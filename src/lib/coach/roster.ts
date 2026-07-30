@@ -17,6 +17,7 @@ export interface RosterAthlete {
   avatar: string | null
   sports: string[]
   level: string | null
+  goal: string | null        // objectif principal (profiles.primary_goal)
   group: string | null
   note: string | null
   status: Forme
@@ -66,7 +67,7 @@ export async function getRoster(): Promise<RosterAthlete[]> {
   const today = new Date().toISOString().slice(0, 10)
 
   const [profRes, actRes, recRes, injRes, planRes, raceRes, msgRes] = await Promise.all([
-    sb.from('profiles').select('id, full_name, first_name, avatar_url, sports, level').in('id', ids),
+    sb.from('profiles').select('id, full_name, first_name, avatar_url, sports, level, primary_goal').in('id', ids),
     sb.from('activities').select('user_id, started_at, tss, moving_time_s').in('user_id', ids).gte('started_at', since30).order('started_at', { ascending: false }),
     sb.from('recovery_checkin').select('user_id, fatigue, soreness, sleep_quality').in('user_id', ids).gte('date', since7d),
     sb.from('injuries').select('user_id, status, resolved_date').in('user_id', ids),
@@ -132,6 +133,7 @@ export async function getRoster(): Promise<RosterAthlete[]> {
       id, linkId: r.id, name, avatar: (p?.avatar_url as string | null) ?? null,
       sports: Array.isArray(p?.sports) ? (p!.sports as string[]) : [],
       level: (p?.level as string | null) ?? null,
+      goal: (p?.primary_goal as string | null) ?? null,
       group: r.group_name, note: r.coach_note,
       status, reason,
       lastActivity: lastAt, lastDays,

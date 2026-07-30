@@ -6,6 +6,7 @@ import { useState, useRef, useEffect, useCallback, Fragment } from 'react'
 import { createPortal } from 'react-dom'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { resolvePlanningUid, isCoachScoped } from '@/lib/planning/scope'
 import { useTrainingZones } from '@/hooks/useTrainingZones'
 import { AnimatedBar, CountUp } from '@/components/ui/AnimatedBar'
 import { SkeletonPlanningGrid } from '@/components/ui/Skeleton'
@@ -690,17 +691,17 @@ function usePlanning(weekStartParam?:string) {
 
   const load = useCallback(async () => {
     setLoading(true)
-    const { data:{ user } } = await supabase.auth.getUser()
-    if (!user) { setLoading(false); return }
+    const uid = await resolvePlanningUid(supabase)
+    if (!uid) { setLoading(false); return }
     const weekEnd=new Date(weekStart); weekEnd.setDate(weekEnd.getDate()+7)
     const weekEndStr=weekEnd.toISOString().split('T')[0]
     const [s,t,r,di,acts] = await Promise.all([
-      supabase.from('planned_sessions').select('*').eq('user_id',user.id).eq('week_start',weekStart),
-      supabase.from('week_tasks').select('*').eq('user_id',user.id).eq('week_start',weekStart),
-      supabase.from('planned_races').select('*').eq('user_id',user.id).order('date'),
-      supabase.from('day_intensity').select('*').eq('user_id',user.id).eq('week_start',weekStart),
+      supabase.from('planned_sessions').select('*').eq('user_id',uid).eq('week_start',weekStart),
+      supabase.from('week_tasks').select('*').eq('user_id',uid).eq('week_start',weekStart),
+      supabase.from('planned_races').select('*').eq('user_id',uid).order('date'),
+      supabase.from('day_intensity').select('*').eq('user_id',uid).eq('week_start',weekStart),
       // Colonnes réelles de la table activities (vérifiées sur activities/page.tsx)
-      supabase.from('activities').select('id,sport_type,title,started_at,moving_time_s,elapsed_time_s,distance_m,tss')
+      supabase.from('activities').select('id,sport_type,title,started_at,moving_time_s,elapsed_time_s,distance_m,tss').eq('user_id',uid)
         .gte('started_at',weekStart+'T00:00:00').lt('started_at',weekEndStr+'T00:00:00'),
     ])
     setSessions((s.data??[]).map((r:any):Session=>({
@@ -757,9 +758,9 @@ function usePlanning(weekStartParam?:string) {
   },[load])
 
   async function addSession(s:Omit<Session,'id'>) {
-    const { data:{ user } } = await supabase.auth.getUser(); if(!user)return
+    const uid = await resolvePlanningUid(supabase); if(!uid)return
     const { data,error } = await supabase.from('planned_sessions').insert({
-      user_id:user.id, week_start:weekStart, day_index:s.dayIndex,
+      user_id:uid, week_start:weekStart, day_index:s.dayIndex,
       sport:s.sport, title:s.title, time:s.time, duration_min:s.durationMin,
       tss:s.tss??null, status:s.status, notes:s.notes??null,
       rpe:s.rpe??null, blocks:s.blocks??[],
@@ -768,6 +769,8 @@ function usePlanning(weekStartParam?:string) {
       parcours_data: s.parcoursData ?? null,
       parcours_id:   s.parcoursId   ?? null,
       nutrition_data: (s as unknown as Session & { nutritionItems?: NutritionItem[] }).nutritionItems ?? null,
+      // Coach scope : la RLS planned_sessions_coach_* exige source='coach'.
+      ...(isCoachScoped() ? { source:'coach' } : {}),
     }).select().single()
     if(!error&&data) {
       setSessions(p=>[...p,{...s,id:data.id}])
@@ -821,9 +824,9 @@ function usePlanning(weekStartParam?:string) {
   }
 
   async function addTask(t:Omit<WeekTask,'id'>) {
-    const { data:{ user } } = await supabase.auth.getUser(); if(!user)return
+    const uid = await resolvePlanningUid(supabase); if(!uid)return
     const { data,error } = await supabase.from('week_tasks').insert({
-      user_id:user.id, week_start:weekStart, title:t.title, type:t.type,
+      user_id:uid, week_start:weekStart, title:t.title, type:t.type,
       day_index:t.dayIndex, start_hour:t.startHour, start_min:t.startMin,
       duration_min:t.durationMin, description:t.description??null,
       priority:t.priority??false, is_main:t.isMain??false,
@@ -854,9 +857,9 @@ function usePlanning(weekStartParam?:string) {
   }
 
   async function addRace(r:Omit<Race,'id'|'validated'|'validationData'>) {
-    const { data:{ user } } = await supabase.auth.getUser(); if(!user)return
+    const uid = await resolvePlanningUid(supabase); if(!uid)return
     const { data,error } = await supabase.from('planned_races').insert({
-      user_id:user.id, name:r.name, sport:r.sport, date:r.date, level:r.level,
+      user_id:uid, name:r.name, sport:r.sport, date:r.date, level:r.level,
       goal:r.goal??null, strategy:r.strategy??null, run_distance:r.runDistance??null,
       tri_distance:r.triDistance??null, hyrox_category:r.hyroxCategory??null,
       hyrox_level:r.hyroxLevel??null, hyrox_gender:r.hyroxGender??null,
@@ -883,9 +886,9 @@ function usePlanning(weekStartParam?:string) {
   }
 
   async function setDayIntensity(dayIdx:number, intensity:DayIntensity) {
-    const { data:{ user } } = await supabase.auth.getUser(); if(!user)return
+    const uid = await resolvePlanningUid(supabase); if(!uid)return
     await supabase.from('day_intensity').upsert({
-      user_id:user.id, week_start:weekStart, day_index:dayIdx, intensity,
+      user_id:uid, week_start:weekStart, day_index:dayIdx, intensity,
       updated_at:new Date().toISOString(),
     },{ onConflict:'user_id,week_start,day_index' })
     setIntensities(p=>({...p,[dayIdx]:intensity}))
@@ -2812,8 +2815,8 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
     void (async () => {
       try {
         const sb = createClient()
-        const { data: { user } } = await sb.auth.getUser()
-        if (!user) return
+        const uid = await resolvePlanningUid(sb)
+        if (!uid) return
 
         // Fetch all active plans for the user, sorted newest first.
         // We filter client-side so timezone off-by-one in stored dates
@@ -2821,7 +2824,7 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
         // multiple rows are avoided.
         const { data: plans } = await sb.from('training_plans')
           .select('*')
-          .eq('user_id', user.id)
+          .eq('user_id', uid)
           .eq('status', 'active')
           .order('created_at', { ascending: false })
           .limit(10)
@@ -2861,7 +2864,7 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
 
         const { data: psData } = await sb.from('planned_sessions')
           .select('sport,duration_min,intensity,week_start')
-          .eq('user_id', user.id)
+          .eq('user_id', uid)
           .eq('plan_id', (planData as { id: string }).id)
         if (cancelled) return
         setAiPlanSessions((psData ?? []) as unknown as AiPlanSessionAgg[])
@@ -2897,9 +2900,9 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
   useEffect(()=>{
     const sb=createClient()
     ;(async()=>{
-      const {data:{user}}=await sb.auth.getUser(); if(!user)return
+      const uid=await resolvePlanningUid(sb); if(!uid)return
       const starts=Array.from({length:weekRange-1},(_,i)=>getWeekStartFromOffset(weekOffset+1+i))
-      const {data}=await sb.from('planned_sessions').select('*').eq('user_id',user.id).in('week_start',starts)
+      const {data}=await sb.from('planned_sessions').select('*').eq('user_id',uid).in('week_start',starts)
       const grouped:Record<string,Session[]>={}; starts.forEach(ws=>{grouped[ws]=[]})
       ;(data??[]).forEach((r:any)=>{
         if(!grouped[r.week_start])grouped[r.week_start]=[]
@@ -2923,7 +2926,7 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
   useEffect(()=>{
     const sb=createClient()
     ;(async()=>{
-      const {data:{user}}=await sb.auth.getUser(); if(!user)return
+      const uid=await resolvePlanningUid(sb); if(!uid)return
       const starts=Array.from({length:weekRange-1},(_,i)=>getWeekStartFromOffset(weekOffset+1+i))
       if(starts.length===0){ setExtraActivities({}); return }
       // Fenêtre [premier lundi affiché, dernier lundi + 7 jours[ — une seule requête.
@@ -2932,7 +2935,7 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
       const rangeEnd=localDateStr(endD)
       const {data}=await sb.from('activities')
         .select('id,sport_type,title,started_at,moving_time_s,elapsed_time_s,distance_m,tss')
-        .eq('user_id',user.id)
+        .eq('user_id',uid)
         .gte('started_at',rangeStart+'T00:00:00').lt('started_at',rangeEnd+'T00:00:00')
       const grouped:Record<string,TrainingActivity[]>={}; starts.forEach(ws=>{grouped[ws]=[]})
       ;(data??[]).forEach((a:any)=>{
@@ -2955,8 +2958,8 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
   useEffect(()=>{
     const sb=createClient()
     ;(async()=>{
-      const {data:{user}}=await sb.auth.getUser(); if(!user)return
-      const {data}=await sb.from('day_intensity').select('week_start,day_index,intensity').eq('user_id',user.id).in('week_start',allWeekStarts)
+      const uid=await resolvePlanningUid(sb); if(!uid)return
+      const {data}=await sb.from('day_intensity').select('week_start,day_index,intensity').eq('user_id',uid).in('week_start',allWeekStarts)
       const m:Record<string,DayIntensity>={}
       ;(data??[]).forEach((x:{week_start:string;day_index:number;intensity:DayIntensity})=>{ m[`${x.week_start}_${x.day_index}`]=x.intensity })
       setIntensityMap(m)
@@ -2966,8 +2969,8 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
   // Définit le type d'un jour PRÉCIS (semaine + jour) — n'affecte pas les autres semaines.
   async function setDayIntensityWeek(ws:string, dayIdx:number, intensity:DayIntensity) {
     setIntensityMap(p=>({...p,[`${ws}_${dayIdx}`]:intensity}))
-    const sb=createClient(); const {data:{user}}=await sb.auth.getUser(); if(!user)return
-    await sb.from('day_intensity').upsert({ user_id:user.id, week_start:ws, day_index:dayIdx, intensity, updated_at:new Date().toISOString() },{ onConflict:'user_id,week_start,day_index' })
+    const sb=createClient(); const uid=await resolvePlanningUid(sb); if(!uid)return
+    await sb.from('day_intensity').upsert({ user_id:uid, week_start:ws, day_index:dayIdx, intensity, updated_at:new Date().toISOString() },{ onConflict:'user_id,week_start,day_index' })
   }
 
   function getSessionsForWeek(ws:string, plan?:PlanVariant):Session[] {
@@ -3256,11 +3259,11 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
       // Ajout sur une autre semaine — appel Supabase direct
       const { createClient: sbCreate } = await import('@/lib/supabase/client')
       const sb = sbCreate()
-      const { data: { user } } = await sb.auth.getUser()
-      if (!user) return
+      const uid = await resolvePlanningUid(sb)
+      if (!uid) return
       const typedS = s as Session & { nutritionItems?: NutritionItem[] }
       await sb.from('planned_sessions').insert({
-        user_id: user.id, week_start: targetWeekStart, day_index: dayIdx,
+        user_id: uid, week_start: targetWeekStart, day_index: dayIdx,
         sport: s.sport, title: s.title, time: s.time, duration_min: s.durationMin,
         tss: s.tss ?? null, status: s.status, notes: s.notes ?? null,
         rpe: s.rpe ?? null, blocks: s.blocks ?? [],
@@ -3268,6 +3271,7 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
         plan_variant: s.planVariant ?? activePlan,
         parcours_data: s.parcoursData ?? null,
         nutrition_data: typedS.nutritionItems ?? null,
+        ...(isCoachScoped() ? { source:'coach' } : {}),
       })
       window.dispatchEvent(new Event('thw:sessions-changed'))
       setPlanTick(t => t + 1)
@@ -3861,16 +3865,15 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
     ;(async()=>{
       try {
         const sb = createClient()
-        const { data } = await sb.auth.getUser()
-        const user = data?.user
-        if (!user) return
+        const uid = await resolvePlanningUid(sb)
+        if (!uid) return
         const today = new Date().toISOString().slice(0,10)
         // Sections
-        const { data: secs } = await sb.from('user_sections').select('*').eq('user_id',user.id).order('sort_order')
+        const { data: secs } = await sb.from('user_sections').select('*').eq('user_id',uid).order('sort_order')
         let loadedSections: UserSection[] = []
         if (!secs || secs.length===0) {
           for (const s of DEFAULT_SECTIONS) {
-            const { data: ins } = await sb.from('user_sections').insert({ user_id:user.id, name:s.name, color:s.color, is_sport_default:s.isSportDefault, sort_order:s.sortOrder }).select().single()
+            const { data: ins } = await sb.from('user_sections').insert({ user_id:uid, name:s.name, color:s.color, is_sport_default:s.isSportDefault, sort_order:s.sortOrder }).select().single()
             if (ins) loadedSections.push({ id:ins.id as string, name:ins.name as string, color:ins.color as string, isSportDefault:ins.is_sport_default as boolean, sortOrder:ins.sort_order as number })
           }
         } else {
@@ -3879,7 +3882,7 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
         setSections(loadedSections)
         if (loadedSections[0]) setNewTaskSection(loadedSections[0].id)
         // Tâches du jour (top zone uniquement — pas d'horaire)
-        const { data: dts } = await sb.from('daily_tasks').select('id,text,done,section_id').eq('user_id',user.id).eq('date',today).order('sort_order')
+        const { data: dts } = await sb.from('daily_tasks').select('id,text,done,section_id').eq('user_id',uid).eq('date',today).order('sort_order')
         if (dts) setDailyTasks((dts as {id:string;text:string;done:boolean;section_id:string|null}[]).map(t=>({id:t.id,text:t.text,done:t.done,sectionId:t.section_id})))
       } catch { /* ignore */ }
     })()
@@ -3888,11 +3891,10 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
   async function addDailyTask() {
     if (!newTaskText.trim()) return
     const sb = createClient()
-    const { data } = await sb.auth.getUser()
-    const user = data?.user
-    if (!user) return
+    const uid = await resolvePlanningUid(sb)
+    if (!uid) return
     const today = new Date().toISOString().slice(0,10)
-    const { data: ins } = await sb.from('daily_tasks').insert({ user_id:user.id, date:today, text:newTaskText.trim(), done:false, section_id:newTaskSection, sort_order:dailyTasks.length }).select('id,text,done,section_id').single()
+    const { data: ins } = await sb.from('daily_tasks').insert({ user_id:uid, date:today, text:newTaskText.trim(), done:false, section_id:newTaskSection, sort_order:dailyTasks.length }).select('id,text,done,section_id').single()
     if (ins) setDailyTasks(p=>[...p,{id:ins.id as string, text:ins.text as string, done:false, sectionId:newTaskSection}])
     setNewTaskText('')
   }
@@ -3912,10 +3914,9 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
   async function addSection() {
     if (!newSectionName.trim()) return
     const sb = createClient()
-    const { data } = await sb.auth.getUser()
-    const user = data?.user
-    if (!user) return
-    const { data: ins } = await sb.from('user_sections').insert({ user_id:user.id, name:newSectionName.trim(), color:'#6b7280', is_sport_default:false, sort_order:sections.length }).select().single()
+    const uid = await resolvePlanningUid(sb)
+    if (!uid) return
+    const { data: ins } = await sb.from('user_sections').insert({ user_id:uid, name:newSectionName.trim(), color:'#6b7280', is_sport_default:false, sort_order:sections.length }).select().single()
     if (ins) setSections(p=>[...p,{ id:ins.id as string, name:ins.name as string, color:ins.color as string, isSportDefault:false, sortOrder:sections.length }])
     setNewSectionName('')
   }

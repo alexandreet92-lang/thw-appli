@@ -252,6 +252,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
     return () => window.removeEventListener('thw:studio-settings-changed', load)
   }, [])
   const [micTarget, setMicTarget] = useState<'desc' | 'chat'>('desc')       // champ visé par la dictée
+  const micBaseRef = useRef('')                                             // texte du champ avant dictée (streaming live)
   const [previewSel, setPreviewSel] = useState<{ msgId: string; nodeId: string } | null>(null)  // bulle touchée dans une maquette
   const [mockupMsgId, setMockupMsgId] = useState<string | null>(null)      // sur-page maquette ouverte
   // Recommandations « pour toi » : l'IA propose des systèmes prêts à lancer.
@@ -1077,7 +1078,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
             </button>
           )}
           {/* Dictée vocale */}
-          <button onClick={() => { setMicTarget(micField); setMicOpen(true) }} disabled={chatBusy} title="Décrire à la voix" aria-label="Décrire à la voix"
+          <button onClick={() => { setMicTarget(micField); micBaseRef.current = micField === 'chat' ? chatInput : desc; setMicOpen(true) }} disabled={chatBusy} title="Décrire à la voix" aria-label="Décrire à la voix"
             style={{ width: 32, height: 32, borderRadius: 10, border: 'none', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <rect x="9" y="2" width="6" height="11" rx="3"/><path d="M5 10a7 7 0 0 0 14 0M12 19v3"/>
@@ -2891,8 +2892,9 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
       {micOpen && (
         <VoiceOverlay
           isDesktop
-          onCancel={() => setMicOpen(false)}
-          onConfirm={(text) => { setMicOpen(false); if (text.trim()) { const add = (prev: string) => (prev ? prev + ' ' : '') + text.trim(); if (micTarget === 'chat') setChatInput(add); else setDesc(add) } }}
+          onCancel={() => { setMicOpen(false); const base = micBaseRef.current; if (micTarget === 'chat') setChatInput(base); else setDesc(base) }}
+          onLiveText={(text) => { const base = micBaseRef.current; const v = text ? (base ? base.trimEnd() + ' ' : '') + text : base; if (micTarget === 'chat') setChatInput(v); else setDesc(v) }}
+          onConfirm={(text) => { setMicOpen(false); const base = micBaseRef.current; const v = text ? (base ? base.trimEnd() + ' ' : '') + text.trim() : base; if (micTarget === 'chat') setChatInput(v); else setDesc(v) }}
         />
       )}
     </div>

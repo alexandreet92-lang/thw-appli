@@ -33,6 +33,7 @@ export function SessionBlockBuilder({ sport, runningSub, accent, blocks, onChang
   const [aiLoading, setAiLoading] = useState(false)
   const [aiError, setAiError] = useState<string | null>(null)
   const [voiceOpen, setVoiceOpen] = useState(false)
+  const voiceBaseRef = useRef('')   // texte du champ avant dictée (streaming live)
   const [parcoursFile, setParcoursFile] = useState<File | null>(null)
   const parcoursInputRef = useRef<HTMLInputElement>(null)
   // Drag-to-reorder (souris + tactile via pointer events)
@@ -415,8 +416,8 @@ export function SessionBlockBuilder({ sport, runningSub, accent, blocks, onChang
               placeholder={sport === 'bike' ? tr('planning.aiPlaceholderBike') : tr('planning.aiPlaceholderDefault')}
               style={{ width: '100%', boxSizing: 'border-box', background: 'var(--bg-card2)', border: '1px solid var(--se-rule)', borderRadius: 'var(--se-r)', color: 'var(--se-text)', padding: '12px 40px 12px 12px', fontSize: 13, outline: 'none', resize: 'vertical', lineHeight: 1.5 }}
             />
-            {/* Dictée : VoiceOverlay → le texte transcrit est concaténé au champ */}
-            <button type="button" onClick={() => setVoiceOpen(true)} aria-label={tr('planning.aiDescribeSession')}
+            {/* Dictée : VoiceOverlay → le texte transcrit s'écrit en direct dans le champ */}
+            <button type="button" onClick={() => { voiceBaseRef.current = aiPrompt; setVoiceOpen(true) }} aria-label={tr('planning.aiDescribeSession')}
               style={{ position: 'absolute', right: 8, bottom: 12, border: 'none', background: 'transparent', color: accent, cursor: 'pointer', display: 'flex', padding: 4 }}>
               <IconMicrophone size={18} />
             </button>
@@ -449,8 +450,9 @@ export function SessionBlockBuilder({ sport, runningSub, accent, blocks, onChang
       {voiceOpen && (
         <VoiceOverlay
           isDesktop={typeof window !== 'undefined' && window.innerWidth >= 1024}
-          onConfirm={txt => { setAiPrompt(p => (p.trim() ? p.trimEnd() + ' ' : '') + txt); setVoiceOpen(false) }}
-          onCancel={() => setVoiceOpen(false)}
+          onLiveText={txt => { const base = voiceBaseRef.current; setAiPrompt(txt ? (base ? base.trimEnd() + ' ' : '') + txt : base) }}
+          onConfirm={txt => { const base = voiceBaseRef.current; setAiPrompt(txt ? (base ? base.trimEnd() + ' ' : '') + txt.trim() : base); setVoiceOpen(false) }}
+          onCancel={() => { setAiPrompt(voiceBaseRef.current); setVoiceOpen(false) }}
         />
       )}
 

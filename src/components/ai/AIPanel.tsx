@@ -20560,6 +20560,8 @@ export default function AIPanel({
   // suspendu → la waveform ne bouge pas). Réutilisé entre dictées.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const dictationCtxRef = useRef<any>(null)
+  // Texte présent AVANT la dictée : la transcription live s'y ajoute (champ visible).
+  const voiceBaseRef = useRef('')
 
   // (B4 thinking animation now uses pure CSS 3-dot bounce — no state needed)
 
@@ -21738,17 +21740,23 @@ export default function AIPanel({
   // L'enregistrement + la transcription sont gérés par VoiceOverlay
   // (getUserMedia + MediaRecorder + /api/stt). Ici : état + insertion du
   // texte transcrit dans le champ de saisie.
-  const stopVoice = useCallback((text = '') => {
+  // Texte de base + dictée live → le champ montre les mots au fur et à mesure.
+  const composeVoice = (dict: string) => {
+    const base = voiceBaseRef.current
+    return dict ? (base ? base.trimEnd() + ' ' : '') + dict : base
+  }
+  const liveVoice = useCallback((text: string) => { setInput(composeVoice(text)) }, [])
+  const confirmVoice = useCallback((text: string) => {
     setRecording(false)
-    if (text) {
-      setInput(prev => (prev ? prev + ' ' : '') + text.trim())
-      setTimeout(() => areaRef.current?.focus(), 80)
-    }
+    setInput(composeVoice(text))
+    setTimeout(() => areaRef.current?.focus(), 60)
   }, [])
-
-  const cancelVoice = useCallback(() => stopVoice(''), [stopVoice])
-  const confirmVoice = useCallback((text: string) => stopVoice(text), [stopVoice])
+  const cancelVoice = useCallback(() => {
+    setRecording(false)
+    setInput(voiceBaseRef.current)   // on jette la dictée, on garde le texte d'avant
+  }, [])
   const startVoice = useCallback(() => {
+    voiceBaseRef.current = input   // fige le texte présent avant de dicter
     // DANS le geste : crée/réveille l'AudioContext (sinon iOS le laisse suspendu
     // → waveform figée). VoiceOverlay réutilisera ce contexte déjà « running ».
     try {
@@ -21760,7 +21768,7 @@ export default function AIPanel({
       }
     } catch { /* ignore */ }
     setRecording(true)
-  }, [])
+  }, [input])
 
   // ── Création de plan : génération de l'aperçu (avant validation) ──
   const generatePlanProposal = useCallback(async (cid: string, msgId: string, req: PlanRequirements) => {
@@ -23710,10 +23718,8 @@ export default function AIPanel({
             {/* ── Conteneur principal de saisie ── */}
             <div className="aip-input-wrap" style={{
               transition: 'border-color 0.15s',
-              // Dictée en cours → on masque le champ d'écriture (l'overlay de
-              // dictée prend toute la place, comme Claude). Le VoiceOverlay
-              // rendu à l'intérieur reste visible (portail vers document.body).
-              display: recording ? 'none' : undefined,
+              // Dictée en cours → le champ RESTE visible : la transcription s'y écrit
+              // en direct. La barre de dictée (X · waveform · ✓) flotte en bas.
             }}>
 
               {/* Citation de texte sélectionné */}
@@ -23821,37 +23827,38 @@ export default function AIPanel({
                 </div>
               )}
 
-              {/* Textarea — hidden during recording */}
-              {!recording && (
-                <textarea
-                  ref={areaRef}
-                  className="aip-textarea"
-                  value={input}
-                  onChange={handleInput}
-                  onKeyDown={handleKey}
-                  placeholder={activeQA
+              {/* Textarea — reste VISIBLE pendant la dictée (le texte s'y écrit en direct). */}
+              <textarea
+                ref={areaRef}
+                className="aip-textarea"
+                value={input}
+                onChange={handleInput}
+                onKeyDown={handleKey}
+                placeholder={recording
+                  ? 'Parle…'
+                  : activeQA
                     ? 'Ajoute ta question ou du contexte pour préciser ta demande…'
                     : 'Écrire un message…'}
-                  rows={1}
-                  style={{
-                    display: 'block', width: '100%',
-                    background: 'transparent',
-                    border: 'none', outline: 'none', resize: 'none',
-                    fontFamily: 'DM Sans, sans-serif',
-                    fontSize: 16, lineHeight: 1.5, color: 'var(--ai-text)',
-                    padding: '14px 16px 6px',
-                    minHeight: 52, maxHeight: 200,
-                    overflowY: 'auto',
-                    boxSizing: 'border-box',
-                  }}
-                />
-              )}
+                rows={1}
+                style={{
+                  display: 'block', width: '100%',
+                  background: 'transparent',
+                  border: 'none', outline: 'none', resize: 'none',
+                  fontFamily: 'DM Sans, sans-serif',
+                  fontSize: 16, lineHeight: 1.5, color: 'var(--ai-text)',
+                  padding: '14px 16px 6px',
+                  minHeight: 52, maxHeight: 200,
+                  overflowY: 'auto',
+                  boxSizing: 'border-box',
+                }}
+              />
 
-              {/* Dictée vocale — overlay plein écran (style image 4) */}
+              {/* Dictée vocale — barre inline flottante (X · waveform · ✓), style Claude */}
               {recording && (
                 <VoiceOverlay
                   onCancel={cancelVoice}
                   onConfirm={confirmVoice}
+                  onLiveText={liveVoice}
                   isDesktop={isDesktop}
                   getAudioCtx={() => dictationCtxRef.current}
                 />

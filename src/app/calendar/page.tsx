@@ -4,6 +4,7 @@ export const dynamic = 'force-dynamic'
 
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { resolvePlanningUid } from '@/lib/planning/scope'
 import GoalBanner from './components/GoalBanner'
 import NextRaceBar from './components/NextRaceBar'
 import AnnualView from './components/AnnualView'
@@ -145,14 +146,14 @@ function useCalendar() {
 
   const load = useCallback(async () => {
     setLoading(true)
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) { setLoading(false); return }
+    const uid = await resolvePlanningUid(supabase)
+    if (!uid) { setLoading(false); return }
 
     const [r, rs, et, ev] = await Promise.all([
-      supabase.from('planned_races').select('*').eq('user_id', user.id).order('date'),
-      supabase.from('race_events').select('*').eq('user_id', user.id).order('start_date'),
-      supabase.from('calendar_event_types').select('*').eq('user_id', user.id).order('name'),
-      supabase.from('calendar_events').select('*').eq('user_id', user.id).order('date'),
+      supabase.from('planned_races').select('*').eq('user_id', uid).order('date'),
+      supabase.from('race_events').select('*').eq('user_id', uid).order('start_date'),
+      supabase.from('calendar_event_types').select('*').eq('user_id', uid).order('name'),
+      supabase.from('calendar_events').select('*').eq('user_id', uid).order('date'),
     ])
 
     setRaces((r.data ?? []).map((x: Record<string, unknown>): Race => ({
@@ -207,9 +208,9 @@ function useCalendar() {
 
   // ── Race CRUD ──────────────────────────────────
   async function addRace(r: Omit<Race, 'id' | 'validated' | 'validationData'>): Promise<string | null> {
-    const { data: { user } } = await supabase.auth.getUser(); if (!user) return null
+    const uid = await resolvePlanningUid(supabase); if (!uid) return null
     const { data, error } = await supabase.from('planned_races').insert({
-      user_id: user.id, name: r.name, sport: r.sport, date: r.date, level: r.level,
+      user_id: uid, name: r.name, sport: r.sport, date: r.date, level: r.level,
       goal: r.goal ?? null, strategy: r.strategy ?? null,
       run_distance: r.runDistance ?? null, tri_distance: r.triDistance ?? null,
       hyrox_category: r.hyroxCategory ?? null, hyrox_level: r.hyroxLevel ?? null,
@@ -233,7 +234,7 @@ function useCalendar() {
   ) {
     const raceId = await addRace(r)
     if (!raceId) return
-    const { data: { user } } = await supabase.auth.getUser(); if (!user) return
+    const uid = await resolvePlanningUid(supabase); if (!uid) return
     const allFiles: { file: File; label?: string }[] = [
       ...files.map(f => ({ file: f })),
       ...(filesBike ?? []).map(f => ({ file: f, label: 'Parcours vélo' })),
@@ -242,7 +243,7 @@ function useCalendar() {
     for (const { file, label } of allFiles) {
       try {
         const safeName = sanitizeFileName(file.name)
-        const path = `${user.id}/${raceId}/${safeName}`
+        const path = `${uid}/${raceId}/${safeName}`
         const { data: upData } = await supabase.storage.from('race-files').upload(path, file, { upsert: true })
         if (upData) {
           const { data: urlData } = supabase.storage.from('race-files').getPublicUrl(path)
@@ -264,7 +265,7 @@ function useCalendar() {
     files: File[], filesBike?: File[], filesRun?: File[],
   ) {
     await updateRace(r)
-    const { data: { user } } = await supabase.auth.getUser(); if (!user) return
+    const uid = await resolvePlanningUid(supabase); if (!uid) return
     const groups: { list: File[]; label: string | null }[] = [
       { list: files,           label: null },
       { list: filesBike ?? [], label: 'Parcours vélo' },
@@ -278,7 +279,7 @@ function useCalendar() {
       for (const file of list) {
         try {
           const safeName = sanitizeFileName(file.name)
-          const path = `${user.id}/${r.id}/${safeName}`
+          const path = `${uid}/${r.id}/${safeName}`
           const { data: upData, error: upErr } = await supabase.storage.from('race-files').upload(path, file, { upsert: true })
           if (upErr) { console.error('[updateRaceWithFiles] storage upload error', upErr); continue }
           if (!upData) { console.error('[updateRaceWithFiles] storage upload returned no data'); continue }
@@ -302,10 +303,10 @@ function useCalendar() {
 
   // ── RaceStage CRUD ─────────────────────────────
   async function addRaceStage(s: Omit<RaceStage, 'id'>, dayFiles: { date: string; file: File }[]) {
-    const { data: { user } } = await supabase.auth.getUser(); if (!user) return
+    const uid = await resolvePlanningUid(supabase); if (!uid) return
     console.log('[addRaceStage] inserting event', s.name, 'dayFiles:', dayFiles.length)
     const { data, error } = await supabase.from('race_events').insert({
-      user_id: user.id, name: s.name, start_date: s.startDate, end_date: s.endDate,
+      user_id: uid, name: s.name, start_date: s.startDate, end_date: s.endDate,
       description: s.description ?? null, daily_program: serializeStageProgram(s),
     }).select().single()
     if (error) { console.error('[addRaceStage] insert error', error); return }
@@ -316,7 +317,7 @@ function useCalendar() {
     for (const { date, file } of dayFiles) {
       try {
         console.log('[addRaceStage] uploading file for', date, file.name)
-        const path = `${user.id}/events/${stageId}/${date}/${sanitizeFileName(file.name)}`
+        const path = `${uid}/events/${stageId}/${date}/${sanitizeFileName(file.name)}`
         const { data: upData, error: upErr } = await supabase.storage.from('race-files').upload(path, file, { upsert: true })
         if (upErr) { console.error('[addRaceStage] storage upload error', upErr); continue }
         if (!upData) { console.error('[addRaceStage] storage upload returned no data'); continue }
@@ -335,7 +336,7 @@ function useCalendar() {
   }
 
   async function saveStageDayContent(stageId: string, date: string, content: string, file?: File) {
-    const { data: { user } } = await supabase.auth.getUser(); if (!user) return
+    const uid = await resolvePlanningUid(supabase); if (!uid) return
     // Update daily_program for this day only
     const stage = raceStages.find(s => s.id === stageId)
     if (!stage) return
@@ -350,7 +351,7 @@ function useCalendar() {
 
     if (file) {
       try {
-        const path = `${user.id}/events/${stageId}/${date}/${sanitizeFileName(file.name)}`
+        const path = `${uid}/events/${stageId}/${date}/${sanitizeFileName(file.name)}`
         const { data: upData } = await supabase.storage.from('race-files').upload(path, file, { upsert: true })
         if (upData) {
           const { data: urlData } = supabase.storage.from('race-files').getPublicUrl(path)
@@ -366,7 +367,7 @@ function useCalendar() {
   }
 
   async function updateRaceStage(s: RaceStage, dayFiles: { date: string; file: File }[]) {
-    const { data: { user } } = await supabase.auth.getUser(); if (!user) return
+    const uid = await resolvePlanningUid(supabase); if (!uid) return
     console.log('[updateRaceStage] updating event', s.id, s.name, 'dayFiles:', dayFiles.length)
     const { error: upErr } = await supabase.from('race_events').update({
       name: s.name, start_date: s.startDate, end_date: s.endDate,
@@ -376,7 +377,7 @@ function useCalendar() {
     for (const { date, file } of dayFiles) {
       try {
         console.log('[updateRaceStage] uploading file for', date, file.name, '(event_id:', s.id, ')')
-        const path = `${user.id}/events/${s.id}/${date}/${sanitizeFileName(file.name)}`
+        const path = `${uid}/events/${s.id}/${date}/${sanitizeFileName(file.name)}`
         const { data: storData, error: storErr } = await supabase.storage.from('race-files').upload(path, file, { upsert: true })
         if (storErr) { console.error('[updateRaceStage] storage upload error', storErr); continue }
         if (!storData) { console.error('[updateRaceStage] storage upload returned no data'); continue }
@@ -421,9 +422,9 @@ function useCalendar() {
 
   // ── EventType CRUD ─────────────────────────────
   async function addEventType(t: Omit<CalEventType, 'id'>) {
-    const { data: { user } } = await supabase.auth.getUser(); if (!user) return
+    const uid = await resolvePlanningUid(supabase); if (!uid) return
     const { data, error } = await supabase.from('calendar_event_types').insert({
-      user_id: user.id, name: t.name, color: t.color, category: t.category,
+      user_id: uid, name: t.name, color: t.color, category: t.category,
     }).select().single()
     if (!error && data) setEventTypes(p => [...p, { ...t, id: data.id }])
   }
@@ -440,9 +441,9 @@ function useCalendar() {
 
   // ── Event CRUD ─────────────────────────────────
   async function addEvent(e: Omit<CalEvent, 'id'>) {
-    const { data: { user } } = await supabase.auth.getUser(); if (!user) return
+    const uid = await resolvePlanningUid(supabase); if (!uid) return
     const { data, error } = await supabase.from('calendar_events').insert({
-      user_id: user.id, category: e.category, type_id: e.typeId ?? null,
+      user_id: uid, category: e.category, type_id: e.typeId ?? null,
       date: e.date, title: e.title, description: e.description ?? null, color: e.color ?? null,
     }).select().single()
     if (!error && data) setEvents(p => [...p, { ...e, id: data.id }])
@@ -488,14 +489,14 @@ function useCalendar() {
   // retire les séances déjà générées par CE stage (source_event_id) puis réinsère
   // avec le même titre + parcours. Appelé à la création ET à la modification.
   async function addStageSessionsToPlanning(stageId: string, stage: { name: string; dailyProgram: RaceStage['dailyProgram'] }) {
-    const { data: { user } } = await supabase.auth.getUser(); if (!user) return
+    const uid = await resolvePlanningUid(supabase); if (!uid) return
     const rows: Record<string, unknown>[] = []
     for (const day of stage.dailyProgram) {
       for (const slot of ['matin', 'aprem'] as const) {
         for (const ses of day[slot] ?? []) {
           if (!ses.title?.trim() && !ses.detail?.trim() && !ses.sport) continue
           rows.push({
-            user_id: user.id, week_start: mondayOf(day.date), day_index: dowOf(day.date),
+            user_id: uid, week_start: mondayOf(day.date), day_index: dowOf(day.date),
             sport: STAGE_PLANNING_SPORT[ses.sport] ?? 'run',
             title: ses.title?.trim() || `${stage.name} — ${ses.detail?.trim() || STAGE_SPORT_LABEL[ses.sport]}`,
             time: ses.time || (slot === 'matin' ? '09:00' : '15:00'),
@@ -507,7 +508,7 @@ function useCalendar() {
         }
       }
     }
-    await supabase.from('planned_sessions').delete().eq('user_id', user.id).eq('source_event_id', stageId)
+    await supabase.from('planned_sessions').delete().eq('user_id', uid).eq('source_event_id', stageId)
     if (rows.length) await supabase.from('planned_sessions').insert(rows)
   }
 

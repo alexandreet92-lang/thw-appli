@@ -785,9 +785,11 @@ APRÈS l'oral : un résumé SCHÉMATISÉ et aéré pour l'écran. CE N'EST PAS l
   // Réglage persistant côté utilisateur (défaut activé). Désactivé → outil coupé.
   const webSearchAllowed = (chatBody as { webSearch?: boolean }).webSearch !== false
   const webEnabled = (cappedKey === 'athena' || cappedKey === 'zeus') && webSearchAllowed
-  const cachedTools = (webEnabled
-    ? [...cachedCustom, { type: 'web_search_20260209', name: 'web_search', max_uses: 5 }]
-    : cachedCustom) as unknown as Anthropic.ToolUnion[]
+  const toolsNoWeb = cachedCustom as unknown as Anthropic.ToolUnion[]
+  const toolsWithWeb = [...cachedCustom, { type: 'web_search_20260209', name: 'web_search', max_uses: 5 }] as unknown as Anthropic.ToolUnion[]
+  // Jeu d'outils courant : peut retomber sur `toolsNoWeb` en cours de route si la
+  // recherche web (conteneur serveur) fait échouer un tour (voir garde-fou plus bas).
+  let cachedTools = webEnabled ? toolsWithWeb : toolsNoWeb
 
   // ── Raisonnement adaptatif (extended thinking) ──
   // Réactivé avec la BONNE syntaxe pour Opus 4.8 / Sonnet 4.6 : `adaptive`.
@@ -846,43 +848,79 @@ APRÈS l'oral : un résumé SCHÉMATISÉ et aéré pour l'écran. CE N'EST PAS l
         } catch (e) { console.error('[coach-stream] coach_runs insert failed:', e) }
       }
 
+      // Retire d'un historique les blocs d'outils SERVEUR incomplets (web_search /
+      // code execution) — indispensable pour rejouer un tour sans recherche web.
+      const stripServerToolBlocks = (msgs: Anthropic.MessageParam[]): Anthropic.MessageParam[] =>
+        msgs.map(m => {
+          if (m.role !== 'assistant' || !Array.isArray(m.content)) return m
+          const kept = m.content.filter(b => {
+            const type = (b as { type?: string }).type
+            return type !== 'server_tool_use' && type !== 'web_search_tool_result' && type !== 'code_execution_tool_result'
+          })
+          return { ...m, content: kept }
+        }).filter(m => !(Array.isArray(m.content) && m.content.length === 0))
+
+      // Sécurité : un historique ne doit jamais contenir de blocs d'outils serveur
+      // incomplets (sinon 400 dès le 1er appel). On les retire proactivement.
+      convMessages = stripServerToolBlocks(convMessages)
+
       try {
         for (let step = 0; step < MAX_STEPS; step++) {
-          // Réutilise le conteneur d'exécution serveur ouvert par un tour précédent
-          // (champ `container` absent des types SDK selon la version → via un Record).
-          const containerParam: Record<string, unknown> = containerId ? { container: containerId } : {}
-          const ms = client.messages.stream({
-            model: chatModel,
-            max_tokens: chatMaxTokens,
-            system: systemBlocks,
-            messages: convMessages,
-            tools: cachedTools,
-            tool_choice: { type: 'auto' },
-            ...(allowThinking ? { thinking: { type: 'adaptive', display: 'summarized' } } : {}),
-            ...containerParam,
-          })
+          const stepCheckpoint = convMessages
+          const textBeforeStep = fullText
+          let finalMsg!: Anthropic.Message
+          try {
+            // Réutilise le conteneur d'exécution serveur ouvert par un tour précédent
+            // (champ `container` absent des types SDK selon la version → via un Record).
+            const containerParam: Record<string, unknown> = containerId ? { container: containerId } : {}
+            const ms = client.messages.stream({
+              model: chatModel,
+              max_tokens: chatMaxTokens,
+              system: systemBlocks,
+              messages: convMessages,
+              tools: cachedTools,
+              tool_choice: { type: 'auto' },
+              ...(allowThinking ? { thinking: { type: 'adaptive', display: 'summarized' } } : {}),
+              ...containerParam,
+            })
 
-          // Streaming live du texte token-par-token + raisonnement + statut web
-          let webAnnounced = false
-          for await (const ev of ms) {
-            if (ev.type === 'content_block_delta' && ev.delta.type === 'text_delta' && ev.delta.text) {
-              send('text', JSON.stringify(ev.delta.text))
-              fullText += ev.delta.text
-            } else if (ev.type === 'content_block_delta' && ev.delta.type === 'thinking_delta' && ev.delta.thinking) {
-              // Raisonnement étendu en direct → feuille « Processus de réflexion »
-              send('thinking', JSON.stringify(ev.delta.thinking))
-            } else if (
-              !webAnnounced &&
-              ev.type === 'content_block_start' &&
-              (ev.content_block as { type?: string })?.type === 'server_tool_use' &&
-              (chatBody as { agentId?: string }).agentId === 'central'
-            ) {
-              webAnnounced = true
-              send('tool_status', JSON.stringify({ tools: ['web_search'] }))
+            // Streaming live du texte token-par-token + raisonnement + statut web
+            let webAnnounced = false
+            for await (const ev of ms) {
+              if (ev.type === 'content_block_delta' && ev.delta.type === 'text_delta' && ev.delta.text) {
+                send('text', JSON.stringify(ev.delta.text))
+                fullText += ev.delta.text
+              } else if (ev.type === 'content_block_delta' && ev.delta.type === 'thinking_delta' && ev.delta.thinking) {
+                // Raisonnement étendu en direct → feuille « Processus de réflexion »
+                send('thinking', JSON.stringify(ev.delta.thinking))
+              } else if (
+                !webAnnounced &&
+                ev.type === 'content_block_start' &&
+                (ev.content_block as { type?: string })?.type === 'server_tool_use' &&
+                (chatBody as { agentId?: string }).agentId === 'central'
+              ) {
+                webAnnounced = true
+                send('tool_status', JSON.stringify({ tools: ['web_search'] }))
+              }
             }
-          }
 
-          const finalMsg = await ms.finalMessage()
+            finalMsg = await ms.finalMessage()
+          } catch (stepErr) {
+            const em = stepErr instanceof Error ? stepErr.message : String(stepErr)
+            // Garde-fou : la recherche web (conteneur serveur) fait parfois échouer
+            // un tour (« container_id is required… », pending tool uses). Plutôt que
+            // de cracher l'erreur brute, on REJOUE le tour SANS recherche web, à
+            // partir du dernier état propre → le coach répond depuis ses connaissances.
+            const webContainerErr = /container_id|pending tool use|code execution|server_tool/i.test(em)
+            if (webContainerErr && cachedTools === toolsWithWeb && fullText === textBeforeStep) {
+              console.warn('[coach-stream] web_search container error → retry sans web_search:', em)
+              cachedTools = toolsNoWeb
+              containerId = null
+              convMessages = stripServerToolBlocks(stepCheckpoint)
+              continue
+            }
+            throw stepErr
+          }
           // Mémorise le conteneur d'exécution serveur (créé par web_search 2026)
           // pour le renvoyer aux tours suivants (sinon 400 sur pause_turn).
           const respContainer = (finalMsg as { container?: { id?: string } | null }).container

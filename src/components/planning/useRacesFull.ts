@@ -5,6 +5,7 @@
 // l'event `thw:sessions-changed` (création/édition depuis n'importe quelle page).
 import { useCallback, useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { resolvePlanningUid } from '@/lib/planning/scope'
 import { mapRowToRace, saveRaceWithFiles, deleteRaceById } from '@/lib/races/raceStore'
 import type { Race } from '@/app/calendar/components/types'
 
@@ -14,9 +15,9 @@ export function useRacesFull() {
 
   const load = useCallback(async () => {
     const sb = createClient()
-    const { data: { user } } = await sb.auth.getUser()
-    if (!user) { setLoading(false); return }
-    const { data } = await sb.from('planned_races').select('*').eq('user_id', user.id).order('date')
+    const uid = await resolvePlanningUid(sb)
+    if (!uid) { setLoading(false); return }
+    const { data } = await sb.from('planned_races').select('*').eq('user_id', uid).order('date')
     setRaces((data ?? []).map(r => mapRowToRace(r as Record<string, unknown>)))
     setLoading(false)
   }, [])
@@ -31,9 +32,9 @@ export function useRacesFull() {
   // Crée/édite une course (+ parcours) puis notifie toutes les pages.
   const save = useCallback(async (race: Omit<Race, 'id'>, files: File[] = [], filesBike: File[] = [], filesRun: File[] = [], existingId?: string) => {
     const sb = createClient()
-    const { data: { user } } = await sb.auth.getUser()
-    if (!user) return
-    await saveRaceWithFiles(sb, user.id, race, files, filesBike, filesRun, existingId)
+    const uid = await resolvePlanningUid(sb)
+    if (!uid) return
+    await saveRaceWithFiles(sb, uid, race, files, filesBike, filesRun, existingId)
     await load()
     window.dispatchEvent(new Event('thw:sessions-changed'))
   }, [load])

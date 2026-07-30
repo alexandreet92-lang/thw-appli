@@ -124,7 +124,7 @@ export default function CoachPlanningRoster() {
                   return (
                     <tr key={r.id} onClick={() => router.push(`/coach/planning/${r.id}`)}
                       style={{ borderBottom: '1px solid var(--border)', cursor: 'pointer' }}
-                      onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'var(--bg-card2)'}
+                      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-card2)'; router.prefetch(`/coach/planning/${r.id}`) }}
                       onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}>
                       {/* Athlète */}
                       <td style={{ padding: '12px 16px' }}>

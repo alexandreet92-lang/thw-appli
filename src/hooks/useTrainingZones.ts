@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { resolvePlanningUid } from '@/lib/planning/scope'
 
 export type ZoneSport = 'bike' | 'run' | 'swim' | 'rowing' | 'hyrox_row' | 'hyrox_ski'
 
@@ -34,13 +35,13 @@ export function useTrainingZones() {
 
   const load = useCallback(async () => {
     setLoading(true)
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) { setLoading(false); return }
+    const uid = await resolvePlanningUid(supabase)
+    if (!uid) { setLoading(false); return }
 
     const { data } = await supabase
       .from('training_zones')
       .select('*')
-      .eq('user_id', user.id)
+      .eq('user_id', uid)
       .eq('is_current', true)
 
     if (data && data.length > 0) {
@@ -70,11 +71,11 @@ export function useTrainingZones() {
 
   const save = useCallback(async (sport: ZoneSport, data: ZoneData) => {
     setSaving(true)
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) { setSaving(false); return }
+    const uid = await resolvePlanningUid(supabase)
+    if (!uid) { setSaving(false); return }
 
     await supabase.from('training_zones').upsert({
-      user_id:         user.id,
+      user_id:         uid,
       sport,
       ftp_watts:       data.ftp_watts ?? null,
       sl1:             data.sl1 || null,

@@ -20,6 +20,7 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { createClient } from '@/lib/supabase/client'
+import { resolvePlanningUid } from '@/lib/planning/scope'
 import { formatHM, matchStatus, normalizeSportType, ATHLETE, type Session, type TrainingActivity } from '@/app/planning/page'
 import { sportKeyFromType, subSportIcon, SPORT_ICON, type SportKey } from '@/components/icons/SportIcon'
 import { toBars, treadmillGainM, totalDistance, barHeightPct, type MBlock } from './mobile/blocks'
@@ -127,30 +128,33 @@ function parseStrength(detail: unknown): StrengthDetail | null {
 
 // ── Références athlète (FTP / seuil course / CSS) — un fetch par session ──
 interface AthleteRefsLite { ftp: number; runThr: number; css: number }
-let refsCache: AthleteRefsLite | null = null
-let refsPromise: Promise<AthleteRefsLite> | null = null
+// Cache par utilisateur effectif (self OU athlète consulté par le coach) : sans
+// clé par uid, les refs du coach « collaient » aux activités de l'athlète.
+const refsCache: Record<string, AthleteRefsLite> = {}
+const refsPromise: Record<string, Promise<AthleteRefsLite>> = {}
 async function loadAthleteRefs(): Promise<AthleteRefsLite> {
-  if (refsCache) return refsCache
-  if (!refsPromise) {
-    refsPromise = (async () => {
+  const sb = createClient()
+  const uid = await resolvePlanningUid(sb)
+  const key = uid ?? '_none'
+  if (refsCache[key]) return refsCache[key]
+  if (!refsPromise[key]) {
+    refsPromise[key] = (async () => {
       const fallback: AthleteRefsLite = { ftp: ATHLETE.ftp, runThr: ATHLETE.thresholdPace, css: ATHLETE.css }
+      if (!uid) return fallback
       try {
-        const sb = createClient()
-        const { data: { user } } = await sb.auth.getUser()
-        if (!user) return fallback
         const { data } = await sb.from('athlete_performance_profile')
           .select('ftp_watts,threshold_pace_s_km,css_s_100m')
-          .eq('user_id', user.id).maybeSingle()
-        refsCache = {
+          .eq('user_id', uid).maybeSingle()
+        refsCache[key] = {
           ftp: Number(data?.ftp_watts) > 0 ? Number(data!.ftp_watts) : fallback.ftp,
           runThr: Number(data?.threshold_pace_s_km) > 0 ? Number(data!.threshold_pace_s_km) : fallback.runThr,
           css: Number(data?.css_s_100m) > 0 ? Number(data!.css_s_100m) : fallback.css,
         }
-        return refsCache
+        return refsCache[key]
       } catch { return fallback }
     })()
   }
-  return refsPromise
+  return refsPromise[key]
 }
 
 /** Zone RÉALISÉE d'un échantillon (vitesse ou watts vs références athlète). */
@@ -479,7 +483,7 @@ export function RealizedIntensityBars({ full, sport, height = 56, cursor, onHove
   cursor?: number | null; onHover?: (frac: number | null) => void
   titleSuffix?: string
 }) {
-  const [refs, setRefs] = useState<AthleteRefsLite | null>(refsCache)
+  const [refs, setRefs] = useState<AthleteRefsLite | null>(null)
   useEffect(() => { let ok = true; void loadAthleteRefs().then(r => { if (ok) setRefs(r) }); return () => { ok = false } }, [])
   const r = refs ?? { ftp: ATHLETE.ftp, runThr: ATHLETE.thresholdPace, css: ATHLETE.css }
   // Besoin d'au moins des laps OU une moyenne exploitable.

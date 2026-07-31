@@ -4,6 +4,7 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { useStrava } from '@/hooks/useStrava'
 import { useI18n } from '@/lib/i18n'
+import { ConnectWithStrava, PoweredByStrava } from './StravaBranding'
 
 const STATUS_MESSAGES: Record<string, { key: string; ok: boolean }> = {
   connected:     { key: 'shared.stravaConnected',        ok: true  },
@@ -96,31 +97,12 @@ export function StravaConnect() {
               {activities.length > 1 ? t('shared.activityCountMany', { n: activities.length }) : t('shared.activityCountOne', { n: activities.length })}
             </span>
           )}
+          {/* Attribution Strava obligatoire dès qu'on affiche des données Strava. */}
+          <PoweredByStrava variant="muted" height={12} />
         </div>
       ) : (
-        <button
-          onClick={() => { window.location.href = '/api/auth/strava/connect' }}
-          style={{
-            padding:     '8px 18px',
-            borderRadius: 9,
-            background:  '#FC4C02',
-            border:      'none',
-            color:       '#fff',
-            fontSize:    12,
-            fontWeight:  700,
-            cursor:      'pointer',
-            display:     'flex',
-            alignItems:  'center',
-            gap:         8,
-            fontFamily:  'DM Sans, sans-serif',
-          }}
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066l-2.084 4.116z" fill="white"/>
-            <path d="M11.214 13.828l2.084-4.116 2.089 4.116h3.066L13.298 3.656l-5.15 10.172h3.066z" fill="white"/>
-          </svg>
-          {t('shared.connectStrava')}
-        </button>
+        // Bouton officiel « Connect with Strava » (Strava Brand Guidelines).
+        <ConnectWithStrava href="/api/auth/strava/connect" height={40} />
       )}
     </>
   )

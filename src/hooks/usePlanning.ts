@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { resolvePlanningUid } from '@/lib/planning/scope'
 import { weekStartStr } from '@/lib/date/weekStart'
 
 // Lundi (LOCAL) de la semaine courante — helper canonique (surtout PAS
@@ -75,14 +76,14 @@ export function usePlanning() {
 
   const load = useCallback(async () => {
     setLoading(true)
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) { setLoading(false); return }
+    const __uid = await resolvePlanningUid(supabase)
+    if (!__uid) { setLoading(false); return }
 
     const [s, t, r, di] = await Promise.all([
-      supabase.from('planned_sessions').select('*').eq('user_id', user.id).eq('week_start', weekStart),
-      supabase.from('week_tasks').select('*').eq('user_id', user.id).eq('week_start', weekStart),
-      supabase.from('planned_races').select('*').eq('user_id', user.id).order('date'),
-      supabase.from('day_intensity').select('*').eq('user_id', user.id).eq('week_start', weekStart),
+      supabase.from('planned_sessions').select('*').eq('user_id', __uid).eq('week_start', weekStart),
+      supabase.from('week_tasks').select('*').eq('user_id', __uid).eq('week_start', weekStart),
+      supabase.from('planned_races').select('*').eq('user_id', __uid).order('date'),
+      supabase.from('day_intensity').select('*').eq('user_id', __uid).eq('week_start', weekStart),
     ])
 
     setSessions((s.data ?? []).map(row => ({
@@ -135,10 +136,10 @@ export function usePlanning() {
 
   // ── Sessions ──────────────────────────────────
   async function addSession(dayIndex: number, session: Omit<PlannedSession, 'id'>) {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
+    const __uid = await resolvePlanningUid(supabase)
+    if (!__uid) return
     const { data, error } = await supabase.from('planned_sessions').insert({
-      user_id: user.id, week_start: weekStart, day_index: dayIndex,
+      user_id: __uid, week_start: weekStart, day_index: dayIndex,
       sport: session.sport, title: session.title, time: session.time,
       duration_min: session.duration_min, tss: session.tss ?? null,
       status: session.status, notes: session.notes ?? null,
@@ -180,10 +181,10 @@ export function usePlanning() {
 
   // ── Tasks ─────────────────────────────────────
   async function addTask(task: Omit<WeekTask, 'id'>) {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
+    const __uid = await resolvePlanningUid(supabase)
+    if (!__uid) return
     const { data, error } = await supabase.from('week_tasks').insert({
-      user_id: user.id, week_start: weekStart,
+      user_id: __uid, week_start: weekStart,
       title: task.title, type: task.type, day_index: task.day_index,
       start_hour: task.start_hour, start_min: task.start_min,
       duration_min: task.duration_min, description: task.description ?? null,
@@ -207,10 +208,10 @@ export function usePlanning() {
 
   // ── Races ─────────────────────────────────────
   async function addRace(race: Omit<PlannedRace, 'id' | 'validated' | 'validation_data'>) {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
+    const __uid = await resolvePlanningUid(supabase)
+    if (!__uid) return
     const { data, error } = await supabase.from('planned_races').insert({
-      user_id: user.id, name: race.name, sport: race.sport,
+      user_id: __uid, name: race.name, sport: race.sport,
       date: race.date, level: race.level, goal: race.goal ?? null,
       strategy: race.strategy ?? null, run_distance: race.run_distance ?? null,
       tri_distance: race.tri_distance ?? null, hyrox_category: race.hyrox_category ?? null,
@@ -240,10 +241,10 @@ export function usePlanning() {
 
   // ── Intensity ─────────────────────────────────
   async function setDayIntensity(dayIndex: number, intensity: 'recovery'|'low'|'mid'|'hard') {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
+    const __uid = await resolvePlanningUid(supabase)
+    if (!__uid) return
     await supabase.from('day_intensity').upsert({
-      user_id: user.id, week_start: weekStart, day_index: dayIndex, intensity,
+      user_id: __uid, week_start: weekStart, day_index: dayIndex, intensity,
       updated_at: new Date().toISOString(),
     }, { onConflict: 'user_id,week_start,day_index' })
     setIntensities(p => ({ ...p, [dayIndex]: intensity }))

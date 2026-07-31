@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { resolvePlanningUid } from '@/lib/planning/scope'
 import { useI18n } from '@/lib/i18n'
 import HrvDaily from './HrvDaily'
 import HrvTrend from './HrvTrend'
@@ -15,21 +16,21 @@ export default function HrvSection() {
 
   useEffect(() => {
     const sb = createClient()
-    sb.auth.getUser().then(({ data: { user } }) => {
-      if (!user) { setLoading(false); return }
+    resolvePlanningUid(sb).then((__uid) => {
+      if (!__uid) { setLoading(false); return }
 
       // Source 1 : data_type='hrv' (entrées dédiées, colonne hrv_rmssd ou raw_data.hrv_rmssd)
       // Source 2 : data_type='nightly_recharge' (Polar v4, raw_data.hrv_ms ou raw_data.hrv_rmssd)
       Promise.all([
         sb.from('health_data')
           .select('date, hrv_rmssd, raw_data')
-          .eq('user_id', user.id)
+          .eq('user_id', __uid)
           .eq('data_type', 'hrv')
           .order('date', { ascending: false })
           .limit(90),
         sb.from('health_data')
           .select('date, raw_data')
-          .eq('user_id', user.id)
+          .eq('user_id', __uid)
           .eq('data_type', 'nightly_recharge')
           .order('date', { ascending: false })
           .limit(90),

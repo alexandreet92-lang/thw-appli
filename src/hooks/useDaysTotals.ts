@@ -4,6 +4,7 @@
 // des dates ; jour sans données → absent (= 0).
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { resolvePlanningUid } from '@/lib/planning/scope'
 
 export interface DayTotals { kcal: number; prot: number; gluc: number; lip: number }
 
@@ -15,12 +16,12 @@ export function useDaysTotals(dates: string[]): Record<string, DayTotals> {
     void (async () => {
       if (dates.length === 0) return
       const sb = createClient()
-      const { data: { user } } = await sb.auth.getUser()
-      if (!user || cancel) return
+      const __uid = await resolvePlanningUid(sb)
+      if (!__uid || cancel) return
       const { data } = await sb
         .from('nutrition_meal_logs')
         .select('date, actual_kcal, actual_prot, actual_gluc, actual_lip')
-        .eq('user_id', user.id)
+        .eq('user_id', __uid)
         .is('plan_id', null)
         .in('date', dates)
       if (cancel) return

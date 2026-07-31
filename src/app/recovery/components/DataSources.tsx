@@ -2,6 +2,7 @@
 
 import { useState, useEffect, type RefObject } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { resolvePlanningUid } from '@/lib/planning/scope'
 import { useI18n } from '@/lib/i18n'
 
 // ── Static source definitions ──────────────────────────────────
@@ -36,11 +37,11 @@ export default function DataSources({ sourcesRef }: Props) {
 
   useEffect(() => {
     const sb = createClient()
-    sb.auth.getUser().then(({ data: { user } }) => {
-      if (!user) return
+    resolvePlanningUid(sb).then((__uid) => {
+      if (!__uid) return
       sb.from('oauth_tokens')
         .select('provider, last_used_at, updated_at')
-        .eq('user_id', user.id)
+        .eq('user_id', __uid)
         .eq('is_active', true)
         .then(({ data }) => setConnInfo((data as ConnInfo[] | null) ?? []))
     })
@@ -57,11 +58,11 @@ export default function DataSources({ sourcesRef }: Props) {
       await fetch(`/api/sync/${provider}`, { method: 'POST' })
       // Refresh connection info
       const sb = createClient()
-      const { data: { user } } = await sb.auth.getUser()
-      if (user) {
+      const __uid = await resolvePlanningUid(sb)
+      if (__uid) {
         const { data } = await sb.from('oauth_tokens')
           .select('provider, last_used_at, updated_at')
-          .eq('user_id', user.id).eq('is_active', true)
+          .eq('user_id', __uid).eq('is_active', true)
         setConnInfo((data as ConnInfo[] | null) ?? [])
       }
     } finally {

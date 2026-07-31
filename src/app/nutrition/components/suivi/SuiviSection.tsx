@@ -9,6 +9,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { resolvePlanningUid } from '@/lib/planning/scope'
 import type { DailyLog, NutritionPlanData } from '@/hooks/useNutrition'
 import { useDaysTotals } from '@/hooks/useDaysTotals'
 import { buildPeriod, periodSummary, adherenceByType, periodDates } from './suiviData'
@@ -66,9 +67,9 @@ export function SuiviSection({ dailyLogs, plan, weightKg, today }: Props) {
     const since = rows[0]?.date
     if (!since) return
     void (async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
-      const { data } = await supabase.from('hydration').select('date,liters').eq('user_id', user.id).gte('date', since).lte('date', today)
+      const __uid = await resolvePlanningUid(supabase)
+      if (!__uid) return
+      const { data } = await supabase.from('hydration').select('date,liters').eq('user_id', __uid).gte('date', since).lte('date', today)
       if (cancel) return
       const map: Record<string, number> = {}
       for (const r of (data ?? []) as { date: string; liters: number }[]) map[r.date] = r.liters ?? 0

@@ -4,6 +4,7 @@
 // série (perf) → SN cyclisme en repli FC ; suffisant pour la tendance de charge.
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { resolvePlanningUid } from '@/lib/planning/scope'
 import { useSmSn } from '@/hooks/useSmSn'
 import { buildPmcDual, combinedVerdict, type PmcDualPoint, type LoadVerdict } from '@/lib/training/pmcDual'
 
@@ -28,13 +29,13 @@ export function useTrainingLoad(days = 90): TrainingLoad {
     void (async () => {
       try {
         const sb = createClient()
-        const { data: { user } } = await sb.auth.getUser()
-        if (!user) { if (!cancelled) { setSeries([]); setLoading(false) } return }
+        const __uid = await resolvePlanningUid(sb)
+        if (!__uid) { if (!cancelled) { setSeries([]); setLoading(false) } return }
         const since = new Date(); since.setDate(since.getDate() - days - 42)
         const { data } = await sb
           .from('activities')
           .select(COLS)
-          .eq('user_id', user.id)
+          .eq('user_id', __uid)
           .gte('started_at', since.toISOString())
           .order('started_at', { ascending: true })
         if (cancelled) return

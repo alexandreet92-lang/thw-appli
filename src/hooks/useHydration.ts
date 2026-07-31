@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { resolvePlanningUid } from '@/lib/planning/scope'
 
 // ── Hook hydratation ────────────────────────────────────────────────
 // Lit/écrit la table `hydration` (une ligne par user/jour, en litres).
@@ -13,12 +14,12 @@ export function useHydration(date: string) {
     if (!date) return
     setLoading(true)
     const sb = createClient()
-    const { data: { user } } = await sb.auth.getUser()
-    if (!user) { setLoading(false); return }
+    const __uid = await resolvePlanningUid(sb)
+    if (!__uid) { setLoading(false); return }
     const { data, error } = await sb
       .from('hydration')
       .select('liters')
-      .eq('user_id', user.id)
+      .eq('user_id', __uid)
       .eq('date', date)
       .maybeSingle()
     if (error) console.error('[useHydration] load:', error)
@@ -32,11 +33,11 @@ export function useHydration(date: string) {
     const value = Math.max(0, Math.round(next * 100) / 100)
     setLitersState(value)   // optimiste
     const sb = createClient()
-    const { data: { user } } = await sb.auth.getUser()
-    if (!user) return
+    const __uid = await resolvePlanningUid(sb)
+    if (!__uid) return
     const { error } = await sb
       .from('hydration')
-      .upsert({ user_id: user.id, date, liters: value }, { onConflict: 'user_id,date' })
+      .upsert({ user_id: __uid, date, liters: value }, { onConflict: 'user_id,date' })
     if (error) { console.error('[useHydration] upsert:', error); void load() }
   }, [date, load])
 

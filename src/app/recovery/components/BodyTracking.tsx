@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { resolvePlanningUid } from '@/lib/planning/scope'
 import { localToday } from './types'
 import type { BodyWeightRow, HydrationRow, PainLogRow } from './types'
 import { useI18n } from '@/lib/i18n'
@@ -45,15 +46,15 @@ export default function BodyTracking() {
 
   const load = useCallback(async () => {
     const sb = createClient()
-    const { data:{ user } } = await sb.auth.getUser()
-    if (!user) return
-    setUserId(user.id)
+    const __uid = await resolvePlanningUid(sb)
+    if (!__uid) return
+    setUserId(__uid)
     const d30 = new Date(); d30.setDate(d30.getDate()-30)
     const d30s = `${d30.getFullYear()}-${String(d30.getMonth()+1).padStart(2,'0')}-${String(d30.getDate()).padStart(2,'0')}`
     const [w, h, p] = await Promise.all([
-      sb.from('body_weight').select('id,date,weight_kg').eq('user_id',user.id).gte('date',d30s).order('date',{ascending:true}),
-      sb.from('hydration').select('id,date,liters').eq('user_id',user.id).gte('date',d30s).order('date',{ascending:true}),
-      sb.from('pain_log').select('id,date,body_zone,intensity').eq('user_id',user.id).gte('date',d30s),
+      sb.from('body_weight').select('id,date,weight_kg').eq('user_id',__uid).gte('date',d30s).order('date',{ascending:true}),
+      sb.from('hydration').select('id,date,liters').eq('user_id',__uid).gte('date',d30s).order('date',{ascending:true}),
+      sb.from('pain_log').select('id,date,body_zone,intensity').eq('user_id',__uid).gte('date',d30s),
     ])
     if (w.data) setWeights(w.data as BodyWeightRow[])
     if (h.data) setHydration(h.data as HydrationRow[])

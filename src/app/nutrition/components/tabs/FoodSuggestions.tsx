@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { resolvePlanningUid } from '@/lib/planning/scope'
 
 export interface RecentMeal {
   meal_name: string
@@ -21,13 +22,13 @@ export default function FoodSuggestions({ slot, onSelect }: Props) {
   useEffect(() => {
     async function load() {
       const supabase = createClient()
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) return
+      const __uid = await resolvePlanningUid(supabase)
+      if (!__uid) return
 
       const { data } = await supabase
         .from('nutrition_meal_logs')
         .select('meal_name, actual_kcal, actual_prot, actual_gluc, actual_lip')
-        .eq('user_id', session.user.id)
+        .eq('user_id', __uid)
         .eq('meal_slot', slot)
         .is('plan_id', null)
         .not('meal_name', 'is', null)

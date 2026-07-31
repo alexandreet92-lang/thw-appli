@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { resolvePlanningUid } from '@/lib/planning/scope'
 
 export interface BodyMeasurement {
   id: string
@@ -65,12 +66,12 @@ export function useBodyMetrics() {
     setLoading(true)
     try {
       const sb = createClient()
-      const { data: { user } } = await sb.auth.getUser()
-      if (!user) { setLoading(false); return }
+      const __uid = await resolvePlanningUid(sb)
+      if (!__uid) { setLoading(false); return }
       const { data, error } = await sb
         .from('body_measurements')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('user_id', __uid)
         .order('measured_at', { ascending: true })
       if (error) console.error('[useBodyMetrics]', error)
       setMeasurements((data as BodyMeasurement[]) ?? [])
@@ -84,11 +85,11 @@ export function useBodyMetrics() {
     m: Omit<BodyMeasurement, 'id' | 'user_id' | 'created_at'>,
   ): Promise<void> => {
     const sb = createClient()
-    const { data: { user } } = await sb.auth.getUser()
-    if (!user) return
+    const __uid = await resolvePlanningUid(sb)
+    if (!__uid) return
     const { error } = await sb
       .from('body_measurements')
-      .upsert({ user_id: user.id, ...m }, { onConflict: 'user_id,measured_at' })
+      .upsert({ user_id: __uid, ...m }, { onConflict: 'user_id,measured_at' })
     if (error) { console.error('[addMeasurement]', error); throw error }
     await load()
   }, [load])

@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { resolvePlanningUid } from '@/lib/planning/scope'
 import { useI18n } from '@/lib/i18n'
 import { currentLocale } from '@/lib/i18n'
 
@@ -30,11 +31,11 @@ export default function DailyStepsCard() {
 
   useEffect(() => {
     const sb = createClient()
-    sb.auth.getUser().then(({ data: { user } }) => {
-      if (!user) return
+    resolvePlanningUid(sb).then((__uid) => {
+      if (!__uid) return
       sb.from('health_data')
         .select('date, steps, active_calories, total_calories, raw_data')
-        .eq('user_id', user.id)
+        .eq('user_id', __uid)
         .eq('data_type', 'daily_activity')
         .order('date', { ascending: false })
         .limit(14)

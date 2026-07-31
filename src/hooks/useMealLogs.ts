@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { resolvePlanningUid } from '@/lib/planning/scope'
 
 export interface MealLog {
   id?: string
@@ -37,12 +38,12 @@ export function useMealLogs(
   const load = useCallback(async () => {
     if (!planId || !date) { setLogs([]); return }
     setLoading(true)
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) { setLoading(false); return }
+    const __uid = await resolvePlanningUid(supabase)
+    if (!__uid) { setLoading(false); return }
     const { data, error } = await supabase
       .from('nutrition_meal_logs')
       .select('*')
-      .eq('user_id', user.id)
+      .eq('user_id', __uid)
       .eq('plan_id', planId)
       .eq('date', date)
     if (error) console.error('[useMealLogs] load error:', error)
@@ -56,8 +57,8 @@ export function useMealLogs(
   // Pattern: optimistic-first → await upsert → merge server row
   //          on error: rollback optimistic state (no blind refetch)
   async function toggleValidated(mealSlot: string, validated: boolean): Promise<void> {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user || !planId) return
+    const __uid = await resolvePlanningUid(supabase)
+    if (!__uid || !planId) return
 
     // 1. Snapshot previous state for rollback
     const prev = logs
@@ -80,7 +81,7 @@ export function useMealLogs(
       .from('nutrition_meal_logs')
       .upsert(
         {
-          user_id: user.id,
+          user_id: __uid,
           plan_id: planId,
           date,
           meal_slot: mealSlot,
@@ -119,8 +120,8 @@ export function useMealLogs(
       | 'validated'
     >>,
   ): Promise<void> {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user || !planId) return
+    const __uid = await resolvePlanningUid(supabase)
+    if (!__uid || !planId) return
 
     const prev = logs
 
@@ -142,7 +143,7 @@ export function useMealLogs(
       .from('nutrition_meal_logs')
       .upsert(
         {
-          user_id: user.id,
+          user_id: __uid,
           plan_id: planId,
           date,
           meal_slot: mealSlot,

@@ -17,7 +17,9 @@ import { Avatar } from '@/components/shared/Sidebar'
 import { AthleteDetailDrawer, type DrawerKind } from '@/components/coach/AthleteDetailDrawer'
 import {
   getAthleteProfile, getActivities, getRecovery, getInjuries, getActiveNutrition, getUpcomingRaces,
+  getWeekSessions, getNutritionToday, getRecoveryVitals,
   type AthleteProfile, type ActivityRow, type RecoveryRow, type InjuryRow, type NutritionActive, type RaceRow,
+  type WeekSessions, type NutritionToday, type RecoveryVitals,
 } from '@/lib/coach/athlete-data'
 
 type Bubble = 'overview' | 'fiche' | 'data' | 'goals'
@@ -37,6 +39,7 @@ const fmtDur = (s: number | null) => s ? `${Math.round(s / 60)} min` : ''
 const fmtKm = (m: number | null) => m ? `${(m / 1000).toFixed(1)} km` : ''
 const ageOf = (d: string | null) => { if (!d) return null; try { const b = new Date(d); const n = new Date(); let a = n.getFullYear() - b.getFullYear(); if (n.getMonth() < b.getMonth() || (n.getMonth() === b.getMonth() && n.getDate() < b.getDate())) a--; return a } catch { return null } }
 const daysTo = (d: string) => Math.max(0, Math.ceil((new Date(d + 'T00:00:00').getTime() - new Date().setHours(0, 0, 0, 0)) / 86400000))
+const fmtSleep = (min: number | null) => { if (min == null) return '—'; const h = Math.floor(min / 60), m = Math.round(min % 60); return m ? `${h}h${String(m).padStart(2, '0')}` : `${h}h` }
 
 const ACTIONS: { kind: Exclude<DrawerKind, null>; label: string; icon: React.ReactNode }[] = [
   { kind: 'planning', label: 'Planning', icon: <svg {...{ width: 15, height: 15, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.9, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const }}><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18M9 16l2 2 4-4" /></svg> },
@@ -63,6 +66,9 @@ export default function AthleteFiche() {
   const [inj, setInj] = useState<InjuryRow[]>([])
   const [nutri, setNutri] = useState<NutritionActive | null>(null)
   const [races, setRaces] = useState<RaceRow[]>([])
+  const [week, setWeek] = useState<WeekSessions | null>(null)
+  const [eaten, setEaten] = useState<NutritionToday | null>(null)
+  const [vitals, setVitals] = useState<RecoveryVitals | null>(null)
 
   useEffect(() => { void createClient().auth.getUser().then(({ data }) => setCoachId(data.user?.id ?? null)) }, [])
 
@@ -71,8 +77,11 @@ export default function AthleteFiche() {
     const p = await getAthleteProfile(id)
     if (!p) { setDenied(true); setLoading(false); return }
     setProfile(p)
-    const [a, r, i, n, rc] = await Promise.all([getActivities(id), getRecovery(id), getInjuries(id), getActiveNutrition(id), getUpcomingRaces(id)])
-    setActs(a); setRec(r); setInj(i); setNutri(n); setRaces(rc)
+    const [a, r, i, n, rc, wk, et, vt] = await Promise.all([
+      getActivities(id), getRecovery(id), getInjuries(id), getActiveNutrition(id), getUpcomingRaces(id),
+      getWeekSessions(id), getNutritionToday(id), getRecoveryVitals(id),
+    ])
+    setActs(a); setRec(r); setInj(i); setNutri(n); setRaces(rc); setWeek(wk); setEaten(et); setVitals(vt)
     setLoading(false)
   }, [id])
   useEffect(() => { void load() }, [load])
@@ -100,6 +109,16 @@ export default function AthleteFiche() {
     <div style={{ ...card, flex: 1, minWidth: 130, padding: 14 }}>
       <div style={{ ...num, fontSize: 24, fontWeight: 700, color: accent, lineHeight: 1 }}>{value}</div>
       <div style={{ fontSize: 11.5, color: 'var(--text-dim)', marginTop: 6 }}>{label}</div>
+    </div>
+  )
+  const miniMetrics = (pairs: [React.ReactNode, string][]) => (
+    <div style={{ display: 'flex', gap: 18, marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border)' }}>
+      {pairs.map(([v, l], i) => (
+        <div key={i} style={{ minWidth: 0 }}>
+          <div style={{ ...num, fontSize: 15, fontWeight: 700, color: 'var(--text)', lineHeight: 1.1 }}>{v}</div>
+          <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 3 }}>{l}</div>
+        </div>
+      ))}
     </div>
   )
   const Row = ({ k, v }: { k: string; v: React.ReactNode }) => (
@@ -210,30 +229,43 @@ export default function AthleteFiche() {
               {/* Training */}
               <button onClick={() => setDrawer('training')} style={{ ...card, textAlign: 'left', cursor: 'pointer' }}>
                 <div style={secLabel}>Training</div>
-                <div style={{ ...num, fontSize: 22, fontWeight: 700, color: 'var(--text)' }}>{Math.round(tss7)}<span style={{ fontSize: 13, color: 'var(--text-dim)', fontWeight: 600 }}> TSS · 7 j</span></div>
-                <div style={{ fontSize: 12.5, color: 'var(--text-dim)', marginTop: 4 }}>{acts.length} séances sur 45 j · dernière {fmtDate(acts[0]?.started_at ?? null)}</div>
+                <div style={{ ...num, fontSize: 22, fontWeight: 700, color: 'var(--text)' }}>{week ? week.done : '—'}<span style={{ fontSize: 15, color: 'var(--text-dim)', fontWeight: 600 }}> / {week ? week.planned : '—'}</span><span style={{ fontSize: 13, color: 'var(--text-dim)', fontWeight: 600 }}> séances</span></div>
+                <div style={{ fontSize: 12.5, color: 'var(--text-dim)', marginTop: 6 }}>faites / planifiées cette semaine</div>
+                {miniMetrics([
+                  [`${Math.round(tss7)}`, 'TSS · 7 j'],
+                  [`${acts.length}`, 'séances · 45 j'],
+                ])}
               </button>
               {/* Récupération */}
               <button onClick={() => setDrawer('recovery')} style={{ ...card, textAlign: 'left', cursor: 'pointer' }}>
                 <div style={secLabel}>Récupération</div>
-                <div style={{ ...num, fontSize: 22, fontWeight: 700, color: (recAvg('fatigue') ?? 0) >= 4 ? '#f59e0b' : 'var(--text)' }}>{recAvg('fatigue') ? `${recAvg('fatigue')!.toFixed(1)}` : '—'}<span style={{ fontSize: 13, color: 'var(--text-dim)', fontWeight: 600 }}> fatigue /5</span></div>
-                <div style={{ fontSize: 12.5, color: 'var(--text-dim)', marginTop: 4 }}>Sommeil {recAvg('sleep_quality') ? recAvg('sleep_quality')!.toFixed(1) : '—'}/5 · courbatures {recAvg('soreness') ? recAvg('soreness')!.toFixed(1) : '—'}/5</div>
+                <div style={{ ...num, fontSize: 22, fontWeight: 700, color: 'var(--text)' }}>{fmtSleep(vitals?.sleepMin ?? null)}<span style={{ fontSize: 13, color: 'var(--text-dim)', fontWeight: 600 }}> sommeil</span></div>
+                <div style={{ fontSize: 12.5, color: 'var(--text-dim)', marginTop: 6 }}>dernière nuit enregistrée</div>
+                {miniMetrics([
+                  [vitals?.hrv != null ? `${Math.round(vitals.hrv)}` : '—', 'HRV (ms)'],
+                  [recAvg('fatigue') ? `${recAvg('fatigue')!.toFixed(1)}/5` : '—', 'fatigue moy.'],
+                ])}
               </button>
               {/* Nutrition */}
               <button onClick={() => setDrawer('nutrition')} style={{ ...card, textAlign: 'left', cursor: 'pointer' }}>
                 <div style={secLabel}>Nutrition</div>
-                {nutri ? (
+                {nutri || (eaten && eaten.hasLog) ? (
                   <>
-                    <div style={{ ...num, fontSize: 22, fontWeight: 700, color: 'var(--text)' }}>{nutri.calories_mid ?? '—'}<span style={{ fontSize: 13, color: 'var(--text-dim)', fontWeight: 600 }}> kcal</span></div>
-                    <div style={{ ...num, fontSize: 12.5, color: 'var(--text-dim)', marginTop: 4 }}>P {nutri.proteines ?? '—'} · G {nutri.glucides ?? '—'} · L {nutri.lipides ?? '—'}</div>
+                    <div style={{ ...num, fontSize: 22, fontWeight: 700, color: 'var(--text)' }}>{eaten?.kcal ?? 0}<span style={{ fontSize: 15, color: 'var(--text-dim)', fontWeight: 600 }}> / {nutri?.calories_mid ?? '—'}</span><span style={{ fontSize: 13, color: 'var(--text-dim)', fontWeight: 600 }}> kcal</span></div>
+                    <div style={{ fontSize: 12.5, color: 'var(--text-dim)', marginTop: 6 }}>mangé / objectif · aujourd’hui</div>
+                    {miniMetrics([
+                      [`${eaten?.prot ?? 0}${nutri?.proteines ? ` / ${nutri.proteines}` : ''}`, 'protéines (g)'],
+                      [`${eaten?.gluc ?? 0}${nutri?.glucides ? ` / ${nutri.glucides}` : ''}`, 'glucides (g)'],
+                    ])}
                   </>
-                ) : <div style={{ fontSize: 13, color: 'var(--text-dim)' }}>Aucun plan actif.</div>}
+                ) : <div style={{ fontSize: 13, color: 'var(--text-dim)' }}>Aucun plan ni repas enregistré.</div>}
               </button>
               {/* Blessures */}
               <button onClick={() => setDrawer('recovery')} style={{ ...card, textAlign: 'left', cursor: 'pointer' }}>
                 <div style={secLabel}>Blessures</div>
-                {activeInj.length === 0 ? <div style={{ fontSize: 13, color: 'var(--text-dim)' }}>Aucune blessure active.</div> : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <div style={{ ...num, fontSize: 22, fontWeight: 700, color: activeInj.length ? '#ef4444' : 'var(--text)' }}>{activeInj.length}<span style={{ fontSize: 13, color: 'var(--text-dim)', fontWeight: 600 }}> active{activeInj.length > 1 ? 's' : ''}</span></div>
+                {activeInj.length === 0 ? <div style={{ fontSize: 12.5, color: 'var(--text-dim)', marginTop: 6 }}>Aucune blessure en cours.</div> : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 10 }}>
                     {activeInj.slice(0, 3).map(x => (
                       <div key={x.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
                         <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#ef4444', flexShrink: 0 }} />

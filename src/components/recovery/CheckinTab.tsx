@@ -9,6 +9,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { resolvePlanningUid } from '@/lib/planning/scope'
 import { computeReadiness, fatigueScore, type CheckinScales } from '@/lib/recovery/computeReadiness'
 import { useI18n } from '@/lib/i18n'
 
@@ -75,18 +76,18 @@ export default function CheckinTab({ initial, inputs, onSaved }: {
   async function save() {
     setSaving(true); setErr(null)
     const sb = createClient()
-    const { data: { user } } = await sb.auth.getUser()
-    if (!user) { setSaving(false); setErr(t('recovery.checkin.err.session')); return }
+    const __uid = await resolvePlanningUid(sb)
+    if (!__uid) { setSaving(false); setErr(t('recovery.checkin.err.session')); return }
     const date = todayStr()
 
     const { error: e1 } = await sb.from('recovery_checkin').upsert(
-      { user_id: user.id, date, sleep_quality: v.sleepQuality, fatigue: v.fatigue, soreness: v.soreness, mood: v.mood },
+      { user_id: __uid, date, sleep_quality: v.sleepQuality, fatigue: v.fatigue, soreness: v.soreness, mood: v.mood },
       { onConflict: 'user_id,date' },
     )
     const result = computeReadiness({ checkin: v, ...inputs })
     const { error: e2 } = await sb.from('health_data').upsert(
       {
-        user_id: user.id, provider: 'manual', provider_id: `readiness_${date}`,
+        user_id: __uid, provider: 'manual', provider_id: `readiness_${date}`,
         measured_at: `${date}T12:00:00Z`, date, data_type: 'readiness',
         readiness_score: result.score, fatigue_level: fatigueScore(v.fatigue),
         raw_data: { components: result.components, checkin: v, source: 'recovery_checkin' },

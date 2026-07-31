@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { resolvePlanningUid } from '@/lib/planning/scope'
 import { useI18n } from '@/lib/i18n'
 import { currentLocale } from '@/lib/i18n'
 
@@ -90,14 +91,14 @@ export default function PhysioSection() {
 
   useEffect(() => {
     const sb = createClient()
-    sb.auth.getUser().then(async ({ data: { user } }) => {
-      if (!user) return
+    resolvePlanningUid(sb).then(async (__uid) => {
+      if (!__uid) return
 
       // Source 1 : health_data(data_type='physical')
       const { data: hdData } = await sb
         .from('health_data')
         .select('date, hr_resting, raw_data')
-        .eq('user_id', user.id)
+        .eq('user_id', __uid)
         .eq('data_type', 'physical')
         .order('date', { ascending: false })
         .limit(30)
@@ -108,7 +109,7 @@ export default function PhysioSection() {
       const { data: mdData } = await sb
         .from('metrics_daily')
         .select('date, resting_hr')
-        .eq('user_id', user.id)
+        .eq('user_id', __uid)
         .not('resting_hr', 'is', null)
         .order('date', { ascending: false })
         .limit(30)

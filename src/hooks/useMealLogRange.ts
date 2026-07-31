@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { resolvePlanningUid } from '@/lib/planning/scope'
 
 // ── Types ─────────────────────────────────────────────────────────
 export interface DayMealTotal {
@@ -22,13 +23,13 @@ export function useMealLogRange(startDate: string, endDate: string) {
     setLoading(true)
     try {
       const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { setLoading(false); return }
+      const __uid = await resolvePlanningUid(supabase)
+      if (!__uid) { setLoading(false); return }
 
       const { data, error } = await supabase
         .from('nutrition_meal_logs')
         .select('date, actual_kcal, actual_prot, actual_gluc, actual_lip')
-        .eq('user_id', user.id)
+        .eq('user_id', __uid)
         .gte('date', startDate)
         .lte('date', endDate)
         .is('plan_id', null)

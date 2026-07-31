@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import type { CSSProperties } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { resolvePlanningUid } from '@/lib/planning/scope'
 
 const MONTHS = ['Janvier','Fevrier','Mars','Avril','Mai','Juin','Juillet','Aout','Septembre','Octobre','Novembre','Decembre']
 const DOW    = ['L','M','M','J','V','S','D']
@@ -39,17 +40,17 @@ export default function CalendarView({ targetKcal, onDayClick }: Props) {
 
   const load = useCallback(async () => {
     const supabase = createClient()
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session) return
+    const __uid = await resolvePlanningUid(supabase)
+    if (!__uid) return
     const first = iso(year, month, 1)
     const last  = iso(year, month, new Date(year, month + 1, 0).getDate())
 
     const [{ data: ml }, { data: dl }] = await Promise.all([
       supabase.from('nutrition_meal_logs').select('date, actual_kcal')
-        .eq('user_id', session.user.id).is('plan_id', null)
+        .eq('user_id', __uid).is('plan_id', null)
         .not('actual_kcal', 'is', null).gte('date', first).lte('date', last),
       supabase.from('nutrition_daily_logs').select('date, kcal_consommees')
-        .eq('user_id', session.user.id).gte('date', first).lte('date', last),
+        .eq('user_id', __uid).gte('date', first).lte('date', last),
     ])
 
     const acc: Record<string, number> = {}

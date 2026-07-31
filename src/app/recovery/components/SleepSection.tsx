@@ -1,6 +1,7 @@
 'use client'
 import { useMemo, useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { resolvePlanningUid } from '@/lib/planning/scope'
 import { useI18n } from '@/lib/i18n'
 import type { CheckInRow } from './types'
 import SleepScoreRing, { type SleepRingData } from './sleep/SleepScoreRing'
@@ -36,11 +37,11 @@ export default function SleepSection({ checkin, history }: Props) {
 
   useEffect(() => {
     const sb = createClient()
-    sb.auth.getUser().then(({ data: { user } }) => {
-      if (!user) return
+    resolvePlanningUid(sb).then((__uid) => {
+      if (!__uid) return
       sb.from('health_data')
         .select('date,sleep_duration_min,sleep_score,rem_duration_min,deep_duration_min,light_duration_min,awake_duration_min,sleep_start,sleep_end')
-        .eq('user_id', user.id).eq('data_type', 'sleep')
+        .eq('user_id', __uid).eq('data_type', 'sleep')
         .order('date', { ascending: false }).limit(90)
         .then(({ data }) => { if (data) setRows(data as PolarRow[]) })
     })

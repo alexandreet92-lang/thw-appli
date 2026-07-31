@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { resolvePlanningUid } from '@/lib/planning/scope'
 
 export type MealCourse = 'entree' | 'plat' | 'dessert'
 
@@ -68,12 +69,12 @@ export function useDailyMeals(date: string) {
     if (!date) return
     setLoading(true)
     const sb = createClient()
-    const { data: { user } } = await sb.auth.getUser()
-    if (!user) { setLoading(false); return }
+    const __uid = await resolvePlanningUid(sb)
+    if (!__uid) { setLoading(false); return }
     const { data, error } = await sb
       .from('nutrition_meal_logs')
       .select('*')
-      .eq('user_id', user.id)
+      .eq('user_id', __uid)
       .eq('date', date)
       .is('plan_id', null)
     if (error) console.error('[useDailyMeals] load:', error)
@@ -88,8 +89,8 @@ export function useDailyMeals(date: string) {
     patch: Partial<Omit<DailyMealEntry, 'id' | 'plan_id' | 'date' | 'meal_slot'>>,
   ): Promise<void> => {
     const sb = createClient()
-    const { data: { user } } = await sb.auth.getUser()
-    if (!user) return
+    const __uid = await resolvePlanningUid(sb)
+    if (!__uid) return
     const existing = entries.find(e => e.meal_slot === slot)
     if (existing?.id) {
       const { error } = await sb
@@ -101,7 +102,7 @@ export function useDailyMeals(date: string) {
       const { error } = await sb
         .from('nutrition_meal_logs')
         .insert({
-          user_id:              user.id,
+          user_id:              __uid,
           plan_id:              null,
           date,
           meal_slot:            slot,

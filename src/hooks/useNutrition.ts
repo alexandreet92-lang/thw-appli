@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { resolvePlanningUid } from '@/lib/planning/scope'
 import { emitNotification } from '@/lib/notifications/emit'
 
 export type MealKey = 'petit_dejeuner' | 'collation_matin' | 'dejeuner' | 'collation_apres_midi' | 'diner' | 'collation_soir'
@@ -125,13 +126,13 @@ export function useNutrition() {
 
   const load = useCallback(async () => {
     setLoading(true)
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) { setLoading(false); return }
+    const __uid = await resolvePlanningUid(supabase)
+    if (!__uid) { setLoading(false); return }
 
     const [planRes, logsRes, weightRes] = await Promise.all([
-      supabase.from('nutrition_plans').select('*').eq('user_id', user.id).eq('actif', true).order('created_at', { ascending: false }).limit(1),
-      supabase.from('nutrition_daily_logs').select('*').eq('user_id', user.id).gte('date', new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0]).order('date', { ascending: false }),
-      supabase.from('body_measurements').select('*').eq('user_id', user.id).order('measured_at', { ascending: false }),
+      supabase.from('nutrition_plans').select('*').eq('user_id', __uid).eq('actif', true).order('created_at', { ascending: false }).limit(1),
+      supabase.from('nutrition_daily_logs').select('*').eq('user_id', __uid).gte('date', new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0]).order('date', { ascending: false }),
+      supabase.from('body_measurements').select('*').eq('user_id', __uid).order('measured_at', { ascending: false }),
     ])
 
     setActivePlan(planRes.data?.[0] ?? null)
@@ -143,35 +144,35 @@ export function useNutrition() {
   useEffect(() => { void load() }, [load])
 
   async function savePlan(planData: NutritionPlanData, type: 'minimal' | 'maximal' | 'manuel'): Promise<void> {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
-    await supabase.from('nutrition_plans').update({ actif: false }).eq('user_id', user.id)
-    await supabase.from('nutrition_plans').insert({ user_id: user.id, type, plan_data: planData, actif: true })
+    const __uid = await resolvePlanningUid(supabase)
+    if (!__uid) return
+    await supabase.from('nutrition_plans').update({ actif: false }).eq('user_id', __uid)
+    await supabase.from('nutrition_plans').insert({ user_id: __uid, type, plan_data: planData, actif: true })
     emitNotification({ key: 'nutrition.plan_nutrition', title: 'Plan nutritionnel prêt', body: 'Ton nouveau plan nutrition est disponible.', url: '/nutrition' })
     await load()
   }
 
   // Désactive le plan actif (réversible : on garde l'historique, on n'orpheline pas les meal_logs).
   async function deactivatePlan(): Promise<void> {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
-    await supabase.from('nutrition_plans').update({ actif: false }).eq('user_id', user.id).eq('actif', true)
+    const __uid = await resolvePlanningUid(supabase)
+    if (!__uid) return
+    await supabase.from('nutrition_plans').update({ actif: false }).eq('user_id', __uid).eq('actif', true)
     await load()
   }
 
   async function saveDailyLog(log: Omit<DailyLog, 'id'>): Promise<void> {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
-    await supabase.from('nutrition_daily_logs').upsert({ user_id: user.id, ...log }, { onConflict: 'user_id,date' })
+    const __uid = await resolvePlanningUid(supabase)
+    if (!__uid) return
+    await supabase.from('nutrition_daily_logs').upsert({ user_id: __uid, ...log }, { onConflict: 'user_id,date' })
     await load()
   }
 
   async function saveWeightLog(log: Omit<WeightLog, 'id'>): Promise<void> {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
+    const __uid = await resolvePlanningUid(supabase)
+    if (!__uid) return
     const { error } = await supabase
       .from('body_measurements')
-      .upsert({ user_id: user.id, ...log }, { onConflict: 'user_id,measured_at' })
+      .upsert({ user_id: __uid, ...log }, { onConflict: 'user_id,measured_at' })
     if (error) console.error('[saveWeightLog]', error)
     await load()
   }
@@ -186,12 +187,12 @@ export function useNutritionTemplates() {
 
   const load = useCallback(async () => {
     setLoading(true)
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) { setLoading(false); return }
+    const __uid = await resolvePlanningUid(supabase)
+    if (!__uid) { setLoading(false); return }
     const { data } = await supabase
       .from('nutrition_meal_templates')
       .select('*')
-      .eq('user_id', user.id)
+      .eq('user_id', __uid)
       .order('created_at', { ascending: false })
     setTemplates((data ?? []) as MealTemplate[])
     setLoading(false)
@@ -200,9 +201,9 @@ export function useNutritionTemplates() {
   useEffect(() => { void load() }, [load])
 
   async function addTemplate(t: Omit<MealTemplate, 'id' | 'user_id' | 'created_at'>): Promise<void> {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
-    await supabase.from('nutrition_meal_templates').insert({ user_id: user.id, ...t })
+    const __uid = await resolvePlanningUid(supabase)
+    if (!__uid) return
+    await supabase.from('nutrition_meal_templates').insert({ user_id: __uid, ...t })
     await load()
   }
 

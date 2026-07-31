@@ -12,6 +12,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { resolvePlanningUid } from '@/lib/planning/scope'
 import type { CheckinScales } from '@/lib/recovery/computeReadiness'
 
 export interface HrvRow { date: string; hrv: number }
@@ -43,20 +44,20 @@ export function useRecoveryData(reloadKey = 0): RecoveryData {
   useEffect(() => {
     let cancelled = false
     const sb = createClient()
-    sb.auth.getUser().then(({ data: { user } }) => {
-      if (!user) { if (!cancelled) setData({ ...EMPTY, loading: false }); return }
+    resolvePlanningUid(sb).then((__uid) => {
+      if (!__uid) { if (!cancelled) setData({ ...EMPTY, loading: false }); return }
       Promise.all([
         sb.from('health_data').select('date, hrv_rmssd, raw_data')
-          .eq('user_id', user.id).eq('data_type', 'hrv')
+          .eq('user_id', __uid).eq('data_type', 'hrv')
           .order('date', { ascending: false }).limit(90),
         sb.from('health_data').select('date, raw_data')
-          .eq('user_id', user.id).eq('data_type', 'nightly_recharge')
+          .eq('user_id', __uid).eq('data_type', 'nightly_recharge')
           .order('date', { ascending: false }).limit(90),
         sb.from('health_data').select('date, readiness_score, fatigue_level')
-          .eq('user_id', user.id).eq('data_type', 'readiness')
+          .eq('user_id', __uid).eq('data_type', 'readiness')
           .order('date', { ascending: false }).limit(90),
         sb.from('recovery_checkin').select('sleep_quality, fatigue, soreness, mood')
-          .eq('user_id', user.id).eq('date', todayStr()).maybeSingle(),
+          .eq('user_id', __uid).eq('date', todayStr()).maybeSingle(),
       ]).then(([hd1, hd2, rd, ci]) => {
         if (cancelled) return
         type RawHrv = { date: string | null; hrv_rmssd?: number | null; raw_data: Record<string, unknown> | null }

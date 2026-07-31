@@ -105,6 +105,48 @@ export async function getUpcomingRaces(id: string): Promise<RaceRow[]> {
   return (data ?? []) as RaceRow[]
 }
 
+// ── Métriques « bulle Données » : au moins 2-3 chiffres réels par domaine ──
+const localDay = (offset = 0) => { const d = new Date(); d.setDate(d.getDate() + offset); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` }
+const mondayStr = () => { const d = new Date(); const back = (d.getDay() + 6) % 7; d.setDate(d.getDate() - back); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` }
+
+const DONE_STATUS = ['done', 'completed', 'complete', 'validé', 'valide', 'fait', 'terminé', 'termine']
+export interface WeekSessions { planned: number; done: number }
+export async function getWeekSessions(id: string): Promise<WeekSessions> {
+  const sb = createClient()
+  const { data } = await sb.from('planned_sessions')
+    .select('status, validation_data').eq('user_id', id).eq('week_start', mondayStr())
+  const rows = (data ?? []) as { status: string | null; validation_data: unknown }[]
+  const done = rows.filter(r => r.validation_data != null || (r.status && DONE_STATUS.includes(r.status.toLowerCase()))).length
+  return { planned: rows.length, done }
+}
+
+export interface NutritionToday { kcal: number; prot: number; gluc: number; hasLog: boolean }
+export async function getNutritionToday(id: string): Promise<NutritionToday> {
+  const sb = createClient()
+  const { data } = await sb.from('nutrition_meal_logs')
+    .select('validated, actual_kcal, actual_prot, actual_gluc').eq('user_id', id).eq('date', localDay())
+  const rows = ((data ?? []) as { validated: boolean; actual_kcal: number | null; actual_prot: number | null; actual_gluc: number | null }[]).filter(r => r.validated)
+  return {
+    kcal: Math.round(rows.reduce((s, r) => s + (r.actual_kcal ?? 0), 0)),
+    prot: Math.round(rows.reduce((s, r) => s + (r.actual_prot ?? 0), 0)),
+    gluc: Math.round(rows.reduce((s, r) => s + (r.actual_gluc ?? 0), 0)),
+    hasLog: rows.length > 0,
+  }
+}
+
+export interface RecoveryVitals { sleepMin: number | null; hrv: number | null; hrvDate: string | null }
+export async function getRecoveryVitals(id: string): Promise<RecoveryVitals> {
+  const sb = createClient()
+  const [sRes, hRes] = await Promise.all([
+    sb.from('health_data').select('date, sleep_duration_min').eq('user_id', id).eq('data_type', 'sleep').order('date', { ascending: false }).limit(1).maybeSingle(),
+    sb.from('health_data').select('date, hrv_rmssd, raw_data').eq('user_id', id).eq('data_type', 'hrv').order('date', { ascending: false }).limit(1).maybeSingle(),
+  ])
+  const s = sRes.data as { sleep_duration_min: number | null } | null
+  const h = hRes.data as { date: string; hrv_rmssd: number | null; raw_data: Record<string, unknown> | null } | null
+  const hrvRaw = h ? (h.hrv_rmssd ?? (h.raw_data?.['hrv_rmssd'] as number | null) ?? null) : null
+  return { sleepMin: s?.sleep_duration_min ?? null, hrv: hrvRaw != null && Number.isFinite(Number(hrvRaw)) ? Number(hrvRaw) : null, hrvDate: h?.date ?? null }
+}
+
 export async function getActiveNutrition(id: string): Promise<NutritionActive | null> {
   const sb = createClient()
   const { data } = await sb.from('nutrition_plans')

@@ -14,19 +14,33 @@ Limites de requêtes au palier 10 (actuel) : lecture 200/15 min & 2 000/jour ; g
 
 ## Comment demander l'augmentation (au-delà de 10)
 
-Il n'y a **aucun bouton** pour ça. On envoie un email au support développeur Strava.
+⚠️ **Strava ne traite PLUS ces demandes par email** (réponse automatique confirmée).
+Le canal officiel est un **formulaire de review**.
 
-- **À :** `developers@strava.com`
-- **Depuis :** l'adresse liée au compte Strava (`alexandre.et92@gmail.com`)
-- **Objet :** `API rate limit & connected athlete increase request — Client ID 217478`
-- **Si pas de réponse sous ~1 semaine :** relancer via le formulaire de contact sur `developers.strava.com`.
+1. Ouvrir la doc : **https://developers.strava.com/docs/rate-limits/**
+2. **Descendre tout en bas de la page** → remplir le **formulaire de demande**
+   (« submit the form at the bottom of the page to submit for review »).
+3. Délai de review : **7 à 10 jours ouvrés**.
+4. **Relance email UNIQUEMENT si pas de réponse** après ce délai :
+   `developers@strava.com`, avec le **Client ID `217478` en objet**.
 
-### Email à envoyer (copier-coller, remplir les [crochets])
+### Critères d'approbation (importants — refus sinon)
+
+L'augmentation **n'est pas garantie** si l'app :
+- n'est pas **optimisée pour gérer la capacité**, et/ou
+- **n'utilise pas les webhooks**.
+
+État THW Coaching :
+- [x] **Webhooks Strava en place** — abonnement `api/strava/webhook-subscribe`
+      + handler `api/strava/webhook` (events create/update/delete). Argument
+      fort à mentionner dans le formulaire : « We use Strava webhooks (push
+      subscription) instead of polling ».
+- [x] Conformité de marque (voir `docs/STRAVA_BRANDING.md`).
+
+### Texte à coller dans le formulaire (remplir les [crochets])
 
 ```
-Subject: API rate limit & connected athlete increase request — Client ID 217478
-
-Hello Strava Developer Team,
+Hello Strava Team,
 
 I'm the developer of a Strava API application and I'd like to request an
 increase to my connected athlete limit and rate limits.
@@ -57,6 +71,11 @@ thousand.
 Requested limits
 - Connected athletes: [ex: 1,000 to start, scaling higher as we grow]
 - Read/overall rate limits: increased accordingly to support multi-athlete syncing
+
+Capacity management
+Our app is built to manage capacity efficiently: we rely on Strava webhooks
+(push subscriptions) to receive activity events instead of polling, and we
+cache data server-side to minimize API calls per athlete.
 
 We comply with the Strava API Agreement and Brand Guidelines: "Connect with
 Strava" button, "Powered by Strava" attribution on all screens showing Strava

@@ -39,6 +39,7 @@ import { formatSplit, speedKmhToSplit500 } from '@/lib/utils/split'
 import { computeVapKmh, avgAdjustedPaceMinKm } from '@/lib/utils/vap'
 import { RecordsBeaten } from '@/components/activity/RecordsBeaten'
 import { ActivityCard, type ActivityCardData } from '@/components/activity/ActivityCard'
+import { ViewOnStrava, PoweredByStrava } from '@/components/strava/StravaBranding'
 import { WeeklyGoals } from '@/components/activity/WeeklyGoals'
 import { MonthlySummary } from '@/components/activity/MonthlySummary'
 import { WeeklySummary } from '@/components/activity/WeeklySummary'
@@ -129,6 +130,7 @@ interface Activity {
   is_race:          boolean
   trainer:          boolean | null
   provider:         string | null
+  provider_id:      string | null
   gear_name:        string | null
   power_curve:      number[] | null
   pace_curve:       number[] | null
@@ -7672,6 +7674,13 @@ conseil pour la prochaine séance similaire.`
                 {fmtDate(a.started_at)}
                 {localIsRace ? ` · ${t('actp.competition')}` : ''}
               </p>
+              {/* Attribution Strava + lien retour vers l'activité source (Brand Guidelines). */}
+              {a.provider === 'strava' && a.provider_id && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginTop: 10 }}>
+                  <ViewOnStrava activityId={a.provider_id} height={28} />
+                  <PoweredByStrava variant="muted" height={12} />
+                </div>
+              )}
             </div>
             <button onClick={() => shareThisActivity()} aria-label={t('actp.share')} style={{
               flexShrink: 0, width: 38, height: 38, borderRadius: '50%', border: '1px solid var(--border)',
@@ -8095,6 +8104,13 @@ conseil pour la prochaine séance similaire.`
           {a.is_race && <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 700, color: '#ef4444', background: '#ef444415', padding: '2px 8px', borderRadius: 20 }}>{t('actp.competition')}</span>}
         </span>
         <div style={{ flex: 1 }} />
+        {/* Attribution Strava + lien retour vers l'activité source (Brand Guidelines). */}
+        {a.provider === 'strava' && a.provider_id && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+            <ViewOnStrava activityId={a.provider_id} height={30} />
+            <PoweredByStrava variant="muted" height={12} />
+          </div>
+        )}
         <button
           className="thw-delete-activity-btn"
           onClick={() => setShowDeleteConfirm(true)}

@@ -9,6 +9,7 @@ export const dynamic = 'force-dynamic'
 // ══════════════════════════════════════════════════════════════
 
 import { useEffect, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { listSystems, type StudioSystemRow } from '@/lib/studio/store'
 import { listMyAthletes, type AthleteSummary } from '@/lib/coach/relationships'
@@ -26,6 +27,7 @@ export default function CoachStudio() {
   const [err, setErr] = useState<string | null>(null)
   const [results, setResults] = useState<RunResult[] | null>(null)
   const [openId, setOpenId] = useState<string | null>(null)
+  const searchParams = useSearchParams()
 
   useEffect(() => {
     let cancelled = false
@@ -34,11 +36,15 @@ export default function CoachStudio() {
       if (cancelled) return
       setSystems(sys); setAthletes(ath)
       if (sys.length) setSystemId(sys[0].id)
-      setSelected(new Set(ath.map(a => a.id)))
+      // Pré-sélection venant de « Lancer un système » (page Athlètes) : ?athletes=id1,id2
+      const preset = (searchParams.get('athletes') ?? '').split(',').map(s => s.trim()).filter(Boolean)
+      const valid = new Set(ath.map(a => a.id))
+      const presetValid = preset.filter(id => valid.has(id))
+      setSelected(new Set(presetValid.length ? presetValid : ath.map(a => a.id)))
       setLoading(false)
     })()
     return () => { cancelled = true }
-  }, [])
+  }, [searchParams])
 
   const toggle = (id: string) => setSelected(s => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n })
   const run = async () => {

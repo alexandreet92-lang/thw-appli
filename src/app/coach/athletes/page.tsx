@@ -318,7 +318,7 @@ export default function CoachAthletes() {
       {sel.size > 0 && (
         <div style={{ position: 'fixed', left: '50%', bottom: 22, transform: 'translateX(-50%)', zIndex: 50, background: 'var(--text)', color: 'var(--bg)', borderRadius: 14, padding: '10px 12px 10px 16px', display: 'flex', alignItems: 'center', gap: 10, boxShadow: '0 12px 40px rgba(0,0,0,0.4)', flexWrap: 'wrap', maxWidth: 'calc(100vw - 24px)' }}>
           <span style={{ fontWeight: 800, fontSize: 13.5 }}>{sel.size} sélectionné{sel.size > 1 ? 's' : ''}</span>
-          <button onClick={() => router.push('/coach/studio')} style={{ ...bulkBtn, background: 'var(--primary)', color: 'var(--on-primary)' }}>Lancer un système</button>
+          <button onClick={() => router.push(`/coach/studio?athletes=${[...sel].join(',')}`)} style={{ ...bulkBtn, background: 'var(--primary)', color: 'var(--on-primary)' }}>Lancer un système</button>
           <button onClick={() => { const g = prompt('Nom du groupe (vide pour retirer) :'); if (g !== null) void bulkGroup(g) }} style={bulkBtn}>🗂 Grouper</button>
           <button onClick={() => setSel(new Set())} style={{ ...bulkBtn, background: 'transparent' }}>Annuler</button>
         </div>

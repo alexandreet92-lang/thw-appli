@@ -1,6 +1,11 @@
 'use client'
 export const dynamic = 'force-dynamic'
-import { CoachStub } from '@/components/coach/CoachStub'
+
+// La Bibliothèque coach EST la page Session athlète, réutilisée telle quelle :
+// même compte, mêmes données → toute modif se reflète des deux côtés (synchro
+// bidirectionnelle automatique, aucune duplication de données).
+import SessionPage from '@/app/session/page'
+
 export default function CoachLibrary() {
-  return <CoachStub title="Bibliothèque" subtitle="Bientôt : tes séances-types et programmes réutilisables, à pousser vers tes athlètes." />
+  return <SessionPage />
 }

@@ -17,15 +17,26 @@ import { Avatar } from '@/components/shared/Sidebar'
 import { AthleteDetailDrawer, type DrawerKind } from '@/components/coach/AthleteDetailDrawer'
 import {
   getAthleteProfile, getActivities, getRecovery, getInjuries, getActiveNutrition, getUpcomingRaces,
-  getWeekSessions, getNutritionToday, getRecoveryVitals,
+  getWeekSessions, getNutritionToday, getRecoveryVitals, getConnections,
   type AthleteProfile, type ActivityRow, type RecoveryRow, type InjuryRow, type NutritionActive, type RaceRow,
-  type WeekSessions, type NutritionToday, type RecoveryVitals,
+  type WeekSessions, type NutritionToday, type RecoveryVitals, type ConnectionRow,
 } from '@/lib/coach/athlete-data'
 
-type Bubble = 'overview' | 'fiche' | 'data' | 'goals'
+type Bubble = 'overview' | 'fiche' | 'data' | 'goals' | 'connexions'
 const BUBBLES: { key: Bubble; label: string }[] = [
-  { key: 'overview', label: 'Aperçu' }, { key: 'fiche', label: 'Fiche' }, { key: 'data', label: 'Données' }, { key: 'goals', label: 'Objectifs' },
+  { key: 'overview', label: 'Aperçu' }, { key: 'fiche', label: 'Fiche' }, { key: 'data', label: 'Données' }, { key: 'goals', label: 'Objectifs' }, { key: 'connexions', label: 'Connexion' },
 ]
+
+const PROVIDER_META: Record<string, { name: string; color: string; initials: string }> = {
+  strava: { name: 'Strava', color: '#FC4C02', initials: 'ST' },
+  garmin: { name: 'Garmin', color: '#007CC3', initials: 'GA' },
+  polar: { name: 'Polar', color: '#D9001B', initials: 'PO' },
+  suunto: { name: 'Suunto', color: '#E8002D', initials: 'SU' },
+  coros: { name: 'Coros', color: '#1A1A1A', initials: 'CO' },
+  wahoo: { name: 'Wahoo', color: '#1565C0', initials: 'WA' },
+  withings: { name: 'Withings', color: '#00C1B2', initials: 'WI' },
+}
+const providerMeta = (p: string) => PROVIDER_META[p] ?? { name: cap(p), color: 'var(--primary)', initials: p.slice(0, 2).toUpperCase() }
 
 const SPORT_LABEL: Record<string, string> = { run: 'Course', running: 'Course', bike: 'Vélo', cycling: 'Vélo', swim: 'Natation', hyrox: 'Hyrox', gym: 'Muscu', trail: 'Trail', trail_run: 'Trail', rowing: 'Aviron', triathlon: 'Triathlon' }
 const GOAL_LABEL: Record<string, string> = { performance: 'Performance', force: 'Force', endurance: 'Endurance', hybride: 'Hybride', prise_de_masse: 'Prise de masse', perte_de_poids: 'Perte de poids', sante: 'Santé', competition: 'Compétition' }
@@ -69,6 +80,7 @@ export default function AthleteFiche() {
   const [week, setWeek] = useState<WeekSessions | null>(null)
   const [eaten, setEaten] = useState<NutritionToday | null>(null)
   const [vitals, setVitals] = useState<RecoveryVitals | null>(null)
+  const [conns, setConns] = useState<ConnectionRow[] | null>(null)
 
   useEffect(() => { void createClient().auth.getUser().then(({ data }) => setCoachId(data.user?.id ?? null)) }, [])
 
@@ -77,11 +89,11 @@ export default function AthleteFiche() {
     const p = await getAthleteProfile(id)
     if (!p) { setDenied(true); setLoading(false); return }
     setProfile(p)
-    const [a, r, i, n, rc, wk, et, vt] = await Promise.all([
+    const [a, r, i, n, rc, wk, et, vt, cx] = await Promise.all([
       getActivities(id), getRecovery(id), getInjuries(id), getActiveNutrition(id), getUpcomingRaces(id),
-      getWeekSessions(id), getNutritionToday(id), getRecoveryVitals(id),
+      getWeekSessions(id), getNutritionToday(id), getRecoveryVitals(id), getConnections(id),
     ])
-    setActs(a); setRec(r); setInj(i); setNutri(n); setRaces(rc); setWeek(wk); setEaten(et); setVitals(vt)
+    setActs(a); setRec(r); setInj(i); setNutri(n); setRaces(rc); setWeek(wk); setEaten(et); setVitals(vt); setConns(cx)
     setLoading(false)
   }, [id])
   useEffect(() => { void load() }, [load])
@@ -304,6 +316,41 @@ export default function AthleteFiche() {
                   </div>
                 )}
                 <button onClick={() => setDrawer('calendar')} style={{ marginTop: 12, fontSize: 12.5, fontWeight: 700, color: 'var(--primary)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'var(--font-body)' }}>Ouvrir le calendrier →</button>
+              </div>
+            </div>
+          )}
+
+          {/* ── Connexion (apps liées de l'athlète) ── */}
+          {tab === 'connexions' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16, maxWidth: 620 }}>
+              <div style={card}>
+                <div style={secLabel}>Applications connectées</div>
+                {conns === null ? (
+                  <div style={{ fontSize: 13, color: 'var(--text-dim)' }}>Chargement…</div>
+                ) : conns.filter(c => c.is_active).length === 0 ? (
+                  <div style={{ fontSize: 13, color: 'var(--text-dim)' }}>Aucune application connectée. L’athlète n’a lié ni Strava, ni montre, ni capteur.</div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    {conns.filter(c => c.is_active).map((c, i) => {
+                      const m = providerMeta(c.provider)
+                      return (
+                        <div key={c.provider} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 0', borderTop: i ? '1px solid var(--border)' : 'none' }}>
+                          <span style={{ width: 38, height: 38, borderRadius: 10, background: `color-mix(in srgb, ${m.color} 16%, transparent)`, color: m.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12.5, fontWeight: 800, flexShrink: 0, letterSpacing: '0.02em' }}>{m.initials}</span>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>{m.name}</div>
+                            <div style={{ ...num, fontSize: 12, color: c.last_error ? '#ef4444' : 'var(--text-dim)', marginTop: 2 }}>
+                              {c.last_error ? 'Erreur de synchro' : c.last_used_at ? `Synchro ${fmtDate(c.last_used_at)}` : 'Connecté'}
+                            </div>
+                          </div>
+                          <span style={{ width: 8, height: 8, borderRadius: '50%', background: c.last_error ? '#ef4444' : '#22c55e', flexShrink: 0 }} />
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+              <div style={{ ...card, background: 'var(--bg-card2)' }}>
+                <div style={{ fontSize: 12.5, color: 'var(--text-mid)', lineHeight: 1.55 }}>Ces connexions alimentent automatiquement les activités, la récupération (HRV, sommeil) et les données santé de l’athlète.</div>
               </div>
             </div>
           )}

@@ -95,6 +95,13 @@ export async function getBody(id: string, days = 120): Promise<BodyRow[]> {
   return (data ?? []) as BodyRow[]
 }
 
+export interface ConnectionRow { provider: string; is_active: boolean; last_used_at: string | null; last_error: string | null }
+export async function getConnections(id: string): Promise<ConnectionRow[]> {
+  const sb = createClient()
+  const { data } = await sb.rpc('coach_athlete_connections', { athlete: id })
+  return (data ?? []) as ConnectionRow[]
+}
+
 export interface RaceRow { id: string; name: string | null; start_date: string; end_date: string | null; description: string | null }
 export async function getUpcomingRaces(id: string): Promise<RaceRow[]> {
   const sb = createClient()

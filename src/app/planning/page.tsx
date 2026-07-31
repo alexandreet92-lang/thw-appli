@@ -6,7 +6,7 @@ import { useState, useRef, useEffect, useCallback, Fragment } from 'react'
 import { createPortal } from 'react-dom'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { resolvePlanningUid, isCoachScoped } from '@/lib/planning/scope'
+import { resolvePlanningUid, isCoachScoped, getPlanningScopeUid } from '@/lib/planning/scope'
 import { useTrainingZones } from '@/hooks/useTrainingZones'
 import { AnimatedBar, CountUp } from '@/components/ui/AnimatedBar'
 import { SkeletonPlanningGrid } from '@/components/ui/Skeleton'
@@ -1674,6 +1674,7 @@ function AiPlanBubble({ plan }: { plan: AiTrainingPlan }) {
         planId={plan.id}
         planName={plan.name}
         planContext={planContext}
+        {...(isCoachScoped() && getPlanningScopeUid() ? { initialAgent: 'coach' as const, initialCoachTarget: { id: getPlanningScopeUid() as string, name: 'Athlète', avatar: null } } : {})}
       />
     </>
   )

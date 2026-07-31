@@ -147,7 +147,8 @@ interface ActiveQuickAction {
 interface Props {
   open: boolean
   onClose: () => void
-  initialAgent?: string              // gardé pour compat — non affiché
+  initialAgent?: string              // gardé pour compat ; 'coach' ouvre l'agent Coach
+  initialCoachTarget?: CoachTarget | null // athlète ciblé quand initialAgent='coach'
   context?: Record<string, unknown>
   prefillMessage?: string
   initialFlow?: FlowId
@@ -20613,6 +20614,8 @@ export default function AIPanel({
   open,
   onClose,
   context,
+  initialAgent,
+  initialCoachTarget,
   prefillMessage,
   initialFlow,
   initialUserLabel,
@@ -20730,11 +20733,11 @@ export default function AIPanel({
   }
 
   // ── Agent selector ────────────────────────────────────────────
-  const [activeAgent,   setActiveAgent]   = useState<'training' | 'networks' | 'coach'>('training')
+  const [activeAgent,   setActiveAgent]   = useState<'training' | 'networks' | 'coach'>(initialAgent === 'coach' ? 'coach' : 'training')
   const [coachAccess,   setCoachAccess]   = useState(false)
   useEffect(() => { void import('@/lib/coach/owner').then(m => m.hasCoachAccess()).then(setCoachAccess) }, [])
   // Agent Coach : athlète actuellement ciblé + roster (chargé à la 1re ouverture).
-  const [coachTarget, setCoachTarget] = useState<CoachTarget | null>(null)
+  const [coachTarget, setCoachTarget] = useState<CoachTarget | null>(initialCoachTarget ?? null)
   const [coachRoster, setCoachRoster] = useState<CoachTarget[]>([])
   useEffect(() => {
     if (activeAgent !== 'coach' || coachRoster.length > 0) return

@@ -14,6 +14,7 @@ import { useMealLogs, type MealLog } from '@/hooks/useMealLogs'
 import { useDailyMeals } from '@/hooks/useDailyMeals'
 import { useHydration } from '@/hooks/useHydration'
 import { useProfile } from '@/hooks/useProfile'
+import { isCoachScoped } from '@/lib/planning/scope'
 import { TodayTab } from '@/app/nutrition/components/today/TodayTab'
 import { CompositionTab } from '@/app/nutrition/components/composition/CompositionTab'
 import { PlanShoppingList } from '@/app/nutrition/components/plan/PlanShoppingList'
@@ -857,6 +858,10 @@ export default function NutritionPage() {
 
   const { activePlan, dailyLogs, weightLogs, loading: nutLoading, saveDailyLog, saveWeightLog, deactivatePlan } = useNutrition()
   const { profile } = useProfile()
+  // Interface coach : sur la fiche d'un athlète, « Créer le plan avec l'IA » doit
+  // ouvrir l'agent COACH ciblé sur CET athlète (jamais l'agent Athlete).
+  const coachScoped = isCoachScoped()
+  const coachTarget = coachScoped && profile ? { id: profile.id, name: profile.full_name || 'Athlète', avatar: profile.avatar_url } : null
   const { templates, loading: templatesLoading, addTemplate, updateTemplate, deleteTemplate } = useNutritionTemplates()
   const { sessions } = usePlanning()
 
@@ -1205,6 +1210,7 @@ export default function NutritionPage() {
             onRegen={() => setRegenConfirm(true)}
             onDelete={() => void handleDeletePlan()}
             isDesktop={isDesktop}
+            createLabel={coachScoped ? 'Créer le plan de l’athlète avec l’IA' : undefined}
           />
         )}
 
@@ -1613,7 +1619,9 @@ export default function NutritionPage() {
       <AIPanel
         open={aiPanelOpen}
         onClose={() => setAiPanelOpen(false)}
-        initialFlow="nutrition"
+        {...(coachScoped
+          ? { initialAgent: 'coach' as const, initialCoachTarget: coachTarget, prefillMessage: `Crée le plan nutritionnel de ${coachTarget?.name ?? 'cet athlète'} (kcal cibles + macros), adapté à son profil, ses sports et ses objectifs, puis enregistre-le pour lui.` }
+          : { initialFlow: 'nutrition' as const })}
       />
     </div>
   )

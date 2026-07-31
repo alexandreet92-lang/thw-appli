@@ -25,6 +25,7 @@ interface Props {
   onRegen:       () => void
   onDelete:      () => void
   isDesktop:     boolean
+  createLabel?:  string   // libellé override (ex. côté coach : « … de l'athlète »)
 }
 
 const root: React.CSSProperties = {
@@ -66,7 +67,7 @@ export function PlanTab(p: Props) {
         <div style={{ background: 'var(--bg-card2)', borderRadius: 'var(--r-md)', padding: 'var(--space-6)' }}>
           <p style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 500, color: 'var(--text)', margin: 0 }}>{tr('nutrition.plan.emptyTitle')}</p>
           <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-mid)', margin: 'var(--space-2) 0 var(--space-4)' }}>{tr('nutrition.plan.emptyDesc')}</p>
-          <button onClick={p.onOpenAI} style={primaryBtn}>{tr('nutrition.plan.createBtn')}</button>
+          <button onClick={p.onOpenAI} style={primaryBtn}>{p.createLabel ?? tr('nutrition.plan.createBtn')}</button>
         </div>
       </div>
     )

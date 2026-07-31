@@ -667,9 +667,13 @@ AVANT de chiffrer — jamais de chiffre « hors-sol ».`
       const convId = (chatBody as { convId?: string }).convId
       const lastUserMsg = [...(chatBody.messages ?? [])].reverse().find(m => m.role === 'user')
       const lastText = typeof lastUserMsg?.content === 'string' ? lastUserMsg.content : ''
+      // Agent Coach : si un athlète est ciblé, le contexte (activités, charge, récup,
+      // nutrition, plan) est celui de CET athlète, lu via la RLS coach — pas du coach.
+      const coachCtx = (chatBody as { context?: { coachAgent?: boolean; coachAthleteId?: string | null; coachAthleteName?: string | null } }).context
+      const targetUid = coachCtx?.coachAgent && coachCtx.coachAthleteId ? coachCtx.coachAthleteId : userId
       const [competencesBlock, athleteCtx, memory, durableMemory, insights] = await Promise.all([
         getActiveCompetencesPrompt(userId).catch(() => ''),
-        buildAthleteContext(sbCtx, userId).catch(() => ''),
+        buildAthleteContext(sbCtx, targetUid).catch(() => ''),
         buildCoachMemory(sbCtx, userId, convId).catch(() => ''),
         buildStructuredMemory(sbCtx, userId).catch(() => ''),
         buildLearnedInsights(lastText).catch(() => ''),

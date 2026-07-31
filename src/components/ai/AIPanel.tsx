@@ -1845,6 +1845,66 @@ function ModelEffigy({ model, isAnimating, size = 18, color }: {
   )
 }
 
+// ── AthletePicker — agent Coach : cible l'athlète dont on parle ──────────
+export interface CoachTarget { id: string; name: string; avatar: string | null }
+function AthleteMini({ a, size = 20 }: { a: CoachTarget; size?: number }) {
+  return a.avatar
+    // eslint-disable-next-line @next/next/no-img-element
+    ? <img src={a.avatar} alt="" style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+    : <span style={{ width: size, height: size, borderRadius: '50%', background: 'var(--ai-bg2)', color: 'var(--ai-mid)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: size * 0.42, fontWeight: 800, flexShrink: 0 }}>{a.name.slice(0, 1).toUpperCase()}</span>
+}
+function AthletePicker({ athletes, active, onPick, disabled = false }: {
+  athletes: CoachTarget[]; active: CoachTarget | null; onPick: (a: CoachTarget | null) => void; disabled?: boolean
+}) {
+  const [open, setOpen] = useState(false)
+  const [q, setQ] = useState('')
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!open) return
+    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false) }
+    document.addEventListener('mousedown', h); return () => document.removeEventListener('mousedown', h)
+  }, [open])
+  const filtered = q ? athletes.filter(a => a.name.toLowerCase().includes(q.toLowerCase())) : athletes
+  return (
+    <div ref={ref} style={{ position: 'relative', flexShrink: 0 }}>
+      <button onClick={() => { if (!disabled) setOpen(p => !p) }} disabled={disabled} title="Athlète ciblé"
+        style={{ height: 28, borderRadius: 999, border: `1px solid ${active || open ? 'var(--ai-mid)' : 'var(--ai-border)'}`, background: active || open ? 'var(--ai-bg2)' : 'transparent', cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.45 : 1, display: 'flex', alignItems: 'center', gap: 6, padding: active ? '0 10px 0 3px' : '0 11px', fontFamily: 'var(--font-body)', fontSize: 12.5, fontWeight: 600, color: 'var(--ai-text)', maxWidth: 150 }}>
+        {active ? <><AthleteMini a={active} /><span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{active.name}</span></>
+          : <><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></svg><span>Athlète</span></>}
+      </button>
+      {open && (
+        <div style={{ position: 'absolute', bottom: 'calc(100% + 8px)', left: 0, width: 244, maxHeight: 340, display: 'flex', flexDirection: 'column', background: 'var(--ai-bg)', border: '1px solid var(--ai-border)', borderRadius: 14, boxShadow: '0 16px 44px rgba(0,0,0,0.32)', overflow: 'hidden', zIndex: 40, fontFamily: 'var(--font-body)' }}>
+          <div style={{ padding: 8, borderBottom: '1px solid var(--ai-border)', flexShrink: 0 }}>
+            <input value={q} onChange={e => setQ(e.target.value)} autoFocus placeholder="Rechercher un athlète…" style={{ width: '100%', boxSizing: 'border-box', padding: '8px 10px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 13, outline: 'none', fontFamily: 'var(--font-body)' }} />
+          </div>
+          <div style={{ overflowY: 'auto', padding: 5 }}>
+            {active && (
+              <button onClick={() => { onPick(null); setOpen(false) }} style={{ display: 'flex', alignItems: 'center', gap: 9, width: '100%', padding: '8px 9px', borderRadius: 9, border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--ai-mid)', fontSize: 13, fontFamily: 'var(--font-body)', textAlign: 'left' }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6L6 18M6 6l12 12" /></svg>
+                Aucun athlète ciblé
+              </button>
+            )}
+            {filtered.length === 0 ? (
+              <div style={{ padding: '14px 10px', fontSize: 12.5, color: 'var(--ai-dim)', textAlign: 'center' }}>Aucun athlète. Invite-en depuis « Athlètes ».</div>
+            ) : filtered.map(a => {
+              const on = active?.id === a.id
+              return (
+                <button key={a.id} onClick={() => { onPick(a); setOpen(false) }} style={{ display: 'flex', alignItems: 'center', gap: 9, width: '100%', padding: '7px 9px', borderRadius: 9, border: 'none', background: on ? 'var(--ai-bg2)' : 'transparent', cursor: 'pointer', color: 'var(--ai-text)', fontSize: 13.5, fontWeight: on ? 700 : 500, fontFamily: 'var(--font-body)', textAlign: 'left' }}
+                  onMouseEnter={e => { if (!on) (e.currentTarget as HTMLButtonElement).style.background = 'var(--ai-bg2)' }}
+                  onMouseLeave={e => { if (!on) (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}>
+                  <AthleteMini a={a} size={26} />
+                  <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.name}</span>
+                  {on && <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── ModelPicker — bouton rond + dropdown monochrome ──────────
 
 function ModelPicker({ model, onChange, disabled = false, isMobile = false }: {
@@ -12205,6 +12265,7 @@ function themeIcon(id: QuickActionTheme): React.ReactNode {
 }
 
 function PlusMenu({
+  agent = 'training',
   onPrepare,
   onEnriched,
   onFlow,
@@ -12219,6 +12280,7 @@ function PlusMenu({
   webSearchOn = true,
   isMobile = false,
 }: {
+  agent?: 'training' | 'networks' | 'coach'
   onPrepare:    (label: string, apiPrompt: string) => void
   onEnriched:   (id: string, label: string) => void
   onFlow:       (f: FlowId) => void
@@ -12627,7 +12689,8 @@ function PlusMenu({
             </button>
           </div>
 
-          {/* Groupe : parcours */}
+          {/* Groupe : parcours — masqué pour l'agent Coach (hors mission) */}
+          {agent !== 'coach' && (
           <div style={mGroup}>
             <button style={mRow} onClick={() => { onPrepare('Créer un parcours', CREATE_ROUTE_PROMPT); onClose() }}>
               <MapIcon size={20} color="var(--text-mid)" style={{ flexShrink: 0 }} />
@@ -12641,6 +12704,7 @@ function PlusMenu({
               <span style={mHint}>GPX / TCX</span>
             </button>
           </div>
+          )}
 
           {/* Groupe : recherche */}
           <div style={mGroup}>
@@ -20627,6 +20691,15 @@ export default function AIPanel({
   const [activeAgent,   setActiveAgent]   = useState<'training' | 'networks' | 'coach'>('training')
   const [coachAccess,   setCoachAccess]   = useState(false)
   useEffect(() => { void import('@/lib/coach/owner').then(m => m.hasCoachAccess()).then(setCoachAccess) }, [])
+  // Agent Coach : athlète actuellement ciblé + roster (chargé à la 1re ouverture).
+  const [coachTarget, setCoachTarget] = useState<CoachTarget | null>(null)
+  const [coachRoster, setCoachRoster] = useState<CoachTarget[]>([])
+  useEffect(() => {
+    if (activeAgent !== 'coach' || coachRoster.length > 0) return
+    void import('@/lib/coach/relationships').then(m => m.listMyAthletes()).then(list => {
+      setCoachRoster(list.map(a => ({ id: a.id, name: a.full_name || a.first_name || 'Athlète', avatar: a.avatar_url })))
+    }).catch(() => {})
+  }, [activeAgent, coachRoster.length])
   const [agentDropOpen, setAgentDropOpen] = useState(false)
 
   // ── Voice recording (B3) ─────────────────────────────────────
@@ -22161,7 +22234,9 @@ export default function AIPanel({
       // Agent « Coach » : l'assistant aide un COACH à suivre et faire progresser
       // plusieurs athlètes (≠ agent « Athlete » qui coache l'utilisateur lui-même).
       if (activeAgent === 'coach') {
-        effectiveRules = [...effectiveRules, { category: 'instruction', rule_text: "Tu es l'assistant COACH de l'application Hybrid. Tu ne t'adresses pas à un athlète mais à un COACH sportif qui suit plusieurs athlètes. Ta mission : l'aider à coacher le plus efficacement possible — analyser l'état de ses athlètes, prioriser ceux qui ont besoin d'attention, proposer des ajustements de plans, rédiger des messages, et lui faire gagner du temps. Parle-lui comme à un professionnel du coaching." }]
+        effectiveRules = [...effectiveRules, { category: 'instruction', rule_text: "Tu es l'agent COACH de l'application Hybrid. Tu t'adresses à un COACH sportif, PAS à un athlète. Tu es STRICTEMENT SPÉCIALISÉ dans l'analyse et le suivi des athlètes du coach : analyser le profil, les activités, la charge, la récupération, la nutrition d'un athlète ciblé ; créer/ajuster ses plans d'entraînement et de nutrition ; rédiger des messages et prioriser les athlètes à surveiller. RECADRAGE OBLIGATOIRE : si le coach te demande quelque chose HORS de cette mission (question sur son propre entraînement, sujet perso, sujet généraliste sans rapport avec le suivi d'un athlète), tu REFUSES poliment et tu lui dis explicitement que tu es l'agent Coach dédié au suivi des athlètes, et que pour ça il doit utiliser l'agent « Athlete » (ou l'agent approprié). Ne traite jamais une demande hors-mission." }]
+        if (coachTarget) effectiveRules = [...effectiveRules, { category: 'instruction', rule_text: `ATHLÈTE CIBLÉ : le coach travaille actuellement sur l'athlète « ${coachTarget.name} ». Toutes les analyses, plans et actions portent sur CET athlète. Le contexte fourni (activités, charge, récupération, nutrition, plan) concerne ${coachTarget.name}. Si le coach n'a désigné aucun athlète et que sa demande en requiert un, demande-lui d'en sélectionner un via le bouton « Athlète » à côté du modèle.` }]
+        else effectiveRules = [...effectiveRules, { category: 'instruction', rule_text: "Aucun athlète n'est ciblé pour l'instant. Si la demande du coach concerne un athlète précis, invite-le à en choisir un via le bouton « Athlète » (à côté du sélecteur de modèle) avant de poursuivre." }]
       }
 
       const res = await fetch('/api/coach-stream', {
@@ -22187,7 +22262,12 @@ export default function AIPanel({
                   sessions: planSessionsContext,
                 },
               }
-            : (context ?? {}),
+            : {
+                ...(context ?? {}),
+                // Agent Coach : cible d'analyse (le back charge le contexte de CET
+                // athlète via la RLS coach, et route les écritures vers lui).
+                ...(activeAgent === 'coach' ? { coachAgent: true, coachAthleteId: coachTarget?.id ?? null, coachAthleteName: coachTarget?.name ?? null } : {}),
+              },
         }),
       })
 
@@ -24002,6 +24082,7 @@ export default function AIPanel({
                   {/* Plus menu — ancré au bouton + */}
                   {plusOpen && (
                     <PlusMenu
+                      agent={activeAgent}
                       onPrepare={(label, p) => { setPlusOpen(false); setActiveFlow(null); setActiveQA(null); void send(label, p) }}
                       onEnriched={(id, label) => { setPlusOpen(false); setActiveFlow(null); setActiveQA(null); void handleEnrichedAction(id, label) }}
                       onFlow={f => { setPlusOpen(false); setActiveQA(null); setActiveFlow(f) }}
@@ -24027,8 +24108,11 @@ export default function AIPanel({
                 {/* Sélecteur modèle */}
                 <ModelPicker model={model} onChange={setModel} disabled={loading} isMobile={!isDesktop} />
 
-                {/* Sélecteur de méthode d'entraînement */}
-                <MethodPicker method={method} onChange={setMethod} disabled={loading} isMobile={!isDesktop} />
+                {/* Agent Coach : sélecteur d'athlète ciblé (à côté du modèle) */}
+                {activeAgent === 'coach' && <AthletePicker athletes={coachRoster} active={coachTarget} onPick={setCoachTarget} disabled={loading} />}
+
+                {/* Sélecteur de méthode d'entraînement — pas pertinent pour l'agent Coach */}
+                {activeAgent !== 'coach' && <MethodPicker method={method} onChange={setMethod} disabled={loading} isMobile={!isDesktop} />}
 
                 {/* Spacer */}
                 <div style={{ flex: 1 }} />

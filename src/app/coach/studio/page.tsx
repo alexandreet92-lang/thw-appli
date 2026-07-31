@@ -32,8 +32,10 @@ export default function CoachStudio() {
   useEffect(() => {
     let cancelled = false
     void (async () => {
-      const [sys, ath] = await Promise.all([listSystems().catch(() => []), listMyAthletes().catch(() => [])])
+      const [sysAll, ath] = await Promise.all([listSystems().catch(() => []), listMyAthletes().catch(() => [])])
       if (cancelled) return
+      // On ne lance sur des athlètes que les systèmes marqués « coach ».
+      const sys = sysAll.filter(s => s.scope === 'coach')
       setSystems(sys); setAthletes(ath)
       if (sys.length) setSystemId(sys[0].id)
       // Pré-sélection venant de « Lancer un système » (page Athlètes) : ?athletes=id1,id2

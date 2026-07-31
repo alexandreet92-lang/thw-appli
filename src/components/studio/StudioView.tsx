@@ -185,6 +185,9 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
   const [activeFolder, setActiveFolder] = useState<string | null>(null)   // null = tous
   const [folderMenuFor, setFolderMenuFor] = useState<string | null>(null) // systemId du menu « Déplacer »
   const [newFolderName, setNewFolderName] = useState('')
+  // Deux espaces : systèmes « perso » (tournent sur soi) vs « coach » (à lancer
+  // sur ses athlètes). Filtre l'affichage + définit le scope des créations.
+  const [scopeTab, setScopeTab] = useState<'perso' | 'coach'>('perso')
   // Popover « Nouveau système » : nom + dossier (existant ou nouveau).
   const [newSysOpen, setNewSysOpen] = useState(false)
   const [newSysName, setNewSysName] = useState('Mon système')
@@ -700,7 +703,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
   }
   const newSystem = async (name: string, g: StudioGraph, folder?: string | null) => {
     try {
-      const row = await createSystem(name, { ...g, name })
+      const row = await createSystem(name, { ...g, name }, scopeTab)
       // Dossier explicite (popover) sinon dossier actif s'il y en a un.
       const dest = folder !== undefined ? folder : activeFolder
       if (dest) { void updateSystem(row.id, { folder: dest }).catch(() => {}); row.folder = dest }
@@ -2385,8 +2388,21 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                   </div>
                 )}
 
+                {/* ── Deux espaces : Pour moi · Pour mes athlètes ── */}
+                <div style={{ display: 'inline-flex', gap: 3, padding: 3, borderRadius: 12, background: 'var(--bg-card2)', margin: '0 0 14px' }}>
+                  {([['perso', 'Pour moi'], ['coach', 'Pour mes athlètes']] as const).map(([v, l]) => (
+                    <button key={v} onClick={() => setScopeTab(v)}
+                      style={{ padding: '7px 14px', borderRadius: 9, border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 12.5, fontWeight: 700,
+                        background: scopeTab === v ? 'var(--bg-card)' : 'transparent', color: scopeTab === v ? '#3B92D4' : 'var(--text-mid)', boxShadow: scopeTab === v ? '0 1px 3px rgba(0,0,0,0.12)' : 'none' }}>
+                      {l}
+                    </button>
+                  ))}
+                </div>
                 {/* ── Mes systèmes ── */}
-                <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--text-dim)', margin: '4px 0 10px', fontFamily: 'DM Sans,sans-serif' }}>{activeFolder ?? 'Mes systèmes'}</div>
+                <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--text-dim)', margin: '4px 0 10px', fontFamily: 'DM Sans,sans-serif' }}>{activeFolder ?? (scopeTab === 'coach' ? 'Systèmes pour mes athlètes' : 'Mes systèmes')}</div>
+                {scopeTab === 'coach' && (
+                  <p style={{ fontSize: 12.5, color: 'var(--text-dim)', margin: '-4px 0 12px', lineHeight: 1.5, fontFamily: 'var(--font-body)', maxWidth: 520 }}>Ces systèmes se lancent sur un ou plusieurs de tes athlètes (tu choisis lesquels au lancement) — depuis « Athlètes » ou ici.</p>
+                )}
                 {homeLoading ? (
                   <p style={{ fontSize: 13, color: 'var(--text-dim)', animation: 'studio_pulse 1.4s ease infinite', fontFamily: 'DM Sans,sans-serif' }}>Chargement…</p>
                 ) : (
@@ -2397,7 +2413,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
                       Nouveau système
                     </button>
-                    {systems.filter(s => activeFolder === null || s.folder === activeFolder).map(s => {
+                    {systems.filter(s => s.scope === scopeTab && (activeFolder === null || s.folder === activeFolder)).map(s => {
                       const nAgents = (s.graph?.nodes ?? []).filter(n => n.kind === 'agent' || n.kind === 'merge').length
                       return (
                         <div key={s.id} onClick={() => openSystem(s)} role="button" tabIndex={0}

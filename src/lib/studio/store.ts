@@ -7,11 +7,13 @@
 import { createClient } from '@/lib/supabase/client'
 import { loadGraph, type StudioGraph } from './graph'
 
+export type StudioScope = 'perso' | 'coach'
 export interface StudioSystemRow {
   id: string
   name: string
   graph: StudioGraph
   folder: string | null
+  scope: StudioScope
   updated_at: string
 }
 
@@ -19,26 +21,26 @@ export async function listSystems(): Promise<StudioSystemRow[]> {
   const supabase = createClient()
   const { data, error } = await supabase
     .from('studio_systems')
-    .select('id, name, graph, folder, updated_at')
+    .select('id, name, graph, folder, scope, updated_at')
     .order('updated_at', { ascending: false })
   if (error) throw new Error(error.message)
-  return (data ?? []) as StudioSystemRow[]
+  return (data ?? []).map(r => ({ ...r, scope: (r as { scope?: string }).scope === 'coach' ? 'coach' : 'perso' })) as StudioSystemRow[]
 }
 
-export async function createSystem(name: string, graph: StudioGraph): Promise<StudioSystemRow> {
+export async function createSystem(name: string, graph: StudioGraph, scope: StudioScope = 'perso'): Promise<StudioSystemRow> {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Non authentifié')
   const { data, error } = await supabase
     .from('studio_systems')
-    .insert({ user_id: user.id, name, graph })
-    .select('id, name, graph, folder, updated_at')
+    .insert({ user_id: user.id, name, graph, scope })
+    .select('id, name, graph, folder, scope, updated_at')
     .single()
   if (error) throw new Error(error.message)
-  return data as StudioSystemRow
+  return { ...(data as StudioSystemRow), scope: (data as { scope?: string }).scope === 'coach' ? 'coach' : 'perso' }
 }
 
-export async function updateSystem(id: string, patch: { name?: string; graph?: StudioGraph; folder?: string | null }): Promise<void> {
+export async function updateSystem(id: string, patch: { name?: string; graph?: StudioGraph; folder?: string | null; scope?: StudioScope }): Promise<void> {
   const supabase = createClient()
   const { error } = await supabase
     .from('studio_systems')
@@ -54,7 +56,7 @@ export async function deleteSystem(id: string): Promise<void> {
 }
 
 export async function duplicateSystem(row: StudioSystemRow): Promise<StudioSystemRow> {
-  return createSystem(`${row.name} (copie)`, row.graph)
+  return createSystem(`${row.name} (copie)`, row.graph, row.scope)
 }
 
 // ── Migration douce depuis le localStorage ─────────────────────

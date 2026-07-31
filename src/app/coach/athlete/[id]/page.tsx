@@ -16,6 +16,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Avatar } from '@/components/shared/Sidebar'
 import { AthleteDetailDrawer, type DrawerKind } from '@/components/coach/AthleteDetailDrawer'
 import { CoachMessageBubble, openCoachMessage } from '@/components/coach/CoachMessageBubble'
+import { CoachFormsSection } from '@/components/coach/CustomForms'
 import {
   getAthleteProfile, getActivities, getRecovery, getInjuries, getActiveNutrition, getUpcomingRaces,
   getWeekSessions, getNutritionToday, getRecoveryVitals, getConnections,
@@ -228,11 +229,7 @@ export default function AthleteFiche() {
                   <Row k="Pays" v={profile?.country || '—'} />
                 </div>
               </div>
-              <div style={{ ...card, borderStyle: 'dashed', textAlign: 'center' }}>
-                <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--text)', marginBottom: 4 }}>Fiche personnalisée</div>
-                <p style={{ fontSize: 12.5, color: 'var(--text-dim)', margin: '0 0 12px', lineHeight: 1.5 }}>Crée une fiche sur-mesure (champs libres), envoie-la à l’athlète par message : il la remplit, et ça revient ici. <b>Bientôt.</b></p>
-                <button disabled style={{ padding: '9px 15px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text-dim)', fontSize: 13, fontWeight: 700, cursor: 'not-allowed', fontFamily: 'var(--font-body)' }}>Créer une fiche personnalisée</button>
-              </div>
+              <CoachFormsSection athleteId={id} athleteName={name} />
             </div>
           )}
 

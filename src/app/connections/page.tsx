@@ -9,6 +9,7 @@ import { PageHelp } from '@/onboarding/system/PageHelp'
 import { usePageOnboarding } from '@/onboarding/system/usePageOnboarding'
 import { CONNECTIONS_ONBOARDING } from '@/onboarding/configs/connections.config'
 import { useI18n } from '@/lib/i18n'
+import { ConnectWithStrava, PoweredByStrava } from '@/components/strava/StravaBranding'
 
 type TFunc = (key: string, vars?: Record<string, string | number>) => string
 
@@ -298,6 +299,9 @@ function AppRow({ app, effectiveStatus, lastSync, isSyncing, isHovered, logoErro
       {/* Status + last sync */}
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3, flexShrink: 0 }}>
         <StatusBadge status={effectiveStatus} />
+        {app.provider === 'strava' && effectiveStatus === 'connected' && (
+          <PoweredByStrava variant="muted" height={11} />
+        )}
         {needsReconnect && (
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 7px', borderRadius: 20, background: 'rgba(249,115,22,0.12)', color: '#f97316', fontSize: 10, fontFamily: 'DM Sans, sans-serif', fontWeight: 600, whiteSpace: 'nowrap' }}>
             {t('connections.v3Reconnect')}
@@ -390,7 +394,12 @@ function AppRow({ app, effectiveStatus, lastSync, isSyncing, isHovered, logoErro
           </span>
         )}
 
-        {effectiveStatus === 'available' && (
+        {effectiveStatus === 'available' && app.provider === 'strava' && (
+          // Bouton officiel « Connect with Strava » (Strava Brand Guidelines).
+          <ConnectWithStrava onClick={onConnect} height={34} />
+        )}
+
+        {effectiveStatus === 'available' && app.provider !== 'strava' && (
           <button onClick={onConnect}
             onMouseEnter={() => setConnectHov(true)} onMouseLeave={() => setConnectHov(false)}
             style={{

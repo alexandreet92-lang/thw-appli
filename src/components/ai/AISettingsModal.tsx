@@ -19,7 +19,7 @@ import { ConnectorLogo, type ConnectorId } from '@/components/ai/ConnectorLogos'
 
 export type SettingsSection =
   | 'profil' | 'instructions' | 'modele' | 'voix' | 'notifications'
-  | 'agent_training' | 'agent_networks' | 'studio' | 'connecteurs' | 'abonnement'
+  | 'agent_training' | 'agent_coach' | 'agent_networks' | 'studio' | 'connecteurs' | 'abonnement'
 
 const SPORTS: [string, string][] = [
   ['running', 'Course à pied'], ['cycling', 'Vélo'], ['swimming', 'Natation'],
@@ -31,7 +31,7 @@ const SPORTS: [string, string][] = [
 const FB = 'var(--font-body)'
 const inputStyle: React.CSSProperties = {
   width: '100%', boxSizing: 'border-box', padding: '11px 13px', borderRadius: 'var(--r-sm)',
-  border: '1px solid var(--border-mid)', background: 'var(--bg-alt)', color: 'var(--text)',
+  border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)',
   fontSize: 14, fontFamily: FB, outline: 'none', transition: 'border-color 0.15s, box-shadow 0.15s',
 }
 const fieldLabel: React.CSSProperties = { fontSize: 12.5, fontWeight: 600, color: 'var(--text-mid)', marginBottom: 7, display: 'block', fontFamily: FB }
@@ -88,11 +88,29 @@ function Dropdown({ value, onChange, options }: { value: string; onChange: (v: s
   )
 }
 
-// Pilule sélectionnable (sports, matériel).
+// Pilule sélectionnable (sports, matériel). Sélection = teinte primaire + coche ;
+// non sélectionné = neutre discret (aucune surface grise pleine, cf. design system).
 function Pill({ on, onClick, children }: { on: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
     <button type="button" onClick={onClick}
-      style={{ padding: '8px 14px', borderRadius: 999, border: 'none', background: on ? 'var(--primary-dim)' : 'var(--bg-alt)', color: on ? 'var(--primary)' : 'var(--text-mid)', fontSize: 12.5, fontWeight: on ? 600 : 500, cursor: 'pointer', fontFamily: FB, transition: 'background 0.14s, color 0.14s' }}>
+      onMouseEnter={e => { if (!on) (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)' }}
+      onMouseLeave={e => { if (!on) (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-card2)' }}
+      style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 13px', borderRadius: 999, border: 'none', background: on ? 'var(--primary-dim)' : 'var(--bg-card2)', color: on ? 'var(--primary)' : 'var(--text-mid)', fontSize: 12.5, fontWeight: on ? 600 : 500, cursor: 'pointer', fontFamily: FB, transition: 'background 0.14s, color 0.14s' }}>
+      {on && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>}
+      {children}
+    </button>
+  )
+}
+
+// Puce « ton » (presets d'instructions) : action qui remplit le prompt. Icône
+// étoile + teinte primaire au survol pour signaler « appliquer ce ton ».
+function PresetChip({ onClick, children }: { onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button type="button" onClick={onClick}
+      onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--primary-dim)'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--primary)' }}
+      onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-card2)'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-mid)' }}
+      style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 13px', borderRadius: 999, border: 'none', background: 'var(--bg-card2)', color: 'var(--text-mid)', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: FB, transition: 'background 0.14s, color 0.14s' }}>
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3l1.9 5.8H20l-4.9 3.6L17 18l-5-3.7L7 18l1.9-5.6L4 8.8h6.1z" /></svg>
       {children}
     </button>
   )
@@ -228,7 +246,7 @@ export default function AISettingsModal({ open, initialSection = 'profil', onClo
       { id: 'profil', label: 'Profil' }, { id: 'instructions', label: 'Instructions' },
       { id: 'modele', label: 'Modèle par défaut' }, { id: 'voix', label: 'Voix' }, { id: 'notifications', label: 'Notifications' },
     ] },
-    { group: 'Agents', items: [ { id: 'agent_training', label: 'Training' }, { id: 'agent_networks', label: 'Networks (bientôt)', disabled: true } ] },
+    { group: 'Agents', items: [ { id: 'agent_training', label: 'Athlete' }, { id: 'agent_coach', label: 'Coach' }, { id: 'agent_networks', label: 'Networks (bientôt)', disabled: true } ] },
     { group: 'Studio', items: [ { id: 'studio', label: 'Studio' } ] },
     { group: 'Compte', items: [ { id: 'connecteurs', label: 'Connecteurs' }, { id: 'abonnement', label: 'Abonnement' } ] },
   ]
@@ -287,6 +305,14 @@ export default function AISettingsModal({ open, initialSection = 'profil', onClo
               {section === 'voix' && <VoixSection voice={voice} save={saveVoice} />}
               {section === 'notifications' && <NotificationsSection prefs={prefs} globalNotif={globalNotif} pushState={pushState} setPushState={setPushState} patchPref={patchPref} setGlobal={setGlobal} />}
               {section === 'agent_training' && <AgentTrainingSection agent={agent} save={saveAgent} />}
+              {section === 'agent_coach' && (
+                <div>
+                  <div style={sectionTitleStyle}>Agent Coach</div>
+                  <p style={{ fontSize: 13.5, color: 'var(--text-mid)', lineHeight: 1.6, margin: '4px 0 0', maxWidth: 520, fontFamily: FB }}>
+                    L’agent Coach t’aide à suivre et faire progresser tes athlètes : priorisation, ajustements de plans, messages. Ses réglages et fonctionnalités arrivent avec la construction de son interface dédiée.
+                  </p>
+                </div>
+              )}
               {section === 'agent_networks' && <div style={sectionTitleStyle}>Networks — bientôt disponible</div>}
               {section === 'studio' && <StudioSection />}
               {section === 'connecteurs' && <ConnecteursSection />}
@@ -382,7 +408,7 @@ function InstructionsSection({ value, setValue, save }: { value: string; setValu
       <div style={sectionTitleStyle}>Instructions</div>
       <p style={sectionLead}>Un prompt qui dit à Hybrid comment se comporter et répondre. Il en tiendra compte dans toutes tes conversations.</p>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 14 }}>
-        {INSTRUCTION_PRESETS.map(p => <Pill key={p.label} on={false} onClick={() => { setValue(p.text); save(p.text) }}>{p.label}</Pill>)}
+        {INSTRUCTION_PRESETS.map(p => <PresetChip key={p.label} onClick={() => { setValue(p.text); save(p.text) }}>{p.label}</PresetChip>)}
       </div>
       <textarea value={value} onChange={e => setValue(e.target.value)} onFocus={onFocusRing} onBlur={e => { onBlurRing(e); save(value) }} rows={7}
         placeholder="Ex. Tu es mon coach hybride. Sois technique mais accessible…"
@@ -398,7 +424,7 @@ function ModeleSection({ value, onChange }: { value: string; onChange: (v: strin
     <div>
       <div style={sectionTitleStyle}>Modèle par défaut</div>
       <p style={sectionLead}>Le modèle utilisé par défaut pour tes nouvelles conversations.</p>
-      <div style={{ display: 'inline-flex', gap: 4, padding: 4, borderRadius: 'var(--r-md)', background: 'var(--bg-alt)', border: '1px solid var(--border)' }}>
+      <div style={{ display: 'inline-flex', gap: 4, padding: 4, borderRadius: 'var(--r-md)', background: 'var(--bg-card2)' }}>
         {MODELS.map(([id, label, speed]) => {
           const on = value === id
           return (
@@ -445,7 +471,7 @@ function StudioSection() {
       <p style={{ fontSize: 12.5, color: 'var(--text-dim)', margin: '2px 0 10px', fontFamily: FB, lineHeight: 1.5 }}>
         Le modèle utilisé par défaut quand l’architecte te pose des questions et propose un système.
       </p>
-      <div style={{ display: 'inline-flex', gap: 4, padding: 4, borderRadius: 'var(--r-md)', background: 'var(--bg-alt)', border: '1px solid var(--border)' }}>
+      <div style={{ display: 'inline-flex', gap: 4, padding: 4, borderRadius: 'var(--r-md)', background: 'var(--bg-card2)' }}>
         {MODELS.map(([id, label, speed]) => {
           const on = model === id
           return (
@@ -467,9 +493,9 @@ function StudioSection() {
           const on = autonomy === id
           return (
             <button key={id} type="button" onClick={() => changeAutonomy(id)}
-              style={{ display: 'flex', alignItems: 'flex-start', gap: 11, padding: '12px 14px', borderRadius: 'var(--r-md)', border: `1px solid ${on ? 'var(--primary)' : 'var(--border)'}`, background: on ? 'var(--primary-soft, rgba(59,146,212,0.08))' : 'var(--bg-alt)', cursor: 'pointer', textAlign: 'left', fontFamily: FB, transition: 'border 0.14s, background 0.14s' }}>
+              style={{ display: 'flex', alignItems: 'flex-start', gap: 11, padding: '12px 14px', borderRadius: 'var(--r-md)', border: 'none', background: on ? 'var(--primary-dim)' : 'var(--bg-card2)', cursor: 'pointer', textAlign: 'left', fontFamily: FB, transition: 'background 0.14s' }}>
               <span style={{ width: 18, height: 18, borderRadius: '50%', flexShrink: 0, marginTop: 1, border: `2px solid ${on ? 'var(--primary)' : 'var(--text-dim)'}`, background: on ? 'var(--primary)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                {on && <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#fff' }} />}
+                {on && <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--on-primary)' }} />}
               </span>
               <span style={{ flex: 1, minWidth: 0 }}>
                 <span style={{ display: 'block', fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>{label}</span>
@@ -580,7 +606,7 @@ function AgentTrainingSection({ agent, save }: { agent: TrainingAgentSettings; s
           <div style={{ display: 'flex', gap: 7 }}>
             {DAYS.map((d, i) => {
               const on = agent.jours.includes(i)
-              return <button key={i} type="button" onClick={() => set({ jours: on ? agent.jours.filter(x => x !== i) : [...agent.jours, i] })} style={{ width: 40, height: 40, borderRadius: 'var(--r-sm)', border: 'none', background: on ? 'var(--primary-dim)' : 'var(--bg-alt)', color: on ? 'var(--primary)' : 'var(--text-mid)', fontSize: 13, fontWeight: on ? 700 : 500, cursor: 'pointer', fontFamily: FB }}>{d}</button>
+              return <button key={i} type="button" onClick={() => set({ jours: on ? agent.jours.filter(x => x !== i) : [...agent.jours, i] })} style={{ width: 40, height: 40, borderRadius: 'var(--r-sm)', border: 'none', background: on ? 'var(--primary-dim)' : 'var(--bg-card2)', color: on ? 'var(--primary)' : 'var(--text-mid)', fontSize: 13, fontWeight: on ? 700 : 500, cursor: 'pointer', fontFamily: FB }}>{d}</button>
             })}
           </div>
         </div>

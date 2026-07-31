@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic'
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { createClient } from '@/lib/supabase/client'
+import { resolvePlanningUid } from '@/lib/planning/scope'
 import { useI18n } from '@/lib/i18n'
 import { useTheme } from '@/hooks/useTheme'
 import { ScrollReveal, ScrollRevealGroup, ScrollRevealItem } from '@/components/ui/ScrollReveal'
@@ -385,10 +386,13 @@ function useActivities() {
       for (let attempt = 0; attempt < 3; attempt++) {
         try {
           const sb = createClient()
+          const uid = await resolvePlanningUid(sb)
+          if (!uid) throw new Error('no-user')
           const from = pageNum * PAGE_SIZE
           const { data, error: err, count } = await sb
             .from('activities')
             .select(LIST_COLUMNS, { count: 'exact' })
+            .eq('user_id', uid)
             .order('started_at', { ascending: false })
             .range(from, from + PAGE_SIZE - 1)
           if (err) throw err
@@ -453,8 +457,12 @@ function useWindowWidth() {
 function useTrainingZones() {
   const [zones, setZones] = useState<TrainingZoneRow[]>([])
   useEffect(() => {
-    createClient().from('training_zones').select('*').eq('is_current', true)
-      .then(({ data }) => setZones((data ?? []) as unknown as TrainingZoneRow[]))
+    const sb = createClient()
+    void resolvePlanningUid(sb).then(uid => {
+      if (!uid) return
+      sb.from('training_zones').select('*').eq('user_id', uid).eq('is_current', true)
+        .then(({ data }) => setZones((data ?? []) as unknown as TrainingZoneRow[]))
+    })
   }, [])
   return zones
 }
@@ -462,8 +470,12 @@ function useTrainingZones() {
 function useProfile() {
   const [profile, setProfile] = useState<Profile>({ weight_kg: null, birth_date: null })
   useEffect(() => {
-    createClient().from('profiles').select('weight_kg,birth_date').limit(1).single()
-      .then(({ data }) => { if (data) setProfile(data as Profile) })
+    const sb = createClient()
+    void resolvePlanningUid(sb).then(uid => {
+      if (!uid) return
+      sb.from('profiles').select('weight_kg,birth_date').eq('id', uid).single()
+        .then(({ data }) => { if (data) setProfile(data as Profile) })
+    })
   }, [])
   return profile
 }
@@ -480,7 +492,10 @@ function useMetricsDaily(): { ctl: number | null; atl: number | null; tsb: numbe
   const [metrics, setMetrics] = useState<{ ctl: number | null; atl: number | null; tsb: number | null }>({ ctl: null, atl: null, tsb: null })
   const [loading, setLoading] = useState(true)
   useEffect(() => {
-    createClient().from('metrics_daily').select('ctl,atl,tsb,date')
+    const sb = createClient()
+    void resolvePlanningUid(sb).then(uid => {
+      if (!uid) { setLoading(false); return }
+      sb.from('metrics_daily').select('ctl,atl,tsb,date').eq('user_id', uid)
       .order('date', { ascending: false }).limit(1).single()
       .then(({ data }) => {
         if (data && (data as Record<string, unknown>).ctl != null) {
@@ -489,6 +504,7 @@ function useMetricsDaily(): { ctl: number | null; atl: number | null; tsb: numbe
         }
         setLoading(false)
       }, () => { setLoading(false) })
+    })
   }, [])
   return { ...metrics, loading }
 }
@@ -922,9 +938,13 @@ function PowerCurveChart({ watts, activityId, activityDurationS, ftp }: {
 
     void (async () => {
       try {
-        const { data } = await createClient()
+        const sb = createClient()
+        const uid = await resolvePlanningUid(sb)
+        if (!uid) { setPrLoading(false); return }
+        const { data } = await sb
           .from('personal_records')
           .select('distance_label, performance, achieved_at')
+          .eq('user_id', uid)
           .eq('sport', 'bike')
           .order('achieved_at', { ascending: false })
         const recs = (data ?? []) as RecRow[]
@@ -5371,12 +5391,17 @@ function SectionDonnees({ activities, zones, profile }: {
   const [weeklyActs, setWeeklyActs] = useState<{ started_at: string; moving_time_s: number | null; distance_m: number | null; sport_type: string }[]>([])
   useEffect(() => {
     const start = new Date(); start.setDate(start.getDate() - 52 * 7)
-    createClient()
-      .from('activities')
-      .select('started_at, moving_time_s, distance_m, sport_type')
-      .gte('started_at', start.toISOString())
-      .order('started_at', { ascending: true })
-      .then(({ data }) => setWeeklyActs((data ?? []) as { started_at: string; moving_time_s: number | null; distance_m: number | null; sport_type: string }[]))
+    const sb = createClient()
+    void resolvePlanningUid(sb).then(uid => {
+      if (!uid) return
+      sb
+        .from('activities')
+        .select('started_at, moving_time_s, distance_m, sport_type')
+        .eq('user_id', uid)
+        .gte('started_at', start.toISOString())
+        .order('started_at', { ascending: true })
+        .then(({ data }) => setWeeklyActs((data ?? []) as { started_at: string; moving_time_s: number | null; distance_m: number | null; sport_type: string }[]))
+    })
   }, [])
 
   // ── PMC data ───────────────────────────────────────────────────────────────
@@ -9622,14 +9647,14 @@ function CardsView({ activities, onSelect, sentinelRef, loadingMore, highlightId
     let cancelled = false
     void (async () => {
       const sb = createClient()
-      const { data: { user } } = await sb.auth.getUser()
-      if (!user) return
+      const uid = await resolvePlanningUid(sb)
+      if (!uid) return
 
       // 1) Tous les records auto liés aux activités visibles
       const { data: autoRows } = await sb
         .from('personal_records')
         .select('activity_id, distance_label, performance, achieved_at')
-        .eq('user_id', user.id)
+        .eq('user_id', uid)
         .eq('sport', 'bike')
         .eq('event_type', 'auto_session')
         .in('activity_id', visibleIds)
@@ -9639,7 +9664,7 @@ function CardsView({ activities, onSelect, sentinelRef, loadingMore, highlightId
       const { data: allRows } = await sb
         .from('personal_records')
         .select('distance_label, performance')
-        .eq('user_id', user.id)
+        .eq('user_id', uid)
         .eq('sport', 'bike')
 
       if (cancelled) return
@@ -10036,10 +10061,10 @@ function TrainingPageInner() {
       if (!res.ok || !json.activity) throw new Error(json.error ?? t('actp.import_error'))
       const a = json.activity
       const sb = createClient()
-      const { data: { user } } = await sb.auth.getUser()
-      if (!user) throw new Error(t('actp.not_connected'))
+      const uid = await resolvePlanningUid(sb)
+      if (!uid) throw new Error(t('actp.not_connected'))
       const { error: insErr } = await sb.from('activities').insert({
-        user_id: user.id,
+        user_id: uid,
         title: a.name ?? file.name,
         started_at: a.date ?? new Date().toISOString(),
         moving_time_s: a.duration_seconds ?? null,

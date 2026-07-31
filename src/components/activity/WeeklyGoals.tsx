@@ -12,6 +12,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { IconFlame, IconChevronRight, IconPlus, IconTrash } from '@tabler/icons-react'
 import { createClient } from '@/lib/supabase/client'
+import { resolvePlanningUid } from '@/lib/planning/scope'
 import { BottomSheet } from '@/components/ui/BottomSheet'
 import { useI18n } from '@/lib/i18n'
 
@@ -124,7 +125,9 @@ export function WeeklyGoals({ activities }: { activities: Act[] }) {
     void (async () => {
       try {
         const sb = createClient()
-        const { data } = await sb.from('training_goals').select('per_sport').maybeSingle()
+        const uid = await resolvePlanningUid(sb)
+        if (!uid) return
+        const { data } = await sb.from('training_goals').select('per_sport').eq('user_id', uid).maybeSingle()
         if (alive && data?.per_sport) setPerSport(data.per_sport as PerSport)
       } catch { /* ignore */ }
     })()
@@ -160,10 +163,10 @@ export function WeeklyGoals({ activities }: { activities: Act[] }) {
     setPerSport(next)
     try {
       const sb = createClient()
-      const { data: { user } } = await sb.auth.getUser()
-      if (!user) return
+      const uid = await resolvePlanningUid(sb)
+      if (!uid) return
       await sb.from('training_goals').upsert({
-        user_id: user.id, per_sport: next, updated_at: new Date().toISOString(),
+        user_id: uid, per_sport: next, updated_at: new Date().toISOString(),
       }, { onConflict: 'user_id' })
     } catch { /* best-effort */ }
   }

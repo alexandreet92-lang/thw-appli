@@ -10,6 +10,7 @@
 // 100 % client-side, aucune dépendance chart externe (SVG brut).
 // ══════════════════════════════════════════════════════════════════
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { resolvePlanningUid } from '@/lib/planning/scope'
 import { createPortal } from 'react-dom'
 import { IconX, IconChevronLeft, IconChevronRight, IconShare2, IconDownload, IconTrophy, IconFlame, IconMountain, IconClock, IconBolt, IconMedal } from '@tabler/icons-react'
 import { SPORT_ICON, sportKeyFromType, type SportKey } from '@/components/icons/SportIcon'
@@ -278,18 +279,18 @@ export function RecapStory({ period, activities, refDate, onClose }: {
     ;(async () => {
       const { createClient } = await import('@/lib/supabase/client')
       const sb = createClient()
-      const { data: { user } } = await sb.auth.getUser()
-      if (!user || cancelled) return
+      const uid = await resolvePlanningUid(sb)
+      if (!uid || cancelled) return
       // 1) Lecture des courbes déjà calculées (payload minuscule).
       const { data } = await sb.from('activities')
         .select('started_at,sport_type,power_curve,pace_curve')
-        .eq('user_id', user.id)
+        .eq('user_id', uid)
         .or('power_curve.not.is.null,pace_curve.not.is.null')
       if (!cancelled && data) setRecRows(data as unknown as RecordRow[])
       // 2) Backfill incrémental : calcule les courbes manquantes pour un petit lot.
       const { data: todo } = await sb.from('activities')
         .select('id,started_at,sport_type,streams')
-        .eq('user_id', user.id)
+        .eq('user_id', uid)
         .is('power_curve', null).is('pace_curve', null)
         .not('streams', 'is', null)
         .order('started_at', { ascending: false })

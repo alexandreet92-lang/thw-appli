@@ -10,7 +10,6 @@ import { createPortal } from 'react-dom'
 import dynamic from 'next/dynamic'
 import { setPlanningScopeUid, PlanningScopeContext } from '@/lib/planning/scope'
 import { MessageThread } from './MessageThread'
-import { CoachTrainingView } from './CoachTrainingView'
 import { Avatar } from '@/components/shared/Sidebar'
 
 export type DrawerKind = 'planning' | 'calendar' | 'training' | 'recovery' | 'nutrition' | 'message' | null
@@ -24,6 +23,9 @@ const PlanningPage = dynamic(() => import('@/app/planning/page'), { ssr: false, 
 const CalendarPage = dynamic(() => import('@/app/calendar/page'), { ssr: false, loading: Loading })
 const RecoveryPage = dynamic(() => import('@/app/recovery/page'), { ssr: false, loading: Loading })
 const NutritionPage = dynamic(() => import('@/app/nutrition/page'), { ssr: false, loading: Loading })
+// « Training » = la vraie page athlète (route /activities, titrée « Training »),
+// désormais câblée sur l'athlète ciblé via le scope planning.
+const TrainingPage = dynamic(() => import('@/app/activities/page'), { ssr: false, loading: Loading })
 
 const TITLE: Record<Exclude<DrawerKind, null>, string> = {
   planning: 'Planning', calendar: 'Calendrier', training: 'Training',
@@ -56,7 +58,7 @@ export function AthleteDetailDrawer({ kind, athleteId, coachId, name, avatar, on
     : kind === 'calendar' ? scoped(<CalendarPage key={`c-${athleteId}`} />)
     : kind === 'recovery' ? scoped(<RecoveryPage key={`r-${athleteId}`} />)
     : kind === 'nutrition' ? scoped(<NutritionPage key={`n-${athleteId}`} />)
-    : kind === 'training' ? scoped(<CoachTrainingView key={`t-${athleteId}`} athleteId={athleteId} />)
+    : kind === 'training' ? scoped(<TrainingPage key={`t-${athleteId}`} />)
     : kind === 'message' ? (coachId ? <div style={{ height: '100%' }}><MessageThread coachId={coachId} athleteId={athleteId} compact /></div> : <Loading />)
     : null
 

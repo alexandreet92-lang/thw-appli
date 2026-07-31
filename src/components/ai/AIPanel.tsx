@@ -126,7 +126,7 @@ interface AIConv {
   updatedAt: number
   msgs: AIMsg[]
   isPinned?: boolean
-  agent?: 'training' | 'networks'
+  agent?: 'training' | 'networks' | 'coach'
   // Rattachement à un projet (dossier de conversations). null/absent = hors projet.
   projectId?: string | null
 }
@@ -12990,6 +12990,7 @@ function HistoryDrawer({
   initials = '',
   activeAgent,
   onAgentChange,
+  coachAccess = false,
   onConvDragStart,
   onConvDragEnd,
 }: {
@@ -13016,8 +13017,9 @@ function HistoryDrawer({
   underlay?: boolean
   avatarUrl?: string | null
   initials?: string
-  activeAgent: 'training' | 'networks'
-  onAgentChange: (a: 'training' | 'networks') => void
+  activeAgent: 'training' | 'networks' | 'coach'
+  onAgentChange: (a: 'training' | 'networks' | 'coach') => void
+  coachAccess?: boolean
   onConvDragStart?: (id: string) => void
   onConvDragEnd?: () => void
 }) {
@@ -13297,14 +13299,37 @@ function HistoryDrawer({
             background: activeAgent === 'training' ? 'var(--bg-hover)' : 'transparent',
             color: 'var(--text)', fontSize: 15,
             fontWeight: activeAgent === 'training' ? 600 : 500,
-            cursor: 'pointer', fontFamily: 'Syne,DM Sans,sans-serif', textAlign: 'left',
+            cursor: 'pointer', fontFamily: 'var(--font-body)', textAlign: 'left',
             transition: 'background 0.12s',
           }}
           onMouseEnter={e => { if (activeAgent !== 'training') (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)' }}
           onMouseLeave={e => { if (activeAgent !== 'training') (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
         >
           <Zap size={16} color={activeAgent === 'training' ? '#06B6D4' : 'var(--text-mid)'} style={{ flexShrink: 0 }} />
-          Training
+          Athlete
+        </button>
+        {/* Agent Coach — visible partout, ouvrable seulement avec un abonnement coach */}
+        <button
+          onClick={() => { if (coachAccess) onAgentChange('coach') }}
+          title={coachAccess ? 'Agent Coach' : 'Réservé à l’abonnement coach'}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 10,
+            width: '100%', padding: '9px 9px', borderRadius: 9,
+            border: 'none',
+            background: activeAgent === 'coach' ? 'var(--bg-hover)' : 'transparent',
+            color: 'var(--text)', fontSize: 15,
+            fontWeight: activeAgent === 'coach' ? 600 : 500,
+            cursor: coachAccess ? 'pointer' : 'not-allowed', opacity: coachAccess ? 1 : 0.55,
+            fontFamily: 'var(--font-body)', textAlign: 'left', transition: 'background 0.12s',
+          }}
+          onMouseEnter={e => { if (coachAccess && activeAgent !== 'coach') (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)' }}
+          onMouseLeave={e => { if (activeAgent !== 'coach') (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={activeAgent === 'coach' ? '#3B92D4' : 'var(--text-mid)'} strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          <span style={{ flex: 1 }}>Coach</span>
+          {!coachAccess && (
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          )}
         </button>
         <div
           title={t('aip.ui.comingSoon')}
@@ -13312,7 +13337,7 @@ function HistoryDrawer({
             display: 'flex', alignItems: 'center', gap: 10,
             width: '100%', padding: '9px 9px', borderRadius: 9,
             color: 'var(--text)', fontSize: 15, fontWeight: 500,
-            fontFamily: 'Syne,DM Sans,sans-serif',
+            fontFamily: 'var(--font-body)',
             opacity: 0.4, cursor: 'not-allowed', pointerEvents: 'none',
           }}
         >
@@ -20599,7 +20624,9 @@ export default function AIPanel({
   }
 
   // ── Agent selector ────────────────────────────────────────────
-  const [activeAgent,   setActiveAgent]   = useState<'training' | 'networks'>('training')
+  const [activeAgent,   setActiveAgent]   = useState<'training' | 'networks' | 'coach'>('training')
+  const [coachAccess,   setCoachAccess]   = useState(false)
+  useEffect(() => { void import('@/lib/coach/owner').then(m => m.hasCoachAccess()).then(setCoachAccess) }, [])
   const [agentDropOpen, setAgentDropOpen] = useState(false)
 
   // ── Voice recording (B3) ─────────────────────────────────────
@@ -22131,6 +22158,12 @@ export default function AIPanel({
         }
       }
 
+      // Agent « Coach » : l'assistant aide un COACH à suivre et faire progresser
+      // plusieurs athlètes (≠ agent « Athlete » qui coache l'utilisateur lui-même).
+      if (activeAgent === 'coach') {
+        effectiveRules = [...effectiveRules, { category: 'instruction', rule_text: "Tu es l'assistant COACH de l'application Hybrid. Tu ne t'adresses pas à un athlète mais à un COACH sportif qui suit plusieurs athlètes. Ta mission : l'aider à coacher le plus efficacement possible — analyser l'état de ses athlètes, prioriser ceux qui ont besoin d'attention, proposer des ajustements de plans, rédiger des messages, et lui faire gagner du temps. Parle-lui comme à un professionnel du coaching." }]
+      }
+
       const res = await fetch('/api/coach-stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -22826,6 +22859,7 @@ export default function AIPanel({
               onClose={() => setHistOpen(false)}
               activeAgent={activeAgent}
               onAgentChange={setActiveAgent}
+              coachAccess={coachAccess}
             />
           )}
           {/* Bouton flottant pour rouvrir la sidebar quand elle est repliée */}
@@ -22867,6 +22901,7 @@ export default function AIPanel({
               onClose={() => setHistOpen(false)}
               activeAgent={activeAgent}
               onAgentChange={setActiveAgent}
+              coachAccess={coachAccess}
             />
           )}
 
@@ -23063,7 +23098,7 @@ export default function AIPanel({
           )}
 
           {/* ── MESSAGES ───────────────────────────────────── */}
-          {activeAgent === 'training' && <div
+          {activeAgent !== 'networks' && <div
             ref={scrollContainerRef}
             className="aip-messages"
             style={{ padding: isDesktop ? '24px 20px 0' : '62px 20px 0', flex: showEmpty && !activeFlow ? '0 0 auto' : undefined, marginTop: showEmpty && !activeFlow ? 'auto' : undefined }}
@@ -23768,7 +23803,7 @@ export default function AIPanel({
           </div>}
 
           {/* ══ INPUT ═════════════════════════════════════════ */}
-          {activeAgent === 'training' && <>
+          {activeAgent !== 'networks' && <>
           <div className="aip-input-footer" style={{
             padding: '10px 16px 14px',
             borderTop: showEmpty && !activeFlow ? 'none' : '1px solid var(--ai-border)',

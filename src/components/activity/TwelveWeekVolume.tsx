@@ -11,6 +11,7 @@
 // ══════════════════════════════════════════════════════════════════
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { resolvePlanningUid } from '@/lib/planning/scope'
 import { currentLocale } from '@/lib/i18n'
 
 const BLUE = '#3B82F6'
@@ -88,12 +89,12 @@ export function TwelveWeekVolume({ activities }: { activities: ActLike[] }) {
     void (async () => {
       try {
         const sb = createClient()
-        const { data: { user } } = await sb.auth.getUser()
-        if (!user) return
+        const uid = await resolvePlanningUid(sb)
+        if (!uid) return
         const since = new Date(mondayOf(new Date())); since.setDate(since.getDate() - 77)
         const { data } = await sb.from('workout_sessions')
           .select('started_at, sport, exercises_detail, calories')
-          .eq('user_id', user.id)
+          .eq('user_id', uid)
           .gte('started_at', since.toISOString())
           .limit(400)
         setWsRows((data ?? []) as WsRow[])

@@ -18,9 +18,6 @@ const ic = { width: 18, height: 18, viewBox: '0 0 24 24', fill: 'none', stroke: 
 export const COACH_NAV: { href: string; label: string; icon: React.ReactNode }[] = [
   { href: '/coach',          label: 'Dashboard',    icon: <svg {...ic}><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg> },
   { href: '/coach/athletes', label: 'Athlètes',     icon: <svg {...ic}><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg> },
-  { href: '/coach/planning', label: 'Planning',     icon: <svg {...ic}><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18M9 16l2 2 4-4"/></svg> },
-  { href: '/coach/training', label: 'Training',     icon: <svg {...ic}><path d="M3 12h4l3 8 4-16 3 8h4"/></svg> },
-  { href: '/coach/calendar', label: 'Calendrier',   icon: <svg {...ic}><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><circle cx="8" cy="15" r="1" fill="currentColor"/><circle cx="12" cy="15" r="1" fill="currentColor"/><circle cx="16" cy="15" r="1" fill="currentColor"/></svg> },
   { href: '/coach/library',  label: 'Bibliothèque', icon: <svg {...ic}><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg> },
   { href: '/coach/messages', label: 'Messages',     icon: <svg {...ic}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> },
   { href: '/coach/studio',   label: 'Studio',       icon: <svg {...ic}><circle cx="5" cy="6" r="2.2"/><circle cx="19" cy="6" r="2.2"/><circle cx="12" cy="18" r="2.2"/><path d="M7 6.6 10.6 16.4M17 6.6 13.4 16.4"/></svg> },

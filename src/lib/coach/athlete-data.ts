@@ -18,6 +18,8 @@ export interface AthleteProfile {
   birth_date: string | null
   weight_kg: number | null
   height_cm: number | null
+  gender: string | null
+  country: string | null
 }
 export interface ActivityRow { id: string; title: string | null; sport_type: string | null; started_at: string | null; moving_time_s: number | null; distance_m: number | null; elevation_gain_m: number | null; tss: number | null; average_heartrate: number | null; is_race: boolean | null }
 export interface RecoveryRow { date: string; sleep_quality: number | null; fatigue: number | null; soreness: number | null; mood: number | null }
@@ -31,7 +33,7 @@ const RESOLVED = ['guérie', 'guerie', 'resolved', 'résolue', 'resolue', 'termi
 export async function getAthleteProfile(id: string): Promise<AthleteProfile | null> {
   const sb = createClient()
   const { data } = await sb.from('profiles')
-    .select('id, full_name, first_name, avatar_url, last_seen_at, primary_goal, level, sports, birth_date, weight_kg, height_cm')
+    .select('id, full_name, first_name, avatar_url, last_seen_at, primary_goal, level, sports, birth_date, weight_kg, height_cm, gender, country')
     .eq('id', id).maybeSingle()
   return (data as AthleteProfile | null) ?? null
 }

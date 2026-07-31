@@ -48,7 +48,11 @@ export function AthleteDetailDrawer({ kind, athleteId, coachId, name, avatar, on
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
     document.addEventListener('keydown', onKey)
     document.body.style.overflow = 'hidden'
-    return () => { document.removeEventListener('keydown', onKey); document.body.style.overflow = ''; setPlanningScopeUid(null) }
+    // Masque le rail de la sidebar coach pendant le drawer → plein écran, tout en
+    // laissant les modales des pages (ajout séance, objectif calendrier…) passer
+    // au-dessus du drawer (le drawer est volontairement à un z-index bas).
+    document.body.classList.add('thw-drawer-open')
+    return () => { document.removeEventListener('keydown', onKey); document.body.style.overflow = ''; document.body.classList.remove('thw-drawer-open'); setPlanningScopeUid(null) }
   }, [open, onClose])
 
   if (!mounted) return null
@@ -63,7 +67,7 @@ export function AthleteDetailDrawer({ kind, athleteId, coachId, name, avatar, on
     : null
 
   return createPortal(
-    <div style={{ position: 'fixed', inset: 0, zIndex: 11000, pointerEvents: open ? 'auto' : 'none' }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 900, pointerEvents: open ? 'auto' : 'none' }}>
       {/* Scrim */}
       <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(2px)', WebkitBackdropFilter: 'blur(2px)', opacity: open ? 1 : 0, transition: 'opacity .28s ease' }} />
       {/* Panneau coulissant — plein écran */}

@@ -42,18 +42,6 @@ function Spark({ d, col }: { d: number[]; col: string }) {
     </svg>
   )
 }
-function Adh({ done, total }: { done: number; total: number }) {
-  if (total === 0) return <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>—</span>
-  return (
-    <span style={{ display: 'inline-flex', gap: 3, alignItems: 'center' }}>
-      {Array.from({ length: Math.min(total, 6) }, (_, i) => (
-        <i key={i} style={{ width: 6, height: 12, borderRadius: 2, background: i < done ? '#22C55E' : 'var(--border-mid)' }} />
-      ))}
-      <span style={{ fontSize: 12, color: 'var(--text-dim)', marginLeft: 3 }}>{done}/{total}</span>
-    </span>
-  )
-}
-
 export default function CoachAthletes() {
   const router = useRouter()
   const [roster, setRoster] = useState<RosterAthlete[]>([])
@@ -65,7 +53,6 @@ export default function CoachAthletes() {
   const [filter, setFilter] = useState<'all' | Forme>('all')
   const [group, setGroup] = useState<string>('__all')
   const [sort, setSort] = useState<'alert' | 'name' | 'recent' | 'load'>('alert')
-  const [view, setView] = useState<'grid' | 'list'>('grid')
   const [sel, setSel] = useState<Set<string>>(new Set())
   const [manage, setManage] = useState<RosterAthlete | null>(null)
 
@@ -134,15 +121,9 @@ export default function CoachAthletes() {
   return (
     <div style={{ width: '100%', padding: '20px clamp(16px,4vw,40px) 60px', boxSizing: 'border-box', fontFamily: BODY }}>
       {/* En-tête */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
-        <div>
-          <h1 style={{ fontFamily: DISP, fontWeight: 600, fontSize: 28, margin: 0, color: 'var(--text)' }}>Athlètes</h1>
-          <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: '3px 0 0' }}>Ton roster, en un coup d’œil — repère qui a besoin de toi.</p>
-        </div>
-        <button onClick={onInvite} disabled={busy} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '10px 15px', borderRadius: 11, border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 13.5, fontWeight: 700, cursor: 'pointer', fontFamily: BODY, flexShrink: 0 }}>
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
-          Inviter
-        </button>
+      <div>
+        <h1 style={{ fontFamily: DISP, fontWeight: 600, fontSize: 28, margin: 0, color: 'var(--text)' }}>Athlètes</h1>
+        <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: '3px 0 0' }}>Ton roster, en un coup d’œil — repère qui a besoin de toi.</p>
       </div>
 
       {/* KPIs */}
@@ -150,7 +131,6 @@ export default function CoachAthletes() {
         {tile(loading ? '—' : kpis.total, 'athlète' + (kpis.total > 1 ? 's' : ''), 'var(--primary)')}
         {tile(loading ? '—' : kpis.active, 'actif' + (kpis.active > 1 ? 's' : '') + ' (7 j)')}
         {tile(loading ? '—' : kpis.alert, 'en alerte', kpis.alert > 0 ? '#F59E0B' : 'var(--text)')}
-        {tile(loading ? '—' : kpis.adh === null ? '—' : `${kpis.adh}%`, 'adhérence moyenne')}
         {tile(loading ? '—' : pending.length, 'invitation' + (pending.length > 1 ? 's' : '') + ' en attente')}
       </div>
 
@@ -179,15 +159,6 @@ export default function CoachAthletes() {
           <option value="recent">Dernière activité</option>
           <option value="load">Charge de la semaine</option>
         </select>
-        <div style={{ display: 'flex', background: 'var(--bg-alt)', border: '1px solid var(--border)', borderRadius: 11, padding: 3 }}>
-          {(['grid', 'list'] as const).map(v => (
-            <button key={v} onClick={() => setView(v)} aria-label={v} style={{ border: 'none', background: view === v ? 'var(--bg-card)' : 'none', color: view === v ? 'var(--primary)' : 'var(--text-dim)', borderRadius: 8, padding: '6px 9px', cursor: 'pointer', display: 'flex', boxShadow: view === v ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' }}>
-              {v === 'grid'
-                ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
-                : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>}
-            </button>
-          ))}
-        </div>
       </div>
 
       {loading ? (
@@ -218,98 +189,106 @@ export default function CoachAthletes() {
           {/* Roster */}
           <div style={lab}>Tout le roster <span style={{ color: 'var(--text-mid)', background: 'var(--bg-alt)', borderRadius: 6, padding: '1px 7px' }}>{visible.length}</span></div>
 
-          {view === 'grid' ? (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 14 }}>
-              {visible.map(a => {
-                const on = sel.has(a.id)
-                return (
-                  <div key={a.id} style={{ ...card, padding: 15, position: 'relative', border: `1px solid ${on ? 'var(--primary)' : 'var(--border)'}`, boxShadow: on ? '0 0 0 2px color-mix(in srgb, var(--primary) 20%, transparent)' : '0 1px 3px rgba(0,0,0,0.05)' }}>
-                    <button onClick={() => toggleSel(a.id)} aria-label="Sélectionner" style={{ position: 'absolute', top: 13, right: 13, width: 20, height: 20, borderRadius: 6, border: `1.5px solid ${on ? 'var(--primary)' : 'var(--border-mid)'}`, background: on ? 'var(--primary)' : 'var(--bg-alt)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: on ? 'var(--on-primary)' : 'transparent' }}>
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
-                    </button>
-                    <Link href={`/coach/athlete/${a.id}`} style={{ display: 'flex', alignItems: 'center', gap: 11, textDecoration: 'none', color: 'inherit', paddingRight: 26 }}>
-                      {avatar(a)}
-                      <div style={{ minWidth: 0 }}>
-                        <div style={{ fontWeight: 700, fontSize: 15, lineHeight: 1.2, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.name}</div>
-                        <div style={{ fontSize: 11.5, color: 'var(--text-dim)', marginTop: 2 }}>{[a.level, a.sports.slice(0, 2).join(', ')].filter(Boolean).join(' · ') || 'Athlète'}{a.group ? ` · ${a.group}` : ''}</div>
-                      </div>
-                      {a.unread > 0 && <span style={{ marginLeft: 'auto', background: '#EF4444', color: '#fff', fontSize: 10, fontWeight: 800, borderRadius: 9, minWidth: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 5px' }}>{a.unread}</span>}
-                    </Link>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '9px 14px', marginTop: 13 }}>
-                      <div><div style={{ fontSize: 10.5, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Dernière activité</div><div style={{ fontSize: 13.5, fontWeight: 700, marginTop: 1, color: 'var(--text)' }}>{lastSeenTxt(a.lastDays)}</div></div>
-                      <div><div style={{ fontSize: 10.5, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Charge · 7 j</div><div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 1 }}><Spark d={a.load7} col={STC[a.status]} /><span style={{ fontSize: 12, color: 'var(--text-dim)' }}>{a.tss7} TSS</span></div></div>
-                      <div><div style={{ fontSize: 10.5, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Adhérence</div><div style={{ marginTop: 3 }}><Adh done={a.adhDone} total={a.adhTotal} /></div></div>
-                      <div><div style={{ fontSize: 10.5, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Fatigue · 7 j</div><div style={{ fontSize: 13.5, fontWeight: 700, marginTop: 1, color: (a.fatigue ?? 0) >= 4 ? '#F59E0B' : 'var(--text)' }}>{a.fatigue ? `${a.fatigue.toFixed(1)}/5` : '—'}</div></div>
-                    </div>
-                    <div style={{ marginTop: 12, paddingTop: 11, borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, color: a.race ? 'var(--text-mid)' : 'var(--text-dim)' }}>
-                      {a.race ? <><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 22V4a1 1 0 0 1 1-1h11l-2 4 2 4H5"/></svg><span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.race.name}</span><span style={{ fontWeight: 800, color: 'var(--primary)' }}>J-{a.race.days}</span></> : <span>Aucune course programmée</span>}
-                    </div>
-                    <div style={{ display: 'flex', gap: 6, marginTop: 12 }}>
-                      <button onClick={() => router.push(`/coach/athlete/${a.id}`)} style={qaBtn}>Fiche</button>
-                      <button onClick={() => router.push('/coach/messages')} style={qaBtn}>✉︎ Message</button>
-                      <button onClick={() => router.push(`/coach/athlete/${a.id}`)} style={qaBtn}>＋ Assigner</button>
-                      <button onClick={() => setManage(a)} style={{ ...qaBtn, flex: '0 0 34px' }} aria-label="Plus">⋯</button>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          ) : (
-            <div style={{ ...card, overflow: 'hidden' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1.1fr 1fr auto', gap: 12, padding: '11px 16px', fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-dim)', fontWeight: 800 }}>
-                <div>Athlète</div><div>Statut</div><div>Dernière act.</div><div>Charge 7 j</div><div>Adhérence</div><div />
+          {/* Vue en ligne unique — un athlète = une ligne, lisible d'un coup d'œil */}
+          <div style={{ ...card, overflowX: 'auto' }}>
+            <div style={{ minWidth: 860 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: COLS, gap: 12, padding: '11px 16px', fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-dim)', fontWeight: 800 }}>
+                <div /><div>Athlète</div><div>Statut</div><div>Dernière act.</div><div>Charge · 7 j</div><div>Séances</div><div>Fatigue</div><div>Prochaine course</div><div>Blessures</div><div />
               </div>
               {visible.map(a => (
-                <div key={a.id} onClick={() => router.push(`/coach/athlete/${a.id}`)} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1.1fr 1fr auto', gap: 12, alignItems: 'center', padding: '11px 16px', borderTop: '1px solid var(--border)', cursor: 'pointer', fontSize: 13 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>{avatar(a, 32)}<div><div style={{ fontWeight: 700, color: 'var(--text)' }}>{a.name}</div><div style={{ fontSize: 11.5, color: 'var(--text-dim)' }}>{a.sports.slice(0, 2).join(', ') || '—'}</div></div></div>
-                  <div><span style={{ fontSize: 11, fontWeight: 700, color: STC[a.status], border: `1px solid ${STC[a.status]}`, borderRadius: 6, padding: '2px 7px' }}>{STLABEL[a.status]}</span></div>
-                  <div style={{ color: 'var(--text-mid)' }}>{lastSeenTxt(a.lastDays)}</div>
-                  <div><Spark d={a.load7} col={STC[a.status]} /></div>
-                  <div><Adh done={a.adhDone} total={a.adhTotal} /></div>
-                  <div style={{ textAlign: 'right' }}>{a.unread > 0 && <span style={{ background: '#EF4444', color: '#fff', fontSize: 10, fontWeight: 800, borderRadius: 9, padding: '2px 6px' }}>{a.unread}</span>}</div>
+                <div key={a.id} onClick={() => router.push(`/coach/athlete/${a.id}`)} style={{ display: 'grid', gridTemplateColumns: COLS, gap: 12, alignItems: 'center', padding: '12px 16px', borderTop: '1px solid var(--border)', cursor: 'pointer', fontSize: 13 }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-card2)' }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}>
+                  {/* Sélection (bulk : Lancer un système, Grouper) */}
+                  <button onClick={e => { e.stopPropagation(); toggleSel(a.id) }} aria-label="Sélectionner" style={{ width: 18, height: 18, borderRadius: 5, border: `1.5px solid ${sel.has(a.id) ? 'var(--primary)' : 'var(--border-mid)'}`, background: sel.has(a.id) ? 'var(--primary)' : 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: sel.has(a.id) ? 'var(--on-primary)' : 'transparent', padding: 0 }}>
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+                  </button>
+                  {/* Athlète */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                    {avatar(a, 34)}
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.name}</span>
+                        {a.unread > 0 && <span style={{ background: '#EF4444', color: '#fff', fontSize: 9.5, fontWeight: 800, borderRadius: 9, minWidth: 16, height: 16, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px', flexShrink: 0 }}>{a.unread}</span>}
+                      </div>
+                      <div style={{ fontSize: 11.5, color: 'var(--text-dim)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.sports.slice(0, 2).join(', ') || '—'}{a.group ? ` · ${a.group}` : ''}</div>
+                    </div>
+                  </div>
+                  {/* Statut */}
+                  <div><span style={{ fontSize: 11, fontWeight: 700, color: STC[a.status], border: `1px solid ${STC[a.status]}`, borderRadius: 6, padding: '2px 7px', whiteSpace: 'nowrap' }}>{STLABEL[a.status]}</span></div>
+                  {/* Dernière activité */}
+                  <div style={{ color: 'var(--text-mid)', ...NUM }}>{lastSeenTxt(a.lastDays)}</div>
+                  {/* Charge 7 j */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}><Spark d={a.load7} col={STC[a.status]} /><span style={{ ...NUM, fontSize: 12, color: 'var(--text-dim)' }}>{a.tss7}</span></div>
+                  {/* Séances faites / planifiées */}
+                  <div style={{ ...NUM, fontWeight: 700, color: 'var(--text)' }}>{a.adhTotal > 0 ? <>{a.adhDone}<span style={{ color: 'var(--text-dim)', fontWeight: 600 }}> / {a.adhTotal}</span></> : <span style={{ color: 'var(--text-dim)', fontWeight: 600 }}>—</span>}</div>
+                  {/* Fatigue moyenne */}
+                  <div style={{ ...NUM, fontWeight: 700, color: (a.fatigue ?? 0) >= 4 ? '#F59E0B' : 'var(--text)' }}>{a.fatigue ? `${a.fatigue.toFixed(1)}/5` : '—'}</div>
+                  {/* Prochaine course */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, color: a.race ? 'var(--text-mid)' : 'var(--text-dim)' }}>
+                    {a.race ? <><span style={{ ...NUM, fontWeight: 800, color: a.race.days <= 14 ? '#ef4444' : 'var(--primary)', flexShrink: 0 }}>J-{a.race.days}</span><span style={{ fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.race.name}</span></> : <span style={{ fontSize: 12 }}>—</span>}
+                  </div>
+                  {/* Blessures actives */}
+                  <div style={{ ...NUM, fontWeight: 700, color: a.activeInjuries > 0 ? '#ef4444' : 'var(--text-dim)' }}>{a.activeInjuries > 0 ? a.activeInjuries : '—'}</div>
+                  {/* Gérer */}
+                  <button onClick={e => { e.stopPropagation(); setManage(a) }} aria-label="Gérer" style={{ width: 30, height: 30, borderRadius: 8, border: 'none', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    onMouseEnter={ev => { (ev.currentTarget as HTMLElement).style.background = 'var(--bg-alt)' }} onMouseLeave={ev => { (ev.currentTarget as HTMLElement).style.background = 'transparent' }}>
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/></svg>
+                  </button>
                 </div>
               ))}
             </div>
-          )}
-
-          {/* ── Invitations ── */}
-          <div style={{ ...card, marginTop: 22, padding: 16 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-              <div style={{ flex: 1, minWidth: 180 }}>
-                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>Inviter un athlète</div>
-                <div style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 2 }}>Génère un code à lui transmettre. Il l’entrera dans « Mes coachs ».</div>
-              </div>
-              <button onClick={onInvite} disabled={busy} style={{ padding: '10px 16px', borderRadius: 11, border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: BODY }}>+ Nouveau code</button>
-            </div>
-            {newCode && <InviteCodeReveal code={newCode} />}
-            {pending.length > 0 && (
-              <div style={{ marginTop: 12 }}>
-                <div style={{ ...lab, margin: '0 0 6px' }}>En attente d’acceptation</div>
-                {pending.map(p => (
-                  <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderTop: '1px solid var(--border)' }}>
-                    <span style={{ fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>{p.code}</span>
-                    <button onClick={() => onRevoke(p.id)} style={{ marginLeft: 'auto', fontSize: 12, color: '#EF4444', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 700 }}>Annuler</button>
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
 
-          {/* ── Mes coachs (côté athlète) ── */}
-          <div style={{ ...card, marginTop: 14, padding: 16 }}>
-            <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>Un coach t’a invité ?</div>
-            <div style={{ fontSize: 12, color: 'var(--text-dim)', margin: '2px 0 12px' }}>Entre son code pour l’autoriser à te suivre. Révocable à tout moment.</div>
-            <div style={{ display: 'flex', gap: 9, flexWrap: 'wrap' }}>
-              <input value={acceptCode} onChange={e => setAcceptCode(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') void onAccept() }} placeholder="Code (ex. ABCD-2345)" style={{ flex: 1, minWidth: 160, padding: '11px 13px', borderRadius: 11, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text)', fontSize: 14, outline: 'none', fontFamily: 'var(--font-body)', letterSpacing: '0.08em' }} />
-              <button onClick={onAccept} disabled={busy || !acceptCode.trim()} style={{ padding: '11px 18px', borderRadius: 11, border: 'none', background: acceptCode.trim() ? 'var(--primary)' : 'var(--border)', color: acceptCode.trim() ? 'var(--on-primary)' : 'var(--text-dim)', fontSize: 13.5, fontWeight: 700, cursor: acceptCode.trim() ? 'pointer' : 'default', fontFamily: BODY }}>Accepter</button>
-            </div>
-            {acceptMsg && <div style={{ marginTop: 10, fontSize: 12.5, color: 'var(--text-mid)' }}>{acceptMsg}</div>}
-            {coaches.length > 0 && coaches.map(c => (
-              <div key={c.linkId} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 0', borderTop: '1px solid var(--border)', marginTop: 4 }}>
-                <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)', flex: 1 }}>Coach</span>
-                <button onClick={() => onRevoke(c.linkId)} style={{ fontSize: 12, color: '#EF4444', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 700 }}>Révoquer</button>
+          {/* ── Invitations — une seule carte, deux volets ── */}
+          <div style={{ ...card, marginTop: 22, padding: 0, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))' }}>
+            {/* Volet 1 : inviter un athlète */}
+            <div style={{ padding: 18 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 4 }}>
+                <span style={{ width: 30, height: 30, borderRadius: 9, background: 'color-mix(in srgb, var(--primary) 13%, transparent)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg>
+                </span>
+                <div style={{ fontSize: 14.5, fontWeight: 700, color: 'var(--text)', fontFamily: DISP }}>Inviter un athlète</div>
               </div>
-            ))}
+              <div style={{ fontSize: 12.5, color: 'var(--text-dim)', lineHeight: 1.5, marginBottom: 12 }}>Génère un code et transmets-le à ton athlète : il l’entre dans « Mon coach » et tu le suis aussitôt.</div>
+              <button onClick={onInvite} disabled={busy} style={{ width: '100%', padding: '11px 16px', borderRadius: 11, border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 13.5, fontWeight: 700, cursor: 'pointer', fontFamily: BODY, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
+                Générer un code d’invitation
+              </button>
+              {newCode && <div style={{ marginTop: 12 }}><InviteCodeReveal code={newCode} /></div>}
+              {pending.length > 0 && (
+                <div style={{ marginTop: 12 }}>
+                  <div style={{ ...lab, margin: '0 0 4px' }}>En attente d’acceptation</div>
+                  {pending.map(p => (
+                    <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderTop: '1px solid var(--border)' }}>
+                      <span style={{ ...NUM, fontSize: 14, fontWeight: 700, color: 'var(--text)', letterSpacing: '0.06em' }}>{p.code}</span>
+                      <button onClick={() => onRevoke(p.id)} style={{ marginLeft: 'auto', fontSize: 12, color: '#EF4444', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 700 }}>Annuler</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            {/* Volet 2 : rejoindre un coach (côté athlète) — séparé par un filet */}
+            <div style={{ padding: 18, borderLeft: '1px solid var(--border)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 4 }}>
+                <span style={{ width: 30, height: 30, borderRadius: 9, background: 'var(--bg-card2)', color: 'var(--text-mid)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M9 12l2 2 4-4"/><path d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/></svg>
+                </span>
+                <div style={{ fontSize: 14.5, fontWeight: 700, color: 'var(--text)', fontFamily: DISP }}>Un coach t’a invité ?</div>
+              </div>
+              <div style={{ fontSize: 12.5, color: 'var(--text-dim)', lineHeight: 1.5, marginBottom: 12 }}>Entre son code pour l’autoriser à te suivre. Révocable à tout moment.</div>
+              <div style={{ display: 'flex', gap: 9, flexWrap: 'wrap' }}>
+                <input value={acceptCode} onChange={e => setAcceptCode(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') void onAccept() }} placeholder="Code (ex. ABCD-2345)" style={{ flex: 1, minWidth: 130, padding: '11px 13px', borderRadius: 11, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 14, outline: 'none', fontFamily: 'var(--font-body)', letterSpacing: '0.08em' }} />
+                <button onClick={onAccept} disabled={busy || !acceptCode.trim()} style={{ padding: '11px 18px', borderRadius: 11, border: 'none', background: acceptCode.trim() ? 'var(--primary)' : 'var(--bg-card2)', color: acceptCode.trim() ? 'var(--on-primary)' : 'var(--text-dim)', fontSize: 13.5, fontWeight: 700, cursor: acceptCode.trim() ? 'pointer' : 'default', fontFamily: BODY }}>Accepter</button>
+              </div>
+              {acceptMsg && <div style={{ marginTop: 10, fontSize: 12.5, color: 'var(--text-mid)' }}>{acceptMsg}</div>}
+              {coaches.length > 0 && coaches.map(c => (
+                <div key={c.linkId} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 0', borderTop: '1px solid var(--border)', marginTop: 4 }}>
+                  <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)', flex: 1 }}>Coach lié</span>
+                  <button onClick={() => onRevoke(c.linkId)} style={{ fontSize: 12, color: '#EF4444', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 700 }}>Révoquer</button>
+                </div>
+              ))}
+            </div>
           </div>
         </>
       )}
@@ -348,5 +327,7 @@ export default function CoachAthletes() {
   )
 }
 
-const qaBtn: React.CSSProperties = { flex: 1, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text-mid)', borderRadius: 9, padding: '7px 0', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }
+// Colonnes de la vue en ligne (une seule vue) + chiffres tabulaires.
+const COLS = '26px minmax(190px,1.8fr) 92px 100px 116px 74px 70px minmax(120px,1.15fr) 74px 34px'
+const NUM: React.CSSProperties = { fontFamily: 'var(--font-body)', fontVariantNumeric: 'tabular-nums' }
 const bulkBtn: React.CSSProperties = { border: 'none', borderRadius: 9, background: 'color-mix(in srgb, var(--bg) 16%, transparent)', color: 'var(--bg)', fontWeight: 700, fontSize: 12.5, padding: '8px 12px', cursor: 'pointer', fontFamily: 'var(--font-body)' }

@@ -965,3 +965,9 @@ html.dark .thw-activity-back-btn {
 /* Bouton Supprimer l'activité — outlined rouge */
 .thw-delete-activity-btn:hover { background: rgba(239, 68, 68, 0.08); }
 .thw-delete-activity-btn:active { transform: scale(0.98); }
+
+/* Drawer coach ouvert : masque le rail de navigation → drawer plein écran.
+   Le drawer est à un z-index bas (900) pour laisser les modales des pages
+   embarquées (ajout de séance, objectif calendrier, bulle d'intensité…)
+   s'afficher au-dessus de lui. */
+body.thw-drawer-open [data-app-rail] { display: none !important; }

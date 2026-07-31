@@ -142,7 +142,7 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
           overlay (le contenu ne se recompose pas). Un spacer réserve RAIL px. */}
       {/* zIndex 1000 : la sidebar (au survol) doit passer AU-DESSUS des overlays
           de contenu comme le bandeau bas de la page Démarrer (zIndex 999). */}
-      <div style={{ width: RAIL, flexShrink: 0, position: 'relative', zIndex: 1000 }}>
+      <div data-app-rail style={{ width: RAIL, flexShrink: 0, position: 'relative', zIndex: 1000 }}>
         <aside
           onMouseEnter={() => setRailOpen(true)}
           onMouseLeave={() => setRailOpen(false)}

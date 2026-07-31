@@ -15,6 +15,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Avatar } from '@/components/shared/Sidebar'
 import { AthleteDetailDrawer, type DrawerKind } from '@/components/coach/AthleteDetailDrawer'
+import { CoachMessageBubble, openCoachMessage } from '@/components/coach/CoachMessageBubble'
 import {
   getAthleteProfile, getActivities, getRecovery, getInjuries, getActiveNutrition, getUpcomingRaces,
   getWeekSessions, getNutritionToday, getRecoveryVitals, getConnections,
@@ -162,7 +163,7 @@ export default function AthleteFiche() {
       {/* Accès aux pages (drawer coulissant depuis la droite) */}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 18 }}>
         {ACTIONS.map(a => (
-          <button key={a.kind} onClick={() => setDrawer(a.kind)}
+          <button key={a.kind} onClick={() => { if (a.kind === 'message') openCoachMessage({ athleteId: id, name, avatar: profile?.avatar_url ?? null }); else setDrawer(a.kind) }}
             style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '8px 14px', borderRadius: 11, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)', transition: 'border-color .14s, color .14s' }}
             onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = 'color-mix(in srgb, var(--primary) 45%, var(--border))'; (e.currentTarget as HTMLElement).style.color = 'var(--primary)' }}
             onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)'; (e.currentTarget as HTMLElement).style.color = 'var(--text)' }}>
@@ -358,6 +359,8 @@ export default function AthleteFiche() {
       )}
 
       <AthleteDetailDrawer kind={drawer} athleteId={id} coachId={coachId} name={name} avatar={profile?.avatar_url ?? null} onClose={() => setDrawer(null)} />
+      {/* Messagerie en bulle flottante (façon mobile), pas en drawer plein écran. */}
+      <CoachMessageBubble />
     </div>
   )
 }

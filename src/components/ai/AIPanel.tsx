@@ -21732,13 +21732,22 @@ export default function AIPanel({
       const { data: { user } } = await sb.auth.getUser()
       if (!user) throw new Error('Non connecté')
 
+      // Agent Coach : les modifications de séances/plan s'appliquent à l'athlète ciblé.
+      const writeUid = activeAgent === 'coach' && coachTarget ? coachTarget.id : user.id
       const total = pendingToolCalls.length
       for (let i = 0; i < total; i++) {
-        const err = await execOneTool(sb, user.id, pendingToolCalls[i])
+        const err = await execOneTool(sb, writeUid, pendingToolCalls[i])
         if (err) {
           const prefix = total > 1 ? `Erreur sur l'opération ${i + 1}/${total} (${pendingToolCalls[i].tool_name}) : ` : 'Erreur : '
           throw new Error(`${prefix}${err}`)
         }
+      }
+      // Notification obligatoire à l'athlète : son programme a été modifié.
+      if (activeAgent === 'coach' && coachTarget) {
+        try {
+          const { createNotification } = await import('@/lib/notifications/create')
+          await createNotification(sb, coachTarget.id, { type: 'coach.plan_updated', title: 'Ton coach a modifié ton programme', body: 'Une ou plusieurs séances viennent d’être mises à jour.', link: '/planning', dedupKey: `coach-plan-${new Date().toISOString().slice(0, 10)}` })
+        } catch { /* best-effort */ }
       }
 
       // Succès — message de confirmation dans le chat
@@ -21974,7 +21983,8 @@ export default function AIPanel({
       const sb = createClient()
       const { data: { user } } = await sb.auth.getUser()
       if (!user) { setProposal({ status: 'error', requirements: req, error: 'Tu n\'es plus connecté.' }); return }
-      const userId = user.id
+      // Agent Coach : le plan est lu/écrit pour l'ATHLÈTE CIBLÉ (RLS coach), pas le coach.
+      const userId = activeAgent === 'coach' && coachTarget ? coachTarget.id : user.id
 
       const sd = new Date(req.start_date ?? new Date().toISOString().slice(0, 10))
       const dow = sd.getDay() === 0 ? 6 : sd.getDay() - 1
@@ -22038,7 +22048,8 @@ export default function AIPanel({
       const sb = createClient()
       const { data: { user } } = await sb.auth.getUser()
       if (!user) throw new Error('Non connecté')
-      const userId = user.id
+      // Agent Coach : le plan est lu/écrit pour l'ATHLÈTE CIBLÉ (RLS coach), pas le coach.
+      const userId = activeAgent === 'coach' && coachTarget ? coachTarget.id : user.id
 
       const sd = new Date(req.start_date ?? new Date().toISOString().slice(0, 10))
       const dow = sd.getDay() === 0 ? 6 : sd.getDay() - 1
@@ -22090,6 +22101,14 @@ export default function AIPanel({
       if (rows.length > 0) {
         const { error: sessErr } = await sb.from('planned_sessions').insert(rows)
         if (sessErr) throw new Error(sessErr.message)
+      }
+
+      // Agent Coach : plan enregistré chez l'athlète → notification OBLIGATOIRE.
+      if (activeAgent === 'coach' && coachTarget) {
+        try {
+          const { createNotification } = await import('@/lib/notifications/create')
+          await createNotification(sb, coachTarget.id, { type: 'coach.plan_updated', title: 'Ton coach t’a créé un plan', body: `Un nouveau plan d’entraînement a été ajouté à ton planning.`, link: '/planning', dedupKey: `coach-plan-${startDate}` })
+        } catch { /* best-effort */ }
       }
 
       setConvs(prev => prev.map(c => c.id === cid

@@ -12246,6 +12246,44 @@ const QA_THEMES: { id: QuickActionTheme; label: string; keys: string[] }[] = [
   { id: 'application',  label: 'Application',  keys: ['app_guide', 'expliquer_concept'] },
 ]
 
+// ══════════════════════════════════════════════════════════════
+// AGENT COACH — catalogue d'actions rapides dédié (chaque action porte sur
+// l'ATHLÈTE CIBLÉ, sélectionné via le bouton « Athlète »). Actions par prompt :
+// le contexte de l'athlète est injecté côté serveur (buildAthleteContext).
+// ══════════════════════════════════════════════════════════════
+const COACH_QA_THEMES: { id: QuickActionTheme; label: string; keys: string[] }[] = [
+  { id: 'analyse',      label: 'Analyse',      keys: ['co_profil', 'co_derniere_activite', 'co_semaine', 'co_charge', 'co_progression', 'co_points_faibles'] },
+  { id: 'recuperation', label: 'Récupération', keys: ['co_recup', 'co_fatigue', 'co_sommeil'] },
+  { id: 'nutrition',    label: 'Nutrition',    keys: ['co_plan_nutrition', 'co_conso', 'co_macros'] },
+  { id: 'objectifs',    label: 'Plans',        keys: ['co_plan_prise_masse', 'co_plan_cardio', 'co_plan_perte', 'co_plan_reathle'] },
+  { id: 'plan',         label: 'Programmation', keys: ['co_planifier_semaine', 'co_reajuster', 'co_prepa_compet', 'co_seance_jour'] },
+  { id: 'application',  label: 'Suivi & com',  keys: ['co_feedback', 'co_point_hebdo'] },
+]
+const COACH_QUICK_ACTIONS: QuickAction[] = [
+  { key: 'co_profil',            label: 'Analyser le profil',        sub: 'Niveau par sport, forces, axes prioritaires', model: 'athena', prompt: "Fais une analyse complète du profil de l'athlète ciblé : niveau par sport, points forts, faiblesses et axes de progression prioritaires, à partir de toutes ses données." },
+  { key: 'co_derniere_activite', label: 'Analyser sa dernière activité', sub: 'Allure/FC/puissance, zones, points clés', model: 'athena', prompt: "Analyse la dernière activité de l'athlète ciblé : allure/FC/puissance, répartition par zones, points forts et axes d'amélioration." },
+  { key: 'co_semaine',           label: 'Bilan de la semaine',       sub: 'Charge, intensités, équilibre, risques', model: 'athena', prompt: "Fais le bilan de la semaine d'entraînement de l'athlète ciblé : volume, charge, répartition des intensités, équilibre et risques éventuels." },
+  { key: 'co_charge',            label: 'Charge & risque',           sub: 'CTL/ATL/TSB, monotonie, surmenage', model: 'athena', prompt: "Analyse la charge d'entraînement de l'athlète ciblé (CTL/ATL/TSB, monotonie, contrainte) et dis-moi s'il y a un risque de surmenage et quoi ajuster." },
+  { key: 'co_progression',       label: 'Sa progression',            sub: 'Tendances et ce qu\'il faut viser', model: 'athena', prompt: "Évalue la progression de l'athlète ciblé sur les dernières semaines et dis-moi sur quoi le faire progresser en priorité." },
+  { key: 'co_points_faibles',    label: 'Ses points faibles',        sub: 'Lacunes et axes de travail', model: 'athena', prompt: "Identifie les points faibles de l'athlète ciblé par sport et propose des axes de travail concrets." },
+  { key: 'co_recup',             label: 'Analyser sa récupération',  sub: 'Sommeil, HRV, fatigue, readiness', model: 'athena', prompt: "Analyse la récupération de l'athlète ciblé : sommeil, HRV, fatigue et readiness. Dis-moi s'il récupère bien et quoi ajuster." },
+  { key: 'co_fatigue',           label: 'Alerte fatigue',            sub: 'Signes de surmenage à surveiller', model: 'hermes', prompt: "L'athlète ciblé montre-t-il des signes de fatigue ou de surmenage dans ses données récentes ? Que dois-je surveiller et faire ?" },
+  { key: 'co_sommeil',           label: 'Conseils sommeil/récup',    sub: 'Recommandations personnalisées', model: 'hermes', prompt: "Donne-moi des recommandations de récupération et de sommeil personnalisées pour l'athlète ciblé, selon ses données." },
+  { key: 'co_plan_nutrition',    label: 'Créer un plan nutritionnel', sub: 'kcal & macros cibles selon son profil', model: 'zeus', prompt: "Crée un plan nutritionnel complet pour l'athlète ciblé (kcal et macros cibles) adapté à son profil, ses sports et ses objectifs, et enregistre-le pour lui." },
+  { key: 'co_conso',             label: 'Analyser ce qu\'il mange',  sub: 'Conso vs objectifs', model: 'athena', prompt: "Analyse ce que l'athlète ciblé a réellement mangé récemment par rapport à ses objectifs nutritionnels, et dis-moi quoi corriger." },
+  { key: 'co_macros',            label: 'Ajuster ses macros',        sub: 'Recalage selon la charge', model: 'athena', prompt: "Recalcule et ajuste les macros de l'athlète ciblé en fonction de sa charge d'entraînement actuelle." },
+  { key: 'co_plan_prise_masse',  label: 'Plan prise de masse',       sub: 'Hypertrophie + apports', model: 'zeus', prompt: "Construis un programme de prise de masse (hypertrophie + apports) pour l'athlète ciblé et enregistre-le dans son planning." },
+  { key: 'co_plan_cardio',       label: 'Plan cardio / endurance',   sub: 'Moteur aérobie', model: 'zeus', prompt: "Construis un programme cardio/endurance pour développer le moteur aérobie de l'athlète ciblé et enregistre-le dans son planning." },
+  { key: 'co_plan_perte',        label: 'Plan perte de poids',       sub: 'Recomposition maîtrisée', model: 'zeus', prompt: "Construis un plan de recomposition (perte de poids maîtrisée : entraînement + déficit) pour l'athlète ciblé et enregistre-le." },
+  { key: 'co_plan_reathle',      label: 'Plan réathlétisation',      sub: 'Retour après blessure/coupure', model: 'zeus', prompt: "Construis un plan de réathlétisation progressif (retour après blessure ou coupure) pour l'athlète ciblé et enregistre-le." },
+  { key: 'co_planifier_semaine', label: 'Planifier sa semaine',      sub: 'Semaine structurée', model: 'zeus', prompt: "Planifie la semaine d'entraînement de l'athlète ciblé (séances, intensités, récup) et enregistre-la dans son planning." },
+  { key: 'co_reajuster',         label: 'Réajuster son plan',        sub: 'Selon forme et contraintes', model: 'athena', prompt: "Réajuste le plan de l'athlète ciblé selon sa forme et sa charge actuelles, et applique les changements dans son planning." },
+  { key: 'co_prepa_compet',      label: 'Prépa compétition',         sub: 'Périodisation & affûtage', model: 'zeus', prompt: "Prépare la périodisation et l'affûtage de l'athlète ciblé pour sa prochaine compétition, et enregistre les séances clés." },
+  { key: 'co_seance_jour',       label: 'Séance du jour',            sub: 'Une séance ciblée à lui donner', model: 'athena', prompt: "Propose une séance pertinente pour l'athlète ciblé aujourd'hui (selon sa forme et son plan) et ajoute-la à son planning." },
+  { key: 'co_feedback',          label: 'Rédiger un feedback',       sub: 'Message à envoyer à l\'athlète', model: 'hermes', prompt: "Rédige un message de feedback clair et motivant à envoyer à l'athlète ciblé sur sa semaine et ses prochaines échéances." },
+  { key: 'co_point_hebdo',       label: 'Préparer le point hebdo',   sub: 'Synthèse pour le suivi', model: 'athena', prompt: "Prépare une synthèse du point hebdomadaire de l'athlète ciblé : ce qui va, ce qui coince, et les décisions à prendre." },
+]
+
 function themeIcon(id: QuickActionTheme): React.ReactNode {
   const sz = 15
   switch (id) {
@@ -12301,6 +12339,10 @@ function PlusMenu({
   const [activeScreen, setActiveScreen] = useState<MenuScreen>('main')
   const [animating, setAnimating] = useState(false)
   const [activeTheme, setActiveTheme] = useState<QuickActionTheme>('objectifs')
+  // Agent Coach : catalogue d'actions dédié (chaque action porte sur l'athlète ciblé).
+  const THEMES = agent === 'coach' ? COACH_QA_THEMES : QA_THEMES
+  const ACTIONS_ALL = agent === 'coach' ? COACH_QUICK_ACTIONS : QUICK_ACTIONS
+  useEffect(() => { if (agent === 'coach' && !COACH_QA_THEMES.some(t => t.id === activeTheme)) setActiveTheme('analyse') }, [agent]) // eslint-disable-line react-hooks/exhaustive-deps
   // Mobile : navigation à deux niveaux — null = liste des thèmes, sinon actions du thème.
   const [mobileTheme, setMobileTheme] = useState<QuickActionTheme | null>(null)
   const [compCount, setCompCount] = useState<number | null>(null)
@@ -12467,8 +12509,8 @@ function PlusMenu({
 
   // Actions d'un thème (dans l'ordre déclaré), résolues par `key`.
   function actionsOfTheme(theme: QuickActionTheme): QuickAction[] {
-    return (QA_THEMES.find(t => t.id === theme)?.keys ?? [])
-      .map(k => QUICK_ACTIONS.find(qa => qa.key === k))
+    return (THEMES.find(t => t.id === theme)?.keys ?? [])
+      .map(k => ACTIONS_ALL.find(qa => qa.key === k))
       .filter((qa): qa is QuickAction => !!qa)
   }
 
@@ -12521,7 +12563,7 @@ function PlusMenu({
     <div style={{ display: 'flex', minWidth: 460, height: 'min(380px, 66vh)' }}>
       {/* Colonne gauche — thèmes */}
       <div style={{ width: 168, flexShrink: 0, borderRight: '1px solid var(--border)', padding: 6, overflowY: 'auto' }}>
-        {QA_THEMES.map(t => {
+        {THEMES.map(t => {
           const active = t.id === activeTheme
           return (
             <button
@@ -12889,7 +12931,7 @@ function PlusMenu({
                   <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--ai-text)', fontFamily: 'var(--font-display, Fraunces), Georgia, serif' }}>Actions rapides</span>
                 </div>
                 <div style={{ padding: 8 }}>
-                  {QA_THEMES.map(t => {
+                  {THEMES.map(t => {
                     const count = actionsOfTheme(t.id).length
                     return (
                       <button
@@ -12922,7 +12964,7 @@ function PlusMenu({
                     <ArrowLeft size={16} color="var(--text-mid)" />
                   </button>
                   <span style={{ flexShrink: 0, display: 'flex', color: 'var(--ai-mid)' }}>{themeIcon(mobileTheme)}</span>
-                  <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--ai-text)', fontFamily: 'var(--font-display, Fraunces), Georgia, serif' }}>{QA_THEMES.find(t => t.id === mobileTheme)?.label}</span>
+                  <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--ai-text)', fontFamily: 'var(--font-display, Fraunces), Georgia, serif' }}>{THEMES.find(t => t.id === mobileTheme)?.label}</span>
                 </div>
                 <div style={{ padding: 8 }}>
                   {actionsOfTheme(mobileTheme).length > 0

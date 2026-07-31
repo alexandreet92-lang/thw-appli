@@ -31,6 +31,7 @@ import { memoryTools, MEMORY_TOOL_NAMES, resolveMemoryTool, buildStructuredMemor
 import { writeTools, WRITE_TOOL_NAMES, resolveWriteTool } from '@/lib/coach/write-tools'
 import { sendPushToUser, previewForBody } from '@/lib/push/send'
 import { isNotifEnabled } from '@/lib/notifications/dispatch'
+import { createNotification } from '@/lib/notifications/create'
 import { buildTrainingAgentInstruction, DEFAULT_TRAINING_SETTINGS } from '@/lib/ai/agent-settings'
 import { createClient } from '@/lib/supabase/server'
 import { enforceQuota } from '@/lib/subscriptions/quota-middleware'
@@ -259,6 +260,14 @@ export async function POST(req: NextRequest) {
   } catch {
     return new Response('Invalid JSON', { status: 400 })
   }
+
+  // ── Agent Coach : athlète ciblé ───────────────────────────────
+  // Les lectures ET écritures des tools portent sur CET athlète (les RLS coach
+  // garantissent que le coach ne touche que SES athlètes). La mémoire reste au coach.
+  const _coachCtx = body.context as { coachAgent?: boolean; coachAthleteId?: string | null } | undefined
+  const coachTargetUid = _coachCtx?.coachAgent && _coachCtx.coachAthleteId ? _coachCtx.coachAthleteId : userId
+  const isCoachTargeting = coachTargetUid !== userId
+  let didAthleteWrite = false
 
   // ── Mode STUDIO : quota et comptabilité SÉPARÉS du chat ────────
   // Les appels du Studio d'agents (body.studio === true) sont réservés aux
@@ -1047,8 +1056,10 @@ APRÈS l'oral : un résumé SCHÉMATISÉ et aéré pour l'écran. CE N'EST PAS l
             const out = MEMORY_TOOL_NAMES.has(r.name)
               ? await resolveMemoryTool(r.name, inp, sbForTools, userId, tier)
               : WRITE_TOOL_NAMES.has(r.name)
-              ? await resolveWriteTool(r.name, inp, sbForTools, userId)
-              : await resolveReadTool(r.name, inp, sbForTools, userId)
+              ? await resolveWriteTool(r.name, inp, sbForTools, coachTargetUid)
+              : await resolveReadTool(r.name, inp, sbForTools, coachTargetUid)
+            // Agent Coach : une écriture a modifié le programme de l'athlète → à notifier.
+            if (isCoachTargeting && WRITE_TOOL_NAMES.has(r.name)) { try { if (JSON.parse(out)?.ok !== false) didAthleteWrite = true } catch { didAthleteWrite = true } }
             results.push({ type: 'tool_result', tool_use_id: r.id, content: out })
           }
           convMessages = [...convMessages, { role: 'user', content: results }]
@@ -1086,6 +1097,25 @@ APRÈS l'oral : un résumé SCHÉMATISÉ et aéré pour l'écran. CE N'EST PAS l
                 tag: convIdForRun ? `coach-${convIdForRun}` : 'coach-done',
               })
             }
+          } catch { /* best-effort */ }
+        }
+        // Agent Coach : le coach a modifié le programme de l'athlète → notification
+        // OBLIGATOIRE à l'athlète (in-app + push). Best-effort, jamais bloquant.
+        if (didAthleteWrite) {
+          try {
+            await createNotification(sbForTools, coachTargetUid, {
+              type: 'coach.plan_updated',
+              title: 'Ton coach a mis à jour ton programme',
+              body: 'Une séance ou ton plan vient d’être modifié par ton coach.',
+              link: '/planning',
+              dedupKey: `coach-plan-${new Date().toISOString().slice(0, 10)}`,
+            })
+            await sendPushToUser(sbForTools, coachTargetUid, {
+              title: 'Ton coach a mis à jour ton programme',
+              body: 'Une séance ou ton plan vient d’être modifié.',
+              url: '/planning',
+              tag: 'coach-plan-updated',
+            })
           } catch { /* best-effort */ }
         }
         streamClosed = true

@@ -48,7 +48,16 @@ export default function CoachStudio() {
     return () => { cancelled = true }
   }, [searchParams])
 
-  const toggle = (id: string) => setSelected(s => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n })
+  // Système lié à un athlète précis → on cible cet athlète (verrouillé sur lui).
+  const linkedAthleteId = systems.find(s => s.id === systemId)?.athlete_id ?? null
+  useEffect(() => {
+    if (linkedAthleteId) setSelected(new Set([linkedAthleteId]))
+  }, [linkedAthleteId])
+
+  const toggle = (id: string) => {
+    if (linkedAthleteId) return   // sélection verrouillée sur l'athlète lié
+    setSelected(s => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n })
+  }
   const run = async () => {
     if (!systemId || selected.size === 0 || running) return
     setRunning(true); setErr(null); setResults(null)

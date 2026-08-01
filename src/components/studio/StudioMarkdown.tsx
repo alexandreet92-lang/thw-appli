@@ -8,7 +8,7 @@
 
 import React from 'react'
 
-const FB = 'DM Sans,sans-serif'
+const FB = 'var(--font-body)'
 
 // ── Inline : **gras**, *italique*, `code`, [texte](url) ────────
 function renderInline(text: string, keyBase: string): React.ReactNode[] {

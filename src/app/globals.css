@@ -110,6 +110,9 @@
   --on-primary:   #ffffff;   /* texte sur surface --primary (bouton cyan) */
   --ai-accent:    #9D7DFF;
   --ai-accent-dim:rgba(157,125,255,0.12);
+  /* Accent Studio (bleu logo) — lisible sur clair comme sur sombre, tokenisé
+     pour respecter « zéro couleur en dur » ; exclusif au Studio. */
+  --studio-accent: #3B92D4;
   /* Variante B des phases (commutable par attribut, sans réécrire les composants) */
   --phase-variant-b-effort:     #22D3E6;
   --phase-variant-b-effort-ink: #04171B;

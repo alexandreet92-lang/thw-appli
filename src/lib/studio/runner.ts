@@ -125,7 +125,7 @@ export interface RunResult {
   errors: { nodeId: string; title: string; message: string }[]
 }
 
-export async function runGraph(graph: StudioGraph, cb: RunCallbacks): Promise<RunResult> {
+export async function runGraph(graph: StudioGraph, cb: RunCallbacks, opts?: { sourceUid?: string }): Promise<RunResult> {
   const nodes = graph.nodes
   const byId = new Map(nodes.map(n => [n.id, n]))
   const deps = new Map<string, Set<string>>()
@@ -176,7 +176,8 @@ export async function runGraph(graph: StudioGraph, cb: RunCallbacks): Promise<Ru
 
         } else if (n.kind === 'source') {
           const key = n.sourceKey ?? 'activities'
-          const text = await readSource(key)
+          // Système coach ciblant un athlète : lire SES données (RLS coach).
+          const text = await readSource(key, opts?.sourceUid)
           outputs[n.id] = text
           cb.onChunk(n.id, text)
           cb.onLog({ nodeId: n.id, title: `${n.title} (${SOURCE_LABEL[key]})`, text })

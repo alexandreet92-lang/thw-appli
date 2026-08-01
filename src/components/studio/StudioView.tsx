@@ -436,7 +436,9 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
       const keys: StudioSourceKey[] = ['profile', 'activities', 'recovery', 'injuries']
-      const parts = await Promise.all(keys.map(k => readSourceWith(supabase, user.id, k).catch(() => '')))
+      // Système coach ciblant un athlète : recommandations basées sur SES données.
+      const ctxUid = (scopeTab === 'coach' ? openAthleteId : null) ?? user.id
+      const parts = await Promise.all(keys.map(k => readSourceWith(supabase, ctxUid, k).catch(() => '')))
       const ctx = parts.filter(Boolean).join('\n\n')
       const recommended = await recommendSystems(ctx, builderModel)
       const items = recommended
@@ -1313,7 +1315,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
           setTab('chat')
           setApproval({ node, content, resolve: (ok) => { setApproval(null); resolve(ok) } })
         }),
-      })
+      }, { sourceUid: (scopeTab === 'coach' ? openAthleteId : null) ?? undefined })
       if (errors.length > 0) {
         const errText = errors.map(er => `${er.title} — ${er.message}`).join(' · ')
         setRunErr(`${errors.length} nœud(s) en erreur : ${errText}`)

@@ -14,6 +14,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { useI18n } from '@/lib/i18n'
+import { openUpgrade } from '@/components/subscription/UpgradeModal'
 import { createPortal } from 'react-dom'
 import { CheckCircle2, XCircle, ChevronDown, ChevronRight, ArrowLeft, Zap, Globe, Paperclip, Camera, Plug, Brain, Activity, Map as MapIcon, MapPin, Dumbbell, Apple, Target, HelpCircle, Search, Flag, Moon, Calendar, BookOpen, Bike, Footprints, Waves } from 'lucide-react'
 import HybridNetworksPanel, { type HNConv } from './HybridNetworksPanel'
@@ -22350,6 +22351,7 @@ export default function AIPanel({
         setConvs(prev => prev.map(c =>
           c.id === cid ? { ...c, msgs: [...c.msgs, quotaErrMsg], updatedAt: Date.now() } : c
         ))
+        openUpgrade('Tu as atteint ta limite de messages IA pour cette période.')
         endGen(cid)
         return
       }

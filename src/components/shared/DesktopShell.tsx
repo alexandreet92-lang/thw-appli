@@ -10,6 +10,8 @@ import { useProfile } from '@/hooks/useProfile'
 import { SidebarContent, Avatar } from '@/components/shared/Sidebar'
 import { CoachSidebarContent } from '@/components/coach/CoachSidebar'
 import { PageTransition } from '@/components/ui/PageTransition'
+import { EntitlementBanner } from '@/components/subscription/EntitlementBanner'
+import { UpgradeModalHost } from '@/components/subscription/UpgradeModal'
 import { isFullscreenRoute } from '@/lib/layout/fullscreenRoutes'
 import { NotificationsOverlay, useUnreadNotifCount } from '@/components/shared/NotificationsOverlay'
 import { useNotificationGenerators } from '@/lib/notifications/useNotificationGenerators'
@@ -222,6 +224,8 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
         </button>
         </>)}
 
+        $1
+        <UpgradeModalHost />
         <PageTransition>{children}</PageTransition>
       </main>
 

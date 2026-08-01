@@ -25,9 +25,11 @@ async function getUserId(): Promise<string> {
 // ── LECTURE ───────────────────────────────────────────────────
 // Le détail des requêtes vit dans source-readers.ts (partagé avec le
 // runner SERVEUR des runs autonomes).
-export async function readSource(key: StudioSourceKey): Promise<string> {
+// sourceUid : lire les données d'un AUTRE utilisateur (coach → athlète, via RLS
+// coach). Défaut = utilisateur courant.
+export async function readSource(key: StudioSourceKey, sourceUid?: string): Promise<string> {
   const sb = createClient()
-  const uid = await getUserId()
+  const uid = sourceUid ?? await getUserId()
   return readSourceWith(sb, uid, key)
 }
 

@@ -10,6 +10,7 @@ import { Greeting } from './Greeting'
 import { QuickActions } from './QuickActions'
 import { AthleteCoachCard } from './AthleteCoachCard'
 import { AthleteFormsCard } from '@/components/coach/CustomForms'
+import { CoachActivityCard } from '@/components/coach/CoachActivityCard'
 import { DashboardModelSwitch } from './DashboardModelSwitch'
 import { ClassiqueGrid } from './ClassiqueGrid'
 import { DataGrid } from './DataGrid'
@@ -37,6 +38,7 @@ export function DashboardContent() {
       <AthleteCoachCard />
 
       <div style={{ marginBottom: 'var(--space-5)' }}><AthleteFormsCard /></div>
+      <div style={{ marginBottom: 'var(--space-5)' }}><CoachActivityCard /></div>
 
       {ready && (model === 'data' ? <DataGrid /> : <ClassiqueGrid />)}
     </div>

@@ -269,6 +269,8 @@ export async function POST(req: NextRequest) {
   const coachTargetUid = _coachCtx?.coachAgent && _coachCtx.coachAthleteId ? _coachCtx.coachAthleteId : userId
   const isCoachTargeting = coachTargetUid !== userId
   let didAthleteWrite = false
+  let coachCanWrite: boolean | null = null                       // consentement athlète (lazy)
+  const auditActions: { action: string; page: string | null }[] = []   // journal des modifs coach
 
   // ── Mode STUDIO : quota et comptabilité SÉPARÉS du chat ────────
   // Les appels du Studio d'agents (body.studio === true) sont réservés aux
@@ -1054,13 +1056,27 @@ APRÈS l'oral : un résumé SCHÉMATISÉ et aéré pour l'écran. CE N'EST PAS l
               }
               continue
             }
-            const out = MEMORY_TOOL_NAMES.has(r.name)
+            // Consentement : l'athlète peut avoir coupé l'écriture du coach.
+            // On vérifie une fois (mise en cache) avant toute écriture ciblée.
+            if (isCoachTargeting && WRITE_TOOL_NAMES.has(r.name) && coachCanWrite === null) {
+              try {
+                const { data: rel } = await sbForTools.from('coach_athlete')
+                  .select('write_enabled').eq('coach_id', userId).eq('athlete_id', coachTargetUid).eq('status', 'accepted').maybeSingle()
+                coachCanWrite = rel ? rel.write_enabled !== false : false
+              } catch { coachCanWrite = true }   // en cas de doute, ne bloque pas
+            }
+            const consentBlocked = isCoachTargeting && WRITE_TOOL_NAMES.has(r.name) && coachCanWrite === false
+            const out = consentBlocked
+              ? JSON.stringify({ ok: false, error: "L'athlète a désactivé les modifications par le coach. Écriture refusée — préviens-le et demande-lui de la réactiver dans ses réglages." })
+              : MEMORY_TOOL_NAMES.has(r.name)
               ? await resolveMemoryTool(r.name, inp, sbForTools, userId, tier)
               : WRITE_TOOL_NAMES.has(r.name)
               ? await resolveWriteTool(r.name, inp, sbForTools, coachTargetUid)
               : await resolveReadTool(r.name, inp, sbForTools, coachTargetUid)
-            // Agent Coach : une écriture a modifié le programme de l'athlète → à notifier.
-            if (isCoachTargeting && WRITE_TOOL_NAMES.has(r.name)) { try { if (JSON.parse(out)?.ok !== false) didAthleteWrite = true } catch { didAthleteWrite = true } }
+            // Agent Coach : une écriture a modifié le programme de l'athlète → à notifier + journaliser.
+            if (isCoachTargeting && WRITE_TOOL_NAMES.has(r.name) && !consentBlocked) {
+              try { if (JSON.parse(out)?.ok !== false) { didAthleteWrite = true; auditActions.push({ action: r.name, page: (JSON.parse(out)?.page as string) ?? null }) } } catch { didAthleteWrite = true }
+            }
             results.push({ type: 'tool_result', tool_use_id: r.id, content: out })
           }
           convMessages = [...convMessages, { role: 'user', content: results }]
@@ -1103,6 +1119,15 @@ APRÈS l'oral : un résumé SCHÉMATISÉ et aéré pour l'écran. CE N'EST PAS l
         // Agent Coach : le coach a modifié le programme de l'athlète → notification
         // OBLIGATOIRE à l'athlète (in-app + push). Best-effort, jamais bloquant.
         if (didAthleteWrite) {
+          // Journal des modifications du coach (traçabilité côté athlète). Best-effort.
+          try {
+            const rows = auditActions.map(a => ({
+              coach_id: userId, athlete_id: coachTargetUid,
+              action: a.action, page: a.page,
+              summary: `Le coach a modifié « ${a.page ?? a.action} » via l'agent.`,
+            }))
+            if (rows.length) await sbForTools.from('coach_audit_log').insert(rows)
+          } catch { /* best-effort */ }
           try {
             await createNotification(sbForTools, coachTargetUid, {
               type: 'coach.plan_updated',

@@ -10,7 +10,7 @@ import { AuthInput } from '@/components/auth/AuthInput'
 import { ErrorMessage } from '@/components/auth/ErrorMessage'
 import { PasswordStrengthBar } from '@/components/auth/PasswordStrengthBar'
 import { EmailVerification } from '@/components/auth/EmailVerification'
-import { getAuthError } from '@/lib/auth/errors'
+import { getAuthError, isRetryableAuthError } from '@/lib/auth/errors'
 import { useI18n } from '@/lib/i18n'
 import { LanguageDropdown } from '@/components/i18n/LanguageDropdown'
 
@@ -169,7 +169,14 @@ function AuthPageInner() {
   async function handleLogin() {
     if (!canLogin) return
     setLoading(true); setError('')
-    const { error: e } = await createClient().auth.signInWithPassword({ email, password })
+    const sb = createClient()
+    // Une indisponibilité passagère (base lente → 504/timeout) ne doit pas bloquer
+    // la connexion : on retente une fois en silence avant d'afficher une erreur.
+    let e = (await sb.auth.signInWithPassword({ email, password })).error
+    if (e && isRetryableAuthError(e)) {
+      await new Promise(r => setTimeout(r, 1200))
+      e = (await sb.auth.signInWithPassword({ email, password })).error
+    }
     setLoading(false)
     if (e) { setError(getAuthError(e)); return }
     const now = Date.now().toString()

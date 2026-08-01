@@ -6,7 +6,7 @@
 // pour ne pas casser SM/SN.
 // ══════════════════════════════════════════════════════════════════
 import { getZone, type Block, type SportType } from '@/app/planning/page'
-import { paceToSec } from './editorial'
+import { paceToSec, secToPace } from './editorial'
 import { elevationFromIncline } from '../composedSports'
 
 /** km/h → allure « m:ss » /km (pour dériver la zone en mode tapis). */
@@ -40,6 +40,14 @@ export type MBlock = Block & {
   //  • 'strokes'  : respiration tous les N coups de bras (breathEvery) sur la
   //    distance saisie, récup « à l'arrêt » (stop) ou « nage continue » (continue).
   hypoxie?: { mode: 'distance' | 'strokes'; breathEvery?: number; recovery?: 'stop' | 'continue' }
+  // ── Progressif (course) ──
+  // Séance à allure croissante : `progSteps` paliers de `progStepMin` minutes,
+  // allure de DÉPART portée par `value` (m:ss /km), accélérée de `progStepSec`
+  // secondes par km à CHAQUE palier (10 s/km plus vite → palier suivant).
+  // Ex. 6 × 5 min, départ 5:30/km, −10 s/km → 5:30 · 5:20 · … · 4:40.
+  progSteps?: number
+  progStepMin?: number
+  progStepSec?: number
   // ── Parcours (vélo) ──
   /** Bloc de FOND « endurance Z2 » couvrant tout le parcours. Ses segments
    *  réels sont recalculés autour des blocs d'intensité (cf. parcoursBase.ts). */
@@ -70,6 +78,18 @@ export function durFromDistance(sport: SportType, distanceM: number, paceStr: st
 /** Recalcule durationMin / effortMin si le bloc est en mode distance. */
 export function recalc(sport: SportType, b: MBlock): MBlock {
   const nb = { ...b }
+  // Progressif (course) : durée = paliers × durée/palier. La zone canonique
+  // (SM/SN, badge) est celle du palier MÉDIAN — représentative de l'effort moyen.
+  if (nb.mode === 'progressive') {
+    const steps = Math.max(1, nb.progSteps ?? 1)
+    nb.durationMin = steps * Math.max(0, nb.progStepMin ?? 0)
+    const startSec = paceToSec(nb.value ?? '')
+    if (!isNaN(startSec) && startSec > 0) {
+      const midSec = Math.max(120, startSec - Math.floor((steps - 1) / 2) * (nb.progStepSec ?? 0))
+      nb.zone = getZone(sport, secToPace(midSec))
+    }
+    return nb
+  }
   // Tapis : vitesse km/h → distance = vitesse × temps → dénivelé auto (pente %).
   // La zone est calculée sur la vitesse ÉQUIVALENTE PLAT : courir en pente coûte
   // bien plus cher (éq. ACSM : v_eq = v·(1 + 4,5·pente)). Ainsi 11 km/h à 10 %
@@ -141,10 +161,41 @@ export function newInterval(sport: SportType, treadmill = false): MBlock {
   return recalc(sport, base)
 }
 
+/** Bloc PROGRESSIF (course) par défaut : 6 paliers de 5 min, départ 5:30/km,
+ *  accéléré de 10 s/km à chaque palier (→ 4:40/km au dernier). */
+export function newProgressive(sport: SportType): MBlock {
+  return recalc(sport, {
+    id: uid(), mode: 'progressive', type: 'effort', durationMin: 30, zone: 3,
+    value: '5:30', hrAvg: '', label: 'Progressif',
+    progSteps: 6, progStepMin: 5, progStepSec: 10, inputMode: 'time', effortUnit: 'pace',
+  })
+}
+
+/** Paliers (allure /km) d'un bloc progressif — départ `value`, −progStepSec s/km/palier. */
+export function progressiveSteps(b: MBlock): { min: number; paceStr: string; zone: number }[] {
+  const steps = Math.max(1, b.progSteps ?? 1)
+  const stepMin = Math.max(0, b.progStepMin ?? 0)
+  const startSec = paceToSec(b.value || '')
+  const stepSec = b.progStepSec ?? 0
+  const out: { min: number; paceStr: string; zone: number }[] = []
+  for (let i = 0; i < steps; i++) {
+    const paceSec = isNaN(startSec) ? NaN : Math.max(120, startSec - i * stepSec)
+    const paceStr = isNaN(paceSec) ? (b.value || '') : secToPace(paceSec)
+    out.push({ min: stepMin, paceStr, zone: isNaN(paceSec) ? b.zone : (getZone('run', paceStr) || b.zone) })
+  }
+  return out
+}
+
 export interface Bar { id: string; min: number; zone: number; recovery: boolean; value?: string; speedKmhEq?: number; startKm?: number }
 
 /** Barres d'un bloc isolé (1 par effort + 1 par récup d'intervalle). */
 function blockBars(b: MBlock): Bar[] {
+  // Progressif : une barre par palier, allure croissante → escalier montant.
+  if (b.mode === 'progressive') {
+    return progressiveSteps(b).map((s, i) => ({
+      id: `${b.id}_p${i}`, min: s.min, zone: s.zone, recovery: false, value: s.paceStr,
+    }))
+  }
   // Tapis : hauteur de barre pilotée par la vitesse ÉQUIVALENTE PLAT (pente incluse).
   const eq = b.effortUnit === 'kmh' ? kmhEquivalent(parseFloat(b.value || '0') || 0, b.inclinePct ?? 0) : undefined
   const out: Bar[] = []
@@ -320,6 +371,13 @@ export function totalMin(blocks: MBlock[]): number {
  *  Course/natation : la distance doit TOUJOURS être connue, même en mode temps
  *  (10×1′ à 4:00/km → 2500 m), pour l'affichage et les totaux du mémo. */
 export function blockDistanceM(sport: SportType, b: MBlock): number {
+  // Progressif : somme des distances palier par palier (durée/palier ÷ allure).
+  if (b.mode === 'progressive') {
+    return Math.round(progressiveSteps(b).reduce((s, p) => {
+      const paceSec = paceToSec(p.paceStr)
+      return s + (isNaN(paceSec) || paceSec <= 0 || p.min <= 0 ? 0 : (p.min * 60 / paceSec) * 1000)
+    }, 0))
+  }
   const reps = b.mode === 'interval' && b.reps ? b.reps : 1
   if (b.distanceM && b.distanceM > 0) return b.distanceM * reps
   // Tapis : distance déjà dérivée par recalc (effortUnit kmh) et stockée dans distanceM.

@@ -5,10 +5,10 @@
 // CSS pur) + liste de BlockCard + boutons d'ajout. Adaptatif par sport.
 // ══════════════════════════════════════════════════════════════════
 import { useState, useRef, useMemo, useEffect } from 'react'
-import { IconPlus, IconRefresh, IconSparkles, IconMapPin, IconX, IconGripVertical, IconMicrophone, IconLungs } from '@tabler/icons-react'
+import { IconPlus, IconRefresh, IconSparkles, IconMapPin, IconX, IconGripVertical, IconMicrophone, IconLungs, IconTrendingUp } from '@tabler/icons-react'
 import { getZone, type SportType, type RunningSub } from '@/app/planning/page'
 import { zColor, fmtDur, secToPace, paceToSec, type AthleteRefs } from './editorial'
-import { toBars, totalMin, totalDistance, newSingle, newInterval, newHypoxie, recalc, barHeightPct, BAR_AXIS_TICKS, treadmillProfile, type MBlock, type EffortUnit } from './blocks'
+import { toBars, totalMin, totalDistance, newSingle, newInterval, newHypoxie, newProgressive, recalc, barHeightPct, BAR_AXIS_TICKS, treadmillProfile, type MBlock, type EffortUnit } from './blocks'
 import { syncBaseBlock, setBaseWatts, enduranceZ2Watts, type BaseCtx } from './parcoursBase'
 import RouteElevationProfile, { type ProfilePortion, type SequencedPortion } from '@/components/gpx/RouteElevationProfile'
 import { BlockCard } from './BlockCard'
@@ -392,11 +392,13 @@ export function SessionBlockBuilder({ sport, runningSub, accent, blocks, onChang
         ))}
       </div>
 
-      {/* Boutons d'ajout — natation : 3e bouton « Hypoxie » (apnées / coups de bras) */}
-      <div style={{ display: 'grid', gridTemplateColumns: isSwim ? '1fr 1fr 1fr' : '1fr 1fr', gap: 10 }}>
+      {/* Boutons d'ajout — natation : 3e bouton « Hypoxie » ; course (extérieur) :
+          3e bouton « Progressif » (allure croissante palier par palier). */}
+      <div style={{ display: 'grid', gridTemplateColumns: (isSwim || (isRun && !isTreadmill)) ? '1fr 1fr 1fr' : '1fr 1fr', gap: 10 }}>
         <button type="button" onClick={() => add(newSingle(sport, runningSub === 'treadmill'))} style={addBtn}><IconPlus size={15} /> {tr('planning.simpleBlock')}</button>
         <button type="button" onClick={() => add(newInterval(sport, runningSub === 'treadmill'))} style={addBtn}><IconRefresh size={15} /> {isSwim ? tr('planning.series') : tr('planning.interval')}</button>
         {isSwim && <button type="button" onClick={() => add(newHypoxie())} style={addBtn}><IconLungs size={15} /> {tr('planning.hypoxie')}</button>}
+        {isRun && !isTreadmill && <button type="button" onClick={() => add(newProgressive(sport))} style={addBtn}><IconTrendingUp size={15} /> {tr('planning.progressive')}</button>}
       </div>
 
       {/* Résumé live (manuel) : durée + intensité moyenne — tapis : km, D+, allure, VAP */}

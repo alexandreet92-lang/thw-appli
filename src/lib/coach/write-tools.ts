@@ -82,6 +82,29 @@ export const writeTools: Anthropic.Tool[] = [
     },
   },
   {
+    name: 'set_nutrition_plan',
+    description:
+      "CRÉE / REMPLACE le PLAN NUTRITIONNEL PRESCRIT de l'athlète (onglet « Mon plan » de la page Nutrition). " +
+      "À utiliser quand le coach demande de « créer / faire le plan nutritionnel de l'athlète ». Fixe les CIBLES " +
+      "kcal + macros pour les 3 types de journée (légère / moyenne / intense) ; le plan devient actif immédiatement " +
+      "chez l'athlète et remplace tout plan précédent. NE PAS confondre avec log_nutrition_day (journal des apports " +
+      "réels). Calcule des cibles cohérentes avec le poids, les sports et la charge d'entraînement de l'athlète.",
+    input_schema: {
+      type: 'object',
+      properties: {
+        calories_low:  { type: 'number', description: 'Cible kcal — journée LÉGÈRE (repos / faible charge).' },
+        calories_mid:  { type: 'number', description: 'Cible kcal — journée MOYENNE.' },
+        calories_hard: { type: 'number', description: 'Cible kcal — journée INTENSE (grosse séance).' },
+        macros_low:  { type: 'object', description: 'Macros journée légère (g).',  properties: { proteines: { type: 'number' }, glucides: { type: 'number' }, lipides: { type: 'number' } } },
+        macros_mid:  { type: 'object', description: 'Macros journée moyenne (g).',  properties: { proteines: { type: 'number' }, glucides: { type: 'number' }, lipides: { type: 'number' } } },
+        macros_hard: { type: 'object', description: 'Macros journée intense (g).',  properties: { proteines: { type: 'number' }, glucides: { type: 'number' }, lipides: { type: 'number' } } },
+        regime: { type: 'string', description: 'Régime / cadre (ex. « omnivore », « végétarien », « sans lactose »). Optionnel.' },
+        resume: { type: 'string', description: 'Résumé court de la logique du plan (1–2 phrases), affiché à l’athlète. Optionnel.' },
+      },
+      required: ['calories_low', 'calories_mid', 'calories_hard', 'macros_mid'],
+    },
+  },
+  {
     name: 'clear_planned_sessions',
     description:
       "SUPPRIME des séances planifiées EN MASSE (page Planning). À utiliser quand l'athlète demande de supprimer " +
@@ -235,6 +258,33 @@ export async function resolveWriteTool(
         const { error } = await sb.from('nutrition_daily_logs').upsert(rows, { onConflict: 'user_id,date' })
         if (error) return JSON.stringify({ ok: false, error: error.message })
         return JSON.stringify({ ok: true, page: 'Nutrition', days: rows.map(r => r.date) })
+      }
+
+      case 'set_nutrition_plan': {
+        const cm = num(input.calories_mid)
+        if (cm === null || cm <= 0) return JSON.stringify({ ok: false, error: 'calories_mid requis (> 0).' })
+        const cl = num(input.calories_low), ch = num(input.calories_hard)
+        const macro = (v: unknown) => {
+          const o = (v ?? {}) as Record<string, unknown>
+          return { proteines: num(o.proteines) ?? 0, glucides: num(o.glucides) ?? 0, lipides: num(o.lipides) ?? 0 }
+        }
+        const mMid = macro(input.macros_mid)
+        const plan_data = {
+          calories_low: cl ?? cm, calories_mid: cm, calories_hard: ch ?? cm,
+          macros_low:  macro(input.macros_low ?? input.macros_mid),
+          macros_mid:  mMid,
+          macros_hard: macro(input.macros_hard ?? input.macros_mid),
+          regime: typeof input.regime === 'string' && input.regime.trim() ? input.regime.trim() : null,
+          resume: typeof input.resume === 'string' && input.resume.trim() ? input.resume.trim() : null,
+          jours: [],
+          source: 'coach',
+        }
+        await sb.from('nutrition_plans').update({ actif: false }).eq('user_id', userId).eq('actif', true)
+        const { data, error } = await sb.from('nutrition_plans')
+          .insert({ user_id: userId, type: 'coach', plan_data, actif: true })
+          .select('id').single()
+        if (error) return JSON.stringify({ ok: false, error: error.message })
+        return JSON.stringify({ ok: true, page: 'Nutrition', plan_id: (data as { id: string })?.id, calories_mid: cm })
       }
 
       case 'clear_planned_sessions': {

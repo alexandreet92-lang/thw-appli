@@ -26,6 +26,7 @@ import { listSystems, createSystem, updateSystem, deleteSystem, duplicateSystem,
 import { STUDIO_TEMPLATES } from '@/lib/studio/templates'
 import { STUDIO_PACKS, estimateRunTokens, formatTokens, type StudioAccess } from '@/lib/studio/offers'
 import { createClient } from '@/lib/supabase/client'
+import { hasCoachAccess } from '@/lib/coach/owner'
 import { VoiceOverlay } from '@/components/ai/VoiceOverlay'
 import StudioMarkdown from './StudioMarkdown'
 
@@ -176,6 +177,9 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
   const [homeLoading, setHomeLoading] = useState(true)
   const [homeErr, setHomeErr] = useState<string | null>(null)
   const [access, setAccess] = useState<StudioAccess | null>(null)
+  // Espace « Pour mes athlètes » = réservé à l'abonnement coach.
+  const [coachAccess, setCoachAccess] = useState(false)
+  useEffect(() => { void hasCoachAccess().then(setCoachAccess) }, [])
   const [walletOpen, setWalletOpen] = useState(false)
   const [runs, setRuns] = useState<RunRow[] | null>(null)
   const [openRunId, setOpenRunId] = useState<string | null>(null)
@@ -2390,13 +2394,19 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
 
                 {/* ── Deux espaces : Pour moi · Pour mes athlètes ── */}
                 <div style={{ display: 'inline-flex', gap: 3, padding: 3, borderRadius: 12, background: 'var(--bg-card2)', margin: '0 0 14px' }}>
-                  {([['perso', 'Pour moi'], ['coach', 'Pour mes athlètes']] as const).map(([v, l]) => (
-                    <button key={v} onClick={() => setScopeTab(v)}
-                      style={{ padding: '7px 14px', borderRadius: 9, border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 12.5, fontWeight: 700,
-                        background: scopeTab === v ? 'var(--bg-card)' : 'transparent', color: scopeTab === v ? '#3B92D4' : 'var(--text-mid)', boxShadow: scopeTab === v ? '0 1px 3px rgba(0,0,0,0.12)' : 'none' }}>
-                      {l}
-                    </button>
-                  ))}
+                  {([['perso', 'Pour moi'], ['coach', 'Pour mes athlètes']] as const).map(([v, l]) => {
+                    // « Pour mes athlètes » verrouillé sans abonnement coach.
+                    const locked = v === 'coach' && !coachAccess
+                    return (
+                      <button key={v} onClick={() => { if (locked) { setScopeTab('perso'); alert('L’espace « Pour mes athlètes » est réservé à l’abonnement coach.'); return } setScopeTab(v) }}
+                        title={locked ? 'Réservé à l’abonnement coach' : undefined}
+                        style={{ padding: '7px 14px', borderRadius: 9, border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 12.5, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 6,
+                          background: scopeTab === v ? 'var(--bg-card)' : 'transparent', color: scopeTab === v ? '#3B92D4' : 'var(--text-mid)', opacity: locked ? 0.55 : 1, boxShadow: scopeTab === v ? '0 1px 3px rgba(0,0,0,0.12)' : 'none' }}>
+                        {l}
+                        {locked && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>}
+                      </button>
+                    )
+                  })}
                 </div>
                 {/* ── Mes systèmes ── */}
                 <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--text-dim)', margin: '4px 0 10px', fontFamily: 'DM Sans,sans-serif' }}>{activeFolder ?? (scopeTab === 'coach' ? 'Systèmes pour mes athlètes' : 'Mes systèmes')}</div>

@@ -104,9 +104,45 @@ function getLimit(tier: TierName, type: UsageType): number {
 
 // ── Fonctions exportées ────────────────────────────────────────────
 
+// Durée de l'essai premium offert à l'inscription (jours).
+export const TRIAL_DAYS = 14
+
+// Cache mémoire de la date d'inscription (immuable) → epoch ms.
+const signupCache = new Map<string, number>()
+
+async function getSignupMs(userId: string): Promise<number | null> {
+  const cached = signupCache.get(userId)
+  if (cached !== undefined) return cached
+  try {
+    const supabase = createServiceClient()
+    const { data } = await supabase.auth.admin.getUserById(userId)
+    const created = data?.user?.created_at
+    if (!created) return null
+    const ms = new Date(created).getTime()
+    signupCache.set(userId, ms)
+    return ms
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Jours restants d'essai premium (0 si terminé). Sert à l'UI (bandeau « il te
+ * reste N jours d'essai »). null si date d'inscription inconnue.
+ */
+export async function trialDaysLeft(userId: string): Promise<number | null> {
+  const signupMs = await getSignupMs(userId)
+  if (signupMs == null) return null
+  const elapsedDays = (Date.now() - signupMs) / 86400000
+  return Math.max(0, Math.ceil(TRIAL_DAYS - elapsedDays))
+}
+
 /**
  * Retourne le tier actif d'un utilisateur.
- * Défaut → 'premium' si aucun abonnement actif trouvé.
+ * - Abonnement payant actif (ou trialing Stripe) → ce tier.
+ * - Compte créateur → jamais rétrogradé (premium).
+ * - Sinon : 14 jours d'essai « premium » depuis l'inscription (tier 'trial'),
+ *   puis mode GRATUIT ('free') tant qu'aucun abonnement n'est pris.
  */
 export async function getUserTier(userId: string): Promise<TierName> {
   const supabase = createServiceClient()
@@ -116,9 +152,17 @@ export async function getUserTier(userId: string): Promise<TierName> {
     .eq('user_id', userId)
     .single()
 
-  if (!data) return 'premium'
-  if (data.status !== 'active' && data.status !== 'trialing') return 'premium'
-  return data.tier as TierName
+  if (data && (data.status === 'active' || data.status === 'trialing')) {
+    return data.tier as TierName
+  }
+
+  // Comptes créateurs : accès complet, jamais de bascule en gratuit.
+  if (await isCreatorAccount(userId)) return 'premium'
+
+  // Essai 14 jours (capacités premium) depuis l'inscription, puis gratuit.
+  const signupMs = await getSignupMs(userId)
+  if (signupMs != null && Date.now() - signupMs < TRIAL_DAYS * 86400000) return 'trial'
+  return 'free'
 }
 
 /**

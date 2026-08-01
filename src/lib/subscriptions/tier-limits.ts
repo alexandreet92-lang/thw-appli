@@ -4,6 +4,31 @@
 // ══════════════════════════════════════════════════════════════════
 
 export const TIER_LIMITS = {
+  // Mode GRATUIT — après les 14 jours d'essai, sans abonnement.
+  // L'app reste utilisable (planning, activités, nutrition manuelle, suivi),
+  // mais les fonctions IA / premium sont fortement limitées.
+  free: {
+    // ── IA (très limité) ─────────────────────────────────────────
+    messages_per_month: 5,              // aperçu de l'IA seulement
+    messages_per_conversation: 5,
+    plans_per_month: 0,                 // pas de génération de plan IA
+    tool_use_per_month: 5,
+    nutrition_plans_per_month: 0,       // pas de plan nutritionnel IA
+    memories_max: 0,                    // pas de mémoire long terme
+    projects_max: 1,                    // 1 dossier de conversations
+    routines_max: 0,                    // pas d'automatisation
+    // ── Briefing ─────────────────────────────────────────────────
+    briefings_per_week: 0,              // pas de briefing quotidien
+    briefing_web_search: false,
+    // ── Modèle ───────────────────────────────────────────────────
+    model: 'hermes' as const,           // Haiku
+    // ── Données ──────────────────────────────────────────────────
+    history_months: 1,
+    strava_sync_per_month: 20,
+    storage_gb: 0.5,
+    conversations_history_days: 14,
+  },
+
   // Essai 14 jours — mêmes capacités que Premium
   trial: {
     // ── IA ──────────────────────────────────────────────────────

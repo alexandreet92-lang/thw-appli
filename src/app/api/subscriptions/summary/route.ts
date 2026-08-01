@@ -5,7 +5,7 @@
 
 import { NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
-import { getUsageSummary } from '@/lib/subscriptions/check-quota'
+import { getUsageSummary, trialDaysLeft } from '@/lib/subscriptions/check-quota'
 
 export async function GET() {
   // ── Auth ─────────────────────────────────────────────────────
@@ -24,8 +24,13 @@ export async function GET() {
     .eq('user_id', user.id)
     .single()
 
+  // Jours d'essai premium restants (null si l'utilisateur a un abonnement payant).
+  const hasPaidSub = !!sub && (sub.status === 'active' || sub.status === 'trialing')
+  const trial_days_left = hasPaidSub ? null : await trialDaysLeft(user.id)
+
   return NextResponse.json({
     ...summary,
     subscription: sub ?? null,
+    trial_days_left,
   })
 }

@@ -25,20 +25,30 @@ interface SubscriptionInfo {
 }
 
 interface SummaryData {
-  tier:         TierName
-  unlimited?:   boolean
-  usage:        Record<UsageType, UsageStat>
-  subscription: SubscriptionInfo | null
+  tier:            TierName
+  unlimited?:      boolean
+  usage:           Record<UsageType, UsageStat>
+  subscription:    SubscriptionInfo | null
+  trial_days_left?: number | null
 }
 
 // ── Plan definitions ───────────────────────────────────────────
 
-// 'trial' est un état interne, pas un plan achetable — on l'exclut ici
-type PurchasableTier = Exclude<TierName, 'trial'>
+// 'trial' et 'free' sont des états internes, pas des plans achetables — exclus ici
+type PurchasableTier = Exclude<TierName, 'trial' | 'free'>
 
 interface PlanFeature {
   label: string
   values: Record<PurchasableTier, string | boolean>
+}
+
+// Libellés FR des états d'abonnement (dont les états internes non achetables).
+const TIER_LABEL: Record<TierName, string> = {
+  free:    'Gratuit',
+  trial:   'Essai premium',
+  premium: 'Premium',
+  pro:     'Pro',
+  expert:  'Expert',
 }
 
 const FEATURES: PlanFeature[] = [
@@ -428,7 +438,7 @@ export default function SubscriptionPage() {
                     fontWeight:  700,
                     color:       'var(--text)',
                   }}>
-                    {isUnlimited ? t('misc.creatorAccount') : `${t('misc.plan')} ${currentTier.charAt(0).toUpperCase() + currentTier.slice(1)}`}
+                    {isUnlimited ? t('misc.creatorAccount') : `${t('misc.plan')} ${TIER_LABEL[currentTier as TierName] ?? currentTier}`}
                   </span>
                   {isUnlimited && (
                     <span style={{
@@ -480,6 +490,22 @@ export default function SubscriptionPage() {
               </span>
             )}
           </div>
+
+          {/* Bandeau essai / gratuit — état non payant */}
+          {!loading && !isUnlimited && (currentTier === 'trial' || currentTier === 'free') && (
+            <div style={{
+              marginTop: 12, padding: '12px 14px', borderRadius: 10,
+              background: currentTier === 'trial' ? 'rgba(6,182,212,0.10)' : 'var(--bg-card2)',
+              border: `1px solid ${currentTier === 'trial' ? 'rgba(6,182,212,0.28)' : 'var(--border)'}`,
+              fontFamily: 'DM Sans, sans-serif', fontSize: 13, color: 'var(--text-mid)', lineHeight: 1.5,
+            }}>
+              {currentTier === 'trial'
+                ? (typeof data?.trial_days_left === 'number'
+                    ? `Essai premium — il te reste ${data.trial_days_left} jour${data.trial_days_left > 1 ? 's' : ''}. Ensuite, l'app passe en mode Gratuit (fonctions IA limitées). Choisis une offre pour tout garder.`
+                    : "Essai premium en cours. À la fin, l'app passe en mode Gratuit (fonctions IA limitées) — choisis une offre pour tout garder.")
+                : "Tu es en mode Gratuit : l'app reste utilisable (planning, activités, suivi), mais les fonctions IA sont limitées. Passe à une offre pour débloquer l'IA complète."}
+            </div>
+          )}
 
           {hasBilling && (
             <button

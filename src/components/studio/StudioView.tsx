@@ -216,6 +216,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
   const [selEdge, setSelEdge] = useState<string | null>(null)
   const [hoverId, setHoverId] = useState<string | null>(null)   // bulle survolée → champ de rôle
   const [pickerOpen, setPickerOpen] = useState(false)           // sélecteur « + » façon Make
+  const [athletePickerOpen, setAthletePickerOpen] = useState(false)   // coach : choisir l'athlète cible du système
   const [pickerQuery, setPickerQuery] = useState('')
   const [pickerFrom, setPickerFrom] = useState<string | null>(null)  // « + » d'une bulle → nouvelle branche
   const [pan, setPan] = useState({ x: 0, y: 0 })
@@ -660,6 +661,15 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
     else addNode('action', { actionKey: app.actionKey, title: app.label, fromId })
   }
   const addExt = (e: ExtEntry, fromId?: string) => addNode('source', { sourceKey: e.sourceKey, title: e.label, fromId })
+  // Coach : rattache le système ouvert à un athlète précis (réutilise athlete_id →
+  // au lancement, le run cible et verrouille cet athlète). null = tous au lancement.
+  const setSystemAthlete = (aid: string | null) => {
+    if (!systemId) return
+    setSystems(list => list.map(s => s.id === systemId ? { ...s, athlete_id: aid } : s))
+    void updateSystem(systemId, { athlete_id: aid }).catch(() => {})
+  }
+  const openAthleteId = (systems.find(s => s.id === systemId)?.athlete_id) ?? null
+  const openAthleteName = openAthleteId ? (coachAthletes.find(a => a.id === openAthleteId)?.name ?? 'Athlète lié') : null
   const loadExample = () => { const g = sampleGraph(); commit({ ...g, name: graph.name || g.name }); setSelId(null); setStatus({}); setNodeText({}) }
   const clearCanvas = () => { commit({ ...emptyGraph(), id: graph.id, name: graph.name }); setSelId(null); setSelEdge(null); setStatus({}); setNodeText({}) }
 
@@ -1625,6 +1635,17 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                       {tools.map(t => row(`t_${t.k}`, KIND_COLOR[t.k], <KindIcon kind={t.k} size={19} />, t.label,
                         t.off ? 'Un seul par système' : null,
                         () => { if (!t.off) { addNode(t.k, { fromId: pickerFrom ?? undefined }); close() } }, t.off))}
+                      {/* Contexte coach : cibler l'athlète du système (sujet des données). */}
+                      {coachAccess && scopeTab === 'coach' && !branching && match('Athlète') && (
+                        <>
+                          <div style={{ ...paletteHdr, marginTop: 4 }}>Contexte</div>
+                          {row('ctx_athlete', 'var(--studio-accent)',
+                            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>,
+                            'Athlète',
+                            openAthleteName ? `Ciblé : ${openAthleteName}` : 'Choisir l’athlète du système',
+                            () => { setAthletePickerOpen(true); close() }, false, 'Coach')}
+                        </>
+                      )}
                       {apps.length > 0 && <div style={{ ...paletteHdr, marginTop: 4 }}>Applications</div>}
                       {apps.map(app => row(app.id, app.color, <AppIcon id={app.id} size={19} />, app.label,
                         app.access === 'écriture' ? 'Écriture' : 'Lecture',
@@ -1644,6 +1665,18 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                 </>
               )
             })()}
+
+            {/* Contexte athlète ciblé (coach) — chip épinglé en haut du canvas. */}
+            {coachAccess && scopeTab === 'coach' && openAthleteName && (
+              <div style={{ position: 'absolute', top: 14, left: '50%', transform: 'translateX(-50%)', zIndex: 8, display: 'inline-flex', alignItems: 'center', gap: 8, padding: '6px 8px 6px 12px', borderRadius: 999, background: 'var(--bg-card)', border: '1px solid var(--border)', boxShadow: '0 4px 14px rgba(0,0,0,0.14)' }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" style={{ color: 'var(--studio-accent)' }} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
+                <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-body)' }}>Athlète : {openAthleteName}</span>
+                <button onClick={() => setAthletePickerOpen(true)} title="Changer d'athlète" style={{ border: 'none', background: 'transparent', color: 'var(--text-mid)', cursor: 'pointer', fontSize: 11, fontWeight: 700, fontFamily: 'var(--font-body)', padding: '2px 4px' }}>Changer</button>
+                <button onClick={() => setSystemAthlete(null)} title="Retirer" aria-label="Retirer l'athlète" style={{ border: 'none', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', padding: 2 }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                </button>
+              </div>
+            )}
 
             {/* ── Zone graphe ── */}
             <div ref={wrapRef} data-bg="1" onPointerDown={startPan}
@@ -2595,6 +2628,39 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
             </div>
           )
         })()}
+
+        {/* ══ Sélecteur d'athlète cible (coach) ══ */}
+        {athletePickerOpen && (
+          <div onClick={() => setAthletePickerOpen(false)} style={{ position: 'absolute', inset: 0, zIndex: 41, background: 'rgba(0,0,0,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, animation: 'studio_in 0.16s ease' }}>
+            <div onClick={e => e.stopPropagation()} style={{ width: 'min(400px, 100%)', maxHeight: '80%', display: 'flex', flexDirection: 'column', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 18, boxShadow: '0 20px 60px rgba(0,0,0,0.3)', padding: 18 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 6 }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" style={{ color: 'var(--studio-accent)' }} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
+                <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-display)', flex: 1 }}>Athlète du système</span>
+                <button onClick={() => setAthletePickerOpen(false)} style={iconBtn} aria-label="Fermer">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                </button>
+              </div>
+              <p style={{ fontSize: 12, color: 'var(--text-dim)', margin: '0 0 12px', lineHeight: 1.5, fontFamily: 'var(--font-body)' }}>Le système lira les données de cet athlète et, au lancement, ciblera automatiquement sa fiche.</p>
+              <div style={{ overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <button onClick={() => { setSystemAthlete(null); setAthletePickerOpen(false) }}
+                  style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 11, border: 'none', background: !openAthleteId ? 'color-mix(in srgb, var(--studio-accent) 10%, transparent)' : 'transparent', cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font-body)', color: !openAthleteId ? 'var(--studio-accent)' : 'var(--text)', fontSize: 13.5, fontWeight: 600 }}>
+                  Tous mes athlètes <span style={{ fontWeight: 400, color: 'var(--text-dim)', fontSize: 12 }}>· choisir au lancement</span>
+                </button>
+                {coachAthletes.map(a => {
+                  const on = openAthleteId === a.id
+                  return (
+                    <button key={a.id} onClick={() => { setSystemAthlete(a.id); setAthletePickerOpen(false) }}
+                      style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 11, border: 'none', background: on ? 'color-mix(in srgb, var(--studio-accent) 10%, transparent)' : 'transparent', cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font-body)', color: on ? 'var(--studio-accent)' : 'var(--text)', fontSize: 13.5, fontWeight: 600 }}>
+                      <span style={{ width: 22, height: 22, borderRadius: '50%', flexShrink: 0, background: 'var(--bg-alt)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: 'var(--text-mid)' }}>{a.name.charAt(0).toUpperCase()}</span>
+                      {a.name}
+                    </button>
+                  )
+                })}
+                {coachAthletes.length === 0 && <p style={{ fontSize: 12.5, color: 'var(--text-dim)', padding: '10px 4px', fontFamily: 'var(--font-body)' }}>Aucun athlète. Invite-en depuis la page Athlètes.</p>}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ══ Architecte — chat plein écran ══ */}

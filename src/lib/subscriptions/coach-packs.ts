@@ -9,7 +9,8 @@ export type CoachPackKey = 'coach10' | 'coach50' | 'coach100' | 'coach200' | 'co
 
 export interface CoachPack {
   key: CoachPackKey
-  label: string
+  name: string          // nom commercial du pack
+  label: string         // sous-titre capacité
   maxAthletes: number
   monthlyEur: number
   yearlyEur: number
@@ -17,13 +18,15 @@ export interface CoachPack {
   studioTokens: number
 }
 
+// Échelle de noms qui raconte la croissance d'une activité de coaching :
+// Solo → Équipe → Club → Académie → Élite → Fédération.
 export const COACH_PACKS: CoachPack[] = [
-  { key: 'coach10',  label: "Jusqu'à 10 athlètes",  maxAthletes: 10,  monthlyEur: 29,  yearlyEur: 290,  studioTokens: 1_000_000 },
-  { key: 'coach50',  label: "Jusqu'à 50 athlètes",  maxAthletes: 50,  monthlyEur: 59,  yearlyEur: 590,  studioTokens: 1_000_000 },
-  { key: 'coach100', label: "Jusqu'à 100 athlètes", maxAthletes: 100, monthlyEur: 99,  yearlyEur: 990,  studioTokens: 1_000_000 },
-  { key: 'coach200', label: "Jusqu'à 200 athlètes", maxAthletes: 200, monthlyEur: 169, yearlyEur: 1690, studioTokens: 1_000_000 },
-  { key: 'coach300', label: "Jusqu'à 300 athlètes", maxAthletes: 300, monthlyEur: 229, yearlyEur: 2290, studioTokens: 1_000_000 },
-  { key: 'coach500', label: "Jusqu'à 500 athlètes", maxAthletes: 500, monthlyEur: 349, yearlyEur: 3490, studioTokens: 1_000_000 },
+  { key: 'coach10',  name: 'Solo',       label: "Jusqu'à 10 athlètes",  maxAthletes: 10,  monthlyEur: 29,  yearlyEur: 290,  studioTokens: 1_000_000 },
+  { key: 'coach50',  name: 'Équipe',     label: "Jusqu'à 50 athlètes",  maxAthletes: 50,  monthlyEur: 59,  yearlyEur: 590,  studioTokens: 1_000_000 },
+  { key: 'coach100', name: 'Club',       label: "Jusqu'à 100 athlètes", maxAthletes: 100, monthlyEur: 99,  yearlyEur: 990,  studioTokens: 1_000_000 },
+  { key: 'coach200', name: 'Académie',   label: "Jusqu'à 200 athlètes", maxAthletes: 200, monthlyEur: 169, yearlyEur: 1690, studioTokens: 1_000_000 },
+  { key: 'coach300', name: 'Élite',      label: "Jusqu'à 300 athlètes", maxAthletes: 300, monthlyEur: 229, yearlyEur: 2290, studioTokens: 1_000_000 },
+  { key: 'coach500', name: 'Fédération', label: "Jusqu'à 500 athlètes", maxAthletes: 500, monthlyEur: 349, yearlyEur: 3490, studioTokens: 1_000_000 },
 ]
 
 export function getCoachPack(key: string | null | undefined): CoachPack | null {

@@ -19,7 +19,7 @@ import { useNotificationGenerators } from '@/lib/notifications/useNotificationGe
 import { FeedbackSheet } from '@/components/feedback/FeedbackSheet'
 import { ProfileModalDesktop } from '@/components/profile/ProfileModalDesktop'
 import { CoachSettingsModal } from '@/components/coach/CoachSettingsModal'
-import { isCoachOwner } from '@/lib/coach/owner'
+import { useCoachAccess } from '@/hooks/useCoachAccess'
 import { useI18n } from '@/lib/i18n'
 
 const AIPanel = dynamic(() => import('@/components/ai/AIPanel'), { ssr: false })
@@ -34,7 +34,7 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
   const isCoach = pathname.startsWith('/coach')
   const { t } = useI18n()
   const { profile } = useProfile()
-  const isOwner = isCoachOwner(profile?.id)
+  const coachAccess = useCoachAccess()   // owner / payant / essai 14 j
   const [railOpen, setRailOpen] = useState(false)   // sidebar principale : survol → ouvre
   const [aiOpen, setAiOpen] = useState(false)
   const [notifOpen, setNotifOpen] = useState(false)
@@ -189,7 +189,7 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
 
         {/* Bascule d'interface Athlète ⇄ Coach — entre Démarrer et la cloche.
             Réservée au propriétaire de l'espace coach (pas d'accès coach pour les athlètes). */}
-        {!isRecord && isOwner && (
+        {!isRecord && coachAccess.access && (
           <Link href={isCoach ? '/' : '/coach'} aria-label={isCoach ? 'Revenir à mon appli' : 'Espace coach'}
             title={isCoach ? 'Revenir à mon appli' : 'Passer en espace coach'}
             style={{ ...fab, right: 108, left: 'auto', textDecoration: 'none',

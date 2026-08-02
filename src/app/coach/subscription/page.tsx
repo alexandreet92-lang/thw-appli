@@ -84,8 +84,9 @@ export default function CoachSubscriptionPage() {
             const price = billing === 'yearly' ? p.yearlyEur : p.monthlyEur
             const isCurrent = activePack?.key === p.key
             return (
-              <div key={p.key} style={{ background: 'var(--bg-card)', borderRadius: 'var(--r-lg)', padding: 20, boxShadow: '0 1px 3px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 600, color: 'var(--text)' }}>{p.label}</div>
+              <div key={p.key} style={{ background: 'var(--bg-card)', borderRadius: 'var(--r-lg)', padding: 20, boxShadow: '0 1px 3px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 600, color: 'var(--text)' }}>{p.name}</div>
+                <div style={{ fontSize: 12.5, color: 'var(--text-dim)' }}>{p.label}</div>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, margin: '6px 0 2px' }}>
                   <span className="tnum" style={{ fontSize: 30, fontWeight: 600, color: 'var(--text)', fontVariantNumeric: 'tabular-nums' }}>{price}</span>
                   <span style={{ fontSize: 13, color: 'var(--text-dim)' }}>€ / {billing === 'yearly' ? 'an' : 'mois'}</span>

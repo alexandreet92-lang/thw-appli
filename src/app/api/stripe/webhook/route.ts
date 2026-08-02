@@ -10,7 +10,7 @@ export const runtime = 'nodejs'
 import { NextRequest, NextResponse } from 'next/server'
 import type Stripe from 'stripe'
 import { stripe, getTierFromPriceId } from '@/lib/stripe/config'
-import { getCoachPackFromPriceId } from '@/lib/subscriptions/coach-packs'
+import { getCoachPackFromPriceId, getCoachPackFromAmount, type CoachPack, type BillingPeriod } from '@/lib/subscriptions/coach-packs'
 import { createServiceClient } from '@/lib/supabase/server'
 import { notifyUser } from '@/lib/notifications/dispatch'
 import { creditStudioPack } from '@/lib/tokens/studio'
@@ -33,6 +33,40 @@ function mapStatus(
   if (status === 'canceled')  return 'canceled'
   if (status === 'past_due')  return 'past_due'
   return 'active'
+}
+
+/** Retrouve un userId Supabase à partir d'un email (paiement par Payment Link). */
+async function findUserIdByEmail(
+  sb: ReturnType<typeof createServiceClient>,
+  email: string | null | undefined,
+): Promise<string | null> {
+  const e = (email ?? '').toLowerCase()
+  if (!e) return null
+  try {
+    for (let page = 1; page <= 5; page++) {
+      const { data } = await sb.auth.admin.listUsers({ page, perPage: 200 })
+      const match = data?.users?.find((u: { email?: string }) => (u.email ?? '').toLowerCase() === e)
+      if (match) return match.id
+      if (!data?.users?.length || data.users.length < 200) break
+    }
+  } catch (e2) { console.warn('[stripe/webhook] user lookup by email failed:', e2) }
+  return null
+}
+
+/**
+ * Identifie le pack coach d'un abonnement Stripe, d'abord par Price ID (si les
+ * env sont configurées), sinon par le MONTANT unitaire + intervalle du prix
+ * (cas Payment Link, source de vérité non falsifiable).
+ */
+function resolveCoachPack(
+  subscription: Stripe.Subscription,
+): { pack: CoachPack; period: BillingPeriod | null } | null {
+  const item = subscription.items.data[0]
+  const price = item?.price
+  const byId = price?.id ? getCoachPackFromPriceId(price.id) : null
+  if (byId) return { pack: byId, period: null }
+  const byAmount = getCoachPackFromAmount(price?.unit_amount, price?.recurring?.interval)
+  return byAmount ? { pack: byAmount.pack, period: byAmount.period } : null
 }
 
 // ── Handler ────────────────────────────────────────────────────
@@ -131,9 +165,14 @@ export async function POST(req: NextRequest) {
 
         if (session.mode !== 'subscription') break
 
-        const userId = session.metadata?.userId
+        // userId : metadata (Checkout Session app) OU client_reference_id
+        // (Payment Link) OU email de paiement en dernier recours.
+        let userId = session.metadata?.userId ?? session.client_reference_id ?? null
         if (!userId) {
-          console.warn('[stripe/webhook] checkout.session.completed: userId manquant dans metadata')
+          userId = await findUserIdByEmail(sb, session.customer_details?.email ?? session.customer_email)
+        }
+        if (!userId) {
+          console.warn(`[stripe/webhook] checkout.session.completed: utilisateur introuvable (session ${session.id})`)
           break
         }
 
@@ -146,8 +185,10 @@ export async function POST(req: NextRequest) {
         const priceId      = subscription.items.data[0]?.price.id ?? ''
 
         // Pack COACH → provisionne coach_subscriptions + débloque l'accès coach.
-        const coachPack = getCoachPackFromPriceId(priceId)
-        if (coachPack) {
+        // Détection par Price ID (env) OU par montant (Payment Link).
+        const coachMatch = resolveCoachPack(subscription)
+        if (coachMatch) {
+          const coachPack = coachMatch.pack
           await sb.from('coach_subscriptions').upsert({
             user_id: userId, pack_key: coachPack.key, max_athletes: coachPack.maxAthletes,
             stripe_customer_id: custId, stripe_subscription_id: subscriptionId,
@@ -156,6 +197,13 @@ export async function POST(req: NextRequest) {
             updated_at: new Date().toISOString(),
           }, { onConflict: 'user_id' })
           await sb.from('profiles').update({ coach_subscribed: true }).eq('id', userId)
+          void notifyUser(userId, 'coach.pack_active', {
+            title: 'Abonnement coach activé',
+            body: `Pack ${coachPack.name} — ${coachPack.label.toLowerCase()}. Ton espace coach est débloqué.`,
+            url: '/coach/subscription',
+            dedupKey: `coach-pack-${subscriptionId}`,
+            once: true,
+          })
           console.log(`[stripe/webhook] checkout.session.completed → coach ${userId} → pack ${coachPack.key}`)
           break
         }
@@ -185,19 +233,25 @@ export async function POST(req: NextRequest) {
         const custId       = customerId(subscription.customer)
         if (!custId) break
 
-        const updPriceId = subscription.items.data[0]?.price.id ?? ''
-        const updCoachPack = getCoachPackFromPriceId(updPriceId)
-        if (updCoachPack) {
-          const { data: cs } = await sb.from('coach_subscriptions').select('user_id').eq('stripe_customer_id', custId).maybeSingle()
-          if (cs?.user_id) {
+        // Abonnement coach ? On le reconnaît par la ligne coach_subscriptions
+        // (posée à la souscription) OU par le pack dérivé du prix/montant.
+        const { data: csRow } = await sb.from('coach_subscriptions')
+          .select('user_id').eq('stripe_customer_id', custId).maybeSingle()
+        const updCoachMatch = resolveCoachPack(subscription)
+        if (csRow?.user_id || updCoachMatch) {
+          const coachUserId = csRow?.user_id
+            ?? (subscription.metadata?.userId ?? null)
+          if (coachUserId) {
             const active = subscription.status === 'active' || subscription.status === 'trialing'
-            await sb.from('coach_subscriptions').update({
-              pack_key: updCoachPack.key, max_athletes: updCoachPack.maxAthletes,
+            const patch: Record<string, unknown> = {
               status: mapStatus(subscription.status),
               current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
               updated_at: new Date().toISOString(),
-            }).eq('user_id', cs.user_id)
-            await sb.from('profiles').update({ coach_subscribed: active }).eq('id', cs.user_id)
+            }
+            if (updCoachMatch) { patch.pack_key = updCoachMatch.pack.key; patch.max_athletes = updCoachMatch.pack.maxAthletes }
+            await sb.from('coach_subscriptions').update(patch).eq('user_id', coachUserId)
+            await sb.from('profiles').update({ coach_subscribed: active }).eq('id', coachUserId)
+            console.log(`[stripe/webhook] subscription.updated → coach ${coachUserId} status ${subscription.status}`)
           }
           break
         }
@@ -234,13 +288,23 @@ export async function POST(req: NextRequest) {
         const custId       = customerId(subscription.customer)
         if (!custId) break
 
-        const delPriceId = subscription.items.data[0]?.price.id ?? ''
-        if (getCoachPackFromPriceId(delPriceId)) {
-          const { data: cs } = await sb.from('coach_subscriptions').select('user_id').eq('stripe_customer_id', custId).maybeSingle()
-          if (cs?.user_id) {
-            await sb.from('coach_subscriptions').update({ status: 'canceled', updated_at: new Date().toISOString() }).eq('user_id', cs.user_id)
-            await sb.from('profiles').update({ coach_subscribed: false }).eq('id', cs.user_id)
-            console.log(`[stripe/webhook] subscription.deleted → coach ${cs.user_id} → accès coach retiré`)
+        // Coach ? Reconnu par la ligne coach_subscriptions (customer/subscription)
+        // ou par le pack dérivé du prix — indépendant des Price IDs env.
+        const { data: csDel } = await sb.from('coach_subscriptions')
+          .select('user_id').eq('stripe_customer_id', custId).maybeSingle()
+        if (csDel?.user_id || resolveCoachPack(subscription)) {
+          const delUserId = csDel?.user_id ?? subscription.metadata?.userId ?? null
+          if (delUserId) {
+            await sb.from('coach_subscriptions').update({ status: 'canceled', updated_at: new Date().toISOString() }).eq('user_id', delUserId)
+            await sb.from('profiles').update({ coach_subscribed: false }).eq('id', delUserId)
+            void notifyUser(delUserId, 'coach.pack_ended', {
+              title: 'Abonnement coach terminé',
+              body: 'Ton accès coach est désactivé. Reprends un pack quand tu veux pour le réactiver.',
+              url: '/coach/subscription',
+              dedupKey: `coach-pack-end-${subscription.id}`,
+              once: true,
+            })
+            console.log(`[stripe/webhook] subscription.deleted → coach ${delUserId} → accès coach retiré`)
           }
           break
         }

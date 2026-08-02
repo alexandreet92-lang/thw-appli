@@ -9,7 +9,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { stripe, getPriceId } from '@/lib/stripe/config'
 import type { TierName } from '@/lib/subscriptions/tier-limits'
-import { getCoachPack, getCoachPackPriceId, type CoachPackKey } from '@/lib/subscriptions/coach-packs'
+import { getCoachPack, buildCoachPackCheckoutUrl, type CoachPackKey } from '@/lib/subscriptions/coach-packs'
 
 const VALID_TIERS: TierName[] = ['premium', 'pro', 'expert']
 const VALID_PERIODS = ['monthly', 'yearly'] as const
@@ -46,21 +46,28 @@ export async function POST(req: NextRequest) {
     }
     const billingPeriod = body.billingPeriod as BillingPeriod
 
+    // ── Pack coach → Payment Link Stripe hébergé ────────────────
+    // On NE crée PAS de Checkout Session : on renvoie directement l'URL du
+    // Payment Link, avec l'identité du coach en client_reference_id. Le pack
+    // et la période sont re-dérivés côté webhook à partir du MONTANT payé
+    // (le lien fixe le prix), jamais depuis l'URL — impossible de payer un
+    // petit pack et d'en réclamer un gros.
     if (body.coachPack) {
       const pack = getCoachPack(body.coachPack as string)
       if (!pack) return NextResponse.json({ error: `Pack coach invalide : ${String(body.coachPack)}` }, { status: 400 })
-      priceId = getCoachPackPriceId(pack.key as CoachPackKey, billingPeriod)
-      checkoutMeta = { userId, coachPack: pack.key }
-      if (!priceId) return NextResponse.json({ error: `Price ID non configuré : STRIPE_PRICE_${pack.key.toUpperCase()}_${billingPeriod.toUpperCase()} manquant` }, { status: 500 })
-    } else {
-      if (!VALID_TIERS.includes(body.tier as TierName)) {
-        return NextResponse.json({ error: `Tier invalide : ${String(body.tier)}` }, { status: 400 })
-      }
-      const tier = body.tier as TierName
-      priceId = getPriceId(tier, billingPeriod)
-      checkoutMeta = { userId, tier }
-      if (!priceId) return NextResponse.json({ error: `Price ID non configuré : STRIPE_PRICE_${tier.toUpperCase()}_${billingPeriod.toUpperCase()} manquant` }, { status: 500 })
+      const url = buildCoachPackCheckoutUrl(pack.key as CoachPackKey, billingPeriod, userId, userEmail)
+      if (!url) return NextResponse.json({ error: `Lien de paiement indisponible pour ${pack.key} (${billingPeriod}).` }, { status: 500 })
+      console.log('[checkout] coach pack payment link:', pack.key, billingPeriod)
+      return NextResponse.json({ url })
     }
+
+    if (!VALID_TIERS.includes(body.tier as TierName)) {
+      return NextResponse.json({ error: `Tier invalide : ${String(body.tier)}` }, { status: 400 })
+    }
+    const tier = body.tier as TierName
+    priceId = getPriceId(tier, billingPeriod)
+    checkoutMeta = { userId, tier }
+    if (!priceId) return NextResponse.json({ error: `Price ID non configuré : STRIPE_PRICE_${tier.toUpperCase()}_${billingPeriod.toUpperCase()} manquant` }, { status: 500 })
   } catch (err) {
     console.error('[checkout] body parse error:', err)
     return NextResponse.json({ error: 'Corps de requête JSON invalide' }, { status: 400 })

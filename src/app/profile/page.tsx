@@ -781,6 +781,8 @@ const NOTIF_CATEGORIES: NotifCategory[] = [
     { key:'coach.briefing',         label:'Nouveau briefing',     sub:'Briefing quotidien disponible', def:true },
     { key:'coach.analyse_terminee', label:'Analyse terminée',     sub:'Ton analyse de séance est prête', def:false },
     { key:'coach.competences',      label:'Compétences à activer',sub:'Des compétences pertinentes pour toi', def:false },
+    { key:'coach.pack_active',      label:'Abonnement coach activé', sub:'Ton espace coach est débloqué', def:true },
+    { key:'coach.pack_ended',       label:'Abonnement coach terminé', sub:'Ton accès coach a été désactivé', def:true },
   ]},
   { id:'tokens', label:'Tokens & abonnement', color:'#06B6D4', Icon: Coins, items:[
     { key:'tokens.quota_80',        label:'Quota à 80%',        sub:'Tu approches de ta limite hebdo', def:true },

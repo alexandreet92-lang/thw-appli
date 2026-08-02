@@ -6,7 +6,7 @@ export interface Routine {
   id: string
   name: string
   prompt: string
-  frequency: 'daily' | 'weekdays' | 'weekends' | 'weekly'
+  frequency: 'daily' | 'every2' | 'every3' | 'weekdays' | 'weekends' | 'weekly'
   hour: number
   weekday: number | null
   timezone: string
@@ -76,6 +76,8 @@ export function scheduleLabel(r: Pick<Routine, 'frequency' | 'hour' | 'weekday'>
   const days = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche']
   switch (r.frequency) {
     case 'daily': return `Chaque jour à ${h}`
+    case 'every2': return `Tous les 2 jours à ${h}`
+    case 'every3': return `Tous les 3 jours à ${h}`
     case 'weekdays': return `En semaine à ${h}`
     case 'weekends': return `Le week-end à ${h}`
     case 'weekly': return `Chaque ${days[r.weekday ?? 0]} à ${h}`

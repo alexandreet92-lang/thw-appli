@@ -13,7 +13,25 @@ import {
 
 const ACCENT = 'var(--primary)'
 
-const TEMPLATES: { label: string; name: string; prompt: string; frequency: RoutineInput['frequency']; hour: number }[] = [
+// Bilan de forme COMPLET — le compte rendu autonome phare : le coach lit TOUTES
+// les données (entraînements, charge, récup, sommeil, nutrition, blessures) et
+// rend un verdict + des ajustements concrets. C'est le cœur du coach autonome.
+const FULL_BILAN_PROMPT =
+  "Fais mon BILAN DE FORME COMPLET. LIS d'abord mes données RÉELLES des ~3 dernières semaines avec tes outils " +
+  "(entraînements réalisés vs prévus, volume & intensité par sport, dérive cardiaque, charge CTL/ATL/TSB & monotonie, " +
+  "récupération & sommeil, HRV si dispo, RPE, nutrition/apports, blessures ou douleurs, objectifs et courses à venir). " +
+  "Puis rends un compte rendu STRUCTURÉ et ACTIONNABLE, chiffres à l'appui :\n" +
+  "1. **État de forme** — un verdict clair en une phrase (frais / en forme / fatigue / surcharge / sous-entraîné).\n" +
+  "2. **Ce qui progresse** — signaux positifs concrets (avec les chiffres).\n" +
+  "3. **Points d'attention** — fatigue, stagnation, déséquilibre, risque de blessure, sommeil ou nutrition insuffisants.\n" +
+  "4. **Mes recommandations** — 3 à 5 actions PRÉCISES et priorisées : monter/baisser le volume (de combien), rendre les " +
+  "intervalles plus ou moins rapides, augmenter les charges en muscu, placer une semaine de décharge, ajuster " +
+  "sommeil/nutrition… CHAQUE reco justifiée par une donnée réelle.\n" +
+  "Base TOUT sur mes chiffres réels (jamais inventés). Si une donnée manque, dis-le en une ligne. Direct et sans blabla."
+
+const TEMPLATES: { label: string; name: string; prompt: string; frequency: RoutineInput['frequency']; hour: number; model?: RoutineInput['model'] }[] = [
+  { label: 'Bilan de forme complet', name: 'Bilan de forme complet', frequency: 'every2', hour: 8, model: 'zeus',
+    prompt: FULL_BILAN_PROMPT },
   { label: 'Brief matinal', name: 'Brief matinal', frequency: 'daily', hour: 7,
     prompt: "Chaque matin, fais-moi un brief clair de ma journée d'entraînement : la séance prévue du jour, les points d'attention (récupération, forme), et un conseil d'exécution concret." },
   { label: 'Bilan hebdo', name: 'Bilan de la semaine', frequency: 'weekly', hour: 19,
@@ -26,6 +44,8 @@ const TEMPLATES: { label: string; name: string; prompt: string; frequency: Routi
 
 const FREQ_OPTS: { v: RoutineInput['frequency']; l: string }[] = [
   { v: 'daily', l: 'Chaque jour' },
+  { v: 'every2', l: 'Tous les 2 jours' },
+  { v: 'every3', l: 'Tous les 3 jours' },
   { v: 'weekdays', l: 'En semaine' },
   { v: 'weekends', l: 'Le week-end' },
   { v: 'weekly', l: 'Un jour précis' },
@@ -173,7 +193,7 @@ function FormView({ initial, onCancel, onSaved }: { initial: FormState; onCancel
           <span style={labelStyle}>Modèles prêts à l&apos;emploi</span>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
             {TEMPLATES.map(tpl => (
-              <button key={tpl.label} onClick={() => set({ name: tpl.name, prompt: tpl.prompt, frequency: tpl.frequency, hour: tpl.hour })}
+              <button key={tpl.label} onClick={() => set({ name: tpl.name, prompt: tpl.prompt, frequency: tpl.frequency, hour: tpl.hour, ...(tpl.model ? { model: tpl.model } : {}) })}
                 style={{ padding: '7px 12px', borderRadius: 999, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text-mid)', fontSize: 12.5, fontWeight: 500, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
                 {tpl.label}
               </button>

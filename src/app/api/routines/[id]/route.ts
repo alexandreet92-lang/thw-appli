@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 
-const FREQ = new Set(['daily', 'weekdays', 'weekends', 'weekly'])
+const FREQ = new Set(['daily', 'every2', 'every3', 'weekdays', 'weekends', 'weekly'])
 const MODELS = new Set(['hermes', 'athena', 'zeus'])
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

@@ -38,6 +38,13 @@ function localParts(tz: string, now: Date): { hour: number; weekdayMon: number }
 function isDue(r: Routine, now: Date): boolean {
   const { hour, weekdayMon } = localParts(r.timezone || 'Europe/Paris', now)
   if (hour !== r.hour) return false
+  // Cadences « tous les N jours » : pilotées par le temps écoulé depuis le
+  // dernier lancement (pas par le jour de semaine). ~N×24h − 2h de marge.
+  if (r.frequency === 'every2' || r.frequency === 'every3') {
+    const nDays = r.frequency === 'every2' ? 2 : 3
+    if (!r.last_run_at) return true
+    return now.getTime() - new Date(r.last_run_at).getTime() >= (nDays * 24 - 2) * 3600 * 1000
+  }
   const dayOk =
     r.frequency === 'daily' ? true
     : r.frequency === 'weekdays' ? weekdayMon <= 4

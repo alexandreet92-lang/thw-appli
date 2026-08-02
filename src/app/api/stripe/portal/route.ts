@@ -15,14 +15,26 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })
 
   // ── Récupère le customer ID ───────────────────────────────────
+  // Abonnement athlète (user_subscriptions) OU pack coach (coach_subscriptions,
+  // souscrit via Payment Link — le customer y est posé par le webhook).
   const sb = createServiceClient()
   const { data: sub } = await sb
     .from('user_subscriptions')
     .select('stripe_customer_id')
     .eq('user_id', user.id)
-    .single()
+    .maybeSingle()
 
-  if (!sub?.stripe_customer_id) {
+  let customerId = sub?.stripe_customer_id ?? null
+  if (!customerId) {
+    const { data: coachSub } = await sb
+      .from('coach_subscriptions')
+      .select('stripe_customer_id')
+      .eq('user_id', user.id)
+      .maybeSingle()
+    customerId = coachSub?.stripe_customer_id ?? null
+  }
+
+  if (!customerId) {
     return NextResponse.json(
       { error: 'Aucun abonnement Stripe trouvé pour cet utilisateur' },
       { status: 404 },
@@ -36,7 +48,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const session = await stripe.billingPortal.sessions.create({
-      customer:   sub.stripe_customer_id,
+      customer:   customerId,
       return_url: `${origin}/settings/subscription`,
     })
     return NextResponse.json({ url: session.url })
@@ -47,10 +59,8 @@ export async function POST(req: NextRequest) {
     // Customer introuvable (ex : customer Live utilisé en mode Test)
     // On nettoie l'ID obsolète afin que le prochain checkout en crée un nouveau.
     if (msg.includes('No such customer')) {
-      await sb
-        .from('user_subscriptions')
-        .update({ stripe_customer_id: null })
-        .eq('user_id', user.id)
+      await sb.from('user_subscriptions').update({ stripe_customer_id: null }).eq('user_id', user.id)
+      await sb.from('coach_subscriptions').update({ stripe_customer_id: null }).eq('user_id', user.id)
 
       return NextResponse.json(
         { error: 'Aucun abonnement actif trouvé. Veuillez souscrire un abonnement pour accéder au portail.' },

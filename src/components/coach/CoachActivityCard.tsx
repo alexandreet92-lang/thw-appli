@@ -5,6 +5,7 @@
 // modifications faites par le coach. Ne s'affiche que si l'athlète a un coach.
 // ══════════════════════════════════════════════════════════════════
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { getMyCoachLink, setCoachWriteConsent, listCoachChanges, type CoachChange } from '@/lib/coach/consent'
 
 export function CoachActivityCard() {
@@ -25,7 +26,19 @@ export function CoachActivityCard() {
     return () => { alive = false }
   }, [])
 
-  if (hasCoach !== true) return null
+  if (hasCoach === null) return null
+  // Pas de coach → invitation à en trouver un (annuaire).
+  if (hasCoach === false) {
+    return (
+      <Link href="/coaches" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', background: 'var(--bg-card2)', borderRadius: 'var(--r-md)', padding: 'var(--space-5)', textDecoration: 'none' }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 600, color: 'var(--text)', margin: 0 }}>Trouver un coach</h3>
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: 12.5, color: 'var(--text-mid)', margin: '4px 0 0', lineHeight: 1.5 }}>Fais-toi accompagner : parcours les coachs et envoie ta demande.</p>
+        </div>
+        <span style={{ color: 'var(--primary)', fontWeight: 700, fontSize: 14, flexShrink: 0 }}>→</span>
+      </Link>
+    )
+  }
 
   const toggle = async () => {
     const next = !enabled

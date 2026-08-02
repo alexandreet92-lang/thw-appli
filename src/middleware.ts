@@ -27,7 +27,8 @@ export async function middleware(request: NextRequest) {
   if (path === '/') return response
 
   // Routes publiques — toujours accessibles
-  const publicRoutes = ['/login', '/auth', '/onboarding', '/access-expired', '/legal', '/decouvrir']
+  // '/c' = vitrines coach publiques (liens partageables, accessibles sans compte).
+  const publicRoutes = ['/login', '/auth', '/onboarding', '/access-expired', '/legal', '/decouvrir', '/c/']
   if (publicRoutes.some(r => path.startsWith(r))) return response
 
   // Routes API — jamais bloquées

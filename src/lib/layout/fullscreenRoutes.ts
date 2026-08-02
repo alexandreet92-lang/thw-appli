@@ -3,6 +3,6 @@
 // (connexion, onboarding, accès expiré, bienvenue).
 export function isFullscreenRoute(pathname: string | null | undefined): boolean {
   if (!pathname) return false
-  const routes = ['/auth', '/login', '/onboarding', '/access-expired', '/bienvenue']
+  const routes = ['/auth', '/login', '/onboarding', '/access-expired', '/bienvenue', '/c']
   return routes.some(r => pathname === r || pathname.startsWith(r + '/'))
 }

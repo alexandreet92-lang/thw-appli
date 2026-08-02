@@ -56,8 +56,14 @@ export default function CoachVitrineEditor() {
   const copy = () => { if (publicUrl) { void navigator.clipboard.writeText(publicUrl); setCopied(true); setTimeout(() => setCopied(false), 1600) } }
 
   const respond = async (r: CoachingRequest & { athleteName: string }, accept: boolean) => {
-    await respondToRequest(r, accept).catch(() => {})
-    setReqs(list => list.filter(x => x.id !== r.id))
+    try {
+      await respondToRequest(r, accept)
+      setReqs(list => list.filter(x => x.id !== r.id))
+    } catch (e) {
+      if (e instanceof Error && e.message === 'CAPACITY') {
+        if (confirm('Tu as atteint la capacité de ton pack. Passer à un pack supérieur ?')) window.location.href = '/coach/subscription'
+      } else { alert('Action impossible — réessaie.') }
+    }
   }
 
   return (

@@ -111,9 +111,28 @@ export async function listIncomingRequests(): Promise<(CoachingRequest & { athle
   return reqs.map(r => ({ ...r, athleteName: nameOf.get(r.athlete_id) ?? 'Athlète' }))
 }
 
+/** Capacité du coach : athlètes actuels vs plafond du pack (Infinity si aucun pack). */
+export async function getCoachCapacity(): Promise<{ used: number; max: number }> {
+  const sb = createClient()
+  const { data: { user } } = await sb.auth.getUser()
+  if (!user) return { used: 0, max: 0 }
+  const [countRes, subRes] = await Promise.all([
+    sb.from('coach_athlete').select('id', { count: 'exact', head: true }).eq('coach_id', user.id).eq('status', 'accepted'),
+    sb.from('coach_subscriptions').select('max_athletes, status').eq('user_id', user.id).maybeSingle(),
+  ])
+  const cs = subRes.data as { max_athletes?: number; status?: string } | null
+  const active = cs && (cs.status === 'active' || cs.status === 'trialing')
+  const max = active ? (cs!.max_athletes ?? 0) : Infinity   // pas de pack → pas de plafond dur (owner / coachs historiques)
+  return { used: countRes.count ?? 0, max }
+}
+
 /** Le coach accepte (crée le lien coach-athlète) ou refuse une demande. */
 export async function respondToRequest(req: CoachingRequest, accept: boolean): Promise<void> {
   const sb = createClient()
+  if (accept) {
+    const { used, max } = await getCoachCapacity()
+    if (used >= max) throw new Error('CAPACITY')   // plafond du pack atteint
+  }
   await sb.from('coaching_requests').update({ status: accept ? 'accepted' : 'declined' }).eq('id', req.id)
   if (accept) {
     await sb.from('coach_athlete').upsert(

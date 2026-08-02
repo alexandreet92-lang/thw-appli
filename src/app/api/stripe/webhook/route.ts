@@ -10,6 +10,7 @@ export const runtime = 'nodejs'
 import { NextRequest, NextResponse } from 'next/server'
 import type Stripe from 'stripe'
 import { stripe, getTierFromPriceId } from '@/lib/stripe/config'
+import { getCoachPackFromPriceId } from '@/lib/subscriptions/coach-packs'
 import { createServiceClient } from '@/lib/supabase/server'
 import { notifyUser } from '@/lib/notifications/dispatch'
 import { creditStudioPack } from '@/lib/tokens/studio'
@@ -143,6 +144,22 @@ export async function POST(req: NextRequest) {
         // Récupère les détails de l'abonnement
         const subscription = await stripe.subscriptions.retrieve(subscriptionId)
         const priceId      = subscription.items.data[0]?.price.id ?? ''
+
+        // Pack COACH → provisionne coach_subscriptions + débloque l'accès coach.
+        const coachPack = getCoachPackFromPriceId(priceId)
+        if (coachPack) {
+          await sb.from('coach_subscriptions').upsert({
+            user_id: userId, pack_key: coachPack.key, max_athletes: coachPack.maxAthletes,
+            stripe_customer_id: custId, stripe_subscription_id: subscriptionId,
+            status: mapStatus(subscription.status),
+            current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+            updated_at: new Date().toISOString(),
+          }, { onConflict: 'user_id' })
+          await sb.from('profiles').update({ coach_subscribed: true }).eq('id', userId)
+          console.log(`[stripe/webhook] checkout.session.completed → coach ${userId} → pack ${coachPack.key}`)
+          break
+        }
+
         const tier: TierName = getTierFromPriceId(priceId)
 
         await sb.from('user_subscriptions').upsert(
@@ -167,6 +184,23 @@ export async function POST(req: NextRequest) {
         const subscription = event.data.object as Stripe.Subscription
         const custId       = customerId(subscription.customer)
         if (!custId) break
+
+        const updPriceId = subscription.items.data[0]?.price.id ?? ''
+        const updCoachPack = getCoachPackFromPriceId(updPriceId)
+        if (updCoachPack) {
+          const { data: cs } = await sb.from('coach_subscriptions').select('user_id').eq('stripe_customer_id', custId).maybeSingle()
+          if (cs?.user_id) {
+            const active = subscription.status === 'active' || subscription.status === 'trialing'
+            await sb.from('coach_subscriptions').update({
+              pack_key: updCoachPack.key, max_athletes: updCoachPack.maxAthletes,
+              status: mapStatus(subscription.status),
+              current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+              updated_at: new Date().toISOString(),
+            }).eq('user_id', cs.user_id)
+            await sb.from('profiles').update({ coach_subscribed: active }).eq('id', cs.user_id)
+          }
+          break
+        }
 
         // Retrouve l'utilisateur via le customer ID
         const { data: subRow } = await sb
@@ -199,6 +233,17 @@ export async function POST(req: NextRequest) {
         const subscription = event.data.object as Stripe.Subscription
         const custId       = customerId(subscription.customer)
         if (!custId) break
+
+        const delPriceId = subscription.items.data[0]?.price.id ?? ''
+        if (getCoachPackFromPriceId(delPriceId)) {
+          const { data: cs } = await sb.from('coach_subscriptions').select('user_id').eq('stripe_customer_id', custId).maybeSingle()
+          if (cs?.user_id) {
+            await sb.from('coach_subscriptions').update({ status: 'canceled', updated_at: new Date().toISOString() }).eq('user_id', cs.user_id)
+            await sb.from('profiles').update({ coach_subscribed: false }).eq('id', cs.user_id)
+            console.log(`[stripe/webhook] subscription.deleted → coach ${cs.user_id} → accès coach retiré`)
+          }
+          break
+        }
 
         const { data: subRow } = await sb
           .from('user_subscriptions')

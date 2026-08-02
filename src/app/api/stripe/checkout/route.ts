@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { stripe, getPriceId } from '@/lib/stripe/config'
 import type { TierName } from '@/lib/subscriptions/tier-limits'
+import { getCoachPack, getCoachPackPriceId, type CoachPackKey } from '@/lib/subscriptions/coach-packs'
 
 const VALID_TIERS: TierName[] = ['premium', 'pro', 'expert']
 const VALID_PERIODS = ['monthly', 'yearly'] as const
@@ -34,35 +35,35 @@ export async function POST(req: NextRequest) {
   }
 
   // ── Validation body ───────────────────────────────────────────
-  let tier: TierName
-  let billingPeriod: BillingPeriod
+  // Deux formes : abonnement athlète { tier } OU pack coach { coachPack }.
+  let priceId: string | undefined
+  let checkoutMeta: Record<string, string>
 
   try {
-    const body = await req.json() as { tier?: unknown; billingPeriod?: unknown }
-    console.log('[checkout] received:', { tier: body.tier, billingPeriod: body.billingPeriod })
-
-    if (!VALID_TIERS.includes(body.tier as TierName)) {
-      return NextResponse.json({ error: `Tier invalide : ${String(body.tier)}` }, { status: 400 })
-    }
+    const body = await req.json() as { tier?: unknown; coachPack?: unknown; billingPeriod?: unknown }
     if (!VALID_PERIODS.includes(body.billingPeriod as BillingPeriod)) {
       return NextResponse.json({ error: `billingPeriod invalide : ${String(body.billingPeriod)}` }, { status: 400 })
     }
-    tier          = body.tier as TierName
-    billingPeriod = body.billingPeriod as BillingPeriod
+    const billingPeriod = body.billingPeriod as BillingPeriod
+
+    if (body.coachPack) {
+      const pack = getCoachPack(body.coachPack as string)
+      if (!pack) return NextResponse.json({ error: `Pack coach invalide : ${String(body.coachPack)}` }, { status: 400 })
+      priceId = getCoachPackPriceId(pack.key as CoachPackKey, billingPeriod)
+      checkoutMeta = { userId, coachPack: pack.key }
+      if (!priceId) return NextResponse.json({ error: `Price ID non configuré : STRIPE_PRICE_${pack.key.toUpperCase()}_${billingPeriod.toUpperCase()} manquant` }, { status: 500 })
+    } else {
+      if (!VALID_TIERS.includes(body.tier as TierName)) {
+        return NextResponse.json({ error: `Tier invalide : ${String(body.tier)}` }, { status: 400 })
+      }
+      const tier = body.tier as TierName
+      priceId = getPriceId(tier, billingPeriod)
+      checkoutMeta = { userId, tier }
+      if (!priceId) return NextResponse.json({ error: `Price ID non configuré : STRIPE_PRICE_${tier.toUpperCase()}_${billingPeriod.toUpperCase()} manquant` }, { status: 500 })
+    }
   } catch (err) {
     console.error('[checkout] body parse error:', err)
     return NextResponse.json({ error: 'Corps de requête JSON invalide' }, { status: 400 })
-  }
-
-  // ── Résolution Price ID ───────────────────────────────────────
-  const priceId = getPriceId(tier, billingPeriod)
-  console.log('[checkout] priceId:', priceId ?? '(undefined — env var manquante)')
-
-  if (!priceId) {
-    return NextResponse.json(
-      { error: `Price ID non configuré : STRIPE_PRICE_${tier.toUpperCase()}_${billingPeriod.toUpperCase()} manquant` },
-      { status: 500 },
-    )
   }
 
   // ── Customer Stripe (récupère ou crée) ────────────────────────
@@ -135,9 +136,9 @@ export async function POST(req: NextRequest) {
       success_url:           `${origin}/settings/subscription?success=true`,
       cancel_url:            `${origin}/settings/subscription?canceled=true`,
       allow_promotion_codes: true,
-      metadata:              { userId, tier },
+      metadata:              checkoutMeta,
       subscription_data: {
-        metadata: { userId, tier },
+        metadata: checkoutMeta,
       },
       locale: 'fr',
     })

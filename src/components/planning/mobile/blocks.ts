@@ -40,14 +40,18 @@ export type MBlock = Block & {
   //  • 'strokes'  : respiration tous les N coups de bras (breathEvery) sur la
   //    distance saisie, récup « à l'arrêt » (stop) ou « nage continue » (continue).
   hypoxie?: { mode: 'distance' | 'strokes'; breathEvery?: number; recovery?: 'stop' | 'continue' }
-  // ── Progressif (course) ──
-  // Séance à allure croissante : `progSteps` paliers de `progStepMin` minutes,
-  // allure de DÉPART portée par `value` (m:ss /km), accélérée de `progStepSec`
-  // secondes par km à CHAQUE palier (10 s/km plus vite → palier suivant).
+  // ── Progressif (course) — séance CONTINUE à allure croissante ──
+  // `progSteps` paliers de `progStepMin` minutes, allure de DÉPART portée par
+  // `value` (m:ss /km), accélérée de `progStepSec` secondes par km à CHAQUE palier.
   // Ex. 6 × 5 min, départ 5:30/km, −10 s/km → 5:30 · 5:20 · … · 4:40.
   progSteps?: number
   progStepMin?: number
   progStepSec?: number
+  // ── Intervalle progressif — chaque RÉPÉTITION a sa propre allure/vitesse/watts ──
+  /** Ex. 3×10' : 4:10 → 4:00 → 3:50. Actif quand `progressive` = true ;
+   *  longueur de `repValues` alignée sur `reps`. Distinct de progSteps (continu). */
+  progressive?: boolean
+  repValues?: string[]
   // ── Parcours (vélo) ──
   /** Bloc de FOND « endurance Z2 » couvrant tout le parcours. Ses segments
    *  réels sont recalculés autour des blocs d'intensité (cf. parcoursBase.ts). */
@@ -75,10 +79,28 @@ export function durFromDistance(sport: SportType, distanceM: number, paceStr: st
   return (distanceM / 1000) * sec / 60   // course : allure /km
 }
 
+/** Distance (m) parcourue par UNE répétition d'effort (course/natation) en mode
+ *  TEMPS, dérivée de l'allure (min/km ou /100m) ou de la vitesse (km/h).
+ *  0 si non calculable (ex. %VMA sans VMA connue). */
+export function effortDistanceM(sport: SportType, effortUnit: EffortUnit | undefined, value: string, minutes: number): number {
+  if (!(minutes > 0)) return 0
+  if (effortUnit === 'kmh') {
+    const kmh = parseFloat(value || '0') || 0
+    return kmh > 0 ? Math.round((kmh / 3.6) * minutes * 60) : 0
+  }
+  if (effortUnit === 'pace' && (sport === 'run' || sport === 'swim')) {
+    const paceSec = paceToSec(value)   // sec/km (course) ou sec/100m (natation)
+    if (!(paceSec > 0)) return 0
+    const unit = sport === 'swim' ? 100 : 1000
+    return Math.round((minutes * 60 / paceSec) * unit)
+  }
+  return 0   // %VMA / zone : distance inconnue ici
+}
+
 /** Recalcule durationMin / effortMin si le bloc est en mode distance. */
 export function recalc(sport: SportType, b: MBlock): MBlock {
   const nb = { ...b }
-  // Progressif (course) : durée = paliers × durée/palier. La zone canonique
+  // Progressif (course) CONTINU : durée = paliers × durée/palier. La zone canonique
   // (SM/SN, badge) est celle du palier MÉDIAN — représentative de l'effort moyen.
   if (nb.mode === 'progressive') {
     const steps = Math.max(1, nb.progSteps ?? 1)
@@ -89,6 +111,13 @@ export function recalc(sport: SportType, b: MBlock): MBlock {
       nb.zone = getZone(sport, secToPace(midSec))
     }
     return nb
+  }
+  // Intervalle progressif : la liste des allures par répétition suit toujours `reps`.
+  if (nb.progressive && nb.mode === 'interval' && nb.reps) {
+    const src = nb.repValues ?? []
+    nb.repValues = Array.from({ length: nb.reps }, (_, i) => src[i] ?? src[src.length - 1] ?? nb.value)
+  } else if (!nb.progressive && nb.repValues) {
+    nb.repValues = undefined
   }
   // Tapis : vitesse km/h → distance = vitesse × temps → dénivelé auto (pente %).
   // La zone est calculée sur la vitesse ÉQUIVALENTE PLAT : courir en pente coûte
@@ -118,6 +147,13 @@ export function recalc(sport: SportType, b: MBlock): MBlock {
     }
   } else if (nb.mode === 'interval' && nb.reps && nb.effortMin != null && nb.recoveryMin != null) {
     nb.durationMin = nb.reps * (nb.effortMin + nb.recoveryMin)
+  }
+  // Mode TEMPS (course/natation) : recalcule la distance par répétition depuis
+  // l'allure/vitesse. Sans ça, distanceM garderait une valeur périmée du mode
+  // distance (bug : 2×10' figés à 800 m ⇒ 1,60 km au lieu de ~5,3 km).
+  if (nb.inputMode !== 'distance' && (sport === 'run' || sport === 'swim')) {
+    const perRepMin = (nb.mode === 'interval' && nb.reps) ? (nb.effortMin ?? 0) : nb.durationMin
+    nb.distanceM = effortDistanceM(sport, nb.effortUnit, nb.value, perRepMin)
   }
   if (nb.value) nb.zone = getZone(sport, nb.value)
   return nb
@@ -188,24 +224,36 @@ export function progressiveSteps(b: MBlock): { min: number; paceStr: string; zon
 
 export interface Bar { id: string; min: number; zone: number; recovery: boolean; value?: string; speedKmhEq?: number; startKm?: number }
 
+/** Vitesse équivalente plat d'une valeur (km/h) — pour la hauteur de barre tapis. */
+function eqFor(b: MBlock, value: string): number | undefined {
+  return b.effortUnit === 'kmh' ? kmhEquivalent(parseFloat(value || '0') || 0, b.inclinePct ?? 0) : undefined
+}
+/** Zone d'une valeur d'effort (progressif : chaque répétition a la sienne). */
+function zoneFor(sport: SportType, b: MBlock, value: string): number {
+  if (b.effortUnit === 'kmh') return getZone(sport, kmhToPace(kmhEquivalent(parseFloat(value || '0') || 0, b.inclinePct ?? 0)))
+  return value ? getZone(sport, value) : b.zone
+}
+
 /** Barres d'un bloc isolé (1 par effort + 1 par récup d'intervalle). */
-function blockBars(b: MBlock): Bar[] {
-  // Progressif : une barre par palier, allure croissante → escalier montant.
+function blockBars(b: MBlock, sport?: SportType): Bar[] {
+  // Progressif CONTINU : une barre par palier, allure croissante → escalier montant.
   if (b.mode === 'progressive') {
     return progressiveSteps(b).map((s, i) => ({
       id: `${b.id}_p${i}`, min: s.min, zone: s.zone, recovery: false, value: s.paceStr,
     }))
   }
-  // Tapis : hauteur de barre pilotée par la vitesse ÉQUIVALENTE PLAT (pente incluse).
-  const eq = b.effortUnit === 'kmh' ? kmhEquivalent(parseFloat(b.value || '0') || 0, b.inclinePct ?? 0) : undefined
   const out: Bar[] = []
   if (b.mode === 'interval' && b.reps && b.effortMin) {
+    // Progressif : chaque répétition porte sa propre allure/vitesse (donc sa zone).
+    const prog = b.progressive && b.repValues && b.repValues.length ? b.repValues : null
     for (let r = 0; r < b.reps; r++) {
-      out.push({ id: `${b.id}_e${r}`, min: b.effortMin, zone: b.zone, recovery: false, value: b.value, speedKmhEq: eq, startKm: b._startKm })
+      const val = prog ? (prog[r] ?? prog[prog.length - 1]) : b.value
+      const zn = prog && sport ? zoneFor(sport, b, val) : b.zone
+      out.push({ id: `${b.id}_e${r}`, min: b.effortMin, zone: zn, recovery: false, value: val, speedKmhEq: eqFor(b, val), startKm: b._startKm })
       if (b.recoveryMin && b.recoveryMin > 0) out.push({ id: `${b.id}_r${r}`, min: b.recoveryMin, zone: b.recoveryZone ?? 1, recovery: true, value: b.recoveryValue, startKm: b._startKm })
     }
   } else {
-    out.push({ id: b.id, min: b.durationMin, zone: b.zone, recovery: false, value: b.value, speedKmhEq: eq, startKm: b._startKm })
+    out.push({ id: b.id, min: b.durationMin, zone: b.zone, recovery: false, value: b.value, speedKmhEq: eqFor(b, b.value), startKm: b._startKm })
   }
   return out
 }
@@ -221,9 +269,9 @@ function blockBars(b: MBlock): Bar[] {
  *   distance : on lit fond → effort → fond → effort → fond.
  *   La somme des durées est conservée (totalMin reste identique).
  */
-export function toBars(blocks: MBlock[]): Bar[] {
+export function toBars(blocks: MBlock[], sport?: SportType): Bar[] {
   const hasKm = blocks.some(b => b._startKm != null && b._endKm != null)
-  if (!hasKm) return blocks.flatMap(blockBars)
+  if (!hasKm) return blocks.flatMap(b => blockBars(b, sport))
 
   const entries: { km: number; seq: number; bars: Bar[] }[] = []
   blocks.forEach((b, i) => {
@@ -241,7 +289,7 @@ export function toBars(blocks: MBlock[]): Bar[] {
       return
     }
     // Bloc sans repère km (séance mixte) → rejeté en fin, ordre de liste préservé.
-    entries.push({ km: b._startKm ?? Number.POSITIVE_INFINITY, seq: i, bars: blockBars(b) })
+    entries.push({ km: b._startKm ?? Number.POSITIVE_INFINITY, seq: i, bars: blockBars(b, sport) })
   })
   entries.sort((a, z) => (a.km === z.km ? a.seq - z.seq : a.km - z.km))
   return entries.flatMap(e => e.bars)
@@ -371,7 +419,7 @@ export function totalMin(blocks: MBlock[]): number {
  *  Course/natation : la distance doit TOUJOURS être connue, même en mode temps
  *  (10×1′ à 4:00/km → 2500 m), pour l'affichage et les totaux du mémo. */
 export function blockDistanceM(sport: SportType, b: MBlock): number {
-  // Progressif : somme des distances palier par palier (durée/palier ÷ allure).
+  // Progressif CONTINU : somme des distances palier par palier (durée/palier ÷ allure).
   if (b.mode === 'progressive') {
     return Math.round(progressiveSteps(b).reduce((s, p) => {
       const paceSec = paceToSec(p.paceStr)
@@ -379,6 +427,10 @@ export function blockDistanceM(sport: SportType, b: MBlock): number {
     }, 0))
   }
   const reps = b.mode === 'interval' && b.reps ? b.reps : 1
+  // Intervalle PROGRESSIF : chaque répétition a sa propre allure/vitesse → on somme.
+  if (b.progressive && b.repValues && b.repValues.length && b.mode === 'interval' && b.reps && b.inputMode !== 'distance') {
+    return Math.round(b.repValues.slice(0, b.reps).reduce((d, val) => d + effortDistanceM(sport, b.effortUnit, val, b.effortMin ?? 0), 0))
+  }
   if (b.distanceM && b.distanceM > 0) return b.distanceM * reps
   // Tapis : distance déjà dérivée par recalc (effortUnit kmh) et stockée dans distanceM.
   if (sport !== 'run' && sport !== 'swim' && sport !== 'rowing') return 0

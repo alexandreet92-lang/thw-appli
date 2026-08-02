@@ -40,7 +40,7 @@ export function SessionBlockBuilder({ sport, runningSub, accent, blocks, onChang
   const dragId = useRef<string | null>(null)
   const [dragging, setDragging] = useState<string | null>(null)
   const rowRefs = useRef<Record<string, HTMLDivElement | null>>({})
-  const bars = toBars(blocks)
+  const bars = toBars(blocks, sport)
   const tot = totalMin(blocks)
   const dist = totalDistance(blocks, sport)
   const isSwim = sport === 'swim'

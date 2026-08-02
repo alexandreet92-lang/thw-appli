@@ -84,6 +84,40 @@ export function BlockCard({ block: b, sport, runningSub, accent, refs, expanded,
   const eqRun = sport === 'run' && effortUnit === 'pace' ? pctOfThreshold(b.value ? mmssToMin(b.value) * 60 : 0, refs) : null
   const eqSwim = sport === 'swim' ? pctOfCss(b.value ? mmssToMin(b.value) * 60 : 0, refs) : null
 
+  // ── Intervalle progressif : une allure/vitesse/watts par répétition ──
+  const stepUnit = sport === 'bike' ? 'W' : effortUnit === 'kmh' ? 'km/h' : sport === 'swim' ? '/100m' : '/km'
+  const canProgressive = isIv && (b.reps ?? 1) > 1 && (sport === 'run' || sport === 'bike')
+  function bumpEffort(v: string, dir: 1 | -1): string {
+    if (sport === 'bike') return String(Math.max(0, (parseInt(v || '0') || 0) + dir * 5))
+    if (effortUnit === 'kmh') return String(Math.max(0, Math.round(((parseFloat(v || '0') || 0) + dir * 0.5) * 10) / 10))
+    return bumpPaceOrWatts(v, dir)
+  }
+  function setRep(r: number, val: string) {
+    const src = b.repValues ?? Array.from({ length: b.reps ?? 1 }, () => b.value)
+    const arr = src.slice(); arr[r] = val
+    set({ progressive: true, repValues: arr })
+  }
+  function progressiveEditor() {
+    return (
+      <div style={{ gridColumn: '1 / -1' }}>
+        <FieldLabel>{tr('planning.perRepPace')}</FieldLabel>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 4 }}>
+          {Array.from({ length: b.reps ?? 1 }, (_, r) => {
+            const val = b.repValues?.[r] ?? b.value
+            return (
+              <div key={r} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ width: 46, flexShrink: 0, fontSize: 11, fontWeight: 600, color: 'var(--se-dim)' }}>{tr('planning.repShort')} {r + 1}</span>
+                <div style={{ flex: 1 }}>
+                  <Stepper value={val} unit={stepUnit} onChange={v => setRep(r, v)} onDec={() => setRep(r, bumpEffort(val, -1))} onInc={() => setRep(r, bumpEffort(val, 1))} />
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    )
+  }
+
   function effortField() {
     if (sport === 'bike') {
       return effortUnit === 'zone'
@@ -201,25 +235,33 @@ export function BlockCard({ block: b, sport, runningSub, accent, refs, expanded,
               ))}
             </div>
           </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             <span style={{ fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--se-dim)' }}>{isProg ? tr('planning.progressive') : isIv ? (sport === 'swim' ? tr('planning.series') : tr('planning.interval')) : tr('planning.effort')}</span>
-            {sport === 'bike' && <Segmented accent={accent} value={effortUnit === 'zone' ? 'zone' : 'watts'} onChange={u => set({ effortUnit: u })} options={[{ key: 'watts', label: tr('planning.watts') }, { key: 'zone', label: tr('planning.zone') }]} />}
-            {sport === 'rowing' && <Segmented accent={accent} value={effortUnit === 'watts' ? 'watts' : 'pace'} onChange={u => set({ effortUnit: u, value: '' })} options={[{ key: 'pace', label: '/500m' }, { key: 'watts', label: tr('planning.watts') }]} />}
-            {sport === 'elliptique' && <Segmented accent={accent} value={effortUnit === 'watts' ? 'watts' : 'zone'} onChange={u => set({ effortUnit: u, value: '' })} options={[{ key: 'zone', label: tr('planning.zone') }, { key: 'watts', label: tr('planning.watts') }]} />}
-            {sport === 'run' && !isProg && (isTreadmill
-              ? <Segmented accent={accent} value={effortUnit === 'pctvma' ? 'pctvma' : effortUnit === 'pace' ? 'pace' : 'kmh'} onChange={u => set({ effortUnit: u, value: '' })} options={[{ key: 'kmh', label: 'km/h' }, { key: 'pace', label: tr('planning.pace') }, { key: 'pctvma', label: '%VMA' }]} />
-              : <Segmented accent={accent} value={effortUnit === 'pctvma' ? 'pctvma' : 'pace'} onChange={u => set({ effortUnit: u })} options={[{ key: 'pace', label: tr('planning.pace') }, { key: 'pctvma', label: '%VMA' }]} />)}
-            {sport === 'swim' && !b.hypoxie && showDistToggle && <Segmented accent={accent} value={distMode ? 'distance' : 'time'} onChange={m => set({ inputMode: m })} options={[{ key: 'distance', label: tr('planning.distance') }, { key: 'time', label: tr('planning.time') }]} />}
-            {b.hypoxie && <Segmented accent={accent} value={b.hypoxie.mode}
-              onChange={m => set({
-                inputMode: 'distance',
-                hypoxie: m === 'strokes'
-                  ? { mode: 'strokes', breathEvery: b.hypoxie!.breathEvery ?? 6, recovery: b.hypoxie!.recovery ?? 'stop' }
-                  : { ...b.hypoxie!, mode: 'distance' },
-                // Bascule coups de bras → distance libre par défaut (100 m), apnée → 25 m.
-                distanceM: m === 'strokes' ? (b.distanceM && b.distanceM > 12.5 ? b.distanceM : 100) : ((HYPOXIE_DISTANCES as readonly number[]).includes(b.distanceM ?? 0) ? b.distanceM : 25),
-              })}
-              options={[{ key: 'distance', label: tr('planning.byDistanceMode') }, { key: 'strokes', label: tr('planning.byStrokes') }]} />}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              {canProgressive && (
+                <button type="button" onClick={() => set({ progressive: !b.progressive, ...(b.progressive ? { repValues: undefined } : {}) })} title={tr('planning.progressive')}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 4, border: `1px solid ${b.progressive ? accent : 'var(--se-rule)'}`, background: 'transparent', color: b.progressive ? accent : 'var(--se-dim)', borderRadius: 999, padding: '4px 10px', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}>
+                  ↗ {tr('planning.progressive')}
+                </button>
+              )}
+              {sport === 'bike' && <Segmented accent={accent} value={effortUnit === 'zone' ? 'zone' : 'watts'} onChange={u => set({ effortUnit: u })} options={[{ key: 'watts', label: tr('planning.watts') }, { key: 'zone', label: tr('planning.zone') }]} />}
+              {sport === 'rowing' && <Segmented accent={accent} value={effortUnit === 'watts' ? 'watts' : 'pace'} onChange={u => set({ effortUnit: u, value: '' })} options={[{ key: 'pace', label: '/500m' }, { key: 'watts', label: tr('planning.watts') }]} />}
+              {sport === 'elliptique' && <Segmented accent={accent} value={effortUnit === 'watts' ? 'watts' : 'zone'} onChange={u => set({ effortUnit: u, value: '' })} options={[{ key: 'zone', label: tr('planning.zone') }, { key: 'watts', label: tr('planning.watts') }]} />}
+              {sport === 'run' && !isProg && (isTreadmill
+                ? <Segmented accent={accent} value={effortUnit === 'pctvma' ? 'pctvma' : effortUnit === 'pace' ? 'pace' : 'kmh'} onChange={u => set({ effortUnit: u, value: '', repValues: undefined })} options={[{ key: 'kmh', label: 'km/h' }, { key: 'pace', label: tr('planning.pace') }, { key: 'pctvma', label: '%VMA' }]} />
+                : <Segmented accent={accent} value={effortUnit === 'pctvma' ? 'pctvma' : effortUnit === 'kmh' ? 'kmh' : 'pace'} onChange={u => set({ effortUnit: u, value: '', repValues: undefined })} options={[{ key: 'pace', label: tr('planning.pace') }, { key: 'kmh', label: 'km/h' }, { key: 'pctvma', label: '%VMA' }]} />)}
+              {sport === 'swim' && !b.hypoxie && showDistToggle && <Segmented accent={accent} value={distMode ? 'distance' : 'time'} onChange={m => set({ inputMode: m })} options={[{ key: 'distance', label: tr('planning.distance') }, { key: 'time', label: tr('planning.time') }]} />}
+              {b.hypoxie && <Segmented accent={accent} value={b.hypoxie.mode}
+                onChange={m => set({
+                  inputMode: 'distance',
+                  hypoxie: m === 'strokes'
+                    ? { mode: 'strokes', breathEvery: b.hypoxie!.breathEvery ?? 6, recovery: b.hypoxie!.recovery ?? 'stop' }
+                    : { ...b.hypoxie!, mode: 'distance' },
+                  // Bascule coups de bras → distance libre par défaut (100 m), apnée → 25 m.
+                  distanceM: m === 'strokes' ? (b.distanceM && b.distanceM > 12.5 ? b.distanceM : 100) : ((HYPOXIE_DISTANCES as readonly number[]).includes(b.distanceM ?? 0) ? b.distanceM : 25),
+                })}
+                options={[{ key: 'distance', label: tr('planning.byDistanceMode') }, { key: 'strokes', label: tr('planning.byStrokes') }]} />}
+            </div>
           </div>
 
           <div className="se-fgrid">
@@ -245,7 +287,7 @@ export function BlockCard({ block: b, sport, runningSub, accent, refs, expanded,
             {sport !== 'bike' && sport !== 'swim' && showDistToggle && !(isTreadmill && effortUnit === 'kmh') && (
               <Field label={tr('planning.mode')}><Segmented accent={accent} value={distMode ? 'distance' : 'time'} onChange={m => set({ inputMode: m })} options={[{ key: 'distance', label: tr('planning.distance') }, { key: 'time', label: tr('planning.time') }]} /></Field>
             )}
-            {effortField()}
+            {b.progressive && isIv ? progressiveEditor() : effortField()}
             {sport === 'elliptique' && (
               <Field label={tr('planning.machineLevel')} opt>
                 <Stepper value={String(b.machineLevel ?? 0)} unit="niv." placeholder="—" onChange={v => set({ machineLevel: Math.max(0, parseInt(v) || 0) })}
@@ -270,7 +312,15 @@ export function BlockCard({ block: b, sport, runningSub, accent, refs, expanded,
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, paddingTop: 4, borderTop: '1px solid var(--se-rule-soft)' }}>
               <Field label={tr('planning.recoveryDuration')}><Stepper value={fmtMMSS(b.recoveryMin ?? 0)} onChange={v => set({ recoveryMin: mmssToMin(v) })} onDec={() => set({ recoveryMin: Math.max(0, (b.recoveryMin ?? 0) - 0.25) })} onInc={() => set({ recoveryMin: (b.recoveryMin ?? 0) + 0.25 })} /></Field>
               {sport === 'run'
-                ? <Field label={tr('planning.recoveryType')}><Segmented accent={accent} value={(b.recoveryStyle ?? 'trot') as 'trot'} onChange={s => set({ recoveryStyle: s })} options={[{ key: 'trot', label: tr('planning.jog') }, { key: 'marche', label: tr('planning.walk') }]} /></Field>
+                ? <>
+                    <Field label={tr('planning.recoveryType')}><Segmented accent={accent} value={(b.recoveryStyle ?? 'trot') as 'trot'} onChange={s => set({ recoveryStyle: s })} options={[{ key: 'trot', label: tr('planning.jog') }, { key: 'marche', label: tr('planning.walk') }]} /></Field>
+                    <Field label={tr('planning.recoveryPace')} opt>
+                      <Stepper value={b.recoveryValue ?? ''} unit={effortUnit === 'kmh' ? 'km/h' : '/km'} placeholder="—"
+                        onChange={v => set({ recoveryValue: v })}
+                        onDec={() => set({ recoveryValue: bumpEffort(b.recoveryValue ?? '', -1) })}
+                        onInc={() => set({ recoveryValue: bumpEffort(b.recoveryValue ?? '', 1) })} />
+                    </Field>
+                  </>
                 : sport === 'bike'
                   ? <Field label={tr('planning.recoveryWatts')}><Stepper value={b.recoveryValue ?? ''} unit="W" onChange={v => set({ recoveryValue: v })} onDec={() => set({ recoveryValue: String(Math.max(0, (parseInt(b.recoveryValue || '0') || 0) - 5)) })} onInc={() => set({ recoveryValue: String((parseInt(b.recoveryValue || '0') || 0) + 5) })} /></Field>
                   : b.hypoxie

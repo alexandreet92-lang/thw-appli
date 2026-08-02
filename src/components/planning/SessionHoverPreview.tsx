@@ -42,7 +42,7 @@ export function SessionHoverPreview({ session, anchor }: { session: Session; anc
 
   const isGym = sportKeyFromType(session.sport) === 'muscu'
   const blocks = (session.blocks ?? []).filter(b => b.type !== 'circuit_header' || (b.label ?? '').trim())
-  const bars = isGym ? [] : toBars(blocks as MBlock[])
+  const bars = isGym ? [] : toBars(blocks as MBlock[], session.sport)
 
   const pd = session.parcoursData
   const trace = pd?.gpsTrace && pd.gpsTrace.length > 1 ? pd.gpsTrace : null

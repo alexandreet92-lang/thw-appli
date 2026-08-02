@@ -73,7 +73,7 @@ export function EnduranceLiveSummary({ sport, runningSub, blocks }: {
     const isPower = sport === 'bike' || sport === 'elliptique'
     // Intensité moyenne pondérée par la durée de chaque barre (effort + récup chiffrées).
     let num = 0, den = 0
-    for (const bar of toBars(blocks)) {
+    for (const bar of toBars(blocks, sport)) {
       if (!bar.min || bar.min <= 0) continue
       if (isPower) {
         const w = parseFloat(bar.value ?? '')

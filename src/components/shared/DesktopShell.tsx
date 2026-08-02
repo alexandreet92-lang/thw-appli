@@ -12,6 +12,7 @@ import { CoachSidebarContent } from '@/components/coach/CoachSidebar'
 import { PageTransition } from '@/components/ui/PageTransition'
 import { EntitlementBanner } from '@/components/subscription/EntitlementBanner'
 import { UpgradeModalHost } from '@/components/subscription/UpgradeModal'
+import { TrialEndedModal } from '@/components/subscription/TrialEndedModal'
 import { isFullscreenRoute } from '@/lib/layout/fullscreenRoutes'
 import { NotificationsOverlay, useUnreadNotifCount } from '@/components/shared/NotificationsOverlay'
 import { useNotificationGenerators } from '@/lib/notifications/useNotificationGenerators'
@@ -225,7 +226,8 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
         </>)}
 
         $1
-        <UpgradeModalHost />
+        $1
+        <TrialEndedModal />
         <PageTransition>{children}</PageTransition>
       </main>
 

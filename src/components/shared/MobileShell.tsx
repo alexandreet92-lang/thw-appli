@@ -13,6 +13,7 @@ import { CoachSidebarContent } from '@/components/coach/CoachSidebar'
 import { PageTransition } from '@/components/ui/PageTransition'
 import { EntitlementBanner } from '@/components/subscription/EntitlementBanner'
 import { UpgradeModalHost } from '@/components/subscription/UpgradeModal'
+import { TrialEndedModal } from '@/components/subscription/TrialEndedModal'
 import { isFullscreenRoute } from '@/lib/layout/fullscreenRoutes'
 import { NotificationsOverlay, useUnreadNotifCount } from '@/components/shared/NotificationsOverlay'
 import { useNotificationGenerators } from '@/lib/notifications/useNotificationGenerators'
@@ -296,7 +297,8 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
             WebkitMaskImage: 'linear-gradient(to bottom, transparent 0, transparent 22px, #000 64px)',
           }) }}>
           $1
-        <UpgradeModalHost />
+        $1
+        <TrialEndedModal />
         <PageTransition>{children}</PageTransition>
         </main>
 

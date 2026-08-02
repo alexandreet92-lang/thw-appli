@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { COACH_OWNER_ID, COACH_TRIAL_DAYS } from '@/lib/coach/owner'
 
 export async function middleware(request: NextRequest) {
   const response = NextResponse.next({ request })
@@ -28,7 +29,8 @@ export async function middleware(request: NextRequest) {
 
   // Routes publiques — toujours accessibles
   // '/c' = vitrines coach publiques (liens partageables, accessibles sans compte).
-  const publicRoutes = ['/login', '/auth', '/onboarding', '/access-expired', '/legal', '/decouvrir', '/c/']
+  // '/coach/tarifs' = page publique de tarification des packs coach (sans compte).
+  const publicRoutes = ['/login', '/auth', '/onboarding', '/access-expired', '/legal', '/decouvrir', '/c/', '/coach/tarifs']
   if (publicRoutes.some(r => path.startsWith(r))) return response
 
   // Routes API — jamais bloquées
@@ -72,12 +74,27 @@ export async function middleware(request: NextRequest) {
   // redirige vers /bienvenue (l'écran d'abonnement /onboarding viendra plus tard).
   const { data: profile } = await supabase
     .from('profiles')
-    .select('profile_setup_done')
+    .select('profile_setup_done, coach_subscribed, coach_trial_started_at')
     .eq('id', user.id)
     .single()
 
   if (profile && !profile.profile_setup_done && path !== '/bienvenue') {
     return NextResponse.redirect(new URL('/bienvenue', request.url))
+  }
+
+  // ── Garde de l'espace coach ────────────────────────────────────
+  // Toutes les routes /coach/* SAUF /coach/subscription (point d'entrée pour
+  // s'abonner) et /coach/tarifs (publique) exigent un accès coach : owner,
+  // pack payant (coach_subscribed, posé par le webhook — vrai aussi en essai
+  // Stripe « trialing »), ou essai coach applicatif de 14 j. Sinon → page d'abo.
+  // (La RLS bloque déjà les DONNÉES ; ceci évite d'afficher un espace coach vide.)
+  if (path.startsWith('/coach') && !path.startsWith('/coach/subscription')) {
+    const startedIso = profile?.coach_trial_started_at as string | null | undefined
+    const trialActive = !!startedIso && Date.now() - new Date(startedIso).getTime() < COACH_TRIAL_DAYS * 86400000
+    const entitled = user.id === COACH_OWNER_ID || profile?.coach_subscribed === true || trialActive
+    if (!entitled) {
+      return NextResponse.redirect(new URL('/coach/subscription', request.url))
+    }
   }
 
   return response

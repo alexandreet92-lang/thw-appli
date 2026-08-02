@@ -113,6 +113,52 @@ export async function GET(req: NextRequest) {
     }
   } catch { /* best-effort */ }
 
+  // ── 3b. Fin d'essai 14 j : athlète (depuis l'inscription) + coach ──
+  // Complète le bloc 3 (qui ne couvre que les essais Stripe côté user_subscriptions) :
+  // l'essai athlète est basé sur la date d'inscription (profiles.created_at), l'essai
+  // coach sur profiles.coach_trial_started_at ou le « trialing » du pack Stripe.
+  try {
+    const [{ data: profs }, { data: coachSubs }, { data: userSubs }] = await Promise.all([
+      sb.from('profiles').select('id,created_at,coach_subscribed,coach_trial_started_at').in('id', userIds),
+      sb.from('coach_subscriptions').select('user_id,status,current_period_end').in('user_id', userIds),
+      sb.from('user_subscriptions').select('user_id,status').in('user_id', userIds),
+    ])
+    const paidAthlete = new Set(
+      ((userSubs ?? []) as Array<{ user_id: string; status: string | null }>)
+        .filter(s => s.status === 'active' || s.status === 'trialing').map(s => s.user_id),
+    )
+    const coachStripeTrialEnd = new Map<string, string>()
+    for (const cs of (coachSubs ?? []) as Array<{ user_id: string; status: string | null; current_period_end: string | null }>) {
+      if (cs.status === 'trialing' && cs.current_period_end) coachStripeTrialEnd.set(cs.user_id, cs.current_period_end.slice(0, 10))
+    }
+    const TRIAL_DAYS = 14
+    for (const p of (profs ?? []) as Array<{ id: string; created_at: string | null; coach_subscribed: boolean | null; coach_trial_started_at: string | null }>) {
+      const uid = p.id
+      // Essai COACH applicatif (coach_trial_started_at + 14 j), sans pack payant.
+      if (!p.coach_subscribed && p.coach_trial_started_at) {
+        const end = ymd(new Date(new Date(p.coach_trial_started_at).getTime() + TRIAL_DAYS * DAY))
+        if (end === plus(3) || end === plus(1)) {
+          const j1 = end === plus(1)
+          await fire(uid, 'tokens.plan_expiration', { title: j1 ? 'Ton essai coach se termine demain' : 'Ton essai coach se termine dans 3 jours', body: 'Choisis un pack pour garder ton espace coach (roster, planning, Studio…).', url: '/coach/subscription', dedupKey: `coach-trial-${end}`, once: true })
+        }
+      }
+      // Essai COACH Stripe (« trialing ») : fin = current_period_end.
+      const csEnd = coachStripeTrialEnd.get(uid)
+      if (csEnd && (csEnd === plus(3) || csEnd === plus(1))) {
+        const j1 = csEnd === plus(1)
+        await fire(uid, 'tokens.plan_expiration', { title: j1 ? 'Ton essai coach se termine demain' : 'Ton essai coach se termine dans 3 jours', body: 'À la fin de l’essai, ton pack coach sera facturé automatiquement. Gère-le quand tu veux.', url: '/coach/subscription', dedupKey: `coach-strial-${csEnd}`, once: true })
+      }
+      // Essai ATHLÈTE depuis l'inscription (created_at + 14 j), sans abo athlète ni accès coach.
+      if (p.created_at && !paidAthlete.has(uid) && !p.coach_subscribed) {
+        const end = ymd(new Date(new Date(p.created_at).getTime() + TRIAL_DAYS * DAY))
+        if (end === plus(3) || end === plus(1)) {
+          const j1 = end === plus(1)
+          await fire(uid, 'tokens.plan_expiration', { title: j1 ? 'Ton essai Premium se termine demain' : 'Ton essai Premium se termine dans 3 jours', body: 'Passe en Premium pour garder l’IA, les plans et le suivi complet.', url: '/settings/subscription', dedupKey: `athlete-trial-${end}`, once: true })
+        }
+      }
+    }
+  } catch { /* best-effort */ }
+
   // ── 4. Rappels quotidiens (à tous, filtrés par préférence individuelle) ──
   for (const uid of userIds) {
     await fire(uid, 'entrainement.programme_matin', { title: 'Ton programme du jour', body: 'Ouvre ton briefing du matin pour voir le plan du jour.', url: '/briefing', dedupKey: `matin-${today}` })

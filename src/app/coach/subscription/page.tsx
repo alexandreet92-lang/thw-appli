@@ -9,6 +9,7 @@ export const dynamic = 'force-dynamic'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { COACH_PACKS, getCoachPack, type CoachPackKey } from '@/lib/subscriptions/coach-packs'
+import CoachSubscribeEmailModal from '@/components/subscription/CoachSubscribeEmailModal'
 
 interface CurrentSub { pack_key: string; status: string; current_period_end: string | null }
 
@@ -17,6 +18,7 @@ export default function CoachSubscriptionPage() {
   const [current, setCurrent] = useState<CurrentSub | null>(null)
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState<string | null>(null)
+  const [emailPack, setEmailPack] = useState<CoachPackKey | null>(null)
 
   useEffect(() => {
     void (async () => {
@@ -30,15 +32,9 @@ export default function CoachSubscriptionPage() {
     })()
   }, [])
 
-  const subscribe = async (packKey: CoachPackKey) => {
-    setBusy(packKey)
-    try {
-      const r = await fetch('/api/stripe/checkout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ coachPack: packKey, billingPeriod: billing }) })
-      const d = await r.json()
-      if (d.url) window.location.href = d.url
-      else alert(d.error ?? 'Impossible de démarrer le paiement.')
-    } catch { alert('Erreur réseau.') } finally { setBusy(null) }
-  }
+  // On ne redirige pas directement vers Stripe : on ouvre la modale qui envoie
+  // le lien de paiement par email (preuve de possession de l'adresse).
+  const subscribe = (packKey: CoachPackKey) => setEmailPack(packKey)
 
   const manage = async () => {
     setBusy('portal')
@@ -108,6 +104,21 @@ export default function CoachSubscriptionPage() {
       )}
 
       <p style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 20, lineHeight: 1.5 }}>Le paiement, le changement de pack et l’annulation se gèrent via Stripe. L’annulation garde ton accès jusqu’à la fin de la période déjà payée.</p>
+
+      {emailPack && (() => {
+        const p = getCoachPack(emailPack)
+        if (!p) return null
+        return (
+          <CoachSubscribeEmailModal
+            packKey={p.key}
+            packName={p.name}
+            packLabel={p.label}
+            price={billing === 'yearly' ? p.yearlyEur : p.monthlyEur}
+            billingPeriod={billing}
+            onClose={() => setEmailPack(null)}
+          />
+        )
+      })()}
     </div>
   )
 }

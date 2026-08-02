@@ -159,6 +159,19 @@ export async function getUserTier(userId: string): Promise<TierName> {
   // Comptes créateurs : accès complet, jamais de bascule en gratuit.
   if (await isCreatorAccount(userId)) return 'premium'
 
+  // Coach : le pack inclut l'expérience athlète (Premium par défaut, ou l'option
+  // Pro/Expert). L'essai coach 14 j donne aussi l'expérience Premium.
+  const { data: prof } = await supabase
+    .from('profiles').select('coach_subscribed, coach_trial_started_at').eq('id', userId).maybeSingle()
+  if (prof?.coach_subscribed) {
+    const { data: cs } = await supabase.from('coach_subscriptions').select('included_tier, status').eq('user_id', userId).maybeSingle()
+    if (cs && (cs.status === 'active' || cs.status === 'trialing')) return (cs.included_tier ?? 'premium') as TierName
+    return 'premium'
+  }
+  if (prof?.coach_trial_started_at && Date.now() - new Date(prof.coach_trial_started_at).getTime() < TRIAL_DAYS * 86400000) {
+    return 'premium'
+  }
+
   // Essai 14 jours (capacités premium) depuis l'inscription, puis gratuit.
   const signupMs = await getSignupMs(userId)
   if (signupMs != null && Date.now() - signupMs < TRIAL_DAYS * 86400000) return 'trial'

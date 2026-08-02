@@ -119,8 +119,19 @@ export const TIER_LIMITS = {
   },
 } as const
 
-export type TierName = keyof typeof TIER_LIMITS  // 'trial' | 'premium' | 'pro' | 'expert'
+export type TierName = keyof typeof TIER_LIMITS  // 'free' | 'trial' | 'premium' | 'pro' | 'expert'
 export type TierModel = typeof TIER_LIMITS[TierName]['model']
+
+// PLAFOND de modèle sélectionnable (distinct du modèle par DÉFAUT ci-dessus, qui
+// reste sobre pour les tâches de fond). Free = Hermès seul ; les payants (et l'essai)
+// peuvent monter jusqu'à Zeus, borné par leur budget de tokens.
+export const TIER_MAX_MODEL: Record<TierName, TierModel> = {
+  free:    'hermes',
+  trial:   'zeus',
+  premium: 'zeus',
+  pro:     'zeus',
+  expert:  'zeus',
+}
 
 // ── Mapping modèle → identifiant Anthropic ─────────────────────────
 export const MODEL_IDS: Record<TierModel, string> = {

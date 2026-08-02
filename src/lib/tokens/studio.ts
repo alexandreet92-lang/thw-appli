@@ -20,8 +20,23 @@ function monthStartISO(): string {
 export async function getStudioAccess(userId: string): Promise<StudioAccess> {
   const creator = await isCreatorAccount(userId)
   const tier = creator ? 'expert' : await getUserTier(userId)
-  const allowed = creator || (STUDIO_TIERS as readonly string[]).includes(tier)
-  const monthlyLimit = STUDIO_MONTHLY_TOKENS[tier] ?? 0
+
+  // Pack coach (ou essai coach) : inclut le Studio + ~1 M tokens/mois, quel que
+  // soit le tier athlète du coach.
+  let coachStudioTokens = 0
+  if (!creator) {
+    const sbc = createServiceClient()
+    const { data: cs } = await sbc.from('coach_subscriptions').select('status').eq('user_id', userId).maybeSingle()
+    if (cs && (cs.status === 'active' || cs.status === 'trialing')) coachStudioTokens = 1_000_000
+    else {
+      const { data: prof } = await sbc.from('profiles').select('coach_trial_started_at').eq('id', userId).maybeSingle()
+      const startedIso = (prof as { coach_trial_started_at?: string | null } | null)?.coach_trial_started_at
+      if (startedIso && Date.now() - new Date(startedIso).getTime() < 14 * 86400000) coachStudioTokens = 1_000_000
+    }
+  }
+
+  const allowed = creator || coachStudioTokens > 0 || (STUDIO_TIERS as readonly string[]).includes(tier)
+  const monthlyLimit = Math.max(coachStudioTokens, STUDIO_MONTHLY_TOKENS[tier] ?? 0)
 
   const sb = createServiceClient()
   const { data: rows } = await sb

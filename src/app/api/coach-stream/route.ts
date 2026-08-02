@@ -36,7 +36,7 @@ import { buildTrainingAgentInstruction, DEFAULT_TRAINING_SETTINGS } from '@/lib/
 import { createClient } from '@/lib/supabase/server'
 import { enforceQuota } from '@/lib/subscriptions/quota-middleware'
 import { getUserTier, logUsage } from '@/lib/subscriptions/check-quota'
-import { TIER_LIMITS, MODEL_IDS, MODEL_MAX_TOKENS } from '@/lib/subscriptions/tier-limits'
+import { TIER_LIMITS, TIER_MAX_MODEL, MODEL_IDS, MODEL_MAX_TOKENS } from '@/lib/subscriptions/tier-limits'
 import { getActiveCompetencesPrompt } from '@/lib/ai/competences'
 import { getUserTokenLimits, recordTokenUsage } from '@/lib/tokens/limits'
 import { getStudioAccess, recordStudioUsage } from '@/lib/tokens/studio'
@@ -444,9 +444,12 @@ export async function POST(req: NextRequest) {
   // pour que le system prompt par-modèle (Hermès/Athéna/Zeus) corresponde
   // TOUJOURS au modèle réellement exécuté — sinon un prompt « Zeus » pourrait
   // tourner sur le modèle Hermès.
+  // Le PLAFOND sélectionnable est TIER_MAX_MODEL (Free→Hermès ; payants/essai→Zeus),
+  // distinct du modèle par DÉFAUT (tierModel) utilisé pour les tâches de fond.
   const RANK: Record<string, number> = { hermes: 0, athena: 1, zeus: 2 }
+  const tierMaxModel = TIER_MAX_MODEL[tier] ?? tierModel
   const requestedKey = ((chatBody as { modelId?: string }).modelId ?? 'athena')
-  const cappedKey = (RANK[requestedKey] ?? 1) <= (RANK[tierModel] ?? 1) ? requestedKey : tierModel
+  const cappedKey = (RANK[requestedKey] ?? 1) <= (RANK[tierMaxModel] ?? 1) ? requestedKey : tierMaxModel
 
   let chatSystemPrompt: string
   let anthropicMessages: { role: string; content: unknown }[]
@@ -756,7 +759,7 @@ APRÈS l'oral : un résumé SCHÉMATISÉ et aéré pour l'écran. CE N'EST PAS l
   // ── Modèle effectif du CHAT (cappedKey calculé plus haut, aligné avec le prompt) ──
   const chatModel = MODEL_IDS[cappedKey as keyof typeof MODEL_IDS] ?? model
   const chatMaxTokens = MODEL_MAX_TOKENS[cappedKey as keyof typeof MODEL_MAX_TOKENS] ?? maxTokens
-  console.log(`[coach-stream] chat model selection → requested=${requestedKey} tier=${tierModel} → ${cappedKey} (${chatModel})`)
+  console.log(`[coach-stream] chat model selection → requested=${requestedKey} max=${tierMaxModel} → ${cappedKey} (${chatModel})`)
 
   // ══════════════════════════════════════════════════════════════
   // BOUCLE AGENTIQUE STREAMÉE

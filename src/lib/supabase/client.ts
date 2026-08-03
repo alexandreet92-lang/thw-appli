@@ -11,7 +11,10 @@ const MUTATIONS = new Set(['insert', 'update', 'upsert', 'delete'])
 // action explicite de l'utilisateur (sinon fausses alertes, ex. au lancement
 // d'une activité). Les vraies sauvegardes (profil, activité, parcours…) restent
 // signalées normalement.
-const SILENT_TABLES = new Set(['ai_conversations', 'sync_logs', 'token_usage', 'chat_messages'])
+const SILENT_TABLES = new Set(['ai_conversations', 'sync_logs', 'token_usage', 'chat_messages',
+  // Communauté : écritures fréquentes de chat (messages, réactions, marqueurs de
+  // lecture) — pas de pastille « Enregistré » à chaque envoi.
+  'community_messages', 'community_message_reactions', 'community_reads', 'community_members'])
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // Enveloppe le builder de requête issu d'une mutation pour émettre un événement

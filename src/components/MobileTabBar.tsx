@@ -11,7 +11,7 @@ import {
   CalendarDays, BarChart3, Grid3x3, ChevronLeft,
   ClipboardList, Calendar, Dumbbell, HeartPulse,
   Activity, Moon, Apple, Trophy,
-  Link as LinkIcon, FileText, User, Settings, MessageCircle,
+  Link as LinkIcon, FileText, User, Settings, MessageCircle, Users,
 } from 'lucide-react'
 
 const AIPanel = dynamic(() => import('@/components/ai/AIPanel'), { ssr: false })
@@ -27,6 +27,7 @@ const ROUTE_TO_TAB: Record<string, Exclude<Mode, 'main'>> = {
   '/planning': 'plan',    '/calendar': 'plan',     '/session': 'plan',  '/injuries': 'plan',
   '/activities': 'stats', '/recovery': 'stats',    '/nutrition': 'stats', '/performance': 'stats',
   '/connections': 'plus', '/briefing': 'plus',     '/profile': 'plus',  '/parametres': 'plus',
+  '/community': 'plus',
 }
 
 type Sub = { href: string; labelKey: string; Icon: LucideIcon }
@@ -45,6 +46,7 @@ const SUBS: Record<Exclude<Mode, 'main'>, Sub[]> = {
     { href: '/performance', labelKey: 'nav.perfShort',     Icon: Trophy },
   ],
   plus: [
+    { href: '/community',   labelKey: 'nav.community',   Icon: Users },
     { href: '/connections', labelKey: 'nav.connections', Icon: LinkIcon },
     { href: '/briefing',    labelKey: 'nav.briefing',    Icon: FileText },
     { href: '#feedback',    labelKey: 'nav.feedback',    Icon: MessageCircle },
@@ -93,7 +95,7 @@ export default function MobileTabBar() {
       '/planning', '/calendar', '/session', '/injuries',
       '/activities', '/recovery', '/nutrition', '/performance',
       '/connections', '/briefing', '/profile', '/parametres',
-      '/record',
+      '/community', '/record',
     ]
     routes.forEach(r => router.prefetch(r))
   }, [router])

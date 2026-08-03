@@ -27,6 +27,19 @@ export const TIER_LIMITS = {
     strava_sync_per_month: 20,
     storage_gb: 0.5,
     conversations_history_days: 14,
+    // ── Communauté ───────────────────────────────────────────────
+    // Participer (lire, poster, réagir, rejoindre) = TOUT LE MONDE (géré hors
+    // limites, côté RLS). Ici on ne configure QUE les capacités « créateur /
+    // animateur » qui montent avec l'abonnement. Free ne crée rien.
+    community_can_create: false,        // créer un espace : Premium minimum
+    community_spaces_max: 0,            // quota d'espaces créés
+    community_members_max: 0,           // capacité membres d'un espace créé
+    community_upload_files: false,      // images/fichiers : Premium+
+    community_private_spaces: false,    // espaces sur invitation : Pro+
+    community_moderation: false,        // outils owner (épingler, rôles…) : Premium+
+    community_branding: false,          // icône/bannière d'espace : Pro+
+    community_voice: false,             // canaux vocaux : Pro+ (Phase 2)
+    community_verified: false,          // badge vérifié : Expert
   },
 
   // Essai 14 jours — mêmes capacités que Premium
@@ -50,6 +63,16 @@ export const TIER_LIMITS = {
     strava_sync_per_month: 100,
     storage_gb: 1,
     conversations_history_days: 90,
+    // ── Communauté (mêmes capacités que Premium) ─────────────────
+    community_can_create: true,
+    community_spaces_max: 1,
+    community_members_max: 200,
+    community_upload_files: true,
+    community_private_spaces: false,
+    community_moderation: true,
+    community_branding: false,
+    community_voice: false,
+    community_verified: false,
   },
 
   premium: {
@@ -72,6 +95,16 @@ export const TIER_LIMITS = {
     strava_sync_per_month: 100,
     storage_gb: 1,
     conversations_history_days: 90,
+    // ── Communauté ───────────────────────────────────────────────
+    community_can_create: true,
+    community_spaces_max: 1,            // Premium : 1 espace créé
+    community_members_max: 200,         // Premium : jusqu'à 200 membres
+    community_upload_files: true,       // images/fichiers
+    community_private_spaces: false,    // privé réservé Pro+
+    community_moderation: true,         // outils owner de base sur son espace
+    community_branding: false,          // branding réservé Pro+
+    community_voice: false,             // voix réservée Pro+ (Phase 2)
+    community_verified: false,          // badge vérifié réservé Expert
   },
 
   pro: {
@@ -94,6 +127,16 @@ export const TIER_LIMITS = {
     strava_sync_per_month: Infinity,
     storage_gb: 5,
     conversations_history_days: 180,
+    // ── Communauté ───────────────────────────────────────────────
+    community_can_create: true,
+    community_spaces_max: 3,            // Pro : jusqu'à 3 espaces créés
+    community_members_max: 1000,        // Pro : jusqu'à 1 000 membres
+    community_upload_files: true,
+    community_private_spaces: true,     // espaces sur invitation
+    community_moderation: true,         // modération complète
+    community_branding: true,           // icône/bannière d'espace
+    community_voice: true,              // canaux vocaux (Phase 2)
+    community_verified: false,
   },
 
   expert: {
@@ -116,6 +159,16 @@ export const TIER_LIMITS = {
     strava_sync_per_month: Infinity,
     storage_gb: 20,
     conversations_history_days: Infinity,
+    // ── Communauté (illimité) ────────────────────────────────────
+    community_can_create: true,
+    community_spaces_max: Infinity,     // Expert : espaces illimités
+    community_members_max: Infinity,    // Expert : membres illimités
+    community_upload_files: true,
+    community_private_spaces: true,
+    community_moderation: true,
+    community_branding: true,
+    community_voice: true,
+    community_verified: true,           // badge vérifié
   },
 } as const
 
@@ -159,4 +212,47 @@ export function getLimits(tier: TierName) {
 export function historyMonthsOrNull(tier: TierName): number | null {
   const v = TIER_LIMITS[tier].history_months
   return isFinite(v) ? v : null
+}
+
+// ── Communauté ──────────────────────────────────────────────────────
+// Capacités « créateur / animateur » dérivées du tier. Participer (lire,
+// poster, réagir, rejoindre) n'est PAS ici : c'est ouvert à tous et géré par
+// la RLS. Source unique des règles = les champs community_* de TIER_LIMITS.
+
+export interface CommunityEntitlements {
+  canCreate: boolean       // créer un espace / groupe
+  maxSpaces: number        // quota d'espaces créés (Infinity = illimité)
+  maxMembers: number       // capacité membres d'un espace créé
+  canUploadFiles: boolean  // images/fichiers
+  canPrivate: boolean      // espaces sur invitation
+  canModerate: boolean     // outils owner (épingler, rôles, bannir)
+  canBrand: boolean        // icône/bannière d'espace
+  canVoice: boolean        // canaux vocaux (Phase 2)
+  verified: boolean        // badge vérifié
+}
+
+/**
+ * Entitlements communauté pour un tier.
+ * `unlimited` (compte créateur / pack coach) débride tout, comme pour les quotas IA.
+ */
+export function communityEntitlements(tier: TierName, unlimited = false): CommunityEntitlements {
+  if (unlimited) {
+    return {
+      canCreate: true, maxSpaces: Infinity, maxMembers: Infinity,
+      canUploadFiles: true, canPrivate: true, canModerate: true,
+      canBrand: true, canVoice: true, verified: true,
+    }
+  }
+  const l = TIER_LIMITS[tier]
+  return {
+    canCreate: l.community_can_create,
+    maxSpaces: l.community_spaces_max,
+    maxMembers: l.community_members_max,
+    canUploadFiles: l.community_upload_files,
+    canPrivate: l.community_private_spaces,
+    canModerate: l.community_moderation,
+    canBrand: l.community_branding,
+    canVoice: l.community_voice,
+    verified: l.community_verified,
+  }
 }

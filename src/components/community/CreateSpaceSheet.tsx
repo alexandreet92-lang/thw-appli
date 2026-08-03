@@ -1,0 +1,177 @@
+'use client'
+// ══════════════════════════════════════════════════════════════════════════
+// Feuille coulissante de création d'espace (createPortal sur document.body).
+// Gating : l'UI masque/verrouille selon les entitlements, MAIS la vérification
+// dure reste côté serveur (POST /api/community/spaces). Free → écran d'upsell.
+// ══════════════════════════════════════════════════════════════════════════
+import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
+import type { CommunityEntitlements } from '@/lib/subscriptions/tier-limits'
+import type { CommunitySport } from '@/types/community'
+
+const FB = 'var(--font-body)', FD = 'var(--font-display)'
+const EMOJIS = ['👥', '🏃', '🚴', '🔥', '🏋️', '💪', '⚡', '🎯', '🏆', '🧠', '🌊', '⛰️']
+const SPORTS: { value: CommunitySport | ''; label: string }[] = [
+  { value: '', label: 'Aucun' },
+  { value: 'running', label: 'Running' },
+  { value: 'cycling', label: 'Cycling' },
+  { value: 'hyrox', label: 'Hyrox' },
+  { value: 'gym', label: 'Gym' },
+]
+
+export function CreateSpaceSheet({
+  ent, onClose, onCreated,
+}: {
+  ent: CommunityEntitlements
+  onClose: () => void
+  onCreated: (space: { id: string; slug: string }) => void
+}) {
+  const [mounted, setMounted] = useState(false)
+  const [name, setName] = useState('')
+  const [description, setDescription] = useState('')
+  const [sport, setSport] = useState<CommunitySport | ''>('')
+  const [emoji, setEmoji] = useState('👥')
+  const [isPublic, setIsPublic] = useState(true)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => { setMounted(true) }, [])
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
+
+  if (!mounted) return null
+
+  async function submit() {
+    if (!name.trim() || busy) return
+    setBusy(true); setError(null)
+    try {
+      const res = await fetch('/api/community/spaces', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: name.trim(),
+          description: description.trim() || null,
+          sport: sport || null,
+          iconEmoji: ent.canBrand ? emoji : null,
+          isPublic,
+        }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) { setError(data?.error ?? 'Création impossible.'); setBusy(false); return }
+      onCreated({ id: data.id, slug: data.slug })
+    } catch {
+      setError('Erreur réseau.'); setBusy(false)
+    }
+  }
+
+  const scrim = (
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'color-mix(in srgb, var(--bg) 55%, transparent)', backdropFilter: 'blur(2px)', zIndex: 1000, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+      <div onClick={e => e.stopPropagation()} role="dialog" aria-modal="true"
+        style={{ width: '100%', maxWidth: 520, maxHeight: '88vh', overflowY: 'auto', background: 'var(--bg-card)', borderTopLeftRadius: 'var(--r-lg)', borderTopRightRadius: 'var(--r-lg)', padding: 'var(--space-6) var(--space-6) var(--space-8)', boxShadow: 'var(--shadow)', animation: 'scale-in 0.22s ease' }}>
+        <div style={{ width: 36, height: 4, borderRadius: 'var(--r-sm)', background: 'var(--border-mid)', margin: '0 auto var(--space-5)' }} />
+
+        {!ent.canCreate ? (
+          <Upsell onClose={onClose} />
+        ) : (
+          <>
+            <h2 style={{ fontFamily: FD, fontSize: 20, fontWeight: 600, color: 'var(--text)', margin: '0 0 var(--space-1)' }}>Créer un espace</h2>
+            <p style={{ fontFamily: FB, fontSize: 12.5, color: 'var(--text-mid)', margin: '0 0 var(--space-5)' }}>
+              Ton espace, tes canaux, ta communauté. {isFinite(ent.maxMembers) ? `Jusqu'à ${ent.maxMembers} membres.` : 'Membres illimités.'}
+            </p>
+
+            {ent.canBrand && (
+              <Field label="Icône">
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)' }}>
+                  {EMOJIS.map(e => (
+                    <button key={e} onClick={() => setEmoji(e)} type="button"
+                      style={{ width: 40, height: 40, borderRadius: 'var(--r-sm)', border: 'none', cursor: 'pointer', fontSize: 20, background: emoji === e ? 'var(--primary-dim)' : 'var(--surface-neutral)', outline: emoji === e ? '2px solid var(--primary)' : 'none' }}>{e}</button>
+                  ))}
+                </div>
+              </Field>
+            )}
+
+            <Field label="Nom">
+              <input value={name} onChange={e => setName(e.target.value.slice(0, 80))} placeholder="Ex. Les grimpeurs du dimanche" style={inputStyle} />
+            </Field>
+
+            <Field label="Description">
+              <textarea value={description} onChange={e => setDescription(e.target.value.slice(0, 400))} placeholder="De quoi parle cet espace ?" rows={3} style={{ ...inputStyle, resize: 'vertical', minHeight: 64 }} />
+            </Field>
+
+            <Field label="Sport (optionnel)">
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)' }}>
+                {SPORTS.map(s => (
+                  <button key={s.value || 'none'} type="button" onClick={() => setSport(s.value)}
+                    style={{ height: 36, padding: '0 var(--space-4)', borderRadius: 'var(--r-sm)', border: 'none', cursor: 'pointer', fontFamily: FB, fontSize: 12.5, fontWeight: 500, background: sport === s.value ? 'var(--primary-dim)' : 'var(--surface-neutral)', color: sport === s.value ? 'var(--primary)' : 'var(--text-mid)' }}>{s.label}</button>
+                ))}
+              </div>
+            </Field>
+
+            <Field label="Visibilité">
+              <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+                <VisBtn active={isPublic} onClick={() => setIsPublic(true)} title="Public" sub="Tout le monde peut rejoindre" />
+                <VisBtn active={!isPublic} onClick={() => { if (ent.canPrivate) setIsPublic(false) }} disabled={!ent.canPrivate} title="Privé" sub={ent.canPrivate ? 'Sur invitation' : 'Réservé Pro'} />
+              </div>
+            </Field>
+
+            {error && <p style={{ fontFamily: FB, fontSize: 12.5, color: 'var(--charge-hard)', margin: 'var(--space-2) 0 0' }}>{error}</p>}
+
+            <div style={{ display: 'flex', gap: 'var(--space-2)', marginTop: 'var(--space-6)' }}>
+              <button onClick={onClose} style={{ flex: '0 0 auto', height: 44, padding: '0 var(--space-5)', border: 'none', borderRadius: 'var(--r-sm)', background: 'var(--surface-neutral)', color: 'var(--text-mid)', fontFamily: FB, fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}>Annuler</button>
+              <button onClick={() => void submit()} disabled={!name.trim() || busy}
+                style={{ flex: 1, height: 44, border: 'none', borderRadius: 'var(--r-sm)', background: 'var(--primary)', color: 'var(--on-primary)', fontFamily: FB, fontSize: 13.5, fontWeight: 600, cursor: name.trim() && !busy ? 'pointer' : 'default', opacity: name.trim() && !busy ? 1 : 0.6 }}>
+                {busy ? 'Création…' : 'Créer l\'espace'}
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  )
+
+  return createPortal(scrim, document.body)
+}
+
+const inputStyle: React.CSSProperties = {
+  width: '100%', boxSizing: 'border-box', background: 'var(--input-bg)', border: '1px solid var(--border)',
+  borderRadius: 'var(--r-sm)', padding: 'var(--space-3) var(--space-4)', fontFamily: FB, fontSize: 13.5,
+  color: 'var(--text)', outline: 'none',
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div style={{ marginBottom: 'var(--space-4)' }}>
+      <label style={{ display: 'block', fontFamily: FB, fontSize: 11.5, fontWeight: 600, color: 'var(--text-mid)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 'var(--space-2)' }}>{label}</label>
+      {children}
+    </div>
+  )
+}
+
+function VisBtn({ active, onClick, disabled, title, sub }: { active: boolean; onClick: () => void; disabled?: boolean; title: string; sub: string }) {
+  return (
+    <button type="button" onClick={onClick} disabled={disabled}
+      style={{ flex: 1, textAlign: 'left', padding: 'var(--space-3) var(--space-4)', border: 'none', borderRadius: 'var(--r-sm)', cursor: disabled ? 'default' : 'pointer', background: active ? 'var(--primary-dim)' : 'var(--surface-neutral)', opacity: disabled ? 0.5 : 1 }}>
+      <span style={{ display: 'block', fontFamily: FB, fontSize: 13, fontWeight: 600, color: active ? 'var(--primary)' : 'var(--text)' }}>{title}</span>
+      <span style={{ display: 'block', fontFamily: FB, fontSize: 11, color: 'var(--text-dim)', marginTop: 2 }}>{sub}</span>
+    </button>
+  )
+}
+
+function Upsell({ onClose }: { onClose: () => void }) {
+  return (
+    <div style={{ textAlign: 'center', padding: 'var(--space-4) var(--space-2) var(--space-2)' }}>
+      <div style={{ fontSize: 34, marginBottom: 'var(--space-3)' }}>✨</div>
+      <h2 style={{ fontFamily: FD, fontSize: 20, fontWeight: 600, color: 'var(--text)', margin: '0 0 var(--space-2)' }}>Passe Premium pour créer un espace</h2>
+      <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-mid)', margin: '0 auto var(--space-5)', maxWidth: 360, lineHeight: 1.5 }}>
+        Lire, poster et réagir restent gratuits, partout. Créer et animer ton propre espace fait partie de l&apos;abonnement Premium.
+      </p>
+      <div style={{ display: 'flex', gap: 'var(--space-2)', justifyContent: 'center' }}>
+        <button onClick={onClose} style={{ height: 44, padding: '0 var(--space-5)', border: 'none', borderRadius: 'var(--r-sm)', background: 'var(--surface-neutral)', color: 'var(--text-mid)', fontFamily: FB, fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}>Plus tard</button>
+        <a href="/settings/subscription" style={{ height: 44, display: 'inline-flex', alignItems: 'center', padding: '0 var(--space-5)', borderRadius: 'var(--r-sm)', background: 'var(--primary)', color: 'var(--on-primary)', fontFamily: FB, fontSize: 13.5, fontWeight: 600, textDecoration: 'none' }}>Voir les offres</a>
+      </div>
+    </div>
+  )
+}

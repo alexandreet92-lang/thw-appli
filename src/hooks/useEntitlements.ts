@@ -6,7 +6,7 @@
 // pour piloter le bandeau d'essai, les verrous de fonctionnalités et l'upsell.
 // ══════════════════════════════════════════════════════════════════
 import { useEffect, useState } from 'react'
-import type { TierName } from '@/lib/subscriptions/tier-limits'
+import { communityEntitlements, type TierName, type CommunityEntitlements } from '@/lib/subscriptions/tier-limits'
 
 export interface Entitlements {
   loading: boolean
@@ -16,17 +16,20 @@ export interface Entitlements {
   isFree: boolean
   isTrial: boolean
   isPaid: boolean          // premium / pro / expert (ou créateur)
+  community: CommunityEntitlements  // capacités « créateur » de la Communauté
 }
 
 interface Summary {
   tier?: TierName
   unlimited?: boolean
   trial_days_left?: number | null
+  community?: CommunityEntitlements
 }
 
 const DEFAULT: Entitlements = {
   loading: true, tier: 'premium', unlimited: false,
   trialDaysLeft: null, isFree: false, isTrial: false, isPaid: true,
+  community: communityEntitlements('premium'),
 }
 
 // ── Cache module : une seule requête réseau partagée ────────────────
@@ -43,6 +46,7 @@ function derive(s: Summary): Entitlements {
     loading: false, tier, unlimited,
     trialDaysLeft: s.trial_days_left ?? null,
     isFree, isTrial, isPaid: unlimited || (!isFree && !isTrial),
+    community: s.community ?? communityEntitlements(tier, unlimited),
   }
 }
 

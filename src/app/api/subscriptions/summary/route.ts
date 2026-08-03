@@ -6,6 +6,7 @@
 import { NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { getUsageSummary, trialDaysLeft } from '@/lib/subscriptions/check-quota'
+import { communityEntitlements } from '@/lib/subscriptions/tier-limits'
 
 export async function GET() {
   // ── Auth ─────────────────────────────────────────────────────
@@ -32,5 +33,8 @@ export async function GET() {
     ...summary,
     subscription: sub ?? null,
     trial_days_left,
+    // Capacités « créateur » de la Communauté, dérivées du tier (gating UI ;
+    // la vérification dure reste côté serveur — RLS + /api/community/spaces).
+    community: communityEntitlements(summary.tier, summary.unlimited),
   })
 }

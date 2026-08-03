@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic'
 
 import { Suspense, useState, useRef, useEffect, useCallback } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
-import { User, Bell, Zap, Moon, Apple, TrendingUp, Sparkles, Coins, Plug, Trophy, Settings, Package, Bike, Footprints, Target, Globe, MapPin, Shield, Lock, CreditCard, BarChart3, Dumbbell, LogOut, ChevronLeft, Palette, Sun, Monitor, Check, Ruler } from 'lucide-react'
+import { User, Bell, Zap, Moon, Apple, TrendingUp, Sparkles, Coins, Plug, Trophy, Settings, Package, Bike, Footprints, Target, Globe, MapPin, Shield, Lock, CreditCard, BarChart3, Dumbbell, LogOut, ChevronLeft, Palette, Sun, Monitor, Check, Ruler, Users } from 'lucide-react'
 import SubscriptionEmailModal from '@/components/subscription/SubscriptionEmailModal'
 import { createClient } from '@/lib/supabase/client'
 import { BottomSheet } from '@/components/ui/BottomSheet'
@@ -803,6 +803,10 @@ const NOTIF_CATEGORIES: NotifCategory[] = [
     { key:'competitions.j3',             label:'Compétition J-3',     sub:'Derniers préparatifs', def:true },
     { key:'competitions.j1',             label:'Compétition J-1',     sub:"C'est demain !", def:true },
     { key:'competitions.strategie_dispo',label:'Stratégie disponible',sub:'Ton plan de course est prêt', def:true },
+  ]},
+  { id:'communaute', label:'Communauté', color:'var(--primary)', Icon: Users, items:[
+    { key:'communaute.mention',         label:'Mention',           sub:'Quelqu\'un te mentionne dans un espace', def:true },
+    { key:'communaute.nouveau_message', label:'Nouveaux messages', sub:'Activité dans tes espaces', def:false },
   ]},
   { id:'systeme', label:'Système', color:'#94a3b8', Icon: Settings, items:[
     { key:'systeme.nouvelle_version', label:'Nouvelle version',       sub:'Une mise à jour est disponible', def:true },

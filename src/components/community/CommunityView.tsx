@@ -10,7 +10,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useEntitlements } from '@/hooks/useEntitlements'
 import { listSpaces, joinSpace, leaveSpace } from '@/lib/community/spaces'
-import { listChannels, createChannel } from '@/lib/community/channels'
+import { listChannels, createChannel, getUnreadChannelIds } from '@/lib/community/channels'
 import { ChannelChat } from './ChannelChat'
 import { CreateSpaceSheet } from './CreateSpaceSheet'
 import { SpaceBadge } from './SpaceBadge'
@@ -31,6 +31,7 @@ export function CommunityView() {
   const [mView, setMView] = useState<MobileView>('spaces')
   const [joining, setJoining] = useState(false)
   const [showCreate, setShowCreate] = useState(false)
+  const [unread, setUnread] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 767px)')
@@ -56,8 +57,14 @@ export function CommunityView() {
     setChannels(list)
     setLoadingChannels(false)
     setChannelId(prev => (prev && list.some(c => c.id === prev) ? prev : list[0]?.id ?? null))
+    void getUnreadChannelIds(list.map(c => c.id)).then(setUnread)
   }, [])
   useEffect(() => { if (spaceId) void loadChannels(spaceId) }, [spaceId, loadChannels])
+
+  // Un canal ouvert / lu n'est plus « non-lu ».
+  const markRead = useCallback((cid: string) => {
+    setUnread(prev => { if (!prev.has(cid)) return prev; const n = new Set(prev); n.delete(cid); return n })
+  }, [])
 
   const space = useMemo(() => spaces.find(s => s.id === spaceId) ?? null, [spaces, spaceId])
   const channel = useMemo(() => channels.find(c => c.id === channelId) ?? null, [channels, channelId])
@@ -67,7 +74,7 @@ export function CommunityView() {
     if (isNarrow) setMView('channels')
   }
   function selectChannel(id: string) {
-    setChannelId(id)
+    setChannelId(id); markRead(id)
     if (isNarrow) setMView('chat')
   }
 
@@ -105,7 +112,7 @@ export function CommunityView() {
   const channelCol = (
     <ChannelColumn
       space={space} channels={channels} activeId={channelId} loading={loadingChannels}
-      isNarrow={isNarrow} joining={joining} canManage={canManage}
+      isNarrow={isNarrow} joining={joining} canManage={canManage} unread={unread}
       onSelect={selectChannel} onJoin={doJoin} onLeave={doLeave}
       onCreateChannel={doCreateChannel}
       onBack={() => setMView('spaces')}
@@ -116,7 +123,8 @@ export function CommunityView() {
     <ChannelChat
       channel={channel} isMember={space.isMember} canPost={space.isMember}
       canUpload={space.isMember && ent.community.canUploadFiles}
-      onJoin={doJoin} joining={joining}
+      canModerate={canManage}
+      onJoin={doJoin} joining={joining} onRead={markRead}
     />
   ) : (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', background: 'var(--bg-card)', color: 'var(--text-dim)', fontFamily: FB, fontSize: 13 }}>
@@ -170,12 +178,18 @@ function SpaceRail({ spaces, activeId, loading, onSelect, onCreate }: {
     <div style={{ height: '100%', overflowY: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--space-2)', padding: 'var(--space-3) 0' }}>
       {loading ? (
         [0, 1, 2, 3].map(i => <span key={i} style={{ width: 44, height: 44, borderRadius: 'var(--r-md)', background: 'var(--surface-neutral)' }} />)
-      ) : spaces.map(s => (
-        <button key={s.id} onClick={() => onSelect(s.id)} title={s.name} aria-label={s.name}
-          style={{ width: 44, height: 44, border: 'none', padding: 0, background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', outline: activeId === s.id ? '2px solid var(--primary)' : 'none', borderRadius: 'var(--r-md)' }}>
-          <SpaceBadge space={s} size={44} active={activeId === s.id} />
-        </button>
-      ))}
+      ) : spaces.map(s => {
+        const active = activeId === s.id
+        return (
+          <div key={s.id} style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%' }}>
+            <span style={{ position: 'absolute', left: 0, width: 3, height: active ? 26 : 0, borderRadius: '0 3px 3px 0', background: 'var(--primary)', transition: 'height 0.16s ease' }} />
+            <button onClick={() => onSelect(s.id)} title={s.name} aria-label={s.name}
+              style={{ width: 44, height: 44, border: 'none', padding: 0, background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 'var(--r-md)' }}>
+              <SpaceBadge space={s} size={44} active={active} />
+            </button>
+          </div>
+        )
+      })}
       <button onClick={onCreate} title="Créer un espace" aria-label="Créer un espace"
         style={{ width: 44, height: 44, borderRadius: 'var(--r-lg)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--surface-neutral)', color: 'var(--primary)', marginTop: 'var(--space-1)' }}>
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14" /></svg>
@@ -185,9 +199,9 @@ function SpaceRail({ spaces, activeId, loading, onSelect, onCreate }: {
 }
 
 // ── Colonne des canaux ──────────────────────────────────────────────────────
-function ChannelColumn({ space, channels, activeId, loading, isNarrow, joining, canManage, onSelect, onJoin, onLeave, onCreateChannel, onBack }: {
+function ChannelColumn({ space, channels, activeId, loading, isNarrow, joining, canManage, unread, onSelect, onJoin, onLeave, onCreateChannel, onBack }: {
   space: CommunitySpace | null; channels: CommunityChannel[]; activeId: string | null; loading: boolean
-  isNarrow: boolean; joining: boolean; canManage: boolean
+  isNarrow: boolean; joining: boolean; canManage: boolean; unread: Set<string>
   onSelect: (id: string) => void; onJoin: () => void; onLeave: () => void; onCreateChannel: (name: string) => void; onBack: () => void
 }) {
   const [adding, setAdding] = useState(false)
@@ -249,13 +263,20 @@ function ChannelColumn({ space, channels, activeId, loading, isNarrow, joining, 
         )}
         {loading ? (
           [0, 1, 2, 3].map(i => <span key={i} style={{ display: 'block', height: 34, borderRadius: 'var(--r-sm)', background: 'var(--surface-neutral)', margin: '0 var(--space-2) var(--space-2)' }} />)
-        ) : channels.map(c => (
-          <button key={c.id} onClick={() => onSelect(c.id)}
-            style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', width: '100%', textAlign: 'left', border: 'none', cursor: 'pointer', borderRadius: 'var(--r-sm)', padding: 'var(--space-2) var(--space-3)', minHeight: 36, background: activeId === c.id ? 'var(--bg-hover)' : 'transparent', fontFamily: FB }}>
-            <span style={{ color: 'var(--text-dim)', fontSize: 15, lineHeight: 1 }}>{c.kind === 'voice' ? '🔊' : '#'}</span>
-            <span style={{ flex: 1, minWidth: 0, fontSize: 13.5, fontWeight: activeId === c.id ? 600 : 500, color: activeId === c.id ? 'var(--text)' : 'var(--text-mid)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</span>
-          </button>
-        ))}
+        ) : channels.map(c => {
+          const active = activeId === c.id
+          const isUnread = unread.has(c.id) && !active
+          return (
+            <button key={c.id} onClick={() => onSelect(c.id)}
+              style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', width: '100%', textAlign: 'left', border: 'none', cursor: 'pointer', borderRadius: 'var(--r-sm)', padding: 'var(--space-2) var(--space-3)', minHeight: 36, background: active ? 'var(--surface-neutral)' : 'transparent', fontFamily: FB }}>
+              {c.kind === 'voice'
+                ? <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-dim)', flexShrink: 0 }}><path d="M11 5 6 9H2v6h4l5 4zM15.5 8.5a5 5 0 0 1 0 7M19 5a9 9 0 0 1 0 14" /></svg>
+                : <span style={{ color: 'var(--text-dim)', fontSize: 15, lineHeight: 1 }}>#</span>}
+              <span style={{ flex: 1, minWidth: 0, fontSize: 13.5, fontWeight: active || isUnread ? 600 : 500, color: active || isUnread ? 'var(--text)' : 'var(--text-mid)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</span>
+              {isUnread && <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--primary)', flexShrink: 0 }} />}
+            </button>
+          )
+        })}
       </div>
 
       {/* Liens croisés (règle d'interconnexion des pages) : messagerie privée +

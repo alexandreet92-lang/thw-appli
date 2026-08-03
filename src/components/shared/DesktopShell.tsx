@@ -225,8 +225,6 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
         </button>
         </>)}
 
-        $1
-        $1
         <TrialEndedModal />
         <PageTransition>{children}</PageTransition>
       </main>

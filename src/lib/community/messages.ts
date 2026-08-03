@@ -6,7 +6,8 @@
 // ══════════════════════════════════════════════════════════════════════════
 import { createClient } from '@/lib/supabase/client'
 import { compressImage } from '@/lib/imageCompression'
-import { myId, namesFor } from './shared'
+import { getReactionsFor } from './reactions'
+import { namesFor } from './shared'
 import type { CommunityMessage, CommunityAttachment } from '@/types/community'
 
 interface MessageRow {
@@ -31,19 +32,33 @@ export async function getChannelMessages(channelId: string): Promise<CommunityMe
     .order('created_at', { ascending: false })
     .limit(PAGE)
   const rows = ((data ?? []) as MessageRow[]).reverse() // → chronologique
-  const people = await namesFor(rows.map(r => r.author_id))
-  return rows.map((r): CommunityMessage => ({
-    id: r.id,
-    channelId: r.channel_id,
-    authorId: r.author_id,
-    body: r.body,
-    createdAt: r.created_at,
-    editedAt: r.edited_at,
-    replyTo: r.reply_to,
-    attachments: Array.isArray(r.attachments) ? r.attachments : [],
-    authorName: people.get(r.author_id)?.name ?? 'Membre',
-    authorAvatar: people.get(r.author_id)?.avatar ?? null,
-  }))
+  const [people, reactions] = await Promise.all([
+    namesFor(rows.map(r => r.author_id)),
+    getReactionsFor(rows.map(r => r.id)),
+  ])
+  const byId = new Map(rows.map(r => [r.id, r]))
+  return rows.map((r): CommunityMessage => {
+    const parent = r.reply_to ? byId.get(r.reply_to) : undefined
+    return {
+      id: r.id,
+      channelId: r.channel_id,
+      authorId: r.author_id,
+      body: r.body,
+      createdAt: r.created_at,
+      editedAt: r.edited_at,
+      replyTo: r.reply_to,
+      attachments: Array.isArray(r.attachments) ? r.attachments : [],
+      reactions: reactions.get(r.id) ?? [],
+      replyPreview: parent ? {
+        id: parent.id,
+        authorName: people.get(parent.author_id)?.name ?? 'Membre',
+        body: parent.body,
+        hasAttachment: Array.isArray(parent.attachments) && parent.attachments.length > 0,
+      } : null,
+      authorName: people.get(r.author_id)?.name ?? 'Membre',
+      authorAvatar: people.get(r.author_id)?.avatar ?? null,
+    }
+  })
 }
 
 /**
@@ -70,22 +85,26 @@ export async function uploadCommunityMedia(file: File): Promise<CommunityAttachm
   return { url: data.url, type: isImage ? 'image' : 'file', name: data.name ?? filename, size: data.size }
 }
 
-/** Envoie un message dans un canal (texte et/ou pièces jointes). Retourne true si succès. */
+/**
+ * Envoie un message (texte et/ou pièces jointes). Passe par la route serveur
+ * /api/community/messages qui insère (RLS) PUIS dispatche les notifications de
+ * mention. Retourne true si succès.
+ */
 export async function sendChannelMessage(
   channelId: string,
   body: string,
   attachments: CommunityAttachment[] = [],
   replyTo?: string | null,
 ): Promise<boolean> {
-  const me = await myId()
-  if (!me) return false
   const trimmed = body.trim()
   if (trimmed.length > 4000) return false
   if (!trimmed && attachments.length === 0) return false // rien à envoyer
-  const { error } = await createClient()
-    .from('community_messages')
-    .insert({ channel_id: channelId, author_id: me, body: trimmed, attachments, reply_to: replyTo ?? null })
-  return !error
+  const res = await fetch('/api/community/messages', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ channelId, body: trimmed, attachments, replyTo: replyTo ?? null }),
+  })
+  return res.ok
 }
 
 /** Édite un message dont on est l'auteur. */

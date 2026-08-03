@@ -46,6 +46,21 @@ export interface CommunityAttachment {
   size?: number
 }
 
+/** Agrégat de réaction sur un message (un emoji + son compte). */
+export interface CommunityReaction {
+  emoji: string
+  count: number
+  mine: boolean
+}
+
+/** Aperçu léger du message auquel on répond. */
+export interface ReplyPreview {
+  id: string
+  authorName: string
+  body: string
+  hasAttachment: boolean
+}
+
 /** Un message d'un canal, avec l'auteur résolu (nom/avatar). */
 export interface CommunityMessage {
   id: string
@@ -56,6 +71,8 @@ export interface CommunityMessage {
   editedAt: string | null
   replyTo: string | null
   attachments: CommunityAttachment[]
+  reactions: CommunityReaction[]
+  replyPreview: ReplyPreview | null
   authorName: string
   authorAvatar: string | null
 }

@@ -375,6 +375,13 @@ html.dark .cmp-section-remodeler { background: var(--bg-card); }
 }
 .mic-listening { animation: micPulse 1.2s ease-in-out infinite; }
 
+/* Communauté — survol d'un message : fond discret + barre d'actions révélée. */
+.comm-msg:hover { background: var(--bg-hover); }
+.comm-actions { opacity: 0; transition: opacity 0.12s ease; }
+.comm-msg:hover .comm-actions { opacity: 1; }
+@media (hover: none) { .comm-actions { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .comm-actions { transition: none; } }
+
 /* Rangée de chips filtres scrollable, scrollbar masquée */
 .comp-chips-scroll { scrollbar-width: none; -ms-overflow-style: none; }
 .comp-chips-scroll::-webkit-scrollbar { display: none; }

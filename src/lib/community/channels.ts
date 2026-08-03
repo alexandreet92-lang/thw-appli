@@ -75,3 +75,33 @@ export async function markChannelRead(channelId: string): Promise<void> {
       { onConflict: 'user_id,channel_id' },
     )
 }
+
+/**
+ * Renvoie l'ensemble des canaux (parmi ceux fournis) qui ont au moins un message
+ * plus récent que mon dernier last_read_at → base des badges « non-lus ».
+ */
+export async function getUnreadChannelIds(channelIds: string[]): Promise<Set<string>> {
+  const unread = new Set<string>()
+  const ids = Array.from(new Set(channelIds)).filter(Boolean)
+  if (ids.length === 0) return unread
+  const sb = createClient()
+  const [readsRes, msgsRes] = await Promise.all([
+    sb.from('community_reads').select('channel_id, last_read_at').in('channel_id', ids),
+    sb.from('community_messages').select('channel_id, created_at')
+      .in('channel_id', ids).order('created_at', { ascending: false }).limit(300),
+  ])
+  const lastRead = new Map<string, string>()
+  for (const r of (readsRes.data ?? []) as { channel_id: string; last_read_at: string }[]) {
+    lastRead.set(r.channel_id, r.last_read_at)
+  }
+  // Premier message rencontré par canal = le plus récent (tri desc).
+  const latest = new Map<string, string>()
+  for (const m of (msgsRes.data ?? []) as { channel_id: string; created_at: string }[]) {
+    if (!latest.has(m.channel_id)) latest.set(m.channel_id, m.created_at)
+  }
+  for (const [cid, last] of latest) {
+    const read = lastRead.get(cid)
+    if (!read || new Date(last).getTime() > new Date(read).getTime()) unread.add(cid)
+  }
+  return unread
+}

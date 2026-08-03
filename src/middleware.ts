@@ -30,7 +30,8 @@ export async function middleware(request: NextRequest) {
   // Routes publiques — toujours accessibles
   // '/c' = vitrines coach publiques (liens partageables, accessibles sans compte).
   // '/coach/tarifs' = page publique de tarification des packs coach (sans compte).
-  const publicRoutes = ['/login', '/auth', '/onboarding', '/access-expired', '/legal', '/decouvrir', '/c/', '/coach/tarifs']
+  // '/programmes' = catalogue public des programmes coach (accessible à tous).
+  const publicRoutes = ['/login', '/auth', '/onboarding', '/access-expired', '/legal', '/decouvrir', '/c/', '/coach/tarifs', '/programmes']
   if (publicRoutes.some(r => path.startsWith(r))) return response
 
   // Routes API — jamais bloquées

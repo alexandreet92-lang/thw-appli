@@ -85,6 +85,14 @@ export async function upsertMyCoachProfile(patch: Partial<CoachProfile>): Promis
   return norm(data)
 }
 
+/** Fiche publique minimale d'un coach par id (pour attribuer un programme). */
+export async function getCoachBriefById(coachId: string): Promise<CoachProfile | null> {
+  const sb = createClient()
+  const { data } = await sb.from('coach_profiles').select(COLS)
+    .eq('coach_id', coachId).eq('published', true).maybeSingle()
+  return data ? norm(data) : null
+}
+
 /** Coachs publiés qui acceptent des demandes (annuaire). */
 export async function listPublishedCoaches(): Promise<CoachProfile[]> {
   const sb = createClient()

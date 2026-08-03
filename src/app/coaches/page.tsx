@@ -25,8 +25,13 @@ export default function CoachesDirectory() {
 
   return (
     <div style={{ width: '100%', maxWidth: 920, margin: '0 auto', padding: '24px clamp(16px,4vw,40px) 64px', boxSizing: 'border-box', fontFamily: 'var(--font-body)' }}>
-      <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 600, color: 'var(--text)', margin: '0 0 4px' }}>Trouver un coach</h1>
-      <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: '0 0 20px' }}>Parcours les coachs de la communauté et envoie ta demande.</p>
+      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+        <div>
+          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 600, color: 'var(--text)', margin: '0 0 4px' }}>Trouver un coach</h1>
+          <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: '0 0 20px' }}>Parcours les coachs de la communauté et envoie ta demande.</p>
+        </div>
+        <Link href="/programmes" style={{ padding: '9px 14px', borderRadius: 'var(--r-md)', background: 'var(--bg-card2)', color: 'var(--primary)', fontSize: 13, fontWeight: 700, textDecoration: 'none', marginBottom: 20, flexShrink: 0 }}>Voir les programmes →</Link>
+      </div>
 
       <input value={q} onChange={e => setQ(e.target.value)} placeholder="Rechercher par nom, sport, ville…"
         style={{ width: '100%', boxSizing: 'border-box', padding: '11px 14px', borderRadius: 'var(--r-md)', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontFamily: 'var(--font-body)', fontSize: 14, outline: 'none', marginBottom: 20 }} />

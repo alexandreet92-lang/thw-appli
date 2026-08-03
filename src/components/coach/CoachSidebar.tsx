@@ -20,6 +20,7 @@ export const COACH_NAV: { href: string; label: string; icon: React.ReactNode }[]
   { href: '/coach/athletes', label: 'Athlètes',     icon: <svg {...ic}><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg> },
   { href: '/coach/library',  label: 'Bibliothèque', icon: <svg {...ic}><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg> },
   { href: '/coach/messages', label: 'Messages',     icon: <svg {...ic}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> },
+  { href: '/community',      label: 'Communauté',   icon: <svg {...ic}><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg> },
   { href: '/coach/studio',   label: 'Studio',       icon: <svg {...ic}><circle cx="5" cy="6" r="2.2"/><circle cx="19" cy="6" r="2.2"/><circle cx="12" cy="18" r="2.2"/><path d="M7 6.6 10.6 16.4M17 6.6 13.4 16.4"/></svg> },
   { href: '/coach/vitrine',  label: 'Ma vitrine',   icon: <svg {...ic}><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg> },
   { href: '/coach/subscription', label: 'Abonnement', icon: <svg {...ic}><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg> },

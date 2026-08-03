@@ -10,7 +10,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useEntitlements } from '@/hooks/useEntitlements'
 import { listSpaces, joinSpace, leaveSpace } from '@/lib/community/spaces'
-import { listChannels } from '@/lib/community/channels'
+import { listChannels, createChannel } from '@/lib/community/channels'
 import { ChannelChat } from './ChannelChat'
 import { CreateSpaceSheet } from './CreateSpaceSheet'
 import type { CommunitySpace, CommunityChannel } from '@/types/community'
@@ -84,6 +84,15 @@ export function CommunityView() {
     if (ok) await loadSpaces(space.id)
   }, [space, loadSpaces])
 
+  const doCreateChannel = useCallback(async (name: string) => {
+    if (!space) return
+    const created = await createChannel(space.id, name)
+    if (created) { await loadChannels(space.id); selectChannel(created.id) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [space, loadChannels])
+
+  const canManage = !!space && (space.myRole === 'owner' || space.myRole === 'admin')
+
   // ── Sous-vues ──────────────────────────────────────────────────────────
   const rail = (
     <SpaceRail
@@ -95,8 +104,9 @@ export function CommunityView() {
   const channelCol = (
     <ChannelColumn
       space={space} channels={channels} activeId={channelId} loading={loadingChannels}
-      isNarrow={isNarrow} joining={joining}
+      isNarrow={isNarrow} joining={joining} canManage={canManage}
       onSelect={selectChannel} onJoin={doJoin} onLeave={doLeave}
+      onCreateChannel={doCreateChannel}
       onBack={() => setMView('spaces')}
     />
   )
@@ -173,13 +183,20 @@ function SpaceRail({ spaces, activeId, loading, onSelect, onCreate }: {
 }
 
 // ── Colonne des canaux ──────────────────────────────────────────────────────
-function ChannelColumn({ space, channels, activeId, loading, isNarrow, joining, onSelect, onJoin, onLeave, onBack }: {
+function ChannelColumn({ space, channels, activeId, loading, isNarrow, joining, canManage, onSelect, onJoin, onLeave, onCreateChannel, onBack }: {
   space: CommunitySpace | null; channels: CommunityChannel[]; activeId: string | null; loading: boolean
-  isNarrow: boolean; joining: boolean
-  onSelect: (id: string) => void; onJoin: () => void; onLeave: () => void; onBack: () => void
+  isNarrow: boolean; joining: boolean; canManage: boolean
+  onSelect: (id: string) => void; onJoin: () => void; onLeave: () => void; onCreateChannel: (name: string) => void; onBack: () => void
 }) {
+  const [adding, setAdding] = useState(false)
+  const [newName, setNewName] = useState('')
   if (!space) {
     return <div style={{ padding: 'var(--space-6)', color: 'var(--text-dim)', fontFamily: FB, fontSize: 13 }}>—</div>
+  }
+  function submitChannel() {
+    const n = newName.trim()
+    if (!n) { setAdding(false); return }
+    onCreateChannel(n); setNewName(''); setAdding(false)
   }
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
@@ -211,7 +228,23 @@ function ChannelColumn({ space, channels, activeId, loading, isNarrow, joining, 
 
       {/* Liste des canaux */}
       <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '0 var(--space-2) var(--space-3)' }}>
-        <div style={{ fontFamily: FB, fontSize: 10.5, fontWeight: 600, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', padding: 'var(--space-2) var(--space-3)' }}>Canaux</div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 'var(--space-2) var(--space-3)' }}>
+          <span style={{ fontFamily: FB, fontSize: 10.5, fontWeight: 600, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Canaux</span>
+          {canManage && (
+            <button onClick={() => setAdding(v => !v)} aria-label="Ajouter un canal" title="Ajouter un canal"
+              style={{ width: 22, height: 22, borderRadius: 'var(--r-sm)', border: 'none', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14" /></svg>
+            </button>
+          )}
+        </div>
+        {adding && (
+          <div style={{ padding: '0 var(--space-2) var(--space-2)' }}>
+            <input autoFocus value={newName} onChange={e => setNewName(e.target.value.slice(0, 60))}
+              onKeyDown={e => { if (e.key === 'Enter') submitChannel(); if (e.key === 'Escape') { setAdding(false); setNewName('') } }}
+              onBlur={submitChannel} placeholder="nom-du-canal"
+              style={{ width: '100%', boxSizing: 'border-box', background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: 'var(--r-sm)', padding: 'var(--space-2) var(--space-3)', fontFamily: FB, fontSize: 13, color: 'var(--text)', outline: 'none' }} />
+          </div>
+        )}
         {loading ? (
           [0, 1, 2, 3].map(i => <span key={i} style={{ display: 'block', height: 34, borderRadius: 'var(--r-sm)', background: 'var(--surface-neutral)', margin: '0 var(--space-2) var(--space-2)' }} />)
         ) : channels.map(c => (
@@ -223,11 +256,16 @@ function ChannelColumn({ space, channels, activeId, loading, isNarrow, joining, 
         ))}
       </div>
 
-      {/* Lien croisé : messagerie privée (règle d'interconnexion des pages). */}
-      <div style={{ flexShrink: 0, padding: 'var(--space-3) var(--space-4)' }}>
-        <Link href="/messages" style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-2)', fontFamily: FB, fontSize: 12, fontWeight: 500, color: 'var(--text-mid)', textDecoration: 'none' }}>
+      {/* Liens croisés (règle d'interconnexion des pages) : messagerie privée +
+          annuaire des coachs publics de l'app. */}
+      <div style={{ flexShrink: 0, padding: 'var(--space-3) var(--space-4)', display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+        <Link href="/messages" style={crossLink}>
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
           Messages privés →
+        </Link>
+        <Link href="/coaches" style={crossLink}>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4" /><path d="M4 21a8 8 0 0 1 16 0" /></svg>
+          Trouver un coach →
         </Link>
       </div>
     </div>
@@ -270,6 +308,10 @@ const backBar: React.CSSProperties = {
   display: 'flex', alignItems: 'center', gap: 'var(--space-2)', width: '100%', border: 'none',
   background: 'var(--bg-card)', cursor: 'pointer', padding: 'var(--space-3) var(--space-4)',
   fontFamily: FB, fontSize: 13, fontWeight: 600, color: 'var(--text-mid)', textAlign: 'left',
+}
+const crossLink: React.CSSProperties = {
+  display: 'inline-flex', alignItems: 'center', gap: 'var(--space-2)', fontFamily: FB,
+  fontSize: 12, fontWeight: 500, color: 'var(--text-mid)', textDecoration: 'none',
 }
 const joinBtn: React.CSSProperties = {
   height: 34, padding: '0 var(--space-4)', border: 'none', borderRadius: 'var(--r-sm)',

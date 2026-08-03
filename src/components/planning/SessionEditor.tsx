@@ -4365,9 +4365,12 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
       : (ttStr ? `${SPORT_LABEL[sport]} ${ttStr}${subLabel}` : `${SPORT_LABEL[sport]}${subLabel}`)
     const parcoursMin = parseDurationToMin(totalDuration)
     const composedMin = isComposed ? sumComposedMinutes(composedMoves, composedCircuit) : 0
-    const finalDur = aiFlowStep === 'parcours' && parcoursMin > 0 ? parcoursMin : (composedMin > 0 ? composedMin : dur || 60)
+    // Mobilité : durée = somme des exos (indicative, HORS volume).
+    const mobMin = sport === 'mobilite' ? blocks.reduce((s, b) => s + ((b as { mob?: unknown }).mob ? (b.durationMin ?? 0) : 0), 0) : 0
+    const finalDur = aiFlowStep === 'parcours' && parcoursMin > 0 ? parcoursMin : (composedMin > 0 ? composedMin : mobMin > 0 ? Math.round(mobMin) : dur || 60)
     const parcoursFlowTss = computeParcoursFlowTSS()
-    const finalTss = (aiFlowStep === 'parcours' && parcoursFlowTss ? parcoursFlowTss.tss : sessionStats.tssHigh) || undefined
+    // Mobilité : jamais de charge (TSS) — elle ne compte pas dans le volume.
+    const finalTss = sport === 'mobilite' ? undefined : ((aiFlowStep === 'parcours' && parcoursFlowTss ? parcoursFlowTss.tss : sessionStats.tssHigh) || undefined)
     const finalBlocks = isStrength && exercises.length > 0
       ? exercisesToBlocks(exercises, gymCircuitsRef.current, gymCircuitMapRef.current)
       : aiFlowStep === 'parcours' && parcoursData

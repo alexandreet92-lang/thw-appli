@@ -44,7 +44,7 @@ import { currentLocale } from '@/lib/i18n'
 export type PlanVariant   = 'A' | 'B'
 export type WeekRange     = 5 | 10 | 20
 export type DayIntensity  = 'recovery' | 'low' | 'mid' | 'hard'
-export type SportType     = 'run' | 'bike' | 'swim' | 'hyrox' | 'rowing' | 'gym' | 'elliptique' | 'hybrid' | 'boxe'
+export type SportType     = 'run' | 'bike' | 'swim' | 'hyrox' | 'rowing' | 'gym' | 'elliptique' | 'hybrid' | 'boxe' | 'mobilite'
 type SessionStatus = 'planned' | 'done'
 export type BlockType     = 'warmup' | 'effort' | 'recovery' | 'cooldown' | 'circuit_header'
 export type CircuitType   = 'series' | 'circuit' | 'superset' | 'emom' | 'tabata'
@@ -58,13 +58,13 @@ export type CyclingSub    = 'velo' | 'vtt' | 'ht'
 export type RunningSub    = 'outdoor' | 'treadmill'
 
 // ── Constants ─────────────────────────────────────
-export const SPORT_BG: Record<SportType,string>     = { swim:'rgba(6,182,212,0.13)', run:'rgba(249,115,22,0.13)', bike:'rgba(59,130,246,0.13)', hyrox:'rgba(239,68,68,0.13)', gym:'rgba(139,92,246,0.13)', rowing:'rgba(20,184,166,0.13)', elliptique:'rgba(168,85,247,0.13)', hybrid:'rgba(245,158,11,0.13)', boxe:'rgba(225,29,72,0.13)' }
-export const SPORT_BORDER: Record<SportType,string> = { swim:'#06b6d4', run:'#22c55e', bike:'#3b82f6', hyrox:'#ef4444', gym:'#f97316', rowing:'#14b8a6', elliptique:'#a855f7', hybrid:'#f59e0b', boxe:'#e11d48' }
+export const SPORT_BG: Record<SportType,string>     = { swim:'rgba(6,182,212,0.13)', run:'rgba(249,115,22,0.13)', bike:'rgba(59,130,246,0.13)', hyrox:'rgba(239,68,68,0.13)', gym:'rgba(139,92,246,0.13)', rowing:'rgba(20,184,166,0.13)', elliptique:'rgba(168,85,247,0.13)', hybrid:'rgba(245,158,11,0.13)', boxe:'rgba(225,29,72,0.13)', mobilite:'rgba(132,204,22,0.13)' }
+export const SPORT_BORDER: Record<SportType,string> = { swim:'#06b6d4', run:'#22c55e', bike:'#3b82f6', hyrox:'#ef4444', gym:'#f97316', rowing:'#14b8a6', elliptique:'#a855f7', hybrid:'#f59e0b', boxe:'#e11d48', mobilite:'#84cc16' }
 
-export const SPORT_LABEL: Record<SportType,string>  = { run:'Running', bike:'Cyclisme', swim:'Natation', hyrox:'Hyrox', gym:'Musculation', rowing:'Aviron', elliptique:'Elliptique', hybrid:'Hybrid', boxe:'Boxe' }
-export const SPORT_ABBR: Record<SportType,string>   = { run:'RUN', bike:'BIKE', swim:'SWIM', hyrox:'HRX', gym:'GYM', rowing:'ROW', elliptique:'ELLIP', hybrid:'HYB', boxe:'BOX' }
+export const SPORT_LABEL: Record<SportType,string>  = { run:'Running', bike:'Cyclisme', swim:'Natation', hyrox:'Hyrox', gym:'Musculation', rowing:'Aviron', elliptique:'Elliptique', hybrid:'Hybrid', boxe:'Boxe', mobilite:'Mobilité' }
+export const SPORT_ABBR: Record<SportType,string>   = { run:'RUN', bike:'BIKE', swim:'SWIM', hyrox:'HRX', gym:'GYM', rowing:'ROW', elliptique:'ELLIP', hybrid:'HYB', boxe:'BOX', mobilite:'MOB' }
 // Label court (maquette grille semaine) : Run/Bike/Swim/Gym/Hyrox…
-export const SPORT_SHORT: Record<SportType,string>  = { run:'Run', bike:'Bike', swim:'Swim', hyrox:'Hyrox', gym:'Gym', rowing:'Row', elliptique:'Ellip', hybrid:'Hybrid', boxe:'Boxe' }
+export const SPORT_SHORT: Record<SportType,string>  = { run:'Run', bike:'Bike', swim:'Swim', hyrox:'Hyrox', gym:'Gym', rowing:'Row', elliptique:'Ellip', hybrid:'Hybrid', boxe:'Boxe', mobilite:'Mobilité' }
 export const CYCLING_SUB_LABEL: Record<CyclingSub,string> = { velo:'Vélo route', vtt:'VTT', ht:'Home Trainer' }
 export const RUNNING_SUB_LABEL: Record<RunningSub,string> = { outdoor:'Dehors', treadmill:'Tapis' }
 export const TRAINING_TYPES: Partial<Record<SportType,string[]>> = {
@@ -375,7 +375,14 @@ export function getWeekStart():string {
 export const SPORT_TO_BUILDER: Record<SportType, string> = {
   run: 'running', bike: 'cycling', swim: 'natation',
   hyrox: 'hyrox', gym: 'gym', rowing: 'rowing', elliptique: 'cycling',
-  hybrid: 'hybrid', boxe: 'boxe',
+  hybrid: 'hybrid', boxe: 'boxe', mobilite: 'mobilite',
+}
+
+// Mobilité : séance HORS VOLUME. Elle n'entre dans AUCUN total (volume horaire,
+// TSS, charge SM/SN, graphe par discipline, type de semaine). Un seul point de
+// vérité pour l'exclure partout.
+export function countsInVolume(sport: SportType | string | null | undefined): boolean {
+  return sportKeyFromType(String(sport ?? '')) !== 'mobilite' && sport !== 'mobilite'
 }
 
 // Convertit une zone string (Z1-Z7, SL1, SL2, EF, VMA, PMA…) → numéro 1-7
@@ -1471,7 +1478,7 @@ function computeWeekType(
   avgVolume: number,
   aiType?: string | null,
 ): string {
-  const real = sessions.filter(s => !isRestSession(s))
+  const real = sessions.filter(s => !isRestSession(s) && countsInVolume(s.sport))
   if (real.length === 0) return aiType ?? 'Base'
   const volume = real.reduce((s, r) => s + ((r.duration_min ?? r.durationMin ?? 0) / 60), 0)
   const intensCount: Record<string, number> = {}
@@ -2082,7 +2089,7 @@ function PlanHeaderAndGraphics({ plan, sessions, currentWeekStart, nextRace, onR
               const rows    = weekMap.get(ws)!
               const weekNum = Math.round((new Date(ws + 'T00:00:00Z').getTime() - planStartMs) / WEEK_MS) + 1
               const aiSem   = aiSemaines.find(s => s.numero === weekNum)
-              const volume_h = rows.reduce((s, r) => s + r.duration_min / 60, 0)
+              const volume_h = rows.reduce((s, r) => s + (countsInVolume(r.sport) ? r.duration_min / 60 : 0), 0)
               return { ws, idx, rows, weekNum, aiSem, volume_h }
             })
             const avgVolume = rawWeeks.length > 0
@@ -2093,6 +2100,7 @@ function PlanHeaderAndGraphics({ plan, sessions, currentWeekStart, nextRace, onR
             const weekBars: WeekBar[] = rawWeeks.map(({ ws, idx, rows, weekNum, aiSem, volume_h }) => {
               const sMap = new Map<string, { count: number; mins: number }>()
               for (const r of rows) {
+                if (!countsInVolume(r.sport)) continue   // mobilité : hors volume
                 if (!sMap.has(r.sport)) sMap.set(r.sport, { count: 0, mins: 0 })
                 sMap.get(r.sport)!.count++
                 sMap.get(r.sport)!.mins += r.duration_min
@@ -3358,19 +3366,21 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
   const allSess = week.flatMap(d=>d.sessions)
   const allActs = week.flatMap(d=>d.activities)   // activités réellement effectuées
 
-  const plannedMin = allSess.reduce((s,x)=>s+x.durationMin,0)
+  // Mobilité exclue de TOUS les totaux (volume, TSS) — hors volume d'entraînement.
+  const volSess = allSess.filter(s=>countsInVolume(s.sport))
+  const plannedMin = volSess.reduce((s,x)=>s+x.durationMin,0)
   // doneMin = séances marquées faites + activités réelles (elapsedTime en secondes → /60 = minutes)
-  const doneMin = allSess.filter(s=>s.status==='done').reduce((s,x)=>s+x.durationMin,0)
+  const doneMin = volSess.filter(s=>s.status==='done').reduce((s,x)=>s+x.durationMin,0)
                + allActs.reduce((s,a)=>s+Math.round(a.elapsedTime/60),0)
 
-  const plannedTSS = allSess.reduce((s,x)=>s+(x.tss||0),0)
-  const doneTSS = allSess.filter(s=>s.status==='done').reduce((s,x)=>s+(x.tss||0),0)
+  const plannedTSS = volSess.reduce((s,x)=>s+(x.tss||0),0)
+  const doneTSS = volSess.filter(s=>s.status==='done').reduce((s,x)=>s+(x.tss||0),0)
                + allActs.reduce((s,a)=>s+(a.tss||0),0)
-  // SM / SN (remplacent le TSS dans l'onglet Plan)
-  const plannedSM = allSess.reduce((s,x)=>s+estSmSn(x.blocks,x.durationMin).sm,0)
-  const plannedSN = allSess.reduce((s,x)=>s+estSmSn(x.blocks,x.durationMin).sn,0)
-  const doneSM = allSess.filter(s=>s.status==='done').reduce((s,x)=>s+estSmSn(x.blocks,x.durationMin).sm,0) + allActs.reduce((s,a)=>s+(a.tss||0),0)
-  const doneSN = allSess.filter(s=>s.status==='done').reduce((s,x)=>s+estSmSn(x.blocks,x.durationMin).sn,0)
+  // SM / SN (remplacent le TSS dans l'onglet Plan) — mobilité exclue (hors charge)
+  const plannedSM = volSess.reduce((s,x)=>s+estSmSn(x.blocks,x.durationMin).sm,0)
+  const plannedSN = volSess.reduce((s,x)=>s+estSmSn(x.blocks,x.durationMin).sn,0)
+  const doneSM = volSess.filter(s=>s.status==='done').reduce((s,x)=>s+estSmSn(x.blocks,x.durationMin).sm,0) + allActs.reduce((s,a)=>s+(a.tss||0),0)
+  const doneSN = volSess.filter(s=>s.status==='done').reduce((s,x)=>s+estSmSn(x.blocks,x.durationMin).sn,0)
 
   const plannedN = allSess.length
   const doneN    = allSess.filter(s=>s.status==='done').length + allActs.length

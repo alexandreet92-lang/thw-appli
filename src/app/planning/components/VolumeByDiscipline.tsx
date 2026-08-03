@@ -3,6 +3,7 @@
 // Données réelles : séances de la semaine (status 'done' = réalisé, tss = source existante).
 // Couleur sport via tokens --sport-*. Chiffres neutres.
 import { formatDuration } from '@/lib/utils'
+import { countsInVolume } from '@/app/planning/page'
 import { useI18n } from '@/lib/i18n'
 
 interface S { sport: string; durationMin: number; tss?: number; status: string }
@@ -25,7 +26,7 @@ export function VolumeByDiscipline({ sessions }: { sessions: S[] }) {
   const { t } = useI18n()
   const map = new Map<string, { volT: number; volD: number; tssT: number; tssD: number }>()
   for (const s of sessions) {
-    const sp = s.sport; if (!sp) continue
+    const sp = s.sport; if (!sp || !countsInVolume(sp)) continue   // mobilité : hors volume
     const e = map.get(sp) ?? { volT: 0, volD: 0, tssT: 0, tssD: 0 }
     const dur = s.durationMin ?? 0
     const tss = typeof s.tss === 'number' ? s.tss : 0

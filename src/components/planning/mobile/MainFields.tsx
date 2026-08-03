@@ -13,7 +13,7 @@ import { sportColor, fmtDur, parseDurInput } from './editorial'
 import { Card, FieldLabel, Gauge } from './ui'
 import { useI18n } from '@/lib/i18n'
 
-const SPORTS: SportType[] = ['run', 'bike', 'swim', 'hyrox', 'gym', 'rowing', 'elliptique', 'hybrid', 'boxe']
+const SPORTS: SportType[] = ['run', 'bike', 'swim', 'hyrox', 'gym', 'rowing', 'elliptique', 'hybrid', 'boxe', 'mobilite']
 // Clés i18n des descripteurs d'effort perçu (RPE 1→10).
 const RPE_DESC = ['planning.rpeVeryEasy', 'planning.rpeVeryEasy', 'planning.rpeEasy', 'planning.rpeEasy', 'planning.rpeModerate', 'planning.rpeModerate', 'planning.rpeSustained', 'planning.rpeHard', 'planning.rpeVeryHard', 'planning.rpeMaximal']
 

@@ -5,6 +5,7 @@ import {
   IconKayak,       // IconRowing absent → IconKayak (aviron/pagaie)
   IconBarbell,
   IconStretching2, // IconStretching existe aussi, mais Stretching2 est plus dynamique
+  IconStretching,  // Mobilité (assouplissement / amplitude articulaire)
   IconTreadmill,
   IconMountain,    // VTT
   IconHome,        // Home Trainer (vélo d'intérieur)
@@ -25,7 +26,7 @@ export function subSportIcon(sub?: string | null): SportIconComponent | null {
 }
 
 export type SportKey =
-  | 'run' | 'bike' | 'swim' | 'rowing' | 'muscu' | 'hyrox' | 'ellip' | 'hybrid' | 'boxe'
+  | 'run' | 'bike' | 'swim' | 'rowing' | 'muscu' | 'hyrox' | 'ellip' | 'hybrid' | 'boxe' | 'mobilite'
 
 // Mapping depuis les SportType de l'app (run|bike|swim|hyrox|rowing|gym|elliptique)
 // + alias éventuels (running, cycling…). Inconnu → null.
@@ -38,6 +39,7 @@ const SPORT_TYPE_TO_KEY: Record<string, SportKey> = {
   hyrox: 'hyrox',
   elliptique: 'ellip', ellip: 'ellip',
   hybrid: 'hybrid', boxe: 'boxe', boxing: 'boxe',
+  mobilite: 'mobilite', mobility: 'mobilite',
 }
 
 export function sportKeyFromType(sport: string): SportKey | null {
@@ -56,6 +58,7 @@ const SPORT_ICON: Record<SportKey, { Icon: ComponentType<{ size?: number; color?
   ellip:  { Icon: IconTreadmill,  color: '#ec4899', label: 'Elliptique' },
   hybrid: { Icon: IconBolt,       color: '#f59e0b', label: 'Hybrid'     },
   boxe:   { Icon: IconKarate,     color: '#e11d48', label: 'Boxe'       },
+  mobilite: { Icon: IconStretching, color: '#84cc16', label: 'Mobilité' },
 }
 
 export function SportIcon({

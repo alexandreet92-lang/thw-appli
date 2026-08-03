@@ -52,6 +52,8 @@ export type MBlock = Block & {
    *  longueur de `repValues` alignée sur `reps`. Distinct de progSteps (continu). */
   progressive?: boolean
   repValues?: string[]
+  // ── Mobilité (HORS volume) : un bloc = un exercice de mobilité ──
+  mob?: { region: string; holdSec?: number; reps?: number; perSide?: boolean; sets: number }
   // ── Parcours (vélo) ──
   /** Bloc de FOND « endurance Z2 » couvrant tout le parcours. Ses segments
    *  réels sont recalculés autour des blocs d'intensité (cf. parcoursBase.ts). */

@@ -6,6 +6,7 @@ import type { Block } from '@/app/planning/page'
 import { SessionBlockBuilder } from './SessionBlockBuilder'
 import { StrengthBuilder } from './StrengthBuilder'
 import { HyroxBuilder } from './HyroxBuilder'
+import { MobilityBuilder } from './MobilityBuilder'
 import { ComposedBuilder } from '../ComposedBuilder'
 import type { ComposedSport } from '../composedSports'
 import type { MBlock } from './blocks'
@@ -14,6 +15,9 @@ import type { SessionEditorPanelProps } from './panelProps'
 export function BuilderSection({ p }: { p: SessionEditorPanelProps }) {
   if (p.isComposed) {
     return <ComposedBuilder sport={p.sport as ComposedSport} moves={p.composedMoves} accent={p.accent} onChange={p.setComposedMoves} circuit={p.composedCircuit} onCircuitChange={p.setComposedCircuit} />
+  }
+  if (p.sport === 'mobilite') {
+    return <MobilityBuilder blocks={p.blocks as MBlock[]} accent={p.accent} onChange={b => p.setBlocks(b as Block[])} />
   }
   if (p.sport === 'gym') {
     return (

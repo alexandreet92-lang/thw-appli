@@ -10,6 +10,7 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { getCoachProfileBySlug, requestCoaching, myRequestTo, type CoachProfile, type CoachingRequest } from '@/lib/coach/vitrine'
+import { listCoachPublishedPrograms, LEVEL_LABEL, type CoachProgram } from '@/lib/coach/programs'
 
 const SPORT_LABEL: Record<string, string> = { running: 'Course', cycling: 'Vélo', swim: 'Natation', gym: 'Renforcement', hyrox: 'Hyrox', rowing: 'Aviron', trail: 'Trail', triathlon: 'Triathlon' }
 
@@ -27,6 +28,7 @@ function SocialLink({ href, label, children }: { href: string; label: string; ch
 export default function CoachVitrine() {
   const slug = String(useParams()?.slug ?? '')
   const [profile, setProfile] = useState<CoachProfile | null>(null)
+  const [programs, setPrograms] = useState<CoachProgram[]>([])
   const [loading, setLoading] = useState(true)
   const [existing, setExisting] = useState<CoachingRequest | null>(null)
   const [asking, setAsking] = useState(false)
@@ -41,7 +43,10 @@ export default function CoachVitrine() {
       const p = await getCoachProfileBySlug(slug).catch(() => null)
       if (!alive) return
       setProfile(p); setLoading(false)
-      if (p) setExisting(await myRequestTo(p.coach_id).catch(() => null))
+      if (p) {
+        setExisting(await myRequestTo(p.coach_id).catch(() => null))
+        setPrograms(await listCoachPublishedPrograms(p.coach_id).catch(() => []))
+      }
     })()
     return () => { alive = false }
   }, [slug])
@@ -197,6 +202,26 @@ export default function CoachVitrine() {
           )}
         </div>
       </div>
+
+      {/* Programmes publiés du coach */}
+      {programs.length > 0 && (
+        <div style={{ ...card, marginTop: 16 }}>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 600, color: 'var(--text)', marginBottom: 12 }}>Programmes</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {programs.map(pr => (
+              <Link key={pr.id} href={`/programmes/${pr.id}`} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', background: 'var(--bg-card2)', borderRadius: 'var(--r-md)', textDecoration: 'none' }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontFamily: 'var(--font-body)', fontSize: 14.5, fontWeight: 600, color: 'var(--text)' }}>{pr.title}</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 2 }}>
+                    <span className="tnum" style={{ fontVariantNumeric: 'tabular-nums' }}>{pr.duration_weeks}</span> sem.{pr.level ? ` · ${LEVEL_LABEL[pr.level]}` : ''}
+                  </div>
+                </div>
+                <span style={{ color: 'var(--primary)', fontSize: 18, flexShrink: 0 }}>→</span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
 
       <p style={{ fontFamily: 'var(--font-body)', fontSize: 11.5, color: 'var(--text-dim)', textAlign: 'center', marginTop: 20 }}>
         Propulsé par <Link href="/" style={{ color: 'var(--text-mid)', fontWeight: 700, textDecoration: 'none' }}>Hybrid</Link>

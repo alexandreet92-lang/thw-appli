@@ -73,6 +73,14 @@ export async function listPublishedPrograms(): Promise<CoachProgram[]> {
   return (data ?? []).map(norm)
 }
 
+/** Programmes PUBLIÉS d'un coach donné (pour sa vitrine publique). */
+export async function listCoachPublishedPrograms(coachId: string): Promise<CoachProgram[]> {
+  const sb = createClient()
+  const { data } = await sb.from('coach_programs').select(COLS)
+    .eq('coach_id', coachId).eq('published', true).order('updated_at', { ascending: false })
+  return (data ?? []).map(norm)
+}
+
 /** Crée un programme vierge et renvoie son id. */
 export async function createProgram(title: string): Promise<string | null> {
   const sb = createClient()

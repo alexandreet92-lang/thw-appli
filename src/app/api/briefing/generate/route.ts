@@ -17,6 +17,7 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { enforceQuota } from '@/lib/subscriptions/quota-middleware'
 import { getUserTier, logUsage } from '@/lib/subscriptions/check-quota'
 import { TIER_LIMITS } from '@/lib/subscriptions/tier-limits'
+import { WEB_SEARCH_MAX_USES_BRIEFING } from '@/lib/ai/cost-limits'
 
 // ── System prompt ─────────────────────────────────────────────
 
@@ -324,7 +325,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     // Pour Premium, le modèle génère à partir de ses connaissances (pas de
     // recherche temps-réel, coût réduit).
     const webSearchTool = useWebSearch
-      ? [{ type: 'web_search_20250305', name: 'web_search', max_uses: 20 }] as unknown as
+      ? [{ type: 'web_search_20250305', name: 'web_search', max_uses: WEB_SEARCH_MAX_USES_BRIEFING }] as unknown as
           Parameters<typeof client.messages.create>[0]['tools']
       : undefined
 

@@ -35,7 +35,8 @@ import { createNotification } from '@/lib/notifications/create'
 import { buildTrainingAgentInstruction, DEFAULT_TRAINING_SETTINGS } from '@/lib/ai/agent-settings'
 import { createClient } from '@/lib/supabase/server'
 import { enforceQuota } from '@/lib/subscriptions/quota-middleware'
-import { getUserTier, logUsage } from '@/lib/subscriptions/check-quota'
+import { getUserTier, isCreatorAccount, logUsage } from '@/lib/subscriptions/check-quota'
+import { WEB_SEARCH_CHAT_TIERS, WEB_SEARCH_MAX_USES_CHAT } from '@/lib/ai/cost-limits'
 import { TIER_LIMITS, TIER_MAX_MODEL, MODEL_IDS, MODEL_MAX_TOKENS } from '@/lib/subscriptions/tier-limits'
 import { getActiveCompetencesPrompt } from '@/lib/ai/competences'
 import { getUserTokenLimits, recordTokenUsage } from '@/lib/tokens/limits'
@@ -800,10 +801,13 @@ APRÈS l'oral : un résumé SCHÉMATISÉ et aéré pour l'écran. CE N'EST PAS l
   // les faits à jour au lieu de répondre « de mémoire » (chiffres fiables).
   // Réservé aux modèles avancés (Haiku ne supporte pas cette version d'outil).
   // Réglage persistant côté utilisateur (défaut activé). Désactivé → outil coupé.
+  // Coût HORS budget de tokens (~10 $/1000) → réservé aux tiers payants avancés
+  // (Pro/Expert, + créateur) et borné à WEB_SEARCH_MAX_USES_CHAT par message.
   const webSearchAllowed = (chatBody as { webSearch?: boolean }).webSearch !== false
-  const webEnabled = (cappedKey === 'athena' || cappedKey === 'zeus') && webSearchAllowed
+  const webTierOk = WEB_SEARCH_CHAT_TIERS.has(tier) || (await isCreatorAccount(userId))
+  const webEnabled = (cappedKey === 'athena' || cappedKey === 'zeus') && webSearchAllowed && webTierOk
   const toolsNoWeb = cachedCustom as unknown as Anthropic.ToolUnion[]
-  const toolsWithWeb = [...cachedCustom, { type: 'web_search_20260209', name: 'web_search', max_uses: 5 }] as unknown as Anthropic.ToolUnion[]
+  const toolsWithWeb = [...cachedCustom, { type: 'web_search_20260209', name: 'web_search', max_uses: WEB_SEARCH_MAX_USES_CHAT }] as unknown as Anthropic.ToolUnion[]
   // Jeu d'outils courant : peut retomber sur `toolsNoWeb` en cours de route si la
   // recherche web (conteneur serveur) fait échouer un tour (voir garde-fou plus bas).
   let cachedTools = webEnabled ? toolsWithWeb : toolsNoWeb

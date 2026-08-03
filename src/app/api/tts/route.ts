@@ -10,6 +10,8 @@
 // ══════════════════════════════════════════════════════════════
 
 import { createClient } from '@/lib/supabase/server'
+import { guardTts, logTtsUsage } from '@/lib/tts/guard'
+import { TTS_MAX_CHARS_PER_CALL } from '@/lib/ai/cost-limits'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -69,7 +71,17 @@ export async function POST(req: Request) {
       : 1.0
 
     // Borne de sécurité (coût/latence)
-    const input = text.length > 4000 ? text.slice(0, 4000) : text
+    const input = text.length > TTS_MAX_CHARS_PER_CALL ? text.slice(0, TTS_MAX_CHARS_PER_CALL) : text
+
+    // ── Gardes anti-abus (tier / quota mensuel / rate-limit) — CÔTÉ SERVEUR ──
+    // (poste OpenAI NON plafonné par le budget de tokens : cf. src/lib/tts/guard.ts)
+    const ip = (req.headers.get('x-forwarded-for') ?? '').split(',')[0].trim() || null
+    const guard = await guardTts(user.id, ip, input.length)
+    if (!guard.ok) {
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+      if (guard.retryAfterSec) headers['Retry-After'] = String(guard.retryAfterSec)
+      return new Response(JSON.stringify(guard.body), { status: guard.status, headers })
+    }
 
     const styleKey: StyleKey = (['douce', 'neutre', 'energique'].includes(body.style ?? '')
       ? body.style
@@ -108,6 +120,8 @@ export async function POST(req: Request) {
     }
 
     const audio = await res.arrayBuffer()
+    // Décompte du quota mensuel (fire-and-forget, non-bloquant).
+    void logTtsUsage(user.id, ip, input.length)
     return new Response(audio, {
       headers: {
         'Content-Type': 'audio/mpeg',

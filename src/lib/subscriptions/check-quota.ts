@@ -44,6 +44,7 @@ export type UsageType =
   | 'briefing'
   | 'nutrition_plan'
   | 'micro_agent'
+  | 'tts'          // synthèse vocale OpenAI — quota géré séparément (src/lib/tts/guard.ts)
 
 export interface QuotaResult {
   allowed: boolean

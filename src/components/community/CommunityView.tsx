@@ -13,6 +13,7 @@ import { listSpaces, joinSpace, leaveSpace } from '@/lib/community/spaces'
 import { listChannels, createChannel } from '@/lib/community/channels'
 import { ChannelChat } from './ChannelChat'
 import { CreateSpaceSheet } from './CreateSpaceSheet'
+import { SpaceBadge } from './SpaceBadge'
 import type { CommunitySpace, CommunityChannel } from '@/types/community'
 
 const FB = 'var(--font-body)', FD = 'var(--font-display)'
@@ -125,7 +126,7 @@ export function CommunityView() {
   const chatWithBack = isNarrow ? (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
       <button onClick={() => setMView('channels')} style={backBar}>
-        <BackIcon /> <span>{space ? `${space.iconEmoji} ${space.name}` : 'Retour'}</span>
+        <BackIcon /> <span>{space ? space.name : 'Retour'}</span>
       </button>
       <div style={{ flex: 1, minHeight: 0 }}>{chat}</div>
     </div>
@@ -170,8 +171,8 @@ function SpaceRail({ spaces, activeId, loading, onSelect, onCreate }: {
         [0, 1, 2, 3].map(i => <span key={i} style={{ width: 44, height: 44, borderRadius: 'var(--r-md)', background: 'var(--surface-neutral)' }} />)
       ) : spaces.map(s => (
         <button key={s.id} onClick={() => onSelect(s.id)} title={s.name} aria-label={s.name}
-          style={{ width: 44, height: 44, borderRadius: activeId === s.id ? 'var(--r-md)' : 'var(--r-lg)', border: 'none', cursor: 'pointer', fontSize: 21, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', background: activeId === s.id ? 'var(--primary-dim)' : 'var(--surface-neutral)', outline: activeId === s.id ? '2px solid var(--primary)' : 'none', transition: 'border-radius 0.15s' }}>
-          {s.iconEmoji}
+          style={{ width: 44, height: 44, border: 'none', padding: 0, background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', outline: activeId === s.id ? '2px solid var(--primary)' : 'none', borderRadius: 'var(--r-md)' }}>
+          <SpaceBadge space={s} size={44} active={activeId === s.id} />
         </button>
       ))}
       <button onClick={onCreate} title="Créer un espace" aria-label="Créer un espace"
@@ -205,8 +206,8 @@ function ChannelColumn({ space, channels, activeId, loading, isNarrow, joining, 
         {isNarrow && (
           <button onClick={onBack} style={{ ...backBar, padding: 0, marginBottom: 'var(--space-3)', background: 'transparent' }}><BackIcon /> <span>Espaces</span></button>
         )}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
-          <span style={{ fontSize: 22 }}>{space.iconEmoji}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+          <SpaceBadge space={space} size={34} />
           <span style={{ fontFamily: FD, fontSize: 17, fontWeight: 600, color: 'var(--text)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{space.name}</span>
         </div>
         <div className="tnum" style={{ fontFamily: FB, fontSize: 11.5, color: 'var(--text-dim)', marginTop: 'var(--space-1)', fontVariantNumeric: 'tabular-nums' }}>
@@ -289,7 +290,7 @@ function MobileSpaces({ spaces, loading, onSelect, canCreate, onCreate }: {
       ) : spaces.map(s => (
         <button key={s.id} onClick={() => onSelect(s.id)}
           style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', width: '100%', textAlign: 'left', border: 'none', cursor: 'pointer', borderRadius: 'var(--r-md)', padding: 'var(--space-3)', minHeight: 58, background: 'var(--bg-card2)', marginBottom: 'var(--space-2)', fontFamily: FB }}>
-          <span style={{ width: 44, height: 44, borderRadius: 'var(--r-md)', background: 'var(--surface-neutral)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, flexShrink: 0 }}>{s.iconEmoji}</span>
+          <SpaceBadge space={s} size={44} />
           <span style={{ flex: 1, minWidth: 0 }}>
             <span style={{ display: 'block', fontSize: 14, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.name}</span>
             <span className="tnum" style={{ display: 'block', fontSize: 11.5, color: 'var(--text-dim)', marginTop: 2, fontVariantNumeric: 'tabular-nums' }}>

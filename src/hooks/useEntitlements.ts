@@ -46,7 +46,11 @@ function derive(s: Summary): Entitlements {
     loading: false, tier, unlimited,
     trialDaysLeft: s.trial_days_left ?? null,
     isFree, isTrial, isPaid: unlimited || (!isFree && !isTrial),
-    community: s.community ?? communityEntitlements(tier, unlimited),
+    // JSON ne transporte pas Infinity (sérialisé en null par l'API) : on restaure
+    // les quotas illimités côté client pour que isFinite(...) se comporte bien.
+    community: s.community
+      ? { ...s.community, maxSpaces: s.community.maxSpaces ?? Infinity, maxMembers: s.community.maxMembers ?? Infinity }
+      : communityEntitlements(tier, unlimited),
   }
 }
 

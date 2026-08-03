@@ -8,6 +8,7 @@ import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { getChannelMessages, sendChannelMessage } from '@/lib/community/messages'
 import { markChannelRead } from '@/lib/community/channels'
+import { useSpeechToText } from '@/hooks/useSpeechToText'
 import type { CommunityChannel, CommunityMessage } from '@/types/community'
 
 const FB = 'var(--font-body)', FD = 'var(--font-display)'
@@ -51,6 +52,11 @@ export function ChannelChat({
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
   const endRef = useRef<HTMLDivElement>(null)
+  // Dictée vocale : on gèle le texte déjà saisi puis on lui ajoute la transcription.
+  const voiceBase = useRef('')
+  const { supported: micSupported, isListening, toggle: toggleMic } = useSpeechToText(
+    (text) => setInput((voiceBase.current ? voiceBase.current.trimEnd() + ' ' : '') + text),
+  )
   // Nom de canal Realtime UNIQUE par instance : la page est montée dans les deux
   // shells (desktop + mobile) simultanément, donc ChannelChat existe en double.
   // Sans suffixe unique, les deux instances ouvriraient le même canal Realtime
@@ -183,6 +189,18 @@ export function ChannelChat({
             disabled={!canPost}
             style={{ flex: 1, resize: 'none', border: 'none', outline: 'none', background: 'transparent', color: 'var(--text)', fontFamily: FB, fontSize: 13.5, lineHeight: 1.5, maxHeight: 120, padding: 'var(--space-2) 0' }}
           />
+          {micSupported && (
+            <button
+              type="button"
+              onClick={() => { if (!isListening) voiceBase.current = input; toggleMic() }}
+              disabled={!canPost}
+              aria-label={isListening ? 'Arrêter la dictée' : 'Dicter'}
+              title={isListening ? 'Arrêter la dictée' : 'Dicter'}
+              className={isListening ? 'mic-listening' : undefined}
+              style={{ width: 36, height: 36, flexShrink: 0, border: 'none', borderRadius: 'var(--r-sm)', background: 'transparent', color: isListening ? 'var(--charge-hard)' : 'var(--text-mid)', cursor: canPost ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="2" width="6" height="12" rx="3" /><path d="M5 10a7 7 0 0 0 14 0M12 19v3" /></svg>
+            </button>
+          )}
           <button onClick={() => void send()} disabled={!input.trim() || sending || !canPost} aria-label="Envoyer"
             style={{ width: 36, height: 36, flexShrink: 0, border: 'none', borderRadius: 'var(--r-sm)', background: input.trim() && !sending ? 'var(--primary)' : 'var(--surface-neutral)', color: input.trim() && !sending ? 'var(--on-primary)' : 'var(--text-dim)', cursor: input.trim() && !sending && canPost ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.15s' }}>
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7z" /></svg>

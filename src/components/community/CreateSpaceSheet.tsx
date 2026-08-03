@@ -10,7 +10,6 @@ import type { CommunityEntitlements } from '@/lib/subscriptions/tier-limits'
 import type { CommunitySport } from '@/types/community'
 
 const FB = 'var(--font-body)', FD = 'var(--font-display)'
-const EMOJIS = ['👥', '🏃', '🚴', '🔥', '🏋️', '💪', '⚡', '🎯', '🏆', '🧠', '🌊', '⛰️']
 const SPORTS: { value: CommunitySport | ''; label: string }[] = [
   { value: '', label: 'Aucun' },
   { value: 'running', label: 'Running' },
@@ -30,7 +29,6 @@ export function CreateSpaceSheet({
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [sport, setSport] = useState<CommunitySport | ''>('')
-  const [emoji, setEmoji] = useState('👥')
   const [isPublic, setIsPublic] = useState(true)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -55,7 +53,6 @@ export function CreateSpaceSheet({
           name: name.trim(),
           description: description.trim() || null,
           sport: sport || null,
-          iconEmoji: ent.canBrand ? emoji : null,
           isPublic,
         }),
       })
@@ -79,19 +76,8 @@ export function CreateSpaceSheet({
           <>
             <h2 style={{ fontFamily: FD, fontSize: 20, fontWeight: 600, color: 'var(--text)', margin: '0 0 var(--space-1)' }}>Créer un espace</h2>
             <p style={{ fontFamily: FB, fontSize: 12.5, color: 'var(--text-mid)', margin: '0 0 var(--space-5)' }}>
-              Ton espace, tes canaux, ta communauté. {isFinite(ent.maxMembers) ? `Jusqu'à ${ent.maxMembers} membres.` : 'Membres illimités.'}
+              Ton espace, tes canaux, ta communauté. {Number.isFinite(ent.maxMembers) ? `Jusqu'à ${ent.maxMembers} membres.` : 'Membres illimités.'}
             </p>
-
-            {ent.canBrand && (
-              <Field label="Icône">
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)' }}>
-                  {EMOJIS.map(e => (
-                    <button key={e} onClick={() => setEmoji(e)} type="button"
-                      style={{ width: 40, height: 40, borderRadius: 'var(--r-sm)', border: 'none', cursor: 'pointer', fontSize: 20, background: emoji === e ? 'var(--primary-dim)' : 'var(--surface-neutral)', outline: emoji === e ? '2px solid var(--primary)' : 'none' }}>{e}</button>
-                  ))}
-                </div>
-              </Field>
-            )}
 
             <Field label="Nom">
               <input value={name} onChange={e => setName(e.target.value.slice(0, 80))} placeholder="Ex. Les grimpeurs du dimanche" style={inputStyle} />

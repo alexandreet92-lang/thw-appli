@@ -5,6 +5,11 @@ import { createClient } from '@/lib/supabase/client'
 
 export interface CoachSocials { instagram?: string; tiktok?: string; youtube?: string; strava?: string }
 
+/** Diplôme / certification. */
+export interface CoachDiploma { title: string; org?: string; year?: string }
+/** Ligne de palmarès / résultat marquant. */
+export interface CoachPalmares { title: string; year?: string }
+
 export interface CoachProfile {
   coach_id: string
   slug: string | null
@@ -12,10 +17,16 @@ export interface CoachProfile {
   headline: string | null
   bio: string | null
   logo_url: string | null
+  avatar_url: string | null
   website_url: string | null
   socials: CoachSocials
   sports: string[]
   location: string | null
+  diplomas: CoachDiploma[]
+  palmares: CoachPalmares[]
+  contact_email: string | null
+  phone: string | null
+  show_contact: boolean
   accepting_requests: boolean
   published: boolean
 }
@@ -29,11 +40,18 @@ export interface CoachingRequest {
   created_at: string
 }
 
-const COLS = 'coach_id, slug, display_name, headline, bio, logo_url, website_url, socials, sports, location, accepting_requests, published'
+const COLS = 'coach_id, slug, display_name, headline, bio, logo_url, avatar_url, website_url, socials, sports, location, diplomas, palmares, contact_email, phone, show_contact, accepting_requests, published'
 
 function norm(r: unknown): CoachProfile {
   const p = r as CoachProfile
-  return { ...p, socials: (p.socials ?? {}) as CoachSocials, sports: p.sports ?? [] }
+  return {
+    ...p,
+    socials: (p.socials ?? {}) as CoachSocials,
+    sports: p.sports ?? [],
+    diplomas: Array.isArray(p.diplomas) ? p.diplomas : [],
+    palmares: Array.isArray(p.palmares) ? p.palmares : [],
+    show_contact: !!p.show_contact,
+  }
 }
 
 /** Slug URL sûr à partir d'un nom (ascii, minuscules, tirets). */

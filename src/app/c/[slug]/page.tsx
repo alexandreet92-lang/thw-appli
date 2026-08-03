@@ -85,9 +85,9 @@ export default function CoachVitrine() {
       <div style={{ ...card, animation: 'vit_in 0.4s ease' }}>
         {/* Hero */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: 4 }}>
-          {profile.logo_url
+          {(profile.avatar_url || profile.logo_url)
             // eslint-disable-next-line @next/next/no-img-element
-            ? <img src={profile.logo_url} alt={name} style={{ width: 104, height: 104, borderRadius: 28, objectFit: 'cover', boxShadow: '0 10px 30px rgba(0,0,0,0.18)' }} />
+            ? <img src={profile.avatar_url || profile.logo_url || ''} alt={name} style={{ width: 104, height: 104, borderRadius: 28, objectFit: 'cover', boxShadow: '0 10px 30px rgba(0,0,0,0.18)' }} />
             : <div style={{ width: 104, height: 104, borderRadius: 28, background: 'var(--primary-gradient)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-display)', fontSize: 44, fontWeight: 600, boxShadow: '0 10px 30px rgba(6,182,212,0.28)' }}>{monogram}</div>}
 
           <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(26px, 6vw, 34px)', fontWeight: 600, letterSpacing: '-0.01em', color: 'var(--text)', margin: '18px 0 0', lineHeight: 1.1, textWrap: 'balance' as const }}>{name}</h1>
@@ -110,6 +110,56 @@ export default function CoachVitrine() {
         {/* Bio */}
         {profile.bio && (
           <p style={{ fontFamily: 'var(--font-body)', fontSize: 15, color: 'var(--text)', lineHeight: 1.65, margin: '26px auto 0', maxWidth: 540, textAlign: 'center', whiteSpace: 'pre-wrap' as const }}>{profile.bio}</p>
+        )}
+
+        {/* Diplômes & palmarès */}
+        {(profile.diplomas.length > 0 || profile.palmares.length > 0) && (
+          <div style={{ display: 'grid', gap: 22, marginTop: 30, maxWidth: 540, marginLeft: 'auto', marginRight: 'auto' }}>
+            {profile.diplomas.length > 0 && (
+              <div>
+                <div style={credLbl}>Diplômes & certifications</div>
+                <ul style={credList}>
+                  {profile.diplomas.map((d, i) => (
+                    <li key={i} style={credItem}>
+                      <span style={{ color: 'var(--text)', fontWeight: 600 }}>{d.title}</span>
+                      {(d.org || d.year) && <span style={{ color: 'var(--text-dim)' }}> — {[d.org, d.year].filter(Boolean).join(' · ')}</span>}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {profile.palmares.length > 0 && (
+              <div>
+                <div style={credLbl}>Palmarès</div>
+                <ul style={credList}>
+                  {profile.palmares.map((d, i) => (
+                    <li key={i} style={credItem}>
+                      <span style={{ color: 'var(--text)', fontWeight: 600 }}>{d.title}</span>
+                      {d.year && <span style={{ color: 'var(--text-dim)' }}> — {d.year}</span>}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Coordonnées (si le coach a choisi de les afficher) */}
+        {profile.show_contact && (profile.contact_email || profile.phone) && (
+          <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap', marginTop: 26 }}>
+            {profile.contact_email && (
+              <a href={`mailto:${profile.contact_email}`} style={contactChip}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 5L2 7"/></svg>
+                {profile.contact_email}
+              </a>
+            )}
+            {profile.phone && (
+              <a href={`tel:${profile.phone.replace(/\s+/g, '')}`} style={contactChip}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                {profile.phone}
+              </a>
+            )}
+          </div>
         )}
 
         {/* Liens */}
@@ -171,4 +221,15 @@ const ctaGhost: React.CSSProperties = {
   height: 48, padding: '0 20px', borderRadius: 'var(--r-md)', border: 'none', background: 'var(--bg-card2)',
   color: 'var(--text-mid)', fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 600, cursor: 'pointer',
   display: 'inline-flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none',
+}
+const credLbl: React.CSSProperties = {
+  fontFamily: 'var(--font-body)', fontSize: 11, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase',
+  color: 'var(--text-dim)', marginBottom: 10, textAlign: 'center',
+}
+const credList: React.CSSProperties = { listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 8 }
+const credItem: React.CSSProperties = { fontFamily: 'var(--font-body)', fontSize: 14, lineHeight: 1.5, textAlign: 'center' }
+const contactChip: React.CSSProperties = {
+  display: 'inline-flex', alignItems: 'center', gap: 8, padding: '9px 14px', borderRadius: 'var(--r-md)',
+  background: 'var(--bg-card2)', color: 'var(--text-mid)', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600,
+  textDecoration: 'none',
 }

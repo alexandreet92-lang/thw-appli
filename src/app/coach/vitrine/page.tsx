@@ -10,7 +10,7 @@ import Link from 'next/link'
 import {
   getMyCoachProfile, upsertMyCoachProfile, slugify,
   listIncomingRequests, respondToRequest,
-  type CoachProfile, type CoachingRequest,
+  type CoachProfile, type CoachingRequest, type CoachDiploma, type CoachPalmares,
 } from '@/lib/coach/vitrine'
 
 const SPORTS: { key: string; label: string }[] = [
@@ -30,7 +30,7 @@ export default function CoachVitrineEditor() {
   useEffect(() => {
     void (async () => {
       const prof = await getMyCoachProfile()
-      setP(prof ?? { coach_id: '', slug: null, display_name: '', headline: '', bio: '', logo_url: '', website_url: '', socials: {}, sports: [], location: '', accepting_requests: true, published: false })
+      setP(prof ?? { coach_id: '', slug: null, display_name: '', headline: '', bio: '', logo_url: '', avatar_url: '', website_url: '', socials: {}, sports: [], location: '', diplomas: [], palmares: [], contact_email: '', phone: '', show_contact: false, accepting_requests: true, published: false })
       setReqs(await listIncomingRequests().catch(() => []))
       setLoading(false)
     })()
@@ -41,6 +41,12 @@ export default function CoachVitrineEditor() {
   const set = (patch: Partial<CoachProfile>) => { setP({ ...p, ...patch }); setSaved(false) }
   const setSocial = (k: string, v: string) => set({ socials: { ...p.socials, [k]: v } })
   const toggleSport = (k: string) => set({ sports: p.sports.includes(k) ? p.sports.filter(x => x !== k) : [...p.sports, k] })
+  const addDiploma = () => set({ diplomas: [...p.diplomas, { title: '' }] })
+  const setDiploma = (i: number, patch: Partial<CoachDiploma>) => set({ diplomas: p.diplomas.map((d, j) => j === i ? { ...d, ...patch } : d) })
+  const removeDiploma = (i: number) => set({ diplomas: p.diplomas.filter((_, j) => j !== i) })
+  const addPalmares = () => set({ palmares: [...p.palmares, { title: '' }] })
+  const setPalm = (i: number, patch: Partial<CoachPalmares>) => set({ palmares: p.palmares.map((d, j) => j === i ? { ...d, ...patch } : d) })
+  const removePalm = (i: number) => set({ palmares: p.palmares.filter((_, j) => j !== i) })
 
   const save = async () => {
     setSaving(true)
@@ -109,6 +115,7 @@ export default function CoachVitrineEditor() {
         <Field label="Accroche"><input value={p.headline ?? ''} onChange={e => set({ headline: e.target.value })} style={inp} placeholder="Coach hybride endurance & force · Ironman" /></Field>
         <Field label="Description"><textarea value={p.bio ?? ''} onChange={e => set({ bio: e.target.value })} rows={4} style={{ ...inp, resize: 'vertical' }} placeholder="Ton parcours, ta méthode, pour qui tu coaches…" /></Field>
         <Field label="Localisation"><input value={p.location ?? ''} onChange={e => set({ location: e.target.value })} style={inp} placeholder="Paris · En ligne" /></Field>
+        <Field label="Photo de profil (URL image)"><input value={p.avatar_url ?? ''} onChange={e => set({ avatar_url: e.target.value })} style={inp} placeholder="https://…" /></Field>
         <Field label="Logo (URL image)"><input value={p.logo_url ?? ''} onChange={e => set({ logo_url: e.target.value })} style={inp} placeholder="https://…" /></Field>
 
         <div style={secLbl}>Sports</div>
@@ -125,6 +132,42 @@ export default function CoachVitrineEditor() {
         <Field label="TikTok"><input value={p.socials.tiktok ?? ''} onChange={e => setSocial('tiktok', e.target.value)} style={inp} placeholder="https://tiktok.com/@…" /></Field>
         <Field label="YouTube"><input value={p.socials.youtube ?? ''} onChange={e => setSocial('youtube', e.target.value)} style={inp} placeholder="https://youtube.com/@…" /></Field>
         <Field label="Strava"><input value={p.socials.strava ?? ''} onChange={e => setSocial('strava', e.target.value)} style={inp} placeholder="https://strava.com/athletes/…" /></Field>
+
+        {/* Diplômes & certifications */}
+        <div style={secLbl}>Diplômes & certifications</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {p.diplomas.map((d, i) => (
+            <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <input value={d.title} onChange={e => setDiploma(i, { title: e.target.value })} style={{ ...inp, flex: 2 }} placeholder="Diplôme / certification" />
+              <input value={d.org ?? ''} onChange={e => setDiploma(i, { org: e.target.value })} style={{ ...inp, flex: 1 }} placeholder="Organisme" />
+              <input value={d.year ?? ''} onChange={e => setDiploma(i, { year: e.target.value })} style={{ ...inp, width: 78, flex: 'none' }} placeholder="Année" inputMode="numeric" />
+              <button onClick={() => removeDiploma(i)} aria-label="Retirer" style={btnRemove}>×</button>
+            </div>
+          ))}
+          <button onClick={addDiploma} style={btnAdd}>+ Ajouter un diplôme</button>
+        </div>
+
+        {/* Palmarès */}
+        <div style={secLbl}>Palmarès</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {p.palmares.map((d, i) => (
+            <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <input value={d.title} onChange={e => setPalm(i, { title: e.target.value })} style={{ ...inp, flex: 1 }} placeholder="Résultat / titre (ex. Vainqueur Hyrox Paris)" />
+              <input value={d.year ?? ''} onChange={e => setPalm(i, { year: e.target.value })} style={{ ...inp, width: 78, flex: 'none' }} placeholder="Année" inputMode="numeric" />
+              <button onClick={() => removePalm(i)} aria-label="Retirer" style={btnRemove}>×</button>
+            </div>
+          ))}
+          <button onClick={addPalmares} style={btnAdd}>+ Ajouter un résultat</button>
+        </div>
+
+        {/* Coordonnées */}
+        <div style={secLbl}>Coordonnées</div>
+        <Field label="Email de contact"><input value={p.contact_email ?? ''} onChange={e => set({ contact_email: e.target.value })} style={inp} placeholder="coach@exemple.com" inputMode="email" /></Field>
+        <Field label="Téléphone"><input value={p.phone ?? ''} onChange={e => set({ phone: e.target.value })} style={inp} placeholder="+33 6 12 34 56 78" inputMode="tel" /></Field>
+        <div style={{ marginTop: 12 }}>
+          <Toggle on={p.show_contact} onClick={() => set({ show_contact: !p.show_contact })} label="Afficher mes coordonnées sur la vitrine" />
+          <p style={{ fontSize: 12, color: 'var(--text-dim)', margin: '6px 0 0', lineHeight: 1.5 }}>Si désactivé, email et téléphone restent privés. Les athlètes te contactent alors via une demande de coaching.</p>
+        </div>
 
         <button onClick={save} disabled={saving} style={{ ...btnPrimary, width: '100%', height: 46, marginTop: 20, fontSize: 14.5 }}>{saving ? 'Enregistrement…' : saved ? 'Enregistré ✓' : 'Enregistrer'}</button>
       </div>
@@ -156,3 +199,5 @@ const secLbl: React.CSSProperties = { fontSize: 11, fontWeight: 800, letterSpaci
 const inp: React.CSSProperties = { width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: 'var(--r-md)', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontFamily: 'var(--font-body)', fontSize: 14, outline: 'none' }
 const btnPrimary: React.CSSProperties = { padding: '8px 16px', borderRadius: 'var(--r-md)', border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }
 const btnGhost: React.CSSProperties = { padding: '8px 14px', borderRadius: 'var(--r-md)', border: 'none', background: 'var(--bg-card2)', color: 'var(--text-mid)', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }
+const btnAdd: React.CSSProperties = { alignSelf: 'flex-start', padding: '8px 14px', borderRadius: 'var(--r-md)', border: 'none', background: 'var(--bg-card2)', color: 'var(--primary)', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 700, cursor: 'pointer' }
+const btnRemove: React.CSSProperties = { width: 34, height: 34, flexShrink: 0, borderRadius: 'var(--r-sm)', border: 'none', background: 'var(--bg-card2)', color: 'var(--text-dim)', fontFamily: 'var(--font-body)', fontSize: 18, lineHeight: 1, cursor: 'pointer' }

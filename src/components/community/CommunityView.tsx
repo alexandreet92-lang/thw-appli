@@ -115,6 +115,7 @@ export function CommunityView() {
   const chat = channel && space ? (
     <ChannelChat
       channel={channel} isMember={space.isMember} canPost={space.isMember}
+      canUpload={space.isMember && ent.community.canUploadFiles}
       onJoin={doJoin} joining={joining}
     />
   ) : (

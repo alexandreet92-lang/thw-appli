@@ -38,6 +38,14 @@ export interface CommunityChannel {
   kind: ChannelKind
 }
 
+/** Pièce jointe d'un message (image ou fichier). */
+export interface CommunityAttachment {
+  url: string
+  type: 'image' | 'file'
+  name: string
+  size?: number
+}
+
 /** Un message d'un canal, avec l'auteur résolu (nom/avatar). */
 export interface CommunityMessage {
   id: string
@@ -47,6 +55,7 @@ export interface CommunityMessage {
   createdAt: string
   editedAt: string | null
   replyTo: string | null
+  attachments: CommunityAttachment[]
   authorName: string
   authorAvatar: string | null
 }

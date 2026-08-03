@@ -4,7 +4,7 @@
 // Densité lisible « type Whoop », feed façon Discord (avatar + nom + heure,
 // messages consécutifs groupés). Aucune bordure hors input ; tokens uniquement.
 // ══════════════════════════════════════════════════════════════════════════
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { getChannelMessages, sendChannelMessage } from '@/lib/community/messages'
 import { markChannelRead } from '@/lib/community/channels'
@@ -51,6 +51,12 @@ export function ChannelChat({
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
   const endRef = useRef<HTMLDivElement>(null)
+  // Nom de canal Realtime UNIQUE par instance : la page est montée dans les deux
+  // shells (desktop + mobile) simultanément, donc ChannelChat existe en double.
+  // Sans suffixe unique, les deux instances ouvriraient le même canal Realtime
+  // sur le client Supabase singleton → « cannot add postgres_changes callbacks
+  // after subscribe() ». useId() donne un identifiant stable et distinct par instance.
+  const instanceId = useId()
 
   const load = useCallback(async () => {
     if (!isMember) { setMessages([]); setLoading(false); return }
@@ -67,13 +73,13 @@ export function ChannelChat({
   useEffect(() => {
     if (!isMember) return
     const sb = createClient()
-    const ch = sb.channel(`comm-ch-${channel.id}`).on(
+    const ch = sb.channel(`comm-ch-${channel.id}-${instanceId}`).on(
       'postgres_changes',
       { event: 'INSERT', schema: 'public', table: 'community_messages', filter: `channel_id=eq.${channel.id}` },
       () => void load(),
     ).subscribe()
     return () => { void sb.removeChannel(ch) }
-  }, [channel.id, isMember, load])
+  }, [channel.id, isMember, load, instanceId])
 
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages])
 

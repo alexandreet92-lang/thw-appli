@@ -375,6 +375,13 @@ html.dark .cmp-section-remodeler { background: var(--bg-card); }
 }
 .mic-listening { animation: micPulse 1.2s ease-in-out infinite; }
 
+/* Communauté — transition « ouverture de page » (mobile, vues empilées). */
+@keyframes commSlideFwd { from { transform: translateX(38%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+@keyframes commSlideBack { from { transform: translateX(-24%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+.comm-slide-fwd { animation: commSlideFwd 0.28s cubic-bezier(0.22, 0.61, 0.36, 1); will-change: transform, opacity; }
+.comm-slide-back { animation: commSlideBack 0.26s cubic-bezier(0.22, 0.61, 0.36, 1); will-change: transform, opacity; }
+@media (prefers-reduced-motion: reduce) { .comm-slide-fwd, .comm-slide-back { animation: none; } }
+
 /* Communauté — survol d'un message : fond discret + barre d'actions révélée. */
 .comm-msg:hover { background: var(--bg-hover); }
 .comm-actions { opacity: 0; transition: opacity 0.12s ease; }

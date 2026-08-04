@@ -17,6 +17,7 @@ interface SpaceRow {
   kind: SpaceKind
   sport: CommunitySport | null
   icon_emoji: string
+  icon_url: string | null
   banner_url: string | null
   is_public: boolean
   created_by: string | null
@@ -33,7 +34,7 @@ export async function listSpaces(): Promise<CommunitySpace[]> {
 
   const [{ data: spacesData }, { data: memberData }] = await Promise.all([
     sb.from('community_spaces')
-      .select('id, name, slug, description, kind, sport, icon_emoji, banner_url, is_public, created_by, created_at')
+      .select('id, name, slug, description, kind, sport, icon_emoji, icon_url, banner_url, is_public, created_by, created_at')
       .order('kind', { ascending: true })   // 'official' < 'user'
       .order('created_at', { ascending: true }),
     sb.from('community_members').select('space_id, user_id, role'),
@@ -59,6 +60,7 @@ export async function listSpaces(): Promise<CommunitySpace[]> {
     kind: s.kind,
     sport: s.sport,
     iconEmoji: s.icon_emoji,
+    iconUrl: s.icon_url,
     bannerUrl: s.banner_url,
     isPublic: s.is_public,
     createdBy: s.created_by,
@@ -88,6 +90,15 @@ export async function leaveSpace(spaceId: string): Promise<boolean> {
     .delete()
     .eq('space_id', spaceId)
     .eq('user_id', me)
+  return !error
+}
+
+/** Met à jour le logo d'un espace (owner/admin via RLS). Retourne true si succès. */
+export async function updateSpaceIcon(spaceId: string, iconUrl: string | null): Promise<boolean> {
+  const { error } = await createClient()
+    .from('community_spaces')
+    .update({ icon_url: iconUrl })
+    .eq('id', spaceId)
   return !error
 }
 

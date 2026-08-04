@@ -6,11 +6,12 @@
 // Séparation par l'espace et le fond (--bg-card / --bg-card2), jamais par des
 // bordures. Realtime dans ChannelChat.
 // ══════════════════════════════════════════════════════════════════════════
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useEntitlements } from '@/hooks/useEntitlements'
-import { listSpaces, joinSpace, leaveSpace } from '@/lib/community/spaces'
+import { listSpaces, joinSpace, leaveSpace, updateSpaceIcon } from '@/lib/community/spaces'
 import { listChannels, createChannel, getUnreadChannelIds } from '@/lib/community/channels'
+import { uploadCommunityMedia } from '@/lib/community/messages'
 import { ChannelChat } from './ChannelChat'
 import { CreateSpaceSheet } from './CreateSpaceSheet'
 import { SpaceBadge } from './SpaceBadge'
@@ -29,6 +30,7 @@ export function CommunityView() {
   const [channelId, setChannelId] = useState<string | null>(null)
   const [isNarrow, setIsNarrow] = useState(false)
   const [mView, setMView] = useState<MobileView>('spaces')
+  const [dir, setDir] = useState<'fwd' | 'back'>('fwd')
   const [joining, setJoining] = useState(false)
   const [showCreate, setShowCreate] = useState(false)
   const [unread, setUnread] = useState<Set<string>>(new Set())
@@ -69,13 +71,14 @@ export function CommunityView() {
   const space = useMemo(() => spaces.find(s => s.id === spaceId) ?? null, [spaces, spaceId])
   const channel = useMemo(() => channels.find(c => c.id === channelId) ?? null, [channels, channelId])
 
+  function goSpaces() { setDir('back'); setMView('spaces') }
   function selectSpace(id: string) {
     setSpaceId(id); setChannelId(null)
-    if (isNarrow) setMView('channels')
+    if (isNarrow) { setDir('fwd'); setMView('channels') }
   }
   function selectChannel(id: string) {
     setChannelId(id); markRead(id)
-    if (isNarrow) setMView('chat')
+    if (isNarrow) { setDir('fwd'); setMView('chat') }
   }
 
   const doJoin = useCallback(async () => {
@@ -101,6 +104,12 @@ export function CommunityView() {
 
   const canManage = !!space && (space.myRole === 'owner' || space.myRole === 'admin')
 
+  const doSetLogo = useCallback(async (file: File) => {
+    if (!space) return
+    const att = await uploadCommunityMedia(file)
+    if (att && await updateSpaceIcon(space.id, att.url)) await loadSpaces(space.id)
+  }, [space, loadSpaces])
+
   // ── Sous-vues ──────────────────────────────────────────────────────────
   const rail = (
     <SpaceRail
@@ -113,9 +122,10 @@ export function CommunityView() {
     <ChannelColumn
       space={space} channels={channels} activeId={channelId} loading={loadingChannels}
       isNarrow={isNarrow} joining={joining} canManage={canManage} unread={unread}
+      canBrand={canManage && ent.community.canBrand}
       onSelect={selectChannel} onJoin={doJoin} onLeave={doLeave}
-      onCreateChannel={doCreateChannel}
-      onBack={() => setMView('spaces')}
+      onCreateChannel={doCreateChannel} onSetLogo={doSetLogo}
+      onBack={goSpaces}
     />
   )
 
@@ -134,7 +144,7 @@ export function CommunityView() {
 
   const chatWithBack = isNarrow ? (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
-      <button onClick={() => setMView('channels')} style={backBar}>
+      <button onClick={() => { setDir('back'); setMView('channels') }} style={backBar}>
         <BackIcon /> <span>{space ? space.name : 'Retour'}</span>
       </button>
       <div style={{ flex: 1, minHeight: 0 }}>{chat}</div>
@@ -145,10 +155,13 @@ export function CommunityView() {
   return (
     <div style={{ height: '100%', minHeight: 0, display: 'flex', flexDirection: 'column', fontFamily: FB }}>
       {isNarrow ? (
-        <div style={{ flex: 1, minHeight: 0, overflow: 'hidden', borderRadius: 'var(--r-lg)', background: 'var(--bg-card)' }}>
-          {mView === 'spaces' && <MobileSpaces spaces={spaces} loading={loadingSpaces} onSelect={selectSpace} canCreate={ent.community.canCreate} onCreate={() => setShowCreate(true)} />}
-          {mView === 'channels' && channelCol}
-          {mView === 'chat' && chatWithBack}
+        <div style={{ flex: 1, minHeight: 0, overflow: 'hidden', borderRadius: 'var(--r-lg)', background: 'var(--bg-card)', position: 'relative' }}>
+          {/* Vues empilées avec transition « ouverture de page » fluide (clé = vue). */}
+          <div key={mView} className={dir === 'fwd' ? 'comm-slide-fwd' : 'comm-slide-back'} style={{ height: '100%', minHeight: 0 }}>
+            {mView === 'spaces' && <MobileSpaces spaces={spaces} loading={loadingSpaces} onSelect={selectSpace} canCreate={ent.community.canCreate} onCreate={() => setShowCreate(true)} />}
+            {mView === 'channels' && channelCol}
+            {mView === 'chat' && chatWithBack}
+          </div>
         </div>
       ) : (
         <div style={{ flex: 1, minHeight: 0, display: 'grid', gridTemplateColumns: '56px 248px 1fr', overflow: 'hidden', borderRadius: 'var(--r-lg)', background: 'var(--bg-card)' }}>
@@ -162,7 +175,7 @@ export function CommunityView() {
         <CreateSpaceSheet
           ent={ent.community}
           onClose={() => setShowCreate(false)}
-          onCreated={(s) => { setShowCreate(false); void loadSpaces(s.id); if (isNarrow) setMView('channels') }}
+          onCreated={(s) => { setShowCreate(false); void loadSpaces(s.id); if (isNarrow) { setDir('fwd'); setMView('channels') } }}
         />
       )}
     </div>
@@ -199,13 +212,14 @@ function SpaceRail({ spaces, activeId, loading, onSelect, onCreate }: {
 }
 
 // ── Colonne des canaux ──────────────────────────────────────────────────────
-function ChannelColumn({ space, channels, activeId, loading, isNarrow, joining, canManage, unread, onSelect, onJoin, onLeave, onCreateChannel, onBack }: {
+function ChannelColumn({ space, channels, activeId, loading, isNarrow, joining, canManage, canBrand, unread, onSelect, onJoin, onLeave, onCreateChannel, onSetLogo, onBack }: {
   space: CommunitySpace | null; channels: CommunityChannel[]; activeId: string | null; loading: boolean
-  isNarrow: boolean; joining: boolean; canManage: boolean; unread: Set<string>
-  onSelect: (id: string) => void; onJoin: () => void; onLeave: () => void; onCreateChannel: (name: string) => void; onBack: () => void
+  isNarrow: boolean; joining: boolean; canManage: boolean; canBrand: boolean; unread: Set<string>
+  onSelect: (id: string) => void; onJoin: () => void; onLeave: () => void; onCreateChannel: (name: string) => void; onSetLogo: (file: File) => void; onBack: () => void
 }) {
   const [adding, setAdding] = useState(false)
   const [newName, setNewName] = useState('')
+  const logoRef = useRef<HTMLInputElement>(null)
   if (!space) {
     return <div style={{ padding: 'var(--space-6)', color: 'var(--text-dim)', fontFamily: FB, fontSize: 13 }}>—</div>
   }
@@ -222,7 +236,21 @@ function ChannelColumn({ space, channels, activeId, loading, isNarrow, joining, 
           <button onClick={onBack} style={{ ...backBar, padding: 0, marginBottom: 'var(--space-3)', background: 'transparent' }}><BackIcon /> <span>Espaces</span></button>
         )}
         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
-          <SpaceBadge space={space} size={34} />
+          {canBrand ? (
+            <>
+              <input ref={logoRef} type="file" accept="image/*" style={{ display: 'none' }}
+                onChange={e => { const f = e.target.files?.[0]; e.target.value = ''; if (f) onSetLogo(f) }} />
+              <button onClick={() => logoRef.current?.click()} title="Changer le logo" aria-label="Changer le logo"
+                style={{ position: 'relative', border: 'none', padding: 0, background: 'transparent', cursor: 'pointer', borderRadius: 'var(--r-md)', lineHeight: 0 }}>
+                <SpaceBadge space={space} size={34} />
+                <span style={{ position: 'absolute', right: -3, bottom: -3, width: 16, height: 16, borderRadius: '50%', background: 'var(--primary)', color: 'var(--on-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 0 2px var(--bg-card2)' }}>
+                  <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" /></svg>
+                </span>
+              </button>
+            </>
+          ) : (
+            <SpaceBadge space={space} size={34} />
+          )}
           <span style={{ fontFamily: FD, fontSize: 17, fontWeight: 600, color: 'var(--text)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{space.name}</span>
         </div>
         <div className="tnum" style={{ fontFamily: FB, fontSize: 11.5, color: 'var(--text-dim)', marginTop: 'var(--space-1)', fontVariantNumeric: 'tabular-nums' }}>
@@ -316,9 +344,12 @@ function MobileSpaces({ spaces, loading, onSelect, canCreate, onCreate }: {
           <span style={{ flex: 1, minWidth: 0 }}>
             <span style={{ display: 'block', fontSize: 14, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.name}</span>
             <span className="tnum" style={{ display: 'block', fontSize: 11.5, color: 'var(--text-dim)', marginTop: 2, fontVariantNumeric: 'tabular-nums' }}>
-              {s.memberCount} membre{s.memberCount > 1 ? 's' : ''}{s.isMember ? ' · membre' : ''}
+              {s.memberCount} membre{s.memberCount > 1 ? 's' : ''}{s.kind === 'official' ? ' · Officiel' : ''}
             </span>
           </span>
+          {s.isMember && (
+            <span style={{ flexShrink: 0, fontFamily: FB, fontSize: 10.5, fontWeight: 600, color: 'var(--primary)', background: 'var(--primary-dim)', padding: '3px 8px', borderRadius: 'var(--r-sm)' }}>Membre</span>
+          )}
           <BackIcon flip />
         </button>
       ))}

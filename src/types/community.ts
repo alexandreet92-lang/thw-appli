@@ -18,6 +18,7 @@ export interface CommunitySpace {
   kind: SpaceKind
   sport: CommunitySport | null
   iconEmoji: string
+  iconUrl: string | null
   bannerUrl: string | null
   isPublic: boolean
   createdBy: string | null

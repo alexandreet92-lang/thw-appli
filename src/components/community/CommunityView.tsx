@@ -13,6 +13,7 @@ import { listSpaces, joinSpace, leaveSpace, updateSpaceIcon } from '@/lib/commun
 import { listChannels, createChannel, getUnreadChannelIds } from '@/lib/community/channels'
 import { uploadCommunityMedia } from '@/lib/community/messages'
 import { ChannelChat } from './ChannelChat'
+import { EventsView } from './EventsView'
 import { CreateSpaceSheet } from './CreateSpaceSheet'
 import { SpaceBadge } from './SpaceBadge'
 import type { CommunitySpace, CommunityChannel } from '@/types/community'
@@ -31,6 +32,7 @@ export function CommunityView() {
   const [isNarrow, setIsNarrow] = useState(false)
   const [mView, setMView] = useState<MobileView>('spaces')
   const [dir, setDir] = useState<'fwd' | 'back'>('fwd')
+  const [panel, setPanel] = useState<'chat' | 'events'>('chat')
   const [joining, setJoining] = useState(false)
   const [showCreate, setShowCreate] = useState(false)
   const [unread, setUnread] = useState<Set<string>>(new Set())
@@ -77,7 +79,11 @@ export function CommunityView() {
     if (isNarrow) { setDir('fwd'); setMView('channels') }
   }
   function selectChannel(id: string) {
-    setChannelId(id); markRead(id)
+    setChannelId(id); markRead(id); setPanel('chat')
+    if (isNarrow) { setDir('fwd'); setMView('chat') }
+  }
+  function selectEvents() {
+    setPanel('events')
     if (isNarrow) { setDir('fwd'); setMView('chat') }
   }
 
@@ -123,11 +129,17 @@ export function CommunityView() {
       space={space} channels={channels} activeId={channelId} loading={loadingChannels}
       isNarrow={isNarrow} joining={joining} canManage={canManage} unread={unread}
       canBrand={canManage && ent.community.canBrand}
+      panel={panel} onEvents={selectEvents}
       onSelect={selectChannel} onJoin={doJoin} onLeave={doLeave}
       onCreateChannel={doCreateChannel} onSetLogo={doSetLogo}
       onBack={goSpaces}
     />
   )
+
+  const eventsPane = space ? (
+    <EventsView spaceId={space.id} isMember={space.isMember} canManage={canManage} isNarrow={isNarrow}
+      onBack={() => { setDir('back'); setMView('channels') }} />
+  ) : null
 
   const chat = channel && space ? (
     <ChannelChat
@@ -142,14 +154,16 @@ export function CommunityView() {
     </div>
   )
 
-  const chatWithBack = isNarrow ? (
+  const centerPane = panel === 'events' ? eventsPane : chat
+
+  const chatWithBack = panel === 'events' ? eventsPane : (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
       <button onClick={() => { setDir('back'); setMView('channels') }} style={backBar}>
         <BackIcon /> <span>{space ? space.name : 'Retour'}</span>
       </button>
       <div style={{ flex: 1, minHeight: 0 }}>{chat}</div>
     </div>
-  ) : chat
+  )
 
   // ── Rendu ──────────────────────────────────────────────────────────────
   return (
@@ -167,7 +181,7 @@ export function CommunityView() {
         <div style={{ flex: 1, minHeight: 0, display: 'grid', gridTemplateColumns: '56px 248px 1fr', overflow: 'hidden', borderRadius: 'var(--r-lg)', background: 'var(--bg-card)' }}>
           <div style={{ minHeight: 0, background: 'var(--bg-card2)' }}>{rail}</div>
           <div style={{ minHeight: 0, background: 'var(--bg-card2)' }}>{channelCol}</div>
-          <div style={{ minHeight: 0 }}>{chat}</div>
+          <div style={{ minHeight: 0 }}>{centerPane}</div>
         </div>
       )}
 
@@ -212,9 +226,10 @@ function SpaceRail({ spaces, activeId, loading, onSelect, onCreate }: {
 }
 
 // ── Colonne des canaux ──────────────────────────────────────────────────────
-function ChannelColumn({ space, channels, activeId, loading, isNarrow, joining, canManage, canBrand, unread, onSelect, onJoin, onLeave, onCreateChannel, onSetLogo, onBack }: {
+function ChannelColumn({ space, channels, activeId, loading, isNarrow, joining, canManage, canBrand, unread, panel, onEvents, onSelect, onJoin, onLeave, onCreateChannel, onSetLogo, onBack }: {
   space: CommunitySpace | null; channels: CommunityChannel[]; activeId: string | null; loading: boolean
   isNarrow: boolean; joining: boolean; canManage: boolean; canBrand: boolean; unread: Set<string>
+  panel: 'chat' | 'events'; onEvents: () => void
   onSelect: (id: string) => void; onJoin: () => void; onLeave: () => void; onCreateChannel: (name: string) => void; onSetLogo: (file: File) => void; onBack: () => void
 }) {
   const [adding, setAdding] = useState(false)
@@ -268,6 +283,15 @@ function ChannelColumn({ space, channels, activeId, loading, isNarrow, joining, 
             <span style={{ fontFamily: FB, fontSize: 11.5, fontWeight: 600, color: 'var(--primary)' }}>Ton espace</span>
           )}
         </div>
+      </div>
+
+      {/* Raccourci Événements */}
+      <div style={{ flexShrink: 0, padding: '0 var(--space-2) var(--space-2)' }}>
+        <button onClick={onEvents}
+          style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', width: '100%', textAlign: 'left', border: 'none', cursor: 'pointer', borderRadius: 'var(--r-sm)', padding: 'var(--space-2) var(--space-3)', minHeight: 36, background: panel === 'events' ? 'var(--surface-neutral)' : 'transparent', fontFamily: FB }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-dim)', flexShrink: 0 }}><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></svg>
+          <span style={{ flex: 1, fontSize: 13.5, fontWeight: panel === 'events' ? 600 : 500, color: panel === 'events' ? 'var(--text)' : 'var(--text-mid)' }}>Événements</span>
+        </button>
       </div>
 
       {/* Liste des canaux */}

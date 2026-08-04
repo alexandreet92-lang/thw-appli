@@ -806,6 +806,7 @@ const NOTIF_CATEGORIES: NotifCategory[] = [
   ]},
   { id:'communaute', label:'Communauté', color:'var(--primary)', Icon: Users, items:[
     { key:'communaute.mention',         label:'Mention',           sub:'Quelqu\'un te mentionne dans un espace', def:true },
+    { key:'communaute.evenement',       label:'Événements',        sub:'Nouvelle sortie / défi dans tes espaces', def:true },
     { key:'communaute.nouveau_message', label:'Nouveaux messages', sub:'Activité dans tes espaces', def:false },
   ]},
   { id:'systeme', label:'Système', color:'#94a3b8', Icon: Settings, items:[

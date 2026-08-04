@@ -85,3 +85,23 @@ export interface CommunityMemberInfo {
   name: string
   avatar: string | null
 }
+
+export type EventKind = 'sortie' | 'wod' | 'defi' | 'course' | 'autre'
+export type RsvpStatus = 'going' | 'maybe' | 'no'
+
+/** Un événement / défi d'un espace, enrichi des compteurs RSVP + ma réponse. */
+export interface CommunityEvent {
+  id: string
+  spaceId: string
+  createdBy: string
+  title: string
+  description: string | null
+  kind: EventKind
+  location: string | null
+  startsAt: string
+  createdAt: string
+  authorName: string
+  goingCount: number
+  maybeCount: number
+  myRsvp: RsvpStatus | null
+}

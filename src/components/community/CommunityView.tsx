@@ -113,7 +113,7 @@ export function CommunityView() {
   const doSetLogo = useCallback(async (file: File) => {
     if (!space) return
     const att = await uploadCommunityMedia(file)
-    if (att && await updateSpaceIcon(space.id, att.url)) await loadSpaces(space.id)
+    if (att?.url && await updateSpaceIcon(space.id, att.url)) await loadSpaces(space.id)
   }, [space, loadSpaces])
 
   // ── Sous-vues ──────────────────────────────────────────────────────────

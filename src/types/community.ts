@@ -39,12 +39,29 @@ export interface CommunityChannel {
   kind: ChannelKind
 }
 
-/** Pièce jointe d'un message (image ou fichier). */
+/** Résumé dénormalisé d'une activité partagée (snapshot — les autres membres ne
+ *  peuvent pas lire la ligne `activities` d'autrui, RLS oblige). */
+export interface ActivityRef {
+  id: string
+  ownerId: string
+  sport: string
+  title: string | null
+  distanceM: number | null
+  durationS: number | null
+  startedAt: string
+  tss: number | null
+  avgHr: number | null
+  avgPaceSKm: number | null
+  isRace: boolean
+}
+
+/** Pièce jointe d'un message : image, fichier, ou activité partagée. */
 export interface CommunityAttachment {
-  url: string
-  type: 'image' | 'file'
-  name: string
+  type: 'image' | 'file' | 'activity'
+  url?: string          // image / fichier
+  name?: string
   size?: number
+  activity?: ActivityRef // type === 'activity'
 }
 
 /** Agrégat de réaction sur un message (un emoji + son compte). */

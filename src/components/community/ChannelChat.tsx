@@ -12,11 +12,14 @@ import {
 } from '@/lib/community/messages'
 import { markChannelRead } from '@/lib/community/channels'
 import { toggleReaction, QUICK_REACTIONS } from '@/lib/community/reactions'
+import { getPinnedIds, getPinnedMessages, togglePin } from '@/lib/community/pins'
 import { listSpaceMembers } from '@/lib/community/spaces'
 import { usePresenceCount } from '@/lib/community/presence'
 import { useSpeechToText } from '@/hooks/useSpeechToText'
 import { myId } from '@/lib/community/shared'
-import type { CommunityChannel, CommunityMessage, CommunityAttachment, CommunityMemberInfo } from '@/types/community'
+import { ShareActivitySheet } from './ShareActivitySheet'
+import { ActivityCard } from './ActivityCard'
+import type { CommunityChannel, CommunityMessage, CommunityAttachment, CommunityMemberInfo, ActivityRef } from '@/types/community'
 
 const FB = 'var(--font-body)', FD = 'var(--font-display)'
 
@@ -73,9 +76,13 @@ export function ChannelChat({
   const [pending, setPending] = useState<CommunityAttachment[]>([])
   const [uploading, setUploading] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
+  const [sharing, setSharing] = useState(false)
   const [me, setMe] = useState<string | null>(null)
   const [members, setMembers] = useState<CommunityMemberInfo[]>([])
   const [reactFor, setReactFor] = useState<string | null>(null)
+  const [pinnedIds, setPinnedIds] = useState<Set<string>>(new Set())
+  const [showPins, setShowPins] = useState(false)
+  const [pinnedList, setPinnedList] = useState<CommunityMessage[] | null>(null)
   const [replyTo, setReplyTo] = useState<{ id: string; authorName: string } | null>(null)
   const [editing, setEditing] = useState<{ id: string; text: string } | null>(null)
   const [mentionQuery, setMentionQuery] = useState<string | null>(null)
@@ -94,13 +101,23 @@ export function ChannelChat({
 
   const load = useCallback(async () => {
     if (!isMember) { setMessages([]); setLoading(false); return }
-    const msgs = await getChannelMessages(channel.id)
+    const [msgs, pins] = await Promise.all([getChannelMessages(channel.id), getPinnedIds(channel.id)])
     idsRef.current = new Set(msgs.map(m => m.id))
-    setMessages(msgs)
+    setMessages(msgs); setPinnedIds(pins)
     setLoading(false)
     void markChannelRead(channel.id)
     onRead?.(channel.id)
   }, [channel.id, isMember, onRead])
+
+  async function pin(m: CommunityMessage) {
+    setReactFor(null)
+    const isPinned = pinnedIds.has(m.id)
+    if (await togglePin(channel.spaceId, channel.id, m.id, isPinned)) { void load(); if (showPins) setPinnedList(await getPinnedMessages(channel.id)) }
+  }
+  async function openPins() {
+    setShowPins(true); setPinnedList(null)
+    setPinnedList(await getPinnedMessages(channel.id))
+  }
 
   useEffect(() => { setLoading(true); setReplyTo(null); setEditing(null); void load() }, [load])
   useEffect(() => { void myId().then(setMe) }, [])
@@ -122,11 +139,19 @@ export function ChannelChat({
           const mid = payload.new?.message_id ?? payload.old?.message_id
           if (mid && idsRef.current.has(mid)) void load()
         })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'community_pins', filter: `channel_id=eq.${channel.id}` },
+        () => void load())
       .subscribe()
     return () => { void sb.removeChannel(ch) }
   }, [channel.id, isMember, load, instanceId])
 
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages])
+
+  const roleOf = useMemo(() => {
+    const m = new Map<string, string>()
+    members.forEach(x => m.set(x.userId, x.role))
+    return m
+  }, [members])
 
   const filteredMentions = useMemo(() => {
     if (mentionQuery === null) return []
@@ -168,6 +193,11 @@ export function ChannelChat({
     if (!canUpload) { setNotice('Passe Premium pour envoyer des photos et fichiers.'); return }
     fileRef.current?.click()
   }
+  async function shareActivity(a: ActivityRef) {
+    setSharing(false)
+    const ok = await sendChannelMessage(channel.id, '', [{ type: 'activity', activity: a }])
+    if (ok) void load(); else setNotice('Partage impossible.')
+  }
   async function handleFiles(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? []); e.target.value = ''
     if (files.length === 0) return
@@ -206,6 +236,13 @@ export function ChannelChat({
           <span style={{ fontFamily: FD, fontSize: 17, fontWeight: 600, color: 'var(--text)' }}>#{channel.name}</span>
           {channel.topic && <p style={{ margin: '2px 0 0', fontFamily: FB, fontSize: 12.5, color: 'var(--text-mid)', lineHeight: 1.4 }}>{channel.topic}</p>}
         </div>
+        {isMember && pinnedIds.size > 0 && (
+          <button onClick={() => void openPins()} title="Messages épinglés"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 5, flexShrink: 0, height: 28, padding: '0 var(--space-2)', border: 'none', borderRadius: 'var(--r-sm)', background: 'var(--surface-neutral)', color: 'var(--text-mid)', cursor: 'pointer', fontFamily: FB, fontSize: 11.5, fontWeight: 600 }}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M12 17v5M9 3h6l-1 6 3 3H7l3-3-1-6z" /></svg>
+            <span className="tnum" style={{ fontVariantNumeric: 'tabular-nums' }}>{pinnedIds.size}</span>
+          </button>
+        )}
         {isMember && presence > 0 && (
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexShrink: 0, fontFamily: FB, fontSize: 11.5, color: 'var(--text-mid)' }}>
             <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--sport-run)' }} />
@@ -238,6 +275,31 @@ export function ChannelChat({
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0, background: 'var(--bg-card)' }}>
       {header}
 
+      {/* Panneau messages épinglés */}
+      {showPins && (
+        <div style={{ flexShrink: 0, maxHeight: 220, overflowY: 'auto', background: 'var(--bg-card2)', padding: 'var(--space-3) var(--space-5)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-2)' }}>
+            <span style={{ fontFamily: FB, fontSize: 11, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-dim)' }}>Épinglés</span>
+            <button onClick={() => setShowPins(false)} aria-label="Fermer" style={{ width: 22, height: 22, border: 'none', borderRadius: '50%', background: 'transparent', color: 'var(--text-mid)', cursor: 'pointer', fontSize: 14 }}>×</button>
+          </div>
+          {pinnedList === null ? (
+            <p style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-dim)', margin: 0 }}>Chargement…</p>
+          ) : pinnedList.length === 0 ? (
+            <p style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-dim)', margin: 0 }}>Aucun message épinglé.</p>
+          ) : pinnedList.map(pm => (
+            <div key={pm.id} style={{ display: 'flex', gap: 'var(--space-2)', padding: 'var(--space-2) 0', alignItems: 'flex-start' }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <span style={{ fontFamily: FB, fontSize: 12, fontWeight: 600, color: 'var(--text)' }}>{pm.authorName}</span>
+                <p style={{ margin: '2px 0 0', fontFamily: FB, fontSize: 12.5, color: 'var(--text-mid)', lineHeight: 1.4, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{pm.body || (pm.attachments.length ? 'Pièce jointe' : '')}</p>
+              </div>
+              {canModerate && (
+                <button onClick={() => void pin(pm)} aria-label="Désépingler" style={{ width: 24, height: 24, flexShrink: 0, border: 'none', borderRadius: 'var(--r-sm)', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 13 }}>×</button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Fil */}
       <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: 'var(--space-2) var(--space-4) var(--space-4)' }}>
         {loading ? <MessagesSkeleton /> : messages.length === 0 ? (
@@ -268,6 +330,7 @@ export function ChannelChat({
                   {!grouped && (
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--space-2)', marginBottom: 2 }}>
                       <span style={{ fontFamily: FB, fontSize: 13.5, fontWeight: 600, color: 'var(--text)' }}>{m.authorName}</span>
+                      <RoleBadge role={roleOf.get(m.authorId)} />
                       <span className="tnum" style={{ fontFamily: FB, fontSize: 10.5, color: 'var(--text-dim)', fontVariantNumeric: 'tabular-nums' }}>{fmtTime(m.createdAt)}</span>
                       {m.editedAt && <span style={{ fontFamily: FB, fontSize: 10, color: 'var(--text-dim)' }}>(modifié)</span>}
                     </div>
@@ -285,7 +348,7 @@ export function ChannelChat({
                   ) : (
                     <>
                       {m.body && <Body text={m.body} />}
-                      {m.attachments.length > 0 && <Attachments items={m.attachments} />}
+                      {m.attachments.length > 0 && <Attachments items={m.attachments} me={me} />}
                       {m.reactions.length > 0 && (
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)', marginTop: 'var(--space-2)' }}>
                           {m.reactions.map(r => (
@@ -310,6 +373,11 @@ export function ChannelChat({
                     <ActionBtn label="Répondre" onClick={() => { setReplyTo({ id: m.id, authorName: m.authorName }); taRef.current?.focus() }}>
                       <path d="M9 17l-5-5 5-5M4 12h11a4 4 0 0 1 4 4v1" />
                     </ActionBtn>
+                    {canModerate && (
+                      <ActionBtn label={pinnedIds.has(m.id) ? 'Désépingler' : 'Épingler'} onClick={() => void pin(m)}>
+                        <path d="M12 17v5M9 3h6l-1 6 3 3H7l3-3-1-6z" />
+                      </ActionBtn>
+                    )}
                     {mine && (
                       <ActionBtn label="Éditer" onClick={() => setEditing({ id: m.id, text: m.body })}>
                         <path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" />
@@ -374,6 +442,9 @@ export function ChannelChat({
           <IconBtn label="Photo, fichier…" onClick={openFilePicker} disabled={!canPost}>
             <path d="M12 5v14M5 12h14" />
           </IconBtn>
+          <IconBtn label="Partager une activité" onClick={() => canPost && setSharing(true)} disabled={!canPost}>
+            <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+          </IconBtn>
           <textarea ref={taRef} value={input} onChange={onInputChange}
             onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && mentionQuery === null) { e.preventDefault(); void send() } }}
             placeholder={`Écrire dans #${channel.name}…`} rows={1} disabled={!canPost}
@@ -392,7 +463,19 @@ export function ChannelChat({
           </button>
         </div>
       </div>
+
+      {sharing && <ShareActivitySheet onClose={() => setSharing(false)} onShare={a => void shareActivity(a)} />}
     </div>
+  )
+}
+
+// Badge de rôle à côté du nom d'auteur (owner/admin/coach). 'member' → rien.
+function RoleBadge({ role }: { role?: string }) {
+  if (!role || role === 'member') return null
+  const label = role === 'owner' ? 'Créateur' : role === 'coach' ? 'Coach' : 'Modo'
+  const accent = role === 'owner' || role === 'coach'
+  return (
+    <span style={{ fontFamily: FB, fontSize: 9.5, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', padding: '2px 6px', borderRadius: 'var(--r-sm)', color: accent ? 'var(--primary)' : 'var(--text-mid)', background: accent ? 'var(--primary-dim)' : 'var(--surface-neutral)' }}>{label}</span>
   )
 }
 
@@ -413,10 +496,12 @@ function IconBtn({ label, onClick, disabled, children }: { label: string; onClic
   )
 }
 
-function Attachments({ items }: { items: CommunityAttachment[] }) {
+function Attachments({ items, me }: { items: CommunityAttachment[]; me: string | null }) {
   return (
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)', marginTop: 'var(--space-2)' }}>
-      {items.map(a => a.type === 'image' ? (
+      {items.map(a => a.type === 'activity' && a.activity ? (
+        <ActivityCard key={a.activity.id} activity={a.activity} me={me} />
+      ) : a.type === 'image' ? (
         <a key={a.url} href={a.url} target="_blank" rel="noopener noreferrer" style={{ display: 'block', lineHeight: 0 }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={a.url} alt={a.name} style={{ maxWidth: 320, maxHeight: 320, width: 'auto', height: 'auto', borderRadius: 'var(--r-md)', objectFit: 'cover', background: 'var(--surface-neutral)' }} />

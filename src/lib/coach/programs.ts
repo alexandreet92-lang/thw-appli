@@ -6,12 +6,16 @@ import { createClient } from '@/lib/supabase/client'
 
 export type ProgramLevel = 'debutant' | 'intermediaire' | 'avance' | 'tous'
 
+export type PrepType = 'endurance' | 'force' | 'hybride' | 'competition' | 'reprise' | 'perte_poids'
+
 /** Une séance d'un programme (forme allégée, alignée sur session_library). */
 export interface ProgramSession {
   nom: string
   sport: string
   type?: string
   duree?: number            // minutes
+  distance?: number         // km (m pour la natation)
+  rpe?: number              // 1..10
   intensite?: 'Faible' | 'Modéré' | 'Élevé' | 'Maximum'
   description?: string
 }
@@ -27,6 +31,8 @@ export interface CoachProgram {
   coach_id: string
   title: string
   description: string | null
+  objective: string | null
+  prep_type: PrepType | null
   sports: string[]
   level: ProgramLevel | null
   duration_weeks: number
@@ -37,7 +43,7 @@ export interface CoachProgram {
   updated_at: string
 }
 
-const COLS = 'id, coach_id, title, description, sports, level, duration_weeks, structure, cover_url, published, created_at, updated_at'
+const COLS = 'id, coach_id, title, description, objective, prep_type, sports, level, duration_weeks, structure, cover_url, published, created_at, updated_at'
 
 function norm(r: unknown): CoachProgram {
   const p = r as CoachProgram
@@ -96,7 +102,7 @@ export async function createProgram(title: string): Promise<string | null> {
 export async function updateProgram(id: string, patch: Partial<CoachProgram>): Promise<void> {
   const sb = createClient()
   const allowed: Partial<CoachProgram> = {}
-  for (const k of ['title', 'description', 'sports', 'level', 'duration_weeks', 'structure', 'cover_url', 'published'] as const) {
+  for (const k of ['title', 'description', 'objective', 'prep_type', 'sports', 'level', 'duration_weeks', 'structure', 'cover_url', 'published'] as const) {
     if (k in patch) (allowed as Record<string, unknown>)[k] = patch[k]
   }
   await sb.from('coach_programs').update(allowed).eq('id', id)
@@ -153,4 +159,32 @@ export async function addProgramToMyPlanning(program: CoachProgram): Promise<num
 // ── Libellés ────────────────────────────────────────────────────────
 export const LEVEL_LABEL: Record<ProgramLevel, string> = {
   debutant: 'Débutant', intermediaire: 'Intermédiaire', avance: 'Avancé', tous: 'Tous niveaux',
+}
+export const PREP_LABEL: Record<PrepType, string> = {
+  endurance: 'Endurance', force: 'Force', hybride: 'Hybride',
+  competition: 'Compétition', reprise: 'Reprise', perte_poids: 'Perte de poids',
+}
+
+export interface SportStat { sport: string; sessions: number; minutes: number; rpe: number | null; distance: number | null }
+export interface ProgramStats { total: number; minutes: number; bySport: SportStat[] }
+
+/** Agrège les séances d'un programme : total + par sport (nb, durée, RPE moyen, distance). */
+export function computeProgramStats(structure: ProgramWeek[]): ProgramStats {
+  const all = structure.flatMap(w => w.sessions)
+  const map = new Map<string, { sessions: number; minutes: number; rpeSum: number; rpeN: number; distance: number }>()
+  for (const s of all) {
+    const k = s.sport || 'running'
+    const cur = map.get(k) ?? { sessions: 0, minutes: 0, rpeSum: 0, rpeN: 0, distance: 0 }
+    cur.sessions += 1
+    cur.minutes += s.duree ?? 0
+    if (typeof s.rpe === 'number' && s.rpe > 0) { cur.rpeSum += s.rpe; cur.rpeN += 1 }
+    if (typeof s.distance === 'number') cur.distance += s.distance
+    map.set(k, cur)
+  }
+  const bySport: SportStat[] = Array.from(map.entries()).map(([sport, v]) => ({
+    sport, sessions: v.sessions, minutes: v.minutes,
+    rpe: v.rpeN ? Math.round((v.rpeSum / v.rpeN) * 10) / 10 : null,
+    distance: v.distance > 0 ? Math.round(v.distance * 10) / 10 : null,
+  }))
+  return { total: all.length, minutes: all.reduce((n, s) => n + (s.duree ?? 0), 0), bySport }
 }

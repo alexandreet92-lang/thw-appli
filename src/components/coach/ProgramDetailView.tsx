@@ -28,6 +28,7 @@ export default function ProgramDetailView({ program, coachName, coachSlug }: { p
     <div style={{ width: '100%', maxWidth: 720, margin: '0 auto', padding: '8px clamp(16px,4vw,32px) 64px', boxSizing: 'border-box', fontFamily: 'var(--font-body)' }}>
       <div style={card}>
         <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(22px,5vw,30px)', fontWeight: 600, color: 'var(--text)', margin: 0, lineHeight: 1.15 }}>{p.title}</h1>
+        {p.objective && <p style={{ fontSize: 14.5, color: 'var(--primary)', fontWeight: 600, margin: '8px 0 0' }}>{p.objective}</p>}
         {coachName && (
           <p style={{ fontSize: 13.5, color: 'var(--text-mid)', margin: '8px 0 0' }}>
             par {coachSlug ? <Link href={`/c/${coachSlug}`} style={{ color: 'var(--primary)', fontWeight: 600, textDecoration: 'none' }}>{coachName}</Link> : coachName}

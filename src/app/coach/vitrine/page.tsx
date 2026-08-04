@@ -123,21 +123,20 @@ export default function CoachVitrinePage() {
     }
   }
 
-  const isEmpty = !p.display_name && !p.avatar_url && p.gallery.length === 0 && !p.bio
-
   // ══════════════════════════════════ VUE APERÇU ══════════════════════════════════
   if (mode === 'view') {
     return (
-      <div style={{ width: '100%', maxWidth: 720, margin: '0 auto', padding: '24px clamp(16px,4vw,40px) 64px', boxSizing: 'border-box', fontFamily: 'var(--font-body)' }}>
+      <div style={{ width: '100%', maxWidth: 1080, margin: '0 auto', padding: '24px clamp(16px,4vw,40px) 64px', boxSizing: 'border-box', fontFamily: 'var(--font-body)' }}>
         {/* Barre d'actions */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 18 }}>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 600, color: 'var(--text)', margin: 0 }}>Ma vitrine</h1>
+            <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 600, color: 'var(--text)', margin: 0 }}>Mon profil</h1>
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
               <span style={{ width: 7, height: 7, borderRadius: '50%', background: p.published ? 'var(--primary)' : 'var(--text-dim)' }} />
               <span style={{ fontSize: 12.5, fontWeight: 600, color: p.published ? 'var(--primary)' : 'var(--text-dim)' }}>{p.published ? 'En ligne' : 'Hors ligne'}</span>
             </div>
           </div>
+          <Link href="/coach/programs" style={ghost}>+ Créer un programme</Link>
           {p.published && p.slug && <Link href={`/c/${p.slug}`} target="_blank" style={ghost}>Voir en public</Link>}
           <button onClick={() => setMode('edit')} style={primary}>Modifier</button>
         </div>
@@ -161,27 +160,12 @@ export default function CoachVitrinePage() {
           </div>
         )}
 
-        {/* Aperçu visuel */}
-        <div style={cardSt}>
-          {isEmpty ? (
-            <div style={{ textAlign: 'center', padding: '20px 0' }}>
-              <p style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 500, color: 'var(--text)', margin: 0 }}>Ta vitrine est vide</p>
-              <p style={{ fontSize: 13.5, color: 'var(--text-mid)', margin: '6px 0 16px' }}>Ajoute ta photo, une vidéo de présentation et ton parcours pour attirer des athlètes.</p>
-              <button onClick={() => setMode('edit')} style={primary}>Remplir ma vitrine</button>
-            </div>
-          ) : (
-            <CoachShowcase profile={p} programs={programs} counts={counts ?? undefined} isCoach isOwner />
-          )}
-        </div>
-
-        {/* Accès rapide programmes */}
-        <div style={{ display: 'flex', gap: 10, marginTop: 12, flexWrap: 'wrap' }}>
-          <Link href="/coach/programs" style={{ ...ghost, flex: 1, justifyContent: 'center', minWidth: 160 }}>+ Créer un programme</Link>
-        </div>
+        {/* Profil (pleine largeur) */}
+        <CoachShowcase profile={p} programs={programs} counts={counts ?? undefined} isCoach isOwner activitiesHref="/activities" />
 
         {/* Lien de partage */}
         {p.published && p.slug && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 14, padding: '10px 12px', borderRadius: 'var(--r-md)', background: 'var(--bg-card2)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 16, padding: '10px 12px', borderRadius: 'var(--r-md)', background: 'var(--bg-card2)' }}>
             <span style={{ flex: 1, minWidth: 0, fontSize: 13, color: 'var(--text-mid)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{publicUrl}</span>
             <button onClick={copy} style={ghost}>{copied ? 'Copié ✓' : 'Copier'}</button>
           </div>

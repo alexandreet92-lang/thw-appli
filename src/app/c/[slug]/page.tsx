@@ -86,38 +86,44 @@ export default function CoachVitrine() {
   const accepted = existing?.status === 'accepted'
   const pending = existing?.status === 'pending' || sent
 
+  const coachingBtn = profile.accepting_requests && !accepted && !pending && !asking
+    ? <button onClick={() => setAsking(true)} style={{ ...ctaPrimary, height: 42, fontSize: 14 }}>Demander un coaching</button>
+    : null
+
   return (
     <div style={pageWrap}>
       <style>{`@keyframes vit_pulse{0%,100%{opacity:1}50%{opacity:.55}}@keyframes vit_in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}`}</style>
 
-      <div style={{ ...card, animation: 'vit_in 0.4s ease' }}>
+      <div style={{ width: '100%', maxWidth: 1080, margin: '0 auto', animation: 'vit_in 0.4s ease' }}>
         <CoachShowcase profile={profile} programs={programs} counts={counts ?? undefined}
           isCoach={profile.accepting_requests || programs.length > 0}
-          isFollowing={following} followBusy={followBusy} onToggleFollow={() => void onToggleFollow()} />
+          isFollowing={following} followBusy={followBusy} onToggleFollow={() => void onToggleFollow()}
+          actions={coachingBtn} />
 
-        {/* CTA */}
-        <div style={{ marginTop: 30, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
-          {accepted ? (
-            <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--primary)', fontWeight: 600, margin: 0 }}>Tu es coaché·e par {name}.</p>
-          ) : pending ? (
-            <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-mid)', margin: 0 }}>Demande envoyée — en attente de réponse.</p>
-          ) : !profile.accepting_requests ? (
-            <p style={{ fontFamily: 'var(--font-body)', fontSize: 13.5, color: 'var(--text-dim)', margin: 0 }}>Ce coach ne prend pas de nouvelles demandes pour le moment.</p>
-          ) : asking ? (
-            <div style={{ width: '100%', maxWidth: 420 }}>
-              <textarea value={msg} onChange={e => setMsg(e.target.value)} rows={3} autoFocus
-                placeholder="Présente-toi en deux mots : ton objectif, ton niveau…"
-                style={{ width: '100%', boxSizing: 'border-box', padding: '12px 14px', borderRadius: 'var(--r-md)', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontFamily: 'var(--font-body)', fontSize: 14, outline: 'none', resize: 'vertical' }} />
-              {err && <p style={{ fontFamily: 'var(--font-body)', fontSize: 12.5, color: 'var(--danger, #ef4444)', margin: '8px 2px 0' }}>{err} {err.toLowerCase().includes('connecte') && <Link href="/auth" style={{ color: 'var(--primary)', fontWeight: 700 }}>Se connecter</Link>}</p>}
-              <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
-                <button onClick={send} disabled={sending} style={{ ...ctaPrimary, flex: 1, opacity: sending ? 0.6 : 1 }}>{sending ? 'Envoi…' : 'Envoyer la demande'}</button>
-                <button onClick={() => setAsking(false)} style={ctaGhost}>Annuler</button>
+        {/* CTA coaching (formulaire / état) */}
+        {(accepted || pending || asking || !profile.accepting_requests) && (
+          <div style={{ ...card, marginTop: 16 }}>
+            {accepted ? (
+              <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--primary)', fontWeight: 600, margin: 0 }}>Tu es coaché·e par {name}.</p>
+            ) : pending ? (
+              <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-mid)', margin: 0 }}>Demande envoyée — en attente de réponse.</p>
+            ) : !profile.accepting_requests ? (
+              <p style={{ fontFamily: 'var(--font-body)', fontSize: 13.5, color: 'var(--text-dim)', margin: 0 }}>Ce coach ne prend pas de nouvelles demandes pour le moment.</p>
+            ) : (
+              <div style={{ maxWidth: 460 }}>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 600, color: 'var(--text)', marginBottom: 10 }}>Demander un coaching</div>
+                <textarea value={msg} onChange={e => setMsg(e.target.value)} rows={3} autoFocus
+                  placeholder="Présente-toi en deux mots : ton objectif, ton niveau…"
+                  style={{ width: '100%', boxSizing: 'border-box', padding: '12px 14px', borderRadius: 'var(--r-md)', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontFamily: 'var(--font-body)', fontSize: 14, outline: 'none', resize: 'vertical' }} />
+                {err && <p style={{ fontFamily: 'var(--font-body)', fontSize: 12.5, color: 'var(--danger, #ef4444)', margin: '8px 2px 0' }}>{err} {err.toLowerCase().includes('connecte') && <Link href="/auth" style={{ color: 'var(--primary)', fontWeight: 700 }}>Se connecter</Link>}</p>}
+                <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                  <button onClick={send} disabled={sending} style={{ ...ctaPrimary, flex: 1, opacity: sending ? 0.6 : 1 }}>{sending ? 'Envoi…' : 'Envoyer la demande'}</button>
+                  <button onClick={() => setAsking(false)} style={ctaGhost}>Annuler</button>
+                </div>
               </div>
-            </div>
-          ) : (
-            <button onClick={() => setAsking(true)} style={{ ...ctaPrimary, minWidth: 240 }}>Demander un coaching</button>
-          )}
-        </div>
+            )}
+          </div>
+        )}
       </div>
 
       <p style={{ fontFamily: 'var(--font-body)', fontSize: 11.5, color: 'var(--text-dim)', textAlign: 'center', marginTop: 20 }}>
@@ -128,12 +134,12 @@ export default function CoachVitrine() {
 }
 
 const pageWrap: React.CSSProperties = {
-  minHeight: '100dvh', background: 'var(--bg)', display: 'flex', flexDirection: 'column', justifyContent: 'center',
-  padding: 'clamp(20px, 5vw, 48px)', boxSizing: 'border-box',
+  minHeight: '100dvh', background: 'var(--bg)', display: 'flex', flexDirection: 'column',
+  padding: 'clamp(20px, 5vw, 40px)', boxSizing: 'border-box',
 }
 const card: React.CSSProperties = {
-  width: '100%', maxWidth: 600, margin: '0 auto', background: 'var(--bg-card)', borderRadius: 'var(--r-lg)',
-  padding: 'clamp(28px, 5vw, 48px)', boxShadow: '0 1px 3px rgba(0,0,0,0.05), 0 20px 60px rgba(0,0,0,0.10)',
+  width: '100%', maxWidth: 1080, margin: '0 auto', background: 'var(--bg-card)', borderRadius: 'var(--r-lg)',
+  padding: 'clamp(20px, 4vw, 28px)', boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
 }
 const ctaPrimary: React.CSSProperties = {
   height: 48, padding: '0 22px', borderRadius: 'var(--r-md)', border: 'none', background: 'var(--primary)',

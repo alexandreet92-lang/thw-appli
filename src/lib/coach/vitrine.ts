@@ -92,8 +92,12 @@ export async function upsertMyCoachProfile(patch: Partial<CoachProfile>): Promis
   const sb = createClient()
   const { data: { user } } = await sb.auth.getUser()
   if (!user) throw new Error('Non authentifié')
+  // On ignore tout coach_id présent dans le patch (ex. '' d'un profil vierge) :
+  // il ne doit JAMAIS écraser l'identifiant réel de l'utilisateur.
+  const { coach_id: _ignore, ...rest } = patch
+  void _ignore
   const { data, error } = await sb.from('coach_profiles')
-    .upsert({ coach_id: user.id, ...patch, updated_at: new Date().toISOString() }, { onConflict: 'coach_id' })
+    .upsert({ ...rest, coach_id: user.id, updated_at: new Date().toISOString() }, { onConflict: 'coach_id' })
     .select(COLS).single()
   if (error) throw new Error(error.message)
   return norm(data)

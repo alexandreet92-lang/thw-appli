@@ -1094,7 +1094,7 @@ function BlockBuilder({ sport, blocks, onChange, nutritionItems, exoHistory, ath
     onChange(blocks.map(b => {
       if (b.id !== id) return b
       const u: Block = { ...b, [field]: val }
-      if (field === 'value') u.zone = getZone(sport, String(val))
+      if (field === 'value') u.zone = getZone(sport, String(val), { ftp: athleteData?.ftp ?? null, runThresholdPaceSec: athleteData?.runThresholdPaceSec ?? null })
       if (u.mode === 'interval' && u.reps && u.effortMin != null && u.recoveryMin != null)
         u.durationMin = u.reps * (u.effortMin + u.recoveryMin)
       return u
@@ -3786,6 +3786,12 @@ export function SessionEditor({ mode, session, dayIndex, weekStart, plan, onClos
     lthrBike: number | null
     runThresholdPaceStr: string | null
     swimCSSStr: string | null
+    // Tableau de zones du builder (vélo/course)
+    vmaKmh: number | null
+    bikeSl1Watts: number | null
+    bikeSl2Watts: number | null
+    runSl1PaceSec: number | null
+    runSl2PaceSec: number | null
   } | null>(null)
   const [athleteProducts, setAthleteProducts] = useState<Array<{
     name: string; type: string; glucidesG: number; proteinesG: number; quantity: string
@@ -3913,21 +3919,43 @@ export function SessionEditor({ mode, session, dayIndex, weekStart, plan, onClos
         const { data: { user } } = await sb.auth.getUser()
         if (!user || cancelled) return
 
-        const [perfRes, actsRes, profileRes, zonesRes] = await Promise.all([
+        const [perfRes, actsRes, profileRes, zonesRes, sportProfRes] = await Promise.all([
           // athlete_performance_profile — vraies colonnes vérifiées
           sb.from('athlete_performance_profile')
-            .select('ftp_watts,hr_max,hr_rest,lthr_run,lthr_bike,threshold_pace_s_km,css_s_100m,rowing_threshold_pace_s_500m')
+            .select('ftp_watts,hr_max,hr_rest,lthr_run,lthr_bike,threshold_pace_s_km,css_s_100m,rowing_threshold_pace_s_500m,vma_km_h')
             .eq('user_id', user.id).maybeSingle().then(r => r, () => ({ data: null })),
           sb.from('activities').select('tss,started_at,moving_time_s,average_heartrate').eq('user_id', user.id).gte('started_at', new Date(Date.now() - 56 * 86400000).toISOString()).order('started_at', { ascending: true }).then(r => r, () => ({ data: [] })),
           sb.from('profiles').select('weight_kg,bike_weight_kg').eq('id', user.id).maybeSingle().then(r => r, () => ({ data: null })),
           // training_zones bike — source canonique du FTP cyclisme
           sb.from('training_zones').select('ftp_watts').eq('user_id', user.id).eq('sport', 'bike').eq('is_current', true).maybeSingle().then(r => r, () => ({ data: null })),
+          // athlete_sport_profile — repères SL1/SL2 (params jsonb) vélo & course
+          sb.from('athlete_sport_profile').select('sport,params').eq('user_id', user.id).in('sport', ['bike', 'run']).then(r => r, () => ({ data: [] })),
         ])
 
         const perf = (perfRes as { data: Record<string, unknown> | null }).data
         const acts = (actsRes as { data: Array<Record<string, unknown>> | null }).data ?? []
         const prof = (profileRes as { data: Record<string, unknown> | null }).data
         const zonesData = (zonesRes as { data: Record<string, unknown> | null }).data
+        const sportProfs = (sportProfRes as { data: Array<{ sport: string; params: Record<string, unknown> | null }> | null }).data ?? []
+        const bikeParams = sportProfs.find(s => s.sport === 'bike')?.params ?? null
+        const runParams = sportProfs.find(s => s.sport === 'run')?.params ?? null
+        // Parse "m:ss" ou secondes → sec/km ; num/str → W. null si absent.
+        const paceToSec = (v: unknown): number | null => {
+          if (v == null || v === '') return null
+          const s = String(v).trim()
+          const m = s.match(/^(\d+):(\d{1,2})$/)
+          if (m) return (+m[1]) * 60 + (+m[2])
+          const n = parseFloat(s); return isNaN(n) ? null : Math.round(n)
+        }
+        const toW = (v: unknown): number | null => {
+          if (v == null || v === '') return null
+          const n = parseInt(String(v)); return isNaN(n) ? null : n
+        }
+        const vmaKmh = (perf?.vma_km_h as number) ?? null
+        const bikeSl1Watts = toW(bikeParams?.watts_sl1)
+        const bikeSl2Watts = toW(bikeParams?.watts_sl2)
+        const runSl1PaceSec = paceToSec(runParams?.allure_sl1)
+        const runSl2PaceSec = paceToSec(runParams?.allure_sl2)
         if (!cancelled) {
           if (prof?.weight_kg) setAthleteWeight(prof.weight_kg as number)
           if (prof?.bike_weight_kg) setBikeWeight(prof.bike_weight_kg as number)
@@ -3983,6 +4011,7 @@ export function SessionEditor({ mode, session, dayIndex, weekStart, plan, onClos
             ctl: Math.round(ctl),
             hrMax, hrRest, lthrRun, lthrBike,
             runThresholdPaceStr, swimCSSStr,
+            vmaKmh, bikeSl1Watts, bikeSl2Watts, runSl1PaceSec, runSl2PaceSec,
           })
         }
       } catch { /* ignore */ }
@@ -5014,7 +5043,12 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
         runThresholdPaceStr: athleteData.runThresholdPaceStr, swimCSSStr: athleteData.swimCSSStr,
         hrMax: athleteData.hrMax,
       } : null,
-      refs: { ftp: athleteData?.ftp ?? null, runThresholdPaceSec: athleteData?.runThresholdPaceSec ?? null, cssSecPer100m: athleteData?.cssSecPer100m ?? null },
+      refs: {
+        ftp: athleteData?.ftp ?? null, runThresholdPaceSec: athleteData?.runThresholdPaceSec ?? null, cssSecPer100m: athleteData?.cssSecPer100m ?? null,
+        vmaKmh: athleteData?.vmaKmh ?? null, weightKg: athleteWeight,
+        bikeSl1Watts: athleteData?.bikeSl1Watts ?? null, bikeSl2Watts: athleteData?.bikeSl2Watts ?? null,
+        runSl1PaceSec: athleteData?.runSl1PaceSec ?? null, runSl2PaceSec: athleteData?.runSl2PaceSec ?? null,
+      },
       parcoursData: parcoursData ? {
         gpsTrace: parcoursData.gpsTrace, elevationProfile: parcoursData.elevationProfile,
         distance: parcoursData.distance, elevation: parcoursData.elevation, name: parcoursData.name,

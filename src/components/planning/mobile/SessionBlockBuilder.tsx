@@ -5,10 +5,11 @@
 // CSS pur) + liste de BlockCard + boutons d'ajout. Adaptatif par sport.
 // ══════════════════════════════════════════════════════════════════
 import { useState, useRef, useMemo, useEffect } from 'react'
-import { IconPlus, IconRefresh, IconSparkles, IconMapPin, IconX, IconGripVertical, IconMicrophone, IconLungs, IconTrendingUp } from '@tabler/icons-react'
+import { IconPlus, IconRefresh, IconSparkles, IconMapPin, IconX, IconGripVertical, IconMicrophone, IconLungs, IconTrendingUp, IconActivity } from '@tabler/icons-react'
 import { getZone, type SportType, type RunningSub } from '@/app/planning/page'
 import { zColor, fmtDur, secToPace, paceToSec, type AthleteRefs } from './editorial'
-import { toBars, totalMin, totalDistance, newSingle, newInterval, newHypoxie, newProgressive, recalc, barHeightPct, BAR_AXIS_TICKS, treadmillProfile, type MBlock, type EffortUnit } from './blocks'
+import { toBars, totalMin, totalDistance, newSingle, newInterval, newHypoxie, newProgressive, newTest, recalc, barHeightPct, BAR_AXIS_TICKS, treadmillProfile, type MBlock, type EffortUnit } from './blocks'
+import { ZonesReference } from './ZonesReference'
 import { syncBaseBlock, setBaseWatts, enduranceZ2Watts, type BaseCtx } from './parcoursBase'
 import RouteElevationProfile, { type ProfilePortion, type SequencedPortion } from '@/components/gpx/RouteElevationProfile'
 import { BlockCard } from './BlockCard'
@@ -83,18 +84,18 @@ export function SessionBlockBuilder({ sport, runningSub, accent, blocks, onChang
   // puis resegmentation automatique autour des blocs d'intensité.
   useEffect(() => {
     if (!hasParcours) return
-    const next = syncBaseBlock(blocks, baseCtx, sport)
+    const next = syncBaseBlock(blocks, baseCtx, sport, refs)
     if (next !== blocks) onChange(next)
-  }, [hasParcours, blocks, baseCtx, sport, onChange])
+  }, [hasParcours, blocks, baseCtx, sport, onChange, refs])
 
   const baseBlock = hasParcours ? blocks.find(b => b._base) ?? null : null
   const baseWatts = parseInt(baseBlock?.value ?? '') || 0
   function bumpBaseWatts(delta: number) {
     if (!baseBlock) return
-    onChange(setBaseWatts(blocks, Math.max(30, baseWatts + delta), baseCtx, sport))
+    onChange(setBaseWatts(blocks, Math.max(30, baseWatts + delta), baseCtx, sport, refs))
   }
 
-  const colorForWatts = (w: number) => zColor(getZone('bike', String(w)))
+  const colorForWatts = (w: number) => zColor(getZone('bike', String(w), refs))
 
   /** Portions dessinées sur le profil : fond Z2 segmenté + blocs d'intensité.
    *  Chaque bloc porte `intensityPct` = hauteur (∝ zone) du bloc coloré dessiné
@@ -146,29 +147,31 @@ export function SessionBlockBuilder({ sport, runningSub, accent, blocks, onChang
       return recalc(sport, {
         id, mode: 'interval', type: 'effort',
         durationMin: Math.round(iv.reps * (effMin + recMin) * 100) / 100,
-        zone: getZone('bike', String(iv.effortWatts)),
+        zone: getZone('bike', String(iv.effortWatts), refs),
         value: String(iv.effortWatts), effortUnit: 'watts', hrAvg: hr,
         reps: iv.reps, effortMin: effMin, recoveryMin: recMin,
         recoveryValue: String(iv.recoveryWatts),
-        recoveryZone: getZone('bike', String(iv.recoveryWatts)),
+        recoveryZone: getZone('bike', String(iv.recoveryWatts), refs),
         label: `Fractionné ${iv.reps}×${mmss} ${kmLabel} @${iv.effortWatts}W`,
         _startKm: p.startKm, _endKm: p.endKm,
-      })
+      }, refs)
     }
     return recalc(sport, {
       id, mode: 'single', type: 'effort',
       durationMin: Math.max(1, Math.round(p.estimatedMin)),
-      zone: getZone('bike', String(p.watts)),
+      zone: getZone('bike', String(p.watts), refs),
       value: String(p.watts), effortUnit: 'watts', hrAvg: hr,
       label: `${p.avgGradPct >= 2 ? 'Ascension' : 'Portion'} ${kmLabel} @${p.watts}W`,
       _startKm: p.startKm, _endKm: p.endKm,
-    })
+    }, refs)
   }
 
   // 4ᵉ métrique : moyenne pondérée par la durée d'effort
   const fourth = (() => {
     let sumWM = 0, sumM = 0
     for (const b of blocks) {
+      // Les blocs TEST n'ont pas de cible fixe (rampe = paliers, CP20 = à fond) → exclus de la moyenne.
+      if (b.mode === 'test') continue
       const m = b.mode === 'interval' && b.reps && b.effortMin ? b.reps * b.effortMin : b.durationMin
       if (sport === 'bike') { const w = parseInt(b.value || '0') || 0; sumWM += w * m; sumM += m }
       else { const s = paceToSec(b.value); if (!isNaN(s)) { sumWM += s * m; sumM += m } }
@@ -319,6 +322,9 @@ export function SessionBlockBuilder({ sport, runningSub, accent, blocks, onChang
         ))}
       </div>
 
+      {/* Zones de l'athlète (référence, juste au-dessus du profil d'intensité) */}
+      {(sport === 'bike' || sport === 'run') && <ZonesReference sport={sport} refs={refs} />}
+
       {/* Profil d'intensité */}
       <div style={{ border: '1px solid var(--se-rule)', borderRadius: 'var(--se-r)', padding: '14px 14px 10px', marginBottom: 18 }}>
         <p style={{ margin: '0 0 10px', fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--se-dim)' }}>
@@ -384,7 +390,7 @@ export function SessionBlockBuilder({ sport, runningSub, accent, blocks, onChang
               <IconGripVertical size={16} />
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <BlockCard block={b} sport={sport} runningSub={runningSub} accent={accent} refs={refs}
+              <BlockCard block={b} sport={sport} runningSub={runningSub} accent={accent} refs={refs} riderKg={riderKg}
                 expanded={openId === b.id} onToggle={() => setOpenId(id => id === b.id ? null : b.id)}
                 onChange={update} onRemove={() => remove(b.id)} onDuplicate={() => duplicate(b.id)} />
             </div>
@@ -392,13 +398,14 @@ export function SessionBlockBuilder({ sport, runningSub, accent, blocks, onChang
         ))}
       </div>
 
-      {/* Boutons d'ajout — natation : 3e bouton « Hypoxie » ; course (extérieur) :
-          3e bouton « Progressif » (allure croissante palier par palier). */}
-      <div style={{ display: 'grid', gridTemplateColumns: (isSwim || (isRun && !isTreadmill)) ? '1fr 1fr 1fr' : '1fr 1fr', gap: 10 }}>
+      {/* Boutons d'ajout — 3ᵉ bouton selon le sport : natation « Hypoxie »,
+          course extérieure « Progressif », vélo « Test ». */}
+      <div style={{ display: 'grid', gridTemplateColumns: (isSwim || (isRun && !isTreadmill) || sport === 'bike') ? '1fr 1fr 1fr' : '1fr 1fr', gap: 10 }}>
         <button type="button" onClick={() => add(newSingle(sport, runningSub === 'treadmill'))} style={addBtn}><IconPlus size={15} /> {tr('planning.simpleBlock')}</button>
         <button type="button" onClick={() => add(newInterval(sport, runningSub === 'treadmill'))} style={addBtn}><IconRefresh size={15} /> {isSwim ? tr('planning.series') : tr('planning.interval')}</button>
         {isSwim && <button type="button" onClick={() => add(newHypoxie())} style={addBtn}><IconLungs size={15} /> {tr('planning.hypoxie')}</button>}
         {isRun && !isTreadmill && <button type="button" onClick={() => add(newProgressive(sport))} style={addBtn}><IconTrendingUp size={15} /> {tr('planning.progressive')}</button>}
+        {sport === 'bike' && <button type="button" onClick={() => add(newTest('ramp'))} style={addBtn}><IconActivity size={15} /> Test</button>}
       </div>
 
       {/* Résumé live (manuel) : durée + intensité moyenne — tapis : km, D+, allure, VAP */}

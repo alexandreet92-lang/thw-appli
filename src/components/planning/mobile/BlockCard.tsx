@@ -18,8 +18,8 @@ function pctVmaToZone(p: number): number {
   if (p < 102) return 4; if (p < 110) return 5; if (p < 120) return 6; return 7
 }
 
-export function BlockCard({ block: b, sport, runningSub, accent, refs, expanded, onToggle, onChange, onRemove, onDuplicate }: {
-  block: MBlock; sport: SportType; runningSub?: RunningSub; accent: string; refs: AthleteRefs
+export function BlockCard({ block: b, sport, runningSub, accent, refs, riderKg, expanded, onToggle, onChange, onRemove, onDuplicate }: {
+  block: MBlock; sport: SportType; runningSub?: RunningSub; accent: string; refs: AthleteRefs; riderKg?: number
   expanded: boolean; onToggle: () => void
   onChange: (b: MBlock) => void; onRemove: () => void; onDuplicate: () => void
 }) {
@@ -27,8 +27,14 @@ export function BlockCard({ block: b, sport, runningSub, accent, refs, expanded,
   const [menu, setMenu] = useState(false)
   const isIv = b.mode === 'interval'
   const isProg = b.mode === 'progressive'
+  const isTest = b.mode === 'test'
   const isTreadmill = sport === 'run' && runningSub === 'treadmill'
-  const set = (patch: Partial<MBlock>) => onChange(recalc(sport, { ...b, ...patch }))
+  const set = (patch: Partial<MBlock>) => onChange(recalc(sport, { ...b, ...patch }, refs))
+
+  // W/kg (vélo) — affiché uniquement si le poids de l'athlète est renseigné.
+  const wkgOf = (watts: number): string | null =>
+    riderKg && riderKg > 0 && watts > 0 ? `${(watts / riderKg).toFixed(1).replace('.', ',')} W/kg` : null
+  const wkg = sport === 'bike' ? wkgOf(parseInt(b.value || '0') || 0) : null
 
   // Progressif : résumé « 6 × 5:00 · −10 s/km » + allure d'arrivée (dernier palier).
   const progSummary = isProg ? `${b.progSteps ?? 0} × ${fmtMMSS(b.progStepMin ?? 0)} · −${b.progStepSec ?? 0} s/km` : ''
@@ -48,7 +54,10 @@ export function BlockCard({ block: b, sport, runningSub, accent, refs, expanded,
   const kmhEq = b.effortUnit === 'kmh' && kmhVal > 0 ? kmhEquivalent(kmhVal, b.inclinePct ?? 0) : 0
   const fr1 = (n: number) => n.toFixed(1).replace('.', ',')
   // Cible affichée (détail discret). Tapis : vitesse · pente · équivalent plat.
-  const target = sport === 'bike'
+  const testTarget = b.testType === 'cp20'
+    ? '20 min · à fond'
+    : `Rampe · départ ${b.rampStartWatts ?? 100} W · +${b.rampStepWatts ?? 20} W/${b.rampStepMin ?? 2}min`
+  const target = isTest ? testTarget : sport === 'bike'
     ? (b.value ? `${b.value} W` : `Z${z}`)
     : sport === 'rowing'
       ? (b.effortUnit === 'watts' ? (b.value ? `${b.value} W` : `Z${z}`) : (b.value ? `${b.value}/500m` : `Z${z}`))
@@ -122,7 +131,7 @@ export function BlockCard({ block: b, sport, runningSub, accent, refs, expanded,
     if (sport === 'bike') {
       return effortUnit === 'zone'
         ? <Field label={tr('planning.zone')}><Stepper value={String(z)} onChange={v => set({ zone: Math.max(1, Math.min(7, parseInt(v) || 1)), value: '' })} onDec={() => set({ zone: Math.max(1, z - 1), value: '' })} onInc={() => set({ zone: Math.min(7, z + 1), value: '' })} /></Field>
-        : <Field label={tr('planning.watts')} eq={eqWatts != null ? `≈ ${eqWatts}% FTP · Z${z}` : `Z${z}`}>
+        : <Field label={tr('planning.watts')} eq={`${eqWatts != null ? `≈ ${eqWatts}% FTP · ` : ''}Z${z}${wkg ? ` · ${wkg}` : ''}`}>
             <Stepper value={b.value} unit="W" onChange={v => set({ value: v })} onDec={() => set({ value: String(Math.max(0, (parseInt(b.value || '0') || 0) - 5)) })} onInc={() => set({ value: String((parseInt(b.value || '0') || 0) + 5) })} />
           </Field>
     }
@@ -226,15 +235,61 @@ export function BlockCard({ block: b, sport, runningSub, accent, refs, expanded,
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             <input value={b.label} placeholder={BLOCK_NAME_KEY[b.type] ? tr(BLOCK_NAME_KEY[b.type]) : tr('planning.blocName')} onChange={e => set({ label: e.target.value })}
               className="se-fr" style={{ flex: 1, minWidth: 120, background: 'transparent', border: 'none', borderBottom: '1px solid var(--se-rule)', outline: 'none', color: 'var(--se-text)', fontSize: 15, fontWeight: 600, padding: '2px 0' }} />
-            <div style={{ display: 'flex', gap: 4 }}>
-              {(['warmup', 'effort', 'recovery'] as const).map(t => (
-                <button key={t} type="button" onClick={() => set({ type: t, label: '', zone: t === 'warmup' ? 2 : t === 'recovery' ? 1 : b.zone })}
-                  style={{ border: `1px solid ${b.type === t ? accent : 'var(--se-rule)'}`, background: 'transparent', color: b.type === t ? accent : 'var(--se-dim)', borderRadius: 999, padding: '4px 9px', fontSize: 10, fontWeight: 600, cursor: 'pointer' }}>
-                  {t === 'warmup' ? tr('planning.warmupShort') : t === 'recovery' ? tr('planning.recovery') : tr('planning.effort')}
-                </button>
-              ))}
-            </div>
+            {!isTest && (
+              <div style={{ display: 'flex', gap: 4 }}>
+                {(['warmup', 'effort', 'recovery'] as const).map(t => (
+                  <button key={t} type="button" onClick={() => set({ type: t, label: '', zone: t === 'warmup' ? 2 : t === 'recovery' ? 1 : b.zone })}
+                    style={{ border: `1px solid ${b.type === t ? accent : 'var(--se-rule)'}`, background: 'transparent', color: b.type === t ? accent : 'var(--se-dim)', borderRadius: 999, padding: '4px 9px', fontSize: 10, fontWeight: 600, cursor: 'pointer' }}>
+                    {t === 'warmup' ? tr('planning.warmupShort') : t === 'recovery' ? tr('planning.recovery') : tr('planning.effort')}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
+
+          {/* ── Éditeur de bloc TEST (vélo) ── */}
+          {isTest && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <Segmented accent={accent} value={b.testType === 'cp20' ? 'cp20' : 'ramp'}
+                onChange={tt => set(tt === 'cp20'
+                  ? { testType: 'cp20', label: b.label && b.label !== 'Ramp test' ? b.label : 'Test CP20' }
+                  : { testType: 'ramp', rampStartWatts: b.rampStartWatts ?? 100, rampStepWatts: b.rampStepWatts ?? 20, rampStepMin: b.rampStepMin ?? 2, label: b.label && b.label !== 'Test CP20' ? b.label : 'Ramp test' })}
+                options={[{ key: 'ramp', label: 'Ramp test' }, { key: 'cp20', label: 'CP20' }]} />
+
+              {b.testType === 'cp20' ? (
+                <p style={{ margin: 0, fontSize: 11.5, lineHeight: 1.5, color: 'var(--se-dim)' }}>
+                  20 min à fond, <strong style={{ color: 'var(--se-text)' }}>sans puissance imposée</strong> — objectif&nbsp;: la meilleure moyenne de watts possible. Le CP20 sert à estimer la FTP (~95&nbsp;% de la moyenne).
+                </p>
+              ) : (
+                <>
+                  <div className="se-fgrid">
+                    <Field label="Palier de départ">
+                      <Stepper value={String(b.rampStartWatts ?? 100)} unit="W" onChange={v => set({ rampStartWatts: Math.max(0, parseInt(v) || 0) })}
+                        onDec={() => set({ rampStartWatts: Math.max(0, (b.rampStartWatts ?? 100) - 5) })} onInc={() => set({ rampStartWatts: (b.rampStartWatts ?? 100) + 5 })} />
+                    </Field>
+                    <Field label="Incrément / palier">
+                      <Stepper value={String(b.rampStepWatts ?? 20)} unit="W" onChange={v => set({ rampStepWatts: Math.max(1, parseInt(v) || 1) })}
+                        onDec={() => set({ rampStepWatts: Math.max(1, (b.rampStepWatts ?? 20) - 5) })} onInc={() => set({ rampStepWatts: (b.rampStepWatts ?? 20) + 5 })} />
+                    </Field>
+                    <Field label="Durée d’un palier">
+                      <Stepper value={fmtMMSS(b.rampStepMin ?? 2)} onChange={v => set({ rampStepMin: Math.max(0.5, mmssToMin(v)) })}
+                        onDec={() => set({ rampStepMin: Math.max(0.5, (b.rampStepMin ?? 2) - 0.5) })} onInc={() => set({ rampStepMin: (b.rampStepMin ?? 2) + 0.5 })} />
+                    </Field>
+                  </div>
+                  <p style={{ margin: 0, fontSize: 11.5, lineHeight: 1.5, color: 'var(--se-dim)' }}>
+                    Paliers <strong style={{ color: 'var(--se-text)' }}>+{b.rampStepWatts ?? 20} W toutes les {fmtMMSS(b.rampStepMin ?? 2)}</strong> jusqu’à l’épuisement. En séance, un bouton <strong style={{ color: 'var(--se-text)' }}>« Stop test »</strong> renverra directement au bloc de récupération suivant.
+                  </p>
+                </>
+              )}
+
+              {/* FC + cadence cibles (communes aux deux tests) */}
+              <div className="se-fgrid">
+                <Field label={tr('planning.targetHr')} opt><Stepper value={b.hrAvg} unit="bpm" placeholder="—" onChange={v => set({ hrAvg: v })} onDec={() => set({ hrAvg: String(Math.max(0, (parseInt(b.hrAvg || '0') || 0) - 1)) })} onInc={() => set({ hrAvg: String((parseInt(b.hrAvg || '0') || 0) + 1) })} /></Field>
+                <Field label="Cadence" opt><Stepper value={b.cadence ?? ''} unit="rpm" placeholder="—" onChange={v => set({ cadence: v })} onDec={() => set({ cadence: String(Math.max(0, (parseInt(b.cadence || '0') || 0) - 1)) })} onInc={() => set({ cadence: String((parseInt(b.cadence || '0') || 0) + 1) })} /></Field>
+              </div>
+            </div>
+          )}
+          {!isTest && (<>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             <span style={{ fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--se-dim)' }}>{isProg ? tr('planning.progressive') : isIv ? (sport === 'swim' ? tr('planning.series') : tr('planning.interval')) : tr('planning.effort')}</span>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
@@ -305,8 +360,11 @@ export function BlockCard({ block: b, sport, runningSub, accent, refs, expanded,
             {sport === 'swim'
               ? <Field label={tr('planning.stroke')} opt><Segmented accent={accent} value={(b.nage ?? 'Crawl') as 'Crawl'} onChange={n => set({ nage: n })} options={[{ key: 'Crawl', label: 'Crawl' }, { key: 'Dos', label: 'Dos' }]} /></Field>
               : <Field label={tr('planning.targetHr')} opt><Stepper value={b.hrAvg} unit="bpm" placeholder="—" onChange={v => set({ hrAvg: v })} onDec={() => set({ hrAvg: String(Math.max(0, (parseInt(b.hrAvg || '0') || 0) - 1)) })} onInc={() => set({ hrAvg: String((parseInt(b.hrAvg || '0') || 0) + 1) })} /></Field>}
+            {/* Cadence cible (vélo) — visible aussi en direct pendant la séance */}
+            {sport === 'bike' && <Field label="Cadence" opt><Stepper value={b.cadence ?? ''} unit="rpm" placeholder="—" onChange={v => set({ cadence: v })} onDec={() => set({ cadence: String(Math.max(0, (parseInt(b.cadence || '0') || 0) - 1)) })} onInc={() => set({ cadence: String((parseInt(b.cadence || '0') || 0) + 1) })} /></Field>}
             </>)}
           </div>
+          </>)}
 
           {isIv && (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, paddingTop: 4, borderTop: '1px solid var(--se-rule-soft)' }}>

@@ -112,6 +112,17 @@ export interface AthleteRefs {
   ftp: number | null
   runThresholdPaceSec: number | null
   cssSecPer100m: number | null
+  // ── Ajouts pour le tableau de zones du builder (vélo/course) ──
+  /** VMA (km/h) — base des zones d'allure course (page Performance). */
+  vmaKmh?: number | null
+  /** Poids athlète (kg) — affichage W/kg (masqué si absent). */
+  weightKg?: number | null
+  /** Puissances repères vélo (W) : seuil 1 / seuil 2. */
+  bikeSl1Watts?: number | null
+  bikeSl2Watts?: number | null
+  /** Allures repères course (sec/km) : seuil 1 / seuil 2. */
+  runSl1PaceSec?: number | null
+  runSl2PaceSec?: number | null
 }
 /** Watts → "% FTP" (null si pas de FTP). */
 export function pctFtp(watts: number, refs: AthleteRefs): number | null {

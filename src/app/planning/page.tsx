@@ -48,7 +48,9 @@ export type SportType     = 'run' | 'bike' | 'swim' | 'hyrox' | 'rowing' | 'gym'
 type SessionStatus = 'planned' | 'done'
 export type BlockType     = 'warmup' | 'effort' | 'recovery' | 'cooldown' | 'circuit_header'
 export type CircuitType   = 'series' | 'circuit' | 'superset' | 'emom' | 'tabata'
-export type BlockMode     = 'single' | 'interval' | 'progressive' | CircuitType
+export type BlockMode     = 'single' | 'interval' | 'progressive' | 'test' | CircuitType
+/** Types de test à effort (vélo) : rampe par paliers ou CP20 (20 min max). */
+export type TestType      = 'ramp' | 'cp20'
 type TaskType      = 'sport' | 'work' | 'personal' | 'recovery'
 type RaceLevel     = 'secondary' | 'important' | 'main' | 'gty'
 type CalView       = 'year' | 'month'
@@ -149,6 +151,13 @@ export interface Block {
   inclinePct?: number; elevationM?: number
   // Terrain planning — km sur le parcours (overlay ElevationChart)
   _startKm?: number; _endKm?: number
+  // Cadence cible (vélo) — tr/min, affichée aussi en direct pendant la séance.
+  cadence?: string
+  // Bloc TEST (vélo) — rampe par paliers OU CP20 (20 min à fond, sans watts saisis).
+  testType?: TestType
+  rampStartWatts?: number   // puissance du 1ᵉ palier (rampe)
+  rampStepWatts?: number    // incrément de puissance par palier (défaut 20 W)
+  rampStepMin?: number      // durée d'un palier en minutes (défaut 2)
 }
 export interface Session {
   id:string; sport:SportType; title:string; time:string; durationMin:number
@@ -445,12 +454,17 @@ export function sessionBuilderBlocToBlock(b: {
 }
 export function getTodayIdx():number { const d=new Date().getDay(); return d===0?6:d-1 }
 
-export const ATHLETE = { ftp:301, thresholdPace:248, css:88, row500:110 }
-export function getZone(sport:SportType,v:string):number {
+// Défauts « aucune donnée athlète » : quand l'athlète n'a renseigné aucune zone,
+// on part d'une FTP de 200 W (vélo) et d'un seuil course de 306 s/km (5:06/km) —
+// calé pour que la Z2 endurance tombe autour de 10 km/h (6:00/km), cf. demande coach.
+export const ATHLETE = { ftp:200, thresholdPace:306, css:88, row500:110 }
+/** Références de zone d'un athlète (sous-ensemble d'AthleteRefs). */
+export interface ZoneRefs { ftp?: number | null; runThresholdPaceSec?: number | null }
+export function getZone(sport:SportType,v:string,refs?:ZoneRefs):number {
   if(!v)return 1
   // Vélo & elliptique : watts vs FTP (l'elliptique affiche souvent des watts).
-  if(sport==='bike'||sport==='elliptique'){ const w=parseInt(v)||0,f=ATHLETE.ftp; if(!w)return 1; if(w<f*0.55)return 1;if(w<f*0.75)return 2;if(w<f*0.87)return 3;if(w<f*1.05)return 4;if(w<f*1.20)return 5;if(w<f*1.50)return 6;return 7 }
-  if(sport==='run'){ const s=parsePace(v),t=ATHLETE.thresholdPace; if(s>t*1.25)return 1;if(s>t*1.10)return 2;if(s>t*1.00)return 3;if(s>t*0.90)return 4;return 5 }
+  if(sport==='bike'||sport==='elliptique'){ const w=parseInt(v)||0,f=(refs?.ftp&&refs.ftp>0?refs.ftp:ATHLETE.ftp); if(!w)return 1; if(w<f*0.55)return 1;if(w<f*0.75)return 2;if(w<f*0.87)return 3;if(w<f*1.05)return 4;if(w<f*1.20)return 5;if(w<f*1.50)return 6;return 7 }
+  if(sport==='run'){ const s=parsePace(v),t=(refs?.runThresholdPaceSec&&refs.runThresholdPaceSec>0?refs.runThresholdPaceSec:ATHLETE.thresholdPace); if(s>t*1.25)return 1;if(s>t*1.10)return 2;if(s>t*1.00)return 3;if(s>t*0.90)return 4;return 5 }
   // Aviron : allure /500m rapportée au seuil (~1:50/500m).
   if(sport==='rowing'){ const s=parsePace(v),r=ATHLETE.row500; if(!s||isNaN(s))return 1; if(s>r*1.20)return 1;if(s>r*1.08)return 2;if(s>r*1.00)return 3;if(s>r*0.93)return 4;return 5 }
   // Natation : zone dérivée de l'allure /100m rapportée au CSS (avant : Z3 figée,

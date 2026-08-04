@@ -13,13 +13,14 @@
 // ══════════════════════════════════════════════════════════════════
 import { freeSegments, estimateRangeMin, type ElePoint, type KmRange } from '@/lib/gpx/elevation'
 import { recalc, type MBlock } from './blocks'
-import type { SportType } from '@/app/planning/page'
+import type { SportType, ZoneRefs } from '@/app/planning/page'
 
 export const BASE_BLOCK_LABEL = 'Fond endurance Z2'
 
-/** Puissance d'endurance Z2 (~0,65 × FTP). Z2 vélo = 0,55 → 0,75 FTP. */
+/** Puissance d'endurance Z2 (~0,65 × FTP). Z2 vélo = 0,55 → 0,75 FTP.
+ *  Repli FTP = 200 W (défaut « aucune donnée athlète ») pour rester en Z2. */
 export function enduranceZ2Watts(ftp: number | null | undefined): number {
-  const f = ftp && ftp > 0 ? ftp : 250
+  const f = ftp && ftp > 0 ? ftp : 200
   return Math.max(60, Math.round((f * 0.65) / 5) * 5)
 }
 
@@ -58,7 +59,7 @@ function chronoSorted(list: MBlock[]): MBlock[] {
   })
 }
 
-export function syncBaseBlock(blocks: MBlock[], ctx: BaseCtx, sport: SportType): MBlock[] {
+export function syncBaseBlock(blocks: MBlock[], ctx: BaseCtx, sport: SportType, refs?: ZoneRefs): MBlock[] {
   const { profile, totalKm, massKg, defaultWatts } = ctx
   if (totalKm <= 0 || profile.length < 2) return blocks
 
@@ -84,11 +85,11 @@ export function syncBaseBlock(blocks: MBlock[], ctx: BaseCtx, sport: SportType):
       durationMin, zone: 2, value: String(watts), effortUnit: 'watts', hrAvg: '',
       label: BASE_BLOCK_LABEL,
       _base: true, _startKm: 0, _endKm: totalKm, _baseSegments: segments,
-    })
+    }, refs)
     working = [base, ...blocks]
   } else if (!baseUnchanged) {
     const next = [...blocks]
-    next[idx] = recalc(sport, { ...existing, _startKm: 0, _endKm: totalKm, _baseSegments: segments, durationMin })
+    next[idx] = recalc(sport, { ...existing, _startKm: 0, _endKm: totalKm, _baseSegments: segments, durationMin }, refs)
     working = next
   }
 
@@ -101,7 +102,7 @@ export function syncBaseBlock(blocks: MBlock[], ctx: BaseCtx, sport: SportType):
 }
 
 /** Change la puissance du fond → toutes ses portions Z2 suivent. */
-export function setBaseWatts(blocks: MBlock[], watts: number, ctx: BaseCtx, sport: SportType): MBlock[] {
+export function setBaseWatts(blocks: MBlock[], watts: number, ctx: BaseCtx, sport: SportType, refs?: ZoneRefs): MBlock[] {
   const idx = blocks.findIndex(b => b._base)
   if (idx < 0) return blocks
   const w = Math.max(1, Math.round(watts))
@@ -110,6 +111,6 @@ export function setBaseWatts(blocks: MBlock[], watts: number, ctx: BaseCtx, spor
     segments.reduce((s, seg) => s + estimateRangeMin(ctx.profile, seg.startKm, seg.endKm, w, ctx.massKg), 0),
   )
   const next = [...blocks]
-  next[idx] = recalc(sport, { ...blocks[idx], value: String(w), durationMin, _baseSegments: segments })
+  next[idx] = recalc(sport, { ...blocks[idx], value: String(w), durationMin, _baseSegments: segments }, refs)
   return next
 }

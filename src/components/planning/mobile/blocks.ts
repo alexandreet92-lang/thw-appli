@@ -5,7 +5,7 @@
 // en mode distance. On dérive toujours durationMin depuis distance×allure
 // pour ne pas casser SM/SN.
 // ══════════════════════════════════════════════════════════════════
-import { getZone, type Block, type SportType } from '@/app/planning/page'
+import { getZone, type Block, type SportType, type TestType, type ZoneRefs } from '@/app/planning/page'
 import { paceToSec, secToPace } from './editorial'
 import { elevationFromIncline } from '../composedSports'
 
@@ -99,9 +99,28 @@ export function effortDistanceM(sport: SportType, effortUnit: EffortUnit | undef
   return 0   // %VMA / zone : distance inconnue ici
 }
 
+/** Durée planifiée (min) d'un bloc TEST — estimation (le test réel va à l'épuisement). */
+export function testDurationMin(b: MBlock): number {
+  if (b.testType === 'cp20') return 20
+  // Rampe : estimation du nombre de paliers de `rampStartWatts` jusqu'à un plafond
+  // générique (~puissance VO2 amateur). Le test s'arrête en réalité à l'épuisement.
+  const start = b.rampStartWatts ?? 100
+  const step = b.rampStepWatts && b.rampStepWatts > 0 ? b.rampStepWatts : 20
+  const stepMin = b.rampStepMin && b.rampStepMin > 0 ? b.rampStepMin : 2
+  const ceiling = Math.max(start + 4 * step, 300)
+  const paliers = Math.max(1, Math.round((ceiling - start) / step))
+  return paliers * stepMin
+}
+
 /** Recalcule durationMin / effortMin si le bloc est en mode distance. */
-export function recalc(sport: SportType, b: MBlock): MBlock {
+export function recalc(sport: SportType, b: MBlock, refs?: ZoneRefs): MBlock {
   const nb = { ...b }
+  // Bloc TEST (vélo) : durée = estimation (rampe/CP20). Zone repère selon le type.
+  if (nb.mode === 'test') {
+    nb.durationMin = testDurationMin(nb)
+    nb.zone = nb.testType === 'cp20' ? 4 : 5
+    return nb
+  }
   // Progressif (course) CONTINU : durée = paliers × durée/palier. La zone canonique
   // (SM/SN, badge) est celle du palier MÉDIAN — représentative de l'effort moyen.
   if (nb.mode === 'progressive') {
@@ -110,7 +129,7 @@ export function recalc(sport: SportType, b: MBlock): MBlock {
     const startSec = paceToSec(nb.value ?? '')
     if (!isNaN(startSec) && startSec > 0) {
       const midSec = Math.max(120, startSec - Math.floor((steps - 1) / 2) * (nb.progStepSec ?? 0))
-      nb.zone = getZone(sport, secToPace(midSec))
+      nb.zone = getZone(sport, secToPace(midSec), refs)
     }
     return nb
   }
@@ -132,7 +151,7 @@ export function recalc(sport: SportType, b: MBlock): MBlock {
     const distM = kmh > 0 ? Math.round((kmh / 3.6) * effMin * 60) : 0
     nb.distanceM = distM
     nb.elevationM = elevationFromIncline(distM, nb.inclinePct ?? 0)
-    if (kmh > 0) nb.zone = getZone(sport, kmhToPace(kmhEquivalent(kmh, nb.inclinePct ?? 0)))
+    if (kmh > 0) nb.zone = getZone(sport, kmhToPace(kmhEquivalent(kmh, nb.inclinePct ?? 0)), refs)
     if (isIv && nb.reps != null) nb.durationMin = nb.reps * ((nb.effortMin ?? 0) + (nb.recoveryMin ?? 0))
     return nb
   }
@@ -157,7 +176,7 @@ export function recalc(sport: SportType, b: MBlock): MBlock {
     const perRepMin = (nb.mode === 'interval' && nb.reps) ? (nb.effortMin ?? 0) : nb.durationMin
     nb.distanceM = effortDistanceM(sport, nb.effortUnit, nb.value, perRepMin)
   }
-  if (nb.value) nb.zone = getZone(sport, nb.value)
+  if (nb.value) nb.zone = getZone(sport, nb.value, refs)
   return nb
 }
 
@@ -224,6 +243,16 @@ export function progressiveSteps(b: MBlock): { min: number; paceStr: string; zon
   return out
 }
 
+/** Bloc TEST (vélo) — rampe par paliers (défaut) ou CP20. */
+export function newTest(testType: TestType = 'ramp'): MBlock {
+  const base: MBlock = {
+    id: uid(), mode: 'test', type: 'effort', durationMin: 0, zone: 5, value: '', hrAvg: '',
+    label: testType === 'cp20' ? 'Test CP20' : 'Ramp test', effortUnit: 'watts', testType,
+  }
+  if (testType === 'cp20') return recalc('bike', { ...base, testType: 'cp20' })
+  return recalc('bike', { ...base, testType: 'ramp', rampStartWatts: 100, rampStepWatts: 20, rampStepMin: 2 })
+}
+
 export interface Bar { id: string; min: number; zone: number; recovery: boolean; value?: string; speedKmhEq?: number; startKm?: number }
 
 /** Vitesse équivalente plat d'une valeur (km/h) — pour la hauteur de barre tapis. */
@@ -245,6 +274,22 @@ function blockBars(b: MBlock, sport?: SportType): Bar[] {
     }))
   }
   const out: Bar[] = []
+  // Bloc TEST : rampe = paliers ascendants ; CP20 = une barre max (Z4→Z5).
+  if (b.mode === 'test') {
+    if (b.testType === 'cp20') {
+      out.push({ id: b.id, min: 20, zone: 4, recovery: false, value: b.value, startKm: b._startKm })
+      return out
+    }
+    const start = b.rampStartWatts ?? 100
+    const step = b.rampStepWatts && b.rampStepWatts > 0 ? b.rampStepWatts : 20
+    const stepMin = b.rampStepMin && b.rampStepMin > 0 ? b.rampStepMin : 2
+    const paliers = Math.max(1, Math.round(testDurationMin(b) / stepMin))
+    for (let p = 0; p < paliers; p++) {
+      const w = start + p * step
+      out.push({ id: `${b.id}_p${p}`, min: stepMin, zone: getZone('bike', String(w)), recovery: false, value: String(w), startKm: b._startKm })
+    }
+    return out
+  }
   if (b.mode === 'interval' && b.reps && b.effortMin) {
     // Progressif : chaque répétition porte sa propre allure/vitesse (donc sa zone).
     const prog = b.progressive && b.repValues && b.repValues.length ? b.repValues : null
@@ -324,9 +369,9 @@ export const ZONE_NUANCE_PCT = 6
 const ZONE_TOPS_POWER = [0.55, 0.75, 0.87, 1.05, 1.20, 1.50, 1.85]   // % FTP (7 zones)
 const ZONE_TOPS_PACE = [0.78, 0.87, 0.94, 1.02, 1.35]                // % allure seuil (5 zones)
 
-/** Références athlète (repli aligné sur le modèle de zones du planning). */
+/** Références athlète (repli aligné sur les défauts « aucune donnée » du planning). */
 export interface BarRefs { ftp?: number | null; runThresholdPaceSec?: number | null; cssSecPer100m?: number | null }
-const FALLBACK_FTP = 301, FALLBACK_RUN = 248, FALLBACK_CSS = 88
+const FALLBACK_FTP = 200, FALLBACK_RUN = 306, FALLBACK_CSS = 88
 
 function isPowerSport(sport: SportType): boolean { return sport === 'bike' || sport === 'elliptique' }
 

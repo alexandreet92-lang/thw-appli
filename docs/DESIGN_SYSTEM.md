@@ -232,7 +232,14 @@ lire d'un coup d'œil (contraste ≥ 3:1 des deux côtés). Aucun composant ne
 redéfinit sa propre échelle de zones — on importe `zColor()`.
 
 **Hauteur des barres du profil d'intensité** (`barHeightPct` dans
-`src/components/planning/mobile/blocks.ts`, source de vérité unique) :
-proportionnelle à la zone, plafonnée à Z5 — `Z1 20 %` · `Z2 40 %` · `Z3 60 %` ·
-`Z4 80 %` · `Z5/Z6/Z7 100 %`, avec une nuance intra-zone de ±8 % au maximum qui
-ne sort jamais de la bande de sa zone.
+`src/components/planning/mobile/blocks.ts`, source de vérité unique) : escalier
+à fort contraste par zone (l'endurance doit se lire BASSE d'un coup d'œil, l'effort
+au seuil/VO2max doit dominer) — `Z1 10 %` · `Z2 26 %` · `Z3 50 %` · `Z4 76 %` ·
+`Z5/Z6/Z7 100 %`, avec une nuance intra-zone de ±6 % au maximum qui ne sort jamais
+de la bande de sa zone (`ZONE_TARGET_PCT` / `ZONE_NUANCE_PCT`).
+
+**Tableau de zones du builder** (`ZonesReference`) : juste au-dessus du profil
+d'intensité (vélo Z2→Z7, course Z2→Z5), bornes issues des mêmes formules que la
+page Performance (`powerZones` / `paceZones`). Défauts « aucune donnée athlète » :
+FTP 200 W · VMA 12,8 km/h (⇒ Z2 endurance ≈ 10 km/h). Sous le tableau : repères
+SL1 · SL2 · FTP (vélo) / SL1 · SL2 allure (course).

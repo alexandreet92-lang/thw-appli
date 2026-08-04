@@ -24,6 +24,8 @@ export interface CoachProfile {
   location: string | null
   diplomas: CoachDiploma[]
   palmares: CoachPalmares[]
+  gallery: string[]
+  intro_video_url: string | null
   contact_email: string | null
   phone: string | null
   show_contact: boolean
@@ -40,7 +42,7 @@ export interface CoachingRequest {
   created_at: string
 }
 
-const COLS = 'coach_id, slug, display_name, headline, bio, logo_url, avatar_url, website_url, socials, sports, location, diplomas, palmares, contact_email, phone, show_contact, accepting_requests, published'
+const COLS = 'coach_id, slug, display_name, headline, bio, logo_url, avatar_url, website_url, socials, sports, location, diplomas, palmares, gallery, intro_video_url, contact_email, phone, show_contact, accepting_requests, published'
 
 function norm(r: unknown): CoachProfile {
   const p = r as CoachProfile
@@ -50,6 +52,7 @@ function norm(r: unknown): CoachProfile {
     sports: p.sports ?? [],
     diplomas: Array.isArray(p.diplomas) ? p.diplomas : [],
     palmares: Array.isArray(p.palmares) ? p.palmares : [],
+    gallery: Array.isArray(p.gallery) ? p.gallery : [],
     show_contact: !!p.show_contact,
   }
 }

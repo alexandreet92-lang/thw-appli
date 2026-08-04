@@ -29,6 +29,7 @@ export interface CoachProfile {
   contact_email: string | null
   phone: string | null
   show_contact: boolean
+  visibility: 'public' | 'private' | 'subscribers'
   accepting_requests: boolean
   published: boolean
 }
@@ -42,7 +43,7 @@ export interface CoachingRequest {
   created_at: string
 }
 
-const COLS = 'coach_id, slug, display_name, headline, bio, logo_url, avatar_url, website_url, socials, sports, location, diplomas, palmares, gallery, intro_video_url, contact_email, phone, show_contact, accepting_requests, published'
+const COLS = 'coach_id, slug, display_name, headline, bio, logo_url, avatar_url, website_url, socials, sports, location, diplomas, palmares, gallery, intro_video_url, contact_email, phone, show_contact, visibility, accepting_requests, published'
 
 function norm(r: unknown): CoachProfile {
   const p = r as CoachProfile
@@ -54,7 +55,17 @@ function norm(r: unknown): CoachProfile {
     palmares: Array.isArray(p.palmares) ? p.palmares : [],
     gallery: Array.isArray(p.gallery) ? p.gallery : [],
     show_contact: !!p.show_contact,
+    visibility: (['public', 'private', 'subscribers'].includes(p.visibility) ? p.visibility : 'public') as CoachProfile['visibility'],
   }
+}
+
+/** Valeurs de compte (nom, avatar) pour pré-remplir un profil vierge. */
+export async function getAccountDefaults(): Promise<{ full_name: string | null; avatar_url: string | null }> {
+  const sb = createClient()
+  const { data: { user } } = await sb.auth.getUser()
+  if (!user) return { full_name: null, avatar_url: null }
+  const { data } = await sb.from('profiles').select('full_name, avatar_url').eq('id', user.id).maybeSingle()
+  return { full_name: (data as { full_name?: string } | null)?.full_name ?? null, avatar_url: (data as { avatar_url?: string } | null)?.avatar_url ?? null }
 }
 
 /** Slug URL sûr à partir d'un nom (ascii, minuscules, tirets). */

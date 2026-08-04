@@ -10,6 +10,7 @@ import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { getCoachProfileBySlug, requestCoaching, myRequestTo, type CoachProfile, type CoachingRequest } from '@/lib/coach/vitrine'
 import { listCoachPublishedPrograms, type CoachProgram } from '@/lib/coach/programs'
+import { getSocialCounts, amIFollowing, toggleFollow, type SocialCounts } from '@/lib/social/follows'
 import CoachShowcase from '@/components/coach/CoachShowcase'
 
 export default function CoachVitrine() {
@@ -23,6 +24,9 @@ export default function CoachVitrine() {
   const [sending, setSending] = useState(false)
   const [sent, setSent] = useState(false)
   const [err, setErr] = useState<string | null>(null)
+  const [counts, setCounts] = useState<SocialCounts | null>(null)
+  const [following, setFollowing] = useState(false)
+  const [followBusy, setFollowBusy] = useState(false)
 
   useEffect(() => {
     let alive = true
@@ -33,10 +37,24 @@ export default function CoachVitrine() {
       if (p) {
         setExisting(await myRequestTo(p.coach_id).catch(() => null))
         setPrograms(await listCoachPublishedPrograms(p.coach_id).catch(() => []))
+        setCounts(await getSocialCounts(p.coach_id).catch(() => null))
+        setFollowing(await amIFollowing(p.coach_id).catch(() => false))
       }
     })()
     return () => { alive = false }
   }, [slug])
+
+  const onToggleFollow = async () => {
+    if (!profile || followBusy) return
+    setFollowBusy(true)
+    try {
+      const now = await toggleFollow(profile.coach_id, following)
+      setFollowing(now)
+      setCounts(c => c ? { ...c, followers: Math.max(0, c.followers + (now ? 1 : -1)) } : c)
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Action impossible.')
+    } finally { setFollowBusy(false) }
+  }
 
   const send = async () => {
     if (!profile || sending) return
@@ -73,7 +91,9 @@ export default function CoachVitrine() {
       <style>{`@keyframes vit_pulse{0%,100%{opacity:1}50%{opacity:.55}}@keyframes vit_in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}`}</style>
 
       <div style={{ ...card, animation: 'vit_in 0.4s ease' }}>
-        <CoachShowcase profile={profile} programs={programs} />
+        <CoachShowcase profile={profile} programs={programs} counts={counts ?? undefined}
+          isCoach={profile.accepting_requests || programs.length > 0}
+          isFollowing={following} followBusy={followBusy} onToggleFollow={() => void onToggleFollow()} />
 
         {/* CTA */}
         <div style={{ marginTop: 30, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>

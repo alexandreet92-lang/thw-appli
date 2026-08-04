@@ -10,13 +10,15 @@ export const dynamic = 'force-dynamic'
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import {
-  getMyCoachProfile, upsertMyCoachProfile, slugify,
+  getMyCoachProfile, upsertMyCoachProfile, slugify, getAccountDefaults,
   listIncomingRequests, respondToRequest,
   type CoachProfile, type CoachingRequest, type CoachDiploma, type CoachPalmares,
 } from '@/lib/coach/vitrine'
 import { listMyPrograms, type CoachProgram } from '@/lib/coach/programs'
 import { uploadCoachMedia } from '@/lib/coach/media'
+import { getSocialCounts, type SocialCounts } from '@/lib/social/follows'
 import CoachShowcase from '@/components/coach/CoachShowcase'
+import { createClient } from '@/lib/supabase/client'
 
 const SPORTS: { key: string; label: string }[] = [
   { key: 'running', label: 'Course' }, { key: 'cycling', label: 'Vélo' }, { key: 'swim', label: 'Natation' },
@@ -24,7 +26,13 @@ const SPORTS: { key: string; label: string }[] = [
   { key: 'triathlon', label: 'Triathlon' }, { key: 'rowing', label: 'Aviron' },
 ]
 
-const EMPTY: CoachProfile = { coach_id: '', slug: null, display_name: '', headline: '', bio: '', logo_url: '', avatar_url: '', website_url: '', socials: {}, sports: [], location: '', diplomas: [], palmares: [], gallery: [], intro_video_url: '', contact_email: '', phone: '', show_contact: false, accepting_requests: true, published: false }
+const EMPTY: CoachProfile = { coach_id: '', slug: null, display_name: '', headline: '', bio: '', logo_url: '', avatar_url: '', website_url: '', socials: {}, sports: [], location: '', diplomas: [], palmares: [], gallery: [], intro_video_url: '', contact_email: '', phone: '', show_contact: false, visibility: 'public', accepting_requests: true, published: false }
+
+const VISIBILITY: { key: CoachProfile['visibility']; label: string; hint: string }[] = [
+  { key: 'public', label: 'Public', hint: 'Visible par tout le monde' },
+  { key: 'subscribers', label: 'Abonnés', hint: 'Visible par tes abonnés seulement' },
+  { key: 'private', label: 'Privé', hint: 'Visible par toi seul' },
+]
 
 export default function CoachVitrinePage() {
   const [p, setP] = useState<CoachProfile | null>(null)
@@ -36,6 +44,7 @@ export default function CoachVitrinePage() {
   const [copied, setCopied] = useState(false)
   const [uploading, setUploading] = useState<string | null>(null)
   const [reqs, setReqs] = useState<(CoachingRequest & { athleteName: string })[]>([])
+  const [counts, setCounts] = useState<SocialCounts | null>(null)
 
   const avatarInput = useRef<HTMLInputElement>(null)
   const galleryInput = useRef<HTMLInputElement>(null)
@@ -44,9 +53,19 @@ export default function CoachVitrinePage() {
   useEffect(() => {
     void (async () => {
       const prof = await getMyCoachProfile()
-      setP(prof ?? EMPTY)
+      // Pré-remplissage depuis le compte (nom, photo) si le profil est vierge.
+      let base = prof ?? EMPTY
+      if (!base.display_name || !base.avatar_url) {
+        const acc = await getAccountDefaults().catch(() => ({ full_name: null, avatar_url: null }))
+        base = { ...base, display_name: base.display_name || acc.full_name || '', avatar_url: base.avatar_url || acc.avatar_url || '' }
+      }
+      setP(base)
       setReqs(await listIncomingRequests().catch(() => []))
       setPrograms((await listMyPrograms().catch(() => [])).filter(pr => pr.published))
+      try {
+        const { data: { user } } = await createClient().auth.getUser()
+        if (user) setCounts(await getSocialCounts(user.id))
+      } catch { /* ignore */ }
       setLoading(false)
     })()
   }, [])
@@ -151,8 +170,13 @@ export default function CoachVitrinePage() {
               <button onClick={() => setMode('edit')} style={primary}>Remplir ma vitrine</button>
             </div>
           ) : (
-            <CoachShowcase profile={p} programs={programs} />
+            <CoachShowcase profile={p} programs={programs} counts={counts ?? undefined} isCoach isOwner />
           )}
+        </div>
+
+        {/* Accès rapide programmes */}
+        <div style={{ display: 'flex', gap: 10, marginTop: 12, flexWrap: 'wrap' }}>
+          <Link href="/coach/programs" style={{ ...ghost, flex: 1, justifyContent: 'center', minWidth: 160 }}>+ Créer un programme</Link>
         </div>
 
         {/* Lien de partage */}
@@ -178,6 +202,18 @@ export default function CoachVitrinePage() {
           <Toggle on={p.published} onClick={() => set({ published: !p.published })} label={p.published ? 'Vitrine en ligne' : 'Vitrine hors ligne'} />
           <Toggle on={p.accepting_requests} onClick={() => set({ accepting_requests: !p.accepting_requests })} label="Accepte des demandes" />
         </div>
+
+        <div style={secLbl}>Visibilité</div>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {VISIBILITY.map(v => {
+            const on = p.visibility === v.key
+            return (
+              <button key={v.key} onClick={() => set({ visibility: v.key })} title={v.hint}
+                style={{ padding: '9px 14px', borderRadius: 'var(--r-md)', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 700, background: on ? 'var(--primary)' : 'var(--bg-card2)', color: on ? 'var(--on-primary)' : 'var(--text-mid)' }}>{v.label}</button>
+            )
+          })}
+        </div>
+        <p style={{ fontSize: 12, color: 'var(--text-dim)', margin: '8px 0 0' }}>{VISIBILITY.find(v => v.key === p.visibility)?.hint}</p>
 
         {/* Médias : photo de profil + vidéo + galerie */}
         <div style={secLbl}>Photo de profil</div>

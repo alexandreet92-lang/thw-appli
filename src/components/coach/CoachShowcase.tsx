@@ -9,8 +9,22 @@ import Link from 'next/link'
 import type { CoachProfile } from '@/lib/coach/vitrine'
 import type { CoachProgram } from '@/lib/coach/programs'
 import { LEVEL_LABEL } from '@/lib/coach/programs'
+import type { SocialCounts } from '@/lib/social/follows'
 
 const SPORT_LABEL: Record<string, string> = { running: 'Course', cycling: 'Vélo', swim: 'Natation', gym: 'Renforcement', hyrox: 'Hyrox', rowing: 'Aviron', trail: 'Trail', triathlon: 'Triathlon' }
+
+/** Palmarès groupé par année (années décroissantes, « sans date » à la fin). */
+function palmaresByYear(items: { title: string; year?: string }[]): { year: string; items: string[] }[] {
+  const groups = new Map<string, string[]>()
+  for (const it of items) {
+    const y = (it.year ?? '').trim() || '—'
+    if (!groups.has(y)) groups.set(y, [])
+    groups.get(y)!.push(it.title)
+  }
+  return Array.from(groups.entries())
+    .sort((a, b) => (a[0] === '—' ? 1 : b[0] === '—' ? -1 : b[0].localeCompare(a[0])))
+    .map(([year, list]) => ({ year, items: list }))
+}
 
 function SocialLink({ href, label, children }: { href: string; label: string; children: React.ReactNode }) {
   return (
@@ -21,11 +35,23 @@ function SocialLink({ href, label, children }: { href: string; label: string; ch
   )
 }
 
-export default function CoachShowcase({ profile, programs = [] }: { profile: CoachProfile; programs?: CoachProgram[] }) {
+interface ShowcaseProps {
+  profile: CoachProfile
+  programs?: CoachProgram[]
+  counts?: SocialCounts
+  isCoach?: boolean
+  isOwner?: boolean
+  isFollowing?: boolean
+  followBusy?: boolean
+  onToggleFollow?: () => void
+}
+
+export default function CoachShowcase({ profile, programs = [], counts, isCoach, isOwner, isFollowing, followBusy, onToggleFollow }: ShowcaseProps) {
   const name = profile.display_name || 'Coach'
   const monogram = name.trim().charAt(0).toUpperCase()
   const socials = profile.socials ?? {}
   const gallery = profile.gallery ?? []
+  const palmaresYears = palmaresByYear(profile.palmares)
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 26 }}>
@@ -42,6 +68,24 @@ export default function CoachShowcase({ profile, programs = [] }: { profile: Coa
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
           {profile.location}
         </p>}
+
+        {/* Compteurs sociaux */}
+        {counts && (
+          <div style={{ display: 'flex', gap: 26, justifyContent: 'center', marginTop: 18 }}>
+            <Stat n={counts.followers} label="Abonnés" />
+            <Stat n={counts.following} label="Abonnements" />
+            {(isCoach || counts.coached > 0) && <Stat n={counts.coached} label="Coachés" />}
+          </div>
+        )}
+
+        {/* S'abonner */}
+        {onToggleFollow && !isOwner && (
+          <button onClick={onToggleFollow} disabled={followBusy}
+            style={{ marginTop: 16, height: 40, padding: '0 22px', borderRadius: 999, border: 'none', cursor: followBusy ? 'default' : 'pointer', fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 700,
+              background: isFollowing ? 'var(--bg-card2)' : 'var(--primary)', color: isFollowing ? 'var(--text-mid)' : 'var(--on-primary)', opacity: followBusy ? 0.6 : 1 }}>
+            {isFollowing ? 'Abonné' : "S'abonner"}
+          </button>
+        )}
 
         {profile.sports.length > 0 && (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center', marginTop: 18 }}>
@@ -93,14 +137,16 @@ export default function CoachShowcase({ profile, programs = [] }: { profile: Coa
           {profile.palmares.length > 0 && (
             <div>
               <div style={credLbl}>Palmarès</div>
-              <ul style={credList}>
-                {profile.palmares.map((d, i) => (
-                  <li key={i} style={credItem}>
-                    <span style={{ color: 'var(--text)', fontWeight: 600 }}>{d.title}</span>
-                    {d.year && <span style={{ color: 'var(--text-dim)' }}> — {d.year}</span>}
-                  </li>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                {palmaresYears.map(g => (
+                  <div key={g.year} style={{ display: 'flex', gap: 14, alignItems: 'baseline', justifyContent: 'center', flexWrap: 'wrap' }}>
+                    <span className="tnum" style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 600, color: 'var(--primary)', fontVariantNumeric: 'tabular-nums', minWidth: 44 }}>{g.year === '—' ? '·' : g.year}</span>
+                    <ul style={{ ...credList, textAlign: 'left', flex: 1, minWidth: 0 }}>
+                      {g.items.map((t, i) => <li key={i} style={{ ...credItem, textAlign: 'left', color: 'var(--text)', fontWeight: 600 }}>{t}</li>)}
+                    </ul>
+                  </div>
                 ))}
-              </ul>
+              </div>
             </div>
           )}
         </div>
@@ -154,6 +200,15 @@ export default function CoachShowcase({ profile, programs = [] }: { profile: Coa
           {socials.strava && <SocialLink href={socials.strava} label="Strava"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M9 3l5 9h-3l-2-4-2 4H2L9 3zm5 11h3l1.5 3 1.5-3h3l-4.5 8L14 14z"/></svg></SocialLink>}
         </div>
       )}
+    </div>
+  )
+}
+
+function Stat({ n, label }: { n: number; label: string }) {
+  return (
+    <div style={{ textAlign: 'center' }}>
+      <div className="tnum" style={{ fontFamily: 'var(--font-body)', fontSize: 20, fontWeight: 700, color: 'var(--text)', fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>{n}</div>
+      <div style={{ fontSize: 11.5, color: 'var(--text-dim)', marginTop: 4 }}>{label}</div>
     </div>
   )
 }

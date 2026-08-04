@@ -8,7 +8,7 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import {
-  getChannelMessages, sendChannelMessage, editChannelMessage, deleteChannelMessage, uploadCommunityMedia,
+  getChannelMessages, sendChannelMessage, editChannelMessage, deleteChannelMessage, uploadCommunityMedia, searchChannelMessages,
 } from '@/lib/community/messages'
 import { markChannelRead } from '@/lib/community/channels'
 import { toggleReaction, QUICK_REACTIONS } from '@/lib/community/reactions'
@@ -58,13 +58,15 @@ function Body({ text }: { text: string }) {
 }
 
 export function ChannelChat({
-  channel, isMember, canPost, canUpload, canModerate, onJoin, joining, onRead,
+  channel, isMember, canPost, canUpload, canModerate, isMuted, onToggleMute, onJoin, joining, onRead,
 }: {
   channel: CommunityChannel
   isMember: boolean
   canPost: boolean
   canUpload: boolean
   canModerate: boolean
+  isMuted: boolean
+  onToggleMute: () => void
   onJoin: () => void
   joining: boolean
   onRead?: (channelId: string) => void
@@ -83,6 +85,9 @@ export function ChannelChat({
   const [pinnedIds, setPinnedIds] = useState<Set<string>>(new Set())
   const [showPins, setShowPins] = useState(false)
   const [pinnedList, setPinnedList] = useState<CommunityMessage[] | null>(null)
+  const [showSearch, setShowSearch] = useState(false)
+  const [searchQ, setSearchQ] = useState('')
+  const [searchResults, setSearchResults] = useState<CommunityMessage[] | null>(null)
   const [replyTo, setReplyTo] = useState<{ id: string; authorName: string } | null>(null)
   const [editing, setEditing] = useState<{ id: string; text: string } | null>(null)
   const [mentionQuery, setMentionQuery] = useState<string | null>(null)
@@ -118,8 +123,13 @@ export function ChannelChat({
     setShowPins(true); setPinnedList(null)
     setPinnedList(await getPinnedMessages(channel.id))
   }
+  async function runSearch(q: string) {
+    setSearchQ(q)
+    if (q.trim().length < 2) { setSearchResults(null); return }
+    setSearchResults(await searchChannelMessages(channel.id, q))
+  }
 
-  useEffect(() => { setLoading(true); setReplyTo(null); setEditing(null); void load() }, [load])
+  useEffect(() => { setLoading(true); setReplyTo(null); setEditing(null); setShowSearch(false); setSearchQ(''); setSearchResults(null); setShowPins(false); void load() }, [load])
   useEffect(() => { void myId().then(setMe) }, [])
   useEffect(() => {
     if (!isMember) { setMembers([]); return }
@@ -236,6 +246,20 @@ export function ChannelChat({
           <span style={{ fontFamily: FD, fontSize: 17, fontWeight: 600, color: 'var(--text)' }}>#{channel.name}</span>
           {channel.topic && <p style={{ margin: '2px 0 0', fontFamily: FB, fontSize: 12.5, color: 'var(--text-mid)', lineHeight: 1.4 }}>{channel.topic}</p>}
         </div>
+        {isMember && (
+          <button onClick={() => { setShowSearch(v => !v); setSearchQ(''); setSearchResults(null) }} title="Rechercher" aria-label="Rechercher"
+            style={{ width: 30, height: 30, flexShrink: 0, border: 'none', borderRadius: 'var(--r-sm)', background: showSearch ? 'var(--surface-neutral)' : 'transparent', color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
+          </button>
+        )}
+        {isMember && (
+          <button onClick={onToggleMute} title={isMuted ? 'Réactiver les notifications' : 'Mettre en sourdine'} aria-label={isMuted ? 'Réactiver' : 'Sourdine'}
+            style={{ width: 30, height: 30, flexShrink: 0, border: 'none', borderRadius: 'var(--r-sm)', background: 'transparent', color: isMuted ? 'var(--primary)' : 'var(--text-dim)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            {isMuted
+              ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M13.73 21a2 2 0 0 1-3.46 0M18 8a6 6 0 0 0-9.33-5M5.2 5.2A6 6 0 0 0 6 8c0 7-3 9-3 9h14M1 1l22 22" /></svg>
+              : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0" /></svg>}
+          </button>
+        )}
         {isMember && pinnedIds.size > 0 && (
           <button onClick={() => void openPins()} title="Messages épinglés"
             style={{ display: 'inline-flex', alignItems: 'center', gap: 5, flexShrink: 0, height: 28, padding: '0 var(--space-2)', border: 'none', borderRadius: 'var(--r-sm)', background: 'var(--surface-neutral)', color: 'var(--text-mid)', cursor: 'pointer', fontFamily: FB, fontSize: 11.5, fontWeight: 600 }}>
@@ -297,6 +321,27 @@ export function ChannelChat({
               )}
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Panneau recherche */}
+      {showSearch && (
+        <div style={{ flexShrink: 0, maxHeight: 280, display: 'flex', flexDirection: 'column', background: 'var(--bg-card2)', padding: 'var(--space-3) var(--space-5)' }}>
+          <input autoFocus value={searchQ} onChange={e => void runSearch(e.target.value)} placeholder={`Rechercher dans #${channel.name}…`}
+            style={{ width: '100%', boxSizing: 'border-box', background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: 'var(--r-sm)', padding: 'var(--space-2) var(--space-3)', fontFamily: FB, fontSize: 13.5, color: 'var(--text)', outline: 'none', marginBottom: 'var(--space-2)' }} />
+          <div style={{ overflowY: 'auto' }}>
+            {searchResults === null ? (
+              <p style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-dim)', margin: 'var(--space-2) 0' }}>{searchQ.trim().length >= 2 ? 'Recherche…' : 'Tape au moins 2 caractères.'}</p>
+            ) : searchResults.length === 0 ? (
+              <p style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-dim)', margin: 'var(--space-2) 0' }}>Aucun résultat.</p>
+            ) : searchResults.map(sr => (
+              <div key={sr.id} style={{ padding: 'var(--space-2) 0' }}>
+                <span style={{ fontFamily: FB, fontSize: 12, fontWeight: 600, color: 'var(--text)' }}>{sr.authorName}</span>
+                <span className="tnum" style={{ fontFamily: FB, fontSize: 10.5, color: 'var(--text-dim)', marginLeft: 6, fontVariantNumeric: 'tabular-nums' }}>{fmtDay(sr.createdAt)}</span>
+                <p style={{ margin: '2px 0 0', fontFamily: FB, fontSize: 12.5, color: 'var(--text-mid)', lineHeight: 1.4, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{sr.body}</p>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

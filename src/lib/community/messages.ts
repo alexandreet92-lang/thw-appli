@@ -61,6 +61,29 @@ export async function getChannelMessages(channelId: string): Promise<CommunityMe
   })
 }
 
+/** Recherche plein-texte simple dans les messages d'un canal (récents d'abord). */
+export async function searchChannelMessages(channelId: string, query: string): Promise<CommunityMessage[]> {
+  const q = query.trim()
+  if (q.length < 2) return []
+  const escaped = q.replace(/[%_]/g, m => `\\${m}`)
+  const { data } = await createClient()
+    .from('community_messages')
+    .select('id, channel_id, author_id, body, created_at, edited_at, reply_to, attachments')
+    .eq('channel_id', channelId)
+    .ilike('body', `%${escaped}%`)
+    .order('created_at', { ascending: false })
+    .limit(40)
+  const rows = (data ?? []) as MessageRow[]
+  const people = await namesFor(rows.map(r => r.author_id))
+  return rows.map((r): CommunityMessage => ({
+    id: r.id, channelId: r.channel_id, authorId: r.author_id, body: r.body,
+    createdAt: r.created_at, editedAt: r.edited_at, replyTo: r.reply_to,
+    attachments: Array.isArray(r.attachments) ? r.attachments : [],
+    reactions: [], replyPreview: null,
+    authorName: people.get(r.author_id)?.name ?? 'Membre', authorAvatar: people.get(r.author_id)?.avatar ?? null,
+  }))
+}
+
 /**
  * Envoie une pièce jointe (image compressée client-side, ou fichier) via la route
  * serveur gated /api/community/upload. Retourne l'attachment prêt à joindre, ou null.

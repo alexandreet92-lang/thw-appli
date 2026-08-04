@@ -65,6 +65,12 @@ export async function POST(req: Request) {
               const words = `${p.full_name ?? ''} ${p.first_name ?? ''}`.split(/\s+/).map(norm).filter(Boolean)
               if (words.some(w => tokens.includes(w))) targets.add(p.id)
             }
+            // Exclure ceux qui ont mis ce canal en sourdine.
+            if (targets.size > 0) {
+              const { data: mutes } = await svc.from('community_channel_mutes')
+                .select('user_id').eq('channel_id', channelId).in('user_id', Array.from(targets))
+              for (const mrow of (mutes ?? []) as { user_id: string }[]) targets.delete(mrow.user_id)
+            }
             const snippet = text.slice(0, 120) || 'Pièce jointe'
             await Promise.all(Array.from(targets).map(id =>
               notifyUser(id, 'communaute.mention', {

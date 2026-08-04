@@ -10,7 +10,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useEntitlements } from '@/hooks/useEntitlements'
 import { listSpaces, joinSpace, leaveSpace, updateSpaceIcon } from '@/lib/community/spaces'
-import { listChannels, createChannel, getUnreadChannelIds } from '@/lib/community/channels'
+import { listChannels, createChannel, getUnreadChannelIds, getMutedChannelIds, toggleChannelMute } from '@/lib/community/channels'
 import { uploadCommunityMedia } from '@/lib/community/messages'
 import { ChannelChat } from './ChannelChat'
 import { EventsView } from './EventsView'
@@ -36,6 +36,7 @@ export function CommunityView() {
   const [joining, setJoining] = useState(false)
   const [showCreate, setShowCreate] = useState(false)
   const [unread, setUnread] = useState<Set<string>>(new Set())
+  const [muted, setMuted] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 767px)')
@@ -62,7 +63,14 @@ export function CommunityView() {
     setLoadingChannels(false)
     setChannelId(prev => (prev && list.some(c => c.id === prev) ? prev : list[0]?.id ?? null))
     void getUnreadChannelIds(list.map(c => c.id)).then(setUnread)
+    void getMutedChannelIds().then(setMuted)
   }, [])
+
+  const doToggleMute = useCallback(async (channelId: string) => {
+    const wasMuted = muted.has(channelId)
+    setMuted(prev => { const n = new Set(prev); if (wasMuted) n.delete(channelId); else n.add(channelId); return n })
+    await toggleChannelMute(channelId, wasMuted)
+  }, [muted])
   useEffect(() => { if (spaceId) void loadChannels(spaceId) }, [spaceId, loadChannels])
 
   // Un canal ouvert / lu n'est plus « non-lu ».
@@ -127,7 +135,7 @@ export function CommunityView() {
   const channelCol = (
     <ChannelColumn
       space={space} channels={channels} activeId={channelId} loading={loadingChannels}
-      isNarrow={isNarrow} joining={joining} canManage={canManage} unread={unread}
+      isNarrow={isNarrow} joining={joining} canManage={canManage} unread={unread} muted={muted}
       canBrand={canManage && ent.community.canBrand}
       panel={panel} onEvents={selectEvents}
       onSelect={selectChannel} onJoin={doJoin} onLeave={doLeave}
@@ -146,6 +154,7 @@ export function CommunityView() {
       channel={channel} isMember={space.isMember} canPost={space.isMember}
       canUpload={space.isMember && ent.community.canUploadFiles}
       canModerate={canManage}
+      isMuted={muted.has(channel.id)} onToggleMute={() => doToggleMute(channel.id)}
       onJoin={doJoin} joining={joining} onRead={markRead}
     />
   ) : (
@@ -226,9 +235,9 @@ function SpaceRail({ spaces, activeId, loading, onSelect, onCreate }: {
 }
 
 // ── Colonne des canaux ──────────────────────────────────────────────────────
-function ChannelColumn({ space, channels, activeId, loading, isNarrow, joining, canManage, canBrand, unread, panel, onEvents, onSelect, onJoin, onLeave, onCreateChannel, onSetLogo, onBack }: {
+function ChannelColumn({ space, channels, activeId, loading, isNarrow, joining, canManage, canBrand, unread, muted, panel, onEvents, onSelect, onJoin, onLeave, onCreateChannel, onSetLogo, onBack }: {
   space: CommunitySpace | null; channels: CommunityChannel[]; activeId: string | null; loading: boolean
-  isNarrow: boolean; joining: boolean; canManage: boolean; canBrand: boolean; unread: Set<string>
+  isNarrow: boolean; joining: boolean; canManage: boolean; canBrand: boolean; unread: Set<string>; muted: Set<string>
   panel: 'chat' | 'events'; onEvents: () => void
   onSelect: (id: string) => void; onJoin: () => void; onLeave: () => void; onCreateChannel: (name: string) => void; onSetLogo: (file: File) => void; onBack: () => void
 }) {
@@ -317,14 +326,16 @@ function ChannelColumn({ space, channels, activeId, loading, isNarrow, joining, 
           [0, 1, 2, 3].map(i => <span key={i} style={{ display: 'block', height: 34, borderRadius: 'var(--r-sm)', background: 'var(--surface-neutral)', margin: '0 var(--space-2) var(--space-2)' }} />)
         ) : channels.map(c => {
           const active = activeId === c.id
-          const isUnread = unread.has(c.id) && !active
+          const isMuted = muted.has(c.id)
+          const isUnread = unread.has(c.id) && !active && !isMuted
           return (
             <button key={c.id} onClick={() => onSelect(c.id)}
-              style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', width: '100%', textAlign: 'left', border: 'none', cursor: 'pointer', borderRadius: 'var(--r-sm)', padding: 'var(--space-2) var(--space-3)', minHeight: 36, background: active ? 'var(--surface-neutral)' : 'transparent', fontFamily: FB }}>
+              style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', width: '100%', textAlign: 'left', border: 'none', cursor: 'pointer', borderRadius: 'var(--r-sm)', padding: 'var(--space-2) var(--space-3)', minHeight: 36, background: active ? 'var(--surface-neutral)' : 'transparent', fontFamily: FB, opacity: isMuted ? 0.5 : 1 }}>
               {c.kind === 'voice'
                 ? <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-dim)', flexShrink: 0 }}><path d="M11 5 6 9H2v6h4l5 4zM15.5 8.5a5 5 0 0 1 0 7M19 5a9 9 0 0 1 0 14" /></svg>
                 : <span style={{ color: 'var(--text-dim)', fontSize: 15, lineHeight: 1 }}>#</span>}
               <span style={{ flex: 1, minWidth: 0, fontSize: 13.5, fontWeight: active || isUnread ? 600 : 500, color: active || isUnread ? 'var(--text)' : 'var(--text-mid)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</span>
+              {isMuted && <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-dim)', flexShrink: 0 }}><path d="M13.73 21a2 2 0 0 1-3.46 0M18 8a6 6 0 0 0-9.33-5M5.2 5.2A6 6 0 0 0 6 8c0 7-3 9-3 9h14M1 1l22 22" /></svg>}
               {isUnread && <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--primary)', flexShrink: 0 }} />}
             </button>
           )

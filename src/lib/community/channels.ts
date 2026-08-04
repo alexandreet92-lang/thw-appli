@@ -76,6 +76,27 @@ export async function markChannelRead(channelId: string): Promise<void> {
     )
 }
 
+/** Ids des canaux que j'ai mis en sourdine. */
+export async function getMutedChannelIds(): Promise<Set<string>> {
+  const me = await myId()
+  if (!me) return new Set()
+  const { data } = await createClient().from('community_channel_mutes').select('channel_id').eq('user_id', me)
+  return new Set(((data ?? []) as { channel_id: string }[]).map(r => r.channel_id))
+}
+
+/** Met en sourdine / réactive un canal. Retourne true si succès. */
+export async function toggleChannelMute(channelId: string, muted: boolean): Promise<boolean> {
+  const me = await myId()
+  if (!me) return false
+  const sb = createClient()
+  if (muted) {
+    const { error } = await sb.from('community_channel_mutes').delete().eq('user_id', me).eq('channel_id', channelId)
+    return !error
+  }
+  const { error } = await sb.from('community_channel_mutes').insert({ user_id: me, channel_id: channelId })
+  return !error
+}
+
 /**
  * Renvoie l'ensemble des canaux (parmi ceux fournis) qui ont au moins un message
  * plus récent que mon dernier last_read_at → base des badges « non-lus ».

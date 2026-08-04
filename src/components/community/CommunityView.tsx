@@ -14,6 +14,7 @@ import { listChannels, createChannel, getUnreadChannelIds, getMutedChannelIds, t
 import { uploadCommunityMedia } from '@/lib/community/messages'
 import { ChannelChat } from './ChannelChat'
 import { EventsView } from './EventsView'
+import { VoiceView } from './VoiceView'
 import { CreateSpaceSheet } from './CreateSpaceSheet'
 import { SpaceBadge } from './SpaceBadge'
 import type { CommunitySpace, CommunityChannel } from '@/types/community'
@@ -109,9 +110,9 @@ export function CommunityView() {
     if (ok) await loadSpaces(space.id)
   }, [space, loadSpaces])
 
-  const doCreateChannel = useCallback(async (name: string) => {
+  const doCreateChannel = useCallback(async (name: string, kind: 'text' | 'voice') => {
     if (!space) return
-    const created = await createChannel(space.id, name)
+    const created = await createChannel(space.id, name, kind)
     if (created) { await loadChannels(space.id); selectChannel(created.id) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [space, loadChannels])
@@ -137,6 +138,7 @@ export function CommunityView() {
       space={space} channels={channels} activeId={channelId} loading={loadingChannels}
       isNarrow={isNarrow} joining={joining} canManage={canManage} unread={unread} muted={muted}
       canBrand={canManage && ent.community.canBrand}
+      canVoice={canManage && ent.community.canVoice}
       panel={panel} onEvents={selectEvents}
       onSelect={selectChannel} onJoin={doJoin} onLeave={doLeave}
       onCreateChannel={doCreateChannel} onSetLogo={doSetLogo}
@@ -150,6 +152,10 @@ export function CommunityView() {
   ) : null
 
   const chat = channel && space ? (
+    channel.kind === 'voice' ? (
+      <VoiceView channel={channel} isMember={space.isMember} isNarrow={isNarrow}
+        onBack={() => { setDir('back'); setMView('channels') }} />
+    ) : (
     <ChannelChat
       channel={channel} isMember={space.isMember} canPost={space.isMember}
       canUpload={space.isMember && ent.community.canUploadFiles}
@@ -157,6 +163,7 @@ export function CommunityView() {
       isMuted={muted.has(channel.id)} onToggleMute={() => doToggleMute(channel.id)}
       onJoin={doJoin} joining={joining} onRead={markRead}
     />
+    )
   ) : (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', background: 'var(--bg-card)', color: 'var(--text-dim)', fontFamily: FB, fontSize: 13 }}>
       {loadingChannels ? '' : 'Choisis un canal.'}
@@ -235,14 +242,15 @@ function SpaceRail({ spaces, activeId, loading, onSelect, onCreate }: {
 }
 
 // ── Colonne des canaux ──────────────────────────────────────────────────────
-function ChannelColumn({ space, channels, activeId, loading, isNarrow, joining, canManage, canBrand, unread, muted, panel, onEvents, onSelect, onJoin, onLeave, onCreateChannel, onSetLogo, onBack }: {
+function ChannelColumn({ space, channels, activeId, loading, isNarrow, joining, canManage, canBrand, canVoice, unread, muted, panel, onEvents, onSelect, onJoin, onLeave, onCreateChannel, onSetLogo, onBack }: {
   space: CommunitySpace | null; channels: CommunityChannel[]; activeId: string | null; loading: boolean
-  isNarrow: boolean; joining: boolean; canManage: boolean; canBrand: boolean; unread: Set<string>; muted: Set<string>
+  isNarrow: boolean; joining: boolean; canManage: boolean; canBrand: boolean; canVoice: boolean; unread: Set<string>; muted: Set<string>
   panel: 'chat' | 'events'; onEvents: () => void
-  onSelect: (id: string) => void; onJoin: () => void; onLeave: () => void; onCreateChannel: (name: string) => void; onSetLogo: (file: File) => void; onBack: () => void
+  onSelect: (id: string) => void; onJoin: () => void; onLeave: () => void; onCreateChannel: (name: string, kind: 'text' | 'voice') => void; onSetLogo: (file: File) => void; onBack: () => void
 }) {
   const [adding, setAdding] = useState(false)
   const [newName, setNewName] = useState('')
+  const [newKind, setNewKind] = useState<'text' | 'voice'>('text')
   const logoRef = useRef<HTMLInputElement>(null)
   if (!space) {
     return <div style={{ padding: 'var(--space-6)', color: 'var(--text-dim)', fontFamily: FB, fontSize: 13 }}>—</div>
@@ -250,7 +258,7 @@ function ChannelColumn({ space, channels, activeId, loading, isNarrow, joining, 
   function submitChannel() {
     const n = newName.trim()
     if (!n) { setAdding(false); return }
-    onCreateChannel(n); setNewName(''); setAdding(false)
+    onCreateChannel(n, newKind); setNewName(''); setNewKind('text'); setAdding(false)
   }
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
@@ -315,11 +323,21 @@ function ChannelColumn({ space, channels, activeId, loading, isNarrow, joining, 
           )}
         </div>
         {adding && (
-          <div style={{ padding: '0 var(--space-2) var(--space-2)' }}>
+          <div style={{ padding: '0 var(--space-2) var(--space-2)', display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
             <input autoFocus value={newName} onChange={e => setNewName(e.target.value.slice(0, 60))}
-              onKeyDown={e => { if (e.key === 'Enter') submitChannel(); if (e.key === 'Escape') { setAdding(false); setNewName('') } }}
-              onBlur={submitChannel} placeholder="nom-du-canal"
+              onKeyDown={e => { if (e.key === 'Enter') submitChannel(); if (e.key === 'Escape') { setAdding(false); setNewName(''); setNewKind('text') } }}
+              placeholder="nom-du-canal"
               style={{ width: '100%', boxSizing: 'border-box', background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: 'var(--r-sm)', padding: 'var(--space-2) var(--space-3)', fontFamily: FB, fontSize: 13, color: 'var(--text)', outline: 'none' }} />
+            {canVoice && (
+              <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+                {(['text', 'voice'] as const).map(k => (
+                  <button key={k} type="button" onClick={() => setNewKind(k)}
+                    style={{ flex: 1, height: 30, border: 'none', borderRadius: 'var(--r-sm)', cursor: 'pointer', fontFamily: FB, fontSize: 12, fontWeight: 600, background: newKind === k ? 'var(--primary-dim)' : 'var(--surface-neutral)', color: newKind === k ? 'var(--primary)' : 'var(--text-mid)' }}>{k === 'text' ? '# Texte' : '🔊 Voix'}</button>
+                ))}
+              </div>
+            )}
+            <button type="button" onClick={submitChannel} disabled={!newName.trim()}
+              style={{ height: 32, border: 'none', borderRadius: 'var(--r-sm)', cursor: newName.trim() ? 'pointer' : 'default', background: 'var(--primary)', color: 'var(--on-primary)', fontFamily: FB, fontSize: 12.5, fontWeight: 600, opacity: newName.trim() ? 1 : 0.5 }}>Créer le canal</button>
           </div>
         )}
         {loading ? (

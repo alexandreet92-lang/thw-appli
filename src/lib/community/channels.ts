@@ -40,6 +40,7 @@ export async function listChannels(spaceId: string): Promise<CommunityChannel[]>
 export async function createChannel(
   spaceId: string,
   name: string,
+  kind: ChannelKind = 'text',
   topic?: string | null,
 ): Promise<CommunityChannel | null> {
   const clean = name.trim().toLowerCase().replace(/[^a-z0-9à-ÿ\- ]/gi, '').slice(0, 60)
@@ -56,7 +57,7 @@ export async function createChannel(
   const position = ((last as { position: number } | null)?.position ?? -1) + 1
   const { data, error } = await sb
     .from('community_channels')
-    .insert({ space_id: spaceId, name: clean, topic: topic?.trim() || null, position, kind: 'text' })
+    .insert({ space_id: spaceId, name: clean, topic: topic?.trim() || null, position, kind })
     .select('id, space_id, name, topic, position, kind')
     .single()
   if (error || !data) return null

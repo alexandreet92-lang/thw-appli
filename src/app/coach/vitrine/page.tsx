@@ -18,6 +18,8 @@ import { listMyPrograms, type CoachProgram } from '@/lib/coach/programs'
 import { uploadCoachMedia } from '@/lib/coach/media'
 import { getSocialCounts, type SocialCounts } from '@/lib/social/follows'
 import CoachShowcase from '@/components/coach/CoachShowcase'
+import SlideSheet from '@/components/ui/SlideSheet'
+import CoachProgramsPage from '@/app/coach/programs/page'
 import { createClient } from '@/lib/supabase/client'
 
 const SPORTS: { key: string; label: string }[] = [
@@ -37,7 +39,8 @@ const VISIBILITY: { key: CoachProfile['visibility']; label: string; hint: string
 export default function CoachVitrinePage() {
   const [p, setP] = useState<CoachProfile | null>(null)
   const [programs, setPrograms] = useState<CoachProgram[]>([])
-  const [mode, setMode] = useState<'view' | 'edit'>('view')
+  const [editOpen, setEditOpen] = useState(false)
+  const [createOpen, setCreateOpen] = useState(false)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -109,6 +112,8 @@ export default function CoachVitrinePage() {
     finally { setSaving(false) }
   }
 
+  const refreshPrograms = async () => { setPrograms((await listMyPrograms().catch(() => [])).filter(pr => pr.published)) }
+
   const publicUrl = p.slug ? `${typeof window !== 'undefined' ? window.location.origin : ''}/c/${p.slug}` : ''
   const copy = () => { if (publicUrl) { void navigator.clipboard.writeText(publicUrl); setCopied(true); setTimeout(() => setCopied(false), 1600) } }
 
@@ -123,22 +128,17 @@ export default function CoachVitrinePage() {
     }
   }
 
-  // ══════════════════════════════════ VUE APERÇU ══════════════════════════════════
-  if (mode === 'view') {
-    return (
+  // ══════════════════════════════════ PROFIL + SURPAGES ══════════════════════════════════
+  return (
+    <>
       <div style={{ width: '100%', maxWidth: 1080, margin: '0 auto', padding: '24px clamp(16px,4vw,40px) 64px', boxSizing: 'border-box', fontFamily: 'var(--font-body)' }}>
-        {/* Barre d'actions */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 18 }}>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 600, color: 'var(--text)', margin: 0 }}>Mon profil</h1>
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
-              <span style={{ width: 7, height: 7, borderRadius: '50%', background: p.published ? 'var(--primary)' : 'var(--text-dim)' }} />
-              <span style={{ fontSize: 12.5, fontWeight: 600, color: p.published ? 'var(--primary)' : 'var(--text-dim)' }}>{p.published ? 'En ligne' : 'Hors ligne'}</span>
-            </div>
+        {/* En-tête */}
+        <div style={{ marginBottom: 16 }}>
+          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 600, color: 'var(--text)', margin: 0 }}>Mon profil</h1>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
+            <span style={{ width: 7, height: 7, borderRadius: '50%', background: p.published ? 'var(--primary)' : 'var(--text-dim)' }} />
+            <span style={{ fontSize: 12.5, fontWeight: 600, color: p.published ? 'var(--primary)' : 'var(--text-dim)' }}>{p.published ? 'En ligne' : 'Hors ligne'}</span>
           </div>
-          <Link href="/coach/programs" style={ghost}>+ Créer un programme</Link>
-          {p.published && p.slug && <Link href={`/c/${p.slug}`} target="_blank" style={ghost}>Voir en public</Link>}
-          <button onClick={() => setMode('edit')} style={primary}>Modifier</button>
         </div>
 
         {/* Demandes reçues */}
@@ -161,7 +161,12 @@ export default function CoachVitrinePage() {
         )}
 
         {/* Profil (pleine largeur) */}
-        <CoachShowcase profile={p} programs={programs} counts={counts ?? undefined} isCoach isOwner activitiesHref="/activities" />
+        <CoachShowcase profile={p} programs={programs} counts={counts ?? undefined} isCoach isOwner activitiesHref="/activities"
+          actions={<>
+            <button onClick={() => setEditOpen(true)} style={{ height: 42, padding: '0 22px', borderRadius: 999, border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>Modifier</button>
+            <button onClick={() => setCreateOpen(true)} style={{ height: 42, padding: '0 18px', borderRadius: 999, border: 'none', background: 'var(--bg-card2)', color: 'var(--text-mid)', fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>+ Programme</button>
+            {p.published && p.slug && <a href={`/c/${p.slug}`} target="_blank" rel="noopener noreferrer" style={{ height: 42, padding: '0 18px', borderRadius: 999, background: 'var(--bg-card2)', color: 'var(--text-mid)', fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 700, textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>Voir en public</a>}
+          </>} />
 
         {/* Lien de partage */}
         {p.published && p.slug && (
@@ -171,17 +176,11 @@ export default function CoachVitrinePage() {
           </div>
         )}
       </div>
-    )
-  }
 
-  // ══════════════════════════════════ VUE ÉDITION ══════════════════════════════════
-  return (
-    <div style={{ width: '100%', maxWidth: 720, margin: '0 auto', padding: '24px clamp(16px,4vw,40px) 64px', boxSizing: 'border-box', fontFamily: 'var(--font-body)' }}>
-      <button onClick={() => setMode('view')} style={backBtn}>← Aperçu</button>
-      <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 600, color: 'var(--text)', margin: '0 0 4px' }}>Modifier ma vitrine</h1>
-      <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: '0 0 24px' }}>Ta page publique de coach — partage-la sur tes réseaux pour recevoir des demandes.</p>
-
-      <div style={cardSt}>
+      {/* Surpage — Modifier le profil */}
+      <SlideSheet open={editOpen} onClose={() => setEditOpen(false)} title="Modifier mon profil">
+        <div style={{ width: '100%', maxWidth: 720, margin: '0 auto', padding: '8px clamp(16px,4vw,32px) 48px', boxSizing: 'border-box', fontFamily: 'var(--font-body)' }}>
+          <div style={cardSt}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
           <Toggle on={p.published} onClick={() => set({ published: !p.published })} label={p.published ? 'Vitrine en ligne' : 'Vitrine hors ligne'} />
           <Toggle on={p.accepting_requests} onClick={() => set({ accepting_requests: !p.accepting_requests })} label="Accepte des demandes" />
@@ -298,10 +297,17 @@ export default function CoachVitrinePage() {
 
         <div style={{ display: 'flex', gap: 10, marginTop: 22 }}>
           <button onClick={save} disabled={saving} style={{ ...primary, flex: 1, height: 46, fontSize: 14.5 }}>{saving ? 'Enregistrement…' : saved ? 'Enregistré ✓' : 'Enregistrer'}</button>
-          <button onClick={() => setMode('view')} style={{ ...ghost, height: 46 }}>Aperçu</button>
+          <button onClick={() => setEditOpen(false)} style={{ ...ghost, height: 46 }}>Fermer</button>
         </div>
-      </div>
-    </div>
+          </div>
+        </div>
+      </SlideSheet>
+
+      {/* Surpage — Créer un programme (plein écran, glisse de la droite) */}
+      <SlideSheet open={createOpen} onClose={() => { setCreateOpen(false); void refreshPrograms() }} title="Créer un programme">
+        <CoachProgramsPage />
+      </SlideSheet>
+    </>
   )
 }
 
@@ -329,6 +335,5 @@ const secLbl: React.CSSProperties = { fontSize: 11, fontWeight: 800, letterSpaci
 const inp: React.CSSProperties = { width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: 'var(--r-md)', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontFamily: 'var(--font-body)', fontSize: 14, outline: 'none' }
 const primary: React.CSSProperties = { padding: '9px 16px', borderRadius: 'var(--r-md)', border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontFamily: 'var(--font-body)', fontSize: 13.5, fontWeight: 700, cursor: 'pointer', flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }
 const ghost: React.CSSProperties = { padding: '9px 14px', borderRadius: 'var(--r-md)', border: 'none', background: 'var(--bg-card2)', color: 'var(--text-mid)', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600, cursor: 'pointer', flexShrink: 0, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }
-const backBtn: React.CSSProperties = { border: 'none', background: 'transparent', color: 'var(--text-mid)', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600, cursor: 'pointer', padding: '4px 0', marginBottom: 8 }
 const addBtn: React.CSSProperties = { alignSelf: 'flex-start', padding: '8px 14px', borderRadius: 'var(--r-md)', border: 'none', background: 'var(--bg-card2)', color: 'var(--primary)', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 700, cursor: 'pointer' }
 const removeBtn: React.CSSProperties = { width: 34, height: 34, flexShrink: 0, borderRadius: 'var(--r-sm)', border: 'none', background: 'var(--bg-card2)', color: 'var(--text-dim)', fontFamily: 'var(--font-body)', fontSize: 18, lineHeight: 1, cursor: 'pointer' }

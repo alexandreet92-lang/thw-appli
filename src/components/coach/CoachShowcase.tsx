@@ -5,11 +5,14 @@
 // hero + stats + actions, puis sections en grille (à propos, vidéo, palmarès,
 // diplômes, programmes, activités, réseaux). États vides qui invitent à remplir.
 // ══════════════════════════════════════════════════════════════════
+import { useState } from 'react'
 import Link from 'next/link'
 import type { CoachProfile } from '@/lib/coach/vitrine'
 import type { CoachProgram } from '@/lib/coach/programs'
-import { LEVEL_LABEL } from '@/lib/coach/programs'
 import type { SocialCounts } from '@/lib/social/follows'
+import ProgramDeck from '@/components/coach/ProgramDeck'
+import ProgramDetailView from '@/components/coach/ProgramDetailView'
+import SlideSheet from '@/components/ui/SlideSheet'
 
 const SPORT_LABEL: Record<string, string> = { running: 'Course', cycling: 'Vélo', swim: 'Natation', gym: 'Renforcement', hyrox: 'Hyrox', rowing: 'Aviron', trail: 'Trail', triathlon: 'Triathlon' }
 
@@ -39,6 +42,7 @@ interface ShowcaseProps {
 }
 
 export default function CoachShowcase({ profile, programs = [], counts, isCoach, isOwner, isFollowing, followBusy, onToggleFollow, actions, activitiesHref }: ShowcaseProps) {
+  const [openProgram, setOpenProgram] = useState<CoachProgram | null>(null)
   const name = profile.display_name || 'Profil'
   const monogram = name.trim().charAt(0).toUpperCase()
   const socials = profile.socials ?? {}
@@ -56,7 +60,15 @@ export default function CoachShowcase({ profile, programs = [], counts, isCoach,
             : <div style={{ width: 'clamp(96px,18vw,140px)', height: 'clamp(96px,18vw,140px)', borderRadius: 'clamp(24px,4vw,36px)', background: 'var(--primary-gradient)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-display)', fontSize: 52, fontWeight: 600, flexShrink: 0, boxShadow: '0 12px 34px rgba(6,182,212,0.28)' }}>{monogram}</div>}
 
           <div style={{ flex: 1, minWidth: 240 }}>
-            <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(28px,5vw,42px)', fontWeight: 600, letterSpacing: '-0.01em', color: 'var(--text)', margin: 0, lineHeight: 1.05 }}>{name}</h1>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(28px,5vw,42px)', fontWeight: 600, letterSpacing: '-0.01em', color: 'var(--text)', margin: 0, lineHeight: 1.05 }}>{name}</h1>
+              {isCoach && (
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 11px', borderRadius: 999, background: 'var(--primary-dim)', color: 'var(--primary)', fontSize: 12, fontWeight: 700 }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+                  Coach
+                </span>
+              )}
+            </div>
             {profile.headline && <p style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(15px,2.2vw,18px)', fontWeight: 500, color: 'var(--text-mid)', margin: '8px 0 0', lineHeight: 1.4 }}>{profile.headline}</p>}
             <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'center', marginTop: 10 }}>
               {profile.location && <span style={{ fontSize: 12.5, color: 'var(--text-dim)', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
@@ -110,6 +122,19 @@ export default function CoachShowcase({ profile, programs = [], counts, isCoach,
         </div>
       )}
 
+      {/* ── PROGRAMMES (deck pleine largeur) ── */}
+      {(programs.length > 0 || isOwner) && (
+        <div style={card}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 14 }}>
+            <SectionTitle>Programmes</SectionTitle>
+            {programs.length > 0 && <span className="tnum" style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-dim)', fontVariantNumeric: 'tabular-nums' }}>{programs.length}</span>}
+          </div>
+          {programs.length > 0
+            ? <ProgramDeck programs={programs} onOpen={setOpenProgram} />
+            : <Empty>{isCoach ? 'Publie un programme pour le montrer ici.' : 'Aucun programme publié.'}</Empty>}
+        </div>
+      )}
+
       {/* ── GRILLE ── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 16, alignItems: 'start' }}>
         {/* Palmarès */}
@@ -148,26 +173,6 @@ export default function CoachShowcase({ profile, programs = [], counts, isCoach,
           </div>
         )}
 
-        {/* Programmes */}
-        {(programs.length > 0 || isOwner) && (
-          <div style={card}>
-            <SectionTitle>Programmes</SectionTitle>
-            {programs.length > 0 ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {programs.map(pr => (
-                  <Link key={pr.id} href={`/programmes/${pr.id}`} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', background: 'var(--bg-card2)', borderRadius: 'var(--r-md)', textDecoration: 'none' }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 14.5, fontWeight: 600, color: 'var(--text)' }}>{pr.title}</div>
-                      <div style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 2 }}><span className="tnum" style={{ fontVariantNumeric: 'tabular-nums' }}>{pr.duration_weeks}</span> sem.{pr.level ? ` · ${LEVEL_LABEL[pr.level]}` : ''}</div>
-                    </div>
-                    <span style={{ color: 'var(--primary)', fontSize: 18 }}>→</span>
-                  </Link>
-                ))}
-              </div>
-            ) : <Empty>{isCoach ? 'Publie un programme pour le montrer ici.' : 'Aucun programme publié.'}</Empty>}
-          </div>
-        )}
-
         {/* Activités */}
         <div style={card}>
           <SectionTitle>Activités</SectionTitle>
@@ -201,6 +206,11 @@ export default function CoachShowcase({ profile, programs = [], counts, isCoach,
           </div>
         )}
       </div>
+
+      {/* Surpage détail d'un programme */}
+      <SlideSheet open={!!openProgram} onClose={() => setOpenProgram(null)} title="Programme">
+        {openProgram && <ProgramDetailView program={openProgram} coachName={isOwner ? null : profile.display_name} coachSlug={profile.slug} />}
+      </SlideSheet>
     </div>
   )
 }

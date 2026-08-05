@@ -22,8 +22,8 @@ function Chip({ name, on }: { name: string; on: boolean }) {
   )
 }
 
-export default function RideDesktop({ v, d, status, onTogglePause, onFinish }: {
-  v: RideView; d: Derived; status: Record<'trainer' | 'hr' | 'cadence', SensorStatus>; onTogglePause: () => void; onFinish: () => void
+export default function RideDesktop({ v, d, status, onTogglePause, onFinish, onStopTest }: {
+  v: RideView; d: Derived; status: Record<'trainer' | 'hr' | 'cadence', SensorStatus>; onTogglePause: () => void; onFinish: () => void; onStopTest?: () => void
 }) {
   const curIdx = v.current ? v.plan?.blocks.indexOf(v.current) ?? -1 : -1
   const stripRef = useRef<HTMLDivElement>(null)
@@ -41,6 +41,9 @@ export default function RideDesktop({ v, d, status, onTogglePause, onFinish }: {
         <span style={{ flex: 1 }} />
         <Chip name="Home trainer" on={status.trainer === 'connected'} />
         <Chip name="Cardio" on={status.hr === 'connected'} />
+        {d.isRampBlock && onStopTest && (
+          <button onClick={onStopTest} style={{ padding: '9px 16px', borderRadius: 'var(--r-sm)', background: 'var(--danger, #ef4444)', border: 'none', color: '#fff', fontSize: 13, fontWeight: 800, cursor: 'pointer' }}>Stop test → récup</button>
+        )}
         <button onClick={onTogglePause} style={{ padding: '9px 16px', borderRadius: 'var(--r-sm)', background: 'var(--bg-card2)', border: '1px solid var(--border-mid)', color: 'var(--text)', fontSize: 13, fontWeight: 800, cursor: 'pointer' }}>Pause</button>
         <button onClick={onFinish} style={{ padding: '9px 16px', borderRadius: 'var(--r-sm)', background: 'var(--bg-card2)', border: '1px solid var(--border-mid)', color: 'var(--charge-hard)', fontSize: 13, fontWeight: 800, cursor: 'pointer' }}>Terminer</button>
       </div>
@@ -52,8 +55,13 @@ export default function RideDesktop({ v, d, status, onTogglePause, onFinish }: {
           <div style={{ ...panel, textAlign: 'center' }}>
             <Lbl>Puissance</Lbl>
             <div style={{ marginTop: 8 }}><span style={{ fontSize: 92, fontWeight: 800, lineHeight: 0.82, fontVariantNumeric: 'tabular-nums', color: 'var(--text)' }}>{d.power}</span><span style={{ fontSize: 20, color: 'var(--text-mid)', fontWeight: 800 }}>W</span></div>
-            {v.current && <div style={{ fontSize: 14, color: 'var(--text-mid)', fontWeight: 800, marginTop: 6 }}>cible <b style={{ color: 'var(--primary)' }}>{d.targetW} W</b> · {d.pct} % FTP</div>}
-            {v.current && <div style={{ marginTop: 14 }}><GaugeBar deltaW={d.deltaW} /></div>}
+            <div style={{ fontSize: 14, color: 'var(--text-mid)', fontWeight: 800, marginTop: 6 }}>
+              {d.isCp20Block
+                ? 'À fond · meilleure moyenne'
+                : v.current && d.targetW > 0 ? <>cible <b style={{ color: 'var(--primary)' }}>{d.targetW} W</b> · {d.pct} % FTP</> : null}
+              {d.wkg != null && <span> · <b style={{ color: 'var(--text)' }}>{d.wkg.toFixed(1).replace('.', ',')}</b> W/kg</span>}
+            </div>
+            {v.current && d.targetW > 0 && <div style={{ marginTop: 14 }}><GaugeBar deltaW={d.deltaW} /></div>}
           </div>
           <div style={panel}>
             <Lbl>Bloc en cours</Lbl>
@@ -85,7 +93,7 @@ export default function RideDesktop({ v, d, status, onTogglePause, onFinish }: {
 
         {/* Droite */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <Metric label="Cadence" value={d.cadence ?? '—'} unit="rpm" size={24} />
+          <Metric label={d.cadenceTarget != null ? `Cadence · cible ${d.cadenceTarget}` : 'Cadence'} value={d.cadence ?? '—'} unit="rpm" size={24} />
           <Metric label="Fréq. cardiaque" value={d.hr ?? '—'} unit="bpm" accent="var(--ride-hr)" size={24} />
           <Metric label="Puiss. moy" value={v.metrics.avgW} unit="W" size={24} />
           <Metric label="NP" value={v.metrics.np} unit="W" size={24} />

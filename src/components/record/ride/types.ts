@@ -6,11 +6,13 @@ export interface RideBlock {
   name: string
   kind: 'warmup' | 'effort' | 'recovery' | 'cooldown' | 'block'
   durationS: number
-  targetW: number          // watts absolus (dérivés de la séance planifiée)
-  rep?: number             // n° de répétition dans une série (1-based)
-  of?: number              // nombre total de répétitions de la série
+  targetW: number          // watts absolus (dérivés de la séance planifiée) ; 0 = pas de cible (CP20)
+  rep?: number             // n° de répétition dans une série (1-based) / n° de palier (rampe)
+  of?: number              // nombre total de répétitions de la série / de paliers (rampe)
   t0: number               // début cumulé (s)
   t1: number               // fin cumulée (s)
+  test?: 'ramp' | 'cp20'   // bloc de TEST (rampe par paliers / CP20 max) → UI dédiée en direct
+  cadenceTarget?: number   // cadence cible (tr/min), affichée pendant l'effort
 }
 
 /** Profil de séance résolu (issu de planned_sessions) ou null = sortie libre. */

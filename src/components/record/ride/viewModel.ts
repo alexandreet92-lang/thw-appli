@@ -6,6 +6,7 @@ import type { RidePlan, RideBlock, RideMetrics, RideSample } from './types'
 export interface RideView {
   ftp: number
   fcMax: number
+  massKg: number          // poids athlète (kg) — 0 si non renseigné (W/kg masqué)
   plan: RidePlan | null
   t: number
   metrics: RideMetrics
@@ -27,6 +28,10 @@ export interface Derived {
   remainingS: number     // restant sur la séance
   repLabel: string
   smEst: number          // estimation live SM (cas indoor de cyclingSmSn)
+  wkg: number | null     // W/kg (null si poids athlète absent)
+  isRampBlock: boolean   // le bloc courant est un palier de ramp test
+  isCp20Block: boolean   // le bloc courant est un CP20 (effort libre à fond)
+  cadenceTarget: number | null
 }
 
 function lastNonNull(samples: RideSample[], key: 'cadence' | 'hr'): number | null {
@@ -50,7 +55,13 @@ export function derive(v: RideView): Derived {
     hr: lastNonNull(v.samples, 'hr'),
     countdownS: v.current ? v.current.t1 - v.t : 0,
     remainingS: v.plan ? Math.max(0, v.plan.totalS - v.t) : 0,
-    repLabel: v.current?.of ? `Bloc ${v.current.rep} / ${v.current.of}` : '—',
+    repLabel: v.current?.test === 'ramp'
+      ? `Palier ${v.current.rep} / ${v.current.of}`
+      : v.current?.of ? `Bloc ${v.current.rep} / ${v.current.of}` : '—',
     smEst: Math.round((v.t / 3600) * v.metrics.if * v.metrics.if * 100),
+    wkg: v.massKg > 0 ? Math.round((power / v.massKg) * 10) / 10 : null,
+    isRampBlock: v.current?.test === 'ramp',
+    isCp20Block: v.current?.test === 'cp20',
+    cadenceTarget: v.current?.cadenceTarget ?? null,
   }
 }

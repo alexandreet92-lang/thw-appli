@@ -19,6 +19,12 @@ export interface PlannedBlock {
   recoveryZone?: number
   recoveryValue?: string
   label?: string
+  // Bloc TEST (vélo)
+  testType?: 'ramp' | 'cp20'
+  rampStartWatts?: number
+  rampStepWatts?: number
+  rampStepMin?: number
+  cadence?: string
 }
 
 const NAME_BY_TYPE: Record<string, string> = {
@@ -55,9 +61,28 @@ export function buildPlan(blocks: PlannedBlock[] | null | undefined, ftp: number
 
   for (const b of blocks) {
     const kind = KIND_BY_TYPE[b.type ?? ''] ?? 'block'
+    const cad = Number((b.cadence ?? '').trim())
+    const cadenceTarget = Number.isFinite(cad) && cad > 0 ? Math.round(cad) : undefined
+    // ── Bloc TEST (vélo) ──
+    if (b.mode === 'test') {
+      if (b.testType === 'cp20') {
+        flat.push({ name: b.label?.trim() || 'Test CP20', kind: 'effort', durationS: 20 * 60, targetW: 0, test: 'cp20', cadenceTarget })
+      } else {
+        // Rampe : paliers ascendants jusqu'à un plafond large (le test s'arrête à
+        // l'épuisement via le bouton « Stop test », bien avant ce plafond).
+        const start = b.rampStartWatts && b.rampStartWatts > 0 ? Math.round(b.rampStartWatts) : 100
+        const step = b.rampStepWatts && b.rampStepWatts > 0 ? Math.round(b.rampStepWatts) : 20
+        const stepMin = b.rampStepMin && b.rampStepMin > 0 ? b.rampStepMin : 2
+        const paliers = Math.max(1, Math.min(40, Math.ceil((600 - start) / step) + 1))
+        for (let p = 0; p < paliers; p++) {
+          flat.push({ name: b.label?.trim() || 'Ramp test', kind: 'effort', durationS: Math.round(stepMin * 60), targetW: start + p * step, rep: p + 1, of: paliers, test: 'ramp', cadenceTarget })
+        }
+      }
+      continue
+    }
     if (b.mode === 'interval' && b.reps && b.effortMin) {
       for (let r = 0; r < b.reps; r++) {
-        flat.push({ name: nameOf(b), kind: 'effort', durationS: Math.round(b.effortMin * 60), targetW: targetWatts(b.value, b.zone, ftp), rep: r + 1, of: b.reps })
+        flat.push({ name: nameOf(b), kind: 'effort', durationS: Math.round(b.effortMin * 60), targetW: targetWatts(b.value, b.zone, ftp), rep: r + 1, of: b.reps, cadenceTarget })
         if (b.recoveryMin && b.recoveryMin > 0) {
           flat.push({ name: 'Récupération', kind: 'recovery', durationS: Math.round(b.recoveryMin * 60), targetW: targetWatts(b.recoveryValue, b.recoveryZone, ftp) })
         }
@@ -65,7 +90,7 @@ export function buildPlan(blocks: PlannedBlock[] | null | undefined, ftp: number
     } else {
       const durS = Math.round((b.durationMin ?? 0) * 60)
       if (durS <= 0) continue
-      flat.push({ name: nameOf(b), kind, durationS: durS, targetW: targetWatts(b.value, b.zone, ftp) })
+      flat.push({ name: nameOf(b), kind, durationS: durS, targetW: targetWatts(b.value, b.zone, ftp), cadenceTarget })
     }
   }
 

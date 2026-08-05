@@ -51,6 +51,37 @@ export function useRideEngine(ftp: number, plan: RidePlan | null, live: React.Re
 
   const pause = useCallback(() => { stopTimer(); setRunning(false) }, [])
 
+  // Avance le chrono à la fin du bloc courant (saute au bloc suivant).
+  const skipToNext = useCallback(() => {
+    setT(prev => {
+      const cur = blockAt(plan, prev)
+      const nt = cur ? cur.t1 : prev
+      if (plan && nt >= plan.totalS) { stopTimer(); setRunning(false) }
+      return nt
+    })
+  }, [plan])
+
+  // « Stop test » (rampe) : saute par-dessus TOUS les paliers restants du test
+  // jusqu'au bloc suivant (la récupération). Renvoie l'état d'arrêt (palier en
+  // cours, temps tenu) pour pré-remplir l'écran de résultat.
+  const stopRampTest = useCallback((): { failedRep: number; heldSecOnFailed: number; startW: number; stepW: number; stepMin: number } | null => {
+    if (!plan) return null
+    const cur = blockAt(plan, t)
+    if (!cur || cur.test !== 'ramp') return null
+    const ramp = plan.blocks.filter(b => b.test === 'ramp')
+    const startW = ramp[0]?.targetW ?? 0
+    const stepW = ramp.length > 1 ? ramp[1].targetW - ramp[0].targetW : 20
+    const stepMin = (ramp[0]?.durationS ?? 120) / 60
+    const info = { failedRep: cur.rep ?? 1, heldSecOnFailed: Math.max(0, t - cur.t0), startW, stepW, stepMin }
+    const lastRampEnd = ramp.reduce((mx, b) => Math.max(mx, b.t1), 0)
+    setT(() => {
+      const nt = lastRampEnd
+      if (nt >= plan.totalS) { stopTimer(); setRunning(false) }
+      return nt
+    })
+    return info
+  }, [plan, t])
+
   const metrics = useMemo(
     () => computeMetrics(samples.current, agg.current, ftp, zone.current.timeS),
     // recalcul à chaque seconde (t) — les agrégats vivent dans des réfs
@@ -59,5 +90,5 @@ export function useRideEngine(ftp: number, plan: RidePlan | null, live: React.Re
 
   const current = useMemo(() => blockAt(plan, t), [plan, t])
 
-  return { running, t, samples, metrics, current, start, pause }
+  return { running, t, samples, metrics, current, start, pause, skipToNext, stopRampTest }
 }

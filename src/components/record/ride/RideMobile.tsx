@@ -16,10 +16,10 @@ import type { SensorStatus } from './useSensors'
 interface Props {
   v: RideView; d: Derived
   status: Record<'trainer' | 'hr' | 'cadence', SensorStatus>
-  onTogglePause: () => void; onFinish: () => void
+  onTogglePause: () => void; onFinish: () => void; onStopTest?: () => void
 }
 
-export default function RideMobile({ v, d, status, onTogglePause, onFinish }: Props) {
+export default function RideMobile({ v, d, status, onTogglePause, onFinish, onStopTest }: Props) {
   const pagesRef = useRef<HTMLDivElement>(null)
   const [page, setPage] = useState(0)
   const onScroll = () => {
@@ -44,7 +44,7 @@ export default function RideMobile({ v, d, status, onTogglePause, onFinish }: Pr
 
       {/* Pages */}
       <div ref={pagesRef} onScroll={onScroll} style={{ flex: 1, display: 'flex', overflowX: 'auto', overflowY: 'hidden', scrollSnapType: 'x mandatory', minHeight: 0 }}>
-        <div style={pageStyle}><RidePilot v={v} d={d} /></div>
+        <div style={pageStyle}><RidePilot v={v} d={d} onStopTest={onStopTest} /></div>
         <div style={pageStyle}><RideFlux v={v} d={d} /></div>
         <div style={pageStyle}><RideProfile v={v} /></div>
         <div style={pageStyle}><RideData v={v} d={d} status={status} /></div>

@@ -16,6 +16,8 @@ import StartGate from './StartGate'
 import RideMobile from './RideMobile'
 import RideDesktop from './RideDesktop'
 import RidePause from './RidePause'
+import RampTestResult, { type RampStop } from './RampTestResult'
+import { createClient } from '@/lib/supabase/client'
 
 interface Props { onExit: () => void; onFinished: () => void }
 
@@ -33,7 +35,25 @@ export default function RideScreen({ onExit, onFinished }: Props) {
   const [mounted, setMounted] = useState(false)
   const [started, setStarted] = useState(false)
   const [startedAt, setStartedAt] = useState('')
+  const [massKg, setMassKg] = useState(0)
+  const [rampStop, setRampStop] = useState<RampStop | null>(null)
+  const [showResult, setShowResult] = useState(false)
   useEffect(() => { setMounted(true) }, [])
+
+  // Poids athlète (W/kg en direct + affiché sur l'écran de résultat).
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      try {
+        const sb = createClient()
+        const { data: { user } } = await sb.auth.getUser()
+        if (!user || cancelled) return
+        const { data } = await sb.from('profiles').select('weight_kg').eq('id', user.id).maybeSingle()
+        if (!cancelled && data?.weight_kg) setMassKg(Number(data.weight_kg) || 0)
+      } catch { /* poids indisponible → W/kg masqué */ }
+    })()
+    return () => { cancelled = true }
+  }, [])
 
   const { benchmarks, ready, compute } = useSmSn()
   const ftp = benchmarks.ftp
@@ -53,27 +73,82 @@ export default function RideScreen({ onExit, onFinished }: Props) {
     engine.start()
   }, [engine])
 
+  // « Stop test » (rampe) : mémorise l'arrêt (palier + temps tenu) puis saute
+  // à la récupération. Le résultat est confirmé à la fin de la séance.
+  const onStopTest = useCallback(() => {
+    const info = engine.stopRampTest()
+    if (info) {
+      setRampStop({
+        startW: info.startW, stepW: info.stepW, stepMin: info.stepMin,
+        validatedPaliers: Math.max(1, info.failedRep - 1),
+        heldSecOnFailed: info.heldSecOnFailed,
+      })
+    }
+  }, [engine])
+
+  // Le plan contient-il un bloc de test ? (→ écran de résultat en fin de séance)
+  const hasCp20 = useMemo(() => !!plan?.blocks.some(b => b.test === 'cp20'), [plan])
+  const hasRampPlan = useMemo(() => !!plan?.blocks.some(b => b.test === 'ramp'), [plan])
+  // Paramètres de la rampe pour l'écran de résultat : soit l'arrêt mémorisé
+  // (bouton « Stop test »), soit un repli déduit du plan (athlète allé au bout).
+  const resolvedRamp: RampStop | undefined = useMemo(() => {
+    if (rampStop) return rampStop
+    if (!hasRampPlan || !plan) return undefined
+    const ramp = plan.blocks.filter(b => b.test === 'ramp')
+    if (ramp.length === 0) return undefined
+    const startW = ramp[0].targetW
+    const stepW = ramp.length > 1 ? ramp[1].targetW - ramp[0].targetW : 20
+    const stepMin = ramp[0].durationS / 60
+    const done = ramp.filter(b => b.t1 <= engine.t).length
+    const cur = ramp.find(b => engine.t >= b.t0 && engine.t < b.t1)
+    return {
+      startW, stepW, stepMin,
+      validatedPaliers: Math.max(1, done),
+      heldSecOnFailed: cur ? Math.max(0, engine.t - cur.t0) : 0,
+    }
+  }, [rampStop, hasRampPlan, plan, engine.t])
+  // Moyenne mesurée sur la fenêtre du bloc CP20 (pour FTP = 0,95 × moyenne).
+  const cp20Avg = useMemo(() => {
+    const blk = plan?.blocks.find(b => b.test === 'cp20')
+    if (!blk) return 0
+    const inWin = engine.samples.current.filter(s => s.t > blk.t0 && s.t <= blk.t1 && s.power != null)
+    if (inWin.length === 0) return 0
+    return Math.round(inWin.reduce((s, x) => s + (x.power ?? 0), 0) / inWin.length)
+  }, [plan, engine.samples, engine.t])
+
   const onFinish = useCallback(async () => {
     engine.pause()
-    if (ftp == null) { onFinished(); return }
-    await recorder.save({
-      samples: engine.samples.current, metrics: engine.metrics, ftp,
-      startedAt: startedAt || new Date().toISOString(), elapsedS: engine.t,
-      title: plan?.title ?? 'Séance home trainer', compute,
-    })
+    if (ftp != null) {
+      await recorder.save({
+        samples: engine.samples.current, metrics: engine.metrics, ftp,
+        startedAt: startedAt || new Date().toISOString(), elapsedS: engine.t,
+        title: plan?.title ?? 'Séance home trainer', compute,
+      })
+    }
+    // Séance de test → écran de résultat (PMA/FTP/zones) avant de quitter.
+    if (rampStop || hasRampPlan || (hasCp20 && cp20Avg > 0)) { setShowResult(true); return }
     onFinished()
-  }, [engine, ftp, recorder, startedAt, plan, compute, onFinished])
+  }, [engine, ftp, recorder, startedAt, plan, compute, onFinished, rampStop, hasRampPlan, hasCp20, cp20Avg])
 
   const view: RideView = useMemo(() => ({
-    ftp: ftp ?? 0, fcMax: fcMax ?? 200, plan, t: engine.t,
+    ftp: ftp ?? 0, fcMax: fcMax ?? 200, massKg, plan, t: engine.t,
     metrics: engine.metrics, current: engine.current, samples: engine.samples.current,
-  }), [ftp, fcMax, plan, engine.t, engine.metrics, engine.current, engine.samples])
+  }), [ftp, fcMax, massKg, plan, engine.t, engine.metrics, engine.current, engine.samples])
   const d = useMemo(() => derive(view), [view])
 
   if (!mounted) return null
 
   let body: React.ReactNode
-  if (!started) {
+  if (showResult) {
+    body = (
+      <RampTestResult
+        mode={resolvedRamp ? 'ramp' : 'cp20'}
+        ramp={resolvedRamp}
+        cp20AvgWatts={cp20Avg}
+        massKg={massKg}
+        onDone={onFinished} />
+    )
+  } else if (!started) {
     body = (
       <StartGate ftp={ftp} fcMax={fcMax} plan={plan} loading={!ready || planLoading}
         available={sensors.available} status={sensors.status}
@@ -83,8 +158,8 @@ export default function RideScreen({ onExit, onFinished }: Props) {
     body = (
       <>
         {isDesktop
-          ? <RideDesktop v={view} d={d} status={sensors.status} onTogglePause={engine.pause} onFinish={onFinish} />
-          : <RideMobile v={view} d={d} status={sensors.status} onTogglePause={engine.pause} onFinish={onFinish} />}
+          ? <RideDesktop v={view} d={d} status={sensors.status} onTogglePause={engine.pause} onFinish={onFinish} onStopTest={onStopTest} />
+          : <RideMobile v={view} d={d} status={sensors.status} onTogglePause={engine.pause} onFinish={onFinish} onStopTest={onStopTest} />}
         {paused && <RidePause onResume={engine.start} onFinish={onFinish} />}
       </>
     )

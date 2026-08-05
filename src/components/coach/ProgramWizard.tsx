@@ -7,9 +7,45 @@
 // ══════════════════════════════════════════════════════════════════
 import { useState } from 'react'
 import {
-  updateProgram, computeProgramStats, defaultTargetUnit, LEVEL_LABEL, PREP_LABEL,
-  type CoachProgram, type ProgramWeek, type ProgramSession, type ProgramLevel, type PrepType, type ProgramTarget, type QuestionItem,
+  updateProgram, computeProgramStats, LEVEL_LABEL, PREP_LABEL, SPORTTYPE_TO_KEY, KEY_TO_SPORTTYPE,
+  type CoachProgram, type ProgramWeek, type ProgramSession, type ProgramLevel, type PrepType, type QuestionItem,
 } from '@/lib/coach/programs'
+import { SessionEditor } from '@/components/planning/SessionEditor'
+import type { Session, SportType } from '@/app/planning/page'
+
+const DAY_LABELS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']
+
+/** ProgramSession → Session (pour ouvrir le vrai éditeur en édition). */
+function toSession(s: ProgramSession): Session {
+  return {
+    id: `ps_${Math.random().toString(36).slice(2)}`,
+    sport: (s.sportType ?? KEY_TO_SPORTTYPE[s.sport] ?? 'run') as SportType,
+    title: s.nom || '',
+    time: '09:00',
+    durationMin: s.duree ?? 60,
+    status: 'planned',
+    blocks: s.blocks ?? [],
+    rpe: s.rpe ?? 5,
+    dayIndex: s.day ?? 0,
+    trainingTypes: s.trainingTypes,
+    notes: s.notes,
+  }
+}
+/** Session (retour de l'éditeur) → ProgramSession (stockée dans le programme). */
+function fromSession(s: Session, day: number): ProgramSession {
+  return {
+    nom: s.title || 'Séance',
+    sport: SPORTTYPE_TO_KEY[s.sport] ?? 'running',
+    sportType: s.sport,
+    duree: s.durationMin,
+    rpe: s.rpe,
+    blocks: s.blocks,
+    trainingTypes: s.trainingTypes,
+    notes: s.notes,
+    day,
+    type: (s.trainingTypes && s.trainingTypes[0]) || undefined,
+  }
+}
 
 const SPORTS: { key: string; label: string }[] = [
   { key: 'running', label: 'Course' }, { key: 'cycling', label: 'Vélo' }, { key: 'swim', label: 'Natation' },
@@ -19,13 +55,12 @@ const SPORTS: { key: string; label: string }[] = [
 const SPORT_LABEL: Record<string, string> = Object.fromEntries(SPORTS.map(s => [s.key, s.label]))
 const PREPS: PrepType[] = ['endurance', 'force', 'hybride', 'competition', 'reprise', 'perte_poids']
 const LEVELS: ProgramLevel[] = ['debutant', 'intermediaire', 'avance', 'tous']
-const TYPES = ['Endurance', 'Sortie longue', 'Seuil', 'VMA / Intervalles', 'Récupération', 'Renforcement', 'Technique', 'Compétition', 'Repos']
-const isDistanceSport = (s: string) => ['running', 'cycling', 'swim', 'trail', 'triathlon', 'rowing'].includes(s)
 
 export default function ProgramWizard({ program, onDone }: { program: CoachProgram; onDone: (p: CoachProgram) => void }) {
   const [step, setStep] = useState(1)
   const [p, setP] = useState<CoachProgram>(program)
   const [busy, setBusy] = useState(false)
+  const [editor, setEditor] = useState<{ wi: number; si: number | null; day: number } | null>(null)
   const set = (patch: Partial<CoachProgram>) => setP(prev => ({ ...prev, ...patch }))
 
   // Assure `duration_weeks` semaines dans la structure (sans perdre l'existant).
@@ -36,14 +71,19 @@ export default function ProgramWizard({ program, onDone }: { program: CoachProgr
   })()
   const setWeeks = (w: ProgramWeek[]) => set({ structure: w })
   const setWeek = (i: number, patch: Partial<ProgramWeek>) => setWeeks(weeks.map((w, j) => j === i ? { ...w, ...patch } : w))
-  const addSession = (wi: number) => setWeek(wi, { sessions: [...weeks[wi].sessions, { nom: '', sport: p.sports[0] ?? 'running' }] })
-  const setSession = (wi: number, si: number, patch: Partial<ProgramSession>) => setWeek(wi, { sessions: weeks[wi].sessions.map((s, j) => j === si ? { ...s, ...patch } : s) })
-  const setTarget = (wi: number, si: number, patch: Partial<ProgramTarget>) => {
-    const cur = weeks[wi].sessions[si].target ?? {}
-    setSession(wi, si, { target: { ...cur, ...patch } })
-  }
   const removeSession = (wi: number, si: number) => setWeek(wi, { sessions: weeks[wi].sessions.filter((_, j) => j !== si) })
+  const onEditorSave = (s: Session) => {
+    if (!editor) return
+    const ps = fromSession(s, editor.day)
+    const cur = weeks[editor.wi].sessions
+    const next = editor.si === null ? [...cur, ps] : cur.map((x, j) => j === editor.si ? ps : x)
+    setWeek(editor.wi, { sessions: next })
+    setEditor(null)
+  }
   const toggleSport = (k: string) => set({ sports: p.sports.includes(k) ? p.sports.filter(x => x !== k) : [...p.sports, k] })
+  const addPhase = () => set({ phases: [...p.phases, { label: '', fromWeek: 1, toWeek: Math.min(p.duration_weeks, 3) }] })
+  const setPhase = (i: number, patch: Partial<CoachProgram['phases'][number]>) => set({ phases: p.phases.map((ph, j) => j === i ? { ...ph, ...patch } : ph) })
+  const removePhase = (i: number) => set({ phases: p.phases.filter((_, j) => j !== i) })
   const addQuestion = () => set({ questionnaire: [...p.questionnaire, { id: `q_${Date.now()}`, label: '', type: 'text' }] })
   const setQuestion = (i: number, patch: Partial<QuestionItem>) => set({ questionnaire: p.questionnaire.map((q, j) => j === i ? { ...q, ...patch } : q) })
   const removeQuestion = (i: number) => set({ questionnaire: p.questionnaire.filter((_, j) => j !== i) })
@@ -51,7 +91,7 @@ export default function ProgramWizard({ program, onDone }: { program: CoachProgr
   const persist = async (patch: Partial<CoachProgram>) => {
     const next = { ...p, ...patch, structure: weeks }
     setP(next)
-    await updateProgram(p.id, { title: next.title, description: next.description, objective: next.objective, prep_type: next.prep_type, sports: next.sports, level: next.level, duration_weeks: next.duration_weeks, structure: next.structure, published: next.published, price_cents: next.price_cents, trial_days: next.trial_days, ai_enabled: next.ai_enabled, questionnaire: next.questionnaire })
+    await updateProgram(p.id, { title: next.title, description: next.description, objective: next.objective, prep_type: next.prep_type, sports: next.sports, level: next.level, duration_weeks: next.duration_weeks, structure: next.structure, published: next.published, price_cents: next.price_cents, trial_days: next.trial_days, ai_enabled: next.ai_enabled, questionnaire: next.questionnaire, phases: next.phases })
     return next
   }
 
@@ -111,49 +151,33 @@ export default function ProgramWizard({ program, onDone }: { program: CoachProgr
         </div>
       )}
 
-      {/* ── ÉTAPE 2 ── */}
+      {/* ── ÉTAPE 2 — construction semaine/jour avec le VRAI éditeur ── */}
       {step === 2 && (
         <div>
-          <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: '0 0 14px' }}>Ajoute les séances de chaque semaine. Tu peux laisser une semaine vide (repos).</p>
+          <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: '0 0 14px' }}>Clique un jour pour créer une séance dans le vrai éditeur du planning (blocs, zones, intervalles). Semaine vide = repos.</p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             {weeks.map((w, wi) => (
               <div key={wi} style={{ ...card, padding: 16 }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                  <div style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 600, color: 'var(--text)' }}>{w.label || `Semaine ${wi + 1}`}</div>
-                  <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>{w.sessions.length} séance{w.sessions.length > 1 ? 's' : ''}</span>
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {w.sessions.map((s, si) => (
-                    <div key={si} style={{ background: 'var(--bg-card2)', borderRadius: 'var(--r-md)', padding: 12 }}>
-                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-                        <input value={s.nom} onChange={e => setSession(wi, si, { nom: e.target.value })} style={{ ...inp, flex: 2, minWidth: 150 }} placeholder="Nom de la séance" />
-                        <select value={s.sport} onChange={e => setSession(wi, si, { sport: e.target.value })} style={{ ...inp, width: 120, flex: 'none' }}>
-                          {SPORTS.map(sp => <option key={sp.key} value={sp.key}>{sp.label}</option>)}
-                        </select>
-                        <select value={s.type ?? ''} onChange={e => setSession(wi, si, { type: e.target.value || undefined })} style={{ ...inp, width: 150, flex: 'none' }}>
-                          <option value="">Type</option>
-                          {TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-                        </select>
-                        <button onClick={() => removeSession(wi, si)} aria-label="Retirer" style={removeBtn}>×</button>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 600, color: 'var(--text)', marginBottom: 10 }}>{w.label || `Semaine ${wi + 1}`}</div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 6 }}>
+                  {DAY_LABELS.map((dl, day) => {
+                    const daySessions = w.sessions.map((s, si) => ({ s, si })).filter(({ s }) => (s.day ?? 0) === day)
+                    return (
+                      <div key={day} style={{ background: 'var(--bg-card2)', borderRadius: 'var(--r-md)', padding: 6, minHeight: 92, display: 'flex', flexDirection: 'column', gap: 5 }}>
+                        <div style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--text-dim)', textAlign: 'center' }}>{dl}</div>
+                        {daySessions.map(({ s, si }) => (
+                          <button key={si} onClick={() => setEditor({ wi, si, day })}
+                            style={{ border: 'none', borderRadius: 'var(--r-sm)', padding: '6px 5px', cursor: 'pointer', textAlign: 'left', background: 'var(--bg-card)', display: 'flex', flexDirection: 'column', gap: 2 }}>
+                            <span style={{ width: 6, height: 6, borderRadius: '50%', background: sportDot(s.sport) }} />
+                            <span style={{ fontSize: 10.5, fontWeight: 600, color: 'var(--text)', lineHeight: 1.2, wordBreak: 'break-word' }}>{s.nom || 'Séance'}</span>
+                            {s.duree ? <span className="tnum" style={{ fontSize: 9.5, color: 'var(--text-dim)' }}>{s.duree}′</span> : null}
+                          </button>
+                        ))}
+                        <button onClick={() => setEditor({ wi, si: null, day })} aria-label="Ajouter"
+                          style={{ marginTop: 'auto', border: 'none', borderRadius: 'var(--r-sm)', background: 'transparent', color: 'var(--primary)', fontSize: 16, cursor: 'pointer', padding: '2px 0' }}>+</button>
                       </div>
-                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
-                        <LabeledInput label="Durée" unit="min" value={s.duree} onChange={v => setSession(wi, si, { duree: v })} />
-                        {isDistanceSport(s.sport) && <LabeledInput label="Distance" unit={s.sport === 'swim' ? 'm' : 'km'} value={s.distance} onChange={v => setSession(wi, si, { distance: v })} />}
-                        <LabeledInput label="RPE" unit="/10" value={s.rpe} onChange={v => setSession(wi, si, { rpe: v })} max={10} />
-                        <input value={s.description ?? ''} onChange={e => setSession(wi, si, { description: e.target.value })} style={{ ...inp, flex: 1, minWidth: 160 }} placeholder="Détail (optionnel)" />
-                      </div>
-                      {/* Cible d'effort : fourchette + relatif */}
-                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginTop: 8 }}>
-                        <span style={{ fontSize: 11.5, color: 'var(--text-dim)', fontWeight: 700 }}>Cible</span>
-                        <input value={s.target?.low ?? ''} onChange={e => setTarget(wi, si, { low: e.target.value || undefined })} placeholder="de" style={{ ...inp, width: 70, flex: 'none', padding: '8px 10px' }} />
-                        <span style={{ color: 'var(--text-dim)' }}>→</span>
-                        <input value={s.target?.high ?? ''} onChange={e => setTarget(wi, si, { high: e.target.value || undefined })} placeholder="à" style={{ ...inp, width: 70, flex: 'none', padding: '8px 10px' }} />
-                        <span style={{ fontSize: 12, color: 'var(--text-dim)', minWidth: 34 }}>{defaultTargetUnit(s.sport)}</span>
-                        <input value={s.target?.relative ?? ''} onChange={e => setTarget(wi, si, { relative: e.target.value || undefined })} placeholder="ou en relatif — Zone 4, 85–90 % FTP, allure 10k +10s" style={{ ...inp, flex: 1, minWidth: 180, padding: '8px 10px' }} />
-                      </div>
-                    </div>
-                  ))}
-                  <button onClick={() => addSession(wi)} style={addBtn}>+ Ajouter une séance</button>
+                    )
+                  })}
                 </div>
               </div>
             ))}
@@ -163,6 +187,19 @@ export default function ProgramWizard({ program, onDone }: { program: CoachProgr
             <button onClick={goNext} disabled={busy} style={{ ...primary, minWidth: 160 }}>{busy ? '…' : 'Continuer →'}</button>
           </div>
         </div>
+      )}
+
+      {/* Le VRAI éditeur de séance du planning (mode réserve : sans date) */}
+      {editor && (
+        <SessionEditor
+          mode={editor.si === null ? 'create' : 'edit'}
+          reserveMode
+          session={editor.si === null ? undefined : toSession(weeks[editor.wi].sessions[editor.si])}
+          initialSport={editor.si === null ? (KEY_TO_SPORTTYPE[p.sports[0]] ?? 'run') : undefined}
+          onClose={() => setEditor(null)}
+          onSave={onEditorSave}
+          onDelete={editor.si !== null ? () => { removeSession(editor.wi, editor.si as number); setEditor(null) } : undefined}
+        />
       )}
 
       {/* ── ÉTAPE 3 ── */}
@@ -177,17 +214,58 @@ export default function ProgramWizard({ program, onDone }: { program: CoachProgr
             <Stat n={Math.round(stats.minutes / 60)} label="Heures" />
           </div>
 
-          <div style={secLbl}>Par sport</div>
+          {/* Volume par sport — jauges horizontales alignées */}
+          <div style={secLbl}>Volume par sport</div>
+          {stats.bySport.length === 0 ? <Empty>Aucune séance renseignée.</Empty> : (() => {
+            const maxMin = Math.max(1, ...stats.bySport.map(s => s.minutes))
+            return (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {stats.bySport.map(s => (
+                  <div key={s.sport} style={{ display: 'grid', gridTemplateColumns: '96px 1fr auto', gap: 10, alignItems: 'center' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0 }}>
+                      <span style={{ width: 8, height: 8, borderRadius: '50%', background: sportDot(s.sport), flexShrink: 0 }} />
+                      <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{SPORT_LABEL[s.sport] ?? s.sport}</span>
+                    </div>
+                    <div style={{ height: 10, borderRadius: 999, background: 'var(--bg-card2)', overflow: 'hidden' }}>
+                      <div style={{ height: '100%', width: `${Math.round(s.minutes / maxMin * 100)}%`, borderRadius: 999, background: sportDot(s.sport), transition: 'width 700ms ease' }} />
+                    </div>
+                    <span className="tnum" style={{ fontSize: 12, color: 'var(--text-dim)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+                      {s.sessions} séa · {Math.round(s.minutes / 60 * 10) / 10} h{s.distance ? ` · ${s.distance} ${s.sport === 'swim' ? 'm' : 'km'}` : ''}{s.rpe ? ` · RPE ${s.rpe}` : ''}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )
+          })()}
+
+          {/* Phases de préparation */}
+          <div style={secLbl}>Phases de préparation</div>
+          {/* Timeline visuelle des phases */}
+          {p.phases.length > 0 && (
+            <div style={{ display: 'flex', gap: 4, marginBottom: 12 }}>
+              {p.phases.map((ph, i) => {
+                const span = Math.max(1, (ph.toWeek - ph.fromWeek + 1))
+                return (
+                  <div key={i} style={{ flex: span, minWidth: 0 }}>
+                    <div style={{ height: 8, borderRadius: 999, background: 'var(--primary)', opacity: 0.35 + (i % 3) * 0.22 }} />
+                    <div style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--text-mid)', marginTop: 5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ph.label || 'Phase'}</div>
+                    <div className="tnum" style={{ fontSize: 10, color: 'var(--text-dim)' }}>S{ph.fromWeek}–S{ph.toWeek}</div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {stats.bySport.length === 0 ? <Empty>Aucune séance renseignée.</Empty> : stats.bySport.map(s => (
-              <div key={s.sport} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 13px', background: 'var(--bg-card2)', borderRadius: 'var(--r-md)' }}>
-                <span style={{ width: 8, height: 8, borderRadius: '50%', background: sportDot(s.sport), flexShrink: 0 }} />
-                <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', flex: 1 }}>{SPORT_LABEL[s.sport] ?? s.sport}</span>
-                <span style={{ fontSize: 12.5, color: 'var(--text-dim)' }} className="tnum">
-                  {s.sessions} séances · {Math.round(s.minutes / 60 * 10) / 10} h{s.rpe ? ` · RPE ${s.rpe}` : ''}{s.distance ? ` · ${s.distance} ${s.sport === 'swim' ? 'm' : 'km'}` : ''}
-                </span>
+            {p.phases.map((ph, i) => (
+              <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <input value={ph.label} onChange={e => setPhase(i, { label: e.target.value })} style={{ ...inp, flex: 1 }} placeholder="Nom de la phase (ex. Développement seuil)" />
+                <input type="number" min={1} max={p.duration_weeks} value={ph.fromWeek} onChange={e => setPhase(i, { fromWeek: Math.max(1, Number(e.target.value) || 1) })} style={{ ...inp, width: 64, flex: 'none' }} aria-label="Semaine début" />
+                <span style={{ color: 'var(--text-dim)' }}>→</span>
+                <input type="number" min={1} max={p.duration_weeks} value={ph.toWeek} onChange={e => setPhase(i, { toWeek: Math.max(1, Number(e.target.value) || 1) })} style={{ ...inp, width: 64, flex: 'none' }} aria-label="Semaine fin" />
+                <button onClick={() => removePhase(i)} aria-label="Retirer" style={removeBtn}>×</button>
               </div>
             ))}
+            <button onClick={addPhase} style={addBtn}>+ Ajouter une phase</button>
           </div>
 
           {/* Vente */}
@@ -241,16 +319,6 @@ export default function ProgramWizard({ program, onDone }: { program: CoachProgr
   )
 }
 
-function LabeledInput({ label, unit, value, onChange, max }: { label: string; unit: string; value?: number; onChange: (v: number | undefined) => void; max?: number }) {
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--bg-card)', borderRadius: 'var(--r-md)', padding: '6px 10px' }}>
-      <span style={{ fontSize: 11.5, color: 'var(--text-dim)', fontWeight: 600 }}>{label}</span>
-      <input type="number" min={0} max={max} value={value ?? ''} onChange={e => onChange(e.target.value ? Number(e.target.value) : undefined)}
-        style={{ width: 52, border: 'none', background: 'transparent', color: 'var(--text)', fontFamily: 'var(--font-body)', fontSize: 13.5, outline: 'none', fontVariantNumeric: 'tabular-nums' }} />
-      <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>{unit}</span>
-    </div>
-  )
-}
 function Field({ label, hint, children, style }: { label: string; hint?: string; children: React.ReactNode; style?: React.CSSProperties }) {
   return (
     <label style={{ display: 'block', margin: '14px 0 0', ...style }}>

@@ -3,8 +3,22 @@
 // catalogue public (accessible à tous) et/ou assigne. Distinct de training_plans.
 // ══════════════════════════════════════════════════════════════════
 import { createClient } from '@/lib/supabase/client'
+import type { Block, SportType } from '@/app/planning/page'
 
 export type ProgramLevel = 'debutant' | 'intermediaire' | 'avance' | 'tous'
+
+/** Phase de préparation (définie par le coach). */
+export interface ProgramPhase { label: string; fromWeek: number; toWeek: number }
+
+// ── Correspondance sport « éditeur planning » ↔ clé programme ─────────
+export const SPORTTYPE_TO_KEY: Record<string, string> = {
+  run: 'running', bike: 'cycling', swim: 'swim', hyrox: 'hyrox', rowing: 'rowing',
+  gym: 'gym', elliptique: 'gym', hybrid: 'gym', boxe: 'gym', mobilite: 'gym',
+}
+export const KEY_TO_SPORTTYPE: Record<string, SportType> = {
+  running: 'run', cycling: 'bike', swim: 'swim', gym: 'gym', hyrox: 'hyrox',
+  trail: 'run', triathlon: 'run', rowing: 'rowing',
+}
 
 export type PrepType = 'endurance' | 'force' | 'hybride' | 'competition' | 'reprise' | 'perte_poids'
 
@@ -21,10 +35,11 @@ export interface ProgramTarget {
   relative?: string  // ex. "Zone 4", "85–90 % FTP", "allure 10k +10s"
 }
 
-/** Une séance d'un programme (forme allégée, alignée sur session_library). */
+/** Une séance d'un programme. Peut porter le DÉTAIL complet du vrai éditeur de
+ * planning (blocks, zones, intervalles) ou rester une séance simple. */
 export interface ProgramSession {
   nom: string
-  sport: string
+  sport: string             // clé programme (running/cycling/…) — dérivée du sportType
   type?: string
   duree?: number            // minutes
   distance?: number         // km (m pour la natation)
@@ -32,6 +47,12 @@ export interface ProgramSession {
   target?: ProgramTarget    // cible d'effort (fourchette + relatif)
   intensite?: 'Faible' | 'Modéré' | 'Élevé' | 'Maximum'
   description?: string
+  day?: number              // 0..6 (jour dans la semaine)
+  // ── Détail « vrai planning » (éditeur SessionEditor) ──
+  sportType?: SportType     // 'run' | 'bike' | …
+  blocks?: Block[]          // blocs/zones/intervalles
+  trainingTypes?: string[]
+  notes?: string
 }
 
 /** Unité de cible par défaut selon le sport. */
@@ -75,11 +96,12 @@ export interface CoachProgram {
   trial_days: number
   ai_enabled: boolean
   questionnaire: QuestionItem[]
+  phases: ProgramPhase[]
   created_at: string
   updated_at: string
 }
 
-const COLS = 'id, coach_id, title, description, objective, prep_type, sports, level, duration_weeks, structure, cover_url, published, price_cents, currency, pricing_model, trial_days, ai_enabled, questionnaire, created_at, updated_at'
+const COLS = 'id, coach_id, title, description, objective, prep_type, sports, level, duration_weeks, structure, cover_url, published, price_cents, currency, pricing_model, trial_days, ai_enabled, questionnaire, phases, created_at, updated_at'
 
 function norm(r: unknown): CoachProgram {
   const p = r as CoachProgram
@@ -88,6 +110,7 @@ function norm(r: unknown): CoachProgram {
     sports: Array.isArray(p.sports) ? p.sports : [],
     structure: Array.isArray(p.structure) ? p.structure : [],
     questionnaire: Array.isArray(p.questionnaire) ? p.questionnaire : [],
+    phases: Array.isArray(p.phases) ? p.phases : [],
     price_cents: p.price_cents ?? 0,
     currency: p.currency ?? 'eur',
     ai_enabled: !!p.ai_enabled,
@@ -168,7 +191,7 @@ export async function createProgram(title: string): Promise<string | null> {
 export async function updateProgram(id: string, patch: Partial<CoachProgram>): Promise<void> {
   const sb = createClient()
   const allowed: Partial<CoachProgram> = {}
-  for (const k of ['title', 'description', 'objective', 'prep_type', 'sports', 'level', 'duration_weeks', 'structure', 'cover_url', 'published', 'price_cents', 'currency', 'trial_days', 'ai_enabled', 'questionnaire'] as const) {
+  for (const k of ['title', 'description', 'objective', 'prep_type', 'sports', 'level', 'duration_weeks', 'structure', 'cover_url', 'published', 'price_cents', 'currency', 'trial_days', 'ai_enabled', 'questionnaire', 'phases'] as const) {
     if (k in patch) (allowed as Record<string, unknown>)[k] = patch[k]
   }
   await sb.from('coach_programs').update(allowed).eq('id', id)

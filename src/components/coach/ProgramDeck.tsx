@@ -96,7 +96,11 @@ export default function ProgramDeck({ programs, onOpen }: { programs: CoachProgr
               </div>
               <div style={{ flex: 1 }} />
               <div style={{ position: 'relative' }}>
-                <div style={{ fontSize: 12, fontWeight: 700, opacity: 0.85, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{SPORT_LABEL[sport] ?? sport}{p.level ? ` · ${LEVEL_LABEL[p.level]}` : ''}</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, opacity: 0.85, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{SPORT_LABEL[sport] ?? sport}{p.level ? ` · ${LEVEL_LABEL[p.level]}` : ''}</span>
+                  {p.ai_enabled && <span style={{ fontSize: 10.5, fontWeight: 800, padding: '2px 7px', borderRadius: 999, background: 'rgba(255,255,255,0.22)' }}>IA</span>}
+                  <span style={{ marginLeft: 'auto', fontSize: 13, fontWeight: 800 }}>{p.price_cents > 0 ? `${(p.price_cents / 100).toFixed(p.price_cents % 100 === 0 ? 0 : 2)} €` : 'Gratuit'}</span>
+                </div>
                 <div style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(24px, 5vw, 30px)', fontWeight: 600, lineHeight: 1.1, margin: '6px 0 8px' }}>{p.title}</div>
                 {p.description && <div style={{ fontSize: 13.5, opacity: 0.92, lineHeight: 1.5, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const, overflow: 'hidden' }}>{p.description}</div>}
                 <div style={{ fontSize: 12, fontWeight: 700, marginTop: 12, opacity: 0.95 }}>Voir le programme →</div>

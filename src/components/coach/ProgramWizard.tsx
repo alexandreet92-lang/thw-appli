@@ -8,7 +8,7 @@
 import { useState } from 'react'
 import {
   updateProgram, computeProgramStats, defaultTargetUnit, LEVEL_LABEL, PREP_LABEL,
-  type CoachProgram, type ProgramWeek, type ProgramSession, type ProgramLevel, type PrepType, type ProgramTarget,
+  type CoachProgram, type ProgramWeek, type ProgramSession, type ProgramLevel, type PrepType, type ProgramTarget, type QuestionItem,
 } from '@/lib/coach/programs'
 
 const SPORTS: { key: string; label: string }[] = [
@@ -44,11 +44,14 @@ export default function ProgramWizard({ program, onDone }: { program: CoachProgr
   }
   const removeSession = (wi: number, si: number) => setWeek(wi, { sessions: weeks[wi].sessions.filter((_, j) => j !== si) })
   const toggleSport = (k: string) => set({ sports: p.sports.includes(k) ? p.sports.filter(x => x !== k) : [...p.sports, k] })
+  const addQuestion = () => set({ questionnaire: [...p.questionnaire, { id: `q_${Date.now()}`, label: '', type: 'text' }] })
+  const setQuestion = (i: number, patch: Partial<QuestionItem>) => set({ questionnaire: p.questionnaire.map((q, j) => j === i ? { ...q, ...patch } : q) })
+  const removeQuestion = (i: number) => set({ questionnaire: p.questionnaire.filter((_, j) => j !== i) })
 
   const persist = async (patch: Partial<CoachProgram>) => {
     const next = { ...p, ...patch, structure: weeks }
     setP(next)
-    await updateProgram(p.id, { title: next.title, description: next.description, objective: next.objective, prep_type: next.prep_type, sports: next.sports, level: next.level, duration_weeks: next.duration_weeks, structure: next.structure, published: next.published })
+    await updateProgram(p.id, { title: next.title, description: next.description, objective: next.objective, prep_type: next.prep_type, sports: next.sports, level: next.level, duration_weeks: next.duration_weeks, structure: next.structure, published: next.published, price_cents: next.price_cents, trial_days: next.trial_days, ai_enabled: next.ai_enabled, questionnaire: next.questionnaire })
     return next
   }
 
@@ -187,6 +190,45 @@ export default function ProgramWizard({ program, onDone }: { program: CoachProgr
             ))}
           </div>
 
+          {/* Vente */}
+          <div style={secLbl}>Vente</div>
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+            <Field label="Prix (€)" hint="0 = gratuit" style={{ width: 130, flex: 'none' }}>
+              <input type="number" min={0} step={1} value={p.price_cents ? p.price_cents / 100 : 0} onChange={e => set({ price_cents: Math.max(0, Math.round((Number(e.target.value) || 0) * 100)) })} style={inp} />
+            </Field>
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-dim)', marginBottom: 6 }}>Essai gratuit</div>
+              <div style={{ display: 'flex', gap: 6 }}>
+                {[0, 3, 7].map(d => <button key={d} onClick={() => set({ trial_days: d })} style={chip(p.trial_days === d)}>{d === 0 ? 'Aucun' : `${d} j`}</button>)}
+              </div>
+            </div>
+          </div>
+          <p style={{ fontSize: 12, color: 'var(--text-dim)', margin: '8px 0 0' }}>
+            {p.price_cents > 0 ? `Commission plateforme : ${p.ai_enabled ? 30 : 10} %. Tu reçois ${Math.round(p.price_cents * (p.ai_enabled ? 70 : 90) / 100) / 100} € par vente (avant frais Stripe).` : 'Programme gratuit — aucune commission.'}
+          </p>
+
+          {/* IA */}
+          <div style={secLbl}>Programme intelligent (IA)</div>
+          <Toggle on={p.ai_enabled} onClick={() => set({ ai_enabled: !p.ai_enabled })} label={p.ai_enabled ? 'IA activée — les cibles s’adaptent à chaque athlète' : 'Activer l’IA (cibles personnalisées par athlète)'} />
+          {p.ai_enabled && (
+            <div style={{ marginTop: 14 }}>
+              <div style={{ fontSize: 12.5, color: 'var(--text-mid)', marginBottom: 10, lineHeight: 1.5 }}>Questionnaire (optionnel) : posé à l’athlète s’il manque de données. Sert à l’IA pour personnaliser.</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {p.questionnaire.map((q, i) => (
+                  <div key={q.id} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <input value={q.label} onChange={e => setQuestion(i, { label: e.target.value })} style={{ ...inp, flex: 1 }} placeholder="Question (ex. Ton meilleur 10 km ?)" />
+                    <select value={q.type} onChange={e => setQuestion(i, { type: e.target.value as QuestionItem['type'] })} style={{ ...inp, width: 120, flex: 'none' }}>
+                      <option value="text">Texte</option>
+                      <option value="number">Nombre</option>
+                    </select>
+                    <button onClick={() => removeQuestion(i)} aria-label="Retirer" style={removeBtn}>×</button>
+                  </div>
+                ))}
+                <button onClick={addQuestion} style={addBtn}>+ Ajouter une question</button>
+              </div>
+            </div>
+          )}
+
           <div style={{ display: 'flex', gap: 10, marginTop: 24, flexWrap: 'wrap' }}>
             <button onClick={() => setStep(2)} style={ghost}>← Retour</button>
             <div style={{ flex: 1 }} />
@@ -221,6 +263,16 @@ function Stat({ n, label }: { n: number; label: string }) {
   return <div><div className="tnum" style={{ fontSize: 24, fontWeight: 700, color: 'var(--text)', fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>{n}</div><div style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 4 }}>{label}</div></div>
 }
 function Empty({ children }: { children: React.ReactNode }) { return <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: 0 }}>{children}</p> }
+function Toggle({ on, onClick, label }: { on: boolean; onClick: () => void; label: string }) {
+  return (
+    <button onClick={onClick} style={{ display: 'inline-flex', alignItems: 'center', gap: 9, border: 'none', background: 'transparent', cursor: 'pointer', fontFamily: 'var(--font-body)', textAlign: 'left' }}>
+      <span style={{ width: 40, height: 24, borderRadius: 999, background: on ? 'var(--primary)' : 'var(--border-mid)', position: 'relative', transition: 'background 160ms', flexShrink: 0 }}>
+        <span style={{ position: 'absolute', top: 3, left: on ? 19 : 3, width: 18, height: 18, borderRadius: '50%', background: '#fff', transition: 'left 160ms', boxShadow: '0 1px 2px rgba(0,0,0,0.25)' }} />
+      </span>
+      <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{label}</span>
+    </button>
+  )
+}
 
 const SPORT_DOT: Record<string, string> = { running: '--sport-run', cycling: '--sport-bike', swim: '--sport-swim', gym: '--sport-gym', hyrox: '--sport-hyrox', rowing: '--sport-rowing', trail: '--sport-run', triathlon: '--sport-swim' }
 function sportDot(s: string): string { return `var(${SPORT_DOT[s] ?? '--sport-run'})` }

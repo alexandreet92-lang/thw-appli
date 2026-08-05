@@ -47,6 +47,14 @@ export interface ProgramWeek {
   sessions: ProgramSession[]
 }
 
+/** Une question du questionnaire d'onboarding (programme IA). */
+export interface QuestionItem {
+  id: string
+  label: string
+  type: 'text' | 'number' | 'choice'
+  options?: string[]
+}
+
 export interface CoachProgram {
   id: string
   coach_id: string
@@ -60,11 +68,18 @@ export interface CoachProgram {
   structure: ProgramWeek[]
   cover_url: string | null
   published: boolean
+  // ── Marketplace / IA ──
+  price_cents: number          // 0 = gratuit
+  currency: string
+  pricing_model: 'one_time'
+  trial_days: number
+  ai_enabled: boolean
+  questionnaire: QuestionItem[]
   created_at: string
   updated_at: string
 }
 
-const COLS = 'id, coach_id, title, description, objective, prep_type, sports, level, duration_weeks, structure, cover_url, published, created_at, updated_at'
+const COLS = 'id, coach_id, title, description, objective, prep_type, sports, level, duration_weeks, structure, cover_url, published, price_cents, currency, pricing_model, trial_days, ai_enabled, questionnaire, created_at, updated_at'
 
 function norm(r: unknown): CoachProgram {
   const p = r as CoachProgram
@@ -72,7 +87,37 @@ function norm(r: unknown): CoachProgram {
     ...p,
     sports: Array.isArray(p.sports) ? p.sports : [],
     structure: Array.isArray(p.structure) ? p.structure : [],
+    questionnaire: Array.isArray(p.questionnaire) ? p.questionnaire : [],
+    price_cents: p.price_cents ?? 0,
+    currency: p.currency ?? 'eur',
+    ai_enabled: !!p.ai_enabled,
+    trial_days: p.trial_days ?? 0,
   }
+}
+
+/** Commission plateforme (part retenue) : 10 % standard, 30 % si IA. */
+export function platformFeePct(ai: boolean): number { return ai ? 30 : 10 }
+
+/** Instance personnalisée (IA) de l'utilisateur pour ce programme, si elle existe. */
+export async function getMyProgramInstance(programId: string): Promise<ProgramWeek[] | null> {
+  const sb = createClient()
+  const { data: { user } } = await sb.auth.getUser()
+  if (!user) return null
+  const { data } = await sb.from('program_instances').select('structure').eq('program_id', programId).eq('user_id', user.id).maybeSingle()
+  const st = (data as { structure?: ProgramWeek[] } | null)?.structure
+  return Array.isArray(st) ? st : null
+}
+
+/** L'utilisateur connecté a-t-il accès au programme (gratuit, propriétaire, ou acheté) ? */
+export async function hasProgramAccess(program: CoachProgram): Promise<boolean> {
+  if (program.price_cents === 0) return true
+  const sb = createClient()
+  const { data: { user } } = await sb.auth.getUser()
+  if (!user) return false
+  if (user.id === program.coach_id) return true
+  const { data } = await sb.from('program_purchases')
+    .select('id').eq('program_id', program.id).eq('buyer_id', user.id).eq('status', 'active').maybeSingle()
+  return !!data
 }
 
 /** Programmes du coach connecté (brouillons + publiés). */
@@ -123,7 +168,7 @@ export async function createProgram(title: string): Promise<string | null> {
 export async function updateProgram(id: string, patch: Partial<CoachProgram>): Promise<void> {
   const sb = createClient()
   const allowed: Partial<CoachProgram> = {}
-  for (const k of ['title', 'description', 'objective', 'prep_type', 'sports', 'level', 'duration_weeks', 'structure', 'cover_url', 'published'] as const) {
+  for (const k of ['title', 'description', 'objective', 'prep_type', 'sports', 'level', 'duration_weeks', 'structure', 'cover_url', 'published', 'price_cents', 'currency', 'trial_days', 'ai_enabled', 'questionnaire'] as const) {
     if (k in patch) (allowed as Record<string, unknown>)[k] = patch[k]
   }
   await sb.from('coach_programs').update(allowed).eq('id', id)

@@ -10,14 +10,27 @@ import {
   listMyPrograms, createProgram, deleteProgram,
   LEVEL_LABEL, PREP_LABEL, type CoachProgram,
 } from '@/lib/coach/programs'
+import { startConnectOnboarding, getConnectStatus, getCoachEarnings, type ConnectStatus } from '@/lib/coach/connect'
 import ProgramWizard from '@/components/coach/ProgramWizard'
 
 export default function CoachProgramsPage() {
   const [list, setList] = useState<CoachProgram[] | null>(null)
   const [editing, setEditing] = useState<CoachProgram | null>(null)
   const [busy, setBusy] = useState(false)
+  const [connect, setConnect] = useState<ConnectStatus | null>(null)
+  const [earnings, setEarnings] = useState<{ net: number; sales: number } | null>(null)
 
-  useEffect(() => { void listMyPrograms().then(setList).catch(() => setList([])) }, [])
+  useEffect(() => {
+    void listMyPrograms().then(setList).catch(() => setList([]))
+    void getConnectStatus().then(setConnect).catch(() => setConnect({ connected: false, chargesEnabled: false, payoutsEnabled: false }))
+    void getCoachEarnings().then(e => setEarnings({ net: e.net, sales: e.sales })).catch(() => {})
+  }, [])
+
+  const onboard = async () => {
+    setBusy(true)
+    try { window.location.href = await startConnectOnboarding() }
+    catch (e) { alert(e instanceof Error ? e.message : 'Erreur'); setBusy(false) }
+  }
 
   const openNew = async () => {
     setBusy(true)
@@ -59,6 +72,21 @@ export default function CoachProgramsPage() {
         </div>
         <button onClick={openNew} disabled={busy} style={primary}>{busy ? '…' : '+ Nouveau'}</button>
       </div>
+
+      {/* Paiements (Stripe Connect) */}
+      {connect && (
+        <div style={{ background: 'var(--bg-card)', borderRadius: 'var(--r-lg)', padding: 16, boxShadow: '0 1px 3px rgba(0,0,0,0.05)', marginBottom: 18, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+          <div style={{ flex: 1, minWidth: 180 }}>
+            <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)' }}>Paiements</div>
+            <div style={{ fontSize: 12.5, color: 'var(--text-dim)', marginTop: 2 }}>
+              {connect.chargesEnabled
+                ? <>Compte actif · <span className="tnum">{earnings?.sales ?? 0}</span> vente(s) · <span className="tnum">{((earnings?.net ?? 0) / 100).toFixed(2)}</span> € encaissés</>
+                : connect.connected ? 'Inscription à compléter pour recevoir des paiements.' : 'Configure les paiements pour vendre tes programmes.'}
+            </div>
+          </div>
+          {!connect.chargesEnabled && <button onClick={onboard} disabled={busy} style={primary}>{connect.connected ? 'Compléter' : 'Configurer les paiements'}</button>}
+        </div>
+      )}
 
       {list === null ? (
         <p style={{ fontSize: 13, color: 'var(--text-dim)' }}>Chargement…</p>

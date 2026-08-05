@@ -99,9 +99,43 @@ export async function POST(req: NextRequest) {
   try {
     switch (event.type) {
 
+      // ── account.updated (Connect) : maj des capacités du compte coach ──
+      case 'account.updated': {
+        const acct = event.data.object as Stripe.Account
+        await sb.from('coach_stripe_accounts').update({
+          charges_enabled: !!acct.charges_enabled,
+          payouts_enabled: !!acct.payouts_enabled,
+          updated_at: new Date().toISOString(),
+        }).eq('stripe_account_id', acct.id)
+        break
+      }
+
       // ── checkout.session.completed ──────────────────────────
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session
+
+        // Achat d'un PROGRAMME (marketplace) → enregistre l'accès de l'acheteur.
+        if (session.metadata?.kind === 'program') {
+          const m = session.metadata
+          if (m.programId && m.buyerId && m.coachId) {
+            await sb.from('program_purchases').upsert({
+              program_id: m.programId, buyer_id: m.buyerId, coach_id: m.coachId,
+              amount_cents: session.amount_total ?? 0,
+              platform_fee_cents: parseInt(m.feeCents ?? '0', 10),
+              status: 'active', stripe_session_id: session.id,
+            }, { onConflict: 'program_id,buyer_id' })
+            void notifyUser(m.buyerId, 'coach.pack_active', {
+              title: 'Programme débloqué', body: 'Ton programme est disponible. Bon entraînement !',
+              url: `/programmes/${m.programId}`, dedupKey: `prog-buy-${session.id}`, once: true,
+            })
+            void notifyUser(m.coachId, 'coach.pack_active', {
+              title: 'Nouvelle vente', body: 'Un athlète vient d’acheter un de tes programmes.',
+              url: '/coach/programs', dedupKey: `prog-sale-${session.id}`, once: true,
+            })
+            console.log(`[stripe/webhook] program purchase → ${m.buyerId} bought ${m.programId}`)
+          }
+          break
+        }
 
         // Paiement unique — pack de tokens STUDIO → crédite le wallet Studio.
         // Deux origines possibles :

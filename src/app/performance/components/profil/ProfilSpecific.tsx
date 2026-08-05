@@ -37,11 +37,14 @@ export function ProfilSpecific({ p, wkg, specSport, onSport, params, fields, onE
   const sportLabel = (id: Sport) => id === 'cycling' ? t('performance.sportCycling') : id === 'swimming' ? t('performance.sportSwimming') : SPORTS.find(s => s.id === id)!.label
   const zTabLabel = (id: ZType) => id === 'pace' ? t('performance.zonesPace') : id === 'power' ? t('performance.zonesPower') : t('performance.zonesHR')
 
+  // « — » tant que la donnée source n'est pas renseignée par l'athlète.
+  const dN = (n: number, unit: string) => n > 0 ? { value: `${n}`, unit } : { value: '—', unit: '' }
+  const zonesAvailable = ztype === 'pace' ? p.vma > 0 : ztype === 'power' ? p.ftp > 0 : (p.hrMax > 0 && p.hrRest > 0)
   const zones = ztype === 'pace' ? paceZones(p.vma) : ztype === 'power' ? powerZones(p.ftp) : fcZones(p.hrMax, p.hrRest)
   const subs: { label: string; value: string; unit: string }[] =
-    specSport === 'running' ? [{ label: 'VMA', value: `${p.vma}`, unit: 'km/h' }, { label: 'LTHR', value: `${p.lthr}`, unit: 'bpm' }, { label: 'VO2max', value: `${p.vo2max}`, unit: 'ml/kg/min' }]
-      : specSport === 'cycling' ? [{ label: 'FTP', value: `${p.ftp}`, unit: 'W' }, { label: 'W/kg', value: wkg, unit: '' }, { label: 'LTHR', value: `${p.lthr}`, unit: 'bpm' }]
-        : specSport === 'swimming' ? [{ label: 'CSS', value: p.css, unit: '/100m' }, { label: t('performance.hrMax'), value: `${p.hrMax}`, unit: 'bpm' }, { label: 'VO2max', value: `${p.vo2max}`, unit: 'ml/kg/min' }]
+    specSport === 'running' ? [{ label: 'VMA', ...dN(p.vma, 'km/h') }, { label: 'LTHR', ...dN(p.lthr, 'bpm') }, { label: 'VO2max', ...dN(p.vo2max, 'ml/kg/min') }]
+      : specSport === 'cycling' ? [{ label: 'FTP', ...dN(p.ftp, 'W') }, { label: 'W/kg', value: wkg, unit: '' }, { label: 'LTHR', ...dN(p.lthr, 'bpm') }]
+        : specSport === 'swimming' ? [{ label: 'CSS', value: p.css || '—', unit: p.css ? '/100m' : '' }, { label: t('performance.hrMax'), ...dN(p.hrMax, 'bpm') }, { label: 'VO2max', ...dN(p.vo2max, 'ml/kg/min') }]
           : [{ label: 'Wall Ball', value: params.wall_ball_max || '—', unit: 'reps' }, { label: 'Run comp.', value: params.run_compromised || '—', unit: '/km' }, { label: 'Farmer', value: params.farmer_max_m || '—', unit: 'm' }]
   const radar = specSport === 'running' ? { labels: ['VMA', t('performance.threshold'), t('performance.endurance')], scores: [clamp((p.vma - 10) / 12 * 100), 75, clamp((p.vo2max - 30) / 40 * 100)] }
     : specSport === 'cycling' ? { labels: ['FTP', 'W/kg', t('performance.endurance')], scores: [clamp((p.ftp - 100) / 300 * 100), clamp((parseFloat(wkg) - 1) / 5 * 100), clamp((p.vo2max - 30) / 40 * 100)] }
@@ -71,7 +74,9 @@ export function ProfilSpecific({ p, wkg, specSport, onSport, params, fields, onE
             </div>
             <button onClick={onEditBenchmarks} style={{ border: 'none', background: 'transparent', cursor: 'pointer', fontFamily: FB, fontSize: 12, fontWeight: 600, color: 'var(--primary)' }}>{t('performance.editBenchmarks')} →</button>
           </div>
-          <ZoneBars zones={zones} animKey={`${specSport}-${ztype}`} />
+          {zonesAvailable
+            ? <ZoneBars zones={zones} animKey={`${specSport}-${ztype}`} />
+            : <p style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-dim)', margin: 0 }}>{t('performance.zonesNeedData')}</p>}
           <div style={{ display: 'flex', flexWrap: 'wrap' }}>
             {subs.map((m, i) => (
               <div key={m.label} style={{ paddingRight: 'var(--space-5)', marginRight: i < subs.length - 1 ? 'var(--space-5)' : 0, borderRight: i < subs.length - 1 ? '1px solid var(--border)' : 'none' }}>

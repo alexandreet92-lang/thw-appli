@@ -21,7 +21,7 @@ const AIPanel = dynamic(() => import('@/components/ai/AIPanel'), { ssr: false })
 import { PageHelp } from '@/onboarding/system/PageHelp'
 import { usePageOnboarding } from '@/onboarding/system/usePageOnboarding'
 import { PERFORMANCE_ONBOARDING } from '@/onboarding/configs/performance.config'
-import { ProfilGlobalGrid } from '@/app/performance/components/profil/ProfilGlobalGrid'
+import { ProfilGlobalGrid, type Metric } from '@/app/performance/components/profil/ProfilGlobalGrid'
 import { TestCard } from '@/app/performance/components/tests/TestCard'
 import { TabbedPageLayout } from '@/components/ui/TabbedPageLayout'
 import { User, Database, FlaskConical } from 'lucide-react'
@@ -35,9 +35,12 @@ type PerfTab = 'profil' | 'datas' | 'tests'
 interface SelectedDatum { label: string; value: string }
 
 
+// Profil VIDE par défaut : aucune donnée personnelle codée en dur. Chaque athlète
+// renseigne ses propres valeurs ; tant qu'une donnée n'est pas saisie elle reste
+// à 0 / '' et s'affiche « — » (jamais les chiffres d'un autre athlète ou du coach).
 const INIT_PROFILE = {
-  ftp: 301, weight: 75, age: 31, lthr: 172, hrMax: 192, hrRest: 44,
-  thresholdPace: '4:08', vma: 18.5, css: '1:28', vo2max: 62,
+  ftp: 0, weight: 0, age: 0, lthr: 0, hrMax: 0, hrRest: 0,
+  thresholdPace: '', vma: 0, css: '', vo2max: 0,
 }
 
 
@@ -102,7 +105,7 @@ function NInput({ label, value, onChange, unit, step }: { label:string; value:nu
       <p style={{ fontSize:10, fontWeight:600, textTransform:'uppercase' as const, letterSpacing:'0.06em', color:'var(--text-dim)', marginBottom:4 }}>
         {label}{unit && <span style={{ fontWeight:400, marginLeft:3, textTransform:'none' as const }}>({unit})</span>}
       </p>
-      <input type="number" value={value} step={step||1} onChange={e => onChange(parseFloat(e.target.value)||0)}
+      <input type="number" value={value === 0 ? '' : value} step={step||1} placeholder="—" onChange={e => onChange(parseFloat(e.target.value)||0)}
         style={{ width:'100%', padding:'7px 10px', borderRadius:8, border:'1px solid var(--border)', background:'var(--input-bg)', color:'var(--text)', fontFamily:'DM Mono,monospace', fontSize:12, outline:'none' }}/>
     </div>
   )
@@ -255,7 +258,8 @@ function ProfilTab({ onSelect, selectedDatum, profile: p, setProfile: setP, onAn
   const [specSavedOk,setSpecSavedOk]= useState(false)
   const [benchOpen,   setBenchOpen]  = useState(false)
 
-  const wkg = (p.ftp / p.weight).toFixed(2)
+  // W/kg seulement si FTP ET poids sont renseignés, sinon « — ».
+  const wkg = (p.ftp > 0 && p.weight > 0) ? (p.ftp / p.weight).toFixed(2) : '—'
 
   // ── Charger depuis Supabase au montage ─────────────────────────
   useEffect(() => {
@@ -387,6 +391,17 @@ function ProfilTab({ onSelect, selectedDatum, profile: p, setProfile: setP, onAn
     setSpecParams(prev => ({ ...prev, [specSport]: { ...prev[specSport], [key]: val } }))
   }
 
+  // Métrique d'affichage : tant que l'athlète n'a pas renseigné la donnée, on
+  // montre « — » (non cliquable) — jamais une valeur par défaut.
+  const mNum = (label: string, val: number, unit: string, sub?: string): Metric =>
+    val > 0
+      ? { label, value: val, unit, sub, selected: isSel(label, val, unit), onSelect: () => onSelect(label, `${val} ${unit}`) }
+      : { label, value: '—', selected: false, onSelect: () => {} }
+  const mTxt = (label: string, val: string, unit: string): Metric =>
+    val
+      ? { label, value: val, unit, selected: selectedDatum?.label === label, onSelect: () => onSelect(label, `${val}${unit}`) }
+      : { label, value: '—', selected: false, onSelect: () => {} }
+
   if (profLoading) {
     return (
       <div style={{ display:'flex', alignItems:'center', justifyContent:'center', padding:'40px 0', color:'var(--text-dim)', fontSize:13, gap:10 }}>
@@ -444,14 +459,14 @@ function ProfilTab({ onSelect, selectedDatum, profile: p, setProfile: setP, onAn
           </div>
         ) : (
           <ProfilGlobalGrid isMobile={isMobile} metrics={[
-            { label: 'FTP', value: p.ftp, unit: 'W', sub: `${wkg} W/kg`, selected: isSel('FTP', p.ftp, 'W'), onSelect: () => onSelect('FTP', `${p.ftp} W`) },
-            { label: 'Allure seuil', value: p.thresholdPace, unit: '/km', selected: selectedDatum?.label === 'Allure seuil', onSelect: () => onSelect('Allure seuil', `${p.thresholdPace}/km`) },
-            { label: 'VMA', value: p.vma, unit: 'km/h', selected: isSel('VMA', p.vma, 'km/h'), onSelect: () => onSelect('VMA', `${p.vma} km/h`) },
-            { label: 'CSS', value: p.css, unit: '/100m', selected: selectedDatum?.label === 'CSS', onSelect: () => onSelect('CSS', `${p.css}/100m`) },
-            { label: 'FC max', value: p.hrMax, unit: 'bpm', selected: isSel('FC max', p.hrMax, 'bpm'), onSelect: () => onSelect('FC max', `${p.hrMax} bpm`) },
-            { label: 'FC repos', value: p.hrRest, unit: 'bpm', selected: isSel('FC repos', p.hrRest, 'bpm'), onSelect: () => onSelect('FC repos', `${p.hrRest} bpm`) },
-            { label: 'LTHR', value: p.lthr, unit: 'bpm', selected: isSel('LTHR', p.lthr, 'bpm'), onSelect: () => onSelect('LTHR', `${p.lthr} bpm`) },
-            { label: 'VO2max', value: p.vo2max, unit: 'ml/kg/min', selected: isSel('VO2max', p.vo2max, 'ml/kg/min'), onSelect: () => onSelect('VO2max', `${p.vo2max} ml/kg/min`) },
+            { ...mNum('FTP', p.ftp, 'W'), sub: (p.ftp > 0 && p.weight > 0) ? `${wkg} W/kg` : undefined },
+            mTxt('Allure seuil', p.thresholdPace, '/km'),
+            mNum('VMA', p.vma, 'km/h'),
+            mTxt('CSS', p.css, '/100m'),
+            mNum('FC max', p.hrMax, 'bpm'),
+            mNum('FC repos', p.hrRest, 'bpm'),
+            mNum('LTHR', p.lthr, 'bpm'),
+            mNum('VO2max', p.vo2max, 'ml/kg/min'),
           ]} />
         )}
       </div>
@@ -467,9 +482,15 @@ function ProfilTab({ onSelect, selectedDatum, profile: p, setProfile: setP, onAn
       <div>
         <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 600, color: 'var(--text)', margin: '0 0 var(--space-4)' }}>{t('performance.estimatedLevel')}</h2>
         <LevelBars metrics={[
-          { label: 'W/kg', display: wkg, pct: Math.min(parseFloat(wkg) / 6 * 100, 100), qualifier: parseFloat(wkg) >= 4.5 ? t('performance.levelExpert') : parseFloat(wkg) >= 3.5 ? t('performance.levelAdvanced') : parseFloat(wkg) >= 2.5 ? t('performance.levelIntermediate') : t('performance.levelBeginner'), selected: selectedDatum?.label === 'W/kg', onSelect: () => onSelect('W/kg', `${wkg} W/kg`) },
-          { label: 'VO2max', display: `${p.vo2max}`, pct: Math.min(p.vo2max / 80 * 100, 100), qualifier: p.vo2max >= 65 ? t('performance.levelElite') : p.vo2max >= 55 ? t('performance.levelHigh') : p.vo2max >= 45 ? t('performance.levelGood') : t('performance.levelAverage'), selected: selectedDatum?.label === 'VO2max', onSelect: () => onSelect('VO2max', `${p.vo2max} ml/kg/min`) },
-          { label: 'FC repos', display: `${p.hrRest}`, pct: Math.min(Math.max(0, 80 - p.hrRest) / 50 * 100, 100), qualifier: p.hrRest <= 40 ? t('performance.levelElite') : p.hrRest <= 50 ? t('performance.levelHigh') : p.hrRest <= 60 ? t('performance.levelGood') : t('performance.levelAverage'), selected: selectedDatum?.label === 'FC repos', onSelect: () => onSelect('FC repos', `${p.hrRest} bpm`) },
+          wkg !== '—'
+            ? { label: 'W/kg', display: wkg, pct: Math.min(parseFloat(wkg) / 6 * 100, 100), qualifier: parseFloat(wkg) >= 4.5 ? t('performance.levelExpert') : parseFloat(wkg) >= 3.5 ? t('performance.levelAdvanced') : parseFloat(wkg) >= 2.5 ? t('performance.levelIntermediate') : t('performance.levelBeginner'), selected: selectedDatum?.label === 'W/kg', onSelect: () => onSelect('W/kg', `${wkg} W/kg`) }
+            : { label: 'W/kg', display: '—', pct: 0, qualifier: '' },
+          p.vo2max > 0
+            ? { label: 'VO2max', display: `${p.vo2max}`, pct: Math.min(p.vo2max / 80 * 100, 100), qualifier: p.vo2max >= 65 ? t('performance.levelElite') : p.vo2max >= 55 ? t('performance.levelHigh') : p.vo2max >= 45 ? t('performance.levelGood') : t('performance.levelAverage'), selected: selectedDatum?.label === 'VO2max', onSelect: () => onSelect('VO2max', `${p.vo2max} ml/kg/min`) }
+            : { label: 'VO2max', display: '—', pct: 0, qualifier: '' },
+          p.hrRest > 0
+            ? { label: 'FC repos', display: `${p.hrRest}`, pct: Math.min(Math.max(0, 80 - p.hrRest) / 50 * 100, 100), qualifier: p.hrRest <= 40 ? t('performance.levelElite') : p.hrRest <= 50 ? t('performance.levelHigh') : p.hrRest <= 60 ? t('performance.levelGood') : t('performance.levelAverage'), selected: selectedDatum?.label === 'FC repos', onSelect: () => onSelect('FC repos', `${p.hrRest} bpm`) }
+            : { label: 'FC repos', display: '—', pct: 0, qualifier: '' },
         ]} />
       </div>
 

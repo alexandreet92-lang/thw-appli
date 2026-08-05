@@ -625,7 +625,8 @@ const fr: Dict = {
   'nutrition.foodSearch.manualEntry': 'Saisie manuelle',
   // performance
   'performance.loadingProfile': 'Chargement du profil…', 'performance.profileNotConfigured': 'Profil non configuré',
-  'performance.profileNotConfiguredDesc': 'Les valeurs affichées sont des exemples. Renseigne ton profil pour des analyses personnalisées.',
+  'performance.profileNotConfiguredDesc': 'Aucune donnée renseignée. Renseigne ton profil pour des analyses personnalisées.',
+  'performance.zonesNeedData': 'Renseigne les données nécessaires pour calculer ces zones.',
   'performance.complete': 'Compléter', 'performance.globalProfile': 'Profil Global',
   'performance.globalProfileSubtitle': 'Paramètres physiologiques transversaux', 'performance.analyze': 'Analyser',
   'performance.analyzing': 'Analyse…', 'performance.cancel': 'Annuler', 'performance.save': 'Enregistrer',
@@ -4385,7 +4386,8 @@ const en: Dict = {
   'nutrition.foodSearch.manualEntry': 'Manual entry',
   // performance
   'performance.loadingProfile': 'Loading profile…', 'performance.profileNotConfigured': 'Profile not configured',
-  'performance.profileNotConfiguredDesc': 'The displayed values are examples. Fill in your profile for personalized analyses.',
+  'performance.profileNotConfiguredDesc': 'No data entered yet. Fill in your profile for personalized analyses.',
+  'performance.zonesNeedData': 'Enter the required data to compute these zones.',
   'performance.complete': 'Complete', 'performance.globalProfile': 'Global Profile',
   'performance.globalProfileSubtitle': 'Cross-discipline physiological parameters', 'performance.analyze': 'Analyze',
   'performance.analyzing': 'Analyzing…', 'performance.cancel': 'Cancel', 'performance.save': 'Save',

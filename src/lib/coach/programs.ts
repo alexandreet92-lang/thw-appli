@@ -8,6 +8,19 @@ export type ProgramLevel = 'debutant' | 'intermediaire' | 'avance' | 'tous'
 
 export type PrepType = 'endurance' | 'force' | 'hybride' | 'competition' | 'reprise' | 'perte_poids'
 
+/**
+ * Cible d'effort d'une séance — jamais une valeur absolue exacte (on ne connaît
+ * pas les données précises de l'athlète), mais une FOURCHETTE et/ou une cible
+ * RELATIVE. L'IA convertit ensuite le relatif en valeurs précises par athlète.
+ */
+export interface ProgramTarget {
+  low?: string       // borne basse (ex. "4:30", "250", "150")
+  high?: string      // borne haute (ex. "4:45", "270", "160")
+  unit?: string      // "/km" | "W" | "bpm" | "/100m" | "km/h"
+  zone?: number      // 1..7 (optionnel)
+  relative?: string  // ex. "Zone 4", "85–90 % FTP", "allure 10k +10s"
+}
+
 /** Une séance d'un programme (forme allégée, alignée sur session_library). */
 export interface ProgramSession {
   nom: string
@@ -16,8 +29,16 @@ export interface ProgramSession {
   duree?: number            // minutes
   distance?: number         // km (m pour la natation)
   rpe?: number              // 1..10
+  target?: ProgramTarget    // cible d'effort (fourchette + relatif)
   intensite?: 'Faible' | 'Modéré' | 'Élevé' | 'Maximum'
   description?: string
+}
+
+/** Unité de cible par défaut selon le sport. */
+export function defaultTargetUnit(sport: string): string {
+  if (sport === 'cycling' || sport === 'rowing') return 'W'
+  if (sport === 'swim') return '/100m'
+  return '/km' // course, trail, triathlon
 }
 
 /** Une semaine du programme. */

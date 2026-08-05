@@ -7,8 +7,8 @@
 // ══════════════════════════════════════════════════════════════════
 import { useState } from 'react'
 import {
-  updateProgram, computeProgramStats, LEVEL_LABEL, PREP_LABEL,
-  type CoachProgram, type ProgramWeek, type ProgramSession, type ProgramLevel, type PrepType,
+  updateProgram, computeProgramStats, defaultTargetUnit, LEVEL_LABEL, PREP_LABEL,
+  type CoachProgram, type ProgramWeek, type ProgramSession, type ProgramLevel, type PrepType, type ProgramTarget,
 } from '@/lib/coach/programs'
 
 const SPORTS: { key: string; label: string }[] = [
@@ -38,6 +38,10 @@ export default function ProgramWizard({ program, onDone }: { program: CoachProgr
   const setWeek = (i: number, patch: Partial<ProgramWeek>) => setWeeks(weeks.map((w, j) => j === i ? { ...w, ...patch } : w))
   const addSession = (wi: number) => setWeek(wi, { sessions: [...weeks[wi].sessions, { nom: '', sport: p.sports[0] ?? 'running' }] })
   const setSession = (wi: number, si: number, patch: Partial<ProgramSession>) => setWeek(wi, { sessions: weeks[wi].sessions.map((s, j) => j === si ? { ...s, ...patch } : s) })
+  const setTarget = (wi: number, si: number, patch: Partial<ProgramTarget>) => {
+    const cur = weeks[wi].sessions[si].target ?? {}
+    setSession(wi, si, { target: { ...cur, ...patch } })
+  }
   const removeSession = (wi: number, si: number) => setWeek(wi, { sessions: weeks[wi].sessions.filter((_, j) => j !== si) })
   const toggleSport = (k: string) => set({ sports: p.sports.includes(k) ? p.sports.filter(x => x !== k) : [...p.sports, k] })
 
@@ -134,6 +138,15 @@ export default function ProgramWizard({ program, onDone }: { program: CoachProgr
                         {isDistanceSport(s.sport) && <LabeledInput label="Distance" unit={s.sport === 'swim' ? 'm' : 'km'} value={s.distance} onChange={v => setSession(wi, si, { distance: v })} />}
                         <LabeledInput label="RPE" unit="/10" value={s.rpe} onChange={v => setSession(wi, si, { rpe: v })} max={10} />
                         <input value={s.description ?? ''} onChange={e => setSession(wi, si, { description: e.target.value })} style={{ ...inp, flex: 1, minWidth: 160 }} placeholder="Détail (optionnel)" />
+                      </div>
+                      {/* Cible d'effort : fourchette + relatif */}
+                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginTop: 8 }}>
+                        <span style={{ fontSize: 11.5, color: 'var(--text-dim)', fontWeight: 700 }}>Cible</span>
+                        <input value={s.target?.low ?? ''} onChange={e => setTarget(wi, si, { low: e.target.value || undefined })} placeholder="de" style={{ ...inp, width: 70, flex: 'none', padding: '8px 10px' }} />
+                        <span style={{ color: 'var(--text-dim)' }}>→</span>
+                        <input value={s.target?.high ?? ''} onChange={e => setTarget(wi, si, { high: e.target.value || undefined })} placeholder="à" style={{ ...inp, width: 70, flex: 'none', padding: '8px 10px' }} />
+                        <span style={{ fontSize: 12, color: 'var(--text-dim)', minWidth: 34 }}>{defaultTargetUnit(s.sport)}</span>
+                        <input value={s.target?.relative ?? ''} onChange={e => setTarget(wi, si, { relative: e.target.value || undefined })} placeholder="ou en relatif — Zone 4, 85–90 % FTP, allure 10k +10s" style={{ ...inp, flex: 1, minWidth: 180, padding: '8px 10px' }} />
                       </div>
                     </div>
                   ))}

@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { createClient } from '@/lib/supabase/client'
+import { resolvePlanningUid } from '@/lib/planning/scope'
 import { Segmented } from '@/components/ui/Segmented'
 
 // ─── Levels ──────────────────────────────────────────────────────────────────
@@ -773,11 +774,11 @@ function UpdateModal({ sport, title, axisDefs, gender, currentValues, onClose, o
     setError(null)
     try {
       const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) throw new Error('Non connecté')
+      const uid = await resolvePlanningUid(supabase)
+      if (!uid) throw new Error('Non connecté')
 
       const rows = axisDefs
-        .map(d => ({ user_id: user.id, sport, axis: d.key, raw_value: parseFloat(draft[d.key] ?? '') || 0 }))
+        .map(d => ({ user_id: uid, sport, axis: d.key, raw_value: parseFloat(draft[d.key] ?? '') || 0 }))
         .filter(r => r.raw_value > 0)
 
       if (rows.length > 0) {
@@ -1143,14 +1144,14 @@ function RadarCard({ dbSport, title, sportColor, axisDefs, defaultValues, extraC
 
   const loadScores = useCallback(async () => {
     const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
+    const uid = await resolvePlanningUid(supabase)
+    if (!uid) return
 
     // 1. Fetch performance_scores (primary source)
     const { data } = await supabase
       .from('performance_scores')
       .select('axis, raw_value')
-      .eq('user_id', user.id)
+      .eq('user_id', uid)
       .eq('sport', dbSport)
     const fetched: Record<string, number> = {}
     if (data) {
@@ -1167,7 +1168,7 @@ function RadarCard({ dbSport, title, sportColor, axisDefs, defaultValues, extraC
       const { data: runRec } = await supabase
         .from('personal_records')
         .select('performance')
-        .eq('user_id', user.id)
+        .eq('user_id', uid)
         .eq('sport', 'run')
         .eq('distance_label', '10km')
         .neq('performance', '—')
@@ -1187,7 +1188,7 @@ function RadarCard({ dbSport, title, sportColor, axisDefs, defaultValues, extraC
       const { data: triRec } = await supabase
         .from('personal_records')
         .select('split_swim, split_t1, split_t2, split_run, performance')
-        .eq('user_id', user.id)
+        .eq('user_id', uid)
         .eq('sport', 'triathlon')
         .eq('distance_label', fmt)
         .neq('performance', '—')

@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { useI18n } from '@/lib/i18n'
 import { createClient } from '@/lib/supabase/client'
+import { resolvePlanningUid } from '@/lib/planning/scope'
 import { useTrainingZones } from '@/hooks/useTrainingZones'
 import type { ZoneSport } from '@/hooks/useTrainingZones'
 import { SportTabs } from '@/components/ui/SportTabs'
@@ -482,12 +483,12 @@ function HyroxTestsBandeau({ onNavigateToTests }: { onNavigateToTests?: () => vo
   useEffect(() => {
     const load = async () => {
       const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { setLoading(false); return }
+      const uid = await resolvePlanningUid(supabase)
+      if (!uid) { setLoading(false); return }
       const { data } = await supabase
         .from('performance_tests')
         .select('test_type, score, level, performed_at')
-        .eq('user_id', user.id)
+        .eq('user_id', uid)
         .in('test_type', ['hyrox-force', 'hyrox-endurance-wod', 'hyrox-explosivite'])
         .order('performed_at', { ascending: false })
       if (data) setTests(data as TestRow[])
@@ -1350,12 +1351,12 @@ function ZonesSubTab({ profile, onSelect, selectedDatum, onOpenAI }: {
     setHrSaveError(null)
     try {
       const sb = createClient()
-      const { data: { user } } = await sb.auth.getUser()
-      if (!user) { setHrSaveError(t('perf2.notAuthenticated')); return }
+      const uid = await resolvePlanningUid(sb)
+      if (!uid) { setHrSaveError(t('perf2.notAuthenticated')); return }
       const hrMax = parseInt(fcMaxInput) || profile.hrMax
       const now = new Date().toISOString()
       const { error } = await sb.from('athlete_performance_profile').upsert(
-        { user_id: user.id, hr_max: hrMax, updated_at: now },
+        { user_id: uid, hr_max: hrMax, updated_at: now },
         { onConflict: 'user_id' }
       )
       if (error) {
@@ -2326,12 +2327,12 @@ function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests }: 
   // Loader bike records, réutilisable (mount + après backfill + après edit)
   const loadBikeRecords = useCallback(async () => {
     const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
+    const uid = await resolvePlanningUid(supabase)
+    if (!uid) return
     const { data } = await supabase
       .from('personal_records')
       .select('id, distance_label, performance, achieved_at')
-      .eq('user_id', user.id)
+      .eq('user_id', uid)
       .eq('sport', 'bike')
       .order('achieved_at', { ascending: false })
     if (data) setBikeAllRecords(data as {id: string; distance_label: string; performance: string; achieved_at: string}[])
@@ -2377,12 +2378,12 @@ function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests }: 
   useEffect(() => {
     const load = async () => {
       const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
+      const uid = await resolvePlanningUid(supabase)
+      if (!uid) return
       const { data } = await supabase
         .from('personal_records')
         .select('id, sport, distance_label, performance, performance_unit, achieved_at, split_swim, split_t1, split_bike, split_t2, split_run')
-        .eq('user_id', user.id)
+        .eq('user_id', uid)
         .in('sport', ['run', 'swim', 'rowing', 'gym', 'triathlon'])
         .order('achieved_at', { ascending: false })
       if (data) setAllSpRecords(data as SpRecord[])
@@ -2468,8 +2469,8 @@ function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests }: 
   async function confirmTriathlonRecord(fmt: string, draftOverride?: string) {
     setRecordSaving(true)
     const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (user) {
+    const uid = await resolvePlanningUid(supabase)
+    if (uid) {
       const achievedAt = editDate || new Date().toISOString().slice(0, 10)
       const payload = {
         performance:      draftOverride || editDraft || '0:00:00',
@@ -2488,7 +2489,7 @@ function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests }: 
         ))
       } else {
         const { data: inserted } = await supabase.from('personal_records').insert({
-          user_id:        user.id,
+          user_id:        uid,
           sport:          'triathlon',
           distance_label: fmt,
           event_type:     'competition',
@@ -2549,8 +2550,8 @@ function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests }: 
     setRecordSaving(true)
     if (editDraft) {
       const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
-      if (user) {
+      const uid = await resolvePlanningUid(supabase)
+      if (uid) {
         const achievedAt = editDate || new Date().toISOString().slice(0, 10)
         if (editingRecordId) {
           // UPDATE du record existant
@@ -2567,7 +2568,7 @@ function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests }: 
         } else {
           // INSERT nouveau record
           const { data: inserted } = await supabase.from('personal_records').insert({
-            user_id:          user.id,
+            user_id:          uid,
             sport:            sp,
             distance_label:   dist,
             performance:      editDraft,
@@ -2598,8 +2599,8 @@ function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests }: 
     const watts = parseInt(editDraft) || 0
     if (watts > 0) {
       const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
-      if (user) {
+      const uid = await resolvePlanningUid(supabase)
+      if (uid) {
         const achievedAt = editDate || new Date().toISOString().split('T')[0]
         if (editingRecordId) {
           // UPDATE du record existant
@@ -2615,7 +2616,7 @@ function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests }: 
         } else {
           // INSERT nouveau record
           const { data: inserted } = await supabase.from('personal_records').insert({
-            user_id:          user.id,
+            user_id:          uid,
             sport:            'bike',
             distance_label:   dur,
             performance:      String(watts),
@@ -3408,10 +3409,10 @@ function YearDatasSubTab() {
     setSaving(true)
     try {
       const sb = createClient()
-      const { data: { user } } = await sb.auth.getUser()
-      if (!user) return
+      const uid = await resolvePlanningUid(sb)
+      if (!uid) return
       const payload = {
-        user_id:                   user.id,
+        user_id:                   uid,
         sport:                     activeSport,
         year:                      parseInt(year),
         km:                        editDraft.km                        ?? null,
@@ -3469,8 +3470,8 @@ function YearDatasSubTab() {
     const data      = await res.json() as Record<string, unknown>
     const currentYr = String(new Date().getFullYear())
     const sb        = createClient()
-    const { data: { user } } = await sb.auth.getUser()
-    if (!user) return { ok: false, text: t('perf2.notAuthenticatedDot') }
+    const uid = await resolvePlanningUid(sb)
+    if (!uid) return { ok: false, text: t('perf2.notAuthenticatedDot') }
 
     type StravaTotal = { count: number; distance: number; moving_time: number }
     const mappings: { sportId: string; ytd: StravaTotal | null }[] = [
@@ -3481,7 +3482,7 @@ function YearDatasSubTab() {
     for (const { sportId, ytd } of mappings) {
       if (!ytd) continue
       await sb.from('year_data_manual').upsert({
-        user_id:    user.id,
+        user_id:    uid,
         sport:      sportId,
         year:       parseInt(currentYr),
         km:         Math.round((ytd.distance    / 1000) * 10) / 10,
@@ -3521,8 +3522,8 @@ function YearDatasSubTab() {
 
     try {
       const sb = createClient()
-      const { data: { user } } = await sb.auth.getUser()
-      if (!user) {
+      const uid = await resolvePlanningUid(sb)
+      if (!uid) {
         setImportProgress({ imported: 0, skipped: 0, page: 0, done: true, error: t('perf2.notAuthenticatedDot') })
         return
       }
@@ -3553,7 +3554,7 @@ function YearDatasSubTab() {
         totalProcessed += activities.length
 
         const rows = activities.map(a => ({
-          user_id:          user.id,
+          user_id:          uid,
           provider:         'strava',
           provider_id:      String(a.id),
           sport_type:       mapStravaSport(a.sport_type ?? a.type ?? 'Workout'),

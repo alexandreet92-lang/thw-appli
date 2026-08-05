@@ -4,6 +4,7 @@
 // « + Exercice » sont stockés en localStorage (aucune migration ; les records eux-mêmes
 // vivent dans personal_records).
 import { createClient } from '@/lib/supabase/client'
+import { resolvePlanningUid } from '@/lib/planning/scope'
 
 export type GymUnit = 'kg' | 'reps' | 'addkg'
 export interface GymExercise { name: string; types: string[] }
@@ -54,25 +55,25 @@ export interface GymRec { id: string; distance_label: string; performance: strin
 
 export async function fetchGym(): Promise<GymRec[]> {
   const supabase = createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return []
+  const uid = await resolvePlanningUid(supabase)
+  if (!uid) return []
   const { data } = await supabase.from('personal_records')
     .select('id, distance_label, performance, performance_unit, achieved_at')
-    .eq('user_id', user.id).eq('sport', 'gym').order('achieved_at', { ascending: false })
+    .eq('user_id', uid).eq('sport', 'gym').order('achieved_at', { ascending: false })
   return (data ?? []) as GymRec[]
 }
 
 export async function upsertGym(p: { id: string | null; name: string; type: string; value: string; dateISO: string }): Promise<GymRec | null> {
   const supabase = createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return null
+  const uid = await resolvePlanningUid(supabase)
+  if (!uid) return null
   const unit = unitLabel(p.type)
   if (p.id) {
     await supabase.from('personal_records').update({ performance: p.value, performance_unit: unit, achieved_at: p.dateISO }).eq('id', p.id)
     return { id: p.id, distance_label: `${p.name} — ${p.type}`, performance: p.value, performance_unit: unit, achieved_at: p.dateISO }
   }
   const { data } = await supabase.from('personal_records').insert({
-    user_id: user.id, sport: 'gym', distance_label: `${p.name} — ${p.type}`,
+    user_id: uid, sport: 'gym', distance_label: `${p.name} — ${p.type}`,
     performance: p.value, performance_unit: unit, event_type: 'training', achieved_at: p.dateISO, race_name: null,
   }).select('id, distance_label, performance, performance_unit, achieved_at').single()
   return (data as GymRec) ?? null

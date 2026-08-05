@@ -7,6 +7,7 @@ import { CountUp } from '@/components/ui/AnimatedBar'
 import DatasTab from './DatasTab'
 import { useI18n } from '@/lib/i18n'
 import { createClient } from '@/lib/supabase/client'
+import { resolvePlanningUid } from '@/lib/planning/scope'
 import {
   TEST_BENCHMARKS,
   computeTestScoreResult,
@@ -262,15 +263,15 @@ function ProfilTab({ onSelect, selectedDatum, profile: p, setProfile: setP, onAn
       setProfLoading(true)
       try {
         const sb = createClient()
-        const { data: { user } } = await sb.auth.getUser()
-        if (!user) return
+        const uid = await resolvePlanningUid(sb)
+        if (!uid) return
 
         const [perfRes, profilesRes, specRes] = await Promise.all([
           sb.from('athlete_performance_profile')
             .select('ftp_watts,hr_max,hr_rest,lthr_run,threshold_pace_s_km,css_s_100m,vma_km_h,vo2max_ml_kg_min,age_years')
-            .eq('user_id', user.id).maybeSingle(),
-          sb.from('profiles').select('weight_kg').eq('id', user.id).maybeSingle(),
-          sb.from('athlete_sport_profile').select('sport,params').eq('user_id', user.id),
+            .eq('user_id', uid).maybeSingle(),
+          sb.from('profiles').select('weight_kg').eq('id', uid).maybeSingle(),
+          sb.from('athlete_sport_profile').select('sport,params').eq('user_id', uid),
         ])
 
         const perf = perfRes.data
@@ -319,8 +320,8 @@ function ProfilTab({ onSelect, selectedDatum, profile: p, setProfile: setP, onAn
     setSaving(true)
     try {
       const sb = createClient()
-      const { data: { user } } = await sb.auth.getUser()
-      if (!user) return
+      const uid = await resolvePlanningUid(sb)
+      if (!uid) return
 
       // Parse allure seuil → secondes/km
       const tParts = p.thresholdPace.split(':').map(Number)
@@ -332,7 +333,7 @@ function ProfilTab({ onSelect, selectedDatum, profile: p, setProfile: setP, onAn
 
       await Promise.all([
         sb.from('athlete_performance_profile').upsert({
-          user_id:              user.id,
+          user_id:              uid,
           ftp_watts:            p.ftp,
           hr_max:               p.hrMax,
           hr_rest:              p.hrRest,
@@ -345,8 +346,10 @@ function ProfilTab({ onSelect, selectedDatum, profile: p, setProfile: setP, onAn
           css_s_100m:           cssSec || null,
           updated_at:           new Date().toISOString(),
         }, { onConflict: 'user_id' }),
-        sb.from('profiles').upsert({ id: user.id, weight_kg: p.weight }, { onConflict: 'id' }),
+        sb.from('profiles').upsert({ id: uid, weight_kg: p.weight }, { onConflict: 'id' }),
       ])
+      // Zones modifiées → planning / éditeur rechargent leurs zones immédiatement.
+      if (typeof window !== 'undefined') window.dispatchEvent(new Event('thw:zones-changed'))
       setSavedOk(true)
       setTimeout(() => setSavedOk(false), 2500)
       setEditing(false)
@@ -360,10 +363,10 @@ function ProfilTab({ onSelect, selectedDatum, profile: p, setProfile: setP, onAn
     setSpecSaving(true)
     try {
       const sb = createClient()
-      const { data: { user } } = await sb.auth.getUser()
-      if (!user) return
+      const uid = await resolvePlanningUid(sb)
+      if (!uid) return
       await sb.from('athlete_sport_profile').upsert({
-        user_id:    user.id,
+        user_id:    uid,
         sport:      specSport,
         params:     specParams[specSport],
         updated_at: new Date().toISOString(),
@@ -1283,12 +1286,12 @@ function TestProtocolPanel({ open: ot, onClose, onFtpUpdate }: { open: OpenTest 
     const load = async () => {
       try {
         const sb = createClient()
-        const { data: { user } } = await sb.auth.getUser()
-        if (!user) return
+        const uid = await resolvePlanningUid(sb)
+        if (!uid) return
         const { data } = await sb
           .from('athlete_performance_profile')
           .select('gender')
-          .eq('user_id', user.id)
+          .eq('user_id', uid)
           .maybeSingle()
         if (data?.gender === 'f') setGender('F')
       } catch { /* ignore */ }
@@ -1300,8 +1303,8 @@ function TestProtocolPanel({ open: ot, onClose, onFtpUpdate }: { open: OpenTest 
     setHistLoading(true)
     try {
       const sb = createClient()
-      const { data: { user } } = await sb.auth.getUser()
-      if (!user) return
+      const uid = await resolvePlanningUid(sb)
+      if (!uid) return
       const { data: defData } = await sb
         .from('test_definitions')
         .select('id')
@@ -1312,7 +1315,7 @@ function TestProtocolPanel({ open: ot, onClose, onFtpUpdate }: { open: OpenTest 
       const { data } = await sb
         .from('test_results')
         .select('id, date, valeurs, documents')
-        .eq('user_id', user.id)
+        .eq('user_id', uid)
         .eq('test_definition_id', defData.id)
         .order('date', { ascending: false })
         .limit(10)
@@ -1365,8 +1368,8 @@ function TestProtocolPanel({ open: ot, onClose, onFtpUpdate }: { open: OpenTest 
     setSaving(true)
     try {
       const sb = createClient()
-      const { data: { user } } = await sb.auth.getUser()
-      if (!user) return
+      const uid = await resolvePlanningUid(sb)
+      if (!uid) return
       const { data: defData } = await sb
         .from('test_definitions')
         .select('id')
@@ -1378,7 +1381,7 @@ function TestProtocolPanel({ open: ot, onClose, onFtpUpdate }: { open: OpenTest 
       const uploadedDocs: { name: string; path: string; size: number; type: string }[] = []
       for (const doc of pendingDocs) {
         const safeName = doc.name.replace(/[^a-zA-Z0-9._-]/g, '_')
-        const path = `${user.id}/${ot.test.id}/${Date.now()}_${safeName}`
+        const path = `${uid}/${ot.test.id}/${Date.now()}_${safeName}`
         const { data: up } = await sb.storage.from('test-documents').upload(path, doc.file, { upsert: false })
         if (up) uploadedDocs.push({ name: doc.name, path: up.path, size: doc.file.size, type: doc.file.type })
       }
@@ -1386,7 +1389,7 @@ function TestProtocolPanel({ open: ot, onClose, onFtpUpdate }: { open: OpenTest 
       const saveVals = buildSaveVals()
 
       await sb.from('test_results').insert({
-        user_id: user.id,
+        user_id: uid,
         test_definition_id: defData?.id ?? null,
         date: new Date().toISOString().slice(0, 10),
         valeurs: saveVals,
@@ -1397,7 +1400,7 @@ function TestProtocolPanel({ open: ot, onClose, onFtpUpdate }: { open: OpenTest 
       const scoreResult = computeTestScoreResult(ot.test.id, saveVals, gender)
       if (scoreResult) {
         await sb.from('performance_tests').insert({
-          user_id:    user.id,
+          user_id:    uid,
           sport:      ot.sport,
           test_type:  ot.test.id,
           performed_at: new Date().toISOString(),
@@ -1423,7 +1426,7 @@ function TestProtocolPanel({ open: ot, onClose, onFtpUpdate }: { open: OpenTest 
           const rawVal = map.rawFn ? map.rawFn(saveVals) : parseFloat(saveVals[map.rawKey ?? ''] ?? '')
           if (rawVal > 0) {
             await sb.from('performance_scores').upsert(
-              { user_id: user.id, sport: map.sport, axis: map.axis, raw_value: rawVal },
+              { user_id: uid, sport: map.sport, axis: map.axis, raw_value: rawVal },
               { onConflict: 'user_id,sport,axis' }
             )
           }
@@ -1436,7 +1439,7 @@ function TestProtocolPanel({ open: ot, onClose, onFtpUpdate }: { open: OpenTest 
                      Math.round((parseFloat(saveVals['puissance_moy'] ?? '') || 0) * 0.95)
         if (ftpW > 0) {
           await sb.from('athlete_performance_profile').upsert(
-            { user_id: user.id, ftp_watts: ftpW, updated_at: new Date().toISOString() },
+            { user_id: uid, ftp_watts: ftpW, updated_at: new Date().toISOString() },
             { onConflict: 'user_id' }
           )
           onFtpUpdate(ftpW)
@@ -1766,12 +1769,12 @@ function HistoriqueTestsPanel({ onClose }: { onClose: () => void }) {
   useEffect(() => {
     async function load() {
       const sb = createClient()
-      const { data: { user } } = await sb.auth.getUser()
-      if (!user) { setLoading(false); return }
+      const uid = await resolvePlanningUid(sb)
+      if (!uid) { setLoading(false); return }
       const { data } = await sb
         .from('test_results')
         .select('id, date, valeurs, documents, test_definitions(nom, sport)')
-        .eq('user_id', user.id)
+        .eq('user_id', uid)
         .order('date', { ascending: false })
         .limit(100)
       if (data) {

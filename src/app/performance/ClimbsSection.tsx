@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useI18n } from '@/lib/i18n'
 import { createClient } from '@/lib/supabase/client'
+import { resolvePlanningUid } from '@/lib/planning/scope'
 import { currentLocale } from '@/lib/i18n'
 
 // ─── useDarkMode — suit la classe dark/light sur <html> ──────────────────────
@@ -445,8 +446,8 @@ function ClimbDrawer({ profileWeight, existing, onSaved, onDeleted, onClose }: C
     setSaving(true); setError(null)
     try {
       const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) throw new Error(t('perf2.notConnected'))
+      const uid = await resolvePlanningUid(supabase)
+      if (!uid) throw new Error(t('perf2.notConnected'))
       const partialRecord = {
         wpkg: parseFloat(wkg.toFixed(3)),
         pre_fatigue: preFatigue,
@@ -458,7 +459,7 @@ function ClimbDrawer({ profileWeight, existing, onSaved, onDeleted, onClose }: C
       } as ClimbRecord
       const computedScore = parseFloat(calcScore(partialRecord).toFixed(2))
       const payload = {
-        user_id: user.id, name: name.trim(), date,
+        user_id: uid, name: name.trim(), date,
         watts_avg: wattsN, duration_seconds: durSecs,
         weight_kg: weightN, wpkg: partialRecord.wpkg,
         score: computedScore,
@@ -1167,9 +1168,9 @@ export function ClimbsSection({ profile }: ClimbsSectionProps) {
 
   const loadClimbs = useCallback(async () => {
     const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
-    const { data } = await supabase.from('climb_records').select('*').eq('user_id', user.id).order('date', { ascending: true })
+    const uid = await resolvePlanningUid(supabase)
+    if (!uid) return
+    const { data } = await supabase.from('climb_records').select('*').eq('user_id', uid).order('date', { ascending: true })
     if (data) setClimbs(data as ClimbRecord[])
     setLoaded(true)
   }, [])

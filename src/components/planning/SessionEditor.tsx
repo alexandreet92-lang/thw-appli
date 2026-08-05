@@ -3915,21 +3915,25 @@ export function SessionEditor({ mode, session, dayIndex, weekStart, plan, onClos
     ;(async () => {
       try {
         const { createClient } = await import('@/lib/supabase/client')
+        const { resolvePlanningUid } = await import('@/lib/planning/scope')
         const sb = createClient()
-        const { data: { user } } = await sb.auth.getUser()
-        if (!user || cancelled) return
+        // Athlète EFFECTIF : celui consulté par le coach (scope) sinon soi-même.
+        // Les zones (FTP, seuil, CSS) affichées dans le builder sont donc CELLES
+        // DE L'ATHLÈTE, pas celles du coach connecté.
+        const uid = await resolvePlanningUid(sb)
+        if (!uid || cancelled) return
 
         const [perfRes, actsRes, profileRes, zonesRes, sportProfRes] = await Promise.all([
           // athlete_performance_profile — vraies colonnes vérifiées
           sb.from('athlete_performance_profile')
             .select('ftp_watts,hr_max,hr_rest,lthr_run,lthr_bike,threshold_pace_s_km,css_s_100m,rowing_threshold_pace_s_500m,vma_km_h')
-            .eq('user_id', user.id).maybeSingle().then(r => r, () => ({ data: null })),
-          sb.from('activities').select('tss,started_at,moving_time_s,average_heartrate').eq('user_id', user.id).gte('started_at', new Date(Date.now() - 56 * 86400000).toISOString()).order('started_at', { ascending: true }).then(r => r, () => ({ data: [] })),
-          sb.from('profiles').select('weight_kg,bike_weight_kg').eq('id', user.id).maybeSingle().then(r => r, () => ({ data: null })),
+            .eq('user_id', uid).maybeSingle().then(r => r, () => ({ data: null })),
+          sb.from('activities').select('tss,started_at,moving_time_s,average_heartrate').eq('user_id', uid).gte('started_at', new Date(Date.now() - 56 * 86400000).toISOString()).order('started_at', { ascending: true }).then(r => r, () => ({ data: [] })),
+          sb.from('profiles').select('weight_kg,bike_weight_kg').eq('id', uid).maybeSingle().then(r => r, () => ({ data: null })),
           // training_zones bike — source canonique du FTP cyclisme
-          sb.from('training_zones').select('ftp_watts').eq('user_id', user.id).eq('sport', 'bike').eq('is_current', true).maybeSingle().then(r => r, () => ({ data: null })),
+          sb.from('training_zones').select('ftp_watts').eq('user_id', uid).eq('sport', 'bike').eq('is_current', true).maybeSingle().then(r => r, () => ({ data: null })),
           // athlete_sport_profile — repères SL1/SL2 (params jsonb) vélo & course
-          sb.from('athlete_sport_profile').select('sport,params').eq('user_id', user.id).in('sport', ['bike', 'run']).then(r => r, () => ({ data: [] })),
+          sb.from('athlete_sport_profile').select('sport,params').eq('user_id', uid).in('sport', ['bike', 'run']).then(r => r, () => ({ data: [] })),
         ])
 
         const perf = (perfRes as { data: Record<string, unknown> | null }).data
@@ -4004,7 +4008,6 @@ export function SessionEditor({ mode, session, dayIndex, weekStart, plan, onClos
         for (const t of tssPerDay) ctl = ctl + (t - ctl) / 42
 
         if (!cancelled) {
-          console.log('[DEBUG] athleteData loaded — ftp=', ftp, 'sport=', sport)
           setAthleteData({
             ftp, runThresholdPaceSec, cssSecPer100m,
             rowThresholdSecPer500m: rowSecPer500m,

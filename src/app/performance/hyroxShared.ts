@@ -3,6 +3,7 @@
 // la table `hyrox_races` n'a PAS de colonne roxzone → le temps de roxzone saisi est
 // replié dans le total (temps_final), non persisté séparément.
 import { createClient } from '@/lib/supabase/client'
+import { resolvePlanningUid } from '@/lib/planning/scope'
 
 export const HYROX_STATIONS = ['SkiErg', 'Sled Push', 'Sled Pull', 'Burpee Broad Jump', 'Rowing', 'Farmers Carry', 'Sandbag Lunges', 'Wall Balls']
 
@@ -42,9 +43,9 @@ export function hmsTotal(sec: number): string {
 
 export async function fetchRaces(): Promise<HyroxRace[]> {
   const supabase = createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return []
-  const { data } = await supabase.from('hyrox_races').select('*').eq('user_id', user.id).order('date', { ascending: false })
+  const uid = await resolvePlanningUid(supabase)
+  if (!uid) return []
+  const { data } = await supabase.from('hyrox_races').select('*').eq('user_id', uid).order('date', { ascending: false })
   return (data ?? []) as HyroxRace[]
 }
 
@@ -55,8 +56,8 @@ export interface NewRace {
 }
 export async function insertRace(n: NewRace): Promise<HyroxRace | null> {
   const supabase = createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return null
-  const { data } = await supabase.from('hyrox_races').insert({ user_id: user.id, ...n }).select().single()
+  const uid = await resolvePlanningUid(supabase)
+  if (!uid) return null
+  const { data } = await supabase.from('hyrox_races').insert({ user_id: uid, ...n }).select().single()
   return (data as HyroxRace) ?? null
 }

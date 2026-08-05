@@ -12,11 +12,11 @@ import { setPlanningScopeUid, PlanningScopeContext } from '@/lib/planning/scope'
 import { MessageThread } from './MessageThread'
 import { Avatar } from '@/components/shared/Sidebar'
 
-export type DrawerKind = 'planning' | 'calendar' | 'training' | 'recovery' | 'nutrition' | 'message' | null
+export type DrawerKind = 'planning' | 'calendar' | 'training' | 'performance' | 'recovery' | 'nutrition' | 'message' | null
 
 // Les pages qui lisent le scope planning (setPlanningScopeUid) doivent l'avoir
 // défini AVANT le montage de leurs effets. On l'arme donc pour tous ces types.
-const SCOPED_KINDS = new Set<DrawerKind>(['planning', 'calendar', 'training', 'recovery', 'nutrition'])
+const SCOPED_KINDS = new Set<DrawerKind>(['planning', 'calendar', 'training', 'performance', 'recovery', 'nutrition'])
 
 const Loading = () => <div style={{ padding: 40, color: 'var(--text-dim)', fontSize: 13, fontFamily: 'var(--font-body)' }}>Chargement…</div>
 const PlanningPage = dynamic(() => import('@/app/planning/page'), { ssr: false, loading: Loading })
@@ -26,9 +26,12 @@ const NutritionPage = dynamic(() => import('@/app/nutrition/page'), { ssr: false
 // « Training » = la vraie page athlète (route /activities, titrée « Training »),
 // désormais câblée sur l'athlète ciblé via le scope planning.
 const TrainingPage = dynamic(() => import('@/app/activities/page'), { ssr: false, loading: Loading })
+// « Performance » = la page athlète (zones, profils, tests) — même page, scopée
+// sur l'athlète : le coach voit ET modifie ses données de perf (RLS coach-write).
+const PerformancePage = dynamic(() => import('@/app/performance/page'), { ssr: false, loading: Loading })
 
 const TITLE: Record<Exclude<DrawerKind, null>, string> = {
-  planning: 'Planning', calendar: 'Calendrier', training: 'Training',
+  planning: 'Planning', calendar: 'Calendrier', training: 'Training', performance: 'Performance',
   recovery: 'Récupération', nutrition: 'Nutrition', message: 'Messages',
 }
 
@@ -63,6 +66,7 @@ export function AthleteDetailDrawer({ kind, athleteId, coachId, name, avatar, on
     : kind === 'recovery' ? scoped(<RecoveryPage key={`r-${athleteId}`} />)
     : kind === 'nutrition' ? scoped(<NutritionPage key={`n-${athleteId}`} />)
     : kind === 'training' ? scoped(<TrainingPage key={`t-${athleteId}`} />)
+    : kind === 'performance' ? scoped(<PerformancePage key={`perf-${athleteId}`} />)
     : kind === 'message' ? (coachId ? <div style={{ height: '100%' }}><MessageThread coachId={coachId} athleteId={athleteId} compact /></div> : <Loading />)
     : null
 

@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useI18n } from '@/lib/i18n'
 import { createClient } from '@/lib/supabase/client'
+import { resolvePlanningUid } from '@/lib/planning/scope'
 import { currentLocale } from '@/lib/i18n'
 
 // ─── useDarkMode ──────────────────────────────────────────────────────────────
@@ -600,8 +601,8 @@ function StravaImportDrawer({ existingStravaIds, weightKg, onImported, onClose }
     setImporting(a.id)
     try {
       const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) throw new Error(t('perf2.notConnected'))
+      const uid = await resolvePlanningUid(supabase)
+      if (!uid) throw new Error(t('perf2.notConnected'))
 
       const durSec = a.elapsed_time_s ?? a.moving_time_s ?? 0
       const distKm = a.distance_m ? a.distance_m / 1000 : null
@@ -617,7 +618,7 @@ function StravaImportDrawer({ existingStravaIds, weightKg, onImported, onClose }
       }) : null
 
       const row = {
-        user_id: user.id,
+        user_id: uid,
         strava_activity_id: a.provider_id ? Number(a.provider_id) : null,
         name: a.title ?? t('perf2.stravaRace'),
         date: (a.started_at ?? new Date().toISOString()).slice(0, 10),
@@ -834,8 +835,8 @@ function FileUploadDrawer({ weightKg, onSaved, onClose }: {
     setSaving(true)
     try {
       const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) throw new Error(t('perf2.notConnected'))
+      const uid = await resolvePlanningUid(supabase)
+      if (!uid) throw new Error(t('perf2.notConnected'))
 
       const durSec   = toSec(durationStr) || activity?.duration_seconds || null
       const np       = wattsNpStr  ? Math.round(Number(wattsNpStr))  : (activity?.watts_np  ?? null)
@@ -859,7 +860,7 @@ function FileUploadDrawer({ weightKg, onSaved, onClose }: {
       }) : null
 
       const { data, error: err } = await supabase.from('race_records').insert({
-        user_id: user.id, name, date, race_type: raceType,
+        user_id: uid, name, date, race_type: raceType,
         distance_km: distKm, elevation_gain_m: elevGain,
         duration_seconds: durSec, watts_np: np, watts_avg: avg,
         wpkg_np: wpkgNp, weight_kg: weightKg,
@@ -1779,9 +1780,9 @@ export function RacesSection({ profile }: RacesSectionProps) {
 
   const loadRaces = useCallback(async () => {
     const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
-    const { data } = await supabase.from('race_records').select('*').eq('user_id', user.id).order('date', { ascending: true })
+    const uid = await resolvePlanningUid(supabase)
+    if (!uid) return
+    const { data } = await supabase.from('race_records').select('*').eq('user_id', uid).order('date', { ascending: true })
     if (data) setRaces(data as RaceRecord[])
     setLoaded(true)
   }, [])

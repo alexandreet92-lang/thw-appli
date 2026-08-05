@@ -2,6 +2,7 @@
 // Couche données « Lier une activité » pour la saisie Triathlon. N'expose QUE des
 // colonnes réellement présentes dans la table `activities` (aucune donnée inventée).
 import { createClient } from '@/lib/supabase/client'
+import { resolvePlanningUid } from '@/lib/planning/scope'
 import { currentLocale } from '@/lib/i18n'
 
 export type Segment = 'swim' | 'bike' | 'run'
@@ -36,11 +37,11 @@ const COLS = 'id, title, started_at, sport_type, distance_m, moving_time_s, avg_
 
 export async function fetchActivities(segment: Segment): Promise<ActivityLite[]> {
   const supabase = createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return []
+  const uid = await resolvePlanningUid(supabase)
+  if (!uid) return []
   const { data } = await supabase.from('activities')
     .select(COLS)
-    .eq('user_id', user.id)
+    .eq('user_id', uid)
     .in('sport_type', SPORT_FILTER[segment])
     .order('started_at', { ascending: false })
     .limit(120)

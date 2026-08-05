@@ -108,6 +108,9 @@
   --primary-dim:  rgba(6,182,212,0.12);
   --primary-gradient: linear-gradient(135deg, #06B6D4, #5b6fff); /* CTA principal — identique au bouton record */
   --on-primary:   #ffffff;   /* texte sur surface --primary (bouton cyan) */
+  /* Danger / destructif (quitter un appel, erreur) — 2 thèmes, tokenisé */
+  --danger:       #ef4444;
+  --danger-soft:  rgba(239,68,68,0.12);
   --ai-accent:    #9D7DFF;
   --ai-accent-dim:rgba(157,125,255,0.12);
   /* Accent Studio (bleu logo) — lisible sur clair comme sur sombre, tokenisé
@@ -140,6 +143,7 @@
   --r-sm: 8px;
   --r-md: 14px;
   --r-lg: 20px;
+  --r-pill: 999px;
 
   /* ── Espacement — grille 4px (DESIGN_SYSTEM.md §3) ── */
   --space-1:  4px;

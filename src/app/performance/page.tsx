@@ -7,7 +7,9 @@ import { CountUp } from '@/components/ui/AnimatedBar'
 import DatasTab from './DatasTab'
 import { useI18n } from '@/lib/i18n'
 import { createClient } from '@/lib/supabase/client'
-import { resolvePlanningUid } from '@/lib/planning/scope'
+import { resolvePlanningUid, isCoachScoped } from '@/lib/planning/scope'
+import type { TestSport, FieldDef } from './testTypes'
+import { RAW_INPUTS, computeDerived, derivedToVals } from './testCompute'
 import {
   TEST_BENCHMARKS,
   computeTestScoreResult,
@@ -513,16 +515,11 @@ function ProfilTab({ onSelect, selectedDatum, profile: p, setProfile: setP, onAn
 // ════════════════════════════════════════════════
 // ONGLET TESTS — types, données, composants
 // ════════════════════════════════════════════════
-type TestSport = 'running' | 'cycling' | 'natation' | 'aviron' | 'hyrox'
 interface TestDef {
   id: string; name: string; desc: string; duration: string
   difficulty: 'Modéré' | 'Intense' | 'Maximal'
 }
 interface OpenTest { sport: TestSport; test: TestDef }
-interface FieldDef {
-  cle: string; label: string; unite: string | null; type: 'number' | 'string'
-  placeholder?: string; helper?: string; required?: boolean
-}
 interface TestProtocol {
   objectif: string; avertissement?: string
   conditions: string[]; echauffement: string[]
@@ -558,6 +555,19 @@ const TEST_SPORT_TABS: { id: TestSport; label: string; short: string; color: str
   },
 ]
 
+// Sport du test → codes activities.sport_type (pour proposer les activités à lier).
+const TEST_SPORT_TO_ACTIVITY: Record<TestSport, string[]> = {
+  running: ['run', 'trail_run'],
+  cycling: ['bike', 'virtual_bike'],
+  natation: ['swim'],
+  aviron: ['rowing'],
+  hyrox: ['hyrox', 'hiit'],
+}
+// Sport du test → code sport planned_sessions.
+const TEST_SPORT_TO_PLANNING: Record<TestSport, string> = {
+  running: 'run', cycling: 'bike', natation: 'swim', aviron: 'rowing', hyrox: 'hyrox',
+}
+
 const TESTS: Record<TestSport, TestDef[]> = {
   running: [
     { id:'vma',                    name:'VMA',                   desc:'Vitesse Maximale Aérobie sur piste. Détermine ton allure plafond pour calibrer toutes tes zones d\'entraînement.',                 duration:'~6 min',    difficulty:'Maximal' },
@@ -572,7 +582,7 @@ const TESTS: Record<TestSport, TestDef[]> = {
   ],
   cycling: [
     { id:'cp20',             name:'FTP',            desc:'Critical Power 20 min — puissance moyenne × 0.95 = FTP. Exprimé en W/kg. Indicateur principal en cyclisme.',                                    duration:'~35 min',    difficulty:'Maximal' },
-    { id:'vo2max-cycling',   name:'PMA / Sprint',   desc:'Test rampe sur ergocycle (paliers +20W/min) pour la PMA, ou sprint 5s pour la puissance neuromusculaire maximale. Exprimé en W/kg.',             duration:'15–25 min',  difficulty:'Maximal' },
+    { id:'vo2max-cycling',   name:'Ramp test',      desc:'Test rampe sur ergocycle : paliers de +20 W toutes les 2 min jusqu\'à l\'épuisement. Détermine la PMA (puissance max aérobie), la FTP et le VO2max estimé. Exprimé en W et W/kg.', duration:'15–25 min',  difficulty:'Maximal' },
     { id:'endurance-cycling',name:'Endurance 3h',   desc:'% du FTP tenu sur 3h en puissance normalisée. Mesure l\'efficience aérobie sur longue durée. Calculé depuis vos sorties enregistrées.',         duration:'180 min',    difficulty:'Modéré'  },
     { id:'cycling-z4',       name:'Résistance Z4',  desc:'Durée maximale tenue à Z4 (95-105% FTP) en un effort continu. Mesure la capacité à soutenir un effort au seuil — clé pour les courses.',        duration:'12–70 min',  difficulty:'Intense' },
     { id:'cycling-grimpeur', name:'Grimpeur',       desc:'Puissance normalisée (W/kg) sur un effort de montée 20–40 min. Indicateur clé pour les cyclistes qui font des courses avec dénivelé.',           duration:'20–40 min',  difficulty:'Maximal' },
@@ -762,10 +772,10 @@ const PROTOCOLS: Record<string, TestProtocol> = {
     ],
   },
   'vo2max-cycling': {
-    objectif: "Déterminer la Puissance Maximale Aérobie (PMA) par test rampe sur ergocycle à paliers progressifs.",
+    objectif: "Déterminer la Puissance Maximale Aérobie (PMA) par test rampe sur ergocycle à paliers progressifs de +20 W toutes les 2 minutes. La PMA sert ensuite à estimer la FTP et le VO2max.",
     conditions: ["Ergocycle calibré ou home trainer de précision", "Capteur de puissance", "Reposé 48h"],
     echauffement: ["15 min progressif à 50–65% FTP", "1 × 1 min effort vif, puis 3 min récup"],
-    etapes: ["Départ à 100W ou 50% FTP estimée", "Augmenter de 20W toutes les 60 secondes", "Maintenir la cadence > 80 rpm à chaque palier", "Arrêt quand impossible de maintenir la cadence cible", "PMA = puissance du dernier palier tenu complet"],
+    etapes: ["Choisir un palier de départ selon le niveau (60 / 80 / 100 / 160 W) pour ne pas allonger le test inutilement", "Augmenter de 20 W toutes les 2 minutes", "Maintenir la cadence > 80 rpm à chaque palier", "Arrêt quand impossible de maintenir la cadence cible", "Noter le dernier palier tenu 2 min complètes + le temps tenu sur le palier suivant non validé", "PMA = dernier palier validé + (temps tenu / 2 min) × 20 W ; FTP = PMA × 0,76"],
     interpretation: ['lo2.p_vo2max_cycling_interp0', 'lo2.p_vo2max_cycling_interp1', 'lo2.p_vo2max_cycling_interp2', 'lo2.p_vo2max_cycling_interp3'],
     erreurs: ["Cadence trop basse (< 80 rpm) → sous-estime la PMA", "Démarrage à une puissance trop élevée", "Home trainer non calibré = résultats non fiables"],
     frequence: "2–3 fois/an",
@@ -1297,27 +1307,68 @@ function TestProtocolPanel({ open: ot, onClose, onFtpUpdate }: { open: OpenTest 
   const [showHistory, setShowHistory] = useState(false)
   const [pendingDocs, setPendingDocs] = useState<{ file: File; name: string }[]>([])
   const [gender, setGender]           = useState<'M' | 'F'>('M')
+  const [weightKg, setWeightKg]       = useState<number>(0)
+  const [weightSaving, setWeightSaving] = useState(false)
+  const [activities, setActivities]   = useState<{ id: string; title: string; started_at: string; sport_type: string; distance_m: number | null }[]>([])
+  const [activityId, setActivityId]   = useState<string>('')
+  const [planOpen, setPlanOpen]       = useState(false)
+  const [planDate, setPlanDate]       = useState<string>('')
+  const [planSaving, setPlanSaving]   = useState(false)
+  const [planDone, setPlanDone]       = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { t } = useI18n()
 
   const testId = ot?.test.id ?? null
 
-  // Load athlete gender from Supabase
+  // Charge le genre, le poids et les activités (même sport) de l'athlète scopé.
   useEffect(() => {
     const load = async () => {
       try {
         const sb = createClient()
         const uid = await resolvePlanningUid(sb)
         if (!uid) return
-        const { data } = await sb
-          .from('athlete_performance_profile')
-          .select('gender')
-          .eq('user_id', uid)
-          .maybeSingle()
-        if (data?.gender === 'f') setGender('F')
+        const [perfRes, profRes] = await Promise.all([
+          sb.from('athlete_performance_profile').select('gender').eq('user_id', uid).maybeSingle(),
+          sb.from('profiles').select('weight_kg').eq('id', uid).maybeSingle(),
+        ])
+        if (perfRes.data?.gender === 'f') setGender('F')
+        if (profRes.data?.weight_kg) setWeightKg(Number(profRes.data.weight_kg))
+
+        // Activités du même sport que le test, récentes d'abord (pour le lien).
+        if (ot) {
+          const codes = TEST_SPORT_TO_ACTIVITY[ot.sport] ?? []
+          if (codes.length > 0) {
+            const { data } = await sb
+              .from('activities')
+              .select('id,title,started_at,sport_type,distance_m')
+              .eq('user_id', uid)
+              .in('sport_type', codes)
+              .order('started_at', { ascending: false })
+              .limit(40)
+            if (data) setActivities(data as typeof activities)
+          } else {
+            setActivities([])
+          }
+        }
       } catch { /* ignore */ }
     }
     void load()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [testId])
+
+  // Sauvegarde du poids athlète (au moment du test) → profiles + propagation zones.
+  const saveWeight = useCallback(async (w: number) => {
+    if (w <= 0) return
+    setWeightSaving(true)
+    try {
+      const sb = createClient()
+      const uid = await resolvePlanningUid(sb)
+      if (!uid) return
+      await sb.from('profiles').upsert({ id: uid, weight_kg: w }, { onConflict: 'id' })
+      if (typeof window !== 'undefined') window.dispatchEvent(new Event('thw:zones-changed'))
+    } finally {
+      setWeightSaving(false)
+    }
   }, [])
 
   const loadHistory = useCallback(async (testName: string, sport: string) => {
@@ -1361,29 +1412,22 @@ function TestProtocolPanel({ open: ot, onClose, onFtpUpdate }: { open: OpenTest 
 
   function setVal(cle: string, v: string) { setVals(p => ({...p, [cle]: v})); setSaved(false) }
 
-  // Build compound vals before saving (compute ratios for force test)
+  // Champs de saisie = valeurs BRUTES (RAW_INPUTS si redéfini, sinon protocole).
+  const inputFields: FieldDef[] = (ot ? (RAW_INPUTS[ot.test.id] ?? proto?.fields) : undefined) ?? []
+
+  // Valeurs sauvegardées = brutes + valeurs calculées (clés canoniques lues par le
+  // scoring/radar) + poids au moment du test.
   function buildSaveVals(): Record<string, string> {
     if (!ot) return vals
-    if (ot.test.id === 'hyrox-force') {
-      const bw = parseFloat(vals['body_weight'] ?? '') || 0
-      const out = { ...vals }
-      if (bw > 0) {
-        const dl = parseFloat(vals['dl_charge'] ?? '') || 0
-        if (dl > 0) out['dl_ratio']         = (dl / bw).toFixed(3)
-        const sq = parseFloat(vals['sq_charge'] ?? '') || 0
-        if (sq > 0) out['sq_ratio']         = (sq / bw).toFixed(3)
-        const b1 = parseFloat(vals['bench_1rm'] ?? '') || 0
-        if (b1 > 0) out['bench_1rm_ratio']  = (b1 / bw).toFixed(3)
-      }
-      return out
-    }
-    return vals
+    const derived = computeDerived(ot.test.id, vals, weightKg, gender)
+    const out: Record<string, string> = { ...vals, ...derivedToVals(derived) }
+    if (weightKg > 0) out['__weight_kg'] = String(weightKg)
+    return out
   }
 
   async function handleSave() {
     if (!ot) return
-    const protoNow = PROTOCOLS[ot.test.id]
-    const required = protoNow?.fields.filter(f => f.required) ?? []
+    const required = inputFields.filter(f => f.required)
     if (required.some(f => !vals[f.cle]?.trim())) return
 
     setSaving(true)
@@ -1415,7 +1459,11 @@ function TestProtocolPanel({ open: ot, onClose, onFtpUpdate }: { open: OpenTest 
         date: new Date().toISOString().slice(0, 10),
         valeurs: saveVals,
         documents: uploadedDocs,
+        activity_id: activityId || null,
       })
+
+      // Persiste le poids au moment du test (au cas où modifié dans le panneau).
+      if (weightKg > 0) await saveWeight(weightKg)
 
       // Also save structured score to performance_tests
       const scoreResult = computeTestScoreResult(ot.test.id, saveVals, gender)
@@ -1454,16 +1502,16 @@ function TestProtocolPanel({ open: ot, onClose, onFtpUpdate }: { open: OpenTest 
         }
       }
 
-      // Auto-update profile FTP for CP20 test
-      if (ot.test.id === 'cp20' && onFtpUpdate) {
-        const ftpW = parseFloat(saveVals['ftp'] ?? '') ||
-                     Math.round((parseFloat(saveVals['puissance_moy'] ?? '') || 0) * 0.95)
+      // Auto-update du FTP du profil pour les tests qui le calculent (CP20, Ramp test).
+      if (ot.test.id === 'cp20' || ot.test.id === 'vo2max-cycling') {
+        const ftpW = Math.round(parseFloat(saveVals['ftp'] ?? '') || 0)
         if (ftpW > 0) {
           await sb.from('athlete_performance_profile').upsert(
             { user_id: uid, ftp_watts: ftpW, updated_at: new Date().toISOString() },
             { onConflict: 'user_id' }
           )
-          onFtpUpdate(ftpW)
+          if (typeof window !== 'undefined') window.dispatchEvent(new Event('thw:zones-changed'))
+          onFtpUpdate?.(ftpW)
         }
       }
 
@@ -1474,6 +1522,47 @@ function TestProtocolPanel({ open: ot, onClose, onFtpUpdate }: { open: OpenTest 
       void loadHistory(ot.test.name, ot.sport)
     } finally {
       setSaving(false)
+    }
+  }
+
+  // Ajoute le test comme séance planifiée à une date choisie (planning de l'athlète
+  // scopé si coach, sinon le sien). source='coach' requis par la RLS côté coach.
+  async function addToPlanning() {
+    if (!ot || !planDate) return
+    setPlanSaving(true)
+    try {
+      const sb = createClient()
+      const uid = await resolvePlanningUid(sb)
+      if (!uid) return
+      const d = new Date(planDate + 'T00:00:00')
+      // Lundi de la semaine (day_index 0 = lundi … 6 = dimanche).
+      const dow = (d.getDay() + 6) % 7
+      const monday = new Date(d); monday.setDate(d.getDate() - dow)
+      const weekStart = monday.toISOString().slice(0, 10)
+      const durMin = parseInt(String(ot.test.duration).match(/\d+/)?.[0] ?? '', 10) || 30
+      const protoNow = PROTOCOLS[ot.test.id]
+      const notes = protoNow
+        ? `Test — ${ot.test.name}. ${protoNow.objectif}\nÉtapes : ${protoNow.etapes.join(' · ')}`
+        : `Test — ${ot.test.name}. ${ot.test.desc}`
+      const intensity = ot.test.difficulty === 'Maximal' ? 'high' : ot.test.difficulty === 'Intense' ? 'medium' : 'low'
+      await sb.from('planned_sessions').insert({
+        user_id:      uid,
+        week_start:   weekStart,
+        day_index:    dow,
+        sport:        TEST_SPORT_TO_PLANNING[ot.sport],
+        title:        `Test · ${ot.test.name}`,
+        duration_min: durMin,
+        status:       'planned',
+        intensity,
+        notes,
+        blocks:       [],
+        plan_variant: 'A',
+        source:       isCoachScoped() ? 'coach' : 'test',
+      })
+      setPlanDone(true)
+      setTimeout(() => { setPlanDone(false); setPlanOpen(false) }, 2200)
+    } finally {
+      setPlanSaving(false)
     }
   }
 
@@ -1593,10 +1682,10 @@ function TestProtocolPanel({ open: ot, onClose, onFtpUpdate }: { open: OpenTest 
             </div>
 
             {/* Saisie des résultats */}
-            {proto.fields.length > 0 && (() => {
-              const valsForScore = ot.test.id === 'hyrox-force' ? buildSaveVals() : vals
-              const scoreResult = computeTestScoreResult(ot.test.id, valsForScore, gender)
+            {inputFields.length > 0 && (() => {
+              const scoreResult = computeTestScoreResult(ot.test.id, buildSaveVals(), gender)
               const hasBench = ot.test.id in TEST_BENCHMARKS
+              const derived = computeDerived(ot.test.id, vals, weightKg, gender)
               return (
                 <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
                   <div style={{ padding:'14px 16px', borderRadius:13, background:'var(--bg-card2)', border:`1px solid ${cfg.color}35` }}>
@@ -1615,7 +1704,7 @@ function TestProtocolPanel({ open: ot, onClose, onFtpUpdate }: { open: OpenTest 
                       )}
                     </div>
                     <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:9 }}>
-                      {proto.fields.map(f => (
+                      {inputFields.map(f => (
                         <div key={f.cle} style={{ display:'flex', flexDirection:'column', gap:4 }}>
                           <label style={{ fontSize:11, color:'var(--text-dim)', fontWeight:600 }}>
                             {f.label}{f.unite ? <span style={{ color:'var(--text-dim)', fontWeight:400 }}> ({f.unite})</span> : null}
@@ -1631,6 +1720,62 @@ function TestProtocolPanel({ open: ot, onClose, onFtpUpdate }: { open: OpenTest 
                         </div>
                       ))}
                     </div>
+
+                    {/* Poids de l'athlète au moment du test (éditable → W/kg exacts). */}
+                    <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:11, padding:'8px 11px', borderRadius:9, background:'var(--bg)', border:'1px solid var(--border)' }}>
+                      <span style={{ fontSize:11, color:'var(--text-dim)', fontWeight:600, flexShrink:0 }}>{t('performance.weightAtTest')}</span>
+                      <input
+                        type="number" inputMode="decimal" value={weightKg > 0 ? weightKg : ''} placeholder="—"
+                        onChange={e => setWeightKg(parseFloat(e.target.value) || 0)}
+                        onBlur={() => { void saveWeight(weightKg) }}
+                        style={{ width:74, padding:'5px 8px', borderRadius:7, border:'1px solid var(--border)', background:'var(--bg-card2)', color:'var(--text)', fontSize:13, fontFamily:'DM Mono,monospace', outline:'none', textAlign:'right' as const }}
+                      />
+                      <span style={{ fontSize:11, color:'var(--text-dim)' }}>kg</span>
+                      {weightSaving && <span style={{ fontSize:10, color:'var(--text-dim)' }}>…</span>}
+                    </div>
+
+                    {/* Résultats calculés — chaque valeur en W est doublée d'un W/kg. */}
+                    {derived.length > 0 && (
+                      <div style={{ marginTop:11, padding:'11px 13px', borderRadius:10, background:`${cfg.color}0d`, border:`1px solid ${cfg.color}30` }}>
+                        <div style={{ fontFamily:'Syne,sans-serif', fontSize:10, fontWeight:700, textTransform:'uppercase' as const, letterSpacing:'0.07em', color:cfg.color, marginBottom:8 }}>{t('performance.computedResults')}</div>
+                        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'8px 12px' }}>
+                          {derived.filter(d => !d.hidden).map(d => (
+                            <div key={d.key} style={{ display:'flex', flexDirection:'column', gap:1 }}>
+                              <span style={{ fontSize:10, color:'var(--text-dim)', fontWeight:600 }}>{d.label}</span>
+                              <span className="tnum" style={{ fontSize:15, fontWeight:700, color:'var(--text)', fontFamily:'DM Mono,monospace' }}>
+                                {d.display ?? d.value}{d.unit && !d.display ? <span style={{ fontSize:11, color:'var(--text-dim)', marginLeft:3 }}>{d.unit}</span> : null}
+                                {d.wkg && weightKg > 0 && (
+                                  <span style={{ fontSize:11, color:cfg.color, marginLeft:7, fontWeight:600 }}>· {(d.value / weightKg).toFixed(2)} W/kg</span>
+                                )}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                        {derived.some(d => d.wkg) && weightKg <= 0 && (
+                          <p style={{ fontSize:10, color:'var(--text-dim)', margin:'8px 0 0' }}>{t('performance.setWeightForWkg')}</p>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Lier une activité (même sport, récentes d'abord). */}
+                    {activities.length > 0 && (
+                      <div style={{ display:'flex', flexDirection:'column', gap:4, marginTop:11 }}>
+                        <label style={{ fontSize:11, color:'var(--text-dim)', fontWeight:600 }}>{t('performance.linkActivity')}</label>
+                        <select
+                          value={activityId}
+                          onChange={e => setActivityId(e.target.value)}
+                          style={{ padding:'7px 10px', borderRadius:8, border:'1px solid var(--border)', background:'var(--bg)', color:'var(--text)', fontSize:12.5, fontFamily:'DM Sans,sans-serif', outline:'none', width:'100%', boxSizing:'border-box' as const, cursor:'pointer' }}
+                        >
+                          <option value="">{t('performance.noActivityLinked')}</option>
+                          {activities.map(a => (
+                            <option key={a.id} value={a.id}>
+                              {new Date(a.started_at).toLocaleDateString('fr-FR')} · {a.title || t('performance.activity')}{a.distance_m ? ` · ${(a.distance_m/1000).toFixed(1)} km` : ''}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+
                     <button
                       onClick={() => { void handleSave() }}
                       disabled={saving}
@@ -1638,6 +1783,33 @@ function TestProtocolPanel({ open: ot, onClose, onFtpUpdate }: { open: OpenTest 
                     >
                       {saved ? t('performance.resultsSaved') : saving ? t('performance.saving') : t('performance.saveThisTest')}
                     </button>
+
+                    {/* Ajouter ce test au planning à une date choisie. */}
+                    <div style={{ marginTop:10, borderTop:'1px solid var(--border)', paddingTop:10 }}>
+                      {!planOpen ? (
+                        <button
+                          onClick={() => setPlanOpen(true)}
+                          style={{ width:'100%', padding:'9px', borderRadius:9, border:'1px dashed var(--border)', background:'transparent', color:'var(--text-mid)', fontSize:12, fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:7, fontFamily:'DM Sans,sans-serif' }}
+                        >
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="12" y1="14" x2="12" y2="18"/><line x1="10" y1="16" x2="14" y2="16"/></svg>
+                          {t('performance.addToPlanning')}
+                        </button>
+                      ) : (
+                        <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                          <input
+                            type="date" value={planDate} onChange={e => setPlanDate(e.target.value)}
+                            style={{ flex:1, padding:'7px 10px', borderRadius:8, border:'1px solid var(--border)', background:'var(--bg)', color:'var(--text)', fontSize:12.5, fontFamily:'DM Sans,sans-serif', outline:'none' }}
+                          />
+                          <button
+                            onClick={() => { void addToPlanning() }}
+                            disabled={!planDate || planSaving}
+                            style={{ padding:'8px 14px', borderRadius:8, border:`1px solid ${cfg.color}40`, background:planDone ? 'rgba(34,197,94,0.25)' : `${cfg.color}22`, color:planDone ? '#22c55e' : cfg.color, fontSize:12.5, fontWeight:700, cursor:(!planDate||planSaving)?'not-allowed':'pointer', whiteSpace:'nowrap' as const, fontFamily:'DM Sans,sans-serif' }}
+                          >
+                            {planDone ? t('performance.added') : planSaving ? t('performance.saving') : t('performance.confirm')}
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   {/* Live score display */}
@@ -1904,6 +2076,7 @@ function TestsTab({ profile, onAnalyzeTest, initialSport, initialTestId, onFtpUp
   const [testSport,      setTestSport]      = useState<TestSport>(initialSport ?? 'running')
   const [openTest,       setOpenTest]       = useState<OpenTest | null>(null)
   const [showHistorique, setShowHistorique] = useState(false)
+  const [sportMenuOpen,  setSportMenuOpen]  = useState(false)
   const isMobile = useWindowWidth() < 768
   const { t } = useI18n()
 
@@ -1928,24 +2101,29 @@ function TestsTab({ profile, onAnalyzeTest, initialSport, initialTestId, onFtpUp
       {/* Header row: tabs + Historique button */}
       <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:10, flexWrap:'wrap' as const }}>
 
-        {/* Sport tabs desktop */}
-        <div className="hidden md:flex" style={{ gap:8, flexWrap:'wrap' as const, flex:1 }}>
-          {TEST_SPORT_TABS.map(t => (
-            <button key={t.id} onClick={() => setTestSport(t.id)}
-              style={{ flex:1, minWidth:110, padding:'10px 14px', borderRadius:12, border:'1px solid', cursor:'pointer', borderColor:testSport===t.id?t.color:'var(--border)', background:testSport===t.id?t.bg:'var(--bg-card)', color:testSport===t.id?t.color:'var(--text-mid)', fontFamily:'DM Sans,sans-serif', fontSize:12, fontWeight:testSport===t.id?700:400, boxShadow:testSport===t.id?`0 0 0 1px ${t.color}33`:'var(--shadow-card)', transition:'all 0.15s', display:'flex', alignItems:'center', justifyContent:'center', gap:7 }}>
-              <span style={{ opacity:testSport===t.id?1:0.6 }}>{t.icon}</span>{t.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Sport tabs mobile */}
-        <div className="md:hidden" style={{ display:'flex', gap:5, flexWrap:'wrap' as const, flex:1 }}>
-          {TEST_SPORT_TABS.map(t => (
-            <button key={t.id} onClick={() => setTestSport(t.id)}
-              style={{ flex:1, minWidth:58, padding:'7px 5px', borderRadius:10, border:'1px solid', cursor:'pointer', borderColor:testSport===t.id?t.color:'var(--border)', background:testSport===t.id?t.bg:'var(--bg-card)', color:testSport===t.id?t.color:'var(--text-mid)', fontFamily:'DM Sans,sans-serif', fontSize:11, fontWeight:testSport===t.id?700:400, transition:'all 0.15s', display:'flex', alignItems:'center', justifyContent:'center', gap:4 }}>
-              <span style={{ opacity:testSport===t.id?1:0.6 }}>{t.icon}</span>{t.short}
-            </button>
-          ))}
+        {/* Sélecteur de sport — menu déroulant (une seule commande, desktop + mobile) */}
+        <div style={{ position:'relative', flex:1, minWidth:180, maxWidth:320 }}>
+          <button
+            onClick={() => setSportMenuOpen(o => !o)}
+            style={{ width:'100%', padding:'10px 14px', borderRadius:12, border:'1px solid', borderColor:sportMenuOpen?cfg.color:'var(--border)', background:'var(--bg-card)', color:cfg.color, fontFamily:'DM Sans,sans-serif', fontSize:13, fontWeight:700, cursor:'pointer', boxShadow:'var(--shadow-card)', transition:'all 0.15s', display:'flex', alignItems:'center', gap:9 }}>
+            <span style={{ display:'flex' }}>{cfg.icon}</span>
+            <span style={{ flex:1, textAlign:'left' as const }}>{cfg.label}</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} style={{ transform:sportMenuOpen?'rotate(180deg)':'none', transition:'transform 0.15s', opacity:0.7 }}><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+          {sportMenuOpen && (
+            <>
+              <div onClick={() => setSportMenuOpen(false)} style={{ position:'fixed', inset:0, zIndex:40 }}/>
+              <div style={{ position:'absolute', top:'calc(100% + 6px)', left:0, right:0, zIndex:41, background:'var(--bg-card)', border:'1px solid var(--border)', borderRadius:12, boxShadow:'0 12px 34px rgba(0,0,0,0.24)', overflow:'hidden', padding:4 }}>
+                {TEST_SPORT_TABS.map(s => (
+                  <button key={s.id} onClick={() => { setTestSport(s.id); setSportMenuOpen(false) }}
+                    style={{ width:'100%', padding:'9px 11px', borderRadius:9, border:'none', cursor:'pointer', background:testSport===s.id?s.bg:'transparent', color:testSport===s.id?s.color:'var(--text-mid)', fontFamily:'DM Sans,sans-serif', fontSize:13, fontWeight:testSport===s.id?700:500, display:'flex', alignItems:'center', gap:10, transition:'background 0.12s' }}>
+                    <span style={{ display:'flex', opacity:testSport===s.id?1:0.65 }}>{s.icon}</span>{s.label}
+                    <span style={{ marginLeft:'auto', fontSize:10, color:'var(--text-dim)' }}>{TESTS[s.id].length}</span>
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
         </div>
 
         {/* Bouton Historique */}

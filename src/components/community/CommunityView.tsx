@@ -142,8 +142,7 @@ export function CommunityView() {
       space={space} channels={channels} activeId={channelId} loading={loadingChannels}
       isNarrow={isNarrow} joining={joining} canManage={canManage} unread={unread} muted={muted}
       canBrand={canManage && ent.community.canBrand}
-      canVoice={canManage && ent.community.canVoice}
-      panel={panel} onEvents={selectEvents} onCall={selectCall}
+      panel={panel} onEvents={selectEvents}
       onSelect={selectChannel} onJoin={doJoin} onLeave={doLeave}
       onCreateChannel={doCreateChannel} onSetLogo={doSetLogo}
       onBack={goSpaces}
@@ -155,25 +154,23 @@ export function CommunityView() {
       onBack={() => { setDir('back'); setMView('channels') }} />
   ) : null
 
-  // Appel de groupe au niveau de l'espace (indépendant des canaux vocaux).
-  const callPane = space ? (
-    <VoiceView title={`Appel · ${space.name}`} target={{ spaceId: space.id }} isMember={space.isMember} isNarrow={isNarrow}
-      onBack={() => { setDir('back'); setMView('channels') }} />
+  // Appel du canal courant : chaque canal a son salon (room `comm-<channelId>`).
+  // On lance/rejoint depuis l'en-tête du canal ; on y reste même seul, les autres
+  // membres du canal rejoignent quand ils veulent.
+  const callPane = channel && space ? (
+    <VoiceView title={`#${channel.name}`} target={{ channelId: channel.id }} isMember={space.isMember} isNarrow={isNarrow}
+      onBack={() => setPanel('chat')} />
   ) : null
 
   const chat = channel && space ? (
-    channel.kind === 'voice' ? (
-      <VoiceView title={channel.name} target={{ channelId: channel.id }} isMember={space.isMember} isNarrow={isNarrow}
-        onBack={() => { setDir('back'); setMView('channels') }} />
-    ) : (
     <ChannelChat
       channel={channel} isMember={space.isMember} canPost={space.isMember}
       canUpload={space.isMember && ent.community.canUploadFiles}
       canModerate={canManage}
       isMuted={muted.has(channel.id)} onToggleMute={() => doToggleMute(channel.id)}
+      onCall={selectCall}
       onJoin={doJoin} joining={joining} onRead={markRead}
     />
-    )
   ) : (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', background: 'var(--bg-card)', color: 'var(--text-dim)', fontFamily: FB, fontSize: 13 }}>
       {loadingChannels ? '' : 'Choisis un canal.'}
@@ -252,15 +249,14 @@ function SpaceRail({ spaces, activeId, loading, onSelect, onCreate }: {
 }
 
 // ── Colonne des canaux ──────────────────────────────────────────────────────
-function ChannelColumn({ space, channels, activeId, loading, isNarrow, joining, canManage, canBrand, canVoice, unread, muted, panel, onEvents, onCall, onSelect, onJoin, onLeave, onCreateChannel, onSetLogo, onBack }: {
+function ChannelColumn({ space, channels, activeId, loading, isNarrow, joining, canManage, canBrand, unread, muted, panel, onEvents, onSelect, onJoin, onLeave, onCreateChannel, onSetLogo, onBack }: {
   space: CommunitySpace | null; channels: CommunityChannel[]; activeId: string | null; loading: boolean
-  isNarrow: boolean; joining: boolean; canManage: boolean; canBrand: boolean; canVoice: boolean; unread: Set<string>; muted: Set<string>
-  panel: 'chat' | 'events' | 'call'; onEvents: () => void; onCall: () => void
+  isNarrow: boolean; joining: boolean; canManage: boolean; canBrand: boolean; unread: Set<string>; muted: Set<string>
+  panel: 'chat' | 'events' | 'call'; onEvents: () => void
   onSelect: (id: string) => void; onJoin: () => void; onLeave: () => void; onCreateChannel: (name: string, kind: 'text' | 'voice') => void; onSetLogo: (file: File) => void; onBack: () => void
 }) {
   const [adding, setAdding] = useState(false)
   const [newName, setNewName] = useState('')
-  const [newKind, setNewKind] = useState<'text' | 'voice'>('text')
   const logoRef = useRef<HTMLInputElement>(null)
   if (!space) {
     return <div style={{ padding: 'var(--space-6)', color: 'var(--text-dim)', fontFamily: FB, fontSize: 13 }}>—</div>
@@ -268,7 +264,7 @@ function ChannelColumn({ space, channels, activeId, loading, isNarrow, joining, 
   function submitChannel() {
     const n = newName.trim()
     if (!n) { setAdding(false); return }
-    onCreateChannel(n, newKind); setNewName(''); setNewKind('text'); setAdding(false)
+    onCreateChannel(n, 'text'); setNewName(''); setAdding(false)
   }
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
@@ -312,20 +308,13 @@ function ChannelColumn({ space, channels, activeId, loading, isNarrow, joining, 
         </div>
       </div>
 
-      {/* Raccourcis : Événements + Appel de groupe */}
+      {/* Raccourci Événements */}
       <div style={{ flexShrink: 0, padding: '0 var(--space-2) var(--space-2)' }}>
         <button onClick={onEvents}
           style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', width: '100%', textAlign: 'left', border: 'none', cursor: 'pointer', borderRadius: 'var(--r-sm)', padding: 'var(--space-2) var(--space-3)', minHeight: 36, background: panel === 'events' ? 'var(--surface-neutral)' : 'transparent', fontFamily: FB }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-dim)', flexShrink: 0 }}><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></svg>
           <span style={{ flex: 1, fontSize: 13.5, fontWeight: panel === 'events' ? 600 : 500, color: panel === 'events' ? 'var(--text)' : 'var(--text-mid)' }}>Événements</span>
         </button>
-        {space.isMember && (
-          <button onClick={onCall}
-            style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', width: '100%', textAlign: 'left', border: 'none', cursor: 'pointer', borderRadius: 'var(--r-sm)', padding: 'var(--space-2) var(--space-3)', minHeight: 36, background: panel === 'call' ? 'var(--surface-neutral)' : 'transparent', fontFamily: FB }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ color: panel === 'call' ? 'var(--primary)' : 'var(--text-dim)', flexShrink: 0 }}><path d="M23 7l-7 5 7 5V7z" /><rect x="1" y="5" width="15" height="14" rx="2" ry="2" /></svg>
-            <span style={{ flex: 1, fontSize: 13.5, fontWeight: panel === 'call' ? 600 : 500, color: panel === 'call' ? 'var(--text)' : 'var(--text-mid)' }}>Démarrer un appel</span>
-          </button>
-        )}
       </div>
 
       {/* Liste des canaux */}
@@ -342,17 +331,9 @@ function ChannelColumn({ space, channels, activeId, loading, isNarrow, joining, 
         {adding && (
           <div style={{ padding: '0 var(--space-2) var(--space-2)', display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
             <input autoFocus value={newName} onChange={e => setNewName(e.target.value.slice(0, 60))}
-              onKeyDown={e => { if (e.key === 'Enter') submitChannel(); if (e.key === 'Escape') { setAdding(false); setNewName(''); setNewKind('text') } }}
+              onKeyDown={e => { if (e.key === 'Enter') submitChannel(); if (e.key === 'Escape') { setAdding(false); setNewName('') } }}
               placeholder="nom-du-canal"
               style={{ width: '100%', boxSizing: 'border-box', background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: 'var(--r-sm)', padding: 'var(--space-2) var(--space-3)', fontFamily: FB, fontSize: 13, color: 'var(--text)', outline: 'none' }} />
-            {canVoice && (
-              <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
-                {(['text', 'voice'] as const).map(k => (
-                  <button key={k} type="button" onClick={() => setNewKind(k)}
-                    style={{ flex: 1, height: 30, border: 'none', borderRadius: 'var(--r-sm)', cursor: 'pointer', fontFamily: FB, fontSize: 12, fontWeight: 600, background: newKind === k ? 'var(--primary-dim)' : 'var(--surface-neutral)', color: newKind === k ? 'var(--primary)' : 'var(--text-mid)' }}>{k === 'text' ? '# Texte' : 'Voix'}</button>
-                ))}
-              </div>
-            )}
             <button type="button" onClick={submitChannel} disabled={!newName.trim()}
               style={{ height: 32, border: 'none', borderRadius: 'var(--r-sm)', cursor: newName.trim() ? 'pointer' : 'default', background: 'var(--primary)', color: 'var(--on-primary)', fontFamily: FB, fontSize: 12.5, fontWeight: 600, opacity: newName.trim() ? 1 : 0.5 }}>Créer le canal</button>
           </div>

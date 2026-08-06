@@ -8,6 +8,17 @@
 
 const FB = 'var(--font-body)'
 
+// Logos officiels des espaces (fichiers dans public/community/). Repli sur le
+// monogramme si l'espace n'en a pas. Un icon_url en base (uploadé par le
+// propriétaire) reste prioritaire sur ces logos.
+const OFFICIAL_LOGOS: Record<string, string> = {
+  'thw-communaute': '/community/thw-communaute.png',
+  cycling: '/community/cycling.png',
+  hyrox: '/community/hyrox.png',
+  gym: '/community/gym.png',
+  triathlon: '/community/triathlon.png',
+}
+
 function monogram(name: string): string {
   const c = name.trim()
   return (c[0] ?? '?').toUpperCase()
@@ -16,16 +27,17 @@ function monogram(name: string): string {
 export function SpaceBadge({
   space, size = 44, active = false, radius,
 }: {
-  space: { name: string; iconUrl?: string | null }
+  space: { name: string; iconUrl?: string | null; slug?: string }
   size?: number
   active?: boolean
   radius?: string
 }) {
   const r = radius ?? 'var(--r-md)'
-  if (space.iconUrl) {
+  const src = space.iconUrl ?? (space.slug ? OFFICIAL_LOGOS[space.slug] : undefined)
+  if (src) {
     return (
       // eslint-disable-next-line @next/next/no-img-element
-      <img src={space.iconUrl} alt={space.name} style={{
+      <img src={src} alt={space.name} style={{
         width: size, height: size, flexShrink: 0, borderRadius: r, objectFit: 'cover',
         background: 'var(--surface-neutral)',
         outline: active ? '2px solid var(--primary)' : 'none', outlineOffset: 1,

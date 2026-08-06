@@ -57,9 +57,10 @@ export async function POST(req: Request) {
     let targetSpaceId: string
     let room: string
     if (channelId) {
-      const { data: ch } = await svc.from('community_channels').select('space_id, kind').eq('id', channelId).maybeSingle()
-      const chan = ch as { space_id: string; kind: string } | null
-      if (!chan || chan.kind !== 'voice') return NextResponse.json({ error: 'Canal vocal introuvable' }, { status: 404 })
+      // Tout canal peut héberger un appel (le salon vocal vit dans chaque canal).
+      const { data: ch } = await svc.from('community_channels').select('space_id').eq('id', channelId).maybeSingle()
+      const chan = ch as { space_id: string } | null
+      if (!chan) return NextResponse.json({ error: 'Canal introuvable' }, { status: 404 })
       targetSpaceId = chan.space_id
       room = `comm-${channelId}`
     } else {

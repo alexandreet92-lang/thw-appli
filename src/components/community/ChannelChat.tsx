@@ -61,7 +61,7 @@ function Body({ text }: { text: string }) {
 }
 
 export function ChannelChat({
-  channel, isMember, canPost, canUpload, canModerate, isMuted, onToggleMute, onJoin, joining, onRead,
+  channel, isMember, canPost, canUpload, canModerate, isMuted, onToggleMute, onCall, onJoin, joining, onRead,
 }: {
   channel: CommunityChannel
   isMember: boolean
@@ -70,6 +70,7 @@ export function ChannelChat({
   canModerate: boolean
   isMuted: boolean
   onToggleMute: () => void
+  onCall: () => void
   onJoin: () => void
   joining: boolean
   onRead?: (channelId: string) => void
@@ -212,13 +213,14 @@ export function ChannelChat({
     const ok = await sendChannelMessage(channel.id, '', [{ type: 'activity', activity: a }])
     if (ok) void load(); else setNotice('Partage impossible.')
   }
-  async function shareSession(s: LibrarySession) {
+  function shareSession(s: LibrarySession) {
     setSharingSession(false)
     // On ne partage que le snapshot (sans l'id de bibliothèque, propre au partageur).
+    // La séance est mise en attente au-dessus du champ : on peut ajouter un
+    // commentaire puis envoyer (pas d'envoi immédiat).
     const { id: _id, ...snapshot } = s
     void _id
-    const ok = await sendChannelMessage(channel.id, '', [{ type: 'session', session: snapshot }])
-    if (ok) void load(); else setNotice('Partage impossible.')
+    setPending(p => [...p, { type: 'session', session: snapshot }])
   }
   async function handleFiles(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? []); e.target.value = ''
@@ -258,6 +260,12 @@ export function ChannelChat({
           <span style={{ fontFamily: FD, fontSize: 17, fontWeight: 600, color: 'var(--text)' }}>#{channel.name}</span>
           {channel.topic && <p style={{ margin: '2px 0 0', fontFamily: FB, fontSize: 12.5, color: 'var(--text-mid)', lineHeight: 1.4 }}>{channel.topic}</p>}
         </div>
+        {isMember && (
+          <button onClick={onCall} title="Rejoindre l'appel du canal" aria-label="Rejoindre l'appel du canal"
+            style={{ width: 30, height: 30, flexShrink: 0, border: 'none', borderRadius: 'var(--r-sm)', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M23 7l-7 5 7 5V7z" /><rect x="1" y="5" width="15" height="14" rx="2" ry="2" /></svg>
+          </button>
+        )}
         {isMember && (
           <button onClick={() => { setShowSearch(v => !v); setSearchQ(''); setSearchResults(null) }} title="Rechercher" aria-label="Rechercher"
             style={{ width: 30, height: 30, flexShrink: 0, border: 'none', borderRadius: 'var(--r-sm)', background: showSearch ? 'var(--surface-neutral)' : 'transparent', color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -489,7 +497,7 @@ export function ChannelChat({
 
         {(pending.length > 0 || uploading) && (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)', marginBottom: 'var(--space-2)' }}>
-            {pending.map((a, i) => <PendingChip key={a.url} att={a} onRemove={() => setPending(p => p.filter((_, j) => j !== i))} />)}
+            {pending.map((a, i) => <PendingChip key={a.url ?? `att-${i}`} att={a} onRemove={() => setPending(p => p.filter((_, j) => j !== i))} />)}
             {uploading && <span style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-dim)', alignSelf: 'center' }}>Envoi…</span>}
           </div>
         )}
@@ -525,7 +533,7 @@ export function ChannelChat({
       </div>
 
       {sharing && <ShareActivitySheet onClose={() => setSharing(false)} onShare={a => void shareActivity(a)} />}
-      {sharingSession && <ShareSessionSheet onClose={() => setSharingSession(false)} onShare={s => void shareSession(s)} />}
+      {sharingSession && <ShareSessionSheet onClose={() => setSharingSession(false)} onShare={shareSession} />}
     </div>
   )
 }
@@ -581,12 +589,22 @@ function Attachments({ items, me }: { items: CommunityAttachment[]; me: string |
 }
 
 function PendingChip({ att, onRemove }: { att: CommunityAttachment; onRemove: () => void }) {
+  const label = att.type === 'session' ? (att.session?.title || 'Séance')
+    : att.type === 'activity' ? (att.activity?.title || 'Activité')
+      : att.name
   return (
     <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', gap: 'var(--space-2)', height: 44, padding: att.type === 'image' ? 0 : '0 var(--space-3)', borderRadius: 'var(--r-sm)', background: 'var(--surface-neutral)', overflow: 'hidden' }}>
       {att.type === 'image'
         // eslint-disable-next-line @next/next/no-img-element
         ? <img src={att.url} alt={att.name} style={{ width: 44, height: 44, objectFit: 'cover' }} />
-        : <span style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-mid)', maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{att.name}</span>}
+        : (
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, maxWidth: 160 }}>
+            {att.type === 'session' && (
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-mid)" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><rect x="2" y="9" width="3" height="6" rx="1" /><rect x="19" y="9" width="3" height="6" rx="1" /><path d="M5 12h14" /></svg>
+            )}
+            <span style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-mid)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label}</span>
+          </span>
+        )}
       <button type="button" onClick={onRemove} aria-label="Retirer" style={{ position: 'absolute', top: 2, right: 2, width: 16, height: 16, borderRadius: '50%', border: 'none', background: 'var(--bg)', color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, lineHeight: 1 }}>×</button>
     </span>
   )

@@ -202,11 +202,17 @@ export function CommunityView() {
           </div>
         </div>
       ) : (
-        <div style={{ flex: 1, minHeight: 0, display: 'grid', gridTemplateColumns: '56px 248px 1fr', overflow: 'hidden', borderRadius: 'var(--r-lg)', background: 'var(--bg-card)' }}>
-          <div style={{ minHeight: 0, background: 'var(--bg-card2)' }}>{rail}</div>
-          <div style={{ minHeight: 0, background: 'var(--bg-card2)' }}>{channelCol}</div>
-          <div style={{ minHeight: 0 }}>{centerPane}</div>
-        </div>
+        <>
+          {/* Réserve la bande haute occupée par les boutons flottants du shell
+              (IA / notifications / profil, position fixe top-right) pour que
+              l'en-tête du canal (appel, recherche, présence…) reste visible. */}
+          <div aria-hidden style={{ height: 46, flexShrink: 0 }} />
+          <div style={{ flex: 1, minHeight: 0, display: 'grid', gridTemplateColumns: '56px 248px 1fr', overflow: 'hidden', borderRadius: 'var(--r-lg)', background: 'var(--bg-card)' }}>
+            <div style={{ minHeight: 0, background: 'var(--bg-card2)' }}>{rail}</div>
+            <div style={{ minHeight: 0, background: 'var(--bg-card2)' }}>{channelCol}</div>
+            <div style={{ minHeight: 0 }}>{centerPane}</div>
+          </div>
+        </>
       )}
 
       {showCreate && (

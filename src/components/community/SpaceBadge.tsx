@@ -11,14 +11,16 @@ const FB = 'var(--font-body)'
 // Logos officiels des espaces (fichiers dans public/community/). Repli sur le
 // monogramme si l'espace n'en a pas. Un icon_url en base (uploadé par le
 // propriétaire) reste prioritaire sur ces logos.
+// NB : dossier hors « /community » (qui est aussi une route App Router et
+// masquerait les fichiers statiques de même préfixe).
 const OFFICIAL_LOGOS: Record<string, string> = {
-  'thw-communaute': '/community/thw-communaute.png',
-  running: '/community/running.png',
-  trail: '/community/trail.png',
-  cycling: '/community/cycling.png',
-  hyrox: '/community/hyrox.png',
-  gym: '/community/gym.png',
-  triathlon: '/community/triathlon.png',
+  'thw-communaute': '/space-logos/thw-communaute.png',
+  running: '/space-logos/running.png',
+  trail: '/space-logos/trail.png',
+  cycling: '/space-logos/cycling.png',
+  hyrox: '/space-logos/hyrox.png',
+  gym: '/space-logos/gym.png',
+  triathlon: '/space-logos/triathlon.png',
 }
 
 function monogram(name: string): string {

@@ -33,7 +33,7 @@ export function CommunityView() {
   const [isNarrow, setIsNarrow] = useState(false)
   const [mView, setMView] = useState<MobileView>('spaces')
   const [dir, setDir] = useState<'fwd' | 'back'>('fwd')
-  const [panel, setPanel] = useState<'chat' | 'events'>('chat')
+  const [panel, setPanel] = useState<'chat' | 'events' | 'call'>('chat')
   const [joining, setJoining] = useState(false)
   const [showCreate, setShowCreate] = useState(false)
   const [unread, setUnread] = useState<Set<string>>(new Set())
@@ -84,7 +84,7 @@ export function CommunityView() {
 
   function goSpaces() { setDir('back'); setMView('spaces') }
   function selectSpace(id: string) {
-    setSpaceId(id); setChannelId(null)
+    setSpaceId(id); setChannelId(null); setPanel('chat')
     if (isNarrow) { setDir('fwd'); setMView('channels') }
   }
   function selectChannel(id: string) {
@@ -93,6 +93,10 @@ export function CommunityView() {
   }
   function selectEvents() {
     setPanel('events')
+    if (isNarrow) { setDir('fwd'); setMView('chat') }
+  }
+  function selectCall() {
+    setPanel('call')
     if (isNarrow) { setDir('fwd'); setMView('chat') }
   }
 
@@ -139,7 +143,7 @@ export function CommunityView() {
       isNarrow={isNarrow} joining={joining} canManage={canManage} unread={unread} muted={muted}
       canBrand={canManage && ent.community.canBrand}
       canVoice={canManage && ent.community.canVoice}
-      panel={panel} onEvents={selectEvents}
+      panel={panel} onEvents={selectEvents} onCall={selectCall}
       onSelect={selectChannel} onJoin={doJoin} onLeave={doLeave}
       onCreateChannel={doCreateChannel} onSetLogo={doSetLogo}
       onBack={goSpaces}
@@ -151,9 +155,15 @@ export function CommunityView() {
       onBack={() => { setDir('back'); setMView('channels') }} />
   ) : null
 
+  // Appel de groupe au niveau de l'espace (indépendant des canaux vocaux).
+  const callPane = space ? (
+    <VoiceView title={`Appel · ${space.name}`} target={{ spaceId: space.id }} isMember={space.isMember} isNarrow={isNarrow}
+      onBack={() => { setDir('back'); setMView('channels') }} />
+  ) : null
+
   const chat = channel && space ? (
     channel.kind === 'voice' ? (
-      <VoiceView channel={channel} isMember={space.isMember} isNarrow={isNarrow}
+      <VoiceView title={channel.name} target={{ channelId: channel.id }} isMember={space.isMember} isNarrow={isNarrow}
         onBack={() => { setDir('back'); setMView('channels') }} />
     ) : (
     <ChannelChat
@@ -170,9 +180,9 @@ export function CommunityView() {
     </div>
   )
 
-  const centerPane = panel === 'events' ? eventsPane : chat
+  const centerPane = panel === 'events' ? eventsPane : panel === 'call' ? callPane : chat
 
-  const chatWithBack = panel === 'events' ? eventsPane : (
+  const chatWithBack = panel === 'events' ? eventsPane : panel === 'call' ? callPane : (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
       <button onClick={() => { setDir('back'); setMView('channels') }} style={backBar}>
         <BackIcon /> <span>{space ? space.name : 'Retour'}</span>
@@ -242,10 +252,10 @@ function SpaceRail({ spaces, activeId, loading, onSelect, onCreate }: {
 }
 
 // ── Colonne des canaux ──────────────────────────────────────────────────────
-function ChannelColumn({ space, channels, activeId, loading, isNarrow, joining, canManage, canBrand, canVoice, unread, muted, panel, onEvents, onSelect, onJoin, onLeave, onCreateChannel, onSetLogo, onBack }: {
+function ChannelColumn({ space, channels, activeId, loading, isNarrow, joining, canManage, canBrand, canVoice, unread, muted, panel, onEvents, onCall, onSelect, onJoin, onLeave, onCreateChannel, onSetLogo, onBack }: {
   space: CommunitySpace | null; channels: CommunityChannel[]; activeId: string | null; loading: boolean
   isNarrow: boolean; joining: boolean; canManage: boolean; canBrand: boolean; canVoice: boolean; unread: Set<string>; muted: Set<string>
-  panel: 'chat' | 'events'; onEvents: () => void
+  panel: 'chat' | 'events' | 'call'; onEvents: () => void; onCall: () => void
   onSelect: (id: string) => void; onJoin: () => void; onLeave: () => void; onCreateChannel: (name: string, kind: 'text' | 'voice') => void; onSetLogo: (file: File) => void; onBack: () => void
 }) {
   const [adding, setAdding] = useState(false)
@@ -302,13 +312,20 @@ function ChannelColumn({ space, channels, activeId, loading, isNarrow, joining, 
         </div>
       </div>
 
-      {/* Raccourci Événements */}
+      {/* Raccourcis : Événements + Appel de groupe */}
       <div style={{ flexShrink: 0, padding: '0 var(--space-2) var(--space-2)' }}>
         <button onClick={onEvents}
           style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', width: '100%', textAlign: 'left', border: 'none', cursor: 'pointer', borderRadius: 'var(--r-sm)', padding: 'var(--space-2) var(--space-3)', minHeight: 36, background: panel === 'events' ? 'var(--surface-neutral)' : 'transparent', fontFamily: FB }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-dim)', flexShrink: 0 }}><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></svg>
           <span style={{ flex: 1, fontSize: 13.5, fontWeight: panel === 'events' ? 600 : 500, color: panel === 'events' ? 'var(--text)' : 'var(--text-mid)' }}>Événements</span>
         </button>
+        {space.isMember && (
+          <button onClick={onCall}
+            style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', width: '100%', textAlign: 'left', border: 'none', cursor: 'pointer', borderRadius: 'var(--r-sm)', padding: 'var(--space-2) var(--space-3)', minHeight: 36, background: panel === 'call' ? 'var(--surface-neutral)' : 'transparent', fontFamily: FB }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ color: panel === 'call' ? 'var(--primary)' : 'var(--text-dim)', flexShrink: 0 }}><path d="M23 7l-7 5 7 5V7z" /><rect x="1" y="5" width="15" height="14" rx="2" ry="2" /></svg>
+            <span style={{ flex: 1, fontSize: 13.5, fontWeight: panel === 'call' ? 600 : 500, color: panel === 'call' ? 'var(--text)' : 'var(--text-mid)' }}>Démarrer un appel</span>
+          </button>
+        )}
       </div>
 
       {/* Liste des canaux */}
@@ -332,7 +349,7 @@ function ChannelColumn({ space, channels, activeId, loading, isNarrow, joining, 
               <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
                 {(['text', 'voice'] as const).map(k => (
                   <button key={k} type="button" onClick={() => setNewKind(k)}
-                    style={{ flex: 1, height: 30, border: 'none', borderRadius: 'var(--r-sm)', cursor: 'pointer', fontFamily: FB, fontSize: 12, fontWeight: 600, background: newKind === k ? 'var(--primary-dim)' : 'var(--surface-neutral)', color: newKind === k ? 'var(--primary)' : 'var(--text-mid)' }}>{k === 'text' ? '# Texte' : '🔊 Voix'}</button>
+                    style={{ flex: 1, height: 30, border: 'none', borderRadius: 'var(--r-sm)', cursor: 'pointer', fontFamily: FB, fontSize: 12, fontWeight: 600, background: newKind === k ? 'var(--primary-dim)' : 'var(--surface-neutral)', color: newKind === k ? 'var(--primary)' : 'var(--text-mid)' }}>{k === 'text' ? '# Texte' : 'Voix'}</button>
                 ))}
               </div>
             )}

@@ -17,7 +17,10 @@ import type {
   Room, Participant, RoomEvent as RoomEventT, RemoteTrack, RemoteTrackPublication,
   RemoteParticipant, LocalVideoTrack, RemoteVideoTrack, Track,
 } from 'livekit-client'
-import type { CommunityChannel } from '@/types/community'
+
+// Cible de l'appel : soit un canal vocal, soit un espace entier (appel de groupe).
+export type CallTarget = { channelId: string } | { spaceId: string }
+const targetKey = (t: CallTarget) => ('channelId' in t ? `c:${t.channelId}` : `s:${t.spaceId}`)
 
 const FB = 'var(--font-body)', FD = 'var(--font-display)'
 
@@ -62,9 +65,10 @@ function tilesFor(room: Room): { screens: Tile[]; people: Tile[] } {
   return { screens, people }
 }
 
-export function VoiceView({ channel, isMember, isNarrow, onBack }: {
-  channel: CommunityChannel; isMember: boolean; isNarrow: boolean; onBack: () => void
+export function VoiceView({ title, target, isMember, isNarrow, onBack }: {
+  title: string; target: CallTarget; isMember: boolean; isNarrow: boolean; onBack: () => void
 }) {
+  const tKey = targetKey(target)
   const [status, setStatus] = useState<Status>('idle')
   const [, setTick] = useState(0)
   const [micOn, setMicOn] = useState(true)
@@ -91,8 +95,8 @@ export function VoiceView({ channel, isMember, isNarrow, onBack }: {
   }, [detachAllAudio])
 
   useEffect(() => { mountedRef.current = true; return () => { mountedRef.current = false } }, [])
-  // Quitter la salle au changement de canal ou au démontage.
-  useEffect(() => teardown, [channel.id, teardown])
+  // Quitter la salle au changement de cible (canal/espace) ou au démontage.
+  useEffect(() => teardown, [tKey, teardown])
 
   const bump = useCallback(() => { if (mountedRef.current) setTick(t => t + 1) }, [])
 
@@ -101,7 +105,7 @@ export function VoiceView({ channel, isMember, isNarrow, onBack }: {
     let token: string, url: string
     try {
       const res = await fetch('/api/community/voice-token', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ channelId: channel.id }),
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(target),
       })
       if (res.status === 501) { setStatus('unconfigured'); return }
       if (res.status === 403) { setStatus('forbidden'); return }
@@ -202,7 +206,7 @@ export function VoiceView({ channel, isMember, isNarrow, onBack }: {
           </button>
         )}
         <VoiceIcon />
-        <span style={{ fontFamily: FD, fontSize: 17, fontWeight: 600, color: 'var(--text)' }}>{channel.name}</span>
+        <span style={{ fontFamily: FD, fontSize: 17, fontWeight: 600, color: 'var(--text)' }}>{title}</span>
         {live && <span style={{ marginLeft: 'auto', fontFamily: FB, fontSize: 12, color: 'var(--text-mid)', fontVariantNumeric: 'tabular-nums' }}>{people.length} en ligne</span>}
       </div>
 

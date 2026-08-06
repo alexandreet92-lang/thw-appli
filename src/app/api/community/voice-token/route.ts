@@ -39,22 +39,36 @@ export async function POST(req: Request) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })
 
-    const { channelId } = (await req.json().catch(() => ({}))) as { channelId?: string }
-    if (!channelId) return NextResponse.json({ error: 'Canal manquant' }, { status: 400 })
+    // La salle d'appel se rattache soit à un canal vocal (channelId), soit
+    // directement à un espace (spaceId → appel de groupe de l'espace, sans avoir
+    // à créer un canal vocal). L'un des deux est requis.
+    const { channelId, spaceId } = (await req.json().catch(() => ({}))) as { channelId?: string; spaceId?: string }
+    if (!channelId && !spaceId) return NextResponse.json({ error: 'Salle manquante' }, { status: 400 })
 
     // Entitlement voix (Pro+/coach).
     const unlimited = await isCreatorAccount(user.id)
     const tier = await getUserTier(user.id)
     if (!communityEntitlements(tier, unlimited).canVoice) {
-      return NextResponse.json({ error: 'Les salons vocaux sont réservés à l\'abonnement Pro.', code: 'upgrade_required', upgrade_url: '/settings/subscription' }, { status: 403 })
+      return NextResponse.json({ error: 'Les appels sont réservés à l\'abonnement Pro.', code: 'upgrade_required', upgrade_url: '/settings/subscription' }, { status: 403 })
     }
 
-    // Le canal doit être vocal et l'utilisateur membre de l'espace.
+    // Résout l'espace cible + la clé de salle, puis vérifie l'appartenance.
     const svc = createServiceClient()
-    const { data: ch } = await svc.from('community_channels').select('space_id, kind').eq('id', channelId).maybeSingle()
-    const chan = ch as { space_id: string; kind: string } | null
-    if (!chan || chan.kind !== 'voice') return NextResponse.json({ error: 'Canal vocal introuvable' }, { status: 404 })
-    const { data: mem } = await svc.from('community_members').select('user_id').eq('space_id', chan.space_id).eq('user_id', user.id).maybeSingle()
+    let targetSpaceId: string
+    let room: string
+    if (channelId) {
+      const { data: ch } = await svc.from('community_channels').select('space_id, kind').eq('id', channelId).maybeSingle()
+      const chan = ch as { space_id: string; kind: string } | null
+      if (!chan || chan.kind !== 'voice') return NextResponse.json({ error: 'Canal vocal introuvable' }, { status: 404 })
+      targetSpaceId = chan.space_id
+      room = `comm-${channelId}`
+    } else {
+      const { data: sp } = await svc.from('community_spaces').select('id').eq('id', spaceId!).maybeSingle()
+      if (!sp) return NextResponse.json({ error: 'Espace introuvable' }, { status: 404 })
+      targetSpaceId = spaceId!
+      room = `comm-space-${spaceId}`
+    }
+    const { data: mem } = await svc.from('community_members').select('user_id').eq('space_id', targetSpaceId).eq('user_id', user.id).maybeSingle()
     if (!mem) return NextResponse.json({ error: 'Rejoins l\'espace pour parler.' }, { status: 403 })
 
     const url = process.env.LIVEKIT_URL, key = process.env.LIVEKIT_API_KEY, secret = process.env.LIVEKIT_API_SECRET
@@ -68,8 +82,8 @@ export async function POST(req: Request) {
       name = ((p?.full_name as string) || (p?.first_name as string) || 'Membre').trim()
     } catch { /* fallback */ }
 
-    const token = mintToken(key, secret, user.id, name, `comm-${channelId}`)
-    return NextResponse.json({ token, url, room: `comm-${channelId}`, identity: user.id })
+    const token = mintToken(key, secret, user.id, name, room)
+    return NextResponse.json({ token, url, room, identity: user.id })
   } catch (e) {
     console.error('[community/voice-token] error:', e)
     return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 })

@@ -175,6 +175,25 @@ export default function ProgramDetailView({ program, coachName, coachSlug }: { p
                           ))}
                         </div>
                       )}
+                      {/* Variantes proposées par le coach (« ou… ») */}
+                      {s.variants?.map((v, vi) => (
+                        <div key={vi} style={{ paddingLeft: 17, marginTop: 6, borderLeft: '2px solid var(--border)' }}>
+                          <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text)' }}>
+                            <span style={{ color: 'var(--text-dim)', fontWeight: 700 }}>ou · </span>{v.nom || 'Variante'}
+                            <span style={{ fontWeight: 500, color: 'var(--text-dim)' }}>{v.duree ? ` · ${v.duree} min` : ''}</span>
+                          </div>
+                          {v.blocks && v.blocks.filter(b => b.type !== 'circuit_header').length > 0 && (
+                            <div style={{ marginTop: 3, display: 'flex', flexDirection: 'column', gap: 3 }}>
+                              {v.blocks.filter(b => b.type !== 'circuit_header').map((b, bi) => (
+                                <div key={bi} style={{ fontSize: 12, color: 'var(--text-mid)', display: 'flex', alignItems: 'center', gap: 7 }}>
+                                  <span className="tnum" style={{ minWidth: 18, fontSize: 10, fontWeight: 700, color: 'var(--text-dim)' }}>Z{b.zone}</span>
+                                  <span>{formatBlockForAthlete(b, refs)}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ))}
                     </div>
                   )
                 })}

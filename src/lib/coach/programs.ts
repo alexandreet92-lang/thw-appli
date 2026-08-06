@@ -71,6 +71,8 @@ export interface ProgramSession {
   blocks?: Block[]          // blocs/zones/intervalles
   trainingTypes?: string[]
   notes?: string
+  /** Variantes proposées par le coach (« fais ça OU ça ») — séances alternatives. */
+  variants?: ProgramSession[]
 }
 
 /**

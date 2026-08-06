@@ -8,7 +8,7 @@
 //                      volume par sport, phases
 //   4. Finalisation  — prix, essai, IA (+ explication détaillée), publication
 // ══════════════════════════════════════════════════════════════════
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import {
   updateProgram, computeProgramFullStats, LEVEL_LABEL, PREP_LABEL, SPORTTYPE_TO_KEY, KEY_TO_SPORTTYPE,
   PHASE_PALETTE, DAY_TYPES, DAY_TYPE_LABEL, DAY_TYPE_COLOR,
@@ -67,9 +67,13 @@ export default function ProgramWizard({ program, onDone }: { program: CoachProgr
   const [step, setStep] = useState(1)
   const [p, setP] = useState<CoachProgram>(program)
   const [busy, setBusy] = useState(false)
-  const [editor, setEditor] = useState<{ wi: number; si: number | null; day: number } | null>(null)
+  // editor : si=null → nouvelle séance ; variantIndex défini → on édite/crée une variante de la séance si.
+  const [editor, setEditor] = useState<{ wi: number; si: number | null; day: number; variantIndex?: number } | null>(null)
   const [aiSheet, setAiSheet] = useState(false)
   const [recapSport, setRecapSport] = useState<string>('all')
+  const [drag, setDrag] = useState<{ wi: number; si: number; x: number; y: number; label: string } | null>(null)
+  const [repeatMenu, setRepeatMenu] = useState<{ wi: number; si: number } | null>(null)
+  const dragRef = useRef<{ wi: number; si: number } | null>(null)
   const set = (patch: Partial<CoachProgram>) => setP(prev => ({ ...prev, ...patch }))
 
   // Assure `duration_weeks` semaines dans la structure (sans perdre l'existant).
@@ -92,13 +96,58 @@ export default function ProgramWizard({ program, onDone }: { program: CoachProgr
   }
   const onEditorSave = (s: Session) => {
     if (!editor) return
-    const prev = editor.si === null ? undefined : weeks[editor.wi].sessions[editor.si]
-    const ps = fromSession(s, editor.day, prev)
-    const cur = weeks[editor.wi].sessions
-    const next = editor.si === null ? [...cur, ps] : cur.map((x, j) => j === editor.si ? ps : x)
-    setWeek(editor.wi, { sessions: next })
+    const { wi, si, day, variantIndex } = editor
+    // Enregistrement d'une VARIANTE d'une séance existante.
+    if (si !== null && variantIndex != null) {
+      const base = weeks[wi].sessions[si]
+      const variants = [...(base.variants ?? [])]
+      variants[variantIndex] = fromSession(s, day, variants[variantIndex])
+      setWeek(wi, { sessions: weeks[wi].sessions.map((x, j) => j === si ? { ...x, variants } : x) })
+      setEditor(null); return
+    }
+    const prev = si === null ? undefined : weeks[wi].sessions[si]
+    const ps: ProgramSession = { ...fromSession(s, day, prev), variants: prev?.variants }
+    const cur = weeks[wi].sessions
+    const next = si === null ? [...cur, ps] : cur.map((x, j) => j === si ? ps : x)
+    setWeek(wi, { sessions: next })
     setEditor(null)
   }
+
+  // ── Drag & drop (souris + tactile) : déplacer une séance entre jours/semaines ──
+  const cloneSession = (s: ProgramSession): ProgramSession => ({ ...s, blocks: s.blocks?.map(b => ({ ...b })), variants: s.variants?.map(cloneSession) })
+  const moveSession = (wi: number, si: number, wi2: number, day2: number) => {
+    const s = weeks[wi].sessions[si]; if (!s) return
+    if (wi === wi2) { setWeek(wi, { sessions: weeks[wi].sessions.map((x, j) => j === si ? { ...x, day: day2 } : x) }); return }
+    setWeeks(weeks.map((w, j) =>
+      j === wi ? { ...w, sessions: w.sessions.filter((_, k) => k !== si) }
+      : j === wi2 ? { ...w, sessions: [...w.sessions, { ...cloneSession(s), day: day2 }] }
+      : w))
+  }
+  const onDrop = (clientX: number, clientY: number) => {
+    const from = dragRef.current; dragRef.current = null; setDrag(null)
+    if (!from) return
+    const el = (document.elementFromPoint(clientX, clientY) as HTMLElement | null)?.closest('[data-daycell]') as HTMLElement | null
+    if (!el) return
+    const wi2 = Number(el.dataset.wi), day2 = Number(el.dataset.day)
+    if (Number.isNaN(wi2) || Number.isNaN(day2)) return
+    moveSession(from.wi, from.si, wi2, day2)
+  }
+
+  // ── Répéter une séance le même jour sur plusieurs semaines ──
+  const repeatSession = (wi: number, si: number, mode: 'all' | 'alt' | number) => {
+    const s = weeks[wi].sessions[si]; if (!s) return
+    const targets: number[] = []
+    if (mode === 'all') { for (let w = wi + 1; w < weeks.length; w++) targets.push(w) }
+    else if (mode === 'alt') { for (let w = wi + 2; w < weeks.length; w += 2) targets.push(w) }
+    else { for (let k = 1; k < mode && wi + k < weeks.length; k++) targets.push(wi + k) }
+    setRepeatMenu(null)
+    if (!targets.length) return
+    setWeeks(weeks.map((w, j) => targets.includes(j) ? { ...w, sessions: [...w.sessions, cloneSession(s)] } : w))
+  }
+
+  // ── Variantes (« fais ça OU ça ») ──
+  const addVariant = (wi: number, si: number) => setEditor({ wi, si, day: weeks[wi].sessions[si].day ?? 0, variantIndex: weeks[wi].sessions[si].variants?.length ?? 0 })
+  const removeVariant = (wi: number, si: number, vi: number) => setWeek(wi, { sessions: weeks[wi].sessions.map((x, j) => j === si ? { ...x, variants: (x.variants ?? []).filter((_, k) => k !== vi) } : x) })
   const toggleSport = (k: string) => set({ sports: p.sports.includes(k) ? p.sports.filter(x => x !== k) : [...p.sports, k] })
   const addPhase = () => set({ phases: [...p.phases, { label: '', fromWeek: 1, toWeek: Math.min(p.duration_weeks, 3), color: PHASE_PALETTE[p.phases.length % PHASE_PALETTE.length] }] })
   const setPhase = (i: number, patch: Partial<CoachProgram['phases'][number]>) => set({ phases: p.phases.map((ph, j) => j === i ? { ...ph, ...patch } : ph) })
@@ -234,26 +283,59 @@ export default function ProgramWizard({ program, onDone }: { program: CoachProgr
                         const dt = dayTypes[day] as DayType | null
                         const daySessions = w.sessions.map((s, si) => ({ s, si })).filter(({ s }) => (s.day ?? 0) === day)
                         return (
-                          <div key={day} style={{ background: 'var(--bg-card2)', borderRadius: 'var(--r-md)', padding: 6, minHeight: 96, display: 'flex', flexDirection: 'column', gap: 5 }}>
+                          <div key={day} data-daycell data-wi={wi} data-day={day}
+                            style={{ background: 'var(--bg-card2)', borderRadius: 'var(--r-md)', padding: 6, minHeight: 96, display: 'flex', flexDirection: 'column', gap: 5, outline: drag ? '1px dashed var(--border-mid)' : 'none' }}>
                             <button onClick={() => cycleDayType(wi, day)} title="Type de journée"
                               style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
                               <span style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--text-dim)' }}>{dl}</span>
                               <span style={{ width: 22, height: 3, borderRadius: 2, background: dt ? DAY_TYPE_COLOR[dt] : 'transparent' }} />
                             </button>
-                            {daySessions.map(({ s, si }) => (
-                              <div key={si} style={{ position: 'relative', borderRadius: 'var(--r-sm)', background: 'var(--bg-card)' }}>
+                            {daySessions.map(({ s, si }) => {
+                              const dragging = drag?.wi === wi && drag?.si === si
+                              return (
+                              <div key={si} style={{ position: 'relative', borderRadius: 'var(--r-sm)', background: 'var(--bg-card)', opacity: dragging ? 0.4 : 1 }}>
                                 <button onClick={() => setEditor({ wi, si, day })}
-                                  style={{ border: 'none', background: 'transparent', borderRadius: 'var(--r-sm)', padding: '6px 5px', cursor: 'pointer', textAlign: 'left', width: '100%', display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                  style={{ border: 'none', background: 'transparent', borderRadius: 'var(--r-sm)', padding: '6px 5px 4px', cursor: 'pointer', textAlign: 'left', width: '100%', display: 'flex', flexDirection: 'column', gap: 2 }}>
                                   <span style={{ width: 6, height: 6, borderRadius: '50%', background: sportDot(s.sport) }} />
                                   <span style={{ fontSize: 10.5, fontWeight: 600, color: 'var(--text)', lineHeight: 1.2, wordBreak: 'break-word', paddingRight: 12 }}>{s.nom || 'Séance'}</span>
                                   {s.duree ? <span className="tnum" style={{ fontSize: 9.5, color: 'var(--text-dim)' }}>{s.duree}′</span> : null}
                                 </button>
+                                {/* Variantes (« ou … ») */}
+                                {s.variants?.map((v, vi) => (
+                                  <div key={vi} style={{ display: 'flex', alignItems: 'center', gap: 3, padding: '0 5px 2px' }}>
+                                    <button onClick={() => setEditor({ wi, si, day, variantIndex: vi })} style={{ flex: 1, minWidth: 0, border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left', fontSize: 9.5, color: 'var(--text-mid)', padding: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>ou · {v.nom || 'Variante'}</button>
+                                    <button onClick={() => removeVariant(wi, si, vi)} aria-label="Retirer variante" style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-dim)', fontSize: 11, lineHeight: 1, padding: 0 }}>×</button>
+                                  </div>
+                                ))}
+                                {/* Barre d'actions : glisser · répéter · variante */}
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 2, padding: '0 4px 4px' }}>
+                                  <span role="button" aria-label="Déplacer" title="Glisser vers un autre jour"
+                                    onPointerDown={e => { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); e.preventDefault(); e.stopPropagation(); dragRef.current = { wi, si }; setDrag({ wi, si, x: e.clientX, y: e.clientY, label: s.nom || 'Séance' }) }}
+                                    onPointerMove={e => { if (dragRef.current) setDrag(d => d ? { ...d, x: e.clientX, y: e.clientY } : d) }}
+                                    onPointerUp={e => { e.stopPropagation(); onDrop(e.clientX, e.clientY) }}
+                                    style={{ cursor: 'grab', touchAction: 'none', fontSize: 11, color: 'var(--text-dim)', lineHeight: 1, userSelect: 'none' }}>⠿</span>
+                                  <span style={{ flex: 1 }} />
+                                  <button onClick={() => setRepeatMenu(repeatMenu?.wi === wi && repeatMenu?.si === si ? null : { wi, si })} aria-label="Répéter" title="Répéter sur plusieurs semaines"
+                                    style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-dim)', fontSize: 11, lineHeight: 1, padding: 0 }}>↻</button>
+                                  <button onClick={() => addVariant(wi, si)} aria-label="Ajouter une variante" title="Proposer une variante (ou…)"
+                                    style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-dim)', fontSize: 12, lineHeight: 1, padding: '0 2px' }}>⎇</button>
+                                </div>
+                                {/* Menu répéter */}
+                                {repeatMenu?.wi === wi && repeatMenu?.si === si && (
+                                  <div style={{ position: 'absolute', zIndex: 20, top: '100%', right: 0, marginTop: 2, background: 'var(--bg-elev, var(--bg-card))', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', boxShadow: '0 6px 20px rgba(0,0,0,0.18)', padding: 4, width: 150, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                    <RepeatOpt onClick={() => repeatSession(wi, si, 'all')}>Toutes les semaines</RepeatOpt>
+                                    <RepeatOpt onClick={() => repeatSession(wi, si, 'alt')}>Une sur deux</RepeatOpt>
+                                    <RepeatOpt onClick={() => repeatSession(wi, si, 3)}>Les 3 prochaines</RepeatOpt>
+                                    <RepeatOpt onClick={() => repeatSession(wi, si, 4)}>Les 4 prochaines</RepeatOpt>
+                                  </div>
+                                )}
                                 <button onClick={() => toggleKey(wi, si)} aria-label="Séance clé" title="Séance clé"
                                   style={{ position: 'absolute', top: 2, right: 2, border: 'none', background: 'transparent', cursor: 'pointer', padding: 0, lineHeight: 1 }}>
                                   <Star filled={!!s.key} />
                                 </button>
                               </div>
-                            ))}
+                              )
+                            })}
                             <button onClick={() => setEditor({ wi, si: null, day })} aria-label="Ajouter"
                               style={{ marginTop: 'auto', border: 'none', borderRadius: 'var(--r-sm)', background: 'transparent', color: 'var(--primary)', fontSize: 16, cursor: 'pointer', padding: '2px 0' }}>+</button>
                           </div>
@@ -300,17 +382,36 @@ export default function ProgramWizard({ program, onDone }: { program: CoachProgr
       )}
 
       {/* Le VRAI éditeur de séance (mode programme : multi-sport, sans zones athlète) */}
-      {editor && (
-        <SessionEditor
-          mode={editor.si === null ? 'create' : 'edit'}
-          reserveMode
-          programMode
-          session={editor.si === null ? undefined : toSession(weeks[editor.wi].sessions[editor.si])}
-          initialSport={editor.si === null ? (KEY_TO_SPORTTYPE[p.sports[0]] ?? 'run') : undefined}
-          onClose={() => setEditor(null)}
-          onSave={onEditorSave}
-          onDelete={editor.si !== null ? () => { removeSession(editor.wi, editor.si as number); setEditor(null) } : undefined}
-        />
+      {editor && (() => {
+        const base = editor.si === null ? undefined : weeks[editor.wi].sessions[editor.si]
+        const editingVariant = editor.variantIndex != null && base ? base.variants?.[editor.variantIndex] : undefined
+        const target = editor.variantIndex != null ? editingVariant : base
+        const isCreate = editor.si === null || (editor.variantIndex != null && !editingVariant)
+        return (
+          <SessionEditor
+            mode={isCreate ? 'create' : 'edit'}
+            reserveMode
+            programMode
+            session={target ? toSession(target) : undefined}
+            initialSport={isCreate ? (KEY_TO_SPORTTYPE[(target?.sport ?? base?.sport ?? p.sports[0]) as string] ?? 'run') : undefined}
+            onClose={() => setEditor(null)}
+            onSave={onEditorSave}
+            onDelete={
+              editor.si !== null && editor.variantIndex != null && editingVariant
+                ? () => { removeVariant(editor.wi, editor.si as number, editor.variantIndex as number); setEditor(null) }
+                : editor.si !== null && editor.variantIndex == null
+                  ? () => { removeSession(editor.wi, editor.si as number); setEditor(null) }
+                  : undefined
+            }
+          />
+        )
+      })()}
+
+      {/* Fantôme de glisser-déposer */}
+      {drag && (
+        <div style={{ position: 'fixed', left: drag.x + 10, top: drag.y + 10, zIndex: 15000, pointerEvents: 'none', background: 'var(--bg-card)', border: '1px solid var(--primary)', borderRadius: 'var(--r-sm)', padding: '5px 9px', fontSize: 11, fontWeight: 700, color: 'var(--text)', boxShadow: '0 8px 24px rgba(0,0,0,0.22)', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {drag.label}
+        </div>
       )}
 
       {/* ── ÉTAPE 3 — Récap ── */}
@@ -563,6 +664,9 @@ function Stat({ n, label }: { n: number; label: string }) {
   return <div><div className="tnum" style={{ fontSize: 24, fontWeight: 700, color: 'var(--text)', fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>{n}</div><div style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 4 }}>{label}</div></div>
 }
 function Empty({ children }: { children: React.ReactNode }) { return <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: 0 }}>{children}</p> }
+function RepeatOpt({ onClick, children }: { onClick: () => void; children: React.ReactNode }) {
+  return <button onClick={onClick} style={{ border: 'none', background: 'transparent', textAlign: 'left', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 600, color: 'var(--text)', padding: '7px 9px', borderRadius: 'var(--r-sm)' }}>{children}</button>
+}
 function Toggle({ on, onClick, label }: { on: boolean; onClick: () => void; label: string }) {
   return (
     <button onClick={onClick} style={{ display: 'inline-flex', alignItems: 'center', gap: 9, border: 'none', background: 'transparent', cursor: 'pointer', fontFamily: 'var(--font-body)', textAlign: 'left' }}>

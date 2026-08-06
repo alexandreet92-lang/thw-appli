@@ -36,6 +36,7 @@ export function SessionEditorDesktop(p: SessionEditorPanelProps) {
           <div style={{ overflowY: 'auto', padding: '22px 22px 32px', borderRight: '1px solid var(--se-rule)' }}>
             <MainFields
               reserveMode={p.reserveMode}
+              programMode={p.programMode}
               sport={p.sport} accent={p.accent} onSportChange={p.onSportChange} lockSport={p.lockSport}
               cyclingSub={p.cyclingSub} setCyclingSub={p.setCyclingSub}
               runningSub={p.runningSub} setRunningSub={p.setRunningSub}

@@ -3617,7 +3617,7 @@ function addMinutesToTime(hhmm: string, addMin: number): string {
   return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`
 }
 
-export function SessionEditor({ mode, session, dayIndex, weekStart, plan, onClose, onSave, onDelete, onValidate, onAutoSave, onDuplicate, onCreateBrick, onLinkBrick, linkableRuns, openWithFavorites, initialSport, reserveMode, lockSport }: {
+export function SessionEditor({ mode, session, dayIndex, weekStart, plan, onClose, onSave, onDelete, onValidate, onAutoSave, onDuplicate, onCreateBrick, onLinkBrick, linkableRuns, openWithFavorites, initialSport, reserveMode, lockSport, programMode }: {
   mode: 'create' | 'edit'
   session?: Session
   dayIndex?: number
@@ -3641,6 +3641,14 @@ export function SessionEditor({ mode, session, dayIndex, weekStart, plan, onClos
   reserveMode?: boolean   // Builder « réserve » : masque Sport / Date / Heure (non planifié)
   /** Verrouille le sport (éditeur de course d'enchaînement : course à pied uniquement). */
   lockSport?: boolean
+  /**
+   * Mode « programme coach » : la séance est un MODÈLE, sans athlète connu.
+   * → On NE charge PAS les données/zones de l'athlète (aucune allure/FTP absolue
+   *   ne doit fuiter dans le builder — cf. §2 du cahier des charges programmes).
+   * → Le sélecteur de sport reste visible (un programme est multi-sport) même si
+   *   reserveMode masque la date/heure (séance non datée dans le modèle).
+   */
+  programMode?: boolean
 }) {
   const { t } = useI18n()
   const isEdit = mode === 'edit'
@@ -3911,6 +3919,10 @@ export function SessionEditor({ mode, session, dayIndex, weekStart, plan, onClos
   }, [sport, title, desc, dur, rpe, blocks, nutritionItems])
 
   useEffect(() => {
+    // Mode programme : aucun athlète connu → on ne charge AUCUNE zone/valeur
+    // absolue (l'athlète les découvrira à l'adoption du programme). athleteData
+    // reste null : mini-stats, références seuil/FTP et estimations disparaissent.
+    if (programMode) return
     let cancelled = false
     ;(async () => {
       try {
@@ -5032,7 +5044,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
       } catch (e) { console.error('[Fav]', e) }
     }
     const panelProps: SessionEditorPanelProps = {
-      mode, reserveMode,
+      mode, reserveMode, programMode,
       sport, accent: 'var(--primary)', sportAccent: mobileSportColor(sport), onSportChange: handleSportChange, lockSport,
       cyclingSub, setCyclingSub, runningSub, setRunningSub, brickRun, setBrickRun, onBrickButton: handleBrickButton, trainingTypes, setTrainingTypes,
       title, setTitle, date, setDate, time, setTime,

@@ -19,6 +19,7 @@ const RPE_DESC = ['planning.rpeVeryEasy', 'planning.rpeVeryEasy', 'planning.rpeE
 
 export function MainFields(p: {
   reserveMode?: boolean
+  programMode?: boolean
   sport: SportType; accent: string; onSportChange: (s: SportType) => void
   lockSport?: boolean
   cyclingSub: CyclingSub; setCyclingSub: (s: CyclingSub) => void
@@ -48,8 +49,10 @@ export function MainFields(p: {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-      {/* §3 — Sélecteur de sport (masqué en réserve : le sport est déjà choisi) */}
-      {!p.reserveMode && (
+      {/* §3 — Sélecteur de sport. Masqué en réserve (sport déjà choisi), SAUF en
+          mode programme : un programme est multi-sport, le coach doit pouvoir
+          choisir le sport de chaque séance comme dans le vrai planning. */}
+      {(!p.reserveMode || p.programMode) && (
         <div>
           <h3 className="se-fr" style={{ margin: '0 0 12px', fontSize: 18, fontWeight: 600 }}>{tr('planning.sport')}</h3>
           <div style={{ display: 'flex', justifyContent: 'space-between' }}>

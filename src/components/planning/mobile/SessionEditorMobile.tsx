@@ -34,6 +34,7 @@ export function SessionEditorMobile(p: SessionEditorPanelProps) {
         <div style={{ flex: 1, overflowY: 'auto', padding: '8px 16px 96px', WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'] }}>
           <MainFields
             reserveMode={p.reserveMode}
+            programMode={p.programMode}
             sport={p.sport} accent={p.accent} onSportChange={p.onSportChange} lockSport={p.lockSport}
             cyclingSub={p.cyclingSub} setCyclingSub={p.setCyclingSub}
             runningSub={p.runningSub} setRunningSub={p.setRunningSub}

@@ -7,8 +7,25 @@ import type { Block, SportType } from '@/app/planning/page'
 
 export type ProgramLevel = 'debutant' | 'intermediaire' | 'avance' | 'tous'
 
-/** Phase de préparation (définie par le coach). */
-export interface ProgramPhase { label: string; fromWeek: number; toWeek: number }
+/** Phase de préparation (définie par le coach). `color` = token var(--…). */
+export interface ProgramPhase { label: string; fromWeek: number; toWeek: number; color?: string }
+
+/** Palette de couleurs (tokens) proposée pour les phases de préparation. */
+export const PHASE_PALETTE: string[] = [
+  'var(--sport-run)', 'var(--sport-bike)', 'var(--sport-swim)',
+  'var(--sport-gym)', 'var(--sport-hyrox)', 'var(--charge-mid)',
+]
+
+/**
+ * Type de journée (comme le planning de base de l'athlète) : le coach qualifie
+ * la charge attendue d'un jour de la semaine, indépendamment des séances.
+ */
+export type DayType = 'recup' | 'easy' | 'mid' | 'hard'
+export const DAY_TYPES: DayType[] = ['recup', 'easy', 'mid', 'hard']
+export const DAY_TYPE_LABEL: Record<DayType, string> = { recup: 'Récup', easy: 'Facile', mid: 'Modéré', hard: 'Dur' }
+export const DAY_TYPE_COLOR: Record<DayType, string> = {
+  recup: 'var(--zone-1)', easy: 'var(--charge-low)', mid: 'var(--charge-mid)', hard: 'var(--charge-hard)',
+}
 
 // ── Correspondance sport « éditeur planning » ↔ clé programme ─────────
 export const SPORTTYPE_TO_KEY: Record<string, string> = {
@@ -48,6 +65,7 @@ export interface ProgramSession {
   intensite?: 'Faible' | 'Modéré' | 'Élevé' | 'Maximum'
   description?: string
   day?: number              // 0..6 (jour dans la semaine)
+  key?: boolean             // séance clé de la semaine (étoile) — 2-3 par semaine
   // ── Détail « vrai planning » (éditeur SessionEditor) ──
   sportType?: SportType     // 'run' | 'bike' | …
   blocks?: Block[]          // blocs/zones/intervalles
@@ -66,6 +84,10 @@ export function defaultTargetUnit(sport: string): string {
 export interface ProgramWeek {
   label: string
   sessions: ProgramSession[]
+  /** Conseil global du coach pour la semaine (texte libre, colonne gauche). */
+  notes?: string
+  /** Type de journée par jour (0..6) — récup / facile / modéré / dur. */
+  dayTypes?: (DayType | null)[]
 }
 
 /** Une question du questionnaire d'onboarding (programme IA). */
@@ -276,4 +298,82 @@ export function computeProgramStats(structure: ProgramWeek[]): ProgramStats {
     distance: v.distance > 0 ? Math.round(v.distance * 10) / 10 : null,
   }))
   return { total: all.length, minutes: all.reduce((n, s) => n + (s.duree ?? 0), 0), bySport }
+}
+
+// ── Classification endurance vs qualité (séances seuil/max/allure spécifique) ──
+const QUALITY_KW = ['seuil', 'vma', 'vo2', 'fractionn', 'tempo', 'spécif', 'specif', 'intervall', 'côte', 'cote', 'sprint', 'allure', 'pma', 'ppm']
+const ENDURANCE_KW = ['endurance', 'ef', 'fondamental', 'sortie longue', 'longue', 'récup', 'recup', 'footing', 'z2', 'facile', 'aérobie', 'aerobie']
+
+/** Une séance est-elle « qualité » (seuil/max/allure spé) ou « endurance » ? */
+export function sessionQuality(s: ProgramSession): 'quality' | 'endurance' {
+  const hay = [s.type ?? '', ...(s.trainingTypes ?? [])].join(' ').toLowerCase()
+  if (QUALITY_KW.some(k => hay.includes(k))) return 'quality'
+  if (ENDURANCE_KW.some(k => hay.includes(k))) return 'endurance'
+  if (typeof s.rpe === 'number' && s.rpe >= 7) return 'quality'
+  return 'endurance'
+}
+
+/** Estimation de charge (proxy TSS/fatigue) d'une séance à partir durée × RPE². */
+export function sessionLoad(s: ProgramSession): number {
+  const h = (s.duree ?? 0) / 60
+  const rpe = typeof s.rpe === 'number' && s.rpe > 0 ? s.rpe : 5
+  return Math.round(h * (rpe / 10) * (rpe / 10) * 100)
+}
+
+export interface WeekAgg {
+  index: number
+  hours: number
+  load: number                               // proxy fatigue/TSS de la semaine
+  minutesBySport: Record<string, number>     // minutes par sport (barres empilées)
+}
+export interface ProgramFullStats {
+  base: ProgramStats
+  totalHours: number
+  enduranceSessions: number
+  qualitySessions: number
+  avgRpe: number | null
+  busiestWeek: { index: number; hours: number } | null
+  longestSession: { nom: string; duree: number; weekIndex: number; day: number } | null
+  weekly: WeekAgg[]
+}
+
+/** Stats complètes pour le récap : volume global, endurance/qualité, semaine la
+ *  plus chargée, séance la plus longue, RPE moyen, agrégat hebdo (barres + charge). */
+export function computeProgramFullStats(structure: ProgramWeek[]): ProgramFullStats {
+  const base = computeProgramStats(structure)
+  let endurance = 0, quality = 0, rpeSum = 0, rpeN = 0
+  const weekly: WeekAgg[] = structure.map((w, index) => {
+    const minutesBySport: Record<string, number> = {}
+    let hours = 0, load = 0
+    for (const s of w.sessions) {
+      const k = s.sport || 'running'
+      minutesBySport[k] = (minutesBySport[k] ?? 0) + (s.duree ?? 0)
+      hours += (s.duree ?? 0) / 60
+      load += sessionLoad(s)
+      if (sessionQuality(s) === 'quality') quality += 1; else endurance += 1
+      if (typeof s.rpe === 'number' && s.rpe > 0) { rpeSum += s.rpe; rpeN += 1 }
+    }
+    return { index, hours: Math.round(hours * 10) / 10, load, minutesBySport }
+  })
+  // Séance la plus longue — reduce (le type de l'accumulateur est explicite, ce
+  // qui évite le rétrécissement CFA d'un `let` muté dans une closure).
+  type Longest = NonNullable<ProgramFullStats['longestSession']>
+  const flat = structure.flatMap((w, wi) => w.sessions.map(s => ({ s, wi })))
+  const longest = flat.reduce<Longest | null>((best, { s, wi }) => {
+    const d = s.duree ?? 0
+    if (d <= 0) return best
+    return !best || d > best.duree ? { nom: s.nom || 'Séance', duree: d, weekIndex: wi, day: s.day ?? 0 } : best
+  }, null)
+  const busiest = weekly.reduce<{ index: number; hours: number } | null>((best, w) =>
+    !best || w.hours > best.hours ? { index: w.index, hours: w.hours } : best, null)
+  return {
+    base,
+    totalHours: Math.round((base.minutes / 60) * 10) / 10,
+    enduranceSessions: endurance,
+    qualitySessions: quality,
+    avgRpe: rpeN ? Math.round((rpeSum / rpeN) * 10) / 10 : null,
+    busiestWeek: busiest && busiest.hours > 0 ? busiest : null,
+    longestSession: longest,
+    weekly,
+  }
 }

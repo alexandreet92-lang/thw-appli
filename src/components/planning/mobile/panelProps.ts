@@ -18,6 +18,7 @@ export interface PanelParcours {
 export interface SessionEditorPanelProps {
   mode: 'create' | 'edit'
   reserveMode?: boolean   // réserve Builder : masque Sport / Date / Heure
+  programMode?: boolean   // modèle de programme coach : sport visible, zones athlète masquées
   sport: SportType; accent: string; sportAccent: string; onSportChange: (s: SportType) => void
   /** Verrouille le sport (éditeur d'enchaînement : course à pied uniquement). */
   lockSport?: boolean

@@ -19,6 +19,7 @@ export default function ProgramsCatalog() {
   const [programs, setPrograms] = useState<CoachProgram[] | null>(null)
   const [coaches, setCoaches] = useState<Record<string, CoachProfile>>({})
   const [sport, setSport] = useState<string>('')
+  const [specialty, setSpecialty] = useState<string>('')
   const [open, setOpen] = useState<CoachProgram | null>(null)
 
   useEffect(() => {
@@ -31,19 +32,32 @@ export default function ProgramsCatalog() {
   }, [])
 
   const sports = useMemo(() => Array.from(new Set((programs ?? []).flatMap(p => p.sports))), [programs])
-  const filtered = (programs ?? []).filter(p => !sport || p.sports.includes(sport))
+  // 2ᵉ niveau : spécificités présentes pour le sport sélectionné.
+  const specialties = useMemo(() => {
+    if (!sport) return []
+    return Array.from(new Set((programs ?? []).filter(p => p.sports.includes(sport) && p.specialty).map(p => p.specialty as string)))
+  }, [programs, sport])
+  const filtered = (programs ?? []).filter(p =>
+    (!sport || p.sports.includes(sport)) && (!specialty || p.specialty === specialty))
   const openCoach = open ? coaches[open.coach_id] : null
 
   return (
-    <div style={{ width: '100%', maxWidth: 640, margin: '0 auto', padding: '24px clamp(16px,4vw,40px) 64px', boxSizing: 'border-box', fontFamily: 'var(--font-body)' }}>
+    <div style={{ width: '100%', maxWidth: 1040, margin: '0 auto', padding: '24px clamp(16px,4vw,40px) 64px', boxSizing: 'border-box', fontFamily: 'var(--font-body)' }}>
       <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 600, color: 'var(--text)', margin: '0 0 4px' }}>Programmes</h1>
-      <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: '0 0 18px' }}>Fais défiler les programmes des coachs, ajoute-les à ton planning en un clic.</p>
+      <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: '0 0 18px' }}>Choisis un sport, affine par spécialité, ajoute un programme à ton planning en un clic.</p>
 
       {/* Filtre sport */}
       {sports.length > 0 && (
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 22 }}>
-          <button onClick={() => setSport('')} style={chip(sport === '')}>Tous</button>
-          {sports.map(s => <button key={s} onClick={() => setSport(s)} style={chip(sport === s)}>{SPORT_LABEL[s] ?? s}</button>)}
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: specialties.length > 0 ? 10 : 22 }}>
+          <button onClick={() => { setSport(''); setSpecialty('') }} style={chip(sport === '')}>Tous les sports</button>
+          {sports.map(s => <button key={s} onClick={() => { setSport(s); setSpecialty('') }} style={chip(sport === s)}>{SPORT_LABEL[s] ?? s}</button>)}
+        </div>
+      )}
+      {/* Filtre spécialité (2ᵉ niveau) */}
+      {specialties.length > 0 && (
+        <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', marginBottom: 22 }}>
+          <button onClick={() => setSpecialty('')} style={subChip(specialty === '')}>Toutes</button>
+          {specialties.map(s => <button key={s} onClick={() => setSpecialty(s)} style={subChip(specialty === s)}>{s}</button>)}
         </div>
       )}
 
@@ -71,4 +85,7 @@ export default function ProgramsCatalog() {
 
 function chip(on: boolean): React.CSSProperties {
   return { padding: '8px 14px', borderRadius: 999, border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 700, background: on ? 'var(--primary)' : 'var(--bg-card2)', color: on ? 'var(--on-primary)' : 'var(--text-mid)' }
+}
+function subChip(on: boolean): React.CSSProperties {
+  return { padding: '6px 12px', borderRadius: 999, border: on ? '1px solid var(--primary)' : '1px solid var(--border)', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 600, background: 'transparent', color: on ? 'var(--primary)' : 'var(--text-dim)' }
 }

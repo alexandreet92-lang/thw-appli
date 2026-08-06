@@ -5,7 +5,29 @@
 import { createClient } from '@/lib/supabase/client'
 import type { Block, SportType } from '@/app/planning/page'
 
-export type ProgramLevel = 'debutant' | 'intermediaire' | 'avance' | 'tous'
+export type ProgramLevel = 'debutant' | 'intermediaire' | 'avance' | 'tres_avance' | 'tous'
+/** Ordre d'affichage des niveaux dans le wizard. */
+export const LEVEL_ORDER: ProgramLevel[] = ['debutant', 'intermediaire', 'avance', 'tres_avance', 'tous']
+
+/**
+ * Spécificités proposées par sport (2ᵉ niveau de filtrage du catalogue).
+ * Clé = clé programme (running/cycling/…). Texte libre contrôlé côté app.
+ */
+export const SPORT_SPECIALTIES: Record<string, string[]> = {
+  running: ['5 km', '10 km', 'Semi-marathon', 'Marathon', 'Trail court', 'Trail long', 'Ultra', 'Piste', 'Cross'],
+  trail: ['Trail court', 'Trail long', 'Ultra', 'Kilomètre vertical'],
+  cycling: ['Route', 'Contre-la-montre', 'Grimpeur', 'Gran Fondo', 'Piste', 'Gravel'],
+  swim: ['Sprint', 'Demi-fond', 'Eau libre', 'Triathlon'],
+  triathlon: ['Sprint', 'Olympique', 'Half / 70.3', 'Ironman'],
+  gym: ['Force', 'Hypertrophie', 'Puissance', 'Full body', 'Haltéro'],
+  hyrox: ['Hyrox Pro', 'Hyrox Open', 'Doubles', 'Relais'],
+  rowing: ['2 000 m', '5 000 m', 'Longue distance', 'Indoor'],
+}
+
+/** Liste des spécificités pour un sport (vide si aucune définie). */
+export function specialtiesForSport(sport: string): string[] {
+  return SPORT_SPECIALTIES[sport] ?? []
+}
 
 /** Phase de préparation (définie par le coach). `color` = token var(--…). */
 export interface ProgramPhase { label: string; fromWeek: number; toWeek: number; color?: string }
@@ -191,6 +213,8 @@ export interface CoachProgram {
   objective: string | null
   prep_type: PrepType | null
   sports: string[]
+  /** Spécificité dans le sport (ex. « Marathon ») — 2ᵉ filtre du catalogue. */
+  specialty: string | null
   level: ProgramLevel | null
   duration_weeks: number
   structure: ProgramWeek[]
@@ -208,7 +232,7 @@ export interface CoachProgram {
   updated_at: string
 }
 
-const COLS = 'id, coach_id, title, description, objective, prep_type, sports, level, duration_weeks, structure, cover_url, published, price_cents, currency, pricing_model, trial_days, ai_enabled, questionnaire, phases, created_at, updated_at'
+const COLS = 'id, coach_id, title, description, objective, prep_type, sports, specialty, level, duration_weeks, structure, cover_url, published, price_cents, currency, pricing_model, trial_days, ai_enabled, questionnaire, phases, created_at, updated_at'
 
 function norm(r: unknown): CoachProgram {
   const p = r as CoachProgram
@@ -298,7 +322,7 @@ export async function createProgram(title: string): Promise<string | null> {
 export async function updateProgram(id: string, patch: Partial<CoachProgram>): Promise<void> {
   const sb = createClient()
   const allowed: Partial<CoachProgram> = {}
-  for (const k of ['title', 'description', 'objective', 'prep_type', 'sports', 'level', 'duration_weeks', 'structure', 'cover_url', 'published', 'price_cents', 'currency', 'trial_days', 'ai_enabled', 'questionnaire', 'phases'] as const) {
+  for (const k of ['title', 'description', 'objective', 'prep_type', 'sports', 'specialty', 'level', 'duration_weeks', 'structure', 'cover_url', 'published', 'price_cents', 'currency', 'trial_days', 'ai_enabled', 'questionnaire', 'phases'] as const) {
     if (k in patch) (allowed as Record<string, unknown>)[k] = patch[k]
   }
   await sb.from('coach_programs').update(allowed).eq('id', id)
@@ -354,7 +378,13 @@ export async function addProgramToMyPlanning(program: CoachProgram): Promise<num
 
 // ── Libellés ────────────────────────────────────────────────────────
 export const LEVEL_LABEL: Record<ProgramLevel, string> = {
-  debutant: 'Débutant', intermediaire: 'Intermédiaire', avance: 'Avancé', tous: 'Tous niveaux',
+  debutant: 'Débutant', intermediaire: 'Intermédiaire', avance: 'Avancé', tres_avance: 'Très avancé', tous: 'Tous niveaux',
+}
+
+/** Volume horaire total d'un programme (heures, 1 décimale). */
+export function programHours(structure: ProgramWeek[]): number {
+  const min = structure.flatMap(w => w.sessions).reduce((n, s) => n + (s.duree ?? 0), 0)
+  return Math.round(min / 60 * 10) / 10
 }
 export const PREP_LABEL: Record<PrepType, string> = {
   endurance: 'Endurance', force: 'Force', hybride: 'Hybride',

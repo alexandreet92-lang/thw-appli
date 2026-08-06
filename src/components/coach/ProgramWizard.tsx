@@ -10,10 +10,12 @@
 // ══════════════════════════════════════════════════════════════════
 import { useRef, useState } from 'react'
 import {
-  updateProgram, computeProgramFullStats, LEVEL_LABEL, PREP_LABEL, SPORTTYPE_TO_KEY, KEY_TO_SPORTTYPE,
-  PHASE_PALETTE, DAY_TYPES, DAY_TYPE_LABEL, DAY_TYPE_COLOR,
+  updateProgram, computeProgramFullStats, LEVEL_LABEL, LEVEL_ORDER, PREP_LABEL, SPORTTYPE_TO_KEY, KEY_TO_SPORTTYPE,
+  PHASE_PALETTE, DAY_TYPES, DAY_TYPE_LABEL, DAY_TYPE_COLOR, specialtiesForSport,
   type CoachProgram, type ProgramWeek, type ProgramSession, type ProgramLevel, type PrepType, type QuestionItem, type DayType,
 } from '@/lib/coach/programs'
+
+const SUMMARY_MAX = 140 // caractères — résumé court affiché sur la carte
 import { SessionEditor } from '@/components/planning/SessionEditor'
 import SlideSheet from '@/components/ui/SlideSheet'
 import type { Session, SportType } from '@/app/planning/page'
@@ -60,7 +62,6 @@ const SPORTS: { key: string; label: string }[] = [
 ]
 const SPORT_LABEL: Record<string, string> = Object.fromEntries(SPORTS.map(s => [s.key, s.label]))
 const PREPS: PrepType[] = ['endurance', 'force', 'hybride', 'competition', 'reprise', 'perte_poids']
-const LEVELS: ProgramLevel[] = ['debutant', 'intermediaire', 'avance', 'tous']
 const STEPS = ['Programme', 'Séances', 'Récap', 'Finalisation']
 
 export default function ProgramWizard({ program, onDone }: { program: CoachProgram; onDone: (p: CoachProgram) => void }) {
@@ -149,6 +150,8 @@ export default function ProgramWizard({ program, onDone }: { program: CoachProgr
   const addVariant = (wi: number, si: number) => setEditor({ wi, si, day: weeks[wi].sessions[si].day ?? 0, variantIndex: weeks[wi].sessions[si].variants?.length ?? 0 })
   const removeVariant = (wi: number, si: number, vi: number) => setWeek(wi, { sessions: weeks[wi].sessions.map((x, j) => j === si ? { ...x, variants: (x.variants ?? []).filter((_, k) => k !== vi) } : x) })
   const toggleSport = (k: string) => set({ sports: p.sports.includes(k) ? p.sports.filter(x => x !== k) : [...p.sports, k] })
+  // Spécialités proposées = union des spécialités des sports sélectionnés.
+  const specialtyOptions = Array.from(new Set(p.sports.flatMap(s => specialtiesForSport(s))))
   const addPhase = () => set({ phases: [...p.phases, { label: '', fromWeek: 1, toWeek: Math.min(p.duration_weeks, 3), color: PHASE_PALETTE[p.phases.length % PHASE_PALETTE.length] }] })
   const setPhase = (i: number, patch: Partial<CoachProgram['phases'][number]>) => set({ phases: p.phases.map((ph, j) => j === i ? { ...ph, ...patch } : ph) })
   const removePhase = (i: number) => set({ phases: p.phases.filter((_, j) => j !== i) })
@@ -169,7 +172,7 @@ export default function ProgramWizard({ program, onDone }: { program: CoachProgr
   const persist = async (patch: Partial<CoachProgram>) => {
     const next = { ...p, ...patch, structure: weeks }
     setP(next)
-    await updateProgram(p.id, { title: next.title, description: next.description, objective: next.objective, prep_type: next.prep_type, sports: next.sports, level: next.level, duration_weeks: next.duration_weeks, structure: next.structure, published: next.published, price_cents: next.price_cents, trial_days: next.trial_days, ai_enabled: next.ai_enabled, questionnaire: next.questionnaire, phases: next.phases })
+    await updateProgram(p.id, { title: next.title, description: next.description, objective: next.objective, prep_type: next.prep_type, sports: next.sports, specialty: next.specialty, level: next.level, duration_weeks: next.duration_weeks, structure: next.structure, published: next.published, price_cents: next.price_cents, trial_days: next.trial_days, ai_enabled: next.ai_enabled, questionnaire: next.questionnaire, phases: next.phases })
     return next
   }
 
@@ -210,6 +213,16 @@ export default function ProgramWizard({ program, onDone }: { program: CoachProgr
             {SPORTS.map(s => <button key={s.key} onClick={() => toggleSport(s.key)} style={chip(p.sports.includes(s.key))}>{s.label}</button>)}
           </div>
 
+          {/* Spécialité (selon les sports choisis) — 2ᵉ filtre du catalogue */}
+          {specialtyOptions.length > 0 && (
+            <>
+              <div style={secLbl}>Spécialité</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                {specialtyOptions.map(sp => <button key={sp} onClick={() => set({ specialty: p.specialty === sp ? null : sp })} style={chip(p.specialty === sp)}>{sp}</button>)}
+              </div>
+            </>
+          )}
+
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
             <Field label="Durée (semaines)" style={{ width: 150, flex: 'none' }}>
               <input type="number" min={1} max={52} value={p.duration_weeks} onChange={e => set({ duration_weeks: Math.max(1, Math.min(52, Number(e.target.value) || 1)) })} style={inp} />
@@ -217,12 +230,14 @@ export default function ProgramWizard({ program, onDone }: { program: CoachProgr
             <Field label="Niveau" style={{ flex: 1, minWidth: 160 }}>
               <select value={p.level ?? ''} onChange={e => set({ level: (e.target.value || null) as ProgramLevel | null })} style={inp}>
                 <option value="">—</option>
-                {LEVELS.map(l => <option key={l} value={l}>{LEVEL_LABEL[l]}</option>)}
+                {LEVEL_ORDER.map(l => <option key={l} value={l}>{LEVEL_LABEL[l]}</option>)}
               </select>
             </Field>
           </div>
 
-          <Field label="Description (optionnel)"><textarea value={p.description ?? ''} onChange={e => set({ description: e.target.value })} rows={3} style={{ ...inp, resize: 'vertical' }} placeholder="À qui s'adresse ce programme, prérequis, philosophie…" /></Field>
+          <Field label="Résumé du programme" hint={`affiché sur la carte · ${(p.description ?? '').length}/${SUMMARY_MAX}`}>
+            <textarea value={p.description ?? ''} onChange={e => set({ description: e.target.value.slice(0, SUMMARY_MAX) })} rows={2} maxLength={SUMMARY_MAX} style={{ ...inp, resize: 'vertical' }} placeholder="Une phrase qui résume le programme (à qui, objectif, méthode)…" />
+          </Field>
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 22 }}>
             <button onClick={goNext} disabled={busy || !p.title.trim()} style={{ ...primary, minWidth: 160, opacity: busy || !p.title.trim() ? 0.55 : 1 }}>Continuer →</button>
@@ -564,49 +579,98 @@ export default function ProgramWizard({ program, onDone }: { program: CoachProgr
   )
 }
 
-// ── Barres verticales empilées par sport (aperçu hebdo) ──
-function WeeklyBars({ weekly, recapSport }: { weekly: { index: number; minutesBySport: Record<string, number> }[]; recapSport: string }) {
-  const maxMin = Math.max(1, ...weekly.map(w => recapSport === 'all'
+type WeeklyAgg = { index: number; hours: number; load: number; minutesBySport: Record<string, number> }
+const fmtH = (min: number) => `${Math.round(min / 60 * 10) / 10} h`
+
+// ── Barres verticales empilées par sport (aperçu hebdo) — heures + survol ──
+function WeeklyBars({ weekly, recapSport }: { weekly: WeeklyAgg[]; recapSport: string }) {
+  const [hover, setHover] = useState<number | null>(null)
+  const totalOf = (w: WeeklyAgg) => recapSport === 'all'
     ? Object.values(w.minutesBySport).reduce((a, b) => a + b, 0)
-    : (w.minutesBySport[recapSport] ?? 0)))
+    : (w.minutesBySport[recapSport] ?? 0)
+  const maxMin = Math.max(1, ...weekly.map(totalOf))
+  const showLabels = weekly.length <= 16
   return (
-    <div style={{ display: 'flex', alignItems: 'flex-end', gap: 5, height: 140, padding: '0 2px 22px', overflowX: 'auto' }}>
-      {weekly.map(w => {
-        const entries = Object.entries(w.minutesBySport).filter(([sp, m]) => m > 0 && (recapSport === 'all' || sp === recapSport))
-          .sort((a, b) => b[1] - a[1])   // plus gros volume en bas
-        const total = entries.reduce((a, [, m]) => a + m, 0)
-        return (
-          <div key={w.index} style={{ flex: '1 0 18px', minWidth: 18, display: 'flex', flexDirection: 'column', alignItems: 'center', height: '100%', justifyContent: 'flex-end', position: 'relative' }}>
-            <div style={{ width: '78%', maxWidth: 26, display: 'flex', flexDirection: 'column-reverse', height: `${Math.round(total / maxMin * 100)}%`, borderRadius: '4px 4px 0 0', overflow: 'hidden' }}>
-              {entries.map(([sp, m]) => (
-                <div key={sp} title={`${SPORT_LABEL[sp] ?? sp} · ${Math.round(m / 60 * 10) / 10} h`} style={{ height: `${Math.round(m / total * 100)}%`, background: sportDot(sp) }} />
-              ))}
+    <div style={{ position: 'relative' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 5, height: 176, padding: '18px 2px 24px', overflowX: 'auto' }}>
+        {weekly.map(w => {
+          const entries = Object.entries(w.minutesBySport).filter(([sp, m]) => m > 0 && (recapSport === 'all' || sp === recapSport))
+            .sort((a, b) => b[1] - a[1])   // plus gros volume en bas
+          const total = totalOf(w)
+          const on = hover === w.index
+          const nbSea = entries.length // (approx) — utilisé seulement pour l'info-bulle globale
+          return (
+            <div key={w.index} onMouseEnter={() => setHover(w.index)} onMouseLeave={() => setHover(h => h === w.index ? null : h)}
+              style={{ flex: '1 0 20px', minWidth: 20, display: 'flex', flexDirection: 'column', alignItems: 'center', height: '100%', justifyContent: 'flex-end', position: 'relative', cursor: 'default' }}>
+              {showLabels && total > 0 && <span className="tnum" style={{ position: 'absolute', top: -2, fontSize: 9, fontWeight: 700, color: on ? 'var(--text)' : 'var(--text-dim)' }}>{fmtH(total)}</span>}
+              <div style={{ width: '76%', maxWidth: 28, display: 'flex', flexDirection: 'column-reverse', height: `${Math.round(total / maxMin * 100)}%`, borderRadius: '5px 5px 0 0', overflow: 'hidden', outline: on ? '2px solid var(--text)' : 'none', outlineOffset: 1, transition: 'outline 120ms' }}>
+                {entries.map(([sp, m]) => (
+                  <div key={sp} style={{ height: `${Math.round(m / total * 100)}%`, background: sportDot(sp) }} />
+                ))}
+              </div>
+              <span style={{ position: 'absolute', bottom: -20, fontSize: 9.5, fontWeight: on ? 700 : 500, color: on ? 'var(--text)' : 'var(--text-dim)' }}>{w.index + 1}</span>
+              {on && total > 0 && (
+                <div style={{ position: 'absolute', bottom: 'calc(100% + 4px)', left: '50%', transform: 'translateX(-50%)', zIndex: 5, background: 'var(--text)', color: 'var(--bg-card)', borderRadius: 8, padding: '6px 9px', whiteSpace: 'nowrap', fontSize: 11, fontWeight: 600, boxShadow: '0 6px 18px rgba(0,0,0,0.25)', pointerEvents: 'none' }}>
+                  <div style={{ fontWeight: 800 }}>Semaine {w.index + 1} · {fmtH(total)}</div>
+                  {entries.map(([sp, m]) => <div key={sp} style={{ opacity: 0.85 }}>{SPORT_LABEL[sp] ?? sp} · {fmtH(m)}</div>)}
+                  {recapSport === 'all' && <div style={{ opacity: 0.7 }}>{nbSea} sport{nbSea > 1 ? 's' : ''}</div>}
+                </div>
+              )}
             </div>
-            <span style={{ position: 'absolute', bottom: -20, fontSize: 9.5, color: 'var(--text-dim)' }}>{w.index + 1}</span>
-          </div>
-        )
-      })}
+          )
+        })}
+      </div>
     </div>
   )
 }
 
-// ── Ligne de charge estimée par semaine (SVG raw, pas de lib) ──
-function LoadLine({ weekly }: { weekly: { index: number; load: number }[] }) {
+// ── Courbe de charge estimée par semaine (SVG raw) — survol + bulle ──
+function LoadLine({ weekly }: { weekly: WeeklyAgg[] }) {
+  const [hover, setHover] = useState<number | null>(null)
+  const wrapRef = useRef<HTMLDivElement | null>(null)
   if (weekly.length === 0) return <Empty>Aucune donnée.</Empty>
   const max = Math.max(1, ...weekly.map(w => w.load))
-  const W = 100, H = 40
-  const step = weekly.length > 1 ? W / (weekly.length - 1) : 0
-  const pts = weekly.map((w, i) => `${(i * step).toFixed(2)},${(H - (w.load / max) * (H - 6) - 3).toFixed(2)}`).join(' ')
-  const area = `0,${H} ${pts} ${((weekly.length - 1) * step).toFixed(2)},${H}`
+  const W = 100, H = 56, PAD = 5
+  const n = weekly.length
+  const step = n > 1 ? (W - PAD * 2) / (n - 1) : 0
+  const xAt = (i: number) => PAD + i * step
+  const yAt = (v: number) => H - PAD - (v / max) * (H - PAD * 2)
+  const pts = weekly.map((w, i) => `${xAt(i).toFixed(2)},${yAt(w.load).toFixed(2)}`).join(' ')
+  const area = `${xAt(0)},${H} ${pts} ${xAt(n - 1)},${H}`
+  const gridY = [0.25, 0.5, 0.75].map(f => H - PAD - f * (H - PAD * 2))
+
+  const onMove = (e: React.MouseEvent) => {
+    const r = wrapRef.current?.getBoundingClientRect(); if (!r) return
+    const frac = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width))
+    setHover(Math.round(frac * (n - 1)))
+  }
+  const hoverX = hover != null ? (xAt(hover) / W) * 100 : 0
+
   return (
-    <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8 }}>
-      <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" style={{ width: '100%', height: 64, overflow: 'visible' }}>
-        <polygon points={area} fill="var(--primary)" opacity={0.12} />
-        <polyline points={pts} fill="none" stroke="var(--primary)" strokeWidth={1.6} vectorEffect="non-scaling-stroke" strokeLinejoin="round" strokeLinecap="round" />
+    <div ref={wrapRef} onMouseMove={onMove} onMouseLeave={() => setHover(null)}
+      style={{ position: 'relative', height: 132, padding: '6px 0' }}>
+      <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" style={{ width: '100%', height: '100%', overflow: 'visible' }}>
+        <defs>
+          <linearGradient id="loadFill" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="var(--primary)" stopOpacity="0.32" />
+            <stop offset="100%" stopColor="var(--primary)" stopOpacity="0.02" />
+          </linearGradient>
+        </defs>
+        {gridY.map((y, i) => <line key={i} x1={PAD} y1={y} x2={W - PAD} y2={y} stroke="var(--border)" strokeWidth={0.4} vectorEffect="non-scaling-stroke" />)}
+        <polygon points={area} fill="url(#loadFill)" />
+        <polyline points={pts} fill="none" stroke="var(--primary)" strokeWidth={2} vectorEffect="non-scaling-stroke" strokeLinejoin="round" strokeLinecap="round" />
+        {hover != null && <line x1={xAt(hover)} y1={PAD} x2={xAt(hover)} y2={H - PAD} stroke="var(--text-dim)" strokeWidth={0.6} vectorEffect="non-scaling-stroke" strokeDasharray="2 2" />}
         {weekly.map((w, i) => (
-          <circle key={i} cx={i * step} cy={H - (w.load / max) * (H - 6) - 3} r={1.6} fill="var(--primary)" vectorEffect="non-scaling-stroke" />
+          <circle key={i} cx={xAt(i)} cy={yAt(w.load)} r={hover === i ? 3 : 1.7} fill="var(--primary)" stroke="var(--bg-card)" strokeWidth={hover === i ? 1 : 0} vectorEffect="non-scaling-stroke" />
         ))}
       </svg>
+      {/* Bulle à droite du curseur */}
+      {hover != null && (
+        <div style={{ position: 'absolute', top: 4, left: `calc(${hoverX}% + 10px)`, transform: hoverX > 72 ? 'translateX(-100%) translateX(-20px)' : 'none', zIndex: 5, background: 'var(--text)', color: 'var(--bg-card)', borderRadius: 8, padding: '6px 10px', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap', boxShadow: '0 6px 18px rgba(0,0,0,0.25)', pointerEvents: 'none' }}>
+          Semaine {weekly[hover].index + 1} · charge {weekly[hover].load}
+          <span style={{ display: 'block', fontWeight: 500, opacity: 0.8 }}>{weekly[hover].hours} h de séances</span>
+        </div>
+      )}
     </div>
   )
 }

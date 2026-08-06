@@ -17,6 +17,7 @@ import { listSpaceMembers } from '@/lib/community/spaces'
 import { usePresenceCount } from '@/lib/community/presence'
 import { useSpeechToText } from '@/hooks/useSpeechToText'
 import { myId } from '@/lib/community/shared'
+import { reportMessage, getSpaceSettings, hasAcceptedRules, acceptRules } from '@/lib/community/moderation'
 import { ShareActivitySheet } from './ShareActivitySheet'
 import { ShareSessionSheet } from './ShareSessionSheet'
 import { ActivityCard } from './ActivityCard'
@@ -84,6 +85,7 @@ export function ChannelChat({
   const [notice, setNotice] = useState<string | null>(null)
   const [sharing, setSharing] = useState(false)
   const [sharingSession, setSharingSession] = useState(false)
+  const [rulesGate, setRulesGate] = useState<{ required: boolean; accepted: boolean; text: string | null }>({ required: false, accepted: true, text: null })
   const [me, setMe] = useState<string | null>(null)
   const [members, setMembers] = useState<CommunityMemberInfo[]>([])
   const [reactFor, setReactFor] = useState<string | null>(null)
@@ -139,6 +141,20 @@ export function ChannelChat({
   useEffect(() => {
     if (!isMember) { setMembers([]); return }
     void listSpaceMembers(channel.spaceId).then(setMembers)
+  }, [channel.spaceId, isMember])
+
+  // Porte des règles : si l'espace l'exige et que je ne les ai pas acceptées.
+  useEffect(() => {
+    if (!isMember) { setRulesGate({ required: false, accepted: true, text: null }); return }
+    let alive = true
+    void (async () => {
+      const cfg = await getSpaceSettings(channel.spaceId)
+      if (!alive) return
+      if (!cfg?.requireRulesAccept) { setRulesGate({ required: false, accepted: true, text: cfg?.rulesText ?? null }); return }
+      const accepted = await hasAcceptedRules(channel.spaceId)
+      if (alive) setRulesGate({ required: true, accepted, text: cfg.rulesText })
+    })()
+    return () => { alive = false }
   }, [channel.spaceId, isMember])
 
   // Append en direct : messages + réactions (un seul canal, nom unique par instance
@@ -222,6 +238,18 @@ export function ChannelChat({
     void _id
     setPending(p => [...p, { type: 'session', session: snapshot }])
   }
+
+  async function report(id: string) {
+    const reason = typeof window !== 'undefined' ? window.prompt('Signaler ce message à la modération — raison :') : ''
+    if (reason === null) return
+    const ok = await reportMessage(channel.spaceId, channel.id, id, reason || 'Signalé')
+    setNotice(ok ? 'Message signalé à la modération.' : 'Signalement impossible.')
+  }
+
+  async function doAcceptRules() {
+    const ok = await acceptRules(channel.spaceId)
+    if (ok) setRulesGate(g => ({ ...g, accepted: true }))
+  }
   async function handleFiles(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? []); e.target.value = ''
     if (files.length === 0) return
@@ -251,7 +279,8 @@ export function ChannelChat({
     if (await deleteChannelMessage(id)) void load()
   }
 
-  const canSend = (input.trim().length > 0 || pending.length > 0) && !sending && !uploading && canPost
+  const gatedByRules = rulesGate.required && !rulesGate.accepted
+  const canSend = (input.trim().length > 0 || pending.length > 0) && !sending && !uploading && canPost && !gatedByRules
 
   const header = (
     <div style={{ flexShrink: 0, padding: 'var(--space-4) var(--space-5) var(--space-3)', background: 'var(--bg-card)' }}>
@@ -448,6 +477,11 @@ export function ChannelChat({
                         <path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" />
                       </ActionBtn>
                     )}
+                    {!mine && (
+                      <ActionBtn label="Signaler" onClick={() => void report(m.id)}>
+                        <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" /><line x1="4" y1="22" x2="4" y2="15" />
+                      </ActionBtn>
+                    )}
                     {(mine || canModerate) && (
                       <ActionBtn label="Supprimer" onClick={() => void remove(m.id)}>
                         <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" />
@@ -499,6 +533,18 @@ export function ChannelChat({
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)', marginBottom: 'var(--space-2)' }}>
             {pending.map((a, i) => <PendingChip key={a.url ?? `att-${i}`} att={a} onRemove={() => setPending(p => p.filter((_, j) => j !== i))} />)}
             {uploading && <span style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-dim)', alignSelf: 'center' }}>Envoi…</span>}
+          </div>
+        )}
+
+        {gatedByRules && (
+          <div style={{ marginBottom: 'var(--space-2)', padding: 'var(--space-3)', borderRadius: 'var(--r-md)', background: 'var(--bg-card2)' }}>
+            <p style={{ margin: '0 0 var(--space-2)', fontFamily: FB, fontSize: 12.5, color: 'var(--text-mid)', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>
+              {rulesGate.text?.trim() || 'Cet espace demande d\'accepter ses règles avant de participer.'}
+            </p>
+            <button onClick={() => void doAcceptRules()}
+              style={{ height: 34, padding: '0 var(--space-4)', border: 'none', borderRadius: 'var(--r-sm)', background: 'var(--primary)', color: 'var(--on-primary)', fontFamily: FB, fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>
+              J&apos;accepte les règles
+            </button>
           </div>
         )}
 

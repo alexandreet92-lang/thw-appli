@@ -35,6 +35,56 @@ export async function POST(req: Request) {
     if (text.length > 4000) return NextResponse.json({ error: 'Message trop long' }, { status: 400 })
     if (!text && atts.length === 0) return NextResponse.json({ error: 'Message vide' }, { status: 400 })
 
+    // ── Garde-fous anti-spam / modération (serveur, service role) ─────────────
+    const svc = createServiceClient()
+    const { data: chRow } = await svc.from('community_channels').select('space_id, name').eq('id', channelId).maybeSingle()
+    const chan = chRow as { space_id: string; name: string } | null
+    if (!chan) return NextResponse.json({ error: 'Canal introuvable' }, { status: 404 })
+    const spaceId = chan.space_id
+    const channelName = chan.name ?? 'un canal'
+
+    const { data: cfgRow } = await svc.from('community_spaces')
+      .select('slow_mode_sec, blocked_words, require_rules_accept').eq('id', spaceId).maybeSingle()
+    const cfg = cfgRow as { slow_mode_sec: number; blocked_words: string[]; require_rules_accept: boolean } | null
+
+    const { data: memRow } = await svc.from('community_members').select('role').eq('space_id', spaceId).eq('user_id', user.id).maybeSingle()
+    const role = (memRow as { role: string } | null)?.role
+    const isMod = role === 'owner' || role === 'admin'
+
+    // Mots bloqués (tous sauf modération).
+    if (text && !isMod && cfg?.blocked_words?.length) {
+      const n = norm(text)
+      if (cfg.blocked_words.some(w => w && n.includes(norm(w)))) {
+        return NextResponse.json({ error: 'Ton message contient un terme interdit dans cet espace.' }, { status: 422 })
+      }
+    }
+    // Acceptation des règles requise (tous sauf modération).
+    if (cfg?.require_rules_accept && !isMod) {
+      const { data: acc } = await svc.from('community_rules_accepted').select('user_id').eq('space_id', spaceId).eq('user_id', user.id).maybeSingle()
+      if (!acc) return NextResponse.json({ error: 'Accepte les règles de l\'espace pour participer.', code: 'rules_required' }, { status: 403 })
+    }
+    // Anti-flood (5 / 10 s) + mode lent (sauf modération).
+    if (!isMod) {
+      const since = new Date(Date.now() - 10_000).toISOString()
+      const { data: burst } = await svc.from('community_messages')
+        .select('created_at').eq('channel_id', channelId).eq('author_id', user.id).gte('created_at', since)
+      if (((burst ?? []) as unknown[]).length >= 5) {
+        return NextResponse.json({ error: 'Tu envoies des messages trop vite. Réessaie dans un instant.' }, { status: 429 })
+      }
+      if (cfg?.slow_mode_sec && cfg.slow_mode_sec > 0) {
+        const { data: last } = await svc.from('community_messages')
+          .select('created_at').eq('channel_id', channelId).eq('author_id', user.id)
+          .order('created_at', { ascending: false }).limit(1).maybeSingle()
+        const lastAt = (last as { created_at: string } | null)?.created_at
+        if (lastAt) {
+          const waited = (Date.now() - new Date(lastAt).getTime()) / 1000
+          if (waited < cfg.slow_mode_sec) {
+            return NextResponse.json({ error: `Mode lent activé : attends ${Math.ceil(cfg.slow_mode_sec - waited)} s.` }, { status: 429 })
+          }
+        }
+      }
+    }
+
     // Insertion via le client utilisateur → RLS (membre + author = uid).
     const { data: inserted, error } = await supabase
       .from('community_messages')
@@ -49,11 +99,7 @@ export async function POST(req: Request) {
     try {
       const tokens = Array.from(new Set((text.match(/@([\p{L}][\p{L}\-]{1,30})/gu) ?? []).map(t => norm(t.slice(1))))).slice(0, 10)
       if (tokens.length > 0) {
-        const svc = createServiceClient()
-        const { data: ch } = await svc.from('community_channels').select('space_id, name').eq('id', channelId).maybeSingle()
-        const spaceId = (ch as { space_id: string; name: string } | null)?.space_id
-        const channelName = (ch as { space_id: string; name: string } | null)?.name ?? 'un canal'
-        if (spaceId) {
+        {
           const { data: mem } = await svc.from('community_members').select('user_id').eq('space_id', spaceId)
           const memberIds = (mem ?? []).map((m: { user_id: string }) => m.user_id).filter(id => id !== user.id)
           if (memberIds.length > 0) {

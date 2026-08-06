@@ -13,6 +13,8 @@ const FB = 'var(--font-body)'
 // propriétaire) reste prioritaire sur ces logos.
 const OFFICIAL_LOGOS: Record<string, string> = {
   'thw-communaute': '/community/thw-communaute.png',
+  running: '/community/running.png',
+  trail: '/community/trail.png',
   cycling: '/community/cycling.png',
   hyrox: '/community/hyrox.png',
   gym: '/community/gym.png',

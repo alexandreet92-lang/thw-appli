@@ -158,6 +158,10 @@ export interface Block {
   rampStartWatts?: number   // puissance du 1ᵉ palier (rampe)
   rampStepWatts?: number    // incrément de puissance par palier (défaut 20 W)
   rampStepMin?: number      // durée d'un palier en minutes (défaut 2)
+  // Cible RELATIVE (programmes coach) : `value` est alors un POURCENTAGE (nombre)
+  // et `rel` indique la référence — %VMA (course), %FTP (vélo), %CSS (natation).
+  // Converti en valeur absolue pour l'athlète à l'adoption du programme.
+  rel?: 'vma' | 'ftp' | 'css'
 }
 export interface Session {
   id:string; sport:SportType; title:string; time:string; durationMin:number

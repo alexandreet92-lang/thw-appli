@@ -73,6 +73,89 @@ export interface ProgramSession {
   notes?: string
 }
 
+/**
+ * Références de l'athlète servant à convertir une cible RELATIVE (%VMA/%FTP/%CSS)
+ * en valeur absolue précise à l'adoption d'un programme.
+ */
+export interface AthleteResolveRefs {
+  vmaKmh?: number | null          // VMA course (km/h)
+  ftpWatts?: number | null        // FTP vélo (W)
+  cssSecPer100m?: number | null   // CSS natation (s/100m)
+}
+
+/**
+ * Convertit une cible relative en valeur absolue affichable pour l'athlète.
+ * `pct` = pourcentage (ex. 90), `rel` = référence. Renvoie null si la donnée
+ * athlète manque (l'app pose alors le questionnaire ou garde le %).
+ */
+export function resolveRelTarget(rel: 'vma' | 'ftp' | 'css', pct: number, refs: AthleteResolveRefs): string | null {
+  if (!pct || pct <= 0) return null
+  if (rel === 'ftp') {
+    if (!refs.ftpWatts) return null
+    return `${Math.round(refs.ftpWatts * pct / 100)} W`
+  }
+  if (rel === 'vma') {
+    if (!refs.vmaKmh) return null
+    const speed = refs.vmaKmh * pct / 100           // km/h
+    if (speed <= 0) return null
+    const sec = 3600 / speed                        // s/km
+    return `${Math.floor(sec / 60)}:${String(Math.round(sec % 60)).padStart(2, '0')}/km`
+  }
+  // css : nager à pct% de la vitesse CSS
+  if (!refs.cssSecPer100m) return null
+  const sec = refs.cssSecPer100m * 100 / pct        // s/100m
+  return `${Math.floor(sec / 60)}:${String(Math.round(sec % 60)).padStart(2, '0')}/100m`
+}
+
+/** Références de l'utilisateur connecté (VMA/FTP/CSS) pour résoudre les cibles %. */
+export async function getMyResolveRefs(): Promise<AthleteResolveRefs> {
+  const sb = createClient()
+  const { data: { user } } = await sb.auth.getUser()
+  if (!user) return {}
+  const { data } = await sb.from('athlete_performance_profile')
+    .select('ftp_watts,css_s_100m,vma_km_h').eq('user_id', user.id).maybeSingle()
+  const r = data as { ftp_watts?: number | null; css_s_100m?: number | null; vma_km_h?: number | null } | null
+  return { vmaKmh: r?.vma_km_h ?? null, ftpWatts: r?.ftp_watts ?? null, cssSecPer100m: r?.css_s_100m ?? null }
+}
+
+/** A-t-on au moins une référence exploitable ? */
+export function hasAnyRef(r: AthleteResolveRefs): boolean {
+  return !!(r.vmaKmh || r.ftpWatts || r.cssSecPer100m)
+}
+
+/** VMA/CSS formatés lisibles pour l'affichage « tes repères ». */
+export function formatRefs(r: AthleteResolveRefs): string[] {
+  const out: string[] = []
+  if (r.vmaKmh) out.push(`VMA ${Math.round(r.vmaKmh * 10) / 10} km/h`)
+  if (r.ftpWatts) out.push(`FTP ${r.ftpWatts} W`)
+  if (r.cssSecPer100m) out.push(`CSS ${Math.floor(r.cssSecPer100m / 60)}:${String(Math.round(r.cssSecPer100m % 60)).padStart(2, '0')}/100m`)
+  return out
+}
+
+/**
+ * Résumé lisible d'un bloc de séance pour l'athlète, avec conversion %→absolu.
+ * `sportKey` = clé programme (running/cycling/…). Renvoie ex.
+ * « 6 × 3:00 @ 3:34/km » ou, sans données athlète, « 6 × 3:00 @ 90 % VMA ».
+ */
+export function formatBlockForAthlete(b: Block, refs: AthleteResolveRefs): string {
+  const mmss = (min: number) => `${Math.floor(min)}:${String(Math.round((min % 1) * 60)).padStart(2, '0')}`
+  const relLabel = b.rel === 'vma' ? '% VMA' : b.rel === 'ftp' ? '% FTP' : b.rel === 'css' ? '% CSS' : ''
+  let target = ''
+  if (b.value) {
+    if (b.rel) {
+      const pct = parseInt(b.value) || 0
+      target = resolveRelTarget(b.rel, pct, refs) ?? `${pct} ${relLabel}`
+    } else {
+      target = b.value
+    }
+  }
+  const dur = b.mode === 'interval' && b.reps
+    ? `${b.reps} × ${mmss(b.effortMin ?? 0)}`
+    : mmss(b.durationMin || 0)
+  const name = b.label ? `${b.label} — ` : ''
+  return `${name}${dur}${target ? ` @ ${target}` : ''}`
+}
+
 /** Unité de cible par défaut selon le sport. */
 export function defaultTargetUnit(sport: string): string {
   if (sport === 'cycling' || sport === 'rowing') return 'W'

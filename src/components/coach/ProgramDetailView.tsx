@@ -7,7 +7,8 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import {
   addProgramToMyPlanning, hasProgramAccess, getMyProgramInstance,
-  LEVEL_LABEL, type CoachProgram, type ProgramWeek,
+  getMyResolveRefs, hasAnyRef, formatRefs, formatBlockForAthlete,
+  LEVEL_LABEL, type CoachProgram, type ProgramWeek, type AthleteResolveRefs,
 } from '@/lib/coach/programs'
 
 const SPORT_LABEL: Record<string, string> = { running: 'Course', cycling: 'Vélo', swim: 'Natation', gym: 'Renforcement', hyrox: 'Hyrox', rowing: 'Aviron', trail: 'Trail', triathlon: 'Triathlon' }
@@ -21,10 +22,12 @@ export default function ProgramDetailView({ program, coachName, coachSlug }: { p
   const [err, setErr] = useState<string | null>(null)
   const [askQ, setAskQ] = useState(false)
   const [answers, setAnswers] = useState<Record<string, string>>({})
+  const [refs, setRefs] = useState<AthleteResolveRefs>({})
 
   useEffect(() => {
     void hasProgramAccess(p).then(setAccess).catch(() => setAccess(false))
     void getMyProgramInstance(p.id).then(setInstance).catch(() => {})
+    void getMyResolveRefs().then(setRefs).catch(() => {})
   }, [p])
 
   const structure = instance ?? p.structure
@@ -124,6 +127,17 @@ export default function ProgramDetailView({ program, coachName, coachSlug }: { p
         </div>
       )}
 
+      {/* Tes repères — permettent d'afficher les cibles % en valeurs précises */}
+      {hasAnyRef(refs) && (
+        <div style={{ ...card, marginTop: 16, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '12px clamp(16px,4vw,24px)' }}>
+          <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.05em', textTransform: 'uppercase' as const, color: 'var(--text-dim)' }}>Tes repères</span>
+          {formatRefs(refs).map(r => (
+            <span key={r} className="tnum" style={{ fontSize: 13, fontWeight: 700, color: 'var(--primary)', background: 'var(--bg-card2)', borderRadius: 999, padding: '4px 11px' }}>{r}</span>
+          ))}
+          <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>— les cibles %VMA/%FTP s’affichent avec tes valeurs.</span>
+        </div>
+      )}
+
       {/* Structure */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 16 }}>
         {shownWeeks.map((w, wi) => (
@@ -148,6 +162,17 @@ export default function ProgramDetailView({ program, coachName, coachSlug }: { p
                         <div style={{ paddingLeft: 17, marginTop: 4, fontSize: 12.5, color: 'var(--text-mid)', lineHeight: 1.5 }}>
                           {targetTxt && <span style={{ fontWeight: 600, color: 'var(--primary)' }}>Cible {targetTxt}</span>}
                           {targetTxt && s.description ? ' — ' : ''}{s.description}
+                        </div>
+                      )}
+                      {/* Blocs de la séance — cibles % converties avec tes repères */}
+                      {s.blocks && s.blocks.filter(b => b.type !== 'circuit_header').length > 0 && (
+                        <div style={{ paddingLeft: 17, marginTop: 6, display: 'flex', flexDirection: 'column', gap: 3 }}>
+                          {s.blocks.filter(b => b.type !== 'circuit_header').map((b, bi) => (
+                            <div key={bi} style={{ fontSize: 12, color: 'var(--text-mid)', display: 'flex', alignItems: 'center', gap: 7 }}>
+                              <span className="tnum" style={{ minWidth: 18, fontSize: 10, fontWeight: 700, color: 'var(--text-dim)' }}>Z{b.zone}</span>
+                              <span>{formatBlockForAthlete(b, refs)}</span>
+                            </div>
+                          ))}
                         </div>
                       )}
                     </div>

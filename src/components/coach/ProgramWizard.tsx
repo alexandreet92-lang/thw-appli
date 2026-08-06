@@ -529,7 +529,7 @@ function AiExplainer() {
 
       <Block title="1. Des cibles relatives, pas absolues">
         Tu construis tes séances en <strong>pourcentages</strong> : %VMA en course, %PMA/FTP à vélo, zones de FC. Tu ne vois jamais l’allure ou la puissance exacte — parce qu’elle dépend de l’athlète.
-        <Ex>Tu écris : <strong>« 6 × 3 min à 90 % VMA »</strong>.<br />L’athlète A (VMA 16) verra <strong>3:34/km</strong>. L’athlète B (VMA 20) verra <strong>2:51/km</strong>. Même séance, cibles personnalisées.</Ex>
+        <Ex>Tu écris : <strong>« 6 × 3 min à 90 % VMA »</strong>.<br />L’athlète A (VMA 16) verra <strong>4:10/km</strong>. L’athlète B (VMA 20) verra <strong>3:20/km</strong>. Même séance, cibles personnalisées.</Ex>
       </Block>
 
       <Block title="2. Calage sur le niveau de l’athlète">

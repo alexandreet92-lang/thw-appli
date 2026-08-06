@@ -938,15 +938,22 @@ function StepperField({ label, unit, value, onChange, onDec, onInc, color = 'var
   )
 }
 
-function BlockBuilder({ sport, blocks, onChange, nutritionItems, exoHistory, athleteData }: {
+function BlockBuilder({ sport, blocks, onChange, nutritionItems, exoHistory, athleteData, programMode }: {
   sport: SportType; blocks: Block[]; onChange: (b: Block[]) => void
   nutritionItems?: Array<{ timeMin: number; name: string; type: string; glucidesG: number }>
   exoHistory?: Record<string, { weight: string; reps: number; date: string }>
   athleteData?: { ftp: number | null; runThresholdPaceSec?: number | null; cssSecPer100m?: number | null } | null
+  /** Programme coach : cibles en % (VMA/FTP/CSS), aucune valeur absolue. */
+  programMode?: boolean
 }) {
   const { t } = useI18n()
-  const vLabel = sport === 'bike' ? t('sed.watts') : sport === 'swim' ? t('sed.pace100m') : t('sed.paceKm')
-  const vPlh   = sport === 'bike' ? '250' : sport === 'swim' ? '1:35' : '4:30'
+  // Cible RELATIVE en mode programme : %VMA (course), %FTP (vélo), %CSS (natation).
+  const relKind: 'vma' | 'ftp' | 'css' | null = programMode
+    ? (sport === 'run' ? 'vma' : (sport === 'bike' || sport === 'elliptique') ? 'ftp' : sport === 'swim' ? 'css' : null)
+    : null
+  const relLabel = relKind === 'vma' ? '% VMA' : relKind === 'ftp' ? '% FTP' : relKind === 'css' ? '% CSS' : '%'
+  const vLabel = relKind ? relLabel : sport === 'bike' ? t('sed.watts') : sport === 'swim' ? t('sed.pace100m') : t('sed.paceKm')
+  const vPlh   = relKind ? '90' : sport === 'bike' ? '250' : sport === 'swim' ? '1:35' : '4:30'
   const isStrengthSportBB = sport === 'gym' || sport === 'hyrox'
   const accentBB = SPORT_BORDER[sport]
   const ftp = athleteData?.ftp ?? null
@@ -1103,6 +1110,27 @@ function BlockBuilder({ sport, blocks, onChange, nutritionItems, exoHistory, ath
   function duplicate(bi: number) {
     const copy = { ...blocks[bi], id: `b_${Date.now()}` }
     const nb = [...blocks]; nb.splice(bi + 1, 0, copy); onChange(nb)
+  }
+  // ── Mode programme : cible en pourcentage (%VMA/%FTP/%CSS) ──
+  // Zone déduite du % (pour la couleur), value = le pourcentage, rel = référence.
+  function pctToZone(pRaw: number): number {
+    const p = pRaw || 0
+    if (sport === 'bike' || sport === 'elliptique') {
+      const i = ZONE_TOPS.findIndex(topRatio => p / 100 <= topRatio)
+      return i < 0 ? maxZone : i + 1
+    }
+    // course / natation / aviron — bornes en % VMA/CSS (5 zones)
+    const tops = [70, 82, 90, 97]
+    const i = tops.findIndex(topPct => p <= topPct)
+    return i < 0 ? 5 : i + 1
+  }
+  function setPct(id: string, field: 'value' | 'recoveryValue', pStr: string) {
+    const p = Math.max(0, Math.min(999, parseInt(pStr) || 0))
+    onChange(blocks.map(b => b.id !== id ? b : {
+      ...b,
+      [field]: p ? String(p) : '',
+      ...(field === 'value' ? { rel: relKind ?? undefined, zone: pctToZone(p) } : {}),
+    }))
   }
   function changeType(id: string, newType: string) {
     const autoZone: Partial<Record<string, number>> = { warmup: 1, recovery: 1, cooldown: 1 }
@@ -1333,8 +1361,15 @@ function BlockBuilder({ sport, blocks, onChange, nutritionItems, exoHistory, ath
                         </div>
                         <div>
                           <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px', textTransform: 'uppercase' as const }}>{vLabel}</p>
-                          <input value={b.value} onChange={e=>upd(b.id,'value',e.target.value)} placeholder={vPlh} style={{ width:'100%', padding:'6px 10px', borderRadius:6, border:'1px solid var(--border)', background:'var(--bg-card)', color:'var(--text)', fontSize:13, fontFamily:'var(--font-display)', outline:'none', fontWeight:700 }}/>
-                          {sport==='bike' && ftp && parseInt(b.value||'0')>0 && <p style={{ fontSize:9, color:'var(--text-dim)', margin:'2px 0 0' }}>{Math.round(parseInt(b.value||'0')/ftp*100)}% FTP</p>}
+                          {relKind ? (
+                            <div style={{ position:'relative' as const, display:'flex', alignItems:'center' }}>
+                              <input type="number" min={0} max={200} value={b.value} onChange={e=>setPct(b.id,'value',e.target.value)} placeholder={vPlh} style={{ width:'100%', padding:'6px 20px 6px 10px', borderRadius:6, border:'1px solid var(--border)', background:'var(--bg-card)', color:'var(--text)', fontSize:13, fontFamily:'var(--font-display)', outline:'none', fontWeight:700, boxSizing:'border-box' as const }}/>
+                              <span style={{ position:'absolute' as const, right:7, fontSize:9, color:'var(--text-dim)', pointerEvents:'none' as const }}>%</span>
+                            </div>
+                          ) : (
+                            <input value={b.value} onChange={e=>upd(b.id,'value',e.target.value)} placeholder={vPlh} style={{ width:'100%', padding:'6px 10px', borderRadius:6, border:'1px solid var(--border)', background:'var(--bg-card)', color:'var(--text)', fontSize:13, fontFamily:'var(--font-display)', outline:'none', fontWeight:700 }}/>
+                          )}
+                          {!relKind && sport==='bike' && ftp && parseInt(b.value||'0')>0 && <p style={{ fontSize:9, color:'var(--text-dim)', margin:'2px 0 0' }}>{Math.round(parseInt(b.value||'0')/ftp*100)}% FTP</p>}
                         </div>
                       </div>
                     </div>
@@ -1403,7 +1438,17 @@ function BlockBuilder({ sport, blocks, onChange, nutritionItems, exoHistory, ath
                       onChange={v=>upd(b.id,'durationMin',mmssToMin(v))}
                       onDec={()=>upd(b.id,'durationMin',bumpDurSec(b.durationMin,-1))}
                       onInc={()=>upd(b.id,'durationMin',bumpDurSec(b.durationMin,1))} />
-                    {inFtpPct && sport === 'bike' && ftp ? (
+                    {relKind ? (
+                      <div>
+                        <div style={{ marginBottom:4, minHeight:14 }}>
+                          <p style={{ fontSize:9.5, fontWeight:700, textTransform:'uppercase' as const, letterSpacing:'0.06em', color:'var(--text-dim)', margin:0 }}>{vLabel}</p>
+                        </div>
+                        <div style={{ position:'relative' as const, display:'flex', alignItems:'center', height:34 }}>
+                          <input type="number" min={0} max={200} placeholder={vPlh} value={b.value} onChange={e=>setPct(b.id,'value',e.target.value)} style={{ width:'100%', padding:'0 20px 0 10px', borderRadius:8, border:`1px solid ${col}50`, background:'var(--bg-card2)', color:col, fontSize:15, fontFamily:'var(--font-display)', outline:'none', fontWeight:700, boxSizing:'border-box' as const }}/>
+                          <span style={{ position:'absolute' as const, right:6, fontSize:9, color:'var(--text-dim)', pointerEvents:'none' as const }}>%</span>
+                        </div>
+                      </div>
+                    ) : inFtpPct && sport === 'bike' && ftp ? (
                       <div>
                         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:4, minHeight:14 }}>
                           <p style={{ fontSize:9.5, fontWeight:700, textTransform:'uppercase' as const, letterSpacing:'0.06em', color:'var(--text-dim)', margin:0 }}>{vLabel}</p>
@@ -1440,7 +1485,7 @@ function BlockBuilder({ sport, blocks, onChange, nutritionItems, exoHistory, ath
                 {/* Footer */}
                 <div style={{ padding:'7px 12px', background:'var(--bg-card2)', display:'flex', alignItems:'center', gap:6 }}>
                   <span style={{ flex:1, fontSize:11, color:col, fontWeight:500 }}>
-                    {sport==='bike'&&b.value?`${b.value}W · `:b.value?`${b.value} · `:''}Z{b.zone} {znm(b.zone)}
+                    {relKind&&b.value?`${b.value} ${relLabel} · `:sport==='bike'&&b.value?`${b.value}W · `:b.value?`${b.value} · `:''}Z{b.zone} {znm(b.zone)}
                   </span>
                   <div style={{ cursor:'grab', display:'flex', flexDirection:'column' as const, gap:2, padding:'2px 4px', flexShrink:0 }}>
                     {[0,1].map(r=><div key={r} style={{ display:'flex', gap:2 }}>{[0,1,2].map(d=><div key={d} style={{ width:3, height:3, borderRadius:'50%', background:'var(--border-mid)' }}/>)}</div>)}
@@ -6247,7 +6292,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
               />
             ) : (
               /* Mode IA ou edit : blocs générés (avec circuit_headers) */
-              <BlockBuilder sport={sport} blocks={blocks} onChange={setBlocks} nutritionItems={nutritionItems} exoHistory={exoHistory} athleteData={athleteData} />
+              <BlockBuilder sport={sport} blocks={blocks} onChange={setBlocks} nutritionItems={nutritionItems} exoHistory={exoHistory} athleteData={athleteData} programMode={programMode} />
             )
           ) : (
             (() => {

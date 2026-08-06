@@ -18,7 +18,10 @@ import { usePresenceCount } from '@/lib/community/presence'
 import { useSpeechToText } from '@/hooks/useSpeechToText'
 import { myId } from '@/lib/community/shared'
 import { ShareActivitySheet } from './ShareActivitySheet'
+import { ShareSessionSheet } from './ShareSessionSheet'
 import { ActivityCard } from './ActivityCard'
+import { SessionCard } from './SessionCard'
+import type { LibrarySession } from '@/lib/community/sessions'
 import type { CommunityChannel, CommunityMessage, CommunityAttachment, CommunityMemberInfo, ActivityRef } from '@/types/community'
 
 const FB = 'var(--font-body)', FD = 'var(--font-display)'
@@ -79,6 +82,7 @@ export function ChannelChat({
   const [uploading, setUploading] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
   const [sharing, setSharing] = useState(false)
+  const [sharingSession, setSharingSession] = useState(false)
   const [me, setMe] = useState<string | null>(null)
   const [members, setMembers] = useState<CommunityMemberInfo[]>([])
   const [reactFor, setReactFor] = useState<string | null>(null)
@@ -206,6 +210,14 @@ export function ChannelChat({
   async function shareActivity(a: ActivityRef) {
     setSharing(false)
     const ok = await sendChannelMessage(channel.id, '', [{ type: 'activity', activity: a }])
+    if (ok) void load(); else setNotice('Partage impossible.')
+  }
+  async function shareSession(s: LibrarySession) {
+    setSharingSession(false)
+    // On ne partage que le snapshot (sans l'id de bibliothèque, propre au partageur).
+    const { id: _id, ...snapshot } = s
+    void _id
+    const ok = await sendChannelMessage(channel.id, '', [{ type: 'session', session: snapshot }])
     if (ok) void load(); else setNotice('Partage impossible.')
   }
   async function handleFiles(e: React.ChangeEvent<HTMLInputElement>) {
@@ -490,6 +502,9 @@ export function ChannelChat({
           <IconBtn label="Partager une activité" onClick={() => canPost && setSharing(true)} disabled={!canPost}>
             <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
           </IconBtn>
+          <IconBtn label="Partager une séance" onClick={() => canPost && setSharingSession(true)} disabled={!canPost}>
+            <path d="M20 6H4a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2zM6 12h4M12 10v4" />
+          </IconBtn>
           <textarea ref={taRef} value={input} onChange={onInputChange}
             onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && mentionQuery === null) { e.preventDefault(); void send() } }}
             placeholder={`Écrire dans #${channel.name}…`} rows={1} disabled={!canPost}
@@ -510,6 +525,7 @@ export function ChannelChat({
       </div>
 
       {sharing && <ShareActivitySheet onClose={() => setSharing(false)} onShare={a => void shareActivity(a)} />}
+      {sharingSession && <ShareSessionSheet onClose={() => setSharingSession(false)} onShare={s => void shareSession(s)} />}
     </div>
   )
 }
@@ -544,8 +560,10 @@ function IconBtn({ label, onClick, disabled, children }: { label: string; onClic
 function Attachments({ items, me }: { items: CommunityAttachment[]; me: string | null }) {
   return (
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)', marginTop: 'var(--space-2)' }}>
-      {items.map(a => a.type === 'activity' && a.activity ? (
+      {items.map((a, idx) => a.type === 'activity' && a.activity ? (
         <ActivityCard key={a.activity.id} activity={a.activity} me={me} />
+      ) : a.type === 'session' && a.session ? (
+        <SessionCard key={`s-${idx}`} session={a.session} />
       ) : a.type === 'image' ? (
         <a key={a.url} href={a.url} target="_blank" rel="noopener noreferrer" style={{ display: 'block', lineHeight: 0 }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}

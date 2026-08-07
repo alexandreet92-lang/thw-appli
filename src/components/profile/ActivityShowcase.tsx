@@ -6,8 +6,22 @@
 // Reçoit les données déjà agrégées + filtrées par la RPC (confidentialité).
 // ══════════════════════════════════════════════════════════════════
 import { useState } from 'react'
-import type { ActivityShowcaseData, RecentActivity } from '@/lib/profile/activityShowcase'
-import { hoursByFamily, activeWeekStreak, sportMeta } from '@/lib/profile/activityShowcase'
+import type { ActivityShowcaseData, RecentActivity, RecordItem } from '@/lib/profile/activityShowcase'
+import { hoursByFamily, activeWeekStreak, sportMeta, bestRecord, recordsForSport } from '@/lib/profile/activityShowcase'
+
+// Créneaux de records par sport (selon la spec).
+const RUN_SLOTS: { label: string; aliases: string[] }[] = [
+  { label: '1500 m', aliases: ['1500m', '1500'] }, { label: '5 km', aliases: ['5km', '5000m'] },
+  { label: 'Marathon', aliases: ['marathon', '42km', '42195m', '42.195km'] }, { label: '100 km', aliases: ['100km', '100000m'] },
+]
+const BIKE_SLOTS: { label: string; aliases: string[] }[] = [
+  { label: '5 min', aliases: ['5min', '5'] }, { label: '10 min', aliases: ['10min', '10'] },
+  { label: '20 min', aliases: ['20min', '20'] }, { label: '1 h', aliases: ['1h', '60min'] },
+]
+const TRI_SLOTS: { label: string; aliases: string[] }[] = [
+  { label: 'S', aliases: ['s', 'sprint'] }, { label: 'M', aliases: ['m', 'olympique', 'olympic'] },
+  { label: '70.3', aliases: ['703', 'half', 'halfironman', '70.3'] }, { label: 'Ironman', aliases: ['ironman', 'full'] },
+]
 
 const DAY_LABELS = ['L', '', 'M', '', 'J', '', 'D']
 const MONTH = ['jan', 'fév', 'mar', 'avr', 'mai', 'juin', 'juil', 'août', 'sep', 'oct', 'nov', 'déc']
@@ -49,6 +63,17 @@ export default function ActivityShowcase({ data, isOwner }: { data: ActivityShow
           <MiniStat n={totalHours} unit="h" label="Volume cette année" />
         </div>
       </div>
+
+      {/* Meilleures performances par sport */}
+      <RecordsSection records={data.records} />
+
+      {/* Graphique : volume par semaine */}
+      {data.weekly.some(w => w.count > 0) && (
+        <div>
+          <Label>Volume par semaine</Label>
+          <WeeklyChart weekly={data.weekly} />
+        </div>
+      )}
 
       {/* Heatmap de régularité */}
       <div>
@@ -179,6 +204,84 @@ function ActivityRow({ a }: { a: RecentActivity }) {
 function sportFamilyLocal(sportType: string): string {
   const F: Record<string, string> = { run: 'running', trail_run: 'running', bike: 'cycling', virtual_bike: 'cycling', swim: 'swim', open_water_swim: 'swim', rowing: 'rowing', gym: 'gym', crossfit: 'gym', hiit: 'gym', yoga: 'gym', ski: 'other', hyrox: 'hyrox', other: 'other' }
   return F[sportType] ?? 'other'
+}
+
+// ── Records par sport ──
+function RecordsSection({ records }: { records: RecordItem[] }) {
+  const has = (sport: string) => records.some(r => r.sport === sport)
+  const runBox = has('run')
+  const bikeBox = has('bike')
+  const triBox = has('triathlon')
+  const hyroxRecs = recordsForSport(records, 'hyrox')
+  const swimRecs = recordsForSport(records, 'swim')
+  if (!runBox && !bikeBox && !triBox && !hyroxRecs.length && !swimRecs.length) return null
+  return (
+    <div>
+      <Label>Meilleures performances</Label>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))', gap: 12 }}>
+        {runBox && <RecordCard sportKey="running" title="Course" rows={RUN_SLOTS.map(s => ({ label: s.label, value: bestRecord(records, 'run', s.aliases)?.value ?? null }))} />}
+        {bikeBox && <RecordCard sportKey="cycling" title="Vélo (puissance)" rows={BIKE_SLOTS.map(s => ({ label: s.label, value: bestRecord(records, 'bike', s.aliases)?.value ?? null }))} />}
+        {triBox && <RecordCard sportKey="swim" title="Triathlon" rows={TRI_SLOTS.map(s => ({ label: s.label, value: bestRecord(records, 'triathlon', s.aliases)?.value ?? null }))} />}
+        {hyroxRecs.length > 0 && <RecordCard sportKey="hyrox" title="Hyrox" rows={hyroxRecs.map(r => ({ label: r.label, value: r.perf }))} />}
+        {swimRecs.length > 0 && <RecordCard sportKey="swim" title="Natation" rows={swimRecs.map(r => ({ label: r.label, value: r.perf }))} />}
+      </div>
+    </div>
+  )
+}
+function RecordCard({ sportKey, title, rows }: { sportKey: string; title: string; rows: { label: string; value: string | null }[] }) {
+  const color = sportMeta(sportKey).color
+  return (
+    <div style={{ background: 'var(--bg-card2)', borderRadius: 'var(--r-md)', padding: '14px 16px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 10 }}>
+        <span style={{ width: 9, height: 9, borderRadius: 3, background: color, flexShrink: 0 }} />
+        <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{title}</span>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+        {rows.map((r, i) => (
+          <div key={i} style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10 }}>
+            <span style={{ fontSize: 12.5, color: 'var(--text-mid)' }}>{r.label}</span>
+            <span className="tnum" style={{ fontSize: 14, fontWeight: 700, color: r.value ? 'var(--text)' : 'var(--text-dim)', fontVariantNumeric: 'tabular-nums' }}>{r.value ?? '—'}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// ── Graphique volume par semaine (barres, bascule distance / temps) ──
+function WeeklyChart({ weekly }: { weekly: { week: string; count: number; distance_m: number; seconds: number }[] }) {
+  const [metric, setMetric] = useState<'time' | 'dist'>('time')
+  const [hover, setHover] = useState<number | null>(null)
+  const val = (w: { distance_m: number; seconds: number }) => metric === 'dist' ? w.distance_m / 1000 : w.seconds / 3600
+  const max = Math.max(1, ...weekly.map(val))
+  const fmt = (v: number) => metric === 'dist' ? `${Math.round(v * 10) / 10} km` : `${Math.round(v * 10) / 10} h`
+  return (
+    <div>
+      <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
+        <Toggle on={metric === 'time'} onClick={() => setMetric('time')}>Temps</Toggle>
+        <Toggle on={metric === 'dist'} onClick={() => setMetric('dist')}>Distance</Toggle>
+      </div>
+      <div style={{ position: 'relative', display: 'flex', alignItems: 'flex-end', gap: 2, height: 120, overflowX: 'auto', paddingTop: 22 }}>
+        {weekly.map((w, i) => {
+          const v = val(w); const on = hover === i
+          return (
+            <div key={w.week} onMouseEnter={() => setHover(i)} onMouseLeave={() => setHover(h => h === i ? null : h)}
+              style={{ flex: '1 0 6px', minWidth: 6, height: '100%', display: 'flex', alignItems: 'flex-end', position: 'relative' }}>
+              <div style={{ width: '100%', height: `${Math.max(v > 0 ? 3 : 0, v / max * 100)}%`, borderRadius: '3px 3px 0 0', background: on ? 'var(--text)' : 'var(--primary)', opacity: on ? 1 : 0.85, transition: 'opacity 120ms' }} />
+              {on && (
+                <div style={{ position: 'absolute', bottom: '100%', left: '50%', transform: 'translateX(-50%)', marginBottom: 4, zIndex: 5, background: 'var(--text)', color: 'var(--bg-card)', borderRadius: 7, padding: '5px 8px', fontSize: 10.5, fontWeight: 700, whiteSpace: 'nowrap', pointerEvents: 'none' }}>
+                  {new Date(w.week).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })} · {fmt(v)}
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+function Toggle({ on, onClick, children }: { on: boolean; onClick: () => void; children: React.ReactNode }) {
+  return <button onClick={onClick} style={{ padding: '5px 12px', borderRadius: 999, border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 700, background: on ? 'var(--primary)' : 'var(--bg-card2)', color: on ? 'var(--on-primary)' : 'var(--text-mid)' }}>{children}</button>
 }
 
 function Label({ children }: { children: React.ReactNode }) {

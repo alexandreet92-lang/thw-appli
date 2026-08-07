@@ -15,6 +15,7 @@ import ProgramFilters, { applyProgramFilters, DEFAULT_FILTERS, type ProgFilters 
 import ProgramDetailView from '@/components/coach/ProgramDetailView'
 import ActivityShowcase from '@/components/profile/ActivityShowcase'
 import { getProfileActivityShowcase, setActivityVisibility, type ActivityShowcaseData, type ActivityVisibility } from '@/lib/profile/activityShowcase'
+import { createClient } from '@/lib/supabase/client'
 import SlideSheet from '@/components/ui/SlideSheet'
 
 const VIS_LABEL: Record<ActivityVisibility, string> = { public: 'Tout le monde', followers: 'Mes abonnés', private: 'Personne' }
@@ -51,13 +52,31 @@ export default function CoachShowcase({ profile, programs = [], counts, isCoach,
   const [progFilters, setProgFilters] = useState<ProgFilters>(DEFAULT_FILTERS)
   const filteredPrograms = applyProgramFilters(programs, progFilters)
   const [showcase, setShowcase] = useState<ActivityShowcaseData | null>(null)
+  const [loadFailed, setLoadFailed] = useState(false)
   const [vis, setVis] = useState<ActivityVisibility>('public')
-  const uid = profile.coach_id
+  // Cible = coach_id si valide, sinon (brouillon propriétaire) l'utilisateur connecté.
+  const resolveTarget = async (): Promise<string> => {
+    const cid = profile.coach_id
+    if (cid && cid.length >= 20) return cid
+    const { data: { user } } = await createClient().auth.getUser()
+    return user?.id ?? ''
+  }
   useEffect(() => {
-    if (!uid) return
-    void getProfileActivityShowcase(uid).then(d => { setShowcase(d); if (d) setVis(d.visibility) }).catch(() => {})
-  }, [uid])
-  const changeVis = async (v: ActivityVisibility) => { setVis(v); await setActivityVisibility(v).catch(() => {}); if (uid) void getProfileActivityShowcase(uid).then(setShowcase).catch(() => {}) }
+    let cancelled = false
+    ;(async () => {
+      const target = await resolveTarget()
+      if (!target || cancelled) { setLoadFailed(true); return }
+      const d = await getProfileActivityShowcase(target)
+      if (cancelled) return
+      if (d) { setShowcase(d); setVis(d.visibility) } else setLoadFailed(true)
+    })()
+    return () => { cancelled = true }
+  }, [profile.coach_id]) // eslint-disable-line react-hooks/exhaustive-deps
+  const changeVis = async (v: ActivityVisibility) => {
+    setVis(v); await setActivityVisibility(v).catch(() => {})
+    const target = await resolveTarget()
+    if (target) void getProfileActivityShowcase(target).then(d => { if (d) setShowcase(d) }).catch(() => {})
+  }
   const yearNow = new Date().getFullYear()
   const name = profile.display_name || 'Profil'
   const monogram = name.trim().charAt(0).toUpperCase()
@@ -203,7 +222,9 @@ export default function CoachShowcase({ profile, programs = [], counts, isCoach,
           </div>
           {showcase
             ? <ActivityShowcase data={showcase} isOwner={!!isOwner} />
-            : <Empty>Chargement des activités…</Empty>}
+            : loadFailed
+              ? <Empty>Aucune activité à afficher pour l’instant.</Empty>
+              : <Empty>Chargement des activités…</Empty>}
 
           {/* Réglage de confidentialité (propriétaire) */}
           {isOwner && (

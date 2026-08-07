@@ -13,6 +13,7 @@ export interface RecentActivity {
   avg_pace_s_km: number | null; avg_watts: number | null; elevation_gain_m: number | null
   polyline: string | null
 }
+export interface RecordItem { sport: string; label: string; perf: string; unit: string; at: string | null }
 export interface ActivityShowcaseData {
   can_view: boolean
   visibility: ActivityVisibility
@@ -21,6 +22,7 @@ export interface ActivityShowcaseData {
   weekly: { week: string; count: number; distance_m: number; seconds: number }[]
   daily: { d: string; count: number; seconds: number }[]
   recent: RecentActivity[]
+  records: RecordItem[]
 }
 
 // sport_type Strava → famille (clé sport de l'app) pour la couleur/le libellé.
@@ -54,7 +56,46 @@ export async function getProfileActivityShowcase(userId: string): Promise<Activi
     weekly: Array.isArray(d.weekly) ? d.weekly : [],
     daily: Array.isArray(d.daily) ? d.daily : [],
     recent: Array.isArray(d.recent) ? d.recent : [],
+    records: Array.isArray(d.records) ? d.records : [],
   }
+}
+
+// ── Records : parsing + meilleur par créneau cible ──
+/** "17:58" | "1:27:00" | "3'30" | "1:14:30" → secondes. null si non parsable. */
+export function perfToSeconds(perf: string): number | null {
+  if (!perf) return null
+  const s = perf.trim().replace(/["″]/g, '').replace(/[',]/g, ':').replace(/\s+/g, '')
+  const parts = s.split(':').map(x => parseInt(x, 10))
+  if (parts.some(isNaN) || parts.length === 0) return null
+  if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2]
+  if (parts.length === 2) return parts[0] * 60 + parts[1]
+  return parts[0]
+}
+export function secondsToPerf(sec: number): string {
+  const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = Math.round(sec % 60)
+  return h ? `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}` : `${m}:${String(s).padStart(2, '0')}`
+}
+const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[\s'’.-]/g, '')
+
+/** Meilleur record (temps → min ; watts → max) d'un sport dont le label matche l'un des alias. */
+export function bestRecord(records: RecordItem[], sport: string, aliases: string[]): { value: string; at: string | null } | null {
+  const wanted = aliases.map(norm)
+  const rows = records.filter(r => r.sport === sport && wanted.includes(norm(r.label)))
+  if (!rows.length) return null
+  const isWatts = rows[0].unit === 'watts'
+  if (isWatts) {
+    const best = rows.reduce((b, r) => (parseInt(r.perf) || 0) > (parseInt(b.perf) || 0) ? r : b)
+    return { value: `${parseInt(best.perf)} W`, at: best.at }
+  }
+  const scored = rows.map(r => ({ r, sec: perfToSeconds(r.perf) })).filter(x => x.sec != null) as { r: RecordItem; sec: number }[]
+  if (!scored.length) return null
+  const best = scored.reduce((b, x) => x.sec < b.sec ? x : b)
+  return { value: secondsToPerf(best.sec), at: best.r.at }
+}
+
+/** Tous les records d'un sport (pour Hyrox : formats variables). */
+export function recordsForSport(records: RecordItem[], sport: string): RecordItem[] {
+  return records.filter(r => r.sport === sport)
 }
 
 /** Heures par famille de sport (agrégées), triées décroissant. */

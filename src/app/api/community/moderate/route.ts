@@ -11,7 +11,7 @@ import { createClient, createServiceClient } from '@/lib/supabase/server'
 
 export const dynamic = 'force-dynamic'
 
-type Action = 'ban' | 'unban' | 'kick' | 'delete_message'
+type Action = 'ban' | 'unban' | 'kick' | 'delete_message' | 'approve_request' | 'reject_request'
 interface Body { spaceId?: string; action?: Action; targetUserId?: string; messageId?: string; reason?: string }
 
 export async function POST(req: Request) {
@@ -44,6 +44,22 @@ export async function POST(req: Request) {
       if (!messageId) return NextResponse.json({ error: 'Message manquant' }, { status: 400 })
       await svc.from('community_messages').delete().eq('id', messageId)
       await audit('delete_message', 'message', messageId)
+      return NextResponse.json({ ok: true })
+    }
+
+    // Demandes d'adhésion (groupes privés).
+    if (action === 'approve_request' || action === 'reject_request') {
+      if (!targetUserId) return NextResponse.json({ error: 'Demandeur manquant' }, { status: 400 })
+      if (action === 'approve_request') {
+        // Ajout du membre (le trigger capacité/ban s'applique).
+        const { error: insErr } = await svc.from('community_members').insert({ space_id: spaceId, user_id: targetUserId, role: 'member' })
+        if (insErr) return NextResponse.json({ error: 'Ajout impossible (capacité atteinte ou banni ?).' }, { status: 400 })
+        await svc.from('community_join_requests').update({ status: 'approved' }).eq('space_id', spaceId).eq('user_id', targetUserId)
+        await audit('approve_request', 'user', targetUserId)
+      } else {
+        await svc.from('community_join_requests').update({ status: 'rejected' }).eq('space_id', spaceId).eq('user_id', targetUserId)
+        await audit('reject_request', 'user', targetUserId)
+      }
       return NextResponse.json({ ok: true })
     }
 

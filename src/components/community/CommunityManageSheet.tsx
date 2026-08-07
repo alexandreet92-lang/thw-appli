@@ -11,10 +11,11 @@ import {
   getSpaceSettings, updateSpaceSettings, moderate, listReports, resolveReport,
   type CommunitySettings, type ReportInfo,
 } from '@/lib/community/moderation'
+import { listJoinRequests, type JoinRequestInfo } from '@/lib/community/discover'
 import type { CommunityMemberInfo } from '@/types/community'
 
 const FB = 'var(--font-body)', FD = 'var(--font-display)'
-type Tab = 'settings' | 'members' | 'reports'
+type Tab = 'settings' | 'members' | 'requests' | 'reports'
 
 export function CommunityManageSheet({ spaceId, onClose }: { spaceId: string; onClose: () => void }) {
   const [mounted, setMounted] = useState(false)
@@ -38,7 +39,7 @@ export function CommunityManageSheet({ spaceId, onClose }: { spaceId: string; on
             <button onClick={onClose} aria-label="Fermer" style={{ width: 28, height: 28, border: 'none', borderRadius: '50%', background: 'transparent', color: 'var(--text-mid)', cursor: 'pointer', fontSize: 16 }}>×</button>
           </div>
           <div style={{ display: 'flex', gap: 'var(--space-1)' }}>
-            {([['settings', 'Réglages'], ['members', 'Membres'], ['reports', 'Signalements']] as const).map(([k, label]) => (
+            {([['settings', 'Réglages'], ['members', 'Membres'], ['requests', 'Demandes'], ['reports', 'Signalements']] as const).map(([k, label]) => (
               <button key={k} onClick={() => setTab(k)}
                 style={{ flex: 1, height: 34, border: 'none', borderRadius: 'var(--r-sm)', cursor: 'pointer', fontFamily: FB, fontSize: 12.5, fontWeight: 600, background: tab === k ? 'var(--surface-neutral)' : 'transparent', color: tab === k ? 'var(--text)' : 'var(--text-mid)' }}>{label}</button>
             ))}
@@ -47,6 +48,7 @@ export function CommunityManageSheet({ spaceId, onClose }: { spaceId: string; on
         <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: 'var(--space-4) var(--space-5) var(--space-8)' }}>
           {tab === 'settings' && <SettingsTab spaceId={spaceId} />}
           {tab === 'members' && <MembersTab spaceId={spaceId} />}
+          {tab === 'requests' && <RequestsTab spaceId={spaceId} />}
           {tab === 'reports' && <ReportsTab spaceId={spaceId} />}
         </div>
       </div>
@@ -155,6 +157,38 @@ function MembersTab({ spaceId }: { spaceId: string }) {
                 style={miniBtn('var(--danger-soft)', 'var(--danger)')}>Bannir</button>
             </>
           )}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// ── Demandes d'adhésion ─────────────────────────────────────────────────────
+function RequestsTab({ spaceId }: { spaceId: string }) {
+  const [reqs, setReqs] = useState<JoinRequestInfo[] | null>(null)
+  const [busy, setBusy] = useState<string | null>(null)
+  const reload = () => { void listJoinRequests(spaceId).then(setReqs) }
+  useEffect(reload, [spaceId])
+
+  async function act(userId: string, action: 'approve_request' | 'reject_request') {
+    setBusy(userId)
+    await moderate(spaceId, action, { targetUserId: userId })
+    setBusy(null); reload()
+  }
+
+  if (!reqs) return <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-mid)' }}>Chargement…</p>
+  if (reqs.length === 0) return <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-mid)' }}>Aucune demande en attente.</p>
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+      {reqs.map(r => (
+        <div key={r.userId} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', padding: 'var(--space-2) var(--space-3)', background: 'var(--bg-card2)', borderRadius: 'var(--r-sm)' }}>
+          <span style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--surface-neutral)', color: 'var(--text-mid)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0, fontFamily: FB, fontWeight: 600, fontSize: 13 }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            {r.avatar ? <img src={r.avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : r.name.slice(0, 1).toUpperCase()}
+          </span>
+          <span style={{ flex: 1, minWidth: 0, fontFamily: FB, fontSize: 13, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.name}</span>
+          <button onClick={() => void act(r.userId, 'approve_request')} disabled={busy === r.userId} style={miniBtn('var(--primary)', 'var(--on-primary)')}>Accepter</button>
+          <button onClick={() => void act(r.userId, 'reject_request')} disabled={busy === r.userId} style={miniBtn('var(--surface-neutral)', 'var(--text-mid)')}>Refuser</button>
         </div>
       ))}
     </div>

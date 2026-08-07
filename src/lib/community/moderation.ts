@@ -58,7 +58,7 @@ export async function updateSpaceSettings(spaceId: string, s: CommunitySettings)
 /** Action de modération (ban/unban/kick/suppression) via la route serveur. */
 export async function moderate(
   spaceId: string,
-  action: 'ban' | 'unban' | 'kick' | 'delete_message',
+  action: 'ban' | 'unban' | 'kick' | 'delete_message' | 'approve_request' | 'reject_request',
   opts: { targetUserId?: string; messageId?: string; reason?: string } = {},
 ): Promise<{ ok: boolean; error?: string }> {
   try {

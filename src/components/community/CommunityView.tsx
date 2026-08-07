@@ -15,8 +15,10 @@ import { uploadCommunityMedia } from '@/lib/community/messages'
 import { ChannelChat } from './ChannelChat'
 import { EventsView } from './EventsView'
 import { VoiceView } from './VoiceView'
+import { useCall } from './call/CallProvider'
 import { CreateSpaceSheet } from './CreateSpaceSheet'
 import { CommunityManageSheet } from './CommunityManageSheet'
+import { DiscoverSheet } from './DiscoverSheet'
 import { SpaceBadge } from './SpaceBadge'
 import type { CommunitySpace, CommunityChannel } from '@/types/community'
 
@@ -25,6 +27,7 @@ type MobileView = 'spaces' | 'channels' | 'chat'
 
 export function CommunityView() {
   const ent = useEntitlements()
+  const call = useCall()
   const [spaces, setSpaces] = useState<CommunitySpace[]>([])
   const [loadingSpaces, setLoadingSpaces] = useState(true)
   const [spaceId, setSpaceId] = useState<string | null>(null)
@@ -37,6 +40,7 @@ export function CommunityView() {
   const [panel, setPanel] = useState<'chat' | 'events' | 'call'>('chat')
   const [joining, setJoining] = useState(false)
   const [showCreate, setShowCreate] = useState(false)
+  const [showDiscover, setShowDiscover] = useState(false)
   const [unread, setUnread] = useState<Set<string>>(new Set())
   const [muted, setMuted] = useState<Set<string>>(new Set())
 
@@ -69,6 +73,18 @@ export function CommunityView() {
       void joinSpace(home.id).then(ok => { if (ok) void loadSpaces(home.id) })
     }
   }, [spaces, loadingSpaces, loadSpaces])
+
+  // Appel actif non réduit (ex. « Agrandir » depuis la bulle) → ouvre son canal
+  // en vue plein écran.
+  useEffect(() => {
+    if (!call.active || call.minimized || !call.channelId) return
+    if (channelId === call.channelId && panel === 'call') return
+    if (channels.some(c => c.id === call.channelId)) {
+      setChannelId(call.channelId); setPanel('call')
+      if (isNarrow) { setDir('fwd'); setMView('chat') }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [call.active, call.minimized, call.channelId, channels])
 
   const loadChannels = useCallback(async (sid: string) => {
     setLoadingChannels(true)
@@ -146,7 +162,7 @@ export function CommunityView() {
   const rail = (
     <SpaceRail
       spaces={spaces} activeId={spaceId} loading={loadingSpaces}
-      onSelect={selectSpace} onCreate={() => setShowCreate(true)}
+      onSelect={selectSpace} onCreate={() => setShowCreate(true)} onDiscover={() => setShowDiscover(true)}
     />
   )
 
@@ -208,7 +224,7 @@ export function CommunityView() {
         <div style={{ flex: 1, minHeight: 0, overflow: 'hidden', borderRadius: 'var(--r-lg)', background: 'var(--bg-card)', position: 'relative' }}>
           {/* Vues empilées avec transition « ouverture de page » fluide (clé = vue). */}
           <div key={mView} className={dir === 'fwd' ? 'comm-slide-fwd' : 'comm-slide-back'} style={{ height: '100%', minHeight: 0 }}>
-            {mView === 'spaces' && <MobileSpaces spaces={spaces} loading={loadingSpaces} onSelect={selectSpace} canCreate={ent.community.canCreate} onCreate={() => setShowCreate(true)} />}
+            {mView === 'spaces' && <MobileSpaces spaces={spaces} loading={loadingSpaces} onSelect={selectSpace} canCreate={ent.community.canCreate} onCreate={() => setShowCreate(true)} onDiscover={() => setShowDiscover(true)} />}
             {mView === 'channels' && channelCol}
             {mView === 'chat' && chatWithBack}
           </div>
@@ -234,14 +250,21 @@ export function CommunityView() {
           onCreated={(s) => { setShowCreate(false); void loadSpaces(s.id); if (isNarrow) { setDir('fwd'); setMView('channels') } }}
         />
       )}
+
+      {showDiscover && (
+        <DiscoverSheet
+          onClose={() => setShowDiscover(false)}
+          onJoined={(id) => { setShowDiscover(false); void loadSpaces(id); if (isNarrow) { setDir('fwd'); setMView('channels') } }}
+        />
+      )}
     </div>
   )
 }
 
 // ── Rail des espaces (desktop) ──────────────────────────────────────────────
-function SpaceRail({ spaces, activeId, loading, onSelect, onCreate }: {
+function SpaceRail({ spaces, activeId, loading, onSelect, onCreate, onDiscover }: {
   spaces: CommunitySpace[]; activeId: string | null; loading: boolean
-  onSelect: (id: string) => void; onCreate: () => void
+  onSelect: (id: string) => void; onCreate: () => void; onDiscover: () => void
 }) {
   return (
     <div style={{ height: '100%', overflowY: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--space-2)', padding: 'var(--space-3) 0' }}>
@@ -259,6 +282,10 @@ function SpaceRail({ spaces, activeId, loading, onSelect, onCreate }: {
           </div>
         )
       })}
+      <button onClick={onDiscover} title="Rechercher un groupe" aria-label="Rechercher un groupe"
+        style={{ width: 44, height: 44, borderRadius: 'var(--r-lg)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--surface-neutral)', color: 'var(--text-mid)', marginTop: 'var(--space-1)' }}>
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
+      </button>
       <button onClick={onCreate} title="Créer un espace" aria-label="Créer un espace"
         style={{ width: 44, height: 44, borderRadius: 'var(--r-lg)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--surface-neutral)', color: 'var(--primary)', marginTop: 'var(--space-1)' }}>
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14" /></svg>
@@ -402,16 +429,21 @@ function ChannelColumn({ space, channels, activeId, loading, isNarrow, joining, 
 }
 
 // ── Espaces (mobile plein écran) ────────────────────────────────────────────
-function MobileSpaces({ spaces, loading, onSelect, canCreate, onCreate }: {
-  spaces: CommunitySpace[]; loading: boolean; onSelect: (id: string) => void; canCreate: boolean; onCreate: () => void
+function MobileSpaces({ spaces, loading, onSelect, canCreate, onCreate, onDiscover }: {
+  spaces: CommunitySpace[]; loading: boolean; onSelect: (id: string) => void; canCreate: boolean; onCreate: () => void; onDiscover: () => void
 }) {
   return (
     <div style={{ height: '100%', overflowY: 'auto', padding: 'var(--space-4)' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-3)' }}>
         <span style={{ fontFamily: FD, fontSize: 17, fontWeight: 600, color: 'var(--text)' }}>Espaces</span>
-        <button onClick={onCreate} aria-label="Créer un espace" style={{ width: 34, height: 34, borderRadius: 'var(--r-sm)', border: 'none', background: 'var(--surface-neutral)', color: 'var(--primary)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14" /></svg>
-        </button>
+        <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+          <button onClick={onDiscover} aria-label="Rechercher un groupe" style={{ width: 34, height: 34, borderRadius: 'var(--r-sm)', border: 'none', background: 'var(--surface-neutral)', color: 'var(--text-mid)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
+          </button>
+          <button onClick={onCreate} aria-label="Créer un espace" style={{ width: 34, height: 34, borderRadius: 'var(--r-sm)', border: 'none', background: 'var(--surface-neutral)', color: 'var(--primary)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14" /></svg>
+          </button>
+        </div>
       </div>
       {loading ? (
         [0, 1, 2, 3, 4].map(i => <span key={i} style={{ display: 'block', height: 58, borderRadius: 'var(--r-md)', background: 'var(--surface-neutral)', marginBottom: 'var(--space-2)' }} />)

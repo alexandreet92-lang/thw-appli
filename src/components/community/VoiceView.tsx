@@ -1,266 +1,93 @@
 'use client'
 // ══════════════════════════════════════════════════════════════════════════
-// Salon d'appel (Phase 2, LiveKit) — audio + vidéo + partage d'écran, multi-
-// participants (appels de groupe coach). Le jeton est minté par
-// /api/community/voice-token (gating Pro+, vérif membre + canal vocal serveur).
-//
-// Ici on branche le client média : connexion à la salle, micro/caméra/écran,
-// grille de participants (vidéo ou avatar), indicateur « qui parle », mute /
-// caméra / partage / quitter, lecture audio distante (attachée manuellement à des
-// éléments <audio> cachés), gestion des erreurs (permission refusée, réseau) et
-// nettoyage complet à la fermeture / au changement de canal.
-//
-// livekit-client est chargé en import dynamique (jamais côté SSR, hors bundle initial).
+// Vue plein écran de l'appel d'un canal. Ne détient PAS la salle : elle consomme
+// le CallProvider global (l'appel survit à la navigation via la bulle flottante).
+// Ici : lancer/rejoindre, grille des participants (visio + partage d'écran),
+// contrôles (micro / caméra / écran / réduire / quitter).
 // ══════════════════════════════════════════════════════════════════════════
-import { useEffect, useRef, useState, useCallback, type ReactNode } from 'react'
-import type {
-  Room, Participant, RoomEvent as RoomEventT, RemoteTrack, RemoteTrackPublication,
-  RemoteParticipant, LocalVideoTrack, RemoteVideoTrack, Track,
-} from 'livekit-client'
-
-// Cible de l'appel : soit un canal vocal, soit un espace entier (appel de groupe).
-export type CallTarget = { channelId: string } | { spaceId: string }
-const targetKey = (t: CallTarget) => ('channelId' in t ? `c:${t.channelId}` : `s:${t.spaceId}`)
+import { useEffect } from 'react'
+import { useCall } from './call/CallProvider'
+import type { CallTarget } from './call/types'
+import {
+  VideoStage, PersonTile, RoundBtn, VoiceIcon, MicIcon, MicOffIcon, CameraIcon, CameraOffIcon,
+  ScreenIcon, PhoneDownIcon, MinimizeIcon,
+} from './call/callUi'
 
 const FB = 'var(--font-body)', FD = 'var(--font-display)'
-
-type Status = 'idle' | 'connecting' | 'connected' | 'unconfigured' | 'forbidden' | 'error'
-type VideoTrackT = LocalVideoTrack | RemoteVideoTrack
-
-interface Tile {
-  key: string
-  identity: string
-  name: string
-  isLocal: boolean
-  speaking: boolean
-  micOn: boolean
-  variant: 'camera' | 'screen'
-  video: VideoTrackT | null
-}
-
-const CAMERA = 'camera' as Track.Source
-const SCREEN = 'screen_share' as Track.Source
-
-function tilesFor(room: Room): { screens: Tile[]; people: Tile[] } {
-  const screens: Tile[] = []
-  const people: Tile[] = []
-  const add = (p: Participant, isLocal: boolean) => {
-    const name = (p.name || 'Membre').trim() || 'Membre'
-    const cam = p.getTrackPublication(CAMERA)
-    people.push({
-      key: `${p.identity}:cam`, identity: p.identity, name, isLocal,
-      speaking: p.isSpeaking, micOn: p.isMicrophoneEnabled, variant: 'camera',
-      video: (p.isCameraEnabled && cam?.videoTrack) ? cam.videoTrack : null,
-    })
-    const scr = p.getTrackPublication(SCREEN)
-    if (p.isScreenShareEnabled && scr?.videoTrack) {
-      screens.push({
-        key: `${p.identity}:scr`, identity: p.identity, name, isLocal,
-        speaking: false, micOn: true, variant: 'screen', video: scr.videoTrack,
-      })
-    }
-  }
-  add(room.localParticipant, true)
-  for (const p of room.remoteParticipants.values()) add(p, false)
-  return { screens, people }
-}
 
 export function VoiceView({ title, target, isMember, isNarrow, onBack }: {
   title: string; target: CallTarget; isMember: boolean; isNarrow: boolean; onBack: () => void
 }) {
-  const tKey = targetKey(target)
-  const [status, setStatus] = useState<Status>('idle')
-  const [, setTick] = useState(0)
-  const [micOn, setMicOn] = useState(true)
-  const [camOn, setCamOn] = useState(false)
-  const [screenOn, setScreenOn] = useState(false)
-  const [notice, setNotice] = useState<string | null>(null)
-  const [errDetail, setErrDetail] = useState<string | null>(null)
-  const [needAudioTap, setNeedAudioTap] = useState(false)
+  const call = useCall()
+  const mine = call.isTarget(target)
+  const live = mine && call.status === 'connected' && !call.minimized
 
-  const roomRef = useRef<Room | null>(null)
-  const mountedRef = useRef(true)
-  const audioBoxRef = useRef<HTMLDivElement | null>(null)
-  const audioElsRef = useRef<Map<RemoteTrack, HTMLMediaElement>>(new Map())
+  // Tant que cette vue montre l'appel (cet appel, non réduit), la bulle se masque.
+  const showing = mine && !call.minimized
+  const { registerFull } = call
+  useEffect(() => { if (showing) return registerFull() }, [showing, registerFull])
 
-  const detachAllAudio = useCallback(() => {
-    for (const el of audioElsRef.current.values()) { el.remove() }
-    audioElsRef.current.clear()
-  }, [])
-
-  const teardown = useCallback(() => {
-    const room = roomRef.current
-    roomRef.current = null
-    detachAllAudio()
-    if (room) void room.disconnect()
-  }, [detachAllAudio])
-
-  useEffect(() => { mountedRef.current = true; return () => { mountedRef.current = false } }, [])
-  // Quitter la salle au changement de cible (canal/espace) ou au démontage.
-  useEffect(() => teardown, [tKey, teardown])
-
-  const bump = useCallback(() => { if (mountedRef.current) setTick(t => t + 1) }, [])
-
-  async function join() {
-    setStatus('connecting'); setNotice(null); setErrDetail(null)
-    let token: string, url: string
-    try {
-      const res = await fetch('/api/community/voice-token', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(target),
-      })
-      if (res.status === 501) { setStatus('unconfigured'); return }
-      if (res.status === 403) { setStatus('forbidden'); return }
-      const data = (await res.json().catch(() => ({}))) as { token?: string; url?: string; error?: string }
-      if (!res.ok) { setErrDetail(data.error ?? `HTTP ${res.status}`); setStatus('error'); return }
-      if (!data.token || !data.url) { setErrDetail('Jeton/URL manquant'); setStatus('error'); return }
-      token = data.token; url = data.url
-    } catch (e) { setErrDetail(e instanceof Error ? e.message : 'réseau'); setStatus('error'); return }
-
-    try {
-      const { Room, RoomEvent, Track } = await import('livekit-client')
-      if (!mountedRef.current) return
-      const room = new Room({ adaptiveStream: true, dynacast: true })
-      roomRef.current = room
-
-      const isThis = () => roomRef.current === room && mountedRef.current
-      const attachAudio = (track: RemoteTrack) => {
-        if (track.kind !== Track.Kind.Audio) return
-        const el = track.attach()
-        el.style.display = 'none'
-        audioBoxRef.current?.appendChild(el)
-        audioElsRef.current.set(track, el)
-      }
-
-      room
-        .on(RoomEvent.ParticipantConnected, bump)
-        .on(RoomEvent.ParticipantDisconnected, bump)
-        .on(RoomEvent.ActiveSpeakersChanged, bump)
-        .on(RoomEvent.TrackMuted, bump)
-        .on(RoomEvent.TrackUnmuted, bump)
-        .on(RoomEvent.LocalTrackPublished, bump)
-        .on(RoomEvent.LocalTrackUnpublished, bump)
-        .on(RoomEvent.TrackSubscribed, (track: RemoteTrack, _pub: RemoteTrackPublication, _p: RemoteParticipant) => { attachAudio(track); bump() })
-        .on(RoomEvent.TrackUnsubscribed, (track: RemoteTrack) => {
-          const el = audioElsRef.current.get(track)
-          if (el) { try { track.detach(el) } catch { /* déjà détaché */ } el.remove(); audioElsRef.current.delete(track) }
-          bump()
-        })
-        .on(RoomEvent.AudioPlaybackStatusChanged, () => { if (isThis()) setNeedAudioTap(!room.canPlaybackAudio) })
-        .on(RoomEvent.Disconnected, () => {
-          if (roomRef.current === room) {
-            roomRef.current = null; detachAllAudio()
-            if (mountedRef.current) { setStatus('idle'); setMicOn(true); setCamOn(false); setScreenOn(false); setNotice(null); setNeedAudioTap(false) }
-          }
-        })
-
-      await room.connect(url, token)
-      if (!isThis()) { void room.disconnect(); return }
-
-      try { await room.localParticipant.setMicrophoneEnabled(true); if (mountedRef.current) setMicOn(true) }
-      catch { if (mountedRef.current) { setMicOn(false); setNotice('Micro non autorisé — tu es en écoute seule.') } }
-
-      if (!isThis()) { void room.disconnect(); return }
-      setStatus('connected')
-      setNeedAudioTap(!room.canPlaybackAudio)
-      bump()
-    } catch (e) {
-      teardown()
-      if (mountedRef.current) { setErrDetail(e instanceof Error ? e.message : 'connexion média'); setStatus('error') }
-    }
-  }
-
-  async function toggleMic() {
-    const room = roomRef.current; if (!room) return
-    const next = !micOn
-    try { await room.localParticipant.setMicrophoneEnabled(next); if (mountedRef.current) { setMicOn(next); if (next) setNotice(null); bump() } }
-    catch { if (mountedRef.current) setNotice('Micro non autorisé.') }
-  }
-  async function toggleCam() {
-    const room = roomRef.current; if (!room) return
-    const next = !camOn
-    try { await room.localParticipant.setCameraEnabled(next); if (mountedRef.current) { setCamOn(next); bump() } }
-    catch { if (mountedRef.current) setNotice('Caméra non autorisée.') }
-  }
-  async function toggleScreen() {
-    const room = roomRef.current; if (!room) return
-    const next = !screenOn
-    try { await room.localParticipant.setScreenShareEnabled(next); if (mountedRef.current) { setScreenOn(next); bump() } }
-    catch { if (mountedRef.current) setNotice(next ? 'Partage d\'écran annulé ou indisponible.' : null) }
-  }
-  async function enableAudio() {
-    const room = roomRef.current; if (!room) return
-    try { await room.startAudio(); if (mountedRef.current) setNeedAudioTap(!room.canPlaybackAudio) } catch { /* réessai possible */ }
-  }
-
-  const live = status === 'connected'
-  const room = roomRef.current
-  const { screens, people } = (live && room) ? tilesFor(room) : { screens: [], people: [] }
+  const BackBtn = isNarrow ? (
+    <button onClick={onBack} aria-label="Retour" style={{ width: 30, height: 30, border: 'none', borderRadius: 'var(--r-sm)', background: 'transparent', color: 'var(--text-mid)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
+    </button>
+  ) : null
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0, background: 'var(--bg-card)' }}>
-      <div ref={audioBoxRef} aria-hidden style={{ display: 'none' }} />
-
       <div style={{ flexShrink: 0, padding: 'var(--space-4) var(--space-5) var(--space-3)', display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
-        {isNarrow && (
-          <button onClick={() => { if (live) teardown(); onBack() }} aria-label="Retour" style={{ width: 30, height: 30, border: 'none', borderRadius: 'var(--r-sm)', background: 'transparent', color: 'var(--text-mid)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
-          </button>
-        )}
+        {BackBtn}
         <VoiceIcon />
         <span style={{ fontFamily: FD, fontSize: 17, fontWeight: 600, color: 'var(--text)' }}>{title}</span>
-        {live && <span style={{ marginLeft: 'auto', fontFamily: FB, fontSize: 12, color: 'var(--text-mid)', fontVariantNumeric: 'tabular-nums' }}>{people.length} en ligne</span>}
+        {live && (
+          <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+            <span style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-mid)', fontVariantNumeric: 'tabular-nums' }}>{call.people.length} en ligne</span>
+            <button onClick={call.minimize} aria-label="Réduire l'appel" title="Réduire l'appel"
+              style={{ width: 30, height: 30, border: 'none', borderRadius: 'var(--r-sm)', background: 'transparent', color: 'var(--text-mid)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><MinimizeIcon /></button>
+          </span>
+        )}
       </div>
 
       {live ? (
         <>
-          {needAudioTap && (
-            <button onClick={() => void enableAudio()} style={{ margin: '0 var(--space-5) var(--space-2)', height: 34, border: 'none', borderRadius: 'var(--r-sm)', background: 'var(--primary)', color: 'var(--on-primary)', fontFamily: FB, fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>
+          {call.needAudioTap && (
+            <button onClick={call.enableAudio} style={{ margin: '0 var(--space-5) var(--space-2)', height: 34, border: 'none', borderRadius: 'var(--r-sm)', background: 'var(--primary)', color: 'var(--on-primary)', fontFamily: FB, fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>
               Activer le son
             </button>
           )}
           <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: 'var(--space-4) var(--space-5)', display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
-            {screens.map(t => <VideoStage key={t.key} tile={t} />)}
+            {call.screens.map(t => <VideoStage key={t.key} tile={t} />)}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 'var(--space-3)', alignContent: 'flex-start' }}>
-              {people.map(t => <PersonTile key={t.key} tile={t} />)}
+              {call.people.map(t => <PersonTile key={t.key} tile={t} />)}
             </div>
           </div>
           <div style={{ flexShrink: 0, padding: 'var(--space-4) var(--space-5)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
-            <RoundBtn on={micOn} label={micOn ? 'Couper le micro' : 'Activer le micro'} onClick={() => void toggleMic()}>{micOn ? <MicIcon /> : <MicOffIcon />}</RoundBtn>
-            <RoundBtn on={camOn} label={camOn ? 'Couper la caméra' : 'Activer la caméra'} onClick={() => void toggleCam()}>{camOn ? <CameraIcon /> : <CameraOffIcon />}</RoundBtn>
+            <RoundBtn on={call.micOn} label={call.micOn ? 'Couper le micro' : 'Activer le micro'} onClick={call.toggleMic}>{call.micOn ? <MicIcon /> : <MicOffIcon />}</RoundBtn>
+            <RoundBtn on={call.camOn} label={call.camOn ? 'Couper la caméra' : 'Activer la caméra'} onClick={call.toggleCam}>{call.camOn ? <CameraIcon /> : <CameraOffIcon />}</RoundBtn>
             {!isNarrow && (
-              <RoundBtn on={screenOn} active label={screenOn ? 'Arrêter le partage d\'écran' : 'Partager mon écran'} onClick={() => void toggleScreen()}><ScreenIcon /></RoundBtn>
+              <RoundBtn on={call.screenOn} active label={call.screenOn ? 'Arrêter le partage d\'écran' : 'Partager mon écran'} onClick={call.toggleScreen}><ScreenIcon /></RoundBtn>
             )}
-            <button onClick={teardown} aria-label="Quitter le salon"
+            <button onClick={call.leave} aria-label="Quitter le salon"
               style={{ height: 46, padding: '0 var(--space-5)', borderRadius: 'var(--r-pill)', border: 'none', cursor: 'pointer', background: 'var(--danger)', color: 'var(--on-primary)', fontFamily: FB, fontSize: 13.5, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
               <PhoneDownIcon /> Quitter
             </button>
           </div>
-          {notice && (
-            <p style={{ margin: 0, padding: '0 var(--space-5) var(--space-4)', fontFamily: FB, fontSize: 12, color: 'var(--text-mid)', textAlign: 'center' }}>{notice}</p>
-          )}
+          {call.notice && <p style={{ margin: 0, padding: '0 var(--space-5) var(--space-4)', fontFamily: FB, fontSize: 12, color: 'var(--text-mid)', textAlign: 'center' }}>{call.notice}</p>}
         </>
       ) : (
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 'var(--space-4)', padding: 'var(--space-8)', textAlign: 'center' }}>
           <span style={{ fontFamily: FD, fontSize: 18, fontWeight: 500, color: 'var(--text)' }}>Salon d&apos;appel</span>
-          <p style={{ margin: 0, fontFamily: FB, fontSize: 13, color: 'var(--text-mid)', maxWidth: 420, lineHeight: 1.5 }}>
-            {status === 'unconfigured'
-              ? 'La voix arrive très bientôt : il reste à activer LiveKit côté serveur.'
-              : status === 'forbidden'
-                ? 'Les salons d\'appel sont réservés à l\'abonnement Pro.'
-                : status === 'error'
-                  ? 'Connexion impossible pour l\'instant. Réessaie dans un instant.'
-                  : !isMember
-                    ? 'Rejoins l\'espace pour parler, te voir et partager ton écran avec les membres présents.'
-                    : 'Rejoins le salon : audio, vidéo et partage d\'écran, en direct avec les membres présents.'}
-          </p>
-          {status === 'error' && errDetail && (
-            <p style={{ margin: 0, fontFamily: FB, fontSize: 11.5, color: 'var(--text-dim)', maxWidth: 420 }}>Détail : {errDetail}</p>
+          <Message call={call} mine={mine} isMember={isMember} />
+          {mine && call.status === 'connected' && call.minimized && (
+            <button onClick={call.expand} style={primaryBtn}>Revenir à l&apos;appel</button>
           )}
-          {isMember && status !== 'unconfigured' && status !== 'forbidden' && (
-            <button onClick={() => void join()} disabled={status === 'connecting'}
-              style={{ height: 40, padding: '0 var(--space-5)', border: 'none', borderRadius: 'var(--r-sm)', background: 'var(--primary)', color: 'var(--on-primary)', fontFamily: FB, fontSize: 13.5, fontWeight: 600, cursor: status === 'connecting' ? 'default' : 'pointer', opacity: status === 'connecting' ? 0.6 : 1 }}>
-              {status === 'connecting' ? 'Connexion…' : 'Rejoindre le salon'}
+          {isMember && (!call.active || (!mine)) && (
+            <button onClick={() => call.start(target, title)} style={primaryBtn}>
+              {call.active && !mine ? 'Rejoindre cet appel' : 'Rejoindre le salon'}
             </button>
+          )}
+          {isMember && mine && (call.status === 'error') && (
+            <button onClick={() => call.start(target, title)} style={primaryBtn}>Réessayer</button>
           )}
         </div>
       )}
@@ -268,109 +95,20 @@ export function VoiceView({ title, target, isMember, isNarrow, onBack }: {
   )
 }
 
-// ── Tuiles vidéo ────────────────────────────────────────────────────────────
-function useAttachedVideo(video: VideoTrackT | null, mirror: boolean) {
-  const ref = useRef<HTMLVideoElement | null>(null)
-  useEffect(() => {
-    const el = ref.current
-    if (!el || !video) return
-    video.attach(el)
-    el.style.transform = mirror ? 'scaleX(-1)' : ''
-    return () => { try { video.detach(el) } catch { /* déjà détaché */ } }
-  }, [video, mirror])
-  return ref
+const primaryBtn: React.CSSProperties = {
+  height: 40, padding: '0 var(--space-5)', border: 'none', borderRadius: 'var(--r-sm)',
+  background: 'var(--primary)', color: 'var(--on-primary)', fontFamily: FB, fontSize: 13.5, fontWeight: 600, cursor: 'pointer',
 }
 
-function VideoStage({ tile }: { tile: Tile }) {
-  const ref = useAttachedVideo(tile.video, false)
-  return (
-    <div style={{ position: 'relative', width: '100%', aspectRatio: '16 / 9', borderRadius: 'var(--r-md)', overflow: 'hidden', background: 'var(--surface-neutral)' }}>
-      <video ref={ref} autoPlay playsInline muted style={{ width: '100%', height: '100%', objectFit: 'contain', background: 'var(--bg-alt)' }} />
-      <span style={{ position: 'absolute', left: 'var(--space-3)', bottom: 'var(--space-3)', padding: '3px 10px', borderRadius: 'var(--r-pill)', background: 'var(--danger)', color: 'var(--on-primary)', fontFamily: FB, fontSize: 11.5, fontWeight: 600 }}>
-        Écran · {tile.isLocal ? 'Toi' : tile.name}
-      </span>
-    </div>
-  )
-}
-
-function PersonTile({ tile }: { tile: Tile }) {
-  const ref = useAttachedVideo(tile.video, tile.isLocal)
-  return (
-    <div style={{
-      position: 'relative', width: '100%', aspectRatio: '4 / 3', borderRadius: 'var(--r-md)', overflow: 'hidden',
-      background: 'var(--surface-neutral)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-      boxShadow: tile.speaking ? 'inset 0 0 0 3px var(--primary)' : 'none', transition: 'box-shadow 120ms ease',
-    }}>
-      {tile.video
-        ? <video ref={ref} autoPlay playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-        : <span style={{ width: 56, height: 56, borderRadius: '50%', background: 'var(--bg-card)', color: 'var(--text-mid)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: FB, fontWeight: 600, fontSize: 22 }}>{tile.name.slice(0, 1).toUpperCase()}</span>}
-      <span style={{ position: 'absolute', left: 8, bottom: 8, display: 'flex', alignItems: 'center', gap: 6, padding: '2px 8px', borderRadius: 'var(--r-pill)', background: 'var(--bg-card)', maxWidth: 'calc(100% - 16px)' }}>
-        {!tile.micOn && <span style={{ color: 'var(--danger)', display: 'flex' }}><MicOffIcon size={12} /></span>}
-        <span style={{ fontFamily: FB, fontSize: 11.5, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tile.isLocal ? 'Toi' : tile.name}</span>
-      </span>
-    </div>
-  )
-}
-
-function RoundBtn({ children, on, active, label, onClick }: { children: ReactNode; on: boolean; active?: boolean; label: string; onClick: () => void }) {
-  // `active` = bouton « activé = teinte primaire » (partage d'écran). Sinon on/off = neutre/danger.
-  const bg = active ? (on ? 'var(--primary)' : 'var(--surface-neutral)') : (on ? 'var(--surface-neutral)' : 'var(--danger-soft)')
-  const fg = active ? (on ? 'var(--on-primary)' : 'var(--text)') : (on ? 'var(--text)' : 'var(--danger)')
-  return (
-    <button onClick={onClick} aria-label={label} title={label}
-      style={{ width: 46, height: 46, borderRadius: '50%', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', background: bg, color: fg }}>
-      {children}
-    </button>
-  )
-}
-
-// ── Icônes ──────────────────────────────────────────────────────────────────
-function VoiceIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-mid)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-      <path d="M11 5 6 9H2v6h4l5 4V5z" /><path d="M15.54 8.46a5 5 0 0 1 0 7.07" /><path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
-    </svg>
-  )
-}
-function MicIcon({ size = 20 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="9" y="2" width="6" height="12" rx="3" /><path d="M19 10a7 7 0 0 1-14 0" /><line x1="12" y1="19" x2="12" y2="22" />
-    </svg>
-  )
-}
-function MicOffIcon({ size = 20 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <line x1="2" y1="2" x2="22" y2="22" /><path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V5a3 3 0 0 0-5.94-.6" /><path d="M17 16.95A7 7 0 0 1 5 12" /><line x1="12" y1="19" x2="12" y2="22" />
-    </svg>
-  )
-}
-function CameraIcon({ size = 20 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M23 7l-7 5 7 5V7z" /><rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
-    </svg>
-  )
-}
-function CameraOffIcon({ size = 20 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M16 16v1a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h2m5.66 0H14a2 2 0 0 1 2 2v3.34l1 1L23 7v10" /><line x1="1" y1="1" x2="23" y2="23" />
-    </svg>
-  )
-}
-function ScreenIcon({ size = 20 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="2" y="3" width="20" height="14" rx="2" ry="2" /><line x1="8" y1="21" x2="16" y2="21" /><line x1="12" y1="17" x2="12" y2="21" />
-    </svg>
-  )
-}
-function PhoneDownIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M10.68 13.31a16 16 0 0 0 3.41 2.6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.53.51 2 2 0 0 1 1.72 2v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.61 2h3a2 2 0 0 1 2 1.72" /><line x1="23" y1="1" x2="1" y2="23" />
-    </svg>
-  )
+function Message({ call, mine, isMember }: { call: ReturnType<typeof useCall>; mine: boolean; isMember: boolean }) {
+  let text: string
+  if (mine && call.status === 'connecting') text = 'Connexion…'
+  else if (mine && call.status === 'unconfigured') text = 'La voix arrive très bientôt : il reste à activer LiveKit côté serveur.'
+  else if (mine && call.status === 'forbidden') text = 'Les salons d\'appel sont réservés à l\'abonnement Pro.'
+  else if (mine && call.status === 'error') text = `Connexion impossible pour l'instant.${call.errDetail ? ` (${call.errDetail})` : ''}`
+  else if (mine && call.status === 'connected' && call.minimized) text = 'Appel en cours (réduit).'
+  else if (call.active && !mine) text = `Un appel est déjà en cours ailleurs (${call.title}). Le rejoindre quittera l'autre.`
+  else if (!isMember) text = 'Rejoins l\'espace pour parler, te voir et partager ton écran avec les membres présents.'
+  else text = 'Rejoins le salon : audio, vidéo et partage d\'écran, en direct avec les membres présents.'
+  return <p style={{ margin: 0, fontFamily: FB, fontSize: 13, color: 'var(--text-mid)', maxWidth: 420, lineHeight: 1.5 }}>{text}</p>
 }

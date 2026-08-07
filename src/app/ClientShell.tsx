@@ -4,6 +4,8 @@ import { SplashScreen } from '@/components/ui/SplashScreen'
 import GlobalSaveToast from '@/components/ui/GlobalSaveToast'
 import { ReauthGate } from '@/components/auth/ReauthGate'
 import { I18nProvider } from '@/lib/i18n'
+import { CallProvider } from '@/components/community/call/CallProvider'
+import { CallBubble } from '@/components/community/call/CallBubble'
 
 interface ClientShellProps {
   children: React.ReactNode
@@ -26,16 +28,19 @@ export function ClientShell({ children }: ClientShellProps) {
     setShowSplash(false)
   }
 
-  if (!hydrated) return <I18nProvider>{children}</I18nProvider>
+  if (!hydrated) return <I18nProvider><CallProvider>{children}</CallProvider></I18nProvider>
 
   return (
     <I18nProvider>
-      {showSplash && (
-        <SplashScreen onDone={handleSplashDone} />
-      )}
-      {children}
-      <GlobalSaveToast />
-      <ReauthGate />
+      <CallProvider>
+        {showSplash && (
+          <SplashScreen onDone={handleSplashDone} />
+        )}
+        {children}
+        <CallBubble />
+        <GlobalSaveToast />
+        <ReauthGate />
+      </CallProvider>
     </I18nProvider>
   )
 }

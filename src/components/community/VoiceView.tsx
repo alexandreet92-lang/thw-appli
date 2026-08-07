@@ -75,6 +75,7 @@ export function VoiceView({ title, target, isMember, isNarrow, onBack }: {
   const [camOn, setCamOn] = useState(false)
   const [screenOn, setScreenOn] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
+  const [errDetail, setErrDetail] = useState<string | null>(null)
   const [needAudioTap, setNeedAudioTap] = useState(false)
 
   const roomRef = useRef<Room | null>(null)
@@ -101,7 +102,7 @@ export function VoiceView({ title, target, isMember, isNarrow, onBack }: {
   const bump = useCallback(() => { if (mountedRef.current) setTick(t => t + 1) }, [])
 
   async function join() {
-    setStatus('connecting'); setNotice(null)
+    setStatus('connecting'); setNotice(null); setErrDetail(null)
     let token: string, url: string
     try {
       const res = await fetch('/api/community/voice-token', {
@@ -109,11 +110,11 @@ export function VoiceView({ title, target, isMember, isNarrow, onBack }: {
       })
       if (res.status === 501) { setStatus('unconfigured'); return }
       if (res.status === 403) { setStatus('forbidden'); return }
-      if (!res.ok) { setStatus('error'); return }
-      const data = (await res.json()) as { token?: string; url?: string }
-      if (!data.token || !data.url) { setStatus('error'); return }
+      const data = (await res.json().catch(() => ({}))) as { token?: string; url?: string; error?: string }
+      if (!res.ok) { setErrDetail(data.error ?? `HTTP ${res.status}`); setStatus('error'); return }
+      if (!data.token || !data.url) { setErrDetail('Jeton/URL manquant'); setStatus('error'); return }
       token = data.token; url = data.url
-    } catch { setStatus('error'); return }
+    } catch (e) { setErrDetail(e instanceof Error ? e.message : 'réseau'); setStatus('error'); return }
 
     try {
       const { Room, RoomEvent, Track } = await import('livekit-client')
@@ -162,9 +163,9 @@ export function VoiceView({ title, target, isMember, isNarrow, onBack }: {
       setStatus('connected')
       setNeedAudioTap(!room.canPlaybackAudio)
       bump()
-    } catch {
+    } catch (e) {
       teardown()
-      if (mountedRef.current) setStatus('error')
+      if (mountedRef.current) { setErrDetail(e instanceof Error ? e.message : 'connexion média'); setStatus('error') }
     }
   }
 
@@ -252,6 +253,9 @@ export function VoiceView({ title, target, isMember, isNarrow, onBack }: {
                     ? 'Rejoins l\'espace pour parler, te voir et partager ton écran avec les membres présents.'
                     : 'Rejoins le salon : audio, vidéo et partage d\'écran, en direct avec les membres présents.'}
           </p>
+          {status === 'error' && errDetail && (
+            <p style={{ margin: 0, fontFamily: FB, fontSize: 11.5, color: 'var(--text-dim)', maxWidth: 420 }}>Détail : {errDetail}</p>
+          )}
           {isMember && status !== 'unconfigured' && status !== 'forbidden' && (
             <button onClick={() => void join()} disabled={status === 'connecting'}
               style={{ height: 40, padding: '0 var(--space-5)', border: 'none', borderRadius: 'var(--r-sm)', background: 'var(--primary)', color: 'var(--on-primary)', fontFamily: FB, fontSize: 13.5, fontWeight: 600, cursor: status === 'connecting' ? 'default' : 'pointer', opacity: status === 'connecting' ? 0.6 : 1 }}>

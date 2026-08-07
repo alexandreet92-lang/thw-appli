@@ -4,8 +4,10 @@
 // Gating : l'UI masque/verrouille selon les entitlements, MAIS la vérification
 // dure reste côté serveur (POST /api/community/spaces). Free → écran d'upsell.
 // ══════════════════════════════════════════════════════════════════════════
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { uploadCommunityMedia } from '@/lib/community/messages'
+import { SpaceBadge } from './SpaceBadge'
 import type { CommunityEntitlements } from '@/lib/subscriptions/tier-limits'
 import type { CommunitySport } from '@/types/community'
 
@@ -30,8 +32,11 @@ export function CreateSpaceSheet({
   const [description, setDescription] = useState('')
   const [sport, setSport] = useState<CommunitySport | ''>('')
   const [isPublic, setIsPublic] = useState(true)
+  const [iconUrl, setIconUrl] = useState<string | null>(null)
+  const [logoBusy, setLogoBusy] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const logoRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => { setMounted(true) }, [])
   useEffect(() => {
@@ -54,6 +59,7 @@ export function CreateSpaceSheet({
           description: description.trim() || null,
           sport: sport || null,
           isPublic,
+          iconUrl,
         }),
       })
       const data = await res.json().catch(() => ({}))
@@ -78,6 +84,29 @@ export function CreateSpaceSheet({
             <p style={{ fontFamily: FB, fontSize: 12.5, color: 'var(--text-mid)', margin: '0 0 var(--space-5)' }}>
               Ton espace, tes canaux, ta communauté. {Number.isFinite(ent.maxMembers) ? `Jusqu'à ${ent.maxMembers} membres.` : 'Membres illimités.'}
             </p>
+
+            <Field label="Logo (optionnel)">
+              <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+                <SpaceBadge space={{ name: name || '?', iconUrl }} size={56} radius="var(--r-md)" />
+                <input ref={logoRef} type="file" accept="image/*" style={{ display: 'none' }}
+                  onChange={async e => {
+                    const f = e.target.files?.[0]; e.target.value = ''
+                    if (!f) return
+                    setLogoBusy(true); setError(null)
+                    const att = await uploadCommunityMedia(f)
+                    setLogoBusy(false)
+                    if (att?.url) setIconUrl(att.url); else setError('Upload du logo impossible.')
+                  }} />
+                <button type="button" onClick={() => logoRef.current?.click()} disabled={logoBusy}
+                  style={{ height: 36, padding: '0 var(--space-4)', border: 'none', borderRadius: 'var(--r-sm)', background: 'var(--surface-neutral)', color: 'var(--text)', fontFamily: FB, fontSize: 12.5, fontWeight: 600, cursor: logoBusy ? 'default' : 'pointer' }}>
+                  {logoBusy ? 'Envoi…' : iconUrl ? 'Changer' : 'Choisir une image'}
+                </button>
+                {iconUrl && !logoBusy && (
+                  <button type="button" onClick={() => setIconUrl(null)}
+                    style={{ height: 36, padding: '0 var(--space-3)', border: 'none', borderRadius: 'var(--r-sm)', background: 'transparent', color: 'var(--text-mid)', fontFamily: FB, fontSize: 12.5, cursor: 'pointer' }}>Retirer</button>
+                )}
+              </div>
+            </Field>
 
             <Field label="Nom">
               <input value={name} onChange={e => setName(e.target.value.slice(0, 80))} placeholder="Ex. Les grimpeurs du dimanche" style={inputStyle} />

@@ -26,6 +26,7 @@ interface Body {
   description?: string | null
   sport?: string | null
   iconEmoji?: string | null
+  iconUrl?: string | null
   isPublic?: boolean
   channels?: string[]
 }
@@ -78,6 +79,11 @@ export async function POST(req: Request) {
     // Branding : icône personnalisée seulement si le tier y a droit.
     const iconEmoji = ent.canBrand && body.iconEmoji ? body.iconEmoji.slice(0, 8) : '👥'
     const description = (body.description ?? '').toString().slice(0, 400) || null
+    // Logo uploadé : accepté seulement s'il pointe vers notre stockage Supabase
+    // (l'upload passe par /api/community/upload → bucket public). Anti-URL arbitraire.
+    const supaBase = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
+    const rawIcon = typeof body.iconUrl === 'string' ? body.iconUrl : ''
+    const iconUrl = rawIcon && rawIcon.length <= 600 && supaBase && rawIcon.startsWith(supaBase) ? rawIcon : null
 
     // ── Quota d'espaces créés (service role : compte réel, RLS bypassée) ──
     const svc = createServiceClient()
@@ -108,6 +114,7 @@ export async function POST(req: Request) {
         kind: 'user',
         sport,
         icon_emoji: iconEmoji,
+        icon_url: iconUrl,
         is_public: !wantPrivate,
         created_by: user.id,
       })

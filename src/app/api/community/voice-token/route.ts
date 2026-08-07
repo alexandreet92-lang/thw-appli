@@ -12,25 +12,27 @@
 //   LIVEKIT_API_SECRET
 // ══════════════════════════════════════════════════════════════════════════
 import { NextResponse } from 'next/server'
-import { createHmac } from 'node:crypto'
+import { AccessToken } from 'livekit-server-sdk'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { getUserTier, isCreatorAccount } from '@/lib/subscriptions/check-quota'
 import { communityEntitlements } from '@/lib/subscriptions/tier-limits'
 
 export const dynamic = 'force-dynamic'
 
-const b64url = (s: string) => Buffer.from(s, 'utf8').toString('base64url')
+// Jeton d'accès LiveKit via le SDK officiel (grant vidéo : publier/souscrire).
+async function mintToken(apiKey: string, apiSecret: string, identity: string, name: string, room: string): Promise<string> {
+  const at = new AccessToken(apiKey, apiSecret, { identity, name, ttl: '2h' })
+  at.addGrant({ room, roomJoin: true, canPublish: true, canSubscribe: true, canPublishData: true })
+  return at.toJwt()
+}
 
-function mintToken(apiKey: string, apiSecret: string, identity: string, name: string, room: string): string {
-  const now = Math.floor(Date.now() / 1000)
-  const header = { alg: 'HS256', typ: 'JWT' }
-  const payload = {
-    iss: apiKey, sub: identity, name, nbf: now, exp: now + 3600, jti: identity,
-    video: { room, roomJoin: true, canPublish: true, canSubscribe: true },
-  }
-  const unsigned = `${b64url(JSON.stringify(header))}.${b64url(JSON.stringify(payload))}`
-  const sig = createHmac('sha256', apiSecret).update(unsigned).digest('base64url')
-  return `${unsigned}.${sig}`
+// LiveKit attend une URL WebSocket (wss://). On tolère une URL https:// collée
+// depuis le dashboard en la normalisant.
+function wsUrl(raw: string): string {
+  const u = raw.trim()
+  if (u.startsWith('https://')) return 'wss://' + u.slice('https://'.length)
+  if (u.startsWith('http://')) return 'ws://' + u.slice('http://'.length)
+  return u
 }
 
 export async function POST(req: Request) {
@@ -83,8 +85,8 @@ export async function POST(req: Request) {
       name = ((p?.full_name as string) || (p?.first_name as string) || 'Membre').trim()
     } catch { /* fallback */ }
 
-    const token = mintToken(key, secret, user.id, name, room)
-    return NextResponse.json({ token, url, room, identity: user.id })
+    const token = await mintToken(key, secret, user.id, name, room)
+    return NextResponse.json({ token, url: wsUrl(url), room, identity: user.id })
   } catch (e) {
     console.error('[community/voice-token] error:', e)
     return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 })

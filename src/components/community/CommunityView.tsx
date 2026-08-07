@@ -58,6 +58,18 @@ export function CommunityView() {
   }, [])
   useEffect(() => { void loadSpaces() }, [loadSpaces])
 
+  // Auto-adhésion à l'espace « maison » (THW Communauté) à la 1re visite, pour
+  // que la page ne soit jamais vide — le reste se rejoint via la recherche.
+  const autoJoinedRef = useRef(false)
+  useEffect(() => {
+    if (autoJoinedRef.current || loadingSpaces) return
+    const home = spaces.find(s => s.slug === 'thw-communaute' && s.kind === 'official')
+    if (home && !home.isMember) {
+      autoJoinedRef.current = true
+      void joinSpace(home.id).then(ok => { if (ok) void loadSpaces(home.id) })
+    }
+  }, [spaces, loadingSpaces, loadSpaces])
+
   const loadChannels = useCallback(async (sid: string) => {
     setLoadingChannels(true)
     const list = await listChannels(sid)

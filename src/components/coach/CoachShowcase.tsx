@@ -11,6 +11,7 @@ import type { CoachProfile } from '@/lib/coach/vitrine'
 import type { CoachProgram } from '@/lib/coach/programs'
 import type { SocialCounts } from '@/lib/social/follows'
 import ProgramDeck from '@/components/coach/ProgramDeck'
+import ProgramFilters, { applyProgramFilters, DEFAULT_FILTERS, type ProgFilters } from '@/components/coach/ProgramFilters'
 import ProgramDetailView from '@/components/coach/ProgramDetailView'
 import SlideSheet from '@/components/ui/SlideSheet'
 
@@ -43,6 +44,8 @@ interface ShowcaseProps {
 
 export default function CoachShowcase({ profile, programs = [], counts, isCoach, isOwner, isFollowing, followBusy, onToggleFollow, actions, activitiesHref }: ShowcaseProps) {
   const [openProgram, setOpenProgram] = useState<CoachProgram | null>(null)
+  const [progFilters, setProgFilters] = useState<ProgFilters>(DEFAULT_FILTERS)
+  const filteredPrograms = applyProgramFilters(programs, progFilters)
   const name = profile.display_name || 'Profil'
   const monogram = name.trim().charAt(0).toUpperCase()
   const socials = profile.socials ?? {}
@@ -129,9 +132,14 @@ export default function CoachShowcase({ profile, programs = [], counts, isCoach,
             <SectionTitle>Programmes</SectionTitle>
             {programs.length > 0 && <span className="tnum" style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-dim)', fontVariantNumeric: 'tabular-nums' }}>{programs.length}</span>}
           </div>
-          {programs.length > 0
-            ? <ProgramDeck programs={programs} onOpen={setOpenProgram} />
-            : <Empty>{isCoach ? 'Publie un programme pour le montrer ici.' : 'Aucun programme publié.'}</Empty>}
+          {programs.length > 0 ? (
+            <>
+              <ProgramFilters programs={programs} value={progFilters} onChange={setProgFilters} />
+              {filteredPrograms.length > 0
+                ? <ProgramDeck programs={filteredPrograms} onOpen={setOpenProgram} />
+                : <Empty>Aucun programme ne correspond à ces filtres.</Empty>}
+            </>
+          ) : <Empty>{isCoach ? 'Publie un programme pour le montrer ici.' : 'Aucun programme publié.'}</Empty>}
         </div>
       )}
 

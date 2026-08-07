@@ -5,7 +5,7 @@
 // hero + stats + actions, puis sections en grille (à propos, vidéo, palmarès,
 // diplômes, programmes, activités, réseaux). États vides qui invitent à remplir.
 // ══════════════════════════════════════════════════════════════════
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import type { CoachProfile } from '@/lib/coach/vitrine'
 import type { CoachProgram } from '@/lib/coach/programs'
@@ -13,7 +13,11 @@ import type { SocialCounts } from '@/lib/social/follows'
 import ProgramDeck from '@/components/coach/ProgramDeck'
 import ProgramFilters, { applyProgramFilters, DEFAULT_FILTERS, type ProgFilters } from '@/components/coach/ProgramFilters'
 import ProgramDetailView from '@/components/coach/ProgramDetailView'
+import ActivityShowcase from '@/components/profile/ActivityShowcase'
+import { getProfileActivityShowcase, setActivityVisibility, type ActivityShowcaseData, type ActivityVisibility } from '@/lib/profile/activityShowcase'
 import SlideSheet from '@/components/ui/SlideSheet'
+
+const VIS_LABEL: Record<ActivityVisibility, string> = { public: 'Tout le monde', followers: 'Mes abonnés', private: 'Personne' }
 
 const SPORT_LABEL: Record<string, string> = { running: 'Course', cycling: 'Vélo', swim: 'Natation', gym: 'Renforcement', hyrox: 'Hyrox', rowing: 'Aviron', trail: 'Trail', triathlon: 'Triathlon' }
 
@@ -46,6 +50,15 @@ export default function CoachShowcase({ profile, programs = [], counts, isCoach,
   const [openProgram, setOpenProgram] = useState<CoachProgram | null>(null)
   const [progFilters, setProgFilters] = useState<ProgFilters>(DEFAULT_FILTERS)
   const filteredPrograms = applyProgramFilters(programs, progFilters)
+  const [showcase, setShowcase] = useState<ActivityShowcaseData | null>(null)
+  const [vis, setVis] = useState<ActivityVisibility>('public')
+  const uid = profile.coach_id
+  useEffect(() => {
+    if (!uid) return
+    void getProfileActivityShowcase(uid).then(d => { setShowcase(d); if (d) setVis(d.visibility) }).catch(() => {})
+  }, [uid])
+  const changeVis = async (v: ActivityVisibility) => { setVis(v); await setActivityVisibility(v).catch(() => {}); if (uid) void getProfileActivityShowcase(uid).then(setShowcase).catch(() => {}) }
+  const yearNow = new Date().getFullYear()
   const name = profile.display_name || 'Profil'
   const monogram = name.trim().charAt(0).toUpperCase()
   const socials = profile.socials ?? {}
@@ -85,10 +98,11 @@ export default function CoachShowcase({ profile, programs = [], counts, isCoach,
 
             {/* Stats */}
             {counts && (
-              <div style={{ display: 'flex', gap: 'clamp(20px,5vw,40px)', marginTop: 18 }}>
+              <div style={{ display: 'flex', gap: 'clamp(20px,5vw,40px)', marginTop: 18, flexWrap: 'wrap' }}>
                 <Stat n={counts.followers} label="Abonnés" />
                 <Stat n={counts.following} label="Abonnements" />
                 {(isCoach || counts.coached > 0) && <Stat n={counts.coached} label="Coachés" />}
+                {showcase?.can_view && showcase.ytd_count > 0 && <Stat n={showcase.ytd_count} label={`Activités ${yearNow}`} />}
               </div>
             )}
 
@@ -181,12 +195,32 @@ export default function CoachShowcase({ profile, programs = [], counts, isCoach,
           </div>
         )}
 
-        {/* Activités */}
-        <div style={card}>
-          <SectionTitle>Activités</SectionTitle>
-          {activitiesHref
-            ? <Link href={activitiesHref} style={{ ...pillBtn, textDecoration: 'none' }}>Voir les activités →</Link>
-            : <Empty>Bientôt : les entraînements et activités visibles sur le profil.</Empty>}
+        {/* Activités (pleine largeur) */}
+        <div style={{ ...card, gridColumn: '1 / -1' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 14 }}>
+            <SectionTitle>Activités</SectionTitle>
+            {activitiesHref && <Link href={activitiesHref} style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--primary)', textDecoration: 'none' }}>Tout voir →</Link>}
+          </div>
+          {showcase
+            ? <ActivityShowcase data={showcase} isOwner={!!isOwner} />
+            : <Empty>Chargement des activités…</Empty>}
+
+          {/* Réglage de confidentialité (propriétaire) */}
+          {isOwner && (
+            <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--border)' }}>
+              <div style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--text-dim)', marginBottom: 8 }}>Qui peut voir mes activités ?</div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {(['public', 'followers', 'private'] as ActivityVisibility[]).map(v => (
+                  <button key={v} onClick={() => void changeVis(v)}
+                    style={{ padding: '8px 14px', borderRadius: 999, cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 12.5, fontWeight: 700,
+                      border: vis === v ? '1px solid var(--primary)' : '1px solid var(--border)',
+                      background: vis === v ? 'var(--primary-dim)' : 'transparent', color: vis === v ? 'var(--primary)' : 'var(--text-mid)' }}>
+                    {VIS_LABEL[v]}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Coordonnées */}
@@ -247,4 +281,3 @@ function Social({ href, label, children }: { href: string; label: string; childr
 const card: React.CSSProperties = { background: 'var(--bg-card)', borderRadius: 'var(--r-lg)', padding: 'clamp(18px,3vw,24px)', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }
 const socialCircle: React.CSSProperties = { width: 42, height: 42, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-card2)', color: 'var(--text-mid)' }
 const contactRow: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 9, fontSize: 13.5, fontWeight: 600, color: 'var(--text-mid)', textDecoration: 'none' }
-const pillBtn: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', height: 40, padding: '0 18px', borderRadius: 'var(--r-md)', background: 'var(--bg-card2)', color: 'var(--primary)', fontFamily: 'var(--font-body)', fontSize: 13.5, fontWeight: 700 }

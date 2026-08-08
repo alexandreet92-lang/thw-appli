@@ -7,7 +7,7 @@
 // ══════════════════════════════════════════════════════════════════════════
 import { createContext, useCallback, useContext, useRef, useState, type ReactNode } from 'react'
 import type {
-  Room, Participant, RoomEvent as RoomEventT, RemoteTrack, RemoteTrackPublication, RemoteParticipant, Track,
+  Room, Participant, RoomEvent as RoomEventT, RemoteTrack, RemoteTrackPublication, RemoteParticipant, Track, LocalVideoTrack,
 } from 'livekit-client'
 import type { CallTarget, Tile } from './types'
 import { targetKey } from './types'
@@ -45,17 +45,22 @@ export interface CallCtx {
   channelId: string | null
   minimized: boolean
   showingFull: boolean
-  micOn: boolean; camOn: boolean; screenOn: boolean
+  micOn: boolean; camOn: boolean; screenOn: boolean; blurOn: boolean
   needAudioTap: boolean
   notice: string | null
   errDetail: string | null
   screens: Tile[]
   people: Tile[]
+  devices: { mics: MediaDeviceInfo[]; cams: MediaDeviceInfo[] }
   start: (target: CallTarget, title: string) => void
   leave: () => void
   toggleMic: () => void
   toggleCam: () => void
   toggleScreen: () => void
+  toggleBlur: () => void
+  refreshDevices: () => void
+  setMic: (id: string) => void
+  setCam: (id: string) => void
   minimize: () => void
   expand: () => void
   enableAudio: () => void
@@ -79,6 +84,8 @@ export function CallProvider({ children }: { children: ReactNode }) {
   const [micOn, setMicOn] = useState(true)
   const [camOn, setCamOn] = useState(false)
   const [screenOn, setScreenOn] = useState(false)
+  const [blurOn, setBlurOn] = useState(false)
+  const [devices, setDevices] = useState<{ mics: MediaDeviceInfo[]; cams: MediaDeviceInfo[] }>({ mics: [], cams: [] })
   const [needAudioTap, setNeedAudioTap] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
   const [errDetail, setErrDetail] = useState<string | null>(null)
@@ -104,7 +111,7 @@ export function CallProvider({ children }: { children: ReactNode }) {
     detachAllAudio()
     if (room) void room.disconnect()
     setStatus('idle'); setTKey(null); setTitle(''); setMinimized(false)
-    setMicOn(true); setCamOn(false); setScreenOn(false); setNeedAudioTap(false); setNotice(null); setErrDetail(null)
+    setMicOn(true); setCamOn(false); setScreenOn(false); setBlurOn(false); setNeedAudioTap(false); setNotice(null); setErrDetail(null)
   }, [detachAllAudio])
 
   const start = useCallback((target: CallTarget, t: string) => {
@@ -175,6 +182,12 @@ export function CallProvider({ children }: { children: ReactNode }) {
         catch { setMicOn(false); setNotice('Micro non autorisé — tu es en écoute seule.') }
         if (!isThis()) { void room.disconnect(); return }
         setStatus('connected'); setNeedAudioTap(!room.canPlaybackAudio); bump()
+        // Premier arrivé dans un canal → prévient les membres de l'espace.
+        if (room.remoteParticipants.size === 0 && 'channelId' in target) {
+          void fetch('/api/community/notify-call', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ channelId: target.channelId }),
+          }).catch(() => {})
+        }
       } catch (e) {
         const r = roomRef.current; roomRef.current = null; if (r) void r.disconnect(); detachAllAudio()
         if (alive()) { setErrDetail(e instanceof Error ? e.message : 'connexion média'); setStatus('error') }
@@ -195,12 +208,45 @@ export function CallProvider({ children }: { children: ReactNode }) {
   const toggleScreen = useCallback(() => {
     const room = roomRef.current; if (!room) return
     const next = !screenOn
-    void room.localParticipant.setScreenShareEnabled(next).then(() => { setScreenOn(next); bump() }).catch(() => { if (next) setNotice('Partage d\'écran annulé ou indisponible.') })
+    // Plafonne 1080p/15fps + exclut l'onglet courant (stoppe l'effet miroir et les saccades).
+    const opts = next
+      ? { audio: true, resolution: { width: 1920, height: 1080, frameRate: 15 }, contentHint: 'detail' as const, selfBrowserSurface: 'exclude' as const }
+      : undefined
+    void room.localParticipant.setScreenShareEnabled(next, opts).then(() => { setScreenOn(next); bump() }).catch(() => { if (next) setNotice('Partage d\'écran annulé ou indisponible.') })
   }, [screenOn, bump])
   const enableAudio = useCallback(() => {
     const room = roomRef.current; if (!room) return
     void room.startAudio().then(() => setNeedAudioTap(!room.canPlaybackAudio)).catch(() => {})
   }, [])
+  const toggleBlur = useCallback(() => {
+    const room = roomRef.current; if (!room) return
+    const next = !blurOn
+    void (async () => {
+      try {
+        if (next && !camOn) { await room.localParticipant.setCameraEnabled(true); setCamOn(true) }
+        const pub = room.localParticipant.getTrackPublication('camera' as Track.Source)
+        const track = pub?.videoTrack as LocalVideoTrack | undefined
+        if (!track) { setNotice('Active la caméra pour le flou.'); return }
+        if (next) {
+          const { BackgroundBlur } = await import('@livekit/track-processors')
+          await track.setProcessor(BackgroundBlur(10))
+        } else {
+          await track.stopProcessor()
+        }
+        setBlurOn(next); bump()
+      } catch { setNotice('Flou d\'arrière-plan indisponible sur cet appareil.') }
+    })()
+  }, [blurOn, camOn, bump])
+  const refreshDevices = useCallback(() => {
+    void (async () => {
+      try {
+        const all = await navigator.mediaDevices.enumerateDevices()
+        setDevices({ mics: all.filter(d => d.kind === 'audioinput' && d.deviceId), cams: all.filter(d => d.kind === 'videoinput' && d.deviceId) })
+      } catch { /* permissions non accordées */ }
+    })()
+  }, [])
+  const setMic = useCallback((id: string) => { const r = roomRef.current; if (r) void r.switchActiveDevice('audioinput', id) }, [])
+  const setCam = useCallback((id: string) => { const r = roomRef.current; if (r) void r.switchActiveDevice('videoinput', id) }, [])
 
   const minimize = useCallback(() => setMinimized(true), [])
   const expand = useCallback(() => setMinimized(false), [])
@@ -216,8 +262,10 @@ export function CallProvider({ children }: { children: ReactNode }) {
   const channelId = tKey && tKey.startsWith('c:') ? tKey.slice(2) : null
 
   const value: CallCtx = {
-    active, status, title, tKey, channelId, minimized, showingFull, micOn, camOn, screenOn, needAudioTap, notice, errDetail,
-    screens, people, start, leave, toggleMic, toggleCam, toggleScreen, minimize, expand, enableAudio, isTarget, registerFull,
+    active, status, title, tKey, channelId, minimized, showingFull, micOn, camOn, screenOn, blurOn, needAudioTap, notice, errDetail,
+    screens, people, devices,
+    start, leave, toggleMic, toggleCam, toggleScreen, toggleBlur, refreshDevices, setMic, setCam,
+    minimize, expand, enableAudio, isTarget, registerFull,
   }
 
   return (

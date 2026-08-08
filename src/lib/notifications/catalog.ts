@@ -21,7 +21,7 @@ export type NotifKey =
   | 'connexions.activite_synchro' | 'connexions.donnee_importee' | 'connexions.reconnexion'
   | 'connexions.echec_sync'
   | 'competitions.j7' | 'competitions.j3' | 'competitions.j1' | 'competitions.strategie_dispo'
-  | 'communaute.mention' | 'communaute.nouveau_message' | 'communaute.evenement'
+  | 'communaute.mention' | 'communaute.nouveau_message' | 'communaute.evenement' | 'communaute.appel'
   | 'systeme.nouvelle_version' | 'systeme.nouvelle_feature' | 'systeme.maintenance' | 'systeme.astuce'
 
 export const NOTIF_DEFAULTS: Record<NotifKey, boolean> = {
@@ -71,6 +71,7 @@ export const NOTIF_DEFAULTS: Record<NotifKey, boolean> = {
   'communaute.mention': true,
   'communaute.nouveau_message': false,
   'communaute.evenement': true,
+  'communaute.appel': true,
   'systeme.nouvelle_version': true,
   'systeme.nouvelle_feature': true,
   'systeme.maintenance': false,

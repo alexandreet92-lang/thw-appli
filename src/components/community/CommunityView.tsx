@@ -11,6 +11,7 @@ import Link from 'next/link'
 import { useEntitlements } from '@/hooks/useEntitlements'
 import { listSpaces, joinSpace, leaveSpace, updateSpaceIcon } from '@/lib/community/spaces'
 import { listChannels, createChannel, getUnreadChannelIds, getMutedChannelIds, toggleChannelMute } from '@/lib/community/channels'
+import { getActiveCalls } from '@/lib/community/calls'
 import { uploadCommunityMedia } from '@/lib/community/messages'
 import { ChannelChat } from './ChannelChat'
 import { EventsView } from './EventsView'
@@ -43,6 +44,7 @@ export function CommunityView() {
   const [showDiscover, setShowDiscover] = useState(false)
   const [unread, setUnread] = useState<Set<string>>(new Set())
   const [muted, setMuted] = useState<Set<string>>(new Set())
+  const [activeCalls, setActiveCalls] = useState<Record<string, number>>({})
 
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 767px)')
@@ -102,6 +104,16 @@ export function CommunityView() {
     await toggleChannelMute(channelId, wasMuted)
   }, [muted])
   useEffect(() => { if (spaceId) void loadChannels(spaceId) }, [spaceId, loadChannels])
+
+  // « X en appel » par canal : sondage léger de LiveKit tant qu'un espace est ouvert.
+  useEffect(() => {
+    if (!spaceId) { setActiveCalls({}); return }
+    let alive = true
+    const tick = () => { void getActiveCalls(spaceId).then(c => { if (alive) setActiveCalls(c) }) }
+    tick()
+    const iv = setInterval(tick, 8000)
+    return () => { alive = false; clearInterval(iv) }
+  }, [spaceId, call.active, call.showingFull])
 
   // Un canal ouvert / lu n'est plus « non-lu ».
   const markRead = useCallback((cid: string) => {
@@ -170,7 +182,7 @@ export function CommunityView() {
   const channelCol = (
     <ChannelColumn
       space={space} channels={channels} activeId={channelId} loading={loadingChannels}
-      isNarrow={isNarrow} joining={joining} canManage={canManage} unread={unread} muted={muted}
+      isNarrow={isNarrow} joining={joining} canManage={canManage} unread={unread} muted={muted} activeCalls={activeCalls}
       canBrand={canManage && ent.community.canBrand}
       panel={panel} onEvents={selectEvents}
       onSelect={selectChannel} onJoin={doJoin} onLeave={doLeave}
@@ -296,9 +308,9 @@ function SpaceRail({ spaces, activeId, loading, onSelect, onCreate, onDiscover }
 }
 
 // ── Colonne des canaux ──────────────────────────────────────────────────────
-function ChannelColumn({ space, channels, activeId, loading, isNarrow, joining, canManage, canBrand, unread, muted, panel, onEvents, onSelect, onJoin, onLeave, onCreateChannel, onSetLogo, onBack }: {
+function ChannelColumn({ space, channels, activeId, loading, isNarrow, joining, canManage, canBrand, unread, muted, activeCalls, panel, onEvents, onSelect, onJoin, onLeave, onCreateChannel, onSetLogo, onBack }: {
   space: CommunitySpace | null; channels: CommunityChannel[]; activeId: string | null; loading: boolean
-  isNarrow: boolean; joining: boolean; canManage: boolean; canBrand: boolean; unread: Set<string>; muted: Set<string>
+  isNarrow: boolean; joining: boolean; canManage: boolean; canBrand: boolean; unread: Set<string>; muted: Set<string>; activeCalls: Record<string, number>
   panel: 'chat' | 'events' | 'call'; onEvents: () => void
   onSelect: (id: string) => void; onJoin: () => void; onLeave: () => void; onCreateChannel: (name: string, kind: 'text' | 'voice') => void; onSetLogo: (file: File) => void; onBack: () => void
 }) {
@@ -406,6 +418,12 @@ function ChannelColumn({ space, channels, activeId, loading, isNarrow, joining, 
                 ? <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-dim)', flexShrink: 0 }}><path d="M11 5 6 9H2v6h4l5 4zM15.5 8.5a5 5 0 0 1 0 7M19 5a9 9 0 0 1 0 14" /></svg>
                 : <span style={{ color: 'var(--text-dim)', fontSize: 15, lineHeight: 1 }}>#</span>}
               <span style={{ flex: 1, minWidth: 0, fontSize: 13.5, fontWeight: active || isUnread ? 600 : 500, color: active || isUnread ? 'var(--text)' : 'var(--text-mid)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</span>
+              {(activeCalls[c.id] ?? 0) > 0 && (
+                <span title={`${activeCalls[c.id]} en appel`} style={{ display: 'inline-flex', alignItems: 'center', gap: 3, flexShrink: 0, fontFamily: FB, fontSize: 10.5, fontWeight: 700, color: 'var(--sport-run)' }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M23 7l-7 5 7 5V7z" /><rect x="1" y="5" width="15" height="14" rx="2" ry="2" /></svg>
+                  <span className="tnum" style={{ fontVariantNumeric: 'tabular-nums' }}>{activeCalls[c.id]}</span>
+                </span>
+              )}
               {isMuted && <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-dim)', flexShrink: 0 }}><path d="M13.73 21a2 2 0 0 1-3.46 0M18 8a6 6 0 0 0-9.33-5M5.2 5.2A6 6 0 0 0 6 8c0 7-3 9-3 9h14M1 1l22 22" /></svg>}
               {isUnread && <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--primary)', flexShrink: 0 }} />}
             </button>

@@ -49,11 +49,12 @@ function coverflow(pos: number, drag: number): Placement {
   if (pos === 2) return { transform: `translateX(calc(-50% + 22% + ${dl * 0.28}px)) translateY(22px) rotate(8deg) scale(0.84)`, z: 20, opacity: 0.7, shadow: '0 10px 22px rgba(0,0,0,0.16)' }
   return { transform: `translateX(calc(-50% - 13% + ${dr * 0.45}px)) translateY(12px) rotate(-4deg) scale(0.92)`, z: 28, opacity: 0.9, shadow: '0 12px 26px rgba(0,0,0,0.20)' }
 }
-// Éventail (desktop, dans une colonne) : suivantes empilées en bas-droite.
+// Éventail (desktop, dans une colonne) : suivantes empilées en bas-droite,
+// nettement décalées + inclinées → effet 3D « paquet de cartes » bien lisible.
 function fan(pos: number, drag: number): Placement {
-  if (pos === 0) return { transform: `translateX(calc(-50% + ${drag}px)) rotate(${(drag * 0.02).toFixed(2)}deg)`, z: 40, opacity: 1, shadow: '0 16px 34px rgba(0,0,0,0.28)' }
-  if (pos === 1) return { transform: `translateX(calc(-50% + 9px)) translateY(11px) rotate(3deg) scale(0.955)`, z: 30, opacity: 0.9, shadow: '0 10px 22px rgba(0,0,0,0.18)' }
-  return { transform: `translateX(calc(-50% + 18px)) translateY(22px) rotate(6deg) scale(0.91)`, z: 20, opacity: 0.72, shadow: '0 9px 20px rgba(0,0,0,0.15)' }
+  if (pos === 0) return { transform: `translateX(calc(-50% + ${drag}px)) rotate(${(drag * 0.02).toFixed(2)}deg)`, z: 40, opacity: 1, shadow: '0 18px 38px rgba(0,0,0,0.30)' }
+  if (pos === 1) return { transform: `translateX(calc(-50% + 16px)) translateY(15px) rotate(4.5deg) scale(0.95)`, z: 30, opacity: 0.97, shadow: '0 12px 26px rgba(0,0,0,0.22)' }
+  return { transform: `translateX(calc(-50% + 30px)) translateY(30px) rotate(8.5deg) scale(0.9)`, z: 20, opacity: 0.9, shadow: '0 10px 22px rgba(0,0,0,0.18)' }
 }
 
 function Card({ p, pos, drag, mode, onOpen }: { p: CoachProgram; pos: number; drag: number; mode: 'coverflow' | 'fan'; onOpen?: () => void }) {
@@ -166,30 +167,69 @@ const STYLE = `
   @media (hover: hover) and (min-width: 720px) { .pd-arrow { display: flex; } }
 `
 
+function SportCircle({ sport, on, onClick }: { sport: string; on: boolean; onClick: () => void }) {
+  const Icon = SPORT_GLYPH[sport] ?? IconRun
+  return (
+    <button onClick={onClick} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, border: 'none', background: 'transparent', cursor: 'pointer', padding: 0, flexShrink: 0, fontFamily: 'var(--font-body)' }}>
+      <span style={{ width: 58, height: 58, borderRadius: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: on ? sportVar(sport) : 'var(--bg-card2)', boxShadow: on ? '0 8px 20px rgba(0,0,0,0.20)' : 'none', transition: 'background 180ms, box-shadow 180ms' }}>
+        <Icon size={26} color={on ? 'white' : 'var(--text-mid)'} stroke={2} />
+      </span>
+      <span style={{ fontSize: 11.5, fontWeight: on ? 700 : 600, color: on ? 'var(--text)' : 'var(--text-dim)' }}>{SPORT_LABEL[sport] ?? sport}</span>
+    </button>
+  )
+}
+function SpecPill({ label, on, onClick }: { label: string; on: boolean; onClick: () => void }) {
+  return <button onClick={onClick} style={{ padding: '8px 16px', borderRadius: 999, border: on ? '2px solid var(--primary)' : '2px solid var(--border)', background: on ? 'var(--primary-dim)' : 'transparent', color: on ? 'var(--primary)' : 'var(--text-mid)', fontSize: 13, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0, fontFamily: 'var(--font-body)' }}>{label}</button>
+}
+
 export default function ProgramDeck({ programs, onOpen }: { programs: CoachProgram[]; onOpen: (p: CoachProgram) => void }) {
   const narrow = useNarrow()
-  if (!programs.length) return null
+  const [selSport, setSelSport] = useState<string | null>(null)
+  const [selSpec, setSelSpec] = useState<string>('')
 
-  // Groupe par sport, ordre stable — jamais de mélange.
   const map = new Map<string, CoachProgram[]>()
   for (const p of programs) { const s = sportOf(p); const arr = map.get(s) ?? []; arr.push(p); map.set(s, arr) }
   const groups = Array.from(map.entries()).sort((a, b) => (SPORT_LABEL[a[0]] ?? a[0]).localeCompare(SPORT_LABEL[b[0]] ?? b[0]))
+  const sportKeys = groups.map(g => g[0])
+  const activeSport = selSport && sportKeys.includes(selSport) ? selSport : (sportKeys[0] ?? null)
 
-  // ── Mobile : une pile, animation de transition entre sports ──
+  if (!programs.length || !activeSport) return null
+
+  // ── Mobile : cercles de sport → cercles de spécialité → une pile ──
   if (narrow) {
-    const [sport, list] = groups[0]
+    const list0 = groups.find(g => g[0] === activeSport)?.[1] ?? []
+    const specialties = Array.from(new Set(list0.filter(p => p.specialty).map(p => p.specialty as string)))
+    const list = selSpec ? list0.filter(p => p.specialty === selSpec) : list0
     return (
-      <div style={{ overflowX: 'clip' }}>
+      <div>
         <style>{STYLE}</style>
-        <AnimatePresence mode="wait" initial={false}>
-          <motion.div key={sport}
-            initial={{ x: '100%', opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: '-100%', opacity: 0 }}
-            transition={{ duration: 0.34, ease: [0.32, 0.72, 0, 1] }}>
-            <div style={{ width: '100%', maxWidth: 460, margin: '0 auto' }}>
-              <Stack list={list} onOpen={onOpen} mode="coverflow" height="clamp(370px, 92vw, 440px)" />
-            </div>
-          </motion.div>
-        </AnimatePresence>
+        {/* Cercles de sport */}
+        {sportKeys.length > 1 && (
+          <div style={{ display: 'flex', gap: 18, overflowX: 'auto', paddingBottom: 6, marginBottom: 6 }}>
+            {sportKeys.map(s => <SportCircle key={s} sport={s} on={s === activeSport} onClick={() => { setSelSport(s); setSelSpec('') }} />)}
+          </div>
+        )}
+        {/* Cercles de spécialité du sport choisi */}
+        {specialties.length > 0 && (
+          <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4, marginBottom: 12 }}>
+            <SpecPill label="Tous" on={selSpec === ''} onClick={() => setSelSpec('')} />
+            {specialties.map(s => <SpecPill key={s} label={s} on={selSpec === s} onClick={() => setSelSpec(s)} />)}
+          </div>
+        )}
+        {/* Pile — glisse vers la gauche à chaque changement de sport/spécialité */}
+        <div style={{ overflowX: 'clip' }}>
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.div key={`${activeSport}|${selSpec}`}
+              initial={{ x: '100%', opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: '-100%', opacity: 0 }}
+              transition={{ duration: 0.34, ease: [0.32, 0.72, 0, 1] }}>
+              <div style={{ width: '100%', maxWidth: 460, margin: '0 auto' }}>
+                {list.length > 0
+                  ? <Stack list={list} onOpen={onOpen} mode="coverflow" height="clamp(370px, 92vw, 440px)" />
+                  : <p style={{ fontSize: 13, color: 'var(--text-dim)', textAlign: 'center', padding: 30 }}>Aucun programme.</p>}
+              </div>
+            </motion.div>
+          </AnimatePresence>
+        </div>
       </div>
     )
   }
@@ -198,14 +238,14 @@ export default function ProgramDeck({ programs, onOpen }: { programs: CoachProgr
   return (
     <div>
       <style>{STYLE}</style>
-      <div style={{ display: 'flex', gap: 'clamp(16px, 2.5vw, 30px)', overflowX: 'auto', paddingBottom: 12, alignItems: 'flex-start' }}>
+      <div style={{ display: 'flex', gap: 'clamp(20px, 3vw, 40px)', overflowX: 'auto', paddingBottom: 14, alignItems: 'flex-start' }}>
         {groups.map(([sport, list]) => (
           <div key={sport} style={{ flex: '0 0 clamp(248px, 30%, 320px)', minWidth: 248 }}>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 7, margin: '0 4px 10px' }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 7, margin: '0 4px 12px' }}>
               <span style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 600, color: 'var(--text)' }}>{SPORT_LABEL[sport] ?? sport}</span>
               <span className="tnum" style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text-dim)' }}>{list.length}</span>
             </div>
-            <Stack list={list} onOpen={onOpen} mode="fan" height="300px" />
+            <Stack list={list} onOpen={onOpen} mode="fan" height="304px" />
           </div>
         ))}
       </div>

@@ -31,8 +31,10 @@ const SPORT_GLYPH: Record<string, GlyphIcon> = {
 function sportOf(p: CoachProgram): string { return p.sports[0] ?? 'running' }
 function sportVar(s: string): string { return `var(${SPORT_VAR[s] ?? '--sport-run'})` }
 function cardBg(s: string): string {
+  // Couleur PLEINE (plus de blanc en haut : la carte du dessous ne paraît plus
+  // grise). Le brillant vient des reflets superposés, pas du dégradé.
   const c = sportVar(s)
-  return `linear-gradient(150deg, color-mix(in srgb, ${c} 90%, white) 0%, ${c} 46%, color-mix(in srgb, ${c} 64%, black) 100%)`
+  return `linear-gradient(150deg, color-mix(in srgb, ${c} 96%, white) 0%, ${c} 40%, color-mix(in srgb, ${c} 74%, black) 100%)`
 }
 function priceStr(p: CoachProgram): string { return p.price_cents > 0 ? `${(p.price_cents / 100).toFixed(p.price_cents % 100 === 0 ? 0 : 2)} €` : 'Gratuit' }
 function SportGlyph({ sport, size = 42 }: { sport: string; size?: number }) {
@@ -69,7 +71,7 @@ function Card({ p, pos, drag, mode, onOpen }: { p: CoachProgram; pos: number; dr
         position: 'absolute', top: 0, left: '50%', width: '88%', height: '100%', zIndex: z, opacity,
         borderRadius: 24, background: cardBg(sport), color: 'white', boxShadow: shadow, overflow: 'hidden',
         padding: 'clamp(16px, 4.5vw, 22px)', display: 'flex', flexDirection: 'column', boxSizing: 'border-box',
-        transform, transformOrigin: 'center', transition: 'transform 340ms cubic-bezier(0.32,0.72,0,1), opacity 200ms, box-shadow 200ms',
+        transform, transformOrigin: 'center', transition: 'transform 440ms cubic-bezier(0.34,1.3,0.5,1), opacity 260ms, box-shadow 260ms',
         cursor: isTop ? 'pointer' : 'default', pointerEvents: isTop ? 'auto' : 'none',
       }}>
       <span aria-hidden style={{ position: 'absolute', inset: 0, background: 'radial-gradient(130% 90% at 12% -5%, rgba(255,255,255,0.30), rgba(255,255,255,0) 52%)', pointerEvents: 'none' }} />

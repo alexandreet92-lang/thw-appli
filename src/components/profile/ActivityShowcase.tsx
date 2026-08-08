@@ -7,8 +7,15 @@
 // ══════════════════════════════════════════════════════════════════
 import { useState } from 'react'
 import SlideSheet from '@/components/ui/SlideSheet'
+import { staticRouteMapUrl } from '@/lib/staticMap'
 import type { ActivityShowcaseData, RecentActivity, RecordItem } from '@/lib/profile/activityShowcase'
-import { hoursByFamily, activeWeekStreak, sportMeta, bestRecord, recordsForSport, fmtHoursSec, polylineToSvgPath } from '@/lib/profile/activityShowcase'
+import { hoursByFamily, activeWeekStreak, sportMeta, bestRecord, recordsForSport, fmtHoursSec, polylineToSvgPath, decodePolyline } from '@/lib/profile/activityShowcase'
+
+// Couleurs (hex) du tracé par famille de sport, pour la carte Mapbox.
+const SPORT_HEX: Record<string, string> = { running: '22c55e', cycling: '3b82f6', swim: '0ea5e9', rowing: '8b5cf6', gym: 'f97316', hyrox: 'ef4444', other: '9ca3af' }
+function routePoints(polyline: string | null): { lat: number; lng: number }[] {
+  return decodePolyline(polyline).map(([lat, lng]) => ({ lat, lng }))
+}
 
 // Créneaux de records par sport (selon la spec).
 const RUN_SLOTS: { label: string; aliases: string[] }[] = [
@@ -35,6 +42,7 @@ const fmtDate = (iso: string) => { const d = new Date(iso); return `${d.getDate(
 
 export default function ActivityShowcase({ data, isOwner }: { data: ActivityShowcaseData; isOwner: boolean }) {
   const [detail, setDetail] = useState<RecentActivity | null>(null)
+  const [allOpen, setAllOpen] = useState(false)
   if (!data.can_view) {
     return (
       <p style={{ fontSize: 13.5, color: 'var(--text-dim)', margin: 0, lineHeight: 1.5 }}>
@@ -89,10 +97,23 @@ export default function ActivityShowcase({ data, isOwner }: { data: ActivityShow
         <div>
           <Label>Dernières activités</Label>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {data.recent.map(a => <ActivityRow key={a.id} a={a} onOpen={() => setDetail(a)} />)}
+            {data.recent.slice(0, 7).map(a => <ActivityRow key={a.id} a={a} onOpen={() => setDetail(a)} />)}
           </div>
+          {data.recent.length > 7 && (
+            <button onClick={() => setAllOpen(true)}
+              style={{ marginTop: 12, width: '100%', padding: '11px 16px', borderRadius: 'var(--r-md)', border: 'none', background: 'var(--bg-card2)', color: 'var(--primary)', fontFamily: 'var(--font-body)', fontSize: 13.5, fontWeight: 700, cursor: 'pointer' }}>
+              Voir toutes les activités →
+            </button>
+          )}
         </div>
       )}
+
+      {/* Toutes les activités — surpage coulissante */}
+      <SlideSheet open={allOpen} onClose={() => setAllOpen(false)} title="Toutes les activités">
+        <div style={{ maxWidth: 680, margin: '0 auto', padding: '8px clamp(16px,4vw,32px) 64px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {data.recent.map(a => <ActivityRow key={a.id} a={a} onOpen={() => setDetail(a)} />)}
+        </div>
+      </SlideSheet>
 
       {/* Détail de l'activité — surpage coulissante droite→gauche */}
       <SlideSheet open={!!detail} onClose={() => setDetail(null)} title="Activité">
@@ -104,12 +125,16 @@ export default function ActivityShowcase({ data, isOwner }: { data: ActivityShow
 
 // ── Détail d'une activité (dans la surpage) ──
 function ActivityDetailView({ a }: { a: RecentActivity }) {
-  const meta = sportMeta(sportFamilyLocal(a.sport))
+  const fam = sportFamilyLocal(a.sport)
+  const meta = sportMeta(fam)
+  const pts = routePoints(a.polyline)
+  const mapUrl = staticRouteMapUrl(pts, { width: 640, height: 360, color: SPORT_HEX[fam] ?? '9ca3af' })
   const path = polylineToSvgPath(a.polyline, 640, 320)
   const stats: { label: string; value: string }[] = []
   const dist = fmtDist(a.distance_m); if (dist) stats.push({ label: 'Distance', value: dist })
   if (a.seconds) stats.push({ label: 'Durée', value: fmtDur(a.seconds) })
   const pace = fmtPace(a.avg_pace_s_km); if (pace) stats.push({ label: 'Allure', value: pace })
+  if (a.distance_m && a.seconds && a.seconds > 0 && (fam === 'cycling' || !pace)) stats.push({ label: 'Vitesse moy.', value: `${Math.round(a.distance_m / a.seconds * 3.6 * 10) / 10} km/h` })
   if (a.avg_watts) stats.push({ label: 'Puissance moy.', value: `${Math.round(a.avg_watts)} W` })
   if (a.elevation_gain_m) stats.push({ label: 'Dénivelé +', value: `${Math.round(a.elevation_gain_m)} m` })
   return (
@@ -120,9 +145,14 @@ function ActivityDetailView({ a }: { a: RecentActivity }) {
       </div>
       <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 600, color: 'var(--text)', margin: '0 0 4px' }}>{a.title}</h2>
       <div style={{ fontSize: 13, color: 'var(--text-dim)', marginBottom: 16 }}>{new Date(a.started_at).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</div>
-      {/* Carte / tracé */}
-      {path ? (
-        <div style={{ background: meta.color, borderRadius: 'var(--r-lg)', padding: 16, marginBottom: 18, opacity: 0.96 }}>
+      {/* Carte réelle (Mapbox) ou tracé SVG en repli */}
+      {mapUrl ? (
+        <div style={{ borderRadius: 'var(--r-lg)', overflow: 'hidden', marginBottom: 18, boxShadow: '0 4px 18px rgba(0,0,0,0.12)' }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={mapUrl} alt="Tracé de l'activité" style={{ width: '100%', height: 'auto', display: 'block' }} />
+        </div>
+      ) : path ? (
+        <div style={{ background: meta.color, borderRadius: 'var(--r-lg)', padding: 16, marginBottom: 18 }}>
           <svg viewBox="0 0 640 320" style={{ width: '100%', height: 'auto', display: 'block' }}>
             <path d={path} fill="none" stroke="white" strokeWidth={4} strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" style={{ filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.3))' }} />
           </svg>
@@ -235,17 +265,23 @@ function Heatmap({ daily }: { daily: { d: string; count: number; seconds: number
 }
 
 function ActivityRow({ a, onOpen }: { a: RecentActivity; onOpen: () => void }) {
-  const meta = sportMeta(sportFamilyLocal(a.sport))
+  const fam = sportFamilyLocal(a.sport)
+  const meta = sportMeta(fam)
   const bits = [fmtDist(a.distance_m), fmtDur(a.seconds), fmtPace(a.avg_pace_s_km) ?? (a.avg_watts ? `${Math.round(a.avg_watts)} W` : null), a.elevation_gain_m ? `${Math.round(a.elevation_gain_m)} m D+` : null].filter(Boolean)
+  const pts = routePoints(a.polyline)
+  const mapUrl = staticRouteMapUrl(pts, { width: 128, height: 88, color: SPORT_HEX[fam] ?? '9ca3af' })
   const path = polylineToSvgPath(a.polyline, 72, 46)
   return (
     <button onClick={onOpen}
       style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '9px 12px', background: 'var(--bg-card2)', borderRadius: 'var(--r-md)', border: 'none', cursor: 'pointer', textAlign: 'left', width: '100%', fontFamily: 'var(--font-body)' }}>
-      {/* Vignette tracé */}
-      <div style={{ width: 56, height: 38, borderRadius: 8, background: path ? meta.color : 'var(--bg-card)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-        {path
-          ? <svg viewBox="0 0 72 46" style={{ width: '100%', height: '100%' }}><path d={path} fill="none" stroke="white" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" /></svg>
-          : <span style={{ width: 8, height: 8, borderRadius: '50%', background: meta.color }} />}
+      {/* Vignette : vraie carte Mapbox si dispo, sinon tracé SVG, sinon pastille */}
+      <div style={{ width: 64, height: 44, borderRadius: 8, background: path ? meta.color : 'var(--bg-card)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+        {mapUrl
+          // eslint-disable-next-line @next/next/no-img-element
+          ? <img src={mapUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          : path
+            ? <svg viewBox="0 0 72 46" style={{ width: '100%', height: '100%' }}><path d={path} fill="none" stroke="white" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" /></svg>
+            : <span style={{ width: 8, height: 8, borderRadius: '50%', background: meta.color }} />}
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.title}</div>

@@ -14,11 +14,9 @@ import ProgramDeck from '@/components/coach/ProgramDeck'
 import ProgramFilters, { applyProgramFilters, DEFAULT_FILTERS, type ProgFilters } from '@/components/coach/ProgramFilters'
 import ProgramDetailView from '@/components/coach/ProgramDetailView'
 import ActivityShowcase from '@/components/profile/ActivityShowcase'
-import { getProfileActivityShowcase, setActivityVisibility, type ActivityShowcaseData, type ActivityVisibility } from '@/lib/profile/activityShowcase'
+import { getProfileActivityShowcase, type ActivityShowcaseData } from '@/lib/profile/activityShowcase'
 import { createClient } from '@/lib/supabase/client'
 import SlideSheet from '@/components/ui/SlideSheet'
-
-const VIS_LABEL: Record<ActivityVisibility, string> = { public: 'Tout le monde', followers: 'Mes abonnés', private: 'Personne' }
 
 const SPORT_LABEL: Record<string, string> = { running: 'Course', cycling: 'Vélo', swim: 'Natation', gym: 'Renforcement', hyrox: 'Hyrox', rowing: 'Aviron', trail: 'Trail', triathlon: 'Triathlon' }
 
@@ -53,30 +51,22 @@ export default function CoachShowcase({ profile, programs = [], counts, isCoach,
   const filteredPrograms = applyProgramFilters(programs, progFilters)
   const [showcase, setShowcase] = useState<ActivityShowcaseData | null>(null)
   const [loadFailed, setLoadFailed] = useState(false)
-  const [vis, setVis] = useState<ActivityVisibility>('public')
-  // Cible = coach_id si valide, sinon (brouillon propriétaire) l'utilisateur connecté.
-  const resolveTarget = async (): Promise<string> => {
-    const cid = profile.coach_id
-    if (cid && cid.length >= 20) return cid
-    const { data: { user } } = await createClient().auth.getUser()
-    return user?.id ?? ''
-  }
   useEffect(() => {
     let cancelled = false
     ;(async () => {
-      const target = await resolveTarget()
+      // Cible = coach_id si valide, sinon (brouillon propriétaire) l'utilisateur connecté.
+      let target = profile.coach_id
+      if (!target || target.length < 20) {
+        const { data: { user } } = await createClient().auth.getUser()
+        target = user?.id ?? ''
+      }
       if (!target || cancelled) { setLoadFailed(true); return }
       const d = await getProfileActivityShowcase(target)
       if (cancelled) return
-      if (d) { setShowcase(d); setVis(d.visibility) } else setLoadFailed(true)
+      if (d) setShowcase(d); else setLoadFailed(true)
     })()
     return () => { cancelled = true }
-  }, [profile.coach_id]) // eslint-disable-line react-hooks/exhaustive-deps
-  const changeVis = async (v: ActivityVisibility) => {
-    setVis(v); await setActivityVisibility(v).catch(() => {})
-    const target = await resolveTarget()
-    if (target) void getProfileActivityShowcase(target).then(d => { if (d) setShowcase(d) }).catch(() => {})
-  }
+  }, [profile.coach_id])
   const yearNow = new Date().getFullYear()
   const name = profile.display_name || 'Profil'
   const monogram = name.trim().charAt(0).toUpperCase()
@@ -224,23 +214,6 @@ export default function CoachShowcase({ profile, programs = [], counts, isCoach,
             : loadFailed
               ? <Empty>Aucune activité à afficher pour l’instant.</Empty>
               : <Empty>Chargement des activités…</Empty>}
-
-          {/* Réglage de confidentialité (propriétaire) */}
-          {isOwner && (
-            <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--border)' }}>
-              <div style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--text-dim)', marginBottom: 8 }}>Qui peut voir mes activités ?</div>
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                {(['public', 'followers', 'private'] as ActivityVisibility[]).map(v => (
-                  <button key={v} onClick={() => void changeVis(v)}
-                    style={{ padding: '8px 14px', borderRadius: 999, cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 12.5, fontWeight: 700,
-                      border: vis === v ? '1px solid var(--primary)' : '1px solid var(--border)',
-                      background: vis === v ? 'var(--primary-dim)' : 'transparent', color: vis === v ? 'var(--primary)' : 'var(--text-mid)' }}>
-                    {VIS_LABEL[v]}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
 
         {/* Coordonnées */}

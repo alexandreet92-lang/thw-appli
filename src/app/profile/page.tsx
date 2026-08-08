@@ -7,6 +7,7 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import { User, Bell, Zap, Moon, Apple, TrendingUp, Sparkles, Coins, Plug, Trophy, Settings, Package, Bike, Footprints, Target, Globe, MapPin, Shield, Lock, CreditCard, BarChart3, Dumbbell, LogOut, ChevronLeft, Palette, Sun, Monitor, Check, Ruler, Users } from 'lucide-react'
 import SubscriptionEmailModal from '@/components/subscription/SubscriptionEmailModal'
 import { createClient } from '@/lib/supabase/client'
+import { getMyActivityVisibility, setActivityVisibility, type ActivityVisibility } from '@/lib/profile/activityShowcase'
 import { BottomSheet } from '@/components/ui/BottomSheet'
 import { SlideView } from '@/components/ui/SlideView'
 import { useI18n } from '@/lib/i18n'
@@ -1144,6 +1145,35 @@ function LocalisationBloc() {
   )
 }
 
+// ── Confidentialité des activités (qui peut les voir sur mon profil) ──
+function ActivityVisibilitySection() {
+  const [vis, setVis] = useState<ActivityVisibility>('public')
+  useEffect(() => { void getMyActivityVisibility().then(setVis).catch(() => {}) }, [])
+  const OPTS: { k: ActivityVisibility; label: string; sub: string }[] = [
+    { k: 'public', label: 'Tout le monde', sub: 'Visibles par tout visiteur de ton profil' },
+    { k: 'followers', label: 'Mes abonnés', sub: 'Visibles seulement par tes abonnés' },
+    { k: 'private', label: 'Personne', sub: 'Toi seul(e) les vois' },
+  ]
+  const choose = (v: ActivityVisibility) => { setVis(v); void setActivityVisibility(v).catch(() => {}) }
+  return (
+    <Section label="Mes activités">
+      <Group>
+        {OPTS.map((o, i) => (
+          <Line key={o.k} first={i === 0}>
+            <button onClick={() => choose(o.k)} style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left', padding: 0, fontFamily: 'var(--font-body)' }}>
+              <span style={{ width: 20, height: 20, borderRadius: '50%', flexShrink: 0, border: vis === o.k ? '6px solid var(--primary)' : '2px solid var(--border-mid)', transition: 'border 150ms' }} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ fontSize: 15, fontWeight: 500, color: 'var(--text)', margin: 0 }}>{o.label}</p>
+                <p style={{ fontSize: 11.5, color: 'var(--text-dim)', margin: '2px 0 0' }}>{o.sub}</p>
+              </div>
+            </button>
+          </Line>
+        ))}
+      </Group>
+    </Section>
+  )
+}
+
 // ── Bulle Confidentialité : données & vie privée ──────────────────
 function ConfidentialiteBloc() {
   const { t } = useI18n()
@@ -1155,6 +1185,8 @@ function ConfidentialiteBloc() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column' }}>
       <Intro>{t('profile.privacyIntro')}</Intro>
+
+      <ActivityVisibilitySection />
 
       <Section label={t('profile.documents')}>
         <Group>

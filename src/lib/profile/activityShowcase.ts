@@ -106,6 +106,31 @@ export function fmtHoursSec(sec: number): string {
   return m > 0 ? `${h}h${String(m).padStart(2, '0')}` : `${h}h`
 }
 
+export interface ActivityStreams {
+  time?: number[]; distance?: number[]; altitude?: number[]; heartrate?: number[]
+  cadence?: number[]; temp?: number[]; velocity?: number[]; watts?: number[]
+}
+export interface ActivityDetail {
+  can_view: boolean
+  id: string; sport: string; title: string; started_at: string; is_race: boolean | null
+  distance_m: number | null; seconds: number | null; elapsed_s: number | null
+  avg_pace_s_km: number | null; avg_speed_ms: number | null; max_speed_ms: number | null
+  avg_watts: number | null; max_watts: number | null; normalized_watts: number | null; kilojoules: number | null
+  elevation_gain_m: number | null; avg_hr: number | null; max_hr: number | null
+  avg_cadence: number | null; max_cadence: number | null; calories: number | null
+  avg_temp_c: number | null; sm: number | null; sn: number | null; rpe: number | null
+  polyline: string | null; streams: ActivityStreams | null
+}
+
+/** Détail complet (lecture seule) d'une activité, via la RPC sécurisée. */
+export async function getActivityDetail(id: string): Promise<ActivityDetail | null> {
+  const sb = createClient()
+  const { data, error } = await sb.rpc('activity_detail', { act_id: id })
+  if (error || !data) return null
+  const d = data as ActivityDetail
+  return d.can_view ? d : null
+}
+
 /** Décode un polyline Google encodé → liste de points [lat, lng]. */
 export function decodePolyline(str: string | null): [number, number][] {
   if (!str) return []

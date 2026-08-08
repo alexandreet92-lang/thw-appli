@@ -5,12 +5,12 @@
 // régularité (~1 an), série de semaines actives, et 7 dernières activités.
 // Reçoit les données déjà agrégées + filtrées par la RPC (confidentialité).
 // ══════════════════════════════════════════════════════════════════
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import SlideSheet from '@/components/ui/SlideSheet'
 import { useNarrow } from '@/lib/hooks/useNarrow'
 import { staticRouteMapUrl } from '@/lib/staticMap'
-import type { ActivityShowcaseData, RecentActivity, RecordItem } from '@/lib/profile/activityShowcase'
-import { hoursByFamily, activeWeekStreak, sportMeta, bestRecord, recordsForSport, fmtHoursSec, polylineToSvgPath, decodePolyline } from '@/lib/profile/activityShowcase'
+import type { ActivityShowcaseData, RecentActivity, RecordItem, ActivityDetail, ActivityStreams } from '@/lib/profile/activityShowcase'
+import { hoursByFamily, activeWeekStreak, sportMeta, bestRecord, recordsForSport, fmtHoursSec, polylineToSvgPath, decodePolyline, getActivityDetail } from '@/lib/profile/activityShowcase'
 
 // Couleurs (hex) du tracé par famille de sport, pour la carte Mapbox.
 const SPORT_HEX: Record<string, string> = { running: '22c55e', cycling: '3b82f6', swim: '0ea5e9', rowing: '8b5cf6', gym: 'f97316', hyrox: 'ef4444', other: '9ca3af' }
@@ -126,29 +126,47 @@ export default function ActivityShowcase({ data, isOwner }: { data: ActivityShow
   )
 }
 
-// ── Détail d'une activité (dans la surpage) ──
+// ── Détail d'une activité (analyse LECTURE SEULE : map + stats + courbes) ──
 function ActivityDetailView({ a }: { a: RecentActivity }) {
   const fam = sportFamilyLocal(a.sport)
   const meta = sportMeta(fam)
-  const pts = routePoints(a.polyline)
-  const mapUrl = staticRouteMapUrl(pts, { width: 640, height: 360, color: SPORT_HEX[fam] ?? '9ca3af' })
-  const path = polylineToSvgPath(a.polyline, 640, 320)
+  const [full, setFull] = useState<ActivityDetail | null>(null)
+  useEffect(() => { let off = false; void getActivityDetail(a.id).then(d => { if (!off) setFull(d) }); return () => { off = true } }, [a.id])
+
+  const poly = full?.polyline ?? a.polyline
+  const mapUrl = staticRouteMapUrl(routePoints(poly), { width: 720, height: 380, color: SPORT_HEX[fam] ?? '9ca3af' })
+  const path = polylineToSvgPath(poly, 640, 320)
+
+  // Stats (détail complet si chargé, sinon aperçu depuis la carte).
+  const d = full
   const stats: { label: string; value: string }[] = []
-  const dist = fmtDist(a.distance_m); if (dist) stats.push({ label: 'Distance', value: dist })
-  if (a.seconds) stats.push({ label: 'Durée', value: fmtDur(a.seconds) })
-  const pace = fmtPace(a.avg_pace_s_km); if (pace) stats.push({ label: 'Allure', value: pace })
-  if (a.distance_m && a.seconds && a.seconds > 0 && (fam === 'cycling' || !pace)) stats.push({ label: 'Vitesse moy.', value: `${Math.round(a.distance_m / a.seconds * 3.6 * 10) / 10} km/h` })
-  if (a.avg_watts) stats.push({ label: 'Puissance moy.', value: `${Math.round(a.avg_watts)} W` })
-  if (a.elevation_gain_m) stats.push({ label: 'Dénivelé +', value: `${Math.round(a.elevation_gain_m)} m` })
+  const dist = fmtDist(d?.distance_m ?? a.distance_m); if (dist) stats.push({ label: 'Distance', value: dist })
+  const secs = d?.seconds ?? a.seconds; if (secs) stats.push({ label: 'Durée', value: fmtDur(secs) })
+  const pace = fmtPace(d?.avg_pace_s_km ?? a.avg_pace_s_km); if (pace && fam !== 'cycling') stats.push({ label: 'Allure', value: pace })
+  const spd = d?.avg_speed_ms ? d.avg_speed_ms * 3.6 : (d?.distance_m && secs ? d.distance_m / secs * 3.6 : null)
+  if (spd && (fam === 'cycling' || !pace)) stats.push({ label: 'Vitesse moy.', value: `${Math.round(spd * 10) / 10} km/h` })
+  const watts = d?.avg_watts ?? a.avg_watts; if (watts) stats.push({ label: 'Puissance moy.', value: `${Math.round(watts)} W` })
+  if (d?.max_watts) stats.push({ label: 'Puissance max', value: `${Math.round(d.max_watts)} W` })
+  const elev = d?.elevation_gain_m ?? a.elevation_gain_m; if (elev) stats.push({ label: 'Dénivelé +', value: `${Math.round(elev)} m` })
+  if (d?.avg_hr) stats.push({ label: 'FC moy.', value: `${Math.round(d.avg_hr)} bpm` })
+  if (d?.max_hr) stats.push({ label: 'FC max', value: `${Math.round(d.max_hr)} bpm` })
+  if (d?.avg_cadence) stats.push({ label: 'Cadence moy.', value: `${Math.round(d.avg_cadence)}` })
+  if (d?.avg_temp_c) stats.push({ label: 'Température', value: `${Math.round(d.avg_temp_c)} °C` })
+  if (d?.calories) stats.push({ label: 'Calories', value: `${Math.round(d.calories)} kcal` })
+  const sm = d?.sm ?? a.sm, sn = d?.sn ?? a.sn
+  if (sm) stats.push({ label: 'Score métab.', value: `${sm}` })
+  if (sn) stats.push({ label: 'Score neuro.', value: `${sn}` })
+
   return (
-    <div style={{ maxWidth: 680, margin: '0 auto', padding: '8px clamp(16px,4vw,32px) 64px' }}>
+    <div style={{ maxWidth: 720, margin: '0 auto', padding: '8px clamp(16px,4vw,32px) 64px' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 4 }}>
         <span style={{ width: 10, height: 10, borderRadius: 3, background: meta.color }} />
         <span style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-mid)' }}>{meta.label}</span>
+        <span style={{ fontSize: 10.5, fontWeight: 800, color: 'var(--text-dim)', border: '1px solid var(--border)', borderRadius: 999, padding: '2px 9px' }}>{(d?.is_race ?? a.is_race) ? 'Compétition' : 'Entraînement'}</span>
       </div>
       <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 600, color: 'var(--text)', margin: '0 0 4px' }}>{a.title}</h2>
       <div style={{ fontSize: 13, color: 'var(--text-dim)', marginBottom: 16 }}>{new Date(a.started_at).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</div>
-      {/* Carte réelle (Mapbox) ou tracé SVG en repli */}
+
       {mapUrl ? (
         <div style={{ borderRadius: 'var(--r-lg)', overflow: 'hidden', marginBottom: 18, boxShadow: '0 4px 18px rgba(0,0,0,0.12)' }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -161,14 +179,65 @@ function ActivityDetailView({ a }: { a: RecentActivity }) {
           </svg>
         </div>
       ) : null}
-      {/* Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(110px,1fr))', gap: 12 }}>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(108px,1fr))', gap: 10 }}>
         {stats.map(s => (
-          <div key={s.label} style={{ background: 'var(--bg-card2)', borderRadius: 'var(--r-md)', padding: '12px 14px' }}>
-            <div style={{ fontSize: 11, color: 'var(--text-dim)', marginBottom: 4 }}>{s.label}</div>
-            <div className="tnum" style={{ fontSize: 19, fontWeight: 700, color: 'var(--text)', fontVariantNumeric: 'tabular-nums' }}>{s.value}</div>
+          <div key={s.label} style={{ background: 'var(--bg-card2)', borderRadius: 'var(--r-md)', padding: '11px 13px' }}>
+            <div style={{ fontSize: 10.5, color: 'var(--text-dim)', marginBottom: 3 }}>{s.label}</div>
+            <div className="tnum" style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)', fontVariantNumeric: 'tabular-nums' }}>{s.value}</div>
           </div>
         ))}
+      </div>
+
+      {/* Courbes (lecture seule) */}
+      {d?.streams && <StreamCurves streams={d.streams} />}
+      {!full && <p style={{ fontSize: 12.5, color: 'var(--text-dim)', marginTop: 16 }}>Chargement de l’analyse…</p>}
+    </div>
+  )
+}
+
+// ── Courbes empilées (altitude, FC, puissance, vitesse, température, cadence) ──
+function StreamCurves({ streams }: { streams: ActivityStreams }) {
+  const defs: { key: keyof ActivityStreams; label: string; color: string; unit: string; transform?: (v: number) => number }[] = [
+    { key: 'altitude', label: 'Altitude', color: '#94a3b8', unit: 'm' },
+    { key: 'heartrate', label: 'FC', color: '#f97316', unit: 'bpm' },
+    { key: 'watts', label: 'Puissance', color: '#8b5cf6', unit: 'W' },
+    { key: 'velocity', label: 'Vitesse', color: '#06b6d4', unit: 'km/h', transform: v => v * 3.6 },
+    { key: 'temp', label: 'Température', color: '#10b981', unit: '°C' },
+    { key: 'cadence', label: 'Cadence', color: '#ec4899', unit: 'rpm' },
+  ]
+  const N = 200
+  const sample = (arr: number[]): number[] => { if (arr.length <= N) return arr; const step = arr.length / N; return Array.from({ length: N }, (_, i) => arr[Math.floor(i * step)]) }
+  const series = defs.map(def => {
+    const raw = streams[def.key]
+    if (!Array.isArray(raw) || raw.length < 3) return null
+    const vals = sample(raw as number[]).map(v => def.transform ? def.transform(v) : v).filter(v => typeof v === 'number' && !isNaN(v))
+    if (vals.length < 3) return null
+    const min = Math.min(...vals), max = Math.max(...vals)
+    return { def, vals, min, max }
+  }).filter(Boolean) as { def: typeof defs[number]; vals: number[]; min: number; max: number }[]
+  if (!series.length) return null
+  return (
+    <div style={{ marginTop: 22 }}>
+      <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-dim)', marginBottom: 10 }}>Courbes</div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {series.map(({ def, vals, min, max }) => {
+          const W = 300, H = 46, span = Math.max(1e-6, max - min)
+          const step = W / (vals.length - 1)
+          const pts = vals.map((v, i) => `${(i * step).toFixed(1)},${(H - ((v - min) / span) * (H - 4) - 2).toFixed(1)}`).join(' ')
+          return (
+            <div key={def.key} style={{ display: 'flex', alignItems: 'stretch', gap: 10, background: 'var(--bg-card2)', borderRadius: 'var(--r-md)', padding: '8px 10px' }}>
+              <div style={{ width: 78, flexShrink: 0 }}>
+                <div style={{ fontSize: 12, fontWeight: 800, color: def.color }}>{def.label}</div>
+                <div className="tnum" style={{ fontSize: 10, color: 'var(--text-dim)' }}>{Math.round(min)}–{Math.round(max)} {def.unit}</div>
+              </div>
+              <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" style={{ flex: 1, height: 46 }}>
+                <polygon points={`0,${H} ${pts} ${W},${H}`} fill={def.color} opacity={0.16} />
+                <polyline points={pts} fill="none" stroke={def.color} strokeWidth={1.4} vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
+              </svg>
+            </div>
+          )
+        })}
       </div>
     </div>
   )

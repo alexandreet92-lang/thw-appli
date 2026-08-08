@@ -6,12 +6,14 @@
 // Reçoit les données déjà agrégées + filtrées par la RPC (confidentialité).
 // ══════════════════════════════════════════════════════════════════
 import { useState } from 'react'
+import SlideSheet from '@/components/ui/SlideSheet'
 import type { ActivityShowcaseData, RecentActivity, RecordItem } from '@/lib/profile/activityShowcase'
-import { hoursByFamily, activeWeekStreak, sportMeta, bestRecord, recordsForSport } from '@/lib/profile/activityShowcase'
+import { hoursByFamily, activeWeekStreak, sportMeta, bestRecord, recordsForSport, fmtHoursSec, polylineToSvgPath } from '@/lib/profile/activityShowcase'
 
 // Créneaux de records par sport (selon la spec).
 const RUN_SLOTS: { label: string; aliases: string[] }[] = [
   { label: '1500 m', aliases: ['1500m', '1500'] }, { label: '5 km', aliases: ['5km', '5000m'] },
+  { label: '10 km', aliases: ['10km', '10000m'] }, { label: 'Semi', aliases: ['semi', 'semimarathon', 'halfmarathon', '21km', '21097m', '21.1km'] },
   { label: 'Marathon', aliases: ['marathon', '42km', '42195m', '42.195km'] }, { label: '100 km', aliases: ['100km', '100000m'] },
 ]
 const BIKE_SLOTS: { label: string; aliases: string[] }[] = [
@@ -32,6 +34,7 @@ const fmtPace = (s: number | null) => { if (!s || s <= 0) return null; return `$
 const fmtDate = (iso: string) => { const d = new Date(iso); return `${d.getDate()} ${MONTH[d.getMonth()]}` }
 
 export default function ActivityShowcase({ data, isOwner }: { data: ActivityShowcaseData; isOwner: boolean }) {
+  const [detail, setDetail] = useState<RecentActivity | null>(null)
   if (!data.can_view) {
     return (
       <p style={{ fontSize: 13.5, color: 'var(--text-dim)', margin: 0, lineHeight: 1.5 }}>
@@ -86,10 +89,54 @@ export default function ActivityShowcase({ data, isOwner }: { data: ActivityShow
         <div>
           <Label>Dernières activités</Label>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {data.recent.map(a => <ActivityRow key={a.id} a={a} />)}
+            {data.recent.map(a => <ActivityRow key={a.id} a={a} onOpen={() => setDetail(a)} />)}
           </div>
         </div>
       )}
+
+      {/* Détail de l'activité — surpage coulissante droite→gauche */}
+      <SlideSheet open={!!detail} onClose={() => setDetail(null)} title="Activité">
+        {detail && <ActivityDetailView a={detail} />}
+      </SlideSheet>
+    </div>
+  )
+}
+
+// ── Détail d'une activité (dans la surpage) ──
+function ActivityDetailView({ a }: { a: RecentActivity }) {
+  const meta = sportMeta(sportFamilyLocal(a.sport))
+  const path = polylineToSvgPath(a.polyline, 640, 320)
+  const stats: { label: string; value: string }[] = []
+  const dist = fmtDist(a.distance_m); if (dist) stats.push({ label: 'Distance', value: dist })
+  if (a.seconds) stats.push({ label: 'Durée', value: fmtDur(a.seconds) })
+  const pace = fmtPace(a.avg_pace_s_km); if (pace) stats.push({ label: 'Allure', value: pace })
+  if (a.avg_watts) stats.push({ label: 'Puissance moy.', value: `${Math.round(a.avg_watts)} W` })
+  if (a.elevation_gain_m) stats.push({ label: 'Dénivelé +', value: `${Math.round(a.elevation_gain_m)} m` })
+  return (
+    <div style={{ maxWidth: 680, margin: '0 auto', padding: '8px clamp(16px,4vw,32px) 64px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 4 }}>
+        <span style={{ width: 10, height: 10, borderRadius: 3, background: meta.color }} />
+        <span style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-mid)' }}>{meta.label}</span>
+      </div>
+      <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 600, color: 'var(--text)', margin: '0 0 4px' }}>{a.title}</h2>
+      <div style={{ fontSize: 13, color: 'var(--text-dim)', marginBottom: 16 }}>{new Date(a.started_at).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</div>
+      {/* Carte / tracé */}
+      {path ? (
+        <div style={{ background: meta.color, borderRadius: 'var(--r-lg)', padding: 16, marginBottom: 18, opacity: 0.96 }}>
+          <svg viewBox="0 0 640 320" style={{ width: '100%', height: 'auto', display: 'block' }}>
+            <path d={path} fill="none" stroke="white" strokeWidth={4} strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" style={{ filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.3))' }} />
+          </svg>
+        </div>
+      ) : null}
+      {/* Stats */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(110px,1fr))', gap: 12 }}>
+        {stats.map(s => (
+          <div key={s.label} style={{ background: 'var(--bg-card2)', borderRadius: 'var(--r-md)', padding: '12px 14px' }}>
+            <div style={{ fontSize: 11, color: 'var(--text-dim)', marginBottom: 4 }}>{s.label}</div>
+            <div className="tnum" style={{ fontSize: 19, fontWeight: 700, color: 'var(--text)', fontVariantNumeric: 'tabular-nums' }}>{s.value}</div>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
@@ -125,7 +172,7 @@ function VolumeGauge({ families, totalSec, totalHours }: { families: { key: stri
               style={{ display: 'flex', alignItems: 'center', gap: 8, opacity: hover && !on ? 0.5 : 1, transition: 'opacity 150ms' }}>
               <span style={{ width: 10, height: 10, borderRadius: 3, background: sportMeta(f.key).color, flexShrink: 0 }} />
               <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text)', minWidth: 74 }}>{sportMeta(f.key).label}</span>
-              <span className="tnum" style={{ fontSize: 12.5, fontWeight: 700, color: on ? 'var(--text)' : 'var(--text-mid)', fontVariantNumeric: 'tabular-nums' }}>{f.hours} h</span>
+              <span className="tnum" style={{ fontSize: 12.5, fontWeight: 700, color: on ? 'var(--text)' : 'var(--text-mid)', fontVariantNumeric: 'tabular-nums' }}>{fmtHoursSec(f.seconds)}</span>
               <span className="tnum" style={{ fontSize: 11, color: 'var(--text-dim)' }}>{pct}%</span>
             </div>
           )
@@ -187,18 +234,25 @@ function Heatmap({ daily }: { daily: { d: string; count: number; seconds: number
   )
 }
 
-function ActivityRow({ a }: { a: RecentActivity }) {
+function ActivityRow({ a, onOpen }: { a: RecentActivity; onOpen: () => void }) {
   const meta = sportMeta(sportFamilyLocal(a.sport))
   const bits = [fmtDist(a.distance_m), fmtDur(a.seconds), fmtPace(a.avg_pace_s_km) ?? (a.avg_watts ? `${Math.round(a.avg_watts)} W` : null), a.elevation_gain_m ? `${Math.round(a.elevation_gain_m)} m D+` : null].filter(Boolean)
+  const path = polylineToSvgPath(a.polyline, 72, 46)
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', background: 'var(--bg-card2)', borderRadius: 'var(--r-md)' }}>
-      <span style={{ width: 9, height: 9, borderRadius: '50%', background: meta.color, flexShrink: 0 }} />
+    <button onClick={onOpen}
+      style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '9px 12px', background: 'var(--bg-card2)', borderRadius: 'var(--r-md)', border: 'none', cursor: 'pointer', textAlign: 'left', width: '100%', fontFamily: 'var(--font-body)' }}>
+      {/* Vignette tracé */}
+      <div style={{ width: 56, height: 38, borderRadius: 8, background: path ? meta.color : 'var(--bg-card)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+        {path
+          ? <svg viewBox="0 0 72 46" style={{ width: '100%', height: '100%' }}><path d={path} fill="none" stroke="white" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" /></svg>
+          : <span style={{ width: 8, height: 8, borderRadius: '50%', background: meta.color }} />}
+      </div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.title}</div>
         <div className="tnum" style={{ fontSize: 11.5, color: 'var(--text-dim)', fontVariantNumeric: 'tabular-nums' }}>{fmtDate(a.started_at)} · {bits.join(' · ')}</div>
       </div>
-      <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-mid)', textTransform: 'uppercase', letterSpacing: '0.03em' }}>{meta.label}</span>
-    </div>
+      <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-mid)', textTransform: 'uppercase', letterSpacing: '0.03em', flexShrink: 0 }}>{meta.label}</span>
+    </button>
   )
 }
 function sportFamilyLocal(sportType: string): string {
@@ -252,24 +306,25 @@ function RecordCard({ sportKey, title, rows }: { sportKey: string; title: string
 function WeeklyChart({ weekly }: { weekly: { week: string; count: number; distance_m: number; seconds: number }[] }) {
   const [metric, setMetric] = useState<'time' | 'dist'>('time')
   const [hover, setHover] = useState<number | null>(null)
-  const val = (w: { distance_m: number; seconds: number }) => metric === 'dist' ? w.distance_m / 1000 : w.seconds / 3600
+  const val = (w: { distance_m: number; seconds: number }) => metric === 'dist' ? w.distance_m / 1000 : w.seconds
   const max = Math.max(1, ...weekly.map(val))
-  const fmt = (v: number) => metric === 'dist' ? `${Math.round(v * 10) / 10} km` : `${Math.round(v * 10) / 10} h`
+  const fmt = (v: number) => metric === 'dist' ? `${Math.round(v * 10) / 10} km` : fmtHoursSec(v)
   return (
     <div>
       <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
         <Toggle on={metric === 'time'} onClick={() => setMetric('time')}>Temps</Toggle>
         <Toggle on={metric === 'dist'} onClick={() => setMetric('dist')}>Distance</Toggle>
       </div>
-      <div style={{ position: 'relative', display: 'flex', alignItems: 'flex-end', gap: 2, height: 120, overflowX: 'auto', paddingTop: 22 }}>
+      {/* overflow visible + padding haut : la bulle n'est jamais coupée */}
+      <div style={{ position: 'relative', display: 'flex', alignItems: 'flex-end', gap: 2, height: 120, paddingTop: 30, overflow: 'visible' }}>
         {weekly.map((w, i) => {
           const v = val(w); const on = hover === i
           return (
             <div key={w.week} onMouseEnter={() => setHover(i)} onMouseLeave={() => setHover(h => h === i ? null : h)}
-              style={{ flex: '1 0 6px', minWidth: 6, height: '100%', display: 'flex', alignItems: 'flex-end', position: 'relative' }}>
-              <div style={{ width: '100%', height: `${Math.max(v > 0 ? 3 : 0, v / max * 100)}%`, borderRadius: '3px 3px 0 0', background: on ? 'var(--text)' : 'var(--primary)', opacity: on ? 1 : 0.85, transition: 'opacity 120ms' }} />
+              style={{ flex: '1 1 0', minWidth: 2, height: '100%', display: 'flex', alignItems: 'flex-end', position: 'relative' }}>
+              <div style={{ width: '100%', height: `${Math.max(v > 0 ? 3 : 0, v / max * 100)}%`, borderRadius: '2px 2px 0 0', background: on ? 'var(--text)' : 'var(--primary)', opacity: on ? 1 : 0.85, transition: 'opacity 120ms' }} />
               {on && (
-                <div style={{ position: 'absolute', bottom: '100%', left: '50%', transform: 'translateX(-50%)', marginBottom: 4, zIndex: 5, background: 'var(--text)', color: 'var(--bg-card)', borderRadius: 7, padding: '5px 8px', fontSize: 10.5, fontWeight: 700, whiteSpace: 'nowrap', pointerEvents: 'none' }}>
+                <div style={{ position: 'absolute', bottom: '100%', left: '50%', transform: 'translateX(-50%)', marginBottom: 6, zIndex: 10, background: 'var(--text)', color: 'var(--bg-card)', borderRadius: 7, padding: '5px 9px', fontSize: 10.5, fontWeight: 700, whiteSpace: 'nowrap', pointerEvents: 'none', boxShadow: '0 4px 14px rgba(0,0,0,0.25)' }}>
                   {new Date(w.week).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })} · {fmt(v)}
                 </div>
               )}

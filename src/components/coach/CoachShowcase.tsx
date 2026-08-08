@@ -47,7 +47,7 @@ interface ShowcaseProps {
   activitiesHref?: string            // lien « Voir les activités » (si dispo)
 }
 
-export default function CoachShowcase({ profile, programs = [], counts, isCoach, isOwner, isFollowing, followBusy, onToggleFollow, actions, activitiesHref }: ShowcaseProps) {
+export default function CoachShowcase({ profile, programs = [], counts, isCoach, isOwner, isFollowing, followBusy, onToggleFollow, actions }: ShowcaseProps) {
   const [openProgram, setOpenProgram] = useState<CoachProgram | null>(null)
   const [progFilters, setProgFilters] = useState<ProgFilters>(DEFAULT_FILTERS)
   const filteredPrograms = applyProgramFilters(programs, progFilters)
@@ -216,9 +216,8 @@ export default function CoachShowcase({ profile, programs = [], counts, isCoach,
 
         {/* Activités (pleine largeur) */}
         <div style={{ ...card, gridColumn: '1 / -1' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 14 }}>
+          <div style={{ marginBottom: 14 }}>
             <SectionTitle>Activités</SectionTitle>
-            {activitiesHref && <Link href={activitiesHref} style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--primary)', textDecoration: 'none' }}>Tout voir →</Link>}
           </div>
           {showcase
             ? <ActivityShowcase data={showcase} isOwner={!!isOwner} />

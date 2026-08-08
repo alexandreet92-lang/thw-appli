@@ -98,6 +98,46 @@ export function recordsForSport(records: RecordItem[], sport: string): RecordIte
   return records.filter(r => r.sport === sport)
 }
 
+/** Durée lisible « 6h30 » (jamais « 6.5h »). */
+export function fmtHoursSec(sec: number): string {
+  const h = Math.floor(sec / 3600), m = Math.round((sec % 3600) / 60)
+  if (h <= 0) return `${m} min`
+  return m > 0 ? `${h}h${String(m).padStart(2, '0')}` : `${h}h`
+}
+
+/** Décode un polyline Google encodé → liste de points [lat, lng]. */
+export function decodePolyline(str: string | null): [number, number][] {
+  if (!str) return []
+  const pts: [number, number][] = []
+  let index = 0, lat = 0, lng = 0
+  while (index < str.length) {
+    let shift = 0, result = 0, b: number
+    do { b = str.charCodeAt(index++) - 63; result |= (b & 0x1f) << shift; shift += 5 } while (b >= 0x20)
+    lat += (result & 1) ? ~(result >> 1) : (result >> 1)
+    shift = 0; result = 0
+    do { b = str.charCodeAt(index++) - 63; result |= (b & 0x1f) << shift; shift += 5 } while (b >= 0x20)
+    lng += (result & 1) ? ~(result >> 1) : (result >> 1)
+    pts.push([lat * 1e-5, lng * 1e-5])
+  }
+  return pts
+}
+
+/** Chemin SVG normalisé (viewBox 0 0 w h) à partir d'un polyline encodé. */
+export function polylineToSvgPath(encoded: string | null, w: number, h: number, pad = 4): string | null {
+  const pts = decodePolyline(encoded)
+  if (pts.length < 2) return null
+  let minLat = Infinity, maxLat = -Infinity, minLng = Infinity, maxLng = -Infinity
+  for (const [la, lo] of pts) { if (la < minLat) minLat = la; if (la > maxLat) maxLat = la; if (lo < minLng) minLng = lo; if (lo > maxLng) maxLng = lo }
+  const spanLat = Math.max(1e-6, maxLat - minLat), spanLng = Math.max(1e-6, maxLng - minLng)
+  const scale = Math.min((w - pad * 2) / spanLng, (h - pad * 2) / spanLat)
+  const ox = (w - spanLng * scale) / 2, oy = (h - spanLat * scale) / 2
+  return pts.map(([la, lo], i) => {
+    const x = ox + (lo - minLng) * scale
+    const y = h - (oy + (la - minLat) * scale) // lat inversé (nord en haut)
+    return `${i === 0 ? 'M' : 'L'}${x.toFixed(1)},${y.toFixed(1)}`
+  }).join(' ')
+}
+
 /** Heures par famille de sport (agrégées), triées décroissant. */
 export function hoursByFamily(rows: { sport: string; seconds: number }[]): { key: string; hours: number; seconds: number }[] {
   const m = new Map<string, number>()

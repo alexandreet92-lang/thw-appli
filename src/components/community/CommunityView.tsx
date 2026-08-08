@@ -126,6 +126,7 @@ export function CommunityView() {
   }
   function selectCall() {
     setPanel('call')
+    if (channel) call.start({ channelId: channel.id }, `#${channel.name}`)
     if (isNarrow) { setDir('fwd'); setMView('chat') }
   }
 

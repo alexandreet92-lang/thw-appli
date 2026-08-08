@@ -135,7 +135,7 @@ export function CallProvider({ children }: { children: ReactNode }) {
       } catch (e) { if (alive()) { setErrDetail(e instanceof Error ? e.message : 'réseau'); setStatus('error') } return }
 
       try {
-        const { Room, RoomEvent, Track } = await import('livekit-client')
+        const { Room, RoomEvent, Track, DisconnectReason } = await import('livekit-client')
         if (!alive()) return
         const room = new Room({ adaptiveStream: true, dynacast: true })
         roomRef.current = room
@@ -158,7 +158,16 @@ export function CallProvider({ children }: { children: ReactNode }) {
           bump()
         })
         room.on(RoomEvent.AudioPlaybackStatusChanged, () => { if (isThis()) setNeedAudioTap(!room.canPlaybackAudio) })
-        room.on(RoomEvent.Disconnected, () => { if (roomRef.current === room) leave() })
+        room.on(RoomEvent.Disconnected, (reason?: number) => {
+          // Ne concerne QUE les coupures non initiées par l'utilisateur (leave()
+          // met roomRef à null avant de déconnecter). On expose la raison LiveKit
+          // pour diagnostic au lieu de retomber silencieusement sur l'accueil.
+          if (roomRef.current !== room) return
+          roomRef.current = null; detachAllAudio()
+          const rn = reason != null ? (DisconnectReason[reason] ?? String(reason)) : 'inconnue'
+          setErrDetail(`déconnecté par le serveur (${rn})`)
+          setStatus('error'); setMinimized(false); setMicOn(true); setCamOn(false); setScreenOn(false); setNeedAudioTap(false)
+        })
 
         await room.connect(url, token)
         if (!isThis()) { void room.disconnect(); return }

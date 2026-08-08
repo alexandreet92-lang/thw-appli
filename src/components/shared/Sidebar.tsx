@@ -11,67 +11,6 @@ import { useI18n } from '@/lib/i18n'
 
 const AIPanel = dynamic(() => import('@/components/ai/AIPanel'), { ssr: false })
 
-// ── Briefing hook inline (compte d'articles non lus) ───────────
-
-interface BriefingSummary {
-  lu: boolean
-  unreadCount: number
-}
-
-function useBriefingBadge(): BriefingSummary {
-  const [summary, setSummary] = useState<BriefingSummary>({ lu: true, unreadCount: 0 })
-  const pathname = usePathname()
-
-  useEffect(() => {
-    let cancelled = false
-    void (async () => {
-      try {
-        const res = await fetch('/api/briefing', { cache: 'no-store' })
-        if (!res.ok || cancelled) return
-        const json = await res.json() as {
-          briefing: { lu: boolean; content: unknown } | null
-        }
-        if (cancelled) return
-        if (!json.briefing) { setSummary({ lu: true, unreadCount: 0 }); return }
-        if (json.briefing.lu) { setSummary({ lu: true, unreadCount: 0 }); return }
-
-        // Compter les articles toutes catégories confondues — supporte
-        // les 3 formes de content.categories :
-        //   (A) NEW  array  : [{ sous_themes: [{ articles }] }]
-        //   (B) OLD  array  : [{ articles: [...] }]
-        //   (C) OLD  keyed  : { ia_tech: [...], business: [...] }
-        let total = 0
-        const content = json.briefing.content
-        if (content && typeof content === 'object') {
-          const cats = (content as { categories?: unknown }).categories
-          if (Array.isArray(cats)) {
-            for (const cat of cats) {
-              if (!cat || typeof cat !== 'object') continue
-              const c = cat as { sous_themes?: unknown; articles?: unknown }
-              if (Array.isArray(c.sous_themes)) {
-                for (const st of c.sous_themes) {
-                  const articles = (st as { articles?: unknown })?.articles
-                  if (Array.isArray(articles)) total += articles.length
-                }
-              } else if (Array.isArray(c.articles)) {
-                total += c.articles.length
-              }
-            }
-          } else if (cats && typeof cats === 'object') {
-            for (const arr of Object.values(cats as Record<string, unknown>)) {
-              if (Array.isArray(arr)) total += arr.length
-            }
-          }
-        }
-        setSummary({ lu: false, unreadCount: total > 0 ? total : 1 })
-      } catch { /* silent */ }
-    })()
-    return () => { cancelled = true }
-    // Re-check quand l'utilisateur navigue (le PATCH de /briefing peut changer l'état)
-  }, [pathname])
-
-  return summary
-}
 
 // ── Nav items ──────────────────────────────────────────────────
 
@@ -306,15 +245,13 @@ function NavItem({
 
 // ── Sidebar content (shared desktop + mobile drawer) ───────────
 
-export function SidebarContent({ onClose, onOpenAI, headerSlot, expanded = true }: { onClose?: () => void; onOpenAI?: () => void; headerSlot?: React.ReactNode; expanded?: boolean }) {
+export function SidebarContent({ onClose, headerSlot, expanded = true }: { onClose?: () => void; onOpenAI?: () => void; headerSlot?: React.ReactNode; expanded?: boolean }) {
   // Libellés masqués (fondu) quand le rail est replié — icônes toujours visibles.
   const lblStyle: React.CSSProperties = { opacity: expanded ? 1 : 0, transition: 'opacity 150ms ease', whiteSpace: 'nowrap' }
   const pathname = usePathname()
   const { mode, toggleTheme } = useTheme()
   const { t } = useI18n()
   const { profile } = useProfile()
-  const briefing = useBriefingBadge()
-  const briefingActive = pathname === '/briefing'
 
   // Lien Cockpit visible uniquement par l'admin (email = NEXT_PUBLIC_ADMIN_EMAIL).
   // La page /admin reste protégée côté serveur (403) indépendamment de cet affichage.
@@ -445,132 +382,6 @@ export function SidebarContent({ onClose, onOpenAI, headerSlot, expanded = true 
             expanded={expanded}
           />
         )}
-        {/* Candidatures */}
-        <NavItem
-          href="/questionnaire"
-          label={t('nav.applications')}
-          expanded={expanded}
-          icon={
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
-              <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/>
-              <rect x="9" y="3" width="6" height="4" rx="1"/>
-              <line x1="9" y1="12" x2="15" y2="12"/>
-              <line x1="9" y1="16" x2="13" y2="16"/>
-            </svg>
-          }
-          active={pathname === '/questionnaire'}
-          onClick={onClose}
-        />
-        {/* Envoyer un message au créateur (sur-page feedback) */}
-        <button
-          onClick={() => { onClose?.(); window.dispatchEvent(new Event('thw:open-feedback')) }}
-          style={{
-            display: 'flex', alignItems: 'center', gap: 10,
-            padding: '9px 12px', borderRadius: 10, width: '100%',
-            border: 'none', background: 'transparent', cursor: 'pointer',
-            fontFamily: 'DM Sans, sans-serif', fontSize: 13, fontWeight: 400,
-            color: 'var(--text-mid)', textAlign: 'left',
-            transition: 'background 0.14s, color 0.14s',
-          }}
-          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(6,182,212,0.06)'; (e.currentTarget as HTMLElement).style.color = 'var(--text)' }}
-          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = 'var(--text-mid)' }}
-        >
-          <span style={{ flexShrink: 0, opacity: 0.6, display: 'flex' }}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-            </svg>
-          </span>
-          <span style={lblStyle}>{t('nav.feedback')}</span>
-        </button>
-        {/* Briefing du jour */}
-        <Link
-          href="/briefing"
-          onClick={onClose}
-          style={{
-            display: 'flex', alignItems: 'center', gap: 10,
-            padding: '9px 12px', borderRadius: 10,
-            textDecoration: 'none',
-            fontFamily: 'DM Sans, sans-serif',
-            fontSize: 13,
-            fontWeight: briefingActive ? 600 : 400,
-            color: briefingActive ? '#06B6D4' : 'var(--text-mid)',
-            background: briefingActive ? 'rgba(6,182,212,0.10)' : 'transparent',
-            borderLeft: `3px solid ${briefingActive ? '#06B6D4' : 'transparent'}`,
-            transition: 'background 0.14s, color 0.14s',
-          }}
-          onMouseEnter={e => {
-            if (!briefingActive) {
-              (e.currentTarget as HTMLElement).style.background = 'rgba(6,182,212,0.06)'
-              ;(e.currentTarget as HTMLElement).style.color = 'var(--text)'
-            }
-          }}
-          onMouseLeave={e => {
-            if (!briefingActive) {
-              (e.currentTarget as HTMLElement).style.background = 'transparent'
-              ;(e.currentTarget as HTMLElement).style.color = 'var(--text-mid)'
-            }
-          }}
-        >
-          <span style={{ flexShrink: 0, opacity: briefingActive ? 1 : 0.6, display: 'flex' }}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-              <polyline points="14 2 14 8 20 8" />
-              <line x1="8" y1="13" x2="16" y2="13" />
-              <line x1="8" y1="17" x2="13" y2="17" />
-            </svg>
-          </span>
-          <span style={{ flex: 1, ...lblStyle }}>{t('nav.dailyBriefing')}</span>
-          {expanded && !briefing.lu && briefing.unreadCount > 0 && (
-            <span style={{
-              flexShrink: 0,
-              minWidth: 18,
-              height: 18,
-              padding: '0 6px',
-              borderRadius: 99,
-              background: '#ef4444',
-              color: '#fff',
-              fontSize: 10,
-              fontWeight: 700,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              lineHeight: 1,
-            }}>
-              {briefing.unreadCount > 99 ? '99+' : briefing.unreadCount}
-            </span>
-          )}
-        </Link>
-
-        {/* ── Bouton Assistant IA ── */}
-        {onOpenAI && (
-          <button
-            onClick={() => { onOpenAI(); onClose?.() }}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 10,
-              padding: '9px 12px', borderRadius: 10,
-              border: 'none', background: 'transparent', cursor: 'pointer',
-              width: '100%', textAlign: 'left',
-              transition: 'background 0.14s, opacity 0.15s',
-            }}
-            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(6,182,212,0.06)' }}
-            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/logos/logo_4bras.png"
-              alt={t('shared.aiAssistant')}
-              style={{ width: 28, height: 28, objectFit: 'contain', flexShrink: 0, opacity: 0.85 }}
-            />
-            <span style={{
-              fontFamily: 'DM Sans, sans-serif', fontSize: 13, fontWeight: 400,
-              background: 'linear-gradient(90deg,#06B6D4,#5b6fff)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              ...lblStyle,
-            }}>
-              {t('nav.aiAssistant')}
-            </span>
-          </button>
-        )}
-
         <button
           onClick={toggleTheme}
           style={{

@@ -74,7 +74,9 @@ export async function POST(req: Request) {
     const { data: mem } = await svc.from('community_members').select('user_id').eq('space_id', targetSpaceId).eq('user_id', user.id).maybeSingle()
     if (!mem) return NextResponse.json({ error: 'Rejoins l\'espace pour parler.' }, { status: 403 })
 
-    const url = process.env.LIVEKIT_URL, key = process.env.LIVEKIT_API_KEY, secret = process.env.LIVEKIT_API_SECRET
+    // trim() : neutralise un espace/retour-à-la-ligne collé dans les variables
+    // d'env (sinon la signature du jeton est invalide → « invalid token »).
+    const url = process.env.LIVEKIT_URL?.trim(), key = process.env.LIVEKIT_API_KEY?.trim(), secret = process.env.LIVEKIT_API_SECRET?.trim()
     if (!url || !key || !secret) {
       return NextResponse.json({ error: 'Voix non configurée (LiveKit).', configured: false }, { status: 501 })
     }

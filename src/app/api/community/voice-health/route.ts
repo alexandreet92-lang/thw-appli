@@ -17,14 +17,18 @@ function httpUrl(raw: string): string {
 }
 
 export async function GET() {
-  const url = process.env.LIVEKIT_URL ?? ''
-  const key = process.env.LIVEKIT_API_KEY ?? ''
-  const secret = process.env.LIVEKIT_API_SECRET ?? ''
+  const url = (process.env.LIVEKIT_URL ?? '').trim()
+  const key = (process.env.LIVEKIT_API_KEY ?? '').trim()
+  const secret = (process.env.LIVEKIT_API_SECRET ?? '').trim()
+  const rawLen = { url: (process.env.LIVEKIT_URL ?? '').length, key: (process.env.LIVEKIT_API_KEY ?? '').length, secret: (process.env.LIVEKIT_API_SECRET ?? '').length }
+  const trimLen = { url: url.length, key: key.length, secret: secret.length }
   const base = {
     hasUrl: !!url, hasKey: !!key, hasSecret: !!secret,
     urlScheme: url.split('://')[0] || null,
     urlHost: (() => { try { return new URL(httpUrl(url)).host } catch { return url ? '(invalide)' : null } })(),
     keyPrefix: key ? key.slice(0, 4) + '…' : null,
+    hadWhitespace: rawLen.url !== trimLen.url || rawLen.key !== trimLen.key || rawLen.secret !== trimLen.secret,
+    secretLen: trimLen.secret,
   }
   if (!url || !key || !secret) return NextResponse.json({ ...base, ok: false, reason: 'missing_env' })
   try {

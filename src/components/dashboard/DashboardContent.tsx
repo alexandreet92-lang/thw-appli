@@ -12,6 +12,7 @@ import { AthleteCoachCard } from './AthleteCoachCard'
 import { AthleteFormsCard } from '@/components/coach/CustomForms'
 import { CoachActivityCard } from '@/components/coach/CoachActivityCard'
 import { BecomeCoachCard } from '@/components/coach/BecomeCoachCard'
+import { VitrineSection } from './VitrineSection'
 import { DashboardModelSwitch } from './DashboardModelSwitch'
 import { ClassiqueGrid } from './ClassiqueGrid'
 import { DataGrid } from './DataGrid'
@@ -43,6 +44,9 @@ export function DashboardContent() {
       <div style={{ marginBottom: 'var(--space-5)' }}><BecomeCoachCard /></div>
 
       {ready && (model === 'data' ? <DataGrid /> : <ClassiqueGrid />)}
+
+      {/* Ma vitrine (profil + activités) — coach & athlète */}
+      <div style={{ marginTop: 'var(--space-6, 32px)' }}><VitrineSection /></div>
     </div>
   )
 }

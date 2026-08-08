@@ -388,6 +388,7 @@ html.dark .cmp-section-remodeler { background: var(--bg-card); }
 /* Tiroir latéral (détail d'activité partagée) : glisse depuis la droite. */
 @keyframes commDrawerIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
 .comm-drawer-in { animation: commDrawerIn 0.24s cubic-bezier(0.22, 0.61, 0.36, 1); will-change: transform; }
+@keyframes commDrawerUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
 @media (prefers-reduced-motion: reduce) { .comm-drawer-in { animation: none; } }
 
 /* Communauté — survol d'un message : fond discret + barre d'actions révélée. */

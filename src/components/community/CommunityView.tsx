@@ -24,7 +24,7 @@ import { SpaceBadge } from './SpaceBadge'
 import type { CommunitySpace, CommunityChannel } from '@/types/community'
 
 const FB = 'var(--font-body)', FD = 'var(--font-display)'
-type MobileView = 'spaces' | 'channels' | 'chat'
+type MobileView = 'home' | 'chat'
 
 export function CommunityView() {
   const ent = useEntitlements()
@@ -36,7 +36,7 @@ export function CommunityView() {
   const [loadingChannels, setLoadingChannels] = useState(false)
   const [channelId, setChannelId] = useState<string | null>(null)
   const [isNarrow, setIsNarrow] = useState(false)
-  const [mView, setMView] = useState<MobileView>('spaces')
+  const [mView, setMView] = useState<MobileView>('home')
   const [dir, setDir] = useState<'fwd' | 'back'>('fwd')
   const [panel, setPanel] = useState<'chat' | 'events' | 'call'>('chat')
   const [joining, setJoining] = useState(false)
@@ -124,10 +124,11 @@ export function CommunityView() {
   const space = useMemo(() => spaces.find(s => s.id === spaceId) ?? null, [spaces, spaceId])
   const channel = useMemo(() => channels.find(c => c.id === channelId) ?? null, [channels, channelId])
 
-  function goSpaces() { setDir('back'); setMView('spaces') }
+  function goSpaces() { setDir('back'); setMView('home') }
   function selectSpace(id: string) {
+    // Mobile façon Discord : le rail des espaces reste visible, on ne change que
+    // la colonne des canaux (on reste sur « home »).
     setSpaceId(id); setChannelId(null); setPanel('chat')
-    if (isNarrow) { setDir('fwd'); setMView('channels') }
   }
   function selectChannel(id: string) {
     setChannelId(id); markRead(id); setPanel('chat')
@@ -194,7 +195,7 @@ export function CommunityView() {
 
   const eventsPane = space ? (
     <EventsView spaceId={space.id} isMember={space.isMember} canManage={canManage} isNarrow={isNarrow}
-      onBack={() => { setDir('back'); setMView('channels') }} />
+      onBack={() => { setDir('back'); setMView('home') }} />
   ) : null
 
   // Appel du canal courant : chaque canal a son salon (room `comm-<channelId>`).
@@ -224,7 +225,7 @@ export function CommunityView() {
 
   const chatWithBack = panel === 'events' ? eventsPane : panel === 'call' ? callPane : (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
-      <button onClick={() => { setDir('back'); setMView('channels') }} style={backBar}>
+      <button onClick={() => { setDir('back'); setMView('home') }} style={backBar}>
         <BackIcon /> <span>{space ? space.name : 'Retour'}</span>
       </button>
       <div style={{ flex: 1, minHeight: 0 }}>{chat}</div>
@@ -238,8 +239,12 @@ export function CommunityView() {
         <div style={{ flex: 1, minHeight: 0, overflow: 'hidden', borderRadius: 'var(--r-lg)', background: 'var(--bg-card)', position: 'relative' }}>
           {/* Vues empilées avec transition « ouverture de page » fluide (clé = vue). */}
           <div key={mView} className={dir === 'fwd' ? 'comm-slide-fwd' : 'comm-slide-back'} style={{ height: '100%', minHeight: 0 }}>
-            {mView === 'spaces' && <MobileSpaces spaces={spaces} loading={loadingSpaces} onSelect={selectSpace} canCreate={ent.community.canCreate} onCreate={() => setShowCreate(true)} onDiscover={() => setShowDiscover(true)} />}
-            {mView === 'channels' && channelCol}
+            {mView === 'home' && (
+              <div style={{ display: 'flex', height: '100%', minHeight: 0 }}>
+                <div style={{ width: 60, flexShrink: 0, minHeight: 0, background: 'var(--bg-card2)' }}>{rail}</div>
+                <div style={{ flex: 1, minWidth: 0, minHeight: 0, background: 'var(--bg-card2)' }}>{channelCol}</div>
+              </div>
+            )}
             {mView === 'chat' && chatWithBack}
           </div>
         </div>
@@ -261,7 +266,7 @@ export function CommunityView() {
         <CreateSpaceSheet
           ent={ent.community}
           onClose={() => setShowCreate(false)}
-          onCreated={(s) => { setShowCreate(false); void loadSpaces(s.id); setShowManage(true); if (isNarrow) { setDir('fwd'); setMView('channels') } }}
+          onCreated={(s) => { setShowCreate(false); void loadSpaces(s.id); setShowManage(true); if (isNarrow) { setDir('fwd'); setMView('home') } }}
         />
       )}
 
@@ -272,7 +277,7 @@ export function CommunityView() {
       {showDiscover && (
         <DiscoverSheet
           onClose={() => setShowDiscover(false)}
-          onJoined={(id) => { setShowDiscover(false); void loadSpaces(id); if (isNarrow) { setDir('fwd'); setMView('channels') } }}
+          onJoined={(id) => { setShowDiscover(false); void loadSpaces(id); if (isNarrow) { setDir('fwd'); setMView('home') } }}
         />
       )}
     </div>
@@ -334,9 +339,6 @@ function ChannelColumn({ space, channels, activeId, loading, isNarrow, joining, 
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
       {/* En-tête d'espace */}
       <div style={{ flexShrink: 0, padding: 'var(--space-4) var(--space-4) var(--space-3)' }}>
-        {isNarrow && (
-          <button onClick={onBack} style={{ ...backBar, padding: 0, marginBottom: 'var(--space-3)', background: 'transparent' }}><BackIcon /> <span>Espaces</span></button>
-        )}
         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
           {canBrand ? (
             <>
@@ -446,45 +448,6 @@ function ChannelColumn({ space, channels, activeId, loading, isNarrow, joining, 
           Trouver un coach →
         </Link>
       </div>
-    </div>
-  )
-}
-
-// ── Espaces (mobile plein écran) ────────────────────────────────────────────
-function MobileSpaces({ spaces, loading, onSelect, canCreate, onCreate, onDiscover }: {
-  spaces: CommunitySpace[]; loading: boolean; onSelect: (id: string) => void; canCreate: boolean; onCreate: () => void; onDiscover: () => void
-}) {
-  return (
-    <div style={{ height: '100%', overflowY: 'auto', padding: 'var(--space-4)' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-3)' }}>
-        <span style={{ fontFamily: FD, fontSize: 17, fontWeight: 600, color: 'var(--text)' }}>Espaces</span>
-        <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
-          <button onClick={onDiscover} aria-label="Rechercher un groupe" style={{ width: 34, height: 34, borderRadius: 'var(--r-sm)', border: 'none', background: 'var(--surface-neutral)', color: 'var(--text-mid)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
-          </button>
-          <button onClick={onCreate} aria-label="Créer un espace" style={{ width: 34, height: 34, borderRadius: 'var(--r-sm)', border: 'none', background: 'var(--surface-neutral)', color: 'var(--primary)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14" /></svg>
-          </button>
-        </div>
-      </div>
-      {loading ? (
-        [0, 1, 2, 3, 4].map(i => <span key={i} style={{ display: 'block', height: 58, borderRadius: 'var(--r-md)', background: 'var(--surface-neutral)', marginBottom: 'var(--space-2)' }} />)
-      ) : spaces.map(s => (
-        <button key={s.id} onClick={() => onSelect(s.id)}
-          style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', width: '100%', textAlign: 'left', border: 'none', cursor: 'pointer', borderRadius: 'var(--r-md)', padding: 'var(--space-3)', minHeight: 58, background: 'var(--bg-card2)', marginBottom: 'var(--space-2)', fontFamily: FB }}>
-          <SpaceBadge space={s} size={44} />
-          <span style={{ flex: 1, minWidth: 0 }}>
-            <span style={{ display: 'block', fontSize: 14, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.name}</span>
-            <span className="tnum" style={{ display: 'block', fontSize: 11.5, color: 'var(--text-dim)', marginTop: 2, fontVariantNumeric: 'tabular-nums' }}>
-              {s.memberCount} membre{s.memberCount > 1 ? 's' : ''}{s.kind === 'official' ? ' · Officiel' : ''}
-            </span>
-          </span>
-          {s.isMember && (
-            <span style={{ flexShrink: 0, fontFamily: FB, fontSize: 10.5, fontWeight: 600, color: 'var(--primary)', background: 'var(--primary-dim)', padding: '3px 8px', borderRadius: 'var(--r-sm)' }}>Membre</span>
-          )}
-          <BackIcon flip />
-        </button>
-      ))}
     </div>
   )
 }

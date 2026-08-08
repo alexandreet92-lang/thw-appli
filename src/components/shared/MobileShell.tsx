@@ -296,8 +296,6 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
             maskImage: 'linear-gradient(to bottom, transparent 0, transparent 22px, #000 64px)',
             WebkitMaskImage: 'linear-gradient(to bottom, transparent 0, transparent 22px, #000 64px)',
           }) }}>
-          $1
-        $1
         <TrialEndedModal />
         <PageTransition>{children}</PageTransition>
         </main>

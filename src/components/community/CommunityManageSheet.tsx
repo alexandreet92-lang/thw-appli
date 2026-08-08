@@ -31,7 +31,7 @@ export function CommunityManageSheet({ spaceId, onClose }: { spaceId: string; on
   const sheet = (
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'color-mix(in srgb, var(--bg) 55%, transparent)', backdropFilter: 'blur(2px)', zIndex: 1100, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
       <div onClick={e => e.stopPropagation()} role="dialog" aria-modal="true"
-        style={{ width: '100%', maxWidth: 560, maxHeight: '88vh', display: 'flex', flexDirection: 'column', background: 'var(--bg-card)', borderTopLeftRadius: 'var(--r-lg)', borderTopRightRadius: 'var(--r-lg)', boxShadow: 'var(--shadow)', animation: 'scale-in 0.22s ease' }}>
+        style={{ width: '100%', maxWidth: 560, maxHeight: 'calc(100dvh - 56px)', display: 'flex', flexDirection: 'column', background: 'var(--bg-card)', borderTopLeftRadius: 'var(--r-lg)', borderTopRightRadius: 'var(--r-lg)', boxShadow: 'var(--shadow)', animation: 'commDrawerUp 0.24s cubic-bezier(0.22,0.61,0.36,1)' }}>
         <div style={{ flexShrink: 0, padding: 'var(--space-5) var(--space-5) 0' }}>
           <div style={{ width: 36, height: 4, borderRadius: 'var(--r-sm)', background: 'var(--border-mid)', margin: '0 auto var(--space-4)' }} />
           <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', marginBottom: 'var(--space-4)' }}>
@@ -41,7 +41,7 @@ export function CommunityManageSheet({ spaceId, onClose }: { spaceId: string; on
           <div style={{ display: 'flex', gap: 'var(--space-1)' }}>
             {([['settings', 'Réglages'], ['members', 'Membres'], ['requests', 'Demandes'], ['reports', 'Signalements']] as const).map(([k, label]) => (
               <button key={k} onClick={() => setTab(k)}
-                style={{ flex: 1, height: 34, border: 'none', borderRadius: 'var(--r-sm)', cursor: 'pointer', fontFamily: FB, fontSize: 12.5, fontWeight: 600, background: tab === k ? 'var(--surface-neutral)' : 'transparent', color: tab === k ? 'var(--text)' : 'var(--text-mid)' }}>{label}</button>
+                style={{ flex: 1, height: 40, border: 'none', borderRadius: 'var(--r-sm)', cursor: 'pointer', fontFamily: FB, fontSize: 13.5, fontWeight: 600, background: tab === k ? 'var(--surface-neutral)' : 'transparent', color: tab === k ? 'var(--text)' : 'var(--text-mid)' }}>{label}</button>
             ))}
           </div>
         </div>
@@ -104,7 +104,7 @@ function SettingsTab({ spaceId }: { spaceId: string }) {
         <textarea value={s.rulesText ?? ''} onChange={e => setS({ ...s, rulesText: e.target.value })} rows={3}
           placeholder="1. Respect… 2. Pas de spam… 3. Pas de contenu dangereux…"
           style={{ ...input, resize: 'vertical', minHeight: 64 }} />
-        <label style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginTop: 'var(--space-2)', fontFamily: FB, fontSize: 12.5, color: 'var(--text-mid)', cursor: 'pointer' }}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginTop: 'var(--space-2)', fontFamily: FB, fontSize: 13.5, color: 'var(--text-mid)', cursor: 'pointer' }}>
           <input type="checkbox" checked={s.requireRulesAccept} onChange={e => setS({ ...s, requireRulesAccept: e.target.checked })} />
           Exiger l&apos;acceptation des règles avant de publier
         </label>
@@ -234,18 +234,18 @@ function ReportsTab({ spaceId }: { spaceId: string }) {
 function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (
     <div>
-      <label style={{ display: 'block', fontFamily: FB, fontSize: 12.5, fontWeight: 600, color: 'var(--text)', marginBottom: 4 }}>{label}</label>
+      <label style={{ display: 'block', fontFamily: FB, fontSize: 14, fontWeight: 600, color: 'var(--text)', marginBottom: 6 }}>{label}</label>
       {children}
-      {hint && <p style={{ margin: '4px 0 0', fontFamily: FB, fontSize: 11.5, color: 'var(--text-dim)', lineHeight: 1.4 }}>{hint}</p>}
+      {hint && <p style={{ margin: '5px 0 0', fontFamily: FB, fontSize: 12.5, color: 'var(--text-dim)', lineHeight: 1.45 }}>{hint}</p>}
     </div>
   )
 }
 const input: React.CSSProperties = {
-  width: '100%', boxSizing: 'border-box', height: 40, background: 'var(--input-bg)', border: '1px solid var(--border)',
-  borderRadius: 'var(--r-sm)', padding: '0 var(--space-3)', fontFamily: FB, fontSize: 13.5, color: 'var(--text)', outline: 'none',
+  width: '100%', boxSizing: 'border-box', height: 46, background: 'var(--input-bg)', border: '1px solid var(--border)',
+  borderRadius: 'var(--r-sm)', padding: '0 var(--space-3)', fontFamily: FB, fontSize: 15, color: 'var(--text)', outline: 'none',
 }
 function pill(active: boolean): React.CSSProperties {
-  return { flex: 1, height: 36, border: 'none', borderRadius: 'var(--r-sm)', cursor: 'pointer', fontFamily: FB, fontSize: 12.5, fontWeight: 600, background: active ? 'var(--primary-dim)' : 'var(--surface-neutral)', color: active ? 'var(--primary)' : 'var(--text-mid)' }
+  return { flex: 1, height: 42, border: 'none', borderRadius: 'var(--r-sm)', cursor: 'pointer', fontFamily: FB, fontSize: 14, fontWeight: 600, background: active ? 'var(--primary-dim)' : 'var(--surface-neutral)', color: active ? 'var(--primary)' : 'var(--text-mid)' }
 }
 function miniBtn(bg: string, fg: string): React.CSSProperties {
   return { height: 30, padding: '0 var(--space-3)', border: 'none', borderRadius: 'var(--r-sm)', cursor: 'pointer', fontFamily: FB, fontSize: 12, fontWeight: 600, background: bg, color: fg }

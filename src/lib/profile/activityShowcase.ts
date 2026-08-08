@@ -12,6 +12,7 @@ export interface RecentActivity {
   distance_m: number | null; seconds: number | null
   avg_pace_s_km: number | null; avg_watts: number | null; elevation_gain_m: number | null
   polyline: string | null
+  sm: number | null; sn: number | null; is_race: boolean | null
 }
 export interface RecordItem { sport: string; label: string; perf: string; unit: string; at: string | null }
 export interface ActivityShowcaseData {

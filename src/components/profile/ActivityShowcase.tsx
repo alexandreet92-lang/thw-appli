@@ -7,6 +7,7 @@
 // ══════════════════════════════════════════════════════════════════
 import { useState } from 'react'
 import SlideSheet from '@/components/ui/SlideSheet'
+import { useNarrow } from '@/lib/hooks/useNarrow'
 import { staticRouteMapUrl } from '@/lib/staticMap'
 import type { ActivityShowcaseData, RecentActivity, RecordItem } from '@/lib/profile/activityShowcase'
 import { hoursByFamily, activeWeekStreak, sportMeta, bestRecord, recordsForSport, fmtHoursSec, polylineToSvgPath, decodePolyline } from '@/lib/profile/activityShowcase'
@@ -43,6 +44,8 @@ const fmtDate = (iso: string) => { const d = new Date(iso); return `${d.getDate(
 export default function ActivityShowcase({ data, isOwner }: { data: ActivityShowcaseData; isOwner: boolean }) {
   const [detail, setDetail] = useState<RecentActivity | null>(null)
   const [allOpen, setAllOpen] = useState(false)
+  const narrow = useNarrow()
+  const gridCols = narrow ? '1fr' : '1fr 1fr' // mobile 1/ligne · desktop 2/ligne
   if (!data.can_view) {
     return (
       <p style={{ fontSize: 13.5, color: 'var(--text-dim)', margin: 0, lineHeight: 1.5 }}>
@@ -96,12 +99,12 @@ export default function ActivityShowcase({ data, isOwner }: { data: ActivityShow
       {data.recent.length > 0 && (
         <div>
           <Label>Dernières activités</Label>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {data.recent.slice(0, 7).map(a => <ActivityRow key={a.id} a={a} onOpen={() => setDetail(a)} />)}
+          <div style={{ display: 'grid', gridTemplateColumns: gridCols, gap: 14 }}>
+            {data.recent.slice(0, 6).map(a => <ActivityMapCard key={a.id} a={a} onOpen={() => setDetail(a)} />)}
           </div>
-          {data.recent.length > 7 && (
+          {data.recent.length > 6 && (
             <button onClick={() => setAllOpen(true)}
-              style={{ marginTop: 12, width: '100%', padding: '11px 16px', borderRadius: 'var(--r-md)', border: 'none', background: 'var(--bg-card2)', color: 'var(--primary)', fontFamily: 'var(--font-body)', fontSize: 13.5, fontWeight: 700, cursor: 'pointer' }}>
+              style={{ marginTop: 14, width: '100%', padding: '12px 16px', borderRadius: 'var(--r-md)', border: 'none', background: 'var(--bg-card2)', color: 'var(--primary)', fontFamily: 'var(--font-body)', fontSize: 13.5, fontWeight: 700, cursor: 'pointer' }}>
               Voir toutes les activités →
             </button>
           )}
@@ -110,8 +113,8 @@ export default function ActivityShowcase({ data, isOwner }: { data: ActivityShow
 
       {/* Toutes les activités — surpage coulissante */}
       <SlideSheet open={allOpen} onClose={() => setAllOpen(false)} title="Toutes les activités">
-        <div style={{ maxWidth: 680, margin: '0 auto', padding: '8px clamp(16px,4vw,32px) 64px', display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {data.recent.map(a => <ActivityRow key={a.id} a={a} onOpen={() => setDetail(a)} />)}
+        <div style={{ maxWidth: 920, margin: '0 auto', padding: '8px clamp(16px,4vw,32px) 64px', display: 'grid', gridTemplateColumns: gridCols, gap: 14 }}>
+          {data.recent.map(a => <ActivityMapCard key={a.id} a={a} onOpen={() => setDetail(a)} />)}
         </div>
       </SlideSheet>
 
@@ -264,30 +267,50 @@ function Heatmap({ daily }: { daily: { d: string; count: number; seconds: number
   )
 }
 
-function ActivityRow({ a, onOpen }: { a: RecentActivity; onOpen: () => void }) {
+// Carte d'activité « façon training » : grande carte + données à côté.
+function ActivityMapCard({ a, onOpen }: { a: RecentActivity; onOpen: () => void }) {
   const fam = sportFamilyLocal(a.sport)
   const meta = sportMeta(fam)
-  const bits = [fmtDist(a.distance_m), fmtDur(a.seconds), fmtPace(a.avg_pace_s_km) ?? (a.avg_watts ? `${Math.round(a.avg_watts)} W` : null), a.elevation_gain_m ? `${Math.round(a.elevation_gain_m)} m D+` : null].filter(Boolean)
   const pts = routePoints(a.polyline)
-  const mapUrl = staticRouteMapUrl(pts, { width: 128, height: 88, color: SPORT_HEX[fam] ?? '9ca3af' })
-  const path = polylineToSvgPath(a.polyline, 72, 46)
+  const mapUrl = staticRouteMapUrl(pts, { width: 640, height: 300, color: SPORT_HEX[fam] ?? '9ca3af' })
+  const path = polylineToSvgPath(a.polyline, 320, 150)
+  const stats: { label: string; value: string }[] = []
+  const dist = fmtDist(a.distance_m); if (dist) stats.push({ label: 'Distance', value: dist })
+  if (a.seconds) stats.push({ label: 'Durée', value: fmtDur(a.seconds) })
+  if (a.elevation_gain_m) stats.push({ label: 'D+', value: `${Math.round(a.elevation_gain_m)} m` })
+  else { const pace = fmtPace(a.avg_pace_s_km) ?? (a.avg_watts ? `${Math.round(a.avg_watts)} W` : null); if (pace) stats.push({ label: fam === 'cycling' ? 'Watts' : 'Allure', value: pace }) }
   return (
     <button onClick={onOpen}
-      style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '9px 12px', background: 'var(--bg-card2)', borderRadius: 'var(--r-md)', border: 'none', cursor: 'pointer', textAlign: 'left', width: '100%', fontFamily: 'var(--font-body)' }}>
-      {/* Vignette : vraie carte Mapbox si dispo, sinon tracé SVG, sinon pastille */}
-      <div style={{ width: 64, height: 44, borderRadius: 8, background: path ? meta.color : 'var(--bg-card)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+      style={{ display: 'flex', flexDirection: 'column', background: 'var(--bg-card2)', borderRadius: 'var(--r-lg)', border: 'none', cursor: 'pointer', textAlign: 'left', width: '100%', fontFamily: 'var(--font-body)', overflow: 'hidden', padding: 0 }}>
+      {/* Grande carte */}
+      <div style={{ position: 'relative', width: '100%', aspectRatio: '2 / 1', background: path ? meta.color : 'var(--bg-card)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
         {mapUrl
           // eslint-disable-next-line @next/next/no-img-element
           ? <img src={mapUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           : path
-            ? <svg viewBox="0 0 72 46" style={{ width: '100%', height: '100%' }}><path d={path} fill="none" stroke="white" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" /></svg>
-            : <span style={{ width: 8, height: 8, borderRadius: '50%', background: meta.color }} />}
+            ? <svg viewBox="0 0 320 150" style={{ width: '100%', height: '100%' }}><path d={path} fill="none" stroke="white" strokeWidth={3.5} strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" /></svg>
+            : <span style={{ width: 12, height: 12, borderRadius: '50%', background: meta.color }} />}
+        <span style={{ position: 'absolute', top: 10, left: 10, fontSize: 10.5, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'white', background: 'rgba(0,0,0,0.42)', padding: '3px 9px', borderRadius: 999, backdropFilter: 'blur(2px)' }}>{a.is_race ? 'Compétition' : meta.label}</span>
       </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.title}</div>
-        <div className="tnum" style={{ fontSize: 11.5, color: 'var(--text-dim)', fontVariantNumeric: 'tabular-nums' }}>{fmtDate(a.started_at)} · {bits.join(' · ')}</div>
+      {/* Données */}
+      <div style={{ padding: '12px 14px 14px' }}>
+        <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 600, color: 'var(--text)', lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.title}</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, margin: '4px 0 12px' }}>
+          <span style={{ width: 7, height: 7, borderRadius: '50%', background: meta.color, flexShrink: 0 }} />
+          <span className="tnum" style={{ fontSize: 12, color: 'var(--text-dim)' }}>{fmtDate(a.started_at)}</span>
+        </div>
+        <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
+          {stats.map(s => (
+            <div key={s.label}>
+              <div style={{ fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-dim)' }}>{s.label}</div>
+              <div className="tnum" style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)', fontVariantNumeric: 'tabular-nums' }}>{s.value}</div>
+            </div>
+          ))}
+        </div>
+        {(a.sm || a.sn) ? (
+          <div className="tnum" style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-mid)', marginTop: 10 }}>SM {a.sm ?? 0} · SN {a.sn ?? 0}</div>
+        ) : null}
       </div>
-      <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-mid)', textTransform: 'uppercase', letterSpacing: '0.03em', flexShrink: 0 }}>{meta.label}</span>
     </button>
   )
 }

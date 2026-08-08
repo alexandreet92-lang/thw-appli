@@ -19,7 +19,7 @@ import type { CommunitySport } from '@/types/community'
 
 export const dynamic = 'force-dynamic'
 
-const SPORTS: CommunitySport[] = ['running', 'cycling', 'hyrox', 'gym']
+const SPORTS: CommunitySport[] = ['running', 'cycling', 'hyrox', 'gym', 'triathlon', 'trail', 'combat']
 
 interface Body {
   name?: string

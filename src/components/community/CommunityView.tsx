@@ -42,6 +42,7 @@ export function CommunityView() {
   const [joining, setJoining] = useState(false)
   const [showCreate, setShowCreate] = useState(false)
   const [showDiscover, setShowDiscover] = useState(false)
+  const [showManage, setShowManage] = useState(false)
   const [unread, setUnread] = useState<Set<string>>(new Set())
   const [muted, setMuted] = useState<Set<string>>(new Set())
   const [activeCalls, setActiveCalls] = useState<Record<string, number>>({})
@@ -184,7 +185,7 @@ export function CommunityView() {
       space={space} channels={channels} activeId={channelId} loading={loadingChannels}
       isNarrow={isNarrow} joining={joining} canManage={canManage} unread={unread} muted={muted} activeCalls={activeCalls}
       canBrand={canManage && ent.community.canBrand}
-      panel={panel} onEvents={selectEvents}
+      panel={panel} onEvents={selectEvents} onManage={() => setShowManage(true)}
       onSelect={selectChannel} onJoin={doJoin} onLeave={doLeave}
       onCreateChannel={doCreateChannel} onSetLogo={doSetLogo}
       onBack={goSpaces}
@@ -260,8 +261,12 @@ export function CommunityView() {
         <CreateSpaceSheet
           ent={ent.community}
           onClose={() => setShowCreate(false)}
-          onCreated={(s) => { setShowCreate(false); void loadSpaces(s.id); if (isNarrow) { setDir('fwd'); setMView('channels') } }}
+          onCreated={(s) => { setShowCreate(false); void loadSpaces(s.id); setShowManage(true); if (isNarrow) { setDir('fwd'); setMView('channels') } }}
         />
+      )}
+
+      {showManage && space && canManage && (
+        <CommunityManageSheet spaceId={space.id} onClose={() => setShowManage(false)} />
       )}
 
       {showDiscover && (
@@ -308,15 +313,14 @@ function SpaceRail({ spaces, activeId, loading, onSelect, onCreate, onDiscover }
 }
 
 // ── Colonne des canaux ──────────────────────────────────────────────────────
-function ChannelColumn({ space, channels, activeId, loading, isNarrow, joining, canManage, canBrand, unread, muted, activeCalls, panel, onEvents, onSelect, onJoin, onLeave, onCreateChannel, onSetLogo, onBack }: {
+function ChannelColumn({ space, channels, activeId, loading, isNarrow, joining, canManage, canBrand, unread, muted, activeCalls, panel, onEvents, onManage, onSelect, onJoin, onLeave, onCreateChannel, onSetLogo, onBack }: {
   space: CommunitySpace | null; channels: CommunityChannel[]; activeId: string | null; loading: boolean
   isNarrow: boolean; joining: boolean; canManage: boolean; canBrand: boolean; unread: Set<string>; muted: Set<string>; activeCalls: Record<string, number>
-  panel: 'chat' | 'events' | 'call'; onEvents: () => void
+  panel: 'chat' | 'events' | 'call'; onEvents: () => void; onManage: () => void
   onSelect: (id: string) => void; onJoin: () => void; onLeave: () => void; onCreateChannel: (name: string, kind: 'text' | 'voice') => void; onSetLogo: (file: File) => void; onBack: () => void
 }) {
   const [adding, setAdding] = useState(false)
   const [newName, setNewName] = useState('')
-  const [showManage, setShowManage] = useState(false)
   const logoRef = useRef<HTMLInputElement>(null)
   if (!space) {
     return <div style={{ padding: 'var(--space-6)', color: 'var(--text-dim)', fontFamily: FB, fontSize: 13 }}>—</div>
@@ -351,13 +355,12 @@ function ChannelColumn({ space, channels, activeId, loading, isNarrow, joining, 
           )}
           <span style={{ fontFamily: FD, fontSize: 17, fontWeight: 600, color: 'var(--text)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{space.name}</span>
           {canManage && (
-            <button onClick={() => setShowManage(true)} title="Gérer l'espace" aria-label="Gérer l'espace"
+            <button onClick={onManage} title="Gérer l'espace" aria-label="Gérer l'espace"
               style={{ width: 30, height: 30, flexShrink: 0, border: 'none', borderRadius: 'var(--r-sm)', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg>
             </button>
           )}
         </div>
-        {showManage && <CommunityManageSheet spaceId={space.id} onClose={() => setShowManage(false)} />}
         <div className="tnum" style={{ fontFamily: FB, fontSize: 11.5, color: 'var(--text-dim)', marginTop: 'var(--space-1)', fontVariantNumeric: 'tabular-nums' }}>
           {space.memberCount} membre{space.memberCount > 1 ? 's' : ''}{space.kind === 'official' ? ' · Officiel' : ''}
         </div>

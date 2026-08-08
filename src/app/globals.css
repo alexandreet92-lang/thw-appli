@@ -385,6 +385,10 @@ html.dark .cmp-section-remodeler { background: var(--bg-card); }
 .comm-slide-fwd { animation: commSlideFwd 0.28s cubic-bezier(0.22, 0.61, 0.36, 1); will-change: transform, opacity; }
 .comm-slide-back { animation: commSlideBack 0.26s cubic-bezier(0.22, 0.61, 0.36, 1); will-change: transform, opacity; }
 @media (prefers-reduced-motion: reduce) { .comm-slide-fwd, .comm-slide-back { animation: none; } }
+/* Tiroir latéral (détail d'activité partagée) : glisse depuis la droite. */
+@keyframes commDrawerIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
+.comm-drawer-in { animation: commDrawerIn 0.24s cubic-bezier(0.22, 0.61, 0.36, 1); will-change: transform; }
+@media (prefers-reduced-motion: reduce) { .comm-drawer-in { animation: none; } }
 
 /* Communauté — survol d'un message : fond discret + barre d'actions révélée. */
 .comm-msg:hover { background: var(--bg-hover); }

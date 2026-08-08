@@ -10,7 +10,7 @@ import type { NutritionItem } from '@/components/planning/SessionEditor'
 export type SpaceKind = 'official' | 'user'
 export type ChannelKind = 'text' | 'voice'
 export type MemberRole = 'owner' | 'admin' | 'coach' | 'member'
-export type CommunitySport = 'running' | 'cycling' | 'hyrox' | 'gym'
+export type CommunitySport = 'running' | 'cycling' | 'hyrox' | 'gym' | 'triathlon' | 'trail' | 'combat'
 
 /** Un espace communautaire, enrichi de l'appartenance de l'utilisateur courant. */
 export interface CommunitySpace {
@@ -56,6 +56,13 @@ export interface ActivityRef {
   avgHr: number | null
   avgPaceSKm: number | null
   isRace: boolean
+  // Enrichissements pour la carte + la surpage (snapshot : les autres membres ne
+  // peuvent pas lire l'activité d'origine).
+  polyline?: string | null       // tracé encodé (summary_polyline)
+  elevation?: number[] | null    // altitudes échantillonnées (profil)
+  elevGainM?: number | null
+  difficulty?: number | null     // 0–10
+  feeling?: number | null        // 0–5
 }
 
 /** Snapshot dénormalisé d'une séance de la bibliothèque partagée dans un canal.

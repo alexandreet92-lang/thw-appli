@@ -18,6 +18,7 @@ import { usePresenceCount } from '@/lib/community/presence'
 import { useSpeechToText } from '@/hooks/useSpeechToText'
 import { myId } from '@/lib/community/shared'
 import { reportMessage, getSpaceSettings, hasAcceptedRules, acceptRules } from '@/lib/community/moderation'
+import { enrichActivity } from '@/lib/community/activities'
 import { ShareActivitySheet } from './ShareActivitySheet'
 import { ShareSessionSheet } from './ShareSessionSheet'
 import { ActivityCard } from './ActivityCard'
@@ -226,8 +227,10 @@ export function ChannelChat({
   }
   async function shareActivity(a: ActivityRef) {
     setSharing(false)
-    const ok = await sendChannelMessage(channel.id, '', [{ type: 'activity', activity: a }])
-    if (ok) void load(); else setNotice('Partage impossible.')
+    // Enrichit le snapshot (profil altimétrique) puis met en attente au-dessus du
+    // champ : on peut ajouter un commentaire avant d'envoyer.
+    const enriched = await enrichActivity(a)
+    setPending(p => [...p, { type: 'activity', activity: enriched }])
   }
   function shareSession(s: LibrarySession) {
     setSharingSession(false)

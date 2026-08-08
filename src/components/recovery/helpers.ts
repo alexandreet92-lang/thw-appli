@@ -72,6 +72,7 @@ export function sportLabel(s: string): string {
     run:'Running', running:'Running', ride:'Cyclisme', cycling:'Cyclisme', bike:'Cyclisme',
     swim:'Natation', swimming:'Natation', gym:'Gym', weighttraining:'Gym',
     hyrox:'Hyrox', rowing:'Aviron', elliptique:'Elliptique',
+    trail:'Trail', triathlon:'Triathlon', combat:'Combat',
   }
   return map[s.toLowerCase()] ?? s
 }

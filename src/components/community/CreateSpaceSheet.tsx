@@ -15,9 +15,12 @@ const FB = 'var(--font-body)', FD = 'var(--font-display)'
 const SPORTS: { value: CommunitySport | ''; label: string }[] = [
   { value: '', label: 'Aucun' },
   { value: 'running', label: 'Running' },
+  { value: 'trail', label: 'Trail' },
   { value: 'cycling', label: 'Cycling' },
+  { value: 'triathlon', label: 'Triathlon' },
   { value: 'hyrox', label: 'Hyrox' },
   { value: 'gym', label: 'Gym' },
+  { value: 'combat', label: 'Sport de combat' },
 ]
 
 export function CreateSpaceSheet({

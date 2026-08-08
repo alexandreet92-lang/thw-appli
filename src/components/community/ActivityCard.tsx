@@ -1,11 +1,13 @@
 'use client'
 // ══════════════════════════════════════════════════════════════════════════
-// Carte d'activité partagée (snapshot). Accent sport sanctionné (filet 3px), pas
-// de surface colorée. Cliquable vers /activities?id= UNIQUEMENT pour le
-// propriétaire (les autres ne peuvent pas lire l'activité — RLS).
+// Carte d'activité partagée (snapshot). Montre le tracé + le profil altimétrique
+// s'ils sont disponibles. Clic → surpage coulissante (détail read-only depuis le
+// snapshot) — JAMAIS de navigation vers la page training d'un autre athlète.
 // ══════════════════════════════════════════════════════════════════════════
-import Link from 'next/link'
+import { useState } from 'react'
 import { sportColor, sportLabel } from '@/components/recovery/helpers'
+import { RouteSvg, ElevationSvg } from './activityViz'
+import { ActivityDetailPanel } from './ActivityDetailPanel'
 import type { ActivityRef } from '@/types/community'
 
 const FB = 'var(--font-body)', FD = 'var(--font-display)'
@@ -28,36 +30,44 @@ function fmtDate(iso: string): string {
   try { return new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) } catch { return '' }
 }
 
-export function ActivityCard({ activity, me }: { activity: ActivityRef; me: string | null }) {
+// `me` conservé pour compat d'appel ; le détail est le même pour tous (snapshot).
+export function ActivityCard({ activity }: { activity: ActivityRef; me?: string | null }) {
+  const [open, setOpen] = useState(false)
   const col = sportColor(activity.sport)
   const stats = [
     fmtDistance(activity.distanceM),
     fmtDuration(activity.durationS),
     fmtPace(activity.avgPaceSKm),
     activity.avgHr ? `${Math.round(activity.avgHr)} bpm` : null,
+    activity.elevGainM && activity.elevGainM > 0 ? `${Math.round(activity.elevGainM)} m D+` : null,
   ].filter(Boolean) as string[]
 
-  const inner = (
-    <div style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'stretch', maxWidth: 380, background: 'var(--bg-card2)', borderRadius: 'var(--r-md)', padding: 'var(--space-3) var(--space-4)' }}>
-      <span style={{ width: 3, borderRadius: 3, background: col, flexShrink: 0 }} />
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginBottom: 3 }}>
-          <span style={{ fontFamily: FB, fontSize: 10.5, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-mid)' }}>{sportLabel(activity.sport)}{activity.isRace ? ' · Course' : ''}</span>
-          <span className="tnum" style={{ fontFamily: FB, fontSize: 10.5, color: 'var(--text-dim)', fontVariantNumeric: 'tabular-nums' }}>{fmtDate(activity.startedAt)}</span>
-        </div>
-        <p style={{ fontFamily: FD, fontSize: 14.5, fontWeight: 600, color: 'var(--text)', margin: '0 0 4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{activity.title || sportLabel(activity.sport)}</p>
-        {stats.length > 0 && (
-          <div className="tnum" style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-3)', fontFamily: FB, fontSize: 12.5, color: 'var(--text-mid)', fontVariantNumeric: 'tabular-nums' }}>
-            {stats.map((s, i) => <span key={i}>{s}</span>)}
+  return (
+    <>
+      <button onClick={() => setOpen(true)}
+        style={{ display: 'block', width: '100%', maxWidth: 340, textAlign: 'left', border: 'none', cursor: 'pointer', background: 'var(--bg-card2)', borderRadius: 'var(--r-md)', padding: 0, overflow: 'hidden', fontFamily: FB }}>
+        {activity.polyline && <RouteSvg polyline={activity.polyline} height={120} />}
+        <div style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'stretch', padding: 'var(--space-3) var(--space-4)' }}>
+          <span style={{ width: 3, borderRadius: 3, background: col, flexShrink: 0 }} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginBottom: 3 }}>
+              <span style={{ fontFamily: FB, fontSize: 10.5, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-mid)' }}>{sportLabel(activity.sport)}{activity.isRace ? ' · Course' : ''}</span>
+              <span className="tnum" style={{ fontFamily: FB, fontSize: 10.5, color: 'var(--text-dim)', fontVariantNumeric: 'tabular-nums' }}>{fmtDate(activity.startedAt)}</span>
+            </div>
+            <p style={{ fontFamily: FD, fontSize: 14.5, fontWeight: 600, color: 'var(--text)', margin: '0 0 4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{activity.title || sportLabel(activity.sport)}</p>
+            {stats.length > 0 && (
+              <div className="tnum" style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-3)', fontFamily: FB, fontSize: 12.5, color: 'var(--text-mid)', fontVariantNumeric: 'tabular-nums' }}>
+                {stats.map((s, i) => <span key={i}>{s}</span>)}
+              </div>
+            )}
+            {activity.elevation && activity.elevation.length > 1 && (
+              <div style={{ marginTop: 6 }}><ElevationSvg elevation={activity.elevation} height={38} /></div>
+            )}
+            <span style={{ display: 'block', marginTop: 6, fontFamily: FB, fontSize: 12, fontWeight: 600, color: 'var(--primary)' }}>Voir le détail →</span>
           </div>
-        )}
-      </div>
-    </div>
+        </div>
+      </button>
+      {open && <ActivityDetailPanel activity={activity} onClose={() => setOpen(false)} />}
+    </>
   )
-
-  const isOwner = !!me && me === activity.ownerId
-  if (isOwner) {
-    return <Link href={`/activities?id=${activity.id}`} style={{ display: 'block', textDecoration: 'none' }}>{inner}</Link>
-  }
-  return inner
 }

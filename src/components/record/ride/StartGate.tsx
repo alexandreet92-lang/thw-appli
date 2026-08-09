@@ -48,24 +48,27 @@ export default function StartGate({ ftp, fcMax, plan, loading, available, status
 
   if (loading) return wrap(<p style={{ color: 'var(--text-mid)', fontSize: 14, textAlign: 'center', marginTop: 40 }}>Chargement du profil…</p>)
 
-  if (ftp == null) return wrap(
-    <div style={{ marginTop: 24, textAlign: 'center' }}>
-      <div style={{ width: 52, height: 52, borderRadius: '50%', background: 'var(--bg-card2)', display: 'grid', placeItems: 'center', margin: '0 auto 16px', color: 'var(--charge-mid)' }}><IconAlertTriangle size={26} /></div>
-      <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 600, color: 'var(--text)', margin: '0 0 8px' }}>FTP manquant</h2>
-      <p style={{ fontSize: 14, color: 'var(--text-mid)', lineHeight: 1.5, margin: '0 auto 20px', maxWidth: 300 }}>Ton FTP vélo n&apos;est pas renseigné. Toutes les cibles et zones en dépendent — renseigne-le pour lancer une séance.</p>
-      <a href="/performance" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '12px 20px', borderRadius: 'var(--r-md)', background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 15, fontWeight: 800, textDecoration: 'none' }}>Renseigner mon FTP <IconArrowRight size={18} /></a>
-    </div>
-  )
-
   return wrap(
     <>
       <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-lg)', padding: 16, marginTop: 8 }}>
         <p style={{ fontSize: 10, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--text-dim)', fontWeight: 800, margin: '0 0 6px' }}>Séance du jour</p>
         <p style={{ fontSize: 18, fontWeight: 800, color: 'var(--text)', margin: 0 }}>{plan?.title ?? 'Sortie libre'}</p>
         <p style={{ fontSize: 13, color: 'var(--text-mid)', fontWeight: 600, margin: '4px 0 0' }}>
-          {plan ? `${plan.blocks.length} blocs · ${fmtClock(plan.totalS)}` : 'Aucune séance planifiée — enregistrement libre'} · FTP {ftp} W{fcMax ? ` · FC max ${fcMax}` : ''}
+          {plan ? `${plan.blocks.length} blocs · ${fmtClock(plan.totalS)}` : 'Aucune séance planifiée — enregistrement libre'} · {ftp != null ? `FTP ${ftp} W` : 'FTP non renseigné'}{fcMax ? ` · FC max ${fcMax}` : ''}
         </p>
       </div>
+
+      {/* FTP absent : on N'INTERDIT PAS la séance (l'athlète voit et lance son
+          plan) ; on prévient juste que les cibles watts seront indisponibles. */}
+      {ftp == null && (
+        <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: 12, marginTop: 12, color: 'var(--text-mid)' }}>
+          <IconAlertTriangle size={18} style={{ flexShrink: 0, marginTop: 1, color: 'var(--charge-mid)' }} />
+          <span style={{ fontSize: 12.5, lineHeight: 1.5 }}>
+            FTP vélo non renseigné : les cibles de puissance ne seront pas affichées. Tu peux quand même lancer la séance.{' '}
+            <a href="/performance" style={{ color: 'var(--primary)', fontWeight: 800, textDecoration: 'none', whiteSpace: 'nowrap' }}>Renseigner mon FTP <IconArrowRight size={13} style={{ verticalAlign: 'middle' }} /></a>
+          </span>
+        </div>
+      )}
 
       {available === false && (
         <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: 12, marginTop: 12, color: 'var(--text-mid)' }}>

@@ -1,43 +1,46 @@
 'use client'
 // Charge le profil d'intervalles depuis la séance vélo planifiée du jour
-// (planned_sessions, sport = 'bike'). Aucune valeur en dur : si aucune séance
-// n'est trouvée ou qu'elle n'a pas de blocs, plan = null → sortie libre
-// (enregistrement sans cible). Le FTP vient du profil (passé en argument).
+// (planned_sessions, sport = 'bike'). La séance est repérée par la clé du
+// planning : week_start (lundi local) + day_index (0 = lundi … 6 = dimanche) —
+// PAS par une colonne `date` (inexistante). Aucune valeur en dur : si aucune
+// séance n'est trouvée ou qu'elle n'a pas de blocs, plan = null → sortie libre.
+// Le plan se charge même sans FTP (cibles indisponibles → repli watts 0), pour
+// que l'athlète VOIE quand même sa séance planifiée sur l'écran de démarrage.
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { buildPlan, type PlannedBlock } from './buildPlan'
 import type { RidePlan } from './types'
+import { weekStartStr, mondayIndex } from '@/lib/date/weekStart'
 
 interface Row { title: string | null; blocks: PlannedBlock[] | null }
-
-function todayISO(): string {
-  return new Date().toISOString().split('T')[0]
-}
 
 export function useRidePlan(ftp: number | null, enabled: boolean) {
   const [plan, setPlan] = useState<RidePlan | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (!enabled || ftp == null) { setLoading(false); return }
+    if (!enabled) { setLoading(false); return }
     let cancelled = false
     void (async () => {
       try {
         const sb = createClient()
         const { data: { user } } = await sb.auth.getUser()
         if (!user) { if (!cancelled) setLoading(false); return }
-        const { data } = await sb
+        const now = new Date()
+        const { data, error } = await sb
           .from('planned_sessions')
           .select('title,blocks')
           .eq('user_id', user.id)
           .eq('sport', 'bike')
-          .eq('date', todayISO())
-          .order('day_index', { ascending: true })
+          .eq('week_start', weekStartStr(now))
+          .eq('day_index', mondayIndex(now))
+          .order('updated_at', { ascending: false })
           .limit(1)
           .maybeSingle()
         if (cancelled) return
+        if (error) { console.error('[ride] chargement séance planifiée:', error.message); return }
         const row = (data ?? null) as Row | null
-        if (row) setPlan(buildPlan(row.blocks, ftp, row.title ?? 'Séance vélo'))
+        if (row) setPlan(buildPlan(row.blocks, ftp ?? 0, row.title ?? 'Séance vélo'))
       } catch { /* pas de séance → sortie libre */ }
       finally { if (!cancelled) setLoading(false) }
     })()

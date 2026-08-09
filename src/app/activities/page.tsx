@@ -10,6 +10,7 @@ import { useI18n } from '@/lib/i18n'
 import { useTheme } from '@/hooks/useTheme'
 import { ScrollReveal, ScrollRevealGroup, ScrollRevealItem } from '@/components/ui/ScrollReveal'
 import { BottomSheet } from '@/components/ui/BottomSheet'
+import SlideSheet from '@/components/ui/SlideSheet'
 import { FitnessCards } from '@/components/training/FitnessCards'
 import { SportTabs } from '@/components/ui/SportTabs'
 import { ToastProvider, useToast } from '@/components/ui/Toast'
@@ -6576,7 +6577,7 @@ function GaugeEditModal({ open, kind, value, onClose, onSave }: {
         @keyframes fdModalEnter  { from{opacity:0;transform:translate(-50%,-46%) scale(0.96)} to{opacity:1;transform:translate(-50%,-50%) scale(1)} }
       `}</style>
       <div onClick={() => { if (ready) onClose() }} style={{
-        position: 'fixed', inset: 0, zIndex: 9998,
+        position: 'fixed', inset: 0, zIndex: 16000,
         background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)',
         animation: 'fdModalBackdrop 0.2s ease-out',
       }} />
@@ -6585,7 +6586,7 @@ function GaugeEditModal({ open, kind, value, onClose, onSave }: {
         style={{
           position: 'fixed', top: '50%', left: '50%',
           transform: 'translate(-50%, -50%)',
-          zIndex: 9999,
+          zIndex: 16001,
           background: 'var(--bg)', borderRadius: 16,
           padding: 24, boxShadow: '0 20px 60px rgba(0,0,0,0.4)',
           width: '90vw', maxWidth: 380,
@@ -6691,12 +6692,15 @@ function FeelingDifficultyCard({ feeling, difficulty, onEdit }: {
 // ─────────────────────────────────────────────────────────────
 // ACTIVITY DETAIL
 // ─────────────────────────────────────────────────────────────
-export function ActivityDetail({ a, onClose, closing = false, zones, profile, allActivities = [], readOnly = false }: {
+export function ActivityDetail({ a, onClose, closing = false, zones, profile, allActivities = [], readOnly = false, initialEdit = false }: {
   a: Activity; onClose: () => void; closing?: boolean
   zones: TrainingZoneRow[]; profile: Profile; allActivities?: Activity[]
   // readOnly : consultation de l'activité d'un AUTRE athlète — aucune écriture,
   // aucune édition, aucun bouton d'analyse IA. Le lien « Voir sur Strava » reste.
   readOnly?: boolean
+  // initialEdit : ouvre directement la sur-page « Modifier » (ex. notification
+  // « séance terminée » → on arrive sur l'interface d'édition des données).
+  initialEdit?: boolean
 }) {
   const { t } = useI18n()
   const width    = useWindowWidth()
@@ -7076,6 +7080,11 @@ export function ActivityDetail({ a, onClose, closing = false, zones, profile, al
   const sensation = a.perceived_effort  // /5 scale
   const rpeVal    = a.rpe               // /10 scale
   const [showRpeModal, setShowRpeModal] = useState(false)
+  // Sur-page « Modifier » (propriétaire) : toute l'édition des données de la
+  // séance (titre, type, tags, confidentialité, ressenti, RPE, photos, commentaire).
+  const [editOpen, setEditOpen] = useState(false)
+  // Notification « séance terminée » → ouvre directement l'édition.
+  useEffect(() => { if (initialEdit && !readOnly) setEditOpen(true) }, [initialEdit, readOnly])
   const [localRpe, setLocalRpe]         = useState<number | null>(rpeVal)
   const [localSensation, setLocalSensation] = useState<number | null>(sensation)
 
@@ -7302,6 +7311,46 @@ conseil pour la prochaine séance similaire.`
     </>
   )
 
+  // Sur-page « Modifier l'activité » (propriétaire uniquement). Toute l'édition
+  // vit ici ; la vue principale reste propre. Les composants enregistrent au fil
+  // de la saisie ; « Enregistrer » ferme simplement la sur-page.
+  const editLabel: React.CSSProperties = { fontSize: 11, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-dim)', margin: '0 0 10px' }
+  const editSheet = (
+    <SlideSheet open={editOpen} onClose={() => setEditOpen(false)} title="Modifier l'activité">
+      <div style={{ maxWidth: 560, margin: '0 auto', padding: '8px clamp(16px,4vw,28px) 80px', display: 'flex', flexDirection: 'column', gap: 26 }}>
+        <div>
+          <div style={editLabel}>Titre</div>
+          <ActivityTitle activityId={a.id} initialName={a.title} />
+        </div>
+        <div>
+          <div style={editLabel}>Type de séance</div>
+          <TrainingRaceSelector value={localIsRace} onChange={saveIsRace} />
+          {!localIsRace && <div style={{ marginTop: 12 }}><WorkoutTypeBadges activityId={a.id} sport={a.sport_type} /></div>}
+        </div>
+        {isGym && <div><div style={editLabel}>Séance de renforcement</div><MuscuSessionPanel activity={a} /></div>}
+        {isPool && <div><div style={editLabel}>Longueurs</div><SwimLengths activityId={a.id} distanceM={a.distance_m} /></div>}
+        <div>
+          <div style={editLabel}>Ressenti & difficulté</div>
+          <FeelingDifficultyCard feeling={localFeeling} difficulty={localDifficulty} onEdit={setFdEditing} />
+          <button onClick={() => setShowRpeModal(true)} style={{ marginTop: 12, display: 'inline-flex', alignItems: 'center', gap: 7, padding: '9px 15px', borderRadius: 999, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-mid)', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
+            RPE & sensation
+          </button>
+        </div>
+        <div>
+          <div style={editLabel}>Confidentialité & matériel</div>
+          <ActivitySettingsPanel activityId={a.id} sport={a.sport_type} />
+        </div>
+        <div>
+          <div style={editLabel}>Photos & commentaire</div>
+          <ActivityMedia activityId={a.id} initialMedia={a.media} initialComment={a.comment} />
+        </div>
+        <button onClick={() => setEditOpen(false)} style={{ marginTop: 4, padding: '13px 20px', borderRadius: 'var(--r-md)', border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontFamily: 'var(--font-body)', fontSize: 14.5, fontWeight: 700, cursor: 'pointer' }}>
+          Enregistrer
+        </button>
+      </div>
+    </SlideSheet>
+  )
+
   // ── Shared data blocks JSX (5 blocs) ──
   const dataBlocks = (
     <div style={{ display: 'flex', gap: 0, marginBottom: 0, flexWrap: 'wrap' }}>
@@ -7348,12 +7397,6 @@ conseil pour la prochaine séance similaire.`
       <div style={{ flex: '1 1 140px', paddingRight: 24, paddingBottom: 12 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
           <span style={{ fontSize: 11, color: T.textMuted }}>{t('actp.feeling')}</span>
-          {!readOnly && (
-            <button onClick={() => setShowRpeModal(true)} style={{
-              background: T.bgAlt, border: `1px solid ${T.border}`, borderRadius: 6,
-              padding: '2px 8px', fontSize: 11, cursor: 'pointer', color: T.textSub,
-            }}>{t('actp.enter_plus')}</button>
-          )}
         </div>
         {localSensation != null && (
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
@@ -7709,9 +7752,7 @@ conseil pour la prochaine séance similaire.`
           <div style={{ padding: '0 16px 16px', display: 'flex', alignItems: 'flex-start', gap: 10 }}>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div data-activity-title="">
-                {readOnly
-                  ? <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 600, color: 'var(--text)', margin: 0, lineHeight: 1.15 }}>{a.title}</h1>
-                  : <ActivityTitle activityId={a.id} initialName={a.title} variant="hero" />}
+                <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 600, color: 'var(--text)', margin: 0, lineHeight: 1.15 }}>{a.title}</h1>
               </div>
               <p data-activity-subtitle="" style={{ fontSize: 13, color: T.textMuted, margin: '6px 0 0', lineHeight: 1.4 }}>
                 {sportLabel(a.sport_type, t)}
@@ -7727,67 +7768,31 @@ conseil pour la prochaine séance similaire.`
                 </div>
               )}
             </div>
-            <button onClick={() => shareThisActivity()} aria-label={t('actp.share')} style={{
-              flexShrink: 0, width: 38, height: 38, borderRadius: '50%', border: '1px solid var(--border)',
-              background: 'var(--bg-card2)', color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+              {!readOnly && (
+                <button onClick={() => setEditOpen(true)} style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6, height: 38, padding: '0 15px', borderRadius: 999, border: 'none',
+                  background: 'var(--primary)', color: 'var(--on-primary)', cursor: 'pointer', fontSize: 13.5, fontWeight: 700, fontFamily: 'var(--font-body)',
+                }}>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
+                  Modifier
+                </button>
+              )}
+              <button onClick={() => shareThisActivity()} aria-label={t('actp.share')} style={{
+                width: 38, height: 38, borderRadius: '50%', border: '1px solid var(--border)',
+                background: 'var(--bg-card2)', color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>
+              </button>
+            </div>
           </div>
 
-          {/* Entraînement / Course (mobile) — masque les badges de type si Course */}
-          {!readOnly && (
-            <div style={{ padding: '0 16px 12px' }}>
-              <TrainingRaceSelector value={localIsRace} onChange={saveIsRace} />
-            </div>
-          )}
-
-          {/* Type d'entraînement (mobile, tous sports) — sélection manuelle.
-              Masqué pour une course (une course n'est pas un entraînement). */}
-          {!readOnly && !localIsRace && (
-            <div style={{ padding: '0 16px' }}>
-              <WorkoutTypeBadges activityId={a.id} sport={a.sport_type} />
-            </div>
-          )}
-
-          {/* Confidentialité + matériel de l'activité (mobile) */}
-          {!readOnly && (
-            <div style={{ padding: '12px 16px 0' }}>
-              <ActivitySettingsPanel activityId={a.id} sport={a.sport_type} />
-            </div>
-          )}
-
-          {/* Muscu : séance enregistrée (fusion in-app) ou saisie manuelle */}
-          {!readOnly && isGym && (
-            <div style={{ padding: '0 16px' }}>
-              <MuscuSessionPanel activity={a} />
-            </div>
-          )}
-
-          {/* Natation piscine : nombre de longueurs (bassin saisi par l'athlète) */}
-          {!readOnly && isPool && (
-            <div style={{ padding: '0 16px' }}>
-              <SwimLengths activityId={a.id} distanceM={a.distance_m} />
-            </div>
-          )}
-
-          {/* Jauges Ressenti / Difficulté (mobile) — non éditable en lecture seule */}
+          {/* Jauges Ressenti / Difficulté (mobile) — AFFICHAGE seul.
+              L'édition (type, tags, confidentialité, ressenti, RPE, photos,
+              commentaire) est dans la sur-page « Modifier ». */}
           <div style={{ padding: '0 16px' }}>
-            <FeelingDifficultyCard feeling={localFeeling} difficulty={localDifficulty} onEdit={readOnly ? () => {} : setFdEditing} />
+            <FeelingDifficultyCard feeling={localFeeling} difficulty={localDifficulty} onEdit={() => {}} />
           </div>
-
-          {/* Sans carte GPS : galerie média inline (avec carte, elle est dans le héros) */}
-          {!readOnly && !(polylinePoints && polylinePoints.length >= 2) && (
-            <div style={{ marginTop: 8 }}>
-              <ActivityMediaHero variant="inline" activityId={a.id} initialMedia={a.media} points={polylinePoints} />
-            </div>
-          )}
-          {/* Commentaire (les photos/vidéos sont gérées dans le héros) */}
-          {!readOnly && (
-            <div style={{ padding: '14px 16px 0' }}>
-              <ActivityMedia activityId={a.id} initialComment={a.comment} showPhotos={false} />
-            </div>
-          )}
 
           {/* Records battus — sous la carte (mobile) */}
           <div style={{ padding: '0 16px' }}>
@@ -8114,6 +8119,7 @@ conseil pour la prochaine séance similaire.`
       </div>
 
       {sharedModals}
+      {!readOnly && editSheet}
 
       {/* Vue détaillée des laps (slide droite, portal sur body) — AUSSI sur
           mobile : sans ça, taper un tour changeait l'état sans rien afficher. */}
@@ -8156,7 +8162,7 @@ conseil pour la prochaine séance similaire.`
           <ChevronLeft size={16} /> Retour
         </button>
         <div style={{ flex: 1, minWidth: 0, fontWeight: 700, fontSize: 15, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {readOnly ? <span>{a.title}</span> : <ActivityTitle activityId={a.id} initialName={a.title} />}
+          <span>{a.title}</span>
         </div>
         <span style={{ fontSize: 12, background: col + '18', color: col, padding: '2px 8px', borderRadius: 20, flexShrink: 0, fontWeight: 600 }}>
           {sportLabel(a.sport_type, t)}
@@ -8172,6 +8178,16 @@ conseil pour la prochaine séance similaire.`
             <ViewOnStrava activityId={a.provider_id} height={30} />
             <PoweredByStrava variant="muted" height={12} />
           </div>
+        )}
+        {!readOnly && (
+          <button onClick={() => setEditOpen(true)} style={{
+            display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 13, fontWeight: 700,
+            color: 'var(--on-primary)', background: 'var(--primary)', border: 'none', borderRadius: 8,
+            padding: '8px 16px', cursor: 'pointer', flexShrink: 0, fontFamily: 'inherit',
+          }}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
+            Modifier
+          </button>
         )}
         {!readOnly && (
         <button
@@ -8193,32 +8209,15 @@ conseil pour la prochaine séance similaire.`
 
       <div style={{ padding: '20px 24px' }}>
 
-        {/* ── Entraînement / Course (desktop) — masque les badges de type si Course ── */}
-        {!readOnly && (
-          <div style={{ marginBottom: 12 }}>
-            <TrainingRaceSelector value={localIsRace} onChange={saveIsRace} />
-          </div>
-        )}
-
-        {/* ── Badges de type d'entraînement (tous sports) — sélection manuelle ── */}
-        {!readOnly && !localIsRace && <WorkoutTypeBadges activityId={a.id} sport={a.sport_type} />}
-
-        {/* ── Confidentialité + matériel de l'activité (desktop) ── */}
-        {!readOnly && (
-          <div style={{ marginTop: 16, maxWidth: 520 }}>
-            <ActivitySettingsPanel activityId={a.id} sport={a.sport_type} />
-          </div>
-        )}
-
-        {/* ── MUSCU : séance enregistrée (fusion in-app) ou saisie manuelle ── */}
-        {!readOnly && isGym && <MuscuSessionPanel activity={a} />}
+        {/* Édition (type, tags, confidentialité, matériel) déplacée dans la
+            sur-page « Modifier » — la vue reste propre. */}
 
         {/* ── MUSCU : layout dédié (remplace entièrement le générique cardio) ── */}
         {isGym && (
           <MuscuActivityView
             activity={a}
             z2DurationS={z2DurationS}
-            jauges={<FeelingDifficultyCard feeling={localFeeling} difficulty={localDifficulty} onEdit={readOnly ? () => {} : setFdEditing} />}
+            jauges={<FeelingDifficultyCard feeling={localFeeling} difficulty={localDifficulty} onEdit={() => {}} />}
           />
         )}
 
@@ -8249,8 +8248,7 @@ conseil pour la prochaine séance similaire.`
             <span><strong>{isOpenWater ? t('actp.open_water') : t('actp.pool')}</strong>{a.avg_temp_c != null ? ` · ${Math.round(Number(a.avg_temp_c))} °C` : ''}</span>
           </div>
         )}
-        {/* Natation : nombre de longueurs (bassin saisi par l'athlète) */}
-        {!readOnly && isPool && <SwimLengths activityId={a.id} distanceM={a.distance_m} />}
+        {/* (longueurs natation : édition dans la sur-page « Modifier ») */}
 
         {/* ── PARTIE 3 : Hero row (carte | stats) ── */}
         {mapExpanded ? (
@@ -8353,15 +8351,11 @@ conseil pour la prochaine séance similaire.`
           </div>
         )}
 
-        {/* ── Jauges Ressenti / Difficulté (desktop) — non éditable en lecture seule ── */}
-        <FeelingDifficultyCard feeling={localFeeling} difficulty={localDifficulty} onEdit={readOnly ? () => {} : setFdEditing} />
+        {/* ── Jauges Ressenti / Difficulté (desktop) — AFFICHAGE seul (édition
+            dans la sur-page « Modifier ») ── */}
+        <FeelingDifficultyCard feeling={localFeeling} difficulty={localDifficulty} onEdit={() => {}} />
 
-        {/* ── Photos & vidéos (desktop) ── */}
-        {!readOnly && (
-          <div style={{ marginBottom: 20 }}>
-            <ActivityMedia activityId={a.id} initialMedia={a.media} initialComment={a.comment} />
-          </div>
-        )}
+        {/* (photos & commentaire : édition dans la sur-page « Modifier ») */}
 
         {/* ── Records battus — sous la carte (desktop) ── */}
         <RecordsBeaten activityId={a.id} isBike={isBike} />
@@ -8923,6 +8917,7 @@ conseil pour la prochaine séance similaire.`
       </div>
 
       {sharedModals}
+      {!readOnly && editSheet}
 
       {/* Vue détaillée des laps (slide droite, portal sur body) */}
       <LapsDetailView
@@ -9331,11 +9326,12 @@ function NewActivityBadge() {
   )
 }
 
-function SectionAnalyse({ activities, zones, profile, deepLinkId, highlightId, onDelete, loadMore, hasMore, loadingMore }: {
+function SectionAnalyse({ activities, zones, profile, deepLinkId, deepLinkEdit, highlightId, onDelete, loadMore, hasMore, loadingMore }: {
   activities: Activity[]
   zones: TrainingZoneRow[]
   profile: Profile
   deepLinkId?: string | null
+  deepLinkEdit?: boolean
   highlightId?: string | null
   onDelete?: (id: string) => void
   loadMore?: () => void
@@ -9479,7 +9475,7 @@ function SectionAnalyse({ activities, zones, profile, deepLinkId, highlightId, o
             <span style={{ fontSize: 16 }}>←</span> {t('activities.backToList')}
           </button>
         )}
-        <ActivityDetail a={selected} onClose={closeDetail} closing={detailClosing} zones={zones} profile={profile} allActivities={activities} />
+        <ActivityDetail a={selected} onClose={closeDetail} closing={detailClosing} zones={zones} profile={profile} allActivities={activities} initialEdit={deepLinkEdit && selected.id === deepLinkId} />
       </div>
     )
   }
@@ -10150,6 +10146,7 @@ function TrainingPageInner() {
   const isMobile = width < 768
   // Deep-link depuis Planning : ?id=<activity_id> → ouvre directement la section analyse
   const [deepLinkId, setDeepLinkId] = useState<string|null>(null)
+  const [deepLinkEdit, setDeepLinkEdit] = useState(false)
   // Depuis l'écran d'enregistrement live : ?new=<activity_id> → scrolle sur la
   // carte de l'activité créée et la met en avant (liseré cyan + badge NOUVEAU).
   const [newActivityId, setNewActivityId] = useState<string|null>(null)
@@ -10158,6 +10155,10 @@ function TrainingPageInner() {
     const params = new URLSearchParams(window.location.search)
     const id = params.get('id')
     if (id) { setDeepLinkId(id); setSection('analyse') }
+    // ?edit=<id> : notification « séance terminée » → ouvre le détail ET la
+    // sur-page « Modifier » directement.
+    const edit = params.get('edit')
+    if (edit) { setDeepLinkId(edit); setDeepLinkEdit(true); setSection('analyse') }
     const created = params.get('new')
     if (created) { setNewActivityId(created); setSection('analyse') }
   }, [])
@@ -10310,7 +10311,7 @@ function TrainingPageInner() {
             )}
             {loading && !error && <PageLoader />}
             {!loading && !error && id === 'donnees'     && <div className="fade-up"><ScrollReveal><SectionDonnees activities={activities} zones={zones} profile={profile} /></ScrollReveal></div>}
-            {!loading && !error && id === 'analyse'     && <div className="fade-up"><ScrollReveal><SectionAnalyse activities={activities} zones={zones} profile={profile} deepLinkId={deepLinkId} highlightId={newActivityId} onDelete={handleDeleteActivity} loadMore={loadMore} hasMore={hasMore} loadingMore={loadingMore} /></ScrollReveal></div>}
+            {!loading && !error && id === 'analyse'     && <div className="fade-up"><ScrollReveal><SectionAnalyse activities={activities} zones={zones} profile={profile} deepLinkId={deepLinkId} deepLinkEdit={deepLinkEdit} highlightId={newActivityId} onDelete={handleDeleteActivity} loadMore={loadMore} hasMore={hasMore} loadingMore={loadingMore} /></ScrollReveal></div>}
             {id === 'progression' && (
               <div className="fade-up">
                 {progSport

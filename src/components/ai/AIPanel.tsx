@@ -21322,7 +21322,7 @@ export default function AIPanel({
     if (!d.active) {
       // Geste vertical → on laisse scroller, on abandonne le drag
       if (Math.abs(dy) > 12 && Math.abs(dy) >= Math.abs(dx)) { dragRef.current = null; return }
-      if (Math.abs(dx) > 12 && Math.abs(dx) > Math.abs(dy)) d.active = true
+      if (Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy)) d.active = true
       else return
     }
     const off = Math.max(0, Math.min(AI_SIDEBAR_W, d.startOffset + dx))

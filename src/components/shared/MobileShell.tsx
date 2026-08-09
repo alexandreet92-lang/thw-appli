@@ -29,7 +29,6 @@ const FD = 'var(--font-display)'
 const MOTION = 'transform 0.32s cubic-bezier(0.32,0.72,0,1), border-radius 0.32s, box-shadow 0.32s'
 const OPEN_RATIO = 0.80
 const OPEN_MAX = 360
-const EDGE = 28 // px depuis le bord gauche pour amorcer l'ouverture
 
 // Cherche un ancêtre défilable horizontalement (tableau large, carrousel…) entre
 // l'élément touché et la page, pour NE PAS ouvrir le menu latéral quand on fait
@@ -140,7 +139,7 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
     const st = g.current
     st.startX = t.clientX; st.startY = t.clientY; st.dragging = false
     st.base = open ? offsetPx() : 0; st.last = st.base
-    st.active = open || t.clientX <= EDGE // fermé : seulement depuis le bord
+    st.active = true // façon Claude : on peut amorcer le glissement depuis n'importe où
     // Tableau/carrousel défilable sous le doigt → on le mémorise pour lui laisser
     // le scroll horizontal (ne pas ouvrir le menu latéral).
     st.hscroll = hScrollAncestor(e.target, panelRef.current)

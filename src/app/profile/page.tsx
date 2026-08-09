@@ -7,7 +7,7 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import { User, Bell, Zap, Moon, Apple, TrendingUp, Sparkles, Coins, Plug, Trophy, Settings, Package, Bike, Footprints, Target, Globe, MapPin, Shield, Lock, CreditCard, BarChart3, Dumbbell, LogOut, ChevronLeft, Palette, Sun, Monitor, Check, Ruler, Users } from 'lucide-react'
 import SubscriptionEmailModal from '@/components/subscription/SubscriptionEmailModal'
 import { createClient } from '@/lib/supabase/client'
-import { getMyActivityVisibility, setActivityVisibility, type ActivityVisibility } from '@/lib/profile/activityShowcase'
+import { getMyActivityVisibility, setActivityVisibility, getMyHiddenData, setMyHiddenData, HIDDEN_DATA_CATS, type ActivityVisibility, type HiddenDataCat } from '@/lib/profile/activityShowcase'
 import { BottomSheet } from '@/components/ui/BottomSheet'
 import { SlideView } from '@/components/ui/SlideView'
 import { useI18n } from '@/lib/i18n'
@@ -1174,6 +1174,48 @@ function ActivityVisibilitySection() {
   )
 }
 
+// ── Masquer certaines données (défaut global, par activité modifiable) ──
+const HIDDEN_DATA_LABELS: Record<HiddenDataCat, { label: string; sub: string }> = {
+  hr:    { label: 'Fréquence cardiaque', sub: 'FC moyenne, max et courbe' },
+  watts: { label: 'Puissance (watts)',   sub: 'Watts moyens, max et courbe' },
+  pace:  { label: 'Allure (course)',     sub: 'Allure moyenne et courbe' },
+  speed: { label: 'Vitesse (vélo)',      sub: 'Vitesse moyenne, max et courbe' },
+  kcal:  { label: 'Calories',            sub: 'Dépense énergétique' },
+}
+function HiddenDataSection() {
+  const [cats, setCats] = useState<HiddenDataCat[]>([])
+  useEffect(() => { void getMyHiddenData().then(setCats).catch(() => {}) }, [])
+  const toggle = (c: HiddenDataCat) => {
+    const next = cats.includes(c) ? cats.filter(x => x !== c) : [...cats, c]
+    setCats(next); void setMyHiddenData(next).catch(() => {})
+  }
+  return (
+    <Section label="Masquer certaines données">
+      <Group>
+        {HIDDEN_DATA_CATS.map((c, i) => {
+          const on = cats.includes(c)
+          return (
+            <Line key={c} first={i === 0}>
+              <button onClick={() => toggle(c)} style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left', padding: 0, fontFamily: 'var(--font-body)' }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontSize: 15, fontWeight: 500, color: 'var(--text)', margin: 0 }}>{HIDDEN_DATA_LABELS[c].label}</p>
+                  <p style={{ fontSize: 11.5, color: 'var(--text-dim)', margin: '2px 0 0' }}>{HIDDEN_DATA_LABELS[c].sub}</p>
+                </div>
+                <span style={{ width: 44, height: 26, borderRadius: 13, flexShrink: 0, background: on ? 'var(--primary)' : 'var(--border-mid)', position: 'relative', transition: 'background 150ms' }}>
+                  <span style={{ position: 'absolute', top: 3, left: on ? 21 : 3, width: 20, height: 20, borderRadius: '50%', background: 'var(--bg-card)', transition: 'left 150ms' }} />
+                </span>
+              </button>
+            </Line>
+          )
+        })}
+      </Group>
+      <p style={{ fontSize: 11.5, color: 'var(--text-dim)', margin: '8px 4px 0' }}>
+        Ces données seront masquées pour les autres athlètes, partout où ils voient tes activités. Tu peux affiner le masquage sur chaque activité.
+      </p>
+    </Section>
+  )
+}
+
 // ── Bulle Confidentialité : données & vie privée ──────────────────
 function ConfidentialiteBloc() {
   const { t } = useI18n()
@@ -1187,6 +1229,8 @@ function ConfidentialiteBloc() {
       <Intro>{t('profile.privacyIntro')}</Intro>
 
       <ActivityVisibilitySection />
+
+      <HiddenDataSection />
 
       <Section label={t('profile.documents')}>
         <Group>

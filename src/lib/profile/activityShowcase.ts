@@ -220,3 +220,27 @@ export async function getMyActivityVisibility(): Promise<ActivityVisibility> {
   const { data } = await sb.from('profiles').select('activity_visibility').eq('id', user.id).maybeSingle()
   return ((data as { activity_visibility?: ActivityVisibility } | null)?.activity_visibility) ?? 'public'
 }
+
+// ── Masquage de données (par défaut global de l'athlète) ──
+// Catégories : 'hr' (FC) · 'watts' · 'pace' (allure, course) · 'speed' (vitesse,
+// vélo) · 'kcal'. Respecté partout où un AUTRE athlète voit l'activité.
+export type HiddenDataCat = 'hr' | 'watts' | 'pace' | 'speed' | 'kcal'
+export const HIDDEN_DATA_CATS: HiddenDataCat[] = ['hr', 'watts', 'pace', 'speed', 'kcal']
+
+/** Masquage global par défaut de l'utilisateur connecté. */
+export async function getMyHiddenData(): Promise<HiddenDataCat[]> {
+  const sb = createClient()
+  const { data: { user } } = await sb.auth.getUser()
+  if (!user) return []
+  const { data } = await sb.from('profiles').select('activity_hidden_data').eq('id', user.id).maybeSingle()
+  const arr = (data as { activity_hidden_data?: string[] } | null)?.activity_hidden_data
+  return Array.isArray(arr) ? arr.filter((c): c is HiddenDataCat => (HIDDEN_DATA_CATS as string[]).includes(c)) : []
+}
+
+/** Met à jour le masquage global par défaut de l'utilisateur connecté. */
+export async function setMyHiddenData(cats: HiddenDataCat[]): Promise<void> {
+  const sb = createClient()
+  const { data: { user } } = await sb.auth.getUser()
+  if (!user) return
+  await sb.from('profiles').update({ activity_hidden_data: cats }).eq('id', user.id)
+}

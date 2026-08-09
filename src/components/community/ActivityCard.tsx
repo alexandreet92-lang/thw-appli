@@ -8,6 +8,7 @@ import { useState } from 'react'
 import { sportColor, sportLabel } from '@/components/recovery/helpers'
 import { RouteSvg, ElevationSvg } from './activityViz'
 import { ActivityDetailPanel } from './ActivityDetailPanel'
+import { CommunityActivityAnalysis } from './CommunityActivityAnalysis'
 import type { ActivityRef } from '@/types/community'
 
 const FB = 'var(--font-body)', FD = 'var(--font-display)'
@@ -30,8 +31,10 @@ function fmtDate(iso: string): string {
   try { return new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) } catch { return '' }
 }
 
-// `me` conservé pour compat d'appel ; le détail est le même pour tous (snapshot).
-export function ActivityCard({ activity }: { activity: ActivityRef; me?: string | null }) {
+// `me` conservé pour compat d'appel. Avec `channelId`, le clic ouvre l'analyse
+// complète (mêmes fonctionnalités que la page training, lecture seule) via la
+// RPC réservée aux membres ; sinon, la surpage snapshot.
+export function ActivityCard({ activity, channelId }: { activity: ActivityRef; me?: string | null; channelId?: string }) {
   const [open, setOpen] = useState(false)
   const col = sportColor(activity.sport)
   const stats = [
@@ -67,7 +70,9 @@ export function ActivityCard({ activity }: { activity: ActivityRef; me?: string 
           </div>
         </div>
       </button>
-      {open && <ActivityDetailPanel activity={activity} onClose={() => setOpen(false)} />}
+      {open && (channelId
+        ? <CommunityActivityAnalysis activity={activity} channelId={channelId} onClose={() => setOpen(false)} />
+        : <ActivityDetailPanel activity={activity} onClose={() => setOpen(false)} />)}
     </>
   )
 }

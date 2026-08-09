@@ -445,7 +445,7 @@ export function ChannelChat({
                   ) : (
                     <>
                       {m.body && <Body text={m.body} />}
-                      {m.attachments.length > 0 && <Attachments items={m.attachments} me={me} />}
+                      {m.attachments.length > 0 && <Attachments items={m.attachments} me={me} channelId={channel.id} />}
                       {m.reactions.length > 0 && (
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)', marginTop: 'var(--space-2)' }}>
                           {m.reactions.map(r => (
@@ -614,11 +614,11 @@ function IconBtn({ label, onClick, disabled, children }: { label: string; onClic
   )
 }
 
-function Attachments({ items, me }: { items: CommunityAttachment[]; me: string | null }) {
+function Attachments({ items, me, channelId }: { items: CommunityAttachment[]; me: string | null; channelId: string }) {
   return (
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)', marginTop: 'var(--space-2)' }}>
       {items.map((a, idx) => a.type === 'activity' && a.activity ? (
-        <ActivityCard key={a.activity.id} activity={a.activity} me={me} />
+        <ActivityCard key={a.activity.id} activity={a.activity} me={me} channelId={channelId} />
       ) : a.type === 'session' && a.session ? (
         <SessionCard key={`s-${idx}`} session={a.session} />
       ) : a.type === 'image' ? (

@@ -34,6 +34,7 @@ create or replace function public._apply_activity_masks(j jsonb, cats text[])
 returns jsonb
 language plpgsql
 immutable
+set search_path to ''
 as $$
 declare s jsonb;
 begin

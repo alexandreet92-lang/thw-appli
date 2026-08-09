@@ -51,7 +51,7 @@ export default function SlideSheet({ open, onClose, title, children }: Props) {
         boxShadow: '-20px 0 60px rgba(0,0,0,0.18)',
       }}>
         {/* En-tête */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px clamp(16px,4vw,32px)', flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 'calc(env(safe-area-inset-top, 0px) + 14px) clamp(16px,4vw,32px) 14px', flexShrink: 0 }}>
           <button onClick={onClose} aria-label="Fermer" style={{ width: 40, height: 40, borderRadius: 'var(--r-md)', border: 'none', background: 'var(--bg-card2)', color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
           </button>

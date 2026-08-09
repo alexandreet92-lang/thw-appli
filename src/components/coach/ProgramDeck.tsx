@@ -67,7 +67,7 @@ function Card({ p, pos, drag, onOpen }: { p: CoachProgram; pos: number; drag: nu
   return (
     <div onClick={isTop ? onOpen : undefined}
       style={{
-        position: 'absolute', top: 0, left: '50%', width: '84%', height: '100%', zIndex: z, opacity,
+        position: 'absolute', top: 0, left: '50%', width: '80%', height: '100%', zIndex: z, opacity,
         borderRadius: 24, background: cardBg(sport), color: 'white', boxShadow: shadow, overflow: 'hidden',
         padding: 'clamp(16px, 4.5vw, 22px)', display: 'flex', flexDirection: 'column', boxSizing: 'border-box',
         transform, transformOrigin: 'center', transition: 'transform 440ms cubic-bezier(0.34,1.3,0.5,1), opacity 260ms, box-shadow 260ms',
@@ -97,7 +97,7 @@ function Card({ p, pos, drag, onOpen }: { p: CoachProgram; pos: number; drag: nu
           {p.level && <Pill>{LEVEL_LABEL[p.level]}</Pill>}
           {p.ai_enabled && <span style={{ fontSize: 10, fontWeight: 800, padding: '2px 8px', borderRadius: 999, background: 'rgba(0,0,0,0.20)' }}>IA</span>}
         </div>
-        <div style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(22px, 5.5vw, 28px)', fontWeight: 600, lineHeight: 1.1, marginBottom: 8, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const, overflow: 'hidden' }}>{p.title}</div>
+        <div style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(18px, 4.6vw, 22px)', fontWeight: 600, lineHeight: 1.12, marginBottom: 8, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const, overflow: 'hidden' }}>{p.title}</div>
         {p.description && <div style={{ fontSize: 12.5, opacity: 0.92, lineHeight: 1.45, marginBottom: 10, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical' as const, overflow: 'hidden' }}>{p.description}</div>}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
           <span style={{ fontSize: 15, fontWeight: 800, background: 'rgba(255,255,255,0.22)', padding: '5px 12px', borderRadius: 999, whiteSpace: 'nowrap' }}>{priceStr(p)}</span>
@@ -225,7 +225,7 @@ export default function ProgramDeck({ programs, onOpen }: { programs: CoachProgr
               transition={{ duration: 0.34, ease: [0.32, 0.72, 0, 1] }}>
               <div style={{ width: '100%', maxWidth: 460, margin: '0 auto' }}>
                 {list.length > 0
-                  ? <Stack list={list} onOpen={onOpen} height="clamp(370px, 92vw, 440px)" />
+                  ? <Stack list={list} onOpen={onOpen} height="clamp(300px, 74vw, 380px)" />
                   : <p style={{ fontSize: 13, color: 'var(--text-dim)', textAlign: 'center', padding: 30 }}>Aucun programme.</p>}
               </div>
             </motion.div>

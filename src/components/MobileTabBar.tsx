@@ -222,7 +222,7 @@ const BAR: React.CSSProperties = {
   position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 100,
   // Barre translucide (verre dépoli) — boutons transparents façon Strava.
   background: 'var(--glass-bg)',
-  backdropFilter: 'blur(18px)', WebkitBackdropFilter: 'blur(18px)',
+  backdropFilter: 'blur(24px) saturate(1.4)', WebkitBackdropFilter: 'blur(24px) saturate(1.4)',
   borderTop: '0.5px solid var(--glass-border)',
   paddingBottom: 'env(safe-area-inset-bottom)',
 }

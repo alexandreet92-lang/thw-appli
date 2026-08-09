@@ -266,6 +266,8 @@ function useProfile() {
   const supabase = createClient()
   const [data, setData] = useState({ full_name:'', bio:'', height_cm:'', weight_kg:'', bike_weight_kg:'', email:'', avatar_url:'' })
   const [saving, setSaving] = useState(false)
+  const loadedRef = useRef(false)          // évite d'enregistrer pendant le chargement initial
+  const autoTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     async function load() {
@@ -281,9 +283,20 @@ function useProfile() {
         email:          user.email        ?? '',
         avatar_url:     p?.avatar_url     ?? '',
       })
+      loadedRef.current = true
     }
     load()
   }, [])
+
+  // Auto-save : toute modification est persistée automatiquement (debounce),
+  // sans bouton « Enregistrer ». Ne se déclenche jamais avant le chargement.
+  useEffect(() => {
+    if (!loadedRef.current) return
+    if (autoTimer.current) clearTimeout(autoTimer.current)
+    autoTimer.current = setTimeout(() => { void save() }, 600)
+    return () => { if (autoTimer.current) clearTimeout(autoTimer.current) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data.full_name, data.bio, data.height_cm, data.weight_kg, data.bike_weight_kg])
 
   async function save(): Promise<string | null> {
     setSaving(true)
@@ -298,6 +311,7 @@ function useProfile() {
       bio:            data.bio       || null,
       height_cm:      data.height_cm      ? parseFloat(data.height_cm) : null,
       weight_kg:      data.weight_kg      ? parseFloat(data.weight_kg) : null,
+      bike_weight_kg: data.bike_weight_kg ? parseFloat(data.bike_weight_kg) : null,
       avatar_url:     data.avatar_url || null,
       updated_at:     new Date().toISOString(),
     })

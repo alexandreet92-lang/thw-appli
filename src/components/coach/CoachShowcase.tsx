@@ -148,16 +148,19 @@ export default function CoachShowcase({ profile, programs = [], counts, isCoach,
         </div>
       )}
 
-      {/* ── PROGRAMMES (deck pleine largeur) ── */}
+      {/* ── PROGRAMMES (deck pleine largeur, SANS cadre ni ombre : les cartes
+          doivent pouvoir déborder librement, jamais coupées) ── */}
       {(programs.length > 0 || isOwner) && (
-        <div style={card}>
+        <div>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 14 }}>
             <SectionTitle>Programmes</SectionTitle>
             {programs.length > 0 && <span className="tnum" style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-dim)', fontVariantNumeric: 'tabular-nums' }}>{programs.length}</span>}
           </div>
           {programs.length > 0 ? (
             <>
-              <ProgramFilters programs={programs} value={progFilters} onChange={setProgFilters} />
+              <div style={{ marginBottom: 16 }}>
+                <ProgramFilters programs={programs} value={progFilters} onChange={setProgFilters} />
+              </div>
               {filteredPrograms.length > 0
                 ? <ProgramDeck programs={filteredPrograms} onOpen={setOpenProgram} />
                 : <Empty>Aucun programme ne correspond à ces filtres.</Empty>}

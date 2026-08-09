@@ -49,12 +49,13 @@ type Placement = { transform: string; z: number; opacity: number; shadow: string
 // glisse à gauche et passe derrière pendant que la suivante avance au centre.
 function placeCard(pos: number, drag: number): Placement {
   const dl = Math.min(0, drag), dr = Math.max(0, drag)
-  if (pos === 0) return { transform: `translateX(calc(-50% + ${drag}px)) rotate(${(drag * 0.015).toFixed(2)}deg)`, z: 40, opacity: 1, shadow: '0 20px 44px rgba(0,0,0,0.30)' }
+  // AUCUNE ombre (demande explicite) — la profondeur vient du décalage + échelle.
+  if (pos === 0) return { transform: `translateX(calc(-50% + ${drag}px)) rotate(${(drag * 0.015).toFixed(2)}deg)`, z: 40, opacity: 1, shadow: 'none' }
   // Suivante — dépasse nettement à droite (visible), en retrait.
-  if (pos === 1) return { transform: `translateX(calc(-50% + 34% + ${dl * 0.4}px)) translateY(14px) rotate(6deg) scale(0.9)`, z: 30, opacity: 0.96, shadow: '0 12px 26px rgba(0,0,0,0.22)' }
-  if (pos === 2) return { transform: `translateX(calc(-50% + 48% + ${dl * 0.25}px)) translateY(26px) rotate(10deg) scale(0.82)`, z: 20, opacity: 0.72, shadow: '0 10px 22px rgba(0,0,0,0.16)' }
+  if (pos === 1) return { transform: `translateX(calc(-50% + 34% + ${dl * 0.4}px)) translateY(14px) rotate(6deg) scale(0.9)`, z: 30, opacity: 0.96, shadow: 'none' }
+  if (pos === 2) return { transform: `translateX(calc(-50% + 48% + ${dl * 0.25}px)) translateY(26px) rotate(10deg) scale(0.82)`, z: 20, opacity: 0.72, shadow: 'none' }
   // Précédente — dépasse nettement à gauche (visible).
-  return { transform: `translateX(calc(-50% - 34% + ${dr * 0.4}px)) translateY(14px) rotate(-6deg) scale(0.9)`, z: 28, opacity: 0.96, shadow: '0 12px 26px rgba(0,0,0,0.22)' }
+  return { transform: `translateX(calc(-50% - 34% + ${dr * 0.4}px)) translateY(14px) rotate(-6deg) scale(0.9)`, z: 28, opacity: 0.96, shadow: 'none' }
 }
 
 function Card({ p, pos, drag, onOpen }: { p: CoachProgram; pos: number; drag: number; onOpen?: () => void }) {
@@ -238,12 +239,13 @@ export default function ProgramDeck({ programs, onOpen }: { programs: CoachProgr
   return (
     <div>
       <style>{STYLE}</style>
-      {/* Gap large : les cartes qui dépassent sur les côtés vivent dans l'espace
-          entre colonnes (pas de chevauchement disgracieux). */}
-      <div style={{ display: 'flex', gap: 'clamp(44px, 6vw, 88px)', overflowX: 'auto', paddingBottom: 14, alignItems: 'flex-start' }}>
+      {/* Rangée des piles (une par sport). overflow VISIBLE + padding vertical :
+          les cartes qui dépassent (côtés, rotation) ne sont JAMAIS coupées.
+          On enveloppe (wrap) au lieu de scroller pour ne pas rogner en hauteur. */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'clamp(48px, 6vw, 96px)', rowGap: 40, overflow: 'visible', padding: '14px 0 28px', alignItems: 'flex-start' }}>
         {groups.map(([sport, list]) => (
-          <div key={sport} style={{ flex: '0 0 clamp(240px, 28%, 300px)', minWidth: 240 }}>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 7, margin: '0 4px 12px' }}>
+          <div key={sport} style={{ flex: '0 0 clamp(230px, 26%, 290px)', minWidth: 230, overflow: 'visible' }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 7, margin: '0 4px 14px' }}>
               <span style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 600, color: 'var(--text)' }}>{SPORT_LABEL[sport] ?? sport}</span>
               <span className="tnum" style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text-dim)' }}>{list.length}</span>
             </div>

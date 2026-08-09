@@ -11,6 +11,7 @@ import SlideSheet from '@/components/ui/SlideSheet'
 import { Greeting } from './Greeting'
 import { QuickActions } from './QuickActions'
 import { AthleteCoachCard } from './AthleteCoachCard'
+import { UnreadMessagesCard } from './UnreadMessagesCard'
 import { AthleteFormsCard } from '@/components/coach/CustomForms'
 import { CoachActivityCard } from '@/components/coach/CoachActivityCard'
 import { BecomeCoachCard } from '@/components/coach/BecomeCoachCard'
@@ -50,6 +51,8 @@ export function DashboardContent() {
       </div>
 
       <AthleteCoachCard />
+
+      <UnreadMessagesCard />
 
       <div style={{ marginBottom: 'var(--space-5)' }}><AthleteFormsCard /></div>
       <div style={{ marginBottom: 'var(--space-5)' }}><CoachActivityCard /></div>

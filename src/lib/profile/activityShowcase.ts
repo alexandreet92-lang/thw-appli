@@ -14,6 +14,9 @@ export interface RecentActivity {
   polyline: string | null
   sm: number | null; sn: number | null; is_race: boolean | null
 }
+export interface FeedActivity extends RecentActivity {
+  author_id: string; author_name: string; author_avatar: string | null
+}
 export interface RecordItem { sport: string; label: string; perf: string; unit: string; at: string | null }
 export interface ActivityShowcaseData {
   can_view: boolean
@@ -112,14 +115,24 @@ export interface ActivityStreams {
 }
 export interface ActivityDetail {
   can_view: boolean
-  id: string; sport: string; title: string; started_at: string; is_race: boolean | null
+  id: string; sport: string; sport_type: string; title: string; started_at: string; is_race: boolean | null
   distance_m: number | null; seconds: number | null; elapsed_s: number | null
+  moving_time_s: number | null; elapsed_time_s: number | null
   avg_pace_s_km: number | null; avg_speed_ms: number | null; max_speed_ms: number | null
   avg_watts: number | null; max_watts: number | null; normalized_watts: number | null; kilojoules: number | null
-  elevation_gain_m: number | null; avg_hr: number | null; max_hr: number | null
+  elevation_gain_m: number | null; elevation_loss_m: number | null; avg_hr: number | null; max_hr: number | null
   avg_cadence: number | null; max_cadence: number | null; calories: number | null
   avg_temp_c: number | null; sm: number | null; sn: number | null; rpe: number | null
-  polyline: string | null; streams: ActivityStreams | null
+  external_url: string | null
+  polyline: string | null; summary_polyline: string | null; streams: ActivityStreams | null
+}
+
+/** Fil d'activités des athlètes suivis (confidentialité respectée par la RPC). */
+export async function getActivityFeed(beforeTs?: string | null, max = 40): Promise<FeedActivity[]> {
+  const sb = createClient()
+  const { data, error } = await sb.rpc('activity_feed', { max_rows: max, before_ts: beforeTs ?? null })
+  if (error || !Array.isArray(data)) return []
+  return data as FeedActivity[]
 }
 
 /** Détail complet (lecture seule) d'une activité, via la RPC sécurisée. */

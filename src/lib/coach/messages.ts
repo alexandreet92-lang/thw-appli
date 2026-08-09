@@ -113,6 +113,33 @@ export async function markThreadRead(coachId: string, athleteId: string): Promis
     .eq('coach_id', coachId).eq('athlete_id', athleteId).neq('sender_id', me).is('read_at', null)
 }
 
+// Fils NON LUS (coach OU tout autre utilisateur) qui me sont adressés — pour le
+// badge/aperçu du Dashboard. Un fil = une paire (coach_id, athlete_id).
+export async function getUnreadThreads(): Promise<Thread[]> {
+  const sb = createClient()
+  const me = await uid()
+  const { data } = await sb.from('coach_messages').select('*')
+    .neq('sender_id', me).is('read_at', null).or(`coach_id.eq.${me},athlete_id.eq.${me}`)
+    .order('created_at', { ascending: false })
+  const rows = (data ?? []) as Row[]
+  const byPair = new Map<string, { coachId: string; athleteId: string; otherId: string; last: Row; unread: number }>()
+  for (const m of rows) {
+    const otherId = m.coach_id === me ? m.athlete_id : m.coach_id
+    const key = `${m.coach_id}:${m.athlete_id}`
+    const cur = byPair.get(key)
+    if (cur) { cur.unread++ } else { byPair.set(key, { coachId: m.coach_id, athleteId: m.athlete_id, otherId, last: m, unread: 1 }) }
+  }
+  const ids = [...new Set([...byPair.values()].map(v => v.otherId))]
+  const profs = ids.length
+    ? (await sb.from('profiles').select('id, full_name, first_name, avatar_url').in('id', ids)).data ?? []
+    : []
+  const byId = new Map(profs.map(p => [p.id as string, p as Record<string, unknown>]))
+  return [...byPair.values()].map(v => {
+    const p = byId.get(v.otherId)
+    return { otherId: v.otherId, coachId: v.coachId, athleteId: v.athleteId, name: (p?.full_name as string) || (p?.first_name as string) || 'Utilisateur', avatar: (p?.avatar_url as string | null) ?? null, lastBody: v.last.body, lastAt: v.last.created_at, unread: v.unread }
+  }).sort((a, b) => (b.lastAt || '').localeCompare(a.lastAt || ''))
+}
+
 // Total de messages non lus qui me sont adressés (coach ou athlète).
 export async function getUnreadTotal(): Promise<number> {
   const sb = createClient()

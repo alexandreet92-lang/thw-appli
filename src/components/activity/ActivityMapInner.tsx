@@ -3,8 +3,17 @@
 // Chargé via dynamic() dans ActivityMapCard pour éviter le SSR.
 
 import { useEffect } from 'react'
-import { MapContainer, TileLayer, Polyline, CircleMarker, useMap } from 'react-leaflet'
+import { MapContainer, TileLayer, Polyline, CircleMarker, Marker, useMap } from 'react-leaflet'
+import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
+
+// Drapeau à damier (arrivée) — petite bulle sans image externe (divIcon HTML).
+const FINISH_ICON = L.divIcon({
+  className: '',
+  html: '<div style="font-size:19px;line-height:1;filter:drop-shadow(0 1px 2px rgba(0,0,0,.45))">🏁</div>',
+  iconSize: [20, 20],
+  iconAnchor: [3, 19],
+})
 
 const TOKEN       = process.env.NEXT_PUBLIC_MAPBOX ?? ''
 const ATTRIBUTION = '© <a href="https://www.mapbox.com/about/maps/">Mapbox</a> © <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
@@ -117,18 +126,15 @@ export default function ActivityMapInner({ points, layer, onLayerChange, hoverGp
                 pathOptions={{ color: '#EF4444', weight: 5, opacity: 1, lineCap: 'round', lineJoin: 'round' }}
               />
             ))}
-            {/* Départ — vert */}
+            {/* Départ — petite bulle verte */}
             <CircleMarker
               center={positions[0]}
               radius={6}
               pathOptions={{ fillColor: '#10B981', fillOpacity: 1, color: 'white', weight: 2 }}
             />
-            {/* Arrivée — rouge */}
-            <CircleMarker
-              center={positions[positions.length - 1]}
-              radius={6}
-              pathOptions={{ fillColor: '#EF4444', fillOpacity: 1, color: 'white', weight: 2 }}
-            />
+            {/* Arrivée — drapeau à damier 🏁 */}
+            <Marker position={positions[positions.length - 1]} icon={FINISH_ICON} />
+
             <FitBounds points={points} bottomInset={bottomInset} />
           </>
         )}

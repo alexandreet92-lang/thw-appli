@@ -9,7 +9,9 @@ import { useEffect, useState } from 'react'
 import SlideSheet from '@/components/ui/SlideSheet'
 import { useNarrow } from '@/lib/hooks/useNarrow'
 import { staticRouteMapUrl } from '@/lib/staticMap'
-import type { ActivityShowcaseData, RecentActivity, RecordItem, ActivityDetail, ActivityStreams } from '@/lib/profile/activityShowcase'
+import { ActivityMapCard as InteractiveMapCard } from '@/components/activity/ActivityMapCard'
+import { ActivityCurves } from '@/app/activities/page'
+import type { ActivityShowcaseData, RecentActivity, RecordItem, ActivityDetail } from '@/lib/profile/activityShowcase'
 import { hoursByFamily, activeWeekStreak, sportMeta, bestRecord, recordsForSport, fmtHoursSec, polylineToSvgPath, decodePolyline, getActivityDetail } from '@/lib/profile/activityShowcase'
 
 // Couleurs (hex) du tracé par famille de sport, pour la carte Mapbox.
@@ -126,19 +128,28 @@ export default function ActivityShowcase({ data, isOwner }: { data: ActivityShow
   )
 }
 
-// ── Détail d'une activité (analyse LECTURE SEULE : map + stats + courbes) ──
-function ActivityDetailView({ a }: { a: RecentActivity }) {
+// ── Détail d'une activité : EXACTEMENT la page training (carte interactive +
+// stats + courbes Empilé/Superposé/Mono), mais 100 % LECTURE SEULE — aucun
+// champ éditable, aucun bouton « Analyse par l'IA », aucune écriture. On garde
+// seulement le lien « Voir sur Strava » (si l'activité en a un). ──
+export function ActivityDetailView({ a }: { a: RecentActivity }) {
   const fam = sportFamilyLocal(a.sport)
   const meta = sportMeta(fam)
+  const narrow = useNarrow()
   const [full, setFull] = useState<ActivityDetail | null>(null)
-  useEffect(() => { let off = false; void getActivityDetail(a.id).then(d => { if (!off) setFull(d) }); return () => { off = true } }, [a.id])
+  const [failed, setFailed] = useState(false)
+  useEffect(() => {
+    let off = false
+    setFull(null); setFailed(false)
+    void getActivityDetail(a.id).then(d => { if (!off) { if (d) setFull(d); else setFailed(true) } }).catch(() => { if (!off) setFailed(true) })
+    return () => { off = true }
+  }, [a.id])
 
-  const poly = full?.polyline ?? a.polyline
-  const mapUrl = staticRouteMapUrl(routePoints(poly), { width: 720, height: 380, color: SPORT_HEX[fam] ?? '9ca3af' })
+  const d = full
+  const poly = d?.polyline ?? a.polyline
   const path = polylineToSvgPath(poly, 640, 320)
 
-  // Stats (détail complet si chargé, sinon aperçu depuis la carte).
-  const d = full
+  // Stats (lecture seule) — détail complet si chargé, sinon aperçu de la carte.
   const stats: { label: string; value: string }[] = []
   const dist = fmtDist(d?.distance_m ?? a.distance_m); if (dist) stats.push({ label: 'Distance', value: dist })
   const secs = d?.seconds ?? a.seconds; if (secs) stats.push({ label: 'Durée', value: fmtDur(secs) })
@@ -157,6 +168,11 @@ function ActivityDetailView({ a }: { a: RecentActivity }) {
   if (sm) stats.push({ label: 'Score métab.', value: `${sm}` })
   if (sn) stats.push({ label: 'Score neuro.', value: `${sn}` })
 
+  // Objet passé aux composants training réels (carte + courbes). Lecture seule :
+  // ces composants n'exposent aucune édition ni bouton IA.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const act = (d ?? null) as any
+
   return (
     <div style={{ maxWidth: 720, margin: '0 auto', padding: '8px clamp(16px,4vw,32px) 64px' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 4 }}>
@@ -164,13 +180,14 @@ function ActivityDetailView({ a }: { a: RecentActivity }) {
         <span style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-mid)' }}>{meta.label}</span>
         <span style={{ fontSize: 10.5, fontWeight: 800, color: 'var(--text-dim)', border: '1px solid var(--border)', borderRadius: 999, padding: '2px 9px' }}>{(d?.is_race ?? a.is_race) ? 'Compétition' : 'Entraînement'}</span>
       </div>
-      <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 600, color: 'var(--text)', margin: '0 0 4px' }}>{a.title}</h2>
+      <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 600, color: 'var(--text)', margin: '0 0 4px' }}>{d?.title || a.title}</h2>
       <div style={{ fontSize: 13, color: 'var(--text-dim)', marginBottom: 16 }}>{new Date(a.started_at).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</div>
 
-      {mapUrl ? (
-        <div style={{ borderRadius: 'var(--r-lg)', overflow: 'hidden', marginBottom: 18, boxShadow: '0 4px 18px rgba(0,0,0,0.12)' }}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={mapUrl} alt="Tracé de l'activité" style={{ width: '100%', height: 'auto', display: 'block' }} />
+      {/* Carte interactive réelle (même composant que la page training) — bulle
+          verte au départ + drapeau à damier à l'arrivée. Repli SVG si pas de token. */}
+      {act ? (
+        <div style={{ marginBottom: 18 }}>
+          <InteractiveMapCard activity={act} isMobile={narrow} />
         </div>
       ) : path ? (
         <div style={{ background: meta.color, borderRadius: 'var(--r-lg)', padding: 16, marginBottom: 18 }}>
@@ -189,56 +206,20 @@ function ActivityDetailView({ a }: { a: RecentActivity }) {
         ))}
       </div>
 
-      {/* Courbes (lecture seule) */}
-      {d?.streams && <StreamCurves streams={d.streams} />}
-      {!full && <p style={{ fontSize: 12.5, color: 'var(--text-dim)', marginTop: 16 }}>Chargement de l’analyse…</p>}
-    </div>
-  )
-}
+      {/* Courbes réelles (Empilé / Superposé / Mono avec survol) — lecture seule. */}
+      {act && d?.streams ? <div style={{ marginTop: 22 }}><ActivityCurves activity={act} /></div> : null}
 
-// ── Courbes empilées (altitude, FC, puissance, vitesse, température, cadence) ──
-function StreamCurves({ streams }: { streams: ActivityStreams }) {
-  const defs: { key: keyof ActivityStreams; label: string; color: string; unit: string; transform?: (v: number) => number }[] = [
-    { key: 'altitude', label: 'Altitude', color: '#94a3b8', unit: 'm' },
-    { key: 'heartrate', label: 'FC', color: '#f97316', unit: 'bpm' },
-    { key: 'watts', label: 'Puissance', color: '#8b5cf6', unit: 'W' },
-    { key: 'velocity', label: 'Vitesse', color: '#06b6d4', unit: 'km/h', transform: v => v * 3.6 },
-    { key: 'temp', label: 'Température', color: '#10b981', unit: '°C' },
-    { key: 'cadence', label: 'Cadence', color: '#ec4899', unit: 'rpm' },
-  ]
-  const N = 200
-  const sample = (arr: number[]): number[] => { if (arr.length <= N) return arr; const step = arr.length / N; return Array.from({ length: N }, (_, i) => arr[Math.floor(i * step)]) }
-  const series = defs.map(def => {
-    const raw = streams[def.key]
-    if (!Array.isArray(raw) || raw.length < 3) return null
-    const vals = sample(raw as number[]).map(v => def.transform ? def.transform(v) : v).filter(v => typeof v === 'number' && !isNaN(v))
-    if (vals.length < 3) return null
-    const min = Math.min(...vals), max = Math.max(...vals)
-    return { def, vals, min, max }
-  }).filter(Boolean) as { def: typeof defs[number]; vals: number[]; min: number; max: number }[]
-  if (!series.length) return null
-  return (
-    <div style={{ marginTop: 22 }}>
-      <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-dim)', marginBottom: 10 }}>Courbes</div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {series.map(({ def, vals, min, max }) => {
-          const W = 300, H = 46, span = Math.max(1e-6, max - min)
-          const step = W / (vals.length - 1)
-          const pts = vals.map((v, i) => `${(i * step).toFixed(1)},${(H - ((v - min) / span) * (H - 4) - 2).toFixed(1)}`).join(' ')
-          return (
-            <div key={def.key} style={{ display: 'flex', alignItems: 'stretch', gap: 10, background: 'var(--bg-card2)', borderRadius: 'var(--r-md)', padding: '8px 10px' }}>
-              <div style={{ width: 78, flexShrink: 0 }}>
-                <div style={{ fontSize: 12, fontWeight: 800, color: def.color }}>{def.label}</div>
-                <div className="tnum" style={{ fontSize: 10, color: 'var(--text-dim)' }}>{Math.round(min)}–{Math.round(max)} {def.unit}</div>
-              </div>
-              <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" style={{ flex: 1, height: 46 }}>
-                <polygon points={`0,${H} ${pts} ${W},${H}`} fill={def.color} opacity={0.16} />
-                <polyline points={pts} fill="none" stroke={def.color} strokeWidth={1.4} vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
-              </svg>
-            </div>
-          )
-        })}
-      </div>
+      {/* Lien « Voir sur Strava » (conservé) — seule action externe. */}
+      {d?.external_url ? (
+        <a href={d.external_url} target="_blank" rel="noopener noreferrer"
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginTop: 22, padding: '10px 16px', borderRadius: 'var(--r-md)', background: 'var(--bg-card2)', color: 'var(--text-mid)', fontSize: 13, fontWeight: 700, textDecoration: 'none' }}>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169" /></svg>
+          Voir sur Strava
+        </a>
+      ) : null}
+
+      {!full && !failed && <p style={{ fontSize: 12.5, color: 'var(--text-dim)', marginTop: 16 }}>Chargement de l’analyse…</p>}
+      {failed && <p style={{ fontSize: 12.5, color: 'var(--text-dim)', marginTop: 16 }}>Analyse détaillée indisponible pour cette activité.</p>}
     </div>
   )
 }
@@ -341,7 +322,7 @@ function ActivityMapCard({ a, onOpen }: { a: RecentActivity; onOpen: () => void 
   const fam = sportFamilyLocal(a.sport)
   const meta = sportMeta(fam)
   const pts = routePoints(a.polyline)
-  const mapUrl = staticRouteMapUrl(pts, { width: 640, height: 300, color: SPORT_HEX[fam] ?? '9ca3af' })
+  const mapUrl = staticRouteMapUrl(pts, { width: 640, height: 300, color: SPORT_HEX[fam] ?? '9ca3af', pins: false })
   const path = polylineToSvgPath(a.polyline, 320, 150)
   const stats: { label: string; value: string }[] = []
   const dist = fmtDist(a.distance_m); if (dist) stats.push({ label: 'Distance', value: dist })

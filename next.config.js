@@ -1,6 +1,12 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   turbopack: {},
+  // Cache-first (fluidité) : le cache du routeur client garde les pages déjà
+  // visitées → revenir sur un écran récent est INSTANTANÉ (aucun aller-retour
+  // serveur). dynamic = pages avec données ; static = pages figées.
+  experimental: {
+    staleTimes: { dynamic: 45, static: 300 },
+  },
   // Embarque les fichiers de doctrine (.md) dans les fonctions serverless
   // qui les lisent au runtime (fs), sinon Vercel ne les trace pas.
   outputFileTracingIncludes: {

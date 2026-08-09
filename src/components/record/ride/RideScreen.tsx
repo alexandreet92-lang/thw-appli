@@ -1,8 +1,9 @@
 'use client'
 // Orchestrateur de la séance home trainer. Branche profil (FTP), séance
 // planifiée, capteurs, moteur, enregistrement. Rendu en portail plein écran.
-// Aucune valeur athlète en dur : le FTP vient de athlete_performance_profile ;
-// sans FTP, StartGate bloque le démarrage.
+// Aucune valeur athlète en dur : le FTP vient de athlete_performance_profile.
+// FTP absent → StartGate n'interdit plus le démarrage : la séance planifiée
+// reste visible et lançable (cibles watts simplement indisponibles).
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useWakeLock } from '@/hooks/useWakeLock'
@@ -118,13 +119,14 @@ export default function RideScreen({ onExit, onFinished }: Props) {
 
   const onFinish = useCallback(async () => {
     engine.pause()
-    if (ftp != null) {
-      await recorder.save({
-        samples: engine.samples.current, metrics: engine.metrics, ftp,
-        startedAt: startedAt || new Date().toISOString(), elapsedS: engine.t,
-        title: plan?.title ?? 'Séance home trainer', compute,
-      })
-    }
+    // On enregistre TOUJOURS la séance, même sans FTP (ftp ?? 0 → charge/IF
+    // non calculées mais la séance est bien sauvegardée). Sans ça, une séance
+    // lancée sans FTP serait silencieusement perdue.
+    await recorder.save({
+      samples: engine.samples.current, metrics: engine.metrics, ftp: ftp ?? 0,
+      startedAt: startedAt || new Date().toISOString(), elapsedS: engine.t,
+      title: plan?.title ?? 'Séance home trainer', compute,
+    })
     // Séance de test → écran de résultat (PMA/FTP/zones) avant de quitter.
     if (rampStop || hasRampPlan || (hasCp20 && cp20Avg > 0)) { setShowResult(true); return }
     onFinished()

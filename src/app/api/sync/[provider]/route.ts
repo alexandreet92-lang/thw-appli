@@ -160,10 +160,25 @@ export async function POST(
     }
 
     if (count > 0) {
+      // Deep-link : une seule activité → on ouvre directement son écran
+      // (carte, données, RPE/ressenti, type, confidentialité, matériel) via
+      // ?id=<activity_id>. Plusieurs → la liste des activités.
+      let url = '/activities'
+      if (count === 1) {
+        const { data: last } = await supabase
+          .from('activities')
+          .select('id')
+          .eq('user_id', userId)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+        const lastId = (last as { id: string } | null)?.id
+        if (lastId) url = `/activities?id=${lastId}`
+      }
       void notifyUser(userId, 'connexions.activite_synchro', {
-        title: 'Nouvelle activité importée',
+        title: count === 1 ? 'Nouvelle activité importée' : 'Nouvelles activités importées',
         body: `${count} nouvelle${count > 1 ? 's' : ''} activité${count > 1 ? 's' : ''} importée${count > 1 ? 's' : ''} depuis ${provider}.`,
-        url: '/data',
+        url,
         dedupKey: `sync-${provider}-${new Date().toISOString().slice(0, 10)}`,
       })
     }

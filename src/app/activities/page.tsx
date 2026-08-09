@@ -29,6 +29,7 @@ import { LapsBikeChart } from '@/components/activity/LapsBikeChart'
 import { LapsDetailView } from '@/components/activity/LapsDetailView'
 import { ClimbDescentSection, detectSegments } from '@/components/activity/ClimbDescentSection'
 import { WorkoutTypeBadges } from '@/components/activity/WorkoutTypeBadges'
+import { ActivitySettingsPanel } from '@/components/activity/ActivitySettingsPanel'
 import { MuscuSessionPanel } from '@/components/activity/MuscuSessionPanel'
 import { SwimLengths } from '@/components/activity/SwimLengths'
 import { MuscuActivityView } from '@/components/activity/MuscuActivityView'
@@ -7749,6 +7750,13 @@ conseil pour la prochaine séance similaire.`
             </div>
           )}
 
+          {/* Confidentialité + matériel de l'activité (mobile) */}
+          {!readOnly && (
+            <div style={{ padding: '12px 16px 0' }}>
+              <ActivitySettingsPanel activityId={a.id} sport={a.sport_type} />
+            </div>
+          )}
+
           {/* Muscu : séance enregistrée (fusion in-app) ou saisie manuelle */}
           {!readOnly && isGym && (
             <div style={{ padding: '0 16px' }}>
@@ -8185,8 +8193,22 @@ conseil pour la prochaine séance similaire.`
 
       <div style={{ padding: '20px 24px' }}>
 
+        {/* ── Entraînement / Course (desktop) — masque les badges de type si Course ── */}
+        {!readOnly && (
+          <div style={{ marginBottom: 12 }}>
+            <TrainingRaceSelector value={localIsRace} onChange={saveIsRace} />
+          </div>
+        )}
+
         {/* ── Badges de type d'entraînement (tous sports) — sélection manuelle ── */}
-        {!readOnly && <WorkoutTypeBadges activityId={a.id} sport={a.sport_type} />}
+        {!readOnly && !localIsRace && <WorkoutTypeBadges activityId={a.id} sport={a.sport_type} />}
+
+        {/* ── Confidentialité + matériel de l'activité (desktop) ── */}
+        {!readOnly && (
+          <div style={{ marginTop: 16, maxWidth: 520 }}>
+            <ActivitySettingsPanel activityId={a.id} sport={a.sport_type} />
+          </div>
+        )}
 
         {/* ── MUSCU : séance enregistrée (fusion in-app) ou saisie manuelle ── */}
         {!readOnly && isGym && <MuscuSessionPanel activity={a} />}

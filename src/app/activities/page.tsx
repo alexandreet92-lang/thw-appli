@@ -23,20 +23,21 @@ import { ActivityTitle } from '@/components/activity/ActivityTitle'
 import { Spinner } from '@/components/ui/Spinner'
 import { SkeletonFitnessCards } from '@/components/ui/Skeleton'
 import { PageLoader } from '@/components/ui/PageLoader'
+import nextDynamic from 'next/dynamic'
 import { ActivityMapCard } from '@/components/activity/ActivityMapCard'
-import { LapsChart } from '@/components/activity/LapsChart'
-import { LapsTable } from '@/components/activity/LapsTable'
-import { LapsBikeChart } from '@/components/activity/LapsBikeChart'
-import { LapsDetailView } from '@/components/activity/LapsDetailView'
+const LapsChart = nextDynamic(() => import('@/components/activity/LapsChart').then(m => m.LapsChart), { ssr: false })
+const LapsTable = nextDynamic(() => import('@/components/activity/LapsTable').then(m => m.LapsTable), { ssr: false })
+const LapsBikeChart = nextDynamic(() => import('@/components/activity/LapsBikeChart').then(m => m.LapsBikeChart), { ssr: false })
+const LapsDetailView = nextDynamic(() => import('@/components/activity/LapsDetailView').then(m => m.LapsDetailView), { ssr: false })
 import { ClimbDescentSection, detectSegments } from '@/components/activity/ClimbDescentSection'
 import { WorkoutTypeBadges } from '@/components/activity/WorkoutTypeBadges'
 import { ActivitySettingsPanel } from '@/components/activity/ActivitySettingsPanel'
-import { MuscuSessionPanel } from '@/components/activity/MuscuSessionPanel'
+const MuscuSessionPanel = nextDynamic(() => import('@/components/activity/MuscuSessionPanel').then(m => m.MuscuSessionPanel), { ssr: false })
 import { SwimLengths } from '@/components/activity/SwimLengths'
-import { MuscuActivityView } from '@/components/activity/MuscuActivityView'
+const MuscuActivityView = nextDynamic(() => import('@/components/activity/MuscuActivityView').then(m => m.MuscuActivityView), { ssr: false })
 import ProgressionHub from '@/app/progression/page'
 import { ProgressionSportView } from '@/app/progression/components/ProgressionSportView'
-import { LapsRunChart } from '@/components/activity/LapsRunChart'
+const LapsRunChart = nextDynamic(() => import('@/components/activity/LapsRunChart').then(m => m.LapsRunChart), { ssr: false })
 import { formatPace as fmtPaceMinKm, speedToPace as kmhToPaceMin, formatPaceSwim } from '@/lib/utils/pace'
 import { formatSplit, speedKmhToSplit500 } from '@/lib/utils/split'
 import { computeVapKmh, avgAdjustedPaceMinKm } from '@/lib/utils/vap'
@@ -46,15 +47,15 @@ import { ViewOnStrava, PoweredByStrava } from '@/components/strava/StravaBrandin
 import { WeeklyGoals } from '@/components/activity/WeeklyGoals'
 import { MonthlySummary } from '@/components/activity/MonthlySummary'
 import { WeeklySummary } from '@/components/activity/WeeklySummary'
-import { IntervalSplitsTable } from '@/components/activity/IntervalSplitsTable'
+const IntervalSplitsTable = nextDynamic(() => import('@/components/activity/IntervalSplitsTable').then(m => m.IntervalSplitsTable), { ssr: false })
 import { TwelveWeekVolume } from '@/components/activity/TwelveWeekVolume'
 import { ActivityMedia } from '@/components/activity/ActivityMedia'
-import { ActivityMediaHero } from '@/components/activity/ActivityMediaHero'
+const ActivityMediaHero = nextDynamic(() => import('@/components/activity/ActivityMediaHero').then(m => m.ActivityMediaHero), { ssr: false })
 import { TrainingRaceSelector } from '@/components/activity/TrainingRaceSelector'
 import { shareCard } from '@/lib/share/shareCard'
 import { useSmSn } from '@/hooks/useSmSn'
 import { smSnFromRow } from '@/lib/metrics/smSn'
-import { PowerDistribution } from '@/components/activity/PowerDistribution'
+const PowerDistribution = nextDynamic(() => import('@/components/activity/PowerDistribution').then(m => m.PowerDistribution), { ssr: false })
 import { AerobicEfficiency } from '@/components/activity/AerobicEfficiency'
 import { MmpTable, MMP_TABLE_DURATIONS, MMP_TABLE_LABELS } from '@/components/activity/MmpTable'
 import { AIBubble } from '@/components/activity/AIBubble'

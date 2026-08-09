@@ -196,14 +196,14 @@ export function ActivityCard({ data, onClick }: Props) {
             // Simple tap → on laisse remonter au parent qui ouvre l'activité.
             if (carDragged.current) { e.stopPropagation(); carDragged.current = false }
           }}
-          style={{ display: 'flex', gap: 8, overflowX: 'auto', scrollSnapType: 'x mandatory', scrollPaddingLeft: 16, WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'], padding: '0 16px', marginBottom: 4 }}
+          style={{ display: 'flex', gap: slides.length > 1 ? 8 : 0, overflowX: 'auto', scrollSnapType: 'x mandatory', scrollPaddingLeft: 0, WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'], padding: 0, marginBottom: 8 }}
           className="thw-card-carousel"
         >
           {slides.map((s, i) => (
             <div key={i} style={{
-              flex: slides.length > 1 ? '0 0 90%' : '0 0 100%', scrollSnapAlign: 'start',
-              height: 232, background: 'var(--bg-card2)', borderRadius: 18, overflow: 'hidden',
-              border: '1px solid var(--border)', position: 'relative',
+              flex: slides.length > 1 ? '0 0 94%' : '0 0 100%', scrollSnapAlign: 'start',
+              height: 232, background: 'var(--bg-card2)', borderRadius: 0, overflow: 'hidden',
+              border: 'none', position: 'relative',
             }}>
               {s.kind === 'video'
                 ? <video src={s.url} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} muted playsInline preload="metadata" />

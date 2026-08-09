@@ -219,12 +219,16 @@ export default function MobileTabBar() {
 // ── Static styles ──────────────────────────────────────────────
 
 const BAR: React.CSSProperties = {
-  position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 100,
-  // Barre translucide (verre dépoli) — boutons transparents façon Strava.
+  // Pill flottante translucide (verre dépoli) détachée des bords — façon Strava :
+  // le contenu défile visiblement dessous.
+  position: 'fixed', zIndex: 100,
+  left: 12, right: 12,
+  bottom: 'calc(env(safe-area-inset-bottom, 0px) + 8px)',
+  borderRadius: 30, overflow: 'hidden',
   background: 'var(--glass-bg)',
-  backdropFilter: 'blur(24px) saturate(1.4)', WebkitBackdropFilter: 'blur(24px) saturate(1.4)',
-  borderTop: '0.5px solid var(--glass-border)',
-  paddingBottom: 'env(safe-area-inset-bottom)',
+  backdropFilter: 'blur(24px) saturate(1.5)', WebkitBackdropFilter: 'blur(24px) saturate(1.5)',
+  border: '0.5px solid var(--glass-border)',
+  boxShadow: '0 6px 24px rgba(0,0,0,0.14)',
 }
 
 const BTN: React.CSSProperties = {

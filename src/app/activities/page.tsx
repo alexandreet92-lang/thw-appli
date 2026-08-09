@@ -9386,10 +9386,13 @@ function SectionAnalyse({ activities, zones, profile, deepLinkId, deepLinkEdit, 
           .single()
         if (err || cancelled || !data) return
         const heavy = data as unknown as Partial<Activity>
+        // Mapping streams obligatoire (cf. CLAUDE.md) : certaines activités ont
+        // leurs streams dans raw_data.streams et une colonne `streams` nulle.
+        const rawStreams = (heavy.raw_data as { streams?: Activity['streams'] } | null)?.streams
         setSelected(prev => (prev && prev.id === id
           ? {
               ...prev,
-              streams:     heavy.streams     ?? null,
+              streams:     heavy.streams     ?? rawStreams ?? null,
               raw_data:    heavy.raw_data    ?? null,
               power_curve: heavy.power_curve ?? null,
               pace_curve:  heavy.pace_curve  ?? null,

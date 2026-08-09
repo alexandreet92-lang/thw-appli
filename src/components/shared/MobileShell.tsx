@@ -185,7 +185,7 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
   const isCoach = pathname.startsWith('/coach')
 
   const hybridHeader = (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 18px 14px', flexShrink: 0 }}>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 'calc(env(safe-area-inset-top, 0px) + 18px) 18px 14px', flexShrink: 0 }}>
       <div>
         <div style={{ fontFamily: FD, fontSize: 22, fontWeight: 600, color: 'var(--text)', lineHeight: 1.05 }}>Hybrid</div>
         <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 700, color: 'var(--text-dim)', marginTop: 2 }}>Interface athlète</div>
@@ -199,7 +199,7 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
   // En-tête sidebar coach : « Hybrid » + type d'interface (cyan) + avatar qui
   // ouvre les réglages coach.
   const coachHeader = (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 18px 14px', flexShrink: 0 }}>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 'calc(env(safe-area-inset-top, 0px) + 18px) 18px 14px', flexShrink: 0 }}>
       <div>
         <div style={{ fontFamily: FD, fontSize: 22, fontWeight: 600, color: 'var(--text)', lineHeight: 1.05 }}>Hybrid</div>
         <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 700, color: 'var(--primary)', marginTop: 2 }}>Interface coach</div>

@@ -44,35 +44,29 @@ function SportGlyph({ sport, size = 42 }: { sport: string; size?: number }) {
 }
 
 type Placement = { transform: string; z: number; opacity: number; shadow: string }
-// Coverflow (mobile) : précédente à gauche, suivantes en éventail à droite.
-function coverflow(pos: number, drag: number): Placement {
+// Placement « coverflow » deux côtés : la carte PRÉCÉDENTE dépasse à GAUCHE, la
+// SUIVANTE dépasse à DROITE, l'active au centre devant. Quand on avance, l'active
+// glisse à gauche et passe derrière pendant que la suivante avance au centre.
+function placeCard(pos: number, drag: number): Placement {
   const dl = Math.min(0, drag), dr = Math.max(0, drag)
   if (pos === 0) return { transform: `translateX(calc(-50% + ${drag}px)) rotate(${(drag * 0.015).toFixed(2)}deg)`, z: 40, opacity: 1, shadow: '0 20px 44px rgba(0,0,0,0.30)' }
-  if (pos === 1) return { transform: `translateX(calc(-50% + 13% + ${dl * 0.45}px)) translateY(12px) rotate(4deg) scale(0.92)`, z: 30, opacity: 0.92, shadow: '0 12px 26px rgba(0,0,0,0.20)' }
-  if (pos === 2) return { transform: `translateX(calc(-50% + 22% + ${dl * 0.28}px)) translateY(22px) rotate(8deg) scale(0.84)`, z: 20, opacity: 0.7, shadow: '0 10px 22px rgba(0,0,0,0.16)' }
-  return { transform: `translateX(calc(-50% - 13% + ${dr * 0.45}px)) translateY(12px) rotate(-4deg) scale(0.92)`, z: 28, opacity: 0.9, shadow: '0 12px 26px rgba(0,0,0,0.20)' }
-}
-// Éventail (desktop, dans une colonne) : suivantes empilées en bas-droite,
-// nettement décalées + inclinées → effet 3D « paquet de cartes » bien lisible.
-function fan(pos: number, drag: number): Placement {
-  // Carte sortante (pos -1) : glisse vers la gauche + s'efface → vraie sensation
-  // de « la carte part, la suivante avance ».
-  if (pos === -1) return { transform: `translateX(calc(-50% - 116%)) translateY(4px) rotate(-9deg) scale(0.9)`, z: 10, opacity: 0, shadow: '0 10px 22px rgba(0,0,0,0)' }
-  if (pos === 0) return { transform: `translateX(calc(-50% + ${drag}px)) rotate(${(drag * 0.02).toFixed(2)}deg)`, z: 40, opacity: 1, shadow: '0 18px 38px rgba(0,0,0,0.30)' }
-  if (pos === 1) return { transform: `translateX(calc(-50% + 16px)) translateY(15px) rotate(4.5deg) scale(0.95)`, z: 30, opacity: 0.97, shadow: '0 12px 26px rgba(0,0,0,0.22)' }
-  return { transform: `translateX(calc(-50% + 30px)) translateY(30px) rotate(8.5deg) scale(0.9)`, z: 20, opacity: 0.9, shadow: '0 10px 22px rgba(0,0,0,0.18)' }
+  // Suivante — dépasse nettement à droite (visible), en retrait.
+  if (pos === 1) return { transform: `translateX(calc(-50% + 34% + ${dl * 0.4}px)) translateY(14px) rotate(6deg) scale(0.9)`, z: 30, opacity: 0.96, shadow: '0 12px 26px rgba(0,0,0,0.22)' }
+  if (pos === 2) return { transform: `translateX(calc(-50% + 48% + ${dl * 0.25}px)) translateY(26px) rotate(10deg) scale(0.82)`, z: 20, opacity: 0.72, shadow: '0 10px 22px rgba(0,0,0,0.16)' }
+  // Précédente — dépasse nettement à gauche (visible).
+  return { transform: `translateX(calc(-50% - 34% + ${dr * 0.4}px)) translateY(14px) rotate(-6deg) scale(0.9)`, z: 28, opacity: 0.96, shadow: '0 12px 26px rgba(0,0,0,0.22)' }
 }
 
-function Card({ p, pos, drag, mode, onOpen }: { p: CoachProgram; pos: number; drag: number; mode: 'coverflow' | 'fan'; onOpen?: () => void }) {
+function Card({ p, pos, drag, onOpen }: { p: CoachProgram; pos: number; drag: number; onOpen?: () => void }) {
   const sport = sportOf(p)
   const sessions = p.structure.reduce((s, w) => s + w.sessions.length, 0)
   const hours = programHours(p.structure)
-  const { transform, z, opacity, shadow } = (mode === 'coverflow' ? coverflow : fan)(pos, drag)
+  const { transform, z, opacity, shadow } = placeCard(pos, drag)
   const isTop = pos === 0
   return (
     <div onClick={isTop ? onOpen : undefined}
       style={{
-        position: 'absolute', top: 0, left: '50%', width: '88%', height: '100%', zIndex: z, opacity,
+        position: 'absolute', top: 0, left: '50%', width: '84%', height: '100%', zIndex: z, opacity,
         borderRadius: 24, background: cardBg(sport), color: 'white', boxShadow: shadow, overflow: 'hidden',
         padding: 'clamp(16px, 4.5vw, 22px)', display: 'flex', flexDirection: 'column', boxSizing: 'border-box',
         transform, transformOrigin: 'center', transition: 'transform 440ms cubic-bezier(0.34,1.3,0.5,1), opacity 260ms, box-shadow 260ms',
@@ -119,7 +113,7 @@ function Pill({ children }: { children: React.ReactNode }) {
 }
 
 // ── Une pile (carrousel) pour UN sport ──
-function Stack({ list, onOpen, mode, height }: { list: CoachProgram[]; onOpen: (p: CoachProgram) => void; mode: 'coverflow' | 'fan'; height: string }) {
+function Stack({ list, onOpen, height }: { list: CoachProgram[]; onOpen: (p: CoachProgram) => void; height: string }) {
   const [index, setIndex] = useState(0)
   const [drag, setDrag] = useState(0)
   const dragging = useRef(false)
@@ -135,8 +129,8 @@ function Stack({ list, onOpen, mode, height }: { list: CoachProgram[]; onOpen: (
   const onUp = () => { if (!dragging.current) return; dragging.current = false; const dx = drag; setDrag(0); const th = 55; if (dx < -th) go(1); else if (dx > th) go(-1) }
 
   if (!n) return null
-  const positions = mode === 'coverflow' ? [2, 1, -1, 0] : [2, 1, 0, -1]
-  const order = positions.filter(pos => cur + pos >= 0 && cur + pos < n)
+  // Ordre de rendu : précédente (-1) et suivantes (1,2) derrière, active (0) devant.
+  const order = [2, 1, -1, 0].filter(pos => cur + pos >= 0 && cur + pos < n)
 
   return (
     <div>
@@ -144,9 +138,9 @@ function Stack({ list, onOpen, mode, height }: { list: CoachProgram[]; onOpen: (
         style={{ position: 'relative', height, touchAction: 'pan-y', userSelect: 'none' }}>
         {order.map(pos => {
           const p = list[cur + pos]
-          return <Card key={p.id} p={p} pos={pos} drag={drag} mode={mode} onOpen={pos === 0 ? () => { if (!moved.current) onOpen(p) } : undefined} />
+          return <Card key={p.id} p={p} pos={pos} drag={drag} onOpen={pos === 0 ? () => { if (!moved.current) onOpen(p) } : undefined} />
         })}
-        {n > 1 && mode === 'fan' && (
+        {n > 1 && (
           <>
             <button className="pd-arrow" aria-label="Précédent" onClick={() => go(-1)} disabled={cur === 0} style={{ ...arrow, left: -12, opacity: cur === 0 ? 0.35 : 1 }}><IconChevronLeft size={18} /></button>
             <button className="pd-arrow" aria-label="Suivant" onClick={() => go(1)} disabled={cur >= n - 1} style={{ ...arrow, right: -12, opacity: cur >= n - 1 ? 0.35 : 1 }}><IconChevronRight size={18} /></button>
@@ -230,7 +224,7 @@ export default function ProgramDeck({ programs, onOpen }: { programs: CoachProgr
               transition={{ duration: 0.34, ease: [0.32, 0.72, 0, 1] }}>
               <div style={{ width: '100%', maxWidth: 460, margin: '0 auto' }}>
                 {list.length > 0
-                  ? <Stack list={list} onOpen={onOpen} mode="coverflow" height="clamp(370px, 92vw, 440px)" />
+                  ? <Stack list={list} onOpen={onOpen} height="clamp(370px, 92vw, 440px)" />
                   : <p style={{ fontSize: 13, color: 'var(--text-dim)', textAlign: 'center', padding: 30 }}>Aucun programme.</p>}
               </div>
             </motion.div>
@@ -244,14 +238,16 @@ export default function ProgramDeck({ programs, onOpen }: { programs: CoachProgr
   return (
     <div>
       <style>{STYLE}</style>
-      <div style={{ display: 'flex', gap: 'clamp(20px, 3vw, 40px)', overflowX: 'auto', paddingBottom: 14, alignItems: 'flex-start' }}>
+      {/* Gap large : les cartes qui dépassent sur les côtés vivent dans l'espace
+          entre colonnes (pas de chevauchement disgracieux). */}
+      <div style={{ display: 'flex', gap: 'clamp(44px, 6vw, 88px)', overflowX: 'auto', paddingBottom: 14, alignItems: 'flex-start' }}>
         {groups.map(([sport, list]) => (
-          <div key={sport} style={{ flex: '0 0 clamp(248px, 30%, 320px)', minWidth: 248 }}>
+          <div key={sport} style={{ flex: '0 0 clamp(240px, 28%, 300px)', minWidth: 240 }}>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 7, margin: '0 4px 12px' }}>
               <span style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 600, color: 'var(--text)' }}>{SPORT_LABEL[sport] ?? sport}</span>
               <span className="tnum" style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text-dim)' }}>{list.length}</span>
             </div>
-            <Stack list={list} onOpen={onOpen} mode="fan" height="304px" />
+            <Stack list={list} onOpen={onOpen} height="320px" />
           </div>
         ))}
       </div>

@@ -7603,7 +7603,7 @@ conseil pour la prochaine séance similaire.`
         data-fullscreen-activity=""
         className={closing ? undefined : 'thw-actsheet-in'}
         style={{
-          position: 'fixed', inset: 0, zIndex: 2000, background: 'var(--bg)', overflow: 'hidden',
+          position: 'fixed', inset: 0, zIndex: readOnly ? 15000 : 2000, background: 'var(--bg)', overflow: 'hidden',
           transform: closing ? 'translateX(100%)' : undefined,
           transition: closing ? 'transform 0.26s cubic-bezier(0.32,0.72,0,1)' : undefined,
         }}
@@ -8130,7 +8130,7 @@ conseil pour la prochaine séance similaire.`
        DESKTOP — sur-page plein écran PAR-DESSUS la sidebar globale
        (portal + fixed inset 0, au-dessus du z-index de la sidebar).
     ══════════════════════════════════════════ */
-    <div style={{ position: 'fixed', inset: 0, zIndex: 1200, overflowY: 'auto', WebkitOverflowScrolling: 'touch', background: 'var(--bg)', color: 'var(--text)' }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: readOnly ? 15000 : 1200, overflowY: 'auto', WebkitOverflowScrolling: 'touch', background: 'var(--bg)', color: 'var(--text)' }}>
 
       {/* ── PARTIE 2 : Header bar ── */}
       <div style={{

@@ -27,6 +27,7 @@ export function applyProgramFilters(programs: CoachProgram[], f: ProgFilters): C
   })
 }
 
+const SPORT_LABEL: Record<string, string> = { running: 'Course', cycling: 'Vélo', swim: 'Natation', gym: 'Renforcement', hyrox: 'Hyrox', rowing: 'Aviron', trail: 'Trail', triathlon: 'Triathlon' }
 const AI_OPTS: { k: ProgFilters['ai']; label: string }[] = [{ k: 'all', label: 'Tous' }, { k: 'yes', label: 'Avec IA' }, { k: 'no', label: 'Sans IA' }]
 const PRICE_OPTS: { k: ProgFilters['price']; label: string }[] = [
   { k: 'all', label: 'Tous' }, { k: 'free', label: 'Gratuit' }, { k: '20', label: '≤ 20 €' }, { k: '30', label: '≤ 30 €' }, { k: '50', label: '≤ 50 €' },
@@ -38,7 +39,11 @@ export default function ProgramFilters({ programs, value, onChange }: {
   const [open, setOpen] = useState(false)
   const hasPaid = programs.some(p => p.price_cents > 0)
   const hasAi = programs.some(p => p.ai_enabled)
-  const activeCount = (value.ai !== 'all' ? 1 : 0) + (value.price !== 'all' ? 1 : 0)
+  // Sports réellement présents dans les programmes (1er sport de chaque prog).
+  const sports = Array.from(new Set(programs.map(p => p.sports[0]).filter(Boolean)))
+  const hasMultiSport = sports.length > 1
+  const activeCount = (value.ai !== 'all' ? 1 : 0) + (value.price !== 'all' ? 1 : 0) + (value.sport ? 1 : 0)
+  const resultCount = applyProgramFilters(programs, value).length
   const set = (patch: Partial<ProgFilters>) => onChange({ ...value, ...patch })
 
   useEffect(() => {
@@ -49,7 +54,7 @@ export default function ProgramFilters({ programs, value, onChange }: {
     return () => { window.removeEventListener('keydown', onKey); document.body.style.overflow = prev }
   }, [open])
 
-  if (!hasPaid && !hasAi) return null
+  if (!hasPaid && !hasAi && !hasMultiSport) return null
 
   return (
     <>
@@ -70,6 +75,10 @@ export default function ProgramFilters({ programs, value, onChange }: {
               <button onClick={() => setOpen(false)} aria-label="Fermer" style={{ width: 34, height: 34, borderRadius: 999, border: 'none', background: 'var(--bg-card2)', color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><IconX size={18} /></button>
             </div>
 
+            {hasMultiSport && <Group label="Sport">
+              <Chip on={value.sport === ''} onClick={() => set({ sport: '', specialty: '' })}>Tous</Chip>
+              {sports.map(s => <Chip key={s} on={value.sport === s} onClick={() => set({ sport: s, specialty: '' })}>{SPORT_LABEL[s] ?? s}</Chip>)}
+            </Group>}
             {hasAi && <Group label="Intelligence artificielle">
               {AI_OPTS.map(o => <Chip key={o.k} on={value.ai === o.k} onClick={() => set({ ai: o.k })}>{o.label}</Chip>)}
             </Group>}
@@ -78,8 +87,10 @@ export default function ProgramFilters({ programs, value, onChange }: {
             </Group>}
 
             <div style={{ display: 'flex', gap: 10, marginTop: 22 }}>
-              <button onClick={() => onChange({ ...value, ai: 'all', price: 'all' })} style={{ flex: '0 0 auto', padding: '11px 16px', borderRadius: 'var(--r-md)', border: 'none', background: 'var(--bg-card2)', color: 'var(--text-mid)', fontFamily: 'var(--font-body)', fontSize: 13.5, fontWeight: 700, cursor: 'pointer' }}>Réinitialiser</button>
-              <button onClick={() => setOpen(false)} style={{ flex: 1, padding: '11px 16px', borderRadius: 'var(--r-md)', border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>Voir les programmes</button>
+              <button onClick={() => onChange({ ...value, sport: '', specialty: '', ai: 'all', price: 'all' })} style={{ flex: '0 0 auto', padding: '11px 16px', borderRadius: 'var(--r-md)', border: 'none', background: 'var(--bg-card2)', color: 'var(--text-mid)', fontFamily: 'var(--font-body)', fontSize: 13.5, fontWeight: 700, cursor: 'pointer' }}>Réinitialiser</button>
+              <button onClick={() => setOpen(false)} style={{ flex: 1, padding: '11px 16px', borderRadius: 'var(--r-md)', border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
+                {resultCount > 0 ? `Voir ${resultCount} programme${resultCount > 1 ? 's' : ''}` : 'Aucun programme'}
+              </button>
             </div>
           </div>
         </div>,

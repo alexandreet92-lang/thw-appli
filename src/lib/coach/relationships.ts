@@ -66,9 +66,14 @@ export async function createInvite(): Promise<{ id: string; code: string }> {
 }
 
 // L'athlète accepte une invitation par code (consentement).
+// Le code est stocké au format « XXXX-YYYY » (voir makeCode), mais la saisie en
+// cellules (CodeInput) ne transporte pas le tiret. On normalise ici (on retire
+// tout séparateur puis on ré-insère le tiret) pour matcher exactement la valeur
+// stockée en base — sans ça, la comparaison échoue et l'invitation paraît « invalide ».
 export async function acceptInvite(code: string): Promise<void> {
   const sb = createClient()
-  const clean = code.trim().toUpperCase().replace(/\s+/g, '')
+  const raw = code.trim().toUpperCase().replace(/[^A-Z0-9]/g, '')
+  const clean = raw.length === 8 ? `${raw.slice(0, 4)}-${raw.slice(4)}` : raw
   const { error } = await sb.rpc('accept_coach_invite', { invite_code: clean })
   if (error) throw new Error(error.message.replace(/^.*?:/, '').trim() || 'Invitation invalide')
 }

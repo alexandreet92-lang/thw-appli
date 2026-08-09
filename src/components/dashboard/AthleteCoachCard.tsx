@@ -9,6 +9,7 @@ import { createClient } from '@/lib/supabase/client'
 import { acceptInvite, listMyCoaches, revokeLink } from '@/lib/coach/relationships'
 import { Avatar } from '@/components/shared/Sidebar'
 import { CodeInput } from '@/components/coach/CodeCells'
+import SlideSheet from '@/components/ui/SlideSheet'
 
 interface CoachRow { linkId: string; coachId: string; since: string | null; name: string; avatar: string | null }
 
@@ -52,12 +53,24 @@ export function AthleteCoachCard() {
   if (!ready) return null
   const since = (d: string | null) => { if (!d) return ''; try { return new Date(d).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }) } catch { return '' } }
   const hasCoach = coaches.length > 0
-  const showForm = !hasCoach || adding
 
   const card: React.CSSProperties = { border: '1px solid var(--border)', background: 'var(--bg-card)', borderRadius: 20, padding: 'clamp(18px, 3.5vw, 26px)', marginBottom: 'var(--space-5)' }
 
   return (
     <div style={card}>
+      {/* Pas de coach → bouton compact « Connexion coach » (ouvre une surpage) */}
+      {!hasCoach && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <div style={{ width: 46, height: 46, borderRadius: 14, flexShrink: 0, background: 'color-mix(in srgb, var(--primary) 12%, transparent)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M19 8l2 2 3-3" /></svg>
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 600, color: 'var(--text)' }}>Mon coach</div>
+            <div style={{ fontSize: 12.5, color: 'var(--text-dim)' }}>Relie ton coach pour qu’il suive tes entraînements.</div>
+          </div>
+          <button onClick={() => { setAdding(true); setMsg(null) }} style={{ flexShrink: 0, padding: '10px 16px', borderRadius: 12, border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 13.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>Connexion coach</button>
+        </div>
+      )}
       {/* Coach(s) lié(s) */}
       {hasCoach && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: adding ? 20 : 0 }}>
@@ -88,33 +101,24 @@ export function AthleteCoachCard() {
         </div>
       )}
 
-      {/* Formulaire de connexion */}
-      {showForm && (
-        <div style={{ textAlign: 'center' }}>
-          {!hasCoach && (
-            <>
-              <div style={{ width: 52, height: 52, borderRadius: 16, margin: '0 auto 14px', background: 'color-mix(in srgb, var(--primary) 12%, transparent)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M19 8l2 2 3-3" /></svg>
-              </div>
-              <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 19, fontWeight: 600, color: 'var(--text)', margin: '0 0 5px' }}>Connecte-toi à ton coach</h2>
-              <p style={{ fontSize: 13.5, color: 'var(--text-mid)', margin: '0 0 20px', lineHeight: 1.55, maxWidth: 340, marginLeft: 'auto', marginRight: 'auto' }}>Saisis le code que ton coach t’a partagé pour qu’il puisse suivre tes entraînements.</p>
-            </>
-          )}
+      {msg && msg.ok && !adding && <p style={{ fontSize: 13, color: '#22c55e', margin: '14px 0 0', fontWeight: 600 }}>{msg.text}</p>}
 
-          <CodeInput key={resetKey} onChange={setCode} onComplete={() => { /* prêt à valider */ }} />
-
-          <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 18 }}>
-            {adding && (
-              <button onClick={() => { setAdding(false); setCode(''); setResetKey(k => k + 1); setMsg(null) }} style={{ padding: '11px 18px', borderRadius: 12, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-mid)', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>Annuler</button>
-            )}
-            <button onClick={() => void add()} disabled={code.length !== 8 || busy}
-              style={{ minWidth: 150, padding: '11px 22px', borderRadius: 12, border: 'none', background: code.length === 8 && !busy ? 'var(--primary)' : 'var(--bg-alt)', color: code.length === 8 && !busy ? 'var(--on-primary)' : 'var(--text-dim)', fontSize: 14.5, fontWeight: 700, cursor: code.length === 8 && !busy ? 'pointer' : 'not-allowed', fontFamily: 'var(--font-body)', transition: 'background .15s' }}>
-              {busy ? 'Connexion…' : 'Connecter'}
-            </button>
+      {/* Surpage de connexion (code) */}
+      <SlideSheet open={adding} onClose={() => { setAdding(false); setCode(''); setResetKey(k => k + 1); setMsg(null) }} title="Connexion coach">
+        <div style={{ maxWidth: 420, margin: '0 auto', padding: '24px clamp(16px,4vw,32px) 64px', textAlign: 'center' }}>
+          <div style={{ width: 52, height: 52, borderRadius: 16, margin: '0 auto 14px', background: 'color-mix(in srgb, var(--primary) 12%, transparent)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M19 8l2 2 3-3" /></svg>
           </div>
+          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 19, fontWeight: 600, color: 'var(--text)', margin: '0 0 5px' }}>Connecte-toi à ton coach</h2>
+          <p style={{ fontSize: 13.5, color: 'var(--text-mid)', margin: '0 0 20px', lineHeight: 1.55 }}>Saisis le code que ton coach t’a partagé pour qu’il puisse suivre tes entraînements.</p>
+          <CodeInput key={resetKey} onChange={setCode} onComplete={() => { /* prêt à valider */ }} />
+          <button onClick={() => void add()} disabled={code.length !== 8 || busy}
+            style={{ minWidth: 170, marginTop: 18, padding: '12px 22px', borderRadius: 12, border: 'none', background: code.length === 8 && !busy ? 'var(--primary)' : 'var(--bg-alt)', color: code.length === 8 && !busy ? 'var(--on-primary)' : 'var(--text-dim)', fontSize: 14.5, fontWeight: 700, cursor: code.length === 8 && !busy ? 'pointer' : 'not-allowed', fontFamily: 'var(--font-body)', transition: 'background .15s' }}>
+            {busy ? 'Connexion…' : 'Connecter'}
+          </button>
           {msg && <p style={{ fontSize: 13, color: msg.ok ? '#22c55e' : '#ef4444', margin: '14px 0 0', fontWeight: 600 }}>{msg.text}</p>}
         </div>
-      )}
+      </SlideSheet>
     </div>
   )
 }

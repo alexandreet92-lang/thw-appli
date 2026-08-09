@@ -27,7 +27,7 @@ interface Props {
   sport: 'bike' | 'run'
   activityLabel: string
   historyEF?: HistoryEF[]
-  ai: AIHandle
+  ai?: AIHandle
 }
 
 interface SplitRow {
@@ -377,7 +377,8 @@ export function IntervalSplitsTable({ streams, sport, activityLabel, historyEF, 
         </div>
       )}
 
-      {/* Analyse IA */}
+      {/* Analyse IA — masquée si aucune poignée IA (consultation lecture seule) */}
+      {ai && (
       <div style={{ marginTop: 12 }}>
         <button
           onClick={() => (ai.status === 'idle' || ai.status === 'done' || ai.status === 'error') ? ai.run(buildPrompt()) : undefined}
@@ -393,6 +394,7 @@ export function IntervalSplitsTable({ streams, sport, activityLabel, historyEF, 
           </div>
         )}
       </div>
+      )}
     </div>
   )
 }

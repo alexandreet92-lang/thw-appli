@@ -31,10 +31,11 @@ const SPORT_GLYPH: Record<string, GlyphIcon> = {
 function sportOf(p: CoachProgram): string { return p.sports[0] ?? 'running' }
 function sportVar(s: string): string { return `var(${SPORT_VAR[s] ?? '--sport-run'})` }
 function cardBg(s: string): string {
-  // Couleur PLEINE (plus de blanc en haut : la carte du dessous ne paraît plus
-  // grise). Le brillant vient des reflets superposés, pas du dégradé.
+  // Couleur PLEINE et vive — AUCUN blanc/gris en haut (c'était le « fond gris »).
+  // Dégradé de la couleur pure vers une version assombrie : profondeur sans lavé.
+  // Le brillant vient uniquement des reflets superposés.
   const c = sportVar(s)
-  return `linear-gradient(150deg, color-mix(in srgb, ${c} 96%, white) 0%, ${c} 40%, color-mix(in srgb, ${c} 74%, black) 100%)`
+  return `linear-gradient(158deg, ${c} 0%, color-mix(in srgb, ${c} 88%, black) 55%, color-mix(in srgb, ${c} 72%, black) 100%)`
 }
 function priceStr(p: CoachProgram): string { return p.price_cents > 0 ? `${(p.price_cents / 100).toFixed(p.price_cents % 100 === 0 ? 0 : 2)} €` : 'Gratuit' }
 function SportGlyph({ sport, size = 42 }: { sport: string; size?: number }) {
@@ -54,6 +55,9 @@ function coverflow(pos: number, drag: number): Placement {
 // Éventail (desktop, dans une colonne) : suivantes empilées en bas-droite,
 // nettement décalées + inclinées → effet 3D « paquet de cartes » bien lisible.
 function fan(pos: number, drag: number): Placement {
+  // Carte sortante (pos -1) : glisse vers la gauche + s'efface → vraie sensation
+  // de « la carte part, la suivante avance ».
+  if (pos === -1) return { transform: `translateX(calc(-50% - 116%)) translateY(4px) rotate(-9deg) scale(0.9)`, z: 10, opacity: 0, shadow: '0 10px 22px rgba(0,0,0,0)' }
   if (pos === 0) return { transform: `translateX(calc(-50% + ${drag}px)) rotate(${(drag * 0.02).toFixed(2)}deg)`, z: 40, opacity: 1, shadow: '0 18px 38px rgba(0,0,0,0.30)' }
   if (pos === 1) return { transform: `translateX(calc(-50% + 16px)) translateY(15px) rotate(4.5deg) scale(0.95)`, z: 30, opacity: 0.97, shadow: '0 12px 26px rgba(0,0,0,0.22)' }
   return { transform: `translateX(calc(-50% + 30px)) translateY(30px) rotate(8.5deg) scale(0.9)`, z: 20, opacity: 0.9, shadow: '0 10px 22px rgba(0,0,0,0.18)' }
@@ -131,7 +135,7 @@ function Stack({ list, onOpen, mode, height }: { list: CoachProgram[]; onOpen: (
   const onUp = () => { if (!dragging.current) return; dragging.current = false; const dx = drag; setDrag(0); const th = 55; if (dx < -th) go(1); else if (dx > th) go(-1) }
 
   if (!n) return null
-  const positions = mode === 'coverflow' ? [2, 1, -1, 0] : [2, 1, 0]
+  const positions = mode === 'coverflow' ? [2, 1, -1, 0] : [2, 1, 0, -1]
   const order = positions.filter(pos => cur + pos >= 0 && cur + pos < n)
 
   return (

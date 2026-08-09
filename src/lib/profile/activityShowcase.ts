@@ -135,12 +135,15 @@ export async function getActivityFeed(beforeTs?: string | null, max = 40): Promi
   return data as FeedActivity[]
 }
 
-/** Détail complet (lecture seule) d'une activité, via la RPC sécurisée. */
-export async function getActivityDetail(id: string): Promise<ActivityDetail | null> {
+/** Ligne d'activité complète (toutes les colonnes sauf raw_data) + zones du
+ * propriétaire + can_view — pour hydrater la vue détaillée training (lecture
+ * seule). Renvoie l'objet brut (mêmes noms de colonnes que la table). */
+export type ActivityDetailRow = Record<string, unknown> & { can_view: boolean; zones: unknown[] }
+export async function getActivityDetailRow(id: string): Promise<ActivityDetailRow | null> {
   const sb = createClient()
   const { data, error } = await sb.rpc('activity_detail', { act_id: id })
   if (error || !data) return null
-  const d = data as ActivityDetail
+  const d = data as ActivityDetailRow
   return d.can_view ? d : null
 }
 

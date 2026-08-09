@@ -143,7 +143,7 @@ export default function ActivityMapInner({ points, layer, onLayerChange, hoverGp
           <CircleMarker
             center={[hoverGps.lat, hoverGps.lng]}
             radius={8}
-            pathOptions={{ fillColor: '#ffffff', fillOpacity: 1, color: '#0f172a', weight: 2.5 }}
+            pathOptions={{ fillColor: '#ef4444', fillOpacity: 1, color: 'white', weight: 2.5 }}
           />
         )}
       </MapContainer>

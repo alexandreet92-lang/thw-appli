@@ -9,10 +9,9 @@ import { useEffect, useState } from 'react'
 import SlideSheet from '@/components/ui/SlideSheet'
 import { useNarrow } from '@/lib/hooks/useNarrow'
 import { staticRouteMapUrl } from '@/lib/staticMap'
-import { ActivityMapCard as InteractiveMapCard } from '@/components/activity/ActivityMapCard'
-import { ActivityCurves } from '@/app/activities/page'
-import type { ActivityShowcaseData, RecentActivity, RecordItem, ActivityDetail } from '@/lib/profile/activityShowcase'
-import { hoursByFamily, activeWeekStreak, sportMeta, bestRecord, recordsForSport, fmtHoursSec, polylineToSvgPath, decodePolyline, getActivityDetail } from '@/lib/profile/activityShowcase'
+import { ReadOnlyActivityDetail } from '@/components/activity/ReadOnlyActivityDetail'
+import type { ActivityShowcaseData, RecentActivity, RecordItem } from '@/lib/profile/activityShowcase'
+import { hoursByFamily, activeWeekStreak, sportMeta, bestRecord, recordsForSport, fmtHoursSec, polylineToSvgPath, decodePolyline } from '@/lib/profile/activityShowcase'
 
 // Couleurs (hex) du tracé par famille de sport, pour la carte Mapbox.
 const SPORT_HEX: Record<string, string> = { running: '22c55e', cycling: '3b82f6', swim: '0ea5e9', rowing: '8b5cf6', gym: 'f97316', hyrox: 'ef4444', other: '9ca3af' }
@@ -120,106 +119,9 @@ export default function ActivityShowcase({ data, isOwner }: { data: ActivityShow
         </div>
       </SlideSheet>
 
-      {/* Détail de l'activité — surpage coulissante droite→gauche */}
-      <SlideSheet open={!!detail} onClose={() => setDetail(null)} title="Activité">
-        {detail && <ActivityDetailView a={detail} />}
-      </SlideSheet>
-    </div>
-  )
-}
-
-// ── Détail d'une activité : EXACTEMENT la page training (carte interactive +
-// stats + courbes Empilé/Superposé/Mono), mais 100 % LECTURE SEULE — aucun
-// champ éditable, aucun bouton « Analyse par l'IA », aucune écriture. On garde
-// seulement le lien « Voir sur Strava » (si l'activité en a un). ──
-export function ActivityDetailView({ a }: { a: RecentActivity }) {
-  const fam = sportFamilyLocal(a.sport)
-  const meta = sportMeta(fam)
-  const narrow = useNarrow()
-  const [full, setFull] = useState<ActivityDetail | null>(null)
-  const [failed, setFailed] = useState(false)
-  useEffect(() => {
-    let off = false
-    setFull(null); setFailed(false)
-    void getActivityDetail(a.id).then(d => { if (!off) { if (d) setFull(d); else setFailed(true) } }).catch(() => { if (!off) setFailed(true) })
-    return () => { off = true }
-  }, [a.id])
-
-  const d = full
-  const poly = d?.polyline ?? a.polyline
-  const path = polylineToSvgPath(poly, 640, 320)
-
-  // Stats (lecture seule) — détail complet si chargé, sinon aperçu de la carte.
-  const stats: { label: string; value: string }[] = []
-  const dist = fmtDist(d?.distance_m ?? a.distance_m); if (dist) stats.push({ label: 'Distance', value: dist })
-  const secs = d?.seconds ?? a.seconds; if (secs) stats.push({ label: 'Durée', value: fmtDur(secs) })
-  const pace = fmtPace(d?.avg_pace_s_km ?? a.avg_pace_s_km); if (pace && fam !== 'cycling') stats.push({ label: 'Allure', value: pace })
-  const spd = d?.avg_speed_ms ? d.avg_speed_ms * 3.6 : (d?.distance_m && secs ? d.distance_m / secs * 3.6 : null)
-  if (spd && (fam === 'cycling' || !pace)) stats.push({ label: 'Vitesse moy.', value: `${Math.round(spd * 10) / 10} km/h` })
-  const watts = d?.avg_watts ?? a.avg_watts; if (watts) stats.push({ label: 'Puissance moy.', value: `${Math.round(watts)} W` })
-  if (d?.max_watts) stats.push({ label: 'Puissance max', value: `${Math.round(d.max_watts)} W` })
-  const elev = d?.elevation_gain_m ?? a.elevation_gain_m; if (elev) stats.push({ label: 'Dénivelé +', value: `${Math.round(elev)} m` })
-  if (d?.avg_hr) stats.push({ label: 'FC moy.', value: `${Math.round(d.avg_hr)} bpm` })
-  if (d?.max_hr) stats.push({ label: 'FC max', value: `${Math.round(d.max_hr)} bpm` })
-  if (d?.avg_cadence) stats.push({ label: 'Cadence moy.', value: `${Math.round(d.avg_cadence)}` })
-  if (d?.avg_temp_c) stats.push({ label: 'Température', value: `${Math.round(d.avg_temp_c)} °C` })
-  if (d?.calories) stats.push({ label: 'Calories', value: `${Math.round(d.calories)} kcal` })
-  const sm = d?.sm ?? a.sm, sn = d?.sn ?? a.sn
-  if (sm) stats.push({ label: 'Score métab.', value: `${sm}` })
-  if (sn) stats.push({ label: 'Score neuro.', value: `${sn}` })
-
-  // Objet passé aux composants training réels (carte + courbes). Lecture seule :
-  // ces composants n'exposent aucune édition ni bouton IA.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const act = (d ?? null) as any
-
-  return (
-    <div style={{ maxWidth: 720, margin: '0 auto', padding: '8px clamp(16px,4vw,32px) 64px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 4 }}>
-        <span style={{ width: 10, height: 10, borderRadius: 3, background: meta.color }} />
-        <span style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-mid)' }}>{meta.label}</span>
-        <span style={{ fontSize: 10.5, fontWeight: 800, color: 'var(--text-dim)', border: '1px solid var(--border)', borderRadius: 999, padding: '2px 9px' }}>{(d?.is_race ?? a.is_race) ? 'Compétition' : 'Entraînement'}</span>
-      </div>
-      <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 600, color: 'var(--text)', margin: '0 0 4px' }}>{d?.title || a.title}</h2>
-      <div style={{ fontSize: 13, color: 'var(--text-dim)', marginBottom: 16 }}>{new Date(a.started_at).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</div>
-
-      {/* Carte interactive réelle (même composant que la page training) — bulle
-          verte au départ + drapeau à damier à l'arrivée. Repli SVG si pas de token. */}
-      {act ? (
-        <div style={{ marginBottom: 18 }}>
-          <InteractiveMapCard activity={act} isMobile={narrow} />
-        </div>
-      ) : path ? (
-        <div style={{ background: meta.color, borderRadius: 'var(--r-lg)', padding: 16, marginBottom: 18 }}>
-          <svg viewBox="0 0 640 320" style={{ width: '100%', height: 'auto', display: 'block' }}>
-            <path d={path} fill="none" stroke="white" strokeWidth={4} strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" style={{ filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.3))' }} />
-          </svg>
-        </div>
-      ) : null}
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(108px,1fr))', gap: 10 }}>
-        {stats.map(s => (
-          <div key={s.label} style={{ background: 'var(--bg-card2)', borderRadius: 'var(--r-md)', padding: '11px 13px' }}>
-            <div style={{ fontSize: 10.5, color: 'var(--text-dim)', marginBottom: 3 }}>{s.label}</div>
-            <div className="tnum" style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)', fontVariantNumeric: 'tabular-nums' }}>{s.value}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* Courbes réelles (Empilé / Superposé / Mono avec survol) — lecture seule. */}
-      {act && d?.streams ? <div style={{ marginTop: 22 }}><ActivityCurves activity={act} /></div> : null}
-
-      {/* Lien « Voir sur Strava » (conservé) — seule action externe. */}
-      {d?.external_url ? (
-        <a href={d.external_url} target="_blank" rel="noopener noreferrer"
-          style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginTop: 22, padding: '10px 16px', borderRadius: 'var(--r-md)', background: 'var(--bg-card2)', color: 'var(--text-mid)', fontSize: 13, fontWeight: 700, textDecoration: 'none' }}>
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169" /></svg>
-          Voir sur Strava
-        </a>
-      ) : null}
-
-      {!full && !failed && <p style={{ fontSize: 12.5, color: 'var(--text-dim)', marginTop: 16 }}>Chargement de l’analyse…</p>}
-      {failed && <p style={{ fontSize: 12.5, color: 'var(--text-dim)', marginTop: 16 }}>Analyse détaillée indisponible pour cette activité.</p>}
+      {/* Détail de l'activité — EXACTEMENT la page training, en lecture seule
+          (plein écran, se ferme via son propre bouton retour). */}
+      {detail && <ReadOnlyActivityDetail id={detail.id} onClose={() => setDetail(null)} />}
     </div>
   )
 }

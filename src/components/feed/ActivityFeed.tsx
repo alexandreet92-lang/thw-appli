@@ -6,9 +6,8 @@
 // détail LECTURE SEULE (exactement la page training, non éditable).
 // ══════════════════════════════════════════════════════════════════
 import { useEffect, useState } from 'react'
-import SlideSheet from '@/components/ui/SlideSheet'
 import { Avatar } from '@/components/shared/Sidebar'
-import { ActivityDetailView } from '@/components/profile/ActivityShowcase'
+import { ReadOnlyActivityDetail } from '@/components/activity/ReadOnlyActivityDetail'
 import { staticRouteMapUrl } from '@/lib/staticMap'
 import { getActivityFeed, decodePolyline, polylineToSvgPath, sportFamily, sportMeta, type FeedActivity } from '@/lib/profile/activityShowcase'
 
@@ -71,10 +70,8 @@ export default function ActivityFeed() {
         </div>
       )}
 
-      {/* Détail LECTURE SEULE — même vue que la page training */}
-      <SlideSheet open={!!detail} onClose={() => setDetail(null)} title="Activité">
-        {detail && <ActivityDetailView a={detail} />}
-      </SlideSheet>
+      {/* Détail LECTURE SEULE — EXACTEMENT la page training (plein écran) */}
+      {detail && <ReadOnlyActivityDetail id={detail.id} onClose={() => setDetail(null)} />}
     </div>
   )
 }

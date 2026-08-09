@@ -3410,11 +3410,14 @@ const METRIC_DEFS: MetricDef[] = [
 
 interface ActivityCurvesProps {
   activity: Activity
+  // Position survolée sur les courbes (0..1 le long de l'activité), pour piloter
+  // le point rouge qui suit le tracé sur la carte. null au relâchement/sortie.
+  onHoverRatio?: (ratio: number | null) => void
 }
 
 type CurvesFormat = 'stacked' | 'overlaid' | 'mono'
 
-export function ActivityCurves({ activity }: ActivityCurvesProps) {
+export function ActivityCurves({ activity, onHoverRatio }: ActivityCurvesProps) {
   const { t } = useI18n()
   void useWindowWidth() // force re-render au resize, mais on s'en sert pas autrement
   const s = activity.streams ?? null
@@ -3614,6 +3617,7 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
     const x = clientX - rect.left
     const ratio = Math.max(0, Math.min(1, x / rect.width))
     const idx = Math.round(ratio * (N - 1))
+    onHoverRatio?.(ratio)
 
     // Crosshair
     if (crosshairRef.current) {
@@ -3676,6 +3680,7 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
     if (crosshairRef.current) crosshairRef.current.style.opacity = '0'
     dotRefsMap.current.forEach(dot => { if (dot) dot.style.opacity = '0' })
     if (tooltipRef.current) tooltipRef.current.style.opacity = '0'
+    onHoverRatio?.(null)
   }
 
   // Helper : convertit clientX en indice de données
@@ -6685,9 +6690,12 @@ function FeelingDifficultyCard({ feeling, difficulty, onEdit }: {
 // ─────────────────────────────────────────────────────────────
 // ACTIVITY DETAIL
 // ─────────────────────────────────────────────────────────────
-function ActivityDetail({ a, onClose, closing = false, zones, profile, allActivities = [] }: {
+export function ActivityDetail({ a, onClose, closing = false, zones, profile, allActivities = [], readOnly = false }: {
   a: Activity; onClose: () => void; closing?: boolean
   zones: TrainingZoneRow[]; profile: Profile; allActivities?: Activity[]
+  // readOnly : consultation de l'activité d'un AUTRE athlète — aucune écriture,
+  // aucune édition, aucun bouton d'analyse IA. Le lien « Voir sur Strava » reste.
+  readOnly?: boolean
 }) {
   const { t } = useI18n()
   const width    = useWindowWidth()
@@ -6886,6 +6894,13 @@ function ActivityDetail({ a, onClose, closing = false, zones, profile, allActivi
     if (!encoded || encoded.length < 2) return null
     return decodePolyline(encoded)
   }, [a.summary_polyline, a.raw_data])
+
+  // Survol des courbes (ratio 0..1) → point rouge qui suit le tracé sur la carte.
+  const onCurveHover = useCallback((ratio: number | null) => {
+    if (ratio == null || !polylinePoints || polylinePoints.length < 2) { setHoverGps(null); return }
+    const i = Math.max(0, Math.min(polylinePoints.length - 1, Math.round(ratio * (polylinePoints.length - 1))))
+    setHoverGps(polylinePoints[i])
+  }, [polylinePoints])
 
   const handleDelete = async () => {
     setIsDeleting(true)
@@ -7332,10 +7347,12 @@ conseil pour la prochaine séance similaire.`
       <div style={{ flex: '1 1 140px', paddingRight: 24, paddingBottom: 12 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
           <span style={{ fontSize: 11, color: T.textMuted }}>{t('actp.feeling')}</span>
-          <button onClick={() => setShowRpeModal(true)} style={{
-            background: T.bgAlt, border: `1px solid ${T.border}`, borderRadius: 6,
-            padding: '2px 8px', fontSize: 11, cursor: 'pointer', color: T.textSub,
-          }}>{t('actp.enter_plus')}</button>
+          {!readOnly && (
+            <button onClick={() => setShowRpeModal(true)} style={{
+              background: T.bgAlt, border: `1px solid ${T.border}`, borderRadius: 6,
+              padding: '2px 8px', fontSize: 11, cursor: 'pointer', color: T.textSub,
+            }}>{t('actp.enter_plus')}</button>
+          )}
         </div>
         {localSensation != null && (
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
@@ -7613,7 +7630,7 @@ conseil pour la prochaine séance similaire.`
         </div>
 
         {/* ── Média façon Strava : photo en vignette sur la carte, clic = swap ── */}
-        {polylinePoints && polylinePoints.length >= 2 && (
+        {!readOnly && polylinePoints && polylinePoints.length >= 2 && (
           <ActivityMediaHero
             variant="overlay"
             activityId={a.id}
@@ -7691,7 +7708,9 @@ conseil pour la prochaine séance similaire.`
           <div style={{ padding: '0 16px 16px', display: 'flex', alignItems: 'flex-start', gap: 10 }}>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div data-activity-title="">
-                <ActivityTitle activityId={a.id} initialName={a.title} variant="hero" />
+                {readOnly
+                  ? <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 600, color: 'var(--text)', margin: 0, lineHeight: 1.15 }}>{a.title}</h1>
+                  : <ActivityTitle activityId={a.id} initialName={a.title} variant="hero" />}
               </div>
               <p data-activity-subtitle="" style={{ fontSize: 13, color: T.textMuted, margin: '6px 0 0', lineHeight: 1.4 }}>
                 {sportLabel(a.sport_type, t)}
@@ -7716,47 +7735,51 @@ conseil pour la prochaine séance similaire.`
           </div>
 
           {/* Entraînement / Course (mobile) — masque les badges de type si Course */}
-          <div style={{ padding: '0 16px 12px' }}>
-            <TrainingRaceSelector value={localIsRace} onChange={saveIsRace} />
-          </div>
+          {!readOnly && (
+            <div style={{ padding: '0 16px 12px' }}>
+              <TrainingRaceSelector value={localIsRace} onChange={saveIsRace} />
+            </div>
+          )}
 
           {/* Type d'entraînement (mobile, tous sports) — sélection manuelle.
               Masqué pour une course (une course n'est pas un entraînement). */}
-          {!localIsRace && (
+          {!readOnly && !localIsRace && (
             <div style={{ padding: '0 16px' }}>
               <WorkoutTypeBadges activityId={a.id} sport={a.sport_type} />
             </div>
           )}
 
           {/* Muscu : séance enregistrée (fusion in-app) ou saisie manuelle */}
-          {isGym && (
+          {!readOnly && isGym && (
             <div style={{ padding: '0 16px' }}>
               <MuscuSessionPanel activity={a} />
             </div>
           )}
 
           {/* Natation piscine : nombre de longueurs (bassin saisi par l'athlète) */}
-          {isPool && (
+          {!readOnly && isPool && (
             <div style={{ padding: '0 16px' }}>
               <SwimLengths activityId={a.id} distanceM={a.distance_m} />
             </div>
           )}
 
-          {/* Jauges Ressenti / Difficulté (mobile) */}
+          {/* Jauges Ressenti / Difficulté (mobile) — non éditable en lecture seule */}
           <div style={{ padding: '0 16px' }}>
-            <FeelingDifficultyCard feeling={localFeeling} difficulty={localDifficulty} onEdit={setFdEditing} />
+            <FeelingDifficultyCard feeling={localFeeling} difficulty={localDifficulty} onEdit={readOnly ? () => {} : setFdEditing} />
           </div>
 
           {/* Sans carte GPS : galerie média inline (avec carte, elle est dans le héros) */}
-          {!(polylinePoints && polylinePoints.length >= 2) && (
+          {!readOnly && !(polylinePoints && polylinePoints.length >= 2) && (
             <div style={{ marginTop: 8 }}>
               <ActivityMediaHero variant="inline" activityId={a.id} initialMedia={a.media} points={polylinePoints} />
             </div>
           )}
           {/* Commentaire (les photos/vidéos sont gérées dans le héros) */}
-          <div style={{ padding: '14px 16px 0' }}>
-            <ActivityMedia activityId={a.id} initialComment={a.comment} showPhotos={false} />
-          </div>
+          {!readOnly && (
+            <div style={{ padding: '14px 16px 0' }}>
+              <ActivityMedia activityId={a.id} initialComment={a.comment} showPhotos={false} />
+            </div>
+          )}
 
           {/* Records battus — sous la carte (mobile) */}
           <div style={{ padding: '0 16px' }}>
@@ -7822,7 +7845,8 @@ conseil pour la prochaine séance similaire.`
             )
           })()}
 
-          {/* ── BOUTON IA GLOBAL (mobile) ── */}
+          {/* ── BOUTON IA GLOBAL (mobile) — masqué en lecture seule ── */}
+          {!readOnly && (
           <div style={{ padding: '0 16px 20px' }}>
             <button
               onClick={() => globalAI.status === 'idle' || globalAI.status === 'done' || globalAI.status === 'error'
@@ -7840,6 +7864,7 @@ conseil pour la prochaine séance similaire.`
             </button>
             <AIBubble text={globalAI.text} status={globalAI.status} onRetry={() => { globalAI.reset(); globalAI.run(buildGlobalPrompt()) }} />
           </div>
+          )}
 
           {/* ── SECTIONS dans le sheet ── */}
           <div style={{ padding: '0 16px' }}>
@@ -7888,7 +7913,7 @@ conseil pour la prochaine séance similaire.`
             {/* COURBES */}
             {a.streams && (
               <Section title={t('actp.curves')}>
-                <ActivityCurves activity={a} />
+                <ActivityCurves activity={a} onHoverRatio={onCurveHover} />
               </Section>
             )}
 
@@ -7901,7 +7926,7 @@ conseil pour la prochaine séance similaire.`
                 sport={isBike ? 'bike' : 'run'}
                 activityLabel={a.title ?? sportLabel(a.sport_type, t)}
                 historyEF={splitsHistoryEF}
-                ai={splitsAI}
+                ai={readOnly ? undefined : splitsAI}
               />
             )}
 
@@ -7936,7 +7961,8 @@ conseil pour la prochaine séance similaire.`
                           temp={s.temp} time={s.time}
                         />
                       )}
-                      {/* IA Découplage */}
+                      {/* IA Découplage — masqué en lecture seule */}
+                      {!readOnly && (
                       <div style={{ marginTop: 12 }}>
                         <button
                           onClick={() => decoupAI.status === 'idle' || decoupAI.status === 'done' || decoupAI.status === 'error'
@@ -7954,6 +7980,7 @@ conseil pour la prochaine séance similaire.`
                         </button>
                         <AIBubble text={decoupAI.text} status={decoupAI.status} onRetry={() => { decoupAI.reset(); decoupAI.run(buildDecouplingPrompt()) }} />
                       </div>
+                      )}
                     </div>
                   )}
                   {/* Durée cumulée par FC — cyclisme uniquement (retiré du running) */}
@@ -8054,7 +8081,8 @@ conseil pour la prochaine séance similaire.`
               </Section>
             )}
 
-            {/* DELETE */}
+            {/* DELETE — masqué en lecture seule */}
+            {!readOnly && (
             <div style={{ marginTop: 28, paddingBottom: 8, display: 'flex', justifyContent: 'center' }}>
               <button
                 className="thw-delete-activity-btn"
@@ -8071,6 +8099,7 @@ conseil pour la prochaine séance similaire.`
                 {t('actp.delete_activity')}
               </button>
             </div>
+            )}
 
           </div>
         </div>
@@ -8119,7 +8148,7 @@ conseil pour la prochaine séance similaire.`
           <ChevronLeft size={16} /> Retour
         </button>
         <div style={{ flex: 1, minWidth: 0, fontWeight: 700, fontSize: 15, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          <ActivityTitle activityId={a.id} initialName={a.title} />
+          {readOnly ? <span>{a.title}</span> : <ActivityTitle activityId={a.id} initialName={a.title} />}
         </div>
         <span style={{ fontSize: 12, background: col + '18', color: col, padding: '2px 8px', borderRadius: 20, flexShrink: 0, fontWeight: 600 }}>
           {sportLabel(a.sport_type, t)}
@@ -8136,6 +8165,7 @@ conseil pour la prochaine séance similaire.`
             <PoweredByStrava variant="muted" height={12} />
           </div>
         )}
+        {!readOnly && (
         <button
           className="thw-delete-activity-btn"
           onClick={() => setShowDeleteConfirm(true)}
@@ -8150,22 +8180,23 @@ conseil pour la prochaine séance similaire.`
         >
           {t('actp.delete')}
         </button>
+        )}
       </div>
 
       <div style={{ padding: '20px 24px' }}>
 
         {/* ── Badges de type d'entraînement (tous sports) — sélection manuelle ── */}
-        <WorkoutTypeBadges activityId={a.id} sport={a.sport_type} />
+        {!readOnly && <WorkoutTypeBadges activityId={a.id} sport={a.sport_type} />}
 
         {/* ── MUSCU : séance enregistrée (fusion in-app) ou saisie manuelle ── */}
-        {isGym && <MuscuSessionPanel activity={a} />}
+        {!readOnly && isGym && <MuscuSessionPanel activity={a} />}
 
         {/* ── MUSCU : layout dédié (remplace entièrement le générique cardio) ── */}
         {isGym && (
           <MuscuActivityView
             activity={a}
             z2DurationS={z2DurationS}
-            jauges={<FeelingDifficultyCard feeling={localFeeling} difficulty={localDifficulty} onEdit={setFdEditing} />}
+            jauges={<FeelingDifficultyCard feeling={localFeeling} difficulty={localDifficulty} onEdit={readOnly ? () => {} : setFdEditing} />}
           />
         )}
 
@@ -8176,7 +8207,7 @@ conseil pour la prochaine séance similaire.`
               textTransform: 'uppercase', marginBottom: 16, borderBottom: `1px solid ${T.border}`, paddingBottom: 5, fontFamily: T.fontDisplay }}>
               {t('actp.curves')}
             </div>
-            <ActivityCurves activity={a} />
+            <ActivityCurves activity={a} onHoverRatio={onCurveHover} />
           </div>
         )}
 
@@ -8197,7 +8228,7 @@ conseil pour la prochaine séance similaire.`
           </div>
         )}
         {/* Natation : nombre de longueurs (bassin saisi par l'athlète) */}
-        {isPool && <SwimLengths activityId={a.id} distanceM={a.distance_m} />}
+        {!readOnly && isPool && <SwimLengths activityId={a.id} distanceM={a.distance_m} />}
 
         {/* ── PARTIE 3 : Hero row (carte | stats) ── */}
         {mapExpanded ? (
@@ -8300,18 +8331,21 @@ conseil pour la prochaine séance similaire.`
           </div>
         )}
 
-        {/* ── Jauges Ressenti / Difficulté (desktop) ── */}
-        <FeelingDifficultyCard feeling={localFeeling} difficulty={localDifficulty} onEdit={setFdEditing} />
+        {/* ── Jauges Ressenti / Difficulté (desktop) — non éditable en lecture seule ── */}
+        <FeelingDifficultyCard feeling={localFeeling} difficulty={localDifficulty} onEdit={readOnly ? () => {} : setFdEditing} />
 
         {/* ── Photos & vidéos (desktop) ── */}
-        <div style={{ marginBottom: 20 }}>
-          <ActivityMedia activityId={a.id} initialMedia={a.media} initialComment={a.comment} />
-        </div>
+        {!readOnly && (
+          <div style={{ marginBottom: 20 }}>
+            <ActivityMedia activityId={a.id} initialMedia={a.media} initialComment={a.comment} />
+          </div>
+        )}
 
         {/* ── Records battus — sous la carte (desktop) ── */}
         <RecordsBeaten activityId={a.id} isBike={isBike} />
 
-        {/* ── IA ANALYSE GLOBALE (desktop) ── */}
+        {/* ── IA ANALYSE GLOBALE (desktop) — masquée en lecture seule ── */}
+        {!readOnly && (
         <div style={{ marginBottom: 20 }}>
           <button
             onClick={() => globalAI.status === 'idle' || globalAI.status === 'done' || globalAI.status === 'error'
@@ -8329,6 +8363,7 @@ conseil pour la prochaine séance similaire.`
           </button>
           <AIBubble text={globalAI.text} status={globalAI.status} onRetry={() => { globalAI.reset(); globalAI.run(buildGlobalPrompt()) }} />
         </div>
+        )}
 
         {/* ── PARTIE 4 : Données détaillées — 4 colonnes ── */}
         <div style={{ background: 'var(--bg-card)', borderRadius: 10, border: '1px solid var(--border)', marginBottom: 20 }}>
@@ -8484,7 +8519,7 @@ conseil pour la prochaine séance similaire.`
               textTransform: 'uppercase', marginBottom: 16, borderBottom: `1px solid ${T.border}`, paddingBottom: 5, fontFamily: T.fontDisplay }}>
               {t('actp.curves')}
             </div>
-            <ActivityCurves activity={a} />
+            <ActivityCurves activity={a} onHoverRatio={onCurveHover} />
           </div>
         )}
 
@@ -8649,7 +8684,7 @@ conseil pour la prochaine séance similaire.`
             sport={isBike ? 'bike' : 'run'}
             activityLabel={a.title ?? sportLabel(a.sport_type, t)}
             historyEF={splitsHistoryEF}
-            ai={splitsAI}
+            ai={readOnly ? undefined : splitsAI}
           />
         )}
 
@@ -8787,6 +8822,7 @@ conseil pour la prochaine séance similaire.`
                     temp={s.temp}
                     time={s.time}
                   />
+                  {!readOnly && (
                   <div style={{ marginTop: 12 }}>
                     <button
                       onClick={() => decoupAI.status === 'idle' || decoupAI.status === 'done' || decoupAI.status === 'error'
@@ -8804,6 +8840,7 @@ conseil pour la prochaine séance similaire.`
                     </button>
                     <AIBubble text={decoupAI.text} status={decoupAI.status} onRetry={() => { decoupAI.reset(); decoupAI.run(buildDecouplingPrompt()) }} />
                   </div>
+                  )}
                 </div>
               )}
 

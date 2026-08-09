@@ -7,7 +7,8 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { sportColor, sportLabel } from '@/components/recovery/helpers'
-import { RouteSvg, ElevationSvg } from './activityViz'
+import { ActivityMapCard } from '@/components/activity/ActivityMapCard'
+import { ElevationSvg } from './activityViz'
 import type { ActivityRef } from '@/types/community'
 
 const FB = 'var(--font-body)', FD = 'var(--font-display)'
@@ -53,7 +54,7 @@ export function ActivityDetailPanel({ activity, onClose }: { activity: ActivityR
   const panel = (
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'color-mix(in srgb, var(--bg) 45%, transparent)', backdropFilter: 'blur(2px)', zIndex: 1100, display: 'flex', justifyContent: 'flex-end' }}>
       <div onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" className="comm-drawer-in"
-        style={{ width: '100%', maxWidth: 460, height: '100%', overflowY: 'auto', background: 'var(--bg-card)', boxShadow: 'var(--shadow)', display: 'flex', flexDirection: 'column' }}>
+        style={{ width: 'min(96vw, 880px)', height: '100%', overflowY: 'auto', background: 'var(--bg-card)', boxShadow: 'var(--shadow)', display: 'flex', flexDirection: 'column' }}>
         {/* En-tête */}
         <div style={{ flexShrink: 0, padding: 'var(--space-5) var(--space-5) var(--space-3)', display: 'flex', alignItems: 'flex-start', gap: 'var(--space-3)' }}>
           <span style={{ width: 3, alignSelf: 'stretch', borderRadius: 3, background: col, flexShrink: 0 }} />
@@ -68,7 +69,11 @@ export function ActivityDetailPanel({ activity, onClose }: { activity: ActivityR
         </div>
 
         <div style={{ padding: '0 var(--space-5) var(--space-8)', display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
-          {activity.polyline && <RouteSvg polyline={activity.polyline} height={180} />}
+          {activity.polyline && (
+            <div style={{ height: 260, borderRadius: 'var(--r-md)', overflow: 'hidden', position: 'relative' }}>
+              <ActivityMapCard activity={{ summary_polyline: activity.polyline }} expanded />
+            </div>
+          )}
           {activity.elevation && activity.elevation.length > 1 && (
             <div>
               <div style={{ fontFamily: FB, fontSize: 10.5, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-dim)', marginBottom: 4 }}>Profil altimétrique</div>

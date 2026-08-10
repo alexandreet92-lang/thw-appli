@@ -8,7 +8,9 @@
     "start": "next start",
     "lint": "next lint",
     "check:colors": "node scripts/check-colors.mjs",
-    "check:colors:enforce": "node scripts/check-colors.mjs --enforce"
+    "check:colors:enforce": "node scripts/check-colors.mjs --enforce",
+    "build:cap": "node scripts/build-cap.mjs",
+    "cap:sync": "node scripts/build-cap.mjs && npx cap sync ios"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.88.0",

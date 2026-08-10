@@ -27,3 +27,6 @@ tsconfig.tsbuildinfo
 
 # Misc
 *.pem
+
+# Build Capacitor (phase 5)
+.cap-build-hidden/

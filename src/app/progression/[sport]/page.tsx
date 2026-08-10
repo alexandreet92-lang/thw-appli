@@ -1,17 +1,8 @@
-'use client'
+// Wrapper serveur (généré) — permet l'export statique Capacitor (phase 5) tout
+// en gardant le rendu à la demande sur Vercel. La vue réelle est 100 % client
+// (View.tsx) et lit le paramètre via useParams().
+import View from './View'
 
-// Route /progression/[sport] (accès direct par URL). La vue est partagée
-// avec le rendu inline de la section Progression de /activities.
-import { useParams, useRouter } from 'next/navigation'
-import { ProgressionSportView } from '../components/ProgressionSportView'
+export function generateStaticParams() { return [{ 'sport': '_' }] }
 
-export default function ProgressionSportPage() {
-  const params = useParams()
-  const router = useRouter()
-  const sport = String(params.sport ?? '')
-  return (
-    <div style={{ padding: '20px 16px 80px' }}>
-      <ProgressionSportView sport={sport} onBack={() => router.push('/progression')} />
-    </div>
-  )
-}
+export default function Page() { return <View /> }

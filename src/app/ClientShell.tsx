@@ -6,6 +6,7 @@ import { ReauthGate } from '@/components/auth/ReauthGate'
 import { I18nProvider } from '@/lib/i18n'
 import { CallProvider } from '@/components/community/call/CallProvider'
 import { CallBubble } from '@/components/community/call/CallBubble'
+import { installNativeApiFetch } from '@/lib/native/apiFetch'
 
 interface ClientShellProps {
   children: React.ReactNode
@@ -16,6 +17,8 @@ export function ClientShell({ children }: ClientShellProps) {
   const [hydrated, setHydrated] = useState(false)
 
   useEffect(() => {
+    // App native : redirige les appels /api vers Vercel + ajoute le token (no-op en web).
+    installNativeApiFetch()
     setHydrated(true)
     const alreadySeen = sessionStorage.getItem('splash_v1')
     if (!alreadySeen) {

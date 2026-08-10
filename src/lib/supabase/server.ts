@@ -1,8 +1,29 @@
 import { createServerClient } from '@supabase/ssr'
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
-import { cookies } from 'next/headers'
+import { cookies, headers } from 'next/headers'
 
 export async function createClient() {
+  // App native (Capacitor) : le bundle local appelle l'API en cross-origin depuis
+  // capacitor:// → les cookies ne passent pas. Si un token Bearer est fourni, on
+  // authentifie avec ce token (RLS appliquée). Le web continue via cookies.
+  try {
+    const h = await headers()
+    const authz = h.get('authorization')
+    if (authz && authz.toLowerCase().startsWith('bearer ')) {
+      const token = authz.slice(7).trim()
+      if (token) {
+        return createSupabaseClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+          {
+            global: { headers: { Authorization: `Bearer ${token}` } },
+            auth: { autoRefreshToken: false, persistSession: false },
+          }
+        )
+      }
+    }
+  } catch { /* headers() indisponible → on retombe sur les cookies */ }
+
   const cookieStore = await cookies()
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

@@ -1,5 +1,17 @@
 import { createBrowserClient } from '@supabase/ssr'
+import { createClient as createSupaClient } from '@supabase/supabase-js'
 import { emitSaved, emitSaveError } from '@/lib/ui/saveToast'
+
+// App native (Capacitor) : le bundle tourne sur capacitor:// → les COOKIES ne
+// persistent pas de façon fiable. On bascule donc sur un stockage localStorage
+// (client supabase-js classique) UNIQUEMENT dans le build natif (NEXT_PUBLIC_API_BASE
+// défini). Le web reste sur createBrowserClient (cookies, requis pour le SSR /
+// middleware). La clé de stockage correspond exactement à celle lue par apiFetch.
+const NATIVE = !!process.env.NEXT_PUBLIC_API_BASE
+function nativeStorageKey(): string {
+  try { return `sb-${new URL(process.env.NEXT_PUBLIC_SUPABASE_URL!).hostname.split('.')[0]}-auth-token` }
+  catch { return 'sb-auth-token' }
+}
 
 // Méthodes qui MODIFIENT des données → déclenchent l'animation « Enregistré ».
 // (les lectures `select` ne sont pas instrumentées.)
@@ -46,10 +58,25 @@ function wrapMutationBuilder(builder: any, silent: boolean): any {
 }
 
 export function createClient() {
-  const client = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-  )
+  const client = NATIVE
+    ? createSupaClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        {
+          auth: {
+            persistSession: true,
+            autoRefreshToken: true,
+            detectSessionInUrl: true,
+            flowType: 'pkce',
+            storageKey: nativeStorageKey(),
+            storage: typeof window !== 'undefined' ? window.localStorage : undefined,
+          },
+        }
+      ) as ReturnType<typeof createBrowserClient>
+    : createBrowserClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      )
 
   const originalFrom = client.from.bind(client)
   client.from = ((table: string) => {

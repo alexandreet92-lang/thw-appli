@@ -17,6 +17,8 @@ import { LanguageDropdown } from '@/components/i18n/LanguageDropdown'
 const FB = 'var(--font-body)', FD = 'var(--font-display)'
 const TERMS_VERSION = '2025-06'
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+// Build natif (Capacitor) : bundle local, redirections adaptées.
+const NATIVE_BUILD = !!process.env.NEXT_PUBLIC_API_BASE
 
 // CTA principal — dégradé cyan→indigo + reflet interne, proportionné (50px).
 function ctaStyle(disabled: boolean): React.CSSProperties {
@@ -183,7 +185,11 @@ function AuthPageInner() {
     localStorage.setItem('last_auth_date', now)
     localStorage.setItem('thw_last_pw_auth', now)
     localStorage.setItem('thw_remember', remember ? '1' : '0')
-    router.replace('/'); router.refresh()
+    // App native : rechargement dur → le dashboard se monte à neuf avec la session
+    // fraîchement stockée en localStorage (router.refresh() n'a pas de serveur en
+    // export statique). Web : navigation SPA classique.
+    if (NATIVE_BUILD) { window.location.href = '/' }
+    else { router.replace('/'); router.refresh() }
   }
 
   async function handleSignup() {

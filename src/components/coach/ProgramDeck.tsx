@@ -44,18 +44,16 @@ function SportGlyph({ sport, size = 42 }: { sport: string; size?: number }) {
 }
 
 type Placement = { transform: string; z: number; opacity: number; shadow: string }
-// Placement « coverflow » deux côtés : la carte PRÉCÉDENTE dépasse à GAUCHE, la
-// SUIVANTE dépasse à DROITE, l'active au centre devant. Quand on avance, l'active
-// glisse à gauche et passe derrière pendant que la suivante avance au centre.
+// Deck empilé et CENTRÉ (façon Runna) : la carte active est devant, les suivantes
+// sont derrière, centrées, un peu plus petites et légèrement descendues (elles
+// dépassent proprement en bas). La précédente sort par la gauche. Pas de
+// fan latéral bancal.
 function placeCard(pos: number, drag: number): Placement {
-  const dl = Math.min(0, drag), dr = Math.max(0, drag)
-  // AUCUNE ombre (demande explicite) — la profondeur vient du décalage + échelle.
-  if (pos === 0) return { transform: `translateX(calc(-50% + ${drag}px)) rotate(${(drag * 0.015).toFixed(2)}deg)`, z: 40, opacity: 1, shadow: 'none' }
-  // Suivante — dépasse nettement à droite (visible), en retrait.
-  if (pos === 1) return { transform: `translateX(calc(-50% + 34% + ${dl * 0.4}px)) translateY(14px) rotate(6deg) scale(0.9)`, z: 30, opacity: 0.96, shadow: 'none' }
-  if (pos === 2) return { transform: `translateX(calc(-50% + 48% + ${dl * 0.25}px)) translateY(26px) rotate(10deg) scale(0.82)`, z: 20, opacity: 0.72, shadow: 'none' }
-  // Précédente — dépasse nettement à gauche (visible).
-  return { transform: `translateX(calc(-50% - 34% + ${dr * 0.4}px)) translateY(14px) rotate(-6deg) scale(0.9)`, z: 28, opacity: 0.96, shadow: 'none' }
+  if (pos === 0) return { transform: `translateX(calc(-50% + ${drag}px)) rotate(${(drag * 0.012).toFixed(2)}deg)`, z: 40, opacity: 1, shadow: 'none' }
+  if (pos === 1) return { transform: `translateX(-50%) translateY(16px) scale(0.945)`, z: 30, opacity: 0.55, shadow: 'none' }
+  if (pos === 2) return { transform: `translateX(-50%) translateY(31px) scale(0.89)`, z: 20, opacity: 0.3, shadow: 'none' }
+  // Précédente : sortie propre vers la gauche (invisible).
+  return { transform: `translateX(calc(-150% + ${Math.max(0, drag)}px))`, z: 10, opacity: 0, shadow: 'none' }
 }
 
 function Card({ p, pos, drag, onOpen }: { p: CoachProgram; pos: number; drag: number; onOpen?: () => void }) {

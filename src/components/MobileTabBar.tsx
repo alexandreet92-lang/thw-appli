@@ -224,9 +224,12 @@ const BAR: React.CSSProperties = {
   position: 'fixed', zIndex: 100,
   left: 12, right: 12,
   bottom: 'calc(env(safe-area-inset-bottom, 0px) + 8px)',
-  borderRadius: 30, overflow: 'hidden',
+  borderRadius: 30,
+  // PAS d'overflow:hidden ici : sur la webview iOS, overflow:hidden + border-radius
+  // CASSE le backdrop-filter (bug WebKit) → le flou disparaît et la barre paraît
+  // opaque. Sans overflow, le verre dépoli s'applique vraiment.
   background: 'var(--glass-bg)',
-  backdropFilter: 'blur(24px) saturate(1.5)', WebkitBackdropFilter: 'blur(24px) saturate(1.5)',
+  backdropFilter: 'blur(30px) saturate(1.7)', WebkitBackdropFilter: 'blur(30px) saturate(1.7)',
   border: '0.5px solid var(--glass-border)',
   boxShadow: '0 6px 24px rgba(0,0,0,0.14)',
 }

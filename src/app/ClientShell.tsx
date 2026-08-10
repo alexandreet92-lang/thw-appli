@@ -21,6 +21,11 @@ export function ClientShell({ children }: ClientShellProps) {
     if (!alreadySeen) {
       setShowSplash(true)
     }
+    // Enregistre le service worker (cache des bundles JS/CSS) → démarrage à
+    // froid plus rapide. Idempotent, sans effet sur les données.
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(() => { /* ignore */ })
+    }
   }, [])
 
   const handleSplashDone = () => {

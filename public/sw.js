@@ -56,3 +56,40 @@ self.addEventListener('notificationclick', (event) => {
     if (self.clients.openWindow) await self.clients.openWindow(url)
   })())
 })
+
+// ══════════════════════════════════════════════════════════════
+// Cache des fichiers statiques IMMUABLES (bundles JS/CSS hashés + logos +
+// polices) → démarrage à froid beaucoup plus rapide (on ne re-télécharge pas
+// des Mo de JS à chaque ouverture). AUCUNE page HTML / API / donnée n'est mise
+// en cache → zéro risque de contenu périmé ou de session cassée.
+// ══════════════════════════════════════════════════════════════
+const THW_STATIC_CACHE = 'thw-static-v1'
+
+self.addEventListener('fetch', (event) => {
+  const req = event.request
+  if (req.method !== 'GET') return
+  let url
+  try { url = new URL(req.url) } catch (e) { return }
+  if (url.origin !== self.location.origin) return
+
+  // Uniquement les ressources à URL hashée / immuables.
+  const cacheable =
+    url.pathname.startsWith('/_next/static/') ||
+    url.pathname.startsWith('/logos/') ||
+    url.pathname.startsWith('/space-logos/') ||
+    /\.(?:woff2?|ttf|otf)$/.test(url.pathname)
+
+  if (!cacheable) return // tout le reste : réseau normal (données toujours fraîches)
+
+  event.respondWith(
+    caches.open(THW_STATIC_CACHE).then((cache) =>
+      cache.match(req).then((hit) => {
+        if (hit) return hit
+        return fetch(req).then((res) => {
+          if (res && res.status === 200) cache.put(req, res.clone())
+          return res
+        })
+      })
+    )
+  )
+})

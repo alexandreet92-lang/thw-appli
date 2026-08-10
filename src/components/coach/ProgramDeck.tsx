@@ -67,7 +67,7 @@ function Card({ p, pos, drag, onOpen }: { p: CoachProgram; pos: number; drag: nu
   return (
     <div onClick={isTop ? onOpen : undefined}
       style={{
-        position: 'absolute', top: 0, left: '50%', width: '80%', height: '100%', zIndex: z, opacity,
+        position: 'absolute', top: 0, left: '50%', width: '72%', height: '100%', zIndex: z, opacity,
         borderRadius: 24, background: cardBg(sport), color: 'white', boxShadow: shadow, overflow: 'hidden',
         padding: 'clamp(16px, 4.5vw, 22px)', display: 'flex', flexDirection: 'column', boxSizing: 'border-box',
         transform, transformOrigin: 'center', transition: 'transform 440ms cubic-bezier(0.34,1.3,0.5,1), opacity 260ms, box-shadow 260ms',
@@ -223,9 +223,9 @@ export default function ProgramDeck({ programs, onOpen }: { programs: CoachProgr
             <motion.div key={`${activeSport}|${selSpec}`}
               initial={{ x: '100%', opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: '-100%', opacity: 0 }}
               transition={{ duration: 0.34, ease: [0.32, 0.72, 0, 1] }}>
-              <div style={{ width: '100%', maxWidth: 460, margin: '0 auto' }}>
+              <div style={{ width: '100%', maxWidth: 420, margin: '0 auto' }}>
                 {list.length > 0
-                  ? <Stack list={list} onOpen={onOpen} height="clamp(300px, 74vw, 380px)" />
+                  ? <Stack list={list} onOpen={onOpen} height="clamp(400px, 108vw, 500px)" />
                   : <p style={{ fontSize: 13, color: 'var(--text-dim)', textAlign: 'center', padding: 30 }}>Aucun programme.</p>}
               </div>
             </motion.div>

@@ -50,16 +50,18 @@ export default function SlideSheet({ open, onClose, title, children }: Props) {
         transition: 'transform 280ms cubic-bezier(0.32, 0.72, 0, 1)',
         boxShadow: '-20px 0 60px rgba(0,0,0,0.18)',
       }}>
-        {/* En-tête */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 'calc(env(safe-area-inset-top, 0px) + 14px) clamp(16px,4vw,32px) 14px', flexShrink: 0 }}>
-          <button onClick={onClose} aria-label="Fermer" style={{ width: 40, height: 40, borderRadius: 'var(--r-md)', border: 'none', background: 'var(--bg-card2)', color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+        {/* Contenu défilable PLEIN ÉCRAN : il passe SOUS l'en-tête translucide
+            (façon page connexion) — pas de bande opaque en haut. */}
+        <div style={{ position: 'absolute', inset: 0, overflowY: 'auto', WebkitOverflowScrolling: 'touch', paddingTop: 'calc(env(safe-area-inset-top, 0px) + 64px)' }}>
+          {children}
+        </div>
+        {/* En-tête flottant translucide : dégradé bg → transparent (le contenu se
+            fond dessous). Le bouton retour reste net et lisible. */}
+        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 2, display: 'flex', alignItems: 'center', gap: 12, padding: 'calc(env(safe-area-inset-top, 0px) + 12px) clamp(16px,4vw,32px) 22px', pointerEvents: 'none', background: 'linear-gradient(to bottom, var(--bg) 42%, transparent)' }}>
+          <button onClick={onClose} aria-label="Fermer" style={{ width: 40, height: 40, borderRadius: 'var(--r-md)', border: '1px solid var(--glass-border)', background: 'var(--glass-bg)', backdropFilter: 'blur(20px) saturate(1.4)', WebkitBackdropFilter: 'blur(20px) saturate(1.4)', color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, pointerEvents: 'auto' }}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
           </button>
-          {title && <div style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 600, color: 'var(--text)' }}>{title}</div>}
-        </div>
-        {/* Contenu défilable */}
-        <div style={{ flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
-          {children}
+          {title && <div style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 600, color: 'var(--text)', pointerEvents: 'auto' }}>{title}</div>}
         </div>
       </div>
     </div>,

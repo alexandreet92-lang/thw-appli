@@ -83,7 +83,7 @@ export default function CoachAthletePlanningPage() {
   return (
     <PlanningScopeContext.Provider value={athleteId}>
       {/* En-tête coach — placé sous la rangée de boutons flottants (paddingTop) */}
-      <div style={{ position: 'sticky', top: 0, zIndex: 40, background: 'color-mix(in srgb, var(--bg) 92%, transparent)', backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)', borderBottom: '1px solid var(--border)', paddingTop: 'calc(env(safe-area-inset-top, 0px) + 58px)' }}>
+      <div style={{ position: 'sticky', top: 'calc(env(safe-area-inset-top, 0px) + 44px)', zIndex: 40, background: 'color-mix(in srgb, var(--bg) 88%, transparent)', backdropFilter: 'blur(18px) saturate(1.4)', WebkitBackdropFilter: 'blur(18px) saturate(1.4)', borderBottom: '1px solid var(--border)', paddingTop: 12 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap', padding: '0 clamp(16px,4vw,40px) 12px', maxWidth: 1200, margin: '0 auto' }}>
           {/* Identité */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 11, minWidth: 0, flex: '1 1 230px' }}>

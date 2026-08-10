@@ -47,7 +47,19 @@ export default function DashboardPage() {
     return () => { cancelled = true }
   }, [router])
 
-  if (!ready) return <div aria-busy="true" style={{ minHeight: '60vh' }} />
+  // Squelette instantané (jamais d'écran blanc vide) — reprend la forme du dashboard.
+  if (!ready) return (
+    <div aria-busy="true" style={{ padding: 'var(--space-5)', display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+      <div className="dash-skel" style={{ height: 34, width: '55%', borderRadius: 10, background: 'var(--bg-card2)' }} />
+      <div className="dash-skel" style={{ height: 18, width: '35%', borderRadius: 8, background: 'var(--bg-card2)' }} />
+      <div className="dash-skel" style={{ height: 190, borderRadius: 18, background: 'var(--bg-card2)', marginTop: 'var(--space-2)' }} />
+      <div style={{ display: 'flex', gap: 'var(--space-4)' }}>
+        <div className="dash-skel" style={{ flex: 1, height: 110, borderRadius: 16, background: 'var(--bg-card2)' }} />
+        <div className="dash-skel" style={{ flex: 1, height: 110, borderRadius: 16, background: 'var(--bg-card2)' }} />
+      </div>
+      <div className="dash-skel" style={{ height: 150, borderRadius: 18, background: 'var(--bg-card2)' }} />
+    </div>
+  )
 
   return <DashboardContent />
 }

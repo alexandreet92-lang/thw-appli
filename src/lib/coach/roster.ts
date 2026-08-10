@@ -37,6 +37,11 @@ export interface RosterAthlete {
 
 async function uid(): Promise<string> {
   const sb = createClient()
+  // getSession() est LOCAL (localStorage) → fiable et instantané sur l'app native.
+  // getUser() fait un aller-retour réseau qui échoue par intermittence (token en
+  // cours de refresh) → c'était la cause des athlètes qui « disparaissent ».
+  const { data: { session } } = await sb.auth.getSession()
+  if (session?.user) return session.user.id
   const { data: { user } } = await sb.auth.getUser()
   if (!user) throw new Error('Non connecté')
   return user.id

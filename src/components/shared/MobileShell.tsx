@@ -287,14 +287,10 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
         </>}
 
         <main style={{ height: '100%', overflowY: 'auto', overflowX: 'hidden', WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'], background: 'var(--bg)',
-          paddingTop: (hideHeader || isRecord) ? 0 : 'calc(env(safe-area-inset-top) + 44px)', paddingBottom: isRecord ? 0 : 'calc(80px + env(safe-area-inset-bottom))',
-          // Fondu du contenu vers le haut (façon Claude) : le contenu monte presque
-          // jusqu'en haut ; seule une fine bande sous la barre de statut s'estompe
-          // quand ça défile. Désactivé sur /record (carte).
-          ...(isRecord ? null : {
-            maskImage: 'linear-gradient(to bottom, transparent 0, transparent 22px, #000 64px)',
-            WebkitMaskImage: 'linear-gradient(to bottom, transparent 0, transparent 22px, #000 64px)',
-          }) }}>
+          // Façon Strava : le contenu NET glisse directement sous la barre translucide
+          // du haut (le flou de l'overlay le rend lisible sous la barre de statut).
+          // Pas de fondu vers le blanc → plus de « bloc blanc » en haut.
+          paddingTop: (hideHeader || isRecord) ? 0 : 'calc(env(safe-area-inset-top) + 44px)', paddingBottom: isRecord ? 0 : 'calc(80px + env(safe-area-inset-bottom))' }}>
         <TrialEndedModal />
         <PageTransition>{children}</PageTransition>
         </main>

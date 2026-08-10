@@ -23,8 +23,16 @@ export default function DashboardPage() {
     let cancelled = false
     void (async () => {
       const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
+      // getSession() est LOCAL (localStorage) → instantané, aucune attente réseau.
+      // C'est ce qui supprime les 3-4 s d'écran vide à l'ouverture de l'app native.
+      const { data: { session } } = await supabase.auth.getSession()
+      const user = session?.user
       if (!user) { router.replace('/auth'); return }
+      if (cancelled) return
+
+      // On affiche le dashboard TOUT DE SUITE ; la garde (abonnement / onboarding)
+      // se fait en arrière-plan et ne redirige qu'en cas de besoin réel.
+      setReady(true)
 
       const [{ data: sub }, { data: profile }] = await Promise.all([
         supabase.from('user_subscriptions').select('status').eq('user_id', user.id).maybeSingle(),
@@ -35,8 +43,6 @@ export default function DashboardPage() {
       if (sub && BLOCKED.includes((sub as { status: string }).status)) { router.replace('/access-expired'); return }
       // Mini-questionnaire one-shot tant que le profil n'est pas configuré.
       if (profile && (profile as { profile_setup_done: boolean }).profile_setup_done === false) { router.replace('/bienvenue'); return }
-
-      setReady(true)
     })()
     return () => { cancelled = true }
   }, [router])

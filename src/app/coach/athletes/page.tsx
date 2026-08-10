@@ -62,10 +62,21 @@ export default function CoachAthletes() {
   const [busy, setBusy] = useState(false)
 
   const reload = useCallback(async () => {
-    try {
-      const [r, p, c] = await Promise.all([getRoster(), listPendingInvites(), listMyCoaches()])
-      setRoster(r); setPending(p); setCoaches(c)
-    } catch { /* silencieux */ } finally { setLoading(false) }
+    // Sur l'app native, un token en cours de refresh peut faire échouer une
+    // requête au montage → on retente une fois avant d'abandonner, et on NE
+    // remplace JAMAIS le roster par du vide sur erreur (sinon les athlètes
+    // « disparaissent »). On garde la liste précédente.
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const [r, p, c] = await Promise.all([getRoster(), listPendingInvites(), listMyCoaches()])
+        setRoster(r); setPending(p); setCoaches(c)
+        setLoading(false)
+        return
+      } catch {
+        if (attempt === 0) { await new Promise(res => setTimeout(res, 600)); continue }
+      }
+    }
+    setLoading(false)
   }, [])
   useEffect(() => { void reload() }, [reload])
 

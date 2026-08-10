@@ -238,17 +238,9 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
           boxShadow: open ? '-8px 0 48px rgba(0,0,0,0.12)' : 'none',
           transition: reduce ? 'none' : MOTION }}>
         {!hideHeader && <>
-          {/* Flou progressif en haut (façon Claude) : le contenu monte jusqu'en haut
-              et se floute de plus en plus vers la barre de statut, sous les boutons
-              flottants. Pas de bande blanche. Masque dégradé → flou max en haut,
-              nul plus bas. Retiré sur /record (carte immersive). */}
-          {!isRecord && <div aria-hidden style={{
-            position: 'absolute', top: 0, left: 0, right: 0,
-            height: 'calc(env(safe-area-inset-top) + 44px)', zIndex: 4, pointerEvents: 'none',
-            backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
-            maskImage: 'linear-gradient(to bottom, #000 50%, transparent)',
-            WebkitMaskImage: 'linear-gradient(to bottom, #000 50%, transparent)',
-          }} />}
+          {/* Plus AUCUNE bande/overlay en haut : les boutons flottent directement
+              au-dessus du contenu (qui défile jusqu'au bord). Sur fond vide, une
+              bande translucide ressemblait à un « bloc » noir/blanc → supprimée. */}
           <button aria-label={t('shared.menu')} onClick={() => settle(!open)} style={{ ...fab, ...(isRecord ? { background: 'var(--bg)', border: '1px solid var(--border)' } : null), left: 12, borderRadius: 12, flexDirection: 'column', gap: 4 }}>
             {[0, 1, 2].map(i => <span key={i} style={{ width: 17, height: 1.6, background: 'var(--text)', borderRadius: 2 }} />)}
           </button>

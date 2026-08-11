@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { Suspense } from 'react'
 import { ArrowRight, Loader2, Check } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import type { AuthChangeEvent, Session } from '@supabase/supabase-js'
 import { AuthInput } from '@/components/auth/AuthInput'
 import { ErrorMessage } from '@/components/auth/ErrorMessage'
 import { PasswordStrengthBar } from '@/components/auth/PasswordStrengthBar'
@@ -172,8 +173,8 @@ function AuthPageInner() {
   useEffect(() => {
     if (!NATIVE_BUILD) return
     const sb = createClient()
-    sb.auth.getSession().then(({ data }) => { if (data.session) window.location.href = '/' })
-    const { data: sub } = sb.auth.onAuthStateChange((event, session) => {
+    void sb.auth.getSession().then((res: { data: { session: Session | null } }) => { if (res.data.session) window.location.href = '/' })
+    const { data: sub } = sb.auth.onAuthStateChange((event: AuthChangeEvent, session: Session | null) => {
       if (session && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED')) window.location.href = '/'
     })
     return () => sub.subscription.unsubscribe()

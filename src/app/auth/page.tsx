@@ -101,11 +101,22 @@ function SocialButtons({ onError }: { onError: (msg: string) => void }) {
   const { t } = useI18n()
   const handleOAuth = async (provider: 'apple' | 'google') => {
     const sb = createClient()
-    // App native (capacitor://) : on revient sur /auth (page cliente) où le client
-    // natif (detectSessionInUrl + PKCE) échange le code et connecte. Web : route
-    // serveur /auth/callback classique.
-    const redirectTo = NATIVE_BUILD ? `${window.location.origin}/auth` : `${window.location.origin}/auth/callback`
-    const { error } = await sb.auth.signInWithOAuth({ provider, options: { redirectTo } })
+    if (NATIVE_BUILD) {
+      // Google refuse les webviews intégrées → on ouvre Safari natif, et on revient
+      // dans l'app via le lien com.thehybridway.app://auth-callback (capté par
+      // App.addListener côté ClientShell). skipBrowserRedirect : on gère l'ouverture.
+      const { data, error } = await sb.auth.signInWithOAuth({
+        provider,
+        options: { redirectTo: 'com.thehybridway.app://auth-callback', skipBrowserRedirect: true },
+      })
+      if (error) { onError(getAuthError(error)); return }
+      if (data?.url) {
+        const { Browser } = await import('@capacitor/browser')
+        await Browser.open({ url: data.url })
+      }
+      return
+    }
+    const { error } = await sb.auth.signInWithOAuth({ provider, options: { redirectTo: `${window.location.origin}/auth/callback` } })
     if (error) onError(getAuthError(error))
   }
   const btn: React.CSSProperties = {

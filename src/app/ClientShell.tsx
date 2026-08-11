@@ -7,6 +7,7 @@ import { I18nProvider } from '@/lib/i18n'
 import { CallProvider } from '@/components/community/call/CallProvider'
 import { CallBubble } from '@/components/community/call/CallBubble'
 import { installNativeApiFetch } from '@/lib/native/apiFetch'
+import { createClient } from '@/lib/supabase/client'
 
 interface ClientShellProps {
   children: React.ReactNode
@@ -29,6 +30,29 @@ export function ClientShell({ children }: ClientShellProps) {
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js').catch(() => { /* ignore */ })
     }
+  }, [])
+
+  // App native : retour d'OAuth (Google/Apple) via le lien com.thehybridway.app://
+  // auth-callback → on échange le code (PKCE) puis on entre dans l'app.
+  useEffect(() => {
+    if (!process.env.NEXT_PUBLIC_API_BASE) return
+    let cleanup: (() => void) | undefined
+    void (async () => {
+      const { App } = await import('@capacitor/app')
+      const handle = await App.addListener('appUrlOpen', async ({ url }: { url: string }) => {
+        if (!url || !url.includes('auth-callback')) return
+        try {
+          const code = new URLSearchParams(url.split('?')[1] ?? '').get('code')
+          try { const { Browser } = await import('@capacitor/browser'); await Browser.close() } catch { /* déjà fermé */ }
+          if (code) {
+            const { error } = await createClient().auth.exchangeCodeForSession(code)
+            if (!error) window.location.href = '/'
+          }
+        } catch { /* ignore */ }
+      })
+      cleanup = () => { void handle.remove() }
+    })()
+    return () => { try { cleanup?.() } catch { /* ignore */ } }
   }, [])
 
   const handleSplashDone = () => {

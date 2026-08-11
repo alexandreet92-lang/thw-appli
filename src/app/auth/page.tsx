@@ -105,9 +105,13 @@ function SocialButtons({ onError }: { onError: (msg: string) => void }) {
       // Google refuse les webviews intégrées → on ouvre Safari natif, et on revient
       // dans l'app via le lien com.thehybridway.app://auth-callback (capté par
       // App.addListener côté ClientShell). skipBrowserRedirect : on gère l'ouverture.
+      // On passe par l'URL Vercel /auth/callback?native=1 (déjà autorisée dans
+      // Supabase pour le web) qui REBONDIT vers com.thehybridway.app://auth-callback.
+      // Évite les soucis d'allowlist des schemes custom côté Supabase.
+      const base = process.env.NEXT_PUBLIC_API_BASE || 'https://thw-appli.vercel.app'
       const { data, error } = await sb.auth.signInWithOAuth({
         provider,
-        options: { redirectTo: 'com.thehybridway.app://auth-callback', skipBrowserRedirect: true },
+        options: { redirectTo: `${base}/auth/callback?native=1`, skipBrowserRedirect: true },
       })
       if (error) { onError(getAuthError(error)); return }
       if (data?.url) {

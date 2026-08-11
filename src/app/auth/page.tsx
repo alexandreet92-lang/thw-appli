@@ -100,7 +100,11 @@ function SocialButtons({ onError }: { onError: (msg: string) => void }) {
   const { t } = useI18n()
   const handleOAuth = async (provider: 'apple' | 'google') => {
     const sb = createClient()
-    const { error } = await sb.auth.signInWithOAuth({ provider, options: { redirectTo: `${window.location.origin}/auth/callback` } })
+    // App native (capacitor://) : on revient sur /auth (page cliente) où le client
+    // natif (detectSessionInUrl + PKCE) échange le code et connecte. Web : route
+    // serveur /auth/callback classique.
+    const redirectTo = NATIVE_BUILD ? `${window.location.origin}/auth` : `${window.location.origin}/auth/callback`
+    const { error } = await sb.auth.signInWithOAuth({ provider, options: { redirectTo } })
     if (error) onError(getAuthError(error))
   }
   const btn: React.CSSProperties = {
@@ -161,6 +165,19 @@ function AuthPageInner() {
   const [remember, setRemember] = useState(true)
 
   useEffect(() => { if (expired) setError(t('auth.expired')) }, [expired, t])
+
+  // App native : retour d'OAuth (Google/Apple). Le webview revient sur
+  // capacitor://…/auth?code=… ; le client natif échange le code (PKCE) → dès
+  // qu'une session existe, on entre dans l'app.
+  useEffect(() => {
+    if (!NATIVE_BUILD) return
+    const sb = createClient()
+    sb.auth.getSession().then(({ data }) => { if (data.session) window.location.href = '/' })
+    const { data: sub } = sb.auth.onAuthStateChange((event, session) => {
+      if (session && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED')) window.location.href = '/'
+    })
+    return () => sub.subscription.unsubscribe()
+  }, [])
 
   const emailValid = EMAIL_RE.test(email)
   const pwMatch = password === confirmPassword

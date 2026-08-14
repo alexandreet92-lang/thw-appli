@@ -7,6 +7,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { getCurrentUser } from '@/lib/auth/currentUser'
 import type { ActivityRow } from '@/lib/training/pmc'
 
 export function useDashboardActivities(): { activities: ActivityRow[]; loading: boolean } {
@@ -17,7 +18,7 @@ export function useDashboardActivities(): { activities: ActivityRow[]; loading: 
     let cancelled = false
     void (async () => {
       const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
+      const user = await getCurrentUser()
       if (!user) { if (!cancelled) setLoading(false); return }
       const since = new Date()
       since.setDate(since.getDate() - 180)

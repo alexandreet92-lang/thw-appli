@@ -8,6 +8,7 @@
 import { useEffect, useState } from 'react'
 import { useI18n } from '@/lib/i18n'
 import { createClient } from '@/lib/supabase/client'
+import { getCurrentUser } from '@/lib/auth/currentUser'
 import { sportColor } from '@/components/recovery/helpers'
 import { Card, SectionTitle, Gauge, Skeleton, EmptyState } from './primitives'
 import { FB, NUM, formatDuration, weekStartIso, iso, DAY_LETTERS } from './lib'
@@ -26,7 +27,7 @@ export function WeekSummary() {
     let cancelled = false
     void (async () => {
       const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
+      const user = await getCurrentUser()
       if (!user) { if (!cancelled) setLoading(false); return }
       const ws = weekStartIso()
       const start = new Date(ws + 'T00:00:00')

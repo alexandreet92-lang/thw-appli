@@ -9,6 +9,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useI18n } from '@/lib/i18n'
 import { createClient } from '@/lib/supabase/client'
+import { getCurrentUser } from '@/lib/auth/currentUser'
 import { sportColor, sportLabel } from '@/components/recovery/helpers'
 import { Card, SectionTitle, SportDot, Skeleton, EmptyState, useReducedMotion } from './primitives'
 import { FD, FB, NUM, formatDuration, weekStartIso, currentDayIndex } from './lib'
@@ -30,7 +31,7 @@ export function TodayCard() {
     let cancelled = false
     void (async () => {
       const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
+      const user = await getCurrentUser()
       if (!user) { if (!cancelled) setLoading(false); return }
       const ws = weekStartIso(); const di = currentDayIndex()
       const [s, t] = await Promise.all([

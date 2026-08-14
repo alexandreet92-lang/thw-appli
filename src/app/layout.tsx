@@ -1,8 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
-import { DesktopShell } from '@/components/shared/DesktopShell'
-import { MobileShell } from '@/components/shared/MobileShell'
-import MobileTabBar from '@/components/MobileTabBar'
+import { AppShell } from '@/components/shared/AppShell'
 import OfflineIndicator from '@/components/shared/OfflineIndicator'
 import GlobalOnboardingWrapper from '@/components/onboarding/GlobalOnboardingWrapper'
 import { AISettingsHost } from '@/components/ai/AISettingsHost'
@@ -46,14 +44,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body style={{ margin: 0, background: 'var(--bg)', height: '100vh', overflow: 'hidden' }}>
         <ClientShell>
 
-          {/* Desktop — sidebar ancrée (push) + header flottant */}
-          <DesktopShell>{children}</DesktopShell>
-
-          {/* Mobile — chrome « effet Claude » (sidebar fixe dessous, page qui glisse) */}
-          <MobileShell>{children}</MobileShell>
-
-          {/* Bottom tab bar — mobile only, position:fixed */}
-          <MobileTabBar />
+          {/* Un SEUL shell monté selon le viewport (desktop OU mobile) → plus de
+              double montage : chaque page/carte ne charge ses données qu'une fois. */}
+          <AppShell>{children}</AppShell>
           <OfflineIndicator />
           <GlobalOnboardingWrapper />
           {/* Fenêtre de réglages IA — hôte UNIQUE (évite les fonds empilés) */}

@@ -11,6 +11,7 @@ import { getMyCoachProfile, getAccountDefaults, type CoachProfile } from '@/lib/
 import { listMyPrograms, type CoachProgram } from '@/lib/coach/programs'
 import { getSocialCounts, type SocialCounts } from '@/lib/social/follows'
 import { createClient } from '@/lib/supabase/client'
+import { getCurrentUser } from '@/lib/auth/currentUser'
 import CoachShowcase from '@/components/coach/CoachShowcase'
 
 const EMPTY: CoachProfile = { coach_id: '', slug: null, display_name: '', headline: '', bio: '', logo_url: '', avatar_url: '', website_url: '', socials: {}, sports: [], location: '', diplomas: [], palmares: [], gallery: [], intro_video_url: '', contact_email: '', phone: '', show_contact: false, visibility: 'public', accepting_requests: true, published: false }
@@ -34,7 +35,7 @@ export function VitrineSection() {
       setIsCoach(!!prof && !!prof.coach_id)
       setPrograms((await listMyPrograms().catch(() => [])).filter(pr => pr.published))
       try {
-        const { data: { user } } = await createClient().auth.getUser()
+        const user = await getCurrentUser()
         if (user) setCounts(await getSocialCounts(user.id))
       } catch { /* ignore */ }
       setReady(true)

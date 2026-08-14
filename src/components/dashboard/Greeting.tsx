@@ -8,6 +8,7 @@ import { useEffect, useState } from 'react'
 import { useProfile } from '@/hooks/useProfile'
 import { useI18n } from '@/lib/i18n'
 import { createClient } from '@/lib/supabase/client'
+import { getCurrentUser } from '@/lib/auth/currentUser'
 import { FD, FB, formatLongDate, daysUntil } from './lib'
 
 type TFn = (key: string, vars?: Record<string, string | number>) => string
@@ -37,7 +38,7 @@ export function Greeting({ rightSlot }: { rightSlot?: React.ReactNode }) {
     let cancelled = false
     void (async () => {
       const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
+      const user = await getCurrentUser()
       if (!user) return
       const { data } = await supabase
         .from('user_subscriptions')

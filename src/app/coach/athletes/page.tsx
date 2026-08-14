@@ -207,11 +207,11 @@ export default function CoachAthletes() {
                 <div /><div>Athlète</div><div>Statut</div><div>Dernière act.</div><div>Charge · 7 j</div><div>Séances</div><div>Fatigue</div><div>Prochaine course</div><div>Blessures</div><div />
               </div>
               {visible.map(a => (
-                <div key={a.id} onClick={() => router.push(`/coach/athlete/${a.id}`)} style={{ display: 'grid', gridTemplateColumns: COLS, gap: 12, alignItems: 'center', padding: '12px 16px', borderTop: '1px solid var(--border)', cursor: 'pointer', fontSize: 13 }}
+                <Link key={a.id} href={`/coach/athlete/${a.id}`} style={{ display: 'grid', gridTemplateColumns: COLS, gap: 12, alignItems: 'center', padding: '12px 16px', borderTop: '1px solid var(--border)', cursor: 'pointer', fontSize: 13, textDecoration: 'none', color: 'inherit' }}
                   onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-card2)' }}
                   onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}>
                   {/* Sélection (bulk : Lancer un système, Grouper) */}
-                  <button onClick={e => { e.stopPropagation(); toggleSel(a.id) }} aria-label="Sélectionner" style={{ width: 18, height: 18, borderRadius: 5, border: `1.5px solid ${sel.has(a.id) ? 'var(--primary)' : 'var(--border-mid)'}`, background: sel.has(a.id) ? 'var(--primary)' : 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: sel.has(a.id) ? 'var(--on-primary)' : 'transparent', padding: 0 }}>
+                  <button onClick={e => { e.preventDefault(); e.stopPropagation(); toggleSel(a.id) }} aria-label="Sélectionner" style={{ width: 18, height: 18, borderRadius: 5, border: `1.5px solid ${sel.has(a.id) ? 'var(--primary)' : 'var(--border-mid)'}`, background: sel.has(a.id) ? 'var(--primary)' : 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: sel.has(a.id) ? 'var(--on-primary)' : 'transparent', padding: 0 }}>
                     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
                   </button>
                   {/* Athlète */}
@@ -242,11 +242,11 @@ export default function CoachAthletes() {
                   {/* Blessures actives */}
                   <div style={{ ...NUM, fontWeight: 700, color: a.activeInjuries > 0 ? '#ef4444' : 'var(--text-dim)' }}>{a.activeInjuries > 0 ? a.activeInjuries : '—'}</div>
                   {/* Gérer */}
-                  <button onClick={e => { e.stopPropagation(); setManage(a) }} aria-label="Gérer" style={{ width: 30, height: 30, borderRadius: 8, border: 'none', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  <button onClick={e => { e.preventDefault(); e.stopPropagation(); setManage(a) }} aria-label="Gérer" style={{ width: 30, height: 30, borderRadius: 8, border: 'none', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                     onMouseEnter={ev => { (ev.currentTarget as HTMLElement).style.background = 'var(--bg-alt)' }} onMouseLeave={ev => { (ev.currentTarget as HTMLElement).style.background = 'transparent' }}>
                     <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/></svg>
                   </button>
-                </div>
+                </Link>
               ))}
             </div>
           </div>

@@ -7,6 +7,7 @@
 // ══════════════════════════════════════════════════════════════
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { getCurrentUser } from '@/lib/auth/currentUser'
 import { MessageThread } from './MessageThread'
 import { Avatar } from '@/components/shared/Sidebar'
 
@@ -17,7 +18,7 @@ export function CoachMessageBubble() {
   const [target, setTarget] = useState<Target | null>(null)
   const [closing, setClosing] = useState(false)
 
-  useEffect(() => { void createClient().auth.getUser().then(({ data }) => setCoachId(data.user?.id ?? null)) }, [])
+  useEffect(() => { void getCurrentUser().then(u => setCoachId(u?.id ?? null)) }, [])
   useEffect(() => {
     const h = (e: Event) => { const d = (e as CustomEvent).detail as Target | undefined; if (d?.athleteId) { setClosing(false); setTarget(d) } }
     window.addEventListener('thw:coach-msg', h)

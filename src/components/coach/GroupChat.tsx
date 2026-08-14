@@ -6,6 +6,7 @@
 // ══════════════════════════════════════════════════════════════
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { getCurrentUser } from '@/lib/auth/currentUser'
 import {
   getGroupMessages, sendGroupMessage, listMembers, addMembers, removeMember,
   renameGroup, leaveGroup, deleteGroup, getAddablePeople,
@@ -81,7 +82,7 @@ export function GroupChat({ group, onChanged, onClosed }: { group: GroupSummary;
   const endRef = useRef<HTMLDivElement>(null)
 
   const loadMsgs = useCallback(async () => { setMsgs(await getGroupMessages(group.id)) }, [group.id])
-  useEffect(() => { void createClient().auth.getUser().then(({ data }) => setMe(data.user?.id ?? null)) }, [])
+  useEffect(() => { void getCurrentUser().then(u => setMe(u?.id ?? null)) }, [])
   useEffect(() => { void loadMsgs(); void listMembers(group.id).then(setMembers) }, [group.id, loadMsgs])
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [msgs])
   // Rafraîchissement doux (les messages des autres membres).

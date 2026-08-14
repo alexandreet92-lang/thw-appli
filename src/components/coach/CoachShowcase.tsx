@@ -16,6 +16,7 @@ import ProgramDetailView from '@/components/coach/ProgramDetailView'
 import ActivityShowcase from '@/components/profile/ActivityShowcase'
 import { getProfileActivityShowcase, type ActivityShowcaseData } from '@/lib/profile/activityShowcase'
 import { createClient } from '@/lib/supabase/client'
+import { getCurrentUser } from '@/lib/auth/currentUser'
 import SlideSheet from '@/components/ui/SlideSheet'
 
 const SPORT_LABEL: Record<string, string> = { running: 'Course', cycling: 'Vélo', swim: 'Natation', gym: 'Renforcement', hyrox: 'Hyrox', rowing: 'Aviron', trail: 'Trail', triathlon: 'Triathlon' }
@@ -57,7 +58,7 @@ export default function CoachShowcase({ profile, programs = [], counts, isCoach,
       // Cible = coach_id si valide, sinon (brouillon propriétaire) l'utilisateur connecté.
       let target = profile.coach_id
       if (!target || target.length < 20) {
-        const { data: { user } } = await createClient().auth.getUser()
+        const user = await getCurrentUser()
         target = user?.id ?? ''
       }
       if (!target || cancelled) { setLoadFailed(true); return }

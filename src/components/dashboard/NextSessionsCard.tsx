@@ -9,6 +9,7 @@
 import { useEffect, useState } from 'react'
 import { useI18n } from '@/lib/i18n'
 import { createClient } from '@/lib/supabase/client'
+import { getCurrentUser } from '@/lib/auth/currentUser'
 import { sportColor } from '@/components/recovery/helpers'
 import { Card, SectionTitle, SportDot, Skeleton } from './primitives'
 import { FD, FB, NUM, iso, todayIso, weekStartIso, formatDuration } from './lib'
@@ -39,7 +40,7 @@ export function NextSessionsCard() {
     let cancelled = false
     void (async () => {
       const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
+      const user = await getCurrentUser()
       if (!user) { if (!cancelled) setLoading(false); return }
       const { data } = await supabase
         .from('planned_sessions')

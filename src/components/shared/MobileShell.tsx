@@ -282,7 +282,7 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
           // Façon Strava : le contenu NET glisse directement sous la barre translucide
           // du haut (le flou de l'overlay le rend lisible sous la barre de statut).
           // Pas de fondu vers le blanc → plus de « bloc blanc » en haut.
-          paddingTop: (hideHeader || isRecord) ? 0 : 'calc(env(safe-area-inset-top) + 44px)', paddingBottom: isRecord ? 0 : 'calc(80px + env(safe-area-inset-bottom))' }}>
+          paddingTop: (hideHeader || isRecord) ? 0 : 'calc(env(safe-area-inset-top) + 54px)', paddingBottom: isRecord ? 0 : 'calc(88px + env(safe-area-inset-bottom))' }}>
         <TrialEndedModal />
         <PageTransition>{children}</PageTransition>
         </main>

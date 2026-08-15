@@ -1,4 +1,5 @@
 'use client'
+import Link from 'next/link'
 
 export const dynamic = 'force-dynamic'
 
@@ -122,11 +123,10 @@ export default function CoachTraining() {
             const name = who?.full_name || who?.first_name || 'Athlète'
             const metrics = [fmtDur(a.dur_s), a.dist_m > 0 ? fmtDist(a.dist_m) : '', a.tss ? `${Math.round(a.tss)} TSS` : ''].filter(Boolean)
             return (
-              <article key={a.id}
-                onClick={() => router.push(`/coach/planning/${a.user_id}`)}
+              <Link key={a.id} href={`/coach/planning/${a.user_id}`}
                 onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = 'color-mix(in srgb, var(--primary) 40%, var(--border))'; el.style.transform = 'translateY(-1px)' }}
                 onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = 'var(--border)'; el.style.transform = 'none' }}
-                style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', padding: '13px 14px 13px 20px', borderRadius: 16, border: '1px solid var(--border)', background: 'var(--bg-card)', cursor: 'pointer', transition: 'transform .16s, border-color .16s' }}>
+                style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', padding: '13px 14px 13px 20px', borderRadius: 16, border: '1px solid var(--border)', background: 'var(--bg-card)', cursor: 'pointer', transition: 'transform .16s, border-color .16s', textDecoration: 'none', color: 'inherit' }}>
                 <span style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, background: sportColor(a.sport), borderRadius: '16px 0 0 16px' }} />
                 <Avatar url={who?.avatar_url ?? null} name={name} size={38} />
                 <div style={{ flex: '1 1 220px', minWidth: 0 }}>
@@ -139,12 +139,12 @@ export default function CoachTraining() {
                 <div style={{ display: 'flex', gap: 16, flexShrink: 0 }}>
                   {metrics.map((m, i) => <span key={i} style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--text)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{m}</span>)}
                 </div>
-                <button onClick={e => { e.stopPropagation(); analyze(a) }}
+                <button onClick={e => { e.preventDefault(); e.stopPropagation(); analyze(a) }}
                   style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 6, height: 32, padding: '0 12px', borderRadius: 10, border: '1px solid color-mix(in srgb, var(--primary) 40%, var(--border))', background: 'color-mix(in srgb, var(--primary) 9%, transparent)', color: 'var(--primary)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: BODY }}>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z" /></svg>
                   Analyser
                 </button>
-              </article>
+              </Link>
             )
           })}
         </div>

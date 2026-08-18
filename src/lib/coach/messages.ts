@@ -15,6 +15,8 @@ export interface Msg {
   body: string
   created_at: string
   read_at: string | null
+  edited_at: string | null
+  deleted_at: string | null
   mine: boolean
 }
 export interface Thread {
@@ -35,7 +37,7 @@ async function uid(): Promise<string> {
   return user.id
 }
 
-interface Row { id: string; coach_id: string; athlete_id: string; sender_id: string; body: string; created_at: string; read_at: string | null }
+interface Row { id: string; coach_id: string; athlete_id: string; sender_id: string; body: string; created_at: string; read_at: string | null; edited_at?: string | null; deleted_at?: string | null }
 
 // Fils côté COACH : une entrée par athlète du roster (même sans message).
 export async function getCoachThreads(): Promise<Thread[]> {
@@ -93,7 +95,9 @@ export async function getMessages(coachId: string, athleteId: string): Promise<M
   const { data } = await sb.from('coach_messages').select('*')
     .eq('coach_id', coachId).eq('athlete_id', athleteId)
     .order('created_at', { ascending: true }).limit(500)
-  return ((data ?? []) as Row[]).map(m => ({ ...m, mine: m.sender_id === me }))
+  return ((data ?? []) as Row[]).map(m => ({
+    ...m, edited_at: m.edited_at ?? null, deleted_at: m.deleted_at ?? null, mine: m.sender_id === me,
+  }))
 }
 
 export async function sendMessage(coachId: string, athleteId: string, body: string): Promise<void> {
@@ -102,6 +106,29 @@ export async function sendMessage(coachId: string, athleteId: string, body: stri
   const clean = body.trim().slice(0, 4000)
   if (!clean) return
   const { error } = await sb.from('coach_messages').insert({ coach_id: coachId, athlete_id: athleteId, sender_id: me, body: clean })
+  if (error) throw new Error(error.message)
+}
+
+// Modifier un message (expéditeur uniquement). Marque edited_at.
+export async function editMessage(id: string, body: string): Promise<void> {
+  const sb = createClient()
+  const me = await uid()
+  const clean = body.trim().slice(0, 4000)
+  if (!clean) return
+  const { error } = await sb.from('coach_messages')
+    .update({ body: clean, edited_at: new Date().toISOString() })
+    .eq('id', id).eq('sender_id', me)
+  if (error) throw new Error(error.message)
+}
+
+// Supprimer un message (expéditeur uniquement) — soft-delete : le corps est vidé
+// et deleted_at posé, pour afficher « Message supprimé » sans casser le fil.
+export async function deleteMessage(id: string): Promise<void> {
+  const sb = createClient()
+  const me = await uid()
+  const { error } = await sb.from('coach_messages')
+    .update({ body: '', deleted_at: new Date().toISOString() })
+    .eq('id', id).eq('sender_id', me)
   if (error) throw new Error(error.message)
 }
 

@@ -64,26 +64,27 @@ export async function middleware(request: NextRequest) {
     return response
   }
 
-  // Vérifier le statut de l'abonnement
-  const { data: subscription } = await supabase
-    .from('user_subscriptions')
-    .select('status')
-    .eq('user_id', user.id)
-    .single()
+  // Abonnement athlète + profil chargés ENSEMBLE : on doit connaître l'accès coach
+  // AVANT de bloquer sur un abonnement athlète expiré, sinon un coach valide (essai
+  // ou pack) dont l'essai ATHLÈTE a expiré serait éjecté de toute l'app vers
+  // /access-expired. Bug corrigé : l'entitlement coach lève le blocage athlète.
+  const [{ data: subscription }, { data: profile }] = await Promise.all([
+    supabase.from('user_subscriptions').select('status').eq('user_id', user.id).single(),
+    supabase.from('profiles').select('profile_setup_done, coach_subscribed, coach_trial_started_at').eq('id', user.id).single(),
+  ])
+
+  const startedIso = profile?.coach_trial_started_at as string | null | undefined
+  const coachTrialActive = !!startedIso && Date.now() - new Date(startedIso).getTime() < COACH_TRIAL_DAYS * 86400000
+  const coachEntitled = user.id === COACH_OWNER_ID || profile?.coach_subscribed === true || coachTrialActive
 
   const blockedStatuses = ['trial_expired', 'cancelled', 'canceled']
-  if (subscription && blockedStatuses.includes(subscription.status)) {
+  // Un coach entitled n'est jamais bloqué par un abonnement athlète expiré.
+  if (!coachEntitled && subscription && blockedStatuses.includes(subscription.status)) {
     return NextResponse.redirect(new URL('/access-expired', request.url))
   }
 
   // Mini-questionnaire one-shot : tant que le profil n'est pas configuré, on
   // redirige vers /bienvenue (l'écran d'abonnement /onboarding viendra plus tard).
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('profile_setup_done, coach_subscribed, coach_trial_started_at')
-    .eq('id', user.id)
-    .single()
-
   if (profile && !profile.profile_setup_done && path !== '/bienvenue') {
     return NextResponse.redirect(new URL('/bienvenue', request.url))
   }
@@ -94,13 +95,8 @@ export async function middleware(request: NextRequest) {
   // pack payant (coach_subscribed, posé par le webhook — vrai aussi en essai
   // Stripe « trialing »), ou essai coach applicatif de 14 j. Sinon → page d'abo.
   // (La RLS bloque déjà les DONNÉES ; ceci évite d'afficher un espace coach vide.)
-  if (path.startsWith('/coach') && !path.startsWith('/coach/subscription')) {
-    const startedIso = profile?.coach_trial_started_at as string | null | undefined
-    const trialActive = !!startedIso && Date.now() - new Date(startedIso).getTime() < COACH_TRIAL_DAYS * 86400000
-    const entitled = user.id === COACH_OWNER_ID || profile?.coach_subscribed === true || trialActive
-    if (!entitled) {
-      return NextResponse.redirect(new URL('/coach/subscription', request.url))
-    }
+  if (path.startsWith('/coach') && !path.startsWith('/coach/subscription') && !coachEntitled) {
+    return NextResponse.redirect(new URL('/coach/subscription', request.url))
   }
 
   return response

@@ -14,13 +14,16 @@ export function BecomeCoachCard() {
   const router = useRouter()
   const s = useCoachAccess()
   const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState<string | null>(null)
 
   if (s.loading || s.access) return null
 
   const start = async () => {
-    setBusy(true)
+    setBusy(true); setErr(null)
+    // On ne navigue vers /coach QU'APRÈS confirmation que l'essai a démarré
+    // (sinon le middleware renverrait aussitôt vers /coach/subscription).
     try { await startCoachTrial(); refreshCoachAccess(); router.push('/coach') }
-    catch { setBusy(false) }
+    catch { setErr('Impossible de démarrer l’essai. Réessaie dans un instant.'); setBusy(false) }
   }
 
   const expired = s.expired
@@ -35,6 +38,7 @@ export function BecomeCoachCard() {
             ? 'Choisis un pack pour retrouver ton espace coach et tes athlètes.'
             : 'Entraîne des athlètes, crée leurs plans, ta vitrine publique — 14 jours d’essai gratuit.'}
         </p>
+        {err && <p style={{ fontSize: 11.5, color: '#ef4444', margin: '6px 0 0', fontWeight: 600 }}>{err}</p>}
       </div>
       {expired ? (
         <button onClick={() => router.push('/coach/subscription')} style={cta}>Voir les packs</button>

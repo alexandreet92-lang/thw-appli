@@ -77,12 +77,19 @@ export async function GET(req: NextRequest) {
     try {
       const { data: system } = await sb
         .from('studio_systems')
-        .select('id, name, graph')
+        .select('id, name, graph, scope, athlete_id')
         .eq('id', sched.system_id)
         .maybeSingle()
       if (!system) continue
       const graph = system.graph as StudioGraph
       const name = (system.name as string) || 'Système Studio'
+      // Système coach lié à un athlète : les DONNÉES lues doivent être CELLES DE
+      // L'ATHLÈTE (dataUserId), la conso débitée sur le COACH (sched.user_id).
+      // Sinon un système coach autonome lisait par erreur les données du coach.
+      const athleteId = (system as { scope?: string; athlete_id?: string | null }).scope === 'coach'
+        ? ((system as { athlete_id?: string | null }).athlete_id ?? null) : null
+      const dataUserId = athleteId ?? sched.user_id
+      const billUserId = athleteId ? sched.user_id : undefined
 
       // ── Système vivant : objectif échu → pause + demande du prochain objectif ──
       const deadline = graph.objective?.deadline
@@ -143,7 +150,7 @@ export async function GET(req: NextRequest) {
 
       // Run serveur + archivage + notification.
       const runId = genId()
-      const res = await runGraphServer(sched.user_id, graph, runId, sched.system_id)
+      const res = await runGraphServer(dataUserId, graph, runId, sched.system_id, billUserId)
       const status = res.errors.length > 0 ? 'error' : 'done'
       await sb.from('studio_runs').insert({
         id: runId,

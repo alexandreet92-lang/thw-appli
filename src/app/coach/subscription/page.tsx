@@ -10,15 +10,20 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { COACH_PACKS, getCoachPack, type CoachPackKey } from '@/lib/subscriptions/coach-packs'
 import CoachSubscribeEmailModal from '@/components/subscription/CoachSubscribeEmailModal'
+import { getCoachAccessState, startCoachTrial, type CoachAccessState } from '@/lib/coach/owner'
+import { useRouter } from 'next/navigation'
 
 interface CurrentSub { pack_key: string; status: string; current_period_end: string | null }
 
 export default function CoachSubscriptionPage() {
+  const router = useRouter()
   const [billing, setBilling] = useState<'monthly' | 'yearly'>('monthly')
   const [current, setCurrent] = useState<CurrentSub | null>(null)
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState<string | null>(null)
   const [emailPack, setEmailPack] = useState<CoachPackKey | null>(null)
+  const [coachState, setCoachState] = useState<CoachAccessState | null>(null)
+  const [trialErr, setTrialErr] = useState<string | null>(null)
 
   useEffect(() => {
     void (async () => {
@@ -28,9 +33,20 @@ export default function CoachSubscriptionPage() {
         const { data } = await sb.from('coach_subscriptions').select('pack_key, status, current_period_end').eq('user_id', user.id).maybeSingle()
         setCurrent((data as CurrentSub) ?? null)
       }
+      setCoachState(await getCoachAccessState())
       setLoading(false)
     })()
   }, [])
+
+  // Essai gratuit : proposé UNIQUEMENT à qui n'a jamais démarré d'essai et n'a pas
+  // d'accès coach. C'est le point d'entrée manquant quand on arrive ici par lien
+  // profond (le CTA du dashboard n'est pas passé).
+  const canStartTrial = !!coachState && !coachState.access && !coachState.everStarted
+  const startTrial = async () => {
+    setBusy('trial'); setTrialErr(null)
+    try { await startCoachTrial(); router.push('/coach') }
+    catch { setTrialErr('Impossible de démarrer l’essai. Réessaie dans un instant.'); setBusy(null) }
+  }
 
   // On ne redirige pas directement vers Stripe : on ouvre la modale qui envoie
   // le lien de paiement par email (preuve de possession de l'adresse).
@@ -52,6 +68,18 @@ export default function CoachSubscriptionPage() {
     <div style={{ width: '100%', maxWidth: 960, margin: '0 auto', padding: '24px clamp(16px,4vw,40px) 64px', boxSizing: 'border-box', fontFamily: 'var(--font-body)' }}>
       <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 600, color: 'var(--text)', margin: '0 0 4px' }}>Abonnement coach</h1>
       <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: '0 0 20px' }}>Chaque pack inclut : ton compte athlète Premium, toutes les fonctions coach et 1 M de tokens Studio par mois. Le pack définit ta capacité d’athlètes.</p>
+
+      {/* Essai gratuit 14 j — point d'entrée self-service (arrivée par lien profond) */}
+      {canStartTrial && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', background: 'var(--bg-card2)', border: '1px solid var(--primary)', borderRadius: 'var(--r-md)', padding: '14px 18px', marginBottom: 20 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>Essaie l’espace coach gratuitement</div>
+            <div style={{ fontSize: 12.5, color: 'var(--text-dim)', marginTop: 2 }}>14 jours d’essai — sans carte bancaire. Entraîne des athlètes et crée leurs plans.</div>
+            {trialErr && <div style={{ fontSize: 11.5, color: '#ef4444', fontWeight: 600, marginTop: 4 }}>{trialErr}</div>}
+          </div>
+          <button onClick={startTrial} disabled={busy === 'trial'} style={{ ...btnManage, background: 'var(--primary)', color: 'var(--on-primary)', opacity: busy === 'trial' ? 0.6 : 1 }}>{busy === 'trial' ? '…' : 'Démarrer l’essai 14 j'}</button>
+        </div>
+      )}
 
       {activePack && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', background: 'var(--bg-card2)', borderRadius: 'var(--r-md)', padding: '14px 18px', marginBottom: 20 }}>

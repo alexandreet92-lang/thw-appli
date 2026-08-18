@@ -12,6 +12,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { DashboardContent } from '@/components/dashboard/DashboardContent'
+import { COACH_TRIAL_DAYS } from '@/lib/coach/owner'
 
 const BLOCKED = ['trial_expired', 'cancelled', 'canceled']
 
@@ -36,11 +37,17 @@ export default function DashboardPage() {
 
       const [{ data: sub }, { data: profile }] = await Promise.all([
         supabase.from('user_subscriptions').select('status').eq('user_id', user.id).maybeSingle(),
-        supabase.from('profiles').select('profile_setup_done').eq('id', user.id).maybeSingle(),
+        supabase.from('profiles').select('profile_setup_done, coach_subscribed, coach_trial_started_at').eq('id', user.id).maybeSingle(),
       ])
       if (cancelled) return
 
-      if (sub && BLOCKED.includes((sub as { status: string }).status)) { router.replace('/access-expired'); return }
+      // Un coach valide (pack ou essai coach actif) n'est jamais bloqué par un
+      // abonnement ATHLÈTE expiré (mêmes règles que le middleware).
+      const prof = profile as { profile_setup_done: boolean; coach_subscribed?: boolean; coach_trial_started_at?: string | null } | null
+      const startedIso = prof?.coach_trial_started_at
+      const coachTrialActive = !!startedIso && Date.now() - new Date(startedIso).getTime() < COACH_TRIAL_DAYS * 86400000
+      const coachEntitled = prof?.coach_subscribed === true || coachTrialActive
+      if (!coachEntitled && sub && BLOCKED.includes((sub as { status: string }).status)) { router.replace('/access-expired'); return }
       // Mini-questionnaire one-shot tant que le profil n'est pas configuré.
       if (profile && (profile as { profile_setup_done: boolean }).profile_setup_done === false) { router.replace('/bienvenue'); return }
     })()

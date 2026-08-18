@@ -54,16 +54,20 @@ export async function hasCoachAccess(): Promise<boolean> {
   return (await getCoachAccessState()).access
 }
 
-/** Démarre l'essai coach de 14 jours (une seule fois). Renvoie l'état résultant. */
+/** Démarre l'essai coach de 14 jours (une seule fois). Renvoie l'état résultant.
+ *  Lève si l'écriture échoue (RLS/réseau) : l'appelant ne doit PAS naviguer vers
+ *  /coach si l'essai n'a pas réellement démarré, sinon le middleware le renverrait
+ *  aussitôt vers /coach/subscription (boucle silencieuse). */
 export async function startCoachTrial(): Promise<CoachAccessState> {
   const { createClient } = await import('@/lib/supabase/client')
   const sb = createClient()
   const { data: { user } } = await sb.auth.getUser()
-  if (!user) return getCoachAccessState()
+  if (!user) throw new Error('Non connecté')
   const { data } = await sb.from('profiles').select('coach_trial_started_at').eq('id', user.id).maybeSingle()
   const already = (data as { coach_trial_started_at?: string | null } | null)?.coach_trial_started_at
   if (!already) {
-    await sb.from('profiles').update({ coach_trial_started_at: new Date().toISOString() }).eq('id', user.id)
+    const { error } = await sb.from('profiles').update({ coach_trial_started_at: new Date().toISOString() }).eq('id', user.id)
+    if (error) throw new Error(error.message)
   }
   return getCoachAccessState()
 }

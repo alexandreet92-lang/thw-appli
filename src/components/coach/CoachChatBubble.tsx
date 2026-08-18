@@ -7,7 +7,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { usePathname } from 'next/navigation'
-import { getAthleteThreads, getUnreadTotal, type Thread } from '@/lib/coach/messages'
+import { getAthleteThreads, getCoachThreads, getUnreadTotal, type Thread } from '@/lib/coach/messages'
 import { isFullscreenRoute } from '@/lib/layout/fullscreenRoutes'
 import { MessageThread } from './MessageThread'
 
@@ -20,12 +20,15 @@ export function CoachChatBubble() {
   const [unread, setUnread] = useState(0)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
-  const hidden = !pathname || pathname.startsWith('/coach') || pathname.startsWith('/messages') || pathname.startsWith('/record') || isFullscreenRoute(pathname) || pathname.startsWith('/topup')
+  // Côté COACH : la bulle liste les athlètes (getCoachThreads). Côté ATHLÈTE :
+  // ses coachs (getAthleteThreads). La bulle apparaît donc AUSSI sur l'espace coach.
+  const isCoachView = !!pathname && pathname.startsWith('/coach') && !pathname.startsWith('/coach/messages')
+  const hidden = !pathname || pathname.startsWith('/messages') || pathname.startsWith('/coach/messages') || pathname.startsWith('/record') || isFullscreenRoute(pathname) || pathname.startsWith('/topup')
 
   const loadThreads = useCallback(async () => {
-    try { const t = await getAthleteThreads(); setThreads(t); if (t.length === 1) setSelId(t[0].otherId) }
+    try { const t = isCoachView ? await getCoachThreads() : await getAthleteThreads(); setThreads(t); if (t.length === 1) setSelId(t[0].otherId) }
     catch { /* silencieux */ } finally { setReady(true) }
-  }, [])
+  }, [isCoachView])
   useEffect(() => { if (!hidden) void loadThreads() }, [hidden, loadThreads])
 
   // Sondage léger du nombre de non-lus.

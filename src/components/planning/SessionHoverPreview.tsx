@@ -64,7 +64,9 @@ export function SessionHoverPreview({ session, anchor }: { session: Session; anc
   // Repli sur une polyline SVG si aucun token Mapbox n'est configuré.
   const MAP_W = WIDTH - 24, MAP_H = 104
   const mapUrl = trace
-    ? staticRouteMapUrl(trace.map(p => ({ lat: p.lat, lng: p.lon })), { width: MAP_W, height: MAP_H, pins: true })
+    // pins:false → plus de gros points départ/arrivée qui masquaient le tracé ;
+    // on veut voir la LIGNE du parcours nettement.
+    ? staticRouteMapUrl(trace.map(p => ({ lat: p.lat, lng: p.lon })), { width: MAP_W, height: MAP_H, pins: false })
     : null
   let traceD = ''
   if (trace && !mapUrl) {

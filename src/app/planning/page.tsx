@@ -637,10 +637,14 @@ export function normalizeSportType(s:string):SportType {
     // Hybrid / Boxe (sports composés)
     hybrid:'hybrid', hybride:'hybrid', 'cross training':'hybrid', crosstraining:'hybrid',
     boxe:'boxe', boxing:'boxe', boxing_training:'boxe',
+    // Mobilité (assouplissement / yoga) — NE PAS mapper vers run, sinon une séance
+    // mobilité redevient « course à pied » à chaque rechargement.
+    mobilite:'mobilite', mobility:'mobilite', 'mobilité':'mobilite',
+    yoga:'mobilite', stretching:'mobilite', assouplissement:'mobilite', souplesse:'mobilite',
     // Multisport
     triathlon:'run',
   }
-  return m[lower]??((['run','bike','swim','hyrox','gym','rowing','elliptique','hybrid','boxe'] as SportType[]).includes(lower as SportType)?lower as SportType:'run')
+  return m[lower]??((['run','bike','swim','hyrox','gym','rowing','elliptique','hybrid','boxe','mobilite'] as SportType[]).includes(lower as SportType)?lower as SportType:'run')
 }
 
 // Retourne true si la séance est une séance repos/off (durée 0 ou sport/titre repos).

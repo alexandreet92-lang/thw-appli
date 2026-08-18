@@ -11,6 +11,8 @@ import AnnualView from './components/AnnualView'
 import AppleCalendarView from './components/AppleCalendarView'
 import RaceModal from './components/RaceModal'
 import EventModal from './components/EventModal'
+import TestEditorSheet, { type PlannedTestInput } from './components/TestEditorSheet'
+import { findCatalogTest } from '@/lib/tests/catalog'
 import type { RaceStage, NutritionItem, StageSport } from './components/types'
 import { sanitizeFileName } from '@/lib/utils'
 
@@ -43,7 +45,7 @@ import DayModal from './components/DayModal'
 import { PageHelp } from '@/onboarding/system/PageHelp'
 import { usePageOnboarding } from '@/onboarding/system/usePageOnboarding'
 import { CALENDAR_ONBOARDING } from '@/onboarding/configs/calendar.config'
-import { Trophy, Briefcase, Heart, LayoutGrid, CalendarDays } from 'lucide-react'
+import { Trophy, Briefcase, Heart, LayoutGrid, CalendarDays, Target } from 'lucide-react'
 import { SectionLayout } from '@/components/navigation/SectionLayout'
 import { useI18n, currentLocale } from '@/lib/i18n'
 type CalView       = 'year' | 'month'
@@ -72,8 +74,9 @@ interface CalEventType {
 }
 
 interface CalEvent {
-  id: string; category: 'race' | 'pro' | 'perso'
+  id: string; category: 'race' | 'pro' | 'perso' | 'test'
   typeId?: string; date: string; title: string; description?: string; color?: string
+  ref?: string | null   // 'test' : slug du test Performance lié
 }
 
 // Combined event for All view
@@ -194,11 +197,12 @@ function useCalendar() {
     })))
 
     setEvents((ev.data ?? []).map((x: Record<string, unknown>): CalEvent => ({
-      id: x.id as string, category: x.category as 'race' | 'pro' | 'perso',
+      id: x.id as string, category: x.category as 'race' | 'pro' | 'perso' | 'test',
       typeId: x.type_id as string | undefined,
       date: x.date as string, title: x.title as string,
       description: x.description as string | undefined,
       color: x.color as string | undefined,
+      ref: (x.ref as string | null | undefined) ?? null,
     })))
 
     setLoading(false)
@@ -445,6 +449,7 @@ function useCalendar() {
     const { data, error } = await supabase.from('calendar_events').insert({
       user_id: uid, category: e.category, type_id: e.typeId ?? null,
       date: e.date, title: e.title, description: e.description ?? null, color: e.color ?? null,
+      ref: e.ref ?? null,
     }).select().single()
     if (!error && data) setEvents(p => [...p, { ...e, id: data.id }])
   }
@@ -452,7 +457,7 @@ function useCalendar() {
   async function updateEvent(e: CalEvent) {
     await supabase.from('calendar_events').update({
       type_id: e.typeId ?? null, date: e.date, title: e.title,
-      description: e.description ?? null, color: e.color ?? null,
+      description: e.description ?? null, color: e.color ?? null, ref: e.ref ?? null,
       updated_at: new Date().toISOString(),
     }).eq('id', e.id)
     setEvents(p => p.map(x => x.id === e.id ? e : x))
@@ -796,8 +801,12 @@ function RaceEventModal({ month, day, year, onClose, onSave }: {
 // ════════════════════════════════════════════════
 // RACE TAB — new component-based implementation
 // ════════════════════════════════════════════════
-function RaceTab({ races, raceStages, addRaceWithFiles, updateRaceWithFiles, updateRace, deleteRace, markCompleted, addRaceStage, updateRaceStage, deleteRaceStage, patchStageDayLocal, deleteStageDayLocal }: {
+function RaceTab({ races, raceStages, tests, addEvent, updateEvent, deleteEvent, addRaceWithFiles, updateRaceWithFiles, updateRace, deleteRace, markCompleted, addRaceStage, updateRaceStage, deleteRaceStage, patchStageDayLocal, deleteStageDayLocal }: {
   races: Race[]; raceStages: RaceStage[]
+  tests: CalEvent[]
+  addEvent: (e: Omit<CalEvent, 'id'>) => void
+  updateEvent: (e: CalEvent) => void
+  deleteEvent: (id: string) => void
   addRaceWithFiles: (r: Omit<Race, 'id' | 'validated' | 'validationData'>, files: File[], fb?: File[], fr?: File[]) => Promise<void>
   updateRaceWithFiles: (r: Race, files: File[], fb?: File[], fr?: File[]) => Promise<void>
   updateRace: (r: Race) => void; deleteRace: (id: string) => void
@@ -842,6 +851,32 @@ function RaceTab({ races, raceStages, addRaceWithFiles, updateRaceWithFiles, upd
     setEditRace(null)
     setPrefillDate(undefined)
   }
+
+  // ── Tests planifiés (objectif « Test ») ────────────────────────────
+  // Stockés dans calendar_events (category='test'). Le sport et le slug du
+  // test Performance lié sont encodés dans `ref` = "<sport>:<slug|custom>".
+  const [testSheet, setTestSheet] = useState<{ mode: 'create' | 'edit'; ev?: CalEvent; initialDate?: string } | null>(null)
+  const TEST_SPORT_COLOR: Record<string, string> = { running: '#22c55e', cycling: '#3b82f6', natation: '#06b6d4', aviron: '#14b8a6', hyrox: '#ec4899', gym: '#f97316' }
+  function parseTestRef(ref?: string | null): { sport: PlannedTestInput['sport']; slug: string | null } {
+    const [sport, slug] = (ref ?? 'running:custom').split(':')
+    return { sport: (sport as PlannedTestInput['sport']) || 'running', slug: slug && slug !== 'custom' ? slug : null }
+  }
+  function eventToTestInput(ev: CalEvent): PlannedTestInput {
+    const { sport, slug } = parseTestRef(ev.ref)
+    return { sport, title: ev.title, protocol: ev.description ?? '', date: ev.date, ref: slug }
+  }
+  function saveTest(input: PlannedTestInput) {
+    const payload = {
+      category: 'test' as const, title: input.title, description: input.protocol || undefined,
+      date: input.date, color: TEST_SPORT_COLOR[input.sport] ?? '#8b5cf6',
+      ref: `${input.sport}:${input.ref ?? 'custom'}`,
+    }
+    if (testSheet?.mode === 'edit' && testSheet.ev) updateEvent({ ...testSheet.ev, ...payload })
+    else addEvent(payload)
+    setTestSheet(null)
+  }
+  const yearTests = tests.filter(e => new Date(e.date + 'T12:00:00').getFullYear() === selectedYear)
+    .sort((a, b) => a.date.localeCompare(b.date))
 
   async function handleSaveRace(
     r: Omit<Race, 'id' | 'validated' | 'validationData'>,
@@ -947,6 +982,37 @@ function RaceTab({ races, raceStages, addRaceWithFiles, updateRaceWithFiles, upd
         />
       )}
 
+      {/* Tests planifiés (objectif « Test ») */}
+      {yearTests.length > 0 && (
+        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 14, padding: '14px 16px' }}>
+          <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-dim)', margin: '0 0 10px' }}>Tests planifiés · {selectedYear}</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {yearTests.map(ev => {
+              const { sport, slug } = parseTestRef(ev.ref)
+              const color = TEST_SPORT_COLOR[sport] ?? '#8b5cf6'
+              const d = new Date(ev.date + 'T12:00:00')
+              return (
+                <div key={ev.id} onClick={() => setTestSheet({ mode: 'edit', ev })}
+                  style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '10px 12px', borderRadius: 11, border: `1px solid ${color}33`, borderLeft: `3px solid ${color}`, background: 'var(--bg-card2)', cursor: 'pointer' }}>
+                  <Target size={17} color={color} style={{ flexShrink: 0 }} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ev.title}</div>
+                    <div style={{ fontSize: 11, color: 'var(--text-dim)' }}>{d.toLocaleDateString(currentLocale(), { weekday: 'short', day: 'numeric', month: 'short' })}{slug ? ' · lié à Performance' : ''}</div>
+                  </div>
+                  {slug && (
+                    // Interconnexion : lien direct vers le test dans la page Performance.
+                    <a href={`/performance?test=${encodeURIComponent(slug)}`} onClick={e => e.stopPropagation()}
+                      style={{ flexShrink: 0, fontSize: 11, fontWeight: 700, color, textDecoration: 'none', border: `1px solid ${color}55`, borderRadius: 8, padding: '5px 9px' }}>
+                      Voir le test →
+                    </a>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Next race bar */}
       <NextRaceBar races={races} onEdit={r => { setEditRace(r); setShowRaceModal(true) }} />
 
@@ -1008,6 +1074,19 @@ function RaceTab({ races, raceStages, addRaceWithFiles, updateRaceWithFiles, upd
           onClose={() => setChooserDate(null)}
           onCourse={() => { const d = chooserDate; setChooserDate(null); openNewRace(d) }}
           onStage={() => { const d = chooserDate; setChooserDate(null); setEventModal({ mode: 'create', initialDate: d }) }}
+          onTest={() => { const d = chooserDate; setChooserDate(null); setTestSheet({ mode: 'create', initialDate: d }) }}
+        />
+      )}
+
+      {/* Éditeur de test planifié */}
+      {testSheet && (
+        <TestEditorSheet
+          mode={testSheet.mode}
+          initial={testSheet.ev ? eventToTestInput(testSheet.ev) : undefined}
+          initialDate={testSheet.initialDate}
+          onClose={() => setTestSheet(null)}
+          onDelete={testSheet.mode === 'edit' && testSheet.ev ? () => { deleteEvent(testSheet.ev!.id); setTestSheet(null) } : undefined}
+          onSave={saveTest}
         />
       )}
     </div>
@@ -1017,8 +1096,8 @@ function RaceTab({ races, raceStages, addRaceWithFiles, updateRaceWithFiles, upd
 // ════════════════════════════════════════════════
 // OBJECTIVE CHOOSER — feuille basse : Course ou Stage
 // ════════════════════════════════════════════════
-function ObjectiveChooser({ date, onClose, onCourse, onStage }: {
-  date: string; onClose: () => void; onCourse: () => void; onStage: () => void
+function ObjectiveChooser({ date, onClose, onCourse, onStage, onTest }: {
+  date: string; onClose: () => void; onCourse: () => void; onStage: () => void; onTest: () => void
 }) {
   const { t } = useI18n()
   const pretty = new Date(date + 'T12:00:00').toLocaleDateString(currentLocale(), { weekday: 'long', day: 'numeric', month: 'long' })
@@ -1048,6 +1127,11 @@ function ObjectiveChooser({ date, onClose, onCourse, onStage }: {
             <CalendarDays size={26} color="#5b6fff" />
             <span style={{ fontWeight: 700, fontSize: 15 }}>{t('calendar.stage')}</span>
             <span style={{ fontSize: 11.5, color: 'var(--text-dim)', textAlign: 'center' }}>{t('calendar.stageChooserSub')}</span>
+          </button>
+          <button onClick={onTest} style={card}>
+            <Target size={26} color="#8b5cf6" />
+            <span style={{ fontWeight: 700, fontSize: 15 }}>Test</span>
+            <span style={{ fontSize: 11.5, color: 'var(--text-dim)', textAlign: 'center' }}>Test de forme lié à Performance</span>
           </button>
         </div>
       </div>
@@ -1658,7 +1742,7 @@ export default function CalendarPage() {
       <SectionLayout
         header={header}
         sections={[
-          { id:'race',  label:t('calendar.tabRace'), subtitle:t('calendar.tabRaceSub'),  icon:Trophy,     content: loading ? loader : <RaceTab races={races} raceStages={raceStages} addRaceWithFiles={addRaceWithFiles} updateRaceWithFiles={updateRaceWithFiles} updateRace={updateRace} deleteRace={deleteRace} markCompleted={markCompleted} addRaceStage={addRaceStage} updateRaceStage={updateRaceStage} deleteRaceStage={deleteRaceStage} patchStageDayLocal={patchStageDayLocal} deleteStageDayLocal={deleteStageDayLocal}/> },
+          { id:'race',  label:t('calendar.tabRace'), subtitle:t('calendar.tabRaceSub'),  icon:Trophy,     content: loading ? loader : <RaceTab races={races} raceStages={raceStages} tests={events.filter(e => e.category === 'test')} addEvent={addEvent} updateEvent={updateEvent} deleteEvent={deleteEvent} addRaceWithFiles={addRaceWithFiles} updateRaceWithFiles={updateRaceWithFiles} updateRace={updateRace} deleteRace={deleteRace} markCompleted={markCompleted} addRaceStage={addRaceStage} updateRaceStage={updateRaceStage} deleteRaceStage={deleteRaceStage} patchStageDayLocal={patchStageDayLocal} deleteStageDayLocal={deleteStageDayLocal}/> },
           { id:'pro',   label:t('calendar.tabPro'),    subtitle:t('calendar.tabProSub'),  icon:Briefcase,  content: loading ? loader : <CategoryTab category="pro"   eventTypes={eventTypes} events={events} addEventType={addEventType} updateEventType={updateEventType} deleteEventType={deleteEventType} addEvent={addEvent} deleteEvent={deleteEvent}/> },
           { id:'perso', label:t('calendar.tabPerso'),  subtitle:t('calendar.tabPersoSub'),      icon:Heart,      content: loading ? loader : <CategoryTab category="perso" eventTypes={eventTypes} events={events} addEventType={addEventType} updateEventType={updateEventType} deleteEventType={deleteEventType} addEvent={addEvent} deleteEvent={deleteEvent}/> },
           { id:'all',   label:t('calendar.tabAll'),   subtitle:t('calendar.tabAllSub'),    icon:LayoutGrid, content: loading ? loader : <AllTab races={races} eventTypes={eventTypes} events={events}/> },

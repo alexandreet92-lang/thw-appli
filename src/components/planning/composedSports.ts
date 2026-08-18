@@ -7,7 +7,7 @@
 // ══════════════════════════════════════════════════════════════════
 
 export type ComposedSport = 'hybrid' | 'boxe'
-export type Measure = 'time' | 'distance' | 'jumps' | 'floors' | 'calories'
+export type Measure = 'time' | 'distance' | 'jumps' | 'floors' | 'calories' | 'reps'
 export type SpeedUnit = 'kmh' | 'minkm'
 export type PaceWattsUnit = 'pace' | 'watts'   // rameur / skierg
 export type RoundSupport = 'bag' | 'uppercut' | 'mitts' | 'sparring' | 'shadow'
@@ -49,6 +49,11 @@ export interface ComposedMove {
   jumps?: number
   floors?: number
   calories?: number       // assault bike : mesure en kcal
+  reps?: number           // exos boxe/renfo au nombre de répétitions
+  // renfo boxe : charge + variante (pompes normal/points/claquées, medecine ball V/H)
+  weightKg?: number
+  variant?: string        // clé d'une variante du MOVE_DEF
+  customName?: string     // exercice libre : nom saisi par l'utilisateur
   // champs cardio
   watts?: number
   hr?: number             // FC
@@ -83,9 +88,12 @@ export interface MoveDef {
     watts?: boolean; hr?: boolean; speed?: boolean; incline?: boolean
     speedLevel?: boolean; paceWatts?: boolean
     doubleUnders?: boolean; roundSupport?: boolean; roundsRest?: boolean
+    weight?: boolean          // champ charge (kg) — jab lesté, medecine ball…
   }
   measures: Measure[]        // mesures possibles (l'utilisateur choisit si > 1)
   defaultMeasure: Measure
+  variants?: { v: string; label: string }[]   // ex : pompes normal/points/claquées
+  custom?: boolean            // exercice libre : nom saisi par l'utilisateur
 }
 
 export const HYBRID_MOVES: MoveDef[] = [
@@ -102,6 +110,16 @@ export const BOXE_MOVES: MoveDef[] = [
   { kind: 'jumprope',  label: 'Corde à sauter', sport: 'boxe', fields: { doubleUnders: true }, measures: ['jumps', 'time'], defaultMeasure: 'time' },
   { kind: 'round',     label: 'Round',          sport: 'boxe', fields: { roundSupport: true, roundsRest: true }, measures: ['time'], defaultMeasure: 'time' },
   { kind: 'battlerope',label: 'Battle rope',    sport: 'boxe', fields: {}, measures: ['time'], defaultMeasure: 'time' },
+  // Renfo spécifique boxe
+  { kind: 'pompes',    label: 'Pompes',         sport: 'boxe', fields: {},              measures: ['reps', 'time'], defaultMeasure: 'reps',
+    variants: [{ v: 'normal', label: 'Normal' }, { v: 'points', label: 'Sur les poings' }, { v: 'claquees', label: 'Claquées' }] },
+  { kind: 'burpees',   label: 'Burpees',        sport: 'boxe', fields: {},              measures: ['reps', 'time'], defaultMeasure: 'reps' },
+  { kind: 'jab_leste', label: 'Jab lesté',      sport: 'boxe', fields: { weight: true }, measures: ['reps', 'time'], defaultMeasure: 'reps' },
+  { kind: 'medball',   label: 'Medecine ball',  sport: 'boxe', fields: { weight: true }, measures: ['reps', 'time'], defaultMeasure: 'reps',
+    variants: [{ v: 'snatch_v', label: 'Snatch vertical' }, { v: 'snatch_h', label: 'Snatch horizontal' }] },
+  { kind: 'dips',      label: 'Dips',           sport: 'boxe', fields: { weight: true }, measures: ['reps', 'time'], defaultMeasure: 'reps' },
+  // Exercice libre : nom saisi à la main + mesure au choix.
+  { kind: 'custom',    label: 'Exercice libre', sport: 'boxe', fields: { weight: true }, measures: ['reps', 'time', 'distance', 'calories'], defaultMeasure: 'reps', custom: true },
 ]
 
 export function movesForSport(sport: ComposedSport): MoveDef[] {
@@ -129,7 +147,17 @@ export function moveMinutes(m: ComposedMove): number {
     return (m.rounds * ((m.timeSec ?? 0) + (m.restSec ?? 0))) / 60
   }
   if (m.timeSec) return m.timeSec / 60
+  // Exos au nombre de répétitions sans temps saisi : estimation ~3 s/rep.
+  if (m.measure === 'reps' && m.reps) return (m.reps * 3) / 60
   return 0
+}
+
+// Libellé d'affichage d'un move composé (variante / nom libre inclus).
+export function composedMoveLabel(m: ComposedMove, def?: MoveDef): string {
+  if (m.kind === 'custom') return (m.customName || '').trim() || 'Exercice libre'
+  const base = def?.label ?? m.kind
+  const variant = def?.variants?.find(v => v.v === m.variant)
+  return variant ? `${base} · ${variant.label}` : base
 }
 
 // Durée totale (min) : (Σ moves + récup inter-exos) × tours + récup inter-tours.

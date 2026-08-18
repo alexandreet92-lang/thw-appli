@@ -6,13 +6,13 @@ import { useState } from 'react'
 import { IconPlus, IconTrash, IconChevronUp, IconChevronDown } from '@tabler/icons-react'
 import {
   type ComposedSport, type ComposedMove, type ComposedCircuit, type Measure, type RoundSupport, type Punch, type PunchSide,
-  movesForSport, moveDef, elevationFromIncline, runDistanceM, moveMinutes,
+  movesForSport, moveDef, elevationFromIncline, runDistanceM, moveMinutes, composedMoveLabel,
   ROUND_SUPPORT_LABEL, PUNCH_LABEL, SUPPORTS_WITH_COMBOS, needsSide, punchLabel, sideSuffix,
 } from './composedSports'
 import { useI18n } from '@/lib/i18n'
 
 const FB = 'var(--font-body)'
-const MEASURE_LABEL: Record<Measure, string> = { time: 'Temps', distance: 'Distance', jumps: 'Sauts', floors: 'Étages', calories: 'Calories' }
+const MEASURE_LABEL: Record<Measure, string> = { time: 'Temps', distance: 'Distance', jumps: 'Sauts', floors: 'Étages', calories: 'Calories', reps: 'Répétitions' }
 
 function uid() { return `mv_${Date.now()}_${Math.random().toString(36).slice(2, 7)}` }
 function mmss(sec: number): string { const s = Math.max(0, Math.round(sec)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}` }
@@ -58,7 +58,9 @@ export function ComposedBuilder({ sport, moves, accent, onChange, circuit, onCir
     if (d.fields.speed) m.speedUnit = 'kmh'
     if (d.fields.roundsRest) { m.rounds = 3; m.restSec = 60; m.timeSec = 180 }
     if (d.fields.roundSupport) m.roundSupport = 'bag'
+    if (d.variants && d.variants.length) m.variant = d.variants[0].v
     if (d.defaultMeasure === 'time') m.timeSec = m.timeSec ?? 300
+    if (d.defaultMeasure === 'reps') m.reps = m.reps ?? 10
     onChange([...moves, m])
   }
   function patch(id: string, p: Partial<ComposedMove>) {
@@ -100,12 +102,24 @@ export function ComposedBuilder({ sport, moves, accent, onChange, circuit, onCir
         return (
           <div key={m.id} style={{ border: '1px solid var(--border)', borderLeft: `3px solid ${accent}`, borderRadius: 12, padding: 12, background: 'var(--bg-card2)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-              <span style={{ flex: 1, fontFamily: 'Syne, sans-serif', fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>{d.label}</span>
+              {d.custom ? (
+                <input defaultValue={m.customName ?? ''} key={m.customName} onBlur={e => patch(m.id, { customName: e.target.value })} placeholder="Nom de l'exercice"
+                  style={{ ...inp, flex: 1, fontWeight: 700, fontFamily: 'Syne, sans-serif', fontSize: 14 }} />
+              ) : (
+                <span style={{ flex: 1, fontFamily: 'Syne, sans-serif', fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>{composedMoveLabel(m, d)}</span>
+              )}
               <span style={{ fontSize: 11, fontWeight: 700, color: accent, fontFamily: 'DM Mono, monospace' }}>{moveMinutes(m) > 0 ? `${Math.round(moveMinutes(m))} min` : ''}</span>
               <button onClick={() => move(i, -1)} disabled={i === 0} aria-label="Monter" style={{ ...iconBtn, opacity: i === 0 ? 0.3 : 1 }}><IconChevronUp size={16} /></button>
               <button onClick={() => move(i, 1)} disabled={i === moves.length - 1} aria-label="Descendre" style={{ ...iconBtn, opacity: i === moves.length - 1 ? 0.3 : 1 }}><IconChevronDown size={16} /></button>
               <button onClick={() => remove(m.id)} aria-label="Supprimer" style={{ ...iconBtn, color: '#ef4444' }}><IconTrash size={16} /></button>
             </div>
+
+            {/* Variante (pompes normal/points/claquées, medecine ball V/H) */}
+            {d.variants && d.variants.length > 0 && (
+              <div style={{ marginBottom: 10 }}>
+                <Seg value={m.variant ?? d.variants[0].v} options={d.variants.map(x => ({ v: x.v, label: x.label }))} onChange={v => patch(m.id, { variant: v })} />
+              </div>
+            )}
 
             {/* Mesure (si plusieurs choix) */}
             {d.measures.length > 1 && (
@@ -115,6 +129,14 @@ export function ComposedBuilder({ sport, moves, accent, onChange, circuit, onCir
             )}
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10 }}>
+              {/* Répétitions */}
+              {m.measure === 'reps' && (
+                <Field label="Répétitions"><input type="number" defaultValue={m.reps ?? ''} key={m.reps} onBlur={e => patch(m.id, { reps: +e.target.value || undefined })} style={inp} /></Field>
+              )}
+              {/* Charge (kg) — jab lesté, medecine ball, dips lestés, exo libre */}
+              {d.fields.weight && (
+                <Field label="Charge (kg)"><input type="number" step="0.5" defaultValue={m.weightKg ?? ''} key={m.weightKg} onBlur={e => patch(m.id, { weightKg: +e.target.value || undefined })} style={inp} /></Field>
+              )}
               {/* Mesures */}
               {(m.measure === 'time') && (
                 <Field label={d.fields.roundsRest ? 'Durée / round' : 'Temps'}>

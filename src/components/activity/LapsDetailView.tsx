@@ -678,10 +678,12 @@ export function LapsDetailView(props: LapsDetailViewProps) {
           fontFamily: 'Inter, system-ui, -apple-system, sans-serif',
         }}
       >
-        {/* Header */}
+        {/* Header — paddingTop tient compte de l'encoche iOS (safe-area) sinon
+            la flèche « retour » passe SOUS la barre d'état sur mobile et devient
+            invisible/intappable. */}
         <header style={{
           display: 'flex', alignItems: 'center', gap: 12,
-          padding: '12px 16px 16px',
+          padding: 'calc(env(safe-area-inset-top) + 12px) 16px 16px',
           borderBottom: '1px solid var(--border)',
           background: 'var(--bg)',
         }}>

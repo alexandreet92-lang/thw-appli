@@ -28,11 +28,15 @@ import { toBars, barHeightPct, treadmillProfile, type MBlock } from './mobile/bl
 import { zColor } from './mobile/editorial'
 import RouteElevationProfile from '@/components/gpx/RouteElevationProfile'
 import { staticRouteMapUrl } from '@/lib/staticMap'
+import { useAthleteRefs } from '@/hooks/useAthleteRefs'
 
 const WIDTH = 262
 
 export function SessionHoverPreview({ session, anchor }: { session: Session; anchor: DOMRect }) {
   const [mounted, setMounted] = useState(false)
+  // Repères de zones du VRAI athlète (FTP réel, ex. 118 W) → hauteurs de barres
+  // correctes au lieu du repli 200 W.
+  const refs = useAthleteRefs()
   useEffect(() => { setMounted(true) }, [])
   if (!mounted || typeof document === 'undefined') return null
 
@@ -154,7 +158,7 @@ export function SessionHoverPreview({ session, anchor }: { session: Session; anc
                   title={`Z${bar.zone}${bar.value ? ` · ${bar.value}` : ''} · ${Math.round(bar.min)}min`}
                   style={{
                     flexGrow: Math.max(1, bar.min), flexBasis: 0, minWidth: 2,
-                    height: `${barHeightPct(bar, session.sport)}%`,
+                    height: `${barHeightPct(bar, session.sport, refs)}%`,
                     background: zColor(bar.zone), opacity: bar.recovery ? 0.5 : 1,
                     borderRadius: '2px 2px 0 0',
                   }} />

@@ -26,6 +26,7 @@ import { sportKeyFromType, subSportIcon, SPORT_ICON, type SportKey } from '@/com
 import { toBars, treadmillGainM, totalDistance, barHeightPct, type MBlock } from './mobile/blocks'
 import { zColor, paceToSec, secToPace } from './mobile/editorial'
 import { staticRouteMapUrl } from '@/lib/staticMap'
+import { useAthleteRefs } from '@/hooks/useAthleteRefs'
 
 // ── Modèle ────────────────────────────────────────────────────────
 export interface StrengthGroup {
@@ -410,6 +411,7 @@ const sectionLabel: React.CSSProperties = {
 
 /** Profil d'intensité PLANIFIÉ (repli quand l'activité n'a pas de streams). */
 export function PlannedIntensityBars({ session, height = 56 }: { session: Session; height?: number }) {
+  const refs = useAthleteRefs()
   const blocks = (session.blocks ?? []).filter(b => b.type !== 'circuit_header' || (b.label ?? '').trim())
   const bars = toBars(blocks as MBlock[])
   if (bars.length === 0) return null
@@ -421,7 +423,7 @@ export function PlannedIntensityBars({ session, height = 56 }: { session: Sessio
           <div key={bar.id} title={`Z${bar.zone}${bar.value ? ` · ${bar.value}` : ''} · ${Math.round(bar.min)}min`}
             style={{
               flexGrow: Math.max(1, bar.min), flexBasis: 0, minWidth: 2,
-              height: `${barHeightPct(bar, session.sport)}%`,
+              height: `${barHeightPct(bar, session.sport, refs)}%`,
               background: zColor(bar.zone), opacity: bar.recovery ? 0.5 : 1,
               borderRadius: '2px 2px 0 0',
             }} />

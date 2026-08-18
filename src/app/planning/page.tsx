@@ -2575,8 +2575,10 @@ function WeekCycles({ ws, blocs }: { ws: string; blocs: TrainingBlocData[] }) {
 // Résumé « Cycle » (onglet Plan) : cycle courant par discipline (nom + sport). + → Training Bloc.
 const BLOC_SPORT_MAP: Record<string, { key: string; label: string }> = {
   velo: { key: 'bike', label: 'Vélo' }, running: { key: 'run', label: 'Course' },
+  trail: { key: 'run', label: 'Trail' },
   natation: { key: 'swim', label: 'Natation' }, hyrox: { key: 'hyrox', label: 'Hyrox' },
   muscu: { key: 'muscu', label: 'Muscu' }, rowing: { key: 'rowing', label: 'Aviron' },
+  boxe: { key: 'boxe', label: 'Boxe' }, hybrid: { key: 'hybrid', label: 'Hybrid' },
 }
 function CycleSummary({ onOpen }: { onOpen: () => void }) {
   const { t } = useI18n()

@@ -24,10 +24,15 @@ function genId(): string {
   return `b_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`
 }
 
+// Cache mémoire des blocs de l'athlète consulté par un coach. Le localStorage
+// appartient au coach → on ne peut ni le lire ni l'écrire pour l'athlète, mais
+// upsert/delete ont besoin d'une base cohérente entre le sync cloud et l'UI.
+let _coachBlocs: TrainingBlocData[] = []
+
 export function loadBlocs(): TrainingBlocData[] {
-  // En vue coach (scope athlète), le cache localStorage appartient au coach :
-  // ne jamais le montrer dans le planning d'un athlète (isolation des données).
-  if (isCoachScoped()) return []
+  // En vue coach (scope athlète) : cache MÉMOIRE de l'athlète (alimenté par
+  // syncBlocsFromCloud), jamais le localStorage du coach.
+  if (isCoachScoped()) return _coachBlocs
   const list = read<TrainingBlocData[]>(BLOCS_KEY, [])
   // ⚠ BUG 2 — Training Blocs : stockage localStorage = données locales à l'appareil.
   // Symptôme reporté : "blocs créés sur Windows n'apparaissent pas sur iPhone/Mac".
@@ -45,7 +50,12 @@ export function loadBlocs(): TrainingBlocData[] {
   }
   return list
 }
-export function saveBlocs(list: TrainingBlocData[]) { if (isCoachScoped()) return; write(BLOCS_KEY, list) }
+export function saveBlocs(list: TrainingBlocData[]) {
+  // Coach : n'écrit PAS le localStorage (= cache du coach) ; met à jour le cache
+  // mémoire de l'athlète pour garder UI et cloud cohérents.
+  if (isCoachScoped()) { _coachBlocs = list; return }
+  write(BLOCS_KEY, list)
+}
 
 // ── Synchronisation Supabase (multi-appareils) ──────────────────────
 interface BlocRow {
@@ -82,11 +92,12 @@ export async function syncBlocsFromCloud(): Promise<TrainingBlocData[]> {
       .eq('user_id', uid)
     // En vue coach : ne jamais retomber sur le cache local (= blocs du coach),
     // et ne pas écraser ce cache avec les blocs de l'athlète.
-    if (error || !data) return isCoachScoped() ? [] : loadBlocs()
+    if (error || !data) return isCoachScoped() ? _coachBlocs : loadBlocs()
     const list = (data as BlocRow[]).map(rowToBloc)
-    if (!isCoachScoped()) saveBlocs(list)
+    // saveBlocs gère les deux cas : localStorage (athlète) ou cache mémoire (coach).
+    saveBlocs(list)
     return list
-  } catch { return isCoachScoped() ? [] : loadBlocs() }
+  } catch { return isCoachScoped() ? _coachBlocs : loadBlocs() }
 }
 async function pushBlocCloud(b: TrainingBlocData) {
   try { const sb = createClient(); const uid = await resolvePlanningUid(sb); if (!uid) return; await sb.from('training_blocs').upsert(blocToRow(b, uid)) } catch { /* best-effort */ }

@@ -4118,7 +4118,8 @@ export function SessionEditor({ mode, session, dayIndex, weekStart, plan, onClos
       try {
         const { createClient } = await import('@/lib/supabase/client')
         const sb = createClient()
-        const { data: { user } } = await sb.auth.getUser()
+        const { data: { session: __sess } } = await sb.auth.getSession()
+        const user = __sess?.user ?? null
         if (!user) return
         const { data } = await sb.from('session_favorites').select('*').eq('user_id', user.id).order('created_at', { ascending: false })
         setFavorites(data ?? [])
@@ -4133,7 +4134,8 @@ export function SessionEditor({ mode, session, dayIndex, weekStart, plan, onClos
       try {
         const { createClient } = await import('@/lib/supabase/client')
         const sb = createClient()
-        const { data: { user } } = await sb.auth.getUser()
+        const { data: { session: __sess } } = await sb.auth.getSession()
+        const user = __sess?.user ?? null
         if (!user) return
         const { data } = await sb.from('planned_sessions')
           .select('blocks,started_at')
@@ -4165,7 +4167,8 @@ export function SessionEditor({ mode, session, dayIndex, weekStart, plan, onClos
       try {
         const { createClient } = await import('@/lib/supabase/client')
         const sb = createClient()
-        const { data: { user } } = await sb.auth.getUser()
+        const { data: { session: __sess } } = await sb.auth.getSession()
+        const user = __sess?.user ?? null
         if (!user) return
         const { data } = await sb.from('nutrition_products').select('name,type,glucidesG:glucides_g,proteinesG:proteines_g,quantity').eq('user_id', user.id).then(r => r, () => ({ data: null }))
         if (data && Array.isArray(data)) setAthleteProducts(data as typeof athleteProducts)
@@ -5078,7 +5081,8 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
       try {
         const { createClient } = await import('@/lib/supabase/client')
         const sb = createClient()
-        const { data: { user } } = await sb.auth.getUser()
+        const { data: { session: __sess } } = await sb.auth.getSession()
+        const user = __sess?.user ?? null
         if (!user) return
         await sb.from('session_favorites').insert({
           user_id: user.id, name, sport,

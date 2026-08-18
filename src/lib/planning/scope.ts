@@ -23,10 +23,15 @@ export function isCoachScoped(): boolean { return _scopeUid != null }
 
 // Résout l'id utilisateur effectif de TOUTES les requêtes planning : l'athlète
 // ciblé si le coach édite sa fiche, sinon l'utilisateur connecté.
+// Perf : getSession() lit le JWT LOCALEMENT (instantané) au lieu de getUser()
+// qui fait un aller-retour RÉSEAU au serveur d'auth. Comme cette fonction est
+// appelée par ~15 requêtes planning + à l'ouverture de l'éditeur, le passage
+// à getSession supprime une latence réseau perçue (~secondes) avant de pouvoir
+// éditer une séance. La RLS protège toujours les données (contexte auth réel).
 export async function resolvePlanningUid(sb: SB): Promise<string | null> {
   if (_scopeUid) return _scopeUid
-  const { data: { user } } = await sb.auth.getUser()
-  return user?.id ?? null
+  const { data: { session } } = await sb.auth.getSession()
+  return session?.user?.id ?? null
 }
 
 // Contexte React (pour les composants qui veulent réagir au scope au rendu).

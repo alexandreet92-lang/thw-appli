@@ -58,7 +58,7 @@ const SPORT_ICON: Record<SportKey, { Icon: ComponentType<{ size?: number; color?
   ellip:  { Icon: IconTreadmill,  color: '#ec4899', label: 'Elliptique' },
   hybrid: { Icon: IconBolt,       color: '#f59e0b', label: 'Hybrid'     },
   boxe:   { Icon: IconKarate,     color: '#e11d48', label: 'Boxe'       },
-  mobilite: { Icon: IconStretching, color: '#84cc16', label: 'Mobilité' },
+  mobilite: { Icon: IconStretching, color: '#86efac', label: 'Mobilité' }, // vert CLAIR distinct du run (#22c55e), figure d'assouplissement
 }
 
 export function SportIcon({

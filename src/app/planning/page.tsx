@@ -1526,6 +1526,8 @@ const SPORT_COLOR_FALLBACK: Record<string, string> = {
   rowing:     '#14b8a6',
   swim:       '#38bdf8',
   bike:       '#3b82f6',
+  mobilite:   '#86efac', // mobilité : vert CLAIR (hors charge/volume, distinct du run)
+  mobility:   '#86efac',
 }
 function sportColor(sport: string): string {
   const k = sport.toLowerCase()

@@ -15,7 +15,6 @@ import { TodayCard } from './TodayCard'
 import { NutritionCard } from './NutritionCard'
 import { WeekSummary } from './WeekSummary'
 import { NextRaceCard } from './NextRaceCard'
-import { CoachAICard } from './CoachAICard'
 
 export function DataGrid() {
   const { activities, loading } = useDashboardActivities()
@@ -30,7 +29,6 @@ export function DataGrid() {
       <div className="dash-a-nutrition"><NutritionCard /></div>
       <div className="dash-a-week"><WeekSummary /></div>
       <div className="dash-a-race"><NextRaceCard /></div>
-      <div className="dash-a-coach"><CoachAICard /></div>
     </div>
   )
 }

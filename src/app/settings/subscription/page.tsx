@@ -588,8 +588,6 @@ export default function SubscriptionPage() {
           }}>
             {PLANS.map(plan => {
               const isActive      = currentTier === plan.tier
-              const price         = billing === 'yearly' ? plan.yearlyPrice : plan.monthlyPrice
-              const monthlyEquiv  = billing === 'yearly' ? plan.yearlyMonthly : plan.monthlyPrice
               const isCta         = ctaLoading === plan.tier
 
               return (
@@ -635,22 +633,8 @@ export default function SubscriptionPage() {
                     </p>
                   </div>
 
-                  {/* Price */}
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
-                      <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 32, fontWeight: 700, color: 'var(--text)' }}>
-                        €{billing === 'yearly' ? monthlyEquiv.toFixed(0) : price}
-                      </span>
-                      <span style={{ fontSize: 13, color: 'var(--text-dim)', fontFamily: 'DM Sans, sans-serif' }}>
-                        {t('misc.perMonth')}
-                      </span>
-                    </div>
-                    {billing === 'yearly' && (
-                      <p style={{ fontSize: 12, color: 'var(--text-dim)', fontFamily: 'DM Sans, sans-serif', margin: '4px 0 0' }}>
-                        {t('misc.billedYearly', { price })}
-                      </p>
-                    )}
-                  </div>
+                  {/* Prix masqués dans l'app (règles App Store) : on n'affiche
+                      plus de montant ni « /mois ». */}
 
                   {/* Features */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>

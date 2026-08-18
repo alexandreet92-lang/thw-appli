@@ -71,9 +71,6 @@ export function PlansVisual() {
           <p style={{ fontSize: 14, fontWeight: 800, color: 'white', margin: '0 0 2px', textAlign: 'center', fontFamily: 'Syne, sans-serif' }}>
             {plan.name}
           </p>
-          <p style={{ fontSize: 11, color: plan.color, margin: '0 0 6px', textAlign: 'center', fontWeight: 700, fontFamily: 'DM Sans, sans-serif' }}>
-            {plan.price}{t('onboarding.g.plans.perMonth')}
-          </p>
 
           {plan.trial && (
             <div style={{ background: `rgba(${hexRgb(plan.color)},0.15)`, borderRadius: 6, padding: '3px 6px', marginBottom: 8, textAlign: 'center' }}>

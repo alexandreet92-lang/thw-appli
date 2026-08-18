@@ -37,15 +37,13 @@ export function DashboardContent() {
     <div className="dash-wrap">
       <Greeting rightSlot={
         <div className="dash-desktop-only">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
-            {vitrineBtn}
-            {switch_}
-            <QuickActions />
-          </div>
+          <QuickActions />
         </div>
       } />
 
-      <div className="dash-mobile-only" style={{ marginTop: 'calc(-1 * var(--space-3))', marginBottom: 'var(--space-5)', display: 'flex', gap: 'var(--space-3)', alignItems: 'center', flexWrap: 'wrap' }}>
+      {/* Ma vitrine + Classique/Datas : rendus UNE seule fois (plus de doublon
+          desktop/mobile). QuickActions reste à droite de la salutation en desktop. */}
+      <div style={{ marginTop: 'calc(-1 * var(--space-3))', marginBottom: 'var(--space-5)', display: 'flex', gap: 'var(--space-3)', alignItems: 'center', flexWrap: 'wrap' }}>
         {vitrineBtn}
         {switch_}
       </div>

@@ -10,7 +10,6 @@ import { WeekSummary } from './WeekSummary'
 import { NextSessionsCard } from './NextSessionsCard'
 import { NextRaceCard } from './NextRaceCard'
 import { LastActivityCard } from './LastActivityCard'
-import { CoachAICard } from './CoachAICard'
 import { QuickActions } from './QuickActions'
 import { RecentRecords } from './RecentRecords'
 
@@ -23,7 +22,6 @@ export function ClassiqueGrid() {
       <div className="dash-a-nexts"><NextSessionsCard /></div>
       <div className="dash-a-race"><NextRaceCard /></div>
       <div className="dash-a-last"><LastActivityCard /></div>
-      <div className="dash-a-coach"><CoachAICard /></div>
       <div className="dash-a-actions dash-mobile-only"><QuickActions /></div>
       <div className="dash-a-records"><RecentRecords /></div>
     </div>

@@ -77,17 +77,12 @@ export default function CoachSubscriptionPage() {
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 14 }}>
           {COACH_PACKS.map(p => {
-            const price = billing === 'yearly' ? p.yearlyEur : p.monthlyEur
             const isCurrent = activePack?.key === p.key
             return (
               <div key={p.key} style={{ background: 'var(--bg-card)', borderRadius: 'var(--r-lg)', padding: 20, boxShadow: '0 1px 3px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column', gap: 4 }}>
                 <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 600, color: 'var(--text)' }}>{p.name}</div>
                 <div style={{ fontSize: 12.5, color: 'var(--text-dim)' }}>{p.label}</div>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, margin: '6px 0 2px' }}>
-                  <span className="tnum" style={{ fontSize: 30, fontWeight: 600, color: 'var(--text)', fontVariantNumeric: 'tabular-nums' }}>{price}</span>
-                  <span style={{ fontSize: 13, color: 'var(--text-dim)' }}>€ / {billing === 'yearly' ? 'an' : 'mois'}</span>
-                </div>
-                <div style={{ fontSize: 12, color: 'var(--text-dim)', marginBottom: 12 }}>{Math.round((price / p.maxAthletes) * (billing === 'yearly' ? 1 / 12 : 1) * 100) / 100} € / athlète / mois</div>
+                {/* Prix masqués dans l'app (règles App Store). */}
                 <div style={{ flex: 1 }} />
                 {isCurrent ? (
                   <div style={{ textAlign: 'center', fontSize: 13, fontWeight: 700, color: 'var(--primary)', padding: '11px 0' }}>Ton pack actuel</div>

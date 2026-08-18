@@ -42,10 +42,6 @@ export default function PlanPicker({ onClose }: Props) {
     }
   }
 
-  const priceLabel = (pl: { monthly: number; yearly: number }) =>
-    period === 'monthly' ? `${pl.monthly} €` : `${pl.yearly} €`
-  const priceUnit = period === 'monthly' ? '/mois' : '/an'
-
   return (
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 13000, background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 18 }}>
       <div onClick={e => e.stopPropagation()} style={{ width: 420, maxWidth: '100%', maxHeight: '88dvh', overflowY: 'auto', background: 'var(--bg-card)', borderRadius: 22, padding: 24, boxShadow: '0 30px 80px rgba(0,0,0,0.35)', border: '1px solid var(--border)' }}>
@@ -73,9 +69,7 @@ export default function PlanPicker({ onClose }: Props) {
                   <p style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 700, color: 'var(--text)', margin: '0 0 2px' }}>{pl.name}</p>
                   <p style={{ fontSize: 12, color: 'var(--text-dim)', margin: 0 }}>{pl.coach}</p>
                 </div>
-                <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                  <p style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 700, color: 'var(--text)', margin: 0 }}>{priceLabel(pl)}<span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-dim)' }}>{priceUnit}</span></p>
-                </div>
+                {/* Prix non affichés dans l'app (règles App Store). */}
               </div>
               <button onClick={() => void choose(pl.tier)} disabled={loading !== null} style={{ width: '100%', marginTop: 12, padding: '11px', borderRadius: 12, border: 'none', background: 'var(--text)', color: 'var(--bg)', fontSize: 13.5, fontWeight: 600, cursor: loading ? 'default' : 'pointer', opacity: loading && loading !== pl.tier ? 0.5 : 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
                 {loading === pl.tier ? 'Redirection…' : <>Choisir {pl.name} <Check size={15} strokeWidth={2.4} /></>}

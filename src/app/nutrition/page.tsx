@@ -16,6 +16,7 @@ import { useHydration } from '@/hooks/useHydration'
 import { useProfile } from '@/hooks/useProfile'
 import { isCoachScoped } from '@/lib/planning/scope'
 import { TodayTab } from '@/app/nutrition/components/today/TodayTab'
+import CoachTargetsPanel from '@/app/nutrition/components/CoachTargetsPanel'
 import { CompositionTab } from '@/app/nutrition/components/composition/CompositionTab'
 import { PlanShoppingList } from '@/app/nutrition/components/plan/PlanShoppingList'
 import { SuiviSection } from '@/app/nutrition/components/suivi/SuiviSection'
@@ -856,7 +857,7 @@ export default function NutritionPage() {
   const { show, dismiss } = usePageOnboarding(NUTRITION_ONBOARDING.pageId, NUTRITION_ONBOARDING.version)
   const { t } = useI18n()
 
-  const { activePlan, dailyLogs, weightLogs, loading: nutLoading, saveDailyLog, saveWeightLog, deactivatePlan } = useNutrition()
+  const { activePlan, dailyLogs, weightLogs, loading: nutLoading, saveDailyLog, saveWeightLog, deactivatePlan, savePlan } = useNutrition()
   const { profile } = useProfile()
   // Interface coach : sur la fiche d'un athlète, « Créer le plan avec l'IA » doit
   // ouvrir l'agent COACH ciblé sur CET athlète (jamais l'agent Athlete).
@@ -1169,7 +1170,17 @@ export default function NutritionPage() {
           transition={{ duration: 0.26, ease: [0.32, 0.72, 0, 1] }}
         >
 
-        {tab === 'today' && (
+        {/* Coach : pas de logging de repas (RLS le bloque déjà) → on affiche
+            l'éditeur d'OBJECTIFS à la place de l'onglet du jour. */}
+        {tab === 'today' && coachScoped && (
+          <CoachTargetsPanel
+            athleteName={coachTarget?.name ?? 'Athlète'}
+            activePlan={activePlan}
+            onSave={(plan, type) => savePlan(plan, type)}
+          />
+        )}
+
+        {tab === 'today' && !coachScoped && (
           <TodayTab
             today={today}
             realToday={realToday}

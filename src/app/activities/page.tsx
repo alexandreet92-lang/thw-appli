@@ -52,6 +52,7 @@ import { TwelveWeekVolume } from '@/components/activity/TwelveWeekVolume'
 import { ActivityMedia } from '@/components/activity/ActivityMedia'
 const ActivityMediaHero = nextDynamic(() => import('@/components/activity/ActivityMediaHero').then(m => m.ActivityMediaHero), { ssr: false })
 import { TrainingRaceSelector } from '@/components/activity/TrainingRaceSelector'
+import { LinkedRacePicker } from '@/components/activity/LinkedRacePicker'
 import { shareCard } from '@/lib/share/shareCard'
 import { useSmSn } from '@/hooks/useSmSn'
 import { smSnFromRow } from '@/lib/metrics/smSn'
@@ -363,7 +364,7 @@ const PAGE_SIZE = 50
 // power_curve, pace_curve) qui ne servent qu'au détail : un `select('*')` les
 // tirait pour chaque ligne → payload énorme → timeout (500). On garde tout le
 // reste (dont summary_polyline pour la mini-carte et laps).
-const LIST_COLUMNS = 'id,user_id,provider,provider_id,external_url,sport_type,is_race,race_name,title,description,notes,started_at,ended_at,timezone,moving_time_s,elapsed_time_s,distance_m,elevation_gain_m,elevation_loss_m,max_elevation_m,avg_speed_ms,max_speed_ms,avg_pace_s_km,avg_watts,max_watts,normalized_watts,kilojoules,ftp_at_time,intensity_factor,tss,avg_hr,max_hr,min_hr,avg_cadence,max_cadence,calories,suffer_score,perceived_effort,rpe,avg_temp_c,weather,gear_name,trainer,commute,flagged,laps,created_at,updated_at,total_descent_m,trimp,aerobic_decoupling,average_heartrate,max_heartrate,average_speed,cardiac_drift_pct,summary_polyline,strava_gear_id,records_processed,records_beaten,feeling,difficulty,ef_value,power_hr_ratio,decoupling_pct,ef_calculation_method,sm_score,sn_score,media,device_name,start_lat,start_lng,location_name,comment'
+const LIST_COLUMNS = 'id,user_id,provider,provider_id,external_url,sport_type,is_race,race_name,linked_race_id,title,description,notes,started_at,ended_at,timezone,moving_time_s,elapsed_time_s,distance_m,elevation_gain_m,elevation_loss_m,max_elevation_m,avg_speed_ms,max_speed_ms,avg_pace_s_km,avg_watts,max_watts,normalized_watts,kilojoules,ftp_at_time,intensity_factor,tss,avg_hr,max_hr,min_hr,avg_cadence,max_cadence,calories,suffer_score,perceived_effort,rpe,avg_temp_c,weather,gear_name,trainer,commute,flagged,laps,created_at,updated_at,total_descent_m,trimp,aerobic_decoupling,average_heartrate,max_heartrate,average_speed,cardiac_drift_pct,summary_polyline,strava_gear_id,records_processed,records_beaten,feeling,difficulty,ef_value,power_hr_ratio,decoupling_pct,ef_calculation_method,sm_score,sn_score,media,device_name,start_lat,start_lng,location_name,comment'
 
 function useActivities() {
   const { t } = useI18n()
@@ -7327,6 +7328,7 @@ conseil pour la prochaine séance similaire.`
           <div style={editLabel}>Type de séance</div>
           <TrainingRaceSelector value={localIsRace} onChange={saveIsRace} />
           {!localIsRace && <div style={{ marginTop: 12 }}><WorkoutTypeBadges activityId={a.id} sport={a.sport_type} /></div>}
+          {localIsRace && <LinkedRacePicker activityId={a.id} activityDate={a.started_at} initialRaceId={(a as { linked_race_id?: string | null }).linked_race_id ?? null} />}
         </div>
         {isGym && <div><div style={editLabel}>Séance de renforcement</div><MuscuSessionPanel activity={a} /></div>}
         {isPool && <div><div style={editLabel}>Longueurs</div><SwimLengths activityId={a.id} distanceM={a.distance_m} /></div>}

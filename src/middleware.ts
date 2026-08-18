@@ -21,7 +21,12 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  const { data: { user } } = await supabase.auth.getUser()
+  // Perf : getSession() lit le cookie signé LOCALEMENT (rafraîchit si expiré),
+  // au lieu de getUser() qui fait un aller-retour RÉSEAU au serveur d'auth à
+  // CHAQUE navigation. Ici on ne fait que du gating de routes ; l'accès aux
+  // données reste protégé par la RLS (contexte auth réel). → navigation bien plus fluide.
+  const { data: { session } } = await supabase.auth.getSession()
+  const user = session?.user ?? null
   const path = request.nextUrl.pathname
 
   // Racine — la page gère elle-même la session et le redirect

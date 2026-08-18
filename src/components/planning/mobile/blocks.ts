@@ -218,6 +218,18 @@ export function newInterval(sport: SportType, treadmill = false): MBlock {
   return recalc(sport, base)
 }
 
+/** Bloc VMA / LIGNES DROITES (strides) — course : accélérations courtes et
+ *  rapides (défaut 8 × 20 s allure VMA, trot 40 s). Réglable comme un interval. */
+export function newStrides(sport: SportType, treadmill = false): MBlock {
+  const base: MBlock = {
+    id: uid(), mode: 'interval', type: 'effort', durationMin: 0, zone: 5, value: '', hrAvg: '', label: 'VMA / Lignes droites',
+    reps: 8, effortMin: 20 / 60, recoveryMin: 40 / 60, recoveryZone: 1, recoveryValue: '', recoveryStyle: 'trot',
+  }
+  if (sport === 'run' && treadmill) return recalc(sport, { ...base, inputMode: 'time', value: '18', effortUnit: 'kmh', inclinePct: 0 })
+  // Par défaut : allure rapide type VMA (3:45/km) sur temps court.
+  return recalc(sport, { ...base, inputMode: 'time', value: '3:45', effortUnit: 'pace' })
+}
+
 /** Bloc PROGRESSIF (course) par défaut : 6 paliers de 5 min, départ 5:30/km,
  *  accéléré de 10 s/km à chaque palier (→ 4:40/km au dernier). */
 export function newProgressive(sport: SportType): MBlock {

@@ -8,7 +8,7 @@ import { useState, useRef, useMemo, useEffect } from 'react'
 import { IconPlus, IconRefresh, IconSparkles, IconMapPin, IconX, IconGripVertical, IconMicrophone, IconLungs, IconTrendingUp, IconActivity } from '@tabler/icons-react'
 import { getZone, type SportType, type RunningSub } from '@/app/planning/page'
 import { zColor, fmtDur, secToPace, paceToSec, type AthleteRefs } from './editorial'
-import { toBars, totalMin, totalDistance, newSingle, newInterval, newHypoxie, newProgressive, newTest, recalc, barHeightPct, BAR_AXIS_TICKS, treadmillProfile, type MBlock, type EffortUnit } from './blocks'
+import { toBars, totalMin, totalDistance, newSingle, newInterval, newHypoxie, newProgressive, newStrides, newTest, recalc, barHeightPct, BAR_AXIS_TICKS, treadmillProfile, type MBlock, type EffortUnit } from './blocks'
 import { ZonesReference } from './ZonesReference'
 import { syncBaseBlock, setBaseWatts, enduranceZ2Watts, type BaseCtx } from './parcoursBase'
 import RouteElevationProfile, { type ProfilePortion, type SequencedPortion } from '@/components/gpx/RouteElevationProfile'
@@ -405,6 +405,7 @@ export function SessionBlockBuilder({ sport, runningSub, accent, blocks, onChang
         <button type="button" onClick={() => add(newInterval(sport, runningSub === 'treadmill'))} style={addBtn}><IconRefresh size={15} /> {isSwim ? tr('planning.series') : tr('planning.interval')}</button>
         {isSwim && <button type="button" onClick={() => add(newHypoxie())} style={addBtn}><IconLungs size={15} /> {tr('planning.hypoxie')}</button>}
         {isRun && !isTreadmill && <button type="button" onClick={() => add(newProgressive(sport))} style={addBtn}><IconTrendingUp size={15} /> {tr('planning.progressive')}</button>}
+        {isRun && <button type="button" onClick={() => add(newStrides(sport, runningSub === 'treadmill'))} style={addBtn}><IconRefresh size={15} /> VMA / Strides</button>}
         {sport === 'bike' && <button type="button" onClick={() => add(newTest('ramp'))} style={addBtn}><IconActivity size={15} /> Test</button>}
       </div>
 

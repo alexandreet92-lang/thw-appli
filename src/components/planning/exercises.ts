@@ -9,12 +9,18 @@ export type ExoCategory = 'push' | 'pull' | 'legs' | 'mixte' | 'abdos' | 'hyrox'
 export interface ExoDefinition {
   id: string; name: string; aliases: string[]; category: ExoCategory
   hasWeight: boolean; hasDistance: boolean; hasKcal: boolean; hasTime: boolean
+  // Hyrox — unités additionnelles par exercice :
+  hasWatts?: boolean       // assault/echo bike, vélo classique (watts cible)
+  hasPace500?: boolean     // rameur / skierg (allure min/500 m)
+  hasIncline?: boolean     // course sur tapis (% pente → D+ auto)
+  official?: boolean       // l'une des 8 stations Hyrox officielles (ou le run)
   defaultReps: number; defaultSets: number; defaultRestSec: number
 }
 export interface ExerciseItem {
   id: string; exoId: string; name: string; category: ExoCategory
   sets: number; reps: number
   weightKg?: number; distanceM?: number; kcal?: number; targetTimeSec?: number
+  watts?: number; pace500Sec?: number; inclinePct?: number
   restSec: number; notes?: string
 }
 export interface ExoCircuit {
@@ -126,18 +132,22 @@ export const EXERCISE_DATABASE: ExoDefinition[] = [
   { id:'v_up', name:'V-Up', aliases:['v up'], category:'abdos', hasWeight:false, hasDistance:false, hasKcal:false, hasTime:false, defaultReps:15, defaultSets:3, defaultRestSec:45 },
   { id:'hollow_hold', name:'Hollow Hold', aliases:['hollow body','gainage creux'], category:'abdos', hasWeight:false, hasDistance:false, hasKcal:false, hasTime:true, defaultReps:1, defaultSets:3, defaultRestSec:45 },
   { id:'dead_bug', name:'Dead Bug', aliases:['dead bug abdos'], category:'abdos', hasWeight:false, hasDistance:false, hasKcal:false, hasTime:false, defaultReps:10, defaultSets:3, defaultRestSec:45 },
-  // HYROX
-  { id:'hyrox_run', name:'Run', aliases:['course','running'], category:'hyrox', hasWeight:false, hasDistance:true, hasKcal:false, hasTime:true, defaultReps:1, defaultSets:1, defaultRestSec:0 },
-  { id:'hyrox_skierg', name:'SkiErg', aliases:['ski erg','ski'], category:'hyrox', hasWeight:false, hasDistance:true, hasKcal:true, hasTime:true, defaultReps:1, defaultSets:1, defaultRestSec:30 },
-  { id:'hyrox_sled_push', name:'Sled Push', aliases:['poussée de luge'], category:'hyrox', hasWeight:true, hasDistance:true, hasKcal:false, hasTime:true, defaultReps:1, defaultSets:1, defaultRestSec:30 },
-  { id:'hyrox_sled_pull', name:'Sled Pull', aliases:['traction de luge'], category:'hyrox', hasWeight:true, hasDistance:true, hasKcal:false, hasTime:true, defaultReps:1, defaultSets:1, defaultRestSec:30 },
-  { id:'hyrox_bbj', name:'Burpee Broad Jump', aliases:['bbj','burpee saut'], category:'hyrox', hasWeight:false, hasDistance:false, hasKcal:false, hasTime:true, defaultReps:80, defaultSets:1, defaultRestSec:30 },
-  { id:'hyrox_rowing', name:'Rowing', aliases:['rameur','row','ergomètre'], category:'hyrox', hasWeight:false, hasDistance:true, hasKcal:true, hasTime:true, defaultReps:1, defaultSets:1, defaultRestSec:30 },
-  { id:'hyrox_farmer', name:'Farmer Carry', aliases:['farmer walk','portée de charges'], category:'hyrox', hasWeight:true, hasDistance:true, hasKcal:false, hasTime:true, defaultReps:1, defaultSets:1, defaultRestSec:30 },
-  { id:'hyrox_lunges', name:'Sandbag Lunges', aliases:['fentes sandbag'], category:'hyrox', hasWeight:true, hasDistance:true, hasKcal:false, hasTime:true, defaultReps:1, defaultSets:1, defaultRestSec:30 },
-  { id:'hyrox_wall_balls', name:'Wall Balls', aliases:['wall ball'], category:'hyrox', hasWeight:true, hasDistance:false, hasKcal:false, hasTime:true, defaultReps:100, defaultSets:1, defaultRestSec:0 },
-  { id:'hyrox_echo_bike', name:'Echo Bike', aliases:['echo bike','assault bike','air bike','vélo air'], category:'hyrox', hasWeight:false, hasDistance:false, hasKcal:true, hasTime:true, defaultReps:1, defaultSets:1, defaultRestSec:60 },
-  { id:'hyrox_assault_bike', name:'Assault Bike', aliases:['assault air bike'], category:'hyrox', hasWeight:false, hasDistance:false, hasKcal:true, hasTime:true, defaultReps:1, defaultSets:1, defaultRestSec:60 },
+  // HYROX — 8 STATIONS OFFICIELLES + RUN (official:true)
+  { id:'hyrox_run', name:'Run', aliases:['course','running','run outdoor'], category:'hyrox', hasWeight:false, hasDistance:true, hasKcal:false, hasTime:true, hasIncline:true, official:true, defaultReps:1, defaultSets:1, defaultRestSec:0 },
+  { id:'hyrox_skierg', name:'SkiErg', aliases:['ski erg','ski'], category:'hyrox', hasWeight:false, hasDistance:true, hasKcal:true, hasTime:true, hasPace500:true, official:true, defaultReps:1, defaultSets:1, defaultRestSec:30 },
+  { id:'hyrox_sled_push', name:'Sled Push', aliases:['poussée de luge'], category:'hyrox', hasWeight:true, hasDistance:true, hasKcal:false, hasTime:true, official:true, defaultReps:1, defaultSets:1, defaultRestSec:30 },
+  { id:'hyrox_sled_pull', name:'Sled Pull', aliases:['traction de luge'], category:'hyrox', hasWeight:true, hasDistance:true, hasKcal:false, hasTime:true, official:true, defaultReps:1, defaultSets:1, defaultRestSec:30 },
+  { id:'hyrox_bbj', name:'Burpee Broad Jump', aliases:['bbj','burpee saut'], category:'hyrox', hasWeight:false, hasDistance:true, hasKcal:false, hasTime:true, official:true, defaultReps:80, defaultSets:1, defaultRestSec:30 },
+  { id:'hyrox_rowing', name:'Rowing', aliases:['rameur','row','ergomètre'], category:'hyrox', hasWeight:false, hasDistance:true, hasKcal:true, hasTime:true, hasPace500:true, official:true, defaultReps:1, defaultSets:1, defaultRestSec:30 },
+  { id:'hyrox_farmer', name:'Farmer Carry', aliases:['farmer walk','portée de charges'], category:'hyrox', hasWeight:true, hasDistance:true, hasKcal:false, hasTime:true, official:true, defaultReps:1, defaultSets:1, defaultRestSec:30 },
+  { id:'hyrox_lunges', name:'Sandbag Lunges', aliases:['fentes sandbag'], category:'hyrox', hasWeight:true, hasDistance:true, hasKcal:false, hasTime:true, official:true, defaultReps:1, defaultSets:1, defaultRestSec:30 },
+  { id:'hyrox_wall_balls', name:'Wall Balls', aliases:['wall ball'], category:'hyrox', hasWeight:true, hasDistance:false, hasKcal:false, hasTime:true, official:true, defaultReps:100, defaultSets:1, defaultRestSec:0 },
+  // HYROX — EXOS ADDITIONNELS (hors stations : ergo alternatifs, renfo, vélo)
+  { id:'hyrox_echo_bike', name:'Echo Bike', aliases:['echo bike','air bike','vélo air'], category:'hyrox', hasWeight:false, hasDistance:true, hasKcal:true, hasTime:true, hasWatts:true, defaultReps:1, defaultSets:1, defaultRestSec:60 },
+  { id:'hyrox_assault_bike', name:'Assault Bike', aliases:['assault air bike'], category:'hyrox', hasWeight:false, hasDistance:true, hasKcal:true, hasTime:true, hasWatts:true, defaultReps:1, defaultSets:1, defaultRestSec:60 },
+  { id:'hyrox_bike_classic', name:'Vélo classique', aliases:['vélo','bike','home trainer','route'], category:'hyrox', hasWeight:false, hasDistance:true, hasKcal:false, hasTime:true, hasWatts:true, defaultReps:1, defaultSets:1, defaultRestSec:60 },
+  { id:'hyrox_pushups', name:'Pompes', aliases:['pompe','pompes','push up','push-up'], category:'hyrox', hasWeight:false, hasDistance:false, hasKcal:false, hasTime:true, defaultReps:20, defaultSets:1, defaultRestSec:30 },
+  { id:'hyrox_pullups', name:'Tractions', aliases:['traction','tractions','pull up','pull-up'], category:'hyrox', hasWeight:true, hasDistance:false, hasKcal:false, hasTime:true, defaultReps:10, defaultSets:1, defaultRestSec:60 },
 ]
 
 // Base complète = exos « tunés » du builder + toute la bibliothèque Session
@@ -152,10 +162,14 @@ export const ALL_MUSCU_EXERCISES: ExoDefinition[] = [
 
 export function searchExercises(query: string, category?: ExoCategory): ExoDefinition[] {
   const q = query.toLowerCase().trim()
-  if (!q && !category) return ALL_MUSCU_EXERCISES
-  return ALL_MUSCU_EXERCISES.filter(exo => {
+  const base = (!q && !category) ? ALL_MUSCU_EXERCISES : ALL_MUSCU_EXERCISES.filter(exo => {
     if (category && exo.category !== category) return false
     if (!q) return true
     return exo.name.toLowerCase().includes(q) || exo.aliases.some(a => a.toLowerCase().includes(q))
   })
+  // Hyrox : stations officielles (+ run) d'abord, exos additionnels ensuite.
+  if (category === 'hyrox') {
+    return [...base].sort((a, b) => (b.official ? 1 : 0) - (a.official ? 1 : 0))
+  }
+  return base
 }

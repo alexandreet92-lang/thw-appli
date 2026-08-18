@@ -49,6 +49,9 @@ export function itemFromDef(def: ExoDefinition): ExerciseItem {
     distanceM: def.hasDistance ? 0 : undefined,
     kcal: def.hasKcal ? 0 : undefined,
     targetTimeSec: def.hasTime ? 0 : undefined,
+    watts: def.hasWatts ? 0 : undefined,
+    pace500Sec: def.hasPace500 ? 0 : undefined,
+    inclinePct: def.hasIncline ? 0 : undefined,
     restSec: def.defaultRestSec,
   }
 }

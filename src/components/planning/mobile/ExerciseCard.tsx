@@ -129,6 +129,30 @@ export function ExerciseCard({ variant, item, index, accent, circuitType, hideRe
                 onInc={() => { if (item.distanceM && item.targetTimeSec) { const ps = item.targetTimeSec / (item.distanceM / 1000) + 5; set({ targetTimeSec: Math.round(ps * item.distanceM / 1000) }) } }} />
             </div>
           )}
+          {/* Unités Hyrox additionnelles (présence du champ = exo compatible) */}
+          <div className="se-fgrid">
+            {item.watts !== undefined && (
+              <NumField label="Watts" unit="W" value={item.watts ?? 0} step={5} onChange={n => set({ watts: n })} />
+            )}
+            {item.pace500Sec !== undefined && (
+              <div>
+                <FieldLabel>Allure /500m</FieldLabel>
+                <Stepper value={fmtSec(item.pace500Sec ?? 0)}
+                  onChange={v => { const m = v.match(/^(\d+):(\d{1,2})$/); set({ pace500Sec: m ? (+m[1]) * 60 + (+m[2]) : (parseInt(v) || 0) }) }}
+                  onDec={() => set({ pace500Sec: Math.max(0, (item.pace500Sec ?? 0) - 2) })}
+                  onInc={() => set({ pace500Sec: (item.pace500Sec ?? 0) + 2 })} />
+              </div>
+            )}
+            {item.inclinePct !== undefined && (
+              <div>
+                <FieldLabel right={(item.inclinePct ?? 0) >= 1 && (item.distanceM ?? 0) > 0 ? <span style={{ fontSize: 9, color: accent, fontWeight: 700 }}>+{Math.round((item.distanceM ?? 0) * (item.inclinePct ?? 0) / 100)} m D+</span> : undefined}>Pente % (tapis)</FieldLabel>
+                <Stepper value={String(item.inclinePct ?? 0)} unit="%"
+                  onChange={v => set({ inclinePct: Math.max(0, parseFloat(v) || 0) })}
+                  onDec={() => set({ inclinePct: Math.max(0, (item.inclinePct ?? 0) - 0.5) })}
+                  onInc={() => set({ inclinePct: (item.inclinePct ?? 0) + 0.5 })} />
+              </div>
+            )}
+          </div>
         </>
       )}
 

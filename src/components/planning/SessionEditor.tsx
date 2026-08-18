@@ -314,6 +314,11 @@ function ExerciseListBuilder({ sport, exercises, onChange, onCircuitsChange }: {
                       </div>
                       <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-dim)', fontFamily: 'DM Mono,monospace', flexShrink: 0 }}>#{idx + 1}</span>
                       <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{e.name}</span>
+                      {exoDef?.official && (
+                        <span title="Station Hyrox officielle" style={{ fontSize: 9, fontWeight: 800, color: '#fff', background: catColor, padding: '2px 6px', borderRadius: 5, textTransform: 'uppercase' as const, flexShrink: 0, letterSpacing: '0.04em' }}>
+                          Officiel
+                        </span>
+                      )}
                       <span style={{ fontSize: 9, fontWeight: 700, color: catColor, background: `${catColor}18`, padding: '2px 6px', borderRadius: 5, textTransform: 'uppercase' as const, flexShrink: 0 }}>
                         {EXO_CATEGORY_LABEL[e.category]}
                       </span>
@@ -369,6 +374,36 @@ function ExerciseListBuilder({ sport, exercises, onChange, onCircuitsChange }: {
                             style={accentInputStyle} />
                           {(e.targetTimeSec ?? 0) > 0 && (
                             <p style={{ fontSize: 10, color: accentColor, fontWeight: 600, margin: '4px 0 0', fontFamily: 'DM Mono,monospace' }}>{fmtTime(e.targetTimeSec ?? 0)}</p>
+                          )}
+                        </div>
+                      )}
+                      {/* Watts cible (assault/echo bike, vélo classique) */}
+                      {exoDef?.hasWatts && (
+                        <div>
+                          <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px' }}>Watts</p>
+                          <input type="number" min={0} step={5} value={e.watts ?? 0}
+                            onChange={ev => updExo(e.id, 'watts', parseInt(ev.target.value) || 0)}
+                            style={accentInputStyle} />
+                        </div>
+                      )}
+                      {/* Allure /500 m (rameur, skierg) — saisie m:ss */}
+                      {exoDef?.hasPace500 && (
+                        <div>
+                          <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px' }}>Allure /500m</p>
+                          <input value={(e.pace500Sec ?? 0) > 0 ? fmtTime(e.pace500Sec ?? 0) : ''} placeholder="1:50"
+                            onChange={ev => { const m = ev.target.value.match(/^(\d+):(\d{1,2})$/); const s = m ? (+m[1]) * 60 + (+m[2]) : (parseInt(ev.target.value) || 0); updExo(e.id, 'pace500Sec', s) }}
+                            style={accentInputStyle} />
+                        </div>
+                      )}
+                      {/* Course tapis : % pente → D+ auto (distance × pente / 100) */}
+                      {exoDef?.hasIncline && (
+                        <div>
+                          <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px' }}>Pente % (tapis)</p>
+                          <input type="number" min={0} step={0.5} value={e.inclinePct ?? 0}
+                            onChange={ev => updExo(e.id, 'inclinePct', parseFloat(ev.target.value) || 0)}
+                            style={accentInputStyle} />
+                          {(e.inclinePct ?? 0) >= 1 && (e.distanceM ?? 0) > 0 && (
+                            <p style={{ fontSize: 10, color: accentColor, fontWeight: 600, margin: '4px 0 0', fontFamily: 'DM Mono,monospace' }}>+{Math.round((e.distanceM ?? 0) * (e.inclinePct ?? 0) / 100)} m D+</p>
                           )}
                         </div>
                       )}

@@ -1,6 +1,7 @@
 'use client'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { getCurrentUser } from '@/lib/auth/currentUser'
 import type { DataFont } from '@/types/cycling'
 
 export interface CyclingSettings {
@@ -59,7 +60,7 @@ export function useCyclingSettings(onSaved?: () => void) {
   useEffect(() => {
     void (async () => {
       try {
-        const { data: { user } } = await supabase.auth.getUser()
+        const user = await getCurrentUser()
         if (!user) return
         const { data } = await supabase
           .from('sport_page_configs').select('pages')
@@ -88,7 +89,7 @@ export function useCyclingSettings(onSaved?: () => void) {
   const persistSettings = useCallback(async (next: CyclingSettings) => {
     setSaving(true)
     try {
-      const { data: { user } } = await supabase.auth.getUser()
+      const user = await getCurrentUser()
       if (!user) return
       const { error } = await supabase.from('sport_page_configs').upsert(
         { user_id: user.id, sport: SETTINGS_SPORT_KEY, pages: next },

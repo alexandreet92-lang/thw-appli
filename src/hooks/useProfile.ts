@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { getCurrentUser } from '@/lib/auth/currentUser'
 import { resolvePlanningUid, isCoachScoped } from '@/lib/planning/scope'
 
 export interface Profile {
@@ -29,7 +30,7 @@ export function useProfile() {
     if (!uid) { setLoading(false); return }
     // E-mail : celui du compte connecté en interface athlète ; en scope coach on
     // ne fuite jamais l'e-mail du coach → on prend celui du profil athlète s'il existe.
-    const ownEmail = isCoachScoped() ? null : (await supabase.auth.getUser()).data.user?.email ?? null
+    const ownEmail = isCoachScoped() ? null : (await getCurrentUser())?.email ?? null
 
     const { data, error } = await supabase
       .from('profiles')

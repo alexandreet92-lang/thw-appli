@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { getCurrentUser } from '@/lib/auth/currentUser'
 import type { Segment, ActiveEffort, CompletedEffortLocal } from '@/types/segment'
 
 const PROXIMITY_M = 30
@@ -29,11 +30,12 @@ export function useSegmentDetection(
   const elapsedRef = useRef<Record<string, number>>({})
   const timerRef = useRef<NodeJS.Timeout | null>(null)
 
-  // Load userId once
+  // Load userId once (local getSession mémoïsé + .catch pour ne pas rejeter
+  // sans être capté sur réseau mobile instable).
   useEffect(() => {
-    createClient().auth.getUser().then(({ data }) => {
-      userIdRef.current = data.user?.id ?? null
-    })
+    getCurrentUser()
+      .then(u => { userIdRef.current = u?.id ?? null })
+      .catch(() => { userIdRef.current = null })
   }, [])
 
   // Load nearby segments when first position is available

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { getCurrentUser } from '@/lib/auth/currentUser'
 
 export interface PersonalRecord {
   id:               string
@@ -46,7 +47,7 @@ export function useRecords() {
 
   const load = useCallback(async () => {
     setLoading(true)
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCurrentUser()
     if (!user) { setLoading(false); return }
 
     const [recRes, palRes] = await Promise.all([
@@ -63,7 +64,7 @@ export function useRecords() {
 
   const addRecord = useCallback(async (entry: Omit<PersonalRecord, 'id' | 'year'>) => {
     setSaving(true)
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCurrentUser()
     if (!user) { setSaving(false); return }
 
     await supabase.from('personal_records').insert({
@@ -90,7 +91,7 @@ export function useRecords() {
 
   const addPalmares = useCallback(async (entry: Omit<RaceResult, 'id' | 'year'>) => {
     setSaving(true)
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCurrentUser()
     if (!user) { setSaving(false); return }
 
     await supabase.from('race_results').insert({

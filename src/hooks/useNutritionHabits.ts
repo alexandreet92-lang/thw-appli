@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { getCurrentUser } from '@/lib/auth/currentUser'
 
 export interface HabitIngredient {
   name: string
@@ -31,7 +32,7 @@ export function useNutritionHabits() {
     setLoading(true)
     try {
       const sb = createClient()
-      const { data: { user } } = await sb.auth.getUser()
+      const user = await getCurrentUser()
       if (!user) { setLoading(false); return }
       const { data } = await sb
         .from('nutrition_habits')
@@ -49,7 +50,7 @@ export function useNutritionHabits() {
     habit: Omit<NutritionHabit, 'id' | 'user_id' | 'created_at'>
   ): Promise<void> => {
     const sb = createClient()
-    const { data: { user } } = await sb.auth.getUser()
+    const user = await getCurrentUser()
     if (!user) return
     const { data } = await sb
       .from('nutrition_habits')

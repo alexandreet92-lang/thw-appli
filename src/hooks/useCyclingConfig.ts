@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { getCurrentUser } from '@/lib/auth/currentUser'
 import { DEFAULT_PAGES, type DataPage } from '@/types/cycling'
 
 export function useCyclingConfig(sport: string = 'cycling') {
@@ -11,7 +12,7 @@ export function useCyclingConfig(sport: string = 'cycling') {
     void (async () => {
       try {
         const sb = createClient()
-        const { data: { user } } = await sb.auth.getUser()
+        const user = await getCurrentUser()
         if (!user) return
 
         const { data } = await sb
@@ -41,7 +42,7 @@ export function useCyclingConfig(sport: string = 'cycling') {
     setPages(newPages)
     try {
       const sb = createClient()
-      const { data: { user } } = await sb.auth.getUser()
+      const user = await getCurrentUser()
       if (!user) return
       await sb
         .from('sport_page_configs')

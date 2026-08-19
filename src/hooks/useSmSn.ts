@@ -3,6 +3,7 @@
 // expose une fonction de calcul SM/SN par activité. Déterministe, aucun LLM.
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { getCurrentUser } from '@/lib/auth/currentUser'
 import { smSnFromRow, type AthleteBenchmarks, type SmSn } from '@/lib/metrics/smSn'
 
 const EMPTY: AthleteBenchmarks = { ftp: null, hrMax: null, hrRest: null, p5s: null, oneRm: null }
@@ -24,7 +25,7 @@ export function useSmSn() {
     void (async () => {
       try {
         const sb = createClient()
-        const { data: { user } } = await sb.auth.getUser()
+        const user = await getCurrentUser()
         if (!user) { if (!cancelled) setReady(true); return }
         const { data } = await sb
           .from('athlete_performance_profile')

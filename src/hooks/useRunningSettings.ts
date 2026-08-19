@@ -1,6 +1,7 @@
 'use client'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { getCurrentUser } from '@/lib/auth/currentUser'
 import type { DataFont } from '@/types/cycling'
 
 export interface RunningSettings {
@@ -48,7 +49,7 @@ export function useRunningSettings(onSaved?: () => void) {
   useEffect(() => {
     void (async () => {
       try {
-        const { data: { user } } = await supabase.auth.getUser()
+        const user = await getCurrentUser()
         if (!user) return
         const { data } = await supabase
           .from('running_settings').select('settings').eq('user_id', user.id).maybeSingle()
@@ -66,7 +67,7 @@ export function useRunningSettings(onSaved?: () => void) {
   const persistSettings = useCallback(async (next: RunningSettings) => {
     setSaving(true)
     try {
-      const { data: { user } } = await supabase.auth.getUser()
+      const user = await getCurrentUser()
       if (!user) return
       const { error } = await supabase.from('running_settings').upsert(
         { user_id: user.id, settings: next, updated_at: new Date().toISOString() },

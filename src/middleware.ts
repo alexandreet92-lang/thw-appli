@@ -60,15 +60,18 @@ export async function middleware(request: NextRequest) {
   // Pas connecté → auth.
   if (!user) return NextResponse.redirect(new URL('/auth', request.url))
 
-  // ── Présence : last_seen_at, throttlé 60 s. Best-effort, fortement borné :
-  // une écriture lente ne doit pas retarder la navigation. ──
+  // ── Présence : last_seen_at. Throttlé à 5 MIN (au lieu de 60 s) et en
+  // FIRE-AND-FORGET (jamais attendu) pour NE PAS ajouter d'écriture DB dans le
+  // chemin critique de chaque navigation — c'était un contributeur majeur à la
+  // saturation de la base. On pose d'abord le cookie (throttle effectif même si
+  // l'écriture est abandonnée), puis on lance l'update sans l'attendre. ──
   const lastPing = request.cookies.get('thw_ls')?.value
-  if (!lastPing || Date.now() - Number(lastPing) > 60_000) {
-    await withTimeout(
+  if (!lastPing || Date.now() - Number(lastPing) > 300_000) {
+    response.cookies.set('thw_ls', String(Date.now()), { httpOnly: true, sameSite: 'lax', maxAge: 360, path: '/' })
+    void withTimeout(
       Promise.resolve(supabase.from('profiles').update({ last_seen_at: new Date().toISOString() }).eq('id', user.id)),
       500, null,
     )
-    response.cookies.set('thw_ls', String(Date.now()), { httpOnly: true, sameSite: 'lax', maxAge: 120, path: '/' })
   }
 
   // ── Cockpit admin (/admin) : refus RÉEL (403) pour tout autre que l'admin ──

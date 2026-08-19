@@ -107,9 +107,12 @@ async function removeBlocCloud(id: string) {
 }
 
 export function upsertBloc(b: TrainingBlocData): TrainingBlocData[] {
-  const list = loadBlocs()
-  const i = list.findIndex(x => x.id === b.id)
-  if (i >= 0) list[i] = b; else list.push(b)
+  // Copie (jamais de mutation en place) : en scope coach loadBlocs() renvoie la
+  // référence du cache mémoire ; sans copie, setBlocs(sameRef) ne re-render pas
+  // et la nouvelle carte n'apparaîtrait pas.
+  const cur = loadBlocs()
+  const i = cur.findIndex(x => x.id === b.id)
+  const list = i >= 0 ? cur.map(x => x.id === b.id ? b : x) : [...cur, b]
   saveBlocs(list)
   void pushBlocCloud(b)
   return list

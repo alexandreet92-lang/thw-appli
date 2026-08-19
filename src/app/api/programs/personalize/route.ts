@@ -3,6 +3,7 @@
 // ABSOLUES personnalisées pour l'athlète (allure, watts…), à partir de son
 // objectif + ses réponses au questionnaire (et ses données si dispo).
 export const runtime = 'nodejs'
+export const maxDuration = 60
 export const dynamic = 'force-dynamic'
 
 import { NextResponse } from 'next/server'

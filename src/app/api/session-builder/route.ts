@@ -1,3 +1,4 @@
+export const maxDuration = 60
 import { NextRequest, NextResponse } from 'next/server'
 import { getAnthropicClient, MODELS, parseJsonResponse } from '@/lib/agents/base'
 import { buildAthleteContextSafe } from '@/lib/coach/athlete-context'

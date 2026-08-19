@@ -13,6 +13,7 @@ import { createClient } from '@/lib/supabase/server'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
+export const maxDuration = 60
 
 // Diagnostic public (aucun secret exposé) : permet de vérifier en ouvrant
 // /api/tts dans le navigateur si la clé OpenAI est bien prise en compte.

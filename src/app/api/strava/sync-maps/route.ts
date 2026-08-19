@@ -1,3 +1,4 @@
+export const maxDuration = 300
 // ══════════════════════════════════════════════════════════════════
 // STRAVA SYNC-MAPS — src/app/api/strava/sync-maps/route.ts
 //

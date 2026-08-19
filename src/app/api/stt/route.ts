@@ -14,6 +14,7 @@ import { createClient } from '@/lib/supabase/server'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
+export const maxDuration = 60
 
 function extFor(type: string): string {
   if (type.includes('mp4'))  return 'mp4'

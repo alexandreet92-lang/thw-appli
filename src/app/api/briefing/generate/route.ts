@@ -1,3 +1,4 @@
+export const maxDuration = 300
 // ══════════════════════════════════════════════════════════════
 // POST /api/briefing/generate
 // Appel direct Claude (claude-sonnet-4-6) avec tool web_search pour

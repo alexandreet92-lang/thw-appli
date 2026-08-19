@@ -16,7 +16,7 @@ import { useHydration } from '@/hooks/useHydration'
 import { useProfile } from '@/hooks/useProfile'
 import { isCoachScoped } from '@/lib/planning/scope'
 import { TodayTab } from '@/app/nutrition/components/today/TodayTab'
-import CoachTargetsPanel from '@/app/nutrition/components/CoachTargetsPanel'
+import CoachNutritionStrategy from '@/app/nutrition/components/strategy/CoachNutritionStrategy'
 import { CompositionTab } from '@/app/nutrition/components/composition/CompositionTab'
 import { PlanShoppingList } from '@/app/nutrition/components/plan/PlanShoppingList'
 import { SuiviSection } from '@/app/nutrition/components/suivi/SuiviSection'
@@ -1173,7 +1173,7 @@ export default function NutritionPage() {
         {/* Coach : pas de logging de repas (RLS le bloque déjà) → on affiche
             l'éditeur d'OBJECTIFS à la place de l'onglet du jour. */}
         {tab === 'today' && coachScoped && (
-          <CoachTargetsPanel
+          <CoachNutritionStrategy
             athleteName={coachTarget?.name ?? 'Athlète'}
             activePlan={activePlan}
             onSave={(plan, type) => savePlan(plan, type)}

@@ -117,6 +117,19 @@ Règles :
 Réponds UNIQUEMENT avec un tableau JSON []. Aucun texte avant ou après.
 Séance : ${durationMin}min, ${blocks || 'non détaillée'}`
 
+// Stratégie nutrition HEBDOMADAIRE (fiche coach) — sortie JSON structurée.
+const NUTRITION_STRATEGY_SYSTEM_PROMPT =
+  `Tu es un nutritionniste sportif expert. On te donne la FICHE d'un athlète (morphologie, objectif, dépense, terrain) et une PROPOSITION de base déjà calculée (TDEE, macros, semaines). Ton rôle : AFFINER cette stratégie avec ton expertise, en tenant compte de TOUT (objectif chiffré, délai, métabolisme, qualité alimentaire, freins, sports pratiqués, contraintes alimentaires). Ne sors pas des chiffres magiques : justifie.
+
+Réponds UNIQUEMENT avec un objet JSON valide, sans texte ni backticks :
+{
+  "weeks": [{"i":0,"weightKg":72.0,"kcal":2600,"proteines":150,"glucides":300,"lipides":75,"note":"phase d'amorce"}],
+  "rationale": "2-4 phrases : la logique globale de la stratégie, adaptée à CET athlète.",
+  "steps": [{"label":"Protéines","value":"1,8 g/kg","detail":"pourquoi ce choix pour cet athlète"}],
+  "warnings": ["alerte éventuelle (objectif trop rapide, etc.)"]
+}
+Contraintes : une entrée par semaine (i = 0..N-1) couvrant tout le délai ; kcal cohérentes avec les macros (prot×4 + gluc×4 + lip×9 ≈ kcal) ; protéines 1,6–2,4 g/kg selon l'objectif ; progression réaliste (gain ≤ 0,35 %/sem du poids, perte ≤ 1 %/sem). "steps" = le détail du calcul lisible par un humain.`
+
 // Contexte sport ajouté au message utilisateur
 const SPORT_CONTEXT: Record<string, string> = {
   bike:       'Sport : Cyclisme. Intensités en WATTS.',
@@ -325,7 +338,10 @@ export async function POST(req: NextRequest) {
     let systemPrompt: string
     let fullMessage: string
 
-    if (mode === 'nutrition') {
+    if (mode === 'nutrition_strategy') {
+      systemPrompt = NUTRITION_STRATEGY_SYSTEM_PROMPT
+      fullMessage  = userMessage   // fiche + proposition de base (JSON) envoyées par le front
+    } else if (mode === 'nutrition') {
       const ctx = body.context as { duration?: number; blocks?: string } | undefined
       systemPrompt = NUTRITION_SYSTEM_PROMPT_TPL(ctx?.duration ?? 0, ctx?.blocks ?? '')
       fullMessage  = userMessage

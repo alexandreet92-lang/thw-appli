@@ -3061,8 +3061,10 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
             const volPlanned: Record<string, number> = {}
             const volDone: Record<string, number> = {}
             w.forEach(d => {
-              d.sessions.forEach(s => { const sp = normalizeSportType(s.sport); volPlanned[sp] = (volPlanned[sp] || 0) + s.durationMin })
-              d.activities.forEach(a => { const sp = normalizeSportType(a.sport); volDone[sp] = (volDone[sp] || 0) + Math.round(a.elapsedTime / 60) })
+              // Mobilité HORS volume d'entraînement : elle n'apparaît pas dans les
+              // barres par sport ni dans les totaux (mais reste dans le planning).
+              d.sessions.forEach(s => { const sp = normalizeSportType(s.sport); if (!countsInVolume(sp)) return; volPlanned[sp] = (volPlanned[sp] || 0) + s.durationMin })
+              d.activities.forEach(a => { const sp = normalizeSportType(a.sport); if (!countsInVolume(sp)) return; volDone[sp] = (volDone[sp] || 0) + Math.round(a.elapsedTime / 60) })
             })
             const sportsSet = Array.from(new Set([...Object.keys(volPlanned), ...Object.keys(volDone)]))
             const plannedTotal = Object.values(volPlanned).reduce((a, b) => a + b, 0)
@@ -3149,8 +3151,9 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
             const w = buildWeek(ws, activePlan); const dates = getWeekDatesFromStart(ws)
             const mPlan: Record<string, number> = {}; const mDone: Record<string, number> = {}
             w.forEach(d => {
-              d.sessions.forEach(s => { const sp = normalizeSportType(s.sport); mPlan[sp] = (mPlan[sp] || 0) + s.durationMin })
-              d.activities.forEach(a => { const sp = normalizeSportType(a.sport); mDone[sp] = (mDone[sp] || 0) + Math.round(a.elapsedTime / 60) })
+              // Mobilité hors volume (idem vue desktop).
+              d.sessions.forEach(s => { const sp = normalizeSportType(s.sport); if (!countsInVolume(sp)) return; mPlan[sp] = (mPlan[sp] || 0) + s.durationMin })
+              d.activities.forEach(a => { const sp = normalizeSportType(a.sport); if (!countsInVolume(sp)) return; mDone[sp] = (mDone[sp] || 0) + Math.round(a.elapsedTime / 60) })
             })
             const mSports = Array.from(new Set([...Object.keys(mPlan), ...Object.keys(mDone)]))
             const mPlanTot = Object.values(mPlan).reduce((a, b) => a + b, 0)

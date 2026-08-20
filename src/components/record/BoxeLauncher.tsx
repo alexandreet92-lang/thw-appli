@@ -5,7 +5,7 @@
 // structure (circuits / rounds / exercices) lue depuis validation_data. On clique
 // une séance → elle s'ouvre et se lance dans le lecteur en direct.
 // ══════════════════════════════════════════════════════════════════
-import { useState, useEffect } from 'react'
+import { useState, useEffect, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { createClient } from '@/lib/supabase/client'
 import { getCurrentUser } from '@/lib/auth/currentUser'
@@ -22,10 +22,10 @@ interface Props {
 }
 
 interface PlannedRow {
-  id: string; title: string | null; day_index: number
+  id: string; title: string | null; day_index: number; week_start: string
   validation_data: { composed?: ComposedMove[]; composedCircuits?: ComposedCircuit[]; composedCircuit?: ComposedCircuit } | null
 }
-interface PlannedBoxe { id: string; title: string; dayIndex: number; moves: ComposedMove[]; circuits: ComposedCircuit[]; minutes: number }
+interface PlannedBoxe { id: string; title: string; dayIndex: number; weekStart: string; moves: ComposedMove[]; circuits: ComposedCircuit[]; minutes: number }
 
 const ACCENT = '#ef4444'
 const DAYS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']
@@ -36,7 +36,8 @@ export default function BoxeLauncher({ open, onClose, onStart, sport = 'boxe' }:
   const [mounted, setMounted] = useState(false)
   const [closing, setClosing] = useState(false)
   const [loading, setLoading] = useState(true)
-  const [sessions, setSessions] = useState<PlannedBoxe[]>([])
+  const [sessions, setSessions] = useState<PlannedBoxe[]>([])   // toutes les séances du sport
+  const [thisWeek, setThisWeek] = useState<PlannedBoxe[]>([])   // planifiées cette semaine
 
   useEffect(() => { setMounted(true) }, [])
 
@@ -50,18 +51,20 @@ export default function BoxeLauncher({ open, onClose, onStart, sport = 'boxe' }:
         const user = await getCurrentUser()
         if (!user) { if (!cancelled) setLoading(false); return }
         const { data } = await sb.from('planned_sessions')
-          .select('id, title, day_index, validation_data')
-          .eq('user_id', user.id).eq('sport', sport).eq('week_start', weekStartStr(new Date()))
-          .order('day_index', { ascending: true })
+          .select('id, title, day_index, week_start, validation_data')
+          .eq('user_id', user.id).eq('sport', sport)
+          .order('week_start', { ascending: false }).order('day_index', { ascending: true })
         if (cancelled) return
         const rows = (data ?? []) as PlannedRow[]
+        const wk = weekStartStr(new Date())
         const mapped: PlannedBoxe[] = rows.map(r => {
           const vd = r.validation_data ?? {}
           const moves = vd.composed ?? []
           const circuits = vd.composedCircuits ?? (vd.composedCircuit ? [vd.composedCircuit] : [])
-          return { id: r.id, title: r.title || `Séance ${SPORT_LABEL.toLowerCase()}`, dayIndex: r.day_index, moves, circuits, minutes: sumComposedMinutes(moves, circuits) }
+          return { id: r.id, title: r.title || `Séance ${SPORT_LABEL.toLowerCase()}`, dayIndex: r.day_index, weekStart: r.week_start, moves, circuits, minutes: sumComposedMinutes(moves, circuits) }
         })
         setSessions(mapped)
+        setThisWeek(mapped.filter(m => m.weekStart === wk))
       } catch { /* silencieux */ }
       finally { if (!cancelled) setLoading(false) }
     })()
@@ -87,47 +90,72 @@ export default function BoxeLauncher({ open, onClose, onStart, sport = 'boxe' }:
 
         <div style={{ padding: '14px 20px 6px', flexShrink: 0 }}>
           <h3 style={{ margin: 0, fontSize: 21, fontWeight: 800, color: 'var(--text)' }}>{SPORT_LABEL}</h3>
-          <p style={{ margin: '3px 0 0', fontSize: 12.5, color: 'var(--text-dim)' }}>Tes séances de {SPORT_LABEL.toLowerCase()} planifiées cette semaine.</p>
+          <p style={{ margin: '3px 0 0', fontSize: 12.5, color: 'var(--text-dim)' }}>Choisis une séance à lancer, ou démarre sans programme.</p>
         </div>
 
         <div style={{ flex: 1, overflowY: 'auto', padding: '10px 20px 16px' }}>
           {loading ? (
             <p style={{ fontSize: 13, color: 'var(--text-dim)', textAlign: 'center', padding: '30px 0' }}>Chargement…</p>
-          ) : sessions.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '28px 12px' }}>
-              <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', margin: '0 0 4px' }}>Aucune séance de {SPORT_LABEL.toLowerCase()} cette semaine</p>
-              <p style={{ fontSize: 12.5, color: 'var(--text-dim)', margin: 0, lineHeight: 1.5 }}>Crée une séance de {SPORT_LABEL.toLowerCase()} dans ton planning, puis reviens ici pour la lancer.</p>
-            </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {sessions.map(s => (
-                <button key={s.id} onClick={() => { onStart({ title: s.title, moves: s.moves, circuits: s.circuits, sport }); handleClose() }}
-                  style={{ textAlign: 'left', padding: '15px 16px', borderRadius: 16, cursor: 'pointer', border: '1px solid var(--border)', background: 'var(--bg-card2)', display: 'flex', alignItems: 'center', gap: 13, width: '100%' }}>
-                  <span style={{ width: 46, height: 46, borderRadius: 12, background: `${ACCENT}18`, color: ACCENT, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 14, lineHeight: 1 }}>
-                    {DAYS[s.dayIndex] ?? ''}
-                  </span>
-                  <span style={{ flex: 1, minWidth: 0 }}>
-                    <span style={{ display: 'block', fontSize: 15, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.title}</span>
-                    <span style={{ display: 'block', fontSize: 12, color: 'var(--text-dim)', marginTop: 2 }}>
-                      {s.circuits.length > 0 ? `${s.circuits.length} circuit${s.circuits.length > 1 ? 's' : ''} · ` : ''}{s.moves.length} exo{s.moves.length > 1 ? 's' : ''}{s.minutes > 0 ? ` · ≈ ${s.minutes} min` : ''}
-                    </span>
-                  </span>
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={ACCENT} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M9 18l6-6-6-6"/></svg>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+            <>
+              {/* SECTION 1 — Week training : séances planifiées cette semaine */}
+              <SectionLabel>Week training</SectionLabel>
+              {thisWeek.length === 0 ? (
+                <EmptyHint>Aucune séance de {SPORT_LABEL.toLowerCase()} planifiée cette semaine.</EmptyHint>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
+                  {thisWeek.map(s => <SessionRow key={s.id} s={s} onPick={() => { onStart({ title: s.title, moves: s.moves, circuits: s.circuits, sport }); handleClose() }} />)}
+                </div>
+              )}
 
-        {/* Séance LIBRE : lancer sans séance planifiée (chrono ouvert) */}
-        <div style={{ flexShrink: 0, padding: '12px 20px calc(14px + env(safe-area-inset-bottom))', borderTop: '1px solid var(--border)' }}>
-          <button onClick={() => { onStart({ title: `Séance ${SPORT_LABEL.toLowerCase()} libre`, moves: [], circuits: [], sport, free: true }); handleClose() }}
-            style={{ width: '100%', padding: 14, borderRadius: 999, border: `1px solid ${ACCENT}`, background: 'transparent', color: ACCENT, fontSize: 14.5, fontWeight: 800, cursor: 'pointer' }}>
-            Démarrer une séance libre
-          </button>
+              {/* SECTION 2 — Session training : toutes les séances créées de ce sport */}
+              <SectionLabel>Session training</SectionLabel>
+              {sessions.length === 0 ? (
+                <EmptyHint>Aucune séance de {SPORT_LABEL.toLowerCase()} créée. Crée-en une dans ton planning.</EmptyHint>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
+                  {sessions.map(s => <SessionRow key={s.id} s={s} onPick={() => { onStart({ title: s.title, moves: s.moves, circuits: s.circuits, sport }); handleClose() }} />)}
+                </div>
+              )}
+
+              {/* SECTION 3 — No training : lancer sans programme */}
+              <SectionLabel>No training</SectionLabel>
+              <button onClick={() => { onStart({ title: `Séance ${SPORT_LABEL.toLowerCase()} libre`, moves: [], circuits: [], sport, free: true }); handleClose() }}
+                style={{ width: '100%', padding: '15px 16px', borderRadius: 16, cursor: 'pointer', border: `1px solid ${ACCENT}`, background: `${ACCENT}12`, color: ACCENT, fontSize: 14.5, fontWeight: 800, display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left' }}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={ACCENT} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                Lancer sans programme
+              </button>
+            </>
+          )}
         </div>
       </div>
     </>,
     document.body,
+  )
+}
+
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return <p style={{ margin: '0 0 10px', fontSize: 11, fontWeight: 800, letterSpacing: 0.6, textTransform: 'uppercase', color: 'var(--text-dim)' }}>{children}</p>
+}
+
+function EmptyHint({ children }: { children: React.ReactNode }) {
+  return <p style={{ fontSize: 12.5, color: 'var(--text-dim)', margin: '0 0 20px', lineHeight: 1.5 }}>{children}</p>
+}
+
+function SessionRow({ s, onPick }: { s: PlannedBoxe; onPick: () => void }) {
+  return (
+    <button onClick={onPick}
+      style={{ textAlign: 'left', padding: '15px 16px', borderRadius: 16, cursor: 'pointer', border: '1px solid var(--border)', background: 'var(--bg-card2)', display: 'flex', alignItems: 'center', gap: 13, width: '100%' }}>
+      <span style={{ width: 46, height: 46, borderRadius: 12, background: `${ACCENT}18`, color: ACCENT, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 14, lineHeight: 1 }}>
+        {DAYS[s.dayIndex] ?? ''}
+      </span>
+      <span style={{ flex: 1, minWidth: 0 }}>
+        <span style={{ display: 'block', fontSize: 15, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.title}</span>
+        <span style={{ display: 'block', fontSize: 12, color: 'var(--text-dim)', marginTop: 2 }}>
+          {s.circuits.length > 0 ? `${s.circuits.length} circuit${s.circuits.length > 1 ? 's' : ''} · ` : ''}{s.moves.length} exo{s.moves.length > 1 ? 's' : ''}{s.minutes > 0 ? ` · ≈ ${s.minutes} min` : ''}
+        </span>
+      </span>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={ACCENT} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M9 18l6-6-6-6"/></svg>
+    </button>
   )
 }

@@ -18,6 +18,7 @@ import { useHeartRate } from '@/lib/record/useHeartRate'
 import HeartRatePanel from './workout/HeartRatePanel'
 import { vibrateBlockChange, vibrateSessionEnd } from './blockVibrate'
 import { buildBoxeTimeline, totalBoxeRounds, type BoxeSession, type BoxeStep } from './boxe/buildBoxeTimeline'
+import { sumComposedMinutes, moveDef, composedMoveLabel } from '@/components/planning/composedSports'
 
 interface Props { session: BoxeSession; onClose: () => void; isDark: boolean }
 
@@ -35,11 +36,13 @@ function useIsDesktop() {
 
 export default function BoxeScreen({ session, onClose, isDark }: Props) {
   const { t } = useI18n()
+  const sport = session.sport ?? 'boxe'
   const timeline = useMemo(() => buildBoxeTimeline(session), [session])
   const totalRounds = useMemo(() => totalBoxeRounds(timeline), [timeline])
   const isDesktop = useIsDesktop()
 
   const [mounted, setMounted] = useState(false)
+  const [started, setStarted] = useState<boolean>(!!session.free)  // résumé pré-séance sauf séance libre
   const [running, setRunning] = useState(false)
   const [idx, setIdx] = useState(0)
   const [remaining, setRemaining] = useState(timeline[0]?.durationSec ?? 10)
@@ -56,6 +59,14 @@ export default function BoxeScreen({ session, onClose, isDark }: Props) {
   const cur = timeline[idx] ?? timeline[timeline.length - 1]
   const isDone = cur.phase === 'done'
   const roundsDone = useMemo(() => timeline.slice(0, idx).filter(s => s.isRound).length, [timeline, idx])
+  // Compteur adaptatif : ROUNDS pour la boxe (moves « round »), EXOS sinon
+  // (hybrid, renfo…). L'hybrid n'a pas de rounds → on montre les exercices.
+  const totalExos = useMemo(() => timeline.filter(s => s.phase === 'work').length, [timeline])
+  const exosDone = useMemo(() => timeline.slice(0, idx).filter(s => s.phase === 'work').length, [timeline, idx])
+  const useRounds = totalRounds > 0
+  const unitLabel = useRounds ? 'ROUNDS' : 'EXOS'
+  const doneCount = useRounds ? roundsDone : exosDone
+  const totalCount = useRounds ? totalRounds : totalExos
   const caloriesEst = Math.round((elapsed / 60) * 9)  // ≈ 9 kcal/min en boxe
 
   useEffect(() => { setMounted(true) }, [])
@@ -130,7 +141,7 @@ export default function BoxeScreen({ session, onClose, isDark }: Props) {
   const dataPanel = (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12, padding: 16, alignContent: 'start' }}>
       <Metric label="Temps total" value={fmtDur(elapsed)} />
-      <Metric label="Rounds faits" value={`${roundsDone}/${totalRounds}`} />
+      <Metric label={useRounds ? 'Rounds faits' : 'Exos faits'} value={`${doneCount}/${totalCount}`} />
       <Metric label="Calories (est.)" value={String(caloriesEst)} unit="kcal" />
       <Metric label="FC moyenne" value={hr.avg ? String(hr.avg) : '—'} unit={hr.avg ? 'bpm' : ''} />
       <Metric label="FC max" value={hr.max ? String(hr.max) : '—'} unit={hr.max ? 'bpm' : ''} />
@@ -169,8 +180,8 @@ export default function BoxeScreen({ session, onClose, isDark }: Props) {
       {/* Contrôles */}
       <div style={{ flexShrink: 0, display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', padding: '14px 24px', gap: 12 }}>
         <div style={{ textAlign: 'center' }}>
-          <p style={{ fontSize: 34, fontWeight: 900, color: ACCENT, margin: 0, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{Math.max(0, totalRounds - roundsDone)}</p>
-          <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-dim)', margin: '4px 0 0', letterSpacing: '0.06em' }}>ROUNDS RESTANTS</p>
+          <p style={{ fontSize: 34, fontWeight: 900, color: ACCENT, margin: 0, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{Math.max(0, totalCount - doneCount)}</p>
+          <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-dim)', margin: '4px 0 0', letterSpacing: '0.06em' }}>{unitLabel} RESTANTS</p>
         </div>
         {isDone ? (
           <button onClick={() => setShowSave(true)} style={{ width: 84, height: 84, borderRadius: '50%', border: `3px solid ${ACCENT}`, background: ACCENT, color: '#fff', cursor: 'pointer', fontWeight: 800, fontSize: 13 }}>{t('record.sessionSaveSave') || 'Enregistrer'}</button>
@@ -181,8 +192,8 @@ export default function BoxeScreen({ session, onClose, isDark }: Props) {
           </button>
         )}
         <div style={{ textAlign: 'center' }}>
-          <p style={{ fontSize: 34, fontWeight: 900, color: 'var(--text)', margin: 0, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{totalRounds}</p>
-          <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-dim)', margin: '4px 0 0', letterSpacing: '0.06em' }}>ROUNDS TOTAL</p>
+          <p style={{ fontSize: 34, fontWeight: 900, color: 'var(--text)', margin: 0, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{totalCount}</p>
+          <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-dim)', margin: '4px 0 0', letterSpacing: '0.06em' }}>{unitLabel} TOTAL</p>
         </div>
       </div>
     </div>
@@ -203,10 +214,56 @@ export default function BoxeScreen({ session, onClose, isDark }: Props) {
     </div>
   )
 
+  // ── Résumé pré-séance (comme la muscu) : titre + durée/tours/exos + détail ──
+  const preCircuits = session.circuits.length ? session.circuits : [{ id: 'c1', rounds: 1, restSec: 0 }]
+  const preFirstId = preCircuits[0].id
+  const preDurMin = sumComposedMinutes(session.moves, session.circuits)
+  const preTours = preCircuits.reduce((s, c) => s + Math.max(1, c.rounds), 0)
+  const preStart = (
+    <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '16px 18px 32px' }}>
+      <div style={{ maxWidth: 560, margin: '0 auto' }}>
+        <p style={{ fontSize: 11, letterSpacing: '0.14em', textTransform: 'uppercase', color: ACCENT, fontWeight: 800, margin: '4px 0 6px' }}>Prêt à démarrer</p>
+        <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 700, color: 'var(--text)', margin: '0 0 18px' }}>{session.title}</h2>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 18 }}>
+          <div style={{ background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 14, padding: '13px 14px' }}><div style={{ fontSize: 20, fontWeight: 800, color: 'var(--text)' }}>~{preDurMin} min</div><div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', color: 'var(--text-dim)', textTransform: 'uppercase' }}>Durée est.</div></div>
+          <div style={{ background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 14, padding: '13px 14px' }}><div style={{ fontSize: 20, fontWeight: 800, color: 'var(--text)' }}>{preTours}</div><div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', color: 'var(--text-dim)', textTransform: 'uppercase' }}>Tours</div></div>
+          <div style={{ background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 14, padding: '13px 14px' }}><div style={{ fontSize: 20, fontWeight: 800, color: 'var(--text)' }}>{session.moves.length}</div><div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', color: 'var(--text-dim)', textTransform: 'uppercase' }}>Exos</div></div>
+        </div>
+        {preCircuits.map((c, ci) => {
+          const cm = session.moves.filter(m => (m.circuitId ?? preFirstId) === c.id)
+          if (!cm.length) return null
+          return (
+            <div key={c.id} style={{ background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 16, padding: '14px 16px', marginBottom: 12 }}>
+              <p style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: ACCENT, margin: '0 0 10px' }}>{c.name || `Circuit ${ci + 1}`} · {Math.max(1, c.rounds)} tour{c.rounds > 1 ? 's' : ''}</p>
+              {cm.map(m => {
+                const def = moveDef(sport, m.kind)
+                const detail = m.kind === 'round' ? `${m.rounds ?? 1} × ${Math.round((m.timeSec ?? 0) / 60)} min`
+                  : m.measure === 'reps' && !m.timeSec ? `${m.reps ?? ''} reps${m.weightKg ? ` · ${m.weightKg} kg` : ''}`
+                  : m.timeSec ? `${Math.round(m.timeSec / 60)} min` : ''
+                return (
+                  <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 0', borderTop: '1px solid var(--border)' }}>
+                    <span style={{ color: 'var(--text-dim)', fontWeight: 700, fontSize: 13 }}>#</span>
+                    <span style={{ flex: 1, fontSize: 14.5, fontWeight: 600, color: 'var(--text)' }}>{composedMoveLabel(m, def)}</span>
+                    <span style={{ fontSize: 12.5, color: 'var(--text-mid)', fontWeight: 600 }}>{detail}</span>
+                  </div>
+                )
+              })}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+
   const content = (
     <div style={{ position: 'fixed', inset: 0, zIndex: 10002, background: 'var(--bg)', color: 'var(--text)', display: 'flex', flexDirection: 'column', fontFamily: 'var(--font-body)', paddingTop: 'env(safe-area-inset-top)' }}>
       {header}
-      {isDesktop ? (
+      {!started ? (<>
+        {preStart}
+        <div style={{ flexShrink: 0, padding: '12px 18px calc(14px + env(safe-area-inset-bottom))', borderTop: '1px solid var(--border)' }}>
+          <button onClick={() => { setStarted(true); setRunning(true) }} style={{ width: '100%', maxWidth: 560, margin: '0 auto', display: 'block', padding: 15, borderRadius: 14, border: 'none', background: ACCENT, color: '#fff', fontSize: 15.5, fontWeight: 800, cursor: 'pointer' }}>Commencer</button>
+        </div>
+      </>) : isDesktop ? (
         // Desktop : split gauche (séance/chrono) / droite (données)
         <div style={{ flex: 1, minHeight: 0, display: 'grid', gridTemplateColumns: '1.4fr 1fr' }}>
           <div style={{ minHeight: 0, borderRight: '1px solid var(--border)' }}>{timerPanel}</div>

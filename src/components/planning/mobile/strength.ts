@@ -37,6 +37,12 @@ export const HYROX_STATION_IDS = [
 export function hyroxStations(): ExoDefinition[] {
   return HYROX_STATION_IDS.map(id => EXERCISE_DATABASE.find(e => e.id === id)).filter((e): e is ExoDefinition => !!e)
 }
+// Exercices Hyrox ADDITIONNELS : tout le catalogue hyrox hors 8 stations
+// officielles (ergo alternatifs, renfo, sauts, gainage…), ajoutables librement.
+export function hyroxExtras(): ExoDefinition[] {
+  const official = new Set<string>(HYROX_STATION_IDS)
+  return EXERCISE_DATABASE.filter(e => e.category === 'hyrox' && !official.has(e.id))
+}
 
 export const genExoId = () => `exo_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`
 export const genCircuitId = () => `circuit_${Date.now()}_${Math.random().toString(36).slice(2, 5)}`

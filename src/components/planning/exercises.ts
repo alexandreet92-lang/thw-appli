@@ -148,6 +148,22 @@ export const EXERCISE_DATABASE: ExoDefinition[] = [
   { id:'hyrox_bike_classic', name:'Vélo classique', aliases:['vélo','bike','home trainer','route'], category:'hyrox', hasWeight:false, hasDistance:true, hasKcal:false, hasTime:true, hasWatts:true, defaultReps:1, defaultSets:1, defaultRestSec:60 },
   { id:'hyrox_pushups', name:'Pompes', aliases:['pompe','pompes','push up','push-up'], category:'hyrox', hasWeight:false, hasDistance:false, hasKcal:false, hasTime:true, defaultReps:20, defaultSets:1, defaultRestSec:30 },
   { id:'hyrox_pullups', name:'Tractions', aliases:['traction','tractions','pull up','pull-up'], category:'hyrox', hasWeight:true, hasDistance:false, hasKcal:false, hasTime:true, defaultReps:10, defaultSets:1, defaultRestSec:60 },
+  { id:'hyrox_burpees', name:'Burpees', aliases:['burpee','burpees'], category:'hyrox', hasWeight:false, hasDistance:false, hasKcal:false, hasTime:true, defaultReps:20, defaultSets:1, defaultRestSec:30 },
+  { id:'hyrox_thruster', name:'Thrusters', aliases:['thruster','thrusters'], category:'hyrox', hasWeight:true, hasDistance:false, hasKcal:false, hasTime:true, defaultReps:15, defaultSets:1, defaultRestSec:60 },
+  { id:'hyrox_kb_swing', name:'Kettlebell Swing', aliases:['kb swing','swing kettlebell','swing'], category:'hyrox', hasWeight:true, hasDistance:false, hasKcal:false, hasTime:true, defaultReps:20, defaultSets:1, defaultRestSec:45 },
+  { id:'hyrox_box_jump', name:'Box Jumps', aliases:['box jump','saut box'], category:'hyrox', hasWeight:false, hasDistance:false, hasKcal:false, hasTime:true, defaultReps:20, defaultSets:1, defaultRestSec:45 },
+  { id:'hyrox_double_unders', name:'Double Unders', aliases:['double under','corde à sauter','jump rope','saut corde'], category:'hyrox', hasWeight:false, hasDistance:false, hasKcal:false, hasTime:true, defaultReps:50, defaultSets:1, defaultRestSec:30 },
+  { id:'hyrox_air_squat', name:'Air Squats', aliases:['air squat','squat poids de corps','squat pdc'], category:'hyrox', hasWeight:false, hasDistance:false, hasKcal:false, hasTime:true, defaultReps:30, defaultSets:1, defaultRestSec:30 },
+  { id:'hyrox_sandbag_clean', name:'Sandbag Clean', aliases:['sandbag clean','épaulé sandbag'], category:'hyrox', hasWeight:true, hasDistance:false, hasKcal:false, hasTime:true, defaultReps:15, defaultSets:1, defaultRestSec:60 },
+  { id:'hyrox_devil_press', name:'Devil Press', aliases:['devil press'], category:'hyrox', hasWeight:true, hasDistance:false, hasKcal:false, hasTime:true, defaultReps:12, defaultSets:1, defaultRestSec:60 },
+  { id:'hyrox_wall_ball_alt', name:'Wall Ball (renfo)', aliases:['wall ball renfo'], category:'hyrox', hasWeight:true, hasDistance:false, hasKcal:false, hasTime:true, defaultReps:30, defaultSets:1, defaultRestSec:45 },
+  { id:'hyrox_toes_to_bar', name:'Toes to Bar', aliases:['toes to bar','t2b','pointes barre'], category:'hyrox', hasWeight:false, hasDistance:false, hasKcal:false, hasTime:true, defaultReps:15, defaultSets:1, defaultRestSec:45 },
+  { id:'hyrox_med_ball_slam', name:'Med Ball Slam', aliases:['medicine ball slam','slam ball'], category:'hyrox', hasWeight:true, hasDistance:false, hasKcal:false, hasTime:true, defaultReps:20, defaultSets:1, defaultRestSec:30 },
+  { id:'hyrox_bear_crawl', name:'Bear Crawl', aliases:['bear crawl','marche de l\'ours'], category:'hyrox', hasWeight:false, hasDistance:true, hasKcal:false, hasTime:true, defaultReps:1, defaultSets:1, defaultRestSec:45 },
+  { id:'hyrox_situps', name:'Sit-ups', aliases:['sit up','situps','abdos'], category:'hyrox', hasWeight:false, hasDistance:false, hasKcal:false, hasTime:true, defaultReps:30, defaultSets:1, defaultRestSec:30 },
+  { id:'hyrox_mountain_climber', name:'Mountain Climbers', aliases:['mountain climber','grimpeur'], category:'hyrox', hasWeight:false, hasDistance:false, hasKcal:false, hasTime:true, defaultReps:40, defaultSets:1, defaultRestSec:30 },
+  { id:'hyrox_sled_drag', name:'Sled Drag', aliases:['sled drag','traîne de luge'], category:'hyrox', hasWeight:true, hasDistance:true, hasKcal:false, hasTime:true, defaultReps:1, defaultSets:1, defaultRestSec:60 },
+  { id:'hyrox_walking_lunge', name:'Walking Lunges', aliases:['walking lunge','fentes marchées'], category:'hyrox', hasWeight:true, hasDistance:true, hasKcal:false, hasTime:true, defaultReps:20, defaultSets:1, defaultRestSec:45 },
 ]
 
 // Base complète = exos « tunés » du builder + toute la bibliothèque Session

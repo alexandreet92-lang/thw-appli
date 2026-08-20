@@ -2,7 +2,7 @@
 // Builder Hyrox (mobile) : presets 8 stations + bandeau SM/SN/Temps/nb + groupes.
 import { IconPlus } from '@tabler/icons-react'
 import {
-  type ExerciseItem, type ExoCircuit, hyroxStations, itemFromDef, customItem, targetTimeSec, fmtSec,
+  type ExerciseItem, type ExoCircuit, hyroxStations, hyroxExtras, itemFromDef, customItem, targetTimeSec, fmtSec,
 } from './strength'
 import { Banner, BuilderHeader } from './ui'
 import { GroupBuilder } from './GroupBuilder'
@@ -37,6 +37,14 @@ export function HyroxBuilder(p: {
         <button type="button" onClick={() => add(customItem(t('planning.freeExercise'), 'hyrox'))} style={chip(p.accent, true)}>
           <IconPlus size={13} /> {t('planning.free')}
         </button>
+      </div>
+      {/* Exercices additionnels (hors 8 stations) — ergo alternatifs, renfo, sauts… */}
+      <p style={{ margin: '14px 0 8px', fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--se-dim)' }}>Exercices additionnels</p>
+      <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4, flexWrap: 'wrap' as const }}>
+        {hyroxExtras().map(def => (
+          <button key={def.id} type="button" onClick={() => add(itemFromDef(def))}
+            style={chip(p.accent, false)}>{def.name}</button>
+        ))}
       </div>
     </div>
   )

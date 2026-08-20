@@ -105,6 +105,30 @@ export const ACTION_LABEL: Record<StudioActionKey, string> = {
   notify_report:    'Envoyer le rapport en notification',
 }
 
+// Un système ne peut tourner SEUL (planifié) que s'il n'attend aucun accord
+// humain : ni bloc Validation, ni écriture (Planning / Calendrier / Nutrition).
+// Seul « notify_report » (envoi d'une notification) est sûr en autonome.
+export function graphNeedsHuman(g: StudioGraph): boolean {
+  return g.nodes.some(n => n.kind === 'validation' || (n.kind === 'action' && n.actionKey !== 'notify_report'))
+}
+
+// Rend un système AUTONOME : convertit les blocs Validation et les écritures
+// (Planning/Calendrier/Nutrition) en un bloc Notification (« notify_report »).
+// Le système garde sa structure et ses liens, mais au lieu d'écrire ou de te
+// demander ton accord, il t'ENVOIE sa synthèse — il peut donc tourner seul.
+export function makeGraphAutonomous(g: StudioGraph): StudioGraph {
+  const nodes = g.nodes.map(n => {
+    if (n.kind === 'validation') {
+      return { ...n, kind: 'action' as const, actionKey: 'notify_report' as StudioActionKey, title: 'Rapport auto', role: undefined }
+    }
+    if (n.kind === 'action' && n.actionKey !== 'notify_report') {
+      return { ...n, actionKey: 'notify_report' as StudioActionKey, title: 'Rapport auto' }
+    }
+    return n
+  })
+  return { ...g, nodes }
+}
+
 // ── Graphe d'exemple : Objectif → (Endurance ∥ Force) → Synthèse ─────────
 export function sampleGraph(): StudioGraph {
   const trigger = genId(), endur = genId(), force = genId(), synth = genId()

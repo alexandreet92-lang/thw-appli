@@ -13,7 +13,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import {
-  emptyGraph, sampleGraph, genId, autoLayout, validateGraph,
+  emptyGraph, sampleGraph, genId, autoLayout, validateGraph, makeGraphAutonomous,
   MODEL_LABEL, KIND_LABEL, SOURCE_LABEL, ACTION_LABEL,
   type StudioGraph, type StudioNode, type StudioNodeKind, type StudioModel, type StudioSourceKey, type StudioActionKey, type GraphIssues,
 } from '@/lib/studio/graph'
@@ -2859,10 +2859,20 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
               </div>
 
               {hasHuman ? (
-                <p style={{ fontSize: 13, color: 'var(--text-mid)', lineHeight: 1.6, margin: 0, fontFamily: 'var(--font-body)' }}>
-                  Ce système contient un bloc <b>Validation</b> ou une <b>écriture</b> (Planning / Calendrier) : il a besoin de TON accord pour avancer, il ne peut donc pas tourner tout seul.
-                  Pour la planification, termine plutôt par une <b>Notification</b> (il t’envoie sa synthèse), ou retire ces blocs.
-                </p>
+                <>
+                  <p style={{ fontSize: 13, color: 'var(--text-mid)', lineHeight: 1.6, margin: '0 0 14px', fontFamily: 'var(--font-body)' }}>
+                    Ce système contient un bloc <b>Validation</b> ou une <b>écriture</b> (Planning / Calendrier) : il a besoin de TON accord pour avancer, il ne peut donc pas tourner tout seul.
+                    Rends-le <b>autonome</b> — chaque bloc de ce type devient une <b>Notification</b> : il t’enverra sa synthèse chaque cycle, sans jamais écrire ni attendre ton accord.
+                  </p>
+                  <button onClick={() => { commit(makeGraphAutonomous(graph)) }}
+                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%', padding: '12px 14px', borderRadius: 12, border: 'none', background: 'var(--studio-accent)', color: '#fff', fontSize: 13.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                    Rendre ce système autonome
+                  </button>
+                  <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: '10px 0 0', fontFamily: 'var(--font-body)' }}>
+                    Tu pourras rebrancher une écriture ou une validation à tout moment sur la toile.
+                  </p>
+                </>
               ) : (
                 <>
                   <p style={{ fontSize: 12.5, color: 'var(--text-dim)', lineHeight: 1.55, margin: '0 0 14px', fontFamily: 'var(--font-body)' }}>

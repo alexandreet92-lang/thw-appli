@@ -11,9 +11,11 @@
 // Actions sur ses propres messages : Modifier / Supprimer (soft-delete).
 
 import { useEffect, useRef, useState, useCallback } from 'react'
-import { getMessages, sendMessage, markThreadRead, editMessage, deleteMessage, type Msg } from '@/lib/coach/messages'
+import { getMessages, sendMessage, markThreadRead, editMessage, deleteMessage, uploadMessageAttachment, type Msg } from '@/lib/coach/messages'
 
 const fmtTime = (d: string) => { try { return new Date(d).toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) } catch { return '' } }
+
+const menuItem: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '11px 14px', border: 'none', background: 'transparent', color: 'var(--text)', fontSize: 13.5, fontFamily: 'var(--font-body)', cursor: 'pointer', textAlign: 'left' }
 
 // Coche(s) de statut d'un message m'appartenant : ⏳ en cours · ✓ envoyé · ✓✓ vu.
 function StatusTick({ m }: { m: Msg }) {
@@ -33,6 +35,31 @@ function StatusTick({ m }: { m: Msg }) {
   )
 }
 
+// Rendu d'une pièce jointe dans une bulle : image (vignette cliquable),
+// parcours (GPX/TCX) ou fichier (PDF…) sous forme de puce téléchargeable.
+function MsgMedia({ url, type, name, mine }: { url: string; type: 'image' | 'parcours' | 'file' | null; name: string | null; mine: boolean }) {
+  if (type === 'image') {
+    return (
+      <a href={url} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} style={{ display: 'block' }}>
+        <img src={url} alt={name ?? 'image'} style={{ maxWidth: '100%', width: 220, maxHeight: 260, objectFit: 'cover', borderRadius: 11, display: 'block' }} />
+      </a>
+    )
+  }
+  const icon = type === 'parcours' ? '🗺️' : '📄'
+  const fg = mine ? 'var(--on-primary)' : 'var(--text)'
+  return (
+    <a href={url} target="_blank" rel="noopener noreferrer" download={name ?? undefined} onClick={e => e.stopPropagation()}
+      style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '8px 11px', borderRadius: 10, textDecoration: 'none',
+        background: mine ? 'color-mix(in srgb, #000 12%, transparent)' : 'var(--bg-card2)', color: fg, maxWidth: 240 }}>
+      <span style={{ fontSize: 18, flexShrink: 0 }}>{icon}</span>
+      <span style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+        <span style={{ fontSize: 13, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name ?? (type === 'parcours' ? 'Parcours' : 'Fichier')}</span>
+        <span style={{ fontSize: 10.5, opacity: 0.7 }}>{type === 'parcours' ? 'Parcours · ouvrir' : 'Ouvrir'}</span>
+      </span>
+    </a>
+  )
+}
+
 export function MessageThread({ coachId, athleteId, compact = false }: { coachId: string; athleteId: string; compact?: boolean }) {
   const [msgs, setMsgs] = useState<Msg[]>([])
   const [input, setInput] = useState('')
@@ -41,7 +68,22 @@ export function MessageThread({ coachId, athleteId, compact = false }: { coachId
   const [menuId, setMenuId] = useState<string | null>(null)      // message dont le menu d'actions est ouvert
   const [editId, setEditId] = useState<string | null>(null)      // message en cours d'édition
   const [editText, setEditText] = useState('')
+  const [attach, setAttach] = useState<File | null>(null)   // pièce jointe en attente d'envoi
+  const [attachErr, setAttachErr] = useState<string | null>(null)
+  const [plusOpen, setPlusOpen] = useState(false)
   const scroller = useRef<HTMLDivElement>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
+  const camRef = useRef<HTMLInputElement>(null)
+  // Aperçu image local (object URL) pour la pièce jointe en attente.
+  const attachPreview = attach && attach.type.startsWith('image/') ? URL.createObjectURL(attach) : null
+  useEffect(() => () => { if (attachPreview) URL.revokeObjectURL(attachPreview) }, [attachPreview])
+
+  function pickAttach(f: File | null) {
+    setPlusOpen(false); setAttachErr(null)
+    if (!f) return
+    if (f.size > 25 * 1024 * 1024) { setAttachErr('Fichier trop volumineux (max 25 Mo).'); return }
+    setAttach(f)
+  }
 
   const refresh = useCallback(async () => {
     try {
@@ -68,14 +110,23 @@ export function MessageThread({ coachId, athleteId, compact = false }: { coachId
 
   const send = async () => {
     const body = input.trim()
-    if (!body || sending) return
-    setSending(true); setInput('')
+    const file = attach
+    if ((!body && !file) || sending) return
+    setSending(true); setInput(''); setAttach(null); setAttachErr(null)
     // Optimiste : on affiche tout de suite (statut « en cours d'envoi »).
-    const optimistic: Msg = { id: `tmp-${Date.now()}`, coach_id: coachId, athlete_id: athleteId, sender_id: 'me', body, created_at: new Date().toISOString(), read_at: null, edited_at: null, deleted_at: null, mine: true }
+    const optimistic: Msg = { id: `tmp-${Date.now()}`, coach_id: coachId, athlete_id: athleteId, sender_id: 'me', body, created_at: new Date().toISOString(), read_at: null, edited_at: null, deleted_at: null, media_url: attachPreview, media_type: file ? (file.type.startsWith('image/') ? 'image' : /\.(gpx|tcx)$/i.test(file.name) ? 'parcours' : 'file') : null, media_name: file?.name ?? null, mine: true }
     setMsgs(m => [...m, optimistic])
-    try { await sendMessage(coachId, athleteId, body); await refresh() }
-    catch { setInput(body); setMsgs(m => m.filter(x => x.id !== optimistic.id)) }
-    finally { setSending(false) }
+    try {
+      // Pièce jointe + légende = UN SEUL message : on upload d'abord, puis on
+      // envoie le message avec l'attachement et le texte ensemble.
+      const uploaded = file ? await uploadMessageAttachment(file) : null
+      await sendMessage(coachId, athleteId, body, uploaded)
+      await refresh()
+    } catch (e) {
+      setInput(body); if (file) setAttach(file)
+      setMsgs(m => m.filter(x => x.id !== optimistic.id))
+      setAttachErr(e instanceof Error ? e.message : 'Envoi impossible.')
+    } finally { setSending(false) }
   }
 
   const startEdit = (m: Msg) => { setMenuId(null); setEditId(m.id); setEditText(m.body) }
@@ -121,14 +172,17 @@ export function MessageThread({ coachId, athleteId, compact = false }: { coachId
                 <>
                   <div
                     onClick={e => { if (canAct) { e.stopPropagation(); setMenuId(menuId === m.id ? null : m.id) } }}
-                    style={{ padding: '8px 12px', borderRadius: 14, fontSize: 13.5, lineHeight: 1.45, fontFamily: 'var(--font-body)',
+                    style={{ padding: m.media_type === 'image' && !m.body && !deleted ? 4 : '8px 12px', borderRadius: 14, fontSize: 13.5, lineHeight: 1.45, fontFamily: 'var(--font-body)',
                       cursor: canAct ? 'pointer' : 'default',
-                      background: deleted ? 'transparent' : m.mine ? 'var(--primary)' : 'var(--bg-alt)',
+                      background: deleted ? 'transparent' : m.mine ? 'var(--primary)' : 'color-mix(in srgb, var(--primary) 12%, var(--bg-card))',
                       color: deleted ? 'var(--text-dim)' : m.mine ? 'var(--on-primary)' : 'var(--text)',
-                      border: deleted ? '1px dashed var(--border)' : 'none',
+                      border: deleted ? '1px dashed var(--border)' : m.mine ? 'none' : '1px solid color-mix(in srgb, var(--primary) 18%, transparent)',
                       fontStyle: deleted ? 'italic' : 'normal',
                       borderBottomRightRadius: m.mine ? 4 : 14, borderBottomLeftRadius: m.mine ? 14 : 4, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                    {deleted ? 'Message supprimé' : m.body}
+                    {deleted ? 'Message supprimé' : (<>
+                      {m.media_url && <MsgMedia url={m.media_url} type={m.media_type} name={m.media_name} mine={m.mine} />}
+                      {m.body && <span style={{ display: 'block', ...(m.media_url ? { marginTop: 6 } : {}) }}>{m.body}</span>}
+                    </>)}
                   </div>
                   {/* Menu d'actions (mes messages) */}
                   {menuId === m.id && canAct && (
@@ -154,17 +208,57 @@ export function MessageThread({ coachId, athleteId, compact = false }: { coachId
           )
         })}
       </div>
-      <div style={{ flexShrink: 0, borderTop: '1px solid var(--border)', padding: 10, display: 'flex', gap: 8, alignItems: 'flex-end' }}>
-        <textarea value={input} onChange={e => setInput(e.target.value)} rows={1}
-          onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void send() } }}
-          onFocus={e => { e.currentTarget.style.borderColor = 'var(--primary)'; e.currentTarget.style.boxShadow = '0 0 0 3px color-mix(in srgb, var(--primary) 15%, transparent)' }}
-          onBlur={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.boxShadow = 'none' }}
-          placeholder="Écris un message…"
-          style={{ flex: 1, resize: 'none', maxHeight: 120, padding: '11px 14px', borderRadius: 14, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 14, fontFamily: 'var(--font-body)', outline: 'none', lineHeight: 1.45, transition: 'border-color .15s, box-shadow .15s', boxShadow: 'var(--shadow-card)' }} />
-        <button onClick={() => void send()} disabled={!input.trim() || sending} aria-label="Envoyer"
-          style={{ width: 38, height: 38, borderRadius: 11, border: 'none', background: input.trim() ? 'var(--primary)' : 'var(--border)', color: input.trim() ? 'var(--on-primary)' : 'var(--text-dim)', cursor: input.trim() ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
-        </button>
+      <div style={{ flexShrink: 0, borderTop: '1px solid var(--border)', padding: 10 }}>
+        {/* Inputs cachés : fichier (image/parcours/PDF) + caméra (mobile) */}
+        <input ref={fileRef} type="file" accept="image/*,.gpx,.tcx,application/gpx+xml,application/pdf" style={{ display: 'none' }}
+          onChange={e => pickAttach(e.target.files?.[0] ?? null)} />
+        <input ref={camRef} type="file" accept="image/*" capture="environment" style={{ display: 'none' }}
+          onChange={e => pickAttach(e.target.files?.[0] ?? null)} />
+
+        {attachErr && <p style={{ fontSize: 11.5, color: '#EF4444', margin: '0 0 8px', fontWeight: 600 }}>{attachErr}</p>}
+
+        {/* Aperçu de la pièce jointe en attente (envoyée AVEC la légende) */}
+        {attach && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8, padding: 8, borderRadius: 12, background: 'var(--bg-card2)', border: '1px solid var(--border)' }}>
+            {attachPreview
+              ? <img src={attachPreview} alt="" style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 8, flexShrink: 0 }} />
+              : <span style={{ fontSize: 22, flexShrink: 0 }}>{/\.(gpx|tcx)$/i.test(attach.name) ? '🗺️' : '📄'}</span>}
+            <span style={{ flex: 1, minWidth: 0, fontSize: 12.5, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{attach.name}</span>
+            <button onClick={() => setAttach(null)} aria-label="Retirer" style={{ border: 'none', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 18, flexShrink: 0, lineHeight: 1 }}>×</button>
+          </div>
+        )}
+
+        <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
+          {/* Bouton + : joindre un fichier ou prendre une photo */}
+          <div style={{ position: 'relative', flexShrink: 0 }}>
+            <button onClick={() => setPlusOpen(o => !o)} aria-label="Joindre" title="Joindre une photo, un fichier ou un parcours"
+              style={{ width: 38, height: 38, borderRadius: '50%', border: '1px solid var(--border)', background: plusOpen ? 'var(--primary-dim)' : 'var(--bg-card)', color: plusOpen ? 'var(--primary)' : 'var(--text-mid)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all .15s' }}>
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
+            </button>
+            {plusOpen && (<>
+              <div onClick={() => setPlusOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 30 }} />
+              <div style={{ position: 'absolute', bottom: '110%', left: 0, zIndex: 31, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 12, boxShadow: '0 10px 30px rgba(0,0,0,0.22)', overflow: 'hidden', minWidth: 210 }}>
+                <button onClick={() => { setPlusOpen(false); fileRef.current?.click() }} style={menuItem}>
+                  <span style={{ fontSize: 17 }}>📎</span> Photo, fichier ou parcours
+                </button>
+                <button onClick={() => { setPlusOpen(false); camRef.current?.click() }} style={{ ...menuItem, borderTop: '1px solid var(--border)' }}>
+                  <span style={{ fontSize: 17 }}>📷</span> Prendre une photo
+                </button>
+              </div>
+            </>)}
+          </div>
+
+          <textarea value={input} onChange={e => setInput(e.target.value)} rows={1}
+            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void send() } }}
+            onFocus={e => { e.currentTarget.style.borderColor = 'var(--primary)'; e.currentTarget.style.boxShadow = '0 0 0 3px color-mix(in srgb, var(--primary) 15%, transparent)' }}
+            onBlur={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.boxShadow = 'none' }}
+            placeholder={attach ? 'Ajoute une légende (optionnel)…' : 'Écris un message…'}
+            style={{ flex: 1, resize: 'none', maxHeight: 120, padding: '11px 14px', borderRadius: 14, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 14, fontFamily: 'var(--font-body)', outline: 'none', lineHeight: 1.45, transition: 'border-color .15s, box-shadow .15s', boxShadow: 'var(--shadow-card)' }} />
+          <button onClick={() => void send()} disabled={(!input.trim() && !attach) || sending} aria-label="Envoyer"
+            style={{ width: 38, height: 38, borderRadius: 11, border: 'none', background: (input.trim() || attach) ? 'var(--primary)' : 'var(--border)', color: (input.trim() || attach) ? 'var(--on-primary)' : 'var(--text-dim)', cursor: (input.trim() || attach) ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+          </button>
+        </div>
       </div>
     </div>
   )

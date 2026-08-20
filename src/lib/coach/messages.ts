@@ -7,6 +7,7 @@
 import { createClient } from '@/lib/supabase/client'
 import { listMyAthletes, listMyCoaches } from './relationships'
 
+export type MediaKind = 'image' | 'parcours' | 'file'
 export interface Msg {
   id: string
   coach_id: string
@@ -17,8 +18,12 @@ export interface Msg {
   read_at: string | null
   edited_at: string | null
   deleted_at: string | null
+  media_url: string | null
+  media_type: MediaKind | null
+  media_name: string | null
   mine: boolean
 }
+export interface MsgAttachment { url: string; type: MediaKind; name: string }
 export interface Thread {
   otherId: string       // l'autre participant (athlète si je suis coach, coach sinon)
   coachId: string
@@ -37,7 +42,7 @@ async function uid(): Promise<string> {
   return user.id
 }
 
-interface Row { id: string; coach_id: string; athlete_id: string; sender_id: string; body: string; created_at: string; read_at: string | null; edited_at?: string | null; deleted_at?: string | null }
+interface Row { id: string; coach_id: string; athlete_id: string; sender_id: string; body: string | null; created_at: string; read_at: string | null; edited_at?: string | null; deleted_at?: string | null; media_url?: string | null; media_type?: MediaKind | null; media_name?: string | null }
 
 // Fils côté COACH : une entrée par athlète du roster (même sans message).
 export async function getCoachThreads(): Promise<Thread[]> {
@@ -96,17 +101,35 @@ export async function getMessages(coachId: string, athleteId: string): Promise<M
     .eq('coach_id', coachId).eq('athlete_id', athleteId)
     .order('created_at', { ascending: true }).limit(500)
   return ((data ?? []) as Row[]).map(m => ({
-    ...m, edited_at: m.edited_at ?? null, deleted_at: m.deleted_at ?? null, mine: m.sender_id === me,
+    ...m, body: m.body ?? '', edited_at: m.edited_at ?? null, deleted_at: m.deleted_at ?? null,
+    media_url: m.media_url ?? null, media_type: m.media_type ?? null, media_name: m.media_name ?? null,
+    mine: m.sender_id === me,
   }))
 }
 
-export async function sendMessage(coachId: string, athleteId: string, body: string): Promise<void> {
+// Envoi d'un message : texte et/ou pièce jointe (légende + fichier = un seul message).
+export async function sendMessage(coachId: string, athleteId: string, body: string, attachment?: MsgAttachment | null): Promise<void> {
   const sb = createClient()
   const me = await uid()
   const clean = body.trim().slice(0, 4000)
-  if (!clean) return
-  const { error } = await sb.from('coach_messages').insert({ coach_id: coachId, athlete_id: athleteId, sender_id: me, body: clean })
+  if (!clean && !attachment) return
+  const { error } = await sb.from('coach_messages').insert({
+    coach_id: coachId, athlete_id: athleteId, sender_id: me,
+    body: clean || null,
+    media_url: attachment?.url ?? null, media_type: attachment?.type ?? null, media_name: attachment?.name ?? null,
+  })
   if (error) throw new Error(error.message)
+}
+
+// Upload d'une pièce jointe (image / parcours GPX-TCX / PDF) → renvoie l'attachement.
+export async function uploadMessageAttachment(file: File): Promise<MsgAttachment> {
+  const fd = new FormData()
+  fd.append('file', file)
+  fd.append('name', file.name)
+  const res = await fetch('/api/coach/messages/upload', { method: 'POST', body: fd })
+  const json = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(json?.error || 'Upload impossible.')
+  return { url: json.url as string, type: json.kind as MediaKind, name: json.name as string }
 }
 
 // Modifier un message (expéditeur uniquement). Marque edited_at.
@@ -163,7 +186,7 @@ export async function getUnreadThreads(): Promise<Thread[]> {
   const byId = new Map(profs.map(p => [p.id as string, p as Record<string, unknown>]))
   return [...byPair.values()].map(v => {
     const p = byId.get(v.otherId)
-    return { otherId: v.otherId, coachId: v.coachId, athleteId: v.athleteId, name: (p?.full_name as string) || (p?.first_name as string) || 'Utilisateur', avatar: (p?.avatar_url as string | null) ?? null, lastBody: v.last.body, lastAt: v.last.created_at, unread: v.unread }
+    return { otherId: v.otherId, coachId: v.coachId, athleteId: v.athleteId, name: (p?.full_name as string) || (p?.first_name as string) || 'Utilisateur', avatar: (p?.avatar_url as string | null) ?? null, lastBody: v.last.body ?? '', lastAt: v.last.created_at, unread: v.unread }
   }).sort((a, b) => (b.lastAt || '').localeCompare(a.lastAt || ''))
 }
 

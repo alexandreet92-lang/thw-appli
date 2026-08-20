@@ -21,18 +21,22 @@ export function cyclingSmSn(a: ActivityMetricsInput, p: AthleteBenchmarks): SmSn
       const sn = (p.p5s / ftp) * minAbove * (1 + (dPlus + dMinus) / (dKm > 0 ? dKm * 15 : 1))
       return { sm: r(sm), sn: r(sn), smEstimated: false, snEstimated: false }
     }
-    // p5s ou streams absents → SN par FC (repli)
-    const sn = rel != null ? rel * min * 0.4 : 0
+    // p5s ou streams absents → SN estimé depuis l'INTENSITÉ puissance (IF) +
+    // dénivelé (grimper = charge neuromusculaire). Le vélo génère de la fatigue
+    // musculaire : on ne renvoie jamais 0 quand la puissance est connue.
+    const snPow = IF * min * 0.45 * (1 + elevSm)
+    const sn = Math.max(snPow, rel != null ? rel * min * 0.4 : 0)
     return { sm: r(sm), sn: r(sn), smEstimated: false, snEstimated: true }
   }
 
   // ── FC seule ──
   if (rel != null) {
     const sm = min * rel * Math.exp(1.92 * rel) * kh * (1 + elevSm)
-    const sn = rel * min * 0.4
+    const sn = rel * min * 0.4 * (1 + elevSm)
     return { sm: r(sm), sn: r(sn), smEstimated: false, snEstimated: false }
   }
 
-  // ── Ni puissance ni FC → fallback minimal estimé ──
-  return { sm: r(min * 0.5), sn: 0, smEstimated: true, snEstimated: true }
+  // ── Ni puissance ni FC → fallback volume + dénivelé (jamais 0 : une sortie
+  //    vélo réelle sollicite les jambes). Estimé, mais cohérent.
+  return { sm: r(min * 0.5), sn: r(min * 0.3 * (1 + elevSm)), smEstimated: true, snEstimated: true }
 }

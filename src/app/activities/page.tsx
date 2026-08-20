@@ -5396,8 +5396,12 @@ function SectionDonnees({ activities, zones, profile }: {
   const atl = dbMetrics.atl ?? localMetrics.atl
   const tsb = dbMetrics.tsb ?? localMetrics.tsb
 
-  // Requête dédiée graphe — indépendante de la pagination, 52 semaines pour navigation
-  const [weeklyActs, setWeeklyActs] = useState<{ started_at: string; moving_time_s: number | null; distance_m: number | null; sport_type: string }[]>([])
+  // Requête dédiée graphe — indépendante de la pagination, 52 semaines pour navigation.
+  // Inclut les colonnes légères utilisées par les widgets de volume (récap mois,
+  // volume 12 semaines, objectifs) : sinon la liste paginée (50 lignes) ne couvre
+  // que la semaine en cours et toutes les semaines antérieures s'affichent à 0.
+  type WeeklyAct = { started_at: string; moving_time_s: number | null; distance_m: number | null; sport_type: string; elevation_gain_m: number | null; avg_hr: number | null; avg_speed_ms: number | null; avg_pace_s_km: number | null; avg_watts: number | null; normalized_watts: number | null; calories: number | null; tss: number | null; rpe: number | null; title: string | null; is_race: boolean | null; difficulty: number | null; summary_polyline: string | null }
+  const [weeklyActs, setWeeklyActs] = useState<WeeklyAct[]>([])
   useEffect(() => {
     const start = new Date(); start.setDate(start.getDate() - 52 * 7)
     const sb = createClient()
@@ -5405,11 +5409,11 @@ function SectionDonnees({ activities, zones, profile }: {
       if (!uid) return
       sb
         .from('activities')
-        .select('started_at, moving_time_s, distance_m, sport_type')
+        .select('started_at, moving_time_s, distance_m, sport_type, elevation_gain_m, avg_hr, avg_speed_ms, avg_pace_s_km, avg_watts, normalized_watts, calories, tss, rpe, title, is_race, difficulty, summary_polyline')
         .eq('user_id', uid)
         .gte('started_at', start.toISOString())
         .order('started_at', { ascending: true })
-        .then(({ data }) => setWeeklyActs((data ?? []) as { started_at: string; moving_time_s: number | null; distance_m: number | null; sport_type: string }[]))
+        .then(({ data }) => setWeeklyActs((data ?? []) as WeeklyAct[]))
     })
   }, [])
 
@@ -5719,13 +5723,15 @@ function SectionDonnees({ activities, zones, profile }: {
 
           {/* ── Récap hebdo (lundi + mardi) puis mensuel (3 premiers jours du mois) ── */}
           <WeeklySummary activities={activities} />
-          <MonthlySummary activities={activities} />
+          <MonthlySummary activities={weeklyActs} />
 
-          {/* ── Volume sur 12 semaines (par sport, scrub à la souris/doigt) ── */}
-          <TwelveWeekVolume activities={activities} />
+          {/* ── Volume sur 12 semaines (par sport, scrub à la souris/doigt) ──
+              Utilise la requête 52 semaines (weeklyActs), pas la liste paginée,
+              sinon seules les semaines récentes affichent du volume. ── */}
+          <TwelveWeekVolume activities={weeklyActs} />
 
           {/* ── Objectifs hebdomadaires + série ── */}
-          <WeeklyGoals activities={activities} />
+          <WeeklyGoals activities={weeklyActs} />
 
           {/* ── SECTION 1: Hero ─────────────────────────────────────────────── */}
           {dbMetrics.loading

@@ -33,6 +33,10 @@ interface ActivityRowLike {
   streams?: unknown
   raw_data?: unknown
   strength_sets?: StrengthSet[] | null
+  // Scores stockés au moment de l'enregistrement (avec streams complets) — plus
+  // fiables que le recalcul depuis une ligne allégée (streams retirés).
+  sm_score?: number | null
+  sn_score?: number | null
 }
 
 function wattsFrom(row: ActivityRowLike): number[] | null {
@@ -61,5 +65,16 @@ export function activityToInput(row: ActivityRowLike): ActivityMetricsInput {
 }
 
 export function smSnFromRow(row: ActivityRowLike, p: AthleteBenchmarks): SmSn {
-  return computeSmSn(activityToInput(row), p)
+  const computed = computeSmSn(activityToInput(row), p)
+  // Préfère les scores stockés (calculés avec les streams complets à
+  // l'enregistrement) quand ils sont renseignés et > 0 ; sinon recalcul (dont
+  // les replis non nuls pour vélo/muscu). Évite un SN à 0 sur ligne allégée.
+  const smStored = typeof row.sm_score === 'number' && row.sm_score > 0 ? row.sm_score : null
+  const snStored = typeof row.sn_score === 'number' && row.sn_score > 0 ? row.sn_score : null
+  return {
+    sm: smStored ?? computed.sm,
+    sn: snStored ?? computed.sn,
+    smEstimated: smStored != null ? false : computed.smEstimated,
+    snEstimated: snStored != null ? false : computed.snEstimated,
+  }
 }

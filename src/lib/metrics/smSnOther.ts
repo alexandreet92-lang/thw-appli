@@ -28,7 +28,11 @@ export function muscuSmSn(a: ActivityMetricsInput, p: AthleteBenchmarks): SmSn {
   const rel = fcRel(a.avgHr, p.hrRest, p.hrMax)
   const sm = rel != null ? rel * min * 0.6 : min * 0.5
   if (!a.strengthSets || a.strengthSets.length === 0 || !p.oneRm) {
-    return { sm: r(sm), sn: 0, smEstimated: rel == null, snEstimated: true }
+    // Séries détaillées ou 1RM absents → SN estimé par le VOLUME : la muscu est
+    // dominée par la charge neuromusculaire, donc SN élevé par minute (jamais 0).
+    // Modulé par l'intensité FC si disponible.
+    const sn = min * 1.2 * (rel != null ? 0.7 + rel : 1)
+    return { sm: r(sm), sn: r(sn), smEstimated: rel == null, snEstimated: true }
   }
   let sn = 0
   for (const s of a.strengthSets) {

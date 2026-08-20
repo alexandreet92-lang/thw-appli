@@ -31,12 +31,15 @@ export function CoachChatBubble() {
   }, [isCoachView])
   useEffect(() => { if (!hidden) void loadThreads() }, [hidden, loadThreads])
 
-  // Sondage léger du nombre de non-lus.
+  // Sondage léger du nombre de non-lus — seulement onglet visible (allège la base).
   useEffect(() => {
     if (hidden) return
-    const tick = () => { void getUnreadTotal().then(setUnread).catch(() => {}) }
+    const tick = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return
+      void getUnreadTotal().then(setUnread).catch(() => {})
+    }
     tick()
-    pollRef.current = setInterval(tick, 20000)
+    pollRef.current = setInterval(tick, 45000)
     return () => { if (pollRef.current) clearInterval(pollRef.current) }
   }, [hidden])
 

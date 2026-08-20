@@ -53,8 +53,14 @@ export function MessageThread({ coachId, athleteId, compact = false }: { coachId
 
   useEffect(() => { setLoading(true); void refresh() }, [refresh])
   // Rafraîchissement doux tant que le fil est ouvert (sauf pendant une édition).
+  // On ne sonde QUE si l'onglet est visible — inutile de charger la base quand
+  // l'app est en arrière-plan (allège une base sous pression).
   useEffect(() => {
-    const iv = setInterval(() => { if (!editId) void refresh() }, 12000)
+    const iv = setInterval(() => {
+      if (editId) return
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return
+      void refresh()
+    }, 30000)
     return () => clearInterval(iv)
   }, [refresh, editId])
   // Autoscroll en bas à chaque nouveau lot.

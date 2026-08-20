@@ -10,6 +10,7 @@
 
 import { createContext, useContext } from 'react'
 import type { createClient } from '@/lib/supabase/client'
+import { getCurrentUser } from '@/lib/auth/currentUser'
 
 type SB = ReturnType<typeof createClient>
 
@@ -30,8 +31,12 @@ export function isCoachScoped(): boolean { return _scopeUid != null }
 // éditer une séance. La RLS protège toujours les données (contexte auth réel).
 export async function resolvePlanningUid(sb: SB): Promise<string | null> {
   if (_scopeUid) return _scopeUid
-  const { data: { session } } = await sb.auth.getSession()
-  return session?.user?.id ?? null
+  void sb // conservé pour compat de signature ; on passe par le cache borné.
+  // getCurrentUser() est mémoïsé ET borné (timeout 3 s) → cette fonction, appelée
+  // par ~15 requêtes planning, ne peut plus rester bloquée sur l'auth (ce qui
+  // figeait la page en squelettes éternels).
+  const user = await getCurrentUser()
+  return user?.id ?? null
 }
 
 // Contexte React (pour les composants qui veulent réagir au scope au rendu).

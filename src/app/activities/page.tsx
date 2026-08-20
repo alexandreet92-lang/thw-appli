@@ -4890,6 +4890,32 @@ function WeekDetailModal({ week, activities, zones, onClose }: {
     [activities, weekStart, weekEnd]
   )
 
+  // Streams à la demande : la liste est allégée (streams FC/puissance retirés pour
+  // la perf). Sans eux, Polarisation FC / Zones FC / Polarisation puissance restent
+  // vides. On charge les streams des seules activités FC/vélo de la semaine
+  // (ensemble borné) et on les fusionne dans les calculs de zones.
+  const [streamsById, setStreamsById] = useState<Record<string, StreamData>>({})
+  useEffect(() => {
+    const ids = weekActs
+      .filter(a => HR_SPORTS.includes(normalizeSport(a.sport_type)) || ['bike', 'virtual_bike'].includes(a.sport_type))
+      .map(a => a.id)
+      .filter(id => id && !(id in streamsById))
+    if (!ids.length) return
+    const sb = createClient()
+    void sb.from('activities').select('id, streams, raw_data').in('id', ids)
+      .then(({ data }) => {
+        if (!data) return
+        setStreamsById(prev => {
+          const next = { ...prev }
+          for (const r of data as { id: string; streams: StreamData | null; raw_data: { streams?: StreamData } | null }[]) {
+            const s = r.streams ?? r.raw_data?.streams ?? null
+            if (s) next[r.id] = s
+          }
+          return next
+        })
+      })
+  }, [weekActs]) // eslint-disable-line react-hooks/exhaustive-deps
+
   const prevWeekActs = useMemo(() => {
     const ps = new Date(weekStart); ps.setDate(ps.getDate() - 7)
     const pe = new Date(weekEnd);   pe.setDate(pe.getDate() - 7)
@@ -4958,13 +4984,13 @@ function WeekDetailModal({ week, activities, zones, onClose }: {
   const hrTimesZ = useMemo(() => {
     const acc = WK_HR_ZONES.map(() => 0)
     for (const a of filteredActs) {
-      const streams = a.streams ?? (a.raw_data?.streams as StreamData | null)
+      const streams = streamsById[a.id] ?? a.streams ?? (a.raw_data?.streams as StreamData | null)
       if (!streams?.heartrate?.length) continue
       const t = calcTimeInZones(streams.heartrate, WK_HR_ZONES)
       t.forEach((v, i) => { acc[i] += v })
     }
     return acc
-  }, [filteredActs])
+  }, [filteredActs, streamsById])
 
   // ── Bike power times ───────────────────────────────────────
   const bikeTimesZ = useMemo(() => {
@@ -4972,13 +4998,13 @@ function WeekDetailModal({ week, activities, zones, onClose }: {
     const acc = bikeZones.map(() => 0)
     for (const a of weekActs) {
       if (!['bike','virtual_bike'].includes(a.sport_type)) continue
-      const streams = a.streams ?? (a.raw_data?.streams as StreamData | null)
+      const streams = streamsById[a.id] ?? a.streams ?? (a.raw_data?.streams as StreamData | null)
       if (!streams?.watts?.length) continue
       const t = calcTimeInZones(streams.watts, bikeZones)
       t.forEach((v, i) => { acc[i] += v })
     }
     return acc
-  }, [weekActs]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [weekActs, streamsById, bikeZones]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Polarization bands ─────────────────────────────────────
   const hrTotal = hrTimesZ.reduce((a,b) => a+b, 0)

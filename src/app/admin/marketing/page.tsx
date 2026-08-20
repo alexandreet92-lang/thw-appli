@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { getCurrentUser } from "@/lib/auth/currentUser"
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useI18n } from "@/lib/i18n";
@@ -51,7 +52,7 @@ export default function MarketingAdminPage() {
   useEffect(() => {
     const supabase = createClient();
     void (async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getCurrentUser();
       if (!isAdminEmail(user?.email)) {
         void router.replace("/");
         return;

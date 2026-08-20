@@ -4,6 +4,7 @@
 // base via dedup_key — sans cron ni backend.
 import { useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { getCurrentUser } from '@/lib/auth/currentUser'
 import { generateRaceCountdowns } from './raceCountdown'
 
 let ran = false
@@ -15,7 +16,7 @@ export function useNotificationGenerators() {
     void (async () => {
       try {
         const sb = createClient()
-        const { data: { user } } = await sb.auth.getUser()
+        const user = await getCurrentUser()
         if (!user) { ran = false; return }
         const todayISO = new Date().toISOString().slice(0, 10)
         const { data: races } = await sb

@@ -5,6 +5,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { getCurrentUser } from '@/lib/auth/currentUser'
 import { DICTS, DEFAULT_LANG, type Lang } from './dictionaries'
 import { setActiveLang, currentLang, currentLocale } from './locale'
 
@@ -37,7 +38,7 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
     void (async () => {
       try {
         const sb = createClient()
-        const { data: { user } } = await sb.auth.getUser()
+        const user = await getCurrentUser()
         if (!user) return
         const { data } = await sb.from('profiles').select('language').eq('id', user.id).maybeSingle()
         const l = (data?.language as string | null) ?? null
@@ -55,7 +56,7 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
     void (async () => {
       try {
         const sb = createClient()
-        const { data: { user } } = await sb.auth.getUser()
+        const user = await getCurrentUser()
         if (user) await sb.from('profiles').update({ language: l }).eq('id', user.id)
       } catch { /* ignore */ }
     })()

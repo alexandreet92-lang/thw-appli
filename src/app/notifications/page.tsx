@@ -8,6 +8,7 @@ export const dynamic = 'force-dynamic'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { getCurrentUser } from '@/lib/auth/currentUser'
 import { useI18n } from '@/lib/i18n'
 
 const FD = 'var(--font-display)', FB = 'var(--font-body)'
@@ -35,7 +36,7 @@ export default function NotificationsPage() {
     void (async () => {
       try {
         const sb = createClient()
-        const { data: { user } } = await sb.auth.getUser()
+        const user = await getCurrentUser()
         if (!user) { if (!cancelled) { setNotifs([]); setLoading(false) }; return }
         // On n'affiche que les notifications datant de 7 jours ou moins.
         const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()

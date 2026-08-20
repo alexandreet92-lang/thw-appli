@@ -8,6 +8,7 @@ export const dynamic = 'force-dynamic'
 // ══════════════════════════════════════════════════════════════════
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { getCurrentUser } from '@/lib/auth/currentUser'
 import { COACH_PACKS, getCoachPack, type CoachPackKey } from '@/lib/subscriptions/coach-packs'
 import CoachSubscribeEmailModal from '@/components/subscription/CoachSubscribeEmailModal'
 import { getCoachAccessState, startCoachTrial, type CoachAccessState } from '@/lib/coach/owner'
@@ -28,7 +29,7 @@ export default function CoachSubscriptionPage() {
   useEffect(() => {
     void (async () => {
       const sb = createClient()
-      const { data: { user } } = await sb.auth.getUser()
+      const user = await getCurrentUser()
       if (user) {
         const { data } = await sb.from('coach_subscriptions').select('pack_key, status, current_period_end').eq('user_id', user.id).maybeSingle()
         setCurrent((data as CurrentSub) ?? null)

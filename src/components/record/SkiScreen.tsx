@@ -22,6 +22,7 @@ import { useSkiSettings } from '@/hooks/useSkiSettings'
 import { useSkiTracking } from '@/hooks/useSkiTracking'
 import { FONT_OPTIONS } from '@/types/cycling'
 import { createClient } from '@/lib/supabase/client'
+import { getCurrentUser } from '@/lib/auth/currentUser'
 import { useI18n } from '@/lib/i18n'
 import PhotoButton, { type PhotoButtonHandle } from './PhotoButton'
 import PhotoPreviewToast from './PhotoPreviewToast'
@@ -153,7 +154,7 @@ export default function SkiScreen({ onExit, onFinished }: Props) {
     if (!snap) return
     try {
       const sb = createClient()
-      const { data: { user } } = await sb.auth.getUser()
+      const user = await getCurrentUser()
       if (user) {
         const { data: skiData } = await sb.from('workout_sessions').insert({ user_id: user.id, sport: snap.skiType, started_at: snap.startedAtISO, ended_at: snap.endedAtISO, duration_seconds: snap.durationSec, distance_m: snap.distM, elevation_gain_m: snap.elevGainM, avg_speed_kmh: snap.avgSpeedKmh, max_speed_kmh: snap.maxSpeedKmh, gps_track: snap.gpsPts, calories: snap.calories, status: 'completed', title: formData.title, training_types: formData.trainingTypes, rpe: formData.rpe, comment: formData.comment }).select('id').single()
         const skiSavedId = skiData?.id ?? null

@@ -10,6 +10,7 @@ import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useI18n } from '@/lib/i18n'
 import { createClient } from '@/lib/supabase/client'
+import { getCurrentUser } from '@/lib/auth/currentUser'
 import { SPORT_CONFIGS, GENERAL_CONFIGS } from '@/lib/progression/sportConfig'
 import { calculateTrend, fmtRelDate, type ProgSession } from '@/lib/progression/helpers'
 import { EvolutionChart } from './EvolutionChart'
@@ -28,7 +29,7 @@ export function GeneralView({ sport }: { sport: string }) {
     let cancel = false
     const supabase = createClient()
     void (async () => {
-      const { data: { user } } = await supabase.auth.getUser()
+      const user = await getCurrentUser()
       if (!user) { if (!cancel) setSessions([]); return }
       const { data } = await supabase.from('activities').select(COLS)
         .eq('user_id', user.id).in('sport_type', cfg.sportTypes)

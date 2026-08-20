@@ -7,6 +7,7 @@
 'use client'
 import { useCallback, useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { getCurrentUser } from '@/lib/auth/currentUser'
 
 export interface Exo { id: string; name: string; sets: string; reps: string; load: string; rest: string }
 export interface StrengthLog { circuits: string; exos: Exo[] }
@@ -46,7 +47,7 @@ export function useActivityExtras(activityId: string) {
     setExtras(next)
     try {
       const sb = createClient()
-      const { data: { user } } = await sb.auth.getUser()
+      const user = await getCurrentUser()
       if (!user) return
       await sb.from('activity_extras').upsert({
         activity_id: activityId,

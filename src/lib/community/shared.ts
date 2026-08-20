@@ -7,10 +7,11 @@
 //   - profils batchés en une requête .in('id', ids) → évite le N+1.
 // ══════════════════════════════════════════════════════════════════════════
 import { createClient } from '@/lib/supabase/client'
+import { getCurrentUser } from '@/lib/auth/currentUser'
 
 /** Id de l'utilisateur courant, ou null. */
 export async function myId(): Promise<string | null> {
-  const { data: { user } } = await createClient().auth.getUser()
+  const user = await getCurrentUser()
   return user?.id ?? null
 }
 

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { getCurrentUser } from '@/lib/auth/currentUser'
 import type { CompetenceWithUserState } from '@/types/competences'
 
 // Mapping tier DB (premium|pro|expert) → libellé + limite de compétences actives.
@@ -31,7 +32,7 @@ export function useUserCompetences() {
     void (async () => {
       try {
         const sb = createClient()
-        const { data: { user } } = await sb.auth.getUser()
+        const user = await getCurrentUser()
         if (!user) return
         const { data } = await sb
           .from('user_subscriptions')
@@ -71,7 +72,7 @@ export function useUserCompetences() {
   ): Promise<ToggleResult> => {
     try {
       const sb = createClient()
-      const { data: { user } } = await sb.auth.getUser()
+      const user = await getCurrentUser()
       if (!user) return { ok: false, error: 'Connecte-toi pour activer une compétence.' }
 
       const { error } = await sb

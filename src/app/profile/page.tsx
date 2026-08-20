@@ -7,6 +7,7 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import { User, Bell, Zap, Moon, Apple, TrendingUp, Sparkles, Coins, Plug, Trophy, Settings, Package, Bike, Footprints, Target, Globe, MapPin, Shield, Lock, CreditCard, BarChart3, Dumbbell, LogOut, ChevronLeft, Palette, Sun, Monitor, Check, Ruler, Users } from 'lucide-react'
 import SubscriptionEmailModal from '@/components/subscription/SubscriptionEmailModal'
 import { createClient } from '@/lib/supabase/client'
+import { getCurrentUser } from '@/lib/auth/currentUser'
 import { getMyActivityVisibility, setActivityVisibility, getMyHiddenData, setMyHiddenData, HIDDEN_DATA_CATS, type ActivityVisibility, type HiddenDataCat } from '@/lib/profile/activityShowcase'
 import { BottomSheet } from '@/components/ui/BottomSheet'
 import { SlideView } from '@/components/ui/SlideView'
@@ -271,7 +272,7 @@ function useProfile() {
 
   useEffect(() => {
     async function load() {
-      const { data: { user } } = await supabase.auth.getUser()
+      const user = await getCurrentUser()
       if (!user) return
       const { data: p } = await supabase.from('profiles').select('*').eq('id', user.id).single()
       setData({
@@ -303,7 +304,7 @@ function useProfile() {
     // getSession() rafraîchit le token si besoin (getUser seul peut renvoyer null
     // sur token expiré → sauvegarde silencieusement perdue).
     const { data: s } = await supabase.auth.getSession()
-    const uid = s.session?.user?.id ?? (await supabase.auth.getUser()).data.user?.id ?? null
+    const uid = s.session?.user?.id ?? (await getCurrentUser())?.id ?? null
     if (!uid) { setSaving(false); return 'not-auth' }
     const { error } = await supabase.from('profiles').upsert({
       id:             uid,
@@ -320,7 +321,7 @@ function useProfile() {
   }
 
   async function uploadAvatar(file: File): Promise<string|null> {
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCurrentUser()
     if (!user) return null
     const ext  = file.name.split('.').pop()
     const path = `${user.id}/avatar.${ext}`
@@ -342,7 +343,7 @@ function useAthleteSports() {
   const [sports, setSports] = useState<{id:string;sport:string;since_date:string|null}[]>([])
 
   async function load() {
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCurrentUser()
     if (!user) return
     const { data } = await supabase.from('athlete_sports').select('*').eq('user_id', user.id).order('since_date', { ascending:true })
     setSports(data ?? [])
@@ -351,7 +352,7 @@ function useAthleteSports() {
   useEffect(() => { load() }, [])
 
   async function add(sport:string, sinceDate:string) {
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCurrentUser()
     if (!user) return
     await supabase.from('athlete_sports').upsert({ user_id:user.id, sport, since_date:sinceDate||null }, { onConflict:'user_id,sport' })
     await load()
@@ -1467,7 +1468,7 @@ function useAiRules() {
 
   useEffect(() => {
     void (async () => {
-      const { data: { user } } = await supabase.auth.getUser()
+      const user = await getCurrentUser()
       if (!user) { setLoading(false); return }
       const { data } = await supabase
         .from('ai_rules')
@@ -1481,7 +1482,7 @@ function useAiRules() {
   }, [])
 
   async function addRule(category: string, ruleText: string) {
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCurrentUser()
     if (!user) return
     const { data, error } = await supabase
       .from('ai_rules')
@@ -1504,7 +1505,7 @@ function useAiRules() {
   // Instruction personnelle unique (style/comportement de l'IA) — catégorie
   // réservée 'instruction'. Upsert : on met à jour l'existante ou on crée.
   async function saveInstruction(text: string) {
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCurrentUser()
     if (!user) return
     const trimmed = text.trim()
     const existing = rules.find(r => r.category === 'instruction')
@@ -2279,7 +2280,7 @@ export function IASettingsBloc() {
     ;(async () => {
       try {
         const sb = createClient()
-        const { data: { user } } = await sb.auth.getUser()
+        const user = await getCurrentUser()
         if (!user) { if (alive) setActiveComp(0); return }
         const { count } = await sb
           .from('user_competences')
@@ -2492,7 +2493,7 @@ function UnitesBloc() {
         const cached = localStorage.getItem('thw-unit-prefs')
         if (cached && alive) setPrefs(p => ({ ...p, ...JSON.parse(cached) }))
       } catch { /* ignore */ }
-      const { data: { user } } = await supabase.auth.getUser()
+      const user = await getCurrentUser()
       if (!user) return
       const { data } = await supabase.from('profiles').select('unit_prefs').eq('id', user.id).single()
       const up = (data?.unit_prefs ?? {}) as Partial<{ distance: string; temperature: string; weight: string }>
@@ -2506,7 +2507,7 @@ function UnitesBloc() {
     setPrefs(next)
     try { localStorage.setItem('thw-unit-prefs', JSON.stringify(next)) } catch { /* ignore */ }
     window.dispatchEvent(new CustomEvent('thw:unit-prefs', { detail: next }))
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCurrentUser()
     if (user) await supabase.from('profiles').update({ unit_prefs: next, updated_at: new Date().toISOString() }).eq('id', user.id)
   }
 

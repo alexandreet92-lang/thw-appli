@@ -4,6 +4,7 @@
 // profile_activity_showcase(target) qui respecte la confidentialité choisie.
 // ══════════════════════════════════════════════════════════════════
 import { createClient } from '@/lib/supabase/client'
+import { getCurrentUser } from '@/lib/auth/currentUser'
 
 export type ActivityVisibility = 'public' | 'followers' | 'private'
 
@@ -207,7 +208,7 @@ export function activeWeekStreak(weekly: { week: string; count: number }[]): num
 /** Met à jour la confidentialité des activités de l'utilisateur connecté. */
 export async function setActivityVisibility(v: ActivityVisibility): Promise<void> {
   const sb = createClient()
-  const { data: { user } } = await sb.auth.getUser()
+  const user = await getCurrentUser()
   if (!user) return
   await sb.from('profiles').update({ activity_visibility: v }).eq('id', user.id)
 }
@@ -215,7 +216,7 @@ export async function setActivityVisibility(v: ActivityVisibility): Promise<void
 /** Confidentialité actuelle de l'utilisateur connecté. */
 export async function getMyActivityVisibility(): Promise<ActivityVisibility> {
   const sb = createClient()
-  const { data: { user } } = await sb.auth.getUser()
+  const user = await getCurrentUser()
   if (!user) return 'public'
   const { data } = await sb.from('profiles').select('activity_visibility').eq('id', user.id).maybeSingle()
   return ((data as { activity_visibility?: ActivityVisibility } | null)?.activity_visibility) ?? 'public'
@@ -230,7 +231,7 @@ export const HIDDEN_DATA_CATS: HiddenDataCat[] = ['hr', 'watts', 'pace', 'speed'
 /** Masquage global par défaut de l'utilisateur connecté. */
 export async function getMyHiddenData(): Promise<HiddenDataCat[]> {
   const sb = createClient()
-  const { data: { user } } = await sb.auth.getUser()
+  const user = await getCurrentUser()
   if (!user) return []
   const { data } = await sb.from('profiles').select('activity_hidden_data').eq('id', user.id).maybeSingle()
   const arr = (data as { activity_hidden_data?: string[] } | null)?.activity_hidden_data
@@ -240,7 +241,7 @@ export async function getMyHiddenData(): Promise<HiddenDataCat[]> {
 /** Met à jour le masquage global par défaut de l'utilisateur connecté. */
 export async function setMyHiddenData(cats: HiddenDataCat[]): Promise<void> {
   const sb = createClient()
-  const { data: { user } } = await sb.auth.getUser()
+  const user = await getCurrentUser()
   if (!user) return
   await sb.from('profiles').update({ activity_hidden_data: cats }).eq('id', user.id)
 }

@@ -8,6 +8,7 @@
 
 import { useEffect, useState, useCallback, useRef, type ReactNode } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { getCurrentUser } from '@/lib/auth/currentUser'
 import { useI18n } from '@/lib/i18n'
 import type { InstaSnapshot, DailyBrief, BriefIdea } from '@/lib/marketing/types'
 import type { PerformanceAnalysis } from '@/app/api/marketing/analyze-performance/route'
@@ -303,7 +304,7 @@ export default function HybridNetworksPanel({
     void (async () => {
       try {
         const sb = createClient()
-        const { data: { user } } = await sb.auth.getUser()
+        const user = await getCurrentUser()
         const admin = isAdminEmail(user?.email)
         setIsAdmin(admin)
         if (admin) {

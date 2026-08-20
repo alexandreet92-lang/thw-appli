@@ -6,6 +6,7 @@ import { useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { IconBulb, IconBug, IconHeart, IconDots, IconCheck, IconSend } from '@tabler/icons-react'
 import { createClient } from '@/lib/supabase/client'
+import { getCurrentUser } from '@/lib/auth/currentUser'
 import { BottomSheet } from '@/components/ui/BottomSheet'
 
 const FB = 'var(--font-body)', FD = 'var(--font-display)'
@@ -32,7 +33,7 @@ export function FeedbackSheet({ open, onClose }: { open: boolean; onClose: () =>
     setSaving(true); setErr(null)
     try {
       const sb = createClient()
-      const { data: { user } } = await sb.auth.getUser()
+      const user = await getCurrentUser()
       if (!user) { setErr('Tu dois être connecté pour envoyer un message.'); setSaving(false); return }
       const { error } = await sb.from('user_feedback').insert({
         user_id: user.id, user_email: user.email ?? null,

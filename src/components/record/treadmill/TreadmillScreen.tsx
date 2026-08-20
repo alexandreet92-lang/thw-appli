@@ -14,6 +14,7 @@ import { createPortal } from 'react-dom'
 import { useWakeLock } from '@/hooks/useWakeLock'
 import { useStopwatch, formatSeconds } from '@/hooks/useStopwatch'
 import { createClient } from '@/lib/supabase/client'
+import { getCurrentUser } from '@/lib/auth/currentUser'
 import { useI18n } from '@/lib/i18n'
 import { notifyActivitySaved } from '@/lib/notifications/activitySaved'
 import { useHeartRate } from '@/lib/record/useHeartRate'
@@ -164,7 +165,7 @@ export default function TreadmillScreen({ onExit, onFinished }: Props) {
     setRunning(false)
     try {
       const sb = createClient()
-      const { data: { user } } = await sb.auth.getUser()
+      const user = await getCurrentUser()
       if (user) {
         const durationSec = seconds
         const distanceM = Math.round(distRef.current)

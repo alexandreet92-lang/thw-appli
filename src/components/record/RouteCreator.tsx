@@ -5,6 +5,7 @@ import { MapContainer, TileLayer, Polyline, CircleMarker, Marker, useMapEvents, 
 import { IconBike, IconMountain, IconRun, IconWalk } from '@tabler/icons-react'
 import L from 'leaflet'
 import { createClient } from '@/lib/supabase/client'
+import { getCurrentUser } from '@/lib/auth/currentUser'
 import { snapRoute } from '@/lib/openrouteservice'
 import type { Waypoint, SnappedPoint, Surface, ElevPoint } from '@/lib/openrouteservice'
 import { parseGPX } from '@/lib/gpxParser'
@@ -212,7 +213,7 @@ export default function RouteCreator({ onClose, onLoadRoute, isDark, initialView
 
   const handleSave = async (name: string, isPublic: boolean, routeType: RouteType) => {
     const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser(); if (!user) return
+    const user = await getCurrentUser(); if (!user) return
     const payload = {
       user_id: user.id, name, sport, is_public: isPublic, route_type: routeType,
       distance_m: distanceM, elevation_gain_m: elevGain,

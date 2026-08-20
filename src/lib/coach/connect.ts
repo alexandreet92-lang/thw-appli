@@ -3,6 +3,7 @@
 // Stripe Connect côté client : onboarding du coach vendeur + statut + gains.
 // ══════════════════════════════════════════════════════════════════
 import { createClient } from '@/lib/supabase/client'
+import { getCurrentUser } from '@/lib/auth/currentUser'
 
 export interface ConnectStatus { connected: boolean; chargesEnabled: boolean; payoutsEnabled: boolean }
 
@@ -24,7 +25,7 @@ export async function getConnectStatus(): Promise<ConnectStatus> {
 /** Gains du coach (somme des achats de ses programmes, net de commission). */
 export async function getCoachEarnings(): Promise<{ gross: number; fee: number; net: number; sales: number }> {
   const sb = createClient()
-  const { data: { user } } = await sb.auth.getUser()
+  const user = await getCurrentUser()
   if (!user) return { gross: 0, fee: 0, net: 0, sales: 0 }
   const { data } = await sb.from('program_purchases')
     .select('amount_cents, platform_fee_cents').eq('coach_id', user.id).eq('status', 'active')

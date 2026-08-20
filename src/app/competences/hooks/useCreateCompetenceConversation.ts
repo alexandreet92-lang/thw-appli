@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { getCurrentUser } from '@/lib/auth/currentUser'
 import type { Sport, CategorieCompetence } from '@/types/competences'
 import { streamCompetenceAI, type AIChatMsg } from '../lib/streamCompetenceAI'
 
@@ -128,7 +129,7 @@ export function useCreateCompetenceConversation() {
     if (!generatedMetadata || !generatedPrompt) return { ok: false, error: 'Aucune compétence générée' }
     try {
       const sb = createClient()
-      const { data: { user } } = await sb.auth.getUser()
+      const user = await getCurrentUser()
       if (!user) return { ok: false, error: 'Non connecté' }
 
       const { data: inserted, error: e1 } = await sb

@@ -24,6 +24,7 @@ import { useTrailConfig } from '@/hooks/useTrailConfig'
 import { useTrailSettings } from '@/hooks/useTrailSettings'
 import { FONT_OPTIONS } from '@/types/cycling'
 import { createClient } from '@/lib/supabase/client'
+import { getCurrentUser } from '@/lib/auth/currentUser'
 import type { FinishedSession, SessionLap } from '@/types/session'
 import type { GPSPoint } from '@/hooks/useGPSTracking'
 import type { NavRouteInput } from './RouteNavScreen'
@@ -213,13 +214,13 @@ export default function TrailScreen({ onExit, onFinished, route }: Props) {
     if (!navigator.onLine) {
       try {
         const sb = createClient()
-        const { data: { user } } = await sb.auth.getUser()
+        const user = await getCurrentUser()
         if (user) savePendingSession({ user_id: user.id, sport: 'trail', started_at: snap.startedAtISO, ended_at: snap.endedAtISO, duration_seconds: snap.durationSec, distance_m: snap.distM, elevation_gain_m: snap.elevM, avg_speed_kmh: snap.avgSpeedKmh, max_speed_kmh: snap.maxSpeedKmh, gps_track: snap.gpsPts, laps: snap.lapsSnap, calories: snap.calories, status: 'completed', title: formData.title, training_types: formData.trainingTypes, rpe: formData.rpe, comment: formData.comment, activity_sport_type: 'trail', avg_speed_ms: snap.durationSec > 0 ? snap.distM / snap.durationSec : 0, max_speed_ms: snap.maxSpeedKmh / 3.6 })
       } catch (e) { console.error('[trail] offline save error:', e) }
     } else {
       try {
         const sb = createClient()
-        const { data: { user } } = await sb.auth.getUser()
+        const user = await getCurrentUser()
         if (user) {
           const { data } = await sb.from('workout_sessions').insert({ user_id: user.id, sport: 'trail', started_at: snap.startedAtISO, ended_at: snap.endedAtISO, duration_seconds: snap.durationSec, distance_m: snap.distM, elevation_gain_m: snap.elevM, avg_speed_kmh: snap.avgSpeedKmh, max_speed_kmh: snap.maxSpeedKmh, gps_track: snap.gpsPts, laps: snap.lapsSnap, calories: snap.calories, status: 'completed', title: formData.title, training_types: formData.trainingTypes, rpe: formData.rpe, comment: formData.comment }).select('id').single()
           savedId = data?.id ?? null

@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { createClient } from '@/lib/supabase/client'
+import { getCurrentUser } from '@/lib/auth/currentUser'
 import { useI18n } from '@/lib/i18n'
 import type { YogaSessionExercise } from '@/types/yoga'
 import YogaExercisePicker from './YogaExercisePicker'
@@ -48,7 +49,7 @@ export default function YogaSessionBuilder({ isDark, onClose, onStart }: Props) 
     if (!exercises.length) return
     setSaving(true)
     const sb = createClient()
-    const { data: { user } } = await sb.auth.getUser()
+    const user = await getCurrentUser()
     const finalTitle = title.trim() || t('record.yogaBuilderDefaultTitle')
     if (user) {
       await sb.from('planned_sessions').insert({

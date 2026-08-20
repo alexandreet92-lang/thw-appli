@@ -8,6 +8,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { getCurrentUser } from '@/lib/auth/currentUser'
 import { matchProfessions } from '@/lib/profile/professions'
 import {
   DEFAULT_TRAINING_SETTINGS, type TrainingAgentSettings,
@@ -182,7 +183,7 @@ export default function AISettingsModal({ open, initialSection = 'profil', onClo
     } catch { /* ignore */ }
     void (async () => {
       const sb = createClient()
-      const { data: { user } } = await sb.auth.getUser()
+      const user = await getCurrentUser()
       if (!user) return
       uidRef.current = user.id
       const [{ data: prof }, { data: rules }] = await Promise.all([

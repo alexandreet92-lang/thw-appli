@@ -12,6 +12,7 @@
 // ══════════════════════════════════════════════════════════════
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import { getCurrentUser } from "@/lib/auth/currentUser"
 import { useRouter } from 'next/navigation'
 import { useI18n } from '@/lib/i18n'
 import { openUpgrade } from '@/components/subscription/UpgradeModal'
@@ -1464,7 +1465,7 @@ function AddToLibraryModal({ session, onClose }: { session: ParsedSession; onClo
     try {
       const { createClient } = await import('@/lib/supabase/client')
       const sb = createClient()
-      const { data: { user } } = await sb.auth.getUser()
+      const user = await getCurrentUser()
       if (!user) { setErrMsg(t('aip.notConnected')); setSaving(false); return }
 
       // Map ParsedSession blocks → session_library blocs format
@@ -2105,7 +2106,7 @@ function WeakpointsFlow({ onCancel, onRecordConv }: {
       try {
         const { createClient } = await import('@/lib/supabase/client')
         const sb = createClient()
-        const { data: { user } } = await sb.auth.getUser()
+        const user = await getCurrentUser()
         if (!user) { setGateLoading(false); return }
 
         const since1y = new Date(Date.now() - 365 * 86400000).toISOString()
@@ -2718,7 +2719,7 @@ function NutritionGate({ onContinue, onCancel }: {
       try {
         const { createClient } = await import('@/lib/supabase/client')
         const sb = createClient()
-        const { data: { user } } = await sb.auth.getUser()
+        const user = await getCurrentUser()
         if (!user) { setLoading(false); return }
 
         const d3m = new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10)
@@ -2931,7 +2932,7 @@ function NutritionFlow({ onCancel, onRecordConv }: {
     try {
       const { createClient } = await import('@/lib/supabase/client')
       const sb = createClient()
-      const { data: { user } } = await sb.auth.getUser()
+      const user = await getCurrentUser()
       if (!user) throw new Error(t('aip.notAuthenticated'))
 
       const today    = new Date().toISOString().split('T')[0]
@@ -2984,7 +2985,7 @@ function NutritionFlow({ onCancel, onRecordConv }: {
     try {
       const { createClient } = await import('@/lib/supabase/client')
       const sb = createClient()
-      const { data: { user } } = await sb.auth.getUser()
+      const user = await getCurrentUser()
       if (!user) return
 
       const planData = activePlanType === 'minimal' ? plan.plan_minimal : plan.plan_maximal
@@ -3319,7 +3320,7 @@ function RechargeFlow({ onPrepare, onCancel, onRecordConv }: {
       try {
         const { createClient } = await import('@/lib/supabase/client')
         const sb = createClient()
-        const { data: { user } } = await sb.auth.getUser()
+        const user = await getCurrentUser()
         if (!user) { setLoading(false); return }
 
         const now = new Date()
@@ -4130,7 +4131,7 @@ function AnalyzeTestFlow({ onCancel, onRecordConv }: {
       try {
         const { createClient } = await import('@/lib/supabase/client')
         const sb = createClient()
-        const { data: { user } } = await sb.auth.getUser()
+        const user = await getCurrentUser()
         if (!user) { setError(t('aip.notConnected')); return }
 
         const [testsRes, zonesRes, profileRes] = await Promise.all([
@@ -4165,7 +4166,7 @@ function AnalyzeTestFlow({ onCancel, onRecordConv }: {
     try {
       const { createClient } = await import('@/lib/supabase/client')
       const sb = createClient()
-      const { data: { user } } = await sb.auth.getUser()
+      const user = await getCurrentUser()
       if (!user) return
 
       const { data: defs } = await sb.from('test_definitions').select('id,nom,sport,fields').eq('sport', sp)
@@ -4229,7 +4230,7 @@ function AnalyzeTestFlow({ onCancel, onRecordConv }: {
     try {
       const { createClient } = await import('@/lib/supabase/client')
       const sb = createClient()
-      const { data: { user } } = await sb.auth.getUser()
+      const user = await getCurrentUser()
       if (!user) return
 
       const { data: rulesData } = await sb.from('ai_rules').select('category,rule_text').eq('user_id', user.id).eq('active', true)
@@ -4766,7 +4767,7 @@ function AnalyserEntrainementFlow({ onPrepare, onCancel }: { onPrepare: (apiProm
       try {
         const { createClient } = await import('@/lib/supabase/client')
         const sb = createClient()
-        const { data: { user } } = await sb.auth.getUser()
+        const user = await getCurrentUser()
         if (!user) { setActivities([]); return }
 
         const { data } = await sb
@@ -4789,7 +4790,7 @@ function AnalyserEntrainementFlow({ onPrepare, onCancel }: { onPrepare: (apiProm
     try {
       const { createClient } = await import('@/lib/supabase/client')
       const sb = createClient()
-      const { data: { user } } = await sb.auth.getUser()
+      const user = await getCurrentUser()
       if (!user) return
 
       const actDate = act.started_at.split('T')[0]
@@ -4850,7 +4851,7 @@ function AnalyserEntrainementFlow({ onPrepare, onCancel }: { onPrepare: (apiProm
     try {
       const { createClient } = await import('@/lib/supabase/client')
       const sb = createClient()
-      const { data: { user } } = await sb.auth.getUser()
+      const user = await getCurrentUser()
       if (!user) return
 
       const actDate = selectedAct.started_at.split('T')[0]
@@ -6173,7 +6174,7 @@ function AnalyzeTrainingFlow({ onCancel, onRecordConv, onFollowUp }: {
       try {
         const { createClient } = await import('@/lib/supabase/client')
         const sb = createClient()
-        const { data: { user } } = await sb.auth.getUser()
+        const user = await getCurrentUser()
         if (!user) { setError(t('aip.notConnected')); return }
 
         const [countRes, plannedRes] = await Promise.all([
@@ -6203,7 +6204,7 @@ function AnalyzeTrainingFlow({ onCancel, onRecordConv, onFollowUp }: {
       try {
         const { createClient } = await import('@/lib/supabase/client')
         const sb = createClient()
-        const { data: { user } } = await sb.auth.getUser()
+        const user = await getCurrentUser()
         if (!user) return
 
         if (analysisType === 'race') {
@@ -6239,7 +6240,7 @@ function AnalyzeTrainingFlow({ onCancel, onRecordConv, onFollowUp }: {
       try {
         const { createClient } = await import('@/lib/supabase/client')
         const sb = createClient()
-        const { data: { user } } = await sb.auth.getUser()
+        const user = await getCurrentUser()
         if (!user) return
         const { data } = await sb.from('activities')
           .select(ACTIVITIES_SELECT_WITH_STREAMS)
@@ -6295,7 +6296,7 @@ function AnalyzeTrainingFlow({ onCancel, onRecordConv, onFollowUp }: {
     try {
       const { createClient } = await import('@/lib/supabase/client')
       const sb = createClient()
-      const { data: { user } } = await sb.auth.getUser()
+      const user = await getCurrentUser()
       if (!user) return
 
       const mainAct = selected[0]
@@ -6411,7 +6412,7 @@ function AnalyzeTrainingFlow({ onCancel, onRecordConv, onFollowUp }: {
     try {
       const { createClient } = await import('@/lib/supabase/client')
       const sb = createClient()
-      const { data: { user } } = await sb.auth.getUser()
+      const user = await getCurrentUser()
       if (!user) return
       const { data } = await sb.from('activities').select('started_at').eq('user_id', user.id).order('started_at', { ascending: true }).limit(1)
       if (data?.[0]) {
@@ -6428,7 +6429,7 @@ function AnalyzeTrainingFlow({ onCancel, onRecordConv, onFollowUp }: {
     try {
       const { createClient } = await import('@/lib/supabase/client')
       const sb = createClient()
-      const { data: { user } } = await sb.auth.getUser()
+      const user = await getCurrentUser()
       if (!user) return null
 
       const actSel = ACTIVITIES_SELECT
@@ -8020,7 +8021,7 @@ function TpIntroScreen({ onContinue, onCancel }: { onContinue: () => void; onCan
     try {
       const { createClient } = await import('@/lib/supabase/client')
       const sb = createClient()
-      const { data: { user } } = await sb.auth.getUser()
+      const user = await getCurrentUser()
       if (!user) { setLoading(false); return }
 
       const now  = new Date()
@@ -8260,7 +8261,7 @@ function TrainingPlanFlow({
     try {
       const { createClient } = await import('@/lib/supabase/client')
       const sb = createClient()
-      const { data: { user } } = await sb.auth.getUser()
+      const user = await getCurrentUser()
       if (!user) return
 
       // 1. Récupère toutes les séances planifiées (fenêtre large : -4 sem à +104 sem)
@@ -8406,7 +8407,7 @@ function TrainingPlanFlow({
       try {
         const { createClient } = await import('@/lib/supabase/client')
         const sb = createClient()
-        const { data: { user } } = await sb.auth.getUser()
+        const user = await getCurrentUser()
         if (!user) return
 
         const [racesRes, recsRes] = await Promise.all([
@@ -8455,7 +8456,7 @@ function TrainingPlanFlow({
     try {
       const { createClient } = await import('@/lib/supabase/client')
       const sb = createClient()
-      const { data: { user } } = await sb.auth.getUser()
+      const user = await getCurrentUser()
       if (!user) return { profil: null, zones: null, activities: [], calendrier: [], sante: [], userId: null }
 
       const cutoff = new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10)
@@ -8594,7 +8595,7 @@ function TrainingPlanFlow({
       try {
         const { createClient } = await import('@/lib/supabase/client')
         const sb = createClient()
-        const { data: { user } } = await sb.auth.getUser()
+        const user = await getCurrentUser()
         if (!user) { setSaving(false); return }
         const firstWeekStart = startDate
         const lastWeekStart = addWeeks(startDate, program.duree_semaines - 1)
@@ -8615,7 +8616,7 @@ function TrainingPlanFlow({
     try {
       const { createClient } = await import('@/lib/supabase/client')
       const sb = createClient()
-      const { data: { user } } = await sb.auth.getUser()
+      const user = await getCurrentUser()
       if (!user) { setPlanStep('error'); return }
 
       // Si replace : supprimer les existants
@@ -11478,7 +11479,7 @@ function SessionBuilderFlow({ onCancel, onRecordConv }: {
     try {
       const { createClient } = await import('@/lib/supabase/client')
       const sb = createClient()
-      const { data: { user } } = await sb.auth.getUser()
+      const user = await getCurrentUser()
       if (!user) return {}
       const { data } = await sb
         .from('training_zones')
@@ -11580,7 +11581,7 @@ function SessionBuilderFlow({ onCancel, onRecordConv }: {
     try {
       const { createClient } = await import('@/lib/supabase/client')
       const sb = createClient()
-      const { data: { user } } = await sb.auth.getUser()
+      const user = await getCurrentUser()
       if (!user) { setSaving(false); return }
       const { data, error: dbErr } = await sb.from('session_library').insert({
         user_id:       user.id,
@@ -12382,7 +12383,7 @@ function PlusMenu({
       try {
         const { createClient } = await import('@/lib/supabase/client')
         const sb = createClient()
-        const { data: { user } } = await sb.auth.getUser()
+        const user = await getCurrentUser()
         if (!user) return
         const { data: compRows } = await sb
           .from('user_competences')
@@ -12415,7 +12416,7 @@ function PlusMenu({
       try {
         const { createClient } = await import('@/lib/supabase/client')
         const sb = createClient()
-        const { data: { user } } = await sb.auth.getUser()
+        const user = await getCurrentUser()
         if (!user) return
         const { data: rows } = await sb
           .from('activities')
@@ -14813,7 +14814,7 @@ function AppGuideFlow({ onPrepare, onCancel }: {
       try {
         const { createClient } = await import('@/lib/supabase/client')
         const sb = createClient()
-        const { data: { user } } = await sb.auth.getUser()
+        const user = await getCurrentUser()
         if (!user) { setPhase('select'); return }
 
         const now = new Date()
@@ -15521,7 +15522,7 @@ function EstimerZonesFlow({ onCancel, onRecordConv }: {
       try {
         const { createClient } = await import('@/lib/supabase/client')
         const sb = createClient()
-        const { data: { user } } = await sb.auth.getUser()
+        const user = await getCurrentUser()
         if (!user) { setLoadingSports(false); return }
         const { data } = await sb.from('profiles').select('sports').eq('id', user.id).maybeSingle()
         const sports = (data?.sports as string[] | null) ?? []
@@ -15541,7 +15542,7 @@ function EstimerZonesFlow({ onCancel, onRecordConv }: {
     try {
       const { createClient } = await import('@/lib/supabase/client')
       const sb = createClient()
-      const { data: { user } } = await sb.auth.getUser()
+      const user = await getCurrentUser()
       if (!user) { setLoadingGate(false); return }
 
       const now = new Date()
@@ -15594,7 +15595,7 @@ function EstimerZonesFlow({ onCancel, onRecordConv }: {
     try {
       const { createClient } = await import('@/lib/supabase/client')
       const sb = createClient()
-      const { data: { user } } = await sb.auth.getUser()
+      const user = await getCurrentUser()
       if (!user) throw new Error('Non authentifié')
 
       const ftpEstimated = estimateFTP(gateData.activities)
@@ -16018,7 +16019,7 @@ function AnalyserProgressionFlow({ onCancel, onRecordConv }: {
       try {
         const { createClient } = await import('@/lib/supabase/client')
         const sb = createClient()
-        const { data: { user } } = await sb.auth.getUser()
+        const user = await getCurrentUser()
         if (!user) { setLoadingSports(false); return }
         const { data } = await sb.from('profiles').select('sports').eq('id', user.id).maybeSingle()
         const sports = (data?.sports as string[] | null) ?? []
@@ -16041,7 +16042,7 @@ function AnalyserProgressionFlow({ onCancel, onRecordConv }: {
       try {
         const { createClient } = await import('@/lib/supabase/client')
         const sb = createClient()
-        const { data: { user } } = await sb.auth.getUser()
+        const user = await getCurrentUser()
         if (!user) { setCheckingGate(false); return }
         const startDate = new Date(); startDate.setMonth(startDate.getMonth() - period)
         const { count } = await sb.from('activities').select('id', { count: 'exact', head: true }).eq('user_id', user.id).in('sport_type', selectedSports).gte('started_at', startDate.toISOString())
@@ -16065,7 +16066,7 @@ function AnalyserProgressionFlow({ onCancel, onRecordConv }: {
     try {
       const { createClient } = await import('@/lib/supabase/client')
       const sb = createClient()
-      const { data: { user } } = await sb.auth.getUser()
+      const user = await getCurrentUser()
       if (!user) throw new Error('Non authentifié')
 
       const startDate = new Date(); startDate.setMonth(startDate.getMonth() - period)
@@ -16439,7 +16440,7 @@ function SleepAdviceFlow({ onCancel, onRecordConv, onFollowUp }: {
       try {
         const { createClient } = await import('@/lib/supabase/client')
         const sb = createClient()
-        const { data: { user } } = await sb.auth.getUser()
+        const user = await getCurrentUser()
         if (!user || cancelled) return
 
         const since60d = new Date(Date.now() - 60 * 86400000)
@@ -16508,7 +16509,7 @@ function SleepAdviceFlow({ onCancel, onRecordConv, onFollowUp }: {
     try {
       const { createClient } = await import('@/lib/supabase/client')
       const sb = createClient()
-      const { data: { user } } = await sb.auth.getUser()
+      const user = await getCurrentUser()
       if (!user) throw new Error('Non connecté')
 
       const now = new Date()
@@ -16916,7 +16917,7 @@ function RecoveryAnalysisFlow({ onCancel, onRecordConv, onFollowUp }: {
       try {
         const { createClient } = await import('@/lib/supabase/client')
         const sb = createClient()
-        const { data: { user } } = await sb.auth.getUser()
+        const user = await getCurrentUser()
         if (!user || cancelled) return
 
         const now = new Date()
@@ -16987,7 +16988,7 @@ function RecoveryAnalysisFlow({ onCancel, onRecordConv, onFollowUp }: {
     try {
       const { createClient } = await import('@/lib/supabase/client')
       const sb = createClient()
-      const { data: { user } } = await sb.auth.getUser()
+      const user = await getCurrentUser()
       if (!user) throw new Error('Non connecté')
 
       const now = new Date()
@@ -17377,7 +17378,7 @@ function WeekAnalysisFlow({ onCancel, onRecordConv, onFollowUp }: {
       try {
         const { createClient } = await import('@/lib/supabase/client')
         const sb = createClient()
-        const { data: { user } } = await sb.auth.getUser()
+        const user = await getCurrentUser()
         if (!user || cancelled) return
 
         const now = new Date()
@@ -17440,7 +17441,7 @@ function WeekAnalysisFlow({ onCancel, onRecordConv, onFollowUp }: {
     try {
       const { createClient } = await import('@/lib/supabase/client')
       const sb = createClient()
-      const { data: { user } } = await sb.auth.getUser()
+      const user = await getCurrentUser()
       if (!user) throw new Error('Non connecté')
 
       const now = new Date()
@@ -18877,7 +18878,7 @@ function StrategieCourseFlow({ onCancel, onRecordConv, onFollowUp }: {
       try {
         const { createClient } = await import('@/lib/supabase/client')
         const sb = createClient()
-        const { data: { user } } = await sb.auth.getUser()
+        const user = await getCurrentUser()
         if (!user) { setLoadingRaces(false); return }
         const today = new Date().toISOString().split('T')[0]
         const { data } = await sb.from('planned_races').select('id,name,sport,date,level,goal,goal_time,run_distance,tri_distance,goal_swim_time,goal_bike_time,goal_run_time').eq('user_id', user.id).gte('date', today).order('date', { ascending: true }).limit(10)
@@ -19004,7 +19005,7 @@ function StrategieCourseFlow({ onCancel, onRecordConv, onFollowUp }: {
     try {
       const { createClient } = await import('@/lib/supabase/client')
       const sb = createClient()
-      const { data: { user } } = await sb.auth.getUser()
+      const user = await getCurrentUser()
       if (!user) return
 
       const raceSport = getRaceSport()
@@ -19082,7 +19083,7 @@ function StrategieCourseFlow({ onCancel, onRecordConv, onFollowUp }: {
     try {
       const { createClient } = await import('@/lib/supabase/client')
       const sb = createClient()
-      const { data: { user } } = await sb.auth.getUser()
+      const user = await getCurrentUser()
       if (!user) { setLoadingContext(false); return }
 
       const raceSport = getRaceSport()
@@ -20922,7 +20923,7 @@ export default function AIPanel({
       try {
         const { createClient } = await import('@/lib/supabase/client')
         const sb = createClient()
-        const { data: { user } } = await sb.auth.getUser()
+        const user = await getCurrentUser()
         if (!user) return
         syncUserIdRef.current = user.id
         const remote = await fetchRemoteConvs(sb, user.id)
@@ -20965,7 +20966,7 @@ export default function AIPanel({
     void (async () => {
       const { createClient } = await import('@/lib/supabase/client')
       const sb = createClient()
-      const { data: { user } } = await sb.auth.getUser()
+      const user = await getCurrentUser()
       if (!user) return
       const { data } = await sb
         .from('ai_rules')
@@ -20997,7 +20998,7 @@ export default function AIPanel({
       try {
         const { createClient } = await import('@/lib/supabase/client')
         const sb = createClient()
-        const { data: { user } } = await sb.auth.getUser()
+        const user = await getCurrentUser()
         if (!user) return
         const name = user.user_metadata?.full_name ?? user.email ?? ''
         const parts = name.trim().split(/\s+/)
@@ -21733,7 +21734,7 @@ export default function AIPanel({
     try {
       const { createClient } = await import('@/lib/supabase/client')
       const sb = createClient()
-      const { data: { user } } = await sb.auth.getUser()
+      const user = await getCurrentUser()
       if (!user) throw new Error('Non connecté')
 
       // Agent Coach : les modifications de séances/plan s'appliquent à l'athlète ciblé.
@@ -21985,7 +21986,7 @@ export default function AIPanel({
     try {
       const { createClient } = await import('@/lib/supabase/client')
       const sb = createClient()
-      const { data: { user } } = await sb.auth.getUser()
+      const user = await getCurrentUser()
       if (!user) { setProposal({ status: 'error', requirements: req, error: 'Tu n\'es plus connecté.' }); return }
       // Agent Coach : le plan est lu/écrit pour l'ATHLÈTE CIBLÉ (RLS coach), pas le coach.
       const userId = activeAgent === 'coach' && coachTarget ? coachTarget.id : user.id
@@ -22050,7 +22051,7 @@ export default function AIPanel({
     try {
       const { createClient } = await import('@/lib/supabase/client')
       const sb = createClient()
-      const { data: { user } } = await sb.auth.getUser()
+      const user = await getCurrentUser()
       if (!user) throw new Error('Non connecté')
       // Agent Coach : le plan est lu/écrit pour l'ATHLÈTE CIBLÉ (RLS coach), pas le coach.
       const userId = activeAgent === 'coach' && coachTarget ? coachTarget.id : user.id
@@ -22580,7 +22581,7 @@ export default function AIPanel({
         try {
           const { createClient } = await import('@/lib/supabase/client')
           const sb = createClient()
-          const { data: { user } } = await sb.auth.getUser()
+          const user = await getCurrentUser()
           if (user) {
             await sb.from('training_plan_messages').insert([
               { training_plan_id: planId, user_id: user.id, role: 'user',      content: displayText },
@@ -22640,7 +22641,7 @@ export default function AIPanel({
   const handleEnrichedAction = useCallback(async (id: string, label: string) => {
     const sbModule = await import('@/lib/supabase/client')
     const sb = sbModule.createClient()
-    const { data: { user } } = await sb.auth.getUser()
+    const user = await getCurrentUser()
     if (!user) return
     const { data: rulesData } = await sb.from('ai_rules').select('category,rule_text').eq('user_id', user.id).eq('active', true)
     const rulesBlock = rulesData && rulesData.length > 0

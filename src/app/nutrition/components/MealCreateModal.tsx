@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { getCurrentUser } from '@/lib/auth/currentUser'
 import type { MealTemplate, MealTiming, Ingredient } from '@/hooks/useNutrition'
 
 type Unit = 'g' | 'ml' | 'piece'
@@ -88,7 +89,7 @@ export default function MealCreateModal({
       setUploading(true)
       try {
         const sb = createClient()
-        const { data: { user } } = await sb.auth.getUser()
+        const user = await getCurrentUser()
         if (user) {
           const ext = photoFile.name.split('.').pop() ?? 'jpg'
           const path = `${user.id}/${Date.now()}.${ext}`

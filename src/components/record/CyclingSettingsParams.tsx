@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import { useProfile } from '@/hooks/useProfile'
 import { createClient } from '@/lib/supabase/client'
+import { getCurrentUser } from '@/lib/auth/currentUser'
 import { SettingsSection, SettingsSectionSubtitle } from './settings/SettingsSection'
 import { SettingsRow } from './settings/SettingsRow'
 import { Toggle } from './settings/Toggle'
@@ -48,7 +49,7 @@ export default function CyclingSettingsParams({ settings, updateSetting, theme, 
     void (async () => {
       try {
         const sb = createClient()
-        const { data: { user } } = await sb.auth.getUser()
+        const user = await getCurrentUser()
         if (!user) return
         const { data } = await sb.from('training_zones')
           .select('ftp_watts,z1_value,z2_value,z3_value,z4_value,z5_value')

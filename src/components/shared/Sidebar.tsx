@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 import { useTheme } from '@/hooks/useTheme'
 import { useProfile } from '@/hooks/useProfile'
 import { createClient } from '@/lib/supabase/client'
+import { getCurrentUser } from '@/lib/auth/currentUser'
 import { useState, useEffect, useRef } from 'react'
 import dynamic from 'next/dynamic'
 import { useI18n } from '@/lib/i18n'
@@ -272,7 +273,7 @@ export function SidebarContent({ onClose, headerSlot, expanded = true }: { onClo
     const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL
     if (!adminEmail) return
     void (async () => {
-      const { data: { user } } = await createClient().auth.getUser()
+      const user = await getCurrentUser()
       if (!cancel) setIsAdmin(!!user?.email && user.email.toLowerCase() === adminEmail.toLowerCase())
     })()
     return () => { cancel = true }

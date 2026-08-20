@@ -11,6 +11,7 @@
 import { useRef, useState } from 'react'
 import { IconPlus, IconTrash, IconPlayerPlayFilled, IconLoader2 } from '@tabler/icons-react'
 import { createClient } from '@/lib/supabase/client'
+import { getCurrentUser } from '@/lib/auth/currentUser'
 import type { MediaItem } from './ActivityMedia'
 
 interface LatLng { lat: number; lng: number }
@@ -56,7 +57,7 @@ export function ActivityMediaHero({ activityId, initialMedia, points, bottomInse
     setBusy(true)
     try {
       const sb = createClient()
-      const { data: { user } } = await sb.auth.getUser()
+      const user = await getCurrentUser()
       if (!user) throw new Error('Non connecté')
       const added: MediaItem[] = []
       for (const file of Array.from(files)) {

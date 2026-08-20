@@ -9,6 +9,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { usePathname } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { getCurrentUser } from '@/lib/auth/currentUser'
 import { isFullscreenRoute } from '@/lib/layout/fullscreenRoutes'
 import { useI18n } from '@/lib/i18n'
 
@@ -32,7 +33,7 @@ export function ReauthGate() {
   const check = useCallback(async () => {
     if (isFullscreenRoute(pathname)) { setNeed(false); return }
     const sb = createClient()
-    const { data: { user } } = await sb.auth.getUser()
+    const user = await getCurrentUser()
     if (!user) { setNeed(false); return }
     // Comptes OAuth (sans mot de passe) : pas de re-saisie possible → on ignore.
     const hasPassword = (user.identities ?? []).some(i => i.provider === 'email')

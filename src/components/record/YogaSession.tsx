@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom'
 import { useWakeLock } from '@/hooks/useWakeLock'
 import { useYogaSession } from '@/hooks/useYogaSession'
 import { createClient } from '@/lib/supabase/client'
+import { getCurrentUser } from '@/lib/auth/currentUser'
 import { useI18n } from '@/lib/i18n'
 import type { YogaSessionExercise } from '@/types/yoga'
 import AICoachingTip from './AICoachingTip'
@@ -60,7 +61,7 @@ export default function YogaSession({ exercises, title, isDark, onClose }: Props
 
   const handleSave = async (formData: SessionFormData) => {
     const sb = createClient()
-    const { data: { user } } = await sb.auth.getUser()
+    const user = await getCurrentUser()
     if (user) {
       await sb.from('activities').insert({
         user_id: user.id, sport: 'yoga',

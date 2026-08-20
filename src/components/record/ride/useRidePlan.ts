@@ -8,6 +8,7 @@
 // que l'athlète VOIE quand même sa séance planifiée sur l'écran de démarrage.
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { getCurrentUser } from '@/lib/auth/currentUser'
 import { buildPlan, type PlannedBlock } from './buildPlan'
 import type { RidePlan } from './types'
 import { weekStartStr, mondayIndex } from '@/lib/date/weekStart'
@@ -24,7 +25,7 @@ export function useRidePlan(ftp: number | null, enabled: boolean) {
     void (async () => {
       try {
         const sb = createClient()
-        const { data: { user } } = await sb.auth.getUser()
+        const user = await getCurrentUser()
         if (!user) { if (!cancelled) setLoading(false); return }
         const now = new Date()
         const { data, error } = await sb

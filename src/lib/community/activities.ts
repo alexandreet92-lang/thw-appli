@@ -6,6 +6,7 @@
 // le profil altimétrique pour un rendu complet dans le chat, sans lecture DB.
 // ══════════════════════════════════════════════════════════════════════════
 import { createClient } from '@/lib/supabase/client'
+import { getCurrentUser } from '@/lib/auth/currentUser'
 import type { ActivityRef } from '@/types/community'
 
 interface Streams { altitude?: number[] }
@@ -29,7 +30,7 @@ function downsampleNums(arr: number[], max: number): number[] {
 // altimétrique est ajouté à la volée au moment du partage (enrichActivity).
 export async function listMyRecentActivities(limit = 20): Promise<ActivityRef[]> {
   const sb = createClient()
-  const { data: { user } } = await sb.auth.getUser()
+  const user = await getCurrentUser()
   if (!user) return []
   const { data } = await sb
     .from('activities')

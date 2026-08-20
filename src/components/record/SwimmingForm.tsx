@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { getCurrentUser } from '@/lib/auth/currentUser'
 import { notifyActivitySaved } from '@/lib/notifications/activitySaved'
 import { useI18n } from '@/lib/i18n'
 import RPESlider from './RPESlider'
@@ -70,7 +71,7 @@ export default function SwimmingForm({ onClose }: Props) {
     setSaving(true)
     try {
       const sb = createClient()
-      const { data: { user } } = await sb.auth.getUser()
+      const user = await getCurrentUser()
       if (!user) { setSaving(false); return }
       const calories = Math.round(totalDurSec / 60 * 8)
       const now = Date.now()

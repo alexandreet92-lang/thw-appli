@@ -11,6 +11,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Check, ArrowRight, ArrowLeft, Loader2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { getCurrentUser } from '@/lib/auth/currentUser'
 import { useI18n } from '@/lib/i18n'
 import { LanguageDropdown } from '@/components/i18n/LanguageDropdown'
 
@@ -49,7 +50,7 @@ export default function BienvenuePage() {
     let cancel = false
     void (async () => {
       const sb = createClient()
-      const { data: { user } } = await sb.auth.getUser()
+      const user = await getCurrentUser()
       if (!user) { router.replace('/auth'); return }
       const { data } = await sb.from('profiles').select('primary_goal, sports, weekly_volume, level, profile_setup_done').eq('id', user.id).maybeSingle()
       if (cancel || !data) return
@@ -83,7 +84,7 @@ export default function BienvenuePage() {
   async function finish() {
     setSaving(true); setError('')
     const sb = createClient()
-    const { data: { user } } = await sb.auth.getUser()
+    const user = await getCurrentUser()
     if (!user) { router.replace('/auth'); return }
     const goal = a.primary_goal === null && other.trim() ? other.trim() : (a.primary_goal === 'autre' ? (other.trim() || 'autre') : a.primary_goal)
     const { error: e } = await sb.from('profiles').update({

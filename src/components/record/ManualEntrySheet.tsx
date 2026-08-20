@@ -15,6 +15,7 @@
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { createClient } from '@/lib/supabase/client'
+import { getCurrentUser } from '@/lib/auth/currentUser'
 import { notifyActivitySaved } from '@/lib/notifications/activitySaved'
 import { SportIcon } from '@/components/icons/SportIcon'
 import { SessionBlockBuilder } from '@/components/planning/mobile/SessionBlockBuilder'
@@ -132,7 +133,7 @@ export default function ManualEntrySheet({ onClose, onSaved }: Props) {
     setError(null); setSaving(true)
     try {
       const sb = createClient()
-      const { data: { user } } = await sb.auth.getUser()
+      const user = await getCurrentUser()
       if (!user) { setError('Session expirée.'); setSaving(false); return }
       const startedAt = new Date(when).toISOString()
       const autoTitle = title.trim() || `${def.label}${isTreadmill ? ' (tapis)' : ''}`

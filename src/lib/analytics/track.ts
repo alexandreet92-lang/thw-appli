@@ -11,6 +11,7 @@
 // ══════════════════════════════════════════════════════════════════
 import { useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { getCurrentUser } from '@/lib/auth/currentUser'
 
 const ENABLED = process.env.NEXT_PUBLIC_ANALYTICS_ENABLED === 'true'
 
@@ -42,7 +43,7 @@ export async function track(
   if (!analyticsActive()) return
   try {
     const sb = createClient()
-    const { data: { user } } = await sb.auth.getUser()
+    const user = await getCurrentUser()
     if (!user) return
     await sb.from('analytics_events').insert({
       user_id: user.id,

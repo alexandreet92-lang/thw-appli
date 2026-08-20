@@ -3,6 +3,7 @@
 // Messages épinglés d'un canal (owner/admin). Table community_pins.
 // ══════════════════════════════════════════════════════════════════════════
 import { createClient } from '@/lib/supabase/client'
+import { getCurrentUser } from '@/lib/auth/currentUser'
 import { namesFor } from './shared'
 import type { CommunityMessage } from '@/types/community'
 
@@ -47,7 +48,7 @@ export async function togglePin(
     const { error } = await sb.from('community_pins').delete().eq('message_id', messageId)
     return !error
   }
-  const { data: { user } } = await sb.auth.getUser()
+  const user = await getCurrentUser()
   if (!user) return false
   const { error } = await sb.from('community_pins')
     .insert({ message_id: messageId, channel_id: channelId, space_id: spaceId, pinned_by: user.id })

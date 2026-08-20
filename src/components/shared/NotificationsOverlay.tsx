@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { getCurrentUser } from '@/lib/auth/currentUser'
 import { useI18n } from '@/lib/i18n'
 
 type TFn = (key: string, vars?: Record<string, string | number>) => string
@@ -21,7 +22,7 @@ export function useUnreadNotifCount(signal: unknown): number {
     void (async () => {
       try {
         const sb = createClient()
-        const { data: { user } } = await sb.auth.getUser()
+        const user = await getCurrentUser()
         if (!user) { if (!cancelled) setCount(0); return }
         // On ne compte / n'affiche que les notifications des 7 derniers jours.
         const since = new Date(Date.now() - 7 * 86400000).toISOString()
@@ -75,7 +76,7 @@ export function NotificationsOverlay({ open, onClose }: { open: boolean; onClose
       setLoading(true)
       try {
         const sb = createClient()
-        const { data: { user } } = await sb.auth.getUser()
+        const user = await getCurrentUser()
         if (!user) { if (!cancelled) { setNotifs([]); setLoading(false) }; return }
         // Fenêtre de 7 jours : au-delà, on n'affiche plus les notifications.
         const since = new Date(Date.now() - 7 * 86400000).toISOString()

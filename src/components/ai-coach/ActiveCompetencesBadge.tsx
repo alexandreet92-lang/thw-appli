@@ -6,6 +6,7 @@
 // ══════════════════════════════════════════════════════════════
 
 import { useEffect, useState } from 'react'
+import { getCurrentUser } from "@/lib/auth/currentUser"
 import { useRouter } from 'next/navigation'
 import { Sparkles } from 'lucide-react'
 import { useI18n } from '@/lib/i18n'
@@ -28,7 +29,7 @@ export default function ActiveCompetencesBadge() {
       try {
         const { createClient } = await import('@/lib/supabase/client')
         const sb = createClient()
-        const { data: { user } } = await sb.auth.getUser()
+        const user = await getCurrentUser()
         if (!user) return
         const { data } = await sb
           .from('user_competences')

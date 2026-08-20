@@ -9,6 +9,7 @@ import { useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { IconPlus, IconX, IconPhoto, IconTrash, IconPlayerPlayFilled, IconLoader2 } from '@tabler/icons-react'
 import { createClient } from '@/lib/supabase/client'
+import { getCurrentUser } from '@/lib/auth/currentUser'
 import { useI18n } from '@/lib/i18n'
 
 export interface MediaItem { url: string; type: 'image' | 'video'; path: string }
@@ -42,7 +43,7 @@ export function ActivityMedia({ activityId, initialMedia, initialComment, showPh
     setBusy(true); setError(null)
     try {
       const sb = createClient()
-      const { data: { user } } = await sb.auth.getUser()
+      const user = await getCurrentUser()
       if (!user) throw new Error('Non connecté')
       const added: MediaItem[] = []
       for (const file of Array.from(files)) {

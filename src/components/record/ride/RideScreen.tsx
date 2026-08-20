@@ -19,6 +19,7 @@ import RideDesktop from './RideDesktop'
 import RidePause from './RidePause'
 import RampTestResult, { type RampStop } from './RampTestResult'
 import { createClient } from '@/lib/supabase/client'
+import { getCurrentUser } from '@/lib/auth/currentUser'
 
 interface Props { onExit: () => void; onFinished: () => void }
 
@@ -47,7 +48,7 @@ export default function RideScreen({ onExit, onFinished }: Props) {
     void (async () => {
       try {
         const sb = createClient()
-        const { data: { user } } = await sb.auth.getUser()
+        const user = await getCurrentUser()
         if (!user || cancelled) return
         const { data } = await sb.from('profiles').select('weight_kg').eq('id', user.id).maybeSingle()
         if (!cancelled && data?.weight_kg) setMassKg(Number(data.weight_kg) || 0)

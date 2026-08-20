@@ -6,6 +6,7 @@ import { useState, useRef, useEffect, useCallback, Fragment } from 'react'
 import { createPortal } from 'react-dom'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { getCurrentUser } from '@/lib/auth/currentUser'
 import { resolvePlanningUid, isCoachScoped, getPlanningScopeUid } from '@/lib/planning/scope'
 import { useTrainingZones } from '@/hooks/useTrainingZones'
 import { AnimatedBar, CountUp } from '@/components/ui/AnimatedBar'
@@ -2818,7 +2819,7 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
       try {
         const { createClient } = await import('@/lib/supabase/client')
         const sb = createClient()
-        const { data: { user } } = await sb.auth.getUser()
+        const user = await getCurrentUser()
         if (!user) return
         const { data } = await sb.from('session_favorites').select('id,name').eq('user_id', user.id).limit(20)
         if (data) setPlanningFavorites(data)

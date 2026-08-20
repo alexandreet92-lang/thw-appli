@@ -6,6 +6,7 @@
 // ══════════════════════════════════════════════════════════════
 
 import { useEffect, useState } from 'react'
+import { getCurrentUser } from "@/lib/auth/currentUser"
 import { Mail, Check } from 'lucide-react'
 import { useI18n } from '@/lib/i18n'
 
@@ -27,7 +28,7 @@ export default function TopupEmailModal({ isOpen, onClose }: Props) {
     ;(async () => {
       try {
         const { createClient } = await import('@/lib/supabase/client')
-        const { data: { user } } = await createClient().auth.getUser()
+        const user = await getCurrentUser()
         if (user?.email) setEmail(user.email)
       } catch { /* silencieux */ }
     })()

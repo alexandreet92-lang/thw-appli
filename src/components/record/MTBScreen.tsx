@@ -22,6 +22,7 @@ import { useMTBConfig } from '@/hooks/useMTBConfig'
 import { useMTBSettings } from '@/hooks/useMTBSettings'
 import { FONT_OPTIONS } from '@/types/cycling'
 import { createClient } from '@/lib/supabase/client'
+import { getCurrentUser } from '@/lib/auth/currentUser'
 import type { FinishedSession, SessionLap } from '@/types/session'
 import type { GPSPoint } from '@/hooks/useGPSTracking'
 import PhotoButton, { type PhotoButtonHandle } from './PhotoButton'
@@ -220,7 +221,7 @@ export default function MTBScreen({ onExit, onFinished }: Props) {
     let savedId: string | null = null
     try {
       const sb = createClient()
-      const { data: { user } } = await sb.auth.getUser()
+      const user = await getCurrentUser()
       if (user) {
         const { data } = await sb.from('workout_sessions').insert({ user_id: user.id, sport: 'mtb', started_at: snap.startedAtISO, ended_at: snap.endedAtISO, duration_seconds: snap.durationSec, distance_m: snap.distM, elevation_gain_m: snap.elevM, avg_speed_kmh: snap.avgSpeedKmh, max_speed_kmh: snap.maxSpeedKmh, gps_track: snap.gpsPts, laps: snap.lapsSnap, calories: snap.calories, status: 'completed', title: formData.title, training_types: formData.trainingTypes, rpe: formData.rpe, comment: formData.comment }).select('id').single()
         savedId = data?.id ?? null

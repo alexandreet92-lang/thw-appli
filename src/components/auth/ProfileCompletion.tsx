@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { getCurrentUser } from '@/lib/auth/currentUser'
 import { useI18n } from '@/lib/i18n'
 
 interface Props { onDone: () => void }
@@ -55,7 +56,7 @@ export function ProfileCompletion({ onDone }: Props) {
     setSaving(true)
     try {
       const sb = createClient()
-      const { data: { user } } = await sb.auth.getUser()
+      const user = await getCurrentUser()
       if (user) {
         await sb.from('profiles').upsert({
           user_id: user.id,

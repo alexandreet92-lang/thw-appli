@@ -4,6 +4,7 @@
 // remplit, et les réponses reviennent côté coach. RLS : coach ↔ son athlète.
 // ══════════════════════════════════════════════════════════════
 import { createClient } from '@/lib/supabase/client'
+import { getCurrentUser } from '@/lib/auth/currentUser'
 import { createNotification } from '@/lib/notifications/create'
 
 export type FieldType = 'text' | 'textarea' | 'number' | 'select' | 'scale' | 'bool'
@@ -40,7 +41,7 @@ function mapRow(r: Record<string, unknown>): CustomForm {
 // ── Coach ─────────────────────────────────────────────────────
 export async function createCustomForm(athleteId: string, title: string, fields: FormField[], athleteName?: string): Promise<CustomForm | null> {
   const sb = createClient()
-  const { data: { user } } = await sb.auth.getUser()
+  const user = await getCurrentUser()
   if (!user) return null
   const { data, error } = await sb.from('coach_custom_forms')
     .insert({ coach_id: user.id, athlete_id: athleteId, title: title.trim() || 'Fiche', fields })
@@ -70,7 +71,7 @@ export async function deleteCustomForm(id: string): Promise<void> {
 // ── Athlète ───────────────────────────────────────────────────
 export async function listMyForms(): Promise<CustomForm[]> {
   const sb = createClient()
-  const { data: { user } } = await sb.auth.getUser()
+  const user = await getCurrentUser()
   if (!user) return []
   const { data } = await sb.from('coach_custom_forms').select('*').eq('athlete_id', user.id).order('created_at', { ascending: false })
   return ((data ?? []) as Record<string, unknown>[]).map(mapRow)

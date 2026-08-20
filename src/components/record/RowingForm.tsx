@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { getCurrentUser } from '@/lib/auth/currentUser'
 import { notifyActivitySaved } from '@/lib/notifications/activitySaved'
 import RPESlider from './RPESlider'
 import RowingTypeSelector from './RowingTypeSelector'
@@ -72,7 +73,7 @@ export default function RowingForm({ onClose }: Props) {
     let savedId: string | null = null
     try {
       const sb = createClient()
-      const { data: { user } } = await sb.auth.getUser()
+      const user = await getCurrentUser()
       if (user) {
         const calories = Math.round(effectiveDur / 60 * 10)
         const finalTitle = title.trim() || autoTitle(t)

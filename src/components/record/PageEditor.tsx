@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { MAX_FIELDS, type DataPage } from '@/types/cycling'
 import { createClient } from '@/lib/supabase/client'
+import { getCurrentUser } from '@/lib/auth/currentUser'
 import { useI18n } from '@/lib/i18n'
 import FieldPicker from './FieldPicker'
 import PagePreview from './PagePreview'
@@ -64,7 +65,7 @@ function PageEditorInner({ page: initial, allPages, onPageUpdated, onClose, isDa
       setSaving(true)
       try {
         const sb = createClient()
-        const { data: { user } } = await sb.auth.getUser()
+        const user = await getCurrentUser()
         if (!user) return
         const newPages = allPagesRef.current.map(p => p.id === updated.id ? updated : p)
         await sb.from('sport_page_configs').upsert(

@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { getCurrentUser } from '@/lib/auth/currentUser'
 import { SettingsSection } from './settings/SettingsSection'
 import { SettingsRow } from './settings/SettingsRow'
 import { Toggle } from './settings/Toggle'
@@ -25,7 +26,7 @@ export default function CyclingSettingsTraining({ theme }: Props) {
   const openPicker = async () => {
     try {
       const sb = createClient()
-      const { data: { user } } = await sb.auth.getUser()
+      const user = await getCurrentUser()
       if (!user) return
       const today = new Date()
       const monday = new Date(today)

@@ -9,6 +9,7 @@
 // par week_start (lundi de la semaine) + day_index (0=lundi … 6=dimanche).
 import { useEffect, useMemo, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { getCurrentUser } from '@/lib/auth/currentUser'
 import { currentLocale } from '@/lib/i18n'
 import { buildTreadmillPlan, type PlannedRunBlock, type TreadmillPlan } from './treadmillPlan'
 
@@ -66,7 +67,7 @@ export function useTreadmillPlan(enabled: boolean) {
     void (async () => {
       try {
         const sb = createClient()
-        const { data: { user } } = await sb.auth.getUser()
+        const user = await getCurrentUser()
         if (!user) { if (!cancelled) setLoading(false); return }
         const { data } = await sb
           .from('planned_sessions')

@@ -6,6 +6,7 @@ import { useStopwatch } from '@/hooks/useStopwatch'
 import SessionSaveForm, { type SessionFormData } from './SessionSaveForm'
 import HomeTrainerIntervals from './HomeTrainerIntervals'
 import { createClient } from '@/lib/supabase/client'
+import { getCurrentUser } from '@/lib/auth/currentUser'
 import { HT_PROGRAMS, type HTProgram } from '@/types/hometrainer'
 import type { CyclingPhase } from './CyclingControls'
 import { useI18n } from '@/lib/i18n'
@@ -63,7 +64,7 @@ export default function HomeTrainerScreen({ onExit, onFinished }: Props) {
   const handleSave = async (formData: SessionFormData) => {
     try {
       const sb = createClient()
-      const { data: { user } } = await sb.auth.getUser()
+      const user = await getCurrentUser()
       if (user) {
         await sb.from('workout_sessions').insert({
           user_id: user.id, sport: 'hometrainer', title: formData.title,

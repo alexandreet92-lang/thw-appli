@@ -10,6 +10,7 @@
 // ══════════════════════════════════════════════════════════════════
 import { useMemo, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { getCurrentUser } from '@/lib/auth/currentUser'
 import { computeRamp, computeCp20, type TestResult } from './rampTest'
 
 export interface RampStop {
@@ -60,7 +61,7 @@ export default function RampTestResult({ mode, ramp, cp20AvgWatts, massKg, onDon
     setSaving(true)
     try {
       const sb = createClient()
-      const { data: { user } } = await sb.auth.getUser()
+      const user = await getCurrentUser()
       if (!user) { setSaving(false); return }
       const today = new Date().toISOString().split('T')[0]
       const nowISO = new Date().toISOString()

@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { createClient } from '@/lib/supabase/client'
+import { getCurrentUser } from '@/lib/auth/currentUser'
 import type { WorkoutExercise, CompletedSet } from '@/types/workout'
 import SeriesView from './workout/SeriesView'
 import LapView from './workout/LapView'
@@ -108,7 +109,7 @@ export default function WorkoutSession({ sport, exercises: initialExercises, pla
 
   const handleSave = async (formData: SessionFormData) => {
     const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCurrentUser()
     if (!user) return
     const sessionId = crypto.randomUUID()
     // Upload des photos (best-effort) → bucket workout-photos, URLs publiques.

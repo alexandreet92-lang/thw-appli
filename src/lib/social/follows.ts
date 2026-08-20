@@ -3,6 +3,7 @@
 // Abonnements sociaux (follow) + compteurs (abonnés / abonnements / coachés).
 // ══════════════════════════════════════════════════════════════════
 import { createClient } from '@/lib/supabase/client'
+import { getCurrentUser } from '@/lib/auth/currentUser'
 
 export interface SocialCounts { followers: number; following: number; coached: number }
 
@@ -20,7 +21,7 @@ export async function getSocialCounts(userId: string): Promise<SocialCounts> {
 /** Est-ce que l'utilisateur connecté suit `userId` ? */
 export async function amIFollowing(userId: string): Promise<boolean> {
   const sb = createClient()
-  const { data: { user } } = await sb.auth.getUser()
+  const user = await getCurrentUser()
   if (!user || user.id === userId) return false
   const { data } = await sb.from('follows')
     .select('follower_id').eq('follower_id', user.id).eq('following_id', userId).maybeSingle()
@@ -30,7 +31,7 @@ export async function amIFollowing(userId: string): Promise<boolean> {
 /** Suit / ne suit plus. Renvoie le nouvel état (true = suit). */
 export async function toggleFollow(userId: string, currentlyFollowing: boolean): Promise<boolean> {
   const sb = createClient()
-  const { data: { user } } = await sb.auth.getUser()
+  const user = await getCurrentUser()
   if (!user) throw new Error('Connecte-toi pour t’abonner.')
   if (user.id === userId) throw new Error('Tu ne peux pas t’abonner à toi-même.')
   if (currentlyFollowing) {

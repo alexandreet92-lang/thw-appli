@@ -21,6 +21,7 @@ import CoachShowcase from '@/components/coach/CoachShowcase'
 import SlideSheet from '@/components/ui/SlideSheet'
 import CoachProgramsPage from '@/app/coach/programs/page'
 import { createClient } from '@/lib/supabase/client'
+import { getCurrentUser } from '@/lib/auth/currentUser'
 
 const SPORTS: { key: string; label: string }[] = [
   { key: 'running', label: 'Course' }, { key: 'cycling', label: 'Vélo' }, { key: 'swim', label: 'Natation' },
@@ -66,7 +67,7 @@ export default function CoachVitrinePage() {
       setReqs(await listIncomingRequests().catch(() => []))
       setPrograms((await listMyPrograms().catch(() => [])).filter(pr => pr.published))
       try {
-        const { data: { user } } = await createClient().auth.getUser()
+        const user = await getCurrentUser()
         if (user) setCounts(await getSocialCounts(user.id))
       } catch { /* ignore */ }
       setLoading(false)

@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { createClient } from '@/lib/supabase/client'
+import { getCurrentUser } from '@/lib/auth/currentUser'
 import { RaceStage } from './types'
 import GpxFullView from '@/components/gpx/GpxFullView'
 import { sanitizeFileName } from '@/lib/utils'
@@ -127,7 +128,7 @@ export default function DayModal({ stage, date, onClose, onSaved, onDeleted }: P
 
       // ── ÉTAPE 2 : file upload (if new file selected) ──
       if (newFile) {
-        const { data: { user } } = await supabase.auth.getUser()
+        const user = await getCurrentUser()
         if (!user) throw new Error(t('calendar.errUserNotAuthenticated'))
 
         console.log('[DayModal save] step 2 — uploading file', newFile.name)
@@ -201,7 +202,7 @@ export default function DayModal({ stage, date, onClose, onSaved, onDeleted }: P
     if (!hasId) return
     setDeleting(true)
     try {
-      const { data: { user } } = await supabase.auth.getUser()
+      const user = await getCurrentUser()
       if (!user) throw new Error(t('calendar.errNotAuthenticated'))
 
       // 1. Remove day entry from daily_program

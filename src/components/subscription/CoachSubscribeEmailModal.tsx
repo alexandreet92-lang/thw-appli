@@ -7,6 +7,7 @@
 // ══════════════════════════════════════════════════════════════
 
 import { useEffect, useState } from 'react'
+import { getCurrentUser } from "@/lib/auth/currentUser"
 import { Mail, Check } from 'lucide-react'
 
 interface Props {
@@ -29,7 +30,7 @@ export default function CoachSubscribeEmailModal({ packKey, packName, packLabel,
     ;(async () => {
       try {
         const { createClient } = await import('@/lib/supabase/client')
-        const { data: { user } } = await createClient().auth.getUser()
+        const user = await getCurrentUser()
         if (user?.email) setEmail(user.email)
       } catch { /* silencieux */ }
     })()

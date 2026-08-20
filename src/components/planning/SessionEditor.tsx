@@ -17,6 +17,7 @@ import React, { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useI18n } from '@/lib/i18n'
 import { createClient } from '@/lib/supabase/client'
+import { getCurrentUser } from '@/lib/auth/currentUser'
 import { useTrainingZones } from '@/hooks/useTrainingZones'
 import { segmentElevationProfile, getSignificantClimbs } from '@/lib/gpx/parser'
 import type { ParsedSegment } from '@/lib/gpx/parser'
@@ -7398,7 +7399,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                 try {
                   const { createClient } = await import('@/lib/supabase/client')
                   const sb = createClient()
-                  const { data: { user } } = await sb.auth.getUser()
+                  const user = await getCurrentUser()
                   if (!user) return
                   await sb.from('session_favorites').insert({
                     user_id: user.id, name, sport,
@@ -7532,7 +7533,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                 try {
                   const { createClient } = await import('@/lib/supabase/client')
                   const sb = createClient()
-                  const { data: { user } } = await sb.auth.getUser()
+                  const user = await getCurrentUser()
                   if (!user) return
                   await sb.from('session_favorites').insert({
                     user_id: user.id, name, sport,

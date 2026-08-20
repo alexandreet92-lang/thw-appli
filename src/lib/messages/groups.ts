@@ -5,6 +5,7 @@
 // le créateur est rétrogradé « member » après le bootstrap → aucun chef).
 // ══════════════════════════════════════════════════════════════
 import { createClient } from '@/lib/supabase/client'
+import { getCurrentUser } from '@/lib/auth/currentUser'
 
 export interface GroupSummary {
   id: string
@@ -33,7 +34,7 @@ export interface GroupMessage {
 export interface Addable { id: string; name: string; avatar: string | null }
 
 async function myId(): Promise<string | null> {
-  const { data: { user } } = await createClient().auth.getUser()
+  const user = await getCurrentUser()
   return user?.id ?? null
 }
 

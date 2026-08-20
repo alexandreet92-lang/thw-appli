@@ -8,6 +8,7 @@ import { Plus, Menu, Lock, X } from 'lucide-react'
 import { useTheme } from '@/hooks/useTheme'
 import { useI18n } from '@/lib/i18n'
 import { createClient } from '@/lib/supabase/client'
+import { getCurrentUser } from '@/lib/auth/currentUser'
 import type { CategorieCompetence, CompetenceWithUserState } from '@/types/competences'
 import { useCompetences } from './hooks/useCompetences'
 import { useUserCompetences } from './hooks/useUserCompetences'
@@ -117,7 +118,7 @@ export default function CompetencesPage() {
     if (!detail) return
     try {
       const sb = createClient()
-      const { data: { user } } = await sb.auth.getUser()
+      const user = await getCurrentUser()
       if (!user) { setNotice(t('competences.notConnected')); return }
       if (!detail.is_predefined && detail.created_by === user.id) {
         // compétence custom du créateur → modifier le prompt de base

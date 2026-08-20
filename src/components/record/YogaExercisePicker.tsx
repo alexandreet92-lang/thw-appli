@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { getCurrentUser } from '@/lib/auth/currentUser'
 import type { YogaExercise, YogaCategory, YogaSessionExercise } from '@/types/yoga'
 import { YOGA_CATEGORIES, DEFAULT_YOGA_EXERCISES } from '@/types/yoga'
 import { useI18n } from '@/lib/i18n'
@@ -62,7 +63,7 @@ export default function YogaExercisePicker({ open, onClose, onAdd, isDark }: Pro
   const handleCreate = async () => {
     if (!newName.trim()) return
     const sb = createClient()
-    const { data: { user } } = await sb.auth.getUser()
+    const user = await getCurrentUser()
     if (!user) return
     const { data } = await sb.from('yoga_exercises').insert({
       name: newName.trim(), category: newCat,

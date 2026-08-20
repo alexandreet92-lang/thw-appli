@@ -11,6 +11,7 @@ import CyclingPage2 from './CyclingPage2'
 import SessionSaveForm, { type SessionFormData } from './SessionSaveForm'
 import SessionTraceMap from './SessionTraceMap'
 import { createClient } from '@/lib/supabase/client'
+import { getCurrentUser } from '@/lib/auth/currentUser'
 import type { GPSPoint } from '@/hooks/useGPSTracking'
 import { OPEN_WATER_BODIES } from '@/types/openwater'
 import { useI18n } from '@/lib/i18n'
@@ -66,7 +67,7 @@ export default function OpenWaterScreen({ onExit, onFinished }: Props) {
     if (!snap) return
     try {
       const sb = createClient()
-      const { data: { user } } = await sb.auth.getUser()
+      const user = await getCurrentUser()
       if (user) {
         const now = Date.now()
         await sb.from('workout_sessions').insert({

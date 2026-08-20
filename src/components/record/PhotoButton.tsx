@@ -1,6 +1,7 @@
 'use client'
 import { forwardRef, useImperativeHandle, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { getCurrentUser } from '@/lib/auth/currentUser'
 import { compressImage } from '@/lib/imageCompression'
 import { useI18n } from '@/lib/i18n'
 
@@ -25,7 +26,7 @@ const PhotoButton = forwardRef<PhotoButtonHandle, Props>(function PhotoButton({ 
       if (pendingFiles.current.length === 0) return
       setUploading(true)
       const sb = createClient()
-      const { data: { user } } = await sb.auth.getUser()
+      const user = await getCurrentUser()
       if (!user) { setUploading(false); return }
 
       for (const { file, lat: fLat, lng: fLng, takenAt } of pendingFiles.current) {

@@ -26,6 +26,7 @@ import { listSystems, createSystem, updateSystem, deleteSystem, duplicateSystem,
 import { STUDIO_TEMPLATES } from '@/lib/studio/templates'
 import { STUDIO_PACKS, estimateRunTokens, formatTokens, type StudioAccess } from '@/lib/studio/offers'
 import { createClient } from '@/lib/supabase/client'
+import { getCurrentUser } from '@/lib/auth/currentUser'
 import { hasCoachAccess } from '@/lib/coach/owner'
 import { listMyAthletes } from '@/lib/coach/relationships'
 import { VoiceOverlay } from '@/components/ai/VoiceOverlay'
@@ -433,7 +434,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
     setRecosLoading(true)
     try {
       const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
+      const user = await getCurrentUser()
       if (!user) return
       const keys: StudioSourceKey[] = ['profile', 'activities', 'recovery', 'injuries']
       // Système coach ciblant un athlète : recommandations basées sur SES données.
@@ -466,7 +467,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
     void (async () => {
       try {
         const supabase = createClient()
-        const { data: { user } } = await supabase.auth.getUser()
+        const user = await getCurrentUser()
         if (!user) return
         const flags = await detectHealthFlags(supabase, user.id)
         if (!cancelled) setHealthAlert(flags.length ? flags.join(' · ') : null)
@@ -717,7 +718,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
     setScheduleSaving(true)
     try {
       const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
+      const user = await getCurrentUser()
       if (!user) return
       const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/Paris'
       await supabase.from('studio_schedules').upsert({
@@ -1236,7 +1237,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
   const saveRunHistory = async (status: RunRow['status'], runLogs: LogEntry[], outputs: Record<string, string>, errorText: string | null, estimate: number) => {
     try {
       const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
+      const user = await getCurrentUser()
       if (!user) return
       const renders = terminalNodeIds(graphRef.current)
         .map(id => { const n = graphRef.current.nodes.find(x => x.id === id); return n ? { title: n.title, text: outputs[id] ?? '' } : null })
@@ -1299,7 +1300,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
     let livingContext = ''
     try {
       const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
+      const user = await getCurrentUser()
       if (user) livingContext = await buildLivingContext(supabase, user.id, systemIdRef.current || null)
     } catch { /* best-effort : un run reste possible sans ce contexte */ }
 
@@ -2948,7 +2949,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                 void (async () => {
                   const base = (process.env.NEXT_PUBLIC_MARKETING_SITE_URL ?? '').replace(/\/$/, '')
                   let uid = ''
-                  try { const { data: { user } } = await createClient().auth.getUser(); uid = user?.id ?? '' } catch { /* ignore */ }
+                  try { const user = await getCurrentUser(); uid = user?.id ?? '' } catch { /* ignore */ }
                   const url = base ? `${base}/tokens.html${uid ? `?uid=${uid}` : ''}` : '/settings/subscription'
                   window.open(url, '_blank', 'noopener')
                 })()

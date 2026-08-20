@@ -8,6 +8,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { createClient } from '@/lib/supabase/client'
+import { getCurrentUser } from '@/lib/auth/currentUser'
 import { useI18n } from '@/lib/i18n'
 import SessionSaveForm from './SessionSaveForm'
 import type { SessionFormData } from './SessionSaveForm'
@@ -118,7 +119,7 @@ export default function BoxeScreen({ config, onClose, isDark }: Props) {
 
   const handleSave = async (formData: SessionFormData) => {
     const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCurrentUser()
     if (!user) return
     await supabase.from('activities').insert({
       user_id: user.id, sport_type: 'boxe',

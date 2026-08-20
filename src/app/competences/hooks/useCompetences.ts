@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { getCurrentUser } from '@/lib/auth/currentUser'
 import type { Competence, UserCompetence, CompetenceWithUserState } from '@/types/competences'
 
 export function useCompetences() {
@@ -14,7 +15,7 @@ export function useCompetences() {
     setError(null)
     try {
       const sb = createClient()
-      const { data: { user } } = await sb.auth.getUser()
+      const user = await getCurrentUser()
 
       // RLS filtre déjà : prédéfinies (publiques) + custom de l'utilisateur
       const { data: comps, error: e1 } = await sb

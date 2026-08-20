@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { getCurrentUser } from '@/lib/auth/currentUser'
 import type { SnappedPoint } from '@/lib/openrouteservice'
 import { useI18n } from '@/lib/i18n'
 import { currentLocale } from '@/lib/i18n'
@@ -157,7 +158,7 @@ export default function RouteLibrary({ onClose, onUseRoute, onCreate, onEditRout
   useEffect(() => {
     const load = async () => {
       const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
+      const user = await getCurrentUser()
       if (!user) return
       const q = supabase.from('routes').select('*').order('created_at', { ascending: false })
       const { data } = await (showPublic ? q.eq('is_public', true) : q.eq('user_id', user.id))
@@ -175,7 +176,7 @@ export default function RouteLibrary({ onClose, onUseRoute, onCreate, onEditRout
   const handleDuplicate = async (route: Route) => {
     setMenuId(null)
     const sb = createClient()
-    const { data: { user } } = await sb.auth.getUser()
+    const user = await getCurrentUser()
     if (!user) return
     const { data } = await sb.from('routes').insert({
       user_id: user.id, name: `${route.name} (copie)`, sport: route.sport, is_public: false, route_type: route.route_type ?? 'training',

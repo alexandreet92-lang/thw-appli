@@ -11,6 +11,7 @@
 import { useEffect, useMemo, useState, useCallback } from 'react'
 import { IconArrowLeft, IconPlus, IconPencil, IconTrash, IconStar, IconStarFilled } from '@tabler/icons-react'
 import { createClient } from '@/lib/supabase/client'
+import { getCurrentUser } from '@/lib/auth/currentUser'
 import { useI18n } from '@/lib/i18n'
 import { SlideView } from '@/components/ui/SlideView'
 import { SessionEditor } from '@/components/planning/SessionEditor'
@@ -140,7 +141,7 @@ export function BuilderReserve() {
     setLoading(true)
     try {
       const sb = createClient()
-      const { data: { user } } = await sb.auth.getUser()
+      const user = await getCurrentUser()
       if (!user) { setFavs([]); return }
       const { data } = await sb.from('session_favorites')
         .select('id,name,sport,training_type,blocks_data,nutrition_data,duration_min,rpe,notes,starred')
@@ -155,7 +156,7 @@ export function BuilderReserve() {
   async function handleSave(s: Session) {
     try {
       const sb = createClient()
-      const { data: { user } } = await sb.auth.getUser()
+      const user = await getCurrentUser()
       if (!user) return
       const row = {
         user_id: user.id, name: s.title, sport: s.sport,

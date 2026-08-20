@@ -3,6 +3,7 @@
 // non appliquée), `tableMissing` = true et la page affiche un état vide propre.
 import { useCallback, useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { getCurrentUser } from '@/lib/auth/currentUser'
 import type { Injury, InjuryLog, RehabExo, Impact } from './types'
 
 type Row = Record<string, unknown>
@@ -43,7 +44,7 @@ export function useInjuries() {
   const load = useCallback(async () => {
     setLoading(true)
     const sb = createClient()
-    const { data: { user } } = await sb.auth.getUser()
+    const user = await getCurrentUser()
     if (!user) { setLoading(false); return }
     const { data: inj, error } = await sb.from('injuries').select('*').eq('user_id', user.id).order('onset_date', { ascending: false })
     if (error) {
@@ -76,7 +77,7 @@ export function useInjuries() {
 
   const add = useCallback(async (inj: NewInjury): Promise<string | null> => {
     const sb = createClient()
-    const { data: { user } } = await sb.auth.getUser()
+    const user = await getCurrentUser()
     if (!user) return null
     const { data, error } = await sb.from('injuries').insert({ ...inj, user_id: user.id }).select('id').single()
     if (error || !data) return null

@@ -28,7 +28,21 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 }
 function Chip<T extends string>({ v, cur, onClick, label }: { v: T; cur: T; onClick: (v: T) => void; label: string }) {
   const on = v === cur
-  return <button onClick={() => onClick(v)} style={{ padding: '7px 12px', borderRadius: 999, border: `1px solid ${on ? 'var(--primary)' : 'var(--border)'}`, cursor: 'pointer', fontSize: 12.5, fontWeight: 600, background: on ? 'var(--primary-dim)' : 'var(--bg-card)', color: on ? 'var(--primary)' : 'var(--text-dim)' }}>{label}</button>
+  return <button onClick={() => onClick(v)} style={{ padding: '7px 13px', borderRadius: 999, border: `1px solid ${on ? 'var(--primary)' : 'var(--border)'}`, cursor: 'pointer', fontSize: 12.5, fontWeight: 600, background: on ? 'var(--primary-dim)' : 'var(--bg-card)', color: on ? 'var(--primary)' : 'var(--text-dim)', transition: 'all .15s', boxShadow: on ? '0 1px 6px color-mix(in srgb, var(--primary) 22%, transparent)' : 'none' }}>{label}</button>
+}
+// Sous-section groupée : petit panneau avec en-tête (numéro + titre) pour aérer
+// la fiche d'intake et lui donner une hiérarchie visuelle plus raffinée.
+function Group({ step, title, hint, children }: { step: number; title: string; hint?: string; children: React.ReactNode }) {
+  return (
+    <div style={{ background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 14, padding: '15px 16px 17px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: hint ? 3 : 13 }}>
+        <span style={{ width: 22, height: 22, borderRadius: 7, background: 'var(--primary-dim)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11.5, fontWeight: 800, fontFamily: 'var(--font-display)', flexShrink: 0 }}>{step}</span>
+        <h4 style={{ fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 600, margin: 0, color: 'var(--text)' }}>{title}</h4>
+      </div>
+      {hint && <p style={{ fontSize: 11.5, color: 'var(--text-dim)', margin: '0 0 13px', paddingLeft: 31 }}>{hint}</p>}
+      {children}
+    </div>
+  )
 }
 
 const DEFAULT_INTAKE: NutritionIntake = {
@@ -180,74 +194,88 @@ export default function CoachNutritionStrategy({ athleteName, activePlan, onSave
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {/* ── 1. INTAKE ─────────────────────────────────────────── */}
       <div style={CARD}>
-        <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 600, margin: '0 0 4px' }}>Stratégie nutrition — {athleteName}</h3>
-        <p style={{ fontSize: 12.5, color: 'var(--text-dim)', margin: '0 0 16px' }}>Remplis la fiche (pré-remplie depuis le profil), puis laisse l’IA proposer une stratégie ou définis-la à la main. Le coach ne logge jamais les repas — seul l’athlète le fait.</p>
-
-        {/* Morphologie */}
-        <p style={{ ...LBL, color: 'var(--text-mid)' }}>Morphologie</p>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 12, marginBottom: 16 }}>
-          <Field label="Poids actuel (kg)"><input type="number" step="0.1" style={INP} value={intake.weightKg || ''} onChange={e => set({ weightKg: parseFloat(e.target.value) || 0 })} /></Field>
-          <Field label="Masse grasse (%)"><input type="number" step="0.1" style={INP} value={intake.bodyFatPct ?? ''} onChange={e => set({ bodyFatPct: e.target.value ? parseFloat(e.target.value) : null })} placeholder="—" /></Field>
-          <Field label="Taille (cm)"><input type="number" style={INP} value={intake.heightCm ?? ''} onChange={e => set({ heightCm: e.target.value ? parseFloat(e.target.value) : null })} placeholder="profil" /></Field>
-          <Field label="Âge"><input type="number" style={INP} value={intake.age ?? ''} onChange={e => set({ age: e.target.value ? parseInt(e.target.value) : null })} placeholder="profil" /></Field>
-          <Field label="Sexe"><div style={{ display: 'flex', gap: 6 }}><Chip v="m" cur={intake.sex} onClick={v => set({ sex: v })} label="H" /><Chip v="f" cur={intake.sex} onClick={v => set({ sex: v })} label="F" /></div></Field>
+        {/* En-tête raffiné */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 13, marginBottom: 18 }}>
+          <span style={{ width: 42, height: 42, borderRadius: 13, background: 'linear-gradient(135deg, var(--primary), color-mix(in srgb, var(--primary) 55%, #22c55e))', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 21, boxShadow: '0 4px 14px color-mix(in srgb, var(--primary) 35%, transparent)' }}>🥗</span>
+          <div style={{ minWidth: 0 }}>
+            <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 600, margin: '0 0 3px', letterSpacing: '-0.01em' }}>Stratégie nutrition — {athleteName}</h3>
+            <p style={{ fontSize: 12.5, color: 'var(--text-dim)', margin: 0, lineHeight: 1.5 }}>Remplis la fiche (pré-remplie depuis le profil), puis laisse l’IA proposer une stratégie ou définis-la à la main. Le coach ne logge jamais les repas — seul l’athlète le fait.</p>
+          </div>
         </div>
 
-        {/* Objectif */}
-        <p style={{ ...LBL, color: 'var(--text-mid)' }}>Objectif</p>
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
-          {(Object.keys(GOAL_LABEL) as GoalType[]).map(g => <Chip key={g} v={g} cur={intake.goalType} onClick={v => set({ goalType: v })} label={GOAL_LABEL[g]} />)}
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 12, marginBottom: 8 }}>
-          <Field label="Poids cible (kg) *"><input type="number" step="0.1" style={INP} value={intake.targetWeightKg || ''} onChange={e => set({ targetWeightKg: parseFloat(e.target.value) || 0 })} /></Field>
-          <Field label="% MG cible (optionnel)"><input type="number" step="0.1" style={INP} value={intake.targetBodyFatPct ?? ''} onChange={e => set({ targetBodyFatPct: e.target.value ? parseFloat(e.target.value) : null })} placeholder="—" /></Field>
-          <Field label="Délai">
-            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-              <input type="number" style={{ ...INP, width: 70 }} value={intake.timelineWeeks || ''} onChange={e => set({ timelineWeeks: parseInt(e.target.value) || 0 })} />
-              {intake.timelineMode === 'range' && <><span style={{ color: 'var(--text-dim)' }}>à</span><input type="number" style={{ ...INP, width: 70 }} value={intake.timelineWeeksMax ?? ''} onChange={e => set({ timelineWeeksMax: e.target.value ? parseInt(e.target.value) : null })} /></>}
-              <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>sem</span>
-              <Chip v={intake.timelineMode === 'range' ? 'exact' : 'range'} cur={'x' as RangeMode} onClick={() => set({ timelineMode: intake.timelineMode === 'range' ? 'exact' : 'range' })} label={intake.timelineMode === 'range' ? 'Fourchette' : 'Précis'} />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {/* Morphologie */}
+          <Group step={1} title="Morphologie">
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(118px, 1fr))', gap: 12 }}>
+              <Field label="Poids actuel (kg)"><input type="number" step="0.1" style={INP} value={intake.weightKg || ''} onChange={e => set({ weightKg: parseFloat(e.target.value) || 0 })} /></Field>
+              <Field label="Masse grasse (%)"><input type="number" step="0.1" style={INP} value={intake.bodyFatPct ?? ''} onChange={e => set({ bodyFatPct: e.target.value ? parseFloat(e.target.value) : null })} placeholder="—" /></Field>
+              <Field label="Taille (cm)"><input type="number" style={INP} value={intake.heightCm ?? ''} onChange={e => set({ heightCm: e.target.value ? parseFloat(e.target.value) : null })} placeholder="profil" /></Field>
+              <Field label="Âge"><input type="number" style={INP} value={intake.age ?? ''} onChange={e => set({ age: e.target.value ? parseInt(e.target.value) : null })} placeholder="profil" /></Field>
+              <Field label="Sexe"><div style={{ display: 'flex', gap: 6 }}><Chip v="m" cur={intake.sex} onClick={v => set({ sex: v })} label="H" /><Chip v="f" cur={intake.sex} onClick={v => set({ sex: v })} label="F" /></div></Field>
             </div>
-          </Field>
-        </div>
+          </Group>
 
-        {/* Dépense */}
-        <p style={{ ...LBL, color: 'var(--text-mid)', marginTop: 8 }}>Dépense & rythme</p>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 12, marginBottom: 10 }}>
-          <Field label="Repas / jour"><select style={INP} value={intake.mealsPerDay} onChange={e => set({ mealsPerDay: parseInt(e.target.value) })}>{[2, 3, 4, 5, 6, 7].map(n => <option key={n} value={n}>{n}</option>)}</select></Field>
-          <Field label="Séances / sem">
-            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-              <input type="number" style={{ ...INP, width: 60 }} value={intake.sessionsPerWeek || ''} onChange={e => set({ sessionsPerWeek: parseInt(e.target.value) || 0 })} />
-              {intake.sessionsMode === 'range' && <><span style={{ color: 'var(--text-dim)' }}>à</span><input type="number" style={{ ...INP, width: 60 }} value={intake.sessionsPerWeekMax ?? ''} onChange={e => set({ sessionsPerWeekMax: e.target.value ? parseInt(e.target.value) : null })} /></>}
-              <Chip v={intake.sessionsMode === 'range' ? 'exact' : 'range'} cur={'x' as RangeMode} onClick={() => set({ sessionsMode: intake.sessionsMode === 'range' ? 'exact' : 'range' })} label={intake.sessionsMode === 'range' ? '↔' : '='} />
+          {/* Objectif */}
+          <Group step={2} title="Objectif">
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 13 }}>
+              {(Object.keys(GOAL_LABEL) as GoalType[]).map(g => <Chip key={g} v={g} cur={intake.goalType} onClick={v => set({ goalType: v })} label={GOAL_LABEL[g]} />)}
             </div>
-          </Field>
-          <Field label="Durée moy. séance (h)"><input type="number" step="0.25" style={INP} value={intake.avgSessionHours || ''} onChange={e => set({ avgSessionHours: parseFloat(e.target.value) || 0 })} /></Field>
-        </div>
-        <Field label="Niveau de travail / quotidien">
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>{(Object.keys(WORK_LABEL) as WorkIntensity[]).map(w => <Chip key={w} v={w} cur={intake.workIntensity} onClick={v => set({ workIntensity: v })} label={WORK_LABEL[w]} />)}</div>
-        </Field>
-        <div style={{ marginTop: 10 }}>
-          <Field label="Cyclage des kcal">
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-              {([['weekly', 'Chaque semaine'], ['biweekly', 'Toutes les 2 sem'], ['training', "S'adapte aux entraînements"]] as [CycleMode, string][]).map(([v, l]) => <Chip key={v} v={v} cur={intake.cycleMode} onClick={vv => set({ cycleMode: vv })} label={l} />)}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 12 }}>
+              <Field label="Poids cible (kg) *"><input type="number" step="0.1" style={INP} value={intake.targetWeightKg || ''} onChange={e => set({ targetWeightKg: parseFloat(e.target.value) || 0 })} /></Field>
+              <Field label="% MG cible (optionnel)"><input type="number" step="0.1" style={INP} value={intake.targetBodyFatPct ?? ''} onChange={e => set({ targetBodyFatPct: e.target.value ? parseFloat(e.target.value) : null })} placeholder="—" /></Field>
+              <Field label="Délai">
+                <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                  <input type="number" style={{ ...INP, width: 70 }} value={intake.timelineWeeks || ''} onChange={e => set({ timelineWeeks: parseInt(e.target.value) || 0 })} />
+                  {intake.timelineMode === 'range' && <><span style={{ color: 'var(--text-dim)' }}>à</span><input type="number" style={{ ...INP, width: 70 }} value={intake.timelineWeeksMax ?? ''} onChange={e => set({ timelineWeeksMax: e.target.value ? parseInt(e.target.value) : null })} /></>}
+                  <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>sem</span>
+                  <Chip v={intake.timelineMode === 'range' ? 'exact' : 'range'} cur={'x' as RangeMode} onClick={() => set({ timelineMode: intake.timelineMode === 'range' ? 'exact' : 'range' })} label={intake.timelineMode === 'range' ? 'Fourchette' : 'Précis'} />
+                </div>
+              </Field>
             </div>
-          </Field>
-          {intake.cycleMode === 'training' && <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: '6px 0 0' }}>Les jours sans séance = moins de kcal ; 1 séance = modéré ; 2+ = plus. L’app calcule depuis le planning réel de l’athlète.</p>}
-        </div>
+          </Group>
 
-        {/* Terrain */}
-        <p style={{ ...LBL, color: 'var(--text-mid)', marginTop: 16 }}>Terrain de l’athlète</p>
-        <Field label="Caractéristique"><div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>{(Object.keys(METABO_LABEL) as Metabolism[]).map(m => <Chip key={m} v={m} cur={intake.metabolism} onClick={v => set({ metabolism: v })} label={METABO_LABEL[m]} />)}</div></Field>
-        <div style={{ marginTop: 10 }}><Field label="Qualité alimentaire"><div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>{(Object.keys(FOOD_QUALITY_LABEL) as FoodQuality[]).map(q => <Chip key={q} v={q} cur={intake.foodQuality} onClick={v => set({ foodQuality: v })} label={FOOD_QUALITY_LABEL[q]} />)}</div></Field></div>
-        <div style={{ marginTop: 10 }}><Field label="Freins (multi)"><div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>{FRICTIONS.map(f => <Multi key={f.key} on={intake.frictions.includes(f.key)} onClick={() => set({ frictions: toggle(intake.frictions, f.key) })} label={f.label} />)}</div></Field></div>
-        <div style={{ marginTop: 10 }}><Field label="Contraintes alimentaires (multi)"><div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>{DIET_CONSTRAINTS.map(d => <Multi key={d.key} on={intake.dietConstraints.includes(d.key)} onClick={() => set({ dietConstraints: toggle(intake.dietConstraints, d.key) })} label={d.label} />)}</div></Field></div>
-        <div style={{ marginTop: 10 }}><Field label="Notes (optionnel)"><textarea rows={2} style={{ ...INP, resize: 'vertical' }} value={intake.notes} onChange={e => set({ notes: e.target.value })} placeholder="Contexte, préférences…" /></Field></div>
+          {/* Dépense */}
+          <Group step={3} title="Dépense & rythme">
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 12, marginBottom: 13 }}>
+              <Field label="Repas / jour"><select style={INP} value={intake.mealsPerDay} onChange={e => set({ mealsPerDay: parseInt(e.target.value) })}>{[2, 3, 4, 5, 6, 7].map(n => <option key={n} value={n}>{n}</option>)}</select></Field>
+              <Field label="Séances / sem">
+                <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                  <input type="number" style={{ ...INP, width: 60 }} value={intake.sessionsPerWeek || ''} onChange={e => set({ sessionsPerWeek: parseInt(e.target.value) || 0 })} />
+                  {intake.sessionsMode === 'range' && <><span style={{ color: 'var(--text-dim)' }}>à</span><input type="number" style={{ ...INP, width: 60 }} value={intake.sessionsPerWeekMax ?? ''} onChange={e => set({ sessionsPerWeekMax: e.target.value ? parseInt(e.target.value) : null })} /></>}
+                  <Chip v={intake.sessionsMode === 'range' ? 'exact' : 'range'} cur={'x' as RangeMode} onClick={() => set({ sessionsMode: intake.sessionsMode === 'range' ? 'exact' : 'range' })} label={intake.sessionsMode === 'range' ? '↔' : '='} />
+                </div>
+              </Field>
+              <Field label="Durée moy. séance (h)"><input type="number" step="0.25" style={INP} value={intake.avgSessionHours || ''} onChange={e => set({ avgSessionHours: parseFloat(e.target.value) || 0 })} /></Field>
+            </div>
+            <div style={{ marginBottom: 13 }}>
+              <Field label="Niveau de travail / quotidien">
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>{(Object.keys(WORK_LABEL) as WorkIntensity[]).map(w => <Chip key={w} v={w} cur={intake.workIntensity} onClick={v => set({ workIntensity: v })} label={WORK_LABEL[w]} />)}</div>
+              </Field>
+            </div>
+            <Field label="Cyclage des kcal">
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                {([['weekly', 'Chaque semaine'], ['biweekly', 'Toutes les 2 sem'], ['training', "S'adapte aux entraînements"]] as [CycleMode, string][]).map(([v, l]) => <Chip key={v} v={v} cur={intake.cycleMode} onClick={vv => set({ cycleMode: vv })} label={l} />)}
+              </div>
+            </Field>
+            {intake.cycleMode === 'training' && <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: '8px 0 0', lineHeight: 1.5 }}>Les jours sans séance = moins de kcal ; 1 séance = modéré ; 2+ = plus. L’app calcule depuis le planning réel de l’athlète.</p>}
+          </Group>
+
+          {/* Terrain */}
+          <Group step={4} title="Terrain de l’athlète">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 13 }}>
+              <Field label="Caractéristique"><div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>{(Object.keys(METABO_LABEL) as Metabolism[]).map(m => <Chip key={m} v={m} cur={intake.metabolism} onClick={v => set({ metabolism: v })} label={METABO_LABEL[m]} />)}</div></Field>
+              <Field label="Qualité alimentaire"><div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>{(Object.keys(FOOD_QUALITY_LABEL) as FoodQuality[]).map(q => <Chip key={q} v={q} cur={intake.foodQuality} onClick={v => set({ foodQuality: v })} label={FOOD_QUALITY_LABEL[q]} />)}</div></Field>
+              <Field label="Freins (multi)"><div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>{FRICTIONS.map(f => <Multi key={f.key} on={intake.frictions.includes(f.key)} onClick={() => set({ frictions: toggle(intake.frictions, f.key) })} label={f.label} />)}</div></Field>
+              <Field label="Contraintes alimentaires (multi)"><div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>{DIET_CONSTRAINTS.map(d => <Multi key={d.key} on={intake.dietConstraints.includes(d.key)} onClick={() => set({ dietConstraints: toggle(intake.dietConstraints, d.key) })} label={d.label} />)}</div></Field>
+              <Field label="Notes (optionnel)"><textarea rows={2} style={{ ...INP, resize: 'vertical' }} value={intake.notes} onChange={e => set({ notes: e.target.value })} placeholder="Contexte, préférences…" /></Field>
+            </div>
+          </Group>
+        </div>
 
         {/* Génération */}
         <div style={{ display: 'flex', gap: 10, marginTop: 18, flexWrap: 'wrap' }}>
-          <button onClick={generateManual} disabled={!intake.targetWeightKg} style={{ flex: '1 1 180px', padding: 12, borderRadius: 12, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontWeight: 700, fontSize: 13.5, cursor: 'pointer' }}>Calculer (manuel)</button>
-          <button onClick={() => void generateAI()} disabled={aiBusy || !intake.targetWeightKg} style={{ flex: '1 1 180px', padding: 12, borderRadius: 12, border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontWeight: 700, fontSize: 13.5, cursor: aiBusy ? 'wait' : 'pointer', opacity: aiBusy ? 0.6 : 1 }}>{aiBusy ? 'L’IA réfléchit…' : '✨ Générer avec l’IA'}</button>
+          <button onClick={generateManual} disabled={!intake.targetWeightKg} style={{ flex: '1 1 180px', padding: 13, borderRadius: 12, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontWeight: 700, fontSize: 13.5, cursor: 'pointer' }}>Calculer (manuel)</button>
+          <button onClick={() => void generateAI()} disabled={aiBusy || !intake.targetWeightKg} style={{ flex: '1 1 180px', padding: 13, borderRadius: 12, border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontWeight: 700, fontSize: 13.5, cursor: aiBusy ? 'wait' : 'pointer', opacity: aiBusy ? 0.6 : 1, boxShadow: '0 4px 14px color-mix(in srgb, var(--primary) 30%, transparent)' }}>{aiBusy ? 'L’IA réfléchit…' : '✨ Générer avec l’IA'}</button>
         </div>
         {aiErr && <p style={{ fontSize: 12, color: '#ef4444', margin: '8px 0 0', fontWeight: 600 }}>{aiErr}</p>}
       </div>

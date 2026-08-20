@@ -1,68 +1,72 @@
 'use client'
 // ══════════════════════════════════════════════════════════════════
-// BoxeLauncher — étape avant le chrono : on choisit une séance planifiée
-// (sport = boxe) si elle existe, sinon on configure une séance libre (rounds /
-// durée / repos). Résumé visible avant de lancer. Pas de carte.
+// BoxeLauncher — on NE crée PAS de séance ici. On affiche uniquement les séances
+// de boxe PLANIFIÉES cette semaine (planned_sessions sport='boxe'), avec leur
+// structure (circuits / rounds / exercices) lue depuis validation_data. On clique
+// une séance → elle s'ouvre et se lance dans le lecteur en direct.
 // ══════════════════════════════════════════════════════════════════
 import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { createClient } from '@/lib/supabase/client'
+import { getCurrentUser } from '@/lib/auth/currentUser'
 import { useI18n } from '@/lib/i18n'
-import type { BoxeConfig } from './BoxeScreen'
+import { weekStartStr } from '@/lib/date/weekStart'
+import { sumComposedMinutes, type ComposedMove, type ComposedCircuit } from '@/components/planning/composedSports'
+import type { BoxeSession } from './boxe/buildBoxeTimeline'
 
 interface Props {
   open: boolean
   onClose: () => void
-  onStart: (config: BoxeConfig) => void
+  onStart: (session: BoxeSession) => void
 }
 
-interface PlannedRow { id: string; title: string | null }
+interface PlannedRow {
+  id: string; title: string | null; day_index: number
+  validation_data: { composed?: ComposedMove[]; composedCircuits?: ComposedCircuit[]; composedCircuit?: ComposedCircuit } | null
+}
+interface PlannedBoxe { id: string; title: string; dayIndex: number; moves: ComposedMove[]; circuits: ComposedCircuit[]; minutes: number }
 
 const ACCENT = '#ef4444'
-
-function Stepper({ label, value, onDec, onInc, display }: { label: string; value: number; onDec: () => void; onInc: () => void; display: string }) {
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 4px' }}>
-      <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>{label}</span>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-        <button onClick={onDec} style={{ width: 34, height: 34, borderRadius: '50%', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 20, fontWeight: 700, cursor: 'pointer', lineHeight: 1 }}>−</button>
-        <span style={{ minWidth: 56, textAlign: 'center', fontSize: 17, fontWeight: 800, color: 'var(--text)', fontVariantNumeric: 'tabular-nums' }}>{display}</span>
-        <button onClick={onInc} style={{ width: 34, height: 34, borderRadius: '50%', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 20, fontWeight: 700, cursor: 'pointer', lineHeight: 1 }}>+</button>
-      </div>
-    </div>
-  )
-}
+const DAYS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']
 
 export default function BoxeLauncher({ open, onClose, onStart }: Props) {
   const { t } = useI18n()
   const [mounted, setMounted] = useState(false)
   const [closing, setClosing] = useState(false)
-  const [sessions, setSessions] = useState<PlannedRow[]>([])
-  const [title, setTitle] = useState<string | undefined>(undefined)
-  const [rounds, setRounds] = useState(12)
-  const [workSec, setWorkSec] = useState(180)
-  const [restSec, setRestSec] = useState(60)
-  const prepareSec = 10
+  const [loading, setLoading] = useState(true)
+  const [sessions, setSessions] = useState<PlannedBoxe[]>([])
 
   useEffect(() => { setMounted(true) }, [])
 
-  // Séances de boxe planifiées (facultatif — s'il y en a).
   useEffect(() => {
     if (!open) return
-    const supabase = createClient()
     let cancelled = false
-    void supabase.from('planned_sessions').select('id, title, sport').eq('sport', 'boxe').limit(20)
-      .then(({ data }) => { if (!cancelled && data) setSessions((data as PlannedRow[]).filter(Boolean)) })
+    setLoading(true)
+    void (async () => {
+      try {
+        const sb = createClient()
+        const user = await getCurrentUser()
+        if (!user) { if (!cancelled) setLoading(false); return }
+        const { data } = await sb.from('planned_sessions')
+          .select('id, title, day_index, validation_data')
+          .eq('user_id', user.id).eq('sport', 'boxe').eq('week_start', weekStartStr(new Date()))
+          .order('day_index', { ascending: true })
+        if (cancelled) return
+        const rows = (data ?? []) as PlannedRow[]
+        const mapped: PlannedBoxe[] = rows.map(r => {
+          const vd = r.validation_data ?? {}
+          const moves = vd.composed ?? []
+          const circuits = vd.composedCircuits ?? (vd.composedCircuit ? [vd.composedCircuit] : [])
+          return { id: r.id, title: r.title || 'Séance boxe', dayIndex: r.day_index, moves, circuits, minutes: sumComposedMinutes(moves, circuits) }
+        })
+        setSessions(mapped)
+      } catch { /* silencieux */ }
+      finally { if (!cancelled) setLoading(false) }
+    })()
     return () => { cancelled = true }
   }, [open])
 
   const handleClose = () => { setClosing(true); setTimeout(onClose, 230) }
-  const totalSec = prepareSec + rounds * workSec + Math.max(0, rounds - 1) * restSec
-  const totalMin = Math.round(totalSec / 60)
-
-  const clampRounds = (n: number) => Math.max(1, Math.min(30, n))
-  const clampWork = (n: number) => Math.max(30, Math.min(600, n))
-  const clampRest = (n: number) => Math.max(0, Math.min(300, n))
 
   if (!mounted || !open) return null
 
@@ -72,68 +76,50 @@ export default function BoxeLauncher({ open, onClose, onStart }: Props) {
       <div style={{
         position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 10001,
         background: 'var(--bg-card)', borderTopLeftRadius: 26, borderTopRightRadius: 26,
-        maxHeight: '88dvh', display: 'flex', flexDirection: 'column',
+        maxHeight: '86dvh', display: 'flex', flexDirection: 'column',
         paddingBottom: 'env(safe-area-inset-bottom)',
         animation: closing ? 'boxeDown .23s ease forwards' : 'boxeUp .3s cubic-bezier(.2,.8,.2,1)',
       }}>
         <style>{`@keyframes boxeScrim{from{opacity:0}to{opacity:1}}@keyframes boxeUp{from{transform:translateY(100%)}to{transform:translateY(0)}}@keyframes boxeDown{from{transform:translateY(0)}to{transform:translateY(100%)}}`}</style>
         <div style={{ width: 40, height: 4, borderRadius: 4, background: 'var(--border-mid)', margin: '10px auto 0', flexShrink: 0 }} />
 
-        <div style={{ padding: '14px 20px 8px', flexShrink: 0 }}>
+        <div style={{ padding: '14px 20px 6px', flexShrink: 0 }}>
           <h3 style={{ margin: 0, fontSize: 21, fontWeight: 800, color: 'var(--text)' }}>Boxe</h3>
+          <p style={{ margin: '3px 0 0', fontSize: 12.5, color: 'var(--text-dim)' }}>Tes séances de boxe planifiées cette semaine.</p>
         </div>
 
-        <div style={{ flex: 1, overflowY: 'auto', padding: '4px 20px 12px' }}>
-          {/* Séances planifiées (si présentes) */}
-          {sessions.length > 0 && (
-            <div style={{ marginBottom: 16 }}>
-              <p style={{ fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-dim)', margin: '0 0 8px' }}>{t('record.workoutPlannedSessions') || 'Séances planifiées'}</p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {sessions.map(s => {
-                  const active = title === (s.title ?? '')
-                  return (
-                    <button key={s.id} onClick={() => setTitle(active ? undefined : (s.title ?? 'Boxe'))}
-                      style={{ textAlign: 'left', padding: '12px 14px', borderRadius: 12, cursor: 'pointer',
-                        border: `1px solid ${active ? ACCENT : 'var(--border)'}`, background: active ? `${ACCENT}14` : 'var(--bg-card2)', color: 'var(--text)', fontSize: 14, fontWeight: 600 }}>
-                      {s.title || 'Séance boxe'}
-                    </button>
-                  )
-                })}
-              </div>
+        <div style={{ flex: 1, overflowY: 'auto', padding: '10px 20px 16px' }}>
+          {loading ? (
+            <p style={{ fontSize: 13, color: 'var(--text-dim)', textAlign: 'center', padding: '30px 0' }}>Chargement…</p>
+          ) : sessions.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '28px 12px' }}>
+              <div style={{ fontSize: 34, marginBottom: 8 }}>🥊</div>
+              <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', margin: '0 0 4px' }}>Aucune séance de boxe cette semaine</p>
+              <p style={{ fontSize: 12.5, color: 'var(--text-dim)', margin: 0, lineHeight: 1.5 }}>Crée une séance de boxe dans ton planning, puis reviens ici pour la lancer.</p>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {sessions.map(s => (
+                <button key={s.id} onClick={() => { onStart({ title: s.title, moves: s.moves, circuits: s.circuits }); handleClose() }}
+                  style={{ textAlign: 'left', padding: '15px 16px', borderRadius: 16, cursor: 'pointer', border: '1px solid var(--border)', background: 'var(--bg-card2)', display: 'flex', alignItems: 'center', gap: 13, width: '100%' }}>
+                  <span style={{ width: 46, height: 46, borderRadius: 12, background: `${ACCENT}18`, color: ACCENT, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontFamily: 'var(--font-display)', fontWeight: 800, lineHeight: 1 }}>
+                    <span style={{ fontSize: 9.5, opacity: 0.7 }}>{DAYS[s.dayIndex] ?? ''}</span>
+                    <span style={{ fontSize: 17 }}>🥊</span>
+                  </span>
+                  <span style={{ flex: 1, minWidth: 0 }}>
+                    <span style={{ display: 'block', fontSize: 15, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.title}</span>
+                    <span style={{ display: 'block', fontSize: 12, color: 'var(--text-dim)', marginTop: 2 }}>
+                      {s.circuits.length > 0 ? `${s.circuits.length} circuit${s.circuits.length > 1 ? 's' : ''} · ` : ''}{s.moves.length} exo{s.moves.length > 1 ? 's' : ''}{s.minutes > 0 ? ` · ≈ ${s.minutes} min` : ''}
+                    </span>
+                  </span>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={ACCENT} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M9 18l6-6-6-6"/></svg>
+                </button>
+              ))}
             </div>
           )}
-
-          {/* Config rounds (séance libre / réglages) */}
-          <p style={{ fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-dim)', margin: '0 0 4px' }}>{title ? title : (t('record.freeMode') || 'Séance libre')}</p>
-          <div style={{ background: 'var(--bg-card2)', borderRadius: 14, border: '1px solid var(--border)', padding: '4px 14px', marginBottom: 14 }}>
-            <Stepper label="Rounds" value={rounds} display={String(rounds)} onDec={() => setRounds(r => clampRounds(r - 1))} onInc={() => setRounds(r => clampRounds(r + 1))} />
-            <div style={{ height: 1, background: 'var(--border)' }} />
-            <Stepper label="Round" value={workSec} display={fmtMS(workSec)} onDec={() => setWorkSec(v => clampWork(v - 15))} onInc={() => setWorkSec(v => clampWork(v + 15))} />
-            <div style={{ height: 1, background: 'var(--border)' }} />
-            <Stepper label="Repos" value={restSec} display={fmtMS(restSec)} onDec={() => setRestSec(v => clampRest(v - 15))} onInc={() => setRestSec(v => clampRest(v + 15))} />
-          </div>
-
-          {/* Résumé */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderRadius: 12, background: `${ACCENT}12`, border: `1px solid ${ACCENT}33`, marginBottom: 4 }}>
-            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{rounds} × {fmtMS(workSec)}</span>
-            <span style={{ fontSize: 13, color: 'var(--text-mid)' }}>· {t('record.rest') || 'repos'} {fmtMS(restSec)}</span>
-            <span style={{ marginLeft: 'auto', fontSize: 13, fontWeight: 800, color: ACCENT }}>≈ {totalMin} min</span>
-          </div>
-        </div>
-
-        <div style={{ flexShrink: 0, padding: '12px 20px calc(14px + env(safe-area-inset-bottom))', borderTop: '1px solid var(--border)' }}>
-          <button onClick={() => { onStart({ title, rounds, workSec, restSec, prepareSec }); handleClose() }}
-            style={{ width: '100%', padding: 15, borderRadius: 999, border: 'none', background: ACCENT, color: '#fff', fontSize: 15.5, fontWeight: 800, cursor: 'pointer' }}>
-            {t('record.start') || 'Commencer'}
-          </button>
         </div>
       </div>
     </>,
     document.body,
   )
-}
-
-function fmtMS(sec: number) {
-  const m = Math.floor(sec / 60), s = sec % 60
-  return `${m}:${String(s).padStart(2, '0')}`
 }

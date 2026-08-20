@@ -70,7 +70,7 @@ export default function RecordPage() {
   const [yogaLauncherOpen, setYogaLauncherOpen] = useState(false)
   const [yogaSessionOpen, setYogaSessionOpen] = useState(false)
   const [boxeLauncherOpen, setBoxeLauncherOpen] = useState(false)
-  const [boxeConfig, setBoxeConfig] = useState<import('@/components/record/BoxeScreen').BoxeConfig | null>(null)
+  const [boxeConfig, setBoxeConfig] = useState<import('@/components/record/boxe/buildBoxeTimeline').BoxeSession | null>(null)
   const [yogaExercises, setYogaExercises] = useState<import('@/types/yoga').YogaSessionExercise[]>([])
   const [yogaTitle, setYogaTitle] = useState('')
   // Course à pied : choix Dehors (GPS) / Tapis (séance guidée) avant de lancer.
@@ -575,7 +575,7 @@ export default function RecordPage() {
 
       {boxeConfig && (
         <BoxeScreen
-          config={boxeConfig}
+          session={boxeConfig}
           isDark={isDark}
           onClose={() => setBoxeConfig(null)}
         />

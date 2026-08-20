@@ -4,7 +4,7 @@
 // préparation → (par circuit → par tour → par move → effort + récup) → terminé.
 // Le move « round » a ses propres rounds internes (temps + repos + intensité).
 // ══════════════════════════════════════════════════════════════════
-import type { ComposedMove, ComposedCircuit, RoundSupport } from '@/components/planning/composedSports'
+import type { ComposedMove, ComposedCircuit, RoundSupport, ComposedSport } from '@/components/planning/composedSports'
 import { ROUND_SUPPORT_LABEL, moveDef, composedMoveLabel } from '@/components/planning/composedSports'
 
 export type BoxePhase = 'prepare' | 'work' | 'rest' | 'done'
@@ -28,11 +28,21 @@ const PREPARE_SEC = 10
 
 function supportLabel(s?: RoundSupport): string { return s ? ROUND_SUPPORT_LABEL[s] : 'Round' }
 
-export interface BoxeSession { title: string; moves: ComposedMove[]; circuits: ComposedCircuit[] }
+export interface BoxeSession { title: string; moves: ComposedMove[]; circuits: ComposedCircuit[]; sport?: ComposedSport; free?: boolean }
 
 export function buildBoxeTimeline(session: BoxeSession): BoxeStep[] {
   const { moves, circuits } = session
+  const sport: ComposedSport = session.sport ?? 'boxe'
   const steps: BoxeStep[] = []
+
+  // Séance LIBRE (aucune structure) : un chrono ouvert que l'athlète arrête
+  // quand il veut, puis enregistre. Pas de préparation, pas d'auto-avance.
+  if (session.free || moves.length === 0) {
+    steps.push({ phase: 'work', label: 'Séance libre', durationSec: 0, measure: 'reps', circuitIdx: 0, isRound: false })
+    steps.push({ phase: 'done', label: 'Terminé', durationSec: 0, measure: 'time', circuitIdx: 0, isRound: false })
+    return steps
+  }
+
   const list: ComposedCircuit[] = circuits.length ? circuits : [{ id: 'c1', rounds: 1, restSec: 0 }]
   const firstId = list[0].id
 
@@ -43,7 +53,7 @@ export function buildBoxeTimeline(session: BoxeSession): BoxeStep[] {
     const tours = Math.max(1, circuit.rounds)
     for (let tour = 1; tour <= tours; tour++) {
       cMoves.forEach(m => {
-        const def = moveDef('boxe', m.kind)
+        const def = moveDef(sport, m.kind)
         const baseLabel = composedMoveLabel(m, def)
         if (m.kind === 'round') {
           const nRounds = Math.max(1, m.rounds ?? 1)

@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { IconBike, IconRun, IconMountain, IconWalk, IconBarbell, IconStretching2, IconKayak, IconSwimming, IconSnowboarding, IconYoga, IconBallTennis, IconKarate } from '@tabler/icons-react'
+import { IconBike, IconRun, IconMountain, IconWalk, IconBarbell, IconStretching2, IconKayak, IconSwimming, IconSnowboarding, IconYoga, IconBallTennis, IconKarate, IconBolt } from '@tabler/icons-react'
 import { useI18n } from '@/lib/i18n'
 
 const SPORT_LABEL_KEY: Record<SportId, string> = {
@@ -9,6 +9,7 @@ const SPORT_LABEL_KEY: Record<SportId, string> = {
   hyrox: 'record.sportLabelHyrox', rowing: 'record.sportLabelRowing', swim: 'record.sportLabelSwim',
   ski: 'record.sportLabelSki', yoga: 'record.sportLabelYoga', padel: 'record.sportLabelPadel',
   openwater: 'record.sportLabelOpenwater', hometrainer: 'record.sportLabelHometrainer', boxe: 'record.sportLabelBoxe',
+  hybrid: 'record.sportLabelHybrid',
 }
 const SPORT_CAT_KEY: Record<string, string> = {
   'Sports sur roues': 'record.sportCatWheels', 'Sports à pied': 'record.sportCatFoot',
@@ -29,6 +30,7 @@ export type SportId =
   | 'openwater'
   | 'hometrainer'
   | 'boxe'
+  | 'hybrid'
 
 // ── Icons — mêmes pictogrammes Tabler que le Planning (SportIcon) ────
 function BikeIcon()        { return <IconBike size={24} stroke={1.6} /> }
@@ -46,6 +48,7 @@ function PadelIcon()       { return <IconBallTennis size={24} stroke={1.6} /> }
 function OpenWaterIcon()   { return <IconSwimming size={24} stroke={1.6} /> }
 function HomeTrainerIcon() { return <IconBike size={24} stroke={1.6} /> }
 function BoxeIcon()        { return <IconKarate size={24} stroke={1.6} /> }
+function HybridIcon()      { return <IconBolt size={24} stroke={1.6} /> }
 
 // ── Data ──────────────────────────────────────────────────────
 interface Sport {
@@ -75,6 +78,7 @@ const SPORT_CATEGORIES: { name: string; sports: Sport[] }[] = [
     sports: [
       { id: 'strength', label: 'Musculation', icon: <StrengthIcon /> },
       { id: 'hyrox',    label: 'Hyrox',       icon: <HyroxIcon /> },
+      { id: 'hybrid',   label: 'Hybrid',      icon: <HybridIcon /> },
     ],
   },
   {
@@ -149,7 +153,7 @@ interface Props {
 // dehors) sont masqués ici. Le running desktop = tapis (géré dans record/page).
 // NB : ce filtre ne concerne QUE le lancement live ; la création/génération d'un
 // entraînement (ManualEntrySheet) garde tous les sports.
-const DESKTOP_ALLOWED: SportId[] = ['hometrainer', 'running', 'strength', 'hyrox', 'boxe', 'rowing', 'padel']
+const DESKTOP_ALLOWED: SportId[] = ['hometrainer', 'running', 'strength', 'hyrox', 'boxe', 'hybrid', 'rowing', 'padel']
 
 export default function SportSelector({ open, onClose, selectedSport, onSelect, onManual }: Props) {
   const { t } = useI18n()

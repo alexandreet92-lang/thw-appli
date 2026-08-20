@@ -70,6 +70,7 @@ export default function RecordPage() {
   const [yogaLauncherOpen, setYogaLauncherOpen] = useState(false)
   const [yogaSessionOpen, setYogaSessionOpen] = useState(false)
   const [boxeLauncherOpen, setBoxeLauncherOpen] = useState(false)
+  const [hybridLauncherOpen, setHybridLauncherOpen] = useState(false)
   const [boxeConfig, setBoxeConfig] = useState<import('@/components/record/boxe/buildBoxeTimeline').BoxeSession | null>(null)
   const [yogaExercises, setYogaExercises] = useState<import('@/types/yoga').YogaSessionExercise[]>([])
   const [yogaTitle, setYogaTitle] = useState('')
@@ -166,6 +167,7 @@ export default function RecordPage() {
     else if (sport === 'strength' || sport === 'hyrox') openLauncher(sport === 'strength' ? 'gym' : 'hyrox')
     else if (sport === 'yoga')        setYogaLauncherOpen(true)
     else if (sport === 'boxe')        setBoxeLauncherOpen(true)
+    else if (sport === 'hybrid')      setHybridLauncherOpen(true)
     else if (sport === 'padel')       setView('padel')
     else if (sport === 'openwater')   setView('openwater')
     else if (sport === 'hometrainer') setView('hometrainer')
@@ -570,6 +572,16 @@ export default function RecordPage() {
           open={boxeLauncherOpen}
           onClose={() => setBoxeLauncherOpen(false)}
           onStart={(config) => { setBoxeConfig(config); setBoxeLauncherOpen(false) }}
+          sport="boxe"
+        />
+      )}
+
+      {hybridLauncherOpen && (
+        <BoxeLauncher
+          open={hybridLauncherOpen}
+          onClose={() => setHybridLauncherOpen(false)}
+          onStart={(config) => { setBoxeConfig(config); setHybridLauncherOpen(false) }}
+          sport="hybrid"
         />
       )}
 

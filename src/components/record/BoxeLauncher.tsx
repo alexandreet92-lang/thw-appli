@@ -11,13 +11,14 @@ import { createClient } from '@/lib/supabase/client'
 import { getCurrentUser } from '@/lib/auth/currentUser'
 import { useI18n } from '@/lib/i18n'
 import { weekStartStr } from '@/lib/date/weekStart'
-import { sumComposedMinutes, type ComposedMove, type ComposedCircuit } from '@/components/planning/composedSports'
+import { sumComposedMinutes, type ComposedMove, type ComposedCircuit, type ComposedSport } from '@/components/planning/composedSports'
 import type { BoxeSession } from './boxe/buildBoxeTimeline'
 
 interface Props {
   open: boolean
   onClose: () => void
   onStart: (session: BoxeSession) => void
+  sport?: ComposedSport   // 'boxe' (défaut) ou 'hybrid' — même lecteur composé
 }
 
 interface PlannedRow {
@@ -29,8 +30,9 @@ interface PlannedBoxe { id: string; title: string; dayIndex: number; moves: Comp
 const ACCENT = '#ef4444'
 const DAYS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']
 
-export default function BoxeLauncher({ open, onClose, onStart }: Props) {
+export default function BoxeLauncher({ open, onClose, onStart, sport = 'boxe' }: Props) {
   const { t } = useI18n()
+  const SPORT_LABEL = sport === 'hybrid' ? 'Hybrid' : 'Boxe'
   const [mounted, setMounted] = useState(false)
   const [closing, setClosing] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -49,7 +51,7 @@ export default function BoxeLauncher({ open, onClose, onStart }: Props) {
         if (!user) { if (!cancelled) setLoading(false); return }
         const { data } = await sb.from('planned_sessions')
           .select('id, title, day_index, validation_data')
-          .eq('user_id', user.id).eq('sport', 'boxe').eq('week_start', weekStartStr(new Date()))
+          .eq('user_id', user.id).eq('sport', sport).eq('week_start', weekStartStr(new Date()))
           .order('day_index', { ascending: true })
         if (cancelled) return
         const rows = (data ?? []) as PlannedRow[]
@@ -57,7 +59,7 @@ export default function BoxeLauncher({ open, onClose, onStart }: Props) {
           const vd = r.validation_data ?? {}
           const moves = vd.composed ?? []
           const circuits = vd.composedCircuits ?? (vd.composedCircuit ? [vd.composedCircuit] : [])
-          return { id: r.id, title: r.title || 'Séance boxe', dayIndex: r.day_index, moves, circuits, minutes: sumComposedMinutes(moves, circuits) }
+          return { id: r.id, title: r.title || `Séance ${SPORT_LABEL.toLowerCase()}`, dayIndex: r.day_index, moves, circuits, minutes: sumComposedMinutes(moves, circuits) }
         })
         setSessions(mapped)
       } catch { /* silencieux */ }
@@ -84,8 +86,8 @@ export default function BoxeLauncher({ open, onClose, onStart }: Props) {
         <div style={{ width: 40, height: 4, borderRadius: 4, background: 'var(--border-mid)', margin: '10px auto 0', flexShrink: 0 }} />
 
         <div style={{ padding: '14px 20px 6px', flexShrink: 0 }}>
-          <h3 style={{ margin: 0, fontSize: 21, fontWeight: 800, color: 'var(--text)' }}>Boxe</h3>
-          <p style={{ margin: '3px 0 0', fontSize: 12.5, color: 'var(--text-dim)' }}>Tes séances de boxe planifiées cette semaine.</p>
+          <h3 style={{ margin: 0, fontSize: 21, fontWeight: 800, color: 'var(--text)' }}>{SPORT_LABEL}</h3>
+          <p style={{ margin: '3px 0 0', fontSize: 12.5, color: 'var(--text-dim)' }}>Tes séances de {SPORT_LABEL.toLowerCase()} planifiées cette semaine.</p>
         </div>
 
         <div style={{ flex: 1, overflowY: 'auto', padding: '10px 20px 16px' }}>
@@ -93,13 +95,13 @@ export default function BoxeLauncher({ open, onClose, onStart }: Props) {
             <p style={{ fontSize: 13, color: 'var(--text-dim)', textAlign: 'center', padding: '30px 0' }}>Chargement…</p>
           ) : sessions.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '28px 12px' }}>
-              <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', margin: '0 0 4px' }}>Aucune séance de boxe cette semaine</p>
-              <p style={{ fontSize: 12.5, color: 'var(--text-dim)', margin: 0, lineHeight: 1.5 }}>Crée une séance de boxe dans ton planning, puis reviens ici pour la lancer.</p>
+              <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', margin: '0 0 4px' }}>Aucune séance de {SPORT_LABEL.toLowerCase()} cette semaine</p>
+              <p style={{ fontSize: 12.5, color: 'var(--text-dim)', margin: 0, lineHeight: 1.5 }}>Crée une séance de {SPORT_LABEL.toLowerCase()} dans ton planning, puis reviens ici pour la lancer.</p>
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {sessions.map(s => (
-                <button key={s.id} onClick={() => { onStart({ title: s.title, moves: s.moves, circuits: s.circuits }); handleClose() }}
+                <button key={s.id} onClick={() => { onStart({ title: s.title, moves: s.moves, circuits: s.circuits, sport }); handleClose() }}
                   style={{ textAlign: 'left', padding: '15px 16px', borderRadius: 16, cursor: 'pointer', border: '1px solid var(--border)', background: 'var(--bg-card2)', display: 'flex', alignItems: 'center', gap: 13, width: '100%' }}>
                   <span style={{ width: 46, height: 46, borderRadius: 12, background: `${ACCENT}18`, color: ACCENT, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 14, lineHeight: 1 }}>
                     {DAYS[s.dayIndex] ?? ''}
@@ -115,6 +117,14 @@ export default function BoxeLauncher({ open, onClose, onStart }: Props) {
               ))}
             </div>
           )}
+        </div>
+
+        {/* Séance LIBRE : lancer sans séance planifiée (chrono ouvert) */}
+        <div style={{ flexShrink: 0, padding: '12px 20px calc(14px + env(safe-area-inset-bottom))', borderTop: '1px solid var(--border)' }}>
+          <button onClick={() => { onStart({ title: `Séance ${SPORT_LABEL.toLowerCase()} libre`, moves: [], circuits: [], sport, free: true }); handleClose() }}
+            style={{ width: '100%', padding: 14, borderRadius: 999, border: `1px solid ${ACCENT}`, background: 'transparent', color: ACCENT, fontSize: 14.5, fontWeight: 800, cursor: 'pointer' }}>
+            Démarrer une séance libre
+          </button>
         </div>
       </div>
     </>,

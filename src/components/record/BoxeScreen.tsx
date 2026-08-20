@@ -104,7 +104,7 @@ export default function BoxeScreen({ session, onClose, isDark }: Props) {
     const user = await getCurrentUser()
     if (!user) return
     await sb.from('activities').insert({
-      user_id: user.id, sport_type: 'boxe', title: formData.title,
+      user_id: user.id, sport_type: session.sport === 'hybrid' ? 'hybrid' : 'boxe', title: formData.title,
       started_at: startedAt, moving_time_s: elapsed, elapsed_time_s: elapsed,
       calories: caloriesEst || null,
       avg_hr: hr.avg || null, max_hr: hr.max || null,
@@ -146,7 +146,9 @@ export default function BoxeScreen({ session, onClose, isDark }: Props) {
       <div style={{ flex: 1, minHeight: 0, background: phaseColorOf(cur.phase), display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', transition: 'background .3s', padding: 16, textAlign: 'center' }}>
         <p style={{ fontSize: 26, fontWeight: 900, color: '#fff', margin: 0, letterSpacing: '0.02em', textTransform: 'uppercase', textShadow: '0 1px 8px rgba(0,0,0,0.15)' }}>{cur.label}</p>
         {cur.detail && <p style={{ fontSize: 14, fontWeight: 700, color: 'rgba(255,255,255,0.9)', margin: '4px 0 0' }}>{cur.detail}</p>}
-        {cur.measure === 'time' ? (
+        {cur.label === 'Séance libre' ? (
+          <p style={{ fontSize: 'min(26vw, 120px)', fontWeight: 900, color: '#fff', margin: '4px 0 0', lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{fmtDur(elapsed)}</p>
+        ) : cur.measure === 'time' ? (
           <p style={{ fontSize: 'min(28vw, 130px)', fontWeight: 900, color: '#fff', margin: '4px 0 0', lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{isDone ? '00:00' : fmt(remaining)}</p>
         ) : (
           <>

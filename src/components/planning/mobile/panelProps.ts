@@ -58,5 +58,5 @@ export interface SessionEditorPanelProps {
   // Sports composés (Hybrid / Boxe)
   isComposed: boolean
   composedMoves: ComposedMove[]; setComposedMoves: (m: ComposedMove[]) => void
-  composedCircuit: ComposedCircuit; setComposedCircuit: (c: ComposedCircuit) => void
+  composedCircuits: ComposedCircuit[]; setComposedCircuits: (c: ComposedCircuit[]) => void
 }

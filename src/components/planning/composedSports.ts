@@ -42,6 +42,8 @@ export const SUPPORTS_WITH_COMBOS: RoundSupport[] = ['bag', 'mitts']
 export interface ComposedMove {
   id: string
   kind: string            // clé du MOVE_DEF (bike, run, round, jumprope…)
+  circuitId?: string      // circuit d'appartenance (multi-circuits). Absent = 1er circuit.
+  roundIntensities?: number[] // boxe « round » : intensité 1→10 PAR round (modifiable)
   measure: Measure
   // mesures
   timeSec?: number
@@ -76,8 +78,10 @@ export interface ComposedMove {
   restAfterSec?: number
 }
 
-// Circuit : la liste des moves est répétée N tours, avec une récup entre tours.
-export interface ComposedCircuit { rounds: number; restSec: number }
+// Circuit : un GROUPE de moves répété N tours, avec une récup entre tours. Une
+// séance peut contenir PLUSIEURS circuits (ex. circuit 1 = 3× sac 8 min, puis
+// circuit 2 = autre chose). Chaque move référence son circuit via circuitId.
+export interface ComposedCircuit { id: string; name?: string; rounds: number; restSec: number }
 
 // Définition d'un type de move (drive l'UI du builder).
 export interface MoveDef {
@@ -160,10 +164,24 @@ export function composedMoveLabel(m: ComposedMove, def?: MoveDef): string {
   return variant ? `${base} · ${variant.label}` : base
 }
 
-// Durée totale (min) : (Σ moves + récup inter-exos) × tours + récup inter-tours.
-export function sumComposedMinutes(moves: ComposedMove[], circuit?: ComposedCircuit): number {
-  const perRound = moves.reduce((s, m) => s + moveMinutes(m) + (m.restAfterSec ?? 0) / 60, 0)
-  const rounds = Math.max(1, circuit?.rounds ?? 1)
-  const restBetween = (rounds - 1) * ((circuit?.restSec ?? 0) / 60)
-  return Math.round(perRound * rounds + restBetween)
+// Durée totale (min), sommée sur TOUS les circuits. Pour chaque circuit :
+// (Σ moves du circuit + récup inter-exos) × tours + récup inter-tours.
+// Rétro-compat : accepte un circuit unique OU un tableau ; les moves sans
+// circuitId sont rattachés au premier circuit.
+export function sumComposedMinutes(moves: ComposedMove[], circuits?: ComposedCircuit | ComposedCircuit[]): number {
+  const list = Array.isArray(circuits) ? circuits : circuits ? [circuits] : []
+  if (list.length === 0) {
+    return Math.round(moves.reduce((s, m) => s + moveMinutes(m) + (m.restAfterSec ?? 0) / 60, 0))
+  }
+  const firstId = list[0].id
+  let total = 0
+  for (const c of list) {
+    const cm = moves.filter(m => (m.circuitId ?? firstId) === c.id)
+    const perRound = cm.reduce((s, m) => s + moveMinutes(m) + (m.restAfterSec ?? 0) / 60, 0)
+    const rounds = Math.max(1, c.rounds)
+    total += perRound * rounds + (rounds - 1) * ((c.restSec ?? 0) / 60)
+  }
+  return Math.round(total)
 }
+
+export function newCircuitId(): string { return `c_${Math.random().toString(36).slice(2, 8)}` }

@@ -3736,17 +3736,25 @@ export function SessionEditor({ mode, session, dayIndex, weekStart, plan, onClos
   const [sport, setSport] = useState<SportType>(session?.sport ?? initialSport ?? 'run')
   const [cyclingSub, setCyclingSub] = useState<CyclingSub>(session?.cyclingSub ?? 'velo')
   const [runningSub, setRunningSub] = useState<RunningSub>(session?.runningSub ?? 'outdoor')
-  // Sports composés (Hybrid / Boxe) : liste de moves.
+  // Sports composés (Hybrid / Boxe) : liste de moves + PLUSIEURS circuits.
   const [composedMoves, setComposedMoves] = useState<ComposedMove[]>(session?.composed ?? [])
-  const [composedCircuit, setComposedCircuit] = useState<ComposedCircuit>(session?.composedCircuit ?? { rounds: 1, restSec: 0 })
+  const [composedCircuits, setComposedCircuits] = useState<ComposedCircuit[]>(() => {
+    // Rétro-compat : nouveau tableau `composedCircuits`, sinon ancien
+    // `composedCircuit` unique enveloppé, sinon un circuit par défaut.
+    const arr = (session as { composedCircuits?: ComposedCircuit[] } | undefined)?.composedCircuits
+    if (arr && arr.length) return arr
+    const old = session?.composedCircuit as (ComposedCircuit & { id?: string }) | undefined
+    if (old) return [{ id: old.id ?? 'c1', name: old.name, rounds: old.rounds, restSec: old.restSec }]
+    return [{ id: 'c1', rounds: 1, restSec: 0 }]
+  })
   const isComposed = sport === 'hybrid' || sport === 'boxe'
-  // La durée se met à jour auto depuis les moves + circuit (comme les blocs).
+  // La durée se met à jour auto depuis les moves + circuits (comme les blocs).
   const composedInitRef = useRef(true)
   useEffect(() => {
     if (composedInitRef.current) { composedInitRef.current = false; return }
-    const total = sumComposedMinutes(composedMoves, composedCircuit)
+    const total = sumComposedMinutes(composedMoves, composedCircuits)
     if (isComposed && total > 0) setDur(total)
-  }, [composedMoves, composedCircuit]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [composedMoves, composedCircuits]) // eslint-disable-line react-hooks/exhaustive-deps
   const [brickRun, setBrickRun] = useState<boolean>(!!session?.brickId)
   // brickId partagé vélo↔course. Généré au moment où l'on active l'enchaînement
   // (pour pouvoir relier une course existante immédiatement).
@@ -4492,7 +4500,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
       ? title.trim()
       : (ttStr ? `${SPORT_LABEL[sport]} ${ttStr}${subLabel}` : `${SPORT_LABEL[sport]}${subLabel}`)
     const parcoursMin = parseDurationToMin(totalDuration)
-    const composedMin = isComposed ? sumComposedMinutes(composedMoves, composedCircuit) : 0
+    const composedMin = isComposed ? sumComposedMinutes(composedMoves, composedCircuits) : 0
     // Mobilité : durée = somme des exos (indicative, HORS volume).
     const mobMin = sport === 'mobilite' ? blocks.reduce((s, b) => s + ((b as { mob?: unknown }).mob ? (b.durationMin ?? 0) : 0), 0) : 0
     const finalDur = aiFlowStep === 'parcours' && parcoursMin > 0 ? parcoursMin : (composedMin > 0 ? composedMin : mobMin > 0 ? Math.round(mobMin) : dur || 60)
@@ -4526,7 +4534,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
       cyclingSub: sport === 'bike' ? cyclingSub : undefined,
       runningSub: sport === 'run' ? runningSub : undefined,
       composed: isComposed && composedMoves.length > 0 ? composedMoves : undefined,
-      composedCircuit: isComposed && composedCircuit.rounds > 1 ? composedCircuit : undefined,
+      composedCircuits: isComposed && composedCircuits.length > 0 ? composedCircuits : undefined,
     }
     onSave(savedSession)
     // Enchaînement : soit on RELIE une course existante (onLinkBrick), soit on
@@ -5135,7 +5143,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
       title, setTitle, date, setDate, time, setTime,
       dur, setDur, rpe, setRpe, desc, setDesc, selPlan,
       blocks, setBlocks,
-      isComposed, composedMoves, setComposedMoves, composedCircuit, setComposedCircuit,
+      isComposed, composedMoves, setComposedMoves, composedCircuits, setComposedCircuits,
       sm: isStrength ? strengthSmsn.sm : smsn.sm, sn: isStrength ? strengthSmsn.sn : smsn.sn,
       exercises, setExercises, circuits: mCircuits, setCircuits: setMCircuits, exoMap: mMap, setExoMap: setMMap,
       athlete: athleteData ? {
@@ -6320,7 +6328,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
 
           {isComposed ? (
             /* Sports composés (Hybrid / Boxe) : builder de moves dédié */
-            <ComposedBuilder sport={sport as ComposedSport} moves={composedMoves} accent={accent} onChange={setComposedMoves} circuit={composedCircuit} onCircuitChange={setComposedCircuit} />
+            <ComposedBuilder sport={sport as ComposedSport} moves={composedMoves} accent={accent} onChange={setComposedMoves} circuits={composedCircuits} onCircuitsChange={setComposedCircuits} />
           ) : builderTab === 'manual' && !parcoursData ? (
             isStrength && !isEdit && blocks.length === 0 ? (
               /* Mode création manuel : constructeur par exercices (circuits) */

@@ -14,7 +14,7 @@ import type { SessionEditorPanelProps } from './panelProps'
 
 export function BuilderSection({ p }: { p: SessionEditorPanelProps }) {
   if (p.isComposed) {
-    return <ComposedBuilder sport={p.sport as ComposedSport} moves={p.composedMoves} accent={p.accent} onChange={p.setComposedMoves} circuit={p.composedCircuit} onCircuitChange={p.setComposedCircuit} />
+    return <ComposedBuilder sport={p.sport as ComposedSport} moves={p.composedMoves} accent={p.accent} onChange={p.setComposedMoves} circuits={p.composedCircuits} onCircuitsChange={p.setComposedCircuits} />
   }
   if (p.sport === 'mobilite') {
     return <MobilityBuilder blocks={p.blocks as MBlock[]} accent={p.accent} onChange={b => p.setBlocks(b as Block[])} />

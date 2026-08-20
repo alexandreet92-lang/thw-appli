@@ -191,7 +191,8 @@ export interface Session {
   runningSub?: RunningSub
   // Sports composés (Hybrid / Boxe) : liste de moves, persistée dans validation_data.
   composed?: ComposedMove[]
-  composedCircuit?: ComposedCircuit   // tours + récup entre tours
+  composedCircuit?: ComposedCircuit     // legacy (circuit unique) — lu en rétro-compat
+  composedCircuits?: ComposedCircuit[]  // plusieurs circuits (nouveau)
 }
 interface WeekTask {
   id:string; title:string; type:TaskType; dayIndex:number
@@ -794,7 +795,7 @@ function usePlanning(weekStartParam?:string) {
       sport:s.sport, title:s.title, time:s.time, duration_min:s.durationMin,
       tss:s.tss??null, status:s.status, notes:s.notes??null,
       rpe:s.rpe??null, blocks:s.blocks??[],
-      validation_data: { ...(s.brickId ? { brickId:s.brickId } : {}), ...(s.cyclingSub ? { cyclingSub:s.cyclingSub } : {}), ...(s.runningSub ? { runningSub:s.runningSub } : {}), ...(s.composed ? { composed:s.composed } : {}), ...(s.composedCircuit ? { composedCircuit:s.composedCircuit } : {}) },
+      validation_data: { ...(s.brickId ? { brickId:s.brickId } : {}), ...(s.cyclingSub ? { cyclingSub:s.cyclingSub } : {}), ...(s.runningSub ? { runningSub:s.runningSub } : {}), ...(s.composed ? { composed:s.composed } : {}), ...(s.composedCircuit ? { composedCircuit:s.composedCircuit } : {}), ...(s.composedCircuits ? { composedCircuits:s.composedCircuits } : {}) },
       plan_variant:s.planVariant??'A',
       parcours_data: s.parcoursData ?? null,
       parcours_id:   s.parcoursId   ?? null,
@@ -813,7 +814,7 @@ function usePlanning(weekStartParam?:string) {
       title:upd.title, time:upd.time, duration_min:upd.durationMin,
       notes:upd.notes??null, rpe:upd.rpe??null, blocks:upd.blocks??[],
       tss:upd.tss??null, status:upd.status,
-      validation_data:{ vDuration:upd.vDuration, vDistance:upd.vDistance, vHrAvg:upd.vHrAvg, vSpeed:upd.vSpeed, ...(upd.brickId ? { brickId:upd.brickId } : {}), ...(upd.cyclingSub ? { cyclingSub:upd.cyclingSub } : {}), ...(upd.runningSub ? { runningSub:upd.runningSub } : {}), ...(upd.composed ? { composed:upd.composed } : {}), ...(upd.composedCircuit ? { composedCircuit:upd.composedCircuit } : {}) },
+      validation_data:{ vDuration:upd.vDuration, vDistance:upd.vDistance, vHrAvg:upd.vHrAvg, vSpeed:upd.vSpeed, ...(upd.brickId ? { brickId:upd.brickId } : {}), ...(upd.cyclingSub ? { cyclingSub:upd.cyclingSub } : {}), ...(upd.runningSub ? { runningSub:upd.runningSub } : {}), ...(upd.composed ? { composed:upd.composed } : {}), ...(upd.composedCircuit ? { composedCircuit:upd.composedCircuit } : {}), ...(upd.composedCircuits ? { composedCircuits:upd.composedCircuits } : {}) },
       updated_at:new Date().toISOString(),
     }
     if (upd.sport) patch.sport = upd.sport
@@ -3306,7 +3307,7 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
         sport: s.sport, title: s.title, time: s.time, duration_min: s.durationMin,
         tss: s.tss ?? null, status: s.status, notes: s.notes ?? null,
         rpe: s.rpe ?? null, blocks: s.blocks ?? [],
-        validation_data: { ...(s.brickId ? { brickId: s.brickId } : {}), ...(s.cyclingSub ? { cyclingSub: s.cyclingSub } : {}), ...(s.runningSub ? { runningSub: s.runningSub } : {}), ...(s.composed ? { composed: s.composed } : {}), ...(s.composedCircuit ? { composedCircuit: s.composedCircuit } : {}) },
+        validation_data: { ...(s.brickId ? { brickId: s.brickId } : {}), ...(s.cyclingSub ? { cyclingSub: s.cyclingSub } : {}), ...(s.runningSub ? { runningSub: s.runningSub } : {}), ...(s.composed ? { composed: s.composed } : {}), ...(s.composedCircuit ? { composedCircuit: s.composedCircuit } : {}), ...(s.composedCircuits ? { composedCircuits: s.composedCircuits } : {}) },
         plan_variant: s.planVariant ?? activePlan,
         parcours_data: s.parcoursData ?? null,
         nutrition_data: typedS.nutritionItems ?? null,

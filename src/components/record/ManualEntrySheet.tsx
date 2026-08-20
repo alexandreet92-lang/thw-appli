@@ -104,7 +104,7 @@ export default function ManualEntrySheet({ onClose, onSaved }: Props) {
   const [circuits, setCircuits] = useState<ExoCircuit[]>([])
   const [exoMap, setExoMap] = useState<Record<string, string>>({})
   const [moves, setMoves] = useState<ComposedMove[]>([])
-  const [composedCircuit, setComposedCircuit] = useState<ComposedCircuit>({ rounds: 1, restSec: 0 })
+  const [composedCircuits, setComposedCircuits] = useState<ComposedCircuit[]>([{ id: 'c1', rounds: 1, restSec: 0 }])
   const [builderTab, setBuilderTab] = useState<'manual' | 'ai'>('manual')
   // FC importée depuis un fichier montre (.fit/.gpx) — série à fusionner.
   const [importedHr, setImportedHr] = useState<number[] | null>(null)
@@ -123,7 +123,7 @@ export default function ManualEntrySheet({ onClose, onSaved }: Props) {
   function doClose() { setClosing(true); setTimeout(onClose, 260) }
   function pickSport(sp: SportDef) {
     setDef(sp); setStep('form')
-    setBlocks([]); setExercises([]); setExoMap({}); setMoves([]); setComposedCircuit({ rounds: 1, restSec: 0 })
+    setBlocks([]); setExercises([]); setExoMap({}); setMoves([]); setComposedCircuits([{ id: 'c1', rounds: 1, restSec: 0 }])
     setCircuits(sp.mode === 'muscu' || sp.mode === 'hyrox' ? [defaultCircuit(sp.mode === 'muscu' ? 'gym' : 'hyrox')] : [])
     if (sp.id === 'running') setRunSurface('outdoor')
   }
@@ -271,7 +271,7 @@ export default function ManualEntrySheet({ onClose, onSaved }: Props) {
     )
     if (mode === 'boxe') return (
       <ComposedBuilder sport="boxe" moves={moves} accent={accent} onChange={setMoves}
-        circuit={composedCircuit} onCircuitChange={setComposedCircuit} />
+        circuits={composedCircuits} onCircuitsChange={setComposedCircuits} />
     )
     // simple : durée + distance
     return (

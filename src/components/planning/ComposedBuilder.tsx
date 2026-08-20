@@ -1,12 +1,14 @@
 'use client'
-// Builder des sports COMPOSÉS (Hybrid & Boxe) : on ajoute des « moves », chacun
-// avec ses champs (watts, FC, vitesse, pente→dénivelé, niveau, rounds, combos…)
-// et sa mesure (temps / distance / sauts / étages). Sortie = ComposedMove[].
+// Builder des sports COMPOSÉS (Hybrid & Boxe). Une séance = PLUSIEURS circuits,
+// chacun étant un groupe de « moves » répété N tours (ex. circuit 1 : 3× sac
+// 8 min ; circuit 2 : autre chose). Chaque move porte watts/FC/vitesse/reps/
+// charge… + sa mesure. Le move « round » (boxe) a une jauge d'intensité 1→10
+// réglable PAR round. Sortie = ComposedMove[] + ComposedCircuit[].
 import { useState } from 'react'
 import { IconPlus, IconTrash, IconChevronUp, IconChevronDown } from '@tabler/icons-react'
 import {
   type ComposedSport, type ComposedMove, type ComposedCircuit, type Measure, type RoundSupport, type Punch, type PunchSide,
-  movesForSport, moveDef, elevationFromIncline, runDistanceM, moveMinutes, composedMoveLabel,
+  movesForSport, moveDef, elevationFromIncline, runDistanceM, moveMinutes, composedMoveLabel, newCircuitId,
   ROUND_SUPPORT_LABEL, PUNCH_LABEL, SUPPORTS_WITH_COMBOS, needsSide, punchLabel, sideSuffix,
 } from './composedSports'
 import { useI18n } from '@/lib/i18n'
@@ -24,8 +26,6 @@ const lbl: React.CSSProperties = { fontSize: 10, fontWeight: 700, textTransform:
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return <div><span style={lbl}>{label}</span>{children}</div>
 }
-
-// Segmented control générique.
 function Seg<T extends string>({ value, options, onChange }: { value: T; options: { v: T; label: string }[]; onChange: (v: T) => void }) {
   return (
     <div style={{ display: 'inline-flex', gap: 3, padding: 3, borderRadius: 9, background: 'var(--bg-card2)', border: '1px solid var(--border)', flexWrap: 'wrap' }}>
@@ -39,24 +39,28 @@ function Seg<T extends string>({ value, options, onChange }: { value: T; options
   )
 }
 
-export function ComposedBuilder({ sport, moves, accent, onChange, circuit, onCircuitChange }: {
+export function ComposedBuilder({ sport, moves, accent, onChange, circuits, onCircuitsChange }: {
   sport: ComposedSport
   moves: ComposedMove[]
   accent: string
   onChange: (m: ComposedMove[]) => void
-  circuit: ComposedCircuit
-  onCircuitChange: (c: ComposedCircuit) => void
+  circuits: ComposedCircuit[]
+  onCircuitsChange: (c: ComposedCircuit[]) => void
 }) {
   const defs = movesForSport(sport)
-  const isCircuit = circuit.rounds > 1
+  // Au moins un circuit doit exister.
+  const circList = circuits.length ? circuits : [{ id: 'c1', rounds: 1, restSec: 0 }]
+  const firstId = circList[0].id
 
-  function add(kind: string) {
+  function circuitOf(m: ComposedMove): string { return m.circuitId ?? firstId }
+
+  function add(kind: string, circuitId: string) {
     const d = moveDef(sport, kind); if (!d) return
-    const m: ComposedMove = { id: uid(), kind, measure: d.defaultMeasure }
+    const m: ComposedMove = { id: uid(), kind, circuitId, measure: d.defaultMeasure }
     if (d.fields.speedLevel) m.speedLevel = 26
     if (d.fields.paceWatts) m.paceWattsUnit = 'pace'
     if (d.fields.speed) m.speedUnit = 'kmh'
-    if (d.fields.roundsRest) { m.rounds = 3; m.restSec = 60; m.timeSec = 180 }
+    if (d.fields.roundsRest) { m.rounds = 3; m.restSec = 60; m.timeSec = 180; m.roundIntensities = [7, 7, 7] }
     if (d.fields.roundSupport) m.roundSupport = 'bag'
     if (d.variants && d.variants.length) m.variant = d.variants[0].v
     if (d.defaultMeasure === 'time') m.timeSec = m.timeSec ?? 300
@@ -67,187 +71,222 @@ export function ComposedBuilder({ sport, moves, accent, onChange, circuit, onCir
     onChange(moves.map(m => {
       if (m.id !== id) return m
       const nx = { ...m, ...p }
-      // Dénivelé auto (running) : distance = vitesse×temps si absente.
       if (nx.kind === 'run') {
         const dist = nx.distanceM ?? runDistanceM(nx.speedKmh, nx.timeSec)
         nx.elevationM = elevationFromIncline(dist, nx.inclinePct ?? 0)
+      }
+      // Round : garder roundIntensities aligné sur le nombre de rounds.
+      if (nx.kind === 'round') {
+        const n = Math.max(1, nx.rounds ?? 1)
+        const cur = nx.roundIntensities ?? []
+        nx.roundIntensities = Array.from({ length: n }, (_, i) => cur[i] ?? cur[cur.length - 1] ?? 7)
       }
       return nx
     }))
   }
   function remove(id: string) { onChange(moves.filter(m => m.id !== id)) }
-  function move(i: number, dir: -1 | 1) {
-    const j = i + dir; if (j < 0 || j >= moves.length) return
-    const next = [...moves];[next[i], next[j]] = [next[j], next[i]]; onChange(next)
+  function move(i: number, dir: -1 | 1, listIds: string[]) {
+    const j = i + dir; if (j < 0 || j >= listIds.length) return
+    const a = moves.findIndex(m => m.id === listIds[i]); const b = moves.findIndex(m => m.id === listIds[j])
+    if (a < 0 || b < 0) return
+    const next = [...moves];[next[a], next[b]] = [next[b], next[a]]; onChange(next)
+  }
+
+  // ── Circuits CRUD ──
+  function addCircuit() {
+    onCircuitsChange([...circList, { id: newCircuitId(), name: `Circuit ${circList.length + 1}`, rounds: 1, restSec: 0 }])
+  }
+  function patchCircuit(id: string, p: Partial<ComposedCircuit>) {
+    onCircuitsChange(circList.map(c => c.id === id ? { ...c, ...p } : c))
+  }
+  function removeCircuit(id: string) {
+    if (circList.length <= 1) return
+    // Rattache les moves orphelins au premier circuit restant.
+    const remaining = circList.filter(c => c.id !== id)
+    onChange(moves.map(m => circuitOf(m) === id ? { ...m, circuitId: remaining[0].id } : m))
+    onCircuitsChange(remaining)
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      {/* Circuit : tours + récup entre tours (toute la liste répétée) */}
-      <div style={{ border: '1px solid var(--border)', borderRadius: 12, padding: 12, background: 'var(--bg-card2)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span style={{ flex: 1, fontFamily: 'Syne, sans-serif', fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>Circuit</span>
-          <Seg value={isCircuit ? 'on' : 'off'} options={[{ v: 'off', label: 'Non' }, { v: 'on', label: 'Oui' }]} onChange={v => onCircuitChange(v === 'on' ? { rounds: Math.max(2, circuit.rounds), restSec: circuit.restSec || 60 } : { rounds: 1, restSec: 0 })} />
-        </div>
-        {isCircuit && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10, marginTop: 10 }}>
-            <Field label="Nb de tours"><input type="number" defaultValue={circuit.rounds} key={circuit.rounds} onBlur={e => onCircuitChange({ ...circuit, rounds: Math.max(1, +e.target.value || 1) })} style={inp} /></Field>
-            <Field label="Récup / tour"><input defaultValue={mmss(circuit.restSec)} key={circuit.restSec} onBlur={e => onCircuitChange({ ...circuit, restSec: parseMmss(e.target.value) })} placeholder="m:ss" style={inp} /></Field>
-          </div>
-        )}
-      </div>
-
-      {moves.map((m, i) => {
-        const d = moveDef(sport, m.kind); if (!d) return null
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      {circList.map((circuit, ci) => {
+        const cMoves = moves.filter(m => circuitOf(m) === circuit.id)
+        const cIds = cMoves.map(m => m.id)
+        const isMulti = circList.length > 1
         return (
-          <div key={m.id} style={{ border: '1px solid var(--border)', borderLeft: `3px solid ${accent}`, borderRadius: 12, padding: 12, background: 'var(--bg-card2)' }}>
+          <div key={circuit.id} style={{ border: `1px solid ${accent}33`, borderRadius: 14, padding: 12, background: 'var(--bg-card)' }}>
+            {/* En-tête circuit */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-              {d.custom ? (
-                <input defaultValue={m.customName ?? ''} key={m.customName} onBlur={e => patch(m.id, { customName: e.target.value })} placeholder="Nom de l'exercice"
-                  style={{ ...inp, flex: 1, fontWeight: 700, fontFamily: 'Syne, sans-serif', fontSize: 14 }} />
-              ) : (
-                <span style={{ flex: 1, fontFamily: 'Syne, sans-serif', fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>{composedMoveLabel(m, d)}</span>
-              )}
-              <span style={{ fontSize: 11, fontWeight: 700, color: accent, fontFamily: 'DM Mono, monospace' }}>{moveMinutes(m) > 0 ? `${Math.round(moveMinutes(m))} min` : ''}</span>
-              <button onClick={() => move(i, -1)} disabled={i === 0} aria-label="Monter" style={{ ...iconBtn, opacity: i === 0 ? 0.3 : 1 }}><IconChevronUp size={16} /></button>
-              <button onClick={() => move(i, 1)} disabled={i === moves.length - 1} aria-label="Descendre" style={{ ...iconBtn, opacity: i === moves.length - 1 ? 0.3 : 1 }}><IconChevronDown size={16} /></button>
-              <button onClick={() => remove(m.id)} aria-label="Supprimer" style={{ ...iconBtn, color: '#ef4444' }}><IconTrash size={16} /></button>
+              <input value={circuit.name ?? `Circuit ${ci + 1}`} onChange={e => patchCircuit(circuit.id, { name: e.target.value })}
+                style={{ flex: 1, minWidth: 0, background: 'transparent', border: 'none', outline: 'none', fontFamily: 'Syne, sans-serif', fontSize: 15, fontWeight: 700, color: 'var(--text)', padding: 0 }} />
+              {isMulti && <button onClick={() => removeCircuit(circuit.id)} aria-label="Supprimer le circuit" style={{ ...iconBtn, color: '#ef4444' }}><IconTrash size={16} /></button>}
+            </div>
+            {/* Tours + récup du circuit */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10, marginBottom: 12, background: 'var(--bg-card2)', borderRadius: 10, padding: 10 }}>
+              <Field label="Nb de tours"><input type="number" min={1} defaultValue={circuit.rounds} key={`r${circuit.rounds}`} onBlur={e => patchCircuit(circuit.id, { rounds: Math.max(1, +e.target.value || 1) })} style={inp} /></Field>
+              <Field label="Récup / tour"><input defaultValue={mmss(circuit.restSec)} key={`rs${circuit.restSec}`} onBlur={e => patchCircuit(circuit.id, { restSec: parseMmss(e.target.value) })} placeholder="m:ss" style={inp} /></Field>
             </div>
 
-            {/* Variante (pompes normal/points/claquées, medecine ball V/H) */}
-            {d.variants && d.variants.length > 0 && (
-              <div style={{ marginBottom: 10 }}>
-                <Seg value={m.variant ?? d.variants[0].v} options={d.variants.map(x => ({ v: x.v, label: x.label }))} onChange={v => patch(m.id, { variant: v })} />
-              </div>
-            )}
+            {/* Moves du circuit */}
+            {cMoves.map((m, i) => {
+              const d = moveDef(sport, m.kind); if (!d) return null
+              return (
+                <div key={m.id} style={{ border: '1px solid var(--border)', borderLeft: `3px solid ${accent}`, borderRadius: 12, padding: 12, background: 'var(--bg-card2)', marginBottom: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                    {d.custom ? (
+                      <input defaultValue={m.customName ?? ''} key={m.customName} onBlur={e => patch(m.id, { customName: e.target.value })} placeholder="Nom de l'exercice"
+                        style={{ ...inp, flex: 1, fontWeight: 700, fontFamily: 'Syne, sans-serif', fontSize: 14 }} />
+                    ) : (
+                      <span style={{ flex: 1, fontFamily: 'Syne, sans-serif', fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>{composedMoveLabel(m, d)}</span>
+                    )}
+                    <span style={{ fontSize: 11, fontWeight: 700, color: accent, fontFamily: 'DM Mono, monospace' }}>{moveMinutes(m) > 0 ? `${Math.round(moveMinutes(m))} min` : ''}</span>
+                    <button onClick={() => move(i, -1, cIds)} disabled={i === 0} aria-label="Monter" style={{ ...iconBtn, opacity: i === 0 ? 0.3 : 1 }}><IconChevronUp size={16} /></button>
+                    <button onClick={() => move(i, 1, cIds)} disabled={i === cIds.length - 1} aria-label="Descendre" style={{ ...iconBtn, opacity: i === cIds.length - 1 ? 0.3 : 1 }}><IconChevronDown size={16} /></button>
+                    <button onClick={() => remove(m.id)} aria-label="Supprimer" style={{ ...iconBtn, color: '#ef4444' }}><IconTrash size={16} /></button>
+                  </div>
 
-            {/* Mesure (si plusieurs choix) */}
-            {d.measures.length > 1 && (
-              <div style={{ marginBottom: 10 }}>
-                <Seg value={m.measure} options={d.measures.map(x => ({ v: x, label: MEASURE_LABEL[x] }))} onChange={v => patch(m.id, { measure: v })} />
-              </div>
-            )}
+                  {d.variants && d.variants.length > 0 && (
+                    <div style={{ marginBottom: 10 }}>
+                      <Seg value={m.variant ?? d.variants[0].v} options={d.variants.map(x => ({ v: x.v, label: x.label }))} onChange={v => patch(m.id, { variant: v })} />
+                    </div>
+                  )}
+                  {d.measures.length > 1 && (
+                    <div style={{ marginBottom: 10 }}>
+                      <Seg value={m.measure} options={d.measures.map(x => ({ v: x, label: MEASURE_LABEL[x] }))} onChange={v => patch(m.id, { measure: v })} />
+                    </div>
+                  )}
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10 }}>
-              {/* Répétitions */}
-              {m.measure === 'reps' && (
-                <Field label="Répétitions"><input type="number" defaultValue={m.reps ?? ''} key={m.reps} onBlur={e => patch(m.id, { reps: +e.target.value || undefined })} style={inp} /></Field>
-              )}
-              {/* Charge (kg) — jab lesté, medecine ball, dips lestés, exo libre */}
-              {d.fields.weight && (
-                <Field label="Charge (kg)"><input type="number" step="0.5" defaultValue={m.weightKg ?? ''} key={m.weightKg} onBlur={e => patch(m.id, { weightKg: +e.target.value || undefined })} style={inp} /></Field>
-              )}
-              {/* Mesures */}
-              {(m.measure === 'time') && (
-                <Field label={d.fields.roundsRest ? 'Durée / round' : 'Temps'}>
-                  <input defaultValue={mmss(m.timeSec ?? 0)} key={m.timeSec} onBlur={e => patch(m.id, { timeSec: parseMmss(e.target.value) })} placeholder="m:ss" style={inp} />
-                </Field>
-              )}
-              {m.measure === 'distance' && (
-                <Field label="Distance (m)"><input type="number" defaultValue={m.distanceM ?? ''} key={m.distanceM} onBlur={e => patch(m.id, { distanceM: +e.target.value || undefined })} style={inp} /></Field>
-              )}
-              {m.measure === 'jumps' && (
-                <Field label="Nb de sauts"><input type="number" defaultValue={m.jumps ?? ''} key={m.jumps} onBlur={e => patch(m.id, { jumps: +e.target.value || undefined })} style={inp} /></Field>
-              )}
-              {m.measure === 'floors' && (
-                <Field label="Étages"><input type="number" defaultValue={m.floors ?? ''} key={m.floors} onBlur={e => patch(m.id, { floors: +e.target.value || undefined })} style={inp} /></Field>
-              )}
-              {m.measure === 'calories' && (
-                <Field label="Calories (kcal)"><input type="number" defaultValue={m.calories ?? ''} key={m.calories} onBlur={e => patch(m.id, { calories: +e.target.value || undefined })} style={inp} /></Field>
-              )}
-              {/* étages → aussi un temps (climber : étages + temps) */}
-              {m.measure === 'floors' && (
-                <Field label="Temps"><input defaultValue={mmss(m.timeSec ?? 0)} key={`t${m.timeSec}`} onBlur={e => patch(m.id, { timeSec: parseMmss(e.target.value) })} placeholder="m:ss" style={inp} /></Field>
-              )}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10 }}>
+                    {m.measure === 'reps' && (
+                      <Field label="Répétitions"><input type="number" defaultValue={m.reps ?? ''} key={m.reps} onBlur={e => patch(m.id, { reps: +e.target.value || undefined })} style={inp} /></Field>
+                    )}
+                    {d.fields.weight && (
+                      <Field label="Charge (kg)"><input type="number" step="0.5" defaultValue={m.weightKg ?? ''} key={m.weightKg} onBlur={e => patch(m.id, { weightKg: +e.target.value || undefined })} style={inp} /></Field>
+                    )}
+                    {(m.measure === 'time') && (
+                      <Field label={d.fields.roundsRest ? 'Durée / round' : 'Temps'}>
+                        <input defaultValue={mmss(m.timeSec ?? 0)} key={m.timeSec} onBlur={e => patch(m.id, { timeSec: parseMmss(e.target.value) })} placeholder="m:ss" style={inp} />
+                      </Field>
+                    )}
+                    {m.measure === 'distance' && (
+                      <Field label="Distance (m)"><input type="number" defaultValue={m.distanceM ?? ''} key={m.distanceM} onBlur={e => patch(m.id, { distanceM: +e.target.value || undefined })} style={inp} /></Field>
+                    )}
+                    {m.measure === 'jumps' && (
+                      <Field label="Nb de sauts"><input type="number" defaultValue={m.jumps ?? ''} key={m.jumps} onBlur={e => patch(m.id, { jumps: +e.target.value || undefined })} style={inp} /></Field>
+                    )}
+                    {m.measure === 'floors' && (
+                      <Field label="Étages"><input type="number" defaultValue={m.floors ?? ''} key={m.floors} onBlur={e => patch(m.id, { floors: +e.target.value || undefined })} style={inp} /></Field>
+                    )}
+                    {m.measure === 'calories' && (
+                      <Field label="Calories (kcal)"><input type="number" defaultValue={m.calories ?? ''} key={m.calories} onBlur={e => patch(m.id, { calories: +e.target.value || undefined })} style={inp} /></Field>
+                    )}
+                    {m.measure === 'floors' && (
+                      <Field label="Temps"><input defaultValue={mmss(m.timeSec ?? 0)} key={`t${m.timeSec}`} onBlur={e => patch(m.id, { timeSec: parseMmss(e.target.value) })} placeholder="m:ss" style={inp} /></Field>
+                    )}
+                    {d.fields.watts && <Field label="Watts"><input type="number" defaultValue={m.watts ?? ''} key={m.watts} onBlur={e => patch(m.id, { watts: +e.target.value || undefined })} style={inp} /></Field>}
+                    {d.fields.hr && <Field label="FC (bpm)"><input type="number" defaultValue={m.hr ?? ''} key={m.hr} onBlur={e => patch(m.id, { hr: +e.target.value || undefined })} style={inp} /></Field>}
+                    {d.fields.speedLevel && <Field label="Niveau vitesse"><input type="number" defaultValue={m.speedLevel ?? 26} key={m.speedLevel} onBlur={e => patch(m.id, { speedLevel: +e.target.value || undefined })} style={inp} /></Field>}
+                    {d.fields.paceWatts && (<>
+                      <Field label="Unité"><Seg value={m.paceWattsUnit ?? 'pace'} options={[{ v: 'pace', label: 'min/500m' }, { v: 'watts', label: 'Watts' }]} onChange={v => patch(m.id, { paceWattsUnit: v })} /></Field>
+                      {(m.paceWattsUnit ?? 'pace') === 'pace'
+                        ? <Field label="Allure /500m"><input defaultValue={m.paceSec500 ? mmss(m.paceSec500) : ''} key={m.paceSec500} onBlur={e => patch(m.id, { paceSec500: parseMmss(e.target.value) || undefined })} placeholder="1:50" style={inp} /></Field>
+                        : <Field label="Watts"><input type="number" defaultValue={m.watts ?? ''} key={`w${m.watts}`} onBlur={e => patch(m.id, { watts: +e.target.value || undefined })} style={inp} /></Field>}
+                    </>)}
+                    {d.fields.speed && (<>
+                      <Field label="Vitesse"><Seg value={m.speedUnit ?? 'kmh'} options={[{ v: 'kmh', label: 'km/h' }, { v: 'minkm', label: 'min/km' }]} onChange={v => patch(m.id, { speedUnit: v })} /></Field>
+                      {(m.speedUnit ?? 'kmh') === 'kmh'
+                        ? <Field label="km/h"><input type="number" step="0.1" defaultValue={m.speedKmh ?? ''} key={m.speedKmh} onBlur={e => patch(m.id, { speedKmh: +e.target.value || undefined })} style={inp} /></Field>
+                        : <Field label="min/km"><input defaultValue={m.paceMinKm ?? ''} key={m.paceMinKm} onBlur={e => patch(m.id, { paceMinKm: e.target.value || undefined })} placeholder="5:00" style={inp} /></Field>}
+                    </>)}
+                    {d.fields.incline && (
+                      <Field label="Pente (%)"><input type="number" step="0.5" defaultValue={m.inclinePct ?? ''} key={m.inclinePct} onBlur={e => patch(m.id, { inclinePct: +e.target.value || undefined })} style={inp} /></Field>
+                    )}
+                    {d.fields.incline && (m.elevationM ?? 0) > 0 && (
+                      <Field label="Dénivelé (auto)"><div style={{ ...inp, background: 'var(--bg-card2)', color: accent, fontWeight: 700 }}>+{m.elevationM} m</div></Field>
+                    )}
+                    {d.fields.roundsRest && (<>
+                      <Field label="Nb de rounds"><input type="number" defaultValue={m.rounds ?? 3} key={m.rounds} onBlur={e => patch(m.id, { rounds: +e.target.value || 1 })} style={inp} /></Field>
+                      <Field label="Récup / round"><input defaultValue={mmss(m.restSec ?? 0)} key={m.restSec} onBlur={e => patch(m.id, { restSec: parseMmss(e.target.value) })} placeholder="m:ss" style={inp} /></Field>
+                    </>)}
+                    {d.fields.doubleUnders && (
+                      <Field label="Type"><Seg value={m.doubleUnders ? 'double' : 'simple'} options={[{ v: 'simple', label: 'Simple' }, { v: 'double', label: 'Double' }]} onChange={v => patch(m.id, { doubleUnders: v === 'double' })} /></Field>
+                    )}
+                  </div>
 
-              {/* Champs cardio */}
-              {d.fields.watts && <Field label="Watts"><input type="number" defaultValue={m.watts ?? ''} key={m.watts} onBlur={e => patch(m.id, { watts: +e.target.value || undefined })} style={inp} /></Field>}
-              {d.fields.hr && <Field label="FC (bpm)"><input type="number" defaultValue={m.hr ?? ''} key={m.hr} onBlur={e => patch(m.id, { hr: +e.target.value || undefined })} style={inp} /></Field>}
-              {d.fields.speedLevel && <Field label="Niveau vitesse"><input type="number" defaultValue={m.speedLevel ?? 26} key={m.speedLevel} onBlur={e => patch(m.id, { speedLevel: +e.target.value || undefined })} style={inp} /></Field>}
+                  {/* Round : jauge d'intensité 1→10 PAR round */}
+                  {d.fields.roundsRest && (m.rounds ?? 0) > 0 && (
+                    <div style={{ marginTop: 12 }}>
+                      <span style={lbl}>Intensité par round (1→10)</span>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                        {Array.from({ length: Math.max(1, m.rounds ?? 1) }, (_, ri) => {
+                          const val = m.roundIntensities?.[ri] ?? 7
+                          return (
+                            <div key={ri} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, minWidth: 54 }}>
+                              <span style={{ fontSize: 9.5, color: 'var(--text-dim)', fontWeight: 700 }}>R{ri + 1}</span>
+                              <span style={{ fontSize: 14, fontWeight: 800, color: accent, fontVariantNumeric: 'tabular-nums' }}>{val}</span>
+                              <input type="range" min={1} max={10} value={val}
+                                onChange={e => { const v = +e.target.value; const arr = Array.from({ length: Math.max(1, m.rounds ?? 1) }, (_, k) => k === ri ? v : (m.roundIntensities?.[k] ?? 7)); patch(m.id, { roundIntensities: arr }) }}
+                                style={{ width: 54, accentColor: accent }} />
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
 
-              {/* Rameur / SkiErg : min/500m OU watts */}
-              {d.fields.paceWatts && (<>
-                <Field label="Unité"><Seg value={m.paceWattsUnit ?? 'pace'} options={[{ v: 'pace', label: 'min/500m' }, { v: 'watts', label: 'Watts' }]} onChange={v => patch(m.id, { paceWattsUnit: v })} /></Field>
-                {(m.paceWattsUnit ?? 'pace') === 'pace'
-                  ? <Field label="Allure /500m"><input defaultValue={m.paceSec500 ? mmss(m.paceSec500) : ''} key={m.paceSec500} onBlur={e => patch(m.id, { paceSec500: parseMmss(e.target.value) || undefined })} placeholder="1:50" style={inp} /></Field>
-                  : <Field label="Watts"><input type="number" defaultValue={m.watts ?? ''} key={`w${m.watts}`} onBlur={e => patch(m.id, { watts: +e.target.value || undefined })} style={inp} /></Field>}
-              </>)}
+                  <div style={{ marginTop: 10, maxWidth: 180 }}>
+                    <Field label="Récup après"><input defaultValue={mmss(m.restAfterSec ?? 0)} key={m.restAfterSec} onBlur={e => patch(m.id, { restAfterSec: parseMmss(e.target.value) })} placeholder="0:00" style={inp} /></Field>
+                  </div>
 
-              {/* Running : vitesse + pente */}
-              {d.fields.speed && (<>
-                <Field label="Vitesse"><Seg value={m.speedUnit ?? 'kmh'} options={[{ v: 'kmh', label: 'km/h' }, { v: 'minkm', label: 'min/km' }]} onChange={v => patch(m.id, { speedUnit: v })} /></Field>
-                {(m.speedUnit ?? 'kmh') === 'kmh'
-                  ? <Field label="km/h"><input type="number" step="0.1" defaultValue={m.speedKmh ?? ''} key={m.speedKmh} onBlur={e => patch(m.id, { speedKmh: +e.target.value || undefined })} style={inp} /></Field>
-                  : <Field label="min/km"><input defaultValue={m.paceMinKm ?? ''} key={m.paceMinKm} onBlur={e => patch(m.id, { paceMinKm: e.target.value || undefined })} placeholder="5:00" style={inp} /></Field>}
-              </>)}
-              {d.fields.incline && (
-                <Field label="Pente (%)"><input type="number" step="0.5" defaultValue={m.inclinePct ?? ''} key={m.inclinePct} onBlur={e => patch(m.id, { inclinePct: +e.target.value || undefined })} style={inp} /></Field>
-              )}
-              {d.fields.incline && (m.elevationM ?? 0) > 0 && (
-                <Field label="Dénivelé (auto)"><div style={{ ...inp, background: 'var(--bg-card2)', color: accent, fontWeight: 700 }}>+{m.elevationM} m</div></Field>
-              )}
-
-              {/* Rounds + récup */}
-              {d.fields.roundsRest && (<>
-                <Field label="Nb de rounds"><input type="number" defaultValue={m.rounds ?? 3} key={m.rounds} onBlur={e => patch(m.id, { rounds: +e.target.value || 1 })} style={inp} /></Field>
-                <Field label="Récup / round"><input defaultValue={mmss(m.restSec ?? 0)} key={m.restSec} onBlur={e => patch(m.id, { restSec: parseMmss(e.target.value) })} placeholder="m:ss" style={inp} /></Field>
-              </>)}
-
-              {/* Corde à sauter : simple / double */}
-              {d.fields.doubleUnders && (
-                <Field label="Type"><Seg value={m.doubleUnders ? 'double' : 'simple'} options={[{ v: 'simple', label: 'Simple' }, { v: 'double', label: 'Double' }]} onChange={v => patch(m.id, { doubleUnders: v === 'double' })} /></Field>
-              )}
-            </div>
-
-            {/* Récup après l'exo (entre exos) */}
-            <div style={{ marginTop: 10, maxWidth: 180 }}>
-              <Field label="Récup après"><input defaultValue={mmss(m.restAfterSec ?? 0)} key={m.restAfterSec} onBlur={e => patch(m.id, { restAfterSec: parseMmss(e.target.value) })} placeholder="0:00" style={inp} /></Field>
-            </div>
-
-            {/* Support de round + combos */}
-            {d.fields.roundSupport && (
-              <div style={{ marginTop: 10 }}>
-                <span style={lbl}>Support</span>
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
-                  {(Object.keys(ROUND_SUPPORT_LABEL) as RoundSupport[]).map(rs => (
-                    <button key={rs} onClick={() => patch(m.id, { roundSupport: rs })} style={{
-                      padding: '5px 11px', borderRadius: 8, cursor: 'pointer', fontFamily: FB, fontSize: 12, fontWeight: 600,
-                      border: `1px solid ${m.roundSupport === rs ? accent : 'var(--border)'}`,
-                      background: m.roundSupport === rs ? `${accent}18` : 'transparent',
-                      color: m.roundSupport === rs ? accent : 'var(--text-mid)',
-                    }}>{ROUND_SUPPORT_LABEL[rs]}</button>
-                  ))}
+                  {d.fields.roundSupport && (
+                    <div style={{ marginTop: 10 }}>
+                      <span style={lbl}>Support</span>
+                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
+                        {(Object.keys(ROUND_SUPPORT_LABEL) as RoundSupport[]).map(rs => (
+                          <button key={rs} onClick={() => patch(m.id, { roundSupport: rs })} style={{
+                            padding: '5px 11px', borderRadius: 8, cursor: 'pointer', fontFamily: FB, fontSize: 12, fontWeight: 600,
+                            border: `1px solid ${m.roundSupport === rs ? accent : 'var(--border)'}`,
+                            background: m.roundSupport === rs ? `${accent}18` : 'transparent',
+                            color: m.roundSupport === rs ? accent : 'var(--text-mid)',
+                          }}>{ROUND_SUPPORT_LABEL[rs]}</button>
+                        ))}
+                      </div>
+                      {m.roundSupport && SUPPORTS_WITH_COMBOS.includes(m.roundSupport) && (
+                        <ComboEditor combos={m.combos ?? []} accent={accent} onChange={c => patch(m.id, { combos: c })} />
+                      )}
+                    </div>
+                  )}
                 </div>
-                {m.roundSupport && SUPPORTS_WITH_COMBOS.includes(m.roundSupport) && (
-                  <ComboEditor combos={m.combos ?? []} accent={accent} onChange={c => patch(m.id, { combos: c })} />
-                )}
+              )
+            })}
+
+            {/* Ajouter un exercice à CE circuit */}
+            <div style={{ marginTop: 4 }}>
+              <span style={lbl}>Ajouter au {circuit.name ?? `circuit ${ci + 1}`}</span>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                {defs.map(d => (
+                  <button key={d.kind} onClick={() => add(d.kind, circuit.id)} style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 12px', borderRadius: 10,
+                    border: '1px dashed var(--border)', background: 'transparent', color: 'var(--text-mid)', cursor: 'pointer', fontFamily: FB, fontSize: 12.5, fontWeight: 600,
+                  }}><IconPlus size={14} /> {d.label}</button>
+                ))}
               </div>
-            )}
+            </div>
           </div>
         )
       })}
 
-      {/* Ajouter un exercice */}
-      <div>
-        <span style={lbl}>Ajouter un exercice</span>
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-          {defs.map(d => (
-            <button key={d.kind} onClick={() => add(d.kind)} style={{
-              display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 12px', borderRadius: 10,
-              border: '1px dashed var(--border)', background: 'transparent', color: 'var(--text-mid)', cursor: 'pointer', fontFamily: FB, fontSize: 12.5, fontWeight: 600,
-            }}><IconPlus size={14} /> {d.label}</button>
-          ))}
-        </div>
-      </div>
+      {/* Ajouter un circuit */}
+      <button onClick={addCircuit} style={{
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 7, padding: '11px', borderRadius: 12,
+        border: `1px dashed ${accent}66`, background: 'transparent', color: accent, cursor: 'pointer', fontFamily: FB, fontSize: 13, fontWeight: 700,
+      }}><IconPlus size={16} /> Ajouter un circuit</button>
     </div>
   )
 }
 
 const iconBtn: React.CSSProperties = { width: 28, height: 28, borderRadius: 7, border: 'none', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }
 
-// Éditeur de combos : on assemble une suite de coups depuis les 4 coups, on l'ajoute.
-// Le crochet et l'uppercut demandent le bras (gauche/droit) → « Crochet G »,
-// « Uppercut D » (FR) ou « Crochet L / R » (EN). Jab et direct n'en ont pas.
 interface DraftPunch { punch: Punch; side: PunchSide }
 function ComboEditor({ combos, accent, onChange }: { combos: string[]; accent: string; onChange: (c: string[]) => void }) {
   const { lang } = useI18n()
@@ -282,7 +321,6 @@ function ComboEditor({ combos, accent, onChange }: { combos: string[]; accent: s
       </div>
       {draft.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {/* Suite en cours : chaque crochet/uppercut porte un choix de bras G/D. */}
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
             {draft.map((x, i) => (
               <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 6px', borderRadius: 7, background: 'var(--bg-card2)', border: '1px solid var(--border)' }}>

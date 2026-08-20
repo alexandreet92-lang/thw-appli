@@ -18,6 +18,7 @@ import RideMobile from './RideMobile'
 import RideDesktop from './RideDesktop'
 import RidePause from './RidePause'
 import RampTestResult, { type RampStop } from './RampTestResult'
+import RideSummary from './RideSummary'
 import { createClient } from '@/lib/supabase/client'
 import { getCurrentUser } from '@/lib/auth/currentUser'
 
@@ -40,6 +41,7 @@ export default function RideScreen({ onExit, onFinished }: Props) {
   const [massKg, setMassKg] = useState(0)
   const [rampStop, setRampStop] = useState<RampStop | null>(null)
   const [showResult, setShowResult] = useState(false)
+  const [showSummary, setShowSummary] = useState(false)   // écran de résumé/validation avant enregistrement
   useEffect(() => { setMounted(true) }, [])
 
   // Poids athlète (W/kg en direct + affiché sur l'écran de résultat).
@@ -118,25 +120,32 @@ export default function RideScreen({ onExit, onFinished }: Props) {
     return Math.round(inWin.reduce((s, x) => s + (x.power ?? 0), 0) / inWin.length)
   }, [plan, engine.samples, engine.t])
 
-  const onFinish = useCallback(async () => {
+  // « Terminer » : on met la séance en pause et on ouvre l'écran de RÉSUMÉ.
+  // Rien n'est enregistré tant que l'athlète n'a pas validé (titre/RPE/sensations).
+  const onFinish = useCallback(() => {
     engine.pause()
+    setShowSummary(true)
+  }, [engine])
+
+  // « Enregistrer » (depuis l'écran de résumé) : persiste l'activité avec le
+  // titre, le RPE et les sensations, clôture la séance planifiée, puis sort.
+  const doSave = useCallback(async (title: string, rpe: number, comment: string) => {
     // On enregistre TOUJOURS la séance, même sans FTP (ftp ?? 0 → charge/IF
-    // non calculées mais la séance est bien sauvegardée). Sans ça, une séance
-    // lancée sans FTP serait silencieusement perdue.
+    // non calculées mais la séance est bien sauvegardée).
     await recorder.save({
       samples: engine.samples.current, metrics: engine.metrics, ftp: ftp ?? 0,
       startedAt: startedAt || new Date().toISOString(), elapsedS: engine.t,
-      title: plan?.title ?? 'Séance home trainer', compute,
+      title, rpe, comment, compute,
     })
-    // Clôture la séance planifiée source (si lancée depuis le planning) → elle
-    // apparaît « faite » dans le planning et n'est plus proposée à refaire.
+    // Clôture la séance planifiée source (si lancée depuis le planning).
     if (plannedId) {
       try { await createClient().from('planned_sessions').update({ status: 'done' }).eq('id', plannedId) } catch { /* best-effort */ }
     }
+    setShowSummary(false)
     // Séance de test → écran de résultat (PMA/FTP/zones) avant de quitter.
     if (rampStop || hasRampPlan || (hasCp20 && cp20Avg > 0)) { setShowResult(true); return }
     onFinished()
-  }, [engine, ftp, recorder, startedAt, plan, plannedId, compute, onFinished, rampStop, hasRampPlan, hasCp20, cp20Avg])
+  }, [engine, ftp, recorder, startedAt, plannedId, compute, onFinished, rampStop, hasRampPlan, hasCp20, cp20Avg])
 
   const view: RideView = useMemo(() => ({
     ftp: ftp ?? 0, fcMax: fcMax ?? 200, massKg, plan, t: engine.t,
@@ -147,7 +156,17 @@ export default function RideScreen({ onExit, onFinished }: Props) {
   if (!mounted) return null
 
   let body: React.ReactNode
-  if (showResult) {
+  if (showSummary) {
+    body = (
+      <RideSummary
+        metrics={engine.metrics}
+        elapsedS={engine.t}
+        smEst={d.smEst}
+        defaultTitle={plan?.title ?? 'Séance home trainer'}
+        saving={recorder.saving}
+        onSave={(title, rpe, comment) => { void doSave(title, rpe, comment) }} />
+    )
+  } else if (showResult) {
     body = (
       <RampTestResult
         mode={resolvedRamp ? 'ramp' : 'cp20'}

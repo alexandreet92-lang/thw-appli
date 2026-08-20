@@ -23,6 +23,8 @@ export interface SaveRideParams {
   startedAt: string
   elapsedS: number
   title: string
+  rpe?: number | null       // ressenti effort 1→10 saisi sur l'écran de résumé
+  comment?: string | null   // sensations libres
   compute: (row: ComputeRow) => SmSn
 }
 
@@ -67,6 +69,9 @@ export async function saveRide(p: SaveRideParams): Promise<void> {
     ftp_at_time: p.ftp,
     avg_hr: p.metrics.hrAvg || null,
     calories: p.metrics.kj || null,
+    rpe: p.rpe ?? null,
+    perceived_effort: p.rpe ?? null,
+    comment: p.comment?.trim() || null,
     streams,
     sm_score: Math.round(smsn.sm),
     sn_score: Math.round(smsn.sn),

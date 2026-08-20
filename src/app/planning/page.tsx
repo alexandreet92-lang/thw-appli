@@ -37,6 +37,7 @@ import { TrainingSummary } from '@/app/planning/components/training/TrainingSumm
 import { SportIcon, SPORT_ICON, sportKeyFromType, subSportIcon } from '@/components/icons/SportIcon'
 import { SessionEditor } from '@/components/planning/SessionEditor'
 import type { NutritionItem, ParcoursData } from '@/components/planning/SessionEditor'
+import TestPlannerSheet, { type TestPlanPayload } from '@/components/tests/TestPlannerSheet'
 import type { ComposedMove, ComposedCircuit } from '@/components/planning/composedSports'
 import { useI18n } from '@/lib/i18n'
 import { currentLocale } from '@/lib/i18n'
@@ -2740,6 +2741,7 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
   const [raceEditor, setRaceEditor] = useState<{ race?: FullRace; date?: string }|null>(null)
   // Choix "Entraînement / Course" au tap sur le n° du jour.
   const [addChooser, setAddChooser] = useState<{dayIndex:number;plan:PlanVariant;weekStart:string}|null>(null)
+  const [testPlanner, setTestPlanner] = useState<{dayIndex:number;plan:PlanVariant;weekStart:string}|null>(null)
   function chooserDateISO(c: {dayIndex:number;weekStart:string}): string {
     const d = new Date(c.weekStart+'T00:00:00'); d.setDate(d.getDate()+c.dayIndex); return localDateStr(d)
   }
@@ -3686,6 +3688,18 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
       <ActivityQuickModal activity={activityDetail} onClose={()=>setActivityDetail(null)}/>
       <RaceDetailSheet race={raceDetail} onClose={()=>setRaceDetail(null)} onEdit={(r)=>{ setRaceDetail(null); setRaceEditor({ race:r }) }} />
 
+      {testPlanner && (
+        <TestPlannerSheet
+          dateLabel={(() => { const d = new Date(testPlanner.weekStart+'T00:00:00'); d.setDate(d.getDate()+testPlanner.dayIndex); return d.toLocaleDateString('fr-FR', { weekday:'short', day:'numeric', month:'short' }) })()}
+          onClose={() => setTestPlanner(null)}
+          onConfirm={async (p: TestPlanPayload) => {
+            const c = testPlanner
+            const s = { dayIndex: c.dayIndex, sport: p.sport, title: p.title, durationMin: p.durationMin, status: 'planned', notes: p.notes, blocks: [], planVariant: c.plan } as unknown as Session
+            await handleAddSession(c.dayIndex, s, c.weekStart)
+          }}
+        />
+      )}
+
       {/* Choix Entraînement / Course au tap sur le jour */}
       <BottomSheet isOpen={addChooser!==null} onClose={()=>setAddChooser(null)} title={t('plnp.add.chooserTitle')}>
         {addChooser && (
@@ -3704,6 +3718,14 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
               <span style={{ flex:1 }}>
                 <span style={{ display:'block', fontFamily:'Syne,sans-serif', fontSize:15, fontWeight:700, color:'var(--text)' }}>{t('plnp.add.race')}</span>
                 <span style={{ display:'block', fontSize:12, color:'var(--text-dim)', marginTop:2 }}>{t('plnp.add.raceHint')}</span>
+              </span>
+            </button>
+            <button onClick={()=>{ const c=addChooser; setAddChooser(null); setTestPlanner({ dayIndex:c.dayIndex, plan:c.plan, weekStart:c.weekStart }) }}
+              style={{ display:'flex', alignItems:'center', gap:12, padding:'16px', borderRadius:14, border:'1px solid var(--border)', background:'var(--bg-card2)', cursor:'pointer', textAlign:'left' as const }}>
+              <span style={{ width:44, height:44, borderRadius:12, background:'rgba(139,92,246,0.14)', color:'#8b5cf6', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, fontFamily:'Syne,sans-serif', fontWeight:800, fontSize:18 }}>T</span>
+              <span style={{ flex:1 }}>
+                <span style={{ display:'block', fontFamily:'Syne,sans-serif', fontSize:15, fontWeight:700, color:'var(--text)' }}>Test de forme</span>
+                <span style={{ display:'block', fontSize:12, color:'var(--text-dim)', marginTop:2 }}>Planifie un test Performance (VMA, FTP, CSS…) — voir le procédé.</span>
               </span>
             </button>
           </div>

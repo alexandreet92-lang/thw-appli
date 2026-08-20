@@ -11,7 +11,8 @@ import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { IconX } from '@tabler/icons-react'
 import { RACE_EDITOR_CSS } from './raceTheme'
-import { testsForSport, type CatalogSport } from '@/lib/tests/catalog'
+import { testsForSport, protocolForSlug, type CatalogSport } from '@/lib/tests/catalog'
+import TestProtocolView from '@/components/tests/TestProtocolView'
 
 export interface PlannedTestInput {
   sport: CatalogSport
@@ -116,6 +117,14 @@ export default function TestEditorSheet({ mode = 'create', initial, initialDate,
               </select>
               {ref && <p style={{ fontSize: 11, color: accent, margin: '6px 0 0' }}>Lié à « {tests.find(t => t.id === ref)?.name} » — visible dans la bulle tests de Performance.</p>}
             </div>
+
+            {/* Procédé du test lié (même déroulé que la page Performance) */}
+            {ref && protocolForSlug(ref) && (
+              <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 14, padding: '16px 16px 18px' }}>
+                <p style={{ ...LBL, color: accent, marginBottom: 12 }}>Procédé du test</p>
+                <TestProtocolView proto={protocolForSlug(ref)!} accent={accent} />
+              </div>
+            )}
 
             {/* Titre */}
             <div><p style={LBL}>Titre</p><input style={INP} value={title} onChange={e => setTitle(e.target.value)} placeholder="Ex. Test VMA piste" /></div>

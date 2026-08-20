@@ -93,7 +93,6 @@ export default function BoxeLauncher({ open, onClose, onStart }: Props) {
             <p style={{ fontSize: 13, color: 'var(--text-dim)', textAlign: 'center', padding: '30px 0' }}>Chargement…</p>
           ) : sessions.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '28px 12px' }}>
-              <div style={{ fontSize: 34, marginBottom: 8 }}>🥊</div>
               <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', margin: '0 0 4px' }}>Aucune séance de boxe cette semaine</p>
               <p style={{ fontSize: 12.5, color: 'var(--text-dim)', margin: 0, lineHeight: 1.5 }}>Crée une séance de boxe dans ton planning, puis reviens ici pour la lancer.</p>
             </div>
@@ -102,9 +101,8 @@ export default function BoxeLauncher({ open, onClose, onStart }: Props) {
               {sessions.map(s => (
                 <button key={s.id} onClick={() => { onStart({ title: s.title, moves: s.moves, circuits: s.circuits }); handleClose() }}
                   style={{ textAlign: 'left', padding: '15px 16px', borderRadius: 16, cursor: 'pointer', border: '1px solid var(--border)', background: 'var(--bg-card2)', display: 'flex', alignItems: 'center', gap: 13, width: '100%' }}>
-                  <span style={{ width: 46, height: 46, borderRadius: 12, background: `${ACCENT}18`, color: ACCENT, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontFamily: 'var(--font-display)', fontWeight: 800, lineHeight: 1 }}>
-                    <span style={{ fontSize: 9.5, opacity: 0.7 }}>{DAYS[s.dayIndex] ?? ''}</span>
-                    <span style={{ fontSize: 17 }}>🥊</span>
+                  <span style={{ width: 46, height: 46, borderRadius: 12, background: `${ACCENT}18`, color: ACCENT, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 14, lineHeight: 1 }}>
+                    {DAYS[s.dayIndex] ?? ''}
                   </span>
                   <span style={{ flex: 1, minWidth: 0 }}>
                     <span style={{ display: 'block', fontSize: 15, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.title}</span>

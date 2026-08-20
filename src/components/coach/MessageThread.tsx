@@ -45,13 +45,15 @@ function MsgMedia({ url, type, name, mine }: { url: string; type: 'image' | 'par
       </a>
     )
   }
-  const icon = type === 'parcours' ? '🗺️' : '📄'
   const fg = mine ? 'var(--on-primary)' : 'var(--text)'
+  const iconSvg = type === 'parcours'
+    ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M9 3 3 6v15l6-3 6 3 6-3V3l-6 3-6-3z"/><path d="M9 3v15M15 6v15"/></svg>
+    : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
   return (
     <a href={url} target="_blank" rel="noopener noreferrer" download={name ?? undefined} onClick={e => e.stopPropagation()}
       style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '8px 11px', borderRadius: 10, textDecoration: 'none',
         background: mine ? 'color-mix(in srgb, #000 12%, transparent)' : 'var(--bg-card2)', color: fg, maxWidth: 240 }}>
-      <span style={{ fontSize: 18, flexShrink: 0 }}>{icon}</span>
+      <span style={{ flexShrink: 0, display: 'flex' }}>{iconSvg}</span>
       <span style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
         <span style={{ fontSize: 13, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name ?? (type === 'parcours' ? 'Parcours' : 'Fichier')}</span>
         <span style={{ fontSize: 10.5, opacity: 0.7 }}>{type === 'parcours' ? 'Parcours · ouvrir' : 'Ouvrir'}</span>
@@ -151,7 +153,7 @@ export function MessageThread({ coachId, athleteId, compact = false }: { coachId
         {loading ? (
           <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: 'auto' }}>Chargement…</p>
         ) : msgs.length === 0 ? (
-          <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: 'auto', textAlign: 'center' }}>Aucun message. Écris le premier 👋</p>
+          <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: 'auto', textAlign: 'center' }}>Aucun message. Écris le premier.</p>
         ) : msgs.map(m => {
           const deleted = !!m.deleted_at
           const editing = editId === m.id
@@ -222,7 +224,7 @@ export function MessageThread({ coachId, athleteId, compact = false }: { coachId
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8, padding: 8, borderRadius: 12, background: 'var(--bg-card2)', border: '1px solid var(--border)' }}>
             {attachPreview
               ? <img src={attachPreview} alt="" style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 8, flexShrink: 0 }} />
-              : <span style={{ fontSize: 22, flexShrink: 0 }}>{/\.(gpx|tcx)$/i.test(attach.name) ? '🗺️' : '📄'}</span>}
+              : <span style={{ flexShrink: 0, display: 'flex', color: 'var(--text-mid)' }}><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg></span>}
             <span style={{ flex: 1, minWidth: 0, fontSize: 12.5, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{attach.name}</span>
             <button onClick={() => setAttach(null)} aria-label="Retirer" style={{ border: 'none', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 18, flexShrink: 0, lineHeight: 1 }}>×</button>
           </div>
@@ -239,10 +241,10 @@ export function MessageThread({ coachId, athleteId, compact = false }: { coachId
               <div onClick={() => setPlusOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 30 }} />
               <div style={{ position: 'absolute', bottom: '110%', left: 0, zIndex: 31, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 12, boxShadow: '0 10px 30px rgba(0,0,0,0.22)', overflow: 'hidden', minWidth: 210 }}>
                 <button onClick={() => { setPlusOpen(false); fileRef.current?.click() }} style={menuItem}>
-                  <span style={{ fontSize: 17 }}>📎</span> Photo, fichier ou parcours
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M21.44 11.05l-9.19 9.19a5 5 0 0 1-7.07-7.07l9.19-9.19a3 3 0 0 1 4.24 4.24l-9.2 9.19a1 1 0 0 1-1.41-1.41l8.49-8.49"/></svg> Photo, fichier ou parcours
                 </button>
                 <button onClick={() => { setPlusOpen(false); camRef.current?.click() }} style={{ ...menuItem, borderTop: '1px solid var(--border)' }}>
-                  <span style={{ fontSize: 17 }}>📷</span> Prendre une photo
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg> Prendre une photo
                 </button>
               </div>
             </>)}

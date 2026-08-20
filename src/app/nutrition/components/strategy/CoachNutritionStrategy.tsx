@@ -196,7 +196,9 @@ export default function CoachNutritionStrategy({ athleteName, activePlan, onSave
       <div style={CARD}>
         {/* En-tête raffiné */}
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 13, marginBottom: 18 }}>
-          <span style={{ width: 42, height: 42, borderRadius: 13, background: 'linear-gradient(135deg, var(--primary), color-mix(in srgb, var(--primary) 55%, #22c55e))', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 21, boxShadow: '0 4px 14px color-mix(in srgb, var(--primary) 35%, transparent)' }}>🥗</span>
+          <span style={{ width: 42, height: 42, borderRadius: 13, background: 'linear-gradient(135deg, var(--primary), color-mix(in srgb, var(--primary) 55%, #22c55e))', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: '#fff', boxShadow: '0 4px 14px color-mix(in srgb, var(--primary) 35%, transparent)' }}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 11h18M12 11V3M7 11a5 5 0 0 1 10 0M5 11l1.5 8a2 2 0 0 0 2 1.6h7a2 2 0 0 0 2-1.6L19 11"/></svg>
+          </span>
           <div style={{ minWidth: 0 }}>
             <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 600, margin: '0 0 3px', letterSpacing: '-0.01em' }}>Stratégie nutrition — {athleteName}</h3>
             <p style={{ fontSize: 12.5, color: 'var(--text-dim)', margin: 0, lineHeight: 1.5 }}>Remplis la fiche (pré-remplie depuis le profil), puis laisse l’IA proposer une stratégie ou définis-la à la main. Le coach ne logge jamais les repas — seul l’athlète le fait.</p>
@@ -275,7 +277,7 @@ export default function CoachNutritionStrategy({ athleteName, activePlan, onSave
         {/* Génération */}
         <div style={{ display: 'flex', gap: 10, marginTop: 18, flexWrap: 'wrap' }}>
           <button onClick={generateManual} disabled={!intake.targetWeightKg} style={{ flex: '1 1 180px', padding: 13, borderRadius: 12, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontWeight: 700, fontSize: 13.5, cursor: 'pointer' }}>Calculer (manuel)</button>
-          <button onClick={() => void generateAI()} disabled={aiBusy || !intake.targetWeightKg} style={{ flex: '1 1 180px', padding: 13, borderRadius: 12, border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontWeight: 700, fontSize: 13.5, cursor: aiBusy ? 'wait' : 'pointer', opacity: aiBusy ? 0.6 : 1, boxShadow: '0 4px 14px color-mix(in srgb, var(--primary) 30%, transparent)' }}>{aiBusy ? 'L’IA réfléchit…' : '✨ Générer avec l’IA'}</button>
+          <button onClick={() => void generateAI()} disabled={aiBusy || !intake.targetWeightKg} style={{ flex: '1 1 180px', padding: 13, borderRadius: 12, border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontWeight: 700, fontSize: 13.5, cursor: aiBusy ? 'wait' : 'pointer', opacity: aiBusy ? 0.6 : 1, boxShadow: '0 4px 14px color-mix(in srgb, var(--primary) 30%, transparent)' }}>{aiBusy ? 'L’IA réfléchit…' : 'Générer avec l’IA'}</button>
         </div>
         {aiErr && <p style={{ fontSize: 12, color: '#ef4444', margin: '8px 0 0', fontWeight: 600 }}>{aiErr}</p>}
       </div>
@@ -285,7 +287,7 @@ export default function CoachNutritionStrategy({ athleteName, activePlan, onSave
         <div style={CARD}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6, gap: 10, flexWrap: 'wrap' }}>
             <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 600, margin: 0 }}>Stratégie sur {weeks.length} semaines</h3>
-            <span style={{ fontSize: 11, fontWeight: 700, color: source === 'ai' ? 'var(--primary)' : 'var(--text-dim)', background: source === 'ai' ? 'var(--primary-dim)' : 'var(--bg-card2)', padding: '3px 9px', borderRadius: 999 }}>{source === 'ai' ? '✨ Proposé par l’IA' : 'Calcul manuel'}</span>
+            <span style={{ fontSize: 11, fontWeight: 700, color: source === 'ai' ? 'var(--primary)' : 'var(--text-dim)', background: source === 'ai' ? 'var(--primary-dim)' : 'var(--bg-card2)', padding: '3px 9px', borderRadius: 999 }}>{source === 'ai' ? 'Proposé par l’IA' : 'Calcul manuel'}</span>
           </div>
           {rationale && <p style={{ fontSize: 13, color: 'var(--text-mid)', lineHeight: 1.5, margin: '0 0 14px' }}>{rationale}</p>}
           {warnings.map((w, i) => <p key={i} style={{ fontSize: 12, color: '#f59e0b', margin: '0 0 8px', fontWeight: 600 }}>⚠ {w}</p>)}

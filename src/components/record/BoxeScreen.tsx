@@ -151,7 +151,7 @@ export default function BoxeScreen({ session, onClose, isDark }: Props) {
         ) : (
           <>
             <p style={{ fontSize: 'min(24vw, 110px)', fontWeight: 900, color: '#fff', margin: '4px 0 0', lineHeight: 1 }}>{cur.reps ? `×${cur.reps}` : '—'}</p>
-            {!isDone && <button onClick={advance} style={{ marginTop: 14, padding: '12px 28px', borderRadius: 999, border: '2px solid #fff', background: 'rgba(255,255,255,0.16)', color: '#fff', fontSize: 15, fontWeight: 800, cursor: 'pointer' }}>Suivant ✓</button>}
+            {!isDone && <button onClick={advance} style={{ marginTop: 14, padding: '12px 28px', borderRadius: 999, border: '2px solid #fff', background: 'rgba(255,255,255,0.16)', color: '#fff', fontSize: 15, fontWeight: 800, cursor: 'pointer' }}>Suivant</button>}
           </>
         )}
       </div>
@@ -224,6 +224,20 @@ export default function BoxeScreen({ session, onClose, isDark }: Props) {
       )}
 
       {showOverview && <OverviewSheet timeline={timeline} idx={idx} onClose={() => setShowOverview(false)} />}
+
+      {/* Chrono en pause → Reprendre ou Terminer l'entraînement */}
+      {!running && !isDone && elapsed > 0 && !showOverview && (
+        <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(3px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 4 }}>
+          <div style={{ background: 'var(--bg-card)', borderRadius: 20, padding: 22, width: 'min(340px, 88vw)', textAlign: 'center' }}>
+            <p style={{ fontSize: 17, fontWeight: 800, color: 'var(--text)', margin: '0 0 4px' }}>Séance en pause</p>
+            <p style={{ fontSize: 13, color: 'var(--text-mid)', margin: '0 0 18px' }}>Temps écoulé · {fmtDur(elapsed)}</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <button onClick={() => setRunning(true)} style={{ width: '100%', padding: 14, borderRadius: 14, border: 'none', background: ACCENT, color: '#fff', fontSize: 15, fontWeight: 800, cursor: 'pointer' }}>Reprendre</button>
+              <button onClick={() => setShowSave(true)} style={{ width: '100%', padding: 14, borderRadius: 14, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 15, fontWeight: 700, cursor: 'pointer' }}>Terminer l’entraînement</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {confirmClose && (
         <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 5 }}>

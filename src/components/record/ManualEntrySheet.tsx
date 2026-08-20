@@ -51,7 +51,7 @@ const SPORTS: SportDef[] = [
   { id: 'swimming', label: 'Natation',      sportType: 'swim',       mode: 'endurance', builderSport: 'swim' },
   { id: 'gym',      label: 'Musculation',   sportType: 'gym',        mode: 'muscu' },
   { id: 'hyrox',    label: 'Hyrox',         sportType: 'hyrox',      mode: 'hyrox' },
-  { id: 'boxe',     label: 'Boxe',          sportType: 'other',      mode: 'boxe' },
+  { id: 'boxe',     label: 'Boxe',          sportType: 'other',      mode: 'boxe',      builderSport: 'boxe' },
   { id: 'rowing',   label: 'Aviron',        sportType: 'rowing',     mode: 'endurance', builderSport: 'rowing' },
   { id: 'elliptique', label: 'Elliptique',  sportType: 'other',      mode: 'endurance', builderSport: 'elliptique' },
   { id: 'trail',    label: 'Trail',         sportType: 'trail_run',  mode: 'endurance', builderSport: 'run',        deniv: true },
@@ -316,7 +316,7 @@ export default function ManualEntrySheet({ onClose, onSaved }: Props) {
               {SPORTS.map(sp => (
                 <button key={sp.id} onClick={() => pickSport(sp)}
                   style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '16px 8px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 14, cursor: 'pointer', color: 'var(--text)', fontFamily: FB }}>
-                  <SportIcon sport={sp.builderSport ?? sp.sportType} size={30} circle={false} />
+                  <SportIcon sport={sp.builderSport ?? sp.id} size={30} circle={false} />
                   <span style={{ fontSize: 12, fontWeight: 600, textAlign: 'center' }}>{sp.label}</span>
                 </button>
               ))}

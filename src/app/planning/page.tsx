@@ -1059,8 +1059,12 @@ export function ActivityQuickModal({ activity, onClose }:{ activity:TrainingActi
     </>
   ) : null
 
+  // En vue coach (scope athlète), on emmène vers l'activité de L'ATHLÈTE
+  // (paramètre uid) et non vers la page training du coach.
+  const _scopedUid = isCoachScoped() ? getPlanningScopeUid() : null
+  const _detailHref = _scopedUid ? `/activities?id=${a.id}&uid=${_scopedUid}` : `/activities?id=${a.id}`
   const detailBtn = (
-    <a href={`/activities?id=${a.id}`}
+    <a href={_detailHref}
       style={{ display:'block',textAlign:'center' as const,padding:'10px 16px',borderRadius:10,background:col,color:'#fff',fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:12.5,textDecoration:'none',letterSpacing:'0.02em',width:'100%',boxSizing:'border-box' as const }}>
       {t('plnp.activity.viewDetails')}
     </a>

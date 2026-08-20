@@ -20517,9 +20517,9 @@ function SecondaryChatColumn({
         <div style={{ border: '1px solid var(--ai-border)', borderRadius: 16, background: 'var(--ai-bg)' }}>
           {/* Aperçu pièce jointe */}
           {attachment && (
-            <div style={{ padding: '8px 12px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ padding: '8px 12px 0', display: 'flex', alignItems: 'flex-start', gap: 8 }}>
               {attachment.isImage && attachment.preview
-                ? <img src={attachment.preview} alt={attachment.name} style={{ height: 48, borderRadius: 10, objectFit: 'cover', border: '1px solid var(--ai-border)' }} />
+                ? <img src={attachment.preview} alt={attachment.name} style={{ maxHeight: 180, maxWidth: '78%', width: 'auto', borderRadius: 12, objectFit: 'contain', border: '1px solid var(--ai-border)', display: 'block' }} />
                 : <div style={{ padding: '6px 12px', borderRadius: 10, background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)', fontSize: 12, color: 'var(--ai-text)', display: 'flex', alignItems: 'center', gap: 7 }}>
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg><span style={{ maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{attachment.name}</span>
                   </div>}
@@ -24011,9 +24011,9 @@ export default function AIPanel({
 
               {/* Attachment preview */}
               {attachment && (
-                <div style={{ padding: '8px 12px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ padding: '8px 12px 0', display: 'flex', alignItems: 'flex-start', gap: 8 }}>
                   {attachment.isImage && attachment.preview
-                    ? <img src={attachment.preview} alt={attachment.name} style={{ height: 56, borderRadius: 10, objectFit: 'cover', border: '1px solid var(--ai-border)' }} />
+                    ? <img src={attachment.preview} alt={attachment.name} style={{ maxHeight: 200, maxWidth: '78%', width: 'auto', borderRadius: 12, objectFit: 'contain', border: '1px solid var(--ai-border)', display: 'block' }} />
                     : attachment.kind === 'parcours'
                     ? (
                       <div style={{ padding: '6px 12px', borderRadius: 10, background: 'rgba(6,182,212,0.06)', border: '1px solid rgba(6,182,212,0.35)', fontSize: 12, color: 'var(--ai-text)', display: 'flex', alignItems: 'center', gap: 7 }}>

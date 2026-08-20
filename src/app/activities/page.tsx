@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic'
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { createClient } from '@/lib/supabase/client'
-import { resolvePlanningUid } from '@/lib/planning/scope'
+import { resolvePlanningUid, setPlanningScopeUid } from '@/lib/planning/scope'
 import { useI18n } from '@/lib/i18n'
 import { useTheme } from '@/hooks/useTheme'
 import { ScrollReveal, ScrollRevealGroup, ScrollRevealItem } from '@/components/ui/ScrollReveal'
@@ -20,6 +20,7 @@ import { TRAINING_ONBOARDING } from '@/onboarding/configs/training.config'
 import { HelpCircle, ChevronDown, ChevronLeft, ChevronRight, MoreHorizontal, Sparkles, BarChart2, Search, Menu, AlignJustify, LayoutGrid, Square, type LucideIcon } from 'lucide-react'
 import { TabbedPageLayout, type PageTab } from '@/components/ui/TabbedPageLayout'
 import { ActivityTitle } from '@/components/activity/ActivityTitle'
+import { ActivitySportPicker } from '@/components/activity/ActivitySportPicker'
 import { Spinner } from '@/components/ui/Spinner'
 import { SkeletonFitnessCards } from '@/components/ui/Skeleton'
 import { PageLoader } from '@/components/ui/PageLoader'
@@ -7357,6 +7358,10 @@ conseil pour la prochaine séance similaire.`
           <ActivityTitle activityId={a.id} initialName={a.title} />
         </div>
         <div>
+          <div style={editLabel}>Sport</div>
+          <ActivitySportPicker activityId={a.id} sport={a.sport_type} />
+        </div>
+        <div>
           <div style={editLabel}>Type de séance</div>
           <TrainingRaceSelector value={localIsRace} onChange={saveIsRace} />
           {!localIsRace && <div style={{ marginTop: 12 }}><WorkoutTypeBadges activityId={a.id} sport={a.sport_type} /></div>}
@@ -10071,9 +10076,23 @@ export default function TrainingPage() {
 }
 
 function TrainingPageInner() {
+  // Vue coach : /activities?uid=<athlète> scope TOUTE la page sur cet athlète
+  // (resolvePlanningUid lit ce singleton ; la RLS is_coach_of autorise la lecture).
+  // Sans paramètre → scope nul = ses propres activités. Réglé AVANT les effets de
+  // chargement pour que la 1re requête cible déjà le bon utilisateur.
+  if (typeof window !== 'undefined') {
+    const u = new URLSearchParams(window.location.search).get('uid')
+    setPlanningScopeUid(u || null)
+  }
   const { t } = useI18n()
   useTheme() // branche sur le thème global (force re-render quand dark/light change)
   const { activities, totalCount, loading, loadingMore, hasMore, error, reload, loadMore, removeActivity } = useActivities()
+  // Rechargement après changement de sport d'une activité (ActivitySportPicker).
+  useEffect(() => {
+    const h = () => reload()
+    window.addEventListener('thw:activities-reload', h)
+    return () => window.removeEventListener('thw:activities-reload', h)
+  }, [reload])
   const { showToast } = useToast()
   const { show: showHelp, dismiss: dismissHelp } = usePageOnboarding(TRAINING_ONBOARDING.pageId, TRAINING_ONBOARDING.version)
   const zones   = useTrainingZones()

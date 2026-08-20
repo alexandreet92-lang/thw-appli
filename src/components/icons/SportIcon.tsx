@@ -11,6 +11,11 @@ import {
   IconHome,        // Home Trainer (vélo d'intérieur)
   IconBolt,        // Hybrid (multi-modalité)
   IconKarate,      // Boxe
+  IconSnowboarding,// Ski
+  IconYoga,        // Yoga
+  IconBallTennis,  // Padel
+  IconWalk,        // Randonnée
+  IconActivity,    // Autre (générique)
 } from '@tabler/icons-react'
 import type { ComponentType } from 'react'
 
@@ -27,6 +32,7 @@ export function subSportIcon(sub?: string | null): SportIconComponent | null {
 
 export type SportKey =
   | 'run' | 'bike' | 'swim' | 'rowing' | 'muscu' | 'hyrox' | 'ellip' | 'hybrid' | 'boxe' | 'mobilite'
+  | 'ski' | 'yoga' | 'padel' | 'hiking' | 'other'
 
 // Mapping depuis les SportType de l'app (run|bike|swim|hyrox|rowing|gym|elliptique)
 // + alias éventuels (running, cycling…). Inconnu → null.
@@ -40,6 +46,9 @@ const SPORT_TYPE_TO_KEY: Record<string, SportKey> = {
   elliptique: 'ellip', ellip: 'ellip',
   hybrid: 'hybrid', boxe: 'boxe', boxing: 'boxe',
   mobilite: 'mobilite', mobility: 'mobilite',
+  ski: 'ski', yoga: 'yoga', padel: 'padel', tennis: 'padel',
+  hiking: 'hiking', randonnee: 'hiking', rando: 'hiking', walk: 'hiking',
+  other: 'other', autre: 'other',
 }
 
 export function sportKeyFromType(sport: string): SportKey | null {
@@ -59,6 +68,11 @@ const SPORT_ICON: Record<SportKey, { Icon: ComponentType<{ size?: number; color?
   hybrid: { Icon: IconBolt,       color: '#f59e0b', label: 'Hybrid'     },
   boxe:   { Icon: IconKarate,     color: '#e11d48', label: 'Boxe'       },
   mobilite: { Icon: IconStretching, color: '#86efac', label: 'Mobilité' }, // vert CLAIR distinct du run (#22c55e), figure d'assouplissement
+  ski:    { Icon: IconSnowboarding, color: '#38bdf8', label: 'Ski'       },
+  yoga:   { Icon: IconYoga,         color: '#a78bfa', label: 'Yoga'      },
+  padel:  { Icon: IconBallTennis,   color: '#facc15', label: 'Padel'     },
+  hiking: { Icon: IconWalk,         color: '#65a30d', label: 'Randonnée' },
+  other:  { Icon: IconActivity,     color: '#64748b', label: 'Autre'     },
 }
 
 export function SportIcon({

@@ -20,13 +20,17 @@ const card: React.CSSProperties = { background: 'var(--bg-card2)', borderRadius:
 const stepBtn: React.CSSProperties = { width: 26, height: 24, border: 'none', background: 'transparent', fontSize: 14, cursor: 'pointer', color: 'var(--text-mid)' }
 const stepBox: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', background: 'var(--bg-card2)', borderRadius: 999 }
 
-export function BlocDetailOverlay({ open, blocId, onClose, onChanged }: {
+export function BlocDetailOverlay({ open, blocId, onClose, onChanged, blocs: propBlocs }: {
   open: boolean; blocId: string | null; onClose: () => void; onChanged: () => void
+  // Source de vérité fournie par le parent (déjà correcte en scope coach comme
+  // athlète). Évite que l'overlay relise loadBlocs() et tombe sur un cache vide
+  // → c'est ce qui empêchait la surpage de s'ouvrir en vue coach.
+  blocs?: TrainingBlocData[]
 }) {
   const { t: tr } = useI18n()
   const isMobile = useWindowWidth() < 768
   const [shown, setShown] = useState(false)
-  const [blocs, setBlocs] = useState<TrainingBlocData[]>(() => loadBlocs())
+  const [blocs, setBlocs] = useState<TrainingBlocData[]>(() => propBlocs ?? loadBlocs())
   const [sport, setSport] = useState<string>('velo')
   const [activeId, setActiveId] = useState<string | null>(blocId)
   const [focusOpen, setFocusOpen] = useState(false)
@@ -34,11 +38,14 @@ export function BlocDetailOverlay({ open, blocId, onClose, onChanged }: {
   const options = useMemo<WeekOption[]>(() => weekStartOptions(), [])
 
   useEffect(() => { const t = setTimeout(() => setShown(open), 10); return () => clearTimeout(t) }, [open])
+  // Garde la liste synchronisée avec le parent (sans réinitialiser la sélection).
+  useEffect(() => { if (propBlocs) setBlocs(propBlocs) }, [propBlocs])
+  // À l'ouverture / changement de bloc ciblé : sélectionne le bon bloc + sport.
   useEffect(() => {
     if (!open) return
-    const list = loadBlocs(); setBlocs(list); setActiveId(blocId)
+    const list = propBlocs ?? loadBlocs(); setBlocs(list); setActiveId(blocId)
     const b = list.find(x => x.id === blocId); if (b) setSport(b.sport)
-  }, [open, blocId])
+  }, [open, blocId]) // eslint-disable-line react-hooks/exhaustive-deps
   if (!open) return null
 
   const sportBlocs = blocs.filter(b => b.sport === sport)

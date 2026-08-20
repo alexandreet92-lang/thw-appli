@@ -71,6 +71,18 @@ export const SPORT_ABBR: Record<SportType,string>   = { run:'RUN', bike:'BIKE', 
 export const SPORT_SHORT: Record<SportType,string>  = { run:'Run', bike:'Bike', swim:'Swim', hyrox:'Hyrox', gym:'Gym', rowing:'Row', elliptique:'Ellip', hybrid:'Hybrid', boxe:'Boxe', mobilite:'Mobilité' }
 export const CYCLING_SUB_LABEL: Record<CyclingSub,string> = { velo:'Vélo route', vtt:'VTT', ht:'Home Trainer' }
 export const RUNNING_SUB_LABEL: Record<RunningSub,string> = { outdoor:'Dehors', treadmill:'Tapis' }
+// Trois FAMILLES de course, qualités physiques distinctes :
+//  • endurance : endurance/seuil/VMA (prépa 1500 m → marathon, triathlon)
+//  • sprints   : répétitions très courtes et maximales, grosse récup
+//  • intervals : intermittent haute intensité type prépa sport co (foot/rugby…),
+//                intervalles variables, changements de direction, navette
+export type RunFamily = 'endurance' | 'sprints' | 'intervals'
+export const RUN_FAMILY_LABEL: Record<RunFamily,string> = { endurance:'Endurance Run', sprints:'Sprints', intervals:'Intervals Strides' }
+export const RUN_FAMILY_TYPES: Record<RunFamily,string[]> = {
+  endurance: ['EF','SL1','SL2','VMA','Seuil','Sortie longue','Heat Training','Mixte'],
+  sprints:   ['30 m','60 m','100 m','150 m','Départs','Accélérations','Survitesse'],
+  intervals: ['15/15','30/30','Navette','Chgt direction','Marche arrière','Intermittent court','Intermittent long'],
+}
 export const TRAINING_TYPES: Partial<Record<SportType,string[]>> = {
   run:        ['EF','SL1','SL2','VMA','Strides','Heat Training','Mixte'],
   bike:       ['EF','SL1','SL2','PMA','Sprints','Heat Training','Mixte'],
@@ -190,6 +202,7 @@ export interface Session {
   // Sous-types (persistés dans validation_data) — différenciation dans la grille.
   cyclingSub?: CyclingSub
   runningSub?: RunningSub
+  runFamily?: RunFamily   // famille de course (endurance / sprints / intervals)
   // Sports composés (Hybrid / Boxe) : liste de moves, persistée dans validation_data.
   composed?: ComposedMove[]
   composedCircuit?: ComposedCircuit     // legacy (circuit unique) — lu en rétro-compat
@@ -796,7 +809,7 @@ function usePlanning(weekStartParam?:string) {
       sport:s.sport, title:s.title, time:s.time, duration_min:s.durationMin,
       tss:s.tss??null, status:s.status, notes:s.notes??null,
       rpe:s.rpe??null, blocks:s.blocks??[],
-      validation_data: { ...(s.brickId ? { brickId:s.brickId } : {}), ...(s.cyclingSub ? { cyclingSub:s.cyclingSub } : {}), ...(s.runningSub ? { runningSub:s.runningSub } : {}), ...(s.composed ? { composed:s.composed } : {}), ...(s.composedCircuit ? { composedCircuit:s.composedCircuit } : {}), ...(s.composedCircuits ? { composedCircuits:s.composedCircuits } : {}) },
+      validation_data: { ...(s.brickId ? { brickId:s.brickId } : {}), ...(s.cyclingSub ? { cyclingSub:s.cyclingSub } : {}), ...(s.runningSub ? { runningSub:s.runningSub } : {}), ...(s.runFamily ? { runFamily:s.runFamily } : {}), ...(s.composed ? { composed:s.composed } : {}), ...(s.composedCircuit ? { composedCircuit:s.composedCircuit } : {}), ...(s.composedCircuits ? { composedCircuits:s.composedCircuits } : {}) },
       plan_variant:s.planVariant??'A',
       parcours_data: s.parcoursData ?? null,
       parcours_id:   s.parcoursId   ?? null,
@@ -815,7 +828,7 @@ function usePlanning(weekStartParam?:string) {
       title:upd.title, time:upd.time, duration_min:upd.durationMin,
       notes:upd.notes??null, rpe:upd.rpe??null, blocks:upd.blocks??[],
       tss:upd.tss??null, status:upd.status,
-      validation_data:{ vDuration:upd.vDuration, vDistance:upd.vDistance, vHrAvg:upd.vHrAvg, vSpeed:upd.vSpeed, ...(upd.brickId ? { brickId:upd.brickId } : {}), ...(upd.cyclingSub ? { cyclingSub:upd.cyclingSub } : {}), ...(upd.runningSub ? { runningSub:upd.runningSub } : {}), ...(upd.composed ? { composed:upd.composed } : {}), ...(upd.composedCircuit ? { composedCircuit:upd.composedCircuit } : {}), ...(upd.composedCircuits ? { composedCircuits:upd.composedCircuits } : {}) },
+      validation_data:{ vDuration:upd.vDuration, vDistance:upd.vDistance, vHrAvg:upd.vHrAvg, vSpeed:upd.vSpeed, ...(upd.brickId ? { brickId:upd.brickId } : {}), ...(upd.cyclingSub ? { cyclingSub:upd.cyclingSub } : {}), ...(upd.runningSub ? { runningSub:upd.runningSub } : {}), ...(upd.runFamily ? { runFamily:upd.runFamily } : {}), ...(upd.composed ? { composed:upd.composed } : {}), ...(upd.composedCircuit ? { composedCircuit:upd.composedCircuit } : {}), ...(upd.composedCircuits ? { composedCircuits:upd.composedCircuits } : {}) },
       updated_at:new Date().toISOString(),
     }
     if (upd.sport) patch.sport = upd.sport
@@ -3309,7 +3322,7 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
         sport: s.sport, title: s.title, time: s.time, duration_min: s.durationMin,
         tss: s.tss ?? null, status: s.status, notes: s.notes ?? null,
         rpe: s.rpe ?? null, blocks: s.blocks ?? [],
-        validation_data: { ...(s.brickId ? { brickId: s.brickId } : {}), ...(s.cyclingSub ? { cyclingSub: s.cyclingSub } : {}), ...(s.runningSub ? { runningSub: s.runningSub } : {}), ...(s.composed ? { composed: s.composed } : {}), ...(s.composedCircuit ? { composedCircuit: s.composedCircuit } : {}), ...(s.composedCircuits ? { composedCircuits: s.composedCircuits } : {}) },
+        validation_data: { ...(s.brickId ? { brickId: s.brickId } : {}), ...(s.cyclingSub ? { cyclingSub: s.cyclingSub } : {}), ...(s.runningSub ? { runningSub: s.runningSub } : {}), ...(s.runFamily ? { runFamily: s.runFamily } : {}), ...(s.composed ? { composed: s.composed } : {}), ...(s.composedCircuit ? { composedCircuit: s.composedCircuit } : {}), ...(s.composedCircuits ? { composedCircuits: s.composedCircuits } : {}) },
         plan_variant: s.planVariant ?? activePlan,
         parcours_data: s.parcoursData ?? null,
         nutrition_data: typedS.nutritionItems ?? null,

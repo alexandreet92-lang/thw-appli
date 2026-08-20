@@ -33,11 +33,11 @@ import type { SessionEditorPanelProps } from './mobile/panelProps'
 import {
   // Types
   type SportType, type BlockMode, type BlockType, type Block, type Session,
-  type PlanVariant, type CircuitType, type CyclingSub, type RunningSub, type DayIntensity,
+  type PlanVariant, type CircuitType, type CyclingSub, type RunningSub, type RunFamily, type DayIntensity,
   type TrainingActivity, type Race,
   // Constantes
   SPORT_LABEL, SPORT_ABBR, SPORT_BG, SPORT_BORDER, SPORT_SHORT,
-  CYCLING_SUB_LABEL, RUNNING_SUB_LABEL, TRAINING_TYPES, ZONE_COLORS,
+  CYCLING_SUB_LABEL, RUNNING_SUB_LABEL, RUN_FAMILY_LABEL, RUN_FAMILY_TYPES, TRAINING_TYPES, ZONE_COLORS,
   BLOCK_TYPE_LABEL, CIRCUIT_TYPES, SPORT_TO_BUILDER, ATHLETE,
   RACE_CONFIG, INTENSITY_CONFIG, INTENSITY_ORDER, DAY_NAMES,
   // Helpers
@@ -3736,6 +3736,7 @@ export function SessionEditor({ mode, session, dayIndex, weekStart, plan, onClos
   const [sport, setSport] = useState<SportType>(session?.sport ?? initialSport ?? 'run')
   const [cyclingSub, setCyclingSub] = useState<CyclingSub>(session?.cyclingSub ?? 'velo')
   const [runningSub, setRunningSub] = useState<RunningSub>(session?.runningSub ?? 'outdoor')
+  const [runFamily, setRunFamily] = useState<RunFamily>(session?.runFamily ?? 'endurance')
   // Sports composés (Hybrid / Boxe) : liste de moves + PLUSIEURS circuits.
   const [composedMoves, setComposedMoves] = useState<ComposedMove[]>(session?.composed ?? [])
   const [composedCircuits, setComposedCircuits] = useState<ComposedCircuit[]>(() => {
@@ -4242,7 +4243,8 @@ export function SessionEditor({ mode, session, dayIndex, weekStart, plan, onClos
   // Les logos gardent leur couleur propre ; seul le thème UI est uniforme.
   const accent = '#06B6D4'
   const isStrength = sport === 'gym' || sport === 'hyrox'
-  const trainTypes = TRAINING_TYPES[sport] ?? []
+  // Course : les types de séance dépendent de la FAMILLE choisie (endurance / sprints / intervals).
+  const trainTypes = sport === 'run' ? RUN_FAMILY_TYPES[runFamily] : (TRAINING_TYPES[sport] ?? [])
 
   // ── Zones FC : modèle LTHR identique à la page Zones ─────────────
   // Priorité : lthr_run/lthr_bike → hrMax*0.85 (estimation LTHR) → fallback hardcodé
@@ -4533,6 +4535,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
       brickId: finalBrickId,
       cyclingSub: sport === 'bike' ? cyclingSub : undefined,
       runningSub: sport === 'run' ? runningSub : undefined,
+      runFamily: sport === 'run' ? runFamily : undefined,
       composed: isComposed && composedMoves.length > 0 ? composedMoves : undefined,
       composedCircuits: isComposed && composedCircuits.length > 0 ? composedCircuits : undefined,
     }
@@ -5139,7 +5142,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
     const panelProps: SessionEditorPanelProps = {
       mode, reserveMode, programMode,
       sport, accent: 'var(--primary)', sportAccent: mobileSportColor(sport), onSportChange: handleSportChange, lockSport,
-      cyclingSub, setCyclingSub, runningSub, setRunningSub, brickRun, setBrickRun, onBrickButton: handleBrickButton, trainingTypes, setTrainingTypes,
+      cyclingSub, setCyclingSub, runningSub, setRunningSub, runFamily, setRunFamily, brickRun, setBrickRun, onBrickButton: handleBrickButton, trainingTypes, setTrainingTypes,
       title, setTitle, date, setDate, time, setTime,
       dur, setDur, rpe, setRpe, desc, setDesc, selPlan,
       blocks, setBlocks,
@@ -5411,7 +5414,19 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                 })}
               </div>
 
-              {sport === 'run' && (
+              {sport === 'run' && (<>
+                {/* Famille de course — 3 façons distinctes de courir */}
+                <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' as const, alignItems: 'center' }}>
+                  {(Object.keys(RUN_FAMILY_LABEL) as RunFamily[]).map(fam => (
+                    <button key={fam} onClick={() => setRunFamily(fam)} style={{
+                      padding: '6px 13px', borderRadius: 999, fontSize: 11.5, fontWeight: 700, cursor: 'pointer',
+                      border: runFamily === fam ? `1px solid ${accent}` : '1px solid var(--border)',
+                      background: runFamily === fam ? accent : 'transparent',
+                      color: runFamily === fam ? '#fff' : 'var(--text-dim)',
+                      transition: 'all .12s',
+                    }}>{RUN_FAMILY_LABEL[fam]}</button>
+                  ))}
+                </div>
                 <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' as const, alignItems: 'center' }}>
                   {(Object.keys(RUNNING_SUB_LABEL) as RunningSub[]).map(sub => (
                     <button key={sub} onClick={() => setRunningSub(sub)} style={{
@@ -5422,7 +5437,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                     }}>{RUNNING_SUB_LABEL[sub]}</button>
                   ))}
                 </div>
-              )}
+              </>)}
 
               {sport === 'bike' && (
                 <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' as const, alignItems: 'center' }}>

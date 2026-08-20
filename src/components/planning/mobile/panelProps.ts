@@ -1,7 +1,7 @@
 // Props partagées par les coquilles SessionEditor mobile & desktop (même
 // contenu éditorial, seule la mise en page diffère). Défini à part pour
 // éviter toute dépendance circulaire entre les deux coquilles.
-import type { SportType, CyclingSub, RunningSub, PlanVariant, Block } from '@/app/planning/page'
+import type { SportType, CyclingSub, RunningSub, RunFamily, PlanVariant, Block } from '@/app/planning/page'
 import type { AthleteRefs } from './editorial'
 import type { ExerciseItem, ExoCircuit } from './strength'
 import type { ComposedMove, ComposedSport, ComposedCircuit } from '../composedSports'
@@ -24,6 +24,7 @@ export interface SessionEditorPanelProps {
   lockSport?: boolean
   cyclingSub: CyclingSub; setCyclingSub: (s: CyclingSub) => void
   runningSub: RunningSub; setRunningSub: (s: RunningSub) => void
+  runFamily?: RunFamily; setRunFamily?: (f: RunFamily) => void
   brickRun: boolean; setBrickRun: (b: boolean) => void
   /** Clic sur « Brick Run » : ouvre la sur-page de choix, ou détache si actif. */
   onBrickButton?: () => void

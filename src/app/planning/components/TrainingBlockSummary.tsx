@@ -56,7 +56,7 @@ export function TrainingBlockSummary() {
         </div>
       )}
 
-      <BlocDetailOverlay open={open} blocId={activeId} onClose={() => { setOpen(false); reload() }} onChanged={reload} />
+      <BlocDetailOverlay open={open} blocId={activeId} blocs={blocs} onClose={() => { setOpen(false); reload() }} onChanged={reload} />
       <GanttOverlay open={gantt} onClose={() => { setGantt(false); reload() }} onChanged={reload} />
     </section>
   )

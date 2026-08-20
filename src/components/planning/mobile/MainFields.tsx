@@ -6,8 +6,8 @@
 // ══════════════════════════════════════════════════════════════════
 import { SportIcon } from '@/components/icons/SportIcon'
 import {
-  type SportType, type CyclingSub, type RunningSub,
-  SPORT_SHORT, CYCLING_SUB_LABEL, RUNNING_SUB_LABEL, TRAINING_TYPES,
+  type SportType, type CyclingSub, type RunningSub, type RunFamily,
+  SPORT_SHORT, CYCLING_SUB_LABEL, RUNNING_SUB_LABEL, RUN_FAMILY_LABEL, RUN_FAMILY_TYPES, TRAINING_TYPES,
 } from '@/app/planning/page'
 import { sportColor, fmtDur, parseDurInput } from './editorial'
 import { Card, FieldLabel, Gauge } from './ui'
@@ -24,6 +24,7 @@ export function MainFields(p: {
   lockSport?: boolean
   cyclingSub: CyclingSub; setCyclingSub: (s: CyclingSub) => void
   runningSub: RunningSub; setRunningSub: (s: RunningSub) => void
+  runFamily?: RunFamily; setRunFamily?: (f: RunFamily) => void
   brickRun: boolean; setBrickRun: (b: boolean) => void
   onBrickButton?: () => void
   trainingTypes: string[]; setTrainingTypes: (t: string[]) => void
@@ -34,7 +35,7 @@ export function MainFields(p: {
   athlete: { ftp: number | null; lthrBike: number | null; lthrRun: number | null; runThresholdPaceStr: string | null; swimCSSStr: string | null; hrMax: number | null } | null
 }) {
   const { t: tr } = useI18n()
-  const trainTypes = TRAINING_TYPES[p.sport] ?? []
+  const trainTypes = p.sport === 'run' ? RUN_FAMILY_TYPES[p.runFamily ?? 'endurance'] : (TRAINING_TYPES[p.sport] ?? [])
   const rpeIdx = Math.max(0, Math.min(9, Math.round(p.rpe) - 1))
 
   // Mini-stats par sport (réfs manquantes masquées)
@@ -80,6 +81,16 @@ export function MainFields(p: {
           {(Object.keys(CYCLING_SUB_LABEL) as CyclingSub[]).map(k => {
             const on = k === p.cyclingSub
             return <button key={k} type="button" onClick={() => p.setCyclingSub(k)} style={{ flex: 1, padding: '11px 8px', borderRadius: 'var(--se-r-sm)', cursor: 'pointer', fontSize: 13, fontWeight: 600, border: `1px solid ${on ? p.accent : 'var(--se-rule)'}`, background: 'var(--se-card)', color: on ? p.accent : 'var(--se-dim)' }}>{CYCLING_SUB_LABEL[k]}</button>
+          })}
+        </div>
+      )}
+
+      {/* Famille de course : Endurance Run / Sprints / Intervals Strides */}
+      {p.sport === 'run' && (
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {(Object.keys(RUN_FAMILY_LABEL) as RunFamily[]).map(k => {
+            const on = k === (p.runFamily ?? 'endurance')
+            return <button key={k} type="button" onClick={() => p.setRunFamily?.(k)} style={{ padding: '10px 14px', borderRadius: 999, cursor: 'pointer', fontSize: 12.5, fontWeight: 700, border: `1px solid ${on ? p.accent : 'var(--se-rule)'}`, background: on ? p.accent : 'var(--se-card)', color: on ? '#fff' : 'var(--se-dim)' }}>{RUN_FAMILY_LABEL[k]}</button>
           })}
         </div>
       )}

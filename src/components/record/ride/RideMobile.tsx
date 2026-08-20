@@ -16,10 +16,14 @@ import type { SensorStatus } from './useSensors'
 interface Props {
   v: RideView; d: Derived
   status: Record<'trainer' | 'hr' | 'cadence', SensorStatus>
+  /** Séance guidée sans capteur de puissance : on n'affiche QUE le profil de
+   *  séance (cibles watts par intervalle) — les autres pages (pilotage, flux,
+   *  data) sont inutiles sans appareil connecté. */
+  soloProfile?: boolean
   onTogglePause: () => void; onFinish: () => void; onStopTest?: () => void
 }
 
-export default function RideMobile({ v, d, status, onTogglePause, onFinish, onStopTest }: Props) {
+export default function RideMobile({ v, d, status, soloProfile = false, onTogglePause, onFinish, onStopTest }: Props) {
   const pagesRef = useRef<HTMLDivElement>(null)
   const [page, setPage] = useState(0)
   const onScroll = () => {
@@ -42,20 +46,27 @@ export default function RideMobile({ v, d, status, onTogglePause, onFinish, onSt
         <SensorDots status={status} />
       </div>
 
-      {/* Pages */}
-      <div ref={pagesRef} onScroll={onScroll} style={{ flex: 1, display: 'flex', overflowX: 'auto', overflowY: 'hidden', scrollSnapType: 'x mandatory', minHeight: 0 }}>
-        <div style={pageStyle}><RidePilot v={v} d={d} onStopTest={onStopTest} /></div>
-        <div style={pageStyle}><RideFlux v={v} d={d} /></div>
-        <div style={pageStyle}><RideProfile v={v} /></div>
-        <div style={pageStyle}><RideData v={v} d={d} status={status} /></div>
-      </div>
+      {/* Pages — sans capteur de puissance : uniquement le profil de séance
+          (cibles watts par intervalle) ; les pages de stats live sont masquées. */}
+      {soloProfile ? (
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '0 16px', minHeight: 0 }}><RideProfile v={v} /></div>
+      ) : (
+        <div ref={pagesRef} onScroll={onScroll} style={{ flex: 1, display: 'flex', overflowX: 'auto', overflowY: 'hidden', scrollSnapType: 'x mandatory', minHeight: 0 }}>
+          <div style={pageStyle}><RidePilot v={v} d={d} onStopTest={onStopTest} /></div>
+          <div style={pageStyle}><RideFlux v={v} d={d} /></div>
+          <div style={pageStyle}><RideProfile v={v} /></div>
+          <div style={pageStyle}><RideData v={v} d={d} status={status} /></div>
+        </div>
+      )}
 
-      {/* Points de pagination */}
-      <div style={{ display: 'flex', justifyContent: 'center', gap: 6, padding: '8px 0 4px' }}>
-        {[0, 1, 2, 3].map(i => (
-          <span key={i} style={{ height: 6, width: i === page ? 18 : 6, borderRadius: 3, background: i === page ? 'var(--primary)' : 'var(--bg-elev)', transition: '.2s' }} />
-        ))}
-      </div>
+      {/* Points de pagination (masqués en mode profil seul) */}
+      {!soloProfile && (
+        <div style={{ display: 'flex', justifyContent: 'center', gap: 6, padding: '8px 0 4px' }}>
+          {[0, 1, 2, 3].map(i => (
+            <span key={i} style={{ height: 6, width: i === page ? 18 : 6, borderRadius: 3, background: i === page ? 'var(--primary)' : 'var(--bg-elev)', transition: '.2s' }} />
+          ))}
+        </div>
+      )}
 
       {/* Barre basse */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '2px 16px 20px' }}>

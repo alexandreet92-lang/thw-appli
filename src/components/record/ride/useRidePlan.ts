@@ -13,10 +13,12 @@ import { buildPlan, type PlannedBlock } from './buildPlan'
 import type { RidePlan } from './types'
 import { weekStartStr, mondayIndex } from '@/lib/date/weekStart'
 
-interface Row { title: string | null; blocks: PlannedBlock[] | null }
+interface Row { id: string; title: string | null; blocks: PlannedBlock[] | null; validation_data: { cyclingSub?: string } | null }
 
 export function useRidePlan(ftp: number | null, enabled: boolean) {
   const [plan, setPlan] = useState<RidePlan | null>(null)
+  const [plannedId, setPlannedId] = useState<string | null>(null)   // séance planifiée source (à clôturer)
+  const [cyclingSub, setCyclingSub] = useState<string | null>(null) // 'ht' = home trainer
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -30,7 +32,7 @@ export function useRidePlan(ftp: number | null, enabled: boolean) {
         const now = new Date()
         const { data, error } = await sb
           .from('planned_sessions')
-          .select('title,blocks')
+          .select('id,title,blocks,validation_data')
           .eq('user_id', user.id)
           .eq('sport', 'bike')
           .eq('week_start', weekStartStr(now))
@@ -41,12 +43,16 @@ export function useRidePlan(ftp: number | null, enabled: boolean) {
         if (cancelled) return
         if (error) { console.error('[ride] chargement séance planifiée:', error.message); return }
         const row = (data ?? null) as Row | null
-        if (row) setPlan(buildPlan(row.blocks, ftp ?? 0, row.title ?? 'Séance vélo'))
+        if (row) {
+          setPlan(buildPlan(row.blocks, ftp ?? 0, row.title ?? 'Séance vélo'))
+          setPlannedId(row.id)
+          setCyclingSub(row.validation_data?.cyclingSub ?? null)
+        }
       } catch { /* pas de séance → sortie libre */ }
       finally { if (!cancelled) setLoading(false) }
     })()
     return () => { cancelled = true }
   }, [ftp, enabled])
 
-  return { plan, loading }
+  return { plan, plannedId, cyclingSub, loading }
 }

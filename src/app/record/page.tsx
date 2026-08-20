@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import SportSelector, { type SportId, getSportIcon, getSportLabel } from '@/components/record/SportSelector'
 import Toast from '@/components/record/Toast'
@@ -45,6 +46,7 @@ interface ActiveRoute {
 
 export default function RecordPage() {
   const { t } = useI18n()
+  const router = useRouter()
   const [view, setView] = useState<View>('home')
   const [sport, setSport] = useState<SportId>('cycling')
   const [sportSheetOpen, setSportSheetOpen] = useState(false)
@@ -280,7 +282,9 @@ export default function RecordPage() {
       <>
         <HomeTrainerScreen
           onExit={() => setView('home')}
-          onFinished={() => { setToast(t('record.pageWorkoutSaved')); setView('home') }}
+          // Séance terminée → enregistrée dans activities ; on emmène l'athlète
+          // directement sur la page Training (/activities) pour la voir.
+          onFinished={() => { setView('home'); router.push('/activities') }}
         />
         {toast && <Toast message={toast} onDismiss={() => setToast(null)} />}
       </>

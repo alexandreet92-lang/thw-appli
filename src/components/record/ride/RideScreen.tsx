@@ -60,7 +60,7 @@ export default function RideScreen({ onExit, onFinished }: Props) {
   const { benchmarks, ready, compute } = useSmSn()
   const ftp = benchmarks.ftp
   const fcMax = benchmarks.hrMax
-  const { plan, loading: planLoading } = useRidePlan(ftp, ready)
+  const { plan, plannedId, loading: planLoading } = useRidePlan(ftp, ready)
   const sensors = useSensors()
   const engine = useRideEngine(ftp ?? 0, plan, sensors.live)
   const recorder = useRideRecorder()
@@ -128,10 +128,15 @@ export default function RideScreen({ onExit, onFinished }: Props) {
       startedAt: startedAt || new Date().toISOString(), elapsedS: engine.t,
       title: plan?.title ?? 'Séance home trainer', compute,
     })
+    // Clôture la séance planifiée source (si lancée depuis le planning) → elle
+    // apparaît « faite » dans le planning et n'est plus proposée à refaire.
+    if (plannedId) {
+      try { await createClient().from('planned_sessions').update({ status: 'done' }).eq('id', plannedId) } catch { /* best-effort */ }
+    }
     // Séance de test → écran de résultat (PMA/FTP/zones) avant de quitter.
     if (rampStop || hasRampPlan || (hasCp20 && cp20Avg > 0)) { setShowResult(true); return }
     onFinished()
-  }, [engine, ftp, recorder, startedAt, plan, compute, onFinished, rampStop, hasRampPlan, hasCp20, cp20Avg])
+  }, [engine, ftp, recorder, startedAt, plan, plannedId, compute, onFinished, rampStop, hasRampPlan, hasCp20, cp20Avg])
 
   const view: RideView = useMemo(() => ({
     ftp: ftp ?? 0, fcMax: fcMax ?? 200, massKg, plan, t: engine.t,
@@ -162,7 +167,7 @@ export default function RideScreen({ onExit, onFinished }: Props) {
       <>
         {isDesktop
           ? <RideDesktop v={view} d={d} status={sensors.status} onTogglePause={engine.pause} onFinish={onFinish} onStopTest={onStopTest} />
-          : <RideMobile v={view} d={d} status={sensors.status} onTogglePause={engine.pause} onFinish={onFinish} onStopTest={onStopTest} />}
+          : <RideMobile v={view} d={d} status={sensors.status} soloProfile={!!plan && sensors.status.trainer !== 'connected'} onTogglePause={engine.pause} onFinish={onFinish} onStopTest={onStopTest} />}
         {paused && <RidePause onResume={engine.start} onFinish={onFinish} />}
       </>
     )

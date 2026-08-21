@@ -12,7 +12,7 @@ import { createPortal } from 'react-dom'
 import { createClient } from '@/lib/supabase/client'
 import { getCurrentUser } from '@/lib/auth/currentUser'
 import { useI18n, currentLocale } from '@/lib/i18n'
-import { useWorkoutVoice } from '@/lib/record/useWorkoutVoice'
+import { useWorkoutVoice, countWords } from '@/lib/record/useWorkoutVoice'
 import SessionSaveForm from './SessionSaveForm'
 import type { SessionFormData } from './SessionSaveForm'
 import { useHeartRate } from '@/lib/record/useHeartRate'
@@ -57,7 +57,7 @@ function adjustIntensity(it: LiveIntensity, dir: 1 | -1, runUnit: 'kmh' | 'minkm
   switch (it.kind) {
     case 'watts': return { kind: 'watts', watts: Math.max(0, it.watts + dir * 5) }
     case 'level': return { kind: 'level', level: Math.max(1, it.level + dir) }
-    case 'pace500': return { kind: 'pace500', sec: Math.max(30, it.sec + dir * 30) }
+    case 'pace500': return { kind: 'pace500', sec: Math.max(30, it.sec + dir * 5) }   // ±0:05/500m
     case 'speed': {
       if (runUnit === 'kmh') return { kind: 'speed', kmh: Math.max(1, +(it.kmh + dir * 0.5).toFixed(1)) }
       const minKm = it.kmh > 0 ? 60 / it.kmh : 6
@@ -111,7 +111,18 @@ export default function BoxeScreen({ session, onClose, isDark }: Props) {
   const voice = useWorkoutVoice(voiceLang, mutedRef)
   const halfWord = voiceLang === 'en' ? 'Half' : 'Moitié'
   const nextPrefix = voiceLang === 'en' ? 'Next:' : 'Prochain :'
+  const numWords = countWords(voiceLang)          // ['un','deux','trois'] / ['one','two','three']
+  const numWord = (n: number) => numWords[n - 1] ?? String(n)
   const prevIdxRef = useRef(0)
+  // Gros affichage flash « 3 / 2 / 1 / GO / STOP » au centre pendant le décompte.
+  const [flash, setFlash] = useState<string | null>(null)
+  const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const cueKeyRef = useRef<string>('')            // anti-doublon (ne dit pas 2× le même cue)
+  const pulse = (label: string, ms = 950) => {
+    setFlash(label)
+    if (flashTimer.current) clearTimeout(flashTimer.current)
+    flashTimer.current = setTimeout(() => setFlash(null), ms)
+  }
   const wakeLockRef = useRef<WakeLockSentinel | null>(null)
   const pagesRef = useRef<HTMLDivElement>(null)
 
@@ -195,10 +206,8 @@ export default function BoxeScreen({ session, onClose, isDark }: Props) {
     if (idx !== prevIdxRef.current) {
       const prev = timeline[prevIdxRef.current]
       const step = timeline[idx]
-      if (!mutedRef.current) {
-        if (prev?.phase === 'work' && prev.measure === 'time') voice.speak('STOP')
-        if (step?.phase === 'work') voice.speak('GO')
-      }
+      if (prev?.phase === 'work' && prev.measure === 'time') { voice.beep(1320, 300); voice.speak('STOP'); pulse('STOP') }
+      if (step?.phase === 'work') { voice.beep(1320, 300); voice.speak('GO'); pulse('GO') }
       if (step && (step.phase === 'rest' || step.phase === 'prepare')) {
         const nx = firstWorkAfter(idx); if (nx) voice.prefetch(`${nextPrefix} ${nx}`)
       }
@@ -209,20 +218,35 @@ export default function BoxeScreen({ session, onClose, isDark }: Props) {
 
   // ── VOIX 2 : décompte 3-2-1 (fin d'exo au temps ET avant un nouvel exo),
   // « Moitié/Half » à mi-parcours, annonce du prochain exo à −10 s (repos).
+  // Bip + gros chiffre à chaque top ; anti-doublon via cueKeyRef.
   useEffect(() => {
-    if (!running || muted || cur.measure !== 'time' || cur.phase === 'done') return
+    if (!running || cur.measure !== 'time' || cur.phase === 'done') return
+    const countdown = (remaining === 3 || remaining === 2 || remaining === 1)
+    const nx = cur.phase === 'work' ? null : firstWorkAfter(idx)
+    // Un décompte n'a de sens que s'il mène à un exo (repos/prépa → nx) ou
+    // termine un exo chronométré (work).
+    const relevant = cur.phase === 'work' || !!nx
+    if (countdown && relevant) {
+      const key = `${idx}:${remaining}`
+      if (cueKeyRef.current !== key) {
+        cueKeyRef.current = key
+        voice.beep(880, 130)
+        voice.speak(numWord(remaining))
+        pulse(String(remaining))
+      }
+    }
     if (cur.phase === 'work') {
       const half = Math.floor(cur.durationSec / 2)
-      if (cur.durationSec >= 12 && half >= 4 && remaining === half) voice.speak(halfWord)
-      if (remaining === 3 || remaining === 2 || remaining === 1) voice.speak(String(remaining))
-    } else {
-      // prépa / repos → vers un exo : annonce à 10 s + décompte 3-2-1
-      const nx = firstWorkAfter(idx)
-      if (nx && remaining === 10) voice.speak(`${nextPrefix} ${nx}`)
-      if (nx && (remaining === 3 || remaining === 2 || remaining === 1)) voice.speak(String(remaining))
+      if (cur.durationSec >= 12 && half >= 4 && remaining === half) {
+        const key = `${idx}:half`
+        if (cueKeyRef.current !== key) { cueKeyRef.current = key; voice.speak(halfWord); pulse(halfWord, 800) }
+      }
+    } else if (nx && remaining === 10) {
+      const key = `${idx}:announce`
+      if (cueKeyRef.current !== key) { cueKeyRef.current = key; voice.speak(`${nextPrefix} ${nx}`) }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [remaining, idx, running, muted])
+  }, [remaining, idx, running])
 
   const onScroll = () => { const el = pagesRef.current; if (el) setPage(Math.round(el.scrollLeft / el.clientWidth)) }
 
@@ -492,6 +516,14 @@ export default function BoxeScreen({ session, onClose, isDark }: Props) {
             {[0, 1].map(i => <span key={i} style={{ height: 6, width: i === page ? 18 : 6, borderRadius: 3, background: i === page ? ACCENT : 'var(--border-mid)', transition: '.2s' }} />)}
           </div>
         </>
+      )}
+
+      {/* Gros décompte flash « 3 / 2 / 1 / GO / STOP » plein écran. */}
+      {flash && (
+        <div style={{ position: 'absolute', inset: 0, zIndex: 3, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', background: 'rgba(0,0,0,0.4)' }}>
+          <style>{`@keyframes flashPop{0%{transform:scale(.5);opacity:0}30%{transform:scale(1.05);opacity:1}100%{transform:scale(1);opacity:1}}`}</style>
+          <span key={flash} style={{ fontSize: flash.length > 2 ? 'min(34vw, 200px)' : 'min(58vw, 340px)', fontWeight: 900, color: '#fff', lineHeight: 1, letterSpacing: '-0.02em', textShadow: '0 6px 50px rgba(0,0,0,0.5)', animation: 'flashPop .28s cubic-bezier(.2,.9,.3,1)', fontVariantNumeric: 'tabular-nums' }}>{flash}</span>
+        </div>
       )}
 
       {showOverview && <OverviewSheet timeline={timeline} idx={idx} onClose={() => setShowOverview(false)} />}

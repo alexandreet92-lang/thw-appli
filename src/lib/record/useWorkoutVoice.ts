@@ -18,6 +18,12 @@ export interface WorkoutVoice {
   unlock: () => void                 // à appeler dans le geste « Commencer »
   speak: (text: string) => void      // joue (cache prioritaire, sinon fetch/navigateur)
   prefetch: (text: string) => void   // pré-charge un texte (ex. prochain exo)
+  beep: (freq?: number, ms?: number) => void   // bip synthétique (oscillateur)
+}
+
+// Mots du décompte selon la langue (« un » et pas « one »).
+export function countWords(lang: Lang): [string, string, string] {
+  return lang === 'en' ? ['one', 'two', 'three'] : ['un', 'deux', 'trois']
 }
 
 const AC: typeof AudioContext | undefined =
@@ -83,13 +89,30 @@ export function useWorkoutVoice(lang: Lang, mutedRef: React.MutableRefObject<boo
 
   const prefetch = useCallback((text: string) => { void load(text) }, [load])
 
+  // Bip synthétique (oscillateur) — instantané, indépendant du réseau.
+  const beep = useCallback((freq = 880, ms = 120) => {
+    if (mutedRef.current) return
+    const c = ctx(); if (!c) return
+    try {
+      const osc = c.createOscillator(), g = c.createGain()
+      osc.type = 'sine'; osc.frequency.value = freq
+      const t0 = c.currentTime
+      g.gain.setValueAtTime(0.0001, t0)
+      g.gain.exponentialRampToValueAtTime(0.3, t0 + 0.012)
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + ms / 1000)
+      osc.connect(g); g.connect(c.destination)
+      osc.start(t0); osc.stop(t0 + ms / 1000 + 0.02)
+    } catch { /* ignore */ }
+  }, [ctx, mutedRef])
+
   const unlock = useCallback(() => {
     const c = ctx()
     if (c && c.state === 'suspended') void c.resume()
     // Pré-charge les phrases fixes du décompte pour un calage instantané.
-    const fixed = ['3', '2', '1', 'GO', 'STOP', lang === 'en' ? 'Half' : 'Moitié']
+    const [w1, w2, w3] = countWords(lang)
+    const fixed = [w1, w2, w3, 'GO', 'STOP', lang === 'en' ? 'Half' : 'Moitié']
     fixed.forEach(t => void load(t))
   }, [ctx, load, lang])
 
-  return { unlock, speak, prefetch }
+  return { unlock, speak, prefetch, beep }
 }

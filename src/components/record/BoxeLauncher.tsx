@@ -98,8 +98,8 @@ export default function BoxeLauncher({ open, onClose, onStart, sport = 'boxe' }:
             <p style={{ fontSize: 13, color: 'var(--text-dim)', textAlign: 'center', padding: '30px 0' }}>Chargement…</p>
           ) : (
             <>
-              {/* SECTION 1 — Week training : séances planifiées cette semaine */}
-              <SectionLabel>Week training</SectionLabel>
+              {/* SECTION 1 — Training Planning : séances planifiées cette semaine */}
+              <SectionLabel>Training Planning</SectionLabel>
               {thisWeek.length === 0 ? (
                 <EmptyHint>Aucune séance de {SPORT_LABEL.toLowerCase()} planifiée cette semaine.</EmptyHint>
               ) : (
@@ -108,8 +108,8 @@ export default function BoxeLauncher({ open, onClose, onStart, sport = 'boxe' }:
                 </div>
               )}
 
-              {/* SECTION 2 — Session training : toutes les séances créées de ce sport */}
-              <SectionLabel>Session training</SectionLabel>
+              {/* SECTION 2 — Training Session : toutes les séances créées de ce sport */}
+              <SectionLabel>Training Session</SectionLabel>
               {sessions.length === 0 ? (
                 <EmptyHint>Aucune séance de {SPORT_LABEL.toLowerCase()} créée. Crée-en une dans ton planning.</EmptyHint>
               ) : (
@@ -118,8 +118,8 @@ export default function BoxeLauncher({ open, onClose, onStart, sport = 'boxe' }:
                 </div>
               )}
 
-              {/* SECTION 3 — No training : lancer sans programme */}
-              <SectionLabel>No training</SectionLabel>
+              {/* SECTION 3 — No Training : lancer sans programme */}
+              <SectionLabel>No Training</SectionLabel>
               <button onClick={() => { onStart({ title: `Séance ${SPORT_LABEL.toLowerCase()} libre`, moves: [], circuits: [], sport, free: true }); handleClose() }}
                 style={{ width: '100%', padding: '15px 16px', borderRadius: 16, cursor: 'pointer', border: `1px solid ${ACCENT}`, background: `${ACCENT}12`, color: ACCENT, fontSize: 14.5, fontWeight: 800, display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left' }}>
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={ACCENT} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><polygon points="5 3 19 12 5 21 5 3"/></svg>

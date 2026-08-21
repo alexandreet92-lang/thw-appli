@@ -127,7 +127,7 @@ export default function PlannedLaunchSheet({ open, onClose, sport, label, accent
             <p style={{ fontSize: 13, color: 'var(--text-dim)', textAlign: 'center', padding: '30px 0' }}>Chargement…</p>
           ) : (
             <>
-              <SectionLabel>Week training</SectionLabel>
+              <SectionLabel>Training Planning</SectionLabel>
               {thisWeek.length === 0 ? (
                 <EmptyHint>Aucune séance de {label.toLowerCase()} planifiée cette semaine.</EmptyHint>
               ) : (
@@ -136,7 +136,7 @@ export default function PlannedLaunchSheet({ open, onClose, sport, label, accent
                 </div>
               )}
 
-              <SectionLabel>Session training</SectionLabel>
+              <SectionLabel>Training Session</SectionLabel>
               {all.length === 0 ? (
                 <EmptyHint>Aucune séance de {label.toLowerCase()} créée. Crée-en une dans ton planning.</EmptyHint>
               ) : (
@@ -145,7 +145,7 @@ export default function PlannedLaunchSheet({ open, onClose, sport, label, accent
                 </div>
               )}
 
-              <SectionLabel>No training</SectionLabel>
+              <SectionLabel>No Training</SectionLabel>
               <button onClick={() => { onFree(); handleClose() }}
                 style={{ width: '100%', padding: '15px 16px', borderRadius: 16, cursor: 'pointer', border: `1px solid ${accent}`, background: `${accent}12`, color: accent, fontSize: 14.5, fontWeight: 800, display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left' }}>
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={accent} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><polygon points="5 3 19 12 5 21 5 3"/></svg>

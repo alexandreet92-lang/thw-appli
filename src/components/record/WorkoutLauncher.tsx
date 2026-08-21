@@ -124,37 +124,14 @@ export default function WorkoutLauncher({ sport, open, onClose, onStart, onFreeM
             </div>
           )}
 
-          {/* SECTION 3 — NO TRAINING */}
+          {/* SECTION 3 — NO TRAINING : on NE crée PAS de séance ici, uniquement lancer sans programme. */}
           <div>
             {sectionLabel('No Training')}
-            <div style={{ display: 'flex', gap: 10 }}>
-
-              {/* Créer une séance */}
-              <button onClick={() => { handleClose(); onStart([], undefined) }}
-                style={{ flex: 1, padding: '14px 12px', background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 12, cursor: 'pointer', textAlign: 'center' }}>
-                <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(6,182,212,0.10)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 8px' }}>
-                  <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-                    <path d="M9 2v14M2 9h14" stroke="#06B6D4" strokeWidth="1.8" strokeLinecap="round"/>
-                  </svg>
-                </div>
-                <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', margin: 0 }}>{t('record.workoutCreateSession')}</p>
-                <p style={{ fontSize: 11, color: 'var(--text-mid)', margin: '3px 0 0' }}>{t('record.workoutDefineExercises')}</p>
-              </button>
-
-              {/* Lancer sans programme */}
-              <button onClick={() => { handleClose(); onFreeMode ? onFreeMode(sport) : onStart(sport === 'gym' ? DEFAULT_GYM_EXERCISES : DEFAULT_HYROX_EXERCISES) }}
-                style={{ flex: 1, padding: '14px 12px', background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 12, cursor: 'pointer', textAlign: 'center' }}>
-                <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(6,182,212,0.10)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 8px' }}>
-                  <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-                    <circle cx="9" cy="9" r="7" stroke="#06B6D4" strokeWidth="1.4"/>
-                    <path d="M9 5v4l3 2" stroke="#06B6D4" strokeWidth="1.4" strokeLinecap="round"/>
-                  </svg>
-                </div>
-                <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', margin: 0 }}>{t('record.workoutLaunch')}</p>
-                <p style={{ fontSize: 11, color: 'var(--text-mid)', margin: '3px 0 0' }}>{t('record.workoutNoProgram')}</p>
-              </button>
-
-            </div>
+            <button onClick={() => { handleClose(); onFreeMode ? onFreeMode(sport) : onStart(sport === 'gym' ? DEFAULT_GYM_EXERCISES : DEFAULT_HYROX_EXERCISES) }}
+              style={{ width: '100%', padding: '15px 16px', borderRadius: 12, cursor: 'pointer', border: `1px solid ${accent}`, background: `${accent}12`, color: accent, fontSize: 14.5, fontWeight: 800, display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left' }}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={accent} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              {t('record.workoutLaunch')} · {t('record.workoutNoProgram')}
+            </button>
           </div>
 
         </div>

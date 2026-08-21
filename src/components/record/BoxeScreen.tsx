@@ -190,8 +190,20 @@ export default function BoxeScreen({ session, onClose, isDark }: Props) {
     setVolumeKg(v => v + liveReps * liveKg)
     advance()
   }
+  // Revenir à l'étape précédente (annuler une avance trop rapide, refaire une série).
+  function goBack() {
+    setIdx(i => {
+      const prev = Math.max(0, i - 1)
+      const step = timeline[prev]
+      if (step) setRemaining(step.durationSec)
+      if (running || isDone) { /* on reste dans l'état courant */ }
+      return prev
+    })
+  }
   // Réglages en direct du temps : effort ±10 s, récup ±15 s (borné ≥ 0).
   const adjustTime = (d: number) => setRemaining(r => Math.max(0, r + d))
+  // Vibration (silencieux) — top de décompte / changement d'étape.
+  const buzz = (pattern: number | number[]) => { try { navigator.vibrate?.(pattern) } catch { /* ignore */ } }
 
   // Libellé du prochain EXO (étape « work ») après l'index i — pour l'annonce.
   const firstWorkAfter = (i: number): string => {
@@ -206,8 +218,8 @@ export default function BoxeScreen({ session, onClose, isDark }: Props) {
     if (idx !== prevIdxRef.current) {
       const prev = timeline[prevIdxRef.current]
       const step = timeline[idx]
-      if (prev?.phase === 'work' && prev.measure === 'time') { voice.beep(1320, 300); voice.speak('STOP'); pulse('STOP') }
-      if (step?.phase === 'work') { voice.beep(1320, 300); voice.speak('GO'); pulse('GO') }
+      if (prev?.phase === 'work' && prev.measure === 'time') { voice.beep(1320, 300); voice.speak('STOP'); pulse('STOP'); buzz([90, 50, 90]) }
+      if (step?.phase === 'work') { voice.beep(1320, 300); voice.speak('GO'); pulse('GO'); buzz([90, 50, 90]) }
       if (step && (step.phase === 'rest' || step.phase === 'prepare')) {
         const nx = firstWorkAfter(idx); if (nx) voice.prefetch(`${nextPrefix} ${nx}`)
       }
@@ -233,6 +245,7 @@ export default function BoxeScreen({ session, onClose, isDark }: Props) {
         voice.beep(880, 130)
         voice.speak(numWord(remaining))
         pulse(String(remaining))
+        buzz(60)
       }
     }
     if (cur.phase === 'work') {
@@ -368,6 +381,22 @@ export default function BoxeScreen({ session, onClose, isDark }: Props) {
         </div>
       )}
 
+      {/* Navigation manuelle : précédent / passer (repos ou exo). */}
+      {!isDone && (
+        <div style={{ flexShrink: 0, display: 'flex', gap: 10, padding: '10px 24px 0', justifyContent: 'center' }}>
+          <button onClick={() => { buzz(30); goBack() }} disabled={idx === 0}
+            style={{ flex: 1, maxWidth: 200, padding: '9px 12px', borderRadius: 999, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: idx === 0 ? 'var(--text-dim)' : 'var(--text)', fontSize: 13, fontWeight: 800, cursor: idx === 0 ? 'default' : 'pointer', opacity: idx === 0 ? 0.5 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+            Précédent
+          </button>
+          <button onClick={() => { buzz(30); advance() }}
+            style={{ flex: 1, maxWidth: 200, padding: '9px 12px', borderRadius: 999, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 13, fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+            {cur.phase === 'rest' ? 'Passer le repos' : 'Passer'}
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+          </button>
+        </div>
+      )}
+
       {/* Contrôles */}
       <div style={{ flexShrink: 0, display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', padding: '14px 24px', gap: 12 }}>
         <div style={{ textAlign: 'center' }}>
@@ -494,6 +523,12 @@ export default function BoxeScreen({ session, onClose, isDark }: Props) {
   const content = (
     <div style={{ position: 'fixed', inset: 0, zIndex: 10002, background: 'var(--bg)', color: 'var(--text)', display: 'flex', flexDirection: 'column', fontFamily: 'var(--font-body)', paddingTop: 'env(safe-area-inset-top)' }}>
       {header}
+      {/* Barre de progression globale de la séance. */}
+      {started && (
+        <div style={{ flexShrink: 0, height: 3, background: 'var(--border)' }}>
+          <div style={{ height: '100%', width: `${Math.round((idx / Math.max(1, timeline.length - 1)) * 100)}%`, background: ACCENT, transition: 'width .35s ease' }} />
+        </div>
+      )}
       {!started ? (<>
         {isWorkout ? preStartWorkout : preStart}
         <div style={{ flexShrink: 0, padding: '12px 18px calc(14px + env(safe-area-inset-bottom))', borderTop: '1px solid var(--border)' }}>

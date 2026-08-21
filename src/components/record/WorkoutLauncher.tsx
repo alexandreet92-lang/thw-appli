@@ -41,7 +41,9 @@ export default function WorkoutLauncher({ sport, open, onClose, onStart, onFreeM
   const [thisWeek, setThisWeek] = useState<PlannedSession[]>([])
   const [allSessions, setAllSessions] = useState<PlannedSession[]>([])
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const accent = sport === 'gym' ? '#06B6D4' : '#EF4444'
+  // Monochrome (demande : pas de rouge, tout en noir) — cohérent avec boxe/hybride.
+  const accent = 'var(--text)'
+  const tint = (pct: number) => `color-mix(in srgb, var(--text) ${pct}%, transparent)`
   const label = sport === 'gym' ? t('record.workoutMuscu') : 'Hyrox'
 
   useEffect(() => { setMounted(true) }, [])
@@ -128,7 +130,7 @@ export default function WorkoutLauncher({ sport, open, onClose, onStart, onFreeM
           <div>
             {sectionLabel('No Training')}
             <button onClick={() => { handleClose(); onFreeMode ? onFreeMode(sport) : onStart(sport === 'gym' ? DEFAULT_GYM_EXERCISES : DEFAULT_HYROX_EXERCISES) }}
-              style={{ width: '100%', padding: '15px 16px', borderRadius: 12, cursor: 'pointer', border: `1px solid ${accent}`, background: `${accent}12`, color: accent, fontSize: 14.5, fontWeight: 800, display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left' }}>
+              style={{ width: '100%', padding: '15px 16px', borderRadius: 12, cursor: 'pointer', border: `1px solid ${accent}`, background: tint(8), color: accent, fontSize: 14.5, fontWeight: 800, display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left' }}>
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={accent} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><polygon points="5 3 19 12 5 21 5 3"/></svg>
               {t('record.workoutLaunch')} · {t('record.workoutNoProgram')}
             </button>

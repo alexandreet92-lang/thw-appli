@@ -24,7 +24,12 @@ import { saveWorkout } from './live/saveWorkout'
 
 interface Props { session: BoxeSession; onClose: () => void; isDark: boolean }
 
-const C_PREP = '#f59e0b', C_WORK = '#ef4444', C_REST = '#22c55e', ACCENT = '#ef4444'
+// Palette monochrome (demande : pas de rouge, tout en noir). Le bloc d'effort
+// est noir ; prépa/repos restent ambre/vert pour distinguer les phases.
+const C_PREP = '#f59e0b', C_WORK = '#161616', C_REST = '#22c55e'
+const ACCENT = 'var(--text)'            // encre : texte, traits, bordures
+const ACCENT_ON = 'var(--bg)'           // texte posé sur un fond ACCENT plein
+const tint = (pct: number) => `color-mix(in srgb, var(--text) ${pct}%, transparent)`
 const phaseColorOf = (p: BoxeStep['phase']) => p === 'prepare' ? C_PREP : p === 'rest' ? C_REST : C_WORK
 
 function fmt(sec: number) { const m = Math.floor(sec / 60), s = sec % 60; return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}` }
@@ -235,7 +240,7 @@ export default function BoxeScreen({ session, onClose, isDark }: Props) {
           <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-dim)', margin: '4px 0 0', letterSpacing: '0.06em' }}>{unitLabel} RESTANTS</p>
         </div>
         {isDone ? (
-          <button onClick={() => setShowSave(true)} style={{ width: 84, height: 84, borderRadius: '50%', border: `3px solid ${ACCENT}`, background: ACCENT, color: '#fff', cursor: 'pointer', fontWeight: 800, fontSize: 13 }}>{t('record.sessionSaveSave') || 'Enregistrer'}</button>
+          <button onClick={() => setShowSave(true)} style={{ width: 84, height: 84, borderRadius: '50%', border: `3px solid ${ACCENT}`, background: ACCENT, color: ACCENT_ON, cursor: 'pointer', fontWeight: 800, fontSize: 13 }}>{t('record.sessionSaveSave') || 'Enregistrer'}</button>
         ) : (
           <button onClick={() => setRunning(r => !r)} style={{ width: 84, height: 84, borderRadius: '50%', border: `3px solid ${ACCENT}`, background: 'transparent', color: ACCENT, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             {running ? <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>
@@ -348,7 +353,7 @@ export default function BoxeScreen({ session, onClose, isDark }: Props) {
       {!started ? (<>
         {isWorkout ? preStartWorkout : preStart}
         <div style={{ flexShrink: 0, padding: '12px 18px calc(14px + env(safe-area-inset-bottom))', borderTop: '1px solid var(--border)' }}>
-          <button onClick={() => { setStarted(true); setRunning(true) }} style={{ width: '100%', maxWidth: 560, margin: '0 auto', display: 'block', padding: 15, borderRadius: 14, border: 'none', background: ACCENT, color: '#fff', fontSize: 15.5, fontWeight: 800, cursor: 'pointer' }}>Commencer</button>
+          <button onClick={() => { setStarted(true); setRunning(true) }} style={{ width: '100%', maxWidth: 560, margin: '0 auto', display: 'block', padding: 15, borderRadius: 14, border: 'none', background: ACCENT, color: ACCENT_ON, fontSize: 15.5, fontWeight: 800, cursor: 'pointer' }}>Commencer</button>
         </div>
       </>) : isDesktop ? (
         // Desktop : split gauche (séance/chrono) / droite (données)
@@ -380,7 +385,7 @@ export default function BoxeScreen({ session, onClose, isDark }: Props) {
             <p style={{ fontSize: 13, color: 'var(--text-mid)', margin: '0 0 20px' }}>Temps écoulé · {fmtDur(elapsed)}</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <button onClick={() => setRunning(true)} style={{ width: '100%', padding: 15, borderRadius: 14, border: 'none', background: '#22c55e', color: '#fff', fontSize: 15.5, fontWeight: 800, cursor: 'pointer' }}>Reprendre</button>
-              <button onClick={() => setShowSave(true)} style={{ width: '100%', padding: 15, borderRadius: 14, border: 'none', background: ACCENT, color: '#fff', fontSize: 15.5, fontWeight: 800, cursor: 'pointer' }}>Terminer et enregistrer</button>
+              <button onClick={() => setShowSave(true)} style={{ width: '100%', padding: 15, borderRadius: 14, border: 'none', background: ACCENT, color: ACCENT_ON, fontSize: 15.5, fontWeight: 800, cursor: 'pointer' }}>Terminer et enregistrer</button>
               <button onClick={onClose} style={{ width: '100%', padding: 15, borderRadius: 14, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 14.5, fontWeight: 700, cursor: 'pointer' }}>Terminer sans enregistrer</button>
             </div>
           </div>
@@ -394,7 +399,7 @@ export default function BoxeScreen({ session, onClose, isDark }: Props) {
             <p style={{ fontSize: 13, color: 'var(--text-mid)', margin: '0 0 16px' }}>La séance en cours ne sera pas enregistrée.</p>
             <div style={{ display: 'flex', gap: 10 }}>
               <button onClick={() => setConfirmClose(false)} style={{ flex: 1, padding: 12, borderRadius: 999, background: 'var(--bg-card2)', border: '1px solid var(--border)', color: 'var(--text)', fontWeight: 700, cursor: 'pointer' }}>Annuler</button>
-              <button onClick={onClose} style={{ flex: 1, padding: 12, borderRadius: 999, background: ACCENT, border: 'none', color: '#fff', fontWeight: 700, cursor: 'pointer' }}>Quitter</button>
+              <button onClick={onClose} style={{ flex: 1, padding: 12, borderRadius: 999, background: ACCENT, border: 'none', color: ACCENT_ON, fontWeight: 700, cursor: 'pointer' }}>Quitter</button>
             </div>
           </div>
         </div>
@@ -443,7 +448,7 @@ function OverviewSheet({ timeline, idx, onClose }: { timeline: BoxeStep[]; idx: 
   const efforts = timeline.map((s, i) => ({ s, i })).filter(x => x.s.phase === 'work')
   const Row = ({ s, state }: { s: BoxeStep; state: 'done' | 'now' | 'todo' }) => (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10, marginBottom: 6,
-      background: state === 'now' ? `${ACCENT}14` : 'var(--bg-card2)', border: state === 'now' ? `1px solid ${ACCENT}55` : '1px solid transparent', opacity: state === 'done' ? 0.5 : 1 }}>
+      background: state === 'now' ? tint(8) : 'var(--bg-card2)', border: state === 'now' ? `1px solid ${tint(40)}` : '1px solid transparent', opacity: state === 'done' ? 0.5 : 1 }}>
       <span style={{ width: 8, height: 8, borderRadius: '50%', background: state === 'done' ? 'var(--text-dim)' : state === 'now' ? ACCENT : 'var(--border-mid)', flexShrink: 0 }} />
       <span style={{ flex: 1, minWidth: 0 }}>
         <span style={{ display: 'block', fontSize: 13.5, fontWeight: 700, color: 'var(--text)' }}>{s.label}{s.tours && s.tours > 1 ? ` · tour ${s.tour}/${s.tours}` : ''}</span>

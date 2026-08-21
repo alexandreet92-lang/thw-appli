@@ -16,6 +16,7 @@ export interface BoxeStep {
   durationSec: number     // 0 = étape aux répétitions (avance manuelle)
   measure: 'time' | 'reps'
   reps?: number
+  weightKg?: number       // charge cible (édition live −/+)
   circuitName?: string
   circuitIdx: number
   tour?: number           // tour du circuit
@@ -69,7 +70,7 @@ export function buildBoxeTimeline(session: BoxeSession): BoxeStep[] {
           }
         } else if (m.measure === 'reps' && !m.timeSec) {
           const detail = [m.reps ? `×${m.reps}` : '', m.weightKg ? `${m.weightKg} kg` : ''].filter(Boolean).join(' · ')
-          steps.push({ phase: 'work', label: baseLabel, detail: detail || undefined, durationSec: 0, measure: 'reps', reps: m.reps, circuitName: circuit.name, circuitIdx: ci, tour, tours, isRound: false })
+          steps.push({ phase: 'work', label: baseLabel, detail: detail || undefined, durationSec: 0, measure: 'reps', reps: m.reps, weightKg: m.weightKg, circuitName: circuit.name, circuitIdx: ci, tour, tours, isRound: false })
         } else {
           const detail = m.weightKg ? `${m.weightKg} kg` : undefined
           steps.push({ phase: 'work', label: baseLabel, detail, durationSec: m.timeSec ?? 60, measure: 'time', circuitName: circuit.name, circuitIdx: ci, tour, tours, isRound: false })

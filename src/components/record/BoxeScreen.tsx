@@ -52,12 +52,24 @@ export default function BoxeScreen({ session, onClose, isDark }: Props) {
   const [showSave, setShowSave] = useState(false)
   const [confirmClose, setConfirmClose] = useState(false)
   const [startedAt] = useState(new Date().toISOString())
+  // Édition en direct (comme la muscu) : reps + charge de l'exo courant, et
+  // cumuls séries / volume pour le résumé. Réinitialisés à chaque étape aux reps.
+  const [liveReps, setLiveReps] = useState(0)
+  const [liveKg, setLiveKg] = useState(0)
+  const [setsDone, setSetsDone] = useState(0)
+  const [volumeKg, setVolumeKg] = useState(0)
   const hr = useHeartRate()
   const wakeLockRef = useRef<WakeLockSentinel | null>(null)
   const pagesRef = useRef<HTMLDivElement>(null)
 
   const cur = timeline[idx] ?? timeline[timeline.length - 1]
   const isDone = cur.phase === 'done'
+
+  // À l'entrée d'une étape aux reps : précharge reps/charge cibles pour l'édition.
+  useEffect(() => {
+    if (cur.measure === 'reps') { setLiveReps(cur.reps ?? 0); setLiveKg(cur.weightKg ?? 0) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [idx])
   const roundsDone = useMemo(() => timeline.slice(0, idx).filter(s => s.isRound).length, [timeline, idx])
   // Compteur adaptatif : ROUNDS pour la boxe (moves « round »), EXOS sinon
   // (hybrid, renfo…). L'hybrid n'a pas de rounds → on montre les exercices.
@@ -106,6 +118,16 @@ export default function BoxeScreen({ session, onClose, isDark }: Props) {
     })
   }
 
+  // Valider une étape aux reps : cumule la série + le volume (reps × charge)
+  // avec les valeurs ÉDITÉES en direct, puis avance.
+  function completeReps() {
+    setSetsDone(n => n + 1)
+    setVolumeKg(v => v + liveReps * liveKg)
+    advance()
+  }
+  // Réglages en direct du temps : effort ±10 s, récup ±15 s (borné ≥ 0).
+  const adjustTime = (d: number) => setRemaining(r => Math.max(0, r + d))
+
   const onScroll = () => { const el = pagesRef.current; if (el) setPage(Math.round(el.scrollLeft / el.clientWidth)) }
 
   const handleClose = () => { if (elapsed > 0) { setConfirmClose(true); return } onClose() }
@@ -142,6 +164,8 @@ export default function BoxeScreen({ session, onClose, isDark }: Props) {
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12, padding: 16, alignContent: 'start' }}>
       <Metric label="Temps total" value={fmtDur(elapsed)} />
       <Metric label={useRounds ? 'Rounds faits' : 'Exos faits'} value={`${doneCount}/${totalCount}`} />
+      <Metric label="Séries" value={String(setsDone)} />
+      <Metric label="Volume" value={volumeKg > 0 ? String(Math.round(volumeKg)) : '—'} unit={volumeKg > 0 ? 'kg' : ''} />
       <Metric label="Calories (est.)" value={String(caloriesEst)} unit="kcal" />
       <Metric label="FC moyenne" value={hr.avg ? String(hr.avg) : '—'} unit={hr.avg ? 'bpm' : ''} />
       <Metric label="FC max" value={hr.max ? String(hr.max) : '—'} unit={hr.max ? 'bpm' : ''} />
@@ -160,11 +184,24 @@ export default function BoxeScreen({ session, onClose, isDark }: Props) {
         {cur.label === 'Séance libre' ? (
           <p style={{ fontSize: 'min(26vw, 120px)', fontWeight: 900, color: '#fff', margin: '4px 0 0', lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{fmtDur(elapsed)}</p>
         ) : cur.measure === 'time' ? (
-          <p style={{ fontSize: 'min(28vw, 130px)', fontWeight: 900, color: '#fff', margin: '4px 0 0', lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{isDone ? '00:00' : fmt(remaining)}</p>
+          <>
+            <p style={{ fontSize: 'min(26vw, 122px)', fontWeight: 900, color: '#fff', margin: '4px 0 0', lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{isDone ? '00:00' : fmt(remaining)}</p>
+            {/* Réglage live du temps : effort ±10 s, récup ±15 s. */}
+            {!isDone && (
+              <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
+                <WhiteChip onClick={() => adjustTime(cur.phase === 'rest' ? -15 : -10)}>{cur.phase === 'rest' ? '−15 s' : '−10 s'}</WhiteChip>
+                <WhiteChip onClick={() => adjustTime(cur.phase === 'rest' ? 15 : 10)}>{cur.phase === 'rest' ? '+15 s' : '+10 s'}</WhiteChip>
+              </div>
+            )}
+          </>
         ) : (
           <>
-            <p style={{ fontSize: 'min(24vw, 110px)', fontWeight: 900, color: '#fff', margin: '4px 0 0', lineHeight: 1 }}>{cur.reps ? `×${cur.reps}` : '—'}</p>
-            {!isDone && <button onClick={advance} style={{ marginTop: 14, padding: '12px 28px', borderRadius: 999, border: '2px solid #fff', background: 'rgba(255,255,255,0.16)', color: '#fff', fontSize: 15, fontWeight: 800, cursor: 'pointer' }}>Suivant</button>}
+            {/* Édition live : reps + charge (comme la muscu). */}
+            <div style={{ display: 'flex', gap: 18, marginTop: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
+              <Stepper label="REPS" value={String(liveReps)} onDec={() => setLiveReps(n => Math.max(0, n - 1))} onInc={() => setLiveReps(n => n + 1)} />
+              <Stepper label="CHARGE (KG)" value={liveKg === 0 ? 'PDC' : String(liveKg)} onDec={() => setLiveKg(n => Math.max(0, +(n - 2.5).toFixed(1)))} onInc={() => setLiveKg(n => +(n + 2.5).toFixed(1))} />
+            </div>
+            {!isDone && <button onClick={completeReps} style={{ marginTop: 22, padding: '13px 34px', borderRadius: 999, border: '2px solid #fff', background: 'rgba(255,255,255,0.18)', color: '#fff', fontSize: 15.5, fontWeight: 800, cursor: 'pointer' }}>Valider · Suivant →</button>}
           </>
         )}
       </div>
@@ -206,7 +243,15 @@ export default function BoxeScreen({ session, onClose, isDark }: Props) {
       </button>
       <div style={{ flex: 1, textAlign: 'center', minWidth: 0 }}>
         <p style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', color: 'var(--text-dim)', margin: 0, textTransform: 'uppercase', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{session.title || 'Boxe'}</p>
-        <p style={{ fontSize: 15, fontWeight: 800, color: 'var(--text)', margin: '1px 0 0', fontVariantNumeric: 'tabular-nums' }}>{fmtDur(elapsed)}</p>
+        {/* FC centrée en haut si un capteur est connecté ; sinon chrono total. */}
+        {hr.status === 'connected' && hr.bpm != null ? (
+          <p style={{ fontSize: 15, fontWeight: 800, color: ACCENT, margin: '1px 0 0', fontVariantNumeric: 'tabular-nums', display: 'inline-flex', alignItems: 'center', gap: 5, justifyContent: 'center' }}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill={ACCENT}><path d="M12 21s-7.5-4.9-10-9.5C.5 8 2 4.5 5.5 4.5c2 0 3.3 1.1 4.5 2.6 1.2-1.5 2.5-2.6 4.5-2.6C22 4.5 23.5 8 22 11.5 19.5 16.1 12 21 12 21z"/></svg>
+            {hr.bpm} <span style={{ fontSize: 10, color: 'var(--text-dim)', fontWeight: 700 }}>bpm</span>
+          </p>
+        ) : (
+          <p style={{ fontSize: 15, fontWeight: 800, color: 'var(--text)', margin: '1px 0 0', fontVariantNumeric: 'tabular-nums' }}>{fmtDur(elapsed)}</p>
+        )}
       </div>
       <button onClick={() => setShowOverview(true)} aria-label="Vue d'ensemble" style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--bg-card2)', border: '1px solid var(--border)', color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
@@ -284,15 +329,17 @@ export default function BoxeScreen({ session, onClose, isDark }: Props) {
 
       {showOverview && <OverviewSheet timeline={timeline} idx={idx} onClose={() => setShowOverview(false)} />}
 
-      {/* Chrono en pause → Reprendre ou Terminer l'entraînement */}
+      {/* Chrono en pause → 3 choix : Reprendre / Terminer sans enregistrer /
+          Terminer et enregistrer. Carte opaque + texte contrasté (lisible). */}
       {!running && !isDone && elapsed > 0 && !showOverview && (
-        <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(3px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 4 }}>
-          <div style={{ background: 'var(--bg-card)', borderRadius: 20, padding: 22, width: 'min(340px, 88vw)', textAlign: 'center' }}>
-            <p style={{ fontSize: 17, fontWeight: 800, color: 'var(--text)', margin: '0 0 4px' }}>Séance en pause</p>
-            <p style={{ fontSize: 13, color: 'var(--text-mid)', margin: '0 0 18px' }}>Temps écoulé · {fmtDur(elapsed)}</p>
+        <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.62)', backdropFilter: 'blur(3px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 4, padding: 20 }}>
+          <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 22, padding: 24, width: 'min(360px, 90vw)', textAlign: 'center', boxShadow: '0 24px 60px rgba(0,0,0,0.4)' }}>
+            <p style={{ fontSize: 18, fontWeight: 800, color: 'var(--text)', margin: '0 0 4px' }}>Séance en pause</p>
+            <p style={{ fontSize: 13, color: 'var(--text-mid)', margin: '0 0 20px' }}>Temps écoulé · {fmtDur(elapsed)}</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <button onClick={() => setRunning(true)} style={{ width: '100%', padding: 14, borderRadius: 14, border: 'none', background: ACCENT, color: '#fff', fontSize: 15, fontWeight: 800, cursor: 'pointer' }}>Reprendre</button>
-              <button onClick={() => setShowSave(true)} style={{ width: '100%', padding: 14, borderRadius: 14, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 15, fontWeight: 700, cursor: 'pointer' }}>Terminer l’entraînement</button>
+              <button onClick={() => setRunning(true)} style={{ width: '100%', padding: 15, borderRadius: 14, border: 'none', background: '#22c55e', color: '#fff', fontSize: 15.5, fontWeight: 800, cursor: 'pointer' }}>Reprendre</button>
+              <button onClick={() => setShowSave(true)} style={{ width: '100%', padding: 15, borderRadius: 14, border: 'none', background: ACCENT, color: '#fff', fontSize: 15.5, fontWeight: 800, cursor: 'pointer' }}>Terminer et enregistrer</button>
+              <button onClick={onClose} style={{ width: '100%', padding: 15, borderRadius: 14, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 14.5, fontWeight: 700, cursor: 'pointer' }}>Terminer sans enregistrer</button>
             </div>
           </div>
         </div>
@@ -314,6 +361,28 @@ export default function BoxeScreen({ session, onClose, isDark }: Props) {
   )
 
   return createPortal(content, document.body)
+}
+
+// Puce blanche (réglage temps) posée sur le bloc de phase coloré.
+function WhiteChip({ children, onClick }: { children: React.ReactNode; onClick: () => void }) {
+  return (
+    <button onClick={onClick} style={{ padding: '10px 18px', borderRadius: 999, border: '2px solid rgba(255,255,255,0.9)', background: 'rgba(255,255,255,0.14)', color: '#fff', fontSize: 14, fontWeight: 800, cursor: 'pointer' }}>{children}</button>
+  )
+}
+
+// Stepper reps/charge (blanc sur bloc coloré) — édition live −/+.
+function Stepper({ label, value, onDec, onInc }: { label: string; value: string; onDec: () => void; onInc: () => void }) {
+  const btn: React.CSSProperties = { width: 46, height: 46, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.9)', background: 'rgba(255,255,255,0.14)', color: '#fff', fontSize: 24, fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }
+  return (
+    <div style={{ textAlign: 'center' }}>
+      <p style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.08em', color: 'rgba(255,255,255,0.85)', margin: '0 0 8px' }}>{label}</p>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <button onClick={onDec} style={btn}>−</button>
+        <span style={{ minWidth: 62, fontSize: 34, fontWeight: 900, color: '#fff', fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>{value}</span>
+        <button onClick={onInc} style={btn}>+</button>
+      </div>
+    </div>
+  )
 }
 
 function Metric({ label, value, unit }: { label: string; value: string; unit?: string }) {

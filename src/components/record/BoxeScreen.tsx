@@ -13,6 +13,7 @@ import { createClient } from '@/lib/supabase/client'
 import { getCurrentUser } from '@/lib/auth/currentUser'
 import { useI18n, currentLocale } from '@/lib/i18n'
 import { useWorkoutVoice, countWords } from '@/lib/record/useWorkoutVoice'
+import { haptic } from '@/lib/haptics'
 import SessionSaveForm from './SessionSaveForm'
 import type { SessionFormData } from './SessionSaveForm'
 import { useHeartRate } from '@/lib/record/useHeartRate'
@@ -202,8 +203,6 @@ export default function BoxeScreen({ session, onClose, isDark }: Props) {
   }
   // Réglages en direct du temps : effort ±10 s, récup ±15 s (borné ≥ 0).
   const adjustTime = (d: number) => setRemaining(r => Math.max(0, r + d))
-  // Vibration (silencieux) — top de décompte / changement d'étape.
-  const buzz = (pattern: number | number[]) => { try { navigator.vibrate?.(pattern) } catch { /* ignore */ } }
 
   // Libellé du prochain EXO (étape « work ») après l'index i — pour l'annonce.
   const firstWorkAfter = (i: number): string => {
@@ -218,8 +217,8 @@ export default function BoxeScreen({ session, onClose, isDark }: Props) {
     if (idx !== prevIdxRef.current) {
       const prev = timeline[prevIdxRef.current]
       const step = timeline[idx]
-      if (prev?.phase === 'work' && prev.measure === 'time') { voice.beep(1320, 300); voice.speak('STOP'); pulse('STOP'); buzz([90, 50, 90]) }
-      if (step?.phase === 'work') { voice.beep(1320, 300); voice.speak('GO'); pulse('GO'); buzz([90, 50, 90]) }
+      if (prev?.phase === 'work' && prev.measure === 'time') { voice.speak('STOP'); pulse('STOP'); haptic('heavy') }
+      if (step?.phase === 'work') { voice.speak('GO'); pulse('GO'); haptic('heavy') }
       if (step && (step.phase === 'rest' || step.phase === 'prepare')) {
         const nx = firstWorkAfter(idx); if (nx) voice.prefetch(`${nextPrefix} ${nx}`)
       }
@@ -242,10 +241,9 @@ export default function BoxeScreen({ session, onClose, isDark }: Props) {
       const key = `${idx}:${remaining}`
       if (cueKeyRef.current !== key) {
         cueKeyRef.current = key
-        voice.beep(880, 130)
         voice.speak(numWord(remaining))
         pulse(String(remaining))
-        buzz(60)
+        haptic('medium')
       }
     }
     if (cur.phase === 'work') {
@@ -384,12 +382,12 @@ export default function BoxeScreen({ session, onClose, isDark }: Props) {
       {/* Navigation manuelle : précédent / passer (repos ou exo). */}
       {!isDone && (
         <div style={{ flexShrink: 0, display: 'flex', gap: 10, padding: '10px 24px 0', justifyContent: 'center' }}>
-          <button onClick={() => { buzz(30); goBack() }} disabled={idx === 0}
+          <button onClick={() => { haptic("light"); goBack() }} disabled={idx === 0}
             style={{ flex: 1, maxWidth: 200, padding: '9px 12px', borderRadius: 999, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: idx === 0 ? 'var(--text-dim)' : 'var(--text)', fontSize: 13, fontWeight: 800, cursor: idx === 0 ? 'default' : 'pointer', opacity: idx === 0 ? 0.5 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
             Précédent
           </button>
-          <button onClick={() => { buzz(30); advance() }}
+          <button onClick={() => { haptic("light"); advance() }}
             style={{ flex: 1, maxWidth: 200, padding: '9px 12px', borderRadius: 999, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 13, fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
             {cur.phase === 'rest' ? 'Passer le repos' : 'Passer'}
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6"/></svg>

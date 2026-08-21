@@ -14,6 +14,7 @@ import { IconRun, IconBike, IconSwimming, IconBarbell, IconStretching2, IconKaya
 import type { CoachProgram } from '@/lib/coach/programs'
 import { LEVEL_LABEL, programHours } from '@/lib/coach/programs'
 import { useNarrow } from '@/lib/hooks/useNarrow'
+import { haptic } from '@/lib/haptics'
 
 type GlyphIcon = ComponentType<{ size?: number; color?: string; stroke?: number; style?: React.CSSProperties }>
 
@@ -48,9 +49,9 @@ type Placement = { transform: string; z: number; opacity: number; shadow: string
 function placeCard(pos: number, drag: number): Placement {
   const sh = '0 10px 30px rgba(0,0,0,0.20)'
   if (pos === 0) return { transform: `translateX(calc(-50% + ${drag}px)) rotate(${(drag * 0.01).toFixed(2)}deg)`, z: 40, opacity: 1, shadow: '0 14px 40px rgba(0,0,0,0.28)' }
-  if (pos === 1) return { transform: `translateX(calc(-50% + 22px)) translateY(10px) scale(0.955)`, z: 30, opacity: 0.92, shadow: sh }
-  if (pos === 2) return { transform: `translateX(calc(-50% + 40px)) translateY(20px) scale(0.912)`, z: 20, opacity: 0.72, shadow: sh }
-  if (pos === 3) return { transform: `translateX(calc(-50% + 56px)) translateY(29px) scale(0.875)`, z: 10, opacity: 0.5, shadow: 'none' }
+  if (pos === 1) return { transform: `translateX(calc(-50% + 16px)) translateY(11px) scale(0.955)`, z: 30, opacity: 0.94, shadow: sh }
+  if (pos === 2) return { transform: `translateX(calc(-50% + 30px)) translateY(21px) scale(0.914)`, z: 20, opacity: 0.74, shadow: sh }
+  if (pos === 3) return { transform: `translateX(calc(-50% + 42px)) translateY(30px) scale(0.878)`, z: 10, opacity: 0.52, shadow: 'none' }
   // Précédente : sortie propre vers la gauche (invisible).
   return { transform: `translateX(calc(-155% + ${Math.max(0, drag)}px))`, z: 5, opacity: 0, shadow: 'none' }
 }
@@ -64,7 +65,7 @@ function Card({ p, pos, drag, onOpen }: { p: CoachProgram; pos: number; drag: nu
   return (
     <div onClick={isTop ? onOpen : undefined}
       style={{
-        position: 'absolute', top: 0, left: '50%', width: '72%', height: '100%', zIndex: z, opacity,
+        position: 'absolute', top: 0, left: '50%', width: '84%', height: '100%', zIndex: z, opacity,
         borderRadius: 24, background: cardBg(sport), color: 'white', boxShadow: shadow, overflow: 'hidden',
         padding: 'clamp(16px, 4.5vw, 22px)', display: 'flex', flexDirection: 'column', boxSizing: 'border-box',
         transform, transformOrigin: 'center', transition: 'transform 440ms cubic-bezier(0.34,1.3,0.5,1), opacity 260ms, box-shadow 260ms',
@@ -83,21 +84,23 @@ function Card({ p, pos, drag, onOpen }: { p: CoachProgram; pos: number; drag: nu
         <SportGlyph sport={sport} />
       </div>
 
-      <div style={{ flex: 1 }} />
-
-      {/* Bas : chips + titre + résumé + prix */}
-      <div style={{ position: 'relative' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 7, flexWrap: 'wrap' }}>
+      {/* Contenu : chips + titre + résumé — collé sous les stats (pas de grand vide). */}
+      <div style={{ position: 'relative', marginTop: 18 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 9, flexWrap: 'wrap' }}>
           <span style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em', opacity: 0.92 }}>{SPORT_LABEL[sport] ?? sport}</span>
           {p.specialty && <Pill>{p.specialty}</Pill>}
           {p.level && <Pill>{LEVEL_LABEL[p.level]}</Pill>}
           {p.ai_enabled && <span style={{ fontSize: 10, fontWeight: 800, padding: '2px 8px', borderRadius: 999, background: 'rgba(0,0,0,0.20)' }}>IA</span>}
         </div>
-        <div style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(18px, 4.6vw, 22px)', fontWeight: 600, lineHeight: 1.12, marginBottom: 8, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const, overflow: 'hidden' }}>{p.title}</div>
-        {p.description && <div style={{ fontSize: 12.5, opacity: 0.92, lineHeight: 1.45, marginBottom: 10, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical' as const, overflow: 'hidden' }}>{p.description}</div>}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
-          <span style={{ fontSize: 15, fontWeight: 800, background: 'rgba(255,255,255,0.22)', padding: '5px 12px', borderRadius: 999, whiteSpace: 'nowrap' }}>{priceStr(p)}</span>
-        </div>
+        <div style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(20px, 5.2vw, 26px)', fontWeight: 600, lineHeight: 1.12, marginBottom: 10, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical' as const, overflow: 'hidden' }}>{p.title}</div>
+        {p.description && <div style={{ fontSize: 13, opacity: 0.9, lineHeight: 1.5, display: '-webkit-box', WebkitLineClamp: 4, WebkitBoxOrient: 'vertical' as const, overflow: 'hidden' }}>{p.description}</div>}
+      </div>
+
+      <div style={{ flex: 1 }} />
+
+      {/* Bas : prix */}
+      <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
+        <span style={{ fontSize: 15, fontWeight: 800, background: 'rgba(255,255,255,0.22)', padding: '5px 12px', borderRadius: 999, whiteSpace: 'nowrap' }}>{priceStr(p)}</span>
       </div>
     </div>
   )
@@ -119,7 +122,7 @@ function Stack({ list, onOpen, height }: { list: CoachProgram[]; onOpen: (p: Coa
   const n = list.length
   const cur = Math.min(index, Math.max(0, n - 1))
   const clamp = (i: number) => Math.max(0, Math.min(n - 1, i))
-  const go = (d: number) => { const ni = clamp(cur + d); if (ni !== cur) { try { navigator.vibrate?.(12) } catch { /* ignore */ } } setIndex(ni); setDrag(0) }
+  const go = (d: number) => { const ni = clamp(cur + d); if (ni !== cur) haptic('light'); setIndex(ni); setDrag(0) }
 
   const onDown = (e: React.PointerEvent) => { if (n < 2) return; dragging.current = true; startX.current = e.clientX; moved.current = false; try { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId) } catch { /* noop */ } }
   const onMove = (e: React.PointerEvent) => { if (!dragging.current) return; const dx = e.clientX - startX.current; if (Math.abs(dx) > 5) moved.current = true; setDrag(dx) }
@@ -221,7 +224,7 @@ export default function ProgramDeck({ programs, onOpen }: { programs: CoachProgr
               transition={{ duration: 0.34, ease: [0.32, 0.72, 0, 1] }}>
               <div style={{ width: '100%', maxWidth: 420, margin: '0 auto' }}>
                 {list.length > 0
-                  ? <Stack list={list} onOpen={onOpen} height="clamp(400px, 108vw, 500px)" />
+                  ? <Stack list={list} onOpen={onOpen} height="clamp(330px, 78vw, 400px)" />
                   : <p style={{ fontSize: 13, color: 'var(--text-dim)', textAlign: 'center', padding: 30 }}>Aucun programme.</p>}
               </div>
             </motion.div>

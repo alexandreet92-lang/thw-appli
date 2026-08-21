@@ -11,7 +11,8 @@ import { useState, useEffect, useRef, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { createClient } from '@/lib/supabase/client'
 import { getCurrentUser } from '@/lib/auth/currentUser'
-import { useI18n } from '@/lib/i18n'
+import { useI18n, currentLocale } from '@/lib/i18n'
+import { useWorkoutVoice } from '@/lib/record/useWorkoutVoice'
 import SessionSaveForm from './SessionSaveForm'
 import type { SessionFormData } from './SessionSaveForm'
 import { useHeartRate } from '@/lib/record/useHeartRate'
@@ -102,6 +103,15 @@ export default function BoxeScreen({ session, onClose, isDark }: Props) {
   const [runUnit, setRunUnit] = useState<'kmh' | 'minkm'>('minkm')
   const [editInt, setEditInt] = useState(false)
   const hr = useHeartRate()
+  // Voix : annonces du décompte + prochain exo (même pipeline que l'IA).
+  const [muted, setMuted] = useState<boolean>(() => { try { return localStorage.getItem('thw:workoutMuted') === '1' } catch { return false } })
+  const mutedRef = useRef(muted)
+  useEffect(() => { mutedRef.current = muted; try { localStorage.setItem('thw:workoutMuted', muted ? '1' : '0') } catch { /* ignore */ } }, [muted])
+  const voiceLang: 'fr' | 'en' = currentLocale().toLowerCase().startsWith('en') ? 'en' : 'fr'
+  const voice = useWorkoutVoice(voiceLang, mutedRef)
+  const halfWord = voiceLang === 'en' ? 'Half' : 'Moitié'
+  const nextPrefix = voiceLang === 'en' ? 'Next:' : 'Prochain :'
+  const prevIdxRef = useRef(0)
   const wakeLockRef = useRef<WakeLockSentinel | null>(null)
   const pagesRef = useRef<HTMLDivElement>(null)
 
@@ -171,6 +181,48 @@ export default function BoxeScreen({ session, onClose, isDark }: Props) {
   }
   // Réglages en direct du temps : effort ±10 s, récup ±15 s (borné ≥ 0).
   const adjustTime = (d: number) => setRemaining(r => Math.max(0, r + d))
+
+  // Libellé du prochain EXO (étape « work ») après l'index i — pour l'annonce.
+  const firstWorkAfter = (i: number): string => {
+    for (let k = i + 1; k < timeline.length; k++) if (timeline[k].phase === 'work') return timeline[k].label
+    return ''
+  }
+
+  // ── VOIX 1 : « GO » en entrant sur un exo, « STOP » en quittant un exo au
+  // temps, et pré-chargement de l'annonce du prochain exo en entrant en repos.
+  useEffect(() => {
+    if (!running) { prevIdxRef.current = idx; return }
+    if (idx !== prevIdxRef.current) {
+      const prev = timeline[prevIdxRef.current]
+      const step = timeline[idx]
+      if (!mutedRef.current) {
+        if (prev?.phase === 'work' && prev.measure === 'time') voice.speak('STOP')
+        if (step?.phase === 'work') voice.speak('GO')
+      }
+      if (step && (step.phase === 'rest' || step.phase === 'prepare')) {
+        const nx = firstWorkAfter(idx); if (nx) voice.prefetch(`${nextPrefix} ${nx}`)
+      }
+      prevIdxRef.current = idx
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [idx, running])
+
+  // ── VOIX 2 : décompte 3-2-1 (fin d'exo au temps ET avant un nouvel exo),
+  // « Moitié/Half » à mi-parcours, annonce du prochain exo à −10 s (repos).
+  useEffect(() => {
+    if (!running || muted || cur.measure !== 'time' || cur.phase === 'done') return
+    if (cur.phase === 'work') {
+      const half = Math.floor(cur.durationSec / 2)
+      if (cur.durationSec >= 12 && half >= 4 && remaining === half) voice.speak(halfWord)
+      if (remaining === 3 || remaining === 2 || remaining === 1) voice.speak(String(remaining))
+    } else {
+      // prépa / repos → vers un exo : annonce à 10 s + décompte 3-2-1
+      const nx = firstWorkAfter(idx)
+      if (nx && remaining === 10) voice.speak(`${nextPrefix} ${nx}`)
+      if (nx && (remaining === 3 || remaining === 2 || remaining === 1)) voice.speak(String(remaining))
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [remaining, idx, running, muted])
 
   const onScroll = () => { const el = pagesRef.current; if (el) setPage(Math.round(el.scrollLeft / el.clientWidth)) }
 
@@ -331,6 +383,15 @@ export default function BoxeScreen({ session, onClose, isDark }: Props) {
           <p style={{ fontSize: 15, fontWeight: 800, color: 'var(--text)', margin: '1px 0 0', fontVariantNumeric: 'tabular-nums' }}>{fmtDur(elapsed)}</p>
         )}
       </div>
+      {/* Couper / activer le son (à gauche des trois traits). */}
+      <button onClick={() => { if (muted) voice.unlock(); setMuted(m => !m) }} aria-label={muted ? 'Activer le son' : 'Couper le son'}
+        style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--bg-card2)', border: '1px solid var(--border)', color: muted ? 'var(--text-dim)' : 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: 8 }}>
+        {muted ? (
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M11 5L6 9H2v6h4l5 4V5z"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
+        ) : (
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
+        )}
+      </button>
       <button onClick={() => setShowOverview(true)} aria-label="Vue d'ensemble" style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--bg-card2)', border: '1px solid var(--border)', color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
       </button>
@@ -412,7 +473,7 @@ export default function BoxeScreen({ session, onClose, isDark }: Props) {
       {!started ? (<>
         {isWorkout ? preStartWorkout : preStart}
         <div style={{ flexShrink: 0, padding: '12px 18px calc(14px + env(safe-area-inset-bottom))', borderTop: '1px solid var(--border)' }}>
-          <button onClick={() => { setStarted(true); setRunning(true) }} style={{ width: '100%', maxWidth: 560, margin: '0 auto', display: 'block', padding: 15, borderRadius: 14, border: 'none', background: ACCENT, color: ACCENT_ON, fontSize: 15.5, fontWeight: 800, cursor: 'pointer' }}>Commencer</button>
+          <button onClick={() => { voice.unlock(); setStarted(true); setRunning(true) }} style={{ width: '100%', maxWidth: 560, margin: '0 auto', display: 'block', padding: 15, borderRadius: 14, border: 'none', background: ACCENT, color: ACCENT_ON, fontSize: 15.5, fontWeight: 800, cursor: 'pointer' }}>Commencer</button>
         </div>
       </>) : isDesktop ? (
         // Desktop : split gauche (séance/chrono) / droite (données)

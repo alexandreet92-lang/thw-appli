@@ -29,8 +29,31 @@ import { zColor } from './mobile/editorial'
 import RouteElevationProfile from '@/components/gpx/RouteElevationProfile'
 import { staticRouteMapUrl } from '@/lib/staticMap'
 import { useAthleteRefs } from '@/hooks/useAthleteRefs'
+import { moveDef, type ComposedMove, type ComposedCircuit, type ComposedSport } from './composedSports'
 
 const WIDTH = 262
+
+// Une ligne d'exo composé : « Bike 7' @190w - 30'' récup », « Pompes ×15 ».
+function composedLineText(sport: ComposedSport, m: ComposedMove): string {
+  const def = moveDef(sport, m.kind)
+  const name = m.customName || def?.label || m.kind
+  const parts: string[] = [name]
+  // Mesure principale
+  if (m.timeSec) parts.push(m.timeSec % 60 === 0 ? `${m.timeSec / 60}'` : `${Math.floor(m.timeSec / 60)}'${String(m.timeSec % 60).padStart(2, '0')}''`)
+  else if (m.reps) parts.push(`×${m.reps}`)
+  else if (m.distanceM) parts.push(`${m.distanceM} m`)
+  else if (m.calories) parts.push(`${m.calories} kcal`)
+  // Intensité cible
+  if (m.watts) parts.push(`@${m.watts}w`)
+  else if (m.speedKmh) parts.push(`@${m.speedKmh}km/h`)
+  else if (m.paceMinKm) parts.push(`@${m.paceMinKm}/km`)
+  else if (m.paceSec500) parts.push(`@${Math.floor(m.paceSec500 / 60)}:${String(m.paceSec500 % 60).padStart(2, '0')}/500`)
+  else if (m.speedLevel) parts.push(`niv ${m.speedLevel}`)
+  if (m.weightKg) parts.push(`${m.weightKg} kg`)
+  let line = parts.join(' ')
+  if (m.restAfterSec) line += ` - ${m.restAfterSec < 60 ? `${m.restAfterSec}''` : `${Math.round(m.restAfterSec / 60)}'`} récup`
+  return line
+}
 
 export function SessionHoverPreview({ session, anchor }: { session: Session; anchor: DOMRect }) {
   const [mounted, setMounted] = useState(false)
@@ -45,8 +68,13 @@ export function SessionHoverPreview({ session, anchor }: { session: Session; anc
   const fitsRight = anchor.right + 10 + WIDTH <= vw
 
   const isGym = sportKeyFromType(session.sport) === 'muscu'
+  // Sports composés (boxe / hybride) : détail lu depuis composed/composedCircuits.
+  const isComposed = (session.sport === 'boxe' || session.sport === 'hybrid') && !!session.composed?.length
+  const composedSport = (session.sport === 'hybrid' ? 'hybrid' : 'boxe') as ComposedSport
+  const composedMoves = session.composed ?? []
+  const composedCircuits: ComposedCircuit[] = session.composedCircuits ?? (session.composedCircuit ? [session.composedCircuit] : [{ id: 'c1', rounds: 1, restSec: 0 }])
   const blocks = (session.blocks ?? []).filter(b => b.type !== 'circuit_header' || (b.label ?? '').trim())
-  const bars = isGym ? [] : toBars(blocks as MBlock[], session.sport)
+  const bars = (isGym || isComposed) ? [] : toBars(blocks as MBlock[], session.sport)
 
   const pd = session.parcoursData
   const trace = pd?.gpsTrace && pd.gpsTrace.length > 1 ? pd.gpsTrace : null
@@ -146,8 +174,36 @@ export function SessionHoverPreview({ session, anchor }: { session: Session; anc
         </div>
       )}
 
+      {/* 3a-bis. Boxe / Hybride : détail ligne par ligne, chaque circuit encadré
+          par des parenthèses avec ×N tours (comme demandé). */}
+      {isComposed && (
+        <div data-testid="shp-composed" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <p style={sectionLabel}>Détail</p>
+          {composedCircuits.map((c, ci) => {
+            const cm = composedMoves.filter(m => (m.circuitId ?? composedCircuits[0].id) === c.id)
+            if (!cm.length) return null
+            const rounds = Math.max(1, c.rounds)
+            const lines = cm.map((m, i) => (
+              <p key={m.id || i} style={{ margin: 0, fontSize: 11, color: 'var(--text)', fontWeight: 600, lineHeight: 1.45 }}>{composedLineText(composedSport, m)}</p>
+            ))
+            if (rounds <= 1) return <div key={c.id}>{c.name && <p style={{ margin: '0 0 2px', fontSize: 10, fontWeight: 700, color: 'var(--text-dim)' }}>{c.name}</p>}{lines}</div>
+            // Circuit répété : parenthèses gauche/droite + ×N
+            return (
+              <div key={c.id} style={{ display: 'flex', alignItems: 'stretch', gap: 6 }}>
+                <span style={{ fontSize: 30, fontWeight: 300, color: 'var(--text-dim)', lineHeight: 1, alignSelf: 'stretch', display: 'flex', alignItems: 'center' }}>(</span>
+                <div style={{ flex: 1, minWidth: 0 }}>{c.name && <p style={{ margin: '0 0 2px', fontSize: 10, fontWeight: 700, color: 'var(--text-dim)' }}>{c.name}</p>}{lines}</div>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                  <span style={{ fontSize: 30, fontWeight: 300, color: 'var(--text-dim)', lineHeight: 1 }}>)</span>
+                  <span style={{ fontSize: 12, fontWeight: 800, color: 'var(--text)' }}>×{rounds}</span>
+                </span>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
       {/* 3b. Profil d'intensité — mêmes barres, mêmes hauteurs que le builder */}
-      {!isGym && (
+      {!isGym && !isComposed && (
         <>
           <p style={sectionLabel}>Profil d&apos;intensité</p>
           <div data-testid="shp-bars" style={{ height: 56, display: 'flex', alignItems: 'flex-end', gap: 1.5, borderBottom: '1px solid var(--border)', marginBottom: trace || elevProfile ? 10 : 0 }}>

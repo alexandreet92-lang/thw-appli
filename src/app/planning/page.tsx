@@ -3339,6 +3339,18 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
     await addSession({ ...s, dayIndex:dayIdx, planVariant:addModal?.plan??activePlan })
     setPlanTick(t => t + 1)
   }
+  // Répète une séance sur les semaines suivantes, le MÊME jour. everyNWeeks =
+  // 1 (chaque semaine) ou 2 (une semaine sur deux). count = nombre de copies.
+  async function handleRepeatSession(s:Session, everyNWeeks:number, count:number) {
+    const base = s.weekStart ?? currentWeekStart
+    for (let k = 1; k <= count; k++) {
+      const d = new Date(base + 'T00:00:00')
+      d.setDate(d.getDate() + k * everyNWeeks * 7)
+      const ws = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+      await handleAddSession(s.dayIndex, { ...s, status:'planned' }, ws)
+    }
+    setDetailModal(null)
+  }
   async function handleSaveSession(s:Session) {
     await updateSession(s.id, s)
     setDetailModal(null)
@@ -3697,6 +3709,7 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
           onValidate={handleValidate}
           onAutoSave={handleAutoSaveSession}
           onDuplicate={(dayIdx, s) => { addSession({ ...s, dayIndex: dayIdx, planVariant: s.planVariant ?? activePlan }); setDetailModal(null) }}
+          onRepeat={handleRepeatSession}
           onCreateBrick={(run)=>handleAddSession(run.dayIndex, run, run.weekStart ?? detailModal.weekStart)}
           onLinkBrick={(runId, brickId)=>updateSession(runId, { brickId })}
           linkableRuns={sessions.filter(r=>sportKeyFromType(r.sport)==='run' && r.dayIndex===detailModal.dayIndex && !r.brickId && r.id!==detailModal.id)}

@@ -3698,7 +3698,7 @@ function addMinutesToTime(hhmm: string, addMin: number): string {
   return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`
 }
 
-export function SessionEditor({ mode, session, dayIndex, weekStart, plan, onClose, onSave, onDelete, onValidate, onAutoSave, onDuplicate, onCreateBrick, onLinkBrick, linkableRuns, openWithFavorites, initialSport, reserveMode, lockSport, programMode }: {
+export function SessionEditor({ mode, session, dayIndex, weekStart, plan, onClose, onSave, onDelete, onValidate, onAutoSave, onDuplicate, onRepeat, onCreateBrick, onLinkBrick, linkableRuns, openWithFavorites, initialSport, reserveMode, lockSport, programMode }: {
   mode: 'create' | 'edit'
   session?: Session
   dayIndex?: number
@@ -3712,6 +3712,7 @@ export function SessionEditor({ mode, session, dayIndex, weekStart, plan, onClos
   onValidate?: (s: Session) => void
   onAutoSave?: (s: Session) => void
   onDuplicate?: (dayIndex: number, session: Session) => void
+  onRepeat?: (session: Session, everyNWeeks: number, count: number) => void
   onCreateBrick?: (run: Session) => void
   /** Relie une course déjà planifiée au vélo édité (lui pose le même brickId). */
   onLinkBrick?: (runId: string, brickId: string) => void
@@ -3850,6 +3851,7 @@ export function SessionEditor({ mode, session, dayIndex, weekStart, plan, onClos
   const [nutritionOpen, setNutritionOpen] = useState(false)
   const [nutritionLoading, setNutritionLoading] = useState(false)
   const [showDuplicateMenu, setShowDuplicateMenu] = useState(false)
+  const [showRepeatMenu, setShowRepeatMenu] = useState(false)
   const [favorites, setFavorites] = useState<Array<{id:string;name:string;sport:string;training_type?:string;blocks_data:Block[];nutrition_data:NutritionItem[];duration_min:number;rpe:number;notes:string}>>([])
   const [showFavorites, setShowFavorites] = useState(openWithFavorites ?? false)
   const [exoHistory, setExoHistory] = useState<Record<string, { weight: string; reps: number; date: string }>>({})
@@ -5314,6 +5316,36 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v8H6z"/></svg>
             Mémo
           </button>
+          {/* Répéter la séance le même jour les semaines suivantes. */}
+          {isEdit && onRepeat && session && (
+            <div style={{ position: 'relative', flexShrink: 0 }}>
+              <button onClick={() => setShowRepeatMenu(v => !v)} title="Répéter les semaines suivantes"
+                style={{ height: 34, padding: '0 12px', borderRadius: 10, cursor: 'pointer', border: `1px solid ${accent}`, background: 'transparent', color: accent, display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700 }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+                Répéter
+              </button>
+              {showRepeatMenu && (
+                <>
+                  <div onClick={() => setShowRepeatMenu(false)} style={{ position: 'fixed', inset: 0, zIndex: 40 }} />
+                  <div style={{ position: 'absolute', top: 40, right: 0, zIndex: 41, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 14, boxShadow: 'var(--shadow-card)', padding: 8, width: 230 }}>
+                    <p style={{ margin: '4px 8px 8px', fontSize: 11, fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-dim)' }}>Répéter le même jour</p>
+                    {[
+                      { label: 'Chaque semaine · 4 fois', n: 1, c: 4 },
+                      { label: 'Chaque semaine · 8 fois', n: 1, c: 8 },
+                      { label: 'Toutes les 2 sem. · 4 fois', n: 2, c: 4 },
+                      { label: 'Toutes les 2 sem. · 8 fois', n: 2, c: 8 },
+                    ].map(opt => (
+                      <button key={opt.label} onClick={() => { setShowRepeatMenu(false); onRepeat({ ...session, sport, title, time, durationMin: dur, rpe, blocks, notes: desc }, opt.n, opt.c); onClose() }}
+                        style={{ width: '100%', textAlign: 'left', padding: '10px 10px', borderRadius: 9, border: 'none', background: 'transparent', color: 'var(--text)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+                        onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-card2)')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
           <button onClick={handleCompteRendu} title={t('sed.reportDownloadImage')}
             style={{ flexShrink: 0, height: 34, padding: '0 13px', borderRadius: 10, cursor: 'pointer', border: 'none', background: 'var(--primary)', color: 'var(--on-primary, #06121A)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 12, fontWeight: 700 }}>
             <svg width="13" height="13" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">

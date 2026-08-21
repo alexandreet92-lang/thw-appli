@@ -15,6 +15,17 @@ export type LiveSport = ComposedSport | 'gym' | 'hyrox'
 
 export type BoxePhase = 'prepare' | 'work' | 'rest' | 'done'
 
+// Cible d'intensité d'un exo cardio (machine) — affichée et RÉGLABLE en direct.
+//   watts  : vélo / assault / rameur-skierg en watts
+//   speed  : course (stockée en km/h ; affichage km/h ↔ min/km au choix)
+//   pace500: rameur / skierg en allure (sec / 500 m)
+//   level  : climber (niveau de vitesse)
+export type LiveIntensity =
+  | { kind: 'watts'; watts: number }
+  | { kind: 'speed'; kmh: number }
+  | { kind: 'pace500'; sec: number }
+  | { kind: 'level'; level: number }
+
 export interface BoxeStep {
   phase: BoxePhase
   label: string           // « Round 2 », « Pompes », « Repos »…
@@ -23,6 +34,7 @@ export interface BoxeStep {
   measure: 'time' | 'reps'
   reps?: number
   weightKg?: number       // charge cible (édition live −/+)
+  intensity?: LiveIntensity   // cible cardio (watts/vitesse/allure) réglable en direct
   circuitName?: string
   circuitIdx: number
   tour?: number           // tour du circuit
@@ -34,6 +46,33 @@ export interface BoxeStep {
 const PREPARE_SEC = 10
 
 function supportLabel(s?: RoundSupport): string { return s ? ROUND_SUPPORT_LABEL[s] : 'Round' }
+
+// « 4:30 » (min/km) → km/h. Renvoie 0 si non parsable.
+function paceMinKmToKmh(pace?: string): number {
+  if (!pace) return 0
+  const [m, s] = pace.split(':').map(Number)
+  const min = (m || 0) + (s || 0) / 60
+  return min > 0 ? 60 / min : 0
+}
+
+// Déduit la cible cardio réglable depuis un move + sa définition.
+function intensityOf(sport: ComposedSport, m: ComposedMove): LiveIntensity | undefined {
+  const def = moveDef(sport, m.kind)
+  if (!def) return undefined
+  const f = def.fields
+  if (f.watts && m.watts) return { kind: 'watts', watts: m.watts }
+  if (f.paceWatts) {
+    if (m.paceWattsUnit === 'watts' && m.watts) return { kind: 'watts', watts: m.watts }
+    if (m.paceSec500) return { kind: 'pace500', sec: m.paceSec500 }
+  }
+  if (f.speed) {
+    if (m.speedKmh) return { kind: 'speed', kmh: m.speedKmh }
+    const kmh = paceMinKmToKmh(m.paceMinKm)
+    if (kmh) return { kind: 'speed', kmh: Math.round(kmh * 10) / 10 }
+  }
+  if (f.speedLevel && m.speedLevel) return { kind: 'level', level: m.speedLevel }
+  return undefined
+}
 
 export interface BoxeSession {
   title: string
@@ -122,7 +161,7 @@ export function buildBoxeTimeline(session: BoxeSession): BoxeStep[] {
           steps.push({ phase: 'work', label: baseLabel, detail: detail || undefined, durationSec: 0, measure: 'reps', reps: m.reps, weightKg: m.weightKg, circuitName: circuit.name, circuitIdx: ci, tour, tours, isRound: false })
         } else {
           const detail = m.weightKg ? `${m.weightKg} kg` : undefined
-          steps.push({ phase: 'work', label: baseLabel, detail, durationSec: m.timeSec ?? 60, measure: 'time', circuitName: circuit.name, circuitIdx: ci, tour, tours, isRound: false })
+          steps.push({ phase: 'work', label: baseLabel, detail, durationSec: m.timeSec ?? 60, measure: 'time', intensity: intensityOf(sport, m), circuitName: circuit.name, circuitIdx: ci, tour, tours, isRound: false })
         }
         if (m.restAfterSec && m.restAfterSec > 0) steps.push({ phase: 'rest', label: 'Récup', durationSec: m.restAfterSec, measure: 'time', circuitIdx: ci, isRound: false })
       })

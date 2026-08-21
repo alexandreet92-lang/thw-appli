@@ -17,7 +17,7 @@ import type { SessionFormData } from './SessionSaveForm'
 import { useHeartRate } from '@/lib/record/useHeartRate'
 import HeartRatePanel from './workout/HeartRatePanel'
 import { vibrateBlockChange, vibrateSessionEnd } from './blockVibrate'
-import { buildBoxeTimeline, buildWorkoutBoxeTimeline, totalBoxeRounds, type BoxeSession, type BoxeStep } from './boxe/buildBoxeTimeline'
+import { buildBoxeTimeline, buildWorkoutBoxeTimeline, totalBoxeRounds, type BoxeSession, type BoxeStep, type LiveIntensity } from './boxe/buildBoxeTimeline'
 import { sumComposedMinutes, moveDef, composedMoveLabel, type ComposedSport } from '@/components/planning/composedSports'
 import { estimateDurationSec, buildTimeline as buildWorkoutSteps } from './live/buildTimeline'
 import { saveWorkout } from './live/saveWorkout'
@@ -31,9 +31,39 @@ const ACCENT = 'var(--text)'            // encre : texte, traits, bordures
 const ACCENT_ON = 'var(--bg)'           // texte posé sur un fond ACCENT plein
 const tint = (pct: number) => `color-mix(in srgb, var(--text) ${pct}%, transparent)`
 const phaseColorOf = (p: BoxeStep['phase']) => p === 'prepare' ? C_PREP : p === 'rest' ? C_REST : C_WORK
+// Bouton −/+ blanc (sur bloc de phase coloré) pour la cible cardio.
+const intBtn: React.CSSProperties = { width: 42, height: 42, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.9)', background: 'rgba(255,255,255,0.14)', color: '#fff', fontSize: 22, fontWeight: 800, cursor: 'pointer', lineHeight: 1 }
 
 function fmt(sec: number) { const m = Math.floor(sec / 60), s = sec % 60; return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}` }
 function fmtDur(sec: number) { const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60; return h > 0 ? `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}` : fmt(sec) }
+function fmtPace(sec: number) { const m = Math.floor(sec / 60), s = Math.round(sec % 60); return `${m}:${String(s).padStart(2, '0')}` }
+function parsePace(str: string): number { const [m, s] = str.split(':').map(Number); return (m || 0) * 60 + (s || 0) }
+
+// Affichage d'une cible cardio selon l'unité course choisie.
+function intensityDisplay(it: LiveIntensity, runUnit: 'kmh' | 'minkm'): { value: string; unit: string } {
+  switch (it.kind) {
+    case 'watts': return { value: String(Math.round(it.watts)), unit: 'W' }
+    case 'level': return { value: String(it.level), unit: 'niv.' }
+    case 'pace500': return { value: fmtPace(it.sec), unit: '/500m' }
+    case 'speed': return runUnit === 'kmh'
+      ? { value: it.kmh.toFixed(1), unit: 'km/h' }
+      : { value: fmtPace(it.kmh > 0 ? 3600 / it.kmh : 0), unit: '/km' }
+  }
+}
+// Réglage −/+ sur l'unité AFFICHÉE. dir=+1 augmente le nombre affiché.
+// Vélo : ±5 W. Course km/h : ±0.5. Course min/km & rameur/skierg : ±0.5 min.
+function adjustIntensity(it: LiveIntensity, dir: 1 | -1, runUnit: 'kmh' | 'minkm'): LiveIntensity {
+  switch (it.kind) {
+    case 'watts': return { kind: 'watts', watts: Math.max(0, it.watts + dir * 5) }
+    case 'level': return { kind: 'level', level: Math.max(1, it.level + dir) }
+    case 'pace500': return { kind: 'pace500', sec: Math.max(30, it.sec + dir * 30) }
+    case 'speed': {
+      if (runUnit === 'kmh') return { kind: 'speed', kmh: Math.max(1, +(it.kmh + dir * 0.5).toFixed(1)) }
+      const minKm = it.kmh > 0 ? 60 / it.kmh : 6
+      return { kind: 'speed', kmh: +(60 / Math.max(2, minKm + dir * 0.5)).toFixed(2) }
+    }
+  }
+}
 
 function useIsDesktop() {
   const [d, setD] = useState(false)
@@ -67,6 +97,10 @@ export default function BoxeScreen({ session, onClose, isDark }: Props) {
   const [liveKg, setLiveKg] = useState(0)
   const [setsDone, setSetsDone] = useState(0)
   const [volumeKg, setVolumeKg] = useState(0)
+  // Cible cardio réglable en direct (watts / vitesse / allure) + unité course.
+  const [liveInt, setLiveInt] = useState<LiveIntensity | null>(null)
+  const [runUnit, setRunUnit] = useState<'kmh' | 'minkm'>('minkm')
+  const [editInt, setEditInt] = useState(false)
   const hr = useHeartRate()
   const wakeLockRef = useRef<WakeLockSentinel | null>(null)
   const pagesRef = useRef<HTMLDivElement>(null)
@@ -77,6 +111,7 @@ export default function BoxeScreen({ session, onClose, isDark }: Props) {
   // À l'entrée d'une étape aux reps : précharge reps/charge cibles pour l'édition.
   useEffect(() => {
     if (cur.measure === 'reps') { setLiveReps(cur.reps ?? 0); setLiveKg(cur.weightKg ?? 0) }
+    setLiveInt(cur.intensity ?? null)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [idx])
   const roundsDone = useMemo(() => timeline.slice(0, idx).filter(s => s.isRound).length, [timeline, idx])
@@ -204,7 +239,31 @@ export default function BoxeScreen({ session, onClose, isDark }: Props) {
           <p style={{ fontSize: 'min(26vw, 120px)', fontWeight: 900, color: '#fff', margin: '4px 0 0', lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{fmtDur(elapsed)}</p>
         ) : cur.measure === 'time' ? (
           <>
-            <p style={{ fontSize: 'min(26vw, 122px)', fontWeight: 900, color: '#fff', margin: '4px 0 0', lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{isDone ? '00:00' : fmt(remaining)}</p>
+            <p style={{ fontSize: 'min(24vw, 108px)', fontWeight: 900, color: '#fff', margin: '4px 0 0', lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{isDone ? '00:00' : fmt(remaining)}</p>
+            {/* Cible cardio (watts / vitesse / allure) — affichée SOUS le temps, réglable. */}
+            {!isDone && cur.phase === 'work' && liveInt && (() => {
+              const d = intensityDisplay(liveInt, runUnit)
+              return (
+                <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <button onClick={() => setLiveInt(v => v ? adjustIntensity(v, -1, runUnit) : v)} style={intBtn}>−</button>
+                    <button onClick={() => setEditInt(true)} style={{ background: 'transparent', border: 'none', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'baseline', gap: 5 }}>
+                      <span style={{ fontSize: 40, fontWeight: 900, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{d.value}</span>
+                      <span style={{ fontSize: 16, fontWeight: 800, opacity: 0.9 }}>{d.unit}</span>
+                    </button>
+                    <button onClick={() => setLiveInt(v => v ? adjustIntensity(v, 1, runUnit) : v)} style={intBtn}>+</button>
+                  </div>
+                  {/* Course : bascule km/h ↔ min/km */}
+                  {liveInt.kind === 'speed' && (
+                    <div style={{ display: 'inline-flex', border: '1.5px solid rgba(255,255,255,0.8)', borderRadius: 999, overflow: 'hidden' }}>
+                      {(['kmh', 'minkm'] as const).map(u => (
+                        <button key={u} onClick={() => setRunUnit(u)} style={{ padding: '5px 12px', fontSize: 12, fontWeight: 800, border: 'none', cursor: 'pointer', background: runUnit === u ? '#fff' : 'transparent', color: runUnit === u ? '#000' : '#fff' }}>{u === 'kmh' ? 'km/h' : 'min/km'}</button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )
+            })()}
             {/* Réglage live du temps : effort ±10 s, récup ±15 s. */}
             {!isDone && (
               <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
@@ -376,6 +435,13 @@ export default function BoxeScreen({ session, onClose, isDark }: Props) {
 
       {showOverview && <OverviewSheet timeline={timeline} idx={idx} onClose={() => setShowOverview(false)} />}
 
+      {/* Saisie manuelle de la cible cardio (valeur exacte). */}
+      {editInt && liveInt && (
+        <IntensityEditor intensity={liveInt} runUnit={runUnit}
+          onCancel={() => setEditInt(false)}
+          onSubmit={(next) => { setLiveInt(next); setEditInt(false) }} />
+      )}
+
       {/* Chrono en pause → 3 choix : Reprendre / Terminer sans enregistrer /
           Terminer et enregistrer. Carte opaque + texte contrasté (lisible). */}
       {!running && !isDone && elapsed > 0 && !showOverview && (
@@ -429,6 +495,40 @@ function Stepper({ label, value, onDec, onInc }: { label: string; value: string;
         <button onClick={onInc} style={btn}>+</button>
       </div>
     </div>
+  )
+}
+
+// Saisie manuelle de la cible exacte (watts, km/h, allure mm:ss).
+function IntensityEditor({ intensity, runUnit, onCancel, onSubmit }: { intensity: LiveIntensity; runUnit: 'kmh' | 'minkm'; onCancel: () => void; onSubmit: (next: LiveIntensity) => void }) {
+  const disp = intensityDisplay(intensity, runUnit)
+  const [val, setVal] = useState(disp.value)
+  const isPace = intensity.kind === 'pace500' || (intensity.kind === 'speed' && runUnit === 'minkm')
+  const submit = () => {
+    let next: LiveIntensity = intensity
+    if (intensity.kind === 'watts') next = { kind: 'watts', watts: Math.max(0, Math.round(parseFloat(val) || 0)) }
+    else if (intensity.kind === 'level') next = { kind: 'level', level: Math.max(1, Math.round(parseFloat(val) || 1)) }
+    else if (intensity.kind === 'pace500') next = { kind: 'pace500', sec: Math.max(30, parsePace(val)) }
+    else if (intensity.kind === 'speed') {
+      if (runUnit === 'kmh') next = { kind: 'speed', kmh: Math.max(1, parseFloat(val) || 1) }
+      else { const sec = parsePace(val); next = { kind: 'speed', kmh: sec > 0 ? +(3600 / sec).toFixed(2) : intensity.kmh } }
+    }
+    onSubmit(next)
+  }
+  return createPortal(
+    <div onClick={onCancel} style={{ position: 'fixed', inset: 0, zIndex: 10010, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+      <div onClick={e => e.stopPropagation()} style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 20, padding: 22, width: 'min(320px, 90vw)' }}>
+        <p style={{ fontSize: 16, fontWeight: 800, color: 'var(--text)', margin: '0 0 4px' }}>Cible exacte</p>
+        <p style={{ fontSize: 12.5, color: 'var(--text-mid)', margin: '0 0 14px' }}>{isPace ? 'Format mm:ss' : `En ${disp.unit}`}</p>
+        <input autoFocus value={val} onChange={e => setVal(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') submit() }}
+          inputMode={isPace ? 'text' : 'decimal'} placeholder={disp.value}
+          style={{ width: '100%', boxSizing: 'border-box', padding: '12px 14px', borderRadius: 12, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 20, fontWeight: 800, textAlign: 'center', outline: 'none' }} />
+        <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
+          <button onClick={onCancel} style={{ flex: 1, padding: 12, borderRadius: 12, background: 'var(--bg-card2)', border: '1px solid var(--border)', color: 'var(--text)', fontWeight: 700, cursor: 'pointer' }}>Annuler</button>
+          <button onClick={submit} style={{ flex: 1, padding: 12, borderRadius: 12, background: 'var(--text)', border: 'none', color: 'var(--bg)', fontWeight: 800, cursor: 'pointer' }}>Valider</button>
+        </div>
+      </div>
+    </div>,
+    document.body,
   )
 }
 

@@ -167,6 +167,10 @@ export function buildBoxeTimeline(session: BoxeSession): BoxeStep[] {
       })
       if (tour < tours && circuit.restSec > 0) steps.push({ phase: 'rest', label: 'Repos de circuit', durationSec: circuit.restSec, measure: 'time', circuitIdx: ci, isRound: false })
     }
+    // Récup ENTRE circuits (avant le circuit suivant).
+    if (ci < list.length - 1 && (circuit.restAfterSec ?? 0) > 0) {
+      steps.push({ phase: 'rest', label: 'Repos entre circuits', durationSec: circuit.restAfterSec ?? 0, measure: 'time', circuitIdx: ci, isRound: false })
+    }
   })
 
   steps.push({ phase: 'done', label: 'Terminé', durationSec: 0, measure: 'time', circuitIdx: list.length - 1, isRound: false })

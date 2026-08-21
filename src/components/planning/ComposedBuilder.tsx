@@ -121,10 +121,13 @@ export function ComposedBuilder({ sport, moves, accent, onChange, circuits, onCi
                 style={{ flex: 1, minWidth: 0, background: 'transparent', border: 'none', outline: 'none', fontFamily: 'Syne, sans-serif', fontSize: 15, fontWeight: 700, color: 'var(--text)', padding: 0 }} />
               {isMulti && <button onClick={() => removeCircuit(circuit.id)} aria-label="Supprimer le circuit" style={{ ...iconBtn, color: '#ef4444' }}><IconTrash size={16} /></button>}
             </div>
-            {/* Tours + récup du circuit */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10, marginBottom: 12, background: 'var(--bg-card2)', borderRadius: 10, padding: 10 }}>
+            {/* Tours + récup du circuit (+ récup avant le circuit suivant si multi). */}
+            <div style={{ display: 'grid', gridTemplateColumns: ci < circList.length - 1 ? 'repeat(3, 1fr)' : 'repeat(2, 1fr)', gap: 10, marginBottom: 12, background: 'var(--bg-card2)', borderRadius: 10, padding: 10 }}>
               <Field label="Nb de tours"><input type="number" min={1} defaultValue={circuit.rounds} key={`r${circuit.rounds}`} onBlur={e => patchCircuit(circuit.id, { rounds: Math.max(1, +e.target.value || 1) })} style={inp} /></Field>
               <Field label="Récup / tour"><input defaultValue={mmss(circuit.restSec)} key={`rs${circuit.restSec}`} onBlur={e => patchCircuit(circuit.id, { restSec: parseMmss(e.target.value) })} placeholder="m:ss" style={inp} /></Field>
+              {ci < circList.length - 1 && (
+                <Field label="Récup / circuit"><input defaultValue={mmss(circuit.restAfterSec ?? 0)} key={`ra${circuit.restAfterSec ?? 0}`} onBlur={e => patchCircuit(circuit.id, { restAfterSec: parseMmss(e.target.value) })} placeholder="m:ss" style={inp} /></Field>
+              )}
             </div>
 
             {/* Moves du circuit */}

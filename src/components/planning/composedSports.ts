@@ -81,7 +81,7 @@ export interface ComposedMove {
 // Circuit : un GROUPE de moves répété N tours, avec une récup entre tours. Une
 // séance peut contenir PLUSIEURS circuits (ex. circuit 1 = 3× sac 8 min, puis
 // circuit 2 = autre chose). Chaque move référence son circuit via circuitId.
-export interface ComposedCircuit { id: string; name?: string; rounds: number; restSec: number }
+export interface ComposedCircuit { id: string; name?: string; rounds: number; restSec: number; restAfterSec?: number }
 
 // Définition d'un type de move (drive l'UI du builder).
 export interface MoveDef {

@@ -31,11 +31,9 @@ const SPORT_GLYPH: Record<string, GlyphIcon> = {
 function sportOf(p: CoachProgram): string { return p.sports[0] ?? 'running' }
 function sportVar(s: string): string { return `var(${SPORT_VAR[s] ?? '--sport-run'})` }
 function cardBg(s: string): string {
-  // Couleur PLEINE et vive — AUCUN blanc/gris en haut (c'était le « fond gris »).
-  // Dégradé de la couleur pure vers une version assombrie : profondeur sans lavé.
-  // Le brillant vient uniquement des reflets superposés.
+  // Couleur PLEINE, plate et simple (moins « verre ») — légère profondeur bas.
   const c = sportVar(s)
-  return `linear-gradient(158deg, ${c} 0%, color-mix(in srgb, ${c} 88%, black) 55%, color-mix(in srgb, ${c} 72%, black) 100%)`
+  return `linear-gradient(165deg, ${c} 0%, color-mix(in srgb, ${c} 90%, black) 100%)`
 }
 function priceStr(p: CoachProgram): string { return p.price_cents > 0 ? `${(p.price_cents / 100).toFixed(p.price_cents % 100 === 0 ? 0 : 2)} €` : 'Gratuit' }
 function SportGlyph({ sport, size = 42 }: { sport: string; size?: number }) {
@@ -44,16 +42,17 @@ function SportGlyph({ sport, size = 42 }: { sport: string; size?: number }) {
 }
 
 type Placement = { transform: string; z: number; opacity: number; shadow: string }
-// Deck empilé et CENTRÉ (façon Runna) : la carte active est devant, les suivantes
-// sont derrière, centrées, un peu plus petites et légèrement descendues (elles
-// dépassent proprement en bas). La précédente sort par la gauche. Pas de
-// fan latéral bancal.
+// Deck EMPILÉ ET ÉVENTAILLÉ vers la droite (façon Strava) : la carte active est
+// devant, les suivantes dépassent nettement derrière-droite (décalées + un peu
+// plus petites), bien visibles. La précédente sort par la gauche.
 function placeCard(pos: number, drag: number): Placement {
-  if (pos === 0) return { transform: `translateX(calc(-50% + ${drag}px)) rotate(${(drag * 0.012).toFixed(2)}deg)`, z: 40, opacity: 1, shadow: 'none' }
-  if (pos === 1) return { transform: `translateX(-50%) translateY(16px) scale(0.945)`, z: 30, opacity: 0.55, shadow: 'none' }
-  if (pos === 2) return { transform: `translateX(-50%) translateY(31px) scale(0.89)`, z: 20, opacity: 0.3, shadow: 'none' }
+  const sh = '0 10px 30px rgba(0,0,0,0.20)'
+  if (pos === 0) return { transform: `translateX(calc(-50% + ${drag}px)) rotate(${(drag * 0.01).toFixed(2)}deg)`, z: 40, opacity: 1, shadow: '0 14px 40px rgba(0,0,0,0.28)' }
+  if (pos === 1) return { transform: `translateX(calc(-50% + 22px)) translateY(10px) scale(0.955)`, z: 30, opacity: 0.92, shadow: sh }
+  if (pos === 2) return { transform: `translateX(calc(-50% + 40px)) translateY(20px) scale(0.912)`, z: 20, opacity: 0.72, shadow: sh }
+  if (pos === 3) return { transform: `translateX(calc(-50% + 56px)) translateY(29px) scale(0.875)`, z: 10, opacity: 0.5, shadow: 'none' }
   // Précédente : sortie propre vers la gauche (invisible).
-  return { transform: `translateX(calc(-150% + ${Math.max(0, drag)}px))`, z: 10, opacity: 0, shadow: 'none' }
+  return { transform: `translateX(calc(-155% + ${Math.max(0, drag)}px))`, z: 5, opacity: 0, shadow: 'none' }
 }
 
 function Card({ p, pos, drag, onOpen }: { p: CoachProgram; pos: number; drag: number; onOpen?: () => void }) {
@@ -71,9 +70,8 @@ function Card({ p, pos, drag, onOpen }: { p: CoachProgram; pos: number; drag: nu
         transform, transformOrigin: 'center', transition: 'transform 440ms cubic-bezier(0.34,1.3,0.5,1), opacity 260ms, box-shadow 260ms',
         cursor: isTop ? 'pointer' : 'default', pointerEvents: isTop ? 'auto' : 'none',
       }}>
-      <span aria-hidden style={{ position: 'absolute', inset: 0, background: 'radial-gradient(130% 90% at 12% -5%, rgba(255,255,255,0.30), rgba(255,255,255,0) 52%)', pointerEvents: 'none' }} />
-      <span aria-hidden style={{ position: 'absolute', inset: 0, background: 'linear-gradient(118deg, rgba(255,255,255,0) 34%, rgba(255,255,255,0.16) 44%, rgba(255,255,255,0) 52%, rgba(255,255,255,0) 70%, rgba(255,255,255,0.10) 78%, rgba(255,255,255,0) 84%)', pointerEvents: 'none' }} />
-      {isTop && <span aria-hidden className="pd-sheen" style={{ position: 'absolute', top: 0, bottom: 0, width: '42%', background: 'linear-gradient(105deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.22) 50%, rgba(255,255,255,0) 100%)', pointerEvents: 'none' }} />}
+      {/* Reflet unique, DISCRET (plus « verre » chargé) : léger éclairage en haut. */}
+      <span aria-hidden style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0) 30%)', pointerEvents: 'none' }} />
 
       {/* Haut : durée · séances · volume (heures) + glyphe */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', position: 'relative', gap: 10 }}>
@@ -121,15 +119,15 @@ function Stack({ list, onOpen, height }: { list: CoachProgram[]; onOpen: (p: Coa
   const n = list.length
   const cur = Math.min(index, Math.max(0, n - 1))
   const clamp = (i: number) => Math.max(0, Math.min(n - 1, i))
-  const go = (d: number) => { setIndex(clamp(cur + d)); setDrag(0) }
+  const go = (d: number) => { const ni = clamp(cur + d); if (ni !== cur) { try { navigator.vibrate?.(12) } catch { /* ignore */ } } setIndex(ni); setDrag(0) }
 
   const onDown = (e: React.PointerEvent) => { if (n < 2) return; dragging.current = true; startX.current = e.clientX; moved.current = false; try { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId) } catch { /* noop */ } }
   const onMove = (e: React.PointerEvent) => { if (!dragging.current) return; const dx = e.clientX - startX.current; if (Math.abs(dx) > 5) moved.current = true; setDrag(dx) }
   const onUp = () => { if (!dragging.current) return; dragging.current = false; const dx = drag; setDrag(0); const th = 55; if (dx < -th) go(1); else if (dx > th) go(-1) }
 
   if (!n) return null
-  // Ordre de rendu : précédente (-1) et suivantes (1,2) derrière, active (0) devant.
-  const order = [2, 1, -1, 0].filter(pos => cur + pos >= 0 && cur + pos < n)
+  // Ordre de rendu : précédente (-1) et suivantes (1,2,3) derrière, active (0) devant.
+  const order = [3, 2, 1, -1, 0].filter(pos => cur + pos >= 0 && cur + pos < n)
 
   return (
     <div>

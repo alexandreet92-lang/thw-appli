@@ -12,7 +12,8 @@ import { ROWING_TYPES, calcSplit500, calcWatts, formatSplit, type RowingPiece } 
 import { useI18n } from '@/lib/i18n'
 import { currentLocale } from '@/lib/i18n'
 
-interface Props { onClose: () => void }
+export interface RowingPrefill { title?: string; pieces?: RowingPiece[]; distanceM?: number; durationSec?: number }
+interface Props { onClose: () => void; prefill?: RowingPrefill }
 
 function autoTitle(t: (key: string) => string): string {
   const d = new Date()
@@ -25,19 +26,20 @@ function autoTitle(t: (key: string) => string): string {
 
 type SavedData = { id: string | null; durationSec: number; distanceM: number; split500Sec: number; avgWatts: number; calories: number; rpe: number; pieces: RowingPiece[] }
 
-export default function RowingForm({ onClose }: Props) {
+export default function RowingForm({ onClose, prefill }: Props) {
   const { t } = useI18n()
   const [isDark, setIsDark] = useState(false)
   useEffect(() => { setIsDark(document.documentElement.classList.contains('dark')) }, [])
 
-  const [title, setTitle]             = useState(autoTitle(t))
+  const preDur = prefill?.durationSec ?? 0
+  const [title, setTitle]             = useState(prefill?.title || autoTitle(t))
   const [practiceType, setPracticeType] = useState('indoor')
-  const [hours, setHours]             = useState(0)
-  const [mins, setMins]               = useState(0)
-  const [secs, setSecs]               = useState(0)
-  const [distVal, setDistVal]         = useState(0)
+  const [hours, setHours]             = useState(Math.floor(preDur / 3600))
+  const [mins, setMins]               = useState(Math.floor((preDur % 3600) / 60))
+  const [secs, setSecs]               = useState(preDur % 60)
+  const [distVal, setDistVal]         = useState(prefill?.distanceM ?? 0)
   const [distUnit, setDistUnit]       = useState<'m' | 'km'>('m')
-  const [pieces, setPieces]           = useState<RowingPiece[]>([])
+  const [pieces, setPieces]           = useState<RowingPiece[]>(prefill?.pieces ?? [])
   const [trainingTypes, setTrainingTypes] = useState<string[]>([])
   const [rpe, setRpe]                 = useState(5)
   const [comment, setComment]         = useState('')

@@ -31,6 +31,7 @@ const OpenWaterScreen  = dynamic(() => import('@/components/record/OpenWaterScre
 const HomeTrainerScreen = dynamic(() => import('@/components/record/ride/RideScreen'), { ssr: false })
 const TreadmillScreen  = dynamic(() => import('@/components/record/treadmill/TreadmillScreen'), { ssr: false })
 const ManualEntrySheet = dynamic(() => import('@/components/record/ManualEntrySheet'), { ssr: false })
+const PlannedLaunchSheet = dynamic(() => import('@/components/record/PlannedLaunchSheet'), { ssr: false })
 
 type View = 'home' | 'cycling' | 'running' | 'trail' | 'hiking' | 'mtb' | 'swimming' | 'rowing' | 'workout' | 'ski' | 'yoga' | 'padel' | 'openwater' | 'hometrainer' | 'treadmill'
 
@@ -42,6 +43,24 @@ interface ActiveRoute {
   name?: string | null
   distance_m?: number | null
   elevation_gain_m?: number | null
+}
+
+// Convertit les blocs d'une séance rameur planifiée en pièces + totaux, pour
+// pré-remplir le formulaire d'enregistrement (distance, durée, récup).
+function rowingBlocksToPrefill(title: string, blocks: unknown[]): import('@/components/record/RowingForm').RowingPrefill {
+  const pieces: { id: string; distanceM: number; durationSec: number; restSec: number }[] = []
+  let seq = 0
+  for (const raw of Array.isArray(blocks) ? blocks : []) {
+    const b = raw as { mode?: string; reps?: number; distanceM?: number; durationMin?: number; effortMin?: number; recoveryMin?: number }
+    const dist = Math.round(Number(b.distanceM) || 0)
+    const reps = b.mode === 'interval' ? Math.max(1, Number(b.reps) || 1) : 1
+    const durSec = Math.round((Number(b.effortMin ?? b.durationMin) || 0) * 60)
+    const restSec = Math.round((Number(b.recoveryMin) || 0) * 60)
+    for (let i = 0; i < reps; i++) pieces.push({ id: `p_${seq++}`, distanceM: dist, durationSec: durSec, restSec })
+  }
+  const distanceM = pieces.reduce((s, p) => s + p.distanceM, 0)
+  const durationSec = pieces.reduce((s, p) => s + p.durationSec, 0)
+  return { title, pieces: pieces.length ? pieces : undefined, distanceM: distanceM || undefined, durationSec: durationSec || undefined }
 }
 
 export default function RecordPage() {
@@ -72,6 +91,12 @@ export default function RecordPage() {
   const [boxeLauncherOpen, setBoxeLauncherOpen] = useState(false)
   const [hybridLauncherOpen, setHybridLauncherOpen] = useState(false)
   const [boxeConfig, setBoxeConfig] = useState<import('@/components/record/boxe/buildBoxeTimeline').BoxeSession | null>(null)
+  // Rameur & Home trainer : launcher 3 sections (comme la muscu) avant de lancer.
+  const [rowingLauncherOpen, setRowingLauncherOpen] = useState(false)
+  const [rowingPrefill, setRowingPrefill] = useState<import('@/components/record/RowingForm').RowingPrefill | undefined>()
+  const [htLauncherOpen, setHtLauncherOpen] = useState(false)
+  // undefined = séance du jour (repli) ; null = sans programme ; string = séance choisie.
+  const [htPlannedId, setHtPlannedId] = useState<string | null | undefined>(undefined)
   const [yogaExercises, setYogaExercises] = useState<import('@/types/yoga').YogaSessionExercise[]>([])
   const [yogaTitle, setYogaTitle] = useState('')
   // Course à pied : choix Dehors (GPS) / Tapis (séance guidée) avant de lancer.
@@ -162,7 +187,7 @@ export default function RecordPage() {
     else if (sport === 'hiking')  setView('hiking')
     else if (sport === 'mtb')     setView('mtb')
     else if (sport === 'swim')    setView('swimming')
-    else if (sport === 'rowing')  setView('rowing')
+    else if (sport === 'rowing')  setRowingLauncherOpen(true)
     else if (sport === 'ski')     setView('ski')
     else if (sport === 'strength' || sport === 'hyrox') openLauncher(sport === 'strength' ? 'gym' : 'hyrox')
     else if (sport === 'yoga')        setYogaLauncherOpen(true)
@@ -170,7 +195,7 @@ export default function RecordPage() {
     else if (sport === 'hybrid')      setHybridLauncherOpen(true)
     else if (sport === 'padel')       setView('padel')
     else if (sport === 'openwater')   setView('openwater')
-    else if (sport === 'hometrainer') setView('hometrainer')
+    else if (sport === 'hometrainer') setHtLauncherOpen(true)
     else setToast(t('record.pageComingSoon'))
   }
 
@@ -260,7 +285,7 @@ export default function RecordPage() {
   }
 
   if (view === 'rowing') {
-    return <RowingForm onClose={() => setView('home')} />
+    return <RowingForm onClose={() => setView('home')} prefill={rowingPrefill} />
   }
 
   if (view === 'padel') {
@@ -284,6 +309,7 @@ export default function RecordPage() {
       <>
         <HomeTrainerScreen
           onExit={() => setView('home')}
+          plannedIdOverride={htPlannedId}
           // Séance terminée → enregistrée dans activities ; on emmène l'athlète
           // directement sur la page Training (/activities) pour la voir.
           onFinished={() => { setView('home'); router.push('/activities') }}
@@ -590,6 +616,28 @@ export default function RecordPage() {
           session={boxeConfig}
           isDark={isDark}
           onClose={() => setBoxeConfig(null)}
+        />
+      )}
+
+      {/* Rameur : launcher 3 sections → pré-remplit le formulaire d'enregistrement. */}
+      {rowingLauncherOpen && (
+        <PlannedLaunchSheet
+          open={rowingLauncherOpen}
+          onClose={() => setRowingLauncherOpen(false)}
+          sport="rowing" label="Rameur" accent="#06B6D4"
+          onPick={(r) => { setRowingPrefill(rowingBlocksToPrefill(r.title, r.blocks)); setRowingLauncherOpen(false); setView('rowing') }}
+          onFree={() => { setRowingPrefill(undefined); setRowingLauncherOpen(false); setView('rowing') }}
+        />
+      )}
+
+      {/* Home trainer : launcher 3 sections → charge la séance choisie dans le lecteur. */}
+      {htLauncherOpen && (
+        <PlannedLaunchSheet
+          open={htLauncherOpen}
+          onClose={() => setHtLauncherOpen(false)}
+          sport="bike" label="Home trainer" accent="#f97316"
+          onPick={(r) => { setHtPlannedId(r.id); setHtLauncherOpen(false); setView('hometrainer') }}
+          onFree={() => { setHtPlannedId(null); setHtLauncherOpen(false); setView('hometrainer') }}
         />
       )}
 

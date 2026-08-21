@@ -5,6 +5,7 @@
 // profil (règle d'interconnexion), sans deviner de valeur.
 import { IconX, IconBike, IconHeartbeat, IconRotateClockwise, IconAlertTriangle, IconArrowRight } from '@tabler/icons-react'
 import { fmtClock } from './format'
+import PowerBlocksProfile from './charts/PowerBlocksProfile'
 import type { RidePlan } from './types'
 import type { SensorStatus, SensorKind } from './useSensors'
 
@@ -56,6 +57,12 @@ export default function StartGate({ ftp, fcMax, plan, loading, available, status
         <p style={{ fontSize: 13, color: 'var(--text-mid)', fontWeight: 600, margin: '4px 0 0' }}>
           {plan ? `${plan.blocks.length} blocs · ${fmtClock(plan.totalS)}` : 'Aucune séance planifiée — enregistrement libre'} · {ftp != null ? `FTP ${ftp} W` : 'FTP non renseigné'}{fcMax ? ` · FC max ${fcMax}` : ''}
         </p>
+        {/* Graphique des blocs de puissance (SVG raw) — aperçu de la séance. */}
+        {plan && plan.blocks.length > 0 && (
+          <div style={{ marginTop: 12 }}>
+            <PowerBlocksProfile plan={plan} ftp={ftp ?? 0} />
+          </div>
+        )}
       </div>
 
       {/* FTP absent : on N'INTERDIT PAS la séance (l'athlète voit et lance son

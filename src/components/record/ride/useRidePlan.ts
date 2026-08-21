@@ -15,7 +15,9 @@ import { weekStartStr, mondayIndex } from '@/lib/date/weekStart'
 
 interface Row { id: string; title: string | null; blocks: PlannedBlock[] | null; validation_data: { cyclingSub?: string } | null }
 
-export function useRidePlan(ftp: number | null, enabled: boolean) {
+// overrideId : séance planifiée CHOISIE dans le launcher (prioritaire sur la
+// séance du jour). null explicite = « lancer sans programme » → aucun plan.
+export function useRidePlan(ftp: number | null, enabled: boolean, overrideId?: string | null) {
   const [plan, setPlan] = useState<RidePlan | null>(null)
   const [plannedId, setPlannedId] = useState<string | null>(null)   // séance planifiée source (à clôturer)
   const [cyclingSub, setCyclingSub] = useState<string | null>(null) // 'ht' = home trainer
@@ -23,6 +25,8 @@ export function useRidePlan(ftp: number | null, enabled: boolean) {
 
   useEffect(() => {
     if (!enabled) { setLoading(false); return }
+    // « Sans programme » explicite : on n'interroge pas la base, sortie libre.
+    if (overrideId === null) { setPlan(null); setPlannedId(null); setLoading(false); return }
     let cancelled = false
     void (async () => {
       try {
@@ -30,16 +34,12 @@ export function useRidePlan(ftp: number | null, enabled: boolean) {
         const user = await getCurrentUser()
         if (!user) { if (!cancelled) setLoading(false); return }
         const now = new Date()
-        const { data, error } = await sb
-          .from('planned_sessions')
-          .select('id,title,blocks,validation_data')
-          .eq('user_id', user.id)
-          .eq('sport', 'bike')
-          .eq('week_start', weekStartStr(now))
-          .eq('day_index', mondayIndex(now))
-          .order('updated_at', { ascending: false })
-          .limit(1)
-          .maybeSingle()
+        let q = sb.from('planned_sessions').select('id,title,blocks,validation_data').eq('user_id', user.id)
+        // Séance choisie par son id, sinon repli sur la séance vélo du jour.
+        q = overrideId
+          ? q.eq('id', overrideId)
+          : q.eq('sport', 'bike').eq('week_start', weekStartStr(now)).eq('day_index', mondayIndex(now))
+        const { data, error } = await q.order('updated_at', { ascending: false }).limit(1).maybeSingle()
         if (cancelled) return
         if (error) { console.error('[ride] chargement séance planifiée:', error.message); return }
         const row = (data ?? null) as Row | null
@@ -52,7 +52,7 @@ export function useRidePlan(ftp: number | null, enabled: boolean) {
       finally { if (!cancelled) setLoading(false) }
     })()
     return () => { cancelled = true }
-  }, [ftp, enabled])
+  }, [ftp, enabled, overrideId])
 
   return { plan, plannedId, cyclingSub, loading }
 }

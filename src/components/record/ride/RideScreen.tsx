@@ -22,7 +22,7 @@ import RideSummary from './RideSummary'
 import { createClient } from '@/lib/supabase/client'
 import { getCurrentUser } from '@/lib/auth/currentUser'
 
-interface Props { onExit: () => void; onFinished: () => void }
+interface Props { onExit: () => void; onFinished: () => void; plannedIdOverride?: string | null }
 
 function useIsDesktop(): boolean {
   const [desk, setDesk] = useState(false)
@@ -34,7 +34,7 @@ function useIsDesktop(): boolean {
   return desk
 }
 
-export default function RideScreen({ onExit, onFinished }: Props) {
+export default function RideScreen({ onExit, onFinished, plannedIdOverride }: Props) {
   const [mounted, setMounted] = useState(false)
   const [started, setStarted] = useState(false)
   const [startedAt, setStartedAt] = useState('')
@@ -62,7 +62,7 @@ export default function RideScreen({ onExit, onFinished }: Props) {
   const { benchmarks, ready, compute } = useSmSn()
   const ftp = benchmarks.ftp
   const fcMax = benchmarks.hrMax
-  const { plan, plannedId, loading: planLoading } = useRidePlan(ftp, ready)
+  const { plan, plannedId, loading: planLoading } = useRidePlan(ftp, ready, plannedIdOverride)
   const sensors = useSensors()
   const engine = useRideEngine(ftp ?? 0, plan, sensors.live)
   const recorder = useRideRecorder()

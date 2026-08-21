@@ -321,18 +321,14 @@ export default function RecordPage() {
 
   if (view === 'workout') {
     const closeWorkout = () => { setView('home'); setActiveLauncherSport(null) }
-    // Muscu → nouveau moteur « Séance en direct » (plein écran, phases colorées).
-    // Hyrox reste sur l'écran existant (hors périmètre de ce lot).
-    if (sport === 'strength') {
-      return <SessionRunner blocks={workoutExercises} planTitle={workoutTitle} onClose={closeWorkout} isDark={isDark} />
-    }
+    // Muscu ET Hyrox passent par le MÊME lecteur en direct que boxe/hybride
+    // (BoxeScreen) : écran identique, données adaptées au sport.
+    const liveSport = sport === 'strength' ? 'gym' : 'hyrox'
     return (
-      <WorkoutSession
-        sport="hyrox"
-        exercises={workoutExercises}
-        planTitle={workoutTitle}
-        onClose={closeWorkout}
+      <BoxeScreen
+        session={{ title: workoutTitle || (liveSport === 'gym' ? 'Musculation' : 'Hyrox'), moves: [], circuits: [], sport: liveSport, workoutBlocks: workoutExercises }}
         isDark={isDark}
+        onClose={closeWorkout}
       />
     )
   }

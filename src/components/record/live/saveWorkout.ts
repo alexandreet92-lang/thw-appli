@@ -5,7 +5,7 @@ import type { WorkoutExercise } from '@/types/workout'
 import type { SessionFormData } from '../SessionSaveForm'
 
 interface SaveArgs {
-  sport: 'gym'
+  sport: string           // 'gym' | 'hyrox' (séance à base de WorkoutExercise[])
   startedAt: string
   durationSec: number
   exercises: WorkoutExercise[]

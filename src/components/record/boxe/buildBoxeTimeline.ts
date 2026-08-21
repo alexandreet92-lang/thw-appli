@@ -6,6 +6,12 @@
 // ══════════════════════════════════════════════════════════════════
 import type { ComposedMove, ComposedCircuit, RoundSupport, ComposedSport } from '@/components/planning/composedSports'
 import { ROUND_SUPPORT_LABEL, moveDef, composedMoveLabel } from '@/components/planning/composedSports'
+import type { WorkoutExercise } from '@/types/workout'
+import { buildTimeline as buildWorkoutSteps } from '@/components/record/live/buildTimeline'
+
+// Sport du lecteur en direct unifié : boxe/hybride (composés) OU muscu/hyrox
+// (WorkoutExercise[]). Tous passent par le même écran (BoxeScreen).
+export type LiveSport = ComposedSport | 'gym' | 'hyrox'
 
 export type BoxePhase = 'prepare' | 'work' | 'rest' | 'done'
 
@@ -29,11 +35,54 @@ const PREPARE_SEC = 10
 
 function supportLabel(s?: RoundSupport): string { return s ? ROUND_SUPPORT_LABEL[s] : 'Round' }
 
-export interface BoxeSession { title: string; moves: ComposedMove[]; circuits: ComposedCircuit[]; sport?: ComposedSport; free?: boolean }
+export interface BoxeSession {
+  title: string
+  moves: ComposedMove[]
+  circuits: ComposedCircuit[]
+  sport?: LiveSport
+  free?: boolean
+  // Muscu / Hyrox : la séance est décrite par des WorkoutExercise[] (pas de
+  // moves composés). Quand présent, le lecteur déroule CES blocs.
+  workoutBlocks?: WorkoutExercise[]
+}
+
+// Déroule une séance muscu/hyrox (WorkoutExercise[]) dans le même modèle d'étapes
+// que la boxe, en réutilisant le builder muscu (séries/circuits/récups) puis en
+// l'adaptant : préparation en tête, « Terminé » en queue, nextLabel en 2e passe.
+export function buildWorkoutBoxeTimeline(blocks: WorkoutExercise[]): BoxeStep[] {
+  const steps: BoxeStep[] = []
+  if (!blocks || blocks.length === 0) {
+    steps.push({ phase: 'work', label: 'Séance libre', durationSec: 0, measure: 'reps', circuitIdx: 0, isRound: false })
+    steps.push({ phase: 'done', label: 'Terminé', durationSec: 0, measure: 'time', circuitIdx: 0, isRound: false })
+    return steps
+  }
+  steps.push({ phase: 'prepare', label: 'Préparez-vous', durationSec: PREPARE_SEC, measure: 'time', circuitIdx: 0, isRound: false })
+  for (const st of buildWorkoutSteps(blocks)) {
+    if (st.kind === 'rest') {
+      steps.push({ phase: 'rest', label: st.tourEnd ? 'Repos de tour' : 'Récup', durationSec: st.sec, measure: 'time', circuitIdx: st.blockIdx, tour: st.tourInBlock, tours: st.toursInBlock, isRound: false })
+    } else {
+      const ex = st.ex
+      const isTime = ex.nature === 'temps'
+      const detail = isTime ? undefined : [ex.targetReps ? `×${ex.targetReps}` : '', ex.targetWeightKg ? `${ex.targetWeightKg} kg` : ''].filter(Boolean).join(' · ') || undefined
+      steps.push({
+        phase: 'work', label: ex.name, detail,
+        durationSec: isTime ? ex.durationSec : 0, measure: isTime ? 'time' : 'reps',
+        reps: ex.targetReps, weightKg: ex.targetWeightKg,
+        circuitIdx: st.blockIdx, tour: st.tourInBlock, tours: st.toursInBlock, isRound: false,
+      })
+    }
+  }
+  steps.push({ phase: 'done', label: 'Terminé', durationSec: 0, measure: 'time', circuitIdx: 0, isRound: false })
+  for (let i = 0; i < steps.length; i++) {
+    const next = steps.slice(i + 1).find(s => s.phase === 'work')
+    if (next) steps[i].nextLabel = next.label + (next.detail ? ` · ${next.detail}` : '')
+  }
+  return steps
+}
 
 export function buildBoxeTimeline(session: BoxeSession): BoxeStep[] {
   const { moves, circuits } = session
-  const sport: ComposedSport = session.sport ?? 'boxe'
+  const sport: ComposedSport = (session.sport === 'hybrid' ? 'hybrid' : 'boxe')
   const steps: BoxeStep[] = []
 
   // Séance LIBRE (aucune structure) : un chrono ouvert que l'athlète arrête

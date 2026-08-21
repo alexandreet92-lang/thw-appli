@@ -17,8 +17,10 @@ import type { SessionFormData } from './SessionSaveForm'
 import { useHeartRate } from '@/lib/record/useHeartRate'
 import HeartRatePanel from './workout/HeartRatePanel'
 import { vibrateBlockChange, vibrateSessionEnd } from './blockVibrate'
-import { buildBoxeTimeline, totalBoxeRounds, type BoxeSession, type BoxeStep } from './boxe/buildBoxeTimeline'
-import { sumComposedMinutes, moveDef, composedMoveLabel } from '@/components/planning/composedSports'
+import { buildBoxeTimeline, buildWorkoutBoxeTimeline, totalBoxeRounds, type BoxeSession, type BoxeStep } from './boxe/buildBoxeTimeline'
+import { sumComposedMinutes, moveDef, composedMoveLabel, type ComposedSport } from '@/components/planning/composedSports'
+import { estimateDurationSec, buildTimeline as buildWorkoutSteps } from './live/buildTimeline'
+import { saveWorkout } from './live/saveWorkout'
 
 interface Props { session: BoxeSession; onClose: () => void; isDark: boolean }
 
@@ -37,7 +39,9 @@ function useIsDesktop() {
 export default function BoxeScreen({ session, onClose, isDark }: Props) {
   const { t } = useI18n()
   const sport = session.sport ?? 'boxe'
-  const timeline = useMemo(() => buildBoxeTimeline(session), [session])
+  const isWorkout = !!session.workoutBlocks   // muscu / hyrox (WorkoutExercise[])
+  const sportType = sport === 'hybrid' ? 'hybrid' : sport === 'gym' ? 'gym' : sport === 'hyrox' ? 'hyrox' : 'boxe'
+  const timeline = useMemo(() => isWorkout ? buildWorkoutBoxeTimeline(session.workoutBlocks ?? []) : buildBoxeTimeline(session), [session, isWorkout])
   const totalRounds = useMemo(() => totalBoxeRounds(timeline), [timeline])
   const isDesktop = useIsDesktop()
 
@@ -133,11 +137,21 @@ export default function BoxeScreen({ session, onClose, isDark }: Props) {
   const handleClose = () => { if (elapsed > 0) { setConfirmClose(true); return } onClose() }
 
   const handleSave = async (formData: SessionFormData) => {
+    // Muscu / Hyrox : chemin muscu complet (workout_sessions + activities, avec
+    // volume/séries) pour ne pas perdre les stats. Boxe/hybride : activités.
+    if (isWorkout) {
+      await saveWorkout({
+        sport: sportType, startedAt, durationSec: elapsed, exercises: session.workoutBlocks ?? [],
+        setsCompleted: setsDone, volumeKg, hr: { avg: hr.avg, max: hr.max, min: hr.min }, form: formData,
+      })
+      onClose()
+      return
+    }
     const sb = createClient()
     const user = await getCurrentUser()
     if (!user) return
     await sb.from('activities').insert({
-      user_id: user.id, sport_type: session.sport === 'hybrid' ? 'hybrid' : 'boxe', title: formData.title,
+      user_id: user.id, sport_type: sportType, title: formData.title,
       started_at: startedAt, moving_time_s: elapsed, elapsed_time_s: elapsed,
       calories: caloriesEst || null,
       avg_hr: hr.avg || null, max_hr: hr.max || null,
@@ -152,7 +166,7 @@ export default function BoxeScreen({ session, onClose, isDark }: Props) {
   if (showSave) {
     return createPortal(
       <div style={{ position: 'fixed', inset: 0, zIndex: 10002, background: 'var(--bg-card)' }}>
-        <SessionSaveForm sport="boxe" startedAt={startedAt} onBack={() => setShowSave(false)} onSave={handleSave} isDark={isDark}
+        <SessionSaveForm sport={sportType} startedAt={startedAt} onBack={() => setShowSave(false)} onSave={handleSave} isDark={isDark}
           hr={{ avg: hr.avg, min: hr.min, max: hr.max }} />
       </div>,
       document.body,
@@ -259,6 +273,34 @@ export default function BoxeScreen({ session, onClose, isDark }: Props) {
     </div>
   )
 
+  // ── Résumé pré-séance MUSCU / HYROX (WorkoutExercise[]) ──
+  const wBlocks = session.workoutBlocks ?? []
+  const preStartWorkout = (
+    <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '16px 18px 32px' }}>
+      <div style={{ maxWidth: 560, margin: '0 auto' }}>
+        <p style={{ fontSize: 11, letterSpacing: '0.14em', textTransform: 'uppercase', color: ACCENT, fontWeight: 800, margin: '4px 0 6px' }}>Prêt à démarrer</p>
+        <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 700, color: 'var(--text)', margin: '0 0 18px' }}>{session.title}</h2>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10, marginBottom: 18 }}>
+          <div style={{ background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 14, padding: '13px 14px' }}><div style={{ fontSize: 20, fontWeight: 800, color: 'var(--text)' }}>~{Math.round(estimateDurationSec(buildWorkoutSteps(wBlocks)) / 60)} min</div><div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', color: 'var(--text-dim)', textTransform: 'uppercase' }}>Durée est.</div></div>
+          <div style={{ background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 14, padding: '13px 14px' }}><div style={{ fontSize: 20, fontWeight: 800, color: 'var(--text)' }}>{wBlocks.length}</div><div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', color: 'var(--text-dim)', textTransform: 'uppercase' }}>Blocs</div></div>
+        </div>
+        {wBlocks.map((b, i) => {
+          const isCircuit = b.mode === 'circuit'
+          const line = isCircuit
+            ? `${b.circuitRounds ?? 1} tour${(b.circuitRounds ?? 1) > 1 ? 's' : ''} · ${(b.circuitExercises ?? []).length} exos`
+            : b.durationSec ? `${b.sets} × ${b.durationSec}s` : `${b.sets} × ${b.reps}${b.weightKg ? ` · ${b.weightKg} kg` : ''}`
+          return (
+            <div key={b.id || i} style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 14, padding: '13px 15px', marginBottom: 10 }}>
+              <span style={{ color: 'var(--text-dim)', fontWeight: 800, fontSize: 13 }}>{i + 1}</span>
+              <span style={{ flex: 1, fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>{isCircuit ? (b.name || `Circuit ${i + 1}`) : b.name}</span>
+              <span style={{ fontSize: 12.5, color: 'var(--text-mid)', fontWeight: 600 }}>{line}</span>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+
   // ── Résumé pré-séance (comme la muscu) : titre + durée/tours/exos + détail ──
   const preCircuits = session.circuits.length ? session.circuits : [{ id: 'c1', rounds: 1, restSec: 0 }]
   const preFirstId = preCircuits[0].id
@@ -281,7 +323,7 @@ export default function BoxeScreen({ session, onClose, isDark }: Props) {
             <div key={c.id} style={{ background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 16, padding: '14px 16px', marginBottom: 12 }}>
               <p style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: ACCENT, margin: '0 0 10px' }}>{c.name || `Circuit ${ci + 1}`} · {Math.max(1, c.rounds)} tour{c.rounds > 1 ? 's' : ''}</p>
               {cm.map(m => {
-                const def = moveDef(sport, m.kind)
+                const def = moveDef(sport as ComposedSport, m.kind)
                 const detail = m.kind === 'round' ? `${m.rounds ?? 1} × ${Math.round((m.timeSec ?? 0) / 60)} min`
                   : m.measure === 'reps' && !m.timeSec ? `${m.reps ?? ''} reps${m.weightKg ? ` · ${m.weightKg} kg` : ''}`
                   : m.timeSec ? `${Math.round(m.timeSec / 60)} min` : ''
@@ -304,7 +346,7 @@ export default function BoxeScreen({ session, onClose, isDark }: Props) {
     <div style={{ position: 'fixed', inset: 0, zIndex: 10002, background: 'var(--bg)', color: 'var(--text)', display: 'flex', flexDirection: 'column', fontFamily: 'var(--font-body)', paddingTop: 'env(safe-area-inset-top)' }}>
       {header}
       {!started ? (<>
-        {preStart}
+        {isWorkout ? preStartWorkout : preStart}
         <div style={{ flexShrink: 0, padding: '12px 18px calc(14px + env(safe-area-inset-bottom))', borderTop: '1px solid var(--border)' }}>
           <button onClick={() => { setStarted(true); setRunning(true) }} style={{ width: '100%', maxWidth: 560, margin: '0 auto', display: 'block', padding: 15, borderRadius: 14, border: 'none', background: ACCENT, color: '#fff', fontSize: 15.5, fontWeight: 800, cursor: 'pointer' }}>Commencer</button>
         </div>

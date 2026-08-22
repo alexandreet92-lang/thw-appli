@@ -1,10 +1,9 @@
 'use client'
 import { useState } from 'react'
-import RPESlider from './RPESlider'
 import TrainingTypeSelector from './TrainingTypeSelector'
 import { RUNNING_TYPES } from '@/types/running'
 import { TRAIL_TYPES } from '@/types/trail'
-import { CYCLING_TYPES } from './TrainingTypeSelector'
+import { CYCLING_TYPES, BOXE_TYPES, HYBRID_TYPES } from './TrainingTypeSelector'
 import { HIKING_TYPES } from '@/types/hiking'
 import { MTB_TYPES } from '@/types/mtb'
 import { ROWING_TYPES } from '@/types/rowing'
@@ -36,11 +35,28 @@ interface Props {
   summary?: SaveSummary
   hr?: { avg: number | null; min: number | null; max: number | null }
   circuitTypes?: string[]   // types de circuit utilisés dans la séance (pré-cochés)
+  doneList?: { label: string; detail?: string }[]   // récap de CE QUI A ÉTÉ FAIT
 }
 
 function fmtDur(s: number): string {
   const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60)
   return h > 0 ? `${h}h${String(m).padStart(2, '0')}` : `${m} min`
+}
+
+// Couleur / libellé du ressenti (RPE 1→10) : vert → ambre → rouge.
+function rpeColor(v: number): string {
+  if (v <= 3) return '#22c55e'
+  if (v <= 5) return '#84cc16'
+  if (v <= 7) return '#f59e0b'
+  if (v <= 8) return '#f97316'
+  return '#ef4444'
+}
+function rpeLabel(v: number): string {
+  if (v <= 2) return 'Très facile'
+  if (v <= 4) return 'Facile'
+  if (v <= 6) return 'Modéré'
+  if (v <= 8) return 'Difficile'
+  return 'Maximal'
 }
 
 function getAutoTitle(sport: string, startedAt: string, t: (key: string) => string): string {
@@ -70,7 +86,7 @@ const LABEL_STYLE: React.CSSProperties = {
   textTransform: 'uppercase', marginBottom: 10,
 }
 
-export default function SessionSaveForm({ sport, startedAt, onBack, onSave, isDark, summary, hr, circuitTypes }: Props) {
+export default function SessionSaveForm({ sport, startedAt, onBack, onSave, isDark, summary, hr, circuitTypes, doneList }: Props) {
   const { t: tr } = useI18n()
   const t = getTheme(isDark)
   const CIRCUIT_TYPE_LABEL: Record<string, string> = {
@@ -157,6 +173,22 @@ export default function SessionSaveForm({ sport, startedAt, onBack, onSave, isDa
           </div>
         )}
 
+        {/* Récap de CE QUI A ÉTÉ FAIT (et non le prévu). */}
+        {doneList && doneList.length > 0 && (
+          <div style={{ padding: '4px 4px 8px', marginBottom: 18 }}>
+            <p style={{ ...LABEL_STYLE, color: t.muted }}>Ce qui a été fait</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 0, background: t.surface, border: `1px solid ${t.border}`, borderRadius: 14, overflow: 'hidden' }}>
+              {doneList.map((d, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 14px', borderTop: i === 0 ? 'none' : `1px solid ${t.separator}` }}>
+                  <span style={{ width: 20, fontSize: 12, fontWeight: 800, color: t.muted, fontVariantNumeric: 'tabular-nums' }}>{i + 1}</span>
+                  <span style={{ flex: 1, fontSize: 14, fontWeight: 700, color: t.text, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.label}</span>
+                  {d.detail && <span style={{ fontSize: 12.5, fontWeight: 700, color: t.muted, fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>{d.detail}</span>}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Fréquence cardiaque */}
         {hr && (hr.avg != null || hr.max != null || hr.min != null) && (
           <div style={{ display: 'flex', gap: 4, padding: '14px 12px', background: t.surface, border: `1px solid ${t.border}`, borderRadius: 16, marginBottom: 18 }}>
@@ -205,7 +237,7 @@ export default function SessionSaveForm({ sport, startedAt, onBack, onSave, isDa
         {/* Type d'entraînement */}
         <div style={{ marginBottom: 28 }}>
           <p style={{ ...LABEL_STYLE, color: t.muted }}>{tr('record.sessionSaveTrainingType')}</p>
-          <TrainingTypeSelector selected={trainingTypes} onChange={setTrainingTypes} isDark={isDark} types={sport === 'running' ? RUNNING_TYPES : sport === 'trail' ? TRAIL_TYPES : sport === 'hiking' ? HIKING_TYPES : sport === 'mtb' ? MTB_TYPES : sport === 'rowing' ? ROWING_TYPES : sport === 'gym' ? STRENGTH_TYPES : sport === 'hyrox' ? HYROX_TYPES : sport === 'yoga' ? YOGA_TYPES : sport === 'padel' ? PADEL_TYPES : sport === 'openwater' ? OPEN_WATER_TYPES : sport === 'hometrainer' ? HT_TYPES : CYCLING_TYPES} />
+          <TrainingTypeSelector selected={trainingTypes} onChange={setTrainingTypes} isDark={isDark} types={sport === 'running' ? RUNNING_TYPES : sport === 'trail' ? TRAIL_TYPES : sport === 'hiking' ? HIKING_TYPES : sport === 'mtb' ? MTB_TYPES : sport === 'rowing' ? ROWING_TYPES : sport === 'gym' ? STRENGTH_TYPES : sport === 'hyrox' ? HYROX_TYPES : sport === 'boxe' ? BOXE_TYPES : sport === 'hybrid' ? HYBRID_TYPES : sport === 'yoga' ? YOGA_TYPES : sport === 'padel' ? PADEL_TYPES : sport === 'openwater' ? OPEN_WATER_TYPES : sport === 'hometrainer' ? HT_TYPES : CYCLING_TYPES} />
         </div>
 
         {/* Type de circuit (muscu/hyrox) — pré-coché avec ceux utilisés */}
@@ -227,11 +259,28 @@ export default function SessionSaveForm({ sport, startedAt, onBack, onSave, isDa
           </div>
         )}
 
-        {/* RPE */}
+        {/* RPE — échelle 1→10 en pastilles (vert → rouge). */}
         <div style={{ marginBottom: 28 }}>
           <p style={{ ...LABEL_STYLE, color: t.muted }}>{tr('record.sessionSaveFeeling')}</p>
-          <p style={{ fontSize: 12, color: t.muted, margin: '-6px 0 16px' }}>{tr('record.sessionSaveFeelingHint')}</p>
-          <RPESlider value={rpe} onChange={setRpe} isDark={isDark} />
+          <p style={{ fontSize: 12, color: t.muted, margin: '-6px 0 14px' }}>{tr('record.sessionSaveFeelingHint')}</p>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 12 }}>
+            <span style={{ fontSize: 30, fontWeight: 800, color: rpeColor(rpe), lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{rpe}</span>
+            <span style={{ fontSize: 14, fontWeight: 700, color: t.text }}>{rpeLabel(rpe)}</span>
+            <span style={{ fontSize: 12, color: t.muted, marginLeft: 'auto' }}>/ 10</span>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(10, 1fr)', gap: 5 }}>
+            {Array.from({ length: 10 }, (_, i) => i + 1).map(v => {
+              const on = v <= rpe
+              return (
+                <button key={v} type="button" onClick={() => setRpe(v)} aria-label={`RPE ${v}`}
+                  style={{ height: 38, borderRadius: 9, cursor: 'pointer', border: 'none',
+                    background: on ? rpeColor(rpe) : t.surface,
+                    color: on ? '#fff' : t.muted, fontSize: 13, fontWeight: 800,
+                    boxShadow: v === rpe ? `0 0 0 2px ${t.bg}, 0 0 0 4px ${rpeColor(rpe)}` : 'none',
+                    transition: 'background 140ms, box-shadow 140ms' }}>{v}</button>
+              )
+            })}
+          </div>
         </div>
 
         {/* Commentaire */}

@@ -43,32 +43,38 @@ function SportGlyph({ sport, size = 42 }: { sport: string; size?: number }) {
 }
 
 type Placement = { transform: string; z: number; opacity: number; shadow: string }
-// Deck EMPILÉ ET ÉVENTAILLÉ vers la droite (façon Strava) : la carte active est
-// devant, les suivantes dépassent nettement derrière-droite (décalées + un peu
-// plus petites), bien visibles. La précédente sort par la gauche.
-function placeCard(pos: number, drag: number): Placement {
-  const sh = '0 10px 30px rgba(0,0,0,0.20)'
-  if (pos === 0) return { transform: `translateX(calc(-50% + ${drag}px)) rotate(${(drag * 0.01).toFixed(2)}deg)`, z: 40, opacity: 1, shadow: '0 14px 40px rgba(0,0,0,0.28)' }
-  if (pos === 1) return { transform: `translateX(calc(-50% + 16px)) translateY(11px) scale(0.955)`, z: 30, opacity: 0.94, shadow: sh }
-  if (pos === 2) return { transform: `translateX(calc(-50% + 30px)) translateY(21px) scale(0.914)`, z: 20, opacity: 0.74, shadow: sh }
-  if (pos === 3) return { transform: `translateX(calc(-50% + 42px)) translateY(30px) scale(0.878)`, z: 10, opacity: 0.52, shadow: 'none' }
-  // Précédente : sortie propre vers la gauche (invisible).
-  return { transform: `translateX(calc(-155% + ${Math.max(0, drag)}px))`, z: 5, opacity: 0, shadow: 'none' }
+// Deck ROLODEX circulaire : la carte de devant est grande et centrée ; les
+// suivantes sont centrées mais RÉTRÉCIES → elles dépassent des DEUX côtés
+// (gauche + droite) et un peu en bas. Quand on avance, la carte de devant
+// RECULE derrière la pile (elle ne sort jamais de l'écran, ne disparaît jamais).
+// `rp` = position dans l'anneau (0 = devant, 1..N-1 = de plus en plus derrière).
+function placeCard(rp: number, drag: number): Placement {
+  if (rp === 0) return { transform: `translateX(calc(-50% + ${drag}px)) translateY(0) scale(1)`, z: 100, opacity: 1, shadow: '0 18px 46px rgba(0,0,0,0.32)' }
+  if (rp === 1) return { transform: `translateX(-50%) translateY(14px) scale(0.93)`, z: 90, opacity: 0.9, shadow: '0 12px 30px rgba(0,0,0,0.24)' }
+  if (rp === 2) return { transform: `translateX(-50%) translateY(27px) scale(0.865)`, z: 80, opacity: 0.72, shadow: '0 10px 24px rgba(0,0,0,0.2)' }
+  if (rp === 3) return { transform: `translateX(-50%) translateY(38px) scale(0.8)`, z: 70, opacity: 0.5, shadow: 'none' }
+  if (rp === 4) return { transform: `translateX(-50%) translateY(47px) scale(0.74)`, z: 60, opacity: 0.3, shadow: 'none' }
+  // Au-delà de 4 cartes : garde la carte derrière la pile, invisible (prête à
+  // réapparaître à la rotation) → jamais de « saut » à l'écran.
+  return { transform: `translateX(-50%) translateY(52px) scale(0.7)`, z: 50, opacity: 0, shadow: 'none' }
 }
 
-function Card({ p, pos, drag, onOpen }: { p: CoachProgram; pos: number; drag: number; onOpen?: () => void }) {
+function Card({ p, rp, drag, dragging, onOpen }: { p: CoachProgram; rp: number; drag: number; dragging: boolean; onOpen?: () => void }) {
   const sport = sportOf(p)
   const sessions = p.structure.reduce((s, w) => s + w.sessions.length, 0)
   const hours = programHours(p.structure)
-  const { transform, z, opacity, shadow } = placeCard(pos, drag)
-  const isTop = pos === 0
+  const { transform, z, opacity, shadow } = placeCard(rp, drag)
+  const isTop = rp === 0
   return (
     <div onClick={isTop ? onOpen : undefined}
       style={{
-        position: 'absolute', top: 0, left: '50%', width: '84%', height: '100%', zIndex: z, opacity,
+        position: 'absolute', top: 0, left: '50%', width: '88%', height: '100%', zIndex: z, opacity,
         borderRadius: 24, background: cardBg(sport), color: 'white', boxShadow: shadow, overflow: 'hidden',
         padding: 'clamp(16px, 4.5vw, 22px)', display: 'flex', flexDirection: 'column', boxSizing: 'border-box',
-        transform, transformOrigin: 'center', transition: 'transform 440ms cubic-bezier(0.34,1.3,0.5,1), opacity 260ms, box-shadow 260ms',
+        transform, transformOrigin: 'center top',
+        // Pendant le drag : pas de transition (suit le doigt). Au relâchement :
+        // mouvement LENT et DOUX (la carte recule/avance en glissant).
+        transition: (isTop && dragging) ? 'none' : 'transform 600ms cubic-bezier(0.25,0.85,0.3,1), opacity 520ms ease, box-shadow 520ms ease',
         cursor: isTop ? 'pointer' : 'default', pointerEvents: isTop ? 'auto' : 'none',
       }}>
       {/* Reflet unique, DISCRET (plus « verre » chargé) : léger éclairage en haut. */}
@@ -114,43 +120,44 @@ function Pill({ children }: { children: React.ReactNode }) {
 
 // ── Une pile (carrousel) pour UN sport ──
 function Stack({ list, onOpen, height }: { list: CoachProgram[]; onOpen: (p: CoachProgram) => void; height: string }) {
-  const [index, setIndex] = useState(0)
+  const [cur, setCur] = useState(0)          // index de la carte de DEVANT
   const [drag, setDrag] = useState(0)
+  const [isDragging, setIsDragging] = useState(false)
   const dragging = useRef(false)
   const startX = useRef(0)
   const moved = useRef(false)
   const n = list.length
-  const cur = Math.min(index, Math.max(0, n - 1))
-  const clamp = (i: number) => Math.max(0, Math.min(n - 1, i))
-  const go = (d: number) => { const ni = clamp(cur + d); if (ni !== cur) haptic('light'); setIndex(ni); setDrag(0) }
+  // Rotation CIRCULAIRE : la carte de devant recule derrière la pile, jamais de sortie.
+  const go = (d: number) => { if (n < 2) return; haptic('light'); setCur(c => (c + d + n) % n); setDrag(0) }
 
-  const onDown = (e: React.PointerEvent) => { if (n < 2) return; dragging.current = true; startX.current = e.clientX; moved.current = false; try { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId) } catch { /* noop */ } }
+  const onDown = (e: React.PointerEvent) => { if (n < 2) return; dragging.current = true; setIsDragging(true); startX.current = e.clientX; moved.current = false; try { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId) } catch { /* noop */ } }
   const onMove = (e: React.PointerEvent) => { if (!dragging.current) return; const dx = e.clientX - startX.current; if (Math.abs(dx) > 5) moved.current = true; setDrag(dx) }
-  const onUp = () => { if (!dragging.current) return; dragging.current = false; const dx = drag; setDrag(0); const th = 55; if (dx < -th) go(1); else if (dx > th) go(-1) }
+  const onUp = () => { if (!dragging.current) return; dragging.current = false; setIsDragging(false); const dx = drag; setDrag(0); const th = 55; if (dx < -th) go(1); else if (dx > th) go(-1) }
 
   if (!n) return null
-  // Ordre de rendu : précédente (-1) et suivantes (1,2,3) derrière, active (0) devant.
-  const order = [3, 2, 1, -1, 0].filter(pos => cur + pos >= 0 && cur + pos < n)
 
   return (
     <div>
       <div onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp}
         style={{ position: 'relative', height, touchAction: 'pan-y', userSelect: 'none' }}>
-        {order.map(pos => {
-          const p = list[cur + pos]
-          return <Card key={p.id} p={p} pos={pos} drag={drag} onOpen={pos === 0 ? () => { if (!moved.current) onOpen(p) } : undefined} />
+        {/* TOUTES les cartes montées en permanence : chacune garde sa place dans
+            l'anneau et s'anime en douceur. La carte de devant recule derrière. */}
+        {list.map((p, i) => {
+          const rp = (i - cur + n) % n     // position dans l'anneau (0 = devant)
+          return <Card key={p.id} p={p} rp={rp} drag={rp === 0 ? drag : 0} dragging={isDragging}
+            onOpen={rp === 0 ? () => { if (!moved.current) onOpen(p) } : undefined} />
         })}
         {n > 1 && (
           <>
-            <button className="pd-arrow" aria-label="Précédent" onClick={() => go(-1)} disabled={cur === 0} style={{ ...arrow, left: -12, opacity: cur === 0 ? 0.35 : 1 }}><IconChevronLeft size={18} /></button>
-            <button className="pd-arrow" aria-label="Suivant" onClick={() => go(1)} disabled={cur >= n - 1} style={{ ...arrow, right: -12, opacity: cur >= n - 1 ? 0.35 : 1 }}><IconChevronRight size={18} /></button>
+            <button className="pd-arrow" aria-label="Précédent" onClick={() => go(-1)} style={{ ...arrow, left: -12 }}><IconChevronLeft size={18} /></button>
+            <button className="pd-arrow" aria-label="Suivant" onClick={() => go(1)} style={{ ...arrow, right: -12 }}><IconChevronRight size={18} /></button>
           </>
         )}
       </div>
       {n > 1 && (
         <div style={{ display: 'flex', gap: 5, justifyContent: 'center', marginTop: 12 }}>
           {list.map((_, i) => (
-            <button key={i} onClick={() => setIndex(i)} aria-label={`Programme ${i + 1}`}
+            <button key={i} onClick={() => setCur(i)} aria-label={`Programme ${i + 1}`}
               style={{ width: i === cur ? 16 : 6, height: 6, borderRadius: 999, border: 'none', cursor: 'pointer', padding: 0, background: i === cur ? 'var(--text)' : 'var(--border-mid)', transition: 'width 200ms, background 200ms' }} />
           ))}
         </div>

@@ -19,6 +19,23 @@ const TYPE_I18N: Record<string, { label: string; desc: string }> = {
   recup:   { label: 'record.trainingTypeRecupLabel',   desc: 'record.trainingTypeRecupDesc' },
 }
 
+// Types d'entraînement PROPRES à chaque sport (fini les types de course sur la boxe).
+export const BOXE_TYPES: { id: string; label: string; desc: string }[] = [
+  { id: 'technique',  label: 'Technique',  desc: 'Travail technique, déplacements' },
+  { id: 'sac',        label: 'Sac',        desc: 'Frappe au sac' },
+  { id: 'sparring',   label: 'Sparring',   desc: 'Opposition, assaut' },
+  { id: 'condition',  label: 'Condition physique', desc: 'Renfo, cardio boxe' },
+  { id: 'recup',      label: 'Récup',      desc: 'Récupération active' },
+]
+
+export const HYBRID_TYPES: { id: string; label: string; desc: string }[] = [
+  { id: 'metcon',     label: 'Metcon',     desc: 'Conditionnement métabolique (WOD)' },
+  { id: 'force',      label: 'Force',      desc: 'Charges lourdes' },
+  { id: 'cardio',     label: 'Cardio',     desc: 'Machines cardio, intervalles' },
+  { id: 'endurance',  label: 'Endurance',  desc: 'Effort long et régulier' },
+  { id: 'recup',      label: 'Récup',      desc: 'Récupération active' },
+]
+
 export type TrainingType = { id: string; label: string; desc: string; labelKey?: string; descKey?: string }
 
 interface Props {

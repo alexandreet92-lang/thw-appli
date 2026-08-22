@@ -99,6 +99,7 @@ export default function BoxeScreen({ session, onClose, isDark }: Props) {
   const [liveKg, setLiveKg] = useState(0)
   const [setsDone, setSetsDone] = useState(0)
   const [volumeKg, setVolumeKg] = useState(0)
+  const [doneLog, setDoneLog] = useState<{ label: string; detail?: string }[]>([])  // récap réel
   // Cible cardio réglable en direct (watts / vitesse / allure) + unité course.
   const [liveInt, setLiveInt] = useState<LiveIntensity | null>(null)
   const [runUnit, setRunUnit] = useState<'kmh' | 'minkm'>('minkm')
@@ -173,6 +174,19 @@ export default function BoxeScreen({ session, onClose, isDark }: Props) {
   }, [running, isDone, cur.measure, remaining, idx])
 
   function advance() {
+    // Enregistre l'étape d'EFFORT que l'on quitte (ce qui a été FAIT), avec les
+    // valeurs éditées en direct (reps/charge/temps/intensité).
+    const leaving = timeline[idx]
+    if (leaving && leaving.phase === 'work' && leaving.label !== 'Séance libre') {
+      let detail = ''
+      if (leaving.measure === 'reps') detail = `${liveReps} reps${liveKg ? ` · ${liveKg} kg` : ''}`
+      else {
+        const done = Math.max(0, (leaving.durationSec || 0) - Math.max(0, remaining))
+        detail = fmt(done > 0 ? done : (leaving.durationSec || 0))
+        if (liveInt) { const d = intensityDisplay(liveInt, runUnit); detail += ` · ${d.value} ${d.unit}` }
+      }
+      setDoneLog(log => [...log, { label: leaving.label, detail }])
+    }
     setIdx(i => {
       const next = Math.min(i + 1, timeline.length - 1)
       const step = timeline[next]
@@ -294,6 +308,8 @@ export default function BoxeScreen({ session, onClose, isDark }: Props) {
     return createPortal(
       <div style={{ position: 'fixed', inset: 0, zIndex: 10002, background: 'var(--bg-card)' }}>
         <SessionSaveForm sport={sportType} startedAt={startedAt} onBack={() => setShowSave(false)} onSave={handleSave} isDark={isDark}
+          summary={{ exos: doneLog.length, sets: setsDone, volumeKg, durationSec: elapsed }}
+          doneList={doneLog}
           hr={{ avg: hr.avg, min: hr.min, max: hr.max }} />
       </div>,
       document.body,

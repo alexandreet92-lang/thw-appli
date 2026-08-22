@@ -10,7 +10,7 @@ export function Radar({ scores, labels }: { scores: number[]; labels: string[] }
   }
   const poly = scores.map((s, i) => { const [x, y] = pt(i, (Math.max(0, Math.min(100, s)) / 100) * R); return `${x.toFixed(1)},${y.toFixed(1)}` }).join(' ')
   return (
-    <svg width={120} height={112} viewBox="0 0 120 112" style={{ display: 'block' }}>
+    <svg width={140} height={120} viewBox="-10 -4 140 120" style={{ display: 'block', overflow: 'visible' }}>
       {[0.34, 0.67, 1].map(f => (
         <polygon key={f} points={labels.map((_, i) => { const [x, y] = pt(i, R * f); return `${x.toFixed(1)},${y.toFixed(1)}` }).join(' ')} fill="none" stroke="var(--border)" strokeWidth={1} />
       ))}

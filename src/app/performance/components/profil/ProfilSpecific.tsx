@@ -46,10 +46,53 @@ export function ProfilSpecific({ p, wkg, specSport, onSport, params, fields, onE
       : specSport === 'cycling' ? [{ label: 'FTP', ...dN(p.ftp, 'W') }, { label: 'W/kg', value: wkg, unit: '' }, { label: 'LTHR', ...dN(p.lthr, 'bpm') }]
         : specSport === 'swimming' ? [{ label: 'CSS', value: p.css || '—', unit: p.css ? '/100m' : '' }, { label: t('performance.hrMax'), ...dN(p.hrMax, 'bpm') }, { label: 'VO2max', ...dN(p.vo2max, 'ml/kg/min') }]
           : [{ label: 'Wall Ball', value: params.wall_ball_max || '—', unit: 'reps' }, { label: 'Run comp.', value: params.run_compromised || '—', unit: '/km' }, { label: 'Farmer', value: params.farmer_max_m || '—', unit: 'm' }]
-  const radar = specSport === 'running' ? { labels: ['VMA', t('performance.threshold'), t('performance.endurance')], scores: [clamp((p.vma - 10) / 12 * 100), 75, clamp((p.vo2max - 30) / 40 * 100)] }
-    : specSport === 'cycling' ? { labels: ['FTP', 'W/kg', t('performance.endurance')], scores: [clamp((p.ftp - 100) / 300 * 100), clamp((parseFloat(wkg) - 1) / 5 * 100), clamp((p.vo2max - 30) / 40 * 100)] }
-      : specSport === 'swimming' ? { labels: ['CSS', t('performance.speed'), t('performance.endurance')], scores: [60, clamp((p.vma - 10) / 10 * 100), clamp((p.vo2max - 30) / 40 * 100)] }
-        : { labels: [t('performance.strength'), t('performance.cardio'), 'Run'], scores: [clamp(parseFloat(params.wall_ball_max ?? '0') / 50 * 100), clamp((p.hrMax - p.hrRest) / 80 * 100), clamp((p.vma - 10) / 12 * 100)] }
+  // Lecture des benchmarks saisis (params). numP = valeur numérique, secP = temps
+  // « m:ss » → secondes. Les axes sans source de donnée restent à 0 (polygone au
+  // centre) : la STRUCTURE des axes est posée, la saisie des tests viendra ensuite.
+  const numP = (k: string) => { const v = parseFloat((params[k] ?? '').replace(',', '.')); return isNaN(v) ? 0 : v }
+  const secP = (k: string) => { const m = (params[k] ?? '').split(':').map(x => parseInt(x, 10)); return m.length === 2 && !m.some(isNaN) ? m[0] * 60 + m[1] : 0 }
+  // Allure (s/km) → score : 6:00/km = 0, 3:00/km = 100.
+  const paceScore = (secPerKm: number) => secPerKm > 0 ? clamp((360 - secPerKm) / 180 * 100) : 0
+
+  const radar =
+    // ── RUNNING : VMA · Sprint · Explosivité · Seuil · Économie · Endurance ──
+    specSport === 'running' ? {
+      labels: ['VMA', 'Sprint', 'Explo.', 'Seuil', 'Éco.', 'Endur.'],
+      scores: [
+        clamp((p.vma - 10) / 12 * 100),   // VMA (1600 m / 6′)
+        0,                                 // Sprint 100/200/400 m — test à saisir
+        0,                                 // Explosivité 20/40 m + navette — test à saisir
+        0,                                 // Seuil 5/10 km / semi — test à saisir
+        0,                                 // Économie = %VMA sur 10 km — test à saisir
+        0,                                 // Endurance = %VMA sur semi — test à saisir
+      ],
+    }
+    // ── CYCLISME : Puissance · Sprint/PMA · Endurance · Résistance Z4 · Grimpeur ──
+    : specSport === 'cycling' ? {
+      labels: ['Puiss.', 'Sprint/PMA', 'Endur.', 'Résist.', 'Grimp.'],
+      scores: [
+        clamp((parseFloat(wkg || '0') - 1) / 5 * 100),                 // Puissance W/kg (10′/20′/30′)
+        clamp(((numP('watts_pma') || numP('max_power')) - 200) / 500 * 100), // Sprint/PMA 10″/1′/3′/5′
+        0,                                                             // Endurance = sortie 4 h + — test à saisir
+        0,                                                             // Résistance Z4 = P60min ÷ FTP — test à saisir
+        0,                                                             // Grimpeur = régularité puissance ≥80 km & ≥3000 m D+
+      ],
+    }
+    // ── NATATION / TRIATHLON ──
+    : specSport === 'swimming' ? {
+      labels: ['CSS', t('performance.speed'), t('performance.endurance')],
+      scores: [p.css ? 60 : 0, clamp((p.vma - 10) / 10 * 100), clamp((p.vo2max - 30) / 40 * 100)],
+    }
+    // ── HYROX (vue globale) : Run comp. · Force · Explosivité · Endurance fonctionnelle ──
+    : {
+      labels: ['Run comp.', 'Force', 'Explo.', 'Endur.'],
+      scores: [
+        paceScore(secP('run_compromised')),   // moyenne des 8 runs
+        0,                                     // Force (squat/DL/tractions lestées…) — test à saisir
+        0,                                     // Explosivité (jumps verticaux/horizontal) — test à saisir
+        0,                                     // Endurance fonctionnelle (test 10-20-30-40-60 ×5) — test à saisir
+      ],
+    }
 
   const tabBtn = (active: boolean): React.CSSProperties => ({ border: 'none', background: 'transparent', cursor: 'pointer', padding: '4px 0', fontFamily: FB, fontSize: 13, fontWeight: active ? 600 : 500, color: active ? 'var(--text)' : 'var(--text-dim)' })
 

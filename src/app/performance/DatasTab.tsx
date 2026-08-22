@@ -2027,10 +2027,13 @@ function PowerCurveLogSVG({ bikeByYear, hiddenYears, selectedYear, weight }: {
   const plotW = W - leftMargin
   const plotH = H - bottomMargin - 10
 
-  // ── Échelle logarithmique : positionX = log10(secs) / log10(duréeMax) ──
-  const LOG_MAX = Math.log10(21600)   // 6h en secondes
+  // ── Échelle racine carrée : les durées courtes sont resserrées (10 s et 1 min
+  // proches) et les longues étalées (1 h et 2 h très espacées) — positionX =
+  // √secs / √duréeMax. Contraire du log, qui écrasait au contraire les durées
+  // longues. Demande explicite : « moins espacé pour les petites durées ».
+  const SQRT_MAX = Math.sqrt(21600)   // 6h en secondes
   function logX(secs: number): number {
-    return (Math.log10(Math.max(secs, 1)) / LOG_MAX) * plotW + leftMargin
+    return (Math.sqrt(Math.max(secs, 1)) / SQRT_MAX) * plotW + leftMargin
   }
 
   function polyY(w: number): number {

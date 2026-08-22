@@ -3212,6 +3212,8 @@ function YearDatasSubTab() {
   const fetchData = useCallback(async () => {
     setLoading(true)
     const sb = createClient()
+    const uid = await resolvePlanningUid(sb)   // athlète ciblé (coach) ou soi-même
+    if (!uid) { setLoading(false); return }
 
     // Pagination pour contourner le plafond PostgREST db-max-rows=1000
     // (le .limit() côté client est écrasé par ce plafond serveur)
@@ -3222,6 +3224,7 @@ function YearDatasSubTab() {
       const { data: page } = await sb
         .from('activities')
         .select('sport_type, started_at, moving_time_s, distance_m, tss, elevation_gain_m')
+        .eq('user_id', uid)
         .order('started_at', { ascending: false })
         .range(offset, offset + PAGE - 1)
       if (!page?.length) break
@@ -3302,17 +3305,19 @@ function YearDatasSubTab() {
   // ── Fetch marqueurs (compétitions + blessures) ───────────────
   const fetchMarkers = useCallback(async () => {
     const sb = createClient()
+    const uid = await resolvePlanningUid(sb)   // athlète ciblé (coach) ou soi-même
+    if (!uid) return
     const [{ data: runRaces }, { data: cycleRaces }, { data: injuriesData }] = await Promise.all([
       // Courses à pied (is_race = true → workout_type 1)
       sb.from('activities')
         .select('id, title, started_at, sport_type, moving_time_s, distance_m')
-        .eq('is_race', true),
+        .eq('user_id', uid).eq('is_race', true),
       // Courses cyclistes (workout_type 11 dans raw_data)
       sb.from('activities')
         .select('id, title, started_at, sport_type, moving_time_s, distance_m')
-        .filter('raw_data->>workout_type', 'eq', '11'),
+        .eq('user_id', uid).filter('raw_data->>workout_type', 'eq', '11'),
       // Blessures — erreur silencieuse si table absente (data sera null)
-      sb.from('injuries').select('id, nom, type, date_debut, date_fin'),
+      sb.from('injuries').select('id, nom, type, date_debut, date_fin').eq('user_id', uid),
     ])
     const merged = [...(runRaces ?? []), ...(cycleRaces ?? [])]
     // Dédupliquer par id (une course running peut matcher les deux requêtes)

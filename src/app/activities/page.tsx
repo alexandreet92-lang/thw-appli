@@ -2,10 +2,10 @@
 
 export const dynamic = 'force-dynamic'
 
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef, useContext } from 'react'
 import { createPortal } from 'react-dom'
 import { createClient } from '@/lib/supabase/client'
-import { resolvePlanningUid, setPlanningScopeUid } from '@/lib/planning/scope'
+import { resolvePlanningUid, setPlanningScopeUid, PlanningScopeContext } from '@/lib/planning/scope'
 import { useI18n } from '@/lib/i18n'
 import { useTheme } from '@/hooks/useTheme'
 import { ScrollReveal, ScrollRevealGroup, ScrollRevealItem } from '@/components/ui/ScrollReveal'
@@ -5453,11 +5453,17 @@ function SectionDonnees({ activities, zones, profile }: {
   const isMobile = width < 768
 
   useEffect(() => {
-    const start = new Date(); start.setDate(start.getDate() - 400)
-    createClient().from('activities').select('started_at, tss, title')
-      .gte('started_at', start.toISOString())
-      .order('started_at', { ascending: true })
-      .then(({ data }) => setPmcActs((data ?? []) as { started_at: string; tss: number | null; title: string | null }[]))
+    void (async () => {
+      const sb = createClient()
+      const uid = await resolvePlanningUid(sb)   // athlète ciblé (coach) ou soi-même
+      if (!uid) return
+      const start = new Date(); start.setDate(start.getDate() - 400)
+      const { data } = await sb.from('activities').select('started_at, tss, title')
+        .eq('user_id', uid)
+        .gte('started_at', start.toISOString())
+        .order('started_at', { ascending: true })
+      setPmcActs((data ?? []) as { started_at: string; tss: number | null; title: string | null }[])
+    })()
   }, [])
 
   const displayDays = numWeeks(filter) * 7
@@ -10076,13 +10082,18 @@ export default function TrainingPage() {
 }
 
 function TrainingPageInner() {
-  // Vue coach : /activities?uid=<athlète> scope TOUTE la page sur cet athlète
-  // (resolvePlanningUid lit ce singleton ; la RLS is_coach_of autorise la lecture).
-  // Sans paramètre → scope nul = ses propres activités. Réglé AVANT les effets de
-  // chargement pour que la 1re requête cible déjà le bon utilisateur.
+  // Vue coach : scope TOUTE la page sur l'athlète consulté. Deux sources possibles
+  // et dans CET ordre de priorité :
+  //   1. le contexte PlanningScope (drawer coach : <Provider value={athleteId}>) ;
+  //   2. le paramètre d'URL ?uid=<athlète> (liens directs).
+  // Sans aucune des deux → scope nul = ses propres activités.
+  // IMPORTANT : ne JAMAIS remettre le scope à null quand le contexte fournit déjà
+  // un athlète (bug historique : la page écrasait le scope du drawer → le coach
+  // voyait SES activités sur la fiche de l'athlète).
+  const ctxScopeUid = useContext(PlanningScopeContext)
   if (typeof window !== 'undefined') {
     const u = new URLSearchParams(window.location.search).get('uid')
-    setPlanningScopeUid(u || null)
+    setPlanningScopeUid(ctxScopeUid || u || null)
   }
   const { t } = useI18n()
   useTheme() // branche sur le thème global (force re-render quand dark/light change)

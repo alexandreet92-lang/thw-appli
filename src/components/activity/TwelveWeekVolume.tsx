@@ -13,6 +13,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { resolvePlanningUid } from '@/lib/planning/scope'
 import { currentLocale } from '@/lib/i18n'
+import { useNarrow } from '@/lib/hooks/useNarrow'
 
 const BLUE = '#3B82F6'
 
@@ -81,6 +82,7 @@ interface WsRow { started_at: string; sport: string | null; exercises_detail: un
 export function TwelveWeekVolume({ activities }: { activities: ActLike[] }) {
   const [sport, setSport] = useState<SportKey>('all')
   const [selIdx, setSelIdx] = useState(11)          // dernière semaine par défaut
+  const narrow = useNarrow()                        // mobile → graphe plus grand/net
   const svgRef = useRef<SVGSVGElement>(null)
   const [wsRows, setWsRows] = useState<WsRow[]>([])
 
@@ -233,8 +235,12 @@ export function TwelveWeekVolume({ activities }: { activities: ActLike[] }) {
   })()
 
   // ── Géométrie du graphique ───────────────────────────────────
-  const W = 640, H = 190, PL = 46, PR = 14, PT = 26, PB = 26
+  // Mobile : viewBox plus étroit (donc tout est agrandi à l'affichage) et plus
+  // haut → chiffres/courbe bien lisibles. Desktop INCHANGÉ.
+  const W = narrow ? 400 : 640, H = narrow ? 250 : 190, PL = narrow ? 42 : 46, PR = 14, PT = 26, PB = 28
   const cW = W - PL - PR, cH = H - PT - PB
+  const fsAxis = narrow ? 13 : 10, fsVal = narrow ? 15 : 12, fsMonth = narrow ? 12 : 10
+  const lineW = narrow ? 3 : 2.4, rSel = narrow ? 7 : 5.5, rHalo = narrow ? 14 : 11, rDot = narrow ? 5 : 4
   const X = (i: number) => PL + (i / 11) * cW
   const Y = (v: number) => PT + (1 - v / (maxV * 1.08)) * cH
   const linePath = chartVals.map((v, i) => `${i === 0 ? 'M' : 'L'} ${X(i).toFixed(1)} ${Y(v).toFixed(1)}`).join(' ')
@@ -301,7 +307,7 @@ export function TwelveWeekVolume({ activities }: { activities: ActLike[] }) {
         {[0, maxV / 2, maxV].map((v, i) => (
           <g key={i}>
             <line x1={PL} y1={Y(v)} x2={PL + cW} y2={Y(v)} stroke="var(--border)" strokeWidth={1} strokeDasharray={i === 0 ? undefined : '3 4'} />
-            <text x={PL - 6} y={Y(v) + 3.5} textAnchor="end" fontSize={10} fill="var(--text-dim)" style={{ fontVariantNumeric: 'tabular-nums' }}>{fmtVal(v)} {chartUnit}</text>
+            <text x={PL - 6} y={Y(v) + 3.5} textAnchor="end" fontSize={fsAxis} fill="var(--text-dim)" style={{ fontVariantNumeric: 'tabular-nums' }}>{fmtVal(v)} {chartUnit}</text>
           </g>
         ))}
         {/* Colonnes de semaines (repères verticaux légers) */}
@@ -309,22 +315,22 @@ export function TwelveWeekVolume({ activities }: { activities: ActLike[] }) {
           <line key={i} x1={X(i)} y1={PT} x2={X(i)} y2={PT + cH} stroke="var(--border)" strokeWidth={0.5} opacity={0.5} />
         ))}
         <path d={areaPath} fill="url(#vol12grad)" />
-        <path d={linePath} fill="none" stroke={BLUE} strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" />
+        <path d={linePath} fill="none" stroke={BLUE} strokeWidth={lineW} strokeLinecap="round" strokeLinejoin="round" />
         {/* Curseur semaine sélectionnée */}
         <line x1={X(selIdx)} y1={Y(chartVals[selIdx])} x2={X(selIdx)} y2={PT + cH} stroke={BLUE} strokeWidth={2} />
         {/* Points hebdo */}
         {chartVals.map((v, i) => (
           i === selIdx
             ? <g key={i}>
-                <circle cx={X(i)} cy={Y(v)} r={11} fill={BLUE} opacity={0.18} />
-                <circle cx={X(i)} cy={Y(v)} r={5.5} fill={BLUE} />
-                <text x={X(i)} y={Y(v) - 12} textAnchor="middle" fontSize={12} fontWeight={800} fill="var(--text)" style={{ fontVariantNumeric: 'tabular-nums' }}>{fmtVal(v)} {chartUnit}</text>
+                <circle cx={X(i)} cy={Y(v)} r={rHalo} fill={BLUE} opacity={0.18} />
+                <circle cx={X(i)} cy={Y(v)} r={rSel} fill={BLUE} />
+                <text x={X(i)} y={Y(v) - 12} textAnchor="middle" fontSize={fsVal} fontWeight={800} fill="var(--text)" style={{ fontVariantNumeric: 'tabular-nums' }}>{fmtVal(v)} {chartUnit}</text>
               </g>
-            : <circle key={i} cx={X(i)} cy={Y(v)} r={4} fill="var(--bg-card)" stroke={BLUE} strokeWidth={2} />
+            : <circle key={i} cx={X(i)} cy={Y(v)} r={rDot} fill="var(--bg-card)" stroke={BLUE} strokeWidth={2} />
         ))}
         {/* Mois */}
         {monthTicks.map(t2 => (
-          <text key={t2.i} x={X(t2.i)} y={PT + cH + 16} textAnchor="middle" fontSize={10} fill="var(--text-dim)" style={{ textTransform: 'uppercase', letterSpacing: '0.06em' }}>{t2.m}</text>
+          <text key={t2.i} x={X(t2.i)} y={PT + cH + 16} textAnchor="middle" fontSize={fsMonth} fill="var(--text-dim)" style={{ textTransform: 'uppercase', letterSpacing: '0.06em' }}>{t2.m}</text>
         ))}
       </svg>
     </div>

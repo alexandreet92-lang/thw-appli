@@ -28,8 +28,11 @@ const ZTABS: Record<Sport, { id: ZType; label: string }[]> = {
 }
 const clamp = (x: number) => Math.max(0, Math.min(100, x))
 
-export function ProfilSpecific({ p, wkg, specSport, onSport, params, fields, onEditBenchmarks }: {
+export function ProfilSpecific({ p, wkg, specSport, onSport, params, fields, onEditBenchmarks, snapshot, year, years, onYear, onAnalyze, analyzing, notEnough }: {
   p: Prof; wkg: string; specSport: Sport; onSport: (id: Sport) => void; params: Record<string, string>; fields: BenchField[]; onEditBenchmarks: () => void
+  snapshot?: Record<string, number>           // scores IA par axe-id pour ce sport + année
+  year?: number; years?: number[]; onYear?: (y: number) => void
+  onAnalyze?: () => void; analyzing?: boolean; notEnough?: boolean
 }) {
   const { t } = useI18n()
   const [ztype, setZtype] = useState<ZType>('fc')
@@ -54,45 +57,39 @@ export function ProfilSpecific({ p, wkg, specSport, onSport, params, fields, onE
   // Allure (s/km) → score : 6:00/km = 0, 3:00/km = 100.
   const paceScore = (secPerKm: number) => secPerKm > 0 ? clamp((360 - secPerKm) / 180 * 100) : 0
 
-  const radar =
-    // ── RUNNING : VMA · Sprint · Explosivité · Seuil · Économie · Endurance ──
-    specSport === 'running' ? {
-      labels: ['VMA', 'Sprint', 'Explo.', 'Seuil', 'Éco.', 'Endur.'],
-      scores: [
-        clamp((p.vma - 10) / 12 * 100),   // VMA (1600 m / 6′)
-        0,                                 // Sprint 100/200/400 m — test à saisir
-        0,                                 // Explosivité 20/40 m + navette — test à saisir
-        0,                                 // Seuil 5/10 km / semi — test à saisir
-        0,                                 // Économie = %VMA sur 10 km — test à saisir
-        0,                                 // Endurance = %VMA sur semi — test à saisir
-      ],
-    }
-    // ── CYCLISME : Puissance · Sprint/PMA · Endurance · Résistance Z4 · Grimpeur ──
-    : specSport === 'cycling' ? {
-      labels: ['Puiss.', 'Sprint/PMA', 'Endur.', 'Résist.', 'Grimp.'],
-      scores: [
-        clamp((parseFloat(wkg || '0') - 1) / 5 * 100),                 // Puissance W/kg (10′/20′/30′)
-        clamp(((numP('watts_pma') || numP('max_power')) - 200) / 500 * 100), // Sprint/PMA 10″/1′/3′/5′
-        0,                                                             // Endurance = sortie 4 h + — test à saisir
-        0,                                                             // Résistance Z4 = P60min ÷ FTP — test à saisir
-        0,                                                             // Grimpeur = régularité puissance ≥80 km & ≥3000 m D+
-      ],
-    }
-    // ── NATATION / TRIATHLON ──
-    : specSport === 'swimming' ? {
-      labels: ['CSS', t('performance.speed'), t('performance.endurance')],
-      scores: [p.css ? 60 : 0, clamp((p.vma - 10) / 10 * 100), clamp((p.vo2max - 30) / 40 * 100)],
-    }
-    // ── HYROX (vue globale) : Run comp. · Force · Explosivité · Endurance fonctionnelle ──
-    : {
-      labels: ['Run comp.', 'Force', 'Explo.', 'Endur.'],
-      scores: [
-        paceScore(secP('run_compromised')),   // moyenne des 8 runs
-        0,                                     // Force (squat/DL/tractions lestées…) — test à saisir
-        0,                                     // Explosivité (jumps verticaux/horizontal) — test à saisir
-        0,                                     // Endurance fonctionnelle (test 10-20-30-40-60 ×5) — test à saisir
-      ],
-    }
+  // Axes par sport, avec id stable. Le score IA (snapshot[id], issu de l'analyse
+  // des activités) prime ; sinon on retombe sur le calcul depuis les benchmarks.
+  const axesDef: { id: string; label: string; base: number }[] =
+    specSport === 'running' ? [
+      { id: 'vma',    label: 'VMA',        base: clamp((p.vma - 10) / 12 * 100) },
+      { id: 'sprint', label: 'Sprint',     base: 0 },   // 100/200/400 m — test
+      { id: 'explo',  label: 'Explo.',     base: 0 },   // 20/40 m + navette — test
+      { id: 'seuil',  label: 'Seuil',      base: 0 },   // 5/10 km / semi — test
+      { id: 'eco',    label: 'Éco.',       base: 0 },   // %VMA sur 10 km — test
+      { id: 'endur',  label: 'Endur.',     base: 0 },   // %VMA sur semi — test
+    ]
+    : specSport === 'cycling' ? [
+      { id: 'puissance', label: 'Puiss.',     base: clamp((parseFloat(wkg || '0') - 1) / 5 * 100) },
+      { id: 'sprintpma', label: 'Sprint/PMA', base: clamp(((numP('watts_pma') || numP('max_power')) - 200) / 500 * 100) },
+      { id: 'endurance', label: 'Endur.',     base: 0 },   // sortie 4 h + — test
+      { id: 'resistance',label: 'Résist.',    base: 0 },   // P60min ÷ FTP — test
+      { id: 'grimpeur',  label: 'Grimp.',     base: 0 },   // régularité col — test
+    ]
+    : specSport === 'swimming' ? [
+      { id: 'css',   label: 'CSS',                    base: p.css ? 60 : 0 },
+      { id: 'speed', label: t('performance.speed'),   base: clamp((p.vma - 10) / 10 * 100) },
+      { id: 'endur', label: t('performance.endurance'), base: clamp((p.vo2max - 30) / 40 * 100) },
+    ]
+    : [
+      { id: 'runcomp', label: 'Run comp.', base: paceScore(secP('run_compromised')) },
+      { id: 'force',   label: 'Force',     base: 0 },   // squat/DL/tractions — test
+      { id: 'explo',   label: 'Explo.',    base: 0 },   // jumps — test
+      { id: 'endur',   label: 'Endur.',    base: 0 },   // endurance fonctionnelle — test
+    ]
+  const radar = {
+    labels: axesDef.map(a => a.label),
+    scores: axesDef.map(a => snapshot && snapshot[a.id] != null ? snapshot[a.id] : a.base),
+  }
 
   const tabBtn = (active: boolean): React.CSSProperties => ({ border: 'none', background: 'transparent', cursor: 'pointer', padding: '4px 0', fontFamily: FB, fontSize: 13, fontWeight: active ? 600 : 500, color: active ? 'var(--text)' : 'var(--text-dim)' })
 
@@ -105,6 +102,32 @@ export function ProfilSpecific({ p, wkg, specSport, onSport, params, fields, onE
           </button>
         ))}
       </div>
+
+      {/* Sélecteur d'année (profil qui change chaque année) + bouton Analyser */}
+      {(years || onAnalyze) && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {(years && years.length ? years : (year ? [year] : [])).map(y => (
+              <button key={y} onClick={() => onYear?.(y)} style={{
+                padding: '4px 11px', borderRadius: 999, border: `1px solid ${y === year ? 'var(--primary)' : 'var(--border)'}`,
+                background: y === year ? 'var(--primary-dim)' : 'transparent', color: y === year ? 'var(--primary)' : 'var(--text-dim)',
+                fontFamily: FB, fontSize: 12, fontWeight: y === year ? 600 : 500, cursor: 'pointer',
+              }}>{y}</button>
+            ))}
+          </div>
+          {onAnalyze && (
+            <button onClick={onAnalyze} disabled={analyzing} style={{
+              border: 'none', background: 'transparent', cursor: analyzing ? 'default' : 'pointer',
+              fontFamily: FB, fontSize: 12, fontWeight: 600, color: 'var(--primary)', opacity: analyzing ? 0.6 : 1,
+            }}>{analyzing ? t('performance.analyzing') : `${t('performance.analyze')} ↻`}</button>
+          )}
+        </div>
+      )}
+      {notEnough && (
+        <p style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-dim)', margin: 0, padding: '8px 12px', background: 'var(--bg-card2)', borderRadius: 10 }}>
+          {t('performance.notEnoughData')}
+        </p>
+      )}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: 'var(--space-6)', alignItems: 'start' }}>
         <Radar scores={radar.scores} labels={radar.labels} />

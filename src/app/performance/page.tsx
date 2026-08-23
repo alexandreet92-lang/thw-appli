@@ -30,6 +30,7 @@ import { TestCard } from '@/app/performance/components/tests/TestCard'
 import { TabbedPageLayout } from '@/components/ui/TabbedPageLayout'
 import { User, Database, FlaskConical } from 'lucide-react'
 import { ProfilSpecific } from '@/app/performance/components/profil/ProfilSpecific'
+import { analyzeYear, saveSnapshot, loadSnapshots, type Snapshots, type AnalyzeResult, type SportKey } from '@/lib/performance/analyzeProfile'
 import { LevelBars } from '@/app/performance/components/profil/LevelBars'
 import { BenchmarkSheet } from '@/app/performance/components/profil/BenchmarkSheet'
 import { currentLocale } from '@/lib/i18n'
@@ -262,6 +263,49 @@ function ProfilTab({ onSelect, selectedDatum, profile: p, setProfile: setP, onAn
   const [specSavedOk,setSpecSavedOk]= useState(false)
   const [benchOpen,   setBenchOpen]  = useState(false)
 
+  // ── Profil par année : analyse depuis les activités + instantanés ──
+  const [profileYear, setProfileYear] = useState(new Date().getFullYear())
+  const [snapshots, setSnapshots] = useState<Snapshots>({ byYear: {}, years: [] })
+  const [specAnalyzing, setSpecAnalyzing] = useState(false)
+  const [analyzeResult, setAnalyzeResult] = useState<AnalyzeResult | null>(null)
+  const autoRan = useRef(false)
+
+  const runSpecAnalyze = useCallback(async (yr: number) => {
+    setSpecAnalyzing(true)
+    try {
+      const sb = createClient()
+      const uid = await resolvePlanningUid(sb)
+      if (!uid) return
+      const res = await analyzeYear(sb, uid, yr)
+      setAnalyzeResult(res)
+      await saveSnapshot(sb, uid, res)
+      setSnapshots(await loadSnapshots(sb, uid))
+    } finally {
+      setSpecAnalyzing(false)
+    }
+  }, [])
+
+  // Charge les instantanés au montage ; si une 1ʳᵉ analyse a déjà eu lieu, on
+  // recalcule l'année courante automatiquement (« le système tourne tout seul »).
+  useEffect(() => {
+    void (async () => {
+      const sb = createClient()
+      const uid = await resolvePlanningUid(sb)
+      if (!uid) return
+      const snaps = await loadSnapshots(sb, uid)
+      setSnapshots(snaps)
+      if (snaps.years.length > 0 && !autoRan.current) {
+        autoRan.current = true
+        void runSpecAnalyze(new Date().getFullYear())
+      }
+    })()
+  }, [runSpecAnalyze])
+
+  const profileYears = Array.from(new Set([new Date().getFullYear(), ...snapshots.years])).sort((a, b) => b - a)
+  const specKey = specSport === 'swimming' ? null : (specSport as SportKey)
+  const curSnapshot = specKey ? snapshots.byYear[String(profileYear)]?.[specKey] : undefined
+  const specNotEnough = !!specKey && !curSnapshot && analyzeResult?.year === profileYear && analyzeResult.sports[specKey] != null && !analyzeResult.sports[specKey].enough
+
   // W/kg seulement si FTP ET poids sont renseignés, sinon « — ».
   const wkg = (p.ftp > 0 && p.weight > 0) ? (p.ftp / p.weight).toFixed(2) : '—'
 
@@ -479,7 +523,9 @@ function ProfilTab({ onSelect, selectedDatum, profile: p, setProfile: setP, onAn
       <div>
         <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 600, color: 'var(--text)', margin: 0 }}>{t('performance.specificProfile')}</h2>
         <p style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--text-dim)', margin: 'var(--space-1) 0 var(--space-4)' }}>{t('performance.specificProfileSubtitle')}</p>
-        <ProfilSpecific p={p} wkg={wkg} specSport={specSport} onSport={setSpecSport} params={specParams[specSport]} fields={SPORT_SPEC_FIELDS[specSport]} onEditBenchmarks={() => setBenchOpen(true)} />
+        <ProfilSpecific p={p} wkg={wkg} specSport={specSport} onSport={setSpecSport} params={specParams[specSport]} fields={SPORT_SPEC_FIELDS[specSport]} onEditBenchmarks={() => setBenchOpen(true)}
+          snapshot={curSnapshot} year={profileYear} years={profileYears} onYear={setProfileYear}
+          onAnalyze={() => void runSpecAnalyze(profileYear)} analyzing={specAnalyzing} notEnough={specNotEnough} />
       </div>
 
       {/* Niveau estimé */}

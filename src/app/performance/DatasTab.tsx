@@ -733,13 +733,22 @@ function ZBars({ zones, onSelect, selectedKey, editKey, editDraft, onEditStart, 
   )
 }
 
-function RecordRow({ label, rec24, rec23, sub, onSelect, selected, actions }: {
-  label: string; rec24: string; rec23: string; sub?: string
+// Date compacte pour les records (jour où la perf a été réalisée).
+function fmtRecDate(iso?: string): string | null {
+  if (!iso || iso === '—') return null
+  const d = new Date(iso)
+  if (isNaN(d.getTime())) return null
+  return d.toLocaleDateString(currentLocale(), { day: '2-digit', month: 'short', year: '2-digit' })
+}
+
+function RecordRow({ label, rec24, rec23, sub, date, onSelect, selected, actions }: {
+  label: string; rec24: string; rec23: string; sub?: string; date?: string
   onSelect?: () => void; selected?: boolean
   actions?: React.ReactNode
 }) {
   const { t } = useI18n()
   const isPR = rec24 !== '—' && rec23 !== '—' && rec24 < rec23
+  const dateStr = fmtRecDate(date)
   return (
     <div
       onClick={rec24 !== '—' ? onSelect : undefined}
@@ -759,6 +768,9 @@ function RecordRow({ label, rec24, rec23, sub, onSelect, selected, actions }: {
           <span className="tnum" style={{ fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{rec24}</span>
           {isPR && <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 4, background: 'transparent', color: 'var(--primary)', fontWeight: 700 }}>PR</span>}
           {sub && <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>{sub}</span>}
+          {dateStr && rec24 !== '—' && (
+            <span className="tnum" style={{ fontSize: 10, color: 'var(--text-dim)', marginLeft: 'auto', whiteSpace: 'nowrap' }}>{dateStr}</span>
+          )}
         </div>
         {rec23 && rec23 !== '—' && (
           <span className="tnum" style={{ fontSize: 10, fontFamily: 'var(--font-body)', color: 'var(--text-dim)' }}>{t('perf2.previous')} : {rec23}</span>
@@ -766,6 +778,77 @@ function RecordRow({ label, rec24, rec23, sub, onSelect, selected, actions }: {
       </div>
       {actions && <div onClick={e => e.stopPropagation()}>{actions}</div>}
     </div>
+  )
+}
+
+// ── Surpage « Comparer les années » (records de puissance) ────────
+// Tableau durées × années : watts + W/kg (poids athlète). Meilleure année par
+// durée surlignée. Ouvert depuis la carte Records de puissance.
+function PowerCompareOverlay({ bikeByYear, weight, onClose }: {
+  bikeByYear: Record<string, Record<string, number>>
+  weight: number
+  onClose: () => void
+}) {
+  const { t } = useI18n()
+  const years = Object.keys(bikeByYear).sort((a, b) => b.localeCompare(a))
+  const cell: React.CSSProperties = { padding: '7px 10px', textAlign: 'right', whiteSpace: 'nowrap', borderBottom: '1px solid var(--border)', fontVariantNumeric: 'tabular-nums' }
+  const hdr: React.CSSProperties = { ...cell, textAlign: 'right', fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.04em', position: 'sticky', top: 0, background: 'var(--bg-card2)', zIndex: 1 }
+
+  return createPortal(
+    <div onClick={e => { if (e.target === e.currentTarget) onClose() }}
+      style={{ position: 'fixed', inset: 0, zIndex: 3300, background: 'rgba(0,0,0,0.72)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+      <div style={{ width: '100%', maxWidth: 820, maxHeight: 'calc(100dvh - 64px)', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 18, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
+          <div>
+            <h2 style={{ fontFamily: 'Syne,sans-serif', fontSize: 15, fontWeight: 700, margin: 0, color: 'var(--text)' }}>{t('perf2.compareYears')}</h2>
+            <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: '3px 0 0' }}>
+              {t('perf2.powerRecords')}{weight > 0 ? ` · ${weight} kg` : ''}
+            </p>
+          </div>
+          <button onClick={onClose} style={{ width: 30, height: 30, borderRadius: '50%', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 17, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
+        </div>
+        <div style={{ flex: 1, overflow: 'auto', padding: '4px 8px 12px' }}>
+          {years.length === 0 ? (
+            <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-dim)', fontSize: 13 }}>{t('perf2.noRaceRecorded')}</div>
+          ) : (
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+              <thead>
+                <tr>
+                  <th style={{ ...hdr, textAlign: 'left' }}>{t('activities.duration')}</th>
+                  {years.map(yr => <th key={yr} style={hdr}>{yr}</th>)}
+                </tr>
+              </thead>
+              <tbody>
+                {BIKE_DURS.map((d, ri) => {
+                  const vals = years.map(yr => bikeByYear[yr]?.[d] ?? 0)
+                  const best = Math.max(...vals, 0)
+                  return (
+                    <tr key={d} style={{ background: ri % 2 === 0 ? 'transparent' : 'var(--bg-card2)' }}>
+                      <td style={{ ...cell, textAlign: 'left', fontWeight: 600, color: 'var(--text-mid)' }}>{d}</td>
+                      {years.map((yr, i) => {
+                        const w = vals[i]
+                        const isBest = w > 0 && w === best && years.length > 1
+                        return (
+                          <td key={yr} style={{ ...cell, color: w > 0 ? (isBest ? 'var(--primary)' : 'var(--text)') : 'var(--text-dim)', fontWeight: isBest ? 800 : 600 }}>
+                            {w > 0 ? (
+                              <>
+                                {w}<span style={{ fontSize: 10, color: 'var(--text-dim)', marginLeft: 2 }}>W</span>
+                                {weight > 0 && <div style={{ fontSize: 10, color: 'var(--text-dim)', fontWeight: 500 }}>{(w / weight).toFixed(2)} W/kg</div>}
+                              </>
+                            ) : '—'}
+                          </td>
+                        )
+                      })}
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+    </div>,
+    document.body
   )
 }
 
@@ -2326,6 +2409,7 @@ function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests }: 
     | { kind: 'done'; processed: number; beats: number }
     | { kind: 'error'; msg: string }
   const [bikeSyncStatus, setBikeSyncStatus] = useState<BikeSyncStatus>({ kind: 'idle' })
+  const [compareOpen, setCompareOpen] = useState(false)
 
   // Loader bike records, réutilisable (mount + après backfill + après edit)
   const loadBikeRecords = useCallback(async () => {
@@ -2834,7 +2918,13 @@ function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests }: 
                   </span>
                 )}
               </div>
-              <BackfillRecordsButton onDone={loadBikeRecords} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                <button onClick={() => setCompareOpen(true)}
+                  style={{ padding: '4px 11px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-mid)', fontSize: 11, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                  {t('perf2.compareYears')}
+                </button>
+                <BackfillRecordsButton onDone={loadBikeRecords} />
+              </div>
             </div>
             {BIKE_DURS.map(d => {
               const eff = getEffectiveRec(d)
@@ -2845,6 +2935,7 @@ function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests }: 
                   rec24={eff.w > 0 ? `${eff.w}W` : '—'}
                   rec23={prev && prev.w > 0 ? `${prev.w}W` : '—'}
                   sub={eff.w > 0 ? `${(eff.w / profile.weight).toFixed(2)} W/kg` : undefined}
+                  date={eff.w > 0 ? eff.date : undefined}
                   onSelect={() => eff.w > 0 ? onSelect(`Vélo ${d}`, `${eff.w}W`) : undefined}
                   selected={sel}
                   actions={
@@ -2862,6 +2953,7 @@ function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests }: 
 
           <ClimbsSection profile={profile} />
           <RacesSection profile={profile} />
+          {compareOpen && <PowerCompareOverlay bikeByYear={bikeByYear} weight={profile.weight} onClose={() => setCompareOpen(false)} />}
         </div>
       )}
 
@@ -2884,6 +2976,7 @@ function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests }: 
                   rec24={spBest?.perf ?? '—'}
                   rec23={prevRec?.perf ?? '—'}
                   sub={pace !== '—' ? pace : undefined}
+                  date={spBest?.date}
                   onSelect={() => spBest ? onSelect(`Course ${d}`, spBest.perf) : undefined}
                   selected={sel}
                   actions={

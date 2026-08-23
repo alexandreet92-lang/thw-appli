@@ -59,7 +59,7 @@ export default function InjuriesPage() {
         ) : tab === 'historique' ? (
           <HistoryTab injuries={injuries} onOpen={i => setTrackId(i.id)} />
         ) : (
-          <AnalysisTab injuries={injuries} />
+          <AnalysisTab injuries={injuries} logs={logs} />
         )}
       </TabbedPageLayout>
 

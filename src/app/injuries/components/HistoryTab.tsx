@@ -110,32 +110,30 @@ function Ranking({ title, data, color }: { title: string; data: { key: string; c
 export function HistoryTab({ injuries, onOpen }: { injuries: Injury[]; onOpen: (i: Injury) => void }) {
   const { t } = useI18n()
   const resolved = injuries.filter(i => i.status === 'resolved')
+  const cardBox: React.CSSProperties = { background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: 'var(--space-5)' }
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-8)' }}>
-      <div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+      {/* Frise — pleine largeur */}
+      <div style={cardBox}>
         <p style={lbl}>{t('injuries.friseTitle')}</p>
-        <div style={{ background: 'var(--bg-card2)', borderRadius: 'var(--r-md)', padding: 'var(--space-4)', maxWidth: 640 }}>
-          <Frise injuries={injuries} onOpen={onOpen} />
+        <Frise injuries={injuries} onOpen={onOpen} />
+      </div>
+
+      {/* Classements + résolus — grille pleine largeur */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 'var(--space-4)', alignItems: 'start' }}>
+        <div style={cardBox}><Ranking title={t('injuries.rankZones')} data={zonesRanking(injuries)} color="var(--charge-hard)" /></div>
+        <div style={cardBox}><Ranking title={t('injuries.rankSports')} data={sportsRanking(injuries)} color="var(--primary)" /></div>
+        <div style={cardBox}>
+          <p style={lbl}>{t('injuries.resolvedTitle')}</p>
+          {resolved.length === 0 ? <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-mid)', margin: 0 }}>{t('injuries.resolvedEmpty')}</p> : resolved.map(i => (
+            <div key={i.id} onClick={() => onOpen(i)} className="card-interactive" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', background: 'var(--bg-card2)', borderRadius: 'var(--r-sm)', padding: 'var(--space-2) var(--space-3)', marginBottom: 'var(--space-2)' }}>
+              <span style={{ width: 7, height: 7, borderRadius: '50%', background: SEV[i.severity].varc, flexShrink: 0, opacity: 0.55 }} />
+              <span style={{ fontFamily: FB, fontSize: 13, color: 'var(--text)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{i.zone}</span>
+              {isRecidive(i, injuries) && <span style={{ fontFamily: FB, fontSize: 10, fontWeight: 600, color: 'var(--text-dim)' }}>{t('injuries.recidiveTag')}</span>}
+              <span className="tnum" style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-mid)', flexShrink: 0 }}>{durationDays(i)} {t('injuries.dayUnit')}</span>
+            </div>
+          ))}
         </div>
-      </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 'var(--space-6)', maxWidth: 640 }}>
-        <Ranking title={t('injuries.rankZones')} data={zonesRanking(injuries)} color="var(--charge-hard)" />
-        <Ranking title={t('injuries.rankSports')} data={sportsRanking(injuries)} color="var(--primary)" />
-      </div>
-      <div>
-        <p style={lbl}>{t('injuries.resolvedTitle')}</p>
-        {resolved.length === 0 ? <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-mid)', margin: 0 }}>{t('injuries.resolvedEmpty')}</p> : (
-          <div style={{ maxWidth: 640 }}>
-            {resolved.map(i => (
-              <div key={i.id} onClick={() => onOpen(i)} className="card-interactive" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', background: 'var(--bg-card2)', borderRadius: 'var(--r-sm)', padding: 'var(--space-2) var(--space-3)', marginBottom: 'var(--space-2)' }}>
-                <span style={{ width: 7, height: 7, borderRadius: '50%', background: SEV[i.severity].varc, flexShrink: 0, opacity: 0.55 }} />
-                <span style={{ fontFamily: FB, fontSize: 13, color: 'var(--text)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{i.zone}</span>
-                {isRecidive(i, injuries) && <span style={{ fontFamily: FB, fontSize: 10, fontWeight: 600, color: 'var(--text-dim)' }}>{t('injuries.recidiveTag')}</span>}
-                <span className="tnum" style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-mid)', flexShrink: 0 }}>{durationDays(i)} {t('injuries.dayUnit')}</span>
-              </div>
-            ))}
-          </div>
-        )}
       </div>
     </div>
   )

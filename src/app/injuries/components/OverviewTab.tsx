@@ -5,7 +5,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { AnimatedBar } from '@/components/ui/AnimatedBar'
 import { SEV, PHASES, type Injury, type InjuryLog, type Phase } from '../types'
-import { availability12mo, daysSince, phasePct, riskIndex, returnProgress, sortedLogs, painTrend, type RiskLevel, type TrendDir } from '../lib'
+import { availability12mo, daysSince, phasePct, riskIndex, returnProgress, sortedLogs, painTrend, preventionAlerts, type RiskLevel, type TrendDir } from '../lib'
 import { useI18n } from '@/lib/i18n'
 
 const FB = 'var(--font-body)', FD = 'var(--font-display)'
@@ -108,6 +108,7 @@ export function OverviewTab({ injuries, logs, onOpen, onCheckin }: {
   const avoid = [...new Set(active.flatMap(i => i.impact.avoid))]
   const avail = availability12mo(injuries)
   const risk = riskIndex(injuries)
+  const alerts = preventionAlerts(injuries, logs)
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-8)' }}>
@@ -116,6 +117,21 @@ export function OverviewTab({ injuries, logs, onOpen, onCheckin }: {
         <Stat label={t('injuries.statRisk')} value={risk.label} valueColor={RISK_COLOR[risk.level]} sub={risk.drivers.length ? risk.drivers.join(' · ') : (risk.level === 'none' ? 'Aucun épisode actif' : 'Basé sur tes épisodes actifs')} />
         <Stat label={t('injuries.statAvailability12mo')} value={`${avail}%`} sub={t('injuries.statAvailability12moSub')} />
       </div>
+
+      {/* Prévention & alertes — récidives chroniques + douleur qui remonte */}
+      {alerts.length > 0 && (
+        <div style={{ background: 'var(--bg-card)', border: '1px solid color-mix(in srgb, var(--charge-mid) 32%, var(--border))', borderRadius: 'var(--r-md)', padding: 'var(--space-4) var(--space-5)' }}>
+          <p style={{ ...lbl, color: 'var(--charge-mid)', marginBottom: 'var(--space-3)' }}>{t('injuries.preventionTitle')}</p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 'var(--space-3) var(--space-6)' }}>
+            {alerts.map((a, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--space-2)' }}>
+                <span style={{ width: 7, height: 7, borderRadius: '50%', background: a.level === 'high' ? 'var(--charge-hard)' : 'var(--charge-mid)', marginTop: 5, flexShrink: 0 }} />
+                <span style={{ fontFamily: FB, fontSize: 13, color: 'var(--text)', lineHeight: 1.45 }}>{a.text}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div>
         <p style={{ ...lbl, marginBottom: 'var(--space-3)' }}>{t('injuries.ongoing')}</p>

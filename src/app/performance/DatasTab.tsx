@@ -18,6 +18,7 @@ import { HyroxRecords } from './HyroxRecords'
 import { GymRecords } from './GymRecords'
 import { ClimbsSection } from './ClimbsSection'
 import { RacesSection } from './RacesSection'
+import { LinkActivitySheet } from './LinkActivitySheet'
 import { currentLocale } from '@/lib/i18n'
 
 // ── Types ────────────────────────────────────────────────────────
@@ -326,11 +327,23 @@ interface SpRecord {
   performance: string
   performance_unit: string
   achieved_at: string
+  activity_id?: string | null
   split_swim?: string | null
   split_t1?:   string | null
   split_bike?: string | null
   split_t2?:   string | null
   split_run?:  string | null
+}
+
+// Données réelles d'une activité liée (pour la bulle au survol des records).
+interface LinkedAct {
+  distance_m: number | null
+  elevation_gain_m: number | null
+  avg_hr: number | null
+  max_hr: number | null
+  avg_temp_c: number | null
+  avg_pace_s_km: number | null
+  moving_time_s: number | null
 }
 
 const CHART_DISTS: Record<string, string[]> = {
@@ -362,17 +375,28 @@ function gaugeTimeColor(dist: string, sec: number): string {
 // Chaque jauge = une performance (un jour). Couleur = temps réalisé (barème
 // par distance). Tri par année / meilleur→moins bon / chronologique. Mobile :
 // 5 jauges visibles, défilement latéral pour les autres. Clic → détail du jour.
-function TimeBarChart({ records, chartDists, onBarClick }: {
+function TimeBarChart({ records, chartDists, onBarClick, actMap, onAll, distKm }: {
   records: SpRecord[]
   chartDists: string[]
   onBarClick: (r: SpRecord) => void
+  actMap?: Record<string, LinkedAct>
+  onAll?: () => void
+  distKm?: Record<string, number>
 }) {
   const { t } = useI18n()
   const [selDist, setSelDist] = useState(chartDists[0] ?? '')
   const [sortMode, setSortMode] = useState<'chrono' | 'best'>('chrono')
   const [yearFilter, setYearFilter] = useState<string>('all')
+  const [hover, setHover] = useState<{ r: SpRecord; x: number } | null>(null)
 
   const fmtDay = (iso: string) => new Date(iso).toLocaleDateString(currentLocale(), { day: '2-digit', month: 'short' })
+  const paceOf = (r: SpRecord): string | null => {
+    const km = distKm?.[r.distance_label] ?? 0
+    const sec = toSec(r.performance)
+    if (km <= 0 || sec <= 0) return null
+    const p = sec / km
+    return `${Math.floor(p / 60)}:${String(Math.round(p % 60)).padStart(2, '0')}/km`
+  }
 
   const distRecs = records.filter(r => r.distance_label === selDist && r.performance !== '—')
   const years = Array.from(new Set(distRecs.map(r => r.achieved_at.slice(0, 4)))).sort((a, b) => b.localeCompare(a))
@@ -400,10 +424,13 @@ function TimeBarChart({ records, chartDists, onBarClick }: {
   return (
     <div style={{ marginBottom: 14 }}>
       {/* Distances */}
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12, alignItems: 'center' }}>
         {chartDists.map(d => (
           <button key={d} onClick={() => { setSelDist(d); setYearFilter('all') }} style={distTabBtn(selDist === d)}>{d}</button>
         ))}
+        {onAll && (
+          <button onClick={onAll} style={{ ...distTabBtn(false), marginLeft: 'auto', fontWeight: 600 }}>All</button>
+        )}
       </div>
 
       {/* Tri : année + chronologique / meilleur */}
@@ -425,27 +452,57 @@ function TimeBarChart({ records, chartDists, onBarClick }: {
           {t('perf2.addTimeToSee', { dist: selDist })}
         </p>
       ) : (
-        <div className="rec-gauge-strip" style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 6 }}>
-          {shown.map(r => {
-            const sec = toSec(r.performance)
-            const col = gaugeTimeColor(selDist, sec)
-            const hPct = Math.max(8, (sec / topSec) * 100)
-            const isBest = sec === bestSec
+        <div style={{ position: 'relative' }}>
+          <div className="rec-gauge-strip" style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 6 }}>
+            {shown.map((r, i) => {
+              const sec = toSec(r.performance)
+              const col = gaugeTimeColor(selDist, sec)
+              const hPct = Math.max(8, (sec / topSec) * 100)
+              const isBest = sec === bestSec
+              return (
+                <button key={r.id} onClick={() => onBarClick(r)}
+                  onMouseEnter={() => setHover({ r, x: i })}
+                  onMouseLeave={() => setHover(h => h?.r.id === r.id ? null : h)}
+                  style={{ flex: '0 0 64px', width: 64, border: 'none', background: 'transparent', cursor: 'pointer',
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, padding: 0 }}>
+                  <span className="tnum" style={{ fontFamily: 'var(--font-body)', fontSize: 11, fontWeight: 700, color: 'var(--text)' }}>{r.performance}</span>
+                  <div style={{ height: BAR_H, width: '100%', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+                    <div style={{ width: 14, height: `${hPct}%`, background: col, borderRadius: 7,
+                      boxShadow: isBest ? `0 0 0 2px var(--bg-card), 0 0 0 3px ${col}` : 'none',
+                      animation: 'chartBarEnter 0.9s cubic-bezier(0.25,1,0.5,1) both', transformBox: 'fill-box', transformOrigin: 'bottom' }} />
+                  </div>
+                  <span style={{ fontFamily: 'var(--font-body)', fontSize: 9.5, color: 'var(--text-dim)', whiteSpace: 'nowrap' }}>{fmtDay(r.achieved_at)}</span>
+                  {isBest && <span style={{ fontSize: 8, fontWeight: 700, color: col }}>★ PR</span>}
+                </button>
+              )
+            })}
+          </div>
+
+          {/* Bulle au survol — temps / distance / allure + (si activité liée) D+, FC, temp */}
+          {hover && (() => {
+            const r = hover.r
+            const act = r.activity_id ? actMap?.[r.activity_id] : undefined
+            const km = distKm?.[r.distance_label]
+            const left = Math.min(hover.x * 74 + 8, 240)
             return (
-              <button key={r.id} onClick={() => onBarClick(r)}
-                style={{ flex: '0 0 64px', width: 64, border: 'none', background: 'transparent', cursor: 'pointer',
-                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, padding: 0 }}>
-                <span className="tnum" style={{ fontFamily: 'var(--font-body)', fontSize: 11, fontWeight: 700, color: 'var(--text)' }}>{r.performance}</span>
-                <div style={{ height: BAR_H, width: '100%', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
-                  <div style={{ width: 14, height: `${hPct}%`, background: col, borderRadius: 7,
-                    boxShadow: isBest ? `0 0 0 2px var(--bg-card), 0 0 0 3px ${col}` : 'none',
-                    animation: 'chartBarEnter 0.9s cubic-bezier(0.25,1,0.5,1) both', transformBox: 'fill-box', transformOrigin: 'bottom' }} />
-                </div>
-                <span style={{ fontFamily: 'var(--font-body)', fontSize: 9.5, color: 'var(--text-dim)', whiteSpace: 'nowrap' }}>{fmtDay(r.achieved_at)}</span>
-                {isBest && <span style={{ fontSize: 8, fontWeight: 700, color: col }}>★ PR</span>}
-              </button>
+              <div style={{ position: 'absolute', top: -6, left, transform: 'translateY(-100%)', zIndex: 20,
+                background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 10, padding: '9px 12px',
+                pointerEvents: 'none', minWidth: 148, boxShadow: '0 4px 18px rgba(0,0,0,0.3)' }}>
+                <p style={{ fontFamily: 'var(--font-display)', fontSize: 12, fontWeight: 700, color: 'var(--text)', margin: '0 0 4px' }}>{r.distance_label} · {r.performance}</p>
+                <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: '0 0 3px' }}>{new Date(r.achieved_at).toLocaleDateString(currentLocale(), { day: '2-digit', month: 'short', year: 'numeric' })}</p>
+                {km ? <p className="tnum" style={{ fontSize: 11, color: 'var(--text-mid)', margin: '0 0 2px' }}>{km} km{paceOf(r) ? ` · ${paceOf(r)}` : ''}</p> : (paceOf(r) && <p className="tnum" style={{ fontSize: 11, color: 'var(--text-mid)', margin: '0 0 2px' }}>{paceOf(r)}</p>)}
+                {act ? (
+                  <div style={{ marginTop: 5, paddingTop: 5, borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    {act.elevation_gain_m != null && <span className="tnum" style={{ fontSize: 10.5, color: 'var(--text-dim)' }}>D+ {Math.round(act.elevation_gain_m)} m</span>}
+                    {act.avg_hr != null && <span className="tnum" style={{ fontSize: 10.5, color: 'var(--text-dim)' }}>FC moy {act.avg_hr} · max {act.max_hr ?? '—'} bpm</span>}
+                    {act.avg_temp_c != null && <span className="tnum" style={{ fontSize: 10.5, color: 'var(--text-dim)' }}>{Math.round(act.avg_temp_c)}°C</span>}
+                  </div>
+                ) : r.activity_id ? null : (
+                  <span style={{ fontSize: 10, color: 'var(--text-dim)', fontStyle: 'italic' }}>{t('perf2.noActivityLinked')}</span>
+                )}
+              </div>
             )
-          })}
+          })()}
         </div>
       )}
     </div>
@@ -852,6 +909,70 @@ function PowerCompareOverlay({ bikeByYear, weight, onClose }: {
   )
 }
 
+// ── Surpage « All » — toutes les courses/records d'un sport, chrono, éditables ──
+function RecordsAllOverlay({ title, records, actMap, distKm, onEdit, onDelete, onClose }: {
+  title: string
+  records: SpRecord[]
+  actMap?: Record<string, LinkedAct>
+  distKm?: Record<string, number>
+  onEdit: (r: SpRecord) => void
+  onDelete: (id: string) => void
+  onClose: () => void
+}) {
+  const { t } = useI18n()
+  const sorted = [...records].sort((a, b) => b.achieved_at.localeCompare(a.achieved_at))
+  const paceOf = (r: SpRecord): string | null => {
+    const km = distKm?.[r.distance_label] ?? 0
+    const sec = toSec(r.performance)
+    if (km <= 0 || sec <= 0) return null
+    const p = sec / km
+    return `${Math.floor(p / 60)}:${String(Math.round(p % 60)).padStart(2, '0')}/km`
+  }
+  return createPortal(
+    <div onClick={e => { if (e.target === e.currentTarget) onClose() }}
+      style={{ position: 'fixed', inset: 0, zIndex: 3300, background: 'rgba(0,0,0,0.72)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+      <div style={{ width: '100%', maxWidth: 640, maxHeight: 'calc(100dvh - 56px)', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '20px 20px 0 0', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
+          <div>
+            <h2 style={{ fontFamily: 'Syne,sans-serif', fontSize: 15, fontWeight: 700, margin: 0, color: 'var(--text)' }}>{title}</h2>
+            <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: '3px 0 0' }}>{sorted.length} {sorted.length > 1 ? t('perf2.activities') : t('perf2.activity')}</p>
+          </div>
+          <button onClick={onClose} style={{ width: 30, height: 30, borderRadius: '50%', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 17 }}>×</button>
+        </div>
+        <div style={{ flex: 1, overflowY: 'auto', padding: '10px 14px 24px' }}>
+          {sorted.length === 0 ? (
+            <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-dim)', fontSize: 13 }}>{t('perf2.noRaceRecorded')}</div>
+          ) : sorted.map(r => {
+            const act = r.activity_id ? actMap?.[r.activity_id] : undefined
+            const pace = paceOf(r)
+            return (
+              <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10, marginBottom: 6, background: 'var(--bg-card2)' }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                    <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, fontWeight: 600, color: 'var(--text-mid)' }}>{r.distance_label}</span>
+                    <span className="tnum" style={{ fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>{r.performance}</span>
+                    {pace && <span className="tnum" style={{ fontSize: 10, color: 'var(--text-dim)' }}>{pace}</span>}
+                    {r.activity_id && <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--primary)', border: '1px solid var(--primary)', borderRadius: 5, padding: '1px 5px' }}>{t('perf2.linked')}</span>}
+                  </div>
+                  <div style={{ display: 'flex', gap: 10, marginTop: 3, flexWrap: 'wrap' }}>
+                    <span className="tnum" style={{ fontSize: 10.5, color: 'var(--text-dim)' }}>{new Date(r.achieved_at).toLocaleDateString(currentLocale(), { day: '2-digit', month: 'short', year: 'numeric' })}</span>
+                    {act?.elevation_gain_m != null && <span className="tnum" style={{ fontSize: 10.5, color: 'var(--text-dim)' }}>D+ {Math.round(act.elevation_gain_m)}m</span>}
+                    {act?.avg_hr != null && <span className="tnum" style={{ fontSize: 10.5, color: 'var(--text-dim)' }}>FC {act.avg_hr}</span>}
+                    {act?.avg_temp_c != null && <span className="tnum" style={{ fontSize: 10.5, color: 'var(--text-dim)' }}>{Math.round(act.avg_temp_c)}°C</span>}
+                  </div>
+                </div>
+                <button onClick={() => onEdit(r)} style={{ flexShrink: 0, padding: '5px 10px', borderRadius: 7, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-mid)', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>{t('perf2.edit')}</button>
+                <button onClick={() => { if (window.confirm(t('perf2.confirmDelete'))) onDelete(r.id) }} style={{ flexShrink: 0, padding: '5px 10px', borderRadius: 7, border: '1px solid var(--border)', background: 'transparent', color: '#EF4444', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>{t('perf2.delete')}</button>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    </div>,
+    document.body
+  )
+}
+
 // ── Section header ───────────────────────────────────────────────
 function SectionHeader({ label, gradient }: { label: string; gradient: string }) {
   return (
@@ -874,9 +995,12 @@ interface RecordDrawerProps {
   onConfirm: () => Promise<void>
   onClose: () => void
   profile: Props['profile']
+  activityId?: string | null
+  onOpenLink?: () => void
+  onUnlink?: () => void
 }
 
-function RecordDrawer({ sport, distLabel, draft, setDraft, date, setDate, saving, onConfirm, onClose, profile }: RecordDrawerProps) {
+function RecordDrawer({ sport, distLabel, draft, setDraft, date, setDate, saving, onConfirm, onClose, profile, activityId, onOpenLink, onUnlink }: RecordDrawerProps) {
   const { t } = useI18n()
   const [mounted, setMounted] = useState(false)
   const [np,      setNp]      = useState('')
@@ -1201,6 +1325,26 @@ function RecordDrawer({ sport, distLabel, draft, setDraft, date, setDate, saving
         <div style={{ flex:1, overflowY:'auto', padding:'16px 20px 100px' }}>
           {perfSec}
           {condSec}
+
+          {/* Lier une activité (course / natation / vélo) */}
+          {(sport === 'run' || sport === 'swim' || sport === 'bike') && onOpenLink && (
+            <div style={{ background:'var(--bg-card2)', borderRadius:14, padding:'12px 16px', marginBottom:12, display:'flex', alignItems:'center', justifyContent:'space-between', gap:10 }}>
+              <div style={{ minWidth:0 }}>
+                <p style={{ ...secLbl, margin:0 }}>{t('perf2.linkedActivity')}</p>
+                <p style={{ fontFamily:'var(--font-body)', fontSize:12, color: activityId ? 'var(--text)' : 'var(--text-dim)', margin:'3px 0 0', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                  {activityId ? t('perf2.activityLinked') : t('perf2.noActivityLinked')}
+                </p>
+              </div>
+              <div style={{ display:'flex', gap:6, flexShrink:0 }}>
+                {activityId && onUnlink && (
+                  <button onClick={onUnlink} style={{ padding:'6px 10px', borderRadius:8, border:'1px solid var(--border)', background:'transparent', color:'var(--text-dim)', fontSize:11, fontWeight:600, cursor:'pointer' }}>{t('perf2.unlink')}</button>
+                )}
+                <button onClick={onOpenLink} style={{ padding:'6px 12px', borderRadius:8, border:'none', background:'var(--primary)', color:'var(--on-primary)', fontSize:11, fontWeight:600, cursor:'pointer' }}>
+                  {activityId ? t('perf2.change') : t('perf2.link')}
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Résumé */}
           {validItems.length > 0 && (
@@ -2347,6 +2491,7 @@ function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests }: 
   const [editingRecordId, setEditingRecordId] = useState<string | null>(null)
   const [editDraft, setEditDraft] = useState('')       // temps final
   const [editDate, setEditDate] = useState('')
+  const [editActivityId, setEditActivityId] = useState<string | null>(null)  // activité liée au record
   const [recordSaving, setRecordSaving] = useState(false)
   // Splits triathlon
   const [editSplitSwim, setEditSplitSwim] = useState('')
@@ -2361,11 +2506,21 @@ function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests }: 
   // ── Wingate-style drawer ─────────────────────────────────────────
   const [drawerSpec, setDrawerSpec] = useState<{ sport: RecordSport; distLabel: string } | null>(null)
 
+  const [linkSheetOpen, setLinkSheetOpen] = useState(false)
+  const [runAllOpen, setRunAllOpen] = useState(false)
+
+  async function deleteSpRecord(id: string) {
+    const supabase = createClient()
+    await supabase.from('personal_records').delete().eq('id', id)
+    setAllSpRecords(prev => prev.filter(r => r.id !== id))
+  }
+
   function openDrawer(sport: RecordSport, distLabel: string, id: string | null, perf: string) {
     setActiveEdit(`${sport}-record-${distLabel}`)
     setEditingRecordId(id)
     setEditDraft(perf)
     setEditDate(new Date().toISOString().slice(0, 10))
+    setEditActivityId(id ? (allSpRecords.find(r => r.id === id)?.activity_id ?? null) : null)
     setDrawerSpec({ sport, distLabel })
   }
 
@@ -2469,7 +2624,7 @@ function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests }: 
       if (!uid) return
       const { data } = await supabase
         .from('personal_records')
-        .select('id, sport, distance_label, performance, performance_unit, achieved_at, split_swim, split_t1, split_bike, split_t2, split_run')
+        .select('id, sport, distance_label, performance, performance_unit, achieved_at, activity_id, split_swim, split_t1, split_bike, split_t2, split_run')
         .eq('user_id', uid)
         .in('sport', ['run', 'swim', 'rowing', 'gym', 'triathlon'])
         .order('achieved_at', { ascending: false })
@@ -2477,6 +2632,25 @@ function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests }: 
     }
     void load()
   }, [])
+
+  // Charge les données réelles des activités liées aux records (bulle survol).
+  const [linkedActs, setLinkedActs] = useState<Record<string, LinkedAct>>({})
+  useEffect(() => {
+    const ids = Array.from(new Set(allSpRecords.map(r => r.activity_id).filter((x): x is string => !!x)))
+    if (ids.length === 0) { setLinkedActs({}); return }
+    void (async () => {
+      const supabase = createClient()
+      const { data } = await supabase
+        .from('activities')
+        .select('id, distance_m, elevation_gain_m, avg_hr, max_hr, avg_temp_c, avg_pace_s_km, moving_time_s')
+        .in('id', ids)
+      if (data) {
+        const map: Record<string, LinkedAct> = {}
+        for (const a of data as any[]) map[a.id] = a as LinkedAct
+        setLinkedActs(map)
+      }
+    })()
+  }, [allSpRecords])
 
   // Meilleur record vélo pour une durée (filtré par année sélectionnée)
   function getEffectiveRec(dur: string): {id: string | null; w: number; date: string} {
@@ -2646,10 +2820,11 @@ function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests }: 
             performance:      editDraft,
             performance_unit: unit,
             achieved_at:      achievedAt,
+            activity_id:      editActivityId,
           }).eq('id', editingRecordId)
           setAllSpRecords(prev => prev.map(r =>
             r.id === editingRecordId
-              ? { ...r, performance: editDraft, performance_unit: unit, achieved_at: achievedAt }
+              ? { ...r, performance: editDraft, performance_unit: unit, achieved_at: achievedAt, activity_id: editActivityId }
               : r
           ))
         } else {
@@ -2662,6 +2837,7 @@ function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests }: 
             performance_unit: unit,
             event_type:       'training',
             achieved_at:      achievedAt,
+            activity_id:      editActivityId,
             race_name:        null,
             pace_s_km:        null,
             elevation_gain_m: null,
@@ -2670,7 +2846,7 @@ function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests }: 
             split_run:        null,
             station_times:    null,
             notes:            null,
-          }).select('id, sport, distance_label, performance, performance_unit, achieved_at').single()
+          }).select('id, sport, distance_label, performance, performance_unit, achieved_at, activity_id').single()
           if (inserted) setAllSpRecords(prev => [...prev, inserted as SpRecord])
         }
       }
@@ -2785,6 +2961,18 @@ function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests }: 
           }}
           onClose={closeDrawer}
           profile={profile}
+          activityId={editActivityId}
+          onOpenLink={() => setLinkSheetOpen(true)}
+          onUnlink={() => setEditActivityId(null)}
+        />
+      )}
+
+      {/* Surpage « Lier une activité » depuis le RecordDrawer */}
+      {linkSheetOpen && drawerSpec && (drawerSpec.sport === 'run' || drawerSpec.sport === 'swim' || drawerSpec.sport === 'bike') && (
+        <LinkActivitySheet
+          segment={drawerSpec.sport === 'bike' ? 'bike' : drawerSpec.sport === 'swim' ? 'swim' : 'run'}
+          onClose={() => setLinkSheetOpen(false)}
+          onLink={(a) => { setEditActivityId(a.id); setLinkSheetOpen(false) }}
         />
       )}
 
@@ -2965,7 +3153,12 @@ function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests }: 
             <div style={{ display: 'flex', alignItems: 'center', marginBottom: 12 }}>
               <h2 style={{ fontFamily: 'Syne,sans-serif', fontSize: 14, fontWeight: 700, margin: 0 }}>{t('perf2.recordsRunning')}</h2>
             </div>
-            <TimeBarChart records={allSpRecords.filter(r => r.sport === 'run')} chartDists={CHART_DISTS.run} onBarClick={r => openDrawer('run', r.distance_label, r.id, r.performance)} />
+            <TimeBarChart records={allSpRecords.filter(r => r.sport === 'run')} chartDists={CHART_DISTS.run} onBarClick={r => openDrawer('run', r.distance_label, r.id, r.performance)} actMap={linkedActs} onAll={() => setRunAllOpen(true)} distKm={RUN_KM} />
+            {runAllOpen && (
+              <RecordsAllOverlay title={t('perf2.recordsRunning')} records={allSpRecords.filter(r => r.sport === 'run')} actMap={linkedActs} distKm={RUN_KM}
+                onEdit={r => { setRunAllOpen(false); openDrawer('run', r.distance_label, r.id, r.performance) }}
+                onDelete={id => void deleteSpRecord(id)} onClose={() => setRunAllOpen(false)} />
+            )}
             {RUN_DISTS.map(d => {
               const spBest  = getSpBest('run', d, recordYear)
               const prevRec = getSpPrev('run', d)

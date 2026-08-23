@@ -3209,10 +3209,11 @@ function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests }: 
       {/* TRIATHLON */}
       {sport === 'triathlon' && (
         <TriathlonRecords
-          getBest={getTrBest}
-          getPrev={getTrPrev}
+          records={allSpRecords.filter(r => r.sport === 'triathlon') as any}
           profile={profile}
-          onEdit={fmt => openTriDrawer(fmt, getTrBest(fmt))}
+          actMap={linkedActs}
+          onEdit={(fmt, rec) => openTriDrawer(fmt, (rec as SpRecord | null) ?? getTrBest(fmt))}
+          onDelete={id => void deleteSpRecord(id)}
         />
       )}
 

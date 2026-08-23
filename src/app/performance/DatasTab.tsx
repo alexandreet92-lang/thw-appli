@@ -2565,6 +2565,7 @@ function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests }: 
     | { kind: 'error'; msg: string }
   const [bikeSyncStatus, setBikeSyncStatus] = useState<BikeSyncStatus>({ kind: 'idle' })
   const [compareOpen, setCompareOpen] = useState(false)
+  const paceBackfilled = useRef(false)
 
   // Loader bike records, réutilisable (mount + après backfill + après edit)
   const loadBikeRecords = useCallback(async () => {
@@ -2651,6 +2652,29 @@ function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests }: 
       }
     })()
   }, [allSpRecords])
+
+  // Auto-backfill des records course/natation/aviron en entrant dans ces sports
+  // (idempotent côté serveur), puis rechargement de la liste. Comme le vélo.
+  useEffect(() => {
+    if (!['run', 'swim', 'rowing'].includes(sport)) return
+    if (paceBackfilled.current) return
+    paceBackfilled.current = true
+    void (async () => {
+      try {
+        await fetch('/api/activities/backfill-records', { method: 'POST' })
+        const supabase = createClient()
+        const uid = await resolvePlanningUid(supabase)
+        if (!uid) return
+        const { data } = await supabase
+          .from('personal_records')
+          .select('id, sport, distance_label, performance, performance_unit, achieved_at, activity_id, split_swim, split_t1, split_bike, split_t2, split_run')
+          .eq('user_id', uid)
+          .in('sport', ['run', 'swim', 'rowing', 'gym', 'triathlon'])
+          .order('achieved_at', { ascending: false })
+        if (data) setAllSpRecords(data as SpRecord[])
+      } catch { /* silencieux — les records ne doivent pas casser la page */ }
+    })()
+  }, [sport])
 
   // Meilleur record vélo pour une durée (filtré par année sélectionnée)
   function getEffectiveRec(dur: string): {id: string | null; w: number; date: string} {

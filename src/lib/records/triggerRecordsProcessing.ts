@@ -9,6 +9,7 @@
 
 import { createServiceClient }       from '@/lib/supabase/server'
 import { processBikeActivityRecords } from './processBikeActivity'
+import { processPaceActivityRecords, paceSportOf } from './processPaceActivity'
 
 export async function triggerRecordsProcessing(params: {
   activityId: string
@@ -16,18 +17,23 @@ export async function triggerRecordsProcessing(params: {
   sport:      string | null | undefined
 }): Promise<void> {
   const { activityId, userId, sport } = params
-
-  // Fast-path : on ne traite que le vélo (Pmax → 6h)
   const s = (sport ?? '').toLowerCase()
-  if (s !== 'bike' && s !== 'cycling' && s !== 'cycle' && s !== 'velo') return
+  const isBike = s === 'bike' || s === 'cycling' || s === 'cycle' || s === 'velo'
+  const paceSport = paceSportOf(sport)   // run / swim / rowing
+  if (!isBike && !paceSport) return       // autres sports : pas de records auto
 
   try {
-    console.log(`[records-trigger] processing activity ${activityId} for user ${userId}`)
-    const sb     = createServiceClient()
-    const result = await processBikeActivityRecords(sb, userId, activityId)
-    const reason = result.reason ?? 'ok'
-    const beats  = result.payload.allTime.length + result.payload.year.length
-    console.log(`[records-trigger] done for activity ${activityId} (reason=${reason}, beats=${beats})`)
+    console.log(`[records-trigger] processing activity ${activityId} for user ${userId} (sport=${s})`)
+    const sb = createServiceClient()
+    if (isBike) {
+      const result = await processBikeActivityRecords(sb, userId, activityId)
+      const beats = result.payload.allTime.length + result.payload.year.length
+      console.log(`[records-trigger] bike done ${activityId} (reason=${result.reason ?? 'ok'}, beats=${beats})`)
+    } else {
+      const result = await processPaceActivityRecords(sb, userId, activityId)
+      const beats = result.payload.allTime.length + result.payload.year.length
+      console.log(`[records-trigger] pace done ${activityId} (reason=${result.reason ?? 'ok'}, beats=${beats})`)
+    }
   } catch (err) {
     console.error(`[records-trigger] failed for activity ${activityId}:`, err)
     // Volontairement avalé — l'import ne doit pas échouer à cause des records

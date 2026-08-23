@@ -8,10 +8,14 @@
 import { NextRequest, NextResponse }                  from 'next/server'
 import { createClient, createServiceClient }          from '@/lib/supabase/server'
 import { processBikeActivityRecords }                 from '@/lib/records/processBikeActivity'
+import { processPaceActivityRecords }                 from '@/lib/records/processPaceActivity'
 
 export const maxDuration = 60 // s
 
-interface ActivityIdRow { id: string }
+interface ActivityIdRow { id: string; sport_type: string | null }
+
+const BIKE_SET = ['bike', 'cycling', 'cycle', 'velo']
+const PACE_SET = ['run', 'trail_run', 'swim', 'rowing']
 
 export async function POST(req: NextRequest) {
   console.log('[backfill-records] handler atteint —', new Date().toISOString())
@@ -25,11 +29,11 @@ export async function POST(req: NextRequest) {
 
   const sb = createServiceClient()
 
-  // Sélection chronologique des activités vélo
+  // Sélection chronologique des activités vélo + sports « au temps » (course/natation/aviron)
   let q = sb.from('activities')
-    .select('id')
+    .select('id, sport_type')
     .eq('user_id', user.id)
-    .in('sport_type', ['bike', 'cycling', 'cycle', 'velo'])
+    .in('sport_type', [...BIKE_SET, ...PACE_SET])
     .order('started_at', { ascending: true })
     .limit(500)
 
@@ -40,8 +44,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: `Liste impossible : ${listErr.message}` }, { status: 500 })
   }
 
-  const ids = ((rows ?? []) as ActivityIdRow[]).map(r => r.id)
-  if (ids.length === 0) {
+  const acts = (rows ?? []) as ActivityIdRow[]
+  if (acts.length === 0) {
     return NextResponse.json({ processed: 0, beatenAllTime: 0, beatenYear: 0, total: 0 })
   }
 
@@ -51,9 +55,12 @@ export async function POST(req: NextRequest) {
   let insertFailed    = 0
   const errors:    string[] = []
 
-  for (const id of ids) {
+  for (const a of acts) {
     try {
-      const r = await processBikeActivityRecords(sb, user.id, id, { force })
+      const isBike = BIKE_SET.includes((a.sport_type ?? '').toLowerCase())
+      const r = isBike
+        ? await processBikeActivityRecords(sb, user.id, a.id, { force })
+        : await processPaceActivityRecords(sb, user.id, a.id, { force })
       if (r.processed) {
         processed++
         beatenAllTime += r.payload.allTime.length
@@ -61,11 +68,11 @@ export async function POST(req: NextRequest) {
       }
       if (r.reason?.startsWith('insert_failed')) {
         insertFailed++
-        errors.push(`${id}: ${r.reason}`)
+        errors.push(`${a.id}: ${r.reason}`)
       }
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e)
-      errors.push(`${id}: ${msg}`)
+      errors.push(`${a.id}: ${msg}`)
     }
   }
 
@@ -74,7 +81,7 @@ export async function POST(req: NextRequest) {
     : null
 
   if (insertFailed > 0) {
-    console.error('[backfill-records] insert_failed=', insertFailed, 'sur', ids.length, 'activités')
+    console.error('[backfill-records] insert_failed=', insertFailed, 'sur', acts.length, 'activités')
   }
   console.log('[backfill-records] résultat : processed=', processed,
               'beatenAllTime=', beatenAllTime, 'beatenYear=', beatenYear,
@@ -84,7 +91,7 @@ export async function POST(req: NextRequest) {
     processed,
     beatenAllTime,
     beatenYear,
-    total:         ids.length,
+    total:         acts.length,
     insert_failed: insertFailed,
     warning,
     errors:        errors.slice(0, 10),

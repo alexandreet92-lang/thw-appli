@@ -12,6 +12,9 @@ import { TriathlonRadar, type TriFormat } from './RadarChart'
 import { toSec, hmsFull } from './triActivities'
 
 const SWIM = '#06b6d4', BIKE = '#3b82f6', RUN = '#f97316' // design-allow-color — teintes sport
+const TRI = '#8B5CF6' // design-allow-color — teinte sport triathlon sanctionnée
+const SCRIM = 'rgba(0,0,0,0.72)' // design-allow-color — voile de surpage (scrim)
+const DANGER = '#EF4444' // design-allow-color — rouge action destructive (supprimer)
 const TRANS = 'var(--text-dim)'
 
 // Données réelles d'une activité liée (mêmes champs que le running).
@@ -69,7 +72,7 @@ function TriRaceOverlay({ rec, act, onEdit, onDelete, onClose }: {
 
   return createPortal(
     <div onClick={e => { if (e.target === e.currentTarget) onClose() }}
-      style={{ position: 'fixed', inset: 0, zIndex: 3300, background: 'rgba(0,0,0,0.72)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+      style={{ position: 'fixed', inset: 0, zIndex: 3300, background: SCRIM, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
       <div style={{ width: '100%', maxWidth: 560, maxHeight: 'calc(100dvh - 56px)', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '20px 20px 0 0', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
           <div>
@@ -128,7 +131,7 @@ function TriRaceOverlay({ rec, act, onEdit, onDelete, onClose }: {
 
         <div style={{ display: 'flex', gap: 8, padding: '12px 20px 20px', borderTop: '1px solid var(--border)', flexShrink: 0 }}>
           <button onClick={onEdit} style={{ flex: 1, padding: '12px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text)', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>{t('perf2.edit')}</button>
-          <button onClick={() => { if (window.confirm(t('perf2.confirmDelete'))) onDelete() }} style={{ flex: 1, padding: '12px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'transparent', color: '#EF4444', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>{t('perf2.delete')}</button>
+          <button onClick={() => { if (window.confirm(t('perf2.confirmDelete'))) onDelete() }} style={{ flex: 1, padding: '12px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'transparent', color: DANGER, fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>{t('perf2.delete')}</button>
         </div>
       </div>
     </div>,
@@ -202,13 +205,13 @@ export function TriathlonRecords({ records, profile, actMap, onEdit, onDelete }:
                   style={{ flex: '0 0 72px', width: 72, border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, padding: 0 }}>
                   <span className="tnum" style={{ fontFamily: 'var(--font-body)', fontSize: 11, fontWeight: 700, color: 'var(--text)' }}>{r.performance}</span>
                   <div style={{ height: 104, width: '100%', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
-                    <div style={{ width: 16, height: mounted ? `${hPct}%` : '0%', background: '#8B5CF6', borderRadius: 8,
-                      boxShadow: isBest ? '0 0 0 2px var(--bg-card), 0 0 0 3px #8B5CF6' : 'none',
+                    <div style={{ width: 16, height: mounted ? `${hPct}%` : '0%', background: TRI, borderRadius: 8,
+                      boxShadow: isBest ? `0 0 0 2px var(--bg-card), 0 0 0 3px ${TRI}` : 'none',
                       transition: 'height 0.9s cubic-bezier(0.25,1,0.5,1)' }} />
                   </div>
                   {showAll && <span style={{ fontFamily: 'var(--font-body)', fontSize: 9, color: 'var(--text-dim)', fontWeight: 600 }}>{r.distance_label}</span>}
                   <span style={{ fontFamily: 'var(--font-body)', fontSize: 9.5, color: 'var(--text-dim)', whiteSpace: 'nowrap' }}>{fmtDay(r.achieved_at)}</span>
-                  {isBest && <span style={{ fontSize: 8, fontWeight: 700, color: '#8B5CF6' }}>★ PR</span>}
+                  {isBest && <span style={{ fontSize: 8, fontWeight: 700, color: TRI }}>★ PR</span>}
                 </button>
               )
             })}

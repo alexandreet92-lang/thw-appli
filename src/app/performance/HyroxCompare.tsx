@@ -11,6 +11,7 @@ import { HYROX_STATIONS, toSec, hmsTotal, mmss, type HyroxRace } from './hyroxSh
 import { currentLocale } from '@/lib/i18n'
 
 const HYROX = '#ec4899' // design-allow-color — teinte sport hyrox sanctionnée
+const SCRIM = 'rgba(0,0,0,0.72)' // design-allow-color — voile de surpage (scrim)
 
 function fmtDate(iso: string) { return new Date(iso).toLocaleDateString(currentLocale(), { month: 'short', year: '2-digit' }) }
 function fmtDateFull(iso: string) { return new Date(iso).toLocaleDateString(currentLocale(), { day: '2-digit', month: 'short', year: 'numeric' }) }
@@ -42,7 +43,7 @@ function HyroxRaceOverlay({ race, races, onSelect, onClose }: {
   ]
   return createPortal(
     <div onClick={e => { if (e.target === e.currentTarget) onClose() }}
-      style={{ position: 'fixed', inset: 0, zIndex: 3300, background: 'rgba(0,0,0,0.72)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+      style={{ position: 'fixed', inset: 0, zIndex: 3300, background: SCRIM, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
       <div style={{ width: '100%', maxWidth: 560, maxHeight: 'calc(100dvh - 56px)', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '20px 20px 0 0', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
           <div>

@@ -52,6 +52,9 @@ import {
 
 import { type ExoCategory, type ExoDefinition, type ExerciseItem, type ExoCircuit, EXO_CATEGORY_COLOR, EXO_CATEGORY_LABEL, EXERCISE_DATABASE, searchExercises } from './exercises'
 import { ComposedBuilder } from './ComposedBuilder'
+import { SprintsBuilder } from './mobile/SprintsBuilder'
+import { StridesBuilder } from './mobile/StridesBuilder'
+import type { MBlock } from './mobile/blocks'
 import { BrickPicker } from './BrickPicker'
 import { type ComposedMove, type ComposedSport, type ComposedCircuit, sumComposedMinutes } from './composedSports'
 import { currentLocale } from '@/lib/i18n'
@@ -6378,7 +6381,11 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
             /* Sports composés (Hybrid / Boxe) : builder de moves dédié */
             <ComposedBuilder sport={sport as ComposedSport} moves={composedMoves} accent={accent} onChange={setComposedMoves} circuits={composedCircuits} onCircuitsChange={setComposedCircuits} />
           ) : builderTab === 'manual' && !parcoursData ? (
-            isStrength && !isEdit && blocks.length === 0 ? (
+            sport === 'run' && runFamily === 'sprints' ? (
+              <SprintsBuilder blocks={blocks as MBlock[]} accent={accent} onChange={setBlocks} />
+            ) : sport === 'run' && runFamily === 'intervals' ? (
+              <StridesBuilder blocks={blocks as MBlock[]} accent={accent} onChange={setBlocks} />
+            ) : isStrength && !isEdit && blocks.length === 0 ? (
               /* Mode création manuel : constructeur par exercices (circuits) */
               <ExerciseListBuilder
                 sport={sport}

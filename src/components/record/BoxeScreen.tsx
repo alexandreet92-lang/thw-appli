@@ -172,8 +172,10 @@ export default function BoxeScreen({ session, onClose, isDark }: Props) {
 
   useEffect(() => { setMounted(true) }, [])
 
-  // Voix de fin + ouverture auto du résumé : « Félicitations, vous avez terminé »
-  // → 1 s de pause → « Voici le résumé de votre séance » → ouvre le résumé.
+  // Voix de fin + ouverture auto du résumé. Séquence EXACTE :
+  //   1. « Félicitations, vous avez terminé. » — on attend qu'elle soit FINIE
+  //   2. 1 seconde de silence
+  //   3. « Voici le résumé de votre séance. » → ouvre le résumé
   const finishFiredRef = useRef(false)
   useEffect(() => {
     const p1 = voiceLang === 'en' ? 'Congratulations, you finished.' : 'Félicitations, vous avez terminé.'
@@ -181,10 +183,19 @@ export default function BoxeScreen({ session, onClose, isDark }: Props) {
     if (!started) { voice.prefetch(p1); voice.prefetch(p2); return }
     if (!isDone || finishFiredRef.current) return
     finishFiredRef.current = true
-    voice.speak(p1)
-    const t2 = setTimeout(() => voice.speak(p2), 2000)   // ≈ 1 s de phrase + 1 s de pause
-    const t3 = setTimeout(() => { setSaveStep('summary'); setShowSave(true) }, 2400)
-    return () => { clearTimeout(t2); clearTimeout(t3) }
+    let cancelled = false
+    const wait = (ms: number) => new Promise<void>(r => setTimeout(r, ms))
+    ;(async () => {
+      await voice.speakAwait(p1)        // attend la fin de « Félicitations… »
+      if (cancelled) return
+      await wait(1000)                  // 1 s de silence
+      if (cancelled) return
+      voice.speak(p2)                   // « Voici le résumé de votre séance. »
+      await wait(350)                   // laisse la phrase démarrer avant la transition
+      if (cancelled) return
+      setSaveStep('summary'); setShowSave(true)
+    })()
+    return () => { cancelled = true }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isDone, started])
 
@@ -335,7 +346,7 @@ export default function BoxeScreen({ session, onClose, isDark }: Props) {
       calories: caloriesEst || null,
       avg_hr: hr.avg || null, max_hr: hr.max || null,
       average_heartrate: hr.avg || null, max_heartrate: hr.max || null,
-      rpe: formData.rpe, perceived_effort: formData.rpe, comment: formData.comment,
+      rpe: formData.rpe, perceived_effort: formData.rpe, feeling: formData.sensation, comment: formData.comment,
       visibility: formData.visibility,
     })
     onClose()
@@ -351,7 +362,7 @@ export default function BoxeScreen({ session, onClose, isDark }: Props) {
               doneList={doneLog} sets={setsDone} volumeKg={volumeKg} caloriesEst={caloriesEst}
               doneCount={doneCount} totalCount={totalCount} unitLabel={unitLabel}
               hr={{ avg: hr.avg, max: hr.max, min: hr.min, samples: hr.samples }} target={targetSeries}
-              accent={ACCENT} onNext={() => setSaveStep('form')} onClose={() => { setShowSave(false); setSaveStep('summary') }} />
+              accent={ACCENT} isDark={isDark} onNext={() => setSaveStep('form')} onClose={() => { setShowSave(false); setSaveStep('summary') }} />
           : <SessionSaveForm sport={sportType} startedAt={startedAt} onBack={() => setSaveStep('summary')} onSave={handleSave} isDark={isDark} />}
       </div>,
       document.body,

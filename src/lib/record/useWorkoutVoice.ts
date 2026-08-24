@@ -17,6 +17,7 @@ type Lang = 'fr' | 'en'
 export interface WorkoutVoice {
   unlock: () => void                 // à appeler dans le geste « Commencer »
   speak: (text: string) => void      // joue (cache prioritaire, sinon fetch/navigateur)
+  speakAwait: (text: string) => Promise<void>  // joue ET résout à la fin de la lecture
   prefetch: (text: string) => void   // pré-charge un texte (ex. prochain exo)
   beep: (freq?: number, ms?: number) => void   // bip synthétique (oscillateur)
 }
@@ -87,6 +88,40 @@ export function useWorkoutVoice(lang: Lang, mutedRef: React.MutableRefObject<boo
     void load(text).then(buf => { if (mutedRef.current) return; buf ? playBuffer(buf) : speakBrowser(text) })
   }, [load, playBuffer, speakBrowser, mutedRef])
 
+  // Lecture d'un buffer avec résolution à la FIN (onended).
+  const playBufferAwait = useCallback((buf: AudioBuffer): Promise<void> => new Promise(resolve => {
+    const c = ctx(); if (!c) { resolve(); return }
+    try {
+      const src = c.createBufferSource(); src.buffer = buf; src.connect(c.destination)
+      src.onended = () => resolve()
+      src.start()
+      // filet de sécurité : résout au plus tard à la durée du buffer + 250 ms
+      setTimeout(() => resolve(), buf.duration * 1000 + 250)
+    } catch { resolve() }
+  }), [ctx])
+
+  const speakBrowserAwait = useCallback((text: string): Promise<void> => new Promise(resolve => {
+    try {
+      const s = window.speechSynthesis; if (!s) { resolve(); return }
+      const u = new SpeechSynthesisUtterance(text)
+      u.lang = langCode; u.rate = 1.06; u.volume = 1
+      u.onend = () => resolve(); u.onerror = () => resolve()
+      s.speak(u)
+      setTimeout(() => resolve(), 4500) // filet de sécurité si onend ne se déclenche pas
+    } catch { resolve() }
+  }), [langCode])
+
+  // Joue le texte et résout quand la lecture est terminée (voix serveur ou navigateur).
+  const speakAwait = useCallback(async (text: string): Promise<void> => {
+    if (mutedRef.current) return
+    const cached = buffers.current.get(text)
+    if (cached) { await playBufferAwait(cached); return }
+    if (serverOk.current === false) { await speakBrowserAwait(text); return }
+    const buf = await load(text)
+    if (mutedRef.current) return
+    if (buf) await playBufferAwait(buf); else await speakBrowserAwait(text)
+  }, [load, playBufferAwait, speakBrowserAwait, mutedRef])
+
   const prefetch = useCallback((text: string) => { void load(text) }, [load])
 
   // Bip synthétique (oscillateur) — instantané, indépendant du réseau.
@@ -114,5 +149,5 @@ export function useWorkoutVoice(lang: Lang, mutedRef: React.MutableRefObject<boo
     fixed.forEach(t => void load(t))
   }, [ctx, load, lang])
 
-  return { unlock, speak, prefetch, beep }
+  return { unlock, speak, speakAwait, prefetch, beep }
 }

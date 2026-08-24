@@ -32,7 +32,7 @@ export async function saveWorkout(a: SaveArgs): Promise<void> {
     id: sessionId, user_id: user.id, sport: a.sport, status: 'done',
     started_at: a.startedAt, ended_at: new Date().toISOString(),
     duration_seconds: a.durationSec,
-    title: a.form.title, training_types: a.form.trainingTypes, rpe: a.form.rpe, comment: a.form.comment,
+    title: a.form.title, training_types: a.form.trainingTypes, rpe: a.form.rpe, feeling: a.form.sensation, comment: a.form.comment,
     calories: Math.round(a.durationSec / 60 * 7),
     exercises_detail: a.exercises, total_volume_kg: a.volumeKg, sets_completed: a.setsCompleted,
     avg_hr: a.hr.avg, max_hr: a.hr.max, min_hr: a.hr.min,
@@ -52,7 +52,7 @@ export async function saveWorkout(a: SaveArgs): Promise<void> {
     calories: Math.round(a.durationSec / 60 * 7),
     avg_hr: a.hr.avg, max_hr: a.hr.max, min_hr: a.hr.min,
     average_heartrate: a.hr.avg, max_heartrate: a.hr.max,
-    rpe: a.form.rpe, comment: a.form.comment,
+    rpe: a.form.rpe, feeling: a.form.sensation, comment: a.form.comment,
     visibility: a.form.visibility,
   })
 }

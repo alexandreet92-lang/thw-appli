@@ -3708,7 +3708,7 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
           onDelete={handleDelete}
           onValidate={handleValidate}
           onAutoSave={handleAutoSaveSession}
-          onDuplicate={(dayIdx, s) => { addSession({ ...s, dayIndex: dayIdx, planVariant: s.planVariant ?? activePlan }); setDetailModal(null) }}
+          onDuplicate={(dayIdx, s, targetWeekStart) => { handleAddSession(dayIdx, { ...s, dayIndex: dayIdx, planVariant: s.planVariant ?? activePlan } as Session, targetWeekStart); setDetailModal(null) }}
           onRepeat={handleRepeatSession}
           onCreateBrick={(run)=>handleAddSession(run.dayIndex, run, run.weekStart ?? detailModal.weekStart)}
           onLinkBrick={(runId, brickId)=>updateSession(runId, { brickId })}

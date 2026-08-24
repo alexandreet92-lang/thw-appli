@@ -3711,7 +3711,7 @@ export function SessionEditor({ mode, session, dayIndex, weekStart, plan, onClos
   onDelete?: (id: string) => void
   onValidate?: (s: Session) => void
   onAutoSave?: (s: Session) => void
-  onDuplicate?: (dayIndex: number, session: Session) => void
+  onDuplicate?: (dayIndex: number, session: Session, targetWeekStart?: string) => void
   onRepeat?: (session: Session, everyNWeeks: number, count: number) => void
   onCreateBrick?: (run: Session) => void
   /** Relie une course déjà planifiée au vélo édité (lui pose le même brickId). */
@@ -3851,6 +3851,7 @@ export function SessionEditor({ mode, session, dayIndex, weekStart, plan, onClos
   const [nutritionOpen, setNutritionOpen] = useState(false)
   const [nutritionLoading, setNutritionLoading] = useState(false)
   const [showDuplicateMenu, setShowDuplicateMenu] = useState(false)
+  const [dupDate, setDupDate] = useState('')   // date cible libre (n'importe quelle semaine)
   const [showRepeatMenu, setShowRepeatMenu] = useState(false)
   const [favorites, setFavorites] = useState<Array<{id:string;name:string;sport:string;training_type?:string;blocks_data:Block[];nutrition_data:NutritionItem[];duration_min:number;rpe:number;notes:string}>>([])
   const [showFavorites, setShowFavorites] = useState(openWithFavorites ?? false)
@@ -7705,38 +7706,68 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
           </div>
         )}
 
-        {showDuplicateMenu && onDuplicate && session && (
+        {showDuplicateMenu && onDuplicate && session && (() => {
+          // Semaine de la séance éditée + date par défaut du sélecteur.
+          const curWs = weekStart ?? session.weekStart ?? getWeekStart()
+          const curDateD = new Date(curWs + 'T00:00:00'); curDateD.setDate(curDateD.getDate() + (session.dayIndex ?? 0))
+          const curDate = localDateStr(curDateD)
+          const pickedDate = dupDate || curDate
+          // date libre → { dayIndex (lundi=0), weekStart (lundi ISO) }
+          const dupResolve = (iso: string) => {
+            const d = new Date(iso + 'T00:00:00')
+            const back = (d.getDay() + 6) % 7
+            const m = new Date(d); m.setDate(d.getDate() - back)
+            return { dayIndex: back, weekStart: localDateStr(m) }
+          }
+          const doDuplicate = (dayIndex: number, ws: string) => {
+            onDuplicate(dayIndex, { ...session, id: '', title: session.title + ` ${t('sed.copySuffix')}`, dayIndex, weekStart: ws }, ws)
+            setShowDuplicateMenu(false); setDupDate(''); onClose()
+          }
+          const fmtPicked = (() => { try { return new Date(pickedDate + 'T00:00:00').toLocaleDateString(currentLocale(), { weekday: 'long', day: 'numeric', month: 'long' }) } catch { return pickedDate } })()
+          return (
           <div style={{
             position: 'fixed' as const, inset: 0, zIndex: 1100,
             background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)',
             display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16,
-          }} onClick={() => setShowDuplicateMenu(false)}>
+          }} onClick={() => { setShowDuplicateMenu(false); setDupDate('') }}>
             <div onClick={e => e.stopPropagation()} style={{
-              background: 'var(--bg-card)', borderRadius: 14, padding: 20,
-              maxWidth: 320, width: '100%', border: '1px solid var(--border)',
+              background: 'var(--bg-card)', borderRadius: 16, padding: 20,
+              maxWidth: 340, width: '100%', border: '1px solid var(--border)',
             }}>
-              <h3 style={{ fontSize: 14, fontWeight: 700, margin: '0 0 14px', fontFamily: 'Syne, sans-serif', color: 'var(--text)' }}>{t('sed.duplicateWhichDay')}</h3>
-              <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 4 }}>
-                {[t('sed.monday'), t('sed.tuesday'), t('sed.wednesday'), t('sed.thursday'), t('sed.friday'), t('sed.saturday'), t('sed.sunday')].map((day, i) => (
-                  <button key={i} onClick={() => {
-                    onDuplicate(i, { ...session, id: '', title: session.title + ` ${t('sed.copySuffix')}`, dayIndex: i })
-                    setShowDuplicateMenu(false)
-                    onClose()
-                  }} style={{
-                    width: '100%', padding: '10px 14px', borderRadius: 8, textAlign: 'left' as const,
-                    border: '1px solid var(--border)', background: 'var(--bg-card2)',
-                    color: 'var(--text)', fontSize: 12, cursor: 'pointer', fontWeight: 500,
+              <h3 style={{ fontSize: 15, fontWeight: 700, margin: '0 0 4px', fontFamily: 'Syne, sans-serif', color: 'var(--text)' }}>{t('sed.duplicate')}</h3>
+              <p style={{ fontSize: 11.5, color: 'var(--text-dim)', margin: '0 0 16px' }}>{t('sed.duplicateToDate')}</p>
+
+              {/* Date libre — n'importe quelle semaine */}
+              <label style={{ display: 'block', fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-dim)', marginBottom: 8 }}>{t('sed.targetDate')}</label>
+              <input type="date" value={pickedDate} onChange={e => setDupDate(e.target.value)}
+                style={{ width: '100%', boxSizing: 'border-box', padding: '11px 14px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 14, fontFamily: 'var(--font-body)', outline: 'none' }} />
+              <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: '8px 0 0', textTransform: 'capitalize' }}>{fmtPicked}</p>
+              <button onClick={() => { const r = dupResolve(pickedDate); doDuplicate(r.dayIndex, r.weekStart) }}
+                style={{ marginTop: 12, width: '100%', padding: '12px', borderRadius: 12, border: 'none', background: 'linear-gradient(135deg, #06B6D4, #2563EB)', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
+                {t('sed.duplicate')}
+              </button>
+
+              {/* Raccourci : jour de la même semaine */}
+              <div style={{ margin: '18px 0 8px', fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-dim)' }}>{t('sed.sameWeekShortcut')}</div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4 }}>
+                {[t('sed.mondayShort'), t('sed.tuesdayShort'), t('sed.wednesdayShort'), t('sed.thursdayShort'), t('sed.fridayShort'), t('sed.saturdayShort'), t('sed.sundayShort')].map((day, i) => (
+                  <button key={i} onClick={() => doDuplicate(i, curWs)} title={day} style={{
+                    padding: '9px 0', borderRadius: 8, textAlign: 'center' as const,
+                    border: `1px solid ${i === (session.dayIndex ?? 0) ? 'var(--primary)' : 'var(--border)'}`, background: 'var(--bg-card2)',
+                    color: 'var(--text)', fontSize: 11, cursor: 'pointer', fontWeight: 600,
                   }}>{day}</button>
                 ))}
               </div>
-              <button onClick={() => setShowDuplicateMenu(false)} style={{
-                marginTop: 10, width: '100%', padding: 8, borderRadius: 7,
+
+              <button onClick={() => { setShowDuplicateMenu(false); setDupDate('') }} style={{
+                marginTop: 14, width: '100%', padding: 9, borderRadius: 8,
                 border: '1px solid var(--border)', background: 'transparent',
-                color: 'var(--text-dim)', fontSize: 10, cursor: 'pointer',
+                color: 'var(--text-dim)', fontSize: 11, cursor: 'pointer',
               }}>{t('sed.cancel')}</button>
             </div>
           </div>
-        )}
+          )
+        })()}
 
       </div>
     </>

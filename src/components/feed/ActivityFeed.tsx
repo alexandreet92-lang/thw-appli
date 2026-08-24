@@ -10,10 +10,12 @@ import Link from 'next/link'
 import { Avatar } from '@/components/shared/Sidebar'
 import { ReadOnlyActivityDetail } from '@/components/activity/ReadOnlyActivityDetail'
 import { PeopleSearchSheet } from './PeopleSearchSheet'
+import { CommentsSheet } from './CommentsSheet'
 import { staticRouteMapUrl } from '@/lib/staticMap'
 import { getActivityFeed, getCombinedFeed, decodePolyline, polylineToSvgPath, sportFamily, sportMeta, type FeedActivity } from '@/lib/profile/activityShowcase'
 import { getCurrentUser } from '@/lib/auth/currentUser'
 import { getFollowingIds, toggleFollow } from '@/lib/social/follows'
+import { getEngagement, toggleKudos, type Engagement } from '@/lib/social/kudos'
 
 const SPORT_HEX: Record<string, string> = { running: '22c55e', cycling: '3b82f6', swim: '0ea5e9', rowing: '8b5cf6', gym: 'f97316', hyrox: 'ef4444', other: '9ca3af' }
 const MONTH = ['jan', 'fév', 'mar', 'avr', 'mai', 'juin', 'juil', 'août', 'sep', 'oct', 'nov', 'déc']
@@ -38,14 +40,27 @@ export default function ActivityFeed() {
   const [meId, setMeId] = useState<string | null>(null)
   const [following, setFollowing] = useState<Set<string>>(new Set())
   const [peopleOpen, setPeopleOpen] = useState(false)
+  const [eng, setEng] = useState<Record<string, Engagement>>({})
+  const [commentsFor, setCommentsFor] = useState<string | null>(null)
+
+  const loadEngagement = (rows: FeedActivity[]) => {
+    const ids = rows.map(r => r.id)
+    if (ids.length) void getEngagement(ids).then(m => setEng(prev => ({ ...prev, ...m })))
+  }
 
   useEffect(() => {
     let off = false
     void getCurrentUser().then(u => { if (!off) setMeId(u?.id ?? null) })
     void getFollowingIds().then(s => { if (!off) setFollowing(s) })
-    void getCombinedFeed(40).then(rows => { if (!off) { setItems(rows); if (rows.length < 40) setDone(true) } })
+    void getCombinedFeed(40).then(rows => { if (!off) { setItems(rows); if (rows.length < 40) setDone(true); loadEngagement(rows) } })
     return () => { off = true }
   }, [])
+
+  async function onKudos(id: string) {
+    const cur = eng[id]?.mine ?? false
+    const now = await toggleKudos(id, cur).catch(() => cur)
+    setEng(prev => { const e = prev[id] ?? { kudos: 0, mine: false, comments: 0 }; return { ...prev, [id]: { ...e, mine: now, kudos: Math.max(0, e.kudos + (now ? 1 : -1)) } } })
+  }
 
   // « Voir plus » pagine le fil des abonnements (mes activités sont déjà toutes chargées).
   const loadMore = async () => {
@@ -56,6 +71,7 @@ export default function ActivityFeed() {
     const seen = new Set(items.map(i => i.id))
     const fresh = more.filter(m => !seen.has(m.id))
     setItems([...items, ...fresh])
+    loadEngagement(fresh)
     if (more.length < 40) setDone(true)
     setLoadingMore(false)
   }
@@ -93,7 +109,8 @@ export default function ActivityFeed() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {items.map((a, i) => (
             <FeedCard key={`${a.id}-${i}`} a={a} onOpen={() => setDetail(a)}
-              canFollow={!!meId && a.author_id !== meId} isFollowing={following.has(a.author_id)} onToggleFollow={() => void onToggleFollow(a.author_id)} />
+              canFollow={!!meId && a.author_id !== meId} isFollowing={following.has(a.author_id)} onToggleFollow={() => void onToggleFollow(a.author_id)}
+              eng={eng[a.id]} onKudos={() => void onKudos(a.id)} onComments={() => setCommentsFor(a.id)} />
           ))}
           {!done && (
             <button onClick={() => void loadMore()} disabled={loadingMore}
@@ -105,13 +122,14 @@ export default function ActivityFeed() {
       )}
 
       {peopleOpen && <PeopleSearchSheet onClose={() => setPeopleOpen(false)} />}
+      {commentsFor && <CommentsSheet activityId={commentsFor} onClose={() => setCommentsFor(null)} onCount={n => setEng(prev => ({ ...prev, [commentsFor]: { ...(prev[commentsFor] ?? { kudos: 0, mine: false, comments: 0 }), comments: n } }))} />}
       {/* Détail LECTURE SEULE — EXACTEMENT la page training (plein écran) */}
       {detail && <ReadOnlyActivityDetail id={detail.id} onClose={() => setDetail(null)} />}
     </div>
   )
 }
 
-function FeedCard({ a, onOpen, canFollow, isFollowing, onToggleFollow }: { a: FeedActivity; onOpen: () => void; canFollow: boolean; isFollowing: boolean; onToggleFollow: () => void }) {
+function FeedCard({ a, onOpen, canFollow, isFollowing, onToggleFollow, eng, onKudos, onComments }: { a: FeedActivity; onOpen: () => void; canFollow: boolean; isFollowing: boolean; onToggleFollow: () => void; eng?: Engagement; onKudos: () => void; onComments: () => void }) {
   const fam = sportFamily(a.sport)
   const meta = sportMeta(fam)
   const pts = decodePolyline(a.polyline).map(([lat, lng]) => ({ lat, lng }))
@@ -169,6 +187,20 @@ function FeedCard({ a, onOpen, canFollow, isFollowing, onToggleFollow }: { a: Fe
           </div>
         </div>
       </button>
+
+      {/* Engagement : kudos 👏 + commentaires */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 8px 8px', borderTop: '1px solid var(--border)' }}>
+        <button onClick={onKudos}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '8px 12px', border: 'none', background: 'transparent', cursor: 'pointer', borderRadius: 'var(--r-md)', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600, color: eng?.mine ? 'var(--primary)' : 'var(--text-mid)' }}>
+          <span style={{ fontSize: 16, filter: eng?.mine ? 'none' : 'grayscale(1)', opacity: eng?.mine ? 1 : 0.7 }}>👏</span>
+          <span className="tnum">{eng?.kudos ?? 0}</span>
+        </button>
+        <button onClick={onComments}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '8px 12px', border: 'none', background: 'transparent', cursor: 'pointer', borderRadius: 'var(--r-md)', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600, color: 'var(--text-mid)' }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+          <span className="tnum">{eng?.comments ?? 0}</span>
+        </button>
+      </div>
     </div>
   )
 }

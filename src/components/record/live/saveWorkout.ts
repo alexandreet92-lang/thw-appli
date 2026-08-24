@@ -53,5 +53,6 @@ export async function saveWorkout(a: SaveArgs): Promise<void> {
     avg_hr: a.hr.avg, max_hr: a.hr.max, min_hr: a.hr.min,
     average_heartrate: a.hr.avg, max_heartrate: a.hr.max,
     rpe: a.form.rpe, comment: a.form.comment,
+    visibility: a.form.visibility,
   })
 }

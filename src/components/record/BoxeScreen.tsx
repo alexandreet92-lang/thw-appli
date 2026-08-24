@@ -16,6 +16,7 @@ import { useWorkoutVoice, countWords } from '@/lib/record/useWorkoutVoice'
 import { haptic } from '@/lib/haptics'
 import SessionSaveForm from './SessionSaveForm'
 import type { SessionFormData } from './SessionSaveForm'
+import SessionSummary, { type TargetSeries } from './SessionSummary'
 import { useHeartRate } from '@/lib/record/useHeartRate'
 import HeartRatePanel from './workout/HeartRatePanel'
 import { vibrateBlockChange, vibrateSessionEnd } from './blockVibrate'
@@ -91,6 +92,7 @@ export default function BoxeScreen({ session, onClose, isDark }: Props) {
   const [page, setPage] = useState(0)
   const [showOverview, setShowOverview] = useState(false)
   const [showSave, setShowSave] = useState(false)
+  const [saveStep, setSaveStep] = useState<'summary' | 'form'>('summary')
   const [confirmClose, setConfirmClose] = useState(false)
   const [startedAt] = useState(new Date().toISOString())
   // Édition en direct (comme la muscu) : reps + charge de l'exo courant, et
@@ -148,7 +150,43 @@ export default function BoxeScreen({ session, onClose, isDark }: Props) {
   const totalCount = useRounds ? totalRounds : totalExos
   const caloriesEst = Math.round((elapsed / 60) * 9)  // ≈ 9 kcal/min en boxe
 
+  // Courbe des CIBLES d'intensité sur la durée (puissance/allure) — pour le
+  // graphique du résumé. Unité = celle du sport dominant de la séance.
+  const targetSeries = useMemo<TargetSeries | null>(() => {
+    const work = timeline.filter(s => s.phase === 'work' && s.intensity)
+    if (!work.length) return null
+    const counts: Record<string, number> = {}
+    for (const s of work) counts[s.intensity!.kind] = (counts[s.intensity!.kind] ?? 0) + 1
+    const kind = Object.entries(counts).sort((a, b) => b[1] - a[1])[0][0]
+    const unit = kind === 'watts' ? 'W' : kind === 'speed' ? 'km/h' : kind === 'pace500' ? 's/500m' : 'niv.'
+    const scalar = (i: LiveIntensity): number => i.kind === 'watts' ? i.watts : i.kind === 'speed' ? i.kmh : i.kind === 'pace500' ? i.sec : i.level
+    let tc = 0; const pts: { t: number; v: number }[] = []
+    for (const s of timeline) {
+      if (s.phase === 'done') break
+      const dur = s.durationSec || 0
+      const v = (s.phase === 'work' && s.intensity && s.intensity.kind === kind) ? scalar(s.intensity) : 0
+      pts.push({ t: tc, v }); tc += dur; pts.push({ t: tc, v })
+    }
+    return { pts, unit, kind }
+  }, [timeline])
+
   useEffect(() => { setMounted(true) }, [])
+
+  // Voix de fin + ouverture auto du résumé : « Félicitations, vous avez terminé »
+  // → 1 s de pause → « Voici le résumé de votre séance » → ouvre le résumé.
+  const finishFiredRef = useRef(false)
+  useEffect(() => {
+    const p1 = voiceLang === 'en' ? 'Congratulations, you finished.' : 'Félicitations, vous avez terminé.'
+    const p2 = voiceLang === 'en' ? 'Here is your session summary.' : 'Voici le résumé de votre séance.'
+    if (!started) { voice.prefetch(p1); voice.prefetch(p2); return }
+    if (!isDone || finishFiredRef.current) return
+    finishFiredRef.current = true
+    voice.speak(p1)
+    const t2 = setTimeout(() => voice.speak(p2), 2000)   // ≈ 1 s de phrase + 1 s de pause
+    const t3 = setTimeout(() => { setSaveStep('summary'); setShowSave(true) }, 2400)
+    return () => { clearTimeout(t2); clearTimeout(t3) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isDone, started])
 
   useEffect(() => {
     if (!running) return
@@ -298,6 +336,7 @@ export default function BoxeScreen({ session, onClose, isDark }: Props) {
       avg_hr: hr.avg || null, max_hr: hr.max || null,
       average_heartrate: hr.avg || null, max_heartrate: hr.max || null,
       rpe: formData.rpe, perceived_effort: formData.rpe, comment: formData.comment,
+      visibility: formData.visibility,
     })
     onClose()
   }
@@ -306,11 +345,14 @@ export default function BoxeScreen({ session, onClose, isDark }: Props) {
 
   if (showSave) {
     return createPortal(
-      <div style={{ position: 'fixed', inset: 0, zIndex: 10002, background: 'var(--bg-card)' }}>
-        <SessionSaveForm sport={sportType} startedAt={startedAt} onBack={() => setShowSave(false)} onSave={handleSave} isDark={isDark}
-          summary={{ exos: doneLog.length, sets: setsDone, volumeKg, durationSec: elapsed }}
-          doneList={doneLog}
-          hr={{ avg: hr.avg, min: hr.min, max: hr.max }} />
+      <div style={{ position: 'fixed', inset: 0, zIndex: 10002 }}>
+        {saveStep === 'summary'
+          ? <SessionSummary sportType={sportType} startedAt={startedAt} durationSec={elapsed}
+              doneList={doneLog} sets={setsDone} volumeKg={volumeKg} caloriesEst={caloriesEst}
+              doneCount={doneCount} totalCount={totalCount} unitLabel={unitLabel}
+              hr={{ avg: hr.avg, max: hr.max, min: hr.min, samples: hr.samples }} target={targetSeries}
+              accent={ACCENT} onNext={() => setSaveStep('form')} onClose={() => { setShowSave(false); setSaveStep('summary') }} />
+          : <SessionSaveForm sport={sportType} startedAt={startedAt} onBack={() => setSaveStep('summary')} onSave={handleSave} isDark={isDark} />}
       </div>,
       document.body,
     )
@@ -418,7 +460,8 @@ export default function BoxeScreen({ session, onClose, isDark }: Props) {
           <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-dim)', margin: '4px 0 0', letterSpacing: '0.06em' }}>{unitLabel} RESTANTS</p>
         </div>
         {isDone ? (
-          <button onClick={() => setShowSave(true)} style={{ width: 84, height: 84, borderRadius: '50%', border: `3px solid ${ACCENT}`, background: ACCENT, color: ACCENT_ON, cursor: 'pointer', fontWeight: 800, fontSize: 13 }}>{t('record.sessionSaveSave') || 'Enregistrer'}</button>
+          // La voix ouvre automatiquement le résumé ; ce bouton n'est qu'un secours pour le rouvrir.
+          <button onClick={() => { setSaveStep('summary'); setShowSave(true) }} style={{ height: 52, padding: '0 22px', borderRadius: 999, border: `2px solid ${ACCENT}`, background: 'transparent', color: ACCENT, cursor: 'pointer', fontWeight: 800, fontSize: 13.5, whiteSpace: 'nowrap' }}>Voir le résumé →</button>
         ) : (
           <button onClick={() => setRunning(r => !r)} style={{ width: 84, height: 84, borderRadius: '50%', border: `3px solid ${ACCENT}`, background: 'transparent', color: ACCENT, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             {running ? <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>
@@ -593,7 +636,7 @@ export default function BoxeScreen({ session, onClose, isDark }: Props) {
             <p style={{ fontSize: 13, color: 'var(--text-mid)', margin: '0 0 20px' }}>Temps écoulé · {fmtDur(elapsed)}</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <button onClick={() => setRunning(true)} style={{ width: '100%', padding: 15, borderRadius: 14, border: 'none', background: '#22c55e', color: '#fff', fontSize: 15.5, fontWeight: 800, cursor: 'pointer' }}>Reprendre</button>
-              <button onClick={() => setShowSave(true)} style={{ width: '100%', padding: 15, borderRadius: 14, border: 'none', background: ACCENT, color: ACCENT_ON, fontSize: 15.5, fontWeight: 800, cursor: 'pointer' }}>Terminer et enregistrer</button>
+              <button onClick={() => { setSaveStep('summary'); setShowSave(true) }} style={{ width: '100%', padding: 15, borderRadius: 14, border: 'none', background: ACCENT, color: ACCENT_ON, fontSize: 15.5, fontWeight: 800, cursor: 'pointer' }}>Terminer et enregistrer</button>
               <button onClick={onClose} style={{ width: '100%', padding: 15, borderRadius: 14, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 14.5, fontWeight: 700, cursor: 'pointer' }}>Terminer sans enregistrer</button>
             </div>
           </div>

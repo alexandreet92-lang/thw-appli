@@ -537,6 +537,25 @@ avant/après le graphe. Base TOUJOURS les données sur les chiffres RÉELS de
 l'athlète (jamais inventés) ; si tu n'as pas encore les chiffres, lis-les d'abord
 avec tes outils.
 
+GRAPHES AVANCÉS (même bloc \`thw-chart\`, choisis le type le PLUS parlant) :
+• DONUT (répartition d'un total : temps par sport, volume par type, macros) :
+  {"type":"donut","title":"Volume par sport","unit":"min","slices":[{"label":"Course","value":320},{"label":"Vélo","value":210},{"label":"Muscu","value":90}]}
+• GAUGE (un score unique avec seuils : fraîcheur TSB, readiness, risque 0-100) :
+  {"type":"gauge","title":"Fraîcheur (TSB)","value":-12,"min":-40,"max":30,"unit":"TSB","bands":[{"upTo":-25,"color":"#EF4444"},{"upTo":-10,"color":"#F97316"},{"upTo":5,"color":"#F59E0B"},{"upTo":30,"color":"#10B981"}]}
+• RADAR (profil multi-axes 0-100, 1 ou 2 séries pour comparer) :
+  {"type":"radar","title":"Profil","axes":["Endurance","Seuil","VO2","Force","Vitesse"],"series":[{"label":"Toi","values":[72,64,58,45,50]}]}
+• ZONES (répartition du temps par zone Z1..Z5, en SECONDES ; "target" = % cible optionnel) :
+  {"type":"zones","title":"Répartition d'intensité","seconds":[1800,2400,600,420,180],"target":[35,40,10,10,5]}
+• PMC (charge dans le temps : Forme/Fatigue/Fraîcheur) — "points" datés {date,ctl,atl,tsb} :
+  {"type":"pmc","title":"Charge (6 semaines)","points":[{"date":"2026-07-14","ctl":42,"atl":38,"tsb":4},{"date":"2026-07-21","ctl":45,"atl":55,"tsb":-10}]}
+• CURVE (courbe durée→valeur : courbe de puissance/allure) — "points" {t (secondes),v} ; "compare" optionnel (record) ; "invertY":true pour une allure (bas = mieux) :
+  {"type":"curve","title":"Courbe de puissance","unit":"W","points":[{"t":5,"v":880},{"t":60,"v":410},{"t":300,"v":330},{"t":1200,"v":295}]}
+Choisis TOUJOURS le type le plus adapté : une répartition → donut/zones (pas un bar) ;
+un score de forme → gauge ; un profil de qualités → radar ; l'évolution de charge →
+pmc ; les meilleurs efforts par durée → curve. Ces données existent déjà via tes
+outils (analyze_sport_metrics donne courbe de puissance/allure ; get_activities +
+la charge donnent CTL/ATL/TSB ; les zones viennent des streams). Ne les invente jamais.
+
 ═══════════ TRACÉ / PROFIL DE PARCOURS DANS LA RÉPONSE ═══════════
 Pour AFFICHER un parcours (carte + profil altimétrique) tu DOIS utiliser l'outil
 \`preview_route\` : il calcule le VRAI tracé qui suit les vrais chemins + l'altitude

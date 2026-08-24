@@ -28,6 +28,30 @@ export async function amIFollowing(userId: string): Promise<boolean> {
   return !!data
 }
 
+/** Ensemble des id que je suis (pour afficher l'état Suivre/Suivi en masse). */
+export async function getFollowingIds(): Promise<Set<string>> {
+  const sb = createClient()
+  const user = await getCurrentUser()
+  if (!user) return new Set()
+  const { data } = await sb.from('follows').select('following_id').eq('follower_id', user.id)
+  return new Set(((data ?? []) as { following_id: string }[]).map(r => r.following_id))
+}
+
+export interface Person { id: string; name: string; username: string | null; avatar: string | null; sports: string[] }
+/** Recherche d'athlètes à suivre (nom / username). Exclut soi-même. */
+export async function searchPeople(q: string, limit = 20): Promise<Person[]> {
+  const sb = createClient()
+  const user = await getCurrentUser()
+  const term = q.trim()
+  let query = sb.from('profiles').select('id, full_name, preferred_name, first_name, username, avatar_url, sports').limit(limit)
+  if (term) query = query.or(`full_name.ilike.%${term}%,username.ilike.%${term}%,preferred_name.ilike.%${term}%,first_name.ilike.%${term}%`)
+  else query = query.order('last_seen_at', { ascending: false, nullsFirst: false })
+  const { data } = await query
+  return ((data ?? []) as any[])
+    .filter(r => r.id !== user?.id)
+    .map(r => ({ id: r.id, name: r.preferred_name || r.full_name || r.first_name || r.username || 'Athlète', username: r.username ?? null, avatar: r.avatar_url ?? null, sports: Array.isArray(r.sports) ? r.sports : [] }))
+}
+
 /** Suit / ne suit plus. Renvoie le nouvel état (true = suit). */
 export async function toggleFollow(userId: string, currentlyFollowing: boolean): Promise<boolean> {
   const sb = createClient()

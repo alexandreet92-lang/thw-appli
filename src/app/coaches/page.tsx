@@ -14,13 +14,27 @@ const SPORT_LABEL: Record<string, string> = { running: 'Course', cycling: 'Vélo
 export default function CoachesDirectory() {
   const [coaches, setCoaches] = useState<CoachProfile[] | null>(null)
   const [q, setQ] = useState('')
+  const [sportsSel, setSportsSel] = useState<Set<string>>(new Set())
+  const [dipOnly, setDipOnly] = useState(false)
 
   useEffect(() => { void listPublishedCoaches().then(setCoaches).catch(() => setCoaches([])) }, [])
 
+  // Sports proposés = ceux réellement présents chez les coachs publiés.
+  const availableSports = Array.from(new Set((coaches ?? []).flatMap(c => c.sports))).filter(s => SPORT_LABEL[s])
+  const toggleSport = (s: string) => setSportsSel(prev => { const n = new Set(prev); n.has(s) ? n.delete(s) : n.add(s); return n })
+
   const filtered = (coaches ?? []).filter(c => {
-    if (!q.trim()) return true
-    const hay = `${c.display_name ?? ''} ${c.headline ?? ''} ${c.location ?? ''} ${c.sports.map(s => SPORT_LABEL[s] ?? s).join(' ')}`.toLowerCase()
-    return hay.includes(q.toLowerCase())
+    if (q.trim()) {
+      const hay = `${c.display_name ?? ''} ${c.headline ?? ''} ${c.location ?? ''} ${c.sports.map(s => SPORT_LABEL[s] ?? s).join(' ')}`.toLowerCase()
+      if (!hay.includes(q.toLowerCase())) return false
+    }
+    if (sportsSel.size > 0 && !c.sports.some(s => sportsSel.has(s))) return false
+    if (dipOnly && !(Array.isArray(c.diplomas) && c.diplomas.length > 0)) return false
+    return true
+  })
+  const chip = (active: boolean): React.CSSProperties => ({
+    padding: '7px 13px', borderRadius: 999, cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 12.5, fontWeight: 600, whiteSpace: 'nowrap',
+    border: `1px solid ${active ? 'var(--primary)' : 'var(--border)'}`, background: active ? 'var(--primary-dim)' : 'var(--bg-card2)', color: active ? 'var(--primary)' : 'var(--text-dim)',
   })
 
   return (
@@ -33,8 +47,17 @@ export default function CoachesDirectory() {
         <Link href="/programmes" style={{ padding: '9px 14px', borderRadius: 'var(--r-md)', background: 'var(--bg-card2)', color: 'var(--primary)', fontSize: 13, fontWeight: 700, textDecoration: 'none', marginBottom: 20, flexShrink: 0 }}>Voir les programmes →</Link>
       </div>
 
-      <input value={q} onChange={e => setQ(e.target.value)} placeholder="Rechercher par nom, sport, ville…"
-        style={{ width: '100%', boxSizing: 'border-box', padding: '11px 14px', borderRadius: 'var(--r-md)', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontFamily: 'var(--font-body)', fontSize: 14, outline: 'none', marginBottom: 20 }} />
+      <input value={q} onChange={e => setQ(e.target.value)} placeholder="Rechercher par nom ou ville…"
+        style={{ width: '100%', boxSizing: 'border-box', padding: '11px 14px', borderRadius: 'var(--r-md)', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontFamily: 'var(--font-body)', fontSize: 14, outline: 'none', marginBottom: 12 }} />
+
+      {/* Filtres structurés : par sport + diplômé·e */}
+      {(availableSports.length > 0 || (coaches?.length ?? 0) > 0) && (
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 20 }}>
+          {availableSports.map(s => <button key={s} onClick={() => toggleSport(s)} style={chip(sportsSel.has(s))}>{SPORT_LABEL[s] ?? s}</button>)}
+          <button onClick={() => setDipOnly(v => !v)} style={chip(dipOnly)}>🎓 Diplômé·e</button>
+          {(sportsSel.size > 0 || dipOnly || q) && <button onClick={() => { setSportsSel(new Set()); setDipOnly(false); setQ('') }} style={{ ...chip(false), border: 'none', background: 'transparent', color: 'var(--text-dim)' }}>Réinitialiser</button>}
+        </div>
+      )}
 
       {coaches === null ? (
         <p style={{ fontSize: 13, color: 'var(--text-dim)' }}>Chargement…</p>

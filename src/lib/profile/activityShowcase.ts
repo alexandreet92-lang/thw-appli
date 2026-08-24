@@ -136,6 +136,36 @@ export async function getActivityFeed(beforeTs?: string | null, max = 40): Promi
   return data as FeedActivity[]
 }
 
+/** MES activités récentes, au format FeedActivity (comme Strava : le fil montre
+ *  aussi mes propres sorties, pas seulement celles des abonnements). */
+export async function getOwnActivities(max = 40): Promise<FeedActivity[]> {
+  const sb = createClient()
+  const user = await getCurrentUser()
+  if (!user) return []
+  const [{ data: acts }, { data: prof }] = await Promise.all([
+    sb.from('activities')
+      .select('id, sport_type, title, race_name, started_at, distance_m, moving_time_s, avg_pace_s_km, avg_watts, elevation_gain_m, summary_polyline, is_race')
+      .eq('user_id', user.id).order('started_at', { ascending: false }).limit(max),
+    sb.from('profiles').select('full_name, username, avatar_url, preferred_name, first_name').eq('id', user.id).maybeSingle(),
+  ])
+  const p = prof as { full_name: string | null; username: string | null; avatar_url: string | null; preferred_name: string | null; first_name: string | null } | null
+  const name = p?.preferred_name || p?.full_name || p?.first_name || p?.username || 'Moi'
+  return ((acts ?? []) as any[]).map((r): FeedActivity => ({
+    id: r.id, sport: r.sport_type ?? 'other', title: r.title || r.race_name || '', started_at: r.started_at,
+    distance_m: r.distance_m, seconds: r.moving_time_s, avg_pace_s_km: r.avg_pace_s_km, avg_watts: r.avg_watts,
+    elevation_gain_m: r.elevation_gain_m, polyline: r.summary_polyline ?? null, sm: null, sn: null, is_race: r.is_race,
+    author_id: user.id, author_name: name, author_avatar: p?.avatar_url ?? null,
+  }))
+}
+
+/** Fil combiné : mes activités + celles des abonnements, fusionnées & triées. */
+export async function getCombinedFeed(max = 40): Promise<FeedActivity[]> {
+  const [own, followed] = await Promise.all([getOwnActivities(max), getActivityFeed(null, max)])
+  const seen = new Set<string>()
+  const merged = [...own, ...followed].filter(a => { if (seen.has(a.id)) return false; seen.add(a.id); return true })
+  return merged.sort((a, b) => b.started_at.localeCompare(a.started_at))
+}
+
 /** Ligne d'activité complète (toutes les colonnes sauf raw_data) + zones du
  * propriétaire + can_view — pour hydrater la vue détaillée training (lecture
  * seule). Renvoie l'objet brut (mêmes noms de colonnes que la table). */

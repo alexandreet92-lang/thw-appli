@@ -72,7 +72,7 @@ const fr: Dict = {
   // Profil
   'profile.langTitle': 'Langue de l’application', 'profile.langDesc': 'Choisis la langue de l’interface.',
   // Navigation (sidebar + barre d'onglets mobile)
-  'nav.dashboard': 'Dashboard', 'nav.feed': 'Fil', 'nav.planning': 'Planning', 'nav.calendar': 'Calendar',
+  'nav.dashboard': 'Dashboard', 'nav.feed': 'Découvrir', 'nav.coaches': 'Coachs', 'nav.planning': 'Planning', 'nav.calendar': 'Calendar',
   'nav.session': 'Session', 'nav.training': 'Training', 'nav.recovery': 'Récupération',
   'nav.nutrition': 'Nutrition', 'nav.performance': 'Performance', 'nav.injuries': 'Blessures',
   'nav.messages': 'Messages',
@@ -3860,7 +3860,7 @@ const en: Dict = {
   'q.lvl.elite': 'Elite', 'q.lvl.eliteD': 'High-level competitor.',
   'profile.langTitle': 'App language', 'profile.langDesc': 'Choose the interface language.',
   // Navigation (sidebar + mobile tab bar)
-  'nav.dashboard': 'Dashboard', 'nav.feed': 'Feed', 'nav.planning': 'Planning', 'nav.calendar': 'Calendar',
+  'nav.dashboard': 'Dashboard', 'nav.feed': 'Discover', 'nav.coaches': 'Coaches', 'nav.planning': 'Planning', 'nav.calendar': 'Calendar',
   'nav.session': 'Session', 'nav.training': 'Training', 'nav.recovery': 'Recovery',
   'nav.nutrition': 'Nutrition', 'nav.performance': 'Performance', 'nav.injuries': 'Injuries',
   'nav.messages': 'Messages',

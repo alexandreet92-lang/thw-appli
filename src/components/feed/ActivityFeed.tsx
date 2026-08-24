@@ -6,10 +6,14 @@
 // détail LECTURE SEULE (exactement la page training, non éditable).
 // ══════════════════════════════════════════════════════════════════
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { Avatar } from '@/components/shared/Sidebar'
 import { ReadOnlyActivityDetail } from '@/components/activity/ReadOnlyActivityDetail'
+import { PeopleSearchSheet } from './PeopleSearchSheet'
 import { staticRouteMapUrl } from '@/lib/staticMap'
-import { getActivityFeed, decodePolyline, polylineToSvgPath, sportFamily, sportMeta, type FeedActivity } from '@/lib/profile/activityShowcase'
+import { getActivityFeed, getCombinedFeed, decodePolyline, polylineToSvgPath, sportFamily, sportMeta, type FeedActivity } from '@/lib/profile/activityShowcase'
+import { getCurrentUser } from '@/lib/auth/currentUser'
+import { getFollowingIds, toggleFollow } from '@/lib/social/follows'
 
 const SPORT_HEX: Record<string, string> = { running: '22c55e', cycling: '3b82f6', swim: '0ea5e9', rowing: '8b5cf6', gym: 'f97316', hyrox: 'ef4444', other: '9ca3af' }
 const MONTH = ['jan', 'fév', 'mar', 'avr', 'mai', 'juin', 'juil', 'août', 'sep', 'oct', 'nov', 'déc']
@@ -31,36 +35,66 @@ export default function ActivityFeed() {
   const [detail, setDetail] = useState<FeedActivity | null>(null)
   const [loadingMore, setLoadingMore] = useState(false)
   const [done, setDone] = useState(false)
+  const [meId, setMeId] = useState<string | null>(null)
+  const [following, setFollowing] = useState<Set<string>>(new Set())
+  const [peopleOpen, setPeopleOpen] = useState(false)
 
-  useEffect(() => { let off = false; void getActivityFeed().then(rows => { if (!off) { setItems(rows); if (rows.length < 40) setDone(true) } }); return () => { off = true } }, [])
+  useEffect(() => {
+    let off = false
+    void getCurrentUser().then(u => { if (!off) setMeId(u?.id ?? null) })
+    void getFollowingIds().then(s => { if (!off) setFollowing(s) })
+    void getCombinedFeed(40).then(rows => { if (!off) { setItems(rows); if (rows.length < 40) setDone(true) } })
+    return () => { off = true }
+  }, [])
 
+  // « Voir plus » pagine le fil des abonnements (mes activités sont déjà toutes chargées).
   const loadMore = async () => {
     if (!items || items.length === 0 || loadingMore || done) return
     setLoadingMore(true)
     const last = items[items.length - 1]
     const more = await getActivityFeed(last.started_at)
-    setItems([...items, ...more])
+    const seen = new Set(items.map(i => i.id))
+    const fresh = more.filter(m => !seen.has(m.id))
+    setItems([...items, ...fresh])
     if (more.length < 40) setDone(true)
     setLoadingMore(false)
   }
 
+  async function onToggleFollow(id: string) {
+    const now = await toggleFollow(id, following.has(id)).catch(() => following.has(id))
+    setFollowing(prev => { const n = new Set(prev); now ? n.add(id) : n.delete(id); return n })
+  }
+
+  const btn = (bg: string, color: string): React.CSSProperties => ({ flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 7, padding: '11px 14px', borderRadius: 'var(--r-md)', border: 'none', background: bg, color, fontFamily: 'var(--font-body)', fontSize: 13.5, fontWeight: 700, cursor: 'pointer', textDecoration: 'none' })
+
   return (
     <div style={{ maxWidth: 620, margin: '0 auto', padding: '4px clamp(12px,4vw,20px) 80px' }}>
-      <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 600, color: 'var(--text)', margin: '8px 0 2px' }}>Fil</h1>
-      <p style={{ fontSize: 13.5, color: 'var(--text-dim)', margin: '0 0 20px' }}>Les dernières activités des athlètes que tu suis.</p>
+      <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 600, color: 'var(--text)', margin: '8px 0 2px' }}>Découvrir</h1>
+      <p style={{ fontSize: 13.5, color: 'var(--text-dim)', margin: '0 0 16px' }}>Tes activités et celles des athlètes que tu suis.</p>
 
-      {items === null && <p style={{ fontSize: 13.5, color: 'var(--text-dim)' }}>Chargement du fil…</p>}
+      {/* Actions : trouver des athlètes / un coach */}
+      <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
+        <button onClick={() => setPeopleOpen(true)} style={btn('var(--bg-card2)', 'var(--text)')}>
+          <span aria-hidden>＋</span> Trouver des athlètes
+        </button>
+        <Link href="/coaches" style={btn('var(--primary)', 'var(--on-primary)')}>Trouver un coach</Link>
+      </div>
+
+      {items === null && <p style={{ fontSize: 13.5, color: 'var(--text-dim)' }}>Chargement…</p>}
 
       {items !== null && items.length === 0 && (
         <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-lg)', padding: '28px 22px', textAlign: 'center' }}>
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 600, color: 'var(--text)', marginBottom: 6 }}>Ton fil est vide pour l’instant</div>
-          <p style={{ fontSize: 13.5, color: 'var(--text-dim)', margin: 0, lineHeight: 1.55 }}>Suis d’autres athlètes depuis la communauté — leurs activités (publiques ou réservées aux abonnés) apparaîtront ici.</p>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 600, color: 'var(--text)', marginBottom: 6 }}>Rien à afficher pour l’instant</div>
+          <p style={{ fontSize: 13.5, color: 'var(--text-dim)', margin: 0, lineHeight: 1.55 }}>Enregistre ou synchronise une activité, ou suis d’autres athlètes — tout apparaîtra ici.</p>
         </div>
       )}
 
       {items !== null && items.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {items.map((a, i) => <FeedCard key={`${a.id}-${i}`} a={a} onOpen={() => setDetail(a)} />)}
+          {items.map((a, i) => (
+            <FeedCard key={`${a.id}-${i}`} a={a} onOpen={() => setDetail(a)}
+              canFollow={!!meId && a.author_id !== meId} isFollowing={following.has(a.author_id)} onToggleFollow={() => void onToggleFollow(a.author_id)} />
+          ))}
           {!done && (
             <button onClick={() => void loadMore()} disabled={loadingMore}
               style={{ width: '100%', padding: '12px 16px', borderRadius: 'var(--r-md)', border: 'none', background: 'var(--bg-card2)', color: 'var(--primary)', fontFamily: 'var(--font-body)', fontSize: 13.5, fontWeight: 700, cursor: loadingMore ? 'default' : 'pointer' }}>
@@ -70,13 +104,14 @@ export default function ActivityFeed() {
         </div>
       )}
 
+      {peopleOpen && <PeopleSearchSheet onClose={() => setPeopleOpen(false)} />}
       {/* Détail LECTURE SEULE — EXACTEMENT la page training (plein écran) */}
       {detail && <ReadOnlyActivityDetail id={detail.id} onClose={() => setDetail(null)} />}
     </div>
   )
 }
 
-function FeedCard({ a, onOpen }: { a: FeedActivity; onOpen: () => void }) {
+function FeedCard({ a, onOpen, canFollow, isFollowing, onToggleFollow }: { a: FeedActivity; onOpen: () => void; canFollow: boolean; isFollowing: boolean; onToggleFollow: () => void }) {
   const fam = sportFamily(a.sport)
   const meta = sportMeta(fam)
   const pts = decodePolyline(a.polyline).map(([lat, lng]) => ({ lat, lng }))
@@ -85,15 +120,16 @@ function FeedCard({ a, onOpen }: { a: FeedActivity; onOpen: () => void }) {
   const stats: { label: string; value: string }[] = []
   const dist = fmtDist(a.distance_m); if (dist) stats.push({ label: 'Distance', value: dist })
   if (a.seconds) stats.push({ label: 'Durée', value: fmtDur(a.seconds) })
+  const pace = fmtPace(a.avg_pace_s_km); if (pace && fam !== 'cycling') stats.push({ label: 'Allure', value: pace })
+  if (a.avg_watts && fam === 'cycling') stats.push({ label: 'Watts', value: `${Math.round(a.avg_watts)} W` })
   if (a.elevation_gain_m) stats.push({ label: 'D+', value: `${Math.round(a.elevation_gain_m)} m` })
-  else { const p = fmtPace(a.avg_pace_s_km) ?? (a.avg_watts ? `${Math.round(a.avg_watts)} W` : null); if (p) stats.push({ label: fam === 'cycling' ? 'Watts' : 'Allure', value: p }) }
 
   return (
     <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-lg)', overflow: 'hidden' }}>
       {/* Auteur */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '12px 14px' }}>
         <Avatar url={a.author_avatar} name={a.author_name} size={40} />
-        <div style={{ minWidth: 0 }}>
+        <div style={{ minWidth: 0, flex: 1 }}>
           <div style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.author_name}</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 12, color: 'var(--text-dim)' }}>
             <span style={{ width: 7, height: 7, borderRadius: '50%', background: meta.color, flexShrink: 0 }} />
@@ -102,6 +138,13 @@ function FeedCard({ a, onOpen }: { a: FeedActivity; onOpen: () => void }) {
             <span className="tnum">{relDate(a.started_at)}</span>
           </div>
         </div>
+        {canFollow && (
+          <button onClick={onToggleFollow}
+            style={{ flexShrink: 0, padding: '6px 13px', borderRadius: 999, cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 600,
+              border: isFollowing ? '1px solid var(--border-mid)' : 'none', background: isFollowing ? 'transparent' : 'var(--primary)', color: isFollowing ? 'var(--text-mid)' : 'var(--on-primary)' }}>
+            {isFollowing ? 'Suivi' : 'Suivre'}
+          </button>
+        )}
       </div>
 
       {/* Carte / titre / stats — clic = détail lecture seule */}

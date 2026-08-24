@@ -4,6 +4,8 @@
 // simplement vers les builders existants.
 import type { Block } from '@/app/planning/page'
 import { SessionBlockBuilder } from './SessionBlockBuilder'
+import { SprintsBuilder } from './SprintsBuilder'
+import { StridesBuilder } from './StridesBuilder'
 import { StrengthBuilder } from './StrengthBuilder'
 import { HyroxBuilder } from './HyroxBuilder'
 import { MobilityBuilder } from './MobilityBuilder'
@@ -27,6 +29,13 @@ export function BuilderSection({ p }: { p: SessionEditorPanelProps }) {
         map={p.exoMap} setMap={p.setExoMap}
         sn={p.sn} builderTab={p.builderTab} onBuilderTab={p.setBuilderTab} />
     )
+  }
+  // Famille course « Sprints » / « Intervals Strides » — builders dédiés.
+  if (p.sport === 'run' && p.runFamily === 'sprints') {
+    return <SprintsBuilder blocks={p.blocks as MBlock[]} accent={p.accent} onChange={b => p.setBlocks(b as Block[])} />
+  }
+  if (p.sport === 'run' && p.runFamily === 'intervals') {
+    return <StridesBuilder blocks={p.blocks as MBlock[]} accent={p.accent} onChange={b => p.setBlocks(b as Block[])} />
   }
   if (p.sport === 'hyrox') {
     return (

@@ -296,8 +296,20 @@ const DUR_SECS: Record<string, number> = {
   '4h':14400, '5h':18000, '6h':21600,
 }
 
-const RUN_DISTS = ['400m','1km','5km','10km','Semi','Marathon','50km','100km']
-const RUN_KM: Record<string,number> = { '400m':0.4,'1km':1,'5km':5,'10km':10,'Semi':21.1,'Marathon':42.195,'50km':50,'100km':100 }
+// Distances SPRINT (pilotent le profil d'intensité du builder Sprints). Affichées
+// en km/h plutôt qu'en allure/km — plus parlant sur des efforts max courts.
+const SPRINT_DISTS = ['100m','150m','200m','300m']
+const RUN_DISTS = [...SPRINT_DISTS,'400m','1km','5km','10km','Semi','Marathon','50km','100km']
+const RUN_KM: Record<string,number> = { '100m':0.1,'150m':0.15,'200m':0.2,'300m':0.3,'400m':0.4,'1km':1,'5km':5,'10km':10,'Semi':21.1,'Marathon':42.195,'50km':50,'100km':100 }
+
+// Vitesse moyenne km/h d'une perf (pour les distances sprint).
+function calcSpeedKmh(distKm: number, timeStr: string): string {
+  if (!timeStr || timeStr === '—') return '—'
+  const p = timeStr.split(':').map(Number)
+  const s = p.length === 3 ? p[0]*3600+p[1]*60+p[2] : p[0]*60+(p[1]||0)
+  if (!s) return '—'
+  return `${(distKm/(s/3600)).toFixed(1).replace('.', ',')} km/h`
+}
 
 const SWIM_M: Record<string,number> = { '100m':100,'200m':200,'400m':400,'1000m':1000,'1500m':1500,'2000m':2000,'5000m':5000,'10000m':10000 }
 
@@ -3186,7 +3198,7 @@ function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests }: 
             {RUN_DISTS.map(d => {
               const spBest  = getSpBest('run', d, recordYear)
               const prevRec = getSpPrev('run', d)
-              const pace = spBest ? calcPacePerKm(RUN_KM[d] ?? 0, spBest.perf) : '—'
+              const pace = spBest ? (SPRINT_DISTS.includes(d) ? calcSpeedKmh(RUN_KM[d] ?? 0, spBest.perf) : calcPacePerKm(RUN_KM[d] ?? 0, spBest.perf)) : '—'
               const sel = selectedDatum?.label === `Course ${d}` && selectedDatum?.value === (spBest?.perf ?? '—')
               return (
                 <RecordRow key={d} label={d}

@@ -106,7 +106,7 @@ export function StridesBuilder({ blocks, onChange, accent }: { blocks: MBlock[];
               style={{ width: '100%', boxSizing: 'border-box', padding: '9px 12px', borderRadius: 9, border: '1px solid var(--se-rule)', background: 'var(--se-card)', color: 'var(--se-text)', fontSize: 13, outline: 'none' }} />
           </div>
           <button type="button" onClick={() => saveReusable(b)} style={{ width: '100%', padding: '9px', borderRadius: 9, border: `1px dashed ${accent}`, background: 'transparent', color: accent, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
-            {savedFlash === b.id ? '✓ Enregistré dans Mes ateliers' : '★ Sauvegarder comme atelier réutilisable'}
+            {savedFlash === b.id ? 'Enregistré dans Mes ateliers' : 'Sauvegarder comme atelier réutilisable'}
           </button>
         </Card>
       ))}
@@ -127,7 +127,7 @@ export function StridesBuilder({ blocks, onChange, accent }: { blocks: MBlock[];
                 {custom.map(c => (
                   <div key={c.id} style={{ position: 'relative' }}>
                     <button type="button" onClick={() => add(newAtelierFromCustom(c))} style={tileStyle(accent)}>
-                      {c.svg ? <Diagram svg={c.svg} accent={accent} size={72} /> : <span style={{ fontSize: 22, color: accent }}>★</span>}
+                      {c.svg ? <Diagram svg={c.svg} accent={accent} size={72} /> : <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={accent} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 12h8M12 8v8"/></svg>}
                       <span style={tileName}>{c.name}</span>
                     </button>
                     <button type="button" onClick={() => delCustom(c.id)} aria-label="Supprimer" style={{ position: 'absolute', top: 4, right: 4, width: 18, height: 18, borderRadius: '50%', border: 'none', background: 'var(--se-card2)', color: 'var(--se-dim)', fontSize: 11, cursor: 'pointer', lineHeight: 1 }}>×</button>
@@ -140,7 +140,7 @@ export function StridesBuilder({ blocks, onChange, accent }: { blocks: MBlock[];
           <p style={{ margin: '0 0 8px', fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--se-dim)' }}>Catalogue</p>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(96px, 1fr))', gap: 8 }}>
             <button type="button" onClick={() => add(newFreeAtelier())} style={{ ...tileStyle(accent), borderStyle: 'dashed' }}>
-              <span style={{ fontSize: 22, color: accent }}>＋</span>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={accent} strokeWidth="2" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
               <span style={tileName}>Atelier libre</span>
             </button>
             {ATELIER_PRESETS.map((p: AtelierPreset) => (

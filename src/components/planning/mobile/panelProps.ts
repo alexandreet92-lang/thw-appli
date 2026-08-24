@@ -51,6 +51,8 @@ export interface SessionEditorPanelProps {
   saving: boolean; saved: boolean
   onClose: () => void; onSave: () => void; onExportPDF: () => void; onFavorite: () => void
   onPrintMemo: () => void
+  /** Duplique (répète) la séance : toutes les `everyNWeeks` semaines, `count` fois. */
+  onDuplicateRepeat?: (everyNWeeks: number, count: number) => void
   onDelete?: () => void
   // Muscu / Hyrox (builder par exercices) — sync vers les refs côté parent
   exercises: ExerciseItem[]; setExercises: (e: ExerciseItem[]) => void

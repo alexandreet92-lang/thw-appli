@@ -141,7 +141,7 @@ export default function SessionSummary({ sportType, startedAt, durationSec, done
             <span style={{ width: 7, height: 7, borderRadius: '50%', background: T.blue }} />
             <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: T.blue }}>{sportLabel(sportType)}</span>
           </div>
-          <h1 style={{ fontFamily: 'Syne, DM Sans, sans-serif', fontSize: 30, fontWeight: 800, margin: '0 0 4px', letterSpacing: '-0.02em', color: T.text }}>Séance terminée 🎉</h1>
+          <h1 style={{ fontFamily: 'Syne, DM Sans, sans-serif', fontSize: 30, fontWeight: 800, margin: '0 0 4px', letterSpacing: '-0.02em', color: T.text }}>Séance terminée</h1>
           <p style={{ fontSize: 13.5, color: T.muted, margin: 0, textTransform: 'capitalize' }}>{date}</p>
           <p style={{ fontFamily: 'Syne, DM Sans, sans-serif', fontSize: 'clamp(52px, 16vw, 84px)', fontWeight: 800, margin: '10px 0 0', lineHeight: 1, color: accent, fontVariantNumeric: 'tabular-nums' }}>{fmtClock(durationSec)}</p>
         </div>

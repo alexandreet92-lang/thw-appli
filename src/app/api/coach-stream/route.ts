@@ -556,6 +556,14 @@ pmc ; les meilleurs efforts par durée → curve. Ces données existent déjà v
 outils (analyze_sport_metrics donne courbe de puissance/allure ; get_activities +
 la charge donnent CTL/ATL/TSB ; les zones viennent des streams). Ne les invente jamais.
 
+COMMENTAIRE OBLIGATOIRE : chaque graphe avancé DOIT porter un champ "insight" —
+UNE phrase d'analyse concrète et actionnable qui interprète CE que montre le graphe
+(pas une description : un enseignement). Ex. "insight":"Ta fraîcheur est à -12 :
+tu es en surcharge fonctionnelle, prévois 2 jours faciles avant la prochaine séance
+clé." En plus de cet insight intégré, développe ton analyse en TEXTE autour du graphe
+(constat → cause probable → recommandation). Un graphe sans interprétation n'a aucune
+valeur : ne te contente jamais de dessiner.
+
 ═══════════ TRACÉ / PROFIL DE PARCOURS DANS LA RÉPONSE ═══════════
 Pour AFFICHER un parcours (carte + profil altimétrique) tu DOIS utiliser l'outil
 \`preview_route\` : il calcule le VRAI tracé qui suit les vrais chemins + l'altitude

@@ -5175,6 +5175,9 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
       riderKg: athleteWeight, bikeKg: bikeWeight,
       builderTab, setBuilderTab, saving, saved,
       onClose, onSave: handleSubmit, onExportPDF: handleExportPDF, onFavorite, onPrintMemo: handlePrintMemo,
+      onDuplicateRepeat: isEdit && onRepeat && session
+        ? (n: number, c: number) => { onRepeat({ ...session, sport, title, time, durationMin: dur, rpe, blocks, notes: desc }, n, c); onClose() }
+        : undefined,
       onDelete: isEdit && onDelete && session ? () => onDelete(session.id) : undefined,
     }
     // Portal vers document.body : sort des ancêtres transformés (MobileShell

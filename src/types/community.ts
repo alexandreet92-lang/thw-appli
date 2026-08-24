@@ -63,6 +63,15 @@ export interface ActivityRef {
   elevGainM?: number | null
   difficulty?: number | null     // 0–10
   feeling?: number | null        // 0–5
+  // Métriques riches embarquées dans le snapshot (affichées selon le sport).
+  avgWatts?: number | null
+  maxWatts?: number | null
+  npWatts?: number | null        // puissance normalisée
+  avgSpeedMs?: number | null     // m/s → km/h à l'affichage
+  maxHr?: number | null
+  calories?: number | null
+  avgTempC?: number | null
+  kj?: number | null             // kilojoules (travail)
 }
 
 /** Snapshot dénormalisé d'une séance de la bibliothèque partagée dans un canal.

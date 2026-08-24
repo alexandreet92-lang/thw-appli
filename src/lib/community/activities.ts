@@ -16,6 +16,9 @@ interface ActRow {
   tss: number | null; avg_hr: number | null; avg_pace_s_km: number | null; is_race: boolean | null
   summary_polyline: string | null; elevation_gain_m: number | null
   difficulty: number | null; feeling: number | null
+  avg_watts: number | null; max_watts: number | null; normalized_watts: number | null
+  avg_speed_ms: number | null; max_hr: number | null; calories: number | null
+  avg_temp_c: number | null; kilojoules: number | null
 }
 
 // Échantillonne un tableau numérique à `max` points max (profil compact).
@@ -34,7 +37,7 @@ export async function listMyRecentActivities(limit = 20): Promise<ActivityRef[]>
   if (!user) return []
   const { data } = await sb
     .from('activities')
-    .select('id, user_id, sport_type, title, race_name, distance_m, moving_time_s, started_at, tss, avg_hr, avg_pace_s_km, is_race, summary_polyline, elevation_gain_m, difficulty, feeling')
+    .select('id, user_id, sport_type, title, race_name, distance_m, moving_time_s, started_at, tss, avg_hr, avg_pace_s_km, is_race, summary_polyline, elevation_gain_m, difficulty, feeling, avg_watts, max_watts, normalized_watts, avg_speed_ms, max_hr, calories, avg_temp_c, kilojoules')
     .eq('user_id', user.id)
     .order('started_at', { ascending: false })
     .limit(limit)
@@ -55,6 +58,14 @@ export async function listMyRecentActivities(limit = 20): Promise<ActivityRef[]>
     elevGainM: r.elevation_gain_m,
     difficulty: r.difficulty,
     feeling: r.feeling,
+    avgWatts: r.avg_watts,
+    maxWatts: r.max_watts,
+    npWatts: r.normalized_watts,
+    avgSpeedMs: r.avg_speed_ms,
+    maxHr: r.max_hr,
+    calories: r.calories,
+    avgTempC: r.avg_temp_c,
+    kj: r.kilojoules,
   }))
 }
 

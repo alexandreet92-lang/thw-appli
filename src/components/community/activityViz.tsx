@@ -3,7 +3,8 @@
 // Rendus SVG bruts (zéro lib) pour une activité partagée : tracé (depuis la
 // polyline encodée) + profil altimétrique (depuis un tableau d'altitudes).
 // ══════════════════════════════════════════════════════════════════════════
-import { polylineToSvgPath } from '@/lib/profile/activityShowcase'
+import { polylineToSvgPath, decodePolyline } from '@/lib/profile/activityShowcase'
+import { staticRouteMapUrl, hasStaticMap } from '@/lib/staticMap'
 
 export function RouteSvg({ polyline, vw = 340, vh = 150, height }: { polyline?: string | null; vw?: number; vh?: number; height?: number }) {
   const d = polylineToSvgPath(polyline ?? null, vw, vh, 8)
@@ -14,6 +15,25 @@ export function RouteSvg({ polyline, vw = 340, vh = 150, height }: { polyline?: 
       <path d={d} fill="none" stroke="var(--primary)" strokeWidth={2.4} strokeLinejoin="round" strokeLinecap="round" />
     </svg>
   )
+}
+
+// Vraie carte (fond Mapbox : villes, relief) avec le tracé dessiné dessus, via
+// l'image statique Mapbox — aucune lib carte chargée, juste une <img>. Repli sur
+// le tracé SVG nu si pas de token Mapbox ou pas de GPS.
+export function RouteMap({ polyline, height = 150, width = 340 }: { polyline?: string | null; height?: number; width?: number }) {
+  if (!polyline) return null
+  if (hasStaticMap()) {
+    const pts = decodePolyline(polyline).map(([lat, lng]) => ({ lat, lng }))
+    const url = staticRouteMapUrl(pts, { width, height, pins: true })
+    if (url) {
+      return (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={url} alt="Carte du parcours" loading="lazy" decoding="async"
+          style={{ display: 'block', width: '100%', height, objectFit: 'cover', borderRadius: 'var(--r-sm)', background: 'var(--surface-neutral)' }} />
+      )
+    }
+  }
+  return <RouteSvg polyline={polyline} height={height} />
 }
 
 export function ElevationSvg({ elevation, vw = 340, vh = 60, height }: { elevation?: number[] | null; vw?: number; vh?: number; height?: number }) {

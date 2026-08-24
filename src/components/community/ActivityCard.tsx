@@ -6,7 +6,7 @@
 // ══════════════════════════════════════════════════════════════════════════
 import { useState } from 'react'
 import { sportColor, sportLabel } from '@/components/recovery/helpers'
-import { RouteSvg, ElevationSvg } from './activityViz'
+import { RouteMap, ElevationSvg } from './activityViz'
 import { ActivityDetailPanel } from './ActivityDetailPanel'
 import { CommunityActivityAnalysis } from './CommunityActivityAnalysis'
 import type { ActivityRef } from '@/types/community'
@@ -37,19 +37,28 @@ function fmtDate(iso: string): string {
 export function ActivityCard({ activity, channelId }: { activity: ActivityRef; me?: string | null; channelId?: string }) {
   const [open, setOpen] = useState(false)
   const col = sportColor(activity.sport)
+  const isBike = /bike|ride|cycl|v[ée]lo|velo/i.test(activity.sport)
+  const kmh = activity.avgSpeedMs && activity.avgSpeedMs > 0 ? (activity.avgSpeedMs * 3.6).toFixed(1).replace('.', ',') : null
+  // Métriques riches, ordonnées et adaptées au sport ; on n'affiche que ce qui existe.
   const stats = [
     fmtDistance(activity.distanceM),
     fmtDuration(activity.durationS),
-    fmtPace(activity.avgPaceSKm),
-    activity.avgHr ? `${Math.round(activity.avgHr)} bpm` : null,
+    !isBike ? fmtPace(activity.avgPaceSKm) : null,
+    isBike && kmh ? `${kmh} km/h` : null,
+    activity.avgWatts ? `${Math.round(activity.avgWatts)} W${activity.npWatts ? ` · NP ${Math.round(activity.npWatts)}` : ''}` : null,
+    activity.avgHr ? `${Math.round(activity.avgHr)} bpm${activity.maxHr ? ` · max ${Math.round(activity.maxHr)}` : ''}` : null,
     activity.elevGainM && activity.elevGainM > 0 ? `${Math.round(activity.elevGainM)} m D+` : null,
+    activity.kj ? `${Math.round(activity.kj)} kJ` : null,
+    activity.calories ? `${Math.round(activity.calories)} kcal` : null,
+    activity.avgTempC != null ? `${Math.round(activity.avgTempC)}°C` : null,
+    activity.tss ? `TSS ${Math.round(activity.tss)}` : null,
   ].filter(Boolean) as string[]
 
   return (
     <>
       <button onClick={() => setOpen(true)}
         style={{ display: 'block', width: '100%', maxWidth: 340, textAlign: 'left', border: 'none', cursor: 'pointer', background: 'var(--bg-card2)', borderRadius: 'var(--r-md)', padding: 0, overflow: 'hidden', fontFamily: FB }}>
-        {activity.polyline && <RouteSvg polyline={activity.polyline} height={120} />}
+        {activity.polyline && <RouteMap polyline={activity.polyline} height={150} />}
         <div style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'stretch', padding: 'var(--space-3) var(--space-4)' }}>
           <span style={{ width: 3, borderRadius: 3, background: col, flexShrink: 0 }} />
           <div style={{ flex: 1, minWidth: 0 }}>

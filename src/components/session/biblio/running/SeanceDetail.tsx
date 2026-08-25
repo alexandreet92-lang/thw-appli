@@ -7,6 +7,7 @@ import type { Seance, Bloc, PhaseBloc, Niveau } from '@/data/seances/running'
 import { FILIERE_LABEL, BUCKET_SHORT, NIVEAUX, hasNiveaux, scaleSeance, volumePrefixe, volumeSignature } from '@/data/seances/running'
 import { RunProfil, ResumeBandeau, ZONE_TOKEN, ZONE_LABEL } from './RunProfil'
 import { AddToPlanning } from '../AddToPlanning'
+import { runningSeanceToBlocks } from './toPlanning'
 import { useI18n } from '@/lib/i18n'
 
 const FB = 'var(--font-body)', FD = 'var(--font-display)'
@@ -133,6 +134,10 @@ export function SeanceDetail({ seance, onBack }: { seance: Seance; onBack: () =>
           computeMeta={(nivId) => {
             const s = showNiveaux && nivId ? scaleSeance(base, nivId as Niveau) : base
             return { durationMin: s.dureeEstimeeMin, rpe: s.rpe }
+          }}
+          computeBlocks={(nivId) => {
+            const s = showNiveaux && nivId ? scaleSeance(base, nivId as Niveau) : base
+            return runningSeanceToBlocks(variante ? { ...s, blocs: variante.blocs } : s)
           }}
         />
       </div>

@@ -29,6 +29,13 @@ export function useGuide() {
 
 interface Rect { top: number; left: number; width: number; height: number }
 
+// Desktop et mobile rendent des éléments DUPLIQUÉS (même data-guide, l'un masqué
+// en CSS). On cible TOUJOURS l'instance réellement visible à l'écran.
+function findGuideEl(anchor: string): HTMLElement | null {
+  const els = Array.from(document.querySelectorAll<HTMLElement>(`[data-guide="${anchor}"]`))
+  return els.find(el => el.getClientRects().length > 0) ?? els[0] ?? null
+}
+
 export function GuideProvider({ children }: { children: React.ReactNode }) {
   const [steps, setSteps] = useState<GuideStep[] | null>(null)
   const [idx, setIdx] = useState(0)
@@ -69,7 +76,7 @@ export function GuideProvider({ children }: { children: React.ReactNode }) {
     const clearPoll = () => { if (pollRef.current) { window.clearInterval(pollRef.current); pollRef.current = null } }
     let tries = 0
     const find = () => {
-      const el = document.querySelector<HTMLElement>(`[data-guide="${step.anchor}"]`)
+      const el = findGuideEl(step.anchor!)
       if (el) {
         clearPoll()
         el.scrollIntoView({ block: 'center', behavior: 'smooth' })
@@ -94,7 +101,7 @@ export function GuideProvider({ children }: { children: React.ReactNode }) {
   // Suivi position (scroll/resize).
   useEffect(() => {
     if (!step?.anchor) return
-    const upd = () => { const el = document.querySelector<HTMLElement>(`[data-guide="${step.anchor}"]`); if (el) measure(el) }
+    const upd = () => { const el = findGuideEl(step.anchor!); if (el) measure(el) }
     window.addEventListener('scroll', upd, true); window.addEventListener('resize', upd)
     return () => { window.removeEventListener('scroll', upd, true); window.removeEventListener('resize', upd) }
   }, [step?.anchor, idx])

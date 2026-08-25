@@ -2466,7 +2466,7 @@ function DayBubble({ sport, label, session, done, onClick, draggable, onDragStar
   if (session) {
     return (
       <>
-        <button onClick={onClick} draggable={draggable} onDragStart={onDragStart} onDragEnd={onDragEnd}
+        <button data-guide="plan-bubble" onClick={onClick} draggable={draggable} onDragStart={onDragStart} onDragEnd={onDragEnd}
           onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
           onMouseEnter={e => setTip(e.currentTarget.getBoundingClientRect())} onMouseLeave={() => setTip(null)}
           style={{ display:'flex',flexDirection:'column',alignItems:'stretch',gap:2,padding:'4px 6px',borderRadius:8,border:'none',borderLeft:`2px solid ${color}`,background:'var(--bg-card2)',cursor:'pointer',width:'100%',boxSizing:'border-box',opacity:done?0.55:1,transform:lifted?'scale(1.06)':undefined,boxShadow:lifted?'0 6px 16px rgba(0,0,0,0.35)':undefined,transition:'transform .12s, box-shadow .12s',touchAction:onTouchStart?'pan-y':undefined,position:'relative',zIndex:lifted?20:undefined }}>
@@ -2666,7 +2666,7 @@ function DayHeader({ abbr, num, intensity, isToday, onNum, plus, onPlus, open, o
     <div ref={ref} data-day-picker style={{ position:'relative', display:'flex', flexDirection:'column', alignItems:'center', gap:1, width:'100%' }}>
       {plus && <button onClick={onPlus} aria-label={t('plnp.day.setType')} style={{ border:'none', background:'transparent', color:'var(--text-dim)', fontSize:14, lineHeight:1, cursor:'pointer', padding:0, height:13 }}>+</button>}
       {abbr && <span style={{ fontSize:8.5, fontWeight:700, textTransform:'uppercase' as const, letterSpacing:'0.02em', color:'var(--text-dim)' }}>{abbr}</span>}
-      <button onClick={onNum} aria-label={t('plnp.day.label')} style={{ border:'none', background:'transparent', cursor:'pointer', padding:0, display:'flex' }}>
+      <button data-guide="plan-daytype" onClick={onNum} aria-label={t('plnp.day.label')} style={{ border:'none', background:'transparent', cursor:'pointer', padding:0, display:'flex' }}>
         <span className="tnum" style={{ width:26, height:26, borderRadius:'50%', background:cfg.color, display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, fontWeight:700, color:'var(--on-primary)', boxSizing:'border-box' as const, boxShadow:isToday?'0 0 0 2px var(--bg), 0 0 0 4px var(--primary)':undefined }}>{num}</span>
       </button>
       {open && rect && <IntensityMenuPortal anchor={rect} value={intensity} onPick={onPick} />}
@@ -3102,7 +3102,7 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
                   const isToday = ws === currentWeekStart && i === todayIdx
                   const isDropTarget = dragCell === hid
                   return (
-                    <div key={i} data-day-index={i}
+                    <div key={i} data-day-index={i} data-guide="plan-day"
                       onClick={e => { if (isEmptyCellTarget(e)) { setAddModalFavorites(false); setAddChooser({ dayIndex: i, plan: activePlan, weekStart: ws }) } }}
                       onDragOver={e => { if (planDrag.current) { e.preventDefault(); setDragCell(hid) } }}
                       onDragLeave={() => setDragCell(c => c === hid ? null : c)}
@@ -3141,7 +3141,7 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
                   )
                 })}
                 {/* cumul volumes / cycle — toggle */}
-                <div style={{ padding: '9px 10px', borderLeft: '1px solid var(--border)', background: 'var(--bg-card2)' }}>
+                <div data-guide="plan-volume" style={{ padding: '9px 10px', borderLeft: '1px solid var(--border)', background: 'var(--bg-card2)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 6, marginBottom: 8 }}>
                     <div style={{ display: 'inline-flex', background: 'var(--bg-card)', borderRadius: 7, padding: 2, gap: 2 }}>
                       {(['volume', 'cycle'] as const).map(tb => (
@@ -3183,7 +3183,7 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
                 {/* En-tête semaine : S## + volume réalisé / prévu à droite */}
                 <div style={{ display:'flex', alignItems:'baseline', justifyContent:'space-between', gap:6, margin:'0 8px 6px' }}>
                   <span style={{ fontSize:11, fontWeight:800, color:'var(--text)', fontFamily:'Syne,sans-serif' }}>S{isoWeekNum(ws)}<span style={{ fontWeight:500, color:'var(--text-dim)', marginLeft:5 }}>{new Date(ws+'T00:00:00').toLocaleDateString(currentLocale(),{ day:'numeric', month:'short' })}</span></span>
-                  <span className="tnum" style={{ fontSize:11, fontWeight:700, color:'var(--text-dim)' }}><span style={{ color:'var(--text)' }}>{formatHM(mDoneTot)}</span> / {formatHM(mPlanTot)}</span>
+                  <span data-guide="plan-volume" className="tnum" style={{ fontSize:11, fontWeight:700, color:'var(--text-dim)' }}><span style={{ color:'var(--text)' }}>{formatHM(mDoneTot)}</span> / {formatHM(mPlanTot)}</span>
                 </div>
                 {/* Carrousel coulissant : page 1 = jours · page 2 = volume/cycle + Datas */}
                 <div className="wk-carousel" style={{ display:'flex', overflowX:'auto', scrollSnapType:'x mandatory', WebkitOverflowScrolling:'touch' as React.CSSProperties['WebkitOverflowScrolling'], touchAction: tDrag ? 'none' : undefined }}>
@@ -3197,7 +3197,7 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
                         const sess = d.sessions.filter(s=>!d.activities.some(a=>matchActivity(a,d.sessions)?.id===s.id))
                         const acts = d.activities  // toutes les activités réalisées (comme desktop)
                         return (
-                          <div key={i} data-mday={i} data-mws={ws} style={{ minWidth:0, display:'flex', flexDirection:'column' as const, gap:3, alignItems:'center', borderRadius:8, background:isDropTarget?'var(--primary-dim)':'transparent', transition:'background .12s' }}>
+                          <div key={i} data-mday={i} data-mws={ws} data-guide="plan-day" style={{ minWidth:0, display:'flex', flexDirection:'column' as const, gap:3, alignItems:'center', borderRadius:8, background:isDropTarget?'var(--primary-dim)':'transparent', transition:'background .12s' }}>
                             <DayHeader abbr={d.day} num={dates[i]} intensity={d.intensity} isToday={isToday}
                               plus onPlus={() => setDayPicker(p => p === `m_${hid}` ? null : `m_${hid}`)} open={dayPicker === `m_${hid}`}
                               onPick={(it) => { void setDayIntensityWeek(ws, i, it); setDayPicker(null) }}
@@ -3775,7 +3775,7 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
       {tab === 'training' && (<>
       {/* ── Controls — desktop (ancienne interface) ── */}
       <div id="tr-ctrl-desktop" style={{ display:'flex',alignItems:'center',gap:8,flexWrap:'wrap' as const }}>
-        <div style={{ display:'flex',alignItems:'center',gap:4,background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:10,padding:'4px 6px' }}>
+        <div data-guide="plan-weeknav" style={{ display:'flex',alignItems:'center',gap:4,background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:10,padding:'4px 6px' }}>
           <button onClick={()=>setWeekOffset(o=>o-1)} style={{ background:'none',border:'none',color:'var(--text-mid)',cursor:'pointer',fontSize:16,padding:'2px 6px',borderRadius:6 }}>←</button>
           <span style={{ fontSize:11,fontWeight:600,color:'var(--text)',minWidth:120,textAlign:'center' as const }}>{getWeekLabel(currentWeekStart)}</span>
           <button onClick={()=>setWeekOffset(o=>o+1)} style={{ background:'none',border:'none',color:'var(--text-mid)',cursor:'pointer',fontSize:16,padding:'2px 6px',borderRadius:6 }}>→</button>
@@ -3795,7 +3795,7 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
         </div>
         <div style={{ marginLeft:'auto', position:'relative' }}>
           {showPlanDd && <div onClick={()=>setShowPlanDd(false)} style={{ position:'fixed',inset:0,zIndex:49 }}/>}
-          <button onClick={()=>setShowPlanDd(x=>!x)}
+          <button data-guide="plan-abtoggle" onClick={()=>setShowPlanDd(x=>!x)}
             style={{ padding:'6px 12px',borderRadius:9,border:'1px solid var(--border)',background:'var(--bg-card)',color:'var(--text-mid)',fontSize:11,cursor:'pointer',display:'flex',alignItems:'center',gap:5,fontWeight:600 }}>
             {compareMode ? t('plnp.compare') : `Plan ${activePlan}`} <span style={{ fontSize:9 }}>▾</span>
           </button>
@@ -3825,7 +3825,7 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
       {/* ── Controls — mobile (3 lignes en carte) ── */}
       <div id="tr-ctrl-mobile" style={{ display:'flex',alignItems:'center',gap:6,flexWrap:'wrap' as const }}>
         {/* Navigation semaine — compacte */}
-        <button onClick={()=>setWeekOffset(o=>o-1)} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',cursor:'pointer',fontSize:14,padding:'4px 9px',borderRadius:8,lineHeight:1 }}>←</button>
+        <button data-guide="plan-weeknav" onClick={()=>setWeekOffset(o=>o-1)} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',cursor:'pointer',fontSize:14,padding:'4px 9px',borderRadius:8,lineHeight:1 }}>←</button>
         <span style={{ fontSize:11,fontWeight:700,color:'var(--text)',minWidth:96,textAlign:'center' as const }}>{getWeekLabel(currentWeekStart)}</span>
         <button onClick={()=>setWeekOffset(o=>o+1)} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',cursor:'pointer',fontSize:14,padding:'4px 9px',borderRadius:8,lineHeight:1 }}>→</button>
         {weekOffset!==0 && <button onClick={()=>setWeekOffset(0)} style={{ fontSize:10,padding:'4px 9px',borderRadius:8,background:'var(--primary-dim)',border:'none',color:'var(--primary)',cursor:'pointer',fontWeight:700 }}>{t('plnp.today')}</button>}
@@ -3852,7 +3852,7 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
         {/* Plan ▾ — bulle compacte */}
         <div style={{ position:'relative' }}>
           {showPlanDd && <div onClick={()=>setShowPlanDd(false)} style={{ position:'fixed',inset:0,zIndex:49 }}/>}
-          <button onClick={()=>setShowPlanDd(x=>!x)}
+          <button data-guide="plan-abtoggle" onClick={()=>setShowPlanDd(x=>!x)}
             style={{ padding:'5px 11px',borderRadius:8,border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text)',fontSize:11,cursor:'pointer',display:'flex',alignItems:'center',gap:5,fontWeight:600 }}>
             <span>{compareMode ? 'A & B' : `Plan ${activePlan}`}</span>
             <span style={{ fontSize:9,color:'var(--text-dim)' }}>▾</span>

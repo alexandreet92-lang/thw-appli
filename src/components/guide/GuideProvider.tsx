@@ -131,59 +131,62 @@ const PAD = 8
 function GuideOverlay({ step, rect, index, total, onNext, onPrev, onSkip }: {
   step: GuideStep; rect: Rect | null; index: number; total: number; onNext: () => void; onPrev: () => void; onSkip: () => void
 }) {
-  const centered = !rect
-  const clickThrough = step.advanceOn === 'click' && !!rect
   const pad = step.pad ?? PAD
   const hole = rect ? { top: rect.top - pad, left: rect.left - pad, width: rect.width + pad * 2, height: rect.height + pad * 2 } : null
+  const vw = typeof window !== 'undefined' ? window.innerWidth : 1200
+  const vh = typeof window !== 'undefined' ? window.innerHeight : 800
+  const BW = Math.min(320, vw - 24), BH = 210
 
-  // Position de la bulle par rapport à la cible.
-  const bubble = (() => {
-    if (!hole) return { bottom: 'max(env(safe-area-inset-bottom), 24px)', left: '50%', transform: 'translateX(-50%)' as const }
-    const vw = window.innerWidth, vh = window.innerHeight
-    const place = step.placement ?? 'auto'
-    const below = hole.top + hole.height + 14
-    const above = hole.top - 14
-    const preferBottom = place === 'bottom' || (place === 'auto' && hole.top < vh / 2)
-    if (place === 'right' && hole.left + hole.width + 300 < vw) return { top: Math.max(12, hole.top), left: hole.left + hole.width + 14 }
-    if (place === 'left' && hole.left - 300 > 0) return { top: Math.max(12, hole.top), left: Math.max(12, hole.left - 288) }
-    if (preferBottom) return { top: below, left: clamp(hole.left, 12, vw - 300) }
-    return { top: Math.max(12, above - 150), left: clamp(hole.left, 12, vw - 300) }
+  // Position de la bulle — TOUJOURS entièrement dans l'écran.
+  const pos = (() => {
+    if (!hole) return { left: (vw - BW) / 2, top: vh - BH - 20, arrow: null as null | { x: number; y: number; dir: 'up' | 'down' } }
+    const cx = hole.left + hole.width / 2
+    const spaceBelow = vh - (hole.top + hole.height)
+    const below = spaceBelow > BH + 24 || spaceBelow > hole.top
+    const left = clamp(cx - BW / 2, 12, vw - BW - 12)
+    const top = below ? clamp(hole.top + hole.height + 24, 12, vh - BH - 12) : clamp(hole.top - BH - 24, 12, vh - BH - 12)
+    return { left, top, arrow: { x: clamp(cx, hole.left, hole.left + hole.width), y: below ? hole.top + hole.height + 6 : hole.top - 6, dir: below ? 'down' as const : 'up' as const } }
   })()
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 100000, pointerEvents: clickThrough ? 'none' : 'auto' }}>
-      <style>{`@keyframes gArrow{0%,100%{transform:translateY(0)}50%{transform:translateY(6px)}}@keyframes gPulse{0%,100%{opacity:.5}50%{opacity:1}}`}</style>
+    // Conteneur PASS-THROUGH : on peut cliquer/utiliser la page pendant le guide.
+    <div style={{ position: 'fixed', inset: 0, zIndex: 100000, pointerEvents: 'none' }}>
+      <style>{`@keyframes gArrow{0%,100%{transform:translateY(0)}50%{transform:translateY(9px)}}@keyframes gArrowUp{0%,100%{transform:translateY(0)}50%{transform:translateY(-9px)}}@keyframes gPulse{0%{box-shadow:0 0 0 3px var(--primary),0 0 0 5px rgba(6,182,212,0.35)}50%{box-shadow:0 0 0 3px var(--primary),0 0 0 12px rgba(6,182,212,0.10)}100%{box-shadow:0 0 0 3px var(--primary),0 0 0 5px rgba(6,182,212,0.35)}}`}</style>
 
-      {/* Étape d'explication (pas de cible) : voile LÉGER pour garder la page visible.
-          Étape d'action (cible) : 4 pans assombris autour de l'élément. */}
-      {!hole && <div style={{ position: 'absolute', inset: 0, background: 'rgba(8,10,14,0.14)' }} />}
+      {/* Voile — visuel seulement (pass-through). Léger si explication, un peu plus marqué autour d'une cible. */}
+      {!hole && <div style={{ position: 'absolute', inset: 0, background: 'rgba(8,10,14,0.12)', pointerEvents: 'none' }} />}
       {hole && (
         <>
-          <Dim style={{ top: 0, left: 0, right: 0, height: hole.top }} pass={clickThrough} />
-          <Dim style={{ top: hole.top + hole.height, left: 0, right: 0, bottom: 0 }} pass={clickThrough} />
-          <Dim style={{ top: hole.top, left: 0, width: hole.left, height: hole.height }} pass={clickThrough} />
-          <Dim style={{ top: hole.top, left: hole.left + hole.width, right: 0, height: hole.height }} pass={clickThrough} />
-          {/* halo de la cible */}
-          <div style={{ position: 'absolute', top: hole.top, left: hole.left, width: hole.width, height: hole.height, borderRadius: 14, boxShadow: '0 0 0 3px var(--primary), 0 0 0 6px rgba(6,182,212,0.25)', animation: 'gPulse 1.6s ease-in-out infinite', pointerEvents: 'none' }} />
-          {/* flèche animée pointant la cible */}
-          <div style={{ position: 'absolute', top: hole.top + hole.height + 4, left: hole.left + hole.width / 2 - 12, animation: 'gArrow 1.1s ease-in-out infinite', pointerEvents: 'none' }}>
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="var(--primary)"><path d="M12 2v14M6 12l6 6 6-6" stroke="var(--primary)" strokeWidth="2.5" fill="none" strokeLinecap="round" strokeLinejoin="round" /></svg>
-          </div>
+          <Dim style={{ top: 0, left: 0, right: 0, height: hole.top }} />
+          <Dim style={{ top: hole.top + hole.height, left: 0, right: 0, bottom: 0 }} />
+          <Dim style={{ top: hole.top, left: 0, width: hole.left, height: hole.height }} />
+          <Dim style={{ top: hole.top, left: hole.left + hole.width, right: 0, height: hole.height }} />
+          <div style={{ position: 'absolute', top: hole.top, left: hole.left, width: hole.width, height: hole.height, borderRadius: 14, animation: 'gPulse 1.5s ease-in-out infinite', pointerEvents: 'none' }} />
         </>
       )}
 
-      {/* Bulle + contrôles */}
-      <div style={{ position: 'absolute', ...bubble, width: 288, maxWidth: 'calc(100vw - 24px)', background: 'var(--bg-card)', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: 16, boxShadow: '0 12px 40px rgba(0,0,0,0.32)', padding: 16, pointerEvents: 'auto', fontFamily: 'var(--font-body, DM Sans, sans-serif)' }}>
-        {step.title && <p style={{ margin: '0 0 6px', fontFamily: 'Syne, sans-serif', fontSize: 15, fontWeight: 700 }}>{step.title}</p>}
+      {/* Flèche animée pointant la cible */}
+      {pos.arrow && (
+        <div style={{ position: 'absolute', left: pos.arrow.x - 15, top: pos.arrow.dir === 'down' ? pos.arrow.y : pos.arrow.y - 30, animation: `${pos.arrow.dir === 'down' ? 'gArrow' : 'gArrowUp'} 0.9s ease-in-out infinite`, pointerEvents: 'none', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.35))' }}>
+          <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ transform: pos.arrow.dir === 'up' ? 'rotate(180deg)' : 'none' }}>
+            <path d="M12 4v15M5 12l7 7 7-7" />
+          </svg>
+        </div>
+      )}
+
+      {/* Bulle + contrôles — pointer-events AUTO (seul élément cliquable de l'overlay) */}
+      <div style={{ position: 'absolute', left: pos.left, top: pos.top, width: BW, background: 'var(--bg-card)', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: 16, boxShadow: '0 12px 40px rgba(0,0,0,0.32)', padding: 16, pointerEvents: 'auto', fontFamily: 'var(--font-body, DM Sans, sans-serif)', boxSizing: 'border-box' }}>
         {rect && <p style={{ margin: '0 0 4px', fontSize: 10.5, fontWeight: 800, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--primary)' }}>Clique ici</p>}
-        <p style={{ margin: '0 0 14px', fontSize: 13.5, lineHeight: 1.5, color: 'var(--text-mid)' }}>{step.message}</p>
+        {step.title && <p style={{ margin: '0 0 6px', fontFamily: 'Syne, sans-serif', fontSize: 15.5, fontWeight: 700 }}>{step.title}</p>}
+        <p style={{ margin: '0 0 12px', fontSize: 13.5, lineHeight: 1.5, color: 'var(--text-mid)' }}>{step.message}</p>
+        <div style={{ display: 'flex', gap: 3, marginBottom: 12 }}>
+          {Array.from({ length: total }, (_, i) => <span key={i} style={{ flex: i === index ? '0 0 16px' : '0 0 6px', height: 5, borderRadius: 3, background: i === index ? 'var(--primary)' : 'var(--border)', transition: 'flex-basis .2s' }} />)}
+        </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <div style={{ display: 'flex', gap: 3, flex: 1 }}>
-            {Array.from({ length: total }, (_, i) => <span key={i} style={{ width: i === index ? 16 : 6, height: 6, borderRadius: 3, background: i === index ? 'var(--primary)' : 'var(--border)', transition: 'width .2s' }} />)}
-          </div>
-          {index > 0 && <button onClick={onPrev} style={btnGhost}>Précédent</button>}
+          <span style={{ flex: 1, fontSize: 11, color: 'var(--text-dim)', fontWeight: 600 }}>{index + 1}/{total}</span>
           <button onClick={onSkip} style={btnGhost}>Passer</button>
-          <button onClick={onNext} style={{ padding: '8px 16px', borderRadius: 10, border: 'none', background: 'var(--primary)', color: 'var(--on-primary, #fff)', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+          {index > 0 && <button onClick={onPrev} style={btnGhost}>Précédent</button>}
+          <button onClick={onNext} style={{ padding: '9px 18px', borderRadius: 10, border: 'none', background: 'var(--primary)', color: 'var(--on-primary, #fff)', fontSize: 13, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
             {index + 1 >= total ? 'Terminer' : 'Suivant'}
           </button>
         </div>
@@ -191,8 +194,8 @@ function GuideOverlay({ step, rect, index, total, onNext, onPrev, onSkip }: {
     </div>
   )
 }
-function Dim({ style, pass }: { style: React.CSSProperties; pass: boolean }) {
-  return <div style={{ position: 'absolute', background: 'rgba(8,10,14,0.62)', pointerEvents: pass ? 'auto' : 'none', ...style }} />
+function Dim({ style }: { style: React.CSSProperties }) {
+  return <div style={{ position: 'absolute', background: 'rgba(8,10,14,0.5)', pointerEvents: 'none', ...style }} />
 }
-const btnGhost: React.CSSProperties = { padding: '8px 10px', borderRadius: 10, border: 'none', background: 'transparent', color: 'var(--text-dim)', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }
-function clamp(v: number, lo: number, hi: number) { return Math.max(lo, Math.min(hi, v)) }
+const btnGhost: React.CSSProperties = { padding: '8px 10px', borderRadius: 10, border: 'none', background: 'transparent', color: 'var(--text-dim)', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }
+function clamp(v: number, lo: number, hi: number) { return Math.max(lo, Math.min(hi, Math.max(lo, hi) === lo ? lo : v)) }

@@ -138,7 +138,7 @@ function GuideOverlay({ step, rect, index, total, onNext, onPrev, onSkip }: {
 
   // Position de la bulle par rapport à la cible.
   const bubble = (() => {
-    if (!hole) return { top: '50%', left: '50%', transform: 'translate(-50%,-50%)' as const }
+    if (!hole) return { bottom: 'max(env(safe-area-inset-bottom), 24px)', left: '50%', transform: 'translateX(-50%)' as const }
     const vw = window.innerWidth, vh = window.innerHeight
     const place = step.placement ?? 'auto'
     const below = hole.top + hole.height + 14
@@ -154,8 +154,9 @@ function GuideOverlay({ step, rect, index, total, onNext, onPrev, onSkip }: {
     <div style={{ position: 'fixed', inset: 0, zIndex: 100000, pointerEvents: clickThrough ? 'none' : 'auto' }}>
       <style>{`@keyframes gArrow{0%,100%{transform:translateY(0)}50%{transform:translateY(6px)}}@keyframes gPulse{0%,100%{opacity:.5}50%{opacity:1}}`}</style>
 
-      {/* Voile assombri : plein écran (info) OU 4 pans autour de la cible (clic possible). */}
-      {!hole && <div style={{ position: 'absolute', inset: 0, background: 'rgba(8,10,14,0.62)' }} />}
+      {/* Étape d'explication (pas de cible) : voile LÉGER pour garder la page visible.
+          Étape d'action (cible) : 4 pans assombris autour de l'élément. */}
+      {!hole && <div style={{ position: 'absolute', inset: 0, background: 'rgba(8,10,14,0.14)' }} />}
       {hole && (
         <>
           <Dim style={{ top: 0, left: 0, right: 0, height: hole.top }} pass={clickThrough} />

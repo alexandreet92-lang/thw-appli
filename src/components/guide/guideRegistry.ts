@@ -30,6 +30,10 @@ export interface GuideAction {
 }
 
 // ── Catalogue initial (étendu au fil de l'eau) ────────────────────
+// Deux familles d'étapes :
+//  • ACTION (« démarrer », « créer ») → on POINTE le bouton (où appuyer).
+//  • NAVIGATION (« voir / ouvrir X ») → on VA sur la page (route) et on EXPLIQUE
+//    son fonctionnement (message centré), sans pointer la nav.
 export const GUIDE_ACTIONS: GuideAction[] = [
   {
     id: 'start-workout', label: 'Démarrer / enregistrer une séance', category: 'Entraînement',
@@ -42,50 +46,49 @@ export const GUIDE_ACTIONS: GuideAction[] = [
     id: 'open-planning', label: 'Voir / construire mon planning', category: 'Planning',
     keywords: ['planning', 'calendrier', 'semaine', 'programme', 'plan', 'séances prévues', 'ajouter séance'],
     steps: [
-      { anchor: 'nav-planning', message: 'Ouvre ton planning : ta semaine d\'entraînement.', advanceOn: 'click', placement: 'right', route: '/planning' },
+      { route: '/planning', message: 'Voici ton planning : ta semaine d\'entraînement. Sur chaque jour, appuie sur « + » pour ajouter une séance, choisis le sport, puis construis les blocs (allures, watts, répétitions). Tu peux glisser les séances pour les réorganiser et basculer entre Plan A / Plan B.' },
     ],
   },
   {
     id: 'add-session', label: 'Ajouter une séance au planning', category: 'Planning',
     keywords: ['ajouter', 'créer', 'nouvelle séance', 'planifier', 'programmer', 'fractionné', 'sortie'],
     steps: [
-      { anchor: 'nav-planning', route: '/planning', message: 'D\'abord, ouvre le planning.', advanceOn: 'click', placement: 'right' },
-      { message: 'Sur un jour, appuie sur « + » pour créer une séance, choisis le sport, puis construis les blocs (allures, watts, répétitions).', placement: 'auto' },
+      { route: '/planning', message: 'Sur le planning, appuie sur « + » sur le jour voulu. Tu choisis le sport, la famille (endurance, sprints…), puis tu construis les blocs. Tu peux aussi partir d\'une séance de la bibliothèque.' },
     ],
   },
   {
     id: 'open-performance', label: 'Voir mes performances et records', category: 'Performance',
     keywords: ['performance', 'records', 'progression', 'vma', 'ftp', 'puissance', 'allure', 'zones', 'profil'],
     steps: [
-      { anchor: 'nav-performance', message: 'Ouvre Performance : tes records, zones, courbe de puissance et profil.', advanceOn: 'click', placement: 'right', route: '/performance' },
+      { route: '/performance', message: 'Voici Performance : tes records par distance, tes zones d\'intensité, ta courbe de puissance et ton profil de qualités qui évolue dans le temps. Saisis tes tests pour affiner tes zones et suivre ta progression.' },
     ],
   },
   {
     id: 'open-nutrition', label: 'Gérer ma nutrition', category: 'Nutrition',
     keywords: ['nutrition', 'manger', 'calories', 'macros', 'protéines', 'poids', 'repas', 'stratégie'],
     steps: [
-      { anchor: 'nav-nutrition', message: 'Ouvre Nutrition : tes cibles, ton suivi et ta stratégie.', advanceOn: 'click', placement: 'right', route: '/nutrition' },
+      { route: '/nutrition', message: 'Voici Nutrition : tes cibles caloriques et macros, ton suivi quotidien (repas, poids) et ta stratégie alimentaire adaptée à ta charge d\'entraînement.' },
     ],
   },
   {
     id: 'open-injuries', label: 'Suivre mes blessures', category: 'Santé',
     keywords: ['blessure', 'douleur', 'santé', 'récupération', 'kiné', 'rééducation', 'prévention'],
     steps: [
-      { anchor: 'nav-injuries', message: 'Ouvre Blessures : historique, suivi et analyses de prévention.', advanceOn: 'click', placement: 'right', route: '/injuries' },
+      { route: '/injuries', message: 'Voici Blessures : déclare une blessure, suis sa guérison, et consulte les analyses (zones chroniques, prévention, disponibilité) pour t\'entraîner sans casser.' },
     ],
   },
   {
     id: 'ask-ai', label: 'Demander à l\'assistant IA', category: 'Assistant',
     keywords: ['ia', 'assistant', 'coach', 'aide', 'question', 'analyse', 'conseil', 'plan d\'entrainement'],
     steps: [
-      { anchor: 'open-ai', message: 'Ouvre l\'assistant : il analyse tes données, crée des plans et répond à tes questions.', advanceOn: 'click', placement: 'bottom' },
+      { anchor: 'open-ai', message: 'Clique ici pour ouvrir l\'assistant : il analyse tes données, crée des plans et répond à tes questions.', advanceOn: 'click', placement: 'bottom' },
     ],
   },
   {
     id: 'open-community', label: 'Découvrir la communauté', category: 'Communauté',
     keywords: ['communauté', 'social', 'amis', 'abonnés', 'découvrir', 'partager', 'coach', 'club'],
     steps: [
-      { anchor: 'nav-community', message: 'Ouvre la communauté : activités des autres, coachs, clubs.', advanceOn: 'click', placement: 'right', route: '/community' },
+      { route: '/community', message: 'Voici la communauté : découvre les activités des autres athlètes, suis des amis, échange dans les espaces et trouve un coach.' },
     ],
   },
 ]
@@ -113,19 +116,35 @@ export function searchActions(query: string): GuideAction[] {
 }
 
 // ── Tours d'onboarding ────────────────────────────────────────────
+// Le tour NAVIGUE réellement sur chaque page et EXPLIQUE son fonctionnement
+// (message centré sur la page ouverte), au lieu de pointer la navigation.
+const HOME_STEP: GuideStep = { route: '/', title: 'Ton tableau de bord', message: 'Ici, ta forme du jour (CTL/ATL/TSB), ta charge sur 4 semaines, ton sommeil et des accès rapides. C\'est ton point de départ chaque jour.' }
+const PLANNING_STEP: GuideStep = { route: '/planning', title: 'Planning', message: 'Ta semaine d\'entraînement. Ajoute une séance sur un jour avec « + », choisis le sport, construis les blocs (allures, watts, répétitions), et glisse-les pour réorganiser. Tu peux dupliquer une séance sur plusieurs semaines.' }
+const PERF_STEP: GuideStep = { route: '/performance', title: 'Performance', message: 'Tes records par distance, tes zones d\'intensité, ta courbe de puissance et ton profil de qualités qui évolue dans le temps. Saisis tes tests pour affiner tes zones.' }
+const AI_STEP: GuideStep = { anchor: 'open-ai', title: 'Assistant IA', message: 'Ton coach IA : il analyse tes données, crée des plans d\'entraînement complets et répond à tes questions avec des graphiques. Clique sur son icône en haut à droite pour l\'ouvrir.', placement: 'bottom' }
+
 export const EXPRESS_TOUR: GuideStep[] = [
-  { message: 'Bienvenue ! Voici l\'essentiel en 30 secondes. Tu pourras revoir ce guide à tout moment via la loupe.', placement: 'auto' },
-  { anchor: 'start-workout', message: 'Démarrer : lance et enregistre une séance en direct.', placement: 'bottom' },
-  { anchor: 'nav-planning', message: 'Planning : construis et suis ta semaine d\'entraînement.', placement: 'right' },
-  { anchor: 'nav-performance', message: 'Performance : tes records, zones et progression.', placement: 'right' },
-  { anchor: 'open-ai', message: 'L\'assistant IA : analyses, plans et réponses à tes questions.', placement: 'bottom' },
+  { title: 'Bienvenue', message: 'Voici l\'essentiel en 1 minute. On va parcourir les pages clés ensemble — tu pourras relancer ce guide à tout moment via la loupe.' },
+  HOME_STEP,
+  PLANNING_STEP,
+  PERF_STEP,
+  AI_STEP,
+  { title: 'C\'est parti', message: 'Tu as l\'essentiel ! Utilise la loupe en haut à droite dès que tu ne sais pas où appuyer, ou tape ce que tu veux faire.' },
 ]
 
-// Le tour complet reprend l'express + une étape par page principale.
+// Le tour complet reprend l'express + les autres pages, chacune ouverte + expliquée.
 export const FULL_TOUR: GuideStep[] = [
-  ...EXPRESS_TOUR,
-  { anchor: 'nav-nutrition', message: 'Nutrition : cibles, suivi et stratégie alimentaire.', placement: 'right' },
-  { anchor: 'nav-injuries', message: 'Blessures : historique, suivi et prévention.', placement: 'right' },
-  { anchor: 'nav-community', message: 'Communauté : découvre les autres athlètes et les coachs.', placement: 'right' },
-  { message: 'C\'est tout ! Utilise la loupe en haut à droite dès que tu ne sais pas où appuyer.', placement: 'auto' },
+  { title: 'Bienvenue', message: 'On va faire le tour complet de l\'app, page par page. À chaque étape, la page s\'ouvre et je t\'explique comment elle marche. Tu peux passer à tout moment.' },
+  HOME_STEP,
+  PLANNING_STEP,
+  { route: '/calendar', title: 'Calendrier', message: 'Ta vue d\'ensemble : tes objectifs, tes courses et tes phases de préparation dans le temps.' },
+  { route: '/session', title: 'Bibliothèque de séances', message: 'Un catalogue de séances prêtes (par sport, niveau, objectif). Choisis-en une, ajuste-la et ajoute-la à ton planning.' },
+  { route: '/activities', title: 'Entraînements', message: 'L\'historique de tes séances réalisées, avec toutes les données (FC, puissance, allure, zones) et l\'analyse de chaque activité.' },
+  PERF_STEP,
+  { route: '/nutrition', title: 'Nutrition', message: 'Tes cibles caloriques et macros, ton suivi quotidien (repas, poids) et ta stratégie alimentaire adaptée à ta charge.' },
+  { route: '/injuries', title: 'Blessures', message: 'Déclare et suis tes blessures, avec un historique et des analyses de prévention pour t\'entraîner sans casser.' },
+  { route: '/recovery', title: 'Récupération', message: 'Ton HRV, ton sommeil et ta readiness du jour — pour savoir quand pousser et quand lever le pied.' },
+  { route: '/community', title: 'Communauté', message: 'Découvre les activités des autres athlètes, suis des amis, échange dans les espaces et trouve un coach.' },
+  AI_STEP,
+  { title: 'Terminé', message: 'Tu as fait le tour ! Relance ce guide ou cherche une action précise à tout moment via la loupe en haut à droite.' },
 ]

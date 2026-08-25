@@ -15,6 +15,14 @@ export interface PanelParcours {
   name?: string
 }
 
+// Options de duplication (répétition) d'une séance.
+export interface DuplicateOpts {
+  /** Ajustement de durée appliqué aux copies (null = inchangé). delta signé. */
+  durationAdjust: { mode: 'min' | 'pct'; delta: number } | null
+  /** 'full' = contenu exact (blocs) · 'titleDuration' = titre + durée seulement. */
+  contentMode: 'full' | 'titleDuration'
+}
+
 export interface SessionEditorPanelProps {
   mode: 'create' | 'edit'
   reserveMode?: boolean   // réserve Builder : masque Sport / Date / Heure
@@ -51,8 +59,8 @@ export interface SessionEditorPanelProps {
   saving: boolean; saved: boolean
   onClose: () => void; onSave: () => void; onExportPDF: () => void; onFavorite: () => void
   onPrintMemo: () => void
-  /** Duplique (répète) la séance : toutes les `everyNWeeks` semaines, `count` fois. */
-  onDuplicateRepeat?: (everyNWeeks: number, count: number) => void
+  /** Duplique (répète) la séance : toutes les `everyNWeeks` semaines, `count` fois, avec options. */
+  onDuplicateRepeat?: (everyNWeeks: number, count: number, opts: DuplicateOpts) => void
   onDelete?: () => void
   // Muscu / Hyrox (builder par exercices) — sync vers les refs côté parent
   exercises: ExerciseItem[]; setExercises: (e: ExerciseItem[]) => void

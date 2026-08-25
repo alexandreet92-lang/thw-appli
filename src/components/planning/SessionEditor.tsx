@@ -5176,7 +5176,16 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
       builderTab, setBuilderTab, saving, saved,
       onClose, onSave: handleSubmit, onExportPDF: handleExportPDF, onFavorite, onPrintMemo: handlePrintMemo,
       onDuplicateRepeat: isEdit && onRepeat && session
-        ? (n: number, c: number) => { onRepeat({ ...session, sport, title, time, durationMin: dur, rpe, blocks, notes: desc }, n, c); onClose() }
+        ? (n: number, c: number, opts) => {
+            let snap: Session = { ...session, sport, title, time, durationMin: dur, rpe, blocks, notes: desc }
+            if (opts.durationAdjust) {
+              const { mode, delta } = opts.durationAdjust
+              const nd = mode === 'min' ? snap.durationMin + delta : Math.round(snap.durationMin * (1 + delta / 100))
+              snap = { ...snap, durationMin: Math.max(1, nd) }
+            }
+            if (opts.contentMode === 'titleDuration') snap = { ...snap, blocks: [], notes: '' }
+            onRepeat(snap, n, c); onClose()
+          }
         : undefined,
       onDelete: isEdit && onDelete && session ? () => onDelete(session.id) : undefined,
     }

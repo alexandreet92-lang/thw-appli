@@ -21,7 +21,7 @@ export function GuideSearch({ open, onClose, onPick }: { open: boolean; onClose:
 
   function askAi() {
     onClose()
-    window.dispatchEvent(new CustomEvent('thw:guide-ask-ai', { detail: { query: q } }))
+    window.dispatchEvent(new CustomEvent('thw:open-coach', { detail: { prompt: `Je veux : « ${q} ». Où dois-je appuyer dans l'app pour ça ? Guide-moi étape par étape.` } }))
   }
 
   if (!open || typeof document === 'undefined') return null

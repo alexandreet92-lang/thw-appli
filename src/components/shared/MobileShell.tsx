@@ -16,6 +16,7 @@ import { UpgradeModalHost } from '@/components/subscription/UpgradeModal'
 import { TrialEndedModal } from '@/components/subscription/TrialEndedModal'
 import { isFullscreenRoute } from '@/lib/layout/fullscreenRoutes'
 import { NotificationsOverlay, useUnreadNotifCount } from '@/components/shared/NotificationsOverlay'
+import { useGuide } from '@/components/guide/GuideProvider'
 import { useNotificationGenerators } from '@/lib/notifications/useNotificationGenerators'
 import { ProfileSheet } from '@/components/profile/ProfileSheet'
 import { CoachSettingsSheet } from '@/components/coach/CoachSettingsSheet'
@@ -53,6 +54,7 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false)
   const [aiOpen, setAiOpen] = useState(false)
   const [notifOpen, setNotifOpen] = useState(false)
+  const { openSearch } = useGuide()
   const [profileOpen, setProfileOpen] = useState(false)
   const [coachSettingsOpen, setCoachSettingsOpen] = useState(false)
   const [aiPrefill, setAiPrefill] = useState<string | undefined>(undefined)
@@ -256,6 +258,11 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
           )}
           {/* IA + notifications masqués sur /record (immersion carte). */}
           {!isRecord && <>
+          {/* Rechercher / Guide — à côté des notifications. */}
+          <button data-guide="app-search" aria-label="Rechercher dans l'app" onClick={() => { setOpen(false); openSearch() }}
+            style={{ ...fab, right: 104, borderRadius: 12 }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text)" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
+          </button>
           {/* Cloche notifications — ouvre une surpage centrée (sans quitter la page) */}
           <button aria-label={t('shared.notifications')} onClick={() => { setOpen(false); setNotifOpen(true) }}
             style={{ ...fab, right: 58, borderRadius: 12 }}>
@@ -269,7 +276,7 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
               </span>
             )}
           </button>
-          <button aria-label={t('shared.aiCoach')} onClick={() => setAiOpen(true)}
+          <button aria-label={t('shared.aiCoach')} data-guide="open-ai" onClick={() => setAiOpen(true)}
             style={{ ...fab, right: 12, borderRadius: 12, overflow: 'hidden' }}>
             {/* Shuriken Athéna classique 4 branches existant — non redessiné, sur verre neutre */}
             {/* eslint-disable-next-line @next/next/no-img-element */}

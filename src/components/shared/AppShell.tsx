@@ -10,6 +10,7 @@ import { useState, useEffect } from 'react'
 import { DesktopShell } from '@/components/shared/DesktopShell'
 import { MobileShell } from '@/components/shared/MobileShell'
 import MobileTabBar from '@/components/MobileTabBar'
+import { GuideProvider } from '@/components/guide/GuideProvider'
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [isDesktop, setIsDesktop] = useState<boolean>(() =>
@@ -23,11 +24,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return () => mq.removeEventListener('change', f)
   }, [])
 
-  if (isDesktop) return <DesktopShell>{children}</DesktopShell>
   return (
-    <>
-      <MobileShell>{children}</MobileShell>
-      <MobileTabBar />
-    </>
+    <GuideProvider>
+      {isDesktop ? <DesktopShell>{children}</DesktopShell> : (
+        <>
+          <MobileShell>{children}</MobileShell>
+          <MobileTabBar />
+        </>
+      )}
+    </GuideProvider>
   )
 }

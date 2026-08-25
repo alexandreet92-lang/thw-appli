@@ -15,6 +15,7 @@ import { UpgradeModalHost } from '@/components/subscription/UpgradeModal'
 import { TrialEndedModal } from '@/components/subscription/TrialEndedModal'
 import { isFullscreenRoute } from '@/lib/layout/fullscreenRoutes'
 import { NotificationsOverlay, useUnreadNotifCount } from '@/components/shared/NotificationsOverlay'
+import { useGuide } from '@/components/guide/GuideProvider'
 import { useNotificationGenerators } from '@/lib/notifications/useNotificationGenerators'
 import { FeedbackSheet } from '@/components/feedback/FeedbackSheet'
 import { ProfileModalDesktop } from '@/components/profile/ProfileModalDesktop'
@@ -34,6 +35,7 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
   const isCoach = pathname.startsWith('/coach')
   const { t } = useI18n()
   const { profile } = useProfile()
+  const { openSearch } = useGuide()
   const coachAccess = useCoachAccess()   // owner / payant / essai 14 j
   const [railOpen, setRailOpen] = useState(false)   // sidebar principale : survol → ouvre
   const [aiOpen, setAiOpen] = useState(false)
@@ -176,7 +178,7 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
 
         {/* Démarrer — accès rapide à l'enregistrement d'une séance (décalé à
             gauche pour laisser place au bouton de bascule d'interface). */}
-        <Link href="/record" aria-label="Démarrer une séance"
+        <Link href="/record" aria-label="Démarrer une séance" data-guide="start-workout"
           style={{
             position: 'fixed', top: 12, right: isRecord ? 108 : 154, height: 38, zIndex: 130,
             display: 'flex', alignItems: 'center', gap: 7, padding: '0 14px', borderRadius: 12,
@@ -186,6 +188,16 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
           <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
           Démarrer
         </Link>
+
+        {/* Rechercher / Guide — à gauche de « Démarrer ». */}
+        {!isRecord && (
+          <button data-guide="app-search" aria-label="Rechercher dans l'app" title="Rechercher · où appuyer ?" onClick={openSearch}
+            style={{ position: 'fixed', top: 12, right: 274, height: 38, width: 38, zIndex: 130,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 12,
+              background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', color: 'var(--text)', cursor: 'pointer', boxShadow: 'var(--shadow-card)' }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
+          </button>
+        )}
 
         {/* Bascule d'interface Athlète ⇄ Coach — entre Démarrer et la cloche.
             Réservée au propriétaire de l'espace coach (pas d'accès coach pour les athlètes). */}
@@ -218,7 +230,7 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
         </button>
 
         {/* Shuriken IA — droite (asset classique 4 branches, sur verre neutre pour qu'il ressorte) */}
-        <button aria-label={t('shared.aiCoach')} onClick={() => setAiOpen(true)}
+        <button aria-label={t('shared.aiCoach')} data-guide="open-ai" onClick={() => setAiOpen(true)}
           style={{ ...fab, right: 16, left: 'auto', overflow: 'hidden' }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/logos/logo_4bras.png" alt={t('shared.aiCoach')} style={{ width: 24, height: 24, objectFit: 'contain' }} />

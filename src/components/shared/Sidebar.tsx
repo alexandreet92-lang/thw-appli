@@ -226,6 +226,7 @@ function NavItem({
   return (
     <Link
       href={href}
+      data-guide={`nav-${href.replace(/^\//, '') || 'home'}`}
       onClick={onClick}
       style={{
         display: 'flex', alignItems: 'center', gap: 10,

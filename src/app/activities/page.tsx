@@ -10095,6 +10095,10 @@ function TrainingPageInner() {
     const u = new URLSearchParams(window.location.search).get('uid')
     setPlanningScopeUid(ctxScopeUid || u || null)
   }
+  // FUITE DE SCOPE (corrigée) : cette page écrit le scope au rendu mais ne le
+  // remettait jamais à null en partant → un scope athlète fuyait sur le tableau
+  // de bord du coach (identité athlète, données coach). On le nettoie au démontage.
+  useEffect(() => () => { setPlanningScopeUid(null) }, [])
   const { t } = useI18n()
   useTheme() // branche sur le thème global (force re-render quand dark/light change)
   const { activities, totalCount, loading, loadingMore, hasMore, error, reload, loadMore, removeActivity } = useActivities()

@@ -9,7 +9,7 @@
 import { useEffect, useState } from 'react'
 import { useI18n } from '@/lib/i18n'
 import { createClient } from '@/lib/supabase/client'
-import { getCurrentUser } from '@/lib/auth/currentUser'
+import { resolvePlanningUid } from '@/lib/planning/scope'
 import { parseSleepNight, type SleepNight, type SleepRow } from '@/lib/health/sleep'
 import { Card, SectionTitle, Skeleton, EmptyState, useReducedMotion } from './primitives'
 import { FB, NUM } from './lib'
@@ -31,12 +31,12 @@ export function SleepCard() {
     let cancelled = false
     void (async () => {
       const supabase = createClient()
-      const user = await getCurrentUser()
-      if (!user) { if (!cancelled) setLoading(false); return }
+      const uid = await resolvePlanningUid(supabase)   // scope-aware : cohérent avec l'en-tête
+      if (!uid) { if (!cancelled) setLoading(false); return }
       const { data } = await supabase
         .from('health_data')
         .select('date, sleep_duration_min, deep_duration_min, rem_duration_min, light_duration_min, awake_duration_min')
-        .eq('user_id', user.id)
+        .eq('user_id', uid)
         .eq('data_type', 'sleep')
         .order('date', { ascending: false })
         .limit(1)

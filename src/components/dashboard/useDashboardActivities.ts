@@ -7,7 +7,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { getCurrentUser } from '@/lib/auth/currentUser'
+import { resolvePlanningUid } from '@/lib/planning/scope'
 import type { ActivityRow } from '@/lib/training/pmc'
 
 export function useDashboardActivities(): { activities: ActivityRow[]; loading: boolean } {
@@ -18,14 +18,14 @@ export function useDashboardActivities(): { activities: ActivityRow[]; loading: 
     let cancelled = false
     void (async () => {
       const supabase = createClient()
-      const user = await getCurrentUser()
-      if (!user) { if (!cancelled) setLoading(false); return }
+      const uid = await resolvePlanningUid(supabase)   // scope-aware : cohérent avec l'en-tête
+      if (!uid) { if (!cancelled) setLoading(false); return }
       const since = new Date()
       since.setDate(since.getDate() - 180)
       const { data } = await supabase
         .from('activities')
         .select('id, sport_type, started_at, moving_time_s, elapsed_time_s, tss')
-        .eq('user_id', user.id)
+        .eq('user_id', uid)
         .gte('started_at', since.toISOString())
         .order('started_at', { ascending: true })
       if (cancelled) return

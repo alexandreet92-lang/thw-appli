@@ -12,6 +12,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { DashboardContent } from '@/components/dashboard/DashboardContent'
+import { setPlanningScopeUid } from '@/lib/planning/scope'
 import { COACH_TRIAL_DAYS } from '@/lib/coach/owner'
 
 const BLOCKED = ['trial_expired', 'cancelled', 'canceled']
@@ -19,6 +20,12 @@ const BLOCKED = ['trial_expired', 'cancelled', 'canceled']
 export default function DashboardPage() {
   const router = useRouter()
   const [ready, setReady] = useState(false)
+
+  // Le tableau de bord « / » est TOUJOURS l'utilisateur connecté (jamais un
+  // athlète). On efface tout scope coach résiduel DÈS LE RENDU (avant que les
+  // cartes enfant ne montent et ne lisent le scope) : sans ça, un scope athlète
+  // qui a fui contaminait forme/charge/sommeil → identité athlète, données coach.
+  if (typeof window !== 'undefined') setPlanningScopeUid(null)
 
   useEffect(() => {
     let cancelled = false

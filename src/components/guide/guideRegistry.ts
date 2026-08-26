@@ -26,6 +26,8 @@ export interface GuideStep {
    *  le moteur émet l'évènement `thw:guide-demo` {id} ; la page l'ouvre, et le referme
    *  quand l'id change / à la fin du guide. */
   demo?: string
+  /** Étape réservée aux comptes COACH (abonnement) — filtrée pour les athlètes. */
+  coachOnly?: boolean
 }
 
 export interface GuideAction {
@@ -373,26 +375,59 @@ export const COMMUNITY_TOUR: GuideStep[] = [
   ] },
 ]
 
-// ASSISTANT IA — on ouvre le vrai panneau.
+// CONNEXIONS — montres, capteurs, services.
+export const CONNECTIONS_TOUR: GuideStep[] = [
+  { route: '/connections', title: 'Connexions', message: 'Branche tes appareils et services : tout se synchronise automatiquement.', lines: [
+    'Montre / capteurs (FC, puissance, GPS)',
+    'Services (Strava, Polar, santé…)',
+    'Une fois relié, tes séances **remontent seules**',
+  ] },
+  { route: '/connections', title: 'Pourquoi connecter', message: 'Plus tu connectes, plus l\'app est juste : forme, zones, sommeil et HRV se calculent sur tes vraies données.' },
+]
+
+// MESSAGES — messagerie privée.
+export const MESSAGES_TOUR: GuideStep[] = [
+  { route: '/messages', title: 'Messages', message: 'Ta messagerie privée : échange avec ton coach et tes contacts.', lines: [
+    'Conversations 1-à-1',
+    'Statuts **envoyé / vu**, **modifier** et **supprimer**',
+    'Pièces jointes, photo et dictée',
+  ] },
+]
+
+// ASSISTANT IA — on ouvre le vrai panneau et on montre tout.
 export const AI_TOUR: GuideStep[] = [
-  { route: '/', demo: 'ai', title: 'Ton assistant IA', message: 'Ton coach de poche. Il connaît tes données et agit sur l\'app.', lines: [
+  { route: '/', demo: 'ai', title: 'Ton assistant IA', message: 'Ton coach de poche. Il connaît tes données et agit vraiment sur l\'app.', lines: [
     '**Analyse** tes séances et ta forme',
-    'Crée des **plans** complets',
+    'Crée des **plans** d\'entraînement et de **nutrition**',
     'Répond avec de **vrais graphiques**',
   ] },
   { route: '/', demo: 'ai', anchor: 'ai-input', title: 'Pose ta question', lines: [
     'Écris en langage naturel : « analyse ma semaine »',
-    'Ou dicte à la voix',
+    'Ou **dicte à la voix**',
+    'Il a le contexte de TES données',
   ] },
   { route: '/', demo: 'ai', anchor: 'ai-send', title: 'Envoie', lines: [
-    'Il répond avec texte + **graphiques** (donut, radar, PMC…)',
-    'Et peut **modifier ton planning ou ta nutrition**',
+    'Réponse en texte + **graphiques** (donut, radar, PMC, courbe…)',
+    'Il peut **modifier ton planning ou ta nutrition** directement',
   ] },
-  { route: '/', demo: 'ai', title: 'Actions rapides & Studio', message: 'Des raccourcis pré-écrits (analyser, créer un plan…) et le Studio pour bâtir des systèmes d\'entraînement multi-agents.', lines: [
-    'Choisis un **modèle** selon la complexité',
-    'Les **actions rapides** lancent les tâches courantes',
-    'Le **Studio** orchestre des analyses avancées',
+  { route: '/', demo: 'ai', title: 'Les actions rapides', message: 'Des raccourcis pré-écrits pour les demandes courantes — un tap et c\'est parti.', lines: [
+    'Analyser une séance, créer un plan, préparer une course…',
+    'Rangées par **thèmes**',
+    'Chaque action choisit le **bon modèle** toute seule',
   ] },
+  { route: '/', demo: 'ai', title: 'Les modèles', message: 'Tu choisis la puissance de l\'IA selon la tâche.', lines: [
+    'Un modèle **rapide** pour les questions simples',
+    'Un modèle **avancé** pour l\'analyse et les plans',
+    'Le bon compromis vitesse / profondeur',
+  ] },
+  { route: '/', demo: 'ai', anchor: 'ai-plus', title: 'Le menu Actions', lines: [
+    'Joindre un **fichier** ou une capture',
+    'Ouvrir les **Routines** et le **Studio**',
+    'Lancer des flux avancés',
+  ] },
+  { route: '/', demo: 'ai', title: 'Plusieurs volets', message: 'Tu peux garder plusieurs conversations/volets en parallèle — une pour l\'analyse, une pour le plan — sans tout mélanger.' },
+  { route: '/', demo: 'ai', title: 'Routines', message: 'Programme des actions IA récurrentes : bilan hebdo automatique, rappel d\'objectif, check du lundi… Elles tournent toutes seules et t\'envoient le résultat.' },
+  { route: '/', demo: 'ai', title: 'Studio', message: 'Le canvas d\'orchestration multi-agents : enchaîne des étapes (analyser → décider → générer → appliquer) pour des tâches complexes, façon systèmes automatisés.' },
 ]
 
 // DÉMARRER / live — on ouvre la page record.
@@ -419,24 +454,35 @@ export const START_TOUR: GuideStep[] = [
   { route: '/record', title: 'Après la séance', message: 'Tu retrouves ta séance dans Entraînements avec l\'analyse complète, et tes records se mettent à jour tout seuls.' },
 ]
 
-// INTERFACE COACH — visible/utile aux coachs.
+// INTERFACE COACH — RÉSERVÉE aux comptes coach (abonnement). Toutes ces étapes
+// portent coachOnly : elles sont filtrées pour les athlètes (jamais montrées ni
+// routées vers /coach).
 export const COACH_TOUR: GuideStep[] = [
-  { route: '/', anchor: 'coach-toggle', title: 'Espace coach', message: 'Si tu es coach, ce bouton bascule vers ton espace pour gérer tes athlètes. (Réservé aux comptes coach.)' },
-  { route: '/coach', title: 'Tableau de bord coach', message: 'Ta vue d\'ensemble : athlètes prioritaires, messages, accès rapides (athlètes, bibliothèque, programmes, studio).' },
-  { route: '/coach/athletes', anchor: 'roster-row', title: 'Ton roster', lines: [
+  { route: '/', anchor: 'coach-toggle', coachOnly: true, title: 'Espace coach', message: 'Réservé aux comptes coach (abonnement). Ce bouton bascule vers ton espace pour gérer tes athlètes.' },
+  { route: '/coach', coachOnly: true, title: 'Tableau de bord coach', message: 'Ta vue d\'ensemble : athlètes prioritaires, messages, et accès rapides.', lines: [
+    'Athlètes **prioritaires** (à relancer, en risque…)',
+    'Tuiles : Athlètes · Bibliothèque · Programmes · Studio',
+  ] },
+  { route: '/coach/athletes', anchor: 'roster-row', coachOnly: true, title: 'Ton roster', lines: [
     'La liste de tes athlètes, cherchables et filtrables',
     'Clique un athlète pour ouvrir sa **fiche complète**',
+    'Invite un athlète avec un **code**',
   ] },
-  { route: '/coach/athletes', title: 'Fiche athlète', message: 'Sur un athlète : ses données (forme, charge, séances, objectifs), sa fiche, et des actions (message, plan, analyse IA) — avec l\'identité ET les données du BON athlète.', lines: [
+  { route: '/coach/athletes', coachOnly: true, title: 'Fiche athlète', message: 'Sur un athlète, tu vois SES données (identité ET données du bon athlète) et tu agis pour lui.', lines: [
     'Onglets : aperçu, fiche, data, objectifs, connexions',
-    'Analyse IA d\'un athlète en un clic',
+    'Actions : message, plan, **analyse IA** de l\'athlète',
   ] },
-  { route: '/coach/studio', anchor: 'studio-run', title: 'Studio — passer à l\'échelle', lines: [
+  { route: '/coach/training', coachOnly: true, title: 'Training & Planning coach', message: 'Construis les séances et le planning d\'un athlète comme dans ton appli — mais pour lui.', lines: [
+    'Mêmes constructeurs (course, muscu, Hyrox…)',
+    'Blocs, zones, allures/watts sur l\'athlète ciblé',
+  ] },
+  { route: '/coach/studio', anchor: 'studio-run', coachOnly: true, title: 'Studio — passer à l\'échelle', lines: [
     'Choisis un **système** (plan, analyse, message…)',
     'Sélectionne **plusieurs athlètes**',
     'Lance-le sur tout le groupe d\'un coup',
   ] },
-  { route: '/coach/programs', title: 'Programmes', message: 'Crée des programmes réutilisables, assigne-les à tes athlètes, et publie-les (monétisation via Stripe).' },
+  { route: '/coach/programs', coachOnly: true, title: 'Programmes', message: 'Crée des programmes réutilisables, assigne-les à tes athlètes et publie-les (monétisation via Stripe).' },
+  { route: '/coach/messages', coachOnly: true, title: 'Messagerie coach', message: 'Échange avec tes athlètes : messages, retours sur séances, suivi. Vu / envoyé, édition et suppression inclus.' },
 ]
 
 // ── Catalogue initial (étendu au fil de l'eau) ────────────────────
@@ -511,6 +557,16 @@ export const GUIDE_ACTIONS: GuideAction[] = [
     steps: COMMUNITY_TOUR,
   },
   {
+    id: 'open-connections', label: 'Connecter ma montre / mes capteurs', category: 'Connexions',
+    keywords: ['connexions', 'montre', 'capteur', 'strava', 'polar', 'garmin', 'synchro', 'appareil', 'santé'],
+    steps: CONNECTIONS_TOUR,
+  },
+  {
+    id: 'open-messages', label: 'Envoyer un message', category: 'Messages',
+    keywords: ['messages', 'messagerie', 'discussion', 'coach', 'contact', 'privé', 'écrire'],
+    steps: MESSAGES_TOUR,
+  },
+  {
     id: 'open-coach', label: 'Découvrir l\'espace coach', category: 'Coach',
     keywords: ['coach', 'athlètes', 'roster', 'studio', 'programme', 'entraîneur', 'clients', 'suivi athlète'],
     steps: COACH_TOUR,
@@ -557,7 +613,7 @@ export const EXPRESS_TOUR: GuideStep[] = [
   COMMUNITY_TOUR[0],                                                        // communauté
   AI_TOUR[0], AI_TOUR[2],                                                   // IA
   START_TOUR[0],                                                            // démarrer
-  { route: '/', anchor: 'coach-toggle', title: 'Espace coach', message: 'Si tu es coach, un espace dédié gère tes athlètes (visible en haut).' },
+  { route: '/', anchor: 'coach-toggle', coachOnly: true, title: 'Espace coach', message: 'Si tu es coach, un espace dédié gère tes athlètes (visible en haut).' },
   { title: 'C\'est parti', message: 'Tu as l\'essentiel ! Pour creuser une page, tape ce que tu veux faire dans la loupe, ou lance la visite complète.' },
 ]
 
@@ -575,6 +631,8 @@ export const FULL_TOUR: GuideStep[] = [
   ...INJURIES_TOUR,
   ...RECOVERY_TOUR,
   ...COMMUNITY_TOUR,
+  ...CONNECTIONS_TOUR,
+  ...MESSAGES_TOUR,
   ...AI_TOUR,
   ...START_TOUR,
   ...COACH_TOUR,

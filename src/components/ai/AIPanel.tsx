@@ -24138,6 +24138,7 @@ export default function AIPanel({
                 {/* + button (avec menu ancré) */}
                 <div style={{ position: 'relative', flexShrink: 0 }}>
                   <button
+                    data-guide="ai-plus"
                     onClick={() => setPlusOpen(p => !p)}
                     title="Actions"
                     className="aip-icon-btn"

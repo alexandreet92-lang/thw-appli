@@ -12,6 +12,7 @@ import type { GuideStep } from './guideRegistry'
 import { EXPRESS_TOUR, FULL_TOUR } from './guideRegistry'
 import { GuideSearch } from './GuideSearch'
 import { setGuideDemoId } from './guideDemo'
+import { useCoachAccess } from '@/hooks/useCoachAccess'
 
 export const GUIDE_FIRSTRUN_KEY = 'thw:guide-firstrun'
 export const GUIDE_SEEN_KEY = 'thw:guide-seen'
@@ -61,7 +62,16 @@ export function GuideProvider({ children }: { children: React.ReactNode }) {
     try { localStorage.setItem(GUIDE_SEEN_KEY, '1'); localStorage.removeItem(GUIDE_FIRSTRUN_KEY) } catch { /* ignore */ }
   }, [])
 
-  const startSteps = useCallback((s: GuideStep[]) => { if (s.length) { setSteps(s); setIdx(0) } }, [])
+  const coachAccess = useCoachAccess()
+  const coachRef = useRef(false)
+  coachRef.current = !!coachAccess.access
+  const startSteps = useCallback((s: GuideStep[]) => {
+    if (!s.length) return
+    // Étapes coach : réservées aux comptes coach (abonnement).
+    let f = coachRef.current ? s : s.filter(st => !st.coachOnly)
+    if (!f.length) f = [{ title: 'Espace coach', message: 'Cette visite est réservée aux comptes coach (abonnement). Passe en coach pour la débloquer.' }]
+    setSteps(f); setIdx(0)
+  }, [])
   const stop = useCallback(() => { setSteps(null); setIdx(0); setRect(null) }, [])
   const next = useCallback(() => { setIdx(i => { const s = steps; if (s && i + 1 >= s.length) { setSteps(null); setRect(null); return 0 } return i + 1 }) }, [steps])
   const prev = useCallback(() => setIdx(i => Math.max(0, i - 1)), [])
@@ -160,7 +170,7 @@ function GuideOverlay({ step, rect, index, total, onNext, onPrev, onSkip }: {
   const BW = Math.min(340, vw - 24)
   // Hauteur estimée pour placer la bulle sans déborder — dépend du contenu (puces).
   const lineCount = step.lines?.length ?? 0
-  const estH = 104 + (step.title ? 28 : 0) + (step.message ? 38 : 0) + lineCount * 32
+  const estH = 138 + (step.title ? 28 : 0) + (step.message ? 38 : 0) + lineCount * 32
   const BH = Math.min(estH, vh - 40)
 
   // Position de la bulle — TOUJOURS entièrement dans l'écran.
@@ -177,7 +187,7 @@ function GuideOverlay({ step, rect, index, total, onNext, onPrev, onSkip }: {
   return (
     // Conteneur PASS-THROUGH : on peut cliquer/utiliser la page pendant le guide.
     <div style={{ position: 'fixed', inset: 0, zIndex: 100000, pointerEvents: 'none' }}>
-      <style>{`@keyframes gArrow{0%,100%{transform:translateY(0)}50%{transform:translateY(9px)}}@keyframes gArrowUp{0%,100%{transform:translateY(0)}50%{transform:translateY(-9px)}}@keyframes gPulse{0%{box-shadow:0 0 0 3px var(--primary),0 0 0 5px rgba(6,182,212,0.35)}50%{box-shadow:0 0 0 3px var(--primary),0 0 0 12px rgba(6,182,212,0.10)}100%{box-shadow:0 0 0 3px var(--primary),0 0 0 5px rgba(6,182,212,0.35)}}@keyframes gLine{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}`}</style>
+      <style>{`@keyframes gArrow{0%,100%{transform:translateY(0)}50%{transform:translateY(9px)}}@keyframes gArrowUp{0%,100%{transform:translateY(0)}50%{transform:translateY(-9px)}}@keyframes gPulse{0%{box-shadow:0 0 0 3px var(--primary),0 0 0 5px rgba(6,182,212,0.35)}50%{box-shadow:0 0 0 3px var(--primary),0 0 0 12px rgba(6,182,212,0.10)}100%{box-shadow:0 0 0 3px var(--primary),0 0 0 5px rgba(6,182,212,0.35)}}@keyframes gLine{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}@keyframes gPop{from{opacity:0;transform:translateY(10px) scale(.96)}to{opacity:1;transform:translateY(0) scale(1)}}`}</style>
 
       {/* Voile — visuel seulement (pass-through). Léger si explication, un peu plus marqué autour d'une cible. */}
       {!hole && <div style={{ position: 'absolute', inset: 0, background: 'rgba(8,10,14,0.12)', pointerEvents: 'none' }} />}
@@ -201,35 +211,53 @@ function GuideOverlay({ step, rect, index, total, onNext, onPrev, onSkip }: {
       )}
 
       {/* Bulle + contrôles — pointer-events AUTO (seul élément cliquable de l'overlay) */}
-      <div style={{ position: 'absolute', left: pos.left, top: pos.top, width: BW, maxHeight: vh - 32, overflowY: 'auto', background: 'var(--bg-card)', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: 16, boxShadow: '0 12px 40px rgba(0,0,0,0.32)', padding: 16, pointerEvents: 'auto', fontFamily: 'var(--font-body, DM Sans, sans-serif)', boxSizing: 'border-box' }}>
-        {rect && step.advanceOn === 'click' && <p style={{ margin: '0 0 4px', fontSize: 10.5, fontWeight: 800, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--primary)' }}>Clique ici</p>}
-        {step.title && <p style={{ margin: '0 0 8px', fontFamily: 'Syne, sans-serif', fontSize: 16, fontWeight: 800 }}>{step.title}</p>}
-        {step.message && <p style={{ margin: '0 0 10px', fontSize: 13.5, lineHeight: 1.5, color: 'var(--text-mid)' }}>{step.message}</p>}
-        {step.lines && step.lines.length > 0 && (
-          <ul key={index} style={{ listStyle: 'none', margin: '0 0 12px', padding: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {step.lines.map((ln, i) => (
-              <li key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 13, lineHeight: 1.45, color: 'var(--text-mid)', opacity: 0, animation: `gLine .34s ease-out forwards`, animationDelay: `${i * 110}ms` }}>
-                <span aria-hidden style={{ flexShrink: 0, width: 6, height: 6, borderRadius: '50%', background: 'var(--primary)', marginTop: 6 }} />
-                <span dangerouslySetInnerHTML={{ __html: mark(ln) }} />
-              </li>
-            ))}
-          </ul>
-        )}
-        <div style={{ display: 'flex', gap: 3, marginBottom: 12 }}>
-          {Array.from({ length: total }, (_, i) => <span key={i} style={{ flex: i === index ? '0 0 16px' : '0 0 6px', height: 5, borderRadius: 3, background: i === index ? 'var(--primary)' : 'var(--border)', transition: 'flex-basis .2s' }} />)}
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ flex: 1, fontSize: 11, color: 'var(--text-dim)', fontWeight: 600 }}>{index + 1}/{total}</span>
-          <button onClick={onSkip} style={btnGhost}>Passer</button>
-          {index > 0 && <button onClick={onPrev} style={btnGhost}>Précédent</button>}
-          <button onClick={onNext} style={{ padding: '9px 18px', borderRadius: 10, border: 'none', background: 'var(--primary)', color: 'var(--on-primary, #fff)', fontSize: 13, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
-            {index + 1 >= total ? 'Terminer' : 'Suivant'}
-          </button>
+      <div key={index} style={{ position: 'absolute', left: pos.left, top: pos.top, width: BW, maxHeight: vh - 32, overflowY: 'auto', background: 'var(--bg-card)', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: 20, boxShadow: '0 18px 50px rgba(0,0,0,0.38)', pointerEvents: 'auto', fontFamily: 'var(--font-body, DM Sans, sans-serif)', boxSizing: 'border-box', overflow: 'hidden', animation: 'gPop .3s cubic-bezier(0.34,1.3,0.6,1)' }}>
+        {/* Liseré dégradé */}
+        <div style={{ height: 4, background: GRAD }} />
+        <div style={{ padding: '14px 16px 15px' }}>
+          {/* En-tête : badge + label + barre de progression */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 11 }}>
+            <span aria-hidden style={{ flexShrink: 0, width: 32, height: 32, borderRadius: 10, background: GRAD, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(6,182,212,0.40)' }}>
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><path d="m15.6 8.4-2.2 5-5 2.2 2.2-5z" /></svg>
+            </span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              {rect && step.advanceOn === 'click'
+                ? <span style={{ display: 'inline-block', fontSize: 9.5, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--primary)', background: 'var(--primary-dim, rgba(6,182,212,0.12))', padding: '2px 8px', borderRadius: 999 }}>Clique ici</span>
+                : <span style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--text-dim)' }}>Visite guidée · {index + 1}/{total}</span>}
+              <div style={{ marginTop: 6, height: 4, borderRadius: 999, background: 'var(--border)', overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: `${((index + 1) / total) * 100}%`, background: GRAD, borderRadius: 999, transition: 'width .35s cubic-bezier(0.4,0,0.2,1)' }} />
+              </div>
+            </div>
+          </div>
+          {step.title && <p style={{ margin: '0 0 8px', fontFamily: 'Syne, sans-serif', fontSize: 17, fontWeight: 800, lineHeight: 1.15 }}>{step.title}</p>}
+          {step.message && <p style={{ margin: '0 0 10px', fontSize: 13.5, lineHeight: 1.5, color: 'var(--text-mid)' }}>{step.message}</p>}
+          {step.lines && step.lines.length > 0 && (
+            <ul key={index} style={{ listStyle: 'none', margin: '0 0 14px', padding: 0, display: 'flex', flexDirection: 'column', gap: 9 }}>
+              {step.lines.map((ln, i) => (
+                <li key={i} style={{ display: 'flex', gap: 9, alignItems: 'flex-start', fontSize: 13, lineHeight: 1.45, color: 'var(--text-mid)', opacity: 0, animation: `gLine .34s ease-out forwards`, animationDelay: `${i * 100}ms` }}>
+                  <span aria-hidden style={{ flexShrink: 0, width: 14, height: 14, marginTop: 1, display: 'flex' }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
+                  </span>
+                  <span dangerouslySetInnerHTML={{ __html: mark(ln) }} />
+                </li>
+              ))}
+            </ul>
+          )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
+            <button onClick={onSkip} style={btnGhost}>Passer</button>
+            <span style={{ flex: 1 }} />
+            {index > 0 && <button onClick={onPrev} style={btnGhost}>Précédent</button>}
+            <button onClick={onNext} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 18px', borderRadius: 12, border: 'none', background: GRAD, color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', boxShadow: '0 4px 14px rgba(6,182,212,0.40)' }}>
+              {index + 1 >= total ? 'Terminer' : 'Suivant'}
+              {index + 1 < total && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>}
+            </button>
+          </div>
         </div>
       </div>
     </div>
   )
 }
+const GRAD = 'linear-gradient(135deg,#06B6D4,#3B82F6)'
 function Dim({ style }: { style: React.CSSProperties }) {
   return <div style={{ position: 'absolute', background: 'rgba(8,10,14,0.5)', pointerEvents: 'none', ...style }} />
 }

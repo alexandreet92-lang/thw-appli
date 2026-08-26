@@ -67,6 +67,17 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener('thw:open-coach', open)
   }, [])
 
+  // Le guide peut ouvrir/fermer le chat IA pour le présenter (démo id 'ai').
+  useEffect(() => {
+    const h = (e: Event) => {
+      const id = (e as CustomEvent<{ id: string | null }>).detail?.id ?? null
+      if (id === 'ai') setAiOpen(true)
+      else if (id === null) setAiOpen(false)
+    }
+    window.addEventListener('thw:guide-demo', h)
+    return () => window.removeEventListener('thw:guide-demo', h)
+  }, [])
+
   // « Envoyer un message » (menu latéral) → sur-page feedback.
   // MobileShell et DesktopShell sont montés en même temps et écoutent tous deux
   // cet event : sans ce garde, DEUX BottomSheet (portals sur body) s'empilaient
@@ -202,7 +213,7 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
         {/* Bascule d'interface Athlète ⇄ Coach — entre Démarrer et la cloche.
             Réservée au propriétaire de l'espace coach (pas d'accès coach pour les athlètes). */}
         {!isRecord && coachAccess.access && (
-          <Link href={isCoach ? '/' : '/coach'} aria-label={isCoach ? 'Revenir à mon appli' : 'Espace coach'}
+          <Link href={isCoach ? '/' : '/coach'} data-guide="coach-toggle" aria-label={isCoach ? 'Revenir à mon appli' : 'Espace coach'}
             title={isCoach ? 'Revenir à mon appli' : 'Passer en espace coach'}
             style={{ ...fab, right: 108, left: 'auto', textDecoration: 'none',
               background: isCoach ? 'var(--primary)' : 'var(--glass-bg)', border: isCoach ? '1px solid var(--primary)' : '1px solid var(--glass-border)' }}>

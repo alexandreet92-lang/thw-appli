@@ -207,7 +207,7 @@ export default function CoachAthletes() {
                 <div /><div>Athlète</div><div>Statut</div><div>Dernière act.</div><div>Charge · 7 j</div><div>Séances</div><div>Fatigue</div><div>Prochaine course</div><div>Blessures</div><div />
               </div>
               {visible.map(a => (
-                <Link key={a.id} href={`/coach/athlete/${a.id}`} style={{ display: 'grid', gridTemplateColumns: COLS, gap: 12, alignItems: 'center', padding: '12px 16px', borderTop: '1px solid var(--border)', cursor: 'pointer', fontSize: 13, textDecoration: 'none', color: 'inherit' }}
+                <Link key={a.id} data-guide="roster-row" href={`/coach/athlete/${a.id}`} style={{ display: 'grid', gridTemplateColumns: COLS, gap: 12, alignItems: 'center', padding: '12px 16px', borderTop: '1px solid var(--border)', cursor: 'pointer', fontSize: 13, textDecoration: 'none', color: 'inherit' }}
                   onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-card2)' }}
                   onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}>
                   {/* Sélection (bulk : Lancer un système, Grouper) */}

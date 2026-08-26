@@ -20,13 +20,16 @@ import { DashboardModelSwitch } from './DashboardModelSwitch'
 import { ClassiqueGrid } from './ClassiqueGrid'
 import { DataGrid } from './DataGrid'
 import { useDashboardModel } from './useDashboardModel'
+import { useGuideTabDemo } from '@/components/guide/guideDemo'
 
 export function DashboardContent() {
   const [model, setModel, ready] = useDashboardModel()
   const [vitrineOpen, setVitrineOpen] = useState(false)
+  // Le guide peut basculer Datas/Classique pour montrer les deux modèles.
+  useGuideTabDemo('dash', (k) => setModel(k === 'data' ? 'data' : 'classique'))
   const switch_ = <DashboardModelSwitch value={model} onChange={setModel} />
   const vitrineBtn = (
-    <button onClick={() => setVitrineOpen(true)}
+    <button data-guide="vitrine" onClick={() => setVitrineOpen(true)}
       style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '9px 16px', borderRadius: 999, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontFamily: 'var(--font-body)', fontSize: 13.5, fontWeight: 700, cursor: 'pointer' }}>
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4" /><path d="M4 21a8 8 0 0 1 16 0" /></svg>
       Ma vitrine

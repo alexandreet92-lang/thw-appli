@@ -56,7 +56,7 @@ export function Greeting({ rightSlot }: { rightSlot?: React.ReactNode }) {
   return (
     <header style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 'var(--space-4)', marginBottom: 'var(--space-6)' }}>
       <div style={{ minWidth: 0 }}>
-        <h1 style={{ margin: 0, fontFamily: FD, fontSize: 28, fontWeight: 600, color: 'var(--text)', lineHeight: 1.1 }}>
+        <h1 data-guide="greeting" style={{ margin: 0, fontFamily: FD, fontSize: 28, fontWeight: 600, color: 'var(--text)', lineHeight: 1.1 }}>
           {firstName ? t('dashboard.greetingName', { name: firstName }) : t('dashboard.greeting')}
         </h1>
         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', marginTop: 'var(--space-2)', flexWrap: 'wrap' }}>

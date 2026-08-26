@@ -28,6 +28,7 @@ import { PERFORMANCE_ONBOARDING } from '@/onboarding/configs/performance.config'
 import { ProfilGlobalGrid, type Metric } from '@/app/performance/components/profil/ProfilGlobalGrid'
 import { TestCard } from '@/app/performance/components/tests/TestCard'
 import { TabbedPageLayout } from '@/components/ui/TabbedPageLayout'
+import { useGuideTabDemo } from '@/components/guide/guideDemo'
 import { User, Database, FlaskConical } from 'lucide-react'
 import { ProfilSpecific } from '@/app/performance/components/profil/ProfilSpecific'
 import { analyzeYear, saveSnapshot, loadSnapshots, type Snapshots, type AnalyzeResult, type SportKey } from '@/lib/performance/analyzeProfile'
@@ -476,12 +477,12 @@ function ProfilTab({ onSelect, selectedDatum, profile: p, setProfile: setP, onAn
       <div>
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 'var(--space-4)', marginBottom: 'var(--space-5)' }}>
           <div>
-            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 600, color: 'var(--text)', margin: 0 }}>{t('performance.globalProfile')}</h2>
+            <h2 data-guide="perf-profil-global" style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 600, color: 'var(--text)', margin: 0 }}>{t('performance.globalProfile')}</h2>
             <p style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--text-dim)', margin: 'var(--space-1) 0 0' }}>{t('performance.globalProfileSubtitle')}</p>
           </div>
           <div style={{ display: 'flex', gap: 'var(--space-4)', alignItems: 'baseline' }}>
             {!editing && onAnalyzeProfile && (
-              <button onClick={() => { setAnalyzing(true); onAnalyzeProfile().finally(() => setAnalyzing(false)) }} disabled={analyzing} style={{ border: 'none', background: 'transparent', cursor: analyzing ? 'default' : 'pointer', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600, color: 'var(--primary)', opacity: analyzing ? 0.6 : 1 }}>{analyzing ? t('performance.analyzing') : t('performance.analyze')}</button>
+              <button data-guide="perf-analyze" onClick={() => { setAnalyzing(true); onAnalyzeProfile().finally(() => setAnalyzing(false)) }} disabled={analyzing} style={{ border: 'none', background: 'transparent', cursor: analyzing ? 'default' : 'pointer', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600, color: 'var(--primary)', opacity: analyzing ? 0.6 : 1 }}>{analyzing ? t('performance.analyzing') : t('performance.analyze')}</button>
             )}
             {editing ? (
               <>
@@ -1499,6 +1500,8 @@ export default function PerformancePage() {
   const [initialTest, setInitialTest]   = useState<{ sport: TestSport; testId: string } | null>(null)
   const isMobile = useWindowWidth() < 768
   const { t } = useI18n()
+  // Le guide peut basculer d'onglet (profil/datas/tests) pour montrer chaque section.
+  useGuideTabDemo('perf', (k) => setTab(k as PerfTab))
 
   // Read URL params on first mount — navigate to specific test if needed
   useEffect(() => {

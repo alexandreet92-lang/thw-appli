@@ -105,7 +105,7 @@ export function SuiviSection({ dailyLogs, plan, weightKg, today }: Props) {
       </div>
 
       {/* Bilan — 4 stats nues, grille responsive (2 col mobile, 4 desktop) */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0,1fr))', gap: 'var(--space-5) var(--space-4)' }} className="suivi-stats">
+      <div data-guide="nutri-tracking" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0,1fr))', gap: 'var(--space-5) var(--space-4)' }} className="suivi-stats">
         <style>{`@media(min-width:560px){.suivi-stats{grid-template-columns:repeat(4,minmax(0,1fr))!important}}`}</style>
         <StatNu label={t('nutrition.suivi.statDaysLogged')} value={`${summary.daysLogged}/${summary.totalDays}`} note={`${summary.loggedPct}%`} />
         <StatNu label={t('nutrition.suivi.statAdherence')} value={summary.adherencePct == null ? '—' : `${summary.adherencePct}%`} note={summary.adherencePct == null ? t('nutrition.suivi.noPlan') : t('nutrition.suivi.inTargetDays')} />

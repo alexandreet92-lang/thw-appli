@@ -72,7 +72,7 @@ export function TodayTab(p: Props) {
       <h1 style={{ fontFamily: FD, fontSize: p.isDesktop ? 22 : 20, fontWeight: 600, color: 'var(--text)', margin: 0, textTransform: 'capitalize' }}>{dateLabel(p.today)}</h1>
 
       {/* Hero — anneau unique + barres de macros */}
-      <FuelingHero
+      <div data-guide="nutri-fueling"><FuelingHero
         todayType={p.todayType}
         consumedKcal={dayMeals.totals.kcal}
         targetKcal={p.todayKcalObj}
@@ -82,7 +82,7 @@ export function TodayTab(p: Props) {
         weightKg={p.weightKg}
         sessions={p.todaySessions}
         isDesktop={p.isDesktop}
-      />
+      /></div>
 
       {/* Autour de ta séance — fueling avant/pendant/après (reco auto + log) */}
       <div>
@@ -108,7 +108,7 @@ export function TodayTab(p: Props) {
       </div>
 
       {/* Repas de la journée — DayFoodJournal réutilisé */}
-      <div id="repas-du-jour">
+      <div id="repas-du-jour" data-guide="nutri-day-meals">
         <h2 style={sectionTitle}>{t('nutrition.today.dayMeals')}</h2>
         <DayFoodJournal
           entries={dayMeals.entries}

@@ -12,6 +12,7 @@ import { TrackSheet } from './components/TrackSheet'
 import { TabbedPageLayout, type PageTab } from '@/components/ui/TabbedPageLayout'
 import { LayoutDashboard, History, LineChart } from 'lucide-react'
 import { useI18n } from '@/lib/i18n'
+import { useGuideTabDemo } from '@/components/guide/guideDemo'
 
 type Tab = 'apercu' | 'historique' | 'analyse'
 const FB = 'var(--font-body)', FD = 'var(--font-display)'
@@ -25,12 +26,13 @@ export default function InjuriesPage() {
     { id: 'analyse', label: t('injuries.tabAnalysis'), subtitle: t('injuries.tabAnalysisSub'), icon: LineChart },
   ]
   const [tab, setTab] = useState<Tab>('apercu')
+  useGuideTabDemo('inj', (k) => setTab(k as Tab))
   const [report, setReport] = useState(false)
   const [trackId, setTrackId] = useState<string | null>(null)
   const trackInj = trackId ? injuries.find(i => i.id === trackId) ?? null : null
 
   const signaler = (
-    <button onClick={() => setReport(true)} style={{ height: 36, padding: '0 16px', border: 'none', borderRadius: 'var(--r-sm)', background: 'var(--primary-gradient)', color: 'var(--on-primary)', fontFamily: FB, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>+ {t('injuries.reportAction')}</button>
+    <button data-guide="inj-declare" onClick={() => setReport(true)} style={{ height: 36, padding: '0 16px', border: 'none', borderRadius: 'var(--r-sm)', background: 'var(--primary-gradient)', color: 'var(--on-primary)', fontFamily: FB, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>+ {t('injuries.reportAction')}</button>
   )
 
   return (

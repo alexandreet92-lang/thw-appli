@@ -127,7 +127,7 @@ export default function CoachStudio() {
 
           {err && <div style={{ padding: '10px 14px', borderRadius: 10, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)', color: '#EF4444', fontSize: 12.5 }}>{err}</div>}
 
-          <button onClick={run} disabled={running || selected.size === 0}
+          <button data-guide="studio-run" onClick={run} disabled={running || selected.size === 0}
             style={{ alignSelf: 'flex-start', padding: '12px 22px', borderRadius: 12, border: 'none', background: running || selected.size === 0 ? 'var(--border)' : 'var(--primary)', color: running || selected.size === 0 ? 'var(--text-dim)' : 'var(--on-primary)', fontSize: 14, fontWeight: 700, cursor: running || selected.size === 0 ? 'default' : 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
             {running ? <><span style={{ width: 15, height: 15, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.4)', borderTopColor: '#fff', animation: 'studio_spin 0.7s linear infinite' }} /> En cours…</> : `Lancer sur ${selected.size} athlète${selected.size > 1 ? 's' : ''}`}
           </button>

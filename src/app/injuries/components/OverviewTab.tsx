@@ -112,7 +112,7 @@ export function OverviewTab({ injuries, logs, onOpen, onCheckin }: {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-8)' }}>
-      <div style={{ display: 'flex', gap: 'var(--space-6)', flexWrap: 'wrap' }}>
+      <div data-guide="inj-stats" style={{ display: 'flex', gap: 'var(--space-6)', flexWrap: 'wrap' }}>
         <Stat label={t('injuries.statAvailability')} value={hasBlessure ? t('injuries.availRestAdvised') : active.length ? t('injuries.availAdapted') : t('injuries.availAvailable')} sub={avoid.length ? t('injuries.availAvoid', { list: avoid.join(', ') }) : t('injuries.availNoLimit')} />
         <Stat label={t('injuries.statRisk')} value={risk.label} valueColor={RISK_COLOR[risk.level]} sub={risk.drivers.length ? risk.drivers.join(' · ') : (risk.level === 'none' ? 'Aucun épisode actif' : 'Basé sur tes épisodes actifs')} />
         <Stat label={t('injuries.statAvailability12mo')} value={`${avail}%`} sub={t('injuries.statAvailability12moSub')} />

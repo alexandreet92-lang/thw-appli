@@ -8,6 +8,7 @@ import dynamicImport from 'next/dynamic'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/Button'
 import { MacroDonut } from '@/components/ui/MacroDonut'
+import { useGuideTabDemo } from '@/components/guide/guideDemo'
 import { useNutrition, useNutritionTemplates, type MealTemplate } from '@/hooks/useNutrition'
 import { usePlanning, type PlannedSession } from '@/hooks/usePlanning'
 import { useMealLogs, type MealLog } from '@/hooks/useMealLogs'
@@ -873,6 +874,7 @@ export default function NutritionPage() {
     setTabDir(TAB_ORDER.indexOf(next) >= TAB_ORDER.indexOf(tab) ? 'right' : 'left')
     setTab(next)
   }, [tab])
+  useGuideTabDemo('nutri', (k) => setTab(k as NutritionTab))
   const [planVariant, setPlanVariant] = useState<PlanVariant>('A')
   const [histRange, setHistRange] = useState<HistRange>('7j')
   const [dayDetailOpen, setDayDetailOpen] = useState<PlanDay | null>(null)

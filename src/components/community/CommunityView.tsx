@@ -290,7 +290,7 @@ function SpaceRail({ spaces, activeId, loading, onSelect, onCreate, onDiscover }
   onSelect: (id: string) => void; onCreate: () => void; onDiscover: () => void
 }) {
   return (
-    <div style={{ height: '100%', overflowY: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--space-2)', padding: 'var(--space-3) 0' }}>
+    <div data-guide="comm-spaces" style={{ height: '100%', overflowY: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--space-2)', padding: 'var(--space-3) 0' }}>
       {loading ? (
         [0, 1, 2, 3].map(i => <span key={i} style={{ width: 44, height: 44, borderRadius: 'var(--r-md)', background: 'var(--surface-neutral)' }} />)
       ) : spaces.map(s => {
@@ -382,7 +382,7 @@ function ChannelColumn({ space, channels, activeId, loading, isNarrow, joining, 
 
       {/* Raccourci Événements */}
       <div style={{ flexShrink: 0, padding: '0 var(--space-2) var(--space-2)' }}>
-        <button onClick={onEvents}
+        <button data-guide="comm-events" onClick={onEvents}
           style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', width: '100%', textAlign: 'left', border: 'none', cursor: 'pointer', borderRadius: 'var(--r-sm)', padding: 'var(--space-2) var(--space-3)', minHeight: 36, background: panel === 'events' ? 'var(--surface-neutral)' : 'transparent', fontFamily: FB }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-dim)', flexShrink: 0 }}><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></svg>
           <span style={{ flex: 1, fontSize: 13.5, fontWeight: panel === 'events' ? 600 : 500, color: panel === 'events' ? 'var(--text)' : 'var(--text-mid)' }}>Événements</span>
@@ -390,7 +390,7 @@ function ChannelColumn({ space, channels, activeId, loading, isNarrow, joining, 
       </div>
 
       {/* Liste des canaux */}
-      <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '0 var(--space-2) var(--space-3)' }}>
+      <div data-guide="comm-channels" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '0 var(--space-2) var(--space-3)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 'var(--space-2) var(--space-3)' }}>
           <span style={{ fontFamily: FB, fontSize: 10.5, fontWeight: 600, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Canaux</span>
           {canManage && (

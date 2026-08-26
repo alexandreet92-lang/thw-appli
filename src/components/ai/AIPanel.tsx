@@ -24087,6 +24087,7 @@ export default function AIPanel({
               {/* Textarea — reste VISIBLE pendant la dictée (le texte s'y écrit en direct). */}
               <textarea
                 ref={areaRef}
+                data-guide="ai-input"
                 className="aip-textarea"
                 value={input}
                 onChange={handleInput}
@@ -24259,6 +24260,7 @@ export default function AIPanel({
                     }
                     return (
                   <button
+                    data-guide="ai-send"
                     onClick={() => void send()}
                     disabled={!canSend}
                     style={{

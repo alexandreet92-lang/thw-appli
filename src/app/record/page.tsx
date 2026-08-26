@@ -422,6 +422,7 @@ export default function RecordPage() {
           }}>
           {/* GAUCHE — Sport */}
           <button
+            data-guide="rec-sport"
             onClick={() => { if (sheetDragged.current) return; setSportSheetOpen(true) }}
             style={{
               display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
@@ -444,6 +445,7 @@ export default function RecordPage() {
 
           {/* CENTRE — Démarrer */}
           <button
+            data-guide="rec-start"
             onClick={() => { if (sheetDragged.current) return; handleStart() }}
             aria-label={t('record.pageStart')}
             style={{

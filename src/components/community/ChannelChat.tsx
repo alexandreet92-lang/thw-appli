@@ -562,7 +562,7 @@ export function ChannelChat({
           <IconBtn label="Partager une séance" onClick={() => canPost && setSharingSession(true)} disabled={!canPost}>
             <path d="M20 6H4a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2zM6 12h4M12 10v4" />
           </IconBtn>
-          <textarea ref={taRef} value={input} onChange={onInputChange}
+          <textarea ref={taRef} data-guide="comm-composer" value={input} onChange={onInputChange}
             onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && mentionQuery === null) { e.preventDefault(); void send() } }}
             placeholder={`Écrire dans #${channel.name}…`} rows={1} disabled={!canPost}
             style={{ flex: 1, resize: 'none', border: 'none', outline: 'none', background: 'transparent', color: 'var(--text)', fontFamily: FB, fontSize: 13.5, lineHeight: 1.5, maxHeight: 140, padding: 'var(--space-2) var(--space-1)' }} />

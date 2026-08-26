@@ -87,6 +87,7 @@ export function TabbedPageLayout<T extends string>({ title, headerExtra, tabs, a
     return (
       <div style={{ display: 'flex', width: '100%', alignItems: 'flex-start', overflowX: 'clip' }}>
         <aside
+          data-guide="page-tabs"
           style={{
             width: 214, flexShrink: 0, alignSelf: 'stretch',
             position: 'sticky', top: 0, zIndex: 5,
@@ -132,7 +133,7 @@ export function TabbedPageLayout<T extends string>({ title, headerExtra, tabs, a
   const tabsBar = (
     <div className="tpl-tabscroll" style={{ marginBottom: 'var(--space-5)', overflowX: 'auto', WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'] }}>
       <style>{`.tpl-tabscroll{scrollbar-width:none}.tpl-tabscroll::-webkit-scrollbar{display:none}`}</style>
-      <div role="tablist" style={{ display: 'inline-flex', gap: 2, padding: 3, borderRadius: 999, background: 'var(--bg-card2)' }}>
+      <div role="tablist" data-guide="page-tabs" style={{ display: 'inline-flex', gap: 2, padding: 3, borderRadius: 999, background: 'var(--bg-card2)' }}>
         {tabs.map(t => {
           const on = t.id === active
           return (

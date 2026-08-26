@@ -175,7 +175,7 @@ export default function AthleteFiche() {
       </div>
 
       {/* Bulles */}
-      <div style={{ display: 'flex', gap: 4, overflowX: 'auto', borderBottom: '1px solid var(--border)', marginBottom: 18, paddingBottom: 2 }}>
+      <div data-guide="athlete-tabs" style={{ display: 'flex', gap: 4, overflowX: 'auto', borderBottom: '1px solid var(--border)', marginBottom: 18, paddingBottom: 2 }}>
         {BUBBLES.map(b => (
           <button key={b.key} onClick={() => setTab(b.key)}
             style={{ padding: '9px 14px', border: 'none', background: 'none', cursor: 'pointer', fontSize: 13.5, fontWeight: tab === b.key ? 700 : 500, color: tab === b.key ? 'var(--primary)' : 'var(--text-mid)', borderBottom: `2px solid ${tab === b.key ? 'var(--primary)' : 'transparent'}`, whiteSpace: 'nowrap', fontFamily: 'var(--font-body)', marginBottom: -3 }}>

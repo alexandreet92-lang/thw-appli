@@ -97,7 +97,7 @@ export function ProfilSpecific({ p, wkg, specSport, onSport, params, fields, onE
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
       <div style={{ display: 'flex', gap: 'var(--space-4)', flexWrap: 'wrap' }}>
         {SPORTS.map(s => (
-          <button key={s.id} onClick={() => onSport(s.id)} style={{ ...tabBtn(s.id === specSport), display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          <button key={s.id} data-guide="perf-profil-sport" onClick={() => onSport(s.id)} style={{ ...tabBtn(s.id === specSport), display: 'inline-flex', alignItems: 'center', gap: 6 }}>
             <span style={{ width: 7, height: 7, borderRadius: '50%', background: s.dot }} />{sportLabel(s.id)}
           </button>
         ))}
@@ -129,13 +129,13 @@ export function ProfilSpecific({ p, wkg, specSport, onSport, params, fields, onE
         </p>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: 'var(--space-6)', alignItems: 'start' }}>
+      <div data-guide="perf-profil-radar" style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: 'var(--space-6)', alignItems: 'start' }}>
         <Radar scores={radar.scores} labels={radar.labels} />
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
             <div style={{ display: 'flex', gap: 'var(--space-4)' }}>
               {ZTABS[specSport].map(z => (
-                <button key={z.id} onClick={() => setZtype(z.id)} style={tabBtn(z.id === ztype)}>{zTabLabel(z.id)}</button>
+                <button key={z.id} data-guide="perf-profil-zones" onClick={() => setZtype(z.id)} style={tabBtn(z.id === ztype)}>{zTabLabel(z.id)}</button>
               ))}
             </div>
             <button onClick={onEditBenchmarks} style={{ border: 'none', background: 'transparent', cursor: 'pointer', fontFamily: FB, fontSize: 12, fontWeight: 600, color: 'var(--primary)' }}>{t('performance.editBenchmarks')} →</button>

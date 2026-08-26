@@ -118,7 +118,7 @@ export function PlanTab(p: Props) {
       </div>
 
       {/* Cibles par type de jour */}
-      <div>
+      <div data-guide="nutri-targets">
         <h2 style={sectionTitle}>{tr('nutrition.plan.targetsByDay')}</h2>
         <div style={{ display: 'flex', gap: 'var(--space-6)' }}>
           {targets.map(({ t, kcal, m }) => (
@@ -142,7 +142,7 @@ export function PlanTab(p: Props) {
 
       {/* Actions */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
-        <button onClick={p.onOpenAI} style={primaryBtn}>{tr('nutrition.plan.editAI')}</button>
+        <button data-guide="nutri-ai-plan" onClick={p.onOpenAI} style={primaryBtn}>{tr('nutrition.plan.editAI')}</button>
         <button onClick={p.onOpenShopping} style={textBtn}>{tr('nutrition.plan.shoppingList')}</button>
         <button onClick={p.onRegen} style={textBtn}>{tr('nutrition.regen.confirm')}</button>
         <button onClick={p.onDelete} style={{ ...textBtn, color: 'var(--text-dim)', marginLeft: 'auto' }}>{tr('nutrition.common.delete')}</button>

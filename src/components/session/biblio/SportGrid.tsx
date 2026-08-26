@@ -35,7 +35,7 @@ export function SportGrid({ onSelect }: { onSelect: (id: SportId) => void }) {
         {t('session.biblioSubtitle')}
       </p>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(168px, 1fr))', gap: 'var(--space-4)' }}>
+      <div data-guide="lib-sport-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(168px, 1fr))', gap: 'var(--space-4)' }}>
         {SPORT_ORDER.map(id => (
           <SportCard key={id} theme={SPORT_THEME[id]} onSelect={onSelect} />
         ))}

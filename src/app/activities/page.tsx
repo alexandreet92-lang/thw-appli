@@ -6365,6 +6365,7 @@ function ActivityRow({ a, selected, onClick }: { a: Activity; selected: boolean;
   const isRunRow  = ['run','trail_run'].includes(a.sport_type)
   return (
     <div
+      data-guide="act-row"
       onClick={onClick}
       style={{
         display: 'grid', gridTemplateColumns: '3px 1fr auto',
@@ -9548,7 +9549,7 @@ function SectionAnalyse({ activities, zones, profile, deepLinkId, deepLinkEdit, 
 
       {view === 'list' && (
         <div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
+          <div data-guide="act-filters" style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
             <input
               value={search} onChange={e => setSearch(e.target.value)}
               placeholder={t('activities.search')}

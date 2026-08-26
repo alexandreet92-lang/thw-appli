@@ -236,7 +236,7 @@ export function AnalysisTab({ injuries, logs }: { injuries: Injury[]; logs: Inju
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
       {/* KPIs */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 'var(--space-4)' }}>
+      <div data-guide="inj-analytics" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 'var(--space-4)' }}>
         {kpi(L.stInjuries, `${s.count}`, `${injuries.filter(i => i.status === 'active').length} ${EN ? 'active' : 'actives'} · ${injuries.filter(i => i.status === 'resolved').length} ${EN ? 'resolved' : 'résolues'}`)}
         {kpi(L.stDuration, s.avgDuration == null ? '—' : `${s.avgDuration} ${L.day}`, EN ? 'Onset → resolution' : 'Onset → résolution')}
         {kpi(L.stRecidive, s.recidiveRate == null ? '—' : `${s.recidiveRate}%`, EN ? 'On an already-hit zone' : 'Sur une zone déjà touchée', s.recidiveRate != null && s.recidiveRate >= 33 ? 'var(--charge-mid)' : undefined)}

@@ -16,7 +16,7 @@ const SEGMENTS: { key: DashboardModel; labelKey: string }[] = [
 export function DashboardModelSwitch({ value, onChange }: { value: DashboardModel; onChange: (m: DashboardModel) => void }) {
   const { t } = useI18n()
   return (
-    <div role="tablist" aria-label={t('dashboard.modelSwitchLabel')}
+    <div role="tablist" data-guide="dash-model-switch" aria-label={t('dashboard.modelSwitchLabel')}
       style={{ display: 'inline-flex', gap: 2, padding: 3, borderRadius: 999, background: 'var(--bg-card2)' }}>
       {SEGMENTS.map(s => {
         const active = s.key === value

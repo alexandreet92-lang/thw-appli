@@ -892,7 +892,7 @@ function RaceTab({ races, raceStages, tests, addEvent, updateEvent, deleteEvent,
 
   return (
     <div style={{ display:'flex',flexDirection:'column',gap:14 }}>
-      <GoalBanner gty={gty} races={races} year={selectedYear} />
+      <div data-guide="cal-goal"><GoalBanner gty={gty} races={races} year={selectedYear} /></div>
 
       {/* Year selector + Controls */}
       <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap' as const,gap:8 }}>
@@ -940,7 +940,7 @@ function RaceTab({ races, raceStages, tests, addEvent, updateEvent, deleteEvent,
           </div>
 
           {/* View toggle */}
-          <div style={{ display:'flex',gap:5 }}>
+          <div data-guide="cal-view" style={{ display:'flex',gap:5 }}>
             {(['year','month'] as CalView[]).map(v => (
               <button key={v} onClick={() => setCalView(v)} style={{
                 padding:'6px 12px',borderRadius:9,border:'1px solid',fontSize:11,cursor:'pointer',fontWeight:calView===v?600:400,

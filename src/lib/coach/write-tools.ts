@@ -51,6 +51,21 @@ function num(v: unknown): number | null {
 function dateOr(v: unknown): string {
   return typeof v === 'string' && /^\d{4}-\d{2}-\d{2}/.test(v) ? v.slice(0, 10) : today()
 }
+function str(v: unknown): string { return typeof v === 'string' ? v.trim() : '' }
+const okJ = (o: Record<string, unknown>) => JSON.stringify({ ok: true, ...o })
+const errJ = (m: string) => JSON.stringify({ ok: false, error: m })
+function ymdLocal(d: Date): string {
+  const y = d.getFullYear(), m = String(d.getMonth() + 1).padStart(2, '0'), da = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${da}`
+}
+// Date cible (YYYY-MM-DD) + décalage de semaines → { week_start (lundi), day_index 0=lun..6=dim }.
+function weekDayOf(dateStr: string, weekOffset: number): { week_start: string; day_index: number } {
+  const d = new Date(dateStr + 'T00:00:00')
+  d.setDate(d.getDate() + weekOffset * 7)
+  const dow = (d.getDay() + 6) % 7
+  const monday = new Date(d); monday.setDate(d.getDate() - dow)
+  return { week_start: ymdLocal(monday), day_index: dow }
+}
 
 export const writeTools: Anthropic.Tool[] = [
   {
@@ -228,6 +243,99 @@ export const writeTools: Anthropic.Tool[] = [
         notes:          { type: 'string', description: 'Note (optionnel).' },
       },
       required: ['sport', 'performance'],
+    },
+  },
+  {
+    name: 'duplicate_session',
+    description:
+      "DUPLIQUE une séance planifiée existante vers une AUTRE date (page Planning). Fournis l'ID de la séance " +
+      "SOURCE (obtenu via get_planned_sessions) et la date cible. Copie tout le contenu (blocs, allures, durée, RPE). " +
+      "Optionnel : la répéter sur plusieurs semaines (repeat_weeks) et/ou changer de Plan (A/B). " +
+      "Utilise-le quand on demande de « répéter / dupliquer / recopier » une séance.",
+    input_schema: {
+      type: 'object',
+      properties: {
+        session_id:   { type: 'string',  description: 'UUID de la séance source (via get_planned_sessions).' },
+        target_date:  { type: 'string',  description: 'YYYY-MM-DD du jour cible de la copie.' },
+        plan_variant: { type: 'string',  enum: ['A', 'B'], description: 'Plan cible (défaut : celui de la source).' },
+        repeat_weeks: { type: 'integer', description: 'Répéter aussi sur N semaines suivantes (0 = seulement la date cible). Max 20.' },
+      },
+      required: ['session_id', 'target_date'],
+    },
+  },
+  {
+    name: 'mark_session_done',
+    description: "Marque une séance planifiée comme RÉALISÉE (statut « done ») — page Planning. Fournis l'ID (via get_planned_sessions).",
+    input_schema: {
+      type: 'object',
+      properties: { session_id: { type: 'string', description: 'UUID de la séance.' } },
+      required: ['session_id'],
+    },
+  },
+  {
+    name: 'update_profile',
+    description:
+      "MET À JOUR le PROFIL de l'athlète : objectif principal, poids, taille, heures d'entraînement/semaine, " +
+      "heures de sommeil idéales, sports pratiqués, profession, heures de travail. N'écris QUE les champs à changer. " +
+      "Sur demande explicite (ex. « change mon objectif », « je peux m'entraîner 8 h/semaine »).",
+    input_schema: {
+      type: 'object',
+      properties: {
+        main_goal:            { type: 'string', description: 'Objectif principal (texte libre).' },
+        weight_kg:            { type: 'number' },
+        height_cm:            { type: 'number' },
+        sport_hours_per_week: { type: 'number', description: "Heures d'entraînement disponibles par semaine." },
+        ideal_sleep_hours:    { type: 'number' },
+        sports:               { type: 'array', items: { type: 'string' }, description: 'Sports pratiqués.' },
+        work_hours_per_week:  { type: 'number' },
+        work_profession:      { type: 'string' },
+      },
+    },
+  },
+  {
+    name: 'update_injury',
+    description:
+      "MET À JOUR une blessure existante (page Blessures) : phase de guérison, douleur repos/effort, date de retour " +
+      "estimée, praticien, prochain RDV, description. Fournis l'ID (via get_injuries). Pour la clore (guérie), utilise resolve_injury.",
+    input_schema: {
+      type: 'object',
+      properties: {
+        injury_id:            { type: 'string',  description: 'UUID de la blessure (via get_injuries).' },
+        phase:                { type: 'string',  description: 'Phase de guérison (ex. « aigue », « subaigue », « reprise », « resolu »).' },
+        intensity_rest:       { type: 'integer', description: 'Douleur au repos 0–10.' },
+        intensity_effort:     { type: 'integer', description: "Douleur à l'effort 0–10." },
+        return_estimate_date: { type: 'string',  description: 'YYYY-MM-DD de retour estimé.' },
+        practitioner:         { type: 'string' },
+        next_appointment:     { type: 'string',  description: 'YYYY-MM-DD.' },
+        description:          { type: 'string' },
+      },
+      required: ['injury_id'],
+    },
+  },
+  {
+    name: 'resolve_injury',
+    description: "CLÔT une blessure (guérie) — page Blessures. Fournis l'ID (via get_injuries).",
+    input_schema: {
+      type: 'object',
+      properties: { injury_id: { type: 'string', description: 'UUID de la blessure.' } },
+      required: ['injury_id'],
+    },
+  },
+  {
+    name: 'log_injury_progress',
+    description:
+      "AJOUTE un point de SUIVI à une blessure (page Blessures) : note + douleur repos/effort du jour. " +
+      "Fournis l'ID (via get_injuries). Utile pour suivre la guérison au fil des jours.",
+    input_schema: {
+      type: 'object',
+      properties: {
+        injury_id:        { type: 'string',  description: 'UUID de la blessure (via get_injuries).' },
+        note:             { type: 'string',  description: 'Note du jour.' },
+        intensity_rest:   { type: 'integer', description: 'Douleur au repos 0–10.' },
+        intensity_effort: { type: 'integer', description: "Douleur à l'effort 0–10." },
+        date:             { type: 'string',  description: 'YYYY-MM-DD (défaut aujourd’hui).' },
+      },
+      required: ['injury_id'],
     },
   },
 ]
@@ -411,6 +519,101 @@ export async function resolveWriteTool(
         }).select('id').single()
         if (error) return JSON.stringify({ ok: false, error: error.message })
         return JSON.stringify({ ok: true, page: 'Records', id: (data as { id: string })?.id, sport, performance: perf })
+      }
+
+      case 'duplicate_session': {
+        const sid = str(input.session_id)
+        const td = typeof input.target_date === 'string' && /^\d{4}-\d{2}-\d{2}/.test(input.target_date) ? input.target_date.slice(0, 10) : ''
+        if (!sid || !td) return errJ('session_id et target_date (YYYY-MM-DD) requis.')
+        const { data: src, error: e1 } = await sb.from('planned_sessions').select('*').eq('id', sid).eq('user_id', userId).maybeSingle()
+        if (e1) return errJ(e1.message)
+        if (!src) return errJ('Séance introuvable.')
+        const b = src as Record<string, unknown>
+        const variant = input.plan_variant === 'A' || input.plan_variant === 'B' ? input.plan_variant : (b.plan_variant ?? 'A')
+        const rep = clampInt(input.repeat_weeks, 0, 20) ?? 0
+        const rows: Record<string, unknown>[] = []
+        for (let k = 0; k <= rep; k++) {
+          const { week_start, day_index } = weekDayOf(td, k)
+          rows.push({
+            user_id: userId, plan_id: b.plan_id ?? null, week_start, day_index,
+            sport: b.sport, title: b.title, time: b.time ?? null,
+            duration_min: b.duration_min, tss: b.tss ?? null, status: 'planned',
+            intensity: b.intensity ?? null, notes: b.notes ?? null, rpe: b.rpe ?? null,
+            blocks: b.blocks ?? [], plan_variant: variant, validation_data: {},
+            source: 'coach_duplicate', original_content: b.original_content ?? null,
+            type_seance: b.type_seance ?? null,
+          })
+        }
+        const { error: e2 } = await sb.from('planned_sessions').insert(rows)
+        if (e2) return errJ(e2.message)
+        return okJ({ page: 'Planning', duplicated: rows.length, plan_variant: variant, first_date: td })
+      }
+
+      case 'mark_session_done': {
+        const sid = str(input.session_id)
+        if (!sid) return errJ('session_id requis.')
+        const { data, error } = await sb.from('planned_sessions').update({ status: 'done' }).eq('id', sid).eq('user_id', userId).select('id')
+        if (error) return errJ(error.message)
+        if (!(data ?? []).length) return errJ('Séance introuvable.')
+        return okJ({ page: 'Planning', session_id: sid, status: 'done' })
+      }
+
+      case 'update_profile': {
+        const patch: Record<string, unknown> = {}
+        if (str(input.main_goal)) patch.main_goal = str(input.main_goal)
+        if (num(input.weight_kg) !== null) patch.weight_kg = num(input.weight_kg)
+        if (num(input.height_cm) !== null) patch.height_cm = num(input.height_cm)
+        if (num(input.sport_hours_per_week) !== null) patch.sport_hours_per_week = num(input.sport_hours_per_week)
+        if (num(input.ideal_sleep_hours) !== null) patch.ideal_sleep_hours = num(input.ideal_sleep_hours)
+        if (num(input.work_hours_per_week) !== null) patch.work_hours_per_week = num(input.work_hours_per_week)
+        if (str(input.work_profession)) patch.work_profession = str(input.work_profession)
+        if (Array.isArray(input.sports)) patch.sports = (input.sports as unknown[]).map(String)
+        if (Object.keys(patch).length === 0) return errJ('Aucun champ à mettre à jour.')
+        const { error } = await sb.from('profiles').update(patch).eq('id', userId)
+        if (error) return errJ(error.message)
+        return okJ({ page: 'Profil', updated: Object.keys(patch) })
+      }
+
+      case 'update_injury': {
+        const iid = str(input.injury_id)
+        if (!iid) return errJ('injury_id requis.')
+        const patch: Record<string, unknown> = { updated_at: new Date().toISOString() }
+        if (str(input.phase)) patch.phase = str(input.phase)
+        const ir = clampInt(input.intensity_rest, 0, 10); if (ir !== null) patch.intensity_rest = ir
+        const ie = clampInt(input.intensity_effort, 0, 10); if (ie !== null) patch.intensity_effort = ie
+        if (typeof input.return_estimate_date === 'string') patch.return_estimate_date = input.return_estimate_date.slice(0, 10)
+        if (str(input.practitioner)) patch.practitioner = str(input.practitioner)
+        if (typeof input.next_appointment === 'string') patch.next_appointment = input.next_appointment.slice(0, 10)
+        if (str(input.description)) patch.description = str(input.description)
+        const { data, error } = await sb.from('injuries').update(patch).eq('id', iid).eq('user_id', userId).select('id')
+        if (error) return errJ(error.message)
+        if (!(data ?? []).length) return errJ('Blessure introuvable.')
+        return okJ({ page: 'Blessures', injury_id: iid, updated: Object.keys(patch).filter(k => k !== 'updated_at') })
+      }
+
+      case 'resolve_injury': {
+        const iid = str(input.injury_id)
+        if (!iid) return errJ('injury_id requis.')
+        const { data, error } = await sb.from('injuries')
+          .update({ status: 'resolved', phase: 'resolu', resolved_date: today(), updated_at: new Date().toISOString() })
+          .eq('id', iid).eq('user_id', userId).select('id')
+        if (error) return errJ(error.message)
+        if (!(data ?? []).length) return errJ('Blessure introuvable.')
+        return okJ({ page: 'Blessures', injury_id: iid, status: 'resolved' })
+      }
+
+      case 'log_injury_progress': {
+        const iid = str(input.injury_id)
+        if (!iid) return errJ('injury_id requis.')
+        const { data: inj } = await sb.from('injuries').select('id').eq('id', iid).eq('user_id', userId).maybeSingle()
+        if (!inj) return errJ('Blessure introuvable.')
+        const row: Record<string, unknown> = { injury_id: iid, log_date: dateOr(input.date) }
+        if (str(input.note)) row.note = str(input.note)
+        const ir = clampInt(input.intensity_rest, 0, 10); if (ir !== null) row.intensity_rest = ir
+        const ie = clampInt(input.intensity_effort, 0, 10); if (ie !== null) row.intensity_effort = ie
+        const { error } = await sb.from('injury_logs').insert(row)
+        if (error) return errJ(error.message)
+        return okJ({ page: 'Blessures', injury_id: iid, log_date: row.log_date })
       }
 
       default:

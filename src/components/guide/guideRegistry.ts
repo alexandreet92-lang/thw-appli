@@ -13,12 +13,19 @@ export interface GuideStep {
   /** Route à ouvrir AVANT d'afficher cette étape (le moteur navigue puis attend l'élément). */
   route?: string
   title?: string
-  message: string
+  /** Texte d'introduction court (une phrase). Optionnel si `lines` est fourni. */
+  message?: string
+  /** Puces expliquées LIGNE PAR LIGNE, animées à l'apparition (l'une après l'autre). */
+  lines?: string[]
   placement?: StepPlacement
   /** 'click' : avance quand l'utilisateur clique vraiment la cible ; 'next' : via le bouton. */
   advanceOn?: 'click' | 'next'
   /** Rayon du halo autour de la cible (px). */
   pad?: number
+  /** Ouvre un panneau de DÉMO (non enregistré) sur la page cible pour montrer une UI :
+   *  le moteur émet l'évènement `thw:guide-demo` {id} ; la page l'ouvre, et le referme
+   *  quand l'id change / à la fin du guide. */
+  demo?: string
 }
 
 export interface GuideAction {
@@ -39,14 +46,93 @@ export interface GuideAction {
 // PLANNING — détail complet : les 3 pastilles, créer une séance par sport,
 // le type de journée (hard/mid…), la navigation, les plans A/B, le volume.
 export const PLANNING_TOUR: GuideStep[] = [
-  { route: '/planning', title: 'Ton planning', message: 'Le planning, c\'est ta semaine d\'entraînement, jour par jour. On va voir ensemble chaque élément : créer une séance pour chaque sport, régler l\'intensité d\'un jour, lire les 3 pastilles, naviguer entre les semaines et gérer tes plans A/B. Tu peux cliquer librement pendant le guide.' },
-  { route: '/planning', anchor: 'plan-day', title: 'Créer une séance', message: 'Chaque colonne = un jour. Appuie sur un jour pour créer une séance : tu choisis d\'abord le SPORT (course, vélo, Hyrox, muscu, boxe, aviron…). Chaque sport ouvre son constructeur dédié — allures & zones pour la course, watts pour le vélo, exercices & séries pour la muscu, stations pour l\'Hyrox. Tu montes ensuite la séance bloc par bloc.' },
-  { route: '/planning', anchor: 'plan-daytype', title: 'Type de journée (hard / mid…)', message: 'La pastille colorée autour du numéro fixe l\'intensité du jour : récup, léger, modéré (mid) ou dur (hard). Appuie dessus pour la changer. Elle t\'aide à alterner jours durs et faciles et à répartir ta charge intelligemment sur la semaine.' },
-  { route: '/planning', anchor: 'plan-bubble', title: 'Les 3 pastilles d\'un jour', message: 'Un jour peut afficher 3 pastilles différentes : une pastille COURSE (ton objectif du calendrier, avec un drapeau), une SÉANCE PLANIFIÉE (ce que tu dois faire — titre, durée, RPE) et une ACTIVITÉ RÉALISÉE (ce que tu as fait, synchronisé depuis ta montre). Appuie sur l\'une d\'elles pour l\'ouvrir en détail.' },
-  { route: '/planning', anchor: 'plan-weeknav', title: 'Naviguer dans les semaines', message: 'Avec les flèches, passe d\'une semaine à l\'autre pour construire ton plan à l\'avance ; le bouton « Auj. » te ramène à la semaine en cours. Tu peux aussi choisir le nombre de semaines affichées.' },
-  { route: '/planning', anchor: 'plan-abtoggle', title: 'Plan A / Plan B', message: 'Garde deux versions de ta semaine — Plan A (optimal) et Plan B (minimal, pour les semaines chargées) — puis bascule ou compare-les. Idéal quand tu ne sais pas encore combien tu pourras t\'entraîner.' },
-  { route: '/planning', anchor: 'plan-volume', title: 'Volume de la semaine', message: 'Ici, le volume total de la semaine — réalisé vs prévu — réparti par sport. C\'est ton garde-fou pour ne pas surcharger et suivre l\'évolution de ta charge.' },
-  { route: '/planning', title: 'À toi de jouer', message: 'Appuie sur n\'importe quel jour pour créer ta première séance. Tu peux rouvrir ce guide à tout moment via la loupe en haut à droite, ou taper ce que tu veux faire.' },
+  { route: '/planning', title: 'Le planning', message: 'Ta semaine d\'entraînement, jour par jour. On va tout voir — je t\'ouvre les vrais écrans au fur et à mesure.', lines: [
+    'Créer une séance pour **chaque sport**',
+    'Régler l\'**intensité** d\'un jour (récup → dur)',
+    'Lire les **3 pastilles** d\'un jour',
+    'Comparer tes **Plans A/B** et suivre ton **volume**',
+  ] },
+  { route: '/planning', anchor: 'plan-day', title: 'Créer une séance', lines: [
+    'Chaque **colonne = un jour**',
+    'Appuie sur un jour pour **ajouter** une séance',
+    'Tu peux **glisser** une séance pour la déplacer',
+  ] },
+  { route: '/planning', demo: 'add-chooser', anchor: 'chooser-training', title: 'Qu\'ajouter sur ce jour ?', message: 'Trois choix s\'ouvrent :', lines: [
+    '**Entraînement** — une séance (tous sports)',
+    '**Course** — un objectif du calendrier (drapeau)',
+    '**Test de forme** — VMA, FTP, CSS… relié à Performance',
+  ] },
+  { route: '/planning', demo: 'builder-run', anchor: 'builder-sport', title: 'Choisis ton sport', message: 'Chaque sport a son **propre constructeur** :', lines: [
+    '**Course / Vélo** — allures ou watts + zones',
+    '**Muscu / Hyrox** — exercices, séries, charges, stations',
+    '**Boxe, Aviron, Natation, Mobilité…** aussi',
+  ] },
+  { route: '/planning', demo: 'builder-run', anchor: 'builder-type', title: 'Type de séance', lines: [
+    'Course : **EF, SL1/SL2, Seuil, VMA, Sortie longue…**',
+    'Ça **pré-cadre** les zones et l\'objectif',
+    'Tu peux en **cumuler** plusieurs',
+  ] },
+  { route: '/planning', demo: 'builder-run', anchor: 'builder-blocks', title: 'Construire les blocs', lines: [
+    '**Bloc simple** — une portion continue (ex. 20′ Z2)',
+    '**Intervalle / Série** — répétitions effort/récup',
+    'En extérieur : **Progressif**, **VMA / Strides**',
+  ] },
+  { route: '/planning', demo: 'builder-run', anchor: 'builder-zones', title: 'Zones d\'allure', lines: [
+    'Calculées sur **tes tests** (VMA / seuil / FTP)',
+    'Tu vois où tombe **chaque zone** avant de caler tes blocs',
+    'Pas de test ? valeurs par défaut, à affiner dans **Performance**',
+  ] },
+  { route: '/planning', demo: 'builder-run', anchor: 'builder-profile', title: 'Profil d\'intensité', lines: [
+    'Un **graphe** de ta séance : hauteur = intensité',
+    'Tu vois l\'**enchaînement** effort/récup d\'un coup d\'œil',
+  ] },
+  { route: '/planning', demo: 'builder-run', anchor: 'builder-load', title: 'Charge estimée', lines: [
+    '**SM métab** — charge métabolique (endurance)',
+    '**SN neuro** — charge neuromusculaire (vitesse/force)',
+    '+ **durée · distance · allure moy.** de la séance',
+  ] },
+  { route: '/planning', demo: 'builder-run', anchor: 'builder-mode', title: 'Manuel ou + IA', lines: [
+    '**Manuel** — tu montes les blocs toi-même',
+    '**+ IA** — décris ta séance, l\'IA **génère les blocs**',
+  ] },
+  { route: '/planning', demo: 'builder-run', anchor: 'builder-memo', title: 'Mémo & Dupliquer', lines: [
+    '**Mémo** — une antisèche **imprimable** de la séance',
+    '**Dupliquer** (en édition) — répète la séance sur **plusieurs semaines**',
+    '…avec ajustement de **durée** ou de **%** à chaque répétition',
+  ] },
+  { route: '/planning', demo: 'builder-run', anchor: 'builder-add', title: 'Ajouter au planning', lines: [
+    '**Ajouter →** enregistre la séance sur le jour choisi',
+    'Tu choisis **Plan A ou B** en haut',
+    'Tu peux fermer sans rien enregistrer si tu changes d\'avis',
+  ] },
+  { route: '/planning', anchor: 'plan-daytype', title: 'Type de journée', lines: [
+    'La **pastille** autour du numéro = l\'intensité du jour',
+    '**Récup · Léger · Modéré (mid) · Dur (hard)**',
+    'Alterne dur/facile pour **bien répartir ta charge**',
+  ] },
+  { route: '/planning', anchor: 'plan-bubble', title: 'Les 3 pastilles d\'un jour', lines: [
+    '**Course** — ton objectif (drapeau)',
+    '**Séance planifiée** — à faire (titre, durée, RPE)',
+    '**Activité réalisée** — déjà faite (synchro montre)',
+  ] },
+  { route: '/planning', anchor: 'plan-weeknav', title: 'Naviguer dans les semaines', lines: [
+    'Les **flèches** changent de semaine',
+    '« **Auj.** » revient à la semaine en cours',
+    'Construis ton plan **plusieurs semaines à l\'avance**',
+  ] },
+  { route: '/planning', anchor: 'plan-abtoggle', title: 'Plan A / Plan B', lines: [
+    '**Plan A** — ta semaine optimale',
+    '**Plan B** — version minimale (semaines chargées)',
+    '**Compare** les deux d\'un seul clic',
+  ] },
+  { route: '/planning', anchor: 'plan-volume', title: 'Volume de la semaine', lines: [
+    'Total **réalisé vs prévu**, réparti par sport',
+    'Ton **garde-fou** pour ne pas surcharger',
+  ] },
+  { route: '/planning', title: 'À toi de jouer', message: 'Tu sais tout sur le planning. Appuie sur un jour pour créer ta première séance.', lines: [
+    'Relance ce guide via la **loupe** en haut',
+    'Ou tape simplement ce que tu veux faire',
+  ] },
 ]
 
 // ── Catalogue initial (étendu au fil de l'eau) ────────────────────
@@ -140,10 +226,11 @@ const PERF_STEP: GuideStep = { route: '/performance', title: 'Performance', mess
 const AI_STEP: GuideStep = { anchor: 'open-ai', title: 'Assistant IA', message: 'Ton coach IA : il analyse tes données, crée des plans d\'entraînement complets et répond à tes questions avec des graphiques. Clique sur son icône en haut à droite pour l\'ouvrir.', placement: 'bottom' }
 
 export const EXPRESS_TOUR: GuideStep[] = [
-  { title: 'Bienvenue', message: 'Voici l\'essentiel en 1 minute. On va parcourir les pages clés ensemble — tu pourras relancer ce guide à tout moment via la loupe.' },
+  { title: 'Bienvenue', message: 'L\'essentiel en 1 minute. On parcourt les pages clés — tu pourras relancer ce guide à tout moment via la loupe.' },
   HOME_STEP,
   PLANNING_STEP,
   PLANNING_TOUR[1],   // « Créer une séance » — flèche sur un jour
+  PLANNING_TOUR[2],   // le sélecteur Entraînement / Course / Test (démo)
   PERF_STEP,
   AI_STEP,
   { title: 'C\'est parti', message: 'Tu as l\'essentiel ! Utilise la loupe en haut à droite dès que tu ne sais pas où appuyer, ou tape ce que tu veux faire.' },
@@ -155,7 +242,7 @@ export const EXPRESS_TOUR: GuideStep[] = [
 export const FULL_TOUR: GuideStep[] = [
   { title: 'Bienvenue', message: 'On va faire le tour complet de l\'app, page par page. À chaque étape, la page s\'ouvre et je t\'explique comment elle marche, avec une flèche sur chaque élément. Tu peux cliquer librement et passer à tout moment.' },
   HOME_STEP,
-  ...PLANNING_TOUR.slice(1, 7),   // détail Planning (sans son intro/outro propres)
+  ...PLANNING_TOUR.slice(1, 17),   // détail Planning complet (sans son intro/outro propres)
   { route: '/calendar', title: 'Calendrier', message: 'Ta vue d\'ensemble : tes objectifs, tes courses et tes phases de préparation dans le temps.' },
   { route: '/session', title: 'Bibliothèque de séances', message: 'Un catalogue de séances prêtes (par sport, niveau, objectif). Choisis-en une, ajuste-la et ajoute-la à ton planning.' },
   { route: '/activities', title: 'Entraînements', message: 'L\'historique de tes séances réalisées, avec toutes les données (FC, puissance, allure, zones) et l\'analyse de chaque activité.' },

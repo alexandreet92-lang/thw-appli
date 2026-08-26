@@ -49,7 +49,7 @@ export function ZonesReference({ sport, refs }: { sport: SportType; refs: Athlet
   }
 
   return (
-    <div data-testid="zones-reference" style={{ border: '1px solid var(--se-rule)', borderRadius: 'var(--se-r)', padding: '12px 14px', marginBottom: 12 }}>
+    <div data-testid="zones-reference" data-guide="builder-zones" style={{ border: '1px solid var(--se-rule)', borderRadius: 'var(--se-r)', padding: '12px 14px', marginBottom: 12 }}>
       <p style={{ margin: '0 0 8px', fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--se-dim)' }}>
         {isBike ? 'Zones de puissance' : "Zones d'allure"}
         <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}> · {isBike ? 'FTP' : 'seuil'} de l’athlète</span>

@@ -54,7 +54,7 @@ export function MainFields(p: {
           mode programme : un programme est multi-sport, le coach doit pouvoir
           choisir le sport de chaque séance comme dans le vrai planning. */}
       {(!p.reserveMode || p.programMode) && (
-        <div>
+        <div data-guide="builder-sport">
           <h3 className="se-fr" style={{ margin: '0 0 12px', fontSize: 18, fontWeight: 600 }}>{tr('planning.sport')}</h3>
           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
             {SPORTS.map(s => {
@@ -119,7 +119,7 @@ export function MainFields(p: {
 
       {/* Type de séance */}
       {trainTypes.length > 0 && (
-        <div>
+        <div data-guide="builder-type">
           <h3 className="se-fr" style={{ margin: '0 0 12px', fontSize: 18, fontWeight: 600 }}>{tr('planning.sessionType')}</h3>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
             {trainTypes.map(t => {

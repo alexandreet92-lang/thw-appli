@@ -106,7 +106,7 @@ export function PanelHeader({ p, titleSize = 21, padding = '14px 18px', bordered
       <input value={p.title} onChange={e => p.setTitle(e.target.value)} placeholder={`${SPORT_LABEL[p.sport]} ${p.trainingTypes.join('+')}`}
         className="se-fr" style={{ flex: 1, minWidth: 0, background: 'none', border: 'none', outline: 'none', color: 'var(--se-text)', fontSize: titleSize, fontWeight: 600, padding: 0 }} />
       {/* Mémo imprimable — antisèche de la séance (une ligne par bloc / circuits). */}
-      <button type="button" onClick={p.onPrintMemo} aria-label="Mémo imprimable" title="Mémo imprimable"
+      <button data-guide="builder-memo" type="button" onClick={p.onPrintMemo} aria-label="Mémo imprimable" title="Mémo imprimable"
         style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6, height: 30, padding: '0 11px', borderRadius: 999, border: `1px solid ${p.sportAccent}`, background: 'transparent', color: p.sportAccent, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
         <IconPrinter size={15} /> Mémo
       </button>
@@ -151,7 +151,7 @@ export function PanelFooter({ p, floating }: { p: SessionEditorPanelProps; float
       {!p.reserveMode && <button type="button" onClick={p.onFavorite} style={footIcon} aria-label={t('planning.saveFavorite')}><IconStar size={17} /></button>}
       {p.onDelete && <button type="button" onClick={() => setConfirmDelete(true)} style={footDanger} aria-label={t('planning.deleteSession')}><IconTrash size={17} /></button>}
       <div style={{ flex: 1 }} />
-      <button type="button" onClick={p.onSave} disabled={p.saving} style={{ pointerEvents: 'auto', padding: '12px 24px', borderRadius: 999, border: 'none', background: p.accent, color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', opacity: p.saving ? 0.6 : 1, boxShadow: '0 4px 16px rgba(0,0,0,0.18)' }}>
+      <button data-guide="builder-add" type="button" onClick={p.onSave} disabled={p.saving} style={{ pointerEvents: 'auto', padding: '12px 24px', borderRadius: 999, border: 'none', background: p.accent, color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', opacity: p.saving ? 0.6 : 1, boxShadow: '0 4px 16px rgba(0,0,0,0.18)' }}>
         {p.saved ? t('planning.savedCheck') : (p.reserveMode || p.mode === 'edit') ? t('planning.save') : t('planning.add')} →
       </button>
     </div>

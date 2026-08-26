@@ -11,6 +11,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import type { GuideStep } from './guideRegistry'
 import { EXPRESS_TOUR, FULL_TOUR } from './guideRegistry'
 import { GuideSearch } from './GuideSearch'
+import { setGuideDemoId } from './guideDemo'
 
 export const GUIDE_FIRSTRUN_KEY = 'thw:guide-firstrun'
 export const GUIDE_SEEN_KEY = 'thw:guide-seen'
@@ -106,6 +107,15 @@ export function GuideProvider({ children }: { children: React.ReactNode }) {
     return () => { window.removeEventListener('scroll', upd, true); window.removeEventListener('resize', upd) }
   }, [step?.anchor, idx])
 
+  // Panneaux de DÉMO : on signale à la page l'UI à ouvrir (non enregistrée).
+  // id=null quand le guide s'arrête ou que l'étape n'a pas de démo → la page referme.
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    setGuideDemoId(steps ? (step?.demo ?? null) : null)
+    return () => { setGuideDemoId(null) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step?.demo, steps])
+
   const openSearch = useCallback(() => setSearchOpen(true), [])
 
   return (
@@ -135,6 +145,11 @@ export function GuideProvider({ children }: { children: React.ReactNode }) {
 }
 
 const PAD = 8
+// Échappe le HTML puis rend **gras** → <strong> (contenu = nos chaînes statiques).
+function mark(s: string): string {
+  const esc = s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  return esc.replace(/\*\*(.+?)\*\*/g, '<strong style="color:var(--text);font-weight:700">$1</strong>')
+}
 function GuideOverlay({ step, rect, index, total, onNext, onPrev, onSkip }: {
   step: GuideStep; rect: Rect | null; index: number; total: number; onNext: () => void; onPrev: () => void; onSkip: () => void
 }) {
@@ -142,7 +157,11 @@ function GuideOverlay({ step, rect, index, total, onNext, onPrev, onSkip }: {
   const hole = rect ? { top: rect.top - pad, left: rect.left - pad, width: rect.width + pad * 2, height: rect.height + pad * 2 } : null
   const vw = typeof window !== 'undefined' ? window.innerWidth : 1200
   const vh = typeof window !== 'undefined' ? window.innerHeight : 800
-  const BW = Math.min(320, vw - 24), BH = 210
+  const BW = Math.min(340, vw - 24)
+  // Hauteur estimée pour placer la bulle sans déborder — dépend du contenu (puces).
+  const lineCount = step.lines?.length ?? 0
+  const estH = 104 + (step.title ? 28 : 0) + (step.message ? 38 : 0) + lineCount * 32
+  const BH = Math.min(estH, vh - 40)
 
   // Position de la bulle — TOUJOURS entièrement dans l'écran.
   const pos = (() => {
@@ -158,7 +177,7 @@ function GuideOverlay({ step, rect, index, total, onNext, onPrev, onSkip }: {
   return (
     // Conteneur PASS-THROUGH : on peut cliquer/utiliser la page pendant le guide.
     <div style={{ position: 'fixed', inset: 0, zIndex: 100000, pointerEvents: 'none' }}>
-      <style>{`@keyframes gArrow{0%,100%{transform:translateY(0)}50%{transform:translateY(9px)}}@keyframes gArrowUp{0%,100%{transform:translateY(0)}50%{transform:translateY(-9px)}}@keyframes gPulse{0%{box-shadow:0 0 0 3px var(--primary),0 0 0 5px rgba(6,182,212,0.35)}50%{box-shadow:0 0 0 3px var(--primary),0 0 0 12px rgba(6,182,212,0.10)}100%{box-shadow:0 0 0 3px var(--primary),0 0 0 5px rgba(6,182,212,0.35)}}`}</style>
+      <style>{`@keyframes gArrow{0%,100%{transform:translateY(0)}50%{transform:translateY(9px)}}@keyframes gArrowUp{0%,100%{transform:translateY(0)}50%{transform:translateY(-9px)}}@keyframes gPulse{0%{box-shadow:0 0 0 3px var(--primary),0 0 0 5px rgba(6,182,212,0.35)}50%{box-shadow:0 0 0 3px var(--primary),0 0 0 12px rgba(6,182,212,0.10)}100%{box-shadow:0 0 0 3px var(--primary),0 0 0 5px rgba(6,182,212,0.35)}}@keyframes gLine{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}`}</style>
 
       {/* Voile — visuel seulement (pass-through). Léger si explication, un peu plus marqué autour d'une cible. */}
       {!hole && <div style={{ position: 'absolute', inset: 0, background: 'rgba(8,10,14,0.12)', pointerEvents: 'none' }} />}
@@ -182,10 +201,20 @@ function GuideOverlay({ step, rect, index, total, onNext, onPrev, onSkip }: {
       )}
 
       {/* Bulle + contrôles — pointer-events AUTO (seul élément cliquable de l'overlay) */}
-      <div style={{ position: 'absolute', left: pos.left, top: pos.top, width: BW, background: 'var(--bg-card)', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: 16, boxShadow: '0 12px 40px rgba(0,0,0,0.32)', padding: 16, pointerEvents: 'auto', fontFamily: 'var(--font-body, DM Sans, sans-serif)', boxSizing: 'border-box' }}>
-        {rect && <p style={{ margin: '0 0 4px', fontSize: 10.5, fontWeight: 800, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--primary)' }}>Clique ici</p>}
-        {step.title && <p style={{ margin: '0 0 6px', fontFamily: 'Syne, sans-serif', fontSize: 15.5, fontWeight: 700 }}>{step.title}</p>}
-        <p style={{ margin: '0 0 12px', fontSize: 13.5, lineHeight: 1.5, color: 'var(--text-mid)' }}>{step.message}</p>
+      <div style={{ position: 'absolute', left: pos.left, top: pos.top, width: BW, maxHeight: vh - 32, overflowY: 'auto', background: 'var(--bg-card)', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: 16, boxShadow: '0 12px 40px rgba(0,0,0,0.32)', padding: 16, pointerEvents: 'auto', fontFamily: 'var(--font-body, DM Sans, sans-serif)', boxSizing: 'border-box' }}>
+        {rect && step.advanceOn === 'click' && <p style={{ margin: '0 0 4px', fontSize: 10.5, fontWeight: 800, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--primary)' }}>Clique ici</p>}
+        {step.title && <p style={{ margin: '0 0 8px', fontFamily: 'Syne, sans-serif', fontSize: 16, fontWeight: 800 }}>{step.title}</p>}
+        {step.message && <p style={{ margin: '0 0 10px', fontSize: 13.5, lineHeight: 1.5, color: 'var(--text-mid)' }}>{step.message}</p>}
+        {step.lines && step.lines.length > 0 && (
+          <ul key={index} style={{ listStyle: 'none', margin: '0 0 12px', padding: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {step.lines.map((ln, i) => (
+              <li key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 13, lineHeight: 1.45, color: 'var(--text-mid)', opacity: 0, animation: `gLine .34s ease-out forwards`, animationDelay: `${i * 110}ms` }}>
+                <span aria-hidden style={{ flexShrink: 0, width: 6, height: 6, borderRadius: '50%', background: 'var(--primary)', marginTop: 6 }} />
+                <span dangerouslySetInnerHTML={{ __html: mark(ln) }} />
+              </li>
+            ))}
+          </ul>
+        )}
         <div style={{ display: 'flex', gap: 3, marginBottom: 12 }}>
           {Array.from({ length: total }, (_, i) => <span key={i} style={{ flex: i === index ? '0 0 16px' : '0 0 6px', height: 5, borderRadius: 3, background: i === index ? 'var(--primary)' : 'var(--border)', transition: 'flex-basis .2s' }} />)}
         </div>

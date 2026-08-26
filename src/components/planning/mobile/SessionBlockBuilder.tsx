@@ -306,14 +306,14 @@ export function SessionBlockBuilder({ sport, runningSub, accent, blocks, onChang
   return (
     <div>
       {/* Header + toggle */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 14 }}>
+      <div data-guide="builder-mode" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 14 }}>
         <h3 className="se-fr" style={{ margin: 0, fontSize: 19, fontWeight: 600 }}>{tr('planning.sessionBuilder')}</h3>
         <Segmented accent={accent} value={builderTab} onChange={onBuilderTab}
           options={[{ key: 'manual', label: tr('planning.manual') }, { key: 'ai', label: tr('planning.aiPlus') }]} />
       </div>
 
       {/* Bandeau résumé 4 cellules */}
-      <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cells.length},1fr)`, border: '1px solid var(--se-rule)', borderRadius: 'var(--se-r)', overflow: 'hidden', marginBottom: 18 }}>
+      <div data-guide="builder-load" style={{ display: 'grid', gridTemplateColumns: `repeat(${cells.length},1fr)`, border: '1px solid var(--se-rule)', borderRadius: 'var(--se-r)', overflow: 'hidden', marginBottom: 18 }}>
         {cells.map((c, i) => (
           <div key={c.label} style={{ padding: '12px 10px', borderLeft: i ? '1px solid var(--se-rule)' : 'none' }}>
             <p style={{ margin: 0, fontSize: 8.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--se-dim)' }}>{c.label}</p>
@@ -326,7 +326,7 @@ export function SessionBlockBuilder({ sport, runningSub, accent, blocks, onChang
       {(sport === 'bike' || sport === 'run') && <ZonesReference sport={sport} refs={refs} />}
 
       {/* Profil d'intensité */}
-      <div style={{ border: '1px solid var(--se-rule)', borderRadius: 'var(--se-r)', padding: '14px 14px 10px', marginBottom: 18 }}>
+      <div data-guide="builder-profile" style={{ border: '1px solid var(--se-rule)', borderRadius: 'var(--se-r)', padding: '14px 14px 10px', marginBottom: 18 }}>
         <p style={{ margin: '0 0 10px', fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--se-dim)' }}>
           {tr('planning.intensityProfile')} <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>· {isSwim ? tr('planning.byDistance') : tr('planning.highIsIntensity')}</span>
         </p>
@@ -400,7 +400,7 @@ export function SessionBlockBuilder({ sport, runningSub, accent, blocks, onChang
 
       {/* Boutons d'ajout — 3ᵉ bouton selon le sport : natation « Hypoxie »,
           course extérieure « Progressif », vélo « Test ». */}
-      <div style={{ display: 'grid', gridTemplateColumns: (isSwim || (isRun && !isTreadmill) || sport === 'bike') ? '1fr 1fr 1fr' : '1fr 1fr', gap: 10 }}>
+      <div data-guide="builder-blocks" style={{ display: 'grid', gridTemplateColumns: (isSwim || (isRun && !isTreadmill) || sport === 'bike') ? '1fr 1fr 1fr' : '1fr 1fr', gap: 10 }}>
         <button type="button" onClick={() => add(newSingle(sport, runningSub === 'treadmill'))} style={addBtn}><IconPlus size={15} /> {tr('planning.simpleBlock')}</button>
         <button type="button" onClick={() => add(newInterval(sport, runningSub === 'treadmill'))} style={addBtn}><IconRefresh size={15} /> {isSwim ? tr('planning.series') : tr('planning.interval')}</button>
         {isSwim && <button type="button" onClick={() => add(newHypoxie())} style={addBtn}><IconLungs size={15} /> {tr('planning.hypoxie')}</button>}

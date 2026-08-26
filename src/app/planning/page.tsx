@@ -37,6 +37,7 @@ import { TrainingSummary } from '@/app/planning/components/training/TrainingSumm
 import { SportIcon, SPORT_ICON, sportKeyFromType, subSportIcon } from '@/components/icons/SportIcon'
 import { SessionEditor } from '@/components/planning/SessionEditor'
 import type { NutritionItem, ParcoursData } from '@/components/planning/SessionEditor'
+import { getGuideDemoId, GUIDE_DEMO_EVENT } from '@/components/guide/guideDemo'
 import TestPlannerSheet, { type TestPlanPayload } from '@/components/tests/TestPlannerSheet'
 import type { ComposedMove, ComposedCircuit } from '@/components/planning/composedSports'
 import { useI18n } from '@/lib/i18n'
@@ -2763,7 +2764,7 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
     const d = new Date(c.weekStart+'T00:00:00'); d.setDate(d.getDate()+c.dayIndex); return localDateStr(d)
   }
   const [view, setView] = useState<TrainingView>('vertical')
-  const [addModal, setAddModal] = useState<{dayIndex:number;plan:PlanVariant;weekStart?:string}|null>(null)
+  const [addModal, setAddModal] = useState<{dayIndex:number;plan:PlanVariant;weekStart?:string;sport?:SportType}|null>(null)
   const [addModalFavorites, setAddModalFavorites] = useState(false)
   const [detailModal, setDetailModal] = useState<Session|null>(null)
   const [activityDetail, setActivityDetail] = useState<TrainingActivity|null>(null)
@@ -2865,6 +2866,34 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
     window.addEventListener('thw:sessions-changed', handler)
     return () => window.removeEventListener('thw:sessions-changed', handler)
   }, [])
+
+  // ── GUIDE : panneaux de DÉMO (non enregistrés) ──────────────────
+  // Le guide demande d'ouvrir le sélecteur d'ajout ou le constructeur de
+  // séance pour les MONTRER pendant la visite. Ouvrir/fermer n'écrit rien
+  // (le mode create ne persiste qu'au clic « Ajouter → », jamais déclenché).
+  // On lit l'id AU MONTAGE (page ouverte par navigation → l'évènement a pu
+  // être émis avant qu'on écoute) puis on suit l'évènement.
+  const applyGuideDemo = useCallback((id: string | null) => {
+    const day = typeof todayIdx === 'number' && todayIdx >= 0 ? todayIdx : 0
+    const ws = currentWeekStart
+    if (id === 'add-chooser') {
+      setAddModal(null); setDetailModal(null); setAddModalFavorites(false)
+      setAddChooser({ dayIndex: day, plan: activePlan, weekStart: ws })
+    } else if (id === 'builder-run') {
+      setAddChooser(null); setDetailModal(null); setAddModalFavorites(false)
+      setAddModal({ dayIndex: day, plan: activePlan, weekStart: ws, sport: 'run' })
+    } else {
+      // Referme uniquement les panneaux de démo.
+      setAddChooser(null)
+      setAddModal(m => (m?.sport ? null : m))
+    }
+  }, [todayIdx, currentWeekStart, activePlan])
+  useEffect(() => {
+    applyGuideDemo(getGuideDemoId())
+    const handler = (e: Event) => applyGuideDemo((e as CustomEvent<{ id: string | null }>).detail?.id ?? null)
+    window.addEventListener(GUIDE_DEMO_EVENT, handler)
+    return () => window.removeEventListener(GUIDE_DEMO_EVENT, handler)
+  }, [applyGuideDemo])
 
   useEffect(() => {
     let cancelled = false
@@ -3691,6 +3720,7 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
           dayIndex={addModal.dayIndex}
           weekStart={addModal.weekStart}
           plan={addModal.plan}
+          initialSport={addModal.sport}
           onClose={()=>{setAddModal(null);setAddModalFavorites(false)}}
           onSave={(s)=>{ handleAddSession(s.dayIndex ?? addModal.dayIndex, s, s.weekStart ?? addModal.weekStart); setAddModal(null); setAddModalFavorites(false) }}
           onCreateBrick={(run)=>handleAddSession(run.dayIndex ?? addModal.dayIndex, run, run.weekStart ?? addModal.weekStart)}
@@ -3734,7 +3764,7 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
       <BottomSheet isOpen={addChooser!==null} onClose={()=>setAddChooser(null)} title={t('plnp.add.chooserTitle')}>
         {addChooser && (
           <div style={{ display:'flex', flexDirection:'column', gap:10, paddingBottom:8 }}>
-            <button onClick={()=>{ const c=addChooser; setAddChooser(null); setAddModal({ dayIndex:c.dayIndex, plan:c.plan, weekStart:c.weekStart }) }}
+            <button data-guide="chooser-training" onClick={()=>{ const c=addChooser; setAddChooser(null); setAddModal({ dayIndex:c.dayIndex, plan:c.plan, weekStart:c.weekStart }) }}
               style={{ display:'flex', alignItems:'center', gap:12, padding:'16px', borderRadius:14, border:'1px solid var(--border)', background:'var(--bg-card2)', cursor:'pointer', textAlign:'left' as const }}>
               <span style={{ width:44, height:44, borderRadius:12, background:'var(--primary-dim)', color:'var(--primary)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}><Dumbbell size={22} /></span>
               <span style={{ flex:1 }}>
@@ -3742,7 +3772,7 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
                 <span style={{ display:'block', fontSize:12, color:'var(--text-dim)', marginTop:2 }}>{t('plnp.add.trainingHint')}</span>
               </span>
             </button>
-            <button onClick={()=>{ const c=addChooser; setAddChooser(null); setRaceEditor({ date: chooserDateISO(c) }) }}
+            <button data-guide="chooser-race" onClick={()=>{ const c=addChooser; setAddChooser(null); setRaceEditor({ date: chooserDateISO(c) }) }}
               style={{ display:'flex', alignItems:'center', gap:12, padding:'16px', borderRadius:14, border:'1px solid var(--border)', background:'var(--bg-card2)', cursor:'pointer', textAlign:'left' as const }}>
               <span style={{ width:44, height:44, borderRadius:12, background:'rgba(239,68,68,0.12)', color:'#ef4444', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}><Flag size={22} /></span>
               <span style={{ flex:1 }}>
@@ -3750,7 +3780,7 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
                 <span style={{ display:'block', fontSize:12, color:'var(--text-dim)', marginTop:2 }}>{t('plnp.add.raceHint')}</span>
               </span>
             </button>
-            <button onClick={()=>{ const c=addChooser; setAddChooser(null); setTestPlanner({ dayIndex:c.dayIndex, plan:c.plan, weekStart:c.weekStart }) }}
+            <button data-guide="chooser-test" onClick={()=>{ const c=addChooser; setAddChooser(null); setTestPlanner({ dayIndex:c.dayIndex, plan:c.plan, weekStart:c.weekStart }) }}
               style={{ display:'flex', alignItems:'center', gap:12, padding:'16px', borderRadius:14, border:'1px solid var(--border)', background:'var(--bg-card2)', cursor:'pointer', textAlign:'left' as const }}>
               <span style={{ width:44, height:44, borderRadius:12, background:'rgba(139,92,246,0.14)', color:'#8b5cf6', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, fontFamily:'Syne,sans-serif', fontWeight:800, fontSize:18 }}>T</span>
               <span style={{ flex:1 }}>

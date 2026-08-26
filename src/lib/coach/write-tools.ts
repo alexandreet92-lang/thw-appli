@@ -338,6 +338,63 @@ export const writeTools: Anthropic.Tool[] = [
       required: ['injury_id'],
     },
   },
+  {
+    name: 'update_training_zones',
+    description:
+      "MET À JOUR les ZONES d'entraînement de l'athlète pour UN sport (page Performance). Les valeurs de zone (z1..z5) " +
+      "sont des CHAÎNES : watts (vélo) ou allures /km (course) — reproduis le format des zones existantes (lues dans " +
+      "le contexte). N'utilise cet outil qu'après un test ou une estimation fiable. Les zones servent ensuite à caler " +
+      "les blocs du planning.",
+    input_schema: {
+      type: 'object',
+      properties: {
+        sport:            { type: 'string', enum: ['bike', 'run', 'swim', 'rowing', 'hyrox_row', 'hyrox_ski'], description: 'Sport des zones.' },
+        ftp_watts:        { type: 'number', description: 'FTP en watts (vélo).' },
+        sl1:              { type: 'string', description: 'Seuil bas SL1 (watts ou allure).' },
+        sl2:              { type: 'string', description: 'Seuil haut SL2 (watts ou allure).' },
+        z1_value:         { type: 'string', description: 'Zone 1 (récup).' },
+        z2_value:         { type: 'string', description: 'Zone 2 (endurance).' },
+        z3_value:         { type: 'string', description: 'Zone 3 (tempo).' },
+        z4_value:         { type: 'string', description: 'Zone 4 (seuil).' },
+        z5_value:         { type: 'string', description: 'Zone 5 (VO2/VMA).' },
+        run_compromised:  { type: 'string', description: 'Allure compromise (hyrox_ski uniquement).' },
+      },
+      required: ['sport'],
+    },
+  },
+  {
+    name: 'add_stage',
+    description:
+      "AJOUTE un STAGE / camp d'entraînement au Calendrier (période pluri-jours) — différent d'une course (utilise add_race pour une course). " +
+      "Sur demande explicite.",
+    input_schema: {
+      type: 'object',
+      properties: {
+        name:        { type: 'string', description: 'Nom du stage (ex. « Stage cols Alpes »).' },
+        start_date:  { type: 'string', description: 'YYYY-MM-DD début.' },
+        end_date:    { type: 'string', description: 'YYYY-MM-DD fin.' },
+        description: { type: 'string', description: 'Description / objectif du stage.' },
+        sports:      { type: 'array', items: { type: 'string' }, description: 'Sports du stage.' },
+      },
+      required: ['name', 'start_date', 'end_date'],
+    },
+  },
+  {
+    name: 'log_activity_feedback',
+    description:
+      "ENREGISTRE le RESSENTI d'une activité RÉALISÉE (page Entraînements) : RPE (effort perçu 1–10), sensation (1–5) et commentaire. " +
+      "Fournis l'ID de l'activité (via get_activities). Sur demande de l'athlète.",
+    input_schema: {
+      type: 'object',
+      properties: {
+        activity_id: { type: 'string',  description: "UUID de l'activité (via get_activities)." },
+        rpe:         { type: 'integer', description: 'Effort perçu 1–10.' },
+        sensation:   { type: 'integer', description: 'Sensation 1–5.' },
+        comment:     { type: 'string',  description: 'Commentaire libre.' },
+      },
+      required: ['activity_id'],
+    },
+  },
 ]
 
 export const WRITE_TOOL_NAMES: ReadonlySet<string> = new Set(writeTools.map(t => t.name))
@@ -614,6 +671,51 @@ export async function resolveWriteTool(
         const { error } = await sb.from('injury_logs').insert(row)
         if (error) return errJ(error.message)
         return okJ({ page: 'Blessures', injury_id: iid, log_date: row.log_date })
+      }
+
+      case 'update_training_zones': {
+        const sport = str(input.sport)
+        const allowed = ['bike', 'run', 'swim', 'rowing', 'hyrox_row', 'hyrox_ski']
+        if (!allowed.includes(sport)) return errJ('sport invalide (bike/run/swim/rowing/hyrox_row/hyrox_ski).')
+        const row: Record<string, unknown> = {
+          user_id: userId, sport, is_current: true, effective_from: today(), updated_at: new Date().toISOString(),
+        }
+        if (num(input.ftp_watts) !== null) row.ftp_watts = num(input.ftp_watts)
+        for (const k of ['sl1', 'sl2', 'z1_value', 'z2_value', 'z3_value', 'z4_value', 'z5_value', 'run_compromised']) {
+          if (str(input[k])) row[k] = str(input[k])
+        }
+        const { error } = await sb.from('training_zones').upsert(row, { onConflict: 'user_id,sport,effective_from' })
+        if (error) return errJ(error.message)
+        return okJ({ page: 'Performance', sport, updated: Object.keys(row).filter(k => !['user_id', 'is_current', 'effective_from', 'updated_at'].includes(k)) })
+      }
+
+      case 'add_stage': {
+        const nm = str(input.name)
+        const sd = typeof input.start_date === 'string' && /^\d{4}-\d{2}-\d{2}/.test(input.start_date) ? input.start_date.slice(0, 10) : ''
+        const ed = typeof input.end_date === 'string' && /^\d{4}-\d{2}-\d{2}/.test(input.end_date) ? input.end_date.slice(0, 10) : ''
+        if (!nm || !sd || !ed) return errJ('name, start_date et end_date (YYYY-MM-DD) requis.')
+        const sports = Array.isArray(input.sports) ? (input.sports as unknown[]).map(String) : []
+        const daily_program = sports.length ? { sports, days: [] } : null
+        const { data, error } = await sb.from('race_events').insert({
+          user_id: userId, name: nm, start_date: sd, end_date: ed,
+          description: str(input.description) || null, daily_program,
+        }).select('id').single()
+        if (error) return errJ(error.message)
+        return okJ({ page: 'Calendrier', id: (data as { id: string })?.id, name: nm, start_date: sd, end_date: ed })
+      }
+
+      case 'log_activity_feedback': {
+        const aid = str(input.activity_id)
+        if (!aid) return errJ('activity_id requis.')
+        const patch: Record<string, unknown> = {}
+        const rpe = clampInt(input.rpe, 1, 10); if (rpe !== null) patch.rpe = rpe
+        const sens = clampInt(input.sensation, 1, 5); if (sens !== null) patch.feeling = sens
+        if (str(input.comment)) patch.comment = str(input.comment)
+        if (Object.keys(patch).length === 0) return errJ('Aucune valeur (rpe / sensation / comment) fournie.')
+        const { data, error } = await sb.from('activities').update(patch).eq('id', aid).eq('user_id', userId).select('id')
+        if (error) return errJ(error.message)
+        if (!(data ?? []).length) return errJ('Activité introuvable.')
+        return okJ({ page: 'Entraînements', activity_id: aid, saved: Object.keys(patch) })
       }
 
       default:

@@ -67,22 +67,47 @@ export function parseAdvancedSpec(raw: string): AdvSpec | null {
 function str(v: unknown): string | undefined { return typeof v === 'string' ? v : undefined }
 function num(v: unknown): number | undefined { return Number.isFinite(Number(v)) ? Number(v) : undefined }
 
+const AC_GRAD = 'linear-gradient(135deg,#06B6D4,#3B82F6)'
+// Petite icône par type de graphe (badge d'en-tête).
+function chartIcon(type: AdvSpec['type']): string {
+  switch (type) {
+    case 'donut': return 'M12 2a10 10 0 1 0 10 10M12 2v10l7 7'                       // camembert
+    case 'gauge': return 'M4 15a8 8 0 0 1 16 0M12 15l4-4'                             // jauge
+    case 'radar': return 'M12 2 3 8l3 11h12l3-11zM12 2v20M3 8l18 0'                   // radar
+    case 'zones': return 'M4 20V10M9 20V4M14 20v-8M19 20V7'                            // barres
+    case 'pmc':   return 'M3 17l5-6 4 3 5-8M3 21h18'                                   // courbe charge
+    case 'curve': return 'M3 20c5 0 5-12 9-12s4 8 9 8'                                 // courbe
+  }
+}
 export function AdvancedChartCard({ spec }: { spec: AdvSpec }) {
   return (
-    <div style={{ margin: '14px auto', maxWidth: 580, width: '100%', border: '1px solid var(--border)', borderRadius: 18, background: 'var(--bg-card)', boxShadow: '0 1px 3px rgba(16,24,40,0.05)', overflow: 'hidden', boxSizing: 'border-box' }}>
+    <div className="ac-card" style={{ margin: '16px auto', maxWidth: 580, width: '100%', border: '1px solid var(--border)', borderRadius: 20, background: 'var(--bg-card)', boxShadow: '0 10px 34px rgba(16,24,40,0.10)', overflow: 'hidden', boxSizing: 'border-box' }}>
+      <style>{`
+        @keyframes acReveal{from{opacity:0;transform:translateY(12px) scale(.985)}to{opacity:1;transform:translateY(0) scale(1)}}
+        @keyframes acFade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+        .ac-card{animation:acReveal .5s cubic-bezier(0.22,1,0.36,1) both}
+        .ac-card .ac-chart{animation:acFade .55s cubic-bezier(0.22,1,0.36,1) .12s both}
+        .ac-card .ac-insight{animation:acFade .5s ease-out .28s both}
+        @media (prefers-reduced-motion: reduce){.ac-card,.ac-card .ac-chart,.ac-card .ac-insight{animation:none}}
+      `}</style>
+      <div style={{ height: 4, background: AC_GRAD }} />
       <div style={{ padding: 18 }}>
         {spec.title && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '0 0 14px' }}>
-            <span style={{ width: 4, height: 15, borderRadius: 2, background: 'var(--primary)', flexShrink: 0 }} />
-            <p style={{ margin: 0, fontFamily: 'Syne, sans-serif', fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>{spec.title}</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '0 0 15px' }}>
+            <span aria-hidden style={{ flexShrink: 0, width: 30, height: 30, borderRadius: 9, background: AC_GRAD, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(6,182,212,0.38)' }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={chartIcon(spec.type)} /></svg>
+            </span>
+            <p style={{ margin: 0, fontFamily: 'Syne, sans-serif', fontSize: 15.5, fontWeight: 800, color: 'var(--text)', lineHeight: 1.15 }}>{spec.title}</p>
           </div>
         )}
-        <AdvancedChart spec={spec} />
+        <div className="ac-chart"><AdvancedChart spec={spec} /></div>
       </div>
       {spec.insight && (
-        <div style={{ padding: '12px 18px', borderTop: '1px solid var(--border)', background: 'var(--bg-card2)', display: 'flex', gap: 9 }}>
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 1 }}><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.1V17h6v-.2c0-.8.4-1.6 1-2.1A7 7 0 0 0 12 2z" /></svg>
-          <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.5, color: 'var(--text-mid)' }}>{spec.insight}</p>
+        <div className="ac-insight" style={{ padding: '13px 18px', borderTop: '1px solid var(--border)', background: 'color-mix(in srgb, var(--primary) 6%, var(--bg-card2))', display: 'flex', gap: 10 }}>
+          <span aria-hidden style={{ flexShrink: 0, marginTop: 1 }}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.1V17h6v-.2c0-.8.4-1.6 1-2.1A7 7 0 0 0 12 2z" /></svg>
+          </span>
+          <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.5, color: 'var(--text-mid)' }}><strong style={{ color: 'var(--primary)', fontWeight: 700 }}>Analyse — </strong>{spec.insight}</p>
         </div>
       )}
     </div>

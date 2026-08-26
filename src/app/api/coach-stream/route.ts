@@ -817,7 +817,10 @@ APRÈS l'oral : un résumé SCHÉMATISÉ et aéré pour l'écran. CE N'EST PAS l
   //  • aucun tool → réponse finale déjà streamée, on s'arrête.
   // ══════════════════════════════════════════════════════════════
   const allTools = [...coachTools, ...readTools, ...memoryTools, ...writeTools]
-  const MAX_STEPS = 6
+  // Tâches profondes (lire le roster → analyser chaque athlète → écrire) : 6 tours
+  // ne suffisaient pas. 12 laisse la place aux chaînes read→read→write multiples,
+  // tout en bornant l'emballement (chaque tour reste borné en tokens).
+  const MAX_STEPS = 12
   // Outils résolus CÔTÉ SERVEUR (lecture + mémoire + écriture) → non terminaux :
   // on les exécute et on reboucle. Tout le reste = outils d'ACTION rendus au front.
   const SERVER_RESOLVED = (n: string) => READ_TOOL_NAMES.has(n) || MEMORY_TOOL_NAMES.has(n) || WRITE_TOOL_NAMES.has(n)

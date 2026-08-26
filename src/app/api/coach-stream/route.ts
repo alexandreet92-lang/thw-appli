@@ -29,6 +29,7 @@ import { coachTools } from '@/lib/coach/tools-definition'
 import { readTools, READ_TOOL_NAMES, resolveReadTool, resolvePreviewRoute } from '@/lib/coach/read-tools'
 import { memoryTools, MEMORY_TOOL_NAMES, resolveMemoryTool, buildStructuredMemory } from '@/lib/coach/memory-tools'
 import { writeTools, WRITE_TOOL_NAMES, resolveWriteTool } from '@/lib/coach/write-tools'
+import { coachScaleTools, COACH_SCALE_TOOL_NAMES, resolveCoachScaleTool } from '@/lib/coach/coach-tools'
 import { sendPushToUser, previewForBody } from '@/lib/push/send'
 import { isNotifEnabled } from '@/lib/notifications/dispatch'
 import { createNotification } from '@/lib/notifications/create'
@@ -281,6 +282,7 @@ export async function POST(req: NextRequest) {
   const _coachCtx = body.context as { coachAgent?: boolean; coachAthleteId?: string | null } | undefined
   const coachTargetUid = _coachCtx?.coachAgent && _coachCtx.coachAthleteId ? _coachCtx.coachAthleteId : userId
   const isCoachTargeting = coachTargetUid !== userId
+  const isCoachAgent = _coachCtx?.coachAgent === true   // outils « à l'échelle » (roster, messages)
   let didAthleteWrite = false
   let coachCanWrite: boolean | null = null                       // consentement athlète (lazy)
   const auditActions: { action: string; page: string | null }[] = []   // journal des modifs coach
@@ -816,14 +818,15 @@ APRÈS l'oral : un résumé SCHÉMATISÉ et aéré pour l'écran. CE N'EST PAS l
   //    et la boucle s'arrête (hand-off UI, comportement inchangé) ;
   //  • aucun tool → réponse finale déjà streamée, on s'arrête.
   // ══════════════════════════════════════════════════════════════
-  const allTools = [...coachTools, ...readTools, ...memoryTools, ...writeTools]
+  // Outils « à l'échelle » (roster, messages) ajoutés SEULEMENT en mode agent coach.
+  const allTools = [...coachTools, ...readTools, ...memoryTools, ...writeTools, ...(isCoachAgent ? coachScaleTools : [])]
   // Tâches profondes (lire le roster → analyser chaque athlète → écrire) : 6 tours
   // ne suffisaient pas. 12 laisse la place aux chaînes read→read→write multiples,
   // tout en bornant l'emballement (chaque tour reste borné en tokens).
   const MAX_STEPS = 12
   // Outils résolus CÔTÉ SERVEUR (lecture + mémoire + écriture) → non terminaux :
   // on les exécute et on reboucle. Tout le reste = outils d'ACTION rendus au front.
-  const SERVER_RESOLVED = (n: string) => READ_TOOL_NAMES.has(n) || MEMORY_TOOL_NAMES.has(n) || WRITE_TOOL_NAMES.has(n)
+  const SERVER_RESOLVED = (n: string) => READ_TOOL_NAMES.has(n) || MEMORY_TOOL_NAMES.has(n) || WRITE_TOOL_NAMES.has(n) || COACH_SCALE_TOOL_NAMES.has(n)
 
   // ── PROMPT CACHING ──────────────────────────────────────────────
   // Le bloc système (prompt + contexte athlète + doctrine + mémoire) et la
@@ -1103,6 +1106,13 @@ APRÈS l'oral : un résumé SCHÉMATISÉ et aéré pour l'écran. CE N'EST PAS l
               } else {
                 results.push({ type: 'tool_result', tool_use_id: r.id, content: JSON.stringify({ ok: false, error: route.error }) })
               }
+              continue
+            }
+            // Outils « à l'échelle » du coach (roster, messages) : résolus avec
+            // l'id du COACH (userId), jamais un athlète ciblé.
+            if (COACH_SCALE_TOOL_NAMES.has(r.name)) {
+              const out = await resolveCoachScaleTool(r.name, inp, sbForTools, userId)
+              results.push({ type: 'tool_result', tool_use_id: r.id, content: out })
               continue
             }
             // Consentement : l'athlète peut avoir coupé l'écriture du coach.

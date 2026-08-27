@@ -11,6 +11,7 @@ import type Anthropic from '@anthropic-ai/sdk'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createNotification } from '@/lib/notifications/create'
 import { sendPushToUser } from '@/lib/push/send'
+import { resolveWriteTool } from '@/lib/coach/write-tools'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SB = SupabaseClient<any, any, any>
@@ -51,6 +52,25 @@ export const coachScaleTools: Anthropic.Tool[] = [
       required: ['body'],
     },
   },
+  {
+    name: 'apply_to_athletes',
+    description:
+      "Applique UNE action d'écriture avec les MÊMES paramètres à PLUSIEURS athlètes du coach — ex. inscrire un groupe " +
+      "à une même course, appliquer un même plan nutritionnel type. action ∈ 'add_race' | 'set_nutrition_plan'. " +
+      "Chaque athlète est vérifié (lien accepté + écriture autorisée par l'athlète) puis notifié. " +
+      "Pour un simple message, utilise message_athletes. N'utilise cet outil que si les MÊMES paramètres ont du sens pour tout le groupe.",
+    input_schema: {
+      type: 'object',
+      properties: {
+        action:        { type: 'string', enum: ['add_race', 'set_nutrition_plan'], description: 'Action à appliquer.' },
+        params:        { type: 'object', description: "Paramètres de l'action (mêmes champs que l'outil correspondant : add_race ou set_nutrition_plan)." },
+        athlete_ids:   { type: 'array', items: { type: 'string' }, description: 'UUIDs des athlètes.' },
+        athlete_names: { type: 'array', items: { type: 'string' }, description: 'Noms des athlètes.' },
+        to_all:        { type: 'boolean', description: 'Appliquer à tout le roster.' },
+      },
+      required: ['action', 'params'],
+    },
+  },
 ]
 
 export const COACH_SCALE_TOOL_NAMES: ReadonlySet<string> = new Set(coachScaleTools.map(t => t.name))
@@ -58,6 +78,31 @@ export const COACH_SCALE_TOOL_NAMES: ReadonlySet<string> = new Set(coachScaleToo
 async function acceptedAthleteIds(sb: SB, coachId: string): Promise<string[]> {
   const { data } = await sb.from('coach_athlete').select('athlete_id').eq('coach_id', coachId).eq('status', 'accepted')
   return (data ?? []).map((r: { athlete_id: string }) => r.athlete_id)
+}
+
+// Destinataires depuis l'input (ids / noms / to_all), limités aux athlètes liés.
+async function resolveTargets(sb: SB, linked: string[], input: Record<string, unknown>): Promise<string[]> {
+  const linkedSet = new Set(linked)
+  const targets: string[] = []
+  if (input.to_all === true) return [...linked]
+  if (Array.isArray(input.athlete_ids)) targets.push(...(input.athlete_ids as unknown[]).map(String).filter(x => linkedSet.has(x)))
+  if (Array.isArray(input.athlete_names) && (input.athlete_names as unknown[]).length) {
+    const names = (input.athlete_names as unknown[]).map(x => String(x).toLowerCase().trim())
+    const { data: profs } = await sb.from('profiles').select('id, full_name, first_name').in('id', linked)
+    for (const nm of names) {
+      const hit = (profs ?? []).find((p: { id: string; full_name?: string; first_name?: string }) =>
+        (p.full_name ?? '').toLowerCase().includes(nm) || (p.first_name ?? '').toLowerCase().includes(nm))
+      if (hit) targets.push(hit.id)
+    }
+  }
+  return Array.from(new Set(targets))
+}
+
+// Écriture autorisée par l'athlète pour ce coach ? (coach_athlete.write_enabled)
+async function canWrite(sb: SB, coachId: string, athleteId: string): Promise<boolean> {
+  const { data } = await sb.from('coach_athlete').select('write_enabled')
+    .eq('coach_id', coachId).eq('athlete_id', athleteId).eq('status', 'accepted').maybeSingle()
+  return !!data && (data as { write_enabled?: boolean }).write_enabled !== false
 }
 
 export async function resolveCoachScaleTool(name: string, input: Record<string, unknown>, sb: SB, coachId: string): Promise<string> {
@@ -111,22 +156,7 @@ export async function resolveCoachScaleTool(name: string, input: Record<string, 
       if (body.length > 4000) return errJ('Message trop long (max 4000).')
       const linked = await acceptedAthleteIds(sb, coachId)
       if (!linked.length) return errJ('Aucun athlète lié.')
-      const linkedSet = new Set(linked)
-      let targets: string[] = []
-      if (input.to_all === true) targets = linked
-      else {
-        if (Array.isArray(input.athlete_ids)) targets.push(...(input.athlete_ids as unknown[]).map(String).filter(x => linkedSet.has(x)))
-        if (Array.isArray(input.athlete_names) && (input.athlete_names as unknown[]).length) {
-          const names = (input.athlete_names as unknown[]).map(x => String(x).toLowerCase().trim())
-          const { data: profs } = await sb.from('profiles').select('id, full_name, first_name').in('id', linked)
-          for (const nm of names) {
-            const hit = (profs ?? []).find((p: { id: string; full_name?: string; first_name?: string }) =>
-              (p.full_name ?? '').toLowerCase().includes(nm) || (p.first_name ?? '').toLowerCase().includes(nm))
-            if (hit) targets.push(hit.id)
-          }
-        }
-      }
-      targets = Array.from(new Set(targets))
+      const targets = await resolveTargets(sb, linked, input)
       if (!targets.length) return errJ('Aucun destinataire valide (précise athlete_ids/athlete_names, ou to_all).')
       const rows = targets.map(aid => ({ coach_id: coachId, athlete_id: aid, sender_id: coachId, body }))
       const { error } = await sb.from('coach_messages').insert(rows)
@@ -139,6 +169,32 @@ export async function resolveCoachScaleTool(name: string, input: Record<string, 
         } catch { /* best-effort */ }
       }))
       return okJ({ page: 'Messages', sent_to: targets.length })
+    }
+
+    if (name === 'apply_to_athletes') {
+      const action = typeof input.action === 'string' ? input.action : ''
+      if (!['add_race', 'set_nutrition_plan'].includes(action)) return errJ("action non autorisée en lot (add_race | set_nutrition_plan).")
+      const params = input.params && typeof input.params === 'object' ? input.params as Record<string, unknown> : null
+      if (!params) return errJ('params requis (paramètres de l’action).')
+      const linked = await acceptedAthleteIds(sb, coachId)
+      if (!linked.length) return errJ('Aucun athlète lié.')
+      const targets = await resolveTargets(sb, linked, input)
+      if (!targets.length) return errJ('Aucun destinataire valide (athlete_ids/athlete_names/to_all).')
+      const results: { id: string; ok: boolean; reason?: string }[] = []
+      for (const aid of targets) {
+        if (!(await canWrite(sb, coachId, aid))) { results.push({ id: aid, ok: false, reason: 'écriture non autorisée par l’athlète' }); continue }
+        const out = await resolveWriteTool(action, params, sb, aid)
+        let ok = false
+        try { ok = JSON.parse(out)?.ok !== false } catch { ok = false }
+        results.push({ id: aid, ok })
+        if (ok) {
+          try {
+            await createNotification(sb, aid, { type: 'coach.plan_updated', title: 'Ton coach a mis à jour ton programme', body: action === 'add_race' ? 'Une course a été ajoutée à ton calendrier.' : 'Ton plan nutritionnel a été mis à jour.', link: action === 'add_race' ? '/calendar' : '/nutrition', dedupKey: null })
+            await sendPushToUser(sb, aid, { title: 'Mise à jour de ton coach', body: action === 'add_race' ? 'Nouvelle course au calendrier.' : 'Plan nutritionnel mis à jour.', url: action === 'add_race' ? '/calendar' : '/nutrition', tag: 'coach-apply' })
+          } catch { /* best-effort */ }
+        }
+      }
+      return okJ({ action, applied: results.filter(r => r.ok).length, total: targets.length, results })
     }
 
     return errJ(`Outil coach inconnu : ${name}`)

@@ -1,6 +1,7 @@
 'use client'
 import { useState, useRef } from 'react'
 import type { CSSProperties } from 'react'
+import { useI18n } from '@/lib/i18n'
 
 export interface FoodItem {
   id:        string
@@ -39,6 +40,7 @@ interface Props {
 }
 
 export default function FoodSearch({ onAdd, onBarcode }: Props) {
+  const { t } = useI18n()
   const [query,    setQuery]    = useState('')
   const [results,  setResults]  = useState<FoodItem[]>([])
   const [loading,  setLoading]  = useState(false)
@@ -96,9 +98,9 @@ export default function FoodSearch({ onAdd, onBarcode }: Props) {
   return (
     <div style={{ position: 'relative' }}>
       <div style={{ display: 'flex', gap: 8 }}>
-        <input value={query} onChange={e => handleInput(e.target.value)} placeholder="Rechercher un aliment..."
+        <input value={query} onChange={e => handleInput(e.target.value)} placeholder={t('w2b.searchFood')}
           style={{ flex: 1, background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', fontSize: 13, color: 'var(--text)', fontFamily: 'DM Sans,sans-serif' }} />
-        <button onClick={onBarcode} title="Scanner un code-barres"
+        <button onClick={onBarcode} title={t('w2b.scanBarcode')}
           style={{ width: 40, height: 40, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-card2)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
           <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
             <rect x="2"  y="3" width="2" height="12" fill="var(--text-dim)" /><rect x="5"  y="3" width="1" height="12" fill="var(--text-dim)" />
@@ -107,7 +109,7 @@ export default function FoodSearch({ onAdd, onBarcode }: Props) {
           </svg>
         </button>
       </div>
-      {loading && <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 4, paddingLeft: 4 }}>Recherche...</div>}
+      {loading && <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 4, paddingLeft: 4 }}>{t('w2b.searching')}</div>}
       {open && results.length > 0 && (
         <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 10, zIndex: 50, maxHeight: 220, overflowY: 'auto' }}>
           {results.map(food => (
@@ -143,7 +145,7 @@ export default function FoodSearch({ onAdd, onBarcode }: Props) {
           </div>
           <button onClick={add}
             style={{ width: '100%', padding: '8px 0', borderRadius: 8, border: 'none', background: 'linear-gradient(90deg,#06B6D4,#3B82F6)', color: '#fff', fontWeight: 700, fontSize: 12, cursor: 'pointer', fontFamily: 'Syne,sans-serif' }}>
-            Ajouter
+            {t('w2b.add')}
           </button>
         </div>
       )}

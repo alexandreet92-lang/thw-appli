@@ -10,6 +10,7 @@ import {
   listMyForms, submitFormResponses,
   type CustomForm, type FormField, type FieldType,
 } from '@/lib/coach/custom-forms'
+import { useI18n } from '@/lib/i18n'
 
 const TYPES: { v: FieldType; l: string }[] = [
   { v: 'text', l: 'Texte court' }, { v: 'textarea', l: 'Texte long' }, { v: 'number', l: 'Nombre' },
@@ -22,6 +23,7 @@ const fmtDate = (d: string | null) => { if (!d) return ''; try { return new Date
 
 // ── Builder (modale) ──────────────────────────────────────────
 function Builder({ athleteId, athleteName, onClose, onCreated }: { athleteId: string; athleteName: string; onClose: () => void; onCreated: () => void }) {
+  const { t } = useI18n()
   const [title, setTitle] = useState('')
   const [fields, setFields] = useState<FormField[]>([{ id: uid(), label: '', type: 'text' }])
   const [busy, setBusy] = useState(false)
@@ -44,33 +46,33 @@ function Builder({ athleteId, athleteName, onClose, onCreated }: { athleteId: st
       <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.45)' }} />
       <div style={{ position: 'relative', width: 'min(520px, 100%)', maxHeight: '86vh', display: 'flex', flexDirection: 'column', background: 'var(--bg)', borderRadius: 20, overflow: 'hidden', boxShadow: '0 24px 70px rgba(0,0,0,0.4)' }}>
         <div style={{ flexShrink: 0, padding: '16px 18px 12px', borderBottom: '1px solid var(--border)' }}>
-          <div style={{ fontSize: 17, fontWeight: 600, color: 'var(--text)', fontFamily: 'var(--font-display)' }}>Nouvelle fiche pour {athleteName}</div>
-          <div style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 2 }}>Crée tes champs — l’athlète les remplira et ça te reviendra.</div>
+          <div style={{ fontSize: 17, fontWeight: 600, color: 'var(--text)', fontFamily: 'var(--font-display)' }}>{t('w2d.newFormFor', { name: athleteName })}</div>
+          <div style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 2 }}>{t('w2d.builderHint')}</div>
         </div>
         <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: 18 }}>
-          <input value={title} onChange={e => setTitle(e.target.value)} autoFocus placeholder="Titre (ex. Bilan de forme hebdo)" style={{ ...inp, fontSize: 15, marginBottom: 14 }} />
+          <input value={title} onChange={e => setTitle(e.target.value)} autoFocus placeholder={t('w2d.formTitlePlaceholder')} style={{ ...inp, fontSize: 15, marginBottom: 14 }} />
           {fields.map((f, i) => (
             <div key={f.id} style={{ ...card, background: 'var(--bg-card2)', padding: 12, marginBottom: 10 }}>
               <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-                <input value={f.label} onChange={e => patch(f.id, { label: e.target.value })} placeholder={`Question ${i + 1}`} style={{ ...inp, flex: 1 }} />
+                <input value={f.label} onChange={e => patch(f.id, { label: e.target.value })} placeholder={t('w2d.questionN', { n: i + 1 })} style={{ ...inp, flex: 1 }} />
                 <select value={f.type} onChange={e => patch(f.id, { type: e.target.value as FieldType })} style={{ ...inp, width: 130, cursor: 'pointer' }}>
-                  {TYPES.map(t => <option key={t.v} value={t.v}>{t.l}</option>)}
+                  {TYPES.map(ft => <option key={ft.v} value={ft.v}>{t(`w2d.ftype_${ft.v}`)}</option>)}
                 </select>
-                {fields.length > 1 && <button onClick={() => setFields(x => x.filter(y => y.id !== f.id))} aria-label="Retirer" style={{ width: 34, borderRadius: 9, border: 'none', background: 'var(--bg-card)', color: '#ef4444', cursor: 'pointer', flexShrink: 0 }}>✕</button>}
+                {fields.length > 1 && <button onClick={() => setFields(x => x.filter(y => y.id !== f.id))} aria-label={t('w2d.remove')} style={{ width: 34, borderRadius: 9, border: 'none', background: 'var(--bg-card)', color: '#ef4444', cursor: 'pointer', flexShrink: 0 }}>✕</button>}
               </div>
               {f.type === 'select' && (
-                <input value={(f.options ?? []).join(', ')} onChange={e => patch(f.id, { options: e.target.value.split(',').map(s => s.trim()) })} placeholder="Options séparées par des virgules" style={{ ...inp, fontSize: 12.5 }} />
+                <input value={(f.options ?? []).join(', ')} onChange={e => patch(f.id, { options: e.target.value.split(',').map(s => s.trim()) })} placeholder={t('w2d.optionsPlaceholder')} style={{ ...inp, fontSize: 12.5 }} />
               )}
             </div>
           ))}
           <button onClick={() => setFields(f => [...f, { id: uid(), label: '', type: 'text' }])} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', color: 'var(--primary)', fontSize: 13, fontWeight: 700, cursor: 'pointer', padding: '4px 0', fontFamily: 'var(--font-body)' }}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
-            Ajouter un champ
+            {t('w2d.addField')}
           </button>
         </div>
         <div style={{ flexShrink: 0, display: 'flex', gap: 10, padding: '14px 18px', borderTop: '1px solid var(--border)' }}>
-          <button onClick={onClose} style={{ flex: 1, padding: '11px', borderRadius: 12, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-mid)', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>Annuler</button>
-          <button onClick={() => void save()} disabled={!valid || busy} style={{ flex: 1, padding: '11px', borderRadius: 12, border: 'none', background: valid && !busy ? 'var(--primary)' : 'var(--bg-card2)', color: valid && !busy ? 'var(--on-primary)' : 'var(--text-dim)', fontSize: 14, fontWeight: 700, cursor: valid && !busy ? 'pointer' : 'default', fontFamily: 'var(--font-body)' }}>Envoyer à l’athlète</button>
+          <button onClick={onClose} style={{ flex: 1, padding: '11px', borderRadius: 12, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-mid)', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>{t('w2d.cancel')}</button>
+          <button onClick={() => void save()} disabled={!valid || busy} style={{ flex: 1, padding: '11px', borderRadius: 12, border: 'none', background: valid && !busy ? 'var(--primary)' : 'var(--bg-card2)', color: valid && !busy ? 'var(--on-primary)' : 'var(--text-dim)', fontSize: 14, fontWeight: 700, cursor: valid && !busy ? 'pointer' : 'default', fontFamily: 'var(--font-body)' }}>{t('w2d.sendToAthlete')}</button>
         </div>
       </div>
     </div>,
@@ -80,6 +82,7 @@ function Builder({ athleteId, athleteName, onClose, onCreated }: { athleteId: st
 
 // ── Coach : section fiches dans la bulle « Fiche » ────────────
 export function CoachFormsSection({ athleteId, athleteName }: { athleteId: string; athleteName: string }) {
+  const { t } = useI18n()
   const [forms, setForms] = useState<CustomForm[] | null>(null)
   const [build, setBuild] = useState(false)
   const load = () => { void listFormsForAthlete(athleteId).then(setForms) }
@@ -88,22 +91,22 @@ export function CoachFormsSection({ athleteId, athleteName }: { athleteId: strin
   return (
     <div style={{ ...card, borderStyle: forms && forms.length ? 'solid' : 'dashed' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: forms && forms.length ? 12 : 4 }}>
-        <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)' }}>Fiches personnalisées</div>
+        <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)' }}>{t('w2d.customForms')}</div>
         <button onClick={() => setBuild(true)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 13px', borderRadius: 10, border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
-          Créer une fiche
+          {t('w2d.createForm')}
         </button>
       </div>
-      {forms === null ? <div style={{ fontSize: 12.5, color: 'var(--text-dim)' }}>Chargement…</div>
-        : forms.length === 0 ? <p style={{ fontSize: 12.5, color: 'var(--text-dim)', margin: 0, lineHeight: 1.5 }}>Crée une fiche sur-mesure (champs libres) : l’athlète la remplit et les réponses reviennent ici.</p>
+      {forms === null ? <div style={{ fontSize: 12.5, color: 'var(--text-dim)' }}>{t('w2d.loading')}</div>
+        : forms.length === 0 ? <p style={{ fontSize: 12.5, color: 'var(--text-dim)', margin: 0, lineHeight: 1.5 }}>{t('w2d.customFormsEmpty')}</p>
         : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {forms.map(f => (
               <div key={f.id} style={{ ...card, background: 'var(--bg-card2)', padding: 12 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)', flex: 1 }}>{f.title}</span>
-                  <span style={{ fontSize: 10.5, fontWeight: 700, padding: '2px 8px', borderRadius: 6, color: f.status === 'filled' ? '#22c55e' : 'var(--text-dim)', border: `1px solid ${f.status === 'filled' ? '#22c55e' : 'var(--border)'}` }}>{f.status === 'filled' ? `Rempli · ${fmtDate(f.filledAt)}` : 'En attente'}</span>
-                  <button onClick={async () => { if (confirm('Supprimer cette fiche ?')) { await deleteCustomForm(f.id); load() } }} aria-label="Supprimer" style={{ width: 26, height: 26, borderRadius: 7, border: 'none', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', flexShrink: 0 }}>✕</button>
+                  <span style={{ fontSize: 10.5, fontWeight: 700, padding: '2px 8px', borderRadius: 6, color: f.status === 'filled' ? '#22c55e' : 'var(--text-dim)', border: `1px solid ${f.status === 'filled' ? '#22c55e' : 'var(--border)'}` }}>{f.status === 'filled' ? t('w2d.filledOn', { date: fmtDate(f.filledAt) }) : t('w2d.pending')}</span>
+                  <button onClick={async () => { if (confirm(t('w2d.confirmDeleteForm'))) { await deleteCustomForm(f.id); load() } }} aria-label={t('w2d.delete')} style={{ width: 26, height: 26, borderRadius: 7, border: 'none', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', flexShrink: 0 }}>✕</button>
                 </div>
                 <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
                   {f.fields.map(fl => (
@@ -124,6 +127,7 @@ export function CoachFormsSection({ athleteId, athleteName }: { athleteId: strin
 
 // ── Athlète : carte « fiches à remplir » (dashboard) ──────────
 export function AthleteFormsCard() {
+  const { t } = useI18n()
   const [forms, setForms] = useState<CustomForm[]>([])
   const [fill, setFill] = useState<CustomForm | null>(null)
   const load = () => { void listMyForms().then(setForms) }
@@ -133,16 +137,16 @@ export function AthleteFormsCard() {
 
   return (
     <div style={{ ...card }}>
-      <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)', marginBottom: 4 }}>Fiches de ton coach</div>
-      <div style={{ fontSize: 12, color: 'var(--text-dim)', marginBottom: 12 }}>{pending.length > 0 ? `${pending.length} fiche${pending.length > 1 ? 's' : ''} à remplir.` : 'Tout est à jour.'}</div>
+      <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)', marginBottom: 4 }}>{t('w2d.coachForms')}</div>
+      <div style={{ fontSize: 12, color: 'var(--text-dim)', marginBottom: 12 }}>{pending.length > 0 ? t(pending.length > 1 ? 'w2d.formsToFillPlural' : 'w2d.formsToFillSingular', { n: pending.length }) : t('w2d.allUpToDate')}</div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {forms.map(f => (
           <div key={f.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 11, background: 'var(--bg-card2)' }}>
             <span style={{ flex: 1, minWidth: 0 }}>
               <span style={{ display: 'block', fontSize: 13.5, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.title}</span>
-              <span style={{ fontSize: 11.5, color: f.status === 'filled' ? '#22c55e' : 'var(--primary)' }}>{f.status === 'filled' ? 'Rempli — merci !' : `${f.fields.length} question${f.fields.length > 1 ? 's' : ''}`}</span>
+              <span style={{ fontSize: 11.5, color: f.status === 'filled' ? '#22c55e' : 'var(--primary)' }}>{f.status === 'filled' ? t('w2d.filledThanks') : t(f.fields.length > 1 ? 'w2d.questionsCountPlural' : 'w2d.questionsCountSingular', { n: f.fields.length })}</span>
             </span>
-            <button onClick={() => setFill(f)} style={{ padding: '7px 13px', borderRadius: 10, border: f.status === 'filled' ? '1px solid var(--border)' : 'none', background: f.status === 'filled' ? 'var(--bg-card)' : 'var(--primary)', color: f.status === 'filled' ? 'var(--text-mid)' : 'var(--on-primary)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)', flexShrink: 0 }}>{f.status === 'filled' ? 'Voir' : 'Remplir'}</button>
+            <button onClick={() => setFill(f)} style={{ padding: '7px 13px', borderRadius: 10, border: f.status === 'filled' ? '1px solid var(--border)' : 'none', background: f.status === 'filled' ? 'var(--bg-card)' : 'var(--primary)', color: f.status === 'filled' ? 'var(--text-mid)' : 'var(--on-primary)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)', flexShrink: 0 }}>{f.status === 'filled' ? t('w2d.view') : t('w2d.fill')}</button>
           </div>
         ))}
       </div>
@@ -152,6 +156,7 @@ export function AthleteFormsCard() {
 }
 
 function FillModal({ form, onClose, onDone }: { form: CustomForm; onClose: () => void; onDone: () => void }) {
+  const { t } = useI18n()
   const [vals, setVals] = useState<Record<string, string | number | boolean>>(form.responses ?? {})
   const [busy, setBusy] = useState(false)
   const [mounted, setMounted] = useState(false)
@@ -181,8 +186,8 @@ function FillModal({ form, onClose, onDone }: { form: CustomForm; onClose: () =>
           ))}
         </div>
         <div style={{ flexShrink: 0, display: 'flex', gap: 10, padding: '14px 18px', borderTop: '1px solid var(--border)' }}>
-          <button onClick={onClose} style={{ flex: 1, padding: '11px', borderRadius: 12, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-mid)', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>Fermer</button>
-          <button onClick={() => void submit()} disabled={busy} style={{ flex: 1, padding: '11px', borderRadius: 12, border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>{form.status === 'filled' ? 'Mettre à jour' : 'Envoyer'}</button>
+          <button onClick={onClose} style={{ flex: 1, padding: '11px', borderRadius: 12, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-mid)', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>{t('w2d.close')}</button>
+          <button onClick={() => void submit()} disabled={busy} style={{ flex: 1, padding: '11px', borderRadius: 12, border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>{form.status === 'filled' ? t('w2d.update') : t('w2d.send')}</button>
         </div>
       </div>
     </div>,

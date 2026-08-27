@@ -1,6 +1,7 @@
 'use client'
 import { useState, useRef, useEffect } from 'react'
 import type { NutritionHabit, HabitIngredient } from '@/hooks/useNutritionHabits'
+import { useI18n } from '@/lib/i18n'
 
 // ── Shared styles ─────────────────────────────────────────────────
 const inputStyle: React.CSSProperties = {
@@ -30,6 +31,7 @@ function sumIngredients(ings: HabitIngredient[]) {
 
 // ── Toast ─────────────────────────────────────────────────────────
 function Toast({ visible }: { visible: boolean }) {
+  const { t } = useI18n()
   return (
     <div style={{
       position: 'fixed', bottom: 32, left: '50%', transform: 'translateX(-50%)',
@@ -38,7 +40,7 @@ function Toast({ visible }: { visible: boolean }) {
       zIndex: 9999, transition: 'opacity 0.3s', opacity: visible ? 1 : 0,
       pointerEvents: 'none',
     }}>
-      Fonctionnalite a venir
+      {t('w2a.feature_coming')}
     </div>
   )
 }
@@ -60,6 +62,7 @@ function RegularMealCreateModal({
   onSave: (h: Omit<NutritionHabit, 'id' | 'user_id' | 'created_at'>) => Promise<void>
   onClose: () => void
 }) {
+  const { t } = useI18n()
   const [name, setName] = useState('')
   const [ings, setIngs] = useState<RegularMealFormIng[]>([])
   const [saving, setSaving] = useState(false)
@@ -136,7 +139,7 @@ function RegularMealCreateModal({
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
           <h2 style={{ fontFamily: 'Syne,sans-serif', fontSize: 16, fontWeight: 800, margin: 0, color: 'var(--text)' }}>
-            Ajouter un repas regulier
+            {t('w2a.add_regular_meal')}
           </h2>
           <button onClick={onClose} style={{
             width: 32, height: 32, borderRadius: 8, border: '1px solid var(--border)',
@@ -148,18 +151,18 @@ function RegularMealCreateModal({
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {/* Nom */}
           <div>
-            <label style={labelStyle}>Nom du repas *</label>
+            <label style={labelStyle}>{t('w2a.meal_name_required')}</label>
             <input
               value={name}
               onChange={e => setName(e.target.value)}
-              placeholder="ex: Mon petit-dejeuner type"
+              placeholder={t('w2a.meal_name_ph_breakfast')}
               style={inputStyle}
             />
           </div>
 
           {/* Ingredients */}
           <div>
-            <label style={labelStyle}>Ingredients</label>
+            <label style={labelStyle}>{t('w2a.ingredients')}</label>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {/* Header row */}
               {ings.length > 0 && (
@@ -168,7 +171,7 @@ function RegularMealCreateModal({
                   gridTemplateColumns: '1fr 60px 60px 60px 60px 60px 28px',
                   gap: 4, marginBottom: 2,
                 }}>
-                  {['Ingredient', 'Qte (g)', 'Kcal', 'Prot', 'Gluc', 'Lip', ''].map((h, i) => (
+                  {[t('w2a.col_ingredient'), t('w2a.col_qty_g'), t('w2a.col_kcal'), t('w2a.col_prot'), t('w2a.col_gluc'), t('w2a.col_lip'), ''].map((h, i) => (
                     <span key={i} style={{ fontSize: 9, color: 'var(--text-dim)', fontWeight: 700, textAlign: 'center', textTransform: 'uppercase' }}>
                       {h}
                     </span>
@@ -182,7 +185,7 @@ function RegularMealCreateModal({
                   gap: 4, alignItems: 'center',
                 }}>
                   <input value={ing.name} onChange={e => updateIng(i, 'name', e.target.value)}
-                    placeholder="Nom" style={inputStyle} />
+                    placeholder={t('w2a.name_ph')} style={inputStyle} />
                   {(['quantity_g', 'calories', 'protein_g', 'carbs_g', 'fat_g'] as const).map(field => (
                     <input key={field} type="number" value={ing[field]}
                       onChange={e => updateIng(i, field, e.target.value)}
@@ -201,7 +204,7 @@ function RegularMealCreateModal({
                 padding: '8px', borderRadius: 8, border: '1px dashed var(--border)',
                 background: 'transparent', color: 'var(--text-dim)', fontSize: 11,
                 cursor: 'pointer', fontFamily: 'DM Sans,sans-serif',
-              }}>+ Ajouter un ingredient</button>
+              }}>{t('w2a.add_ingredient')}</button>
             </div>
           </div>
 
@@ -212,14 +215,14 @@ function RegularMealCreateModal({
               padding: '12px 14px', border: '1px solid var(--border)',
             }}>
               <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-dim)', marginBottom: 8, letterSpacing: '0.05em' }}>
-                Totaux calcules
+                {t('w2a.calculated_totals')}
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 8 }}>
                 {[
-                  { label: 'Kcal',    value: Math.round(totals.calories),          unit: '' },
-                  { label: 'Prot',    value: totals.protein_g.toFixed(1),           unit: 'g' },
-                  { label: 'Glucides',value: totals.carbs_g.toFixed(1),             unit: 'g' },
-                  { label: 'Lipides', value: totals.fat_g.toFixed(1),              unit: 'g' },
+                  { label: t('w2a.col_kcal'), value: Math.round(totals.calories),          unit: '' },
+                  { label: t('w2a.col_prot'), value: totals.protein_g.toFixed(1),           unit: 'g' },
+                  { label: t('w2a.gluc_full'),value: totals.carbs_g.toFixed(1),             unit: 'g' },
+                  { label: t('w2a.lip_full'), value: totals.fat_g.toFixed(1),              unit: 'g' },
                 ].map(({ label, value, unit }) => (
                   <div key={label} style={{ textAlign: 'center' }}>
                     <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)', fontFamily: 'Syne,sans-serif' }}>
@@ -240,7 +243,7 @@ function RegularMealCreateModal({
               padding: '10px 16px', borderRadius: 8,
               border: '1px solid var(--border)', background: 'transparent',
               color: 'var(--text-dim)', fontSize: 12, cursor: 'pointer',
-            }}>Annuler</button>
+            }}>{t('w2a.cancel')}</button>
             <button
               onClick={() => void handleSave()}
               disabled={saving || !name.trim()}
@@ -251,7 +254,7 @@ function RegularMealCreateModal({
                 cursor: name.trim() && !saving ? 'pointer' : 'not-allowed',
                 fontFamily: 'Syne,sans-serif',
               }}
-            >{saving ? 'Sauvegarde...' : 'Sauvegarder'}</button>
+            >{saving ? t('w2a.saving') : t('w2a.save')}</button>
           </div>
         </div>
       </div>
@@ -267,6 +270,7 @@ function RegularMealCard({
   habit: NutritionHabit
   onDelete: (id: string) => Promise<void>
 }) {
+  const { t } = useI18n()
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [toastVisible, setToastVisible] = useState(false)
 
@@ -277,8 +281,8 @@ function RegularMealCard({
 
   const macroSummary = [
     habit.total_calories  != null ? `${habit.total_calories} kcal`           : null,
-    habit.total_protein_g != null ? `Prot. ${habit.total_protein_g}g`         : null,
-    habit.total_carbs_g   != null ? `Gluc. ${habit.total_carbs_g}g`           : null,
+    habit.total_protein_g != null ? t('w2a.macro_prot', { n: habit.total_protein_g }) : null,
+    habit.total_carbs_g   != null ? t('w2a.macro_gluc', { n: habit.total_carbs_g })   : null,
   ].filter(Boolean).join(' · ')
 
   return (
@@ -313,7 +317,9 @@ function RegularMealCard({
             )}
             {habit.ingredients && habit.ingredients.length > 0 && (
               <div style={{ fontSize: 10, color: 'var(--text-dim)', marginTop: 2, opacity: 0.7 }}>
-                {habit.ingredients.length} ingredient{habit.ingredients.length > 1 ? 's' : ''}
+                {habit.ingredients.length > 1
+                  ? t('w2a.ingredient_count_other', { n: habit.ingredients.length })
+                  : t('w2a.ingredient_count_one', { n: habit.ingredients.length })}
               </div>
             )}
           </div>
@@ -329,7 +335,7 @@ function RegularMealCard({
                 cursor: 'pointer', fontFamily: 'Syne,sans-serif', fontWeight: 600,
                 whiteSpace: 'nowrap',
               }}
-            >Utiliser</button>
+            >{t('w2a.use')}</button>
             <button
               onClick={() => setConfirmDelete(true)}
               style={{
@@ -356,7 +362,7 @@ function RegularMealCard({
             border: '1px solid rgba(239,68,68,0.2)',
             display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
           }}>
-            <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>Supprimer ce repas ?</span>
+            <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>{t('w2a.delete_meal_confirm')}</span>
             <div style={{ display: 'flex', gap: 6 }}>
               <button
                 onClick={() => void onDelete(habit.id)}
@@ -365,7 +371,7 @@ function RegularMealCard({
                   background: '#ef4444', color: '#fff',
                   fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'Syne,sans-serif',
                 }}
-              >Oui</button>
+              >{t('w2a.yes')}</button>
               <button
                 onClick={() => setConfirmDelete(false)}
                 style={{
@@ -373,7 +379,7 @@ function RegularMealCard({
                   border: '1px solid var(--border)', background: 'transparent',
                   color: 'var(--text-dim)', fontSize: 11, cursor: 'pointer',
                 }}
-              >Non</button>
+              >{t('w2a.no')}</button>
             </div>
           </div>
         )}
@@ -402,6 +408,7 @@ function TrainingFuelSection({
   onUpdate: (id: string, patch: Partial<Omit<NutritionHabit, 'id' | 'user_id' | 'created_at'>>) => Promise<void>
   onDelete: (id: string) => Promise<void>
 }) {
+  const { t } = useI18n()
   const [editCell, setEditCell] = useState<EditCell | null>(null)
   const [adding, setAdding] = useState(false)
   const [newName, setNewName] = useState('')
@@ -431,7 +438,7 @@ function TrainingFuelSection({
 
   async function commitEdit(id: string, field: FuelField, value: string) {
     if (field === 'name') {
-      await onUpdate(id, { name: value.trim() || 'Produit' })
+      await onUpdate(id, { name: value.trim() || t('w2a.default_product') })
     } else {
       const num = value.trim() ? parseFloat(value) : null
       const habit = habits.find(h => h.id === id)
@@ -466,11 +473,11 @@ function TrainingFuelSection({
   }
 
   const COLS: { field: FuelField; label: string; width: string | number; numeric?: boolean }[] = [
-    { field: 'name',       label: 'Produit',     width: '1fr'  },
-    { field: 'quantity_g', label: 'Qte (g)',      width: 72,    numeric: true },
-    { field: 'carbs_g',    label: 'Glucides (g)', width: 90,    numeric: true },
-    { field: 'protein_g',  label: 'Proteines (g)',width: 96,    numeric: true },
-    { field: 'calories',   label: 'Kcal',         width: 64,    numeric: true },
+    { field: 'name',       label: t('w2a.col_product'),  width: '1fr'  },
+    { field: 'quantity_g', label: t('w2a.col_qty_g'),    width: 72,    numeric: true },
+    { field: 'carbs_g',    label: t('w2a.col_carbs_g'),  width: 90,    numeric: true },
+    { field: 'protein_g',  label: t('w2a.col_protein_g'),width: 96,    numeric: true },
+    { field: 'calories',   label: t('w2a.col_kcal'),     width: 64,    numeric: true },
   ]
 
   const gridTemplate = `${COLS.map(c => typeof c.width === 'number' ? `${c.width}px` : c.width).join(' ')} 36px`
@@ -500,7 +507,7 @@ function TrainingFuelSection({
       {/* Rows */}
       {habits.length === 0 && !adding && (
         <div style={{ color: 'var(--text-dim)', fontSize: 12, padding: '16px 10px', textAlign: 'center' }}>
-          Aucun produit — ajoutez votre premier produit ci-dessous
+          {t('w2a.no_product')}
         </div>
       )}
 
@@ -585,7 +592,7 @@ function TrainingFuelSection({
               if (e.key === 'Enter') void handleAddRow()
               if (e.key === 'Escape') { setAdding(false); setNewName('') }
             }}
-            placeholder="Nom du produit"
+            placeholder={t('w2a.product_name_ph')}
             style={{ ...inputStyle, flex: 1, maxWidth: 260 }}
           />
           <button
@@ -598,7 +605,7 @@ function TrainingFuelSection({
               cursor: newName.trim() ? 'pointer' : 'not-allowed',
               fontFamily: 'Syne,sans-serif',
             }}
-          >Ajouter</button>
+          >{t('w2a.add')}</button>
           <button
             onClick={() => { setAdding(false); setNewName('') }}
             style={{
@@ -606,7 +613,7 @@ function TrainingFuelSection({
               border: '1px solid var(--border)', background: 'transparent',
               color: 'var(--text-dim)', fontSize: 12, cursor: 'pointer',
             }}
-          >Annuler</button>
+          >{t('w2a.cancel')}</button>
         </div>
       ) : (
         <button
@@ -617,7 +624,7 @@ function TrainingFuelSection({
             color: 'var(--text-dim)', fontSize: 11, cursor: 'pointer',
             fontFamily: 'DM Sans,sans-serif',
           }}
-        >+ Ajouter un produit</button>
+        >{t('w2a.add_product')}</button>
       )}
     </div>
   )
@@ -637,6 +644,7 @@ export default function HabitudesSection({
   onUpdate: (id: string, patch: Partial<Omit<NutritionHabit, 'id' | 'user_id' | 'created_at'>>) => Promise<void>
   onDelete: (id: string) => Promise<void>
 }) {
+  const { t } = useI18n()
   const [creatingMeal, setCreatingMeal] = useState(false)
 
   const regularMeals = habits.filter(h => h.habit_type === 'regular_meal')
@@ -659,19 +667,19 @@ export default function HabitudesSection({
     <div style={cardStyle}>
       {/* Section title */}
       <h2 style={{ fontFamily: 'Syne,sans-serif', fontSize: 18, fontWeight: 700, margin: '0 0 20px', color: 'var(--text)' }}>
-        Mes habitudes
+        {t('w2a.my_habits')}
       </h2>
 
       {loading ? (
         <div style={{ color: 'var(--text-dim)', fontSize: 13, padding: '24px 0', textAlign: 'center' }}>
-          Chargement...
+          {t('w2a.loading')}
         </div>
       ) : (
         <>
           {/* ── Repas reguliers ─────────────────────────── */}
           <div style={{ marginBottom: 28 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-              <h3 style={subTitleStyle}>Repas reguliers</h3>
+              <h3 style={subTitleStyle}>{t('w2a.regular_meals')}</h3>
               <button
                 onClick={() => setCreatingMeal(true)}
                 style={{
@@ -680,12 +688,12 @@ export default function HabitudesSection({
                   color: 'var(--text-dim)', fontSize: 11, cursor: 'pointer',
                   fontFamily: 'Syne,sans-serif', fontWeight: 600,
                 }}
-              >+ Ajouter</button>
+              >{t('w2a.add_plus')}</button>
             </div>
 
             {regularMeals.length === 0 ? (
               <div style={{ color: 'var(--text-dim)', fontSize: 12, padding: '12px 0', textAlign: 'center' }}>
-                Aucun repas regulier — ajoutez votre premier repas ci-dessus
+                {t('w2a.no_regular_meal')}
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -702,7 +710,7 @@ export default function HabitudesSection({
           {/* ── Nutrition a l'effort ──────────────────── */}
           <div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-              <h3 style={subTitleStyle}>Nutrition a l&apos;effort</h3>
+              <h3 style={subTitleStyle}>{t('w2a.effort_nutrition')}</h3>
             </div>
             <TrainingFuelSection
               habits={fuelProducts}

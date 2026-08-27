@@ -4,6 +4,7 @@ import type { MealIngredient } from '@/hooks/useDailyMeals'
 import FoodSearch, { type AddedIngredient, type FoodItem, calcMacros } from './FoodSearch'
 import IngredientRow from './IngredientRow'
 import BarcodeScanner from './BarcodeScanner'
+import { useI18n } from '@/lib/i18n'
 
 export interface ManualSaveData {
   meal_name:   string
@@ -35,10 +36,11 @@ function sumMacros(ingredients: AddedIngredient[]) {
 }
 
 export default function MealModalManual({ initialName = '', initialKcal = 0, initialProt = 0, initialGluc = 0, initialLip = 0, onSave }: Props) {
+  const { t } = useI18n()
   const [ingredients, setIngredients] = useState<AddedIngredient[]>(() => {
     if (initialKcal > 0 || initialProt > 0 || initialGluc > 0 || initialLip > 0) {
       return [{
-        food: { id: `prefill-${initialName || 'repas'}`, name: initialName || 'Repas', kcal_100g: initialKcal, prot_100g: initialProt, gluc_100g: initialGluc, lip_100g: initialLip },
+        food: { id: `prefill-${initialName || 'repas'}`, name: initialName || t('w2b.defaultMeal'), kcal_100g: initialKcal, prot_100g: initialProt, gluc_100g: initialGluc, lip_100g: initialLip },
         qty: 100,
       }]
     }
@@ -58,7 +60,7 @@ export default function MealModalManual({ initialName = '', initialKcal = 0, ini
       const n = p.nutriments as Record<string, number> | undefined
       const food: FoodItem = {
         id:        barcode,
-        name:      String(p.product_name ?? 'Produit inconnu'),
+        name:      String(p.product_name ?? t('w2b.unknownProduct')),
         brand:     p.brands ? String(p.brands).split(',')[0].trim() : undefined,
         kcal_100g: Math.round(Number(n?.['energy-kcal_100g'] ?? n?.['energy_100g'] ?? 0)),
         prot_100g: Math.round(Number(n?.proteins_100g       ?? 0)),
@@ -80,7 +82,7 @@ export default function MealModalManual({ initialName = '', initialKcal = 0, ini
     }))
     try {
       await onSave({
-        meal_name:   name.trim() || 'Repas',
+        meal_name:   name.trim() || t('w2b.defaultMeal'),
         ingredients: mealIngredients,
         actual_kcal: totals.kcal,
         actual_prot: totals.prot,
@@ -118,12 +120,12 @@ export default function MealModalManual({ initialName = '', initialKcal = 0, ini
         </div>
       )}
 
-      <input value={name} onChange={e => setName(e.target.value)} placeholder="Nom du repas (optionnel)"
+      <input value={name} onChange={e => setName(e.target.value)} placeholder={t('w2b.mealNamePlaceholder')}
         style={{ width: '100%', background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', fontSize: 13, color: 'var(--text)', fontFamily: 'DM Sans,sans-serif' }} />
 
       <button onClick={() => void handleSave()} disabled={saving || !hasItems}
         style={{ width: '100%', padding: '10px 0', borderRadius: 10, border: 'none', background: hasItems ? 'linear-gradient(90deg,#06B6D4,#3B82F6)' : 'var(--border)', color: '#fff', fontWeight: 700, fontSize: 13, cursor: hasItems ? 'pointer' : 'default', fontFamily: 'Syne,sans-serif' }}>
-        {saving ? 'Enregistrement...' : 'Enregistrer'}
+        {saving ? t('w2b.saving') : t('w2b.save')}
       </button>
 
       {scannerOpen && (

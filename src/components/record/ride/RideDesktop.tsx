@@ -2,6 +2,7 @@
 // Écran ordinateur : tableau de bord dense, tout visible d'un coup. 3 colonnes
 // + frise d'intervalles en bas, recentrée sur le bloc en cours.
 import { useEffect, useRef } from 'react'
+import { useI18n } from '@/lib/i18n'
 import LiveChart from './charts/LiveChart'
 import ProfileChart from './charts/ProfileChart'
 import GaugeBar from './ui/GaugeBar'
@@ -25,6 +26,7 @@ function Chip({ name, on }: { name: string; on: boolean }) {
 export default function RideDesktop({ v, d, status, onTogglePause, onFinish, onStopTest }: {
   v: RideView; d: Derived; status: Record<'trainer' | 'hr' | 'cadence', SensorStatus>; onTogglePause: () => void; onFinish: () => void; onStopTest?: () => void
 }) {
+  const { t } = useI18n()
   const curIdx = v.current ? v.plan?.blocks.indexOf(v.current) ?? -1 : -1
   const stripRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
@@ -36,16 +38,16 @@ export default function RideDesktop({ v, d, status, onTogglePause, onFinish, onS
     <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', background: 'var(--bg)', overflow: 'auto' }}>
       {/* En-tête */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '14px 20px', borderBottom: '1px solid var(--border)', background: 'var(--bg-card)' }}>
-        <span style={{ fontSize: 17, fontWeight: 800, color: 'var(--text)' }}>{v.plan?.title ?? 'Sortie libre'}</span>
+        <span style={{ fontSize: 17, fontWeight: 800, color: 'var(--text)' }}>{v.plan?.title ?? t('w2c.freeRide')}</span>
         <span style={{ fontSize: 22, fontWeight: 800, color: 'var(--primary)', fontVariantNumeric: 'tabular-nums' }}>{fmtClock(v.t)}</span>
         <span style={{ flex: 1 }} />
-        <Chip name="Home trainer" on={status.trainer === 'connected'} />
-        <Chip name="Cardio" on={status.hr === 'connected'} />
+        <Chip name={t('w2c.homeTrainer')} on={status.trainer === 'connected'} />
+        <Chip name={t('w2c.cardio')} on={status.hr === 'connected'} />
         {d.isRampBlock && onStopTest && (
-          <button onClick={onStopTest} style={{ padding: '9px 16px', borderRadius: 'var(--r-sm)', background: 'var(--danger, #ef4444)', border: 'none', color: '#fff', fontSize: 13, fontWeight: 800, cursor: 'pointer' }}>Stop test → récup</button>
+          <button onClick={onStopTest} style={{ padding: '9px 16px', borderRadius: 'var(--r-sm)', background: 'var(--danger, #ef4444)', border: 'none', color: '#fff', fontSize: 13, fontWeight: 800, cursor: 'pointer' }}>{t('w2c.stopTestRecovery')}</button>
         )}
-        <button onClick={onTogglePause} style={{ padding: '9px 16px', borderRadius: 'var(--r-sm)', background: 'var(--bg-card2)', border: '1px solid var(--border-mid)', color: 'var(--text)', fontSize: 13, fontWeight: 800, cursor: 'pointer' }}>Pause</button>
-        <button onClick={onFinish} style={{ padding: '9px 16px', borderRadius: 'var(--r-sm)', background: 'var(--bg-card2)', border: '1px solid var(--border-mid)', color: 'var(--charge-hard)', fontSize: 13, fontWeight: 800, cursor: 'pointer' }}>Terminer</button>
+        <button onClick={onTogglePause} style={{ padding: '9px 16px', borderRadius: 'var(--r-sm)', background: 'var(--bg-card2)', border: '1px solid var(--border-mid)', color: 'var(--text)', fontSize: 13, fontWeight: 800, cursor: 'pointer' }}>{t('w2c.pause')}</button>
+        <button onClick={onFinish} style={{ padding: '9px 16px', borderRadius: 'var(--r-sm)', background: 'var(--bg-card2)', border: '1px solid var(--border-mid)', color: 'var(--charge-hard)', fontSize: 13, fontWeight: 800, cursor: 'pointer' }}>{t('w2c.finish')}</button>
       </div>
 
       {/* Corps 3 colonnes */}
@@ -53,54 +55,54 @@ export default function RideDesktop({ v, d, status, onTogglePause, onFinish, onS
         {/* Gauche */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div style={{ ...panel, textAlign: 'center' }}>
-            <Lbl>Puissance</Lbl>
+            <Lbl>{t('w2c.power')}</Lbl>
             <div style={{ marginTop: 8 }}><span style={{ fontSize: 92, fontWeight: 800, lineHeight: 0.82, fontVariantNumeric: 'tabular-nums', color: 'var(--text)' }}>{d.power}</span><span style={{ fontSize: 20, color: 'var(--text-mid)', fontWeight: 800 }}>W</span></div>
             <div style={{ fontSize: 14, color: 'var(--text-mid)', fontWeight: 800, marginTop: 6 }}>
               {d.isCp20Block
-                ? 'À fond · meilleure moyenne'
-                : v.current && d.targetW > 0 ? <>cible <b style={{ color: 'var(--primary)' }}>{d.targetW} W</b> · {d.pct} % FTP</> : null}
+                ? t('w2c.allOutBestAvg')
+                : v.current && d.targetW > 0 ? <>{t('w2c.target')} <b style={{ color: 'var(--primary)' }}>{d.targetW} W</b> · {d.pct} % FTP</> : null}
               {d.wkg != null && <span> · <b style={{ color: 'var(--text)' }}>{d.wkg.toFixed(1).replace('.', ',')}</b> W/kg</span>}
             </div>
             {v.current && d.targetW > 0 && <div style={{ marginTop: 14 }}><GaugeBar deltaW={d.deltaW} /></div>}
           </div>
           <div style={panel}>
-            <Lbl>Bloc en cours</Lbl>
+            <Lbl>{t('w2c.currentBlock')}</Lbl>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginTop: 6 }}>
               <span style={{ fontSize: 17, fontWeight: 800, color: 'var(--text)' }}>{v.current?.name ?? '—'}</span>
               <span style={{ fontSize: 12, color: 'var(--primary)', fontWeight: 800 }}>{d.repLabel}</span>
             </div>
             <div style={{ fontSize: 48, fontWeight: 800, marginTop: 8, textAlign: 'center', fontVariantNumeric: 'tabular-nums', color: 'var(--text)' }}>{v.plan ? fmtMs(d.countdownS) : fmtClock(v.t)}</div>
-            <div style={{ textAlign: 'center', marginTop: 4 }}><Lbl>{v.plan ? 'Restant sur l’intervalle' : 'Temps écoulé'}</Lbl></div>
+            <div style={{ textAlign: 'center', marginTop: 4 }}><Lbl>{v.plan ? t('w2c.intervalRemaining') : t('w2c.elapsedTime')}</Lbl></div>
           </div>
-          <div style={panel}><Lbl>Zones</Lbl><div style={{ marginTop: 8 }}><ZoneBar active={d.zone} /></div></div>
+          <div style={panel}><Lbl>{t('w2c.zones')}</Lbl><div style={{ marginTop: 8 }}><ZoneBar active={d.zone} /></div></div>
         </div>
 
         {/* Centre */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div style={{ ...panel, height: 250, display: 'flex', flexDirection: 'column' }}>
             <div style={{ display: 'flex', gap: 14, marginBottom: 6 }}>
-              <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, fontWeight: 800, color: 'var(--text-mid)' }}><span style={{ width: 14, height: 3, borderRadius: 2, background: 'var(--ride-power)' }} />Puissance</span>
-              <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, fontWeight: 800, color: 'var(--text-mid)' }}><span style={{ width: 14, height: 3, borderRadius: 2, background: 'var(--ride-hr)' }} />Cardio</span>
-              <span style={{ marginLeft: 'auto', fontSize: 11, fontWeight: 800, color: 'var(--text-dim)' }}>10 dernières minutes</span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, fontWeight: 800, color: 'var(--text-mid)' }}><span style={{ width: 14, height: 3, borderRadius: 2, background: 'var(--ride-power)' }} />{t('w2c.power')}</span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, fontWeight: 800, color: 'var(--text-mid)' }}><span style={{ width: 14, height: 3, borderRadius: 2, background: 'var(--ride-hr)' }} />{t('w2c.cardio')}</span>
+              <span style={{ marginLeft: 'auto', fontSize: 11, fontWeight: 800, color: 'var(--text-dim)' }}>{t('w2c.last10min')}</span>
             </div>
             <div style={{ flex: 1, minHeight: 0 }}><LiveChart samples={v.samples} ftp={v.ftp} fcMax={v.fcMax} windowS={600} t={v.t} /></div>
           </div>
           <div style={{ ...panel, height: 160 }}>
-            <Lbl>Profil de séance · réel vs cible</Lbl>
+            <Lbl>{t('w2c.sessionProfile')}</Lbl>
             <div style={{ height: 118, marginTop: 6 }}><ProfileChart plan={v.plan} samples={v.samples} ftp={v.ftp} t={v.t} /></div>
           </div>
         </div>
 
         {/* Droite */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <Metric label={d.cadenceTarget != null ? `Cadence · cible ${d.cadenceTarget}` : 'Cadence'} value={d.cadence ?? '—'} unit="rpm" size={24} />
-          <Metric label="Fréq. cardiaque" value={d.hr ?? '—'} unit="bpm" accent="var(--ride-hr)" size={24} />
-          <Metric label="Puiss. moy" value={v.metrics.avgW} unit="W" size={24} />
+          <Metric label={d.cadenceTarget != null ? t('w2c.cadenceTarget', { n: d.cadenceTarget }) : t('w2c.cadence')} value={d.cadence ?? '—'} unit="rpm" size={24} />
+          <Metric label={t('w2c.heartRate')} value={d.hr ?? '—'} unit="bpm" accent="var(--ride-hr)" size={24} />
+          <Metric label={t('w2c.avgPower')} value={v.metrics.avgW} unit="W" size={24} />
           <Metric label="NP" value={v.metrics.np} unit="W" size={24} />
           <Metric label="IF" value={v.metrics.if.toFixed(2)} size={24} />
-          <Metric label="Travail" value={v.metrics.kj} unit="kJ" size={24} />
-          <Metric label="SM est." value={d.smEst} size={24} />
-          <Metric label="Temps restant" value={v.plan ? fmtClock(d.remainingS) : '—'} size={24} />
+          <Metric label={t('w2c.work')} value={v.metrics.kj} unit="kJ" size={24} />
+          <Metric label={t('w2c.smEst')} value={d.smEst} size={24} />
+          <Metric label={t('w2c.timeLeft')} value={v.plan ? fmtClock(d.remainingS) : '—'} size={24} />
         </div>
       </div>
 

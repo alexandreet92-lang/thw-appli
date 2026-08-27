@@ -9,6 +9,7 @@
 // ════════════════════════════════════════════════════════════════════
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
 import dynamic from 'next/dynamic'
+import { useI18n } from '@/lib/i18n'
 import './tokens.css'
 import type { GPSState } from '@/hooks/useGPSTracking'
 import { GPSStatus } from '@/hooks/useGPSTracking'
@@ -53,6 +54,7 @@ export interface LiveShellProps {
 export default function LiveShell({
   sportTitle, gps, resetTracking, settings, route, isDark, onExit, onFinished, onOpenSettings,
 }: LiveShellProps) {
+  const { t } = useI18n()
   const [machine, send] = useReducer(liveReducer, LIVE_INIT)
   const [timer, setTimer] = useState<LiveTimer>(TIMER_INIT)
   const [nowMs, setNowMs] = useState(() => Date.now())
@@ -202,11 +204,11 @@ export default function LiveShell({
     const nut = settings.alerts.nutritionInterval
     if (hyd > 0) {
       const n = Math.floor(durationSec / (hyd * 60))
-      if (n > lastHydrationRef.current) { lastHydrationRef.current = n; notify('Pensez à vous hydrater') }
+      if (n > lastHydrationRef.current) { lastHydrationRef.current = n; notify(t('w2c.hydrateReminder')) }
     }
     if (nut > 0) {
       const n = Math.floor(durationSec / (nut * 60))
-      if (n > lastNutritionRef.current) { lastNutritionRef.current = n; notify('Pensez à vous alimenter') }
+      if (n > lastNutritionRef.current) { lastNutritionRef.current = n; notify(t('w2c.fuelReminder')) }
     }
   }, [durationSec, eff, settings.alerts.hydrationInterval, settings.alerts.nutritionInterval, notify])
 
@@ -215,7 +217,7 @@ export default function LiveShell({
   useEffect(() => {
     if (eff !== 'recording' || !settings.alerts.gpsLost) return
     const lost = gps.status === GPSStatus.poor || gps.status === GPSStatus.error || gps.status === GPSStatus.unavailable
-    if (lost && gpsWasOkRef.current) { gpsWasOkRef.current = false; notify('Signal GPS perdu') }
+    if (lost && gpsWasOkRef.current) { gpsWasOkRef.current = false; notify(t('w2c.gpsLost')) }
     if (!lost) gpsWasOkRef.current = true
   }, [gps.status, eff, settings.alerts.gpsLost, notify])
 
@@ -257,7 +259,7 @@ export default function LiveShell({
     }
     const onPop = () => {
       pushSentinel()
-      showToast('Termine ou supprime l’activité d’abord')
+      showToast(t('w2c.finishOrDeleteFirst'))
     }
     pushSentinel()
     window.addEventListener('popstate', onPop)
@@ -313,7 +315,7 @@ export default function LiveShell({
   }
   const handleClose = () => {
     if (machine.phase === 'idle') { onExit(); return }
-    if (inSummaryFlow) { showToast('Enregistre ou supprime la séance d’abord'); return }
+    if (inSummaryFlow) { showToast(t('w2c.saveOrDeleteFirst')); return }
     send({ type: 'REQUEST_STOP' })
   }
   const handleFinish = () => {
@@ -328,14 +330,14 @@ export default function LiveShell({
     send({ type: 'DISCARD' })
     resetAll()
     setPendingBackup(null)
-    showToast('Activité supprimée')
+    showToast(t('w2c.activityDeleted'))
   }
   const handleDiscardSummary = () => {
     clearLiveBackup()
     send({ type: 'DISCARD' })
     resetAll()
     setPendingBackup(null)
-    showToast('Activité supprimée')
+    showToast(t('w2c.activityDeleted'))
   }
   const handleRestoreBackup = () => {
     if (!pendingBackup) return
@@ -404,10 +406,10 @@ export default function LiveShell({
   // ── GPS line (avant démarrage) ──
   const acc = gps.accuracy != null ? Math.max(1, Math.round(gps.accuracy)) : null
   const gpsLine = gps.status === GPSStatus.good
-    ? { color: 'var(--live-success)', text: `Bon signal (±${acc ?? 2} m)` }
+    ? { color: 'var(--live-success)', text: t('w2c.gpsGood', { acc: acc ?? 2 }) }
     : gps.status === GPSStatus.approximate
-      ? { color: 'var(--live-warn)', text: `Signal moyen (±${acc ?? 12} m)` }
-      : { color: 'var(--live-danger)', text: 'Recherche GPS…' }
+      ? { color: 'var(--live-warn)', text: t('w2c.gpsMedium', { acc: acc ?? 12 }) }
+      : { color: 'var(--live-danger)', text: t('w2c.gpsSearching') }
 
   const onMapPage = pageIndex === 1
   const controlsHidden = started && onMapPage
@@ -451,7 +453,7 @@ export default function LiveShell({
   const centerBtn = (
     <button
       onClick={centerIsPause ? handlePauseToggle : doLap}
-      aria-label={centerIsPause ? (showPlayIcon ? 'Reprendre' : 'Pause') : 'Lap'}
+      aria-label={centerIsPause ? (showPlayIcon ? t('w2c.resume') : t('w2c.pause')) : t('w2c.lap')}
       className="lv2-press"
       style={{
         width: 84, height: 84, borderRadius: '50%',
@@ -468,7 +470,7 @@ export default function LiveShell({
   const rightBtn = (
     <button
       onClick={swap ? handlePauseToggle : doLap}
-      aria-label={swap ? (showPlayIcon ? 'Reprendre' : 'Pause') : 'Lap'}
+      aria-label={swap ? (showPlayIcon ? t('w2c.resume') : t('w2c.pause')) : t('w2c.lap')}
       className="lv2-press"
       style={{ ...sideBtnStyle, color: 'var(--live-text)' }}
     >
@@ -513,7 +515,7 @@ export default function LiveShell({
             gpsAccuracy={gps.accuracy}
             dataSize={settings.display.dataSize}
             units={settings.units}
-            onSensorChipTap={() => showToast('Appairage capteurs — bientôt disponible')}
+            onSensorChipTap={() => showToast(t('w2c.sensorPairingSoon'))}
           />
         </section>
         <section className="lv2-page">
@@ -560,7 +562,7 @@ export default function LiveShell({
       }}>
         <button
           onClick={handleClose}
-          aria-label="Fermer"
+          aria-label={t('w2c.close')}
           className="lv2-press"
           style={{
             width: 36, height: 36, borderRadius: '50%', border: onMapPage ? '1px solid var(--live-hairline-2)' : 'none',
@@ -591,7 +593,7 @@ export default function LiveShell({
         {!onMapPage ? (
           <button
             onClick={onOpenSettings}
-            aria-label="Réglages"
+            aria-label={t('w2c.settings')}
             className="lv2-press"
             style={{
               width: 36, height: 36, borderRadius: '50%', border: 'none',
@@ -617,7 +619,7 @@ export default function LiveShell({
           fontSize: 12.5, fontWeight: 700, color: 'var(--live-warn)',
         }}>
           <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--live-warn)' }} />
-          En pause auto
+          {t('w2c.autoPaused')}
         </div>
       )}
 
@@ -646,7 +648,7 @@ export default function LiveShell({
           display: 'flex', alignItems: 'center', gap: 12,
         }}>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 13.5, fontWeight: 700 }}>Séance non envoyée</div>
+            <div style={{ fontSize: 13.5, fontWeight: 700 }}>{t('w2c.sessionNotSent')}</div>
             <div className="lv2-num" style={{ fontSize: 12, fontWeight: 500, color: 'var(--live-text-2)', marginTop: 2 }}>
               {formatHMS(pendingBackup.snap.durationSec, true)} · {frNum(pendingBackup.snap.distM / 1000, 1)} km
             </div>
@@ -659,11 +661,11 @@ export default function LiveShell({
               background: 'var(--live-accent)', color: 'var(--live-accent-on)', fontSize: 13, fontWeight: 800,
             }}
           >
-            Reprendre l’envoi
+            {t('w2c.resumeUpload')}
           </button>
           <button
             onClick={() => { clearLiveBackup(); setPendingBackup(null) }}
-            aria-label="Ignorer"
+            aria-label={t('w2c.dismiss')}
             className="lv2-press"
             style={{
               width: 30, height: 30, borderRadius: '50%', border: 'none', cursor: 'pointer',
@@ -717,7 +719,7 @@ export default function LiveShell({
               <button
                 onClick={handleStart}
                 disabled={!canStart}
-                aria-label="Démarrer"
+                aria-label={t('w2c.start')}
                 className="lv2-press"
                 style={{
                   position: 'absolute', left: '50%', top: 26, transform: 'translateX(-50%)',
@@ -738,7 +740,7 @@ export default function LiveShell({
                 fontSize: 13, fontWeight: 800, letterSpacing: '0.19em',
                 color: canStart ? 'var(--live-accent)' : 'var(--live-label)',
               }}>
-                DÉMARRER
+                {t('w2c.startCaps')}
               </div>
             </>
           )}
@@ -748,7 +750,7 @@ export default function LiveShell({
               position: 'absolute', top: 42, left: 0, right: 0,
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 44,
             }}>
-              <button onClick={() => send({ type: 'LOCK' })} aria-label="Verrouiller" className="lv2-press" style={sideBtnStyle}>
+              <button onClick={() => send({ type: 'LOCK' })} aria-label={t('w2c.lockAction')} className="lv2-press" style={sideBtnStyle}>
                 {lockOpenIcon}
               </button>
               <div style={{ marginTop: -16 }}>{centerBtn}</div>
@@ -759,12 +761,12 @@ export default function LiveShell({
           {locked && (
             <>
               <div style={{ position: 'absolute', top: 8, left: 0, right: 0, textAlign: 'center', fontSize: 12.5, color: 'var(--live-label)' }}>
-                Double tap pour déverrouiller
+                {t('w2c.doubleTapUnlock')}
               </div>
               <button
                 ref={bigLockRef}
                 onClick={handleBigLockTap}
-                aria-label="Déverrouiller"
+                aria-label={t('w2c.unlockAction')}
                 style={{
                   position: 'absolute', left: '50%', top: 38, transform: 'translateX(-50%)',
                   width: 56, height: 56, borderRadius: '50%', cursor: 'pointer',
@@ -802,7 +804,7 @@ export default function LiveShell({
             </div>
           </div>
           <div style={{ position: 'absolute', left: 0, right: 0, top: 'calc(40% + 92px)', textAlign: 'center', fontSize: 13.5, fontWeight: 600, color: 'var(--live-text-2)' }}>
-            Maintenez 2 s pour marquer un lap
+            {t('w2c.holdForLap')}
           </div>
         </div>
       )}

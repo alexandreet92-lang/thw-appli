@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { currentLocale } from '@/lib/i18n'
+import { currentLocale, useI18n } from '@/lib/i18n'
 
 export interface ClockEvent {
   id: string
@@ -45,6 +45,7 @@ function arcPath(startAngle: number, endAngle: number, r: number): string {
 }
 
 export default function ClockView({ events, year }: Props) {
+  const { t } = useI18n()
   const [now, setNow] = useState(() => new Date())
   const [tip, setTip] = useState<{ x: number; y: number; text: string } | null>(null)
   const [hoverId, setHoverId] = useState<string | null>(null)
@@ -168,7 +169,7 @@ export default function ClockView({ events, year }: Props) {
                   fill={isCurrent ? ACCENT : 'var(--text-mid)'}
                   transform={`rotate(${angle <= 180 ? angle : angle + 180}, ${lp.x}, ${lp.y})`}
                 >
-                  {label}
+                  {t(`w2e.month.${mi}`)}
                 </text>
                 {/* Badge if ≥2 events this month */}
                 {count >= 2 && (

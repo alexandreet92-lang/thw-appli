@@ -7,6 +7,7 @@ export const dynamic = 'force-dynamic'
 // ══════════════════════════════════════════════════════════════════
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { useI18n } from '@/lib/i18n'
 import { listPublishedPrograms, type CoachProgram } from '@/lib/coach/programs'
 import { listPublishedCoaches, type CoachProfile } from '@/lib/coach/vitrine'
 import ProgramDeck from '@/components/coach/ProgramDeck'
@@ -15,6 +16,7 @@ import ProgramDetailView from '@/components/coach/ProgramDetailView'
 import SlideSheet from '@/components/ui/SlideSheet'
 
 export default function ProgramsCatalog() {
+  const { t } = useI18n()
   const [programs, setPrograms] = useState<CoachProgram[] | null>(null)
   const [coaches, setCoaches] = useState<Record<string, CoachProfile>>({})
   const [filters, setFilters] = useState<ProgFilters>(DEFAULT_FILTERS)
@@ -34,27 +36,27 @@ export default function ProgramsCatalog() {
 
   return (
     <div style={{ width: '100%', maxWidth: 1040, margin: '0 auto', padding: '24px clamp(16px,4vw,40px) 64px', boxSizing: 'border-box', fontFamily: 'var(--font-body)' }}>
-      <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 600, color: 'var(--text)', margin: '0 0 4px' }}>Programmes</h1>
-      <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: '0 0 18px' }}>Filtre par sport, spécialité, IA ou prix, puis ajoute un programme à ton planning en un clic.</p>
+      <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 600, color: 'var(--text)', margin: '0 0 4px' }}>{t('w2h.programmes.title')}</h1>
+      <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: '0 0 18px' }}>{t('w2h.programmes.subtitle')}</p>
 
       {programs && programs.length > 0 && <ProgramFilters programs={programs} value={filters} onChange={setFilters} />}
 
       {programs === null ? (
-        <p style={{ fontSize: 13, color: 'var(--text-dim)' }}>Chargement…</p>
+        <p style={{ fontSize: 13, color: 'var(--text-dim)' }}>{t('w2h.common.loading')}</p>
       ) : filtered.length === 0 ? (
         <div style={{ background: 'var(--bg-card2)', borderRadius: 'var(--r-md)', padding: 28, textAlign: 'center' }}>
-          <p style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 500, color: 'var(--text)', margin: 0 }}>Aucun programme pour l&apos;instant</p>
-          <p style={{ fontSize: 13.5, color: 'var(--text-mid)', margin: '6px 0 0' }}>Reviens bientôt — les coachs publient leurs programmes.</p>
+          <p style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 500, color: 'var(--text)', margin: 0 }}>{t('w2h.programmes.empty')}</p>
+          <p style={{ fontSize: 13.5, color: 'var(--text-mid)', margin: '6px 0 0' }}>{t('w2h.programmes.emptyHint')}</p>
         </div>
       ) : (
         <ProgramDeck programs={filtered} onOpen={setOpen} />
       )}
 
       <p style={{ textAlign: 'center', marginTop: 26 }}>
-        <Link href="/coaches" style={{ fontSize: 13, fontWeight: 700, color: 'var(--primary)', textDecoration: 'none' }}>Trouver un coach →</Link>
+        <Link href="/coaches" style={{ fontSize: 13, fontWeight: 700, color: 'var(--primary)', textDecoration: 'none' }}>{t('w2h.programmes.findCoach')}</Link>
       </p>
 
-      <SlideSheet open={!!open} onClose={() => setOpen(null)} title="Programme">
+      <SlideSheet open={!!open} onClose={() => setOpen(null)} title={t('w2h.programmes.sheetTitle')}>
         {open && <ProgramDetailView program={open} coachName={openCoach?.display_name} coachSlug={openCoach?.slug} />}
       </SlideSheet>
     </div>

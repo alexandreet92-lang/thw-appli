@@ -22,6 +22,7 @@
 // simple) → bandeau simple + panneau « Guidage détaillé indisponible ».
 // ════════════════════════════════════════════════════════════════════
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useI18n } from '@/lib/i18n'
 import { MapContainer, TileLayer, Polyline, Marker, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import type { NavRouteInput } from '../RouteNavScreen'
@@ -180,6 +181,7 @@ export default function MapPage({
   started, locked, dim, speedKmh, powerW, heartRateBpm, distanceDoneM, gainDoneM, elapsedSec,
   points, currentPos, route, defaultLayer, units, onPrevPage, onNextPage,
 }: Props) {
+  const { t } = useI18n()
   const [layer, setLayer] = useState<LayerId>(defaultLayer)
   const [layersOpen, setLayersOpen] = useState(false)
   const [guideOpen, setGuideOpen] = useState(false)
@@ -305,13 +307,13 @@ export default function MapPage({
 
   // États simples du bandeau (parcours absent / avant départ / sans steps ORS).
   const guideTitle = !hasRoute
-    ? 'Guidage indisponible'
-    : started ? 'Suivez l’itinéraire' : 'Rejoignez l’itinéraire'
+    ? t('w2c.guidanceUnavailable')
+    : started ? t('w2c.followRoute') : t('w2c.joinRoute')
   const guideSub = !hasRoute
-    ? 'Aucun parcours chargé'
+    ? t('w2c.noRouteLoaded')
     : started
-      ? `${fmtDist(remainingM)} restants`
-      : `Départ à ${distToStartM != null ? fmtDist(distToStartM) : '—'}`
+      ? t('w2c.remaining', { d: fmtDist(remainingM) })
+      : t('w2c.startAt', { d: distToStartM != null ? fmtDist(distToStartM) : '—' })
   const bannerIconKind = hasRoute ? (started ? 'straight' : 'join') : 'straight'
 
   return (
@@ -399,14 +401,14 @@ export default function MapPage({
               }}>
                 {afterStep && afterGapM != null ? (
                   <>
-                    <span>puis</span>
+                    <span>{t('w2c.then')}</span>
                     {afterBadge && <RoadBadge info={afterBadge} />}
                     <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {maneuverShortFR(afterStep.type).toLowerCase()} dans {fmtDist(afterGapM)}
+                      {t('w2c.maneuverIn', { man: maneuverShortFR(afterStep.type).toLowerCase(), d: fmtDist(afterGapM) })}
                     </span>
                   </>
                 ) : (
-                  <span>{fmtDist(remainingM)} restants</span>
+                  <span>{t('w2c.remaining', { d: fmtDist(remainingM) })}</span>
                 )}
               </div>
             </>
@@ -445,7 +447,7 @@ export default function MapPage({
         <>
           <button
             onClick={() => setLayersOpen(o => !o)}
-            aria-label="Fond de carte"
+            aria-label={t('w2c.mapLayer')}
             className="lv2-press"
             style={{
               position: 'absolute', top: 'calc(env(safe-area-inset-top) + 126px)', right: 24,
@@ -467,7 +469,7 @@ export default function MapPage({
               borderRadius: 14, overflow: 'hidden', minWidth: 150,
               backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
             }}>
-              {([['std', 'Standard'], ['sat', 'Satellite'], ['hyb', 'Hybride'], ['dark', 'Sombre']] as [LayerId, string][]).map(([id, lbl], i) => (
+              {([['std', 'w2c.layerStandard'], ['sat', 'w2c.layerSatellite'], ['hyb', 'w2c.layerHybrid'], ['dark', 'w2c.layerDark']] as [LayerId, string][]).map(([id, lbl], i) => (
                 <button
                   key={id}
                   onClick={() => { setLayer(id); setLayersOpen(false) }}
@@ -480,7 +482,7 @@ export default function MapPage({
                     color: layer === id ? 'var(--live-accent)' : 'var(--live-text)',
                   }}
                 >
-                  {lbl}
+                  {t(lbl)}
                   {layer === id && (
                     <svg width="14" height="14" viewBox="0 0 24 24">
                       <path d="M4 12.5 L9.5 18 L20 6.5" stroke="currentColor" strokeWidth="2.6" fill="none" strokeLinecap="round" strokeLinejoin="round" />
@@ -494,12 +496,12 @@ export default function MapPage({
       )}
 
       {/* Flèches ‹ › à mi-hauteur — TOUJOURS visibles, au-dessus de la carte */}
-      {[{ label: 'Page précédente', side: { left: 10 }, glyph: '‹', on: onPrevPage },
-        { label: 'Page suivante', side: { right: 10 }, glyph: '›', on: onNextPage }].map(a => (
+      {[{ label: 'w2c.prevPage', side: { left: 10 }, glyph: '‹', on: onPrevPage },
+        { label: 'w2c.nextPage', side: { right: 10 }, glyph: '›', on: onNextPage }].map(a => (
         <button
           key={a.glyph}
           onClick={a.on}
-          aria-label={a.label}
+          aria-label={t(a.label)}
           style={{
             position: 'absolute', top: '50%', transform: 'translateY(-50%)', ...a.side,
             width: 32, height: 32, borderRadius: '50%', zIndex: 20,
@@ -521,7 +523,7 @@ export default function MapPage({
           display: 'flex', alignItems: 'center', whiteSpace: 'nowrap',
           fontSize: 12.5, fontWeight: 600, color: 'var(--live-text-2)',
         }}>
-          Itinéraire · {frNum((totalM / 1000) * df, 1)} {getUnitLabel('km', units)}
+          {t('w2c.routeLabel')} · {frNum((totalM / 1000) * df, 1)} {getUnitLabel('km', units)}
           {totalGainM != null && ` · ${Math.round(totalGainM * af)} ${getUnitLabel('m', units)} D+`}
         </div>
       )}
@@ -537,10 +539,10 @@ export default function MapPage({
         }}>
           <div style={{ display: 'flex', gap: 26, alignItems: 'flex-end' }}>
             {[
-              { lb: 'W', v: powerW != null ? String(Math.round(powerW)) : '—' },
-              { lb: 'FC', v: heartRateBpm != null ? String(Math.round(heartRateBpm)) : '—' },
+              { id: 'W', lb: 'W', v: powerW != null ? String(Math.round(powerW)) : '—' },
+              { id: 'FC', lb: t('w2c.hr'), v: heartRateBpm != null ? String(Math.round(heartRateBpm)) : '—' },
             ].map(c => (
-              <div key={c.lb}>
+              <div key={c.id}>
                 <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.16em', opacity: 0.85 }}>{c.lb}</div>
                 <div className="lv2-num" style={{ fontSize: 28, fontWeight: 800, lineHeight: 1.05, marginTop: 1 }}>
                   {c.v}
@@ -563,10 +565,10 @@ export default function MapPage({
           D+ fait / durée). */}
       {(started || hasRoute) && (() => {
         const estCol = {
-          label: 'Temps est.',
+          label: t('w2c.estTime'),
           value: estMin >= 60 ? formatHMS(Math.round(estMin * 60), true) : String(Math.round(estMin)),
           unit: estMin < 60 ? 'min' : undefined,
-          sub: started ? `écoulé ${Math.floor(elapsedSec / 60)} min` : null,
+          sub: started ? t('w2c.elapsedMin', { n: Math.floor(elapsedSec / 60) }) : null,
         }
         // Colonnes D+ uniquement si un dénivelé RÉEL est connu — jamais de
         // valeur inventée quand le parcours n'a pas d'altitudes.
@@ -574,43 +576,43 @@ export default function MapPage({
           ? hasRoute
             ? [
               ...(remainingGainM != null ? [{
-                label: 'D+ restant',
+                label: t('w2c.elevRemaining'),
                 value: String(Math.round(remainingGainM * af)),
                 unit: getUnitLabel('m', units),
-                sub: `fait ${Math.round(gainDoneM * af)} ${getUnitLabel('m', units)}`,
+                sub: t('w2c.doneValue', { v: `${Math.round(gainDoneM * af)} ${getUnitLabel('m', units)}` }),
               }] : []),
               {
-                label: 'Restant',
+                label: t('w2c.remainingLabel'),
                 value: frNum((remainingM / 1000) * df, 1),
                 unit: getUnitLabel('km', units),
-                sub: `fait ${frNum((distanceDoneM / 1000) * df, 2)} ${getUnitLabel('km', units)}`,
+                sub: t('w2c.doneValue', { v: `${frNum((distanceDoneM / 1000) * df, 2)} ${getUnitLabel('km', units)}` }),
               },
               estCol,
             ]
             : [
               {
-                label: 'Distance',
+                label: t('w2c.distance'),
                 value: frNum((distanceDoneM / 1000) * df, 2),
                 unit: getUnitLabel('km', units),
                 sub: null,
               },
               {
-                label: 'D+ fait',
+                label: t('w2c.elevDone'),
                 value: String(Math.round(gainDoneM * af)),
                 unit: getUnitLabel('m', units),
                 sub: null,
               },
-              { label: 'Durée', value: formatHMS(elapsedSec, true), unit: undefined, sub: null },
+              { label: t('w2c.duration'), value: formatHMS(elapsedSec, true), unit: undefined, sub: null },
             ]
           : [
             ...(totalGainM != null ? [{
-              label: 'D+ total',
+              label: t('w2c.elevTotal'),
               value: String(Math.round(totalGainM * af)),
               unit: getUnitLabel('m', units),
               sub: null,
             }] : []),
             {
-              label: 'Distance',
+              label: t('w2c.distance'),
               value: frNum((totalM / 1000) * df, 1),
               unit: getUnitLabel('km', units),
               sub: null,

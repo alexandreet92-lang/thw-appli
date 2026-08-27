@@ -24,6 +24,7 @@
 // petites bosses et sous-estime le D+ de ~45 %.
 // ══════════════════════════════════════════════════════════════════
 import { useMemo, useRef, useState, useCallback } from 'react'
+import { useI18n } from '@/lib/i18n'
 import {
   cumulativeGain, gainAtKm, gainBetween, eleAtKm, estimateRangeMin,
   solveSpeedMs as solveSpeedMsLib, estimatePortionMin as estimatePortionMinLib,
@@ -190,6 +191,7 @@ export default function RouteElevationProfile({
   profile, totalKm, totalGainM, height = 92, onHoverKm, portions, sequencing,
   staticMode = false, hideAxis = false,
 }: Props) {
+  const { t } = useI18n()
   const svgRef = useRef<SVGSVGElement>(null)
   const [boxW, setBoxW] = useState(600)
   const [hoverKm, setHoverKm] = useState<number | null>(null)
@@ -428,23 +430,23 @@ export default function RouteElevationProfile({
       {showSeqUi && (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8, marginBottom: 4 }}>
           {selectMode && (
-            <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>Glisse sur le profil pour sélectionner une portion</span>
+            <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>{t('w2f.drag_to_select')}</span>
           )}
           <button
             type="button"
             onClick={() => { setSelectMode(v => v === 'simple' ? null : 'simple'); setPending(null); setDrag(null) }}
-            title={selectMode === 'simple' ? 'Quitter le mode séquençage' : 'Séquencer une portion du parcours'}
-            aria-label="Séquencer le parcours"
+            title={selectMode === 'simple' ? t('w2f.exit_sequencing') : t('w2f.sequence_portion')}
+            aria-label={t('w2f.sequence_route')}
             style={{ ...seqBtn(selectMode === 'simple'), width: 26, padding: 0, fontSize: 15, fontWeight: 600 }}>
             {selectMode === 'simple' ? '✕' : '+'}
           </button>
           <button
             type="button"
             onClick={() => { setSelectMode(v => v === 'interval' ? null : 'interval'); setPending(null); setDrag(null) }}
-            title="Séquencer un fractionné sur une portion"
-            aria-label="Fractionné"
+            title={t('w2f.sequence_interval')}
+            aria-label={t('w2f.interval')}
             style={seqBtn(selectMode === 'interval')}>
-            {selectMode === 'interval' ? '✕ Fractionné' : 'Fractionné'}
+            {selectMode === 'interval' ? t('w2f.interval_close') : t('w2f.interval')}
           </button>
         </div>
       )}
@@ -570,9 +572,9 @@ export default function RouteElevationProfile({
           fontVariantNumeric: 'tabular-nums', lineHeight: 1.45,
         }}>
           <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: 'var(--text)' }}>KM {fmtKm(hoverKm)}</p>
-          <p style={{ margin: 0, fontSize: 11, color: 'var(--text-mid)' }}>Altitude <strong style={{ color: 'var(--text)' }}>{Math.round(eleAtKm(profile, hoverKm))} m</strong></p>
-          <p style={{ margin: 0, fontSize: 11, color: 'var(--text-mid)' }}>D+ cumulé <strong data-testid="elev-cum-gain" style={{ color: 'var(--text)' }}>{Math.round(gainAt(hoverKm))} m</strong></p>
-          <p style={{ margin: 0, fontSize: 11, color: 'var(--text-mid)' }}>Pente <strong style={{ color: 'var(--text)' }}>{slopeAt(hoverKm).toFixed(1).replace('.', ',')} %</strong></p>
+          <p style={{ margin: 0, fontSize: 11, color: 'var(--text-mid)' }}>{t('w2f.altitude')} <strong style={{ color: 'var(--text)' }}>{Math.round(eleAtKm(profile, hoverKm))} m</strong></p>
+          <p style={{ margin: 0, fontSize: 11, color: 'var(--text-mid)' }}>{t('w2f.cum_gain')} <strong data-testid="elev-cum-gain" style={{ color: 'var(--text)' }}>{Math.round(gainAt(hoverKm))} m</strong></p>
+          <p style={{ margin: 0, fontSize: 11, color: 'var(--text-mid)' }}>{t('w2f.slope')} <strong style={{ color: 'var(--text)' }}>{slopeAt(hoverKm).toFixed(1).replace('.', ',')} %</strong></p>
         </div>
       )}
 
@@ -592,20 +594,20 @@ export default function RouteElevationProfile({
           }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
             <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text)' }}>
-              {pendingIsInterval ? 'Fractionné sur le parcours' : 'Portion du parcours'}
+              {pendingIsInterval ? t('w2f.interval_on_route') : t('w2f.route_portion')}
             </span>
-            <button type="button" onClick={() => setPending(null)} aria-label="Fermer"
+            <button type="button" onClick={() => setPending(null)} aria-label={t('w2f.close')}
               style={{ border: 'none', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 13, padding: 2, lineHeight: 1 }}>✕</button>
           </div>
           <div style={{ display: 'flex', gap: 10, marginBottom: 8 }}>
             <div>
-              <span style={miniLabel}>KM début</span>
+              <span style={miniLabel}>{t('w2f.km_start')}</span>
               <input type="number" step={0.1} min={0} max={pending.endKm - 0.1} value={pending.startKm}
                 onChange={e => { const v = parseFloat(e.target.value); if (!isNaN(v)) setPending(p => p ? { ...p, startKm: Math.max(0, Math.min(v, p.endKm - 0.1)) } : p) }}
                 style={inputStyle} />
             </div>
             <div>
-              <span style={miniLabel}>KM fin</span>
+              <span style={miniLabel}>{t('w2f.km_end')}</span>
               <input type="number" step={0.1} min={pending.startKm + 0.1} max={total} value={pending.endKm}
                 onChange={e => { const v = parseFloat(e.target.value); if (!isNaN(v)) setPending(p => p ? { ...p, endKm: Math.min(total, Math.max(v, p.startKm + 0.1)) } : p) }}
                 style={inputStyle} />
@@ -619,34 +621,34 @@ export default function RouteElevationProfile({
             <>
               <div style={{ display: 'flex', gap: 10, marginBottom: 8 }}>
                 <div>
-                  <span style={miniLabel}>Effort</span>
+                  <span style={miniLabel}>{t('w2f.effort')}</span>
                   <input type="text" inputMode="numeric" value={effortStr} placeholder="mm:ss"
                     onChange={e => setEffortStr(e.target.value)} style={inputStyle} />
                 </div>
                 <div>
-                  <span style={miniLabel}>Récup</span>
+                  <span style={miniLabel}>{t('w2f.recovery')}</span>
                   <input type="text" inputMode="numeric" value={recupStr} placeholder="mm:ss"
                     onChange={e => setRecupStr(e.target.value)} style={inputStyle} />
                 </div>
                 <div>
-                  <span style={miniLabel}>Reps</span>
+                  <span style={miniLabel}>{t('w2f.reps')}</span>
                   <input type="number" step={1} min={1} max={60} value={repsStr}
                     onChange={e => setRepsStr(e.target.value)} style={{ ...inputStyle, width: 46 }} />
                 </div>
               </div>
               <div style={{ display: 'flex', gap: 10, marginBottom: 8 }}>
                 <div>
-                  <span style={miniLabel}>Watts effort</span>
+                  <span style={miniLabel}>{t('w2f.watts_effort')}</span>
                   <input type="number" step={5} min={0} value={wEffStr}
                     onChange={e => setWEffStr(e.target.value)} style={inputStyle} />
                 </div>
                 <div>
-                  <span style={miniLabel}>Watts récup</span>
+                  <span style={miniLabel}>{t('w2f.watts_recovery')}</span>
                   <input type="number" step={5} min={0} value={wRecStr}
                     onChange={e => setWRecStr(e.target.value)} style={inputStyle} />
                 </div>
                 <div>
-                  <span style={miniLabel}>FC cible</span>
+                  <span style={miniLabel}>{t('w2f.hr_target')}</span>
                   <input type="number" step={1} min={0} value={hrStr} placeholder="bpm"
                     onChange={e => setHrStr(e.target.value)} style={inputStyle} />
                 </div>
@@ -655,7 +657,7 @@ export default function RouteElevationProfile({
           ) : (
             <div style={{ display: 'flex', gap: 10, marginBottom: 8 }}>
               <div>
-                <span style={miniLabel}>Watts cibles</span>
+                <span style={miniLabel}>{t('w2f.watts_target')}</span>
                 <input type="number" step={5} min={0} value={wattsStr}
                   onChange={e => setWattsStr(e.target.value)} style={inputStyle} />
               </div>
@@ -668,7 +670,7 @@ export default function RouteElevationProfile({
           )}
 
           <p style={{ margin: '0 0 10px', fontSize: 11, color: 'var(--text-mid)' }}>
-            Durée estimée <strong style={{ fontSize: 14, color: 'var(--text)', fontVariantNumeric: 'tabular-nums' }}>{fmtEstMin(pendingEstMin)}</strong>
+            {t('w2f.estimated_duration')} <strong style={{ fontSize: 14, color: 'var(--text)', fontVariantNumeric: 'tabular-nums' }}>{fmtEstMin(pendingEstMin)}</strong>
           </p>
           <div style={{ display: 'flex', gap: 8 }}>
             <button type="button" onClick={submitPending} disabled={pendingWatts <= 0}
@@ -677,15 +679,15 @@ export default function RouteElevationProfile({
                 background: 'var(--primary, #06B6D4)', color: 'var(--on-primary, #fff)', fontSize: 12, fontWeight: 700,
                 opacity: pendingWatts > 0 ? 1 : 0.5,
               }}>
-              {pending.id ? 'Mettre à jour' : 'Ajouter le bloc'}
+              {pending.id ? t('w2f.update') : t('w2f.add_block')}
             </button>
             {pending.id && sequencing.onRemoveBlock && (
-              <button type="button" onClick={removePending} aria-label="Supprimer le bloc"
+              <button type="button" onClick={removePending} aria-label={t('w2f.remove_block')}
                 style={{
                   padding: '8px 12px', borderRadius: 10, border: '1px solid var(--border)', cursor: 'pointer',
                   background: 'transparent', color: 'var(--danger, #EF4444)', fontSize: 12, fontWeight: 700,
                 }}>
-                Supprimer
+                {t('w2f.remove')}
               </button>
             )}
           </div>

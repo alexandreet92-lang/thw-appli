@@ -10,6 +10,7 @@
 import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { IconX } from '@tabler/icons-react'
+import { useI18n } from '@/lib/i18n'
 import { RACE_EDITOR_CSS } from './raceTheme'
 import { testsForSport, protocolForSlug, type CatalogSport } from '@/lib/tests/catalog'
 import TestProtocolView from '@/components/tests/TestProtocolView'
@@ -43,6 +44,7 @@ export default function TestEditorSheet({ mode = 'create', initial, initialDate,
   onDelete?: () => void
   onSave: (t: PlannedTestInput) => Promise<void> | void
 }) {
+  const { t } = useI18n()
   const isEdit = mode === 'edit'
   const [mounted, setMounted] = useState(false)
   useEffect(() => { setMounted(true) }, [])
@@ -91,50 +93,50 @@ export default function TestEditorSheet({ mode = 'create', initial, initialDate,
       }}>
         <div style={{ width: 40, height: 4, borderRadius: 4, background: 'var(--border-mid)', margin: '10px auto 0', flexShrink: 0 }} />
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 24px 14px', flexShrink: 0, borderBottom: '1px solid var(--border)' }}>
-          <h3 className="ed-fr" style={{ margin: 0, fontSize: 22, fontWeight: 600, color: 'var(--text)' }}>{isEdit ? 'Modifier le test' : 'Planifier un test'}</h3>
-          <button onClick={onClose} aria-label="Fermer" style={{ width: 32, height: 32, borderRadius: '50%', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><IconX size={16} /></button>
+          <h3 className="ed-fr" style={{ margin: 0, fontSize: 22, fontWeight: 600, color: 'var(--text)' }}>{isEdit ? t('w2e.editTest') : t('w2e.planTest')}</h3>
+          <button onClick={onClose} aria-label={t('w2e.close')} style={{ width: 32, height: 32, borderRadius: '50%', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><IconX size={16} /></button>
         </div>
 
         <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px 28px' }}>
           <div style={{ maxWidth: 720, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 22 }}>
             {/* Sport */}
             <div>
-              <p style={LBL}>Sport</p>
+              <p style={LBL}>{t('w2e.sportLabel')}</p>
               <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}>
                 {SPORTS.map(s => {
                   const on = sport === s.id
-                  return <button key={s.id} onClick={() => { setSport(s.id); setRef(null) }} style={{ padding: '8px 14px', borderRadius: 999, border: `1px solid ${on ? s.color : 'var(--border)'}`, cursor: 'pointer', fontSize: 12.5, fontWeight: 600, background: on ? `${s.color}1f` : 'var(--bg-card)', color: on ? s.color : 'var(--text-dim)' }}>{s.label}</button>
+                  return <button key={s.id} onClick={() => { setSport(s.id); setRef(null) }} style={{ padding: '8px 14px', borderRadius: 999, border: `1px solid ${on ? s.color : 'var(--border)'}`, cursor: 'pointer', fontSize: 12.5, fontWeight: 600, background: on ? `${s.color}1f` : 'var(--bg-card)', color: on ? s.color : 'var(--text-dim)' }}>{t(`w2e.sport.${s.id}`)}</button>
                 })}
               </div>
             </div>
 
             {/* Test lié (catalogue Performance) */}
             <div>
-              <p style={LBL}>Test lié (page Performance)</p>
+              <p style={LBL}>{t('w2e.linkedTest')}</p>
               <select value={ref ?? ''} onChange={e => pickTest(e.target.value)} style={INP}>
-                <option value="">— Test personnalisé (non lié) —</option>
-                {tests.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                <option value="">{t('w2e.customTestOption')}</option>
+                {tests.map(tt => <option key={tt.id} value={tt.id}>{tt.name}</option>)}
               </select>
-              {ref && <p style={{ fontSize: 11, color: accent, margin: '6px 0 0' }}>Lié à « {tests.find(t => t.id === ref)?.name} » — visible dans la bulle tests de Performance.</p>}
+              {ref && <p style={{ fontSize: 11, color: accent, margin: '6px 0 0' }}>{t('w2e.linkedTo', { name: tests.find(tt => tt.id === ref)?.name ?? '' })}</p>}
             </div>
 
             {/* Procédé du test lié (même déroulé que la page Performance) */}
             {ref && protocolForSlug(ref) && (
               <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 14, padding: '16px 16px 18px' }}>
-                <p style={{ ...LBL, color: accent, marginBottom: 12 }}>Procédé du test</p>
+                <p style={{ ...LBL, color: accent, marginBottom: 12 }}>{t('w2e.testProcedure')}</p>
                 <TestProtocolView proto={protocolForSlug(ref)!} accent={accent} />
               </div>
             )}
 
             {/* Titre */}
-            <div><p style={LBL}>Titre</p><input style={INP} value={title} onChange={e => setTitle(e.target.value)} placeholder="Ex. Test VMA piste" /></div>
+            <div><p style={LBL}>{t('w2e.title')}</p><input style={INP} value={title} onChange={e => setTitle(e.target.value)} placeholder={t('w2e.titlePlaceholder')} /></div>
 
             {/* Date */}
-            <div><p style={LBL}>Date</p><input type="date" style={INP} value={date} onChange={e => setDate(e.target.value)} /></div>
+            <div><p style={LBL}>{t('w2e.date')}</p><input type="date" style={INP} value={date} onChange={e => setDate(e.target.value)} /></div>
 
             {/* Déroulé / protocole */}
-            <div><p style={LBL}>Déroulé du test</p>
-              <textarea rows={6} style={{ ...INP, resize: 'vertical', lineHeight: 1.5 }} value={protocol} onChange={e => setProto(e.target.value)} placeholder="Échauffement, étapes, conditions, données à relever…" /></div>
+            <div><p style={LBL}>{t('w2e.testFlow')}</p>
+              <textarea rows={6} style={{ ...INP, resize: 'vertical', lineHeight: 1.5 }} value={protocol} onChange={e => setProto(e.target.value)} placeholder={t('w2e.testFlowPlaceholder')} /></div>
           </div>
         </div>
 
@@ -142,16 +144,16 @@ export default function TestEditorSheet({ mode = 'create', initial, initialDate,
           <div style={{ display: 'flex', gap: 10, width: '100%', maxWidth: 720, alignItems: 'center' }}>
             {isEdit && onDelete && (confirmDelete ? (
               <div style={{ display: 'flex', gap: 8, alignItems: 'center', flex: 1, flexWrap: 'wrap' }}>
-                <span style={{ fontSize: 12.5, fontWeight: 600, color: '#ef4444' }}>Supprimer ce test ?</span>
-                <button onClick={onDelete} style={{ padding: '10px 16px', borderRadius: 999, background: '#ef4444', border: 'none', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Confirmer</button>
-                <button onClick={() => setConfirmDelete(false)} style={{ padding: '10px 14px', borderRadius: 999, background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-mid)', fontSize: 13, cursor: 'pointer' }}>Annuler</button>
+                <span style={{ fontSize: 12.5, fontWeight: 600, color: '#ef4444' }}>{t('w2e.deleteTestConfirm')}</span>
+                <button onClick={onDelete} style={{ padding: '10px 16px', borderRadius: 999, background: '#ef4444', border: 'none', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>{t('w2e.confirm')}</button>
+                <button onClick={() => setConfirmDelete(false)} style={{ padding: '10px 14px', borderRadius: 999, background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-mid)', fontSize: 13, cursor: 'pointer' }}>{t('w2e.cancel')}</button>
               </div>
             ) : (
-              <button onClick={() => setConfirmDelete(true)} style={{ padding: 12, borderRadius: 999, background: 'transparent', border: '1px solid #ef4444', color: '#ef4444', fontSize: 13.5, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>Supprimer</button>
+              <button onClick={() => setConfirmDelete(true)} style={{ padding: 12, borderRadius: 999, background: 'transparent', border: '1px solid #ef4444', color: '#ef4444', fontSize: 13.5, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>{t('w2e.delete')}</button>
             ))}
             {!confirmDelete && (<>
-              <button onClick={onClose} style={{ flex: 1, padding: 12, borderRadius: 999, background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-mid)', fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}>Fermer</button>
-              <button onClick={handleSave} disabled={saving || !title.trim() || !date} style={{ flex: 2, padding: 12, borderRadius: 999, background: accent, border: 'none', color: '#fff', fontWeight: 700, fontSize: 13.5, cursor: saving ? 'wait' : 'pointer', opacity: (!title.trim() || !date) ? 0.5 : 1 }}>{saving ? '…' : isEdit ? 'Enregistrer' : 'Planifier'}</button>
+              <button onClick={onClose} style={{ flex: 1, padding: 12, borderRadius: 999, background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-mid)', fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}>{t('w2e.close')}</button>
+              <button onClick={handleSave} disabled={saving || !title.trim() || !date} style={{ flex: 2, padding: 12, borderRadius: 999, background: accent, border: 'none', color: '#fff', fontWeight: 700, fontSize: 13.5, cursor: saving ? 'wait' : 'pointer', opacity: (!title.trim() || !date) ? 0.5 : 1 }}>{saving ? '…' : isEdit ? t('w2e.save') : t('w2e.schedule')}</button>
             </>)}
           </div>
         </div>

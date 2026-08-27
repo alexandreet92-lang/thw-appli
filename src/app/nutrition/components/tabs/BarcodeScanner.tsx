@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { useI18n } from '@/lib/i18n'
 
 interface BarcodeDet {
   detect(target: HTMLVideoElement): Promise<Array<{ rawValue: string }>>
@@ -19,6 +20,7 @@ interface Props {
 }
 
 export default function BarcodeScanner({ onDetected, onClose }: Props) {
+  const { t } = useI18n()
   const videoRef  = useRef<HTMLVideoElement>(null)
   const activeRef = useRef(true)
   const [error,   setError]   = useState<string | null>(null)
@@ -29,7 +31,7 @@ export default function BarcodeScanner({ onDetected, onClose }: Props) {
   useEffect(() => {
     if (!mounted) return
     if (!window.BarcodeDetector) {
-      setError('Scanner disponible sur mobile uniquement')
+      setError(t('w2b.scannerMobileOnly'))
       return
     }
 
@@ -54,7 +56,7 @@ export default function BarcodeScanner({ onDetected, onClose }: Props) {
           if (activeRef.current) requestAnimationFrame(() => void scan())
         }
         void scan()
-      } catch { setError("Impossible d'acceder a la camera") }
+      } catch { setError(t('w2b.cameraError')) }
     }
 
     function stop() {
@@ -64,7 +66,7 @@ export default function BarcodeScanner({ onDetected, onClose }: Props) {
 
     void start()
     return () => { stop() }
-  }, [mounted, onDetected])
+  }, [mounted, onDetected, t])
 
   if (!mounted) return null
 
@@ -81,14 +83,14 @@ export default function BarcodeScanner({ onDetected, onClose }: Props) {
               <div style={{ position: 'absolute', top: '30%', left: 12, right: 12, height: '40%', border: '2px solid #06B6D4', boxShadow: '0 0 0 9999px rgba(0,0,0,0.4)' }} />
             </div>
             <p style={{ color: '#fff', fontSize: 12, textAlign: 'center', marginTop: 10 }}>
-              Placez le code-barres dans le cadre
+              {t('w2b.placeBarcode')}
             </p>
           </>
         )}
       </div>
       <button onClick={onClose}
         style={{ marginTop: 24, padding: '10px 28px', borderRadius: 10, border: '1px solid rgba(255,255,255,0.3)', background: 'none', color: '#fff', fontSize: 13, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
-        Fermer
+        {t('w2b.close')}
       </button>
     </div>
   )

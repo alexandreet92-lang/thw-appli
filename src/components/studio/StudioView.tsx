@@ -31,6 +31,7 @@ import { hasCoachAccess } from '@/lib/coach/owner'
 import { listMyAthletes } from '@/lib/coach/relationships'
 import { VoiceOverlay } from '@/components/ai/VoiceOverlay'
 import StudioMarkdown from './StudioMarkdown'
+import { useI18n } from '@/lib/i18n'
 
 // Nœuds = « bulles-logos » circulaires (façon Make) : diamètre fixe, libellé
 // dessous, port d'entrée à gauche / de sortie à droite (au centre vertical).
@@ -170,6 +171,7 @@ interface RunRow {
 }
 
 export default function StudioView({ onClose }: { onClose: () => void }) {
+  const { t } = useI18n()
   const [graph, setGraph] = useState<StudioGraph>(() => emptyGraph())
   const [tab, setTab] = useState<Tab>('canvas')
   // ── Accueil multi-systèmes + accès (offre Pro/Expert) ────────
@@ -186,7 +188,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
       setCoachAccess(ok)
       if (!ok) return
       const ath = await listMyAthletes().catch(() => [])
-      setCoachAthletes(ath.map(a => ({ id: a.id, name: a.full_name || a.first_name || 'Athlète' })))
+      setCoachAthletes(ath.map(a => ({ id: a.id, name: a.full_name || a.first_name || t('w1i.athlete') })))
     })
   }, [])
   const [walletOpen, setWalletOpen] = useState(false)
@@ -203,7 +205,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
   const [scopeTab, setScopeTab] = useState<'perso' | 'coach'>('perso')
   // Popover « Nouveau système » : nom + dossier (existant ou nouveau).
   const [newSysOpen, setNewSysOpen] = useState(false)
-  const [newSysName, setNewSysName] = useState('Mon système')
+  const [newSysName, setNewSysName] = useState(t('w1i.my_system'))
   const [newSysFolder, setNewSysFolder] = useState<string | null>(null)
   const [newSysNewFolder, setNewSysNewFolder] = useState('')
   // Coach : rattacher un système « Pour mes athlètes » à un athlète précis (optionnel).
@@ -410,7 +412,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
         if (migrated) list = [migrated, ...list]
         setSystems(list)
       } catch {
-        setHomeErr('Impossible de charger tes systèmes — vérifie ta connexion.')
+        setHomeErr(t('w1i.err_load_systems'))
       } finally {
         setHomeLoading(false)
       }
@@ -641,11 +643,11 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
     const n: StudioNode = {
       id: genId(), kind, x: cx, y: cy,
       title: opts?.title
-        ?? (kind === 'agent' ? 'Nouvel agent'
+        ?? (kind === 'agent' ? t('w1i.new_agent')
           : kind === 'source' ? SOURCE_LABEL[sourceKey ?? 'activities']
           : kind === 'action' ? ACTION_LABEL[actionKey ?? 'planning_save']
           : KIND_LABEL[kind]),
-      role: kind === 'trigger' ? '' : kind === 'validation' ? 'Vérifie ce qui précède avant de continuer.' : kind === 'source' || kind === 'action' ? undefined : 'Décris le rôle de cet agent…',
+      role: kind === 'trigger' ? '' : kind === 'validation' ? t('w1i.validation_role_default') : kind === 'source' || kind === 'action' ? undefined : t('w1i.agent_role_default'),
       model: kind === 'agent' || kind === 'merge' ? 'athena' : undefined,
       sourceKey,
       actionKey,
@@ -672,7 +674,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
     void updateSystem(systemId, { athlete_id: aid }).catch(() => {})
   }
   const openAthleteId = (systems.find(s => s.id === systemId)?.athlete_id) ?? null
-  const openAthleteName = openAthleteId ? (coachAthletes.find(a => a.id === openAthleteId)?.name ?? 'Athlète lié') : null
+  const openAthleteName = openAthleteId ? (coachAthletes.find(a => a.id === openAthleteId)?.name ?? t('w1i.linked_athlete')) : null
   const loadExample = () => { const g = sampleGraph(); commit({ ...g, name: graph.name || g.name }); setSelId(null); setStatus({}); setNodeText({}) }
   const clearCanvas = () => { commit({ ...emptyGraph(), id: graph.id, name: graph.name }); setSelId(null); setSelEdge(null); setStatus({}); setNodeText({}) }
 
@@ -738,28 +740,28 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
       setSystems(s => [row, ...s])
       openSystem(row)
     } catch {
-      setHomeErr('Création impossible — réessaie.')
+      setHomeErr(t('w1i.err_create'))
     }
   }
   // Onboarding : crée un premier système vide et lance l'architecte avec
   // l'objectif saisi (il posera ses questions puis proposera un système).
   const startFirstSystem = async (objective: string) => {
     const msg = objective.trim()
-      ? `Mon objectif du moment : ${objective.trim()}. Construis-moi un système vivant adapté à mon profil et mes données.`
-      : 'Regarde mon profil et mes données, et propose-moi un système vivant adapté à moi.'
+      ? t('w1i.first_msg_with_obj', { objective: objective.trim() })
+      : t('w1i.first_msg_no_obj')
     try {
-      const row = await createSystem('Mon système', emptyGraph())
+      const row = await createSystem(t('w1i.my_system'), emptyGraph())
       setSystems(s => [row, ...s])
       setPendingFirstMsg(msg)   // sera envoyé à l'architecte à l'ouverture
       openSystem(row)
-    } catch { setHomeErr('Création impossible — réessaie.') }
+    } catch { setHomeErr(t('w1i.err_create')) }
   }
   const removeSystem = async (id: string) => {
-    if (!confirm('Supprimer ce système ? Cette action est définitive.')) return
-    try { await deleteSystem(id); setSystems(s => s.filter(x => x.id !== id)) } catch { setHomeErr('Suppression impossible — réessaie.') }
+    if (!confirm(t('w1i.confirm_delete_system'))) return
+    try { await deleteSystem(id); setSystems(s => s.filter(x => x.id !== id)) } catch { setHomeErr(t('w1i.err_delete')) }
   }
   const copySystem = async (row: StudioSystemRow) => {
-    try { const dup = await duplicateSystem(row); setSystems(s => [dup, ...s]) } catch { setHomeErr('Duplication impossible — réessaie.') }
+    try { const dup = await duplicateSystem(row); setSystems(s => [dup, ...s]) } catch { setHomeErr(t('w1i.err_duplicate')) }
   }
   const backToHome = () => {
     // Sauvegarde immédiate avant de quitter la toile.
@@ -778,7 +780,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
     try {
       await updateSystem(id, { folder })
       setSystems(s => s.map(x => x.id === id ? { ...x, folder } : x))
-    } catch { setHomeErr('Déplacement impossible — réessaie.') }
+    } catch { setHomeErr(t('w1i.err_move')) }
   }
   const patchNode = (id: string, patch: Partial<StudioNode>) =>
     commit({ ...graph, nodes: graph.nodes.map(n => n.id === id ? { ...n, ...patch } : n) })
@@ -875,9 +877,9 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
   const newMsgId = () => `m${++chatIdRef.current}`
 
   const sendArchitect = async (text: string) => {
-    const t = text.trim()
-    if (!t || chatBusy) return
-    const userMsg: ChatMsg = { id: newMsgId(), role: 'user', text: t }
+    const txt = text.trim()
+    if (!txt || chatBusy) return
+    const userMsg: ChatMsg = { id: newMsgId(), role: 'user', text: txt }
     const history = [...chatMsgs, userMsg]
     setChatMsgs(history)
     setChatOpen(true)
@@ -897,15 +899,15 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
         // une MAQUETTE ; il ne sera APPLIQUÉ qu'après confirmation.
         try {
           const built = planToGraph(turn.plan, turn.message || turn.plan.explanation || '').graph
-          setChatMsgs(m => [...m, { id, role: 'assistant', kind: 'propose', text: turn.message || turn.plan.explanation || 'Voici le système que je te propose.', graph: built }])
+          setChatMsgs(m => [...m, { id, role: 'assistant', kind: 'propose', text: turn.message || turn.plan.explanation || t('w1i.proposed_system'), graph: built }])
         } catch (e) {
-          setChatMsgs(m => [...m, { id, role: 'assistant', kind: 'error', text: e instanceof Error ? e.message : "Je n'ai pas pu préparer ce système — reformule ta demande." }])
+          setChatMsgs(m => [...m, { id, role: 'assistant', kind: 'error', text: e instanceof Error ? e.message : t('w1i.err_prepare_system') }])
         }
       } else {
         setChatMsgs(m => [...m, { id, role: 'assistant', kind: 'reply', text: turn.message }])
       }
     } catch (e) {
-      setChatMsgs(m => [...m, { id: newMsgId(), role: 'assistant', kind: 'error', text: e instanceof Error ? e.message : "L'architecte n'a pas répondu — réessaie." }])
+      setChatMsgs(m => [...m, { id: newMsgId(), role: 'assistant', kind: 'error', text: e instanceof Error ? e.message : t('w1i.err_architect_no_reply') }])
     } finally {
       setChatBusy(false)
     }
@@ -944,16 +946,18 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
       setChatMsgs(m => m.map(x => x.id === msgId && x.role === 'assistant' && x.kind === 'propose' ? { ...x, applied: true } : x))
       const living = !!res.objective?.text
       const done = living
-        ? `C’est fait — voici ta base${res.objective?.deadline ? ` (objectif jusqu’au ${res.objective.deadline})` : ''}. Pour qu’elle vive en continu, active la planification (icône horloge en haut) : elle sortira ton programme à chaque cycle en s’adaptant à ta forme. Tu peux d’abord tester avec « Run once ».`
-        : 'C’est fait — j’ai construit le système. Vérifie les bulles puis lance « Run once ». Tu peux annuler si besoin.'
+        ? (res.objective?.deadline
+          ? t('w1i.done_living_deadline', { deadline: res.objective.deadline })
+          : t('w1i.done_living'))
+        : t('w1i.done_built')
       setChatMsgs(m => [...m, { id: newMsgId(), role: 'assistant', kind: 'reply', text: done }])
     } catch (e) {
-      setChatMsgs(m => [...m, { id: newMsgId(), role: 'assistant', kind: 'error', text: e instanceof Error ? e.message : "Impossible d'appliquer ce plan." }])
+      setChatMsgs(m => [...m, { id: newMsgId(), role: 'assistant', kind: 'error', text: e instanceof Error ? e.message : t('w1i.err_apply_plan') }])
     }
   }
   const declinePlan = (msgId: string) => {
     setChatMsgs(m => m.map(x => x.id === msgId && x.role === 'assistant' && x.kind === 'propose' ? { ...x, declined: true } : x))
-    setChatMsgs(m => [...m, { id: newMsgId(), role: 'assistant', kind: 'reply', text: 'Ok, je n’applique rien. Dis-moi ce que tu veux changer.' }])
+    setChatMsgs(m => [...m, { id: newMsgId(), role: 'assistant', kind: 'reply', text: t('w1i.decline_reply') }])
   }
   const resetChat = () => { setChatMsgs([]); setChatInput(''); setChatBusy(false) }
 
@@ -981,7 +985,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
   const undoBuild = () => {
     if (prevGraphRef.current) {
       commit(prevGraphRef.current); prevGraphRef.current = null
-      setChatMsgs(m => [...m, { id: newMsgId(), role: 'assistant', kind: 'reply', text: 'J’ai rétabli le système précédent.' }])
+      setChatMsgs(m => [...m, { id: newMsgId(), role: 'assistant', kind: 'reply', text: t('w1i.restored_previous') }])
     }
   }
 
@@ -1073,7 +1077,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           {/* Sélecteur de modèle IA (logo + nom) */}
           <div style={{ position: 'relative' }}>
-            <button onClick={() => setModelMenuOpen(o => !o)} disabled={chatBusy} title="Modèle de l’IA"
+            <button onClick={() => setModelMenuOpen(o => !o)} disabled={chatBusy} title={t('w1i.ai_model')}
               style={{ display: 'flex', alignItems: 'center', gap: 6, height: 30, padding: '0 10px 0 8px', borderRadius: 999, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text-mid)', cursor: chatBusy ? 'default' : 'pointer', fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 700 }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={builderModel === 'hermes' ? '/logos/logo_3bras.png' : builderModel === 'zeus' ? '/logos/logo_6bras.png' : '/logos/logo_4bras.png'} alt="" width={16} height={16} style={{ objectFit: 'contain', flexShrink: 0 }} />
@@ -1100,7 +1104,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
           <div style={{ flex: 1 }} />
           {/* Jauge d'utilisation des tokens */}
           {access?.allowed && (
-            <button onClick={() => setWalletOpen(true)} title="Jauge d'utilisation Studio" aria-label="Jauge d'utilisation Studio"
+            <button onClick={() => setWalletOpen(true)} title={t('w1i.usage_gauge')} aria-label={t('w1i.usage_gauge')}
               style={{ width: 32, height: 32, borderRadius: 10, border: 'none', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, position: 'relative' }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 21a9 9 0 100-18 9 9 0 000 18z" opacity="0.4"/><path d="M12 3a9 9 0 018.5 6"/><path d="M12 12l3.5-3.5"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/></svg>
               {access.monthlyLimit > 0 && access.remaining < 1e12 && (
@@ -1109,14 +1113,14 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
             </button>
           )}
           {/* Dictée vocale */}
-          <button onClick={() => { setMicTarget(micField); micBaseRef.current = micField === 'chat' ? chatInput : desc; setMicOpen(true) }} disabled={chatBusy} title="Décrire à la voix" aria-label="Décrire à la voix"
+          <button onClick={() => { setMicTarget(micField); micBaseRef.current = micField === 'chat' ? chatInput : desc; setMicOpen(true) }} disabled={chatBusy} title={t('w1i.describe_voice')} aria-label={t('w1i.describe_voice')}
             style={{ width: 32, height: 32, borderRadius: 10, border: 'none', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <rect x="9" y="2" width="6" height="11" rx="3"/><path d="M5 10a7 7 0 0 0 14 0M12 19v3"/>
             </svg>
           </button>
           {/* Envoyer */}
-          <button onClick={onSend} disabled={!ready} aria-label="Envoyer"
+          <button onClick={onSend} disabled={!ready} aria-label={t('w1i.send')}
             style={{ width: 34, height: 34, borderRadius: 11, border: 'none', cursor: ready ? 'pointer' : 'not-allowed',
               background: ready ? 'var(--studio-accent)' : 'var(--border)', color: ready ? '#fff' : 'var(--text-dim)',
               display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -1137,8 +1141,8 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
         {chatMsgs.length === 0 && !chatBusy && (
           <div style={{ margin: 'auto', textAlign: 'center', maxWidth: 280, color: 'var(--text-dim)' }}>
 <div style={{ display: 'inline-flex', marginBottom: 8 }}><StudioLogo size={32} /></div>
-            <p style={{ margin: 0, fontSize: 13.5, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-body)' }}>Décris ton système</p>
-            <p style={{ margin: '5px 0 0', fontSize: 12, lineHeight: 1.5, fontFamily: 'var(--font-body)' }}>Je te pose quelques questions pour bien comprendre, puis je te propose un système à valider. Rien n’est appliqué sans ton accord.</p>
+            <p style={{ margin: 0, fontSize: 13.5, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-body)' }}>{t('w1i.describe_system')}</p>
+            <p style={{ margin: '5px 0 0', fontSize: 12, lineHeight: 1.5, fontFamily: 'var(--font-body)' }}>{t('w1i.describe_system_hint')}</p>
           </div>
         )}
         {chatMsgs.map(m => {
@@ -1170,24 +1174,24 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><circle cx="5" cy="6" r="2.2"/><circle cx="19" cy="6" r="2.2"/><circle cx="12" cy="18" r="2.2"/><path d="M7 6.6 10.6 16.4M17 6.6 13.4 16.4"/></svg>
                 </span>
                 <span style={{ flex: 1, minWidth: 0 }}>
-                  <span style={{ display: 'block', fontSize: 13.5, fontWeight: 700, color: 'var(--text)' }}>Maquette du système</span>
+                  <span style={{ display: 'block', fontSize: 13.5, fontWeight: 700, color: 'var(--text)' }}>{t('w1i.system_mockup')}</span>
                   <span style={{ display: 'block', fontSize: 11.5, color: 'var(--text-dim)', marginTop: 1 }}>
-                    {m.graph.nodes.length} blocs · {m.graph.nodes.filter(n => n.kind === 'agent' || n.kind === 'merge').length} agents · {m.graph.edges.length} liaisons — touche pour ouvrir
+                    {m.graph.nodes.length} {t('w1i.block_many')} · {m.graph.nodes.filter(n => n.kind === 'agent' || n.kind === 'merge').length} {t('w1i.agent_many')} · {m.graph.edges.length} {t('w1i.link_many')} {t('w1i.tap_to_open')}
                   </span>
                 </span>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M9 6l6 6-6 6"/></svg>
               </button>
               {!m.applied && !m.declined && (
                 <>
-                  <div style={{ marginTop: 10, fontSize: 12, fontWeight: 700, color: 'var(--studio-accent)' }}>Confirmes-tu la construction de ce système&nbsp;?</div>
+                  <div style={{ marginTop: 10, fontSize: 12, fontWeight: 700, color: 'var(--studio-accent)' }}>{t('w1i.confirm_build_question')}</div>
                   <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
                     <button onClick={() => confirmPlan(m.id)}
                       style={{ flex: 1, padding: '9px 0', borderRadius: 10, border: 'none', background: 'var(--studio-accent)', color: '#fff', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
-                      Confirmer
+                      {t('w1i.confirm')}
                     </button>
                     <button onClick={() => declinePlan(m.id)}
                       style={{ padding: '9px 14px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text-mid)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
-                      Non
+                      {t('w1i.no')}
                     </button>
                   </div>
                 </>
@@ -1196,14 +1200,14 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                 <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ fontSize: 12, fontWeight: 700, color: '#22C55E', display: 'flex', alignItems: 'center', gap: 5 }}>
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
-                    Construit
+                    {t('w1i.built')}
                   </span>
                   {prevGraphRef.current && (
-                    <button onClick={undoBuild} style={{ border: 'none', background: 'transparent', color: 'var(--text-dim)', fontSize: 12, fontWeight: 600, cursor: 'pointer', padding: 0, fontFamily: 'var(--font-body)', textDecoration: 'underline' }}>Annuler</button>
+                    <button onClick={undoBuild} style={{ border: 'none', background: 'transparent', color: 'var(--text-dim)', fontSize: 12, fontWeight: 600, cursor: 'pointer', padding: 0, fontFamily: 'var(--font-body)', textDecoration: 'underline' }}>{t('w1i.undo')}</button>
                   )}
                 </div>
               )}
-              {m.declined && <div style={{ marginTop: 8, fontSize: 11.5, color: 'var(--text-dim)', fontStyle: 'italic' }}>Non appliqué.</div>}
+              {m.declined && <div style={{ marginTop: 8, fontSize: 11.5, color: 'var(--text-dim)', fontStyle: 'italic' }}>{t('w1i.not_applied')}</div>}
             </div>
           )
         })}
@@ -1212,7 +1216,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={builderModel === 'hermes' ? '/logos/logo_3bras.png' : builderModel === 'zeus' ? '/logos/logo_6bras.png' : '/logos/logo_4bras.png'}
               alt="" width={17} height={17} style={{ objectFit: 'contain', animation: 'studio_spin 2.4s linear infinite', opacity: 0.9 }} />
-            <span className="studio-shimmer" style={{ fontSize: 13.5, fontWeight: 600, fontFamily: 'var(--font-display)' }}>Je réfléchis…</span>
+            <span className="studio-shimmer" style={{ fontSize: 13.5, fontWeight: 600, fontFamily: 'var(--font-display)' }}>{t('w1i.thinking')}</span>
           </div>
         )}
       </div>
@@ -1223,7 +1227,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
           onChange: setChatInput,
           onSend: () => { const t = chatInput; setChatInput(''); void sendArchitect(t) },
           micField: 'chat',
-          placeholder: 'Écris ta réponse ou une demande…',
+          placeholder: t('w1i.chat_placeholder'),
           menuUp: true,
         })}
       </div>
@@ -1264,7 +1268,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
     const estimate = estimateRunTokens(graph.nodes)
     if (access && access.allowed && estimate > access.remaining) {
       setIssues({
-        errors: [`Solde Studio insuffisant : ce run coûte environ ${formatTokens(estimate)} tokens, il t'en reste ${formatTokens(access.remaining)}. Recharge avec un pack Studio.`],
+        errors: [t('w1i.err_insufficient_balance', { estimate: formatTokens(estimate), remaining: formatTokens(access.remaining) })],
         warnings: [], nodeIssues: {}, canForce: false,
       })
       setWalletOpen(true)
@@ -1319,7 +1323,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
       }, { sourceUid: (scopeTab === 'coach' ? openAthleteId : null) ?? undefined })
       if (errors.length > 0) {
         const errText = errors.map(er => `${er.title} — ${er.message}`).join(' · ')
-        setRunErr(`${errors.length} nœud(s) en erreur : ${errText}`)
+        setRunErr(t('w1i.err_nodes_failed', { count: errors.length, errText }))
         setTab('chat')
         settleCost('error', outputs, errText)
       } else {
@@ -1327,7 +1331,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
         settleCost('done', outputs, null)
       }
     } catch (e) {
-      if (!ctrl.signal.aborted) setRunErr(e instanceof Error ? e.message : 'Erreur pendant le run')
+      if (!ctrl.signal.aborted) setRunErr(e instanceof Error ? e.message : t('w1i.err_during_run'))
       settleCost(ctrl.signal.aborted ? 'stopped' : 'error', {}, e instanceof Error ? e.message : null)
     } finally {
       setRunning(false); abortRef.current = null
@@ -1365,7 +1369,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
   const continueWithCoach = (title: string, text: string) => {
     try {
       sessionStorage.setItem('coach_prefill',
-        `Voici le résultat produit par mon système Studio « ${graph.name} » (${title}) :\n\n${text.slice(0, 4000)}\n\nAide-moi à aller plus loin à partir de ça.`)
+        t('w1i.coach_prefill', { name: graph.name, title, text: text.slice(0, 4000) }))
     } catch { /* ignore */ }
     onClose()
     setTimeout(() => window.dispatchEvent(new CustomEvent('thw:open-coach')), 80)
@@ -1396,12 +1400,12 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
 
       {/* ══ Header ══ */}
       <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 10, padding: 'max(12px, env(safe-area-inset-top)) 14px 10px', borderBottom: '0.5px solid var(--border)' }}>
-        <button onClick={view === 'canvas' ? backToHome : onClose} aria-label={view === 'canvas' ? 'Retour à mes systèmes' : 'Fermer'} style={iconBtn}>
+        <button onClick={view === 'canvas' ? backToHome : onClose} aria-label={view === 'canvas' ? t('w1i.back_to_systems') : t('w1i.close')} style={iconBtn}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
         </button>
         {!isMobile && <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-display)', whiteSpace: 'nowrap' }}>Studio</div>}
         {/* Aide — sur-page d'explication */}
-        <button onClick={() => setHelpOpen(true)} aria-label="Comment ça marche ?" title="Comment ça marche ?"
+        <button onClick={() => setHelpOpen(true)} aria-label={t('w1i.how_it_works')} title={t('w1i.how_it_works')}
           style={{ width: 22, height: 22, borderRadius: '50%', border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text-dim)', fontSize: 12, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-body)', flexShrink: 0 }}>
           ?
         </button>
@@ -1409,17 +1413,17 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
           <input
             value={graph.name}
             onChange={e => commit({ ...graph, name: e.target.value })}
-            aria-label="Nom du système"
+            aria-label={t('w1i.system_name')}
             style={{ marginLeft: 2, minWidth: 0, flex: '0 1 240px', padding: '6px 10px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text-mid)', fontSize: 13, fontFamily: 'var(--font-body)', outline: 'none' }}
           />
         )}
 
         {/* Solde Studio — clic : détail + packs */}
         {access?.allowed && (
-          <button onClick={() => setWalletOpen(true)} title="Solde de tokens Studio — voir le détail et recharger"
+          <button onClick={() => setWalletOpen(true)} title={t('w1i.balance_tooltip')}
             style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6, padding: '6px 11px', borderRadius: 999, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text-mid)', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)', flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" style={{ color: 'var(--studio-accent)' }} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
-            {access.remaining > 1e12 ? 'Illimité' : `${formatTokens(access.remaining)} tokens`}
+            {access.remaining > 1e12 ? t('w1i.unlimited') : t('w1i.tokens_amount', { n: formatTokens(access.remaining) })}
           </button>
         )}
 
@@ -1430,31 +1434,31 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
               style={{ padding: isMobile ? '6px 8px' : '6px 14px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: isMobile ? 11.5 : 13, fontWeight: 600, fontFamily: 'var(--font-body)',
                 background: tab === tb ? 'var(--bg)' : 'transparent', color: tab === tb ? 'var(--text)' : 'var(--text-dim)',
                 boxShadow: tab === tb ? 'var(--shadow-card)' : 'none' }}>
-              {tb === 'canvas' ? 'Canvas' : tb === 'chat' ? 'Pilotage' : tb === 'rendu' ? 'Rendu' : 'Journal'}
+              {tb === 'canvas' ? t('w1i.tab_canvas') : tb === 'chat' ? t('w1i.tab_pilotage') : tb === 'rendu' ? t('w1i.tab_rendu') : t('w1i.tab_journal')}
             </button>
           ))}
         </div>
 
         {/* Chat Architecte — ouvre la discussion en plein écran */}
-        <button onClick={() => { setChatFull(true); if (tab !== 'canvas') setTab('canvas') }} title="Discuter avec l’architecte (plein écran)" aria-label="Chat architecte"
+        <button onClick={() => { setChatFull(true); if (tab !== 'canvas') setTab('canvas') }} title={t('w1i.chat_architect_full')} aria-label={t('w1i.chat_architect')}
           style={{ display: 'flex', alignItems: 'center', gap: 6, padding: isMobile ? '0 9px' : '0 12px', height: 34, borderRadius: 10, border: '1px solid var(--border)', background: chatMsgs.length > 0 ? 'color-mix(in srgb, var(--studio-accent) 10%, transparent)' : 'var(--bg-alt)', color: chatMsgs.length > 0 ? 'var(--studio-accent)' : 'var(--text-mid)', cursor: 'pointer', fontSize: 12.5, fontWeight: 700, fontFamily: 'var(--font-body)', flexShrink: 0 }}>
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.4 8.4 0 01-8.5 8.5 8.6 8.6 0 01-3.9-.9L3 21l1.9-5.6a8.4 8.4 0 01-.9-3.9A8.4 8.4 0 0112.5 3 8.4 8.4 0 0121 11.5z"/></svg>
-          {!isMobile && 'Chat'}
+          {!isMobile && t('w1i.chat')}
         </button>
 
         {/* Planifier — run autonome récurrent */}
-        <button onClick={() => setScheduleOpen(true)} title={schedule?.enabled ? 'Planification active — modifier' : 'Planifier ce système (run automatique)'} aria-label="Planifier ce système"
+        <button onClick={() => setScheduleOpen(true)} title={schedule?.enabled ? t('w1i.schedule_active_edit') : t('w1i.schedule_this_system_auto')} aria-label={t('w1i.schedule_this_system')}
           style={{ width: 34, height: 34, borderRadius: 10, border: '1px solid var(--border)', background: schedule?.enabled ? 'color-mix(in srgb, var(--studio-accent) 10%, transparent)' : 'var(--bg-alt)', color: schedule?.enabled ? 'var(--studio-accent)' : 'var(--text-mid)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
         </button>
 
         {running ? (
           <button onClick={stopRun} style={{ ...cta, background: '#374151' }}>
-            <span style={{ width: 9, height: 9, borderRadius: 2, background: '#fff', display: 'inline-block' }} /> Arrêter
+            <span style={{ width: 9, height: 9, borderRadius: 2, background: '#fff', display: 'inline-block' }} /> {t('w1i.stop')}
           </button>
         ) : (
           <button onClick={() => void runOnce()} style={cta}
-            title={graph.nodes.length ? `Coût estimé : ~${formatTokens(estimateRunTokens(graph.nodes))} tokens Studio` : 'Run once'}>
+            title={graph.nodes.length ? t('w1i.estimated_cost', { n: formatTokens(estimateRunTokens(graph.nodes)) }) : 'Run once'}>
             <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
             Run once
             {graph.nodes.length > 0 && (
@@ -1476,9 +1480,9 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg>
               </span>
               <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-body)', flex: 1 }}>
-                {issues.errors.length ? 'Le système ne peut pas tourner' : 'À vérifier avant de lancer'}
+                {issues.errors.length ? t('w1i.system_cannot_run') : t('w1i.check_before_launch')}
               </span>
-              <button onClick={() => setIssues(null)} aria-label="Fermer" style={iconBtn}>
+              <button onClick={() => setIssues(null)} aria-label={t('w1i.close')} style={iconBtn}>
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
               </button>
             </div>
@@ -1497,7 +1501,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
             {issues.canForce && (
               <button onClick={() => void runOnce(true)}
                 style={{ marginTop: 10, width: '100%', padding: '9px 0', borderRadius: 9, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
-                Lancer quand même
+                {t('w1i.launch_anyway')}
               </button>
             )}
           </div>
@@ -1515,7 +1519,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                   onChange: setDesc,
                   onSend: () => void build(),
                   micField: 'desc',
-                  placeholder: graph.nodes.length > 0 ? 'Décris une modification… ou un nouveau système' : "Décris ce que tu veux… l'IA te posera des questions",
+                  placeholder: graph.nodes.length > 0 ? t('w1i.composer_ph_modify') : t('w1i.composer_ph_new'),
                 })}
               </div>
             )}
@@ -1529,7 +1533,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
               const top = (chatOpen || chatFull) ? 14 : (isMobile ? 88 : 100)
               return (
                 <div style={{ position: 'absolute', top, left: '50%', transform: 'translateX(-50%)', zIndex: 5, maxWidth: isMobile ? 'calc(100% - 24px)' : 560 }}>
-                  <button onClick={openObjEditor} title="Objectif du système — clique pour modifier"
+                  <button onClick={openObjEditor} title={t('w1i.objective_tooltip')}
                     style={{ display: 'flex', alignItems: 'center', gap: 8, maxWidth: '100%', padding: '6px 12px', borderRadius: 999, border: `1px solid color-mix(in srgb, ${accent} 45%, var(--border))`, background: 'var(--bg-card)', color: 'var(--text)', cursor: 'pointer', boxShadow: '0 2px 10px rgba(0,0,0,0.08)', fontFamily: 'var(--font-body)' }}>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={accent} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="0.6" fill={accent}/></svg>
                     {graph.objective?.text ? (
@@ -1537,23 +1541,23 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                         <span style={{ fontSize: 12.5, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{graph.objective.text}</span>
                         {dleft !== null && (
                           <span style={{ flexShrink: 0, fontSize: 10.5, fontWeight: 800, letterSpacing: '0.02em', color: accent, background: `color-mix(in srgb, ${accent} 12%, transparent)`, border: `1px solid color-mix(in srgb, ${accent} 35%, transparent)`, borderRadius: 999, padding: '2px 8px' }}>
-                            {expired ? 'échéance passée' : soon ? `J-${dleft}` : new Date(graph.objective.deadline + 'T00:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+                            {expired ? t('w1i.deadline_passed') : soon ? t('w1i.days_left', { n: dleft }) : new Date(graph.objective.deadline + 'T00:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
                           </span>
                         )}
                       </>
                     ) : (
-                      <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text-mid)' }}>Définir l’objectif du système</span>
+                      <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text-mid)' }}>{t('w1i.define_objective')}</span>
                     )}
                   </button>
                   {expired && (
                     <div style={{ marginTop: 6, padding: '7px 11px', borderRadius: 10, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)', fontSize: 11.5, color: '#EF4444', fontFamily: 'var(--font-body)', lineHeight: 1.45 }}>
-                      L’objectif est passé. Définis ton prochain objectif pour que le système se remette à jour.
+                      {t('w1i.objective_expired_msg')}
                     </div>
                   )}
                   {healthAlert && (
-                    <div title={`Le système bridera la charge : ${healthAlert}`} style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 7, padding: '6px 11px', borderRadius: 10, background: 'rgba(245,158,11,0.10)', border: '1px solid rgba(245,158,11,0.35)', color: '#B45309', fontFamily: 'var(--font-body)' }}>
+                    <div title={t('w1i.system_limits_load', { alert: healthAlert })} style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 7, padding: '6px 11px', borderRadius: 10, background: 'rgba(245,158,11,0.10)', border: '1px solid rgba(245,158,11,0.35)', color: '#B45309', fontFamily: 'var(--font-body)' }}>
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4M12 17h.01"/></svg>
-                      <span style={{ fontSize: 11.5, fontWeight: 700, lineHeight: 1.35 }}>Mode sécurité — le système allègera la charge ({healthAlert})</span>
+                      <span style={{ fontSize: 11.5, fontWeight: 700, lineHeight: 1.35 }}>{t('w1i.safety_mode_load', { alert: healthAlert })}</span>
                     </div>
                   )}
                 </div>
@@ -1564,21 +1568,21 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
             <div style={{ position: 'absolute', top: 14, left: 12, zIndex: 8, display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-start' }}>
               {(graph.nodes.length > 0 || canUndo || canRedo) && (
                 <div style={{ display: 'flex', gap: 4, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 10, padding: 3, boxShadow: '0 6px 18px rgba(0,0,0,0.10)' }}>
-                  <button onClick={undo} disabled={!canUndo} title="Annuler (⌘Z)" aria-label="Annuler"
+                  <button onClick={undo} disabled={!canUndo} title={t('w1i.undo_shortcut')} aria-label={t('w1i.undo')}
                     style={{ ...zBtn, opacity: canUndo ? 1 : 0.35, cursor: canUndo ? 'pointer' : 'default' }}>
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M9 14L4 9l5-5"/><path d="M4 9h11a5 5 0 015 5 5 5 0 01-5 5H8"/></svg>
                   </button>
-                  <button onClick={redo} disabled={!canRedo} title="Rétablir (⌘⇧Z)" aria-label="Rétablir"
+                  <button onClick={redo} disabled={!canRedo} title={t('w1i.redo_shortcut')} aria-label={t('w1i.redo')}
                     style={{ ...zBtn, opacity: canRedo ? 1 : 0.35, cursor: canRedo ? 'pointer' : 'default' }}>
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M15 14l5-5-5-5"/><path d="M20 9H9a5 5 0 00-5 5 5 5 0 005 5h7"/></svg>
                   </button>
                   {graph.nodes.length > 0 && (
                     <>
                       <div style={{ width: 1, background: 'var(--border)', margin: '2px 1px' }} />
-                      <button onClick={() => { if (confirm('Remplacer le système actuel par l’exemple ?')) loadExample() }} title="Charger l’exemple" style={zBtn}>
+                      <button onClick={() => { if (confirm(t('w1i.confirm_load_example'))) loadExample() }} title={t('w1i.load_example')} style={zBtn}>
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16v12H5.2L4 17.2z"/><path d="M8 9h8M8 12h5"/></svg>
                       </button>
-                      <button onClick={() => { if (confirm('Vider la toile ?')) clearCanvas() }} title="Vider la toile" style={zBtn}>
+                      <button onClick={() => { if (confirm(t('w1i.confirm_clear_canvas'))) clearCanvas() }} title={t('w1i.clear_canvas')} style={zBtn}>
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
                       </button>
                     </>
@@ -1598,8 +1602,8 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
               const close = () => { setPickerOpen(false); setPickerFrom(null) }
               const tools = (['trigger', 'agent', 'merge', 'validation'] as StudioNodeKind[])
                 .filter(k => !branching || hasStudioInput(k))
-                .map(k => ({ k, label: k === 'trigger' ? 'Objectif' : KIND_LABEL[k], off: k === 'trigger' && !!trigger }))
-                .filter(t => match(t.label))
+                .map(k => ({ k, label: k === 'trigger' ? t('w1i.objective') : KIND_LABEL[k], off: k === 'trigger' && !!trigger }))
+                .filter(tl => match(tl.label))
               const apps = APP_CATALOG.filter(a => (!branching || a.kind === 'action') && match(a.label))
               const exts = branching ? [] : EXT_CATALOG.filter(e => match(e.label))
               const bubble = (color: string, node: React.ReactNode, dim?: boolean) => (
@@ -1625,43 +1629,43 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                       <div style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 12px', borderBottom: '1px solid var(--border)', background: 'rgba(59,146,212,0.06)' }}>
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" style={{ color: 'var(--studio-accent)' }} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 3v12a3 3 0 003 3h6"/><path d="M15 15l3 3-3 3"/></svg>
                         <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--studio-accent)', fontFamily: 'var(--font-body)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          Brancher depuis « {branchFrom?.title ?? 'bloc'} »
+                          {t('w1i.branch_from', { name: branchFrom?.title ?? t('w1i.block') })}
                         </span>
                       </div>
                     )}
                     <div style={{ padding: 10, borderBottom: '1px solid var(--border)' }}>
-                      <input autoFocus value={pickerQuery} onChange={e => setPickerQuery(e.target.value)} placeholder="Rechercher un outil ou une application…"
+                      <input autoFocus value={pickerQuery} onChange={e => setPickerQuery(e.target.value)} placeholder={t('w1i.search_tool_app')}
                         style={{ width: '100%', boxSizing: 'border-box', padding: '9px 11px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text)', fontSize: 13, outline: 'none', fontFamily: 'var(--font-body)' }} />
                     </div>
                     <div style={{ overflowY: 'auto', padding: 6 }}>
-                      {tools.length > 0 && <div style={paletteHdr}>Outils</div>}
-                      {tools.map(t => row(`t_${t.k}`, KIND_COLOR[t.k], <KindIcon kind={t.k} size={19} />, t.label,
-                        t.off ? 'Un seul par système' : null,
-                        () => { if (!t.off) { addNode(t.k, { fromId: pickerFrom ?? undefined }); close() } }, t.off))}
+                      {tools.length > 0 && <div style={paletteHdr}>{t('w1i.tools')}</div>}
+                      {tools.map(tl => row(`t_${tl.k}`, KIND_COLOR[tl.k], <KindIcon kind={tl.k} size={19} />, tl.label,
+                        tl.off ? t('w1i.one_per_system') : null,
+                        () => { if (!tl.off) { addNode(tl.k, { fromId: pickerFrom ?? undefined }); close() } }, tl.off))}
                       {/* Contexte coach : cibler l'athlète du système (sujet des données). */}
-                      {coachAccess && scopeTab === 'coach' && !branching && match('Athlète') && (
+                      {coachAccess && scopeTab === 'coach' && !branching && match(t('w1i.athlete')) && (
                         <>
-                          <div style={{ ...paletteHdr, marginTop: 4 }}>Contexte</div>
+                          <div style={{ ...paletteHdr, marginTop: 4 }}>{t('w1i.context')}</div>
                           {row('ctx_athlete', 'var(--studio-accent)',
                             <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>,
-                            'Athlète',
-                            openAthleteName ? `Ciblé : ${openAthleteName}` : 'Choisir l’athlète du système',
+                            t('w1i.athlete'),
+                            openAthleteName ? t('w1i.targeted_name', { name: openAthleteName }) : t('w1i.choose_system_athlete'),
                             () => { setAthletePickerOpen(true); close() }, false, 'Coach')}
                         </>
                       )}
-                      {apps.length > 0 && <div style={{ ...paletteHdr, marginTop: 4 }}>Applications</div>}
+                      {apps.length > 0 && <div style={{ ...paletteHdr, marginTop: 4 }}>{t('w1i.applications')}</div>}
                       {apps.map(app => row(app.id, app.color, <AppIcon id={app.id} size={19} />, app.label,
-                        app.access === 'écriture' ? 'Écriture' : 'Lecture',
+                        app.access === 'écriture' ? t('w1i.write_access') : t('w1i.read_access'),
                         () => { addApp(app, pickerFrom ?? undefined); close() }, false))}
-                      {exts.length > 0 && <div style={{ ...paletteHdr, marginTop: 4 }}>Apps externes</div>}
+                      {exts.length > 0 && <div style={{ ...paletteHdr, marginTop: 4 }}>{t('w1i.external_apps')}</div>}
                       {exts.map(ext => {
                         const on = connectedProviders.has(ext.provider)
                         return row(ext.id, ext.color, <AppIcon id={ext.id} size={19} />, ext.label,
-                          on ? 'Connecté' : 'À connecter dans Connexions',
+                          on ? t('w1i.connected') : t('w1i.connect_in_connections'),
                           () => { addExt(ext, pickerFrom ?? undefined); close() }, !on)
                       })}
                       {tools.length + apps.length + exts.length === 0 && (
-                        <div style={{ padding: '18px 10px', textAlign: 'center', fontSize: 12.5, color: 'var(--text-dim)' }}>Aucun résultat.</div>
+                        <div style={{ padding: '18px 10px', textAlign: 'center', fontSize: 12.5, color: 'var(--text-dim)' }}>{t('w1i.no_results')}</div>
                       )}
                     </div>
                   </div>
@@ -1673,9 +1677,9 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
             {coachAccess && scopeTab === 'coach' && openAthleteName && (
               <div style={{ position: 'absolute', top: 14, left: '50%', transform: 'translateX(-50%)', zIndex: 8, display: 'inline-flex', alignItems: 'center', gap: 8, padding: '6px 8px 6px 12px', borderRadius: 999, background: 'var(--bg-card)', border: '1px solid var(--border)', boxShadow: '0 4px 14px rgba(0,0,0,0.14)' }}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" style={{ color: 'var(--studio-accent)' }} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
-                <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-body)' }}>Athlète : {openAthleteName}</span>
-                <button onClick={() => setAthletePickerOpen(true)} title="Changer d'athlète" style={{ border: 'none', background: 'transparent', color: 'var(--text-mid)', cursor: 'pointer', fontSize: 11, fontWeight: 700, fontFamily: 'var(--font-body)', padding: '2px 4px' }}>Changer</button>
-                <button onClick={() => setSystemAthlete(null)} title="Retirer" aria-label="Retirer l'athlète" style={{ border: 'none', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', padding: 2 }}>
+                <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-body)' }}>{t('w1i.athlete_label', { name: openAthleteName })}</span>
+                <button onClick={() => setAthletePickerOpen(true)} title={t('w1i.change_athlete')} style={{ border: 'none', background: 'transparent', color: 'var(--text-mid)', cursor: 'pointer', fontSize: 11, fontWeight: 700, fontFamily: 'var(--font-body)', padding: '2px 4px' }}>{t('w1i.change')}</button>
+                <button onClick={() => setSystemAthlete(null)} title={t('w1i.remove')} aria-label={t('w1i.remove_athlete')} style={{ border: 'none', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', padding: 2 }}>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
                 </button>
               </div>
@@ -1778,10 +1782,10 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                   const roleBearing = n.kind === 'trigger' || n.kind === 'agent' || n.kind === 'merge' || n.kind === 'validation'
                   const filled = isApp || isTrigger   // bulle pleine (logo blanc) vs contour
                   const open = hoverId === n.id || selId === n.id
-                  const rolePh = n.kind === 'trigger' ? 'Décris l’objectif du système…'
-                    : n.kind === 'merge' ? 'Rôle de la synthèse…'
-                    : n.kind === 'validation' ? 'Que vérifier avant de continuer ?'
-                    : 'Rôle de cet agent…'
+                  const rolePh = n.kind === 'trigger' ? t('w1i.role_ph_trigger')
+                    : n.kind === 'merge' ? t('w1i.role_ph_merge')
+                    : n.kind === 'validation' ? t('w1i.role_ph_validation')
+                    : t('w1i.role_ph_agent')
                   const ringColor = st !== 'idle' && STATUS_RING[st] !== 'transparent' ? STATUS_RING[st]
                     : selId === n.id ? `color-mix(in srgb, ${col} 32%, transparent)`
                     : iss === 'error' ? 'rgba(239,68,68,0.22)' : iss === 'warning' ? 'rgba(245,158,11,0.24)' : null
@@ -1808,13 +1812,13 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                         {/* Poignée de sortie (glisser pour relier) — à droite, au
                             survol seulement pour garder la bulle épurée. */}
                         {open && hasStudioOutput(n.kind) && (
-                          <span onPointerDown={e => startConnect(e, n)} title="Relier" className="studio-port"
+                          <span onPointerDown={e => startConnect(e, n)} title={t('w1i.link')} className="studio-port"
                             style={{ position: 'absolute', right: -7, top: NODE_D / 2 - 7, width: 14, height: 14, borderRadius: '50%', background: col, border: '2.5px solid var(--bg-card)', cursor: 'crosshair', boxShadow: `0 0 0 2px color-mix(in srgb, ${col} 25%, transparent), 0 1px 3px rgba(0,0,0,0.2)` }} />
                         )}
                         {/* « + » au survol : ouvre une branche (ajoute + relie un bloc). */}
                         {open && hasStudioOutput(n.kind) && (
                           <button onPointerDown={e => e.stopPropagation()} onClick={e => { e.stopPropagation(); setPickerFrom(n.id); setPickerQuery(''); setPickerOpen(true) }}
-                            title="Ajouter une branche" className="studio-port"
+                            title={t('w1i.add_branch')} className="studio-port"
                             style={{ position: 'absolute', right: -30, top: NODE_D / 2 - 11, width: 22, height: 22, borderRadius: '50%', background: col, color: '#fff', border: '2px solid var(--bg-card)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.3)' }}>
                             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
                           </button>
@@ -1840,7 +1844,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                         <div onPointerDown={e => e.stopPropagation()}
                           style={{ position: 'absolute', top: NODE_D + 34, left: NODE_D / 2 - 100, width: 200, zIndex: 8, background: 'var(--bg-card)', border: `1px solid ${col}`, borderRadius: 12, padding: '8px 10px', boxShadow: '0 10px 30px rgba(0,0,0,0.28)', fontSize: 11.5, color: 'var(--text-mid)', fontFamily: 'var(--font-body)' }}>
                           <div style={{ fontWeight: 700, color: col, marginBottom: 2 }}>{subtitle}</div>
-                          {n.kind === 'source' ? 'Injecte ces données dans le système.' : 'Agit sur l’app après ta validation.'}
+                          {n.kind === 'source' ? t('w1i.source_desc') : t('w1i.action_desc')}
                         </div>
                       )}
                     </div>
@@ -1851,7 +1855,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
               {/* ── Toile vide : grosse bulle « + » (façon Make) ── */}
               {graph.nodes.length === 0 && !chatBusy && (
                 <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', gap: 16, padding: 20 }}>
-                  <button onClick={() => { setPickerFrom(null); setPickerQuery(''); setPickerOpen(true) }} title="Ajouter un bloc"
+                  <button onClick={() => { setPickerFrom(null); setPickerQuery(''); setPickerOpen(true) }} title={t('w1i.add_block')}
                     style={{ pointerEvents: 'auto', width: 84, height: 84, borderRadius: '50%', cursor: 'pointer',
                       background: 'color-mix(in srgb, var(--studio-accent) 8%, var(--bg-card))', border: '2px dashed color-mix(in srgb, var(--studio-accent) 45%, transparent)',
                       color: 'var(--studio-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -1861,12 +1865,12 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                     <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
                   </button>
                   <div style={{ textAlign: 'center', maxWidth: 300 }}>
-                    <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-body)' }}>Toile vierge</p>
+                    <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-body)' }}>{t('w1i.blank_canvas')}</p>
                     <p style={{ margin: '5px 0 0', fontSize: 12.5, color: 'var(--text-mid)', lineHeight: 1.5, fontFamily: 'var(--font-body)' }}>
-                      Appuie sur <b style={{ color: 'var(--studio-accent)' }}>+</b> pour choisir un outil ou une application, et relie les bulles entre elles.
+                      {t('w1i.blank_canvas_hint_a')}<b style={{ color: 'var(--studio-accent)' }}>+</b>{t('w1i.blank_canvas_hint_b')}
                     </p>
                     <button onClick={loadExample} style={{ pointerEvents: 'auto', marginTop: 12, padding: '7px 14px', borderRadius: 9, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-mid)', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
-                      ou charger un exemple
+                      {t('w1i.or_load_example')}
                     </button>
                   </div>
                 </div>
@@ -1874,21 +1878,21 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
 
               {/* ── Contrôles de la toile : zoom · ajuster · ranger ── */}
               <div style={{ position: 'absolute', right: 12, bottom: 14, zIndex: 5, display: 'flex', alignItems: 'center', gap: 2, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 12, padding: 3, boxShadow: '0 2px 6px rgba(0,0,0,0.06), 0 10px 28px rgba(0,0,0,0.10)' }}>
-                <button onClick={() => zoomBy(1 / 1.2)} title="Zoom arrière" aria-label="Zoom arrière" style={zBtn}>
+                <button onClick={() => zoomBy(1 / 1.2)} title={t('w1i.zoom_out')} aria-label={t('w1i.zoom_out')} style={zBtn}>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M5 12h14"/></svg>
                 </button>
-                <button onClick={() => { setZoom(1); setPan({ x: 0, y: 0 }) }} title="Réinitialiser le zoom" aria-label="Réinitialiser le zoom"
+                <button onClick={() => { setZoom(1); setPan({ x: 0, y: 0 }) }} title={t('w1i.reset_zoom')} aria-label={t('w1i.reset_zoom')}
                   style={{ ...zBtn, width: 46, fontSize: 11, fontWeight: 700, fontFamily: 'var(--font-body)', fontVariantNumeric: 'tabular-nums' }}>
                   {Math.round(zoom * 100)}%
                 </button>
-                <button onClick={() => zoomBy(1.2)} title="Zoom avant" aria-label="Zoom avant" style={zBtn}>
+                <button onClick={() => zoomBy(1.2)} title={t('w1i.zoom_in')} aria-label={t('w1i.zoom_in')} style={zBtn}>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
                 </button>
                 <div style={{ width: 1, height: 18, background: 'var(--border)', margin: '0 2px' }} />
-                <button onClick={fitView} title="Ajuster à la vue" aria-label="Ajuster à la vue" style={zBtn}>
+                <button onClick={fitView} title={t('w1i.fit_view')} aria-label={t('w1i.fit_view')} style={zBtn}>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3H5a2 2 0 00-2 2v3M16 3h3a2 2 0 012 2v3M8 21H5a2 2 0 01-2-2v-3M16 21h3a2 2 0 002-2v-3"/></svg>
                 </button>
-                <button onClick={tidy} title="Ranger la toile (auto-layout)" aria-label="Ranger la toile" style={zBtn}>
+                <button onClick={tidy} title={t('w1i.tidy_canvas_auto')} aria-label={t('w1i.tidy_canvas')} style={zBtn}>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="6" height="6" rx="1.5"/><rect x="15" y="4" width="6" height="6" rx="1.5"/><rect x="9" y="14" width="6" height="6" rx="1.5"/><path d="M6 10v2a2 2 0 002 2h1M18 10v2a2 2 0 01-2 2h-1"/></svg>
                 </button>
               </div>
@@ -1901,16 +1905,16 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                 display: 'flex', flexDirection: 'column', boxShadow: '-10px 0 34px rgba(0,0,0,0.14)', animation: 'studio_in 0.2s ease' }}>
                 <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 8, padding: '11px 12px', borderBottom: '1px solid var(--border)' }}>
                   <StudioLogo size={17} />
-                  <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-body)', flex: 1 }}>Architecte</span>
+                  <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-body)', flex: 1 }}>{t('w1i.architect')}</span>
                   {chatMsgs.length > 0 && (
-                    <button onClick={resetChat} title="Nouvelle conversation" aria-label="Nouvelle conversation" style={iconBtn}>
+                    <button onClick={resetChat} title={t('w1i.new_conversation')} aria-label={t('w1i.new_conversation')} style={iconBtn}>
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14"/></svg>
                     </button>
                   )}
-                  <button onClick={() => setChatFull(true)} title="Plein écran" aria-label="Plein écran" style={iconBtn}>
+                  <button onClick={() => setChatFull(true)} title={t('w1i.fullscreen')} aria-label={t('w1i.fullscreen')} style={iconBtn}>
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3H5a2 2 0 00-2 2v3M16 3h3a2 2 0 012 2v3M8 21H5a2 2 0 01-2-2v-3M16 21h3a2 2 0 002-2v-3"/></svg>
                   </button>
-                  <button onClick={() => setChatOpen(false)} title="Réduire" aria-label="Réduire" style={iconBtn}>
+                  <button onClick={() => setChatOpen(false)} title={t('w1i.minimize')} aria-label={t('w1i.minimize')} style={iconBtn}>
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 6l6 6-6 6"/></svg>
                   </button>
                 </div>
@@ -1919,10 +1923,10 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
             )}
             {/* Onglet de réouverture quand le chat est replié mais qu'une conversation existe */}
             {!chatOpen && chatMsgs.length > 0 && (
-              <button onClick={() => setChatOpen(true)} title="Rouvrir l’architecte"
+              <button onClick={() => setChatOpen(true)} title={t('w1i.reopen_architect')}
                 style={{ position: 'absolute', top: 70, right: 0, zIndex: 8, display: 'flex', alignItems: 'center', gap: 6, padding: '9px 12px 9px 14px', borderRadius: '12px 0 0 12px', border: '1px solid var(--border)', borderRight: 'none', background: 'var(--bg-card)', color: 'var(--text)', cursor: 'pointer', boxShadow: '-4px 4px 16px rgba(0,0,0,0.12)', fontFamily: 'var(--font-body)' }}>
                 <StudioLogo size={15} />
-                <span style={{ fontSize: 12, fontWeight: 700 }}>Architecte</span>
+                <span style={{ fontSize: 12, fontWeight: 700 }}>{t('w1i.architect')}</span>
               </button>
             )}
 
@@ -1936,24 +1940,24 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                     <KindIcon kind={sel.kind} size={13} />
                   </span>
                   <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-mid)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{KIND_LABEL[sel.kind]}</span>
-                  <button onClick={() => setSelId(null)} style={{ ...iconBtn, marginLeft: 'auto' }} aria-label="Fermer">
+                  <button onClick={() => setSelId(null)} style={{ ...iconBtn, marginLeft: 'auto' }} aria-label={t('w1i.close')}>
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
                   </button>
                 </div>
-                <label style={lbl}>Titre</label>
+                <label style={lbl}>{t('w1i.title')}</label>
                 <input value={sel.title} onChange={e => patchNode(sel.id, { title: e.target.value })} style={fld} />
 
                 {/* Connecteur de page (lecture) */}
                 {sel.kind === 'source' && (
                   <>
-                    <label style={lbl}>Page de l’app à connecter</label>
+                    <label style={lbl}>{t('w1i.app_page_to_connect')}</label>
                     <select value={sel.sourceKey ?? 'activities'} onChange={e => patchNode(sel.id, { sourceKey: e.target.value as StudioSourceKey })} style={{ ...fld, cursor: 'pointer' }}>
                       {(Object.keys(SOURCE_LABEL) as StudioSourceKey[]).map(k => (
                         <option key={k} value={k}>{SOURCE_LABEL[k]}</option>
                       ))}
                     </select>
                     <p style={{ fontSize: 11.5, color: 'var(--text-dim)', lineHeight: 1.5, margin: '0 0 14px' }}>
-                      Ce nœud lit les vraies données de cette page et les transmet aux nœuds reliés en aval.
+                      {t('w1i.source_node_desc')}
                     </p>
                   </>
                 )}
@@ -1961,7 +1965,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                 {/* Action d'écriture */}
                 {sel.kind === 'action' && (
                   <>
-                    <label style={lbl}>Action</label>
+                    <label style={lbl}>{t('w1i.action')}</label>
                     <select value={sel.actionKey ?? 'planning_save'} onChange={e => patchNode(sel.id, { actionKey: e.target.value as StudioActionKey, title: ACTION_LABEL[e.target.value as StudioActionKey] })} style={{ ...fld, cursor: 'pointer' }}>
                       {(Object.keys(ACTION_LABEL) as StudioActionKey[]).map(k => (
                         <option key={k} value={k}>{ACTION_LABEL[k]}</option>
@@ -1969,25 +1973,25 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                     </select>
                     <p style={{ fontSize: 11.5, color: 'var(--text-dim)', lineHeight: 1.5, margin: '0 0 14px' }}>
                       {(sel.actionKey ?? 'planning_save') === 'planning_save'
-                        ? 'Convertit ce qu’il reçoit en séances et les enregistre dans ton Planning — toujours après ta validation explicite.'
+                        ? t('w1i.action_desc_planning')
                         : (sel.actionKey === 'calendar_race')
-                        ? 'Extrait une course/un objectif daté de ce qu’il reçoit et l’ajoute à ton Calendrier — toujours après ta validation explicite.'
-                        : 'Envoie le contenu reçu dans tes notifications (rapport consultable plus tard) — toujours après ta validation explicite.'}
+                        ? t('w1i.action_desc_calendar')
+                        : t('w1i.action_desc_notify')}
                     </p>
                   </>
                 )}
 
                 {sel.kind !== 'source' && sel.kind !== 'action' && (
                   <>
-                    <label style={lbl}>{sel.kind === 'trigger' ? 'Objectif' : sel.kind === 'validation' ? 'Consigne de validation' : 'Rôle de l’agent'}</label>
+                    <label style={lbl}>{sel.kind === 'trigger' ? t('w1i.objective') : sel.kind === 'validation' ? t('w1i.validation_instruction') : t('w1i.agent_role')}</label>
                     <textarea value={sel.role ?? ''} onChange={e => patchNode(sel.id, { role: e.target.value })} rows={7}
-                      style={{ ...fld, resize: 'vertical', lineHeight: 1.5 }} placeholder={sel.kind === 'trigger' ? 'Que doit accomplir le collectif ?' : 'Décris précisément le job…'} />
+                      style={{ ...fld, resize: 'vertical', lineHeight: 1.5 }} placeholder={sel.kind === 'trigger' ? t('w1i.collective_goal_ph') : t('w1i.describe_job_ph')} />
                   </>
                 )}
 
                 {(sel.kind === 'agent' || sel.kind === 'merge') && (
                   <>
-                    <label style={lbl}>Modèle IA</label>
+                    <label style={lbl}>{t('w1i.ai_model_label')}</label>
                     <div style={{ display: 'flex', gap: 6 }}>
                       {(['hermes', 'athena', 'zeus'] as StudioModel[]).map(m => (
                         <button key={m} onClick={() => patchNode(sel.id, { model: m })}
@@ -2002,7 +2006,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                 {sel.kind !== 'trigger' && (
                   <button onClick={() => deleteNode(sel.id)}
                     style={{ marginTop: 18, width: '100%', padding: '10px 0', borderRadius: 9, border: '1px solid rgba(239,68,68,0.4)', background: 'rgba(239,68,68,0.08)', color: '#EF4444', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
-                    Supprimer ce nœud
+                    {t('w1i.delete_node')}
                   </button>
                 )}
               </div>
@@ -2013,18 +2017,18 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
         {/* ══ PILOTAGE ══ */}
         {view === 'canvas' && tab === 'chat' && (
           <div style={{ position: 'absolute', inset: 0, overflowY: 'auto', padding: '20px 18px', maxWidth: 760, margin: '0 auto' }}>
-            <label style={lbl}>Objectif du collectif</label>
+            <label style={lbl}>{t('w1i.collective_objective')}</label>
             {trigger ? (
               <textarea value={trigger.role ?? ''} onChange={e => patchNode(trigger.id, { role: e.target.value })} rows={3}
-                style={{ ...fld, resize: 'vertical', lineHeight: 1.5, marginBottom: 18 }} placeholder="Que doivent accomplir les agents ensemble ?" />
-            ) : <p style={{ fontSize: 13, color: 'var(--text-dim)' }}>Utilise la barre « Décris ton système » du Canvas pour créer un système (le déclencheur portera l’objectif).</p>}
+                style={{ ...fld, resize: 'vertical', lineHeight: 1.5, marginBottom: 18 }} placeholder={t('w1i.agents_together_ph')} />
+            ) : <p style={{ fontSize: 13, color: 'var(--text-dim)' }}>{t('w1i.no_trigger_hint')}</p>}
 
             {runErr && <div style={{ padding: 12, borderRadius: 10, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)', color: '#EF4444', fontSize: 13, marginBottom: 16 }}>{runErr}</div>}
 
             {runCost !== null && (
               <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '6px 12px', borderRadius: 999, background: 'rgba(59,146,212,0.08)', border: '1px solid rgba(59,146,212,0.25)', marginBottom: 16, fontSize: 12, fontWeight: 700, color: 'var(--studio-accent)', fontFamily: 'var(--font-body)', fontVariantNumeric: 'tabular-nums' }}>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
-                Ce run a coûté {formatTokens(runCost)} tokens Studio
+                {t('w1i.run_cost', { n: formatTokens(runCost) })}
               </div>
             )}
 
@@ -2035,22 +2039,22 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                     <KindIcon kind={approval.node.kind} size={14} />
                   </span>
                   <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-display)', flex: 1 }}>{approval.node.title}</span>
-                  <span style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '0.05em', textTransform: 'uppercase', color: '#F59E0B', background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.35)', borderRadius: 999, padding: '3px 9px' }}>Ton accord</span>
+                  <span style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '0.05em', textTransform: 'uppercase', color: '#F59E0B', background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.35)', borderRadius: 999, padding: '3px 9px' }}>{t('w1i.your_approval')}</span>
                 </div>
                 {approval.node.role && <div style={{ fontSize: 12.5, color: 'var(--text-mid)', marginBottom: 10, lineHeight: 1.5, fontFamily: 'var(--font-body)' }}>{approval.node.role}</div>}
                 <div style={{ maxHeight: 420, overflowY: 'auto', padding: '14px 16px', borderRadius: 12, background: 'var(--bg-alt)', border: '1px solid var(--border)', marginBottom: 14 }}>
-                  {approval.content ? <StudioMarkdown text={approval.content} /> : <span style={{ fontSize: 13, color: 'var(--text-dim)' }}>(aucun contenu en entrée)</span>}
+                  {approval.content ? <StudioMarkdown text={approval.content} /> : <span style={{ fontSize: 13, color: 'var(--text-dim)' }}>{t('w1i.no_input_content')}</span>}
                 </div>
                 <div style={{ display: 'flex', gap: 8 }}>
-                  <button onClick={() => approval.resolve(true)} style={{ ...cta, flex: 1, justifyContent: 'center' }}>Valider et continuer</button>
-                  <button onClick={() => approval.resolve(false)} style={{ flex: 1, padding: '9px 0', borderRadius: 9, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text-mid)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>Refuser</button>
+                  <button onClick={() => approval.resolve(true)} style={{ ...cta, flex: 1, justifyContent: 'center' }}>{t('w1i.validate_continue')}</button>
+                  <button onClick={() => approval.resolve(false)} style={{ flex: 1, padding: '9px 0', borderRadius: 9, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text-mid)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>{t('w1i.refuse')}</button>
                 </div>
               </div>
             )}
 
-            <label style={lbl}>Journal du run</label>
-            {logs.length === 0 && !running && <p style={{ fontSize: 13, color: 'var(--text-dim)' }}>Lance un « Run once » pour voir les agents travailler.</p>}
-            {running && logs.length === 0 && <p style={{ fontSize: 13, color: 'var(--text-dim)', animation: 'studio_pulse 1.4s ease infinite' }}>Les agents travaillent…</p>}
+            <label style={lbl}>{t('w1i.run_journal')}</label>
+            {logs.length === 0 && !running && <p style={{ fontSize: 13, color: 'var(--text-dim)' }}>{t('w1i.run_once_to_see')}</p>}
+            {running && logs.length === 0 && <p style={{ fontSize: 13, color: 'var(--text-dim)', animation: 'studio_pulse 1.4s ease infinite' }}>{t('w1i.agents_working')}</p>}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {logs.map((l, i) => (
                 <div key={i} style={{ padding: 13, borderRadius: 13, background: 'var(--bg-card)', border: '1px solid var(--border)', animation: 'studio_in 0.2s ease' }}>
@@ -2075,7 +2079,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
           const writes = graph.nodes.filter(n => n.kind === 'action' && status[n.id] === 'done' && (nodeText[n.id] ?? '').trim()).map(n => {
             const ak = n.actionKey ?? 'planning_save'
             const link = ak === 'calendar_race' ? '/calendar' : ak === 'notify_report' ? '/notifications' : '/planning'
-            const linkLabel = ak === 'calendar_race' ? 'Ouvrir le Calendrier' : ak === 'notify_report' ? 'Voir les notifications' : 'Ouvrir le Planning'
+            const linkLabel = ak === 'calendar_race' ? t('w1i.open_calendar') : ak === 'notify_report' ? t('w1i.see_notifications') : t('w1i.open_planning')
             const first = (nodeText[n.id] ?? '').split('\n').find(l => l.trim()) ?? ''
             return { id: n.id, first, link, linkLabel }
           })
@@ -2084,7 +2088,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
             {runCost !== null && (
               <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '6px 12px', borderRadius: 999, background: 'rgba(59,146,212,0.08)', border: '1px solid rgba(59,146,212,0.25)', marginBottom: 14, fontSize: 12, fontWeight: 700, color: 'var(--studio-accent)', fontFamily: 'var(--font-body)', fontVariantNumeric: 'tabular-nums' }}>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
-                Ce run a coûté {formatTokens(runCost)} tokens Studio
+                {t('w1i.run_cost', { n: formatTokens(runCost) })}
               </div>
             )}
             {/* Bandeau : ce qui a été écrit dans l'app (Planning / Calendrier / Notifs). */}
@@ -2092,7 +2096,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
               <div style={{ marginBottom: 16, padding: '12px 14px', borderRadius: 14, background: 'rgba(34,197,94,0.07)', border: '1px solid rgba(34,197,94,0.35)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: writes.length ? 6 : 0 }}>
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#22C55E" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
-                  <span style={{ fontSize: 13, fontWeight: 800, color: '#16A34A', fontFamily: 'var(--font-body)' }}>Ce que ce run a écrit dans ton app</span>
+                  <span style={{ fontSize: 13, fontWeight: 800, color: '#16A34A', fontFamily: 'var(--font-body)' }}>{t('w1i.run_wrote_in_app')}</span>
                 </div>
                 {writes.map(w => (
                   <div key={w.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '4px 0' }}>
@@ -2104,12 +2108,12 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
             )}
             {!hasAnyText ? (
               <p style={{ fontSize: 14, color: 'var(--text-dim)', textAlign: 'center', marginTop: 60 }}>
-                Le rendu apparaîtra ici après un « Run once ». Touche une bulle pour voir ce qu’elle a produit.
+                {t('w1i.rendu_empty')}
               </p>
             ) : (
               <>
                 {/* Carte du système — bulles cliquables, statut du run */}
-                <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-dim)', margin: '0 0 2px' }}>Le système · touche une bulle</div>
+                <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-dim)', margin: '0 0 2px' }}>{t('w1i.system_tap_bubble')}</div>
                 <div style={{ maxWidth: 360 }}>
                   {miniGraph(graph, { height: 220, selectedId: selId, onSelect: setRenduSelId, status })}
                 </div>
@@ -2125,17 +2129,17 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                       <span style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-dim)', background: 'var(--bg-alt)', border: '1px solid var(--border)', borderRadius: 6, padding: '2px 7px' }}>{sub(selNode)}</span>
                       <div style={{ flex: 1 }} />
                       {selText.trim() && (<>
-                        <button onClick={() => continueWithCoach(selNode.title, selText)} title="Continuer avec le coach IA"
+                        <button onClick={() => continueWithCoach(selNode.title, selText)} title={t('w1i.continue_with_coach')}
                           style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 11px', borderRadius: 8, border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
                           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
-                          Continuer
+                          {t('w1i.continue')}
                         </button>
-                        <button onClick={() => copyRender(selNode.id, selText)} title="Copier"
+                        <button onClick={() => copyRender(selNode.id, selText)} title={t('w1i.copy')}
                           style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 11px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-card)', color: copied === selNode.id ? '#22C55E' : 'var(--text-mid)', fontSize: 11.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
                           {copied === selNode.id ? (
-                            <><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg> Copié</>
+                            <><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg> {t('w1i.copied')}</>
                           ) : (
-                            <><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg> Copier</>
+                            <><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg> {t('w1i.copy')}</>
                           )}
                         </button>
                       </>)}
@@ -2144,7 +2148,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                     <div style={{ padding: '14px 18px', borderRadius: 14, background: 'var(--bg-card)', border: '1px solid var(--border)', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
                       {selText.trim()
                         ? <StudioMarkdown text={selText} />
-                        : <span style={{ fontSize: 13.5, color: 'var(--text-dim)' }}>{selNode.kind === 'source' ? 'Ce bloc alimente les agents en données — il ne produit pas de texte.' : 'Aucune sortie pour ce bloc lors du dernier run.'}</span>}
+                        : <span style={{ fontSize: 13.5, color: 'var(--text-dim)' }}>{selNode.kind === 'source' ? t('w1i.source_no_text') : t('w1i.no_output_last_run')}</span>}
                     </div>
                   </div>
                 )}
@@ -2166,18 +2170,18 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
             if (!isNaN(end.getTime())) {
               const days = Math.ceil((end.getTime() - Date.now()) / 86400_000)
               deadlineChip = days < 0
-                ? { text: 'échéance passée', col: '#EF4444' }
-                : days === 0 ? { text: 'aujourd’hui', col: '#F59E0B' }
-                : { text: `J-${days}`, col: days <= 14 ? '#F59E0B' : 'var(--studio-accent)' }
+                ? { text: t('w1i.deadline_passed'), col: '#EF4444' }
+                : days === 0 ? { text: t('w1i.today'), col: '#F59E0B' }
+                : { text: t('w1i.days_left', { n: days }), col: days <= 14 ? '#F59E0B' : 'var(--studio-accent)' }
             }
           }
           // Prochain run planifié (résumé lisible) si la planification est active.
           let nextRunLabel: string | null = null
           if (schedule?.enabled) {
-            const DAYS = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche']
+            const DAYS = [t('w1i.day_monday_lc'), t('w1i.day_tuesday_lc'), t('w1i.day_wednesday_lc'), t('w1i.day_thursday_lc'), t('w1i.day_friday_lc'), t('w1i.day_saturday_lc'), t('w1i.day_sunday_lc')]
             nextRunLabel = schedule.frequency === 'weekly'
-              ? `chaque ${DAYS[schedule.weekday] ?? 'semaine'} ~${schedule.hour}h`
-              : `chaque jour ~${schedule.hour}h`
+              ? t('w1i.each_weekday_at', { day: DAYS[schedule.weekday] ?? t('w1i.week'), hour: schedule.hour })
+              : t('w1i.each_day_at', { hour: schedule.hour })
           }
           // Aperçu du dernier cycle réussi (première ligne de son rendu).
           const lastDone = allRuns.find(r => r.status === 'done')
@@ -2192,13 +2196,13 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
               <div style={{ padding: '14px 16px', borderRadius: 16, background: 'linear-gradient(150deg, color-mix(in srgb, var(--studio-accent) 8%, var(--bg-card)), var(--bg-card))', border: '1px solid color-mix(in srgb, var(--studio-accent) 22%, var(--border))', marginBottom: 18 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ color: 'var(--studio-accent)', display: 'flex', flexShrink: 0 }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="0.7" fill="currentColor"/></svg></span>
-                  <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-dim)', fontFamily: 'var(--font-body)' }}>Progression vers l’objectif</span>
+                  <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-dim)', fontFamily: 'var(--font-body)' }}>{t('w1i.progress_to_objective')}</span>
                   {deadlineChip && <span style={{ marginLeft: 'auto', fontSize: 11, fontWeight: 800, color: deadlineChip.col, background: `color-mix(in srgb, ${deadlineChip.col} 12%, transparent)`, borderRadius: 7, padding: '3px 9px', fontFamily: 'var(--font-body)' }}>{deadlineChip.text}</span>}
                 </div>
                 <div style={{ fontSize: 15.5, fontWeight: 700, color: 'var(--text)', margin: '8px 0 0', fontFamily: 'var(--font-display)', lineHeight: 1.3 }}>{obj?.text || graph.name}</div>
                 <div style={{ fontSize: 12.5, color: 'var(--text-mid)', marginTop: 6, fontFamily: 'var(--font-body)' }}>
-                  {doneCount > 0 ? <><b style={{ color: 'var(--studio-accent)' }}>{doneCount}</b> cycle{doneCount > 1 ? 's' : ''} accompli{doneCount > 1 ? 's' : ''}</> : 'Aucun cycle accompli pour l’instant'}
-                  {!obj?.text && <span style={{ color: 'var(--text-dim)' }}> · défini aucun objectif — l’architecte peut t’en fixer un</span>}
+                  {doneCount > 0 ? <><b style={{ color: 'var(--studio-accent)' }}>{doneCount}</b> {t(doneCount > 1 ? 'w1i.cycles_done_plural' : 'w1i.cycles_done_singular')}</> : t('w1i.no_cycles_done')}
+                  {!obj?.text && <span style={{ color: 'var(--text-dim)' }}>{t('w1i.no_objective_suffix')}</span>}
                 </div>
                 {/* Chips d'état : planification + santé */}
                 {(nextRunLabel || healthAlert) && (
@@ -2206,29 +2210,29 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                     {nextRunLabel && (
                       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 700, color: 'var(--studio-accent)', background: 'color-mix(in srgb, var(--studio-accent) 10%, transparent)', borderRadius: 8, padding: '4px 9px', fontFamily: 'var(--font-body)' }}>
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
-                        Prochain run : {nextRunLabel}
+                        {t('w1i.next_run', { label: nextRunLabel })}
                       </span>
                     )}
                     {healthAlert && (
                       <span title={healthAlert} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 700, color: '#B45309', background: 'rgba(245,158,11,0.12)', borderRadius: 8, padding: '4px 9px', fontFamily: 'var(--font-body)' }}>
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4M12 17h.01"/></svg>
-                        Mode sécurité actif
+                        {t('w1i.safety_mode_active')}
                       </span>
                     )}
                   </div>
                 )}
                 {lastSnippet && (
                   <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid color-mix(in srgb, var(--studio-accent) 15%, var(--border))' }}>
-                    <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-dim)', marginBottom: 3, fontFamily: 'var(--font-body)' }}>Dernier cycle</div>
+                    <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-dim)', marginBottom: 3, fontFamily: 'var(--font-body)' }}>{t('w1i.last_cycle')}</div>
                     <div style={{ fontSize: 12.5, color: 'var(--text-mid)', lineHeight: 1.5, fontFamily: 'var(--font-body)' }}>{lastSnippet}…</div>
                   </div>
                 )}
               </div>
             )}
 
-            {runs === null && <p style={{ fontSize: 13, color: 'var(--text-dim)', animation: 'studio_pulse 1.4s ease infinite' }}>Chargement du journal…</p>}
+            {runs === null && <p style={{ fontSize: 13, color: 'var(--text-dim)', animation: 'studio_pulse 1.4s ease infinite' }}>{t('w1i.loading_journal')}</p>}
             {runs !== null && allRuns.length === 0 && (
-              <p style={{ fontSize: 14, color: 'var(--text-dim)', textAlign: 'center', marginTop: 40 }}>Aucun cycle pour l’instant — lance un « Run once » ou planifie le système, et sa progression s’écrira ici.</p>
+              <p style={{ fontSize: 14, color: 'var(--text-dim)', textAlign: 'center', marginTop: 40 }}>{t('w1i.no_cycles_yet')}</p>
             )}
 
             {/* Timeline : un point par cycle, du plus récent au plus ancien */}
@@ -2238,7 +2242,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                 {allRuns.map(r => {
                   const open = openRunId === r.id
                   const stCol = r.status === 'done' ? '#22C55E' : r.status === 'error' ? '#EF4444' : '#F59E0B'
-                  const stLbl = r.status === 'done' ? 'Terminé' : r.status === 'error' ? 'Erreur' : 'Arrêté'
+                  const stLbl = r.status === 'done' ? t('w1i.status_done') : r.status === 'error' ? t('w1i.status_error') : t('w1i.status_stopped')
                   return (
                     <div key={r.id} style={{ display: 'flex', gap: 12, position: 'relative' }}>
                       {/* Pastille de la timeline */}
@@ -2253,7 +2257,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                               {new Date(r.created_at).toLocaleString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
                             </span>
                             <span style={{ display: 'block', fontSize: 11.5, color: 'var(--text-dim)', marginTop: 2 }}>
-                              {stLbl}{r.tokens_est ? ` · ~${formatTokens(r.tokens_est)} tokens` : ''}{(r.renders ?? []).filter(x => x.text).length ? ` · ${(r.renders ?? []).filter(x => x.text).length} rendu(s)` : ''}
+                              {stLbl}{r.tokens_est ? t('w1i.tokens_suffix', { n: formatTokens(r.tokens_est) }) : ''}{(r.renders ?? []).filter(x => x.text).length ? t('w1i.renders_suffix', { n: (r.renders ?? []).filter(x => x.text).length }) : ''}
                             </span>
                           </span>
                           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 200ms ease', flexShrink: 0 }}><path d="M6 9l6 6 6-6"/></svg>
@@ -2261,7 +2265,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                         {open && (
                           <div style={{ padding: '0 14px 12px', borderTop: '1px solid var(--border)' }}>
                             {(r.renders ?? []).filter(x => x.text).length === 0 && (
-                              <p style={{ fontSize: 12.5, color: 'var(--text-dim)', margin: '10px 0 0' }}>Aucun rendu conservé pour ce cycle.</p>
+                              <p style={{ fontSize: 12.5, color: 'var(--text-dim)', margin: '10px 0 0' }}>{t('w1i.no_render_kept')}</p>
                             )}
                             {(r.renders ?? []).filter(x => x.text).map((x, i) => (
                               <div key={i} style={{ marginTop: 10 }}>
@@ -2293,28 +2297,27 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                 <span style={{ width: 60, height: 60, borderRadius: 18, background: 'rgba(59,146,212,0.12)', color: 'var(--studio-accent)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
                   <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
                 </span>
-                <h2 style={{ fontSize: 22, fontWeight: 700, color: 'var(--text)', margin: '16px 0 8px', fontFamily: 'var(--font-display)' }}>Le Studio est réservé aux offres Pro et Expert</h2>
+                <h2 style={{ fontSize: 22, fontWeight: 700, color: 'var(--text)', margin: '16px 0 8px', fontFamily: 'var(--font-display)' }}>{t('w1i.paywall_title')}</h2>
                 <p style={{ fontSize: 14, color: 'var(--text-mid)', lineHeight: 1.6, margin: '0 auto 22px', maxWidth: 480, fontFamily: 'var(--font-body)' }}>
-                  Un run mobilise plusieurs coachs IA en parallèle — c’est une puissance de calcul sans commune mesure avec le chat.
-                  Les abonnements Pro et Expert incluent un quota mensuel de tokens Studio dédié, extensible avec des packs.
+                  {t('w1i.paywall_body')}
                 </p>
-                <a href="/settings/subscription" style={{ ...cta, display: 'inline-flex', textDecoration: 'none' }}>Voir les abonnements</a>
+                <a href="/settings/subscription" style={{ ...cta, display: 'inline-flex', textDecoration: 'none' }}>{t('w1i.see_subscriptions')}</a>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginTop: 34, opacity: 0.65 }}>
                   {STUDIO_PACKS.map(p => (
                     <div key={p.key} style={{ padding: '16px 14px', borderRadius: 14, border: '1px solid var(--border)', background: 'var(--bg-card)', textAlign: 'left' }}>
                       <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-body)' }}>{p.label}</div>
-                      <div style={{ fontSize: 19, fontWeight: 800, color: 'var(--text)', margin: '6px 0 2px', fontFamily: 'var(--font-display)' }}>{formatTokens(p.tokens)} <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-dim)' }}>tokens</span></div>
+                      <div style={{ fontSize: 19, fontWeight: 800, color: 'var(--text)', margin: '6px 0 2px', fontFamily: 'var(--font-display)' }}>{formatTokens(p.tokens)} <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-dim)' }}>{t('w1i.tokens_word')}</span></div>
                       <div style={{ fontSize: 11.5, color: 'var(--text-dim)', fontFamily: 'var(--font-body)' }}>{p.tagline}</div>
                     </div>
                   ))}
                 </div>
-                <p style={{ fontSize: 11.5, color: 'var(--text-dim)', marginTop: 10, fontFamily: 'var(--font-body)' }}>Packs disponibles sur le site, une fois abonné Pro ou Expert.</p>
+                <p style={{ fontSize: 11.5, color: 'var(--text-dim)', marginTop: 10, fontFamily: 'var(--font-body)' }}>{t('w1i.packs_available_site')}</p>
               </div>
             ) : (
               <div style={{ maxWidth: 1020, margin: '0 auto', display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: isMobile ? 14 : 22, alignItems: isMobile ? 'stretch' : 'flex-start' }}>
                 {/* ── Rail des dossiers (horizontal sur mobile) ── */}
                 <div style={isMobile ? { width: '100%' } : { width: 170, flexShrink: 0, position: 'sticky', top: 0 }}>
-                  <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--text-dim)', margin: '4px 0 10px', fontFamily: 'var(--font-body)' }}>Dossiers</div>
+                  <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--text-dim)', margin: '4px 0 10px', fontFamily: 'var(--font-body)' }}>{t('w1i.folders')}</div>
                   {([null, ...Array.from(new Set(systems.map(s => s.folder).filter((f): f is string => Boolean(f)))).sort()] as (string | null)[]).map(f => {
                     const on = activeFolder === f
                     const count = f === null ? systems.length : systems.filter(s => s.folder === f).length
@@ -2326,13 +2329,13 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
                           {f === null ? <><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></> : <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/>}
                         </svg>
-                        <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f ?? 'Tous les systèmes'}</span>
+                        <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f ?? t('w1i.all_systems')}</span>
                         <span style={{ fontSize: 11, color: on ? 'var(--studio-accent)' : 'var(--text-dim)', fontVariantNumeric: 'tabular-nums' }}>{count}</span>
                       </button>
                     )
                   })}
                   <p style={{ fontSize: 10.5, color: 'var(--text-dim)', lineHeight: 1.5, margin: '10px 10px 0', fontFamily: 'var(--font-body)' }}>
-                    Range un système via l’icône dossier de sa carte — crée le dossier au passage.
+                    {t('w1i.folder_rail_hint')}
                   </p>
                 </div>
 
@@ -2348,12 +2351,12 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4M12 17h.01"/></svg>
                     </span>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-body)' }}>On dirait qu’il faut lever le pied</div>
-                      <div style={{ fontSize: 12, color: 'var(--text-mid)', marginTop: 2, fontFamily: 'var(--font-body)', lineHeight: 1.45 }}>Détecté : {healthAlert}. Veux-tu un système qui gère ça — retour prudent et charge adaptée à ta forme réelle&nbsp;?</div>
+                      <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-body)' }}>{t('w1i.ease_off_title')}</div>
+                      <div style={{ fontSize: 12, color: 'var(--text-mid)', marginTop: 2, fontFamily: 'var(--font-body)', lineHeight: 1.45 }}>{t('w1i.ease_off_body', { alert: healthAlert })}</div>
                     </div>
-                    <button onClick={() => void startFirstSystem(`Gérer ma situation actuelle (${healthAlert}) : retour prudent, prévention et charge adaptée à ma forme réelle`)}
+                    <button onClick={() => void startFirstSystem(t('w1i.manage_situation_obj', { alert: healthAlert }))}
                       style={{ padding: '10px 16px', borderRadius: 11, border: 'none', background: '#F59E0B', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)', flexShrink: 0, whiteSpace: 'nowrap' }}>
-                      Créer ce système
+                      {t('w1i.create_this_system')}
                     </button>
                   </div>
                 )}
@@ -2363,23 +2366,23 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                   <div style={{ padding: isMobile ? '20px 16px' : '26px 24px', borderRadius: 20, background: 'linear-gradient(150deg, color-mix(in srgb, var(--studio-accent) 12%, var(--bg-card)), var(--bg-card))', border: '1px solid color-mix(in srgb, var(--studio-accent) 26%, var(--border))', marginBottom: 24, boxShadow: '0 1px 3px rgba(0,0,0,0.05), 0 18px 44px rgba(0,0,0,0.06)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
                       <StudioLogo size={26} />
-                      <span style={{ fontSize: isMobile ? 18 : 20, fontWeight: 800, color: 'var(--text)', fontFamily: 'var(--font-display)' }}>Ton premier système</span>
+                      <span style={{ fontSize: isMobile ? 18 : 20, fontWeight: 800, color: 'var(--text)', fontFamily: 'var(--font-display)' }}>{t('w1i.your_first_system')}</span>
                     </div>
                     <p style={{ fontSize: 13.5, color: 'var(--text-mid)', lineHeight: 1.6, margin: '0 0 16px', maxWidth: 560, fontFamily: 'var(--font-body)' }}>
-                      Dis-moi juste ton objectif du moment. L’IA lit ton profil et tes données, te pose une ou deux questions, et construit un système qui te suit en continu — tu n’as rien à assembler.
+                      {t('w1i.first_system_intro')}
                     </p>
                     <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 9, maxWidth: 620 }}>
                       <input value={firstObjective} onChange={e => setFirstObjective(e.target.value)}
                         onKeyDown={e => { if (e.key === 'Enter') void startFirstSystem(firstObjective) }}
-                        placeholder="Ex. Semi-marathon sous 1h40 en novembre · Prise de masse · Prépa Hyrox"
+                        placeholder={t('w1i.first_objective_ph')}
                         style={{ flex: 1, minWidth: 0, padding: '12px 14px', borderRadius: 12, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 14, fontFamily: 'var(--font-body)', outline: 'none' }} />
                       <button onClick={() => void startFirstSystem(firstObjective)}
                         style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, padding: '12px 20px', borderRadius: 12, border: 'none', background: 'var(--studio-accent)', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)', flexShrink: 0 }}>
-                        Créer mon système
+                        {t('w1i.create_my_system')}
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
                       </button>
                     </div>
-                    <p style={{ fontSize: 11.5, color: 'var(--text-dim)', margin: '11px 0 0', fontFamily: 'var(--font-body)' }}>Pas d’objectif précis ? Laisse vide — l’IA te proposera ce qui te conviendrait.</p>
+                    <p style={{ fontSize: 11.5, color: 'var(--text-dim)', margin: '11px 0 0', fontFamily: 'var(--font-body)' }}>{t('w1i.no_precise_objective')}</p>
                   </div>
                 )}
 
@@ -2388,15 +2391,15 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                   <div style={{ marginBottom: 26 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '4px 0 4px' }}>
                       <span style={{ color: 'var(--studio-accent)', display: 'flex' }}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l2.4 7.4H22l-6 4.6 2.3 7.4-6.3-4.6L5.7 21 8 14 2 9.4h7.6z"/></svg></span>
-                      <span style={{ fontSize: 12, fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--text)', fontFamily: 'var(--font-body)' }}>Recommandés pour toi</span>
+                      <span style={{ fontSize: 12, fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--text)', fontFamily: 'var(--font-body)' }}>{t('w1i.recommended_for_you')}</span>
                       <div style={{ flex: 1 }} />
-                      <button onClick={() => void loadRecos(true)} disabled={recosLoading} title="Régénérer les recommandations" aria-label="Régénérer"
+                      <button onClick={() => void loadRecos(true)} disabled={recosLoading} title={t('w1i.regenerate_recos')} aria-label={t('w1i.regenerate')}
                         style={{ display: 'flex', alignItems: 'center', gap: 5, height: 26, padding: '0 9px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text-mid)', cursor: recosLoading ? 'default' : 'pointer', fontSize: 11.5, fontWeight: 700, fontFamily: 'var(--font-body)' }}>
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={recosLoading ? { animation: 'studio_spin 0.8s linear infinite' } : undefined}><path d="M21 12a9 9 0 11-2.6-6.4M21 3v6h-6"/></svg>
-                        Régénérer
+                        {t('w1i.regenerate')}
                       </button>
                     </div>
-                    <p style={{ fontSize: 11.5, color: 'var(--text-dim)', margin: '0 0 12px', fontFamily: 'var(--font-body)' }}>D’après ton profil et tes données récentes — clique pour voir le système, puis lance-le en un tap.</p>
+                    <p style={{ fontSize: 11.5, color: 'var(--text-dim)', margin: '0 0 12px', fontFamily: 'var(--font-body)' }}>{t('w1i.recos_hint')}</p>
                     {recosLoading && recos.length === 0 ? (
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: 12 }}>
                         {[0, 1, 2].map(i => (
@@ -2408,7 +2411,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                         ))}
                       </div>
                     ) : recosError && recos.length === 0 ? (
-                      <p style={{ fontSize: 12.5, color: 'var(--text-dim)', fontFamily: 'var(--font-body)' }}>Impossible de générer des recommandations pour l’instant. <button onClick={() => void loadRecos(true)} style={{ background: 'none', border: 'none', color: 'var(--studio-accent)', cursor: 'pointer', fontWeight: 700, fontSize: 12.5, padding: 0, fontFamily: 'var(--font-body)' }}>Réessayer</button></p>
+                      <p style={{ fontSize: 12.5, color: 'var(--text-dim)', fontFamily: 'var(--font-body)' }}>{t('w1i.recos_error')} <button onClick={() => void loadRecos(true)} style={{ background: 'none', border: 'none', color: 'var(--studio-accent)', cursor: 'pointer', fontWeight: 700, fontSize: 12.5, padding: 0, fontFamily: 'var(--font-body)' }}>{t('w1i.retry')}</button></p>
                     ) : (
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: 12 }}>
                         {recos.map((r, i) => {
@@ -2427,9 +2430,9 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                               <p style={{ fontSize: 12, color: 'var(--text-mid)', lineHeight: 1.5, margin: '8px 0 0', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{r.why}</p>
                               <div style={{ flex: 1 }} />
                               <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 10 }}>
-                                <span style={{ fontSize: 10.5, color: 'var(--text-dim)' }}>{r.graph.nodes.length} blocs · {nAgents} agent{nAgents !== 1 ? 's' : ''}</span>
+                                <span style={{ fontSize: 10.5, color: 'var(--text-dim)' }}>{r.graph.nodes.length} {t('w1i.block_many')} · {nAgents} {t(nAgents !== 1 ? 'w1i.agent_many' : 'w1i.agent_one')}</span>
                                 <div style={{ flex: 1 }} />
-                                <span style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--studio-accent)', display: 'flex', alignItems: 'center', gap: 3 }}>Voir <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6"/></svg></span>
+                                <span style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--studio-accent)', display: 'flex', alignItems: 'center', gap: 3 }}>{t('w1i.view')} <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6"/></svg></span>
                               </div>
                             </button>
                           )
@@ -2441,12 +2444,12 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
 
                 {/* ── Deux espaces : Pour moi · Pour mes athlètes ── */}
                 <div style={{ display: 'inline-flex', gap: 3, padding: 3, borderRadius: 12, background: 'var(--bg-card2)', margin: '0 0 14px' }}>
-                  {([['perso', 'Pour moi'], ['coach', 'Pour mes athlètes']] as const).map(([v, l]) => {
+                  {([['perso', t('w1i.for_me')], ['coach', t('w1i.for_my_athletes')]] as const).map(([v, l]) => {
                     // « Pour mes athlètes » verrouillé sans abonnement coach.
                     const locked = v === 'coach' && !coachAccess
                     return (
-                      <button key={v} onClick={() => { if (locked) { setScopeTab('perso'); alert('L’espace « Pour mes athlètes » est réservé à l’abonnement coach.'); return } setScopeTab(v) }}
-                        title={locked ? 'Réservé à l’abonnement coach' : undefined}
+                      <button key={v} onClick={() => { if (locked) { setScopeTab('perso'); alert(t('w1i.athletes_space_locked')); return } setScopeTab(v) }}
+                        title={locked ? t('w1i.coach_only') : undefined}
                         style={{ padding: '7px 14px', borderRadius: 9, border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 12.5, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 6,
                           background: scopeTab === v ? 'var(--bg-card)' : 'transparent', color: scopeTab === v ? 'var(--studio-accent)' : 'var(--text-mid)', opacity: locked ? 0.55 : 1, boxShadow: scopeTab === v ? '0 1px 3px rgba(0,0,0,0.12)' : 'none' }}>
                         {l}
@@ -2456,19 +2459,19 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                   })}
                 </div>
                 {/* ── Mes systèmes ── */}
-                <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--text-dim)', margin: '4px 0 10px', fontFamily: 'var(--font-body)' }}>{activeFolder ?? (scopeTab === 'coach' ? 'Systèmes pour mes athlètes' : 'Mes systèmes')}</div>
+                <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--text-dim)', margin: '4px 0 10px', fontFamily: 'var(--font-body)' }}>{activeFolder ?? (scopeTab === 'coach' ? t('w1i.systems_for_athletes') : t('w1i.my_systems'))}</div>
                 {scopeTab === 'coach' && (
-                  <p style={{ fontSize: 12.5, color: 'var(--text-dim)', margin: '-4px 0 12px', lineHeight: 1.5, fontFamily: 'var(--font-body)', maxWidth: 520 }}>Ces systèmes se lancent sur un ou plusieurs de tes athlètes (tu choisis lesquels au lancement) — depuis « Athlètes » ou ici.</p>
+                  <p style={{ fontSize: 12.5, color: 'var(--text-dim)', margin: '-4px 0 12px', lineHeight: 1.5, fontFamily: 'var(--font-body)', maxWidth: 520 }}>{t('w1i.coach_systems_hint')}</p>
                 )}
                 {homeLoading ? (
-                  <p style={{ fontSize: 13, color: 'var(--text-dim)', animation: 'studio_pulse 1.4s ease infinite', fontFamily: 'var(--font-body)' }}>Chargement…</p>
+                  <p style={{ fontSize: 13, color: 'var(--text-dim)', animation: 'studio_pulse 1.4s ease infinite', fontFamily: 'var(--font-body)' }}>{t('w1i.loading')}</p>
                 ) : (
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))', gap: 12 }}>
                     {/* Nouveau système → popover (nom + dossier) */}
-                    <button onClick={() => { setNewSysName('Mon système'); setNewSysFolder(activeFolder); setNewSysNewFolder(''); setNewSysAthlete(null); setNewSysOpen(true) }}
+                    <button onClick={() => { setNewSysName(t('w1i.my_system')); setNewSysFolder(activeFolder); setNewSysNewFolder(''); setNewSysAthlete(null); setNewSysOpen(true) }}
                       style={{ minHeight: 110, borderRadius: 16, border: '2px dashed color-mix(in srgb, var(--studio-accent) 40%, transparent)', background: 'color-mix(in srgb, var(--studio-accent) 5%, var(--bg-card))', color: 'var(--studio-accent)', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, fontFamily: 'var(--font-body)', fontSize: 13.5, fontWeight: 700 }}>
                       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
-                      Nouveau système
+                      {t('w1i.new_system')}
                     </button>
                     {systems.filter(s => s.scope === scopeTab && (activeFolder === null || s.folder === activeFolder)).map(s => {
                       const nAgents = (s.graph?.nodes ?? []).filter(n => n.kind === 'agent' || n.kind === 'merge').length
@@ -2480,12 +2483,12 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                           onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.boxShadow = '0 1px 3px rgba(0,0,0,0.05)'; (e.currentTarget as HTMLDivElement).style.transform = 'none' }}>
                           <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-body)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.name}</div>
                           <div style={{ fontSize: 11.5, color: 'var(--text-dim)', marginTop: 4, fontFamily: 'var(--font-body)' }}>
-                            {(s.graph?.nodes ?? []).length} bloc{(s.graph?.nodes ?? []).length !== 1 ? 's' : ''} · {nAgents} agent{nAgents !== 1 ? 's' : ''}
+                            {(s.graph?.nodes ?? []).length} {t((s.graph?.nodes ?? []).length !== 1 ? 'w1i.block_many' : 'w1i.block_one')} · {nAgents} {t(nAgents !== 1 ? 'w1i.agent_many' : 'w1i.agent_one')}
                           </div>
                           {s.scope === 'coach' && s.athlete_id && (
                             <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, marginTop: 6, fontSize: 11, fontWeight: 700, color: 'var(--primary)', fontFamily: 'var(--font-body)' }}>
                               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
-                              {coachAthletes.find(a => a.id === s.athlete_id)?.name ?? 'Athlète lié'}
+                              {coachAthletes.find(a => a.id === s.athlete_id)?.name ?? t('w1i.linked_athlete')}
                             </div>
                           )}
                           <div style={{ flex: 1 }} />
@@ -2497,7 +2500,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                             {/* Ranger dans un dossier */}
                             <div style={{ position: 'relative' }} onClick={e => e.stopPropagation()}>
                               <button onClick={() => { setFolderMenuFor(folderMenuFor === s.id ? null : s.id); setNewFolderName('') }}
-                                title={s.folder ? `Dossier : ${s.folder}` : 'Ranger dans un dossier'} aria-label="Ranger dans un dossier"
+                                title={s.folder ? t('w1i.folder_named', { folder: s.folder }) : t('w1i.move_to_folder')} aria-label={t('w1i.move_to_folder')}
                                 style={{ ...zBtn, width: 26, height: 24, color: s.folder ? 'var(--studio-accent)' : 'var(--text-mid)' }}>
                                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
                               </button>
@@ -2513,13 +2516,13 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                                   {s.folder && (
                                     <button onClick={() => void moveToFolder(s.id, null)}
                                       style={{ display: 'flex', width: '100%', padding: '8px 10px', borderRadius: 8, border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left', fontSize: 12.5, color: 'var(--text-dim)', fontFamily: 'var(--font-body)' }}>
-                                      Retirer du dossier
+                                      {t('w1i.remove_from_folder')}
                                     </button>
                                   )}
                                   <div style={{ display: 'flex', gap: 5, padding: '6px 4px 2px', borderTop: '1px solid var(--border)', marginTop: 4 }}>
                                     <input value={newFolderName} onChange={e => setNewFolderName(e.target.value)}
                                       onKeyDown={e => { if (e.key === 'Enter' && newFolderName.trim()) void moveToFolder(s.id, newFolderName.trim()) }}
-                                      placeholder="Nouveau dossier…"
+                                      placeholder={t('w1i.new_folder_ph')}
                                       style={{ flex: 1, minWidth: 0, padding: '6px 8px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text)', fontSize: 12, fontFamily: 'var(--font-body)', outline: 'none' }} />
                                     <button onClick={() => { if (newFolderName.trim()) void moveToFolder(s.id, newFolderName.trim()) }}
                                       disabled={!newFolderName.trim()}
@@ -2530,11 +2533,11 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                                 </div>
                               )}
                             </div>
-                            <button onClick={e => { e.stopPropagation(); void copySystem(s) }} title="Dupliquer" aria-label="Dupliquer"
+                            <button onClick={e => { e.stopPropagation(); void copySystem(s) }} title={t('w1i.duplicate')} aria-label={t('w1i.duplicate')}
                               style={{ ...zBtn, width: 26, height: 24 }}>
                               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
                             </button>
-                            <button onClick={e => { e.stopPropagation(); void removeSystem(s.id) }} title="Supprimer" aria-label="Supprimer"
+                            <button onClick={e => { e.stopPropagation(); void removeSystem(s.id) }} title={t('w1i.delete')} aria-label={t('w1i.delete')}
                               style={{ ...zBtn, width: 26, height: 24, color: '#EF4444' }}>
                               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6"/></svg>
                             </button>
@@ -2549,12 +2552,12 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                 {activeFolder === null && (<>
                 <div style={{ borderTop: '1px solid var(--border)', margin: '30px 0 0' }} />
                 <div style={{ margin: '18px 0 3px' }}>
-                  <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--text-dim)', fontFamily: 'var(--font-body)' }}>Partir d’un modèle</div>
-                  <p style={{ fontSize: 11.5, color: 'var(--text-dim)', margin: '3px 0 12px', fontFamily: 'var(--font-body)' }}>Systèmes déjà construits, prêts à l’emploi — clique pour en créer ta propre copie modifiable.</p>
+                  <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--text-dim)', fontFamily: 'var(--font-body)' }}>{t('w1i.start_from_template')}</div>
+                  <p style={{ fontSize: 11.5, color: 'var(--text-dim)', margin: '3px 0 12px', fontFamily: 'var(--font-body)' }}>{t('w1i.templates_hint')}</p>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))', gap: 12 }}>
-                  {STUDIO_TEMPLATES.map(t => (
-                    <button key={t.key} onClick={() => void newSystem(t.name, t.build())}
+                  {STUDIO_TEMPLATES.map(tpl => (
+                    <button key={tpl.key} onClick={() => void newSystem(tpl.name, tpl.build())}
                       style={{ borderRadius: 16, border: '1px solid var(--border)', background: 'var(--bg-card)', cursor: 'pointer', padding: '14px 14px 13px', textAlign: 'left', fontFamily: 'var(--font-body)', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', transition: 'box-shadow 150ms, transform 150ms' }}
                       onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 6px 20px rgba(0,0,0,0.10)'; (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-1px)' }}
                       onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 1px 3px rgba(0,0,0,0.05)'; (e.currentTarget as HTMLButtonElement).style.transform = 'none' }}>
@@ -2562,9 +2565,9 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                         <span style={{ width: 26, height: 26, borderRadius: 8, background: 'rgba(59,146,212,0.12)', color: 'var(--studio-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="5" cy="6" r="2.4"/><circle cx="19" cy="6" r="2.4"/><circle cx="12" cy="18" r="2.4"/><path d="M7.2 7.2 10.5 16M16.8 7.2 13.5 16"/></svg>
                         </span>
-                        <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)' }}>{t.name}</span>
+                        <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)' }}>{tpl.name}</span>
                       </div>
-                      <p style={{ fontSize: 12, color: 'var(--text-dim)', lineHeight: 1.5, margin: '8px 0 0' }}>{t.description}</p>
+                      <p style={{ fontSize: 12, color: 'var(--text-dim)', lineHeight: 1.5, margin: '8px 0 0' }}>{tpl.description}</p>
                     </button>
                   ))}
                 </div>
@@ -2579,36 +2582,36 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
         {newSysOpen && (() => {
           const folders = Array.from(new Set(systems.map(s => s.folder).filter((f): f is string => Boolean(f)))).sort()
           const chosen = newSysNewFolder.trim() ? newSysNewFolder.trim() : newSysFolder
-          const create = () => { setNewSysOpen(false); void newSystem(newSysName.trim() || 'Mon système', emptyGraph(), chosen, scopeTab === 'coach' ? newSysAthlete : null) }
+          const create = () => { setNewSysOpen(false); void newSystem(newSysName.trim() || t('w1i.my_system'), emptyGraph(), chosen, scopeTab === 'coach' ? newSysAthlete : null) }
           return (
             <div onClick={() => setNewSysOpen(false)} style={{ position: 'absolute', inset: 0, zIndex: 40, background: 'rgba(0,0,0,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, animation: 'studio_in 0.16s ease' }}>
               <div onClick={e => e.stopPropagation()} style={{ width: 'min(420px, 100%)', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 18, boxShadow: '0 20px 60px rgba(0,0,0,0.3)', padding: 18 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 14 }}>
                   <StudioLogo size={20} />
-                  <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-display)', flex: 1 }}>Nouveau système</span>
-                  <button onClick={() => setNewSysOpen(false)} style={iconBtn} aria-label="Fermer">
+                  <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-display)', flex: 1 }}>{t('w1i.new_system')}</span>
+                  <button onClick={() => setNewSysOpen(false)} style={iconBtn} aria-label={t('w1i.close')}>
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
                   </button>
                 </div>
-                <label style={lbl}>Nom du système</label>
+                <label style={lbl}>{t('w1i.system_name')}</label>
                 <input value={newSysName} onChange={e => setNewSysName(e.target.value)} autoFocus
                   onKeyDown={e => { if (e.key === 'Enter') create() }} style={fld} />
                 {scopeTab === 'coach' && coachAthletes.length > 0 && (
                   <>
-                    <label style={lbl}>Athlète lié <span style={{ fontWeight: 500, color: 'var(--text-dim)' }}>· optionnel</span></label>
-                    <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: '0 0 8px', lineHeight: 1.5 }}>Rattache ce système à un athlète précis. Laisse « Tous » pour choisir les athlètes au lancement.</p>
+                    <label style={lbl}>{t('w1i.linked_athlete')} <span style={{ fontWeight: 500, color: 'var(--text-dim)' }}>{t('w1i.optional_suffix')}</span></label>
+                    <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: '0 0 8px', lineHeight: 1.5 }}>{t('w1i.link_athlete_hint')}</p>
                     <select value={newSysAthlete ?? ''} onChange={e => setNewSysAthlete(e.target.value || null)} style={{ ...fld, cursor: 'pointer' }}>
-                      <option value="">Tous mes athlètes (au lancement)</option>
+                      <option value="">{t('w1i.all_athletes_at_launch')}</option>
                       {coachAthletes.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
                     </select>
                   </>
                 )}
-                <label style={lbl}>Dossier</label>
-                <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: '0 0 8px', lineHeight: 1.5 }}>Range ce système dans un dossier — crée-en un nouveau au passage. Les dossiers apparaissent sous « Tous les systèmes ».</p>
+                <label style={lbl}>{t('w1i.folder')}</label>
+                <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: '0 0 8px', lineHeight: 1.5 }}>{t('w1i.folder_hint')}</p>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
                   <button onClick={() => { setNewSysFolder(null); setNewSysNewFolder('') }}
                     style={{ padding: '6px 12px', borderRadius: 999, border: `1px solid ${!chosen ? 'var(--studio-accent)' : 'var(--border)'}`, background: !chosen ? 'color-mix(in srgb, var(--studio-accent) 10%, transparent)' : 'var(--bg-alt)', color: !chosen ? 'var(--studio-accent)' : 'var(--text-mid)', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
-                    Sans dossier
+                    {t('w1i.no_folder')}
                   </button>
                   {folders.map(f => {
                     const on = !newSysNewFolder.trim() && newSysFolder === f
@@ -2620,11 +2623,11 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                     )
                   })}
                 </div>
-                <input value={newSysNewFolder} onChange={e => setNewSysNewFolder(e.target.value)} placeholder="+ Nouveau dossier…"
+                <input value={newSysNewFolder} onChange={e => setNewSysNewFolder(e.target.value)} placeholder={t('w1i.new_folder_plus_ph')}
                   onKeyDown={e => { if (e.key === 'Enter') create() }} style={fld} />
                 <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
                   <button onClick={create} style={{ flex: 1, padding: '10px 0', borderRadius: 11, border: 'none', background: 'var(--studio-accent)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
-                    Créer{chosen ? ` dans « ${chosen} »` : ''}
+                    {t('w1i.create')}{chosen ? t('w1i.in_folder_suffix', { folder: chosen }) : ''}
                   </button>
                 </div>
               </div>
@@ -2638,16 +2641,16 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
             <div onClick={e => e.stopPropagation()} style={{ width: 'min(400px, 100%)', maxHeight: '80%', display: 'flex', flexDirection: 'column', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 18, boxShadow: '0 20px 60px rgba(0,0,0,0.3)', padding: 18 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 6 }}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" style={{ color: 'var(--studio-accent)' }} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
-                <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-display)', flex: 1 }}>Athlète du système</span>
-                <button onClick={() => setAthletePickerOpen(false)} style={iconBtn} aria-label="Fermer">
+                <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-display)', flex: 1 }}>{t('w1i.system_athlete')}</span>
+                <button onClick={() => setAthletePickerOpen(false)} style={iconBtn} aria-label={t('w1i.close')}>
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
                 </button>
               </div>
-              <p style={{ fontSize: 12, color: 'var(--text-dim)', margin: '0 0 12px', lineHeight: 1.5, fontFamily: 'var(--font-body)' }}>Le système lira les données de cet athlète et, au lancement, ciblera automatiquement sa fiche.</p>
+              <p style={{ fontSize: 12, color: 'var(--text-dim)', margin: '0 0 12px', lineHeight: 1.5, fontFamily: 'var(--font-body)' }}>{t('w1i.athlete_picker_hint')}</p>
               <div style={{ overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4 }}>
                 <button onClick={() => { setSystemAthlete(null); setAthletePickerOpen(false) }}
                   style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 11, border: 'none', background: !openAthleteId ? 'color-mix(in srgb, var(--studio-accent) 10%, transparent)' : 'transparent', cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font-body)', color: !openAthleteId ? 'var(--studio-accent)' : 'var(--text)', fontSize: 13.5, fontWeight: 600 }}>
-                  Tous mes athlètes <span style={{ fontWeight: 400, color: 'var(--text-dim)', fontSize: 12 }}>· choisir au lancement</span>
+                  {t('w1i.all_my_athletes')} <span style={{ fontWeight: 400, color: 'var(--text-dim)', fontSize: 12 }}>{t('w1i.choose_at_launch_suffix')}</span>
                 </button>
                 {coachAthletes.map(a => {
                   const on = openAthleteId === a.id
@@ -2659,7 +2662,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                     </button>
                   )
                 })}
-                {coachAthletes.length === 0 && <p style={{ fontSize: 12.5, color: 'var(--text-dim)', padding: '10px 4px', fontFamily: 'var(--font-body)' }}>Aucun athlète. Invite-en depuis la page Athlètes.</p>}
+                {coachAthletes.length === 0 && <p style={{ fontSize: 12.5, color: 'var(--text-dim)', padding: '10px 4px', fontFamily: 'var(--font-body)' }}>{t('w1i.no_athletes')}</p>}
               </div>
             </div>
           </div>
@@ -2671,16 +2674,16 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
         <div style={{ position: 'absolute', inset: 0, zIndex: 30, background: 'var(--bg)', display: 'flex', flexDirection: 'column', animation: 'studio_in 0.18s ease' }}>
           <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px', borderBottom: '1px solid var(--border)' }}>
             <StudioLogo size={19} />
-            <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-display)', flex: 1 }}>Architecte</span>
+            <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-display)', flex: 1 }}>{t('w1i.architect')}</span>
             {chatMsgs.length > 0 && (
-              <button onClick={resetChat} title="Nouvelle conversation" aria-label="Nouvelle conversation" style={iconBtn}>
+              <button onClick={resetChat} title={t('w1i.new_conversation')} aria-label={t('w1i.new_conversation')} style={iconBtn}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14"/></svg>
               </button>
             )}
-            <button onClick={() => { setChatFull(false); setChatOpen(true) }} title="Réduire dans la colonne" aria-label="Réduire" style={iconBtn}>
+            <button onClick={() => { setChatFull(false); setChatOpen(true) }} title={t('w1i.minimize_to_column')} aria-label={t('w1i.minimize')} style={iconBtn}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 3h3a2 2 0 012 2v3M8 21H5a2 2 0 01-2-2v-3M21 8V5a2 2 0 00-2-2M3 16v3a2 2 0 002 2"/><path d="M9 15l-6 6M21 3l-6 6"/></svg>
             </button>
-            <button onClick={() => setChatFull(false)} title="Fermer" aria-label="Fermer" style={iconBtn}>
+            <button onClick={() => setChatFull(false)} title={t('w1i.close')} aria-label={t('w1i.close')} style={iconBtn}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
             </button>
           </div>
@@ -2697,11 +2700,11 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
         const g = isChat ? (chatMk as { graph: StudioGraph }).graph : recoMockup?.graph
         if (!g) return null
         const mockKey = isChat ? chatMk!.id : 'reco'
-        const headTitle = isChat ? 'Maquette du système' : recoMockup!.title
+        const headTitle = isChat ? t('w1i.system_mockup') : recoMockup!.title
         const why = isChat ? '' : recoMockup!.why
         const showConfirm = isChat ? !(chatMk as { applied?: boolean; declined?: boolean }).applied && !(chatMk as { applied?: boolean; declined?: boolean }).declined : true
-        const askLabel = isChat ? 'Confirmes-tu la construction ?' : 'Lancer ce système pour toi ?'
-        const confirmLabel = isChat ? 'Confirmer' : 'Créer ce système'
+        const askLabel = isChat ? t('w1i.confirm_build_short') : t('w1i.launch_for_you')
+        const confirmLabel = isChat ? t('w1i.confirm') : t('w1i.create_this_system')
         const sel = previewSel?.msgId === mockKey ? g.nodes.find(n => n.id === previewSel!.nodeId) : null
         const sub = (n: StudioNode) => n.kind === 'source' ? SOURCE_LABEL[n.sourceKey ?? 'activities'] : n.kind === 'action' ? ACTION_LABEL[n.actionKey ?? 'planning_save'] : KIND_LABEL[n.kind]
         const closeMockup = () => { setMockupMsgId(null); setRecoMockup(null); setPreviewSel(null) }
@@ -2711,14 +2714,14 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
         // nœud terminal (le rendu concret du système).
         const outLabel = (n: StudioNode): string => {
           if (n.kind === 'action') {
-            if (n.actionKey === 'notify_report') return 'Une notification avec la synthèse du cycle.'
-            if (n.actionKey === 'planning_replace') return 'La semaine remplacée dans ton Planning (après ton accord).'
-            if (n.actionKey === 'planning_save') return 'Des séances ajoutées à ton Planning (après ton accord).'
-            if (n.actionKey === 'calendar_race') return 'Une course ajoutée à ton Calendrier (après ton accord).'
-            if (n.actionKey === 'nutrition_save') return 'Un plan nutrition activé (après ton accord).'
+            if (n.actionKey === 'notify_report') return t('w1i.out_notify')
+            if (n.actionKey === 'planning_replace') return t('w1i.out_planning_replace')
+            if (n.actionKey === 'planning_save') return t('w1i.out_planning_save')
+            if (n.actionKey === 'calendar_race') return t('w1i.out_calendar')
+            if (n.actionKey === 'nutrition_save') return t('w1i.out_nutrition')
           }
-          if (n.kind === 'validation') return 'Une pause pour ta validation avant d’aller plus loin.'
-          return `Un bilan à lire : « ${n.title} ».`
+          if (n.kind === 'validation') return t('w1i.out_validation')
+          return t('w1i.out_report', { title: n.title })
         }
         const outputs = terminalNodeIds(g).map(id => g.nodes.find(n => n.id === id)).filter((n): n is StudioNode => !!n)
         const panelStyle: React.CSSProperties = isMobile
@@ -2737,9 +2740,9 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                 </span>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-display)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{headTitle}</div>
-                  <div style={{ fontSize: 11.5, color: 'var(--text-dim)' }}>{g.nodes.length} blocs · {g.nodes.filter(n => n.kind === 'agent' || n.kind === 'merge').length} agents · {g.edges.length} liaisons</div>
+                  <div style={{ fontSize: 11.5, color: 'var(--text-dim)' }}>{g.nodes.length} {t('w1i.block_many')} · {g.nodes.filter(n => n.kind === 'agent' || n.kind === 'merge').length} {t('w1i.agent_many')} · {g.edges.length} {t('w1i.link_many')}</div>
                 </div>
-                <button onClick={closeMockup} title="Fermer" aria-label="Fermer" style={iconBtn}>
+                <button onClick={closeMockup} title={t('w1i.close')} aria-label={t('w1i.close')} style={iconBtn}>
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
                 </button>
               </div>
@@ -2751,7 +2754,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                       <span style={{ fontSize: 13, color: 'var(--text-mid)', lineHeight: 1.55, fontFamily: 'var(--font-body)' }}>{why}</span>
                     </div>
                   )}
-                  <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-dim)', margin: '0 0 8px', textAlign: 'center' }}>Touche une bulle pour voir son rôle</div>
+                  <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-dim)', margin: '0 0 8px', textAlign: 'center' }}>{t('w1i.tap_bubble_role')}</div>
                   <div style={{ borderRadius: 18, background: 'var(--bg-card)', border: '1px solid var(--border)', boxShadow: '0 1px 3px rgba(0,0,0,0.05), 0 18px 44px rgba(0,0,0,0.08)', padding: '14px 10px' }}>
                     {miniGraph(g, {
                       bare: true, width: 660, height: 400, maxScale: 1,
@@ -2763,7 +2766,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                     <div style={{ marginTop: 14, padding: '13px 15px', borderRadius: 14, background: 'var(--bg-card)', border: '1px solid var(--border)', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 9 }}>
                         <span style={{ color: '#22C55E', display: 'flex' }}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg></span>
-                        <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text)', fontFamily: 'var(--font-body)' }}>Ce que tu recevras</span>
+                        <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text)', fontFamily: 'var(--font-body)' }}>{t('w1i.what_you_receive')}</span>
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
                         {outputs.map(n => (
@@ -2792,7 +2795,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                 <div style={{ flexShrink: 0, borderTop: '1px solid var(--border)', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10, width: '100%', boxSizing: 'border-box' }}>
                   <span style={{ flex: 1, fontSize: 12.5, fontWeight: 700, color: 'var(--studio-accent)', fontFamily: 'var(--font-body)' }}>{askLabel}</span>
                   <button onClick={doDecline}
-                    style={{ padding: '10px 16px', borderRadius: 11, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text-mid)', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>Non</button>
+                    style={{ padding: '10px 16px', borderRadius: 11, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text-mid)', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>{t('w1i.no')}</button>
                   <button onClick={doConfirm}
                     style={{ padding: '10px 22px', borderRadius: 11, border: 'none', background: 'var(--studio-accent)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>{confirmLabel}</button>
                 </div>
@@ -2808,27 +2811,27 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
           <div onClick={e => e.stopPropagation()} style={{ width: 'min(440px, 100%)', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 18, boxShadow: '0 20px 60px rgba(0,0,0,0.3)', padding: 18 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 6 }}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" style={{ color: 'var(--studio-accent)' }} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="0.6" fill="currentColor"/></svg>
-              <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-display)', flex: 1 }}>Objectif du système</span>
-              <button onClick={() => setObjEditOpen(false)} style={iconBtn} aria-label="Fermer">
+              <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-display)', flex: 1 }}>{t('w1i.system_objective')}</span>
+              <button onClick={() => setObjEditOpen(false)} style={iconBtn} aria-label={t('w1i.close')}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
               </button>
             </div>
             <p style={{ fontSize: 12, color: 'var(--text-dim)', margin: '0 0 12px', lineHeight: 1.5, fontFamily: 'var(--font-body)' }}>
-              Ce système reste ta base permanente ; il se spécialise selon cet objectif. À l’échéance, il te demandera ton prochain objectif pour se remettre à jour.
+              {t('w1i.objective_editor_hint')}
             </p>
-            <label style={lbl}>Objectif du moment</label>
-            <input value={objText} onChange={e => setObjText(e.target.value)} autoFocus placeholder="Ex. Prise de masse → ~77 kg + semi Maroc"
+            <label style={lbl}>{t('w1i.objective_of_moment')}</label>
+            <input value={objText} onChange={e => setObjText(e.target.value)} autoFocus placeholder={t('w1i.objective_ph')}
               onKeyDown={e => { if (e.key === 'Enter') saveObjective() }} style={fld} />
-            <label style={lbl}>Échéance (optionnel)</label>
+            <label style={lbl}>{t('w1i.deadline_optional')}</label>
             <input type="date" value={objDeadline} onChange={e => setObjDeadline(e.target.value)} style={{ ...fld, cursor: 'pointer' }} />
             <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
               <button onClick={saveObjective} style={{ flex: 1, padding: '10px 0', borderRadius: 11, border: 'none', background: 'var(--studio-accent)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
-                Enregistrer
+                {t('w1i.save')}
               </button>
               {graph.objective && (
                 <button onClick={() => { commit({ ...graph, objective: null }); setObjEditOpen(false) }}
                   style={{ padding: '10px 14px', borderRadius: 11, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text-mid)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
-                  Retirer
+                  {t('w1i.remove')}
                 </button>
               )}
             </div>
@@ -2841,7 +2844,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
         // « notify_report » est autorisé en autonome ; écritures/validation non.
         const hasHuman = graph.nodes.some(n => n.kind === 'validation' || (n.kind === 'action' && n.actionKey !== 'notify_report'))
         const cur = schedule ?? { frequency: 'weekly' as const, hour: 18, weekday: 6, enabled: false }
-        const DAYS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche']
+        const DAYS = [t('w1i.day_monday'), t('w1i.day_tuesday'), t('w1i.day_wednesday'), t('w1i.day_thursday'), t('w1i.day_friday'), t('w1i.day_saturday'), t('w1i.day_sunday')]
         const selStyle: React.CSSProperties = { padding: '9px 11px', borderRadius: 9, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text)', fontSize: 13, fontFamily: 'var(--font-body)', outline: 'none', cursor: 'pointer' }
         return (
           <div onClick={() => setScheduleOpen(false)}
@@ -2852,8 +2855,8 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                 <span style={{ width: 32, height: 32, borderRadius: 10, background: 'rgba(59,146,212,0.12)', color: 'var(--studio-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
                 </span>
-                <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-display)', flex: 1 }}>Planifier ce système</div>
-                <button onClick={() => setScheduleOpen(false)} aria-label="Fermer" style={iconBtn}>
+                <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-display)', flex: 1 }}>{t('w1i.schedule_this_system')}</div>
+                <button onClick={() => setScheduleOpen(false)} aria-label={t('w1i.close')} style={iconBtn}>
                   <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
                 </button>
               </div>
@@ -2861,22 +2864,21 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
               {hasHuman ? (
                 <>
                   <p style={{ fontSize: 13, color: 'var(--text-mid)', lineHeight: 1.6, margin: '0 0 14px', fontFamily: 'var(--font-body)' }}>
-                    Ce système contient un bloc <b>Validation</b> ou une <b>écriture</b> (Planning / Calendrier) : il a besoin de TON accord pour avancer, il ne peut donc pas tourner tout seul.
-                    Rends-le <b>autonome</b> — chaque bloc de ce type devient une <b>Notification</b> : il t’enverra sa synthèse chaque cycle, sans jamais écrire ni attendre ton accord.
+                    {t('w1i.autonomy_p1a')}<b>{t('w1i.validation_word')}</b>{t('w1i.autonomy_p1b')}<b>{t('w1i.write_word')}</b>{t('w1i.autonomy_p1c')}<b>{t('w1i.autonomy_word')}</b>{t('w1i.autonomy_p1d')}<b>{t('w1i.notification_word')}</b>{t('w1i.autonomy_p1e')}
                   </p>
                   <button onClick={() => { commit(makeGraphAutonomous(graph)) }}
                     style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%', padding: '12px 14px', borderRadius: 12, border: 'none', background: 'var(--studio-accent)', color: '#fff', fontSize: 13.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
-                    Rendre ce système autonome
+                    {t('w1i.make_autonomous')}
                   </button>
                   <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: '10px 0 0', fontFamily: 'var(--font-body)' }}>
-                    Tu pourras rebrancher une écriture ou une validation à tout moment sur la toile.
+                    {t('w1i.reconnect_later')}
                   </p>
                 </>
               ) : (
                 <>
                   <p style={{ fontSize: 12.5, color: 'var(--text-dim)', lineHeight: 1.55, margin: '0 0 14px', fontFamily: 'var(--font-body)' }}>
-                    Le système tournera tout seul, même app fermée. Le rendu arrive dans le Journal et tu reçois une notification. Chaque run débite ton solde Studio (~{formatTokens(estimateRunTokens(graph.nodes))} tokens).
+                    {t('w1i.schedule_desc', { n: formatTokens(estimateRunTokens(graph.nodes)) })}
                   </p>
                   {/* Activation */}
                   <button onClick={() => void saveSchedule({ ...cur, enabled: !cur.enabled })} disabled={scheduleSaving}
@@ -2884,13 +2886,13 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                     <span style={{ width: 38, height: 22, borderRadius: 999, background: cur.enabled ? 'var(--studio-accent)' : 'var(--border-mid)', position: 'relative', transition: 'background 180ms', flexShrink: 0 }}>
                       <span style={{ position: 'absolute', top: 2, left: cur.enabled ? 18 : 2, width: 18, height: 18, borderRadius: '50%', background: '#fff', transition: 'left 180ms', boxShadow: '0 1px 3px rgba(0,0,0,0.25)' }} />
                     </span>
-                    <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-body)' }}>{cur.enabled ? 'Planification active' : 'Planification désactivée'}</span>
+                    <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-body)' }}>{cur.enabled ? t('w1i.schedule_active') : t('w1i.schedule_disabled')}</span>
                   </button>
                   {/* Fréquence / jour / heure */}
                   <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                     <select value={cur.frequency} onChange={e => void saveSchedule({ ...cur, frequency: e.target.value as 'daily' | 'weekly' })} style={selStyle}>
-                      <option value="weekly">Chaque semaine</option>
-                      <option value="daily">Chaque jour</option>
+                      <option value="weekly">{t('w1i.every_week')}</option>
+                      <option value="daily">{t('w1i.every_day')}</option>
                     </select>
                     {cur.frequency === 'weekly' && (
                       <select value={cur.weekday} onChange={e => void saveSchedule({ ...cur, weekday: Number(e.target.value) })} style={selStyle}>
@@ -2902,7 +2904,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                     </select>
                   </div>
                   <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: '10px 0 0', fontFamily: 'var(--font-body)' }}>
-                    Fuseau horaire : {Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/Paris'} (détecté automatiquement).
+                    {t('w1i.timezone_line', { tz: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/Paris' })}
                   </p>
                 </>
               )}
@@ -2921,8 +2923,8 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
               <span style={{ width: 32, height: 32, borderRadius: 10, background: 'rgba(59,146,212,0.12)', color: 'var(--studio-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
               </span>
-              <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-display)', flex: 1 }}>Tokens Studio</div>
-              <button onClick={() => setWalletOpen(false)} aria-label="Fermer" style={iconBtn}>
+              <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-display)', flex: 1 }}>{t('w1i.studio_tokens')}</div>
+              <button onClick={() => setWalletOpen(false)} aria-label={t('w1i.close')} style={iconBtn}>
                 <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
               </button>
             </div>
@@ -2930,24 +2932,24 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
             {/* Jauge mensuelle */}
             <div style={{ padding: '12px 14px', borderRadius: 12, background: 'var(--bg-alt)', marginBottom: 10 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, fontWeight: 600, color: 'var(--text-mid)', fontFamily: 'var(--font-body)' }}>
-                <span>Quota mensuel inclus ({access.tier === 'expert' ? 'Expert' : 'Pro'})</span>
+                <span>{t('w1i.monthly_quota_included', { tier: access.tier === 'expert' ? 'Expert' : 'Pro' })}</span>
                 <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatTokens(Math.min(access.monthlyUsed, access.monthlyLimit))} / {formatTokens(access.monthlyLimit)}</span>
               </div>
               <div style={{ height: 6, borderRadius: 3, background: 'var(--border)', marginTop: 8, overflow: 'hidden' }}>
                 <div style={{ height: '100%', width: `${access.monthlyLimit > 0 ? Math.min(100, (access.monthlyUsed / access.monthlyLimit) * 100) : 0}%`, background: 'var(--studio-accent)', borderRadius: 3 }} />
               </div>
               <div style={{ fontSize: 11.5, color: 'var(--text-dim)', marginTop: 8, fontFamily: 'var(--font-body)' }}>
-                Tokens de packs : <b style={{ color: 'var(--text)' }}>{formatTokens(access.packTokens)}</b> (n’expirent pas)
+                {t('w1i.pack_tokens_label')}<b style={{ color: 'var(--text)' }}>{formatTokens(access.packTokens)}</b>{t('w1i.no_expire')}
               </div>
             </div>
 
             {/* Les 3 packs — AUCUN prix dans l'app (règle Apple) : l'achat se fait sur le site */}
-            <div style={{ fontSize: 11.5, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-dim)', margin: '14px 0 8px', fontFamily: 'var(--font-body)' }}>Recharger</div>
+            <div style={{ fontSize: 11.5, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-dim)', margin: '14px 0 8px', fontFamily: 'var(--font-body)' }}>{t('w1i.recharge')}</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {STUDIO_PACKS.map(p => (
                 <div key={p.key} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderRadius: 12, border: '1px solid var(--border)', background: 'var(--bg-card)' }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-body)' }}>{p.label} — {formatTokens(p.tokens)} tokens</div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-body)' }}>{p.label} — {formatTokens(p.tokens)} {t('w1i.tokens_word')}</div>
                     <div style={{ fontSize: 11.5, color: 'var(--text-dim)', marginTop: 2, fontFamily: 'var(--font-body)' }}>{p.tagline}</div>
                   </div>
                 </div>
@@ -2965,10 +2967,10 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                 })()
               }}
               style={{ marginTop: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%', padding: '11px 0', borderRadius: 11, border: 'none', background: 'var(--studio-accent)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
-              Acheter des packs sur le site
+              {t('w1i.buy_packs_site')}
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M7 17L17 7M8 7h9v9"/></svg>
             </button>
-            <p style={{ fontSize: 11.5, color: 'var(--text-dim)', marginTop: 10, fontFamily: 'var(--font-body)' }}>Les tarifs et l’achat se font sur le site — les tokens sont crédités automatiquement sur ton compte. Ton quota mensuel se recharge, lui, chaque mois.</p>
+            <p style={{ fontSize: 11.5, color: 'var(--text-dim)', marginTop: 10, fontFamily: 'var(--font-body)' }}>{t('w1i.pricing_note')}</p>
           </div>
         </div>
       )}
@@ -2983,37 +2985,36 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
               <span style={{ width: 34, height: 34, borderRadius: 11, background: 'rgba(59,146,212,0.12)', color: 'var(--studio-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><circle cx="5" cy="6" r="2.4"/><circle cx="19" cy="6" r="2.4"/><circle cx="12" cy="18" r="2.4"/><path d="M7.2 7.2 10.5 16M16.8 7.2 13.5 16"/></svg>
               </span>
-              <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-display)', flex: 1 }}>Le Studio, c’est quoi ?</div>
-              <button onClick={() => setHelpOpen(false)} aria-label="Fermer" style={iconBtn}>
+              <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-display)', flex: 1 }}>{t('w1i.help_title')}</div>
+              <button onClick={() => setHelpOpen(false)} aria-label={t('w1i.close')} style={iconBtn}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
               </button>
             </div>
 
             <div style={{ fontSize: 13.5, color: 'var(--text-mid)', lineHeight: 1.65, fontFamily: 'var(--font-body)' }}>
               <p style={{ margin: '0 0 12px' }}>
-                Au lieu de parler à <strong style={{ color: 'var(--text)' }}>un seul assistant</strong>, le Studio te donne
-                <strong style={{ color: 'var(--text)' }}> une équipe de coachs IA</strong> qui travaillent ensemble sur une tâche :
-                chacun a son métier (endurance, force, prévention…), ils bossent en parallèle, et une synthèse assemble le tout.
+                {t('w1i.help_p1a')}<strong style={{ color: 'var(--text)' }}>{t('w1i.help_single_assistant')}</strong>{t('w1i.help_p1b')}
+                <strong style={{ color: 'var(--text)' }}>{t('w1i.help_team')}</strong>{t('w1i.help_p1c')}
               </p>
               {[
-                ['1. Décris', 'Écris (ou dicte à la voix) ce que tu veux dans la barre du Canvas — l’IA construit le système toute seule : les agents, les connexions, tout.'],
-                ['2. Branche tes pages', 'Les nœuds verts « Page » lisent tes vraies données (Activités, Planning, Blessures, Récupération, Profil) et les injectent dans le système.'],
-                ['3. Lance', '« Run once » : les agents travaillent en même temps, tu suis tout dans Pilotage, le résultat arrive dans Rendu.'],
-                ['4. Tu gardes la main', 'Pour toute action importante (ex. enregistrer des séances dans ton Planning), le système se met en pause et attend TON accord.'],
-              ].map(([t, d]) => (
-                <div key={t} style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
-                  <span style={{ fontSize: 12, fontWeight: 800, color: 'var(--studio-accent)', whiteSpace: 'nowrap', paddingTop: 1 }}>{t}</span>
+                [t('w1i.help_step1_t'), t('w1i.help_step1_d')],
+                [t('w1i.help_step2_t'), t('w1i.help_step2_d')],
+                [t('w1i.help_step3_t'), t('w1i.help_step3_d')],
+                [t('w1i.help_step4_t'), t('w1i.help_step4_d')],
+              ].map(([title, d]) => (
+                <div key={title} style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
+                  <span style={{ fontSize: 12, fontWeight: 800, color: 'var(--studio-accent)', whiteSpace: 'nowrap', paddingTop: 1 }}>{title}</span>
                   <span>{d}</span>
                 </div>
               ))}
               <p style={{ margin: '12px 0 0', fontSize: 12.5, color: 'var(--text-dim)' }}>
-                Exemple : « Analyse mes 30 derniers jours et construis-moi une semaine équilibrée, puis enregistre-la dans mon planning » → un système complet se monte et s’exécute sous tes yeux.
+                {t('w1i.help_example')}
               </p>
             </div>
 
             <a href={siteUrl} target="_blank" rel="noreferrer"
               style={{ marginTop: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '11px 0', borderRadius: 11, background: 'var(--primary)', color: '#fff', fontSize: 13, fontWeight: 700, textDecoration: 'none', fontFamily: 'var(--font-body)' }}>
-              Guide complet : bien utiliser le Studio
+              {t('w1i.full_guide')}
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M7 17L17 7M8 7h9v9"/></svg>
             </a>
           </div>

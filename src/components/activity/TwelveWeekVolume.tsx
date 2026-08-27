@@ -12,7 +12,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { resolvePlanningUid } from '@/lib/planning/scope'
-import { currentLocale } from '@/lib/i18n'
+import { currentLocale, useI18n } from '@/lib/i18n'
 import { useNarrow } from '@/lib/hooks/useNarrow'
 
 const BLUE = '#3B82F6'
@@ -80,6 +80,7 @@ const fmtSwimPace = (secPer100: number | null) => {
 interface WsRow { started_at: string; sport: string | null; exercises_detail: unknown; calories: number | null }
 
 export function TwelveWeekVolume({ activities }: { activities: ActLike[] }) {
+  const { t } = useI18n()
   const [sport, setSport] = useState<SportKey>('all')
   const [selIdx, setSelIdx] = useState(11)          // dernière semaine par défaut
   const narrow = useNarrow()                        // mobile → graphe plus grand/net
@@ -188,48 +189,48 @@ export function TwelveWeekVolume({ activities }: { activities: ActLike[] }) {
   const stats: Stat[] = (() => {
     switch (sport) {
       case 'bike': return [
-        { label: 'Distance', value: `${km} km` }, { label: 'Temps', value: fmtH(sel.timeS) }, { label: 'Dénivelé', value: `${Math.round(sel.dPlus)} m` },
-        { label: 'Séances', value: String(sel.count) }, { label: 'W moy', value: avgW != null ? `${avgW} W` : dash }, { label: 'W normalisés', value: avgNp != null ? `${avgNp} W` : dash },
-        { label: 'FC moy', value: avgHr != null ? `${avgHr} bpm` : dash }, { label: 'Calories', value: kcalS },
+        { label: t('w2f.stat_distance'), value: `${km} km` }, { label: t('w2f.stat_time'), value: fmtH(sel.timeS) }, { label: t('w2f.stat_elevation'), value: `${Math.round(sel.dPlus)} m` },
+        { label: t('w2f.stat_sessions'), value: String(sel.count) }, { label: t('w2f.stat_avg_watts'), value: avgW != null ? `${avgW} W` : dash }, { label: t('w2f.stat_norm_watts'), value: avgNp != null ? `${avgNp} W` : dash },
+        { label: t('w2f.stat_avg_hr'), value: avgHr != null ? `${avgHr} bpm` : dash }, { label: t('w2f.stat_calories'), value: kcalS },
       ]
       case 'run': return [
-        { label: 'Distance', value: `${km} km` }, { label: 'Temps', value: fmtH(sel.timeS) }, { label: 'Dénivelé', value: `${Math.round(sel.dPlus)} m` },
-        { label: 'Séances', value: String(sel.count) }, { label: 'Allure moy', value: paceS ? `${fmtPace(paceS)} /km` : dash }, { label: 'Allure VAP', value: vapS ? `${fmtPace(vapS)} /km` : dash },
-        { label: 'FC moy', value: avgHr != null ? `${avgHr} bpm` : dash }, { label: 'Calories', value: kcalS },
+        { label: t('w2f.stat_distance'), value: `${km} km` }, { label: t('w2f.stat_time'), value: fmtH(sel.timeS) }, { label: t('w2f.stat_elevation'), value: `${Math.round(sel.dPlus)} m` },
+        { label: t('w2f.stat_sessions'), value: String(sel.count) }, { label: t('w2f.stat_avg_pace'), value: paceS ? `${fmtPace(paceS)} /km` : dash }, { label: t('w2f.stat_gap_pace'), value: vapS ? `${fmtPace(vapS)} /km` : dash },
+        { label: t('w2f.stat_avg_hr'), value: avgHr != null ? `${avgHr} bpm` : dash }, { label: t('w2f.stat_calories'), value: kcalS },
       ]
       case 'trail': return [
-        { label: 'Temps', value: fmtH(sel.timeS) }, { label: 'Séances', value: String(sel.count) }, { label: 'Dénivelé', value: `${Math.round(sel.dPlus)} m` },
-        { label: 'Distance', value: `${km} km` }, { label: 'Allure VAP', value: vapS ? `${fmtPace(vapS)} /km` : dash },
-        { label: 'FC moy', value: avgHr != null ? `${avgHr} bpm` : dash }, { label: 'Calories', value: kcalS },
+        { label: t('w2f.stat_time'), value: fmtH(sel.timeS) }, { label: t('w2f.stat_sessions'), value: String(sel.count) }, { label: t('w2f.stat_elevation'), value: `${Math.round(sel.dPlus)} m` },
+        { label: t('w2f.stat_distance'), value: `${km} km` }, { label: t('w2f.stat_gap_pace'), value: vapS ? `${fmtPace(vapS)} /km` : dash },
+        { label: t('w2f.stat_avg_hr'), value: avgHr != null ? `${avgHr} bpm` : dash }, { label: t('w2f.stat_calories'), value: kcalS },
       ]
       case 'gym': return [
-        { label: 'Temps', value: fmtH(sel.timeS) }, { label: 'Séances', value: String(sel.count) },
-        { label: 'Exercices', value: sel.extras.exercises > 0 ? String(sel.extras.exercises) : dash },
-        { label: 'Circuits', value: sel.extras.circuits > 0 ? String(sel.extras.circuits) : dash },
-        { label: 'Calories', value: kcalS },
+        { label: t('w2f.stat_time'), value: fmtH(sel.timeS) }, { label: t('w2f.stat_sessions'), value: String(sel.count) },
+        { label: t('w2f.stat_exercises'), value: sel.extras.exercises > 0 ? String(sel.extras.exercises) : dash },
+        { label: t('w2f.stat_circuits'), value: sel.extras.circuits > 0 ? String(sel.extras.circuits) : dash },
+        { label: t('w2f.stat_calories'), value: kcalS },
       ]
       case 'swim': return [
-        { label: 'Temps', value: fmtH(sel.timeS) }, { label: 'Séances', value: String(sel.count) },
-        { label: 'Distance', value: sel.distM > 0 ? `${Math.round(sel.distM)} m` : dash },
-        { label: 'Allure moy', value: swimP ? `${fmtSwimPace(swimP)} /100m` : dash },
-        { label: 'Calories', value: kcalS },
+        { label: t('w2f.stat_time'), value: fmtH(sel.timeS) }, { label: t('w2f.stat_sessions'), value: String(sel.count) },
+        { label: t('w2f.stat_distance'), value: sel.distM > 0 ? `${Math.round(sel.distM)} m` : dash },
+        { label: t('w2f.stat_avg_pace'), value: swimP ? `${fmtSwimPace(swimP)} /100m` : dash },
+        { label: t('w2f.stat_calories'), value: kcalS },
       ]
       case 'hyrox': return [
-        { label: 'Temps', value: fmtH(sel.timeS) }, { label: 'Séances', value: String(sel.count) },
-        { label: 'Run compromised', value: sel.distM > 0 ? `${km} km` : dash },
-        { label: 'Wall balls', value: sel.extras.wallBalls > 0 ? String(sel.extras.wallBalls) : dash },
-        { label: 'Rameur + SkiErg', value: sel.extras.ergM > 0 ? `${(sel.extras.ergM / 1000).toFixed(1).replace('.', ',')} km` : dash },
-        { label: 'Calories', value: kcalS }, { label: 'FC moy', value: avgHr != null ? `${avgHr} bpm` : dash },
+        { label: t('w2f.stat_time'), value: fmtH(sel.timeS) }, { label: t('w2f.stat_sessions'), value: String(sel.count) },
+        { label: t('w2f.stat_run_compromised'), value: sel.distM > 0 ? `${km} km` : dash },
+        { label: t('w2f.stat_wall_balls'), value: sel.extras.wallBalls > 0 ? String(sel.extras.wallBalls) : dash },
+        { label: t('w2f.stat_rower_skierg'), value: sel.extras.ergM > 0 ? `${(sel.extras.ergM / 1000).toFixed(1).replace('.', ',')} km` : dash },
+        { label: t('w2f.stat_calories'), value: kcalS }, { label: t('w2f.stat_avg_hr'), value: avgHr != null ? `${avgHr} bpm` : dash },
       ]
       case 'boxe': return [
-        { label: 'Temps', value: fmtH(sel.timeS) }, { label: 'Séances', value: String(sel.count) },
-        { label: 'Calories', value: kcalS },
-        { label: 'Rounds', value: sel.extras.rounds > 0 ? String(sel.extras.rounds) : dash },
+        { label: t('w2f.stat_time'), value: fmtH(sel.timeS) }, { label: t('w2f.stat_sessions'), value: String(sel.count) },
+        { label: t('w2f.stat_calories'), value: kcalS },
+        { label: t('w2f.stat_rounds'), value: sel.extras.rounds > 0 ? String(sel.extras.rounds) : dash },
       ]
       default: return [
-        { label: 'Temps', value: fmtH(sel.timeS) }, { label: 'Séances', value: String(sel.count) },
-        { label: 'Distance', value: sel.distM > 0 ? `${km} km` : dash }, { label: 'Dénivelé', value: sel.dPlus > 0 ? `${Math.round(sel.dPlus)} m` : dash },
-        { label: 'Calories', value: kcalS },
+        { label: t('w2f.stat_time'), value: fmtH(sel.timeS) }, { label: t('w2f.stat_sessions'), value: String(sel.count) },
+        { label: t('w2f.stat_distance'), value: sel.distM > 0 ? `${km} km` : dash }, { label: t('w2f.stat_elevation'), value: sel.dPlus > 0 ? `${Math.round(sel.dPlus)} m` : dash },
+        { label: t('w2f.stat_calories'), value: kcalS },
       ]
     }
   })()
@@ -272,7 +273,7 @@ export function TwelveWeekVolume({ activities }: { activities: ActLike[] }) {
                 border: on ? `1.5px solid ${BLUE}` : '1px solid var(--border)',
                 background: on ? 'rgba(59,130,246,0.08)' : 'var(--bg-card)',
                 color: on ? BLUE : 'var(--text-mid)' }}>
-              {s.label}
+              {t('w2f.sport_' + s.key)}
             </button>
           )
         })}
@@ -280,7 +281,7 @@ export function TwelveWeekVolume({ activities }: { activities: ActLike[] }) {
 
       {/* Semaine sélectionnée + stats */}
       <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--text)', margin: '6px 0 10px', fontFamily: 'var(--font-display)' }}>
-        Semaine du {sel.label}
+        {t('w2f.week_of', { label: sel.label })}
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gap: '10px 14px', marginBottom: 14 }}>
         {stats.map(st => (

@@ -5,7 +5,7 @@ import type { BodyMeasurement } from '@/hooks/useBodyMetrics'
 import { useProfile } from '@/hooks/useProfile'
 import WeightChart from './WeightChart'
 import type { ToastType } from '@/hooks/useToast'
-import { currentLocale } from '@/lib/i18n'
+import { currentLocale, useI18n } from '@/lib/i18n'
 
 // ── Stepper config ────────────────────────────────────────────────
 type StepKey = 'weight_kg' | 'fat_mass_percent' | 'muscle_mass_kg' | 'metabolic_age'
@@ -85,6 +85,7 @@ function HistoryTable({
   onUpdate: (id: string, patch: Partial<Omit<BodyMeasurement, 'id' | 'user_id' | 'created_at'>>) => Promise<void>
   onDelete: (id: string) => Promise<void>
 }) {
+  const { t } = useI18n()
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editRow, setEditRow] = useState<EditRowState | null>(null)
   const [confirmId, setConfirmId] = useState<string | null>(null)
@@ -130,15 +131,15 @@ function HistoryTable({
 
   return (
     <div>
-      <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)', marginBottom: 8 }}>Mes mesures</div>
+      <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)', marginBottom: 8 }}>{t('w2a.my_measures')}</div>
       {sorted.length === 0 ? (
-        <div style={{ color: 'var(--text-dim)', fontSize: 12, padding: '12px 0' }}>Aucune mesure enregistree</div>
+        <div style={{ color: 'var(--text-dim)', fontSize: 12, padding: '12px 0' }}>{t('w2a.no_measure')}</div>
       ) : (
         <div style={{ maxHeight: 256, overflowY: 'auto', border: '1px solid var(--border)', borderRadius: 10 }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ background: 'var(--bg-card2)' }}>
-                {['Date', 'Poids', 'MG%', 'MM kg', 'IMC', ''].map(h => (
+                {[t('w2a.th_date'), t('w2a.th_weight'), t('w2a.th_fat'), t('w2a.th_muscle'), t('w2a.th_bmi'), ''].map(h => (
                   <th key={h} style={{ ...tdBase, fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-dim)' }}>{h}</th>
                 ))}
               </tr>
@@ -154,14 +155,14 @@ function HistoryTable({
                     <tr key={m.id}>
                       <td colSpan={6} style={{ ...tdBase, background: 'rgba(239,68,68,0.06)' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                          <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>Supprimer cette mesure ?</span>
+                          <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>{t('w2a.delete_measure_confirm')}</span>
                           <button onClick={() => void onDelete(m.id).then(() => setConfirmId(null))}
                             style={{ padding: '3px 10px', borderRadius: 6, border: 'none', background: '#ef4444', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
-                            Oui
+                            {t('w2a.yes')}
                           </button>
                           <button onClick={() => setConfirmId(null)}
                             style={{ padding: '3px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-dim)', fontSize: 11, cursor: 'pointer' }}>
-                            Non
+                            {t('w2a.no')}
                           </button>
                         </div>
                       </td>
@@ -180,22 +181,22 @@ function HistoryTable({
                     <td style={{ ...tdBase, minWidth: 64 }}>
                       {isEditing ? (
                         <div style={{ display: 'flex', gap: 4 }}>
-                          <button onClick={() => void commitEdit()} title="Valider"
+                          <button onClick={() => void commitEdit()} title={t('w2a.validate')}
                             style={{ width: 26, height: 26, borderRadius: 6, border: '1px solid rgba(34,197,94,0.4)', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             <IconCheck />
                           </button>
-                          <button onClick={() => { setEditingId(null); setEditRow(null) }} title="Annuler"
+                          <button onClick={() => { setEditingId(null); setEditRow(null) }} title={t('w2a.cancel')}
                             style={{ width: 26, height: 26, borderRadius: 6, border: '1px solid rgba(239,68,68,0.3)', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             <IconX />
                           </button>
                         </div>
                       ) : (
                         <div style={{ display: 'flex', gap: 4 }}>
-                          <button onClick={() => startEdit(m)} title="Modifier"
+                          <button onClick={() => startEdit(m)} title={t('w2a.edit')}
                             style={{ width: 26, height: 26, borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             <IconPencil />
                           </button>
-                          <button onClick={() => setConfirmId(m.id)} title="Supprimer"
+                          <button onClick={() => setConfirmId(m.id)} title={t('w2a.delete')}
                             style={{ width: 26, height: 26, borderRadius: 6, border: '1px solid rgba(239,68,68,0.3)', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             <IconTrash />
                           </button>
@@ -219,6 +220,7 @@ interface WeightSectionProps {
 }
 
 export default function WeightSection({ showToast }: WeightSectionProps) {
+  const { t } = useI18n()
   const { measurements, loading, addMeasurement, updateMeasurement, deleteMeasurement } = useBodyMetrics()
   const { profile } = useProfile()
   const heightCm = profile?.height_cm ?? null
@@ -270,10 +272,10 @@ export default function WeightSection({ showToast }: WeightSectionProps) {
       setForm({ weight_kg: '', fat_mass_percent: '', muscle_mass_kg: '', metabolic_age: '' })
       setSaveSuccess(true)
       setTimeout(() => setSaveSuccess(false), 1500)
-      showToast?.('Mesure enregistree', 'success')
+      showToast?.(t('w2a.measure_saved'), 'success')
     } catch (err) {
       console.error('[WeightSection.handleSave]', err)
-      showToast?.('Erreur lors de l\'enregistrement', 'error')
+      showToast?.(t('w2a.save_error'), 'error')
     } finally {
       setSaving(false)
     }
@@ -289,7 +291,7 @@ export default function WeightSection({ showToast }: WeightSectionProps) {
   return (
     <div style={cardStyle}>
       <p style={{ fontFamily: 'Syne,sans-serif', fontWeight: 700, fontSize: 18, color: 'var(--text)', margin: '0 0 16px' }}>
-        Poids et composition
+        {t('w2a.weight_composition')}
       </p>
 
       {/* Last measurement pills */}
@@ -316,7 +318,7 @@ export default function WeightSection({ showToast }: WeightSectionProps) {
             </span>
           )}
           <div style={{ fontSize: 10, color: 'var(--text-dim)', alignSelf: 'center', marginLeft: 2 }}>
-            Derniere mesure : {new Date(last.measured_at + 'T00:00:00').toLocaleDateString(currentLocale(), { day: '2-digit', month: '2-digit', year: 'numeric' })}
+            {t('w2a.last_measure', { date: new Date(last.measured_at + 'T00:00:00').toLocaleDateString(currentLocale(), { day: '2-digit', month: '2-digit', year: 'numeric' }) })}
           </div>
         </div>
       )}
@@ -324,7 +326,7 @@ export default function WeightSection({ showToast }: WeightSectionProps) {
       {/* Chart with sliding window navigation */}
       {loading ? (
         <div style={{ height: 240, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-dim)', fontSize: 13 }}>
-          Chargement...
+          {t('w2a.loading')}
         </div>
       ) : (
         <div>
@@ -390,11 +392,11 @@ export default function WeightSection({ showToast }: WeightSectionProps) {
 
       {/* Form */}
       <div style={{ marginTop: 24, borderTop: '1px solid var(--border)', paddingTop: 20 }}>
-        <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', marginBottom: 14 }}>Ajouter une mesure</div>
+        <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', marginBottom: 14 }}>{t('w2a.add_measure')}</div>
 
         {/* Date */}
         <div style={{ marginBottom: 14 }}>
-          <label style={{ fontSize: 10, color: 'var(--text-dim)', display: 'block', marginBottom: 4, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Date</label>
+          <label style={{ fontSize: 10, color: 'var(--text-dim)', display: 'block', marginBottom: 4, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('w2a.th_date')}</label>
           <input type="date" value={date} onChange={e => setDate(e.target.value)}
             style={{ background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 8, padding: '7px 10px', fontSize: 12, color: 'var(--text)', outline: 'none' }}
           />
@@ -405,13 +407,13 @@ export default function WeightSection({ showToast }: WeightSectionProps) {
           {STEPPERS.map(cfg => (
             <div key={cfg.key} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <span style={{ fontSize: 12, color: 'var(--text)', fontWeight: 500 }}>{cfg.label}</span>
+                <span style={{ fontSize: 12, color: 'var(--text)', fontWeight: 500 }}>{t(`w2a.stepper_${cfg.key}`)}</span>
                 {cfg.optional && (
-                  <span style={{ fontSize: 10, color: 'var(--text-dim)', marginLeft: 5 }}>(optionnel)</span>
+                  <span style={{ fontSize: 10, color: 'var(--text-dim)', marginLeft: 5 }}>{t('w2a.optional')}</span>
                 )}
               </div>
               <button onClick={() => setForm(f => ({ ...f, [cfg.key]: stepDown(f[cfg.key], cfg) }))}
-                style={btnRnd} aria-label="Diminuer">−</button>
+                style={btnRnd} aria-label={t('w2a.decrease')}>−</button>
               <input
                 type="number" value={form[cfg.key]}
                 onChange={e => setForm(f => ({ ...f, [cfg.key]: e.target.value }))}
@@ -419,8 +421,8 @@ export default function WeightSection({ showToast }: WeightSectionProps) {
                 style={iStyle}
               />
               <button onClick={() => setForm(f => ({ ...f, [cfg.key]: stepUp(f[cfg.key], cfg) }))}
-                style={btnRnd} aria-label="Augmenter">+</button>
-              <span style={{ fontSize: 11, color: 'var(--text-dim)', width: 28, textAlign: 'left' }}>{cfg.unit}</span>
+                style={btnRnd} aria-label={t('w2a.increase')}>+</button>
+              <span style={{ fontSize: 11, color: 'var(--text-dim)', width: 28, textAlign: 'left' }}>{cfg.key === 'metabolic_age' ? t('w2a.unit_years') : cfg.unit}</span>
             </div>
           ))}
         </div>
@@ -438,7 +440,7 @@ export default function WeightSection({ showToast }: WeightSectionProps) {
             transition: 'background 0.3s',
           }}
         >
-          {saving ? <Spinner /> : 'Sauvegarder la mesure'}
+          {saving ? <Spinner /> : t('w2a.save_measure')}
         </button>
       </div>
 

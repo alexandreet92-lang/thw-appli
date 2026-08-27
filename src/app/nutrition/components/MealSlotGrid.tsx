@@ -1,11 +1,12 @@
 'use client'
 import { useState, useEffect } from 'react'
 import type { ReactElement, CSSProperties } from 'react'
-import { useDailyMeals, SLOT_KEYS, SLOT_LABELS, type MealSlotKey, type DailyMealEntry } from '@/hooks/useDailyMeals'
+import { useDailyMeals, SLOT_KEYS, type MealSlotKey, type DailyMealEntry } from '@/hooks/useDailyMeals'
 import MealModal from './MealModal'
 import MealScoreDot from './MealScoreDot'
 import type { ManualSaveData } from './tabs/MealModalManual'
 import type { ToastType } from '@/hooks/useToast'
+import { useI18n } from '@/lib/i18n'
 
 // ── SVG Icons ─────────────────────────────────────────────────────
 const SLOT_ICONS: Record<MealSlotKey, ReactElement> = {
@@ -43,11 +44,12 @@ const SLOT_ICONS: Record<MealSlotKey, ReactElement> = {
 
 // ── Daily summary bar ─────────────────────────────────────────────
 function DailySummaryBar({ kcal, prot, gluc, lip }: { kcal: number; prot: number; gluc: number; lip: number }) {
+  const { t } = useI18n()
   const items = [
-    { label: 'Kcal',   val: kcal, color: '#06B6D4', unit: '' },
-    { label: 'Prot',   val: prot, color: '#3B82F6', unit: 'g' },
-    { label: 'Gluc',   val: gluc, color: '#F97316', unit: 'g' },
-    { label: 'Lip',    val: lip,  color: '#8B5CF6', unit: 'g' },
+    { label: t('w2a.col_kcal'), val: kcal, color: '#06B6D4', unit: '' },
+    { label: t('w2a.col_prot'), val: prot, color: '#3B82F6', unit: 'g' },
+    { label: t('w2a.col_gluc'), val: gluc, color: '#F97316', unit: 'g' },
+    { label: t('w2a.col_lip'),  val: lip,  color: '#8B5CF6', unit: 'g' },
   ]
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6, marginBottom: 16, background: 'var(--bg-card2)', borderRadius: 12, padding: '10px 12px' }}>
@@ -70,6 +72,7 @@ function SlotCard({ slot, entry, onAdd, onEdit }: {
   onAdd:  () => void
   onEdit: (e: DailyMealEntry) => void
 }) {
+  const { t } = useI18n()
   const base: CSSProperties = { borderRadius: 14, border: '1px solid var(--border)', background: 'var(--bg-card2)', padding: '14px 12px', minHeight: 90, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, cursor: 'pointer', transition: 'border-color 0.15s' }
 
   if (!entry) {
@@ -79,7 +82,7 @@ function SlotCard({ slot, entry, onAdd, onEdit }: {
         onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border)')}>
         <div style={{ color: 'var(--text-dim)', opacity: 0.6 }}>{SLOT_ICONS[slot]}</div>
         <span style={{ fontSize: 10, color: 'var(--text-dim)', fontFamily: 'DM Sans,sans-serif', textAlign: 'center' }}>
-          {SLOT_LABELS[slot]}
+          {t(`w2a.slot_${slot}`)}
         </span>
         <div style={{ width: 32, height: 32, borderRadius: '50%', border: '1.5px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-dim)', fontSize: 20, lineHeight: 1 }}>+</div>
       </div>
@@ -90,7 +93,7 @@ function SlotCard({ slot, entry, onAdd, onEdit }: {
     <div style={{ ...base, alignItems: 'flex-start', justifyContent: 'flex-start', cursor: 'default' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 4, width: '100%' }}>
         <span style={{ fontSize: 10, color: 'var(--text-dim)', fontFamily: 'Syne,sans-serif', fontWeight: 700, flex: 1 }}>
-          {SLOT_LABELS[slot]}
+          {t(`w2a.slot_${slot}`)}
         </span>
         {entry.actual_kcal != null && (
           <MealScoreDot calories={entry.actual_kcal} prot={entry.actual_prot ?? 0} fat={entry.actual_lip ?? 0} />
@@ -110,13 +113,13 @@ function SlotCard({ slot, entry, onAdd, onEdit }: {
       )}
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 2 }}>
         {entry.actual_kcal != null && <span style={{ fontSize: 10, color: '#06B6D4', fontFamily: 'DM Mono,monospace', fontWeight: 700 }}>{entry.actual_kcal} kcal</span>}
-        {entry.actual_prot != null && <span style={{ fontSize: 10, color: '#3B82F6', fontFamily: 'DM Mono,monospace' }}>P {entry.actual_prot}g</span>}
-        {entry.actual_gluc != null && <span style={{ fontSize: 10, color: '#F97316', fontFamily: 'DM Mono,monospace' }}>G {entry.actual_gluc}g</span>}
-        {entry.actual_lip  != null && <span style={{ fontSize: 10, color: '#8B5CF6', fontFamily: 'DM Mono,monospace' }}>L {entry.actual_lip}g</span>}
+        {entry.actual_prot != null && <span style={{ fontSize: 10, color: '#3B82F6', fontFamily: 'DM Mono,monospace' }}>{t('w2a.abbr_prot', { n: entry.actual_prot })}</span>}
+        {entry.actual_gluc != null && <span style={{ fontSize: 10, color: '#F97316', fontFamily: 'DM Mono,monospace' }}>{t('w2a.abbr_gluc', { n: entry.actual_gluc })}</span>}
+        {entry.actual_lip  != null && <span style={{ fontSize: 10, color: '#8B5CF6', fontFamily: 'DM Mono,monospace' }}>{t('w2a.abbr_lip', { n: entry.actual_lip })}</span>}
       </div>
       <button onClick={onAdd}
         style={{ marginTop: 6, alignSelf: 'flex-end', background: 'none', border: '1px dashed var(--border)', borderRadius: 6, padding: '3px 8px', fontSize: 10, color: 'var(--text-dim)', cursor: 'pointer' }}>
-        + Ajouter
+        {t('w2a.add_plus')}
       </button>
     </div>
   )
@@ -132,6 +135,7 @@ interface Props {
 }
 
 export default function MealSlotGrid({ date, onSaved, showToast }: Props) {
+  const { t } = useI18n()
   const { entries, totals, saveEntry } = useDailyMeals(date)
   const [modal,    setModal]    = useState<{ slot: MealSlotKey; initData?: Partial<ManualSaveData> } | null>(null)
   const [isDesktop, setIsDesktop] = useState(false)
@@ -160,10 +164,10 @@ export default function MealSlotGrid({ date, onSaved, showToast }: Props) {
         actual_lip:  data.actual_lip,
         source:      'manual',
       })
-      showToast?.('Repas enregistre', 'success')
+      showToast?.(t('w2a.meal_saved'), 'success')
       onSaved?.({ meal_name: data.meal_name, actual_kcal: data.actual_kcal, actual_prot: data.actual_prot })
     } catch {
-      showToast?.('Erreur lors de l\'enregistrement', 'error')
+      showToast?.(t('w2a.save_error'), 'error')
     }
   }
 

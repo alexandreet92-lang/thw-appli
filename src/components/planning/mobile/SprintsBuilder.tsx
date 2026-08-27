@@ -9,6 +9,7 @@
 // il pilote l'intensité. Sans emoji, contrôles steppers/chips.
 // ══════════════════════════════════════════════════════════════════
 import { useEffect, useMemo, useState } from 'react'
+import { useI18n } from '@/lib/i18n'
 import type { Block } from '@/app/planning/page'
 import type { MBlock } from './blocks'
 import { createClient } from '@/lib/supabase/client'
@@ -62,9 +63,10 @@ function Chip({ on, onClick, children, accent }: { on: boolean; onClick: () => v
 
 // ── Panneau Temps de référence (toujours visible) ─────────────────
 function ReferenceZones({ pbs }: { pbs: Record<number, number> }) {
+  const { t } = useI18n()
   return (
     <Card style={{ padding: 14 }}>
-      <p style={{ margin: '0 0 10px', fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--se-dim)' }}>Temps de référence</p>
+      <p style={{ margin: '0 0 10px', fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--se-dim)' }}>{t('w2e.refTime')}</p>
       <div style={{ display: 'grid', gridTemplateColumns: `repeat(${SPRINT_PB_DISTS.length}, 1fr)`, gap: 8 }}>
         {SPRINT_PB_DISTS.map(d => {
           const sec = pbs[d]
@@ -73,7 +75,7 @@ function ReferenceZones({ pbs }: { pbs: Record<number, number> }) {
             <div key={d} style={{ border: '1px solid var(--se-rule)', borderRadius: 10, padding: '9px 6px', textAlign: 'center', background: sec > 0 ? 'var(--se-card)' : 'transparent' }}>
               <div style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--se-dim)' }}>{d} m</div>
               <div className="se-tnum" style={{ fontSize: 15, fontWeight: 800, color: sec > 0 ? 'var(--se-text)' : 'var(--se-dim)', marginTop: 2 }}>{fmtSprintTime(sec)}</div>
-              <div className="se-tnum" style={{ fontSize: 9.5, color: 'var(--se-dim)', marginTop: 1 }}>{sec > 0 ? fmtSpeed(kmh) : 'pas de données'}</div>
+              <div className="se-tnum" style={{ fontSize: 9.5, color: 'var(--se-dim)', marginTop: 1 }}>{sec > 0 ? fmtSpeed(kmh) : t('w2e.noData')}</div>
             </div>
           )
         })}
@@ -100,23 +102,24 @@ function IntensityProfile({ blocks, accent }: { blocks: SprintBlock[]; accent: s
 
 // ── Cartes d'édition ──────────────────────────────────────────────
 function WarmupCard({ x, on, accent }: { x: WarmupExt; on: (x: WarmupExt) => void; accent: string }) {
+  const { t } = useI18n()
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-        <div><FieldLabel>Footing</FieldLabel><Step value={x.easyRunMin} onChange={n => on({ ...x, easyRunMin: n })} unit="min" /></div>
-        <div><FieldLabel>Allure footing</FieldLabel><Txt value={x.easyPace} onChange={v => on({ ...x, easyPace: v })} placeholder="6:00" /></div>
+        <div><FieldLabel>{t('w2e.footing')}</FieldLabel><Step value={x.easyRunMin} onChange={n => on({ ...x, easyRunMin: n })} unit="min" /></div>
+        <div><FieldLabel>{t('w2e.footingPace')}</FieldLabel><Txt value={x.easyPace} onChange={v => on({ ...x, easyPace: v })} placeholder="6:00" /></div>
       </div>
       <div>
-        <FieldLabel>Sprints d'échauffement</FieldLabel>
+        <FieldLabel>{t('w2e.warmupSprints')}</FieldLabel>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
           <Step value={x.wuReps} onChange={n => on({ ...x, wuReps: n })} min={1} w={100} unit="×" />
           <Step value={x.wuDistanceM} onChange={n => on({ ...x, wuDistanceM: n })} unit="m" step={5} w={120} />
-          <span style={{ fontSize: 11.5, color: 'var(--se-dim)', fontWeight: 600 }}>récup</span>
+          <span style={{ fontSize: 11.5, color: 'var(--se-dim)', fontWeight: 600 }}>{t('w2e.recup')}</span>
           <Step value={x.wuRecoverySec} onChange={n => on({ ...x, wuRecoverySec: n })} unit="s" step={5} w={110} />
         </div>
       </div>
       <div>
-        <FieldLabel>Gammes / éducatifs</FieldLabel>
+        <FieldLabel>{t('w2e.drills')}</FieldLabel>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: x.drills.length ? 12 : 0 }}>
           {SPRINT_DRILLS.map(g => {
             const on2 = x.drills.some(d => d.type === g)
@@ -139,17 +142,18 @@ function WarmupCard({ x, on, accent }: { x: WarmupExt; on: (x: WarmupExt) => voi
 }
 
 function SprintCard({ x, on, accent, pbs }: { x: SprintExt; on: (x: SprintExt) => void; accent: string; pbs: Record<number, number> }) {
+  const { t } = useI18n()
   const speed = sprintSpeedKmh(x.distanceM, x.tMinSec, x.tMaxSec)
   const pbSec = pbs[x.distanceM]
   const pbSpeed = pbSec ? (x.distanceM / pbSec) * 3.6 : 0
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-        <div><FieldLabel>Distance</FieldLabel><Step value={x.distanceM} onChange={n => on({ ...x, distanceM: n })} unit="m" step={10} /></div>
-        <div><FieldLabel>Répétitions</FieldLabel><Step value={x.reps} onChange={n => on({ ...x, reps: n })} min={1} /></div>
+        <div><FieldLabel>{t('w2e.distance')}</FieldLabel><Step value={x.distanceM} onChange={n => on({ ...x, distanceM: n })} unit="m" step={10} /></div>
+        <div><FieldLabel>{t('w2e.reps')}</FieldLabel><Step value={x.reps} onChange={n => on({ ...x, reps: n })} min={1} /></div>
       </div>
       <div>
-        <FieldLabel right={<span className="se-tnum" style={{ fontSize: 11, fontWeight: 700, color: accent }}>≈ {fmtSpeed(speed)}</span>}>Temps cible (plage)</FieldLabel>
+        <FieldLabel right={<span className="se-tnum" style={{ fontSize: 11, fontWeight: 700, color: accent }}>≈ {fmtSpeed(speed)}</span>}>{t('w2e.targetTime')}</FieldLabel>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
           <Step value={x.tMinSec} onChange={n => on({ ...x, tMinSec: n })} unit="s" step={0.5} w={110} />
           <span style={{ color: 'var(--se-dim)' }}>→</span>
@@ -157,33 +161,33 @@ function SprintCard({ x, on, accent, pbs }: { x: SprintExt; on: (x: SprintExt) =
         </div>
         {pbSec > 0 && (
           <p className="se-tnum" style={{ margin: '8px 0 0', fontSize: 11, color: 'var(--se-dim)' }}>
-            Record {x.distanceM} m : {fmtSprintTime(pbSec)} · {fmtSpeed(pbSpeed)}
-            {speed > 0 && <span style={{ color: speed >= pbSpeed ? '#16a34a' : 'var(--se-dim)', marginLeft: 6 }}>({Math.round((speed / pbSpeed) * 100)} % du record)</span>}
+            {t('w2e.recordLabel')} {x.distanceM} m : {fmtSprintTime(pbSec)} · {fmtSpeed(pbSpeed)}
+            {speed > 0 && <span style={{ color: speed >= pbSpeed ? '#16a34a' : 'var(--se-dim)', marginLeft: 6 }}>{t('w2e.pctOfRecord', { pct: Math.round((speed / pbSpeed) * 100) })}</span>}
           </p>
         )}
       </div>
       <div>
-        <FieldLabel right={<span className="se-tnum" style={{ fontSize: 11, color: 'var(--se-dim)' }}>{x.progPct === 0 ? 'constant' : `+${x.progPct}% en fin`}</span>}>Progressivité (départ → fin)</FieldLabel>
+        <FieldLabel right={<span className="se-tnum" style={{ fontSize: 11, color: 'var(--se-dim)' }}>{x.progPct === 0 ? t('w2e.constant') : t('w2e.progEnd', { n: x.progPct })}</span>}>{t('w2e.progressivity')}</FieldLabel>
         <Step value={x.progPct} onChange={n => on({ ...x, progPct: Math.min(100, n) })} unit="%" step={5} w={130} />
       </div>
       <div>
-        <FieldLabel>Surface</FieldLabel>
+        <FieldLabel>{t('w2e.surface')}</FieldLabel>
         <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-          <Segmented accent={accent} value={x.surface} onChange={v => on({ ...x, surface: v, gradientPct: v === 'flat' ? 0 : x.gradientPct || 5 })} options={[{ key: 'flat', label: 'Plat' }, { key: 'uphill', label: 'Côte' }]} />
-          {x.surface === 'uphill' && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}><span style={{ fontSize: 11.5, color: 'var(--se-dim)', fontWeight: 600 }}>Pente</span><Step value={x.gradientPct} onChange={n => on({ ...x, gradientPct: n })} unit="%" w={110} /></span>}
+          <Segmented accent={accent} value={x.surface} onChange={v => on({ ...x, surface: v, gradientPct: v === 'flat' ? 0 : x.gradientPct || 5 })} options={[{ key: 'flat', label: t('w2e.flat') }, { key: 'uphill', label: t('w2e.uphill') }]} />
+          {x.surface === 'uphill' && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}><span style={{ fontSize: 11.5, color: 'var(--se-dim)', fontWeight: 600 }}>{t('w2e.gradient')}</span><Step value={x.gradientPct} onChange={n => on({ ...x, gradientPct: n })} unit="%" w={110} /></span>}
         </div>
       </div>
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-        <Chip accent={accent} on={x.startingBlocks} onClick={() => on({ ...x, startingBlocks: !x.startingBlocks })}>Starting-blocks</Chip>
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}><span style={{ fontSize: 11.5, color: 'var(--se-dim)', fontWeight: 600 }}>Récup</span><Step value={x.recoverySec} onChange={n => on({ ...x, recoverySec: n })} unit="s" step={5} w={110} /></span>
+        <Chip accent={accent} on={x.startingBlocks} onClick={() => on({ ...x, startingBlocks: !x.startingBlocks })}>{t('w2e.startingBlocks')}</Chip>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}><span style={{ fontSize: 11.5, color: 'var(--se-dim)', fontWeight: 600 }}>{t('w2e.recupCap')}</span><Step value={x.recoverySec} onChange={n => on({ ...x, recoverySec: n })} unit="s" step={5} w={110} /></span>
       </div>
       <div>
-        <FieldLabel right={<Chip accent={accent} on={!!x.hurdles} onClick={() => on({ ...x, hurdles: x.hurdles ? null : { count: 5, spacingM: 8, heightCm: 76 } })}>{x.hurdles ? 'Haies activées' : 'Ajouter des haies'}</Chip>}>Haies</FieldLabel>
+        <FieldLabel right={<Chip accent={accent} on={!!x.hurdles} onClick={() => on({ ...x, hurdles: x.hurdles ? null : { count: 5, spacingM: 8, heightCm: 76 } })}>{x.hurdles ? t('w2e.hurdlesOn') : t('w2e.addHurdles')}</Chip>}>{t('w2e.hurdles')}</FieldLabel>
         {x.hurdles && (
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center', marginTop: 4 }}>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><span style={{ fontSize: 11, color: 'var(--se-dim)' }}>Nb</span><Step value={x.hurdles.count} onChange={n => on({ ...x, hurdles: { ...x.hurdles!, count: n } })} min={1} w={90} /></span>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><span style={{ fontSize: 11, color: 'var(--se-dim)' }}>Espac.</span><Step value={x.hurdles.spacingM} onChange={n => on({ ...x, hurdles: { ...x.hurdles!, spacingM: n } })} unit="m" step={0.5} w={110} /></span>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><span style={{ fontSize: 11, color: 'var(--se-dim)' }}>Haut.</span><Step value={x.hurdles.heightCm} onChange={n => on({ ...x, hurdles: { ...x.hurdles!, heightCm: n } })} unit="cm" w={120} /></span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><span style={{ fontSize: 11, color: 'var(--se-dim)' }}>{t('w2e.count')}</span><Step value={x.hurdles.count} onChange={n => on({ ...x, hurdles: { ...x.hurdles!, count: n } })} min={1} w={90} /></span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><span style={{ fontSize: 11, color: 'var(--se-dim)' }}>{t('w2e.spacing')}</span><Step value={x.hurdles.spacingM} onChange={n => on({ ...x, hurdles: { ...x.hurdles!, spacingM: n } })} unit="m" step={0.5} w={110} /></span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><span style={{ fontSize: 11, color: 'var(--se-dim)' }}>{t('w2e.height')}</span><Step value={x.hurdles.heightCm} onChange={n => on({ ...x, hurdles: { ...x.hurdles!, heightCm: n } })} unit="cm" w={120} /></span>
           </div>
         )}
       </div>
@@ -192,15 +196,16 @@ function SprintCard({ x, on, accent, pbs }: { x: SprintExt; on: (x: SprintExt) =
 }
 
 function StairsCard({ x, on }: { x: StairsExt; on: (x: StairsExt) => void }) {
+  const { t } = useI18n()
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <div><FieldLabel>Nom de l'exercice</FieldLabel><Txt value={x.exoName} onChange={v => on({ ...x, exoName: v })} placeholder="Montée 2 par 2" /></div>
+      <div><FieldLabel>{t('w2e.exoName')}</FieldLabel><Txt value={x.exoName} onChange={v => on({ ...x, exoName: v })} placeholder={t('w2e.stairsExoPlaceholder')} /></div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-        <div><FieldLabel>Marches</FieldLabel><Step value={x.steps} onChange={n => on({ ...x, steps: n })} /></div>
-        <div><FieldLabel>Répétitions</FieldLabel><Step value={x.reps} onChange={n => on({ ...x, reps: n })} min={1} /></div>
+        <div><FieldLabel>{t('w2e.steps')}</FieldLabel><Step value={x.steps} onChange={n => on({ ...x, steps: n })} /></div>
+        <div><FieldLabel>{t('w2e.reps')}</FieldLabel><Step value={x.reps} onChange={n => on({ ...x, reps: n })} min={1} /></div>
       </div>
-      <p style={{ margin: 0, fontSize: 11.5, color: 'var(--se-dim)' }}>Aucun repos entre les répétitions.</p>
-      <div><FieldLabel>Repos entre blocs</FieldLabel><Step value={x.restBetweenSec} onChange={n => on({ ...x, restBetweenSec: n })} unit="s" step={5} w={130} /></div>
+      <p style={{ margin: 0, fontSize: 11.5, color: 'var(--se-dim)' }}>{t('w2e.noRestBetweenReps')}</p>
+      <div><FieldLabel>{t('w2e.restBetweenBlocks')}</FieldLabel><Step value={x.restBetweenSec} onChange={n => on({ ...x, restBetweenSec: n })} unit="s" step={5} w={130} /></div>
     </div>
   )
 }
@@ -217,6 +222,7 @@ function AddBtn({ icon, title, sub, accent, onClick }: { icon: React.ReactNode; 
 }
 
 export function SprintsBuilder({ blocks, onChange, accent }: { blocks: MBlock[]; onChange: (b: Block[]) => void; accent: string }) {
+  const { t } = useI18n()
   const sBlocks = useMemo(() => (blocks as MBlock[]).filter(isSprintBlock) as SprintBlock[], [blocks])
   const [pbs, setPbs] = useState<Record<number, number>>({})
 
@@ -258,7 +264,7 @@ export function SprintsBuilder({ blocks, onChange, accent }: { blocks: MBlock[];
       {sBlocks.length > 0 && (
         <Card style={{ padding: 14 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
-            <span style={{ fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--se-dim)' }}>Profil d'intensité</span>
+            <span style={{ fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--se-dim)' }}>{t('w2e.intensityProfile')}</span>
             <span className="se-tnum" style={{ fontSize: 12, fontWeight: 700, color: 'var(--se-text)' }}>≈ {totalMin} min</span>
           </div>
           <IntensityProfile blocks={sBlocks} accent={accent} />
@@ -272,7 +278,7 @@ export function SprintsBuilder({ blocks, onChange, accent }: { blocks: MBlock[];
               {b.sx.kind === 'warmup' ? <IconWarm c={accent} /> : b.sx.kind === 'sprint' ? <IconSprint c={accent} /> : <IconStairs c={accent} />}
             </span>
             <span style={{ flex: 1, fontFamily: 'Syne, sans-serif', fontSize: 15, fontWeight: 700, color: 'var(--se-text)' }}>
-              {b.sx.kind === 'warmup' ? 'Échauffement' : b.sx.kind === 'sprint' ? `Sprint ${b.sx.distanceM} m` : 'Escaliers'}
+              {b.sx.kind === 'warmup' ? t('w2e.warmup') : b.sx.kind === 'sprint' ? t('w2e.sprintDist', { dist: b.sx.distanceM }) : t('w2e.stairs')}
             </span>
             <button type="button" onClick={() => move(b.id, -1)} disabled={i === 0} style={{ width: 28, height: 28, borderRadius: 7, border: '1px solid var(--se-rule)', background: 'var(--se-card)', color: 'var(--se-dim)', cursor: i === 0 ? 'default' : 'pointer', opacity: i === 0 ? 0.35 : 1 }}>↑</button>
             <button type="button" onClick={() => move(b.id, 1)} disabled={i === sBlocks.length - 1} style={{ width: 28, height: 28, borderRadius: 7, border: '1px solid var(--se-rule)', background: 'var(--se-card)', color: 'var(--se-dim)', cursor: i === sBlocks.length - 1 ? 'default' : 'pointer', opacity: i === sBlocks.length - 1 ? 0.35 : 1 }}>↓</button>
@@ -285,13 +291,13 @@ export function SprintsBuilder({ blocks, onChange, accent }: { blocks: MBlock[];
       ))}
 
       {!sBlocks.length && (
-        <p style={{ margin: '4px 0 8px', fontSize: 13, color: 'var(--se-dim)', textAlign: 'center' }}>Ajoute un bloc pour construire ta séance de sprints.</p>
+        <p style={{ margin: '4px 0 8px', fontSize: 13, color: 'var(--se-dim)', textAlign: 'center' }}>{t('w2e.addBlockHint')}</p>
       )}
 
       <div style={{ display: 'flex', gap: 10 }}>
-        <AddBtn accent={accent} onClick={() => add(newSprintWarmup())} icon={<IconWarm c={accent} />} title="Échauffement" sub="Footing + gammes + sprints" />
-        <AddBtn accent={accent} onClick={() => add(newSprint())} icon={<IconSprint c={accent} />} title="Sprint" sub="Distance, temps cible, haies" />
-        <AddBtn accent={accent} onClick={() => add(newStairs())} icon={<IconStairs c={accent} />} title="Escaliers" sub="Marches, répétitions" />
+        <AddBtn accent={accent} onClick={() => add(newSprintWarmup())} icon={<IconWarm c={accent} />} title={t('w2e.warmup')} sub={t('w2e.warmupSub')} />
+        <AddBtn accent={accent} onClick={() => add(newSprint())} icon={<IconSprint c={accent} />} title={t('w2e.sprint')} sub={t('w2e.sprintSub')} />
+        <AddBtn accent={accent} onClick={() => add(newStairs())} icon={<IconStairs c={accent} />} title={t('w2e.stairs')} sub={t('w2e.stairsSub')} />
       </div>
     </div>
   )

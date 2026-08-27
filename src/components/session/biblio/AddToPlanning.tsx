@@ -5,6 +5,7 @@
 // (allures/watts/reps ajustables) avant l'ajout dans planned_sessions.
 import { useEffect, useState } from 'react'
 import { IconCalendarPlus, IconCheck, IconChevronLeft, IconChevronRight } from '@tabler/icons-react'
+import { useI18n } from '@/lib/i18n'
 import { createClient } from '@/lib/supabase/client'
 import { BottomSheet } from '@/components/ui/BottomSheet'
 import { weekStartStr, mondayIndex } from '@/lib/date/weekStart'
@@ -14,9 +15,6 @@ import type { Block, Session, SportType } from '@/app/planning/page'
 
 const FB = 'var(--font-body)', FD = 'var(--font-display)'
 const WD = ['L', 'M', 'M', 'J', 'V', 'S', 'D']
-const MOIS = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre']
-const MOIS_C = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.']
-const JOURS_C = ['lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.', 'dim.']
 const SPORT_DOT: Record<string, string> = { run: '#22c55e', bike: '#3b82f6', swim: '#06b6d4', gym: '#f97316', hyrox: '#ef4444', rowing: '#0ea5e9' }
 
 export interface PlanNiveau { id: string; label: string }
@@ -43,6 +41,7 @@ function weekStartAndDayIndex(d: Date): { weekStart: string; dayIndex: number } 
 interface DaySess { sport: string; title: string }
 
 export function AddToPlanning({ sport, title, objectif, niveaux, defaultNiveau, computeMeta, computeBlocks }: Props) {
+  const { t } = useI18n()
   const today = startOfDay(new Date())
   const [open, setOpen] = useState(false)
   const [niveau, setNiveau] = useState<string | null>(defaultNiveau ?? null)
@@ -110,7 +109,7 @@ export function AddToPlanning({ sport, title, objectif, niveaux, defaultNiveau, 
     ...Array.from({ length: nbDays }, (_, i) => new Date(view.y, view.m, i + 1)),
   ]
 
-  const selLabel = `${JOURS_C[mondayIndex(sel)]} ${sel.getDate()} ${MOIS_C[sel.getMonth()]}`
+  const selLabel = `${t(`w2e.joursC.${mondayIndex(sel)}`)} ${sel.getDate()} ${t(`w2e.moisC.${sel.getMonth()}`)}`
 
   // Insertion directe (chemin hérité, sans éditeur).
   async function directAdd() {
@@ -118,7 +117,7 @@ export function AddToPlanning({ sport, title, objectif, niveaux, defaultNiveau, 
     try {
       const sb = createClient()
       const { data: { user } } = await sb.auth.getUser()
-      if (!user) { setErrMsg('Tu dois être connecté pour ajouter une séance.'); setSaving(false); return }
+      if (!user) { setErrMsg(t('w2e.mustBeLoggedIn')); setSaving(false); return }
       const { weekStart, dayIndex } = weekStartAndDayIndex(sel)
       const meta = computeMeta(niveau)
       const nivLabel = niveaux?.find(n => n.id === niveau)?.label
@@ -127,9 +126,9 @@ export function AddToPlanning({ sport, title, objectif, niveaux, defaultNiveau, 
         user_id: user.id, week_start: weekStart, day_index: dayIndex,
         sport, title, duration_min: meta.durationMin, status: 'planned', rpe: meta.rpe, notes, blocks: [], source: 'biblio',
       })
-      if (error) { setErrMsg(error.message || 'Ajout impossible. Réessaie.'); setSaving(false); return }
+      if (error) { setErrMsg(error.message || t('w2e.addFailedRetry')); setSaving(false); return }
       afterAdd(weekStart, dayIndex); setSaving(false)
-    } catch (e) { setErrMsg(e instanceof Error ? e.message : 'Ajout impossible.'); setSaving(false) }
+    } catch (e) { setErrMsg(e instanceof Error ? e.message : t('w2e.addFailed')); setSaving(false) }
   }
 
   // Étape « Suivant » : construit la séance (blocs convertis) et ouvre l'éditeur.
@@ -161,15 +160,15 @@ export function AddToPlanning({ sport, title, objectif, niveaux, defaultNiveau, 
       })
       const d = new Date(weekStart + 'T00:00:00'); d.setDate(d.getDate() + dayIndex)
       afterAdd(weekStart, dayIndex)
-      emitNotification({ key: 'entrainement.seance_telechargee', title: 'Séance ajoutée', body: `« ${s.title} » a été ajoutée à ton planning`, url: '/planning', dedupKey: `dl:${user.id}:${weekStart}:${dayIndex}:${s.title}` })
+      emitNotification({ key: 'entrainement.seance_telechargee', title: t('w2e.sessionAdded'), body: t('w2e.sessionAddedBody', { title: s.title }), url: '/planning', dedupKey: `dl:${user.id}:${weekStart}:${dayIndex}:${s.title}` })
     } catch { /* ignore */ }
     setEditorSession(null)
   }
 
   function afterAdd(weekStart: string, dayIndex: number) {
     emitNotification({
-      key: 'entrainement.seance_telechargee', title: 'Séance téléchargée',
-      body: `« ${title} » a été ajoutée à ton planning · ${selLabel}`, url: '/planning',
+      key: 'entrainement.seance_telechargee', title: t('w2e.sessionDownloaded'),
+      body: t('w2e.sessionDownloadedBody', { title, label: selLabel }), url: '/planning',
       dedupKey: `dl:${weekStart}:${dayIndex}:${title}`,
     })
     window.dispatchEvent(new Event('thw:sessions-changed'))
@@ -182,16 +181,16 @@ export function AddToPlanning({ sport, title, objectif, niveaux, defaultNiveau, 
         style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '10px 16px', borderRadius: 999,
           border: 'none', background: 'var(--primary)', color: 'var(--on-primary, #fff)',
           fontFamily: FB, fontSize: 13, fontWeight: 600, cursor: 'pointer', boxShadow: '0 2px 10px rgba(0,0,0,0.10)' }}>
-        <IconCalendarPlus size={17} /> Ajouter au planning
+        <IconCalendarPlus size={17} /> {t('w2e.addToPlanning')}
       </button>
 
-      <BottomSheet isOpen={open} onClose={() => setOpen(false)} title="Ajouter au planning">
+      <BottomSheet isOpen={open} onClose={() => setOpen(false)} title={t('w2e.addToPlanning')}>
         {done ? (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, padding: 'var(--space-6) 0' }}>
             <span style={{ width: 52, height: 52, borderRadius: '50%', background: 'var(--primary-dim)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <IconCheck size={30} />
             </span>
-            <p style={{ fontFamily: FD, fontSize: 16, fontWeight: 700, color: 'var(--text)', margin: 0 }}>Ajoutée · {selLabel}</p>
+            <p style={{ fontFamily: FD, fontSize: 16, fontWeight: 700, color: 'var(--text)', margin: 0 }}>{t('w2e.added', { label: selLabel })}</p>
           </div>
         ) : (
           <div style={{ paddingBottom: 8 }}>
@@ -199,7 +198,7 @@ export function AddToPlanning({ sport, title, objectif, niveaux, defaultNiveau, 
 
             {niveaux && niveaux.length > 0 && (
               <div style={{ marginBottom: 'var(--space-6)' }}>
-                <span style={{ fontFamily: FB, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-dim)' }}>Niveau</span>
+                <span style={{ fontFamily: FB, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-dim)' }}>{t('w2e.level')}</span>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 7, marginTop: 'var(--space-3)' }}>
                   {niveaux.map(n => {
                     const on = niveau === n.id
@@ -218,24 +217,24 @@ export function AddToPlanning({ sport, title, objectif, niveaux, defaultNiveau, 
             {/* Calendrier — montre le planning déjà en place + jour recommandé */}
             <div style={{ marginBottom: 'var(--space-4)' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ fontFamily: FB, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-dim)' }}>Jour</span>
+                <span style={{ fontFamily: FB, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-dim)' }}>{t('w2e.day')}</span>
                 {suggested && sameDay(startOfDay(suggested), startOfDay(sel)) === false && (
                   <button onClick={() => { setSel(startOfDay(suggested)); setView({ y: suggested.getFullYear(), m: suggested.getMonth() }) }}
                     style={{ background: 'transparent', border: 'none', color: 'var(--primary)', fontFamily: FB, fontSize: 11.5, fontWeight: 700, cursor: 'pointer' }}>
-                    Jour recommandé : {JOURS_C[mondayIndex(suggested)]} {suggested.getDate()}
+                    {t('w2e.recommendedDay', { day: `${t(`w2e.joursC.${mondayIndex(suggested)}`)} ${suggested.getDate()}` })}
                   </button>
                 )}
               </div>
               <div style={{ marginTop: 'var(--space-3)', padding: 'var(--space-4)', borderRadius: 16, background: 'var(--bg-card2)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-3)' }}>
-                  <button onClick={() => shiftMonth(-1)} disabled={!canPrev} aria-label="Mois précédent" style={{
+                  <button onClick={() => shiftMonth(-1)} disabled={!canPrev} aria-label={t('w2e.prevMonth')} style={{
                     width: 32, height: 32, borderRadius: '50%', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center',
                     background: canPrev ? 'var(--bg-card)' : 'transparent', color: canPrev ? 'var(--text-mid)' : 'var(--text-dim)',
                     opacity: canPrev ? 1 : 0.35, cursor: canPrev ? 'pointer' : 'default' }}>
                     <IconChevronLeft size={18} />
                   </button>
-                  <span style={{ fontFamily: FD, fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>{MOIS[view.m]} {view.y}</span>
-                  <button onClick={() => shiftMonth(1)} aria-label="Mois suivant" style={{
+                  <span style={{ fontFamily: FD, fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>{t(`w2e.mois.${view.m}`)} {view.y}</span>
+                  <button onClick={() => shiftMonth(1)} aria-label={t('w2e.nextMonth')} style={{
                     width: 32, height: 32, borderRadius: '50%', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center',
                     background: 'var(--bg-card)', color: 'var(--text-mid)', cursor: 'pointer' }}>
                     <IconChevronRight size={18} />
@@ -243,7 +242,7 @@ export function AddToPlanning({ sport, title, objectif, niveaux, defaultNiveau, 
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2, marginBottom: 4 }}>
-                  {WD.map((w, i) => <span key={i} style={{ textAlign: 'center', fontFamily: FB, fontSize: 10.5, fontWeight: 600, color: 'var(--text-dim)' }}>{w}</span>)}
+                  {WD.map((w, i) => <span key={i} style={{ textAlign: 'center', fontFamily: FB, fontSize: 10.5, fontWeight: 600, color: 'var(--text-dim)' }}>{t(`w2e.wd.${i}`)}</span>)}
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2 }}>
                   {cells.map((d, i) => {
@@ -275,7 +274,7 @@ export function AddToPlanning({ sport, title, objectif, niveaux, defaultNiveau, 
               </div>
               {(planMap[dateKey(sel)]?.length ?? 0) >= 2 && (
                 <p style={{ fontFamily: FB, fontSize: 11.5, color: '#f97316', margin: 'var(--space-2) 0 0', fontWeight: 600 }}>
-                  ⚠ Déjà {planMap[dateKey(sel)]!.length} séances ce jour-là.
+                  {t('w2e.alreadyNSessions', { n: planMap[dateKey(sel)]!.length })}
                 </p>
               )}
             </div>
@@ -287,7 +286,7 @@ export function AddToPlanning({ sport, title, objectif, niveaux, defaultNiveau, 
               cursor: saving ? 'default' : 'pointer', background: 'var(--primary)', color: 'var(--on-primary, #fff)',
               fontFamily: FB, fontSize: 14.5, fontWeight: 700, opacity: saving ? 0.6 : 1,
               boxShadow: '0 4px 14px color-mix(in srgb, var(--primary) 35%, transparent)' }}>
-              {computeBlocks ? `Suivant · régler les blocs →` : saving ? 'Ajout…' : `Ajouter · ${selLabel}`}
+              {computeBlocks ? t('w2e.nextSetBlocks') : saving ? t('w2e.adding') : t('w2e.addWithDate', { label: selLabel })}
             </button>
           </div>
         )}

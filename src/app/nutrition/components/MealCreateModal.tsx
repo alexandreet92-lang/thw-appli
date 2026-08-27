@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { getCurrentUser } from '@/lib/auth/currentUser'
 import type { MealTemplate, MealTiming, Ingredient } from '@/hooks/useNutrition'
+import { useI18n } from '@/lib/i18n'
 
 type Unit = 'g' | 'ml' | 'piece'
 
@@ -51,6 +52,7 @@ export default function MealCreateModal({
   onSave: (data: Omit<MealTemplate, 'id' | 'user_id' | 'created_at'>) => Promise<void>
   onClose: () => void
 }) {
+  const { t } = useI18n()
   const [form, setForm] = useState<FormData>(EMPTY)
   const [photoFile, setPhotoFile] = useState<File | null>(null)
   const [photoPreview, setPhotoPreview] = useState<string>('')
@@ -149,7 +151,7 @@ export default function MealCreateModal({
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
           <h2 style={{ fontFamily: 'Syne,sans-serif', fontSize: 16, fontWeight: 800, margin: 0, color: 'var(--text)' }}>
-            Creer un repas
+            {t('w2a.create_meal')}
           </h2>
           <button onClick={onClose} style={{
             width: 32, height: 32, borderRadius: 8, border: '1px solid var(--border)',
@@ -161,26 +163,26 @@ export default function MealCreateModal({
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {/* Nom */}
           <div>
-            <label style={labelStyle}>Nom du repas *</label>
+            <label style={labelStyle}>{t('w2a.meal_name_required')}</label>
             <input value={form.nom}
               onChange={e => setForm(f => ({ ...f, nom: e.target.value }))}
-              placeholder="ex: Porridge avoine banane" style={inputStyle} />
+              placeholder={t('w2a.meal_name_ph_porridge')} style={inputStyle} />
           </div>
 
           {/* Timing */}
           <div>
-            <label style={labelStyle}>Timing</label>
+            <label style={labelStyle}>{t('w2a.timing_label')}</label>
             <select value={form.meal_timing}
               onChange={e => setForm(f => ({ ...f, meal_timing: e.target.value as MealTiming | '' }))}
               style={{ ...inputStyle, cursor: 'pointer' }}>
-              <option value="">-- Choisir --</option>
-              {TIMINGS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+              <option value="">{t('w2a.choose')}</option>
+              {TIMINGS.map(tm => <option key={tm.value} value={tm.value}>{t(`w2a.timing_${tm.value}`)}</option>)}
             </select>
           </div>
 
           {/* Photo */}
           <div>
-            <label style={labelStyle}>Photo</label>
+            <label style={labelStyle}>{t('w2a.photo')}</label>
             {photoPreview && (
               <img src={photoPreview} alt="" style={{
                 width: '100%', height: 140, objectFit: 'cover',
@@ -190,19 +192,19 @@ export default function MealCreateModal({
             <input type="file" accept="image/*" onChange={handlePhotoChange}
               style={{ ...inputStyle, padding: '6px 8px', cursor: 'pointer' }} />
             {uploading && (
-              <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '4px 0 0' }}>Envoi en cours...</p>
+              <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '4px 0 0' }}>{t('w2a.uploading')}</p>
             )}
           </div>
 
           {/* Macros grid */}
           <div>
-            <label style={labelStyle}>Valeurs nutritionnelles</label>
+            <label style={labelStyle}>{t('w2a.nutritional_values')}</label>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 8 }}>
               {([
-                { key: 'kcal' as const,      label: 'Kcal',     ph: '350' },
-                { key: 'proteines' as const, label: 'Prot (g)', ph: '20'  },
-                { key: 'glucides' as const,  label: 'Gluc (g)', ph: '45'  },
-                { key: 'lipides' as const,   label: 'Lip (g)',  ph: '8'   },
+                { key: 'kcal' as const,      label: t('w2a.col_kcal'),     ph: '350' },
+                { key: 'proteines' as const, label: t('w2a.macro_prot_g'), ph: '20'  },
+                { key: 'glucides' as const,  label: t('w2a.macro_gluc_g'), ph: '45'  },
+                { key: 'lipides' as const,   label: t('w2a.macro_lip_g'),  ph: '8'   },
               ]).map(({ key, label, ph }) => (
                 <div key={key}>
                   <label style={{ ...labelStyle, fontSize: 9 }}>{label}</label>
@@ -217,26 +219,26 @@ export default function MealCreateModal({
 
           {/* Frequency */}
           <div>
-            <label style={labelStyle}>Frequence recommandee (fois/semaine)</label>
+            <label style={labelStyle}>{t('w2a.freq_recommended_label')}</label>
             <input type="number" min="1" max="21"
               value={form.recommended_frequency_per_week}
               onChange={e => setForm(f => ({ ...f, recommended_frequency_per_week: e.target.value }))}
-              placeholder="ex: 3"
+              placeholder={t('w2a.freq_ph')}
               style={{ ...inputStyle, maxWidth: 100 }} />
           </div>
 
           {/* Ingredients */}
           <div>
-            <label style={labelStyle}>Ingredients</label>
+            <label style={labelStyle}>{t('w2a.ingredients')}</label>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {form.ingredients.map((ing, i) => (
                 <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 72px 62px 28px', gap: 6, alignItems: 'center' }}>
                   <input value={ing.name}
                     onChange={e => updateIngredient(i, 'name', e.target.value)}
-                    placeholder="Nom" style={inputStyle} />
+                    placeholder={t('w2a.name_ph')} style={inputStyle} />
                   <input value={ing.quantity}
                     onChange={e => updateIngredient(i, 'quantity', e.target.value)}
-                    placeholder="Qte" style={{ ...inputStyle, textAlign: 'center' }} />
+                    placeholder={t('w2a.qty_ph')} style={{ ...inputStyle, textAlign: 'center' }} />
                   <select value={ing.unit}
                     onChange={e => updateIngredient(i, 'unit', e.target.value)}
                     style={{ ...inputStyle, padding: '6px 4px', cursor: 'pointer' }}>
@@ -256,7 +258,7 @@ export default function MealCreateModal({
                 padding: '8px', borderRadius: 8, border: '1px dashed var(--border)',
                 background: 'transparent', color: 'var(--text-dim)', fontSize: 11,
                 cursor: 'pointer', fontFamily: 'DM Sans,sans-serif',
-              }}>+ Ajouter un ingredient</button>
+              }}>{t('w2a.add_ingredient')}</button>
             </div>
           </div>
 
@@ -266,7 +268,7 @@ export default function MealCreateModal({
               padding: '10px 16px', borderRadius: 8,
               border: '1px solid var(--border)', background: 'transparent',
               color: 'var(--text-dim)', fontSize: 12, cursor: 'pointer',
-            }}>Annuler</button>
+            }}>{t('w2a.cancel')}</button>
             <button
               onClick={() => void handleSave()}
               disabled={saving || !form.nom.trim()}
@@ -277,7 +279,7 @@ export default function MealCreateModal({
                 cursor: form.nom.trim() && !saving ? 'pointer' : 'not-allowed',
                 fontFamily: 'Syne,sans-serif',
               }}
-            >{saving ? 'Sauvegarde...' : 'Sauvegarder'}</button>
+            >{saving ? t('w2a.saving') : t('w2a.save')}</button>
           </div>
         </div>
       </div>

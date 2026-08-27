@@ -10,6 +10,7 @@
 // ══════════════════════════════════════════════════════════════════
 import { useEffect, useMemo, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { useI18n } from '@/lib/i18n'
 import { resolvePlanningUid } from '@/lib/planning/scope'
 import {
   computeStrategy, dayKcal, ageFromBirth,
@@ -61,6 +62,7 @@ export default function CoachNutritionStrategy({ athleteName, activePlan, onSave
   activePlan: { plan_data?: NutritionPlanData | null } | null
   onSave: (plan: NutritionPlanData, type: 'manuel') => Promise<void>
 }) {
+  const { t } = useI18n()
   const [intake, setIntake] = useState<NutritionIntake>(DEFAULT_INTAKE)
   const [weeks, setWeeks] = useState<WeekTarget[]>([])
   const [calc, setCalc] = useState<StrategyCalc | null>(null)
@@ -141,20 +143,20 @@ export default function CoachNutritionStrategy({ athleteName, activePlan, onSave
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sport: 'nutrition', mode: 'nutrition_strategy', messages: [{ role: 'user', content: JSON.stringify(payload) }] }),
       })
-      if (!res.ok || !res.body) throw new Error('IA indisponible')
+      if (!res.ok || !res.body) throw new Error(t('w2b.aiUnavailable'))
       // Le endpoint STREAME le JSON (SSE-like) : on accumule le texte puis on parse.
       const reader = res.body.getReader(); const dec = new TextDecoder(); let buf = ''
       for (;;) { const { done, value } = await reader.read(); if (done) break; buf += dec.decode(value, { stream: true }) }
       const text = extractStreamText(buf)
       const parsed = JSON.parse(extractJson(text)) as { weeks: WeekTarget[]; rationale?: string; steps?: StrategyCalc['steps']; warnings?: string[] }
-      if (!Array.isArray(parsed.weeks) || parsed.weeks.length === 0) throw new Error('Réponse IA vide')
+      if (!Array.isArray(parsed.weeks) || parsed.weeks.length === 0) throw new Error(t('w2b.aiEmpty'))
       const normWeeks = parsed.weeks.map((w, i) => ({ i, start: null, weightKg: Number(w.weightKg) || intake.weightKg, kcal: Math.round(Number(w.kcal) || 0), proteines: Math.round(Number(w.proteines) || 0), glucides: Math.round(Number(w.glucides) || 0), lipides: Math.round(Number(w.lipides) || 0), note: w.note }))
       setWeeks(normWeeks)
       setCalc({ ...base.calc, steps: parsed.steps ?? base.calc.steps, warnings: parsed.warnings ?? base.calc.warnings })
       setPerSessionKcal(base.calc.perSessionKcal)
       setRationale(parsed.rationale ?? '')
       setSource('ai')
-    } catch (e) { setAiErr(e instanceof Error ? e.message : 'Erreur IA') }
+    } catch (e) { setAiErr(e instanceof Error ? e.message : t('w2b.aiError')) }
     finally { setAiBusy(false) }
   }
 
@@ -188,7 +190,7 @@ export default function CoachNutritionStrategy({ athleteName, activePlan, onSave
   const detailSteps = calc?.steps ?? []
   const warnings = calc?.warnings ?? []
 
-  if (loading) return <div style={{ fontSize: 13, color: 'var(--text-dim)', padding: 20 }}>Chargement de la fiche…</div>
+  if (loading) return <div style={{ fontSize: 13, color: 'var(--text-dim)', padding: 20 }}>{t('w2b.loadingSheet')}</div>
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -200,84 +202,84 @@ export default function CoachNutritionStrategy({ athleteName, activePlan, onSave
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 11h18M12 11V3M7 11a5 5 0 0 1 10 0M5 11l1.5 8a2 2 0 0 0 2 1.6h7a2 2 0 0 0 2-1.6L19 11"/></svg>
           </span>
           <div style={{ minWidth: 0 }}>
-            <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 600, margin: '0 0 3px', letterSpacing: '-0.01em' }}>Stratégie nutrition — {athleteName}</h3>
-            <p style={{ fontSize: 12.5, color: 'var(--text-dim)', margin: 0, lineHeight: 1.5 }}>Remplis la fiche (pré-remplie depuis le profil), puis laisse l’IA proposer une stratégie ou définis-la à la main. Le coach ne logge jamais les repas — seul l’athlète le fait.</p>
+            <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 600, margin: '0 0 3px', letterSpacing: '-0.01em' }}>{t('w2b.strategyTitle', { athleteName })}</h3>
+            <p style={{ fontSize: 12.5, color: 'var(--text-dim)', margin: 0, lineHeight: 1.5 }}>{t('w2b.strategyIntro')}</p>
           </div>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {/* Morphologie */}
-          <Group step={1} title="Morphologie">
+          <Group step={1} title={t('w2b.morphology')}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(118px, 1fr))', gap: 12 }}>
-              <Field label="Poids actuel (kg)"><input type="number" step="0.1" style={INP} value={intake.weightKg || ''} onChange={e => set({ weightKg: parseFloat(e.target.value) || 0 })} /></Field>
-              <Field label="Masse grasse (%)"><input type="number" step="0.1" style={INP} value={intake.bodyFatPct ?? ''} onChange={e => set({ bodyFatPct: e.target.value ? parseFloat(e.target.value) : null })} placeholder="—" /></Field>
-              <Field label="Taille (cm)"><input type="number" style={INP} value={intake.heightCm ?? ''} onChange={e => set({ heightCm: e.target.value ? parseFloat(e.target.value) : null })} placeholder="profil" /></Field>
-              <Field label="Âge"><input type="number" style={INP} value={intake.age ?? ''} onChange={e => set({ age: e.target.value ? parseInt(e.target.value) : null })} placeholder="profil" /></Field>
-              <Field label="Sexe"><div style={{ display: 'flex', gap: 6 }}><Chip v="m" cur={intake.sex} onClick={v => set({ sex: v })} label="H" /><Chip v="f" cur={intake.sex} onClick={v => set({ sex: v })} label="F" /></div></Field>
+              <Field label={t('w2b.currentWeight')}><input type="number" step="0.1" style={INP} value={intake.weightKg || ''} onChange={e => set({ weightKg: parseFloat(e.target.value) || 0 })} /></Field>
+              <Field label={t('w2b.bodyFat')}><input type="number" step="0.1" style={INP} value={intake.bodyFatPct ?? ''} onChange={e => set({ bodyFatPct: e.target.value ? parseFloat(e.target.value) : null })} placeholder="—" /></Field>
+              <Field label={t('w2b.height')}><input type="number" style={INP} value={intake.heightCm ?? ''} onChange={e => set({ heightCm: e.target.value ? parseFloat(e.target.value) : null })} placeholder={t('w2b.phProfile')} /></Field>
+              <Field label={t('w2b.age')}><input type="number" style={INP} value={intake.age ?? ''} onChange={e => set({ age: e.target.value ? parseInt(e.target.value) : null })} placeholder={t('w2b.phProfile')} /></Field>
+              <Field label={t('w2b.sex')}><div style={{ display: 'flex', gap: 6 }}><Chip v="m" cur={intake.sex} onClick={v => set({ sex: v })} label={t('w2b.sexM')} /><Chip v="f" cur={intake.sex} onClick={v => set({ sex: v })} label={t('w2b.sexF')} /></div></Field>
             </div>
           </Group>
 
           {/* Objectif */}
-          <Group step={2} title="Objectif">
+          <Group step={2} title={t('w2b.objective')}>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 13 }}>
-              {(Object.keys(GOAL_LABEL) as GoalType[]).map(g => <Chip key={g} v={g} cur={intake.goalType} onClick={v => set({ goalType: v })} label={GOAL_LABEL[g]} />)}
+              {(Object.keys(GOAL_LABEL) as GoalType[]).map(g => <Chip key={g} v={g} cur={intake.goalType} onClick={v => set({ goalType: v })} label={t(`w2b.goal.${g}`)} />)}
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 12 }}>
-              <Field label="Poids cible (kg) *"><input type="number" step="0.1" style={INP} value={intake.targetWeightKg || ''} onChange={e => set({ targetWeightKg: parseFloat(e.target.value) || 0 })} /></Field>
-              <Field label="% MG cible (optionnel)"><input type="number" step="0.1" style={INP} value={intake.targetBodyFatPct ?? ''} onChange={e => set({ targetBodyFatPct: e.target.value ? parseFloat(e.target.value) : null })} placeholder="—" /></Field>
-              <Field label="Délai">
+              <Field label={t('w2b.targetWeight')}><input type="number" step="0.1" style={INP} value={intake.targetWeightKg || ''} onChange={e => set({ targetWeightKg: parseFloat(e.target.value) || 0 })} /></Field>
+              <Field label={t('w2b.targetBodyFat')}><input type="number" step="0.1" style={INP} value={intake.targetBodyFatPct ?? ''} onChange={e => set({ targetBodyFatPct: e.target.value ? parseFloat(e.target.value) : null })} placeholder="—" /></Field>
+              <Field label={t('w2b.timeline')}>
                 <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                   <input type="number" style={{ ...INP, width: 70 }} value={intake.timelineWeeks || ''} onChange={e => set({ timelineWeeks: parseInt(e.target.value) || 0 })} />
-                  {intake.timelineMode === 'range' && <><span style={{ color: 'var(--text-dim)' }}>à</span><input type="number" style={{ ...INP, width: 70 }} value={intake.timelineWeeksMax ?? ''} onChange={e => set({ timelineWeeksMax: e.target.value ? parseInt(e.target.value) : null })} /></>}
-                  <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>sem</span>
-                  <Chip v={intake.timelineMode === 'range' ? 'exact' : 'range'} cur={'x' as RangeMode} onClick={() => set({ timelineMode: intake.timelineMode === 'range' ? 'exact' : 'range' })} label={intake.timelineMode === 'range' ? 'Fourchette' : 'Précis'} />
+                  {intake.timelineMode === 'range' && <><span style={{ color: 'var(--text-dim)' }}>{t('w2b.rangeTo')}</span><input type="number" style={{ ...INP, width: 70 }} value={intake.timelineWeeksMax ?? ''} onChange={e => set({ timelineWeeksMax: e.target.value ? parseInt(e.target.value) : null })} /></>}
+                  <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>{t('w2b.weeksShort')}</span>
+                  <Chip v={intake.timelineMode === 'range' ? 'exact' : 'range'} cur={'x' as RangeMode} onClick={() => set({ timelineMode: intake.timelineMode === 'range' ? 'exact' : 'range' })} label={intake.timelineMode === 'range' ? t('w2b.rangeMode') : t('w2b.exactMode')} />
                 </div>
               </Field>
             </div>
           </Group>
 
           {/* Dépense */}
-          <Group step={3} title="Dépense & rythme">
+          <Group step={3} title={t('w2b.expenseRhythm')}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 12, marginBottom: 13 }}>
-              <Field label="Repas / jour"><select style={INP} value={intake.mealsPerDay} onChange={e => set({ mealsPerDay: parseInt(e.target.value) })}>{[2, 3, 4, 5, 6, 7].map(n => <option key={n} value={n}>{n}</option>)}</select></Field>
-              <Field label="Séances / sem">
+              <Field label={t('w2b.mealsPerDay')}><select style={INP} value={intake.mealsPerDay} onChange={e => set({ mealsPerDay: parseInt(e.target.value) })}>{[2, 3, 4, 5, 6, 7].map(n => <option key={n} value={n}>{n}</option>)}</select></Field>
+              <Field label={t('w2b.sessionsPerWeek')}>
                 <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                   <input type="number" style={{ ...INP, width: 60 }} value={intake.sessionsPerWeek || ''} onChange={e => set({ sessionsPerWeek: parseInt(e.target.value) || 0 })} />
-                  {intake.sessionsMode === 'range' && <><span style={{ color: 'var(--text-dim)' }}>à</span><input type="number" style={{ ...INP, width: 60 }} value={intake.sessionsPerWeekMax ?? ''} onChange={e => set({ sessionsPerWeekMax: e.target.value ? parseInt(e.target.value) : null })} /></>}
+                  {intake.sessionsMode === 'range' && <><span style={{ color: 'var(--text-dim)' }}>{t('w2b.rangeTo')}</span><input type="number" style={{ ...INP, width: 60 }} value={intake.sessionsPerWeekMax ?? ''} onChange={e => set({ sessionsPerWeekMax: e.target.value ? parseInt(e.target.value) : null })} /></>}
                   <Chip v={intake.sessionsMode === 'range' ? 'exact' : 'range'} cur={'x' as RangeMode} onClick={() => set({ sessionsMode: intake.sessionsMode === 'range' ? 'exact' : 'range' })} label={intake.sessionsMode === 'range' ? '↔' : '='} />
                 </div>
               </Field>
-              <Field label="Durée moy. séance (h)"><input type="number" step="0.25" style={INP} value={intake.avgSessionHours || ''} onChange={e => set({ avgSessionHours: parseFloat(e.target.value) || 0 })} /></Field>
+              <Field label={t('w2b.avgSessionDuration')}><input type="number" step="0.25" style={INP} value={intake.avgSessionHours || ''} onChange={e => set({ avgSessionHours: parseFloat(e.target.value) || 0 })} /></Field>
             </div>
             <div style={{ marginBottom: 13 }}>
-              <Field label="Niveau de travail / quotidien">
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>{(Object.keys(WORK_LABEL) as WorkIntensity[]).map(w => <Chip key={w} v={w} cur={intake.workIntensity} onClick={v => set({ workIntensity: v })} label={WORK_LABEL[w]} />)}</div>
+              <Field label={t('w2b.workLevel')}>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>{(Object.keys(WORK_LABEL) as WorkIntensity[]).map(w => <Chip key={w} v={w} cur={intake.workIntensity} onClick={v => set({ workIntensity: v })} label={t(`w2b.work.${w}`)} />)}</div>
               </Field>
             </div>
-            <Field label="Cyclage des kcal">
+            <Field label={t('w2b.kcalCycling')}>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                {([['weekly', 'Chaque semaine'], ['biweekly', 'Toutes les 2 sem'], ['training', "S'adapte aux entraînements"]] as [CycleMode, string][]).map(([v, l]) => <Chip key={v} v={v} cur={intake.cycleMode} onClick={vv => set({ cycleMode: vv })} label={l} />)}
+                {(['weekly', 'biweekly', 'training'] as CycleMode[]).map(v => <Chip key={v} v={v} cur={intake.cycleMode} onClick={vv => set({ cycleMode: vv })} label={t(`w2b.cycle.${v}`)} />)}
               </div>
             </Field>
-            {intake.cycleMode === 'training' && <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: '8px 0 0', lineHeight: 1.5 }}>Les jours sans séance = moins de kcal ; 1 séance = modéré ; 2+ = plus. L’app calcule depuis le planning réel de l’athlète.</p>}
+            {intake.cycleMode === 'training' && <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: '8px 0 0', lineHeight: 1.5 }}>{t('w2b.cycleTrainingHint')}</p>}
           </Group>
 
           {/* Terrain */}
-          <Group step={4} title="Terrain de l’athlète">
+          <Group step={4} title={t('w2b.athleteTerrain')}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 13 }}>
-              <Field label="Caractéristique"><div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>{(Object.keys(METABO_LABEL) as Metabolism[]).map(m => <Chip key={m} v={m} cur={intake.metabolism} onClick={v => set({ metabolism: v })} label={METABO_LABEL[m]} />)}</div></Field>
-              <Field label="Qualité alimentaire"><div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>{(Object.keys(FOOD_QUALITY_LABEL) as FoodQuality[]).map(q => <Chip key={q} v={q} cur={intake.foodQuality} onClick={v => set({ foodQuality: v })} label={FOOD_QUALITY_LABEL[q]} />)}</div></Field>
-              <Field label="Freins (multi)"><div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>{FRICTIONS.map(f => <Multi key={f.key} on={intake.frictions.includes(f.key)} onClick={() => set({ frictions: toggle(intake.frictions, f.key) })} label={f.label} />)}</div></Field>
-              <Field label="Contraintes alimentaires (multi)"><div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>{DIET_CONSTRAINTS.map(d => <Multi key={d.key} on={intake.dietConstraints.includes(d.key)} onClick={() => set({ dietConstraints: toggle(intake.dietConstraints, d.key) })} label={d.label} />)}</div></Field>
-              <Field label="Notes (optionnel)"><textarea rows={2} style={{ ...INP, resize: 'vertical' }} value={intake.notes} onChange={e => set({ notes: e.target.value })} placeholder="Contexte, préférences…" /></Field>
+              <Field label={t('w2b.characteristic')}><div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>{(Object.keys(METABO_LABEL) as Metabolism[]).map(m => <Chip key={m} v={m} cur={intake.metabolism} onClick={v => set({ metabolism: v })} label={t(`w2b.metabo.${m}`)} />)}</div></Field>
+              <Field label={t('w2b.foodQuality')}><div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>{(Object.keys(FOOD_QUALITY_LABEL) as FoodQuality[]).map(q => <Chip key={q} v={q} cur={intake.foodQuality} onClick={v => set({ foodQuality: v })} label={t(`w2b.foodq.${q}`)} />)}</div></Field>
+              <Field label={t('w2b.frictions')}><div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>{FRICTIONS.map(f => <Multi key={f.key} on={intake.frictions.includes(f.key)} onClick={() => set({ frictions: toggle(intake.frictions, f.key) })} label={t(`w2b.friction.${f.key}`)} />)}</div></Field>
+              <Field label={t('w2b.dietConstraints')}><div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>{DIET_CONSTRAINTS.map(d => <Multi key={d.key} on={intake.dietConstraints.includes(d.key)} onClick={() => set({ dietConstraints: toggle(intake.dietConstraints, d.key) })} label={t(`w2b.diet.${d.key}`)} />)}</div></Field>
+              <Field label={t('w2b.notes')}><textarea rows={2} style={{ ...INP, resize: 'vertical' }} value={intake.notes} onChange={e => set({ notes: e.target.value })} placeholder={t('w2b.notesPlaceholder')} /></Field>
             </div>
           </Group>
         </div>
 
         {/* Génération */}
         <div style={{ display: 'flex', gap: 10, marginTop: 18, flexWrap: 'wrap' }}>
-          <button onClick={generateManual} disabled={!intake.targetWeightKg} style={{ flex: '1 1 180px', padding: 13, borderRadius: 12, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontWeight: 700, fontSize: 13.5, cursor: 'pointer' }}>Calculer (manuel)</button>
-          <button onClick={() => void generateAI()} disabled={aiBusy || !intake.targetWeightKg} style={{ flex: '1 1 180px', padding: 13, borderRadius: 12, border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontWeight: 700, fontSize: 13.5, cursor: aiBusy ? 'wait' : 'pointer', opacity: aiBusy ? 0.6 : 1, boxShadow: '0 4px 14px color-mix(in srgb, var(--primary) 30%, transparent)' }}>{aiBusy ? 'L’IA réfléchit…' : 'Générer avec l’IA'}</button>
+          <button onClick={generateManual} disabled={!intake.targetWeightKg} style={{ flex: '1 1 180px', padding: 13, borderRadius: 12, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontWeight: 700, fontSize: 13.5, cursor: 'pointer' }}>{t('w2b.calcManual')}</button>
+          <button onClick={() => void generateAI()} disabled={aiBusy || !intake.targetWeightKg} style={{ flex: '1 1 180px', padding: 13, borderRadius: 12, border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontWeight: 700, fontSize: 13.5, cursor: aiBusy ? 'wait' : 'pointer', opacity: aiBusy ? 0.6 : 1, boxShadow: '0 4px 14px color-mix(in srgb, var(--primary) 30%, transparent)' }}>{aiBusy ? t('w2b.aiThinking') : t('w2b.generateAI')}</button>
         </div>
         {aiErr && <p style={{ fontSize: 12, color: '#ef4444', margin: '8px 0 0', fontWeight: 600 }}>{aiErr}</p>}
       </div>
@@ -286,8 +288,8 @@ export default function CoachNutritionStrategy({ athleteName, activePlan, onSave
       {weeks.length > 0 && currentWeek && (
         <div style={CARD}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6, gap: 10, flexWrap: 'wrap' }}>
-            <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 600, margin: 0 }}>Stratégie sur {weeks.length} semaines</h3>
-            <span style={{ fontSize: 11, fontWeight: 700, color: source === 'ai' ? 'var(--primary)' : 'var(--text-dim)', background: source === 'ai' ? 'var(--primary-dim)' : 'var(--bg-card2)', padding: '3px 9px', borderRadius: 999 }}>{source === 'ai' ? 'Proposé par l’IA' : 'Calcul manuel'}</span>
+            <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 600, margin: 0 }}>{t('w2b.strategyOverWeeks', { n: weeks.length })}</h3>
+            <span style={{ fontSize: 11, fontWeight: 700, color: source === 'ai' ? 'var(--primary)' : 'var(--text-dim)', background: source === 'ai' ? 'var(--primary-dim)' : 'var(--bg-card2)', padding: '3px 9px', borderRadius: 999 }}>{source === 'ai' ? t('w2b.proposedByAI') : t('w2b.manualCalc')}</span>
           </div>
           {rationale && <p style={{ fontSize: 13, color: 'var(--text-mid)', lineHeight: 1.5, margin: '0 0 14px' }}>{rationale}</p>}
           {warnings.map((w, i) => <p key={i} style={{ fontSize: 12, color: '#f59e0b', margin: '0 0 8px', fontWeight: 600 }}>⚠ {w}</p>)}
@@ -300,7 +302,7 @@ export default function CoachNutritionStrategy({ athleteName, activePlan, onSave
 
           {/* Détail du calcul */}
           <button onClick={() => setShowDetail(s => !s)} style={{ marginTop: 16, fontSize: 12.5, fontWeight: 700, color: 'var(--primary)', background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}>
-            {showDetail ? '▾ Masquer le détail du calcul' : '▸ Détail du calcul'}
+            {showDetail ? t('w2b.hideCalcDetail') : t('w2b.showCalcDetail')}
           </button>
           {showDetail && (
             <div style={{ marginTop: 10, background: 'var(--bg-alt)', borderRadius: 12, padding: '12px 14px' }}>
@@ -321,18 +323,18 @@ export default function CoachNutritionStrategy({ athleteName, activePlan, onSave
       {/* ── 3. ÉDITEUR SEMAINE PAR SEMAINE (manuel) ───────────── */}
       {weeks.length > 0 && (
         <div style={CARD}>
-          <p style={{ ...LBL, color: 'var(--text-mid)' }}>Semaine par semaine — éditable</p>
+          <p style={{ ...LBL, color: 'var(--text-mid)' }}>{t('w2b.weekByWeek')}</p>
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', minWidth: 520, borderCollapse: 'collapse', fontSize: 12.5, fontVariantNumeric: 'tabular-nums' }}>
               <thead>
                 <tr style={{ color: 'var(--text-dim)', textAlign: 'left' }}>
-                  {['Sem', 'Poids', 'kcal', 'Prot (g)', 'Gluc (g)', 'Lip (g)', 'Note'].map(h => <th key={h} style={{ padding: '6px 8px', fontWeight: 700, fontSize: 10.5, textTransform: 'uppercase' }}>{h}</th>)}
+                  {[t('w2b.thWeek'), t('w2b.thWeight'), 'kcal', t('w2b.thProt'), t('w2b.thGluc'), t('w2b.thLip'), t('w2b.thNote')].map(h => <th key={h} style={{ padding: '6px 8px', fontWeight: 700, fontSize: 10.5, textTransform: 'uppercase' }}>{h}</th>)}
                 </tr>
               </thead>
               <tbody>
                 {weeks.map(w => (
                   <tr key={w.i} style={{ borderTop: '1px solid var(--border)' }}>
-                    <td style={{ padding: '5px 8px', fontWeight: 700, color: 'var(--text)' }}>S{w.i + 1}</td>
+                    <td style={{ padding: '5px 8px', fontWeight: 700, color: 'var(--text)' }}>{t('w2b.weekAbbr', { n: w.i + 1 })}</td>
                     <td style={{ padding: '5px 8px', color: 'var(--text-dim)' }}>{w.weightKg} kg</td>
                     <td style={{ padding: '4px' }}><input type="number" style={cell} value={w.kcal} onChange={e => editWeek(w.i, { kcal: parseInt(e.target.value) || 0 })} /></td>
                     <td style={{ padding: '4px' }}><input type="number" style={cell} value={w.proteines} onChange={e => editWeek(w.i, { proteines: parseInt(e.target.value) || 0 })} /></td>
@@ -345,10 +347,10 @@ export default function CoachNutritionStrategy({ athleteName, activePlan, onSave
             </table>
           </div>
           <div style={{ display: 'flex', gap: 10, marginTop: 16, flexWrap: 'wrap' }}>
-            <button onClick={() => void persist('draft')} style={{ flex: '1 1 160px', padding: 12, borderRadius: 12, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Enregistrer (brouillon)</button>
-            <button onClick={() => void activate()} style={{ flex: '2 1 200px', padding: 12, borderRadius: 12, border: 'none', background: savedFlash ? '#22c55e' : 'var(--primary)', color: 'var(--on-primary)', fontWeight: 700, fontSize: 13.5, cursor: 'pointer' }}>{savedFlash ? '✓ Plan activé pour l’athlète' : 'Activer comme plan de l’athlète'}</button>
+            <button onClick={() => void persist('draft')} style={{ flex: '1 1 160px', padding: 12, borderRadius: 12, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>{t('w2b.saveDraft')}</button>
+            <button onClick={() => void activate()} style={{ flex: '2 1 200px', padding: 12, borderRadius: 12, border: 'none', background: savedFlash ? '#22c55e' : 'var(--primary)', color: 'var(--on-primary)', fontWeight: 700, fontSize: 13.5, cursor: 'pointer' }}>{savedFlash ? t('w2b.planActivated') : t('w2b.activateAsPlan')}</button>
           </div>
-          <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: '8px 0 0' }}>À l’activation, la semaine 1 devient le plan actif de l’athlète, cyclé automatiquement selon ses séances (jour repos / modéré / dur).</p>
+          <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: '8px 0 0' }}>{t('w2b.activationHint')}</p>
         </div>
       )}
     </div>

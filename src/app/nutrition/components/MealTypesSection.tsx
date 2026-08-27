@@ -2,16 +2,9 @@
 import { useState } from 'react'
 import type { MealTemplate, MealTiming } from '@/hooks/useNutrition'
 import MealCreateModal from './MealCreateModal'
+import { useI18n } from '@/lib/i18n'
 
 type Filter = 'all' | 'favorites' | MealTiming
-
-const TIMING_LABELS: Record<MealTiming, string> = {
-  pre_training:  'Pre-training',
-  post_training: 'Post-training',
-  morning:       'Matin',
-  evening:       'Soir',
-  rest:          'Repos',
-}
 
 const TIMING_COLORS: Record<MealTiming, { bg: string; color: string }> = {
   pre_training:  { bg: 'rgba(6,182,212,0.14)',  color: '#06B6D4' },
@@ -56,40 +49,41 @@ export default function MealTypesSection({
   onDelete: (id: string) => Promise<void>
   onOpenAI: (prompt: string) => void
 }) {
+  const { t } = useI18n()
   const [filter, setFilter] = useState<Filter>('all')
   const [creating, setCreating] = useState(false)
 
-  const filtered = templates.filter(t => {
-    if (!t.actif) return false
-    if (filter === 'favorites') return t.is_favorite
+  const filtered = templates.filter(tpl => {
+    if (!tpl.actif) return false
+    if (filter === 'favorites') return tpl.is_favorite
     if (filter === 'all') return true
-    return t.meal_timing === filter
+    return tpl.meal_timing === filter
   })
 
-  async function toggleFavorite(t: MealTemplate) {
-    await onUpdate(t.id, { is_favorite: !t.is_favorite })
+  async function toggleFavorite(tpl: MealTemplate) {
+    await onUpdate(tpl.id, { is_favorite: !tpl.is_favorite })
   }
 
   async function handleDelete(id: string) {
-    if (!confirm('Supprimer ce repas type ?')) return
+    if (!confirm(t('w2a.delete_meal_type_confirm'))) return
     await onDelete(id)
   }
 
   const FILTERS: { key: Filter; label: string }[] = [
-    { key: 'all',          label: 'Tous'           },
-    { key: 'favorites',    label: 'Favoris'        },
-    { key: 'pre_training', label: 'Pre-training'   },
-    { key: 'post_training',label: 'Post-training'  },
-    { key: 'morning',      label: 'Matin'          },
-    { key: 'evening',      label: 'Soir'           },
-    { key: 'rest',         label: 'Repos'          },
+    { key: 'all',          label: t('w2a.filter_all')             },
+    { key: 'favorites',    label: t('w2a.filter_favorites')       },
+    { key: 'pre_training', label: t('w2a.timing_pre_training')    },
+    { key: 'post_training',label: t('w2a.timing_post_training')   },
+    { key: 'morning',      label: t('w2a.timing_morning')         },
+    { key: 'evening',      label: t('w2a.timing_evening')         },
+    { key: 'rest',         label: t('w2a.timing_rest')            },
   ]
 
   function handleAISuggest() {
     const timingLabel = (filter !== 'all' && filter !== 'favorites')
-      ? TIMING_LABELS[filter as MealTiming]
-      : 'tous types de repas'
-    onOpenAI(`Suggere-moi 3 repas types adaptes a mon profil pour ${timingLabel}`)
+      ? t(`w2a.timing_${filter}`)
+      : t('w2a.ai_all_meal_types')
+    onOpenAI(t('w2a.ai_suggest_prompt', { timing: timingLabel }))
   }
 
   const cardStyle: React.CSSProperties = {
@@ -105,7 +99,7 @@ export default function MealTypesSection({
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
         <h2 style={{ fontFamily: 'Syne,sans-serif', fontSize: 18, fontWeight: 700, margin: 0, color: 'var(--text)' }}>
-          Mes repas types
+          {t('w2a.my_meal_types')}
         </h2>
         <button
           onClick={() => setCreating(true)}
@@ -115,7 +109,7 @@ export default function MealTypesSection({
             color: '#fff', fontFamily: 'Syne,sans-serif', fontWeight: 700, fontSize: 12,
             whiteSpace: 'nowrap',
           }}
-        >+ Creer un repas</button>
+        >{t('w2a.create_meal_plus')}</button>
       </div>
 
       {/* Filters + AI button */}
@@ -147,30 +141,30 @@ export default function MealTypesSection({
           }}
         >
           <SparkleIcon />
-          Suggerer par l&apos;IA
+          {t('w2a.ai_suggest_btn')}
         </button>
       </div>
 
       {/* Grid */}
       {loading ? (
         <div style={{ color: 'var(--text-dim)', fontSize: 13, padding: '24px 0', textAlign: 'center' }}>
-          Chargement...
+          {t('w2a.loading')}
         </div>
       ) : filtered.length === 0 ? (
         <div style={{ color: 'var(--text-dim)', fontSize: 13, padding: '24px 0', textAlign: 'center' }}>
           {filter === 'all'
-            ? 'Aucun repas type — creez votre premier repas ci-dessus'
-            : 'Aucun repas dans cette categorie'}
+            ? t('w2a.no_meal_type')
+            : t('w2a.no_meal_in_category')}
         </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 12 }}
           className="meal-types-grid">
-          {filtered.map(t => {
-            const timing = t.meal_timing as MealTiming | null
+          {filtered.map(tpl => {
+            const timing = tpl.meal_timing as MealTiming | null
             const tc = timing ? TIMING_COLORS[timing] : null
 
             return (
-              <div key={t.id} style={{
+              <div key={tpl.id} style={{
                 background: 'var(--bg-card2)', border: '1px solid var(--border)',
                 borderRadius: 12, overflow: 'hidden', position: 'relative',
               }}>
@@ -180,8 +174,8 @@ export default function MealTypesSection({
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   overflow: 'hidden', position: 'relative', color: 'var(--text-dim)',
                 }}>
-                  {t.photo_url ? (
-                    <img src={t.photo_url} alt={t.nom}
+                  {tpl.photo_url ? (
+                    <img src={tpl.photo_url} alt={tpl.nom}
                       style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                   ) : (
                     <PlateIcon />
@@ -189,8 +183,8 @@ export default function MealTypesSection({
 
                   {/* Favorite star */}
                   <button
-                    onClick={() => void toggleFavorite(t)}
-                    title={t.is_favorite ? 'Retirer des favoris' : 'Ajouter aux favoris'}
+                    onClick={() => void toggleFavorite(tpl)}
+                    title={tpl.is_favorite ? t('w2a.remove_favorite') : t('w2a.add_favorite')}
                     style={{
                       position: 'absolute', top: 8, right: 8,
                       width: 30, height: 30, borderRadius: 8,
@@ -199,16 +193,16 @@ export default function MealTypesSection({
                     }}
                   >
                     <svg width="14" height="14" viewBox="0 0 24 24"
-                      fill={t.is_favorite ? '#F59E0B' : 'none'}
-                      stroke={t.is_favorite ? '#F59E0B' : '#fff'} strokeWidth="2">
+                      fill={tpl.is_favorite ? '#F59E0B' : 'none'}
+                      stroke={tpl.is_favorite ? '#F59E0B' : '#fff'} strokeWidth="2">
                       <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
                     </svg>
                   </button>
 
                   {/* Delete */}
                   <button
-                    onClick={() => void handleDelete(t.id)}
-                    title="Supprimer"
+                    onClick={() => void handleDelete(tpl.id)}
+                    title={t('w2a.delete')}
                     style={{
                       position: 'absolute', top: 8, left: 8,
                       width: 30, height: 30, borderRadius: 8,
@@ -227,7 +221,7 @@ export default function MealTypesSection({
                 {/* Body */}
                 <div style={{ padding: 12 }}>
                   <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--text)', marginBottom: 6, lineHeight: 1.3 }}>
-                    {t.nom}
+                    {tpl.nom}
                   </div>
 
                   {timing && tc && (
@@ -235,24 +229,24 @@ export default function MealTypesSection({
                       <span style={{
                         padding: '2px 9px', borderRadius: 20, fontSize: 9, fontWeight: 700,
                         background: tc.bg, color: tc.color, fontFamily: 'Syne,sans-serif',
-                      }}>{TIMING_LABELS[timing]}</span>
+                      }}>{t(`w2a.timing_${timing}`)}</span>
                     </div>
                   )}
 
-                  {(t.kcal || t.proteines || t.glucides || t.lipides) && (
+                  {(tpl.kcal || tpl.proteines || tpl.glucides || tpl.lipides) && (
                     <div style={{ fontSize: 10, color: 'var(--text-dim)', lineHeight: 1.5, marginBottom: 4 }}>
                       {[
-                        t.kcal       != null ? `${t.kcal} kcal`         : null,
-                        t.proteines  != null ? `Prot. ${t.proteines}g`  : null,
-                        t.glucides   != null ? `Gluc. ${t.glucides}g`   : null,
-                        t.lipides    != null ? `Lip. ${t.lipides}g`     : null,
+                        tpl.kcal       != null ? `${tpl.kcal} kcal`         : null,
+                        tpl.proteines  != null ? t('w2a.macro_prot', { n: tpl.proteines }) : null,
+                        tpl.glucides   != null ? t('w2a.macro_gluc', { n: tpl.glucides })  : null,
+                        tpl.lipides    != null ? t('w2a.macro_lip', { n: tpl.lipides })    : null,
                       ].filter(Boolean).join(' · ')}
                     </div>
                   )}
 
-                  {t.recommended_frequency_per_week != null && t.recommended_frequency_per_week > 0 && (
+                  {tpl.recommended_frequency_per_week != null && tpl.recommended_frequency_per_week > 0 && (
                     <div style={{ fontSize: 10, color: 'var(--text-dim)' }}>
-                      {t.recommended_frequency_per_week} fois/semaine recommande
+                      {t('w2a.freq_recommended', { n: tpl.recommended_frequency_per_week })}
                     </div>
                   )}
                 </div>

@@ -14,6 +14,7 @@
 // = non enregistrés / non affichés.
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
+import { useI18n } from '@/lib/i18n'
 import { createClient } from '@/lib/supabase/client'
 import { getCurrentUser } from '@/lib/auth/currentUser'
 import { notifyActivitySaved } from '@/lib/notifications/activitySaved'
@@ -81,6 +82,7 @@ function todayLocalISO(): string {
 }
 
 export default function ManualEntrySheet({ onClose, onSaved }: Props) {
+  const { t } = useI18n()
   const [closing, setClosing] = useState(false)
   const [step, setStep] = useState<'sport' | 'form'>('sport')
   const [def, setDef] = useState<SportDef | null>(null)
@@ -134,7 +136,7 @@ export default function ManualEntrySheet({ onClose, onSaved }: Props) {
     try {
       const sb = createClient()
       const user = await getCurrentUser()
-      if (!user) { setError('Session expirée.'); setSaving(false); return }
+      if (!user) { setError(t('w2c.sessionExpired')); setSaving(false); return }
       const startedAt = new Date(when).toISOString()
       const autoTitle = title.trim() || `${def.label}${isTreadmill ? ' (tapis)' : ''}`
       const rpeN = difficulty != null ? Math.round(difficulty) : null
@@ -154,7 +156,7 @@ export default function ManualEntrySheet({ onClose, onSaved }: Props) {
 
       if (isTreadmill) {
         const plan = buildTreadmillPlan(blocks as never, autoTitle)
-        if (!plan) { setError('Ajoute au moins un bloc.'); setSaving(false); return }
+        if (!plan) { setError(t('w2c.addOneBlock')); setSaving(false); return }
         const intervals: TreadInterval[] = plan.steps.map(st => ({
           durationS: st.durationS,
           speedKmh: st.targetKmh ?? (st.targetPaceSecPerKm ? 3600 / st.targetPaceSecPerKm : 0),
@@ -181,7 +183,7 @@ export default function ManualEntrySheet({ onClose, onSaved }: Props) {
         Object.assign(ws, { duration_seconds: sum.durationS, distance_m: sum.distanceM, elevation_gain_m: sum.elevationM, avg_speed_kmh: sum.avgSpeedMs * 3.6, avg_hr: avgHr, training_types: ['tapis'], laps: blocks })
       } else if (mode === 'endurance') {
         const durS = Math.round(totalMin(blocks) * 60) || durationSecManual
-        if (durS <= 0) { setError('Ajoute au moins un bloc (ou une durée).'); setSaving(false); return }
+        if (durS <= 0) { setError(t('w2c.addBlockOrDuration')); setSaving(false); return }
         const distM = Math.round(totalDistance(blocks, builderSport)) || (distKm ? Math.round(flt(distKm) * 1000) : 0)
         Object.assign(act, {
           moving_time_s: durS, elapsed_time_s: durS, distance_m: distM,
@@ -211,7 +213,7 @@ export default function ManualEntrySheet({ onClose, onSaved }: Props) {
       onSaved?.(); doClose()
     } catch (e) {
       console.error('[manual] save error:', e)
-      setError("Échec de l'enregistrement. Réessaie."); setSaving(false)
+      setError(t('w2c.saveFailed')); setSaving(false)
     }
   }
 
@@ -223,12 +225,12 @@ export default function ManualEntrySheet({ onClose, onSaved }: Props) {
       const fd = new FormData(); fd.append('file', file)
       const res = await fetch('/api/parse-activity-file', { method: 'POST', body: fd })
       const json = await res.json() as { activity?: { hr_stream?: number[] | null; hr_avg?: number | null }; error?: string }
-      if (!res.ok || !json.activity) throw new Error(json.error ?? 'Fichier illisible')
+      if (!res.ok || !json.activity) throw new Error(json.error ?? t('w2c.fileUnreadable'))
       const hr = json.activity.hr_stream
-      if (!hr || hr.length < 2) { setImportInfo("Aucune fréquence cardiaque trouvée dans ce fichier."); setImportedHr(null) }
-      else { setImportedHr(hr); setImportInfo(`FC importée · ${hr.length} points · moy ${json.activity.hr_avg ?? '—'} bpm`) }
+      if (!hr || hr.length < 2) { setImportInfo(t('w2c.noHrFound')); setImportedHr(null) }
+      else { setImportedHr(hr); setImportInfo(t('w2c.hrImported', { n: hr.length, avg: json.activity.hr_avg ?? '—' })) }
     } catch (err) {
-      setImportInfo(err instanceof Error ? err.message : "Échec de l'import.")
+      setImportInfo(err instanceof Error ? err.message : t('w2c.importFailed'))
     } finally {
       setImporting(false)
       if (e.target) e.target.value = ''
@@ -248,10 +250,10 @@ export default function ManualEntrySheet({ onClose, onSaved }: Props) {
         )}
         {isTreadmill && (
           <div style={{ marginTop: 12 }}>
-            <label style={lab}>Fréquence cardiaque (lier un fichier montre)</label>
+            <label style={lab}>{t('w2c.hrLinkFile')}</label>
             <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, height: 46, borderRadius: 12, background: 'var(--bg-card2)', border: '1px dashed var(--border-mid)', color: 'var(--text)', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14"/></svg>
-              {importing ? 'Lecture…' : 'Importer un .fit / .gpx (montre)'}
+              {importing ? t('w2c.reading') : t('w2c.importFitGpx')}
               <input type="file" accept=".fit,.gpx" onChange={handleImportHr} style={{ display: 'none' }} />
             </label>
             {importInfo && <div style={{ fontSize: 12, color: importedHr ? 'var(--zone-2, #22c55e)' : 'var(--text-mid)', fontWeight: 600, marginTop: 6 }}>{importInfo}</div>}
@@ -278,7 +280,7 @@ export default function ManualEntrySheet({ onClose, onSaved }: Props) {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         {(def?.deniv || def?.sportType === 'other') && (
           <div>
-            <label style={lab}>Distance (km)</label>
+            <label style={lab}>{t('w2c.distanceKm')}</label>
             <input type="number" inputMode="decimal" value={distKm} onChange={e => setDistKm(e.target.value)} placeholder="0" style={input} />
           </div>
         )}
@@ -309,15 +311,15 @@ export default function ManualEntrySheet({ onClose, onSaved }: Props) {
         {step === 'sport' ? (
           <>
             <div style={{ padding: '10px 20px 6px', flexShrink: 0 }}>
-              <h2 style={{ fontFamily: FD, fontSize: 22, fontWeight: 600, margin: 0 }}>Créer une activité</h2>
-              <p style={{ fontSize: 13, color: 'var(--text-mid)', margin: '4px 0 0' }}>Choisis un sport</p>
+              <h2 style={{ fontFamily: FD, fontSize: 22, fontWeight: 600, margin: 0 }}>{t('w2c.createActivity')}</h2>
+              <p style={{ fontSize: 13, color: 'var(--text-mid)', margin: '4px 0 0' }}>{t('w2c.chooseSport')}</p>
             </div>
             <div style={{ flex: 1, overflowY: 'auto', padding: '10px 16px calc(env(safe-area-inset-bottom) + 16px)', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
               {SPORTS.map(sp => (
                 <button key={sp.id} onClick={() => pickSport(sp)}
                   style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '16px 8px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 14, cursor: 'pointer', color: 'var(--text)', fontFamily: FB }}>
                   <SportIcon sport={sp.builderSport ?? sp.id} size={30} circle={false} />
-                  <span style={{ fontSize: 12, fontWeight: 600, textAlign: 'center' }}>{sp.label}</span>
+                  <span style={{ fontSize: 12, fontWeight: 600, textAlign: 'center' }}>{t('w2c.sport_' + sp.id)}</span>
                 </button>
               ))}
             </div>
@@ -325,10 +327,10 @@ export default function ManualEntrySheet({ onClose, onSaved }: Props) {
         ) : (
           <>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 16px 6px', flexShrink: 0 }}>
-              <button onClick={() => setStep('sport')} aria-label="Retour" style={{ width: 34, height: 34, borderRadius: '50%', background: 'var(--bg-card2)', border: 'none', color: 'var(--text)', fontSize: 19, cursor: 'pointer', flexShrink: 0 }}>‹</button>
+              <button onClick={() => setStep('sport')} aria-label={t('w2c.back')} style={{ width: 34, height: 34, borderRadius: '50%', background: 'var(--bg-card2)', border: 'none', color: 'var(--text)', fontSize: 19, cursor: 'pointer', flexShrink: 0 }}>‹</button>
               <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <SportIcon sport={builderSport} size={22} circle={false} />
-                <h2 style={{ fontFamily: FD, fontSize: 20, fontWeight: 600, margin: 0 }}>{def?.label}</h2>
+                <h2 style={{ fontFamily: FD, fontSize: 20, fontWeight: 600, margin: 0 }}>{def ? t('w2c.sport_' + def.id) : ''}</h2>
               </span>
             </div>
             <div style={{ flex: 1, overflowY: 'auto', padding: '6px 16px 12px', display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -336,18 +338,18 @@ export default function ManualEntrySheet({ onClose, onSaved }: Props) {
                 <div style={{ display: 'flex', gap: 8 }}>
                   {(['outdoor', 'treadmill'] as RunningSub[]).map(sfc => (
                     <button key={sfc} onClick={() => setRunSurface(sfc)} style={{ flex: 1, padding: '10px', borderRadius: 12, border: `1px solid ${runSurface === sfc ? accent : 'var(--border)'}`, background: runSurface === sfc ? accent : 'var(--bg-card2)', color: runSurface === sfc ? '#fff' : 'var(--text)', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: FB }}>
-                      {sfc === 'outdoor' ? 'Dehors' : 'Tapis'}
+                      {sfc === 'outdoor' ? t('w2c.outdoor') : t('w2c.treadmill')}
                     </button>
                   ))}
                 </div>
               )}
 
-              <div style={{ padding: '0 2px' }}><label style={lab}>Titre</label><input value={title} onChange={e => setTitle(e.target.value)} placeholder="Optionnel" style={input} /></div>
-              <div style={{ padding: '0 2px' }}><label style={lab}>Date & heure</label><input type="datetime-local" value={when} onChange={e => setWhen(e.target.value)} style={input} /></div>
+              <div style={{ padding: '0 2px' }}><label style={lab}>{t('w2c.titleLabel')}</label><input value={title} onChange={e => setTitle(e.target.value)} placeholder={t('w2c.optional')} style={input} /></div>
+              <div style={{ padding: '0 2px' }}><label style={lab}>{t('w2c.dateTime')}</label><input type="datetime-local" value={when} onChange={e => setWhen(e.target.value)} style={input} /></div>
 
               {showManualDuration && (
                 <div style={{ padding: '0 2px' }}>
-                  <label style={lab}>Durée</label>
+                  <label style={lab}>{t('w2c.duration')}</label>
                   <div style={{ display: 'flex', gap: 8 }}>
                     {([['h', h, setH], ['min', m, setM], ['s', s, setS]] as const).map(([u, v, set]) => (
                       <div key={u} style={{ flex: 1, position: 'relative' }}>
@@ -365,25 +367,25 @@ export default function ManualEntrySheet({ onClose, onSaved }: Props) {
               {/* Dénivelé (course/vélo/trail/rando) — masqué sur tapis (auto depuis pentes) */}
               {def?.deniv && !isTreadmill && (
                 <div style={{ padding: '0 2px' }}>
-                  <label style={lab}>Dénivelé + (m)</label>
+                  <label style={lab}>{t('w2c.elevGainLabel')}</label>
                   <input type="number" inputMode="numeric" value={deniv} onChange={e => setDeniv(e.target.value)} placeholder="0" style={input} />
                 </div>
               )}
 
               {!isTreadmill && (
-                <div style={{ padding: '0 2px' }}><label style={lab}>FC moyenne (bpm)</label><input type="number" inputMode="numeric" value={avgHr} onChange={e => setAvgHr(e.target.value)} placeholder="—" style={input} /></div>
+                <div style={{ padding: '0 2px' }}><label style={lab}>{t('w2c.avgHrLabel')}</label><input type="number" inputMode="numeric" value={avgHr} onChange={e => setAvgHr(e.target.value)} placeholder="—" style={input} /></div>
               )}
               <div style={{ padding: '0 2px' }}>
-                <label style={lab}>Ressenti & difficulté</label>
+                <label style={lab}>{t('w2c.feelingDifficulty')}</label>
                 <FeelingDifficultyInput feeling={feeling} difficulty={difficulty} onFeeling={setFeeling} onDifficulty={setDifficulty} />
               </div>
-              <div style={{ padding: '0 2px' }}><label style={lab}>Description</label><textarea value={desc} onChange={e => setDesc(e.target.value)} rows={3} placeholder="Ce que tu as ressenti, le contexte…" style={{ ...input, resize: 'vertical' }} /></div>
+              <div style={{ padding: '0 2px' }}><label style={lab}>{t('w2c.description')}</label><textarea value={desc} onChange={e => setDesc(e.target.value)} rows={3} placeholder={t('w2c.descriptionPlaceholder')} style={{ ...input, resize: 'vertical' }} /></div>
 
               {error && <div style={{ fontSize: 13, color: 'var(--zone-5, #ef4444)', fontWeight: 600, padding: '0 2px' }}>{error}</div>}
             </div>
             <div style={{ padding: '10px 16px calc(env(safe-area-inset-bottom) + 14px)', flexShrink: 0, borderTop: '1px solid var(--border)' }}>
               <button onClick={handleSave} disabled={saving} style={{ width: '100%', height: 52, borderRadius: 14, background: 'var(--primary)', color: 'var(--on-primary)', border: 'none', fontSize: 16, fontWeight: 800, cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.7 : 1, fontFamily: FB }}>
-                {saving ? 'Enregistrement…' : "Enregistrer l'activité"}
+                {saving ? t('w2c.saving') : t('w2c.saveActivity')}
               </button>
             </div>
           </>

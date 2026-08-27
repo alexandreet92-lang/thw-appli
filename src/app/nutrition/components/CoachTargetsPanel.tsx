@@ -9,6 +9,7 @@
 // ══════════════════════════════════════════════════════════════════
 import { useState } from 'react'
 import type { NutritionPlanData } from '@/hooks/useNutrition'
+import { useI18n } from '@/lib/i18n'
 
 const LBL: React.CSSProperties = { fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-dim)', margin: '0 0 6px' }
 const INP: React.CSSProperties = { width: '100%', boxSizing: 'border-box', padding: '9px 11px', borderRadius: 9, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 14, outline: 'none', fontVariantNumeric: 'tabular-nums' }
@@ -35,6 +36,7 @@ export default function CoachTargetsPanel({ athleteName, activePlan, onSave }: {
   activePlan: { plan_data?: NutritionPlanData | null } | null
   onSave: (plan: NutritionPlanData, type: 'manuel') => Promise<void>
 }) {
+  const { t } = useI18n()
   const pd = activePlan?.plan_data ?? null
   const [kcal, setKcal] = useState<string>(pd?.calories_low ? String(pd.calories_low) : '')
   const [prot, setProt] = useState<string>(pd?.macros_low?.proteines ? String(pd.macros_low.proteines) : '')
@@ -52,29 +54,29 @@ export default function CoachTargetsPanel({ athleteName, activePlan, onSave }: {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 16, padding: '18px 18px 20px' }}>
-        <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 600, margin: '0 0 4px' }}>Objectifs nutritionnels — {athleteName}</h3>
+        <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 600, margin: '0 0 4px' }}>{t('w2b.targetsTitle', { athleteName })}</h3>
         <p style={{ fontSize: 12.5, color: 'var(--text-dim)', margin: '0 0 16px' }}>
-          Définis les cibles quotidiennes de référence (jour de repos). Les jours modérés et durs sont ajustés automatiquement.
+          {t('w2b.targetsIntro')}
         </p>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          <div><p style={LBL}>Calories / jour (kcal)</p><input type="number" inputMode="numeric" style={INP} value={kcal} onChange={e => setKcal(e.target.value)} placeholder="2200" /></div>
-          <div><p style={LBL}>Protéines / jour (g)</p><input type="number" inputMode="numeric" style={INP} value={prot} onChange={e => setProt(e.target.value)} placeholder="140" /></div>
+          <div><p style={LBL}>{t('w2b.caloriesPerDay')}</p><input type="number" inputMode="numeric" style={INP} value={kcal} onChange={e => setKcal(e.target.value)} placeholder="2200" /></div>
+          <div><p style={LBL}>{t('w2b.proteinPerDay')}</p><input type="number" inputMode="numeric" style={INP} value={prot} onChange={e => setProt(e.target.value)} placeholder="140" /></div>
         </div>
         {(parseInt(kcal) > 0 && parseInt(prot) > 0) && (
           <div style={{ display: 'flex', gap: 14, marginTop: 12, flexWrap: 'wrap' }}>
-            <Chip label="Repos" kcal={parseInt(kcal)} />
-            <Chip label="Modéré" kcal={Math.round(parseInt(kcal) * 1.12)} />
-            <Chip label="Dur" kcal={Math.round(parseInt(kcal) * 1.28)} />
+            <Chip label={t('w2b.dayRest')} kcal={parseInt(kcal)} />
+            <Chip label={t('w2b.dayModerate')} kcal={Math.round(parseInt(kcal) * 1.12)} />
+            <Chip label={t('w2b.dayHard')} kcal={Math.round(parseInt(kcal) * 1.28)} />
           </div>
         )}
         <button onClick={() => void save()} disabled={saving || !(parseInt(kcal) > 0 && parseInt(prot) > 0)}
           style={{ marginTop: 16, width: '100%', padding: 12, borderRadius: 12, border: 'none', background: saved ? '#22c55e' : 'var(--primary)', color: 'var(--on-primary)', fontWeight: 700, fontSize: 14, cursor: saving ? 'wait' : 'pointer', opacity: !(parseInt(kcal) > 0 && parseInt(prot) > 0) ? 0.5 : 1 }}>
-          {saving ? '…' : saved ? '✓ Objectifs enregistrés' : 'Définir les objectifs de la semaine'}
+          {saving ? '…' : saved ? t('w2b.targetsSaved') : t('w2b.setWeekTargets')}
         </button>
       </div>
 
       <div style={{ background: 'var(--bg-alt)', border: '1px solid var(--border)', borderRadius: 12, padding: '12px 14px', fontSize: 12.5, color: 'var(--text-mid)', lineHeight: 1.5 }}>
-        En tant que coach, tu définis les <strong>objectifs</strong> — seul l&apos;athlète enregistre ses repas réels. Tu retrouveras son suivi (calories et macros consommées) dans son historique.
+        {t('w2b.coachNotePart1')}<strong>{t('w2b.coachNoteStrong')}</strong>{t('w2b.coachNotePart2')}
       </div>
     </div>
   )

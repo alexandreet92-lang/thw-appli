@@ -5,6 +5,7 @@
 // snapshot) — JAMAIS de navigation vers la page training d'un autre athlète.
 // ══════════════════════════════════════════════════════════════════════════
 import { useState } from 'react'
+import { useI18n } from '@/lib/i18n'
 import { sportColor, sportLabel } from '@/components/recovery/helpers'
 import { RouteMap, ElevationSvg } from './activityViz'
 import { ActivityDetailPanel } from './ActivityDetailPanel'
@@ -35,6 +36,7 @@ function fmtDate(iso: string): string {
 // complète (mêmes fonctionnalités que la page training, lecture seule) via la
 // RPC réservée aux membres ; sinon, la surpage snapshot.
 export function ActivityCard({ activity, channelId }: { activity: ActivityRef; me?: string | null; channelId?: string }) {
+  const { t } = useI18n()
   const [open, setOpen] = useState(false)
   const col = sportColor(activity.sport)
   const isBike = /bike|ride|cycl|v[ée]lo|velo/i.test(activity.sport)
@@ -63,7 +65,7 @@ export function ActivityCard({ activity, channelId }: { activity: ActivityRef; m
           <span style={{ width: 3, borderRadius: 3, background: col, flexShrink: 0 }} />
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginBottom: 3 }}>
-              <span style={{ fontFamily: FB, fontSize: 10.5, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-mid)' }}>{sportLabel(activity.sport)}{activity.isRace ? ' · Course' : ''}</span>
+              <span style={{ fontFamily: FB, fontSize: 10.5, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-mid)' }}>{sportLabel(activity.sport)}{activity.isRace ? ` · ${t('w2g.race')}` : ''}</span>
               <span className="tnum" style={{ fontFamily: FB, fontSize: 10.5, color: 'var(--text-dim)', fontVariantNumeric: 'tabular-nums' }}>{fmtDate(activity.startedAt)}</span>
             </div>
             <p style={{ fontFamily: FD, fontSize: 14.5, fontWeight: 600, color: 'var(--text)', margin: '0 0 4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{activity.title || sportLabel(activity.sport)}</p>
@@ -75,7 +77,7 @@ export function ActivityCard({ activity, channelId }: { activity: ActivityRef; m
             {activity.elevation && activity.elevation.length > 1 && (
               <div style={{ marginTop: 6 }}><ElevationSvg elevation={activity.elevation} height={38} /></div>
             )}
-            <span style={{ display: 'block', marginTop: 6, fontFamily: FB, fontSize: 12, fontWeight: 600, color: 'var(--primary)' }}>Voir le détail →</span>
+            <span style={{ display: 'block', marginTop: 6, fontFamily: FB, fontSize: 12, fontWeight: 600, color: 'var(--primary)' }}>{t('w2g.viewDetail')}</span>
           </div>
         </div>
       </button>

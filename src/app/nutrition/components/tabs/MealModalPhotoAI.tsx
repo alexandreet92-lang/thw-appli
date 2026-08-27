@@ -1,6 +1,7 @@
 'use client'
 import { useState, useRef, useEffect } from 'react'
 import type { ManualSaveData } from './MealModalManual'
+import { useI18n } from '@/lib/i18n'
 
 // ── Types ─────────────────────────────────────────────────────────
 interface ApiItem { name: string; qty: number; unit: string; kcal: number }
@@ -54,14 +55,15 @@ async function resizeImage(file: File): Promise<{ base64: string; mimeType: stri
 
 // ── Confidence badge ──────────────────────────────────────────────
 function ConfidenceBadge({ level }: { level: 'low' | 'medium' | 'high' }) {
+  const { t } = useI18n()
   const cfg = {
-    low:    { label: 'Confiance faible',  bg: 'rgba(239,68,68,0.12)',  color: '#EF4444' },
-    medium: { label: 'Confiance moyenne', bg: 'rgba(234,179,8,0.12)',  color: '#EAB308' },
-    high:   { label: 'Confiance haute',   bg: 'rgba(34,197,94,0.12)',  color: '#22C55E' },
+    low:    { bg: 'rgba(239,68,68,0.12)',  color: '#EF4444' },
+    medium: { bg: 'rgba(234,179,8,0.12)',  color: '#EAB308' },
+    high:   { bg: 'rgba(34,197,94,0.12)',  color: '#22C55E' },
   }[level]
   return (
     <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 20, fontWeight: 700, background: cfg.bg, color: cfg.color }}>
-      {cfg.label}
+      {t(`w2b.confidence.${level}`)}
     </span>
   )
 }
@@ -93,6 +95,7 @@ function IconWarning() {
 
 // ── Main component ────────────────────────────────────────────────
 export default function MealModalPhotoAI({ onSave }: Props) {
+  const { t } = useI18n()
   const [preview,  setPreview]  = useState<string | null>(null)
   const [loading,  setLoading]  = useState(false)
   const [result,   setResult]   = useState<ApiResult | null>(null)
@@ -141,7 +144,7 @@ export default function MealModalPhotoAI({ onSave }: Props) {
         baseQty: it.qty || 1, baseKcal: it.kcal,
       })))
     } catch {
-      setError('Analyse impossible. Reessaye avec une photo plus nette.')
+      setError(t('w2b.analyzeError'))
     } finally { setLoading(false) }
   }
 
@@ -220,7 +223,7 @@ export default function MealModalPhotoAI({ onSave }: Props) {
                 <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
                 <circle cx="12" cy="13" r="4"/>
               </svg>
-              Camera
+              {t('w2b.camera')}
             </button>
             <button onClick={() => galleryRef.current?.click()}
               style={{ flex: 1, padding: '14px 0', borderRadius: 10, border: '1.5px dashed var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 12, fontFamily: 'DM Sans,sans-serif', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
@@ -229,7 +232,7 @@ export default function MealModalPhotoAI({ onSave }: Props) {
                 <circle cx="8.5" cy="8.5" r="1.5"/>
                 <path d="m21 15-5-5L5 21"/>
               </svg>
-              Galerie
+              {t('w2b.gallery')}
             </button>
           </div>
         ) : (
@@ -253,7 +256,7 @@ export default function MealModalPhotoAI({ onSave }: Props) {
               <circle cx="8.5" cy="8.5" r="1.5"/>
               <path d="m21 15-5-5L5 21"/>
             </svg>
-            <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>Glisser une photo ou cliquer</span>
+            <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>{t('w2b.dragPhoto')}</span>
           </div>
         )}
       </div>
@@ -280,7 +283,7 @@ export default function MealModalPhotoAI({ onSave }: Props) {
             }}>
               <OverlaySpinner />
               <p style={{ color: '#fff', fontSize: 12, fontWeight: 500, fontFamily: 'DM Sans,sans-serif', margin: 0 }}>
-                Analyse en cours...
+                {t('w2b.analyzing')}
               </p>
             </div>
           )}
@@ -299,7 +302,7 @@ export default function MealModalPhotoAI({ onSave }: Props) {
                 background: 'transparent', color: 'var(--text-dim)',
                 fontSize: 12, fontFamily: 'DM Sans,sans-serif', cursor: 'pointer',
               }}>
-              Changer de photo
+              {t('w2b.changePhoto')}
             </button>
           </>
         )}
@@ -317,7 +320,7 @@ export default function MealModalPhotoAI({ onSave }: Props) {
         <ConfidenceBadge level={result.confidence} />
         <button onClick={reset}
           style={{ fontSize: 11, color: 'var(--text-dim)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
-          Recommencer
+          {t('w2b.restart')}
         </button>
       </div>
 
@@ -328,7 +331,7 @@ export default function MealModalPhotoAI({ onSave }: Props) {
       {/* Items list */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 64px 54px', gap: 6, paddingBottom: 4, borderBottom: '1px solid var(--border)' }}>
-          {['Aliment', 'Qte', 'Kcal'].map(h => (
+          {[t('w2b.thFood'), t('w2b.thQty'), 'Kcal'].map(h => (
             <span key={h} style={{ fontSize: 9, color: 'var(--text-dim)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', fontFamily: 'DM Sans,sans-serif' }}>{h}</span>
           ))}
         </div>
@@ -347,7 +350,7 @@ export default function MealModalPhotoAI({ onSave }: Props) {
         ))}
         {/* Totals row */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 64px 54px', gap: 6, paddingTop: 6, borderTop: '1px solid var(--border)' }}>
-          <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text)', fontFamily: 'Syne,sans-serif' }}>Total</span>
+          <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text)', fontFamily: 'Syne,sans-serif' }}>{t('w2b.total')}</span>
           <span />
           <span style={{ fontSize: 11, fontWeight: 700, color: '#06B6D4', fontFamily: 'DM Mono,monospace', textAlign: 'center' }}>{totalKcal}</span>
         </div>
@@ -365,7 +368,7 @@ export default function MealModalPhotoAI({ onSave }: Props) {
       {/* Save button */}
       <button onClick={() => void handleSave()} disabled={saving}
         style={{ width: '100%', padding: '10px 0', borderRadius: 10, border: 'none', background: saving ? 'var(--border)' : 'linear-gradient(90deg,#06B6D4,#3B82F6)', color: '#fff', fontWeight: 700, fontSize: 13, cursor: saving ? 'default' : 'pointer', fontFamily: 'Syne,sans-serif' }}>
-        {saving ? 'Enregistrement...' : 'Enregistrer ce repas'}
+        {saving ? t('w2b.saving') : t('w2b.saveMeal')}
       </button>
     </div>
   )

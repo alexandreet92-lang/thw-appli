@@ -54,10 +54,12 @@ export async function onAthleteActivity(athleteId: string, opts: { activityId?: 
     })
   }
   if (followers.length) {
+    // Deep-link : le profil de l'ami, avec l'activité ouverte si on la connaît.
+    const url = opts.activityId ? `/u/${athleteId}?activity=${opts.activityId}` : `/u/${athleteId}`
     await notifyUsers(followers, 'social.activite_ami', {
       title: `${name} vient de s'entraîner`,
-      body: `A enregistré une nouvelle activité${sport}. Retrouve-la dans ton fil.`,
-      url: `/feed`,
+      body: `A enregistré une nouvelle activité${sport}. Va voir son profil.`,
+      url,
       dedupKey: `friend-act-${athleteId}-${opts.activityId ?? day()}`,
     })
   }
@@ -101,6 +103,20 @@ export async function onAthleteJoined(coachId: string, athleteId: string): Promi
   })
 }
 
+/** Un athlète a battu un record all-time → prévient son coach. */
+export async function onAthleteRecord(athleteId: string, opts: { label?: string; activityId?: string } = {}): Promise<void> {
+  const sb = createServiceClient()
+  const coachId = await coachOf(sb, athleteId)
+  if (!coachId) return
+  const name = await nameOf(sb, athleteId)
+  await notifyUser(coachId, 'coach_in.record', {
+    title: `${name} a battu un record`,
+    body: opts.label ? `Nouveau record all-time : ${opts.label}.` : 'Nouveau record all-time enregistré.',
+    url: opts.activityId ? `/coach/athlete/${athleteId}?tab=data` : `/coach/athlete/${athleteId}?tab=performance`,
+    dedupKey: `coach-rec-${athleteId}-${opts.activityId ?? day()}-${opts.label ?? ''}`,
+  })
+}
+
 /** Cron : un athlète n'a pas fait la séance du jour → prévient son coach. */
 export async function onAthleteMissedSession(coachId: string, athleteId: string, sessionTitle?: string): Promise<void> {
   const sb = createServiceClient()
@@ -121,8 +137,8 @@ export async function onNewFollower(followedId: string, followerId: string): Pro
   const name = await nameOf(sb, followerId)
   await notifyUser(followedId, 'social.abonne', {
     title: `${name} s'est abonné à toi`,
-    body: 'Retrouve son activité dans ton fil.',
-    url: `/feed`,
+    body: 'Découvre son profil.',
+    url: `/u/${followerId}`,
     dedupKey: `follow-${followerId}-${followedId}`,
   })
 }

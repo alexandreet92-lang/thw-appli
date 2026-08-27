@@ -144,18 +144,20 @@ function FeedCard({ a, onOpen, canFollow, isFollowing, onToggleFollow, eng, onKu
 
   return (
     <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-lg)', overflow: 'hidden' }}>
-      {/* Auteur */}
+      {/* Auteur — clic sur avatar/nom = profil public (interconnexion) */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '12px 14px' }}>
-        <Avatar url={a.author_avatar} name={a.author_name} size={40} />
-        <div style={{ minWidth: 0, flex: 1 }}>
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.author_name}</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 12, color: 'var(--text-dim)' }}>
-            <span style={{ width: 7, height: 7, borderRadius: '50%', background: meta.color, flexShrink: 0 }} />
-            <span>{a.is_race ? 'Compétition' : meta.label}</span>
-            <span>·</span>
-            <span className="tnum">{relDate(a.started_at)}</span>
+        <Link href={`/u/${a.author_id}`} style={{ display: 'flex', alignItems: 'center', gap: 11, minWidth: 0, flex: 1, textDecoration: 'none' }}>
+          <Avatar url={a.author_avatar} name={a.author_name} size={40} />
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.author_name}</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 12, color: 'var(--text-dim)' }}>
+              <span style={{ width: 7, height: 7, borderRadius: '50%', background: meta.color, flexShrink: 0 }} />
+              <span>{a.is_race ? 'Compétition' : meta.label}</span>
+              <span>·</span>
+              <span className="tnum">{relDate(a.started_at)}</span>
+            </div>
           </div>
-        </div>
+        </Link>
         {canFollow && (
           <button onClick={onToggleFollow}
             style={{ flexShrink: 0, padding: '6px 13px', borderRadius: 999, cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 600,

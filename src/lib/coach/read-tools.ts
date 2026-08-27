@@ -15,6 +15,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { computeSportMetrics, type ActivityWithStreams } from '@/lib/analysis/sportMetrics'
 import { queryCatalog, type LibrarySession } from '@/lib/coach/session-library'
 import { snapRoute } from '@/lib/openrouteservice'
+import { periodizationBlueprint } from '@/lib/training/periodization'
 
 const ACT_COLS =
   'id,title,sport_type,started_at,moving_time_s,distance_m,tss,average_heartrate,max_heartrate,average_speed,avg_cadence,is_race,avg_watts'
@@ -401,6 +402,23 @@ export const readTools: Anthropic.Tool[] = [
       required: ['waypoints'],
     },
   },
+  {
+    name: 'periodization_blueprint',
+    description:
+      "Calcule la STRUCTURE de périodisation d'une saison : phases (Base → Développement → Spécifique → Affûtage), " +
+      "longueur d'affûtage, semaines de décharge et ratio de polarisation, à partir du NOMBRE DE SEMAINES jusqu'à la " +
+      "course (ou de la date de course). Appelle-le AVANT de bâtir un plan sur objectif, pour caler une structure " +
+      "méthodologiquement correcte — puis remplis chaque phase avec des séances aux VRAIES zones de l'athlète.",
+    input_schema: {
+      type: 'object',
+      properties: {
+        weeks:     { type: 'integer', description: 'Nombre de semaines jusqu’à la course.' },
+        race_date: { type: 'string',  description: 'YYYY-MM-DD de la course (alternative à weeks : on déduit les semaines depuis aujourd’hui).' },
+        level:     { type: 'string',  description: 'debutant | intermediaire | avance.' },
+        race_type: { type: 'string',  description: 'Type d’épreuve (marathon, 10 km, ironman, trail…).' },
+      },
+    },
+  },
 ]
 
 export const READ_TOOL_NAMES: ReadonlySet<string> = new Set(readTools.map(t => t.name))
@@ -476,6 +494,22 @@ export async function resolveReadTool(
 ): Promise<string> {
   try {
     switch (name) {
+      // ── periodization_blueprint (calcul pur, pas de DB) ─────
+      case 'periodization_blueprint': {
+        let weeks = Number(input.weeks)
+        if ((!Number.isFinite(weeks) || weeks < 1) && typeof input.race_date === 'string' && /^\d{4}-\d{2}-\d{2}/.test(input.race_date)) {
+          const days = Math.ceil((new Date(input.race_date + 'T00:00:00').getTime() - Date.now()) / 86400000)
+          weeks = Math.max(4, Math.round(days / 7))
+        }
+        if (!Number.isFinite(weeks) || weeks < 1) return JSON.stringify({ ok: false, error: 'Fournis weeks (ou race_date future).' })
+        const bp = periodizationBlueprint({
+          weeks,
+          level: typeof input.level === 'string' ? input.level : undefined,
+          race_type: typeof input.race_type === 'string' ? input.race_type : undefined,
+        })
+        return JSON.stringify({ ok: true, ...bp })
+      }
+
       // ── get_activities ──────────────────────────────────────
       case 'get_activities': {
         const sport     = typeof input.sport === 'string' ? input.sport.trim() : ''

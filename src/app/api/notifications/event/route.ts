@@ -11,6 +11,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import {
   onAthleteActivity, onAthleteMessage, onAthleteInjury, onAthleteJoined, onNewFollower,
+  onActivityKudos, onActivityComment,
 } from '@/lib/notifications/events'
 
 export async function POST(req: Request) {
@@ -62,6 +63,20 @@ export async function POST(req: Request) {
           .eq('follower_id', actorId).eq('following_id', targetId).maybeSingle()
         if (!f) break
         await onNewFollower(targetId, actorId)
+        break
+      }
+      case 'kudos': {
+        // L'acteur a mis un kudos sur une activité. onActivityKudos vérifie le
+        // propriétaire (≠ acteur) côté service avant d'émettre.
+        const activityId = typeof body.activityId === 'string' ? body.activityId : ''
+        if (!activityId) return NextResponse.json({ ok: false, error: 'activityId requis' }, { status: 400 })
+        await onActivityKudos(activityId, actorId)
+        break
+      }
+      case 'comment': {
+        const activityId = typeof body.activityId === 'string' ? body.activityId : ''
+        if (!activityId) return NextResponse.json({ ok: false, error: 'activityId requis' }, { status: 400 })
+        await onActivityComment(activityId, actorId, typeof body.preview === 'string' ? body.preview : 'Nouveau commentaire')
         break
       }
       default:

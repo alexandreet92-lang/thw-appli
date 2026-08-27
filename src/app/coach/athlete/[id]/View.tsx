@@ -86,6 +86,14 @@ export default function AthleteFiche() {
   const [conns, setConns] = useState<ConnectionRow[] | null>(null)
 
   useEffect(() => { void createClient().auth.getUser().then(({ data }) => setCoachId(data.user?.id ?? null)) }, [])
+  // Deep-link depuis une notification : ?tab=data|fiche|goals|connexions ouvre
+  // directement l'onglet concerné (ex. « activité enregistrée » → onglet Data).
+  useEffect(() => {
+    try {
+      const t = new URLSearchParams(window.location.search).get('tab')
+      if (t && (['overview', 'fiche', 'data', 'goals', 'connexions'] as const).includes(t as Bubble)) setTab(t as Bubble)
+    } catch { /* pas de deep-link */ }
+  }, [])
 
   const load = useCallback(async () => {
     if (!id) return

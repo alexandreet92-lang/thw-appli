@@ -32,6 +32,15 @@ export function MessagesView({ role, title, subtitle }: { role: 'coach' | 'athle
     catch { /* silencieux */ } finally { setLoading(false) }
   }, [role])
   useEffect(() => { void load() }, [load])
+  // Deep-link depuis une notification : /coach/messages?thread=<otherId> (ou
+  // /messages?thread=…) ouvre directement la conversation avec cette personne.
+  useEffect(() => {
+    if (loading) return
+    try {
+      const wanted = new URLSearchParams(window.location.search).get('thread')
+      if (wanted && threads.some(t => t.otherId === wanted)) { setSelId(wanted); setSelGroup(null) }
+    } catch { /* pas de deep-link */ }
+  }, [loading, threads])
   const loadGroups = useCallback(async () => { try { setGroups(await listMyGroups()) } catch { /* */ } }, [])
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 767px)')

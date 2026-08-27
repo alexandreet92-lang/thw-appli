@@ -56,8 +56,8 @@ export async function onAthleteActivity(athleteId: string, opts: { activityId?: 
   if (followers.length) {
     await notifyUsers(followers, 'social.activite_ami', {
       title: `${name} vient de s'entraîner`,
-      body: `A enregistré une nouvelle activité${sport}.`,
-      url: `/u/${athleteId}`,
+      body: `A enregistré une nouvelle activité${sport}. Retrouve-la dans ton fil.`,
+      url: `/feed`,
       dedupKey: `friend-act-${athleteId}-${opts.activityId ?? day()}`,
     })
   }
@@ -121,8 +121,44 @@ export async function onNewFollower(followedId: string, followerId: string): Pro
   const name = await nameOf(sb, followerId)
   await notifyUser(followedId, 'social.abonne', {
     title: `${name} s'est abonné à toi`,
-    body: 'Découvre son profil.',
-    url: `/u/${followerId}`,
+    body: 'Retrouve son activité dans ton fil.',
+    url: `/feed`,
     dedupKey: `follow-${followerId}-${followedId}`,
+  })
+}
+
+/** Propriétaire d'une activité, ou null. */
+async function activityOwner(sb: ReturnType<typeof createServiceClient>, activityId: string): Promise<string | null> {
+  try {
+    const { data } = await sb.from('activities').select('user_id').eq('id', activityId).maybeSingle()
+    return (data as { user_id?: string } | null)?.user_id ?? null
+  } catch { return null }
+}
+
+/** Quelqu'un met un kudos sur ton activité → prévient le propriétaire. */
+export async function onActivityKudos(activityId: string, actorId: string): Promise<void> {
+  const sb = createServiceClient()
+  const owner = await activityOwner(sb, activityId)
+  if (!owner || owner === actorId) return
+  const name = await nameOf(sb, actorId)
+  await notifyUser(owner, 'social.reaction', {
+    title: `${name} a réagi à ton activité`,
+    body: 'Ouvre ton activité pour voir.',
+    url: `/activities?id=${activityId}`,
+    dedupKey: `kudos-${activityId}-${actorId}`,
+  })
+}
+
+/** Quelqu'un commente ton activité → prévient le propriétaire. */
+export async function onActivityComment(activityId: string, actorId: string, preview: string): Promise<void> {
+  const sb = createServiceClient()
+  const owner = await activityOwner(sb, activityId)
+  if (!owner || owner === actorId) return
+  const name = await nameOf(sb, actorId)
+  await notifyUser(owner, 'social.commentaire', {
+    title: `${name} a commenté ton activité`,
+    body: preview.length > 90 ? preview.slice(0, 90) + '…' : preview,
+    url: `/activities?id=${activityId}`,
+    dedupKey: `comment-${activityId}-${actorId}-${day()}`,
   })
 }

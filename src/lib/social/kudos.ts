@@ -4,6 +4,7 @@
 // ══════════════════════════════════════════════════════════════════
 import { createClient } from '@/lib/supabase/client'
 import { getCurrentUser } from '@/lib/auth/currentUser'
+import { emitServerEvent } from '@/lib/notifications/clientEvents'
 
 export interface Engagement { kudos: number; mine: boolean; comments: number }
 
@@ -37,6 +38,8 @@ export async function toggleKudos(activityId: string, currently: boolean): Promi
     return false
   }
   await sb.from('activity_kudos').upsert({ activity_id: activityId, user_id: user.id }, { onConflict: 'activity_id,user_id' })
+  // Prévient (côté serveur) le propriétaire de l'activité.
+  emitServerEvent('kudos', { activityId })
   return true
 }
 
@@ -66,6 +69,8 @@ export async function addComment(activityId: string, body: string): Promise<Acti
   const user = await getCurrentUser()
   if (!user) throw new Error('Connecte-toi pour commenter.')
   const { data } = await sb.from('activity_comments').insert({ activity_id: activityId, user_id: user.id, body: text.slice(0, 2000) }).select('id, created_at').single()
+  // Prévient (côté serveur) le propriétaire de l'activité.
+  if (data) emitServerEvent('comment', { activityId, preview: text.slice(0, 120) })
   const { data: p } = await sb.from('profiles').select('full_name, preferred_name, first_name, username, avatar_url').eq('id', user.id).maybeSingle()
   const pr = p as any
   return data ? { id: (data as any).id, userId: user.id, name: pr?.preferred_name || pr?.full_name || pr?.first_name || pr?.username || 'Moi', avatar: pr?.avatar_url ?? null, body: text, createdAt: (data as any).created_at, mine: true } : null

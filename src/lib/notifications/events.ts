@@ -112,7 +112,7 @@ export async function onAthleteRecord(athleteId: string, opts: { label?: string;
   await notifyUser(coachId, 'coach_in.record', {
     title: `${name} a battu un record`,
     body: opts.label ? `Nouveau record all-time : ${opts.label}.` : 'Nouveau record all-time enregistré.',
-    url: opts.activityId ? `/coach/athlete/${athleteId}?tab=data` : `/coach/athlete/${athleteId}?tab=performance`,
+    url: `/coach/athlete/${athleteId}?tab=data`,
     dedupKey: `coach-rec-${athleteId}-${opts.activityId ?? day()}-${opts.label ?? ''}`,
   })
 }

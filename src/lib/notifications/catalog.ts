@@ -23,6 +23,14 @@ export type NotifKey =
   | 'competitions.j7' | 'competitions.j3' | 'competitions.j1' | 'competitions.strategie_dispo'
   | 'communaute.mention' | 'communaute.nouveau_message' | 'communaute.evenement' | 'communaute.appel'
   | 'systeme.nouvelle_version' | 'systeme.nouvelle_feature' | 'systeme.maintenance' | 'systeme.astuce'
+  // ── Coach ENTRANT (ce que le coach reçoit sur SES athlètes) ──
+  | 'coach_in.message' | 'coach_in.activite' | 'coach_in.seance_manquee' | 'coach_in.nouvel_athlete'
+  | 'coach_in.blessure' | 'coach_in.readiness' | 'coach_in.record' | 'coach_in.feedback'
+  | 'coach_in.demande' | 'coach_in.paiement'
+  // ── Social / abonnés ──
+  | 'social.abonne' | 'social.activite_ami' | 'social.reaction' | 'social.commentaire'
+  // ── Studio / Routines ──
+  | 'studio.validation' | 'studio.termine' | 'studio.echec' | 'studio.routine'
 
 export const NOTIF_DEFAULTS: Record<NotifKey, boolean> = {
   'entrainement.rappel_seance': true,
@@ -76,6 +84,24 @@ export const NOTIF_DEFAULTS: Record<NotifKey, boolean> = {
   'systeme.nouvelle_feature': true,
   'systeme.maintenance': false,
   'systeme.astuce': false,
+  'coach_in.message': true,
+  'coach_in.activite': true,
+  'coach_in.seance_manquee': true,
+  'coach_in.nouvel_athlete': true,
+  'coach_in.blessure': true,
+  'coach_in.readiness': true,
+  'coach_in.record': true,
+  'coach_in.feedback': true,
+  'coach_in.demande': true,
+  'coach_in.paiement': true,
+  'social.abonne': true,
+  'social.activite_ami': false,
+  'social.reaction': true,
+  'social.commentaire': true,
+  'studio.validation': true,
+  'studio.termine': true,
+  'studio.echec': true,
+  'studio.routine': false,
 }
 
 export function defaultFor(key: string): boolean {

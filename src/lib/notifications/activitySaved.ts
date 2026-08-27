@@ -3,6 +3,7 @@
 // Best-effort (ne jette jamais) : réutilise le canal in-app + push existant
 // via la clé `entrainement.seance_telechargee` (togglée dans les réglages).
 import { emitNotification } from './emit'
+import { emitServerEvent } from './clientEvents'
 
 const SPORT_LABEL: Record<string, string> = {
   running: 'Course à pied', cycling: 'Vélo', hometrainer: 'Home trainer',
@@ -23,4 +24,6 @@ export function notifyActivitySaved(params: { sport: string; title?: string | nu
     body,
     url: '/activities',
   })
+  // Prévient (côté serveur) le COACH de l'athlète + ses ABONNÉS.
+  emitServerEvent('activity_saved', { sportLabel: label })
 }

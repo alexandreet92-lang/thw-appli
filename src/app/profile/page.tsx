@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic'
 
 import { Suspense, useState, useRef, useEffect, useCallback } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
-import { User, Bell, Zap, Moon, Apple, TrendingUp, Sparkles, Coins, Plug, Trophy, Settings, Package, Bike, Footprints, Target, Globe, MapPin, Shield, Lock, CreditCard, BarChart3, Dumbbell, LogOut, ChevronLeft, Palette, Sun, Monitor, Check, Ruler, Users } from 'lucide-react'
+import { User, Bell, Zap, Moon, Apple, TrendingUp, Sparkles, Coins, Plug, Trophy, Settings, Package, Bike, Footprints, Target, Globe, MapPin, Shield, Lock, CreditCard, BarChart3, Dumbbell, LogOut, ChevronLeft, Palette, Sun, Monitor, Check, Ruler, Users, UserCog, Heart, Wand2 } from 'lucide-react'
 import SubscriptionEmailModal from '@/components/subscription/SubscriptionEmailModal'
 import { createClient } from '@/lib/supabase/client'
 import { getCurrentUser } from '@/lib/auth/currentUser'
@@ -825,6 +825,30 @@ const NOTIF_CATEGORIES: NotifCategory[] = [
     { key:'communaute.evenement',       label:'Événements',        sub:'Nouvelle sortie / défi dans tes espaces', def:true },
     { key:'communaute.appel',           label:'Appels',            sub:'Un appel démarre dans un de tes canaux', def:true },
     { key:'communaute.nouveau_message', label:'Nouveaux messages', sub:'Activité dans tes espaces', def:false },
+  ]},
+  { id:'coach_in', label:'Coach — tes athlètes', color:'#5b6fff', Icon: UserCog, items:[
+    { key:'coach_in.message',        label:"Message d'un athlète",  sub:'Un athlète t\'a écrit',                     def:true },
+    { key:'coach_in.activite',       label:'Activité enregistrée',  sub:'Un athlète vient de s\'entraîner',          def:true },
+    { key:'coach_in.seance_manquee', label:'Séance manquée',        sub:'La séance du jour n\'a pas été faite',      def:true },
+    { key:'coach_in.nouvel_athlete', label:'Nouvel athlète',        sub:'Un athlète a rejoint ton roster',          def:true },
+    { key:'coach_in.blessure',       label:'Blessure déclarée',     sub:'Un athlète a signalé une blessure',        def:true },
+    { key:'coach_in.readiness',      label:'Forme du jour',         sub:'Readiness / HRV anormale chez un athlète',  def:true },
+    { key:'coach_in.record',         label:'Record d\'un athlète',   sub:'Un athlète a battu un record',             def:true },
+    { key:'coach_in.feedback',       label:'Retour de séance',      sub:'Un athlète a laissé un feedback',          def:true },
+    { key:'coach_in.demande',        label:'Demande de coaching',   sub:'Une demande de suivi est arrivée',         def:true },
+    { key:'coach_in.paiement',       label:'Paiement athlète',      sub:'Un abonnement athlète a évolué',           def:true },
+  ]},
+  { id:'social', label:'Social & abonnés', color:'#ec4899', Icon: Heart, items:[
+    { key:'social.abonne',        label:'Nouvel abonné',    sub:'Quelqu\'un s\'est abonné à toi',           def:true },
+    { key:'social.activite_ami',  label:'Activité d\'un ami', sub:'Une personne suivie s\'est entraînée',    def:false },
+    { key:'social.reaction',      label:'Réaction',         sub:'Une réaction sur ton activité partagée',    def:true },
+    { key:'social.commentaire',   label:'Commentaire',      sub:'Un commentaire sur ton activité partagée',  def:true },
+  ]},
+  { id:'studio', label:'Studio & Routines', color:'#f59e0b', Icon: Wand2, items:[
+    { key:'studio.validation', label:'Validation requise', sub:'Une action attend ton autorisation',     def:true },
+    { key:'studio.termine',    label:'Tâche terminée',     sub:'Un travail Studio est prêt',             def:true },
+    { key:'studio.echec',      label:'Échec Studio',       sub:'Une tâche n\'a pas pu aboutir',          def:true },
+    { key:'studio.routine',    label:'Routine exécutée',   sub:'Une routine programmée s\'est lancée',   def:false },
   ]},
   { id:'systeme', label:'Système', color:'#94a3b8', Icon: Settings, items:[
     { key:'systeme.nouvelle_version', label:'Nouvelle version',       sub:'Une mise à jour est disponible', def:true },

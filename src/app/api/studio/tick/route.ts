@@ -12,8 +12,7 @@ export const maxDuration = 300
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
-import { createNotification } from '@/lib/notifications/create'
-import { sendPushToUser } from '@/lib/push/send'
+import { notifyUser } from '@/lib/notifications/dispatch'
 import { getStudioAccess } from '@/lib/tokens/studio'
 import { runGraphServer } from '@/lib/studio/server-runner'
 import { validateGraph, genId, type StudioGraph } from '@/lib/studio/graph'
@@ -98,18 +97,12 @@ export async function GET(req: NextRequest) {
         if (!isNaN(end.getTime()) && now.getTime() > end.getTime()) {
           // Met le système en pause (planification désactivée) — une seule fois.
           await sb.from('studio_schedules').update({ enabled: false }).eq('id', sched.id)
-          await createNotification(sb, sched.user_id, {
-            type: 'studio.schedule',
+          await notifyUser(sched.user_id, 'studio.termine', {
             title: `« ${name} » : objectif atteint`,
             body: `Ton objectif « ${graph.objective!.text} » est arrivé à échéance. Le système est en pause — ouvre le Studio pour définir ton prochain objectif et le relancer.`,
-            link: '/?studio=1',
+            url: '/?studio=1',
             dedupKey: `studio-obj-expired-${sched.system_id}-${deadline}`,
-          })
-          await sendPushToUser(sb, sched.user_id, {
-            title: 'Studio : objectif atteint',
-            body: `« ${name} » est en pause. Définis ton prochain objectif.`,
-            url: '/',
-            tag: `studio-obj-${sched.system_id}`,
+            once: true,
           })
           continue
         }
@@ -121,13 +114,12 @@ export async function GET(req: NextRequest) {
       const v = validateGraph(graph)
       const needsHuman = graph.nodes.some(n => n.kind === 'validation' || (n.kind === 'action' && n.actionKey !== 'notify_report'))
       if (v.errors.length > 0 || needsHuman) {
-        await createNotification(sb, sched.user_id, {
-          type: 'studio.schedule',
+        await notifyUser(sched.user_id, needsHuman ? 'studio.validation' : 'studio.echec', {
           title: `« ${name} » n'a pas pu tourner`,
           body: needsHuman
             ? 'Ce système contient un bloc Validation ou une écriture (Planning / Calendrier) qui nécessite ton accord : il ne peut pas tourner tout seul. Pour la planification, termine plutôt par une Notification.'
             : `Le système est invalide : ${v.errors[0]}`,
-          link: '/?studio=1',
+          url: '/?studio=1',
           dedupKey: `studio-sched-invalid-${sched.id}`,
         })
         continue
@@ -136,13 +128,12 @@ export async function GET(req: NextRequest) {
       const access = await getStudioAccess(sched.user_id)
       const estimate = estimateRunTokens(graph.nodes)
       if (!access.allowed || estimate > access.remaining) {
-        await createNotification(sb, sched.user_id, {
-          type: 'studio.schedule',
+        await notifyUser(sched.user_id, 'studio.echec', {
           title: `« ${name} » n'a pas pu tourner`,
           body: !access.allowed
             ? 'Le Studio nécessite un abonnement Pro ou Expert.'
             : `Solde Studio insuffisant (~${formatTokens(estimate)} tokens nécessaires). Recharge avec un pack.`,
-          link: '/?studio=1',
+          url: '/?studio=1',
           dedupKey: `studio-sched-balance-${sched.id}-${now.toISOString().slice(0, 10)}`,
         })
         continue
@@ -171,18 +162,11 @@ export async function GET(req: NextRequest) {
       const body = status === 'done'
         ? (report ? `${report.slice(0, 1400)}${report.length > 1400 ? '…' : ''}` : `Run automatique terminé (${formatTokens(res.weightedTokens)} tokens).`)
         : 'Run automatique terminé avec des erreurs — ouvre l’historique du Studio pour le détail.'
-      await createNotification(sb, sched.user_id, {
-        type: 'studio.schedule',
+      await notifyUser(sched.user_id, status === 'done' ? 'studio.termine' : 'studio.echec', {
         title: `« ${name} » a tourné`,
         body,
-        link: '/?studio=1',
+        url: '/?studio=1',
         dedupKey: `studio-sched-run-${runId}`,
-      })
-      await sendPushToUser(sb, sched.user_id, {
-        title: `Studio : « ${name} » a tourné`,
-        body,
-        url: '/',
-        tag: `studio-sched-${sched.id}`,
       })
       launched++
     } catch (e) {

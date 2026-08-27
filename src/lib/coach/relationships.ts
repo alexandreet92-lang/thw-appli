@@ -7,6 +7,7 @@
 // ══════════════════════════════════════════════════════════════
 
 import { createClient } from '@/lib/supabase/client'
+import { emitServerEvent } from '@/lib/notifications/clientEvents'
 
 export type CoachLinkStatus = 'pending' | 'accepted' | 'revoked'
 
@@ -76,6 +77,8 @@ export async function acceptInvite(code: string): Promise<void> {
   const clean = raw.length === 8 ? `${raw.slice(0, 4)}-${raw.slice(4)}` : raw
   const { error } = await sb.rpc('accept_coach_invite', { invite_code: clean })
   if (error) throw new Error(error.message.replace(/^.*?:/, '').trim() || 'Invitation invalide')
+  // Prévient (côté serveur) le coach que l'athlète a rejoint son roster.
+  emitServerEvent('joined', {})
 }
 
 // Révoque un lien (annule une invitation, ou met fin au coaching). Utilisable

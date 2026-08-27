@@ -4,6 +4,7 @@
 // ══════════════════════════════════════════════════════════════════
 import { createClient } from '@/lib/supabase/client'
 import { getCurrentUser } from '@/lib/auth/currentUser'
+import { emitServerEvent } from '@/lib/notifications/clientEvents'
 
 export interface SocialCounts { followers: number; following: number; coached: number }
 
@@ -63,5 +64,7 @@ export async function toggleFollow(userId: string, currentlyFollowing: boolean):
     return false
   }
   await sb.from('follows').upsert({ follower_id: user.id, following_id: userId }, { onConflict: 'follower_id,following_id' })
+  // Prévient (côté serveur) l'utilisateur suivi qu'il a un nouvel abonné.
+  emitServerEvent('follow', { targetId: userId })
   return true
 }

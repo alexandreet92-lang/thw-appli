@@ -6,6 +6,7 @@
 
 import { createClient } from '@/lib/supabase/client'
 import { listMyAthletes, listMyCoaches } from './relationships'
+import { emitServerEvent } from '@/lib/notifications/clientEvents'
 
 export type MediaKind = 'image' | 'parcours' | 'file'
 export interface Msg {
@@ -119,6 +120,8 @@ export async function sendMessage(coachId: string, athleteId: string, body: stri
     media_url: attachment?.url ?? null, media_type: attachment?.type ?? null, media_name: attachment?.name ?? null,
   })
   if (error) throw new Error(error.message)
+  // Si c'est l'ATHLÈTE qui écrit → prévient son coach (notif côté serveur).
+  if (me === athleteId) emitServerEvent('coach_message', { coachId, preview: clean || 'Pièce jointe' })
 }
 
 // Upload d'une pièce jointe (image / parcours GPX-TCX / PDF) → renvoie l'attachement.

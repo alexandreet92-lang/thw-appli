@@ -17,6 +17,7 @@ export const maxDuration = 120
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { notifyUser } from '@/lib/notifications/dispatch'
+import { onAthleteMissedSession } from '@/lib/notifications/events'
 
 const DAY = 86400000
 function ymd(d: Date): string { return d.toISOString().slice(0, 10) }
@@ -93,6 +94,34 @@ export async function GET(req: NextRequest) {
       if (s.status === 'done' || s.status === 'skipped') continue
       const label = s.title || (s.sport ? `Séance ${s.sport}` : 'Séance du jour')
       await fire(s.user_id, 'entrainement.rappel_seance', { title: 'Séance du jour', body: `${label}${s.time ? ` — ${s.time}` : ''}`, url: '/planning', dedupKey: `seance-${today}`, })
+    }
+  } catch { /* best-effort */ }
+
+  // ── 2b. Coach : séance d'HIER non enregistrée par un athlète ──
+  // On évalue la veille (journée terminée) : une séance planifiée encore
+  // ni « done » ni « skipped » = manquée → on prévient le coach.
+  try {
+    const yDate = new Date(now.getTime() - DAY)
+    const yIdx = (yDate.getUTCDay() + 6) % 7
+    const yWeekStart = ymd(new Date(yDate.getTime() - yIdx * DAY))
+    const { data: links } = await sb.from('coach_athlete')
+      .select('coach_id,athlete_id').eq('status', 'accepted')
+    const rels = (links ?? []) as Array<{ coach_id: string; athlete_id: string }>
+    if (rels.length) {
+      const athleteIds = Array.from(new Set(rels.map(r => r.athlete_id)))
+      const coachByAthlete = new Map(rels.map(r => [r.athlete_id, r.coach_id]))
+      const { data: ySessions } = await sb.from('planned_sessions')
+        .select('user_id,title,sport,status')
+        .in('user_id', athleteIds)
+        .eq('week_start', yWeekStart)
+        .eq('day_index', yIdx)
+      for (const s of (ySessions ?? []) as Array<{ user_id: string; title: string | null; sport: string | null; status: string | null }>) {
+        if (s.status === 'done' || s.status === 'skipped') continue
+        const coachId = coachByAthlete.get(s.user_id)
+        if (!coachId) continue
+        const label = s.title || (s.sport ? `Séance ${s.sport}` : undefined)
+        try { await onAthleteMissedSession(coachId, s.user_id, label); sent++ } catch { /* best-effort */ }
+      }
     }
   } catch { /* best-effort */ }
 

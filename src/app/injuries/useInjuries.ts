@@ -4,6 +4,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { getCurrentUser } from '@/lib/auth/currentUser'
+import { emitServerEvent } from '@/lib/notifications/clientEvents'
 import type { Injury, InjuryLog, RehabExo, Impact } from './types'
 
 type Row = Record<string, unknown>
@@ -81,6 +82,8 @@ export function useInjuries() {
     if (!user) return null
     const { data, error } = await sb.from('injuries').insert({ ...inj, user_id: user.id }).select('id').single()
     if (error || !data) return null
+    // Prévient (côté serveur) le coach de l'athlète qu'une blessure a été déclarée.
+    emitServerEvent('injury', { zone: inj.zone })
     await load()
     return String((data as Row).id)
   }, [load])

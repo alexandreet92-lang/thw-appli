@@ -1,5 +1,6 @@
 'use client'
 import React from 'react'
+import { useI18n } from '@/lib/i18n'
 
 // ─── 7-Level system ───────────────────────────────────────────────────────────
 export const TEST_LEVELS = [
@@ -574,18 +575,19 @@ function BenchmarkTable({ rows, gender, currentLevelLabel, accentColor }: {
   currentLevelLabel: string | null
   accentColor: string
 }) {
+  const { t } = useI18n()
   return (
     <div style={{ overflowX: 'auto' as const, borderRadius: 10, border: '1px solid var(--border)' }}>
       <table style={{ width: '100%', borderCollapse: 'collapse' as const, fontSize: 11.5 }}>
         <thead>
           <tr style={{ background: 'var(--bg-card2)' }}>
-            <th style={{ padding: '7px 10px', textAlign: 'left' as const, color: 'var(--text-dim)', fontWeight: 600, borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' as const }}>Niveau</th>
-            <th style={{ padding: '7px 10px', textAlign: 'center' as const, color: 'var(--text-dim)', fontWeight: 600, borderBottom: '1px solid var(--border)' }}>Score</th>
+            <th style={{ padding: '7px 10px', textAlign: 'left' as const, color: 'var(--text-dim)', fontWeight: 600, borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' as const }}>{t('w1c.niveau')}</th>
+            <th style={{ padding: '7px 10px', textAlign: 'center' as const, color: 'var(--text-dim)', fontWeight: 600, borderBottom: '1px solid var(--border)' }}>{t('w1c.score')}</th>
             <th style={{ padding: '7px 10px', textAlign: 'center' as const, color: gender === 'M' ? accentColor : 'var(--text-dim)', fontWeight: gender === 'M' ? 700 : 500, borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' as const }}>
-              Homme {gender === 'M' && '▲'}
+              {t('w1c.homme')} {gender === 'M' && '▲'}
             </th>
             <th style={{ padding: '7px 10px', textAlign: 'center' as const, color: gender === 'F' ? '#f472b6' : 'var(--text-dim)', fontWeight: gender === 'F' ? 700 : 500, borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' as const }}>
-              Femme {gender === 'F' && '▲'}
+              {t('w1c.femme')} {gender === 'F' && '▲'}
             </th>
           </tr>
         </thead>
@@ -609,7 +611,7 @@ function BenchmarkTable({ rows, gender, currentLevelLabel, accentColor }: {
                     </span>
                     {isHighlighted && (
                       <span style={{ fontSize: 9, background: row.color + '22', color: row.color, border: `1px solid ${row.color}44`, borderRadius: 5, padding: '1px 5px', fontWeight: 700 }}>
-                        Vous
+                        {t('w1c.vous')}
                       </span>
                     )}
                   </div>
@@ -634,6 +636,7 @@ function BenchmarkTable({ rows, gender, currentLevelLabel, accentColor }: {
 
 // ─── TestScoreDisplay ─────────────────────────────────────────────────────────
 export function TestScoreDisplay({ result, accentColor }: { result: TestScoreResult; accentColor: string }) {
+  const { t } = useI18n()
   return (
     <div style={{
       padding: '14px 16px',
@@ -644,12 +647,12 @@ export function TestScoreDisplay({ result, accentColor }: { result: TestScoreRes
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: result.subScores?.length ? 10 : 0 }}>
         <div>
           <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.07em', marginBottom: 5 }}>
-            Score calculé
+            {t('w1c.score_calcule')}
           </div>
           <ScoreBadge score={result.overall} level={result.level} size="lg" />
         </div>
         <div style={{ textAlign: 'right' as const }}>
-          <div style={{ fontSize: 11, color: 'var(--text-dim)', marginBottom: 2 }}>Percentile</div>
+          <div style={{ fontSize: 11, color: 'var(--text-dim)', marginBottom: 2 }}>{t('w1c.percentile')}</div>
           <div style={{ fontFamily: 'DM Mono, monospace', fontSize: 13, color: result.level.color, fontWeight: 700 }}>
             {result.level.label === 'Alien' ? '>99%' :
              result.level.label === 'Élite' ? 'Top 1%' :

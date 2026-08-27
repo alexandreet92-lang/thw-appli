@@ -18,6 +18,7 @@ import { getProfileActivityShowcase, type ActivityShowcaseData } from '@/lib/pro
 import { createClient } from '@/lib/supabase/client'
 import { getCurrentUser } from '@/lib/auth/currentUser'
 import SlideSheet from '@/components/ui/SlideSheet'
+import { useI18n } from '@/lib/i18n'
 
 const SPORT_LABEL: Record<string, string> = { running: 'Course', cycling: 'Vélo', swim: 'Natation', gym: 'Renforcement', hyrox: 'Hyrox', rowing: 'Aviron', trail: 'Trail', triathlon: 'Triathlon' }
 
@@ -47,6 +48,7 @@ interface ShowcaseProps {
 }
 
 export default function CoachShowcase({ profile, programs = [], counts, isCoach, isOwner, isFollowing, followBusy, onToggleFollow, actions }: ShowcaseProps) {
+  const { t } = useI18n()
   const [openProgram, setOpenProgram] = useState<CoachProgram | null>(null)
   const [progFilters, setProgFilters] = useState<ProgFilters>(DEFAULT_FILTERS)
   const filteredPrograms = applyProgramFilters(programs, progFilters)
@@ -69,7 +71,7 @@ export default function CoachShowcase({ profile, programs = [], counts, isCoach,
     return () => { cancelled = true }
   }, [profile.coach_id])
   const yearNow = new Date().getFullYear()
-  const name = profile.display_name || 'Profil'
+  const name = profile.display_name || t('w1j.profile')
   const monogram = name.trim().charAt(0).toUpperCase()
   const socials = profile.socials ?? {}
   const years = palmaresByYear(profile.palmares)
@@ -91,7 +93,7 @@ export default function CoachShowcase({ profile, programs = [], counts, isCoach,
               {isCoach && (
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 11px', borderRadius: 999, background: 'var(--primary-dim)', color: 'var(--primary)', fontSize: 12, fontWeight: 700 }}>
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
-                  Coach
+                  {t('w1j.coachBadge')}
                 </span>
               )}
             </div>
@@ -109,10 +111,10 @@ export default function CoachShowcase({ profile, programs = [], counts, isCoach,
             {/* Stats */}
             {counts && (
               <div style={{ display: 'flex', gap: 'clamp(20px,5vw,40px)', marginTop: 18, flexWrap: 'wrap' }}>
-                <Stat n={counts.followers} label="Abonnés" />
-                <Stat n={counts.following} label="Abonnements" />
-                {(isCoach || counts.coached > 0) && <Stat n={counts.coached} label="Coachés" />}
-                {showcase?.can_view && showcase.ytd_count > 0 && <Stat n={showcase.ytd_count} label={`Activités ${yearNow}`} />}
+                <Stat n={counts.followers} label={t('w1j.statFollowers')} />
+                <Stat n={counts.following} label={t('w1j.statFollowing')} />
+                {(isCoach || counts.coached > 0) && <Stat n={counts.coached} label={t('w1j.statCoached')} />}
+                {showcase?.can_view && showcase.ytd_count > 0 && <Stat n={showcase.ytd_count} label={t('w1j.statActivitiesYear', { year: yearNow })} />}
               </div>
             )}
 
@@ -121,7 +123,7 @@ export default function CoachShowcase({ profile, programs = [], counts, isCoach,
               {onToggleFollow && !isOwner && (
                 <button onClick={onToggleFollow} disabled={followBusy}
                   style={{ height: 42, padding: '0 24px', borderRadius: 999, border: 'none', cursor: followBusy ? 'default' : 'pointer', fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 700, background: isFollowing ? 'var(--bg-card2)' : 'var(--primary)', color: isFollowing ? 'var(--text-mid)' : 'var(--on-primary)', opacity: followBusy ? 0.6 : 1 }}>
-                  {isFollowing ? 'Abonné' : "S'abonner"}
+                  {isFollowing ? t('w1j.subscribed') : t('w1j.subscribe')}
                 </button>
               )}
               {actions}
@@ -133,7 +135,7 @@ export default function CoachShowcase({ profile, programs = [], counts, isCoach,
       {/* ── VIDÉO ── */}
       {profile.intro_video_url && (
         <div style={card}>
-          <SectionTitle>Présentation</SectionTitle>
+          <SectionTitle>{t('w1j.presentation')}</SectionTitle>
           <video controls preload="metadata" playsInline src={profile.intro_video_url}
             style={{ width: '100%', maxHeight: 480, borderRadius: 'var(--r-md)', background: 'var(--bg-card2)', objectFit: 'cover', marginTop: 4 }} />
         </div>
@@ -142,10 +144,10 @@ export default function CoachShowcase({ profile, programs = [], counts, isCoach,
       {/* ── À PROPOS ── */}
       {(profile.bio || isOwner) && (
         <div style={card}>
-          <SectionTitle>À propos</SectionTitle>
+          <SectionTitle>{t('w1j.about')}</SectionTitle>
           {profile.bio
             ? <p style={{ fontFamily: 'var(--font-body)', fontSize: 15, color: 'var(--text)', lineHeight: 1.65, margin: 0, whiteSpace: 'pre-wrap' as const }}>{profile.bio}</p>
-            : <Empty>Ajoute une description : ton parcours, ta méthode, pour qui tu coaches.</Empty>}
+            : <Empty>{t('w1j.aboutEmpty')}</Empty>}
         </div>
       )}
 
@@ -154,7 +156,7 @@ export default function CoachShowcase({ profile, programs = [], counts, isCoach,
       {(programs.length > 0 || isOwner) && (
         <div>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 14 }}>
-            <SectionTitle>Programmes</SectionTitle>
+            <SectionTitle>{t('w1j.programs')}</SectionTitle>
             {programs.length > 0 && <span className="tnum" style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-dim)', fontVariantNumeric: 'tabular-nums' }}>{programs.length}</span>}
           </div>
           {programs.length > 0 ? (
@@ -164,9 +166,9 @@ export default function CoachShowcase({ profile, programs = [], counts, isCoach,
               </div>
               {filteredPrograms.length > 0
                 ? <ProgramDeck programs={filteredPrograms} onOpen={setOpenProgram} />
-                : <Empty>Aucun programme ne correspond à ces filtres.</Empty>}
+                : <Empty>{t('w1j.noProgramMatch')}</Empty>}
             </>
-          ) : <Empty>{isCoach ? 'Publie un programme pour le montrer ici.' : 'Aucun programme publié.'}</Empty>}
+          ) : <Empty>{isCoach ? t('w1j.publishProgramHint') : t('w1j.noProgramPublished')}</Empty>}
         </div>
       )}
 
@@ -175,7 +177,7 @@ export default function CoachShowcase({ profile, programs = [], counts, isCoach,
         {/* Palmarès */}
         {(profile.palmares.length > 0 || isOwner) && (
           <div style={card}>
-            <SectionTitle>Palmarès</SectionTitle>
+            <SectionTitle>{t('w1j.honours')}</SectionTitle>
             {years.length > 0 ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                 {years.map(g => (
@@ -187,14 +189,14 @@ export default function CoachShowcase({ profile, programs = [], counts, isCoach,
                   </div>
                 ))}
               </div>
-            ) : <Empty>Ajoute tes résultats marquants, année par année.</Empty>}
+            ) : <Empty>{t('w1j.honoursEmpty')}</Empty>}
           </div>
         )}
 
         {/* Diplômes */}
         {(profile.diplomas.length > 0 || isOwner) && (
           <div style={card}>
-            <SectionTitle>Diplômes & certifications</SectionTitle>
+            <SectionTitle>{t('w1j.diplomasCertifications')}</SectionTitle>
             {profile.diplomas.length > 0 ? (
               <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {profile.diplomas.map((d, i) => (
@@ -204,26 +206,26 @@ export default function CoachShowcase({ profile, programs = [], counts, isCoach,
                   </li>
                 ))}
               </ul>
-            ) : <Empty>Ajoute tes diplômes et certifications.</Empty>}
+            ) : <Empty>{t('w1j.diplomasEmpty')}</Empty>}
           </div>
         )}
 
         {/* Activités (pleine largeur) */}
         <div style={{ ...card, gridColumn: '1 / -1' }}>
           <div style={{ marginBottom: 14 }}>
-            <SectionTitle>Activités</SectionTitle>
+            <SectionTitle>{t('w1j.activities')}</SectionTitle>
           </div>
           {showcase
             ? <ActivityShowcase data={showcase} isOwner={!!isOwner} />
             : loadFailed
-              ? <Empty>Aucune activité à afficher pour l’instant.</Empty>
-              : <Empty>Chargement des activités…</Empty>}
+              ? <Empty>{t('w1j.noActivityToShow')}</Empty>
+              : <Empty>{t('w1j.loadingActivities')}</Empty>}
         </div>
 
         {/* Coordonnées */}
         {profile.show_contact && (profile.contact_email || profile.phone) && (
           <div style={card}>
-            <SectionTitle>Coordonnées</SectionTitle>
+            <SectionTitle>{t('w1j.contactDetails')}</SectionTitle>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {profile.contact_email && <a href={`mailto:${profile.contact_email}`} style={contactRow}><Ic path="M2 4h20v16H2zM2 7l10 5 10-5" />{profile.contact_email}</a>}
               {profile.phone && <a href={`tel:${profile.phone.replace(/\s+/g, '')}`} style={contactRow}><Ic path="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3-8.7A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7A2 2 0 0 1 22 16.9z" />{profile.phone}</a>}
@@ -234,9 +236,9 @@ export default function CoachShowcase({ profile, programs = [], counts, isCoach,
         {/* Réseaux */}
         {hasLinks && (
           <div style={card}>
-            <SectionTitle>Réseaux</SectionTitle>
+            <SectionTitle>{t('w1j.socialNetworks')}</SectionTitle>
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-              {profile.website_url && <Social href={profile.website_url} label="Site web"><path d="M2 12h20M12 2a15 15 0 010 20 15 15 0 010-20z"/><circle cx="12" cy="12" r="10"/></Social>}
+              {profile.website_url && <Social href={profile.website_url} label={t('w1j.website')}><path d="M2 12h20M12 2a15 15 0 010 20 15 15 0 010-20z"/><circle cx="12" cy="12" r="10"/></Social>}
               {socials.instagram && <Social href={socials.instagram} label="Instagram"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></Social>}
               {socials.tiktok && <Social href={socials.tiktok} label="TikTok"><path d="M9 12a4 4 0 104 4V4a5 5 0 005 5"/></Social>}
               {socials.youtube && <Social href={socials.youtube} label="YouTube"><rect x="2" y="5" width="20" height="14" rx="4"/><path d="M10 9l5 3-5 3z" fill="currentColor" stroke="none"/></Social>}
@@ -247,7 +249,7 @@ export default function CoachShowcase({ profile, programs = [], counts, isCoach,
       </div>
 
       {/* Surpage détail d'un programme */}
-      <SlideSheet open={!!openProgram} onClose={() => setOpenProgram(null)} title="Programme">
+      <SlideSheet open={!!openProgram} onClose={() => setOpenProgram(null)} title={t('w1j.program')}>
         {openProgram && <ProgramDetailView program={openProgram} coachName={isOwner ? null : profile.display_name} coachSlug={profile.slug} />}
       </SlideSheet>
     </div>

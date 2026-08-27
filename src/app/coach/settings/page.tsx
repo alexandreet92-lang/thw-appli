@@ -16,6 +16,7 @@ import { useRouter } from 'next/navigation'
 import { User, CreditCard, Users, Sparkles, Share2, ClipboardList, Bell, SlidersHorizontal, Zap, Shield, Palette, LogOut, ChevronLeft, Check } from 'lucide-react'
 import { useProfile } from '@/hooks/useProfile'
 import { SlideView } from '@/components/ui/SlideView'
+import { useI18n } from '@/lib/i18n'
 
 // ── Fonds « façon Claude » (identiques à ProfileContent) ─────────────
 const GREY_CARD = 'color-mix(in srgb, var(--text) 6%, var(--bg))'
@@ -78,10 +79,11 @@ function Toggle({ value, onChange, locked }: { value: boolean; onChange?: (v: bo
 
 // Ligne label + toggle (façon DevicePushSection athlète).
 function ToggleLine({ first, label, sub, value, onChange, locked }: { first?: boolean; label: string; sub?: string; value: boolean; onChange?: (v: boolean) => void; locked?: boolean }) {
+  const { t } = useI18n()
   return (
     <Line first={first}>
       <div style={{ flex: 1, minWidth: 0, paddingRight: 4 }}>
-        <p style={{ fontSize: 15, fontWeight: 500, color: 'var(--text)', margin: '0 0 2px' }}>{label}{locked && <span style={{ fontSize: 10.5, color: 'var(--text-dim)', marginLeft: 7, fontWeight: 700 }}>· verrouillé</span>}</p>
+        <p style={{ fontSize: 15, fontWeight: 500, color: 'var(--text)', margin: '0 0 2px' }}>{label}{locked && <span style={{ fontSize: 10.5, color: 'var(--text-dim)', marginLeft: 7, fontWeight: 700 }}>{t('w1b.locked')}</span>}</p>
         {sub && <p style={{ fontSize: 11.5, color: 'var(--text-dim)', margin: 0, lineHeight: 1.5 }}>{sub}</p>}
       </div>
       <Toggle value={value} onChange={onChange} locked={locked} />
@@ -153,27 +155,28 @@ function ListRow({ Icon, label, value, danger, last, onClick }: { Icon: typeof U
 type SetFn = (k: string, v: unknown) => void
 
 function ProfilBloc({ s, set }: { s: S; set: SetFn }) {
+  const { t } = useI18n()
   return (
     <div>
-      <Intro>Ce que voient tes athlètes quand ils te rejoignent ou consultent ton profil.</Intro>
-      <Section label="Identité">
+      <Intro>{t('w1b.profil_intro')}</Intro>
+      <Section label={t('w1b.sec_identite')}>
         <Group>
           <Line first align="flex-start">
             <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ fontSize: 13, color: 'var(--text-mid)', margin: '0 0 6px' }}>Nom d&apos;affichage</p>
-              <input value={s.coachName as string} onChange={e => set('coachName', e.target.value)} placeholder="Ex. Coach Alex" style={{ ...ctrl, width: '100%', boxSizing: 'border-box', fontSize: 15, background: 'transparent', border: 'none', padding: 0 }} />
+              <p style={{ fontSize: 13, color: 'var(--text-mid)', margin: '0 0 6px' }}>{t('w1b.field_display_name')}</p>
+              <input value={s.coachName as string} onChange={e => set('coachName', e.target.value)} placeholder={t('w1b.ph_coach_alex')} style={{ ...ctrl, width: '100%', boxSizing: 'border-box', fontSize: 15, background: 'transparent', border: 'none', padding: 0 }} />
             </div>
           </Line>
           <Line align="flex-start">
             <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ fontSize: 13, color: 'var(--text-mid)', margin: '0 0 6px' }}>Certifications / diplômes</p>
-              <input value={s.certifs as string} onChange={e => set('certifs', e.target.value)} placeholder="Ex. BPJEPS, Ironman U. Certified…" style={{ ...ctrl, width: '100%', boxSizing: 'border-box', fontSize: 15, background: 'transparent', border: 'none', padding: 0 }} />
+              <p style={{ fontSize: 13, color: 'var(--text-mid)', margin: '0 0 6px' }}>{t('w1b.field_certifs')}</p>
+              <input value={s.certifs as string} onChange={e => set('certifs', e.target.value)} placeholder={t('w1b.ph_certifs')} style={{ ...ctrl, width: '100%', boxSizing: 'border-box', fontSize: 15, background: 'transparent', border: 'none', padding: 0 }} />
             </div>
           </Line>
         </Group>
       </Section>
 
-      <Section label="Spécialités">
+      <Section label={t('w1b.sec_specialites')}>
         <Group>
           <Line first>
             <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}>
@@ -189,16 +192,16 @@ function ProfilBloc({ s, set }: { s: S; set: SetFn }) {
         </Group>
       </Section>
 
-      <Section label="Bio">
+      <Section label={t('w1b.sec_bio')}>
         <Group>
-          <textarea value={s.bio as string} onChange={e => set('bio', e.target.value)} placeholder="Présente-toi en une ou deux phrases…" rows={3}
+          <textarea value={s.bio as string} onChange={e => set('bio', e.target.value)} placeholder={t('w1b.ph_bio')} rows={3}
             style={{ width: '100%', padding: '14px 16px', border: 'none', background: 'transparent', color: 'var(--text)', fontSize: 14, outline: 'none', resize: 'none' as const, fontFamily: 'var(--font-body)', lineHeight: 1.6, boxSizing: 'border-box' as const, display: 'block' }} />
         </Group>
       </Section>
 
-      <Section label="Visibilité">
+      <Section label={t('w1b.sec_visibilite')}>
         <Group>
-          <ToggleLine first label="Visible dans l'annuaire coach" sub="Permet à de nouveaux athlètes de te trouver." value={!!s.directoryVisible} onChange={v => set('directoryVisible', v)} />
+          <ToggleLine first label={t('w1b.tog_directory')} sub={t('w1b.tog_directory_sub')} value={!!s.directoryVisible} onChange={v => set('directoryVisible', v)} />
         </Group>
       </Section>
     </div>
@@ -206,20 +209,21 @@ function ProfilBloc({ s, set }: { s: S; set: SetFn }) {
 }
 
 function AccesBloc({ s, set }: { s: S; set: SetFn }) {
+  const { t } = useI18n()
   return (
     <div>
-      <Intro>Comment tes athlètes te rejoignent, et les règles du lien coach ↔ athlète.</Intro>
-      <Section label="Invitation">
+      <Intro>{t('w1b.acces_intro')}</Intro>
+      <Section label={t('w1b.sec_invitation')}>
         <Group>
-          <FieldLine first label="Méthode par défaut"><Seg value={s.inviteMethod as string} options={[['code', 'Code'], ['link', 'Lien']]} onChange={v => set('inviteMethod', v)} /></FieldLine>
-          <ToggleLine label="Accepter automatiquement les demandes" sub="Les athlètes qui entrent ton code sont liés sans validation." value={!!s.autoAccept} onChange={v => set('autoAccept', v)} />
+          <FieldLine first label={t('w1b.field_default_method')}><Seg value={s.inviteMethod as string} options={[['code', t('w1b.opt_code')], ['link', t('w1b.opt_link')]]} onChange={v => set('inviteMethod', v)} /></FieldLine>
+          <ToggleLine label={t('w1b.tog_auto_accept')} sub={t('w1b.tog_auto_accept_sub')} value={!!s.autoAccept} onChange={v => set('autoAccept', v)} />
         </Group>
       </Section>
-      <Section label="Consentement & inactivité">
+      <Section label={t('w1b.sec_consent')}>
         <Group>
-          <ToggleLine first label="Consentement de l'athlète requis" sub="L'athlète doit accepter avant que tu voies ses données (RGPD)." value locked />
-          <ToggleLine label="Retirer les athlètes inactifs" sub={`Rompre le lien après ${s.autoRemoveMonths} mois sans activité.`} value={!!s.autoRemoveInactive} onChange={v => set('autoRemoveInactive', v)} />
-          {!!s.autoRemoveInactive && <SliderLine label="Après" min={1} max={12} value={s.autoRemoveMonths as number} onChange={v => set('autoRemoveMonths', v)} suffix=" mois" />}
+          <ToggleLine first label={t('w1b.tog_consent')} sub={t('w1b.tog_consent_sub')} value locked />
+          <ToggleLine label={t('w1b.tog_remove_inactive')} sub={t('w1b.tog_remove_inactive_sub', { n: s.autoRemoveMonths as number })} value={!!s.autoRemoveInactive} onChange={v => set('autoRemoveInactive', v)} />
+          {!!s.autoRemoveInactive && <SliderLine label={t('w1b.slider_after')} min={1} max={12} value={s.autoRemoveMonths as number} onChange={v => set('autoRemoveMonths', v)} suffix={t('w1b.suffix_months')} />}
         </Group>
       </Section>
     </div>
@@ -227,23 +231,24 @@ function AccesBloc({ s, set }: { s: S; set: SetFn }) {
 }
 
 function IaBloc({ s, set }: { s: S; set: SetFn }) {
+  const { t } = useI18n()
   return (
     <div>
-      <Intro>L&apos;IA t&apos;aide à piloter ton roster. Elle est distincte du coach personnel de l&apos;athlète.</Intro>
-      <Section label="Comportement">
+      <Intro>{t('w1b.ia_intro')}</Intro>
+      <Section label={t('w1b.sec_behavior')}>
         <Group>
-          <FieldLine first label="Modèle par défaut"><Select value={s.aiModel as string} options={[['hermes', 'Hermès'], ['athena', 'Athéna'], ['zeus', 'Zeus']]} onChange={v => set('aiModel', v)} /></FieldLine>
-          <FieldLine label="Ton"><Select value={s.aiTone as string} options={[['concis', 'Concis'], ['pedago', 'Pédagogue'], ['direct', 'Direct']]} onChange={v => set('aiTone', v)} /></FieldLine>
-          <FieldLine label="Autonomie"><Seg value={s.aiAutonomy as string} options={[['propose', 'Propose'], ['auto', 'Agit auto']]} onChange={v => set('aiAutonomy', v)} /></FieldLine>
+          <FieldLine first label={t('w1b.default_model')}><Select value={s.aiModel as string} options={[['hermes', 'Hermès'], ['athena', 'Athéna'], ['zeus', 'Zeus']]} onChange={v => set('aiModel', v)} /></FieldLine>
+          <FieldLine label={t('w1b.field_tone')}><Select value={s.aiTone as string} options={[['concis', t('w1b.opt_concis')], ['pedago', t('w1b.opt_pedago')], ['direct', t('w1b.opt_direct')]]} onChange={v => set('aiTone', v)} /></FieldLine>
+          <FieldLine label={t('w1b.field_autonomy')}><Seg value={s.aiAutonomy as string} options={[['propose', t('w1b.opt_propose')], ['auto', t('w1b.opt_auto_act')]]} onChange={v => set('aiAutonomy', v)} /></FieldLine>
         </Group>
       </Section>
-      <Section label="Données lisibles par l'IA">
+      <Section label={t('w1b.sec_ai_readable')}>
         <Group>
-          <ToggleLine first label="Activités" value={!!s.aiReadActivities} onChange={v => set('aiReadActivities', v)} />
-          <ToggleLine label="Récupération" value={!!s.aiReadRecovery} onChange={v => set('aiReadRecovery', v)} />
-          <ToggleLine label="Nutrition" value={!!s.aiReadNutrition} onChange={v => set('aiReadNutrition', v)} />
-          <ToggleLine label="Blessures" value={!!s.aiReadInjuries} onChange={v => set('aiReadInjuries', v)} />
-          <ToggleLine label="Planning" value={!!s.aiReadPlanning} onChange={v => set('aiReadPlanning', v)} />
+          <ToggleLine first label={t('w1b.tog_activities')} value={!!s.aiReadActivities} onChange={v => set('aiReadActivities', v)} />
+          <ToggleLine label={t('w1b.tog_recovery')} value={!!s.aiReadRecovery} onChange={v => set('aiReadRecovery', v)} />
+          <ToggleLine label={t('w1b.tog_nutrition')} value={!!s.aiReadNutrition} onChange={v => set('aiReadNutrition', v)} />
+          <ToggleLine label={t('w1b.tog_injuries')} value={!!s.aiReadInjuries} onChange={v => set('aiReadInjuries', v)} />
+          <ToggleLine label={t('w1b.tog_planning')} value={!!s.aiReadPlanning} onChange={v => set('aiReadPlanning', v)} />
         </Group>
       </Section>
     </div>
@@ -251,15 +256,16 @@ function IaBloc({ s, set }: { s: S; set: SetFn }) {
 }
 
 function StudioBloc({ s, set }: { s: S; set: SetFn }) {
+  const { t } = useI18n()
   return (
     <div>
-      <Intro>Systèmes IA qui tournent sur les données de tes athlètes (analyses, rapports, alertes).</Intro>
-      <Section label="Défauts des systèmes">
+      <Intro>{t('w1b.studio_intro')}</Intro>
+      <Section label={t('w1b.sec_system_defaults')}>
         <Group>
-          <FieldLine first label="Modèle par défaut"><Select value={s.studioModel as string} options={[['hermes', 'Hermès'], ['athena', 'Athéna'], ['zeus', 'Zeus']]} onChange={v => set('studioModel', v)} /></FieldLine>
-          <FieldLine label="Exécution"><Seg value={s.studioExec as string} options={[['manual', 'Manuelle'], ['auto', 'Auto']]} onChange={v => set('studioExec', v)} /></FieldLine>
-          <FieldLine label="Cadence"><Seg value={s.studioCadence as string} options={[['weekly', 'Hebdo'], ['biweekly', '2 sem.']]} onChange={v => set('studioCadence', v)} /></FieldLine>
-          <FieldLine label="Cible"><Seg value={s.studioTarget as string} options={[['all', 'Tous'], ['group', 'Groupe']]} onChange={v => set('studioTarget', v)} /></FieldLine>
+          <FieldLine first label={t('w1b.default_model')}><Select value={s.studioModel as string} options={[['hermes', 'Hermès'], ['athena', 'Athéna'], ['zeus', 'Zeus']]} onChange={v => set('studioModel', v)} /></FieldLine>
+          <FieldLine label={t('w1b.field_execution')}><Seg value={s.studioExec as string} options={[['manual', t('w1b.opt_manual')], ['auto', t('w1b.opt_auto')]]} onChange={v => set('studioExec', v)} /></FieldLine>
+          <FieldLine label={t('w1b.field_cadence')}><Seg value={s.studioCadence as string} options={[['weekly', t('w1b.opt_hebdo')], ['biweekly', t('w1b.opt_biweekly')]]} onChange={v => set('studioCadence', v)} /></FieldLine>
+          <FieldLine label={t('w1b.field_target')}><Seg value={s.studioTarget as string} options={[['all', t('w1b.opt_all')], ['group', t('w1b.opt_group')]]} onChange={v => set('studioTarget', v)} /></FieldLine>
         </Group>
       </Section>
     </div>
@@ -267,31 +273,32 @@ function StudioBloc({ s, set }: { s: S; set: SetFn }) {
 }
 
 function NotifsBloc({ s, set }: { s: S; set: SetFn }) {
+  const { t } = useI18n()
   return (
     <div>
-      <Intro>Quand te prévenir, et par quels canaux.</Intro>
-      <Section label="Événements">
+      <Intro>{t('w1b.notifs_intro')}</Intro>
+      <Section label={t('w1b.sec_events')}>
         <Group>
-          <ToggleLine first label="Nouvel athlète accepté" value={!!s.notifNewAthlete} onChange={v => set('notifNewAthlete', v)} />
-          <ToggleLine label="Message reçu d'un athlète" value={!!s.notifMessage} onChange={v => set('notifMessage', v)} />
-          <ToggleLine label="Alerte santé" sub="Blessure, surmenage ou inactivité" value={!!s.notifHealth} onChange={v => set('notifHealth', v)} />
-          <ToggleLine label="Échéance de course proche" value={!!s.notifRace} onChange={v => set('notifRace', v)} />
-          <ToggleLine label="Run Studio terminé" value={!!s.notifStudioRun} onChange={v => set('notifStudioRun', v)} />
-          <ToggleLine label="Adhérence faible d'un athlète" value={!!s.notifAdherence} onChange={v => set('notifAdherence', v)} />
-          <ToggleLine label="Nouveau check-in récupération" value={!!s.notifCheckin} onChange={v => set('notifCheckin', v)} />
+          <ToggleLine first label={t('w1b.tog_new_athlete')} value={!!s.notifNewAthlete} onChange={v => set('notifNewAthlete', v)} />
+          <ToggleLine label={t('w1b.tog_message')} value={!!s.notifMessage} onChange={v => set('notifMessage', v)} />
+          <ToggleLine label={t('w1b.tog_health')} sub={t('w1b.tog_health_sub')} value={!!s.notifHealth} onChange={v => set('notifHealth', v)} />
+          <ToggleLine label={t('w1b.tog_race')} value={!!s.notifRace} onChange={v => set('notifRace', v)} />
+          <ToggleLine label={t('w1b.tog_studio_run')} value={!!s.notifStudioRun} onChange={v => set('notifStudioRun', v)} />
+          <ToggleLine label={t('w1b.tog_adherence')} value={!!s.notifAdherence} onChange={v => set('notifAdherence', v)} />
+          <ToggleLine label={t('w1b.tog_checkin')} value={!!s.notifCheckin} onChange={v => set('notifCheckin', v)} />
         </Group>
       </Section>
-      <Section label="Canaux">
+      <Section label={t('w1b.sec_channels')}>
         <Group>
-          <ToggleLine first label="Dans l'app" value={!!s.chanInApp} onChange={v => set('chanInApp', v)} />
-          <ToggleLine label="Notifications push" value={!!s.chanPush} onChange={v => set('chanPush', v)} />
-          <ToggleLine label="Email" value={!!s.chanEmail} onChange={v => set('chanEmail', v)} />
+          <ToggleLine first label={t('w1b.tog_inapp')} value={!!s.chanInApp} onChange={v => set('chanInApp', v)} />
+          <ToggleLine label={t('w1b.tog_push')} value={!!s.chanPush} onChange={v => set('chanPush', v)} />
+          <ToggleLine label={t('w1b.tog_email')} value={!!s.chanEmail} onChange={v => set('chanEmail', v)} />
         </Group>
       </Section>
-      <Section label="Rythme">
+      <Section label={t('w1b.sec_rhythm')}>
         <Group>
-          <FieldLine first label="Fréquence"><Select value={s.notifFreq as string} options={[['realtime', 'Temps réel'], ['daily', 'Résumé quotidien'], ['weekly', 'Hebdo']]} onChange={v => set('notifFreq', v)} /></FieldLine>
-          <FieldLine label="Heures calmes">
+          <FieldLine first label={t('w1b.field_frequency')}><Select value={s.notifFreq as string} options={[['realtime', t('w1b.opt_realtime')], ['daily', t('w1b.opt_daily')], ['weekly', t('w1b.opt_hebdo')]]} onChange={v => set('notifFreq', v)} /></FieldLine>
+          <FieldLine label={t('w1b.field_quiet_hours')}>
             <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
               <input type="time" value={s.quietFrom as string} onChange={e => set('quietFrom', e.target.value)} style={{ ...ctrl, cursor: 'pointer' }} />
               <span style={{ color: 'var(--text-dim)', fontSize: 13 }}>→</span>
@@ -305,16 +312,17 @@ function NotifsBloc({ s, set }: { s: S; set: SetFn }) {
 }
 
 function SeuilsBloc({ s, set }: { s: S; set: SetFn }) {
+  const { t } = useI18n()
   return (
     <div>
-      <Intro>Ce qui déclenche une alerte sur ton Dashboard coach.</Intro>
+      <Intro>{t('w1b.seuils_intro')}</Intro>
       <Section>
         <Group>
-          <SliderLine first label="Inactivité" min={2} max={21} value={s.thInactive as number} onChange={v => set('thInactive', v)} suffix=" j" />
-          <SliderLine label="Fatigue élevée (≥)" min={2} max={5} step={0.5} value={s.thFatigue as number} onChange={v => set('thFatigue', v)} suffix=" /5" />
-          <SliderLine label="Adhérence faible (<)" min={30} max={90} step={5} value={s.thAdherence as number} onChange={v => set('thAdherence', v)} suffix=" %" />
-          <SliderLine label="Pic de charge (>)" min={20} max={80} step={5} value={s.thLoadSpike as number} onChange={v => set('thLoadSpike', v)} suffix=" %" />
-          <SliderLine label="Sommeil au plancher (≤)" min={1} max={4} step={0.5} value={s.thSleep as number} onChange={v => set('thSleep', v)} suffix=" /5" />
+          <SliderLine first label={t('w1b.slider_inactivity')} min={2} max={21} value={s.thInactive as number} onChange={v => set('thInactive', v)} suffix={t('w1b.suffix_days')} />
+          <SliderLine label={t('w1b.slider_high_fatigue')} min={2} max={5} step={0.5} value={s.thFatigue as number} onChange={v => set('thFatigue', v)} suffix=" /5" />
+          <SliderLine label={t('w1b.slider_low_adherence')} min={30} max={90} step={5} value={s.thAdherence as number} onChange={v => set('thAdherence', v)} suffix=" %" />
+          <SliderLine label={t('w1b.slider_load_spike')} min={20} max={80} step={5} value={s.thLoadSpike as number} onChange={v => set('thLoadSpike', v)} suffix=" %" />
+          <SliderLine label={t('w1b.slider_low_sleep')} min={1} max={4} step={0.5} value={s.thSleep as number} onChange={v => set('thSleep', v)} suffix=" /5" />
         </Group>
       </Section>
     </div>
@@ -322,32 +330,34 @@ function SeuilsBloc({ s, set }: { s: S; set: SetFn }) {
 }
 
 function AutoBloc({ s, set, onStudio }: { s: S; set: SetFn; onStudio: () => void }) {
+  const { t } = useI18n()
   return (
     <div>
-      <Intro>Des règles « si → alors » qui travaillent pour toi entre deux séances de coaching.</Intro>
+      <Intro>{t('w1b.auto_intro')}</Intro>
       <Section>
         <Group>
-          <ToggleLine first label="Relancer un athlète inactif" sub={`Message auto après ${s.thInactive} jours sans activité.`} value={!!s.autoRelance} onChange={v => set('autoRelance', v)} />
-          <ToggleLine label="Alléger la semaine si récup au plancher" sub="Proposer un deload quand la fatigue explose." value={!!s.autoDeload} onChange={v => set('autoDeload', v)} />
-          <ToggleLine label="Rapport hebdo automatique par athlète" sub="Une synthèse de sa semaine chaque lundi." value={!!s.autoWeeklyReport} onChange={v => set('autoWeeklyReport', v)} />
-          <ToggleLine label="Alerter si adhérence faible" sub={`Me notifier + relancer sous ${s.thAdherence}%.`} value={!!s.autoAdherence} onChange={v => set('autoAdherence', v)} />
-          <ToggleLine label="Mettre le plan en pause si blessure" sub="Suspendre les séances dures + m'alerter." value={!!s.autoInjuryPause} onChange={v => set('autoInjuryPause', v)} />
+          <ToggleLine first label={t('w1b.tog_relance')} sub={t('w1b.tog_relance_sub', { n: s.thInactive as number })} value={!!s.autoRelance} onChange={v => set('autoRelance', v)} />
+          <ToggleLine label={t('w1b.tog_deload')} sub={t('w1b.tog_deload_sub')} value={!!s.autoDeload} onChange={v => set('autoDeload', v)} />
+          <ToggleLine label={t('w1b.tog_weekly_report')} sub={t('w1b.tog_weekly_report_sub')} value={!!s.autoWeeklyReport} onChange={v => set('autoWeeklyReport', v)} />
+          <ToggleLine label={t('w1b.tog_auto_adherence')} sub={t('w1b.tog_auto_adherence_sub', { n: s.thAdherence as number })} value={!!s.autoAdherence} onChange={v => set('autoAdherence', v)} />
+          <ToggleLine label={t('w1b.tog_injury_pause')} sub={t('w1b.tog_injury_pause_sub')} value={!!s.autoInjuryPause} onChange={v => set('autoInjuryPause', v)} />
         </Group>
       </Section>
-      <button onClick={onStudio} style={{ width: '100%', padding: '12px', borderRadius: 12, border: '1px solid color-mix(in srgb, var(--primary) 40%, var(--border))', background: 'color-mix(in srgb, var(--primary) 8%, transparent)', color: 'var(--primary)', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>Créer une automatisation sur mesure (Studio)</button>
+      <button onClick={onStudio} style={{ width: '100%', padding: '12px', borderRadius: 12, border: '1px solid color-mix(in srgb, var(--primary) 40%, var(--border))', background: 'color-mix(in srgb, var(--primary) 8%, transparent)', color: 'var(--primary)', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>{t('w1b.btn_custom_auto')}</button>
     </div>
   )
 }
 
 function AssignBloc({ s, set }: { s: S; set: SetFn }) {
+  const { t } = useI18n()
   return (
     <div>
-      <Intro>Tes préférences par défaut quand tu assignes une séance à un athlète.</Intro>
+      <Intro>{t('w1b.assign_intro')}</Intro>
       <Section>
         <Group>
-          <FieldLine first label="Sport par défaut"><Select value={s.assignSport as string} options={[['run', 'Course'], ['bike', 'Vélo'], ['swim', 'Natation'], ['gym', 'Muscu'], ['hyrox', 'Hyrox'], ['trail_run', 'Trail'], ['other', 'Autre']]} onChange={v => set('assignSport', v)} /></FieldLine>
-          <SliderLine label="Durée par défaut" min={15} max={240} step={15} value={s.assignDuration as number} onChange={v => set('assignDuration', v)} suffix=" min" />
-          <ToggleLine label="Validation de l'athlète requise" sub="La séance compte comme faite seulement s'il la valide." value={!!s.assignRequireValidation} onChange={v => set('assignRequireValidation', v)} />
+          <FieldLine first label={t('w1b.field_default_sport')}><Select value={s.assignSport as string} options={[['run', t('w1b.opt_run')], ['bike', t('w1b.opt_bike')], ['swim', t('w1b.opt_swim')], ['gym', t('w1b.opt_gym')], ['hyrox', 'Hyrox'], ['trail_run', t('w1b.opt_trail')], ['other', t('w1b.opt_other')]]} onChange={v => set('assignSport', v)} /></FieldLine>
+          <SliderLine label={t('w1b.slider_default_duration')} min={15} max={240} step={15} value={s.assignDuration as number} onChange={v => set('assignDuration', v)} suffix=" min" />
+          <ToggleLine label={t('w1b.tog_require_validation')} sub={t('w1b.tog_require_validation_sub')} value={!!s.assignRequireValidation} onChange={v => set('assignRequireValidation', v)} />
         </Group>
       </Section>
     </div>
@@ -367,14 +377,15 @@ function LinkRow({ first, label, sub, onClick }: { first?: boolean; label: strin
 }
 
 function DataBloc() {
+  const { t } = useI18n()
   return (
     <div>
-      <Intro>Tu accèdes aux données de tes athlètes en <b>lecture seule</b>, uniquement après leur consentement — et ils peuvent le révoquer à tout moment.</Intro>
-      <Section label="Données des athlètes">
+      <Intro>{t('w1b.data_intro_1')}<b>{t('w1b.data_intro_bold')}</b>{t('w1b.data_intro_2')}</Intro>
+      <Section label={t('w1b.sec_athlete_data')}>
         <Group>
-          <LinkRow first label="Journal d'accès aux données" sub="Voir quand tu as consulté les fiches" />
-          <LinkRow label="Exporter les données d'un athlète" sub="Sur demande de l'athlète (RGPD)" />
-          <LinkRow label="Politique de confidentialité" sub="Comment les données sont protégées" />
+          <LinkRow first label={t('w1b.link_access_log')} sub={t('w1b.link_access_log_sub')} />
+          <LinkRow label={t('w1b.link_export')} sub={t('w1b.link_export_sub')} />
+          <LinkRow label={t('w1b.link_privacy')} sub={t('w1b.link_privacy_sub')} />
         </Group>
       </Section>
     </div>
@@ -382,24 +393,25 @@ function DataBloc() {
 }
 
 function OffreBloc() {
+  const { t } = useI18n()
   return (
     <div>
-      <Intro>Ton plan coach et ta consommation Studio.</Intro>
-      <Section label="Plan actuel">
+      <Intro>{t('w1b.offre_intro')}</Intro>
+      <Section label={t('w1b.sec_current_plan')}>
         <Group>
           <Line first>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)', margin: 0 }}>Offre Coach</p>
-              <p style={{ fontSize: 11.5, color: 'var(--text-dim)', margin: '2px 0 0' }}>Jusqu&apos;à 25 athlètes · quota Studio mensuel</p>
+              <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)', margin: 0 }}>{t('w1b.offre_coach')}</p>
+              <p style={{ fontSize: 11.5, color: 'var(--text-dim)', margin: '2px 0 0' }}>{t('w1b.offre_coach_sub')}</p>
             </div>
-            <a href="/settings/subscription" style={{ textDecoration: 'none', padding: '8px 14px', borderRadius: 10, background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 13, fontWeight: 700, flexShrink: 0 }}>Gérer</a>
+            <a href="/settings/subscription" style={{ textDecoration: 'none', padding: '8px 14px', borderRadius: 10, background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 13, fontWeight: 700, flexShrink: 0 }}>{t('w1b.manage')}</a>
           </Line>
         </Group>
       </Section>
-      <Section label="Facturation">
+      <Section label={t('w1b.sec_billing')}>
         <Group>
-          <LinkRow first label="Packs de tokens Studio" sub="Recharger pour lancer plus de systèmes" />
-          <LinkRow label="Historique de facturation" sub="Tes reçus et paiements" />
+          <LinkRow first label={t('w1b.link_token_packs')} sub={t('w1b.link_token_packs_sub')} />
+          <LinkRow label={t('w1b.link_billing_history')} sub={t('w1b.link_billing_history_sub')} />
         </Group>
       </Section>
     </div>
@@ -407,13 +419,14 @@ function OffreBloc() {
 }
 
 function ApparenceBloc({ s, set }: { s: S; set: SetFn }) {
+  const { t } = useI18n()
   return (
     <div>
-      <Intro>Langue et unités de ton espace coach.</Intro>
+      <Intro>{t('w1b.apparence_intro')}</Intro>
       <Section>
         <Group>
-          <FieldLine first label="Langue"><Seg value={s.lang as string} options={[['fr', 'Français'], ['en', 'English']]} onChange={v => set('lang', v)} /></FieldLine>
-          <FieldLine label="Unités"><Seg value={s.units as string} options={[['metric', 'Métrique'], ['imperial', 'Impérial']]} onChange={v => set('units', v)} /></FieldLine>
+          <FieldLine first label={t('w1b.field_language')}><Seg value={s.lang as string} options={[['fr', 'Français'], ['en', 'English']]} onChange={v => set('lang', v)} /></FieldLine>
+          <FieldLine label={t('w1b.field_units')}><Seg value={s.units as string} options={[['metric', t('w1b.opt_metric')], ['imperial', t('w1b.opt_imperial')]]} onChange={v => set('units', v)} /></FieldLine>
         </Group>
       </Section>
     </div>
@@ -426,6 +439,7 @@ function ApparenceBloc({ s, set }: { s: S; set: SetFn }) {
 
 export function CoachSettingsContent() {
   const router = useRouter()
+  const { t } = useI18n()
   const { profile } = useProfile()
   const [s, setS] = useState<S>(DEFAULTS)
   const [active, setActive] = useState<string | null>(null)
@@ -446,36 +460,36 @@ export function CoachSettingsContent() {
   function back() { setDir(-1); setActive(null); window.scrollTo({ top: 0 }) }
 
   const CONTENT: Record<string, { label: string; node: React.ReactNode }> = {
-    profil:    { label: 'Profil coach',        node: <ProfilBloc s={s} set={set} /> },
-    offre:     { label: 'Offre & facturation', node: <OffreBloc /> },
-    data:      { label: 'Confidentialité',     node: <DataBloc /> },
-    acces:     { label: 'Athlètes & accès',    node: <AccesBloc s={s} set={set} /> },
-    ia:        { label: 'Assistant IA',        node: <IaBloc s={s} set={set} /> },
-    studio:    { label: 'Studio coach',        node: <StudioBloc s={s} set={set} /> },
-    assign:    { label: 'Assignation',         node: <AssignBloc s={s} set={set} /> },
-    seuils:    { label: 'Alertes & seuils',    node: <SeuilsBloc s={s} set={set} /> },
-    auto:      { label: 'Automatisations',     node: <AutoBloc s={s} set={set} onStudio={() => router.push('/coach/studio')} /> },
-    notifs:    { label: 'Notifications',       node: <NotifsBloc s={s} set={set} /> },
-    apparence: { label: 'Apparence & langue',  node: <ApparenceBloc s={s} set={set} /> },
+    profil:    { label: t('w1b.nav_profil'),    node: <ProfilBloc s={s} set={set} /> },
+    offre:     { label: t('w1b.nav_offre'),     node: <OffreBloc /> },
+    data:      { label: t('w1b.nav_data'),      node: <DataBloc /> },
+    acces:     { label: t('w1b.nav_acces'),     node: <AccesBloc s={s} set={set} /> },
+    ia:        { label: t('w1b.nav_ia'),        node: <IaBloc s={s} set={set} /> },
+    studio:    { label: t('w1b.nav_studio'),    node: <StudioBloc s={s} set={set} /> },
+    assign:    { label: t('w1b.nav_assign'),    node: <AssignBloc s={s} set={set} /> },
+    seuils:    { label: t('w1b.nav_seuils'),    node: <SeuilsBloc s={s} set={set} /> },
+    auto:      { label: t('w1b.nav_auto'),      node: <AutoBloc s={s} set={set} onStudio={() => router.push('/coach/studio')} /> },
+    notifs:    { label: t('w1b.nav_notifs'),    node: <NotifsBloc s={s} set={set} /> },
+    apparence: { label: t('w1b.nav_apparence'), node: <ApparenceBloc s={s} set={set} /> },
   }
 
   const GROUPS: { title: string; rows: { id: string; label: string; Icon: typeof User; value?: string }[] }[] = [
-    { title: 'Compte', rows: [
-      { id: 'profil', label: 'Profil coach', Icon: User },
-      { id: 'offre',  label: 'Offre & facturation', Icon: CreditCard, value: 'Coach' },
-      { id: 'data',   label: 'Confidentialité', Icon: Shield },
+    { title: t('w1b.grp_compte'), rows: [
+      { id: 'profil', label: t('w1b.nav_profil'), Icon: User },
+      { id: 'offre',  label: t('w1b.nav_offre'), Icon: CreditCard, value: t('w1b.plan_coach_short') },
+      { id: 'data',   label: t('w1b.nav_data'), Icon: Shield },
     ] },
-    { title: 'Coaching', rows: [
-      { id: 'acces',  label: 'Athlètes & accès', Icon: Users },
-      { id: 'ia',     label: 'Assistant IA', Icon: Sparkles },
-      { id: 'studio', label: 'Studio coach', Icon: Share2 },
-      { id: 'assign', label: 'Assignation', Icon: ClipboardList },
-      { id: 'seuils', label: 'Alertes & seuils', Icon: SlidersHorizontal },
-      { id: 'auto',   label: 'Automatisations', Icon: Zap },
+    { title: t('w1b.grp_coaching'), rows: [
+      { id: 'acces',  label: t('w1b.nav_acces'), Icon: Users },
+      { id: 'ia',     label: t('w1b.nav_ia'), Icon: Sparkles },
+      { id: 'studio', label: t('w1b.nav_studio'), Icon: Share2 },
+      { id: 'assign', label: t('w1b.nav_assign'), Icon: ClipboardList },
+      { id: 'seuils', label: t('w1b.nav_seuils'), Icon: SlidersHorizontal },
+      { id: 'auto',   label: t('w1b.nav_auto'), Icon: Zap },
     ] },
-    { title: 'Application', rows: [
-      { id: 'notifs',    label: 'Notifications', Icon: Bell },
-      { id: 'apparence', label: 'Apparence & langue', Icon: Palette },
+    { title: t('w1b.grp_application'), rows: [
+      { id: 'notifs',    label: t('w1b.nav_notifs'), Icon: Bell },
+      { id: 'apparence', label: t('w1b.nav_apparence'), Icon: Palette },
     ] },
   ]
 
@@ -488,11 +502,11 @@ export function CoachSettingsContent() {
           {active ? (
             <div>
               <div style={{ position: 'sticky', top: 0, zIndex: 5, background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 40, margin: '0 -16px 16px', padding: '2px 16px 12px' }}>
-                <button onClick={back} aria-label="Retour" style={{ position: 'absolute', left: 16, top: 0, width: 40, height: 40, borderRadius: '50%', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 10px rgba(0,0,0,0.14)' }}>
+                <button onClick={back} aria-label={t('w1b.back')} style={{ position: 'absolute', left: 16, top: 0, width: 40, height: 40, borderRadius: '50%', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 10px rgba(0,0,0,0.14)' }}>
                   <ChevronLeft size={20} />
                 </button>
                 <p style={{ fontFamily: 'var(--font-display)', fontSize: 19, fontWeight: 600, margin: 0, color: 'var(--text)' }}>{CONTENT[active]?.label}</p>
-                <span style={{ position: 'absolute', right: 16, top: 10, fontSize: 12, color: 'var(--primary)', opacity: saved ? 1 : 0, transition: 'opacity .2s', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4 }}><Check size={13} /> Enregistré</span>
+                <span style={{ position: 'absolute', right: 16, top: 10, fontSize: 12, color: 'var(--primary)', opacity: saved ? 1 : 0, transition: 'opacity .2s', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4 }}><Check size={13} /> {t('w1b.saved')}</span>
               </div>
               {CONTENT[active]?.node}
             </div>
@@ -503,12 +517,12 @@ export function CoachSettingsContent() {
                 <div style={{ width: 58, height: 58, borderRadius: '50%', flexShrink: 0, overflow: 'hidden', background: 'var(--primary-dim)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   {profile?.avatar_url
                     // eslint-disable-next-line @next/next/no-img-element
-                    ? <img src={profile.avatar_url} alt="Profil" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ? <img src={profile.avatar_url} alt={t('w1b.avatar_alt')} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     : <span style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 700, color: 'var(--primary)' }}>{initial}</span>}
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 700, margin: 0, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{profile?.full_name || 'Mon espace coach'}</p>
-                  <p style={{ fontSize: 13, color: 'var(--primary)', margin: '3px 0 0', fontWeight: 700 }}>Interface coach</p>
+                  <p style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 700, margin: 0, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{profile?.full_name || t('w1b.my_coach_space')}</p>
+                  <p style={{ fontSize: 13, color: 'var(--primary)', margin: '3px 0 0', fontWeight: 700 }}>{t('w1b.coach_interface')}</p>
                 </div>
               </div>
 
@@ -525,7 +539,7 @@ export function CoachSettingsContent() {
 
               {/* Quitter le mode coach */}
               <div style={{ background: GREY_CARD, border: '1px solid var(--border)', borderRadius: 16, overflow: 'hidden' }}>
-                <ListRow Icon={LogOut} label="Quitter le mode coach" danger last onClick={() => setConfirmLeave(true)} />
+                <ListRow Icon={LogOut} label={t('w1b.exit_coach')} danger last onClick={() => setConfirmLeave(true)} />
               </div>
             </div>
           )}
@@ -534,11 +548,11 @@ export function CoachSettingsContent() {
         {confirmLeave && (
           <div onClick={() => setConfirmLeave(false)} style={{ position: 'fixed', inset: 0, zIndex: 13000, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(3px)', WebkitBackdropFilter: 'blur(3px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
             <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 340, background: 'var(--bg-card)', borderRadius: 18, padding: '22px 20px', boxShadow: '0 24px 60px rgba(0,0,0,0.35)', border: '1px solid var(--border)' }}>
-              <p style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 700, color: 'var(--text)', margin: '0 0 6px' }}>Quitter le mode coach ?</p>
-              <p style={{ fontSize: 13.5, color: 'var(--text-mid)', margin: '0 0 18px', lineHeight: 1.5 }}>Tu reviens à ton appli athlète. Tes athlètes et réglages coach sont conservés.</p>
+              <p style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 700, color: 'var(--text)', margin: '0 0 6px' }}>{t('w1b.exit_coach_q')}</p>
+              <p style={{ fontSize: 13.5, color: 'var(--text-mid)', margin: '0 0 18px', lineHeight: 1.5 }}>{t('w1b.exit_coach_desc')}</p>
               <div style={{ display: 'flex', gap: 10 }}>
-                <button onClick={() => setConfirmLeave(false)} style={{ flex: 1, padding: '11px', borderRadius: 12, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>Annuler</button>
-                <button onClick={() => router.push('/')} style={{ flex: 1, padding: '11px', borderRadius: 12, border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>Quitter</button>
+                <button onClick={() => setConfirmLeave(false)} style={{ flex: 1, padding: '11px', borderRadius: 12, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>{t('w1b.cancel')}</button>
+                <button onClick={() => router.push('/')} style={{ flex: 1, padding: '11px', borderRadius: 12, border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>{t('w1b.exit')}</button>
               </div>
             </div>
           </div>

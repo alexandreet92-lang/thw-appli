@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom'
 import { createClient } from '@/lib/supabase/client'
 import { resolvePlanningUid } from '@/lib/planning/scope'
 import { Segmented } from '@/components/ui/Segmented'
+import { useI18n } from '@/lib/i18n'
 
 // ─── Levels ──────────────────────────────────────────────────────────────────
 const LEVELS = [
@@ -680,6 +681,7 @@ function RadarSVG({ axes, onHover }: RadarSVGProps) {
 
 // ─── Tooltip ─────────────────────────────────────────────────────────────────
 function RadarTooltip({ tooltip }: { tooltip: TooltipState }) {
+  const { t } = useI18n()
   const { axis, x, y } = tooltip
   const lv = levelOf(axis.score)
   return createPortal(
@@ -716,7 +718,7 @@ function RadarTooltip({ tooltip }: { tooltip: TooltipState }) {
       </div>
       {axis.score > 0 && (
         <div style={{ fontSize: 12, color: 'var(--text-mid)', marginBottom: 4 }}>
-          Valeur : <strong style={{ color: 'var(--text)' }}>{formatRaw(axis.rawValue, axis.unit)}</strong>
+          {t('w1c.valeur')} <strong style={{ color: 'var(--text)' }}>{formatRaw(axis.rawValue, axis.unit)}</strong>
         </div>
       )}
       <div style={{ fontSize: 11, color: 'var(--text-dim)', lineHeight: 1.4 }}>
@@ -724,7 +726,7 @@ function RadarTooltip({ tooltip }: { tooltip: TooltipState }) {
       </div>
       {axis.score === 0 && (
         <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 4, fontStyle: 'italic', opacity: 0.7 }}>
-          Non renseigné — cliquez Mettre à jour
+          {t('w1c.non_renseigne')}
         </div>
       )}
     </div>,
@@ -744,6 +746,7 @@ interface UpdateModalProps {
 }
 
 function UpdateModal({ sport, title, axisDefs, gender, currentValues, onClose, onSaved }: UpdateModalProps) {
+  const { t } = useI18n()
   const [draft, setDraft] = useState<Record<string, string>>(() => {
     const init: Record<string, string> = {}
     axisDefs.forEach(d => {
@@ -775,7 +778,7 @@ function UpdateModal({ sport, title, axisDefs, gender, currentValues, onClose, o
     try {
       const supabase = createClient()
       const uid = await resolvePlanningUid(supabase)
-      if (!uid) throw new Error('Non connecté')
+      if (!uid) throw new Error(t('w1c.non_connecte'))
 
       const rows = axisDefs
         .map(d => ({ user_id: uid, sport, axis: d.key, raw_value: parseFloat(draft[d.key] ?? '') || 0 }))
@@ -792,7 +795,7 @@ function UpdateModal({ sport, title, axisDefs, gender, currentValues, onClose, o
       })
       onSaved(newValues)
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Erreur inconnue')
+      setError(e instanceof Error ? e.message : t('w1c.erreur_inconnue'))
     } finally {
       setSaving(false)
     }
@@ -827,7 +830,7 @@ function UpdateModal({ sport, title, axisDefs, gender, currentValues, onClose, o
               {title}
             </div>
             <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 2 }}>
-              Genre sélectionné : {gender === 'M' ? 'Homme' : 'Femme'} — les benchmarks s&apos;adaptent
+              {t('w1c.genre_selectionne', { genre: gender === 'M' ? t('w1c.homme') : t('w1c.femme') })}
             </div>
           </div>
           <button
@@ -883,7 +886,7 @@ function UpdateModal({ sport, title, axisDefs, gender, currentValues, onClose, o
               color: 'var(--text-mid)', fontSize: 14, cursor: 'pointer',
             }}
           >
-            Annuler
+            {t('w1c.annuler')}
           </button>
           <button
             onClick={handleSave}
@@ -895,7 +898,7 @@ function UpdateModal({ sport, title, axisDefs, gender, currentValues, onClose, o
               fontSize: 14, fontWeight: 700, cursor: saving ? 'not-allowed' : 'pointer',
             }}
           >
-            {saving ? 'Enregistrement…' : 'Enregistrer'}
+            {saving ? t('w1c.enregistrement') : t('w1c.enregistrer')}
           </button>
         </div>
       </div>
@@ -969,6 +972,7 @@ interface BenchmarkModalProps {
 }
 
 function BenchmarkModal({ title, sportColor, axisDefs, rawValues, onClose }: BenchmarkModalProps) {
+  const { t } = useI18n()
   const [g, setG] = useState<'M' | 'F'>('M')
   const [visible, setVisible] = useState(false)
   const [closing, setClosing] = useState(false)
@@ -1013,10 +1017,10 @@ function BenchmarkModal({ title, sportColor, axisDefs, rawValues, onClose }: Ben
         }}>
           <div>
             <div style={{ fontFamily: 'Syne,sans-serif', fontWeight: 700, fontSize: 15, color: 'var(--text)' }}>
-              Barème — {title}
+              {t('w1c.bareme_title', { title })}
             </div>
             <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 2 }}>
-              Niveaux de référence par axe · cellules surlignées = votre niveau actuel
+              {t('w1c.bareme_subtitle')}
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -1057,7 +1061,7 @@ function BenchmarkModal({ title, sportColor, axisDefs, rawValues, onClose }: Ben
                   borderBottom: '1px solid var(--border)',
                   whiteSpace: 'nowrap', minWidth: 90, zIndex: 2,
                 }}>
-                  Niveau
+                  {t('w1c.niveau')}
                 </th>
                 {axisDefs.map(def => (
                   <th key={def.key} style={{
@@ -1132,6 +1136,7 @@ interface RadarCardProps {
 }
 
 function RadarCard({ dbSport, title, sportColor, axisDefs, defaultValues, extraControls, children }: RadarCardProps) {
+  const { t } = useI18n()
   const [gender, setGender] = useState<'M' | 'F'>('M')
   const [rawValues, setRawValues] = useState<Record<string, number>>({})
   const [loaded, setLoaded] = useState(false)
@@ -1261,14 +1266,14 @@ function RadarCard({ dbSport, title, sportColor, axisDefs, defaultValues, extraC
           )}
           {!hasData && loaded && (
             <span style={{ fontSize: 11, color: 'var(--text-dim)', fontStyle: 'italic' }}>
-              Aucune donnée
+              {t('w1c.aucune_donnee')}
             </span>
           )}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           {extraControls}
           {/* Gender toggle — neutre */}
-          <Segmented size="sm" ariaLabel="Genre" value={gender} onChange={setGender}
+          <Segmented size="sm" ariaLabel={t('w1c.genre')} value={gender} onChange={setGender}
             options={[{ id: 'M', label: 'H' }, { id: 'F', label: 'F' }]} />
           {/* Barème — lien cyan */}
           <button
@@ -1279,7 +1284,7 @@ function RadarCard({ dbSport, title, sportColor, axisDefs, defaultValues, extraC
               fontSize: 12, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap',
             }}
           >
-            Barème
+            {t('w1c.bareme')}
           </button>
         </div>
       </div>
@@ -1311,7 +1316,7 @@ function RadarCard({ dbSport, title, sportColor, axisDefs, defaultValues, extraC
       {showModal && (
         <UpdateModal
           sport={dbSport}
-          title={`Profil ${title}`}
+          title={t('w1c.profil_title', { title })}
           axisDefs={axisDefs}
           gender={gender}
           currentValues={rawValues}
@@ -1344,6 +1349,7 @@ interface ProfileHint {
 }
 
 export function CyclingRadar({ profile }: { profile?: ProfileHint }) {
+  const { t } = useI18n()
   const defaults: Record<string, number> = {}
   if (profile?.ftp && profile?.weight && profile.weight > 0) {
     defaults['ftp_wkg'] = parseFloat((profile.ftp / profile.weight).toFixed(2))
@@ -1352,7 +1358,7 @@ export function CyclingRadar({ profile }: { profile?: ProfileHint }) {
   return (
     <RadarCard
       dbSport="cycling"
-      title="Profil Cyclisme"
+      title={t('w1c.profil_cyclisme')}
       sportColor="#3b82f6"
       axisDefs={CYCLING_AXES}
       defaultValues={defaults}
@@ -1369,6 +1375,7 @@ function paceStringToSec(pace: string): number {
 }
 
 export function RunningRadar({ profile }: { profile?: ProfileHint }) {
+  const { t } = useI18n()
   const defaults: Record<string, number> = {}
   if (profile?.vma && profile.vma > 0) defaults['vma'] = profile.vma
   if (profile?.vo2max && profile.vo2max > 0) defaults['vo2max'] = profile.vo2max
@@ -1380,7 +1387,7 @@ export function RunningRadar({ profile }: { profile?: ProfileHint }) {
   return (
     <RadarCard
       dbSport="running"
-      title="Profil Running"
+      title={t('w1c.profil_running')}
       sportColor="#22c55e"
       axisDefs={RUNNING_AXES}
       defaultValues={defaults}
@@ -1390,6 +1397,7 @@ export function RunningRadar({ profile }: { profile?: ProfileHint }) {
 
 // ─── HyroxRadar ───────────────────────────────────────────────────────────────
 export function HyroxRadar() {
+  const { t } = useI18n()
   const [view, setView] = useState<'main' | 'stations'>('main')
 
   const toggle = (
@@ -1406,7 +1414,7 @@ export function HyroxRadar() {
         whiteSpace: 'nowrap',
       }}
     >
-      {view === 'main' ? '9 stations →' : '← Vue globale'}
+      {view === 'main' ? t('w1c.hyrox_9_stations') : t('w1c.hyrox_vue_globale')}
     </button>
   )
 
@@ -1414,7 +1422,7 @@ export function HyroxRadar() {
     return (
       <RadarCard
         dbSport="hyrox"
-        title="Détail Stations Hyrox"
+        title={t('w1c.profil_hyrox_stations')}
         sportColor="#ef4444"
         axisDefs={HYROX_STATION_AXES}
         extraControls={toggle}
@@ -1425,7 +1433,7 @@ export function HyroxRadar() {
   return (
     <RadarCard
       dbSport="hyrox"
-      title="Profil Hyrox"
+      title={t('w1c.profil_hyrox')}
       sportColor="#ef4444"
       axisDefs={HYROX_MAIN_AXES}
       extraControls={toggle}
@@ -1443,6 +1451,7 @@ const TRI_FORMAT_LABELS: Record<TriFormat, string> = {
 // `format`/`onFormat` optionnels : si fournis, le sélecteur est piloté par le parent
 // (la page Records) et le sélecteur interne disparaît.
 export function TriathlonRadar({ profile, format: controlled, onFormat }: { profile?: ProfileHint; format?: TriFormat; onFormat?: (f: TriFormat) => void }) {
+  const { t } = useI18n()
   const [internal, setInternal] = useState<TriFormat>('703')
   const format = controlled ?? internal
   const isControlled = controlled != null
@@ -1454,14 +1463,14 @@ export function TriathlonRadar({ profile, format: controlled, onFormat }: { prof
   }
 
   const formatSelector = isControlled ? undefined : (
-    <Segmented size="sm" ariaLabel="Format" value={format} onChange={f => (onFormat ?? setInternal)(f)}
+    <Segmented size="sm" ariaLabel={t('w1c.format')} value={format} onChange={f => (onFormat ?? setInternal)(f)}
       options={(Object.keys(TRI_FORMAT_LABELS) as TriFormat[]).map(f => ({ id: f, label: TRI_FORMAT_LABELS[f] }))} />
   )
 
   return (
     <RadarCard
       dbSport={`triathlon_${format}`}
-      title={`Profil Triathlon ${TRI_FORMAT_LABELS[format]}`}
+      title={t('w1c.profil_triathlon', { format: TRI_FORMAT_LABELS[format] })}
       sportColor="var(--primary)"
       axisDefs={TRIATHLON_AXES[format]}
       defaultValues={defaults}

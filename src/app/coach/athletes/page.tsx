@@ -17,6 +17,7 @@ import { useRouter } from 'next/navigation'
 import { getRoster, setAthleteGroup, setAthleteNote, type RosterAthlete, type Forme } from '@/lib/coach/roster'
 import { createInvite, acceptInvite, revokeLink, listPendingInvites, listMyCoaches, type CoachAthleteLink } from '@/lib/coach/relationships'
 import { InviteCodeReveal } from '@/components/coach/CodeCells'
+import { useI18n } from '@/lib/i18n'
 
 const DISP = 'var(--font-display)'
 const BODY = 'var(--font-body)'
@@ -43,6 +44,7 @@ function Spark({ d, col }: { d: number[]; col: string }) {
   )
 }
 export default function CoachAthletes() {
+  const { t } = useI18n()
   const router = useRouter()
   const [roster, setRoster] = useState<RosterAthlete[]>([])
   const [loading, setLoading] = useState(true)
@@ -102,8 +104,8 @@ export default function CoachAthletes() {
 
   const toggleSel = (id: string) => setSel(s => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n })
   const onInvite = async () => { setBusy(true); try { const { code } = await createInvite(); setNewCode(code); await reload() } catch { /* */ } finally { setBusy(false) } }
-  const onAccept = async () => { if (!acceptCode.trim() || busy) return; setBusy(true); setAcceptMsg(null); try { await acceptInvite(acceptCode); setAcceptCode(''); setAcceptMsg('Coach ajouté — il peut désormais te suivre.'); await reload() } catch (e) { setAcceptMsg(e instanceof Error ? e.message : 'Code invalide') } finally { setBusy(false) } }
-  const onRevoke = async (linkId: string) => { if (!confirm('Confirmer ? Ce lien sera rompu.')) return; try { await revokeLink(linkId); await reload() } catch { /* */ } }
+  const onAccept = async () => { if (!acceptCode.trim() || busy) return; setBusy(true); setAcceptMsg(null); try { await acceptInvite(acceptCode); setAcceptCode(''); setAcceptMsg(t('w1h.coach_added')); await reload() } catch (e) { setAcceptMsg(e instanceof Error ? e.message : t('w1h.invalid_code')) } finally { setBusy(false) } }
+  const onRevoke = async (linkId: string) => { if (!confirm(t('w1h.confirm_revoke_link'))) return; try { await revokeLink(linkId); await reload() } catch { /* */ } }
   const bulkGroup = async (name: string) => { const g = name.trim() || null; await Promise.all([...sel].map(id => { const a = roster.find(x => x.id === id); return a ? setAthleteGroup(a.linkId, g).catch(() => {}) : null })); setSel(new Set()); await reload() }
 
   // ── styles partagés ──
@@ -133,26 +135,26 @@ export default function CoachAthletes() {
     <div style={{ width: '100%', padding: '20px clamp(16px,4vw,40px) 60px', boxSizing: 'border-box', fontFamily: BODY }}>
       {/* En-tête */}
       <div>
-        <h1 style={{ fontFamily: DISP, fontWeight: 600, fontSize: 28, margin: 0, color: 'var(--text)' }}>Athlètes</h1>
-        <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: '3px 0 0' }}>Ton roster, en un coup d’œil — repère qui a besoin de toi.</p>
+        <h1 style={{ fontFamily: DISP, fontWeight: 600, fontSize: 28, margin: 0, color: 'var(--text)' }}>{t('w1h.athletes_title')}</h1>
+        <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: '3px 0 0' }}>{t('w1h.roster_subtitle')}</p>
       </div>
 
       {/* KPIs */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12, margin: '20px 0' }}>
-        {tile(loading ? '—' : kpis.total, 'athlète' + (kpis.total > 1 ? 's' : ''), 'var(--primary)')}
-        {tile(loading ? '—' : kpis.active, 'actif' + (kpis.active > 1 ? 's' : '') + ' (7 j)')}
-        {tile(loading ? '—' : kpis.alert, 'en alerte', kpis.alert > 0 ? '#F59E0B' : 'var(--text)')}
-        {tile(loading ? '—' : pending.length, 'invitation' + (pending.length > 1 ? 's' : '') + ' en attente')}
+        {tile(loading ? '—' : kpis.total, kpis.total > 1 ? t('w1h.tile_athletes') : t('w1h.tile_athlete'), 'var(--primary)')}
+        {tile(loading ? '—' : kpis.active, kpis.active > 1 ? t('w1h.tile_active_plural') : t('w1h.tile_active_singular'))}
+        {tile(loading ? '—' : kpis.alert, t('w1h.tile_alert'), kpis.alert > 0 ? '#F59E0B' : 'var(--text)')}
+        {tile(loading ? '—' : pending.length, pending.length > 1 ? t('w1h.tile_invite_plural') : t('w1h.tile_invite_singular'))}
       </div>
 
       {/* Barre d'outils */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center', marginBottom: 4 }}>
         <label style={{ flex: 1, minWidth: 200, display: 'flex', alignItems: 'center', gap: 8, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 11, padding: '9px 12px' }}>
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
-          <input value={q} onChange={e => setQ(e.target.value)} placeholder="Rechercher un athlète…" style={{ border: 'none', background: 'none', outline: 'none', color: 'var(--text)', fontFamily: BODY, fontSize: 14, width: '100%' }} />
+          <input value={q} onChange={e => setQ(e.target.value)} placeholder={t('w1h.ph_search_athlete')} style={{ border: 'none', background: 'none', outline: 'none', color: 'var(--text)', fontFamily: BODY, fontSize: 14, width: '100%' }} />
         </label>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-          {([['all', 'Tous'], ['ok', 'En forme'], ['warn', 'Attention'], ['injured', 'Blessé'], ['inactive', 'Inactif']] as [('all' | Forme), string][]).map(([f, l]) => (
+          {([['all', t('w1h.filter_all')], ['ok', t('w1h.filter_ok')], ['warn', t('w1h.filter_warn')], ['injured', t('w1h.filter_injured')], ['inactive', t('w1h.filter_inactive')]] as [('all' | Forme), string][]).map(([f, l]) => (
             <button key={f} onClick={() => setFilter(f)} style={chip(filter === f)}>
               {f !== 'all' && <span style={{ width: 7, height: 7, borderRadius: '50%', background: STC[f as Forme] }} />}{l}
             </button>
@@ -160,24 +162,24 @@ export default function CoachAthletes() {
         </div>
         {groups.length > 0 && (
           <select value={group} onChange={e => setGroup(e.target.value)} style={field}>
-            <option value="__all">Tous les groupes</option>
+            <option value="__all">{t('w1h.all_groups')}</option>
             {groups.map(g => <option key={g} value={g}>{g}</option>)}
           </select>
         )}
         <select value={sort} onChange={e => setSort(e.target.value as typeof sort)} style={field}>
-          <option value="alert">Trier : priorité</option>
-          <option value="name">Nom (A→Z)</option>
-          <option value="recent">Dernière activité</option>
-          <option value="load">Charge de la semaine</option>
+          <option value="alert">{t('w1h.sort_priority')}</option>
+          <option value="name">{t('w1h.sort_name')}</option>
+          <option value="recent">{t('w1h.sort_recent')}</option>
+          <option value="load">{t('w1h.sort_load')}</option>
         </select>
       </div>
 
       {loading ? (
-        <p style={{ fontSize: 13, color: 'var(--text-dim)', animation: 'studio_pulse 1.4s ease infinite', marginTop: 24 }}>Chargement du roster…</p>
+        <p style={{ fontSize: 13, color: 'var(--text-dim)', animation: 'studio_pulse 1.4s ease infinite', marginTop: 24 }}>{t('w1h.loading_roster')}</p>
       ) : roster.length === 0 ? (
         <div style={{ ...card, textAlign: 'center', padding: '30px 20px', marginTop: 18 }}>
-          <p style={{ fontSize: 14, color: 'var(--text-mid)', margin: '0 0 14px', lineHeight: 1.55 }}>Tu n’as pas encore d’athlète. Invite-en un : il reçoit un code, l’entre dans son appli, et tu le suis.</p>
-          <button onClick={onInvite} disabled={busy} style={{ padding: '11px 20px', borderRadius: 12, border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: BODY }}>Inviter mon premier athlète</button>
+          <p style={{ fontSize: 14, color: 'var(--text-mid)', margin: '0 0 14px', lineHeight: 1.55 }}>{t('w1h.empty_roster')}</p>
+          <button onClick={onInvite} disabled={busy} style={{ padding: '11px 20px', borderRadius: 12, border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: BODY }}>{t('w1h.invite_first')}</button>
           {newCode && <div style={{ maxWidth: 420, margin: '0 auto' }}><InviteCodeReveal code={newCode} /></div>}
         </div>
       ) : (
@@ -185,7 +187,7 @@ export default function CoachAthletes() {
           {/* À suivre en priorité */}
           {priority.length > 0 && (
             <>
-              <div style={lab}>À suivre en priorité <span style={{ color: 'var(--text-mid)', background: 'var(--bg-alt)', borderRadius: 6, padding: '1px 7px' }}>{priority.length}</span></div>
+              <div style={lab}>{t('w1h.priority_follow')} <span style={{ color: 'var(--text-mid)', background: 'var(--bg-alt)', borderRadius: 6, padding: '1px 7px' }}>{priority.length}</span></div>
               <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 6 }}>
                 {priority.map(a => (
                   <Link key={a.id} href={`/coach/athlete/${a.id}`} style={{ flex: '0 0 264px', ...card, borderLeft: `3px solid ${STC[a.status]}`, padding: '12px 14px', textDecoration: 'none', color: 'inherit' }}>
@@ -198,20 +200,20 @@ export default function CoachAthletes() {
           )}
 
           {/* Roster */}
-          <div style={lab}>Tout le roster <span style={{ color: 'var(--text-mid)', background: 'var(--bg-alt)', borderRadius: 6, padding: '1px 7px' }}>{visible.length}</span></div>
+          <div style={lab}>{t('w1h.all_roster')} <span style={{ color: 'var(--text-mid)', background: 'var(--bg-alt)', borderRadius: 6, padding: '1px 7px' }}>{visible.length}</span></div>
 
           {/* Vue en ligne unique — un athlète = une ligne, lisible d'un coup d'œil */}
           <div style={{ ...card, overflowX: 'auto' }}>
             <div style={{ minWidth: 860 }}>
               <div style={{ display: 'grid', gridTemplateColumns: COLS, gap: 12, padding: '11px 16px', fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-dim)', fontWeight: 800 }}>
-                <div /><div>Athlète</div><div>Statut</div><div>Dernière act.</div><div>Charge · 7 j</div><div>Séances</div><div>Fatigue</div><div>Prochaine course</div><div>Blessures</div><div />
+                <div /><div>{t('w1h.athlete')}</div><div>{t('w1h.col_status')}</div><div>{t('w1h.col_last_act')}</div><div>{t('w1h.col_load_7d')}</div><div>{t('w1h.col_sessions')}</div><div>{t('w1h.col_fatigue')}</div><div>{t('w1h.col_next_race')}</div><div>{t('w1h.col_injuries')}</div><div />
               </div>
               {visible.map(a => (
                 <Link key={a.id} data-guide="roster-row" href={`/coach/athlete/${a.id}`} style={{ display: 'grid', gridTemplateColumns: COLS, gap: 12, alignItems: 'center', padding: '12px 16px', borderTop: '1px solid var(--border)', cursor: 'pointer', fontSize: 13, textDecoration: 'none', color: 'inherit' }}
                   onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-card2)' }}
                   onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}>
                   {/* Sélection (bulk : Lancer un système, Grouper) */}
-                  <button onClick={e => { e.preventDefault(); e.stopPropagation(); toggleSel(a.id) }} aria-label="Sélectionner" style={{ width: 18, height: 18, borderRadius: 5, border: `1.5px solid ${sel.has(a.id) ? 'var(--primary)' : 'var(--border-mid)'}`, background: sel.has(a.id) ? 'var(--primary)' : 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: sel.has(a.id) ? 'var(--on-primary)' : 'transparent', padding: 0 }}>
+                  <button onClick={e => { e.preventDefault(); e.stopPropagation(); toggleSel(a.id) }} aria-label={t('w1h.aria_select')} style={{ width: 18, height: 18, borderRadius: 5, border: `1.5px solid ${sel.has(a.id) ? 'var(--primary)' : 'var(--border-mid)'}`, background: sel.has(a.id) ? 'var(--primary)' : 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: sel.has(a.id) ? 'var(--on-primary)' : 'transparent', padding: 0 }}>
                     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
                   </button>
                   {/* Athlète */}
@@ -237,12 +239,12 @@ export default function CoachAthletes() {
                   <div style={{ ...NUM, fontWeight: 700, color: (a.fatigue ?? 0) >= 4 ? '#F59E0B' : 'var(--text)' }}>{a.fatigue ? `${a.fatigue.toFixed(1)}/5` : '—'}</div>
                   {/* Prochaine course */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, color: a.race ? 'var(--text-mid)' : 'var(--text-dim)' }}>
-                    {a.race ? <><span style={{ ...NUM, fontWeight: 800, color: a.race.days <= 14 ? '#ef4444' : 'var(--primary)', flexShrink: 0 }}>J-{a.race.days}</span><span style={{ fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.race.name}</span></> : <span style={{ fontSize: 12 }}>—</span>}
+                    {a.race ? <><span style={{ ...NUM, fontWeight: 800, color: a.race.days <= 14 ? '#ef4444' : 'var(--primary)', flexShrink: 0 }}>{t('w1h.days_to', { n: a.race.days })}</span><span style={{ fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.race.name}</span></> : <span style={{ fontSize: 12 }}>—</span>}
                   </div>
                   {/* Blessures actives */}
                   <div style={{ ...NUM, fontWeight: 700, color: a.activeInjuries > 0 ? '#ef4444' : 'var(--text-dim)' }}>{a.activeInjuries > 0 ? a.activeInjuries : '—'}</div>
                   {/* Gérer */}
-                  <button onClick={e => { e.preventDefault(); e.stopPropagation(); setManage(a) }} aria-label="Gérer" style={{ width: 30, height: 30, borderRadius: 8, border: 'none', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  <button onClick={e => { e.preventDefault(); e.stopPropagation(); setManage(a) }} aria-label={t('w1h.aria_manage')} style={{ width: 30, height: 30, borderRadius: 8, border: 'none', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                     onMouseEnter={ev => { (ev.currentTarget as HTMLElement).style.background = 'var(--bg-alt)' }} onMouseLeave={ev => { (ev.currentTarget as HTMLElement).style.background = 'transparent' }}>
                     <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/></svg>
                   </button>
@@ -259,21 +261,21 @@ export default function CoachAthletes() {
                 <span style={{ width: 30, height: 30, borderRadius: 9, background: 'color-mix(in srgb, var(--primary) 13%, transparent)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg>
                 </span>
-                <div style={{ fontSize: 14.5, fontWeight: 700, color: 'var(--text)', fontFamily: DISP }}>Inviter un athlète</div>
+                <div style={{ fontSize: 14.5, fontWeight: 700, color: 'var(--text)', fontFamily: DISP }}>{t('w1h.invite_athlete')}</div>
               </div>
-              <div style={{ fontSize: 12.5, color: 'var(--text-dim)', lineHeight: 1.5, marginBottom: 12 }}>Génère un code et transmets-le à ton athlète : il l’entre dans « Mon coach » et tu le suis aussitôt.</div>
+              <div style={{ fontSize: 12.5, color: 'var(--text-dim)', lineHeight: 1.5, marginBottom: 12 }}>{t('w1h.invite_athlete_desc')}</div>
               <button onClick={onInvite} disabled={busy} style={{ width: '100%', padding: '11px 16px', borderRadius: 11, border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 13.5, fontWeight: 700, cursor: 'pointer', fontFamily: BODY, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}>
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
-                Générer un code d’invitation
+                {t('w1h.generate_invite_code')}
               </button>
               {newCode && <div style={{ marginTop: 12 }}><InviteCodeReveal code={newCode} /></div>}
               {pending.length > 0 && (
                 <div style={{ marginTop: 12 }}>
-                  <div style={{ ...lab, margin: '0 0 4px' }}>En attente d’acceptation</div>
+                  <div style={{ ...lab, margin: '0 0 4px' }}>{t('w1h.awaiting_acceptance')}</div>
                   {pending.map(p => (
                     <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderTop: '1px solid var(--border)' }}>
                       <span style={{ ...NUM, fontSize: 14, fontWeight: 700, color: 'var(--text)', letterSpacing: '0.06em' }}>{p.code}</span>
-                      <button onClick={() => onRevoke(p.id)} style={{ marginLeft: 'auto', fontSize: 12, color: '#EF4444', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 700 }}>Annuler</button>
+                      <button onClick={() => onRevoke(p.id)} style={{ marginLeft: 'auto', fontSize: 12, color: '#EF4444', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 700 }}>{t('w1h.cancel')}</button>
                     </div>
                   ))}
                 </div>
@@ -285,18 +287,18 @@ export default function CoachAthletes() {
                 <span style={{ width: 30, height: 30, borderRadius: 9, background: 'var(--bg-card2)', color: 'var(--text-mid)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M9 12l2 2 4-4"/><path d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/></svg>
                 </span>
-                <div style={{ fontSize: 14.5, fontWeight: 700, color: 'var(--text)', fontFamily: DISP }}>Un coach t’a invité ?</div>
+                <div style={{ fontSize: 14.5, fontWeight: 700, color: 'var(--text)', fontFamily: DISP }}>{t('w1h.coach_invited_you')}</div>
               </div>
-              <div style={{ fontSize: 12.5, color: 'var(--text-dim)', lineHeight: 1.5, marginBottom: 12 }}>Entre son code pour l’autoriser à te suivre. Révocable à tout moment.</div>
+              <div style={{ fontSize: 12.5, color: 'var(--text-dim)', lineHeight: 1.5, marginBottom: 12 }}>{t('w1h.coach_invited_desc')}</div>
               <div style={{ display: 'flex', gap: 9, flexWrap: 'wrap' }}>
-                <input value={acceptCode} onChange={e => setAcceptCode(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') void onAccept() }} placeholder="Code (ex. ABCD-2345)" style={{ flex: 1, minWidth: 130, padding: '11px 13px', borderRadius: 11, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 14, outline: 'none', fontFamily: 'var(--font-body)', letterSpacing: '0.08em' }} />
-                <button onClick={onAccept} disabled={busy || !acceptCode.trim()} style={{ padding: '11px 18px', borderRadius: 11, border: 'none', background: acceptCode.trim() ? 'var(--primary)' : 'var(--bg-card2)', color: acceptCode.trim() ? 'var(--on-primary)' : 'var(--text-dim)', fontSize: 13.5, fontWeight: 700, cursor: acceptCode.trim() ? 'pointer' : 'default', fontFamily: BODY }}>Accepter</button>
+                <input value={acceptCode} onChange={e => setAcceptCode(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') void onAccept() }} placeholder={t('w1h.ph_code')} style={{ flex: 1, minWidth: 130, padding: '11px 13px', borderRadius: 11, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 14, outline: 'none', fontFamily: 'var(--font-body)', letterSpacing: '0.08em' }} />
+                <button onClick={onAccept} disabled={busy || !acceptCode.trim()} style={{ padding: '11px 18px', borderRadius: 11, border: 'none', background: acceptCode.trim() ? 'var(--primary)' : 'var(--bg-card2)', color: acceptCode.trim() ? 'var(--on-primary)' : 'var(--text-dim)', fontSize: 13.5, fontWeight: 700, cursor: acceptCode.trim() ? 'pointer' : 'default', fontFamily: BODY }}>{t('w1h.accept')}</button>
               </div>
               {acceptMsg && <div style={{ marginTop: 10, fontSize: 12.5, color: 'var(--text-mid)' }}>{acceptMsg}</div>}
               {coaches.length > 0 && coaches.map(c => (
                 <div key={c.linkId} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 0', borderTop: '1px solid var(--border)', marginTop: 4 }}>
-                  <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)', flex: 1 }}>Coach lié</span>
-                  <button onClick={() => onRevoke(c.linkId)} style={{ fontSize: 12, color: '#EF4444', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 700 }}>Révoquer</button>
+                  <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)', flex: 1 }}>{t('w1h.linked_coach')}</span>
+                  <button onClick={() => onRevoke(c.linkId)} style={{ fontSize: 12, color: '#EF4444', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 700 }}>{t('w1h.revoke')}</button>
                 </div>
               ))}
             </div>
@@ -307,10 +309,10 @@ export default function CoachAthletes() {
       {/* ── Barre d'actions groupées ── */}
       {sel.size > 0 && (
         <div style={{ position: 'fixed', left: '50%', bottom: 22, transform: 'translateX(-50%)', zIndex: 50, background: 'var(--text)', color: 'var(--bg)', borderRadius: 14, padding: '10px 12px 10px 16px', display: 'flex', alignItems: 'center', gap: 10, boxShadow: '0 12px 40px rgba(0,0,0,0.4)', flexWrap: 'wrap', maxWidth: 'calc(100vw - 24px)' }}>
-          <span style={{ fontWeight: 800, fontSize: 13.5 }}>{sel.size} sélectionné{sel.size > 1 ? 's' : ''}</span>
-          <button onClick={() => router.push(`/coach/studio?athletes=${[...sel].join(',')}`)} style={{ ...bulkBtn, background: 'var(--primary)', color: 'var(--on-primary)' }}>Lancer un système</button>
-          <button onClick={() => { const g = prompt('Nom du groupe (vide pour retirer) :'); if (g !== null) void bulkGroup(g) }} style={bulkBtn}>🗂 Grouper</button>
-          <button onClick={() => setSel(new Set())} style={{ ...bulkBtn, background: 'transparent' }}>Annuler</button>
+          <span style={{ fontWeight: 800, fontSize: 13.5 }}>{sel.size > 1 ? t('w1h.selected_plural', { n: sel.size }) : t('w1h.selected_singular', { n: sel.size })}</span>
+          <button onClick={() => router.push(`/coach/studio?athletes=${[...sel].join(',')}`)} style={{ ...bulkBtn, background: 'var(--primary)', color: 'var(--on-primary)' }}>{t('w1h.launch_system')}</button>
+          <button onClick={() => { const g = prompt(t('w1h.prompt_group_name')); if (g !== null) void bulkGroup(g) }} style={bulkBtn}>🗂 {t('w1h.group')}</button>
+          <button onClick={() => setSel(new Set())} style={{ ...bulkBtn, background: 'transparent' }}>{t('w1h.cancel')}</button>
         </div>
       )}
 
@@ -321,14 +323,14 @@ export default function CoachAthletes() {
           <div onClick={() => setManage(null)} style={{ position: 'fixed', inset: 0, zIndex: 60, background: 'rgba(0,0,0,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
             <div onClick={e => e.stopPropagation()} style={{ width: 'min(440px, 100%)', ...card, padding: 18 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 11, marginBottom: 14 }}>{avatar(a, 40)}<div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)', fontFamily: DISP }}>{a.name}</div></div>
-              <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-dim)', fontFamily: BODY }}>Groupe</label>
-              <input list="coach-groups" defaultValue={a.group ?? ''} onBlur={async e => { await setAthleteGroup(a.linkId, e.target.value.trim() || null); await reload() }} placeholder="Ex. Triathlon, Débutants…" style={{ width: '100%', boxSizing: 'border-box', margin: '5px 0 14px', padding: '10px 12px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text)', fontSize: 13.5, fontFamily: BODY, outline: 'none' }} />
+              <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-dim)', fontFamily: BODY }}>{t('w1h.group_label')}</label>
+              <input list="coach-groups" defaultValue={a.group ?? ''} onBlur={async e => { await setAthleteGroup(a.linkId, e.target.value.trim() || null); await reload() }} placeholder={t('w1h.ph_group')} style={{ width: '100%', boxSizing: 'border-box', margin: '5px 0 14px', padding: '10px 12px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text)', fontSize: 13.5, fontFamily: BODY, outline: 'none' }} />
               <datalist id="coach-groups">{groups.map(g => <option key={g} value={g} />)}</datalist>
-              <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-dim)', fontFamily: BODY }}>Note privée</label>
-              <textarea defaultValue={a.note ?? ''} onBlur={async e => { await setAthleteNote(a.linkId, e.target.value); await reload() }} rows={3} placeholder="Visible par toi seul (objectifs, contexte, rappels…)" style={{ width: '100%', boxSizing: 'border-box', margin: '5px 0 14px', padding: '10px 12px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text)', fontSize: 13.5, fontFamily: BODY, outline: 'none', resize: 'vertical' }} />
+              <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-dim)', fontFamily: BODY }}>{t('w1h.private_note')}</label>
+              <textarea defaultValue={a.note ?? ''} onBlur={async e => { await setAthleteNote(a.linkId, e.target.value); await reload() }} rows={3} placeholder={t('w1h.ph_private_note')} style={{ width: '100%', boxSizing: 'border-box', margin: '5px 0 14px', padding: '10px 12px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text)', fontSize: 13.5, fontFamily: BODY, outline: 'none', resize: 'vertical' }} />
               <div style={{ display: 'flex', gap: 8, justifyContent: 'space-between' }}>
-                <button onClick={() => { setManage(null); void onRevoke(a.linkId) }} style={{ padding: '9px 14px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: '#EF4444', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: BODY }}>Retirer l’athlète</button>
-                <button onClick={() => setManage(null)} style={{ padding: '9px 18px', borderRadius: 10, border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: BODY }}>Terminé</button>
+                <button onClick={() => { setManage(null); void onRevoke(a.linkId) }} style={{ padding: '9px 14px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: '#EF4444', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: BODY }}>{t('w1h.remove_athlete')}</button>
+                <button onClick={() => setManage(null)} style={{ padding: '9px 18px', borderRadius: 10, border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: BODY }}>{t('w1h.done')}</button>
               </div>
             </div>
           </div>

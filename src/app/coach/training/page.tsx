@@ -17,6 +17,7 @@ import { listMyAthletes, type AthleteSummary } from '@/lib/coach/relationships'
 import { createClient } from '@/lib/supabase/client'
 import { Avatar } from '@/components/shared/Sidebar'
 import { FilterMenu, type Opt } from '@/components/coach/CoachMenus'
+import { useI18n } from '@/lib/i18n'
 
 const DISP = 'var(--font-display)'
 const BODY = 'var(--font-body)'
@@ -46,6 +47,7 @@ function relDate(iso: string): string {
 interface Act { id: string; user_id: string; sport: string; title: string; started_at: string; dur_s: number; dist_m: number; tss: number | null }
 
 export default function CoachTraining() {
+  const { t } = useI18n()
   const router = useRouter()
   const [athletes, setAthletes] = useState<AthleteSummary[]>([])
   const [acts, setActs] = useState<Act[]>([])
@@ -73,7 +75,7 @@ export default function CoachTraining() {
       setAthletes(list)
       setActs((rows as Record<string, unknown>[]).map(a => ({
         id: a.id as string, user_id: a.user_id as string, sport: (a.sport_type as string) ?? 'run',
-        title: (a.title as string) || 'Séance', started_at: a.started_at as string,
+        title: (a.title as string) || t('w1h.session_fallback'), started_at: a.started_at as string,
         dur_s: (a.moving_time_s as number) ?? (a.elapsed_time_s as number) ?? 0,
         dist_m: (a.distance_m as number) ?? 0, tss: (a.tss as number | null) ?? null,
       })))
@@ -91,8 +93,8 @@ export default function CoachTraining() {
 
   const analyze = (a: Act) => {
     const who = nameOf.get(a.user_id)
-    const name = who?.full_name || who?.first_name || 'cet athlète'
-    window.dispatchEvent(new CustomEvent('thw:open-coach', { detail: { prompt: `Analyse la séance « ${a.title} » de ${name} (${sportLabel(a.sport)}, ${relDate(a.started_at).toLowerCase()}) : qualité d'exécution, charge, et points d'amélioration.` } }))
+    const name = who?.full_name || who?.first_name || t('w1h.this_athlete')
+    window.dispatchEvent(new CustomEvent('thw:open-coach', { detail: { prompt: t('w1h.analyze_prompt', { title: a.title, name, sport: sportLabel(a.sport), when: relDate(a.started_at).toLowerCase() }) } }))
   }
 
   return (
@@ -100,27 +102,27 @@ export default function CoachTraining() {
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 4, flexWrap: 'wrap' }}>
         <h1 style={{ fontFamily: DISP, fontWeight: 600, fontSize: 28, margin: 0, color: 'var(--text)' }}>Training</h1>
         <span style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--primary)', background: 'color-mix(in srgb, var(--primary) 12%, transparent)', borderRadius: 7, padding: '3px 9px' }}>Coach</span>
-        <span style={{ fontSize: 12.5, color: 'var(--text-dim)' }}>Analyse les entraînements réalisés par tes athlètes.</span>
+        <span style={{ fontSize: 12.5, color: 'var(--text-dim)' }}>{t('w1h.training_subtitle')}</span>
       </div>
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', margin: '16px 0' }}>
-        <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '.05em' }}>Filtrer</span>
-        <FilterMenu label="Athlète" value={fAth} options={athOpts} onChange={setFAth} />
-        <FilterMenu label="Sport" value={fSport} options={sportOpts} onChange={setFSport} />
-        <span style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--text-dim)', fontVariantNumeric: 'tabular-nums' }}>{shown.length} séance{shown.length > 1 ? 's' : ''} · 21 j</span>
+        <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '.05em' }}>{t('w1h.filter_label')}</span>
+        <FilterMenu label={t('w1h.athlete')} value={fAth} options={athOpts} onChange={setFAth} />
+        <FilterMenu label={t('w1h.sport')} value={fSport} options={sportOpts} onChange={setFSport} />
+        <span style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--text-dim)', fontVariantNumeric: 'tabular-nums' }}>{shown.length > 1 ? t('w1h.sessions_count_plural', { n: shown.length }) : t('w1h.sessions_count_singular', { n: shown.length })}</span>
       </div>
 
       {loading ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>{Array.from({ length: 4 }).map((_, i) => <div key={i} style={{ height: 74, borderRadius: 16, border: '1px solid var(--border)', background: 'var(--bg-card)', opacity: 0.6 }} />)}</div>
       ) : shown.length === 0 ? (
         <div style={{ borderRadius: 18, border: '1px solid var(--border)', background: 'var(--bg-card)', padding: 26, textAlign: 'center', color: 'var(--text-dim)', fontSize: 14 }}>
-          {athletes.length === 0 ? 'Aucun athlète. Invite-en un depuis « Athlètes ».' : 'Aucune séance sur les 21 derniers jours.'}
+          {athletes.length === 0 ? t('w1h.no_athlete_invite') : t('w1h.no_sessions_21d')}
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {shown.map(a => {
             const who = nameOf.get(a.user_id)
-            const name = who?.full_name || who?.first_name || 'Athlète'
+            const name = who?.full_name || who?.first_name || t('w1h.athlete')
             const metrics = [fmtDur(a.dur_s), a.dist_m > 0 ? fmtDist(a.dist_m) : '', a.tss ? `${Math.round(a.tss)} TSS` : ''].filter(Boolean)
             return (
               <Link key={a.id} href={`/coach/planning/${a.user_id}`}
@@ -142,7 +144,7 @@ export default function CoachTraining() {
                 <button onClick={e => { e.preventDefault(); e.stopPropagation(); analyze(a) }}
                   style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 6, height: 32, padding: '0 12px', borderRadius: 10, border: '1px solid color-mix(in srgb, var(--primary) 40%, var(--border))', background: 'color-mix(in srgb, var(--primary) 9%, transparent)', color: 'var(--primary)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: BODY }}>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z" /></svg>
-                  Analyser
+                  {t('w1h.analyze')}
                 </button>
               </Link>
             )

@@ -6,6 +6,7 @@
 // ══════════════════════════════════════════════════════════════════════════
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { useI18n } from '@/lib/i18n'
 import { listSpaceMembers } from '@/lib/community/spaces'
 import {
   getSpaceSettings, updateSpaceSettings, moderate, listReports, resolveReport,
@@ -18,6 +19,7 @@ const FB = 'var(--font-body)', FD = 'var(--font-display)'
 type Tab = 'settings' | 'members' | 'requests' | 'reports'
 
 export function CommunityManageSheet({ spaceId, onClose }: { spaceId: string; onClose: () => void }) {
+  const { t } = useI18n()
   const [mounted, setMounted] = useState(false)
   const [tab, setTab] = useState<Tab>('settings')
 
@@ -35,11 +37,11 @@ export function CommunityManageSheet({ spaceId, onClose }: { spaceId: string; on
         <div style={{ flexShrink: 0, padding: 'var(--space-5) var(--space-5) 0' }}>
           <div style={{ width: 36, height: 4, borderRadius: 'var(--r-sm)', background: 'var(--border-mid)', margin: '0 auto var(--space-4)' }} />
           <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', marginBottom: 'var(--space-4)' }}>
-            <h2 style={{ fontFamily: FD, fontSize: 19, fontWeight: 600, color: 'var(--text)', margin: 0, flex: 1 }}>Gérer l&apos;espace</h2>
-            <button onClick={onClose} aria-label="Fermer" style={{ width: 28, height: 28, border: 'none', borderRadius: '50%', background: 'transparent', color: 'var(--text-mid)', cursor: 'pointer', fontSize: 16 }}>×</button>
+            <h2 style={{ fontFamily: FD, fontSize: 19, fontWeight: 600, color: 'var(--text)', margin: 0, flex: 1 }}>{t('w1g.manageSpace')}</h2>
+            <button onClick={onClose} aria-label={t('w1g.close')} style={{ width: 28, height: 28, border: 'none', borderRadius: '50%', background: 'transparent', color: 'var(--text-mid)', cursor: 'pointer', fontSize: 16 }}>×</button>
           </div>
           <div style={{ display: 'flex', gap: 'var(--space-1)' }}>
-            {([['settings', 'Réglages'], ['members', 'Membres'], ['requests', 'Demandes'], ['reports', 'Signalements']] as const).map(([k, label]) => (
+            {([['settings', t('w1g.tabSettings')], ['members', t('w1g.tabMembers')], ['requests', t('w1g.tabRequests')], ['reports', t('w1g.tabReports')]] as const).map(([k, label]) => (
               <button key={k} onClick={() => setTab(k)}
                 style={{ flex: 1, height: 40, border: 'none', borderRadius: 'var(--r-sm)', cursor: 'pointer', fontFamily: FB, fontSize: 13.5, fontWeight: 600, background: tab === k ? 'var(--surface-neutral)' : 'transparent', color: tab === k ? 'var(--text)' : 'var(--text-mid)' }}>{label}</button>
             ))}
@@ -59,60 +61,61 @@ export function CommunityManageSheet({ spaceId, onClose }: { spaceId: string; on
 
 // ── Réglages ────────────────────────────────────────────────────────────────
 function SettingsTab({ spaceId }: { spaceId: string }) {
+  const { t } = useI18n()
   const [s, setS] = useState<CommunitySettings | null>(null)
   const [words, setWords] = useState('')
   const [saving, setSaving] = useState(false)
   const [done, setDone] = useState<string | null>(null)
 
   useEffect(() => { void getSpaceSettings(spaceId).then(cfg => { if (cfg) { setS(cfg); setWords(cfg.blockedWords.join(', ')) } }) }, [spaceId])
-  if (!s) return <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-mid)' }}>Chargement…</p>
+  if (!s) return <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-mid)' }}>{t('w1g.loading')}</p>
 
   async function save() {
     if (!s) return
     setSaving(true); setDone(null)
     const next: CommunitySettings = { ...s, blockedWords: words.split(',').map(w => w.trim()).filter(Boolean) }
     const ok = await updateSpaceSettings(spaceId, next)
-    setSaving(false); setDone(ok ? 'Réglages enregistrés.' : 'Enregistrement impossible.')
+    setSaving(false); setDone(ok ? t('w1g.settingsSaved') : t('w1g.saveFailed'))
   }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
-      <Field label="Accès à l'espace" hint="« Fermé » empêche toute nouvelle inscription spontanée (seule la modération ajoute des membres).">
+      <Field label={t('w1g.spaceAccess')} hint={t('w1g.spaceAccessHint')}>
         <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
           {(['open', 'closed'] as const).map(p => (
             <button key={p} type="button" onClick={() => setS({ ...s, joinPolicy: p })}
-              style={pill(s.joinPolicy === p)}>{p === 'open' ? 'Ouvert' : 'Fermé'}</button>
+              style={pill(s.joinPolicy === p)}>{p === 'open' ? t('w1g.open') : t('w1g.closed')}</button>
           ))}
         </div>
       </Field>
-      <Field label="Mode lent (secondes entre deux messages)" hint="0 = désactivé. La modération n'y est pas soumise.">
+      <Field label={t('w1g.slowMode')} hint={t('w1g.slowModeHint')}>
         <input type="number" min={0} max={21600} value={s.slowModeSec}
           onChange={e => setS({ ...s, slowModeSec: Number(e.target.value) || 0 })} style={input} />
       </Field>
-      <Field label="Capacité maximale (membres)" hint="Vide = illimité. Bloque les inscriptions au-delà.">
-        <input type="number" min={1} value={s.maxMembers ?? ''} placeholder="illimité"
+      <Field label={t('w1g.maxCapacity')} hint={t('w1g.maxCapacityHint')}>
+        <input type="number" min={1} value={s.maxMembers ?? ''} placeholder={t('w1g.unlimited')}
           onChange={e => setS({ ...s, maxMembers: e.target.value ? Number(e.target.value) : null })} style={input} />
       </Field>
-      <Field label="Ancienneté de compte minimale (jours)" hint="Anti-raid. 0 = aucune condition.">
+      <Field label={t('w1g.minAccountAge')} hint={t('w1g.minAccountAgeHint')}>
         <input type="number" min={0} max={3650} value={s.minAccountAgeDays}
           onChange={e => setS({ ...s, minAccountAgeDays: Number(e.target.value) || 0 })} style={input} />
       </Field>
-      <Field label="Mots interdits (séparés par des virgules)" hint="Un message contenant l'un de ces termes est refusé (modération exemptée).">
-        <input value={words} onChange={e => setWords(e.target.value)} placeholder="spam, pub, …" style={input} />
+      <Field label={t('w1g.blockedWords')} hint={t('w1g.blockedWordsHint')}>
+        <input value={words} onChange={e => setWords(e.target.value)} placeholder={t('w1g.blockedWordsPlaceholder')} style={input} />
       </Field>
-      <Field label="Règles de l'espace" hint="Affichées aux membres ; l'acceptation peut être exigée avant de participer.">
+      <Field label={t('w1g.spaceRules')} hint={t('w1g.spaceRulesHint')}>
         <textarea value={s.rulesText ?? ''} onChange={e => setS({ ...s, rulesText: e.target.value })} rows={3}
-          placeholder="1. Respect… 2. Pas de spam… 3. Pas de contenu dangereux…"
+          placeholder={t('w1g.spaceRulesPlaceholder')}
           style={{ ...input, resize: 'vertical', minHeight: 64 }} />
         <label style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginTop: 'var(--space-2)', fontFamily: FB, fontSize: 13.5, color: 'var(--text-mid)', cursor: 'pointer' }}>
           <input type="checkbox" checked={s.requireRulesAccept} onChange={e => setS({ ...s, requireRulesAccept: e.target.checked })} />
-          Exiger l&apos;acceptation des règles avant de publier
+          {t('w1g.requireRulesAccept')}
         </label>
       </Field>
       {done && <p style={{ margin: 0, fontFamily: FB, fontSize: 12.5, color: 'var(--text-mid)' }}>{done}</p>}
       <button onClick={() => void save()} disabled={saving}
         style={{ height: 44, border: 'none', borderRadius: 'var(--r-sm)', background: 'var(--primary)', color: 'var(--on-primary)', fontFamily: FB, fontSize: 13.5, fontWeight: 600, cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.6 : 1 }}>
-        {saving ? 'Enregistrement…' : 'Enregistrer les réglages'}
+        {saving ? t('w1g.saving') : t('w1g.saveSettings')}
       </button>
     </div>
   )
@@ -120,6 +123,7 @@ function SettingsTab({ spaceId }: { spaceId: string }) {
 
 // ── Membres ─────────────────────────────────────────────────────────────────
 function MembersTab({ spaceId }: { spaceId: string }) {
+  const { t } = useI18n()
   const [members, setMembers] = useState<CommunityMemberInfo[] | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
   const [err, setErr] = useState<string | null>(null)
@@ -128,14 +132,14 @@ function MembersTab({ spaceId }: { spaceId: string }) {
   useEffect(reload, [spaceId])
 
   async function act(userId: string, action: 'kick' | 'ban') {
-    if (typeof window !== 'undefined' && !window.confirm(action === 'ban' ? 'Bannir ce membre ?' : 'Exclure ce membre ?')) return
+    if (typeof window !== 'undefined' && !window.confirm(action === 'ban' ? t('w1g.banMemberConfirm') : t('w1g.kickMemberConfirm'))) return
     setBusy(userId); setErr(null)
     const r = await moderate(spaceId, action, { targetUserId: userId })
     setBusy(null)
-    if (r.ok) reload(); else setErr(r.error ?? 'Action impossible.')
+    if (r.ok) reload(); else setErr(r.error ?? t('w1g.actionFailed'))
   }
 
-  if (!members) return <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-mid)' }}>Chargement…</p>
+  if (!members) return <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-mid)' }}>{t('w1g.loading')}</p>
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
       {err && <p style={{ margin: 0, fontFamily: FB, fontSize: 12.5, color: 'var(--danger)' }}>{err}</p>}
@@ -147,14 +151,14 @@ function MembersTab({ spaceId }: { spaceId: string }) {
           </span>
           <span style={{ flex: 1, minWidth: 0 }}>
             <span style={{ display: 'block', fontFamily: FB, fontSize: 13, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.name}</span>
-            <span style={{ display: 'block', fontFamily: FB, fontSize: 11, color: 'var(--text-dim)' }}>{m.role === 'owner' ? 'Propriétaire' : m.role === 'admin' ? 'Admin' : m.role === 'coach' ? 'Coach' : 'Membre'}</span>
+            <span style={{ display: 'block', fontFamily: FB, fontSize: 11, color: 'var(--text-dim)' }}>{m.role === 'owner' ? t('w1g.roleOwner') : m.role === 'admin' ? t('w1g.roleAdmin') : m.role === 'coach' ? t('w1g.roleCoach') : t('w1g.roleMember')}</span>
           </span>
           {m.role !== 'owner' && (
             <>
               <button onClick={() => void act(m.userId, 'kick')} disabled={busy === m.userId}
-                style={miniBtn('var(--surface-neutral)', 'var(--text-mid)')}>Exclure</button>
+                style={miniBtn('var(--surface-neutral)', 'var(--text-mid)')}>{t('w1g.kick')}</button>
               <button onClick={() => void act(m.userId, 'ban')} disabled={busy === m.userId}
-                style={miniBtn('var(--danger-soft)', 'var(--danger)')}>Bannir</button>
+                style={miniBtn('var(--danger-soft)', 'var(--danger)')}>{t('w1g.ban')}</button>
             </>
           )}
         </div>
@@ -165,6 +169,7 @@ function MembersTab({ spaceId }: { spaceId: string }) {
 
 // ── Demandes d'adhésion ─────────────────────────────────────────────────────
 function RequestsTab({ spaceId }: { spaceId: string }) {
+  const { t } = useI18n()
   const [reqs, setReqs] = useState<JoinRequestInfo[] | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
   const reload = () => { void listJoinRequests(spaceId).then(setReqs) }
@@ -176,8 +181,8 @@ function RequestsTab({ spaceId }: { spaceId: string }) {
     setBusy(null); reload()
   }
 
-  if (!reqs) return <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-mid)' }}>Chargement…</p>
-  if (reqs.length === 0) return <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-mid)' }}>Aucune demande en attente.</p>
+  if (!reqs) return <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-mid)' }}>{t('w1g.loading')}</p>
+  if (reqs.length === 0) return <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-mid)' }}>{t('w1g.noPendingRequests')}</p>
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
       {reqs.map(r => (
@@ -187,8 +192,8 @@ function RequestsTab({ spaceId }: { spaceId: string }) {
             {r.avatar ? <img src={r.avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : r.name.slice(0, 1).toUpperCase()}
           </span>
           <span style={{ flex: 1, minWidth: 0, fontFamily: FB, fontSize: 13, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.name}</span>
-          <button onClick={() => void act(r.userId, 'approve_request')} disabled={busy === r.userId} style={miniBtn('var(--primary)', 'var(--on-primary)')}>Accepter</button>
-          <button onClick={() => void act(r.userId, 'reject_request')} disabled={busy === r.userId} style={miniBtn('var(--surface-neutral)', 'var(--text-mid)')}>Refuser</button>
+          <button onClick={() => void act(r.userId, 'approve_request')} disabled={busy === r.userId} style={miniBtn('var(--primary)', 'var(--on-primary)')}>{t('w1g.accept')}</button>
+          <button onClick={() => void act(r.userId, 'reject_request')} disabled={busy === r.userId} style={miniBtn('var(--surface-neutral)', 'var(--text-mid)')}>{t('w1g.reject')}</button>
         </div>
       ))}
     </div>
@@ -197,6 +202,7 @@ function RequestsTab({ spaceId }: { spaceId: string }) {
 
 // ── Signalements ────────────────────────────────────────────────────────────
 function ReportsTab({ spaceId }: { spaceId: string }) {
+  const { t } = useI18n()
   const [reports, setReports] = useState<ReportInfo[] | null>(null)
   const reload = () => { void listReports(spaceId).then(setReports) }
   useEffect(reload, [spaceId])
@@ -207,22 +213,22 @@ function ReportsTab({ spaceId }: { spaceId: string }) {
 
   async function del(r: ReportInfo) {
     if (!r.messageId) return
-    if (typeof window !== 'undefined' && !window.confirm('Supprimer le message signalé ?')) return
+    if (typeof window !== 'undefined' && !window.confirm(t('w1g.deleteReportedConfirm'))) return
     await moderate(spaceId, 'delete_message', { messageId: r.messageId })
     await resolveReport(r.id, 'resolved'); reload()
   }
 
-  if (!reports) return <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-mid)' }}>Chargement…</p>
-  if (reports.length === 0) return <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-mid)' }}>Aucun signalement en attente.</p>
+  if (!reports) return <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-mid)' }}>{t('w1g.loading')}</p>
+  if (reports.length === 0) return <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-mid)' }}>{t('w1g.noPendingReports')}</p>
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
       {reports.map(r => (
         <div key={r.id} style={{ padding: 'var(--space-3)', background: 'var(--bg-card2)', borderRadius: 'var(--r-sm)' }}>
           <p style={{ margin: '0 0 var(--space-2)', fontFamily: FB, fontSize: 13, color: 'var(--text)' }}>{r.reason}</p>
           <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
-            {r.messageId && <button onClick={() => void del(r)} style={miniBtn('var(--danger-soft)', 'var(--danger)')}>Supprimer le message</button>}
-            <button onClick={() => void resolve(r.id, 'resolved')} style={miniBtn('var(--surface-neutral)', 'var(--text)')}>Traité</button>
-            <button onClick={() => void resolve(r.id, 'dismissed')} style={miniBtn('transparent', 'var(--text-mid)')}>Ignorer</button>
+            {r.messageId && <button onClick={() => void del(r)} style={miniBtn('var(--danger-soft)', 'var(--danger)')}>{t('w1g.deleteMessage')}</button>}
+            <button onClick={() => void resolve(r.id, 'resolved')} style={miniBtn('var(--surface-neutral)', 'var(--text)')}>{t('w1g.resolved')}</button>
+            <button onClick={() => void resolve(r.id, 'dismissed')} style={miniBtn('transparent', 'var(--text-mid)')}>{t('w1g.dismiss')}</button>
           </div>
         </div>
       ))}

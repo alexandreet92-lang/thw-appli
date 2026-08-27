@@ -12,6 +12,7 @@ import { staticRouteMapUrl } from '@/lib/staticMap'
 import { ReadOnlyActivityDetail } from '@/components/activity/ReadOnlyActivityDetail'
 import type { ActivityShowcaseData, RecentActivity, RecordItem } from '@/lib/profile/activityShowcase'
 import { hoursByFamily, activeWeekStreak, sportMeta, bestRecord, recordsForSport, fmtHoursSec, polylineToSvgPath, decodePolyline } from '@/lib/profile/activityShowcase'
+import { useI18n } from '@/lib/i18n'
 
 // Couleurs (hex) du tracé par famille de sport, pour la carte Mapbox.
 const SPORT_HEX: Record<string, string> = { running: '22c55e', cycling: '3b82f6', swim: '0ea5e9', rowing: '8b5cf6', gym: 'f97316', hyrox: 'ef4444', other: '9ca3af' }
@@ -43,6 +44,7 @@ const fmtPace = (s: number | null) => { if (!s || s <= 0) return null; return `$
 const fmtDate = (iso: string) => { const d = new Date(iso); return `${d.getDate()} ${MONTH[d.getMonth()]}` }
 
 export default function ActivityShowcase({ data, isOwner }: { data: ActivityShowcaseData; isOwner: boolean }) {
+  const { t } = useI18n()
   const [detail, setDetail] = useState<RecentActivity | null>(null)
   const [allOpen, setAllOpen] = useState(false)
   const narrow = useNarrow()
@@ -51,10 +53,10 @@ export default function ActivityShowcase({ data, isOwner }: { data: ActivityShow
     return (
       <p style={{ fontSize: 13.5, color: 'var(--text-dim)', margin: 0, lineHeight: 1.5 }}>
         {isOwner
-          ? 'Tes activités sont masquées sur ton profil (réglable ci-dessous).'
+          ? t('w1j.activitiesHiddenOwner')
           : data.visibility === 'followers'
-            ? 'Activités réservées aux abonnés. Abonne-toi pour les voir.'
-            : 'Cet athlète a rendu ses activités privées.'}
+            ? t('w1j.activitiesFollowersOnly')
+            : t('w1j.activitiesPrivate')}
       </p>
     )
   }
@@ -64,7 +66,7 @@ export default function ActivityShowcase({ data, isOwner }: { data: ActivityShow
   const totalHours = Math.round(totalSec / 3600)
 
   if (totalSec === 0 && data.recent.length === 0) {
-    return <p style={{ fontSize: 13.5, color: 'var(--text-dim)', margin: 0 }}>Aucune activité pour l’instant.</p>
+    return <p style={{ fontSize: 13.5, color: 'var(--text-dim)', margin: 0 }}>{t('w1j.noActivityYet')}</p>
   }
 
   return (
@@ -73,9 +75,9 @@ export default function ActivityShowcase({ data, isOwner }: { data: ActivityShow
       <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', alignItems: 'stretch' }}>
         <VolumeGauge families={families} totalSec={totalSec} totalHours={totalHours} />
         <div style={{ flex: 1, minWidth: 180, display: 'flex', flexDirection: 'column', gap: 12, justifyContent: 'center' }}>
-          <MiniStat n={streak} unit={streak > 1 ? 'semaines' : 'semaine'} label="Série active" accent />
-          <MiniStat n={data.ytd_count} unit="activités" label={`depuis janvier`} />
-          <MiniStat n={totalHours} unit="h" label="Volume cette année" />
+          <MiniStat n={streak} unit={streak > 1 ? t('w1j.weeksPlural') : t('w1j.weekSingular')} label={t('w1j.activeStreak')} accent />
+          <MiniStat n={data.ytd_count} unit={t('w1j.activitiesUnit')} label={t('w1j.sinceJanuary')} />
+          <MiniStat n={totalHours} unit="h" label={t('w1j.volumeThisYear')} />
         </div>
       </div>
 
@@ -85,35 +87,35 @@ export default function ActivityShowcase({ data, isOwner }: { data: ActivityShow
       {/* Graphique : volume par semaine */}
       {data.weekly.some(w => w.count > 0) && (
         <div>
-          <Label>Volume par semaine</Label>
+          <Label>{t('w1j.volumePerWeek')}</Label>
           <WeeklyChart weekly={data.weekly} />
         </div>
       )}
 
       {/* Heatmap de régularité */}
       <div>
-        <Label>Régularité</Label>
+        <Label>{t('w1j.regularity')}</Label>
         <Heatmap daily={data.daily} />
       </div>
 
       {/* Dernières activités */}
       {data.recent.length > 0 && (
         <div>
-          <Label>Dernières activités</Label>
+          <Label>{t('w1j.latestActivities')}</Label>
           <div style={{ display: 'grid', gridTemplateColumns: gridCols, gap: 14 }}>
             {data.recent.slice(0, 6).map(a => <ActivityMapCard key={a.id} a={a} onOpen={() => setDetail(a)} />)}
           </div>
           {data.recent.length > 6 && (
             <button onClick={() => setAllOpen(true)}
               style={{ marginTop: 14, width: '100%', padding: '12px 16px', borderRadius: 'var(--r-md)', border: 'none', background: 'var(--bg-card2)', color: 'var(--primary)', fontFamily: 'var(--font-body)', fontSize: 13.5, fontWeight: 700, cursor: 'pointer' }}>
-              Voir toutes les activités →
+              {t('w1j.seeAllActivities')}
             </button>
           )}
         </div>
       )}
 
       {/* Toutes les activités — surpage coulissante */}
-      <SlideSheet open={allOpen} onClose={() => setAllOpen(false)} title="Toutes les activités">
+      <SlideSheet open={allOpen} onClose={() => setAllOpen(false)} title={t('w1j.allActivities')}>
         <div style={{ maxWidth: 920, margin: '0 auto', padding: '8px clamp(16px,4vw,32px) 64px', display: 'grid', gridTemplateColumns: gridCols, gap: 14 }}>
           {data.recent.map(a => <ActivityMapCard key={a.id} a={a} onOpen={() => setDetail(a)} />)}
         </div>
@@ -128,6 +130,7 @@ export default function ActivityShowcase({ data, isOwner }: { data: ActivityShow
 
 // ── Jauge verticale : volume horaire empilé par sport ──
 function VolumeGauge({ families, totalSec, totalHours }: { families: { key: string; hours: number; seconds: number }[]; totalSec: number; totalHours: number }) {
+  const { t } = useI18n()
   const [hover, setHover] = useState<string | null>(null)
   if (totalSec === 0) return null
   return (
@@ -144,7 +147,7 @@ function VolumeGauge({ families, totalSec, totalHours }: { families: { key: stri
         })}
         <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start', paddingTop: 8 }}>
           <span className="tnum" style={{ fontSize: 18, fontWeight: 800, color: 'var(--on-primary)', textShadow: '0 1px 3px rgba(0,0,0,0.35)', fontVariantNumeric: 'tabular-nums' }}>{totalHours}</span>
-          <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--on-primary)', textShadow: '0 1px 3px rgba(0,0,0,0.35)' }}>heures</span>
+          <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--on-primary)', textShadow: '0 1px 3px rgba(0,0,0,0.35)' }}>{t('w1j.hours')}</span>
         </div>
       </div>
       {/* Légende */}
@@ -169,6 +172,7 @@ function VolumeGauge({ families, totalSec, totalHours }: { families: { key: stri
 
 // ── Heatmap type calendrier (semaines × jours) ──
 function Heatmap({ daily }: { daily: { d: string; count: number; seconds: number }[] }) {
+  const { t } = useI18n()
   const byDay = new Map(daily.map(x => [x.d, x]))
   const maxSec = Math.max(1, ...daily.map(x => x.seconds))
   // 53 semaines finissant à la semaine courante (lundi).
@@ -207,7 +211,7 @@ function Heatmap({ daily }: { daily: { d: string; count: number; seconds: number
               <div key={wi} style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                 {col.map(cell => {
                   const b = bucket(cell.sec)
-                  return <div key={cell.key} title={cell.cnt > 0 ? `${cell.key} · ${cell.cnt} activité${cell.cnt > 1 ? 's' : ''} · ${fmtDur(cell.sec)}` : cell.key}
+                  return <div key={cell.key} title={cell.cnt > 0 ? t(cell.cnt > 1 ? 'w1j.heatmapCellPlural' : 'w1j.heatmapCellSingular', { key: cell.key, n: cell.cnt, dur: fmtDur(cell.sec) }) : cell.key}
                     style={{ width: 11, height: 11, borderRadius: 3, background: b === 0 ? 'var(--bg-card2)' : 'var(--primary)', opacity: b === 0 ? 1 : b }} />
                 })}
               </div>
@@ -221,16 +225,17 @@ function Heatmap({ daily }: { daily: { d: string; count: number; seconds: number
 
 // Carte d'activité « façon training » : grande carte + données à côté.
 function ActivityMapCard({ a, onOpen }: { a: RecentActivity; onOpen: () => void }) {
+  const { t } = useI18n()
   const fam = sportFamilyLocal(a.sport)
   const meta = sportMeta(fam)
   const pts = routePoints(a.polyline)
   const mapUrl = staticRouteMapUrl(pts, { width: 640, height: 300, color: SPORT_HEX[fam] ?? '9ca3af', pins: false })
   const path = polylineToSvgPath(a.polyline, 320, 150)
   const stats: { label: string; value: string }[] = []
-  const dist = fmtDist(a.distance_m); if (dist) stats.push({ label: 'Distance', value: dist })
-  if (a.seconds) stats.push({ label: 'Durée', value: fmtDur(a.seconds) })
-  if (a.elevation_gain_m) stats.push({ label: 'D+', value: `${Math.round(a.elevation_gain_m)} m` })
-  else { const pace = fmtPace(a.avg_pace_s_km) ?? (a.avg_watts ? `${Math.round(a.avg_watts)} W` : null); if (pace) stats.push({ label: fam === 'cycling' ? 'Watts' : 'Allure', value: pace }) }
+  const dist = fmtDist(a.distance_m); if (dist) stats.push({ label: t('w1j.distance'), value: dist })
+  if (a.seconds) stats.push({ label: t('w1j.duration'), value: fmtDur(a.seconds) })
+  if (a.elevation_gain_m) stats.push({ label: t('w1j.elevationGain'), value: `${Math.round(a.elevation_gain_m)} m` })
+  else { const pace = fmtPace(a.avg_pace_s_km) ?? (a.avg_watts ? `${Math.round(a.avg_watts)} W` : null); if (pace) stats.push({ label: fam === 'cycling' ? t('w1j.watts') : t('w1j.pace'), value: pace }) }
   return (
     <button onClick={onOpen}
       style={{ display: 'flex', flexDirection: 'column', background: 'var(--bg-card2)', borderRadius: 'var(--r-lg)', border: 'none', cursor: 'pointer', textAlign: 'left', width: '100%', fontFamily: 'var(--font-body)', overflow: 'hidden', padding: 0 }}>
@@ -242,7 +247,7 @@ function ActivityMapCard({ a, onOpen }: { a: RecentActivity; onOpen: () => void 
           : path
             ? <svg viewBox="0 0 320 150" style={{ width: '100%', height: '100%' }}><path d={path} fill="none" stroke="white" strokeWidth={3.5} strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" /></svg>
             : <span style={{ width: 12, height: 12, borderRadius: '50%', background: meta.color }} />}
-        <span style={{ position: 'absolute', top: 10, left: 10, fontSize: 10.5, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'white', background: 'rgba(0,0,0,0.42)', padding: '3px 9px', borderRadius: 999, backdropFilter: 'blur(2px)' }}>{a.is_race ? 'Compétition' : meta.label}</span>
+        <span style={{ position: 'absolute', top: 10, left: 10, fontSize: 10.5, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'white', background: 'rgba(0,0,0,0.42)', padding: '3px 9px', borderRadius: 999, backdropFilter: 'blur(2px)' }}>{a.is_race ? t('w1j.race') : meta.label}</span>
       </div>
       {/* Données */}
       <div style={{ padding: '12px 14px 14px' }}>
@@ -273,6 +278,7 @@ function sportFamilyLocal(sportType: string): string {
 
 // ── Records par sport ──
 function RecordsSection({ records }: { records: RecordItem[] }) {
+  const { t } = useI18n()
   const has = (sport: string) => records.some(r => r.sport === sport)
   const runBox = has('run')
   const bikeBox = has('bike')
@@ -282,13 +288,13 @@ function RecordsSection({ records }: { records: RecordItem[] }) {
   if (!runBox && !bikeBox && !triBox && !hyroxRecs.length && !swimRecs.length) return null
   return (
     <div>
-      <Label>Meilleures performances</Label>
+      <Label>{t('w1j.bestPerformances')}</Label>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))', gap: 12 }}>
-        {runBox && <RecordCard sportKey="running" title="Course" rows={RUN_SLOTS.map(s => ({ label: s.label, value: bestRecord(records, 'run', s.aliases)?.value ?? null }))} />}
-        {bikeBox && <RecordCard sportKey="cycling" title="Vélo (puissance)" rows={BIKE_SLOTS.map(s => ({ label: s.label, value: bestRecord(records, 'bike', s.aliases)?.value ?? null }))} />}
-        {triBox && <RecordCard sportKey="swim" title="Triathlon" rows={TRI_SLOTS.map(s => ({ label: s.label, value: bestRecord(records, 'triathlon', s.aliases)?.value ?? null }))} />}
-        {hyroxRecs.length > 0 && <RecordCard sportKey="hyrox" title="Hyrox" rows={hyroxRecs.map(r => ({ label: r.label, value: r.perf }))} />}
-        {swimRecs.length > 0 && <RecordCard sportKey="swim" title="Natation" rows={swimRecs.map(r => ({ label: r.label, value: r.perf }))} />}
+        {runBox && <RecordCard sportKey="running" title={t('w1j.recordRunning')} rows={RUN_SLOTS.map(s => ({ label: s.label, value: bestRecord(records, 'run', s.aliases)?.value ?? null }))} />}
+        {bikeBox && <RecordCard sportKey="cycling" title={t('w1j.recordCyclingPower')} rows={BIKE_SLOTS.map(s => ({ label: s.label, value: bestRecord(records, 'bike', s.aliases)?.value ?? null }))} />}
+        {triBox && <RecordCard sportKey="swim" title={t('w1j.recordTriathlon')} rows={TRI_SLOTS.map(s => ({ label: s.label, value: bestRecord(records, 'triathlon', s.aliases)?.value ?? null }))} />}
+        {hyroxRecs.length > 0 && <RecordCard sportKey="hyrox" title={t('w1j.recordHyrox')} rows={hyroxRecs.map(r => ({ label: r.label, value: r.perf }))} />}
+        {swimRecs.length > 0 && <RecordCard sportKey="swim" title={t('w1j.recordSwimming')} rows={swimRecs.map(r => ({ label: r.label, value: r.perf }))} />}
       </div>
     </div>
   )
@@ -315,6 +321,7 @@ function RecordCard({ sportKey, title, rows }: { sportKey: string; title: string
 
 // ── Graphique volume par semaine (barres, bascule distance / temps) ──
 function WeeklyChart({ weekly }: { weekly: { week: string; count: number; distance_m: number; seconds: number }[] }) {
+  const { t } = useI18n()
   const [metric, setMetric] = useState<'time' | 'dist'>('time')
   const [hover, setHover] = useState<number | null>(null)
   const val = (w: { distance_m: number; seconds: number }) => metric === 'dist' ? w.distance_m / 1000 : w.seconds
@@ -323,8 +330,8 @@ function WeeklyChart({ weekly }: { weekly: { week: string; count: number; distan
   return (
     <div>
       <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
-        <Toggle on={metric === 'time'} onClick={() => setMetric('time')}>Temps</Toggle>
-        <Toggle on={metric === 'dist'} onClick={() => setMetric('dist')}>Distance</Toggle>
+        <Toggle on={metric === 'time'} onClick={() => setMetric('time')}>{t('w1j.time')}</Toggle>
+        <Toggle on={metric === 'dist'} onClick={() => setMetric('dist')}>{t('w1j.distance')}</Toggle>
       </div>
       {/* overflow visible + padding haut : la bulle n'est jamais coupée */}
       <div style={{ position: 'relative', display: 'flex', alignItems: 'flex-end', gap: 2, height: 120, paddingTop: 30, overflow: 'visible' }}>

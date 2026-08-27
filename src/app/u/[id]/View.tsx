@@ -15,6 +15,7 @@ import { ReadOnlyActivityDetail } from '@/components/activity/ReadOnlyActivityDe
 import ActivityShowcase from '@/components/profile/ActivityShowcase'
 import { getProfileActivityShowcase, type ActivityShowcaseData } from '@/lib/profile/activityShowcase'
 import { getSocialCounts, amIFollowing, toggleFollow, type SocialCounts } from '@/lib/social/follows'
+import { useI18n } from '@/lib/i18n'
 
 interface PublicProfile {
   id: string
@@ -33,6 +34,7 @@ const SPORT_LABEL: Record<string, string> = {
 const sportLabel = (s: string) => SPORT_LABEL[s] ?? (s ? s[0].toUpperCase() + s.slice(1) : s)
 
 export default function PublicProfileView({ userId }: { userId: string }) {
+  const { t } = useI18n()
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
   const [profile, setProfile] = useState<PublicProfile | null>(null)
@@ -61,7 +63,7 @@ export default function PublicProfileView({ userId }: { userId: string }) {
       const s = (v: unknown) => (typeof v === 'string' ? v : null)
       setProfile({
         id: userId,
-        name: s(row.preferred_name) || s(row.full_name) || s(row.first_name) || s(row.username) || 'Athlète',
+        name: s(row.preferred_name) || s(row.full_name) || s(row.first_name) || s(row.username) || t('w1j.athlete'),
         username: s(row.username),
         avatar: s(row.avatar_url),
         bio: s(row.bio),
@@ -93,15 +95,15 @@ export default function PublicProfileView({ userId }: { userId: string }) {
   }
 
   if (loading) {
-    return <div style={wrap}><p style={{ fontSize: 13, color: 'var(--text-dim)' }}>Chargement…</p></div>
+    return <div style={wrap}><p style={{ fontSize: 13, color: 'var(--text-dim)' }}>{t('w1j.loading')}</p></div>
   }
   if (notFound || !profile) {
     return (
       <div style={wrap}>
         <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-lg)', padding: '32px 22px', textAlign: 'center' }}>
-          <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)', margin: '0 0 6px' }}>Athlète introuvable</p>
-          <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: '0 0 16px' }}>Ce profil n’existe pas ou n’est plus disponible.</p>
-          <Link href="/feed" style={pill('var(--bg-card2)', 'var(--primary)')}>Retour au fil</Link>
+          <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)', margin: '0 0 6px' }}>{t('w1j.athleteNotFound')}</p>
+          <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: '0 0 16px' }}>{t('w1j.profileUnavailable')}</p>
+          <Link href="/feed" style={pill('var(--bg-card2)', 'var(--primary)')}>{t('w1j.backToFeed')}</Link>
         </div>
       </div>
     )
@@ -118,11 +120,11 @@ export default function PublicProfileView({ userId }: { userId: string }) {
             {profile.username && <p style={{ fontSize: 13.5, color: 'var(--text-dim)', margin: '2px 0 0' }}>@{profile.username}</p>}
           </div>
           {isSelf ? (
-            <Link href="/profile" style={pill('var(--bg-card2)', 'var(--primary)')}>Modifier mon profil</Link>
+            <Link href="/profile" style={pill('var(--bg-card2)', 'var(--primary)')}>{t('w1j.editMyProfile')}</Link>
           ) : (
             <button onClick={onToggleFollow} disabled={busy}
               style={pill(following ? 'var(--bg-card2)' : 'var(--primary)', following ? 'var(--text-mid)' : 'var(--on-primary)')}>
-              {following ? 'Suivi' : 'Suivre'}
+              {following ? t('w1j.followingState') : t('w1j.follow')}
             </button>
           )}
         </div>
@@ -139,9 +141,9 @@ export default function PublicProfileView({ userId }: { userId: string }) {
 
         {/* Compteurs sociaux */}
         <div style={{ display: 'flex', gap: 24, marginTop: 18, borderTop: '1px solid var(--border)', paddingTop: 16 }}>
-          <Stat n={counts.followers} label={counts.followers > 1 ? 'abonnés' : 'abonné'} />
-          <Stat n={counts.following} label="abonnements" />
-          {counts.coached > 0 && <Stat n={counts.coached} label={counts.coached > 1 ? 'athlètes coachés' : 'athlète coaché'} />}
+          <Stat n={counts.followers} label={counts.followers > 1 ? t('w1j.followersPlural') : t('w1j.followerSingular')} />
+          <Stat n={counts.following} label={t('w1j.followingCount')} />
+          {counts.coached > 0 && <Stat n={counts.coached} label={counts.coached > 1 ? t('w1j.coachedAthletesPlural') : t('w1j.coachedAthleteSingular')} />}
         </div>
       </div>
 
@@ -149,7 +151,7 @@ export default function PublicProfileView({ userId }: { userId: string }) {
       <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-lg)', padding: 'clamp(18px,4vw,26px)' }}>
         {showcase
           ? <ActivityShowcase data={showcase} isOwner={isSelf} />
-          : <p style={{ fontSize: 13.5, color: 'var(--text-dim)', margin: 0 }}>Activités indisponibles.</p>}
+          : <p style={{ fontSize: 13.5, color: 'var(--text-dim)', margin: 0 }}>{t('w1j.activitiesUnavailable')}</p>}
       </div>
 
       {detailId && <ReadOnlyActivityDetail id={detailId} onClose={() => setDetailId(null)} />}

@@ -7,6 +7,7 @@
 // ══════════════════════════════════════════════════════════════
 
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { useI18n } from '@/lib/i18n'
 import { createClient } from '@/lib/supabase/client'
 import { getCurrentUser } from '@/lib/auth/currentUser'
 import { matchProfessions } from '@/lib/profile/professions'
@@ -146,6 +147,7 @@ const CURATED_NOTIFS: { key: string; title: string; desc: string; def: boolean }
 ]
 
 export default function AISettingsModal({ open, initialSection = 'profil', onClose }: { open: boolean; initialSection?: SettingsSection; onClose: () => void }) {
+  const { t } = useI18n()
   const [section, setSection] = useState<SettingsSection>(initialSection)
   const [isWide, setIsWide] = useState(true)
   const [showNav, setShowNav] = useState(false)
@@ -243,13 +245,13 @@ export default function AISettingsModal({ open, initialSection = 'profil', onClo
   if (!open) return null
 
   const NAV: { group: string; items: { id: SettingsSection; label: string; disabled?: boolean }[] }[] = [
-    { group: 'Général', items: [
-      { id: 'profil', label: 'Profil' }, { id: 'instructions', label: 'Instructions' },
-      { id: 'modele', label: 'Modèle par défaut' }, { id: 'voix', label: 'Voix' }, { id: 'notifications', label: 'Notifications' },
+    { group: t('w1a.navGeneral'), items: [
+      { id: 'profil', label: t('w1a.navProfil') }, { id: 'instructions', label: t('w1a.navInstructions') },
+      { id: 'modele', label: t('w1a.navModele') }, { id: 'voix', label: t('w1a.navVoix') }, { id: 'notifications', label: t('w1a.navNotifications') },
     ] },
-    { group: 'Agents', items: [ { id: 'agent_training', label: 'Athlete' }, { id: 'agent_coach', label: 'Coach' }, { id: 'agent_networks', label: 'Networks (bientôt)', disabled: true } ] },
-    { group: 'Studio', items: [ { id: 'studio', label: 'Studio' } ] },
-    { group: 'Compte', items: [ { id: 'connecteurs', label: 'Connecteurs' }, { id: 'abonnement', label: 'Abonnement' } ] },
+    { group: t('w1a.navAgents'), items: [ { id: 'agent_training', label: t('w1a.navAthlete') }, { id: 'agent_coach', label: t('w1a.navCoach') }, { id: 'agent_networks', label: t('w1a.navNetworks'), disabled: true } ] },
+    { group: t('w1a.navStudio'), items: [ { id: 'studio', label: t('w1a.navStudio') } ] },
+    { group: t('w1a.navCompte'), items: [ { id: 'connecteurs', label: t('w1a.navConnecteurs') }, { id: 'abonnement', label: t('w1a.navAbonnement') } ] },
   ]
 
   const nav = (
@@ -285,12 +287,12 @@ export default function AISettingsModal({ open, initialSection = 'profil', onClo
         {/* Header */}
         <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 12, padding: 'max(16px, env(safe-area-inset-top)) 20px 14px', borderBottom: '1px solid var(--border)' }}>
           {!isWide && !showNav && (
-            <button type="button" onClick={() => setShowNav(true)} aria-label="Retour" style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text)', display: 'flex', padding: 4 }}>
+            <button type="button" onClick={() => setShowNav(true)} aria-label={t('w1a.retour')} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text)', display: 'flex', padding: 4 }}>
               <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
             </button>
           )}
-          <div style={{ flex: 1, fontSize: 19, fontWeight: 600, color: 'var(--text)', fontFamily: 'var(--font-display)', letterSpacing: '-0.01em' }}>Paramètres</div>
-          <button type="button" onClick={onClose} aria-label="Fermer" style={{ border: 'none', background: 'var(--bg-alt)', cursor: 'pointer', color: 'var(--text-mid)', width: 32, height: 32, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ flex: 1, fontSize: 19, fontWeight: 600, color: 'var(--text)', fontFamily: 'var(--font-display)', letterSpacing: '-0.01em' }}>{t('w1a.parametres')}</div>
+          <button type="button" onClick={onClose} aria-label={t('w1a.fermer')} style={{ border: 'none', background: 'var(--bg-alt)', cursor: 'pointer', color: 'var(--text-mid)', width: 32, height: 32, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
           </button>
         </div>
@@ -308,13 +310,13 @@ export default function AISettingsModal({ open, initialSection = 'profil', onClo
               {section === 'agent_training' && <AgentTrainingSection agent={agent} save={saveAgent} />}
               {section === 'agent_coach' && (
                 <div>
-                  <div style={sectionTitleStyle}>Agent Coach</div>
+                  <div style={sectionTitleStyle}>{t('w1a.agentCoachTitle')}</div>
                   <p style={{ fontSize: 13.5, color: 'var(--text-mid)', lineHeight: 1.6, margin: '4px 0 0', maxWidth: 520, fontFamily: FB }}>
-                    L’agent Coach t’aide à suivre et faire progresser tes athlètes : priorisation, ajustements de plans, messages. Ses réglages et fonctionnalités arrivent avec la construction de son interface dédiée.
+                    {t('w1a.agentCoachDesc')}
                   </p>
                 </div>
               )}
-              {section === 'agent_networks' && <div style={sectionTitleStyle}>Networks — bientôt disponible</div>}
+              {section === 'agent_networks' && <div style={sectionTitleStyle}>{t('w1a.networksBientot')}</div>}
               {section === 'studio' && <StudioSection />}
               {section === 'connecteurs' && <ConnecteursSection />}
               {section === 'abonnement' && <AbonnementSection />}
@@ -325,7 +327,7 @@ export default function AISettingsModal({ open, initialSection = 'profil', onClo
         {/* Toast « Enregistré » */}
         <div aria-live="polite" style={{ position: 'absolute', bottom: 18, left: '50%', transform: `translateX(-50%) translateY(${savedAt ? 0 : 12}px)`, opacity: savedAt ? 1 : 0, pointerEvents: 'none', transition: 'opacity 0.25s, transform 0.25s', display: 'flex', alignItems: 'center', gap: 8, padding: '9px 15px', borderRadius: 999, background: 'var(--text)', color: 'var(--bg)', fontSize: 13, fontWeight: 600, fontFamily: FB, boxShadow: '0 8px 24px rgba(0,0,0,0.25)' }}>
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
-          Enregistré
+          {t('w1a.enregistre')}
         </div>
       </div>
     </div>
@@ -334,6 +336,7 @@ export default function AISettingsModal({ open, initialSection = 'profil', onClo
 
 // ── Profil ─────────────────────────────────────────────────────
 function ProfilSection({ profile, setProfile, saveProfile }: { profile: ProfileState; setProfile: React.Dispatch<React.SetStateAction<ProfileState>>; saveProfile: (patch: Record<string, unknown>) => void }) {
+  const { t } = useI18n()
   const [profQuery, setProfQuery] = useState('')
   const [profOpen, setProfOpen] = useState(false)
   const matches = matchProfessions(profQuery || profile.work_profession, 40)
@@ -348,20 +351,20 @@ function ProfilSection({ profile, setProfile, saveProfile }: { profile: ProfileS
 
   return (
     <div>
-      <div style={sectionTitleStyle}>Profil</div>
-      <p style={sectionLead}>Ces informations aident Hybrid à personnaliser ses conseils.</p>
+      <div style={sectionTitleStyle}>{t('w1a.navProfil')}</div>
+      <p style={sectionLead}>{t('w1a.profilLead')}</p>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 18, maxWidth: 540 }}>
         <div>
-          <label style={fieldLabel}>Nom complet</label>
-          <input style={inputStyle} onFocus={onFocusRing} onBlur={e => { onBlurRing(e); saveProfile({ full_name: profile.full_name.trim() || null }) }} value={profile.full_name} onChange={e => setProfile(p => ({ ...p, full_name: e.target.value }))} placeholder="Ton nom" />
+          <label style={fieldLabel}>{t('w1a.nomComplet')}</label>
+          <input style={inputStyle} onFocus={onFocusRing} onBlur={e => { onBlurRing(e); saveProfile({ full_name: profile.full_name.trim() || null }) }} value={profile.full_name} onChange={e => setProfile(p => ({ ...p, full_name: e.target.value }))} placeholder={t('w1a.tonNom')} />
         </div>
         <div>
-          <label style={fieldLabel}>Comment souhaites-tu que Hybrid t’appelle ?</label>
-          <input style={inputStyle} onFocus={onFocusRing} onBlur={e => { onBlurRing(e); saveProfile({ preferred_name: profile.preferred_name.trim() || null }) }} value={profile.preferred_name} onChange={e => setProfile(p => ({ ...p, preferred_name: e.target.value }))} placeholder="Ex. Alex, Coach…" />
+          <label style={fieldLabel}>{t('w1a.appelleLabel')}</label>
+          <input style={inputStyle} onFocus={onFocusRing} onBlur={e => { onBlurRing(e); saveProfile({ preferred_name: profile.preferred_name.trim() || null }) }} value={profile.preferred_name} onChange={e => setProfile(p => ({ ...p, preferred_name: e.target.value }))} placeholder={t('w1a.appellePh')} />
         </div>
         <div style={{ position: 'relative' }}>
-          <label style={fieldLabel}>Quelle est la meilleure description de ton travail ?</label>
-          <input style={inputStyle} onFocus={e => { onFocusRing(e); setProfOpen(true); setProfQuery('') }} onBlur={e => { onBlurRing(e); setTimeout(() => setProfOpen(false), 150) }} value={profOpen ? profQuery : profile.work_profession} onChange={e => setProfQuery(e.target.value)} placeholder="Rechercher un métier…" />
+          <label style={fieldLabel}>{t('w1a.travailLabel')}</label>
+          <input style={inputStyle} onFocus={e => { onFocusRing(e); setProfOpen(true); setProfQuery('') }} onBlur={e => { onBlurRing(e); setTimeout(() => setProfOpen(false), 150) }} value={profOpen ? profQuery : profile.work_profession} onChange={e => setProfQuery(e.target.value)} placeholder={t('w1a.rechercherMetier')} />
           {profOpen && (
             <div style={{ position: 'absolute', top: 'calc(100% + 5px)', left: 0, right: 0, zIndex: 20, maxHeight: 240, overflowY: 'auto', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', boxShadow: '0 12px 34px rgba(0,0,0,0.28)', padding: 5, transformOrigin: 'top', animation: 'thwDDin 0.15s cubic-bezier(0.2,0.9,0.3,1)' }}>
               {matches.map(m => (
@@ -370,12 +373,12 @@ function ProfilSection({ profile, setProfile, saveProfile }: { profile: ProfileS
                   onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)' }}
                   onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}>{m}</button>
               ))}
-              {matches.length === 0 && <div style={{ padding: '9px 11px', fontSize: 13, color: 'var(--text-dim)' }}>Aucun résultat</div>}
+              {matches.length === 0 && <div style={{ padding: '9px 11px', fontSize: 13, color: 'var(--text-dim)' }}>{t('w1a.aucunResultat')}</div>}
             </div>
           )}
         </div>
         <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
-          {([['work_hours_per_week', 'Travail / semaine', 'Ex. 40'], ['ideal_sleep_hours', 'Sommeil idéal', 'Ex. 8'], ['sport_hours_per_week', 'Sport / semaine', 'Ex. 10']] as const).map(([k, label, ph]) => (
+          {([['work_hours_per_week', t('w1a.travailSemaine'), t('w1a.exemple40')], ['ideal_sleep_hours', t('w1a.sommeilIdeal'), t('w1a.exemple8')], ['sport_hours_per_week', t('w1a.sportSemaine'), t('w1a.exemple10')]] as const).map(([k, label, ph]) => (
             <div key={k} style={{ flex: '1 1 140px' }}>
               <label style={fieldLabel}>{label}</label>
               <div style={{ position: 'relative' }}>
@@ -386,9 +389,9 @@ function ProfilSection({ profile, setProfile, saveProfile }: { profile: ProfileS
           ))}
         </div>
         <div>
-          <label style={fieldLabel}>Sports pratiqués</label>
+          <label style={fieldLabel}>{t('w1a.sportsPratiques')}</label>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-            {SPORTS.map(([v, l]) => <Pill key={v} on={profile.sports.includes(v)} onClick={() => toggleSport(v)}>{l}</Pill>)}
+            {SPORTS.map(([v]) => <Pill key={v} on={profile.sports.includes(v)} onClick={() => toggleSport(v)}>{t(`w1a.sport_${v}`)}</Pill>)}
           </div>
         </div>
       </div>
@@ -404,15 +407,16 @@ const INSTRUCTION_PRESETS = [
   { label: 'Motivateur', text: 'Sois positif et motivant. Encourage-moi, célèbre mes progrès, garde-moi engagé même les jours difficiles.' },
 ]
 function InstructionsSection({ value, setValue, save }: { value: string; setValue: (v: string) => void; save: (v: string) => void }) {
+  const { t } = useI18n()
   return (
     <div>
-      <div style={sectionTitleStyle}>Instructions</div>
-      <p style={sectionLead}>Un prompt qui dit à Hybrid comment se comporter et répondre. Il en tiendra compte dans toutes tes conversations.</p>
+      <div style={sectionTitleStyle}>{t('w1a.navInstructions')}</div>
+      <p style={sectionLead}>{t('w1a.instructionsLead')}</p>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 14 }}>
-        {INSTRUCTION_PRESETS.map(p => <PresetChip key={p.label} onClick={() => { setValue(p.text); save(p.text) }}>{p.label}</PresetChip>)}
+        {INSTRUCTION_PRESETS.map((_, i) => { const text = t(`w1a.preset_${i}_text`); return <PresetChip key={i} onClick={() => { setValue(text); save(text) }}>{t(`w1a.preset_${i}_label`)}</PresetChip> })}
       </div>
       <textarea value={value} onChange={e => setValue(e.target.value)} onFocus={onFocusRing} onBlur={e => { onBlurRing(e); save(value) }} rows={7}
-        placeholder="Ex. Tu es mon coach hybride. Sois technique mais accessible…"
+        placeholder={t('w1a.instructionsPh')}
         style={{ ...inputStyle, fontSize: 14, lineHeight: 1.55, resize: 'vertical', maxWidth: 640 }} />
     </div>
   )
@@ -420,11 +424,12 @@ function InstructionsSection({ value, setValue, save }: { value: string; setValu
 
 // ── Modèle par défaut ──────────────────────────────────────────
 function ModeleSection({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  const MODELS: [string, string, string][] = [['hermes', 'Hermès', 'Rapide'], ['athena', 'Athéna', 'Équilibré'], ['zeus', 'Zeus', 'Maximum']]
+  const { t } = useI18n()
+  const MODELS: [string, string, string][] = [['hermes', 'Hermès', t('w1a.speedRapide')], ['athena', 'Athéna', t('w1a.speedEquilibre')], ['zeus', 'Zeus', t('w1a.speedMax')]]
   return (
     <div>
-      <div style={sectionTitleStyle}>Modèle par défaut</div>
-      <p style={sectionLead}>Le modèle utilisé par défaut pour tes nouvelles conversations.</p>
+      <div style={sectionTitleStyle}>{t('w1a.navModele')}</div>
+      <p style={sectionLead}>{t('w1a.modeleLead')}</p>
       <div style={{ display: 'inline-flex', gap: 4, padding: 4, borderRadius: 'var(--r-md)', background: 'var(--bg-card2)' }}>
         {MODELS.map(([id, label, speed]) => {
           const on = value === id
@@ -445,7 +450,8 @@ function ModeleSection({ value, onChange }: { value: string; onChange: (v: strin
 // Réglages de la page Studio (orchestration d'agents). Pour l'instant : le
 // modèle par défaut de l'architecte. Persisté en localStorage, lu par le Studio.
 function StudioSection() {
-  const MODELS: [string, string, string][] = [['hermes', 'Hermès', 'Rapide'], ['athena', 'Athéna', 'Équilibré'], ['zeus', 'Zeus', 'Maximum']]
+  const { t } = useI18n()
+  const MODELS: [string, string, string][] = [['hermes', 'Hermès', t('w1a.speedRapide')], ['athena', 'Athéna', t('w1a.speedEquilibre')], ['zeus', 'Zeus', t('w1a.speedMax')]]
   const [model, setModel] = useState('athena')
   const [autonomy, setAutonomy] = useState<'auto' | 'manual'>('auto')
   useEffect(() => {
@@ -462,15 +468,15 @@ function StudioSection() {
     try { localStorage.setItem('thw_studio_autonomy', v) } catch { /* ignore */ }
     try { window.dispatchEvent(new CustomEvent('thw:studio-settings-changed')) } catch { /* ignore */ }
   }
-  const AUTON: [('auto' | 'manual'), string, string][] = [['auto', 'Automatique', 'Le système tourne seul et t’envoie sa synthèse'], ['manual', 'Confirmation manuelle', 'Tu valides chaque cycle avant l’envoi']]
+  const AUTON: [('auto' | 'manual'), string, string][] = [['auto', t('w1a.autonAutoLabel'), t('w1a.autonAutoDesc')], ['manual', t('w1a.autonManualLabel'), t('w1a.autonManualDesc')]]
   return (
     <div>
-      <div style={sectionTitleStyle}>Studio</div>
-      <p style={sectionLead}>Les réglages de la page Studio (construction de systèmes multi-agents).</p>
+      <div style={sectionTitleStyle}>{t('w1a.navStudio')}</div>
+      <p style={sectionLead}>{t('w1a.studioLead')}</p>
 
-      <label style={fieldLabel}>Modèle de l’architecte</label>
+      <label style={fieldLabel}>{t('w1a.modeleArchitecte')}</label>
       <p style={{ fontSize: 12.5, color: 'var(--text-dim)', margin: '2px 0 10px', fontFamily: FB, lineHeight: 1.5 }}>
-        Le modèle utilisé par défaut quand l’architecte te pose des questions et propose un système.
+        {t('w1a.modeleArchitecteDesc')}
       </p>
       <div style={{ display: 'inline-flex', gap: 4, padding: 4, borderRadius: 'var(--r-md)', background: 'var(--bg-card2)' }}>
         {MODELS.map(([id, label, speed]) => {
@@ -485,9 +491,9 @@ function StudioSection() {
         })}
       </div>
 
-      <label style={{ ...fieldLabel, marginTop: 22 }}>Exécution des systèmes</label>
+      <label style={{ ...fieldLabel, marginTop: 22 }}>{t('w1a.executionSystemes')}</label>
       <p style={{ fontSize: 12.5, color: 'var(--text-dim)', margin: '2px 0 10px', fontFamily: FB, lineHeight: 1.5 }}>
-        Comment tes systèmes planifiés se comportent : en autonomie, ou avec ta validation à chaque cycle.
+        {t('w1a.executionSystemesDesc')}
       </p>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxWidth: 460 }}>
         {AUTON.map(([id, label, desc]) => {
@@ -508,7 +514,7 @@ function StudioSection() {
       </div>
 
       <p style={{ fontSize: 11.5, color: 'var(--text-dim)', margin: '22px 0 0', fontFamily: FB, lineHeight: 1.5 }}>
-        L’architecte en tient compte quand il construit un système. Tu peux toujours ajuster un système au cas par cas.
+        {t('w1a.architecteNote')}
       </p>
     </div>
   )
@@ -516,14 +522,15 @@ function StudioSection() {
 
 // ── Voix ───────────────────────────────────────────────────────
 function VoixSection({ voice, save }: { voice: { lang: string; style: string; speed: string }; save: (v: { lang: string; style: string; speed: string }) => void }) {
+  const { t } = useI18n()
   return (
     <div>
-      <div style={sectionTitleStyle}>Voix</div>
-      <p style={sectionLead}>Comment Hybrid te parle en mode vocal.</p>
+      <div style={sectionTitleStyle}>{t('w1a.navVoix')}</div>
+      <p style={sectionLead}>{t('w1a.voixLead')}</p>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 18, maxWidth: 420 }}>
-        <div><label style={fieldLabel}>Langue</label><Dropdown value={voice.lang} onChange={v => save({ ...voice, lang: v })} options={[['fr-FR', 'Français'], ['en-US', 'Anglais'], ['es-ES', 'Espagnol']]} /></div>
-        <div><label style={fieldLabel}>Style</label><Dropdown value={voice.style} onChange={v => save({ ...voice, style: v })} options={[['douce', 'Douce'], ['neutre', 'Neutre'], ['energique', 'Énergique']]} /></div>
-        <div><label style={fieldLabel}>Vitesse</label><Dropdown value={voice.speed} onChange={v => save({ ...voice, speed: v })} options={[['lent', 'Lent'], ['normal', 'Normal'], ['rapide', 'Rapide']]} /></div>
+        <div><label style={fieldLabel}>{t('w1a.langue')}</label><Dropdown value={voice.lang} onChange={v => save({ ...voice, lang: v })} options={[['fr-FR', t('w1a.langFr')], ['en-US', t('w1a.langEn')], ['es-ES', t('w1a.langEs')]]} /></div>
+        <div><label style={fieldLabel}>{t('w1a.style')}</label><Dropdown value={voice.style} onChange={v => save({ ...voice, style: v })} options={[['douce', t('w1a.styleDouce')], ['neutre', t('w1a.styleNeutre')], ['energique', t('w1a.styleEnergique')]]} /></div>
+        <div><label style={fieldLabel}>{t('w1a.vitesse')}</label><Dropdown value={voice.speed} onChange={v => save({ ...voice, speed: v })} options={[['lent', t('w1a.vitesseLent')], ['normal', t('w1a.vitesseNormal')], ['rapide', t('w1a.vitesseRapide')]]} /></div>
       </div>
     </div>
   )
@@ -534,6 +541,7 @@ function NotificationsSection({ prefs, globalNotif, pushState, setPushState, pat
   prefs: Record<string, boolean>; globalNotif: boolean; pushState: PushState | 'loading'
   setPushState: (s: PushState) => void; patchPref: (k: string, v: boolean) => void; setGlobal: (v: boolean) => void
 }) {
+  const { t } = useI18n()
   const [busy, setBusy] = useState(false)
   const togglePush = async () => {
     if (busy) return; setBusy(true)
@@ -541,27 +549,27 @@ function NotificationsSection({ prefs, globalNotif, pushState, setPushState, pat
   }
   return (
     <div>
-      <div style={sectionTitleStyle}>Notifications</div>
-      <p style={sectionLead}>Choisis ce qui mérite de te déranger.</p>
+      <div style={sectionTitleStyle}>{t('w1a.navNotifications')}</div>
+      <p style={sectionLead}>{t('w1a.notificationsLead')}</p>
       {pushState !== 'unsupported' && (
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, padding: '15px 0', borderBottom: '1px solid var(--border)' }}>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>Notifications sur cet appareil</div>
+            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>{t('w1a.notifAppareil')}</div>
             <div style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 3, lineHeight: 1.5 }}>
-              {pushState === 'denied' ? 'Bloquées par le navigateur — autorise-les dans les réglages du site.'
-                : pushState === 'unconfigured' ? 'Bientôt disponible sur ce serveur.'
-                : 'Reçois les notifications push, même app fermée.'}
+              {pushState === 'denied' ? t('w1a.notifDenied')
+                : pushState === 'unconfigured' ? t('w1a.notifUnconfigured')
+                : t('w1a.notifDefault')}
             </div>
           </div>
           <Toggle value={pushState === 'on'} onChange={() => { if (pushState === 'off' || pushState === 'on') void togglePush() }} />
         </div>
       )}
       <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '15px 0', borderBottom: '1px solid var(--border)' }}>
-        <div style={{ flex: 1, fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>Toutes les notifications</div>
+        <div style={{ flex: 1, fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>{t('w1a.toutesNotifs')}</div>
         <Toggle value={globalNotif} onChange={setGlobal} />
       </div>
       <div style={{ opacity: globalNotif ? 1 : 0.45, pointerEvents: globalNotif ? 'auto' : 'none' }}>
-        {CURATED_NOTIFS.map(n => <NotifRow key={n.key} title={n.title} desc={n.desc} value={prefs[n.key] ?? n.def} onChange={(v) => patchPref(n.key, v)} />)}
+        {CURATED_NOTIFS.map(n => <NotifRow key={n.key} title={t(`w1a.notif_${n.key}_title`)} desc={t(`w1a.notif_${n.key}_desc`)} value={prefs[n.key] ?? n.def} onChange={(v) => patchPref(n.key, v)} />)}
       </div>
     </div>
   )
@@ -569,6 +577,7 @@ function NotificationsSection({ prefs, globalNotif, pushState, setPushState, pat
 
 // ── Agent Training ─────────────────────────────────────────────
 function AgentTrainingSection({ agent, save }: { agent: TrainingAgentSettings; save: (a: TrainingAgentSettings) => void }) {
+  const { t } = useI18n()
   const set = (patch: Partial<TrainingAgentSettings>) => save({ ...agent, ...patch })
   const toggleIn = (arr: string[], v: string) => arr.includes(v) ? arr.filter(x => x !== v) : [...arr, v]
   const DAYS = ['L', 'M', 'M', 'J', 'V', 'S', 'D']
@@ -577,45 +586,45 @@ function AgentTrainingSection({ agent, save }: { agent: TrainingAgentSettings; s
   )
   return (
     <div>
-      <div style={sectionTitleStyle}>Agent Training</div>
-      <p style={sectionLead}>Ces réglages pilotent le comportement du coach Training dans tes conversations.</p>
+      <div style={sectionTitleStyle}>{t('w1a.agentTrainingTitle')}</div>
+      <p style={sectionLead}>{t('w1a.agentTrainingLead')}</p>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 18, maxWidth: 540 }}>
         <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
-          <Field label="Discipline prioritaire"><Dropdown value={agent.focus} onChange={v => set({ focus: v })} options={FOCUS_OPTS} /></Field>
-          <Field label="Objectif principal"><Dropdown value={agent.objectif} onChange={v => set({ objectif: v })} options={OBJECTIF_OPTS} /></Field>
+          <Field label={t('w1a.disciplinePrioritaire')}><Dropdown value={agent.focus} onChange={v => set({ focus: v })} options={FOCUS_OPTS} /></Field>
+          <Field label={t('w1a.objectifPrincipal')}><Dropdown value={agent.objectif} onChange={v => set({ objectif: v })} options={OBJECTIF_OPTS} /></Field>
         </div>
         <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
-          <Field label="Ton du coach"><Dropdown value={agent.ton} onChange={v => set({ ton: v })} options={TON_OPTS} /></Field>
-          <Field label="Niveau de détail"><Dropdown value={agent.detail} onChange={v => set({ detail: v })} options={DETAIL_OPTS} /></Field>
+          <Field label={t('w1a.tonCoach')}><Dropdown value={agent.ton} onChange={v => set({ ton: v })} options={TON_OPTS} /></Field>
+          <Field label={t('w1a.niveauDetail')}><Dropdown value={agent.detail} onChange={v => set({ detail: v })} options={DETAIL_OPTS} /></Field>
         </div>
         <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
-          <Field label="Niveau de l’athlète"><Dropdown value={agent.niveau} onChange={v => set({ niveau: v })} options={NIVEAU_OPTS} /></Field>
-          <Field label="Format des réponses"><Dropdown value={agent.format} onChange={v => set({ format: v })} options={FORMAT_OPTS} /></Field>
+          <Field label={t('w1a.niveauAthlete')}><Dropdown value={agent.niveau} onChange={v => set({ niveau: v })} options={NIVEAU_OPTS} /></Field>
+          <Field label={t('w1a.formatReponses')}><Dropdown value={agent.format} onChange={v => set({ format: v })} options={FORMAT_OPTS} /></Field>
         </div>
         <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
-          <Field label="Périodisation préférée"><Dropdown value={agent.periodisation} onChange={v => set({ periodisation: v })} options={PERIODISATION_OPTS} /></Field>
-          <Field label="Unités"><Dropdown value={agent.unites} onChange={v => set({ unites: v })} options={UNITES_OPTS} /></Field>
+          <Field label={t('w1a.periodisationPreferee')}><Dropdown value={agent.periodisation} onChange={v => set({ periodisation: v })} options={PERIODISATION_OPTS} /></Field>
+          <Field label={t('w1a.unites')}><Dropdown value={agent.unites} onChange={v => set({ unites: v })} options={UNITES_OPTS} /></Field>
         </div>
         <div>
-          <label style={fieldLabel}>Matériel disponible</label>
+          <label style={fieldLabel}>{t('w1a.materielDisponible')}</label>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
             {MATERIEL_OPTS.map(([v, l]) => <Pill key={v} on={agent.materiel.includes(v)} onClick={() => set({ materiel: toggleIn(agent.materiel, v) })}>{l}</Pill>)}
           </div>
         </div>
         <div>
-          <label style={fieldLabel}>Jours d’entraînement préférés</label>
+          <label style={fieldLabel}>{t('w1a.joursEntrainement')}</label>
           <div style={{ display: 'flex', gap: 7 }}>
-            {DAYS.map((d, i) => {
+            {DAYS.map((_, i) => {
               const on = agent.jours.includes(i)
-              return <button key={i} type="button" onClick={() => set({ jours: on ? agent.jours.filter(x => x !== i) : [...agent.jours, i] })} style={{ width: 40, height: 40, borderRadius: 'var(--r-sm)', border: 'none', background: on ? 'var(--primary-dim)' : 'var(--bg-card2)', color: on ? 'var(--primary)' : 'var(--text-mid)', fontSize: 13, fontWeight: on ? 700 : 500, cursor: 'pointer', fontFamily: FB }}>{d}</button>
+              return <button key={i} type="button" onClick={() => set({ jours: on ? agent.jours.filter(x => x !== i) : [...agent.jours, i] })} style={{ width: 40, height: 40, borderRadius: 'var(--r-sm)', border: 'none', background: on ? 'var(--primary-dim)' : 'var(--bg-card2)', color: on ? 'var(--primary)' : 'var(--text-mid)', fontSize: 13, fontWeight: on ? 700 : 500, cursor: 'pointer', fontFamily: FB }}>{t(`w1a.dayInitial_${i}`)}</button>
             })}
           </div>
         </div>
         <div>
-          <label style={fieldLabel}>Contraintes / blessures à toujours considérer</label>
-          <textarea value={agent.contraintes} onChange={e => set({ contraintes: e.target.value })} onFocus={onFocusRing} onBlur={onBlurRing} rows={3} placeholder="Ex. genou droit fragile, pas de sauts…" style={{ ...inputStyle, fontSize: 14, lineHeight: 1.5, resize: 'vertical' }} />
+          <label style={fieldLabel}>{t('w1a.contraintesLabel')}</label>
+          <textarea value={agent.contraintes} onChange={e => set({ contraintes: e.target.value })} onFocus={onFocusRing} onBlur={onBlurRing} rows={3} placeholder={t('w1a.contraintesPh')} style={{ ...inputStyle, fontSize: 14, lineHeight: 1.5, resize: 'vertical' }} />
         </div>
-        {([['proactivite', 'Suggestions proactives', 'Hybrid propose des idées utiles sans que tu le demandes.'], ['science', 'Appuyer sur la science', 'Justifie les conseils par des références quand pertinent.'], ['emoji', 'Emojis', 'Autoriser quelques emojis dans les réponses.']] as const).map(([k, title, desc]) => (
+        {([['proactivite', t('w1a.proactiviteTitle'), t('w1a.proactiviteDesc')], ['science', t('w1a.scienceTitle'), t('w1a.scienceDesc')], ['emoji', t('w1a.emojiTitle'), t('w1a.emojiDesc')]] as const).map(([k, title, desc]) => (
           <div key={k} style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '12px 0', borderTop: '1px solid var(--border)' }}>
             <div style={{ flex: 1 }}><div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>{title}</div><div style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 2 }}>{desc}</div></div>
             <Toggle value={agent[k]} onChange={(v) => set({ [k]: v } as Partial<TrainingAgentSettings>)} />
@@ -628,14 +637,15 @@ function AgentTrainingSection({ agent, save }: { agent: TrainingAgentSettings; s
 
 // ── Connecteurs ────────────────────────────────────────────────
 function ConnecteursSection() {
+  const { t } = useI18n()
   const CONNECTORS: { id: ConnectorId; name: string; desc: string; ready: boolean }[] = [
-    { id: 'strava', name: 'Strava', desc: 'Importe automatiquement tes activités.', ready: true },
-    { id: 'polar', name: 'Polar', desc: 'Séances, sommeil et récupération.', ready: true },
-    { id: 'wahoo', name: 'Wahoo', desc: 'Séances vélo et home-trainer.', ready: true },
-    { id: 'withings', name: 'Withings', desc: 'Poids, sommeil, métriques santé.', ready: true },
-    { id: 'gcal', name: 'Google Agenda', desc: 'Synchronise tes séances avec ton agenda.', ready: false },
-    { id: 'acal', name: 'Apple Agenda', desc: 'Synchronise tes séances avec ton agenda.', ready: false },
-    { id: 'excel', name: 'Excel', desc: 'Exporte / importe tes données en tableur.', ready: false },
+    { id: 'strava', name: 'Strava', desc: t('w1a.connStrava'), ready: true },
+    { id: 'polar', name: 'Polar', desc: t('w1a.connPolar'), ready: true },
+    { id: 'wahoo', name: 'Wahoo', desc: t('w1a.connWahoo'), ready: true },
+    { id: 'withings', name: 'Withings', desc: t('w1a.connWithings'), ready: true },
+    { id: 'gcal', name: t('w1a.connGcalName'), desc: t('w1a.connGcalDesc'), ready: false },
+    { id: 'acal', name: t('w1a.connAcalName'), desc: t('w1a.connAcalDesc'), ready: false },
+    { id: 'excel', name: 'Excel', desc: t('w1a.connExcel'), ready: false },
   ]
   // État de connexion réel (oauth_tokens) : un toggle par app, comme les
   // notifications. Activer = OAuth direct vers le fournisseur (pas de détour par
@@ -664,8 +674,8 @@ function ConnecteursSection() {
 
   return (
     <div>
-      <div style={sectionTitleStyle}>Connecteurs</div>
-      <p style={sectionLead}>Connecte Hybrid à tes applications pour qu’il travaille avec toutes tes données.</p>
+      <div style={sectionTitleStyle}>{t('w1a.navConnecteurs')}</div>
+      <p style={sectionLead}>{t('w1a.connecteursLead')}</p>
       <div style={{ maxWidth: 560 }}>
         {CONNECTORS.map((c, i) => {
           const isOn = connected.has(c.id)
@@ -675,7 +685,7 @@ function ConnecteursSection() {
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--text)' }}>{c.name}</div>
                 <div style={{ fontSize: 11.5, color: 'var(--text-dim)', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {isOn ? 'Connecté · synchronisation active' : c.desc}
+                  {isOn ? t('w1a.connecteActive') : c.desc}
                 </div>
               </div>
               {c.ready ? (
@@ -683,7 +693,7 @@ function ConnecteursSection() {
                   <Toggle value={isOn} onChange={v => onToggle(c.id, v)} />
                 </div>
               ) : (
-                <span style={{ padding: '5px 10px', fontSize: 11, fontWeight: 600, color: 'var(--text-dim)', whiteSpace: 'nowrap' }}>Bientôt</span>
+                <span style={{ padding: '5px 10px', fontSize: 11, fontWeight: 600, color: 'var(--text-dim)', whiteSpace: 'nowrap' }}>{t('w1a.bientot')}</span>
               )}
             </div>
           )
@@ -695,11 +705,12 @@ function ConnecteursSection() {
 
 // ── Abonnement ─────────────────────────────────────────────────
 function AbonnementSection() {
+  const { t } = useI18n()
   return (
     <div>
-      <div style={sectionTitleStyle}>Abonnement</div>
-      <p style={sectionLead}>Gère ton plan, tes tokens et ta facturation.</p>
-      <a href="/settings/subscription" style={{ display: 'inline-block', padding: '12px 20px', borderRadius: 'var(--r-sm)', background: 'var(--primary)', color: '#fff', fontSize: 14, fontWeight: 600, textDecoration: 'none', fontFamily: FB }}>Voir mon abonnement</a>
+      <div style={sectionTitleStyle}>{t('w1a.navAbonnement')}</div>
+      <p style={sectionLead}>{t('w1a.abonnementLead')}</p>
+      <a href="/settings/subscription" style={{ display: 'inline-block', padding: '12px 20px', borderRadius: 'var(--r-sm)', background: 'var(--primary)', color: '#fff', fontSize: 14, fontWeight: 600, textDecoration: 'none', fontFamily: FB }}>{t('w1a.voirAbonnement')}</a>
     </div>
   )
 }

@@ -9,6 +9,7 @@
 //   4. Finalisation  — prix, essai, IA (+ explication détaillée), publication
 // ══════════════════════════════════════════════════════════════════
 import { useRef, useState } from 'react'
+import { useI18n } from '@/lib/i18n'
 import {
   updateProgram, computeProgramFullStats, LEVEL_LABEL, LEVEL_ORDER, PREP_LABEL, SPORTTYPE_TO_KEY, KEY_TO_SPORTTYPE,
   PHASE_PALETTE, DAY_TYPES, DAY_TYPE_LABEL, DAY_TYPE_COLOR, specialtiesForSport,
@@ -65,6 +66,7 @@ const PREPS: PrepType[] = ['endurance', 'force', 'hybride', 'competition', 'repr
 const STEPS = ['Programme', 'Séances', 'Récap', 'Finalisation']
 
 export default function ProgramWizard({ program, onDone }: { program: CoachProgram; onDone: (p: CoachProgram) => void }) {
+  const { t } = useI18n()
   const [step, setStep] = useState(1)
   const [p, setP] = useState<CoachProgram>(program)
   const [busy, setBusy] = useState(false)
@@ -196,10 +198,10 @@ export default function ProgramWizard({ program, onDone }: { program: CoachProgr
       {/* ── ÉTAPE 1 — Programme ── */}
       {step === 1 && (
         <div style={card}>
-          <Field label="Titre du programme"><input value={p.title} onChange={e => set({ title: e.target.value })} style={inp} placeholder="Prépa 10 km" /></Field>
-          <Field label="Objectif" hint="ex. Prépa 10 km sub 40′ · Prépa marathon sub 3h30"><input value={p.objective ?? ''} onChange={e => set({ objective: e.target.value })} style={inp} placeholder="Prépa 10 km sub 40′" /></Field>
+          <Field label={t('w1d.programTitle')}><input value={p.title} onChange={e => set({ title: e.target.value })} style={inp} placeholder={t('w1d.programTitlePh')} /></Field>
+          <Field label={t('w1d.objective')} hint={t('w1d.objectiveHint')}><input value={p.objective ?? ''} onChange={e => set({ objective: e.target.value })} style={inp} placeholder={t('w1d.objectivePh')} /></Field>
 
-          <div style={secLbl}>Type de préparation</div>
+          <div style={secLbl}>{t('w1d.prepType')}</div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
             {PREPS.map(t => {
               const on = p.prep_type === t
@@ -207,8 +209,8 @@ export default function ProgramWizard({ program, onDone }: { program: CoachProgr
             })}
           </div>
 
-          <div style={secLbl}>Sports</div>
-          <p style={{ fontSize: 12, color: 'var(--text-dim)', margin: '0 0 10px' }}>Un programme peut mêler plusieurs sports. Tu choisiras le sport de chaque séance dans l’éditeur.</p>
+          <div style={secLbl}>{t('w1d.sports')}</div>
+          <p style={{ fontSize: 12, color: 'var(--text-dim)', margin: '0 0 10px' }}>{t('w1d.sportsHelp')}</p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
             {SPORTS.map(s => <button key={s.key} onClick={() => toggleSport(s.key)} style={chip(p.sports.includes(s.key))}>{s.label}</button>)}
           </div>
@@ -216,7 +218,7 @@ export default function ProgramWizard({ program, onDone }: { program: CoachProgr
           {/* Spécialité (selon les sports choisis) — 2ᵉ filtre du catalogue */}
           {specialtyOptions.length > 0 && (
             <>
-              <div style={secLbl}>Spécialité</div>
+              <div style={secLbl}>{t('w1d.specialty')}</div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                 {specialtyOptions.map(sp => <button key={sp} onClick={() => set({ specialty: p.specialty === sp ? null : sp })} style={chip(p.specialty === sp)}>{sp}</button>)}
               </div>
@@ -224,10 +226,10 @@ export default function ProgramWizard({ program, onDone }: { program: CoachProgr
           )}
 
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-            <Field label="Durée (semaines)" style={{ width: 150, flex: 'none' }}>
+            <Field label={t('w1d.durationWeeks')} style={{ width: 150, flex: 'none' }}>
               <input type="number" min={1} max={52} value={p.duration_weeks} onChange={e => set({ duration_weeks: Math.max(1, Math.min(52, Number(e.target.value) || 1)) })} style={inp} />
             </Field>
-            <Field label="Niveau" style={{ flex: 1, minWidth: 160 }}>
+            <Field label={t('w1d.level')} style={{ flex: 1, minWidth: 160 }}>
               <select value={p.level ?? ''} onChange={e => set({ level: (e.target.value || null) as ProgramLevel | null })} style={inp}>
                 <option value="">—</option>
                 {LEVEL_ORDER.map(l => <option key={l} value={l}>{LEVEL_LABEL[l]}</option>)}
@@ -235,12 +237,12 @@ export default function ProgramWizard({ program, onDone }: { program: CoachProgr
             </Field>
           </div>
 
-          <Field label="Résumé du programme" hint={`affiché sur la carte · ${(p.description ?? '').length}/${SUMMARY_MAX}`}>
-            <textarea value={p.description ?? ''} onChange={e => set({ description: e.target.value.slice(0, SUMMARY_MAX) })} rows={2} maxLength={SUMMARY_MAX} style={{ ...inp, resize: 'vertical' }} placeholder="Une phrase qui résume le programme (à qui, objectif, méthode)…" />
+          <Field label={t('w1d.summary')} hint={t('w1d.summaryHint', { len: (p.description ?? '').length, max: SUMMARY_MAX })}>
+            <textarea value={p.description ?? ''} onChange={e => set({ description: e.target.value.slice(0, SUMMARY_MAX) })} rows={2} maxLength={SUMMARY_MAX} style={{ ...inp, resize: 'vertical' }} placeholder={t('w1d.summaryPh')} />
           </Field>
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 22 }}>
-            <button onClick={goNext} disabled={busy || !p.title.trim()} style={{ ...primary, minWidth: 160, opacity: busy || !p.title.trim() ? 0.55 : 1 }}>Continuer →</button>
+            <button onClick={goNext} disabled={busy || !p.title.trim()} style={{ ...primary, minWidth: 160, opacity: busy || !p.title.trim() ? 0.55 : 1 }}>{t('w1d.continue')}</button>
           </div>
         </div>
       )}
@@ -250,29 +252,29 @@ export default function ProgramWizard({ program, onDone }: { program: CoachProgr
         <div>
           {/* Phases de préparation (bandes de couleur sur les semaines) */}
           <div style={{ ...card, padding: 16, marginBottom: 14 }}>
-            <div style={secLbl0}>Phases de préparation</div>
-            <p style={{ fontSize: 12, color: 'var(--text-dim)', margin: '0 0 10px' }}>Chaque phase colore une plage de semaines (ex. Développement, Affûtage).</p>
+            <div style={secLbl0}>{t('w1d.prepPhases')}</div>
+            <p style={{ fontSize: 12, color: 'var(--text-dim)', margin: '0 0 10px' }}>{t('w1d.prepPhasesHelp')}</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {p.phases.map((ph, i) => (
                 <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                   <div style={{ display: 'flex', gap: 5 }}>
                     {PHASE_PALETTE.map(c => (
-                      <button key={c} onClick={() => setPhase(i, { color: c })} aria-label="Couleur"
+                      <button key={c} onClick={() => setPhase(i, { color: c })} aria-label={t('w1d.color')}
                         style={{ width: 20, height: 20, borderRadius: 999, border: (ph.color ?? PHASE_PALETTE[i % PHASE_PALETTE.length]) === c ? '2px solid var(--text)' : '2px solid transparent', background: c, cursor: 'pointer', padding: 0 }} />
                     ))}
                   </div>
-                  <input value={ph.label} onChange={e => setPhase(i, { label: e.target.value })} style={{ ...inp, flex: 1, minWidth: 150 }} placeholder="Nom de la phase" />
-                  <input type="number" min={1} max={p.duration_weeks} value={ph.fromWeek} onChange={e => setPhase(i, { fromWeek: Math.max(1, Math.min(p.duration_weeks, Number(e.target.value) || 1)) })} style={{ ...inp, width: 60, flex: 'none' }} aria-label="Semaine début" />
+                  <input value={ph.label} onChange={e => setPhase(i, { label: e.target.value })} style={{ ...inp, flex: 1, minWidth: 150 }} placeholder={t('w1d.phaseName')} />
+                  <input type="number" min={1} max={p.duration_weeks} value={ph.fromWeek} onChange={e => setPhase(i, { fromWeek: Math.max(1, Math.min(p.duration_weeks, Number(e.target.value) || 1)) })} style={{ ...inp, width: 60, flex: 'none' }} aria-label={t('w1d.weekStart')} />
                   <span style={{ color: 'var(--text-dim)' }}>→</span>
-                  <input type="number" min={1} max={p.duration_weeks} value={ph.toWeek} onChange={e => setPhase(i, { toWeek: Math.max(1, Math.min(p.duration_weeks, Number(e.target.value) || 1)) })} style={{ ...inp, width: 60, flex: 'none' }} aria-label="Semaine fin" />
-                  <button onClick={() => removePhase(i)} aria-label="Retirer" style={removeBtn}>×</button>
+                  <input type="number" min={1} max={p.duration_weeks} value={ph.toWeek} onChange={e => setPhase(i, { toWeek: Math.max(1, Math.min(p.duration_weeks, Number(e.target.value) || 1)) })} style={{ ...inp, width: 60, flex: 'none' }} aria-label={t('w1d.weekEnd')} />
+                  <button onClick={() => removePhase(i)} aria-label={t('w1d.remove')} style={removeBtn}>×</button>
                 </div>
               ))}
-              <button onClick={addPhase} style={addBtn}>+ Ajouter une phase</button>
+              <button onClick={addPhase} style={addBtn}>{t('w1d.addPhase')}</button>
             </div>
           </div>
 
-          <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: '0 0 14px' }}>Clique un jour pour créer une séance dans le vrai éditeur (blocs, zones, %VMA/%PMA). L’étoile marque une séance clé. Clique un jour (en-tête) pour définir son intensité.</p>
+          <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: '0 0 14px' }}>{t('w1d.dayHelp')}</p>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             {weeks.map((w, wi) => {
@@ -286,7 +288,7 @@ export default function ProgramWizard({ program, onDone }: { program: CoachProgr
                   <div style={{ height: 4, background: ph ? ph.color : 'var(--bg-card2)' }} />
                   <div style={{ padding: 16 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10, flexWrap: 'wrap' }}>
-                      <div style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 600, color: 'var(--text)' }}>{w.label || `Semaine ${wi + 1}`}</div>
+                      <div style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 600, color: 'var(--text)' }}>{w.label || t('w1d.weekN', { n: wi + 1 })}</div>
                       {ph && <span style={{ fontSize: 10.5, fontWeight: 700, color: ph.color, background: 'var(--bg-card2)', borderRadius: 999, padding: '2px 9px' }}>{ph.label}</span>}
                       <span style={{ flex: 1 }} />
                       {wk && wk.hours > 0 && <span className="tnum" style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-mid)' }}>{wk.hours} h</span>}
@@ -300,7 +302,7 @@ export default function ProgramWizard({ program, onDone }: { program: CoachProgr
                         return (
                           <div key={day} data-daycell data-wi={wi} data-day={day}
                             style={{ background: 'var(--bg-card2)', borderRadius: 'var(--r-md)', padding: 6, minHeight: 96, display: 'flex', flexDirection: 'column', gap: 5, outline: drag ? '1px dashed var(--border-mid)' : 'none' }}>
-                            <button onClick={() => cycleDayType(wi, day)} title="Type de journée"
+                            <button onClick={() => cycleDayType(wi, day)} title={t('w1d.dayType')}
                               style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
                               <span style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--text-dim)' }}>{dl}</span>
                               <span style={{ width: 22, height: 3, borderRadius: 2, background: dt ? DAY_TYPE_COLOR[dt] : 'transparent' }} />
@@ -312,46 +314,46 @@ export default function ProgramWizard({ program, onDone }: { program: CoachProgr
                                 <button onClick={() => setEditor({ wi, si, day })}
                                   style={{ border: 'none', background: 'transparent', borderRadius: 'var(--r-sm)', padding: '6px 5px 4px', cursor: 'pointer', textAlign: 'left', width: '100%', display: 'flex', flexDirection: 'column', gap: 2 }}>
                                   <span style={{ width: 6, height: 6, borderRadius: '50%', background: sportDot(s.sport) }} />
-                                  <span style={{ fontSize: 10.5, fontWeight: 600, color: 'var(--text)', lineHeight: 1.2, wordBreak: 'break-word', paddingRight: 12 }}>{s.nom || 'Séance'}</span>
+                                  <span style={{ fontSize: 10.5, fontWeight: 600, color: 'var(--text)', lineHeight: 1.2, wordBreak: 'break-word', paddingRight: 12 }}>{s.nom || t('w1d.session')}</span>
                                   {s.duree ? <span className="tnum" style={{ fontSize: 9.5, color: 'var(--text-dim)' }}>{s.duree}′</span> : null}
                                 </button>
                                 {/* Variantes (« ou … ») */}
                                 {s.variants?.map((v, vi) => (
                                   <div key={vi} style={{ display: 'flex', alignItems: 'center', gap: 3, padding: '0 5px 2px' }}>
-                                    <button onClick={() => setEditor({ wi, si, day, variantIndex: vi })} style={{ flex: 1, minWidth: 0, border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left', fontSize: 9.5, color: 'var(--text-mid)', padding: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>ou · {v.nom || 'Variante'}</button>
-                                    <button onClick={() => removeVariant(wi, si, vi)} aria-label="Retirer variante" style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-dim)', fontSize: 11, lineHeight: 1, padding: 0 }}>×</button>
+                                    <button onClick={() => setEditor({ wi, si, day, variantIndex: vi })} style={{ flex: 1, minWidth: 0, border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left', fontSize: 9.5, color: 'var(--text-mid)', padding: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t('w1d.orPrefix')}{v.nom || t('w1d.variant')}</button>
+                                    <button onClick={() => removeVariant(wi, si, vi)} aria-label={t('w1d.removeVariant')} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-dim)', fontSize: 11, lineHeight: 1, padding: 0 }}>×</button>
                                   </div>
                                 ))}
                                 {/* Barre d'actions : glisser · répéter · variante */}
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 2, padding: '0 4px 4px' }}>
-                                  <span role="button" aria-label="Déplacer" title="Glisser vers un autre jour"
-                                    onPointerDown={e => { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); e.preventDefault(); e.stopPropagation(); dragRef.current = { wi, si }; setDrag({ wi, si, x: e.clientX, y: e.clientY, label: s.nom || 'Séance' }) }}
+                                  <span role="button" aria-label={t('w1d.move')} title={t('w1d.dragToDay')}
+                                    onPointerDown={e => { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); e.preventDefault(); e.stopPropagation(); dragRef.current = { wi, si }; setDrag({ wi, si, x: e.clientX, y: e.clientY, label: s.nom || t('w1d.session') }) }}
                                     onPointerMove={e => { if (dragRef.current) setDrag(d => d ? { ...d, x: e.clientX, y: e.clientY } : d) }}
                                     onPointerUp={e => { e.stopPropagation(); onDrop(e.clientX, e.clientY) }}
                                     style={{ cursor: 'grab', touchAction: 'none', fontSize: 11, color: 'var(--text-dim)', lineHeight: 1, userSelect: 'none' }}>⠿</span>
                                   <span style={{ flex: 1 }} />
-                                  <button onClick={() => setRepeatMenu(repeatMenu?.wi === wi && repeatMenu?.si === si ? null : { wi, si })} aria-label="Répéter" title="Répéter sur plusieurs semaines"
+                                  <button onClick={() => setRepeatMenu(repeatMenu?.wi === wi && repeatMenu?.si === si ? null : { wi, si })} aria-label={t('w1d.repeat')} title={t('w1d.repeatWeeks')}
                                     style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-dim)', fontSize: 11, lineHeight: 1, padding: 0 }}>↻</button>
-                                  <button onClick={() => addVariant(wi, si)} aria-label="Ajouter une variante" title="Proposer une variante (ou…)"
+                                  <button onClick={() => addVariant(wi, si)} aria-label={t('w1d.addVariant')} title={t('w1d.proposeVariant')}
                                     style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-dim)', fontSize: 12, lineHeight: 1, padding: '0 2px' }}>⎇</button>
                                 </div>
                                 {/* Menu répéter */}
                                 {repeatMenu?.wi === wi && repeatMenu?.si === si && (
                                   <div style={{ position: 'absolute', zIndex: 20, top: '100%', right: 0, marginTop: 2, background: 'var(--bg-elev, var(--bg-card))', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', boxShadow: '0 6px 20px rgba(0,0,0,0.18)', padding: 4, width: 150, display: 'flex', flexDirection: 'column', gap: 2 }}>
-                                    <RepeatOpt onClick={() => repeatSession(wi, si, 'all')}>Toutes les semaines</RepeatOpt>
-                                    <RepeatOpt onClick={() => repeatSession(wi, si, 'alt')}>Une sur deux</RepeatOpt>
-                                    <RepeatOpt onClick={() => repeatSession(wi, si, 3)}>Les 3 prochaines</RepeatOpt>
-                                    <RepeatOpt onClick={() => repeatSession(wi, si, 4)}>Les 4 prochaines</RepeatOpt>
+                                    <RepeatOpt onClick={() => repeatSession(wi, si, 'all')}>{t('w1d.repeatAll')}</RepeatOpt>
+                                    <RepeatOpt onClick={() => repeatSession(wi, si, 'alt')}>{t('w1d.repeatAlt')}</RepeatOpt>
+                                    <RepeatOpt onClick={() => repeatSession(wi, si, 3)}>{t('w1d.repeatNext3')}</RepeatOpt>
+                                    <RepeatOpt onClick={() => repeatSession(wi, si, 4)}>{t('w1d.repeatNext4')}</RepeatOpt>
                                   </div>
                                 )}
-                                <button onClick={() => toggleKey(wi, si)} aria-label="Séance clé" title="Séance clé"
+                                <button onClick={() => toggleKey(wi, si)} aria-label={t('w1d.keySession')} title={t('w1d.keySession')}
                                   style={{ position: 'absolute', top: 2, right: 2, border: 'none', background: 'transparent', cursor: 'pointer', padding: 0, lineHeight: 1 }}>
                                   <Star filled={!!s.key} />
                                 </button>
                               </div>
                               )
                             })}
-                            <button onClick={() => setEditor({ wi, si: null, day })} aria-label="Ajouter"
+                            <button onClick={() => setEditor({ wi, si: null, day })} aria-label={t('w1d.add')}
                               style={{ marginTop: 'auto', border: 'none', borderRadius: 'var(--r-sm)', background: 'transparent', color: 'var(--primary)', fontSize: 16, cursor: 'pointer', padding: '2px 0' }}>+</button>
                           </div>
                         )
@@ -372,7 +374,7 @@ export default function ProgramWizard({ program, onDone }: { program: CoachProgr
 
                     {/* Conseil de la semaine (colonne coach) */}
                     <textarea value={w.notes ?? ''} onChange={e => setWeek(wi, { notes: e.target.value })} rows={2}
-                      placeholder="Conseil de la semaine (charge, focus, récupération…)"
+                      placeholder={t('w1d.weekTip')}
                       style={{ ...inp, marginTop: 10, resize: 'vertical', fontSize: 13 }} />
                   </div>
                 </div>
@@ -390,8 +392,8 @@ export default function ProgramWizard({ program, onDone }: { program: CoachProgr
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 22 }}>
-            <button onClick={() => setStep(1)} style={ghost}>← Retour</button>
-            <button onClick={goNext} disabled={busy} style={{ ...primary, minWidth: 160 }}>{busy ? '…' : 'Continuer →'}</button>
+            <button onClick={() => setStep(1)} style={ghost}>{t('w1d.back')}</button>
+            <button onClick={goNext} disabled={busy} style={{ ...primary, minWidth: 160 }}>{busy ? '…' : t('w1d.continue')}</button>
           </div>
         </div>
       )}
@@ -436,35 +438,35 @@ export default function ProgramWizard({ program, onDone }: { program: CoachProgr
           {p.objective && <div style={{ fontSize: 13, color: 'var(--text-mid)', marginBottom: 14 }}>{p.objective}</div>}
 
           {/* Volume global du programme */}
-          <div style={secLbl0}>Volume global</div>
+          <div style={secLbl0}>{t('w1d.globalVolume')}</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(120px,1fr))', gap: 12, marginBottom: 6 }}>
-            <Stat n={p.duration_weeks} label="Semaines" />
-            <Stat n={stats.base.total} label="Séances" />
-            <Stat n={stats.totalHours} label="Heures" />
-            <Stat n={stats.enduranceSessions} label="Endurance" />
-            <Stat n={stats.qualitySessions} label="Seuil / max / spé" />
-            {stats.avgRpe != null && <Stat n={stats.avgRpe} label="RPE moyen" />}
+            <Stat n={p.duration_weeks} label={t('w1d.statWeeks')} />
+            <Stat n={stats.base.total} label={t('w1d.statSessions')} />
+            <Stat n={stats.totalHours} label={t('w1d.statHours')} />
+            <Stat n={stats.enduranceSessions} label={t('w1d.statEndurance')} />
+            <Stat n={stats.qualitySessions} label={t('w1d.statQuality')} />
+            {stats.avgRpe != null && <Stat n={stats.avgRpe} label={t('w1d.statAvgRpe')} />}
           </div>
           <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', fontSize: 12.5, color: 'var(--text-mid)', marginBottom: 6 }}>
-            {stats.busiestWeek && <span>Semaine la plus chargée : <strong>S{stats.busiestWeek.index + 1}</strong> · {stats.busiestWeek.hours} h</span>}
-            {stats.longestSession && <span>Séance la plus longue : <strong>{stats.longestSession.nom}</strong> · {stats.longestSession.duree}′ <span style={{ fontSize: 10.5, color: 'var(--text-dim)' }}>(S{stats.longestSession.weekIndex + 1} · {DAY_LABELS[stats.longestSession.day]})</span></span>}
+            {stats.busiestWeek && <span>{t('w1d.busiestWeek')} <strong>{t('w1d.weekAbbr')}{stats.busiestWeek.index + 1}</strong> · {stats.busiestWeek.hours} h</span>}
+            {stats.longestSession && <span>{t('w1d.longestSession')} <strong>{stats.longestSession.nom}</strong> · {stats.longestSession.duree}′ <span style={{ fontSize: 10.5, color: 'var(--text-dim)' }}>({t('w1d.weekAbbr')}{stats.longestSession.weekIndex + 1} · {DAY_LABELS[stats.longestSession.day]})</span></span>}
           </div>
 
           {/* Aperçu hebdomadaire — barres empilées par sport */}
-          <div style={secLbl}>Aperçu hebdomadaire</div>
+          <div style={secLbl}>{t('w1d.weeklyPreview')}</div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
-            <button onClick={() => setRecapSport('all')} style={chip(recapSport === 'all')}>Tous</button>
+            <button onClick={() => setRecapSport('all')} style={chip(recapSport === 'all')}>{t('w1d.all')}</button>
             {stats.base.bySport.map(s => <button key={s.sport} onClick={() => setRecapSport(s.sport)} style={chip(recapSport === s.sport)}>{SPORT_LABEL[s.sport] ?? s.sport}</button>)}
           </div>
           <WeeklyBars weekly={stats.weekly} recapSport={recapSport} />
 
           {/* Charge estimée (SN/SM proxy) par semaine */}
-          <div style={secLbl}>Charge estimée par semaine <span style={{ fontWeight: 500, textTransform: 'none', letterSpacing: 0, color: 'var(--text-dim)' }}>· proxy fatigue (durée × intensité)</span></div>
+          <div style={secLbl}>{t('w1d.estLoad')} <span style={{ fontWeight: 500, textTransform: 'none', letterSpacing: 0, color: 'var(--text-dim)' }}>{t('w1d.estLoadNote')}</span></div>
           <LoadLine weekly={stats.weekly} />
 
           {/* Volume par sport — jauges horizontales */}
-          <div style={secLbl}>Volume par sport</div>
-          {stats.base.bySport.length === 0 ? <Empty>Aucune séance renseignée.</Empty> : (() => {
+          <div style={secLbl}>{t('w1d.volumeBySport')}</div>
+          {stats.base.bySport.length === 0 ? <Empty>{t('w1d.noSessionYet')}</Empty> : (() => {
             const maxMin = Math.max(1, ...stats.base.bySport.map(s => s.minutes))
             return (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -478,7 +480,7 @@ export default function ProgramWizard({ program, onDone }: { program: CoachProgr
                       <div style={{ height: '100%', width: `${Math.round(s.minutes / maxMin * 100)}%`, borderRadius: 999, background: sportDot(s.sport), transition: 'width 700ms ease' }} />
                     </div>
                     <span className="tnum" style={{ fontSize: 12, color: 'var(--text-dim)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
-                      {s.sessions} séa · {Math.round(s.minutes / 60 * 10) / 10} h{s.distance ? ` · ${s.distance} ${s.sport === 'swim' ? 'm' : 'km'}` : ''}{s.rpe ? ` · RPE ${s.rpe}` : ''}
+                      {s.sessions} {t('w1d.sessAbbr')} · {Math.round(s.minutes / 60 * 10) / 10} h{s.distance ? ` · ${s.distance} ${s.sport === 'swim' ? 'm' : 'km'}` : ''}{s.rpe ? ` · RPE ${s.rpe}` : ''}
                     </span>
                   </div>
                 ))}
@@ -489,7 +491,7 @@ export default function ProgramWizard({ program, onDone }: { program: CoachProgr
           {/* Phases — timeline colorée */}
           {p.phases.length > 0 && (
             <>
-              <div style={secLbl}>Phases</div>
+              <div style={secLbl}>{t('w1d.phases')}</div>
               <div style={{ display: 'flex', gap: 4 }}>
                 {p.phases.map((ph, i) => {
                   const span = Math.max(1, ph.toWeek - ph.fromWeek + 1)
@@ -497,7 +499,7 @@ export default function ProgramWizard({ program, onDone }: { program: CoachProgr
                   return (
                     <div key={i} style={{ flex: span, minWidth: 0 }}>
                       <div style={{ height: 8, borderRadius: 999, background: col }} />
-                      <div style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--text-mid)', marginTop: 5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ph.label || 'Phase'}</div>
+                      <div style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--text-mid)', marginTop: 5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ph.label || t('w1d.phase')}</div>
                       <div className="tnum" style={{ fontSize: 10, color: 'var(--text-dim)' }}>S{ph.fromWeek}–S{ph.toWeek}</div>
                     </div>
                   )
@@ -507,9 +509,9 @@ export default function ProgramWizard({ program, onDone }: { program: CoachProgr
           )}
 
           <div style={{ display: 'flex', gap: 10, marginTop: 24 }}>
-            <button onClick={() => setStep(2)} style={ghost}>← Retour</button>
+            <button onClick={() => setStep(2)} style={ghost}>{t('w1d.back')}</button>
             <div style={{ flex: 1 }} />
-            <button onClick={goNext} disabled={busy} style={{ ...primary, minWidth: 150 }}>{busy ? '…' : 'Continuer →'}</button>
+            <button onClick={goNext} disabled={busy} style={{ ...primary, minWidth: 150 }}>{busy ? '…' : t('w1d.continue')}</button>
           </div>
         </div>
       )}
@@ -517,62 +519,62 @@ export default function ProgramWizard({ program, onDone }: { program: CoachProgr
       {/* ── ÉTAPE 4 — Finalisation ── */}
       {step === 4 && (
         <div style={card}>
-          <div style={secLbl0}>Prix du programme</div>
+          <div style={secLbl0}>{t('w1d.programPrice')}</div>
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: 14, flexWrap: 'wrap' }}>
             <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, color: 'var(--text)', lineHeight: 1, fontSize: 'clamp(44px,10vw,72px)', fontVariantNumeric: 'tabular-nums' }}>
-              {p.price_cents > 0 ? `${p.price_cents / 100}` : 'Gratuit'}
+              {p.price_cents > 0 ? `${p.price_cents / 100}` : t('w1d.free')}
               {p.price_cents > 0 && <span style={{ fontSize: '0.4em', fontWeight: 600, color: 'var(--text-mid)', marginLeft: 4 }}>€</span>}
             </div>
-            <Field label="Modifier le prix (€)" hint="0 = gratuit" style={{ width: 150, flex: 'none', margin: 0 }}>
+            <Field label={t('w1d.editPrice')} hint={t('w1d.editPriceHint')} style={{ width: 150, flex: 'none', margin: 0 }}>
               <input type="number" min={0} step={1} value={p.price_cents ? p.price_cents / 100 : 0} onChange={e => set({ price_cents: Math.max(0, Math.round((Number(e.target.value) || 0) * 100)) })} style={inp} />
             </Field>
           </div>
           <p style={{ fontSize: 12.5, color: 'var(--text-dim)', margin: '10px 0 0' }}>
-            {p.price_cents > 0 ? `Commission plateforme : ${p.ai_enabled ? 30 : 10} %. Tu reçois ${Math.round(p.price_cents * (p.ai_enabled ? 70 : 90) / 100) / 100} € par vente (avant frais Stripe).` : 'Programme gratuit — aucune commission.'}
+            {p.price_cents > 0 ? t('w1d.commissionNote', { pct: p.ai_enabled ? 30 : 10, amount: Math.round(p.price_cents * (p.ai_enabled ? 70 : 90) / 100) / 100 }) : t('w1d.freeNoCommission')}
           </p>
 
           {/* Essai gratuit */}
-          <div style={secLbl}>Essai gratuit</div>
+          <div style={secLbl}>{t('w1d.freeTrial')}</div>
           <div style={{ display: 'flex', gap: 6 }}>
-            {[0, 3, 7].map(d => <button key={d} onClick={() => set({ trial_days: d })} style={chip(p.trial_days === d)}>{d === 0 ? 'Aucun' : `${d} jours`}</button>)}
+            {[0, 3, 7].map(d => <button key={d} onClick={() => set({ trial_days: d })} style={chip(p.trial_days === d)}>{d === 0 ? t('w1d.none') : t('w1d.nDays', { d })}</button>)}
           </div>
 
           {/* IA */}
-          <div style={secLbl}>Programme intelligent (IA)</div>
+          <div style={secLbl}>{t('w1d.smartProgram')}</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
-            <Toggle on={p.ai_enabled} onClick={() => set({ ai_enabled: !p.ai_enabled })} label={p.ai_enabled ? 'IA activée — cibles adaptées à chaque athlète' : 'Activer l’IA (cibles personnalisées)'} />
-            <button onClick={() => setAiSheet(true)} style={{ ...addBtn, background: 'var(--bg-card2)' }}>Comment marche l’IA ? →</button>
+            <Toggle on={p.ai_enabled} onClick={() => set({ ai_enabled: !p.ai_enabled })} label={p.ai_enabled ? t('w1d.aiOn') : t('w1d.aiOff')} />
+            <button onClick={() => setAiSheet(true)} style={{ ...addBtn, background: 'var(--bg-card2)' }}>{t('w1d.howAiWorks')}</button>
           </div>
           {p.ai_enabled && (
             <div style={{ marginTop: 14 }}>
-              <div style={{ fontSize: 12.5, color: 'var(--text-mid)', marginBottom: 10, lineHeight: 1.5 }}>Questionnaire (optionnel) : posé à l’athlète s’il manque de données. Sert à l’IA pour personnaliser.</div>
+              <div style={{ fontSize: 12.5, color: 'var(--text-mid)', marginBottom: 10, lineHeight: 1.5 }}>{t('w1d.questionnaireHelp')}</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {p.questionnaire.map((q, i) => (
                   <div key={q.id} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                    <input value={q.label} onChange={e => setQuestion(i, { label: e.target.value })} style={{ ...inp, flex: 1 }} placeholder="Question (ex. Ton meilleur 10 km ?)" />
+                    <input value={q.label} onChange={e => setQuestion(i, { label: e.target.value })} style={{ ...inp, flex: 1 }} placeholder={t('w1d.questionPh')} />
                     <select value={q.type} onChange={e => setQuestion(i, { type: e.target.value as QuestionItem['type'] })} style={{ ...inp, width: 120, flex: 'none' }}>
-                      <option value="text">Texte</option>
-                      <option value="number">Nombre</option>
+                      <option value="text">{t('w1d.typeText')}</option>
+                      <option value="number">{t('w1d.typeNumber')}</option>
                     </select>
-                    <button onClick={() => removeQuestion(i)} aria-label="Retirer" style={removeBtn}>×</button>
+                    <button onClick={() => removeQuestion(i)} aria-label={t('w1d.remove')} style={removeBtn}>×</button>
                   </div>
                 ))}
-                <button onClick={addQuestion} style={addBtn}>+ Ajouter une question</button>
+                <button onClick={addQuestion} style={addBtn}>{t('w1d.addQuestion')}</button>
               </div>
             </div>
           )}
 
           <div style={{ display: 'flex', gap: 10, marginTop: 24, flexWrap: 'wrap' }}>
-            <button onClick={() => setStep(3)} style={ghost}>← Retour</button>
+            <button onClick={() => setStep(3)} style={ghost}>{t('w1d.back')}</button>
             <div style={{ flex: 1 }} />
-            <button onClick={() => void finish(false)} disabled={busy} style={ghost}>Enregistrer en brouillon</button>
-            <button onClick={() => void finish(true)} disabled={busy} style={{ ...primary, minWidth: 150 }}>{busy ? '…' : 'Publier'}</button>
+            <button onClick={() => void finish(false)} disabled={busy} style={ghost}>{t('w1d.saveDraft')}</button>
+            <button onClick={() => void finish(true)} disabled={busy} style={{ ...primary, minWidth: 150 }}>{busy ? '…' : t('w1d.publish')}</button>
           </div>
         </div>
       )}
 
       {/* Surpage : explication détaillée de l'IA */}
-      <SlideSheet open={aiSheet} onClose={() => setAiSheet(false)} title="Le programme intelligent (IA)">
+      <SlideSheet open={aiSheet} onClose={() => setAiSheet(false)} title={t('w1d.aiSheetTitle')}>
         <AiExplainer />
       </SlideSheet>
     </div>
@@ -584,6 +586,7 @@ const fmtH = (min: number) => `${Math.round(min / 60 * 10) / 10} h`
 
 // ── Barres verticales empilées par sport (aperçu hebdo) — heures + survol ──
 function WeeklyBars({ weekly, recapSport }: { weekly: WeeklyAgg[]; recapSport: string }) {
+  const { t } = useI18n()
   const [hover, setHover] = useState<number | null>(null)
   const totalOf = (w: WeeklyAgg) => recapSport === 'all'
     ? Object.values(w.minutesBySport).reduce((a, b) => a + b, 0)
@@ -611,9 +614,9 @@ function WeeklyBars({ weekly, recapSport }: { weekly: WeeklyAgg[]; recapSport: s
               <span style={{ position: 'absolute', bottom: -20, fontSize: 9.5, fontWeight: on ? 700 : 500, color: on ? 'var(--text)' : 'var(--text-dim)' }}>{w.index + 1}</span>
               {on && total > 0 && (
                 <div style={{ position: 'absolute', bottom: 'calc(100% + 4px)', left: '50%', transform: 'translateX(-50%)', zIndex: 5, background: 'var(--text)', color: 'var(--bg-card)', borderRadius: 8, padding: '6px 9px', whiteSpace: 'nowrap', fontSize: 11, fontWeight: 600, boxShadow: '0 6px 18px rgba(0,0,0,0.25)', pointerEvents: 'none' }}>
-                  <div style={{ fontWeight: 800 }}>Semaine {w.index + 1} · {fmtH(total)}</div>
+                  <div style={{ fontWeight: 800 }}>{t('w1d.week')} {w.index + 1} · {fmtH(total)}</div>
                   {entries.map(([sp, m]) => <div key={sp} style={{ opacity: 0.85 }}>{SPORT_LABEL[sp] ?? sp} · {fmtH(m)}</div>)}
-                  {recapSport === 'all' && <div style={{ opacity: 0.7 }}>{nbSea} sport{nbSea > 1 ? 's' : ''}</div>}
+                  {recapSport === 'all' && <div style={{ opacity: 0.7 }}>{nbSea} {t('w1d.sportWord')}{nbSea > 1 ? 's' : ''}</div>}
                 </div>
               )}
             </div>
@@ -626,9 +629,10 @@ function WeeklyBars({ weekly, recapSport }: { weekly: WeeklyAgg[]; recapSport: s
 
 // ── Courbe de charge estimée par semaine (SVG raw) — survol + bulle ──
 function LoadLine({ weekly }: { weekly: WeeklyAgg[] }) {
+  const { t } = useI18n()
   const [hover, setHover] = useState<number | null>(null)
   const wrapRef = useRef<HTMLDivElement | null>(null)
-  if (weekly.length === 0) return <Empty>Aucune donnée.</Empty>
+  if (weekly.length === 0) return <Empty>{t('w1d.noData')}</Empty>
   const max = Math.max(1, ...weekly.map(w => w.load))
   const W = 100, H = 56, PAD = 5
   const n = weekly.length
@@ -667,8 +671,8 @@ function LoadLine({ weekly }: { weekly: WeeklyAgg[] }) {
       {/* Bulle à droite du curseur */}
       {hover != null && (
         <div style={{ position: 'absolute', top: 4, left: `calc(${hoverX}% + 10px)`, transform: hoverX > 72 ? 'translateX(-100%) translateX(-20px)' : 'none', zIndex: 5, background: 'var(--text)', color: 'var(--bg-card)', borderRadius: 8, padding: '6px 10px', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap', boxShadow: '0 6px 18px rgba(0,0,0,0.25)', pointerEvents: 'none' }}>
-          Semaine {weekly[hover].index + 1} · charge {weekly[hover].load}
-          <span style={{ display: 'block', fontWeight: 500, opacity: 0.8 }}>{weekly[hover].hours} h de séances</span>
+          {t('w1d.week')} {weekly[hover].index + 1} · {t('w1d.loadWord')} {weekly[hover].load}
+          <span style={{ display: 'block', fontWeight: 500, opacity: 0.8 }}>{weekly[hover].hours} h {t('w1d.ofSessions')}</span>
         </div>
       )}
     </div>
@@ -677,6 +681,7 @@ function LoadLine({ weekly }: { weekly: WeeklyAgg[] }) {
 
 // ── Contenu de la surpage IA ──
 function AiExplainer() {
+  const { t } = useI18n()
   const Block = ({ title, children }: { title: string; children: React.ReactNode }) => (
     <div style={{ marginBottom: 22 }}>
       <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 600, color: 'var(--text)', marginBottom: 8 }}>{title}</div>
@@ -689,28 +694,28 @@ function AiExplainer() {
   return (
     <div style={{ maxWidth: 640, margin: '0 auto', padding: '8px clamp(16px,4vw,32px) 64px' }}>
       <p style={{ fontSize: 15, color: 'var(--text-mid)', lineHeight: 1.6, marginTop: 0 }}>
-        Sans IA, ton programme est un modèle fixe : chaque athlète reçoit les mêmes séances. Avec l’IA, le programme s’<strong style={{ color: 'var(--text)' }}>adapte automatiquement à chaque athlète</strong> à partir de ses données (zones, seuils, historique) au moment où il le démarre.
+        {t('w1d.aiIntro1')}<strong style={{ color: 'var(--text)' }}>{t('w1d.aiIntroStrong')}</strong>{t('w1d.aiIntro2')}
       </p>
 
-      <Block title="1. Des cibles relatives, pas absolues">
-        Tu construis tes séances en <strong>pourcentages</strong> : %VMA en course, %PMA/FTP à vélo, zones de FC. Tu ne vois jamais l’allure ou la puissance exacte — parce qu’elle dépend de l’athlète.
-        <Ex>Tu écris : <strong>« 6 × 3 min à 90 % VMA »</strong>.<br />L’athlète A (VMA 16) verra <strong>4:10/km</strong>. L’athlète B (VMA 20) verra <strong>3:20/km</strong>. Même séance, cibles personnalisées.</Ex>
+      <Block title={t('w1d.aiB1Title')}>
+        {t('w1d.aiB1a')}<strong>{t('w1d.aiB1Strong')}</strong>{t('w1d.aiB1b')}
+        <Ex>{t('w1d.aiExWrite')}<strong>{t('w1d.aiExTarget')}</strong>.<br />{t('w1d.aiExAthleteA')}<strong>4:10/km</strong>{t('w1d.aiExAthleteB')}<strong>3:20/km</strong>{t('w1d.aiExSame')}</Ex>
       </Block>
 
-      <Block title="2. Calage sur le niveau de l’athlète">
-        À l’adoption, l’IA lit le profil de l’athlète (tests, activités Strava, seuils) et convertit chaque cible relative en valeur précise, avec ses propres zones d’allure / de puissance affichées.
+      <Block title={t('w1d.aiB2Title')}>
+        {t('w1d.aiB2Body')}
       </Block>
 
-      <Block title="3. Questionnaire de démarrage">
-        Si des données manquent, l’IA pose les questions que <em>tu</em> as définies (record sur 10 km, disponibilité hebdo…) pour caler le programme sans attendre.
+      <Block title={t('w1d.aiB3Title')}>
+        {t('w1d.aiB3a')}<em>{t('w1d.aiB3Em')}</em>{t('w1d.aiB3b')}
       </Block>
 
-      <Block title="4. Ce que ça change pour toi">
-        Un seul programme sert des athlètes de tous niveaux, sans réécriture. C’est la raison de la commission plus élevée sur les programmes IA — la personnalisation est prise en charge automatiquement à chaque vente.
+      <Block title={t('w1d.aiB4Title')}>
+        {t('w1d.aiB4Body')}
       </Block>
 
-      <Block title="Ce que l’IA ne fait pas">
-        Elle ne réécrit pas ta logique d’entraînement ni l’ordre de tes séances : ta structure, tes phases et tes séances clés restent exactement telles que tu les as conçues. L’IA ne fait que traduire tes cibles relatives en valeurs concrètes pour chaque athlète.
+      <Block title={t('w1d.aiB5Title')}>
+        {t('w1d.aiB5Body')}
       </Block>
     </div>
   )

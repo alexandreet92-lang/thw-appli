@@ -6,6 +6,7 @@
 // ══════════════════════════════════════════════════════════════
 
 import { useState, useEffect, useCallback } from 'react'
+import { useI18n } from '@/lib/i18n'
 import {
   listRoutines, createRoutine, updateRoutine, deleteRoutine, runRoutine, listRuns,
   scheduleLabel, type Routine, type RoutineRun, type RoutineInput,
@@ -73,6 +74,7 @@ const labelStyle: React.CSSProperties = { fontSize: 12, fontWeight: 600, color: 
 type FormState = Partial<Routine> & { id?: string }
 
 export default function RoutinesView({ onClose }: { onClose: () => void }) {
+  const { t } = useI18n()
   const [routines, setRoutines] = useState<Routine[]>([])
   const [loading, setLoading]   = useState(true)
   const [view, setView]         = useState<{ mode: 'list' } | { mode: 'form'; form: FormState } | { mode: 'detail'; id: string }>({ mode: 'list' })
@@ -80,9 +82,9 @@ export default function RoutinesView({ onClose }: { onClose: () => void }) {
 
   const load = useCallback(async () => {
     setLoading(true)
-    try { setRoutines(await listRoutines()) } catch (e) { setErr(e instanceof Error ? e.message : 'Erreur') }
+    try { setRoutines(await listRoutines()) } catch (e) { setErr(e instanceof Error ? e.message : t('w1a.r_erreur')) }
     finally { setLoading(false) }
-  }, [])
+  }, [t])
   useEffect(() => { void load() }, [load])
 
   const openNew = () => setView({ mode: 'form', form: { name: '', prompt: '', frequency: 'daily', hour: 7, weekday: 0, model: 'athena', allow_write: false } })
@@ -93,18 +95,18 @@ export default function RoutinesView({ onClose }: { onClose: () => void }) {
       {/* Header */}
       <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 10, padding: 'max(14px, env(safe-area-inset-top)) 16px 12px', borderBottom: '0.5px solid var(--border)' }}>
         <button onClick={() => { if (view.mode === 'list') onClose(); else setView({ mode: 'list' }) }}
-          aria-label="Retour"
+          aria-label={t('w1a.r_retour')}
           style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text)', display: 'flex', alignItems: 'center', padding: 4 }}>
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
         </button>
         <div style={{ flex: 1, fontSize: 19, fontWeight: 700, color: 'var(--text)', fontFamily: 'Syne,DM Sans,sans-serif' }}>
-          {view.mode === 'form' ? (view.form.id ? 'Modifier la routine' : 'Nouvelle routine') : 'Routines'}
+          {view.mode === 'form' ? (view.form.id ? t('w1a.r_modifierRoutine') : t('w1a.r_nouvelleRoutine')) : t('w1a.r_routines')}
         </div>
         {view.mode === 'list' && (
           <button onClick={openNew}
             style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 12px', borderRadius: 9, border: 'none', background: ACCENT, color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
-            Nouvelle
+            {t('w1a.r_nouvelle')}
           </button>
         )}
       </div>
@@ -123,16 +125,17 @@ function ListView({ routines, loading, err, onNew, onOpen, onToggle }: {
   routines: Routine[]; loading: boolean; err: string | null; onNew: () => void
   onOpen: (id: string) => void; onToggle: (r: Routine) => void
 }) {
-  if (loading) return <div style={{ textAlign: 'center', color: 'var(--text-dim)', fontSize: 13, padding: 40 }}>Chargement…</div>
+  const { t } = useI18n()
+  if (loading) return <div style={{ textAlign: 'center', color: 'var(--text-dim)', fontSize: 13, padding: 40 }}>{t('w1a.r_chargement')}</div>
   if (err) return <div style={{ textAlign: 'center', color: '#ef4444', fontSize: 13, padding: 40 }}>{err}</div>
   if (routines.length === 0) {
     return (
       <div style={{ textAlign: 'center', padding: '40px 20px' }}>
-        <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)', marginBottom: 6 }}>Aucune routine</div>
+        <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)', marginBottom: 6 }}>{t('w1a.r_aucuneRoutine')}</div>
         <p style={{ fontSize: 13, color: 'var(--text-dim)', lineHeight: 1.6, maxWidth: 320, margin: '0 auto 18px' }}>
-          Automatise une tâche récurrente : l&apos;IA l&apos;exécute toute seule à l&apos;heure choisie et t&apos;envoie une notification.
+          {t('w1a.r_aucuneRoutineDesc')}
         </p>
-        <button onClick={onNew} style={{ padding: '11px 18px', borderRadius: 10, border: 'none', background: ACCENT, color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>Créer ma première routine</button>
+        <button onClick={onNew} style={{ padding: '11px 18px', borderRadius: 10, border: 'none', background: ACCENT, color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>{t('w1a.r_creerPremiere')}</button>
       </div>
     )
   }
@@ -146,11 +149,11 @@ function ListView({ routines, loading, err, onNew, onOpen, onToggle }: {
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.name}</div>
-            <div style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 2 }}>{scheduleLabel(r)}{!r.enabled && ' · en pause'}</div>
+            <div style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 2 }}>{scheduleLabel(r)}{!r.enabled && t('w1a.r_enPause')}</div>
           </div>
           <button
             onClick={(e) => { e.stopPropagation(); onToggle(r) }}
-            aria-label={r.enabled ? 'Mettre en pause' : 'Activer'}
+            aria-label={r.enabled ? t('w1a.r_mettrePause') : t('w1a.r_activer')}
             style={{ flexShrink: 0, width: 42, height: 25, borderRadius: 999, border: 'none', cursor: 'pointer', background: r.enabled ? ACCENT : 'var(--border)', position: 'relative', transition: 'background 0.15s' }}>
             <span style={{ position: 'absolute', top: 3, left: r.enabled ? 20 : 3, width: 19, height: 19, borderRadius: '50%', background: '#fff', transition: 'left 0.15s' }} />
           </button>
@@ -162,13 +165,14 @@ function ListView({ routines, loading, err, onNew, onOpen, onToggle }: {
 
 // ── Formulaire (création / édition) ────────────────────────────
 function FormView({ initial, onCancel, onSaved }: { initial: FormState; onCancel: () => void; onSaved: () => void }) {
+  const { t } = useI18n()
   const [f, setF] = useState<FormState>(initial)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const set = (patch: Partial<FormState>) => setF(prev => ({ ...prev, ...patch }))
 
   const save = async () => {
-    if (!f.name?.trim() || !f.prompt?.trim()) { setError('Donne un nom et décris ce que la routine doit faire.'); return }
+    if (!f.name?.trim() || !f.prompt?.trim()) { setError(t('w1a.r_validationMsg')); return }
     setSaving(true); setError(null)
     try {
       const body: RoutineInput = {
@@ -182,7 +186,7 @@ function FormView({ initial, onCancel, onSaved }: { initial: FormState; onCancel
       if (f.id) await updateRoutine(f.id, body)
       else await createRoutine(body)
       onSaved()
-    } catch (e) { setError(e instanceof Error ? e.message : 'Erreur') }
+    } catch (e) { setError(e instanceof Error ? e.message : t('w1a.r_erreur')) }
     finally { setSaving(false) }
   }
 
@@ -190,12 +194,12 @@ function FormView({ initial, onCancel, onSaved }: { initial: FormState; onCancel
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16, maxWidth: 560, margin: '0 auto' }}>
       {!f.id && (
         <div>
-          <span style={labelStyle}>Modèles prêts à l&apos;emploi</span>
+          <span style={labelStyle}>{t('w1a.r_modelesPrets')}</span>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
-            {TEMPLATES.map(tpl => (
-              <button key={tpl.label} onClick={() => set({ name: tpl.name, prompt: tpl.prompt, frequency: tpl.frequency, hour: tpl.hour, ...(tpl.model ? { model: tpl.model } : {}) })}
+            {TEMPLATES.map((tpl, i) => (
+              <button key={i} onClick={() => set({ name: t(`w1a.r_tpl_${i}_name`), prompt: t(`w1a.r_tpl_${i}_prompt`), frequency: tpl.frequency, hour: tpl.hour, ...(tpl.model ? { model: tpl.model } : {}) })}
                 style={{ padding: '7px 12px', borderRadius: 999, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text-mid)', fontSize: 12.5, fontWeight: 500, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
-                {tpl.label}
+                {t(`w1a.r_tpl_${i}_label`)}
               </button>
             ))}
           </div>
@@ -203,57 +207,57 @@ function FormView({ initial, onCancel, onSaved }: { initial: FormState; onCancel
       )}
 
       <div>
-        <label style={labelStyle}>Nom</label>
-        <input value={f.name ?? ''} onChange={e => set({ name: e.target.value })} placeholder="Ex. Brief matinal" style={inputStyle} />
+        <label style={labelStyle}>{t('w1a.r_nom')}</label>
+        <input value={f.name ?? ''} onChange={e => set({ name: e.target.value })} placeholder={t('w1a.r_nomPh')} style={inputStyle} />
       </div>
 
       <div>
-        <label style={labelStyle}>Que doit faire l&apos;IA ?</label>
+        <label style={labelStyle}>{t('w1a.r_promptLabel')}</label>
         <textarea value={f.prompt ?? ''} onChange={e => set({ prompt: e.target.value })} rows={5}
-          placeholder="Décris précisément la tâche à répéter. Ex. « Chaque matin, fais-moi le brief de ma journée d'entraînement avec un conseil d'exécution. »"
+          placeholder={t('w1a.r_promptPh')}
           style={{ ...inputStyle, fontSize: 13, lineHeight: 1.5, resize: 'vertical' }} />
       </div>
 
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
         <div style={{ flex: '1 1 160px' }}>
-          <label style={labelStyle}>Fréquence</label>
+          <label style={labelStyle}>{t('w1a.r_frequence')}</label>
           <select value={f.frequency ?? 'daily'} onChange={e => set({ frequency: e.target.value as RoutineInput['frequency'] })} style={inputStyle}>
-            {FREQ_OPTS.map(o => <option key={o.v} value={o.v}>{o.l}</option>)}
+            {FREQ_OPTS.map(o => <option key={o.v} value={o.v}>{t(`w1a.r_freq_${o.v}`)}</option>)}
           </select>
         </div>
         <div style={{ flex: '0 0 110px' }}>
-          <label style={labelStyle}>Heure</label>
+          <label style={labelStyle}>{t('w1a.r_heure')}</label>
           <select value={f.hour ?? 7} onChange={e => set({ hour: Number(e.target.value) })} style={inputStyle}>
-            {Array.from({ length: 24 }, (_, i) => <option key={i} value={i}>{String(i).padStart(2, '0')}h00</option>)}
+            {Array.from({ length: 24 }, (_, i) => <option key={i} value={i}>{t('w1a.r_heureOption', { h: String(i).padStart(2, '0') })}</option>)}
           </select>
         </div>
       </div>
 
       {f.frequency === 'weekly' && (
         <div>
-          <label style={labelStyle}>Jour</label>
+          <label style={labelStyle}>{t('w1a.r_jour')}</label>
           <select value={f.weekday ?? 0} onChange={e => set({ weekday: Number(e.target.value) })} style={inputStyle}>
-            {DAYS.map((d, i) => <option key={i} value={i}>{d}</option>)}
+            {DAYS.map((_, i) => <option key={i} value={i}>{t(`w1a.r_day_${i}`)}</option>)}
           </select>
         </div>
       )}
 
       <div>
-        <label style={labelStyle}>Modèle IA</label>
+        <label style={labelStyle}>{t('w1a.r_modeleIA')}</label>
         <select value={f.model ?? 'athena'} onChange={e => set({ model: e.target.value as RoutineInput['model'] })} style={inputStyle}>
-          {MODEL_OPTS.map(o => <option key={o.v} value={o.v}>{o.l}</option>)}
+          {MODEL_OPTS.map(o => <option key={o.v} value={o.v}>{t(`w1a.r_model_${o.v}`)}</option>)}
         </select>
       </div>
 
       {/* Garde-fou : autoriser les modifications */}
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '12px 14px', borderRadius: 10, border: '0.5px solid var(--border)', background: 'var(--bg-alt)' }}>
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--text)' }}>Autoriser les modifications</div>
+          <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--text)' }}>{t('w1a.r_autoriserModifs')}</div>
           <div style={{ fontSize: 11.5, color: 'var(--text-dim)', marginTop: 3, lineHeight: 1.5 }}>
-            Off = la routine analyse et te notifie seulement. On = elle peut aussi agir (créer un plan, planifier des séances…) sans validation.
+            {t('w1a.r_autoriserModifsDesc')}
           </div>
         </div>
-        <button onClick={() => set({ allow_write: !f.allow_write })} aria-label="Autoriser les modifications"
+        <button onClick={() => set({ allow_write: !f.allow_write })} aria-label={t('w1a.r_autoriserModifs')}
           style={{ flexShrink: 0, width: 42, height: 25, borderRadius: 999, border: 'none', cursor: 'pointer', background: f.allow_write ? '#f59e0b' : 'var(--border)', position: 'relative', transition: 'background 0.15s' }}>
           <span style={{ position: 'absolute', top: 3, left: f.allow_write ? 20 : 3, width: 19, height: 19, borderRadius: '50%', background: '#fff', transition: 'left 0.15s' }} />
         </button>
@@ -262,10 +266,10 @@ function FormView({ initial, onCancel, onSaved }: { initial: FormState; onCancel
       {error && <div style={{ fontSize: 12.5, color: '#ef4444' }}>{error}</div>}
 
       <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-        <button onClick={onCancel} style={{ padding: '11px 16px', borderRadius: 10, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-mid)', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>Annuler</button>
+        <button onClick={onCancel} style={{ padding: '11px 16px', borderRadius: 10, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-mid)', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>{t('w1a.r_annuler')}</button>
         <button onClick={save} disabled={saving}
           style={{ padding: '11px 20px', borderRadius: 10, border: 'none', background: saving ? 'var(--border)' : ACCENT, color: '#fff', fontSize: 14, fontWeight: 700, cursor: saving ? 'default' : 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
-          {saving ? '…' : f.id ? 'Enregistrer' : 'Créer la routine'}
+          {saving ? '…' : f.id ? t('w1a.r_enregistrer') : t('w1a.r_creerRoutine')}
         </button>
       </div>
     </div>
@@ -277,6 +281,7 @@ function DetailView({ id, routine, onEdit, onChanged, onDeleted }: {
   id: string; routine: Routine | null
   onEdit: (r: Routine) => void; onChanged: () => void; onDeleted: () => void
 }) {
+  const { t } = useI18n()
   const [runs, setRuns] = useState<RoutineRun[]>([])
   const [loadingRuns, setLoadingRuns] = useState(true)
   const [running, setRunning] = useState(false)
@@ -294,14 +299,14 @@ function DetailView({ id, routine, onEdit, onChanged, onDeleted }: {
     try { await runRoutine(id); await loadRuns(); onChanged() } catch { /* ignore */ } finally { setRunning(false) }
   }
 
-  if (!routine) return <div style={{ textAlign: 'center', color: 'var(--text-dim)', fontSize: 13, padding: 40 }}>Routine introuvable.</div>
+  if (!routine) return <div style={{ textAlign: 'center', color: 'var(--text-dim)', fontSize: 13, padding: 40 }}>{t('w1a.r_introuvable')}</div>
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 18, maxWidth: 640, margin: '0 auto' }}>
       {/* En-tête routine */}
       <div>
         <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--text)', fontFamily: 'Syne,DM Sans,sans-serif' }}>{routine.name}</div>
-        <div style={{ fontSize: 13, color: 'var(--text-dim)', marginTop: 3 }}>{scheduleLabel(routine)}{!routine.enabled && ' · en pause'}{routine.allow_write && ' · peut agir'}</div>
+        <div style={{ fontSize: 13, color: 'var(--text-dim)', marginTop: 3 }}>{scheduleLabel(routine)}{!routine.enabled && t('w1a.r_enPause')}{routine.allow_write && t('w1a.r_peutAgir')}</div>
       </div>
 
       {/* Actions */}
@@ -309,42 +314,42 @@ function DetailView({ id, routine, onEdit, onChanged, onDeleted }: {
         <button onClick={doRunNow} disabled={running}
           style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 14px', borderRadius: 9, border: 'none', background: ACCENT, color: '#fff', fontSize: 13, fontWeight: 700, cursor: running ? 'default' : 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
-          {running ? 'Exécution…' : 'Exécuter maintenant'}
+          {running ? t('w1a.r_execution') : t('w1a.r_executerMaintenant')}
         </button>
         <button onClick={() => updateRoutine(id, { enabled: !routine.enabled }).then(onChanged)}
           style={{ padding: '9px 14px', borderRadius: 9, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-mid)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
-          {routine.enabled ? 'Mettre en pause' : 'Activer'}
+          {routine.enabled ? t('w1a.r_mettrePause') : t('w1a.r_activer')}
         </button>
         <button onClick={() => onEdit(routine)}
           style={{ padding: '9px 14px', borderRadius: 9, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-mid)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
-          Modifier
+          {t('w1a.r_modifier')}
         </button>
         {confirmDel ? (
           <button onClick={() => deleteRoutine(id).then(onDeleted)}
             style={{ padding: '9px 14px', borderRadius: 9, border: 'none', background: '#ef4444', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
-            Confirmer la suppression
+            {t('w1a.r_confirmerSuppression')}
           </button>
         ) : (
           <button onClick={() => setConfirmDel(true)}
             style={{ padding: '9px 14px', borderRadius: 9, border: '1px solid var(--border)', background: 'transparent', color: '#ef4444', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
-            Supprimer
+            {t('w1a.r_supprimer')}
           </button>
         )}
       </div>
 
       {/* Prompt */}
       <div>
-        <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase', color: 'var(--text-dim)', marginBottom: 6 }}>Instruction</div>
+        <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase', color: 'var(--text-dim)', marginBottom: 6 }}>{t('w1a.r_instruction')}</div>
         <div style={{ fontSize: 13.5, lineHeight: 1.6, color: 'var(--text)', padding: '12px 14px', borderRadius: 10, background: 'var(--bg-alt)', border: '0.5px solid var(--border)', whiteSpace: 'pre-wrap' }}>{routine.prompt}</div>
       </div>
 
       {/* Historique */}
       <div>
-        <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase', color: 'var(--text-dim)', marginBottom: 8 }}>Exécutions</div>
+        <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase', color: 'var(--text-dim)', marginBottom: 8 }}>{t('w1a.r_executions')}</div>
         {loadingRuns ? (
-          <div style={{ fontSize: 13, color: 'var(--text-dim)', padding: 12 }}>Chargement…</div>
+          <div style={{ fontSize: 13, color: 'var(--text-dim)', padding: 12 }}>{t('w1a.r_chargement')}</div>
         ) : runs.length === 0 ? (
-          <div style={{ fontSize: 13, color: 'var(--text-dim)', padding: 12 }}>Aucune exécution pour l&apos;instant. Utilise « Exécuter maintenant » pour tester.</div>
+          <div style={{ fontSize: 13, color: 'var(--text-dim)', padding: 12 }}>{t('w1a.r_aucuneExecution')}</div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {runs.map(run => {
@@ -356,7 +361,7 @@ function DetailView({ id, routine, onEdit, onChanged, onDeleted }: {
                     style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '11px 14px', border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left' }}>
                     <span style={{ width: 8, height: 8, borderRadius: '50%', background: color, flexShrink: 0 }} />
                     <span style={{ flex: 1, fontSize: 13, color: 'var(--text)', fontFamily: 'DM Sans,sans-serif' }}>{fmtWhen(run.created_at)}</span>
-                    <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>{run.status === 'error' ? 'erreur' : run.status === 'running' ? 'en cours' : 'terminé'}</span>
+                    <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>{run.status === 'error' ? t('w1a.r_statusError') : run.status === 'running' ? t('w1a.r_statusRunning') : t('w1a.r_statusDone')}</span>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ transform: isOpen ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s', flexShrink: 0 }}><path d="M9 6l6 6-6 6"/></svg>
                   </button>
                   {isOpen && (

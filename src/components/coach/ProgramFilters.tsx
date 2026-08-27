@@ -7,6 +7,7 @@
 // ══════════════════════════════════════════════════════════════════
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { useI18n } from '@/lib/i18n'
 import { IconAdjustmentsHorizontal, IconX } from '@tabler/icons-react'
 import type { CoachProgram } from '@/lib/coach/programs'
 
@@ -36,6 +37,7 @@ const PRICE_OPTS: { k: ProgFilters['price']; label: string }[] = [
 export default function ProgramFilters({ programs, value, onChange }: {
   programs: CoachProgram[]; value: ProgFilters; onChange: (f: ProgFilters) => void
 }) {
+  const { t } = useI18n()
   const [open, setOpen] = useState(false)
   const hasPaid = programs.some(p => p.price_cents > 0)
   const hasAi = programs.some(p => p.ai_enabled)
@@ -61,7 +63,7 @@ export default function ProgramFilters({ programs, value, onChange }: {
       <button onClick={() => setOpen(true)}
         style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '9px 15px', borderRadius: 999, cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 700,
           border: activeCount ? '1px solid var(--primary)' : '1px solid var(--border)', background: activeCount ? 'var(--primary-dim)' : 'var(--bg-card2)', color: activeCount ? 'var(--primary)' : 'var(--text-mid)' }}>
-        <IconAdjustmentsHorizontal size={17} /> Filtres
+        <IconAdjustmentsHorizontal size={17} /> {t('w1d.filters')}
         {activeCount > 0 && <span className="tnum" style={{ minWidth: 18, height: 18, borderRadius: 999, background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 11, fontWeight: 800, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0 5px' }}>{activeCount}</span>}
       </button>
 
@@ -71,25 +73,25 @@ export default function ProgramFilters({ programs, value, onChange }: {
           <div style={{ position: 'relative', width: '100%', maxWidth: 420, background: 'var(--bg-card)', borderRadius: 'var(--r-lg)', padding: 'clamp(20px,5vw,28px)', boxShadow: '0 24px 60px rgba(0,0,0,0.3)', animation: 'fPop 220ms cubic-bezier(0.32,0.72,0,1)' }}>
             <style>{`@keyframes fBg{from{opacity:0}to{opacity:1}}@keyframes fPop{from{opacity:0;transform:translateY(12px) scale(0.96)}to{opacity:1;transform:none}}`}</style>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
-              <span style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 600, color: 'var(--text)' }}>Filtres</span>
-              <button onClick={() => setOpen(false)} aria-label="Fermer" style={{ width: 34, height: 34, borderRadius: 999, border: 'none', background: 'var(--bg-card2)', color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><IconX size={18} /></button>
+              <span style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 600, color: 'var(--text)' }}>{t('w1d.filters')}</span>
+              <button onClick={() => setOpen(false)} aria-label={t('w1d.close')} style={{ width: 34, height: 34, borderRadius: 999, border: 'none', background: 'var(--bg-card2)', color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><IconX size={18} /></button>
             </div>
 
-            {hasMultiSport && <Group label="Sport">
-              <Chip on={value.sport === ''} onClick={() => set({ sport: '', specialty: '' })}>Tous</Chip>
+            {hasMultiSport && <Group label={t('w1d.sport')}>
+              <Chip on={value.sport === ''} onClick={() => set({ sport: '', specialty: '' })}>{t('w1d.all')}</Chip>
               {sports.map(s => <Chip key={s} on={value.sport === s} onClick={() => set({ sport: s, specialty: '' })}>{SPORT_LABEL[s] ?? s}</Chip>)}
             </Group>}
-            {hasAi && <Group label="Intelligence artificielle">
+            {hasAi && <Group label={t('w1d.ai')}>
               {AI_OPTS.map(o => <Chip key={o.k} on={value.ai === o.k} onClick={() => set({ ai: o.k })}>{o.label}</Chip>)}
             </Group>}
-            {hasPaid && <Group label="Prix">
+            {hasPaid && <Group label={t('w1d.price')}>
               {PRICE_OPTS.map(o => <Chip key={o.k} on={value.price === o.k} onClick={() => set({ price: o.k })}>{o.label}</Chip>)}
             </Group>}
 
             <div style={{ display: 'flex', gap: 10, marginTop: 22 }}>
-              <button onClick={() => onChange({ ...value, sport: '', specialty: '', ai: 'all', price: 'all' })} style={{ flex: '0 0 auto', padding: '11px 16px', borderRadius: 'var(--r-md)', border: 'none', background: 'var(--bg-card2)', color: 'var(--text-mid)', fontFamily: 'var(--font-body)', fontSize: 13.5, fontWeight: 700, cursor: 'pointer' }}>Réinitialiser</button>
+              <button onClick={() => onChange({ ...value, sport: '', specialty: '', ai: 'all', price: 'all' })} style={{ flex: '0 0 auto', padding: '11px 16px', borderRadius: 'var(--r-md)', border: 'none', background: 'var(--bg-card2)', color: 'var(--text-mid)', fontFamily: 'var(--font-body)', fontSize: 13.5, fontWeight: 700, cursor: 'pointer' }}>{t('w1d.reset')}</button>
               <button onClick={() => setOpen(false)} style={{ flex: 1, padding: '11px 16px', borderRadius: 'var(--r-md)', border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
-                {resultCount > 0 ? `Voir ${resultCount} programme${resultCount > 1 ? 's' : ''}` : 'Aucun programme'}
+                {resultCount > 0 ? `${t('w1d.see')} ${resultCount} ${t('w1d.programWord')}${resultCount > 1 ? 's' : ''}` : t('w1d.noProgram')}
               </button>
             </div>
           </div>

@@ -6,6 +6,7 @@
 // Tokens uniquement, aucune bordure hors input/focus.
 // ══════════════════════════════════════════════════════════════════════════
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
+import { useI18n } from '@/lib/i18n'
 import { createClient } from '@/lib/supabase/client'
 import {
   getChannelMessages, sendChannelMessage, editChannelMessage, deleteChannelMessage, uploadCommunityMedia, searchChannelMessages,
@@ -77,6 +78,7 @@ export function ChannelChat({
   joining: boolean
   onRead?: (channelId: string) => void
 }) {
+  const { t } = useI18n()
   const [messages, setMessages] = useState<CommunityMessage[]>([])
   const [loading, setLoading] = useState(true)
   const [input, setInput] = useState('')
@@ -218,11 +220,11 @@ export function ChannelChat({
     const ok = await sendChannelMessage(channel.id, body, atts, rTo)
     setSending(false)
     if (ok) void load()
-    else { setInput(body); setPending(atts); setNotice('Envoi impossible.') }
+    else { setInput(body); setPending(atts); setNotice(t('w1g.sendFailed')) }
   }
 
   function openFilePicker() {
-    if (!canUpload) { setNotice('Passe Premium pour envoyer des photos et fichiers.'); return }
+    if (!canUpload) { setNotice(t('w1g.premiumForFiles')); return }
     fileRef.current?.click()
   }
   async function shareActivity(a: ActivityRef) {
@@ -243,10 +245,10 @@ export function ChannelChat({
   }
 
   async function report(id: string) {
-    const reason = typeof window !== 'undefined' ? window.prompt('Signaler ce message à la modération — raison :') : ''
+    const reason = typeof window !== 'undefined' ? window.prompt(t('w1g.reportPrompt')) : ''
     if (reason === null) return
-    const ok = await reportMessage(channel.spaceId, channel.id, id, reason || 'Signalé')
-    setNotice(ok ? 'Message signalé à la modération.' : 'Signalement impossible.')
+    const ok = await reportMessage(channel.spaceId, channel.id, id, reason || t('w1g.reported'))
+    setNotice(ok ? t('w1g.reportSent') : t('w1g.reportFailed'))
   }
 
   async function doAcceptRules() {
@@ -260,7 +262,7 @@ export function ChannelChat({
     for (const f of files.slice(0, 6)) {
       const att = await uploadCommunityMedia(f)
       if (att) setPending(p => [...p, att])
-      else setNotice('Une pièce jointe n\'a pas pu être envoyée.')
+      else setNotice(t('w1g.attachmentFailed'))
     }
     setUploading(false)
   }
@@ -278,7 +280,7 @@ export function ChannelChat({
     if (t && await editChannelMessage(cur.id, t)) void load()
   }
   async function remove(id: string) {
-    if (typeof window !== 'undefined' && !window.confirm('Supprimer ce message ?')) return
+    if (typeof window !== 'undefined' && !window.confirm(t('w1g.deleteMessageConfirm'))) return
     if (await deleteChannelMessage(id)) void load()
   }
 
@@ -293,19 +295,19 @@ export function ChannelChat({
           {channel.topic && <p style={{ margin: '2px 0 0', fontFamily: FB, fontSize: 12.5, color: 'var(--text-mid)', lineHeight: 1.4 }}>{channel.topic}</p>}
         </div>
         {isMember && (
-          <button onClick={onCall} title="Rejoindre l'appel du canal" aria-label="Rejoindre l'appel du canal"
+          <button onClick={onCall} title={t('w1g.joinChannelCall')} aria-label={t('w1g.joinChannelCall')}
             style={{ width: 30, height: 30, flexShrink: 0, border: 'none', borderRadius: 'var(--r-sm)', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M23 7l-7 5 7 5V7z" /><rect x="1" y="5" width="15" height="14" rx="2" ry="2" /></svg>
           </button>
         )}
         {isMember && (
-          <button onClick={() => { setShowSearch(v => !v); setSearchQ(''); setSearchResults(null) }} title="Rechercher" aria-label="Rechercher"
+          <button onClick={() => { setShowSearch(v => !v); setSearchQ(''); setSearchResults(null) }} title={t('w1g.search')} aria-label={t('w1g.search')}
             style={{ width: 30, height: 30, flexShrink: 0, border: 'none', borderRadius: 'var(--r-sm)', background: showSearch ? 'var(--surface-neutral)' : 'transparent', color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
           </button>
         )}
         {isMember && (
-          <button onClick={onToggleMute} title={isMuted ? 'Réactiver les notifications' : 'Mettre en sourdine'} aria-label={isMuted ? 'Réactiver' : 'Sourdine'}
+          <button onClick={onToggleMute} title={isMuted ? t('w1g.unmuteNotifications') : t('w1g.mute')} aria-label={isMuted ? t('w1g.unmute') : t('w1g.muteShort')}
             style={{ width: 30, height: 30, flexShrink: 0, border: 'none', borderRadius: 'var(--r-sm)', background: 'transparent', color: isMuted ? 'var(--primary)' : 'var(--text-dim)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             {isMuted
               ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M13.73 21a2 2 0 0 1-3.46 0M18 8a6 6 0 0 0-9.33-5M5.2 5.2A6 6 0 0 0 6 8c0 7-3 9-3 9h14M1 1l22 22" /></svg>
@@ -313,7 +315,7 @@ export function ChannelChat({
           </button>
         )}
         {isMember && pinnedIds.size > 0 && (
-          <button onClick={() => void openPins()} title="Messages épinglés"
+          <button onClick={() => void openPins()} title={t('w1g.pinnedMessages')}
             style={{ display: 'inline-flex', alignItems: 'center', gap: 5, flexShrink: 0, height: 28, padding: '0 var(--space-2)', border: 'none', borderRadius: 'var(--r-sm)', background: 'var(--surface-neutral)', color: 'var(--text-mid)', cursor: 'pointer', fontFamily: FB, fontSize: 11.5, fontWeight: 600 }}>
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M12 17v5M9 3h6l-1 6 3 3H7l3-3-1-6z" /></svg>
             <span className="tnum" style={{ fontVariantNumeric: 'tabular-nums' }}>{pinnedIds.size}</span>
@@ -322,7 +324,7 @@ export function ChannelChat({
         {isMember && presence > 0 && (
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexShrink: 0, fontFamily: FB, fontSize: 11.5, color: 'var(--text-mid)' }}>
             <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--sport-run)' }} />
-            <span className="tnum" style={{ fontVariantNumeric: 'tabular-nums' }}>{presence}</span> en ligne
+            <span className="tnum" style={{ fontVariantNumeric: 'tabular-nums' }}>{presence}</span>{' '}{t('w1g.online')}
           </span>
         )}
       </div>
@@ -334,13 +336,13 @@ export function ChannelChat({
       <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0, background: 'var(--bg-card)' }}>
         {header}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 'var(--space-4)', padding: 'var(--space-8)', textAlign: 'center' }}>
-          <span style={{ fontFamily: FD, fontSize: 18, fontWeight: 500, color: 'var(--text)' }}>Rejoins l&apos;espace pour lire et participer</span>
+          <span style={{ fontFamily: FD, fontSize: 18, fontWeight: 500, color: 'var(--text)' }}>{t('w1g.joinToRead')}</span>
           <p style={{ margin: 0, fontFamily: FB, fontSize: 13, color: 'var(--text-mid)', maxWidth: 360, lineHeight: 1.5 }}>
-            La discussion s&apos;ouvre dès que tu fais partie de l&apos;espace. C&apos;est gratuit et instantané.
+            {t('w1g.joinToReadDesc')}
           </p>
           <button onClick={onJoin} disabled={joining}
             style={{ height: 40, padding: '0 var(--space-5)', border: 'none', borderRadius: 'var(--r-sm)', background: 'var(--primary)', color: 'var(--on-primary)', fontFamily: FB, fontSize: 13.5, fontWeight: 600, cursor: joining ? 'default' : 'pointer', opacity: joining ? 0.6 : 1 }}>
-            {joining ? 'Connexion…' : 'Rejoindre'}
+            {joining ? t('w1g.connecting') : t('w1g.join')}
           </button>
         </div>
       </div>
@@ -355,21 +357,21 @@ export function ChannelChat({
       {showPins && (
         <div style={{ flexShrink: 0, maxHeight: 220, overflowY: 'auto', background: 'var(--bg-card2)', padding: 'var(--space-3) var(--space-5)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-2)' }}>
-            <span style={{ fontFamily: FB, fontSize: 11, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-dim)' }}>Épinglés</span>
-            <button onClick={() => setShowPins(false)} aria-label="Fermer" style={{ width: 22, height: 22, border: 'none', borderRadius: '50%', background: 'transparent', color: 'var(--text-mid)', cursor: 'pointer', fontSize: 14 }}>×</button>
+            <span style={{ fontFamily: FB, fontSize: 11, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-dim)' }}>{t('w1g.pinned')}</span>
+            <button onClick={() => setShowPins(false)} aria-label={t('w1g.close')} style={{ width: 22, height: 22, border: 'none', borderRadius: '50%', background: 'transparent', color: 'var(--text-mid)', cursor: 'pointer', fontSize: 14 }}>×</button>
           </div>
           {pinnedList === null ? (
-            <p style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-dim)', margin: 0 }}>Chargement…</p>
+            <p style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-dim)', margin: 0 }}>{t('w1g.loading')}</p>
           ) : pinnedList.length === 0 ? (
-            <p style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-dim)', margin: 0 }}>Aucun message épinglé.</p>
+            <p style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-dim)', margin: 0 }}>{t('w1g.noPinnedMessage')}</p>
           ) : pinnedList.map(pm => (
             <div key={pm.id} style={{ display: 'flex', gap: 'var(--space-2)', padding: 'var(--space-2) 0', alignItems: 'flex-start' }}>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <span style={{ fontFamily: FB, fontSize: 12, fontWeight: 600, color: 'var(--text)' }}>{pm.authorName}</span>
-                <p style={{ margin: '2px 0 0', fontFamily: FB, fontSize: 12.5, color: 'var(--text-mid)', lineHeight: 1.4, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{pm.body || (pm.attachments.length ? 'Pièce jointe' : '')}</p>
+                <p style={{ margin: '2px 0 0', fontFamily: FB, fontSize: 12.5, color: 'var(--text-mid)', lineHeight: 1.4, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{pm.body || (pm.attachments.length ? t('w1g.attachment') : '')}</p>
               </div>
               {canModerate && (
-                <button onClick={() => void pin(pm)} aria-label="Désépingler" style={{ width: 24, height: 24, flexShrink: 0, border: 'none', borderRadius: 'var(--r-sm)', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 13 }}>×</button>
+                <button onClick={() => void pin(pm)} aria-label={t('w1g.unpin')} style={{ width: 24, height: 24, flexShrink: 0, border: 'none', borderRadius: 'var(--r-sm)', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 13 }}>×</button>
               )}
             </div>
           ))}
@@ -379,13 +381,13 @@ export function ChannelChat({
       {/* Panneau recherche */}
       {showSearch && (
         <div style={{ flexShrink: 0, maxHeight: 280, display: 'flex', flexDirection: 'column', background: 'var(--bg-card2)', padding: 'var(--space-3) var(--space-5)' }}>
-          <input autoFocus value={searchQ} onChange={e => void runSearch(e.target.value)} placeholder={`Rechercher dans #${channel.name}…`}
+          <input autoFocus value={searchQ} onChange={e => void runSearch(e.target.value)} placeholder={t('w1g.searchInChannel', { name: channel.name })}
             style={{ width: '100%', boxSizing: 'border-box', background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: 'var(--r-sm)', padding: 'var(--space-2) var(--space-3)', fontFamily: FB, fontSize: 13.5, color: 'var(--text)', outline: 'none', marginBottom: 'var(--space-2)' }} />
           <div style={{ overflowY: 'auto' }}>
             {searchResults === null ? (
-              <p style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-dim)', margin: 'var(--space-2) 0' }}>{searchQ.trim().length >= 2 ? 'Recherche…' : 'Tape au moins 2 caractères.'}</p>
+              <p style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-dim)', margin: 'var(--space-2) 0' }}>{searchQ.trim().length >= 2 ? t('w1g.searching') : t('w1g.typeAtLeast2')}</p>
             ) : searchResults.length === 0 ? (
-              <p style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-dim)', margin: 'var(--space-2) 0' }}>Aucun résultat.</p>
+              <p style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-dim)', margin: 'var(--space-2) 0' }}>{t('w1g.noResults')}</p>
             ) : searchResults.map(sr => (
               <div key={sr.id} style={{ padding: 'var(--space-2) 0' }}>
                 <span style={{ fontFamily: FB, fontSize: 12, fontWeight: 600, color: 'var(--text)' }}>{sr.authorName}</span>
@@ -401,8 +403,8 @@ export function ChannelChat({
       <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: 'var(--space-2) var(--space-4) var(--space-4)' }}>
         {loading ? <MessagesSkeleton /> : messages.length === 0 ? (
           <div style={{ padding: 'var(--space-10) var(--space-4)', textAlign: 'center' }}>
-            <p style={{ fontFamily: FD, fontSize: 18, fontWeight: 500, color: 'var(--text)', margin: '0 0 var(--space-2)' }}>#{channel.name} démarre ici</p>
-            <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-mid)', margin: 0 }}>Sois le premier à écrire — lance la conversation.</p>
+            <p style={{ fontFamily: FD, fontSize: 18, fontWeight: 500, color: 'var(--text)', margin: '0 0 var(--space-2)' }}>{t('w1g.channelStartsHere', { name: channel.name })}</p>
+            <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-mid)', margin: 0 }}>{t('w1g.beFirstToWrite')}</p>
           </div>
         ) : messages.map((m, i) => {
           const prev = messages[i - 1]
@@ -421,7 +423,7 @@ export function ChannelChat({
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3, fontFamily: FB, fontSize: 11.5, color: 'var(--text-dim)', overflow: 'hidden' }}>
                       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M9 17l-5-5 5-5M4 12h11a4 4 0 0 1 4 4v1" /></svg>
                       <span style={{ fontWeight: 600, color: 'var(--text-mid)' }}>{m.replyPreview.authorName}</span>
-                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.replyPreview.body || (m.replyPreview.hasAttachment ? 'Pièce jointe' : '')}</span>
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.replyPreview.body || (m.replyPreview.hasAttachment ? t('w1g.attachment') : '')}</span>
                     </div>
                   )}
                   {!grouped && (
@@ -429,7 +431,7 @@ export function ChannelChat({
                       <span style={{ fontFamily: FB, fontSize: 13.5, fontWeight: 600, color: 'var(--text)' }}>{m.authorName}</span>
                       <RoleBadge role={roleOf.get(m.authorId)} />
                       <span className="tnum" style={{ fontFamily: FB, fontSize: 10.5, color: 'var(--text-dim)', fontVariantNumeric: 'tabular-nums' }}>{fmtTime(m.createdAt)}</span>
-                      {m.editedAt && <span style={{ fontFamily: FB, fontSize: 10, color: 'var(--text-dim)' }}>(modifié)</span>}
+                      {m.editedAt && <span style={{ fontFamily: FB, fontSize: 10, color: 'var(--text-dim)' }}>{t('w1g.edited')}</span>}
                     </div>
                   )}
                   {isEditing ? (
@@ -438,8 +440,8 @@ export function ChannelChat({
                         onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void saveEdit() } if (e.key === 'Escape') setEditing(null) }}
                         style={{ width: '100%', boxSizing: 'border-box', resize: 'vertical', minHeight: 40, background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: 'var(--r-sm)', padding: 'var(--space-2) var(--space-3)', fontFamily: FB, fontSize: 13.5, color: 'var(--text)', outline: 'none' }} />
                       <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
-                        <button onClick={() => void saveEdit()} style={{ height: 30, padding: '0 var(--space-4)', border: 'none', borderRadius: 'var(--r-sm)', background: 'var(--primary)', color: 'var(--on-primary)', fontFamily: FB, fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>Enregistrer</button>
-                        <button onClick={() => setEditing(null)} style={{ height: 30, padding: '0 var(--space-3)', border: 'none', borderRadius: 'var(--r-sm)', background: 'transparent', color: 'var(--text-mid)', fontFamily: FB, fontSize: 12.5, cursor: 'pointer' }}>Annuler</button>
+                        <button onClick={() => void saveEdit()} style={{ height: 30, padding: '0 var(--space-4)', border: 'none', borderRadius: 'var(--r-sm)', background: 'var(--primary)', color: 'var(--on-primary)', fontFamily: FB, fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>{t('w1g.save')}</button>
+                        <button onClick={() => setEditing(null)} style={{ height: 30, padding: '0 var(--space-3)', border: 'none', borderRadius: 'var(--r-sm)', background: 'transparent', color: 'var(--text-mid)', fontFamily: FB, fontSize: 12.5, cursor: 'pointer' }}>{t('w1g.cancel')}</button>
                       </div>
                     </div>
                   ) : (
@@ -464,29 +466,29 @@ export function ChannelChat({
                 {/* Barre d'actions au survol */}
                 {!isEditing && (
                   <div className="comm-actions" style={{ position: 'absolute', top: -10, right: 8, display: 'flex', gap: 2, padding: 3, borderRadius: 'var(--r-sm)', background: 'var(--bg-elev)', boxShadow: 'var(--shadow-card)' }}>
-                    <ActionBtn label="Réagir" onClick={() => setReactFor(reactFor === m.id ? null : m.id)}>
+                    <ActionBtn label={t('w1g.react')} onClick={() => setReactFor(reactFor === m.id ? null : m.id)}>
                       <path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM8.5 14a3.5 3.5 0 0 0 7 0" /><path d="M9 9h.01M15 9h.01" />
                     </ActionBtn>
-                    <ActionBtn label="Répondre" onClick={() => { setReplyTo({ id: m.id, authorName: m.authorName }); taRef.current?.focus() }}>
+                    <ActionBtn label={t('w1g.reply')} onClick={() => { setReplyTo({ id: m.id, authorName: m.authorName }); taRef.current?.focus() }}>
                       <path d="M9 17l-5-5 5-5M4 12h11a4 4 0 0 1 4 4v1" />
                     </ActionBtn>
                     {canModerate && (
-                      <ActionBtn label={pinnedIds.has(m.id) ? 'Désépingler' : 'Épingler'} onClick={() => void pin(m)}>
+                      <ActionBtn label={pinnedIds.has(m.id) ? t('w1g.unpin') : t('w1g.pin')} onClick={() => void pin(m)}>
                         <path d="M12 17v5M9 3h6l-1 6 3 3H7l3-3-1-6z" />
                       </ActionBtn>
                     )}
                     {mine && (
-                      <ActionBtn label="Éditer" onClick={() => setEditing({ id: m.id, text: m.body })}>
+                      <ActionBtn label={t('w1g.edit')} onClick={() => setEditing({ id: m.id, text: m.body })}>
                         <path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" />
                       </ActionBtn>
                     )}
                     {!mine && (
-                      <ActionBtn label="Signaler" onClick={() => void report(m.id)}>
+                      <ActionBtn label={t('w1g.report')} onClick={() => void report(m.id)}>
                         <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" /><line x1="4" y1="22" x2="4" y2="15" />
                       </ActionBtn>
                     )}
                     {(mine || canModerate) && (
-                      <ActionBtn label="Supprimer" onClick={() => void remove(m.id)}>
+                      <ActionBtn label={t('w1g.delete')} onClick={() => void remove(m.id)}>
                         <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" />
                       </ActionBtn>
                     )}
@@ -527,54 +529,54 @@ export function ChannelChat({
 
         {replyTo && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginBottom: 'var(--space-2)', padding: '6px var(--space-3)', borderRadius: 'var(--r-sm)', background: 'var(--bg-card2)' }}>
-            <span style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-mid)' }}>Réponse à <strong style={{ color: 'var(--text)' }}>{replyTo.authorName}</strong></span>
-            <button onClick={() => setReplyTo(null)} aria-label="Annuler la réponse" style={{ marginLeft: 'auto', width: 20, height: 20, border: 'none', borderRadius: '50%', background: 'transparent', color: 'var(--text-mid)', cursor: 'pointer', fontSize: 14 }}>×</button>
+            <span style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-mid)' }}>{t('w1g.replyingTo')} <strong style={{ color: 'var(--text)' }}>{replyTo.authorName}</strong></span>
+            <button onClick={() => setReplyTo(null)} aria-label={t('w1g.cancelReply')} style={{ marginLeft: 'auto', width: 20, height: 20, border: 'none', borderRadius: '50%', background: 'transparent', color: 'var(--text-mid)', cursor: 'pointer', fontSize: 14 }}>×</button>
           </div>
         )}
 
         {(pending.length > 0 || uploading) && (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)', marginBottom: 'var(--space-2)' }}>
             {pending.map((a, i) => <PendingChip key={a.url ?? `att-${i}`} att={a} onRemove={() => setPending(p => p.filter((_, j) => j !== i))} />)}
-            {uploading && <span style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-dim)', alignSelf: 'center' }}>Envoi…</span>}
+            {uploading && <span style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-dim)', alignSelf: 'center' }}>{t('w1g.uploading')}</span>}
           </div>
         )}
 
         {gatedByRules && (
           <div style={{ marginBottom: 'var(--space-2)', padding: 'var(--space-3)', borderRadius: 'var(--r-md)', background: 'var(--bg-card2)' }}>
             <p style={{ margin: '0 0 var(--space-2)', fontFamily: FB, fontSize: 12.5, color: 'var(--text-mid)', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>
-              {rulesGate.text?.trim() || 'Cet espace demande d\'accepter ses règles avant de participer.'}
+              {rulesGate.text?.trim() || t('w1g.rulesGateDefault')}
             </p>
             <button onClick={() => void doAcceptRules()}
               style={{ height: 34, padding: '0 var(--space-4)', border: 'none', borderRadius: 'var(--r-sm)', background: 'var(--primary)', color: 'var(--on-primary)', fontFamily: FB, fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>
-              J&apos;accepte les règles
+              {t('w1g.acceptRules')}
             </button>
           </div>
         )}
 
         <input ref={fileRef} type="file" accept="image/*,application/pdf" multiple style={{ display: 'none' }} onChange={handleFiles} />
         <div style={{ display: 'flex', alignItems: 'flex-end', gap: 'var(--space-1)', background: 'var(--input-bg)', borderRadius: 'var(--r-lg)', padding: 'var(--space-1) var(--space-2)' }}>
-          <IconBtn label="Photo, fichier…" onClick={openFilePicker} disabled={!canPost}>
+          <IconBtn label={t('w1g.photoFile')} onClick={openFilePicker} disabled={!canPost}>
             <path d="M12 5v14M5 12h14" />
           </IconBtn>
-          <IconBtn label="Partager une activité" onClick={() => canPost && setSharing(true)} disabled={!canPost}>
+          <IconBtn label={t('w1g.shareActivity')} onClick={() => canPost && setSharing(true)} disabled={!canPost}>
             <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
           </IconBtn>
-          <IconBtn label="Partager une séance" onClick={() => canPost && setSharingSession(true)} disabled={!canPost}>
+          <IconBtn label={t('w1g.shareSession')} onClick={() => canPost && setSharingSession(true)} disabled={!canPost}>
             <path d="M20 6H4a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2zM6 12h4M12 10v4" />
           </IconBtn>
           <textarea ref={taRef} data-guide="comm-composer" value={input} onChange={onInputChange}
             onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && mentionQuery === null) { e.preventDefault(); void send() } }}
-            placeholder={`Écrire dans #${channel.name}…`} rows={1} disabled={!canPost}
+            placeholder={t('w1g.writeInChannel', { name: channel.name })} rows={1} disabled={!canPost}
             style={{ flex: 1, resize: 'none', border: 'none', outline: 'none', background: 'transparent', color: 'var(--text)', fontFamily: FB, fontSize: 13.5, lineHeight: 1.5, maxHeight: 140, padding: 'var(--space-2) var(--space-1)' }} />
           {micSupported && (
             <button type="button" onClick={() => { if (!isListening) voiceBase.current = input; toggleMic() }} disabled={!canPost}
-              aria-label={isListening ? 'Arrêter la dictée' : 'Dicter'} title={isListening ? 'Arrêter la dictée' : 'Dicter'}
+              aria-label={isListening ? t('w1g.stopDictation') : t('w1g.dictate')} title={isListening ? t('w1g.stopDictation') : t('w1g.dictate')}
               className={isListening ? 'mic-listening' : undefined}
               style={{ width: 36, height: 36, flexShrink: 0, border: 'none', borderRadius: 'var(--r-sm)', background: 'transparent', color: isListening ? 'var(--charge-hard)' : 'var(--text-mid)', cursor: canPost ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="2" width="6" height="12" rx="3" /><path d="M5 10a7 7 0 0 0 14 0M12 19v3" /></svg>
             </button>
           )}
-          <button onClick={() => void send()} disabled={!canSend} aria-label="Envoyer"
+          <button onClick={() => void send()} disabled={!canSend} aria-label={t('w1g.send')}
             style={{ width: 36, height: 36, flexShrink: 0, border: 'none', borderRadius: 'var(--r-sm)', background: canSend ? 'var(--primary)' : 'var(--surface-neutral)', color: canSend ? 'var(--on-primary)' : 'var(--text-dim)', cursor: canSend ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.15s' }}>
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7z" /></svg>
           </button>
@@ -589,8 +591,9 @@ export function ChannelChat({
 
 // Badge de rôle à côté du nom d'auteur (owner/admin/coach). 'member' → rien.
 function RoleBadge({ role }: { role?: string }) {
+  const { t } = useI18n()
   if (!role || role === 'member') return null
-  const label = role === 'owner' ? 'Créateur' : role === 'coach' ? 'Coach' : 'Modo'
+  const label = role === 'owner' ? t('w1g.roleCreator') : role === 'coach' ? t('w1g.roleCoach') : t('w1g.roleMod')
   const accent = role === 'owner' || role === 'coach'
   return (
     <span style={{ fontFamily: FB, fontSize: 9.5, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', padding: '2px 6px', borderRadius: 'var(--r-sm)', color: accent ? 'var(--primary)' : 'var(--text-mid)', background: accent ? 'var(--primary-dim)' : 'var(--surface-neutral)' }}>{label}</span>
@@ -638,8 +641,9 @@ function Attachments({ items, me, channelId }: { items: CommunityAttachment[]; m
 }
 
 function PendingChip({ att, onRemove }: { att: CommunityAttachment; onRemove: () => void }) {
-  const label = att.type === 'session' ? (att.session?.title || 'Séance')
-    : att.type === 'activity' ? (att.activity?.title || 'Activité')
+  const { t } = useI18n()
+  const label = att.type === 'session' ? (att.session?.title || t('w1g.session'))
+    : att.type === 'activity' ? (att.activity?.title || t('w1g.activity'))
       : att.name
   return (
     <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', gap: 'var(--space-2)', height: 44, padding: att.type === 'image' ? 0 : '0 var(--space-3)', borderRadius: 'var(--r-sm)', background: 'var(--surface-neutral)', overflow: 'hidden' }}>
@@ -654,7 +658,7 @@ function PendingChip({ att, onRemove }: { att: CommunityAttachment; onRemove: ()
             <span style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-mid)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label}</span>
           </span>
         )}
-      <button type="button" onClick={onRemove} aria-label="Retirer" style={{ position: 'absolute', top: 2, right: 2, width: 16, height: 16, borderRadius: '50%', border: 'none', background: 'var(--bg)', color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, lineHeight: 1 }}>×</button>
+      <button type="button" onClick={onRemove} aria-label={t('w1g.remove')} style={{ position: 'absolute', top: 2, right: 2, width: 16, height: 16, borderRadius: '50%', border: 'none', background: 'var(--bg)', color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, lineHeight: 1 }}>×</button>
     </span>
   )
 }

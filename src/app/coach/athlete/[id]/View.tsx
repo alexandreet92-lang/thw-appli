@@ -13,6 +13,7 @@ export const dynamic = 'force-dynamic'
 import { useEffect, useState, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { useI18n } from '@/lib/i18n'
 import { Avatar } from '@/components/shared/Sidebar'
 import { AthleteDetailDrawer, type DrawerKind } from '@/components/coach/AthleteDetailDrawer'
 import { CoachMessageBubble, openCoachMessage } from '@/components/coach/CoachMessageBubble'
@@ -28,6 +29,8 @@ type Bubble = 'overview' | 'fiche' | 'data' | 'goals' | 'connexions'
 const BUBBLES: { key: Bubble; label: string }[] = [
   { key: 'overview', label: 'Aperçu' }, { key: 'fiche', label: 'Fiche' }, { key: 'data', label: 'Données' }, { key: 'goals', label: 'Objectifs' }, { key: 'connexions', label: 'Connexion' },
 ]
+const BUBBLE_KEY: Record<Bubble, string> = { overview: 'w1e.tabOverview', fiche: 'w1e.tabFiche', data: 'w1e.tabData', goals: 'w1e.tabGoals', connexions: 'w1e.tabConnexions' }
+const ACTION_KEY: Record<string, string> = { planning: 'w1e.actPlanning', calendar: 'w1e.actCalendar', training: 'w1e.actTraining', performance: 'w1e.actPerformance', recovery: 'w1e.actRecovery', nutrition: 'w1e.actNutrition', message: 'w1e.actMessage' }
 
 const PROVIDER_META: Record<string, { name: string; color: string; initials: string }> = {
   strava: { name: 'Strava', color: '#FC4C02', initials: 'ST' },
@@ -40,12 +43,10 @@ const PROVIDER_META: Record<string, { name: string; color: string; initials: str
 }
 const providerMeta = (p: string) => PROVIDER_META[p] ?? { name: cap(p), color: 'var(--primary)', initials: p.slice(0, 2).toUpperCase() }
 
-const SPORT_LABEL: Record<string, string> = { run: 'Course', running: 'Course', bike: 'Vélo', cycling: 'Vélo', swim: 'Natation', hyrox: 'Hyrox', gym: 'Muscu', trail: 'Trail', trail_run: 'Trail', rowing: 'Aviron', triathlon: 'Triathlon' }
-const GOAL_LABEL: Record<string, string> = { performance: 'Performance', force: 'Force', endurance: 'Endurance', hybride: 'Hybride', prise_de_masse: 'Prise de masse', perte_de_poids: 'Perte de poids', sante: 'Santé', competition: 'Compétition' }
-const GENDER_LABEL: Record<string, string> = { male: 'Homme', female: 'Femme', homme: 'Homme', femme: 'Femme', other: 'Autre' }
+const SPORT_KEY: Record<string, string> = { run: 'w1e.sportCourse', running: 'w1e.sportCourse', bike: 'w1e.sportVelo', cycling: 'w1e.sportVelo', swim: 'w1e.sportNatation', hyrox: 'w1e.sportHyrox', gym: 'w1e.sportMuscu', trail: 'w1e.sportTrail', trail_run: 'w1e.sportTrail', rowing: 'w1e.sportAviron', triathlon: 'w1e.sportTriathlon' }
+const GOAL_KEY: Record<string, string> = { performance: 'w1e.goalPerformance', force: 'w1e.goalForce', endurance: 'w1e.goalEndurance', hybride: 'w1e.goalHybride', prise_de_masse: 'w1e.goalPriseDeMasse', perte_de_poids: 'w1e.goalPerteDePoids', sante: 'w1e.goalSante', competition: 'w1e.goalCompetition' }
+const GENDER_KEY: Record<string, string> = { male: 'w1e.genderHomme', female: 'w1e.genderFemme', homme: 'w1e.genderHomme', femme: 'w1e.genderFemme', other: 'w1e.genderAutre' }
 const cap = (s: string) => s ? s.charAt(0).toUpperCase() + s.slice(1).replace(/_/g, ' ') : s
-const sportLabel = (s: string) => SPORT_LABEL[s] ?? cap(s)
-const goalLabel = (s: string) => GOAL_LABEL[s] ?? cap(s)
 
 const fmtDate = (d: string | null) => { if (!d) return '—'; try { return new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) } catch { return '—' } }
 const fmtDur = (s: number | null) => s ? `${Math.round(s / 60)} min` : ''
@@ -67,7 +68,11 @@ const ACTIONS: { kind: Exclude<DrawerKind, null>; label: string; icon: React.Rea
 export default function AthleteFiche() {
   const params = useParams<{ id: string }>()
   const router = useRouter()
+  const { t } = useI18n()
   const id = params?.id as string
+  const sportLabel = (s: string) => (SPORT_KEY[s] ? t(SPORT_KEY[s]) : cap(s))
+  const goalLabel = (s: string) => (GOAL_KEY[s] ? t(GOAL_KEY[s]) : cap(s))
+  const genderLabel = (s: string) => (GENDER_KEY[s] ? t(GENDER_KEY[s]) : cap(s))
 
   const [tab, setTab] = useState<Bubble>('overview')
   const [drawer, setDrawer] = useState<DrawerKind>(null)
@@ -109,7 +114,7 @@ export default function AthleteFiche() {
   }, [id])
   useEffect(() => { void load() }, [load])
 
-  const name = profile?.full_name || profile?.first_name || 'Athlète'
+  const name = profile?.full_name || profile?.first_name || t('w1e.athlete')
   const activeInj = inj.filter(x => x.active)
   const recAvg = (k: keyof RecoveryRow) => { const v = rec.map(x => Number(x[k])).filter(n => Number.isFinite(n) && n > 0); return v.length ? v.reduce((s, x) => s + x, 0) / v.length : null }
   const tss7 = acts.filter(a => a.started_at && (Date.now() - new Date(a.started_at).getTime()) < 7 * 86400000).reduce((s, a) => s + (a.tss ?? 0), 0)
@@ -121,9 +126,9 @@ export default function AthleteFiche() {
   if (denied) {
     return (
       <div style={{ width: '100%', padding: '48px clamp(16px,4vw,40px)', textAlign: 'center', fontFamily: 'var(--font-body)' }}>
-        <h1 style={{ fontSize: 22, fontWeight: 600, color: 'var(--text)', fontFamily: 'var(--font-display)' }}>Athlète introuvable</h1>
-        <p style={{ fontSize: 14, color: 'var(--text-mid)', marginTop: 8 }}>Cet athlète ne fait pas (ou plus) partie de ton roster.</p>
-        <button onClick={() => router.push('/coach/athletes')} style={{ marginTop: 16, padding: '10px 18px', borderRadius: 11, border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 13.5, fontWeight: 700, cursor: 'pointer' }}>Retour aux athlètes</button>
+        <h1 style={{ fontSize: 22, fontWeight: 600, color: 'var(--text)', fontFamily: 'var(--font-display)' }}>{t('w1e.notFoundTitle')}</h1>
+        <p style={{ fontSize: 14, color: 'var(--text-mid)', marginTop: 8 }}>{t('w1e.notFoundBody')}</p>
+        <button onClick={() => router.push('/coach/athletes')} style={{ marginTop: 16, padding: '10px 18px', borderRadius: 11, border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 13.5, fontWeight: 700, cursor: 'pointer' }}>{t('w1e.backToAthletes')}</button>
       </div>
     )
   }
@@ -157,15 +162,15 @@ export default function AthleteFiche() {
     <div style={{ width: '100%', padding: '18px clamp(16px,4vw,40px) 60px', boxSizing: 'border-box', fontFamily: 'var(--font-body)' }}>
       {/* En-tête */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 13, marginBottom: 16 }}>
-        <button onClick={() => router.push('/coach/athletes')} aria-label="Retour" style={{ width: 34, height: 34, borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-mid)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+        <button onClick={() => router.push('/coach/athletes')} aria-label={t('w1e.back')} style={{ width: 34, height: 34, borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-mid)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M11 18l-6-6 6-6" /></svg>
         </button>
         <Avatar url={profile?.avatar_url ?? null} name={name} size={48} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <h1 style={{ fontSize: 22, fontWeight: 600, color: 'var(--text)', margin: 0, fontFamily: 'var(--font-display)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</h1>
           <div style={{ fontSize: 12.5, color: 'var(--text-dim)', marginTop: 2 }}>
-            {profile?.level ? `${cap(profile.level)} · ` : ''}{(profile?.sports ?? []).map(sportLabel).slice(0, 3).join(', ') || 'Athlète'}
-            {activeInj.length > 0 && <span style={{ color: '#f59e0b', fontWeight: 700 }}> · {activeInj.length} blessure{activeInj.length > 1 ? 's' : ''}</span>}
+            {profile?.level ? `${cap(profile.level)} · ` : ''}{(profile?.sports ?? []).map(sportLabel).slice(0, 3).join(', ') || t('w1e.athlete')}
+            {activeInj.length > 0 && <span style={{ color: '#f59e0b', fontWeight: 700 }}> · {activeInj.length > 1 ? t('w1e.injuriesN', { n: activeInj.length }) : t('w1e.injury1', { n: activeInj.length })}</span>}
           </div>
         </div>
       </div>
@@ -177,7 +182,7 @@ export default function AthleteFiche() {
             style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '8px 14px', borderRadius: 11, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)', transition: 'border-color .14s, color .14s' }}
             onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = 'color-mix(in srgb, var(--primary) 45%, var(--border))'; (e.currentTarget as HTMLElement).style.color = 'var(--primary)' }}
             onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)'; (e.currentTarget as HTMLElement).style.color = 'var(--text)' }}>
-            {a.icon}{a.label}
+            {a.icon}{t(ACTION_KEY[a.kind])}
           </button>
         ))}
       </div>
@@ -187,38 +192,38 @@ export default function AthleteFiche() {
         {BUBBLES.map(b => (
           <button key={b.key} onClick={() => setTab(b.key)}
             style={{ padding: '9px 14px', border: 'none', background: 'none', cursor: 'pointer', fontSize: 13.5, fontWeight: tab === b.key ? 700 : 500, color: tab === b.key ? 'var(--primary)' : 'var(--text-mid)', borderBottom: `2px solid ${tab === b.key ? 'var(--primary)' : 'transparent'}`, whiteSpace: 'nowrap', fontFamily: 'var(--font-body)', marginBottom: -3 }}>
-            {b.label}
+            {t(BUBBLE_KEY[b.key])}
           </button>
         ))}
       </div>
 
       {loading ? (
-        <p style={{ fontSize: 13, color: 'var(--text-dim)' }}>Chargement…</p>
+        <p style={{ fontSize: 13, color: 'var(--text-dim)' }}>{t('w1e.loading')}</p>
       ) : (
         <>
           {/* ── Aperçu ── */}
           {tab === 'overview' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16, maxWidth: 760 }}>
               <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                {tile(fmtDate(acts[0]?.started_at ?? null), 'Dernière activité')}
-                {tile(<>{Math.round(tss7)}</>, 'Charge 7 j (TSS)', 'var(--primary)')}
-                {tile(recAvg('fatigue') ? `${recAvg('fatigue')!.toFixed(1)}/5` : '—', 'Fatigue moy.', (recAvg('fatigue') ?? 0) >= 4 ? '#f59e0b' : 'var(--text)')}
-                {tile(activeInj.length, 'Blessure' + (activeInj.length > 1 ? 's' : ''), activeInj.length ? '#ef4444' : 'var(--text)')}
+                {tile(fmtDate(acts[0]?.started_at ?? null), t('w1e.lastActivity'))}
+                {tile(<>{Math.round(tss7)}</>, t('w1e.load7d'), 'var(--primary)')}
+                {tile(recAvg('fatigue') ? `${recAvg('fatigue')!.toFixed(1)}/5` : '—', t('w1e.avgFatigue'), (recAvg('fatigue') ?? 0) >= 4 ? '#f59e0b' : 'var(--text)')}
+                {tile(activeInj.length, activeInj.length > 1 ? t('w1e.injuriesLabel') : t('w1e.injuryLabel'), activeInj.length ? '#ef4444' : 'var(--text)')}
               </div>
               <div style={card}>
-                <div style={secLabel}>Dernières séances</div>
-                {acts.length === 0 ? <div style={{ fontSize: 13, color: 'var(--text-dim)' }}>Aucune activité récente.</div> : (
+                <div style={secLabel}>{t('w1e.lastSessions')}</div>
+                {acts.length === 0 ? <div style={{ fontSize: 13, color: 'var(--text-dim)' }}>{t('w1e.noRecentActivity')}</div> : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
                     {acts.slice(0, 5).map(a => (
                       <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13 }}>
                         <span style={{ ...num, color: 'var(--text-dim)', width: 52, flexShrink: 0 }}>{fmtDate(a.started_at)}</span>
-                        <span style={{ color: 'var(--text)', fontWeight: 600, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.title || sportLabel(a.sport_type ?? '') || 'Séance'}</span>
+                        <span style={{ color: 'var(--text)', fontWeight: 600, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.title || sportLabel(a.sport_type ?? '') || t('w1e.session')}</span>
                         <span style={{ ...num, color: 'var(--text-dim)', flexShrink: 0 }}>{[fmtDur(a.moving_time_s), fmtKm(a.distance_m)].filter(Boolean).join(' · ')}</span>
                       </div>
                     ))}
                   </div>
                 )}
-                <button onClick={() => setDrawer('training')} style={{ marginTop: 14, fontSize: 12.5, fontWeight: 700, color: 'var(--primary)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'var(--font-body)' }}>Voir tout le training →</button>
+                <button onClick={() => setDrawer('training')} style={{ marginTop: 14, fontSize: 12.5, fontWeight: 700, color: 'var(--primary)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'var(--font-body)' }}>{t('w1e.viewAllTraining')}</button>
               </div>
             </div>
           )}
@@ -227,15 +232,15 @@ export default function AthleteFiche() {
           {tab === 'fiche' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16, maxWidth: 620 }}>
               <div style={card}>
-                <div style={secLabel}>Identité</div>
+                <div style={secLabel}>{t('w1e.identity')}</div>
                 <div style={{ display: 'flex', flexDirection: 'column' }}>
-                  <Row k="Âge" v={age != null ? <span style={num}>{age} ans</span> : '—'} />
-                  <Row k="Sexe" v={profile?.gender ? (GENDER_LABEL[profile.gender] ?? cap(profile.gender)) : '—'} />
-                  <Row k="Taille" v={profile?.height_cm ? <span style={num}>{profile.height_cm} cm</span> : '—'} />
-                  <Row k="Poids" v={profile?.weight_kg ? <span style={num}>{profile.weight_kg} kg</span> : '—'} />
-                  <Row k="Niveau" v={profile?.level ? cap(profile.level) : '—'} />
-                  <Row k="Sports" v={(profile?.sports ?? []).map(sportLabel).join(', ') || '—'} />
-                  <Row k="Pays" v={profile?.country || '—'} />
+                  <Row k={t('w1e.age')} v={age != null ? <span style={num}>{t('w1e.ageYears', { age })}</span> : '—'} />
+                  <Row k={t('w1e.gender')} v={profile?.gender ? genderLabel(profile.gender) : '—'} />
+                  <Row k={t('w1e.height')} v={profile?.height_cm ? <span style={num}>{profile.height_cm} cm</span> : '—'} />
+                  <Row k={t('w1e.weight')} v={profile?.weight_kg ? <span style={num}>{profile.weight_kg} kg</span> : '—'} />
+                  <Row k={t('w1e.level')} v={profile?.level ? cap(profile.level) : '—'} />
+                  <Row k={t('w1e.sports')} v={(profile?.sports ?? []).map(sportLabel).join(', ') || '—'} />
+                  <Row k={t('w1e.country')} v={profile?.country || '—'} />
                 </div>
               </div>
               <CoachFormsSection athleteId={id} athleteName={name} />
@@ -247,43 +252,43 @@ export default function AthleteFiche() {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 12, maxWidth: 900 }}>
               {/* Training */}
               <button onClick={() => setDrawer('training')} style={{ ...card, textAlign: 'left', cursor: 'pointer' }}>
-                <div style={secLabel}>Training</div>
-                <div style={{ ...num, fontSize: 22, fontWeight: 700, color: 'var(--text)' }}>{week ? week.done : '—'}<span style={{ fontSize: 15, color: 'var(--text-dim)', fontWeight: 600 }}> / {week ? week.planned : '—'}</span><span style={{ fontSize: 13, color: 'var(--text-dim)', fontWeight: 600 }}> séances</span></div>
-                <div style={{ fontSize: 12.5, color: 'var(--text-dim)', marginTop: 6 }}>faites / planifiées cette semaine</div>
+                <div style={secLabel}>{t('w1e.dataTraining')}</div>
+                <div style={{ ...num, fontSize: 22, fontWeight: 700, color: 'var(--text)' }}>{week ? week.done : '—'}<span style={{ fontSize: 15, color: 'var(--text-dim)', fontWeight: 600 }}> / {week ? week.planned : '—'}</span><span style={{ fontSize: 13, color: 'var(--text-dim)', fontWeight: 600 }}> {t('w1e.sessionsUnit')}</span></div>
+                <div style={{ fontSize: 12.5, color: 'var(--text-dim)', marginTop: 6 }}>{t('w1e.doneVsPlanned')}</div>
                 {miniMetrics([
-                  [`${Math.round(tss7)}`, 'TSS · 7 j'],
-                  [`${acts.length}`, 'séances · 45 j'],
+                  [`${Math.round(tss7)}`, t('w1e.tss7d')],
+                  [`${acts.length}`, t('w1e.sessions45d')],
                 ])}
               </button>
               {/* Récupération */}
               <button onClick={() => setDrawer('recovery')} style={{ ...card, textAlign: 'left', cursor: 'pointer' }}>
-                <div style={secLabel}>Récupération</div>
-                <div style={{ ...num, fontSize: 22, fontWeight: 700, color: 'var(--text)' }}>{fmtSleep(vitals?.sleepMin ?? null)}<span style={{ fontSize: 13, color: 'var(--text-dim)', fontWeight: 600 }}> sommeil</span></div>
-                <div style={{ fontSize: 12.5, color: 'var(--text-dim)', marginTop: 6 }}>dernière nuit enregistrée</div>
+                <div style={secLabel}>{t('w1e.dataRecovery')}</div>
+                <div style={{ ...num, fontSize: 22, fontWeight: 700, color: 'var(--text)' }}>{fmtSleep(vitals?.sleepMin ?? null)}<span style={{ fontSize: 13, color: 'var(--text-dim)', fontWeight: 600 }}> {t('w1e.sleepUnit')}</span></div>
+                <div style={{ fontSize: 12.5, color: 'var(--text-dim)', marginTop: 6 }}>{t('w1e.lastNight')}</div>
                 {miniMetrics([
-                  [vitals?.hrv != null ? `${Math.round(vitals.hrv)}` : '—', 'HRV (ms)'],
-                  [recAvg('fatigue') ? `${recAvg('fatigue')!.toFixed(1)}/5` : '—', 'fatigue moy.'],
+                  [vitals?.hrv != null ? `${Math.round(vitals.hrv)}` : '—', t('w1e.hrvMs')],
+                  [recAvg('fatigue') ? `${recAvg('fatigue')!.toFixed(1)}/5` : '—', t('w1e.avgFatigueLower')],
                 ])}
               </button>
               {/* Nutrition */}
               <button onClick={() => setDrawer('nutrition')} style={{ ...card, textAlign: 'left', cursor: 'pointer' }}>
-                <div style={secLabel}>Nutrition</div>
+                <div style={secLabel}>{t('w1e.dataNutrition')}</div>
                 {nutri || (eaten && eaten.hasLog) ? (
                   <>
-                    <div style={{ ...num, fontSize: 22, fontWeight: 700, color: 'var(--text)' }}>{eaten?.kcal ?? 0}<span style={{ fontSize: 15, color: 'var(--text-dim)', fontWeight: 600 }}> / {nutri?.calories_mid ?? '—'}</span><span style={{ fontSize: 13, color: 'var(--text-dim)', fontWeight: 600 }}> kcal</span></div>
-                    <div style={{ fontSize: 12.5, color: 'var(--text-dim)', marginTop: 6 }}>mangé / objectif · aujourd’hui</div>
+                    <div style={{ ...num, fontSize: 22, fontWeight: 700, color: 'var(--text)' }}>{eaten?.kcal ?? 0}<span style={{ fontSize: 15, color: 'var(--text-dim)', fontWeight: 600 }}> / {nutri?.calories_mid ?? '—'}</span><span style={{ fontSize: 13, color: 'var(--text-dim)', fontWeight: 600 }}> {t('w1e.kcalUnit')}</span></div>
+                    <div style={{ fontSize: 12.5, color: 'var(--text-dim)', marginTop: 6 }}>{t('w1e.eatenVsGoal')}</div>
                     {miniMetrics([
-                      [`${eaten?.prot ?? 0}${nutri?.proteines ? ` / ${nutri.proteines}` : ''}`, 'protéines (g)'],
-                      [`${eaten?.gluc ?? 0}${nutri?.glucides ? ` / ${nutri.glucides}` : ''}`, 'glucides (g)'],
+                      [`${eaten?.prot ?? 0}${nutri?.proteines ? ` / ${nutri.proteines}` : ''}`, t('w1e.proteinG')],
+                      [`${eaten?.gluc ?? 0}${nutri?.glucides ? ` / ${nutri.glucides}` : ''}`, t('w1e.carbsG')],
                     ])}
                   </>
-                ) : <div style={{ fontSize: 13, color: 'var(--text-dim)' }}>Aucun plan ni repas enregistré.</div>}
+                ) : <div style={{ fontSize: 13, color: 'var(--text-dim)' }}>{t('w1e.noNutritionLog')}</div>}
               </button>
               {/* Blessures */}
               <button onClick={() => setDrawer('recovery')} style={{ ...card, textAlign: 'left', cursor: 'pointer' }}>
-                <div style={secLabel}>Blessures</div>
-                <div style={{ ...num, fontSize: 22, fontWeight: 700, color: activeInj.length ? '#ef4444' : 'var(--text)' }}>{activeInj.length}<span style={{ fontSize: 13, color: 'var(--text-dim)', fontWeight: 600 }}> active{activeInj.length > 1 ? 's' : ''}</span></div>
-                {activeInj.length === 0 ? <div style={{ fontSize: 12.5, color: 'var(--text-dim)', marginTop: 6 }}>Aucune blessure en cours.</div> : (
+                <div style={secLabel}>{t('w1e.injuriesLabel')}</div>
+                <div style={{ ...num, fontSize: 22, fontWeight: 700, color: activeInj.length ? '#ef4444' : 'var(--text)' }}>{activeInj.length}<span style={{ fontSize: 13, color: 'var(--text-dim)', fontWeight: 600 }}> {activeInj.length > 1 ? t('w1e.activeFemN') : t('w1e.activeFem1')}</span></div>
+                {activeInj.length === 0 ? <div style={{ fontSize: 12.5, color: 'var(--text-dim)', marginTop: 6 }}>{t('w1e.noActiveInjury')}</div> : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 10 }}>
                     {activeInj.slice(0, 3).map(x => (
                       <div key={x.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
@@ -301,28 +306,28 @@ export default function AthleteFiche() {
           {tab === 'goals' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16, maxWidth: 620 }}>
               <div style={card}>
-                <div style={secLabel}>Objectif principal</div>
-                <div style={{ fontSize: 15, fontWeight: 600, color: profile?.primary_goal ? 'var(--text)' : 'var(--text-dim)' }}>{profile?.primary_goal ? goalLabel(profile.primary_goal) : 'Non renseigné'}</div>
+                <div style={secLabel}>{t('w1e.primaryGoal')}</div>
+                <div style={{ fontSize: 15, fontWeight: 600, color: profile?.primary_goal ? 'var(--text)' : 'var(--text-dim)' }}>{profile?.primary_goal ? goalLabel(profile.primary_goal) : t('w1e.notProvided')}</div>
               </div>
               <div style={card}>
-                <div style={secLabel}>Échéances à venir</div>
-                {races.length === 0 ? <div style={{ fontSize: 13, color: 'var(--text-dim)' }}>Aucune course programmée.</div> : (
+                <div style={secLabel}>{t('w1e.upcomingRaces')}</div>
+                {races.length === 0 ? <div style={{ fontSize: 13, color: 'var(--text-dim)' }}>{t('w1e.noRacePlanned')}</div> : (
                   <div style={{ display: 'flex', flexDirection: 'column' }}>
                     {races.map((r, i) => {
                       const d = daysTo(r.start_date); const w = Math.floor(d / 7)
                       return (
                         <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 0', borderTop: i ? '1px solid var(--border)' : 'none' }}>
-                          <div style={{ ...num, fontFamily: 'var(--font-body)', fontSize: 17, fontWeight: 800, color: d <= 14 ? '#ef4444' : 'var(--primary)', width: 54, flexShrink: 0 }}>J-{d}</div>
+                          <div style={{ ...num, fontFamily: 'var(--font-body)', fontSize: 17, fontWeight: 800, color: d <= 14 ? '#ef4444' : 'var(--primary)', width: 54, flexShrink: 0 }}>{t('w1e.dayCountdown', { d })}</div>
                           <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.name || 'Course'}</div>
-                            <div style={{ ...num, fontSize: 12, color: 'var(--text-dim)', marginTop: 2 }}>{fmtDate(r.start_date)} · {w > 0 ? `${w} sem` : `${d} j`}</div>
+                            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.name || t('w1e.race')}</div>
+                            <div style={{ ...num, fontSize: 12, color: 'var(--text-dim)', marginTop: 2 }}>{fmtDate(r.start_date)} · {w > 0 ? t('w1e.weeksShort', { w }) : t('w1e.daysShort', { d })}</div>
                           </div>
                         </div>
                       )
                     })}
                   </div>
                 )}
-                <button onClick={() => setDrawer('calendar')} style={{ marginTop: 12, fontSize: 12.5, fontWeight: 700, color: 'var(--primary)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'var(--font-body)' }}>Ouvrir le calendrier →</button>
+                <button onClick={() => setDrawer('calendar')} style={{ marginTop: 12, fontSize: 12.5, fontWeight: 700, color: 'var(--primary)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'var(--font-body)' }}>{t('w1e.openCalendar')}</button>
               </div>
             </div>
           )}
@@ -331,11 +336,11 @@ export default function AthleteFiche() {
           {tab === 'connexions' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16, maxWidth: 620 }}>
               <div style={card}>
-                <div style={secLabel}>Applications connectées</div>
+                <div style={secLabel}>{t('w1e.connectedApps')}</div>
                 {conns === null ? (
-                  <div style={{ fontSize: 13, color: 'var(--text-dim)' }}>Chargement…</div>
+                  <div style={{ fontSize: 13, color: 'var(--text-dim)' }}>{t('w1e.loading')}</div>
                 ) : conns.filter(c => c.is_active).length === 0 ? (
-                  <div style={{ fontSize: 13, color: 'var(--text-dim)' }}>Aucune application connectée. L’athlète n’a lié ni Strava, ni montre, ni capteur.</div>
+                  <div style={{ fontSize: 13, color: 'var(--text-dim)' }}>{t('w1e.noConnectedApp')}</div>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column' }}>
                     {conns.filter(c => c.is_active).map((c, i) => {
@@ -346,7 +351,7 @@ export default function AthleteFiche() {
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>{m.name}</div>
                             <div style={{ ...num, fontSize: 12, color: c.last_error ? '#ef4444' : 'var(--text-dim)', marginTop: 2 }}>
-                              {c.last_error ? 'Erreur de synchro' : c.last_used_at ? `Synchro ${fmtDate(c.last_used_at)}` : 'Connecté'}
+                              {c.last_error ? t('w1e.syncError') : c.last_used_at ? t('w1e.syncedOn', { date: fmtDate(c.last_used_at) }) : t('w1e.connected')}
                             </div>
                           </div>
                           <span style={{ width: 8, height: 8, borderRadius: '50%', background: c.last_error ? '#ef4444' : '#22c55e', flexShrink: 0 }} />
@@ -357,7 +362,7 @@ export default function AthleteFiche() {
                 )}
               </div>
               <div style={{ ...card, background: 'var(--bg-card2)' }}>
-                <div style={{ fontSize: 12.5, color: 'var(--text-mid)', lineHeight: 1.55 }}>Ces connexions alimentent automatiquement les activités, la récupération (HRV, sommeil) et les données santé de l’athlète.</div>
+                <div style={{ fontSize: 12.5, color: 'var(--text-mid)', lineHeight: 1.55 }}>{t('w1e.connectionsInfo')}</div>
               </div>
             </div>
           )}

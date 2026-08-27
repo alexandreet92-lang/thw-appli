@@ -8,6 +8,7 @@
 // ══════════════════════════════════════════════════════════════════════════
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
+import { useI18n } from '@/lib/i18n'
 import { useEntitlements } from '@/hooks/useEntitlements'
 import { listSpaces, joinSpace, leaveSpace, updateSpaceIcon } from '@/lib/community/spaces'
 import { listChannels, createChannel, getUnreadChannelIds, getMutedChannelIds, toggleChannelMute } from '@/lib/community/channels'
@@ -27,6 +28,7 @@ const FB = 'var(--font-body)', FD = 'var(--font-display)'
 type MobileView = 'home' | 'chat'
 
 export function CommunityView() {
+  const { t } = useI18n()
   const ent = useEntitlements()
   const call = useCall()
   const [spaces, setSpaces] = useState<CommunitySpace[]>([])
@@ -217,7 +219,7 @@ export function CommunityView() {
     />
   ) : (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', background: 'var(--bg-card)', color: 'var(--text-dim)', fontFamily: FB, fontSize: 13 }}>
-      {loadingChannels ? '' : 'Choisis un canal.'}
+      {loadingChannels ? '' : t('w1g.chooseChannel')}
     </div>
   )
 
@@ -226,7 +228,7 @@ export function CommunityView() {
   const chatWithBack = panel === 'events' ? eventsPane : panel === 'call' ? callPane : (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
       <button onClick={() => { setDir('back'); setMView('home') }} style={backBar}>
-        <BackIcon /> <span>{space ? space.name : 'Retour'}</span>
+        <BackIcon /> <span>{space ? space.name : t('w1g.back')}</span>
       </button>
       <div style={{ flex: 1, minHeight: 0 }}>{chat}</div>
     </div>
@@ -289,6 +291,7 @@ function SpaceRail({ spaces, activeId, loading, onSelect, onCreate, onDiscover }
   spaces: CommunitySpace[]; activeId: string | null; loading: boolean
   onSelect: (id: string) => void; onCreate: () => void; onDiscover: () => void
 }) {
+  const { t } = useI18n()
   return (
     <div data-guide="comm-spaces" style={{ height: '100%', overflowY: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--space-2)', padding: 'var(--space-3) 0' }}>
       {loading ? (
@@ -305,11 +308,11 @@ function SpaceRail({ spaces, activeId, loading, onSelect, onCreate, onDiscover }
           </div>
         )
       })}
-      <button onClick={onDiscover} title="Rechercher un groupe" aria-label="Rechercher un groupe"
+      <button onClick={onDiscover} title={t('w1g.searchGroup')} aria-label={t('w1g.searchGroup')}
         style={{ width: 44, height: 44, borderRadius: 'var(--r-lg)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--surface-neutral)', color: 'var(--text-mid)', marginTop: 'var(--space-1)' }}>
         <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
       </button>
-      <button onClick={onCreate} title="Créer un espace" aria-label="Créer un espace"
+      <button onClick={onCreate} title={t('w1g.createSpace')} aria-label={t('w1g.createSpace')}
         style={{ width: 44, height: 44, borderRadius: 'var(--r-lg)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--surface-neutral)', color: 'var(--primary)', marginTop: 'var(--space-1)' }}>
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14" /></svg>
       </button>
@@ -324,6 +327,7 @@ function ChannelColumn({ space, channels, activeId, loading, isNarrow, joining, 
   panel: 'chat' | 'events' | 'call'; onEvents: () => void; onManage: () => void
   onSelect: (id: string) => void; onJoin: () => void; onLeave: () => void; onCreateChannel: (name: string, kind: 'text' | 'voice') => void; onSetLogo: (file: File) => void; onBack: () => void
 }) {
+  const { t } = useI18n()
   const [adding, setAdding] = useState(false)
   const [newName, setNewName] = useState('')
   const logoRef = useRef<HTMLInputElement>(null)
@@ -344,7 +348,7 @@ function ChannelColumn({ space, channels, activeId, loading, isNarrow, joining, 
             <>
               <input ref={logoRef} type="file" accept="image/*" style={{ display: 'none' }}
                 onChange={e => { const f = e.target.files?.[0]; e.target.value = ''; if (f) onSetLogo(f) }} />
-              <button onClick={() => logoRef.current?.click()} title="Changer le logo" aria-label="Changer le logo"
+              <button onClick={() => logoRef.current?.click()} title={t('w1g.changeLogo')} aria-label={t('w1g.changeLogo')}
                 style={{ position: 'relative', border: 'none', padding: 0, background: 'transparent', cursor: 'pointer', borderRadius: 'var(--r-md)', lineHeight: 0 }}>
                 <SpaceBadge space={space} size={34} />
                 <span style={{ position: 'absolute', right: -3, bottom: -3, width: 16, height: 16, borderRadius: '50%', background: 'var(--primary)', color: 'var(--on-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 0 2px var(--bg-card2)' }}>
@@ -357,25 +361,25 @@ function ChannelColumn({ space, channels, activeId, loading, isNarrow, joining, 
           )}
           <span style={{ fontFamily: FD, fontSize: 17, fontWeight: 600, color: 'var(--text)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{space.name}</span>
           {canManage && (
-            <button onClick={onManage} title="Gérer l'espace" aria-label="Gérer l'espace"
+            <button onClick={onManage} title={t('w1g.manageSpace')} aria-label={t('w1g.manageSpace')}
               style={{ width: 30, height: 30, flexShrink: 0, border: 'none', borderRadius: 'var(--r-sm)', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg>
             </button>
           )}
         </div>
         <div className="tnum" style={{ fontFamily: FB, fontSize: 11.5, color: 'var(--text-dim)', marginTop: 'var(--space-1)', fontVariantNumeric: 'tabular-nums' }}>
-          {space.memberCount} membre{space.memberCount > 1 ? 's' : ''}{space.kind === 'official' ? ' · Officiel' : ''}
+          {t(space.memberCount > 1 ? 'w1g.membersPlural' : 'w1g.memberSingular', { n: space.memberCount })}{space.kind === 'official' ? t('w1g.officialSuffix') : ''}
         </div>
         {space.description && (
           <p style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-mid)', margin: 'var(--space-2) 0 0', lineHeight: 1.45 }}>{space.description}</p>
         )}
         <div style={{ marginTop: 'var(--space-3)' }}>
           {!space.isMember ? (
-            <button onClick={onJoin} disabled={joining} style={joinBtn}>{joining ? 'Connexion…' : 'Rejoindre'}</button>
+            <button onClick={onJoin} disabled={joining} style={joinBtn}>{joining ? t('w1g.connecting') : t('w1g.join')}</button>
           ) : space.myRole !== 'owner' ? (
-            <button onClick={onLeave} style={leaveBtn}>Quitter</button>
+            <button onClick={onLeave} style={leaveBtn}>{t('w1g.leave')}</button>
           ) : (
-            <span style={{ fontFamily: FB, fontSize: 11.5, fontWeight: 600, color: 'var(--primary)' }}>Ton espace</span>
+            <span style={{ fontFamily: FB, fontSize: 11.5, fontWeight: 600, color: 'var(--primary)' }}>{t('w1g.yourSpace')}</span>
           )}
         </div>
       </div>
@@ -385,16 +389,16 @@ function ChannelColumn({ space, channels, activeId, loading, isNarrow, joining, 
         <button data-guide="comm-events" onClick={onEvents}
           style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', width: '100%', textAlign: 'left', border: 'none', cursor: 'pointer', borderRadius: 'var(--r-sm)', padding: 'var(--space-2) var(--space-3)', minHeight: 36, background: panel === 'events' ? 'var(--surface-neutral)' : 'transparent', fontFamily: FB }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-dim)', flexShrink: 0 }}><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></svg>
-          <span style={{ flex: 1, fontSize: 13.5, fontWeight: panel === 'events' ? 600 : 500, color: panel === 'events' ? 'var(--text)' : 'var(--text-mid)' }}>Événements</span>
+          <span style={{ flex: 1, fontSize: 13.5, fontWeight: panel === 'events' ? 600 : 500, color: panel === 'events' ? 'var(--text)' : 'var(--text-mid)' }}>{t('w1g.events')}</span>
         </button>
       </div>
 
       {/* Liste des canaux */}
       <div data-guide="comm-channels" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '0 var(--space-2) var(--space-3)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 'var(--space-2) var(--space-3)' }}>
-          <span style={{ fontFamily: FB, fontSize: 10.5, fontWeight: 600, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Canaux</span>
+          <span style={{ fontFamily: FB, fontSize: 10.5, fontWeight: 600, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{t('w1g.channels')}</span>
           {canManage && (
-            <button onClick={() => setAdding(v => !v)} aria-label="Ajouter un canal" title="Ajouter un canal"
+            <button onClick={() => setAdding(v => !v)} aria-label={t('w1g.addChannel')} title={t('w1g.addChannel')}
               style={{ width: 22, height: 22, borderRadius: 'var(--r-sm)', border: 'none', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14" /></svg>
             </button>
@@ -404,10 +408,10 @@ function ChannelColumn({ space, channels, activeId, loading, isNarrow, joining, 
           <div style={{ padding: '0 var(--space-2) var(--space-2)', display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
             <input autoFocus value={newName} onChange={e => setNewName(e.target.value.slice(0, 60))}
               onKeyDown={e => { if (e.key === 'Enter') submitChannel(); if (e.key === 'Escape') { setAdding(false); setNewName('') } }}
-              placeholder="nom-du-canal"
+              placeholder={t('w1g.channelNamePlaceholder')}
               style={{ width: '100%', boxSizing: 'border-box', background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: 'var(--r-sm)', padding: 'var(--space-2) var(--space-3)', fontFamily: FB, fontSize: 13, color: 'var(--text)', outline: 'none' }} />
             <button type="button" onClick={submitChannel} disabled={!newName.trim()}
-              style={{ height: 32, border: 'none', borderRadius: 'var(--r-sm)', cursor: newName.trim() ? 'pointer' : 'default', background: 'var(--primary)', color: 'var(--on-primary)', fontFamily: FB, fontSize: 12.5, fontWeight: 600, opacity: newName.trim() ? 1 : 0.5 }}>Créer le canal</button>
+              style={{ height: 32, border: 'none', borderRadius: 'var(--r-sm)', cursor: newName.trim() ? 'pointer' : 'default', background: 'var(--primary)', color: 'var(--on-primary)', fontFamily: FB, fontSize: 12.5, fontWeight: 600, opacity: newName.trim() ? 1 : 0.5 }}>{t('w1g.createChannel')}</button>
           </div>
         )}
         {loading ? (
@@ -424,7 +428,7 @@ function ChannelColumn({ space, channels, activeId, loading, isNarrow, joining, 
                 : <span style={{ color: 'var(--text-dim)', fontSize: 15, lineHeight: 1 }}>#</span>}
               <span style={{ flex: 1, minWidth: 0, fontSize: 13.5, fontWeight: active || isUnread ? 600 : 500, color: active || isUnread ? 'var(--text)' : 'var(--text-mid)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</span>
               {(activeCalls[c.id] ?? 0) > 0 && (
-                <span title={`${activeCalls[c.id]} en appel`} style={{ display: 'inline-flex', alignItems: 'center', gap: 3, flexShrink: 0, fontFamily: FB, fontSize: 10.5, fontWeight: 700, color: 'var(--sport-run)' }}>
+                <span title={t('w1g.inCall', { n: activeCalls[c.id] })} style={{ display: 'inline-flex', alignItems: 'center', gap: 3, flexShrink: 0, fontFamily: FB, fontSize: 10.5, fontWeight: 700, color: 'var(--sport-run)' }}>
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M23 7l-7 5 7 5V7z" /><rect x="1" y="5" width="15" height="14" rx="2" ry="2" /></svg>
                   <span className="tnum" style={{ fontVariantNumeric: 'tabular-nums' }}>{activeCalls[c.id]}</span>
                 </span>
@@ -441,11 +445,11 @@ function ChannelColumn({ space, channels, activeId, loading, isNarrow, joining, 
       <div style={{ flexShrink: 0, padding: 'var(--space-3) var(--space-4)', display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
         <Link href="/messages" style={crossLink}>
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
-          Messages privés →
+          {t('w1g.privateMessages')}
         </Link>
         <Link href="/coaches" style={crossLink}>
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4" /><path d="M4 21a8 8 0 0 1 16 0" /></svg>
-          Trouver un coach →
+          {t('w1g.findCoach')}
         </Link>
       </div>
     </div>

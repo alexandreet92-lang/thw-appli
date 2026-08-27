@@ -10,7 +10,7 @@ import {
   returnAccuracy, fragilityProfile, seasonality, mechanismSplit, aggregatePainCurve, adherenceVsHealing,
   type ChronicStatus,
 } from '../lib'
-import { currentLocale } from '@/lib/i18n'
+import { currentLocale, useI18n } from '@/lib/i18n'
 
 const FB = 'var(--font-body)', FD = 'var(--font-display)'
 const EN = currentLocale() === 'en'
@@ -187,6 +187,7 @@ function SeasonHeatmap({ inj }: { inj: Injury[] }) {
 
 // ── J. Courbe de douleur type ─────────────────────────────────────
 function PainCurveChart({ inj, logs }: { inj: Injury[]; logs: InjuryLog[] }) {
+  const { t } = useI18n()
   const curve = aggregatePainCurve(inj, logs)
   if (!curve) return <Empty />
   const W = 460, H = 150, padB = 22
@@ -205,7 +206,7 @@ function PainCurveChart({ inj, logs }: { inj: Injury[]; logs: InjuryLog[] }) {
       </div>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
         <span style={{ ...muted, fontSize: 10 }}>J0</span>
-        <span style={{ ...muted, fontSize: 10 }}>{EN ? 'resolved' : 'résolu'}</span>
+        <span style={{ ...muted, fontSize: 10 }}>{t('w1f.resolved')}</span>
       </div>
       <div style={{ display: 'flex', gap: 14, marginTop: 8 }}>
         <Legend c="var(--charge-hard)" label={L.atEffort} />
@@ -217,6 +218,7 @@ function PainCurveChart({ inj, logs }: { inj: Injury[]; logs: InjuryLog[] }) {
 
 // ── Composant principal ───────────────────────────────────────────
 export function AnalysisTab({ injuries, logs }: { injuries: Injury[]; logs: InjuryLog[] }) {
+  const { t } = useI18n()
   const s = stats12mo(injuries)
   const struct = healingByStructure(injuries)
   const sev = healingBySeverity(injuries)
@@ -237,10 +239,10 @@ export function AnalysisTab({ injuries, logs }: { injuries: Injury[]; logs: Inju
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
       {/* KPIs */}
       <div data-guide="inj-analytics" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 'var(--space-4)' }}>
-        {kpi(L.stInjuries, `${s.count}`, `${injuries.filter(i => i.status === 'active').length} ${EN ? 'active' : 'actives'} · ${injuries.filter(i => i.status === 'resolved').length} ${EN ? 'resolved' : 'résolues'}`)}
-        {kpi(L.stDuration, s.avgDuration == null ? '—' : `${s.avgDuration} ${L.day}`, EN ? 'Onset → resolution' : 'Onset → résolution')}
-        {kpi(L.stRecidive, s.recidiveRate == null ? '—' : `${s.recidiveRate}%`, EN ? 'On an already-hit zone' : 'Sur une zone déjà touchée', s.recidiveRate != null && s.recidiveRate >= 33 ? 'var(--charge-mid)' : undefined)}
-        {kpi(L.stReturn, s.avgReturn == null ? '—' : `${s.avgReturn} ${L.day}`, EN ? 'Effective return' : 'Reprise effective')}
+        {kpi(L.stInjuries, `${s.count}`, `${injuries.filter(i => i.status === 'active').length} ${t('w1f.active')} · ${injuries.filter(i => i.status === 'resolved').length} ${t('w1f.resolvedPlural')}`)}
+        {kpi(L.stDuration, s.avgDuration == null ? '—' : `${s.avgDuration} ${L.day}`, t('w1f.onsetResolution'))}
+        {kpi(L.stRecidive, s.recidiveRate == null ? '—' : `${s.recidiveRate}%`, t('w1f.alreadyHitZone'), s.recidiveRate != null && s.recidiveRate >= 33 ? 'var(--charge-mid)' : undefined)}
+        {kpi(L.stReturn, s.avgReturn == null ? '—' : `${s.avgReturn} ${L.day}`, t('w1f.effectiveReturn'))}
       </div>
 
       {/* D — disponibilité pleine largeur */}
@@ -293,7 +295,7 @@ export function AnalysisTab({ injuries, logs }: { injuries: Injury[]; logs: Inju
                         ? <span style={{ fontFamily: FB, fontSize: 10, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: CHRONIC_COLOR[z.status], background: `color-mix(in srgb, ${CHRONIC_COLOR[z.status]} 14%, transparent)`, padding: '2px 8px', borderRadius: 999 }}>{z.status === 'chronic' ? L.tagChronic : L.tagWatch}</span>
                         : <span style={{ ...muted, fontSize: 11 }}>{L.noRecidive}</span>}
                     </div>
-                    <span className="tnum" style={{ ...muted }}>{z.count} {EN ? (z.count > 1 ? 'episodes' : 'episode') : (z.count > 1 ? 'épisodes' : 'épisode')}{z.avgIntervalDays != null ? ` · ${L.everyMonths(Math.max(1, Math.round(z.avgIntervalDays / 30)))}` : ''}</span>
+                    <span className="tnum" style={{ ...muted }}>{z.count} {z.count > 1 ? t('w1f.episodes') : t('w1f.episode')}{z.avgIntervalDays != null ? ` · ${L.everyMonths(Math.max(1, Math.round(z.avgIntervalDays / 30)))}` : ''}</span>
                   </div>
                 </div>
               ))}
@@ -350,7 +352,7 @@ export function AnalysisTab({ injuries, logs }: { injuries: Injury[]; logs: Inju
                   <div style={{ height: 6, borderRadius: 999, background: 'var(--bg-card2)', overflow: 'hidden', margin: '6px 0' }}>
                     <i style={{ display: 'block', height: '100%', width: `${a.adherence}%`, background: SEV[a.severity].varc, borderRadius: 999 }} />
                   </div>
-                  <span className="tnum" style={{ ...muted }}>{a.adherence}% · {a.days} {L.day}<span style={{ opacity: 0.5 }}> · {Math.round((a.days / maxAdhDays) * 100)}%{EN ? ' of longest' : ' du + long'}</span></span>
+                  <span className="tnum" style={{ ...muted }}>{a.adherence}% · {a.days} {L.day}<span style={{ opacity: 0.5 }}> · {Math.round((a.days / maxAdhDays) * 100)}%{t('w1f.ofLongest')}</span></span>
                 </div>
               ))}
             </div>

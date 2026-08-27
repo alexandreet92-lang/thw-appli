@@ -6,6 +6,7 @@
 // ══════════════════════════════════════════════════════════════════════════
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { useI18n } from '@/lib/i18n'
 import { uploadCommunityMedia } from '@/lib/community/messages'
 import { SpaceBadge } from './SpaceBadge'
 import type { CommunityEntitlements } from '@/lib/subscriptions/tier-limits'
@@ -30,6 +31,7 @@ export function CreateSpaceSheet({
   onClose: () => void
   onCreated: (space: { id: string; slug: string }) => void
 }) {
+  const { t } = useI18n()
   const [mounted, setMounted] = useState(false)
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
@@ -66,10 +68,10 @@ export function CreateSpaceSheet({
         }),
       })
       const data = await res.json().catch(() => ({}))
-      if (!res.ok) { setError(data?.error ?? 'Création impossible.'); setBusy(false); return }
+      if (!res.ok) { setError(data?.error ?? t('w1g.createFailed')); setBusy(false); return }
       onCreated({ id: data.id, slug: data.slug })
     } catch {
-      setError('Erreur réseau.'); setBusy(false)
+      setError(t('w1g.networkError')); setBusy(false)
     }
   }
 
@@ -83,12 +85,12 @@ export function CreateSpaceSheet({
           <Upsell onClose={onClose} />
         ) : (
           <>
-            <h2 style={{ fontFamily: FD, fontSize: 20, fontWeight: 600, color: 'var(--text)', margin: '0 0 var(--space-1)' }}>Créer un espace</h2>
+            <h2 style={{ fontFamily: FD, fontSize: 20, fontWeight: 600, color: 'var(--text)', margin: '0 0 var(--space-1)' }}>{t('w1g.createSpace')}</h2>
             <p style={{ fontFamily: FB, fontSize: 12.5, color: 'var(--text-mid)', margin: '0 0 var(--space-5)' }}>
-              Ton espace, tes canaux, ta communauté. {Number.isFinite(ent.maxMembers) ? `Jusqu'à ${ent.maxMembers} membres.` : 'Membres illimités.'}
+              {t('w1g.createSpaceTagline')} {Number.isFinite(ent.maxMembers) ? t('w1g.upToMembers', { n: ent.maxMembers }) : t('w1g.unlimitedMembers')}
             </p>
 
-            <Field label="Logo (optionnel)">
+            <Field label={t('w1g.logoOptional')}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
                 <SpaceBadge space={{ name: name || '?', iconUrl }} size={56} radius="var(--r-md)" />
                 <input ref={logoRef} type="file" accept="image/*" style={{ display: 'none' }}
@@ -98,28 +100,28 @@ export function CreateSpaceSheet({
                     setLogoBusy(true); setError(null)
                     const att = await uploadCommunityMedia(f)
                     setLogoBusy(false)
-                    if (att?.url) setIconUrl(att.url); else setError('Upload du logo impossible.')
+                    if (att?.url) setIconUrl(att.url); else setError(t('w1g.logoUploadFailed'))
                   }} />
                 <button type="button" onClick={() => logoRef.current?.click()} disabled={logoBusy}
                   style={{ height: 36, padding: '0 var(--space-4)', border: 'none', borderRadius: 'var(--r-sm)', background: 'var(--surface-neutral)', color: 'var(--text)', fontFamily: FB, fontSize: 12.5, fontWeight: 600, cursor: logoBusy ? 'default' : 'pointer' }}>
-                  {logoBusy ? 'Envoi…' : iconUrl ? 'Changer' : 'Choisir une image'}
+                  {logoBusy ? t('w1g.uploading') : iconUrl ? t('w1g.change') : t('w1g.chooseImage')}
                 </button>
                 {iconUrl && !logoBusy && (
                   <button type="button" onClick={() => setIconUrl(null)}
-                    style={{ height: 36, padding: '0 var(--space-3)', border: 'none', borderRadius: 'var(--r-sm)', background: 'transparent', color: 'var(--text-mid)', fontFamily: FB, fontSize: 12.5, cursor: 'pointer' }}>Retirer</button>
+                    style={{ height: 36, padding: '0 var(--space-3)', border: 'none', borderRadius: 'var(--r-sm)', background: 'transparent', color: 'var(--text-mid)', fontFamily: FB, fontSize: 12.5, cursor: 'pointer' }}>{t('w1g.remove')}</button>
                 )}
               </div>
             </Field>
 
-            <Field label="Nom">
-              <input value={name} onChange={e => setName(e.target.value.slice(0, 80))} placeholder="Ex. Les grimpeurs du dimanche" style={inputStyle} />
+            <Field label={t('w1g.name')}>
+              <input value={name} onChange={e => setName(e.target.value.slice(0, 80))} placeholder={t('w1g.namePlaceholder')} style={inputStyle} />
             </Field>
 
-            <Field label="Description">
-              <textarea value={description} onChange={e => setDescription(e.target.value.slice(0, 400))} placeholder="De quoi parle cet espace ?" rows={3} style={{ ...inputStyle, resize: 'vertical', minHeight: 64 }} />
+            <Field label={t('w1g.description')}>
+              <textarea value={description} onChange={e => setDescription(e.target.value.slice(0, 400))} placeholder={t('w1g.descriptionPlaceholder')} rows={3} style={{ ...inputStyle, resize: 'vertical', minHeight: 64 }} />
             </Field>
 
-            <Field label="Sport (optionnel)">
+            <Field label={t('w1g.sportOptional')}>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)' }}>
                 {SPORTS.map(s => (
                   <button key={s.value || 'none'} type="button" onClick={() => setSport(s.value)}
@@ -128,20 +130,20 @@ export function CreateSpaceSheet({
               </div>
             </Field>
 
-            <Field label="Visibilité">
+            <Field label={t('w1g.visibility')}>
               <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
-                <VisBtn active={isPublic} onClick={() => setIsPublic(true)} title="Public" sub="Tout le monde peut rejoindre" />
-                <VisBtn active={!isPublic} onClick={() => { if (ent.canPrivate) setIsPublic(false) }} disabled={!ent.canPrivate} title="Privé" sub={ent.canPrivate ? 'Sur invitation' : 'Réservé Pro'} />
+                <VisBtn active={isPublic} onClick={() => setIsPublic(true)} title={t('w1g.public')} sub={t('w1g.publicSub')} />
+                <VisBtn active={!isPublic} onClick={() => { if (ent.canPrivate) setIsPublic(false) }} disabled={!ent.canPrivate} title={t('w1g.private')} sub={ent.canPrivate ? t('w1g.privateSub') : t('w1g.proOnly')} />
               </div>
             </Field>
 
             {error && <p style={{ fontFamily: FB, fontSize: 12.5, color: 'var(--charge-hard)', margin: 'var(--space-2) 0 0' }}>{error}</p>}
 
             <div style={{ display: 'flex', gap: 'var(--space-2)', marginTop: 'var(--space-6)' }}>
-              <button onClick={onClose} style={{ flex: '0 0 auto', height: 44, padding: '0 var(--space-5)', border: 'none', borderRadius: 'var(--r-sm)', background: 'var(--surface-neutral)', color: 'var(--text-mid)', fontFamily: FB, fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}>Annuler</button>
+              <button onClick={onClose} style={{ flex: '0 0 auto', height: 44, padding: '0 var(--space-5)', border: 'none', borderRadius: 'var(--r-sm)', background: 'var(--surface-neutral)', color: 'var(--text-mid)', fontFamily: FB, fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}>{t('w1g.cancel')}</button>
               <button onClick={() => void submit()} disabled={!name.trim() || busy}
                 style={{ flex: 1, height: 44, border: 'none', borderRadius: 'var(--r-sm)', background: 'var(--primary)', color: 'var(--on-primary)', fontFamily: FB, fontSize: 13.5, fontWeight: 600, cursor: name.trim() && !busy ? 'pointer' : 'default', opacity: name.trim() && !busy ? 1 : 0.6 }}>
-                {busy ? 'Création…' : 'Créer l\'espace'}
+                {busy ? t('w1g.creating') : t('w1g.createSpaceBtn')}
               </button>
             </div>
           </>
@@ -179,16 +181,17 @@ function VisBtn({ active, onClick, disabled, title, sub }: { active: boolean; on
 }
 
 function Upsell({ onClose }: { onClose: () => void }) {
+  const { t } = useI18n()
   return (
     <div style={{ textAlign: 'center', padding: 'var(--space-4) var(--space-2) var(--space-2)' }}>
       <div style={{ fontSize: 34, marginBottom: 'var(--space-3)' }}>✨</div>
-      <h2 style={{ fontFamily: FD, fontSize: 20, fontWeight: 600, color: 'var(--text)', margin: '0 0 var(--space-2)' }}>Passe Premium pour créer un espace</h2>
+      <h2 style={{ fontFamily: FD, fontSize: 20, fontWeight: 600, color: 'var(--text)', margin: '0 0 var(--space-2)' }}>{t('w1g.upsellTitle')}</h2>
       <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-mid)', margin: '0 auto var(--space-5)', maxWidth: 360, lineHeight: 1.5 }}>
-        Lire, poster et réagir restent gratuits, partout. Créer et animer ton propre espace fait partie de l&apos;abonnement Premium.
+        {t('w1g.upsellBody')}
       </p>
       <div style={{ display: 'flex', gap: 'var(--space-2)', justifyContent: 'center' }}>
-        <button onClick={onClose} style={{ height: 44, padding: '0 var(--space-5)', border: 'none', borderRadius: 'var(--r-sm)', background: 'var(--surface-neutral)', color: 'var(--text-mid)', fontFamily: FB, fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}>Plus tard</button>
-        <a href="/settings/subscription" style={{ height: 44, display: 'inline-flex', alignItems: 'center', padding: '0 var(--space-5)', borderRadius: 'var(--r-sm)', background: 'var(--primary)', color: 'var(--on-primary)', fontFamily: FB, fontSize: 13.5, fontWeight: 600, textDecoration: 'none' }}>Voir les offres</a>
+        <button onClick={onClose} style={{ height: 44, padding: '0 var(--space-5)', border: 'none', borderRadius: 'var(--r-sm)', background: 'var(--surface-neutral)', color: 'var(--text-mid)', fontFamily: FB, fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}>{t('w1g.later')}</button>
+        <a href="/settings/subscription" style={{ height: 44, display: 'inline-flex', alignItems: 'center', padding: '0 var(--space-5)', borderRadius: 'var(--r-sm)', background: 'var(--primary)', color: 'var(--on-primary)', fontFamily: FB, fontSize: 13.5, fontWeight: 600, textDecoration: 'none' }}>{t('w1g.seePlans')}</a>
       </div>
     </div>
   )

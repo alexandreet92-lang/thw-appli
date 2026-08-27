@@ -14,6 +14,7 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { readTools, READ_TOOL_NAMES, resolveReadTool } from '@/lib/coach/read-tools'
 import { memoryTools, MEMORY_TOOL_NAMES, resolveMemoryTool, buildStructuredMemory } from '@/lib/coach/memory-tools'
 import { writeTools, WRITE_TOOL_NAMES, resolveWriteTool } from '@/lib/coach/write-tools'
+import { terminalWriteTools, TERMINAL_WRITE_NAMES, resolveTerminalWrite } from '@/lib/coach/terminal-writes'
 import { getActiveCompetencesPrompt } from '@/lib/ai/competences'
 import { buildAthleteContext } from '@/lib/coach/athlete-context'
 import { recordTokenUsage } from '@/lib/tokens/limits'
@@ -25,7 +26,7 @@ const MODEL_BY_KEY: Record<string, string> = {
   zeus:   MODELS.powerful,
 }
 
-const MAX_STEPS = 6
+const MAX_STEPS = 12   // routines autonomes : lire → analyser → construire/ajuster le plan sur plusieurs tours
 
 export async function runCoachHeadless(opts: {
   userId: string
@@ -45,6 +46,8 @@ export async function runCoachHeadless(opts: {
   let system = `Tu es le coach IA de THW Coaching (coaching sportif hybride endurance + force). Tu exécutes une ROUTINE AUTOMATISÉE définie par l'athlète : accomplis la tâche demandée de façon AUTONOME et complète, en te basant UNIQUEMENT sur ses données réelles (injectées ci-dessous et accessibles via tes outils de lecture). Écris en français, clair et actionnable. Ta réponse sera lue dans une notification puis une conversation — va à l'essentiel, structure si utile. N'invente jamais de données ; si une donnée manque, dis-le brièvement.`
   if (!allowWrite) {
     system += `\n\nIMPORTANT : cette routine est en LECTURE SEULE. Tu ne dois RIEN modifier dans l'app (pas de création/suppression de plan, séance, etc.). Contente-toi d'analyser, résumer et conseiller.`
+  } else {
+    system += `\n\nÉCRITURE AUTORISÉE : tu peux AGIR sur l'app de façon autonome (construire/ajuster le plan avec add_session, add_week, update_session, move_session, delete_session, update_plan_periodisation ; profil, zones, nutrition, récup, blessures, calendrier via les autres outils). Récupère d'abord les ID réels (get_training_plan / get_planned_sessions) — n'invente jamais d'identifiant. Agis directement, puis résume ce que tu as fait.`
   }
   try {
     const [comp, athlete, mem] = await Promise.all([
@@ -65,10 +68,10 @@ export async function runCoachHeadless(opts: {
   } catch { /* fail-open : la routine tourne même sans contexte */ }
 
   const tools = allowWrite
-    ? [...readTools, ...memoryTools, ...writeTools]
+    ? [...readTools, ...memoryTools, ...writeTools, ...terminalWriteTools]
     : [...readTools, ...memoryTools]
   const isServerTool = (n: string) =>
-    READ_TOOL_NAMES.has(n) || MEMORY_TOOL_NAMES.has(n) || (allowWrite && WRITE_TOOL_NAMES.has(n))
+    READ_TOOL_NAMES.has(n) || MEMORY_TOOL_NAMES.has(n) || (allowWrite && (WRITE_TOOL_NAMES.has(n) || TERMINAL_WRITE_NAMES.has(n)))
 
   const client = getAnthropicClient()
   const messages: Anthropic.MessageParam[] = [{ role: 'user', content: prompt }]
@@ -109,9 +112,11 @@ export async function runCoachHeadless(opts: {
           const inp = tu.input as Record<string, unknown>
           out = MEMORY_TOOL_NAMES.has(tu.name)
             ? await resolveMemoryTool(tu.name, inp, sb, userId, tier)
-            : (allowWrite && WRITE_TOOL_NAMES.has(tu.name))
-              ? await resolveWriteTool(tu.name, inp, sb, userId)
-              : await resolveReadTool(tu.name, inp, sb, userId)
+            : (allowWrite && TERMINAL_WRITE_NAMES.has(tu.name))
+              ? await resolveTerminalWrite(tu.name, inp, sb, userId)
+              : (allowWrite && WRITE_TOOL_NAMES.has(tu.name))
+                ? await resolveWriteTool(tu.name, inp, sb, userId)
+                : await resolveReadTool(tu.name, inp, sb, userId)
         } catch (e) {
           out = JSON.stringify({ error: e instanceof Error ? e.message : 'tool_error' })
         }

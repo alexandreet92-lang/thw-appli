@@ -27,6 +27,7 @@ import { usePageOnboarding } from '@/onboarding/system/usePageOnboarding'
 import { PERFORMANCE_ONBOARDING } from '@/onboarding/configs/performance.config'
 import { ProfilGlobalGrid, type Metric } from '@/app/performance/components/profil/ProfilGlobalGrid'
 import { TestCard } from '@/app/performance/components/tests/TestCard'
+import { CustomTests } from '@/app/performance/components/tests/CustomTests'
 import { TabbedPageLayout } from '@/components/ui/TabbedPageLayout'
 import { useGuideTabDemo } from '@/components/guide/guideDemo'
 import { User, Database, FlaskConical } from 'lucide-react'
@@ -1468,6 +1469,9 @@ function TestsTab({ profile, onAnalyzeTest, initialSport, initialTestId, onFtpUp
           <TestCard key={test.id} test={test} onOpen={() => setOpenTest({ sport:testSport, test })}/>
         ))}
       </div>
+
+      {/* Tests personnalisés (créés par l'athlète, visibles par lui seul) */}
+      <CustomTests sport={testSport} color={cfg.color} />
 
       {/* Protocol panel */}
       {openTest && <TestProtocolPanel open={openTest} onClose={() => setOpenTest(null)} onFtpUpdate={onFtpUpdate}/>}

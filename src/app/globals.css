@@ -90,6 +90,12 @@
   --cat-race:  #ef4444;
   --cat-pro:   #3b82f6;
   --cat-perso: #a855f7;
+  --cat-event: #ec4899; /* Événement / Défi — rose */
+
+  /* ── Priorité d'un objectif calendrier (couleur = importance) ── */
+  --prio-secondary: #22c55e; /* Secondaire — vert   */
+  --prio-important: #f97316; /* Important  — orange */
+  --prio-main:      #ef4444; /* Principal  — rouge  */
 
   /* ── Palette par année (records) — fonctionnel modéré (DESIGN_SYSTEM.md §2.1) ── */
   --year-2026:   #06b6d4;

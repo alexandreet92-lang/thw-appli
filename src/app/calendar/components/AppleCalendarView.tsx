@@ -1,8 +1,11 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
-import { Race, RaceStage, RACE_CFG, MONTHS, getDaysInMonth, getFirstDayISO } from './types'
+import { useEffect, useRef, useState } from 'react'
+import { Race, RaceStage, RACE_CFG, SPORT_LABEL, MONTHS, MONTH_SHORT, getDaysInMonth, getFirstDayISO } from './types'
 import { useI18n } from '@/lib/i18n'
+
+// Bulle d'aperçu (survol) — infos principales d'un objectif, façon page planning.
+interface HoverInfo { title: string; lines: string[]; color: string; x: number; y: number }
 
 // ── Types ─────────────────────────────────────────────────────
 interface Props {
@@ -24,6 +27,28 @@ function fmtDate(y: number, m: number, d: number): string {
   return `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`
 }
 
+// Chip d'objectif : barre de couleur + nom, plus gros et lisible qu'un point.
+function Chip({ color, label, onClick, onEnter, onMove, onLeave }: {
+  color: string; label: string
+  onClick: (e: React.MouseEvent) => void
+  onEnter: (e: React.MouseEvent) => void
+  onMove: (e: React.MouseEvent) => void
+  onLeave: () => void
+}) {
+  return (
+    <div onClick={onClick} onMouseEnter={onEnter} onMouseMove={onMove} onMouseLeave={onLeave}
+      style={{
+        display: 'flex', alignItems: 'center', gap: 5,
+        padding: '3px 6px 3px 5px', borderRadius: 7, cursor: 'pointer', overflow: 'hidden',
+        background: `color-mix(in srgb, ${color} 14%, transparent)`,
+        border: `1px solid color-mix(in srgb, ${color} 30%, transparent)`,
+      }}>
+      <span style={{ width: 3, alignSelf: 'stretch', minHeight: 12, borderRadius: 999, background: color, flexShrink: 0 }} />
+      <span style={{ fontSize: 10.5, fontWeight: 700, color, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, letterSpacing: '-0.01em' }}>{label}</span>
+    </div>
+  )
+}
+
 // ── Component ─────────────────────────────────────────────────
 export default function AppleCalendarView({ races, stages, year, onDayClick, onRaceClick, onStageDayClick }: Props) {
   const { t } = useI18n()
@@ -32,6 +57,24 @@ export default function AppleCalendarView({ races, stages, year, onDayClick, onR
   const todayMonth = new Date().getMonth()
   const todayYear  = new Date().getFullYear()
   const containerRef = useRef<HTMLDivElement>(null)
+  const [hover, setHover] = useState<HoverInfo | null>(null)
+
+  // Construit le contenu de la bulle d'aperçu pour une course / un stage.
+  const raceHover = (r: Race, e: React.MouseEvent): HoverInfo => {
+    const d = new Date(r.date + 'T12:00:00')
+    const cfg = RACE_CFG[r.level]
+    const lines = [
+      `${d.getDate()} ${MONTH_SHORT[d.getMonth()]} · ${SPORT_LABEL[r.sport] ?? r.sport}`,
+      r.level !== 'gty' ? cfg.label : 'GTY',
+      ...(r.distance ? [`Distance : ${r.distance}`] : []),
+      ...(r.goalTime ? [`Objectif : ${r.goalTime}`] : []),
+    ]
+    return { title: r.name, lines, color: r.level === 'gty' ? 'var(--gty-bg)' : cfg.color, x: e.clientX, y: e.clientY }
+  }
+  const stageHover = (s: RaceStage, e: React.MouseEvent): HoverInfo => {
+    const a = new Date(s.startDate + 'T12:00:00'), b = new Date(s.endDate + 'T12:00:00')
+    return { title: s.name, lines: [`${a.getDate()} ${MONTH_SHORT[a.getMonth()]} → ${b.getDate()} ${MONTH_SHORT[b.getMonth()]}`, t('calendar.stage')], color: 'var(--cat-pro)', x: e.clientX, y: e.clientY }
+  }
 
   // Scroll to current month on mount (if viewing current year)
   useEffect(() => {
@@ -150,64 +193,26 @@ export default function AppleCalendarView({ races, stages, year, onDayClick, onR
                         </span>
                       </div>
 
-                      {/* Race dots */}
+                      {/* Objectifs (courses) — chip couleur = importance */}
                       {dayRaces.map(r => {
                         const cfg = RACE_CFG[r.level]
-                        const dotColor = r.level === 'gty' ? '#fff' : cfg.color
+                        const c = r.level === 'gty' ? 'var(--gty-bg)' : cfg.color
                         return (
-                          <div
-                            key={r.id}
+                          <Chip key={r.id} color={c} label={r.name}
                             onClick={e => { e.stopPropagation(); onRaceClick?.(r) }}
-                            style={{
-                              display: 'flex', alignItems: 'center', gap: 3,
-                              padding: '2px 4px', borderRadius: 4,
-                              background: r.level === 'gty' ? 'rgba(17,24,39,0.9)' : `${cfg.color}22`,
-                              cursor: 'pointer',
-                              overflow: 'hidden',
-                            }}
-                          >
-                            <span style={{
-                              width: 5, height: 5, borderRadius: '50%',
-                              background: dotColor, flexShrink: 0,
-                            }} />
-                            <span style={{
-                              fontSize: 9, fontWeight: 600, color: dotColor,
-                              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                              flex: 1,
-                            }}>
-                              {r.name}
-                            </span>
-                          </div>
+                            onEnter={e => setHover(raceHover(r, e))}
+                            onMove={e => setHover(h => h && ({ ...h, x: e.clientX, y: e.clientY }))}
+                            onLeave={() => setHover(null)} />
                         )
                       })}
 
-                      {/* Stage dots */}
+                      {/* Stages — chip bleu (catégorie pro) */}
                       {dayStages.map(s => (
-                        <div
-                          key={s.id}
-                          onClick={e => {
-                            e.stopPropagation()
-                            if (onStageDayClick) onStageDayClick(s, ds)
-                          }}
-                          style={{
-                            display: 'flex', alignItems: 'center', gap: 3,
-                            padding: '2px 4px', borderRadius: 4,
-                            background: 'rgba(59,130,246,0.12)',
-                            cursor: 'pointer', overflow: 'hidden',
-                          }}
-                        >
-                          <span style={{
-                            width: 5, height: 5, borderRadius: '50%',
-                            background: '#3b82f6', flexShrink: 0,
-                          }} />
-                          <span style={{
-                            fontSize: 9, fontWeight: 600, color: '#3b82f6',
-                            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                            flex: 1,
-                          }}>
-                            {s.name}
-                          </span>
-                        </div>
+                        <Chip key={s.id} color="var(--cat-pro)" label={s.name}
+                          onClick={e => { e.stopPropagation(); if (onStageDayClick) onStageDayClick(s, ds) }}
+                          onEnter={e => setHover(stageHover(s, e))}
+                          onMove={e => setHover(h => h && ({ ...h, x: e.clientX, y: e.clientY }))}
+                          onLeave={() => setHover(null)} />
                       ))}
                     </div>
                   )
@@ -217,6 +222,24 @@ export default function AppleCalendarView({ races, stages, year, onDayClick, onR
           )
         })}
       </div>
+
+      {/* Bulle d'aperçu au survol (façon planning) — suit le curseur, non bloquante */}
+      {hover && (
+        <div style={{
+          position: 'fixed', left: Math.min(hover.x + 14, (typeof window !== 'undefined' ? window.innerWidth : 9999) - 240), top: hover.y + 14,
+          zIndex: 10000, pointerEvents: 'none', width: 220,
+          background: 'var(--bg-card)', border: `1px solid color-mix(in srgb, ${hover.color} 40%, var(--border))`,
+          borderRadius: 12, padding: '10px 12px', boxShadow: '0 12px 34px rgba(0,0,0,0.28)',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 5 }}>
+            <span style={{ width: 8, height: 8, borderRadius: '50%', background: hover.color, flexShrink: 0 }} />
+            <span style={{ fontFamily: 'Syne, sans-serif', fontSize: 13.5, fontWeight: 800, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{hover.title}</span>
+          </div>
+          {hover.lines.map((l, i) => (
+            <div key={i} style={{ fontSize: 11.5, color: i === 0 ? 'var(--text-mid)' : 'var(--text-dim)', fontWeight: i === 0 ? 600 : 500, lineHeight: 1.5 }}>{l}</div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

@@ -15,7 +15,9 @@ interface Props {
 
 const FB = 'var(--font-body)'
 const PRIO_KEY: Record<string, string> = { secondary: 'calendar.prioSecondary', important: 'calendar.prioImportant', main: 'calendar.prioMain', gty: 'calendar.prioGty' }
-const raceColor = (level: string) => level === 'gty' ? 'var(--gty-bg)' : 'var(--cat-race)'
+// Couleur d'un objectif = son IMPORTANCE (secondaire vert · important orange · principal rouge).
+const PRIO_COLOR: Record<string, string> = { secondary: 'var(--prio-secondary)', important: 'var(--prio-important)', main: 'var(--prio-main)', gty: 'var(--gty-bg)' }
+const raceColor = (level: string) => PRIO_COLOR[level] ?? 'var(--cat-race)'
 
 function Filet({ color }: { color: string }) {
   return <span style={{ width: 3, alignSelf: 'stretch', borderRadius: 999, background: color, flexShrink: 0 }} />

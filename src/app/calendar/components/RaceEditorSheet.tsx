@@ -19,7 +19,7 @@ import { useI18n } from '@/lib/i18n'
 import { createClient } from '@/lib/supabase/client'
 
 interface Props {
-  race?: Race; initialDate?: string; onClose: () => void
+  race?: Race; initialDate?: string; initialLevel?: RaceLevel; onClose: () => void
   onSave: (r: Omit<Race, 'id'>, files: File[], filesBike?: File[], filesRun?: File[]) => Promise<void>
   onDelete?: () => void
 }
@@ -29,7 +29,7 @@ const LBL: React.CSSProperties = { fontSize: 9.5, fontWeight: 700, textTransform
 const INP: React.CSSProperties = { width: '100%', boxSizing: 'border-box', padding: '9px 11px', borderRadius: 9, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 13.5, outline: 'none' }
 const findGpx = (list: File[]) => list.find(f => /\.(gpx|tcx|kml)$/i.test(f.name))
 
-export default function RaceEditorSheet({ race, initialDate, onClose, onSave, onDelete }: Props) {
+export default function RaceEditorSheet({ race, initialDate, initialLevel, onClose, onSave, onDelete }: Props) {
   const { t } = useI18n()
   const isEdit = !!race
   // Portail sur <body> : la sheet doit passer AU-DESSUS de la barre d'onglets.
@@ -41,7 +41,8 @@ export default function RaceEditorSheet({ race, initialDate, onClose, onSave, on
     return () => document.body.classList.remove('race-editor-open')
   }, [])
   const [sport, setSport] = useState<RaceSport>(race?.sport ?? 'run')
-  const [level, setLevel] = useState<RaceLevel>(race?.level ?? 'important')
+  const [level, setLevel] = useState<RaceLevel>(race?.level ?? initialLevel ?? 'important')
+  const isEvent = level === 'event'   // Événement / Défi : pas de priorité
   const [name, setName] = useState(race?.name ?? '')
   const [date, setDate] = useState(race?.date ?? initialDate ?? new Date().toISOString().split('T')[0])
   const [notes, setNotes] = useState(race?.notes ?? '')
@@ -120,7 +121,8 @@ export default function RaceEditorSheet({ race, initialDate, onClose, onSave, on
                 ))}
               </div>
             </div>
-            {/* Objectif (niveau) — GTY conservé */}
+            {/* Objectif (niveau) — GTY conservé ; masqué pour un Événement/Défi (pas de priorité) */}
+            {!isEvent && (
             <div>
               <p style={LBL}>{t('calendar.goal')}</p>
               <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}>
@@ -129,6 +131,7 @@ export default function RaceEditorSheet({ race, initialDate, onClose, onSave, on
                 ) })}
               </div>
             </div>
+            )}
             {/* Nom + Date */}
             <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 12 }}>
               <div><p style={LBL}>{t('calendar.name')}</p><input style={INP} value={name} onChange={e => setName(e.target.value)} placeholder={t('calendar.raceNamePlaceholder')} /></div>

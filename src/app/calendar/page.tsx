@@ -45,13 +45,13 @@ import DayModal from './components/DayModal'
 import { PageHelp } from '@/onboarding/system/PageHelp'
 import { usePageOnboarding } from '@/onboarding/system/usePageOnboarding'
 import { CALENDAR_ONBOARDING } from '@/onboarding/configs/calendar.config'
-import { Trophy, Briefcase, Heart, LayoutGrid, CalendarDays, Target } from 'lucide-react'
+import { Trophy, Briefcase, Heart, LayoutGrid, CalendarDays, Target, PartyPopper } from 'lucide-react'
 import { SectionLayout } from '@/components/navigation/SectionLayout'
 import { useI18n, currentLocale } from '@/lib/i18n'
 import { useGuideTabDemo } from '@/components/guide/guideDemo'
 type CalView       = 'year' | 'month'
 type TimelineMode  = 'vertical' | 'horizontal'
-type RaceLevel     = 'secondary' | 'important' | 'main' | 'gty'
+type RaceLevel     = 'secondary' | 'important' | 'main' | 'gty' | 'event'
 type RaceSport     = 'run' | 'trail' | 'bike' | 'swim' | 'hyrox' | 'triathlon' | 'rowing'
 type SportType     = 'run' | 'trail' | 'bike' | 'swim' | 'hyrox' | 'triathlon' | 'rowing' | 'gym'
 
@@ -106,9 +106,10 @@ const RACE_CONFIG: Record<RaceLevel, { label: string; color: string; bg: string;
   important: { label:'Important',  color:'#f97316', bg:'rgba(249,115,22,0.12)', border:'#f97316' },
   main:      { label:'Principal',  color:'#ef4444', bg:'rgba(239,68,68,0.12)',  border:'#ef4444' },
   gty:       { label:'GTY', color:'var(--gty-text)', bg:'var(--gty-bg)', border:'var(--gty-border)' },
+  event:     { label:'Événement', color:'#ec4899', bg:'rgba(236,72,153,0.12)', border:'#ec4899' },
 }
 
-const EVENT_CONFIG = { label:'Événement', color:'#9ca3af', bg:'rgba(156,163,175,0.12)', border:'#9ca3af' }
+const EVENT_CONFIG = { label:'Événement', color:'#ec4899', bg:'rgba(236,72,153,0.12)', border:'#ec4899' }
 
 const CATEGORY_CONFIG = {
   race:  { label:'Race',  color:'#ef4444', bg:'rgba(239,68,68,0.10)'  },
@@ -119,7 +120,7 @@ const CATEGORY_CONFIG = {
 // Clés i18n pour les libellés (les configs ci-dessus gardent les couleurs).
 const RACE_LEVEL_KEY: Record<RaceLevel, string> = {
   secondary: 'calendar.prioSecondary', important: 'calendar.prioImportant',
-  main: 'calendar.prioMain', gty: 'calendar.levelGty',
+  main: 'calendar.prioMain', gty: 'calendar.levelGty', event: 'calendar.prioEvent',
 }
 const CATEGORY_LABEL_KEY: Record<'race' | 'pro' | 'perso', string> = {
   race: 'calendar.catRace', pro: 'calendar.catPro', perso: 'calendar.catPerso',
@@ -826,6 +827,7 @@ function RaceTab({ races, raceStages, tests, addEvent, updateEvent, deleteEvent,
   const [showRaceModal,  setShowRaceModal]  = useState(false)
   const [editRace,    setEditRace]    = useState<Race | null>(null)
   const [prefillDate, setPrefillDate] = useState<string | undefined>(undefined)
+  const [prefillLevel, setPrefillLevel] = useState<RaceLevel | undefined>(undefined)
   // EventModal: null = closed, {mode,stage?} = open
   const [eventModal, setEventModal] = useState<{ mode: 'create' | 'edit'; stage?: RaceStage; initialDate?: string } | null>(null)
   // Chooser « ajouter un objectif » : date du jour cliqué (null = fermé)
@@ -844,15 +846,17 @@ function RaceTab({ races, raceStages, tests, addEvent, updateEvent, deleteEvent,
     return sy === selectedYear || ey === selectedYear
   })
 
-  function openNewRace(date?: string) {
+  function openNewRace(date?: string, level?: RaceLevel) {
     setEditRace(null)
     setPrefillDate(date)
+    setPrefillLevel(level)
     setShowRaceModal(true)
   }
   function closeRaceModal() {
     setShowRaceModal(false)
     setEditRace(null)
     setPrefillDate(undefined)
+    setPrefillLevel(undefined)
   }
 
   // ── Tests planifiés (objectif « Test ») ────────────────────────────
@@ -1036,6 +1040,7 @@ function RaceTab({ races, raceStages, tests, addEvent, updateEvent, deleteEvent,
         <RaceModal
           race={editRace ?? undefined}
           initialDate={prefillDate}
+          initialLevel={prefillLevel}
           onClose={closeRaceModal}
           onSave={handleSaveRace}
           onDelete={editRace ? () => { deleteRace(editRace.id); closeRaceModal() } : undefined}
@@ -1078,6 +1083,7 @@ function RaceTab({ races, raceStages, tests, addEvent, updateEvent, deleteEvent,
           onCourse={() => { const d = chooserDate; setChooserDate(null); openNewRace(d) }}
           onStage={() => { const d = chooserDate; setChooserDate(null); setEventModal({ mode: 'create', initialDate: d }) }}
           onTest={() => { const d = chooserDate; setChooserDate(null); setTestSheet({ mode: 'create', initialDate: d }) }}
+          onEvent={() => { const d = chooserDate; setChooserDate(null); openNewRace(d, 'event') }}
         />
       )}
 
@@ -1099,8 +1105,8 @@ function RaceTab({ races, raceStages, tests, addEvent, updateEvent, deleteEvent,
 // ════════════════════════════════════════════════
 // OBJECTIVE CHOOSER — feuille basse : Course ou Stage
 // ════════════════════════════════════════════════
-function ObjectiveChooser({ date, onClose, onCourse, onStage, onTest }: {
-  date: string; onClose: () => void; onCourse: () => void; onStage: () => void; onTest: () => void
+function ObjectiveChooser({ date, onClose, onCourse, onStage, onTest, onEvent }: {
+  date: string; onClose: () => void; onCourse: () => void; onStage: () => void; onTest: () => void; onEvent: () => void
 }) {
   const { t } = useI18n()
   const pretty = new Date(date + 'T12:00:00').toLocaleDateString(currentLocale(), { weekday: 'long', day: 'numeric', month: 'long' })
@@ -1120,7 +1126,7 @@ function ObjectiveChooser({ date, onClose, onCourse, onStage, onTest }: {
         <div style={{ width: 40, height: 4, borderRadius: 4, background: 'var(--border-mid)', margin: '0 auto 14px' }} />
         <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-dim)', margin: 0, textAlign: 'center' }}>{t('calendar.addGoalTitle')}</p>
         <h3 style={{ fontFamily: 'Syne,sans-serif', fontSize: 18, fontWeight: 700, margin: '4px 0 18px', textAlign: 'center', textTransform: 'capitalize' }}>{pretty}</h3>
-        <div style={{ display: 'flex', gap: 12, maxWidth: 460, margin: '0 auto' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, maxWidth: 460, margin: '0 auto' }}>
           <button onClick={onCourse} style={card}>
             <Trophy size={26} color="#06B6D4" />
             <span style={{ fontWeight: 700, fontSize: 15 }}>{t('calendar.race')}</span>
@@ -1135,6 +1141,11 @@ function ObjectiveChooser({ date, onClose, onCourse, onStage, onTest }: {
             <Target size={26} color="#8b5cf6" />
             <span style={{ fontWeight: 700, fontSize: 15 }}>Test</span>
             <span style={{ fontSize: 11.5, color: 'var(--text-dim)', textAlign: 'center' }}>Test de forme lié à Performance</span>
+          </button>
+          <button onClick={onEvent} style={card}>
+            <PartyPopper size={26} color="#ec4899" />
+            <span style={{ fontWeight: 700, fontSize: 15 }}>{t('calendar.eventGoal')}</span>
+            <span style={{ fontSize: 11.5, color: 'var(--text-dim)', textAlign: 'center' }}>{t('calendar.eventGoalSub')}</span>
           </button>
         </div>
       </div>

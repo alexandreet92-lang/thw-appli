@@ -1,4 +1,4 @@
-export type RaceLevel = 'secondary' | 'important' | 'main' | 'gty'
+export type RaceLevel = 'secondary' | 'important' | 'main' | 'gty' | 'event'
 export type RaceSport = 'run' | 'trail' | 'bike' | 'swim' | 'hyrox' | 'triathlon' | 'rowing'
 
 export interface Race {
@@ -45,6 +45,7 @@ export const RACE_CFG: Record<RaceLevel, { label: string; color: string; bg: str
   important: { label:'Important',  color:'#f97316', bg:'rgba(249,115,22,0.14)', border:'#f97316' },
   main:      { label:'Principal',  color:'#ef4444', bg:'rgba(239,68,68,0.14)',  border:'#ef4444' },
   gty:       { label:'GTY',        color:'#fff',    bg:'#111827',               border:'#374151' },
+  event:     { label:'Événement',  color:'#ec4899', bg:'rgba(236,72,153,0.14)', border:'#ec4899' },
 }
 
 export const SPORT_LABEL: Record<RaceSport, string> = {

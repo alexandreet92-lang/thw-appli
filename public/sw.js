@@ -11,7 +11,14 @@ self.addEventListener('install', () => {
 })
 
 self.addEventListener('activate', (event) => {
-  event.waitUntil(self.clients.claim())
+  // Purge des anciens caches (bundles périmés d'un déploiement précédent) : évite
+  // de servir de vieux chunks /_next/static incompatibles avec le nouveau HTML,
+  // cause classique d'« Application error » juste après une mise en production.
+  event.waitUntil((async () => {
+    const keys = await caches.keys()
+    await Promise.all(keys.filter((k) => k !== THW_STATIC_CACHE).map((k) => caches.delete(k)))
+    await self.clients.claim()
+  })())
 })
 
 self.addEventListener('push', (event) => {
@@ -63,7 +70,7 @@ self.addEventListener('notificationclick', (event) => {
 // des Mo de JS à chaque ouverture). AUCUNE page HTML / API / donnée n'est mise
 // en cache → zéro risque de contenu périmé ou de session cassée.
 // ══════════════════════════════════════════════════════════════
-const THW_STATIC_CACHE = 'thw-static-v1'
+const THW_STATIC_CACHE = 'thw-static-v2'
 
 self.addEventListener('fetch', (event) => {
   const req = event.request

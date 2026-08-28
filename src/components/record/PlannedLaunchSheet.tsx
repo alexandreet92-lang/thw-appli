@@ -9,6 +9,7 @@
 // ══════════════════════════════════════════════════════════════════
 import { useState, useEffect, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
+import { useI18n } from '@/lib/i18n'
 import { createClient } from '@/lib/supabase/client'
 import { getCurrentUser } from '@/lib/auth/currentUser'
 import { weekStartStr } from '@/lib/date/weekStart'
@@ -41,9 +42,8 @@ interface DbRow {
   blocks: unknown[] | null; validation_data: Record<string, unknown> | null
 }
 
-const DAYS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']
-
 export default function PlannedLaunchSheet({ open, onClose, sport, label, accent, onPick, onFree, freeLabel, subFilter }: Props) {
+  const { t } = useI18n()
   const [mounted, setMounted] = useState(false)
   const [closing, setClosing] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -70,7 +70,7 @@ export default function PlannedLaunchSheet({ open, onClose, sport, label, accent
         let rows = (data ?? []) as DbRow[]
         if (subFilter) rows = rows.filter(r => (r.validation_data?.cyclingSub as string | undefined) === subFilter)
         const mapped: PlannedLaunchRow[] = rows.map(r => ({
-          id: r.id, title: r.title || `Séance ${label.toLowerCase()}`, dayIndex: r.day_index,
+          id: r.id, title: r.title || t('w3b.session_of', { label: label.toLowerCase() }), dayIndex: r.day_index,
           weekStart: r.week_start, blocks: r.blocks ?? [], validationData: r.validation_data ?? {},
         }))
         setAll(mapped)
@@ -79,7 +79,7 @@ export default function PlannedLaunchSheet({ open, onClose, sport, label, accent
       finally { if (!cancelled) setLoading(false) }
     })()
     return () => { cancelled = true }
-  }, [open, sport, subFilter, label])
+  }, [open, sport, subFilter, label, t])
 
   const handleClose = () => { setClosing(true); setTimeout(onClose, 230) }
 
@@ -87,14 +87,14 @@ export default function PlannedLaunchSheet({ open, onClose, sport, label, accent
 
   const rowSubtitle = (r: PlannedLaunchRow) => {
     const n = Array.isArray(r.blocks) ? r.blocks.length : 0
-    return n > 0 ? `${n} bloc${n > 1 ? 's' : ''}` : 'Séance'
+    return n > 0 ? (n > 1 ? t('w3b.blocks_n', { n }) : t('w3b.block_n', { n })) : t('w3b.session')
   }
 
   const Row = ({ r }: { r: PlannedLaunchRow }) => (
     <button onClick={() => { onPick(r); handleClose() }}
       style={{ textAlign: 'left', padding: '15px 16px', borderRadius: 16, cursor: 'pointer', border: '1px solid var(--border)', background: 'var(--bg-card2)', display: 'flex', alignItems: 'center', gap: 13, width: '100%' }}>
       <span style={{ width: 46, height: 46, borderRadius: 12, background: `${accent}18`, color: accent, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 14, lineHeight: 1 }}>
-        {DAYS[r.dayIndex] ?? ''}
+        {r.dayIndex >= 0 && r.dayIndex <= 6 ? t(`w3b.day_${r.dayIndex}`) : ''}
       </span>
       <span style={{ flex: 1, minWidth: 0 }}>
         <span style={{ display: 'block', fontSize: 15, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.title}</span>
@@ -119,17 +119,17 @@ export default function PlannedLaunchSheet({ open, onClose, sport, label, accent
 
         <div style={{ padding: '14px 20px 6px', flexShrink: 0 }}>
           <h3 style={{ margin: 0, fontSize: 21, fontWeight: 800, color: 'var(--text)' }}>{label}</h3>
-          <p style={{ margin: '3px 0 0', fontSize: 12.5, color: 'var(--text-dim)' }}>Choisis une séance à lancer, ou démarre sans programme.</p>
+          <p style={{ margin: '3px 0 0', fontSize: 12.5, color: 'var(--text-dim)' }}>{t('w3b.choose_session')}</p>
         </div>
 
         <div style={{ flex: 1, overflowY: 'auto', padding: '10px 20px 16px' }}>
           {loading ? (
-            <p style={{ fontSize: 13, color: 'var(--text-dim)', textAlign: 'center', padding: '30px 0' }}>Chargement…</p>
+            <p style={{ fontSize: 13, color: 'var(--text-dim)', textAlign: 'center', padding: '30px 0' }}>{t('w3b.loading')}</p>
           ) : (
             <>
               <SectionLabel>Training Planning</SectionLabel>
               {thisWeek.length === 0 ? (
-                <EmptyHint>Aucune séance de {label.toLowerCase()} planifiée cette semaine.</EmptyHint>
+                <EmptyHint>{t('w3b.empty_week', { label: label.toLowerCase() })}</EmptyHint>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
                   {thisWeek.map(r => <Row key={r.id} r={r} />)}
@@ -138,7 +138,7 @@ export default function PlannedLaunchSheet({ open, onClose, sport, label, accent
 
               <SectionLabel>Training Session</SectionLabel>
               {all.length === 0 ? (
-                <EmptyHint>Aucune séance de {label.toLowerCase()} créée. Crée-en une dans ton planning.</EmptyHint>
+                <EmptyHint>{t('w3b.empty_created', { label: label.toLowerCase() })}</EmptyHint>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
                   {all.map(r => <Row key={r.id} r={r} />)}
@@ -149,7 +149,7 @@ export default function PlannedLaunchSheet({ open, onClose, sport, label, accent
               <button onClick={() => { onFree(); handleClose() }}
                 style={{ width: '100%', padding: '15px 16px', borderRadius: 16, cursor: 'pointer', border: `1px solid ${accent}`, background: `${accent}12`, color: accent, fontSize: 14.5, fontWeight: 800, display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left' }}>
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={accent} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><polygon points="5 3 19 12 5 21 5 3"/></svg>
-                {freeLabel ?? 'Lancer sans programme'}
+                {freeLabel ?? t('w3b.launch_no_program')}
               </button>
             </>
           )}

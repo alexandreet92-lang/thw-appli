@@ -15,21 +15,20 @@ import NumPadSheet from './NumPadSheet'
 import SessionSaveForm, { type SessionFormData } from '../SessionSaveForm'
 import { fmt } from './liveUi'
 import { saveWorkout } from './saveWorkout'
+import { useI18n } from '@/lib/i18n'
 import type { WorkoutExercise } from '@/types/workout'
 
 interface Props { blocks: WorkoutExercise[]; planTitle?: string; onClose: () => void; isDark: boolean; variant?: 'A' | 'B' }
 
-const PHASE_NAME: Record<string, string> = { prepare: 'PRÉPARER', effortReps: 'EFFORT', effortTime: 'EFFORT', rest: 'REPOS', done: 'TERMINÉ' }
-const ACTION: Record<string, string> = { prepare: 'Passer', effortReps: 'Valider', effortTime: 'Terminer', rest: 'Passer', done: 'Enregistrer' }
-
 export default function SessionRunner({ blocks, planTitle, onClose, isDark, variant = 'A' }: Props) {
+  const { t } = useI18n()
   const { state, step, color, toursRemaining, exosRemaining, dispatch } = useSessionEngine(blocks)
   const hr = useHeartRate()
   const [startedAt] = useState(() => new Date().toISOString())
   const [pad, setPad] = useState<'reps' | 'kg' | null>(null)
   const [progress, setProgress] = useState(false)
   const [showSave, setShowSave] = useState(false)
-  const title = planTitle || 'Musculation'
+  const title = planTitle || t('w3a.default_title')
 
   const handleSave = async (form: SessionFormData) => {
     await saveWorkout({ sport: 'gym', startedAt, durationSec: state.elapsed, exercises: blocks,
@@ -49,13 +48,13 @@ export default function SessionRunner({ blocks, planTitle, onClose, isDark, vari
     return (
       <PhaseShell
         color={color}
-        phaseName={PHASE_NAME[state.phase]}
+        phaseName={t(`w3a.phase_${state.phase}`)}
         clock={fmt(state.elapsed)}
         toursInBlock={ctx?.toursInBlock ?? 1}
         tourInBlock={done ? (ctx?.toursInBlock ?? 1) : (step?.tourInBlock ?? 1)}
         toursRemaining={done ? 0 : toursRemaining}
         exosRemaining={done ? 0 : exosRemaining}
-        actionLabel={ACTION[state.phase]}
+        actionLabel={t(`w3a.action_${state.phase}`)}
         onAction={primary}
         onPause={() => dispatch({ t: 'PAUSE' })}
         onProgress={() => setProgress(true)}
@@ -77,7 +76,7 @@ export default function SessionRunner({ blocks, planTitle, onClose, isDark, vari
       {progress && <ProgressSheet timeline={state.timeline} stepIdx={state.stepIdx} onClose={() => setProgress(false)} />}
       {pad && (
         <NumPadSheet
-          title={pad === 'reps' ? 'Répétitions' : 'Charge (kg)'}
+          title={pad === 'reps' ? t('w3a.pad_reps') : t('w3a.pad_kg')}
           initial={pad === 'reps' ? state.reps : state.bodyweight ? 0 : state.kg}
           onClose={() => setPad(null)}
           onSubmit={v => { dispatch(pad === 'reps' ? { t: 'SET_REPS', v } : { t: 'SET_KG', v }); setPad(null) }}

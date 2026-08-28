@@ -15,6 +15,7 @@ import { uploadLiveSession } from './saveLive'
 import { clearLiveBackup, type LiveSnapshot } from './useLocalBackup'
 import { distFactor, altFactor, getUnitLabel, type LiveUnits } from '../units'
 import UploadGauge, { type UploadGaugeState } from './UploadGauge'
+import { useI18n } from '@/lib/i18n'
 
 interface Props {
   snap: LiveSnapshot
@@ -59,6 +60,7 @@ function projectTrack(pts: { lat: number; lng: number }[]): [number, number][] {
 }
 
 export default function SummaryScreen({ snap, units, onUploadStart, onUploadDone, onUploadFail, onDiscard, flushPhotos, onFinished }: Props) {
+  const { t } = useI18n()
   const router = useRouter()
   const { compute } = useSmSn()
   const df = distFactor(units)
@@ -135,20 +137,20 @@ export default function SummaryScreen({ snap, units, onUploadStart, onUploadDone
 
   const rows: { label: string; value: string; unit?: string }[][] = [
     [
-      { label: 'Durée', value: formatHMS(snap.durationSec, true) },
-      { label: 'Distance', value: frNum((snap.distM / 1000) * df, 2), unit: getUnitLabel('km', units) },
+      { label: t('w3a.duration'), value: formatHMS(snap.durationSec, true) },
+      { label: t('w3a.distance'), value: frNum((snap.distM / 1000) * df, 2), unit: getUnitLabel('km', units) },
     ],
     [
-      { label: 'D+', value: String(Math.round(snap.elevM * af)), unit: getUnitLabel('m', units) },
-      { label: 'Vitesse moy', value: frNum(snap.avgSpeedKmh * df, 1), unit: getUnitLabel('km/h', units) },
+      { label: t('w3a.elevation_gain'), value: String(Math.round(snap.elevM * af)), unit: getUnitLabel('m', units) },
+      { label: t('w3a.avg_speed'), value: frNum(snap.avgSpeedKmh * df, 1), unit: getUnitLabel('km/h', units) },
     ],
     [
-      { label: 'Watts moy', value: '—', unit: 'W' },
-      { label: 'Watts norm.', value: '—', unit: 'W' },
+      { label: t('w3a.avg_watts'), value: '—', unit: 'W' },
+      { label: t('w3a.norm_watts'), value: '—', unit: 'W' },
     ],
     [
-      { label: 'FC moy', value: '—', unit: 'bpm' },
-      { label: 'Cadence moy', value: '—', unit: 'rpm' },
+      { label: t('w3a.avg_hr'), value: '—', unit: 'bpm' },
+      { label: t('w3a.avg_cadence'), value: '—', unit: 'rpm' },
     ],
     [
       { label: 'SM', value: String(smsn.sm) },
@@ -167,7 +169,7 @@ export default function SummaryScreen({ snap, units, onUploadStart, onUploadDone
     }}>
       {/* En-tête */}
       <div style={{ textAlign: 'center', padding: '18px 0 14px', flexShrink: 0 }}>
-        <h2 style={{ fontSize: 19, fontWeight: 800, margin: 0 }}>Résumé de la séance</h2>
+        <h2 style={{ fontSize: 19, fontWeight: 800, margin: 0 }}>{t('w3a.summary_title')}</h2>
         <div style={{ fontSize: 12.5, fontWeight: 500, color: 'var(--live-text-2)', marginTop: 4 }}>{dateLine}</div>
       </div>
 
@@ -195,7 +197,7 @@ export default function SummaryScreen({ snap, units, onUploadStart, onUploadDone
           </svg>
         ) : (
           <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, color: 'var(--live-label)' }}>
-            Aucun tracé GPS
+            {t('w3a.no_gps')}
           </div>
         )}
       </div>
@@ -222,13 +224,13 @@ export default function SummaryScreen({ snap, units, onUploadStart, onUploadDone
         {foot === 'buttons' ? (
           <>
             <button className="lv2-pill lv2-pill-primary lv2-press" style={{ marginBottom: 12 }} onClick={runUpload}>
-              Enregistrer la séance
+              {t('w3a.save_session')}
             </button>
             <button
               className={armed ? 'lv2-pill lv2-pill-danger lv2-armed lv2-press' : 'lv2-pill lv2-pill-danger lv2-press'}
               onClick={handleDelete}
             >
-              {armed ? `Confirmer — supprimer ${frNum((snap.distM / 1000) * df, 1)} ${getUnitLabel('km', units)} ?` : 'Supprimer l’activité'}
+              {armed ? t('w3a.confirm_delete', { dist: frNum((snap.distM / 1000) * df, 1), unit: getUnitLabel('km', units) }) : t('w3a.delete_activity')}
             </button>
           </>
         ) : (

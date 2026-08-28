@@ -9,10 +9,10 @@ import { createClient } from '@/lib/supabase/client'
 import { listSpaceEvents, setRsvp, deleteEvent } from '@/lib/community/events'
 import { myId } from '@/lib/community/shared'
 import { CreateEventSheet } from './CreateEventSheet'
-import type { CommunityEvent, EventKind } from '@/types/community'
+import type { CommunityEvent } from '@/types/community'
+import { useI18n } from '@/lib/i18n'
 
 const FB = 'var(--font-body)', FD = 'var(--font-display)'
-const KIND_LABEL: Record<EventKind, string> = { sortie: 'Sortie', wod: 'WOD', defi: 'Défi', course: 'Course', autre: 'Événement' }
 
 function fmtWhen(iso: string): string {
   try {
@@ -32,6 +32,7 @@ export function EventsView({ spaceId, isMember, canManage, isNarrow, onBack }: {
   const [me, setMe] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)
   const instanceId = useId()
+  const { t } = useI18n()
 
   const load = useCallback(async () => {
     if (!isMember) { setEvents([]); setLoading(false); return }
@@ -55,20 +56,20 @@ export function EventsView({ spaceId, isMember, canManage, isNarrow, onBack }: {
     if (await setRsvp(ev.id, next)) void load()
   }
   async function remove(id: string) {
-    if (typeof window !== 'undefined' && !window.confirm('Supprimer cet événement ?')) return
+    if (typeof window !== 'undefined' && !window.confirm(t('w3e.confirm_delete_event'))) return
     if (await deleteEvent(id)) void load()
   }
 
   const header = (
     <div style={{ flexShrink: 0, padding: 'var(--space-4) var(--space-5) var(--space-3)', background: 'var(--bg-card)', display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
       {isNarrow && (
-        <button onClick={onBack} aria-label="Retour" style={{ width: 30, height: 30, border: 'none', borderRadius: 'var(--r-sm)', background: 'transparent', color: 'var(--text-mid)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+        <button onClick={onBack} aria-label={t('w3e.back')} style={{ width: 30, height: 30, border: 'none', borderRadius: 'var(--r-sm)', background: 'transparent', color: 'var(--text-mid)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
         </button>
       )}
-      <span style={{ flex: 1, fontFamily: FD, fontSize: 17, fontWeight: 600, color: 'var(--text)' }}>Événements</span>
+      <span style={{ flex: 1, fontFamily: FD, fontSize: 17, fontWeight: 600, color: 'var(--text)' }}>{t('w3e.events')}</span>
       {isMember && (
-        <button onClick={() => setCreating(true)} style={{ height: 32, padding: '0 var(--space-3)', border: 'none', borderRadius: 'var(--r-sm)', background: 'var(--primary)', color: 'var(--on-primary)', fontFamily: FB, fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>+ Créer</button>
+        <button onClick={() => setCreating(true)} style={{ height: 32, padding: '0 var(--space-3)', border: 'none', borderRadius: 'var(--r-sm)', background: 'var(--primary)', color: 'var(--on-primary)', fontFamily: FB, fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>{t('w3e.create_short')}</button>
       )}
     </div>
   )
@@ -78,15 +79,15 @@ export function EventsView({ spaceId, isMember, canManage, isNarrow, onBack }: {
       {header}
       <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: 'var(--space-3) var(--space-5) var(--space-5)' }}>
         {!isMember ? (
-          <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-mid)', textAlign: 'center', padding: 'var(--space-8)' }}>Rejoins l&apos;espace pour voir et créer des événements.</p>
+          <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-mid)', textAlign: 'center', padding: 'var(--space-8)' }}>{t('w3e.join_to_see_events')}</p>
         ) : loading ? (
           <div aria-hidden style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
             {[0, 1, 2].map(i => <span key={i} style={{ height: 96, borderRadius: 'var(--r-md)', background: 'var(--surface-neutral)' }} />)}
           </div>
         ) : events.length === 0 ? (
           <div style={{ textAlign: 'center', padding: 'var(--space-10) var(--space-4)' }}>
-            <p style={{ fontFamily: FD, fontSize: 17, fontWeight: 500, color: 'var(--text)', margin: '0 0 var(--space-2)' }}>Aucun événement pour l&apos;instant</p>
-            <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-mid)', margin: 0 }}>Organise une sortie, un WOD ou un défi — les membres seront prévenus.</p>
+            <p style={{ fontFamily: FD, fontSize: 17, fontWeight: 500, color: 'var(--text)', margin: '0 0 var(--space-2)' }}>{t('w3e.no_events_yet')}</p>
+            <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-mid)', margin: 0 }}>{t('w3e.events_empty_hint')}</p>
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
@@ -95,22 +96,22 @@ export function EventsView({ spaceId, isMember, canManage, isNarrow, onBack }: {
               return (
                 <div key={ev.id} style={{ background: 'var(--bg-card2)', borderRadius: 'var(--r-md)', padding: 'var(--space-4)', opacity: past ? 0.6 : 1 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginBottom: 'var(--space-2)' }}>
-                    <span style={{ fontFamily: FB, fontSize: 10.5, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--primary)', background: 'var(--primary-dim)', padding: '3px 8px', borderRadius: 'var(--r-sm)' }}>{KIND_LABEL[ev.kind]}</span>
+                    <span style={{ fontFamily: FB, fontSize: 10.5, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--primary)', background: 'var(--primary-dim)', padding: '3px 8px', borderRadius: 'var(--r-sm)' }}>{t(`w3e.kindlabel_${ev.kind}`)}</span>
                     <span className="tnum" style={{ fontFamily: FB, fontSize: 12, fontWeight: 600, color: 'var(--text)', fontVariantNumeric: 'tabular-nums' }}>{fmtWhen(ev.startsAt)}</span>
                     {(ev.createdBy === me || canManage) && (
-                      <button onClick={() => void remove(ev.id)} aria-label="Supprimer" style={{ marginLeft: 'auto', width: 26, height: 26, border: 'none', borderRadius: 'var(--r-sm)', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <button onClick={() => void remove(ev.id)} aria-label={t('w3e.delete')} style={{ marginLeft: 'auto', width: 26, height: 26, border: 'none', borderRadius: 'var(--r-sm)', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" /></svg>
                       </button>
                     )}
                   </div>
                   <p style={{ fontFamily: FD, fontSize: 16, fontWeight: 600, color: 'var(--text)', margin: '0 0 2px' }}>{ev.title}</p>
                   <p style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-dim)', margin: 0 }}>
-                    {ev.location ? `${ev.location} · ` : ''}par {ev.authorName}
+                    {ev.location ? `${ev.location} · ` : ''}{t('w3e.by_author', { name: ev.authorName })}
                   </p>
                   {ev.description && <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-mid)', margin: 'var(--space-2) 0 0', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{ev.description}</p>}
                   <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginTop: 'var(--space-3)' }}>
-                    <RsvpBtn active={ev.myRsvp === 'going'} onClick={() => void rsvp(ev, 'going')} label="Je viens" count={ev.goingCount} disabled={past} />
-                    <RsvpBtn active={ev.myRsvp === 'maybe'} onClick={() => void rsvp(ev, 'maybe')} label="Peut-être" count={ev.maybeCount} disabled={past} />
+                    <RsvpBtn active={ev.myRsvp === 'going'} onClick={() => void rsvp(ev, 'going')} label={t('w3e.rsvp_going')} count={ev.goingCount} disabled={past} />
+                    <RsvpBtn active={ev.myRsvp === 'maybe'} onClick={() => void rsvp(ev, 'maybe')} label={t('w3e.rsvp_maybe')} count={ev.maybeCount} disabled={past} />
                   </div>
                 </div>
               )

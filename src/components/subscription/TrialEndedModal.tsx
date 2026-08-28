@@ -10,11 +10,13 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useEntitlements } from '@/hooks/useEntitlements'
+import { useI18n } from '@/lib/i18n'
 
 const SEEN_KEY = 'thw_trial_ended_seen'
 
 export function TrialEndedModal() {
   const router = useRouter()
+  const { t } = useI18n()
   const { loading, isFree } = useEntitlements()
   const [show, setShow] = useState(false)
   const [email, setEmail] = useState<string | null>(null)
@@ -48,9 +50,9 @@ export function TrialEndedModal() {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, action: 'change' }),
       })
-      if (!r.ok) { const d = await r.json().catch(() => ({})); throw new Error(d.error ?? 'Envoi impossible') }
+      if (!r.ok) { const d = await r.json().catch(() => ({})); throw new Error(d.error ?? t('w3c.trial_send_failed')) }
       setSent(true)
-    } catch (e) { setErr(e instanceof Error ? e.message : 'Envoi impossible.') }
+    } catch (e) { setErr(e instanceof Error ? e.message : t('w3c.trial_send_failed2')) }
     finally { setSending(false) }
   }
 
@@ -61,28 +63,28 @@ export function TrialEndedModal() {
           <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
         </div>
 
-        <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(21px, 5vw, 25px)', fontWeight: 600, color: 'var(--text)', margin: 0, lineHeight: 1.2, textWrap: 'balance' as const }}>Ton essai premium est terminé</h2>
+        <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(21px, 5vw, 25px)', fontWeight: 600, color: 'var(--text)', margin: 0, lineHeight: 1.2, textWrap: 'balance' as const }}>{t('w3c.trial_ended_title')}</h2>
         <p style={{ fontFamily: 'var(--font-body)', fontSize: 14.5, color: 'var(--text-mid)', margin: '12px 0 0', lineHeight: 1.6 }}>
-          Tes 14 jours d’essai sont écoulés. Tu peux continuer à utiliser l’app <strong style={{ color: 'var(--text)' }}>gratuitement</strong> — mais avec des fonctions IA limitées. Pour garder l’expérience complète, choisis une formule <strong style={{ color: 'var(--text)' }}>Premium, Pro ou Expert</strong>.
+          {t('w3c.trial_ended_p1')}<strong style={{ color: 'var(--text)' }}>{t('w3c.trial_ended_free')}</strong>{t('w3c.trial_ended_p2')}<strong style={{ color: 'var(--text)' }}>{t('w3c.trial_ended_plans')}</strong>.
         </p>
 
         {sent ? (
           <div style={{ marginTop: 22, padding: '14px 16px', borderRadius: 'var(--r-md)', background: 'var(--bg-card2)' }}>
-            <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text)', margin: 0, fontWeight: 600 }}>Lien envoyé ✓</p>
-            <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-mid)', margin: '4px 0 0' }}>Regarde ta boîte mail{email ? ` (${email})` : ''} pour choisir et régler ta formule.</p>
-            <button onClick={dismiss} style={{ ...ghostBtn, marginTop: 12 }}>Continuer</button>
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text)', margin: 0, fontWeight: 600 }}>{t('w3c.trial_link_sent')}</p>
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-mid)', margin: '4px 0 0' }}>{t('w3c.trial_check_mail_pre')}{email ? ` (${email})` : ''}{t('w3c.trial_check_mail_post')}</p>
+            <button onClick={dismiss} style={{ ...ghostBtn, marginTop: 12 }}>{t('w3c.continue')}</button>
           </div>
         ) : (
           <>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 24 }}>
               <button onClick={sendLink} disabled={sending || !email} style={{ ...primaryBtn, opacity: sending || !email ? 0.65 : 1 }}>
-                {sending ? 'Envoi…' : 'Recevoir le lien pour m’abonner'}
+                {sending ? t('w3c.sending') : t('w3c.trial_receive_link')}
               </button>
-              <button onClick={() => { dismiss(); router.push('/settings/subscription') }} style={ghostBtn}>Voir les formules</button>
-              <button onClick={dismiss} style={{ ...ghostBtn, background: 'transparent', color: 'var(--text-dim)' }}>Continuer en gratuit</button>
+              <button onClick={() => { dismiss(); router.push('/settings/subscription') }} style={ghostBtn}>{t('w3c.trial_see_plans')}</button>
+              <button onClick={dismiss} style={{ ...ghostBtn, background: 'transparent', color: 'var(--text-dim)' }}>{t('w3c.trial_continue_free')}</button>
             </div>
             {err && <p style={{ fontFamily: 'var(--font-body)', fontSize: 12.5, color: '#ef4444', margin: '10px 0 0' }}>{err}</p>}
-            <p style={{ fontFamily: 'var(--font-body)', fontSize: 11.5, color: 'var(--text-dim)', margin: '14px 0 0' }}>On t’envoie un lien sécurisé par email vers la page de paiement.</p>
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: 11.5, color: 'var(--text-dim)', margin: '14px 0 0' }}>{t('w3c.trial_secure_note')}</p>
           </>
         )}
       </div>

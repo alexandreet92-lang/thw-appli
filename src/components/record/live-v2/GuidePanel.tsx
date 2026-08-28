@@ -13,6 +13,7 @@
 // Aucune donnée inventée : badge / chip absents si ORS ne les fournit pas.
 // ════════════════════════════════════════════════════════════════════
 import type { NavStep } from '@/lib/openrouteservice'
+import { useI18n } from '@/lib/i18n'
 
 // ── Icônes de manœuvre (maquette const IC — pas de librairie d'icônes) ──
 export type ManeuverKind = 'right' | 'left' | 'rondR' | 'rondL' | 'straight' | 'join'
@@ -178,6 +179,7 @@ export default function GuidePanel({
   steps, stepDistM, nextIdx, fmtDist,
   routeName, distLabel, gainLabel, elevProfile, traveledM, fmtAlt, onClose,
 }: Props) {
+  const { t } = useI18n()
   const upcoming = nextIdx >= 0 ? steps.slice(nextIdx) : []
   const upcomingDist = nextIdx >= 0 ? stepDistM.slice(nextIdx) : []
   const hasSteps = steps.length > 0
@@ -211,7 +213,7 @@ export default function GuidePanel({
             fontSize: 20, fontWeight: 800, lineHeight: 1.2,
             whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
           }}>
-            {hasSteps ? 'Suivez l’itinéraire' : (routeName || 'Détail du parcours')}
+            {hasSteps ? t('w3a.follow_route') : (routeName || t('w3a.route_detail'))}
           </div>
           <div className="lv2-num" style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--live-text-2)', marginTop: 3 }}>
             {distLabel}
@@ -226,24 +228,24 @@ export default function GuidePanel({
           <div style={{ padding: '18px 0' }}>
             <div style={{ display: 'flex', gap: 22, marginBottom: hasElev ? 16 : 12 }}>
               <div>
-                <div className="lv2-eyebrow" style={{ fontSize: 9.5 }}>Distance</div>
+                <div className="lv2-eyebrow" style={{ fontSize: 9.5 }}>{t('w3a.distance')}</div>
                 <div className="lv2-num" style={{ fontSize: 22, fontWeight: 800, marginTop: 3 }}>{distLabel}</div>
               </div>
               {gainLabel != null && (
                 <div>
-                  <div className="lv2-eyebrow" style={{ fontSize: 9.5 }}>Dénivelé</div>
+                  <div className="lv2-eyebrow" style={{ fontSize: 9.5 }}>{t('w3a.elevation')}</div>
                   <div className="lv2-num" style={{ fontSize: 22, fontWeight: 800, marginTop: 3 }}>{gainLabel}</div>
                 </div>
               )}
             </div>
             {hasElev && (
               <>
-                <div className="lv2-eyebrow" style={{ fontSize: 9.5, marginBottom: 8 }}>Profil altimétrique</div>
+                <div className="lv2-eyebrow" style={{ fontSize: 9.5, marginBottom: 8 }}>{t('w3a.elev_profile')}</div>
                 <MiniElevProfile elevProfile={elevProfile} traveledM={traveledM} fmtAlt={fmtAlt} />
               </>
             )}
             <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--live-label)', marginTop: 16 }}>
-              Guidage virage-par-virage indisponible sur ce parcours — suivez le tracé sur la carte.
+              {t('w3a.no_turn_guidance')}
             </div>
           </div>
         ) : upcoming.length === 0 ? (
@@ -252,7 +254,7 @@ export default function GuidePanel({
             textAlign: 'center', padding: '0 20px',
             fontSize: 13.5, fontWeight: 500, color: 'var(--live-text-2)',
           }}>
-            Aucune manœuvre à venir
+            {t('w3a.no_upcoming_maneuver')}
           </div>
         ) : (
           upcoming.map((s, i) => {
@@ -301,7 +303,7 @@ export default function GuidePanel({
       {/* Chevron de repli */}
       <button
         onClick={onClose}
-        aria-label="Replier"
+        aria-label={t('w3a.collapse')}
         className="lv2-press"
         style={{
           height: 44, border: 'none', background: 'none', color: 'var(--live-label)',

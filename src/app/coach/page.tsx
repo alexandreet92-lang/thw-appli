@@ -12,9 +12,9 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { getRoster, type RosterAthlete, type Forme } from '@/lib/coach/roster'
 import { listPendingInvites } from '@/lib/coach/relationships'
+import { useI18n } from '@/lib/i18n'
 
 const STC: Record<Forme, string> = { ok: '#22C55E', warn: '#F59E0B', injured: '#EF4444', inactive: '#94A3B8' }
-const STLABEL: Record<Forme, string> = { ok: 'En forme', warn: 'Attention', injured: 'Blessé', inactive: 'Inactif' }
 const BODY = 'var(--font-body)'
 const DISP = 'var(--font-display)'
 const num: React.CSSProperties = { fontFamily: BODY, fontVariantNumeric: 'tabular-nums' }
@@ -24,6 +24,7 @@ const ORDER: Record<Forme, number> = { injured: 0, inactive: 1, warn: 2, ok: 3 }
 
 export default function CoachDashboard() {
   const router = useRouter()
+  const { t } = useI18n()
   const [roster, setRoster] = useState<RosterAthlete[]>([])
   const [pending, setPending] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -66,34 +67,34 @@ export default function CoachDashboard() {
   )
 
   const QUICK: { href: string; label: string; icon: React.ReactNode }[] = [
-    { href: '/coach/athletes', label: 'Athlètes', icon: <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 7a4 4 0 1 0 0 .01" /> },
-    { href: '/coach/library', label: 'Bibliothèque', icon: <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" /> },
-    { href: '/coach/messages', label: 'Messages', icon: <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /> },
-    { href: '/coach/studio', label: 'Studio', icon: <><circle cx="5" cy="6" r="2.2" /><circle cx="19" cy="6" r="2.2" /><circle cx="12" cy="18" r="2.2" /><path d="M7 6.6 10.6 16.4M17 6.6 13.4 16.4" /></> },
+    { href: '/coach/athletes', label: t('w3d.nav_athletes'), icon: <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 7a4 4 0 1 0 0 .01" /> },
+    { href: '/coach/library', label: t('w3d.nav_library'), icon: <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" /> },
+    { href: '/coach/messages', label: t('w3d.nav_messages'), icon: <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /> },
+    { href: '/coach/studio', label: t('w3d.nav_studio'), icon: <><circle cx="5" cy="6" r="2.2" /><circle cx="19" cy="6" r="2.2" /><circle cx="12" cy="18" r="2.2" /><path d="M7 6.6 10.6 16.4M17 6.6 13.4 16.4" /></> },
   ]
 
   return (
     <div style={{ width: '100%', padding: '20px clamp(16px,4vw,40px) 60px', boxSizing: 'border-box', fontFamily: BODY }}>
-      <h1 style={{ fontFamily: DISP, fontWeight: 600, fontSize: 28, margin: 0, color: 'var(--text)' }}>Tableau de bord</h1>
-      <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: '3px 0 0' }}>Qui a besoin de toi aujourd’hui — ton roster en un coup d’œil.</p>
+      <h1 style={{ fontFamily: DISP, fontWeight: 600, fontSize: 28, margin: 0, color: 'var(--text)' }}>{t('w3d.dashboard_title')}</h1>
+      <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: '3px 0 0' }}>{t('w3d.dashboard_subtitle')}</p>
 
       {/* KPIs */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, margin: '20px 0' }}>
-        {tile(loading ? '—' : total, 'athlète' + (total > 1 ? 's' : ''), 'var(--primary)')}
-        {tile(loading ? '—' : active, 'actif' + (active > 1 ? 's' : '') + ' (7 j)')}
-        {tile(loading ? '—' : alert, 'en alerte', alert > 0 ? '#F59E0B' : 'var(--text)')}
-        {tile(loading ? '—' : unread, 'message' + (unread > 1 ? 's' : '') + ' non lu' + (unread > 1 ? 's' : ''), unread > 0 ? 'var(--primary)' : 'var(--text)')}
-        {tile(loading ? '—' : Math.round(tssRoster), 'charge roster (TSS · 7 j)')}
+        {tile(loading ? '—' : total, total > 1 ? t('w3d.kpi_athletes_plural') : t('w3d.kpi_athletes_singular'), 'var(--primary)')}
+        {tile(loading ? '—' : active, active > 1 ? t('w3d.kpi_active_plural') : t('w3d.kpi_active_singular'))}
+        {tile(loading ? '—' : alert, t('w3d.kpi_alert'), alert > 0 ? '#F59E0B' : 'var(--text)')}
+        {tile(loading ? '—' : unread, unread > 1 ? t('w3d.kpi_unread_plural') : t('w3d.kpi_unread_singular'), unread > 0 ? 'var(--primary)' : 'var(--text)')}
+        {tile(loading ? '—' : Math.round(tssRoster), t('w3d.kpi_roster_load'))}
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 16 }}>
         {/* À suivre en priorité */}
         <div style={{ ...card, padding: 16 }}>
           <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
-            À suivre en priorité {priority.length > 0 && <span style={{ ...num, fontSize: 11.5, color: 'var(--text-mid)', background: 'var(--bg-alt)', borderRadius: 6, padding: '1px 7px' }}>{priority.length}</span>}
+            {t('w3d.priority_title')} {priority.length > 0 && <span style={{ ...num, fontSize: 11.5, color: 'var(--text-mid)', background: 'var(--bg-alt)', borderRadius: 6, padding: '1px 7px' }}>{priority.length}</span>}
           </div>
-          {loading ? <div style={{ fontSize: 13, color: 'var(--text-dim)' }}>Chargement…</div>
-            : priority.length === 0 ? <div style={{ fontSize: 13, color: 'var(--text-dim)' }}>Tout le monde est au vert.</div>
+          {loading ? <div style={{ fontSize: 13, color: 'var(--text-dim)' }}>{t('w3d.loading')}</div>
+            : priority.length === 0 ? <div style={{ fontSize: 13, color: 'var(--text-dim)' }}>{t('w3d.priority_empty')}</div>
             : (
               <div style={{ display: 'flex', flexDirection: 'column' }}>
                 {priority.map((a, i) => (
@@ -101,7 +102,7 @@ export default function CoachDashboard() {
                     {avatar(a, 38)}
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.name}</div>
-                      <div style={{ fontSize: 12, color: 'var(--text-mid)', marginTop: 1 }}><b style={{ color: STC[a.status] }}>{STLABEL[a.status]}</b>{a.reason ? ` — ${a.reason}` : ''}</div>
+                      <div style={{ fontSize: 12, color: 'var(--text-mid)', marginTop: 1 }}><b style={{ color: STC[a.status] }}>{t(`w3d.forme_${a.status}`)}</b>{a.reason ? ` — ${a.reason}` : ''}</div>
                     </div>
                     {a.unread > 0 && <span style={{ ...num, background: '#EF4444', color: '#fff', fontSize: 10, fontWeight: 800, borderRadius: 9, minWidth: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 5px', flexShrink: 0 }}>{a.unread}</span>}
                   </Link>
@@ -112,14 +113,14 @@ export default function CoachDashboard() {
 
         {/* Prochaines échéances */}
         <div style={{ ...card, padding: 16 }}>
-          <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)', marginBottom: 12 }}>Prochaines échéances</div>
-          {loading ? <div style={{ fontSize: 13, color: 'var(--text-dim)' }}>Chargement…</div>
-            : races.length === 0 ? <div style={{ fontSize: 13, color: 'var(--text-dim)' }}>Aucune course programmée dans le roster.</div>
+          <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)', marginBottom: 12 }}>{t('w3d.upcoming_title')}</div>
+          {loading ? <div style={{ fontSize: 13, color: 'var(--text-dim)' }}>{t('w3d.loading')}</div>
+            : races.length === 0 ? <div style={{ fontSize: 13, color: 'var(--text-dim)' }}>{t('w3d.upcoming_empty')}</div>
             : (
               <div style={{ display: 'flex', flexDirection: 'column' }}>
                 {races.map(({ a, race }, i) => (
                   <Link key={a.id + race.name} href={`/coach/athlete/${a.id}`} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 0', borderTop: i ? '1px solid var(--border)' : 'none', textDecoration: 'none', color: 'inherit' }}>
-                    <span style={{ ...num, fontSize: 16, fontWeight: 800, color: race.days <= 14 ? '#ef4444' : 'var(--primary)', width: 50, flexShrink: 0 }}>J-{race.days}</span>
+                    <span style={{ ...num, fontSize: 16, fontWeight: 800, color: race.days <= 14 ? '#ef4444' : 'var(--primary)', width: 50, flexShrink: 0 }}>{t('w3d.days_until', { days: race.days })}</span>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{race.name}</div>
                       <div style={{ fontSize: 12, color: 'var(--text-dim)' }}>{a.name}</div>
@@ -135,8 +136,8 @@ export default function CoachDashboard() {
       {pending > 0 && (
         <div style={{ ...card, padding: '14px 16px', marginTop: 16, display: 'flex', alignItems: 'center', gap: 12 }}>
           <span style={{ ...num, fontSize: 22, fontWeight: 700, color: 'var(--primary)' }}>{pending}</span>
-          <div style={{ flex: 1, fontSize: 13, color: 'var(--text-mid)' }}>invitation{pending > 1 ? 's' : ''} en attente d’acceptation</div>
-          <button onClick={() => router.push('/coach/athletes')} style={{ padding: '8px 14px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: BODY }}>Gérer</button>
+          <div style={{ flex: 1, fontSize: 13, color: 'var(--text-mid)' }}>{pending > 1 ? t('w3d.pending_invites_plural') : t('w3d.pending_invites_singular')}</div>
+          <button onClick={() => router.push('/coach/athletes')} style={{ padding: '8px 14px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: BODY }}>{t('w3d.manage')}</button>
         </div>
       )}
 

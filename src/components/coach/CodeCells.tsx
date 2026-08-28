@@ -6,6 +6,7 @@
 // (Inter tabulaire pour les caractères), accent unique var(--primary).
 // ══════════════════════════════════════════════════════════════
 import { useRef, useState } from 'react'
+import { useI18n } from '@/lib/i18n'
 
 const REVEAL = `@keyframes cmReveal{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}`
 const ALLOWED = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
@@ -22,6 +23,7 @@ const Dash = () => <span style={{ width: 12, height: 2, borderRadius: 2, backgro
 
 // ── Saisie (athlète) ─────────────────────────────────────────────────
 export function CodeInput({ onChange, onComplete }: { onChange?: (code: string) => void; onComplete?: (code: string) => void }) {
+  const { t } = useI18n()
   const [cells, setCells] = useState<string[]>(Array(8).fill(''))
   const [focus, setFocus] = useState<number | null>(null)
   const refs = useRef<(HTMLInputElement | null)[]>([])
@@ -52,7 +54,7 @@ export function CodeInput({ onChange, onComplete }: { onChange?: (code: string) 
         onChange={e => onCell(i, e.target.value)} onKeyDown={e => onKey(i, e)}
         onPaste={e => { e.preventDefault(); const s = san(e.clipboardData.getData('text')); if (s) fillFrom(i, s) }}
         onFocus={e => { setFocus(i); e.currentTarget.select() }} onBlur={() => setFocus(null)}
-        aria-label={`Caractère ${i + 1}`}
+        aria-label={t('w3d.character_n', { n: i + 1 })}
         style={{
           ...cellBase, textAlign: 'center', outline: 'none', cursor: 'text',
           background: 'var(--input-bg)',
@@ -89,20 +91,21 @@ export function CodeDisplay({ code }: { code: string }) {
 
 // ── Révélation du code côté coach (affichage + copie) ────────────────
 export function InviteCodeReveal({ code }: { code: string }) {
+  const { t } = useI18n()
   const [copied, setCopied] = useState(false)
   const copy = () => { void navigator.clipboard?.writeText(code); setCopied(true); setTimeout(() => setCopied(false), 1600) }
   return (
     <div style={{ marginTop: 14, padding: 'clamp(14px, 3vw, 18px)', borderRadius: 16, border: '1px solid var(--border)', background: 'var(--bg-alt)', animation: 'cmReveal .25s cubic-bezier(.32,.72,0,1)' }}>
       <style>{REVEAL}</style>
-      <div style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 12 }}>Code d’invitation</div>
+      <div style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 12 }}>{t('w3d.invite_code')}</div>
       <CodeDisplay code={code} />
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 14, flexWrap: 'wrap' }}>
         <button onClick={copy} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '9px 15px', borderRadius: 11, border: 'none', background: copied ? 'color-mix(in srgb, #22c55e 16%, transparent)' : 'var(--primary)', color: copied ? '#22c55e' : 'var(--on-primary)', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)', transition: 'background .15s' }}>
           {copied
-            ? <><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>Copié</>
-            : <><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>Copier</>}
+            ? <><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>{t('w3d.copied')}</>
+            : <><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>{t('w3d.copy')}</>}
         </button>
-        <span style={{ fontSize: 12.5, color: 'var(--text-dim)', flex: 1, minWidth: 160 }}>Partage-le avec ton athlète — il le saisit sur son Dashboard.</span>
+        <span style={{ fontSize: 12.5, color: 'var(--text-dim)', flex: 1, minWidth: 160 }}>{t('w3d.share_code_hint')}</span>
       </div>
     </div>
   )

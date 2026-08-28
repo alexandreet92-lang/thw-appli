@@ -4,9 +4,11 @@
 // Choisir un résultat lance le guide pas-à-pas.
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { useI18n } from '@/lib/i18n'
 import { GUIDE_ACTIONS, searchActions, EXPRESS_TOUR, FULL_TOUR, type GuideStep } from './guideRegistry'
 
 export function GuideSearch({ open, onClose, onPick }: { open: boolean; onClose: () => void; onPick: (steps: GuideStep[]) => void }) {
+  const { t } = useI18n()
   const [q, setQ] = useState('')
   const inputRef = useRef<HTMLInputElement | null>(null)
   useEffect(() => { if (open) { setQ(''); setTimeout(() => inputRef.current?.focus(), 60) } }, [open])
@@ -21,7 +23,7 @@ export function GuideSearch({ open, onClose, onPick }: { open: boolean; onClose:
 
   function askAi() {
     onClose()
-    window.dispatchEvent(new CustomEvent('thw:open-coach', { detail: { prompt: `Je veux : « ${q} ». Où dois-je appuyer dans l'app pour ça ? Guide-moi étape par étape.` } }))
+    window.dispatchEvent(new CustomEvent('thw:open-coach', { detail: { prompt: t('w3g.guide_search_ai_prompt', { q }) } }))
   }
 
   if (!open || typeof document === 'undefined') return null
@@ -31,9 +33,9 @@ export function GuideSearch({ open, onClose, onPick }: { open: boolean; onClose:
         {/* Champ */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px', borderBottom: '1px solid var(--border)' }}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
-          <input ref={inputRef} value={q} onChange={e => setQ(e.target.value)} placeholder="Que veux-tu faire ? (ex. « créer une séance de fractionné »)"
+          <input ref={inputRef} value={q} onChange={e => setQ(e.target.value)} placeholder={t('w3g.guide_search_placeholder')}
             style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', color: 'var(--text)', fontSize: 15, fontFamily: 'inherit' }} />
-          <kbd style={{ fontSize: 10, color: 'var(--text-dim)', border: '1px solid var(--border)', borderRadius: 6, padding: '2px 6px' }}>Échap</kbd>
+          <kbd style={{ fontSize: 10, color: 'var(--text-dim)', border: '1px solid var(--border)', borderRadius: 6, padding: '2px 6px' }}>{t('w3g.guide_search_esc')}</kbd>
         </div>
 
         {/* Résultats */}
@@ -51,8 +53,8 @@ export function GuideSearch({ open, onClose, onPick }: { open: boolean; onClose:
           {noMatch && (
             <button onClick={askAi} style={rowStyle}>
               <span style={{ flex: 1, minWidth: 0 }}>
-                <span style={{ display: 'block', fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>Demander à l'assistant : « {q} »</span>
-                <span style={{ display: 'block', fontSize: 11.5, color: 'var(--text-dim)' }}>L'IA t'explique où appuyer</span>
+                <span style={{ display: 'block', fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>{t('w3g.guide_search_ask_ai', { q })}</span>
+                <span style={{ display: 'block', fontSize: 11.5, color: 'var(--text-dim)' }}>{t('w3g.guide_search_ai_hint')}</span>
               </span>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
             </button>
@@ -61,9 +63,9 @@ export function GuideSearch({ open, onClose, onPick }: { open: boolean; onClose:
 
         {/* Pied : relancer une visite guidée */}
         <div style={{ display: 'flex', gap: 8, padding: '10px 14px', borderTop: '1px solid var(--border)', background: 'var(--bg-card2)' }}>
-          <span style={{ fontSize: 11.5, color: 'var(--text-dim)', alignSelf: 'center', flex: 1 }}>Visite guidée</span>
-          <button onClick={() => onPick(EXPRESS_TOUR)} style={tourBtn}>Express</button>
-          <button onClick={() => onPick(FULL_TOUR)} style={tourBtn}>Complète</button>
+          <span style={{ fontSize: 11.5, color: 'var(--text-dim)', alignSelf: 'center', flex: 1 }}>{t('w3g.guide_tour')}</span>
+          <button onClick={() => onPick(EXPRESS_TOUR)} style={tourBtn}>{t('w3g.guide_search_express')}</button>
+          <button onClick={() => onPick(FULL_TOUR)} style={tourBtn}>{t('w3g.guide_search_full')}</button>
         </div>
       </div>
     </div>,

@@ -8,11 +8,13 @@ import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useCall } from './CallProvider'
 import { PersonTile, RoundBtn, MicIcon, MicOffIcon, PhoneDownIcon, ExpandIcon } from './callUi'
+import { useI18n } from '@/lib/i18n'
 
 const FB = 'var(--font-body)'
 const W = 220
 
 export function CallBubble() {
+  const { t } = useI18n()
   const call = useCall()
   const router = useRouter()
   const [pos, setPos] = useState<{ x: number; y: number } | null>(null)
@@ -51,7 +53,7 @@ export function CallBubble() {
         style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', padding: '8px var(--space-3)', cursor: 'grab', touchAction: 'none' }}>
         <span style={{ width: 7, height: 7, borderRadius: '50%', background: connecting ? 'var(--text-dim)' : 'var(--sport-run)', flexShrink: 0 }} />
         <span style={{ flex: 1, minWidth: 0, fontFamily: FB, fontSize: 12, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{call.title}</span>
-        <button onClick={expand} aria-label="Agrandir" title="Agrandir" style={{ width: 24, height: 24, border: 'none', borderRadius: 'var(--r-sm)', background: 'transparent', color: 'var(--text-mid)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><ExpandIcon /></button>
+        <button onClick={expand} aria-label={t('w3e.expand')} title={t('w3e.expand')} style={{ width: 24, height: 24, border: 'none', borderRadius: 'var(--r-sm)', background: 'transparent', color: 'var(--text-mid)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><ExpandIcon /></button>
       </div>
 
       {/* Vignettes participants */}
@@ -63,10 +65,10 @@ export function CallBubble() {
 
       {/* Contrôles */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 'var(--space-2)', padding: 'var(--space-2)' }}>
-        <RoundBtn size={36} on={call.micOn} label={call.micOn ? 'Couper le micro' : 'Activer le micro'} onClick={call.toggleMic}>
+        <RoundBtn size={36} on={call.micOn} label={call.micOn ? t('w3e.mute_mic') : t('w3e.unmute_mic')} onClick={call.toggleMic}>
           {call.micOn ? <MicIcon size={16} /> : <MicOffIcon size={16} />}
         </RoundBtn>
-        <button onClick={call.leave} aria-label="Quitter" title="Quitter"
+        <button onClick={call.leave} aria-label={t('w3e.leave')} title={t('w3e.leave')}
           style={{ width: 36, height: 36, borderRadius: '50%', border: 'none', cursor: 'pointer', background: 'var(--danger)', color: 'var(--on-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <PhoneDownIcon size={15} />
         </button>

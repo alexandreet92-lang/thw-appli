@@ -3,8 +3,8 @@ import { useState, useEffect, useCallback } from 'react'
 import type { CSSProperties } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { resolvePlanningUid } from '@/lib/planning/scope'
+import { useI18n } from '@/lib/i18n'
 
-const MONTHS = ['Janvier','Fevrier','Mars','Avril','Mai','Juin','Juillet','Aout','Septembre','Octobre','Novembre','Decembre']
 const DOW    = ['L','M','M','J','V','S','D']
 
 function iso(y: number, m: number, d: number) {
@@ -33,6 +33,7 @@ interface Props {
 }
 
 export default function CalendarView({ targetKcal, onDayClick }: Props) {
+  const { t } = useI18n()
   const now = new Date()
   const [year,   setYear]   = useState(now.getFullYear())
   const [month,  setMonth]  = useState(now.getMonth())
@@ -83,7 +84,7 @@ export default function CalendarView({ targetKcal, onDayClick }: Props) {
           <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>
         </button>
         <span style={{ fontFamily: 'Syne,sans-serif', fontWeight: 600, fontSize: 14, color: 'var(--text)' }}>
-          {MONTHS[month]} {year}
+          {t(`w3h.month_${month}`)} {year}
         </span>
         <button style={{ ...navBtnStyle, opacity: (year > now.getFullYear() || isCurrentMonth) ? 0.3 : 1, cursor: (year > now.getFullYear() || isCurrentMonth) ? 'default' : 'pointer' }}
           onClick={() => { if (!isCurrentMonth) nav(1) }}>
@@ -94,7 +95,7 @@ export default function CalendarView({ targetKcal, onDayClick }: Props) {
       {/* DOW header */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 3, marginBottom: 4 }}>
         {DOW.map((d, i) => (
-          <div key={i} style={{ textAlign: 'center', fontSize: 10, color: 'var(--text-dim)', fontWeight: 600, fontFamily: 'DM Sans,sans-serif', paddingBottom: 4 }}>{d}</div>
+          <div key={i} style={{ textAlign: 'center', fontSize: 10, color: 'var(--text-dim)', fontWeight: 600, fontFamily: 'DM Sans,sans-serif', paddingBottom: 4 }}>{t(`w3h.dow_${i}`)}</div>
         ))}
       </div>
 
@@ -136,9 +137,9 @@ export default function CalendarView({ targetKcal, onDayClick }: Props) {
       {/* Legend */}
       <div style={{ display: 'flex', gap: 14, marginTop: 14, justifyContent: 'center', flexWrap: 'wrap' }}>
         {([
-          { color: '#10B981',           label: 'Objectif atteint' },
-          { color: '#F59E0B',           label: 'Partiel'          },
-          { color: 'var(--text-dim)',   label: 'Pas de donnees'   },
+          { color: '#10B981',           label: t('w3h.legend_complete') },
+          { color: '#F59E0B',           label: t('w3h.legend_partial')  },
+          { color: 'var(--text-dim)',   label: t('w3h.legend_none')     },
         ] as const).map(({ color, label }) => (
           <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
             <div style={{ width: 7, height: 7, borderRadius: '50%', background: color, flexShrink: 0 }} />

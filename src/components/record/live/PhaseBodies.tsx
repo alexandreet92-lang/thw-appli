@@ -2,6 +2,7 @@
 // Corps spécifiques à chaque phase, posés dans PhaseShell. Encre héritée.
 import { fmt, BigTime, BigName, Kicker, Sub } from './liveUi'
 import RepsInput from './RepsInput'
+import { useI18n } from '@/lib/i18n'
 import type { EffortStep, RestStep } from './types'
 import type { Action } from './sessionReducer'
 import type { EngineState } from './sessionReducer'
@@ -12,30 +13,33 @@ const chip: React.CSSProperties = {
 }
 
 export function PrepareBody({ remaining, firstExo }: { remaining: number; firstExo: string }) {
+  const { t } = useI18n()
   return (<>
-    <Kicker>Tenez-vous prêt</Kicker>
+    <Kicker>{t('w3a.prepare_ready')}</Kicker>
     <BigTime>{fmt(remaining)}</BigTime>
-    <Sub>Premier · <b>{firstExo}</b></Sub>
+    <Sub>{t('w3a.first')} · <b>{firstExo}</b></Sub>
   </>)
 }
 
 export function EffortTimeBody({ step, remaining }: { step: EffortStep; remaining: number }) {
+  const { t } = useI18n()
   return (<>
     <BigName>{step.ex.name}</BigName>
     <BigTime>{fmt(remaining)}</BigTime>
-    <Sub>Tenir · <b>{step.ex.durationSec} s</b></Sub>
+    <Sub>{t('w3a.hold')} · <b>{step.ex.durationSec} s</b></Sub>
   </>)
 }
 
 export function RestBody({ step, remaining, dispatch }: { step: RestStep; remaining: number; dispatch: (a: Action) => void }) {
+  const { t } = useI18n()
   return (<>
-    <Kicker>{step.tourEnd ? 'Repos de tour' : 'Repos court'}</Kicker>
+    <Kicker>{step.tourEnd ? t('w3a.rest_tour') : t('w3a.rest_short')}</Kicker>
     <BigTime>{fmt(remaining)}</BigTime>
-    <Sub>À suivre · <b>{step.nextExoName}</b></Sub>
+    <Sub>{t('w3a.up_next')} · <b>{step.nextExoName}</b></Sub>
     <div style={{ display: 'flex', gap: 8, marginTop: 20, flexWrap: 'wrap', justifyContent: 'center' }}>
       <button style={chip} onClick={() => dispatch({ t: 'ADJUST_REST', d: -15 })}>−15 s</button>
       <button style={chip} onClick={() => dispatch({ t: 'ADJUST_REST', d: 15 })}>+15 s</button>
-      <button style={chip} onClick={() => dispatch({ t: 'ADD_TOUR' })}>+1 tour</button>
+      <button style={chip} onClick={() => dispatch({ t: 'ADD_TOUR' })}>{t('w3a.add_tour')}</button>
     </div>
   </>)
 }
@@ -56,8 +60,9 @@ export function EffortRepsBody({ step, state, dispatch, onOpenPad }: {
 }
 
 export function DoneBody({ setsDone, volumeKg }: { setsDone: number; volumeKg: number }) {
+  const { t } = useI18n()
   return (<>
-    <Kicker>Séance bouclée</Kicker>
-    <Sub><b>{setsDone}</b> séries · <b>{Math.round(volumeKg)}</b> kg</Sub>
+    <Kicker>{t('w3a.done_wrapped')}</Kicker>
+    <Sub><b>{setsDone}</b> {t('w3a.series')} · <b>{Math.round(volumeKg)}</b> kg</Sub>
   </>)
 }

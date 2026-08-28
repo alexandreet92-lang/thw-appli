@@ -6,6 +6,7 @@
 // Stocke activities.linked_race_id (+ race_name pour l'affichage rapide).
 // ══════════════════════════════════════════════════════════════════
 import { useEffect, useState, useCallback } from 'react'
+import { useI18n } from '@/lib/i18n'
 import { createClient } from '@/lib/supabase/client'
 import { SportIcon } from '@/components/icons/SportIcon'
 
@@ -24,6 +25,7 @@ export function LinkedRacePicker({ activityId, activityDate, initialRaceId }: {
   activityDate?: string | null
   initialRaceId?: string | null
 }) {
+  const { t } = useI18n()
   const [races, setRaces] = useState<RaceOpt[]>([])
   const [sel, setSel] = useState<string>(initialRaceId ?? '')
   const [loading, setLoading] = useState(true)
@@ -76,15 +78,15 @@ export function LinkedRacePicker({ activityId, activityDate, initialRaceId }: {
 
   return (
     <div style={{ marginTop: 12 }}>
-      <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', marginBottom: 6 }}>Course associée (calendrier)</div>
+      <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', marginBottom: 6 }}>{t('w3f.linked_race_label')}</div>
       {loading ? (
-        <div style={{ fontSize: 12.5, color: 'var(--text-dim)' }}>Chargement…</div>
+        <div style={{ fontSize: 12.5, color: 'var(--text-dim)' }}>{t('w3f.loading')}</div>
       ) : races.length === 0 ? (
-        <div style={{ fontSize: 12.5, color: 'var(--text-dim)' }}>Aucune course dans ton calendrier. Ajoute-en une dans la page Calendrier.</div>
+        <div style={{ fontSize: 12.5, color: 'var(--text-dim)' }}>{t('w3f.no_races')}</div>
       ) : (
         <select value={sel} onChange={e => void save(e.target.value)}
           style={{ width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: 11, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 13.5, fontFamily: 'var(--font-body)', outline: 'none' }}>
-          <option value="">— Aucune course associée —</option>
+          <option value="">{t('w3f.no_linked_race')}</option>
           {sorted.map(r => (
             <option key={r.id} value={r.id}>{r.name} · {new Date(r.date + 'T12:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}</option>
           ))}
@@ -92,14 +94,14 @@ export function LinkedRacePicker({ activityId, activityDate, initialRaceId }: {
       )}
       {sel && siblings.length > 0 && (
         <div style={{ marginTop: 12 }}>
-          <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-dim)', marginBottom: 8 }}>Enchaînement de la course</div>
+          <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-dim)', marginBottom: 8 }}>{t('w3f.race_chain')}</div>
           <div style={{ display: 'flex', alignItems: 'stretch', gap: 8, overflowX: 'auto', paddingBottom: 4 }}>
             {siblings.map((s, i) => (
               <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
                 <a href={`/activities?id=${s.id}`} style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 9, padding: '9px 12px', borderRadius: 12, border: `1px solid ${s.id === activityId ? 'var(--primary)' : 'var(--border)'}`, background: s.id === activityId ? 'var(--primary-dim)' : 'var(--bg-card2)', minWidth: 150 }}>
                   <SportIcon sport={s.sport_type ?? 'run'} size={30} />
                   <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 120 }}>{s.title || 'Activité'}</div>
+                    <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 120 }}>{s.title || t('w3f.activity')}</div>
                     <div style={{ fontSize: 11, color: 'var(--text-dim)', fontVariantNumeric: 'tabular-nums' }}>{[fmtKm(s.distance_m), fmtDur(s.moving_time_s)].filter(Boolean).join(' · ')}</div>
                   </div>
                 </a>
@@ -113,7 +115,7 @@ export function LinkedRacePicker({ activityId, activityDate, initialRaceId }: {
       )}
       {sel && siblings.length <= 1 && (
         <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: '6px 0 0' }}>
-          Lie d&apos;autres activités (vélo, cap…) à cette même course pour les afficher en enchaînement.
+          {t('w3f.link_more_hint')}
         </p>
       )}
     </div>

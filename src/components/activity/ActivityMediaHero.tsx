@@ -9,6 +9,7 @@
 // Upload → bucket activity-media, persistance dans activities.media (jsonb).
 // ══════════════════════════════════════════════════════════════════
 import { useRef, useState } from 'react'
+import { useI18n } from '@/lib/i18n'
 import { IconPlus, IconTrash, IconPlayerPlayFilled, IconLoader2 } from '@tabler/icons-react'
 import { createClient } from '@/lib/supabase/client'
 import { getCurrentUser } from '@/lib/auth/currentUser'
@@ -46,6 +47,7 @@ function MiniMap({ points, size }: { points: LatLng[]; size: number }) {
 }
 
 export function ActivityMediaHero({ activityId, initialMedia, points, bottomInset = 0, variant }: Props) {
+  const { t } = useI18n()
   const [media, setMedia] = useState<MediaItem[]>(Array.isArray(initialMedia) ? initialMedia : [])
   const [mode, setMode] = useState<'map' | 'photo'>('map')   // overlay : quel média occupe le héros
   const [busy, setBusy] = useState(false)
@@ -103,7 +105,7 @@ export function ActivityMediaHero({ activityId, initialMedia, points, bottomInse
           {m.type === 'video'
             ? <video src={m.url} controls playsInline style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
             : <img src={m.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
-          <button onClick={() => remove(i)} aria-label="Supprimer" style={{ position: 'absolute', top: 10, right: 10, width: 34, height: 34, borderRadius: '50%', border: 'none', background: 'rgba(0,0,0,0.5)', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(6px)' }}><IconTrash size={16} /></button>
+          <button onClick={() => remove(i)} aria-label={t('w3f.delete')} style={{ position: 'absolute', top: 10, right: 10, width: 34, height: 34, borderRadius: '50%', border: 'none', background: 'rgba(0,0,0,0.5)', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(6px)' }}><IconTrash size={16} /></button>
         </div>
       ))}
     </div>
@@ -117,7 +119,7 @@ export function ActivityMediaHero({ activityId, initialMedia, points, bottomInse
         {media.length === 0 ? (
           <button onClick={() => inputRef.current?.click()} disabled={busy} style={{ width: '100%', padding: '22px 16px', borderRadius: 16, border: '1.5px dashed var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
             {busy ? <IconLoader2 size={24} className="thw-spin" /> : <IconPlus size={24} />}
-            <span style={{ fontSize: 13, fontWeight: 600 }}>Ajouter une photo / vidéo</span>
+            <span style={{ fontSize: 13, fontWeight: 600 }}>{t('w3f.add_photo_video')}</span>
           </button>
         ) : (
           <div style={{ position: 'relative', borderRadius: 16, overflow: 'hidden', border: '1px solid var(--border)' }}>
@@ -144,7 +146,7 @@ export function ActivityMediaHero({ activityId, initialMedia, points, bottomInse
       )}
       {/* Vignette encadrée (bas gauche, au-dessus de la feuille) */}
       {media.length > 0 && (
-        <button onClick={() => setMode(showPhoto ? 'map' : 'photo')} aria-label="Inverser carte / photo" style={{
+        <button onClick={() => setMode(showPhoto ? 'map' : 'photo')} aria-label={t('w3f.toggle_map_photo')} style={{
           position: 'absolute', left: 12, bottom: bottomInset + 16, zIndex: 11,
           width: insetSize, height: insetSize, borderRadius: 14, overflow: 'hidden', padding: 0, cursor: 'pointer',
           border: '2px solid #fff', boxShadow: '0 3px 12px rgba(0,0,0,0.35)', background: 'var(--bg-card2)',
@@ -157,7 +159,7 @@ export function ActivityMediaHero({ activityId, initialMedia, points, bottomInse
         </button>
       )}
       {/* Bouton ajouter (à droite de la vignette, ou seul si aucune photo) */}
-      <button onClick={() => inputRef.current?.click()} disabled={busy} aria-label="Ajouter une photo" style={{
+      <button onClick={() => inputRef.current?.click()} disabled={busy} aria-label={t('w3f.add_photo')} style={{
         ...addBtnStyle, position: 'absolute', zIndex: 11,
         left: media.length > 0 ? 12 + insetSize + 8 : 12, bottom: bottomInset + 16 + (media.length > 0 ? (insetSize - 40) / 2 : 0),
       }}>{busy ? <IconLoader2 size={18} className="thw-spin" /> : <IconPlus size={20} />}</button>

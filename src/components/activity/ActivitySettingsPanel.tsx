@@ -8,6 +8,7 @@
 // sinon le dernier utilisé.
 // ══════════════════════════════════════════════════════════════════════════
 import { useEffect, useState, useCallback } from 'react'
+import { useI18n } from '@/lib/i18n'
 import { createClient } from '@/lib/supabase/client'
 import {
   getMyActivityVisibility, getMyHiddenData, HIDDEN_DATA_CATS,
@@ -25,9 +26,6 @@ const VIS_OPTS: { k: ActivityVisibility; label: string }[] = [
   { k: 'followers', label: 'Abonnés' },
   { k: 'private', label: 'Privé' },
 ]
-const HIDDEN_LABELS: Record<HiddenDataCat, string> = {
-  hr: 'FC', watts: 'Watts', pace: 'Allure', speed: 'Vitesse', kcal: 'Kcal',
-}
 // Catégories pertinentes selon le sport (allure = course, vitesse/watts = vélo).
 function catsForSport(sport: string): HiddenDataCat[] {
   const s = sport.toLowerCase()
@@ -52,6 +50,7 @@ function Card({ title, children }: { title: string; children: React.ReactNode })
 }
 
 export function ActivitySettingsPanel({ activityId, sport }: { activityId: string; sport: string }) {
+  const { t } = useI18n()
   const sb = createClient()
   const kind = gearKindForSport(sport)
   const cats = catsForSport(sport)
@@ -129,7 +128,7 @@ export function ActivitySettingsPanel({ activityId, sport }: { activityId: strin
   return (
     <div style={{ marginBottom: 'var(--space-5)' }}>
       {/* Confidentialité */}
-      <Card title="Visible par">
+      <Card title={t('w3f.visible_by')}>
         <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
           {VIS_OPTS.map(o => {
             const on = vis === o.k
@@ -139,14 +138,14 @@ export function ActivitySettingsPanel({ activityId, sport }: { activityId: strin
                   border: on ? '2px solid var(--primary)' : '1px solid var(--border-mid)',
                   background: on ? 'color-mix(in srgb, var(--primary) 12%, transparent)' : 'transparent',
                   color: on ? 'var(--primary)' : 'var(--text-mid)' }}>
-                {o.label}
+                {t(`w3f.vis_${o.k}`)}
               </button>
             )
           })}
         </div>
       </Card>
 
-      <Card title="Masquer certaines données">
+      <Card title={t('w3f.hide_some_data')}>
         <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
           {cats.map(c => {
             const on = hidden.includes(c)
@@ -156,19 +155,19 @@ export function ActivitySettingsPanel({ activityId, sport }: { activityId: strin
                   border: on ? '2px solid var(--danger)' : '1px solid var(--border-mid)',
                   background: on ? 'var(--danger-soft)' : 'transparent',
                   color: on ? 'var(--danger)' : 'var(--text-mid)' }}>
-                {on ? '🔒 ' : ''}{HIDDEN_LABELS[c]}
+                {on ? '🔒 ' : ''}{t(`w3f.hidden_${c}`)}
               </button>
             )
           })}
         </div>
         <p style={{ fontFamily: FB, fontSize: 11.5, color: 'var(--text-dim)', margin: '10px 0 0' }}>
-          Pré-rempli depuis tes réglages ; masqué pour les autres athlètes sur cette activité.
+          {t('w3f.hidden_hint')}
         </p>
       </Card>
 
       {/* Matériel */}
       {kind && (
-        <Card title={kind === 'bike' ? 'Vélo utilisé' : 'Chaussures utilisées'}>
+        <Card title={kind === 'bike' ? t('w3f.gear_bike_title') : t('w3f.gear_shoes_title')}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
             {gear.map(g => {
               const on = selGear === g.id
@@ -189,26 +188,26 @@ export function ActivitySettingsPanel({ activityId, sport }: { activityId: strin
 
             {adding ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)', padding: 'var(--space-2)', border: '1px dashed var(--border-mid)', borderRadius: 'var(--r-sm)' }}>
-                <input value={draftBrand} onChange={e => setDraftBrand(e.target.value)} placeholder={kind === 'bike' ? 'Marque (ex. Canyon)' : 'Marque (ex. Nike)'}
+                <input value={draftBrand} onChange={e => setDraftBrand(e.target.value)} placeholder={kind === 'bike' ? t('w3f.brand_ph_bike') : t('w3f.brand_ph_shoes')}
                   style={{ padding: '9px 11px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border-mid)', background: 'var(--bg-card)', color: 'var(--text)', fontFamily: FB, fontSize: 14 }} />
-                <input value={draftName} onChange={e => setDraftName(e.target.value)} placeholder={kind === 'bike' ? 'Modèle / nom (ex. Ultimate)' : 'Modèle (ex. Pegasus 40)'}
+                <input value={draftName} onChange={e => setDraftName(e.target.value)} placeholder={kind === 'bike' ? t('w3f.model_ph_bike') : t('w3f.model_ph_shoes')}
                   onKeyDown={e => { if (e.key === 'Enter') void submitGear() }}
                   style={{ padding: '9px 11px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border-mid)', background: 'var(--bg-card)', color: 'var(--text)', fontFamily: FB, fontSize: 14 }} />
                 <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
                   <button onClick={() => void submitGear()} disabled={busy || !(draftName.trim() || draftBrand.trim())}
                     style={{ flex: 1, padding: '9px', borderRadius: 'var(--r-sm)', border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontFamily: FB, fontSize: 13.5, fontWeight: 700, cursor: 'pointer', opacity: busy ? 0.6 : 1 }}>
-                    {busy ? '…' : 'Ajouter'}
+                    {busy ? '…' : t('w3f.add')}
                   </button>
                   <button onClick={() => { setAdding(false); setDraftName(''); setDraftBrand('') }}
                     style={{ padding: '9px 14px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border-mid)', background: 'transparent', color: 'var(--text-mid)', fontFamily: FB, fontSize: 13.5, cursor: 'pointer' }}>
-                    Annuler
+                    {t('w3f.cancel')}
                   </button>
                 </div>
               </div>
             ) : (
               <button onClick={() => setAdding(true)}
                 style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: 'var(--space-3)', borderRadius: 'var(--r-sm)', border: '1px dashed var(--border-mid)', background: 'transparent', color: 'var(--primary)', fontFamily: FB, fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}>
-                + Ajouter {kind === 'bike' ? 'un vélo' : 'des chaussures'}
+                {kind === 'bike' ? t('w3f.add_gear_bike') : t('w3f.add_gear_shoes')}
               </button>
             )}
           </div>

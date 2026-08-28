@@ -19,6 +19,7 @@
 // ══════════════════════════════════════════════════════════════════
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { useI18n } from '@/lib/i18n'
 import { createClient } from '@/lib/supabase/client'
 import { resolvePlanningUid } from '@/lib/planning/scope'
 import { formatHM, matchStatus, normalizeSportType, ATHLETE, type Session, type TrainingActivity } from '@/app/planning/page'
@@ -339,6 +340,7 @@ const rowVal: React.CSSProperties = { fontSize: 10.5, color: 'var(--text)', font
 export function CompareGrid({ planned, full, activity, dense }: {
   planned: Session; full: FullActivity | null; activity: TrainingActivity; dense?: boolean
 }) {
+  const { t: tr } = useI18n()
   const sport = planned.sport
   const isSwim = sport === 'swim'
   const isPower = sport === 'bike' || sport === 'elliptique'
@@ -353,9 +355,9 @@ export function CompareGrid({ planned, full, activity, dense }: {
         : full.paceSKm)
     : null
   const rows: { label: string; prev: string; done: string; color?: string }[] = []
-  rows.push({ label: 'Temps', prev: formatHM(planned.durationMin), done: formatHM(actMin), color: st.color })
+  rows.push({ label: tr('w3g.act_time'), prev: formatHM(planned.durationMin), done: formatHM(actMin), color: st.color })
   if (t.distM != null || (full?.distanceM != null && full.distanceM > 0)) rows.push({
-    label: 'Distance',
+    label: tr('w3g.act_distance'),
     prev: t.distM != null ? fmtDist(t.distM) : '—',
     done: full?.distanceM != null && full.distanceM > 0 ? fmtDist(full.distanceM) : '—',
   })
@@ -371,12 +373,12 @@ export function CompareGrid({ planned, full, activity, dense }: {
   })
   if (isPower) {
     if (t.watts != null || full?.avgWatts != null) rows.push({
-      label: 'Puissance',
+      label: tr('w3g.act_power'),
       prev: t.watts != null ? `${t.watts} W` : '—',
       done: full?.avgWatts != null ? `${full.avgWatts} W` : '—',
     })
   } else if (t.paceS != null || actPace != null) rows.push({
-    label: 'Allure',
+    label: tr('w3g.act_pace'),
     prev: t.paceS != null ? fmtPace(t.paceS) : '—',
     done: actPace != null ? fmtPace(actPace) : '—',
   })
@@ -384,8 +386,8 @@ export function CompareGrid({ planned, full, activity, dense }: {
     <div style={{ display: 'flex', flexDirection: 'column', gap: dense ? 3 : 5 }}>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: dense ? '2px 10px' : '3px 12px', alignItems: 'baseline' }}>
         <span />
-        <span style={{ ...rowLbl, fontSize: 8.5, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Prévu</span>
-        <span style={{ ...rowLbl, fontSize: 8.5, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Réalisé</span>
+        <span style={{ ...rowLbl, fontSize: 8.5, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{tr('w3g.act_planned')}</span>
+        <span style={{ ...rowLbl, fontSize: 8.5, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{tr('w3g.act_realized')}</span>
         {rows.map(r => (
           <FragmentRow key={r.label} r={r} />
         ))}
@@ -411,13 +413,14 @@ const sectionLabel: React.CSSProperties = {
 
 /** Profil d'intensité PLANIFIÉ (repli quand l'activité n'a pas de streams). */
 export function PlannedIntensityBars({ session, height = 56 }: { session: Session; height?: number }) {
+  const { t } = useI18n()
   const refs = useAthleteRefs()
   const blocks = (session.blocks ?? []).filter(b => b.type !== 'circuit_header' || (b.label ?? '').trim())
   const bars = toBars(blocks as MBlock[])
   if (bars.length === 0) return null
   return (
     <div>
-      <p style={sectionLabel}>Profil d&apos;intensité · prévu</p>
+      <p style={sectionLabel}>{t('w3g.act_intensity_planned')}</p>
       <div style={{ height, display: 'flex', alignItems: 'flex-end', gap: 1.5, borderBottom: '1px solid var(--border)' }}>
         {bars.map(bar => (
           <div key={bar.id} title={`Z${bar.zone}${bar.value ? ` · ${bar.value}` : ''} · ${Math.round(bar.min)}min`}
@@ -485,6 +488,7 @@ export function RealizedIntensityBars({ full, sport, height = 56, cursor, onHove
   cursor?: number | null; onHover?: (frac: number | null) => void
   titleSuffix?: string
 }) {
+  const { t } = useI18n()
   const [refs, setRefs] = useState<AthleteRefsLite | null>(null)
   useEffect(() => { let ok = true; void loadAthleteRefs().then(r => { if (ok) setRefs(r) }); return () => { ok = false } }, [])
   const r = refs ?? { ftp: ATHLETE.ftp, runThr: ATHLETE.thresholdPace, css: ATHLETE.css }
@@ -495,7 +499,7 @@ export function RealizedIntensityBars({ full, sport, height = 56, cursor, onHove
   const single = full.laps.length <= 1
   return (
     <div>
-      <p style={sectionLabel}>Profil d&apos;intensité · réalisé{titleSuffix ? ` ${titleSuffix}` : ''}{single ? ' · séance continue' : ` · ${full.laps.length} tours`}</p>
+      <p style={sectionLabel}>{t('w3g.act_intensity_realized')}{titleSuffix ? ` ${titleSuffix}` : ''}{single ? ` · ${t('w3g.act_continuous_session')}` : ` · ${t('w3g.act_laps_count', { n: full.laps.length })}`}</p>
       <div
         onMouseMove={onHover ? (e => {
           const rect = e.currentTarget.getBoundingClientRect()
@@ -527,6 +531,7 @@ export function ActivityElevation({ full, height = 64, cursor, onHover, showTitl
   cursor?: number | null; onHover?: (frac: number | null) => void
   showTitle?: boolean
 }) {
+  const { t } = useI18n()
   const samples = full.samples
   if (!samples || samples.length < 2) return null
   const pts = samples.map(s => s.ele).filter((e): e is number => e != null)
@@ -546,7 +551,7 @@ export function ActivityElevation({ full, height = 64, cursor, onHover, showTitl
   const cx = cursor != null ? Math.max(0, Math.min(1, cursor)) * W : null
   return (
     <div>
-      {showTitle && <p style={sectionLabel}>Profil altimétrique{full.elevM ? ` · +${full.elevM} m D+` : ''}</p>}
+      {showTitle && <p style={sectionLabel}>{t('w3g.act_elevation_profile')}{full.elevM ? ` · +${full.elevM} m D+` : ''}</p>}
       <svg width="100%" height={height} viewBox={`0 0 ${W} ${height}`} preserveAspectRatio="none"
         onMouseMove={onHover ? (e => {
           const rect = e.currentTarget.getBoundingClientRect()
@@ -595,6 +600,7 @@ export function ActivityMap({ latlng, width, height, color, cursorLL }: {
   latlng: [number, number][]; width: number; height: number; color?: string
   cursorLL?: [number, number] | null
 }) {
+  const { t } = useI18n()
   const pts = latlng.map(p => ({ lat: p[0], lng: p[1] }))
   const mapUrl = staticRouteMapUrl(pts, { width, height, pins: true, color })
   const fit = mercatorFit(latlng, width, height, 26)
@@ -603,7 +609,7 @@ export function ActivityMap({ latlng, width, height, color, cursorLL }: {
     return (
       <div style={{ position: 'relative', width, height }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={mapUrl} alt="Trace GPS" width={width} height={height}
+        <img src={mapUrl} alt={t('w3g.act_gps_trace')} width={width} height={height}
           style={{ display: 'block', width, height, objectFit: 'cover', borderRadius: 10, border: '1px solid var(--border)' }} />
         {cursor && (
           <span style={{
@@ -634,13 +640,14 @@ export function ActivityMap({ latlng, width, height, color, cursorLL }: {
 }
 
 export function StrengthDone({ strength, dense }: { strength: StrengthDetail; dense?: boolean }) {
+  const { t } = useI18n()
   const meta = [
-    strength.sets != null ? `${strength.sets} séries` : '',
-    strength.tonnageKg != null ? `${strength.tonnageKg} kg soulevés` : '',
+    strength.sets != null ? t('w3g.act_sets_count', { n: strength.sets }) : '',
+    strength.tonnageKg != null ? t('w3g.act_tonnage', { kg: strength.tonnageKg }) : '',
   ].filter(Boolean).join(' · ')
   return (
     <div>
-      <p style={sectionLabel}>Exercices réalisés{meta ? <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}> · {meta}</span> : null}</p>
+      <p style={sectionLabel}>{t('w3g.act_exercises_done')}{meta ? <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}> · {meta}</span> : null}</p>
       <div style={{ display: 'flex', flexDirection: 'column', gap: dense ? 4 : 6, maxHeight: dense ? 150 : undefined, overflow: 'hidden' }}>
         {strength.groups.map((g, i) => (
           <div key={i}>
@@ -668,6 +675,7 @@ const WIDTH = 262
 export function ActivityHoverPreview({ activity, planned, anchor }: {
   activity: TrainingActivity; planned: Session | null; anchor: DOMRect
 }) {
+  const { t } = useI18n()
   const [mounted, setMounted] = useState(false)
   useEffect(() => { setMounted(true) }, [])
   const full = useActivityFull(activity)
@@ -706,7 +714,7 @@ export function ActivityHoverPreview({ activity, planned, anchor }: {
 
       {/* Titre + badge */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-        <span style={{ fontSize: 7.5, fontWeight: 800, background: color, color: '#fff', padding: '2px 5px', borderRadius: 4, letterSpacing: '0.06em', flexShrink: 0 }}>RÉALISÉ</span>
+        <span style={{ fontSize: 7.5, fontWeight: 800, background: color, color: '#fff', padding: '2px 5px', borderRadius: 4, letterSpacing: '0.06em', flexShrink: 0 }}>{t('w3g.act_badge_realized')}</span>
         <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {planned?.title || activity.name}
         </p>
@@ -738,7 +746,7 @@ export function ActivityHoverPreview({ activity, planned, anchor }: {
               : null}
           {full?.latlng && (
             <div style={{ marginBottom: 10 }}>
-              <p style={sectionLabel}>Trace GPS</p>
+              <p style={sectionLabel}>{t('w3g.act_gps_trace')}</p>
               <ActivityMap latlng={full.latlng} width={MAP_W} height={MAP_H} color={color.startsWith('#') ? color.slice(1) : undefined} />
             </div>
           )}
@@ -752,11 +760,12 @@ export function ActivityHoverPreview({ activity, planned, anchor }: {
 
 // Force sans détail workout_sessions : on liste au moins les exercices PRÉVUS.
 function PlannedBlocksListStrength({ planned }: { planned: Session }) {
+  const { t } = useI18n()
   const blocks = (planned.blocks ?? []).filter(b => (b.label ?? '').trim())
   if (!blocks.length) return null
   return (
     <div>
-      <p style={sectionLabel}>Séance prévue</p>
+      <p style={sectionLabel}>{t('w3g.act_planned_session')}</p>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 3, maxHeight: 130, overflow: 'hidden' }}>
         {blocks.slice(0, 10).map((b, i) => (
           <span key={i} style={{ fontSize: 10.5, color: 'var(--text-mid)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.label}</span>

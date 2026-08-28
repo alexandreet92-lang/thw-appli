@@ -3,6 +3,7 @@
 // activities.sport_type (valeurs autorisées par la contrainte CHECK) puis
 // déclenche un rechargement de la liste.
 import { useState } from 'react'
+import { useI18n } from '@/lib/i18n'
 import { createClient } from '@/lib/supabase/client'
 import { SportIcon } from '@/components/icons/SportIcon'
 
@@ -30,6 +31,7 @@ const ICON_KEY: Record<string, string> = {
 }
 
 export function ActivitySportPicker({ activityId, sport, onChanged }: { activityId: string; sport: string; onChanged?: () => void }) {
+  const { t } = useI18n()
   const [cur, setCur] = useState(sport)
   const [saving, setSaving] = useState(false)
 
@@ -56,7 +58,7 @@ export function ActivitySportPicker({ activityId, sport, onChanged }: { activity
             color: on ? 'var(--primary)' : 'var(--text-dim)', fontSize: 12.5, fontWeight: 600, fontFamily: 'var(--font-body)',
           }}>
             <SportIcon sport={ICON_KEY[o.type] ?? 'other'} size={18} circle={false} />
-            {o.label}
+            {t(`w3f.sport_${o.type}`)}
           </button>
         )
       })}

@@ -6,6 +6,7 @@
 // dans les totaux (cf. countsInVolume). Persistée dans les blocs JSONB (mob).
 // ══════════════════════════════════════════════════════════════════
 import { useState } from 'react'
+import { useI18n } from '@/lib/i18n'
 import { IconPlus, IconTrash, IconChevronUp, IconChevronDown } from '@tabler/icons-react'
 import type { MBlock } from './blocks'
 import { Stepper, FieldLabel } from './ui'
@@ -28,15 +29,16 @@ function blockFromExo(exo: MobilityExo): MBlock {
   return { id: uid(), mode: 'single', type: 'effort', zone: 1, value: '', hrAvg: '', label: exo.nom, durationMin: Math.round(mobMinutes(mob) * 10) / 10, mob }
 }
 
-function itemDetail(mob: NonNullable<MBlock['mob']>): string {
-  const base = mob.holdSec != null ? `${mob.holdSec}s` : `${mob.reps ?? 0} rép`
+function itemDetail(mob: NonNullable<MBlock['mob']>, t: (key: string, vars?: Record<string, string | number>) => string): string {
+  const base = mob.holdSec != null ? `${mob.holdSec}s` : t('w3g.mob_reps_short', { n: mob.reps ?? 0 })
   const sets = (mob.sets || 1) > 1 ? `${mob.sets} × ` : ''
-  return `${sets}${base}${mob.perSide ? ' · par côté' : ''}`
+  return `${sets}${base}${mob.perSide ? ` · ${t('w3g.mob_per_side_detail')}` : ''}`
 }
 
 export function MobilityBuilder({ blocks, accent, onChange }: {
   blocks: MBlock[]; accent: string; onChange: (b: MBlock[]) => void
 }) {
+  const { t } = useI18n()
   const [openRegion, setOpenRegion] = useState<MobilityRegion | null>(MOBILITY_REGION_ORDER[0])
   const items = blocks.filter(b => b.mob)
 
@@ -62,13 +64,13 @@ export function MobilityBuilder({ blocks, accent, onChange }: {
     <div>
       {/* Bandeau : nb d'exos + durée indicative (HORS volume) */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-        <h3 className="se-fr" style={{ margin: 0, fontSize: 19, fontWeight: 600, flex: 1 }}>Séance mobilité</h3>
+        <h3 className="se-fr" style={{ margin: 0, fontSize: 19, fontWeight: 600, flex: 1 }}>{t('w3g.mob_session')}</h3>
         <span className="se-tnum" style={{ fontSize: 12, color: 'var(--se-dim)' }}>
-          {items.length} exo{items.length > 1 ? 's' : ''} · ≈ {Math.round(totalMin)} min
+          {items.length > 1 ? t('w3g.mob_summary_plural', { count: items.length, min: Math.round(totalMin) }) : t('w3g.mob_summary', { count: items.length, min: Math.round(totalMin) })}
         </span>
       </div>
       <p style={{ margin: '0 0 14px', fontSize: 11, color: 'var(--se-dim)', lineHeight: 1.5 }}>
-        La mobilité ne compte pas dans le volume d’entraînement — elle apparaît dans ton planning sans alourdir tes totaux.
+        {t('w3g.mob_volume_note')}
       </p>
 
       {/* Liste des exercices sélectionnés */}
@@ -79,24 +81,24 @@ export function MobilityBuilder({ blocks, accent, onChange }: {
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                 <span style={{ fontSize: 8.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: accent }}>{MOBILITY_REGION_LABEL[b.mob!.region as MobilityRegion] ?? b.mob!.region}</span>
                 <span className="se-fr" style={{ flex: 1, fontSize: 14, fontWeight: 600, color: 'var(--se-text)' }}>{b.label}</span>
-                <button onClick={() => move(i, -1)} disabled={i === 0} aria-label="Monter" style={{ ...iconBtn, opacity: i === 0 ? 0.3 : 1 }}><IconChevronUp size={15} /></button>
-                <button onClick={() => move(i, 1)} disabled={i === items.length - 1} aria-label="Descendre" style={{ ...iconBtn, opacity: i === items.length - 1 ? 0.3 : 1 }}><IconChevronDown size={15} /></button>
-                <button onClick={() => remove(b.id)} aria-label="Retirer" style={{ ...iconBtn, color: '#ff5f5f' }}><IconTrash size={15} /></button>
+                <button onClick={() => move(i, -1)} disabled={i === 0} aria-label={t('w3g.mob_move_up')} style={{ ...iconBtn, opacity: i === 0 ? 0.3 : 1 }}><IconChevronUp size={15} /></button>
+                <button onClick={() => move(i, 1)} disabled={i === items.length - 1} aria-label={t('w3g.mob_move_down')} style={{ ...iconBtn, opacity: i === items.length - 1 ? 0.3 : 1 }}><IconChevronDown size={15} /></button>
+                <button onClick={() => remove(b.id)} aria-label={t('w3g.mob_remove')} style={{ ...iconBtn, color: '#ff5f5f' }}><IconTrash size={15} /></button>
               </div>
               <div className="se-fgrid">
                 {b.mob!.holdSec != null
-                  ? <div><FieldLabel>Tenue</FieldLabel><Stepper value={String(b.mob!.holdSec)} unit="s" onChange={v => patch(b.id, { holdSec: Math.max(5, parseInt(v) || 0) })} onDec={() => patch(b.id, { holdSec: Math.max(5, (b.mob!.holdSec ?? 0) - 5) })} onInc={() => patch(b.id, { holdSec: (b.mob!.holdSec ?? 0) + 5 })} /></div>
-                  : <div><FieldLabel>Répétitions</FieldLabel><Stepper value={String(b.mob!.reps ?? 0)} onChange={v => patch(b.id, { reps: Math.max(1, parseInt(v) || 1) })} onDec={() => patch(b.id, { reps: Math.max(1, (b.mob!.reps ?? 1) - 1) })} onInc={() => patch(b.id, { reps: (b.mob!.reps ?? 0) + 1 })} /></div>}
-                <div><FieldLabel>Séries</FieldLabel><Stepper value={String(b.mob!.sets)} onChange={v => patch(b.id, { sets: Math.max(1, parseInt(v) || 1) })} onDec={() => patch(b.id, { sets: Math.max(1, b.mob!.sets - 1) })} onInc={() => patch(b.id, { sets: b.mob!.sets + 1 })} /></div>
+                  ? <div><FieldLabel>{t('w3g.mob_hold')}</FieldLabel><Stepper value={String(b.mob!.holdSec)} unit="s" onChange={v => patch(b.id, { holdSec: Math.max(5, parseInt(v) || 0) })} onDec={() => patch(b.id, { holdSec: Math.max(5, (b.mob!.holdSec ?? 0) - 5) })} onInc={() => patch(b.id, { holdSec: (b.mob!.holdSec ?? 0) + 5 })} /></div>
+                  : <div><FieldLabel>{t('w3g.mob_reps')}</FieldLabel><Stepper value={String(b.mob!.reps ?? 0)} onChange={v => patch(b.id, { reps: Math.max(1, parseInt(v) || 1) })} onDec={() => patch(b.id, { reps: Math.max(1, (b.mob!.reps ?? 1) - 1) })} onInc={() => patch(b.id, { reps: (b.mob!.reps ?? 0) + 1 })} /></div>}
+                <div><FieldLabel>{t('w3g.mob_sets')}</FieldLabel><Stepper value={String(b.mob!.sets)} onChange={v => patch(b.id, { sets: Math.max(1, parseInt(v) || 1) })} onDec={() => patch(b.id, { sets: Math.max(1, b.mob!.sets - 1) })} onInc={() => patch(b.id, { sets: b.mob!.sets + 1 })} /></div>
                 <div>
-                  <FieldLabel>Côtés</FieldLabel>
+                  <FieldLabel>{t('w3g.mob_sides')}</FieldLabel>
                   <button type="button" onClick={() => patch(b.id, { perSide: !b.mob!.perSide })}
                     style={{ width: '100%', height: 38, borderRadius: 'var(--se-r-sm, 8px)', cursor: 'pointer', fontSize: 12, fontWeight: 600, border: `1px solid ${b.mob!.perSide ? accent : 'var(--se-rule)'}`, background: b.mob!.perSide ? `${accent}14` : 'transparent', color: b.mob!.perSide ? accent : 'var(--se-dim)' }}>
-                    {b.mob!.perSide ? 'Par côté' : 'Symétrique'}
+                    {b.mob!.perSide ? t('w3g.mob_per_side_btn') : t('w3g.mob_symmetric')}
                   </button>
                 </div>
               </div>
-              <p style={{ margin: '8px 2px 0', fontSize: 10, color: 'var(--se-dim)' }}>{itemDetail(b.mob!)} · ≈ {Math.round((b.durationMin ?? 0) * 10) / 10} min</p>
+              <p style={{ margin: '8px 2px 0', fontSize: 10, color: 'var(--se-dim)' }}>{itemDetail(b.mob!, t)} · ≈ {Math.round((b.durationMin ?? 0) * 10) / 10} min</p>
             </div>
           ))}
         </div>

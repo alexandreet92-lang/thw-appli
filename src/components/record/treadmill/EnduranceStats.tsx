@@ -4,6 +4,7 @@
 // vitesse (km/h, vélo/aviron/elliptique) ou /100m (natation), et dénivelé si
 // renseigné. Marche pour les blocs saisis à la main OU générés par l'IA.
 import { useMemo } from 'react'
+import { useI18n } from '@/lib/i18n'
 import { totalMin, totalDistance, toBars, type MBlock } from '@/components/planning/mobile/blocks'
 
 type Kind = 'run' | 'bike' | 'swim' | 'rowing' | 'elliptique'
@@ -25,6 +26,7 @@ function fmtPace(secPerUnit: number): string {
 }
 
 export function EnduranceStats({ blocks, sport, denivM }: { blocks: MBlock[]; sport: Kind; denivM: number }) {
+  const { t } = useI18n()
   const data = useMemo(() => {
     const min = totalMin(blocks)
     const distM = totalDistance(blocks, sport)
@@ -38,21 +40,21 @@ export function EnduranceStats({ blocks, sport, denivM }: { blocks: MBlock[]; sp
 
   // Métrique de rythme selon le sport
   let paceLabel = '', paceValue = '—'
-  if (sport === 'run') { paceLabel = 'Allure'; paceValue = km > 0 ? `${fmtPace(durS / km)}/km` : '—' }
-  else if (sport === 'swim') { paceLabel = 'Allure'; paceValue = distM > 0 ? `${fmtPace(durS / (distM / 100))}/100m` : '—' }
-  else { paceLabel = 'Vitesse'; paceValue = durS > 0 && km > 0 ? `${(km / (durS / 3600)).toFixed(1).replace('.', ',')} km/h` : '—' }
+  if (sport === 'run') { paceLabel = t('w3b.pace'); paceValue = km > 0 ? `${fmtPace(durS / km)}/km` : '—' }
+  else if (sport === 'swim') { paceLabel = t('w3b.pace'); paceValue = distM > 0 ? `${fmtPace(durS / (distM / 100))}/100m` : '—' }
+  else { paceLabel = t('w3b.speed'); paceValue = durS > 0 && km > 0 ? `${(km / (durS / 3600)).toFixed(1).replace('.', ',')} km/h` : '—' }
 
   const distDisplay = sport === 'swim'
     ? `${Math.round(distM)} m`
     : `${km.toFixed(2).replace('.', ',')} km`
 
   const cells: { label: string; value: string }[] = [
-    { label: 'Durée', value: `${Math.round(min)} min` },
-    { label: 'Distance', value: distDisplay },
+    { label: t('w3b.duration'), value: `${Math.round(min)} min` },
+    { label: t('w3b.distance'), value: distDisplay },
     { label: paceLabel, value: paceValue },
   ]
-  if (sport === 'bike') { const w = avgWatts(blocks); if (w != null) cells.push({ label: 'Watts moy.', value: `${w} W` }) }
-  if (denivM > 0) cells.push({ label: 'Dénivelé +', value: `${denivM} m` })
+  if (sport === 'bike') { const w = avgWatts(blocks); if (w != null) cells.push({ label: t('w3b.avg_watts'), value: `${w} W` }) }
+  if (denivM > 0) cells.push({ label: t('w3b.elevation_gain'), value: `${denivM} m` })
 
   return (
     <div style={{ display: 'flex', gap: 8, background: 'var(--bg-card2)', borderRadius: 14, padding: 14, marginTop: 4 }}>

@@ -22,6 +22,7 @@
 // ══════════════════════════════════════════════════════════════════
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { useI18n } from '@/lib/i18n'
 import { formatHM, parseGymExercise, type Session } from '@/app/planning/page'
 import { sportKeyFromType } from '@/components/icons/SportIcon'
 import { toBars, barHeightPct, treadmillProfile, type MBlock } from './mobile/blocks'
@@ -34,7 +35,7 @@ import { moveDef, type ComposedMove, type ComposedCircuit, type ComposedSport } 
 const WIDTH = 262
 
 // Une ligne d'exo composé : « Bike 7' @190w - 30'' récup », « Pompes ×15 ».
-function composedLineText(sport: ComposedSport, m: ComposedMove): string {
+function composedLineText(sport: ComposedSport, m: ComposedMove, t: (key: string, vars?: Record<string, string | number>) => string): string {
   const def = moveDef(sport, m.kind)
   const name = m.customName || def?.label || m.kind
   const parts: string[] = [name]
@@ -48,14 +49,15 @@ function composedLineText(sport: ComposedSport, m: ComposedMove): string {
   else if (m.speedKmh) parts.push(`@${m.speedKmh}km/h`)
   else if (m.paceMinKm) parts.push(`@${m.paceMinKm}/km`)
   else if (m.paceSec500) parts.push(`@${Math.floor(m.paceSec500 / 60)}:${String(m.paceSec500 % 60).padStart(2, '0')}/500`)
-  else if (m.speedLevel) parts.push(`niv ${m.speedLevel}`)
+  else if (m.speedLevel) parts.push(t('w3g.shp_level', { n: m.speedLevel }))
   if (m.weightKg) parts.push(`${m.weightKg} kg`)
   let line = parts.join(' ')
-  if (m.restAfterSec) line += ` - ${m.restAfterSec < 60 ? `${m.restAfterSec}''` : `${Math.round(m.restAfterSec / 60)}'`} récup`
+  if (m.restAfterSec) line += ` - ${m.restAfterSec < 60 ? `${m.restAfterSec}''` : `${Math.round(m.restAfterSec / 60)}'`} ${t('w3g.shp_recovery')}`
   return line
 }
 
 export function SessionHoverPreview({ session, anchor }: { session: Session; anchor: DOMRect }) {
+  const { t } = useI18n()
   const [mounted, setMounted] = useState(false)
   // Repères de zones du VRAI athlète (FTP réel, ex. 118 W) → hauteurs de barres
   // correctes au lieu du repli 200 W.
@@ -160,10 +162,10 @@ export function SessionHoverPreview({ session, anchor }: { session: Session; anc
       {/* 3a. Muscu : liste des exercices (pas de profil d'intensité pertinent) */}
       {isGym && blocks.length > 0 && (
         <div data-testid="shp-exercises" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <p style={sectionLabel}>Exercices</p>
+          <p style={sectionLabel}>{t('w3g.shp_exercises')}</p>
           {blocks.map((b, i) => {
             const ex = parseGymExercise(b)
-            const meta = [ex.sets && ex.reps ? `${ex.sets}×${ex.reps}` : (ex.sets ? `${ex.sets} séries` : ''), ex.charge ? `@${ex.charge}` : ''].filter(Boolean).join(' ')
+            const meta = [ex.sets && ex.reps ? `${ex.sets}×${ex.reps}` : (ex.sets ? t('w3g.shp_sets_count', { n: ex.sets }) : ''), ex.charge ? `@${ex.charge}` : ''].filter(Boolean).join(' ')
             return (
               <div key={i} style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
                 <span style={{ fontSize: 11.5, color: 'var(--text)', fontWeight: 600, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ex.nom}</span>
@@ -178,13 +180,13 @@ export function SessionHoverPreview({ session, anchor }: { session: Session; anc
           par des parenthèses avec ×N tours (comme demandé). */}
       {isComposed && (
         <div data-testid="shp-composed" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <p style={sectionLabel}>Détail</p>
+          <p style={sectionLabel}>{t('w3g.shp_detail')}</p>
           {composedCircuits.map((c, ci) => {
             const cm = composedMoves.filter(m => (m.circuitId ?? composedCircuits[0].id) === c.id)
             if (!cm.length) return null
             const rounds = Math.max(1, c.rounds)
             const lines = cm.map((m, i) => (
-              <p key={m.id || i} style={{ margin: 0, fontSize: 11, color: 'var(--text)', fontWeight: 600, lineHeight: 1.45 }}>{composedLineText(composedSport, m)}</p>
+              <p key={m.id || i} style={{ margin: 0, fontSize: 11, color: 'var(--text)', fontWeight: 600, lineHeight: 1.45 }}>{composedLineText(composedSport, m, t)}</p>
             ))
             if (rounds <= 1) return <div key={c.id}>{c.name && <p style={{ margin: '0 0 2px', fontSize: 10, fontWeight: 700, color: 'var(--text-dim)' }}>{c.name}</p>}{lines}</div>
             // Circuit répété : parenthèses gauche/droite + ×N
@@ -205,10 +207,10 @@ export function SessionHoverPreview({ session, anchor }: { session: Session; anc
       {/* 3b. Profil d'intensité — mêmes barres, mêmes hauteurs que le builder */}
       {!isGym && !isComposed && (
         <>
-          <p style={sectionLabel}>Profil d&apos;intensité</p>
+          <p style={sectionLabel}>{t('w3g.shp_intensity_profile')}</p>
           <div data-testid="shp-bars" style={{ height: 56, display: 'flex', alignItems: 'flex-end', gap: 1.5, borderBottom: '1px solid var(--border)', marginBottom: trace || elevProfile ? 10 : 0 }}>
             {bars.length === 0
-              ? <span style={{ fontSize: 10, color: 'var(--text-dim)', alignSelf: 'center', margin: '0 auto' }}>Aucun bloc</span>
+              ? <span style={{ fontSize: 10, color: 'var(--text-dim)', alignSelf: 'center', margin: '0 auto' }}>{t('w3g.shp_no_block')}</span>
               : bars.map(bar => (
                 <div key={bar.id} data-zone={bar.zone} data-km={bar.startKm ?? ''}
                   title={`Z${bar.zone}${bar.value ? ` · ${bar.value}` : ''} · ${Math.round(bar.min)}min`}
@@ -226,10 +228,10 @@ export function SessionHoverPreview({ session, anchor }: { session: Session; anc
       {/* 4. Mini-carte du parcours — vraie carte Mapbox (repli SVG sans token) */}
       {trace && (
         <>
-          <p style={sectionLabel}>Parcours</p>
+          <p style={sectionLabel}>{t('w3g.shp_route')}</p>
           {mapUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img data-testid="shp-map" src={mapUrl} alt="Carte du parcours" width={MAP_W} height={MAP_H}
+            <img data-testid="shp-map" src={mapUrl} alt={t('w3g.shp_map_alt')} width={MAP_W} height={MAP_H}
               style={{ display: 'block', width: MAP_W, height: MAP_H, objectFit: 'cover', borderRadius: 10, border: '1px solid var(--border)' }} />
           ) : (
             <svg data-testid="shp-map" width={MAP_W} height={MAP_H} viewBox={`0 0 ${MAP_W} ${MAP_H}`}
@@ -245,7 +247,7 @@ export function SessionHoverPreview({ session, anchor }: { session: Session; anc
       {/* 5. Profil altimétrique — même rendu que l'éditeur, statique */}
       {elevProfile && (
         <div data-testid="shp-elevation" style={{ marginTop: trace ? 10 : 0 }}>
-          <p style={sectionLabel}>Profil altimétrique</p>
+          <p style={sectionLabel}>{t('w3g.shp_elevation_profile')}</p>
           <RouteElevationProfile
             profile={elevProfile}
             totalKm={pd?.distance ?? undefined}
@@ -259,7 +261,7 @@ export function SessionHoverPreview({ session, anchor }: { session: Session; anc
       {/* 5b. Tapis : profil altimétrique reconstruit depuis la pente des blocs */}
       {showTread && (
         <div data-testid="shp-tread-elevation" style={{ marginTop: 10 }}>
-          <p style={sectionLabel}>Profil altimétrique · +{treadGain} m D+</p>
+          <p style={sectionLabel}>{t('w3g.shp_elevation_profile')} · +{treadGain} m D+</p>
           <RouteElevationProfile
             profile={treadProfile}
             totalKm={treadKm}

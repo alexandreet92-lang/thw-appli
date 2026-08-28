@@ -2,7 +2,7 @@
 import { useState, useRef, useEffect } from 'react'
 import type { BodyMeasurement, WeightMetric } from '@/hooks/useBodyMetrics'
 import { getMetricValue, computeTrendPerWeek } from '@/hooks/useBodyMetrics'
-import { currentLocale } from '@/lib/i18n'
+import { currentLocale, useI18n } from '@/lib/i18n'
 
 // ── Config ────────────────────────────────────────────────────────
 const METRIC_CONFIG: Record<WeightMetric, { label: string; unit: string; color: string; dec: number }> = {
@@ -38,6 +38,7 @@ interface Props {
 }
 
 export default function WeightChart({ measurements, heightCm, targetWeight }: Props) {
+  const { t } = useI18n()
   const [metric, setMetric] = useState<WeightMetric>('weight_kg')
   const [hover, setHover] = useState<number | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -113,8 +114,8 @@ export default function WeightChart({ measurements, heightCm, targetWeight }: Pr
                 opacity: disabled ? 0.4 : 1,
               }}
             >
-              {METRIC_CONFIG[m].label}
-              {m === 'bmi' && !heightCm ? ' (renseigner taille)' : ''}
+              {t(`w3h.metric_${m}`)}
+              {m === 'bmi' && !heightCm ? t('w3h.metric_need_height') : ''}
             </button>
           )
         })}
@@ -127,7 +128,7 @@ export default function WeightChart({ measurements, heightCm, targetWeight }: Pr
             fontSize: 11, fontWeight: 600, fontFamily: 'DM Mono,monospace',
             color: trendIsGood ? '#22C55E' : '#EF4444',
           }}>
-            {trend > 0 ? '▲' : '▼'} {Math.abs(trend).toFixed(1)} {cfg.unit || 'pt'}/sem
+            {trend > 0 ? '▲' : '▼'} {Math.abs(trend).toFixed(1)} {cfg.unit || 'pt'}{t('w3h.per_week')}
           </span>
         </div>
       )}
@@ -137,7 +138,7 @@ export default function WeightChart({ measurements, heightCm, targetWeight }: Pr
         <div style={{ overflowX: 'auto', height: SVG_H }} onMouseLeave={() => setHover(null)}>
           {n === 0 ? (
             <div style={{ height: SVG_H, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-dim)', fontSize: 13 }}>
-              Aucune donnee pour cette metrique
+              {t('w3h.no_data_metric')}
             </div>
           ) : (
             <svg width={svgW} height={SVG_H} style={{ display: 'block', userSelect: 'none' }}>
@@ -164,7 +165,7 @@ export default function WeightChart({ measurements, heightCm, targetWeight }: Pr
                   <line x1={PAD.l} y1={toY(targetWeight)} x2={svgW - PAD.r} y2={toY(targetWeight)}
                     stroke="#6B7280" strokeWidth={1} strokeDasharray="6 3" />
                   <text x={svgW - PAD.r + 3} y={toY(targetWeight) + 4}
-                    fill="#6B7280" fontSize={9} fontFamily="DM Sans,sans-serif">Objectif</text>
+                    fill="#6B7280" fontSize={9} fontFamily="DM Sans,sans-serif">{t('w3h.target')}</text>
                 </g>
               )}
               {/* Area + line */}

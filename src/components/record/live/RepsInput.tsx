@@ -2,6 +2,8 @@
 // Deux cartes de saisie (répétitions / charge) posées sur le fond d'effort.
 // Steppers ± et tap sur la valeur → pavé numérique. « PDC » tant que charge = 0
 // sur un exercice au poids du corps ; dès qu'on ajoute du poids, passe en kg.
+import { useI18n } from '@/lib/i18n'
+
 interface Props {
   reps: number
   kg: number
@@ -24,26 +26,27 @@ const stp: React.CSSProperties = {
 const cl: React.CSSProperties = { fontSize: 11, letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 800, opacity: 0.85 }
 
 export default function RepsInput(p: Props) {
+  const { t } = useI18n()
   return (
     <div style={{ display: 'flex', gap: 12, marginTop: 22, width: '100%', maxWidth: 350 }}>
       <div style={card}>
-        <span style={cl}>Répétitions</span>
+        <span style={cl}>{t('w3a.reps_label')}</span>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', justifyContent: 'center' }}>
-          <button aria-label="moins" style={stp} onClick={() => p.onNudgeReps(-1)}>−</button>
+          <button aria-label={t('w3a.minus')} style={stp} onClick={() => p.onNudgeReps(-1)}>−</button>
           <span onClick={() => p.onOpenPad('reps')} style={{ flex: 1, textAlign: 'center', fontSize: 48, fontWeight: 800, cursor: 'pointer', fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>{p.reps}</span>
-          <button aria-label="plus" style={stp} onClick={() => p.onNudgeReps(1)}>+</button>
+          <button aria-label={t('w3a.plus')} style={stp} onClick={() => p.onNudgeReps(1)}>+</button>
         </div>
-        <span style={{ fontSize: 11, fontWeight: 700, opacity: 0.7 }}>cible {p.targetReps}</span>
+        <span style={{ fontSize: 11, fontWeight: 700, opacity: 0.7 }}>{t('w3a.target_short')} {p.targetReps}</span>
       </div>
 
       <div style={card}>
-        <span style={cl}>Charge</span>
+        <span style={cl}>{t('w3a.load_label')}</span>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', justifyContent: 'center' }}>
-          <button aria-label="moins" style={{ ...stp, opacity: p.bodyweight ? 0.4 : 1 }} onClick={() => p.onNudgeKg(-1)}>−</button>
-          <span onClick={() => p.onOpenPad('kg')} style={{ flex: 1, textAlign: 'center', fontSize: p.bodyweight ? 30 : 48, fontWeight: 800, cursor: 'pointer', fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>{p.bodyweight ? 'PDC' : p.kg}</span>
-          <button aria-label="plus" style={stp} onClick={() => p.onNudgeKg(1)}>+</button>
+          <button aria-label={t('w3a.minus')} style={{ ...stp, opacity: p.bodyweight ? 0.4 : 1 }} onClick={() => p.onNudgeKg(-1)}>−</button>
+          <span onClick={() => p.onOpenPad('kg')} style={{ flex: 1, textAlign: 'center', fontSize: p.bodyweight ? 30 : 48, fontWeight: 800, cursor: 'pointer', fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>{p.bodyweight ? t('w3a.bodyweight_abbr') : p.kg}</span>
+          <button aria-label={t('w3a.plus')} style={stp} onClick={() => p.onNudgeKg(1)}>+</button>
         </div>
-        <span style={{ fontSize: 11, fontWeight: 700, opacity: 0.7 }}>{p.bodyweight ? 'poids du corps' : `cible ${p.targetKg} kg`}</span>
+        <span style={{ fontSize: 11, fontWeight: 700, opacity: 0.7 }}>{p.bodyweight ? t('w3a.bodyweight_full') : `${t('w3a.target_short')} ${p.targetKg} kg`}</span>
       </div>
     </div>
   )

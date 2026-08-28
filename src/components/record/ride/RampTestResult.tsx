@@ -9,6 +9,7 @@
 // enregistre dans le profil (page Performance mise à jour directement).
 // ══════════════════════════════════════════════════════════════════
 import { useMemo, useState } from 'react'
+import { useI18n } from '@/lib/i18n'
 import { createClient } from '@/lib/supabase/client'
 import { getCurrentUser } from '@/lib/auth/currentUser'
 import { computeRamp, computeCp20, type TestResult } from './rampTest'
@@ -40,6 +41,7 @@ function parseMMSS(v: string): number {
 }
 
 export default function RampTestResult({ mode, ramp, cp20AvgWatts, massKg, onDone }: Props) {
+  const { t } = useI18n()
   const [validated, setValidated] = useState(ramp?.validatedPaliers ?? 1)
   const [heldStr, setHeldStr] = useState(fmtMMSS(ramp?.heldSecOnFailed ?? 0))
   const [saving, setSaving] = useState(false)
@@ -98,29 +100,29 @@ export default function RampTestResult({ mode, ramp, cp20AvgWatts, massKg, onDon
     <div style={{ position: 'absolute', inset: 0, background: 'var(--bg)', overflowY: 'auto', padding: 'max(env(safe-area-inset-top), 20px) 18px 28px' }}>
       <div style={{ maxWidth: 460, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 14 }}>
         <div>
-          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 600, margin: '4px 0 2px', color: 'var(--text)' }}>Résultat du test</h2>
-          <p style={{ margin: 0, fontSize: 12.5, color: 'var(--text-mid)' }}>{mode === 'ramp' ? 'Ramp test — confirme ce que tu as tenu.' : 'CP20 — moyenne mesurée sur 20 min.'}</p>
+          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 600, margin: '4px 0 2px', color: 'var(--text)' }}>{t('w3b.test_result')}</h2>
+          <p style={{ margin: 0, fontSize: 12.5, color: 'var(--text-mid)' }}>{mode === 'ramp' ? t('w3b.ramp_confirm') : t('w3b.cp20_desc')}</p>
         </div>
 
         {mode === 'ramp' && ramp && (
           <div style={card}>
             <p style={{ margin: '0 0 12px', fontSize: 11.5, color: 'var(--text-mid)' }}>
-              Départ <b style={{ color: 'var(--text)' }}>{ramp.startW} W</b> · +{ramp.stepW} W toutes les {fmtMMSS(ramp.stepMin * 60)}
+              {t('w3b.depart')} <b style={{ color: 'var(--text)' }}>{ramp.startW} W</b> {t('w3b.ramp_cadence', { step: ramp.stepW, clock: fmtMMSS(ramp.stepMin * 60) })}
             </p>
             <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap' }}>
               <div>
-                <span style={lbl}>Paliers validés</span>
+                <span style={lbl}>{t('w3b.validated_steps')}</span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                   <button onClick={() => setValidated(n => Math.max(1, n - 1))} style={stepBtn}>−</button>
                   <input value={validated} inputMode="numeric" onChange={e => setValidated(Math.max(1, parseInt(e.target.value) || 1))} style={input} />
                   <button onClick={() => setValidated(n => n + 1)} style={stepBtn}>+</button>
                 </div>
-                <span style={{ fontSize: 10.5, color: 'var(--text-dim)', marginTop: 4, display: 'block' }}>= {ramp.startW + (Math.max(1, validated) - 1) * ramp.stepW} W tenu</span>
+                <span style={{ fontSize: 10.5, color: 'var(--text-dim)', marginTop: 4, display: 'block' }}>{t('w3b.held_at', { w: ramp.startW + (Math.max(1, validated) - 1) * ramp.stepW })}</span>
               </div>
               <div>
-                <span style={lbl}>Tenu au palier suivant</span>
+                <span style={lbl}>{t('w3b.held_next_step')}</span>
                 <input value={heldStr} onChange={e => setHeldStr(e.target.value)} placeholder="m:ss" style={{ ...input, width: 88 }} />
-                <span style={{ fontSize: 10.5, color: 'var(--text-dim)', marginTop: 4, display: 'block' }}>sur {ramp.startW + Math.max(1, validated) * ramp.stepW} W (échoué)</span>
+                <span style={{ fontSize: 10.5, color: 'var(--text-dim)', marginTop: 4, display: 'block' }}>{t('w3b.on_failed', { w: ramp.startW + Math.max(1, validated) * ramp.stepW })}</span>
               </div>
             </div>
           </div>
@@ -144,7 +146,7 @@ export default function RampTestResult({ mode, ramp, cp20AvgWatts, massKg, onDon
 
         {/* Zones estimées + SL1/SL2 */}
         <div style={card}>
-          <p style={{ margin: '0 0 10px', fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-dim)', fontWeight: 800 }}>Zones de puissance estimées</p>
+          <p style={{ margin: '0 0 10px', fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-dim)', fontWeight: 800 }}>{t('w3b.estimated_power_zones')}</p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
             {result.zones.map(z => (
               <div key={z.z} style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
@@ -164,12 +166,12 @@ export default function RampTestResult({ mode, ramp, cp20AvgWatts, massKg, onDon
 
         {/* Actions */}
         <div style={{ display: 'flex', gap: 10, marginTop: 2 }}>
-          <button onClick={onDone} style={{ padding: '13px 16px', borderRadius: 'var(--r-md)', background: 'var(--bg-card)', border: '1px solid var(--border-mid)', color: 'var(--text-mid)', fontSize: 13, fontWeight: 800, cursor: 'pointer' }}>Passer</button>
+          <button onClick={onDone} style={{ padding: '13px 16px', borderRadius: 'var(--r-md)', background: 'var(--bg-card)', border: '1px solid var(--border-mid)', color: 'var(--text-mid)', fontSize: 13, fontWeight: 800, cursor: 'pointer' }}>{t('w3b.skip')}</button>
           <button onClick={saved ? onDone : save} disabled={saving} style={{ flex: 1, padding: '13px 16px', borderRadius: 'var(--r-md)', background: 'var(--primary)', border: 'none', color: 'var(--on-primary)', fontSize: 14, fontWeight: 800, cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.6 : 1 }}>
-            {saved ? 'Enregistré ✓ · Fermer' : saving ? 'Enregistrement…' : 'Enregistrer dans mon profil'}
+            {saved ? t('w3b.saved_close') : saving ? t('w3b.saving') : t('w3b.save_to_profile')}
           </button>
         </div>
-        {saved && <p style={{ margin: 0, fontSize: 11.5, color: 'var(--text-mid)', textAlign: 'center' }}>FTP, zones et seuils mis à jour dans ta page Performance.</p>}
+        {saved && <p style={{ margin: 0, fontSize: 11.5, color: 'var(--text-mid)', textAlign: 'center' }}>{t('w3b.profile_updated')}</p>}
       </div>
     </div>
   )

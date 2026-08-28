@@ -9,10 +9,13 @@ import { getCoachThreads, getAthleteThreads, type Thread } from '@/lib/coach/mes
 import { MessageThread } from './MessageThread'
 import { GroupChat, NewGroupModal } from './GroupChat'
 import { listMyGroups, type GroupSummary } from '@/lib/messages/groups'
+import { useI18n, currentLocale } from '@/lib/i18n'
 
-const fmtWhen = (d: string) => { if (!d) return ''; const days = Math.floor((Date.now() - new Date(d).getTime()) / 86400_000); if (days <= 0) return "aujourd'hui"; if (days === 1) return 'hier'; if (days < 7) return `${days} j`; try { return new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) } catch { return '' } }
+type Translate = (key: string, vars?: Record<string, string | number>) => string
+const fmtWhen = (d: string, t: Translate) => { if (!d) return ''; const days = Math.floor((Date.now() - new Date(d).getTime()) / 86400_000); if (days <= 0) return t('w3d.today'); if (days === 1) return t('w3d.yesterday'); if (days < 7) return t('w3d.days_short', { n: days }); try { return new Date(d).toLocaleDateString(currentLocale(), { day: 'numeric', month: 'short' }) } catch { return '' } }
 
 export function MessagesView({ role, title, subtitle }: { role: 'coach' | 'athlete'; title: string; subtitle: string }) {
+  const { t } = useI18n()
   const [threads, setThreads] = useState<Thread[]>([])
   const [groups, setGroups] = useState<GroupSummary[]>([])
   const [loading, setLoading] = useState(true)
@@ -52,18 +55,18 @@ export function MessagesView({ role, title, subtitle }: { role: 'coach' | 'athle
   const selectedGroup = groups.find(g => g.id === selGroup) ?? null
   const card: React.CSSProperties = { borderRadius: 16, border: '1px solid var(--border)', background: 'var(--bg-card)' }
   const secLabel: React.CSSProperties = { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 13px 6px', fontSize: 10.5, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-dim)' }
-  const fmtGroupWhen = (d: string | null) => d ? fmtWhen(d) : ''
+  const fmtGroupWhen = (d: string | null) => d ? fmtWhen(d, t) : ''
 
   const groupsSection = (
     <div style={{ flexShrink: 0, borderBottom: '1px solid var(--border)' }}>
       <div style={secLabel}>
-        <span>Groupes</span>
-        <button onClick={() => setShowNew(true)} aria-label="Nouveau groupe" style={{ width: 22, height: 22, borderRadius: 7, border: 'none', background: 'color-mix(in srgb, var(--primary) 14%, transparent)', color: 'var(--primary)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <span>{t('w3d.groups')}</span>
+        <button onClick={() => setShowNew(true)} aria-label={t('w3d.new_group')} style={{ width: 22, height: 22, borderRadius: 7, border: 'none', background: 'color-mix(in srgb, var(--primary) 14%, transparent)', color: 'var(--primary)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14" /></svg>
         </button>
       </div>
       {groups.length === 0 ? (
-        <div style={{ fontSize: 12, color: 'var(--text-dim)', padding: '2px 13px 12px' }}>Crée un groupe avec le +.</div>
+        <div style={{ fontSize: 12, color: 'var(--text-dim)', padding: '2px 13px 12px' }}>{t('w3d.create_group_hint')}</div>
       ) : groups.map(g => (
         <button key={g.id} onClick={() => { setSelGroup(g.id); setSelId(null) }}
           style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '9px 13px', border: 'none', background: selGroup === g.id ? 'var(--bg-card2)' : 'transparent', cursor: 'pointer', textAlign: 'left', width: '100%', fontFamily: 'var(--font-body)' }}>
@@ -75,7 +78,7 @@ export function MessagesView({ role, title, subtitle }: { role: 'coach' | 'athle
               <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{g.name}</span>
               {g.lastAt && <span style={{ fontSize: 10.5, color: 'var(--text-dim)', flexShrink: 0 }}>{fmtGroupWhen(g.lastAt)}</span>}
             </span>
-            <span style={{ display: 'block', fontSize: 12, color: 'var(--text-dim)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{g.lastBody || `${g.memberCount} membre${g.memberCount > 1 ? 's' : ''}`}</span>
+            <span style={{ display: 'block', fontSize: 12, color: 'var(--text-dim)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{g.lastBody || (g.memberCount > 1 ? t('w3d.members_count', { n: g.memberCount }) : t('w3d.member_count', { n: g.memberCount }))}</span>
           </span>
         </button>
       ))}
@@ -86,25 +89,25 @@ export function MessagesView({ role, title, subtitle }: { role: 'coach' | 'athle
     <div style={{ ...card, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
       {groupsSection}
       {loading ? (
-        <p style={{ fontSize: 13, color: 'var(--text-dim)', padding: 16 }}>Chargement…</p>
+        <p style={{ fontSize: 13, color: 'var(--text-dim)', padding: 16 }}>{t('w3d.loading')}</p>
       ) : threads.length === 0 ? (
         <p style={{ fontSize: 13, color: 'var(--text-dim)', padding: 20, textAlign: 'center' }}>
-          {role === 'coach' ? 'Aucun athlète. Invite-en un depuis « Athlètes ».' : 'Aucun coach. Ajoute-en un via « Espace coach → Mes coachs ».'}
+          {role === 'coach' ? t('w3d.no_athlete_invite') : t('w3d.no_coach_add')}
         </p>
-      ) : threads.map(t => (
-        <button key={t.otherId} onClick={() => { setSelId(t.otherId); setSelGroup(null) }}
-          style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '11px 13px', border: 'none', borderBottom: '1px solid var(--border)', background: sel?.otherId === t.otherId ? 'var(--bg-alt)' : 'transparent', cursor: 'pointer', textAlign: 'left', width: '100%', fontFamily: 'var(--font-body)' }}>
+      ) : threads.map(th => (
+        <button key={th.otherId} onClick={() => { setSelId(th.otherId); setSelGroup(null) }}
+          style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '11px 13px', border: 'none', borderBottom: '1px solid var(--border)', background: sel?.otherId === th.otherId ? 'var(--bg-alt)' : 'transparent', cursor: 'pointer', textAlign: 'left', width: '100%', fontFamily: 'var(--font-body)' }}>
           <span style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--bg-alt)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0, color: 'var(--text-dim)', fontWeight: 800, position: 'relative' }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            {t.avatar ? <img src={t.avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : t.name.slice(0, 1).toUpperCase()}
-            {t.unread > 0 && <span style={{ position: 'absolute', top: -2, right: -2, minWidth: 16, height: 16, padding: '0 4px', borderRadius: 8, background: '#EF4444', color: '#fff', fontSize: 9, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 0 2px var(--bg-card)' }}>{t.unread > 9 ? '9+' : t.unread}</span>}
+            {th.avatar ? <img src={th.avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : th.name.slice(0, 1).toUpperCase()}
+            {th.unread > 0 && <span style={{ position: 'absolute', top: -2, right: -2, minWidth: 16, height: 16, padding: '0 4px', borderRadius: 8, background: '#EF4444', color: '#fff', fontSize: 9, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 0 2px var(--bg-card)' }}>{th.unread > 9 ? '9+' : th.unread}</span>}
           </span>
           <span style={{ flex: 1, minWidth: 0 }}>
             <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.name}</span>
-              {t.lastAt && <span style={{ fontSize: 10.5, color: 'var(--text-dim)', flexShrink: 0 }}>{fmtWhen(t.lastAt)}</span>}
+              <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{th.name}</span>
+              {th.lastAt && <span style={{ fontSize: 10.5, color: 'var(--text-dim)', flexShrink: 0 }}>{fmtWhen(th.lastAt, t)}</span>}
             </span>
-            <span style={{ display: 'block', fontSize: 12, color: 'var(--text-dim)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.lastBody || 'Démarrer la conversation'}</span>
+            <span style={{ display: 'block', fontSize: 12, color: 'var(--text-dim)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{th.lastBody || t('w3d.start_conversation')}</span>
           </span>
         </button>
       ))}
@@ -115,7 +118,7 @@ export function MessagesView({ role, title, subtitle }: { role: 'coach' | 'athle
     <div style={{ ...card, overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
       <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderBottom: '1px solid var(--border)' }}>
         {isNarrow && (
-          <button onClick={() => setSelId(null)} aria-label="Retour" style={{ width: 30, height: 30, borderRadius: 9, border: 'none', background: 'var(--bg-alt)', color: 'var(--text-mid)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <button onClick={() => setSelId(null)} aria-label={t('w3d.back')} style={{ width: 30, height: 30, borderRadius: 9, border: 'none', background: 'var(--bg-alt)', color: 'var(--text-mid)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
           </button>
         )}
@@ -146,7 +149,7 @@ export function MessagesView({ role, title, subtitle }: { role: 'coach' | 'athle
       ) : (
         <div style={{ flex: 1, minHeight: 0, display: 'grid', gridTemplateColumns: '320px 1fr', gap: 14 }}>
           <div style={{ minHeight: 0, overflowY: 'auto' }}>{listPane}</div>
-          {rightPane ?? <div style={{ ...card, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-dim)', fontSize: 14 }}>Choisis une conversation.</div>}
+          {rightPane ?? <div style={{ ...card, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-dim)', fontSize: 14 }}>{t('w3d.choose_conversation')}</div>}
         </div>
       )}
       {showNew && <NewGroupModal asAdmin={role === 'coach'} onClose={() => setShowNew(false)} onCreated={(id) => { setShowNew(false); setSelGroup(id); setSelId(null); void loadGroups() }} />}

@@ -11,16 +11,19 @@ import type {
 } from 'livekit-client'
 import type { CallTarget, Tile } from './types'
 import { targetKey } from './types'
+import { useI18n } from '@/lib/i18n'
 
 type Status = 'idle' | 'connecting' | 'connected' | 'error' | 'unconfigured' | 'forbidden'
+type Tr = (key: string, vars?: Record<string, string | number>) => string
 
 const CAMERA = 'camera' as Track.Source
 const SCREEN = 'screen_share' as Track.Source
 
-function tilesFor(room: Room): { screens: Tile[]; people: Tile[] } {
+function tilesFor(room: Room, t: Tr): { screens: Tile[]; people: Tile[] } {
   const screens: Tile[] = [], people: Tile[] = []
+  const fallbackName = t('w3e.member')
   const add = (p: Participant, isLocal: boolean) => {
-    const name = (p.name || 'Membre').trim() || 'Membre'
+    const name = (p.name || fallbackName).trim() || fallbackName
     const cam = p.getTrackPublication(CAMERA)
     people.push({
       key: `${p.identity}:cam`, identity: p.identity, name, isLocal,
@@ -76,6 +79,7 @@ export function useCall(): CallCtx {
 }
 
 export function CallProvider({ children }: { children: ReactNode }) {
+  const { t } = useI18n()
   const [status, setStatus] = useState<Status>('idle')
   const [title, setTitle] = useState('')
   const [tKey, setTKey] = useState<string | null>(null)
@@ -97,7 +101,7 @@ export function CallProvider({ children }: { children: ReactNode }) {
   const audioElsRef = useRef<Map<RemoteTrack, HTMLMediaElement>>(new Map())
   const startTokenRef = useRef(0)
 
-  const bump = useCallback(() => setTick(t => t + 1), [])
+  const bump = useCallback(() => setTick(v => v + 1), [])
 
   const detachAllAudio = useCallback(() => {
     for (const el of audioElsRef.current.values()) el.remove()
@@ -114,7 +118,7 @@ export function CallProvider({ children }: { children: ReactNode }) {
     setMicOn(true); setCamOn(false); setScreenOn(false); setBlurOn(false); setNeedAudioTap(false); setNotice(null); setErrDetail(null)
   }, [detachAllAudio])
 
-  const start = useCallback((target: CallTarget, t: string) => {
+  const start = useCallback((target: CallTarget, callTitle: string) => {
     const key = targetKey(target)
     // Déjà dans cet appel → on ré-agrandit simplement.
     if (roomRef.current && tKey === key) { setMinimized(false); return }
@@ -123,7 +127,7 @@ export function CallProvider({ children }: { children: ReactNode }) {
 
     const myToken = ++startTokenRef.current
     const alive = () => startTokenRef.current === myToken
-    setStatus('connecting'); setTitle(t); setTKey(key); setMinimized(false)
+    setStatus('connecting'); setTitle(callTitle); setTKey(key); setMinimized(false)
     setNotice(null); setErrDetail(null); setMicOn(true); setCamOn(false); setScreenOn(false)
 
     void (async () => {
@@ -137,9 +141,9 @@ export function CallProvider({ children }: { children: ReactNode }) {
         if (res.status === 403) { setStatus('forbidden'); return }
         const data = (await res.json().catch(() => ({}))) as { token?: string; url?: string; error?: string }
         if (!res.ok) { setErrDetail(data.error ?? `HTTP ${res.status}`); setStatus('error'); return }
-        if (!data.token || !data.url) { setErrDetail('Jeton/URL manquant'); setStatus('error'); return }
+        if (!data.token || !data.url) { setErrDetail(t('w3e.token_url_missing')); setStatus('error'); return }
         token = data.token; url = data.url
-      } catch (e) { if (alive()) { setErrDetail(e instanceof Error ? e.message : 'réseau'); setStatus('error') } return }
+      } catch (e) { if (alive()) { setErrDetail(e instanceof Error ? e.message : t('w3e.network')); setStatus('error') } return }
 
       try {
         const { Room, RoomEvent, Track, DisconnectReason } = await import('livekit-client')
@@ -171,15 +175,15 @@ export function CallProvider({ children }: { children: ReactNode }) {
           // pour diagnostic au lieu de retomber silencieusement sur l'accueil.
           if (roomRef.current !== room) return
           roomRef.current = null; detachAllAudio()
-          const rn = reason != null ? (DisconnectReason[reason] ?? String(reason)) : 'inconnue'
-          setErrDetail(`déconnecté par le serveur (${rn})`)
+          const rn = reason != null ? (DisconnectReason[reason] ?? String(reason)) : t('w3e.unknown')
+          setErrDetail(t('w3e.disconnected_by_server', { reason: rn }))
           setStatus('error'); setMinimized(false); setMicOn(true); setCamOn(false); setScreenOn(false); setNeedAudioTap(false)
         })
 
         await room.connect(url, token)
         if (!isThis()) { void room.disconnect(); return }
         try { await room.localParticipant.setMicrophoneEnabled(true); setMicOn(true) }
-        catch { setMicOn(false); setNotice('Micro non autorisé — tu es en écoute seule.') }
+        catch { setMicOn(false); setNotice(t('w3e.mic_denied_listen_only')) }
         if (!isThis()) { void room.disconnect(); return }
         setStatus('connected'); setNeedAudioTap(!room.canPlaybackAudio); bump()
         // Premier arrivé dans un canal → prévient les membres de l'espace.
@@ -190,21 +194,21 @@ export function CallProvider({ children }: { children: ReactNode }) {
         }
       } catch (e) {
         const r = roomRef.current; roomRef.current = null; if (r) void r.disconnect(); detachAllAudio()
-        if (alive()) { setErrDetail(e instanceof Error ? e.message : 'connexion média'); setStatus('error') }
+        if (alive()) { setErrDetail(e instanceof Error ? e.message : t('w3e.media_connection')); setStatus('error') }
       }
     })()
-  }, [tKey, detachAllAudio, bump, leave])
+  }, [tKey, detachAllAudio, bump, leave, t])
 
   const toggleMic = useCallback(() => {
     const room = roomRef.current; if (!room) return
     const next = !micOn
-    void room.localParticipant.setMicrophoneEnabled(next).then(() => { setMicOn(next); if (next) setNotice(null); bump() }).catch(() => setNotice('Micro non autorisé.'))
-  }, [micOn, bump])
+    void room.localParticipant.setMicrophoneEnabled(next).then(() => { setMicOn(next); if (next) setNotice(null); bump() }).catch(() => setNotice(t('w3e.mic_denied')))
+  }, [micOn, bump, t])
   const toggleCam = useCallback(() => {
     const room = roomRef.current; if (!room) return
     const next = !camOn
-    void room.localParticipant.setCameraEnabled(next).then(() => { setCamOn(next); bump() }).catch(() => setNotice('Caméra non autorisée.'))
-  }, [camOn, bump])
+    void room.localParticipant.setCameraEnabled(next).then(() => { setCamOn(next); bump() }).catch(() => setNotice(t('w3e.cam_denied')))
+  }, [camOn, bump, t])
   const toggleScreen = useCallback(() => {
     const room = roomRef.current; if (!room) return
     const next = !screenOn
@@ -212,8 +216,8 @@ export function CallProvider({ children }: { children: ReactNode }) {
     const opts = next
       ? { audio: true, resolution: { width: 1920, height: 1080, frameRate: 15 }, contentHint: 'detail' as const, selfBrowserSurface: 'exclude' as const }
       : undefined
-    void room.localParticipant.setScreenShareEnabled(next, opts).then(() => { setScreenOn(next); bump() }).catch(() => { if (next) setNotice('Partage d\'écran annulé ou indisponible.') })
-  }, [screenOn, bump])
+    void room.localParticipant.setScreenShareEnabled(next, opts).then(() => { setScreenOn(next); bump() }).catch(() => { if (next) setNotice(t('w3e.screen_share_unavailable')) })
+  }, [screenOn, bump, t])
   const enableAudio = useCallback(() => {
     const room = roomRef.current; if (!room) return
     void room.startAudio().then(() => setNeedAudioTap(!room.canPlaybackAudio)).catch(() => {})
@@ -226,7 +230,7 @@ export function CallProvider({ children }: { children: ReactNode }) {
         if (next && !camOn) { await room.localParticipant.setCameraEnabled(true); setCamOn(true) }
         const pub = room.localParticipant.getTrackPublication('camera' as Track.Source)
         const track = pub?.videoTrack as LocalVideoTrack | undefined
-        if (!track) { setNotice('Active la caméra pour le flou.'); return }
+        if (!track) { setNotice(t('w3e.enable_cam_for_blur')); return }
         if (next) {
           const { BackgroundBlur } = await import('@livekit/track-processors')
           await track.setProcessor(BackgroundBlur(10))
@@ -234,9 +238,9 @@ export function CallProvider({ children }: { children: ReactNode }) {
           await track.stopProcessor()
         }
         setBlurOn(next); bump()
-      } catch { setNotice('Flou d\'arrière-plan indisponible sur cet appareil.') }
+      } catch { setNotice(t('w3e.blur_unavailable')) }
     })()
-  }, [blurOn, camOn, bump])
+  }, [blurOn, camOn, bump, t])
   const refreshDevices = useCallback(() => {
     void (async () => {
       try {
@@ -250,7 +254,7 @@ export function CallProvider({ children }: { children: ReactNode }) {
 
   const minimize = useCallback(() => setMinimized(true), [])
   const expand = useCallback(() => setMinimized(false), [])
-  const isTarget = useCallback((t: CallTarget) => tKey === targetKey(t), [tKey])
+  const isTarget = useCallback((target: CallTarget) => tKey === targetKey(target), [tKey])
   const registerFull = useCallback(() => {
     fullCount.current++; setShowingFull(true)
     return () => { fullCount.current = Math.max(0, fullCount.current - 1); if (fullCount.current === 0) setShowingFull(false) }
@@ -258,7 +262,7 @@ export function CallProvider({ children }: { children: ReactNode }) {
 
   const active = status !== 'idle'
   const room = roomRef.current
-  const { screens, people } = (status === 'connected' && room) ? tilesFor(room) : { screens: [], people: [] }
+  const { screens, people } = (status === 'connected' && room) ? tilesFor(room, t) : { screens: [], people: [] }
   const channelId = tKey && tKey.startsWith('c:') ? tKey.slice(2) : null
 
   const value: CallCtx = {

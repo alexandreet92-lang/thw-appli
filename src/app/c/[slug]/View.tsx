@@ -12,8 +12,10 @@ import { getCoachProfileBySlug, requestCoaching, myRequestTo, type CoachProfile,
 import { listCoachPublishedPrograms, type CoachProgram } from '@/lib/coach/programs'
 import { getSocialCounts, amIFollowing, toggleFollow, type SocialCounts } from '@/lib/social/follows'
 import CoachShowcase from '@/components/coach/CoachShowcase'
+import { useI18n } from '@/lib/i18n'
 
 export default function CoachVitrine() {
+  const { t } = useI18n()
   const slug = String(useParams()?.slug ?? '')
   const [profile, setProfile] = useState<CoachProfile | null>(null)
   const [programs, setPrograms] = useState<CoachProgram[]>([])
@@ -52,7 +54,7 @@ export default function CoachVitrine() {
       setFollowing(now)
       setCounts(c => c ? { ...c, followers: Math.max(0, c.followers + (now ? 1 : -1)) } : c)
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'Action impossible.')
+      alert(e instanceof Error ? e.message : t('w3e.action_failed'))
     } finally { setFollowBusy(false) }
   }
 
@@ -63,7 +65,7 @@ export default function CoachVitrine() {
       await requestCoaching(profile.coach_id, msg.trim())
       setSent(true); setAsking(false)
     } catch (e) {
-      setErr(e instanceof Error ? e.message : 'Envoi impossible.')
+      setErr(e instanceof Error ? e.message : t('w3e.send_failed'))
     } finally { setSending(false) }
   }
 
@@ -74,20 +76,20 @@ export default function CoachVitrine() {
     return (
       <div style={{ ...pageWrap, textAlign: 'center' }}>
         <div style={card}>
-          <p style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 600, color: 'var(--text)', margin: 0 }}>Vitrine introuvable</p>
-          <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-mid)', margin: '8px 0 20px' }}>Ce coach n’a pas (encore) de page publique.</p>
-          <Link href="/coaches" style={ctaGhost}>Voir les coachs</Link>
+          <p style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 600, color: 'var(--text)', margin: 0 }}>{t('w3e.showcase_not_found')}</p>
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-mid)', margin: '8px 0 20px' }}>{t('w3e.coach_no_public_page')}</p>
+          <Link href="/coaches" style={ctaGhost}>{t('w3e.see_coaches')}</Link>
         </div>
       </div>
     )
   }
 
-  const name = profile.display_name || 'Coach'
+  const name = profile.display_name || t('w3e.coach')
   const accepted = existing?.status === 'accepted'
   const pending = existing?.status === 'pending' || sent
 
   const coachingBtn = profile.accepting_requests && !accepted && !pending && !asking
-    ? <button onClick={() => setAsking(true)} style={{ ...ctaPrimary, height: 42, fontSize: 14 }}>Demander un coaching</button>
+    ? <button onClick={() => setAsking(true)} style={{ ...ctaPrimary, height: 42, fontSize: 14 }}>{t('w3e.request_coaching')}</button>
     : null
 
   return (
@@ -104,21 +106,21 @@ export default function CoachVitrine() {
         {(accepted || pending || asking || !profile.accepting_requests) && (
           <div style={{ ...card, marginTop: 16 }}>
             {accepted ? (
-              <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--primary)', fontWeight: 600, margin: 0 }}>Tu es coaché·e par {name}.</p>
+              <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--primary)', fontWeight: 600, margin: 0 }}>{t('w3e.you_are_coached_by', { name })}</p>
             ) : pending ? (
-              <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-mid)', margin: 0 }}>Demande envoyée — en attente de réponse.</p>
+              <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-mid)', margin: 0 }}>{t('w3e.request_sent_pending')}</p>
             ) : !profile.accepting_requests ? (
-              <p style={{ fontFamily: 'var(--font-body)', fontSize: 13.5, color: 'var(--text-dim)', margin: 0 }}>Ce coach ne prend pas de nouvelles demandes pour le moment.</p>
+              <p style={{ fontFamily: 'var(--font-body)', fontSize: 13.5, color: 'var(--text-dim)', margin: 0 }}>{t('w3e.coach_not_accepting')}</p>
             ) : (
               <div style={{ maxWidth: 460 }}>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 600, color: 'var(--text)', marginBottom: 10 }}>Demander un coaching</div>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 600, color: 'var(--text)', marginBottom: 10 }}>{t('w3e.request_coaching')}</div>
                 <textarea value={msg} onChange={e => setMsg(e.target.value)} rows={3} autoFocus
-                  placeholder="Présente-toi en deux mots : ton objectif, ton niveau…"
+                  placeholder={t('w3e.coaching_placeholder')}
                   style={{ width: '100%', boxSizing: 'border-box', padding: '12px 14px', borderRadius: 'var(--r-md)', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontFamily: 'var(--font-body)', fontSize: 14, outline: 'none', resize: 'vertical' }} />
-                {err && <p style={{ fontFamily: 'var(--font-body)', fontSize: 12.5, color: 'var(--danger, #ef4444)', margin: '8px 2px 0' }}>{err} {err.toLowerCase().includes('connecte') && <Link href="/auth" style={{ color: 'var(--primary)', fontWeight: 700 }}>Se connecter</Link>}</p>}
+                {err && <p style={{ fontFamily: 'var(--font-body)', fontSize: 12.5, color: 'var(--danger, #ef4444)', margin: '8px 2px 0' }}>{err} {err.toLowerCase().includes('connecte') && <Link href="/auth" style={{ color: 'var(--primary)', fontWeight: 700 }}>{t('w3e.sign_in')}</Link>}</p>}
                 <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
-                  <button onClick={send} disabled={sending} style={{ ...ctaPrimary, flex: 1, opacity: sending ? 0.6 : 1 }}>{sending ? 'Envoi…' : 'Envoyer la demande'}</button>
-                  <button onClick={() => setAsking(false)} style={ctaGhost}>Annuler</button>
+                  <button onClick={send} disabled={sending} style={{ ...ctaPrimary, flex: 1, opacity: sending ? 0.6 : 1 }}>{sending ? t('w3e.sending') : t('w3e.send_request')}</button>
+                  <button onClick={() => setAsking(false)} style={ctaGhost}>{t('w3e.cancel')}</button>
                 </div>
               </div>
             )}
@@ -127,7 +129,7 @@ export default function CoachVitrine() {
       </div>
 
       <p style={{ fontFamily: 'var(--font-body)', fontSize: 11.5, color: 'var(--text-dim)', textAlign: 'center', marginTop: 20 }}>
-        Propulsé par <Link href="/" style={{ color: 'var(--text-mid)', fontWeight: 700, textDecoration: 'none' }}>Hybrid</Link>
+        {t('w3e.powered_by')} <Link href="/" style={{ color: 'var(--text-mid)', fontWeight: 700, textDecoration: 'none' }}>Hybrid</Link>
       </p>
     </div>
   )

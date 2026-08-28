@@ -10,6 +10,7 @@ import { sportColor, sportLabel } from '@/components/recovery/helpers'
 import { ActivityMapCard } from '@/components/activity/ActivityMapCard'
 import { ElevationSvg } from './activityViz'
 import type { ActivityRef } from '@/types/community'
+import { useI18n } from '@/lib/i18n'
 
 const FB = 'var(--font-body)', FD = 'var(--font-display)'
 
@@ -32,6 +33,7 @@ function fmtDate(iso: string): string {
 }
 
 export function ActivityDetailPanel({ activity, onClose }: { activity: ActivityRef; onClose: () => void }) {
+  const { t } = useI18n()
   const [mounted, setMounted] = useState(false)
   useEffect(() => { setMounted(true) }, [])
   useEffect(() => {
@@ -42,14 +44,14 @@ export function ActivityDetailPanel({ activity, onClose }: { activity: ActivityR
 
   const col = sportColor(activity.sport)
   const stats: { label: string; value: string }[] = []
-  const d = fmtDistance(activity.distanceM); if (d) stats.push({ label: 'Distance', value: d })
-  const du = fmtDuration(activity.durationS); if (du) stats.push({ label: 'Durée', value: du })
-  const p = fmtPace(activity.avgPaceSKm); if (p) stats.push({ label: 'Allure moy.', value: p })
-  if (activity.elevGainM && activity.elevGainM > 0) stats.push({ label: 'Dénivelé +', value: `${Math.round(activity.elevGainM)} m` })
-  if (activity.avgHr) stats.push({ label: 'FC moy.', value: `${Math.round(activity.avgHr)} bpm` })
+  const d = fmtDistance(activity.distanceM); if (d) stats.push({ label: t('w3e.stat_distance'), value: d })
+  const du = fmtDuration(activity.durationS); if (du) stats.push({ label: t('w3e.stat_duration'), value: du })
+  const p = fmtPace(activity.avgPaceSKm); if (p) stats.push({ label: t('w3e.stat_avg_pace'), value: p })
+  if (activity.elevGainM && activity.elevGainM > 0) stats.push({ label: t('w3e.stat_elev_gain'), value: `${Math.round(activity.elevGainM)} m` })
+  if (activity.avgHr) stats.push({ label: t('w3e.stat_avg_hr'), value: `${Math.round(activity.avgHr)} bpm` })
   if (activity.tss) stats.push({ label: 'TSS', value: `${Math.round(activity.tss)}` })
-  if (activity.difficulty != null) stats.push({ label: 'Difficulté', value: `${activity.difficulty}/10` })
-  if (activity.feeling != null) stats.push({ label: 'Ressenti', value: `${activity.feeling}/5` })
+  if (activity.difficulty != null) stats.push({ label: t('w3e.stat_difficulty'), value: `${activity.difficulty}/10` })
+  if (activity.feeling != null) stats.push({ label: t('w3e.stat_feeling'), value: `${activity.feeling}/5` })
 
   const panel = (
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'color-mix(in srgb, var(--bg) 45%, transparent)', backdropFilter: 'blur(2px)', zIndex: 1100, display: 'flex', justifyContent: 'flex-end' }}>
@@ -60,12 +62,12 @@ export function ActivityDetailPanel({ activity, onClose }: { activity: ActivityR
           <span style={{ width: 3, alignSelf: 'stretch', borderRadius: 3, background: col, flexShrink: 0 }} />
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginBottom: 2 }}>
-              <span style={{ fontFamily: FB, fontSize: 10.5, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-mid)' }}>{sportLabel(activity.sport)}{activity.isRace ? ' · Course' : ''}</span>
+              <span style={{ fontFamily: FB, fontSize: 10.5, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-mid)' }}>{sportLabel(activity.sport)}{activity.isRace ? ` · ${t('w3e.race')}` : ''}</span>
             </div>
             <h2 style={{ fontFamily: FD, fontSize: 19, fontWeight: 600, color: 'var(--text)', margin: 0 }}>{activity.title || sportLabel(activity.sport)}</h2>
             <p style={{ margin: '2px 0 0', fontFamily: FB, fontSize: 12, color: 'var(--text-dim)' }}>{fmtDate(activity.startedAt)}</p>
           </div>
-          <button onClick={onClose} aria-label="Fermer" style={{ width: 30, height: 30, flexShrink: 0, border: 'none', borderRadius: '50%', background: 'var(--surface-neutral)', color: 'var(--text-mid)', cursor: 'pointer', fontSize: 16 }}>×</button>
+          <button onClick={onClose} aria-label={t('w3e.close')} style={{ width: 30, height: 30, flexShrink: 0, border: 'none', borderRadius: '50%', background: 'var(--surface-neutral)', color: 'var(--text-mid)', cursor: 'pointer', fontSize: 16 }}>×</button>
         </div>
 
         <div style={{ padding: '0 var(--space-5) var(--space-8)', display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
@@ -76,7 +78,7 @@ export function ActivityDetailPanel({ activity, onClose }: { activity: ActivityR
           )}
           {activity.elevation && activity.elevation.length > 1 && (
             <div>
-              <div style={{ fontFamily: FB, fontSize: 10.5, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-dim)', marginBottom: 4 }}>Profil altimétrique</div>
+              <div style={{ fontFamily: FB, fontSize: 10.5, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-dim)', marginBottom: 4 }}>{t('w3e.elevation_profile')}</div>
               <ElevationSvg elevation={activity.elevation} height={72} />
             </div>
           )}
@@ -91,7 +93,7 @@ export function ActivityDetailPanel({ activity, onClose }: { activity: ActivityR
             </div>
           )}
           {!activity.polyline && !activity.elevation && stats.length === 0 && (
-            <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-mid)' }}>Pas de données détaillées pour cette activité.</p>
+            <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-mid)' }}>{t('w3e.no_detailed_data')}</p>
           )}
         </div>
       </div>

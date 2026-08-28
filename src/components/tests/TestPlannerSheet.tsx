@@ -6,6 +6,7 @@
 // payload prêt à insérer dans planned_sessions.
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
+import { useI18n } from '@/lib/i18n'
 import { IconX, IconChevronRight, IconArrowLeft } from '@tabler/icons-react'
 import { TESTS, PROTOCOLS, DIFFICULTY_COLOR, TEST_SPORT_TO_PLANNING, type TestDef } from '@/lib/tests/protocols'
 import type { TestSport } from '@/app/performance/testTypes'
@@ -33,6 +34,7 @@ export default function TestPlannerSheet({ dateLabel, onClose, onConfirm }: {
   onClose: () => void
   onConfirm: (p: TestPlanPayload) => Promise<void> | void
 }) {
+  const { t } = useI18n()
   const [sport, setSport] = useState<TestSport>('running')
   const [open, setOpen] = useState<TestDef | null>(null)
   const [saving, setSaving] = useState(false)
@@ -46,10 +48,10 @@ export default function TestPlannerSheet({ dateLabel, onClose, onConfirm }: {
       const durMin = parseInt(String(open.duration).match(/\d+/)?.[0] ?? '', 10) || 30
       const p = PROTOCOLS[open.id]
       const notes = p
-        ? `Test — ${open.name}. ${p.objectif}\nÉtapes : ${p.etapes.join(' · ')}`
-        : `Test — ${open.name}. ${open.desc}`
+        ? `${t('w3g.test_note_prefix', { name: open.name })} ${p.objectif}\n${t('w3g.test_note_steps')} ${p.etapes.join(' · ')}`
+        : `${t('w3g.test_note_prefix', { name: open.name })} ${open.desc}`
       const intensity: TestPlanPayload['intensity'] = open.difficulty === 'Maximal' ? 'high' : open.difficulty === 'Intense' ? 'medium' : 'low'
-      await onConfirm({ sport: TEST_SPORT_TO_PLANNING[sport], testId: open.id, title: `Test · ${open.name}`, durationMin: durMin, intensity, notes })
+      await onConfirm({ sport: TEST_SPORT_TO_PLANNING[sport], testId: open.id, title: t('w3g.test_title', { name: open.name }), durationMin: durMin, intensity, notes })
       onClose()
     } finally { setSaving(false) }
   }
@@ -65,12 +67,12 @@ export default function TestPlannerSheet({ dateLabel, onClose, onConfirm }: {
         <div style={{ width: 40, height: 4, borderRadius: 4, background: 'var(--border-mid)', margin: '10px auto 0', flexShrink: 0 }} />
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '12px 22px 14px', flexShrink: 0, borderBottom: '1px solid var(--border)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-            {open && <button onClick={() => setOpen(null)} aria-label="Retour" style={{ width: 32, height: 32, borderRadius: '50%', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><IconArrowLeft size={16} /></button>}
+            {open && <button onClick={() => setOpen(null)} aria-label={t('w3g.test_back')} style={{ width: 32, height: 32, borderRadius: '50%', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><IconArrowLeft size={16} /></button>}
             <h3 style={{ margin: 0, fontFamily: 'Syne, sans-serif', fontSize: 20, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {open ? open.name : 'Planifier un test'}
+              {open ? open.name : t('w3g.test_plan_title')}
             </h3>
           </div>
-          <button onClick={onClose} aria-label="Fermer" style={{ width: 32, height: 32, borderRadius: '50%', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><IconX size={16} /></button>
+          <button onClick={onClose} aria-label={t('w3g.test_close')} style={{ width: 32, height: 32, borderRadius: '50%', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><IconX size={16} /></button>
         </div>
 
         <div style={{ flex: 1, overflowY: 'auto', padding: '18px 22px 24px' }}>
@@ -80,7 +82,7 @@ export default function TestPlannerSheet({ dateLabel, onClose, onConfirm }: {
               <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', marginBottom: 18 }}>
                 {SPORT_TABS.map(s => {
                   const on = sport === s.id
-                  return <button key={s.id} onClick={() => setSport(s.id)} style={{ padding: '8px 14px', borderRadius: 999, border: `1px solid ${on ? s.color : 'var(--border)'}`, cursor: 'pointer', fontSize: 12.5, fontWeight: 600, background: on ? `${s.color}1f` : 'var(--bg-card)', color: on ? s.color : 'var(--text-dim)' }}>{s.label}</button>
+                  return <button key={s.id} onClick={() => setSport(s.id)} style={{ padding: '8px 14px', borderRadius: 999, border: `1px solid ${on ? s.color : 'var(--border)'}`, cursor: 'pointer', fontSize: 12.5, fontWeight: 600, background: on ? `${s.color}1f` : 'var(--bg-card)', color: on ? s.color : 'var(--text-dim)' }}>{t(`w3g.test_sport_${s.id}`)}</button>
                 })}
               </div>
               {/* Liste des tests */}
@@ -106,7 +108,7 @@ export default function TestPlannerSheet({ dateLabel, onClose, onConfirm }: {
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
                   <span style={{ fontSize: 9.5, fontWeight: 700, padding: '3px 9px', borderRadius: 20, background: `${DIFFICULTY_COLOR[open.difficulty]}20`, color: DIFFICULTY_COLOR[open.difficulty], textTransform: 'uppercase', letterSpacing: '0.06em' }}>{open.difficulty}</span>
-                  <span style={{ fontSize: 12.5, color: 'var(--text-dim)', fontWeight: 600 }}>Durée : {open.duration}</span>
+                  <span style={{ fontSize: 12.5, color: 'var(--text-dim)', fontWeight: 600 }}>{t('w3g.test_duration', { d: open.duration })}</span>
                 </div>
                 {proto ? (
                   <TestProtocolView proto={proto} accent={accent} />
@@ -121,7 +123,7 @@ export default function TestPlannerSheet({ dateLabel, onClose, onConfirm }: {
         {open && (
           <div style={{ flexShrink: 0, display: 'flex', justifyContent: 'center', gap: 10, padding: '12px 22px', paddingBottom: 'calc(12px + env(safe-area-inset-bottom))', borderTop: '1px solid var(--border)', background: 'var(--bg-card2)' }}>
             <button onClick={confirm} disabled={saving} style={{ width: '100%', maxWidth: 640, padding: 13, borderRadius: 999, background: accent, border: 'none', color: '#fff', fontWeight: 700, fontSize: 14, cursor: saving ? 'wait' : 'pointer', fontFamily: 'Syne, sans-serif' }}>
-              {saving ? '…' : `Ajouter au planning${dateLabel ? ` · ${dateLabel}` : ''}`}
+              {saving ? '…' : `${t('w3g.test_add_to_plan')}${dateLabel ? ` · ${dateLabel}` : ''}`}
             </button>
           </div>
         )}

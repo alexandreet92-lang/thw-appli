@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
+import { useI18n } from '@/lib/i18n'
 
 interface Props {
   onDetected: (barcode: string) => void
@@ -7,6 +8,7 @@ interface Props {
 }
 
 export function BarcodeScanner({ onDetected, onClose }: Props) {
+  const { t } = useI18n()
   const videoRef = useRef<HTMLVideoElement>(null)
   const [error, setError] = useState<string | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
@@ -31,7 +33,7 @@ export function BarcodeScanner({ onDetected, onClose }: Props) {
 
   const startCamera = async () => {
     if (!('mediaDevices' in navigator)) {
-      setError('Camera non disponible sur ce navigateur.')
+      setError(t('w3h.cam_unavailable'))
       return
     }
     try {
@@ -45,16 +47,16 @@ export function BarcodeScanner({ onDetected, onClose }: Props) {
       startDetection()
     } catch (err) {
       if (err instanceof Error) {
-        if (err.name === 'NotAllowedError') setError("Acces a la camera refuse. Autorisez l'acces dans les reglages.")
-        else if (err.name === 'NotFoundError') setError('Aucune camera detectee sur cet appareil.')
-        else setError("Impossible d'acceder a la camera.")
+        if (err.name === 'NotAllowedError') setError(t('w3h.cam_denied'))
+        else if (err.name === 'NotFoundError') setError(t('w3h.cam_not_found'))
+        else setError(t('w3h.cam_error'))
       }
     }
   }
 
   const startDetection = () => {
     if (!('BarcodeDetector' in window)) {
-      setError('Scanner non supporte sur ce navigateur. Utilisez Chrome.')
+      setError(t('w3h.scanner_unsupported'))
       return
     }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -80,7 +82,7 @@ export function BarcodeScanner({ onDetected, onClose }: Props) {
     <div className="fixed inset-0 bg-black z-[100] flex flex-col">
       <div className="flex items-center justify-between p-4 flex-shrink-0">
         <p className="text-white font-medium text-base" style={{ fontFamily: 'Syne,sans-serif' }}>
-          Scanner un produit
+          {t('w3h.scan_product')}
         </p>
         <button
           onClick={() => { stopCamera(); onClose() }}
@@ -97,7 +99,7 @@ export function BarcodeScanner({ onDetected, onClose }: Props) {
           <div className="flex flex-col items-center justify-center h-full gap-4 px-8 text-center">
             <p className="text-white/80 text-sm leading-relaxed">{error}</p>
             <button onClick={onClose} className="bg-white text-black rounded-xl px-6 py-3 text-sm font-medium">
-              Fermer
+              {t('w3h.close')}
             </button>
           </div>
         ) : (
@@ -113,7 +115,7 @@ export function BarcodeScanner({ onDetected, onClose }: Props) {
               </div>
             </div>
             <p className="absolute bottom-10 left-0 right-0 text-center text-white/60 text-sm">
-              Pointez vers le code-barres
+              {t('w3h.point_barcode')}
             </p>
           </>
         )}

@@ -13,11 +13,13 @@ import { COACH_PACKS, getCoachPack, type CoachPackKey } from '@/lib/subscription
 import CoachSubscribeEmailModal from '@/components/subscription/CoachSubscribeEmailModal'
 import { getCoachAccessState, startCoachTrial, type CoachAccessState } from '@/lib/coach/owner'
 import { useRouter } from 'next/navigation'
+import { useI18n } from '@/lib/i18n'
 
 interface CurrentSub { pack_key: string; status: string; current_period_end: string | null }
 
 export default function CoachSubscriptionPage() {
   const router = useRouter()
+  const { t } = useI18n()
   const [billing, setBilling] = useState<'monthly' | 'yearly'>('monthly')
   const [current, setCurrent] = useState<CurrentSub | null>(null)
   const [loading, setLoading] = useState(true)
@@ -46,7 +48,7 @@ export default function CoachSubscriptionPage() {
   const startTrial = async () => {
     setBusy('trial'); setTrialErr(null)
     try { await startCoachTrial(); router.push('/coach') }
-    catch { setTrialErr('Impossible de démarrer l’essai. Réessaie dans un instant.'); setBusy(null) }
+    catch { setTrialErr(t('w3c.trial_start_failed')); setBusy(null) }
   }
 
   // On ne redirige pas directement vers Stripe : on ouvre la modale qui envoie
@@ -59,36 +61,36 @@ export default function CoachSubscriptionPage() {
       const r = await fetch('/api/stripe/portal', { method: 'POST' })
       const d = await r.json()
       if (d.url) window.location.href = d.url
-      else alert(d.error ?? 'Portail indisponible.')
-    } catch { alert('Erreur réseau.') } finally { setBusy(null) }
+      else alert(d.error ?? t('w3c.portal_unavailable'))
+    } catch { alert(t('w3c.network_error')) } finally { setBusy(null) }
   }
 
   const activePack = current && (current.status === 'active' || current.status === 'trialing') ? getCoachPack(current.pack_key) : null
 
   return (
     <div style={{ width: '100%', maxWidth: 960, margin: '0 auto', padding: '24px clamp(16px,4vw,40px) 64px', boxSizing: 'border-box', fontFamily: 'var(--font-body)' }}>
-      <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 600, color: 'var(--text)', margin: '0 0 4px' }}>Abonnement coach</h1>
-      <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: '0 0 20px' }}>Chaque pack inclut : ton compte athlète Premium, toutes les fonctions coach et 1 M de tokens Studio par mois. Le pack définit ta capacité d’athlètes.</p>
+      <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 600, color: 'var(--text)', margin: '0 0 4px' }}>{t('w3c.coach_sub_title')}</h1>
+      <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: '0 0 20px' }}>{t('w3c.coach_sub_intro')}</p>
 
       {/* Essai gratuit 14 j — point d'entrée self-service (arrivée par lien profond) */}
       {canStartTrial && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', background: 'var(--bg-card2)', border: '1px solid var(--primary)', borderRadius: 'var(--r-md)', padding: '14px 18px', marginBottom: 20 }}>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>Essaie l’espace coach gratuitement</div>
-            <div style={{ fontSize: 12.5, color: 'var(--text-dim)', marginTop: 2 }}>14 jours d’essai — sans carte bancaire. Entraîne des athlètes et crée leurs plans.</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>{t('w3c.coach_trial_title')}</div>
+            <div style={{ fontSize: 12.5, color: 'var(--text-dim)', marginTop: 2 }}>{t('w3c.coach_trial_desc')}</div>
             {trialErr && <div style={{ fontSize: 11.5, color: '#ef4444', fontWeight: 600, marginTop: 4 }}>{trialErr}</div>}
           </div>
-          <button onClick={startTrial} disabled={busy === 'trial'} style={{ ...btnManage, background: 'var(--primary)', color: 'var(--on-primary)', opacity: busy === 'trial' ? 0.6 : 1 }}>{busy === 'trial' ? '…' : 'Démarrer l’essai 14 j'}</button>
+          <button onClick={startTrial} disabled={busy === 'trial'} style={{ ...btnManage, background: 'var(--primary)', color: 'var(--on-primary)', opacity: busy === 'trial' ? 0.6 : 1 }}>{busy === 'trial' ? '…' : t('w3c.coach_trial_start')}</button>
         </div>
       )}
 
       {activePack && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', background: 'var(--bg-card2)', borderRadius: 'var(--r-md)', padding: '14px 18px', marginBottom: 20 }}>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>Pack actif · {activePack.label}</div>
-            {current?.current_period_end && <div style={{ fontSize: 12.5, color: 'var(--text-dim)', marginTop: 2 }}>Prochain renouvellement : {new Date(current.current_period_end).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</div>}
+            <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>{t('w3c.active_pack')} · {activePack.label}</div>
+            {current?.current_period_end && <div style={{ fontSize: 12.5, color: 'var(--text-dim)', marginTop: 2 }}>{t('w3c.next_renewal')} {new Date(current.current_period_end).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</div>}
           </div>
-          <button onClick={manage} disabled={busy === 'portal'} style={btnManage}>{busy === 'portal' ? '…' : 'Changer / annuler'}</button>
+          <button onClick={manage} disabled={busy === 'portal'} style={btnManage}>{busy === 'portal' ? '…' : t('w3c.change_cancel')}</button>
         </div>
       )}
 
@@ -96,13 +98,13 @@ export default function CoachSubscriptionPage() {
       <div style={{ display: 'inline-flex', gap: 3, padding: 3, borderRadius: 999, background: 'var(--bg-card2)', marginBottom: 20 }}>
         {(['monthly', 'yearly'] as const).map(b => (
           <button key={b} onClick={() => setBilling(b)} style={{ padding: '7px 16px', borderRadius: 999, border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 700, background: billing === b ? 'var(--bg-card)' : 'transparent', color: billing === b ? 'var(--primary)' : 'var(--text-mid)', boxShadow: billing === b ? '0 1px 3px rgba(0,0,0,0.12)' : 'none' }}>
-            {b === 'monthly' ? 'Mensuel' : 'Annuel'}{b === 'yearly' && <span style={{ fontSize: 11, marginLeft: 5, color: 'var(--text-dim)' }}>−17 %</span>}
+            {b === 'monthly' ? t('w3c.monthly') : t('w3c.annual')}{b === 'yearly' && <span style={{ fontSize: 11, marginLeft: 5, color: 'var(--text-dim)' }}>−17 %</span>}
           </button>
         ))}
       </div>
 
       {loading ? (
-        <p style={{ fontSize: 13, color: 'var(--text-dim)' }}>Chargement…</p>
+        <p style={{ fontSize: 13, color: 'var(--text-dim)' }}>{t('w3c.loading')}</p>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 14 }}>
           {COACH_PACKS.map(p => {
@@ -114,11 +116,11 @@ export default function CoachSubscriptionPage() {
                 {/* Prix masqués dans l'app (règles App Store). */}
                 <div style={{ flex: 1 }} />
                 {isCurrent ? (
-                  <div style={{ textAlign: 'center', fontSize: 13, fontWeight: 700, color: 'var(--primary)', padding: '11px 0' }}>Ton pack actuel</div>
+                  <div style={{ textAlign: 'center', fontSize: 13, fontWeight: 700, color: 'var(--primary)', padding: '11px 0' }}>{t('w3c.current_pack')}</div>
                 ) : (
                   <button onClick={() => subscribe(p.key as CoachPackKey)} disabled={!!busy}
                     style={{ height: 44, borderRadius: 'var(--r-md)', border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 700, cursor: busy ? 'default' : 'pointer', opacity: busy ? 0.6 : 1 }}>
-                    {busy === p.key ? '…' : activePack ? 'Passer à ce pack' : 'Choisir'}
+                    {busy === p.key ? '…' : activePack ? t('w3c.switch_to_pack') : t('w3c.choose')}
                   </button>
                 )}
               </div>
@@ -127,7 +129,7 @@ export default function CoachSubscriptionPage() {
         </div>
       )}
 
-      <p style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 20, lineHeight: 1.5 }}>Le paiement, le changement de pack et l’annulation se gèrent via Stripe. L’annulation garde ton accès jusqu’à la fin de la période déjà payée.</p>
+      <p style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 20, lineHeight: 1.5 }}>{t('w3c.coach_sub_footer')}</p>
 
       {emailPack && (() => {
         const p = getCoachPack(emailPack)

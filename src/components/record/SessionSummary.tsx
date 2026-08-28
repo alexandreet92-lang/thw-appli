@@ -9,6 +9,7 @@
 // noir forcé qui rendait certaines données invisibles.
 // ══════════════════════════════════════════════════════════════════════════
 import { sportLabel } from '@/components/recovery/helpers'
+import { useI18n } from '@/lib/i18n'
 
 export interface TargetSeries { pts: { t: number; v: number }[]; unit: string; kind: string }
 export interface SummaryHr { avg: number | null; max: number | null; min: number | null; samples: number[] }
@@ -59,7 +60,7 @@ function fmtClock(s: number): string {
 }
 
 // Graphique cible + FC mesurée (SVG, aucune lib).
-function SessionChart({ target, hr, accent, T }: { target: TargetSeries | null; hr: SummaryHr; accent: string; T: ReturnType<typeof theme> }) {
+function SessionChart({ target, hr, accent, T, t }: { target: TargetSeries | null; hr: SummaryHr; accent: string; T: ReturnType<typeof theme>; t: (key: string, vars?: Record<string, string | number>) => string }) {
   const W = 720, H = 200, padL = 8, padR = 8, padT = 14, padB = 22
   const hasTarget = target && target.pts.length > 1
   const hasHr = hr.samples.length > 1
@@ -88,8 +89,8 @@ function SessionChart({ target, hr, accent, T }: { target: TargetSeries | null; 
   return (
     <div>
       <div style={{ display: 'flex', gap: 16, marginBottom: 8, flexWrap: 'wrap' }}>
-        {hasTarget && <Legend c={accent} label={`Cible (${tUnit})`} T={T} />}
-        {hasHr && <Legend c={HR_COLOR} label="FC mesurée" T={T} />}
+        {hasTarget && <Legend c={accent} label={t('w3a.legend_target', { unit: tUnit })} T={T} />}
+        {hasHr && <Legend c={HR_COLOR} label={t('w3a.legend_hr')} T={T} />}
       </div>
       <div style={{ width: '100%', overflow: 'hidden' }}>
         <svg viewBox={`0 0 ${W} ${H}`} width="100%" height={H} preserveAspectRatio="none" style={{ display: 'block' }}>
@@ -111,17 +112,18 @@ function Legend({ c, label, T }: { c: string; label: string; T: ReturnType<typeo
 }
 
 export default function SessionSummary({ sportType, startedAt, durationSec, doneList, sets, volumeKg, caloriesEst, doneCount, totalCount, unitLabel, hr, target, accent, isDark, onNext, onClose }: Props) {
+  const { t } = useI18n()
   const T = theme(isDark)
   const date = new Date(startedAt).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })
   const kpis: { label: string; value: string; accent?: boolean }[] = [
-    { label: 'Temps', value: fmtClock(durationSec), accent: true },
+    { label: t('w3a.kpi_temps'), value: fmtClock(durationSec), accent: true },
     { label: unitLabel, value: `${doneCount}/${totalCount}` },
   ]
-  if (sets > 0) kpis.push({ label: 'Séries', value: String(sets) })
-  if (volumeKg > 0) kpis.push({ label: 'Volume', value: `${Math.round(volumeKg)} kg` })
-  if (caloriesEst > 0) kpis.push({ label: 'Calories', value: `${caloriesEst} kcal` })
-  if (hr.avg != null) kpis.push({ label: 'FC moy', value: `${hr.avg}` })
-  if (hr.max != null) kpis.push({ label: 'FC max', value: `${hr.max}` })
+  if (sets > 0) kpis.push({ label: t('w3a.kpi_series'), value: String(sets) })
+  if (volumeKg > 0) kpis.push({ label: t('w3a.kpi_volume'), value: `${Math.round(volumeKg)} kg` })
+  if (caloriesEst > 0) kpis.push({ label: t('w3a.kpi_calories'), value: `${caloriesEst} kcal` })
+  if (hr.avg != null) kpis.push({ label: t('w3a.kpi_hr_avg'), value: `${hr.avg}` })
+  if (hr.max != null) kpis.push({ label: t('w3a.kpi_hr_max'), value: `${hr.max}` })
 
   const tile: React.CSSProperties = { background: T.tileBg, border: `1px solid ${T.tileBorder}`, borderRadius: 16, padding: '14px 16px', boxShadow: T.shadow }
   const label: React.CSSProperties = { fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: T.muted, margin: 0 }
@@ -131,7 +133,7 @@ export default function SessionSummary({ sportType, startedAt, durationSec, done
       <style>{`@keyframes sumUp{from{transform:translateY(100%)}to{transform:translateY(0)}}`}</style>
 
       {onClose && (
-        <button onClick={onClose} aria-label="Fermer" style={{ position: 'absolute', top: 'calc(env(safe-area-inset-top) + 12px)', left: 14, width: 38, height: 38, borderRadius: '50%', border: `1px solid ${T.tileBorder}`, background: T.tileBg, color: T.text, cursor: 'pointer', zIndex: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, boxShadow: T.shadow }}>×</button>
+        <button onClick={onClose} aria-label={t('w3a.close')} style={{ position: 'absolute', top: 'calc(env(safe-area-inset-top) + 12px)', left: 14, width: 38, height: 38, borderRadius: '50%', border: `1px solid ${T.tileBorder}`, background: T.tileBg, color: T.text, cursor: 'pointer', zIndex: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, boxShadow: T.shadow }}>×</button>
       )}
 
       <div style={{ flex: 1, overflowY: 'auto', padding: '30px 20px 130px', maxWidth: 760, width: '100%', margin: '0 auto', boxSizing: 'border-box' }}>
@@ -141,7 +143,7 @@ export default function SessionSummary({ sportType, startedAt, durationSec, done
             <span style={{ width: 7, height: 7, borderRadius: '50%', background: T.blue }} />
             <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: T.blue }}>{sportLabel(sportType)}</span>
           </div>
-          <h1 style={{ fontFamily: 'Syne, DM Sans, sans-serif', fontSize: 30, fontWeight: 800, margin: '0 0 4px', letterSpacing: '-0.02em', color: T.text }}>Séance terminée</h1>
+          <h1 style={{ fontFamily: 'Syne, DM Sans, sans-serif', fontSize: 30, fontWeight: 800, margin: '0 0 4px', letterSpacing: '-0.02em', color: T.text }}>{t('w3a.session_done')}</h1>
           <p style={{ fontSize: 13.5, color: T.muted, margin: 0, textTransform: 'capitalize' }}>{date}</p>
           <p style={{ fontFamily: 'Syne, DM Sans, sans-serif', fontSize: 'clamp(52px, 16vw, 84px)', fontWeight: 800, margin: '10px 0 0', lineHeight: 1, color: accent, fontVariantNumeric: 'tabular-nums' }}>{fmtClock(durationSec)}</p>
         </div>
@@ -159,10 +161,10 @@ export default function SessionSummary({ sportType, startedAt, durationSec, done
         {/* Graphique cible + FC */}
         {(target || hr.samples.length > 1) && (
           <div style={{ ...tile, marginBottom: 22 }}>
-            <p style={{ ...label, marginBottom: 12 }}>Intensité de la séance</p>
-            <SessionChart target={target} hr={hr} accent={accent} T={T} />
+            <p style={{ ...label, marginBottom: 12 }}>{t('w3a.intensity')}</p>
+            <SessionChart target={target} hr={hr} accent={accent} T={T} t={t} />
             {!hr.samples.length && (
-              <p style={{ fontSize: 11.5, color: T.faint, margin: '10px 0 0' }}>Cibles programmées — connecte un capteur cardio pour superposer ta FC réelle.</p>
+              <p style={{ fontSize: 11.5, color: T.faint, margin: '10px 0 0' }}>{t('w3a.targets_note')}</p>
             )}
           </div>
         )}
@@ -170,7 +172,7 @@ export default function SessionSummary({ sportType, startedAt, durationSec, done
         {/* Exos réalisés */}
         {doneList.length > 0 && (
           <div style={{ marginBottom: 8 }}>
-            <p style={{ ...label, marginBottom: 10 }}>Ce qui a été fait</p>
+            <p style={{ ...label, marginBottom: 10 }}>{t('w3a.what_done')}</p>
             <div style={{ background: T.tileBg, border: `1px solid ${T.tileBorder}`, borderRadius: 16, overflow: 'hidden', boxShadow: T.shadow }}>
               {doneList.map((d, i) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 15px', borderTop: i === 0 ? 'none' : `1px solid ${T.listBorder}` }}>
@@ -188,7 +190,7 @@ export default function SessionSummary({ sportType, startedAt, durationSec, done
       <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '16px 20px', paddingBottom: 'max(env(safe-area-inset-bottom), 20px)', background: `linear-gradient(transparent, ${T.fadeTo} 45%)` }}>
         <div style={{ maxWidth: 760, margin: '0 auto' }}>
           <button onClick={onNext} style={{ width: '100%', height: 54, borderRadius: 16, border: 'none', background: APP_BLUE, color: '#fff', fontSize: 16, fontWeight: 800, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, boxShadow: '0 4px 20px rgba(37,99,235,0.32)' }}>
-            Suivant
+            {t('w3a.next')}
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
           </button>
         </div>

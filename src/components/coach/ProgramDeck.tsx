@@ -12,9 +12,10 @@ import { useRef, useState, type ComponentType } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { IconRun, IconBike, IconSwimming, IconBarbell, IconStretching2, IconKayak, IconChevronLeft, IconChevronRight } from '@tabler/icons-react'
 import type { CoachProgram } from '@/lib/coach/programs'
-import { LEVEL_LABEL, programHours } from '@/lib/coach/programs'
+import { programHours } from '@/lib/coach/programs'
 import { useNarrow } from '@/lib/hooks/useNarrow'
 import { haptic } from '@/lib/haptics'
+import { useI18n } from '@/lib/i18n'
 
 type GlyphIcon = ComponentType<{ size?: number; color?: string; stroke?: number; style?: React.CSSProperties }>
 
@@ -36,7 +37,7 @@ function cardBg(s: string): string {
   const c = sportVar(s)
   return `linear-gradient(165deg, ${c} 0%, color-mix(in srgb, ${c} 90%, black) 100%)`
 }
-function priceStr(p: CoachProgram): string { return p.price_cents > 0 ? `${(p.price_cents / 100).toFixed(p.price_cents % 100 === 0 ? 0 : 2)} €` : 'Gratuit' }
+function priceStr(p: CoachProgram): string { return p.price_cents > 0 ? `${(p.price_cents / 100).toFixed(p.price_cents % 100 === 0 ? 0 : 2)} €` : '' }
 function SportGlyph({ sport, size = 42 }: { sport: string; size?: number }) {
   const Icon = SPORT_GLYPH[sport] ?? IconRun
   return <Icon size={size} color="white" stroke={2} style={{ opacity: 0.97, filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.22))' }} />
@@ -60,6 +61,7 @@ function placeCard(rp: number, drag: number): Placement {
 }
 
 function Card({ p, rp, drag, dragging, onOpen }: { p: CoachProgram; rp: number; drag: number; dragging: boolean; onOpen?: () => void }) {
+  const { t } = useI18n()
   const sport = sportOf(p)
   const sessions = p.structure.reduce((s, w) => s + w.sessions.length, 0)
   const hours = programHours(p.structure)
@@ -83,9 +85,9 @@ function Card({ p, rp, drag, dragging, onOpen }: { p: CoachProgram; rp: number; 
       {/* Haut : durée · séances · volume (heures) + glyphe */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', position: 'relative', gap: 10 }}>
         <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-          <Stat label="Durée" value={`${p.duration_weeks} sem`} />
-          <Stat label="Séances" value={String(sessions)} />
-          <Stat label="Volume" value={`${hours} h`} />
+          <Stat label={t('w3d.stat_duration')} value={t('w3d.weeks_short', { n: p.duration_weeks })} />
+          <Stat label={t('w3d.stat_sessions')} value={String(sessions)} />
+          <Stat label={t('w3d.stat_volume')} value={`${hours} h`} />
         </div>
         <SportGlyph sport={sport} />
       </div>
@@ -93,10 +95,10 @@ function Card({ p, rp, drag, dragging, onOpen }: { p: CoachProgram; rp: number; 
       {/* Contenu : chips + titre + résumé — collé sous les stats (pas de grand vide). */}
       <div style={{ position: 'relative', marginTop: 18 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 9, flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em', opacity: 0.92 }}>{SPORT_LABEL[sport] ?? sport}</span>
+          <span style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em', opacity: 0.92 }}>{t(`w3d.sport_${sport}`)}</span>
           {p.specialty && <Pill>{p.specialty}</Pill>}
-          {p.level && <Pill>{LEVEL_LABEL[p.level]}</Pill>}
-          {p.ai_enabled && <span style={{ fontSize: 10, fontWeight: 800, padding: '2px 8px', borderRadius: 999, background: 'rgba(0,0,0,0.20)' }}>IA</span>}
+          {p.level && <Pill>{t(`w3d.level_${p.level}`)}</Pill>}
+          {p.ai_enabled && <span style={{ fontSize: 10, fontWeight: 800, padding: '2px 8px', borderRadius: 999, background: 'rgba(0,0,0,0.20)' }}>{t('w3d.ai_badge')}</span>}
         </div>
         <div style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(20px, 5.2vw, 26px)', fontWeight: 600, lineHeight: 1.12, marginBottom: 10, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical' as const, overflow: 'hidden' }}>{p.title}</div>
         {p.description && <div style={{ fontSize: 13, opacity: 0.9, lineHeight: 1.5, display: '-webkit-box', WebkitLineClamp: 4, WebkitBoxOrient: 'vertical' as const, overflow: 'hidden' }}>{p.description}</div>}
@@ -106,7 +108,7 @@ function Card({ p, rp, drag, dragging, onOpen }: { p: CoachProgram; rp: number; 
 
       {/* Bas : prix */}
       <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
-        <span style={{ fontSize: 15, fontWeight: 800, background: 'rgba(255,255,255,0.22)', padding: '5px 12px', borderRadius: 999, whiteSpace: 'nowrap' }}>{priceStr(p)}</span>
+        <span style={{ fontSize: 15, fontWeight: 800, background: 'rgba(255,255,255,0.22)', padding: '5px 12px', borderRadius: 999, whiteSpace: 'nowrap' }}>{priceStr(p) || t('w3d.free')}</span>
       </div>
     </div>
   )
@@ -120,6 +122,7 @@ function Pill({ children }: { children: React.ReactNode }) {
 
 // ── Une pile (carrousel) pour UN sport ──
 function Stack({ list, onOpen, height }: { list: CoachProgram[]; onOpen: (p: CoachProgram) => void; height: string }) {
+  const { t } = useI18n()
   const [cur, setCur] = useState(0)          // index de la carte de DEVANT
   const [drag, setDrag] = useState(0)
   const [isDragging, setIsDragging] = useState(false)
@@ -149,15 +152,15 @@ function Stack({ list, onOpen, height }: { list: CoachProgram[]; onOpen: (p: Coa
         })}
         {n > 1 && (
           <>
-            <button className="pd-arrow" aria-label="Précédent" onClick={() => go(-1)} style={{ ...arrow, left: -12 }}><IconChevronLeft size={18} /></button>
-            <button className="pd-arrow" aria-label="Suivant" onClick={() => go(1)} style={{ ...arrow, right: -12 }}><IconChevronRight size={18} /></button>
+            <button className="pd-arrow" aria-label={t('w3d.previous')} onClick={() => go(-1)} style={{ ...arrow, left: -12 }}><IconChevronLeft size={18} /></button>
+            <button className="pd-arrow" aria-label={t('w3d.next')} onClick={() => go(1)} style={{ ...arrow, right: -12 }}><IconChevronRight size={18} /></button>
           </>
         )}
       </div>
       {n > 1 && (
         <div style={{ display: 'flex', gap: 5, justifyContent: 'center', marginTop: 12 }}>
           {list.map((_, i) => (
-            <button key={i} onClick={() => setCur(i)} aria-label={`Programme ${i + 1}`}
+            <button key={i} onClick={() => setCur(i)} aria-label={t('w3d.program_n', { n: i + 1 })}
               style={{ width: i === cur ? 16 : 6, height: 6, borderRadius: 999, border: 'none', cursor: 'pointer', padding: 0, background: i === cur ? 'var(--text)' : 'var(--border-mid)', transition: 'width 200ms, background 200ms' }} />
           ))}
         </div>
@@ -175,13 +178,14 @@ const STYLE = `
 `
 
 function SportCircle({ sport, on, onClick }: { sport: string; on: boolean; onClick: () => void }) {
+  const { t } = useI18n()
   const Icon = SPORT_GLYPH[sport] ?? IconRun
   return (
     <button onClick={onClick} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, border: 'none', background: 'transparent', cursor: 'pointer', padding: 0, flexShrink: 0, fontFamily: 'var(--font-body)' }}>
       <span style={{ width: 58, height: 58, borderRadius: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: on ? sportVar(sport) : 'var(--bg-card2)', boxShadow: on ? '0 8px 20px rgba(0,0,0,0.20)' : 'none', transition: 'background 180ms, box-shadow 180ms' }}>
         <Icon size={26} color={on ? 'white' : 'var(--text-mid)'} stroke={2} />
       </span>
-      <span style={{ fontSize: 11.5, fontWeight: on ? 700 : 600, color: on ? 'var(--text)' : 'var(--text-dim)' }}>{SPORT_LABEL[sport] ?? sport}</span>
+      <span style={{ fontSize: 11.5, fontWeight: on ? 700 : 600, color: on ? 'var(--text)' : 'var(--text-dim)' }}>{t(`w3d.sport_${sport}`)}</span>
     </button>
   )
 }
@@ -190,6 +194,7 @@ function SpecPill({ label, on, onClick }: { label: string; on: boolean; onClick:
 }
 
 export default function ProgramDeck({ programs, onOpen }: { programs: CoachProgram[]; onOpen: (p: CoachProgram) => void }) {
+  const { t } = useI18n()
   const narrow = useNarrow()
   const [selSport, setSelSport] = useState<string | null>(null)
   const [selSpec, setSelSpec] = useState<string>('')
@@ -219,7 +224,7 @@ export default function ProgramDeck({ programs, onOpen }: { programs: CoachProgr
         {/* Cercles de spécialité du sport choisi */}
         {specialties.length > 0 && (
           <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4, marginBottom: 12 }}>
-            <SpecPill label="Tous" on={selSpec === ''} onClick={() => setSelSpec('')} />
+            <SpecPill label={t('w3d.all')} on={selSpec === ''} onClick={() => setSelSpec('')} />
             {specialties.map(s => <SpecPill key={s} label={s} on={selSpec === s} onClick={() => setSelSpec(s)} />)}
           </div>
         )}
@@ -232,7 +237,7 @@ export default function ProgramDeck({ programs, onOpen }: { programs: CoachProgr
               <div style={{ width: '100%', maxWidth: 420, margin: '0 auto' }}>
                 {list.length > 0
                   ? <Stack list={list} onOpen={onOpen} height="clamp(330px, 78vw, 400px)" />
-                  : <p style={{ fontSize: 13, color: 'var(--text-dim)', textAlign: 'center', padding: 30 }}>Aucun programme.</p>}
+                  : <p style={{ fontSize: 13, color: 'var(--text-dim)', textAlign: 'center', padding: 30 }}>{t('w3d.no_program')}</p>}
               </div>
             </motion.div>
           </AnimatePresence>
@@ -252,7 +257,7 @@ export default function ProgramDeck({ programs, onOpen }: { programs: CoachProgr
         {groups.map(([sport, list]) => (
           <div key={sport} style={{ flex: '0 0 clamp(230px, 26%, 290px)', minWidth: 230, overflow: 'visible' }}>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 7, margin: '0 4px 14px' }}>
-              <span style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 600, color: 'var(--text)' }}>{SPORT_LABEL[sport] ?? sport}</span>
+              <span style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 600, color: 'var(--text)' }}>{t(`w3d.sport_${sport}`)}</span>
               <span className="tnum" style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text-dim)' }}>{list.length}</span>
             </div>
             <Stack list={list} onOpen={onOpen} height="320px" />

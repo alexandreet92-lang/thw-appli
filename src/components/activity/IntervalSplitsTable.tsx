@@ -12,6 +12,7 @@
 // bouton « Faire analyser par l'IA » (+ historique EF des sorties comparables).
 // ══════════════════════════════════════════════════════════════════
 import { useMemo, useState } from 'react'
+import { useI18n } from '@/lib/i18n'
 import { AIBubble } from './AIBubble'
 import type { AIStatus } from '@/hooks/useAIAnalysis'
 
@@ -213,6 +214,7 @@ function trendArrow(cur: number | null, prev: number | null, higherIsBetter: boo
 }
 
 export function IntervalSplitsTable({ streams, sport, activityLabel, historyEF, ai }: Props) {
+  const { t } = useI18n()
   const options = sport === 'bike'
     ? [{ label: '30 min', s: 1800 }, { label: '1 h', s: 3600 }]
     : [{ label: '15 min', s: 900 }, { label: '30 min', s: 1800 }]
@@ -229,11 +231,11 @@ export function IntervalSplitsTable({ streams, sport, activityLabel, historyEF, 
   const ctxParts: string[] = []
   if (first.tempAvg != null && last.tempAvg != null) {
     const d = last.tempAvg - first.tempAvg
-    ctxParts.push(Math.abs(d) < 1.5 ? 'température stable' : `température ${d > 0 ? '+' : '−'}${Math.abs(d).toFixed(0)} °C entre le début et la fin`)
+    ctxParts.push(Math.abs(d) < 1.5 ? t('w3f.temp_stable') : t('w3f.temp_delta', { d: `${d > 0 ? '+' : '−'}${Math.abs(d).toFixed(0)}` }))
   }
   if (first.altAvg != null && last.altAvg != null) {
     const d = last.altAvg - first.altAvg
-    ctxParts.push(Math.abs(d) < 40 ? 'altitude stable' : `altitude ${d > 0 ? '+' : '−'}${Math.abs(d).toFixed(0)} m en moyenne`)
+    ctxParts.push(Math.abs(d) < 40 ? t('w3f.alt_stable') : t('w3f.alt_delta', { d: `${d > 0 ? '+' : '−'}${Math.abs(d).toFixed(0)}` }))
   }
 
   // ── Prompt IA : le tableau + le contexte + l'historique comparable ──
@@ -275,7 +277,7 @@ export function IntervalSplitsTable({ streams, sport, activityLabel, historyEF, 
     <div style={{ marginBottom: 32, paddingTop: 24 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, borderBottom: '1px solid var(--border)', paddingBottom: 5 }}>
         <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-dim)', letterSpacing: 0.9, textTransform: 'uppercase', fontFamily: 'var(--font-display)', flex: 1 }}>
-          Comparatif par intervalles
+          {t('w3f.intervals_comparison')}
         </div>
         {/* Toggle 30 min / 1 h (vélo) · 15 / 30 min (course) */}
         <div style={{ display: 'flex', gap: 2, background: 'var(--bg-alt)', borderRadius: 9, padding: 2 }}>
@@ -294,24 +296,24 @@ export function IntervalSplitsTable({ streams, sport, activityLabel, historyEF, 
         <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: sport === 'bike' ? 860 : 700, background: 'var(--bg-card)' }}>
           <thead>
             <tr>
-              <th style={{ ...th, ...sticky }}>Intervalle</th>
+              <th style={{ ...th, ...sticky }}>{t('w3f.col_interval')}</th>
               <th style={th}>Km</th>
               <th style={th}>D+</th>
               <th style={th}>D−</th>
               {sport === 'bike' ? (<>
-                <th style={th}>W moy</th>
+                <th style={th}>{t('w3f.col_wavg')}</th>
                 <th style={th}>NP</th>
-                <th style={th}>Roue libre</th>
+                <th style={th}>{t('w3f.col_coasting')}</th>
                 <th style={th}>Temp</th>
-                <th style={th}>Altitude</th>
-                <th style={th}>FC</th>
-                <th style={th}>Découplage P/FC</th>
+                <th style={th}>{t('w3f.col_altitude')}</th>
+                <th style={th}>{t('w3f.col_hr')}</th>
+                <th style={th}>{t('w3f.col_decoupling')}</th>
               </>) : (<>
-                <th style={th}>Altitude</th>
+                <th style={th}>{t('w3f.col_altitude')}</th>
                 <th style={th}>Temp</th>
-                <th style={th}>Allure</th>
+                <th style={th}>{t('w3f.col_pace')}</th>
                 <th style={th}>VAP</th>
-                <th style={th}>FC</th>
+                <th style={th}>{t('w3f.col_hr')}</th>
               </>)}
             </tr>
           </thead>
@@ -348,7 +350,7 @@ export function IntervalSplitsTable({ streams, sport, activityLabel, historyEF, 
                       {r.hrAvg != null ? <>{r.hrAvg}<span style={{ fontSize: 10, opacity: 0.6 }}> bpm</span>{r.hrMax != null && <span style={sub}>max {r.hrMax}</span>}</> : '—'}
                     </td>
                     <td style={{ ...td, ...decStyle, fontWeight: 700 }}>
-                      {i === 0 ? <span style={{ fontSize: 10.5, color: 'var(--text-dim)', fontWeight: 600 }}>réf.</span>
+                      {i === 0 ? <span style={{ fontSize: 10.5, color: 'var(--text-dim)', fontWeight: 600 }}>{t('w3f.ref')}</span>
                         : r.decoupPct != null ? `${r.decoupPct.toFixed(1)} %` : '—'}
                     </td>
                   </>) : (<>
@@ -373,7 +375,7 @@ export function IntervalSplitsTable({ streams, sport, activityLabel, historyEF, 
       {/* Contexte externe — ce que l'IA (et l'œil) doit garder en tête */}
       {ctxParts.length > 0 && (
         <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 8, fontFamily: 'var(--font-body)' }}>
-          Contexte : {ctxParts.join(' · ')}
+          {t('w3f.context_label')}{ctxParts.join(' · ')}
         </div>
       )}
 
@@ -386,7 +388,7 @@ export function IntervalSplitsTable({ streams, sport, activityLabel, historyEF, 
             border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--primary)',
             fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3z"/></svg>
-          {ai.status === 'loading' || ai.status === 'streaming' ? 'Analyse en cours…' : 'Faire analyser par l\'IA'}
+          {ai.status === 'loading' || ai.status === 'streaming' ? t('w3f.analyzing') : t('w3f.analyze_ai')}
         </button>
         {ai.status !== 'idle' && (
           <div style={{ marginTop: 10 }}>

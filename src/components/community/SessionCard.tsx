@@ -11,6 +11,7 @@ import { sportColor, sportLabel } from '@/components/recovery/helpers'
 import { copySessionToLibrary, addSessionToPlanning } from '@/lib/community/sessions'
 import type { SessionRef } from '@/types/community'
 import type { Block } from '@/app/planning/page'
+import { useI18n } from '@/lib/i18n'
 
 const FB = 'var(--font-body)', FD = 'var(--font-display)'
 
@@ -20,14 +21,14 @@ function fmtDuration(min: number | null): string | null {
   return h > 0 ? `${h}h${String(m).padStart(2, '0')}` : `${m} min`
 }
 
-const TYPE_LABEL: Record<string, string> = {
-  warmup: 'Échauffement', effort: 'Effort', recovery: 'Récupération',
-  cooldown: 'Retour au calme', circuit_header: 'Circuit',
+type Tr = (key: string, vars?: Record<string, string | number>) => string
+const KNOWN_BLOCK_TYPES = new Set(['warmup', 'effort', 'recovery', 'cooldown', 'circuit_header'])
+function blockTitle(b: Block, t: Tr): string {
+  const label = b.label?.trim()
+  if (label) return label
+  return KNOWN_BLOCK_TYPES.has(b.type) ? t(`w3e.blocktype_${b.type}`) : t('w3e.block_default')
 }
-function blockTitle(b: Block): string {
-  return b.label?.trim() || TYPE_LABEL[b.type] || 'Bloc'
-}
-function blockDetail(b: Block): string {
+function blockDetail(b: Block, t: Tr): string {
   const p: string[] = []
   if ((b.mode === 'interval' || b.mode === 'series' || b.mode === 'circuit' || b.mode === 'emom' || b.mode === 'tabata') && b.reps) p.push(`${b.reps} ×`)
   if (b.effortMin && b.effortMin > 0) p.push(`${b.effortMin} min`)
@@ -36,14 +37,15 @@ function blockDetail(b: Block): string {
   if (b.value?.trim()) p.push(b.value.trim())
   if (b.cadence?.trim()) p.push(`${b.cadence} rpm`)
   if (b.inclinePct) p.push(`${b.inclinePct}%`)
-  if (b.recoveryMin && b.recoveryMin > 0) p.push(`récup ${b.recoveryMin} min${b.recoveryZone ? ` Z${b.recoveryZone}` : ''}`)
+  if (b.recoveryMin && b.recoveryMin > 0) p.push(`${t('w3e.recovery_abbr')} ${b.recoveryMin} min${b.recoveryZone ? ` Z${b.recoveryZone}` : ''}`)
   return p.join(' · ')
 }
 
 export function SessionCard({ session }: { session: SessionRef }) {
+  const { t } = useI18n()
   const [open, setOpen] = useState(false)
   const col = sportColor(session.sport)
-  const meta = [sportLabel(session.sport), fmtDuration(session.durationMin), session.blocks.length ? `${session.blocks.length} bloc${session.blocks.length > 1 ? 's' : ''}` : null, session.rpe ? `RPE ${session.rpe}` : null].filter(Boolean) as string[]
+  const meta = [sportLabel(session.sport), fmtDuration(session.durationMin), session.blocks.length ? (session.blocks.length > 1 ? t('w3e.block_count_other', { n: session.blocks.length }) : t('w3e.block_count_one', { n: session.blocks.length })) : null, session.rpe ? `RPE ${session.rpe}` : null].filter(Boolean) as string[]
 
   return (
     <>
@@ -52,13 +54,13 @@ export function SessionCard({ session }: { session: SessionRef }) {
         <span style={{ width: 3, borderRadius: 3, background: col, flexShrink: 0 }} />
         <span style={{ flex: 1, minWidth: 0 }}>
           <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginBottom: 3 }}>
-            <span style={{ fontFamily: FB, fontSize: 10.5, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-mid)' }}>Séance</span>
+            <span style={{ fontFamily: FB, fontSize: 10.5, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-mid)' }}>{t('w3e.session_label')}</span>
           </span>
           <span style={{ display: 'block', fontFamily: FD, fontSize: 14.5, fontWeight: 600, color: 'var(--text)', margin: '0 0 4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{session.title}</span>
           <span className="tnum" style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-3)', fontFamily: FB, fontSize: 12.5, color: 'var(--text-mid)', fontVariantNumeric: 'tabular-nums' }}>
             {meta.map((s, i) => <span key={i}>{s}</span>)}
           </span>
-          <span style={{ display: 'block', marginTop: 6, fontFamily: FB, fontSize: 12, fontWeight: 600, color: 'var(--primary)' }}>Voir le détail →</span>
+          <span style={{ display: 'block', marginTop: 6, fontFamily: FB, fontSize: 12, fontWeight: 600, color: 'var(--primary)' }}>{t('w3e.see_detail')} →</span>
         </span>
       </button>
       {open && <SessionDetailOverlay session={session} onClose={() => setOpen(false)} />}
@@ -72,6 +74,7 @@ function todayStr(): string {
 }
 
 function SessionDetailOverlay({ session, onClose }: { session: SessionRef; onClose: () => void }) {
+  const { t } = useI18n()
   const [mounted, setMounted] = useState(false)
   const [busy, setBusy] = useState<null | 'copy' | 'plan'>(null)
   const [done, setDone] = useState<null | string>(null)
@@ -89,15 +92,15 @@ function SessionDetailOverlay({ session, onClose }: { session: SessionRef; onClo
   async function doCopy() {
     setBusy('copy'); setDone(null)
     const ok = await copySessionToLibrary(session)
-    setBusy(null); setDone(ok ? 'Séance copiée dans ta bibliothèque.' : 'Copie impossible. Réessaie.')
+    setBusy(null); setDone(ok ? t('w3e.session_copied') : t('w3e.copy_failed_retry'))
   }
   async function doPlan() {
     setBusy('plan'); setDone(null)
     const [y, m, d] = date.split('-').map(Number)
     const ok = await addSessionToPlanning(session, new Date(y, m - 1, d))
     setBusy(null)
-    if (ok) { setPlanning(false); setDone('Séance ajoutée à ton planning.') }
-    else setDone('Ajout impossible. Réessaie.')
+    if (ok) { setPlanning(false); setDone(t('w3e.session_planned')) }
+    else setDone(t('w3e.add_failed_retry'))
   }
 
   const meta = [sportLabel(session.sport), fmtDuration(session.durationMin), session.rpe ? `RPE ${session.rpe}` : null].filter(Boolean) as string[]
@@ -118,25 +121,25 @@ function SessionDetailOverlay({ session, onClose }: { session: SessionRef; onClo
               </div>
               {session.trainingTypes?.length ? (
                 <div style={{ marginTop: 6, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                  {session.trainingTypes.map(t => <span key={t} style={{ fontFamily: FB, fontSize: 10.5, fontWeight: 600, color: 'var(--text-mid)', background: 'var(--surface-neutral)', padding: '2px 8px', borderRadius: 'var(--r-sm)' }}>{t}</span>)}
+                  {session.trainingTypes.map(tt => <span key={tt} style={{ fontFamily: FB, fontSize: 10.5, fontWeight: 600, color: 'var(--text-mid)', background: 'var(--surface-neutral)', padding: '2px 8px', borderRadius: 'var(--r-sm)' }}>{tt}</span>)}
                 </div>
               ) : null}
             </div>
-            <button onClick={onClose} aria-label="Fermer" style={{ width: 28, height: 28, flexShrink: 0, border: 'none', borderRadius: '50%', background: 'transparent', color: 'var(--text-mid)', cursor: 'pointer', fontSize: 16 }}>×</button>
+            <button onClick={onClose} aria-label={t('w3e.close')} style={{ width: 28, height: 28, flexShrink: 0, border: 'none', borderRadius: '50%', background: 'transparent', color: 'var(--text-mid)', cursor: 'pointer', fontSize: 16 }}>×</button>
           </div>
         </div>
 
         {/* Contenu : blocs / exos */}
         <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '0 var(--space-5)', display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
           {session.blocks.length === 0 ? (
-            <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-mid)', padding: 'var(--space-4) 0' }}>Cette séance n&apos;a pas de bloc détaillé.</p>
+            <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-mid)', padding: 'var(--space-4) 0' }}>{t('w3e.no_detailed_block')}</p>
           ) : session.blocks.map((b, i) => {
-            const detail = blockDetail(b)
+            const detail = blockDetail(b, t)
             return (
               <div key={b.id || i} style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'baseline', padding: 'var(--space-3)', background: 'var(--bg-card2)', borderRadius: 'var(--r-sm)' }}>
                 <span className="tnum" style={{ fontFamily: FB, fontSize: 11.5, fontWeight: 700, color: 'var(--text-dim)', width: 18, flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>{i + 1}</span>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontFamily: FB, fontSize: 13.5, fontWeight: 600, color: 'var(--text)' }}>{blockTitle(b)}</div>
+                  <div style={{ fontFamily: FB, fontSize: 13.5, fontWeight: 600, color: 'var(--text)' }}>{blockTitle(b, t)}</div>
                   {detail && <div className="tnum" style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-mid)', marginTop: 2, fontVariantNumeric: 'tabular-nums' }}>{detail}</div>}
                 </div>
               </div>
@@ -147,7 +150,7 @@ function SessionDetailOverlay({ session, onClose }: { session: SessionRef; onClo
           )}
           {session.nutritionItems?.length ? (
             <div style={{ marginTop: 'var(--space-2)' }}>
-              <div style={{ fontFamily: FB, fontSize: 10.5, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-dim)', margin: '0 0 var(--space-2)' }}>Nutrition</div>
+              <div style={{ fontFamily: FB, fontSize: 10.5, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-dim)', margin: '0 0 var(--space-2)' }}>{t('w3e.nutrition')}</div>
               {session.nutritionItems.map((n, i) => (
                 <div key={n.id || i} className="tnum" style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-mid)', fontVariantNumeric: 'tabular-nums' }}>{n.timeMin} min · {n.name || n.type} · {n.quantity}</div>
               ))}
@@ -164,18 +167,18 @@ function SessionDetailOverlay({ session, onClose }: { session: SessionRef; onClo
                 style={{ flex: 1, height: 40, boxSizing: 'border-box', background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: 'var(--r-sm)', padding: '0 var(--space-3)', fontFamily: FB, fontSize: 13.5, color: 'var(--text)', outline: 'none' }} />
               <button onClick={() => void doPlan()} disabled={busy === 'plan'}
                 style={{ height: 40, padding: '0 var(--space-5)', border: 'none', borderRadius: 'var(--r-sm)', background: 'var(--primary)', color: 'var(--on-primary)', fontFamily: FB, fontSize: 13.5, fontWeight: 600, cursor: busy === 'plan' ? 'default' : 'pointer', opacity: busy === 'plan' ? 0.6 : 1 }}>
-                {busy === 'plan' ? 'Ajout…' : 'Confirmer'}
+                {busy === 'plan' ? t('w3e.adding') : t('w3e.confirm')}
               </button>
             </div>
           ) : (
             <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
               <button onClick={() => void doCopy()} disabled={busy === 'copy'}
                 style={{ flex: 1, height: 44, border: 'none', borderRadius: 'var(--r-sm)', background: 'var(--surface-neutral)', color: 'var(--text)', fontFamily: FB, fontSize: 13.5, fontWeight: 600, cursor: busy === 'copy' ? 'default' : 'pointer', opacity: busy === 'copy' ? 0.6 : 1 }}>
-                {busy === 'copy' ? 'Copie…' : 'Copier en bibliothèque'}
+                {busy === 'copy' ? t('w3e.copying') : t('w3e.copy_to_library')}
               </button>
               <button onClick={() => { setPlanning(true); setDone(null) }}
                 style={{ flex: 1, height: 44, border: 'none', borderRadius: 'var(--r-sm)', background: 'var(--primary)', color: 'var(--on-primary)', fontFamily: FB, fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}>
-                Ajouter au planning
+                {t('w3e.add_to_planning')}
               </button>
             </div>
           )}

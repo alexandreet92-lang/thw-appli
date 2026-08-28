@@ -11,6 +11,7 @@ import dynamic from 'next/dynamic'
 import { setPlanningScopeUid, PlanningScopeContext } from '@/lib/planning/scope'
 import { MessageThread } from './MessageThread'
 import { Avatar } from '@/components/shared/Sidebar'
+import { useI18n } from '@/lib/i18n'
 
 export type DrawerKind = 'planning' | 'calendar' | 'training' | 'performance' | 'recovery' | 'nutrition' | 'message' | null
 
@@ -18,7 +19,7 @@ export type DrawerKind = 'planning' | 'calendar' | 'training' | 'performance' | 
 // défini AVANT le montage de leurs effets. On l'arme donc pour tous ces types.
 const SCOPED_KINDS = new Set<DrawerKind>(['planning', 'calendar', 'training', 'performance', 'recovery', 'nutrition'])
 
-const Loading = () => <div style={{ padding: 40, color: 'var(--text-dim)', fontSize: 13, fontFamily: 'var(--font-body)' }}>Chargement…</div>
+const Loading = () => { const { t } = useI18n(); return <div style={{ padding: 40, color: 'var(--text-dim)', fontSize: 13, fontFamily: 'var(--font-body)' }}>{t('w3d.loading')}</div> }
 const PlanningPage = dynamic(() => import('@/app/planning/page'), { ssr: false, loading: Loading })
 const CalendarPage = dynamic(() => import('@/app/calendar/page'), { ssr: false, loading: Loading })
 const RecoveryPage = dynamic(() => import('@/app/recovery/page'), { ssr: false, loading: Loading })
@@ -30,14 +31,10 @@ const TrainingPage = dynamic(() => import('@/app/activities/page'), { ssr: false
 // sur l'athlète : le coach voit ET modifie ses données de perf (RLS coach-write).
 const PerformancePage = dynamic(() => import('@/app/performance/page'), { ssr: false, loading: Loading })
 
-const TITLE: Record<Exclude<DrawerKind, null>, string> = {
-  planning: 'Planning', calendar: 'Calendrier', training: 'Training', performance: 'Performance',
-  recovery: 'Récupération', nutrition: 'Nutrition', message: 'Messages',
-}
-
 export function AthleteDetailDrawer({ kind, athleteId, coachId, name, avatar, onClose }: {
   kind: DrawerKind; athleteId: string; coachId: string | null; name: string; avatar: string | null; onClose: () => void
 }) {
+  const { t } = useI18n()
   const open = !!kind
   const [mounted, setMounted] = useState(false)
 
@@ -82,13 +79,13 @@ export function AthleteDetailDrawer({ kind, athleteId, coachId, name, avatar, on
         transform: open ? 'translateX(0)' : 'translateX(100%)', transition: 'transform .3s cubic-bezier(.32,.72,0,1)',
       }}>
         <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 12, padding: '12px clamp(14px,3vw,22px)', borderBottom: '1px solid var(--border)', background: 'var(--bg)' }}>
-          <button onClick={onClose} aria-label="Fermer" style={{ width: 34, height: 34, borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-mid)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <button onClick={onClose} aria-label={t('w3d.close')} style={{ width: 34, height: 34, borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-mid)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" transform="rotate(180 12 12)" /></svg>
           </button>
           <Avatar url={avatar} name={name} size={34} />
           <div style={{ minWidth: 0, flex: 1 }}>
             <div style={{ fontFamily: 'var(--font-display)', fontSize: 15.5, fontWeight: 600, color: 'var(--text)', lineHeight: 1.1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</div>
-            <div style={{ fontSize: 12, color: 'var(--primary)', fontWeight: 700 }}>{kind ? TITLE[kind] : ''}</div>
+            <div style={{ fontSize: 12, color: 'var(--primary)', fontWeight: 700 }}>{kind ? t(`w3d.drawer_${kind}`) : ''}</div>
           </div>
         </div>
         <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'] }}>

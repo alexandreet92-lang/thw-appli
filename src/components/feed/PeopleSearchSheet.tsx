@@ -3,6 +3,7 @@
 // bouton Suivre/Suivi. Point d'entrée du graphe social (le fil se remplit ensuite).
 import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { useI18n } from '@/lib/i18n'
 import { Avatar } from '@/components/shared/Sidebar'
 import { searchPeople, getFollowingIds, toggleFollow, type Person } from '@/lib/social/follows'
 
@@ -10,6 +11,7 @@ const FB = 'var(--font-body)', FD = 'var(--font-display)'
 const SCRIM = 'rgba(0,0,0,0.72)' // design-allow-color — voile de surpage
 
 export function PeopleSearchSheet({ onClose }: { onClose: () => void }) {
+  const { t } = useI18n()
   const [q, setQ] = useState('')
   const [people, setPeople] = useState<Person[] | null>(null)
   const [following, setFollowing] = useState<Set<string>>(new Set())
@@ -38,18 +40,18 @@ export function PeopleSearchSheet({ onClose }: { onClose: () => void }) {
       <div onClick={e => e.stopPropagation()} className={closing ? 'sheet-close' : 'sheet-open'}
         style={{ width: '100%', maxWidth: 560, maxHeight: 'calc(100dvh - 56px)', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '20px 20px 0 0', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid var(--border)' }}>
-          <h2 style={{ fontFamily: FD, fontSize: 16, fontWeight: 700, color: 'var(--text)', margin: 0 }}>Trouver des athlètes</h2>
+          <h2 style={{ fontFamily: FD, fontSize: 16, fontWeight: 700, color: 'var(--text)', margin: 0 }}>{t('w3f.find_athletes')}</h2>
           <button onClick={close} style={{ width: 30, height: 30, borderRadius: '50%', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 17 }}>×</button>
         </div>
         <div style={{ padding: '12px 20px 0' }}>
-          <input autoFocus value={q} onChange={e => setQ(e.target.value)} placeholder="Nom ou pseudo…"
+          <input autoFocus value={q} onChange={e => setQ(e.target.value)} placeholder={t('w3f.name_or_username')}
             style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1px solid var(--border-mid)', background: 'var(--input-bg)', color: 'var(--text)', fontFamily: FB, fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
         </div>
         <div style={{ flex: 1, overflowY: 'auto', padding: '12px 16px 24px' }}>
           {people === null ? (
-            <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-dim)', padding: '0 4px' }}>Recherche…</p>
+            <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-dim)', padding: '0 4px' }}>{t('w3f.searching')}</p>
           ) : list.length === 0 ? (
-            <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-dim)', padding: '0 4px' }}>Aucun athlète trouvé.</p>
+            <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-dim)', padding: '0 4px' }}>{t('w3f.no_athletes')}</p>
           ) : list.map(p => {
             const isF = following.has(p.id)
             return (
@@ -62,7 +64,7 @@ export function PeopleSearchSheet({ onClose }: { onClose: () => void }) {
                 <button onClick={() => void toggle(p.id)} disabled={busy === p.id}
                   style={{ flexShrink: 0, padding: '7px 14px', borderRadius: 999, cursor: 'pointer', fontFamily: FB, fontSize: 12.5, fontWeight: 600,
                     border: isF ? '1px solid var(--border-mid)' : 'none', background: isF ? 'transparent' : 'var(--primary)', color: isF ? 'var(--text-mid)' : 'var(--on-primary)' }}>
-                  {isF ? 'Suivi' : 'Suivre'}
+                  {isF ? t('w3f.following') : t('w3f.follow')}
                 </button>
               </div>
             )

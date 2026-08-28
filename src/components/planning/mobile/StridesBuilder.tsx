@@ -7,6 +7,7 @@
 // • On peut sauvegarder un atelier comme réutilisable (table custom_ateliers).
 // ══════════════════════════════════════════════════════════════════
 import { useEffect, useMemo, useState } from 'react'
+import { useI18n } from '@/lib/i18n'
 import type { Block } from '@/app/planning/page'
 import type { MBlock } from './blocks'
 import { Card, FieldLabel } from './ui'
@@ -48,6 +49,7 @@ function IntensityProfile({ blocks, accent }: { blocks: StrideBlock[]; accent: s
 }
 
 export function StridesBuilder({ blocks, onChange, accent }: { blocks: MBlock[]; onChange: (b: Block[]) => void; accent: string }) {
+  const { t } = useI18n()
   const sBlocks = useMemo(() => (blocks as MBlock[]).filter(isStrideBlock) as StrideBlock[], [blocks])
   const [gallery, setGallery] = useState(false)
   const [custom, setCustom] = useState<CustomAtelier[]>([])
@@ -76,8 +78,8 @@ export function StridesBuilder({ blocks, onChange, accent }: { blocks: MBlock[];
       {sBlocks.length > 0 && (
         <Card style={{ padding: 14 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
-            <span style={{ fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--se-dim)' }}>Profil d'intensité</span>
-            <span className="se-tnum" style={{ fontSize: 12, fontWeight: 700, color: 'var(--se-text)' }}>≈ {totalMin} min · {sBlocks.length} atelier{sBlocks.length > 1 ? 's' : ''}</span>
+            <span style={{ fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--se-dim)' }}>{t('w3g.strides_intensity_profile')}</span>
+            <span className="se-tnum" style={{ fontSize: 12, fontWeight: 700, color: 'var(--se-text)' }}>{sBlocks.length > 1 ? t('w3g.strides_summary_plural', { min: totalMin, count: sBlocks.length }) : t('w3g.strides_summary', { min: totalMin, count: sBlocks.length })}</span>
           </div>
           <IntensityProfile blocks={sBlocks} accent={accent} />
         </Card>
@@ -95,26 +97,26 @@ export function StridesBuilder({ blocks, onChange, accent }: { blocks: MBlock[];
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12, marginBottom: 12 }}>
-            <div><FieldLabel>Répétitions</FieldLabel><Num value={b.at.reps} onChange={n => setAt(b.id, { ...b.at, reps: n })} w={72} min={1} /></div>
-            <div><FieldLabel>Effort / rép.</FieldLabel><Num value={b.at.effortSec} onChange={n => setAt(b.id, { ...b.at, effortSec: n })} unit="s" w={78} step={5} /></div>
-            <div><FieldLabel>Récup entre rép.</FieldLabel><Num value={b.at.recoverySec} onChange={n => setAt(b.id, { ...b.at, recoverySec: n })} unit="s" w={78} step={5} /></div>
-            <div><FieldLabel>Repos entre blocs</FieldLabel><Num value={b.at.restBetweenSec} onChange={n => setAt(b.id, { ...b.at, restBetweenSec: n })} unit="s" w={78} step={5} /></div>
+            <div><FieldLabel>{t('w3g.strides_reps')}</FieldLabel><Num value={b.at.reps} onChange={n => setAt(b.id, { ...b.at, reps: n })} w={72} min={1} /></div>
+            <div><FieldLabel>{t('w3g.strides_effort_per_rep')}</FieldLabel><Num value={b.at.effortSec} onChange={n => setAt(b.id, { ...b.at, effortSec: n })} unit="s" w={78} step={5} /></div>
+            <div><FieldLabel>{t('w3g.strides_recovery_between_reps')}</FieldLabel><Num value={b.at.recoverySec} onChange={n => setAt(b.id, { ...b.at, recoverySec: n })} unit="s" w={78} step={5} /></div>
+            <div><FieldLabel>{t('w3g.strides_rest_between_blocks')}</FieldLabel><Num value={b.at.restBetweenSec} onChange={n => setAt(b.id, { ...b.at, restBetweenSec: n })} unit="s" w={78} step={5} /></div>
           </div>
           <div style={{ marginBottom: 10 }}>
-            <FieldLabel right={<span style={{ display: 'inline-flex', gap: 4 }}>{[1, 2, 3, 4, 5].map(z => <button key={z} type="button" onClick={() => setAt(b.id, { ...b.at, zone: z })} style={{ width: 22, height: 20, borderRadius: 5, fontSize: 10, fontWeight: 700, cursor: 'pointer', border: `1px solid ${b.at.zone === z ? accent : 'var(--se-rule)'}`, background: b.at.zone === z ? accent : 'var(--se-card)', color: b.at.zone === z ? '#fff' : 'var(--se-dim)' }}>{z}</button>)}</span>}>Zone · note</FieldLabel>
-            <input value={b.at.note} onChange={e => setAt(b.id, { ...b.at, note: e.target.value })} placeholder="Consigne (ex. sur signal du coach)"
+            <FieldLabel right={<span style={{ display: 'inline-flex', gap: 4 }}>{[1, 2, 3, 4, 5].map(z => <button key={z} type="button" onClick={() => setAt(b.id, { ...b.at, zone: z })} style={{ width: 22, height: 20, borderRadius: 5, fontSize: 10, fontWeight: 700, cursor: 'pointer', border: `1px solid ${b.at.zone === z ? accent : 'var(--se-rule)'}`, background: b.at.zone === z ? accent : 'var(--se-card)', color: b.at.zone === z ? '#fff' : 'var(--se-dim)' }}>{z}</button>)}</span>}>{t('w3g.strides_zone_note')}</FieldLabel>
+            <input value={b.at.note} onChange={e => setAt(b.id, { ...b.at, note: e.target.value })} placeholder={t('w3g.strides_note_placeholder')}
               style={{ width: '100%', boxSizing: 'border-box', padding: '9px 12px', borderRadius: 9, border: '1px solid var(--se-rule)', background: 'var(--se-card)', color: 'var(--se-text)', fontSize: 13, outline: 'none' }} />
           </div>
           <button type="button" onClick={() => saveReusable(b)} style={{ width: '100%', padding: '9px', borderRadius: 9, border: `1px dashed ${accent}`, background: 'transparent', color: accent, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
-            {savedFlash === b.id ? 'Enregistré dans Mes ateliers' : 'Sauvegarder comme atelier réutilisable'}
+            {savedFlash === b.id ? t('w3g.strides_saved_flash') : t('w3g.strides_save_reusable')}
           </button>
         </Card>
       ))}
 
-      {!sBlocks.length && <p style={{ margin: '4px 0', fontSize: 13, color: 'var(--se-dim)', textAlign: 'center' }}>Ajoute un atelier d'agilité pour construire ta séance.</p>}
+      {!sBlocks.length && <p style={{ margin: '4px 0', fontSize: 13, color: 'var(--se-dim)', textAlign: 'center' }}>{t('w3g.strides_empty')}</p>}
 
       <button type="button" onClick={() => setGallery(g => !g)} style={{ padding: '13px', borderRadius: 12, border: `1px solid ${accent}`, background: gallery ? accent : 'var(--se-card)', color: gallery ? '#fff' : accent, fontSize: 13.5, fontWeight: 700, cursor: 'pointer' }}>
-        {gallery ? 'Fermer la bibliothèque' : '+ Ajouter un atelier'}
+        {gallery ? t('w3g.strides_close_library') : t('w3g.strides_add_atelier')}
       </button>
 
       {gallery && (
@@ -122,7 +124,7 @@ export function StridesBuilder({ blocks, onChange, accent }: { blocks: MBlock[];
           {/* Mes ateliers */}
           {custom.length > 0 && (
             <>
-              <p style={{ margin: '0 0 8px', fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--se-dim)' }}>Mes ateliers</p>
+              <p style={{ margin: '0 0 8px', fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--se-dim)' }}>{t('w3g.strides_my_ateliers')}</p>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(96px, 1fr))', gap: 8, marginBottom: 16 }}>
                 {custom.map(c => (
                   <div key={c.id} style={{ position: 'relative' }}>
@@ -130,18 +132,18 @@ export function StridesBuilder({ blocks, onChange, accent }: { blocks: MBlock[];
                       {c.svg ? <Diagram svg={c.svg} accent={accent} size={72} /> : <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={accent} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 12h8M12 8v8"/></svg>}
                       <span style={tileName}>{c.name}</span>
                     </button>
-                    <button type="button" onClick={() => delCustom(c.id)} aria-label="Supprimer" style={{ position: 'absolute', top: 4, right: 4, width: 18, height: 18, borderRadius: '50%', border: 'none', background: 'var(--se-card2)', color: 'var(--se-dim)', fontSize: 11, cursor: 'pointer', lineHeight: 1 }}>×</button>
+                    <button type="button" onClick={() => delCustom(c.id)} aria-label={t('w3g.strides_delete')} style={{ position: 'absolute', top: 4, right: 4, width: 18, height: 18, borderRadius: '50%', border: 'none', background: 'var(--se-card2)', color: 'var(--se-dim)', fontSize: 11, cursor: 'pointer', lineHeight: 1 }}>×</button>
                   </div>
                 ))}
               </div>
             </>
           )}
           {/* Atelier libre */}
-          <p style={{ margin: '0 0 8px', fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--se-dim)' }}>Catalogue</p>
+          <p style={{ margin: '0 0 8px', fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--se-dim)' }}>{t('w3g.strides_catalog')}</p>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(96px, 1fr))', gap: 8 }}>
             <button type="button" onClick={() => add(newFreeAtelier())} style={{ ...tileStyle(accent), borderStyle: 'dashed' }}>
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={accent} strokeWidth="2" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
-              <span style={tileName}>Atelier libre</span>
+              <span style={tileName}>{t('w3g.strides_free_atelier')}</span>
             </button>
             {ATELIER_PRESETS.map((p: AtelierPreset) => (
               <button key={p.id} type="button" onClick={() => add(newAtelierFromPreset(p))} style={tileStyle(accent)}>

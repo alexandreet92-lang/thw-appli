@@ -14,6 +14,7 @@ import Link from 'next/link'
 import { listSystems, type StudioSystemRow } from '@/lib/studio/store'
 import { listMyAthletes, type AthleteSummary } from '@/lib/coach/relationships'
 import StudioMarkdown from '@/components/studio/StudioMarkdown'
+import { useI18n } from '@/lib/i18n'
 
 interface RunResult { athleteId: string; name: string; status: 'done' | 'error'; renders: { title: string; text: string }[]; error?: string }
 
@@ -28,6 +29,7 @@ export default function CoachStudio() {
   const [results, setResults] = useState<RunResult[] | null>(null)
   const [openId, setOpenId] = useState<string | null>(null)
   const searchParams = useSearchParams()
+  const { t } = useI18n()
 
   useEffect(() => {
     let cancelled = false
@@ -64,10 +66,10 @@ export default function CoachStudio() {
     try {
       const res = await fetch('/api/coach/studio-run', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ systemId, athleteIds: [...selected] }) })
       const data = await res.json()
-      if (!res.ok) { setErr(data?.error || 'Le run a échoué.'); return }
+      if (!res.ok) { setErr(data?.error || t('w3d.run_failed')); return }
       setResults(data.results as RunResult[])
       setOpenId((data.results as RunResult[])[0]?.athleteId ?? null)
-    } catch { setErr('Le run a échoué — réessaie.') }
+    } catch { setErr(t('w3d.run_failed_retry')) }
     finally { setRunning(false) }
   }
 
@@ -76,24 +78,24 @@ export default function CoachStudio() {
 
   return (
     <div style={{ width: '100%', padding: '20px clamp(16px,4vw,40px) 60px', boxSizing: 'border-box', fontFamily: 'var(--font-body)' }}>
-      <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)', margin: '0 0 4px', fontFamily: 'var(--font-display)' }}>Studio coach</h1>
-      <p style={{ fontSize: 12.5, color: 'var(--text-dim)', margin: '0 0 18px' }}>Fais tourner un de tes systèmes sur les données de tes athlètes — un rendu par athlète.</p>
+      <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)', margin: '0 0 4px', fontFamily: 'var(--font-display)' }}>{t('w3d.studio_title')}</h1>
+      <p style={{ fontSize: 12.5, color: 'var(--text-dim)', margin: '0 0 18px' }}>{t('w3d.studio_subtitle')}</p>
 
       {loading ? (
-        <p style={{ fontSize: 13, color: 'var(--text-dim)', animation: 'studio_pulse 1.4s ease infinite' }}>Chargement…</p>
+        <p style={{ fontSize: 13, color: 'var(--text-dim)', animation: 'studio_pulse 1.4s ease infinite' }}>{t('w3d.loading')}</p>
       ) : systems.length === 0 ? (
         <div style={{ ...card }}>
-          <p style={{ fontSize: 14, color: 'var(--text-mid)', margin: 0, lineHeight: 1.6 }}>Tu n’as pas encore de système. Construis-en un dans ton Studio (bouton IA → Studio, côté « mon appli »), puis reviens ici pour le lancer sur tes athlètes.</p>
+          <p style={{ fontSize: 14, color: 'var(--text-mid)', margin: 0, lineHeight: 1.6 }}>{t('w3d.studio_no_system')}</p>
         </div>
       ) : athletes.length === 0 ? (
         <div style={{ ...card }}>
-          <p style={{ fontSize: 14, color: 'var(--text-mid)', margin: 0 }}>Aucun athlète. Invite-en depuis <Link href="/coach/athletes" style={{ color: 'var(--primary)', fontWeight: 700 }}>Athlètes</Link>.</p>
+          <p style={{ fontSize: 14, color: 'var(--text-mid)', margin: 0 }}>{t('w3d.studio_no_athletes_prefix')}<Link href="/coach/athletes" style={{ color: 'var(--primary)', fontWeight: 700 }}>{t('w3d.nav_athletes')}</Link>.</p>
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {/* Choix du système */}
           <div style={{ ...card }}>
-            <div style={secLabel}>Système à lancer</div>
+            <div style={secLabel}>{t('w3d.system_to_run')}</div>
             <select value={systemId} onChange={e => setSystemId(e.target.value)}
               style={{ width: '100%', maxWidth: 420, padding: '10px 12px', borderRadius: 11, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text)', fontSize: 14, fontFamily: 'var(--font-body)', cursor: 'pointer' }}>
               {systems.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
@@ -103,10 +105,10 @@ export default function CoachStudio() {
           {/* Choix des athlètes */}
           <div style={{ ...card }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-              <span style={secLabel}>Athlètes ({selected.size}/{athletes.length})</span>
+              <span style={secLabel}>{t('w3d.athletes_count', { sel: selected.size, total: athletes.length })}</span>
               <button onClick={() => setSelected(selected.size === athletes.length ? new Set() : new Set(athletes.map(a => a.id)))}
                 style={{ fontSize: 12, fontWeight: 700, color: 'var(--primary)', background: 'none', border: 'none', cursor: 'pointer' }}>
-                {selected.size === athletes.length ? 'Tout décocher' : 'Tout cocher'}
+                {selected.size === athletes.length ? t('w3d.uncheck_all') : t('w3d.check_all')}
               </button>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 8 }}>
@@ -118,7 +120,7 @@ export default function CoachStudio() {
                     <span style={{ width: 18, height: 18, borderRadius: 5, border: `1.5px solid ${on ? 'var(--primary)' : 'var(--border-mid)'}`, background: on ? 'var(--primary)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                       {on && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>}
                     </span>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.full_name || a.first_name || 'Athlète'}</span>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.full_name || a.first_name || t('w3d.athlete_fallback')}</span>
                   </button>
                 )
               })}
@@ -129,13 +131,13 @@ export default function CoachStudio() {
 
           <button data-guide="studio-run" onClick={run} disabled={running || selected.size === 0}
             style={{ alignSelf: 'flex-start', padding: '12px 22px', borderRadius: 12, border: 'none', background: running || selected.size === 0 ? 'var(--border)' : 'var(--primary)', color: running || selected.size === 0 ? 'var(--text-dim)' : 'var(--on-primary)', fontSize: 14, fontWeight: 700, cursor: running || selected.size === 0 ? 'default' : 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
-            {running ? <><span style={{ width: 15, height: 15, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.4)', borderTopColor: '#fff', animation: 'studio_spin 0.7s linear infinite' }} /> En cours…</> : `Lancer sur ${selected.size} athlète${selected.size > 1 ? 's' : ''}`}
+            {running ? <><span style={{ width: 15, height: 15, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.4)', borderTopColor: '#fff', animation: 'studio_spin 0.7s linear infinite' }} /> {t('w3d.running')}</> : (selected.size > 1 ? t('w3d.run_on_n_plural', { n: selected.size }) : t('w3d.run_on_n', { n: selected.size }))}
           </button>
 
           {/* Résultats */}
           {results && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <div style={secLabel}>Résultats</div>
+              <div style={secLabel}>{t('w3d.results')}</div>
               {results.map(r => {
                 const open = openId === r.athleteId
                 return (
@@ -150,7 +152,7 @@ export default function CoachStudio() {
                         {r.status === 'error' ? (
                           <p style={{ fontSize: 12.5, color: '#EF4444', marginTop: 10 }}>{r.error}</p>
                         ) : r.renders.length === 0 ? (
-                          <p style={{ fontSize: 12.5, color: 'var(--text-dim)', marginTop: 10 }}>Aucun rendu.</p>
+                          <p style={{ fontSize: 12.5, color: 'var(--text-dim)', marginTop: 10 }}>{t('w3d.no_render')}</p>
                         ) : r.renders.map((x, i) => (
                           <div key={i} style={{ marginTop: 10 }}>
                             {x.title && <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)', marginBottom: 4 }}>{x.title}</div>}

@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
+import { useI18n } from '@/lib/i18n'
 
 export interface DailyBilanProps {
   consumed: { calories: number; protein: number; carbs: number; fat: number }
@@ -87,23 +88,24 @@ function MiniRing({ consumed, target, color, label }: { consumed: number; target
 }
 
 export default function DailyBilan({ consumed, targets, dayType }: DailyBilanProps) {
+  const { t } = useI18n()
   const badge = BADGE[dayType]
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
         <p style={{ fontFamily: 'Syne,sans-serif', fontWeight: 700, fontSize: 16, color: 'var(--text)', margin: 0 }}>
-          Bilan du jour
+          {t('w3h.daily_summary')}
         </p>
         <div style={{ padding: '4px 10px', borderRadius: 8, background: badge.bg, border: `1px solid ${badge.border}`, color: badge.text, fontSize: 11, fontFamily: 'Syne,sans-serif', fontWeight: 700 }}>
-          {badge.label}
+          {t(`w3h.daytype_${dayType}`)}
         </div>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
         <BigRing consumed={consumed.calories} target={targets.calories} />
         <div style={{ display: 'flex', gap: 16, flex: 1, justifyContent: 'space-around', flexWrap: 'wrap' }}>
-          <MiniRing consumed={consumed.protein} target={targets.protein} color="#10B981" label="Proteines" />
-          <MiniRing consumed={consumed.carbs}   target={targets.carbs}   color="#F59E0B" label="Glucides"  />
-          <MiniRing consumed={consumed.fat}     target={targets.fat}     color="#3B82F6" label="Lipides"   />
+          <MiniRing consumed={consumed.protein} target={targets.protein} color="#10B981" label={t('w3h.macro_protein')} />
+          <MiniRing consumed={consumed.carbs}   target={targets.carbs}   color="#F59E0B" label={t('w3h.macro_carbs')}  />
+          <MiniRing consumed={consumed.fat}     target={targets.fat}     color="#3B82F6" label={t('w3h.macro_fat')}    />
         </div>
       </div>
     </div>

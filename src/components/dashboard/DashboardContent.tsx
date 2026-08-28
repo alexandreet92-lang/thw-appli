@@ -10,6 +10,7 @@ import { useState } from 'react'
 import SlideSheet from '@/components/ui/SlideSheet'
 import { Greeting } from './Greeting'
 import { QuickActions } from './QuickActions'
+import { Suggestions } from './Suggestions'
 import { AthleteCoachCard } from './AthleteCoachCard'
 import { UnreadMessagesCard } from './UnreadMessagesCard'
 import { AthleteFormsCard } from '@/components/coach/CustomForms'
@@ -50,6 +51,8 @@ export function DashboardContent() {
         {vitrineBtn}
         {switch_}
       </div>
+
+      <Suggestions />
 
       <AthleteCoachCard />
 

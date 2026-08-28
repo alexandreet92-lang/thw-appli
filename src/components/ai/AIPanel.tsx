@@ -21054,8 +21054,9 @@ export default function AIPanel({
     const qa = QUICK_ACTIONS.find(a => a.key === key)
     if (!qa) return
     setModel(qa.model)
-    if (qa.flow) { setActiveFlow(qa.flow); return }
+    // Même priorité que le clic sur le bouton (renderActionButton) : spec → flow → prompt.
     if (QUICK_ACTION_SPECS[qa.key]) { setInput(buildActionPrompt(QUICK_ACTION_SPECS[qa.key])); return }
+    if (qa.flow) { setActiveFlow(qa.flow); return }
     if (qa.prompt) setInput(qa.prompt)
   }, [open])
 

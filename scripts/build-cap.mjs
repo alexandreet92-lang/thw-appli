@@ -67,6 +67,9 @@ try {
       CAP_BUILD: '1',
       // L'app packagée en local appelle l'API sur Vercel (base absolue).
       NEXT_PUBLIC_API_BASE: process.env.NEXT_PUBLIC_API_BASE || 'https://thw-appli.vercel.app',
+      // Marqueur explicite « app native » : masque les prix / achats in-app
+      // (paiement Stripe hors app — règles App Store). Voir lib/native/platform.
+      NEXT_PUBLIC_NATIVE_APP: '1',
     },
   })
   console.log('\n✅ Build statique terminé → dossier out/  (prêt pour `npx cap sync`)')

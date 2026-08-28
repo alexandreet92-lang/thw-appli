@@ -21043,6 +21043,21 @@ export default function AIPanel({
       if (p) { setInput(p); sessionStorage.removeItem('coach_prefill') }
     } catch { /* ignore */ }
   }, [open])
+  // Action rapide déclenchée depuis une autre surface (ex. pill « Créer un plan »
+  // du Dashboard → sessionStorage['coach_action'] = 'training_plan'). On ouvre
+  // directement le flow/l'action correspondant au lieu de juste pré-remplir.
+  useEffect(() => {
+    if (!open) return
+    let key: string | null = null
+    try { key = sessionStorage.getItem('coach_action'); if (key) sessionStorage.removeItem('coach_action') } catch { /* ignore */ }
+    if (!key) return
+    const qa = QUICK_ACTIONS.find(a => a.key === key)
+    if (!qa) return
+    setModel(qa.model)
+    if (qa.flow) { setActiveFlow(qa.flow); return }
+    if (QUICK_ACTION_SPECS[qa.key]) { setInput(buildActionPrompt(QUICK_ACTION_SPECS[qa.key])); return }
+    if (qa.prompt) setInput(qa.prompt)
+  }, [open])
 
   // ── Détection support voix ───────────────────────────────────
   useEffect(() => {

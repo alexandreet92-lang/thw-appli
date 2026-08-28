@@ -297,6 +297,45 @@ export async function runGraph(graph: StudioGraph, cb: RunCallbacks, opts?: { so
   return { outputs, errors }
 }
 
+// ── Rendu → Planning en 1 tap ─────────────────────────────────────────────
+// Convertit une synthèse texte (le rendu d'un agent/synthèse) en séances puis,
+// APRÈS accord explicite, les écrit au Planning. Même pipeline que le nœud
+// « Action : Ajouter au Planning », mais utilisable directement depuis un rendu
+// sans avoir câblé de nœud d'action. La sécurité (accord humain) est préservée.
+export async function planningFromText(text: string, opts: {
+  model?: StudioModel
+  runId?: string
+  signal?: AbortSignal
+  replace?: boolean
+  onChunk?: (t: string) => void
+  requestApproval: (summary: string) => Promise<boolean>
+}): Promise<{ inserted: number; removed: number; summary: string }> {
+  const replace = !!opts.replace
+  const node: StudioNode = { id: 'inline_plan', kind: 'action', title: 'Planning', x: 0, y: 0, model: opts.model ?? 'hermes' }
+  const prompt =
+    `Tu convertis un plan d'entraînement en JSON STRICT pour insertion en base.\n` +
+    `Réponds UNIQUEMENT avec un tableau JSON (aucun texte autour) d'objets :\n` +
+    `{"week_start":"YYYY-MM-DD (un LUNDI)","day_index":0-6 (0=lundi),"sport":"run|bike|gym|hyrox|swim|trail_run|other","title":"…","duration_min":60,"intensity":"Z2|tempo|seuil|VMA|force|…","notes":"…"}\n` +
+    `Le lundi de la semaine prochaine est le ${nextMondayISO()} — planifie à partir de là sauf indication contraire.\n` +
+    `Maximum 10 séances.\n\n--- Plan à convertir ---\n${text}`
+  const raw = await callAgent(node, prompt, t => opts.onChunk?.(t), opts.signal, opts.runId)
+  const drafts = extractJson<PlanningSessionDraft[]>(raw)
+  if (!Array.isArray(drafts) || drafts.length === 0) throw new Error('Aucune séance exploitable dans ce rendu')
+  const finalDrafts = drafts.slice(0, 10)
+  const summary = describeDrafts(finalDrafts)
+  const weeks = Array.from(new Set(finalDrafts.map(d => d.week_start)))
+  const existing = await readExistingAiSessions(weeks).catch(() => [] as PlanningSessionDraft[])
+  const diff = describePlanningDiff(existing, finalDrafts, replace)
+  const ok = await opts.requestApproval(diff)
+  if (!ok) throw new Error('Écriture dans le Planning refusée')
+  if (replace) {
+    const { inserted, removed } = await replacePlanningSessions(finalDrafts)
+    return { inserted, removed, summary }
+  }
+  const inserted = await savePlanningSessions(finalDrafts)
+  return { inserted, removed: 0, summary }
+}
+
 // Nœuds terminaux (sans fil sortant) → ce sont les « rendus » du graphe.
 export function terminalNodeIds(graph: StudioGraph): string[] {
   const hasOut = new Set(graph.edges.map(e => e.from))

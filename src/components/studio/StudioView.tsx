@@ -17,7 +17,7 @@ import {
   MODEL_LABEL, KIND_LABEL, SOURCE_LABEL, ACTION_LABEL,
   type StudioGraph, type StudioNode, type StudioNodeKind, type StudioModel, type StudioSourceKey, type StudioActionKey, type GraphIssues,
 } from '@/lib/studio/graph'
-import { runGraph, terminalNodeIds, type NodeStatus } from '@/lib/studio/runner'
+import { runGraph, terminalNodeIds, planningFromText, type NodeStatus } from '@/lib/studio/runner'
 import { converseArchitect, planToGraph, recommendSystems, type ArchitectChatMessage, type ArchitectQuestion } from '@/lib/studio/architect'
 import { readSourceWith } from '@/lib/studio/source-readers'
 import { buildLivingContext, detectHealthFlags } from '@/lib/studio/living'
@@ -509,9 +509,29 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
       p2: { x: cb.x - ux * R, y: cb.y - uy * R },   // bord de B vers A
     }
   }
-  // Ligne droite (plus de courbe biscornue).
-  const edgePath = (a: { x: number; y: number }, b: { x: number; y: number }) =>
-    `M ${a.x} ${a.y} L ${b.x} ${b.y}`
+  // Fil courbe (bézier cubique) à tangentes horizontales, façon Make / n8n :
+  // le flux « sort » du bord droit et « entre » par la gauche, ce qui donne une
+  // courbe lisible pour la mise en page en colonnes (autoLayout).
+  const edgeCtrl = (a: { x: number; y: number }, b: { x: number; y: number }) => {
+    const dx = b.x - a.x, dy = b.y - a.y
+    const k = Math.max(28, Math.min(150, Math.abs(dx) * 0.5 + Math.abs(dy) * 0.12))
+    const s = dx >= 0 ? 1 : -1
+    return { c1: { x: a.x + s * k, y: a.y }, c2: { x: b.x - s * k, y: b.y } }
+  }
+  const edgePath = (a: { x: number; y: number }, b: { x: number; y: number }) => {
+    const { c1, c2 } = edgeCtrl(a, b)
+    return `M ${a.x} ${a.y} C ${c1.x} ${c1.y} ${c2.x} ${c2.y} ${b.x} ${b.y}`
+  }
+  // Point sur la courbe (paramètre t ∈ [0,1]) — pour semer les perles le long
+  // du fil courbe plutôt que sur une corde droite.
+  const bezAt = (a: { x: number; y: number }, b: { x: number; y: number }, t: number) => {
+    const { c1, c2 } = edgeCtrl(a, b)
+    const mt = 1 - t
+    return {
+      x: mt * mt * mt * a.x + 3 * mt * mt * t * c1.x + 3 * mt * t * t * c2.x + t * t * t * b.x,
+      y: mt * mt * mt * a.y + 3 * mt * mt * t * c1.y + 3 * mt * t * t * c2.y + t * t * t * b.y,
+    }
+  }
   // pan/zoom via refs : les handlers pointeur/molette lisent toujours la valeur
   // courante sans se réabonner.
   const panRef = useRef(pan)
@@ -1275,7 +1295,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
       return
     }
     setIssues(null)
-    setRunErr(null); setLogs([]); setNodeText({}); setStatus({}); setRunCost(null)
+    setRunErr(null); setLogs([]); setNodeText({}); setStatus({}); setRunCost(null); setApplyResult(null)
     const runLogs: LogEntry[] = []
     const runId = genId()
     const ctrl = new AbortController(); abortRef.current = ctrl
@@ -1362,6 +1382,39 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
     void navigator.clipboard?.writeText(text)
     setCopied(id)
     setTimeout(() => setCopied(c => (c === id ? null : c)), 1600)
+  }
+
+  // « Ajouter au planning » depuis un rendu : convertit la synthèse en séances
+  // puis les écrit au Planning après accord (réutilise la feuille d'accord de
+  // l'onglet Chat, comme un nœud d'action). Aucun nœud à câbler.
+  const [applyBusy, setApplyBusy] = useState(false)
+  const [applyResult, setApplyResult] = useState<{ ok: boolean; text: string } | null>(null)
+  const addRenderToPlanning = async (text: string) => {
+    if (applyBusy || !text.trim()) return
+    setApplyBusy(true); setApplyResult(null)
+    const ctrl = new AbortController()
+    const runId = genId()
+    try {
+      const res = await planningFromText(text, {
+        runId, signal: ctrl.signal,
+        requestApproval: (summary) => new Promise<boolean>(resolve => {
+          setTab('chat')
+          setApproval({
+            node: { id: 'inline_plan', kind: 'action', title: t('w1i.add_to_planning'), x: 0, y: 0, actionKey: 'planning_save' },
+            content: summary,
+            resolve: (ok) => { setApproval(null); setTab('rendu'); resolve(ok) },
+          })
+        }),
+      })
+      setApplyResult({ ok: true, text: t('w1i.render_saved_planning', { n: res.inserted }) })
+      refreshAccess()
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : t('w1i.err_during_run')
+      if (!/refus/i.test(msg)) setApplyResult({ ok: false, text: msg })
+      setTab('rendu')
+    } finally {
+      setApplyBusy(false)
+    }
   }
 
   // « Continuer avec le coach » : dépose le rendu dans le composer du chat
@@ -1697,7 +1750,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                     const a = graph.nodes.find(n => n.id === e.from), b = graph.nodes.find(n => n.id === e.to)
                     if (!a || !b) return null
                     const { p1, p2 } = edgeAnchors(a, b)
-                    const mid = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 }
+                    const mid = bezAt(p1, p2, 0.5)
                     const flowing = status[e.from] === 'done' && (status[e.to] === 'running' || status[e.to] === 'waiting')
                     const doneFlow = status[e.from] === 'done' && status[e.to] === 'done'
                     const sel = selEdge === e.id
@@ -1729,8 +1782,9 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                           // Fil au repos : chapelet de perles dégradées.
                           Array.from({ length: N + 1 }, (_, i) => {
                             const t = i / N
+                            const pt = bezAt(p1, p2, t)
                             const r = (sel ? 2.3 : 1.8) + 1.5 * Math.abs(2 * t - 1)
-                            return <circle key={i} cx={p1.x + dx * t} cy={p1.y + dy * t} r={r}
+                            return <circle key={i} cx={pt.x} cy={pt.y} r={r}
                               fill={`url(#eg_${e.id})`} opacity={sel ? 1 : 0.85} style={{ pointerEvents: 'none' }} />
                           })
                         )}
@@ -2106,6 +2160,14 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                 ))}
               </div>
             )}
+            {applyResult && (
+              <div style={{ marginBottom: 16, padding: '12px 14px', borderRadius: 14, display: 'flex', alignItems: 'center', gap: 10,
+                background: applyResult.ok ? 'rgba(34,197,94,0.07)' : 'rgba(239,68,68,0.07)',
+                border: `1px solid ${applyResult.ok ? 'rgba(34,197,94,0.35)' : 'rgba(239,68,68,0.35)'}` }}>
+                <span style={{ flex: 1, fontSize: 12.5, fontWeight: 700, color: applyResult.ok ? '#16A34A' : '#EF4444', fontFamily: 'var(--font-body)' }}>{applyResult.text}</span>
+                {applyResult.ok && <a href="/planning" style={{ flexShrink: 0, fontSize: 12, fontWeight: 700, color: '#16A34A', textDecoration: 'none', fontFamily: 'var(--font-body)' }}>{t('w1i.open_planning')} →</a>}
+              </div>
+            )}
             {!hasAnyText ? (
               <p style={{ fontSize: 14, color: 'var(--text-dim)', textAlign: 'center', marginTop: 60 }}>
                 {t('w1i.rendu_empty')}
@@ -2129,6 +2191,17 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                       <span style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-dim)', background: 'var(--bg-alt)', border: '1px solid var(--border)', borderRadius: 6, padding: '2px 7px' }}>{sub(selNode)}</span>
                       <div style={{ flex: 1 }} />
                       {selText.trim() && (<>
+                        {(selNode.kind === 'agent' || selNode.kind === 'merge') && (
+                          <button onClick={() => void addRenderToPlanning(selText)} disabled={applyBusy} title={t('w1i.add_to_planning')}
+                            style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 11px', borderRadius: 8, border: 'none', background: '#16A34A', color: '#fff', fontSize: 11.5, fontWeight: 700, cursor: applyBusy ? 'default' : 'pointer', opacity: applyBusy ? 0.6 : 1, fontFamily: 'var(--font-body)' }}>
+                            {applyBusy ? (
+                              <span style={{ width: 12, height: 12, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.4)', borderTopColor: '#fff', animation: 'studio_spin 0.7s linear infinite' }} />
+                            ) : (
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4M9 14l2 2 4-4"/></svg>
+                            )}
+                            {applyBusy ? t('w1i.adding') : t('w1i.add_to_planning')}
+                          </button>
+                        )}
                         <button onClick={() => continueWithCoach(selNode.title, selText)} title={t('w1i.continue_with_coach')}
                           style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 11px', borderRadius: 8, border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
                           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>

@@ -65,6 +65,22 @@ const STATUS_RING: Record<NodeStatus, string> = {
   done: 'rgba(34,197,94,0.45)', error: 'rgba(239,68,68,0.5)', skipped: 'transparent',
 }
 
+// Variante LECTURE SEULE d'un système : on retire les nœuds d'écriture (action)
+// et de validation → le run produit une ANALYSE par athlète sans jamais écrire
+// ni demander d'accord. C'est ce qu'on lance en fan-out sur un roster.
+function readOnlyGraph(g: StudioGraph): StudioGraph {
+  const drop = new Set(g.nodes.filter(n => n.kind === 'action' || n.kind === 'validation').map(n => n.id))
+  return {
+    ...g,
+    nodes: g.nodes.filter(n => !drop.has(n.id)),
+    edges: g.edges.filter(e => !drop.has(e.from) && !drop.has(e.to)),
+  }
+}
+
+// Résultat d'un run roster pour un athlète.
+type RosterState = 'idle' | 'running' | 'done' | 'error'
+interface RosterResult { state: RosterState; summary?: string; text?: string; cost?: number; error?: string }
+
 // Icônes par type de nœud (traits, cohérents avec le design system)
 function KindIcon({ kind, size = 13 }: { kind: StudioNodeKind; size?: number }) {
   const p = { width: size, height: size, viewBox: '0 0 24 24', fill: 'none' as const, stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const }
@@ -693,7 +709,9 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
     setSystems(list => list.map(s => s.id === systemId ? { ...s, athlete_id: aid } : s))
     void updateSystem(systemId, { athlete_id: aid }).catch(() => {})
   }
-  const openAthleteId = (systems.find(s => s.id === systemId)?.athlete_id) ?? null
+  const curSystem = systems.find(s => s.id === systemId) ?? null
+  const isCoachSystem = curSystem?.scope === 'coach'
+  const openAthleteId = curSystem?.athlete_id ?? null
   const openAthleteName = openAthleteId ? (coachAthletes.find(a => a.id === openAthleteId)?.name ?? t('w1i.linked_athlete')) : null
   const loadExample = () => { const g = sampleGraph(); commit({ ...g, name: graph.name || g.name }); setSelId(null); setStatus({}); setNodeText({}) }
   const clearCanvas = () => { commit({ ...emptyGraph(), id: graph.id, name: graph.name }); setSelId(null); setSelEdge(null); setStatus({}); setNodeText({}) }
@@ -1417,6 +1435,72 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
     }
   }
 
+  // ── Roster : lancer le système sur PLUSIEURS athlètes (fan-out) ──────────
+  // Analyse LECTURE SEULE par athlète (aucune écriture), avec tableau de bord.
+  const [rosterOpen, setRosterOpen] = useState(false)
+  const [rosterSel, setRosterSel] = useState<Set<string>>(new Set())
+  const [rosterRunning, setRosterRunning] = useState(false)
+  const [rosterResults, setRosterResults] = useState<Record<string, RosterResult>>({})
+  const [rosterView, setRosterView] = useState<string | null>(null)   // athlète dont on lit le détail
+  const rosterAbort = useRef<AbortController | null>(null)
+  const stopRoster = () => { rosterAbort.current?.abort(); setRosterRunning(false) }
+
+  const toggleRoster = (id: string) => setRosterSel(s => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n })
+  const allRosterSelected = coachAthletes.length > 0 && coachAthletes.every(a => rosterSel.has(a.id))
+  const toggleAllRoster = () => setRosterSel(allRosterSelected ? new Set() : new Set(coachAthletes.map(a => a.id)))
+
+  const runRoster = async () => {
+    if (rosterRunning) return
+    const ro = readOnlyGraph(graph)
+    const v = validateGraph(ro)
+    if (v.errors.length > 0) { setIssues({ ...v, canForce: false }); setRosterOpen(false); setTab('canvas'); return }
+    const targets = coachAthletes.filter(a => rosterSel.has(a.id))
+    if (targets.length === 0) return
+    // Coût : estimation × nombre d'athlètes vs solde Studio.
+    const estPer = estimateRunTokens(ro.nodes)
+    const estTotal = estPer * targets.length
+    if (access && access.allowed && estTotal > access.remaining) {
+      setIssues({ errors: [t('w1i.err_insufficient_balance', { estimate: formatTokens(estTotal), remaining: formatTokens(access.remaining) })], warnings: [], nodeIssues: {}, canForce: false })
+      setRosterOpen(false); setWalletOpen(true); return
+    }
+    const ctrl = new AbortController(); rosterAbort.current = ctrl
+    setRosterRunning(true)
+    setRosterResults(Object.fromEntries(targets.map(a => [a.id, { state: 'idle' as RosterState }])))
+    const terminals = terminalNodeIds(ro)
+    try {
+      for (const a of targets) {
+        if (ctrl.signal.aborted) break
+        setRosterResults(r => ({ ...r, [a.id]: { state: 'running' } }))
+        const runId = genId()
+        try {
+          let living = ''
+          try {
+            const sb = createClient()
+            living = await buildLivingContext(sb, a.id, systemIdRef.current || null)
+          } catch { /* best-effort */ }
+          const { outputs, errors } = await runGraph(ro, {
+            signal: ctrl.signal, runId, livingContext: living,
+            onStatus: () => {}, onChunk: () => {}, onLog: () => {},
+            requestApproval: () => Promise.resolve(false),   // aucun nœud d'accord dans un graphe lecture seule
+          }, { sourceUid: a.id })
+          const text = terminals.map(id => outputs[id] ?? '').find(x => x.trim()) ?? ''
+          const summary = text.replace(/[#*_`>-]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 120)
+          if (errors.length > 0 && !text.trim()) {
+            setRosterResults(r => ({ ...r, [a.id]: { state: 'error', error: errors.map(e => e.message).join(' · ') } }))
+          } else {
+            setRosterResults(r => ({ ...r, [a.id]: { state: 'done', summary, text } }))
+          }
+        } catch (e) {
+          if (ctrl.signal.aborted) { setRosterResults(r => ({ ...r, [a.id]: { state: 'idle' } })); break }
+          setRosterResults(r => ({ ...r, [a.id]: { state: 'error', error: e instanceof Error ? e.message : t('w1i.err_during_run') } }))
+        }
+      }
+    } finally {
+      setRosterRunning(false); rosterAbort.current = null
+      refreshAccess()
+    }
+  }
+
   // « Continuer avec le coach » : dépose le rendu dans le composer du chat
   // (mécanisme coach_prefill) puis ouvre le coach et ferme le Studio.
   const continueWithCoach = (title: string, text: string) => {
@@ -1505,6 +1589,14 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
         </button>
 
+        {/* Roster — lancer le système sur plusieurs athlètes (coach) */}
+        {isCoachSystem && coachAccess && (
+          <button onClick={() => { setRosterView(null); setRosterOpen(true) }} title={t('w1i.roster_run_title')} aria-label={t('w1i.roster')}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: isMobile ? '0 9px' : '0 12px', height: 34, borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text-mid)', cursor: 'pointer', fontSize: 12.5, fontWeight: 700, fontFamily: 'var(--font-body)', flexShrink: 0 }}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+            {!isMobile && t('w1i.roster')}
+          </button>
+        )}
         {running ? (
           <button onClick={stopRun} style={{ ...cta, background: '#374151' }}>
             <span style={{ width: 9, height: 9, borderRadius: 2, background: '#fff', display: 'inline-block' }} /> {t('w1i.stop')}
@@ -2987,6 +3079,123 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
       })()}
 
       {/* ══ Solde Studio + packs (sur-page) ══ */}
+      {/* ══ ROSTER : lancer sur N athlètes + tableau de bord ══ */}
+      {rosterOpen && (() => {
+        const results = rosterResults
+        const targets = coachAthletes.filter(a => rosterSel.has(a.id))
+        const doneN = targets.filter(a => results[a.id]?.state === 'done').length
+        const errN = targets.filter(a => results[a.id]?.state === 'error').length
+        const hasResults = Object.keys(results).length > 0
+        const detail = rosterView ? results[rosterView] : null
+        const detailName = rosterView ? (coachAthletes.find(a => a.id === rosterView)?.name ?? t('w1i.athlete')) : ''
+        const chip = (st: RosterState | undefined) => {
+          const map: Record<string, { bg: string; col: string; label: string }> = {
+            running: { bg: 'rgba(6,182,212,0.14)', col: '#06B6D4', label: t('w1i.roster_running') },
+            done:    { bg: 'rgba(34,197,94,0.14)', col: '#16A34A', label: t('w1i.roster_done') },
+            error:   { bg: 'rgba(239,68,68,0.14)', col: '#EF4444', label: t('w1i.roster_error') },
+            idle:    { bg: 'var(--bg-alt)', col: 'var(--text-dim)', label: t('w1i.roster_pending') },
+          }
+          const c = map[st ?? 'idle']
+          return <span style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.03em', textTransform: 'uppercase', color: c.col, background: c.bg, borderRadius: 999, padding: '3px 9px', flexShrink: 0 }}>{c.label}</span>
+        }
+        return (
+          <div onClick={() => { if (!rosterRunning) { setRosterOpen(false); setRosterView(null) } }}
+            style={{ position: 'fixed', inset: 0, zIndex: 13700, background: 'rgba(15,23,42,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+            <div onClick={e => e.stopPropagation()}
+              style={{ width: 'min(560px, 100%)', maxHeight: '86vh', display: 'flex', flexDirection: 'column', background: 'var(--bg-card)', borderRadius: 20, border: '1px solid var(--border)', boxShadow: '0 24px 70px rgba(0,0,0,0.35)', animation: 'studio_in 0.2s ease', fontFamily: 'var(--font-body)' }}>
+              {/* En-tête */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '18px 20px 12px', flexShrink: 0 }}>
+                {rosterView ? (
+                  <button onClick={() => setRosterView(null)} aria-label={t('w1i.back')} style={iconBtn}>
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+                  </button>
+                ) : (
+                  <span style={{ width: 32, height: 32, borderRadius: 10, background: 'color-mix(in srgb, var(--studio-accent) 12%, transparent)', color: 'var(--studio-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/></svg>
+                  </span>
+                )}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-display)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{rosterView ? detailName : t('w1i.roster_title')}</div>
+                  <div style={{ fontSize: 11.5, color: 'var(--text-dim)' }}>{rosterView ? graph.name : t('w1i.roster_subtitle', { name: graph.name })}</div>
+                </div>
+                <button onClick={() => { if (!rosterRunning) { setRosterOpen(false); setRosterView(null) } }} aria-label={t('w1i.close')} style={iconBtn}>
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                </button>
+              </div>
+
+              {/* Détail d'un athlète */}
+              {rosterView && detail ? (
+                <div style={{ flex: 1, overflowY: 'auto', padding: '0 20px 18px' }}>
+                  {detail.state === 'error'
+                    ? <div style={{ padding: '12px 14px', borderRadius: 12, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)', color: '#EF4444', fontSize: 13 }}>{detail.error}</div>
+                    : detail.text?.trim()
+                      ? <div style={{ padding: '14px 16px', borderRadius: 14, background: 'var(--bg-alt)', border: '1px solid var(--border)' }}><StudioMarkdown text={detail.text} /></div>
+                      : <p style={{ fontSize: 13, color: 'var(--text-dim)' }}>{t('w1i.roster_no_output')}</p>}
+                </div>
+              ) : (
+                <>
+                  {/* Sélection / tableau de bord */}
+                  <div style={{ flex: 1, overflowY: 'auto', padding: '0 20px 8px' }}>
+                    {!hasResults && (
+                      <button onClick={toggleAllRoster} style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '0 0 8px', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--studio-accent)', fontSize: 12.5, fontWeight: 700, fontFamily: 'var(--font-body)', padding: 0 }}>
+                        {allRosterSelected ? t('w1i.roster_deselect_all') : t('w1i.roster_select_all')}
+                      </button>
+                    )}
+                    {coachAthletes.length === 0 && <p style={{ fontSize: 13, color: 'var(--text-dim)', padding: '20px 0', textAlign: 'center' }}>{t('w1i.roster_no_athletes')}</p>}
+                    {coachAthletes.map(a => {
+                      const res = results[a.id]
+                      const selected = rosterSel.has(a.id)
+                      const clickable = hasResults ? res?.state === 'done' || res?.state === 'error' : true
+                      return (
+                        <div key={a.id}
+                          onClick={() => { if (hasResults) { if (clickable) setRosterView(a.id) } else toggleRoster(a.id) }}
+                          style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '10px 6px', borderBottom: '1px solid var(--border)', cursor: clickable ? 'pointer' : 'default' }}>
+                          {!hasResults && (
+                            <span style={{ width: 20, height: 20, borderRadius: 6, flexShrink: 0, border: `2px solid ${selected ? 'var(--studio-accent)' : 'var(--border-mid)'}`, background: selected ? 'var(--studio-accent)' : 'transparent', display: 'grid', placeItems: 'center' }}>
+                              {selected && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>}
+                            </span>
+                          )}
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 14.5, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.name}</div>
+                            {res?.summary && <div style={{ fontSize: 11.5, color: 'var(--text-dim)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{res.summary}…</div>}
+                            {res?.state === 'error' && <div style={{ fontSize: 11.5, color: '#EF4444', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{res.error}</div>}
+                          </div>
+                          {hasResults ? chip(res?.state) : null}
+                          {hasResults && clickable && <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M9 18l6-6-6-6"/></svg>}
+                        </div>
+                      )
+                    })}
+                  </div>
+
+                  {/* Pied : lancer / arrêter / relancer */}
+                  <div style={{ flexShrink: 0, padding: '12px 20px calc(env(safe-area-inset-bottom) + 16px)', borderTop: '1px solid var(--border)' }}>
+                    {hasResults && !rosterRunning && (
+                      <div style={{ fontSize: 12, color: 'var(--text-mid)', fontWeight: 700, marginBottom: 10, textAlign: 'center' }}>
+                        {t('w1i.roster_recap', { done: doneN, total: targets.length })}{errN ? ` · ${t('w1i.roster_errors', { n: errN })}` : ''}
+                      </div>
+                    )}
+                    {rosterRunning ? (
+                      <button onClick={stopRoster} style={{ width: '100%', height: 50, borderRadius: 14, border: 'none', background: '#374151', color: '#fff', fontSize: 15, fontWeight: 800, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
+                        {t('w1i.roster_stop')} ({doneN}/{targets.length})
+                      </button>
+                    ) : hasResults ? (
+                      <button onClick={() => setRosterResults({})} style={{ width: '100%', height: 50, borderRadius: 14, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text)', fontSize: 15, fontWeight: 800, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
+                        {t('w1i.roster_new')}
+                      </button>
+                    ) : (
+                      <button onClick={() => void runRoster()} disabled={rosterSel.size === 0}
+                        style={{ width: '100%', height: 50, borderRadius: 14, border: 'none', background: rosterSel.size ? 'var(--studio-accent)' : 'var(--border)', color: rosterSel.size ? '#fff' : 'var(--text-dim)', fontSize: 15, fontWeight: 800, cursor: rosterSel.size ? 'pointer' : 'default', fontFamily: 'var(--font-body)' }}>
+                        {t('w1i.roster_launch', { n: rosterSel.size })}
+                      </button>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        )
+      })()}
+
       {walletOpen && access && (
         <div onClick={() => setWalletOpen(false)}
           style={{ position: 'fixed', inset: 0, zIndex: 13700, background: 'rgba(15,23,42,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>

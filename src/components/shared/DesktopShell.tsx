@@ -183,6 +183,10 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
       <main style={{
         flex: 1, minWidth: 0, height: '100vh', overflowY: 'auto', overflowX: 'hidden',
         position: 'relative', background: 'var(--bg)', scrollBehavior: 'smooth', WebkitOverflowScrolling: SCROLL,
+        // Dégage le haut : les boutons flottants (Démarrer, IA, cloche… top:12,
+        // h:38) ne doivent plus masquer les titres et blocs de tête des pages.
+        // /record garde son plein écran (il sort en amont, avant ce <main>).
+        paddingTop: isRecord ? 0 : 56,
       }}>
         {/* Scrim léger en haut */}
         <div aria-hidden style={{ position: 'fixed', top: 0, left: RAIL, right: 0, height: 62, zIndex: 50, pointerEvents: 'none', background: 'linear-gradient(var(--bg), transparent)' }} />

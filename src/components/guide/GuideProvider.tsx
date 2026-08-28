@@ -34,7 +34,7 @@ interface Rect { top: number; left: number; width: number; height: number }
 
 // Libellés de page (en-tête « Page X/N · <page> »). Repli si `step.page` absent.
 const ROUTE_LABEL: Record<string, string> = {
-  '/': 'Accueil', '/planning': 'Planning', '/calendar': 'Calendrier', '/activities': 'Training',
+  '/': 'Tableau de bord', '/planning': 'Planning', '/calendar': 'Calendrier', '/activities': 'Training',
   '/performance': 'Performance', '/nutrition': 'Nutrition', '/recovery': 'Récupération',
   '/community': 'Communauté', '/connections': 'Connexions', '/injuries': 'Blessures',
   '/feed': 'Fil', '/coach': 'Coach', '/coaches': 'Coachs', '/programmes': 'Programmes',

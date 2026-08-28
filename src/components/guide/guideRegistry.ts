@@ -488,6 +488,13 @@ export const COACH_TOUR: GuideStep[] = [
   { route: '/coach/messages', coachOnly: true, title: 'Messagerie coach', message: 'Échange avec tes athlètes : messages, retours sur séances, suivi. Vu / envoyé, édition et suppression inclus.' },
 ]
 
+// Pages qui ne se déduisent pas proprement de la route (panneaux ouverts
+// au-dessus de l'accueil, sous-routes coach) → libellé explicite pour
+// l'en-tête « Page X/N · <page> » du guide.
+AI_TOUR.forEach(s => { s.page = s.page ?? 'Assistant IA' })
+START_TOUR.forEach(s => { s.page = s.page ?? 'Démarrer' })
+COACH_TOUR.forEach(s => { s.page = s.page ?? 'Espace coach' })
+
 // ── Catalogue initial (étendu au fil de l'eau) ────────────────────
 // Deux familles d'étapes :
 //  • ACTION (« démarrer », « créer ») → on POINTE le bouton (où appuyer).

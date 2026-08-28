@@ -522,7 +522,54 @@ export const COACH_TOUR: GuideStep[] = [
     'Vu / envoyé, modifier, supprimer, pièces jointes',
     'L\'athlète est prévenu (notification)',
   ] },
-  { route: '/coach/studio', anchor: 'studio-run', coachOnly: true, title: 'Studio — passer à l\'échelle', message: 'Applique un plan, une analyse ou un message à PLUSIEURS athlètes d\'un coup. (On le détaillera à part.)' },
+  { route: '/coach/studio', coachOnly: true, title: 'Studio — passer à l\'échelle', message: 'Le Studio orchestre plusieurs agents IA pour toi. On le détaille dans sa propre visite (« Créer un système d\'agents ») — voici l\'essentiel.' },
+]
+
+// ── Studio d'agents : sa propre visite guidée (contenu détaillé) ───────────
+// Le Studio est un panneau plein écran (pas une route à part) : on reste sur
+// /coach/studio et on EXPLIQUE, cartes centrées. Couvre briques, architecte,
+// templates, run, rendu actionnable, roster et autonomie.
+const STUDIO_TOUR: GuideStep[] = [
+  { route: '/coach/studio', title: 'Le Studio d\'agents', lines: [
+    'Un **canvas** où tu assembles des agents IA qui travaillent ensemble',
+    'Objectif → les agents analysent, proposent, synthétisent',
+    'Façon « systèmes automatisés » (n8n / Make), mais pour le coaching',
+  ] },
+  { route: '/coach/studio', title: 'Les briques', lines: [
+    '**Objectif** — le point d\'entrée : ce que le système doit accomplir',
+    '**Page (lecture)** — injecte tes vraies données (activités, planning, récup…)',
+    '**Agent** — un coach IA avec un rôle précis ; **Synthèse** — arbitre et fusionne',
+    '**Validation / Action** — te demande ton accord AVANT d\'écrire dans l\'app',
+  ] },
+  { route: '/coach/studio', title: 'L\'Architecte — décris, il construit', lines: [
+    'Écris (ou dicte) ce que tu veux : « fais mon bilan de la semaine »',
+    'L\'IA compose le graphe pour toi (agents + liaisons + données)',
+    'Tu ajustes ensuite tout à la main sur la toile',
+  ] },
+  { route: '/coach/studio', title: 'Des modèles prêts', lines: [
+    '**Bilan hebdo** · **Semaine hybride** · **Préparation course** · **Retour de blessure**',
+    'Un clic charge un système complet, que tu personnalises',
+  ] },
+  { route: '/coach/studio', title: 'Lancer — « Run once »', lines: [
+    'Un contrôle pré-lancement signale ce qui bloque ou alerte',
+    'Chaque run affiche son **coût réel** (tokens Studio, séparés du chat)',
+    'Les agents travaillent en parallèle : tu vois le flux circuler sur la toile',
+  ] },
+  { route: '/coach/studio', title: 'Le Rendu — et on agit', lines: [
+    'La synthèse de chaque agent, avec des **graphes** (donut, jauge, radar, PMC…)',
+    'Bouton **« Ajouter au planning »** : la semaine proposée devient de vraies séances',
+    'Ou « Continuer avec le coach » pour approfondir dans le chat',
+  ] },
+  { route: '/coach/studio', coachOnly: true, title: 'Roster — passer à l\'échelle', lines: [
+    'Bouton **Roster** (systèmes coach) → choisis plusieurs athlètes',
+    'Le système tourne sur CHACUN avec SES données — analyse par athlète',
+    'Un **tableau de bord** te montre tous les résultats d\'un coup d\'œil',
+  ] },
+  { route: '/coach/studio', title: 'Autonomie & système vivant', lines: [
+    '**Planifie** un run récurrent (chaque semaine) — il tourne seul et t\'envoie le rapport',
+    '**Garde-fou santé** : blessure ou récup au plancher → l\'IA bride la charge',
+    '**Mémoire** : il repart de son dernier cycle au lieu de recommencer',
+  ] },
 ]
 
 // Pages qui ne se déduisent pas proprement de la route (panneaux ouverts
@@ -531,6 +578,7 @@ export const COACH_TOUR: GuideStep[] = [
 AI_TOUR.forEach(s => { s.page = s.page ?? 'Assistant IA' })
 START_TOUR.forEach(s => { s.page = s.page ?? 'Démarrer' })
 COACH_TOUR.forEach(s => { s.page = s.page ?? 'Espace coach' })
+STUDIO_TOUR.forEach(s => { s.page = s.page ?? 'Studio' })
 
 // ── Catalogue initial (étendu au fil de l'eau) ────────────────────
 // Deux familles d'étapes :
@@ -617,6 +665,11 @@ export const GUIDE_ACTIONS: GuideAction[] = [
     id: 'open-coach', label: 'Découvrir l\'espace coach', category: 'Coach',
     keywords: ['coach', 'athlètes', 'roster', 'studio', 'programme', 'entraîneur', 'clients', 'suivi athlète'],
     steps: COACH_TOUR,
+  },
+  {
+    id: 'open-studio', label: 'Créer un système d\'agents (Studio)', category: 'Studio',
+    keywords: ['studio', 'agent', 'agents', 'automatisation', 'workflow', 'canvas', 'architecte', 'roster', 'orchestration', 'système', 'bilan', 'graphe'],
+    steps: STUDIO_TOUR,
   },
 ]
 

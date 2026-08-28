@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { useI18n } from '@/lib/i18n'
 import type { MealSlotKey } from '@/hooks/useDailyMeals'
 
 export interface LocalTemplate {
@@ -28,6 +29,7 @@ const SLOT_TIMING: Record<MealSlotKey, string[]> = {
 }
 
 export default function MealModalTemplates({ slot, onSelect }: Props) {
+  const { t: tr } = useI18n()
   const [templates, setTemplates] = useState<LocalTemplate[]>([])
   const [loading,   setLoading]   = useState(true)
   const [search,    setSearch]    = useState('')
@@ -72,17 +74,17 @@ export default function MealModalTemplates({ slot, onSelect }: Props) {
   })
 
   if (loading) {
-    return <div style={{ textAlign: 'center', color: 'var(--text-dim)', padding: 32, fontSize: 12 }}>Chargement...</div>
+    return <div style={{ textAlign: 'center', color: 'var(--text-dim)', padding: 32, fontSize: 12 }}>{tr('w4b.loading')}</div>
   }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-      <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher..."
+      <input value={search} onChange={e => setSearch(e.target.value)} placeholder={tr('w4b.search_placeholder')}
         style={{ width: '100%', background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '7px 12px', fontSize: 12, color: 'var(--text)', fontFamily: 'DM Sans,sans-serif' }} />
 
       {filtered.length === 0 ? (
         <div style={{ textAlign: 'center', color: 'var(--text-dim)', padding: '28px 0', fontSize: 12 }}>
-          Aucun repas type disponible
+          {tr('w4b.no_template')}
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 340, overflowY: 'auto' }}>
@@ -96,9 +98,9 @@ export default function MealModalTemplates({ slot, onSelect }: Props) {
               </div>
               <div style={{ display: 'flex', gap: 10, fontSize: 10, fontFamily: 'DM Mono,monospace', flexWrap: 'wrap' }}>
                 {t.kcal      != null && <span style={{ color: '#06B6D4' }}>{t.kcal} kcal</span>}
-                {t.proteines != null && <span style={{ color: '#3B82F6' }}>P {t.proteines}g</span>}
-                {t.glucides  != null && <span style={{ color: '#F97316' }}>G {t.glucides}g</span>}
-                {t.lipides   != null && <span style={{ color: '#8B5CF6' }}>L {t.lipides}g</span>}
+                {t.proteines != null && <span style={{ color: '#3B82F6' }}>{tr('w4b.ml_p')} {t.proteines}g</span>}
+                {t.glucides  != null && <span style={{ color: '#F97316' }}>{tr('w4b.ml_g')} {t.glucides}g</span>}
+                {t.lipides   != null && <span style={{ color: '#8B5CF6' }}>{tr('w4b.ml_l')} {t.lipides}g</span>}
               </div>
             </button>
           ))}

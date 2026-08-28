@@ -54,7 +54,7 @@ export default function SportSidebar({ activeSport, activeCategory, onSelectSpor
       <div style={labelStyle}>{t('competences.sports')}</div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
         {SPORTS_ORDER.map(s => (
-          <Item key={s} active={activeSport === s} icon={sportIcon(s)} label={SPORT_LABELS[s]} onClick={() => onSelectSport(s)} />
+          <Item key={s} active={activeSport === s} icon={sportIcon(s)} label={t(SPORT_LABELS[s])} onClick={() => onSelectSport(s)} />
         ))}
       </div>
 
@@ -67,7 +67,7 @@ export default function SportSidebar({ activeSport, activeCategory, onSelectSpor
             key={c}
             active={activeCategory === c}
             icon={categoryIcon(c)}
-            label={CATEGORY_LABELS[c]}
+            label={t(CATEGORY_LABELS[c])}
             onClick={() => onSelectCategory(activeCategory === c ? null : c)}
           />
         ))}

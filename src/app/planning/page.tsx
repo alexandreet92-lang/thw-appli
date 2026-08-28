@@ -2456,6 +2456,7 @@ function DayBubble({ sport, label, session, done, onClick, draggable, onDragStar
   onTouchStart?: React.TouchEventHandler; onTouchMove?: React.TouchEventHandler; onTouchEnd?: React.TouchEventHandler
   lifted?: boolean
 }) {
+  const { t } = useI18n()
   const key = sportKeyFromType(sport)
   const cfg = key ? SPORT_ICON[key] : null
   const color = cfg?.color ?? 'var(--text-mid)'
@@ -2473,7 +2474,7 @@ function DayBubble({ sport, label, session, done, onClick, draggable, onDragStar
           style={{ display:'flex',flexDirection:'column',alignItems:'stretch',gap:2,padding:'4px 6px',borderRadius:8,border:'none',borderLeft:`2px solid ${color}`,background:'var(--bg-card2)',cursor:'pointer',width:'100%',boxSizing:'border-box',opacity:done?0.55:1,transform:lifted?'scale(1.06)':undefined,boxShadow:lifted?'0 6px 16px rgba(0,0,0,0.35)':undefined,transition:'transform .12s, box-shadow .12s',touchAction:onTouchStart?'pan-y':undefined,position:'relative',zIndex:lifted?20:undefined }}>
           <div style={{ display:'flex',alignItems:'flex-start',gap:4,minWidth:0 }}>
             {Ico ? <span style={{ flexShrink:0,marginTop:1,display:'flex' }}><Ico size={13} color={color} stroke={2.2} /></span> : <span style={{ width:7,height:7,borderRadius:'50%',background:color,flexShrink:0,marginTop:3 }} />}
-            <span style={{ flex:1,minWidth:0,fontSize:9.5,fontWeight:700,lineHeight:1.18,color:'var(--text)',textAlign:'left',display:'-webkit-box',WebkitLineClamp:2,WebkitBoxOrient:'vertical',overflow:'hidden',overflowWrap:'anywhere',wordBreak:'break-word' }}>{session.title || (cfg?.label ?? sport)}</span>
+            <span style={{ flex:1,minWidth:0,fontSize:9.5,fontWeight:700,lineHeight:1.18,color:'var(--text)',textAlign:'left',display:'-webkit-box',WebkitLineClamp:2,WebkitBoxOrient:'vertical',overflow:'hidden',overflowWrap:'anywhere',wordBreak:'break-word' }}>{session.title || (cfg?.label ? t(cfg.label) : sport)}</span>
           </div>
           <div style={{ display:'flex',alignItems:'center',justifyContent:'center',gap:5,flexWrap:'wrap' }}>
             <span className="tnum" style={{ fontSize:9,fontWeight:700,color,whiteSpace:'nowrap' }}>{formatHM(session.durationMin)}</span>

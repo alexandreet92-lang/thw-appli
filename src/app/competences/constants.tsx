@@ -14,16 +14,16 @@ export const SPORTS_ORDER: SportFilter[] = [
 ]
 
 export const SPORT_LABELS: Record<SportFilter, string> = {
-  all: 'Tous',
-  running: 'Running',
-  trail: 'Trail',
-  cyclisme: 'Cyclisme',
-  triathlon: 'Triathlon',
-  natation: 'Natation',
-  rowing: 'Rowing',
-  muscu: 'Musculation',
-  hyrox: 'Hyrox',
-  transversale: 'Transversale',
+  all: 'w4d.sport_all',
+  running: 'w4d.sport_running',
+  trail: 'w4d.sport_trail',
+  cyclisme: 'w4d.sport_cyclisme',
+  triathlon: 'w4d.sport_triathlon',
+  natation: 'w4d.sport_natation',
+  rowing: 'w4d.sport_rowing',
+  muscu: 'w4d.sport_muscu',
+  hyrox: 'w4d.sport_hyrox',
+  transversale: 'w4d.sport_transversale',
 }
 
 export const CATEGORIES_ORDER: CategorieCompetence[] = [
@@ -31,14 +31,14 @@ export const CATEGORIES_ORDER: CategorieCompetence[] = [
 ]
 
 export const CATEGORY_LABELS: Record<CategorieCompetence, string> = {
-  methodologie: 'Méthodologie',
-  periodisation: 'Périodisation',
-  adaptation: 'Adaptation',
-  nutrition: 'Nutrition',
-  recuperation: 'Récupération',
-  force: 'Force',
-  hypertrophie: 'Hypertrophie',
-  performance: 'Performance',
+  methodologie: 'w4d.cat_methodologie',
+  periodisation: 'w4d.cat_periodisation',
+  adaptation: 'w4d.cat_adaptation',
+  nutrition: 'w4d.cat_nutrition',
+  recuperation: 'w4d.cat_recuperation',
+  force: 'w4d.cat_force',
+  hypertrophie: 'w4d.cat_hypertrophie',
+  performance: 'w4d.cat_performance',
 }
 
 export function sportIcon(s: SportFilter, size = 15): React.ReactNode {

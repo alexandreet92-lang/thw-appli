@@ -13,6 +13,7 @@ import { createPortal } from 'react-dom'
 import { IconPlus, IconArrowDown } from '@tabler/icons-react'
 import { formatHM, type Session } from '@/app/planning/page'
 import { SportIcon } from '@/components/icons/SportIcon'
+import { useI18n } from '@/lib/i18n'
 
 export function BrickPicker({ runs, accent, onPick, onCreate, onClose }: {
   runs: Session[]
@@ -21,6 +22,7 @@ export function BrickPicker({ runs, accent, onPick, onCreate, onClose }: {
   onCreate: () => void
   onClose: () => void
 }) {
+  const { t } = useI18n()
   const [mounted, setMounted] = useState(false)
   useEffect(() => { setMounted(true) }, [])
   if (!mounted || typeof document === 'undefined') return null
@@ -49,18 +51,18 @@ export function BrickPicker({ runs, accent, onPick, onCreate, onClose }: {
             <SportIcon sport="bike" size={20} /><IconArrowDown size={15} /><SportIcon sport="run" size={20} />
           </span>
           <h3 style={{ margin: 0, fontFamily: 'Syne, sans-serif', fontSize: 17, fontWeight: 700, color: 'var(--text)' }}>
-            Enchaînement course à pied
+            {t('w4c.brick_title')}
           </h3>
-          <button onClick={onClose} aria-label="Fermer" style={{ marginLeft: 'auto', width: 30, height: 30, borderRadius: '50%', border: 'none', background: 'var(--bg-card2)', color: 'var(--text-mid)', cursor: 'pointer', fontSize: 15 }}>✕</button>
+          <button onClick={onClose} aria-label={t('w4c.brick_close_aria')} style={{ marginLeft: 'auto', width: 30, height: 30, borderRadius: '50%', border: 'none', background: 'var(--bg-card2)', color: 'var(--text-mid)', cursor: 'pointer', fontSize: 15 }}>✕</button>
         </div>
         <p style={{ margin: '0 0 16px', fontSize: 12.5, color: 'var(--text-mid)', lineHeight: 1.45 }}>
-          Relie une course déjà planifiée ce jour-là, ou crée-en une nouvelle. Elle sera reliée au vélo par une flèche dans le planning.
+          {t('w4c.brick_description')}
         </p>
 
         {runs.length > 0 && (
           <>
             <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-dim)', display: 'block', marginBottom: 8 }}>
-              Courses de ce jour
+              {t('w4c.brick_runs_today')}
             </span>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
               {runs.map(r => (
@@ -74,7 +76,7 @@ export function BrickPicker({ runs, accent, onPick, onCreate, onClose }: {
                       {formatHM(r.durationMin)}{r.time ? ` · ${r.time}` : ''}
                     </span>
                   </span>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: accent }}>Relier →</span>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: accent }}>{t('w4c.brick_link')} →</span>
                 </button>
               ))}
             </div>
@@ -82,7 +84,7 @@ export function BrickPicker({ runs, accent, onPick, onCreate, onClose }: {
         )}
 
         <button onClick={onCreate} style={{ ...card, borderStyle: 'dashed', justifyContent: 'center', color: accent, fontWeight: 700, fontSize: 13 }}>
-          <IconPlus size={17} /> Créer une nouvelle course d’enchaînement
+          <IconPlus size={17} /> {t('w4c.brick_create_new')}
         </button>
       </div>
     </div>

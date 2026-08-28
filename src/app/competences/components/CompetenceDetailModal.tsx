@@ -143,7 +143,7 @@ Garde le prompt entre 80 et 150 mots. Réponds d'abord en expliquant brièvement
   ]
   const hasStructured = sections.some(s => s.text)
 
-  const subtitle = `${competence.sports.map(s => SPORT_LABELS[s as SportFilter] ?? s).join(' / ')} · ${CATEGORY_LABELS[competence.categorie]}`
+  const subtitle = `${competence.sports.map(s => t(SPORT_LABELS[s as SportFilter] ?? s)).join(' / ')} · ${t(CATEGORY_LABELS[competence.categorie])}`
 
   // ── Header (badge + titre + sous-titre + badges + X) ──
   const headerNode = (closeFn: () => void) => (

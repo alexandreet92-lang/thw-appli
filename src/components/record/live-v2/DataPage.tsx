@@ -6,6 +6,7 @@
 // VITESSE. Le mode puissance (heroSource 'power') est prévu pour plus tard.
 // Avant démarrage : héro DURÉE 00:00:00 en dim + chips capteurs.
 // ════════════════════════════════════════════════════════════════════
+import { useI18n } from '@/lib/i18n'
 import { GPSStatus } from '@/hooks/useGPSTracking'
 import { formatHMS, frNum } from './liveMachine'
 import { distFactor, altFactor, getUnitLabel, type LiveUnits } from '../units'
@@ -63,6 +64,7 @@ export default function DataPage({
   heartRate, cadence, powerW, avgPowerW, npW, heroSource,
   gpsStatus, gpsAccuracy, dataSize, units, onSensorChipTap,
 }: Props) {
+  const { t } = useI18n()
   const f = SIZE_FACTOR[dataSize]
   const tileSize = Math.round(40 * f)
   const df = distFactor(units)
@@ -98,9 +100,9 @@ export default function DataPage({
             <span className="lv2-num">{gpsChipLabel}</span>
           </div>
           {/* FC / Puissance : non appairés — tap = appairage (à venir) */}
-          {(['FC', 'Puissance'] as const).map(lbl => (
+          {([['FC', 'w4a.hr'], ['Puissance', 'w4a.power']] as const).map(([id, k]) => (
             <button
-              key={lbl}
+              key={id}
               onClick={onSensorChipTap}
               style={{
                 height: 28, padding: '0 13px', borderRadius: 14,
@@ -108,10 +110,10 @@ export default function DataPage({
                 display: 'flex', alignItems: 'center', gap: 7, cursor: 'pointer',
                 fontSize: 12, fontWeight: 600, color: 'var(--live-label)',
               }}
-              aria-label={`${lbl} — non appairé`}
+              aria-label={t('w4a.sensor_unpaired', { name: t(k) })}
             >
               <span style={{ width: 7, height: 7, borderRadius: '50%', border: '1.5px solid var(--live-dim)' }} />
-              {lbl}
+              {t(k)}
             </button>
           ))}
         </div>
@@ -121,29 +123,29 @@ export default function DataPage({
       <div style={{ textAlign: 'center', marginTop: started ? 44 : 40 }}>
         {!started ? (
           <>
-            <div className="lv2-eyebrow">Durée</div>
+            <div className="lv2-eyebrow">{t('w4a.duration')}</div>
             <div className="lv2-num" style={{ fontSize: Math.round(76 * f), fontWeight: 800, lineHeight: 1, letterSpacing: '-0.01em', marginTop: 26, color: 'var(--live-dim)' }}>
               00:00:00
             </div>
           </>
         ) : heroIsPower ? (
           <>
-            <div className="lv2-eyebrow">Puissance · 3 s</div>
+            <div className="lv2-eyebrow">{t('w4a.power_3s')}</div>
             <div className="lv2-num" style={{ fontSize: Math.round(112 * f), fontWeight: 800, lineHeight: 1, letterSpacing: '-0.01em', marginTop: 18, color: dim ? 'var(--live-dim)' : 'var(--live-text)' }}>
               {dim ? 0 : Math.round(powerW ?? 0)}
             </div>
             <div className="lv2-num" style={{ fontSize: 13, fontWeight: 500, marginTop: 10, color: dim ? 'var(--live-dim-sub)' : 'var(--live-text-2)' }}>
-              moy {avgPowerW != null ? Math.round(avgPowerW) : '—'} W · NP {npW != null ? Math.round(npW) : '—'} W
+              {t('w4a.avg_np', { avg: avgPowerW != null ? Math.round(avgPowerW) : '—', np: npW != null ? Math.round(npW) : '—' })}
             </div>
           </>
         ) : (
           <>
-            <div className="lv2-eyebrow">Vitesse</div>
+            <div className="lv2-eyebrow">{t('w4a.speed')}</div>
             <div className="lv2-num" style={{ fontSize: Math.round(104 * f), fontWeight: 800, lineHeight: 1, letterSpacing: '-0.01em', marginTop: 20, color: dim ? 'var(--live-dim)' : 'var(--live-text)' }}>
               {frNum(shownSpeed * df, 1)}
             </div>
             <div className="lv2-num" style={{ fontSize: 13, fontWeight: 500, marginTop: 10, color: dim ? 'var(--live-dim-sub)' : 'var(--live-text-2)' }}>
-              {speedUnit} · moy {frNum(avgSpeedKmh * df, 1)}
+              {t('w4a.speed_avg', { unit: speedUnit, avg: frNum(avgSpeedKmh * df, 1) })}
             </div>
           </>
         )}
@@ -152,16 +154,16 @@ export default function DataPage({
       {/* Grille 2×3 — ordre gelé : DURÉE/DISTANCE · VITESSE/FC · D+/CADENCE */}
       <div className="lv2-grid" style={{ marginTop: started ? 40 : 48 }}>
         <div className="lv2-row">
-          <Cell label="Durée" value={started ? formatHMS(durationSec) : '00:00'} dim={dim || !started} tileSize={tileSize} />
-          <Cell label="Distance" value={started ? frNum((distanceM / 1000) * df, 2) : '0,00'} unit={getUnitLabel('km', units)} dim={dim || !started} tileSize={tileSize} />
+          <Cell label={t('w4a.duration')} value={started ? formatHMS(durationSec) : '00:00'} dim={dim || !started} tileSize={tileSize} />
+          <Cell label={t('w4a.distance')} value={started ? frNum((distanceM / 1000) * df, 2) : '0,00'} unit={getUnitLabel('km', units)} dim={dim || !started} tileSize={tileSize} />
         </div>
         <div className="lv2-row">
-          <Cell label="Vitesse" value={frNum((started ? shownSpeed : 0) * df, 1)} unit={speedUnit} dim={dim || !started} tileSize={tileSize} />
-          <Cell label="FC" value={started && heartRate != null ? String(Math.round(heartRate)) : '—'} unit="bpm" dim={dim || !started} tileSize={tileSize} />
+          <Cell label={t('w4a.speed')} value={frNum((started ? shownSpeed : 0) * df, 1)} unit={speedUnit} dim={dim || !started} tileSize={tileSize} />
+          <Cell label={t('w4a.hr')} value={started && heartRate != null ? String(Math.round(heartRate)) : '—'} unit="bpm" dim={dim || !started} tileSize={tileSize} />
         </div>
         <div className="lv2-row">
           <Cell label="D+" value={String(Math.round(elevGainM * af))} unit={getUnitLabel('m', units)} dim={dim || !started} tileSize={tileSize} />
-          <Cell label="Cadence" value={started && cadence != null ? String(Math.round(dim ? 0 : cadence)) : '—'} unit="rpm" dim={dim || !started} tileSize={tileSize} />
+          <Cell label={t('w4a.cadence')} value={started && cadence != null ? String(Math.round(dim ? 0 : cadence)) : '—'} unit="rpm" dim={dim || !started} tileSize={tileSize} />
         </div>
       </div>
     </div>

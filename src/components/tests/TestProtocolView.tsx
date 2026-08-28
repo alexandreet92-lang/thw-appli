@@ -4,6 +4,7 @@
 // déroulé exact d'un test avant de le planifier. Rend objectif, conditions,
 // échauffement, étapes, erreurs fréquentes et fréquence conseillée.
 import type { TestProtocol } from '@/lib/tests/protocols'
+import { useI18n } from '@/lib/i18n'
 
 const HEAD: React.CSSProperties = { fontFamily: 'Syne, sans-serif', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 7px', display: 'flex', alignItems: 'center', gap: 6 }
 
@@ -22,25 +23,26 @@ function Section({ label, color, items }: { label: string; color: string; items:
 }
 
 export default function TestProtocolView({ proto, accent = 'var(--primary)' }: { proto: TestProtocol; accent?: string }) {
+  const { t } = useI18n()
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div style={{ background: `${accent}12`, border: `1px solid ${accent}30`, borderRadius: 12, padding: '12px 14px' }}>
-        <p style={{ ...HEAD, color: accent }}>Objectif</p>
+        <p style={{ ...HEAD, color: accent }}>{t('w4c.test_objective')}</p>
         <p style={{ fontSize: 13.5, lineHeight: 1.55, color: 'var(--text)', margin: 0 }}>{proto.objectif}</p>
       </div>
       {proto.avertissement && (
         <div style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.30)', borderRadius: 12, padding: '11px 14px' }}>
-          <p style={{ ...HEAD, color: '#ef4444' }}>Avertissement</p>
+          <p style={{ ...HEAD, color: '#ef4444' }}>{t('w4c.test_warning')}</p>
           <p style={{ fontSize: 12.5, lineHeight: 1.5, color: 'var(--text-mid)', margin: 0 }}>{proto.avertissement}</p>
         </div>
       )}
-      <Section label="Conditions" color="var(--text)" items={proto.conditions} />
-      <Section label="Échauffement" color="#f59e0b" items={proto.echauffement} />
-      <Section label="Déroulé du test" color={accent} items={proto.etapes} />
-      <Section label="Erreurs fréquentes" color="#ef4444" items={proto.erreurs} />
+      <Section label={t('w4c.test_conditions')} color="var(--text)" items={proto.conditions} />
+      <Section label={t('w4c.test_warmup')} color="#f59e0b" items={proto.echauffement} />
+      <Section label={t('w4c.test_procedure')} color={accent} items={proto.etapes} />
+      <Section label={t('w4c.test_common_errors')} color="#ef4444" items={proto.erreurs} />
       {proto.frequence && (
         <div>
-          <p style={{ ...HEAD, color: 'var(--text-dim)' }}>Fréquence conseillée</p>
+          <p style={{ ...HEAD, color: 'var(--text-dim)' }}>{t('w4c.test_frequency')}</p>
           <p style={{ fontSize: 13, lineHeight: 1.5, color: 'var(--text-mid)', margin: 0 }}>{proto.frequence}</p>
         </div>
       )}

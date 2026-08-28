@@ -122,7 +122,7 @@ export default function CreateCompetencePanel({ variant = 'desktop', limitReache
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 8 }}>
             {conv.generatedMetadata.sports.map(s => (
               <span key={s} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, color: 'rgba(6,182,212,0.85)', border: '0.5px solid rgba(6,182,212,0.25)', borderRadius: 5, padding: '2px 8px' }}>
-                {sportIcon(s as SportFilter, 11)}{SPORT_LABELS[s as SportFilter] ?? s}
+                {sportIcon(s as SportFilter, 11)}{t(SPORT_LABELS[s as SportFilter] ?? s)}
               </span>
             ))}
           </div>

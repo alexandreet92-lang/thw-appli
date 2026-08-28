@@ -287,7 +287,7 @@ export default function CompetencesPage() {
                   color: a ? '#06B6D4' : 'var(--text-mid)',
                   fontWeight: a ? 500 : 400,
                 }}>
-                {sportIcon(s, 12)}{SPORT_LABELS[s]}
+                {sportIcon(s, 12)}{t(SPORT_LABELS[s])}
               </button>
             )
           })}

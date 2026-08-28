@@ -1,6 +1,6 @@
 'use client'
 import { useState } from 'react'
-import { currentLocale } from '@/lib/i18n'
+import { currentLocale, useI18n } from '@/lib/i18n'
 
 export type BodLog = {
   date: string
@@ -51,6 +51,7 @@ function ScaleIcon() {
 
 export default function BodyCompositionChart({ logs }: { logs: BodLog[] }) {
   const [hover, setHover] = useState<number | null>(null)
+  const { t } = useI18n()
 
   if (!logs.length) {
     return (
@@ -60,10 +61,10 @@ export default function BodyCompositionChart({ logs }: { logs: BodLog[] }) {
       }}>
         <ScaleIcon />
         <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-dim)' }}>
-          Aucune mesure enregistree
+          {t('w4b.no_measure')}
         </div>
         <div style={{ fontSize: 11, color: 'var(--text-dim)', opacity: 0.7 }}>
-          Ajoutez votre premiere mesure ci-dessous
+          {t('w4b.add_first_measure')}
         </div>
       </div>
     )
@@ -290,17 +291,17 @@ export default function BodyCompositionChart({ logs }: { logs: BodLog[] }) {
           </div>
           {hRow.poids != null && (
             <div style={{ color: '#06B6D4', marginBottom: 2 }}>
-              Poids : {hRow.poids.toFixed(1)} kg
+              {t('w4b.weight')} : {hRow.poids.toFixed(1)} kg
             </div>
           )}
           {hRow.mm != null && (
             <div style={{ color: '#3B82F6', marginBottom: 2 }}>
-              Masse musc. : {hRow.mm.toFixed(1)} kg
+              {t('w4b.mm')} : {hRow.mm.toFixed(1)} kg
             </div>
           )}
           {hRow.mg != null && (
             <div style={{ color: '#F97316' }}>
-              Masse grasse : {hRow.mg.toFixed(1)} %
+              {t('w4b.mg')} : {hRow.mg.toFixed(1)} %
             </div>
           )}
         </div>
@@ -312,14 +313,14 @@ export default function BodyCompositionChart({ logs }: { logs: BodLog[] }) {
           <svg width={20} height={8}>
             <line x1={0} y1={4} x2={20} y2={4} stroke="#06B6D4" strokeWidth={2} />
           </svg>
-          <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>Poids (kg)</span>
+          <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>{t('w4b.weight')} (kg)</span>
         </div>
         {hasMM && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
             <svg width={20} height={8}>
               <line x1={0} y1={4} x2={20} y2={4} stroke="#3B82F6" strokeWidth={2} strokeDasharray="4 2" />
             </svg>
-            <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>Masse musc. (kg)</span>
+            <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>{t('w4b.mm')} (kg)</span>
           </div>
         )}
         {hasFat && (
@@ -327,7 +328,7 @@ export default function BodyCompositionChart({ logs }: { logs: BodLog[] }) {
             <svg width={20} height={8}>
               <line x1={0} y1={4} x2={20} y2={4} stroke="#F97316" strokeWidth={2} strokeDasharray="2 4" />
             </svg>
-            <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>Masse grasse (%)</span>
+            <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>{t('w4b.mg')} (%)</span>
           </div>
         )}
       </div>

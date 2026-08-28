@@ -1,4 +1,5 @@
 'use client'
+import { useI18n } from '@/lib/i18n'
 
 interface Props {
   kcal: number
@@ -44,6 +45,7 @@ function Donut({ value, max, color, label, size }: {
 }
 
 export default function MacroDonuts({ kcal, prot, gluc, lip, size = 56 }: Props) {
+  const { t } = useI18n()
   const vals: Record<MacroKey, number> = { prot, gluc, lip }
   return (
     <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end' }}>
@@ -58,7 +60,7 @@ export default function MacroDonuts({ kcal, prot, gluc, lip, size = 56 }: Props)
           value={vals[d.key]}
           max={d.max}
           color={d.color}
-          label={d.label}
+          label={t(`w4b.donut_${d.key}`)}
           size={size} />
       ))}
     </div>

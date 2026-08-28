@@ -3,6 +3,7 @@
 // temps au survol, indice de polarisation (Polarisé / Pyramidal / Seuil) et
 // comparaison à une cible optionnelle.
 import { INK, ZONE, fmtDuration, fmtPct } from './theme'
+import { useI18n } from '@/lib/i18n'
 
 export interface ZoneDistProps {
   seconds: number[]          // 5 valeurs : temps (s) par zone Z1..Z5
@@ -13,16 +14,17 @@ export interface ZoneDistProps {
 
 const Z_LABEL = ['Z1', 'Z2', 'Z3', 'Z4', 'Z5']
 
-export function polarizationVerdict(sec: number[]): { label: string; color: string } {
+export function polarizationVerdict(sec: number[]): { key: string; label: string; color: string } {
   const tot = sec.reduce((s, x) => s + x, 0) || 1
   const low = (sec[0] + sec[1]) / tot, mid = sec[2] / tot, high = (sec[3] + sec[4]) / tot
-  if (low >= 0.7 && high >= 0.12 && mid <= 0.12) return { label: 'Polarisé', color: '#10B981' }
-  if (low > mid && mid > high && high > 0) return { label: 'Pyramidal', color: '#3B82F6' }
-  if (mid >= 0.3) return { label: 'Axé seuil/tempo', color: '#F97316' }
-  return { label: 'Base aérobie', color: '#8B5CF6' }
+  if (low >= 0.7 && high >= 0.12 && mid <= 0.12) return { key: 'polarized', label: 'Polarisé', color: '#10B981' }
+  if (low > mid && mid > high && high > 0) return { key: 'pyramidal', label: 'Pyramidal', color: '#3B82F6' }
+  if (mid >= 0.3) return { key: 'threshold', label: 'Axé seuil/tempo', color: '#F97316' }
+  return { key: 'aerobic', label: 'Base aérobie', color: '#8B5CF6' }
 }
 
 export function ZoneDistribution({ seconds, target, height = 34, showModel = true }: ZoneDistProps) {
+  const { t } = useI18n()
   const tot = seconds.reduce((s, x) => s + Math.max(0, x), 0)
   const pct = seconds.map(s => tot > 0 ? (Math.max(0, s) / tot) * 100 : 0)
   const verdict = polarizationVerdict(seconds)
@@ -44,9 +46,9 @@ export function ZoneDistribution({ seconds, target, height = 34, showModel = tru
       {target && (
         <div>
           <div style={{ display: 'flex', gap: 2, height: 8, borderRadius: 4, overflow: 'hidden', opacity: 0.85 }}>
-            {target.map((p, i) => p > 0 && <div key={i} title={`Cible ${Z_LABEL[i]} · ${fmtPct(p)}`} style={{ width: `${p}%`, background: ZONE[i] }} />)}
+            {target.map((p, i) => p > 0 && <div key={i} title={t('w4c.zonedist_target_zone', { zone: Z_LABEL[i], pct: fmtPct(p) })} style={{ width: `${p}%`, background: ZONE[i] }} />)}
           </div>
-          <span style={{ fontSize: 9.5, color: INK.dim }}>Cible</span>
+          <span style={{ fontSize: 9.5, color: INK.dim }}>{t('w4c.zonedist_target')}</span>
         </div>
       )}
 
@@ -62,7 +64,7 @@ export function ZoneDistribution({ seconds, target, height = 34, showModel = tru
         {showModel && tot > 0 && (
           <span style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6, padding: '3px 10px', borderRadius: 999, background: `${verdict.color}1a`, border: `1px solid ${verdict.color}55` }}>
             <span style={{ width: 6, height: 6, borderRadius: '50%', background: verdict.color }} />
-            <span style={{ fontSize: 11, fontWeight: 700, color: verdict.color }}>{verdict.label}</span>
+            <span style={{ fontSize: 11, fontWeight: 700, color: verdict.color }}>{t(`w4c.zonedist_verdict_${verdict.key}`)}</span>
           </span>
         )}
       </div>

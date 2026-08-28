@@ -58,21 +58,21 @@ export function sportKeyFromType(sport: string): SportKey | null {
 // MAP CENTRALISÉE — couleur + icône au même endroit.
 // Pour changer une couleur : modifier UNE ligne ici, rien d'autre.
 const SPORT_ICON: Record<SportKey, { Icon: ComponentType<{ size?: number; color?: string; stroke?: number }>; color: string; label: string }> = {
-  run:    { Icon: IconRun,        color: '#22c55e', label: 'Running'    },
-  bike:   { Icon: IconBike,       color: '#3b82f6', label: 'Cyclisme'   },
-  swim:   { Icon: IconSwimming,   color: '#0ea5e9', label: 'Natation'   },
-  rowing: { Icon: IconKayak,      color: '#8b5cf6', label: 'Aviron'     }, // IconRowing absent → IconKayak
-  muscu:  { Icon: IconBarbell,    color: '#f97316', label: 'Muscu'      },
-  hyrox:  { Icon: IconStretching2,color: '#ef4444', label: 'Hyrox'      }, // IconStretching2 (mouvement fonctionnel)
-  ellip:  { Icon: IconTreadmill,  color: '#ec4899', label: 'Elliptique' },
-  hybrid: { Icon: IconBolt,       color: '#f59e0b', label: 'Hybrid'     },
-  boxe:   { Icon: IconKarate,     color: '#e11d48', label: 'Boxe'       },
-  mobilite: { Icon: IconStretching, color: '#86efac', label: 'Mobilité' }, // vert CLAIR distinct du run (#22c55e), figure d'assouplissement
-  ski:    { Icon: IconSnowboarding, color: '#38bdf8', label: 'Ski'       },
-  yoga:   { Icon: IconYoga,         color: '#a78bfa', label: 'Yoga'      },
-  padel:  { Icon: IconBallTennis,   color: '#facc15', label: 'Padel'     },
-  hiking: { Icon: IconWalk,         color: '#65a30d', label: 'Randonnée' },
-  other:  { Icon: IconActivity,     color: '#64748b', label: 'Autre'     },
+  run:    { Icon: IconRun,        color: '#22c55e', label: 'w4d.si_run'    },
+  bike:   { Icon: IconBike,       color: '#3b82f6', label: 'w4d.si_bike'   },
+  swim:   { Icon: IconSwimming,   color: '#0ea5e9', label: 'w4d.si_swim'   },
+  rowing: { Icon: IconKayak,      color: '#8b5cf6', label: 'w4d.si_rowing'     }, // IconRowing absent → IconKayak
+  muscu:  { Icon: IconBarbell,    color: '#f97316', label: 'w4d.si_muscu'      },
+  hyrox:  { Icon: IconStretching2,color: '#ef4444', label: 'w4d.si_hyrox'      }, // IconStretching2 (mouvement fonctionnel)
+  ellip:  { Icon: IconTreadmill,  color: '#ec4899', label: 'w4d.si_ellip' },
+  hybrid: { Icon: IconBolt,       color: '#f59e0b', label: 'w4d.si_hybrid'     },
+  boxe:   { Icon: IconKarate,     color: '#e11d48', label: 'w4d.si_boxe'       },
+  mobilite: { Icon: IconStretching, color: '#86efac', label: 'w4d.si_mobilite' }, // vert CLAIR distinct du run (#22c55e), figure d'assouplissement
+  ski:    { Icon: IconSnowboarding, color: '#38bdf8', label: 'w4d.si_ski'       },
+  yoga:   { Icon: IconYoga,         color: '#a78bfa', label: 'w4d.si_yoga'      },
+  padel:  { Icon: IconBallTennis,   color: '#facc15', label: 'w4d.si_padel'     },
+  hiking: { Icon: IconWalk,         color: '#65a30d', label: 'w4d.si_hiking' },
+  other:  { Icon: IconActivity,     color: '#64748b', label: 'w4d.si_other'     },
 }
 
 export function SportIcon({

@@ -8,6 +8,7 @@
 // ══════════════════════════════════════════════════════════════════
 import { Donut, Gauge, Radar, PmcChart, DurationCurve, ZoneDistribution, type DonutSlice, type GaugeBand, type RadarSeries, type CurvePoint } from '@/components/charts'
 import type { PmcPoint } from '@/lib/training/pmc'
+import { useI18n } from '@/lib/i18n'
 
 type AdvSpec = (
   | { type: 'donut'; title?: string; unit?: string; centerLabel?: string; centerValue?: string; slices: DonutSlice[] }
@@ -80,6 +81,7 @@ function chartIcon(type: AdvSpec['type']): string {
   }
 }
 export function AdvancedChartCard({ spec }: { spec: AdvSpec }) {
+  const { t } = useI18n()
   return (
     <div className="ac-card" style={{ margin: '16px auto', maxWidth: 580, width: '100%', border: '1px solid var(--border)', borderRadius: 20, background: 'var(--bg-card)', boxShadow: '0 10px 34px rgba(16,24,40,0.10)', overflow: 'hidden', boxSizing: 'border-box' }}>
       <style>{`
@@ -107,7 +109,7 @@ export function AdvancedChartCard({ spec }: { spec: AdvSpec }) {
           <span aria-hidden style={{ flexShrink: 0, marginTop: 1 }}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.1V17h6v-.2c0-.8.4-1.6 1-2.1A7 7 0 0 0 12 2z" /></svg>
           </span>
-          <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.5, color: 'var(--text-mid)' }}><strong style={{ color: 'var(--primary)', fontWeight: 700 }}>Analyse — </strong>{spec.insight}</p>
+          <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.5, color: 'var(--text-mid)' }}><strong style={{ color: 'var(--primary)', fontWeight: 700 }}>{t('w4c.adv_analysis')}</strong>{spec.insight}</p>
         </div>
       )}
     </div>

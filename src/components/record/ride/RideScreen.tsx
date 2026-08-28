@@ -6,6 +6,7 @@
 // reste visible et lançable (cibles watts simplement indisponibles).
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { useI18n } from '@/lib/i18n'
 import { useWakeLock } from '@/hooks/useWakeLock'
 import { useSmSn } from '@/hooks/useSmSn'
 import { useSensors } from './useSensors'
@@ -35,6 +36,7 @@ function useIsDesktop(): boolean {
 }
 
 export default function RideScreen({ onExit, onFinished, plannedIdOverride }: Props) {
+  const { t } = useI18n()
   const [mounted, setMounted] = useState(false)
   const [started, setStarted] = useState(false)
   const [startedAt, setStartedAt] = useState('')
@@ -162,7 +164,7 @@ export default function RideScreen({ onExit, onFinished, plannedIdOverride }: Pr
         metrics={engine.metrics}
         elapsedS={engine.t}
         smEst={d.smEst}
-        defaultTitle={plan?.title ?? 'Séance home trainer'}
+        defaultTitle={plan?.title ?? t('w4a.ride_default_title')}
         saving={recorder.saving}
         onSave={(title, rpe, comment) => { void doSave(title, rpe, comment) }} />
     )

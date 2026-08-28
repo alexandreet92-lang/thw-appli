@@ -94,13 +94,13 @@ export default function MobileSidebar(props: Props) {
 
         <div style={labelStyle}>{t('competences.sports')}</div>
         {SPORTS_ORDER.map(s => (
-          <Item key={s} active={activeSport === s} icon={sportIcon(s)} label={SPORT_LABELS[s]}
+          <Item key={s} active={activeSport === s} icon={sportIcon(s)} label={t(SPORT_LABELS[s])}
             onClick={() => { onSelectSport(s); onClose() }} />
         ))}
 
         <div style={labelStyle}>{t('competences.categories')}</div>
         {CATEGORIES_ORDER.map(c => (
-          <Item key={c} active={activeCategory === c} icon={categoryIcon(c)} label={CATEGORY_LABELS[c]}
+          <Item key={c} active={activeCategory === c} icon={categoryIcon(c)} label={t(CATEGORY_LABELS[c])}
             onClick={() => { onSelectCategory(activeCategory === c ? null : c); onClose() }} />
         ))}
 

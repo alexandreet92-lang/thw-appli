@@ -1,6 +1,6 @@
 'use client'
 import { useState } from 'react'
-import { currentLocale } from '@/lib/i18n'
+import { currentLocale, useI18n } from '@/lib/i18n'
 
 export type MacroEntry = {
   date: string
@@ -29,6 +29,7 @@ export default function MacrosLineChart({
   objL?: number
 }) {
   const [hover, setHover] = useState<number | null>(null)
+  const { t } = useI18n()
 
   if (!entries.length) return null
 
@@ -149,18 +150,18 @@ export default function MacrosLineChart({
               weekday: 'short', day: '2-digit', month: '2-digit',
             })}
           </div>
-          <div style={{ color: '#22C55E', marginBottom: 2 }}>Prot : {hEntry.p.toFixed(0)} g</div>
-          <div style={{ color: '#EAB308', marginBottom: 2 }}>Gluc : {hEntry.g.toFixed(0)} g</div>
-          <div style={{ color: '#F97316' }}>Lip : {hEntry.l.toFixed(0)} g</div>
+          <div style={{ color: '#22C55E', marginBottom: 2 }}>{t('w4b.abbr_prot')} : {hEntry.p.toFixed(0)} g</div>
+          <div style={{ color: '#EAB308', marginBottom: 2 }}>{t('w4b.abbr_gluc')} : {hEntry.g.toFixed(0)} g</div>
+          <div style={{ color: '#F97316' }}>{t('w4b.abbr_lip')} : {hEntry.l.toFixed(0)} g</div>
         </div>
       )}
 
       {/* Legend */}
       <div style={{ display: 'flex', gap: 14, marginTop: 6, flexWrap: 'wrap' }}>
         {[
-          { color: '#22C55E', label: 'Proteines' },
-          { color: '#EAB308', label: 'Glucides' },
-          { color: '#F97316', label: 'Lipides' },
+          { color: '#22C55E', label: t('w4b.leg_prot') },
+          { color: '#EAB308', label: t('w4b.gluc') },
+          { color: '#F97316', label: t('w4b.lip') },
         ].map(item => (
           <div key={item.label} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
             <div style={{ width: 10, height: 10, borderRadius: '50%', background: item.color }} />

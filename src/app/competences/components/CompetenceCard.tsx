@@ -84,7 +84,7 @@ export default function CompetenceCard({ competence, conflicts, onToggle, onOpen
             border: '0.5px solid rgba(6,182,212,0.25)', borderRadius: 5, padding: '2px 8px',
           }}>
             {sportIcon(s as SportFilter, 11)}
-            {SPORT_LABELS[s as SportFilter] ?? s}
+            {t(SPORT_LABELS[s as SportFilter] ?? s)}
           </span>
         ))}
 

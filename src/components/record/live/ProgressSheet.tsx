@@ -1,5 +1,6 @@
 'use client'
 // Bottom-sheet « progression » : Fait / En cours / À venir, dérivé de la timeline.
+import { useI18n } from '@/lib/i18n'
 import type { TimelineStep } from './types'
 
 interface Props { timeline: TimelineStep[]; stepIdx: number; onClose: () => void }
@@ -29,19 +30,20 @@ function Line({ label, meta, tone }: { label: string; meta: string; tone: 'done'
 }
 
 export default function ProgressSheet({ timeline, stepIdx, onClose }: Props) {
+  const { t } = useI18n()
   const { done, now, next } = rows(timeline, stepIdx)
   const H: React.CSSProperties = { fontSize: 12, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--text-mid)', fontWeight: 800, margin: '14px 0 6px' }
   return (
     <div onClick={e => { if (e.target === e.currentTarget) onClose() }}
       style={{ position: 'absolute', inset: 0, zIndex: 30, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'flex-end' }}>
       <div style={{ width: '100%', maxHeight: '78%', overflowY: 'auto', background: 'var(--bg-card)', borderRadius: '28px 28px 0 0', padding: '16px 18px calc(env(safe-area-inset-bottom) + 20px)', borderTop: '1px solid var(--border-mid)', fontFamily: 'DM Sans, sans-serif' }}>
-        <p style={{ ...H, marginTop: 4 }}>Fait</p>
+        <p style={{ ...H, marginTop: 4 }}>{t('w4a.progress_done')}</p>
         {done.length ? done.map(([l, m], i) => <Line key={`d${i}`} label={l} meta={m} tone="done" />) : <Empty />}
-        <p style={H}>En cours</p>
+        <p style={H}>{t('w4a.progress_current')}</p>
         {now.length ? now.map(([l, m], i) => <Line key={`n${i}`} label={l} meta={m} tone="now" />) : <Empty />}
-        <p style={H}>À venir</p>
+        <p style={H}>{t('w4a.progress_upcoming')}</p>
         {next.length ? next.map(([l, m], i) => <Line key={`a${i}`} label={l} meta={m} tone="next" />) : <Empty />}
-        <button onClick={onClose} style={{ width: '100%', height: 50, borderRadius: 14, background: 'var(--bg-card2)', border: '1px solid var(--border-mid)', color: 'var(--text)', fontWeight: 800, marginTop: 14, cursor: 'pointer' }}>Fermer</button>
+        <button onClick={onClose} style={{ width: '100%', height: 50, borderRadius: 14, background: 'var(--bg-card2)', border: '1px solid var(--border-mid)', color: 'var(--text)', fontWeight: 800, marginTop: 14, cursor: 'pointer' }}>{t('w4a.close')}</button>
       </div>
     </div>
   )

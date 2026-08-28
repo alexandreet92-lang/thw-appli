@@ -18,6 +18,8 @@ import { shareCard, type ShareStat } from '@/lib/share/shareCard'
 import { computeCurves, aggregatePeriodPowerRecords, aggregatePeriodPaceRecords, fmtRecordTime, type RecordRow, type PeriodRecordEntry } from '@/lib/records/curves'
 import { useI18n } from '@/lib/i18n'
 import { currentLocale } from '@/lib/i18n'
+import { currentLang } from '@/lib/i18n/locale'
+import { DICTS } from '@/lib/i18n/dictionaries'
 
 type TFn = (key: string, vars?: Record<string, string | number>) => string
 
@@ -111,7 +113,11 @@ function computeStats(acts: RecapAct[], b: Bounds): PeriodStat {
 
 const sportCfg = (k: string) => (k in SPORT_ICON ? SPORT_ICON[k as SportKey] : null)
 const sportColor = (k: string) => sportCfg(k)?.color ?? '#06B6D4'
-const sportLabel = (k: string) => sportCfg(k)?.label ?? cap(k)
+const sportLabel = (k: string) => {
+  const key = sportCfg(k)?.label
+  if (!key) return cap(k)
+  return DICTS[currentLang()][key] ?? DICTS.fr[key] ?? key
+}
 
 // ── count-up (rAF, easing cubic-out) ──────────────────────────────
 function useCountUp(target: number, active: boolean, ms = 1100): number {

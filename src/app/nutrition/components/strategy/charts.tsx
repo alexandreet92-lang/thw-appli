@@ -5,6 +5,7 @@
 // jauges de la semaine courante. Thème via tokens ; couleurs macro assumées.
 // ══════════════════════════════════════════════════════════════════
 import type { WeekTarget } from '@/lib/nutrition/strategy'
+import { useI18n } from '@/lib/i18n'
 
 const C_KCAL = '#22d3ee', C_PROT = '#ef4444', C_GLUC = '#f59e0b', C_LIP = '#a855f7', C_TARGET = '#22c55e', C_REAL = '#3b82f6'
 
@@ -12,6 +13,7 @@ export interface WeightPoint { date: string; kg: number }
 
 // ── Courbe de poids : trajectoire CIBLE (ligne) + poids RÉEL loggé (points) ──
 export function WeightTrajectoryChart({ weeks, actual, startWeight }: { weeks: WeekTarget[]; actual: WeightPoint[]; startWeight: number }) {
+  const { t } = useI18n()
   const W = 640, H = 220, PL = 44, PR = 16, PT = 16, PB = 26
   const target = weeks.map((w, i) => ({ x: i, kg: w.weightKg }))
   const allKg = [startWeight, ...target.map(t => t.kg), ...actual.map(a => a.kg)].filter(v => v > 0)
@@ -33,7 +35,7 @@ export function WeightTrajectoryChart({ weeks, actual, startWeight }: { weeks: W
   const yTicks = [minKg, Math.round((minKg + maxKg) / 2), maxKg]
   return (
     <div>
-      <ChartTitle>Poids — trajectoire cible <Dot c={C_TARGET} /> vs réel <Dot c={C_REAL} /></ChartTitle>
+      <ChartTitle>{t('w4b.weight_target_traj')} <Dot c={C_TARGET} /> {t('w4b.vs_real')} <Dot c={C_REAL} /></ChartTitle>
       <div style={{ overflowX: 'auto' }}>
         <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ minWidth: 420, display: 'block' }}>
           {yTicks.map((v, k) => (
@@ -45,8 +47,8 @@ export function WeightTrajectoryChart({ weeks, actual, startWeight }: { weeks: W
           <path d={targetPath} fill="none" stroke={C_TARGET} strokeWidth={2.4} strokeLinejoin="round" strokeLinecap="round" />
           {realPts.map((p, i) => <circle key={i} cx={px(p.x)} cy={py(p.kg)} r={3.2} fill={C_REAL} />)}
           {realPts.length > 1 && <path d={realPts.map((p, i) => `${i === 0 ? 'M' : 'L'}${px(p.x).toFixed(1)},${py(p.kg).toFixed(1)}`).join(' ')} fill="none" stroke={C_REAL} strokeWidth={1.5} opacity={0.55} strokeDasharray="4 3" />}
-          <text x={PL} y={H - 8} fontSize={9} fill="var(--text-dim)">S1</text>
-          <text x={W - PR} y={H - 8} textAnchor="end" fontSize={9} fill="var(--text-dim)">S{weeks.length}</text>
+          <text x={PL} y={H - 8} fontSize={9} fill="var(--text-dim)">{t('w4b.week_short', { n: 1 })}</text>
+          <text x={W - PR} y={H - 8} textAnchor="end" fontSize={9} fill="var(--text-dim)">{t('w4b.week_short', { n: weeks.length })}</text>
         </svg>
       </div>
     </div>
@@ -55,6 +57,7 @@ export function WeightTrajectoryChart({ weeks, actual, startWeight }: { weeks: W
 
 // ── Fluctuation kcal + macros par semaine (barres empilées macros + ligne kcal) ──
 export function MacroFluctuationChart({ weeks }: { weeks: WeekTarget[] }) {
+  const { t } = useI18n()
   const W = 640, H = 220, PL = 44, PR = 40, PT = 16, PB = 26
   if (!weeks.length) return null
   const maxKcal = Math.max(...weeks.map(w => w.kcal)) * 1.1 || 1
@@ -66,7 +69,7 @@ export function MacroFluctuationChart({ weeks }: { weeks: WeekTarget[] }) {
   const cx = (i: number) => PL + bw * i + bw / 2
   return (
     <div>
-      <ChartTitle>Semaine par semaine — Protéines <Dot c={C_PROT} /> Glucides <Dot c={C_GLUC} /> Lipides <Dot c={C_LIP} /> · kcal <Dot c={C_KCAL} /></ChartTitle>
+      <ChartTitle>{t('w4b.weekly_proteins')} <Dot c={C_PROT} /> {t('w4b.gluc')} <Dot c={C_GLUC} /> {t('w4b.lip')} <Dot c={C_LIP} /> · kcal <Dot c={C_KCAL} /></ChartTitle>
       <div style={{ overflowX: 'auto' }}>
         <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ minWidth: 420, display: 'block' }}>
           <line x1={PL} y1={H - PB} x2={W - PR} y2={H - PB} stroke="var(--border)" strokeWidth={1} />
@@ -82,7 +85,7 @@ export function MacroFluctuationChart({ weeks }: { weeks: WeekTarget[] }) {
             return (
               <g key={i}>
                 {segs.map((s, k) => { yb -= s.h; return <rect key={k} x={x} y={yb} width={barW} height={Math.max(0, s.h)} fill={s.c} opacity={0.9} rx={1} /> })}
-                <text x={cx(i)} y={H - 8} textAnchor="middle" fontSize={9} fill="var(--text-dim)">S{i + 1}</text>
+                <text x={cx(i)} y={H - 8} textAnchor="middle" fontSize={9} fill="var(--text-dim)">{t('w4b.week_short', { n: i + 1 })}</text>
               </g>
             )
           })}
@@ -98,23 +101,24 @@ export function MacroFluctuationChart({ weeks }: { weeks: WeekTarget[] }) {
 
 // ── Jauges de la semaine courante ──
 export function MacroGauges({ week }: { week: WeekTarget }) {
+  const { t } = useI18n()
   const items = [
-    { label: 'kcal', value: week.kcal, unit: '', c: C_KCAL, max: week.kcal },
-    { label: 'Protéines', value: week.proteines, unit: 'g', c: C_PROT, max: week.proteines },
-    { label: 'Glucides', value: week.glucides, unit: 'g', c: C_GLUC, max: week.glucides },
-    { label: 'Lipides', value: week.lipides, unit: 'g', c: C_LIP, max: week.lipides },
+    { label: 'kcal', disp: 'kcal', value: week.kcal, unit: '', c: C_KCAL, max: week.kcal },
+    { label: 'Protéines', disp: t('w4b.macro_prot'), value: week.proteines, unit: 'g', c: C_PROT, max: week.proteines },
+    { label: 'Glucides', disp: t('w4b.gluc'), value: week.glucides, unit: 'g', c: C_GLUC, max: week.glucides },
+    { label: 'Lipides', disp: t('w4b.lip'), value: week.lipides, unit: 'g', c: C_LIP, max: week.lipides },
   ]
   const kcalFromMacros = week.proteines * 4 + week.glucides * 4 + week.lipides * 9
   return (
     <div>
-      <ChartTitle>Cibles — semaine {week.i + 1}</ChartTitle>
+      <ChartTitle>{t('w4b.targets_week', { n: week.i + 1 })}</ChartTitle>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
         {items.map(it => {
           const pctOfKcal = it.label === 'kcal' ? 100 : Math.round(((it.label === 'Lipides' ? it.value * 9 : it.value * 4) / (kcalFromMacros || 1)) * 100)
           return (
             <div key={it.label} style={{ textAlign: 'center' }}>
               <Ring color={it.c} pct={it.label === 'kcal' ? 100 : pctOfKcal} label={`${Math.round(it.value)}${it.unit}`} />
-              <div style={{ fontSize: 10.5, color: 'var(--text-dim)', marginTop: 4 }}>{it.label}{it.label !== 'kcal' && ` · ${pctOfKcal}%`}</div>
+              <div style={{ fontSize: 10.5, color: 'var(--text-dim)', marginTop: 4 }}>{it.disp}{it.label !== 'kcal' && ` · ${pctOfKcal}%`}</div>
             </div>
           )
         })}

@@ -6734,7 +6734,7 @@ function FeelingDifficultyCard({ feeling, difficulty, onEdit }: {
 // ─────────────────────────────────────────────────────────────
 // ACTIVITY DETAIL
 // ─────────────────────────────────────────────────────────────
-export function ActivityDetail({ a, onClose, closing = false, zones, profile, allActivities = [], readOnly = false, initialEdit = false }: {
+export function ActivityDetail({ a, onClose, closing = false, zones, profile, allActivities = [], readOnly = false, initialEdit = false, autoAnalyze = false }: {
   a: Activity; onClose: () => void; closing?: boolean
   zones: TrainingZoneRow[]; profile: Profile; allActivities?: Activity[]
   // readOnly : consultation de l'activité d'un AUTRE athlète — aucune écriture,
@@ -6743,6 +6743,9 @@ export function ActivityDetail({ a, onClose, closing = false, zones, profile, al
   // initialEdit : ouvre directement la sur-page « Modifier » (ex. notification
   // « séance terminée » → on arrive sur l'interface d'édition des données).
   initialEdit?: boolean
+  // autoAnalyze : lance directement l'analyse IA globale à l'ouverture (action
+  // rapide « Analyser une activité » : deep-link ?id=<id>&analyze=1).
+  autoAnalyze?: boolean
 }) {
   const { t } = useI18n()
   const width    = useWindowWidth()
@@ -7127,6 +7130,17 @@ export function ActivityDetail({ a, onClose, closing = false, zones, profile, al
   const [editOpen, setEditOpen] = useState(false)
   // Notification « séance terminée » → ouvre directement l'édition.
   useEffect(() => { if (initialEdit && !readOnly) setEditOpen(true) }, [initialEdit, readOnly])
+  // Action rapide « Analyser une activité » → lance l'analyse IA globale une
+  // seule fois à l'ouverture (buildGlobalPrompt / globalAI définis plus bas ;
+  // le callback ne s'exécute qu'après le montage → pas de TDZ).
+  const autoAnalyzedRef = useRef(false)
+  useEffect(() => {
+    if (!autoAnalyze || readOnly || autoAnalyzedRef.current) return
+    autoAnalyzedRef.current = true
+    const id = setTimeout(() => { globalAI.run(buildGlobalPrompt()) }, 350)
+    return () => clearTimeout(id)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoAnalyze, readOnly])
   const [localRpe, setLocalRpe]         = useState<number | null>(rpeVal)
   const [localSensation, setLocalSensation] = useState<number | null>(sensation)
 
@@ -9373,12 +9387,13 @@ function NewActivityBadge() {
   )
 }
 
-function SectionAnalyse({ activities, zones, profile, deepLinkId, deepLinkEdit, highlightId, onDelete, loadMore, hasMore, loadingMore }: {
+function SectionAnalyse({ activities, zones, profile, deepLinkId, deepLinkEdit, deepLinkAnalyze, highlightId, onDelete, loadMore, hasMore, loadingMore }: {
   activities: Activity[]
   zones: TrainingZoneRow[]
   profile: Profile
   deepLinkId?: string | null
   deepLinkEdit?: boolean
+  deepLinkAnalyze?: boolean
   highlightId?: string | null
   onDelete?: (id: string) => void
   loadMore?: () => void
@@ -9525,7 +9540,7 @@ function SectionAnalyse({ activities, zones, profile, deepLinkId, deepLinkEdit, 
             <span style={{ fontSize: 16 }}>←</span> {t('activities.backToList')}
           </button>
         )}
-        <ActivityDetail a={selected} onClose={closeDetail} closing={detailClosing} zones={zones} profile={profile} allActivities={activities} initialEdit={deepLinkEdit && selected.id === deepLinkId} />
+        <ActivityDetail a={selected} onClose={closeDetail} closing={detailClosing} zones={zones} profile={profile} allActivities={activities} initialEdit={deepLinkEdit && selected.id === deepLinkId} autoAnalyze={!!deepLinkAnalyze && selected.id === deepLinkId} />
       </div>
     )
   }
@@ -10220,6 +10235,7 @@ function TrainingPageInner() {
   // Deep-link depuis Planning : ?id=<activity_id> → ouvre directement la section analyse
   const [deepLinkId, setDeepLinkId] = useState<string|null>(null)
   const [deepLinkEdit, setDeepLinkEdit] = useState(false)
+  const [deepLinkAnalyze, setDeepLinkAnalyze] = useState(false)
   // Depuis l'écran d'enregistrement live : ?new=<activity_id> → scrolle sur la
   // carte de l'activité créée et la met en avant (liseré cyan + badge NOUVEAU).
   const [newActivityId, setNewActivityId] = useState<string|null>(null)
@@ -10228,6 +10244,9 @@ function TrainingPageInner() {
     const params = new URLSearchParams(window.location.search)
     const id = params.get('id')
     if (id) { setDeepLinkId(id); setSection('analyse') }
+    // ?analyze=1 (avec ?id=) : action rapide « Analyser une activité » → ouvre
+    // le détail ET lance l'analyse IA globale directement.
+    if (id && params.get('analyze') === '1') setDeepLinkAnalyze(true)
     // ?edit=<id> : notification « séance terminée » → ouvre le détail ET la
     // sur-page « Modifier » directement.
     const edit = params.get('edit')
@@ -10384,7 +10403,7 @@ function TrainingPageInner() {
             )}
             {loading && !error && <PageLoader />}
             {!loading && !error && id === 'donnees'     && <div className="fade-up"><ScrollReveal><SectionDonnees activities={activities} zones={zones} profile={profile} /></ScrollReveal></div>}
-            {!loading && !error && id === 'analyse'     && <div className="fade-up"><ScrollReveal><SectionAnalyse activities={activities} zones={zones} profile={profile} deepLinkId={deepLinkId} deepLinkEdit={deepLinkEdit} highlightId={newActivityId} onDelete={handleDeleteActivity} loadMore={loadMore} hasMore={hasMore} loadingMore={loadingMore} /></ScrollReveal></div>}
+            {!loading && !error && id === 'analyse'     && <div className="fade-up"><ScrollReveal><SectionAnalyse activities={activities} zones={zones} profile={profile} deepLinkId={deepLinkId} deepLinkEdit={deepLinkEdit} deepLinkAnalyze={deepLinkAnalyze} highlightId={newActivityId} onDelete={handleDeleteActivity} loadMore={loadMore} hasMore={hasMore} loadingMore={loadingMore} /></ScrollReveal></div>}
             {id === 'progression' && (
               <div className="fade-up">
                 {progSport

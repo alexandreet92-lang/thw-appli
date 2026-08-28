@@ -57,23 +57,31 @@ export function LastActivityCard() {
     : ''
 
   return (
-    <Card href={act ? `/activities?id=${act.id}` : undefined}>
+    <Card>
       <SectionTitle>{t('dashboard.lastActivity')}</SectionTitle>
 
       {!act ? (
         <EmptyState title={t('dashboard.lastActivityEmptyTitle')} hint={t('dashboard.lastActivityEmptyHint')} href="/session" cta={t('dashboard.record')} />
       ) : (
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginBottom: 'var(--space-1)' }}>
-            <SportDot color={sportColor(sport)} />
-            <span style={{ fontFamily: FB, fontSize: 11, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-mid)' }}>{sportLabel(sport)}</span>
-            <span style={{ marginLeft: 'auto', ...NUM, fontSize: 12, color: 'var(--text-dim)' }}>{formatShortDate(act.started_at)}</span>
-          </div>
-          <p style={{ margin: 0, fontFamily: FD, fontSize: 15, fontWeight: 500, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {act.title ?? sportLabel(sport)}
-          </p>
-          {meta && <p style={{ margin: 'var(--space-2) 0 0', ...NUM, fontSize: 13, color: 'var(--text-mid)' }}>{meta}</p>}
-        </div>
+        <>
+          <Link href={`/activities?id=${act.id}`} style={{ display: 'block', textDecoration: 'none', color: 'inherit' }} className="dash-tap">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginBottom: 'var(--space-1)' }}>
+              <SportDot color={sportColor(sport)} />
+              <span style={{ fontFamily: FB, fontSize: 11, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-mid)' }}>{sportLabel(sport)}</span>
+              <span style={{ marginLeft: 'auto', ...NUM, fontSize: 12, color: 'var(--text-dim)' }}>{formatShortDate(act.started_at)}</span>
+            </div>
+            <p style={{ margin: 0, fontFamily: FD, fontSize: 15, fontWeight: 500, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {act.title ?? sportLabel(sport)}
+            </p>
+            {meta && <p style={{ margin: 'var(--space-2) 0 0', ...NUM, fontSize: 13, color: 'var(--text-mid)' }}>{meta}</p>}
+          </Link>
+          {/* Action rapide « Analyser une activité » → ouvre le détail + lance l'analyse IA */}
+          <Link href={`/activities?id=${act.id}&analyze=1`}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 'var(--space-3)', padding: '6px 12px', borderRadius: 999, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--primary)', fontFamily: FB, fontSize: 12.5, fontWeight: 600, textDecoration: 'none' }}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/></svg>
+            {t('dashboard.analyzeWithAI')}
+          </Link>
+        </>
       )}
     </Card>
   )

@@ -4,5 +4,6 @@
     { "path": "/api/notifications/dispatch", "schedule": "0 6 * * *" },
     { "path": "/api/routines/tick", "schedule": "0 * * * *" },
     { "path": "/api/studio/tick", "schedule": "0 * * * *" }
-  ]
+  ],
+  "ignoreCommand": "if git log -1 --pretty=%B | grep -qF '[deploy]'; then exit 1; else exit 0; fi"
 }

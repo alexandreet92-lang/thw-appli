@@ -5,7 +5,7 @@
 // attend que l'élément cible apparaisse, et avance au VRAI clic sur la cible.
 // Cibles = éléments portant un attribut data-guide="…".
 // ══════════════════════════════════════════════════════════════════
-import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useI18n } from '@/lib/i18n'
 import { usePathname, useRouter } from 'next/navigation'
@@ -31,6 +31,41 @@ export function useGuide() {
 }
 
 interface Rect { top: number; left: number; width: number; height: number }
+
+// Libellés de page (en-tête « Page X/N · <page> »). Repli si `step.page` absent.
+const ROUTE_LABEL: Record<string, string> = {
+  '/': 'Accueil', '/planning': 'Planning', '/calendar': 'Calendrier', '/activities': 'Training',
+  '/performance': 'Performance', '/nutrition': 'Nutrition', '/recovery': 'Récupération',
+  '/community': 'Communauté', '/connections': 'Connexions', '/injuries': 'Blessures',
+  '/feed': 'Fil', '/coach': 'Coach', '/coaches': 'Coachs', '/programmes': 'Programmes',
+  '/messages': 'Messages', '/profile': 'Profil', '/progression': 'Progression', '/zones': 'Zones',
+  '/session': 'Séance', '/record': 'Enregistrement',
+}
+
+interface PageInfo { label: string; pageNum: number; totalPages: number; posInPage: number; pageCount: number; nextLabel: string | null }
+
+// Calcule, pour chaque étape, sa PAGE effective (page explicite → route → héritée),
+// puis regroupe en « pages » consécutives pour la progression « Page X/N ».
+function computePages(steps: GuideStep[]): PageInfo[] {
+  const labels: string[] = []
+  let last = ''
+  for (const s of steps) {
+    const l = s.page ?? (s.route ? ROUTE_LABEL[s.route] : undefined) ?? last ?? ''
+    last = l
+    labels.push(l)
+  }
+  // Bornes de groupes (une page = suite d'étapes de même libellé).
+  const groupStart: number[] = []
+  labels.forEach((l, i) => { if (i === 0 || l !== labels[i - 1]) groupStart.push(i) })
+  const totalPages = groupStart.length
+  return labels.map((label, i) => {
+    const gi = groupStart.filter(s => s <= i).length - 1
+    const start = groupStart[gi]
+    const end = gi + 1 < groupStart.length ? groupStart[gi + 1] : steps.length
+    const nextLabel = end < steps.length ? labels[end] : null
+    return { label, pageNum: gi + 1, totalPages, posInPage: i - start + 1, pageCount: end - start, nextLabel }
+  })
+}
 
 // Desktop et mobile rendent des éléments DUPLIQUÉS (même data-guide, l'un masqué
 // en CSS). On cible TOUJOURS l'instance réellement visible à l'écran.
@@ -79,6 +114,8 @@ export function GuideProvider({ children }: { children: React.ReactNode }) {
   const prev = useCallback(() => setIdx(i => Math.max(0, i - 1)), [])
 
   const step = steps ? steps[idx] : null
+  const pages = useMemo(() => (steps ? computePages(steps) : []), [steps])
+  const pageInfo = pages[idx] ?? null
 
   // Navigation + attente de l'élément cible.
   useEffect(() => {
@@ -149,7 +186,7 @@ export function GuideProvider({ children }: { children: React.ReactNode }) {
         document.body,
       )}
       {mounted && steps && step && createPortal(
-        <GuideOverlay step={step} rect={rect} index={idx} total={steps.length} onNext={next} onPrev={prev} onSkip={stop} />,
+        <GuideOverlay step={step} rect={rect} index={idx} total={steps.length} pageInfo={pageInfo} onNext={next} onPrev={prev} onSkip={stop} />,
         document.body,
       )}
     </Ctx.Provider>
@@ -162,30 +199,49 @@ function mark(s: string): string {
   const esc = s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
   return esc.replace(/\*\*(.+?)\*\*/g, '<strong style="color:var(--text);font-weight:700">$1</strong>')
 }
-function GuideOverlay({ step, rect, index, total, onNext, onPrev, onSkip }: {
-  step: GuideStep; rect: Rect | null; index: number; total: number; onNext: () => void; onPrev: () => void; onSkip: () => void
+function GuideOverlay({ step, rect, index, total, pageInfo, onNext, onPrev, onSkip }: {
+  step: GuideStep; rect: Rect | null; index: number; total: number; pageInfo: PageInfo | null; onNext: () => void; onPrev: () => void; onSkip: () => void
 }) {
   const { t } = useI18n()
+  const cardRef = useRef<HTMLDivElement | null>(null)
+  const [cardH, setCardH] = useState(0)
+  const [vp, setVp] = useState(() => ({ w: typeof window !== 'undefined' ? window.innerWidth : 1200, h: typeof window !== 'undefined' ? window.innerHeight : 800 }))
+  useEffect(() => {
+    const onR = () => setVp({ w: window.innerWidth, h: window.innerHeight })
+    window.addEventListener('resize', onR); return () => window.removeEventListener('resize', onR)
+  }, [])
+  const vw = vp.w, vh = vp.h
   const pad = step.pad ?? PAD
   const hole = rect ? { top: rect.top - pad, left: rect.left - pad, width: rect.width + pad * 2, height: rect.height + pad * 2 } : null
-  const vw = typeof window !== 'undefined' ? window.innerWidth : 1200
-  const vh = typeof window !== 'undefined' ? window.innerHeight : 800
-  const BW = Math.min(340, vw - 24)
-  // Hauteur estimée pour placer la bulle sans déborder — dépend du contenu (puces).
-  const lineCount = step.lines?.length ?? 0
-  const estH = 138 + (step.title ? 28 : 0) + (step.message ? 38 : 0) + lineCount * 32
-  const BH = Math.min(estH, vh - 40)
+  const BW = Math.min(344, vw - 24)
+  const MAXH = vh - 24
+  // Mesure la HAUTEUR RÉELLE de la carte (après rendu) → placement exact, jamais
+  // de bouton coupé. Deux passes : estimation puis mesure (via useLayoutEffect).
+  useLayoutEffect(() => {
+    const el = cardRef.current
+    if (el) setCardH(Math.min(el.offsetHeight, MAXH))
+  }, [step, rect, vw, vh, MAXH])
+  const H = Math.min(cardH || (150 + (step.lines?.length ?? 0) * 30 + (step.title ? 26 : 0) + (step.message ? 36 : 0)), MAXH)
+  const GAP = 18
 
-  // Position de la bulle — TOUJOURS entièrement dans l'écran.
+  // Position — la carte est TOUJOURS entièrement à l'écran, et la flèche visible
+  // dans l'espace entre la cible et la carte (jamais cachée derrière).
   const pos = (() => {
-    if (!hole) return { left: (vw - BW) / 2, top: vh - BH - 20, arrow: null as null | { x: number; y: number; dir: 'up' | 'down' } }
+    if (!hole) return { left: Math.round((vw - BW) / 2), top: Math.round(clamp((vh - H) / 2, 12, vh - H - 12)), arrow: null as null | { x: number; y: number; dir: 'up' | 'down' } }
     const cx = hole.left + hole.width / 2
-    const spaceBelow = vh - (hole.top + hole.height)
-    const below = spaceBelow > BH + 24 || spaceBelow > hole.top
+    const roomBelow = vh - (hole.top + hole.height) - 12
+    const roomAbove = hole.top - 12
+    let dir: 'up' | 'down'; let top: number
+    if (roomBelow >= H + GAP) { dir = 'down'; top = hole.top + hole.height + GAP }
+    else if (roomAbove >= H + GAP) { dir = 'up'; top = hole.top - H - GAP }
+    else if (roomBelow >= roomAbove) { dir = 'down'; top = clamp(hole.top + hole.height + GAP, 12, vh - H - 12) }
+    else { dir = 'up'; top = clamp(hole.top - H - GAP, 12, vh - H - 12) }
     const left = clamp(cx - BW / 2, 12, vw - BW - 12)
-    const top = below ? clamp(hole.top + hole.height + 24, 12, vh - BH - 12) : clamp(hole.top - BH - 24, 12, vh - BH - 12)
-    return { left, top, arrow: { x: clamp(cx, hole.left, hole.left + hole.width), y: below ? hole.top + hole.height + 6 : hole.top - 6, dir: below ? 'down' as const : 'up' as const } }
+    return { left, top, arrow: { x: clamp(cx, 20, vw - 20), y: dir === 'down' ? hole.top + hole.height + 4 : hole.top - 4, dir } }
   })()
+
+  const lastOfPage = !!pageInfo && pageInfo.posInPage >= pageInfo.pageCount
+  const eyebrow = pageInfo ? `${t('w3g.guide_page')} ${pageInfo.pageNum}/${pageInfo.totalPages} · ${pageInfo.label}` : `${t('w3g.guide_tour')} · ${index + 1}/${total}`
 
   return (
     // Conteneur PASS-THROUGH : on peut cliquer/utiliser la page pendant le guide.
@@ -213,12 +269,13 @@ function GuideOverlay({ step, rect, index, total, onNext, onPrev, onSkip }: {
         </div>
       )}
 
-      {/* Bulle + contrôles — pointer-events AUTO (seul élément cliquable de l'overlay) */}
-      <div key={index} style={{ position: 'absolute', left: pos.left, top: pos.top, width: BW, maxHeight: vh - 32, overflowY: 'auto', background: 'var(--bg-card)', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: 20, boxShadow: '0 18px 50px rgba(0,0,0,0.38)', pointerEvents: 'auto', fontFamily: 'var(--font-body, DM Sans, sans-serif)', boxSizing: 'border-box', overflow: 'hidden', animation: 'gPop .3s cubic-bezier(0.34,1.3,0.6,1)' }}>
+      {/* Bulle — colonne flex : corps scrollable + PIED FIXE (boutons toujours visibles) */}
+      <div ref={cardRef} key={index} style={{ position: 'absolute', left: pos.left, top: pos.top, width: BW, maxHeight: MAXH, display: 'flex', flexDirection: 'column', background: 'var(--bg-card)', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: 20, boxShadow: '0 18px 50px rgba(0,0,0,0.38)', pointerEvents: 'auto', fontFamily: 'var(--font-body, DM Sans, sans-serif)', boxSizing: 'border-box', overflow: 'hidden', animation: 'gPop .3s cubic-bezier(0.34,1.3,0.6,1)' }}>
         {/* Liseré dégradé */}
-        <div style={{ height: 4, background: GRAD }} />
-        <div style={{ padding: '14px 16px 15px' }}>
-          {/* En-tête : badge + label + barre de progression */}
+        <div style={{ height: 4, background: GRAD, flexShrink: 0 }} />
+        {/* CORPS — défile si trop haut, sans jamais pousser les boutons hors écran */}
+        <div style={{ padding: '13px 16px 8px', overflowY: 'auto', flex: '1 1 auto', minHeight: 0 }}>
+          {/* En-tête : badge + « Page X/N · Nom » + barre de progression */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 11 }}>
             <span aria-hidden style={{ flexShrink: 0, width: 32, height: 32, borderRadius: 10, background: GRAD, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(6,182,212,0.40)' }}>
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><path d="m15.6 8.4-2.2 5-5 2.2 2.2-5z" /></svg>
@@ -226,7 +283,7 @@ function GuideOverlay({ step, rect, index, total, onNext, onPrev, onSkip }: {
             <div style={{ flex: 1, minWidth: 0 }}>
               {rect && step.advanceOn === 'click'
                 ? <span style={{ display: 'inline-block', fontSize: 9.5, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--primary)', background: 'var(--primary-dim, rgba(6,182,212,0.12))', padding: '2px 8px', borderRadius: 999 }}>{t('w3g.guide_click_here')}</span>
-                : <span style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--text-dim)' }}>{t('w3g.guide_tour')} · {index + 1}/{total}</span>}
+                : <span style={{ display: 'block', fontSize: 9.5, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{eyebrow}</span>}
               <div style={{ marginTop: 6, height: 4, borderRadius: 999, background: 'var(--border)', overflow: 'hidden' }}>
                 <div style={{ height: '100%', width: `${((index + 1) / total) * 100}%`, background: GRAD, borderRadius: 999, transition: 'width .35s cubic-bezier(0.4,0,0.2,1)' }} />
               </div>
@@ -235,7 +292,7 @@ function GuideOverlay({ step, rect, index, total, onNext, onPrev, onSkip }: {
           {step.title && <p style={{ margin: '0 0 8px', fontFamily: 'Syne, sans-serif', fontSize: 17, fontWeight: 800, lineHeight: 1.15 }}>{step.title}</p>}
           {step.message && <p style={{ margin: '0 0 10px', fontSize: 13.5, lineHeight: 1.5, color: 'var(--text-mid)' }}>{step.message}</p>}
           {step.lines && step.lines.length > 0 && (
-            <ul key={index} style={{ listStyle: 'none', margin: '0 0 14px', padding: 0, display: 'flex', flexDirection: 'column', gap: 9 }}>
+            <ul key={index} style={{ listStyle: 'none', margin: '0 0 6px', padding: 0, display: 'flex', flexDirection: 'column', gap: 9 }}>
               {step.lines.map((ln, i) => (
                 <li key={i} style={{ display: 'flex', gap: 9, alignItems: 'flex-start', fontSize: 13, lineHeight: 1.45, color: 'var(--text-mid)', opacity: 0, animation: `gLine .34s ease-out forwards`, animationDelay: `${i * 100}ms` }}>
                   <span aria-hidden style={{ flexShrink: 0, width: 14, height: 14, marginTop: 1, display: 'flex' }}>
@@ -246,7 +303,15 @@ function GuideOverlay({ step, rect, index, total, onNext, onPrev, onSkip }: {
               ))}
             </ul>
           )}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
+        </div>
+        {/* PIED FIXE — toujours visible : prochaine page + contrôles */}
+        <div style={{ flexShrink: 0, borderTop: '1px solid var(--border)', padding: '9px 14px 11px', background: 'var(--bg-card)' }}>
+          {lastOfPage && pageInfo?.nextLabel && (
+            <p style={{ margin: '0 0 8px', fontSize: 11, color: 'var(--text-dim)', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span aria-hidden style={{ color: 'var(--primary)', fontWeight: 800 }}>→</span>{t('w3g.guide_next_page')} : <strong style={{ color: 'var(--text-mid)', fontWeight: 700 }}>{pageInfo.nextLabel}</strong>
+            </p>
+          )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <button onClick={onSkip} style={btnGhost}>{t('w3g.guide_skip')}</button>
             <span style={{ flex: 1 }} />
             {index > 0 && <button onClick={onPrev} style={btnGhost}>{t('w3g.guide_prev')}</button>}

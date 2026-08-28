@@ -6745,6 +6745,8 @@ const fr: Dict = {
   'w4d.si_other': 'Autre',
   'native.manageSubOnWeb': 'Abonnement à gérer sur le site web.',
   'native.topupOnWeb': 'Rechargement à effectuer sur le site web.',
+  'w3g.guide_page': 'Page',
+  'w3g.guide_next_page': 'Prochaine page',
 }
 
 const en: Dict = {
@@ -13299,6 +13301,8 @@ const en: Dict = {
   'w4d.si_other': 'Other',
   'native.manageSubOnWeb': 'Manage your subscription on the website.',
   'native.topupOnWeb': 'Top up on the website.',
+  'w3g.guide_page': 'Page',
+  'w3g.guide_next_page': 'Next page',
 }
 
 const es: Dict = {
@@ -20034,6 +20038,8 @@ const es: Dict = {
   'w4d.si_other': 'Otro',
   'native.manageSubOnWeb': 'Gestiona tu suscripción en el sitio web.',
   'native.topupOnWeb': 'Recarga en el sitio web.',
+  'w3g.guide_page': 'Página',
+  'w3g.guide_next_page': 'Página siguiente',
 }
 
 export const DICTS: Record<Lang, Dict> = { fr, en, es }

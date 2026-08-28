@@ -18,6 +18,9 @@ export interface GuideStep {
   /** Puces expliquées LIGNE PAR LIGNE, animées à l'apparition (l'une après l'autre). */
   lines?: string[]
   placement?: StepPlacement
+  /** Nom de la PAGE de cette étape (affiché dans l'en-tête « Page X/N · <page> »).
+   *  Si absent : déduit de `route`, sinon hérité de l'étape précédente. */
+  page?: string
   /** 'click' : avance quand l'utilisateur clique vraiment la cible ; 'next' : via le bouton. */
   advanceOn?: 'click' | 'next'
   /** Rayon du halo autour de la cible (px). */

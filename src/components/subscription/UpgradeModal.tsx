@@ -66,7 +66,7 @@ export function UpgradeModalHost() {
         {hidePrice ? (
           <>
             <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-dim)', textAlign: 'center', margin: '4px 0 0', lineHeight: 1.5 }}>
-              Abonnement à gérer sur le site web.
+              {t('native.manageSubOnWeb')}
             </p>
             <button onClick={() => setOpen(false)} style={{ width: '100%', marginTop: 14, height: 46, borderRadius: 'var(--r-md)', border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontFamily: 'var(--font-body)', fontSize: 14.5, fontWeight: 700, cursor: 'pointer' }}>
               {t('w3c.close')}

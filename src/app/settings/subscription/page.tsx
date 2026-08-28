@@ -665,7 +665,7 @@ export default function SubscriptionPage() {
                     </button>
                   ) : hidePrice ? (
                     <p style={{ fontSize: 12, color: 'var(--text-dim)', fontFamily: 'DM Sans, sans-serif', textAlign: 'center', margin: 0, lineHeight: 1.5 }}>
-                      Abonnement à gérer sur le site web.
+                      {t('native.manageSubOnWeb')}
                     </p>
                   ) : (
                     <button

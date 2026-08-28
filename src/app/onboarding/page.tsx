@@ -75,7 +75,7 @@ export default function SelectPlanPage() {
             </div>
             {hidePrice ? (
               <p style={{ fontSize:12, color:'var(--text-dim)', textAlign:'center', margin:'4px 0 0', lineHeight:1.5 }}>
-                Abonnement à gérer sur le site web.
+                {t('native.manageSubOnWeb')}
               </p>
             ) : (
               <>

@@ -77,7 +77,7 @@ function PackCard({ pack, loading, onChoose }: { pack: Pack; loading: string | n
       <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, lineHeight: 1.5, color: 'var(--text-mid)', flex: 1, margin: '6px 0 20px' }}>{packDesc}</p>
       {hidePrice ? (
         <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, lineHeight: 1.5, color: 'var(--text-dim)', textAlign: 'center', margin: 0 }}>
-          Rechargement à effectuer sur le site web.
+          {t('native.topupOnWeb')}
         </p>
       ) : (
         <button onClick={() => onChoose(pack)} disabled={!!loading} aria-label={t('misc.choosePackAria', { name: packName })}

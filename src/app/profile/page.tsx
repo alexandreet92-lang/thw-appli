@@ -2385,7 +2385,7 @@ export function IASettingsBloc() {
                     {p.features.map((f,i)=><div key={i} style={{ display:'flex', alignItems:'center', gap:7 }}><span style={{ color:p.color, fontSize:11 }}>✓</span><span style={{ fontSize:12, color:'var(--text-mid)' }}>{t('profile.plan.'+p.id+'.feat'+i)}</span></div>)}
                   </div>
                   {hidePrice ? (
-                    <p style={{ fontSize:11, color:'var(--text-dim)', textAlign:'center' as const, margin:'2px 0 0', lineHeight:1.5 }}>Abonnement à gérer sur le site web.</p>
+                    <p style={{ fontSize:11, color:'var(--text-dim)', textAlign:'center' as const, margin:'2px 0 0', lineHeight:1.5 }}>{t('native.manageSubOnWeb')}</p>
                   ) : (
                     <>
                       <button style={{ width:'100%', padding:'10px', borderRadius:10, background:`linear-gradient(135deg,${p.color},${p.color}bb)`, border:'none', color:'#fff', fontFamily:'var(--font-display)', fontWeight:700, fontSize:13, cursor:'pointer' }}>{t('profile.choose', { plan: p.label })}</button>

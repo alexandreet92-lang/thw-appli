@@ -4,10 +4,16 @@
 // serveur (/api/push/subscribe). Utilisé par le réglage « Notifications ».
 // ══════════════════════════════════════════════════════════════
 
+import { isNativeApp } from '@/lib/native/platform'
+
 const SW_URL = '/sw.js'
 
 export function isPushSupported(): boolean {
+  // Web Push ne fonctionne pas dans la webview iOS (WKWebView) : on désactive
+  // proprement tout le flux push sur l'app native (le web garde ses notifs).
+  // Des notifs push natives iOS passeraient par APNs (@capacitor/push) — plus tard.
   return typeof window !== 'undefined'
+    && !isNativeApp()
     && 'serviceWorker' in navigator
     && 'PushManager' in window
     && 'Notification' in window

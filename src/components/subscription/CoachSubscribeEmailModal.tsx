@@ -91,7 +91,7 @@ export default function CoachSubscribeEmailModal({ packKey, packName, packLabel,
                   {t('w3c.close')}
                 </button>
                 <p style={{ fontSize: 12, color: 'var(--text-dim)', textAlign: 'center', lineHeight: 1.5, margin: '14px 0 0' }}>
-                  Abonnement à gérer sur le site web.
+                  {t('native.manageSubOnWeb')}
                 </p>
               </>
             ) : (

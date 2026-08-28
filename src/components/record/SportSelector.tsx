@@ -201,7 +201,10 @@ export default function SportSelector({ open, onClose, selectedSport, onSelect, 
         className={closing ? 'sheet-close' : 'sheet-open'}
         style={{
           position: 'fixed', left: 0, right: 0, bottom: 0,
-          height: '85vh',
+          // Ne jamais atteindre le tout en haut : on laisse la barre d'état /
+          // l'encoche (safe-area) + une marge, pour que le header reste visible.
+          height: '85dvh',
+          maxHeight: 'calc(100dvh - env(safe-area-inset-top) - 16px)',
           background: 'var(--bg-card)',
           borderTopLeftRadius: 24, borderTopRightRadius: 24,
           display: 'flex', flexDirection: 'column', overflow: 'hidden',

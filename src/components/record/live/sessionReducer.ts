@@ -60,11 +60,27 @@ function addTour(s: EngineState): EngineState {
   return { ...s, blocks, timeline, stepIdx: idx }
 }
 
+// Remplace la séance en cours d'édition (ajout / suppression d'exos ou de circuits)
+// puis reconstruit la timeline. On garde le pas courant si sa clé existe encore ;
+// sinon on ré-entre le pas à l'index clampé (phase/valeurs recalculées).
+function setBlocks(s: EngineState, blocks: WorkoutExercise[]): EngineState {
+  const timeline = buildTimeline(blocks)
+  if (s.phase === 'summary') return { ...s, blocks, timeline }
+  if (!timeline.length) return { ...s, blocks, timeline, phase: 'done', stepIdx: 0 }
+  const step = s.timeline[s.stepIdx]
+  const key = step ? stepKey(step) : ''
+  const idx = key ? timeline.findIndex(x => stepKey(x) === key) : -1
+  if (idx >= 0) return { ...s, blocks, timeline, stepIdx: idx }
+  const clamped = Math.min(Math.max(0, s.stepIdx), timeline.length - 1)
+  return enterStep({ ...s, blocks, timeline }, clamped)
+}
+
 export type Action =
   | { t: 'TICK' } | { t: 'BEGIN' } | { t: 'PRIMARY' }
   | { t: 'NUDGE_REPS'; d: number } | { t: 'NUDGE_KG'; d: number }
   | { t: 'SET_REPS'; v: number } | { t: 'SET_KG'; v: number }
   | { t: 'ADJUST_REST'; d: number } | { t: 'ADD_TOUR' }
+  | { t: 'SET_BLOCKS'; blocks: WorkoutExercise[] }
   | { t: 'PAUSE' } | { t: 'RESUME' }
 
 export function reducer(s: EngineState, a: Action): EngineState {
@@ -94,6 +110,7 @@ export function reducer(s: EngineState, a: Action): EngineState {
     case 'SET_KG': return s.phase === 'effortReps' ? { ...s, kg: Math.max(0, a.v), bodyweight: false } : s
     case 'ADJUST_REST': return s.phase === 'rest' ? { ...s, remaining: Math.max(0, s.remaining + a.d) } : s
     case 'ADD_TOUR': return addTour(s)
+    case 'SET_BLOCKS': return setBlocks(s, a.blocks)
     case 'PAUSE': return { ...s, paused: true }
     case 'RESUME': return { ...s, paused: false }
     default: return s

@@ -2,7 +2,7 @@
 // Coquille commune des 3 phases colorées (prépa / effort / repos). Fond = token
 // de phase, encre = token -ink. Barre de tours segmentée + pied (compteurs
 // tours/exos autour de l'action centrale) + indicateur FC discret. Icônes Tabler.
-import { IconPlayerPauseFilled, IconMenu2, IconHeartFilled } from '@tabler/icons-react'
+import { IconPlayerPauseFilled, IconMenu2, IconHeartFilled, IconPencil } from '@tabler/icons-react'
 import type { PhaseColor } from './types'
 import type { HeartRateState } from '@/lib/record/useHeartRate'
 
@@ -18,6 +18,7 @@ interface Props {
   onAction: () => void
   onPause: () => void
   onProgress: () => void
+  onEdit?: () => void
   hr: HeartRateState
   children: React.ReactNode
 }
@@ -39,7 +40,10 @@ export default function PhaseShell(p: Props) {
           <p style={{ fontSize: 13, letterSpacing: '0.2em', textTransform: 'uppercase', fontWeight: 800, opacity: 0.8, margin: 0 }}>{p.phaseName}</p>
           <p style={{ fontSize: 13, fontWeight: 800, opacity: 0.6, margin: '1px 0 0', fontVariantNumeric: 'tabular-nums' }}>{p.clock}</p>
         </div>
-        <button aria-label="Progression" onClick={p.onProgress} style={round}><IconMenu2 size={19} /></button>
+        <div style={{ display: 'flex', gap: 10 }}>
+          {p.onEdit && <button aria-label="Modifier" onClick={p.onEdit} style={round}><IconPencil size={18} /></button>}
+          <button aria-label="Progression" onClick={p.onProgress} style={round}><IconMenu2 size={19} /></button>
+        </div>
       </div>
 
       {/* Barre de tours segmentée */}

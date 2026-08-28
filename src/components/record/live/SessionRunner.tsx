@@ -11,6 +11,7 @@ import { PrepareBody, EffortRepsBody, EffortTimeBody, RestBody, DoneBody } from 
 import SummaryScreen from './SummaryScreen'
 import PauseOverlay from './PauseOverlay'
 import ProgressSheet from './ProgressSheet'
+import SessionEditSheet from './SessionEditSheet'
 import NumPadSheet from './NumPadSheet'
 import SessionSaveForm, { type SessionFormData } from '../SessionSaveForm'
 import { fmt } from './liveUi'
@@ -27,7 +28,10 @@ export default function SessionRunner({ blocks, planTitle, onClose, isDark, vari
   const [startedAt] = useState(() => new Date().toISOString())
   const [pad, setPad] = useState<'reps' | 'kg' | null>(null)
   const [progress, setProgress] = useState(false)
+  const [editing, setEditing] = useState(false)
   const [showSave, setShowSave] = useState(false)
+  // Modifier la séance → on met d'abord en pause (exigence produit).
+  const openEdit = () => { dispatch({ t: 'PAUSE' }); setEditing(true) }
   const title = planTitle || t('w3a.default_title')
 
   const handleSave = async (form: SessionFormData) => {
@@ -58,6 +62,7 @@ export default function SessionRunner({ blocks, planTitle, onClose, isDark, vari
         onAction={primary}
         onPause={() => dispatch({ t: 'PAUSE' })}
         onProgress={() => setProgress(true)}
+        onEdit={openEdit}
         hr={hr}
       >
         {state.phase === 'prepare' && <PrepareBody remaining={state.remaining} firstExo={firstName} />}
@@ -72,8 +77,17 @@ export default function SessionRunner({ blocks, planTitle, onClose, isDark, vari
   return createPortal(
     <div data-phase-variant={variant} style={{ position: 'fixed', inset: 0, zIndex: 10002, background: 'var(--bg)' }}>
       {inner}
-      {state.paused && <PauseOverlay onResume={() => dispatch({ t: 'RESUME' })} onEnd={onClose} />}
-      {progress && <ProgressSheet timeline={state.timeline} stepIdx={state.stepIdx} onClose={() => setProgress(false)} />}
+      {state.paused && !editing && <PauseOverlay onResume={() => dispatch({ t: 'RESUME' })} onEnd={onClose} />}
+      {editing && (
+        <SessionEditSheet
+          blocks={state.blocks}
+          currentBlockIdx={step?.blockIdx ?? 0}
+          isDark={isDark}
+          onChange={next => dispatch({ t: 'SET_BLOCKS', blocks: next })}
+          onClose={() => setEditing(false)}
+        />
+      )}
+      {progress && <ProgressSheet blocks={state.blocks} timeline={state.timeline} stepIdx={state.stepIdx} onClose={() => setProgress(false)} />}
       {pad && (
         <NumPadSheet
           title={pad === 'reps' ? t('w3a.pad_reps') : t('w3a.pad_kg')}

@@ -43,6 +43,7 @@ export default function AppleCalendarView({ races, stages, year, onDayClick, onR
   return (
     <div
       ref={containerRef}
+      data-guide="cal-day"
       style={{
         background: 'var(--bg-card)', border: '1px solid var(--border)',
         borderRadius: 16, overflow: 'hidden', boxShadow: 'var(--shadow-card)',

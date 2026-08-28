@@ -107,7 +107,7 @@ export default function PlannedLaunchSheet({ open, onClose, sport, label, accent
   return createPortal(
     <>
       <div onClick={handleClose} style={{ position: 'fixed', inset: 0, zIndex: 10000, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', animation: 'plsScrim .2s ease' }} />
-      <div style={{
+      <div data-guide="rec-planned" style={{
         position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 10001,
         background: 'var(--bg-card)', borderTopLeftRadius: 26, borderTopRightRadius: 26,
         maxHeight: '86dvh', display: 'flex', flexDirection: 'column',

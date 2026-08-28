@@ -100,7 +100,7 @@ export default function CheckinTab({ initial, inputs, onSaved }: {
   }
 
   return (
-    <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 20, padding: 20, boxShadow: 'var(--shadow-card)' }}>
+    <div data-guide="rec-checkin" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 20, padding: 20, boxShadow: 'var(--shadow-card)' }}>
       <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 600, margin: '0 0 4px', color: 'var(--text)' }}>{t('recovery.checkin.title')}</h2>
       <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', margin: '0 0 18px' }}>
         {done ? t('recovery.checkin.subtitle.done') : t('recovery.checkin.subtitle.new')}

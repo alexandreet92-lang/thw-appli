@@ -11,7 +11,7 @@ import { useI18n } from '@/lib/i18n'
 export default function SourcesTab({ hrvActive }: { hrvActive: boolean }) {
   const { t } = useI18n()
   return (
-    <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 20, padding: 20, boxShadow: 'var(--shadow-card)' }}>
+    <div data-guide="rec-sources" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 20, padding: 20, boxShadow: 'var(--shadow-card)' }}>
       <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 600, margin: '0 0 16px', color: 'var(--text)' }}>{t('recovery.sources.title')}</h2>
 
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '14px 16px', borderRadius: 14, background: 'var(--bg-card2)', border: '1px solid var(--border)' }}>

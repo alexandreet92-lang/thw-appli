@@ -342,7 +342,7 @@ function ChannelColumn({ space, channels, activeId, loading, isNarrow, joining, 
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
       {/* En-tête d'espace */}
-      <div style={{ flexShrink: 0, padding: 'var(--space-4) var(--space-4) var(--space-3)' }}>
+      <div data-guide="comm-space-header" style={{ flexShrink: 0, padding: 'var(--space-4) var(--space-4) var(--space-3)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
           {canBrand ? (
             <>

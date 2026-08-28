@@ -72,7 +72,7 @@ export default function CoachProgramsPage() {
           <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 600, color: 'var(--text)', margin: '0 0 4px' }}>{t('w1h.my_programs')}</h1>
           <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: 0 }}>{t('w1h.programs_subtitle')}</p>
         </div>
-        <button onClick={openNew} disabled={busy} style={primary}>{busy ? '…' : t('w1h.new_short')}</button>
+        <button data-guide="coach-programs-new" onClick={openNew} disabled={busy} style={primary}>{busy ? '…' : t('w1h.new_short')}</button>
       </div>
 
       {/* Paiements (Stripe Connect) */}

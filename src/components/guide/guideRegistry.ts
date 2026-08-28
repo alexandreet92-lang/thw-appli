@@ -261,9 +261,14 @@ export const CALENDAR_TOUR: GuideStep[] = [
     'Tout le plan se construit autour d\'elle',
   ] },
   { route: '/calendar', anchor: 'cal-view', title: 'Année ou Mois', lines: [
-    '**Année** — vue macro de ta saison',
-    '**Mois** — détail semaine par semaine',
-    'Clique un **jour** pour ajouter une course, une phase ou un test',
+    '**Année** — la macro de ta saison',
+    '**Mois** — le détail semaine par semaine',
+  ] },
+  { route: '/calendar', demo: 'cal:month', anchor: 'cal-day', title: 'Les jours', message: 'En vue Mois, chaque jour est cliquable pour y placer un événement.' },
+  { route: '/calendar', demo: 'cal:month', anchor: 'cal-add', title: 'Ajouter sur un jour', lines: [
+    'Clique un jour → **Course**, **Phase** ou **Test**',
+    'Les **tests** sont reliés à ta page Performance',
+    'Les **courses** apparaissent aussi dans le planning',
   ] },
 ]
 
@@ -278,11 +283,11 @@ export const SESSION_TOUR: GuideStep[] = [
     'Course, vélo, muscu, Hyrox, boxe…',
     'Chaque sport a ses familles de séances',
   ] },
-  { route: '/session', anchor: 'page-tabs', title: 'Builder & Bibliothèque', lines: [
+  { route: '/session', anchor: 'page-tabs', title: 'Bibliothèque & Builder', lines: [
     '**Bibliothèque** — les séances toutes faites',
-    '**Builder** — pour composer la tienne',
-    'Une séance ouverte → **Ajouter au planning** (tu règles le niveau et le jour)',
+    '**Builder** — pour composer la tienne bloc par bloc',
   ] },
+  { route: '/session', title: 'Envoyer au planning', message: 'Une séance ouverte → « Ajouter au planning » : tu choisis le niveau (selon TES zones) et le jour. Elle apparaît dans ta semaine.' },
 ]
 
 // NUTRITION — cibles, suivi, stratégie.
@@ -337,20 +342,25 @@ export const INJURIES_TOUR: GuideStep[] = [
 
 // RÉCUPÉRATION.
 export const RECOVERY_TOUR: GuideStep[] = [
-  { route: '/recovery', title: 'Récupération', message: 'Savoir quand pousser et quand lever le pied.', lines: [
+  { route: '/recovery', title: 'Récupération', message: 'Savoir chaque jour si tu peux pousser ou s\'il faut lever le pied.', lines: [
     'Ton **readiness** du jour',
     'Ton **HRV** et ton **sommeil**',
     'Un **check-in** subjectif rapide',
   ] },
-  { route: '/recovery', anchor: 'rec-readiness', title: 'Readiness du jour', lines: [
-    'Un score /100 qui combine HRV, sommeil, ressenti',
-    'Vert = vas-y · orange = allège',
+  { route: '/recovery', demo: 'rec:readiness', anchor: 'rec-readiness', title: 'Readiness du jour', lines: [
+    'Un score /100 : HRV + sommeil + ressenti',
+    'Vert = vas-y · orange = allège · rouge = repos',
   ] },
-  { route: '/recovery', title: 'HRV, sommeil, check-in', message: 'Dans les onglets : ta variabilité cardiaque (HRV), tes nuits, la charge, et un check-in quotidien qui alimente ton readiness.', lines: [
-    '**HRV** — l\'état de ton système nerveux',
-    '**Check-in** — 4 curseurs, 20 secondes',
-    '**Sources** — connecte ta montre / capteur',
+  { route: '/recovery', demo: 'rec:hrv', anchor: 'rec-hrv', title: 'HRV & sommeil', lines: [
+    'Ta **variabilité cardiaque** = l\'état de ton système nerveux',
+    'Tes nuits : durée et stades',
+    'Synchronisés depuis ta montre / capteur',
   ] },
+  { route: '/recovery', demo: 'rec:checkin', anchor: 'rec-checkin', title: 'Check-in du jour', lines: [
+    '4 curseurs, 20 s : sommeil, jambes, humeur, stress',
+    'Ça **affine ton readiness** avec ton ressenti réel',
+  ] },
+  { route: '/recovery', demo: 'rec:sources', anchor: 'rec-sources', title: 'Tes sources', message: 'Connecte ta montre / capteur ici : plus il y a de données, plus ton readiness est juste.' },
 ]
 
 // COMMUNAUTÉ.
@@ -364,6 +374,7 @@ export const COMMUNITY_TOUR: GuideStep[] = [
     'Chaque icône = un **espace** (un groupe)',
     'La loupe pour en **découvrir**, + pour en **créer**',
   ] },
+  { route: '/community', anchor: 'comm-space-header', title: 'L\'espace ouvert', message: 'En haut : le nom de l\'espace, son type et le bouton pour le rejoindre / le quitter.' },
   { route: '/community', anchor: 'comm-channels', title: 'Les canaux', lines: [
     'À l\'intérieur d\'un espace : des **canaux** par thème',
     'Texte, annonces, et **vocal** (Pro+)',
@@ -381,11 +392,19 @@ export const COMMUNITY_TOUR: GuideStep[] = [
 // CONNEXIONS — montres, capteurs, services.
 export const CONNECTIONS_TOUR: GuideStep[] = [
   { route: '/connections', title: 'Connexions', message: 'Branche tes appareils et services : tout se synchronise automatiquement.', lines: [
-    'Montre / capteurs (FC, puissance, GPS)',
+    'Montre & capteurs (FC, puissance, GPS)',
     'Services (Strava, Polar, santé…)',
     'Une fois relié, tes séances **remontent seules**',
   ] },
-  { route: '/connections', title: 'Pourquoi connecter', message: 'Plus tu connectes, plus l\'app est juste : forme, zones, sommeil et HRV se calculent sur tes vraies données.' },
+  { route: '/connections', anchor: 'conn-services', title: 'Services', lines: [
+    'Strava, Polar… tes activités arrivent toutes seules',
+    'Un clic pour **Connecter**, l\'app fait le reste',
+  ] },
+  { route: '/connections', anchor: 'conn-devices', title: 'Biométrie & capteurs', lines: [
+    'Montre, ceinture FC, capteur de puissance…',
+    'C\'est ce qui nourrit ta forme, tes zones, ton HRV',
+  ] },
+  { route: '/connections', title: 'Pourquoi connecter', message: 'Plus tu connectes, plus l\'app est juste : forme, zones, sommeil et HRV se calculent sur tes VRAIES données.' },
 ]
 
 // MESSAGES — messagerie privée.
@@ -444,6 +463,7 @@ export const START_TOUR: GuideStep[] = [
     'Course, vélo, natation, muscu, Hyrox, boxe, rameur…',
     'Chaque sport a son écran live adapté',
   ] },
+  { route: '/record', anchor: 'rec-planned', title: 'Séance planifiée', message: 'Tu peux enregistrer une séance déjà prévue dans ton planning : l\'app te guide bloc par bloc pendant l\'effort.' },
   { route: '/record', anchor: 'rec-start', title: 'Le gros bouton Démarrer', lines: [
     'Lance la séance — libre ou une **séance planifiée**',
     'GPS pour l\'extérieur, capteurs FC/puissance en Bluetooth',
@@ -461,31 +481,48 @@ export const START_TOUR: GuideStep[] = [
 // portent coachOnly : elles sont filtrées pour les athlètes (jamais montrées ni
 // routées vers /coach).
 export const COACH_TOUR: GuideStep[] = [
-  { route: '/', anchor: 'coach-toggle', coachOnly: true, title: 'Espace coach', message: 'Réservé aux comptes coach (abonnement). Ce bouton bascule vers ton espace pour gérer tes athlètes.' },
-  { route: '/coach', coachOnly: true, title: 'Tableau de bord coach', message: 'Ta vue d\'ensemble : athlètes prioritaires, messages, et accès rapides.', lines: [
-    'Athlètes **prioritaires** (à relancer, en risque…)',
-    'Tuiles : Athlètes · Bibliothèque · Programmes · Studio',
+  { route: '/', anchor: 'coach-toggle', coachOnly: true, title: 'Passer en mode coach', message: 'Réservé aux comptes coach (abonnement). Ce bouton bascule entre TON entraînement et TON espace coach.' },
+  { route: '/coach', anchor: 'coach-priority', coachOnly: true, title: 'À suivre en priorité', lines: [
+    'Les athlètes qui ont besoin de toi **en premier**',
+    'Séance manquée, forme en baisse, blessure, à relancer…',
+    'Clique un athlète pour ouvrir sa fiche',
   ] },
-  { route: '/coach/athletes', anchor: 'roster-row', coachOnly: true, title: 'Ton roster', lines: [
-    'La liste de tes athlètes, cherchables et filtrables',
-    'Clique un athlète pour ouvrir sa **fiche complète**',
-    'Invite un athlète avec un **code**',
+  { route: '/coach', anchor: 'coach-tiles', coachOnly: true, title: 'Tes accès rapides', lines: [
+    '**Athlètes** — ton roster complet',
+    '**Bibliothèque** — tes séances types',
+    '**Messages** — tes conversations',
+    '**Studio** — agir sur plusieurs athlètes',
   ] },
-  { route: '/coach/athletes', coachOnly: true, title: 'Fiche athlète', message: 'Sur un athlète, tu vois SES données (identité ET données du bon athlète) et tu agis pour lui.', lines: [
-    'Onglets : aperçu, fiche, data, objectifs, connexions',
-    'Actions : message, plan, **analyse IA** de l\'athlète',
+  { route: '/coach/athletes', anchor: 'roster-search', coachOnly: true, title: 'Ton roster', lines: [
+    'Cherche et filtre tes athlètes',
+    'Trie par priorité, sport, dernière activité…',
   ] },
-  { route: '/coach/training', coachOnly: true, title: 'Training & Planning coach', message: 'Construis les séances et le planning d\'un athlète comme dans ton appli — mais pour lui.', lines: [
-    'Mêmes constructeurs (course, muscu, Hyrox…)',
-    'Blocs, zones, allures/watts sur l\'athlète ciblé',
+  { route: '/coach/athletes', anchor: 'roster-invite', coachOnly: true, title: 'Inviter un athlète', lines: [
+    'Génère un **code d\'invitation**',
+    'L\'athlète le saisit → il rejoint ton roster',
+    'Consentement : il peut révoquer à tout moment',
   ] },
-  { route: '/coach/studio', anchor: 'studio-run', coachOnly: true, title: 'Studio — passer à l\'échelle', lines: [
-    'Choisis un **système** (plan, analyse, message…)',
-    'Sélectionne **plusieurs athlètes**',
-    'Lance-le sur tout le groupe d\'un coup',
+  { route: '/coach/athletes', anchor: 'roster-row', coachOnly: true, title: 'Ouvrir un athlète', message: 'Clique une ligne pour sa fiche complète — TU vois SES données et tu agis pour lui.' },
+  { route: '/coach/athletes', anchor: 'athlete-tabs', coachOnly: true, title: 'La fiche athlète', lines: [
+    '**Aperçu · Fiche · Data · Objectifs · Connexions**',
+    'Toutes ses données d\'entraînement et de forme',
+    'Actions : message, plan, **analyse IA** de CET athlète',
   ] },
-  { route: '/coach/programs', coachOnly: true, title: 'Programmes', message: 'Crée des programmes réutilisables, assigne-les à tes athlètes et publie-les (monétisation via Stripe).' },
-  { route: '/coach/messages', coachOnly: true, title: 'Messagerie coach', message: 'Échange avec tes athlètes : messages, retours sur séances, suivi. Vu / envoyé, édition et suppression inclus.' },
+  { route: '/coach/training', coachOnly: true, title: 'Training — suivi des séances', message: 'Le fil des séances réalisées par tes athlètes, avec « Analyser par l\'IA » sur chacune.', lines: [
+    'Vois d\'un coup ce que tout le monde a fait',
+    'Analyse la séance d\'un athlète en un clic',
+  ] },
+  { route: '/coach/programs', anchor: 'coach-programs-new', coachOnly: true, title: 'Créer un programme', lines: [
+    'Des programmes **réutilisables** (plans types)',
+    'Assigne-les à un ou plusieurs athlètes',
+    'Publie-les à la vente (Stripe) si tu veux',
+  ] },
+  { route: '/coach/messages', anchor: 'coach-thread', coachOnly: true, title: 'Messagerie', lines: [
+    'Une conversation par athlète',
+    'Vu / envoyé, modifier, supprimer, pièces jointes',
+    'L\'athlète est prévenu (notification)',
+  ] },
+  { route: '/coach/studio', anchor: 'studio-run', coachOnly: true, title: 'Studio — passer à l\'échelle', message: 'Applique un plan, une analyse ou un message à PLUSIEURS athlètes d\'un coup. (On le détaillera à part.)' },
 ]
 
 // Pages qui ne se déduisent pas proprement de la route (panneaux ouverts

@@ -20,6 +20,17 @@ import { PageHelp } from '@/onboarding/system/PageHelp'
 import { usePageOnboarding } from '@/onboarding/system/usePageOnboarding'
 import { RECOVERY_ONBOARDING } from '@/onboarding/configs/recovery.config'
 import { currentLocale } from '@/lib/i18n'
+import { useGuideTabDemo } from '@/components/guide/guideDemo'
+
+// Sections réelles de la coquille à onglets.
+type RecoverySection = 'overview' | 'checkin' | 'load' | 'sleep' | 'sources'
+// Clés émises par le guide (rec:<key>) → section réelle à ouvrir.
+const GUIDE_KEY_TO_SECTION: Record<string, RecoverySection> = {
+  readiness: 'overview',
+  hrv: 'sleep',
+  checkin: 'checkin',
+  sources: 'sources',
+}
 
 function OverviewTab({ weeks, readiness }: { weeks: WeekData[]; readiness: ReadinessResult | null }) {
   const { t } = useI18n()
@@ -45,6 +56,9 @@ export default function RecoveryPage() {
   const { t } = useI18n()
   const { show, dismiss } = usePageOnboarding(RECOVERY_ONBOARDING.pageId, RECOVERY_ONBOARDING.version)
   const [reload, setReload] = useState(0)
+  // Section imposée par le guide (null = navigation libre via SectionLayout).
+  const [guideSection, setGuideSection] = useState<RecoverySection | null>(null)
+  useGuideTabDemo('rec', (k) => { const s = GUIDE_KEY_TO_SECTION[k]; if (s) setGuideSection(s) })
   const data = useRecoveryData(reload)
   const tl = useTrainingLoad()
   const tsb = tl.series.length > 0 ? tl.TSB_SM : null
@@ -82,7 +96,7 @@ export default function RecoveryPage() {
   return (
     <>
       <PageHelp config={RECOVERY_ONBOARDING} show={show} onDismiss={dismiss} />
-      <SectionLayout sections={sections} defaultSection="overview" urlParam="tab" header={header} contentMaxWidth={1100} />
+      <SectionLayout key={guideSection ?? 'default'} sections={sections} defaultSection={guideSection ?? 'overview'} urlParam="tab" header={header} contentMaxWidth={1100} />
     </>
   )
 }

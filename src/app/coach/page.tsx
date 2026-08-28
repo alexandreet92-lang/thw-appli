@@ -89,7 +89,7 @@ export default function CoachDashboard() {
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 16 }}>
         {/* À suivre en priorité */}
-        <div style={{ ...card, padding: 16 }}>
+        <div data-guide="coach-priority" style={{ ...card, padding: 16 }}>
           <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
             {t('w3d.priority_title')} {priority.length > 0 && <span style={{ ...num, fontSize: 11.5, color: 'var(--text-mid)', background: 'var(--bg-alt)', borderRadius: 6, padding: '1px 7px' }}>{priority.length}</span>}
           </div>
@@ -142,7 +142,7 @@ export default function CoachDashboard() {
       )}
 
       {/* Accès rapides */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12, marginTop: 16 }}>
+      <div data-guide="coach-tiles" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12, marginTop: 16 }}>
         {QUICK.map(q => (
           <Link key={q.href} href={q.href} style={{ ...card, padding: '16px', display: 'flex', alignItems: 'center', gap: 11, textDecoration: 'none', color: 'var(--text)' }}>
             <span style={{ width: 34, height: 34, borderRadius: 10, background: 'color-mix(in srgb, var(--primary) 12%, transparent)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>

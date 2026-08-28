@@ -47,7 +47,7 @@ function HrvCard({ rows }: { rows: HrvRow[] }) {
   const dColor = delta === 0 ? 'var(--text-dim)' : delta > 0 ? 'var(--charge-low)' : 'var(--charge-hard)'
 
   return (
-    <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 20, padding: 20, boxShadow: 'var(--shadow-card)' }}>
+    <div data-guide="rec-hrv" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 20, padding: 20, boxShadow: 'var(--shadow-card)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
         <span style={{ width: 7, height: 7, borderRadius: 2, background: 'var(--rec-hrv)', flexShrink: 0 }} />
         <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 600, margin: 0, color: 'var(--text)' }}>{t('recovery.hrv.title')}</h2>

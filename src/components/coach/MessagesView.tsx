@@ -95,7 +95,7 @@ export function MessagesView({ role, title, subtitle }: { role: 'coach' | 'athle
           {role === 'coach' ? t('w3d.no_athlete_invite') : t('w3d.no_coach_add')}
         </p>
       ) : threads.map(th => (
-        <button key={th.otherId} onClick={() => { setSelId(th.otherId); setSelGroup(null) }}
+        <button key={th.otherId} data-guide="coach-thread" onClick={() => { setSelId(th.otherId); setSelGroup(null) }}
           style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '11px 13px', border: 'none', borderBottom: '1px solid var(--border)', background: sel?.otherId === th.otherId ? 'var(--bg-alt)' : 'transparent', cursor: 'pointer', textAlign: 'left', width: '100%', fontFamily: 'var(--font-body)' }}>
           <span style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--bg-alt)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0, color: 'var(--text-dim)', fontWeight: 800, position: 'relative' }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}

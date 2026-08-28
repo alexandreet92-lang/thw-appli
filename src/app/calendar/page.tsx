@@ -48,6 +48,7 @@ import { CALENDAR_ONBOARDING } from '@/onboarding/configs/calendar.config'
 import { Trophy, Briefcase, Heart, LayoutGrid, CalendarDays, Target } from 'lucide-react'
 import { SectionLayout } from '@/components/navigation/SectionLayout'
 import { useI18n, currentLocale } from '@/lib/i18n'
+import { useGuideTabDemo } from '@/components/guide/guideDemo'
 type CalView       = 'year' | 'month'
 type TimelineMode  = 'vertical' | 'horizontal'
 type RaceLevel     = 'secondary' | 'important' | 'main' | 'gty'
@@ -819,6 +820,8 @@ function RaceTab({ races, raceStages, tests, addEvent, updateEvent, deleteEvent,
 }) {
   const { t } = useI18n()
   const [calView,      setCalView]      = useState<CalView>('year')
+  // Guide plumbing : le tour guidé peut basculer la vue via `cal:year` / `cal:month`.
+  useGuideTabDemo('cal', (k) => setCalView(k as CalView))
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth())
   const [showRaceModal,  setShowRaceModal]  = useState(false)
   const [editRace,    setEditRace]    = useState<Race | null>(null)
@@ -955,7 +958,7 @@ function RaceTab({ races, raceStages, tests, addEvent, updateEvent, deleteEvent,
         </div>
 
         {/* Astuce : l'ajout se fait en cliquant un jour du calendrier */}
-        <span style={{ fontSize:11, color:'var(--text-dim)' }}>{t('calendar.clickDayToAddGoal')}</span>
+        <span data-guide="cal-add" style={{ fontSize:11, color:'var(--text-dim)' }}>{t('calendar.clickDayToAddGoal')}</span>
       </div>
 
       {/* Close year picker on outside click */}

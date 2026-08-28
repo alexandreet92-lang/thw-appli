@@ -616,7 +616,7 @@ function CalendarSyncCard({ isMobile }: { isMobile: boolean }) {
           </div>
         </div>
         {state !== 'ready' && (
-          <button onClick={connect} disabled={state === 'loading'}
+          <button data-guide="conn-connect" onClick={connect} disabled={state === 'loading'}
             style={{ flexShrink: 0, padding: '7px 14px', borderRadius: 8, border: 'none', background: ACCENT, color: '#fff', fontFamily: 'DM Sans, sans-serif', fontSize: 12.5, fontWeight: 700, cursor: state === 'loading' ? 'default' : 'pointer', display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}>
             {state === 'loading' ? <Spinner size={12} color="#fff" /> : null}
             {state === 'loading' ? 'Connexion…' : 'Connecter'}
@@ -1049,7 +1049,9 @@ function ConnectionsInner() {
                 if (catApps.length === 0) return null
                 const connCount = catApps.filter(a => a.provider && connectedProviders[a.provider]).length
                 return (
-                  <section key={cat.id} id={SECTION_ID[cat.id]} style={{ paddingTop: 32, paddingBottom: 8 }}>
+                  <section key={cat.id} id={SECTION_ID[cat.id]}
+                    data-guide={cat.id === 'training' ? 'conn-services' : cat.id === 'biometrics' ? 'conn-devices' : undefined}
+                    style={{ paddingTop: 32, paddingBottom: 8 }}>
 
                     {/* Section header */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>

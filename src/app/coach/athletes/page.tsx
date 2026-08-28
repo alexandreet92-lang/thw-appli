@@ -148,7 +148,7 @@ export default function CoachAthletes() {
       </div>
 
       {/* Barre d'outils */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center', marginBottom: 4 }}>
+      <div data-guide="roster-search" style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center', marginBottom: 4 }}>
         <label style={{ flex: 1, minWidth: 200, display: 'flex', alignItems: 'center', gap: 8, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 11, padding: '9px 12px' }}>
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
           <input value={q} onChange={e => setQ(e.target.value)} placeholder={t('w1h.ph_search_athlete')} style={{ border: 'none', background: 'none', outline: 'none', color: 'var(--text)', fontFamily: BODY, fontSize: 14, width: '100%' }} />
@@ -256,7 +256,7 @@ export default function CoachAthletes() {
           {/* ── Invitations — une seule carte, deux volets ── */}
           <div style={{ ...card, marginTop: 22, padding: 0, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))' }}>
             {/* Volet 1 : inviter un athlète */}
-            <div style={{ padding: 18 }}>
+            <div data-guide="roster-invite" style={{ padding: 18 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 4 }}>
                 <span style={{ width: 30, height: 30, borderRadius: 9, background: 'color-mix(in srgb, var(--primary) 13%, transparent)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg>

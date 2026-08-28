@@ -74,13 +74,8 @@ All Pages
 - Lister TOUTES les actions rapides 
 - Lister le process des main actions rapides 
 - Priorité action rapide = Créer un plan d’entrainement 
+token_meta_temporaire.txt : EAAcb8fMi5zIBRT30jCCIYjAIGZBw3EVTfjERDhPkZAzYXww1ZCERMRZAXE6KQUukNHfoYQd15l9ZBzVDlTlJeyR44aARTZBFgk53JyGJefD3bZBIafnvrZB6aoD2TYafZAp3HXd93mhnsyTzLH7m2uMBwVMJNnJHuc190HDUutBIkSgr21vq7mZA8GZBpeqqBxKHk4av7bZBS8CYnA9GoASCwgHJhSzmgx7b28odhwwC7nhTW3yLZCAOgIYrtWYrxX6Np71zPWZCnnfCbsG6SR7yenUZBisirNC
+instagram business id : 17841449112603067
+clé secrète : 2f2f1473d571d775987b003d8b071ac9
 
-## Intégration Meta (Instagram/Facebook)
-⚠️ Les identifiants Meta NE DOIVENT PLUS être stockés en clair ici (repo versionné = fuite).
-Ils vivent désormais en variables d'environnement (non commitées) :
-- `META_APP_ID` — App ID Facebook
-- `META_APP_SECRET` — clé secrète de l'app (à régénérer côté Meta si elle a fuité)
-- `META_LONG_LIVED_TOKEN` — token longue durée (à régénérer)
-- `IG_BUSINESS_ID` — Instagram Business ID (identifiant public, pas secret)
-Échange d'un token courte→longue durée : `GET https://graph.facebook.com/v21.0/oauth/access_token`
-avec `grant_type=fb_exchange_token`, `client_id`, `client_secret`, `fb_exchange_token`.
+https://graph.facebook.com/v21.0/oauth/access_token?grant_type=fb_exchange_token&client_id=2052520568982613&client_secret=2f2f1473d571d775987b003d8b071ac9&fb_exchange_token=EAAcb8fMi5zIBRT30jCCIYjAIGZBw3EVTfjERDhPkZAzYXww1ZCERMRZAXE6KQUukNHfoYQd15l9ZBzVDlTlJeyR44aARTZBFgk53JyGJefD3bZBIafnvrZB6aoD2TYafZAp3HXd93mhnsyTzLH7m2uMBwVMJNnJHuc190HDUutBIkSgr21vq7mZA8GZBpeqqBxKHk4av7bZBS8CYnA9GoASCwgHJhSzmgx7b28odhwwC7nhTW3yLZCAOgIYrtWYrxX6Np71zPWZCnnfCbsG6SR7yenUZBisirNC

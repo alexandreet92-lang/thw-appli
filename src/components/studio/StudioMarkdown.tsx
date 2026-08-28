@@ -7,6 +7,7 @@
 // ══════════════════════════════════════════════════════════════
 
 import React from 'react'
+import { parseAdvancedSpec, AdvancedChartCard } from '@/components/ai/AdvancedChart'
 
 const FB = 'var(--font-body)'
 
@@ -56,6 +57,27 @@ export default function StudioMarkdown({ text }: { text: string }) {
 
   while (i < lines.length) {
     const line = lines[i]
+
+    // Bloc de code cloturé ```lang … ``` — en particulier ```thw-chart {json}```
+    // que l'on transforme en graphe du kit (donut/gauge/radar/pmc/courbe/zones),
+    // exactement comme dans le chat coach. Sinon : bloc de code monospace.
+    const fence = /^\s*```(\w[\w-]*)?\s*$/.exec(line)
+    if (fence) {
+      const lang = (fence[1] ?? '').toLowerCase()
+      const code: string[] = []
+      i++
+      while (i < lines.length && !/^\s*```\s*$/.test(lines[i])) { code.push(lines[i]); i++ }
+      i++ // saute la clôture ```
+      const raw = code.join('\n')
+      if (lang === 'thw-chart' || lang === 'chart') {
+        const adv = parseAdvancedSpec(raw)
+        if (adv) { blocks.push(<AdvancedChartCard key={key++} spec={adv} />); continue }
+      }
+      blocks.push(
+        <pre key={key++} style={{ overflowX: 'auto', margin: '8px 0', padding: '10px 12px', borderRadius: 10, background: 'var(--bg-alt)', border: '1px solid var(--border)', fontSize: 12, lineHeight: 1.5, color: 'var(--text-mid)', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' }}>{raw}</pre>,
+      )
+      continue
+    }
 
     // Tableau : lignes | … | consécutives
     if (/^\s*\|.*\|\s*$/.test(line)) {

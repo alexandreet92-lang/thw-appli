@@ -10,6 +10,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useEntitlements } from '@/hooks/useEntitlements'
+import { hidePricing } from '@/lib/native/platform'
 
 function todayKey(): string {
   // Clé de rejet valable pour la journée (réapparaît le lendemain).
@@ -20,6 +21,7 @@ function todayKey(): string {
 export function EntitlementBanner() {
   const { loading, isFree, isTrial, trialDaysLeft } = useEntitlements()
   const [dismissed, setDismissed] = useState(true)
+  const hidePrice = hidePricing()
 
   const show = !loading && (isFree || (isTrial && (trialDaysLeft ?? 99) <= 7))
   const dismissKey = isFree ? 'free' : `trial-${trialDaysLeft}`
@@ -53,9 +55,11 @@ export function EntitlementBanner() {
     }}>
       <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--primary)', flexShrink: 0 }} />
       <span style={{ flex: 1, minWidth: 0 }}>{message}</span>
-      <Link href="/settings/subscription" style={{ color: 'var(--primary)', fontWeight: 700, textDecoration: 'none', whiteSpace: 'nowrap' }}>
-        Voir les offres →
-      </Link>
+      {!hidePrice && (
+        <Link href="/settings/subscription" style={{ color: 'var(--primary)', fontWeight: 700, textDecoration: 'none', whiteSpace: 'nowrap' }}>
+          Voir les offres →
+        </Link>
+      )}
       <button onClick={dismiss} aria-label="Masquer" style={{ border: 'none', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', padding: 2, flexShrink: 0 }}>
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
       </button>

@@ -15,6 +15,7 @@ import { useI18n } from '@/lib/i18n'
 import { LanguageSelector } from '@/components/i18n/LanguageSelector'
 import { currentLocale } from '@/lib/i18n'
 import { getPushState, enablePush, disablePush, type PushState } from '@/lib/push/client'
+import { hidePricing } from '@/lib/native/platform'
 
 // ══════════════════════════════════════════════════
 // TYPES
@@ -1843,6 +1844,7 @@ function fmtAmount(amount: number, currency: string): string {
 
 function AbonnementContent() {
   const { t } = useI18n()
+  const hidePrice = hidePricing()
   const [details,  setDetails]  = useState<SubDetails | null>(null)
   const [loading,  setLoading]  = useState(true)
   const [cancelling, setCancelling] = useState(false)
@@ -1911,7 +1913,7 @@ function AbonnementContent() {
                 ) : hasStripe && details?.stripe?.nextBillingDate ? (
                   <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: 0 }}>
                     {t('profile.nextPayment')} · {fmtDate(details.stripe.nextBillingDate)}
-                    {details.stripe.amount != null && details.stripe.currency
+                    {!hidePrice && details.stripe.amount != null && details.stripe.currency
                       ? ` · ${fmtAmount(details.stripe.amount, details.stripe.currency)}`
                       : ''}
                   </p>
@@ -1986,7 +1988,7 @@ function AbonnementContent() {
                       </span>
                     </div>
                     <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                      <p style={{ fontFamily: 'var(--font-body)', fontSize: 15, fontWeight: 700, color: 'var(--text)', margin: '0 0 2px' }}>{fmtAmount(inv.amount, inv.currency)}</p>
+                      {!hidePrice && <p style={{ fontFamily: 'var(--font-body)', fontSize: 15, fontWeight: 700, color: 'var(--text)', margin: '0 0 2px' }}>{fmtAmount(inv.amount, inv.currency)}</p>}
                       {inv.url && (
                         <a href={inv.url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 10, color: '#5b6fff', textDecoration: 'none' }}>
                           {t('profile.viewInvoice')}
@@ -2258,6 +2260,7 @@ function ModelesContent() {
 
 export function IASettingsBloc() {
   const { t } = useI18n()
+  const hidePrice = hidePricing()
   // Overlays
   const [modelsPageOpen, setModelsPageOpen] = useState(false)
   const [subPageOpen,    setSubPageOpen]    = useState(false)
@@ -2371,16 +2374,24 @@ export function IASettingsBloc() {
                 <div key={p.id} style={{ padding:'16px', borderRadius:14, background:'var(--bg-card2)', border:`1px solid ${p.color}44` }}>
                   <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:10 }}>
                     <span style={{ fontFamily:'var(--font-display)', fontSize:16, fontWeight:700, color:p.color }}>{p.label}</span>
-                    <div style={{ textAlign:'right' as const }}>
-                      <p style={{ fontFamily:'var(--font-body)', fontSize:14, fontWeight:700, color:'var(--text)', margin:0 }}>{p.annual}</p>
-                      <p style={{ fontSize:10, color:'var(--text-dim)', margin:'1px 0 0' }}>{p.monthly} · <span style={{ color:'#22c55e', fontWeight:600 }}>-{p.save}</span></p>
-                    </div>
+                    {!hidePrice && (
+                      <div style={{ textAlign:'right' as const }}>
+                        <p style={{ fontFamily:'var(--font-body)', fontSize:14, fontWeight:700, color:'var(--text)', margin:0 }}>{p.annual}</p>
+                        <p style={{ fontSize:10, color:'var(--text-dim)', margin:'1px 0 0' }}>{p.monthly} · <span style={{ color:'#22c55e', fontWeight:600 }}>-{p.save}</span></p>
+                      </div>
+                    )}
                   </div>
                   <div style={{ display:'flex', flexDirection:'column', gap:5, marginBottom:12 }}>
                     {p.features.map((f,i)=><div key={i} style={{ display:'flex', alignItems:'center', gap:7 }}><span style={{ color:p.color, fontSize:11 }}>✓</span><span style={{ fontSize:12, color:'var(--text-mid)' }}>{t('profile.plan.'+p.id+'.feat'+i)}</span></div>)}
                   </div>
-                  <button style={{ width:'100%', padding:'10px', borderRadius:10, background:`linear-gradient(135deg,${p.color},${p.color}bb)`, border:'none', color:'#fff', fontFamily:'var(--font-display)', fontWeight:700, fontSize:13, cursor:'pointer' }}>{t('profile.choose', { plan: p.label })}</button>
-                  <p style={{ fontSize:10, color:'var(--text-dim)', textAlign:'center' as const, margin:'6px 0 0' }}>{t('profile.securePaymentStripe')}</p>
+                  {hidePrice ? (
+                    <p style={{ fontSize:11, color:'var(--text-dim)', textAlign:'center' as const, margin:'2px 0 0', lineHeight:1.5 }}>Abonnement à gérer sur le site web.</p>
+                  ) : (
+                    <>
+                      <button style={{ width:'100%', padding:'10px', borderRadius:10, background:`linear-gradient(135deg,${p.color},${p.color}bb)`, border:'none', color:'#fff', fontFamily:'var(--font-display)', fontWeight:700, fontSize:13, cursor:'pointer' }}>{t('profile.choose', { plan: p.label })}</button>
+                      <p style={{ fontSize:10, color:'var(--text-dim)', textAlign:'center' as const, margin:'6px 0 0' }}>{t('profile.securePaymentStripe')}</p>
+                    </>
+                  )}
                 </div>
               ))}
             </div>

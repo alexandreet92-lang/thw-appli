@@ -10,6 +10,7 @@ import { useEffect, useState } from 'react'
 import { getCurrentUser } from "@/lib/auth/currentUser"
 import { Mail, Check } from 'lucide-react'
 import { useI18n } from '@/lib/i18n'
+import { hidePricing } from '@/lib/native/platform'
 
 interface Props {
   packKey: string
@@ -27,6 +28,7 @@ export default function CoachSubscribeEmailModal({ packKey, packName, packLabel,
   const [error, setError] = useState<string | null>(null)
   const { t } = useI18n()
   const per = billingPeriod === 'yearly' ? t('w3c.per_year') : t('w3c.per_month')
+  const hidePrice = hidePricing()
 
   useEffect(() => {
     ;(async () => {
@@ -80,32 +82,48 @@ export default function CoachSubscribeEmailModal({ packKey, packName, packLabel,
             </div>
             <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 19, fontWeight: 600, color: 'var(--text)', textAlign: 'center', margin: '0 0 6px' }}>{t('w3c.coachsub_pack', { name: packName })}</h2>
             <p style={{ fontSize: 13, color: 'var(--text-dim)', textAlign: 'center', margin: '0 0 14px' }}>{packLabel}</p>
-            <div style={{ textAlign: 'center', margin: '0 0 18px' }}>
-              <span className="tnum" style={{ fontSize: 30, fontWeight: 600, color: 'var(--text)', fontVariantNumeric: 'tabular-nums' }}>{price}</span>
-              <span style={{ fontSize: 14, color: 'var(--text-dim)' }}> € / {per}</span>
-            </div>
-            <p style={{ fontSize: 13.5, color: 'var(--text-mid)', textAlign: 'center', lineHeight: 1.6, margin: '0 0 20px' }}>
-              {t('w3c.coachsub_confirm')}
-            </p>
-            <input
-              type="email"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') void submit() }}
-              placeholder={t('w3c.email_placeholder')}
-              style={{ width: '100%', background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: '13px 15px', fontSize: 14, color: 'var(--text)', outline: 'none', marginBottom: 12, fontFamily: 'var(--font-body)', boxSizing: 'border-box', textAlign: 'center' }}
-            />
-            {error && <p style={{ fontSize: 12, color: 'var(--danger, #ef4444)', margin: '0 0 12px', textAlign: 'center' }}>{error}</p>}
-            <button
-              onClick={() => void submit()}
-              disabled={loading || !email}
-              style={{ width: '100%', padding: 14, borderRadius: 'var(--r-md)', border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontFamily: 'var(--font-body)', fontSize: 14.5, fontWeight: 700, cursor: loading || !email ? 'not-allowed' : 'pointer', opacity: loading || !email ? 0.55 : 1 }}
-            >
-              {loading ? t('w3c.sending') : t('w3c.receive_link')}
-            </button>
-            <p style={{ fontSize: 11.5, color: 'var(--text-dim)', textAlign: 'center', lineHeight: 1.5, margin: '14px 0 0' }}>
-              {t('w3c.sent_only_note')}
-            </p>
+            {hidePrice ? (
+              <>
+                <button
+                  onClick={onClose}
+                  style={{ width: '100%', padding: 14, borderRadius: 'var(--r-md)', border: 'none', background: 'var(--bg-card2)', color: 'var(--text)', fontFamily: 'var(--font-body)', fontSize: 14.5, fontWeight: 700, cursor: 'pointer', marginTop: 6 }}
+                >
+                  {t('w3c.close')}
+                </button>
+                <p style={{ fontSize: 12, color: 'var(--text-dim)', textAlign: 'center', lineHeight: 1.5, margin: '14px 0 0' }}>
+                  Abonnement à gérer sur le site web.
+                </p>
+              </>
+            ) : (
+              <>
+                <div style={{ textAlign: 'center', margin: '0 0 18px' }}>
+                  <span className="tnum" style={{ fontSize: 30, fontWeight: 600, color: 'var(--text)', fontVariantNumeric: 'tabular-nums' }}>{price}</span>
+                  <span style={{ fontSize: 14, color: 'var(--text-dim)' }}> € / {per}</span>
+                </div>
+                <p style={{ fontSize: 13.5, color: 'var(--text-mid)', textAlign: 'center', lineHeight: 1.6, margin: '0 0 20px' }}>
+                  {t('w3c.coachsub_confirm')}
+                </p>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') void submit() }}
+                  placeholder={t('w3c.email_placeholder')}
+                  style={{ width: '100%', background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: '13px 15px', fontSize: 14, color: 'var(--text)', outline: 'none', marginBottom: 12, fontFamily: 'var(--font-body)', boxSizing: 'border-box', textAlign: 'center' }}
+                />
+                {error && <p style={{ fontSize: 12, color: 'var(--danger, #ef4444)', margin: '0 0 12px', textAlign: 'center' }}>{error}</p>}
+                <button
+                  onClick={() => void submit()}
+                  disabled={loading || !email}
+                  style={{ width: '100%', padding: 14, borderRadius: 'var(--r-md)', border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontFamily: 'var(--font-body)', fontSize: 14.5, fontWeight: 700, cursor: loading || !email ? 'not-allowed' : 'pointer', opacity: loading || !email ? 0.55 : 1 }}
+                >
+                  {loading ? t('w3c.sending') : t('w3c.receive_link')}
+                </button>
+                <p style={{ fontSize: 11.5, color: 'var(--text-dim)', textAlign: 'center', lineHeight: 1.5, margin: '14px 0 0' }}>
+                  {t('w3c.sent_only_note')}
+                </p>
+              </>
+            )}
           </>
         )}
       </div>

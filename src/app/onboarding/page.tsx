@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { useI18n } from '@/lib/i18n'
+import { hidePricing } from '@/lib/native/platform'
 
 const PLANS = [
   {
@@ -25,6 +26,7 @@ const PLANS = [
 export default function SelectPlanPage() {
   const router = useRouter()
   const { t } = useI18n()
+  const hidePrice = hidePricing()
 
   return (
     <div style={{ minHeight:'100vh', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', background:'var(--bg)', padding:20 }}>
@@ -56,10 +58,12 @@ export default function SelectPlanPage() {
             )}
             <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14 }}>
               <span style={{ fontFamily:'Syne,sans-serif', fontSize:18, fontWeight:700, color:p.color }}>{p.label}</span>
-              <div style={{ textAlign:'right' }}>
-                <p style={{ fontFamily:'DM Mono,monospace', fontSize:15, fontWeight:700, color:'var(--text)', margin:0 }}>{p.annual}</p>
-                <p style={{ fontSize:10, color:'var(--text-dim)', margin:'2px 0 0' }}>{p.monthly} · <span style={{ color:'#22c55e', fontWeight:600 }}>-{p.save}</span></p>
-              </div>
+              {!hidePrice && (
+                <div style={{ textAlign:'right' }}>
+                  <p style={{ fontFamily:'DM Mono,monospace', fontSize:15, fontWeight:700, color:'var(--text)', margin:0 }}>{p.annual}</p>
+                  <p style={{ fontSize:10, color:'var(--text-dim)', margin:'2px 0 0' }}>{p.monthly} · <span style={{ color:'#22c55e', fontWeight:600 }}>-{p.save}</span></p>
+                </div>
+              )}
             </div>
             <div style={{ display:'flex', flexDirection:'column', gap:7, marginBottom:16 }}>
               {p.features.map((f,i) => (
@@ -69,12 +73,20 @@ export default function SelectPlanPage() {
                 </div>
               ))}
             </div>
-            <button
-              onClick={()=>{ /* TODO: lien Stripe */ alert(`Redirection Stripe — ${p.label}`) }}
-              style={{ width:'100%', padding:'12px', borderRadius:11, background:p.gradient, border:'none', color:'#fff', fontFamily:'Syne,sans-serif', fontWeight:700, fontSize:14, cursor:'pointer' }}>
-              {t('onboarding.choosePlanLabel', { label: p.label })}
-            </button>
-            <p style={{ fontSize:10, color:'var(--text-dim)', textAlign:'center', margin:'8px 0 0' }}>{t('onboarding.securePayment')}</p>
+            {hidePrice ? (
+              <p style={{ fontSize:12, color:'var(--text-dim)', textAlign:'center', margin:'4px 0 0', lineHeight:1.5 }}>
+                Abonnement à gérer sur le site web.
+              </p>
+            ) : (
+              <>
+                <button
+                  onClick={()=>{ /* TODO: lien Stripe */ alert(`Redirection Stripe — ${p.label}`) }}
+                  style={{ width:'100%', padding:'12px', borderRadius:11, background:p.gradient, border:'none', color:'#fff', fontFamily:'Syne,sans-serif', fontWeight:700, fontSize:14, cursor:'pointer' }}>
+                  {t('onboarding.choosePlanLabel', { label: p.label })}
+                </button>
+                <p style={{ fontSize:10, color:'var(--text-dim)', textAlign:'center', margin:'8px 0 0' }}>{t('onboarding.securePayment')}</p>
+              </>
+            )}
           </div>
         ))}
       </div>

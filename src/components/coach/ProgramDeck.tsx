@@ -16,6 +16,7 @@ import { programHours } from '@/lib/coach/programs'
 import { useNarrow } from '@/lib/hooks/useNarrow'
 import { haptic } from '@/lib/haptics'
 import { useI18n } from '@/lib/i18n'
+import { hidePricing } from '@/lib/native/platform'
 
 type GlyphIcon = ComponentType<{ size?: number; color?: string; stroke?: number; style?: React.CSSProperties }>
 
@@ -62,6 +63,7 @@ function placeCard(rp: number, drag: number): Placement {
 
 function Card({ p, rp, drag, dragging, onOpen }: { p: CoachProgram; rp: number; drag: number; dragging: boolean; onOpen?: () => void }) {
   const { t } = useI18n()
+  const hidePrice = hidePricing()
   const sport = sportOf(p)
   const sessions = p.structure.reduce((s, w) => s + w.sessions.length, 0)
   const hours = programHours(p.structure)
@@ -106,10 +108,12 @@ function Card({ p, rp, drag, dragging, onOpen }: { p: CoachProgram; rp: number; 
 
       <div style={{ flex: 1 }} />
 
-      {/* Bas : prix */}
-      <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
-        <span style={{ fontSize: 15, fontWeight: 800, background: 'rgba(255,255,255,0.22)', padding: '5px 12px', borderRadius: 999, whiteSpace: 'nowrap' }}>{priceStr(p) || t('w3d.free')}</span>
-      </div>
+      {/* Bas : prix — masqué dans l'app native (règles App Store). */}
+      {!hidePrice && (
+        <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
+          <span style={{ fontSize: 15, fontWeight: 800, background: 'rgba(255,255,255,0.22)', padding: '5px 12px', borderRadius: 999, whiteSpace: 'nowrap' }}>{priceStr(p) || t('w3d.free')}</span>
+        </div>
+      )}
     </div>
   )
 }

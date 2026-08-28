@@ -8,6 +8,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useI18n } from '@/lib/i18n'
+import { hidePricing } from '@/lib/native/platform'
 
 const EVT = 'thw:upgrade'
 
@@ -22,6 +23,7 @@ export function UpgradeModalHost() {
   const { t } = useI18n()
   const [reason, setReason] = useState<string | null>(null)
   const [open, setOpen] = useState(false)
+  const hidePrice = hidePricing()
 
   useEffect(() => {
     const on = (e: Event) => {
@@ -61,13 +63,26 @@ export function UpgradeModalHost() {
             </div>
           ))}
         </div>
-        <button onClick={() => { setOpen(false); router.push('/settings/subscription') }}
-          style={{ width: '100%', height: 46, borderRadius: 'var(--r-md)', border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontFamily: 'var(--font-body)', fontSize: 14.5, fontWeight: 700, cursor: 'pointer' }}>
-          {t('w3c.upgrade_see_offers')}
-        </button>
-        <button onClick={() => setOpen(false)} style={{ width: '100%', marginTop: 8, height: 38, border: 'none', background: 'transparent', color: 'var(--text-mid)', fontFamily: 'var(--font-body)', fontSize: 13, cursor: 'pointer' }}>
-          {t('w3c.later')}
-        </button>
+        {hidePrice ? (
+          <>
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-dim)', textAlign: 'center', margin: '4px 0 0', lineHeight: 1.5 }}>
+              Abonnement à gérer sur le site web.
+            </p>
+            <button onClick={() => setOpen(false)} style={{ width: '100%', marginTop: 14, height: 46, borderRadius: 'var(--r-md)', border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontFamily: 'var(--font-body)', fontSize: 14.5, fontWeight: 700, cursor: 'pointer' }}>
+              {t('w3c.close')}
+            </button>
+          </>
+        ) : (
+          <>
+            <button onClick={() => { setOpen(false); router.push('/settings/subscription') }}
+              style={{ width: '100%', height: 46, borderRadius: 'var(--r-md)', border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontFamily: 'var(--font-body)', fontSize: 14.5, fontWeight: 700, cursor: 'pointer' }}>
+              {t('w3c.upgrade_see_offers')}
+            </button>
+            <button onClick={() => setOpen(false)} style={{ width: '100%', marginTop: 8, height: 38, border: 'none', background: 'transparent', color: 'var(--text-mid)', fontFamily: 'var(--font-body)', fontSize: 13, cursor: 'pointer' }}>
+              {t('w3c.later')}
+            </button>
+          </>
+        )}
       </div>
     </div>
   )

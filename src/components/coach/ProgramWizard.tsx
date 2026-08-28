@@ -10,6 +10,7 @@
 // ══════════════════════════════════════════════════════════════════
 import { useRef, useState } from 'react'
 import { useI18n } from '@/lib/i18n'
+import { hidePricing } from '@/lib/native/platform'
 import {
   updateProgram, computeProgramFullStats, LEVEL_LABEL, LEVEL_ORDER, PREP_LABEL, SPORTTYPE_TO_KEY, KEY_TO_SPORTTYPE,
   PHASE_PALETTE, DAY_TYPES, DAY_TYPE_LABEL, DAY_TYPE_COLOR, specialtiesForSport,
@@ -67,6 +68,7 @@ const STEPS = ['Programme', 'Séances', 'Récap', 'Finalisation']
 
 export default function ProgramWizard({ program, onDone }: { program: CoachProgram; onDone: (p: CoachProgram) => void }) {
   const { t } = useI18n()
+  const hidePrice = hidePricing()
   const [step, setStep] = useState(1)
   const [p, setP] = useState<CoachProgram>(program)
   const [busy, setBusy] = useState(false)
@@ -521,17 +523,23 @@ export default function ProgramWizard({ program, onDone }: { program: CoachProgr
         <div style={card}>
           <div style={secLbl0}>{t('w1d.programPrice')}</div>
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: 14, flexWrap: 'wrap' }}>
-            <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, color: 'var(--text)', lineHeight: 1, fontSize: 'clamp(44px,10vw,72px)', fontVariantNumeric: 'tabular-nums' }}>
-              {p.price_cents > 0 ? `${p.price_cents / 100}` : t('w1d.free')}
-              {p.price_cents > 0 && <span style={{ fontSize: '0.4em', fontWeight: 600, color: 'var(--text-mid)', marginLeft: 4 }}>€</span>}
-            </div>
+            {/* Grand montant + € masqué dans l'app native (règles App Store) ;
+                le champ d'édition reste pour permettre au coach de fixer le prix. */}
+            {!hidePrice && (
+              <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, color: 'var(--text)', lineHeight: 1, fontSize: 'clamp(44px,10vw,72px)', fontVariantNumeric: 'tabular-nums' }}>
+                {p.price_cents > 0 ? `${p.price_cents / 100}` : t('w1d.free')}
+                {p.price_cents > 0 && <span style={{ fontSize: '0.4em', fontWeight: 600, color: 'var(--text-mid)', marginLeft: 4 }}>€</span>}
+              </div>
+            )}
             <Field label={t('w1d.editPrice')} hint={t('w1d.editPriceHint')} style={{ width: 150, flex: 'none', margin: 0 }}>
               <input type="number" min={0} step={1} value={p.price_cents ? p.price_cents / 100 : 0} onChange={e => set({ price_cents: Math.max(0, Math.round((Number(e.target.value) || 0) * 100)) })} style={inp} />
             </Field>
           </div>
-          <p style={{ fontSize: 12.5, color: 'var(--text-dim)', margin: '10px 0 0' }}>
-            {p.price_cents > 0 ? t('w1d.commissionNote', { pct: p.ai_enabled ? 30 : 10, amount: Math.round(p.price_cents * (p.ai_enabled ? 70 : 90) / 100) / 100 }) : t('w1d.freeNoCommission')}
-          </p>
+          {!hidePrice && (
+            <p style={{ fontSize: 12.5, color: 'var(--text-dim)', margin: '10px 0 0' }}>
+              {p.price_cents > 0 ? t('w1d.commissionNote', { pct: p.ai_enabled ? 30 : 10, amount: Math.round(p.price_cents * (p.ai_enabled ? 70 : 90) / 100) / 100 }) : t('w1d.freeNoCommission')}
+            </p>
+          )}
 
           {/* Essai gratuit */}
           <div style={secLbl}>{t('w1d.freeTrial')}</div>

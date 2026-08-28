@@ -6,6 +6,7 @@ import { useI18n } from '@/lib/i18n'
 import type { TierName } from '@/lib/subscriptions/tier-limits'
 import type { UsageType } from '@/lib/subscriptions/check-quota'
 import { currentLocale } from '@/lib/i18n'
+import { hidePricing } from '@/lib/native/platform'
 
 // ── Types ──────────────────────────────────────────────────────
 
@@ -191,6 +192,7 @@ export default function SubscriptionPage() {
   const { t }        = useI18n()
   const success      = searchParams.get('success') === 'true'
   const canceled     = searchParams.get('canceled') === 'true'
+  const hidePrice    = hidePricing()
 
   const featureLabels: Record<string, string> = {
     'Messages IA / mois':          t('misc.featMessages'),
@@ -564,21 +566,24 @@ export default function SubscriptionPage() {
             <h2 style={{ fontFamily: 'Syne, sans-serif', fontSize: 16, fontWeight: 700, margin: 0, color: 'var(--text)' }}>
               {t('misc.changePlan')}
             </h2>
-            {/* Toggle mensuel / annuel */}
-            <div className="toggle-pill">
-              <button
-                className={`toggle-option${billing === 'monthly' ? ' selected' : ''}`}
-                onClick={() => setBilling('monthly')}
-              >
-                {t('misc.monthly')}
-              </button>
-              <button
-                className={`toggle-option${billing === 'yearly' ? ' selected' : ''}`}
-                onClick={() => setBilling('yearly')}
-              >
-                {t('misc.yearly')} <span style={{ fontSize: 11, marginLeft: 4, opacity: 0.8 }}>−20%</span>
-              </button>
-            </div>
+            {/* Toggle mensuel / annuel — masqué dans l'app native (pas d'achat
+                in-app, et le badge −20% est une indication de prix). */}
+            {!hidePrice && (
+              <div className="toggle-pill">
+                <button
+                  className={`toggle-option${billing === 'monthly' ? ' selected' : ''}`}
+                  onClick={() => setBilling('monthly')}
+                >
+                  {t('misc.monthly')}
+                </button>
+                <button
+                  className={`toggle-option${billing === 'yearly' ? ' selected' : ''}`}
+                  onClick={() => setBilling('yearly')}
+                >
+                  {t('misc.yearly')} <span style={{ fontSize: 11, marginLeft: 4, opacity: 0.8 }}>−20%</span>
+                </button>
+              </div>
+            )}
           </div>
 
           <div style={{
@@ -648,7 +653,8 @@ export default function SubscriptionPage() {
                     ))}
                   </div>
 
-                  {/* CTA */}
+                  {/* CTA — dans l'app native, aucun parcours d'achat : on
+                      remplace le bouton checkout par une ligne neutre. */}
                   {isActive ? (
                     <button
                       className="sub-btn"
@@ -657,6 +663,10 @@ export default function SubscriptionPage() {
                     >
                       {t('misc.currentPlan')}
                     </button>
+                  ) : hidePrice ? (
+                    <p style={{ fontSize: 12, color: 'var(--text-dim)', fontFamily: 'DM Sans, sans-serif', textAlign: 'center', margin: 0, lineHeight: 1.5 }}>
+                      Abonnement à gérer sur le site web.
+                    </p>
                   ) : (
                     <button
                       className="sub-btn"

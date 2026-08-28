@@ -6,6 +6,7 @@ import { Suspense, useEffect, useState } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { useTheme } from '@/hooks/useTheme'
 import { useI18n } from '@/lib/i18n'
+import { hidePricing } from '@/lib/native/platform'
 import { CheckCircle2, Lock, Zap, ArrowRight } from 'lucide-react'
 import {
   GRAD, GRAD_H, PACKS, USAGES, TokenGauge, Header, Footer, TopupStyles, type Pack,
@@ -27,6 +28,7 @@ function PackCard({ pack, loading, onChoose }: { pack: Pack; loading: string | n
   const { t } = useI18n()
   const [hover, setHover] = useState(false)
   const feat = pack.featured
+  const hidePrice = hidePricing()
 
   const packNames: Record<string, string> = {
     discovery:   t('misc.packDiscovery'),
@@ -64,24 +66,32 @@ function PackCard({ pack, loading, onChoose }: { pack: Pack; loading: string | n
         <div style={{ height: 5, borderRadius: 999, background: 'var(--bg-alt)', overflow: 'hidden', border: '1px solid var(--border)' }}>
           <div style={{ height: '100%', width: `${pack.vol * 100}%`, borderRadius: 999, background: feat ? GRAD_H : `linear-gradient(90deg, ${pack.accent}, ${pack.accent}88)`, boxShadow: `0 0 10px ${pack.accent}66` }} />
         </div>
-        {pack.per && <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 10.5, color: 'var(--text-dim)', marginTop: 8 }}>{pack.per} tokens</div>}
+        {!hidePrice && pack.per && <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 10.5, color: 'var(--text-dim)', marginTop: 8 }}>{pack.per} tokens</div>}
       </div>
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 9, marginBottom: 6 }}>
-        <span style={{ fontFamily: "'Syne', sans-serif", fontSize: 38, fontWeight: 800, letterSpacing: '-0.05em', lineHeight: 1, background: GRAD, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>{pack.price} €</span>
-        {pack.save && <span style={{ padding: '3px 9px', borderRadius: 999, background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.3)', color: '#22c55e', fontFamily: "'DM Mono', monospace", fontSize: 11, fontWeight: 500 }}>{pack.save}</span>}
-      </div>
+      {!hidePrice && (
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 9, marginBottom: 6 }}>
+          <span style={{ fontFamily: "'Syne', sans-serif", fontSize: 38, fontWeight: 800, letterSpacing: '-0.05em', lineHeight: 1, background: GRAD, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>{pack.price} €</span>
+          {pack.save && <span style={{ padding: '3px 9px', borderRadius: 999, background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.3)', color: '#22c55e', fontFamily: "'DM Mono', monospace", fontSize: 11, fontWeight: 500 }}>{pack.save}</span>}
+        </div>
+      )}
       <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, lineHeight: 1.5, color: 'var(--text-mid)', flex: 1, margin: '6px 0 20px' }}>{packDesc}</p>
-      <button onClick={() => onChoose(pack)} disabled={!!loading} aria-label={t('misc.choosePackAria', { name: packName })}
-        style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%',
-          padding: '13px 18px', borderRadius: 10, border: feat ? 'none' : '1px solid #06B6D4',
-          background: feat ? GRAD : 'rgba(6,182,212,0.08)', color: feat ? '#fff' : '#06B6D4',
-          fontFamily: "'DM Sans', sans-serif", fontSize: 14, fontWeight: 600,
-          cursor: loading ? 'default' : 'pointer', opacity: loading && loading !== pack.id ? 0.5 : 1,
-          boxShadow: feat ? '0 4px 22px rgba(6,182,212,0.36)' : 'none',
-        }}>
-        {loading === pack.id ? <><span className="spinner" /> {t('misc.redirecting')}</> : <>{t('misc.chooseThisPack')} <ArrowRight size={15} /></>}
-      </button>
+      {hidePrice ? (
+        <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, lineHeight: 1.5, color: 'var(--text-dim)', textAlign: 'center', margin: 0 }}>
+          Rechargement à effectuer sur le site web.
+        </p>
+      ) : (
+        <button onClick={() => onChoose(pack)} disabled={!!loading} aria-label={t('misc.choosePackAria', { name: packName })}
+          style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%',
+            padding: '13px 18px', borderRadius: 10, border: feat ? 'none' : '1px solid #06B6D4',
+            background: feat ? GRAD : 'rgba(6,182,212,0.08)', color: feat ? '#fff' : '#06B6D4',
+            fontFamily: "'DM Sans', sans-serif", fontSize: 14, fontWeight: 600,
+            cursor: loading ? 'default' : 'pointer', opacity: loading && loading !== pack.id ? 0.5 : 1,
+            boxShadow: feat ? '0 4px 22px rgba(6,182,212,0.36)' : 'none',
+          }}>
+          {loading === pack.id ? <><span className="spinner" /> {t('misc.redirecting')}</> : <>{t('misc.chooseThisPack')} <ArrowRight size={15} /></>}
+        </button>
+      )}
     </div>
   )
 

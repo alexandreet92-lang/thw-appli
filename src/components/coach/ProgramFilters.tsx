@@ -8,6 +8,7 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useI18n } from '@/lib/i18n'
+import { hidePricing } from '@/lib/native/platform'
 import { IconAdjustmentsHorizontal, IconX } from '@tabler/icons-react'
 import type { CoachProgram } from '@/lib/coach/programs'
 
@@ -39,7 +40,8 @@ export default function ProgramFilters({ programs, value, onChange }: {
 }) {
   const { t } = useI18n()
   const [open, setOpen] = useState(false)
-  const hasPaid = programs.some(p => p.price_cents > 0)
+  // Dans l'app native : aucun filtre de prix (règles App Store — pas de prix affiché).
+  const hasPaid = !hidePricing() && programs.some(p => p.price_cents > 0)
   const hasAi = programs.some(p => p.ai_enabled)
   // Sports réellement présents dans les programmes (1er sport de chaque prog).
   const sports = Array.from(new Set(programs.map(p => p.sports[0]).filter(Boolean)))

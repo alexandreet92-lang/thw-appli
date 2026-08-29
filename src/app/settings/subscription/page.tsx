@@ -6,7 +6,7 @@ import { useI18n } from '@/lib/i18n'
 import type { TierName } from '@/lib/subscriptions/tier-limits'
 import type { UsageType } from '@/lib/subscriptions/check-quota'
 import { currentLocale } from '@/lib/i18n'
-import { hidePricing } from '@/lib/native/platform'
+import { hidePricing, openWebsite } from '@/lib/native/platform'
 
 // ── Types ──────────────────────────────────────────────────────
 
@@ -664,9 +664,13 @@ export default function SubscriptionPage() {
                       {t('misc.currentPlan')}
                     </button>
                   ) : hidePrice ? (
-                    <p style={{ fontSize: 12, color: 'var(--text-dim)', fontFamily: 'DM Sans, sans-serif', textAlign: 'center', margin: 0, lineHeight: 1.5 }}>
-                      {t('native.manageSubOnWeb')}
-                    </p>
+                    <button
+                      className="sub-btn"
+                      onClick={() => void openWebsite('/settings/subscription')}
+                      style={{ background: 'var(--bg-card2)', color: 'var(--text-mid)', width: '100%' }}
+                    >
+                      {t('native.manageSubOnWeb')} ↗
+                    </button>
                   ) : (
                     <button
                       className="sub-btn"

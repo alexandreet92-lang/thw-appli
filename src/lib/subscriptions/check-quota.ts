@@ -148,12 +148,27 @@ export async function getUserTier(userId: string): Promise<TierName> {
   const supabase = createServiceClient()
   const { data } = await supabase
     .from('user_subscriptions')
-    .select('tier, status')
+    .select('tier, status, stripe_subscription_id, current_period_end')
     .eq('user_id', userId)
     .single()
 
-  if (data && (data.status === 'active' || data.status === 'trialing')) {
-    return data.tier as TierName
+  // SÉCURITÉ : on n'accorde un tier payant que si un abonnement Stripe RÉEL existe
+  // (stripe_subscription_id non nul, posé par le webhook après paiement). Sinon un
+  // checkout ABANDONNÉ — qui pré-crée une ligne AVANT paiement — donnerait Premium
+  // gratuit à vie. On retombe alors sur l'essai/gratuit.
+  if (data?.stripe_subscription_id) {
+    // Abonnement en règle (ou en essai Stripe) → tier accordé.
+    if (data.status === 'active' || data.status === 'trialing') {
+      return data.tier as TierName
+    }
+    // Impayé (past_due) : Stripe relance le paiement pendant plusieurs jours.
+    // On maintient l'accès jusqu'à la fin de la période déjà réglée (grâce),
+    // au lieu de couper dès le 1er échec. Au-delà → bascule essai/gratuit.
+    if (data.status === 'past_due' && data.current_period_end) {
+      if (new Date(data.current_period_end).getTime() > Date.now()) {
+        return data.tier as TierName
+      }
+    }
   }
 
   // Comptes créateurs : accès complet, jamais de bascule en gratuit.

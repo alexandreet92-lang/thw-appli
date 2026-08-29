@@ -8,7 +8,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useI18n } from '@/lib/i18n'
-import { hidePricing } from '@/lib/native/platform'
+import { hidePricing, openWebsite } from '@/lib/native/platform'
 
 const EVT = 'thw:upgrade'
 
@@ -65,10 +65,11 @@ export function UpgradeModalHost() {
         </div>
         {hidePrice ? (
           <>
-            <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-dim)', textAlign: 'center', margin: '4px 0 0', lineHeight: 1.5 }}>
-              {t('native.manageSubOnWeb')}
-            </p>
-            <button onClick={() => setOpen(false)} style={{ width: '100%', marginTop: 14, height: 46, borderRadius: 'var(--r-md)', border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontFamily: 'var(--font-body)', fontSize: 14.5, fontWeight: 700, cursor: 'pointer' }}>
+            <button onClick={() => { setOpen(false); void openWebsite('/settings/subscription') }}
+              style={{ width: '100%', marginTop: 14, height: 46, borderRadius: 'var(--r-md)', border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontFamily: 'var(--font-body)', fontSize: 14.5, fontWeight: 700, cursor: 'pointer' }}>
+              {t('native.manageSubOnWeb')} ↗
+            </button>
+            <button onClick={() => setOpen(false)} style={{ width: '100%', marginTop: 10, height: 42, borderRadius: 'var(--r-md)', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-mid)', fontFamily: 'var(--font-body)', fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}>
               {t('w3c.close')}
             </button>
           </>

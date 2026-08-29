@@ -45,3 +45,25 @@ export function isIOS(): boolean {
 export function hidePricing(): boolean {
   return isNativeApp()
 }
+
+/** URL publique du site web (gestion abonnement/recharge hors app). */
+export const WEB_APP_URL =
+  process.env.NEXT_PUBLIC_APP_URL || 'https://thw-coaching.vercel.app'
+
+/**
+ * Ouvre une page du SITE WEB (paiement/gestion abonnement) hors de l'app.
+ * En natif : navigateur système via Capacitor Browser (le paiement Stripe se
+ * fait sur le web, jamais in-app). Sur le web : navigation classique.
+ * `path` doit commencer par « / ».
+ */
+export async function openWebsite(path = '/settings/subscription'): Promise<void> {
+  const url = `${WEB_APP_URL}${path.startsWith('/') ? path : `/${path}`}`
+  if (isNativeApp()) {
+    try {
+      const { Browser } = await import('@capacitor/browser')
+      await Browser.open({ url })
+      return
+    } catch { /* fallback navigation web ci-dessous */ }
+  }
+  try { window.open(url, '_blank', 'noopener') } catch { window.location.href = url }
+}

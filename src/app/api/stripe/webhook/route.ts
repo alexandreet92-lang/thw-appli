@@ -28,10 +28,15 @@ function customerId(
 
 function mapStatus(
   status: Stripe.Subscription.Status,
-): 'active' | 'canceled' | 'past_due' | 'trialing' {
+): 'active' | 'canceled' | 'past_due' | 'trialing' | 'incomplete' | 'unpaid' | 'paused' {
   if (status === 'trialing')  return 'trialing'
   if (status === 'canceled')  return 'canceled'
   if (status === 'past_due')  return 'past_due'
+  // Statuts NON-entitlants : ne jamais les écraser en 'active', sinon un
+  // abonnement jamais réglé donnerait un accès payant.
+  if (status === 'incomplete' || status === 'incomplete_expired') return 'incomplete'
+  if (status === 'unpaid')  return 'unpaid'
+  if (status === 'paused')  return 'paused'
   return 'active'
 }
 
@@ -94,6 +99,26 @@ export async function POST(req: NextRequest) {
   }
 
   const sb = createServiceClient()
+
+  // ── Idempotence : chaque event.id n'est traité qu'une seule fois ──
+  // Stripe REJOUE les webhooks (timeouts, retries). Sans garde, un
+  // `creditStudioPack` (additif) doublerait le solde de tokens. On pose une
+  // ligne unique par event.id ; si elle existe déjà, on court-circuite.
+  {
+    const { error: dupErr } = await sb
+      .from('stripe_processed_events')
+      .insert({ event_id: event.id, event_type: event.type })
+    if (dupErr) {
+      // Conflit de clé primaire = event déjà traité → 200 sans rejouer.
+      if (dupErr.code === '23505') {
+        console.log(`[stripe/webhook] event ${event.id} déjà traité — ignoré`)
+        return NextResponse.json({ received: true, duplicate: true })
+      }
+      // Autre erreur (table absente, etc.) : on log mais on NE bloque pas le
+      // traitement — mieux vaut un éventuel doublon rare qu'un webhook perdu.
+      console.warn('[stripe/webhook] idempotency insert error:', dupErr.message)
+    }
+  }
 
   // ── Dispatch events ───────────────────────────────────────────
   try {
@@ -242,7 +267,23 @@ export async function POST(req: NextRequest) {
           break
         }
 
-        const tier: TierName = getTierFromPriceId(priceId)
+        const tier: TierName | null = getTierFromPriceId(priceId)
+        if (!tier) {
+          // Prix non mappé : ne JAMAIS accorder un tier arbitraire. On enregistre
+          // néanmoins l'abonnement (customer/subscription id) pour la traçabilité
+          // et le portail, sans droit payant tant que le prix n'est pas reconnu.
+          console.error(`[stripe/webhook] checkout.session.completed: prix inconnu ${priceId} (user ${userId}) — aucun tier accordé`)
+          await sb.from('user_subscriptions').upsert(
+            {
+              user_id:                userId,
+              stripe_customer_id:     custId,
+              stripe_subscription_id: subscriptionId,
+              status:                 'incomplete',
+            },
+            { onConflict: 'user_id' },
+          )
+          break
+        }
 
         await sb.from('user_subscriptions').upsert(
           {
@@ -303,16 +344,21 @@ export async function POST(req: NextRequest) {
         }
 
         const priceId    = subscription.items.data[0]?.price.id ?? ''
-        const tier: TierName = getTierFromPriceId(priceId)
+        const tier: TierName | null = getTierFromPriceId(priceId)
 
-        await sb.from('user_subscriptions').update({
-          tier,
+        // Prix inconnu → on met à jour le statut/les dates mais on NE touche PAS
+        // au tier (on conserve celui déjà en base plutôt que d'accorder un défaut).
+        const updatePatch: Record<string, unknown> = {
           status:               mapStatus(subscription.status),
           current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
           current_period_end:   new Date(subscription.current_period_end   * 1000).toISOString(),
-        }).eq('user_id', subRow.user_id)
+        }
+        if (tier) updatePatch.tier = tier
+        else console.error(`[stripe/webhook] subscription.updated: prix inconnu ${priceId} (user ${subRow.user_id}) — tier conservé`)
 
-        console.log(`[stripe/webhook] subscription.updated → user ${subRow.user_id} → tier ${tier} status ${subscription.status}`)
+        await sb.from('user_subscriptions').update(updatePatch).eq('user_id', subRow.user_id)
+
+        console.log(`[stripe/webhook] subscription.updated → user ${subRow.user_id} → tier ${tier ?? '(inchangé)'} status ${subscription.status}`)
         break
       }
 

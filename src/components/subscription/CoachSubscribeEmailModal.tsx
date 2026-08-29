@@ -10,7 +10,7 @@ import { useEffect, useState } from 'react'
 import { getCurrentUser } from "@/lib/auth/currentUser"
 import { Mail, Check } from 'lucide-react'
 import { useI18n } from '@/lib/i18n'
-import { hidePricing } from '@/lib/native/platform'
+import { hidePricing, openWebsite } from '@/lib/native/platform'
 
 interface Props {
   packKey: string
@@ -85,14 +85,17 @@ export default function CoachSubscribeEmailModal({ packKey, packName, packLabel,
             {hidePrice ? (
               <>
                 <button
+                  onClick={() => { onClose(); void openWebsite('/coach/subscription') }}
+                  style={{ width: '100%', padding: 14, borderRadius: 'var(--r-md)', border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontFamily: 'var(--font-body)', fontSize: 14.5, fontWeight: 700, cursor: 'pointer', marginTop: 6 }}
+                >
+                  {t('native.manageSubOnWeb')} ↗
+                </button>
+                <button
                   onClick={onClose}
-                  style={{ width: '100%', padding: 14, borderRadius: 'var(--r-md)', border: 'none', background: 'var(--bg-card2)', color: 'var(--text)', fontFamily: 'var(--font-body)', fontSize: 14.5, fontWeight: 700, cursor: 'pointer', marginTop: 6 }}
+                  style={{ width: '100%', padding: 12, borderRadius: 'var(--r-md)', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-mid)', fontFamily: 'var(--font-body)', fontSize: 13.5, fontWeight: 600, cursor: 'pointer', marginTop: 10 }}
                 >
                   {t('w3c.close')}
                 </button>
-                <p style={{ fontSize: 12, color: 'var(--text-dim)', textAlign: 'center', lineHeight: 1.5, margin: '14px 0 0' }}>
-                  {t('native.manageSubOnWeb')}
-                </p>
               </>
             ) : (
               <>

@@ -103,9 +103,12 @@ export async function POST(req: NextRequest) {
         })
         customerId = freshCustomer.id
 
-        // Met à jour la ligne user_subscriptions avec le nouveau customer ID
+        // Met à jour la ligne user_subscriptions avec le nouveau customer ID.
+        // Statut 'incomplete' : la ligne ne donne AUCUN droit tant que le webhook
+        // n'a pas confirmé le paiement (il posera status='active' + subscription_id).
+        // Un checkout abandonné ne doit jamais accorder Premium gratuit.
         await sb.from('user_subscriptions').upsert(
-          { user_id: userId, tier: 'premium', stripe_customer_id: customerId, status: 'active' },
+          { user_id: userId, stripe_customer_id: customerId, status: 'incomplete' },
           { onConflict: 'user_id' },
         )
         console.log('[checkout] fresh customer created:', customerId)
@@ -117,9 +120,11 @@ export async function POST(req: NextRequest) {
       })
       customerId = customer.id
 
-      // Pré-crée la ligne user_subscriptions avec le customer ID
+      // Pré-crée la ligne user_subscriptions avec le customer ID.
+      // Statut 'incomplete' : aucun droit accordé tant que le paiement n'est pas
+      // confirmé par le webhook (qui posera status='active' + subscription_id).
       await sb.from('user_subscriptions').upsert(
-        { user_id: userId, tier: 'premium', stripe_customer_id: customerId, status: 'active' },
+        { user_id: userId, tier: 'premium', stripe_customer_id: customerId, status: 'incomplete' },
         { onConflict: 'user_id' },
       )
       console.log('[checkout] new customer created:', customerId)

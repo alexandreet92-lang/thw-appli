@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { useI18n } from '@/lib/i18n'
-import { hidePricing } from '@/lib/native/platform'
+import { hidePricing, openWebsite } from '@/lib/native/platform'
 
 const PLANS = [
   {
@@ -74,9 +74,11 @@ export default function SelectPlanPage() {
               ))}
             </div>
             {hidePrice ? (
-              <p style={{ fontSize:12, color:'var(--text-dim)', textAlign:'center', margin:'4px 0 0', lineHeight:1.5 }}>
-                {t('native.manageSubOnWeb')}
-              </p>
+              <button
+                onClick={()=>void openWebsite('/settings/subscription')}
+                style={{ width:'100%', padding:'12px', borderRadius:11, background:'var(--bg-card2)', border:'1px solid var(--border)', color:'var(--text-mid)', fontFamily:'Syne,sans-serif', fontWeight:700, fontSize:13, cursor:'pointer' }}>
+                {t('native.manageSubOnWeb')} ↗
+              </button>
             ) : (
               <>
                 <button

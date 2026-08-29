@@ -15,7 +15,7 @@ import { useI18n } from '@/lib/i18n'
 import { LanguageSelector } from '@/components/i18n/LanguageSelector'
 import { currentLocale } from '@/lib/i18n'
 import { getPushState, enablePush, disablePush, type PushState } from '@/lib/push/client'
-import { hidePricing } from '@/lib/native/platform'
+import { hidePricing, openWebsite } from '@/lib/native/platform'
 
 // ══════════════════════════════════════════════════
 // TYPES
@@ -1849,6 +1849,7 @@ function AbonnementContent() {
   const [loading,  setLoading]  = useState(true)
   const [cancelling, setCancelling] = useState(false)
   const [cancelConfirm, setCancelConfirm] = useState(false)
+  const [cancelError, setCancelError] = useState<string | null>(null)
   const [portalLoading, setPortalLoading] = useState(false)
   const [subEmail, setSubEmail] = useState<'change' | 'cancel' | null>(null)
 
@@ -1873,14 +1874,24 @@ function AbonnementContent() {
 
   async function handleCancel() {
     setCancelling(true)
+    setCancelError(null)
     try {
-      await fetch('/api/subscription/cancel', { method: 'POST' })
+      const cancelRes = await fetch('/api/subscription/cancel', { method: 'POST' })
+      if (!cancelRes.ok) {
+        // Échec réel de la résiliation : on prévient l'utilisateur au lieu de
+        // laisser croire que c'est fait (le portail Stripe reste le recours).
+        const err = await cancelRes.json().catch(() => ({})) as { error?: string }
+        setCancelError(err.error || t('profile.cancelFailed'))
+        return
+      }
       // Reload details
       const res = await fetch('/api/subscription/details')
       const d = await res.json() as SubDetails
       setDetails(d)
       setCancelConfirm(false)
-    } catch { /* ignore */ } finally {
+    } catch {
+      setCancelError(t('profile.cancelFailed'))
+    } finally {
       setCancelling(false)
     }
   }
@@ -2089,6 +2100,11 @@ function AbonnementContent() {
             <p style={{ fontSize: 12.5, color: 'var(--text-dim)', textAlign: 'center', lineHeight: 1.6, margin: '0 0 20px' }}>
               {t('profile.cancelSubscriptionInfo')}
             </p>
+            {cancelError && (
+              <p style={{ fontSize: 12, color: '#ef4444', textAlign: 'center', lineHeight: 1.5, margin: '0 0 16px' }}>
+                {cancelError}
+              </p>
+            )}
             <div style={{ display: 'flex', gap: 10 }}>
               <button
                 onClick={() => setCancelConfirm(false)}
@@ -2385,7 +2401,10 @@ export function IASettingsBloc() {
                     {p.features.map((f,i)=><div key={i} style={{ display:'flex', alignItems:'center', gap:7 }}><span style={{ color:p.color, fontSize:11 }}>✓</span><span style={{ fontSize:12, color:'var(--text-mid)' }}>{t('profile.plan.'+p.id+'.feat'+i)}</span></div>)}
                   </div>
                   {hidePrice ? (
-                    <p style={{ fontSize:11, color:'var(--text-dim)', textAlign:'center' as const, margin:'2px 0 0', lineHeight:1.5 }}>{t('native.manageSubOnWeb')}</p>
+                    <button onClick={() => void openWebsite('/settings/subscription')}
+                      style={{ width:'100%', padding:'9px', borderRadius:10, background:'var(--bg-card2)', border:'1px solid var(--border)', color:'var(--text-mid)', fontFamily:'var(--font-display)', fontWeight:700, fontSize:12, cursor:'pointer' }}>
+                      {t('native.manageSubOnWeb')} ↗
+                    </button>
                   ) : (
                     <>
                       <button style={{ width:'100%', padding:'10px', borderRadius:10, background:`linear-gradient(135deg,${p.color},${p.color}bb)`, border:'none', color:'#fff', fontFamily:'var(--font-display)', fontWeight:700, fontSize:13, cursor:'pointer' }}>{t('profile.choose', { plan: p.label })}</button>

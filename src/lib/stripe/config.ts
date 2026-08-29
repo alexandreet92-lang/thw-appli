@@ -14,10 +14,11 @@ export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY ?? '', {
 // ── Résolution Price ID → tier ─────────────────────────────────
 
 /**
- * Retourne le tier correspondant à un Price ID Stripe.
- * Défaut → 'premium' si le Price ID n'est pas reconnu.
+ * Retourne le tier correspondant à un Price ID Stripe, ou `null` si le Price ID
+ * n'est pas reconnu. On NE défausse PAS vers 'premium' : un prix inconnu ne doit
+ * jamais accorder un accès payant (sécurité). Le webhook logue et ignore.
  */
-export function getTierFromPriceId(priceId: string): TierName {
+export function getTierFromPriceId(priceId: string): TierName | null {
   const map: Record<string, TierName> = {}
 
   const entries: [string | undefined, TierName][] = [
@@ -33,7 +34,7 @@ export function getTierFromPriceId(priceId: string): TierName {
     if (id) map[id] = tier
   }
 
-  return map[priceId] ?? 'premium'
+  return map[priceId] ?? null
 }
 
 /**

@@ -5,6 +5,7 @@
 // ══════════════════════════════════════════════════════════════
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { useI18n } from '@/lib/i18n'
 import { createClient } from '@/lib/supabase/client'
 import { getCurrentUser } from '@/lib/auth/currentUser'

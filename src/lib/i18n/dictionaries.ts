@@ -1518,6 +1518,7 @@ const fr: Dict = {
   // ai
   'ai.coachIA': 'Coach IA', 'ai.openCoachIA': 'Ouvrir Coach IA', 'ai.close': 'Fermer', 'ai.cancel': 'Annuler',
   'ai.validate': 'Valider', 'ai.send': 'Envoyer', 'ai.next': 'Suivant', 'ai.previous': 'Précédent',
+  'ai.yourAnswer': 'Ta réponse…', 'ai.dictate': 'Dicter', 'ai.generateNow': 'Générer maintenant',
   'ai.other': 'Autre…', 'ai.stopDictation': 'Arrêter la dictée', 'ai.voiceDictation': 'Dictée vocale',
   'ai.activeCompetence': 'Compétence active : {name}', 'ai.otherSingular': 'autre', 'ai.othersPlural': 'autres',
   'ai.answersSent': 'Réponses envoyées', 'ai.noAnswer': '(sans réponse)', 'ai.myAnswers': 'Mes réponses :',
@@ -8262,7 +8263,7 @@ const en: Dict = {
   'ui.loadingData': 'Your data is loading',
   // ai
   'ai.coachIA': 'AI Coach', 'ai.openCoachIA': 'Open AI Coach', 'ai.close': 'Close', 'ai.cancel': 'Cancel',
-  'ai.validate': 'Confirm', 'ai.send': 'Send', 'ai.next': 'Next', 'ai.previous': 'Previous', 'ai.other': 'Other…',
+  'ai.validate': 'Confirm', 'ai.send': 'Send', 'ai.next': 'Next', 'ai.previous': 'Previous', 'ai.other': 'Other…', 'ai.yourAnswer': 'Your answer…', 'ai.dictate': 'Dictate', 'ai.generateNow': 'Generate now',
   'ai.stopDictation': 'Stop dictation', 'ai.voiceDictation': 'Voice dictation',
   'ai.activeCompetence': 'Active skill: {name}', 'ai.otherSingular': 'other', 'ai.othersPlural': 'others',
   'ai.answersSent': 'Answers sent', 'ai.noAnswer': '(no answer)', 'ai.myAnswers': 'My answers:',
@@ -14961,6 +14962,7 @@ const es: Dict = {
   // ai
   'ai.coachIA': 'Coach IA', 'ai.openCoachIA': 'Abrir Coach IA', 'ai.close': 'Cerrar', 'ai.cancel': 'Cancelar',
   'ai.validate': 'Validar', 'ai.send': 'Enviar', 'ai.next': 'Siguiente', 'ai.previous': 'Anterior',
+  'ai.yourAnswer': 'Tu respuesta…', 'ai.dictate': 'Dictar', 'ai.generateNow': 'Generar ahora',
   'ai.other': 'Otro…', 'ai.stopDictation': 'Detener el dictado', 'ai.voiceDictation': 'Dictado por voz',
   'ai.activeCompetence': 'Competencia activa: {name}', 'ai.otherSingular': 'otro', 'ai.othersPlural': 'otros',
   'ai.answersSent': 'Respuestas enviadas', 'ai.noAnswer': '(sin respuesta)', 'ai.myAnswers': 'Mis respuestas:',

@@ -27,8 +27,8 @@ import { localDateStr } from '@/lib/date/weekStart'
 import RoutinesView from '@/components/ai/RoutinesView'
 import StudioView from '@/components/studio/StudioView'
 import { getGuideDemoId, GUIDE_DEMO_EVENT } from '@/components/guide/guideDemo'
-import { QUICK_ACTION_SPECS } from '@/lib/quick-actions/specs'
-import { QuickActionFlow } from './QuickActionFlow'
+import { QUICK_ACTION_SPECS, specToClarifyQuestions } from '@/lib/quick-actions/specs'
+import type { Answer as QAAnswer } from './CoachQuestionCard'
 import { VoiceOverlay } from './VoiceOverlay'
 import { VoiceConversation } from './VoiceConversation'
 import { CoachQuestionCard, type ClarifyingQuestions } from './CoachQuestionCard'
@@ -23333,14 +23333,48 @@ export default function AIPanel({
                 semaines détaillées et les graphiques du résultat. */}
             {activeFlow && (
               <div style={{ animation: 'ai_slidein 0.2s ease', paddingBottom: 16 }}>
-                {activeFlow === 'quickaction' && quickActionKey && QUICK_ACTION_SPECS[quickActionKey] && (
-                  <QuickActionFlow
-                    spec={QUICK_ACTION_SPECS[quickActionKey]}
-                    label={QUICK_ACTIONS.find(a => a.key === quickActionKey)?.label ?? ''}
-                    onCancel={() => { setActiveFlow(null); setQuickActionKey(null) }}
-                    onGenerate={(displayLabel, prompt) => { setActiveFlow(null); setQuickActionKey(null); void send(displayLabel, prompt) }}
-                  />
-                )}
+                {activeFlow === 'quickaction' && quickActionKey && QUICK_ACTION_SPECS[quickActionKey] && (() => {
+                  const spec = QUICK_ACTION_SPECS[quickActionKey!]
+                  const label = QUICK_ACTIONS.find(a => a.key === quickActionKey)?.label ?? ''
+                  const clarify: ClarifyingQuestions = { questions: specToClarifyQuestions(spec, label) }
+                  let mem: QAAnswer[] | undefined
+                  try { const raw = localStorage.getItem('thw_qa_mem_' + quickActionKey); if (raw) mem = JSON.parse(raw) } catch { /* ignore */ }
+                  const buildPrompt = (recap: string) => [
+                    `[ACTION RAPIDE] Objectif : ${spec.objective}`, '', recap, '',
+                    "Adapte-toi à MON niveau, MES données (profil, zones, historique, calendrier) et NE me redemande pas ce que je viens de répondre. Si un fichier est joint, analyse-le. Si un point vraiment décisif manque, pose-le brièvement, sinon génère directement.",
+                    `Résultat attendu : ${spec.produce}`,
+                  ].join('\n')
+                  const done = () => { setActiveFlow(null); setQuickActionKey(null) }
+                  // Actions sans question → petite carte de confirmation directe.
+                  if (clarify.questions.length === 0) {
+                    return (
+                      <div style={{ background: 'var(--ai-surface, var(--bg-card))', border: '1px solid var(--ai-border, var(--border))', borderRadius: 16, padding: 18 }}>
+                        <p style={{ margin: 0, fontSize: 15, fontWeight: 800, color: 'var(--ai-text, var(--text))', fontFamily: 'Syne,sans-serif' }}>{label}</p>
+                        <p style={{ margin: '4px 0 12px', fontSize: 12.5, color: 'var(--ai-dim, var(--text-dim))', lineHeight: 1.4 }}>{spec.objective}. Tu peux joindre un fichier via <strong>+</strong> avant de générer.</p>
+                        <div style={{ display: 'flex', gap: 8 }}>
+                          <button onClick={done} style={{ padding: '10px 16px', borderRadius: 11, border: '1px solid var(--ai-border, var(--border))', background: 'transparent', color: 'var(--ai-mid, var(--text-mid))', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>{t('ai.cancel') || 'Annuler'}</button>
+                          <button onClick={() => { done(); void send(label, buildPrompt('')) }} style={{ padding: '10px 18px', borderRadius: 11, border: 'none', background: 'linear-gradient(135deg,#06B6D4,#3B82F6)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>{t('ai.generateNow')}</button>
+                        </div>
+                      </div>
+                    )
+                  }
+                  return (
+                    <>
+                      <CoachQuestionCard
+                        data={clarify}
+                        initialAnswers={mem}
+                        onSkip
+                        enableVoice
+                        onSubmit={(recap, answers) => {
+                          try { if (answers) localStorage.setItem('thw_qa_mem_' + quickActionKey, JSON.stringify(answers)) } catch { /* ignore */ }
+                          done()
+                          void send(label, buildPrompt(recap))
+                        }}
+                      />
+                      <p style={{ margin: '8px 4px 0', fontSize: 11.5, color: 'var(--ai-dim, var(--text-dim))', textAlign: 'center' }}>Besoin d&apos;ajouter une photo, un PDF ou un parcours ? Joins-le via <strong>+</strong>.</p>
+                    </>
+                  )
+                })()}
                 {activeFlow === 'weakpoints' && (
                   <WeakpointsFlow
                     onCancel={() => setActiveFlow(null)}

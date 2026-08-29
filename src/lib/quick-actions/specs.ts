@@ -29,6 +29,44 @@ export interface QAItem {
   durations?: number[]
   multiline?: boolean          // text : zone multi-lignes
   optional?: boolean           // question sautable
+  recommend?: string           // libellé de l'option à mettre en avant (badge « Recommandé »)
+  prefill?: 'mainSport'        // pré-réponse depuis les données connues (ex. sport principal du profil)
+}
+
+// ── Adaptation au composant « cartes qui défilent » (CoachQuestionCard) ────
+// Une action = un jeu de cartes de questions swipeables. On convertit chaque
+// champ de la spec en question à options (durée → pills en options, curseur →
+// options étiquetées, texte → carte sans option = champ libre).
+export interface ClarifyQ {
+  header: string
+  question: string
+  multiSelect: boolean
+  options: { label: string; description?: string; recommended?: boolean }[]
+  free?: boolean               // true = question à réponse libre (pas d'options)
+  prefill?: 'mainSport'
+}
+const durLabel = (m: number) => (m >= 60 ? `${m / 60 === Math.floor(m / 60) ? m / 60 + ' h' : Math.floor(m / 60) + ' h' + String(m % 60).padStart(2, '0')}` : `${m} min`)
+
+/** Convertit une spec en questions à cartes (pour CoachQuestionCard). */
+export function specToClarifyQuestions(spec: QuickActionSpec, header: string): ClarifyQ[] {
+  return spec.questions.map((it): ClarifyQ => {
+    const multi = it.kind === 'multi' || (!!it.note && /plusieurs|multiple/i.test(it.note))
+    let opts: string[] = []
+    if (it.kind === 'duration' || it.durations?.length) opts = (it.durations ?? [30, 45, 60, 90]).map(durLabel)
+    else if (it.kind === 'slider') {
+      const lo = it.minLabel ?? 'Facile', hi = it.maxLabel ?? 'Difficile'
+      opts = [lo, 'Modéré', hi]
+    } else if (it.options?.length) opts = it.options
+    const free = opts.length === 0
+    return {
+      header,
+      question: it.q,
+      multiSelect: multi,
+      options: opts.map(label => ({ label, recommended: it.recommend ? label === it.recommend : false })),
+      free,
+      prefill: it.prefill,
+    }
+  })
 }
 
 export interface QuickActionSpec {
@@ -172,7 +210,7 @@ export const QUICK_ACTION_SPECS: Record<string, QuickActionSpec> = {
       { q: 'Quel sport aujourd\'hui ?', options: ['Course', 'Vélo', 'Muscu / Renfo', 'Natation', 'Hyrox', 'Peu importe — surprends-moi'] },
       { q: 'Combien de temps as-tu ?', kind: 'duration', durations: [30, 45, 60, 90, 120] },
       { q: 'Ta forme du jour ?', kind: 'slider', min: 1, max: 5, minLabel: 'Cramé', maxLabel: 'En feu', note: '1 = fatigué · 5 = frais et prêt' },
-      { q: 'Une intention pour aujourd\'hui ?', options: ['Suivre mon planning', 'Du facile / récup', 'De la qualité (intensité)', 'Du volume'], note: 'optionnel' },
+      { q: 'Une intention pour aujourd\'hui ?', options: ['Suivre mon planning', 'Du facile / récup', 'De la qualité (intensité)', 'Du volume'], recommend: 'Suivre mon planning', note: 'optionnel' },
       { q: 'Une contrainte du jour ?', note: 'optionnel — ex : petite gêne, pas de salle, chaleur…' },
     ],
     produce: "une séance prête à exécuter (échauffement, corps de séance, retour au calme, zones/allures/watts cibles selon MES zones), calibrée sur ma forme du jour et ce qui est prévu dans mon planning. Ajoute un profil d'intensité en graphique quand c'est pertinent.",
@@ -330,7 +368,7 @@ export const QUICK_ACTION_SPECS: Record<string, QuickActionSpec> = {
     key: 'run_vo2',
     objective: 'une séance course VO2max / VMA',
     questions: [
-      { q: 'Format d\'intervalles préféré ?', options: ['Courts (30/30, 200-400 m)', 'Moyens (400-1000 m)', 'Longs (1000-1600 m)', 'Peu importe — choisis pour moi'] },
+      { q: 'Format d\'intervalles préféré ?', options: ['Courts (30/30, 200-400 m)', 'Moyens (400-1000 m)', 'Longs (1000-1600 m)', 'Peu importe — choisis pour moi'], recommend: 'Peu importe — choisis pour moi' },
       { q: 'Temps total dispo (échauffement inclus) ?', kind: 'duration', durations: [40, 50, 60, 75] },
       { q: 'Dureté visée ?', kind: 'slider', min: 1, max: 5, minLabel: 'Découverte', maxLabel: 'Costaud', note: '1 = prudent · 5 = grosse séance' },
       { q: 'Où la fais-tu ?', options: ['Piste', 'Route / plat', 'Nature / vallonné', 'Tapis'], note: 'optionnel' },

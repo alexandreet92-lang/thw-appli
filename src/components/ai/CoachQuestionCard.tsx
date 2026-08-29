@@ -20,22 +20,34 @@ export interface ClarifyingQuestions {
   answered?: string
 }
 
-interface Answer { selected: string[]; other: string }
+export interface Answer { selected: string[]; other: string }
 
 export function CoachQuestionCard({
   data,
   onSubmit,
+  initialAnswers,
+  onSkip,
+  enableVoice,
 }: {
   data: ClarifyingQuestions
-  onSubmit: (recap: string) => void
+  onSubmit: (recap: string, answers?: Answer[]) => void
+  /** Pré-remplissage (mémoire des dernières réponses / données connues). */
+  initialAnswers?: Answer[]
+  /** Affiche un bouton « Générer maintenant » (sauter les questions restantes). */
+  onSkip?: boolean
+  /** Active le micro (dictée) sur le champ libre. */
+  enableVoice?: boolean
 }) {
   const { t } = useI18n()
   const qs = data.questions
   const [page, setPage] = useState(0)
   const [anim, setAnim] = useState<'next' | 'prev' | null>(null)
-  const [answers, setAnswers] = useState<Answer[]>(() => qs.map(() => ({ selected: [], other: '' })))
+  const [answers, setAnswers] = useState<Answer[]>(() => qs.map((_, i) => initialAnswers?.[i] ?? ({ selected: [], other: '' })))
+  const [listening, setListening] = useState(false)
   const wrapRef = useRef<HTMLDivElement>(null)
   const drag = useRef<{ x: number; dx: number } | null>(null)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const recogRef = useRef<any>(null)
 
   const answered = data.answered !== undefined
 
@@ -76,6 +88,27 @@ export function CoachQuestionCard({
   }))
   const setOther = (val: string) => setAnswers(prev => prev.map((ans, i) => i === page ? { ...ans, other: val } : ans))
 
+  // ── Dictée vocale sur le champ libre (Web Speech API) ───────
+  const toggleDictation = () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+    if (!SR) return
+    if (listening) { try { recogRef.current?.stop() } catch { /* ignore */ } setListening(false); return }
+    try {
+      const r = new SR()
+      r.lang = 'fr-FR'; r.interimResults = false; r.continuous = false
+      r.onresult = (e: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => {
+        const txt = Array.from(e.results).map(res => res[0].transcript).join(' ').trim()
+        if (txt) setOther((answers[page]?.other ? answers[page].other + ' ' : '') + txt)
+      }
+      r.onend = () => setListening(false)
+      r.onerror = () => setListening(false)
+      recogRef.current = r; r.start(); setListening(true)
+    } catch { setListening(false) }
+  }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const voiceSupported = enableVoice && typeof window !== 'undefined' && ((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition)
+
   const goNext = () => { if (!isLast && canProceed) { setAnim('next'); setPage(p => p + 1) } }
   const goPrev = () => { if (page > 0) { setAnim('prev'); setPage(p => p - 1) } }
   const submit = () => {
@@ -85,7 +118,7 @@ export function CoachQuestionCard({
       if (ans.other.trim()) parts.push(ans.other.trim())
       return `- ${qq.question} → ${parts.length ? parts.join(', ') : t('ai.noAnswer')}`
     })
-    onSubmit(`${t('ai.myAnswers')}\n${lines.join('\n')}`)
+    onSubmit(`${t('ai.myAnswers')}\n${lines.join('\n')}`, answers)
   }
 
   // ── Swipe horizontal entre questions ────────────────────────
@@ -167,15 +200,32 @@ export function CoachQuestionCard({
             })}
           </div>
 
-          {/* Autre */}
-          <input
-            value={a.other}
-            onChange={e => setOther(e.target.value)}
-            placeholder={t('ai.other')}
-            style={{ width: '100%', padding: '10px 8px', border: 'none', borderBottom: `1px solid ${a.other.trim() ? '#3C90D5' : 'var(--ai-border)'}`, background: 'transparent', color: 'var(--ai-text)', fontSize: 13.5, fontFamily: 'DM Sans,sans-serif', outline: 'none', boxSizing: 'border-box' }}
-          />
+          {/* Champ libre (réponse libre si pas d'options, sinon « Autre ») + dictée */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, borderBottom: `1px solid ${a.other.trim() ? '#3C90D5' : 'var(--ai-border)'}` }}>
+            <input
+              value={a.other}
+              onChange={e => setOther(e.target.value)}
+              placeholder={q.options.length === 0 ? t('ai.yourAnswer') : t('ai.other')}
+              style={{ flex: 1, minWidth: 0, padding: '10px 8px', border: 'none', background: 'transparent', color: 'var(--ai-text)', fontSize: 13.5, fontFamily: 'DM Sans,sans-serif', outline: 'none', boxSizing: 'border-box' }}
+            />
+            {voiceSupported && (
+              <button onClick={toggleDictation} aria-label={t('ai.dictate')} style={{ flexShrink: 0, width: 32, height: 32, borderRadius: '50%', border: 'none', background: listening ? 'rgba(60,144,213,0.15)' : 'transparent', color: listening ? '#3C90D5' : 'var(--ai-mid)', cursor: 'pointer', display: 'grid', placeItems: 'center' }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1M12 18v4"/></svg>
+              </button>
+            )}
+          </div>
         </div>
       </div>
+
+      {/* « Générer maintenant » — saute les questions restantes (actions rapides) */}
+      {onSkip && (
+        <div style={{ display: 'flex', justifyContent: 'center', marginTop: 10 }}>
+          <button onClick={submit} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 12px', border: 'none', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m13 2-3 7h6l-3 7"/></svg>
+            {t('ai.generateNow')}
+          </button>
+        </div>
+      )}
 
       {/* Pied */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 14 }}>

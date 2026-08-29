@@ -14,6 +14,7 @@ import TriSegments from './TriSegments'
 import RaceDropZone from './RaceDropZone'
 import ParcoursViewer from '@/components/gpx/ParcoursViewer'
 import { SegmentCard } from './RaceSegmentCard'
+import { RaceLinkedActivities } from './RaceLinkedActivities'
 import { RACE_EDITOR_CSS } from './raceTheme'
 import { useI18n } from '@/lib/i18n'
 import { createClient } from '@/lib/supabase/client'
@@ -173,6 +174,9 @@ export default function RaceEditorSheet({ race, initialDate, initialLevel, onClo
             {/* Notes */}
             <div><p style={LBL}>{t('calendar.notes')}</p>
               <textarea rows={3} value={notes} onChange={e => setNotes(e.target.value)} placeholder={t('calendar.raceNotesPlaceholder')} style={{ ...INP, resize: 'vertical' }} /></div>
+
+            {/* RÉALISÉ — activités liées à cet objectif : tracé + datas + prévu vs réalisé */}
+            {isEdit && race?.id && <RaceLinkedActivities raceId={race.id} goalTime={race.goalTime} />}
           </div>
         </div>
 

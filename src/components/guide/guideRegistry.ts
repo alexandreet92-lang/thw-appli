@@ -291,20 +291,20 @@ export const SESSION_TOUR: GuideStep[] = [
     'Filtre par filière, distance, durée, RPE',
     'Ajuste et **envoie-la dans ton planning**',
   ] },
-  { route: '/session', anchor: 'lib-sport-grid', title: 'Choisis un sport', lines: [
+  { route: '/session', demo: 'session:biblio', anchor: 'lib-sport-grid', title: 'Choisis un sport', lines: [
     'Course, vélo, muscu, Hyrox, boxe…',
     'Chaque sport a ses familles de séances',
   ] },
-  { route: '/session', title: 'Ouvre un sport', lines: [
-    'Clique un sport → ses **familles de séances**',
-    'Course : endurance · sprints · intervalles/strides',
-    'Vélo : Z2 · seuil · VO2… — chaque séance a durée, filière, RPE',
+  { route: '/session', demo: 'session:sport-running', title: 'Ouvre un sport', message: 'Je t\'ouvre la Course pour l\'exemple — chaque sport marche pareil.', lines: [
+    'Ses **familles de séances** : endurance · sprints · intervalles/strides',
+    'Chaque séance affiche **durée, filière, RPE**',
+    'Vélo, muscu, Hyrox… ont chacun leurs familles',
   ] },
-  { route: '/session', anchor: 'page-tabs', title: 'Bibliothèque & Builder', lines: [
+  { route: '/session', demo: 'session:biblio', anchor: 'page-tabs', title: 'Bibliothèque & Builder', lines: [
     '**Bibliothèque** — les séances toutes faites',
     '**Builder** — pour composer la tienne bloc par bloc',
   ] },
-  { route: '/session', title: 'Envoyer au planning', message: 'Une séance ouverte → « Ajouter au planning » : tu choisis le niveau (selon TES zones) et le jour. Elle apparaît dans ta semaine.' },
+  { route: '/session', demo: 'session:sport-running', title: 'Envoyer au planning', message: 'Une séance ouverte → « Ajouter au planning » : tu choisis le niveau (selon TES zones) et le jour. Elle apparaît dans ta semaine.' },
 ]
 
 // NUTRITION — cibles, suivi, stratégie.
@@ -475,8 +475,16 @@ export const AI_TOUR: GuideStep[] = [
     'Lancer des flux avancés',
   ] },
   { route: '/', demo: 'ai', title: 'Plusieurs volets', message: 'Tu peux garder plusieurs conversations/volets en parallèle — une pour l\'analyse, une pour le plan — sans tout mélanger.' },
-  { route: '/', demo: 'ai', title: 'Routines', message: 'Programme des actions IA récurrentes : bilan hebdo automatique, rappel d\'objectif, check du lundi… Elles tournent toutes seules et t\'envoient le résultat.' },
-  { route: '/', demo: 'ai', title: 'Studio', message: 'Le canvas d\'orchestration multi-agents : enchaîne des étapes (analyser → décider → générer → appliquer) pour des tâches complexes, façon systèmes automatisés.' },
+  { route: '/', demo: 'ai:routines', title: 'Routines', message: 'Je t\'ouvre le panneau Routines. Programme des actions IA récurrentes : bilan hebdo automatique, rappel d\'objectif, check du lundi… Elles tournent toutes seules et t\'envoient le résultat.', lines: [
+    'Choisis un **déclencheur** (chaque lundi, après une synchro…)',
+    'Choisis l\'**action IA** à lancer',
+    'Le résultat arrive en **notification**',
+  ] },
+  { route: '/', demo: 'ai:studio', title: 'Studio', message: 'Et voici le Studio : le canvas d\'orchestration multi-agents. Enchaîne des étapes (analyser → décider → générer → appliquer) pour des tâches complexes, façon systèmes automatisés.', lines: [
+    'Assemble des **agents** reliés entre eux sur une toile',
+    'L\'**Architecte** construit le système à partir de ta description',
+    'Le rendu est **actionnable** : « Ajouter au planning »',
+  ] },
 ]
 
 // DÉMARRER / live — on ouvre la page record.

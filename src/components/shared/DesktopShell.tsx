@@ -71,7 +71,8 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const h = (e: Event) => {
       const id = (e as CustomEvent<{ id: string | null }>).detail?.id ?? null
-      if (id === 'ai') setAiOpen(true)
+      // 'ai', 'ai:routines', 'ai:studio' → ouvre le chat (le panneau ouvre ensuite sa sous-vue).
+      if (id && id.startsWith('ai')) setAiOpen(true)
       else if (id === null) setAiOpen(false)
     }
     window.addEventListener('thw:guide-demo', h)

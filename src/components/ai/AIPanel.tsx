@@ -26,6 +26,7 @@ import { emitNotification } from '@/lib/notifications/emit'
 import { localDateStr } from '@/lib/date/weekStart'
 import RoutinesView from '@/components/ai/RoutinesView'
 import StudioView from '@/components/studio/StudioView'
+import { getGuideDemoId, GUIDE_DEMO_EVENT } from '@/components/guide/guideDemo'
 import { QUICK_ACTION_SPECS, buildActionPrompt } from '@/lib/quick-actions/specs'
 import { VoiceOverlay } from './VoiceOverlay'
 import { VoiceConversation } from './VoiceConversation'
@@ -20947,6 +20948,22 @@ export default function AIPanel({
         if (q.get('studio') === '1') setStudioOpen(true)
       } catch { /* ignore */ }
     })()
+  }, [])
+
+  // Le GUIDE ouvre réellement les sous-vues : demo 'ai:routines' → panneau Routines,
+  // 'ai:studio' → Studio. On lit l'id courant au montage (l'évènement peut avoir été
+  // émis avant que le panneau soit prêt) puis on suit les changements.
+  useEffect(() => {
+    const apply = (id: string | null) => {
+      if (id === 'ai:routines') { setRoutinesOpen(true); setStudioOpen(false) }
+      else if (id === 'ai:studio') { setStudioOpen(true); setRoutinesOpen(false) }
+      else if (id === 'ai') { setRoutinesOpen(false); setStudioOpen(false) }
+      else if (id === null) { setRoutinesOpen(false); setStudioOpen(false) }
+    }
+    try { apply(getGuideDemoId()) } catch { /* ignore */ }
+    const h = (e: Event) => apply((e as CustomEvent<{ id: string | null }>).detail?.id ?? null)
+    window.addEventListener(GUIDE_DEMO_EVENT, h)
+    return () => window.removeEventListener(GUIDE_DEMO_EVENT, h)
   }, [])
 
   // Pousse les conversations vers le serveur (debounce) à chaque changement

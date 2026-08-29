@@ -88,6 +88,16 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
     window.addEventListener('thw:open-coach', open)
     return () => window.removeEventListener('thw:open-coach', open)
   }, [])
+  // Le guide peut ouvrir/fermer le chat IA pour le présenter ('ai', 'ai:routines', 'ai:studio').
+  useEffect(() => {
+    const h = (e: Event) => {
+      const id = (e as CustomEvent<{ id: string | null }>).detail?.id ?? null
+      if (id && id.startsWith('ai')) setAiOpen(true)
+      else if (id === null) setAiOpen(false)
+    }
+    window.addEventListener('thw:guide-demo', h)
+    return () => window.removeEventListener('thw:guide-demo', h)
+  }, [])
   // « Mon Profil » ouvert en sur-page (par-dessus la page courante).
   useEffect(() => {
     const open = () => { setOpen(false); setProfileOpen(true) }

@@ -76,44 +76,11 @@ export const QUICK_ACTION_SPECS: Record<string, QuickActionSpec> = {
     produce: "un programme structuré (répartition des séances sur la semaine, exercices avec séries/répétitions/repos, schéma de progression) + un plan nutritionnel cohérent (calories + macros), en t'appuyant sur mes données déjà connues.",
   },
 
-  // ─── Analyses (le coach lit mes données ; peu ou pas de questions) ───
-  analyser_semaine: {
-    key: 'analyser_semaine',
-    objective: "un bilan clair de ma semaine d'entraînement (charge, équilibre, risques)",
-    questions: [],
-    produce: "un bilan de ma semaine : charge totale et répartition par sport/intensité, équilibre entraînement/récupération, points forts, signaux de risque (surcharge, monotonie), et 2-3 recommandations concrètes pour la suite.",
-  },
-  analyser_recuperation: {
-    key: 'analyser_recuperation',
-    objective: "une analyse de mon état de forme et de ma récupération",
-    questions: [],
-    produce: "une lecture de ma récupération (HRV, sommeil, fatigue, charge récente), un état de forme global, et des recommandations concrètes (faut-il pousser, maintenir ou lever le pied) pour les prochains jours.",
-  },
-  analyser_progression: {
-    key: 'analyser_progression',
-    objective: "une analyse de l'évolution de mes performances dans le temps",
-    questions: [
-      { q: 'Sur quelle période veux-tu que j\'analyse ta progression ?', options: ['4 semaines', '3 mois', '6 mois', '1 an'] },
-      { q: 'Un sport ou un aspect en particulier ?', options: ['Vue globale', 'Course', 'Vélo', 'Natation', 'Force'], note: 'optionnel' },
-    ],
-    produce: "une analyse d'évolution : tendances clés (progrès, stagnations, régressions) chiffrées à partir de mon historique, ce qui les explique, et les leviers prioritaires pour continuer à progresser.",
-  },
-  weakpoints: {
-    key: 'weakpoints',
-    objective: "l'identification de mes points faibles et de mes lacunes prioritaires",
-    questions: [
-      { q: 'Sur quel angle veux-tu que je cherche tes points faibles ?', options: ['Vue globale', 'Endurance', 'Force / puissance', 'Vitesse / seuil', 'Récupération', 'Technique'] },
-    ],
-    produce: "une analyse croisée de mes données révélant mes 2-3 points faibles prioritaires, pourquoi ce sont des freins, et un plan concret pour les corriger.",
-  },
-  conseils_sommeil: {
-    key: 'conseils_sommeil',
-    objective: "des conseils personnalisés pour mieux récupérer la nuit",
-    questions: [
-      { q: 'Quel est ton principal souci de sommeil en ce moment ?', options: ['Difficile de m\'endormir', 'Réveils nocturnes', 'Sommeil trop court', 'Réveil fatigué', 'Rien de précis'] },
-    ],
-    produce: "des recommandations sommeil concrètes et personnalisées (routine, timing, environnement, lien avec l'entraînement), priorisées et actionnables dès ce soir.",
-  },
+  // NB. weakpoints, analyser_semaine, analyser_recuperation, analyser_progression,
+  // conseils_sommeil et app_guide ont chacun un FLOW dédié riche (WeakpointsFlow,
+  // WeekAnalysisFlow, RecoveryAnalysisFlow, AnalyserProgressionFlow, SleepAdviceFlow,
+  // AppGuideFlow) : on NE leur met PAS de spec ici, pour que ce flow (la référence)
+  // reste prioritaire. Le moteur générique ne couvre que les actions SANS flow riche.
 
   // ═══════════════════════════════════════════════════════════════
   // PROGRAMMES (plusieurs semaines) — objectif clair, 2-3 questions décisives.
@@ -123,10 +90,14 @@ export const QUICK_ACTION_SPECS: Record<string, QuickActionSpec> = {
     objective: 'un programme cardio progressif pour développer mon endurance et mon moteur aérobie',
     questions: [
       { q: 'Ton objectif cardio principal ?', options: ['Endurance de base', 'Perdre du gras', 'Préparer une course', 'VO2max / vitesse'] },
-      { q: 'Combien de séances cardio par semaine ?', options: ['2', '3', '4', '5+'] },
       { q: 'Sport(s) support ?', options: ['Course', 'Vélo', 'Rameur', 'Natation', 'Indifférent'], note: 'plusieurs choix possibles' },
+      { q: 'Combien de séances cardio par semaine ?', options: ['2', '3', '4', '5+'] },
+      { q: 'Durée par séance en moyenne ?', kind: 'duration', durations: [30, 45, 60, 90] },
+      { q: 'Sur combien de semaines ?', options: ['4', '8', '12', '16'] },
+      { q: 'Ton niveau actuel ?', options: ['Débutant', 'Intermédiaire', 'Avancé'] },
+      { q: 'Une contrainte à respecter ?', note: 'optionnel — ex : genou sensible, pas de fractionné dur, chaleur…' },
     ],
-    produce: "un programme polarisé sur 8-12 semaines (endurance fondamentale, seuil, VO2max), séances clés semaine par semaine avec durées et zones cibles (FC/allure/puissance selon mes zones), montée de charge, semaines d'assimilation, et comment tester ma progression.",
+    produce: "un programme polarisé (endurance fondamentale, seuil, VO2max) sur la durée choisie, séances clés semaine par semaine avec durées et zones cibles (FC/allure/puissance selon MES zones), montée de charge, semaines d'assimilation, et comment tester ma progression.",
   },
   perte_de_poids: {
     key: 'perte_de_poids',
@@ -143,10 +114,12 @@ export const QUICK_ACTION_SPECS: Record<string, QuickActionSpec> = {
     objective: 'un plan de reprise progressive (réathlétisation) après arrêt ou blessure',
     questions: [
       { q: 'Reprise après quoi ?', options: ['Blessure', 'Longue coupure', 'Maladie', 'Post-partum'] },
-      { q: 'Depuis combien de temps es-tu à l\'arrêt / gêné ?', note: 'approximatif' },
+      { q: 'Depuis combien de temps es-tu à l\'arrêt / gêné ?', options: ['< 2 semaines', '2-6 semaines', '1-3 mois', '3 mois+'] },
+      { q: 'Sport à reprendre en priorité ?', options: ['Course', 'Vélo', 'Muscu', 'Natation', 'Hyrox', 'Plusieurs'] },
+      { q: 'Combien de séances par semaine au départ ?', options: ['2', '3', '4'] },
       { q: 'Une zone ou un mouvement encore sensible ?', note: 'optionnel' },
     ],
-    produce: "un retour progressif et sécurisé : phases (reprise douce → volume → intensité), charge de départ prudente basée sur mes données, critères pour passer à l'étape suivante, et signaux d'alerte pour ne pas rechuter.",
+    produce: "un retour progressif et sécurisé sur plusieurs semaines : phases (reprise douce → volume → intensité), charge de départ prudente basée sur MES données, séances par semaine, critères pour passer à l'étape suivante, et signaux d'alerte pour ne pas rechuter.",
   },
   prepa_competition: {
     key: 'prepa_competition',
@@ -154,9 +127,11 @@ export const QUICK_ACTION_SPECS: Record<string, QuickActionSpec> = {
     questions: [
       { q: 'Quelle échéance / distance ?', note: 'si ce n\'est pas déjà dans mon calendrier' },
       { q: 'Combien de semaines avant l\'objectif ?', options: ['4', '8', '12', '16+'] },
-      { q: 'Objectif de perf visé ?', note: 'chrono, finir, place… (optionnel)' },
+      { q: 'Combien de séances par semaine ?', options: ['3', '4', '5', '6+'] },
+      { q: 'Ton objectif de perf ?', options: ['Finir', 'Battre mon record', 'Viser un chrono précis', 'Jouer un classement'] },
+      { q: 'Un point faible connu à travailler ?', note: 'optionnel — ex : fin de course, côtes, allure spécifique…' },
     ],
-    produce: "une périodisation jusqu'au jour J : phases (développement → spécifique → affûtage), séances clés par semaine, gestion de la charge et du taper, points de contrôle, en tenant compte de ma course dans le calendrier.",
+    produce: "une périodisation jusqu'au jour J : phases (développement → spécifique → affûtage), nombre de séances par semaine avec les séances clés, gestion de la charge et du taper, points de contrôle, en tenant compte de MA course dans le calendrier et de mon objectif.",
   },
   semaine_decharge: {
     key: 'semaine_decharge',
@@ -169,17 +144,22 @@ export const QUICK_ACTION_SPECS: Record<string, QuickActionSpec> = {
     objective: 'la planification de ma semaine d\'entraînement à venir',
     questions: [
       { q: 'Combien de jours dispo cette semaine ?', options: ['2', '3', '4', '5', '6'] },
-      { q: 'Une priorité cette semaine ?', options: ['Volume', 'Intensité', 'Récup', 'Équilibre'], note: 'optionnel' },
+      { q: 'Sport(s) de la semaine ?', options: ['Course', 'Vélo', 'Natation', 'Muscu', 'Hyrox'], note: 'plusieurs choix possibles' },
+      { q: 'Priorité de la semaine ?', options: ['Volume', 'Intensité', 'Récup', 'Équilibre'] },
+      { q: 'Volume horaire visé ?', options: ['< 4 h', '4-6 h', '6-9 h', '9 h+'], note: 'optionnel' },
+      { q: 'Des jours imposés (off / obligatoires) ?', note: 'optionnel — ex : repos le lundi, long le dimanche…' },
     ],
-    produce: "une semaine jour par jour cohérente avec ma forme, ma charge récente et mes objectifs : type de séance par jour, intensité, alternance dur/facile, prête à poser dans mon planning.",
+    produce: "une semaine jour par jour cohérente avec ma forme, ma charge récente et mes objectifs : type de séance par jour et par sport, intensité, alternance dur/facile, respect des jours imposés, prête à poser dans mon planning.",
   },
   reajuster_plan: {
     key: 'reajuster_plan',
     objective: 'un réajustement de mon plan quand la réalité a changé',
     questions: [
-      { q: 'Qu\'est-ce qui a changé ?', options: ['Séance(s) manquée(s)', 'Fatigue / méforme', 'Emploi du temps', 'Petite douleur', 'Regain de forme'] },
+      { q: 'Qu\'est-ce qui a changé ?', options: ['Séance(s) manquée(s)', 'Fatigue / méforme', 'Emploi du temps', 'Petite douleur', 'Regain de forme'], note: 'plusieurs choix possibles' },
+      { q: 'Sur quel horizon je réajuste ?', options: ['Les 3 prochains jours', 'Cette semaine', 'Les 2 prochaines semaines'] },
+      { q: 'Une priorité à préserver ?', options: ['Ma course cible', 'Le volume', 'La récup', 'Rester régulier'], note: 'optionnel' },
     ],
-    produce: "un plan corrigé pour les prochains jours qui absorbe le changement sans casser la progression : ce qu'on décale, allège ou remplace, et pourquoi, à partir de mon planning et de ma forme actuelle.",
+    produce: "un plan corrigé sur l'horizon choisi qui absorbe le changement sans casser la progression : ce qu'on décale, allège ou remplace, et pourquoi, à partir de mon planning et de ma forme actuelle, en préservant ma priorité.",
   },
 
   // ═══════════════════════════════════════════════════════════════
@@ -201,33 +181,42 @@ export const QUICK_ACTION_SPECS: Record<string, QuickActionSpec> = {
     key: 'peu_de_temps',
     objective: 'une séance efficace quand j\'ai très peu de temps',
     questions: [
-      { q: 'Tu as combien de temps, vraiment ?', options: ['15 min', '20 min', '30 min'] },
+      { q: 'Tu as combien de temps, vraiment ?', kind: 'duration', durations: [10, 15, 20, 30] },
       { q: 'Plutôt quel type ?', options: ['Cardio', 'Force', 'Mixte / HIIT'] },
+      { q: 'Matériel dispo ?', options: ['Rien / poids du corps', 'Haltères', 'Home-trainer / tapis', 'Salle'] },
+      { q: 'Intensité acceptable ?', kind: 'slider', min: 1, max: 5, minLabel: 'Doux', maxLabel: 'À fond' },
     ],
-    produce: "une séance courte à haut rendement (format, blocs, intensités) qui maximise le bénéfice dans le temps donné, réalisable avec ce que j'ai sous la main.",
+    produce: "une séance courte à haut rendement (format, blocs minutés, intensités) qui maximise le bénéfice dans le temps donné, réalisable avec le matériel indiqué.",
   },
   sans_materiel: {
     key: 'sans_materiel',
     objective: 'une séance sans aucun matériel (poids du corps)',
     questions: [
-      { q: 'Durée dispo ?', options: ['20 min', '30 min', '45 min'] },
+      { q: 'Durée dispo ?', kind: 'duration', durations: [15, 20, 30, 45] },
       { q: 'Focus ?', options: ['Full body', 'Haut du corps', 'Bas du corps', 'Gainage / core', 'Cardio'] },
+      { q: 'Format préféré ?', options: ['Circuit (AMRAP/EMOM)', 'Séries classiques', 'Tabata / HIIT', 'Choisis pour moi'] },
+      { q: 'Niveau de difficulté ?', kind: 'slider', min: 1, max: 5, minLabel: 'Facile', maxLabel: 'Costaud' },
     ],
-    produce: "une séance au poids du corps structurée (circuits, séries/répétitions ou temps, repos, progressions/régressions selon mon niveau), sans matériel.",
+    produce: "une séance au poids du corps structurée (échauffement, circuits/séries avec reps ou temps, repos, progressions/régressions selon mon niveau), sans matériel.",
   },
   indoor: {
     key: 'indoor',
     objective: 'une séance à faire en intérieur (maison / home-trainer / tapis)',
     questions: [
       { q: 'Avec quoi t\'entraînes-tu en intérieur ?', options: ['Home-trainer', 'Tapis', 'Rameur', 'Rien / poids du corps'] },
-      { q: 'Durée ?', options: ['30 min', '45 min', '1 h'] },
+      { q: 'Durée ?', kind: 'duration', durations: [30, 45, 60] },
+      { q: 'Objectif ?', options: ['Endurance', 'Seuil / qualité', 'VO2 / intensité', 'Récup'] },
+      { q: 'Dureté visée ?', kind: 'slider', min: 1, max: 5, minLabel: 'Tranquille', maxLabel: 'Costaud' },
     ],
-    produce: "une séance indoor guidée bloc par bloc (intensités précises adaptées au support et à mes zones), pensée pour rester efficace et pas ennuyeuse en intérieur.",
+    produce: "une séance indoor guidée bloc par bloc (intensités précises adaptées au support et à MES zones), pensée pour rester efficace et pas ennuyeuse en intérieur, avec un profil d'intensité en graphique.",
   },
   recup_active: {
     key: 'recup_active',
     objective: 'une séance de récupération active bien dosée',
-    questions: [],
+    questions: [
+      { q: 'Support pour ta récup ?', options: ['Marche', 'Vélo très facile', 'Footing lent', 'Natation', 'Mobilité / yoga'] },
+      { q: 'Durée ?', kind: 'duration', durations: [20, 30, 45] },
+    ],
     produce: "une séance de récup active courte et vraiment facile (intensité plafonnée, durée, contenu) qui accélère la récup sans ajouter de fatigue, calée sur mon état de forme actuel.",
   },
   echauffement: {
@@ -235,25 +224,33 @@ export const QUICK_ACTION_SPECS: Record<string, QuickActionSpec> = {
     objective: 'un échauffement adapté à ma séance',
     questions: [
       { q: 'Échauffement pour quel type d\'effort ?', options: ['Endurance', 'Fractionné / vitesse', 'Force / muscu', 'Compétition'] },
+      { q: 'Pour quel sport ?', options: ['Course', 'Vélo', 'Muscu', 'Hyrox', 'Natation', 'Autre'] },
+      { q: 'Temps dispo pour t\'échauffer ?', kind: 'duration', durations: [10, 15, 20] },
     ],
-    produce: "un protocole d'échauffement progressif et précis (mobilité, montée en intensité, gammes/activation spécifiques), calibré pour préparer exactement l'effort visé sans fatiguer.",
+    produce: "un protocole d'échauffement progressif et précis (mobilité, montée en intensité, gammes/activation spécifiques au sport et à l'effort), calibré pour préparer exactement l'effort visé sans fatiguer.",
   },
   seance_force: {
     key: 'seance_force',
     objective: 'une séance de force / musculation ciblée',
     questions: [
       { q: 'Focus de la séance ?', options: ['Full body', 'Haut', 'Bas', 'Poussée', 'Tirage', 'Force spécifique sport'] },
-      { q: 'Matériel dispo ?', options: ['Salle complète', 'Haltères', 'Barre', 'Poids du corps'], note: 'plusieurs choix possibles' },
+      { q: 'Matériel dispo ?', options: ['Salle complète', 'Haltères', 'Barre', 'Poids du corps', 'Kettlebells', 'Élastiques'], note: 'plusieurs choix possibles' },
+      { q: 'Durée dispo ?', kind: 'duration', durations: [30, 45, 60, 75] },
+      { q: 'Objectif d\'intensité ?', options: ['Force max (lourd)', 'Hypertrophie (volume)', 'Force-endurance', 'Explosivité'] },
+      { q: 'Une contrainte ?', note: 'optionnel — ex : dos sensible, pas de sauts, épaule…' },
     ],
-    produce: "une séance de force structurée (exercices, séries × répétitions, charges en %1RM ou RPE, repos, tempo) adaptée à mon niveau et à mon sport principal.",
+    produce: "une séance de force structurée (échauffement, exercices avec séries × répétitions, charges en %1RM ou RPE, repos, tempo) adaptée à mon niveau, mon sport principal, mon matériel et mon objectif d'intensité.",
   },
   renforcement: {
     key: 'renforcement',
     objective: 'une séance de renforcement / prévention pour soutenir mon sport',
     questions: [
       { q: 'Renforcement orienté quoi ?', options: ['Prévention blessure', 'Gainage / core', 'Stabilité', 'Explosivité', 'Général'] },
+      { q: 'Pour quel sport le renforcer ?', options: ['Course', 'Vélo', 'Natation', 'Hyrox', 'Général'] },
+      { q: 'Durée dispo ?', kind: 'duration', durations: [15, 20, 30, 45] },
+      { q: 'Matériel dispo ?', options: ['Poids du corps', 'Élastiques', 'Haltères', 'Salle'], note: 'plusieurs choix possibles' },
     ],
-    produce: "une séance de renforcement ciblée (exercices, dosage, exécution) qui complète mon entraînement principal et réduit mes risques de blessure, adaptée à mes sports.",
+    produce: "une séance de renforcement ciblée (exercices, dosage séries/reps/temps, exécution) qui complète mon entraînement principal et réduit mes risques de blessure, adaptée au sport visé et à mon matériel.",
   },
   desequilibre: {
     key: 'desequilibre',
@@ -268,39 +265,66 @@ export const QUICK_ACTION_SPECS: Record<string, QuickActionSpec> = {
     objective: 'un WOD / une séance type Hyrox',
     questions: [
       { q: 'Objectif de la séance ?', options: ['Endurance de force', 'Stations spécifiques', 'Simulation course', 'Intensité / gaz'] },
-      { q: 'Durée / matériel ?', note: 'ex : 45 min, sled + wall balls…' },
+      { q: 'Durée dispo ?', kind: 'duration', durations: [30, 45, 60] },
+      { q: 'Matériel dispo ?', options: ['Sled', 'Wall balls', 'Rameur / skierg', 'Kettlebells', 'Sac / sandbag', 'Poids du corps'], note: 'plusieurs choix possibles' },
+      { q: 'Stations à cibler en priorité ?', note: 'optionnel — ex : sled push, burpees broad jumps, wall balls…' },
     ],
-    produce: "une séance Hyrox structurée (blocs, stations, charges, transitions run/station, intensités) adaptée à mon niveau et à l'objectif choisi.",
+    produce: "une séance Hyrox structurée (échauffement, blocs avec stations + charges + reps, transitions run/station, intensités) adaptée à mon niveau, à l'objectif et au matériel dispo.",
   },
   velo_endurance: {
     key: 'velo_endurance',
     objective: 'une séance vélo d\'endurance (Z2)',
-    questions: [{ q: 'Durée dispo ?', options: ['1 h', '1 h 30', '2 h', '3 h+'] }],
-    produce: "une séance vélo d'endurance en zone 2 (durée, fenêtre de puissance/FC selon mes zones, cadence, éventuelles touches de tempo), pensée pour développer le foncier.",
+    questions: [
+      { q: 'Durée dispo ?', kind: 'duration', durations: [60, 90, 120, 180] },
+      { q: 'Où roules-tu ?', options: ['Home-trainer', 'Route / extérieur'] },
+      { q: 'Ajouter une touche de qualité ?', options: ['Non, 100 % foncier', 'Quelques accélérations', 'Un peu de tempo / sweet spot'], note: 'optionnel' },
+      { q: 'Une contrainte ?', note: 'optionnel — ex : vent, jambes fraîches, cadence à travailler…' },
+    ],
+    produce: "une séance vélo d'endurance en zone 2 (durée, fenêtre de puissance/FC selon MES zones, cadence, éventuelles touches de qualité si demandé), pensée pour développer le foncier, avec un profil d'intensité en graphique.",
   },
   velo_seuil: {
     key: 'velo_seuil',
     objective: 'une séance vélo au seuil (FTP)',
-    questions: [{ q: 'Temps total dispo ?', options: ['1 h', '1 h 15', '1 h 30'] }],
-    produce: "une séance seuil vélo (format d'intervalles, puissance cible autour de ma FTP, récup, volume total au seuil) calibrée sur mes zones actuelles.",
+    questions: [
+      { q: 'Temps total dispo (échauffement inclus) ?', kind: 'duration', durations: [60, 75, 90] },
+      { q: 'Format d\'intervalles ?', options: ['Longs (2×20, 3×15)', 'Sweet spot (3×12-15)', 'Over-unders', 'Choisis pour moi'] },
+      { q: 'Où roules-tu ?', options: ['Home-trainer', 'Route / extérieur'] },
+      { q: 'Dureté visée ?', kind: 'slider', min: 1, max: 5, minLabel: 'Prudent', maxLabel: 'Costaud' },
+    ],
+    produce: "une séance seuil vélo (échauffement, format d'intervalles + puissance cible autour de MA FTP, récup, volume total au seuil, retour au calme) calibrée sur mes zones, avec un profil d'intensité en graphique.",
   },
   velo_vo2: {
     key: 'velo_vo2',
     objective: 'une séance vélo VO2max',
-    questions: [{ q: 'Niveau de dureté visé ?', options: ['Découverte', 'Classique', 'Costaud'] }],
-    produce: "une séance VO2max vélo (répétitions courtes à haute intensité, puissance cible, ratio effort/récup, volume) adaptée à mes zones et à ma fraîcheur du moment.",
+    questions: [
+      { q: 'Format préféré ?', options: ['Courts (30/30, 40/20)', 'Moyens (3-5 min)', 'Micro-intervalles', 'Choisis pour moi'] },
+      { q: 'Temps total dispo ?', kind: 'duration', durations: [50, 60, 75] },
+      { q: 'Dureté visée ?', kind: 'slider', min: 1, max: 5, minLabel: 'Découverte', maxLabel: 'Costaud' },
+      { q: 'Où roules-tu ?', options: ['Home-trainer', 'Route / extérieur'] },
+    ],
+    produce: "une séance VO2max vélo complète (échauffement, répétitions à haute intensité + puissance cible et ratio effort/récup, retour au calme) adaptée à MES zones et à ma fraîcheur, avec un profil d'intensité en graphique.",
   },
   run_ef: {
     key: 'run_ef',
     objective: 'une sortie course en endurance fondamentale',
-    questions: [{ q: 'Durée dispo ?', options: ['30 min', '45 min', '1 h', '1 h 30+'] }],
-    produce: "une sortie EF (durée, allure/FC cible selon mes zones, terrain, éventuelles lignes droites en fin) pour construire le foncier sans dériver.",
+    questions: [
+      { q: 'Durée dispo ?', kind: 'duration', durations: [30, 45, 60, 90] },
+      { q: 'Terrain ?', options: ['Plat / route', 'Vallonné / nature', 'Tapis'] },
+      { q: 'Ajouter en fin de sortie ?', options: ['Rien', 'Quelques lignes droites', 'Côtes courtes', 'Gammes'], note: 'optionnel' },
+      { q: 'Une contrainte ?', note: 'optionnel — ex : reprise, chaleur, jambes lourdes…' },
+    ],
+    produce: "une sortie EF (durée, allure/FC cible selon MES zones, terrain, éventuel travail de fin de sortie si demandé) pour construire le foncier sans dériver.",
   },
   run_seuil: {
     key: 'run_seuil',
     objective: 'une séance course au seuil',
-    questions: [{ q: 'Temps total dispo ?', options: ['40 min', '1 h', '1 h 15'] }],
-    produce: "une séance seuil course (format, allure cible au seuil selon mes zones, récup, volume total qualité) avec échauffement et retour au calme.",
+    questions: [
+      { q: 'Temps total dispo (échauffement inclus) ?', kind: 'duration', durations: [40, 60, 75] },
+      { q: 'Format ?', options: ['Seuil continu (tempo)', 'Fractions au seuil (ex. 4-6×5\')', 'Progressif', 'Choisis pour moi'] },
+      { q: 'Terrain ?', options: ['Piste', 'Route / plat', 'Tapis'] },
+      { q: 'Dureté visée ?', kind: 'slider', min: 1, max: 5, minLabel: 'Prudent', maxLabel: 'Costaud' },
+    ],
+    produce: "une séance seuil course complète (échauffement, format + allure cible au seuil selon MES zones, récup, volume total qualité, retour au calme), avec un profil d'intensité en graphique.",
   },
   run_vo2: {
     key: 'run_vo2',
@@ -316,9 +340,14 @@ export const QUICK_ACTION_SPECS: Record<string, QuickActionSpec> = {
   },
   run_power: {
     key: 'run_power',
-    objective: 'une séance course en puissance (capteur de puissance à la course)',
-    questions: [{ q: 'Objectif ?', options: ['Endurance', 'Seuil', 'VO2max'] }],
-    produce: "une séance course pilotée en puissance (fenêtres de watts cibles, format, récup) adaptée à mes zones de puissance course.",
+    objective: 'une séance course pilotée en puissance (capteur de puissance à la course)',
+    questions: [
+      { q: 'Objectif de la séance ?', options: ['Endurance', 'Seuil', 'VO2max', 'Côtes / force'] },
+      { q: 'Temps total dispo ?', kind: 'duration', durations: [40, 60, 75] },
+      { q: 'Terrain ?', options: ['Plat', 'Vallonné', 'Tapis'] },
+      { q: 'Dureté visée ?', kind: 'slider', min: 1, max: 5, minLabel: 'Prudent', maxLabel: 'Costaud' },
+    ],
+    produce: "une séance course pilotée en puissance (échauffement, format + fenêtres de watts cibles selon MES zones de puissance course, récup, retour au calme), avec un profil d'intensité en graphique.",
   },
 
   // ═══════════════════════════════════════════════════════════════
@@ -347,8 +376,12 @@ export const QUICK_ACTION_SPECS: Record<string, QuickActionSpec> = {
   predire_chrono: {
     key: 'predire_chrono',
     objective: 'prédire un chrono réaliste sur une distance',
-    questions: [{ q: 'Sur quelle distance veux-tu une prédiction ?', options: ['5 km', '10 km', 'Semi', 'Marathon', 'Autre'] }],
-    produce: "une prédiction de chrono argumentée à partir de mes performances et de ma forme actuelle (fourchette réaliste, allure cible, conditions pour la tenir).",
+    questions: [
+      { q: 'Sur quelle distance veux-tu une prédiction ?', options: ['5 km', '10 km', 'Semi', 'Marathon', 'Autre'] },
+      { q: 'Pour quand ?', options: ['Aujourd\'hui (état actuel)', 'Dans 4 semaines', 'Dans 8-12 semaines', 'Jour de ma course'] },
+      { q: 'Conditions attendues ?', options: ['Plat / idéal', 'Vallonné', 'Chaleur', 'Je ne sais pas'], note: 'optionnel' },
+    ],
+    produce: "une prédiction de chrono argumentée à partir de MES performances et de ma forme actuelle (fourchette réaliste, allure cible, effet des conditions et de l'échéance choisie, conditions pour la tenir).",
   },
 
   // ═══════════════════════════════════════════════════════════════
@@ -357,26 +390,37 @@ export const QUICK_ACTION_SPECS: Record<string, QuickActionSpec> = {
   nutrition_effort: {
     key: 'nutrition_effort',
     objective: 'ma stratégie nutritionnelle pendant l\'effort',
-    questions: [{ q: 'Pour quel type d\'effort ?', options: ['Sortie longue', 'Course', 'Séance intense', 'Ultra'] }],
-    produce: "un plan d'apport pendant l'effort (glucides/h, hydratation, sodium, timing, produits) adapté à la durée et à l'intensité, avec un exemple concret.",
+    questions: [
+      { q: 'Pour quel type d\'effort ?', options: ['Sortie longue', 'Course', 'Séance intense', 'Ultra'] },
+      { q: 'Durée prévue de l\'effort ?', kind: 'duration', durations: [60, 90, 120, 180, 240] },
+      { q: 'Ce que tu tolères / préfères ?', options: ['Gels', 'Boisson glucidique', 'Barres', 'Vrai food (solide)', 'Peu importe'], note: 'plusieurs choix possibles' },
+      { q: 'Conditions ?', options: ['Tempéré', 'Chaleur', 'Froid'], note: 'optionnel' },
+    ],
+    produce: "un plan d'apport pendant l'effort (glucides/h, hydratation, sodium, timing, produits selon mes préférences) adapté à la durée, l'intensité et les conditions, avec un exemple concret minuté.",
   },
   hydratation: {
     key: 'hydratation', objective: 'un plan d\'hydratation adapté', questions: [
       { q: 'Contexte ?', options: ['Au quotidien', 'Autour de l\'effort', 'Chaleur', 'Compétition'] },
+      { q: 'Tu transpires beaucoup ?', kind: 'slider', min: 1, max: 5, minLabel: 'Peu', maxLabel: 'Énormément' },
+      { q: 'Un souci constaté ?', options: ['Crampes', 'Coup de moins bien', 'Rien de précis'], note: 'optionnel' },
     ],
-    produce: "des repères d'hydratation concrets (quantités, timing, électrolytes) adaptés au contexte et à mon volume d'entraînement.",
+    produce: "des repères d'hydratation concrets (quantités, timing, électrolytes/sodium) adaptés au contexte, à mon niveau de sudation et à mon volume d'entraînement.",
   },
   repas_post: {
     key: 'repas_post', objective: 'quoi manger après ma séance pour bien récupérer', questions: [
       { q: 'La séance était plutôt ?', options: ['Endurance longue', 'Intense / qualité', 'Force / muscu'] },
+      { q: 'Objectif prioritaire après ?', options: ['Récupérer vite', 'Prendre du muscle', 'Rester léger / perte de gras'] },
+      { q: 'Une contrainte alimentaire ?', options: ['Aucune', 'Végé / vegan', 'Sans lactose', 'Sans gluten'], note: 'optionnel' },
     ],
-    produce: "une recommandation de repas/collation post-séance (fenêtre, protéines + glucides cibles, exemples concrets) pour optimiser la récup selon le type d'effort.",
+    produce: "une recommandation de repas/collation post-séance (fenêtre, protéines + glucides cibles, exemples concrets adaptés à ma contrainte alimentaire) pour optimiser la récup selon le type d'effort et mon objectif.",
   },
   besoins_macros: {
     key: 'besoins_macros', objective: 'mes besoins en calories et macros', questions: [
       { q: 'Objectif actuel ?', options: ['Maintien', 'Prise de muscle', 'Perte de gras', 'Performance'] },
+      { q: 'Régime particulier ?', options: ['Aucun', 'Végé / vegan', 'Low-carb', 'Autre'], note: 'optionnel' },
+      { q: 'Nombre de repas/jour préféré ?', options: ['2', '3', '4', '5+'], note: 'optionnel' },
     ],
-    produce: "une estimation de mes besoins (calories, protéines/glucides/lipides en g et g/kg) selon mon objectif et ma dépense d'entraînement, avec une répartition simple à suivre.",
+    produce: "une estimation de mes besoins (calories, protéines/glucides/lipides en g et g/kg) selon mon objectif, mon régime et ma dépense d'entraînement, avec une répartition sur mes repas simple à suivre.",
   },
 
   // ═══════════════════════════════════════════════════════════════
@@ -388,20 +432,26 @@ export const QUICK_ACTION_SPECS: Record<string, QuickActionSpec> = {
     questions: [
       { q: 'Où as-tu mal ?', note: 'zone précise' },
       { q: 'Depuis quand et dans quel contexte ?', note: 'ex : depuis 3 jours, après une sortie longue' },
+      { q: 'Intensité de la douleur ?', kind: 'slider', min: 1, max: 10, minLabel: 'Légère', maxLabel: 'Vive' },
+      { q: 'Elle apparaît quand ?', options: ['Au repos', 'Au début de l\'effort', 'Pendant / après l\'effort', 'Tout le temps'] },
     ],
-    produce: "une lecture prudente de la douleur (pistes possibles, drapeaux rouges qui imposent un avis médical), comment adapter mon entraînement en attendant, et des pistes de reprise — sans poser de diagnostic médical.",
+    produce: "une lecture prudente de la douleur (pistes possibles, drapeaux rouges qui imposent un avis médical selon l'intensité et le comportement décrits), comment adapter mon entraînement en attendant, et des pistes de reprise — sans poser de diagnostic médical.",
   },
   etirements: {
     key: 'etirements', objective: 'une routine d\'étirements / mobilité adaptée', questions: [
       { q: 'Objectif ?', options: ['Après séance', 'Mobilité générale', 'Zone raide précise', 'Détente / sommeil'] },
+      { q: 'Zone(s) à cibler ?', options: ['Hanches', 'Ischios', 'Mollets', 'Dos', 'Épaules', 'Chevilles'], note: 'plusieurs choix possibles' },
+      { q: 'Temps dispo ?', kind: 'duration', durations: [5, 10, 15, 20] },
     ],
-    produce: "une routine d'étirements/mobilité guidée (mouvements, durées, respiration) ciblée sur l'objectif et sur les zones sollicitées par mes sports.",
+    produce: "une routine d'étirements/mobilité guidée (mouvements, durées, respiration) ciblée sur l'objectif, les zones choisies et les sollicitations de mes sports, tenant dans le temps dispo.",
   },
   gestion_stress: {
     key: 'gestion_stress', objective: 'gérer mon stress pour mieux récupérer et performer', questions: [
       { q: 'Le stress vient surtout ?', options: ['Compétition', 'Charge de vie', 'Sommeil / mental', 'Rien de précis'] },
+      { q: 'Comment il te touche ?', options: ['Sommeil', 'Tension / respiration', 'Motivation', 'Récup / HRV'], note: 'plusieurs choix possibles' },
+      { q: 'Combien de temps par jour peux-tu y consacrer ?', kind: 'duration', durations: [5, 10, 15] },
     ],
-    produce: "des stratégies concrètes et actionnables (respiration, routine, gestion de la charge mentale, lien avec l'entraînement et le sommeil) priorisées selon ma situation.",
+    produce: "des stratégies concrètes et actionnables (respiration, routine, gestion de la charge mentale, lien avec l'entraînement et le sommeil) priorisées selon ma situation et tenant dans le temps que je peux y mettre.",
   },
   expliquer_concept: {
     key: 'expliquer_concept', objective: 'm\'expliquer clairement un concept d\'entraînement', questions: [
@@ -409,16 +459,7 @@ export const QUICK_ACTION_SPECS: Record<string, QuickActionSpec> = {
     ],
     produce: "une explication claire et imagée du concept, avec un exemple tiré de MES données quand c'est possible, et pourquoi ça compte pour ma pratique.",
   },
-
-  // ─── Guide app (simple, conversationnel) ───
-  app_guide: {
-    key: 'app_guide',
-    objective: "m'aider à comprendre et utiliser l'application",
-    questions: [
-      { q: 'Sur quoi veux-tu de l\'aide ?', options: ['Prise en main générale', 'Planning', 'Nutrition', 'Récupération', 'Connexions / calendrier', 'Autre'] },
-    ],
-    produce: "une explication claire et concrète (étapes, où cliquer) répondant précisément à ma demande, sans jargon.",
-  },
+  // app_guide : garde son AppGuideFlow (pas de spec, cf. note plus haut).
 }
 
 export function hasQuickActionSpec(key: string): boolean {

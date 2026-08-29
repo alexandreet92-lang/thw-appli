@@ -48,6 +48,7 @@ export interface ActivityCardData {
   media?:         Array<{ url: string; type: 'image' | 'video'; path: string }> | null
   comment?:       string | null
   isRace?:        boolean         // true = Compétition · false/undefined = Entraînement
+  raceName?:      string | null   // objectif lié (ex. « Ironman Leeds Vélo » pour un triathlon)
 }
 
 interface Props {
@@ -171,6 +172,13 @@ export function ActivityCard({ data, onClick }: Props) {
             {fmtSubline(data.sportLabel, data.startedAt)}{data.deviceName ? ` · ${data.deviceName}` : ''}
           </span>
         </div>
+        {/* Objectif lié (course/triathlon) — ex. « Ironman Leeds Vélo » */}
+        {data.raceName && (
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, marginTop: 5, padding: '2px 9px', borderRadius: 999, background: 'color-mix(in srgb, var(--primary) 12%, transparent)', border: '1px solid color-mix(in srgb, var(--primary) 30%, transparent)' }}>
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M4 22V4a1 1 0 0 1 1-1h13l-2 4 2 4H6"/></svg>
+            <span style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 240 }}>{data.raceName}</span>
+          </div>
+        )}
         {/* Lieu de départ */}
         {place && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 3, fontSize: 11.5, color: 'var(--text-dim)' }}>

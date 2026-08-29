@@ -20,9 +20,20 @@ function fmtDur(s: number | null): string {
 }
 function fmtKm(m: number | null): string { return m ? `${(m / 1000).toFixed(1)} km` : '' }
 
-export function LinkedRacePicker({ activityId, activityDate, initialRaceId }: {
+// Pour un objectif TRIATHLON (3 sports), on nomme la ligne « Objectif + segment »
+// selon le sport de l'activité : « Ironman Leeds Natation », « … Vélo », « … Course ».
+function triSegmentLabel(sport?: string | null): string {
+  const s = (sport ?? '').toLowerCase()
+  if (/swim|natation|openwater|eau/.test(s)) return 'Natation'
+  if (/bike|cycl|velo|vélo|ride|vtt|mtb|home ?trainer|hometrainer/.test(s)) return 'Vélo'
+  if (/run|course|trail|tapis|treadmill|cap/.test(s)) return 'Course'
+  return ''
+}
+
+export function LinkedRacePicker({ activityId, activityDate, activitySport, initialRaceId }: {
   activityId: string
   activityDate?: string | null
+  activitySport?: string | null
   initialRaceId?: string | null
 }) {
   const { t } = useI18n()
@@ -63,9 +74,12 @@ export function LinkedRacePicker({ activityId, activityDate, initialRaceId }: {
   async function save(raceId: string) {
     setSel(raceId)
     const race = races.find(r => r.id === raceId)
+    // Triathlon → on stocke « Objectif + segment » (sport de l'activité).
+    const seg = race?.sport === 'triathlon' ? triSegmentLabel(activitySport) : ''
+    const composedName = race ? (seg ? `${race.name} ${seg}` : race.name) : null
     try {
       await createClient().from('activities')
-        .update({ linked_race_id: raceId || null, race_name: race?.name ?? null })
+        .update({ linked_race_id: raceId || null, race_name: composedName })
         .eq('id', activityId)
     } catch (e) { console.error('[linked_race] save', e) }
     void loadSiblings(raceId)

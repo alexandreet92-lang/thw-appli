@@ -1518,6 +1518,7 @@ const fr: Dict = {
   // ai
   'ai.coachIA': 'Coach IA', 'ai.openCoachIA': 'Ouvrir Coach IA', 'ai.close': 'Fermer', 'ai.cancel': 'Annuler',
   'ai.validate': 'Valider', 'ai.send': 'Envoyer', 'ai.next': 'Suivant', 'ai.previous': 'Précédent',
+  'ai.voiceUnsupported': 'La dictée vocale n\u2019est pas disponible sur cet appareil/navigateur.',
   'ai.yourAnswer': 'Ta réponse…', 'ai.dictate': 'Dicter', 'ai.generateNow': 'Générer maintenant',
   'ai.other': 'Autre…', 'ai.stopDictation': 'Arrêter la dictée', 'ai.voiceDictation': 'Dictée vocale',
   'ai.activeCompetence': 'Compétence active : {name}', 'ai.otherSingular': 'autre', 'ai.othersPlural': 'autres',
@@ -8263,7 +8264,7 @@ const en: Dict = {
   'ui.loadingData': 'Your data is loading',
   // ai
   'ai.coachIA': 'AI Coach', 'ai.openCoachIA': 'Open AI Coach', 'ai.close': 'Close', 'ai.cancel': 'Cancel',
-  'ai.validate': 'Confirm', 'ai.send': 'Send', 'ai.next': 'Next', 'ai.previous': 'Previous', 'ai.other': 'Other…', 'ai.yourAnswer': 'Your answer…', 'ai.dictate': 'Dictate', 'ai.generateNow': 'Generate now',
+  'ai.validate': 'Confirm', 'ai.send': 'Send', 'ai.next': 'Next', 'ai.previous': 'Previous', 'ai.other': 'Other…', 'ai.voiceUnsupported': 'Voice dictation is not available on this device/browser.', 'ai.yourAnswer': 'Your answer…', 'ai.dictate': 'Dictate', 'ai.generateNow': 'Generate now',
   'ai.stopDictation': 'Stop dictation', 'ai.voiceDictation': 'Voice dictation',
   'ai.activeCompetence': 'Active skill: {name}', 'ai.otherSingular': 'other', 'ai.othersPlural': 'others',
   'ai.answersSent': 'Answers sent', 'ai.noAnswer': '(no answer)', 'ai.myAnswers': 'My answers:',
@@ -14962,6 +14963,7 @@ const es: Dict = {
   // ai
   'ai.coachIA': 'Coach IA', 'ai.openCoachIA': 'Abrir Coach IA', 'ai.close': 'Cerrar', 'ai.cancel': 'Cancelar',
   'ai.validate': 'Validar', 'ai.send': 'Enviar', 'ai.next': 'Siguiente', 'ai.previous': 'Anterior',
+  'ai.voiceUnsupported': 'El dictado por voz no está disponible en este dispositivo/navegador.',
   'ai.yourAnswer': 'Tu respuesta…', 'ai.dictate': 'Dictar', 'ai.generateNow': 'Generar ahora',
   'ai.other': 'Otro…', 'ai.stopDictation': 'Detener el dictado', 'ai.voiceDictation': 'Dictado por voz',
   'ai.activeCompetence': 'Competencia activa: {name}', 'ai.otherSingular': 'otro', 'ai.othersPlural': 'otros',

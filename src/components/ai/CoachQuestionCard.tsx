@@ -89,22 +89,32 @@ export function CoachQuestionCard({
   const setOther = (val: string) => setAnswers(prev => prev.map((ans, i) => i === page ? { ...ans, other: val } : ans))
 
   // ── Dictée vocale sur le champ libre (Web Speech API) ───────
+  const pageRef = useRef(page); pageRef.current = page
   const toggleDictation = () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
-    if (!SR) return
+    if (!SR) { alert(t('ai.voiceUnsupported')); return }
     if (listening) { try { recogRef.current?.stop() } catch { /* ignore */ } setListening(false); return }
     try {
       const r = new SR()
-      r.lang = 'fr-FR'; r.interimResults = false; r.continuous = false
-      r.onresult = (e: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => {
-        const txt = Array.from(e.results).map(res => res[0].transcript).join(' ').trim()
-        if (txt) setOther((answers[page]?.other ? answers[page].other + ' ' : '') + txt)
+      r.lang = 'fr-FR'; r.interimResults = true; r.continuous = false
+      r.onresult = (e: { results: ArrayLike<ArrayLike<{ transcript: string }>> & { length: number } }) => {
+        // On ne prend que les résultats FINAUX et on les ajoute au champ de la
+        // question courante — via un setter fonctionnel (pas de valeur périmée).
+        let txt = ''
+        for (let i = 0; i < e.results.length; i++) {
+          const res = e.results[i] as ArrayLike<{ transcript: string }> & { isFinal?: boolean }
+          if (res.isFinal) txt += res[0].transcript
+        }
+        txt = txt.trim()
+        if (!txt) return
+        const p = pageRef.current
+        setAnswers(prev => prev.map((ans, i) => i === p ? { ...ans, other: (ans.other ? ans.other + ' ' : '') + txt } : ans))
       }
       r.onend = () => setListening(false)
       r.onerror = () => setListening(false)
       recogRef.current = r; r.start(); setListening(true)
-    } catch { setListening(false) }
+    } catch { setListening(false); alert(t('ai.voiceUnsupported')) }
   }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const voiceSupported = enableVoice && typeof window !== 'undefined' && ((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition)

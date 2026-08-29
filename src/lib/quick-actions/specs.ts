@@ -114,11 +114,149 @@ export const QUICK_ACTION_SPECS: Record<string, QuickActionSpec> = {
     produce: "un programme structuré (répartition des séances sur la semaine, exercices avec séries/répétitions/repos, schéma de progression) + un plan nutritionnel cohérent (calories + macros), en t'appuyant sur mes données déjà connues.",
   },
 
-  // NB. weakpoints, analyser_semaine, analyser_recuperation, analyser_progression,
-  // conseils_sommeil et app_guide ont chacun un FLOW dédié riche (WeakpointsFlow,
-  // WeekAnalysisFlow, RecoveryAnalysisFlow, AnalyserProgressionFlow, SleepAdviceFlow,
-  // AppGuideFlow) : on NE leur met PAS de spec ici, pour que ce flow (la référence)
-  // reste prioritaire. Le moteur générique ne couvre que les actions SANS flow riche.
+  // ═══════════════════════════════════════════════════════════════
+  // GROSSES ACTIONS — MÊME SYSTÈME que les autres (cartes qui défilent).
+  // Elles posent leurs questions via le même moteur, puis génèrent dans le chat ;
+  // le coach utilise SES outils pour produire le résultat riche (plan, séance,
+  // analyse, graphiques) et proposer « Ajouter au planning » quand c'est pertinent.
+  // ═══════════════════════════════════════════════════════════════
+  sessionbuilder: {
+    key: 'sessionbuilder',
+    objective: 'une séance sur mesure prête à ajouter à mon planning',
+    questions: [
+      { q: 'Pour quel sport ?', options: ['Course', 'Vélo', 'Muscu / Renfo', 'Natation', 'Hyrox', 'Aviron', 'Triathlon'] },
+      { q: 'Type de séance ?', options: ['Endurance', 'Seuil', 'VO2max / intervalles', 'Sortie longue', 'Force', 'Technique', 'Récup'], note: 'plusieurs choix possibles' },
+      { q: 'Durée dispo ?', kind: 'duration', durations: [30, 45, 60, 90, 120] },
+      { q: 'Dureté visée ?', kind: 'slider', min: 1, max: 5, minLabel: 'Facile', maxLabel: 'Costaud' },
+      { q: 'Une précision ou contrainte ?', note: 'optionnel — ex : home-trainer, jambes lourdes, cibler les côtes…' },
+    ],
+    produce: "une séance complète et structurée (échauffement, corps avec blocs + zones/allures/watts selon MES zones, retour au calme, profil d'intensité en graphique) et PROPOSE de l'ajouter à mon planning.",
+  },
+  training_plan: {
+    key: 'training_plan',
+    objective: "un plan d'entraînement structuré et périodisé vers mon objectif",
+    questions: [
+      { q: 'Objectif du plan ?', options: ['Une course précise', 'Progresser en général', 'Perte de poids', 'Reprise'] },
+      { q: 'Sport principal du plan ?', options: ['Course', 'Vélo', 'Triathlon', 'Hyrox', 'Muscu', 'Hybride'] },
+      { q: 'Sur combien de semaines ?', options: ['4', '8', '12', '16'] },
+      { q: 'Combien de séances par semaine ?', options: ['3', '4', '5', '6+'] },
+      { q: 'Matériel / accès ?', options: ['Salle', 'Home-trainer', 'Extérieur', 'Piscine', 'Poids du corps'], note: 'plusieurs choix possibles' },
+      { q: 'Jours imposés ou blessure à gérer ?', note: 'optionnel — ex : repos lundi, genou sensible…' },
+    ],
+    produce: "un plan périodisé complet (phases, séances clés semaine par semaine avec zones cibles selon MES données, montée de charge, affûtage) et PROPOSE de l'ajouter à mon planning.",
+  },
+  nutrition: {
+    key: 'nutrition',
+    objective: 'un plan nutritionnel personnalisé selon mon profil et mes sports',
+    questions: [
+      { q: 'Objectif nutritionnel ?', options: ['Performance', 'Prise de muscle', 'Perte de gras', 'Maintien'] },
+      { q: 'Régime particulier ?', options: ['Aucun', 'Végétarien', 'Vegan', 'Sans lactose', 'Sans gluten'], note: 'plusieurs choix possibles' },
+      { q: 'Combien de repas/jour ?', options: ['2', '3', '4', '5+'] },
+      { q: 'Cuisines-tu ou tu veux du simple ?', options: ['J\'aime cuisiner', 'Simple et rapide', 'Peu importe'] },
+      { q: 'Aliments à éviter / préférences ?', note: 'optionnel' },
+    ],
+    produce: "un plan nutritionnel adapté à ma charge d'entraînement (cibles kcal + macros par type de jour, exemples de repas, hydratation) et PROPOSE de l'activer.",
+  },
+  strategie_course: {
+    key: 'strategie_course',
+    objective: 'une stratégie de course personnalisée (allures, nutrition, plan B)',
+    questions: [
+      { q: 'Quelle course ?', options: ['Ma prochaine course du calendrier', 'Une autre (je précise)'], note: 'si autre, précise nom/distance en dessous' },
+      { q: 'Ton objectif ?', options: ['Finir', 'Battre mon record', 'Viser un chrono précis', 'Jouer un classement'] },
+      { q: 'Profil du parcours ?', options: ['Plat', 'Vallonné', 'Montagneux', 'Je ne sais pas'] },
+      { q: 'Ta forme en ce moment ?', kind: 'slider', min: 1, max: 5, minLabel: 'Fatigué', maxLabel: 'Au top' },
+      { q: 'Météo attendue / contrainte ?', note: 'optionnel — ex : chaleur, vent…' },
+    ],
+    produce: "une stratégie de course complète (3 scénarios conservateur/optimal/agressif, plan d'allures/puissance, nutrition pendant l'effort, plan B) basée sur MES données. Si un fichier de parcours est joint, utilise-le.",
+  },
+  analyze_training: {
+    key: 'analyze_training',
+    objective: "l'analyse détaillée d'une de mes séances (ou comparaison de deux)",
+    questions: [
+      { q: 'Quoi analyser ?', options: ['Ma dernière séance', 'Une séance précise (je précise)', 'Comparer deux séances', 'Une période / un mois'] },
+      { q: 'Angle prioritaire ?', options: ['Vue globale', 'Charge / zones', 'Allure / puissance', 'Cœur / dérive', 'Technique'], note: 'optionnel' },
+    ],
+    produce: "une analyse concrète (charge, zones, allure/puissance, FC, dérive, points forts/faibles) avec des graphiques, et ce que j'en retiens pour la suite.",
+  },
+  analyzetest: {
+    key: 'analyzetest',
+    objective: "l'interprétation d'un de mes tests de performance",
+    questions: [
+      { q: 'Quel test veux-tu interpréter ?', options: ['Mon dernier test', 'Un test précis (je précise)'] },
+      { q: 'Ce que tu veux surtout savoir ?', options: ['Mon niveau', 'Mes nouvelles zones', 'Ma progression', 'Quoi travailler'], note: 'optionnel' },
+    ],
+    produce: "une interprétation fiable du test (ce qu'il vaut, mise à jour de mes zones, comparaison avec mes tests précédents, recommandations).",
+  },
+  recharge: {
+    key: 'recharge',
+    objective: 'un plan de recharge glucidique avant mon objectif',
+    questions: [
+      { q: 'Pour quel évènement ?', options: ['Ma prochaine course', 'Une autre (je précise)'] },
+      { q: 'Type d\'effort ?', options: ['Course longue (> 90 min)', 'Effort intense court', 'Ultra / journée entière'] },
+      { q: 'Tu tolères quoi ?', options: ['Pâtes / riz', 'Pain / céréales', 'Boissons glucidiques', 'Peu importe'], note: 'plusieurs choix possibles' },
+    ],
+    produce: "un plan de recharge glucidique jour par jour avant l'objectif (quantités, timing, aliments selon mes préférences) et l'apport le jour J.",
+  },
+  estimer_zones: {
+    key: 'estimer_zones',
+    objective: "l'estimation de mes zones d'intensité à partir de mes données",
+    questions: [
+      { q: 'Pour quel sport estimer les zones ?', options: ['Course', 'Vélo', 'Natation', 'Autre'] },
+      { q: 'Base d\'estimation préférée ?', options: ['FC', 'Allure', 'Puissance', 'Le coach choisit'], note: 'optionnel' },
+    ],
+    produce: "une estimation de mes zones (FC / allure / puissance) déduite de mes performances, comparée à mes zones actuelles, avec la fiabilité et quoi faire pour les affiner.",
+  },
+  weakpoints: {
+    key: 'weakpoints',
+    objective: "l'identification de mes points faibles prioritaires",
+    questions: [
+      { q: 'Sur quel angle chercher mes points faibles ?', options: ['Vue globale', 'Endurance', 'Force / puissance', 'Vitesse / seuil', 'Récupération', 'Technique'] },
+      { q: 'Un sport en particulier ?', options: ['Tous', 'Course', 'Vélo', 'Natation', 'Force'], note: 'optionnel' },
+    ],
+    produce: "une analyse croisée de mes données révélant mes 2-3 points faibles prioritaires (chiffrés, avec graphiques), pourquoi ce sont des freins, et un plan concret pour les corriger.",
+  },
+  analyser_semaine: {
+    key: 'analyser_semaine',
+    objective: "un bilan clair de ma semaine d'entraînement",
+    questions: [
+      { q: 'Quelle semaine ?', options: ['Cette semaine', 'La semaine dernière'] },
+    ],
+    produce: "un bilan de ma semaine (charge totale et répartition par sport/intensité, CTL/ATL/TSB, équilibre entraînement/récup, signaux de risque) avec des graphiques et 2-3 recommandations concrètes.",
+  },
+  analyser_recuperation: {
+    key: 'analyser_recuperation',
+    objective: 'une analyse de mon état de forme et de ma récupération',
+    questions: [
+      { q: 'Ton ressenti général en ce moment ?', kind: 'slider', min: 1, max: 5, minLabel: 'Vidé', maxLabel: 'Frais' },
+    ],
+    produce: "une lecture de ma récupération (HRV, sommeil, fatigue, charge récente, CTL/ATL/TSB) confrontée à mon ressenti, un état de forme global, et si je dois pousser, maintenir ou lever le pied.",
+  },
+  analyser_progression: {
+    key: 'analyser_progression',
+    objective: "l'analyse de l'évolution de mes performances dans le temps",
+    questions: [
+      { q: 'Sur quelle période ?', options: ['3 mois', '6 mois', '1 an'] },
+      { q: 'Un sport en particulier ?', options: ['Tous', 'Course', 'Vélo', 'Natation', 'Force'], note: 'optionnel' },
+    ],
+    produce: "une analyse d'évolution (progrès, stagnations, régressions chiffrés depuis mon historique, avec graphiques), ce qui les explique, et les leviers prioritaires pour continuer à progresser.",
+  },
+  conseils_sommeil: {
+    key: 'conseils_sommeil',
+    objective: 'des conseils personnalisés pour mieux récupérer la nuit',
+    questions: [
+      { q: 'Ton principal souci de sommeil ?', options: ['Difficile de m\'endormir', 'Réveils nocturnes', 'Sommeil trop court', 'Réveil fatigué', 'Rien de précis'] },
+      { q: 'À quelle heure tu te couches en général ?', note: 'optionnel' },
+    ],
+    produce: "des recommandations sommeil concrètes et personnalisées (routine, timing, environnement, lien avec l'entraînement), à partir de mes données de sommeil, priorisées et actionnables dès ce soir.",
+  },
+  app_guide: {
+    key: 'app_guide',
+    objective: "m'aider à comprendre et utiliser l'application",
+    questions: [
+      { q: 'Sur quoi veux-tu de l\'aide ?', options: ['Prise en main générale', 'Planning', 'Nutrition', 'Récupération', 'Performance / tests', 'Connexions / calendrier'] },
+    ],
+    produce: "une explication claire et concrète (étapes, où cliquer) répondant précisément à ma demande, sans jargon, adaptée à ce qu'il me reste à configurer.",
+  },
 
   // ═══════════════════════════════════════════════════════════════
   // PROGRAMMES (plusieurs semaines) — objectif clair, 2-3 questions décisives.

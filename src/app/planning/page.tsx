@@ -1083,7 +1083,9 @@ export function ActivityQuickModal({ activity, onClose }:{ activity:TrainingActi
             <div style={{ marginBottom:3 }}>
               <span style={{ fontSize:8,fontWeight:800,background:col,color:'#fff',padding:'2px 6px',borderRadius:4,letterSpacing:'0.06em' }}>{t('plnp.activity.completed')}</span>
             </div>
-            <p style={{ fontFamily:'Syne,sans-serif',fontSize:16,fontWeight:700,margin:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' as const }}>{planned?.title || a.name}</p>
+            {/* On affiche le VRAI titre de l'activité (celui donné dans Training),
+                pas le nom de la séance planifiée : c'est l'activité réalisée. */}
+            <p style={{ fontFamily:'Syne,sans-serif',fontSize:16,fontWeight:700,margin:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' as const }}>{a.name || planned?.title}</p>
           </div>
         </div>
 

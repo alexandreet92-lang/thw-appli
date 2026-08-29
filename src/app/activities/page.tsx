@@ -9948,6 +9948,12 @@ function CardsView({ activities, onSelect, sentinelRef, loadingMore, highlightId
         @media (min-width: 768px) {
           .thw-cards-grid { grid-template-columns: 1fr 1fr; gap: 16px; }
         }
+        /* Mobile : la carte GPS de chaque activité déborde jusqu'aux bords de
+           l'écran (pleine largeur). Les marges négatives annulent exactement le
+           padding horizontal de la page → aucun scroll horizontal. */
+        @media (max-width: 767px) {
+          .thw-card-carousel { margin-left: calc(50% - 50vw); margin-right: calc(50% - 50vw); }
+        }
       `}</style>
     </>
   )

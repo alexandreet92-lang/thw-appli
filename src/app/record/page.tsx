@@ -6,6 +6,8 @@ import SportSelector, { type SportId, getSportIcon, getSportLabel } from '@/comp
 import Toast from '@/components/record/Toast'
 import { useI18n } from '@/lib/i18n'
 import type { WorkoutExercise } from '@/types/workout'
+import { getGuideDemoId, GUIDE_DEMO_EVENT } from '@/components/guide/guideDemo'
+import { GuideLiveDemo } from '@/components/guide/GuideLiveDemo'
 
 const MapBackground    = dynamic(() => import('@/components/record/MapBackground'),    { ssr: false })
 const CyclingScreen    = dynamic(() => import('@/components/record/CyclingScreen'),    { ssr: false })
@@ -103,6 +105,9 @@ export default function RecordPage() {
   const [runChoiceOpen, setRunChoiceOpen] = useState(false)
   // Création manuelle d'activité (tous sports).
   const [manualOpen, setManualOpen] = useState(false)
+  // DÉMO du guide : joue une vraie animation de séance live (chrono, blocs qui
+  // défilent) sans toucher au vrai enregistrement. Piloté par « start:live-demo ».
+  const [guideLive, setGuideLive] = useState(false)
 
   // Sheet du bas (façon Strava) : replié = 3 boutons ; déplié = paramètres.
   // Drag qui suit le doigt en temps réel (hauteur pilotée en DOM, 0 re-render).
@@ -173,6 +178,15 @@ export default function RecordPage() {
     return () => obs.disconnect()
   }, [])
 
+  // Le GUIDE lance / arrête la démo de séance live (« start:live-demo »).
+  useEffect(() => {
+    const apply = (id: string | null) => setGuideLive(id === 'start:live-demo')
+    try { apply(getGuideDemoId()) } catch { /* ignore */ }
+    const h = (e: Event) => apply((e as CustomEvent<{ id: string | null }>).detail?.id ?? null)
+    window.addEventListener(GUIDE_DEMO_EVENT, h)
+    return () => window.removeEventListener(GUIDE_DEMO_EVENT, h)
+  }, [])
+
   const handleSelectSport = (s: SportId) => {
     setSport(s)
     setSportSheetOpen(false)
@@ -197,6 +211,12 @@ export default function RecordPage() {
     else if (sport === 'openwater')   setView('openwater')
     else if (sport === 'hometrainer') setHtLauncherOpen(true)
     else setToast(t('record.pageComingSoon'))
+  }
+
+  // Démo guide : l'écran live animé prend tout l'espace (le halo du guide pointe
+  // le chrono). Prioritaire sur toute autre vue tant que la démo est active.
+  if (guideLive) {
+    return <GuideLiveDemo dataGuide="rec-live-chrono" />
   }
 
   if (view === 'cycling') {

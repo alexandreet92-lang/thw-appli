@@ -130,7 +130,10 @@ export function GuideProvider({ children }: { children: React.ReactNode }) {
       if (el) {
         clearPoll()
         el.scrollIntoView({ block: 'center', behavior: 'smooth' })
-        window.setTimeout(() => { if (alive) measure(el) }, 260)
+        // Re-mesure à plusieurs instants : après le scroll fluide ET après un
+        // éventuel reflow (panneau de démo qui s'ouvre, image qui charge) → le
+        // halo reste calé sur la cible, jamais sur une zone qui a bougé.
+        ;[260, 550, 900].forEach(d => window.setTimeout(() => { if (alive) { const e = findGuideEl(step.anchor!); if (e) measure(e) } }, d))
         // Avance au vrai clic sur la cible.
         if (step.advanceOn === 'click') {
           const onClick = () => { el.removeEventListener('click', onClick); window.setTimeout(next, 120) }
@@ -212,7 +215,25 @@ function GuideOverlay({ step, rect, index, total, pageInfo, onNext, onPrev, onSk
   }, [])
   const vw = vp.w, vh = vp.h
   const pad = step.pad ?? PAD
-  const hole = rect ? { top: rect.top - pad, left: rect.left - pad, width: rect.width + pad * 2, height: rect.height + pad * 2 } : null
+  // RÈGLE ANTI « PAGE COUPÉE » : le trou de spotlight est TOUJOURS borné à l'écran
+  // visible. Si la cible dépasse (plus haute que le viewport, ou partiellement
+  // hors-champ pendant un reflow / une navigation), on rogne le halo aux bords du
+  // viewport au lieu de laisser le voile et la carte se calculer sur une zone qui
+  // sort de l'écran — ce qui donnait l'impression d'une page coupée.
+  const hole = (() => {
+    if (!rect) return null
+    const rawTop = rect.top - pad, rawLeft = rect.left - pad
+    const rawBottom = rect.top + rect.height + pad, rawRight = rect.left + rect.width + pad
+    const top = clamp(rawTop, 0, vh)
+    const left = clamp(rawLeft, 0, vw)
+    const bottom = clamp(rawBottom, 0, vh)
+    const right = clamp(rawRight, 0, vw)
+    const width = Math.max(0, right - left)
+    const height = Math.max(0, bottom - top)
+    // Cible entièrement hors-champ → pas de halo (message centré), jamais de bande coupée.
+    if (width < 4 || height < 4) return null
+    return { top, left, width, height }
+  })()
   const BW = Math.min(344, vw - 24)
   const MAXH = vh - 24
   // Mesure la HAUTEUR RÉELLE de la carte (après rendu) → placement exact, jamais

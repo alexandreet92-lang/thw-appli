@@ -503,12 +503,13 @@ export const START_TOUR: GuideStep[] = [
     'Lance la séance — libre ou une **séance planifiée**',
     'GPS pour l\'extérieur, capteurs FC/puissance en Bluetooth',
   ] },
-  { route: '/record', title: 'Pendant la séance', message: 'L\'écran live t\'accompagne en temps réel, selon le sport.', lines: [
+  { route: '/record', demo: 'start:live-demo', anchor: 'rec-live-chrono', title: 'Pendant la séance', message: 'Voici l\'écran live en action (démo) — regarde le chrono tourner et les blocs défiler.', lines: [
     '**Chrono**, distance, allure/puissance, FC en direct',
-    'Le **bloc en cours** et le **prochain** (séances guidées)',
+    'Le **bloc en cours** et le **prochain** défilent tout seuls',
     'Muscu/Hyrox : séries, reps, **exercice suivant**',
     'Bouton **Terminer** → résumé + enregistrement auto',
   ] },
+  { route: '/record', demo: 'start:live-demo', title: 'La séance se déroule', message: 'Échauffement → seuil → récup → seuil… l\'app te guide bloc par bloc et adapte l\'affichage au sport. Tu n\'as qu\'à courir.' },
   { route: '/record', title: 'Après la séance', message: 'Tu retrouves ta séance dans Entraînements avec l\'analyse complète, et tes records se mettent à jour tout seuls.' },
 ]
 

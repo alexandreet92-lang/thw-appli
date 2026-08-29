@@ -538,7 +538,9 @@ export const COACH_TOUR: GuideStep[] = [
     'Consentement : il peut révoquer à tout moment',
   ] },
   { route: '/coach/athletes', anchor: 'roster-row', coachOnly: true, title: 'Ouvrir un athlète', message: 'Clique une ligne pour sa fiche complète — TU vois SES données et tu agis pour lui.' },
-  { route: '/coach/athletes', anchor: 'athlete-tabs', coachOnly: true, title: 'La fiche athlète', lines: [
+  // Pas de route ici (héritée) : la démo « coach:first-athlete » navigue vers le
+  // 1er athlète, et l'ancre athlete-tabs apparaît sur SA fiche.
+  { demo: 'coach:first-athlete', anchor: 'athlete-tabs', coachOnly: true, title: 'La fiche athlète', message: 'Je t\'ouvre la fiche d\'un athlète pour te montrer :', lines: [
     '**Aperçu · Fiche · Data · Objectifs · Connexions**',
     'Toutes ses données d\'entraînement et de forme',
     'Actions : message, plan, **analyse IA** de CET athlète',
@@ -547,10 +549,15 @@ export const COACH_TOUR: GuideStep[] = [
     'Vois d\'un coup ce que tout le monde a fait',
     'Analyse la séance d\'un athlète en un clic',
   ] },
-  { route: '/coach/programs', anchor: 'coach-programs-new', coachOnly: true, title: 'Créer un programme', lines: [
-    'Des programmes **réutilisables** (plans types)',
-    'Assigne-les à un ou plusieurs athlètes',
-    'Publie-les à la vente (Stripe) si tu veux',
+  { route: '/coach/programs', anchor: 'coach-programs-new', coachOnly: true, title: 'Créer un programme', message: 'Un programme = un plan type réutilisable, construit semaine par semaine.', lines: [
+    'Choisis une **durée** (nb de semaines) et un **niveau**',
+    'Pour chaque semaine, ajoute des **séances** (tous sports)',
+    'Chaque séance : blocs, intensité, consignes — comme dans le planning',
+  ] },
+  { route: '/coach/programs', coachOnly: true, title: 'Assigner & vendre', lines: [
+    '**Assigne** le programme à un ou plusieurs athlètes → il atterrit dans LEUR planning',
+    'Garde-le en **brouillon** ou **publie-le**',
+    'Publié = vendable (**Stripe**) sur ta vitrine coach',
   ] },
   { route: '/coach/messages', anchor: 'coach-thread', coachOnly: true, title: 'Messagerie', lines: [
     'Une conversation par athlète',

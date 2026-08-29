@@ -18,6 +18,7 @@ import { getRoster, setAthleteGroup, setAthleteNote, type RosterAthlete, type Fo
 import { createInvite, acceptInvite, revokeLink, listPendingInvites, listMyCoaches, type CoachAthleteLink } from '@/lib/coach/relationships'
 import { InviteCodeReveal } from '@/components/coach/CodeCells'
 import { useI18n } from '@/lib/i18n'
+import { getGuideDemoId, GUIDE_DEMO_EVENT } from '@/components/guide/guideDemo'
 
 const DISP = 'var(--font-display)'
 const BODY = 'var(--font-body)'
@@ -81,6 +82,17 @@ export default function CoachAthletes() {
     setLoading(false)
   }, [])
   useEffect(() => { void reload() }, [reload])
+
+  // Le GUIDE peut ouvrir la fiche d'un athlète pour la montrer (démo
+  // « coach:first-athlete ») : on navigue vers le 1er athlète du roster.
+  useEffect(() => {
+    if (!roster.length) return
+    const apply = (id: string | null) => { if (id === 'coach:first-athlete') router.push(`/coach/athlete/${roster[0].id}`) }
+    try { apply(getGuideDemoId()) } catch { /* ignore */ }
+    const h = (e: Event) => apply((e as CustomEvent<{ id: string | null }>).detail?.id ?? null)
+    window.addEventListener(GUIDE_DEMO_EVENT, h)
+    return () => window.removeEventListener(GUIDE_DEMO_EVENT, h)
+  }, [roster, router])
 
   const groups = useMemo(() => Array.from(new Set(roster.map(a => a.group).filter((g): g is string => !!g))).sort(), [roster])
   const kpis = useMemo(() => ({

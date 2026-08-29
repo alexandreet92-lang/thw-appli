@@ -356,9 +356,7 @@ function ChannelColumn({ space, channels, activeId, loading, isNarrow, joining, 
                 </span>
               </button>
             </>
-          ) : (
-            <SpaceBadge space={space} size={34} />
-          )}
+          ) : null /* le logo est déjà affiché dans le rail des espaces → pas de doublon */}
           <span style={{ fontFamily: FD, fontSize: 17, fontWeight: 600, color: 'var(--text)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{space.name}</span>
           {canManage && (
             <button onClick={onManage} title={t('w1g.manageSpace')} aria-label={t('w1g.manageSpace')}

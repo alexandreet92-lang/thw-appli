@@ -221,10 +221,16 @@ export const PERF_TOUR: GuideStep[] = [
     '**FC**, **allure** ou **puissance** selon le sport',
     'Ce sont ces zones qu\'on utilise dans le planning',
   ] },
+  { route: '/performance', demo: 'perf:datas', anchor: 'page-tabs', title: 'Onglet Datas', lines: [
+    'Séparé en deux : **Records** et **Données annuelles**',
+    '**Records** — tes PR, ta **courbe de puissance/allure**, tes **records de côte**',
+    '**Données annuelles** — **compare tes années** (volume, D+, charge…)',
+  ] },
   { route: '/performance', demo: 'perf:tests', anchor: 'page-tabs', title: 'Onglet Tests', lines: [
     'Des **protocoles** par sport (VMA, FTP, CSS, Hyrox…)',
-    'Tu fais le test → tes zones se **mettent à jour**',
-    'Chaque test garde son **historique**',
+    'Chaque test : objectif, conditions, échauffement, protocole, interprétation',
+    'Tu fais le test → tes **zones se mettent à jour** + **historique**',
+    'Tu peux aussi **créer tes propres tests** (visibles par toi seul)',
   ] },
 ]
 
@@ -245,8 +251,14 @@ export const ACTIVITIES_TOUR: GuideStep[] = [
   ] },
   { route: '/activities', anchor: 'act-row', title: 'Une activité', lines: [
     'Chaque ligne = une séance réalisée',
-    'Clique pour l\'**analyse détaillée** : FC, puissance, allure, zones, laps',
+    'Clique pour ouvrir l\'**analyse détaillée**',
   ] },
+  { route: '/activities', title: 'L\'analyse d\'une séance', lines: [
+    'Vélo : **puissance, NP, IF, TSS**, courbe, zones, W/kg',
+    'Course : **allure, FC, dérive cardiaque, D+**, zones, laps',
+    'Carte GPS, comparatif d\'intervalles, et **analyse par l\'IA**',
+  ] },
+  { route: '/activities', title: 'Analyser par l\'IA', message: 'Sur chaque activité, un bouton « Analyser par l\'IA » : elle lit la séance (charge, zones, dérive, points forts/faibles) et te sort une lecture concrète + des graphiques.' },
 ]
 
 // CALENDRIER — objectifs, courses, phases.
@@ -283,6 +295,11 @@ export const SESSION_TOUR: GuideStep[] = [
     'Course, vélo, muscu, Hyrox, boxe…',
     'Chaque sport a ses familles de séances',
   ] },
+  { route: '/session', title: 'Ouvre un sport', lines: [
+    'Clique un sport → ses **familles de séances**',
+    'Course : endurance · sprints · intervalles/strides',
+    'Vélo : Z2 · seuil · VO2… — chaque séance a durée, filière, RPE',
+  ] },
   { route: '/session', anchor: 'page-tabs', title: 'Bibliothèque & Builder', lines: [
     '**Bibliothèque** — les séances toutes faites',
     '**Builder** — pour composer la tienne bloc par bloc',
@@ -307,6 +324,11 @@ export const NUTRITION_TOUR: GuideStep[] = [
   { route: '/nutrition', demo: 'nutri:today', anchor: 'nutri-day-meals', title: 'Repas du jour', lines: [
     'Ajoute tes repas — total mis à jour en direct',
     'Recherche d\'aliments et code-barres (mobile)',
+  ] },
+  { route: '/nutrition', demo: 'nutri:today', title: 'Photo de ton repas', lines: [
+    'Prends ton repas en **photo** → l\'IA l\'analyse',
+    'Elle estime **calories, macros ET micros**',
+    'Tu peux tout **ajuster à la main** avant de valider',
   ] },
   { route: '/nutrition', demo: 'nutri:plan', anchor: 'nutri-targets', title: 'Cibles par type de jour', lines: [
     'Des cibles différentes : **récup / modéré / dur**',
@@ -333,6 +355,11 @@ export const INJURIES_TOUR: GuideStep[] = [
   { route: '/injuries', demo: 'inj:apercu', anchor: 'inj-stats', title: 'Disponibilité', lines: [
     'Ton état : **dispo**, **adapté** ou **repos conseillé**',
     'Les mouvements à éviter aujourd\'hui',
+  ] },
+  { route: '/injuries', demo: 'inj:apercu', title: 'Suivi de guérison', lines: [
+    'Chaque blessure a son **journal** jour après jour',
+    'Note douleur, séances adaptées, étapes de reprise',
+    'L\'app te dit **quand reprendre** et à quelle intensité',
   ] },
   { route: '/injuries', demo: 'inj:analyse', anchor: 'inj-analytics', title: 'Analyses & prévention', lines: [
     'Zones **chroniques**, récidives, délai de retour',

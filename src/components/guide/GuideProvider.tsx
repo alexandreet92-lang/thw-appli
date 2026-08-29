@@ -227,17 +227,35 @@ function GuideOverlay({ step, rect, index, total, pageInfo, onNext, onPrev, onSk
   // Position — la carte est TOUJOURS entièrement à l'écran, et la flèche visible
   // dans l'espace entre la cible et la carte (jamais cachée derrière).
   const pos = (() => {
-    if (!hole) return { left: Math.round((vw - BW) / 2), top: Math.round(clamp((vh - H) / 2, 12, vh - H - 12)), arrow: null as null | { x: number; y: number; dir: 'up' | 'down' } }
+    const centered = { left: Math.round((vw - BW) / 2), top: Math.round(clamp((vh - H) / 2, 12, vh - H - 12)), arrow: null as null | { x: number; y: number; dir: 'up' | 'down' } }
+    if (!hole) return centered
     const cx = hole.left + hole.width / 2
+    const cy = hole.top + hole.height / 2
     const roomBelow = vh - (hole.top + hole.height) - 12
     const roomAbove = hole.top - 12
-    let dir: 'up' | 'down'; let top: number
-    if (roomBelow >= H + GAP) { dir = 'down'; top = hole.top + hole.height + GAP }
-    else if (roomAbove >= H + GAP) { dir = 'up'; top = hole.top - H - GAP }
-    else if (roomBelow >= roomAbove) { dir = 'down'; top = clamp(hole.top + hole.height + GAP, 12, vh - H - 12) }
-    else { dir = 'up'; top = clamp(hole.top - H - GAP, 12, vh - H - 12) }
-    const left = clamp(cx - BW / 2, 12, vw - BW - 12)
-    return { left, top, arrow: { x: clamp(cx, 20, vw - 20), y: dir === 'down' ? hole.top + hole.height + 4 : hole.top - 4, dir } }
+    const roomRight = vw - (hole.left + hole.width) - 12
+    const roomLeft = hole.left - 12
+    // Ordre de préférence : sous → au-dessus → à droite → à gauche. La carte ne
+    // RECOUVRE JAMAIS la cible : si aucun côté ne rentre, on la met dans le coin
+    // le plus éloigné (sans flèche), pour que la cible reste toujours visible.
+    if (roomBelow >= H + GAP) {
+      const top = hole.top + hole.height + GAP
+      return { left: clamp(cx - BW / 2, 12, vw - BW - 12), top, arrow: { x: clamp(cx, 20, vw - 20), y: hole.top + hole.height + 4, dir: 'down' as const } }
+    }
+    if (roomAbove >= H + GAP) {
+      const top = hole.top - H - GAP
+      return { left: clamp(cx - BW / 2, 12, vw - BW - 12), top, arrow: { x: clamp(cx, 20, vw - 20), y: hole.top - 4, dir: 'up' as const } }
+    }
+    if (roomRight >= BW + GAP) {
+      return { left: hole.left + hole.width + GAP, top: clamp(cy - H / 2, 12, vh - H - 12), arrow: null }
+    }
+    if (roomLeft >= BW + GAP) {
+      return { left: hole.left - BW - GAP, top: clamp(cy - H / 2, 12, vh - H - 12), arrow: null }
+    }
+    // Aucun côté ne rentre : coin vertical opposé à la cible (haut si cible en bas,
+    // bas si cible en haut), collé au bord, sans recouvrir le centre de la cible.
+    const putTop = cy > vh / 2 ? 12 : Math.max(12, vh - H - 12)
+    return { left: clamp(cx - BW / 2, 12, vw - BW - 12), top: putTop, arrow: null }
   })()
 
   const lastOfPage = !!pageInfo && pageInfo.posInPage >= pageInfo.pageCount

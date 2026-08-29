@@ -13,10 +13,22 @@
 //   actuel (flow wizard ou prompt libre).
 // ══════════════════════════════════════════════════════════════════
 
+// Type de champ d'une question. Par défaut déduit : options → 'single' (ou
+// 'multi' si note contient « plusieurs »), sinon 'text'. Le moteur unique
+// (QuickActionFlow) sait rendre tous ces types en cartes natives.
+export type QAKind = 'single' | 'multi' | 'text' | 'slider' | 'duration'
+
 export interface QAItem {
   q: string                    // la question
   options?: string[]           // propositions (cartes) ; absent = réponse libre
-  note?: string                // précision optionnelle pour le coach
+  note?: string                // précision (ex. « plusieurs choix possibles », « optionnel »)
+  kind?: QAKind                // force le type de champ
+  // slider : bornes + libellés d'extrémités
+  min?: number; max?: number; minLabel?: string; maxLabel?: string
+  // duration : pills de minutes (ex. [30, 45, 60, 90])
+  durations?: number[]
+  multiline?: boolean          // text : zone multi-lignes
+  optional?: boolean           // question sautable
 }
 
 export interface QuickActionSpec {
@@ -177,9 +189,13 @@ export const QUICK_ACTION_SPECS: Record<string, QuickActionSpec> = {
     key: 'seance_du_jour',
     objective: 'LA séance à faire aujourd\'hui, adaptée à ma forme du jour',
     questions: [
-      { q: 'Combien de temps as-tu aujourd\'hui ?', options: ['30 min', '45 min', '1 h', '1 h 30+'] },
+      { q: 'Quel sport aujourd\'hui ?', options: ['Course', 'Vélo', 'Muscu / Renfo', 'Natation', 'Hyrox', 'Peu importe — surprends-moi'] },
+      { q: 'Combien de temps as-tu ?', kind: 'duration', durations: [30, 45, 60, 90, 120] },
+      { q: 'Ta forme du jour ?', kind: 'slider', min: 1, max: 5, minLabel: 'Cramé', maxLabel: 'En feu', note: '1 = fatigué · 5 = frais et prêt' },
+      { q: 'Une intention pour aujourd\'hui ?', options: ['Suivre mon planning', 'Du facile / récup', 'De la qualité (intensité)', 'Du volume'], note: 'optionnel' },
+      { q: 'Une contrainte du jour ?', note: 'optionnel — ex : petite gêne, pas de salle, chaleur…' },
     ],
-    produce: "une séance prête à exécuter (échauffement, corps, retour au calme, zones/allures cibles) cohérente avec ce que dit ma récup et ma charge, et avec ce qui est prévu dans mon planning.",
+    produce: "une séance prête à exécuter (échauffement, corps de séance, retour au calme, zones/allures/watts cibles selon MES zones), calibrée sur ma forme du jour et ce qui est prévu dans mon planning. Ajoute un profil d'intensité en graphique quand c'est pertinent.",
   },
   peu_de_temps: {
     key: 'peu_de_temps',
@@ -289,8 +305,14 @@ export const QUICK_ACTION_SPECS: Record<string, QuickActionSpec> = {
   run_vo2: {
     key: 'run_vo2',
     objective: 'une séance course VO2max / VMA',
-    questions: [{ q: 'Dureté visée ?', options: ['Découverte', 'Classique', 'Costaud'] }],
-    produce: "une séance VMA/VO2max (répétitions, allure cible % VMA, ratio effort/récup, volume) calibrée sur ma VMA et ma fraîcheur.",
+    questions: [
+      { q: 'Format d\'intervalles préféré ?', options: ['Courts (30/30, 200-400 m)', 'Moyens (400-1000 m)', 'Longs (1000-1600 m)', 'Peu importe — choisis pour moi'] },
+      { q: 'Temps total dispo (échauffement inclus) ?', kind: 'duration', durations: [40, 50, 60, 75] },
+      { q: 'Dureté visée ?', kind: 'slider', min: 1, max: 5, minLabel: 'Découverte', maxLabel: 'Costaud', note: '1 = prudent · 5 = grosse séance' },
+      { q: 'Où la fais-tu ?', options: ['Piste', 'Route / plat', 'Nature / vallonné', 'Tapis'], note: 'optionnel' },
+      { q: 'Une contrainte ?', note: 'optionnel — ex : jambes lourdes, reprise, chaleur…' },
+    ],
+    produce: "une séance VMA/VO2max complète (échauffement, corps avec répétitions + allure cible en % VMA/allure et ratio effort/récup, retour au calme), calibrée sur MA VMA et ma fraîcheur, avec un profil d'intensité en graphique.",
   },
   run_power: {
     key: 'run_power',

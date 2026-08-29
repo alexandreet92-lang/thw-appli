@@ -125,19 +125,18 @@ export async function GET(req: NextRequest) {
     }
   } catch { /* best-effort */ }
 
-  // ── 3. Plan / essai en expiration (~3 jours) ──
+  // ── 3. Abonnement en fin de période (résiliation programmée, ~3 jours) ──
+  // Note : l'essai 14 j athlète est géré au bloc 3b (basé sur la date
+  // d'inscription). On NE lit PAS trial_ends_at (colonne jamais renseignée).
   try {
     const { data: subsRows } = await sb.from('user_subscriptions')
-      .select('user_id,current_period_end,trial_ends_at,status,cancel_at_period_end')
+      .select('user_id,current_period_end,cancel_at_period_end')
       .in('user_id', userIds)
-    for (const s of (subsRows ?? []) as Array<{ user_id: string; current_period_end: string | null; trial_ends_at: string | null; status: string | null; cancel_at_period_end: boolean | null }>) {
-      const trialEnd = s.trial_ends_at ? s.trial_ends_at.slice(0, 10) : null
+    for (const s of (subsRows ?? []) as Array<{ user_id: string; current_period_end: string | null; cancel_at_period_end: boolean | null }>) {
       const periodEnd = s.current_period_end ? s.current_period_end.slice(0, 10) : null
-      const trialEnding = s.status === 'trialing' && trialEnd && (trialEnd === plus(3) || trialEnd === plus(1))
       const subEnding = s.cancel_at_period_end && periodEnd && (periodEnd === plus(3) || periodEnd === plus(1))
-      if (trialEnding || subEnding) {
-        const endDate = trialEnding ? trialEnd! : periodEnd!
-        await fire(s.user_id, 'tokens.plan_expiration', { title: 'Ton abonnement arrive à échéance', body: trialEnding ? 'Ta période d’essai se termine bientôt.' : 'Ton abonnement se termine bientôt.', url: '/settings/subscription', dedupKey: `expire-${endDate}`, once: true })
+      if (subEnding) {
+        await fire(s.user_id, 'tokens.plan_expiration', { title: 'Ton abonnement arrive à échéance', body: 'Ton abonnement se termine bientôt.', url: '/settings/subscription', dedupKey: `expire-${periodEnd}`, once: true })
       }
     }
   } catch { /* best-effort */ }

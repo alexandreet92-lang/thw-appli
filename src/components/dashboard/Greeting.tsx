@@ -1,7 +1,12 @@
 'use client'
 // ══════════════════════════════════════════════════════════════
 // Salutation + badge plan/essai. Source : profiles (useProfile)
-// + user_subscriptions (tier, status, trial_ends_at).
+// + user_subscriptions (tier, status, stripe_subscription_id).
+//
+// Essai 14 j : source de vérité = la DATE D'INSCRIPTION (auth.created_at),
+// alignée sur getUserTier (check-quota.ts). On N'UTILISE PAS trial_ends_at
+// (colonne jamais renseignée). Un abonnement payant réel (stripe_subscription_id
+// + status active/trialing) prime toujours sur le badge d'essai.
 // ══════════════════════════════════════════════════════════════
 
 import { useEffect, useState } from 'react'
@@ -9,30 +14,23 @@ import { useProfile } from '@/hooks/useProfile'
 import { useI18n } from '@/lib/i18n'
 import { createClient } from '@/lib/supabase/client'
 import { getCurrentUser } from '@/lib/auth/currentUser'
-import { FD, FB, formatLongDate, daysUntil } from './lib'
-
-type TFn = (key: string, vars?: Record<string, string | number>) => string
+import { FD, FB, formatLongDate } from './lib'
 
 const PLAN_LABEL: Record<string, string> = {
   premium: 'Premium', pro: 'Pro', expert: 'Expert',
 }
 
-interface SubRow { tier: string | null; status: string | null; trial_ends_at: string | null }
+// Durée de l'essai offert à l'inscription (jours). Doit rester alignée sur
+// TRIAL_DAYS de src/lib/subscriptions/check-quota.ts.
+const TRIAL_DAYS = 14
 
-function badgeText(sub: SubRow | null, t: TFn): string | null {
-  if (!sub) return null
-  const isTrial = sub.status === 'trialing' || sub.tier === 'trial'
-  if (isTrial) {
-    const days = sub.trial_ends_at ? daysUntil(sub.trial_ends_at) : 0
-    return t('dashboard.trialBadge', { days })
-  }
-  return sub.tier ? (PLAN_LABEL[sub.tier] ?? sub.tier) : null
-}
+interface SubRow { tier: string | null; status: string | null; stripe_subscription_id: string | null }
 
 export function Greeting({ rightSlot }: { rightSlot?: React.ReactNode }) {
   const { t } = useI18n()
   const { profile } = useProfile()
   const [sub, setSub] = useState<SubRow | null>(null)
+  const [trialDaysLeft, setTrialDaysLeft] = useState<number | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -40,9 +38,14 @@ export function Greeting({ rightSlot }: { rightSlot?: React.ReactNode }) {
       const supabase = createClient()
       const user = await getCurrentUser()
       if (!user) return
+      // Jours d'essai restants, dérivés de la date d'inscription.
+      if (user.created_at) {
+        const elapsed = (Date.now() - new Date(user.created_at).getTime()) / 86400000
+        if (!cancelled) setTrialDaysLeft(Math.max(0, Math.ceil(TRIAL_DAYS - elapsed)))
+      }
       const { data } = await supabase
         .from('user_subscriptions')
-        .select('tier, status, trial_ends_at')
+        .select('tier, status, stripe_subscription_id')
         .eq('user_id', user.id)
         .maybeSingle()
       if (!cancelled) setSub((data as SubRow | null) ?? null)
@@ -51,7 +54,12 @@ export function Greeting({ rightSlot }: { rightSlot?: React.ReactNode }) {
   }, [])
 
   const firstName = profile?.full_name?.trim().split(/\s+/)[0] ?? null
-  const badge = badgeText(sub, t)
+
+  // Abonnement payant réel → badge du plan ; sinon essai (si jours restants).
+  const hasPaidSub = !!(sub?.stripe_subscription_id && (sub.status === 'active' || sub.status === 'trialing'))
+  const badge: string | null = hasPaidSub
+    ? (sub?.tier ? (PLAN_LABEL[sub.tier] ?? sub.tier) : null)
+    : (trialDaysLeft && trialDaysLeft > 0 ? t('dashboard.trialBadge', { days: trialDaysLeft }) : null)
 
   return (
     <header style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 'var(--space-4)', marginBottom: 'var(--space-6)' }}>

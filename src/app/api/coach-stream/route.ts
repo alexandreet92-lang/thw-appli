@@ -795,18 +795,26 @@ APRÈS l'oral : un résumé SCHÉMATISÉ et aéré pour l'écran. CE N'EST PAS l
 (Les deux parties doivent être DIFFÉRENTES : l'oral discute, l'écrit schématise. Cette consigne annule toute consigne de format/markdown donnée plus haut pour la partie orale.)`
   }
 
-  // ── Pré-check tokens (fail-open : n'interrompt jamais en cas d'erreur) ──
-  // Mode Studio → solde Studio uniquement (le quota chat n'est pas touché).
+  // ── Pré-check tokens ───────────────────────────────────────────
   const tokenModelKey = (chatBody as { modelId?: string }).modelId ?? 'athena'
-  try {
-    const rawEstimate = Math.ceil((JSON.stringify(anthropicMessages).length + systemWithTools.length) / 4)
-    const estimate = Math.ceil(rawEstimate * getModelMultiplier(tokenModelKey))
-    if (isStudio) {
+  const rawEstimate = Math.ceil((JSON.stringify(anthropicMessages).length + systemWithTools.length) / 4)
+  const estimate = Math.ceil(rawEstimate * getModelMultiplier(tokenModelKey))
+
+  if (isStudio) {
+    // Studio = tokens payants → fail-CLOSED : si le solde est indisponible
+    // (erreur DB), on REFUSE plutôt que de laisser un run dépenser sans garde.
+    try {
       const access = await getStudioAccess(userId)
       if (estimate > access.remaining) {
         return new Response(JSON.stringify({ error: 'Solde de tokens Studio insuffisant pour ce run. Recharge avec un pack Studio.' }), { status: 402, headers: { 'Content-Type': 'application/json' } })
       }
-    } else {
+    } catch (e) {
+      console.error('[coach-stream] studio token pre-check failed (fail-closed):', e)
+      return new Response(JSON.stringify({ error: 'Impossible de vérifier ton solde Studio pour l’instant. Réessaie dans un instant.' }), { status: 503, headers: { 'Content-Type': 'application/json' } })
+    }
+  } else {
+    // Chat = fail-open : une erreur transitoire ne doit pas bloquer un abonné.
+    try {
       const tl = await getUserTokenLimits(userId)
       const remainingRolling = tl.rolling_6h.limit - tl.rolling_6h.used
       const remainingTotal = (tl.monthly.limit - tl.monthly.used) + tl.bonus_tokens
@@ -817,9 +825,9 @@ APRÈS l'oral : un résumé SCHÉMATISÉ et aéré pour l'écran. CE N'EST PAS l
       if (estimate > remainingTotal) {
         return new Response(JSON.stringify({ error: 'Limite hebdomadaire de tokens atteinte. Recharge pour continuer.' }), { status: 402, headers: { 'Content-Type': 'application/json' } })
       }
+    } catch (e) {
+      console.error('[coach-stream] token pre-check failed (fail-open):', e)
     }
-  } catch (e) {
-    console.error('[coach-stream] token pre-check failed (fail-open):', e)
   }
 
   // ── Modèle effectif du CHAT (cappedKey calculé plus haut, aligné avec le prompt) ──

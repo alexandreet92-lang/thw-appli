@@ -85,11 +85,17 @@ export async function runGraphServer(userId: string, graph: StudioGraph, runId: 
     const raw = (resp.usage?.input_tokens ?? 0) + (resp.usage?.output_tokens ?? 0)
     weightedTokens += Math.ceil(raw * getModelMultiplier(modelKey))
     void recordStudioUsage(billTo, raw, modelKey, runId)
-    return resp.content
+    const text = resp.content
       .filter((b): b is Anthropic.TextBlock => b.type === 'text')
       .map(b => b.text)
       .join('\n\n')
       .trim()
+    // Sortie coupée par la limite de tokens → on le SIGNALE au lieu de passer une
+    // sortie tronquée en aval comme si elle était complète (rapport cut-off).
+    if (resp.stop_reason === 'max_tokens') {
+      return `${text}\n\n_[Sortie tronquée : limite de longueur atteinte. Relance ce nœud pour obtenir la suite.]_`
+    }
+    return text
   }
 
   let guard = 0

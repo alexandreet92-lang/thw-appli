@@ -451,6 +451,11 @@ export async function POST(req: NextRequest) {
             input_tokens:  inputTokens,
             output_tokens: outputTokens,
           })
+          // Décompte AUSSI les tokens sur le quota (plan/bonus) : le mode parser
+          // (session-builder, nutrition… jusqu'à 8000 tokens) ne doit pas être une
+          // porte dérobée pour dépasser les limites. Sans ça, seul le compteur de
+          // messages était incrémenté.
+          void recordTokenUsage(userId, inputTokens + outputTokens, { model })
         }
       },
     })
@@ -1164,7 +1169,10 @@ APRÈS l'oral : un résumé SCHÉMATISÉ et aéré pour l'écran. CE N'EST PAS l
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e)
         console.error('[coach-stream] agentic loop error:', msg)
-        send('text', JSON.stringify(`\n\n⚠️ IA : ${msg}`))
+        // On N'EXPOSE PAS le message d'erreur brut à l'utilisateur (fuite d'infos
+        // internes : IDs modèle, erreurs API…). Message générique côté chat, détail
+        // en logs serveur uniquement.
+        send('text', JSON.stringify('\n\n⚠️ Une erreur est survenue pendant l\'analyse. Réessaie dans un instant.'))
         runErrored = true
         if (runId) {
           try { await sbForTools.from('coach_runs').update({ status: 'error', content: fullText, error: msg, updated_at: new Date().toISOString() }).eq('id', runId) } catch { /* best-effort */ }

@@ -39,10 +39,14 @@ export async function getStudioAccess(userId: string): Promise<StudioAccess> {
   const monthlyLimit = Math.max(coachStudioTokens, STUDIO_MONTHLY_TOKENS[tier] ?? 0)
 
   const sb = createServiceClient()
+  // Consommation MENSUELLE = uniquement les tokens décomptés du quota inclus
+  // (source='monthly'). Les tokens de packs ont leur propre solde (studio_wallet)
+  // et ne doivent PAS gonfler monthlyUsed.
   const { data: rows } = await sb
     .from('studio_usage')
     .select('tokens_used')
     .eq('user_id', userId)
+    .eq('source', 'monthly')
     .gte('created_at', monthStartISO())
   const monthlyUsed = (rows ?? []).reduce((s, r) => s + (r.tokens_used ?? 0), 0)
 
@@ -89,28 +93,28 @@ export async function recordStudioUsage(userId: string, rawTokens: number, model
       if (fromMonthly > 0) {
         await sb.from('studio_usage').insert({ ...base, tokens_used: fromMonthly, raw_tokens: Math.round(fromMonthly / mult), source: 'monthly' })
       }
-      await sb.from('studio_usage').insert({ ...base, tokens_used: fromPack, raw_tokens: Math.round(fromPack / mult), source: 'pack' })
-      await sb.from('studio_wallet').upsert(
-        { user_id: userId, pack_tokens: Math.max(0, access.packTokens - fromPack), updated_at: new Date().toISOString() },
-        { onConflict: 'user_id' },
-      )
+      // Débit ATOMIQUE du wallet (verrou DB) : évite la perte de tokens quand
+      // plusieurs nœuds d'un run Studio s'exécutent en parallèle. La RPC borne à 0
+      // et renvoie le montant RÉELLEMENT débité — on ne logue que celui-ci pour ne
+      // pas comptabiliser plus que le solde disponible.
+      if (fromPack > 0) {
+        const { data: debited } = await sb.rpc('debit_studio_pack', { p_user_id: userId, p_amount: fromPack })
+        const actuallyDebited = typeof debited === 'number' ? debited : fromPack
+        if (actuallyDebited > 0) {
+          await sb.from('studio_usage').insert({ ...base, tokens_used: actuallyDebited, raw_tokens: Math.round(actuallyDebited / mult), source: 'pack' })
+        }
+      }
     }
   } catch (e) {
     console.error('[recordStudioUsage] error:', e)
   }
 }
 
-/** Crédite des tokens de pack (webhook Stripe). */
+/** Crédite des tokens de pack (webhook Stripe). Incrément ATOMIQUE côté DB :
+ *  un crédit qui arrive pendant un run actif ne peut plus écraser le solde. */
 export async function creditStudioPack(userId: string, tokens: number): Promise<void> {
   if (tokens <= 0) return
   const sb = createServiceClient()
-  const { data: wallet } = await sb
-    .from('studio_wallet')
-    .select('pack_tokens')
-    .eq('user_id', userId)
-    .maybeSingle()
-  await sb.from('studio_wallet').upsert(
-    { user_id: userId, pack_tokens: (wallet?.pack_tokens ?? 0) + tokens, updated_at: new Date().toISOString() },
-    { onConflict: 'user_id' },
-  )
+  const { error } = await sb.rpc('credit_studio_pack', { p_user_id: userId, p_tokens: tokens })
+  if (error) console.error('[creditStudioPack] rpc error:', error.message)
 }

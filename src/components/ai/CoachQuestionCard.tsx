@@ -6,8 +6,11 @@
 // avec navigation au doigt (swipe horizontal) + animation de glissement.
 // ══════════════════════════════════════════════════════════════
 
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useI18n } from '@/lib/i18n'
+
+// Locale de reconnaissance vocale selon la langue de l'app.
+const VOICE_LANG: Record<string, string> = { fr: 'fr-FR', en: 'en-US', es: 'es-ES' }
 
 export interface ClarifyingQuestion {
   header: string
@@ -38,7 +41,7 @@ export function CoachQuestionCard({
   /** Active le micro (dictée) sur le champ libre. */
   enableVoice?: boolean
 }) {
-  const { t } = useI18n()
+  const { t, lang } = useI18n()
   const qs = data.questions
   const [page, setPage] = useState(0)
   const [anim, setAnim] = useState<'next' | 'prev' | null>(null)
@@ -48,6 +51,10 @@ export function CoachQuestionCard({
   const drag = useRef<{ x: number; dx: number } | null>(null)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const recogRef = useRef<any>(null)
+
+  // Coupe la reconnaissance vocale si la carte est démontée en pleine dictée
+  // (flow fermé / question soumise) → pas de setState sur un arbre démonté.
+  useEffect(() => () => { try { recogRef.current?.stop() } catch { /* ignore */ } }, [])
 
   const answered = data.answered !== undefined
 
@@ -97,7 +104,7 @@ export function CoachQuestionCard({
     if (listening) { try { recogRef.current?.stop() } catch { /* ignore */ } setListening(false); return }
     try {
       const r = new SR()
-      r.lang = 'fr-FR'; r.interimResults = true; r.continuous = false
+      r.lang = VOICE_LANG[lang] ?? 'fr-FR'; r.interimResults = true; r.continuous = false
       r.onresult = (e: { results: ArrayLike<ArrayLike<{ transcript: string }>> & { length: number } }) => {
         // On ne prend que les résultats FINAUX et on les ajoute au champ de la
         // question courante — via un setter fonctionnel (pas de valeur périmée).
@@ -140,7 +147,7 @@ export function CoachQuestionCard({
     if (!drag.current || !wrapRef.current) return
     let dx = e.touches[0].clientX - drag.current.x
     // résistance aux bords
-    if ((dx > 0 && page === 0) || (dx < 0 && (isLast ? !canProceed : !canProceed))) dx *= 0.3
+    if ((dx > 0 && page === 0) || (dx < 0 && !canProceed)) dx *= 0.3
     drag.current.dx = dx
     wrapRef.current.style.transform = `translateX(${dx}px)`
   }
@@ -152,7 +159,7 @@ export function CoachQuestionCard({
     el.style.transition = 'transform 0.22s ease'
     el.style.transform = 'translateX(0px)'
     const dx = d?.dx ?? 0
-    if (dx < -55 && (isLast ? canProceed : canProceed)) { if (isLast) submit(); else goNext() }
+    if (dx < -55 && canProceed) { if (isLast) submit(); else goNext() }
     else if (dx > 55 && page > 0) goPrev()
   }
 

@@ -22,7 +22,10 @@ export function getAnthropicClient(): Anthropic {
 export const MODELS = {
   fast:     'claude-haiku-4-5-20251001',   // Q&A, chat, nutrition, readiness, génération texte court
   balanced: 'claude-sonnet-4-6',           // analyse données complexes, planning, performance
-  powerful: 'claude-sonnet-4-6',           // génération programme complet multi-semaines
+  // Zeus = le plus puissant. DOIT rester aligné sur MODEL_IDS.zeus (tier-limits.ts)
+  // et sur le multiplicateur ×6 (multipliers.ts) : sinon Studio facturait du Opus
+  // (×6) tout en exécutant du Sonnet.
+  powerful: 'claude-opus-4-8',             // génération programme complet / nœuds Studio Zeus
 } as const
 
 export type ModelKey = keyof typeof MODELS

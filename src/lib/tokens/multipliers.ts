@@ -1,6 +1,6 @@
 // ══════════════════════════════════════════════════════════════
 // Multiplicateurs de consommation de tokens par modèle.
-// La clé THWModel prime (Zeus et Athéna partagent l'ID API Sonnet).
+// La clé THWModel prime : Hermès=Haiku (×1), Athéna=Sonnet (×3), Zeus=Opus (×6).
 // ══════════════════════════════════════════════════════════════
 
 export const MODEL_MULTIPLIERS = {

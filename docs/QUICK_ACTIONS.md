@@ -13,6 +13,23 @@
 
 - **Action rapide (quick action)** : un bouton pré-câblé qui, en 1 tap, envoie à l'IA
   un objectif précis (souvent avec des questions de cadrage) ou déclenche un flow.
+
+### Le « système » de chaque action rapide (priorité spec → flow → prompt)
+
+Chaque action rapide a désormais UN système clair et homogène. Au clic, l'ordre de
+résolution est (AIPanel, `renderActionButton` + `runAction`) :
+
+1. **spec** (`QUICK_ACTION_SPECS`, `src/lib/quick-actions/specs.ts`) — le mode par défaut :
+   `objective` (à quoi sert l'action) + `questions` décisives (posées via les cartes de
+   clarification, l'IA saute celles dont elle connaît déjà la réponse) + `produce` (le
+   livrable attendu). L'IA s'adapte à mon niveau/mes données puis génère.
+2. **flow** — un assistant multi-étapes sur mesure pour les gros livrables structurés
+   (`training_plan`, `nutrition`, `sessionbuilder`, `strategie_course`, `analyze_training`…).
+3. **prompt** — repli historique (prompt figé). **Plus aucune action athlète n'en dépend** :
+   les 53 ont soit un `flow` riche, soit une `spec` (objectif + questions + livrable).
+
+Autrement dit : « à quoi sert l'action » = son `objective`, « comment elle réfléchit » =
+ses `questions` + `produce` (ou son `flow`). Pour ajuster une action, on édite sa spec.
 - **Outil (tool)** : capacité que l'IA appelle elle-même pendant sa réflexion
   (lecture de données réelles, ou écriture dans l'app après validation).
 - **Action Studio** : nœud d'écriture d'un système d'agents (planning, calendrier…).

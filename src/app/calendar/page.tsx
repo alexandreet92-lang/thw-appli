@@ -74,10 +74,25 @@ interface CalEventType {
   id: string; name: string; color: string; category: 'pro' | 'perso'
 }
 
+type Importance = 'normal' | 'important' | 'primordial'
 interface CalEvent {
   id: string; category: 'race' | 'pro' | 'perso' | 'test'
   typeId?: string; date: string; title: string; description?: string; color?: string
   ref?: string | null   // 'test' : slug du test Performance lié
+  importance?: Importance   // pro/perso : niveau → teinte (bleu pour pro, violet pour perso)
+  done?: boolean            // pro/perso : objectif Fait / Pas fait
+}
+
+// Dégradé de teinte par importance : bleu pour les objectifs Pro, violet pour les Perso.
+const IMPORTANCE_SHADES: Record<'pro' | 'perso', Record<Importance, string>> = {
+  pro:   { normal: '#93c5fd', important: '#3b82f6', primordial: '#1e40af' },
+  perso: { normal: '#c4b5fd', important: '#a855f7', primordial: '#6b21a8' },
+}
+const IMPORTANCE_LABEL_KEY: Record<Importance, string> = {
+  normal: 'calendar.impNormal', important: 'calendar.impImportant', primordial: 'calendar.impPrimordial',
+}
+function eventShade(category: 'pro' | 'perso', importance?: Importance): string {
+  return IMPORTANCE_SHADES[category][importance ?? 'normal']
 }
 
 // Combined event for All view
@@ -205,6 +220,8 @@ function useCalendar() {
       description: x.description as string | undefined,
       color: x.color as string | undefined,
       ref: (x.ref as string | null | undefined) ?? null,
+      importance: (x.importance as Importance | undefined) ?? 'normal',
+      done: (x.done as boolean | undefined) ?? false,
     })))
 
     setLoading(false)
@@ -451,7 +468,7 @@ function useCalendar() {
     const { data, error } = await supabase.from('calendar_events').insert({
       user_id: uid, category: e.category, type_id: e.typeId ?? null,
       date: e.date, title: e.title, description: e.description ?? null, color: e.color ?? null,
-      ref: e.ref ?? null,
+      ref: e.ref ?? null, importance: e.importance ?? 'normal', done: e.done ?? false,
     }).select().single()
     if (!error && data) setEvents(p => [...p, { ...e, id: data.id }])
   }
@@ -460,6 +477,7 @@ function useCalendar() {
     await supabase.from('calendar_events').update({
       type_id: e.typeId ?? null, date: e.date, title: e.title,
       description: e.description ?? null, color: e.color ?? null, ref: e.ref ?? null,
+      importance: e.importance ?? 'normal', done: e.done ?? false,
       updated_at: new Date().toISOString(),
     }).eq('id', e.id)
     setEvents(p => p.map(x => x.id === e.id ? e : x))
@@ -1167,8 +1185,10 @@ function CategoryEventModal({ category, eventTypes, initialDate, onClose, onSave
   const [date, setDate]       = useState(initialDate)
   const [desc, setDesc]       = useState('')
   const [typeId, setTypeId]   = useState<string>(types[0]?.id ?? '')
+  const [importance, setImportance] = useState<Importance>('normal')
 
   const selectedType = types.find(t => t.id === typeId)
+  const shade = eventShade(category, importance)
 
   return (
     <div onClick={onClose} style={{ position:'fixed',inset:0,zIndex:300,background:'rgba(0,0,0,0.55)',backdropFilter:'blur(4px)',display:'flex',alignItems:'center',justifyContent:'center',padding:16 }}>
@@ -1208,20 +1228,39 @@ function CategoryEventModal({ category, eventTypes, initialDate, onClose, onSave
           <input type="date" value={date} onChange={e => setDate(e.target.value)}
             style={{ width:'100%',padding:'7px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:12,outline:'none' }}/>
         </div>
-        <div style={{ marginBottom:14 }}>
+        <div style={{ marginBottom:12 }}>
           <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>{tr('calendar.description')}</p>
           <textarea value={desc} onChange={e => setDesc(e.target.value)} rows={2} placeholder={tr('calendar.optional')}
             style={{ width:'100%',padding:'7px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:12,outline:'none',resize:'none' }}/>
         </div>
+
+        {/* Importance : dégradé de teinte (bleu pour Pro, violet pour Perso). */}
+        <div style={{ marginBottom:14 }}>
+          <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:7 }}>{tr('calendar.importance')}</p>
+          <div style={{ display:'flex',gap:6 }}>
+            {(['normal','important','primordial'] as Importance[]).map(lvl => {
+              const c = eventShade(category, lvl); const on = importance === lvl
+              return (
+                <button key={lvl} onClick={() => setImportance(lvl)}
+                  style={{ flex:1,display:'flex',alignItems:'center',justifyContent:'center',gap:6,padding:'8px 6px',borderRadius:10,border:`1.5px solid ${on?c:'var(--border)'}`,background:on?`${c}1f`:'var(--bg-card2)',color:on?c:'var(--text-mid)',fontSize:11,fontWeight:on?700:500,cursor:'pointer' }}>
+                  <span style={{ width:10,height:10,borderRadius:'50%',background:c,flexShrink:0 }} />
+                  {tr(IMPORTANCE_LABEL_KEY[lvl])}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
         <div style={{ display:'flex',gap:8 }}>
           <button onClick={onClose} style={{ flex:1,padding:10,borderRadius:10,background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',fontSize:12,cursor:'pointer' }}>{tr('calendar.cancel')}</button>
           <button
             onClick={() => {
               if (!title || !date || !typeId) return
-              onSave({ category, typeId, date, title, description:desc||undefined, color: selectedType?.color })
+              // La teinte d'importance PRIME sur la couleur du type pour le rendu.
+              onSave({ category, typeId, date, title, description:desc||undefined, color: shade, importance, done:false })
               onClose()
             }}
-            style={{ flex:2,padding:10,borderRadius:10,background:selectedType ? selectedType.color : 'var(--bg-card2)',border:'none',color:'#fff',fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:12,cursor:'pointer' }}>
+            style={{ flex:2,padding:10,borderRadius:10,background:shade,border:'none',color:'#fff',fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:12,cursor:'pointer' }}>
             {tr('calendar.addBtn')}
           </button>
         </div>
@@ -1233,13 +1272,14 @@ function CategoryEventModal({ category, eventTypes, initialDate, onClose, onSave
 // ════════════════════════════════════════════════
 // CATEGORY TAB (Pro / Perso)
 // ════════════════════════════════════════════════
-function CategoryTab({ category, eventTypes, events, addEventType, updateEventType, deleteEventType, addEvent, deleteEvent }: {
+function CategoryTab({ category, eventTypes, events, addEventType, updateEventType, deleteEventType, addEvent, updateEvent, deleteEvent }: {
   category: 'pro' | 'perso'
   eventTypes: CalEventType[]; events: CalEvent[]
   addEventType: (t: Omit<CalEventType, 'id'>) => void
   updateEventType: (t: CalEventType) => void
   deleteEventType: (id: string) => void
   addEvent: (e: Omit<CalEvent, 'id'>) => void
+  updateEvent: (e: CalEvent) => void
   deleteEvent: (id: string) => void
 }) {
   const { t: tr } = useI18n()
@@ -1425,6 +1465,33 @@ function CategoryTab({ category, eventTypes, events, addEventType, updateEventTy
                       </div>
                     )
                   })}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Liste des objectifs {catégorie} : importance (teinte) + Fait / Pas fait. */}
+      {myEvents.length > 0 && (
+        <div style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:14,padding:14 }}>
+          <p style={{ fontFamily:'Syne,sans-serif',fontSize:13,fontWeight:700,margin:'0 0 10px' }}>{tr('calendar.myObjectives', { category: tr(CATEGORY_LABEL_KEY[category]) })}</p>
+          <div style={{ display:'flex',flexDirection:'column',gap:6 }}>
+            {[...myEvents].sort((a,b) => a.date.localeCompare(b.date)).map(ev => {
+              const col = getColor(ev)
+              return (
+                <div key={ev.id} style={{ display:'flex',alignItems:'center',gap:10,padding:'9px 11px',borderRadius:10,background:'var(--bg-card2)',border:`1px solid ${col}33`,opacity:ev.done?0.62:1 }}>
+                  <span style={{ width:9,height:9,borderRadius:'50%',background:col,flexShrink:0 }} />
+                  <div style={{ flex:1,minWidth:0 }}>
+                    <p style={{ fontSize:13,fontWeight:600,margin:0,color:'var(--text)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',textDecoration:ev.done?'line-through':'none' }}>{ev.title}</p>
+                    <p style={{ fontSize:10.5,color:'var(--text-dim)',margin:'1px 0 0' }}>{new Date(ev.date+'T12:00:00').toLocaleDateString(currentLocale(),{ day:'numeric',month:'short',year:'numeric' })} · {tr(IMPORTANCE_LABEL_KEY[ev.importance ?? 'normal'])}</p>
+                  </div>
+                  <button onClick={() => updateEvent({ ...ev, done: !ev.done })}
+                    style={{ display:'flex',alignItems:'center',gap:5,padding:'6px 11px',borderRadius:999,border:`1px solid ${ev.done?'#22c55e':'var(--border)'}`,background:ev.done?'rgba(34,197,94,0.14)':'var(--bg-card)',color:ev.done?'#22c55e':'var(--text-mid)',fontSize:11,fontWeight:700,cursor:'pointer',flexShrink:0 }}>
+                    {ev.done ? `✓ ${tr('calendar.statusDone')}` : tr('calendar.statusNotDone')}
+                  </button>
+                  <button onClick={() => deleteEvent(ev.id)} aria-label={tr('calendar.delete')}
+                    style={{ width:28,height:28,borderRadius:8,border:'none',background:'transparent',color:'var(--text-dim)',cursor:'pointer',flexShrink:0 }}>✕</button>
                 </div>
               )
             })}
@@ -1757,8 +1824,8 @@ export default function CalendarPage() {
         header={header}
         sections={[
           { id:'race',  label:t('calendar.tabRace'), subtitle:t('calendar.tabRaceSub'),  icon:Trophy,     content: loading ? loader : <RaceTab races={races} raceStages={raceStages} tests={events.filter(e => e.category === 'test')} addEvent={addEvent} updateEvent={updateEvent} deleteEvent={deleteEvent} addRaceWithFiles={addRaceWithFiles} updateRaceWithFiles={updateRaceWithFiles} updateRace={updateRace} deleteRace={deleteRace} markCompleted={markCompleted} addRaceStage={addRaceStage} updateRaceStage={updateRaceStage} deleteRaceStage={deleteRaceStage} patchStageDayLocal={patchStageDayLocal} deleteStageDayLocal={deleteStageDayLocal}/> },
-          { id:'pro',   label:t('calendar.tabPro'),    subtitle:t('calendar.tabProSub'),  icon:Briefcase,  content: loading ? loader : <CategoryTab category="pro"   eventTypes={eventTypes} events={events} addEventType={addEventType} updateEventType={updateEventType} deleteEventType={deleteEventType} addEvent={addEvent} deleteEvent={deleteEvent}/> },
-          { id:'perso', label:t('calendar.tabPerso'),  subtitle:t('calendar.tabPersoSub'),      icon:Heart,      content: loading ? loader : <CategoryTab category="perso" eventTypes={eventTypes} events={events} addEventType={addEventType} updateEventType={updateEventType} deleteEventType={deleteEventType} addEvent={addEvent} deleteEvent={deleteEvent}/> },
+          { id:'pro',   label:t('calendar.tabPro'),    subtitle:t('calendar.tabProSub'),  icon:Briefcase,  content: loading ? loader : <CategoryTab category="pro"   eventTypes={eventTypes} events={events} addEventType={addEventType} updateEventType={updateEventType} deleteEventType={deleteEventType} addEvent={addEvent} updateEvent={updateEvent} deleteEvent={deleteEvent}/> },
+          { id:'perso', label:t('calendar.tabPerso'),  subtitle:t('calendar.tabPersoSub'),      icon:Heart,      content: loading ? loader : <CategoryTab category="perso" eventTypes={eventTypes} events={events} addEventType={addEventType} updateEventType={updateEventType} deleteEventType={deleteEventType} addEvent={addEvent} updateEvent={updateEvent} deleteEvent={deleteEvent}/> },
           { id:'all',   label:t('calendar.tabAll'),   subtitle:t('calendar.tabAllSub'),    icon:LayoutGrid, content: loading ? loader : <AllTab races={races} eventTypes={eventTypes} events={events}/> },
         ]}
       />

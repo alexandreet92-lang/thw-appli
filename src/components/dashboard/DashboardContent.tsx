@@ -11,6 +11,7 @@ import SlideSheet from '@/components/ui/SlideSheet'
 import { Greeting } from './Greeting'
 import { QuickActions } from './QuickActions'
 import { Suggestions } from './Suggestions'
+import { DailyPlanningNotifier } from './DailyPlanningNotifier'
 import { AthleteCoachCard } from './AthleteCoachCard'
 import { UnreadMessagesCard } from './UnreadMessagesCard'
 import { AthleteFormsCard } from '@/components/coach/CustomForms'
@@ -39,6 +40,8 @@ export function DashboardContent() {
 
   return (
     <div className="dash-wrap">
+      {/* Émet une fois/jour le résumé du planning du jour (sport + pro + perso). */}
+      <DailyPlanningNotifier />
       <Greeting rightSlot={
         <div className="dash-desktop-only">
           <QuickActions />

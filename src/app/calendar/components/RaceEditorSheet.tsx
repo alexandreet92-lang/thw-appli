@@ -46,6 +46,7 @@ export default function RaceEditorSheet({ race, initialDate, initialLevel, onClo
   const isEvent = level === 'event'   // Événement / Défi : pas de priorité
   const [name, setName] = useState(race?.name ?? '')
   const [date, setDate] = useState(race?.date ?? initialDate ?? new Date().toISOString().split('T')[0])
+  const [endDate, setEndDate] = useState(race?.endDate ?? '')   // Événement/Défi multi-jours
   const [notes, setNotes] = useState(race?.notes ?? '')
   const [pd, setPd] = useState<Record<string, unknown>>(race?.performanceData ?? {})
   const [saving, setSaving] = useState(false)
@@ -80,6 +81,8 @@ export default function RaceEditorSheet({ race, initialDate, initialLevel, onClo
     try {
       await onSave(
         { name: name.trim(), sport, date, level, notes: notes || undefined, performanceData: pd,
+          // Multi-jours : uniquement pour un Événement/Défi avec une fin > début.
+          endDate: (isEvent && endDate && endDate > date) ? endDate : undefined,
           status: race?.status ?? 'upcoming',
           goalTime: (pd.goalTime as string) || (pd.triSwimTime ? '' : undefined),
           distance: (pd.distance as string) || (pd.rowDist as string) || undefined,
@@ -133,11 +136,15 @@ export default function RaceEditorSheet({ race, initialDate, initialLevel, onClo
               </div>
             </div>
             )}
-            {/* Nom + Date */}
-            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 12 }}>
+            {/* Nom + Date(s). Événement/Défi = plage de dates (multi-jours, comme un stage). */}
+            <div style={{ display: 'grid', gridTemplateColumns: isEvent ? '2fr 1fr 1fr' : '2fr 1fr', gap: 12 }}>
               <div><p style={LBL}>{t('calendar.name')}</p><input style={INP} value={name} onChange={e => setName(e.target.value)} placeholder={t('calendar.raceNamePlaceholder')} /></div>
-              <div><p style={LBL}>{t('calendar.date')}</p><input type="date" style={INP} value={date} onChange={e => setDate(e.target.value)} /></div>
+              <div><p style={LBL}>{isEvent ? t('calendar.start') : t('calendar.date')}</p><input type="date" style={INP} value={date} onChange={e => setDate(e.target.value)} /></div>
+              {isEvent && <div><p style={LBL}>{t('calendar.end')}</p><input type="date" style={INP} value={endDate} min={date} onChange={e => setEndDate(e.target.value)} /></div>}
             </div>
+            {isEvent && endDate && endDate > date && (
+              <p style={{ fontSize: 12.5, color: 'var(--text-dim)', margin: '-14px 0 0' }}>{t('calendar.multiDayHint')}</p>
+            )}
             {/* Segments adaptatifs — pour le triathlon, le dépôt du parcours
                 vélo est sous la section Vélo, et le parcours course sous la
                 section Course (et non en bas de la page). */}

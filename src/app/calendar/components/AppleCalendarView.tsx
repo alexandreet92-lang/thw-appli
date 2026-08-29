@@ -114,9 +114,14 @@ export default function AppleCalendarView({ races, stages, year, onDayClick, onR
           const firstDay    = getFirstDayISO(year, mi) // 1=Mon…7=Sun
 
           // Races & stages for this month
+          // Un objectif « Événement / Défi » multi-jours (endDate) s'étale sur
+          // sa plage, comme un stage → il apparaît dès que sa plage croise le mois.
           const monthRaces  = races.filter(r => {
-            const d = new Date(r.date + 'T12:00:00')
-            return d.getFullYear() === year && d.getMonth() === mi
+            const start = new Date(r.date + 'T12:00:00')
+            const end   = new Date((r.endDate || r.date) + 'T12:00:00')
+            const mStart = new Date(year, mi, 1)
+            const mEnd   = new Date(year, mi + 1, 0)
+            return start <= mEnd && end >= mStart
           })
           const monthStages = stages.filter(s => {
             const start = new Date(s.startDate + 'T12:00:00')
@@ -155,7 +160,7 @@ export default function AppleCalendarView({ races, stages, year, onDayClick, onR
                   const day      = i + 1
                   const ds       = fmtDate(year, mi, day)
                   const isToday  = ds === today
-                  const dayRaces = monthRaces.filter(r => r.date === ds)
+                  const dayRaces = monthRaces.filter(r => r.date <= ds && (r.endDate || r.date) >= ds)
                   const dayStages = monthStages.filter(s => s.startDate <= ds && s.endDate >= ds)
                   const hasEvents = dayRaces.length > 0 || dayStages.length > 0
 

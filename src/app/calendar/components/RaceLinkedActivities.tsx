@@ -41,6 +41,7 @@ interface Act {
   id: string; sport_type: string | null; title: string | null; distance_m: number | null
   moving_time_s: number | null; elapsed_time_s: number | null; avg_pace_s_km: number | null
   avg_watts: number | null; avg_hr: number | null; summary_polyline: string | null; started_at: string | null
+  linked_race_date: string | null
 }
 
 const SPORT_COL: Record<string, string> = { run: '#22c55e', trail: '#84cc16', bike: '#3b82f6', swim: '#38bdf8', hyrox: '#ef4444', rowing: '#14b8a6', triathlon: '#a855f7' }
@@ -54,7 +55,7 @@ export function RaceLinkedActivities({ raceId, goalTime }: { raceId: string; goa
     void (async () => {
       try {
         const { data } = await createClient().from('activities')
-          .select('id,sport_type,title,distance_m,moving_time_s,elapsed_time_s,avg_pace_s_km,avg_watts,avg_hr,summary_polyline,started_at')
+          .select('id,sport_type,title,distance_m,moving_time_s,elapsed_time_s,avg_pace_s_km,avg_watts,avg_hr,summary_polyline,started_at,linked_race_date')
           .eq('linked_race_id', raceId).order('started_at', { ascending: true })
         if (!cancel) setActs((data as Act[]) ?? [])
       } catch { if (!cancel) setActs([]) }
@@ -81,6 +82,7 @@ export function RaceLinkedActivities({ raceId, goalTime }: { raceId: string; goa
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                   <span style={{ width: 8, height: 8, borderRadius: '50%', background: col, flexShrink: 0 }} />
                   <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.title || t('calendar.realizedActivity')}</span>
+                  {a.linked_race_date && <span style={{ fontSize: 10.5, fontWeight: 700, color: col, background: `${col}1f`, padding: '2px 7px', borderRadius: 999, flexShrink: 0, textTransform: 'capitalize' }}>{new Date(a.linked_race_date + 'T12:00:00').toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })}</span>}
                   <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--primary)', fontWeight: 600, flexShrink: 0 }}>{t('calendar.openAnalysis')} →</span>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>

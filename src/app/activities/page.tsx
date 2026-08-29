@@ -7386,7 +7386,7 @@ conseil pour la prochaine séance similaire.`
           <div style={editLabel}>Type de séance</div>
           <TrainingRaceSelector value={localIsRace} onChange={saveIsRace} />
           {!localIsRace && <div style={{ marginTop: 12 }}><WorkoutTypeBadges activityId={a.id} sport={a.sport_type} /></div>}
-          {localIsRace && <LinkedRacePicker activityId={a.id} activityDate={a.started_at} activitySport={a.sport_type} initialRaceId={(a as { linked_race_id?: string | null }).linked_race_id ?? null} />}
+          {localIsRace && <LinkedRacePicker activityId={a.id} activityDate={a.started_at} activitySport={a.sport_type} initialRaceId={(a as { linked_race_id?: string | null }).linked_race_id ?? null} initialRaceDate={(a as { linked_race_date?: string | null }).linked_race_date ?? null} />}
         </div>
         {isGym && <div><div style={editLabel}>Séance de renforcement</div><MuscuSessionPanel activity={a} /></div>}
         {isPool && <div><div style={editLabel}>Longueurs</div><SwimLengths activityId={a.id} distanceM={a.distance_m} /></div>}

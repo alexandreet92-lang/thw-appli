@@ -3,6 +3,7 @@ export type RaceSport = 'run' | 'trail' | 'bike' | 'swim' | 'hyrox' | 'triathlon
 
 export interface Race {
   id: string; name: string; sport: RaceSport; date: string; level: RaceLevel
+  endDate?: string   // Événement / Défi multi-jours : fin de la plage (NULL = 1 jour)
   goal?: string; status?: 'upcoming' | 'completed'
   distance?: string; goalTime?: string; notes?: string
   performanceData?: Record<string, unknown>

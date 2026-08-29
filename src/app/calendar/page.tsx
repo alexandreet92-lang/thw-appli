@@ -57,6 +57,7 @@ type SportType     = 'run' | 'trail' | 'bike' | 'swim' | 'hyrox' | 'triathlon' |
 
 interface Race {
   id: string; name: string; sport: RaceSport; date: string; level: RaceLevel
+  endDate?: string   // Événement/Défi multi-jours
   goal?: string; strategy?: string
   runDistance?: string; triDistance?: string
   hyroxCategory?: string; hyroxLevel?: string; hyroxGender?: string
@@ -179,6 +180,7 @@ function useCalendar() {
     setRaces((r.data ?? []).map((x: Record<string, unknown>): Race => ({
       id: x.id as string, name: x.name as string,
       sport: x.sport as RaceSport, date: x.date as string, level: x.level as RaceLevel,
+      endDate: (x.end_date as string | null | undefined) ?? undefined,
       goal: x.goal as string | undefined, strategy: x.strategy as string | undefined,
       runDistance: x.run_distance as string | undefined,
       triDistance: x.tri_distance as string | undefined,
@@ -234,6 +236,7 @@ function useCalendar() {
     const uid = await resolvePlanningUid(supabase); if (!uid) return null
     const { data, error } = await supabase.from('planned_races').insert({
       user_id: uid, name: r.name, sport: r.sport, date: r.date, level: r.level,
+      end_date: r.endDate ?? null,
       goal: r.goal ?? null, strategy: r.strategy ?? null,
       run_distance: r.runDistance ?? null, tri_distance: r.triDistance ?? null,
       hyrox_category: r.hyroxCategory ?? null, hyrox_level: r.hyroxLevel ?? null,
@@ -423,6 +426,7 @@ function useCalendar() {
   async function updateRace(r: Race) {
     const { error } = await supabase.from('planned_races').update({
       name: r.name, sport: r.sport, date: r.date, level: r.level,
+      end_date: r.endDate ?? null,
       goal: r.goal ?? null, strategy: r.strategy ?? null,
       run_distance: r.runDistance ?? null, tri_distance: r.triDistance ?? null,
       hyrox_category: r.hyroxCategory ?? null, hyrox_level: r.hyroxLevel ?? null,

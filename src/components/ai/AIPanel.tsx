@@ -27,7 +27,8 @@ import { localDateStr } from '@/lib/date/weekStart'
 import RoutinesView from '@/components/ai/RoutinesView'
 import StudioView from '@/components/studio/StudioView'
 import { getGuideDemoId, GUIDE_DEMO_EVENT } from '@/components/guide/guideDemo'
-import { QUICK_ACTION_SPECS, buildActionPrompt } from '@/lib/quick-actions/specs'
+import { QUICK_ACTION_SPECS } from '@/lib/quick-actions/specs'
+import { QuickActionFlow } from './QuickActionFlow'
 import { VoiceOverlay } from './VoiceOverlay'
 import { VoiceConversation } from './VoiceConversation'
 import { CoachQuestionCard, type ClarifyingQuestions } from './CoachQuestionCard'
@@ -135,7 +136,7 @@ interface AIConv {
   projectId?: string | null
 }
 
-type FlowId = 'weakpoints' | 'nutrition' | 'recharge' | 'analyzetest' | 'sessionbuilder' | 'training_plan' | 'rule_helper' | 'analyser_entrainement' | 'estimer_zones' | 'analyser_progression' | 'strategie_course' | 'app_guide' | 'analyze_training' | 'analyser_semaine' | 'analyser_recuperation' | 'conseils_sommeil' | null
+type FlowId = 'weakpoints' | 'nutrition' | 'recharge' | 'analyzetest' | 'sessionbuilder' | 'training_plan' | 'rule_helper' | 'analyser_entrainement' | 'estimer_zones' | 'analyser_progression' | 'strategie_course' | 'app_guide' | 'analyze_training' | 'analyser_semaine' | 'analyser_recuperation' | 'conseils_sommeil' | 'quickaction' | null
 
 interface PendingToolCall {
   tool_name: string
@@ -12315,6 +12316,7 @@ function PlusMenu({
   onPrepare,
   onEnriched,
   onFlow,
+  onQuickAction,
   onClose,
   onClosePanel,
   onCamera,
@@ -12330,6 +12332,7 @@ function PlusMenu({
   onPrepare:    (label: string, apiPrompt: string) => void
   onEnriched:   (id: string, label: string) => void
   onFlow:       (f: FlowId) => void
+  onQuickAction: (key: string) => void
   onClose:      () => void
   onClosePanel: () => void
   onCamera:     () => void
@@ -12485,9 +12488,9 @@ function PlusMenu({
         onClick={() => {
           onForceModel(qa.model)
           onClose()
-          // Nouveau système déclaratif : l'action pose ses questions via les
-          // cartes du coach (ask_clarifying_questions) puis génère. Prioritaire.
-          if (QUICK_ACTION_SPECS[qa.key]) onPrepare(qa.label, buildActionPrompt(QUICK_ACTION_SPECS[qa.key]))
+          // Mécanisme UNIQUE : une spec ouvre le wizard à cartes natives
+          // (QuickActionFlow) — questions à boutons puis génération. Prioritaire.
+          if (QUICK_ACTION_SPECS[qa.key]) onQuickAction(qa.key)
           else if (qa.flow) onFlow(qa.flow)
           else if (qa.enrichedId) onEnriched(qa.enrichedId, qa.label)
           else if (qa.prompt) onPrepare(qa.label, qa.prompt)
@@ -20665,6 +20668,8 @@ export default function AIPanel({
   const [tokenLimitMsg, setTokenLimitMsg] = useState<string | null>(null)
   const [activeFlow,  setActiveFlow]  = useState<FlowId>(null)
   const [activeQA,    setActiveQA]    = useState<ActiveQuickAction | null>(null)
+  // Action rapide en cours dans le wizard à cartes natives (QuickActionFlow).
+  const [quickActionKey, setQuickActionKey] = useState<string | null>(null)
   // Recherche Web : réglage PERSISTANT (activé/désactivé), activé PAR DÉFAUT.
   // Quand actif, le coach peut chercher sur le web quand c'est pertinent (il
   // décide lui-même) — sans indicateur « activé » dans le fil. Désactivé → outil coupé.
@@ -21072,7 +21077,8 @@ export default function AIPanel({
     if (!qa) return
     setModel(qa.model)
     // Même priorité que le clic sur le bouton (renderActionButton) : spec → flow → prompt.
-    if (QUICK_ACTION_SPECS[qa.key]) { setInput(buildActionPrompt(QUICK_ACTION_SPECS[qa.key])); return }
+    // Une spec ouvre le wizard à cartes natives (QuickActionFlow), pas un prompt brut.
+    if (QUICK_ACTION_SPECS[qa.key]) { setActiveQA(null); setQuickActionKey(qa.key); setActiveFlow('quickaction'); return }
     if (qa.flow) { setActiveFlow(qa.flow); return }
     if (qa.prompt) setInput(qa.prompt)
   }, [open])
@@ -23327,6 +23333,14 @@ export default function AIPanel({
                 semaines détaillées et les graphiques du résultat. */}
             {activeFlow && (
               <div style={{ animation: 'ai_slidein 0.2s ease', paddingBottom: 16 }}>
+                {activeFlow === 'quickaction' && quickActionKey && QUICK_ACTION_SPECS[quickActionKey] && (
+                  <QuickActionFlow
+                    spec={QUICK_ACTION_SPECS[quickActionKey]}
+                    label={QUICK_ACTIONS.find(a => a.key === quickActionKey)?.label ?? ''}
+                    onCancel={() => { setActiveFlow(null); setQuickActionKey(null) }}
+                    onGenerate={(displayLabel, prompt) => { setActiveFlow(null); setQuickActionKey(null); void send(displayLabel, prompt) }}
+                  />
+                )}
                 {activeFlow === 'weakpoints' && (
                   <WeakpointsFlow
                     onCancel={() => setActiveFlow(null)}
@@ -24192,6 +24206,7 @@ export default function AIPanel({
                       onPrepare={(label, p) => { setPlusOpen(false); setActiveFlow(null); setActiveQA(null); void send(label, p) }}
                       onEnriched={(id, label) => { setPlusOpen(false); setActiveFlow(null); setActiveQA(null); void handleEnrichedAction(id, label) }}
                       onFlow={f => { setPlusOpen(false); setActiveQA(null); setActiveFlow(f) }}
+                      onQuickAction={key => { setPlusOpen(false); setActiveQA(null); setQuickActionKey(key); setActiveFlow('quickaction') }}
                       onClose={() => setPlusOpen(false)}
                       onClosePanel={onClose}
                       onForceModel={setModel}

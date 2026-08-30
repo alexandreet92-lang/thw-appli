@@ -1323,7 +1323,7 @@ function ConfidentialiteBloc() {
 function LearnMoreAppLink() {
   const { t } = useI18n()
   return (
-    <a href="/site/index.html" target="_blank" rel="noopener"
+    <a href="/site/decouvrir.html" target="_blank" rel="noopener"
       style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%', marginTop: 20, padding: '14px', background: 'transparent', border: '0.5px solid var(--border)', borderRadius: 12, color: 'var(--text)', fontSize: 14, fontWeight: 500, textDecoration: 'none' }}>
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
       {t('profile.learnMoreApp')}
@@ -2089,7 +2089,7 @@ function AbonnementContent() {
 
           {/* En savoir plus sur l'application → accueil du site */}
           <a
-            href="/site/index.html"
+            href="/site/decouvrir.html"
             target="_blank"
             rel="noopener"
             style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%', padding: '14px', background: 'transparent', border: '0.5px solid var(--border)', borderRadius: 12, color: 'var(--text)', fontSize: 14, fontWeight: 500, textDecoration: 'none', cursor: 'pointer' }}

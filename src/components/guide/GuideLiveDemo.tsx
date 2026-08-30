@@ -8,6 +8,7 @@
 // Le halo du guide pointe le chrono ; la carte explique ce qui se passe.
 // ══════════════════════════════════════════════════════════════════
 import { useEffect, useRef, useState } from 'react'
+import { useI18n } from '@/lib/i18n'
 
 // Séance course fractionnée compressée (les durées sont courtes pour que TOUT
 // le déroulé se voie en quelques secondes pendant le guide, puis boucle).
@@ -25,6 +26,19 @@ const TOTAL = PHASES.reduce((s, p) => s + p.sec, 0)
 const mmss = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`
 
 export function GuideLiveDemo({ dataGuide }: { dataGuide?: string }) {
+  const { t } = useI18n()
+  // Libellé de phase traduit (le fractionné 1/3… reste langue-neutre).
+  const phaseLabel = (key: string): string => {
+    switch (key) {
+      case 'wu': return t('gld.warmup')
+      case 'r1': case 'r2': return t('gld.recovery')
+      case 'cd': return t('gld.cooldown')
+      case 's1': return `${t('gld.threshold')} · 1/3`
+      case 's2': return `${t('gld.threshold')} · 2/3`
+      case 's3': return `${t('gld.threshold')} · 3/3`
+      default: return ''
+    }
+  }
   const [elapsed, setElapsed] = useState(0)
   const start = useRef<number>(Date.now())
   useEffect(() => {
@@ -64,21 +78,21 @@ export function GuideLiveDemo({ dataGuide }: { dataGuide?: string }) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '18px 18px 8px', flexShrink: 0 }}>
         <span style={{ width: 9, height: 9, borderRadius: '50%', background: '#ef4444', animation: 'gld_rec 1s ease-in-out infinite' }} />
         <span style={{ fontSize: 12, fontWeight: 800, letterSpacing: '0.08em', color: '#ef4444' }}>REC</span>
-        <span style={{ marginLeft: 8, fontSize: 13, fontWeight: 700, color: 'var(--text-mid)' }}>Course · Fractionné seuil</span>
-        <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--text-dim)' }}>Démo guide</span>
+        <span style={{ marginLeft: 8, fontSize: 13, fontWeight: 700, color: 'var(--text-mid)' }}>{t('gld.session_type')}</span>
+        <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--text-dim)' }}>{t('gld.demo')}</span>
       </div>
 
       {/* Chrono géant — cible du halo du guide */}
       <div data-guide={dataGuide} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '10px 0 6px', flexShrink: 0 }}>
-        <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-dim)' }}>Temps</p>
+        <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-dim)' }}>{t('gld.time')}</p>
         <p style={{ margin: '2px 0 0', fontFamily: 'DM Mono, monospace', fontSize: 62, fontWeight: 700, lineHeight: 1, color: 'var(--text)', fontVariantNumeric: 'tabular-nums' }}>{chrono}</p>
       </div>
 
       {/* Métriques live */}
       <div style={{ display: 'flex', gap: 9, padding: '10px 16px', flexShrink: 0 }}>
-        <div style={tile}><p style={tileLabel}>Distance</p><p style={tileVal}>{distKm}<span style={{ fontSize: 12, color: 'var(--text-dim)' }}> km</span></p></div>
-        <div style={tile}><p style={tileLabel}>Allure</p><p style={tileVal}>{pace}<span style={{ fontSize: 12, color: 'var(--text-dim)' }}> /km</span></p></div>
-        <div style={tile}><p style={tileLabel}>FC</p><p style={{ ...tileVal, color: cur.accent }}>{hr}<span style={{ fontSize: 12, color: 'var(--text-dim)' }}> bpm</span></p></div>
+        <div style={tile}><p style={tileLabel}>{t('gld.distance')}</p><p style={tileVal}>{distKm}<span style={{ fontSize: 12, color: 'var(--text-dim)' }}> km</span></p></div>
+        <div style={tile}><p style={tileLabel}>{t('gld.pace')}</p><p style={tileVal}>{pace}<span style={{ fontSize: 12, color: 'var(--text-dim)' }}> /km</span></p></div>
+        <div style={tile}><p style={tileLabel}>{t('gld.hr')}</p><p style={{ ...tileVal, color: cur.accent }}>{hr}<span style={{ fontSize: 12, color: 'var(--text-dim)' }}> bpm</span></p></div>
       </div>
 
       {/* Profil de séance — les blocs, avec le bloc courant surligné */}
@@ -106,25 +120,25 @@ export function GuideLiveDemo({ dataGuide }: { dataGuide?: string }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '13px 15px', borderRadius: 16, background: `color-mix(in srgb, ${cur.accent} 12%, transparent)`, border: `1px solid ${cur.accent}` }}>
           <div style={{ width: 44, height: 44, borderRadius: 12, background: cur.accent, color: '#fff', display: 'grid', placeItems: 'center', flexShrink: 0, fontFamily: 'DM Mono, monospace', fontWeight: 700, fontSize: 13 }}>Z{cur.zone}</div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <p style={{ margin: 0, fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: cur.accent }}>En cours</p>
-            <p style={{ margin: '2px 0 0', fontSize: 16, fontWeight: 800, color: 'var(--text)' }}>{cur.label}</p>
+            <p style={{ margin: 0, fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: cur.accent }}>{t('gld.current')}</p>
+            <p style={{ margin: '2px 0 0', fontSize: 16, fontWeight: 800, color: 'var(--text)' }}>{phaseLabel(cur.key)}</p>
           </div>
           <div style={{ textAlign: 'right', flexShrink: 0 }}>
             <p style={{ margin: 0, fontFamily: 'DM Mono, monospace', fontSize: 18, fontWeight: 700, color: 'var(--text)' }}>{mmss(cur.sec - into)}</p>
-            <p style={{ margin: '2px 0 0', fontSize: 11, color: 'var(--text-dim)' }}>restant · {cur.pace}/km</p>
+            <p style={{ margin: '2px 0 0', fontSize: 11, color: 'var(--text-dim)' }}>{t('gld.remaining')} · {cur.pace}/km</p>
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 15px', borderRadius: 14, background: 'var(--bg-card)', border: '1px dashed var(--border)', opacity: 0.85 }}>
-          <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-dim)' }}>À suivre</span>
-          <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-mid)' }}>{next.label}</span>
+          <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-dim)' }}>{t('gld.next')}</span>
+          <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-mid)' }}>{phaseLabel(next.key)}</span>
           <span style={{ marginLeft: 'auto', fontFamily: 'DM Mono, monospace', fontSize: 13, color: 'var(--text-dim)' }}>{mmss(next.sec)}</span>
         </div>
       </div>
 
       {/* Barre d'action live (Pause / Terminer) — illustratif */}
       <div style={{ marginTop: 'auto', display: 'flex', gap: 10, padding: '12px 16px calc(16px + env(safe-area-inset-bottom))', flexShrink: 0 }}>
-        <button disabled style={{ flex: 1, padding: 14, borderRadius: 14, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-mid)', fontSize: 14, fontWeight: 700, cursor: 'default' }}>Pause</button>
-        <button disabled style={{ flex: 1, padding: 14, borderRadius: 14, border: 'none', background: '#ef4444', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'default' }}>Terminer</button>
+        <button disabled style={{ flex: 1, padding: 14, borderRadius: 14, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-mid)', fontSize: 14, fontWeight: 700, cursor: 'default' }}>{t('gld.pause')}</button>
+        <button disabled style={{ flex: 1, padding: 14, borderRadius: 14, border: 'none', background: '#ef4444', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'default' }}>{t('gld.finish')}</button>
       </div>
     </div>
   )

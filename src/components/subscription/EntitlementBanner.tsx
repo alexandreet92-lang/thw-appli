@@ -11,6 +11,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useEntitlements } from '@/hooks/useEntitlements'
 import { hidePricing } from '@/lib/native/platform'
+import { useI18n } from '@/lib/i18n'
 
 function todayKey(): string {
   // Clé de rejet valable pour la journée (réapparaît le lendemain).
@@ -19,6 +20,7 @@ function todayKey(): string {
 }
 
 export function EntitlementBanner() {
+  const { t } = useI18n()
   const { loading, isFree, isTrial, trialDaysLeft } = useEntitlements()
   const [dismissed, setDismissed] = useState(true)
   const hidePrice = hidePricing()
@@ -36,11 +38,12 @@ export function EntitlementBanner() {
 
   if (!show || dismissed) return null
 
+  const n = trialDaysLeft ?? 0
   const message = isFree
-    ? "Mode Gratuit — les fonctions IA sont limitées."
+    ? t('entb.free_mode')
     : trialDaysLeft === 0
-      ? "Dernier jour d'essai premium."
-      : `Essai premium — ${trialDaysLeft} jour${(trialDaysLeft ?? 0) > 1 ? 's' : ''} restant${(trialDaysLeft ?? 0) > 1 ? 's' : ''}.`
+      ? t('entb.trial_last_day')
+      : t(n > 1 ? 'entb.trial_days_many' : 'entb.trial_days_one', { n })
 
   const dismiss = () => {
     try { localStorage.setItem('thw_entbanner_dismissed', `${todayKey()}:${dismissKey}`) } catch { /* ignore */ }
@@ -57,10 +60,10 @@ export function EntitlementBanner() {
       <span style={{ flex: 1, minWidth: 0 }}>{message}</span>
       {!hidePrice && (
         <Link href="/settings/subscription" style={{ color: 'var(--primary)', fontWeight: 700, textDecoration: 'none', whiteSpace: 'nowrap' }}>
-          Voir les offres →
+          {t('entb.see_offers')}
         </Link>
       )}
-      <button onClick={dismiss} aria-label="Masquer" style={{ border: 'none', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', padding: 2, flexShrink: 0 }}>
+      <button onClick={dismiss} aria-label={t('entb.hide')} style={{ border: 'none', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', padding: 2, flexShrink: 0 }}>
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
       </button>
     </div>

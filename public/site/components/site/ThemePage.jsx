@@ -88,14 +88,14 @@ function ComingSoon(props) {
     <main>
       <div className="wrap">
         <div className="breadcrumb">
-          <a href="Découvrir.html">Découvrir</a><span className="sep">/</span><span>{t.title}</span>
+          <a href="decouvrir.html">Découvrir</a><span className="sep">/</span><span>{t.title}</span>
         </div>
         <section className="soon-wrap">
           <div className="soon-ico"><ThemeIcon name={t.icon} size={42}/></div>
           <div className="soon-pill">Bientôt disponible</div>
           <h1>{t.title}</h1>
           <p>{t.intro}</p>
-          <a className="btn btn-cyan btn-lg" href="Découvrir.html"><UIIcon name="grid" size={16}/> Explorer les autres thèmes</a>
+          <a className="btn btn-cyan btn-lg" href="decouvrir.html"><UIIcon name="grid" size={16}/> Explorer les autres thèmes</a>
         </section>
       </div>
       <SiteFooter/>
@@ -130,7 +130,7 @@ function ThemeView(props) {
       <main>
         <div className="wrap">
           <div className="breadcrumb">
-            <a href="Découvrir.html">Découvrir</a><span className="sep">/</span><span>{t.title}</span>
+            <a href="decouvrir.html">Découvrir</a><span className="sep">/</span><span>{t.title}</span>
           </div>
 
           {/* Hero */}
@@ -150,7 +150,7 @@ function ThemeView(props) {
               {t.audience && <div className="th-audience reveal"><b>Pour qui ?</b> {t.audience}</div>}
               <div className="reveal" style={{ marginTop: 26, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
                 <a className="btn btn-accent btn-lg" href={APP_URL}><UIIcon name="spark" size={15}/> {t.cta}</a>
-                <a className="btn btn-ghost btn-lg" href="Découvrir.html">Tous les thèmes</a>
+                <a className="btn btn-ghost btn-lg" href="decouvrir.html">Tous les thèmes</a>
               </div>
             </div>
             <div className="th-hero-media reveal" style={{ transitionDelay: '120ms' }}>
@@ -194,7 +194,7 @@ function ThemeView(props) {
               <div className="rel-grid">
                 {related.map(function (r, i) {
                   return (
-                    <a key={i} className="rel-card reveal" href={'Thème.html#' + r.slug} style={{ '--rc-accent': r.accent, transitionDelay: (i * 30) + 'ms' }}>
+                    <a key={i} className="rel-card reveal" href={'theme.html#' + r.slug} style={{ '--rc-accent': r.accent, transitionDelay: (i * 30) + 'ms' }}>
                       <span className="rel-ico" style={{ '--rc-accent': r.accent }}><ThemeIcon name={r.icon} size={20}/></span>
                       <span className="rel-name">{r.title}</span>
                     </a>
@@ -211,7 +211,7 @@ function ThemeView(props) {
               <p>14 jours d'essai gratuit. Découvre ce que THW Coaching change à ton entraînement.</p>
               <div className="cta-band-btns">
                 <a className="btn btn-accent btn-lg" href={APP_URL}><UIIcon name="spark" size={16}/> Essai gratuit 14 jours</a>
-                <a className="btn btn-ghost btn-lg" href="Thème.html#abonnements">Voir les plans</a>
+                <a className="btn btn-ghost btn-lg" href="theme.html#abonnements">Voir les plans</a>
               </div>
             </div>
           </section>

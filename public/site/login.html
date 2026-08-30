@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hybrid — Connexion (animée)</title>
+<style>
+/* ════════════════════════════════════════════════════════════════
+   HYBRID — PAGE DE CONNEXION ANIMÉE
+   Chaque bloc est numéroté et indépendant : copie uniquement
+   les blocs qui t'intéressent dans ton app.
+   ════════════════════════════════════════════════════════════════ */
+
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap');
+
+:root {
+  --brand:        #00c8e0;
+  --brand-alt:    #5b6fff;
+  --brand-gradient: linear-gradient(135deg, #00c8e0, #5b6fff);
+  --bg:           #070b0f;
+  --text:         #eef2f7;
+  --text-mid:     rgba(238, 242, 247, 0.65);
+  --text-dim:     rgba(238, 242, 247, 0.38);
+  --border:       rgba(255, 255, 255, 0.08);
+  --border-mid:   rgba(255, 255, 255, 0.14);
+  --input-bg:     rgba(255, 255, 255, 0.05);
+  --danger:       #ef4444;
+  --success:      #22c55e;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body { height: 100%; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'DM Sans', system-ui, sans-serif;
+  overflow-x: hidden;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   BLOC 1 — FOND "AURORA" ANIMÉ
+   Deux halos flous (cyan + indigo) qui dérivent lentement.
+   Très discret, donne de la vie sans distraire.
+   → Copie : .aurora, .aurora::before, .aurora::after + keyframes
+   ════════════════════════════════════════════════════════════════ */
+
+.aurora {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+.aurora::before,
+.aurora::after {
+  content: '';
+  position: absolute;
+  width: 60vmax;
+  height: 60vmax;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.55;
+}
+.aurora::before {
+  background: radial-gradient(circle, rgba(0, 200, 224, 0.10) 0%, transparent 65%);
+  top: -20vmax;
+  left: -15vmax;
+  animation: auroraDrift1 26s ease-in-out infinite alternate;
+}
+.aurora::after {
+  background: radial-gradient(circle, rgba(91, 111, 255, 0.10) 0%, transparent 65%);
+  bottom: -25vmax;
+  right: -15vmax;
+  animation: auroraDrift2 32s ease-in-out infinite alternate;
+}
+@keyframes auroraDrift1 {
+  from { transform: translate(0, 0) scale(1); }
+  to   { transform: translate(12vmax, 8vmax) scale(1.15); }
+}
+@keyframes auroraDrift2 {
+  from { transform: translate(0, 0) scale(1.1); }
+  to   { transform: translate(-10vmax, -8vmax) scale(0.95); }
+}
+
+/* ════════════════════════════════════════════════════════════════
+   BLOC 2 — ENTRÉE ORCHESTRÉE (stagger)
+   Chaque élément apparaît l'un après l'autre, du haut vers le bas.
+   → Ajoute class="anim-in" + style="--d: 0.1s" (délai) à tes éléments
+   ════════════════════════════════════════════════════════════════ */
+
+.anim-in {
+  opacity: 0;
+  animation: fadeUp 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: var(--d, 0s);
+}
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ════════════════════════════════════════════════════════════════
+   BLOC 3 — LOGO : entrée + halo respirant
+   Le logo arrive en rotation/zoom, puis un halo cyan "respire"
+   doucement derrière lui, en continu.
+   ════════════════════════════════════════════════════════════════ */
+
+.logo-mark {
+  width: 56px;
+  height: 56px;
+  display: block;
+  margin: 0 auto 14px;
+  border-radius: 14px;
+  opacity: 0;
+  animation:
+    logoIn 0.9s cubic-bezier(0.34, 1.56, 0.64, 1) 0.15s both,
+    logoBreathe 4s ease-in-out 1.2s infinite;
+}
+@keyframes logoIn {
+  from { opacity: 0; transform: scale(0.4) rotate(-120deg); }
+  to   { opacity: 1; transform: scale(1) rotate(0deg); }
+}
+@keyframes logoBreathe {
+  0%, 100% { filter: drop-shadow(0 0 6px rgba(0, 200, 224, 0.35)); }
+  50%      { filter: drop-shadow(0 0 18px rgba(0, 200, 224, 0.65)); }
+}
+
+/* ════════════════════════════════════════════════════════════════
+   STRUCTURE DE LA PAGE (layout — pas une animation)
+   ════════════════════════════════════════════════════════════════ */
+
+.page {
+  position: relative;
+  z-index: 1;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+}
+.card {
+  width: 100%;
+  max-width: 380px;
+}
+
+.brand-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 34px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  text-align: center;
+}
+.brand-sub {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  text-align: center;
+  margin-top: 6px;
+  margin-bottom: 32px;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   BLOC 4 — ONGLETS À PILULE GLISSANTE
+   La pilule "Connexion / Créer un compte" glisse d'un onglet à
+   l'autre au lieu de changer brutalement.
+   → HTML : .tabs > .tab-indicator + 2 boutons .tab
+   → JS   : voir « BLOC 4 (JS) » en bas de page
+   ════════════════════════════════════════════════════════════════ */
+
+.tabs {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 4px;
+  margin-bottom: 28px;
+}
+.tab-indicator {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: calc(50% - 4px);
+  height: calc(100% - 8px);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border-mid);
+  border-radius: 10px;
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.tabs[data-active="signup"] .tab-indicator {
+  transform: translateX(100%);
+}
+.tab {
+  position: relative;
+  z-index: 1;
+  background: none;
+  border: none;
+  padding: 11px 0;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: color 0.25s;
+}
+.tab.active { color: var(--text); }
+
+/* Bascule des deux formulaires (crossfade + glissement) */
+.panels {
+  position: relative;
+  display: grid;
+}
+.panel {
+  grid-area: 1 / 1;
+  transition: opacity 0.3s ease, transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.panel.hidden-left  { opacity: 0; transform: translateX(-14px); pointer-events: none; }
+.panel.hidden-right { opacity: 0; transform: translateX(14px);  pointer-events: none; }
+
+/* ════════════════════════════════════════════════════════════════
+   BLOC 5 — CHAMPS : focus lumineux
+   Au focus : bordure cyan + halo doux + le label s'allume.
+   → Copie : .field, .field input, :focus-within
+   ════════════════════════════════════════════════════════════════ */
+
+.field { margin-bottom: 18px; }
+.field label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-bottom: 8px;
+  transition: color 0.25s;
+}
+.field:focus-within label { color: var(--brand); }
+
+.input-wrap { position: relative; }
+
+.field input {
+  width: 100%;
+  padding: 14px 16px;
+  background: var(--input-bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 15px;
+  outline: none;
+  transition: border-color 0.25s, box-shadow 0.25s, background 0.25s;
+}
+.field input::placeholder { color: var(--text-dim); }
+.field input:focus {
+  border-color: rgba(0, 200, 224, 0.6);
+  background: rgba(0, 200, 224, 0.04);
+  box-shadow: 0 0 0 3px rgba(0, 200, 224, 0.12);
+}
+
+/* État erreur (déclenché par le JS du bouton) */
+.field.error input {
+  border-color: rgba(239, 68, 68, 0.7);
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.12);
+}
+
+/* Œil afficher/masquer le mot de passe */
+.eye-btn {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  transition: color 0.2s, transform 0.15s;
+}
+.eye-btn:hover { color: var(--text-mid); }
+.eye-btn:active { transform: translateY(-50%) scale(0.85); }
+
+.forgot {
+  display: block;
+  text-align: right;
+  font-size: 13px;
+  color: var(--brand);
+  text-decoration: none;
+  margin: -6px 0 22px;
+}
+.forgot:hover { text-decoration: underline; }
+
+/* ════════════════════════════════════════════════════════════════
+   BLOC 6 — BOUTON PRINCIPAL : reflet + états chargement / succès / erreur
+   • Au survol : un reflet lumineux balaye le bouton + légère levée
+   • Au clic : spinner → coche verte (ou secousse si champs vides)
+   → Copie : .btn-primary + keyframes + « BLOC 6 (JS) »
+   ════════════════════════════════════════════════════════════════ */
+
+.btn-primary {
+  position: relative;
+  width: 100%;
+  padding: 16px;
+  border: none;
+  border-radius: 14px;
+  background: var(--brand-gradient);
+  color: #fff;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  overflow: hidden;
+  box-shadow: 0 4px 24px rgba(0, 200, 224, 0.25);
+  transition: transform 0.18s, box-shadow 0.25s, filter 0.2s;
+}
+.btn-primary:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.08);
+  box-shadow: 0 8px 32px rgba(0, 200, 224, 0.38);
+}
+.btn-primary:active { transform: translateY(0) scale(0.98); }
+
+/* Le reflet qui balaye au survol */
+.btn-primary::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -80%;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.35), transparent);
+  transform: skewX(-20deg);
+  transition: left 0.55s ease;
+  pointer-events: none;
+}
+.btn-primary:hover::after { left: 130%; }
+
+/* Contenu interne : libellé / spinner / coche superposés */
+.btn-inner { position: relative; height: 19px; }
+.btn-label, .btn-spinner, .btn-check {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.2s, transform 0.25s;
+}
+.btn-spinner, .btn-check { opacity: 0; transform: scale(0.5); }
+
+.btn-spinner svg { animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.btn-primary.loading .btn-label  { opacity: 0; transform: scale(0.6); }
+.btn-primary.loading .btn-spinner { opacity: 1; transform: scale(1); }
+.btn-primary.loading { pointer-events: none; }
+
+.btn-primary.success .btn-label   { opacity: 0; transform: scale(0.6); }
+.btn-primary.success .btn-spinner { opacity: 0; transform: scale(0.5); }
+.btn-primary.success .btn-check   { opacity: 1; transform: scale(1); }
+.btn-primary.success {
+  background: linear-gradient(135deg, #16a34a, #22c55e);
+  box-shadow: 0 4px 24px rgba(34, 197, 94, 0.3);
+  pointer-events: none;
+}
+
+/* Secousse en cas d'erreur — à mettre sur le formulaire entier */
+.shake { animation: shake 0.45s cubic-bezier(0.36, 0.07, 0.19, 0.97); }
+@keyframes shake {
+  10%, 90% { transform: translateX(-2px); }
+  20%, 80% { transform: translateX(4px); }
+  30%, 50%, 70% { transform: translateX(-6px); }
+  40%, 60% { transform: translateX(6px); }
+}
+
+/* ════════════════════════════════════════════════════════════════
+   BLOC 7 — SÉPARATEUR « ou » + BOUTONS SOCIAUX (survol soulevé)
+   ════════════════════════════════════════════════════════════════ */
+
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 26px 0;
+  color: var(--text-dim);
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.divider::before, .divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--border-mid));
+}
+.divider::after {
+  background: linear-gradient(90deg, var(--border-mid), transparent);
+}
+
+.btn-social {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  padding: 14px;
+  border-radius: 14px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.18s, box-shadow 0.25s, border-color 0.25s, background 0.25s;
+}
+.btn-social + .btn-social { margin-top: 12px; }
+.btn-social:hover { transform: translateY(-2px); }
+.btn-social:active { transform: translateY(0) scale(0.98); }
+
+.btn-apple {
+  background: #fff;
+  color: #0d1117;
+  border: 1px solid #fff;
+}
+.btn-apple:hover { box-shadow: 0 6px 24px rgba(255, 255, 255, 0.18); }
+
+.btn-google {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+  border: 1px solid var(--border-mid);
+}
+.btn-google:hover {
+  border-color: rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.07);
+}
+
+/* ════════════════════════════════════════════════════════════════
+   BLOC 8 — ACCESSIBILITÉ : coupe les animations si l'utilisateur
+   a activé « réduire les animations » sur son appareil.
+   À garder absolument si tu intègres les blocs ci-dessus !
+   ════════════════════════════════════════════════════════════════ */
+
+@media (prefers-reduced-motion: reduce) {
+  .aurora::before, .aurora::after,
+  .anim-in, .logo-mark {
+    animation: none !important;
+    opacity: 1;
+  }
+}
+
+/* ── Bouton « Rejouer » (uniquement pour la démo, ne pas copier) ── */
+.replay {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border-mid);
+  border-radius: 999px;
+  color: var(--text-mid);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+  transition: color 0.2s, border-color 0.2s;
+}
+.replay:hover { color: var(--brand); border-color: var(--brand); }
+</style>
+</head>
+<body>
+
+<!-- BLOC 1 — fond animé -->
+<div class="aurora"></div>
+
+<div class="page">
+  <main class="card" data-screen-label="Connexion">
+
+    <!-- BLOC 3 — logo animé -->
+    <img class="logo-mark" src="assets/thw_logo_no_bg.png" alt="Logo Hybrid">
+
+    <!-- BLOC 2 — chaque élément a un délai --d croissant -->
+    <h1 class="brand-title anim-in" style="--d: 0.25s;">Hybrid</h1>
+    <p class="brand-sub anim-in" style="--d: 0.32s;">By The Hybrid Way</p>
+
+    <!-- BLOC 4 — onglets à pilule glissante -->
+    <div class="tabs anim-in" style="--d: 0.4s;" data-active="login" id="tabs">
+      <div class="tab-indicator"></div>
+      <button class="tab active" type="button" data-tab="login">Connexion</button>
+      <button class="tab" type="button" data-tab="signup">Créer un compte</button>
+    </div>
+
+    <div class="panels">
+
+      <!-- ── Panneau CONNEXION ── -->
+      <form class="panel" id="panel-login" novalidate>
+        <div class="field anim-in" style="--d: 0.48s;">
+          <label for="login-email">Adresse email</label>
+          <div class="input-wrap">
+            <input type="email" id="login-email" placeholder="ton@email.com" autocomplete="email">
+          </div>
+        </div>
+
+        <div class="field anim-in" style="--d: 0.56s;">
+          <label for="login-pass">Mot de passe</label>
+          <div class="input-wrap">
+            <input type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password">
+            <button class="eye-btn" type="button" aria-label="Afficher le mot de passe">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+            </button>
+          </div>
+        </div>
+
+        <a class="forgot anim-in" style="--d: 0.62s;" href="#">Mot de passe oublié ?</a>
+
+        <!-- BLOC 6 — bouton avec états -->
+        <button class="btn-primary anim-in" style="--d: 0.68s;" type="submit" id="login-btn">
+          <span class="btn-inner">
+            <span class="btn-label">Se connecter</span>
+            <span class="btn-spinner">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 2 a10 10 0 0 1 10 10"></path></svg>
+            </span>
+            <span class="btn-check">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+            </span>
+          </span>
+        </button>
+
+        <!-- BLOC 7 -->
+        <div class="divider anim-in" style="--d: 0.74s;">ou</div>
+
+        <button class="btn-social btn-apple anim-in" style="--d: 0.8s;" type="button">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"></path></svg>
+          Continuer avec Apple
+        </button>
+
+        <button class="btn-social btn-google anim-in" style="--d: 0.86s;" type="button">
+          <svg width="17" height="17" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"></path><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"></path><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"></path><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"></path></svg>
+          Continuer avec Google
+        </button>
+      </form>
+
+      <!-- ── Panneau CRÉER UN COMPTE ── -->
+      <form class="panel hidden-right" id="panel-signup" novalidate>
+        <div class="field">
+          <label for="su-name">Prénom</label>
+          <div class="input-wrap">
+            <input type="text" id="su-name" placeholder="Ton prénom" autocomplete="given-name">
+          </div>
+        </div>
+        <div class="field">
+          <label for="su-email">Adresse email</label>
+          <div class="input-wrap">
+            <input type="email" id="su-email" placeholder="ton@email.com" autocomplete="email">
+          </div>
+        </div>
+        <div class="field" style="margin-bottom: 26px;">
+          <label for="su-pass">Mot de passe</label>
+          <div class="input-wrap">
+            <input type="password" id="su-pass" placeholder="8 caractères minimum" autocomplete="new-password">
+            <button class="eye-btn" type="button" aria-label="Afficher le mot de passe">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+            </button>
+          </div>
+        </div>
+        <button class="btn-primary" type="submit" id="signup-btn">
+          <span class="btn-inner">
+            <span class="btn-label">Créer mon compte</span>
+            <span class="btn-spinner">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 2 a10 10 0 0 1 10 10"></path></svg>
+            </span>
+            <span class="btn-check">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+            </span>
+          </span>
+        </button>
+      </form>
+
+    </div>
+  </main>
+</div>
+
+<!-- Uniquement pour la démo : rejoue l'animation d'entrée -->
+<button class="replay" type="button" onclick="location.reload()">
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
+  Rejouer l'entrée
+</button>
+
+<script>
+/* ════════════════════════════════════════════════════════════════
+   BLOC 4 (JS) — bascule des onglets Connexion / Créer un compte
+   ════════════════════════════════════════════════════════════════ */
+(function () {
+  var tabs = document.getElementById('tabs');
+  var panelLogin = document.getElementById('panel-login');
+  var panelSignup = document.getElementById('panel-signup');
+
+  tabs.addEventListener('click', function (e) {
+    var btn = e.target.closest('.tab');
+    if (!btn) return;
+    var target = btn.getAttribute('data-tab');
+    tabs.setAttribute('data-active', target);
+    tabs.querySelectorAll('.tab').forEach(function (t) {
+      t.classList.toggle('active', t === btn);
+    });
+    if (target === 'login') {
+      panelLogin.classList.remove('hidden-left');
+      panelSignup.classList.add('hidden-right');
+    } else {
+      panelLogin.classList.add('hidden-left');
+      panelSignup.classList.remove('hidden-right');
+    }
+  });
+})();
+
+/* ════════════════════════════════════════════════════════════════
+   BLOC 5 (JS) — œil afficher / masquer le mot de passe
+   ════════════════════════════════════════════════════════════════ */
+document.querySelectorAll('.eye-btn').forEach(function (btn) {
+  btn.addEventListener('click', function () {
+    var input = btn.parentElement.querySelector('input');
+    input.type = input.type === 'password' ? 'text' : 'password';
+  });
+});
+
+/* ════════════════════════════════════════════════════════════════
+   BLOC 6 (JS) — états du bouton : erreur (secousse) / chargement / succès
+   Dans ton app, remplace le setTimeout par ton appel de connexion réel.
+   ════════════════════════════════════════════════════════════════ */
+function wireSubmit(form, btn) {
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+
+    /* 1. Validation : champs vides → secousse + bordure rouge */
+    var empty = false;
+    form.querySelectorAll('input').forEach(function (input) {
+      var field = input.closest('.field');
+      if (!input.value.trim()) {
+        field.classList.add('error');
+        empty = true;
+      } else {
+        field.classList.remove('error');
+      }
+    });
+    if (empty) {
+      form.classList.remove('shake');
+      void form.offsetWidth; /* relance l'animation */
+      form.classList.add('shake');
+      return;
+    }
+
+    /* 2. Chargement → succès (simulé ici) */
+    btn.classList.add('loading');
+    setTimeout(function () {
+      btn.classList.remove('loading');
+      btn.classList.add('success');
+      /* Ici : redirection vers l'app */
+      setTimeout(function () { btn.classList.remove('success'); }, 2000);
+    }, 1400);
+  });
+
+  /* Efface l'état erreur dès qu'on retape */
+  form.querySelectorAll('input').forEach(function (input) {
+    input.addEventListener('input', function () {
+      input.closest('.field').classList.remove('error');
+    });
+  });
+}
+wireSubmit(document.getElementById('panel-login'), document.getElementById('login-btn'));
+wireSubmit(document.getElementById('panel-signup'), document.getElementById('signup-btn'));
+</script>
+
+<!-- i18n — FR (source) / EN / ES runtime translation + switcher -->
+<script src="components/site/i18n-dict.js"></script>
+<script src="components/site/i18n-dict-6.js"></script>
+<script src="components/site/i18n.js"></script>
+
+</body>
+</html>

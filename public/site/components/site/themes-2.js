@@ -8,7 +8,7 @@ window.THW_THEMES.push(
   {
     slug: 'connexions', num: 9, icon: 'plug', accent: '#3B82F6', accentName: 'Bleu',
     title: 'Connexions et intégrations',
-    tagline: 'Tes données arrivent toutes seules.',
+    tagline: '40+ apps, Strava en temps réel. Tes données arrivent seules.',
     intro: "Connecte tes apps et capteurs préférés : tes activités et tes données de santé se synchronisent automatiquement. Tu alimentes ton analyse de performance et ton suivi de récupération sans rien saisir à la main.",
     benefits: [
       'Synchronisation automatique de tes activités.',
@@ -80,7 +80,7 @@ window.THW_THEMES.push(
   {
     slug: 'tokens', num: 11, icon: 'token', accent: '#F59E0B', accentName: 'Or',
     title: 'Système de tokens',
-    tagline: 'Une IA puissante, une consommation transparente.',
+    tagline: "Un quota clair, un solde Studio, des recharges qui n'expirent pas.",
     intro: "Les tokens mesurent ton utilisation du coach IA. Deux jauges te montrent ta consommation en temps réel, et des multiplicateurs clairs reflètent la puissance du coach choisi. Pas de boîte noire, pas de surprise.",
     benefits: [
       'Deux jauges en temps réel : hebdomadaire et 6h glissantes.',
@@ -122,7 +122,7 @@ window.THW_THEMES.push(
   {
     slug: 'abonnements', num: 12, icon: 'card', accent: '#059669', accentName: 'Émeraude',
     title: 'Abonnements',
-    tagline: 'Trois formules, sans engagement.',
+    tagline: 'Athlète, Coach, Studio — trois mondes, sans engagement.',
     intro: "THW Coaching propose trois plans — Premium, Pro et Expert — selon ton ambition. Tu démarres par 14 jours d'essai, puis tu choisis la formule qui te correspond. Paiement mensuel ou annuel, résiliable à tout moment.",
     benefits: [
       'Trois plans clairs : Premium, Pro, Expert.',

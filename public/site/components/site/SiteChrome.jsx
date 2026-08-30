@@ -4,25 +4,23 @@
    Liens app non connectés pour ce livrable → APP_URL.
    ════════════════════════════════════════════════════════════════ */
 var APP_URL = 'https://thw-appli.vercel.app';
-var LOGIN_URL = APP_URL + '/auth';
 
-/* Si une page fournit une surpage de connexion locale (ex. page tokens), le clic
-   « Connexion » l'ouvre au lieu de partir vers l'app. Sinon → /auth normal. */
-function thwMaybeLogin(e) {
-  if (typeof window.THW_LOGIN === 'function') { e.preventDefault(); window.THW_LOGIN(); }
-}
-
-/* Menu déroulant partagé — présent sur la page principale et sur chaque page listée. */
+/* Menu déroulant partagé — toutes les pages du site, visible depuis chacune d'elles. */
 var MENU_ITEMS = [
-  { label: 'Politique de confidentialité', href: 'confidentialite.html' },
-  { label: 'Mentions légales',            href: 'mentions-legales.html' },
-  { label: "Conditions d'utilisation",     href: 'conditions-utilisation.html' },
-  { label: 'Exporter mes données',        href: 'exporter-mes-donnees.html' },
-  { label: 'Abonnement',                  href: 'Abonnements.html', group: 'shop' },
-  { label: 'Recharge Tokens',             href: 'Achat de tokens.html', group: 'shop' },
+  { label: 'Accueil',                     href: 'index.html' },
+  { label: 'Découvrir les piliers',        href: 'decouvrir.html' },
+  { label: 'Abonnement athlète',          href: 'abonnement-athlete.html', group: 'shop' },
+  { label: 'Abonnement coach',            href: 'abonnement-coach.html', group: 'shop' },
+  { label: 'Recharge de tokens',          href: 'recharge-tokens.html', group: 'shop' },
+  { label: 'Devenir coach',               href: 'theme.html#espace-coach', group: 'shop' },
+  { label: 'Politique de confidentialité', href: 'confidentialite.html', group: 'legal' },
+  { label: 'Mentions légales',            href: 'mentions-legales.html', group: 'legal' },
+  { label: "Conditions d'utilisation",     href: 'conditions-utilisation.html', group: 'legal' },
+  { label: 'Exporter mes données',        href: 'exporter-mes-donnees.html', group: 'legal' },
 ];
 
-/* Dropdown « Menu » pour le header partagé (desktop). */
+/* Dropdown « Menu » pour le header partagé (desktop).
+   Toujours monté : l'ouverture est une vraie animation de déroulé. */
 function HeaderMenu() {
   var [open, setOpen] = React.useState(false);
   var ref = React.useRef(null);
@@ -42,35 +40,93 @@ function HeaderMenu() {
                        color: open ? 'var(--text)' : undefined }}>
         Menu
         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4"
-             style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform .2s' }}>
+             style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform .24s cubic-bezier(.22,1,.36,1)' }}>
           <path d="M6 9l6 6 6-6"/>
         </svg>
       </button>
-      {open && (
-        <div role="menu" style={{
-          position: 'absolute', top: 'calc(100% + 10px)', right: 0, minWidth: 250, zIndex: 200,
-          background: 'var(--nav-bg)', border: '1px solid var(--border-mid)', borderRadius: 14,
-          padding: 6, boxShadow: 'var(--shadow)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
-        }}>
-          {MENU_ITEMS.map(function (m, i) {
-            var divider = m.group === 'shop' && (i === 0 || MENU_ITEMS[i - 1].group !== 'shop');
-            return (
-              <React.Fragment key={m.href}>
-                {divider && <div style={{ height: 1, background: 'var(--border)', margin: '6px 8px' }}/>}
-                <a role="menuitem" href={m.href} style={{
-                  display: 'block', padding: '10px 12px', borderRadius: 9,
-                  fontFamily: "'DM Sans', sans-serif", fontSize: 13.5, fontWeight: 500,
-                  color: 'var(--text-mid)', textDecoration: 'none', transition: 'background .14s, color .14s',
-                }}
-                onMouseEnter={function (e) { e.currentTarget.style.background = 'var(--bg-hover)'; e.currentTarget.style.color = 'var(--brand)'; }}
-                onMouseLeave={function (e) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-mid)'; }}>
-                  {m.label}
-                </a>
-              </React.Fragment>
-            );
-          })}
-        </div>
-      )}
+      <div role="menu" aria-hidden={!open} className={'dd-panel' + (open ? ' dd-open' : '')} style={{
+        position: 'absolute', top: 'calc(100% + 10px)', right: 0, minWidth: 250, zIndex: 200,
+        background: 'var(--nav-bg)', border: '1px solid var(--border-mid)', borderRadius: 14,
+        padding: 6, boxShadow: 'var(--shadow)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
+      }}>
+        {MENU_ITEMS.map(function (m, i) {
+          var divider = m.group && (i === 0 || MENU_ITEMS[i - 1].group !== m.group);
+          return (
+            <React.Fragment key={m.href}>
+              {divider && <div style={{ height: 1, background: 'var(--border)', margin: '6px 8px' }}/>}
+              <a role="menuitem" href={m.href} tabIndex={open ? 0 : -1} className="dd-item" style={{
+                display: 'block', padding: '10px 12px', borderRadius: 9,
+                fontFamily: "'DM Sans', sans-serif", fontSize: 13.5, fontWeight: 500,
+                color: 'var(--text-mid)', textDecoration: 'none', transition: 'background .14s, color .14s',
+              }}
+              onMouseEnter={function (e) { e.currentTarget.style.background = 'var(--bg-hover)'; e.currentTarget.style.color = 'var(--brand)'; }}
+              onMouseLeave={function (e) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-mid)'; }}>
+                {m.label}
+              </a>
+            </React.Fragment>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/* Sélecteur de langue — menu déroulant animé, partagé par les pages traduites. */
+function LangSelect(props) {
+  var LANGS = [['fr', 'Français', 'FR'], ['en', 'English', 'EN'], ['es', 'Español', 'ES']];
+  var lang = props.lang || 'fr';
+  var setLang = props.setLang || function () {};
+  var [open, setOpen] = React.useState(false);
+  var ref = React.useRef(null);
+  React.useEffect(function () {
+    function onDoc(e) { if (ref.current && !ref.current.contains(e.target)) setOpen(false); }
+    function onKey(e) { if (e.key === 'Escape') setOpen(false); }
+    document.addEventListener('mousedown', onDoc);
+    document.addEventListener('keydown', onKey);
+    return function () { document.removeEventListener('mousedown', onDoc); document.removeEventListener('keydown', onKey); };
+  }, []);
+  var current = LANGS.filter(function (l) { return l[0] === lang; })[0] || LANGS[0];
+  return (
+    <div ref={ref} style={{ position: 'relative' }}>
+      <button type="button" onClick={function () { setOpen(function (o) { return !o; }); }}
+        aria-haspopup="listbox" aria-expanded={open} aria-label="Langue"
+        style={{ display: 'inline-flex', alignItems: 'center', gap: 7, cursor: 'pointer',
+          padding: '8px 12px', borderRadius: 999, background: 'var(--bg-card)',
+          border: '1px solid var(--border-mid)', boxShadow: 'var(--shadow-card)',
+          fontFamily: "'DM Sans', sans-serif", fontSize: 12.5, fontWeight: 600, letterSpacing: '0.02em',
+          color: open ? 'var(--text)' : 'var(--text-mid)', transition: 'color .16s' }}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.6 2.5 15.4 0 18M12 3c-2.5 2.6-2.5 15.4 0 18"/>
+        </svg>
+        {current[2]}
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6"
+          style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform .24s cubic-bezier(.22,1,.36,1)' }}>
+          <path d="M6 9l6 6 6-6"/>
+        </svg>
+      </button>
+      <div role="listbox" aria-hidden={!open} className={'dd-panel' + (open ? ' dd-open' : '')} style={{
+        position: 'absolute', top: 'calc(100% + 8px)', right: 0, minWidth: 152, zIndex: 200,
+        background: 'var(--nav-bg)', border: '1px solid var(--border-mid)', borderRadius: 12,
+        padding: 5, boxShadow: 'var(--shadow)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
+      }}>
+        {LANGS.map(function (l) {
+          var on = l[0] === lang;
+          return (
+            <button key={l[0]} type="button" role="option" aria-selected={on} tabIndex={open ? 0 : -1}
+              onClick={function () { setLang(l[0]); setOpen(false); }}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, width: '100%',
+                padding: '9px 11px', borderRadius: 8, border: 'none', cursor: 'pointer', textAlign: 'left',
+                background: on ? 'var(--bg-hover)' : 'transparent',
+                fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: on ? 600 : 500,
+                color: on ? 'var(--brand)' : 'var(--text-mid)', transition: 'background .14s, color .14s' }}
+              onMouseEnter={function (e) { if (!on) { e.currentTarget.style.background = 'var(--bg-hover)'; e.currentTarget.style.color = 'var(--text)'; } }}
+              onMouseLeave={function (e) { if (!on) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-mid)'; } }}>
+              {l[1]}
+              <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, opacity: .7 }}>{l[2]}</span>
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -83,17 +139,27 @@ function hexToRgb(hex) {
 }
 
 function SiteHeader(props) {
-  var active = props && props.active; // 'discover' | 'plans'
+  var active = props && props.active; // 'home' | 'discover' | 'plans' | 'login'
   var [open, setOpen] = React.useState(false);
+  /* Langue : par défaut le header pilote le moteur i18n global (window.THWLang).
+     Les pages qui traduisent elles-mêmes passent leur propre sélecteur via `extra`. */
+  var [lang, setLangState] = React.useState(function () {
+    return (window.THWLang && window.THWLang.getLang && window.THWLang.getLang()) || 'fr';
+  });
+  var setLang = function (l) {
+    setLangState(l);
+    if (window.THWLang && window.THWLang.setLang) window.THWLang.setLang(l);
+  };
   var navLinks = [
-    { label: 'Découvrir', href: 'Découvrir.html', key: 'discover' },
-    { label: 'Plans', href: 'Thème.html#abonnements', key: 'plans' },
-    { label: 'Connexion', href: LOGIN_URL, key: 'login' },
+    { label: 'Accueil', href: 'index.html', key: 'home' },
+    { label: 'Découvrir', href: 'decouvrir.html', key: 'discover' },
+    { label: 'Plans', href: 'theme.html#abonnements', key: 'plans' },
+    { label: 'Connexion', href: 'compte.html', key: 'login' },
   ];
   return (
     <header className="site-header">
       <div className="site-header-inner">
-        <a className="brand-lockup" href="Découvrir.html" aria-label="THW Coaching — accueil">
+        <a className="brand-lockup" href="index.html" aria-label="THW Coaching — accueil">
           <ThwLogo size={34} radius={9}/>
           <span className="brand-word">THW<span>.</span></span>
         </a>
@@ -102,7 +168,6 @@ function SiteHeader(props) {
           {navLinks.map(function (l) {
             return (
               <a key={l.key} className="header-link" href={l.href}
-                 onClick={l.key === 'login' ? thwMaybeLogin : null}
                  style={l.key === active ? { color: 'var(--text)', background: 'var(--bg-hover)' } : null}>
                 {l.label}
               </a>
@@ -112,11 +177,12 @@ function SiteHeader(props) {
         </nav>
 
         <div className="header-right">
-          {props && props.extra ? props.extra : null}
+          {props && props.extra ? props.extra
+            : <div data-thw-lang-select="1" data-no-i18n="1"><LangSelect lang={lang} setLang={setLang}/></div>}
           <ThemeToggle/>
-          <a className="btn btn-cyan" href={LOGIN_URL}>
-            <UIIcon name="spark" size={15}/>
-            <span className="header-cta-label">Essai gratuit 14 jours</span>
+          <a className="btn btn-cyan" href="compte.html">
+            <UIIcon name="user" size={15}/>
+            <span className="header-cta-label">Se connecter</span>
           </a>
           <button type="button" className="btn btn-ghost header-burger"
                   aria-label="Menu" onClick={function () { setOpen(!open); }}
@@ -126,26 +192,46 @@ function SiteHeader(props) {
         </div>
       </div>
 
-      {open && (
-        <div className="header-mobile-menu" style={{
-          borderTop: '1px solid var(--border)', padding: '8px 22px 16px',
-          display: 'flex', flexDirection: 'column', gap: 2,
-        }}>
-          {navLinks.map(function (l) {
-            return <a key={l.key} className="header-link" href={l.href} onClick={l.key === 'login' ? thwMaybeLogin : null} style={{ padding: '12px 6px', fontSize: 15 }}>{l.label}</a>;
-          })}
-          <div style={{ height: 1, background: 'var(--border)', margin: '8px 6px' }}/>
-          {MENU_ITEMS.map(function (m) {
-            return <a key={m.href} className="header-link" href={m.href} style={{ padding: '12px 6px', fontSize: 15 }}>{m.label}</a>;
-          })}
+      <div className={'header-mobile-menu' + (open ? ' hmm-open' : '')} aria-hidden={!open}>
+        <div className="hmm-inner">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2, padding: '8px 22px 16px' }}>
+            {navLinks.map(function (l) {
+              return <a key={l.key} className="header-link" href={l.href} tabIndex={open ? 0 : -1} style={{ padding: '12px 6px', fontSize: 15 }}>{l.label}</a>;
+            })}
+            <div style={{ height: 1, background: 'var(--border)', margin: '8px 6px' }}/>
+            {MENU_ITEMS.map(function (m) {
+              return <a key={m.href} className="header-link" href={m.href} tabIndex={open ? 0 : -1} style={{ padding: '12px 6px', fontSize: 15 }}>{m.label}</a>;
+            })}
+          </div>
         </div>
-      )}
+      </div>
 
       <style>{`
+        /* Tout menu déroulant s'ouvre par un vrai mouvement de déroulé. */
+        .dd-panel {
+          transform-origin: top right;
+          opacity: 0; visibility: hidden;
+          transform: translateY(-8px) scaleY(.92);
+          transition: opacity .2s ease, transform .26s cubic-bezier(.22,1,.36,1), visibility .26s;
+        }
+        .dd-panel.dd-open { opacity: 1; visibility: visible; transform: none; }
+        .dd-panel > * { opacity: 0; transform: translateY(-4px); transition: opacity .2s ease .04s, transform .24s cubic-bezier(.22,1,.36,1) .04s; }
+        .dd-panel.dd-open > * { opacity: 1; transform: none; }
+        /* Pas de piste fr ici : dans WebKit, une piste fr dans une grille à hauteur
+           indéfinie se résout à 0 et le menu ne s'ouvre jamais. On anime max-height,
+           en gardant le padding sur l'enfant pour que l'état fermé soit à 0. */
+        .header-mobile-menu {
+          overflow: hidden; max-height: 0; opacity: 0;
+          border-top: 0 solid transparent;
+          transition: max-height .32s cubic-bezier(.22,1,.36,1), opacity .22s ease, border-top-color .3s ease;
+        }
+        .header-mobile-menu > .hmm-inner { padding: 0; }
+        .header-mobile-menu.hmm-open { max-height: 720px; opacity: 1; border-top-width: 1px; border-top-color: var(--border); }
+        @media (prefers-reduced-motion: reduce) { .dd-panel, .dd-panel > *, .header-mobile-menu { transition: none !important; } }
         @media (max-width: 820px) {
           .header-burger { display: inline-flex !important; }
         }
-        @media (min-width: 821px) { .header-mobile-menu { display: none !important; } }
+        @media (min-width: 1001px) { .header-mobile-menu { display: none !important; } }
       `}</style>
     </header>
   );
@@ -181,14 +267,14 @@ function SiteFooter() {
       <div className="wrap">
         <div className="footer-top">
           <div className="footer-brand">
-            <a className="brand-lockup" href="Découvrir.html" aria-label="THW Coaching">
+            <a className="brand-lockup" href="index.html" aria-label="THW Coaching">
               <ThwLogo size={36} radius={9}/>
               <span className="brand-word">THW<span>.</span></span>
             </a>
             <p>Ton entraînement hybride — endurance + force — piloté par une IA qui te connaît.</p>
           </div>
-          {col('Découvrir', [['Toutes les fonctionnalités', 'Découvrir.html'], ['Coach IA', 'Thème.html#coach-ia'], ['Performances', 'Thème.html#performances'], ['Compétences', 'Thème.html#competences']])}
-          {col('Produit', [['Plans & tarifs', 'Thème.html#abonnements'], ['Système de tokens', 'Thème.html#tokens'], ['Connexion', LOGIN_URL], ['Essai gratuit', LOGIN_URL]])}
+          {col('Découvrir', [['Tous les piliers', 'decouvrir.html'], ['Coach IA', 'theme.html#coach-ia'], ['Performances', 'theme.html#performances'], ['Compétences', 'theme.html#competences']])}
+          {col('Produit', [['Plans & tarifs', 'theme.html#abonnements'], ['Abonnement coach', 'abonnement-coach.html'], ['Système de tokens', 'theme.html#tokens'], ['Connexion', APP_URL], ['Essai gratuit', APP_URL]])}
           {col('Support & légal', [['Mentions légales', 'mentions-legales.html'], ['Conditions d\'utilisation', 'conditions-utilisation.html'], ['Confidentialité', 'confidentialite.html'], ['Exporter mes données', 'exporter-mes-donnees.html']])}
         </div>
         <div className="footer-bottom">

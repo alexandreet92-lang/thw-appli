@@ -175,6 +175,14 @@
   var startTime = Date.now();
 
   function ensureSwitcher() {
+    // Le header partagé fournit déjà son propre sélecteur de langue → ne rien injecter.
+    if (document.querySelector('[data-thw-lang-select]')) {
+      var old = document.getElementById('thw-lang-switch');
+      if (old && old.parentNode) old.parentNode.removeChild(old);
+      var oldHost = document.getElementById('thw-lang-host');
+      if (oldHost && oldHost.parentNode) oldHost.parentNode.removeChild(oldHost);
+      return;
+    }
     var tt = findThemeToggle();
     var sw = document.getElementById('thw-lang-switch');
     if (tt && tt.parentNode) {

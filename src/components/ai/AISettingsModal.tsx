@@ -884,13 +884,13 @@ function AbonnementSection() {
           Confidentialité (pages du site). « Autorisations » = permissions
           in-app, gérées dans Profil → Autorisations. */}
       <div style={{ marginTop: 28, paddingTop: 18, borderTop: '1px solid var(--border)', maxWidth: 460 }}>
-        <a href="/decouvrir/decouvrir.html" target="_blank" rel="noopener"
+        <a href="/site/index.html" target="_blank" rel="noopener"
           style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '13px 16px', borderRadius: 'var(--r-md)', border: '1px solid var(--border)', color: 'var(--text)', fontSize: 14, fontWeight: 600, textDecoration: 'none', fontFamily: FB }}>
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
           {t('w1a.enSavoirPlusApp')}
         </a>
         <div style={{ display: 'flex', flexDirection: 'column', marginTop: 6 }}>
-          {([['/decouvrir/cgu.html', t('w1a.linkUtilisation')], ['/decouvrir/confidentialite.html', t('w1a.linkConfidentialite')]] as const).map(([href, label]) => (
+          {([['/site/conditions-utilisation.html', t('w1a.linkUtilisation')], ['/site/confidentialite.html', t('w1a.linkConfidentialite')]] as const).map(([href, label]) => (
             <a key={href} href={href} target="_blank" rel="noopener"
               style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 4px', borderBottom: '1px solid var(--border)', color: 'var(--text-mid)', fontSize: 13.5, textDecoration: 'none', fontFamily: FB }}>
               <span>{label}</span>

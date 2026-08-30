@@ -12,9 +12,9 @@ const APP_BASE = process.env.APP_BASE_URL ?? 'https://thw-appli.vercel.app'
 // Destinations (surchargables par variables d'env quand les pages du site sont prêtes).
 // On distingue ATHLÈTE (grille tarifaire) et COACH (espace coach) : le lien mène
 // directement au bon type d'abonnement.
-const CHANGE_URL_ATHLETE = process.env.SUBSCRIPTION_CHANGE_URL ?? `${APP_BASE}/decouvrir/abonnement.html`
-const CHANGE_URL_COACH = process.env.SUBSCRIPTION_CHANGE_URL_COACH ?? `${APP_BASE}/coach/subscription`
-const CANCEL_URL = process.env.SUBSCRIPTION_CANCEL_URL ?? `${APP_BASE}/decouvrir/cgu.html#resiliation`
+const CHANGE_URL_ATHLETE = process.env.SUBSCRIPTION_CHANGE_URL ?? `${APP_BASE}/site/abonnement-athlete.html`
+const CHANGE_URL_COACH = process.env.SUBSCRIPTION_CHANGE_URL_COACH ?? `${APP_BASE}/site/abonnement-coach.html`
+const CANCEL_URL = process.env.SUBSCRIPTION_CANCEL_URL ?? `${APP_BASE}/site/conditions-utilisation.html#resiliation`
 const LOGO_URL = process.env.EMAIL_LOGO_URL ?? 'https://thw-appli.vercel.app/branding/logo-thw-light.png'
 
 type Action = 'change' | 'cancel'

@@ -1,7 +1,7 @@
 /* ════════════════════════════════════════════════════════════════
    THW Coaching — Site vitrine : contenu des 16 thèmes (partie 1/2)
    Données validées (CONTENU_SITE_THEMES.md). Ne pas réécrire.
-   Chaque thème alimente une page via Thème.html?t=<slug>.
+   Chaque thème alimente une page via theme.html#<slug>.
    ════════════════════════════════════════════════════════════════ */
 window.THW_THEMES = window.THW_THEMES || [];
 
@@ -9,7 +9,7 @@ window.THW_THEMES.push(
   {
     slug: 'coach-ia', num: 1, icon: 'coach', accent: '#00c8e0', accentName: 'Cyan',
     title: 'Coach IA personnalisé',
-    tagline: 'Un coach hybride qui te connaît, disponible jour et nuit.',
+    tagline: 'Un agent qui lit tes données, agit, et se souvient de toi.',
     intro: "THW Coaching, c'est d'abord un coach IA qui a accès à ton historique, tes objectifs, ton matériel et ta forme du moment. Tu lui parles comme à un humain — il te répond, analyse, planifie et agit directement dans l'app.",
     benefits: [
       'Un coach disponible 24/7, qui se souvient de tout ton contexte.',
@@ -125,7 +125,7 @@ window.THW_THEMES.push(
   {
     slug: 'actions-rapides', num: 3, icon: 'bolt', accent: '#F97316', accentName: 'Orange',
     title: 'Actions rapides',
-    tagline: 'Les bonnes tâches, lancées en un clic, avec le bon coach.',
+    tagline: 'Les bons prompts, pour toi ou pour tes athlètes.',
     intro: "Les actions rapides sont des raccourcis qui déclenchent une tâche précise et sélectionnent automatiquement le niveau de coach adapté. Tu n'as rien à régler : la complexité de la tâche choisit le bon modèle pour toi.",
     benefits: [
       '14 raccourcis prêts à l\u2019emploi, classés par domaine.',
@@ -189,7 +189,7 @@ window.THW_THEMES.push(
   {
     slug: 'performances', num: 4, icon: 'chart', accent: '#10B981', accentName: 'Vert',
     title: 'Analyse de tes performances',
-    tagline: 'Transforme tes données en décisions d\u2019entraînement.',
+    tagline: 'Ton IA transforme tes données en décisions.',
     intro: "La page Performance rassemble ton profil athlète, tes tests, tes records et tes graphiques. Tu visualises tes forces et tes faiblesses, tu situes ton niveau, et ton coach s'appuie sur tout ça pour personnaliser ses conseils.",
     benefits: [
       'Un profil athlète complet (FTP, VMA, VO2max, seuils…).',

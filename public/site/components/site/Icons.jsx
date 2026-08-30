@@ -51,6 +51,18 @@
     record: svg([C(12, 12, 9), C(12, 12, 3.6, { fill: 'currentColor', stroke: 'none' })]),
     // 16 — Sécurité : bouclier + cadenas
     shield: svg([P('M12 3l7 3v5c0 4.5-3 7.7-7 9-4-1.3-7-4.5-7-9V6z'), R(9.5, 11, 5, 4, 1), P('M10.5 11v-1.5a1.5 1.5 0 0 1 3 0V11')]),
+    // 17 — Studio : graphe de blocs reliés
+    studio: svg([R(3, 4, 6, 5, 1.5), R(15, 4, 6, 5, 1.5), R(9, 15, 6, 5, 1.5), P('M6 9v2.5a1.5 1.5 0 0 0 1.5 1.5h9A1.5 1.5 0 0 0 18 11.5V9'), P('M12 13v2')]),
+    // 18 — Espace coach : sifflet
+    whistle: svg([C(9, 14, 5.5), P('M14.2 11.5 21 8.2'), P('M13.6 9.8 19.4 6'), P('M9 3v3')]),
+    // 19 — Communauté : groupe
+    community: svg([C(9, 9.5, 3.2), P('M3 20a6 6 0 0 1 12 0'), P('M16 6.6a3 3 0 0 1 0 5.8'), P('M17.5 20a5.6 5.6 0 0 0-2.2-4.4')]),
+    // 20 — Fil : cartes empilées
+    feed: svg([R(3, 4, 18, 7, 2), R(3, 13, 18, 7, 2), L(6.5, 7.5, 12, 7.5), L(6.5, 16.5, 12, 16.5)]),
+    // 21 — Messagerie : bulles
+    message: svg([P('M3.5 5.5h13a1.5 1.5 0 0 1 1.5 1.5v6a1.5 1.5 0 0 1-1.5 1.5H9l-4 3v-3H3.5A1.5 1.5 0 0 1 2 13V7a1.5 1.5 0 0 1 1.5-1.5z'), P('M20.5 9.5H21a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-1v2.5l-2.5-2.5')]),
+    // 22 — Programmes : liste structurée
+    program: svg([R(4, 3, 16, 18, 2.5), L(8, 8, 16, 8), L(8, 12, 16, 12), L(8, 16, 13, 16)]),
   };
 
   var UI = {
@@ -62,6 +74,21 @@
     close: svg([L(6, 6, 18, 18), L(18, 6, 6, 18)]),
     grid: svg([R(4, 4, 7, 7, 1.5), R(13, 4, 7, 7, 1.5), R(4, 13, 7, 7, 1.5), R(13, 13, 7, 7, 1.5)]),
     play: svg([P('M7 5l11 7-11 7z', { fill: 'currentColor', stroke: 'none' })]),
+    google: function (props) {
+      var size = (props && props.size) || 18;
+      return React.createElement('svg', { width: size, height: size, viewBox: '0 0 48 48', 'aria-hidden': 'true' }, [
+        React.createElement('path', { key: 'a', fill: '#4285F4', d: 'M45.1 24.5c0-1.6-.1-2.8-.4-4H24v7.6h11.9c-.2 2-1.5 5-4.4 7l-.1.3 6.4 5 .4.1c4.1-3.8 6.9-9.4 6.9-16z' }),
+        React.createElement('path', { key: 'b', fill: '#34A853', d: 'M24 46c5.9 0 10.8-1.9 14.2-5.3l-6.8-5.2c-1.8 1.3-4.3 2.2-7.4 2.2-5.7 0-10.6-3.7-12.3-8.9l-.3.1-6.6 5.1-.1.3C8.1 41.3 15.5 46 24 46z' }),
+        React.createElement('path', { key: 'c', fill: '#FBBC05', d: 'M11.7 28.8c-.5-1.4-.7-2.8-.7-4.3s.3-3 .7-4.3l-.1-.3-6.7-5.2-.2.1A22.6 22.6 0 0 0 2 24.5c0 3.6.9 7.1 2.7 10.2l7-5.9z' }),
+        React.createElement('path', { key: 'd', fill: '#EA4335', d: 'M24 11.3c4 0 6.7 1.7 8.3 3.2l6-5.9C34.7 5.1 29.9 3 24 3 15.5 3 8.1 7.7 4.7 14.6l7 5.9C13.4 15.3 18.3 11.3 24 11.3z' }),
+      ]);
+    },
+    apple: function (props) {
+      var size = (props && props.size) || 18;
+      return React.createElement('svg', { width: size, height: size, viewBox: '0 0 24 24', fill: 'currentColor', 'aria-hidden': 'true' },
+        React.createElement('path', { d: 'M16.4 12.7c0-2.5 2-3.7 2.1-3.8-1.1-1.7-2.9-1.9-3.5-1.9-1.5-.1-2.8.9-3.5.9s-1.9-.9-3.1-.9C6.7 7 5 8.3 4.1 10.3c-1.6 3.9.4 9.6 2.5 11.5.8.7 1.7 1.2 2.7 1.2 1.1 0 1.6-.7 3-.7s1.8.7 3 .7 2.1-.9 2.9-1.9c.9-1.2 1.3-2.3 1.3-2.4-.1 0-2.9-1.2-3.1-4zM14.6 5.2c.6-.8 1.1-1.9 1-3-1 .1-2.2.7-2.9 1.5-.6.7-1.2 1.8-1 2.9 1.1 0 2.2-.6 2.9-1.4z' }));
+    },
+    user: svg([C(12, 8, 4), P('M5 20a7 7 0 0 1 14 0')]),
   };
 
   function ThemeIcon(props) {

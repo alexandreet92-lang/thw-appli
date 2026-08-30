@@ -1,0 +1,109 @@
+/* ════════════════════════════════════════════════════════════════
+   THW — Couche « raffinée » partagée.
+   Aligne toutes les pages du site sur la typographie de la page
+   Abonnement Coach : Fraunces en titres, Inter en texte, corps
+   réduits, moins d'effets. À charger APRÈS site.css.
+
+   Les pages construites en JSX posent leurs polices en style inline
+   (qui gagne sur une feuille de style) : les règles ci-dessous ciblent
+   donc ces attributs avec !important. C'est volontaire.
+   ════════════════════════════════════════════════════════════════ */
+
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=Inter:wght@400;500;600&display=swap');
+
+:root {
+  --font-display: 'Fraunces', Georgia, serif;
+  --font-body: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'Inter', system-ui, sans-serif;
+}
+
+body { font-family: 'Inter', system-ui, sans-serif; }
+
+/* ── Titres : Fraunces, graisse 600, corps contenus ─────────────────
+   Uniquement sur les balises de titre : les pages JSX posent aussi
+   'Syne' en inline sur des CHIFFRES (prix, volumes de tokens), qui
+   doivent rester en Inter tabulaire. ─────────────────────────────── */
+h1, h2, h3, h4 {
+  font-family: 'Fraunces', Georgia, serif !important;
+  font-weight: 600 !important;
+  letter-spacing: -0.01em !important;
+}
+
+/* Chiffres : jamais de serif, toujours alignés en colonne. */
+.num, .num *, [style*="tabular"],
+[class*="price"], [class*="price"] * {
+  font-family: 'Inter', system-ui, sans-serif !important;
+  font-variant-numeric: tabular-nums !important;
+  font-feature-settings: 'zero' 0;
+}
+
+/* Pas de titre serif rempli d'un dégradé : la page de référence n'en a aucun.
+   Deux origines à neutraliser : le style inline (pages JSX) et la classe
+   .grad de site.css (héros de Découvrir et Thème). */
+[style*="text-fill-color"],
+.grad, [class*="grad"] {
+  -webkit-text-fill-color: currentColor !important;
+  background: none !important;
+  background-image: none !important;
+  color: var(--text) !important;
+}
+
+/* Corps de texte et chiffres : Inter partout */
+[style*="DM Sans"], [style*="DM Mono"] {
+  font-family: 'Inter', system-ui, sans-serif !important;
+}
+[style*="DM Mono"] { font-variant-numeric: tabular-nums; font-feature-settings: 'zero' 0; }
+
+/* ── Échelle de titres ───────────────────────────────────────
+   Pas de règle globale sur h1/h2/h3 : chaque bloc garde sa hiérarchie.
+   On ramène uniquement les héros — et, en même temps, la géométrie
+   (mesure, interligne) qui était calée sur un très grand corps. ───── */
+.disc-hero h1, .th-hero h1, .soon-wrap h1, .hero h1 {
+  font-size: clamp(28px, 3.6vw, 40px) !important;
+  line-height: 1.16 !important;
+  max-width: 26ch !important;
+  text-wrap: balance;
+}
+/* Une mesure sur un bloc n'est centr\u00e9e que par des marges auto : les h\u00e9ros
+   centr\u00e9s (.soon-wrap) ont margin lat\u00e9ral 0 dans site.css. */
+.soon-wrap h1 { margin-left: auto !important; margin-right: auto !important; }
+.legal-header h1 { font-size: 28px !important; line-height: 1.18 !important; text-wrap: balance; }
+@media (max-width: 640px) {
+  .disc-hero h1, .th-hero h1, .soon-wrap h1, .hero h1 { max-width: 22ch !important; }
+  .legal-header h1 { font-size: 24px !important; }
+}
+
+/* Titres de section : on adoucit le pic sans casser la hiérarchie. */
+.section-head h2, .cta-band h2 { font-size: clamp(22px, 2.4vw, 28px) !important; line-height: 1.16 !important; }
+/* ── Moins de bruit : halos et lueurs des pages produit ─────────── */
+[style*="proGlow"], [style*="studioGlow"] { animation: none !important; }
+
+/* ── Sur-titres (eyebrow) uniformes ─────────────────────────────── */
+.eyebrow, .cp-eyebrow {
+  font-family: 'Inter', system-ui, sans-serif !important;
+  font-size: 12px !important; font-weight: 500 !important;
+  letter-spacing: 0.09em !important; text-transform: uppercase !important;
+}
+
+/* ── Pages légales : mêmes places d'écriture que Abonnement Coach ── */
+.legal-wrap { max-width: 1040px !important; padding-left: 32px !important; padding-right: 32px !important; }
+.legal-main { padding-top: 72px !important; }
+.legal-header { border-bottom: none !important; padding-bottom: 0 !important; margin-bottom: 40px !important; }
+.legal-updated { font-family: 'Inter', system-ui, sans-serif !important; font-size: 12px !important; letter-spacing: 0.02em; }
+.legal-lead, .legal-content p, .legal-content ul li { font-size: 14.5px !important; line-height: 1.62 !important; }
+.legal-block h2 { font-size: 17px !important; margin-bottom: 10px !important; }
+.legal-callout { background: var(--bg-card) !important; border: none !important; box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--warning) 40%, transparent); }
+/* Liens « voir aussi » : liens texte sobres, pas des pastilles. */
+.legal-other { border-top: none !important; }
+.legal-other-links a {
+  font-family: 'Inter', system-ui, sans-serif !important;
+  background: none !important; border: none !important;
+  padding: 0 !important; border-radius: 0 !important;
+  color: var(--brand) !important; font-size: 13.5px !important;
+}
+.legal-other-links { gap: 22px !important; }
+
+@media (max-width: 640px) {
+  .legal-wrap { padding-left: 20px !important; padding-right: 20px !important; }
+  .legal-main { padding-top: 44px !important; }
+}

@@ -10,8 +10,8 @@
     /* ── Découvrir page ── */
     "Tout ce que": "Everything",
     "l'app sait faire": "the app can do",
-    "Endurance et force, pilotées par une IA qui te connaît. Explore les 16 piliers de THW Coaching — du coach personnalisé à l'analyse de tes performances.": "Endurance and strength, driven by an AI that knows you. Explore the 16 pillars of THW Coaching — from personalized coaching to the analysis of your performance.",
-    "Explorer les 16 thèmes": "Explore the 16 themes",
+    "Endurance et force, pilotées par une IA qui te connaît. Explore les piliers de THW Coaching — du coach personnalisé à l'analyse de tes performances.": "Endurance and strength, driven by an AI that knows you. Explore the 16 pillars of THW Coaching — from personalized coaching to the analysis of your performance.",
+    "Explorer les piliers": "Explore the pillars",
     "Prêt à t'entraîner plus intelligemment ?": "Ready to train smarter?",
     "Un coach IA, tes données, ta méthode. Commence aujourd'hui, sans carte bancaire.": "An AI coach, your data, your method. Start today, no credit card.",
     "Voir les plans": "See plans",
@@ -380,8 +380,8 @@
     /* ── Découvrir page ── */
     "Tout ce que": "Todo lo que",
     "l'app sait faire": "sabe hacer la app",
-    "Endurance et force, pilotées par une IA qui te connaît. Explore les 16 piliers de THW Coaching — du coach personnalisé à l'analyse de tes performances.": "Resistencia y fuerza, guiadas por una IA que te conoce. Explora los 16 pilares de THW Coaching — del coaching personalizado al análisis de tu rendimiento.",
-    "Explorer les 16 thèmes": "Explorar los 16 temas",
+    "Endurance et force, pilotées par une IA qui te connaît. Explore les piliers de THW Coaching — du coach personnalisé à l'analyse de tes performances.": "Resistencia y fuerza, guiadas por una IA que te conoce. Explora los 16 pilares de THW Coaching — del coaching personalizado al análisis de tu rendimiento.",
+    "Explorer les piliers": "Explorar los pilares",
     "Prêt à t'entraîner plus intelligemment ?": "¿Listo para entrenar de forma más inteligente?",
     "Un coach IA, tes données, ta méthode. Commence aujourd'hui, sans carte bancaire.": "Un coach IA, tus datos, tu método. Empieza hoy, sin tarjeta.",
     "Voir les plans": "Ver planes",

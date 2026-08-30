@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Abonnement Coach — THW Coaching</title>
+  <link rel="icon" href="assets/logo.png"/>
+  <link rel="stylesheet" href="colors_and_type.css"/>
+  <link rel="stylesheet" href="site.css"/>
+  <link rel="stylesheet" href="refined.css"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
+  <script>
+    window.THWTheme = (function () {
+      var KEY = 'thw-theme-mode';
+      var listeners = [];
+      function getMode() { try { return localStorage.getItem(KEY) || 'auto'; } catch (e) { return 'auto'; } }
+      function resolve(mode) {
+        if (mode === 'light') return 'light';
+        if (mode === 'dark') return 'dark';
+        var h = new Date().getHours();
+        return (h >= 7 && h < 20) ? 'light' : 'dark';
+      }
+      function apply(mode) {
+        var eff = resolve(mode);
+        var el = document.documentElement;
+        el.classList.toggle('light', eff === 'light');
+        el.classList.toggle('dark', eff === 'dark');
+        for (var i = 0; i < listeners.length; i++) { try { listeners[i](mode, eff); } catch (e) {} }
+      }
+      function setMode(mode) { try { localStorage.setItem(KEY, mode); } catch (e) {} apply(mode); }
+      function onChange(fn) { listeners.push(fn); return function () { listeners = listeners.filter(function (f) { return f !== fn; }); }; }
+      apply(getMode());
+      setInterval(function () { if (getMode() === 'auto') apply('auto'); }, 60000);
+      return { getMode: getMode, setMode: setMode, resolve: resolve, apply: apply, onChange: onChange, effective: function () { return resolve(getMode()); } };
+    })();
+  </script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body { background: var(--bg); color: var(--text); min-height: 100vh; font-family: 'Inter', var(--font-body); -webkit-font-smoothing: antialiased; overflow-x: hidden; transition: background 0.4s ease, color 0.4s ease; }
+    a { color: var(--brand); text-decoration: none; }
+    a:hover { color: var(--brand-vivid); }
+    /* Atmosphère très atténuée : la page respire par le vide, pas par les effets. */
+    .atmosphere { position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background: radial-gradient(ellipse 60% 50% at 50% 0%, rgba(0,200,224,0.035) 0%, transparent 65%); }
+    #root { position: relative; z-index: 1; }
+    .num { font-variant-numeric: tabular-nums; font-feature-settings: 'zero' 0; }
+    .reveal { opacity: 0; transform: translateY(12px); transition: opacity .55s ease, transform .55s ease; }
+    .reveal.in { opacity: 1; transform: none; }
+    @media (prefers-reduced-motion: reduce) { .reveal { opacity: 1 !important; transform: none !important; } * { animation: none !important; transition: none !important; } }
+
+    /* ── Typographie de la page : Fraunces (titres) + Inter (tout le reste) ── */
+    .cp-display { font-family: 'Fraunces', Georgia, serif; font-weight: 600; letter-spacing: -0.01em; }
+    .cp-wrap { max-width: 1040px; margin: 0 auto; padding: 0 32px; }
+    @media (max-width: 640px) { .cp-wrap { padding: 0 20px; } }
+
+    .cp-head { padding: 64px 0 0; text-align: center; }
+    @media (max-width: 640px) { .cp-head { padding-top: 44px; } }
+    .cp-eyebrow { display: inline-flex; align-items: center; gap: 7px; padding: 7px 14px; border-radius: 999px;
+      background: var(--bg-card); border: 1px solid var(--border-mid); box-shadow: var(--shadow-card);
+      font-size: 11.5px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-mid); }
+    .cp-h1 { font-size: clamp(38px, 6vw, 68px); line-height: 1.04; letter-spacing: -0.03em; margin: 22px auto 0; max-width: 18ch; text-wrap: balance; color: var(--text); }
+    @media (max-width: 640px) { .cp-h1 { font-size: clamp(30px, 8vw, 40px); } }
+    .cp-sub { margin: 18px auto 0; max-width: 58ch; font-size: 15px; line-height: 1.62; color: var(--text-mid); text-wrap: pretty; }
+
+    .cp-togglerow { display: flex; align-items: center; justify-content: center; gap: 16px; flex-wrap: wrap; margin-top: 36px; }
+    .cp-toggle { display: flex; align-items: center; gap: 4px; padding: 5px; background: var(--bg-card);
+      border: 1px solid var(--border-mid); border-radius: 999px; box-shadow: var(--shadow-card); }
+    .cp-toggle button { min-height: 44px; padding: 0 24px; border: none; background: none; border-radius: 999px; cursor: pointer;
+      display: inline-flex; align-items: center; gap: 9px;
+      font-family: 'Inter', sans-serif; font-size: 14.5px; font-weight: 600; color: var(--text-mid); transition: background .2s, color .2s; }
+    .cp-toggle button[aria-pressed="true"] { background: var(--bg-hover); color: var(--text); box-shadow: inset 0 0 0 1px var(--border); }
+    .cp-badge { padding: 4px 10px; border-radius: 999px; background: var(--brand-gradient); color: #fff;
+      font-size: 11.5px; font-weight: 700; letter-spacing: .02em; box-shadow: 0 2px 10px rgba(0,200,224,.3); }
+
+    .cp-band { margin-top: 44px; }
+    .cp-band svg { display: block; width: 100%; height: 58px; overflow: visible; }
+    .cp-band text { font-family: 'Inter', sans-serif; font-size: 11px; fill: var(--text-dim); font-variant-numeric: tabular-nums; }
+    .cp-band-cap { margin: 12px 0 0; font-size: 12px; color: var(--text-dim); }
+
+    /* Cartes : détachées par le fond et l'espace, sans bordure ni couleur d'accent. */
+    .cp-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-top: 40px; }
+    @media (max-width: 560px) { .cp-grid { grid-template-columns: 1fr; } }
+    /* Toutes les cartes partagent la même surface : l'accent seul distingue « Club ». */
+    .cp-pack { background: var(--bg-card); border-radius: 20px; padding: 32px 24px 24px; display: flex; flex-direction: column;
+      box-shadow: inset 0 0 0 1px transparent; transition: box-shadow .2s; }
+    .cp-pack:hover { box-shadow: inset 0 0 0 1px var(--border); }
+    .cp-pack.rec { box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--brand) 55%, transparent); }
+    .cp-pack.rec:hover { box-shadow: inset 0 0 0 1px var(--brand); }
+    .cp-pack-top { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; min-height: 22px; }
+    .cp-pack-name { font-size: 17px; margin: 0; color: var(--text); }
+    .cp-tag { font-size: 11px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; color: var(--brand); white-space: nowrap; }
+    .cp-cap { margin: 8px 0 0; font-size: 13px; color: var(--text-dim); }
+    .cp-price { margin-top: 24px; display: flex; align-items: baseline; gap: 8px; white-space: nowrap; }
+    .cp-price .v { font-size: 34px; font-weight: 600; letter-spacing: -0.02em; line-height: 1; color: var(--text); }
+    @media (max-width: 640px) { .cp-price .v { font-size: 30px; } }
+    .cp-price .p { font-size: 13px; color: var(--text-dim); }
+    .cp-per { margin: 12px 0 0; font-size: 12.5px; color: var(--text-mid); }
+    .cp-alt { margin: 4px 0 0; font-size: 12.5px; color: var(--text-dim); flex: 1; }
+    .cp-cta { margin-top: 24px; min-height: 44px; width: 100%; display: flex; align-items: center; justify-content: center;
+      border-radius: 8px; background: transparent; color: var(--text); box-shadow: inset 0 0 0 1px var(--border-mid);
+      font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 500; cursor: pointer; transition: box-shadow .18s, color .18s, background .18s; }
+    .cp-pack:hover .cp-cta { box-shadow: inset 0 0 0 1px var(--brand); color: var(--brand); }
+    .cp-pack.rec .cp-cta { background: var(--brand); color: #041418; box-shadow: none; }
+    .cp-pack.rec:hover .cp-cta { background: var(--brand-vivid); color: #041418; }
+
+    .cp-section { margin-top: 80px; text-align: center; }
+    @media (max-width: 640px) { .cp-section { margin-top: 56px; } }
+    .cp-h2 { font-size: 20px; margin: 0 0 8px; color: var(--text); }
+    .cp-h2sub { margin: 0 auto 28px; font-size: 14px; color: var(--text-mid); max-width: 58ch; text-wrap: pretty; }
+    .cp-incl { list-style: none; display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px 24px; text-align: left; max-width: 900px; margin: 0 auto; }
+    .cp-incl li { position: relative; padding-left: 20px; font-size: 14px; line-height: 1.55; color: var(--text-mid); text-wrap: pretty; }
+    .cp-incl li::before { content: ''; position: absolute; left: 0; top: 9px; width: 7px; height: 7px; border-radius: 50%; background: var(--brand); }
+
+    .cp-faq { display: flex; flex-direction: column; gap: 8px; text-align: left; max-width: 720px; margin: 0 auto; }
+    .cp-faq-item { background: var(--bg-card); border-radius: 14px; overflow: hidden; }
+    .cp-faq-q { width: 100%; min-height: 44px; display: flex; align-items: center; justify-content: space-between; gap: 16px; text-align: left;
+      padding: 16px 24px; background: none; border: none; cursor: pointer; font-family: 'Inter', sans-serif; font-size: 15px; font-weight: 500; color: var(--text); }
+    .cp-faq-q svg { flex-shrink: 0; color: var(--text-dim); transition: transform .22s; }
+    .cp-faq-item[data-open="true"] .cp-faq-q svg { transform: rotate(180deg); }
+    .cp-faq-a { max-height: 0; overflow: hidden; transition: max-height .26s ease; }
+    .cp-faq-item[data-open="true"] .cp-faq-a { max-height: 240px; }
+    .cp-faq-a p { padding: 0 24px 20px; font-size: 14px; line-height: 1.62; color: var(--text-mid); text-wrap: pretty; }
+
+    .cp-foot-note { margin: 28px 0 0; font-size: 13px; color: var(--text-dim); text-align: center; }
+    .cp-tail { padding-bottom: 80px; }
+    @media (max-width: 640px) { .cp-tail { padding-bottom: 48px; } }
+  </style>
+</head>
+<body>
+<template id="__bundler_thumbnail"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#070b0f"/><text x="50" y="60" font-family="Georgia,serif" font-size="26" font-weight="600" fill="#00c8e0" text-anchor="middle">THW</text></svg></template>
+  <div class="atmosphere"></div>
+  <div id="root"></div>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <script type="text/babel" src="components/branding/ThwLogo.jsx"></script>
+  <script type="text/babel" src="components/branding/ThemeToggle.jsx"></script>
+  <script type="text/babel" src="components/site/Icons.jsx"></script>
+  <script type="text/babel" src="components/site/SiteChrome.jsx"></script>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    const APP_URL = 'https://app.thwcoaching.com';
+
+    const COACH_PACKS = [
+      { key: 'coach10',  name: 'Solo',       label: "jusqu'à 10 athlètes",  maxAthletes: 10,  monthlyEur: 29,  yearlyEur: 290,
+        links: { monthly: 'https://buy.stripe.com/bJe5kE1uXaixdsPeEYf3a1m', yearly: 'https://buy.stripe.com/7sY7sMehJbmBdsP9kEf3a1n' } },
+      { key: 'coach50',  name: 'Équipe',     label: "jusqu'à 50 athlètes",  maxAthletes: 50,  monthlyEur: 59,  yearlyEur: 590,
+        links: { monthly: 'https://buy.stripe.com/bJe9AU7Tl76lgF1aoIf3a1o', yearly: 'https://buy.stripe.com/3cIfZigpR62hcoL1Scf3a1p' } },
+      { key: 'coach100', name: 'Club',       label: "jusqu'à 100 athlètes", maxAthletes: 100, monthlyEur: 99,  yearlyEur: 990,
+        links: { monthly: 'https://buy.stripe.com/fZu14oflN2Q52ObeEYf3a1q', yearly: 'https://buy.stripe.com/00w14oflN1M1dsP68sf3a1r' } },
+      { key: 'coach200', name: 'Académie',   label: "jusqu'à 200 athlètes", maxAthletes: 200, monthlyEur: 169, yearlyEur: 1690,
+        links: { monthly: 'https://buy.stripe.com/bJe5kEa1t4Yd2Ob0O8f3a1s', yearly: 'https://buy.stripe.com/7sY7sM4H92Q5agDeEYf3a1t' } },
+      { key: 'coach300', name: 'Élite',      label: "jusqu'à 300 athlètes", maxAthletes: 300, monthlyEur: 229, yearlyEur: 2290,
+        links: { monthly: 'https://buy.stripe.com/aFadRagpR3U960nfJ2f3a1u', yearly: 'https://buy.stripe.com/3cI8wQc9BbmBgF154of3a1v' } },
+      { key: 'coach500', name: 'Fédération', label: "jusqu'à 500 athlètes", maxAthletes: 500, monthlyEur: 349, yearlyEur: 3490,
+        links: { monthly: 'https://buy.stripe.com/14A28s8XpbmB1K7bsMf3a1w', yearly: 'https://buy.stripe.com/14A8wQ8XpfCRagD2Wgf3a1x' } },
+    ];
+
+    // Si la page est ouverte depuis l'app avec ?uid=..., on le transmet à Stripe
+    // en client_reference_id pour rattacher le paiement au compte à coup sûr.
+    const APP_UID = (() => { try { return new URLSearchParams(window.location.search).get('uid') || ''; } catch (e) { return ''; } })();
+    const stripeUrl = (base) => APP_UID ? base + (base.indexOf('?') === -1 ? '?' : '&') + 'client_reference_id=' + encodeURIComponent(APP_UID) : base;
+    const RECOMMENDED = 'coach100';
+
+    const INCLUDED = [
+      'Ton compte athlète Premium personnel',
+      'Roster complet de tes athlètes',
+      'Planning individuel par athlète',
+      "Écriture directe dans le calendrier de l'athlète",
+      'Messagerie de groupe',
+      'Vitrine publique de coach',
+      '1 M de tokens Studio par mois',
+      'Essai de 14 jours, sans engagement',
+    ];
+
+    const FAQ = [
+      { q: "Comment fonctionne l'essai gratuit ?", a: "14 jours d'accès complet au pack choisi, sans engagement. Aucun prélèvement avant la fin de l'essai, et tu peux arrêter avant sans rien payer." },
+      { q: 'Puis-je changer de pack en cours de route ?', a: "Oui, à tout moment. Le changement prend effet immédiatement et le montant est ajusté au prorata de la période en cours." },
+      { q: 'Comment annuler ?', a: "En un clic depuis ton espace coach. L'accès reste actif jusqu'à la fin de la période déjà payée, puis s'arrête — aucune reconduction." },
+      { q: 'Que se passe-t-il si je dépasse ma capacité ?', a: "Tes athlètes existants ne sont jamais coupés. Tu es simplement invité à passer au pack supérieur pour en ajouter de nouveaux." },
+    ];
+
+    const nf = new Intl.NumberFormat('fr-FR');
+    const eur = (n) => nf.format(n) + ' €';
+    const perAthlete = (p) => (p.monthlyEur / p.maxAthletes).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+
+    function useReveal() {
+      const ref = useRef(null);
+      useEffect(() => {
+        const root = ref.current; if (!root) return;
+        const els = Array.prototype.slice.call(root.querySelectorAll('.reveal'));
+        const io = new IntersectionObserver((entries) => {
+          entries.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } });
+        }, { rootMargin: '0px 0px -8% 0px' });
+        els.forEach((el) => io.observe(el));
+        const safety = setTimeout(() => els.forEach((el) => el.classList.add('in')), 1200);
+        return () => { io.disconnect(); clearTimeout(safety); };
+      }, []);
+      return ref;
+    }
+
+    function CapacityScale() {
+      const max = 500, W = 1000, slot = W / COACH_PACKS.length;
+      return (
+        <div className="cp-band reveal">
+          <svg viewBox={`0 0 ${W} 58`} preserveAspectRatio="none" role="img" aria-label="La capacité d'athlètes croît de 10 à 500 selon le pack">
+            {COACH_PACKS.map((p, i) => {
+              const h = 8 + 44 * (p.maxAthletes / max);
+              const x = i * slot + slot * 0.5 - 14, y = 54 - h;
+              const on = p.key === RECOMMENDED;
+              return (
+                <g key={p.key}>
+                  <rect x={x} y={y} width={28} height={h} rx="4" fill={on ? 'var(--brand)' : 'var(--text-dim)'} opacity={on ? 1 : 0.4}/>
+                  <text x={x + 14} y={y - 6} textAnchor="middle">{p.maxAthletes}</text>
+                </g>
+              );
+            })}
+          </svg>
+          <p className="cp-band-cap num">De 10 à 500 athlètes suivis</p>
+        </div>
+      );
+    }
+
+    function PackCard({ pack, yearly }) {
+      const rec = pack.key === RECOMMENDED;
+      const value = yearly ? eur(pack.yearlyEur) : eur(pack.monthlyEur);
+      const alt = yearly ? `soit ${eur(Math.round(pack.yearlyEur / 12))} par mois` : `${eur(pack.yearlyEur)} en annuel`;
+      return (
+        <article className={rec ? 'cp-pack rec reveal' : 'cp-pack reveal'}>
+          <div className="cp-pack-top">
+            <h3 className="cp-pack-name cp-display">{pack.name}</h3>
+            {rec && <span className="cp-tag">Recommandé</span>}
+          </div>
+          <p className="cp-cap num">{pack.label}</p>
+          <div className="cp-price"><span className="v num">{value}</span><span className="p num">{yearly ? '/an' : '/mois'}</span></div>
+          <p className="cp-per num">{perAthlete(pack)} par athlète et par mois</p>
+          <p className="cp-alt num">{alt}</p>
+          <a className="cp-cta" href={stripeUrl(yearly ? pack.links.yearly : pack.links.monthly)}>Démarrer l'essai gratuit</a>
+        </article>
+      );
+    }
+
+    function FaqItem({ q, a }) {
+      const [open, setOpen] = useState(false);
+      return (
+        <div className="cp-faq-item reveal" data-open={open}>
+          <button type="button" className="cp-faq-q" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+            {q}
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+          </button>
+          <div className="cp-faq-a"><p>{a}</p></div>
+        </div>
+      );
+    }
+
+    function CoachPricingPage() {
+      const [yearly, setYearly] = useState(false);
+      const [lang, setLang] = useState('fr');
+      const ref = useReveal();
+      useEffect(() => { document.title = 'Abonnement Coach — THW Coaching'; }, []);
+
+      return (
+        <div ref={ref}>
+          <SiteHeader active="plans" extra={<LangSelect lang={lang} setLang={setLang}/>}/>
+
+          <main className="cp-wrap">
+            <header className="cp-head reveal">
+              <p className="cp-eyebrow">Abonnement coach</p>
+              <h1 className="cp-h1 cp-display">Coache plus d'athlètes, sans plafond de fonctions</h1>
+              <p className="cp-sub">Toutes les fonctions coach sont dans chaque pack — roster, planning par athlète, messagerie de groupe, écriture directe chez l'athlète, vitrine publique. Le pack ne change que le nombre d'athlètes que tu peux suivre.</p>
+
+              <div className="cp-togglerow">
+                <div className="cp-toggle" role="group" aria-label="Période de facturation">
+                  <button type="button" aria-pressed={!yearly} onClick={() => setYearly(false)}>Mensuel</button>
+                  <button type="button" aria-pressed={yearly} onClick={() => setYearly(true)}>
+                    Annuel <span className="cp-badge">2 mois offerts</span>
+                  </button>
+                </div>
+              </div>
+            </header>
+
+            <CapacityScale/>
+
+            <section aria-label="Packs coach">
+              <div className="cp-grid">
+                {COACH_PACKS.map((p) => <PackCard key={p.key} pack={p} yearly={yearly}/>)}
+              </div>
+            </section>
+
+            <section className="cp-section">
+              <h2 className="cp-h2 cp-display reveal">Tout est inclus, dans chaque pack</h2>
+              <p className="cp-h2sub reveal">Aucune fonction n'est réservée aux packs supérieurs. Tu paies la capacité, pas les fonctionnalités.</p>
+              <ul className="cp-incl reveal">
+                {INCLUDED.map((item) => <li key={item}>{item}</li>)}
+              </ul>
+            </section>
+
+            <section className="cp-section cp-tail">
+              <h2 className="cp-h2 cp-display reveal">Questions fréquentes</h2>
+              <div className="cp-faq" style={{ marginTop: 24 }}>
+                {FAQ.map((f) => <FaqItem key={f.q} q={f.q} a={f.a}/>)}
+              </div>
+              <p className="cp-foot-note reveal">Utilise l'email de ton compte Hybrid lors du paiement.</p>
+              <p className="cp-foot-note reveal" style={{ marginTop: 10 }}>Tu cherches un abonnement individuel ? <a href="abonnement-athlete.html">Voir les abonnements athlète</a></p>
+            </section>
+          </main>
+
+          <SiteFooter/>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<CoachPricingPage/>);
+  </script>
+</body>
+</html>

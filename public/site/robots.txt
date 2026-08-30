@@ -1,3 +1,0 @@
-User-agent: *
-Allow: /
-Sitemap: https://the-hybridway.com/sitemap.xml

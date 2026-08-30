@@ -30,7 +30,7 @@ export async function middleware(request: NextRequest) {
   // Racine : la page gère elle-même la session/redirect.
   if (path === '/') return response
   // Routes publiques (vitrines /c, tarifs coach, programmes, auth…).
-  const publicRoutes = ['/login', '/auth', '/onboarding', '/access-expired', '/legal', '/decouvrir', '/c/', '/coach/tarifs', '/programmes']
+  const publicRoutes = ['/login', '/auth', '/onboarding', '/access-expired', '/legal', '/decouvrir', '/site', '/c/', '/coach/tarifs', '/programmes']
   if (publicRoutes.some(r => path.startsWith(r))) return response
   // Routes API — jamais bloquées.
   if (path.startsWith('/api')) return response
@@ -123,5 +123,5 @@ export async function middleware(request: NextRequest) {
 export const config = {
   // Exclut les assets publics (dont /branding/*) : sinon les requêtes d'images
   // sans cookie (ex. clients mail) sont redirigées vers /auth (307) → image cassée.
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|branding|logos|logo.png|decouvrir).*)'],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|branding|logos|logo.png|decouvrir|site).*)'],
 }

@@ -32,12 +32,12 @@ function Discover() {
               Tout ce que <span className="grad">l'app sait faire</span>
             </h1>
             <p className="reveal" style={{ transitionDelay: '90ms' }}>
-              Endurance et force, pilotées par une IA qui te connaît. Explore les 16 piliers
+              Endurance et force, pilotées par une IA qui te connaît. Explore les piliers
               de THW Coaching — du coach personnalisé à l'analyse de tes performances.
             </p>
             <div className="disc-hero-cta reveal" style={{ transitionDelay: '140ms' }}>
               <a className="btn btn-cyan btn-lg" href={APP_URL}><UIIcon name="spark" size={16} /> Essai gratuit 14 jours</a>
-              <a className="btn btn-ghost btn-lg" href="#grille"><UIIcon name="grid" size={16} /> Explorer les 16 thèmes</a>
+              <a className="btn btn-ghost btn-lg" href="#grille"><UIIcon name="grid" size={16} /> Explorer les piliers</a>
             </div>
             <div className="disc-hero-note reveal" style={{ transitionDelay: '180ms' }}>Sans engagement · résiliable à tout moment</div>
           </section>

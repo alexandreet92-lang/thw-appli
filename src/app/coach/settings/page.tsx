@@ -383,9 +383,10 @@ function DataBloc() {
       <Intro>{t('w1b.data_intro_1')}<b>{t('w1b.data_intro_bold')}</b>{t('w1b.data_intro_2')}</Intro>
       <Section label={t('w1b.sec_athlete_data')}>
         <Group>
-          <LinkRow first label={t('w1b.link_access_log')} sub={t('w1b.link_access_log_sub')} />
-          <LinkRow label={t('w1b.link_export')} sub={t('w1b.link_export_sub')} />
-          <LinkRow label={t('w1b.link_privacy')} sub={t('w1b.link_privacy_sub')} />
+          {/* « Journal d'accès aux données » : fonctionnalité in-app non encore
+              construite (aucune page) → masquée tant qu'elle n'existe pas. */}
+          <LinkRow first label={t('w1b.link_export')} sub={t('w1b.link_export_sub')} onClick={() => window.open('/site/exporter-mes-donnees.html', '_blank', 'noopener')} />
+          <LinkRow label={t('w1b.link_privacy')} sub={t('w1b.link_privacy_sub')} onClick={() => window.open('/site/confidentialite.html', '_blank', 'noopener')} />
         </Group>
       </Section>
     </div>
@@ -410,8 +411,8 @@ function OffreBloc() {
       </Section>
       <Section label={t('w1b.sec_billing')}>
         <Group>
-          <LinkRow first label={t('w1b.link_token_packs')} sub={t('w1b.link_token_packs_sub')} />
-          <LinkRow label={t('w1b.link_billing_history')} sub={t('w1b.link_billing_history_sub')} />
+          <LinkRow first label={t('w1b.link_token_packs')} sub={t('w1b.link_token_packs_sub')} onClick={() => window.open('/site/recharge-tokens.html', '_blank', 'noopener')} />
+          <LinkRow label={t('w1b.link_billing_history')} sub={t('w1b.link_billing_history_sub')} onClick={() => { window.location.href = '/coach/subscription' }} />
         </Group>
       </Section>
     </div>

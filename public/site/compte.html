@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Mon compte — THW Coaching</title>
+  <link rel="icon" href="assets/logo.png"/>
+  <link rel="stylesheet" href="colors_and_type.css"/>
+  <link rel="stylesheet" href="site.css"/>
+  <link rel="stylesheet" href="refined.css"/>
+  <script>
+    window.THWTheme = (function () {
+      var KEY = 'thw-theme-mode';
+      var listeners = [];
+      function getMode() { try { return localStorage.getItem(KEY) || 'auto'; } catch (e) { return 'auto'; } }
+      function resolve(mode) {
+        if (mode === 'light') return 'light';
+        if (mode === 'dark') return 'dark';
+        var h = new Date().getHours();
+        return (h >= 7 && h < 20) ? 'light' : 'dark';
+      }
+      function apply(mode) {
+        var eff = resolve(mode);
+        var el = document.documentElement;
+        el.classList.toggle('light', eff === 'light');
+        el.classList.toggle('dark', eff === 'dark');
+        for (var i = 0; i < listeners.length; i++) { try { listeners[i](mode, eff); } catch (e) {} }
+      }
+      function setMode(mode) { try { localStorage.setItem(KEY, mode); } catch (e) {} apply(mode); }
+      function onChange(fn) { listeners.push(fn); return function () { listeners = listeners.filter(function (f) { return f !== fn; }); }; }
+      apply(getMode());
+      setInterval(function () { if (getMode() === 'auto') apply('auto'); }, 60000);
+      return { getMode: getMode, setMode: setMode, resolve: resolve, apply: apply, onChange: onChange, effective: function () { return resolve(getMode()); } };
+    })();
+  </script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); min-height: 100vh; font-family: var(--font-body); -webkit-font-smoothing: antialiased; overflow-x: hidden; transition: background .4s ease, color .4s ease; }
+    a { color: var(--brand); text-decoration: none; }
+    a:hover { color: var(--brand-vivid); }
+    .atmosphere { position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background: radial-gradient(ellipse 60% 50% at 50% 0%, rgba(0,200,224,0.045) 0%, transparent 65%); }
+    #root { position: relative; z-index: 1; }
+    .num { font-variant-numeric: tabular-nums; font-feature-settings: 'zero' 0; }
+
+    .ac-wrap { max-width: 1040px; margin: 0 auto; padding: 0 32px; }
+    @media (max-width: 640px) { .ac-wrap { padding: 0 20px; } }
+    .ac-main { padding: 64px 0 80px; }
+    @media (max-width: 640px) { .ac-main { padding: 40px 0 48px; } }
+
+    /* ── Écran de connexion ── */
+    .ac-login { max-width: 400px; margin: 0 auto; text-align: center; }
+    .ac-login h1 { font-size: 26px; margin: 18px 0 0; color: var(--text); }
+    .ac-login .lead { margin: 12px 0 0; font-size: 14.5px; line-height: 1.6; color: var(--text-mid); text-wrap: pretty; }
+    .ac-form { margin-top: 28px; display: flex; flex-direction: column; gap: 10px; text-align: left; }
+    .ac-label { font-size: 12px; font-weight: 500; letter-spacing: .06em; text-transform: uppercase; color: var(--text-dim); }
+    .ac-input { width: 100%; min-height: 46px; padding: 0 14px; border-radius: 10px; background: var(--bg-card);
+      border: 1px solid var(--border-mid); color: var(--text); font-family: var(--font-body); font-size: 14.5px; }
+    .ac-input:focus { outline: 2px solid var(--brand); outline-offset: 1px; border-color: transparent; }
+    .ac-submit { min-height: 46px; margin-top: 6px; border: none; border-radius: 10px; cursor: pointer;
+      background: var(--brand-gradient); color: #fff; font-family: var(--font-body); font-size: 14.5px; font-weight: 600;
+      box-shadow: 0 4px 20px rgba(0,200,224,.32); transition: filter .16s; }
+    .ac-submit:hover { filter: brightness(1.07); }
+    .ac-hint { margin-top: 16px; font-size: 12.5px; color: var(--text-dim); }
+    .ac-oauth { margin-top: 22px; display: flex; flex-direction: column; gap: 10px; }
+    .ac-oauth a { display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 46px; border-radius: 10px;
+      background: var(--bg-card); box-shadow: inset 0 0 0 1px var(--border-mid); color: var(--text);
+      font-size: 14.5px; font-weight: 500; transition: box-shadow .16s, background .16s; }
+    .ac-oauth a:hover { color: var(--text); box-shadow: inset 0 0 0 1px var(--text-dim); background: var(--bg-hover); }
+    .ac-sep { display: flex; align-items: center; gap: 12px; margin-top: 22px; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--text-dim); }
+    .ac-sep::before, .ac-sep::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+    /* ── Tableau de bord ── */
+    .ac-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+    .ac-head h1 { font-size: 26px; margin: 6px 0 0; color: var(--text); }
+    .ac-mail { font-size: 13px; color: var(--text-dim); }
+    .ac-logout { min-height: 40px; padding: 0 16px; border-radius: 8px; cursor: pointer; background: transparent;
+      color: var(--text-mid); box-shadow: inset 0 0 0 1px var(--border-mid); border: none;
+      font-family: var(--font-body); font-size: 13.5px; font-weight: 500; transition: box-shadow .16s, color .16s; }
+    .ac-logout:hover { color: var(--text); box-shadow: inset 0 0 0 1px var(--text-dim); }
+
+    .ac-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px; margin-top: 32px; }
+    .ac-card { background: var(--bg-card); border-radius: 18px; padding: 24px; box-shadow: inset 0 0 0 1px transparent; transition: box-shadow .2s; }
+    .ac-card:hover { box-shadow: inset 0 0 0 1px var(--border); }
+    .ac-card-label { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 500; letter-spacing: .07em; text-transform: uppercase; color: var(--text-dim); }
+    .ac-card-label svg { color: var(--brand); flex-shrink: 0; }
+    .ac-big { margin-top: 14px; font-size: 30px; font-weight: 600; letter-spacing: -.02em; line-height: 1; color: var(--text); }
+    .ac-unit { font-size: 13px; font-weight: 400; color: var(--text-dim); margin-left: 5px; }
+    .ac-note { margin-top: 10px; font-size: 12.5px; line-height: 1.5; color: var(--text-mid); }
+    .ac-bar { margin-top: 14px; height: 6px; border-radius: 999px; background: var(--bg-hover); overflow: hidden; }
+    .ac-bar span { display: block; height: 100%; border-radius: 999px; background: var(--brand-gradient); }
+    .ac-bar.warn span { background: var(--warning); }
+    .ac-pill { display: inline-flex; align-items: center; gap: 6px; margin-top: 12px; padding: 5px 11px; border-radius: 999px;
+      background: rgba(0,200,224,.09); color: var(--brand); font-size: 11.5px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
+    .ac-link { display: inline-flex; align-items: center; gap: 6px; margin-top: 16px; font-size: 13px; font-weight: 500; }
+
+    /* ── Factures ── */
+    .ac-section { margin-top: 64px; }
+    .ac-section h2 { font-size: 20px; margin: 0 0 6px; color: var(--text); }
+    .ac-section .sub { margin: 0 0 20px; font-size: 13.5px; color: var(--text-mid); }
+    .ac-table { width: 100%; border-collapse: collapse; }
+    .ac-table th { text-align: left; padding: 0 14px 10px; font-size: 11.5px; font-weight: 500; letter-spacing: .07em; text-transform: uppercase; color: var(--text-dim); }
+    .ac-table th:last-child, .ac-table td:last-child { text-align: right; }
+    .ac-table td { padding: 14px; font-size: 13.5px; color: var(--text-mid); border-top: 1px solid var(--border); }
+    .ac-table tr:first-child td { border-top: none; }
+    .ac-table .desc { color: var(--text); font-weight: 500; }
+    .ac-tag { display: inline-block; padding: 3px 9px; border-radius: 999px; font-size: 11px; font-weight: 600; letter-spacing: .03em; }
+    .ac-tag.sub { background: rgba(0,200,224,.1); color: var(--brand); }
+    .ac-tag.tok { background: rgba(139,92,246,.12); color: #a78bfa; }
+    .ac-dl { color: var(--brand); font-weight: 500; }
+    @media (max-width: 640px) {
+      .ac-table thead { display: none; }
+      .ac-table tr { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; padding: 14px 0; border-top: 1px solid var(--border); }
+      .ac-table tr:first-child { border-top: none; }
+      .ac-table td { border: none; padding: 0; }
+      .ac-table td:last-child { grid-column: 2; grid-row: 1 / span 2; align-self: center; }
+    }
+  </style>
+</head>
+<body>
+<template id="__bundler_thumbnail"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#070b0f"/><circle cx="50" cy="40" r="13" fill="none" stroke="#00c8e0" stroke-width="5"/><path d="M26 78a24 24 0 0 1 48 0" fill="none" stroke="#00c8e0" stroke-width="5"/></svg></template>
+  <div class="atmosphere"></div>
+  <div id="root"></div>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <script type="text/babel" src="components/branding/ThwLogo.jsx"></script>
+  <script type="text/babel" src="components/branding/ThemeToggle.jsx"></script>
+  <script type="text/babel" src="components/site/Icons.jsx"></script>
+  <script type="text/babel" src="components/site/SiteChrome.jsx"></script>
+
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    /* Démonstration : dans l'app, ces valeurs viennent du compte connecté
+       (solde de tokens, abonnement en cours, essai, factures Stripe). */
+    const ACCOUNT = {
+      name: 'Alexandre',
+      email: 'alexandre@exemple.fr',
+      plan: { name: 'Pro', kind: 'Abonnement athlète', price: '26 € /mois', renews: '2 septembre 2026' },
+      trial: { active: true, daysLeft: 6, total: 14 },
+      chatTokens: { balance: 68400, quota: 120000 },
+      studioTokens: { balance: 412500, quota: 300000 },
+      invoices: [
+        { date: '2 août 2026',    desc: 'Abonnement Pro — août 2026',        type: 'sub', amount: '26,00 €' },
+        { date: '28 juillet 2026', desc: 'Pack Builder — 2 M tokens Studio', type: 'tok', amount: '29,99 €' },
+        { date: '2 juillet 2026',  desc: 'Abonnement Pro — juillet 2026',    type: 'sub', amount: '26,00 €' },
+        { date: '14 juin 2026',    desc: 'Pack Découverte — 200k tokens Studio', type: 'tok', amount: '4,99 €' },
+        { date: '2 juin 2026',     desc: 'Abonnement Pro — juin 2026',       type: 'sub', amount: '26,00 €' },
+      ],
+    };
+
+    const nf = new Intl.NumberFormat('fr-FR');
+
+    const Icon = ({ size = 16, children }) => (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{children}</svg>
+    );
+    const IcToken = (p) => <Icon {...p}><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5h3.2a2 2 0 0 1 0 4H9.5v-4zm0 4v3"/></Icon>;
+    const IcLayers = (p) => <Icon {...p}><path d="m12 2 9 5-9 5-9-5 9-5zM3 12l9 5 9-5M3 17l9 5 9-5"/></Icon>;
+    const IcCard = (p) => <Icon {...p}><rect x="2" y="5" width="20" height="14" rx="2.5"/><path d="M2 10h20"/></Icon>;
+    const IcClock = (p) => <Icon {...p}><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></Icon>;
+    const IcArrow = (p) => <Icon {...p}><path d="M5 12h14M13 6l6 6-6 6"/></Icon>;
+    const IcDown = (p) => <Icon {...p}><path d="M12 4v11M7.5 11l4.5 4.5L16.5 11M5 20h14"/></Icon>;
+
+    function LoginView({ onLogin }) {
+      const [email, setEmail] = useState('');
+      return (
+        <div className="ac-login">
+          <span className="eyebrow" style={{ justifyContent: 'center' }}>Espace personnel</span>
+          <h1>Se connecter</h1>
+          <p className="lead">Retrouve ton solde de tokens, ton abonnement en cours, tes jours d'essai restants et toutes tes factures.</p>
+          <div className="ac-oauth">
+            <a href={APP_URL + '/login?provider=google'}><UIIcon name="google" size={18}/> Continuer avec Google</a>
+            <a href={APP_URL + '/login?provider=apple'}><UIIcon name="apple" size={17}/> Continuer avec Apple</a>
+          </div>
+          <div className="ac-sep">ou par email</div>
+          <form className="ac-form" style={{ marginTop: 18 }} onSubmit={(e) => { e.preventDefault(); onLogin(); }}>
+            <label className="ac-label" htmlFor="ac-email">Email du compte Hybrid</label>
+            <input className="ac-input" id="ac-email" type="email" required placeholder="ton@email.fr"
+              value={email} onChange={(e) => setEmail(e.target.value)}/>
+            <label className="ac-label" htmlFor="ac-pass" style={{ marginTop: 6 }}>Mot de passe</label>
+            <input className="ac-input" id="ac-pass" type="password" required placeholder="••••••••"/>
+            <button className="ac-submit" type="submit">Se connecter</button>
+          </form>
+          <p className="ac-hint">Pas encore de compte ? <a href={APP_URL + '/signup'}>Crée-le en 1 minute</a> — 14 jours d'essai, sans carte bancaire.</p>
+        </div>
+      );
+    }
+
+    function TokenCard({ label, icon, balance, quota, note, cta }) {
+      const pct = Math.min(100, Math.round((balance / quota) * 100));
+      return (
+        <div className="ac-card">
+          <div className="ac-card-label">{icon} {label}</div>
+          <p className="ac-big num">{nf.format(balance)}<span className="ac-unit">tokens</span></p>
+          <div className="ac-bar"><span style={{ width: pct + '%' }}/></div>
+          <p className="ac-note num">{note}</p>
+          {cta && <a className="ac-link" href={cta[1]}>{cta[0]} <IcArrow size={13}/></a>}
+        </div>
+      );
+    }
+
+    function Dashboard({ onLogout }) {
+      const a = ACCOUNT;
+      const trialPct = Math.round((a.trial.daysLeft / a.trial.total) * 100);
+      return (
+        <React.Fragment>
+          <div className="ac-head">
+            <div>
+              <span className="eyebrow">Mon compte</span>
+              <h1>Bonjour {a.name}</h1>
+              <p className="ac-mail">{a.email}</p>
+            </div>
+            <button type="button" className="ac-logout" onClick={onLogout}>Se déconnecter</button>
+          </div>
+
+          <div className="ac-cards">
+            <div className="ac-card">
+              <div className="ac-card-label"><IcCard size={15}/> Mon abonnement</div>
+              <p className="ac-big">{a.plan.name}</p>
+              <p className="ac-note">{a.plan.kind} · {a.plan.price}<br/>Prochain prélèvement le {a.plan.renews}</p>
+              <a className="ac-link" href="abonnement-athlete.html">Changer de formule <IcArrow size={13}/></a>
+            </div>
+
+            <div className="ac-card">
+              <div className="ac-card-label"><IcClock size={15}/> Essai gratuit</div>
+              <p className="ac-big num">{a.trial.daysLeft}<span className="ac-unit">jours restants</span></p>
+              <div className="ac-bar warn"><span style={{ width: trialPct + '%' }}/></div>
+              <p className="ac-note num">sur {a.trial.total} jours d'essai · aucun prélèvement avant la fin</p>
+              <span className="ac-pill">Essai en cours</span>
+            </div>
+
+            <TokenCard label="Tokens du chat" icon={<IcToken size={15}/>}
+              balance={a.chatTokens.balance} quota={a.chatTokens.quota}
+              note={`sur ${nf.format(a.chatTokens.quota)} inclus ce mois-ci`}
+              cta={['Recharger', 'recharge-tokens.html']}/>
+
+            <TokenCard label="Tokens Studio" icon={<IcLayers size={15}/>}
+              balance={a.studioTokens.balance} quota={a.studioTokens.quota}
+              note={`quota mensuel ${nf.format(a.studioTokens.quota)} · les packs achetés n'expirent jamais`}
+              cta={['Recharger le Studio', 'recharge-tokens.html']}/>
+          </div>
+
+          <section className="ac-section">
+            <h2>Mes factures</h2>
+            <p className="sub">Abonnements et recharges de tokens. Chaque facture est téléchargeable en PDF.</p>
+            <table className="ac-table">
+              <thead>
+                <tr><th>Date</th><th>Détail</th><th>Type</th><th>Montant</th><th>Facture</th></tr>
+              </thead>
+              <tbody>
+                {a.invoices.map((inv, i) => (
+                  <tr key={i}>
+                    <td className="num">{inv.date}</td>
+                    <td className="desc">{inv.desc}</td>
+                    <td><span className={'ac-tag ' + inv.type}>{inv.type === 'sub' ? 'Abonnement' : 'Tokens'}</span></td>
+                    <td className="num">{inv.amount}</td>
+                    <td><a className="ac-dl" href="#" onClick={(e) => e.preventDefault()} style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><IcDown size={13}/> PDF</a></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </section>
+        </React.Fragment>
+      );
+    }
+
+    function AccountPage() {
+      const [logged, setLogged] = useState(false);
+      useEffect(() => { document.title = 'Mon compte — THW Coaching'; }, []);
+      return (
+        <div>
+          <SiteHeader active="login"/>
+          <main className="ac-wrap ac-main">
+            {logged ? <Dashboard onLogout={() => setLogged(false)}/> : <LoginView onLogin={() => setLogged(true)}/>}
+          </main>
+          <SiteFooter/>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<AccountPage/>);
+  </script>
+</body>
+</html>

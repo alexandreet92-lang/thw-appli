@@ -261,7 +261,7 @@ export default function SessionSaveForm({ sport, startedAt, onBack, onSave, isDa
 
               {/* Visibilité */}
               <div>
-                <p style={{ ...LABEL_STYLE, color: t.muted }}>Qui peut voir cette séance</p>
+                <p style={{ ...LABEL_STYLE, color: t.muted }}>{tr('record.whoCanSeeSession')}</p>
                 <div style={{ display: 'flex', gap: 8 }}>
                   {VIS_OPTS.map(o => {
                     const on = visibility === o.id

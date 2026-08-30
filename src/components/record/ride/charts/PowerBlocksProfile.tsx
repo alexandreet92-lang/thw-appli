@@ -6,10 +6,12 @@
 // plan résolu + FTP athlète.
 import { ZONES, zoneIndex } from '../zones'
 import type { RidePlan } from '../types'
+import { useI18n } from '@/lib/i18n'
 
 interface Props { plan: RidePlan; ftp: number; height?: number }
 
 export default function PowerBlocksProfile({ plan, ftp, height = 84 }: Props) {
+  const { t } = useI18n()
   const blocks = plan.blocks.filter(b => b.t1 > b.t0)
   if (blocks.length === 0) return null
   const total = plan.totalS || blocks[blocks.length - 1].t1 || 1
@@ -19,7 +21,7 @@ export default function PowerBlocksProfile({ plan, ftp, height = 84 }: Props) {
   const W = 1000, H = height, pad = 3, innerH = H - pad * 2
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" style={{ width: '100%', height, display: 'block' }} role="img" aria-label="Profil de puissance de la séance">
+    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" style={{ width: '100%', height, display: 'block' }} role="img" aria-label={t('ride.powerProfile')}>
       {/* ligne de base FTP */}
       {ftp > 0 && (() => {
         const y = pad + innerH - (ftp / pmax) * innerH

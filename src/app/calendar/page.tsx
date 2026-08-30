@@ -1162,7 +1162,7 @@ function ObjectiveChooser({ date, onClose, onCourse, onStage, onTest, onEvent }:
           <button onClick={onTest} style={card}>
             <Target size={26} color="#8b5cf6" />
             <span style={{ fontWeight: 700, fontSize: 15 }}>Test</span>
-            <span style={{ fontSize: 11.5, color: 'var(--text-dim)', textAlign: 'center' }}>Test de forme lié à Performance</span>
+            <span style={{ fontSize: 11.5, color: 'var(--text-dim)', textAlign: 'center' }}>{t('calendar.testFormPerf')}</span>
           </button>
           <button onClick={onEvent} style={card}>
             <PartyPopper size={26} color="#ec4899" />

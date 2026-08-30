@@ -1877,7 +1877,7 @@ function AthletePicker({ athletes, active, onPick, disabled = false }: {
   const filtered = q ? athletes.filter(a => a.name.toLowerCase().includes(q.toLowerCase())) : athletes
   return (
     <div ref={ref} style={{ position: 'relative', flexShrink: 0 }}>
-      <button onClick={() => { if (!disabled) setOpen(p => !p) }} disabled={disabled} title="Athlète ciblé"
+      <button onClick={() => { if (!disabled) setOpen(p => !p) }} disabled={disabled} title={t('aip.targetedAthlete')}
         style={{ height: 28, borderRadius: 999, border: `1px solid ${active || open ? 'var(--ai-mid)' : 'var(--ai-border)'}`, background: active || open ? 'var(--ai-bg2)' : 'transparent', cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.45 : 1, display: 'flex', alignItems: 'center', gap: 6, padding: active ? '0 10px 0 3px' : '0 11px', fontFamily: 'var(--font-body)', fontSize: 12.5, fontWeight: 600, color: 'var(--ai-text)', maxWidth: 150 }}>
         {active ? <><AthleteMini a={active} /><span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{active.name}</span></>
           : <><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></svg><span>Athlète</span></>}
@@ -12757,7 +12757,7 @@ function PlusMenu({
           <div style={mGroup}>
             <button style={mRow} onClick={() => { onPrepare('Créer un parcours', CREATE_ROUTE_PROMPT); onClose() }}>
               <MapIcon size={20} color="var(--text-mid)" style={{ flexShrink: 0 }} />
-              <span style={{ flex: 1 }}>Créer un parcours</span>
+              <span style={{ flex: 1 }}>{t('record.routeLibraryCreate')}</span>
               <span style={mHint}>IA</span>
             </button>
             <div style={mDiv} />
@@ -12894,7 +12894,7 @@ function PlusMenu({
             onMouseEnter={hoverOn} onMouseLeave={hoverOff}
           >
             <MapIcon size={16} color="var(--text-mid)" style={{ flexShrink: 0 }} />
-            <span style={{ flex: 1 }}>Créer un parcours</span>
+            <span style={{ flex: 1 }}>{t('record.routeLibraryCreate')}</span>
             <span style={{ fontSize: 10, color: 'var(--text-dim)', flexShrink: 0 }}>IA</span>
           </button>
           <button
@@ -13212,7 +13212,7 @@ function HistoryDrawer({
             Hybrid
           </span>
           {persistent && onToggleCollapse && (
-            <button type="button" onClick={() => { haptic(); onToggleCollapse() }} aria-label="Replier la barre latérale"
+            <button type="button" onClick={() => { haptic(); onToggleCollapse() }} aria-label={t('aip.collapseSidebar')}
               style={{ width: 28, height: 28, borderRadius: 7, border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-mid)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
               onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)' }}
               onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}>
@@ -13224,7 +13224,7 @@ function HistoryDrawer({
           <button
             type="button"
             onClick={() => { haptic(); setAvatarMenu(o => !o) }}
-            aria-label="Compte et paramètres"
+            aria-label={t('aip.accountSettings')}
             style={{
               width: 34, height: 34, borderRadius: '50%', flexShrink: 0,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -13564,7 +13564,7 @@ function HistoryDrawer({
                       réponse terminée non vue (point bleu). Prioritaire sur le pin. */}
                   {generatingConvs.has(conv.id) ? (
                     <span
-                      aria-label="Réflexion en cours"
+                      aria-label={t('aip.thinking')}
                       style={{
                         width: 11, height: 11, borderRadius: '50%', flexShrink: 0, alignSelf: 'center',
                         border: '1.5px solid rgba(91,111,255,0.25)', borderTopColor: '#5b6fff',
@@ -13573,7 +13573,7 @@ function HistoryDrawer({
                     />
                   ) : unreadDone.has(conv.id) ? (
                     <span
-                      aria-label="Réponse terminée"
+                      aria-label={t('aip.responseDone')}
                       style={{
                         width: 7, height: 7, borderRadius: '50%', flexShrink: 0, alignSelf: 'center',
                         background: '#5b6fff', boxShadow: '0 0 6px rgba(91,111,255,0.7)',
@@ -20616,7 +20616,7 @@ function SecondaryChatColumn({
             <TokenUsageBubble onBuyTokens={onBuyTokens} currentModel={model} isMobile={false} />
 
             {generating ? (
-              <button onClick={onStop} title="Arrêter" aria-label="Arrêter la génération"
+              <button onClick={onStop} title={t('aip.stop')} aria-label={t('aip.stopGeneration')}
                 style={{ width: 30, height: 30, borderRadius: '50%', flexShrink: 0, border: 'none', background: '#374151', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="white" stroke="none"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
               </button>
@@ -23074,7 +23074,7 @@ export default function AIPanel({
           {isDesktop && sidebarCollapsed && (
             <button
               onClick={() => { haptic(); setSidebarCollapsed(false) }}
-              aria-label="Ouvrir la barre latérale"
+              aria-label={t('aip.openSidebar')}
               style={{ position: 'absolute', top: 16, left: 12, zIndex: 40, width: 34, height: 34, borderRadius: 9, border: '0.5px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-mid)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 14px rgba(0,0,0,0.12)' }}
               onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)' }}
               onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-card)' }}
@@ -23169,8 +23169,8 @@ export default function AIPanel({
                   <div style={{ position: 'relative', flexShrink: 0 }}>
                     <button
                       onClick={() => setSplitPickerOpen(o => !o)}
-                      title="Diviser l'écran (ouvrir une conversation en volet)"
-                      aria-label="Diviser l'écran"
+                      title={t('aip.splitScreenTitle')}
+                      aria-label={t('aip.splitScreen')}
                       style={{
                         width: 26, height: 26, borderRadius: 8,
                         border: '0.5px solid var(--border)', background: splitPickerOpen ? 'var(--bg-alt)' : 'var(--bg-hover)',

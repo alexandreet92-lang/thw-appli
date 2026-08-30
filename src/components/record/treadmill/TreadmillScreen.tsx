@@ -217,7 +217,7 @@ export default function TreadmillScreen({ onExit, onFinished }: Props) {
       <header style={{ padding: '14px 20px 8px', flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
           <button onClick={onExit} aria-label="Retour" style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--bg-card2)', border: 'none', color: 'var(--text)', fontSize: 20, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>‹</button>
-          <span style={{ fontSize: 12, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--primary)', fontWeight: 800 }}>Tapis · prêt à démarrer</span>
+          <span style={{ fontSize: 12, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--primary)', fontWeight: 800 }}>{t('tm.readyToStart')}</span>
         </div>
         <h1 style={{ fontFamily: FD, fontSize: 26, fontWeight: 600, margin: '0 0 14px', color: 'var(--text)' }}>{plan.title}</h1>
         <div style={{ display: 'flex', gap: 8 }}>
@@ -248,7 +248,7 @@ export default function TreadmillScreen({ onExit, onFinished }: Props) {
                   border: selectedId == null ? '1.5px solid var(--primary)' : '1px solid var(--border)',
                   background: selectedId == null ? 'color-mix(in srgb, var(--primary) 8%, var(--bg-card))' : 'var(--bg-card)' }}>
                 <div style={{ fontSize: 13.5, fontWeight: 700, color: selectedId == null ? 'var(--primary)' : 'var(--text)' }}>Course libre</div>
-                <div style={{ fontSize: 11, color: 'var(--text-mid)', marginTop: 2 }}>Vitesse et pente à la volée</div>
+                <div style={{ fontSize: 11, color: 'var(--text-mid)', marginTop: 2 }}>{t('tm.speedGradeOnFly')}</div>
               </button>
               {options.map(o => {
                 const on = selectedId === o.id
@@ -390,7 +390,7 @@ export default function TreadmillScreen({ onExit, onFinished }: Props) {
       {/* Section FC — capteur BLE (Web Bluetooth) */}
       <div style={{ padding: '0 16px 8px', flexShrink: 0 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, fontWeight: 700, opacity: 0.9, marginBottom: 6 }}>
-          <span>Fréquence cardiaque</span>
+          <span>{t('activities.heartRate')}</span>
           {hr.status === 'connected'
             ? <span style={{ fontVariantNumeric: 'tabular-nums' }}>{hr.bpm ?? '—'} bpm</span>
             : hr.supported
@@ -428,7 +428,7 @@ export default function TreadmillScreen({ onExit, onFinished }: Props) {
   const dataScreen = (
     <div style={{ minHeight: '100%', background: 'var(--bg)', color: 'var(--text)', fontFamily: FB, padding: 'calc(env(safe-area-inset-top) + 14px) 16px calc(env(safe-area-inset-bottom) + 20px)' }}>
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 12 }}>
-        <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--text-dim)' }}>Données de séance</span>
+        <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--text-dim)' }}>{t('tm.sessionData')}</span>
         <span style={{ fontSize: 14, fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}>{formatSeconds(seconds)}</span>
       </div>
 
@@ -455,13 +455,13 @@ export default function TreadmillScreen({ onExit, onFinished }: Props) {
       </div>
 
       {/* Profil altimétrique (réel, cumulé) */}
-      <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-dim)', margin: '0 2px 8px' }}>Profil altimétrique</div>
+      <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-dim)', margin: '0 2px 8px' }}>{t('tm.altitudeProfile')}</div>
       <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 14, padding: '10px 12px', marginBottom: 14 }}>
         <AltProfile series={altSeriesRef.current} height={96} />
       </div>
 
       {/* Déroulé de la séance */}
-      <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-dim)', margin: '0 2px 8px' }}>Déroulé de la séance</div>
+      <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-dim)', margin: '0 2px 8px' }}>{t('tm.sessionFlow')}</div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         {plan.steps.map((s, i) => {
           const state = i < stepIdx ? 'done' : i === stepIdx ? 'now' : 'next'
@@ -517,7 +517,7 @@ export default function TreadmillScreen({ onExit, onFinished }: Props) {
   const review = (
     <div style={{ position: 'absolute', inset: 0, overflowY: 'auto', background: 'var(--bg)', color: 'var(--text)', fontFamily: FB, padding: 'calc(env(safe-area-inset-top) + 18px) 18px calc(env(safe-area-inset-bottom) + 18px)' }}>
       <div style={{ maxWidth: 560, margin: '0 auto' }}>
-        <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--primary)', marginBottom: 6 }}>Séance terminée</div>
+        <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--primary)', marginBottom: 6 }}>{t('record.homeTrainerSessionDone')}</div>
         <h2 style={{ fontFamily: FD, fontSize: 24, fontWeight: 600, margin: '0 0 16px' }}>{plan.title}</h2>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8, marginBottom: 14 }}>
@@ -543,12 +543,12 @@ export default function TreadmillScreen({ onExit, onFinished }: Props) {
           ]
           return (
             <>
-              <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-dim)', margin: '0 2px 8px' }}>Prévu vs réalisé</div>
+              <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-dim)', margin: '0 2px 8px' }}>{t('plnp.activity.planVsDone')}</div>
               <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 14, padding: '12px 14px', marginBottom: 14 }}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: '5px 18px', alignItems: 'baseline' }}>
                   <span />
                   <span style={{ fontSize: 9, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-dim)' }}>Prévu</span>
-                  <span style={{ fontSize: 9, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-dim)' }}>Réalisé</span>
+                  <span style={{ fontSize: 9, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-dim)' }}>{t('calendar.realized')}</span>
                   {rows.map(r => (
                     <FragmentRowTm key={r.l} r={r} />
                   ))}
@@ -558,7 +558,7 @@ export default function TreadmillScreen({ onExit, onFinished }: Props) {
           )
         })()}
 
-        <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-dim)', margin: '0 2px 8px' }}>Profil altimétrique</div>
+        <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-dim)', margin: '0 2px 8px' }}>{t('tm.altitudeProfile')}</div>
         <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 14, padding: '10px 12px', marginBottom: 18 }}>
           <AltProfile series={altSeriesRef.current} height={110} />
         </div>
@@ -604,7 +604,7 @@ export default function TreadmillScreen({ onExit, onFinished }: Props) {
   // ── Écran FINAL (après enregistrement) ──────────────────────
   const done = (
     <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 22, background: 'var(--bg)', color: 'var(--text)', fontFamily: FB, padding: '0 24px' }}>
-      <p style={{ fontFamily: FD, fontSize: 24, fontWeight: 600, margin: 0 }}>Séance enregistrée</p>
+      <p style={{ fontFamily: FD, fontSize: 24, fontWeight: 600, margin: 0 }}>{t('activities.recordedSession')}</p>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, width: '100%', maxWidth: 340 }}>
         {[
           { l: 'Distance', v: `${(distRef.current / 1000).toFixed(2).replace('.', ',')} km` },

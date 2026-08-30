@@ -379,7 +379,7 @@ export default function RecordPage() {
       `}</style>
       <button
         className="thw-record-plus"
-        aria-label="Créer une activité manuellement"
+        aria-label={t('record.createManualActivity')}
         onClick={() => setManualOpen(true)}
         style={{
           width: 38, height: 38, borderRadius: 12, zIndex: 121,
@@ -667,7 +667,7 @@ export default function RecordPage() {
             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 14 }}>
               <div style={{ width: 40, height: 4, borderRadius: 2, background: 'var(--border-mid)' }} />
             </div>
-            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 600, margin: '0 0 14px' }}>Course à pied</h2>
+            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 600, margin: '0 0 14px' }}>{t('w1a.sport_running')}</h2>
             {[
               { id: 'outdoor', label: 'Dehors', desc: 'Suivi GPS en extérieur', go: () => { setRunChoiceOpen(false); setView('running') } },
               { id: 'treadmill', label: 'Tapis', desc: 'Séance guidée · allure & pente', go: () => { setRunChoiceOpen(false); setView('treadmill') } },

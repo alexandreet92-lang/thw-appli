@@ -207,7 +207,7 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
 
         {/* Rechercher / Guide — à gauche de « Démarrer ». */}
         {!isRecord && (
-          <button data-guide="app-search" aria-label="Rechercher dans l'app" title="Rechercher · où appuyer ?" onClick={openSearch}
+          <button data-guide="app-search" aria-label={t('dsh.searchApp')} title={t('dsh.searchWhereTap')} onClick={openSearch}
             style={{ position: 'fixed', top: 12, right: 274, height: 38, width: 38, zIndex: 130,
               display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 12,
               background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', color: 'var(--text)', cursor: 'pointer', boxShadow: 'var(--shadow-card)' }}>

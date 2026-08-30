@@ -5327,7 +5327,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
               {SPORT_LABEL[sport]}{trainingTypes.length ? ` · ${trainingTypes.join(' + ')}` : ''}
             </p>
           </div>
-          <button onClick={handlePrintMemo} title="Mémo imprimable"
+          <button onClick={handlePrintMemo} title={t('sed.printMemo')}
             style={{ flexShrink: 0, height: 34, padding: '0 12px', borderRadius: 10, cursor: 'pointer', border: `1px solid ${accent}`, background: 'transparent', color: accent, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 12, fontWeight: 700 }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v8H6z"/></svg>
             Mémo
@@ -5335,7 +5335,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
           {/* Répéter la séance le même jour les semaines suivantes. */}
           {isEdit && onRepeat && session && (
             <div style={{ position: 'relative', flexShrink: 0 }}>
-              <button onClick={() => setShowRepeatMenu(v => !v)} title="Répéter les semaines suivantes"
+              <button onClick={() => setShowRepeatMenu(v => !v)} title={t('sed.repeatNextWeeks')}
                 style={{ height: 34, padding: '0 12px', borderRadius: 10, cursor: 'pointer', border: `1px solid ${accent}`, background: 'transparent', color: accent, display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700 }}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
                 Répéter
@@ -5344,7 +5344,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                 <>
                   <div onClick={() => setShowRepeatMenu(false)} style={{ position: 'fixed', inset: 0, zIndex: 40 }} />
                   <div style={{ position: 'absolute', top: 40, right: 0, zIndex: 41, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 14, boxShadow: 'var(--shadow-card)', padding: 8, width: 230 }}>
-                    <p style={{ margin: '4px 8px 8px', fontSize: 11, fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-dim)' }}>Répéter le même jour</p>
+                    <p style={{ margin: '4px 8px 8px', fontSize: 11, fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-dim)' }}>{t('sed.repeatSameDay')}</p>
                     {[
                       { label: 'Chaque semaine · 4 fois', n: 1, c: 4 },
                       { label: 'Chaque semaine · 8 fois', n: 1, c: 8 },

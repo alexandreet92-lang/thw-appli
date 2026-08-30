@@ -18,6 +18,7 @@ const PCT_CHIPS = [5, 10, 15, 20]
 // Popover « Dupliquer » : répète la séance toutes les 1 ou 2 semaines, N fois,
 // avec ajustement de durée (min ou %) et choix du contenu copié.
 function DuplicatePopover({ accent, sport, onApply, onClose }: { accent: string; sport: SportType; onApply: (n: number, c: number, opts: DuplicateOpts) => void; onClose: () => void }) {
+  const { t } = useI18n()
   const [every, setEvery] = useState(1)
   const [count, setCount] = useState(4)
   const [adjMode, setAdjMode] = useState<'none' | 'min' | 'pct'>('none')
@@ -38,10 +39,10 @@ function DuplicatePopover({ accent, sport, onApply, onClose }: { accent: string;
     <>
       <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 40 }} />
       <div style={{ position: 'absolute', top: 38, right: 0, zIndex: 41, background: 'var(--se-card)', border: '1px solid var(--se-rule)', borderRadius: 14, boxShadow: '0 8px 30px rgba(0,0,0,0.22)', padding: 16, width: 288, maxHeight: '78vh', overflowY: 'auto' }}>
-        <p style={{ margin: '0 0 4px', fontFamily: 'Syne, sans-serif', fontSize: 14, fontWeight: 700, color: 'var(--se-text)' }}>Dupliquer la séance</p>
+        <p style={{ margin: '0 0 4px', fontFamily: 'Syne, sans-serif', fontSize: 14, fontWeight: 700, color: 'var(--se-text)' }}>{t('pch.duplicateSession')}</p>
         <p style={{ margin: '0 0 14px', fontSize: 11.5, color: 'var(--se-dim)' }}>Répète cette séance dans le planning.</p>
 
-        <Lbl>Fréquence</Lbl>
+        <Lbl>{t('performance.frequency')}</Lbl>
         <div style={{ display: 'flex', gap: 8, margin: '7px 0 14px' }}>
           {[{ n: 1, l: 'Chaque semaine' }, { n: 2, l: 'Toutes les 2 sem.' }].map(o => (
             <button key={o.n} type="button" onClick={() => setEvery(o.n)} style={seg(every === o.n)}>{o.l}</button>
@@ -106,14 +107,14 @@ export function PanelHeader({ p, titleSize = 21, padding = '14px 18px', bordered
       <input value={p.title} onChange={e => p.setTitle(e.target.value)} placeholder={`${SPORT_LABEL[p.sport]} ${p.trainingTypes.join('+')}`}
         className="se-fr" style={{ flex: 1, minWidth: 0, background: 'none', border: 'none', outline: 'none', color: 'var(--se-text)', fontSize: titleSize, fontWeight: 600, padding: 0 }} />
       {/* Mémo imprimable — antisèche de la séance (une ligne par bloc / circuits). */}
-      <button data-guide="builder-memo" type="button" onClick={p.onPrintMemo} aria-label="Mémo imprimable" title="Mémo imprimable"
+      <button data-guide="builder-memo" type="button" onClick={p.onPrintMemo} aria-label={t('sed.printMemo')} title={t('sed.printMemo')}
         style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6, height: 30, padding: '0 11px', borderRadius: 999, border: `1px solid ${p.sportAccent}`, background: 'transparent', color: p.sportAccent, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
         <IconPrinter size={15} /> Mémo
       </button>
       {/* Dupliquer — répétition de la séance (à côté de Mémo). */}
       {p.onDuplicateRepeat && (
         <div style={{ position: 'relative', flexShrink: 0 }}>
-          <button type="button" onClick={() => setDupOpen(o => !o)} aria-label="Dupliquer" title="Dupliquer la séance"
+          <button type="button" onClick={() => setDupOpen(o => !o)} aria-label={t('pch.duplicateSession')} title={t('pch.duplicateSession')}
             style={{ display: 'flex', alignItems: 'center', gap: 6, height: 30, padding: '0 11px', borderRadius: 999, border: `1px solid ${p.sportAccent}`, background: dupOpen ? p.sportAccent : 'transparent', color: dupOpen ? '#fff' : p.sportAccent, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
             <IconCopy size={15} /> Dupliquer
           </button>

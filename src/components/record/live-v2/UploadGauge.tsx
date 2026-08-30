@@ -7,6 +7,8 @@
 // stoppée, « Envoi interrompu » + « Réessayer ».
 // ════════════════════════════════════════════════════════════════════
 
+import { useI18n } from '@/lib/i18n'
+
 export type UploadGaugeState = 'uploading' | 'failed' | 'done'
 
 interface Props {
@@ -18,6 +20,7 @@ interface Props {
 }
 
 export default function UploadGauge({ state, progress, onRetry, onSeeTraining }: Props) {
+  const { t } = useI18n()
   if (state === 'done') {
     return (
       <div style={{ paddingTop: 2, textAlign: 'center' }}>
@@ -31,7 +34,7 @@ export default function UploadGauge({ state, progress, onRetry, onSeeTraining }:
             <path d="M4 12.5 L9.5 18 L20 6.5" stroke="currentColor" strokeWidth="3" fill="none" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </div>
-        <div style={{ fontSize: 15.5, fontWeight: 700, marginBottom: 16 }}>Séance enregistrée</div>
+        <div style={{ fontSize: 15.5, fontWeight: 700, marginBottom: 16 }}>{t('activities.recordedSession')}</div>
         <button className="lv2-pill lv2-pill-primary lv2-press" onClick={onSeeTraining}>
           Voir l’entraînement
         </button>

@@ -4,12 +4,14 @@
 import ProfileChart from '../charts/ProfileChart'
 import { zoneIndex, ZONES } from '../zones'
 import type { RideView } from '../viewModel'
+import { useI18n } from '@/lib/i18n'
 
 export default function RideProfile({ v }: { v: RideView }) {
+  const { t } = useI18n()
   const curIdx = v.current ? v.plan?.blocks.indexOf(v.current) ?? -1 : -1
   return (
     <>
-      <div style={{ fontSize: 10, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'var(--text-dim)', fontWeight: 800, padding: '2px 2px 8px' }}>Profil de séance</div>
+      <div style={{ fontSize: 10, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'var(--text-dim)', fontWeight: 800, padding: '2px 2px 8px' }}>{t('ride.sessionProfile')}</div>
 
       <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: 10, height: 150, flexShrink: 0 }}>
         <ProfileChart plan={v.plan} samples={v.samples} ftp={v.ftp} t={v.t} />

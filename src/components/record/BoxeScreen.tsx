@@ -524,7 +524,7 @@ export default function BoxeScreen({ session, onClose, isDark }: Props) {
   const preStartWorkout = (
     <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '16px 18px 32px' }}>
       <div style={{ maxWidth: 560, margin: '0 auto' }}>
-        <p style={{ fontSize: 11, letterSpacing: '0.14em', textTransform: 'uppercase', color: ACCENT, fontWeight: 800, margin: '4px 0 6px' }}>Prêt à démarrer</p>
+        <p style={{ fontSize: 11, letterSpacing: '0.14em', textTransform: 'uppercase', color: ACCENT, fontWeight: 800, margin: '4px 0 6px' }}>{t('record.readyToStart')}</p>
         <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 700, color: 'var(--text)', margin: '0 0 18px' }}>{session.title}</h2>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10, marginBottom: 18 }}>
           <div style={{ background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 14, padding: '13px 14px' }}><div style={{ fontSize: 20, fontWeight: 800, color: 'var(--text)' }}>~{Math.round(estimateDurationSec(buildWorkoutSteps(wBlocks)) / 60)} min</div><div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', color: 'var(--text-dim)', textTransform: 'uppercase' }}>Durée est.</div></div>
@@ -555,7 +555,7 @@ export default function BoxeScreen({ session, onClose, isDark }: Props) {
   const preStart = (
     <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '16px 18px 32px' }}>
       <div style={{ maxWidth: 560, margin: '0 auto' }}>
-        <p style={{ fontSize: 11, letterSpacing: '0.14em', textTransform: 'uppercase', color: ACCENT, fontWeight: 800, margin: '4px 0 6px' }}>Prêt à démarrer</p>
+        <p style={{ fontSize: 11, letterSpacing: '0.14em', textTransform: 'uppercase', color: ACCENT, fontWeight: 800, margin: '4px 0 6px' }}>{t('record.readyToStart')}</p>
         <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 700, color: 'var(--text)', margin: '0 0 18px' }}>{session.title}</h2>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 18 }}>
           <div style={{ background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 14, padding: '13px 14px' }}><div style={{ fontSize: 20, fontWeight: 800, color: 'var(--text)' }}>~{preDurMin} min</div><div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', color: 'var(--text-dim)', textTransform: 'uppercase' }}>Durée est.</div></div>
@@ -643,7 +643,7 @@ export default function BoxeScreen({ session, onClose, isDark }: Props) {
       {!running && !isDone && elapsed > 0 && !showOverview && (
         <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.62)', backdropFilter: 'blur(3px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 4, padding: 20 }}>
           <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 22, padding: 24, width: 'min(360px, 90vw)', textAlign: 'center', boxShadow: '0 24px 60px rgba(0,0,0,0.4)' }}>
-            <p style={{ fontSize: 18, fontWeight: 800, color: 'var(--text)', margin: '0 0 4px' }}>Séance en pause</p>
+            <p style={{ fontSize: 18, fontWeight: 800, color: 'var(--text)', margin: '0 0 4px' }}>{t('record.sessionPaused')}</p>
             <p style={{ fontSize: 13, color: 'var(--text-mid)', margin: '0 0 20px' }}>Temps écoulé · {fmtDur(elapsed)}</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <button onClick={() => setRunning(true)} style={{ width: '100%', padding: 15, borderRadius: 14, border: 'none', background: '#22c55e', color: '#fff', fontSize: 15.5, fontWeight: 800, cursor: 'pointer' }}>Reprendre</button>
@@ -741,6 +741,7 @@ function Metric({ label, value, unit }: { label: string; value: string; unit?: s
 
 // Vue d'ensemble : toutes les étapes d'EFFORT groupées Fait / En cours / À venir.
 function OverviewSheet({ timeline, idx, onClose }: { timeline: BoxeStep[]; idx: number; onClose: () => void }) {
+  const { t } = useI18n()
   const efforts = timeline.map((s, i) => ({ s, i })).filter(x => x.s.phase === 'work')
   const Row = ({ s, state }: { s: BoxeStep; state: 'done' | 'now' | 'todo' }) => (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10, marginBottom: 6,
@@ -759,7 +760,7 @@ function OverviewSheet({ timeline, idx, onClose }: { timeline: BoxeStep[]; idx: 
       <div style={{ position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 10006, background: 'var(--bg-card)', borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '82dvh', display: 'flex', flexDirection: 'column', paddingBottom: 'env(safe-area-inset-bottom)' }}>
         <div style={{ width: 40, height: 4, borderRadius: 4, background: 'var(--border-mid)', margin: '10px auto 0' }} />
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px 8px' }}>
-          <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: 'var(--text)' }}>Séance complète</h3>
+          <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: 'var(--text)' }}>{t('boxe.fullSession')}</h3>
           <button onClick={onClose} style={{ width: 30, height: 30, borderRadius: '50%', background: 'var(--bg-card2)', border: 'none', color: 'var(--text-mid)', cursor: 'pointer', fontSize: 15 }}>✕</button>
         </div>
         <div style={{ flex: 1, overflowY: 'auto', padding: '4px 18px 20px' }}>

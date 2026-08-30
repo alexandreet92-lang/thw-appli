@@ -7372,7 +7372,7 @@ conseil pour la prochaine séance similaire.`
   // de la saisie ; « Enregistrer » ferme simplement la sur-page.
   const editLabel: React.CSSProperties = { fontSize: 11, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-dim)', margin: '0 0 10px' }
   const editSheet = (
-    <SlideSheet open={editOpen} onClose={() => setEditOpen(false)} title="Modifier l'activité">
+    <SlideSheet open={editOpen} onClose={() => setEditOpen(false)} title={t('act.editActivity')}>
       <div style={{ maxWidth: 560, margin: '0 auto', padding: '8px clamp(16px,4vw,28px) 80px', display: 'flex', flexDirection: 'column', gap: 26 }}>
         <div>
           <div style={editLabel}>Titre</div>
@@ -7383,12 +7383,12 @@ conseil pour la prochaine séance similaire.`
           <ActivitySportPicker activityId={a.id} sport={a.sport_type} />
         </div>
         <div>
-          <div style={editLabel}>Type de séance</div>
+          <div style={editLabel}>{t('planning.sessionType')}</div>
           <TrainingRaceSelector value={localIsRace} onChange={saveIsRace} />
           {!localIsRace && <div style={{ marginTop: 12 }}><WorkoutTypeBadges activityId={a.id} sport={a.sport_type} /></div>}
           {localIsRace && <LinkedRacePicker activityId={a.id} activityDate={a.started_at} activitySport={a.sport_type} initialRaceId={(a as { linked_race_id?: string | null }).linked_race_id ?? null} initialRaceDate={(a as { linked_race_date?: string | null }).linked_race_date ?? null} />}
         </div>
-        {isGym && <div><div style={editLabel}>Séance de renforcement</div><MuscuSessionPanel activity={a} /></div>}
+        {isGym && <div><div style={editLabel}>{t('act.strengthSession')}</div><MuscuSessionPanel activity={a} /></div>}
         {isPool && <div><div style={editLabel}>Longueurs</div><SwimLengths activityId={a.id} distanceM={a.distance_m} /></div>}
         <div>
           <div style={editLabel}>Ressenti & difficulté</div>
@@ -7398,7 +7398,7 @@ conseil pour la prochaine séance similaire.`
           </button>
         </div>
         <div>
-          <div style={editLabel}>Confidentialité & matériel</div>
+          <div style={editLabel}>{t('act.privacyEquipment')}</div>
           <ActivitySettingsPanel activityId={a.id} sport={a.sport_type} />
         </div>
         <div>

@@ -79,7 +79,7 @@ export function CoachSidebarContent({ onClose, onOpenAI, headerSlot, expanded = 
         <Link href="/" onClick={onClose}
           style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', borderRadius: 10, textDecoration: 'none', color: 'var(--text-mid)', fontFamily: 'var(--font-body)', fontSize: 13 }}>
           <span style={{ flexShrink: 0, opacity: 0.6, display: 'flex' }}><svg {...ic}><path d="M19 12H5M11 18l-6-6 6-6"/></svg></span>
-          <span style={lbl}>Revenir à mon appli</span>
+          <span style={lbl}>{t('coach.backToMyApp')}</span>
         </Link>
         {onOpenAI && (
           <button onClick={onOpenAI}

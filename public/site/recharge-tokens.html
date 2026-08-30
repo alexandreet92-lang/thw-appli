@@ -255,6 +255,22 @@
       { Ic: IcZap,   title: 'Crédité instantanément', desc: "Retourne dans l'app, ton solde est à jour." },
     ];
 
+    // ── Compte réel (utilisateur connecté) ───────────────────────────────────────
+    // Même origine → les cookies de session partent avec le fetch : /api/account/summary
+    // renvoie les vrais soldes. Non connecté → on garde les valeurs de démonstration.
+    function useAccount() {
+      const [acc, setAcc] = useState(null);
+      useEffect(() => {
+        let alive = true;
+        fetch('/api/account/summary', { credentials: 'include' })
+          .then(r => r.ok ? r.json() : null)
+          .then(d => { if (alive && d && d.loggedIn) setAcc(d); })
+          .catch(() => {});
+        return () => { alive = false; };
+      }, []);
+      return acc;
+    }
+
     // ── Hooks ───────────────────────────────────────────────────────────────────
     function useReveal() {
       const ref = useRef(null);
@@ -557,6 +573,8 @@
 
     // ── Studio section (packs + FAQ) ─────────────────────────────────────────────
     function StudioSection() {
+      const acc = useAccount();
+      const studio = acc && acc.studioTokens ? acc.studioTokens : null;
       return (
         <section style={{ position: 'relative', paddingTop: 90, paddingBottom: 8 }}>
           {/* subtle purple field to separate from the chat section */}
@@ -577,6 +595,18 @@
                 Le Studio est notre builder de systèmes multi-agents : tu assembles des coachs IA spécialisés qui travaillent ensemble. Ces packs rechargent ton solde <strong style={{ color: 'var(--text)', fontWeight: 600 }}>au-delà de ton quota mensuel</strong> (Pro : 300k / mois · Expert : 1M / mois). Ils n'expirent jamais et sont utilisables uniquement par le Studio.
               </p>
             </div>
+
+            {/* Solde Studio réel (connecté) */}
+            {studio && (
+              <div className="reveal" style={{ display: 'flex', alignItems: 'center', gap: 10, justifyContent: 'center', flexWrap: 'wrap',
+                maxWidth: 620, margin: '0 auto 22px', padding: '12px 18px', borderRadius: 'var(--radius-md)',
+                background: 'rgba(139,92,246,0.09)', border: '1px solid rgba(139,92,246,0.32)' }}>
+                <IcLayers size={16} style={{ color: '#a78bfa', flexShrink: 0 }}/>
+                <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13.5, color: 'var(--text-mid)' }}>
+                  Ton solde Studio : <strong style={{ color: 'var(--text)', fontWeight: 700 }}>{Number(studio.remaining || 0).toLocaleString('fr-FR')}</strong> tokens
+                </span>
+              </div>
+            )}
 
             {/* eligibility notice */}
             <div className="reveal" style={{ display: 'flex', alignItems: 'center', gap: 11, justifyContent: 'center', flexWrap: 'wrap',
@@ -625,6 +655,11 @@
     function TopUpView({ onPaid }) {
       const [loading, setLoading] = useState(null);
       const revealRef = useReveal();
+      const acc = useAccount();
+      // Solde chat réel si connecté, sinon valeurs de démonstration.
+      const chatRemaining = acc && acc.chatTokens ? acc.chatTokens.remaining : BALANCE;
+      const chatLimit     = acc && acc.chatTokens && acc.chatTokens.limit ? acc.chatTokens.limit : MONTHLY_QUOTA;
+      const planLabel     = acc && acc.tierLabel ? acc.tierLabel : 'Pro';
 
       function choose(pack) {
         if (loading) return;
@@ -646,16 +681,16 @@
               </div>
 
               <div className="reveal" style={{ marginBottom: 22 }}>
-                <TokenGauge value={BALANCE} total={MONTHLY_QUOTA} label="Ton solde actuel" sub="quota mensuel" />
+                <TokenGauge value={chatRemaining} total={chatLimit} label={acc ? 'Ton solde actuel' : 'Solde (démo)'} sub="quota mensuel" />
               </div>
 
               <div className="reveal" style={{ display: 'inline-flex', alignItems: 'center', gap: 10, padding: '8px 16px', borderRadius: 999,
                 border: '1px solid var(--border-mid)', background: 'var(--bg-card)' }}>
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: "'DM Mono', monospace", fontSize: 12, color: 'var(--brand)' }}>
-                  <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--brand)', display: 'inline-block' }}/> Plan Pro
+                  <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--brand)', display: 'inline-block' }}/> Plan {planLabel}
                 </span>
                 <span style={{ width: 1, height: 12, background: 'var(--border-mid)' }}/>
-                <span style={{ fontSize: 12.5, color: 'var(--text-mid)' }}>Réinitialisation dans 5 jours</span>
+                <span style={{ fontSize: 12.5, color: 'var(--text-mid)' }}>{acc ? 'Solde mis à jour en temps réel' : 'Connecte-toi pour voir ton solde'}</span>
               </div>
             </div>
           </section>

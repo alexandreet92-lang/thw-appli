@@ -192,6 +192,7 @@ export default function SubscriptionPage() {
   const { t }        = useI18n()
   const success      = searchParams.get('success') === 'true'
   const canceled     = searchParams.get('canceled') === 'true'
+  const sessionId    = searchParams.get('session_id')
   const hidePrice    = hidePricing()
 
   const featureLabels: Record<string, string> = {
@@ -245,6 +246,29 @@ export default function SubscriptionPage() {
     })()
     return () => { cancelled = true }
   }, [])
+
+  // ── Débloque l'abonnement INSTANTANÉMENT au retour du paiement ──
+  // On ne dépend pas du webhook (asynchrone) : /api/subscription/sync vérifie la
+  // session Stripe et pose l'abonnement tout de suite. On poll un peu au cas où le
+  // paiement finalise, puis on rafraîchit l'état serveur (entitlements) sans reload.
+  useEffect(() => {
+    if (!success || !sessionId) return
+    let cancelled = false
+    void (async () => {
+      try {
+        for (let i = 0; i < 6 && !cancelled; i++) {
+          const r = await fetch(`/api/subscription/sync?session_id=${encodeURIComponent(sessionId)}`)
+          const j = await r.json().catch(() => ({})) as { synced?: boolean; pending?: boolean }
+          if (j.synced || !j.pending) break
+          await new Promise(res => setTimeout(res, 1500))
+        }
+        if (cancelled) return
+        try { const res = await fetch('/api/subscriptions/summary'); if (res.ok) setData(await res.json() as SummaryData) } catch { /* ignore */ }
+        router.refresh()
+      } catch { /* le webhook prendra le relais */ }
+    })()
+    return () => { cancelled = true }
+  }, [success, sessionId, router])
 
   // ── Checkout ──────────────────────────────────────────────────
   const handleCheckout = useCallback(async (tier: PurchasableTier) => {

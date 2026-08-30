@@ -145,7 +145,7 @@ export async function POST(req: NextRequest) {
       customer:              customerId,
       line_items:            [{ price: priceId, quantity: 1 }],
       mode:                  'subscription',
-      success_url:           `${origin}/settings/subscription?success=true`,
+      success_url:           `${origin}/settings/subscription?success=true&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url:            `${origin}/settings/subscription?canceled=true`,
       allow_promotion_codes: true,
       metadata:              checkoutMeta,

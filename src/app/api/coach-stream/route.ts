@@ -292,6 +292,17 @@ export async function POST(req: NextRequest) {
     return new Response('Invalid JSON', { status: 400 })
   }
 
+  // ── Langue de réponse (locale envoyée par le client) ──────────
+  // Le serveur ne connaît pas la langue active (module-level = défaut fr) : le
+  // client la transmet dans le body. On force le modèle à répondre dans CETTE
+  // langue, ce qui prime sur les consignes « en français » des prompts.
+  const LANG_NAMES: Record<string, string> = { fr: 'français', en: 'English', es: 'español' }
+  const userLang = (typeof body.lang === 'string' && ['fr', 'en', 'es'].includes(body.lang)) ? body.lang : 'fr'
+  const langName = LANG_NAMES[userLang]
+  const LANG_DIRECTIVE = userLang === 'fr'
+    ? ''
+    : `\n\n═══════════ LANGUE DE RÉPONSE — CONSIGNE PRIORITAIRE ═══════════\nRéponds EXCLUSIVEMENT en ${langName}. TOUT ton texte visible (analyse, titres, listes, commentaires, et tout champ texte destiné à l'utilisateur dans un JSON) doit être en ${langName}. Ignore toute consigne précédente demandant de répondre en français. N'utilise le français QUE si l'utilisateur écrit lui-même en français.`
+
   // ── Agent Coach : athlète ciblé ───────────────────────────────
   // Les lectures ET écritures des tools portent sur CET athlète (les RLS coach
   // garantissent que le coach ne touche que SES athlètes). La mémoire reste au coach.
@@ -396,7 +407,7 @@ export async function POST(req: NextRequest) {
         // (séance/plan/nutrition) — rend la troncature quasi impossible en pratique.
         max_tokens: 16000,
         stream: true,
-        system: systemPrompt,
+        system: systemPrompt + LANG_DIRECTIVE,
         messages: [{ role: 'user', content: fullMessage }],
       }),
     })
@@ -820,6 +831,9 @@ APRÈS l'oral : un résumé SCHÉMATISÉ et aéré pour l'écran. CE N'EST PAS l
 
 (Les deux parties doivent être DIFFÉRENTES : l'oral discute, l'écrit schématise. Cette consigne annule toute consigne de format/markdown donnée plus haut pour la partie orale.)`
   }
+
+  // Consigne de langue en DERNIER → prime sur les « réponds en français » des prompts.
+  if (LANG_DIRECTIVE) systemWithTools = `${systemWithTools}${LANG_DIRECTIVE}`
 
   // ── Pré-check tokens ───────────────────────────────────────────
   const tokenModelKey = (chatBody as { modelId?: string }).modelId ?? 'athena'

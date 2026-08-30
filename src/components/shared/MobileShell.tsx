@@ -199,7 +199,7 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 'calc(env(safe-area-inset-top, 0px) + 18px) 18px 14px', flexShrink: 0 }}>
       <div>
         <div style={{ fontFamily: FD, fontSize: 22, fontWeight: 600, color: 'var(--text)', lineHeight: 1.05 }}>Hybrid</div>
-        <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 700, color: 'var(--text-dim)', marginTop: 2 }}>Interface athlète</div>
+        <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 700, color: 'var(--text-dim)', marginTop: 2 }}>{t('shared.interfaceAthlete')}</div>
       </div>
       <button onClick={() => { setOpen(false); setProfileOpen(true) }} aria-label={t('shared.myProfile')} style={{ display: 'flex', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}>
         <Avatar url={profile?.avatar_url ?? null} name={profile?.full_name ?? null} size={38} />
@@ -213,9 +213,9 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 'calc(env(safe-area-inset-top, 0px) + 18px) 18px 14px', flexShrink: 0 }}>
       <div>
         <div style={{ fontFamily: FD, fontSize: 22, fontWeight: 600, color: 'var(--text)', lineHeight: 1.05 }}>Hybrid</div>
-        <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 700, color: 'var(--primary)', marginTop: 2 }}>Interface coach</div>
+        <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 700, color: 'var(--primary)', marginTop: 2 }}>{t('shared.interfaceCoach')}</div>
       </div>
-      <button onClick={() => { setOpen(false); setCoachSettingsOpen(true) }} aria-label="Réglages coach" style={{ display: 'flex', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}>
+      <button onClick={() => { setOpen(false); setCoachSettingsOpen(true) }} aria-label={t('shared.coachSettings')} style={{ display: 'flex', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}>
         <Avatar url={profile?.avatar_url ?? null} name={profile?.full_name ?? null} size={38} />
       </button>
     </div>
@@ -258,7 +258,7 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
           </button>
           {/* Bascule d'interface Athlète ⇄ Coach — réservée au propriétaire de l'espace coach. */}
           {!isRecord && coachAccess.access && (
-            <Link href={isCoach ? "/" : "/coach"} aria-label={isCoach ? 'Revenir à mon appli' : 'Espace coach'} onClick={() => setOpen(false)}
+            <Link href={isCoach ? "/" : "/coach"} aria-label={isCoach ? t('shared.backToApp') : t('shared.coachSpace')} onClick={() => setOpen(false)}
               style={{ ...fab, left: 58, borderRadius: 12, textDecoration: 'none',
                 background: isCoach ? 'var(--primary)' : (fab.background as string), border: isCoach ? '1px solid var(--primary)' : (fab.border as string) }}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={isCoach ? '#fff' : 'var(--text)'} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
@@ -269,7 +269,7 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
           {/* IA + notifications masqués sur /record (immersion carte). */}
           {!isRecord && <>
           {/* Rechercher / Guide — à côté des notifications. */}
-          <button data-guide="app-search" aria-label="Rechercher dans l'app" onClick={() => { setOpen(false); openSearch() }}
+          <button data-guide="app-search" aria-label={t('shared.searchApp')} onClick={() => { setOpen(false); openSearch() }}
             style={{ ...fab, right: 104, borderRadius: 12 }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text)" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
           </button>

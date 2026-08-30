@@ -27,8 +27,7 @@ export function LanguageDropdown() {
         boxShadow: '0 2px 12px rgba(0,0,0,0.12)', color: 'var(--text)',
         fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 600, cursor: 'pointer',
       }}>
-        <span style={{ fontSize: 17, lineHeight: 1, display: 'flex' }}>{current.flag}</span>
-        <span style={{ letterSpacing: '0.01em' }}>{current.label}</span>
+        <span style={{ letterSpacing: '0.01em', paddingLeft: 2 }}>{current.label}</span>
         <span style={{ width: 22, height: 22, borderRadius: '50%', flexShrink: 0, background: 'var(--bg-hover)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"
             style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', opacity: 0.7 }}><path d="M6 9l6 6 6-6" /></svg>
@@ -51,7 +50,6 @@ export function LanguageDropdown() {
             }}
               onMouseEnter={e => { if (!on) (e.currentTarget as HTMLElement).style.background = 'var(--bg-hover)' }}
               onMouseLeave={e => { if (!on) (e.currentTarget as HTMLElement).style.background = 'transparent' }}>
-              <span style={{ fontSize: 16 }}>{l.flag}</span>
               <span style={{ flex: 1 }}>{l.label}</span>
               {on && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M5 12l5 5L20 6" /></svg>}
             </button>

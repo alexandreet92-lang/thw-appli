@@ -43,7 +43,7 @@ import TopupEmailModal from '@/components/topup/TopupEmailModal'
 import { MODEL_BADGE, quickActionEstimate, fmtEstimate } from '@/lib/quick-actions/models'
 import { getModelMultiplier } from '@/lib/tokens/multipliers'
 import { computeSportMetrics, wpLabelToCanon, type ActivityWithStreams, type SportMetrics } from '@/lib/analysis/sportMetrics'
-import { currentLocale } from '@/lib/i18n'
+import { currentLocale, currentLang } from '@/lib/i18n'
 
 // ── Colonnes activities — source de vérité unique ──────────────
 /** Colonnes SAFE de la table activities — ne JAMAIS ajouter sans vérifier Supabase */
@@ -6612,6 +6612,7 @@ IMPORTANT: Réponds UNIQUEMENT en JSON valide (commence par {, finit par }). For
       body: JSON.stringify({
         agentId: 'central',
         modelId: 'athena',
+        lang: currentLang(),
         messages: [
           { role: 'user', content: userPrompt },
           { role: 'assistant', content: '{' },
@@ -15681,6 +15682,7 @@ FORMAT DE RÉPONSE OBLIGATOIRE (JSON uniquement, 0 texte avant ou après) :
         body: JSON.stringify({
           agentId: 'central',
           modelId: 'athena',
+          lang: currentLang(),
           messages: [{ role: 'user', content: systemPrompt }],
         }),
       })
@@ -16151,6 +16153,7 @@ FORMAT OBLIGATOIRE (JSON uniquement) :
         body: JSON.stringify({
           agentId: 'central',
           modelId: 'athena',
+          lang: currentLang(),
           messages: [{ role: 'user', content: systemPrompt }],
         }),
       })
@@ -16634,6 +16637,7 @@ Activités 60j: ${activities60d.length} · Séances soirée avec données sommei
         body: JSON.stringify({
           agentId: 'central',
           modelId: 'athena',
+          lang: currentLang(),
           messages: [{ role: 'user', content: sysPrompt + '\n\n' + userPr }],
         }),
       })
@@ -17130,6 +17134,7 @@ Séances 48h: ${next48h.map((p: any) => `${p.sport} ${p.title ?? ''} ${p.duratio
         body: JSON.stringify({
           agentId: 'central',
           modelId: 'athena',
+          lang: currentLang(),
           messages: [{ role: 'user', content: sysPrompt + '\n\n' + userPr }],
         }),
       })
@@ -17741,6 +17746,7 @@ Patterns 4 semaines (${typeDriftData.length} données): ${typeDriftData.length >
         body: JSON.stringify({
           agentId: 'central',
           modelId: 'athena',
+          lang: currentLang(),
           messages: [{ role: 'user', content: sysPrompt + '\n\n' + userPr }],
         }),
       })
@@ -19303,6 +19309,7 @@ FORMAT JSON STRICT :
         body: JSON.stringify({
           agentId: 'central',
           modelId: 'athena',
+          lang: currentLang(),
           // Le prefill '{ ' force Claude à commencer directement en JSON
           messages: [
             { role: 'user', content: userPrompt },
@@ -22363,6 +22370,7 @@ export default function AIPanel({
         body: JSON.stringify({
           agentId:  isPlanChat ? 'plan_coach' : activeAgent === 'networks' ? 'hybrid_networks' : 'central',
           modelId:  snapshot,
+          lang:     currentLang(),
           method:   (opts?.method ?? method) !== 'auto' ? (opts?.method ?? method) : undefined,
           voice:    opts?.voice ? true : undefined,
           webSearch: opts?.webSearch ?? webSearchOn,

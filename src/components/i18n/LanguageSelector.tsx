@@ -20,7 +20,7 @@ export function LanguageSelector({ size = 'md' }: { size?: 'sm' | 'md' }) {
             color: on ? 'var(--primary)' : 'var(--text)',
             fontFamily: 'var(--font-body)', fontSize: fs, fontWeight: on ? 600 : 500, transition: 'all 0.15s',
           }}>
-            <span style={{ fontSize: fs + 2 }}>{l.flag}</span>{l.label}
+            {l.label}
           </button>
         )
       })}

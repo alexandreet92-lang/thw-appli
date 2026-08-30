@@ -55,6 +55,14 @@ const SUBS: Record<Exclude<Mode, 'main'>, Sub[]> = {
   ],
 }
 
+// ── Onglets rapides côté COACH ─────────────────────────────────
+const COACH_TABS: { href: string; labelKey: string; Icon: LucideIcon; match: (p: string) => boolean }[] = [
+  { href: '/coach',          labelKey: 'nav.coachHome',     Icon: Grid3x3,       match: p => p === '/coach' },
+  { href: '/coach/athletes', labelKey: 'nav.coachAthletes', Icon: Users,         match: p => p.startsWith('/coach/athlete') },
+  { href: '/coach/programs', labelKey: 'nav.coachPrograms', Icon: ClipboardList, match: p => p.startsWith('/coach/programs') || p.startsWith('/coach/library') },
+  { href: '/coach/messages', labelKey: 'nav.coachMessages', Icon: MessageCircle, match: p => p.startsWith('/coach/messages') },
+]
+
 // ── Sub-item component ─────────────────────────────────────────
 
 function SubItem({ href, labelKey, Icon, active }: Sub & { active: boolean }) {
@@ -128,7 +136,34 @@ export default function MobileTabBar() {
   // uniquement la barre <nav> plus bas, en gardant l'AIPanel monté.
   // Page /record : compteur immersif, on cache la navbar
   if (pathname === '/record') return null
-  if (pathname?.startsWith('/coach')) return null   // espace coach : nav via la sidebar
+  // Espace coach : barre de nav rapide dédiée (mêmes bulles que côté athlète).
+  if (pathname?.startsWith('/coach')) {
+    if (isFullscreenRoute(pathname)) return null
+    return (
+      <>
+        {!hidden && (
+          <nav className="mobile-tab-bar md:hidden" style={BAR}>
+            <div style={{ display: 'flex', width: '100%', height: 64, alignItems: 'center' }}>
+              {COACH_TABS.map(tab => {
+                const active = tab.match(pathname)
+                return (
+                  <Link key={tab.href} href={tab.href} style={{ ...BTN, textDecoration: 'none' }} aria-label={t(tab.labelKey)}>
+                    <tab.Icon size={22} color={active ? ACCENT : DIM} />
+                    <span style={lbl(active)}>{t(tab.labelKey)}</span>
+                  </Link>
+                )
+              })}
+              <button onClick={() => setAiOpen(o => !o)} style={BTN} aria-label={t('nav.coachAI')}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/logos/logo_4bras.png" alt={t('nav.coachAI')} width={24} height={24} style={{ objectFit: 'contain' }} />
+              </button>
+            </div>
+          </nav>
+        )}
+        <AIPanel open={aiOpen} onClose={() => setAiOpen(false)} initialAgent="coach" />
+      </>
+    )
+  }
   // Page /competences : header + champ dédiés, on masque la tabbar
   if (pathname?.startsWith('/competences')) return null
   // Page /topup : standalone (lien email)

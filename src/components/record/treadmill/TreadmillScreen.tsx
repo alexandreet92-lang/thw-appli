@@ -306,7 +306,7 @@ export default function TreadmillScreen({ onExit, onFinished }: Props) {
           onClick={() => { setPhase('live'); setRunning(true) }}
           disabled={loading}
           style={{ width: '100%', height: 54, border: 'none', borderRadius: 15, cursor: 'pointer', background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 17, fontWeight: 800, fontFamily: FB, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-          Démarrer la séance
+          {t('record.startSession')}
         </button>
       </div>
     </div>

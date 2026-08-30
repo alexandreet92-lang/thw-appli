@@ -13,7 +13,7 @@ export const dynamic = 'force-dynamic'
 
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { User, CreditCard, Users, Sparkles, Share2, ClipboardList, Bell, SlidersHorizontal, Zap, Shield, Palette, LogOut, ChevronLeft, Check } from 'lucide-react'
+import { User, CreditCard, Users, Sparkles, Share2, ClipboardList, Bell, SlidersHorizontal, Zap, Shield, Palette, LogOut, ChevronLeft, Check, Languages } from 'lucide-react'
 import { useProfile } from '@/hooks/useProfile'
 import { SlideView } from '@/components/ui/SlideView'
 import { useI18n } from '@/lib/i18n'
@@ -419,6 +419,7 @@ function OffreBloc() {
   )
 }
 
+// Apparence & unités (l'apparence/thème suit le système ; ici : unités).
 function ApparenceBloc({ s, set }: { s: S; set: SetFn }) {
   const { t } = useI18n()
   return (
@@ -426,8 +427,25 @@ function ApparenceBloc({ s, set }: { s: S; set: SetFn }) {
       <Intro>{t('w1b.apparence_intro')}</Intro>
       <Section>
         <Group>
-          <FieldLine first label={t('w1b.field_language')}><Seg value={s.lang as string} options={[['fr', 'Français'], ['en', 'English']]} onChange={v => set('lang', v)} /></FieldLine>
-          <FieldLine label={t('w1b.field_units')}><Seg value={s.units as string} options={[['metric', t('w1b.opt_metric')], ['imperial', t('w1b.opt_imperial')]]} onChange={v => set('units', v)} /></FieldLine>
+          <FieldLine first label={t('w1b.field_units')}><Seg value={s.units as string} options={[['metric', t('w1b.opt_metric')], ['imperial', t('w1b.opt_imperial')]]} onChange={v => set('units', v)} /></FieldLine>
+        </Group>
+      </Section>
+    </div>
+  )
+}
+
+// Langue de l'app (coach) : pilote le contexte i18n GLOBAL (setLang) → change
+// réellement toute l'app. 3 langues, comme côté athlète.
+function LangueBloc() {
+  const { t, lang, setLang } = useI18n()
+  return (
+    <div>
+      <Intro>{t('w1b.langue_intro')}</Intro>
+      <Section>
+        <Group>
+          <FieldLine first label={t('w1b.field_language')}>
+            <Seg value={lang} options={[['fr', 'Français'], ['en', 'English'], ['es', 'Español']]} onChange={v => setLang(v as 'fr' | 'en' | 'es')} />
+          </FieldLine>
         </Group>
       </Section>
     </div>
@@ -472,6 +490,7 @@ export function CoachSettingsContent() {
     auto:      { label: t('w1b.nav_auto'),      node: <AutoBloc s={s} set={set} onStudio={() => router.push('/coach/studio')} /> },
     notifs:    { label: t('w1b.nav_notifs'),    node: <NotifsBloc s={s} set={set} /> },
     apparence: { label: t('w1b.nav_apparence'), node: <ApparenceBloc s={s} set={set} /> },
+    langue:    { label: t('w1b.nav_langue'),    node: <LangueBloc /> },
   }
 
   const GROUPS: { title: string; rows: { id: string; label: string; Icon: typeof User; value?: string }[] }[] = [
@@ -491,6 +510,7 @@ export function CoachSettingsContent() {
     { title: t('w1b.grp_application'), rows: [
       { id: 'notifs',    label: t('w1b.nav_notifs'), Icon: Bell },
       { id: 'apparence', label: t('w1b.nav_apparence'), Icon: Palette },
+      { id: 'langue',    label: t('w1b.nav_langue'), Icon: Languages },
     ] },
   ]
 

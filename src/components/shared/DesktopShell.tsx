@@ -125,7 +125,7 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
       </button>
       <div style={{ opacity: railOpen ? 1 : 0, transition: 'opacity 150ms ease', minWidth: 0 }}>
         <div style={{ fontFamily: FD, fontSize: 21, fontWeight: 600, color: 'var(--text)', lineHeight: 1.05, whiteSpace: 'nowrap' }}>Hybrid</div>
-        <div style={{ fontFamily: 'var(--font-body)', fontSize: 11.5, fontWeight: 700, color: 'var(--text-dim)', marginTop: 2, whiteSpace: 'nowrap' }}>Interface athlète</div>
+        <div style={{ fontFamily: 'var(--font-body)', fontSize: 11.5, fontWeight: 700, color: 'var(--text-dim)', marginTop: 2, whiteSpace: 'nowrap' }}>{t('shared.interfaceAthlete')}</div>
       </div>
     </div>
   )
@@ -134,12 +134,12 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
   // mais l'avatar ouvre les réglages coach et le type d'interface est cyan.
   const coachHeader = (
     <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '16px 14px 12px', flexShrink: 0 }}>
-      <button onClick={() => setCoachSettingsOpen(true)} aria-label="Réglages coach" style={{ display: 'flex', border: 'none', background: 'transparent', padding: 0, cursor: 'pointer', flexShrink: 0 }}>
+      <button onClick={() => setCoachSettingsOpen(true)} aria-label={t('shared.coachSettings')} style={{ display: 'flex', border: 'none', background: 'transparent', padding: 0, cursor: 'pointer', flexShrink: 0 }}>
         <Avatar url={profile?.avatar_url ?? null} name={profile?.full_name ?? null} size={36} />
       </button>
       <div style={{ opacity: railOpen ? 1 : 0, transition: 'opacity 150ms ease', minWidth: 0 }}>
         <div style={{ fontFamily: FD, fontSize: 21, fontWeight: 600, color: 'var(--text)', lineHeight: 1.05, whiteSpace: 'nowrap' }}>Hybrid</div>
-        <div style={{ fontFamily: 'var(--font-body)', fontSize: 11.5, fontWeight: 700, color: 'var(--primary)', marginTop: 2, whiteSpace: 'nowrap' }}>Interface coach</div>
+        <div style={{ fontFamily: 'var(--font-body)', fontSize: 11.5, fontWeight: 700, color: 'var(--primary)', marginTop: 2, whiteSpace: 'nowrap' }}>{t('shared.interfaceCoach')}</div>
       </div>
     </div>
   )
@@ -194,7 +194,7 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
 
         {/* Démarrer — accès rapide à l'enregistrement d'une séance (décalé à
             gauche pour laisser place au bouton de bascule d'interface). */}
-        <Link href="/record" aria-label="Démarrer une séance" data-guide="start-workout"
+        <Link href="/record" aria-label={t('nav.startActivity')} data-guide="start-workout"
           style={{
             position: 'fixed', top: 12, right: isRecord ? 108 : 154, height: 38, zIndex: 130,
             display: 'flex', alignItems: 'center', gap: 7, padding: '0 14px', borderRadius: 12,
@@ -202,7 +202,7 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
             boxShadow: 'var(--shadow-card)', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 700,
           }}>
           <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
-          Démarrer
+          {t('nav.tabStart')}
         </Link>
 
         {/* Rechercher / Guide — à gauche de « Démarrer ». */}

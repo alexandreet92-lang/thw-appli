@@ -405,7 +405,7 @@ function OffreBloc() {
               <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)', margin: 0 }}>{t('w1b.offre_coach')}</p>
               <p style={{ fontSize: 11.5, color: 'var(--text-dim)', margin: '2px 0 0' }}>{t('w1b.offre_coach_sub')}</p>
             </div>
-            <a href="/settings/subscription" style={{ textDecoration: 'none', padding: '8px 14px', borderRadius: 10, background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 13, fontWeight: 700, flexShrink: 0 }}>{t('w1b.manage')}</a>
+            <a href="/coach/subscription" style={{ textDecoration: 'none', padding: '8px 14px', borderRadius: 10, background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 13, fontWeight: 700, flexShrink: 0 }}>{t('w1b.manage')}</a>
           </Line>
         </Group>
       </Section>

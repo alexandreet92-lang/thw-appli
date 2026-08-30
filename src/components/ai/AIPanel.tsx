@@ -1865,6 +1865,7 @@ function AthleteMini({ a, size = 20 }: { a: CoachTarget; size?: number }) {
 function AthletePicker({ athletes, active, onPick, disabled = false }: {
   athletes: CoachTarget[]; active: CoachTarget | null; onPick: (a: CoachTarget | null) => void; disabled?: boolean
 }) {
+  const { t } = useI18n()
   const [open, setOpen] = useState(false)
   const [q, setQ] = useState('')
   const ref = useRef<HTMLDivElement>(null)
@@ -1884,7 +1885,7 @@ function AthletePicker({ athletes, active, onPick, disabled = false }: {
       {open && (
         <div style={{ position: 'absolute', bottom: 'calc(100% + 8px)', left: 0, width: 244, maxHeight: 340, display: 'flex', flexDirection: 'column', background: 'var(--ai-bg)', border: '1px solid var(--ai-border)', borderRadius: 14, boxShadow: '0 16px 44px rgba(0,0,0,0.32)', overflow: 'hidden', zIndex: 40, fontFamily: 'var(--font-body)' }}>
           <div style={{ padding: 8, borderBottom: '1px solid var(--ai-border)', flexShrink: 0 }}>
-            <input value={q} onChange={e => setQ(e.target.value)} autoFocus placeholder="Rechercher un athlète…" style={{ width: '100%', boxSizing: 'border-box', padding: '8px 10px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 13, outline: 'none', fontFamily: 'var(--font-body)' }} />
+            <input value={q} onChange={e => setQ(e.target.value)} autoFocus placeholder={t("aip.search_athlete")} style={{ width: '100%', boxSizing: 'border-box', padding: '8px 10px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 13, outline: 'none', fontFamily: 'var(--font-body)' }} />
           </div>
           <div style={{ overflowY: 'auto', padding: 5 }}>
             {active && (
@@ -13757,13 +13758,13 @@ function HistoryDrawer({
               autoFocus
               value={projModal.name}
               onChange={e => setProjModal(m => m ? { ...m, name: e.target.value } : m)}
-              placeholder="Nom du projet (ex. Prépa Ironman)"
+              placeholder={t("aip.project_name_ph")}
               style={{ width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: 9, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text)', fontSize: 14, fontFamily: 'DM Sans,sans-serif', outline: 'none' }}
             />
             <textarea
               value={projModal.instructions}
               onChange={e => setProjModal(m => m ? { ...m, instructions: e.target.value } : m)}
-              placeholder="Contexte / instructions partagés — le coach en tiendra compte dans toutes les conversations de ce projet. (ex. objectif, échéance, contraintes)"
+              placeholder={t("aip.project_context_ph")}
               rows={5}
               style={{ width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: 9, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text)', fontSize: 13, lineHeight: 1.5, fontFamily: 'DM Sans,sans-serif', outline: 'none', resize: 'vertical' }}
             />
@@ -20448,6 +20449,7 @@ function SecondaryChatColumn({
   onClose: () => void
   onBuyTokens: () => void
 }) {
+  const { t } = useI18n()
   const [text, setText] = useState('')
   const [model, setModel] = useState<THWModel>(defaultModel)
   const [method, setMethod] = useState<string>('auto')
@@ -20558,7 +20560,7 @@ function SecondaryChatColumn({
             value={text}
             onChange={e => { setText(e.target.value); const el = e.target; el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 160) + 'px' }}
             onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit() } }}
-            placeholder="Écrire un message…"
+            placeholder={t("aip.write_message")}
             rows={1}
             className="aip-textarea"
             style={{ display: 'block', width: '100%', resize: 'none', border: 'none', outline: 'none', background: 'transparent', color: 'var(--ai-text)', fontFamily: 'DM Sans,sans-serif', lineHeight: 1.5, padding: '12px 14px 4px', minHeight: 44, maxHeight: 160, boxSizing: 'border-box' }}
@@ -24190,10 +24192,10 @@ export default function AIPanel({
                 onChange={handleInput}
                 onKeyDown={handleKey}
                 placeholder={recording
-                  ? 'Parle…'
+                  ? t('aip.speak_ph')
                   : activeQA
-                    ? 'Ajoute ta question ou du contexte pour préciser ta demande…'
-                    : 'Écrire un message…'}
+                    ? t('aip.qa_context_ph')
+                    : t('aip.write_message')}
                 rows={1}
                 style={{
                   display: 'block', width: '100%',

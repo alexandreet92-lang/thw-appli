@@ -1569,13 +1569,8 @@ function useAiRules() {
 }
 
 // Presets d'instruction — un tap pour définir le style de l'IA.
-const INSTRUCTION_PRESETS: { label: string; text: string }[] = [
-  { label: 'Coach exigeant', text: "Sois un coach exigeant et franc : aucune complaisance, tu me pousses, tu me reprends quand je me relâche, et tu vises la performance." },
-  { label: 'Pédagogue',      text: "Explique-moi toujours le POURQUOI de tes conseils, avec des mots simples, comme à quelqu'un qui veut comprendre et progresser." },
-  { label: 'Direct & concis', text: "Va droit au but : réponses courtes et concrètes, l'essentiel d'abord, sans introduction ni blabla." },
-  { label: 'Motivant',       text: "Sois positif et motivant : encourage-moi, valorise mes progrès, garde un ton énergique qui donne envie de m'entraîner." },
-  { label: 'Scientifique',   text: "Appuie tes conseils sur la science et mes données chiffrées (zones, charge, physiologie) ; explicite les principes quand c'est utile." },
-]
+// Presets d'instruction — libellés + textes traduits (clés résolues au rendu).
+const INSTRUCTION_PRESET_KEYS = ['demanding', 'pedagogue', 'concise', 'motivating', 'scientific'] as const
 
 // ── Composant RuleCreator — modal IA de formulation de règle ──
 function RuleCreator({ addRule, onClose }: {
@@ -1751,7 +1746,9 @@ function RuleCreator({ addRule, onClose }: {
 
 // ── Composant RulesCard ───────────────────────────────────────
 function RulesCard() {
+  const { t } = useI18n()
   const { rules, saveInstruction } = useAiRules()
+  const presets = INSTRUCTION_PRESET_KEYS.map(k => ({ label: t(`profile.preset_${k}_label`), text: t(`profile.preset_${k}_text`) }))
 
   // ── Instruction personnelle (champ unique, façon Claude) ──
   const instrRule = rules.find(r => r.category === 'instruction')
@@ -1774,14 +1771,14 @@ function RulesCard() {
 
       {/* ── Instructions : prompt personnel qui définit le style de l'IA ── */}
       <Card>
-        <CardTitle icon={<svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a7 7 0 00-4 12.7V17a1 1 0 001 1h6a1 1 0 001-1v-2.3A7 7 0 0012 2z"/><path d="M9 21h6"/></svg>}>Instructions</CardTitle>
+        <CardTitle icon={<svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a7 7 0 00-4 12.7V17a1 1 0 001 1h6a1 1 0 001-1v-2.3A7 7 0 0012 2z"/><path d="M9 21h6"/></svg>}>{t('profile.instructions')}</CardTitle>
         <p style={{ fontSize:11, color:'var(--text-dim)', margin:'6px 0 12px', lineHeight:1.5 }}>
-          Un prompt qui dit à l&apos;IA comment se comporter et répondre. Il s&apos;applique à TOUTES tes conversations avec le coach.
+          {t('profile.instructions_desc')}
         </p>
 
         {/* Presets — un tap pour insérer un style */}
         <div style={{ display:'flex', gap:6, flexWrap:'wrap' as const, marginBottom:10 }}>
-          {INSTRUCTION_PRESETS.map(p => (
+          {presets.map(p => (
             <button
               key={p.label}
               onClick={() => { setInstr(p.text); setInstrDirty(true) }}
@@ -1793,19 +1790,19 @@ function RulesCard() {
         <textarea
           value={instr}
           onChange={e => { setInstr(e.target.value); setInstrDirty(true) }}
-          placeholder="Ex : Tu es mon coach personnel exigeant. Va à l'essentiel, appuie-toi sur mes données chiffrées, et pousse-moi à progresser."
+          placeholder={t('profile.coachInstrPlaceholder')}
           rows={4}
           style={{ width:'100%', boxSizing:'border-box' as const, padding:'11px 12px', borderRadius:12, border:'1px solid var(--border)', background:'var(--bg-card2)', color:'var(--text)', fontSize:13.5, lineHeight:1.5, fontFamily:'DM Sans,sans-serif', resize:'vertical' as const, outline:'none' }}
         />
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginTop:10 }}>
           <span style={{ fontSize:11, color: instrSaved ? '#22c55e' : 'var(--text-dim)' }}>
-            {instrSaved ? '✓ Enregistré' : `${instr.length} caractères`}
+            {instrSaved ? `✓ ${t('profile.saved')}` : t('profile.chars_count', { n: instr.length })}
           </span>
           <button
             onClick={() => void handleSaveInstruction()}
             disabled={!instrDirty}
             style={{ padding:'8px 18px', borderRadius:10, border:'none', background: instrDirty ? 'linear-gradient(135deg,#06B6D4,#5b6fff)' : 'var(--border)', color:'#fff', fontSize:12.5, fontWeight:700, cursor: instrDirty ? 'pointer' : 'default' }}
-          >Enregistrer</button>
+          >{t('profile.save')}</button>
         </div>
       </Card>
     </>

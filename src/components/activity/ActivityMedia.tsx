@@ -90,7 +90,7 @@ export function ActivityMedia({ activityId, initialMedia, initialComment, showPh
           value={comment}
           onChange={e => setComment(e.target.value)}
           onBlur={saveComment}
-          placeholder="Ajoute un commentaire sur ta séance…"
+          placeholder={t("actmedia.comment_ph")}
           rows={2}
           style={{ width: '100%', resize: 'vertical', minHeight: 44, padding: '10px 12px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 14, lineHeight: 1.5, outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }}
         />

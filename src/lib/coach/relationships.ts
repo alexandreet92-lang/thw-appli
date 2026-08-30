@@ -76,7 +76,13 @@ export async function acceptInvite(code: string): Promise<void> {
   const raw = code.trim().toUpperCase().replace(/[^A-Z0-9]/g, '')
   const clean = raw.length === 8 ? `${raw.slice(0, 4)}-${raw.slice(4)}` : raw
   const { error } = await sb.rpc('accept_coach_invite', { invite_code: clean })
-  if (error) throw new Error(error.message.replace(/^.*?:/, '').trim() || 'Invitation invalide')
+  if (error) {
+    // Capacité du pack coach atteinte → message clair pour l'athlète.
+    if (error.message.includes('CAPACITY_FULL')) {
+      throw new Error('Ce coach a atteint la limite d\'athlètes de son abonnement. Contacte-le pour qu\'il augmente sa capacité.')
+    }
+    throw new Error(error.message.replace(/^.*?:/, '').trim() || 'Invitation invalide')
+  }
   // Prévient (côté serveur) le coach que l'athlète a rejoint son roster.
   emitServerEvent('joined', {})
 }

@@ -23,7 +23,7 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useI18n } from '@/lib/i18n'
-import { formatHM, parseGymExercise, type Session } from '@/app/planning/page'
+import { formatHM, parseGymExercise, BLOCK_TYPE_LABEL, type Session, type Block } from '@/app/planning/page'
 import { sportKeyFromType } from '@/components/icons/SportIcon'
 import { toBars, barHeightPct, treadmillProfile, type MBlock } from './mobile/blocks'
 import { zColor } from './mobile/editorial'
@@ -72,11 +72,40 @@ export function SessionHoverPreview({ session, anchor }: { session: Session; anc
   const isGym = sportKeyFromType(session.sport) === 'muscu'
   // Sports composés (boxe / hybride) : détail lu depuis composed/composedCircuits.
   const isComposed = (session.sport === 'boxe' || session.sport === 'hybrid') && !!session.composed?.length
+  // Course fractionnée (Intervals Strides / Sprints) : on présente le détail
+  // bloc par bloc (comme la boxe / l'hybride), PAS le profil d'intensité — celui-ci
+  // reste réservé à l'endurance, où la lecture par zones a du sens.
+  const isRunFractionned = sportKeyFromType(session.sport) === 'run'
+    && (session.runFamily === 'intervals' || session.runFamily === 'sprints')
   const composedSport = (session.sport === 'hybrid' ? 'hybrid' : 'boxe') as ComposedSport
   const composedMoves = session.composed ?? []
   const composedCircuits: ComposedCircuit[] = session.composedCircuits ?? (session.composedCircuit ? [session.composedCircuit] : [{ id: 'c1', rounds: 1, restSec: 0 }])
   const blocks = (session.blocks ?? []).filter(b => b.type !== 'circuit_header' || (b.label ?? '').trim())
-  const bars = (isGym || isComposed) ? [] : toBars(blocks as MBlock[], session.sport)
+  const bars = (isGym || isComposed || isRunFractionned) ? [] : toBars(blocks as MBlock[], session.sport)
+
+  // Décrit un bloc de course fractionnée en une ligne (nom + détail) : gère
+  // l'intervalle (reps × effort @ cible / récup), le progressif et le bloc simple.
+  const fmtMin = (m: number) => m % 1 === 0 ? `${m}'` : `${Math.floor(m)}'${String(Math.round((m % 1) * 60)).padStart(2, '0')}''`
+  function runBlockLine(b: Block): { name: string; detail: string } {
+    const bb = b as Block & { inputMode?: string; distanceM?: number; progSteps?: number; progStepMin?: number; progStepSec?: number }
+    const name = (b.label ?? '').trim() || BLOCK_TYPE_LABEL[b.type] || t('w3g.shp_no_block')
+    const zoneTxt = (b.value ?? '').trim() || (b.zone ? `Z${b.zone}` : '')
+    let detail = ''
+    if (b.mode === 'interval' && b.reps) {
+      const per = bb.inputMode === 'distance' && bb.distanceM ? `${bb.distanceM} m` : (b.effortMin ? fmtMin(b.effortMin) : '')
+      detail = per ? `${b.reps} × ${per}` : `× ${b.reps}`
+      if (zoneTxt) detail += ` @ ${zoneTxt}`
+      if (b.recoveryMin) detail += ` · ${fmtMin(b.recoveryMin)} ${t('w3g.shp_recovery')}`
+    } else if (b.mode === 'progressive' && bb.progSteps) {
+      detail = `${bb.progSteps} × ${fmtMin(bb.progStepMin ?? 0)}`
+      if (bb.progStepSec) detail += ` · −${bb.progStepSec} s/km`
+      if (zoneTxt) detail += ` @ ${zoneTxt}`
+    } else {
+      detail = fmtMin(b.durationMin || 0)
+      if (zoneTxt) detail += ` · ${zoneTxt}`
+    }
+    return { name, detail }
+  }
 
   const pd = session.parcoursData
   const trace = pd?.gpsTrace && pd.gpsTrace.length > 1 ? pd.gpsTrace : null
@@ -204,8 +233,27 @@ export function SessionHoverPreview({ session, anchor }: { session: Session; anc
         </div>
       )}
 
+      {/* 3a-ter. Course fractionnée (Intervals Strides / Sprints) : détail bloc par
+          bloc — même logique de présentation que la boxe / l'hybride. */}
+      {isRunFractionned && (
+        <div data-testid="shp-run-blocks" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <p style={sectionLabel}>{t('w3g.shp_detail')}</p>
+          {blocks.length === 0
+            ? <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>{t('w3g.shp_no_block')}</span>
+            : blocks.map((b, i) => {
+              const { name, detail } = runBlockLine(b)
+              return (
+                <div key={b.id || i} style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
+                  <span style={{ fontSize: 11.5, color: 'var(--text)', fontWeight: 600, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span>
+                  {detail && <span style={{ fontSize: 10.5, color: 'var(--text-mid)', flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>{detail}</span>}
+                </div>
+              )
+            })}
+        </div>
+      )}
+
       {/* 3b. Profil d'intensité — mêmes barres, mêmes hauteurs que le builder */}
-      {!isGym && !isComposed && (
+      {!isGym && !isComposed && !isRunFractionned && (
         <>
           <p style={sectionLabel}>{t('w3g.shp_intensity_profile')}</p>
           <div data-testid="shp-bars" style={{ height: 56, display: 'flex', alignItems: 'flex-end', gap: 1.5, borderBottom: '1px solid var(--border)', marginBottom: trace || elevProfile ? 10 : 0 }}>

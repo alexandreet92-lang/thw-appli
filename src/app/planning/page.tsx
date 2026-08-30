@@ -3061,6 +3061,16 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
     await sb.from('day_intensity').upsert({ user_id:uid, week_start:ws, day_index:dayIdx, intensity, updated_at:new Date().toISOString() },{ onConflict:'user_id,week_start,day_index' })
   }
 
+  // Déplace une séance vers une AUTRE semaine (et un jour donné). Contrairement à
+  // moveSession (même semaine, day_index seul), on réécrit aussi week_start. On
+  // persiste puis on émet thw:sessions-changed : la semaine courante (usePlanning)
+  // et les semaines annexes (extraSessions via planTick) se rechargent proprement.
+  async function moveSessionToWeek(id:string, toWs:string, toDay:number) {
+    const sb=createClient()
+    await sb.from('planned_sessions').update({ week_start:toWs, day_index:toDay, updated_at:new Date().toISOString() }).eq('id',id)
+    window.dispatchEvent(new Event('thw:sessions-changed'))
+  }
+
   function getSessionsForWeek(ws:string, plan?:PlanVariant):Session[] {
     const raw = ws===currentWeekStart ? sessions : (extraSessions[ws]??[])
     if(!plan) return raw
@@ -3138,7 +3148,14 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
                       onClick={e => { if (isEmptyCellTarget(e)) { setAddModalFavorites(false); setAddChooser({ dayIndex: i, plan: activePlan, weekStart: ws }) } }}
                       onDragOver={e => { if (planDrag.current) { e.preventDefault(); setDragCell(hid) } }}
                       onDragLeave={() => setDragCell(c => c === hid ? null : c)}
-                      onDrop={() => { const dr = planDrag.current; if (dr && dr.ws === ws && dr.day !== i) moveSession(dr.id, i); planDrag.current = null; setDragCell(null) }}
+                      onDrop={() => {
+                        const dr = planDrag.current
+                        if (dr) {
+                          if (dr.ws === ws) { if (dr.day !== i) moveSession(dr.id, i) }        // même semaine → day_index
+                          else void moveSessionToWeek(dr.id, ws, i)                            // autre semaine → week_start + day_index
+                        }
+                        planDrag.current = null; setDragCell(null)
+                      }}
                       style={{ position: 'relative' as const, minHeight: 104, padding: '8px 6px 22px', borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column' as const, gap: 5, background: isDropTarget ? 'rgba(6,182,212,0.07)' : 'transparent', transition: 'background .12s', cursor: plusCursor }}>
                       {/* N° du jour dans un anneau coloré (type de jour) ; clic → menu (desktop) */}
                       <div style={{ alignSelf: 'flex-end' as const, marginBottom: 2 }}>

@@ -27,6 +27,7 @@ export default function CoachSubscriptionPage() {
   const [emailPack, setEmailPack] = useState<CoachPackKey | null>(null)
   const [coachState, setCoachState] = useState<CoachAccessState | null>(null)
   const [trialErr, setTrialErr] = useState<string | null>(null)
+  const [athleteCount, setAthleteCount] = useState<number | null>(null)
 
   useEffect(() => {
     void (async () => {
@@ -35,6 +36,11 @@ export default function CoachSubscriptionPage() {
       if (user) {
         const { data } = await sb.from('coach_subscriptions').select('pack_key, status, current_period_end').eq('user_id', user.id).maybeSingle()
         setCurrent((data as CurrentSub) ?? null)
+        // Capacité utilisée : nombre d'athlètes acceptés du roster.
+        const { count } = await sb.from('coach_athlete')
+          .select('id', { count: 'exact', head: true })
+          .eq('coach_id', user.id).eq('status', 'accepted')
+        setAthleteCount(count ?? 0)
       }
       setCoachState(await getCoachAccessState())
       setLoading(false)
@@ -88,6 +94,14 @@ export default function CoachSubscriptionPage() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', background: 'var(--bg-card2)', borderRadius: 'var(--r-md)', padding: '14px 18px', marginBottom: 20 }}>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>{t('w3c.active_pack')} · {activePack.label}</div>
+            {athleteCount !== null && (() => {
+              const full = athleteCount >= activePack.maxAthletes
+              return (
+                <div style={{ fontSize: 12.5, color: full ? '#ef4444' : 'var(--text-dim)', fontWeight: full ? 700 : 400, marginTop: 2 }}>
+                  {athleteCount} / {activePack.maxAthletes} {t('w3c.athletes_capacity')}{full ? ` — ${t('w3c.capacity_full')}` : ''}
+                </div>
+              )
+            })()}
             {current?.current_period_end && <div style={{ fontSize: 12.5, color: 'var(--text-dim)', marginTop: 2 }}>{t('w3c.next_renewal')} {new Date(current.current_period_end).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</div>}
           </div>
           <button onClick={manage} disabled={busy === 'portal'} style={btnManage}>{busy === 'portal' ? '…' : t('w3c.change_cancel')}</button>

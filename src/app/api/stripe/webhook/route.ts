@@ -377,6 +377,15 @@ export async function POST(req: NextRequest) {
           if (delUserId) {
             await sb.from('coach_subscriptions').update({ status: 'canceled', updated_at: new Date().toISOString() }).eq('user_id', delUserId)
             await sb.from('profiles').update({ coach_subscribed: false }).eq('id', delUserId)
+            // Sécurité : sans pack actif, l'ex-coach ne doit plus accéder aux
+            // données de ses athlètes. On révoque les liens acceptés (la RLS coach
+            // s'appuie sur status='accepted'). Le coach devra ré-inviter s'il
+            // reprend un pack — c'est le comportement attendu d'une résiliation.
+            const { data: revoked } = await sb.from('coach_athlete')
+              .update({ status: 'revoked', revoked_at: new Date().toISOString() })
+              .eq('coach_id', delUserId).eq('status', 'accepted')
+              .select('id')
+            if (revoked?.length) console.log(`[stripe/webhook] subscription.deleted → coach ${delUserId} → ${revoked.length} lien(s) athlète révoqué(s)`)
             void notifyUser(delUserId, 'coach.pack_ended', {
               title: 'Abonnement coach terminé',
               body: 'Ton accès coach est désactivé. Reprends un pack quand tu veux pour le réactiver.',

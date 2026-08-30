@@ -150,6 +150,15 @@ function SiteHeader(props) {
     setLangState(l);
     if (window.THWLang && window.THWLang.setLang) window.THWLang.setLang(l);
   };
+  // Compte réel : si l'utilisateur est connecté à l'app (session en cookie, même
+  // domaine), on récupère son nom + abonnement pour l'afficher en haut à droite.
+  var [account, setAccount] = React.useState(null);
+  React.useEffect(function () {
+    fetch('/api/account/summary', { credentials: 'same-origin' })
+      .then(function (r) { return r.json(); })
+      .then(function (j) { if (j && j.loggedIn) setAccount(j); })
+      .catch(function () {});
+  }, []);
   var navLinks = [
     { label: 'Accueil', href: 'index.html', key: 'home' },
     { label: 'Découvrir', href: 'decouvrir.html', key: 'discover' },
@@ -180,9 +189,13 @@ function SiteHeader(props) {
           {props && props.extra ? props.extra
             : <div data-thw-lang-select="1" data-no-i18n="1"><LangSelect lang={lang} setLang={setLang}/></div>}
           <ThemeToggle/>
-          <a className="btn btn-cyan" href="compte.html">
+          <a className="btn btn-cyan" href="compte.html" title={account ? (account.email || '') : ''}>
             <UIIcon name="user" size={15}/>
-            <span className="header-cta-label">Se connecter</span>
+            <span className="header-cta-label">
+              {account
+                ? ((account.firstName || 'Mon compte') + (account.tierLabel ? ' · ' + account.tierLabel : ''))
+                : 'Se connecter'}
+            </span>
           </a>
           <button type="button" className="btn btn-ghost header-burger"
                   aria-label="Menu" onClick={function () { setOpen(!open); }}

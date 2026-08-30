@@ -4809,7 +4809,8 @@ function AnalyserEntrainementFlow({ onPrepare, onCancel }: { onPrepare: (apiProm
       const since28d = new Date(actDate)
       since28d.setDate(since28d.getDate() - 28)
 
-      // TODO: inject injuries when table exists
+      // Blessures actives : injectées dans le prompt de génération (handleGenerate),
+      // pas dans cet aperçu de contexte (affichage seulement).
       const [zonesRes, metricsYestRes, plannedRes, similarRes, hrvHistRes] = await Promise.all([
         sb.from('training_zones').select('*').eq('user_id', user.id).eq('sport', act.sport_type).eq('is_current', true).maybeSingle(),
         Promise.resolve(sb.from('metrics_daily').select('*').eq('user_id', user.id).eq('date', dayBefore).maybeSingle()).catch(() => ({ data: null })),
@@ -4868,12 +4869,12 @@ function AnalyserEntrainementFlow({ onPrepare, onCancel }: { onPrepare: (apiProm
       const dayAfter = new Date(actDate)
       dayAfter.setDate(dayAfter.getDate() + 1)
 
-      // TODO: inject injuries when table exists
-      const [zonesRes, recoveryRes, plannedRes, similarRes] = await Promise.all([
+      const [zonesRes, recoveryRes, plannedRes, similarRes, injuriesRes] = await Promise.all([
         sb.from('training_zones').select('*').eq('user_id', user.id).eq('sport', selectedAct.sport_type).eq('is_current', true).maybeSingle(),
         Promise.resolve(sb.from('metrics_daily').select('*').eq('user_id', user.id).gte('date', threeDaysBefore.toISOString().split('T')[0]).lte('date', actDate)).catch(() => ({ data: [] })),
         sb.from('planned_sessions').select('*').eq('user_id', user.id).gte('date', dayBefore.toISOString().split('T')[0]).lte('date', dayAfter.toISOString().split('T')[0]).eq('sport', selectedAct.sport_type).maybeSingle(),
         sb.from('activities').select(ACTIVITIES_SELECT).eq('sport_type', selectedAct.sport_type).gte('moving_time_s', Math.round((selectedAct.moving_time_s ?? 0) * 0.7)).lte('moving_time_s', Math.round((selectedAct.moving_time_s ?? 0) * 1.3)).neq('id', selectedAct.id).order('started_at', { ascending: false }).limit(10),
+        Promise.resolve(sb.from('injuries').select('zone,side,structure,severity,phase,status,onset_date').eq('user_id', user.id).eq('status', 'active').order('onset_date', { ascending: false })).catch(() => ({ data: [] })),
       ])
 
       // HRV baseline 28d
@@ -4940,6 +4941,12 @@ Efficiency Index : ${ei ?? 'N/A'} (${similar.length} séances similaires disponi
         ? recoveryData.map((d: Record<string, unknown>) => `${d.date} — HRV: ${d.hrv ?? 'N/A'}ms · Repos HR: ${d.resting_hr ?? 'N/A'}bpm · Readiness: ${d.readiness ?? 'N/A'} · Fatigue: ${d.fatigue ?? 'N/A'} · Énergie: ${d.energy ?? 'N/A'}`).join('\n')
         : 'Pas de données de récupération disponibles'
 
+      // Blessures actives : à prendre en compte dans l'analyse (adapte les conseils).
+      const injuries = (injuriesRes.data ?? []) as { zone?: string; side?: string; structure?: string; severity?: string; phase?: string; onset_date?: string }[]
+      const injuriesBlock = injuries.length > 0
+        ? `\n⚠️ BLESSURES ACTIVES (${injuries.length}) — tiens-en compte dans ton analyse et tes recommandations :\n${injuries.map(i => `- ${[i.zone, i.side, i.structure].filter(Boolean).join(' ')}${i.severity ? ` (sévérité ${i.severity})` : ''}${i.phase ? ` — phase ${i.phase}` : ''}${i.onset_date ? ` — depuis ${i.onset_date}` : ''}`).join('\n')}`
+        : ''
+
       const apiPrompt = `Tu es un expert en analyse de séances d'entraînement et physiologie sportive.
 
 SÉANCE ANALYSÉE :
@@ -4951,6 +4958,7 @@ ${lapsBlock}
 CONTEXTE RÉCUPÉRATION (3 jours avant la séance) :
 ${recoveryBlock}
 Baseline HRV personnelle : ${hrvBaseline ?? 'non disponible'}ms | HRV veille : ${hrvYesterday ?? 'non disponible'}ms
+${injuriesBlock}
 
 SÉANCE PLANIFIÉE CORRESPONDANTE : ${plannedRes.data ? JSON.stringify(plannedRes.data) : 'aucune trouvée'}
 

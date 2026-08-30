@@ -392,7 +392,9 @@ export async function POST(req: NextRequest) {
       },
       body: JSON.stringify({
         model,
-        max_tokens: 8000,
+        // 16000 (au lieu de 8000) : marge confortable pour les gros JSON
+        // (séance/plan/nutrition) — rend la troncature quasi impossible en pratique.
+        max_tokens: 16000,
         stream: true,
         system: systemPrompt,
         messages: [{ role: 'user', content: fullMessage }],
@@ -406,7 +408,7 @@ export async function POST(req: NextRequest) {
     }
 
     const encoder = new TextEncoder()
-    let inputTokens = 0, outputTokens = 0
+    let inputTokens = 0, outputTokens = 0, parserStopReason: string | null = null
 
     const parserStream = new ReadableStream({
       async start(controller) {
@@ -436,9 +438,17 @@ export async function POST(req: NextRequest) {
                 } else if (parsed.type === 'message_delta') {
                   const usage = parsed.usage as Record<string, unknown> | undefined
                   outputTokens = (usage?.output_tokens as number) ?? 0
+                  const d = parsed.delta as Record<string, unknown> | undefined
+                  if (typeof d?.stop_reason === 'string') parserStopReason = d.stop_reason
                 }
               } catch { /* non-JSON SSE line */ }
             }
+          }
+          // Sortie coupée par la limite → on le signale au front (event dédié),
+          // au lieu de laisser passer un JSON tronqué comme s'il était complet.
+          if (parserStopReason === 'max_tokens') {
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ truncated: true })}\n\n`))
+            console.warn('[coach-stream] parser output truncated (max_tokens)')
           }
           controller.enqueue(encoder.encode('data: [DONE]\n\n'))
         } catch (e) {

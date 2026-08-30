@@ -1312,7 +1312,22 @@ function ConfidentialiteBloc() {
           </a>
         </Group>
       </Section>
+
+      <LearnMoreAppLink />
     </div>
+  )
+}
+
+// Bouton « En savoir plus sur l'application » → accueil du site. Présent dans les
+// sections Confidentialité et Autorisations (demande produit).
+function LearnMoreAppLink() {
+  const { t } = useI18n()
+  return (
+    <a href="/decouvrir/decouvrir.html" target="_blank" rel="noopener"
+      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%', marginTop: 20, padding: '14px', background: 'transparent', border: '0.5px solid var(--border)', borderRadius: 12, color: 'var(--text)', fontSize: 14, fontWeight: 500, textDecoration: 'none' }}>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+      {t('profile.learnMoreApp')}
+    </a>
   )
 }
 
@@ -1389,6 +1404,7 @@ function AutorisationsBloc() {
           })}
         </Group>
       </Section>
+      <LearnMoreAppLink />
     </div>
   )
 }
@@ -1852,6 +1868,8 @@ function AbonnementContent() {
   const [cancelError, setCancelError] = useState<string | null>(null)
   const [portalLoading, setPortalLoading] = useState(false)
   const [subEmail, setSubEmail] = useState<'change' | 'cancel' | null>(null)
+  // Type d'abonnement à cibler par le lien email (athlète vs coach), déduit du profil.
+  const [subPlan, setSubPlan] = useState<'athlete' | 'coach'>('athlete')
 
   useEffect(() => {
     fetch('/api/subscription/details')
@@ -1859,6 +1877,18 @@ function AbonnementContent() {
       .then((d: SubDetails) => setDetails(d))
       .catch(() => setDetails(null))
       .finally(() => setLoading(false))
+    // Détection coach (profil + coach_subscriptions) → cible du lien « changer ».
+    void (async () => {
+      try {
+        const sb = createClient(); const user = await getCurrentUser()
+        if (!user) return
+        const [{ data: prof }, { data: cs }] = await Promise.all([
+          sb.from('profiles').select('coach_subscribed, coach_trial_started_at').eq('id', user.id).maybeSingle(),
+          sb.from('coach_subscriptions').select('status').eq('user_id', user.id).maybeSingle(),
+        ])
+        if (prof?.coach_subscribed || prof?.coach_trial_started_at || (cs && (cs.status === 'active' || cs.status === 'trialing'))) setSubPlan('coach')
+      } catch { /* défaut athlète */ }
+    })()
   }, [])
 
   async function handlePortal() {
@@ -2057,9 +2087,11 @@ function AbonnementContent() {
             </div>
           )}
 
-          {/* En savoir plus */}
+          {/* En savoir plus sur l'application → accueil du site */}
           <a
-            href="/decouvrir/abonnement.html"
+            href="/decouvrir/decouvrir.html"
+            target="_blank"
+            rel="noopener"
             style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%', padding: '14px', background: 'transparent', border: '0.5px solid var(--border)', borderRadius: 12, color: 'var(--text)', fontSize: 14, fontWeight: 500, textDecoration: 'none', cursor: 'pointer' }}
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -2067,7 +2099,7 @@ function AbonnementContent() {
               <polyline points="15 3 21 3 21 9"/>
               <line x1="10" y1="14" x2="21" y2="3"/>
             </svg>
-            {t('profile.learnMoreSubscriptions')}
+            {t('profile.learnMoreApp')}
           </a>
 
           {isCancelling && (
@@ -2079,7 +2111,7 @@ function AbonnementContent() {
             </div>
           )}
 
-          {subEmail && <SubscriptionEmailModal action={subEmail} onClose={() => setSubEmail(null)} />}
+          {subEmail && <SubscriptionEmailModal action={subEmail} plan={subPlan} onClose={() => setSubEmail(null)} />}
         </div>
       )}
 

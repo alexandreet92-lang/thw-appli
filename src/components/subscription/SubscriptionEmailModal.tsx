@@ -14,10 +14,13 @@ import { useI18n } from '@/lib/i18n'
 
 interface Props {
   action: 'change' | 'cancel'
+  /** Type d'abonnement concerné : dirige le lien email vers la bonne page
+   *  (athlète → grille tarifaire ; coach → espace coach). Défaut : athlète. */
+  plan?: 'athlete' | 'coach'
   onClose: () => void
 }
 
-export default function SubscriptionEmailModal({ action, onClose }: Props) {
+export default function SubscriptionEmailModal({ action, plan = 'athlete', onClose }: Props) {
   const { t } = useI18n()
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
@@ -41,7 +44,7 @@ export default function SubscriptionEmailModal({ action, onClose }: Props) {
       const res = await fetch('/api/subscription/request-link', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, action }),
+        body: JSON.stringify({ email, action, plan }),
       })
       const json = await res.json() as { success?: boolean; error?: string }
       if (!res.ok || !json.success) throw new Error(json.error ?? t('w3c.error_generic'))

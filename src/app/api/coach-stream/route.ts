@@ -33,7 +33,7 @@ import { coachScaleTools, COACH_SCALE_TOOL_NAMES, resolveCoachScaleTool } from '
 import { sendPushToUser, previewForBody } from '@/lib/push/send'
 import { isNotifEnabled } from '@/lib/notifications/dispatch'
 import { createNotification } from '@/lib/notifications/create'
-import { buildTrainingAgentInstruction, DEFAULT_TRAINING_SETTINGS } from '@/lib/ai/agent-settings'
+import { buildTrainingAgentInstruction, DEFAULT_TRAINING_SETTINGS, buildCoachAgentInstruction, DEFAULT_COACH_SETTINGS } from '@/lib/ai/agent-settings'
 import { createClient } from '@/lib/supabase/server'
 import { enforceQuota } from '@/lib/subscriptions/quota-middleware'
 import { getUserTier, logUsage } from '@/lib/subscriptions/check-quota'
@@ -765,13 +765,29 @@ AVANT de chiffrer — jamais de chiffre « hors-sol ».`
       if (durableMemory)    systemWithTools = `${systemWithTools}\n\n${durableMemory}`
       if (memory)           systemWithTools = `${systemWithTools}\n\n${memory}`
       if (insights)         systemWithTools = `${systemWithTools}\n\n${insights}`
-      // Réglages de l'agent Training (Paramètres → Agents → Training).
+      // Réglages des agents (Paramètres → Agents). Training = préférences athlète ;
+      // Coach = préférences de coaching (injectées uniquement si l'utilisateur est coach).
       try {
-        const { data: prof } = await sbCtx.from('profiles').select('ai_agent_training').eq('id', userId).maybeSingle()
-        const agentCfg = (prof as { ai_agent_training?: Record<string, unknown> } | null)?.ai_agent_training
+        const { data: prof } = await sbCtx.from('profiles')
+          .select('ai_agent_training, ai_agent_coach, coach_subscribed, coach_trial_started_at')
+          .eq('id', userId).maybeSingle()
+        const p = prof as {
+          ai_agent_training?: Record<string, unknown>
+          ai_agent_coach?: Record<string, unknown>
+          coach_subscribed?: boolean | null
+          coach_trial_started_at?: string | null
+        } | null
+        const agentCfg = p?.ai_agent_training
         if (agentCfg && typeof agentCfg === 'object') {
           const instr = buildTrainingAgentInstruction({ ...DEFAULT_TRAINING_SETTINGS, ...(agentCfg as Partial<typeof DEFAULT_TRAINING_SETTINGS>) })
           systemWithTools = `${systemWithTools}\n\n${instr}`
+        }
+        // Agent Coach : uniquement pour un utilisateur coach (abonné ou en essai coach).
+        const isCoach = !!p?.coach_subscribed || !!p?.coach_trial_started_at
+        const coachCfg = p?.ai_agent_coach
+        if (isCoach && coachCfg && typeof coachCfg === 'object') {
+          const cInstr = buildCoachAgentInstruction({ ...DEFAULT_COACH_SETTINGS, ...(coachCfg as Partial<typeof DEFAULT_COACH_SETTINGS>) })
+          systemWithTools = `${systemWithTools}\n\n${cInstr}`
         }
       } catch { /* fail-open */ }
     } catch (e) {

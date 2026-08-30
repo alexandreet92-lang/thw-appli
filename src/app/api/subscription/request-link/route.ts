@@ -10,11 +10,15 @@ export const dynamic = 'force-dynamic'
 
 const APP_BASE = process.env.APP_BASE_URL ?? 'https://thw-appli.vercel.app'
 // Destinations (surchargables par variables d'env quand les pages du site sont prêtes).
-const CHANGE_URL = process.env.SUBSCRIPTION_CHANGE_URL ?? `${APP_BASE}/decouvrir/abonnement.html`
+// On distingue ATHLÈTE (grille tarifaire) et COACH (espace coach) : le lien mène
+// directement au bon type d'abonnement.
+const CHANGE_URL_ATHLETE = process.env.SUBSCRIPTION_CHANGE_URL ?? `${APP_BASE}/decouvrir/abonnement.html`
+const CHANGE_URL_COACH = process.env.SUBSCRIPTION_CHANGE_URL_COACH ?? `${APP_BASE}/coach/subscription`
 const CANCEL_URL = process.env.SUBSCRIPTION_CANCEL_URL ?? `${APP_BASE}/decouvrir/cgu.html#resiliation`
 const LOGO_URL = process.env.EMAIL_LOGO_URL ?? 'https://thw-appli.vercel.app/branding/logo-thw-light.png'
 
 type Action = 'change' | 'cancel'
+type Plan = 'athlete' | 'coach'
 
 export async function POST(req: Request) {
   try {
@@ -22,11 +26,12 @@ export async function POST(req: Request) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const { email, action } = await req.json() as { email?: string; action?: Action }
+    const { email, action, plan } = await req.json() as { email?: string; action?: Action; plan?: Plan }
     if (!email) return NextResponse.json({ error: 'Email requis' }, { status: 400 })
     if (action !== 'change' && action !== 'cancel') {
       return NextResponse.json({ error: 'Action invalide' }, { status: 400 })
     }
+    const planType: Plan = plan === 'coach' ? 'coach' : 'athlete'
     if (email.toLowerCase() !== (user.email ?? '').toLowerCase()) {
       return NextResponse.json({ error: 'Email non autorisé' }, { status: 403 })
     }
@@ -50,16 +55,18 @@ export async function POST(req: Request) {
     } catch { /* fallback */ }
 
     const isCancel = action === 'cancel'
-    const url = isCancel ? CANCEL_URL : CHANGE_URL
-    const heading = isCancel ? 'Résilier ton abonnement' : "Changer d'abonnement"
+    const isCoach = planType === 'coach'
+    const url = isCancel ? CANCEL_URL : (isCoach ? CHANGE_URL_COACH : CHANGE_URL_ATHLETE)
+    const typeLabel = isCoach ? 'coach' : 'athlète'
+    const heading = isCancel ? 'Résilier ton abonnement' : `Changer d'abonnement ${typeLabel}`
     const intro = isCancel
       ? 'Voici ton lien sécurisé pour gérer la résiliation de ton abonnement.'
-      : 'Voici ton lien sécurisé pour changer de formule.'
+      : `Voici ton lien sécurisé pour changer ta formule ${typeLabel}.`
     const cta = isCancel ? 'Gérer la résiliation →' : 'Choisir ma formule →'
     const accent = isCancel ? '#ef4444' : '#06B6D4'
     const subject = isCancel
       ? `${firstName}, ton lien de résiliation est prêt`
-      : `${firstName}, ton lien pour changer d'abonnement`
+      : `${firstName}, ton lien pour changer d'abonnement ${typeLabel}`
 
     const html = `
 <!DOCTYPE html>

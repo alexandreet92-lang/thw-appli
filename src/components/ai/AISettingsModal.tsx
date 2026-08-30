@@ -15,9 +15,12 @@ import {
   DEFAULT_TRAINING_SETTINGS, type TrainingAgentSettings,
   FOCUS_OPTS, OBJECTIF_OPTS, TON_OPTS, DETAIL_OPTS, NIVEAU_OPTS, FORMAT_OPTS,
   PERIODISATION_OPTS, UNITES_OPTS, MATERIEL_OPTS,
+  DEFAULT_COACH_SETTINGS, type CoachAgentSettings,
+  COACH_TON_OPTS, COACH_PRIORITE_OPTS, COACH_BILANS_OPTS, COACH_LANGUE_OPTS, COACH_SPECIALITE_OPTS,
 } from '@/lib/ai/agent-settings'
 import { getPushState, enablePush, disablePush, type PushState } from '@/lib/push/client'
 import { ConnectorLogo, type ConnectorId } from '@/components/ai/ConnectorLogos'
+import SubscriptionEmailModal from '@/components/subscription/SubscriptionEmailModal'
 
 export type SettingsSection =
   | 'profil' | 'instructions' | 'modele' | 'voix' | 'notifications'
@@ -152,12 +155,19 @@ export default function AISettingsModal({ open, initialSection = 'profil', onClo
   const [isWide, setIsWide] = useState(true)
   const [showNav, setShowNav] = useState(false)
   const [savedAt, setSavedAt] = useState(0)
-  const flashSaved = useCallback(() => setSavedAt(Date.now()), [])
+  const [errorAt, setErrorAt] = useState(0)
+  const flashSaved = useCallback(() => { setErrorAt(0); setSavedAt(Date.now()) }, [])
+  const flashError = useCallback(() => { setSavedAt(0); setErrorAt(Date.now()) }, [])
   useEffect(() => {
     if (!savedAt) return
     const id = setTimeout(() => setSavedAt(0), 1700)
     return () => clearTimeout(id)
   }, [savedAt])
+  useEffect(() => {
+    if (!errorAt) return
+    const id = setTimeout(() => setErrorAt(0), 2600)
+    return () => clearTimeout(id)
+  }, [errorAt])
 
   useEffect(() => { if (open) { setSection(initialSection); setShowNav(false) } }, [open, initialSection])
   useEffect(() => {
@@ -175,6 +185,7 @@ export default function AISettingsModal({ open, initialSection = 'profil', onClo
   const [globalNotif, setGlobalNotif] = useState(true)
   const [pushState, setPushState] = useState<PushState | 'loading'>('loading')
   const [agent, setAgent] = useState<TrainingAgentSettings>(DEFAULT_TRAINING_SETTINGS)
+  const [coachAgent, setCoachAgent] = useState<CoachAgentSettings>(DEFAULT_COACH_SETTINGS)
   const uidRef = useRef<string | null>(null)
 
   useEffect(() => {
@@ -189,7 +200,7 @@ export default function AISettingsModal({ open, initialSection = 'profil', onClo
       if (!user) return
       uidRef.current = user.id
       const [{ data: prof }, { data: rules }] = await Promise.all([
-        sb.from('profiles').select('full_name,preferred_name,work_profession,work_hours_per_week,ideal_sleep_hours,sport_hours_per_week,sports,ai_agent_training').eq('id', user.id).maybeSingle(),
+        sb.from('profiles').select('full_name,preferred_name,work_profession,work_hours_per_week,ideal_sleep_hours,sport_hours_per_week,sports,ai_agent_training,ai_agent_coach').eq('id', user.id).maybeSingle(),
         sb.from('ai_rules').select('rule_text').eq('user_id', user.id).eq('category', 'instruction').eq('active', true).maybeSingle(),
       ])
       if (prof) {
@@ -199,6 +210,7 @@ export default function AISettingsModal({ open, initialSection = 'profil', onClo
           sport_hours_per_week: prof.sport_hours_per_week?.toString() ?? '', sports: (prof.sports as string[] | null) ?? [],
         })
         if (prof.ai_agent_training) setAgent({ ...DEFAULT_TRAINING_SETTINGS, ...(prof.ai_agent_training as Partial<TrainingAgentSettings>) })
+        if (prof.ai_agent_coach) setCoachAgent({ ...DEFAULT_COACH_SETTINGS, ...(prof.ai_agent_coach as Partial<CoachAgentSettings>) })
       }
       if (rules?.rule_text) setInstruction(rules.rule_text)
       try {
@@ -209,38 +221,69 @@ export default function AISettingsModal({ open, initialSection = 'profil', onClo
     })()
   }, [open])
 
+  // Sauvegardes FIABILISÉES : chaque écriture vérifie son succès et affiche
+  // « Enregistré » OU « Échec de l'enregistrement » (jamais un faux positif).
   const saveProfile = useCallback(async (patch: Record<string, unknown>) => {
     const uid = uidRef.current; if (!uid) return
-    try { await createClient().from('profiles').update(patch).eq('id', uid); flashSaved() } catch { /* ignore */ }
-  }, [flashSaved])
+    try {
+      const { error } = await createClient().from('profiles').update(patch).eq('id', uid)
+      if (error) { console.error('[settings] saveProfile', error); flashError() } else flashSaved()
+    } catch (e) { console.error('[settings] saveProfile', e); flashError() }
+  }, [flashSaved, flashError])
   const saveInstruction = useCallback(async (text: string) => {
     const uid = uidRef.current; if (!uid) return
-    const sb = createClient()
-    const { data: existing } = await sb.from('ai_rules').select('id').eq('user_id', uid).eq('category', 'instruction').maybeSingle()
-    if (existing) await sb.from('ai_rules').update({ rule_text: text.trim(), active: true }).eq('id', existing.id)
-    else await sb.from('ai_rules').insert({ user_id: uid, category: 'instruction', rule_text: text.trim(), active: true })
-    flashSaved()
-  }, [flashSaved])
+    try {
+      const sb = createClient()
+      const { data: existing } = await sb.from('ai_rules').select('id').eq('user_id', uid).eq('category', 'instruction').maybeSingle()
+      const { error } = existing
+        ? await sb.from('ai_rules').update({ rule_text: text.trim(), active: true }).eq('id', existing.id)
+        : await sb.from('ai_rules').insert({ user_id: uid, category: 'instruction', rule_text: text.trim(), active: true })
+      if (error) { console.error('[settings] saveInstruction', error); flashError() } else flashSaved()
+    } catch (e) { console.error('[settings] saveInstruction', e); flashError() }
+  }, [flashSaved, flashError])
   const saveVoice = useCallback((next: { lang: string; style: string; speed: string }) => {
-    setVoice(next); try { localStorage.setItem('thw_voice_settings', JSON.stringify(next)) } catch { /* ignore */ }; flashSaved()
-  }, [flashSaved])
+    setVoice(next)
+    try { localStorage.setItem('thw_voice_settings', JSON.stringify(next)); flashSaved() }
+    catch (e) { console.error('[settings] saveVoice', e); flashError() }
+  }, [flashSaved, flashError])
   const saveModel = useCallback((m: string) => {
-    setDefaultModel(m); try { localStorage.setItem('thw_ai_default_model', m) } catch { /* ignore */ }; flashSaved()
-  }, [flashSaved])
-  const saveAgent = useCallback((next: TrainingAgentSettings) => {
-    setAgent(next); const uid = uidRef.current
-    if (uid) void createClient().from('profiles').update({ ai_agent_training: next }).eq('id', uid)
-    try { localStorage.setItem('thw_agent_training', JSON.stringify(next)) } catch { /* ignore */ }
-    flashSaved()
-  }, [flashSaved])
+    setDefaultModel(m)
+    try { localStorage.setItem('thw_ai_default_model', m); flashSaved() }
+    catch (e) { console.error('[settings] saveModel', e); flashError() }
+  }, [flashSaved, flashError])
+  const saveAgent = useCallback(async (next: TrainingAgentSettings) => {
+    setAgent(next); const uid = uidRef.current; if (!uid) { flashError(); return }
+    try { localStorage.setItem('thw_agent_training', JSON.stringify(next)) } catch { /* non bloquant */ }
+    try {
+      const { error } = await createClient().from('profiles').update({ ai_agent_training: next }).eq('id', uid)
+      if (error) { console.error('[settings] saveAgent', error); flashError() } else flashSaved()
+    } catch (e) { console.error('[settings] saveAgent', e); flashError() }
+  }, [flashSaved, flashError])
+  const saveCoachAgent = useCallback(async (next: CoachAgentSettings) => {
+    setCoachAgent(next); const uid = uidRef.current; if (!uid) { flashError(); return }
+    try {
+      const { error } = await createClient().from('profiles').update({ ai_agent_coach: next }).eq('id', uid)
+      if (error) { console.error('[settings] saveCoachAgent', error); flashError() } else flashSaved()
+    } catch (e) { console.error('[settings] saveCoachAgent', e); flashError() }
+  }, [flashSaved, flashError])
   const patchPref = useCallback((key: string, val: boolean) => {
     setPrefs(p => ({ ...p, [key]: val }))
-    void fetch('/api/notifications/preferences', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ preferences: { [key]: val } }) }).then(() => flashSaved())
-  }, [flashSaved])
+    void (async () => {
+      try {
+        const r = await fetch('/api/notifications/preferences', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ preferences: { [key]: val } }) })
+        if (r.ok) flashSaved(); else flashError()
+      } catch { flashError() }
+    })()
+  }, [flashSaved, flashError])
   const setGlobal = useCallback((v: boolean) => {
     setGlobalNotif(v)
-    void fetch('/api/notifications/preferences', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ global_enabled: v }) }).then(() => flashSaved())
-  }, [flashSaved])
+    void (async () => {
+      try {
+        const r = await fetch('/api/notifications/preferences', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ global_enabled: v }) })
+        if (r.ok) flashSaved(); else flashError()
+      } catch { flashError() }
+    })()
+  }, [flashSaved, flashError])
 
   if (!open) return null
 
@@ -308,14 +351,7 @@ export default function AISettingsModal({ open, initialSection = 'profil', onClo
               {section === 'voix' && <VoixSection voice={voice} save={saveVoice} />}
               {section === 'notifications' && <NotificationsSection prefs={prefs} globalNotif={globalNotif} pushState={pushState} setPushState={setPushState} patchPref={patchPref} setGlobal={setGlobal} />}
               {section === 'agent_training' && <AgentTrainingSection agent={agent} save={saveAgent} />}
-              {section === 'agent_coach' && (
-                <div>
-                  <div style={sectionTitleStyle}>{t('w1a.agentCoachTitle')}</div>
-                  <p style={{ fontSize: 13.5, color: 'var(--text-mid)', lineHeight: 1.6, margin: '4px 0 0', maxWidth: 520, fontFamily: FB }}>
-                    {t('w1a.agentCoachDesc')}
-                  </p>
-                </div>
-              )}
+              {section === 'agent_coach' && <AgentCoachSection agent={coachAgent} save={saveCoachAgent} />}
               {section === 'agent_networks' && <div style={sectionTitleStyle}>{t('w1a.networksBientot')}</div>}
               {section === 'studio' && <StudioSection />}
               {section === 'connecteurs' && <ConnecteursSection />}
@@ -328,6 +364,12 @@ export default function AISettingsModal({ open, initialSection = 'profil', onClo
         <div aria-live="polite" style={{ position: 'absolute', bottom: 18, left: '50%', transform: `translateX(-50%) translateY(${savedAt ? 0 : 12}px)`, opacity: savedAt ? 1 : 0, pointerEvents: 'none', transition: 'opacity 0.25s, transform 0.25s', display: 'flex', alignItems: 'center', gap: 8, padding: '9px 15px', borderRadius: 999, background: 'var(--text)', color: 'var(--bg)', fontSize: 13, fontWeight: 600, fontFamily: FB, boxShadow: '0 8px 24px rgba(0,0,0,0.25)' }}>
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
           {t('w1a.enregistre')}
+        </div>
+
+        {/* Toast « Échec de l'enregistrement » */}
+        <div aria-live="assertive" style={{ position: 'absolute', bottom: 18, left: '50%', transform: `translateX(-50%) translateY(${errorAt ? 0 : 12}px)`, opacity: errorAt ? 1 : 0, pointerEvents: 'none', transition: 'opacity 0.25s, transform 0.25s', display: 'flex', alignItems: 'center', gap: 8, padding: '9px 15px', borderRadius: 999, background: '#ef4444', color: '#fff', fontSize: 13, fontWeight: 600, fontFamily: FB, boxShadow: '0 8px 24px rgba(0,0,0,0.25)' }}>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+          {t('w1a.echecEnregistrement')}
         </div>
       </div>
     </div>
@@ -635,6 +677,76 @@ function AgentTrainingSection({ agent, save }: { agent: TrainingAgentSettings; s
   )
 }
 
+// ── Agent Coach ────────────────────────────────────────────────
+// Comment l'IA aide un COACH à suivre et faire progresser SES athlètes.
+// Persisté dans profiles.ai_agent_coach, injecté dans le coach (si l'utilisateur
+// est coach). Même grammaire visuelle que l'agent Training.
+function AgentCoachSection({ agent, save }: { agent: CoachAgentSettings; save: (a: CoachAgentSettings) => void }) {
+  const { t } = useI18n()
+  const set = (patch: Partial<CoachAgentSettings>) => save({ ...agent, ...patch })
+  const toggleIn = (arr: string[], v: string) => arr.includes(v) ? arr.filter(x => x !== v) : [...arr, v]
+  const Field = ({ label, children }: { label: string; children: React.ReactNode }) => (
+    <div style={{ flex: '1 1 210px' }}><label style={fieldLabel}>{label}</label>{children}</div>
+  )
+  const GroupTitle = ({ children }: { children: React.ReactNode }) => (
+    <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.6px', textTransform: 'uppercase', color: 'var(--text-dim)', margin: '6px 0 -4px', fontFamily: FB }}>{children}</div>
+  )
+  return (
+    <div>
+      <div style={sectionTitleStyle}>{t('w1a.agentCoachTitle')}</div>
+      <p style={sectionLead}>{t('w1a.agentCoachLead')}</p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 18, maxWidth: 560 }}>
+
+        {/* ① Ton & style avec les athlètes */}
+        <GroupTitle>{t('w1a.coachGroupStyle')}</GroupTitle>
+        <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
+          <Field label={t('w1a.coachTon')}><Dropdown value={agent.ton} onChange={v => set({ ton: v })} options={COACH_TON_OPTS} /></Field>
+          <Field label={t('w1a.coachDetail')}><Dropdown value={agent.detail} onChange={v => set({ detail: v })} options={DETAIL_OPTS} /></Field>
+        </div>
+        <Field label={t('w1a.coachFormat')}><Dropdown value={agent.format} onChange={v => set({ format: v })} options={FORMAT_OPTS} /></Field>
+
+        {/* ② Priorités & seuils d'alerte */}
+        <GroupTitle>{t('w1a.coachGroupAlertes')}</GroupTitle>
+        <Field label={t('w1a.coachPriorite')}><Dropdown value={agent.priorite} onChange={v => set({ priorite: v })} options={COACH_PRIORITE_OPTS} /></Field>
+        {([['alerte_surcharge', t('w1a.coachAlerteSurchargeTitle'), t('w1a.coachAlerteSurchargeDesc')],
+           ['alerte_seance_manquee', t('w1a.coachAlerteSeanceTitle'), t('w1a.coachAlerteSeanceDesc')],
+           ['alerte_fatigue', t('w1a.coachAlerteFatigueTitle'), t('w1a.coachAlerteFatigueDesc')]] as const).map(([k, title, desc]) => (
+          <div key={k} style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '10px 0', borderTop: '1px solid var(--border)' }}>
+            <div style={{ flex: 1 }}><div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>{title}</div><div style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 2 }}>{desc}</div></div>
+            <Toggle value={agent[k]} onChange={(v) => set({ [k]: v } as Partial<CoachAgentSettings>)} />
+          </div>
+        ))}
+
+        {/* ③ Proactivité & bilans */}
+        <GroupTitle>{t('w1a.coachGroupProactivite')}</GroupTitle>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '10px 0', borderTop: '1px solid var(--border)' }}>
+          <div style={{ flex: 1 }}><div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>{t('w1a.coachProactiviteTitle')}</div><div style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 2 }}>{t('w1a.coachProactiviteDesc')}</div></div>
+          <Toggle value={agent.proactivite} onChange={(v) => set({ proactivite: v })} />
+        </div>
+        <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
+          <Field label={t('w1a.coachBilans')}><Dropdown value={agent.bilans} onChange={v => set({ bilans: v })} options={COACH_BILANS_OPTS} /></Field>
+          <Field label={t('w1a.coachPeriodisation')}><Dropdown value={agent.periodisation} onChange={v => set({ periodisation: v })} options={PERIODISATION_OPTS} /></Field>
+        </div>
+
+        {/* ④ Spécialités & signature */}
+        <GroupTitle>{t('w1a.coachGroupSpecialites')}</GroupTitle>
+        <div>
+          <label style={fieldLabel}>{t('w1a.coachSpecialites')}</label>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            {COACH_SPECIALITE_OPTS.map(([v, l]) => <Pill key={v} on={agent.specialites.includes(v)} onClick={() => set({ specialites: toggleIn(agent.specialites, v) })}>{l}</Pill>)}
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
+          <Field label={t('w1a.coachSignature')}>
+            <input style={inputStyle} onFocus={onFocusRing} onBlur={onBlurRing} value={agent.signature} onChange={e => set({ signature: e.target.value })} placeholder={t('w1a.coachSignaturePh')} />
+          </Field>
+          <Field label={t('w1a.coachLangue')}><Dropdown value={agent.langue} onChange={v => set({ langue: v })} options={COACH_LANGUE_OPTS} /></Field>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Connecteurs ────────────────────────────────────────────────
 function ConnecteursSection() {
   const { t } = useI18n()
@@ -704,13 +816,107 @@ function ConnecteursSection() {
 }
 
 // ── Abonnement ─────────────────────────────────────────────────
+// Affiche l'abonnement ACTUEL (pas de renvoi vers la grille tarifaire) + un
+// bouton « Changer d'abonnement » qui distingue athlète / coach, + un lien
+// « En savoir plus sur l'application » vers l'accueil du site, à côté des accès
+// Utilisation / Confidentialité / Autorisations.
+const PLAN_LABELS: Record<string, string> = { premium: 'Premium', pro: 'Pro', expert: 'Expert', trial: 'Essai', free: 'Gratuit' }
+
 function AbonnementSection() {
   const { t } = useI18n()
+  const [tier, setTier] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [isCoach, setIsCoach] = useState(false)
+  const [hasAthletePaid, setHasAthletePaid] = useState(false)
+  const [change, setChange] = useState<null | 'athlete' | 'coach' | 'choose'>(null)
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const r = await fetch('/api/subscription/details')
+        const d = await r.json() as { tier?: string }
+        setTier(d.tier ?? 'trial')
+      } catch { setTier('trial') } finally { setLoading(false) }
+      try {
+        const sb = createClient(); const user = await getCurrentUser()
+        if (!user) return
+        const [{ data: prof }, { data: cs }, { data: usub }] = await Promise.all([
+          sb.from('profiles').select('coach_subscribed, coach_trial_started_at').eq('id', user.id).maybeSingle(),
+          sb.from('coach_subscriptions').select('status').eq('user_id', user.id).maybeSingle(),
+          sb.from('user_subscriptions').select('status, stripe_subscription_id').eq('user_id', user.id).maybeSingle(),
+        ])
+        const coach = !!prof?.coach_subscribed || (!!cs && (cs.status === 'active' || cs.status === 'trialing')) || !!prof?.coach_trial_started_at
+        setIsCoach(coach)
+        setHasAthletePaid(!!usub?.stripe_subscription_id && (usub.status === 'active' || usub.status === 'trialing'))
+      } catch { /* ignore */ }
+    })()
+  }, [])
+
+  // Décision auto : coach & athlète payant → on demande ; sinon type déduit.
+  const onChange = () => {
+    if (isCoach && hasAthletePaid) setChange('choose')
+    else setChange(isCoach ? 'coach' : 'athlete')
+  }
+
+  const planName = tier ? (PLAN_LABELS[tier] ?? tier) : '—'
+
   return (
     <div>
       <div style={sectionTitleStyle}>{t('w1a.navAbonnement')}</div>
       <p style={sectionLead}>{t('w1a.abonnementLead')}</p>
-      <a href="/settings/subscription" style={{ display: 'inline-block', padding: '12px 20px', borderRadius: 'var(--r-sm)', background: 'var(--primary)', color: '#fff', fontSize: 14, fontWeight: 600, textDecoration: 'none', fontFamily: FB }}>{t('w1a.voirAbonnement')}</a>
+
+      {/* Abonnement actuel */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '16px 18px', borderRadius: 'var(--r-md)', background: 'var(--bg-card2)', border: '1px solid var(--border)', maxWidth: 460 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 12, color: 'var(--text-dim)', fontFamily: FB }}>{t('w1a.abonnementActuel')}</div>
+          <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-display)', marginTop: 2 }}>
+            {loading ? '…' : `THW ${planName}`}{isCoach && !loading ? ` · ${t('w1a.abonnementCoach')}` : ''}
+          </div>
+        </div>
+      </div>
+
+      <button type="button" onClick={onChange}
+        style={{ display: 'inline-block', marginTop: 14, padding: '12px 20px', borderRadius: 'var(--r-sm)', background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 14, fontWeight: 600, border: 'none', cursor: 'pointer', fontFamily: FB }}>
+        {t('w1a.changerAbonnement')}
+      </button>
+
+      {/* En savoir plus sur l'application → accueil du site + accès Utilisation /
+          Confidentialité (pages du site). « Autorisations » = permissions
+          in-app, gérées dans Profil → Autorisations. */}
+      <div style={{ marginTop: 28, paddingTop: 18, borderTop: '1px solid var(--border)', maxWidth: 460 }}>
+        <a href="/decouvrir/decouvrir.html" target="_blank" rel="noopener"
+          style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '13px 16px', borderRadius: 'var(--r-md)', border: '1px solid var(--border)', color: 'var(--text)', fontSize: 14, fontWeight: 600, textDecoration: 'none', fontFamily: FB }}>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          {t('w1a.enSavoirPlusApp')}
+        </a>
+        <div style={{ display: 'flex', flexDirection: 'column', marginTop: 6 }}>
+          {([['/decouvrir/cgu.html', t('w1a.linkUtilisation')], ['/decouvrir/confidentialite.html', t('w1a.linkConfidentialite')]] as const).map(([href, label]) => (
+            <a key={href} href={href} target="_blank" rel="noopener"
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 4px', borderBottom: '1px solid var(--border)', color: 'var(--text-mid)', fontSize: 13.5, textDecoration: 'none', fontFamily: FB }}>
+              <span>{label}</span>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="2" strokeLinecap="round"><path d="M9 18l6-6-6-6"/></svg>
+            </a>
+          ))}
+        </div>
+      </div>
+
+      {/* Choix athlète / coach quand les deux existent */}
+      {change === 'choose' && (
+        <div onClick={() => setChange(null)} style={{ position: 'fixed', inset: 0, zIndex: 14000, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+          <div onClick={e => e.stopPropagation()} style={{ width: 360, maxWidth: '100%', background: 'var(--bg-card)', borderRadius: 'var(--r-lg)', border: '1px solid var(--border)', padding: 24 }}>
+            <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 700, color: 'var(--text)', margin: '0 0 6px', textAlign: 'center' }}>{t('w1a.quelAbonnement')}</h3>
+            <p style={{ fontSize: 13, color: 'var(--text-dim)', textAlign: 'center', margin: '0 0 18px', lineHeight: 1.5 }}>{t('w1a.quelAbonnementDesc')}</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <button onClick={() => setChange('athlete')} style={{ padding: 13, borderRadius: 'var(--r-md)', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: FB }}>{t('w1a.abonnementAthlete')}</button>
+              <button onClick={() => setChange('coach')} style={{ padding: 13, borderRadius: 'var(--r-md)', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: FB }}>{t('w1a.abonnementCoach')}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {(change === 'athlete' || change === 'coach') && (
+        <SubscriptionEmailModal action="change" plan={change} onClose={() => setChange(null)} />
+      )}
     </div>
   )
 }

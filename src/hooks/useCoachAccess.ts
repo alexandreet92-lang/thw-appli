@@ -7,17 +7,28 @@ const DEFAULT: CoachAccessState = { access: false, paid: false, isTrial: false, 
 
 let cached: CoachAccessState | null = null
 let inflight: Promise<CoachAccessState> | null = null
+let noAccessRetries = 0
 const subs = new Set<(s: CoachAccessState) => void>()
 
 async function load(): Promise<CoachAccessState> {
   if (cached) return cached
   if (inflight) return inflight
-  inflight = getCoachAccessState().then(s => { cached = s; subs.forEach(f => f(s)); return s })
-    .catch(() => DEFAULT).finally(() => { inflight = null })
+  inflight = getCoachAccessState().then(s => {
+    // On ne met en cache QUE les états POSITIFS. Un accès=false peut simplement
+    // signifier que la session n'est pas encore hydratée (fréquent au 1er rendu
+    // mobile : getUser() renvoie null une fraction de seconde). Si on figeait ce
+    // false, l'espace coach resterait masqué à tort (bouton absent) jusqu'à un
+    // focus manuel — exactement le bug « coach visible sur ordi, pas sur mobile ».
+    // Donc tant qu'on n'a pas d'accès confirmé, on retente quelques fois.
+    if (s.access) { cached = s; noAccessRetries = 0 }
+    else if (noAccessRetries < 3) { noAccessRetries++; setTimeout(() => { if (!cached) void load() }, 1000) }
+    subs.forEach(f => f(s))
+    return s
+  }).catch(() => DEFAULT).finally(() => { inflight = null })
   return inflight
 }
 
-export function refreshCoachAccess(): void { cached = null; void load() }
+export function refreshCoachAccess(): void { cached = null; noAccessRetries = 0; void load() }
 
 let lastFocusRefresh = 0
 

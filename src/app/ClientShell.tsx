@@ -7,6 +7,7 @@ import { I18nProvider } from '@/lib/i18n'
 import { CallProvider } from '@/components/community/call/CallProvider'
 import { CallBubble } from '@/components/community/call/CallBubble'
 import { installNativeApiFetch } from '@/lib/native/apiFetch'
+import { isNativeApp } from '@/lib/native/platform'
 import { createClient } from '@/lib/supabase/client'
 
 interface ClientShellProps {
@@ -25,10 +26,22 @@ export function ClientShell({ children }: ClientShellProps) {
     if (!alreadySeen) {
       setShowSplash(true)
     }
-    // Enregistre le service worker (cache des bundles JS/CSS) → démarrage à
-    // froid plus rapide. Idempotent, sans effet sur les données.
+    // Service worker :
+    //  • WEB (PWA) → on l'enregistre : démarrage à froid plus rapide.
+    //  • APP NATIVE (Capacitor) → le bundle est DÉJÀ local. Le SW n'apporte rien
+    //    et, pire, il met en cache l'ancienne version à CHAQUE mise à jour de
+    //    l'app → l'app « ne se met jamais à jour ». On le DÉSENREGISTRE et on
+    //    vide les caches pour que l'app reflète toujours le dernier build.
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js').catch(() => { /* ignore */ })
+      if (isNativeApp()) {
+        void navigator.serviceWorker.getRegistrations()
+          .then(rs => rs.forEach(r => { void r.unregister() })).catch(() => { /* ignore */ })
+        if ('caches' in window) {
+          void caches.keys().then(ks => ks.forEach(k => { void caches.delete(k) })).catch(() => { /* ignore */ })
+        }
+      } else {
+        navigator.serviceWorker.register('/sw.js').catch(() => { /* ignore */ })
+      }
     }
   }, [])
 

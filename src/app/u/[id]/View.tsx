@@ -8,6 +8,7 @@
 // ══════════════════════════════════════════════════════════════════
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { useParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { getCurrentUser } from '@/lib/auth/currentUser'
 import { Avatar } from '@/components/shared/Sidebar'
@@ -33,7 +34,12 @@ const SPORT_LABEL: Record<string, string> = {
 }
 const sportLabel = (s: string) => SPORT_LABEL[s] ?? (s ? s[0].toUpperCase() + s.slice(1) : s)
 
-export default function PublicProfileView({ userId }: { userId: string }) {
+export default function PublicProfileView() {
+  // L'id vient de l'URL côté client (useParams) — la page est un simple wrapper
+  // serveur pour l'export statique Capacitor. En natif, la navigation SPA fournit
+  // le vrai id au runtime (le param prérendu « _ » n'est jamais utilisé ici).
+  const params = useParams()
+  const userId = String((params as { id?: string })?.id ?? '')
   const { t } = useI18n()
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)

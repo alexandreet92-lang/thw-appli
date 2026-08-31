@@ -1,11 +1,9 @@
-'use client'
-export const dynamic = 'force-dynamic'
-import { use } from 'react'
+// Wrapper serveur (généré) — permet l'export statique Capacitor (phase 5) tout
+// en gardant le rendu à la demande sur Vercel. La vue réelle est 100 % client
+// (View.tsx) et lit l'id via useParams(). Sans generateStaticParams, le build
+// `output: export` de l'app native échoue (« missing generateStaticParams »).
 import PublicProfileView from './View'
 
-// Profil public d'un athlète — /u/<id>. Destination des notifications sociales
-// (nouvel abonné, activité d'un ami). Respecte la confidentialité (RPC).
-export default function PublicProfilePage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params)
-  return <PublicProfileView userId={id} />
-}
+export function generateStaticParams() { return [{ 'id': '_' }] }
+
+export default function Page() { return <PublicProfileView /> }

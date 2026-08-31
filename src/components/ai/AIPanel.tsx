@@ -24055,7 +24055,7 @@ export default function AIPanel({
           {/* ══ INPUT ═════════════════════════════════════════ */}
           {activeAgent !== 'networks' && <>
           <div className="aip-input-footer" style={{
-            padding: '10px 16px 14px',
+            padding: '10px 16px calc(14px + env(safe-area-inset-bottom, 0px))',
             borderTop: showEmpty && !activeFlow ? 'none' : '1px solid var(--ai-border)',
             flexShrink: 0, background: 'var(--ai-bg)',
             position: 'relative',

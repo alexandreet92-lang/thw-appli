@@ -6,6 +6,7 @@
 // quand le navigateur a de vieux fichiers en cache) déclenchent un rechargement
 // automatique unique.
 import { useEffect } from 'react'
+import { isNativeApp } from '@/lib/native/platform'
 
 // Écran de récupération : la frontière d'erreur peut se déclencher avant que le
 // provider i18n ne soit monté (ex. erreur de chunk après déploiement). On lit donc
@@ -37,15 +38,32 @@ export default function Error({ error, reset }: { error: Error & { digest?: stri
   useEffect(() => {
     // eslint-disable-next-line no-console
     console.error('[app error boundary]', error)
-    if (isChunk) {
+    if (!isChunk) return
+    // ⚠️ App native (Capacitor) : le bundle est LOCAL → aucun « vieux chunk » à
+    // rafraîchir. Et un location.reload() sur une ROUTE DYNAMIQUE
+    // (ex. /coach/athlete/[id]) est catastrophique : le fichier statique de cet
+    // id n'existe pas → la WebView retombe sur index.html = le DASHBOARD. C'est
+    // exactement le bug « je clique sur un athlète et j'atterris sur mon dashboard ».
+    // → En natif on NE recharge PAS : on RÉ-ESSAIE le rendu (reset), avec un
+    // garde temporel pour éviter toute boucle.
+    if (isNativeApp()) {
       try {
-        if (!sessionStorage.getItem('thw_chunk_reloaded')) {
-          sessionStorage.setItem('thw_chunk_reloaded', '1')
-          location.reload()
+        const last = Number(sessionStorage.getItem('thw_native_reset_ts') || 0)
+        if (Date.now() - last > 2000) {
+          sessionStorage.setItem('thw_native_reset_ts', String(Date.now()))
+          reset()
         }
       } catch { /* ignore */ }
+      return
     }
-  }, [error, isChunk])
+    // Web : rechargement unique (récupère les chunks frais après un déploiement).
+    try {
+      if (!sessionStorage.getItem('thw_chunk_reloaded')) {
+        sessionStorage.setItem('thw_chunk_reloaded', '1')
+        location.reload()
+      }
+    } catch { /* ignore */ }
+  }, [error, isChunk, reset])
 
   const hardReload = () => {
     try { sessionStorage.removeItem('thw_chunk_reloaded') } catch { /* ignore */ }

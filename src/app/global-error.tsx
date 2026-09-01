@@ -3,6 +3,7 @@
 // error.tsx ne peut pas). Doit rendre <html>/<body>. Même logique : écran de
 // récupération lisible + auto-reload sur erreur de chunk (déploiement récent).
 import { useEffect } from 'react'
+import { isNativeApp } from '@/lib/native/platform'
 
 // Langue lue depuis localStorage ('thw-lang') sans hook : la frontière racine peut
 // se déclencher avant le montage du provider i18n.
@@ -30,15 +31,23 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
   useEffect(() => {
     // eslint-disable-next-line no-console
     console.error('[global error boundary]', error)
-    if (isChunk) {
+    if (!isChunk) return
+    // App native : NE PAS recharger (reload sur une route dynamique retombe sur
+    // index.html = Dashboard). On ré-essaie le rendu à la place.
+    if (isNativeApp()) {
       try {
-        if (!sessionStorage.getItem('thw_chunk_reloaded')) {
-          sessionStorage.setItem('thw_chunk_reloaded', '1')
-          location.reload()
-        }
+        const last = Number(sessionStorage.getItem('thw_native_reset_ts') || 0)
+        if (Date.now() - last > 2000) { sessionStorage.setItem('thw_native_reset_ts', String(Date.now())); reset() }
       } catch { /* ignore */ }
+      return
     }
-  }, [error, isChunk])
+    try {
+      if (!sessionStorage.getItem('thw_chunk_reloaded')) {
+        sessionStorage.setItem('thw_chunk_reloaded', '1')
+        location.reload()
+      }
+    } catch { /* ignore */ }
+  }, [error, isChunk, reset])
 
   return (
     <html lang={lang}>

@@ -33,6 +33,10 @@ const SPORTS: [string, string][] = [
 ]
 
 // ── Styles partagés (tokens uniquement) ──
+// Fonds « façon Claude » — IDENTIQUES aux réglages principaux (ProfileContent /
+// réglages coach) : page quasi neutre + cartes grises groupées.
+const GREY_CARD = 'color-mix(in srgb, var(--text) 6%, var(--bg))'
+const GREY_PAGE = 'color-mix(in srgb, var(--text) 1.5%, var(--bg))'
 const FB = 'var(--font-body)'
 const inputStyle: React.CSSProperties = {
   width: '100%', boxSizing: 'border-box', padding: '11px 13px', borderRadius: 'var(--r-sm)',
@@ -298,22 +302,30 @@ export default function AISettingsModal({ open, initialSection = 'profil', onClo
   ]
 
   const nav = (
-    <div style={{ width: isWide ? 244 : '100%', flexShrink: 0, borderRight: isWide ? '1px solid var(--border)' : 'none', padding: '14px 12px', overflowY: 'auto', background: isWide ? 'var(--bg-card2)' : 'transparent' }}>
+    <div style={{ width: isWide ? 258 : '100%', flexShrink: 0, borderRight: isWide ? '1px solid var(--border)' : 'none', padding: isWide ? '16px 14px' : '10px 14px 20px', overflowY: 'auto', background: isWide ? GREY_PAGE : 'transparent' }}>
       {NAV.map(g => (
-        <div key={g.group} style={{ marginBottom: 12 }}>
-          <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.8px', textTransform: 'uppercase', color: 'var(--text-dim)', padding: '6px 12px', fontFamily: FB }}>{g.group}</div>
-          {g.items.map(it => {
-            const active = section === it.id && isWide
-            return (
-              <button key={it.id} disabled={it.disabled} type="button"
-                onClick={() => { if (it.disabled) return; setSection(it.id); if (!isWide) setShowNav(false) }}
-                style={{ display: 'block', width: '100%', textAlign: 'left', padding: '10px 12px', borderRadius: 'var(--r-sm)', border: 'none', cursor: it.disabled ? 'not-allowed' : 'pointer', background: active ? 'var(--primary-dim)' : 'transparent', color: it.disabled ? 'var(--text-dim)' : active ? 'var(--primary)' : 'var(--text-mid)', fontSize: 14, fontWeight: active ? 600 : 500, fontFamily: FB, transition: 'background 0.12s' }}
-                onMouseEnter={e => { if (!active && !it.disabled) (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)' }}
-                onMouseLeave={e => { if (!active && !it.disabled) (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}>
-                {it.label}
-              </button>
-            )
-          })}
+        <div key={g.group} style={{ marginBottom: 18 }}>
+          {/* Libellé de groupe — même typo que les réglages principaux. */}
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.4px', color: 'var(--text-dim)', padding: '0 4px 8px', fontFamily: FB }}>{g.group}</div>
+          {/* Carte grise groupée « façon Claude » : lignes bulles + fins séparateurs. */}
+          <div style={{ background: GREY_CARD, borderRadius: 16, overflow: 'hidden', border: '1px solid var(--border)' }}>
+            {g.items.map((it, idx) => {
+              const active = section === it.id && isWide
+              return (
+                <button key={it.id} disabled={it.disabled} type="button"
+                  onClick={() => { if (it.disabled) return; setSection(it.id); if (!isWide) setShowNav(false) }}
+                  style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left', padding: '13px 15px', borderTop: idx === 0 ? 'none' : '1px solid var(--border)', border: 'none', cursor: it.disabled ? 'not-allowed' : 'pointer', background: active ? 'var(--primary-dim)' : 'transparent', color: it.disabled ? 'var(--text-dim)' : active ? 'var(--primary)' : 'var(--text)', fontSize: 14.5, fontWeight: active ? 700 : 500, fontFamily: FB, transition: 'background 0.12s' }}
+                  onMouseEnter={e => { if (!active && !it.disabled) (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)' }}
+                  onMouseLeave={e => { if (!active && !it.disabled) (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}>
+                  <span style={{ flex: 1 }}>{it.label}</span>
+                  {/* Chevron drill-down (mobile) façon réglages principaux. */}
+                  {!isWide && !it.disabled && (
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M9 18l6-6-6-6"/></svg>
+                  )}
+                </button>
+              )
+            })}
+          </div>
         </div>
       ))}
     </div>
@@ -326,7 +338,7 @@ export default function AISettingsModal({ open, initialSection = 'profil', onClo
         .thw-conn-row:hover { background: var(--bg-hover); }
       `}</style>
       <div onClick={e => e.stopPropagation()}
-        style={{ position: 'relative', width: '100%', maxWidth: 920, height: isWide ? '85vh' : '100%', background: 'var(--bg-card)', borderRadius: isWide ? 'var(--r-lg)' : 0, border: '1px solid var(--border)', overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 70px rgba(0,0,0,0.4)' }}>
+        style={{ position: 'relative', width: '100%', maxWidth: 920, height: isWide ? '85vh' : '100%', background: GREY_PAGE, borderRadius: isWide ? 'var(--r-lg)' : 0, border: '1px solid var(--border)', overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 70px rgba(0,0,0,0.4)' }}>
         {/* Header */}
         <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 12, padding: 'max(16px, env(safe-area-inset-top)) 20px 14px', borderBottom: '1px solid var(--border)' }}>
           {!isWide && !showNav && (

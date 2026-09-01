@@ -3452,20 +3452,29 @@ export function ActivityCurves({ activity, onHoverRatio }: ActivityCurvesProps) 
   const defOf = (key: MetricDef['key']) => metricDefs.find(d => d.key === key)!
 
   // ── Format + métriques actives + métrique mono — persistés localStorage ─
-  const [format,        setFormat]        = useState<CurvesFormat>('stacked')
-  const [activeMetrics, setActiveMetrics] = useState<Set<string>>(new Set(['hr', 'watts', 'speed']))
-  const [monoMetric,    setMonoMetric]    = useState<MetricDef['key']>('hr')
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    const f = localStorage.getItem('activity-charts-format') as CurvesFormat | null
-    if (f === 'stacked' || f === 'overlaid' || f === 'mono') setFormat(f)
+  // Initialisation SYNCHRONE depuis localStorage (lazy initializer) : sans ça,
+  // le format démarrait toujours à 'stacked' puis un effet le restaurait — au
+  // moindre remount du composant (ex : scrub tactile sur les courbes qui fait
+  // re-render le parent), on voyait un retour à « Empilé ». En lisant la valeur
+  // dès l'init, le format choisi (Superposé/Mono) survit à tout remount.
+  const [format,        setFormat]        = useState<CurvesFormat>(() => {
+    if (typeof window === 'undefined') return 'stacked'
+    const f = localStorage.getItem('activity-charts-format')
+    return (f === 'stacked' || f === 'overlaid' || f === 'mono') ? f : 'stacked'
+  })
+  const [activeMetrics, setActiveMetrics] = useState<Set<string>>(() => {
+    if (typeof window === 'undefined') return new Set(['hr', 'watts', 'speed'])
     try {
       const m = JSON.parse(localStorage.getItem('activity-charts-overlaid-metrics') ?? '[]') as string[]
-      if (Array.isArray(m) && m.length > 0) setActiveMetrics(new Set(m))
+      if (Array.isArray(m) && m.length > 0) return new Set(m)
     } catch { /* default */ }
+    return new Set(['hr', 'watts', 'speed'])
+  })
+  const [monoMetric,    setMonoMetric]    = useState<MetricDef['key']>(() => {
+    if (typeof window === 'undefined') return 'hr'
     const mm = localStorage.getItem('activity-charts-mono-metric') as MetricDef['key'] | null
-    if (mm && METRIC_DEFS.some(d => d.key === mm)) setMonoMetric(mm)
-  }, [])
+    return (mm && METRIC_DEFS.some(d => d.key === mm)) ? mm : 'hr'
+  })
   useEffect(() => { if (typeof window !== 'undefined') localStorage.setItem('activity-charts-format', format) }, [format])
   useEffect(() => {
     if (typeof window !== 'undefined') {

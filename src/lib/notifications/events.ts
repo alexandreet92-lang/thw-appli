@@ -49,7 +49,7 @@ export async function onAthleteActivity(athleteId: string, opts: { activityId?: 
     await notifyUser(coachId, 'coach_in.activite', {
       title: `${name} a enregistré une séance`,
       body: `Nouvelle activité${sport} à consulter.`,
-      url: `/coach/athlete/${athleteId}?tab=data`,
+      url: `/coach/athlete?id=${athleteId}&tab=data`,
       dedupKey: `coach-act-${athleteId}-${opts.activityId ?? day()}`,
     })
   }
@@ -86,7 +86,7 @@ export async function onAthleteInjury(athleteId: string, opts: { zone?: string }
   await notifyUser(coachId, 'coach_in.blessure', {
     title: `${name} a déclaré une blessure`,
     body: opts.zone ? `Zone : ${opts.zone}. À prendre en compte dans sa charge.` : 'À prendre en compte dans sa charge.',
-    url: `/coach/athlete/${athleteId}`,
+    url: `/coach/athlete?id=${athleteId}`,
     dedupKey: `coach-inj-${athleteId}-${day()}`,
   })
 }
@@ -98,7 +98,7 @@ export async function onAthleteJoined(coachId: string, athleteId: string): Promi
   await notifyUser(coachId, 'coach_in.nouvel_athlete', {
     title: `${name} a rejoint ton roster`,
     body: 'Ouvre sa fiche pour commencer le suivi.',
-    url: `/coach/athlete/${athleteId}`,
+    url: `/coach/athlete?id=${athleteId}`,
     dedupKey: `coach-join-${athleteId}`,
   })
 }
@@ -112,7 +112,7 @@ export async function onAthleteRecord(athleteId: string, opts: { label?: string;
   await notifyUser(coachId, 'coach_in.record', {
     title: `${name} a battu un record`,
     body: opts.label ? `Nouveau record all-time : ${opts.label}.` : 'Nouveau record all-time enregistré.',
-    url: `/coach/athlete/${athleteId}?tab=data`,
+    url: `/coach/athlete?id=${athleteId}&tab=data`,
     dedupKey: `coach-rec-${athleteId}-${opts.activityId ?? day()}-${opts.label ?? ''}`,
   })
 }
@@ -124,7 +124,7 @@ export async function onAthleteMissedSession(coachId: string, athleteId: string,
   await notifyUser(coachId, 'coach_in.seance_manquee', {
     title: `${name} n'a pas fait sa séance`,
     body: sessionTitle ? `« ${sessionTitle} » non enregistrée aujourd'hui.` : `Séance du jour non enregistrée.`,
-    url: `/coach/athlete/${athleteId}`,
+    url: `/coach/athlete?id=${athleteId}`,
     dedupKey: `coach-miss-${athleteId}-${day()}`,
   })
 }

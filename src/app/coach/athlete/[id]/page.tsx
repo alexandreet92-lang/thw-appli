@@ -1,8 +1,16 @@
-// Wrapper serveur (généré) — permet l'export statique Capacitor (phase 5) tout
-// en gardant le rendu à la demande sur Vercel. La vue réelle est 100 % client
-// (View.tsx) et lit le paramètre via useParams().
+// Ancien chemin dynamique /coach/athlete/[id] — CONSERVÉ pour compatibilité
+// (anciennes notifications / liens). Les nouveaux liens utilisent l'adresse fixe
+// /coach/athlete?id=… (voir ../page.tsx) qui, elle, fonctionne en natif.
+// Suspense obligatoire : la vue lit useSearchParams().
+import { Suspense } from 'react'
 import View from './View'
 
 export function generateStaticParams() { return [{ 'id': '_' }] }
 
-export default function Page() { return <View /> }
+export default function Page() {
+  return (
+    <Suspense fallback={null}>
+      <View />
+    </Suspense>
+  )
+}

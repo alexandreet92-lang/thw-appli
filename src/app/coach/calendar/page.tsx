@@ -54,7 +54,7 @@ export default function CoachCalendar() {
           {items.map(it => {
             const d = daysTo(it.date)
             return (
-              <Link key={it.id} href={`/coach/athlete/${it.athleteId}`} style={{ ...card, display: 'flex', alignItems: 'center', gap: 14, textDecoration: 'none', color: 'inherit', padding: 14 }}>
+              <Link key={it.id} href={`/coach/athlete?id=${it.athleteId}`} style={{ ...card, display: 'flex', alignItems: 'center', gap: 14, textDecoration: 'none', color: 'inherit', padding: 14 }}>
                 <div style={{ width: 58, flexShrink: 0, textAlign: 'center' }}>
                   <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--primary)', fontFamily: 'var(--font-display)', lineHeight: 1 }}>{d <= 0 ? t('w2h.calendar.dday') : t('w2h.calendar.dMinus', { d })}</div>
                 </div>

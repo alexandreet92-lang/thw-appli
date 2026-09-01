@@ -42,7 +42,7 @@ export default function CoachAthleteCalendarPage() {
     <PlanningScopeContext.Provider value={athleteId}>
       <div style={{ position: 'sticky', top: 0, zIndex: 40, background: 'color-mix(in srgb, var(--bg) 92%, transparent)', backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)', borderBottom: '1px solid var(--border)', paddingTop: 'calc(env(safe-area-inset-top, 0px) + 58px)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '0 clamp(16px,4vw,40px) 12px', maxWidth: 1200, margin: '0 auto' }}>
-          <Link href={`/coach/athlete/${athleteId}`} aria-label={t('w4b.back_to_profile')} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 34, height: 34, borderRadius: 10, color: 'var(--text-mid)', flexShrink: 0, textDecoration: 'none', border: '1px solid var(--border)', background: 'var(--bg-card)' }}>
+          <Link href={`/coach/athlete?id=${athleteId}`} aria-label={t('w4b.back_to_profile')} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 34, height: 34, borderRadius: 10, color: 'var(--text-mid)', flexShrink: 0, textDecoration: 'none', border: '1px solid var(--border)', background: 'var(--bg-card)' }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
           </Link>
           <Avatar url={athlete?.avatar ?? null} name={athlete?.name ?? null} size={38} />

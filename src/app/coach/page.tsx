@@ -98,7 +98,7 @@ export default function CoachDashboard() {
             : (
               <div style={{ display: 'flex', flexDirection: 'column' }}>
                 {priority.map((a, i) => (
-                  <Link key={a.id} href={`/coach/athlete/${a.id}`} style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '11px 0', borderTop: i ? '1px solid var(--border)' : 'none', textDecoration: 'none', color: 'inherit' }}>
+                  <Link key={a.id} href={`/coach/athlete?id=${a.id}`} style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '11px 0', borderTop: i ? '1px solid var(--border)' : 'none', textDecoration: 'none', color: 'inherit' }}>
                     {avatar(a, 38)}
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.name}</div>
@@ -119,7 +119,7 @@ export default function CoachDashboard() {
             : (
               <div style={{ display: 'flex', flexDirection: 'column' }}>
                 {races.map(({ a, race }, i) => (
-                  <Link key={a.id + race.name} href={`/coach/athlete/${a.id}`} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 0', borderTop: i ? '1px solid var(--border)' : 'none', textDecoration: 'none', color: 'inherit' }}>
+                  <Link key={a.id + race.name} href={`/coach/athlete?id=${a.id}`} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 0', borderTop: i ? '1px solid var(--border)' : 'none', textDecoration: 'none', color: 'inherit' }}>
                     <span style={{ ...num, fontSize: 16, fontWeight: 800, color: race.days <= 14 ? '#ef4444' : 'var(--primary)', width: 50, flexShrink: 0 }}>{t('w3d.days_until', { days: race.days })}</span>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{race.name}</div>

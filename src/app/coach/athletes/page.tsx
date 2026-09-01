@@ -87,7 +87,7 @@ export default function CoachAthletes() {
   // « coach:first-athlete ») : on navigue vers le 1er athlète du roster.
   useEffect(() => {
     if (!roster.length) return
-    const apply = (id: string | null) => { if (id === 'coach:first-athlete') router.push(`/coach/athlete/${roster[0].id}`) }
+    const apply = (id: string | null) => { if (id === 'coach:first-athlete') router.push(`/coach/athlete?id=${roster[0].id}`) }
     try { apply(getGuideDemoId()) } catch { /* ignore */ }
     const h = (e: Event) => apply((e as CustomEvent<{ id: string | null }>).detail?.id ?? null)
     window.addEventListener(GUIDE_DEMO_EVENT, h)
@@ -202,7 +202,7 @@ export default function CoachAthletes() {
               <div style={lab}>{t('w1h.priority_follow')} <span style={{ color: 'var(--text-mid)', background: 'var(--bg-alt)', borderRadius: 6, padding: '1px 7px' }}>{priority.length}</span></div>
               <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 6 }}>
                 {priority.map(a => (
-                  <Link key={a.id} href={`/coach/athlete/${a.id}`} style={{ flex: '0 0 264px', ...card, borderLeft: `3px solid ${STC[a.status]}`, padding: '12px 14px', textDecoration: 'none', color: 'inherit' }}>
+                  <Link key={a.id} href={`/coach/athlete?id=${a.id}`} style={{ flex: '0 0 264px', ...card, borderLeft: `3px solid ${STC[a.status]}`, padding: '12px 14px', textDecoration: 'none', color: 'inherit' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>{avatar(a, 34)}<span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>{a.name}</span></div>
                     <div style={{ fontSize: 12.5, color: 'var(--text-mid)', marginTop: 9, lineHeight: 1.4 }}><b style={{ color: STC[a.status] }}>{STLABEL[a.status]}</b> — {a.reason}</div>
                   </Link>
@@ -221,7 +221,7 @@ export default function CoachAthletes() {
                 <div /><div>{t('w1h.athlete')}</div><div>{t('w1h.col_status')}</div><div>{t('w1h.col_last_act')}</div><div>{t('w1h.col_load_7d')}</div><div>{t('w1h.col_sessions')}</div><div>{t('w1h.col_fatigue')}</div><div>{t('w1h.col_next_race')}</div><div>{t('w1h.col_injuries')}</div><div />
               </div>
               {visible.map(a => (
-                <Link key={a.id} data-guide="roster-row" href={`/coach/athlete/${a.id}`} style={{ display: 'grid', gridTemplateColumns: COLS, gap: 12, alignItems: 'center', padding: '12px 16px', borderTop: '1px solid var(--border)', cursor: 'pointer', fontSize: 13, textDecoration: 'none', color: 'inherit' }}
+                <Link key={a.id} data-guide="roster-row" href={`/coach/athlete?id=${a.id}`} style={{ display: 'grid', gridTemplateColumns: COLS, gap: 12, alignItems: 'center', padding: '12px 16px', borderTop: '1px solid var(--border)', cursor: 'pointer', fontSize: 13, textDecoration: 'none', color: 'inherit' }}
                   onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-card2)' }}
                   onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}>
                   {/* Sélection (bulk : Lancer un système, Grouper) */}

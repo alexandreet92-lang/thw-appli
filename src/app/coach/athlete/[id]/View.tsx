@@ -11,7 +11,7 @@ export const dynamic = 'force-dynamic'
 // ══════════════════════════════════════════════════════════════
 
 import { useEffect, useState, useCallback } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useI18n } from '@/lib/i18n'
 import { Avatar } from '@/components/shared/Sidebar'
@@ -67,9 +67,13 @@ const ACTIONS: { kind: Exclude<DrawerKind, null>; label: string; icon: React.Rea
 
 export default function AthleteFiche() {
   const params = useParams<{ id: string }>()
+  const search = useSearchParams()
   const router = useRouter()
   const { t } = useI18n()
-  const id = params?.id as string
+  // Adresse FIXE `/coach/athlete?id=…` (paramètre de requête) → fiable en natif
+  // (l'ancien chemin dynamique /coach/athlete/[id] cassait dans le bundle statique).
+  // On lit d'abord ?id=, sinon on retombe sur l'ancien segment [id] (compat).
+  const id = ((search?.get('id')) || (params?.id) || '') as string
   const sportLabel = (s: string) => (SPORT_KEY[s] ? t(SPORT_KEY[s]) : cap(s))
   const goalLabel = (s: string) => (GOAL_KEY[s] ? t(GOAL_KEY[s]) : cap(s))
   const genderLabel = (s: string) => (GENDER_KEY[s] ? t(GENDER_KEY[s]) : cap(s))

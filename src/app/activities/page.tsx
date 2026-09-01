@@ -7784,7 +7784,7 @@ conseil pour la prochaine séance similaire.`
             boxShadow: '0 -4px 24px rgba(0, 0, 0, 0.18)',
             overflowY: 'auto',
             WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'],
-            paddingTop: sheetPos === 'full' ? 'env(safe-area-inset-top, 0px)' : 0,
+            paddingTop: 0,
             paddingBottom: 120,
             transform: `translateY(${snapTy(sheetPos)}px)`,
           }}
@@ -7793,7 +7793,11 @@ conseil pour la prochaine séance similaire.`
               une barre façon Strava (∨ fermer · sport centré · partager). */}
           <div
             className="thw-activity-sheet-handle"
-            style={{ position: 'sticky', top: 0, zIndex: 3, background: 'var(--bg)', borderRadius: sheetPos === 'full' ? 0 : '20px 20px 0 0' }}
+            style={{ position: 'sticky', top: 0, zIndex: 3, background: 'var(--bg)', borderRadius: sheetPos === 'full' ? 0 : '20px 20px 0 0',
+              // En plein écran, l'en-tête couvre AUSSI la zone de la barre d'état
+              // (safe-area) avec un fond plein → le contenu qui défile ne se
+              // superpose plus à l'heure/batterie. (padding porté ici, retiré de la sheet.)
+              paddingTop: sheetPos === 'full' ? 'env(safe-area-inset-top, 0px)' : 0 }}
           >
             {sheetPos === 'full' ? (
               <div style={{

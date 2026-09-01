@@ -46,9 +46,14 @@ export function hidePricing(): boolean {
   return isNativeApp()
 }
 
-/** URL publique du site web (gestion abonnement/recharge hors app). */
+/** URL publique du site web (gestion abonnement/recharge hors app).
+ *  On réutilise NEXT_PUBLIC_API_BASE (défini dans le build natif = domaine
+ *  Vercel RÉEL) pour éviter un domaine mort : « thw-coaching.vercel.app »
+ *  renvoyait 404 (DEPLOYMENT_NOT_FOUND) → tous les liens vers le site cassés. */
 export const WEB_APP_URL =
-  process.env.NEXT_PUBLIC_APP_URL || 'https://thw-coaching.vercel.app'
+  process.env.NEXT_PUBLIC_APP_URL
+  || process.env.NEXT_PUBLIC_API_BASE
+  || 'https://thw-appli.vercel.app'
 
 /**
  * Ouvre une page du SITE WEB (paiement/gestion abonnement) hors de l'app.

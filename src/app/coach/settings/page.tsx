@@ -395,6 +395,21 @@ function DataBloc() {
 
 function OffreBloc() {
   const { t } = useI18n()
+  // Ouvre le portail de facturation Stripe (reçus / paiements / historique) —
+  // c'est LA page « facturation » du site, jamais une page in-app. En natif on
+  // l'ouvre dans le navigateur système (le paiement Stripe ne se fait pas in-app).
+  const openBilling = async () => {
+    try {
+      const r = await fetch('/api/stripe/portal', { method: 'POST' })
+      const d = await r.json()
+      if (d?.url) {
+        const { openExternalUrl } = await import('@/lib/native/platform')
+        await openExternalUrl(d.url)
+      } else {
+        alert(d?.error ?? t('w3c.portal_unavailable'))
+      }
+    } catch { alert(t('w3c.network_error')) }
+  }
   return (
     <div>
       <Intro>{t('w1b.offre_intro')}</Intro>
@@ -412,7 +427,7 @@ function OffreBloc() {
       <Section label={t('w1b.sec_billing')}>
         <Group>
           <LinkRow first label={t('w1b.link_token_packs')} sub={t('w1b.link_token_packs_sub')} onClick={() => window.open('/site/recharge-tokens.html', '_blank', 'noopener')} />
-          <LinkRow label={t('w1b.link_billing_history')} sub={t('w1b.link_billing_history_sub')} onClick={() => { window.location.href = '/coach/subscription' }} />
+          <LinkRow label={t('w1b.link_billing_history')} sub={t('w1b.link_billing_history_sub')} onClick={() => { void openBilling() }} />
         </Group>
       </Section>
     </div>

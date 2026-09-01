@@ -67,3 +67,19 @@ export async function openWebsite(path = '/settings/subscription'): Promise<void
   }
   try { window.open(url, '_blank', 'noopener') } catch { window.location.href = url }
 }
+
+/**
+ * Ouvre une URL ABSOLUE hors de l'app (ex : URL de portail Stripe renvoyée par
+ * l'API). En natif : navigateur système (Capacitor Browser) — on ne navigue
+ * jamais la webview vers un domaine externe. Sur le web : nouvel onglet.
+ */
+export async function openExternalUrl(url: string): Promise<void> {
+  if (isNativeApp()) {
+    try {
+      const { Browser } = await import('@capacitor/browser')
+      await Browser.open({ url })
+      return
+    } catch { /* fallback navigation web ci-dessous */ }
+  }
+  try { window.open(url, '_blank', 'noopener') } catch { window.location.href = url }
+}

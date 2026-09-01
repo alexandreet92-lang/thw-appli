@@ -22484,6 +22484,34 @@ export default function AIPanel({
       // Création de plan : on génère l'aperçu APRÈS le stream (40s), pas pendant
       let planGenRequest: { msgId: string; requirements: PlanRequirements } | null = null
 
+      // ── Throttle des rendus pendant le streaming ──────────────────────────
+      // Chaque token appelait setConvs → re-render du panneau IA ENTIER (fichier
+      // géant) à chaque caractère → gros lag. On limite les mises à jour d'état à
+      // ~1 toutes les 60 ms (le texte reste fluide à l'œil) + un flush FORCÉ à la
+      // fin pour ne rien perdre.
+      let lastTextFlush = 0
+      const flushConvText = (force: boolean) => {
+        const now = Date.now()
+        if (!force && now - lastTextFlush < 60) return
+        lastTextFlush = now
+        setConvs(prev => prev.map(c =>
+          c.id === cid
+            ? { ...c, msgs: c.msgs.map(m => m.id === aiMsgId ? { ...m, content: textAccumulated } : m), updatedAt: Date.now() }
+            : c
+        ))
+      }
+      let lastThinkFlush = 0
+      const flushConvThinking = (force: boolean) => {
+        const now = Date.now()
+        if (!force && now - lastThinkFlush < 90) return
+        lastThinkFlush = now
+        setConvs(prev => prev.map(c =>
+          c.id === cid
+            ? { ...c, msgs: c.msgs.map(m => m.id === aiMsgId ? { ...m, thinking: thinkingAccumulated } : m), updatedAt: Date.now() }
+            : c
+        ))
+      }
+
       const processSSEBuffer = () => {
         const parts = sseBuffer.split('\n\n')
         sseBuffer = parts.pop() ?? ''  // keep incomplete trailing event in buffer
@@ -22517,11 +22545,7 @@ export default function AIPanel({
                 opts.onOral(ei === -1 ? after : after.slice(0, ei))
               }
             }
-            setConvs(prev => prev.map(c =>
-              c.id === cid
-                ? { ...c, msgs: c.msgs.map(m => m.id === aiMsgId ? { ...m, content: textAccumulated } : m), updatedAt: Date.now() }
-                : c
-            ))
+            flushConvText(false)
           } else if (eventType === 'thinking') {
             // Raisonnement étendu en direct → accumulé sur le message (feuille
             // « Processus de réflexion », ouvrable depuis l'indicateur Réflexion…)
@@ -22530,11 +22554,7 @@ export default function AIPanel({
             } catch {
               thinkingAccumulated += data
             }
-            setConvs(prev => prev.map(c =>
-              c.id === cid
-                ? { ...c, msgs: c.msgs.map(m => m.id === aiMsgId ? { ...m, thinking: thinkingAccumulated } : m), updatedAt: Date.now() }
-                : c
-            ))
+            flushConvThinking(false)
           } else if (eventType === 'tool_status') {
             try {
               const { tools } = JSON.parse(data) as { tools?: string[] }
@@ -22629,6 +22649,11 @@ export default function AIPanel({
         sseBuffer += decoder.decode(value, { stream: true })
         processSSEBuffer()
       }
+
+      // Flush FORCÉ de fin : garantit que le dernier texte/réflexion est affiché
+      // en entier même s'il est arrivé dans la fenêtre de throttle.
+      flushConvText(true)
+      if (thinkingAccumulated) flushConvThinking(true)
 
       abortRefs.current.delete(cid)
       streamDone = true  // stream complété normalement

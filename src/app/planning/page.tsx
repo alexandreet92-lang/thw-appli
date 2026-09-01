@@ -3103,7 +3103,9 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
   const week = buildWeek(currentWeekStart, compareMode ? undefined : activePlan)
 
   // ── PLAN multi-semaines (style Idosport) : lignes hebdo + sidebar jauges de volume ──
-  function renderPlan() {
+  function renderPlan(planParam?:PlanVariant) {
+    // Plan affiché : forcé (mode Comparer, A puis B) ou plan actif courant.
+    const plan = planParam ?? activePlan
     const RAIL = 54, SB = 206
     const cols = `${RAIL}px repeat(7,minmax(0,1fr)) ${SB}px`
     return (
@@ -3118,7 +3120,7 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
           </div>
           {/* Lignes semaine */}
           {allWeekStarts.map((ws, wi) => {
-            const w = buildWeek(ws, activePlan)
+            const w = buildWeek(ws, plan)
             const dates = getWeekDatesFromStart(ws)
             const volPlanned: Record<string, number> = {}
             const volDone: Record<string, number> = {}
@@ -3145,7 +3147,7 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
                   const isDropTarget = dragCell === hid
                   return (
                     <div key={i} data-day-index={i} data-guide="plan-day"
-                      onClick={e => { if (isEmptyCellTarget(e)) { setAddModalFavorites(false); setAddChooser({ dayIndex: i, plan: activePlan, weekStart: ws }) } }}
+                      onClick={e => { if (isEmptyCellTarget(e)) { setAddModalFavorites(false); setAddChooser({ dayIndex: i, plan, weekStart: ws }) } }}
                       onDragOver={e => { if (planDrag.current) { e.preventDefault(); setDragCell(hid) } }}
                       onDragLeave={() => setDragCell(c => c === hid ? null : c)}
                       onDrop={() => {
@@ -3217,7 +3219,7 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
         <div className="wg-mobile">
           <style>{`.wk-carousel{scrollbar-width:none}.wk-carousel::-webkit-scrollbar{display:none}`}</style>
           {allWeekStarts.map(ws => {
-            const w = buildWeek(ws, activePlan); const dates = getWeekDatesFromStart(ws)
+            const w = buildWeek(ws, plan); const dates = getWeekDatesFromStart(ws)
             const mPlan: Record<string, number> = {}; const mDone: Record<string, number> = {}
             w.forEach(d => {
               // Mobilité hors volume (idem vue desktop).
@@ -3250,7 +3252,7 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
                             <DayHeader abbr={d.day} num={dates[i]} intensity={d.intensity} isToday={isToday}
                               plus onPlus={() => setDayPicker(p => p === `m_${hid}` ? null : `m_${hid}`)} open={dayPicker === `m_${hid}`}
                               onPick={(it) => { void setDayIntensityWeek(ws, i, it); setDayPicker(null) }}
-                              onNum={() => { setAddModalFavorites(false); setAddChooser({ dayIndex:i, plan:activePlan, weekStart:ws }) }} />
+                              onNum={() => { setAddModalFavorites(false); setAddChooser({ dayIndex:i, plan, weekStart:ws }) }} />
                             {d.races.map(r => <RaceBubble key={r.id} race={r} onClick={()=>setRaceDetail(r)} />)}
                             {(() => {
                               const { list, brickRunIds } = orderBrickSessions(sess)
@@ -3959,7 +3961,20 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
 
 
       {tab === 'training' && (<>
-      {renderPlan()}
+      {compareMode ? (
+        // Mode Comparer : Plan A puis Plan B empilés, chacun avec son bandeau.
+        <div style={{ display:'flex', flexDirection:'column', gap:18 }}>
+          {(['A','B'] as const).map(pv => (
+            <div key={pv}>
+              <div style={{ display:'flex', alignItems:'center', gap:8, margin:'0 0 8px 2px' }}>
+                <span style={{ width:9, height:9, borderRadius:'50%', background: pv==='A'?'#06B6D4':'#a78bfa', flexShrink:0 }} />
+                <span style={{ fontSize:13, fontWeight:800, color:'var(--text)' }}>Plan {pv}</span>
+              </div>
+              {renderPlan(pv)}
+            </div>
+          ))}
+        </div>
+      ) : renderPlan()}
       {renderDatasOverlay()}
       </>)}
     </div>

@@ -12,7 +12,13 @@ Ce document couvre les 4 emails envoyés par Supabase Auth :
 
 Deux problèmes indépendants se cumulaient.
 
-### A. L'email ne PART pas — SMTP par défaut de Supabase
+### A. L'email n'arrive qu'aux membres de l'org — SMTP par défaut de Supabase
+
+**Constat au 01/09** : les emails d'auth arrivent bien — mais sur
+`alexandre.et92+…@gmail.com`, c'est-à-dire l'adresse du propriétaire du projet.
+C'est exactement ce que le SMTP par défaut autorise, et rien de plus : il n'y a
+donc **aucune preuve que le canal fonctionne pour un utilisateur externe**, et
+toute raison de croire l'inverse.
 
 Le SMTP intégré de Supabase est un service de **dépannage**, pas de production :
 
@@ -21,12 +27,13 @@ Le SMTP intégré de Supabase est un service de **dépannage**, pas de productio
   envoyé à un utilisateur externe est purement et simplement **jeté** ;
 - pas de domaine d'expédition authentifié → ce qui sort finit en spam.
 
-C'est la cause n°1 du symptôme « l'app dit que l'email est envoyé, rien n'arrive ».
+C'est la cause n°1 du symptôme « l'app dit que l'email est envoyé, rien n'arrive »
+chez les utilisateurs qui ne sont pas membres du projet.
 **Correctif : configurer un SMTP custom** (§3). Le projet utilise déjà **Resend**
 avec le domaine vérifié `thw-coaching.com` (voir la fonction Edge
 `send-trial-expired-email`) — il suffit de réutiliser le même compte.
 
-### B. L'email part mais le lien ne fonctionne pas — allowlist des Redirect URLs
+### B. Le lien ne mène pas au bon endroit — templates par défaut + allowlist
 
 Supabase valide le `redirectTo` envoyé par le client contre
 **Authentication → URL Configuration → Redirect URLs**. Si l'URL n'y figure pas,
@@ -34,7 +41,13 @@ GoTrue **ne renvoie aucune erreur** : il remplace silencieusement la destination
 par la « Site URL ». L'utilisateur clique et atterrit sur l'accueil au lieu de
 l'écran « nouveau mot de passe ».
 
-Le code envoyait `${window.location.origin}/auth/callback?next=/auth/reset-password`,
+S'ajoutait à ça le fait que les **templates étaient ceux par défaut de Supabase**
+(anglais, `{{ .ConfirmationURL }}`) : c'est cette variable qui porte le
+`redirect_to` soumis à validation. Les templates de `supabase/email-templates/`
+écrivent désormais la destination en dur (§4), ce qui neutralise le problème.
+
+Côté code, le `redirectTo` était construit sur
+`${window.location.origin}/auth/callback?next=/auth/reset-password`,
 ce qui échouait dans trois cas :
 
 | Contexte | `window.location.origin` | Dans l'allowlist ? |
@@ -123,65 +136,42 @@ seconds`). Le message est traduit dans `src/lib/auth/errors.ts`.
 
 ## 4. Authentication → Email Templates
 
-Deux formats de lien sont possibles. **Le format `{{ .TokenHash }}` est préféré**
-parce qu'il fonctionne quel que soit l'appareil sur lequel l'email est ouvert,
-alors que `{{ .ConfirmationURL }}` (flux PKCE) exige que le lien soit ouvert
-dans **le navigateur d'origine** — le verifier PKCE y est stocké. Ouvrir le mail
-sur son téléphone après l'avoir demandé sur son ordinateur casse le flux PKCE.
+**Les 4 templates sont versionnés dans `supabase/email-templates/`** — voir le
+README de ce dossier pour les sujets à saisir et la procédure de copie.
 
-Les deux formats sont gérés par `src/app/auth/callback/route.ts`.
+Ils remplacent les templates par défaut de Supabase (anglais,
+`{{ .ConfirmationURL }}`) par des templates français aux couleurs de Hybrid, qui
+construisent le lien **eux-mêmes** avec `{{ .TokenHash }}`.
 
-### Confirm signup
+Deux raisons à ce choix :
 
-```html
-<h2>Confirme ton inscription</h2>
-<p>Clique pour activer ton compte Hybrid :</p>
-<p>
-  <a href="{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=signup&next=%2F">
-    Activer mon compte
-  </a>
-</p>
-```
+1. **`{{ .ConfirmationURL }}` dépend de l'allowlist.** Il pointe sur
+   `/auth/v1/verify?…&redirect_to=…`, et `redirect_to` est validé contre les
+   « Redirect URLs ». Refusé → remplacé silencieusement par la Site URL. C'est
+   exactement pourquoi le lien « Reset Password » ramenait sur l'accueil au lieu
+   de l'écran de création de mot de passe. Un lien écrit en dur dans le template
+   ne subit aucune réécriture.
+2. **`token_hash` marche depuis n'importe quel appareil.** Le flux PKCE exige le
+   navigateur d'origine (le `code_verifier` y est stocké) : demander un reset sur
+   son ordinateur puis ouvrir le mail sur son téléphone cassait le flux.
 
-### Reset password
+### Destination de chaque lien
 
-```html
-<h2>Réinitialise ton mot de passe</h2>
-<p>Clique pour choisir un nouveau mot de passe :</p>
-<p>
-  <a href="{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=recovery&next=%2Fauth%2Freset-password">
-    Choisir un nouveau mot de passe
-  </a>
-</p>
-<p>Ce lien expire dans 1 heure. Si tu n'es pas à l'origine de cette demande, ignore cet email.</p>
-```
+| Type | Destination | Qui consomme le jeton |
+|---|---|---|
+| `signup` | `/auth/callback?token_hash=…&type=signup&next=%2F` | Route serveur → session en cookies, puis accueil |
+| `recovery` | `/auth/reset-password?token_hash=…&type=recovery` | **La page dédiée elle-même**, côté client |
+| `magiclink` | `/auth/callback?token_hash=…&type=magiclink&next=%2F` | Route serveur |
+| `email_change` | `/auth/callback?token_hash=…&type=email_change&next=%2Fprofile` | Route serveur |
 
-### Magic Link
+Le reset pointe **directement** sur la page dédiée `/auth/reset-password`, sans
+passer par `/auth/callback` : un seul saut, et aucune dépendance à l'allowlist.
+La page vérifie le jeton, retire celui-ci de la barre d'adresse, affiche le
+formulaire, puis — le mot de passe enregistré — l'utilisateur est **connecté**
+(la vérification du jeton a ouvert la session) et entre dans l'app.
 
-```html
-<p>
-  <a href="{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=magiclink&next=%2F">
-    Se connecter
-  </a>
-</p>
-```
-
-### Change email
-
-```html
-<p>
-  <a href="{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=email_change&next=%2Fprofile">
-    Confirmer ma nouvelle adresse
-  </a>
-</p>
-```
-
-Points de vigilance :
-
-- `next` doit être **URL-encodé** (`%2Fauth%2Freset-password`), sinon le `/` est
-  interprété comme la fin du paramètre.
-- Ne PAS mélanger `{{ .ConfirmationURL }}` et `token_hash` dans le même lien.
-- `{{ .SiteURL }}` doit rendre `https://thw-appli.vercel.app` (§2).
+Point de vigilance : `next` doit être **URL-encodé** (`%2Fprofile`), sinon le `/`
+est lu comme la fin du paramètre.
 
 ---
 
@@ -192,7 +182,7 @@ Points de vigilance :
 | `src/lib/auth/redirect.ts` | Base publique stable pour tous les liens d'email. `NEXT_PUBLIC_SITE_URL` > `NEXT_PUBLIC_API_BASE` > `window.location.origin`. Ajoute `native=1` dans le build Capacitor. |
 | `src/app/auth/page.tsx` | `resetPasswordForEmail` / `signUp` utilisent `authCallbackUrl()`. Affiche l'erreur portée par `?error=` au retour d'un lien cassé. |
 | `src/app/auth/callback/route.ts` | Consomme `token_hash` (tous appareils) **ou** `code` (PKCE). Renvoie la vraie raison de l'échec dans `?error=`. `next` restreint aux chemins internes. |
-| `src/app/auth/reset-password/page.tsx` | Vérifie le lien avant d'afficher le formulaire : lit le fragment `#error_code=` (invisible côté serveur), gère `?token_hash=` côté client pour le build natif, propose « demander un nouveau lien ». |
+| `src/app/auth/reset-password/page.tsx` | **Page dédiée à la création du mot de passe**, cible directe du lien de reset. Vérifie le jeton (`?token_hash=`) avant d'afficher le formulaire, le retire de l'URL, lit le fragment `#error_code=` (invisible côté serveur), propose « demander un nouveau lien », et connecte l'utilisateur une fois le mot de passe enregistré. |
 | `src/app/ClientShell.tsx` | Deep link natif : gère `code`, `token_hash`, `error`, et route vers `next` (donc vers l'écran de reset) au lieu de toujours retomber sur l'accueil. |
 | `src/lib/auth/errors.ts` | Traduit les erreurs d'envoi (`Error sending recovery email`), de quota (`over_email_send_rate_limit`) et de lien (`otp_expired`, `pkce_exchange_failed`). |
 
@@ -229,7 +219,7 @@ l'URL de preview — absente de l'allowlist Supabase.
 | Recliquer le même lien une 2ᵉ fois | Écran « Lien invalide ou expiré » + bouton « Demander un nouveau lien » |
 | Ouvrir un lien vieux de > 1 h | Idem |
 | Demander 2 resets en < 60 s | « Trop de demandes rapprochées. Patiente une minute. » |
-| Ouvrir le lien sur un AUTRE appareil (template `{{ .ConfirmationURL }}`) | Message expliquant qu'il faut l'appareil d'origine. Avec le template `{{ .TokenHash }}` : fonctionne. |
+| Ouvrir le lien sur un AUTRE appareil | Fonctionne (templates `{{ .TokenHash }}`). Avec les anciens templates `{{ .ConfirmationURL }}` : message expliquant qu'il faut l'appareil d'origine. |
 
 ### Confirm signup
 

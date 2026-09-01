@@ -1518,6 +1518,8 @@ const fr: Dict = {
   'authpage.resetChecking': 'Vérification du lien…',
   'authpage.resetLinkInvalid': 'Lien invalide ou expiré',
   'authpage.resetAskNewLink': 'Demander un nouveau lien',
+  'authpage.signedInRedirect': 'Tu es connecté. Entrée dans l’app…',
+  'authpage.enterApp': 'Entrer dans Hybrid',
   'authpage.updating': 'Modification…', 'authpage.changePasswordBtn': 'Modifier le mot de passe',
   // ui
   'ui.loading': 'Chargement…', 'ui.saveError': 'Échec de l’enregistrement', 'ui.saved': 'Enregistré',
@@ -8390,6 +8392,8 @@ const en: Dict = {
   'authpage.resetChecking': 'Checking the link…',
   'authpage.resetLinkInvalid': 'Invalid or expired link',
   'authpage.resetAskNewLink': 'Request a new link',
+  'authpage.signedInRedirect': 'You are signed in. Entering the app…',
+  'authpage.enterApp': 'Enter Hybrid',
   'authpage.updating': 'Updating…', 'authpage.changePasswordBtn': 'Change password',
   // ui
   'ui.loading': 'Loading…', 'ui.saveError': 'Save failed', 'ui.saved': 'Saved',
@@ -15213,6 +15217,8 @@ const es: Dict = {
   'authpage.resetChecking': 'Verificando el enlace…',
   'authpage.resetLinkInvalid': 'Enlace no válido o caducado',
   'authpage.resetAskNewLink': 'Solicitar un nuevo enlace',
+  'authpage.signedInRedirect': 'Has iniciado sesión. Entrando en la app…',
+  'authpage.enterApp': 'Entrar en Hybrid',
   'authpage.updating': 'Modificando…', 'authpage.changePasswordBtn': 'Modificar la contraseña',
   // ui
   'ui.loading': 'Cargando…', 'ui.saveError': 'Error al guardar', 'ui.saved': 'Guardado',

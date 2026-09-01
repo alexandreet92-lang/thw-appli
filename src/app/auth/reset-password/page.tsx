@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import type { AuthChangeEvent, Session } from '@supabase/supabase-js'
+import type { AuthChangeEvent, EmailOtpType, Session } from '@supabase/supabase-js'
 import { AuthInput } from '@/components/auth/AuthInput'
 import { ErrorMessage } from '@/components/auth/ErrorMessage'
 import { PasswordStrengthBar } from '@/components/auth/PasswordStrengthBar'
@@ -73,7 +73,11 @@ export default function ResetPasswordPage() {
 
       const tokenHash = url.searchParams.get('token_hash')
       if (tokenHash) {
-        const { error: e } = await sb.auth.verifyOtp({ token_hash: tokenHash, type: 'recovery' })
+        const type = (url.searchParams.get('type') ?? 'recovery') as EmailOtpType
+        const { error: e } = await sb.auth.verifyOtp({ token_hash: tokenHash, type })
+        // Le jeton ne doit pas rester dans la barre d'adresse : il finirait dans
+        // l'historique et dans l'en-tête Referer des requêtes suivantes.
+        window.history.replaceState(null, '', '/auth/reset-password')
         finish(e ? 'invalid' : 'ready', e ? getAuthError(e) : '')
         return
       }
@@ -106,7 +110,7 @@ export default function ResetPasswordPage() {
     localStorage.setItem('last_auth_date', now)
     localStorage.setItem('thw_last_pw_auth', now)
     setSuccess(true)
-    setTimeout(() => router.replace('/'), 2000)
+    setTimeout(() => { window.location.href = '/' }, 1800)
   }
 
   return (
@@ -137,9 +141,12 @@ export default function ResetPasswordPage() {
             <h3 style={{ fontSize: 22, fontWeight: 700, color: 'white', margin: '0 0 12px', fontFamily: 'Syne, sans-serif' }}>
               {t('authpage.passwordChanged')}
             </h3>
-            <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)', margin: 0, fontFamily: 'DM Sans, sans-serif' }}>
-              {t('authpage.redirecting')}
+            <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)', margin: '0 0 28px', fontFamily: 'DM Sans, sans-serif' }}>
+              {t('authpage.signedInRedirect')}
             </p>
+            <button onClick={() => { window.location.href = '/' }} style={primaryBtn}>
+              {t('authpage.enterApp')}
+            </button>
           </div>
         ) : linkState === 'checking' ? (
           <p style={{ textAlign: 'center', color: 'rgba(255,255,255,0.5)', fontSize: 14, fontFamily: 'DM Sans, sans-serif' }}>

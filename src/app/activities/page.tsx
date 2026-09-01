@@ -9534,12 +9534,13 @@ function SectionAnalyse({ activities, zones, profile, deepLinkId, deepLinkEdit, 
         style={{ willChange: 'transform, opacity' }}
       >
         <style>{`
-          @keyframes thwDetailIn  { from { opacity: 0; transform: translateX(26px) } to { opacity: 1; transform: translateX(0) } }
-          @keyframes thwDetailOut { from { opacity: 1; transform: translateX(0) }    to { opacity: 0; transform: translateX(34px) } }
-          /* enter: pas de fill → le transform revient à 'none' (ne confine pas les overlays fixed) */
-          .thw-detail-in  { animation: thwDetailIn  0.30s cubic-bezier(0.32,0.72,0,1); }
-          /* exit: forwards → garde l'état final jusqu'au démontage (~260ms) */
-          .thw-detail-out { animation: thwDetailOut 0.26s cubic-bezier(0.32,0.72,0,1) forwards; }
+          /* Fondu d'opacité SEUL (pas de translateX) : animer un transform sur la
+             fiche activité — carte + courbes SVG lourdes — repeint tout le sous-arbre
+             et rame dans la WebView iOS. L'opacité est bien moins coûteuse. */
+          @keyframes thwDetailIn  { from { opacity: 0 } to { opacity: 1 } }
+          @keyframes thwDetailOut { from { opacity: 1 } to { opacity: 0 } }
+          .thw-detail-in  { animation: thwDetailIn  0.16s ease-out; }
+          .thw-detail-out { animation: thwDetailOut 0.16s ease-out forwards; }
           @media (prefers-reduced-motion: reduce) {
             .thw-detail-in, .thw-detail-out { animation: none; }
           }
@@ -9564,8 +9565,8 @@ function SectionAnalyse({ activities, zones, profile, deepLinkId, deepLinkEdit, 
       className="thw-list-in"
     >
       <style>{`
-        @keyframes thwListIn { from { opacity: 0; transform: translateX(-18px) } to { opacity: 1; transform: translateX(0) } }
-        .thw-list-in { animation: thwListIn 0.28s cubic-bezier(0.32,0.72,0,1) both; }
+        @keyframes thwListIn { from { opacity: 0 } to { opacity: 1 } }
+        .thw-list-in { animation: thwListIn 0.16s ease-out both; }
         @media (prefers-reduced-motion: reduce) { .thw-list-in { animation: none; } }
       `}</style>
       <ViewSegmented value={view} onChange={setView} />

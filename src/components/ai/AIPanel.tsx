@@ -12722,7 +12722,7 @@ function PlusMenu({
           <div style={mGroup}>
             <button style={mRow} onClick={() => { onClose(); setTimeout(onFiles, 80) }}>
               <Paperclip size={20} color="var(--text-mid)" style={{ flexShrink: 0 }} />
-              <span style={{ flex: 1 }}>Ajouter des fichiers</span>
+              <span style={{ flex: 1 }}>{t('ai.addFiles')}</span>
             </button>
           </div>
 
@@ -12730,7 +12730,7 @@ function PlusMenu({
           <div style={mGroup}>
             <button style={mRow} onClick={() => { setMobileTheme(null); goTo('actions') }}>
               <Zap size={20} color="var(--text-mid)" style={{ flexShrink: 0 }} />
-              <span style={{ flex: 1 }}>Actions rapides</span>
+              <span style={{ flex: 1 }}>{t('ai.quickActions')}</span>
               <ChevronRight size={18} color="var(--text-dim)" style={{ flexShrink: 0 }} />
             </button>
             <div style={mDiv} />
@@ -12835,7 +12835,7 @@ function PlusMenu({
           {/* Ajouter des fichiers */}
           <button style={rowStyle} onClick={() => { onClose(); setTimeout(onFiles, 80) }} onMouseEnter={hoverOn} onMouseLeave={hoverOff}>
             <Paperclip size={16} color="var(--text-mid)" style={{ flexShrink: 0 }} />
-            Ajouter des fichiers…
+            {t('ai.addFiles')}…
           </button>
 
           <div style={sepStyle} />
@@ -12848,7 +12848,7 @@ function PlusMenu({
             onMouseLeave={e => { if (!(flyout === 'actions')) hoverOff(e); if (!isMobile) scheduleCloseFlyout() }}
           >
             <Zap size={16} color="var(--text-mid)" style={{ flexShrink: 0 }} />
-            <span style={{ flex: 1 }}>Actions rapides</span>
+            <span style={{ flex: 1 }}>{t('ai.quickActions')}</span>
             <ChevronRight size={13} color="var(--text-dim)" style={{ marginLeft: 'auto', flexShrink: 0 }} />
           </button>
 
@@ -12949,7 +12949,7 @@ function PlusMenu({
                   <button onClick={goBack} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex' }}>
                     <ArrowLeft size={16} color="var(--text-mid)" />
                   </button>
-                  <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--ai-text)', fontFamily: 'var(--font-display, Fraunces), Georgia, serif' }}>Actions rapides</span>
+                  <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--ai-text)', fontFamily: 'var(--font-display, Fraunces), Georgia, serif' }}>{t('ai.quickActions')}</span>
                 </div>
                 <div style={{ padding: 8 }}>
                   {THEMES.map(t => {
@@ -13001,7 +13001,7 @@ function PlusMenu({
                 <button onClick={goBack} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex' }}>
                   <ArrowLeft size={14} color="var(--text-mid)" />
                 </button>
-                <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>Actions rapides</span>
+                <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>{t('ai.quickActions')}</span>
               </div>
               {actionsTwoColumns}
             </>
@@ -13294,7 +13294,7 @@ function HistoryDrawer({
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ flexShrink: 0 }}>
             <path d="M12 5v14M5 12h14" />
           </svg>
-          Nouvelle conversation
+          {t('w1i.new_conversation')}
         </button>
         )}
         {/* En-tête Projets (dépliable) */}
@@ -13313,7 +13313,7 @@ function HistoryDrawer({
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
             <path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
           </svg>
-          <span style={{ flex: 1 }}>Projets</span>
+          <span style={{ flex: 1 }}>{t('ai.projects')}</span>
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, transform: projectsOpen ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s' }}>
             <path d="M9 6l6 6-6 6" />
           </svg>
@@ -13407,7 +13407,7 @@ function HistoryDrawer({
             <circle cx="5" cy="6" r="2.4"/><circle cx="19" cy="6" r="2.4"/><circle cx="12" cy="18" r="2.4"/>
             <path d="M7.2 7.2 10.5 16M16.8 7.2 13.5 16"/>
           </svg>
-          <span style={{ flex: 1 }}>Studio</span>
+          <span style={{ flex: 1 }}>{t('w1a.navStudio')}</span>
           <span style={{ fontSize: 9, fontWeight: 700, color: '#8B5CF6', background: 'rgba(139,92,246,0.12)', padding: '2px 6px', borderRadius: 6, letterSpacing: '0.03em' }}>NOUVEAU</span>
         </button>
       </div>
@@ -13737,7 +13737,7 @@ function HistoryDrawer({
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" style={{ flexShrink: 0 }}>
             <path d="M12 5v14M5 12h14" />
           </svg>
-          Nouvelle conversation
+          {t('w1i.new_conversation')}
         </button>
       )}
 

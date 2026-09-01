@@ -221,13 +221,15 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
     </div>
   )
 
-  // Boutons flottants façon verre dépoli : translucides (on voit le contenu défiler
-  // dessous), flou marqué, ombre très douce.
+  // Boutons flottants : fond PLEIN (couleur de carte), SANS backdrop-filter.
+  // Le flou « verre dépoli » (backdrop-filter) est bogué dans la WebView iOS :
+  // il s'affiche par intermittence (« des fois ça marche, des fois pas »). Un
+  // fond plein est 100 % constant → plus de clignotement, boutons toujours nets.
   const fab: React.CSSProperties = {
     position: 'absolute', top: 'calc(env(safe-area-inset-top) + 10px)', width: 38, height: 38,
-    display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--glass-border)',
-    background: 'var(--glass-bg)', backdropFilter: 'blur(20px) saturate(1.4)', WebkitBackdropFilter: 'blur(20px) saturate(1.4)',
-    boxShadow: '0 2px 10px rgba(0,0,0,0.07)', cursor: 'pointer', zIndex: 5, padding: 0,
+    display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border)',
+    background: 'var(--bg-card)',
+    boxShadow: '0 2px 10px rgba(0,0,0,0.10)', cursor: 'pointer', zIndex: 5, padding: 0,
   }
 
   return (

@@ -254,19 +254,16 @@ export default function MobileTabBar() {
 // ── Static styles ──────────────────────────────────────────────
 
 const BAR: React.CSSProperties = {
-  // Pill flottante translucide (verre dépoli) détachée des bords — façon Strava :
-  // le contenu défile visiblement dessous.
+  // Pill flottante à fond PLEIN, SANS backdrop-filter : le flou « verre dépoli »
+  // est bogué dans la WebView iOS (il clignote / disparaît au défilement — le
+  // fameux « des fois ça marche, des fois pas »). Fond plein = toujours net.
   position: 'fixed', zIndex: 100,
   left: 12, right: 12,
   bottom: 'calc(env(safe-area-inset-bottom, 0px) + 8px)',
   borderRadius: 30,
-  // PAS d'overflow:hidden ici : sur la webview iOS, overflow:hidden + border-radius
-  // CASSE le backdrop-filter (bug WebKit) → le flou disparaît et la barre paraît
-  // opaque. Sans overflow, le verre dépoli s'applique vraiment.
-  background: 'var(--glass-bg)',
-  backdropFilter: 'blur(30px) saturate(1.7)', WebkitBackdropFilter: 'blur(30px) saturate(1.7)',
-  border: '0.5px solid var(--glass-border)',
-  boxShadow: '0 6px 24px rgba(0,0,0,0.14)',
+  background: 'var(--bg-card)',
+  border: '1px solid var(--border)',
+  boxShadow: '0 6px 24px rgba(0,0,0,0.16)',
 }
 
 const BTN: React.CSSProperties = {

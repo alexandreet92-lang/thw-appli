@@ -3042,23 +3042,39 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
 
   const allWeekStarts = Array.from({length:weekRange},(_,i)=>getWeekStartFromOffset(weekOffset+i))
 
-  // Charge les types de jour de TOUTES les semaines affichées (clé week_start_day_index).
+  // Types de jour PAR PLAN : clé `${ws}_${dayIndex}_${plan}`. La table
+  // day_intensity n'a pas de colonne plan → le Plan A reste en base (multi-
+  // appareils), le Plan B (et autres variantes) est mémorisé EN LOCAL. Ainsi
+  // régler un jour sur le Plan A ne touche PAS le Plan B (qui reste par défaut).
+  const LS_INTENSITY = 'thw_day_intensity_byplan'
   useEffect(()=>{
     const sb=createClient()
     ;(async()=>{
       const uid=await resolvePlanningUid(sb); if(!uid)return
       const {data}=await sb.from('day_intensity').select('week_start,day_index,intensity').eq('user_id',uid).in('week_start',allWeekStarts)
       const m:Record<string,DayIntensity>={}
-      ;(data??[]).forEach((x:{week_start:string;day_index:number;intensity:DayIntensity})=>{ m[`${x.week_start}_${x.day_index}`]=x.intensity })
+      // L'existant en base = Plan A (pas de notion de plan côté table).
+      ;(data??[]).forEach((x:{week_start:string;day_index:number;intensity:DayIntensity})=>{ m[`${x.week_start}_${x.day_index}_A`]=x.intensity })
+      // Recouvre avec les choix par-plan mémorisés en local (Plan B, etc.).
+      try { const raw=localStorage.getItem(LS_INTENSITY); if(raw){ const o=JSON.parse(raw) as Record<string,DayIntensity>; if(o&&typeof o==='object') Object.assign(m,o) } } catch { /* ignore */ }
       setIntensityMap(m)
     })()
   },[weekRange,weekOffset,planTick])  // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Définit le type d'un jour PRÉCIS (semaine + jour) — n'affecte pas les autres semaines.
-  async function setDayIntensityWeek(ws:string, dayIdx:number, intensity:DayIntensity) {
-    setIntensityMap(p=>({...p,[`${ws}_${dayIdx}`]:intensity}))
-    const sb=createClient(); const uid=await resolvePlanningUid(sb); if(!uid)return
-    await sb.from('day_intensity').upsert({ user_id:uid, week_start:ws, day_index:dayIdx, intensity, updated_at:new Date().toISOString() },{ onConflict:'user_id,week_start,day_index' })
+  // Définit le type d'un jour PRÉCIS (semaine + jour + PLAN) — n'affecte ni les
+  // autres semaines, ni l'autre plan.
+  async function setDayIntensityWeek(ws:string, dayIdx:number, intensity:DayIntensity, plan:PlanVariant) {
+    const key=`${ws}_${dayIdx}_${plan}`
+    setIntensityMap(p=>{
+      const next={...p,[key]:intensity}
+      // On ne persiste EN LOCAL que les variantes ≠ A (le Plan A vit en base).
+      try { const bOnly=Object.fromEntries(Object.entries(next).filter(([k])=>!k.endsWith('_A'))); localStorage.setItem(LS_INTENSITY, JSON.stringify(bOnly)) } catch { /* ignore */ }
+      return next
+    })
+    if(plan==='A'){
+      const sb=createClient(); const uid=await resolvePlanningUid(sb); if(!uid)return
+      await sb.from('day_intensity').upsert({ user_id:uid, week_start:ws, day_index:dayIdx, intensity, updated_at:new Date().toISOString() },{ onConflict:'user_id,week_start,day_index' })
+    }
   }
 
   // Déplace une séance vers une AUTRE semaine (et un jour donné). Contrairement à
@@ -3093,7 +3109,7 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
       const isoStr = localDateStr(dIso)
       return {
         day: dayAbbrs[i], date:wDates[i],
-        intensity:(intensityMap[`${ws}_${i}`]??'low') as DayIntensity,
+        intensity:(intensityMap[`${ws}_${i}_${plan ?? activePlan}`]??'low') as DayIntensity,
         sessions: wSessions.filter(s=>s.dayIndex===i && !isRestSession(s)),
         activities: wActs.filter(a=>a.dayIndex===i),
         races: racesFull.filter(r=>r.date===isoStr),
@@ -3118,9 +3134,11 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
             {t('plnp.dayAbbrs').split(',').map(d => <div key={d} style={{ padding: '10px 4px', textAlign: 'center' as const, fontSize: 9.5, fontWeight: 700, letterSpacing: '0.06em', color: 'var(--text-dim)' }}>{d}.</div>)}
             <div style={{ padding: '10px 10px', fontSize: 9, fontWeight: 800, letterSpacing: '0.06em', color: 'var(--text-dim)', borderLeft: '1px solid var(--border)' }}>{t('plnp.volume').toUpperCase()}</div>
           </div>
-          {/* Lignes semaine */}
-          {allWeekStarts.map((ws, wi) => {
-            const w = buildWeek(ws, plan)
+          {/* Lignes semaine — en mode Comparer : pour CHAQUE semaine, la ligne
+              Plan A puis juste en dessous la ligne Plan B (interclassé par semaine),
+              pas 5 semaines A puis 5 semaines B. */}
+          {allWeekStarts.flatMap((ws, wi) => (compareMode ? (['A','B'] as const) : ([plan] as const)).map(pv => {
+            const w = buildWeek(ws, pv)
             const dates = getWeekDatesFromStart(ws)
             const volPlanned: Record<string, number> = {}
             const volDone: Record<string, number> = {}
@@ -3134,11 +3152,12 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
             const plannedTotal = Object.values(volPlanned).reduce((a, b) => a + b, 0)
             const doneTotal = Object.values(volDone).reduce((a, b) => a + b, 0)
             return (
-              <div key={ws} style={{ display: 'grid', gridTemplateColumns: cols, borderBottom: wi < allWeekStarts.length - 1 ? '1px solid var(--border)' : 'none' }}>
-                {/* rail semaine */}
+              <div key={`${ws}_${pv}`} style={{ display: 'grid', gridTemplateColumns: cols, borderBottom: '1px solid var(--border)' }}>
+                {/* rail semaine (+ badge Plan A/B en mode Comparer) */}
                 <div style={{ display: 'flex', flexDirection: 'column' as const, alignItems: 'center', justifyContent: 'center', gap: 1, borderRight: '1px solid var(--border)', background: 'var(--bg-card2)' }}>
                   <span style={{ fontSize: 12, fontWeight: 800, color: 'var(--text)', fontFamily: 'Syne,sans-serif' }}>S{isoWeekNum(ws)}</span>
                   <span style={{ fontSize: 8, color: 'var(--text-dim)' }}>{new Date(ws + 'T00:00:00').toLocaleDateString(currentLocale(), { day: 'numeric', month: 'short' })}</span>
+                  {compareMode && <span style={{ fontSize: 9, fontWeight: 800, color: pv === 'A' ? '#06B6D4' : '#a78bfa', marginTop: 2 }}>Plan {pv}</span>}
                 </div>
                 {/* jours */}
                 {w.map((d, i) => {
@@ -3147,7 +3166,7 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
                   const isDropTarget = dragCell === hid
                   return (
                     <div key={i} data-day-index={i} data-guide="plan-day"
-                      onClick={e => { if (isEmptyCellTarget(e)) { setAddModalFavorites(false); setAddChooser({ dayIndex: i, plan, weekStart: ws }) } }}
+                      onClick={e => { if (isEmptyCellTarget(e)) { setAddModalFavorites(false); setAddChooser({ dayIndex: i, plan: pv, weekStart: ws }) } }}
                       onDragOver={e => { if (planDrag.current) { e.preventDefault(); setDragCell(hid) } }}
                       onDragLeave={() => setDragCell(c => c === hid ? null : c)}
                       onDrop={() => {
@@ -3163,7 +3182,7 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
                       <div style={{ alignSelf: 'flex-end' as const, marginBottom: 2 }}>
                         <DayHeader num={dates[i]} intensity={d.intensity} isToday={isToday}
                           onNum={() => setDayPicker(p => p === `d_${hid}` ? null : `d_${hid}`)} open={dayPicker === `d_${hid}`}
-                          onPick={(it) => { void setDayIntensityWeek(ws, i, it); setDayPicker(null) }} />
+                          onPick={(it) => { void setDayIntensityWeek(ws, i, it, pv); setDayPicker(null) }} />
                       </div>
                       {/* Courses du jour (drapeau) */}
                       {d.races.map(r => (
@@ -3211,15 +3230,15 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
                 </div>
               </div>
             )
-          })}
+          }))}
         </div></div>
         </div>{/* /wg-desktop */}
 
         {/* ── Mobile : bandeau 7 jours compact par semaine (tout visible, pleine largeur) ── */}
         <div className="wg-mobile">
           <style>{`.wk-carousel{scrollbar-width:none}.wk-carousel::-webkit-scrollbar{display:none}`}</style>
-          {allWeekStarts.map(ws => {
-            const w = buildWeek(ws, plan); const dates = getWeekDatesFromStart(ws)
+          {allWeekStarts.flatMap(ws => (compareMode ? (['A','B'] as const) : ([plan] as const)).map(pv => {
+            const w = buildWeek(ws, pv); const dates = getWeekDatesFromStart(ws)
             const mPlan: Record<string, number> = {}; const mDone: Record<string, number> = {}
             w.forEach(d => {
               // Mobilité hors volume (idem vue desktop).
@@ -3230,10 +3249,10 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
             const mPlanTot = Object.values(mPlan).reduce((a, b) => a + b, 0)
             const mDoneTot = Object.values(mDone).reduce((a, b) => a + b, 0)
             return (
-              <div key={ws} style={{ borderBottom:'1px solid var(--border)', padding:'8px 0' }}>
+              <div key={`${ws}_${pv}`} style={{ borderBottom:'1px solid var(--border)', padding:'8px 0' }}>
                 {/* En-tête semaine : S## + volume réalisé / prévu à droite */}
                 <div style={{ display:'flex', alignItems:'baseline', justifyContent:'space-between', gap:6, margin:'0 8px 6px' }}>
-                  <span style={{ fontSize:11, fontWeight:800, color:'var(--text)', fontFamily:'Syne,sans-serif' }}>S{isoWeekNum(ws)}<span style={{ fontWeight:500, color:'var(--text-dim)', marginLeft:5 }}>{new Date(ws+'T00:00:00').toLocaleDateString(currentLocale(),{ day:'numeric', month:'short' })}</span></span>
+                  <span style={{ fontSize:11, fontWeight:800, color:'var(--text)', fontFamily:'Syne,sans-serif' }}>S{isoWeekNum(ws)}<span style={{ fontWeight:500, color:'var(--text-dim)', marginLeft:5 }}>{new Date(ws+'T00:00:00').toLocaleDateString(currentLocale(),{ day:'numeric', month:'short' })}</span></span>{compareMode && <span style={{ fontSize:10, fontWeight:800, color: pv==='A'?'#06B6D4':'#a78bfa', marginLeft:8 }}>Plan {pv}</span>}
                   <span data-guide="plan-volume" className="tnum" style={{ fontSize:11, fontWeight:700, color:'var(--text-dim)' }}><span style={{ color:'var(--text)' }}>{formatHM(mDoneTot)}</span> / {formatHM(mPlanTot)}</span>
                 </div>
                 {/* Carrousel coulissant : page 1 = jours · page 2 = volume/cycle + Datas */}
@@ -3251,8 +3270,8 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
                           <div key={i} data-mday={i} data-mws={ws} data-guide="plan-day" style={{ minWidth:0, display:'flex', flexDirection:'column' as const, gap:3, alignItems:'center', borderRadius:8, background:isDropTarget?'var(--primary-dim)':'transparent', transition:'background .12s' }}>
                             <DayHeader abbr={d.day} num={dates[i]} intensity={d.intensity} isToday={isToday}
                               plus onPlus={() => setDayPicker(p => p === `m_${hid}` ? null : `m_${hid}`)} open={dayPicker === `m_${hid}`}
-                              onPick={(it) => { void setDayIntensityWeek(ws, i, it); setDayPicker(null) }}
-                              onNum={() => { setAddModalFavorites(false); setAddChooser({ dayIndex:i, plan, weekStart:ws }) }} />
+                              onPick={(it) => { void setDayIntensityWeek(ws, i, it, pv); setDayPicker(null) }}
+                              onNum={() => { setAddModalFavorites(false); setAddChooser({ dayIndex:i, plan: pv, weekStart:ws }) }} />
                             {d.races.map(r => <RaceBubble key={r.id} race={r} onClick={()=>setRaceDetail(r)} />)}
                             {(() => {
                               const { list, brickRunIds } = orderBrickSessions(sess)
@@ -3287,7 +3306,7 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
                 </div>
               </div>
             )
-          })}
+          }))}
         </div>
       </div>
     )
@@ -3961,20 +3980,9 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
 
 
       {tab === 'training' && (<>
-      {compareMode ? (
-        // Mode Comparer : Plan A puis Plan B empilés, chacun avec son bandeau.
-        <div style={{ display:'flex', flexDirection:'column', gap:18 }}>
-          {(['A','B'] as const).map(pv => (
-            <div key={pv}>
-              <div style={{ display:'flex', alignItems:'center', gap:8, margin:'0 0 8px 2px' }}>
-                <span style={{ width:9, height:9, borderRadius:'50%', background: pv==='A'?'#06B6D4':'#a78bfa', flexShrink:0 }} />
-                <span style={{ fontSize:13, fontWeight:800, color:'var(--text)' }}>Plan {pv}</span>
-              </div>
-              {renderPlan(pv)}
-            </div>
-          ))}
-        </div>
-      ) : renderPlan()}
+      {/* renderPlan gère lui-même le mode Comparer (interclassé par semaine :
+          ligne Plan A puis Plan B pour chaque semaine) → un seul appel. */}
+      {renderPlan()}
       {renderDatasOverlay()}
       </>)}
     </div>

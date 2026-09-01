@@ -78,7 +78,7 @@ export function AthleteDetailDrawer({ kind, athleteId, coachId, name, avatar, on
         display: 'flex', flexDirection: 'column', overflow: 'hidden',
         transform: open ? 'translateX(0)' : 'translateX(100%)', transition: 'transform .3s cubic-bezier(.32,.72,0,1)',
       }}>
-        <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 12, padding: '12px clamp(14px,3vw,22px)', borderBottom: '1px solid var(--border)', background: 'var(--bg)' }}>
+        <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 12, padding: 'calc(env(safe-area-inset-top, 0px) + 12px) clamp(14px,3vw,22px) 12px', borderBottom: '1px solid var(--border)', background: 'var(--bg)' }}>
           <button onClick={onClose} aria-label={t('w3d.close')} style={{ width: 34, height: 34, borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-mid)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" transform="rotate(180 12 12)" /></svg>
           </button>

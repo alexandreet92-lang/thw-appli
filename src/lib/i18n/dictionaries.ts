@@ -1515,6 +1515,9 @@ const fr: Dict = {
   'authpage.updatePasswordBtn': 'Mettre à jour le mot de passe', 'authpage.passwordChanged': 'Mot de passe modifié',
   'authpage.redirecting': 'Redirection en cours…',
   'authpage.chooseSecurePassword': 'Choisis un mot de passe sécurisé d\'au moins 6 caractères.',
+  'authpage.resetChecking': 'Vérification du lien…',
+  'authpage.resetLinkInvalid': 'Lien invalide ou expiré',
+  'authpage.resetAskNewLink': 'Demander un nouveau lien',
   'authpage.updating': 'Modification…', 'authpage.changePasswordBtn': 'Modifier le mot de passe',
   // ui
   'ui.loading': 'Chargement…', 'ui.saveError': 'Échec de l’enregistrement', 'ui.saved': 'Enregistré',
@@ -8384,6 +8387,9 @@ const en: Dict = {
   'authpage.updatePasswordBtn': 'Update password', 'authpage.passwordChanged': 'Password changed',
   'authpage.redirecting': 'Redirecting…',
   'authpage.chooseSecurePassword': 'Choose a secure password of at least 6 characters.',
+  'authpage.resetChecking': 'Checking the link…',
+  'authpage.resetLinkInvalid': 'Invalid or expired link',
+  'authpage.resetAskNewLink': 'Request a new link',
   'authpage.updating': 'Updating…', 'authpage.changePasswordBtn': 'Change password',
   // ui
   'ui.loading': 'Loading…', 'ui.saveError': 'Save failed', 'ui.saved': 'Saved',
@@ -15204,6 +15210,9 @@ const es: Dict = {
   'authpage.updatePasswordBtn': 'Actualizar la contraseña', 'authpage.passwordChanged': 'Contraseña modificada',
   'authpage.redirecting': 'Redirigiendo…',
   'authpage.chooseSecurePassword': 'Elige una contraseña segura de al menos 6 caracteres.',
+  'authpage.resetChecking': 'Verificando el enlace…',
+  'authpage.resetLinkInvalid': 'Enlace no válido o caducado',
+  'authpage.resetAskNewLink': 'Solicitar un nuevo enlace',
   'authpage.updating': 'Modificando…', 'authpage.changePasswordBtn': 'Modificar la contraseña',
   // ui
   'ui.loading': 'Cargando…', 'ui.saveError': 'Error al guardar', 'ui.saved': 'Guardado',

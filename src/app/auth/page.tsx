@@ -11,7 +11,8 @@ import { AuthInput } from '@/components/auth/AuthInput'
 import { ErrorMessage } from '@/components/auth/ErrorMessage'
 import { PasswordStrengthBar } from '@/components/auth/PasswordStrengthBar'
 import { EmailVerification } from '@/components/auth/EmailVerification'
-import { getAuthError, isRetryableAuthError } from '@/lib/auth/errors'
+import { getAuthError, isRetryableAuthError, getAuthLinkError } from '@/lib/auth/errors'
+import { authCallbackUrl } from '@/lib/auth/redirect'
 import { useI18n } from '@/lib/i18n'
 import { LanguageDropdown } from '@/components/i18n/LanguageDropdown'
 
@@ -168,6 +169,10 @@ function AuthPageInner() {
   const { t } = useI18n()
   const params = useSearchParams()
   const expired = params.get('expired') === '1'
+  // Erreur remontée par /auth/callback (lien d'email expiré, déjà utilisé,
+  // verifier PKCE absent…). Avant, ce paramètre était posé mais JAMAIS lu :
+  // l'utilisateur revenait sur l'écran de connexion sans la moindre explication.
+  const linkError = params.get('error')
 
   const [activeTab, setActiveTab] = useState(0) // 0 login, 1 signup
   const [view, setView] = useState<'auth' | 'forgot' | 'verify'>('auth')
@@ -176,11 +181,14 @@ function AuthPageInner() {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [acceptedTerms, setAcceptedTerms] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState(expired ? t('auth.expired') : '')
+  const [error, setError] = useState(expired ? t('auth.expired') : linkError ? getAuthLinkError(linkError) : '')
   const [resetSent, setResetSent] = useState(false)
   const [remember, setRemember] = useState(true)
 
-  useEffect(() => { if (expired) setError(t('auth.expired')) }, [expired, t])
+  useEffect(() => {
+    if (expired) setError(t('auth.expired'))
+    else if (linkError) setError(getAuthLinkError(linkError))
+  }, [expired, linkError, t])
 
   // App native : retour d'OAuth (Google/Apple). Le webview revient sur
   // capacitor://…/auth?code=… ; le client natif échange le code (PKCE) → dès
@@ -231,7 +239,7 @@ function AuthPageInner() {
     const { error: e } = await createClient().auth.signUp({
       email, password,
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        emailRedirectTo: authCallbackUrl('/'),
         // RGPD : trace de l'acceptation CGU + confidentialité (date + version).
         data: { terms_accepted_at: new Date().toISOString(), terms_version: TERMS_VERSION },
       },
@@ -245,7 +253,7 @@ function AuthPageInner() {
     if (!emailValid) { setError(t('auth.forgotDesc')); return }
     setLoading(true); setError('')
     const { error: e } = await createClient().auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/auth/callback?next=/auth/reset-password`,
+      redirectTo: authCallbackUrl('/auth/reset-password'),
     })
     setLoading(false)
     if (e) { setError(getAuthError(e)); return }

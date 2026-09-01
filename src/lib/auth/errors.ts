@@ -16,7 +16,37 @@ export const AUTH_ERRORS: Record<string, string> = {
   'context deadline exceeded':    TIMEOUT_MSG,
   'timeout':                      TIMEOUT_MSG,
   'Token has expired or is invalid': 'Ce lien de réinitialisation a expiré. Demandes-en un nouveau.',
+  // ── Envoi d'email cassé côté Supabase (SMTP saturé, non configuré, ou
+  // domaine d'expédition refusé). Message EXPLICITE : sans ça, l'utilisateur
+  // croit que l'email est parti alors que rien n'a quitté le serveur. ──
+  'Error sending recovery email':     "L'email n'a pas pu être envoyé. Réessaie dans quelques minutes — si ça persiste, contacte le support.",
+  'Error sending confirmation email': "L'email n'a pas pu être envoyé. Réessaie dans quelques minutes — si ça persiste, contacte le support.",
+  'Error sending magic link email':   "L'email n'a pas pu être envoyé. Réessaie dans quelques minutes — si ça persiste, contacte le support.",
+  'error sending email':              "L'email n'a pas pu être envoyé. Réessaie dans quelques minutes — si ça persiste, contacte le support.",
+  // Quota d'envoi atteint (SMTP par défaut de Supabase : quelques mails/heure).
+  'email rate limit exceeded':        "Trop d'emails demandés. Attends une heure avant de réessayer.",
+  'over_email_send_rate_limit':       "Trop d'emails demandés. Attends une heure avant de réessayer.",
+  'For security purposes, you can only request this after': 'Trop de demandes rapprochées. Patiente une minute avant de réessayer.',
+  'Signups not allowed':              'Les inscriptions sont temporairement fermées.',
   'default':                      'Une erreur est survenue. Réessaie dans quelques instants.',
+}
+
+// Codes d'erreur portés par le lien d'email (query `?error=` posée par
+// /auth/callback, ou fragment `#error_code=` renvoyé par GoTrue).
+const LINK_ERRORS: Record<string, string> = {
+  otp_expired:          'Ce lien a expiré ou a déjà été utilisé. Demande un nouveau lien.',
+  access_denied:        'Ce lien a expiré ou a déjà été utilisé. Demande un nouveau lien.',
+  pkce_exchange_failed: "Ce lien doit être ouvert sur l'appareil et le navigateur depuis lesquels tu l'as demandé. Refais une demande depuis cet appareil.",
+  missing_token:        'Lien incomplet. Demande un nouveau lien.',
+  bad_oauth_state:      'La connexion a expiré en cours de route. Réessaie.',
+  signup_disabled:      'Les inscriptions sont temporairement fermées.',
+}
+
+// Traduit le code d'erreur d'un lien d'email en message affichable. Un code
+// inconnu (erreur OAuth, panne côté Supabase…) reçoit un message neutre plutôt
+// que « lien expiré », qui serait trompeur.
+export function getAuthLinkError(code: string): string {
+  return LINK_ERRORS[code] ?? 'La connexion a échoué. Réessaie, ou demande un nouveau lien.'
 }
 
 // Codes HTTP qui traduisent une indisponibilité passagère (à retenter).

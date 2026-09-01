@@ -1,6 +1,8 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { getAuthError } from '@/lib/auth/errors'
+import { authCallbackUrl } from '@/lib/auth/redirect'
 import { useI18n } from '@/lib/i18n'
 
 interface Props {
@@ -13,6 +15,7 @@ export function EmailVerification({ email, onBack }: Props) {
   const [resent,     setResent]     = useState(false)
   const [resending,  setResending]  = useState(false)
   const [countdown,  setCountdown]  = useState(0)
+  const [error,      setError]      = useState('')
 
   useEffect(() => {
     if (countdown <= 0) return
@@ -20,11 +23,17 @@ export function EmailVerification({ email, onBack }: Props) {
     return () => clearTimeout(t)
   }, [countdown])
 
+  // L'échec d'envoi (quota SMTP atteint, expéditeur refusé…) était AVALÉ ici :
+  // l'écran affichait « ✓ Email renvoyé » alors que rien n'était parti.
   const handleResend = async () => {
-    setResending(true)
+    setResending(true); setError('')
     const sb = createClient()
-    await sb.auth.resend({ type: 'signup', email })
+    const { error: e } = await sb.auth.resend({
+      type: 'signup', email,
+      options: { emailRedirectTo: authCallbackUrl('/') },
+    })
     setResending(false)
+    if (e) { setError(getAuthError(e)); return }
     setResent(true)
     setCountdown(60)
   }
@@ -76,6 +85,12 @@ export function EmailVerification({ email, onBack }: Props) {
       >
         {resending ? t('verify.resending') : resent ? t('verify.resent') : countdown > 0 ? t('verify.resendIn', { s: countdown }) : t('verify.resend')}
       </button>
+
+      {error && (
+        <p style={{ fontSize: 13, color: '#ef4444', margin: '0 0 12px', lineHeight: 1.5, fontFamily: 'var(--font-body)' }}>
+          {error}
+        </p>
+      )}
 
       <button onClick={onBack} style={{ background: 'none', border: 'none', color: 'var(--text-dim)', fontSize: 13, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
         {t('verify.back')}

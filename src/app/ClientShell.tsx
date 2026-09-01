@@ -9,6 +9,7 @@ import { CallBubble } from '@/components/community/call/CallBubble'
 import { installNativeApiFetch } from '@/lib/native/apiFetch'
 import { isNativeApp, openWebsite } from '@/lib/native/platform'
 import { createClient } from '@/lib/supabase/client'
+import type { EmailOtpType } from '@supabase/supabase-js'
 
 interface ClientShellProps {
   children: React.ReactNode
@@ -69,8 +70,10 @@ export function ClientShell({ children }: ClientShellProps) {
     return () => document.removeEventListener('click', onClick, true)
   }, [])
 
-  // App native : retour d'OAuth (Google/Apple) via le lien com.thehybridway.app://
-  // auth-callback → on échange le code (PKCE) puis on entre dans l'app.
+  // App native : retour des liens com.thehybridway.app://auth-callback —
+  // OAuth (Google/Apple) ET liens d'email (réinitialisation, confirmation).
+  // On termine la session ici, puis on route vers la destination `next`
+  // (ex. /auth/reset-password) au lieu de toujours retomber sur l'accueil.
   useEffect(() => {
     if (!process.env.NEXT_PUBLIC_API_BASE) return
     let cleanup: (() => void) | undefined
@@ -79,11 +82,32 @@ export function ClientShell({ children }: ClientShellProps) {
       const handle = await App.addListener('appUrlOpen', async ({ url }: { url: string }) => {
         if (!url || !url.includes('auth-callback')) return
         try {
-          const code = new URLSearchParams(url.split('?')[1] ?? '').get('code')
+          const q = new URLSearchParams(url.split('?')[1] ?? '')
           try { const { Browser } = await import('@capacitor/browser'); await Browser.close() } catch { /* déjà fermé */ }
+
+          // Échec renvoyé par Supabase (lien expiré, déjà utilisé…) : on ne
+          // reste PAS muet, on renvoie l'utilisateur sur /auth avec la raison.
+          const err = q.get('error_code') || q.get('error')
+          if (err) { window.location.href = `/auth?error=${encodeURIComponent(err)}`; return }
+
+          const rawNext = q.get('next') ?? '/'
+          const next = rawNext.startsWith('/') && !rawNext.startsWith('//') ? rawNext : '/'
+          const sb = createClient()
+
+          // Lien d'email au format {{ .TokenHash }} : vérifiable sans verifier
+          // PKCE, donc valide même si le mail est ouvert ailleurs.
+          const tokenHash = q.get('token_hash')
+          if (tokenHash) {
+            const type = (q.get('type') ?? 'recovery') as EmailOtpType
+            const { error } = await sb.auth.verifyOtp({ token_hash: tokenHash, type })
+            window.location.href = error ? '/auth?error=otp_expired' : next
+            return
+          }
+
+          const code = q.get('code')
           if (code) {
-            const { error } = await createClient().auth.exchangeCodeForSession(code)
-            if (!error) window.location.href = '/'
+            const { error } = await sb.auth.exchangeCodeForSession(code)
+            window.location.href = error ? '/auth?error=pkce_exchange_failed' : next
           }
         } catch { /* ignore */ }
       })

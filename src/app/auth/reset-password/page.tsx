@@ -4,10 +4,11 @@ export const dynamic = 'force-dynamic'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import type { AuthChangeEvent, Session } from '@supabase/supabase-js'
 import { AuthInput } from '@/components/auth/AuthInput'
 import { ErrorMessage } from '@/components/auth/ErrorMessage'
 import { PasswordStrengthBar } from '@/components/auth/PasswordStrengthBar'
-import { getAuthError } from '@/lib/auth/errors'
+import { getAuthError, getAuthLinkError } from '@/lib/auth/errors'
 import { useI18n } from '@/lib/i18n'
 
 const BG = 'linear-gradient(160deg, #060614 0%, #0A0F1E 50%, #050B1A 100%)'
@@ -22,6 +23,11 @@ const primaryBtn: React.CSSProperties = {
   transition: 'opacity 200ms',
 }
 
+// État du lien de récupération : tant qu'on n'a pas de session « recovery »,
+// afficher le formulaire ne sert à rien (updateUser échouerait avec un message
+// obscur). On distingue donc explicitement les trois cas.
+type LinkState = 'checking' | 'ready' | 'invalid'
+
 export default function ResetPasswordPage() {
   const router = useRouter()
   const { t } = useI18n()
@@ -30,14 +36,60 @@ export default function ResetPasswordPage() {
   const [loading,  setLoading]  = useState(false)
   const [error,    setError]    = useState('')
   const [success,  setSuccess]  = useState(false)
+  const [linkState, setLinkState] = useState<LinkState>('checking')
+  const [linkError, setLinkError] = useState('')
 
+  // ── Validation du lien reçu par email ──────────────────────────────
+  // Trois formes possibles selon le template et la plateforme :
+  //  a) session déjà posée par /auth/callback (web, flux PKCE côté serveur) ;
+  //  b) `?token_hash=…&type=recovery` — indispensable au build NATIF, qui n'a
+  //     pas de route serveur pour consommer le jeton ;
+  //  c) `#access_token=…` (flux implicite) — consommé automatiquement par
+  //     supabase-js (detectSessionInUrl), on attend juste l'événement.
+  // Et l'échec : `#error_code=otp_expired` — jamais visible côté serveur,
+  // c'est ICI qu'il faut le lire, sinon l'utilisateur voit un formulaire muet.
   useEffect(() => {
     const sb = createClient()
-    const { data: { subscription } } = sb.auth.onAuthStateChange((event) => {
-      if (event === 'PASSWORD_RECOVERY') {
-        // Token valide — l'utilisateur peut maintenant changer son mot de passe
+    let done = false
+    const finish = (state: LinkState, msg = '') => {
+      if (done) return
+      done = true
+      setLinkState(state)
+      setLinkError(msg)
+    }
+
+    const { data: { subscription } } = sb.auth.onAuthStateChange((event: AuthChangeEvent, session: Session | null) => {
+      if (session && (event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN' || event === 'INITIAL_SESSION')) {
+        finish('ready')
       }
     })
+
+    void (async () => {
+      const url = new URL(window.location.href)
+      const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''))
+      const errCode = hash.get('error_code') || hash.get('error')
+        || url.searchParams.get('error_code') || url.searchParams.get('error')
+      if (errCode) { finish('invalid', getAuthLinkError(errCode)); return }
+
+      const tokenHash = url.searchParams.get('token_hash')
+      if (tokenHash) {
+        const { error: e } = await sb.auth.verifyOtp({ token_hash: tokenHash, type: 'recovery' })
+        finish(e ? 'invalid' : 'ready', e ? getAuthError(e) : '')
+        return
+      }
+
+      const { data } = await sb.auth.getSession()
+      if (data.session) { finish('ready'); return }
+
+      // Flux implicite : laisser à supabase-js le temps de consommer le
+      // fragment avant de déclarer le lien invalide.
+      if (hash.get('access_token')) {
+        setTimeout(() => finish('invalid', getAuthLinkError('otp_expired')), 4000)
+        return
+      }
+      finish('invalid', getAuthLinkError('missing_token'))
+    })()
+
     return () => subscription.unsubscribe()
   }, [])
 
@@ -63,6 +115,7 @@ export default function ResetPasswordPage() {
       <div style={{ width: '100%', maxWidth: 380, padding: '0 24px' }}>
 
         <div style={{ textAlign: 'center', marginBottom: 40 }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/logos/logo_4bras.png" alt="Hybrid" style={{ width: 40, height: 40 }} />
           <h2 style={{ fontSize: 24, fontWeight: 800, color: 'white', margin: '10px 0 4px', letterSpacing: '-0.5px', fontFamily: 'Syne, sans-serif' }}>
             Hybrid
@@ -87,6 +140,22 @@ export default function ResetPasswordPage() {
             <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)', margin: 0, fontFamily: 'DM Sans, sans-serif' }}>
               {t('authpage.redirecting')}
             </p>
+          </div>
+        ) : linkState === 'checking' ? (
+          <p style={{ textAlign: 'center', color: 'rgba(255,255,255,0.5)', fontSize: 14, fontFamily: 'DM Sans, sans-serif' }}>
+            {t('authpage.resetChecking')}
+          </p>
+        ) : linkState === 'invalid' ? (
+          <div style={{ textAlign: 'center' }}>
+            <h3 style={{ color: 'white', fontSize: 22, fontWeight: 700, margin: '0 0 12px', fontFamily: 'Syne, sans-serif' }}>
+              {t('authpage.resetLinkInvalid')}
+            </h3>
+            <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: 14, margin: '0 0 28px', lineHeight: 1.5, fontFamily: 'DM Sans, sans-serif' }}>
+              {linkError}
+            </p>
+            <button onClick={() => router.replace('/auth')} style={primaryBtn}>
+              {t('authpage.resetAskNewLink')}
+            </button>
           </div>
         ) : (
           <>

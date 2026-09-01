@@ -15,6 +15,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { getCurrentUser } from "@/lib/auth/currentUser"
 import { useRouter } from 'next/navigation'
 import { useI18n } from '@/lib/i18n'
+import { pickNativePhoto } from '@/lib/native/photoPicker'
 import { openUpgrade } from '@/components/subscription/UpgradeModal'
 import { parseAdvancedSpec, AdvancedChartCard } from '@/components/ai/AdvancedChart'
 import { createPortal } from 'react-dom'
@@ -22003,6 +22004,34 @@ export default function AIPanel({
     }
   }, [])
 
+  // Attache un File image (issu du sélecteur natif Camera/Photothèque).
+  const attachImageFile = useCallback(async (file: File) => {
+    setAttachErr(null)
+    try {
+      const attached = await fileToAttachment(file)
+      setAttachment(attached)
+      areaRef.current?.focus()
+    } catch {
+      setAttachErr('Impossible de lire cette photo.')
+      setTimeout(() => setAttachErr(null), 4000)
+    }
+  }, [])
+
+  // Ouvre l'appareil photo (natif : plugin Camera → direct ; sinon <input>).
+  const openCamera = useCallback(async () => {
+    const f = await pickNativePhoto('camera')
+    if (f) { void attachImageFile(f); return }
+    cameraRef.current?.click()
+  }, [attachImageFile])
+
+  // Ouvre la photothèque (natif : plugin Camera → DIRECT, sans feuille d'actions
+  // intermédiaire ; sinon <input type="file">).
+  const openPhotos = useCallback(async () => {
+    const f = await pickNativePhoto('photos')
+    if (f) { void attachImageFile(f); return }
+    photosRef.current?.click()
+  }, [attachImageFile])
+
   // ── Dictée vocale (Whisper) ──────────────────────────────────
   // L'enregistrement + la transcription sont gérés par VoiceOverlay
   // (getUserMedia + MediaRecorder + /api/stt). Ici : état + insertion du
@@ -24269,8 +24298,8 @@ export default function AIPanel({
                         if (!webSearchOn) setModel(m => (m === 'hermes' ? 'athena' : m))
                         toggleWebSearch()
                       }}
-                      onCamera={() => cameraRef.current?.click()}
-                      onPhotos={() => photosRef.current?.click()}
+                      onCamera={() => { void openCamera() }}
+                      onPhotos={() => { void openPhotos() }}
                       onFiles={() => filesRef.current?.click()}
                       onPickPhoto={url => { setPlusOpen(false); void handlePickRecentPhoto(url) }}
                       isMobile={!isDesktop}

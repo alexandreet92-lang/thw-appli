@@ -16,6 +16,7 @@ import { getCurrentUser } from "@/lib/auth/currentUser"
 import { useRouter } from 'next/navigation'
 import { useI18n } from '@/lib/i18n'
 import { pickNativePhoto } from '@/lib/native/photoPicker'
+import { isNativeApp } from '@/lib/native/platform'
 import { openUpgrade } from '@/components/subscription/UpgradeModal'
 import { parseAdvancedSpec, AdvancedChartCard } from '@/components/ai/AdvancedChart'
 import { createPortal } from 'react-dom'
@@ -21103,6 +21104,13 @@ export default function AIPanel({
 
   // ── Détection support voix ───────────────────────────────────
   useEffect(() => {
+    // ⚠️ App native (Capacitor / WKWebView) : accéder au micro (getUserMedia /
+    // SpeechRecognition) FAIT PLANTER l'app si Info.plist n'a pas
+    // NSMicrophoneUsageDescription, et la reco vocale est de toute façon peu
+    // fiable en WebView iOS. → On DÉSACTIVE la voix sur l'app native (les boutons
+    // vocaux n'apparaissent pas) : plus de crash. (Réactivable une fois la
+    // permission micro + une vraie solution audio native en place.)
+    if (isNativeApp()) { setSpeechSupported(false); setDictationSupported(false); return }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
     setSpeechSupported(!!SR && typeof window.speechSynthesis !== 'undefined')

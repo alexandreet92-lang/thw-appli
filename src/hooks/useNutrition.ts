@@ -126,19 +126,27 @@ export function useNutrition() {
 
   const load = useCallback(async () => {
     setLoading(true)
-    const __uid = await resolvePlanningUid(supabase)
-    if (!__uid) { setLoading(false); return }
+    // try/finally OBLIGATOIRE : sans ça, si une requête Supabase échoue (coupure
+    // réseau sur l'app native, timeout…), l'exception remontait et setLoading(false)
+    // n'était JAMAIS atteint → la page Nutrition restait bloquée sur « Chargement… ».
+    try {
+      const __uid = await resolvePlanningUid(supabase)
+      if (!__uid) return
 
-    const [planRes, logsRes, weightRes] = await Promise.all([
-      supabase.from('nutrition_plans').select('*').eq('user_id', __uid).eq('actif', true).order('created_at', { ascending: false }).limit(1),
-      supabase.from('nutrition_daily_logs').select('*').eq('user_id', __uid).gte('date', new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0]).order('date', { ascending: false }),
-      supabase.from('body_measurements').select('*').eq('user_id', __uid).order('measured_at', { ascending: false }),
-    ])
+      const [planRes, logsRes, weightRes] = await Promise.all([
+        supabase.from('nutrition_plans').select('*').eq('user_id', __uid).eq('actif', true).order('created_at', { ascending: false }).limit(1),
+        supabase.from('nutrition_daily_logs').select('*').eq('user_id', __uid).gte('date', new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0]).order('date', { ascending: false }),
+        supabase.from('body_measurements').select('*').eq('user_id', __uid).order('measured_at', { ascending: false }),
+      ])
 
-    setActivePlan(planRes.data?.[0] ?? null)
-    setDailyLogs((logsRes.data ?? []).map(r => ({ ...r, repas_details: (r.repas_details as Record<string, { consumed: boolean; note?: string }>) ?? {} })))
-    setWeightLogs(weightRes.data ?? [])
-    setLoading(false)
+      setActivePlan(planRes.data?.[0] ?? null)
+      setDailyLogs((logsRes.data ?? []).map(r => ({ ...r, repas_details: (r.repas_details as Record<string, { consumed: boolean; note?: string }>) ?? {} })))
+      setWeightLogs(weightRes.data ?? [])
+    } catch (e) {
+      console.error('[useNutrition] load', e)
+    } finally {
+      setLoading(false)
+    }
   }, [supabase])
 
   useEffect(() => { void load() }, [load])
@@ -187,15 +195,20 @@ export function useNutritionTemplates() {
 
   const load = useCallback(async () => {
     setLoading(true)
-    const __uid = await resolvePlanningUid(supabase)
-    if (!__uid) { setLoading(false); return }
-    const { data } = await supabase
-      .from('nutrition_meal_templates')
-      .select('*')
-      .eq('user_id', __uid)
-      .order('created_at', { ascending: false })
-    setTemplates((data ?? []) as MealTemplate[])
-    setLoading(false)
+    try {
+      const __uid = await resolvePlanningUid(supabase)
+      if (!__uid) return
+      const { data } = await supabase
+        .from('nutrition_meal_templates')
+        .select('*')
+        .eq('user_id', __uid)
+        .order('created_at', { ascending: false })
+      setTemplates((data ?? []) as MealTemplate[])
+    } catch (e) {
+      console.error('[useNutritionTemplates] load', e)
+    } finally {
+      setLoading(false)
+    }
   }, [supabase])
 
   useEffect(() => { void load() }, [load])

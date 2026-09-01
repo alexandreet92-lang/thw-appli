@@ -21122,6 +21122,12 @@ export default function AIPanel({
     setDictationSupported(!!navigator.mediaDevices?.getUserMedia && hasAudioCtx)
   }, [])
 
+  // Signale l'ouverture/fermeture du panneau IA (la bulle « Mon coach » s'y masque).
+  useEffect(() => {
+    try { window.dispatchEvent(new CustomEvent('thw:ai-open', { detail: open })) } catch { /* ignore */ }
+    return () => { try { window.dispatchEvent(new CustomEvent('thw:ai-open', { detail: false })) } catch { /* ignore */ } }
+  }, [open])
+
   // ── Keyboard shortcuts (F2) ───────────────────────────────────
   useEffect(() => {
     if (!open) return

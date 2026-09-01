@@ -65,7 +65,7 @@ export function UpgradeModalHost() {
         </div>
         {hidePrice ? (
           <>
-            <button onClick={() => { setOpen(false); void openWebsite('/settings/subscription') }}
+            <button onClick={() => { setOpen(false); void openWebsite('/site/abonnement-athlete.html') }}
               style={{ width: '100%', marginTop: 14, height: 46, borderRadius: 'var(--r-md)', border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontFamily: 'var(--font-body)', fontSize: 14.5, fontWeight: 700, cursor: 'pointer' }}>
               {t('native.manageSubOnWeb')} ↗
             </button>

@@ -400,16 +400,19 @@ function OffreBloc() {
   // c'est LA page « facturation » du site, jamais une page in-app. En natif on
   // l'ouvre dans le navigateur système (le paiement Stripe ne se fait pas in-app).
   const openBilling = async () => {
+    // On tente le portail Stripe (reçus/paiements). S'il n'est pas joignable
+    // (ex. WebView native → l'appel /api échouait avec « erreur réseau »), on
+    // OUVRE la page abonnement du SITE plutôt que d'afficher une erreur.
     try {
       const r = await fetch('/api/stripe/portal', { method: 'POST' })
-      const d = await r.json()
+      const d = await r.json().catch(() => null)
       if (d?.url) {
         const { openExternalUrl } = await import('@/lib/native/platform')
         await openExternalUrl(d.url)
-      } else {
-        alert(d?.error ?? t('w3c.portal_unavailable'))
+        return
       }
-    } catch { alert(t('w3c.network_error')) }
+    } catch { /* on retombe sur le site ci-dessous */ }
+    await openWebsite('/site/abonnement-coach.html')
   }
   return (
     <div>
@@ -421,7 +424,7 @@ function OffreBloc() {
               <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)', margin: 0 }}>{t('w1b.offre_coach')}</p>
               <p style={{ fontSize: 11.5, color: 'var(--text-dim)', margin: '2px 0 0' }}>{t('w1b.offre_coach_sub')}</p>
             </div>
-            <a href="/coach/subscription" style={{ textDecoration: 'none', padding: '8px 14px', borderRadius: 10, background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 13, fontWeight: 700, flexShrink: 0 }}>{t('w1b.manage')}</a>
+            <button onClick={() => void openWebsite('/site/abonnement-coach.html')} style={{ border: 'none', cursor: 'pointer', padding: '8px 14px', borderRadius: 10, background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 13, fontWeight: 700, flexShrink: 0 }}>{t('w1b.manage')}</button>
           </Line>
         </Group>
       </Section>

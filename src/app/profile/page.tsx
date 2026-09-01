@@ -1923,27 +1923,26 @@ function AbonnementContent() {
   }
 
   async function handleCancel() {
+    // Résiliation = via le PORTAIL STRIPE (c'est là que sont gérés les paiements
+    // et les résiliations). On ouvre le portail dans le navigateur système ;
+    // s'il n'est pas joignable (WebView native), on retombe sur la page abonnement
+    // du site. Plus de « ça ne fait rien ».
     setCancelling(true)
     setCancelError(null)
     try {
-      const cancelRes = await fetch('/api/subscription/cancel', { method: 'POST' })
-      if (!cancelRes.ok) {
-        // Échec réel de la résiliation : on prévient l'utilisateur au lieu de
-        // laisser croire que c'est fait (le portail Stripe reste le recours).
-        const err = await cancelRes.json().catch(() => ({})) as { error?: string }
-        setCancelError(err.error || t('profile.cancelFailed'))
+      const res = await fetch('/api/stripe/portal', { method: 'POST' })
+      const d = await res.json().catch(() => null) as { url?: string } | null
+      if (d?.url) {
+        const { openExternalUrl } = await import('@/lib/native/platform')
+        await openExternalUrl(d.url)
+        setCancelConfirm(false)
+        setCancelling(false)
         return
       }
-      // Reload details
-      const res = await fetch('/api/subscription/details')
-      const d = await res.json() as SubDetails
-      setDetails(d)
-      setCancelConfirm(false)
-    } catch {
-      setCancelError(t('profile.cancelFailed'))
-    } finally {
-      setCancelling(false)
-    }
+    } catch { /* on retombe sur le site ci-dessous */ }
+    try { await openWebsite('/site/abonnement-athlete.html'); setCancelConfirm(false) }
+    catch { setCancelError(t('profile.cancelFailed')) }
+    finally { setCancelling(false) }
   }
 
   const tier = details?.tier ?? 'trial'

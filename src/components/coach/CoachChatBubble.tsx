@@ -20,12 +20,23 @@ export function CoachChatBubble() {
   const [open, setOpen] = useState(false)
   const [selId, setSelId] = useState<string | null>(null)
   const [unread, setUnread] = useState(0)
+  const [aiOpen, setAiOpen] = useState(false)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  // Masque la bulle quand le panneau IA est ouvert (le panneau émet thw:ai-open).
+  useEffect(() => {
+    const on = (e: Event) => setAiOpen(!!(e as CustomEvent).detail)
+    window.addEventListener('thw:ai-open', on)
+    return () => window.removeEventListener('thw:ai-open', on)
+  }, [])
 
   // Côté COACH : la bulle liste les athlètes (getCoachThreads). Côté ATHLÈTE :
   // ses coachs (getAthleteThreads). La bulle apparaît donc AUSSI sur l'espace coach.
   const isCoachView = !!pathname && pathname.startsWith('/coach') && !pathname.startsWith('/coach/messages')
-  const hidden = !pathname || pathname.startsWith('/messages') || pathname.startsWith('/coach/messages') || pathname.startsWith('/record') || isFullscreenRoute(pathname) || pathname.startsWith('/topup')
+  // Masquée sur : messagerie, record, plein écran, topup, RÉGLAGES (athlète &
+  // coach) et quand l'IA est ouverte (pour ne pas gêner ces écrans).
+  const inSettings = !!pathname && (pathname.startsWith('/parametres') || pathname.startsWith('/settings') || pathname.startsWith('/coach/settings'))
+  const hidden = !pathname || aiOpen || inSettings || pathname.startsWith('/messages') || pathname.startsWith('/coach/messages') || pathname.startsWith('/record') || isFullscreenRoute(pathname) || pathname.startsWith('/topup')
 
   const loadThreads = useCallback(async () => {
     try { const t = isCoachView ? await getCoachThreads() : await getAthleteThreads(); setThreads(t); if (t.length === 1) setSelId(t[0].otherId) }

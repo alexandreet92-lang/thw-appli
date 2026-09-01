@@ -922,8 +922,23 @@ function NotificationsBloc() {
   const [globalOn, setGlobalOn] = useState(true)
   const [prefs, setPrefs] = useState<Record<string, boolean>>(NOTIF_DEFAULTS)
 
+  // Persistance LOCALE (miroir) : sur l'app native, l'appel PATCH peut échouer
+  // ponctuellement (réseau/token) et faisait « repartir » l'interrupteur à son
+  // état précédent. On mémorise donc le choix EN LOCAL immédiatement → il ne
+  // revient plus en arrière, et on tente la sauvegarde serveur en arrière-plan.
+  const LS_PREFS = 'thw_notif_prefs'
+  const LS_GLOBAL = 'thw_notif_global'
+
   useEffect(() => {
     let alive = true
+    // 1) Choix locaux d'abord (instantané, survit même si l'API est injoignable).
+    try {
+      const rawG = localStorage.getItem(LS_GLOBAL)
+      if (rawG === '0' || rawG === '1') setGlobalOn(rawG === '1')
+      const rawP = localStorage.getItem(LS_PREFS)
+      if (rawP) { const p = JSON.parse(rawP) as Record<string, boolean>; if (p && typeof p === 'object') setPrefs(prev => ({ ...prev, ...p })) }
+    } catch { /* localStorage indispo */ }
+    // 2) Puis on réconcilie avec le serveur si joignable (le serveur fait foi).
     void (async () => {
       try {
         const res = await fetch('/api/notifications/preferences')
@@ -932,27 +947,35 @@ function NotificationsBloc() {
         if (!alive) return
         setGlobalOn(j.global_enabled ?? true)
         setPrefs({ ...NOTIF_DEFAULTS, ...(j.preferences ?? {}) })
-      } catch { /* garde les défauts */ }
+      } catch { /* garde les choix locaux / défauts */ }
     })()
     return () => { alive = false }
   }, [])
 
-  const patch = (body: { global_enabled?: boolean; preferences?: Record<string, boolean> }, rollback: () => void) => {
+  // Sauvegarde serveur best-effort. On NE remet PLUS l'interrupteur en arrière
+  // en cas d'échec : le choix reste appliqué (miroir local) et sera resynchro
+  // à la prochaine ouverture si le serveur diffère.
+  const patch = (body: { global_enabled?: boolean; preferences?: Record<string, boolean> }) => {
     void fetch('/api/notifications/preferences', {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
-    }).then(r => { if (!r.ok) rollback() }).catch(rollback)
+    }).catch(() => { /* réessayé implicitement à la prochaine bascule / ouverture */ })
   }
 
   const toggleItem = (key: string) => {
     const next = !(prefs[key] ?? NOTIF_DEFAULTS[key])
-    setPrefs(p => ({ ...p, [key]: next }))
-    patch({ preferences: { [key]: next } }, () => setPrefs(p => ({ ...p, [key]: !next })))
+    setPrefs(p => {
+      const merged = { ...p, [key]: next }
+      try { localStorage.setItem(LS_PREFS, JSON.stringify(merged)) } catch { /* ignore */ }
+      return merged
+    })
+    patch({ preferences: { [key]: next } })
   }
 
   const toggleGlobal = () => {
     const next = !globalOn
     setGlobalOn(next)
-    patch({ global_enabled: next }, () => setGlobalOn(!next))
+    try { localStorage.setItem(LS_GLOBAL, next ? '1' : '0') } catch { /* ignore */ }
+    patch({ global_enabled: next })
   }
 
   return (

@@ -256,11 +256,13 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
               en dégradé), sous les bulles (z 4 < 5) donc les boutons restent nets.
               pointerEvents:none → n'intercepte aucun tap. */}
           {!isRecord && <>
-            {/* Bande HAUTE : OPAQUE (couleur de fond pleine), jamais transparente —
-                on ne voit pas le contenu défiler à travers. Dégradé de fond plein
-                → transparent (pas de flou) : plein en haut, fondu vers le contenu. */}
-            <div aria-hidden style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 'calc(env(safe-area-inset-top) + 46px)', pointerEvents: 'none', zIndex: 4, background: 'linear-gradient(to bottom, var(--bg) 0%, var(--bg) 62%, transparent 100%)' }} />
-            <div aria-hidden style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 'calc(env(safe-area-inset-bottom) + 62px)', pointerEvents: 'none', zIndex: 4, backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', WebkitMaskImage: 'linear-gradient(to top, #000 40%, transparent)', maskImage: 'linear-gradient(to top, #000 40%, transparent)' }} />
+            {/* Bandes VERRE DÉPOLI (façon barre iOS) en HAUT et en BAS : teinte
+                --glass-bg (50 % opaque) → la bande est PLEINE (jamais vide/see-
+                through, même tout en haut) + flou du contenu qui défile dessous.
+                Masque en dégradé sur le bord intérieur → fondu doux, pas de coupe
+                nette. z 4 < 5 (les boutons restent nets), pointerEvents:none. */}
+            <div aria-hidden style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 'calc(env(safe-area-inset-top) + 52px)', pointerEvents: 'none', zIndex: 4, background: 'var(--glass-bg)', backdropFilter: 'blur(16px) saturate(1.3)', WebkitBackdropFilter: 'blur(16px) saturate(1.3)', WebkitMaskImage: 'linear-gradient(to bottom, #000 60%, transparent)', maskImage: 'linear-gradient(to bottom, #000 60%, transparent)' }} />
+            <div aria-hidden style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 'calc(env(safe-area-inset-bottom) + 64px)', pointerEvents: 'none', zIndex: 4, background: 'var(--glass-bg)', backdropFilter: 'blur(16px) saturate(1.3)', WebkitBackdropFilter: 'blur(16px) saturate(1.3)', WebkitMaskImage: 'linear-gradient(to top, #000 46%, transparent)', maskImage: 'linear-gradient(to top, #000 46%, transparent)' }} />
           </>}
           <button aria-label={t('shared.menu')} onClick={() => settle(!open)} style={{ ...fab, ...(isRecord ? { background: 'var(--bg)', border: '1px solid var(--border)' } : null), left: 12, borderRadius: 12, flexDirection: 'column', gap: 4 }}>
             {[0, 1, 2].map(i => <span key={i} style={{ width: 17, height: 1.6, background: 'var(--text)', borderRadius: 2 }} />)}

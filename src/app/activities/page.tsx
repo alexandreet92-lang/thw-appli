@@ -7792,7 +7792,7 @@ conseil pour la prochaine séance similaire.`
                 padding: '10px 12px', borderBottom: '1px solid var(--info-border)',
                 animation: 'thwHeadFade 0.22s ease',
               }}>
-                <button onClick={onClose} aria-label={t('actp.back')} style={{ width: 38, height: 38, borderRadius: '50%', border: 'none', background: 'transparent', color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
+                <button onClick={() => setSheetPos('mid')} aria-label={t('actp.back')} style={{ width: 38, height: 38, borderRadius: '50%', border: 'none', background: 'transparent', color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
                   <ChevronDown size={24} strokeWidth={2.4} />
                 </button>
                 <span style={{ flex: 1, textAlign: 'center', fontSize: 17, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>

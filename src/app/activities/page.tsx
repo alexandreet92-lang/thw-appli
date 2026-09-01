@@ -7807,9 +7807,9 @@ conseil pour la prochaine séance similaire.`
                 <span style={{ flex: 1, textAlign: 'center', fontSize: 17, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {sportLabel(a.sport_type, t)}
                 </span>
-                <button onClick={() => shareThisActivity()} aria-label={t('actp.share')} style={{ width: 38, height: 38, borderRadius: '50%', border: 'none', background: 'transparent', color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>
-                </button>
+                {/* Le partage est déjà dans l'en-tête de contenu (à côté de « Modifier ») :
+                    on retire le doublon ici. Spacer 38px pour garder le titre centré. */}
+                <div aria-hidden style={{ width: 38, height: 38, flexShrink: 0 }} />
               </div>
             ) : (
               <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0 8px' }}>

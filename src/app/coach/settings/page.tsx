@@ -17,6 +17,7 @@ import { User, CreditCard, Users, Sparkles, Share2, ClipboardList, Bell, Sliders
 import { useProfile } from '@/hooks/useProfile'
 import { SlideView } from '@/components/ui/SlideView'
 import { useI18n } from '@/lib/i18n'
+import { openWebsite } from '@/lib/native/platform'
 
 // ── Fonds « façon Claude » (identiques à ProfileContent) ─────────────
 const GREY_CARD = 'color-mix(in srgb, var(--text) 6%, var(--bg))'
@@ -385,8 +386,8 @@ function DataBloc() {
         <Group>
           {/* « Journal d'accès aux données » : fonctionnalité in-app non encore
               construite (aucune page) → masquée tant qu'elle n'existe pas. */}
-          <LinkRow first label={t('w1b.link_export')} sub={t('w1b.link_export_sub')} onClick={() => window.open('/site/exporter-mes-donnees.html', '_blank', 'noopener')} />
-          <LinkRow label={t('w1b.link_privacy')} sub={t('w1b.link_privacy_sub')} onClick={() => window.open('/site/confidentialite.html', '_blank', 'noopener')} />
+          <LinkRow first label={t('w1b.link_export')} sub={t('w1b.link_export_sub')} onClick={() => void openWebsite('/site/exporter-mes-donnees.html')} />
+          <LinkRow label={t('w1b.link_privacy')} sub={t('w1b.link_privacy_sub')} onClick={() => void openWebsite('/site/confidentialite.html')} />
         </Group>
       </Section>
     </div>
@@ -426,7 +427,7 @@ function OffreBloc() {
       </Section>
       <Section label={t('w1b.sec_billing')}>
         <Group>
-          <LinkRow first label={t('w1b.link_token_packs')} sub={t('w1b.link_token_packs_sub')} onClick={() => window.open('/site/recharge-tokens.html', '_blank', 'noopener')} />
+          <LinkRow first label={t('w1b.link_token_packs')} sub={t('w1b.link_token_packs_sub')} onClick={() => void openWebsite('/site/recharge-tokens.html')} />
           <LinkRow label={t('w1b.link_billing_history')} sub={t('w1b.link_billing_history_sub')} onClick={() => { void openBilling() }} />
         </Group>
       </Section>

@@ -7,7 +7,7 @@ import { I18nProvider } from '@/lib/i18n'
 import { CallProvider } from '@/components/community/call/CallProvider'
 import { CallBubble } from '@/components/community/call/CallBubble'
 import { installNativeApiFetch } from '@/lib/native/apiFetch'
-import { isNativeApp } from '@/lib/native/platform'
+import { isNativeApp, openWebsite } from '@/lib/native/platform'
 import { createClient } from '@/lib/supabase/client'
 
 interface ClientShellProps {
@@ -43,6 +43,30 @@ export function ClientShell({ children }: ClientShellProps) {
         navigator.serviceWorker.register('/sw.js').catch(() => { /* ignore */ })
       }
     }
+  }, [])
+
+  // App native : les liens vers le SITE (/site/*.html, ou target="_blank") ne
+  // s'ouvrent PAS dans la WebView Capacitor (window.open / _blank inertes). On
+  // intercepte tout clic sur ces liens et on ouvre le site dans le navigateur
+  // système (via openWebsite → Capacitor Browser). No-op total sur le web.
+  useEffect(() => {
+    if (!isNativeApp()) return
+    const onClick = (e: MouseEvent) => {
+      const el = (e.target as HTMLElement | null)?.closest?.('a[href]') as HTMLAnchorElement | null
+      if (!el) return
+      const href = el.getAttribute('href') || ''
+      const isSite = href.startsWith('/site/')
+      const isExternal = /^https?:\/\//i.test(href)
+      const isBlank = el.target === '_blank'
+      if (isSite || (isExternal && isBlank)) {
+        e.preventDefault()
+        // Chemin relatif → openWebsite (préfixe le domaine) ; URL absolue → telle quelle.
+        if (isExternal) { void import('@/lib/native/platform').then(m => m.openExternalUrl(href)) }
+        else { void openWebsite(href) }
+      }
+    }
+    document.addEventListener('click', onClick, true)
+    return () => document.removeEventListener('click', onClick, true)
   }, [])
 
   // App native : retour d'OAuth (Google/Apple) via le lien com.thehybridway.app://

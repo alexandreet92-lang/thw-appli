@@ -14,7 +14,12 @@ const config: CapacitorConfig = {
   ios: {
     // Fond de la webview cohérent avec le thème sombre (évite un flash blanc).
     backgroundColor: '#0b0b0f',
-    contentInset: 'always',
+    // 'never' = webview EDGE-TO-EDGE. Les marges (encoche / home indicator) sont
+    // gérées par le CSS via env(safe-area-inset-*) — que l'app utilise déjà
+    // partout (barre d'onglets, contenu, écrans record). Avec 'always', iOS
+    // insérait le contenu et laissait apparaître le fond NOIR du webview en bas
+    // (bandes noires) : c'était la cause du « coupé en bas ».
+    contentInset: 'never',
   },
   plugins: {
     // Écran de démarrage : court, sans spinner (le bundle local démarre vite).

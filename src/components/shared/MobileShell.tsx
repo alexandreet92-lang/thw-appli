@@ -250,9 +250,15 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
           boxShadow: open ? '-8px 0 48px rgba(0,0,0,0.12)' : 'none',
           transition: reduce ? 'none' : MOTION }}>
         {!hideHeader && <>
-          {/* Plus AUCUNE bande/overlay en haut : les boutons flottent directement
-              au-dessus du contenu (qui défile jusqu'au bord). Sur fond vide, une
-              bande translucide ressemblait à un « bloc » noir/blanc → supprimée. */}
+          {/* Fondu/flou aux bords haut & bas (façon « Ma vitrine ») : le contenu
+              qui défile se floute PROGRESSIVEMENT sous les bulles (haut) et la
+              barre d'onglets (bas), au lieu d'être coupé net. Bandes fines (mask
+              en dégradé), sous les bulles (z 4 < 5) donc les boutons restent nets.
+              pointerEvents:none → n'intercepte aucun tap. */}
+          {!isRecord && <>
+            <div aria-hidden style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 'calc(env(safe-area-inset-top) + 46px)', pointerEvents: 'none', zIndex: 4, backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', WebkitMaskImage: 'linear-gradient(to bottom, #000 55%, transparent)', maskImage: 'linear-gradient(to bottom, #000 55%, transparent)' }} />
+            <div aria-hidden style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 'calc(env(safe-area-inset-bottom) + 62px)', pointerEvents: 'none', zIndex: 4, backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', WebkitMaskImage: 'linear-gradient(to top, #000 40%, transparent)', maskImage: 'linear-gradient(to top, #000 40%, transparent)' }} />
+          </>}
           <button aria-label={t('shared.menu')} onClick={() => settle(!open)} style={{ ...fab, ...(isRecord ? { background: 'var(--bg)', border: '1px solid var(--border)' } : null), left: 12, borderRadius: 12, flexDirection: 'column', gap: 4 }}>
             {[0, 1, 2].map(i => <span key={i} style={{ width: 17, height: 1.6, background: 'var(--text)', borderRadius: 2 }} />)}
           </button>

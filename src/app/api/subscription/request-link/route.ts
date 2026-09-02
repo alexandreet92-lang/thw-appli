@@ -9,12 +9,14 @@ import { Resend } from 'resend'
 export const dynamic = 'force-dynamic'
 
 const APP_BASE = process.env.APP_BASE_URL ?? 'https://thw-appli.vercel.app'
-// Destinations (surchargables par variables d'env quand les pages du site sont prêtes).
-// On distingue ATHLÈTE (grille tarifaire) et COACH (espace coach) : le lien mène
-// directement au bon type d'abonnement.
-const CHANGE_URL_ATHLETE = process.env.SUBSCRIPTION_CHANGE_URL ?? `${APP_BASE}/site/abonnement-athlete.html`
-const CHANGE_URL_COACH = process.env.SUBSCRIPTION_CHANGE_URL_COACH ?? `${APP_BASE}/site/abonnement-coach.html`
-const CANCEL_URL = process.env.SUBSCRIPTION_CANCEL_URL ?? `${APP_BASE}/site/conditions-utilisation.html#resiliation`
+// Le lien mène toujours à l'ESPACE COMPTE du site (compte.html) : la personne
+// s'y connecte (connexion d'abord), voit SES données réelles, puis change ou
+// résilie son abonnement via Stripe depuis cette page unique. Surchargables par
+// variables d'env si besoin.
+const ACCOUNT_URL = process.env.SUBSCRIPTION_ACCOUNT_URL ?? `${APP_BASE}/site/compte.html`
+const CHANGE_URL_ATHLETE = process.env.SUBSCRIPTION_CHANGE_URL ?? ACCOUNT_URL
+const CHANGE_URL_COACH = process.env.SUBSCRIPTION_CHANGE_URL_COACH ?? ACCOUNT_URL
+const CANCEL_URL = process.env.SUBSCRIPTION_CANCEL_URL ?? ACCOUNT_URL
 const LOGO_URL = process.env.EMAIL_LOGO_URL ?? 'https://thw-appli.vercel.app/branding/logo-thw-light.png'
 
 type Action = 'change' | 'cancel'

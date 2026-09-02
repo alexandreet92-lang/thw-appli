@@ -18,6 +18,7 @@ import { useProfile } from '@/hooks/useProfile'
 import { SlideView } from '@/components/ui/SlideView'
 import { useI18n } from '@/lib/i18n'
 import { openWebsite } from '@/lib/native/platform'
+import SubscriptionEmailModal from '@/components/subscription/SubscriptionEmailModal'
 
 // ── Fonds « façon Claude » (identiques à ProfileContent) ─────────────
 const GREY_CARD = 'color-mix(in srgb, var(--text) 6%, var(--bg))'
@@ -396,26 +397,13 @@ function DataBloc() {
 
 function OffreBloc() {
   const { t } = useI18n()
-  // Ouvre le portail de facturation Stripe (reçus / paiements / historique) —
-  // c'est LA page « facturation » du site, jamais une page in-app. En natif on
-  // l'ouvre dans le navigateur système (le paiement Stripe ne se fait pas in-app).
-  const openBilling = async () => {
-    // On tente le portail Stripe (reçus/paiements). S'il n'est pas joignable
-    // (ex. WebView native → l'appel /api échouait avec « erreur réseau »), on
-    // OUVRE la page abonnement du SITE plutôt que d'afficher une erreur.
-    try {
-      const r = await fetch('/api/stripe/portal', { method: 'POST' })
-      const d = await r.json().catch(() => null)
-      if (d?.url) {
-        const { openExternalUrl } = await import('@/lib/native/platform')
-        await openExternalUrl(d.url)
-        return
-      }
-    } catch { /* on retombe sur l'espace facturation ci-dessous */ }
-    // Portail Stripe injoignable → on ouvre l'espace abonnement/facturation du
-    // compte (login d'abord, puis SES reçus et paiements), pas la page marketing.
-    await openWebsite('/settings/subscription')
-  }
+  // « Gérer » n'ouvre JAMAIS une page directement (règle App Store) : on envoie
+  // un email avec un lien sécurisé vers l'espace compte du site.
+  const [emailModal, setEmailModal] = useState(false)
+  // « Historique de facturation » : consultation → on ouvre directement l'espace
+  // compte du SITE (connexion d'abord, puis SES factures réelles). Jamais une
+  // page in-app.
+  const openBilling = () => { void openWebsite('/site/compte.html') }
   return (
     <div>
       <Intro>{t('w1b.offre_intro')}</Intro>
@@ -426,16 +414,17 @@ function OffreBloc() {
               <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)', margin: 0 }}>{t('w1b.offre_coach')}</p>
               <p style={{ fontSize: 11.5, color: 'var(--text-dim)', margin: '2px 0 0' }}>{t('w1b.offre_coach_sub')}</p>
             </div>
-            <button onClick={() => void openWebsite('/coach/subscription')} style={{ border: 'none', cursor: 'pointer', padding: '8px 14px', borderRadius: 10, background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 13, fontWeight: 700, flexShrink: 0 }}>{t('w1b.manage')}</button>
+            <button onClick={() => setEmailModal(true)} style={{ border: 'none', cursor: 'pointer', padding: '8px 14px', borderRadius: 10, background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 13, fontWeight: 700, flexShrink: 0 }}>{t('w1b.manage')}</button>
           </Line>
         </Group>
       </Section>
       <Section label={t('w1b.sec_billing')}>
         <Group>
           <LinkRow first label={t('w1b.link_token_packs')} sub={t('w1b.link_token_packs_sub')} onClick={() => void openWebsite('/site/recharge-tokens.html')} />
-          <LinkRow label={t('w1b.link_billing_history')} sub={t('w1b.link_billing_history_sub')} onClick={() => { void openBilling() }} />
+          <LinkRow label={t('w1b.link_billing_history')} sub={t('w1b.link_billing_history_sub')} onClick={openBilling} />
         </Group>
       </Section>
+      {emailModal && <SubscriptionEmailModal action="change" plan="coach" onClose={() => setEmailModal(false)} />}
     </div>
   )
 }

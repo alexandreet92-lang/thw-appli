@@ -8,7 +8,8 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useI18n } from '@/lib/i18n'
-import { hidePricing, openWebsite } from '@/lib/native/platform'
+import { hidePricing } from '@/lib/native/platform'
+import SubscriptionEmailModal from '@/components/subscription/SubscriptionEmailModal'
 
 const EVT = 'thw:upgrade'
 
@@ -23,6 +24,7 @@ export function UpgradeModalHost() {
   const { t } = useI18n()
   const [reason, setReason] = useState<string | null>(null)
   const [open, setOpen] = useState(false)
+  const [emailModal, setEmailModal] = useState(false)
   const hidePrice = hidePricing()
 
   useEffect(() => {
@@ -34,7 +36,12 @@ export function UpgradeModalHost() {
     return () => window.removeEventListener(EVT, on)
   }, [])
 
-  if (!open) return null
+  if (!open && !emailModal) return null
+
+  // Modale email ouverte (natif) → on remplace l'upsell par l'envoi du lien.
+  if (emailModal) {
+    return <SubscriptionEmailModal action="change" plan="athlete" onClose={() => { setEmailModal(false); setOpen(false) }} />
+  }
 
   const perks = [
     t('w3c.upgrade_perk_1'),
@@ -65,9 +72,9 @@ export function UpgradeModalHost() {
         </div>
         {hidePrice ? (
           <>
-            <button onClick={() => { setOpen(false); void openWebsite('/settings/subscription') }}
+            <button onClick={() => { setEmailModal(true) }}
               style={{ width: '100%', marginTop: 14, height: 46, borderRadius: 'var(--r-md)', border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontFamily: 'var(--font-body)', fontSize: 14.5, fontWeight: 700, cursor: 'pointer' }}>
-              {t('native.manageSubOnWeb')} ↗
+              {t('w3c.upgrade_see_offers')} ✉
             </button>
             <button onClick={() => setOpen(false)} style={{ width: '100%', marginTop: 10, height: 42, borderRadius: 'var(--r-md)', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-mid)', fontFamily: 'var(--font-body)', fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}>
               {t('w3c.close')}

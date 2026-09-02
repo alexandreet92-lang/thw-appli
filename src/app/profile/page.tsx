@@ -1942,7 +1942,7 @@ function AbonnementContent() {
     } catch { /* on retombe sur l'espace abonnement ci-dessous */ }
     // Portail Stripe injoignable → espace abonnement du compte (login-first),
     // d'où l'utilisateur gère/résilie, plutôt que la page marketing publique.
-    try { await openWebsite('/settings/subscription'); setCancelConfirm(false) }
+    try { await openWebsite('/site/compte.html'); setCancelConfirm(false) }
     catch { setCancelError(t('profile.cancelFailed')) }
     finally { setCancelling(false) }
   }
@@ -2101,7 +2101,7 @@ function AbonnementContent() {
                 <span style={{ flex: 1, fontSize: 15, fontWeight: 500, color: 'var(--text)' }}>Changer d&apos;abonnement</span>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="2" strokeLinecap="round"><path d="M9 18l6-6-6-6"/></svg>
               </button>
-              <button onClick={() => void handlePortal()} disabled={portalLoading} style={{ display: 'flex', alignItems: 'center', width: '100%', textAlign: 'left', padding: '15px 16px', background: 'transparent', border: 'none', borderTop: '1px solid var(--border)', cursor: 'pointer' }}>
+              <button onClick={() => setSubEmail('cancel')} style={{ display: 'flex', alignItems: 'center', width: '100%', textAlign: 'left', padding: '15px 16px', background: 'transparent', border: 'none', borderTop: '1px solid var(--border)', cursor: 'pointer' }}>
                 <span style={{ flex: 1, fontSize: 15, fontWeight: 500, color: '#ef4444' }}>Résilier l&apos;abonnement</span>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="2" strokeLinecap="round"><path d="M9 18l6-6-6-6"/></svg>
               </button>
@@ -2454,7 +2454,7 @@ export function IASettingsBloc() {
                     {p.features.map((f,i)=><div key={i} style={{ display:'flex', alignItems:'center', gap:7 }}><span style={{ color:p.color, fontSize:11 }}>✓</span><span style={{ fontSize:12, color:'var(--text-mid)' }}>{t('profile.plan.'+p.id+'.feat'+i)}</span></div>)}
                   </div>
                   {hidePrice ? (
-                    <button onClick={() => void openWebsite('/settings/subscription')}
+                    <button onClick={() => void openWebsite('/site/compte.html')}
                       style={{ width:'100%', padding:'9px', borderRadius:10, background:'var(--bg-card2)', border:'1px solid var(--border)', color:'var(--text-mid)', fontFamily:'var(--font-display)', fontWeight:700, fontSize:12, cursor:'pointer' }}>
                       {t('native.manageSubOnWeb')} ↗
                     </button>

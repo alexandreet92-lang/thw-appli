@@ -75,7 +75,7 @@ export default function SelectPlanPage() {
             </div>
             {hidePrice ? (
               <button
-                onClick={()=>void openWebsite('/settings/subscription')}
+                onClick={()=>void openWebsite('/site/compte.html')}
                 style={{ width:'100%', padding:'12px', borderRadius:11, background:'var(--bg-card2)', border:'1px solid var(--border)', color:'var(--text-mid)', fontFamily:'Syne,sans-serif', fontWeight:700, fontSize:13, cursor:'pointer' }}>
                 {t('native.manageSubOnWeb')} ↗
               </button>

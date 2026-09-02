@@ -45,8 +45,8 @@ export const TIER_LIMITS = {
   // Essai 14 jours — mêmes capacités que Premium
   trial: {
     // ── IA ──────────────────────────────────────────────────────
-    messages_per_month: 30,
-    messages_per_conversation: 15,
+    messages_per_month: Infinity,       // limité par les tokens (120k en essai)
+    messages_per_conversation: Infinity,
     plans_per_month: 2,
     tool_use_per_month: 50,
     nutrition_plans_per_month: 1,
@@ -77,8 +77,8 @@ export const TIER_LIMITS = {
 
   premium: {
     // ── IA ──────────────────────────────────────────────────────
-    messages_per_month: 30,             // messages chat + micro_agents combinés
-    messages_per_conversation: 15,
+    messages_per_month: Infinity,       // PAS de limite au nombre de messages :
+    messages_per_conversation: Infinity, // c'est le budget de TOKENS qui plafonne.
     plans_per_month: 2,
     tool_use_per_month: 50,
     nutrition_plans_per_month: 1,
@@ -109,8 +109,8 @@ export const TIER_LIMITS = {
 
   pro: {
     // ── IA ──────────────────────────────────────────────────────
-    messages_per_month: 100,
-    messages_per_conversation: 25,
+    messages_per_month: Infinity,       // limité par les tokens (3 M / mois)
+    messages_per_conversation: Infinity,
     plans_per_month: 6,
     tool_use_per_month: 150,
     nutrition_plans_per_month: 3,
@@ -141,8 +141,8 @@ export const TIER_LIMITS = {
 
   expert: {
     // ── IA (soft caps) ───────────────────────────────────────────
-    messages_per_month: 300,
-    messages_per_conversation: 50,
+    messages_per_month: Infinity,       // limité par les tokens (8 M / mois)
+    messages_per_conversation: Infinity,
     plans_per_month: 20,
     tool_use_per_month: 400,
     nutrition_plans_per_month: 10,

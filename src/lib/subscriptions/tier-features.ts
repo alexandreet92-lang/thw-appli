@@ -15,17 +15,19 @@ export interface TierFeatureRow {
   values: Record<DisplayTier, string | boolean>
 }
 
-/** Tableau comparatif complet (lignes = fonctions, colonnes = formules). */
+// Perks INCLUS DANS TOUTES les formules (pas de différence entre elles) — mis en
+// avant sur la fiche du plan et l'animation d'activation.
+export const UNIVERSAL_PERKS: string[] = [
+  'Messages IA illimités (seul le budget de tokens compte)',
+  'Tous les modèles IA — Hermès, Athéna et Zeus',
+]
+
+/** Tableau comparatif : uniquement ce qui DIFFÈRE entre les formules. */
 export const TIER_FEATURES: TierFeatureRow[] = [
-  { label: 'Messages IA / mois',          values: { premium: '30',      pro: '100',       expert: '300'        } },
-  { label: 'Modèle IA',                   values: { premium: 'Hermès',  pro: 'Athéna',    expert: 'Zeus'       } },
   { label: 'Tokens IA / mois',            values: { premium: '700 k',   pro: '3 M',       expert: '8 M'        } },
   { label: "Plans d'entraînement / mois", values: { premium: '2',       pro: '6',         expert: '20'         } },
   { label: 'Plans nutrition / mois',      values: { premium: '1',       pro: '3',         expert: '10'         } },
   { label: 'Actions outils IA / mois',    values: { premium: '50',      pro: '150',       expert: '400'        } },
-  { label: 'Briefings',                   values: { premium: '4 / sem', pro: 'Quotidien', expert: 'Quotidien'  } },
-  { label: 'Recherche web (briefing)',    values: { premium: false,     pro: true,        expert: true         } },
-  { label: 'Compétitions suivies',        values: { premium: '3',       pro: '7',         expert: '20'         } },
   { label: 'Historique activités',        values: { premium: '6 mois',  pro: '24 mois',   expert: 'Illimité'   } },
   { label: 'Historique conversations',    values: { premium: '90 j',    pro: '180 j',     expert: 'Illimité'   } },
   { label: 'Sync Strava / mois',          values: { premium: '100',     pro: 'Illimité',  expert: 'Illimité'   } },
@@ -56,7 +58,7 @@ export const TIER_TAGLINE: Record<DisplayTier, string> = {
  * texte non vide) et on formate « Label : valeur ».
  */
 export function featuresForTier(tier: DisplayTier): string[] {
-  const out: string[] = []
+  const out: string[] = [...UNIVERSAL_PERKS]
   for (const row of TIER_FEATURES) {
     const v = row.values[tier]
     if (v === false || v === '' || v == null) continue

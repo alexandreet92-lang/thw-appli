@@ -21,13 +21,17 @@ export function CoachChatBubble() {
   const [selId, setSelId] = useState<string | null>(null)
   const [unread, setUnread] = useState(0)
   const [aiOpen, setAiOpen] = useState(false)
+  const [sheetOpen, setSheetOpen] = useState(false)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
-  // Masque la bulle quand le panneau IA est ouvert (le panneau émet thw:ai-open).
+  // Masque la bulle quand le panneau IA (thw:ai-open) ou un panneau réglages
+  // (thw:sheet-open) est ouvert.
   useEffect(() => {
-    const on = (e: Event) => setAiOpen(!!(e as CustomEvent).detail)
-    window.addEventListener('thw:ai-open', on)
-    return () => window.removeEventListener('thw:ai-open', on)
+    const onAi = (e: Event) => setAiOpen(!!(e as CustomEvent).detail)
+    const onSheet = (e: Event) => setSheetOpen(!!(e as CustomEvent).detail)
+    window.addEventListener('thw:ai-open', onAi)
+    window.addEventListener('thw:sheet-open', onSheet)
+    return () => { window.removeEventListener('thw:ai-open', onAi); window.removeEventListener('thw:sheet-open', onSheet) }
   }, [])
 
   // Côté COACH : la bulle liste les athlètes (getCoachThreads). Côté ATHLÈTE :
@@ -36,7 +40,7 @@ export function CoachChatBubble() {
   // Masquée sur : messagerie, record, plein écran, topup, RÉGLAGES (athlète &
   // coach) et quand l'IA est ouverte (pour ne pas gêner ces écrans).
   const inSettings = !!pathname && (pathname.startsWith('/parametres') || pathname.startsWith('/settings') || pathname.startsWith('/coach/settings'))
-  const hidden = !pathname || aiOpen || inSettings || pathname.startsWith('/messages') || pathname.startsWith('/coach/messages') || pathname.startsWith('/record') || isFullscreenRoute(pathname) || pathname.startsWith('/topup')
+  const hidden = !pathname || aiOpen || sheetOpen || inSettings || pathname.startsWith('/messages') || pathname.startsWith('/coach/messages') || pathname.startsWith('/record') || isFullscreenRoute(pathname) || pathname.startsWith('/topup')
 
   const loadThreads = useCallback(async () => {
     try { const t = isCoachView ? await getCoachThreads() : await getAthleteThreads(); setThreads(t); if (t.length === 1) setSelId(t[0].otherId) }

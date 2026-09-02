@@ -113,6 +113,11 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener('thw:open-coach-settings', open)
   }, [])
   useEffect(() => { setCoachSettingsOpen(false) }, [pathname])
+  // Signale l'ouverture d'un panneau réglages (profil / réglages coach) → la
+  // bulle « Mon coach » s'y masque (comme sur l'IA).
+  useEffect(() => {
+    try { window.dispatchEvent(new CustomEvent('thw:sheet-open', { detail: profileOpen || coachSettingsOpen })) } catch { /* ignore */ }
+  }, [profileOpen, coachSettingsOpen])
   // « Envoyer un message » ouvert en sur-page (depuis le menu Plus / la sidebar).
   useEffect(() => {
     // Garde viewport : DesktopShell écoute aussi cet event (les deux shells sont

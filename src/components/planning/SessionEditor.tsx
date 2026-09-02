@@ -5227,6 +5227,15 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
           initialSport="run" lockSport onClose={cancelBrickNew} onSave={saveBrickNewRun} />
       )}
 
+      {/* Placeholder du titre bien visible : sinon on ne repère pas que c'est
+          un champ éditable (retour utilisateur : « titre difficile à voir »). */}
+      <style>{`
+        .sed-title-in::placeholder { color: var(--text-mid); opacity: 0.9; font-weight: 600; }
+        .sed-title-in::-webkit-input-placeholder { color: var(--text-mid); opacity: 0.9; font-weight: 600; }
+        .sed-title-main { border-bottom: 1px dashed var(--border) !important; padding-bottom: 3px !important; }
+        .sed-title-main:focus { border-bottom-color: var(--brand, var(--primary)) !important; border-bottom-style: solid !important; }
+      `}</style>
+
       {/* Backdrop */}
       <div onClick={onClose} style={{
         position: 'fixed' as const, inset: 0, zIndex: 998,
@@ -5266,6 +5275,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
           </div>
 
           <input
+            className="sed-title-in"
             value={title}
             onChange={e => setTitle(e.target.value)}
             placeholder={`${SPORT_LABEL[sport]} ${trainingTypes.join('+')}`}
@@ -5316,7 +5326,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
         <div style={{ padding: mobile ? '14px 16px 14px' : '18px 24px 16px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 12 }}>
           <span style={{ width: 11, height: 11, borderRadius: '50%', background: accent, flexShrink: 0 }} />
           <div style={{ flex: 1, minWidth: 0 }}>
-            <input value={title} onChange={e => setTitle(e.target.value)}
+            <input className="sed-title-in sed-title-main" value={title} onChange={e => setTitle(e.target.value)}
               placeholder={`${SPORT_LABEL[sport]} ${trainingTypes.join('+')}`}
               style={{
                 width: '100%', background: 'none', border: 'none', color: 'var(--text)',

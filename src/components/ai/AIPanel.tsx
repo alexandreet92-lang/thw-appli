@@ -11,7 +11,7 @@
 // de <main> (z-index:10). Safe-area pour iOS notch.
 // ══════════════════════════════════════════════════════════════
 
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo, memo } from 'react'
 import { getCurrentUser } from "@/lib/auth/currentUser"
 import { useRouter } from 'next/navigation'
 import { useI18n } from '@/lib/i18n'
@@ -41,6 +41,7 @@ import { PlanProposalCard, type PlanProposal, type GenProgram, type PlanRequirem
 import { MethodPicker } from './MethodPicker'
 import { ActivityMap } from '@/components/planning/ActivityDetails'
 import TokenUsageBubble from '@/components/ai-coach/TokenUsageBubble'
+import TokenUsageWarning from '@/components/ai-coach/TokenUsageWarning'
 import TopupEmailModal from '@/components/topup/TopupEmailModal'
 import { MODEL_BADGE, quickActionEstimate, fmtEstimate } from '@/lib/quick-actions/models'
 import { getModelMultiplier } from '@/lib/tokens/multipliers'
@@ -743,7 +744,11 @@ function ChartViewer({ spec, onClose }: { spec: ChartSpec; onClose: () => void }
   )
 }
 
-function MsgContent({ text, fontFamily }: { text: string; fontFamily?: string }) {
+// Mémoïsé : le parsing markdown (split + construction des blocs) est coûteux et
+// se répétait à CHAQUE render du panneau (streaming, ouverture d'une discussion
+// avec beaucoup de messages → 2-3 s de latence). React.memo évite de re-parser
+// les messages dont le texte n'a pas changé.
+const MsgContent = memo(function MsgContent({ text, fontFamily }: { text: string; fontFamily?: string }) {
   const { t } = useI18n()
   const blocks: React.ReactNode[] = []
   const lines = text.split('\n')
@@ -925,7 +930,7 @@ function MsgContent({ text, fontFamily }: { text: string; fontFamily?: string })
   }
 
   return <div style={{ fontFamily: fontFamily ?? 'DM Sans, sans-serif' }}>{blocks}</div>
-}
+})
 
 // ── Typed text — streaming character-by-character reveal ──────────
 // Matches the Claude / ChatGPT "typewriter" feel: reveals chars at
@@ -20799,7 +20804,7 @@ export default function AIPanel({
   const initMsgRef         = useRef<string | undefined>(undefined)
   // Swipe / drag tracking (mobile) — sidebar coulissante
   const chatColRef = useRef<HTMLDivElement>(null)
-  const dragRef    = useRef<{ startX: number; startY: number; startOffset: number; active: boolean; lastOff: number } | null>(null)
+  const dragRef    = useRef<{ startX: number; startY: number; startOffset: number; active: boolean; lastOff: number; lastX: number; lastT: number; vx: number } | null>(null)
   // Selection popup ref (pour détecter clic extérieur)
   const selPopupRef = useRef<HTMLDivElement>(null)
   // File inputs for attachment
@@ -21385,7 +21390,7 @@ export default function AIPanel({
     const hs = target?.closest('[data-hscroll]') as HTMLElement | null
     if (hs && hs.scrollWidth > hs.clientWidth + 1) { dragRef.current = null; return }
     const t = e.touches[0]
-    dragRef.current = { startX: t.clientX, startY: t.clientY, startOffset: histOpen ? AI_SIDEBAR_W : 0, active: false, lastOff: histOpen ? AI_SIDEBAR_W : 0 }
+    dragRef.current = { startX: t.clientX, startY: t.clientY, startOffset: histOpen ? AI_SIDEBAR_W : 0, active: false, lastOff: histOpen ? AI_SIDEBAR_W : 0, lastX: t.clientX, lastT: Date.now(), vx: 0 }
   }, [isDesktop, histOpen])
 
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
@@ -21403,6 +21408,13 @@ export default function AIPanel({
     }
     const off = Math.max(0, Math.min(AI_SIDEBAR_W, d.startOffset + dx))
     d.lastOff = off
+    // Vitesse instantanée (px/ms) pour détecter un « flick » : un petit geste
+    // rapide suffit à ouvrir/fermer, comme dans Claude.
+    const now = Date.now()
+    const dt = now - d.lastT
+    if (dt > 0) d.vx = (t.clientX - d.lastX) / dt
+    d.lastX = t.clientX
+    d.lastT = now
     const el = chatColRef.current
     if (el) { el.style.transition = 'none'; el.style.transform = `translateX(${off}px)` }
   }, [isDesktop])
@@ -21415,7 +21427,18 @@ export default function AIPanel({
     // Restaure la transition animée pour que le snap glisse (et ne saute pas)
     if (el) el.style.transition = 'transform 0.34s cubic-bezier(0.32,0.72,0,1)'
     if (d && d.active) {
-      const open = d.lastOff > AI_SIDEBAR_W / 2
+      // Ouverture au moindre geste : un flick rapide (vitesse) OU un petit
+      // déplacement (~18 % de la largeur) suffit, dans le sens du geste.
+      const FLICK = 0.35 // px/ms
+      const opening = d.startOffset < AI_SIDEBAR_W / 2 // on partait fermé
+      let open: boolean
+      if (Math.abs(d.vx) >= FLICK) {
+        open = d.vx > 0 // le flick décide, quel que soit l'offset
+      } else if (opening) {
+        open = d.lastOff > AI_SIDEBAR_W * 0.18
+      } else {
+        open = d.lastOff > AI_SIDEBAR_W * 0.82
+      }
       setHistOpen(open)
       if (el) el.style.transform = `translateX(${open ? AI_SIDEBAR_W : 0}px)`
     } else if (histOpen) {
@@ -22749,6 +22772,8 @@ export default function AIPanel({
       ))
     } finally {
       abortRefs.current.delete(cid)
+      // La consommation de tokens a changé → prévenir la jauge/bannière d'usage.
+      try { window.dispatchEvent(new CustomEvent('thw:tokens-updated')) } catch { /* ignore */ }
       if (streamDone) {
         // Stream terminé normalement : on retarde endGen d'un tick pour éviter
         // que React batchise ce call avec le dernier setConvs. Sans ce délai,
@@ -22924,6 +22949,8 @@ export default function AIPanel({
         /* Textarea font — 16px toujours (évite zoom Safari sur iOS) */
         .aip-textarea { font-size: 16px !important; }
         .aip-textarea:focus { outline: none !important; box-shadow: none !important; }
+        /* Bouton d'envoi/vocal : retour tactile au press (façon Claude). */
+        .aip-send-live:active { transform: scale(0.9); }
         /* Icon buttons in header — hover effect */
         .aip-icon-btn {
           background: transparent !important;
@@ -24139,6 +24166,9 @@ export default function AIPanel({
             {/* Compétences actives : visibles via le flyout du bouton Compétences
                 (menu « + »), plus affichées en pastilles bleues au-dessus du champ. */}
 
+            {/* Bandeau d'alerte de consommation (50/70/90/100 %) — juste au-dessus du champ. */}
+            {activeAgent !== 'coach' && <TokenUsageWarning onBuyTokens={() => setTopupOpen(true)} isMobile={!isDesktop} />}
+
             {/* ── Conteneur principal de saisie ── */}
             <div className="aip-input-wrap" style={{
               transition: 'border-color 0.15s',
@@ -24386,16 +24416,17 @@ export default function AIPanel({
                   <button
                     onClick={stopGeneration}
                     title={t('aip.ui.stopGeneration')}
+                    className="aip-send-live"
                     style={{
-                      width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
+                      width: 36, height: 36, borderRadius: '50%', flexShrink: 0,
                       border: 'none',
                       background: '#374151',
                       cursor: 'pointer',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      transition: 'background 0.15s',
+                      transition: 'background 0.15s, transform 0.12s',
                     }}
                   >
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="white" stroke="none">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="white" stroke="none">
                       <rect x="4" y="4" width="16" height="16" rx="2" />
                     </svg>
                   </button>
@@ -24415,13 +24446,14 @@ export default function AIPanel({
                           }}
                           title={t('aip.ui.voiceChat')}
                           aria-label={t('aip.ui.startVoice')}
+                          className="aip-send-live"
                           style={{
-                            width: 32, height: 32, borderRadius: '50%', flexShrink: 0, border: 'none',
+                            width: 36, height: 36, borderRadius: '50%', flexShrink: 0, border: 'none',
                             background: 'var(--ai-text)', color: 'var(--ai-bg)', cursor: 'pointer',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.15s',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.15s, transform 0.12s',
                           }}
                         >
-                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M4 10v4M8 6v12M12 3v18M16 7v10M20 10v4" />
                           </svg>
                         </button>
@@ -24432,17 +24464,20 @@ export default function AIPanel({
                     data-guide="ai-send"
                     onClick={() => void send()}
                     disabled={!canSend}
+                    className={canSend ? 'aip-send-live' : undefined}
+                    aria-label={t('aip.write_message')}
                     style={{
-                      width: 30, height: 30, borderRadius: '50%', flexShrink: 0,
+                      width: 36, height: 36, borderRadius: '50%', flexShrink: 0,
                       border: 'none',
                       background: canSend ? '#06B6D4' : 'var(--border)',
                       color: canSend ? '#fff' : 'var(--text-dim)',
                       cursor: canSend ? 'pointer' : 'not-allowed',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      transition: 'background 0.15s',
+                      transition: 'background 0.15s, transform 0.12s, box-shadow 0.15s',
+                      boxShadow: canSend ? '0 2px 10px rgba(6,182,212,0.4)' : 'none',
                     }}
                   >
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
                       stroke="currentColor"
                       strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z" />

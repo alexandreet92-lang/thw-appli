@@ -84,6 +84,25 @@ export const WEB_APP_URL =
  * fait sur le web, jamais in-app). Sur le web : navigation classique.
  * `path` doit commencer par « / ».
  */
+// Fragment de « handoff » de session : transmet les jetons de l'app au site
+// (dans le # → non envoyé au serveur, nettoyé aussitôt côté site) pour l'auto-
+// connexion. Retour '' si pas de session native.
+function sessionHandoffFragment(): string {
+  try {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+    const ref = url.match(/https:\/\/([^.]+)\./)?.[1]
+    if (!ref) return ''
+    const raw = localStorage.getItem(`sb-${ref}-auth-token`)
+    if (!raw) return ''
+    const p = JSON.parse(raw)
+    const at = p?.access_token ?? p?.currentSession?.access_token
+    const rt = p?.refresh_token ?? p?.currentSession?.refresh_token
+    if (!at || !rt) return ''
+    const b64 = btoa(JSON.stringify({ at, rt })).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+    return `#s=${b64}`
+  } catch { return '' }
+}
+
 export async function openWebsite(path = '/settings/subscription'): Promise<void> {
   const clean = path.startsWith('/') ? path : `/${path}`
   // Règle : quand on ouvre une page du site qui montre les données PERSONNELLES
@@ -97,7 +116,10 @@ export async function openWebsite(path = '/settings/subscription'): Promise<void
   // (navigateur in-app). On tague l'URL avec `app=1` → les pages du site masquent
   // tous les montants. Le lien reçu par EMAIL (ouvert hors app) garde les prix.
   const withFlag = native ? `${routed}${routed.includes('?') ? '&' : '?'}app=1` : routed
-  const url = `${WEB_APP_URL}${withFlag}`
+  // Auto-connexion : sur une page du site ouverte depuis l'app, on joint la
+  // session (fragment #s=…). Pas sur /auth (déjà géré) ni hors app.
+  const handoff = native && clean.startsWith('/site/') ? sessionHandoffFragment() : ''
+  const url = `${WEB_APP_URL}${withFlag}${handoff}`
   if (native) {
     try {
       const { Browser } = await import('@capacitor/browser')

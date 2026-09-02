@@ -5,6 +5,27 @@
    ════════════════════════════════════════════════════════════════ */
 var APP_URL = 'https://thw-appli.vercel.app';
 
+/* Auto-connexion : l'app ouvre le site avec un fragment #s=<jetons>. On établit
+   la session (cookies) une seule fois, on nettoie l'URL, et on expose une
+   promesse que les pages attendent avant de charger les données du compte. */
+window.__thwSessionReady = (function () {
+  try {
+    var h = window.location.hash || '';
+    var m = h.match(/(?:^#|[#&])s=([^&]+)/);
+    if (!m) return Promise.resolve(false);
+    var b64 = m[1].replace(/-/g, '+').replace(/_/g, '/');
+    while (b64.length % 4) b64 += '=';
+    var blob = JSON.parse(decodeURIComponent(escape(atob(b64))));
+    // Nettoie le fragment tout de suite (jetons hors de l'URL visible).
+    try { history.replaceState(null, '', window.location.pathname + window.location.search); } catch (e) {}
+    if (!blob || !blob.at || !blob.rt) return Promise.resolve(false);
+    return fetch('/api/auth/site-session', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+      body: JSON.stringify({ access_token: blob.at, refresh_token: blob.rt }),
+    }).then(function (r) { return r.ok; }).catch(function () { return false; });
+  } catch (e) { return Promise.resolve(false); }
+})();
+
 /* Menu déroulant partagé — toutes les pages du site, visible depuis chacune d'elles. */
 var MENU_ITEMS = [
   { label: 'Accueil',                     href: 'index.html' },
@@ -154,7 +175,10 @@ function SiteHeader(props) {
   // domaine), on récupère son nom + abonnement pour l'afficher en haut à droite.
   var [account, setAccount] = React.useState(null);
   React.useEffect(function () {
-    fetch('/api/account/summary', { credentials: 'same-origin' })
+    // On attend l'auto-connexion (handoff) avant de lire le compte.
+    (window.__thwSessionReady || Promise.resolve()).then(function () {
+      return fetch('/api/account/summary', { credentials: 'same-origin' });
+    })
       .then(function (r) { return r.json(); })
       .then(function (j) { if (j && j.loggedIn) setAccount(j); })
       .catch(function () {});

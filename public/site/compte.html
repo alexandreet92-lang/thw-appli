@@ -377,6 +377,8 @@
         let alive = true;
         (async () => {
           try {
+            // Auto-connexion (handoff depuis l'app) avant de lire le compte.
+            try { await (window.__thwSessionReady || Promise.resolve()); } catch (e) {}
             const r = await fetch('/api/account/summary', { credentials: 'include' });
             const s = await r.json().catch(() => null);
             if (!alive) return;

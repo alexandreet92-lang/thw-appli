@@ -36,6 +36,7 @@ export default function GlobalAIButton() {
       <button
         onClick={() => setOpen(o => !o)}
         aria-label={t('ai.openCoachIA')}
+        className="thw-glass"
         style={{
           position:    'fixed',
           bottom:      24,
@@ -46,12 +47,6 @@ export default function GlobalAIButton() {
           gap:         8,
           padding:     '9px 16px 9px 12px',
           borderRadius: 14,
-          border:      `1px solid ${open ? 'rgba(139,92,246,0.55)' : 'rgba(139,92,246,0.25)'}`,
-          background:  open
-            ? 'linear-gradient(135deg,rgba(139,92,246,0.18),rgba(91,111,255,0.22))'
-            : 'var(--nav-bg)',
-          backdropFilter: 'blur(14px)',
-          WebkitBackdropFilter: 'blur(14px)',
           cursor:      'pointer',
           boxShadow:   open
             ? '0 0 0 3px rgba(139,92,246,0.14), 0 8px 32px rgba(0,0,0,0.22)'

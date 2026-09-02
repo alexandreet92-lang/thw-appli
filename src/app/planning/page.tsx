@@ -1702,14 +1702,11 @@ function AiPlanBubble({ plan }: { plan: AiTrainingPlan }) {
         <button
           onMouseDown={handleMouseDown}
           title={`Coach IA — ${plan.name} · Glisser pour déplacer`}
+          className="thw-glass"
           style={{
             display: 'flex', alignItems: 'center', gap: 6,
             padding: '7px 13px 7px 10px',
             borderRadius: 24,
-            border: `1px solid ${open ? 'rgba(139,92,246,0.6)' : 'rgba(139,92,246,0.22)'}`,
-            background: open
-              ? 'linear-gradient(135deg,rgba(139,92,246,0.22),rgba(91,111,255,0.22))'
-              : 'var(--bg-card)',
             cursor: isDragging ? 'grabbing' : 'grab',
             boxShadow: open
               ? '0 0 0 3px rgba(139,92,246,0.14), 0 4px 16px rgba(139,92,246,0.22)'

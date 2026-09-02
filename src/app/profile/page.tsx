@@ -151,7 +151,7 @@ function Section({ label, children, style }: { label?:string; children:React.Rea
   )
 }
 function Group({ children, style }: { children:React.ReactNode; style?:React.CSSProperties }) {
-  return <div style={{ background:GREY_CARD, border:'1px solid var(--border)', borderRadius:16, overflow:'hidden', ...style }}>{children}</div>
+  return <div className="thw-glass" style={{ background:GREY_CARD, border:'1px solid var(--border)', borderRadius:16, overflow:'hidden', ...style }}>{children}</div>
 }
 // Ligne dans une Group. `first` retire le séparateur du haut.
 function Line({ first, onClick, align='center', children }: { first?:boolean; onClick?:()=>void; align?:'center'|'flex-start'; children:React.ReactNode }) {

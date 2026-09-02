@@ -63,7 +63,7 @@ function Section({ label, children }: { label?: string; children: React.ReactNod
   )
 }
 function Group({ children }: { children: React.ReactNode }) {
-  return <div style={{ background: GREY_CARD, border: '1px solid var(--border)', borderRadius: 16, overflow: 'hidden' }}>{children}</div>
+  return <div className="thw-glass" style={{ background: GREY_CARD, border: '1px solid var(--border)', borderRadius: 16, overflow: 'hidden' }}>{children}</div>
 }
 function Line({ first, align = 'center', children }: { first?: boolean; align?: 'center' | 'flex-start'; children: React.ReactNode }) {
   return <div style={{ display: 'flex', alignItems: align, gap: 12, padding: '13px 16px', borderTop: first ? 'none' : '1px solid var(--border)', width: '100%', boxSizing: 'border-box' }}>{children}</div>

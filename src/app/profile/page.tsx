@@ -16,6 +16,8 @@ import { LanguageSelector } from '@/components/i18n/LanguageSelector'
 import { currentLocale } from '@/lib/i18n'
 import { getPushState, enablePush, disablePush, type PushState } from '@/lib/push/client'
 import { hidePricing, openWebsite } from '@/lib/native/platform'
+import { listBlockedUsers, unblockUser, type BlockedUser } from '@/lib/moderation/dm'
+import { Avatar } from '@/components/shared/Sidebar'
 
 // ══════════════════════════════════════════════════
 // TYPES
@@ -1279,6 +1281,48 @@ function HiddenDataSection() {
   )
 }
 
+// ── Utilisateurs bloqués (messagerie privée) ──────────────────────
+function BlockedUsersSection() {
+  const [users, setUsers] = useState<BlockedUser[]>([])
+  const [loading, setLoading] = useState(true)
+  const [busy, setBusy] = useState<string | null>(null)
+  const load = useCallback(async () => { try { setUsers(await listBlockedUsers()) } finally { setLoading(false) } }, [])
+  useEffect(() => { void load() }, [load])
+  const unblock = async (id: string) => {
+    setBusy(id)
+    const ok = await unblockUser(id)
+    setBusy(null)
+    if (ok) setUsers(u => u.filter(x => x.id !== id))
+  }
+  return (
+    <Section label="Utilisateurs bloqués">
+      {loading ? (
+        <p style={{ fontSize: 12.5, color: 'var(--text-dim)', margin: '4px 4px' }}>Chargement…</p>
+      ) : users.length === 0 ? (
+        <p style={{ fontSize: 12.5, color: 'var(--text-dim)', margin: '4px 4px', lineHeight: 1.5 }}>
+          Personne n’est bloqué. Depuis une conversation, appuie sur un message reçu pour signaler ou bloquer son auteur.
+        </p>
+      ) : (
+        <Group>
+          {users.map((u, i) => (
+            <Line key={u.id} first={i === 0}>
+              <Avatar url={u.avatar} name={u.name} size={34} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ fontSize: 15, fontWeight: 500, color: 'var(--text)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.name}</p>
+                <p style={{ fontSize: 11.5, color: 'var(--text-dim)', margin: '2px 0 0' }}>Bloqué</p>
+              </div>
+              <button onClick={() => void unblock(u.id)} disabled={busy === u.id}
+                style={{ flexShrink: 0, padding: '7px 13px', borderRadius: 10, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text)', fontSize: 13, fontWeight: 600, cursor: busy === u.id ? 'default' : 'pointer', fontFamily: 'var(--font-body)', opacity: busy === u.id ? 0.5 : 1 }}>
+                Débloquer
+              </button>
+            </Line>
+          ))}
+        </Group>
+      )}
+    </Section>
+  )
+}
+
 // ── Bulle Confidentialité : données & vie privée ──────────────────
 function ConfidentialiteBloc() {
   const { t } = useI18n()
@@ -1294,6 +1338,8 @@ function ConfidentialiteBloc() {
       <ActivityVisibilitySection />
 
       <HiddenDataSection />
+
+      <BlockedUsersSection />
 
       <Section label={t('profile.documents')}>
         <Group>

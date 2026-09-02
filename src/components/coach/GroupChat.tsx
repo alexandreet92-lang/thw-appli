@@ -14,6 +14,8 @@ import {
 } from '@/lib/messages/groups'
 import { createGroup } from '@/lib/messages/groups'
 import { Avatar } from '@/components/shared/Sidebar'
+import { ReportBlockActions } from '@/components/moderation/ReportBlockActions'
+import { myBlockedIds } from '@/lib/moderation/dm'
 import { createPortal } from 'react-dom'
 import { useI18n } from '@/lib/i18n'
 
@@ -81,11 +83,15 @@ export function GroupChat({ group, onChanged, onClosed }: { group: GroupSummary;
   const [me, setMe] = useState<string | null>(null)
   const [input, setInput] = useState('')
   const [panel, setPanel] = useState(false)
+  const [menuId, setMenuId] = useState<string | null>(null)   // message dont le menu Signaler/Bloquer est ouvert
+  const [blocked, setBlocked] = useState<Set<string>>(new Set())
   const isAdmin = group.myRole === 'admin'
   const endRef = useRef<HTMLDivElement>(null)
 
   const loadMsgs = useCallback(async () => { setMsgs(await getGroupMessages(group.id)) }, [group.id])
+  const reloadBlocked = useCallback(async () => { setBlocked(await myBlockedIds()) }, [])
   useEffect(() => { void getCurrentUser().then(u => setMe(u?.id ?? null)) }, [])
+  useEffect(() => { void reloadBlocked() }, [reloadBlocked])
   useEffect(() => { void loadMsgs(); void listMembers(group.id).then(setMembers) }, [group.id, loadMsgs])
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [msgs])
   // Rafraîchissement doux (les messages des autres membres).
@@ -123,18 +129,42 @@ export function GroupChat({ group, onChanged, onClosed }: { group: GroupSummary;
       </div>
 
       {/* Fil */}
-      <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '14px', display: 'flex', flexDirection: 'column', gap: 10 }}
+        onClick={() => menuId && setMenuId(null)}>
         {msgs.length === 0 && <div style={{ margin: 'auto', color: 'var(--text-dim)', fontSize: 13 }}>{t('w2d.startGroupConversation')}</div>}
         {msgs.map((m, i) => {
           const mine = m.senderId === me
+          const isBlocked = !mine && blocked.has(m.senderId)
           const showName = !mine && (i === 0 || msgs[i - 1].senderId !== m.senderId)
+          const canReport = !mine && !isBlocked
           return (
-            <div key={m.id} style={{ display: 'flex', flexDirection: 'column', alignItems: mine ? 'flex-end' : 'flex-start' }}>
+            <div key={m.id} style={{ display: 'flex', flexDirection: 'column', alignItems: mine ? 'flex-end' : 'flex-start', position: 'relative' }}>
               {showName && <span style={{ fontSize: 11, color: 'var(--text-dim)', margin: '0 0 3px 4px', fontWeight: 600 }}>{m.senderName}</span>}
-              <div style={{ maxWidth: '78%', padding: '8px 12px', borderRadius: 14, background: mine ? 'var(--primary)' : 'var(--bg-card2)', color: mine ? 'var(--on-primary)' : 'var(--text)', fontSize: 13.5, lineHeight: 1.4, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                {m.body}
-                <span style={{ display: 'block', fontSize: 9.5, opacity: 0.6, marginTop: 3, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{fmtT(m.createdAt)}</span>
-              </div>
+              {isBlocked ? (
+                <div style={{ maxWidth: '78%', padding: '8px 12px', borderRadius: 14, background: 'transparent', color: 'var(--text-dim)', fontSize: 12.5, fontStyle: 'italic', border: '1px dashed var(--border)' }}>
+                  Message masqué (utilisateur bloqué)
+                </div>
+              ) : (
+                <div onClick={e => { if (canReport) { e.stopPropagation(); setMenuId(menuId === m.id ? null : m.id) } }}
+                  style={{ maxWidth: '78%', padding: '8px 12px', borderRadius: 14, background: mine ? 'var(--primary)' : 'var(--bg-card2)', color: mine ? 'var(--on-primary)' : 'var(--text)', fontSize: 13.5, lineHeight: 1.4, whiteSpace: 'pre-wrap', wordBreak: 'break-word', cursor: canReport ? 'pointer' : 'default' }}>
+                  {m.body}
+                  <span style={{ display: 'block', fontSize: 9.5, opacity: 0.6, marginTop: 3, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{fmtT(m.createdAt)}</span>
+                </div>
+              )}
+              {menuId === m.id && canReport && (
+                <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: 4, zIndex: 20, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.22)', overflow: 'hidden', minWidth: 140 }}>
+                  <ReportBlockActions
+                    targetUserId={m.senderId}
+                    targetName={m.senderName}
+                    context="group"
+                    messageId={m.id}
+                    messageExcerpt={m.body}
+                    itemStyle={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '9px 12px', border: 'none', background: 'transparent', fontSize: 13, cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font-body)' }}
+                    onClose={() => setMenuId(null)}
+                    onBlocked={() => { setMenuId(null); void reloadBlocked() }}
+                  />
+                </div>
+              )}
             </div>
           )
         })}

@@ -185,22 +185,29 @@ function BodyConditions() {
       </section>
 
       <section className="legal-block">
-        <h2>9. Propriété intellectuelle</h2>
+        <h2>9. Contenu généré par les utilisateurs — tolérance zéro</h2>
+        <p>THW permet d'échanger des messages (coach ↔ athlète, groupes, communauté). <strong>Aucun contenu répréhensible ni comportement abusif n'est toléré</strong> : harcèlement, menaces, propos haineux, discriminatoires ou diffamatoires, contenu sexuel ou violent, usurpation d'identité, spam et arnaques sont interdits.</p>
+        <p>En publiant du contenu, tu confirmes qu'il respecte ces règles. Tu peux <strong>signaler</strong> tout message ou utilisateur (appui long / menu du message) et <strong>bloquer</strong> un utilisateur pour ne plus jamais recevoir ses messages. Tu gères tes blocages dans Profil → Confidentialité → Utilisateurs bloqués.</p>
+        <p>Nous examinons chaque signalement et retirons le contenu répréhensible ou suspendons l'auteur <strong>sous 24 heures</strong>. Le non-respect de ces règles peut entraîner l'avertissement, la suspension ou la suppression du compte, sans remboursement.</p>
+      </section>
+
+      <section className="legal-block">
+        <h2>10. Propriété intellectuelle</h2>
         <p>Le contenu, la marque, le design et les algorithmes de THW restent la propriété de l'éditeur. Tes données personnelles t'appartiennent.</p>
       </section>
 
       <section className="legal-block">
-        <h2>10. Responsabilité</h2>
+        <h2>11. Responsabilité</h2>
         <p>Dans les limites permises par la loi, l'éditeur n'est pas responsable des dommages indirects liés à l'utilisation du service ni d'une interruption temporaire.</p>
       </section>
 
       <section className="legal-block">
-        <h2>11. Médiation de la consommation</h2>
+        <h2>12. Médiation de la consommation</h2>
         <p>En cas de litige non résolu, tu peux recourir gratuitement à un médiateur de la consommation : <Todo>[nom + coordonnées du médiateur à désigner]</Todo>. Plateforme européenne de règlement des litiges : <a href="https://ec.europa.eu/consumers/odr" target="_blank" rel="noopener">ec.europa.eu/consumers/odr</a>.</p>
       </section>
 
       <section className="legal-block">
-        <h2>12. Droit applicable</h2>
+        <h2>13. Droit applicable</h2>
         <p>Les présentes conditions sont régies par le droit français. À défaut de résolution amiable, les tribunaux français sont compétents.</p>
       </section>
 

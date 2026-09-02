@@ -12,6 +12,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { getMessages, sendMessage, markThreadRead, editMessage, deleteMessage, uploadMessageAttachment, type Msg } from '@/lib/coach/messages'
+import { ReportBlockActions } from '@/components/moderation/ReportBlockActions'
 import { useI18n } from '@/lib/i18n'
 
 const fmtTime = (d: string) => { try { return new Date(d).toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) } catch { return '' } }
@@ -162,6 +163,8 @@ export function MessageThread({ coachId, athleteId, compact = false }: { coachId
           const deleted = !!m.deleted_at
           const editing = editId === m.id
           const canAct = m.mine && !deleted && !m.id.startsWith('tmp-')
+          const canReport = !m.mine && !deleted && !m.id.startsWith('tmp-')
+          const hasMenu = canAct || canReport
           return (
             <div key={m.id} style={{ alignSelf: m.mine ? 'flex-end' : 'flex-start', maxWidth: '82%', position: 'relative' }}>
               {editing ? (
@@ -177,9 +180,9 @@ export function MessageThread({ coachId, athleteId, compact = false }: { coachId
               ) : (
                 <>
                   <div
-                    onClick={e => { if (canAct) { e.stopPropagation(); setMenuId(menuId === m.id ? null : m.id) } }}
+                    onClick={e => { if (hasMenu) { e.stopPropagation(); setMenuId(menuId === m.id ? null : m.id) } }}
                     style={{ padding: m.media_type === 'image' && !m.body && !deleted ? 4 : '8px 12px', borderRadius: 14, fontSize: 13.5, lineHeight: 1.45, fontFamily: 'var(--font-body)',
-                      cursor: canAct ? 'pointer' : 'default',
+                      cursor: hasMenu ? 'pointer' : 'default',
                       background: deleted ? 'transparent' : m.mine ? 'var(--primary)' : 'color-mix(in srgb, var(--primary) 12%, var(--bg-card))',
                       color: deleted ? 'var(--text-dim)' : m.mine ? 'var(--on-primary)' : 'var(--text)',
                       border: deleted ? '1px dashed var(--border)' : m.mine ? 'none' : '1px solid color-mix(in srgb, var(--primary) 18%, transparent)',
@@ -190,17 +193,29 @@ export function MessageThread({ coachId, athleteId, compact = false }: { coachId
                       {m.body && <span style={{ display: 'block', ...(m.media_url ? { marginTop: 6 } : {}) }}>{m.body}</span>}
                     </>)}
                   </div>
-                  {/* Menu d'actions (mes messages) */}
-                  {menuId === m.id && canAct && (
-                    <div style={{ position: 'absolute', top: '100%', right: m.mine ? 0 : 'auto', left: m.mine ? 'auto' : 0, marginTop: 4, zIndex: 20, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.22)', overflow: 'hidden', minWidth: 130 }}>
-                      <button onClick={e => { e.stopPropagation(); startEdit(m) }} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '9px 12px', border: 'none', background: 'transparent', color: 'var(--text)', fontSize: 13, cursor: 'pointer', textAlign: 'left' }}>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
-                        {t('w2d.edit')}
-                      </button>
-                      <button onClick={e => { e.stopPropagation(); void remove(m) }} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '9px 12px', border: 'none', borderTop: '1px solid var(--border)', background: 'transparent', color: '#EF4444', fontSize: 13, cursor: 'pointer', textAlign: 'left' }}>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>
-                        {t('w2d.delete')}
-                      </button>
+                  {/* Menu d'actions : mes messages → Modifier/Supprimer ; ceux de l'autre → Signaler/Bloquer */}
+                  {menuId === m.id && hasMenu && (
+                    <div style={{ position: 'absolute', top: '100%', right: m.mine ? 0 : 'auto', left: m.mine ? 'auto' : 0, marginTop: 4, zIndex: 20, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.22)', overflow: 'hidden', minWidth: 140 }}>
+                      {canAct ? (<>
+                        <button onClick={e => { e.stopPropagation(); startEdit(m) }} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '9px 12px', border: 'none', background: 'transparent', color: 'var(--text)', fontSize: 13, cursor: 'pointer', textAlign: 'left' }}>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
+                          {t('w2d.edit')}
+                        </button>
+                        <button onClick={e => { e.stopPropagation(); void remove(m) }} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '9px 12px', border: 'none', borderTop: '1px solid var(--border)', background: 'transparent', color: '#EF4444', fontSize: 13, cursor: 'pointer', textAlign: 'left' }}>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>
+                          {t('w2d.delete')}
+                        </button>
+                      </>) : (
+                        <ReportBlockActions
+                          targetUserId={m.sender_id}
+                          context="coach_dm"
+                          messageId={m.id}
+                          messageExcerpt={m.body || (m.media_name ?? null)}
+                          itemStyle={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '9px 12px', border: 'none', background: 'transparent', fontSize: 13, cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font-body)' }}
+                          onClose={() => setMenuId(null)}
+                          onBlocked={() => { setMenuId(null); void refresh() }}
+                        />
+                      )}
                     </div>
                   )}
                   <div style={{ fontSize: 10, color: 'var(--text-dim)', marginTop: 2, textAlign: m.mine ? 'right' : 'left', display: 'flex', alignItems: 'center', gap: 2, justifyContent: m.mine ? 'flex-end' : 'flex-start' }}>

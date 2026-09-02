@@ -1,14 +1,14 @@
-<!doctype html>
-<html lang="fr">
+{{ $lang := printf "%v" .Data.lang }}<!doctype html>
+<html lang="{{ if eq $lang "en" }}en{{ else if eq $lang "es" }}es{{ else }}fr{{ end }}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
-<title>Confirme ton inscription</title>
+<title>Hybrid</title>
 </head>
 <body style="margin:0;padding:0;background:#f1f4f8;">
   <!-- Préheader : texte d'aperçu dans la liste des mails, masqué à l'ouverture -->
-  <div style="display:none;max-height:0;overflow:hidden;opacity:0;">Il ne reste qu'une étape : confirme ton adresse pour activer ton compte.</div>
+  <div style="display:none;max-height:0;overflow:hidden;opacity:0;">{{ if eq $lang "en" }}One last step: confirm your address to activate your account.{{ else if eq $lang "es" }}Solo queda un paso: confirma tu dirección para activar tu cuenta.{{ else }}Il ne reste qu'une étape : confirme ton adresse pour activer ton compte.{{ end }}</div>
 
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f1f4f8;">
     <tr>
@@ -24,11 +24,11 @@
 
               <!-- Titre éditorial -->
               <h1 style="margin:26px 0 0;font-family:'Fraunces', Georgia, 'Times New Roman', serif;font-size:26px;line-height:1.25;font-weight:600;color:#0d1117;letter-spacing:-0.01em;">
-                Bienvenue sur Hybrid
+                {{ if eq $lang "en" }}Welcome to Hybrid{{ else if eq $lang "es" }}Bienvenido a Hybrid{{ else }}Bienvenue sur Hybrid{{ end }}
               </h1>
 
               <p style="margin:14px 0 0;font-family:'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;font-size:15px;line-height:1.6;color:rgba(13,17,23,0.60);">
-                Il ne reste qu'une étape : confirme ton adresse pour activer ton compte.
+                {{ if eq $lang "en" }}One last step: confirm your address to activate your account.{{ else if eq $lang "es" }}Solo queda un paso: confirma tu dirección para activar tu cuenta.{{ else }}Il ne reste qu'une étape : confirme ton adresse pour activer ton compte.{{ end }}
               </p>
 
               <!-- CTA -->
@@ -37,19 +37,19 @@
                   <td style="border-radius:14px;background:#06B6D4;">
                     <a href="{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&amp;type=signup&amp;next=%2F"
                        style="display:inline-block;padding:15px 30px;font-family:'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;border-radius:14px;">
-                      Activer mon compte
+                      {{ if eq $lang "en" }}Activate my account{{ else if eq $lang "es" }}Activar mi cuenta{{ else }}Activer mon compte{{ end }}
                     </a>
                   </td>
                 </tr>
               </table>
 
               <p style="margin:28px 0 0;font-family:'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;font-size:13px;line-height:1.6;color:rgba(13,17,23,0.38);">
-                Ce lien est valable 24 heures. Si tu n'es pas à l'origine de cette inscription, ignore simplement cet email.
+                {{ if eq $lang "en" }}This link is valid for 24 hours. If you didn't sign up, simply ignore this email.{{ else if eq $lang "es" }}Este enlace es válido 24 horas. Si no te has registrado, ignora este correo.{{ else }}Ce lien est valable 24 heures. Si tu n'es pas à l'origine de cette inscription, ignore simplement cet email.{{ end }}
               </p>
 
               <!-- Repli : lien brut, si le bouton ne s'affiche pas -->
               <p style="margin:20px 0 0;font-family:'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;font-size:12px;line-height:1.5;color:rgba(13,17,23,0.38);">
-                Si le bouton ne fonctionne pas, copie ce lien dans ton navigateur :<br>
+                {{ if eq $lang "en" }}If the button doesn't work, copy this link into your browser:{{ else if eq $lang "es" }}Si el botón no funciona, copia este enlace en tu navegador:{{ else }}Si le bouton ne fonctionne pas, copie ce lien dans ton navigateur :{{ end }}<br>
                 <a href="{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&amp;type=signup&amp;next=%2F" style="color:#06B6D4;text-decoration:underline;word-break:break-all;">{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&amp;type=signup&amp;next=%2F</a>
               </p>
 

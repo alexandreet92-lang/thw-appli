@@ -8,12 +8,40 @@ ici, puis on les recopie dans le dashboard.
 correspondant → coller le contenu du fichier dans « Message body », puis
 renseigner le sujet ci-dessous → **Save**.
 
-| Onglet dashboard | Fichier | Sujet à saisir |
+| Onglet dashboard | Fichier | Sujet |
 |---|---|---|
-| Confirm signup | `confirm-signup.html` | `Confirme ton inscription — Hybrid` |
-| Reset password | `reset-password.html` | `Réinitialise ton mot de passe — Hybrid` |
-| Magic Link | `magic-link.html` | `Ton lien de connexion — Hybrid` |
-| Change Email Address | `change-email.html` | `Confirme ta nouvelle adresse — Hybrid` |
+| Confirm sign up | `confirm-signup.html` | voir `SUJETS.md` |
+| Reset password | `reset-password.html` | voir `SUJETS.md` |
+| Magic link or OTP | `magic-link.html` | voir `SUJETS.md` |
+| Change email address | `change-email.html` | voir `SUJETS.md` |
+
+---
+
+## Langue de l'email (fr / en / es)
+
+Les templates sont **trilingues** : chaque texte est enveloppé dans un
+conditionnel Go qui lit la langue du compte, avec repli français.
+
+```
+{{ $lang := printf "%v" .Data.lang }}
+{{ if eq $lang "en" }}New password{{ else if eq $lang "es" }}Nueva contraseña{{ else }}Nouveau mot de passe{{ end }}
+```
+
+Deux points à connaître :
+
+1. **`{{ .Data }}` (= `user_metadata`) est la SEULE source de langue lisible
+   depuis un template.** La table `profiles`, où l'app stocke `language`, est
+   inaccessible ici. Le code recopie donc la langue dans `user_metadata.lang` :
+   - `src/app/auth/page.tsx` — à l'inscription (`options.data.lang`) ;
+   - `src/lib/i18n/index.tsx` — à chaque changement de langue (`updateUser`),
+     et en remise à niveau au chargement pour les comptes antérieurs.
+2. **`printf "%v"` n'est pas décoratif.** Comparer directement `.Data.lang`
+   (absent sur les vieux comptes) à une chaîne fait échouer le template Go, donc
+   l'envoi de l'email. Passer par `printf` donne `"<nil>"` et le repli français
+   s'applique proprement. Ne pas retirer ce `printf`.
+
+Le fichier `SUJETS.md` contient les sujets trilingues correspondants — le champ
+« Subject » du dashboard accepte les mêmes conditionnels.
 
 ---
 

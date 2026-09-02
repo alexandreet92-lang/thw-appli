@@ -166,7 +166,7 @@ const STYLES = `
 
 function AuthPageInner() {
   const router = useRouter()
-  const { t } = useI18n()
+  const { t, lang } = useI18n()
   const params = useSearchParams()
   const expired = params.get('expired') === '1'
   // Erreur remontée par /auth/callback (lien d'email expiré, déjà utilisé,
@@ -257,7 +257,10 @@ function AuthPageInner() {
       options: {
         emailRedirectTo: authCallbackUrl('/'),
         // RGPD : trace de l'acceptation CGU + confidentialité (date + version).
-        data: { terms_accepted_at: new Date().toISOString(), terms_version: TERMS_VERSION },
+        // `lang` : les templates d'email Supabase ne peuvent lire QUE les
+        // métadonnées du compte ({{ .Data }}) — jamais la table profiles. C'est
+        // donc ici que se joue la langue des mails d'authentification.
+        data: { terms_accepted_at: new Date().toISOString(), terms_version: TERMS_VERSION, lang },
       },
     })
     setLoading(false)

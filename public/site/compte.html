@@ -134,25 +134,69 @@
   <script type="text/babel">
     const { useState, useEffect } = React;
 
-    /* Démonstration : dans l'app, ces valeurs viennent du compte connecté
-       (solde de tokens, abonnement en cours, essai, factures Stripe). */
-    const ACCOUNT = {
-      name: 'Alexandre',
-      email: 'alexandre@exemple.fr',
-      plan: { name: 'Pro', kind: 'Abonnement athlète', price: '26 € /mois', renews: '2 septembre 2026' },
-      trial: { active: true, daysLeft: 6, total: 14 },
-      chatTokens: { balance: 68400, quota: 120000 },
-      studioTokens: { balance: 412500, quota: 300000 },
-      invoices: [
-        { date: '2 août 2026',    desc: 'Abonnement Pro — août 2026',        type: 'sub', amount: '26,00 €' },
-        { date: '28 juillet 2026', desc: 'Pack Builder — 2 M tokens Studio', type: 'tok', amount: '29,99 €' },
-        { date: '2 juillet 2026',  desc: 'Abonnement Pro — juillet 2026',    type: 'sub', amount: '26,00 €' },
-        { date: '14 juin 2026',    desc: 'Pack Découverte — 200k tokens Studio', type: 'tok', amount: '4,99 €' },
-        { date: '2 juin 2026',     desc: 'Abonnement Pro — juin 2026',       type: 'sub', amount: '26,00 €' },
-      ],
-    };
-
+    // Données RÉELLES du compte connecté : /api/account/summary + /api/subscription/details
+    // (même origine → cookies de session envoyés automatiquement). Sans session,
+    // on renvoie vers la vraie page de connexion de l'app (connexion d'abord).
     const nf = new Intl.NumberFormat('fr-FR');
+    const AUTH_URL = '/auth?redirect=' + encodeURIComponent('/site/compte.html');
+
+    function fmtEur(cents, currency) {
+      const v = (cents || 0) / 100;
+      try { return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: (currency || 'eur').toUpperCase() }).format(v); }
+      catch (e) { return v.toFixed(2).replace('.', ',') + ' €'; }
+    }
+    function fmtDate(iso) {
+      try { return new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }); }
+      catch (e) { return ''; }
+    }
+    function daysUntil(iso) {
+      try { return Math.max(0, Math.ceil((new Date(iso).getTime() - Date.now()) / 86400000)); }
+      catch (e) { return null; }
+    }
+
+    // Construit l'objet d'affichage à partir des réponses API.
+    function buildAccount(s, d) {
+      const isCoach = !!s.isCoach;
+      const period = d && d.stripe && d.stripe.currency ? ' /mois' : '';
+      const price = d && d.stripe && d.stripe.amount != null ? fmtEur(d.stripe.amount, d.stripe.currency) + period : null;
+      const renewIso = (d && d.stripe && d.stripe.nextBillingDate) || (d && d.current_period_end) || null;
+      const isTrial = (s.tier === 'trial') || (d && d.tier === 'trial');
+      const trialDays = isTrial && renewIso ? daysUntil(renewIso) : null;
+      const invoices = ((d && d.invoices) || []).map(function (inv) {
+        return {
+          date: fmtDate(inv.date),
+          desc: 'Abonnement ' + (s.tierLabel || ''),
+          type: 'sub',
+          amount: fmtEur(inv.amount, inv.currency),
+          url: inv.url || null,
+        };
+      });
+      return {
+        name: s.firstName || s.name || (s.email ? s.email.split('@')[0] : 'toi'),
+        email: s.email || '',
+        isCoach: isCoach,
+        plan: {
+          name: s.tierLabel || s.tier || '—',
+          kind: isCoach ? 'Abonnement coach' : 'Abonnement athlète',
+          price: price,
+          renews: renewIso ? fmtDate(renewIso) : null,
+          cancelAtEnd: !!(d && d.cancel_at_period_end),
+        },
+        trial: (trialDays != null) ? { active: true, daysLeft: trialDays, total: 14 } : null,
+        chatTokens: s.chatTokens ? { balance: s.chatTokens.remaining, quota: s.chatTokens.limit } : null,
+        studioTokens: s.studioTokens ? { balance: s.studioTokens.remaining, quota: s.studioTokens.monthlyLimit } : null,
+        invoices: invoices,
+      };
+    }
+
+    async function openPortal() {
+      try {
+        const r = await fetch('/api/stripe/portal', { method: 'POST', credentials: 'include' });
+        const d = await r.json().catch(function () { return null; });
+        if (d && d.url) { window.location.href = d.url; return; }
+      } catch (e) { /* ignore */ }
+      alert('La gestion du paiement est momentanément indisponible. Réessaie plus tard.');
+    }
 
     const Icon = ({ size = 16, children }) => (
       <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{children}</svg>
@@ -164,27 +208,29 @@
     const IcArrow = (p) => <Icon {...p}><path d="M5 12h14M13 6l6 6-6 6"/></Icon>;
     const IcDown = (p) => <Icon {...p}><path d="M12 4v11M7.5 11l4.5 4.5L16.5 11M5 20h14"/></Icon>;
 
-    function LoginView({ onLogin }) {
-      const [email, setEmail] = useState('');
+    function LoginView() {
       return (
         <div className="ac-login">
           <span className="eyebrow" style={{ justifyContent: 'center' }}>Espace personnel</span>
           <h1>Se connecter</h1>
-          <p className="lead">Retrouve ton solde de tokens, ton abonnement en cours, tes jours d'essai restants et toutes tes factures.</p>
+          <p className="lead">Connecte-toi pour retrouver ton abonnement, tes tokens et toutes tes factures.</p>
           <div className="ac-oauth">
-            <a href={APP_URL + '/login?provider=google'}><UIIcon name="google" size={18}/> Continuer avec Google</a>
-            <a href={APP_URL + '/login?provider=apple'}><UIIcon name="apple" size={17}/> Continuer avec Apple</a>
+            <a href={AUTH_URL}><UIIcon name="google" size={18}/> Continuer avec Google</a>
+            <a href={AUTH_URL}><UIIcon name="apple" size={17}/> Continuer avec Apple</a>
           </div>
-          <div className="ac-sep">ou par email</div>
-          <form className="ac-form" style={{ marginTop: 18 }} onSubmit={(e) => { e.preventDefault(); onLogin(); }}>
-            <label className="ac-label" htmlFor="ac-email">Email du compte Hybrid</label>
-            <input className="ac-input" id="ac-email" type="email" required placeholder="ton@email.fr"
-              value={email} onChange={(e) => setEmail(e.target.value)}/>
-            <label className="ac-label" htmlFor="ac-pass" style={{ marginTop: 6 }}>Mot de passe</label>
-            <input className="ac-input" id="ac-pass" type="password" required placeholder="••••••••"/>
-            <button className="ac-submit" type="submit">Se connecter</button>
-          </form>
-          <p className="ac-hint">Pas encore de compte ? <a href={APP_URL + '/signup'}>Crée-le en 1 minute</a> — 14 jours d'essai, sans carte bancaire.</p>
+          <div className="ac-sep">ou</div>
+          <a className="ac-submit" href={AUTH_URL} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none' }}>Se connecter par email</a>
+          <p className="ac-hint">Pas encore de compte ? <a href={AUTH_URL}>Crée-le en 1 minute</a> — 14 jours d'essai, sans carte bancaire.</p>
+        </div>
+      );
+    }
+
+    function LoadingView() {
+      return (
+        <div className="ac-login" style={{ textAlign: 'center' }}>
+          <span className="eyebrow" style={{ justifyContent: 'center' }}>Espace personnel</span>
+          <h1>Chargement…</h1>
+          <p className="lead">On récupère ton compte.</p>
         </div>
       );
     }
@@ -202,9 +248,10 @@
       );
     }
 
-    function Dashboard({ onLogout }) {
-      const a = ACCOUNT;
-      const trialPct = Math.round((a.trial.daysLeft / a.trial.total) * 100);
+    function Dashboard({ account, onLogout }) {
+      const a = account;
+      const changeHref = a.isCoach ? 'abonnement-coach.html' : 'abonnement-athlete.html';
+      const trialPct = a.trial ? Math.round((a.trial.daysLeft / a.trial.total) * 100) : 0;
       return (
         <React.Fragment>
           <div className="ac-head">
@@ -213,68 +260,113 @@
               <h1>Bonjour {a.name}</h1>
               <p className="ac-mail">{a.email}</p>
             </div>
-            <button type="button" className="ac-logout" onClick={onLogout}>Se déconnecter</button>
+            <a className="ac-logout" href="/api/auth/signout" onClick={onLogout}>Se déconnecter</a>
           </div>
 
           <div className="ac-cards">
             <div className="ac-card">
               <div className="ac-card-label"><IcCard size={15}/> Mon abonnement</div>
               <p className="ac-big">{a.plan.name}</p>
-              <p className="ac-note">{a.plan.kind} · {a.plan.price}<br/>Prochain prélèvement le {a.plan.renews}</p>
-              <a className="ac-link" href="abonnement-athlete.html">Changer de formule <IcArrow size={13}/></a>
+              <p className="ac-note">
+                {a.plan.kind}{a.plan.price ? ' · ' + a.plan.price : ''}
+                {a.plan.renews ? (<React.Fragment><br/>{a.plan.cancelAtEnd ? 'Se termine le ' : 'Prochain prélèvement le '}{a.plan.renews}</React.Fragment>) : null}
+              </p>
+              <a className="ac-link" href={changeHref}>Changer de formule <IcArrow size={13}/></a>
+              <a className="ac-link" href="#" onClick={(e) => { e.preventDefault(); openPortal(); }} style={{ marginTop: 6 }}>Gérer le paiement / résilier <IcArrow size={13}/></a>
             </div>
 
-            <div className="ac-card">
-              <div className="ac-card-label"><IcClock size={15}/> Essai gratuit</div>
-              <p className="ac-big num">{a.trial.daysLeft}<span className="ac-unit">jours restants</span></p>
-              <div className="ac-bar warn"><span style={{ width: trialPct + '%' }}/></div>
-              <p className="ac-note num">sur {a.trial.total} jours d'essai · aucun prélèvement avant la fin</p>
-              <span className="ac-pill">Essai en cours</span>
-            </div>
+            {a.trial && (
+              <div className="ac-card">
+                <div className="ac-card-label"><IcClock size={15}/> Essai gratuit</div>
+                <p className="ac-big num">{a.trial.daysLeft}<span className="ac-unit">jours restants</span></p>
+                <div className="ac-bar warn"><span style={{ width: trialPct + '%' }}/></div>
+                <p className="ac-note num">sur {a.trial.total} jours d'essai · aucun prélèvement avant la fin</p>
+                <span className="ac-pill">Essai en cours</span>
+              </div>
+            )}
 
-            <TokenCard label="Tokens du chat" icon={<IcToken size={15}/>}
-              balance={a.chatTokens.balance} quota={a.chatTokens.quota}
-              note={`sur ${nf.format(a.chatTokens.quota)} inclus ce mois-ci`}
-              cta={['Recharger', 'recharge-tokens.html']}/>
+            {a.chatTokens && (
+              <TokenCard label="Tokens du chat" icon={<IcToken size={15}/>}
+                balance={a.chatTokens.balance} quota={a.chatTokens.quota}
+                note={`sur ${nf.format(a.chatTokens.quota)} inclus ce mois-ci`}
+                cta={['Recharger', 'recharge-tokens.html']}/>
+            )}
 
-            <TokenCard label="Tokens Studio" icon={<IcLayers size={15}/>}
-              balance={a.studioTokens.balance} quota={a.studioTokens.quota}
-              note={`quota mensuel ${nf.format(a.studioTokens.quota)} · les packs achetés n'expirent jamais`}
-              cta={['Recharger le Studio', 'recharge-tokens.html']}/>
+            {a.studioTokens && (
+              <TokenCard label="Tokens Studio" icon={<IcLayers size={15}/>}
+                balance={a.studioTokens.balance} quota={a.studioTokens.quota}
+                note={`quota mensuel ${nf.format(a.studioTokens.quota)} · les packs achetés n'expirent jamais`}
+                cta={['Recharger le Studio', 'recharge-tokens.html']}/>
+            )}
           </div>
 
           <section className="ac-section">
             <h2>Mes factures</h2>
             <p className="sub">Abonnements et recharges de tokens. Chaque facture est téléchargeable en PDF.</p>
-            <table className="ac-table">
-              <thead>
-                <tr><th>Date</th><th>Détail</th><th>Type</th><th>Montant</th><th>Facture</th></tr>
-              </thead>
-              <tbody>
-                {a.invoices.map((inv, i) => (
-                  <tr key={i}>
-                    <td className="num">{inv.date}</td>
-                    <td className="desc">{inv.desc}</td>
-                    <td><span className={'ac-tag ' + inv.type}>{inv.type === 'sub' ? 'Abonnement' : 'Tokens'}</span></td>
-                    <td className="num">{inv.amount}</td>
-                    <td><a className="ac-dl" href="#" onClick={(e) => e.preventDefault()} style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><IcDown size={13}/> PDF</a></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            {a.invoices.length === 0 ? (
+              <p className="ac-note" style={{ marginTop: 8 }}>Aucune facture pour le moment.</p>
+            ) : (
+              <table className="ac-table">
+                <thead>
+                  <tr><th>Date</th><th>Détail</th><th>Type</th><th>Montant</th><th>Facture</th></tr>
+                </thead>
+                <tbody>
+                  {a.invoices.map((inv, i) => (
+                    <tr key={i}>
+                      <td className="num">{inv.date}</td>
+                      <td className="desc">{inv.desc}</td>
+                      <td><span className={'ac-tag ' + inv.type}>{inv.type === 'sub' ? 'Abonnement' : 'Tokens'}</span></td>
+                      <td className="num">{inv.amount}</td>
+                      <td>{inv.url
+                        ? <a className="ac-dl" href={inv.url} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><IcDown size={13}/> PDF</a>
+                        : <span className="ac-note">—</span>}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </section>
         </React.Fragment>
       );
     }
 
     function AccountPage() {
-      const [logged, setLogged] = useState(false);
-      useEffect(() => { document.title = 'Mon compte — THW Coaching'; }, []);
+      const [state, setState] = useState('loading'); // loading | guest | ready
+      const [account, setAccount] = useState(null);
+
+      useEffect(() => {
+        document.title = 'Mon compte — THW Coaching';
+        let alive = true;
+        (async () => {
+          try {
+            const r = await fetch('/api/account/summary', { credentials: 'include' });
+            const s = await r.json().catch(() => null);
+            if (!alive) return;
+            if (!s || !s.loggedIn) { setState('guest'); return; }
+            let d = null;
+            try {
+              const rd = await fetch('/api/subscription/details', { credentials: 'include' });
+              if (rd.ok) d = await rd.json();
+            } catch (e) { /* détails optionnels */ }
+            if (!alive) return;
+            setAccount(buildAccount(s, d));
+            setState('ready');
+          } catch (e) {
+            if (alive) setState('guest');
+          }
+        })();
+        return () => { alive = false; };
+      }, []);
+
       return (
         <div>
           <SiteHeader active="login"/>
           <main className="ac-wrap ac-main">
-            {logged ? <Dashboard onLogout={() => setLogged(false)}/> : <LoginView onLogin={() => setLogged(true)}/>}
+            {state === 'loading'
+              ? <LoadingView/>
+              : state === 'ready'
+                ? <Dashboard account={account} onLogout={() => { /* lien /api/auth/signout gère la suite */ }}/>
+                : <LoginView/>}
           </main>
           <SiteFooter/>
         </div>

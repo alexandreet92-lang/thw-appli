@@ -48,7 +48,7 @@ const SPORT_TYPE_TO_KEY: Record<string, SportKey> = {
   mobilite: 'mobilite', mobility: 'mobilite',
   ski: 'ski', yoga: 'yoga', padel: 'padel', tennis: 'padel',
   hiking: 'hiking', randonnee: 'hiking', rando: 'hiking', walk: 'hiking',
-  other: 'other', autre: 'other',
+  other: 'other', autre: 'other', autres: 'other',
 }
 
 export function sportKeyFromType(sport: string): SportKey | null {

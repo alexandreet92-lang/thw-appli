@@ -47,7 +47,7 @@ import { currentLocale } from '@/lib/i18n'
 export type PlanVariant   = 'A' | 'B'
 export type WeekRange     = 5 | 10 | 20
 export type DayIntensity  = 'recovery' | 'low' | 'mid' | 'hard'
-export type SportType     = 'run' | 'bike' | 'swim' | 'hyrox' | 'rowing' | 'gym' | 'elliptique' | 'hybrid' | 'boxe' | 'mobilite'
+export type SportType     = 'run' | 'bike' | 'swim' | 'hyrox' | 'rowing' | 'gym' | 'elliptique' | 'hybrid' | 'boxe' | 'mobilite' | 'autres'
 type SessionStatus = 'planned' | 'done'
 export type BlockType     = 'warmup' | 'effort' | 'recovery' | 'cooldown' | 'circuit_header'
 export type CircuitType   = 'series' | 'circuit' | 'superset' | 'emom' | 'tabata'
@@ -63,13 +63,13 @@ export type CyclingSub    = 'velo' | 'vtt' | 'ht'
 export type RunningSub    = 'outdoor' | 'treadmill'
 
 // ── Constants ─────────────────────────────────────
-export const SPORT_BG: Record<SportType,string>     = { swim:'rgba(6,182,212,0.13)', run:'rgba(249,115,22,0.13)', bike:'rgba(59,130,246,0.13)', hyrox:'rgba(239,68,68,0.13)', gym:'rgba(139,92,246,0.13)', rowing:'rgba(20,184,166,0.13)', elliptique:'rgba(168,85,247,0.13)', hybrid:'rgba(245,158,11,0.13)', boxe:'rgba(225,29,72,0.13)', mobilite:'rgba(132,204,22,0.13)' }
-export const SPORT_BORDER: Record<SportType,string> = { swim:'#06b6d4', run:'#22c55e', bike:'#3b82f6', hyrox:'#ef4444', gym:'#f97316', rowing:'#14b8a6', elliptique:'#a855f7', hybrid:'#f59e0b', boxe:'#e11d48', mobilite:'#84cc16' }
+export const SPORT_BG: Record<SportType,string>     = { swim:'rgba(6,182,212,0.13)', run:'rgba(249,115,22,0.13)', bike:'rgba(59,130,246,0.13)', hyrox:'rgba(239,68,68,0.13)', gym:'rgba(139,92,246,0.13)', rowing:'rgba(20,184,166,0.13)', elliptique:'rgba(168,85,247,0.13)', hybrid:'rgba(245,158,11,0.13)', boxe:'rgba(225,29,72,0.13)', mobilite:'rgba(132,204,22,0.13)', autres:'rgba(148,163,184,0.13)' }
+export const SPORT_BORDER: Record<SportType,string> = { swim:'#06b6d4', run:'#22c55e', bike:'#3b82f6', hyrox:'#ef4444', gym:'#f97316', rowing:'#14b8a6', elliptique:'#a855f7', hybrid:'#f59e0b', boxe:'#e11d48', mobilite:'#84cc16', autres:'#94a3b8' }
 
-export const SPORT_LABEL: Record<SportType,string>  = { run:'Running', bike:'Cyclisme', swim:'Natation', hyrox:'Hyrox', gym:'Musculation', rowing:'Aviron', elliptique:'Elliptique', hybrid:'Hybrid', boxe:'Boxe', mobilite:'Mobilité' }
-export const SPORT_ABBR: Record<SportType,string>   = { run:'RUN', bike:'BIKE', swim:'SWIM', hyrox:'HRX', gym:'GYM', rowing:'ROW', elliptique:'ELLIP', hybrid:'HYB', boxe:'BOX', mobilite:'MOB' }
+export const SPORT_LABEL: Record<SportType,string>  = { run:'Running', bike:'Cyclisme', swim:'Natation', hyrox:'Hyrox', gym:'Musculation', rowing:'Aviron', elliptique:'Elliptique', hybrid:'Hybrid', boxe:'Boxe', mobilite:'Mobilité', autres:'Autres' }
+export const SPORT_ABBR: Record<SportType,string>   = { run:'RUN', bike:'BIKE', swim:'SWIM', hyrox:'HRX', gym:'GYM', rowing:'ROW', elliptique:'ELLIP', hybrid:'HYB', boxe:'BOX', mobilite:'MOB', autres:'AUT' }
 // Label court (maquette grille semaine) : Run/Bike/Swim/Gym/Hyrox…
-export const SPORT_SHORT: Record<SportType,string>  = { run:'Run', bike:'Bike', swim:'Swim', hyrox:'Hyrox', gym:'Gym', rowing:'Row', elliptique:'Ellip', hybrid:'Hybrid', boxe:'Boxe', mobilite:'Mobilité' }
+export const SPORT_SHORT: Record<SportType,string>  = { run:'Run', bike:'Bike', swim:'Swim', hyrox:'Hyrox', gym:'Gym', rowing:'Row', elliptique:'Ellip', hybrid:'Hybrid', boxe:'Boxe', mobilite:'Mobilité', autres:'Autres' }
 export const CYCLING_SUB_LABEL: Record<CyclingSub,string> = { velo:'Vélo route', vtt:'VTT', ht:'Home Trainer' }
 export const RUNNING_SUB_LABEL: Record<RunningSub,string> = { outdoor:'Dehors', treadmill:'Tapis' }
 // Trois FAMILLES de course, qualités physiques distinctes :
@@ -405,7 +405,7 @@ export function getWeekStart():string {
 export const SPORT_TO_BUILDER: Record<SportType, string> = {
   run: 'running', bike: 'cycling', swim: 'natation',
   hyrox: 'hyrox', gym: 'gym', rowing: 'rowing', elliptique: 'cycling',
-  hybrid: 'hybrid', boxe: 'boxe', mobilite: 'mobilite',
+  hybrid: 'hybrid', boxe: 'boxe', mobilite: 'mobilite', autres: 'autres',
 }
 
 // Mobilité : séance HORS VOLUME. Elle n'entre dans AUCUN total (volume horaire,
@@ -660,8 +660,10 @@ export function normalizeSportType(s:string):SportType {
     yoga:'mobilite', stretching:'mobilite', assouplissement:'mobilite', souplesse:'mobilite',
     // Multisport
     triathlon:'run',
+    // Autres (catch-all)
+    autres:'autres', autre:'autres', other:'autres',
   }
-  return m[lower]??((['run','bike','swim','hyrox','gym','rowing','elliptique','hybrid','boxe','mobilite'] as SportType[]).includes(lower as SportType)?lower as SportType:'run')
+  return m[lower]??((['run','bike','swim','hyrox','gym','rowing','elliptique','hybrid','boxe','mobilite','autres'] as SportType[]).includes(lower as SportType)?lower as SportType:'run')
 }
 
 // Retourne true si la séance est une séance repos/off (durée 0 ou sport/titre repos).

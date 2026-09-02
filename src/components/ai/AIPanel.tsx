@@ -15,7 +15,7 @@ import { useState, useEffect, useRef, useCallback, useMemo, memo } from 'react'
 import { getCurrentUser } from "@/lib/auth/currentUser"
 import { useRouter } from 'next/navigation'
 import { useI18n } from '@/lib/i18n'
-import { pickNativePhoto } from '@/lib/native/photoPicker'
+import { pickNativePhoto, pickNativePhotos } from '@/lib/native/photoPicker'
 import { isNativeApp } from '@/lib/native/platform'
 import { openUpgrade } from '@/components/subscription/UpgradeModal'
 import { parseAdvancedSpec, AdvancedChartCard } from '@/components/ai/AdvancedChart'
@@ -137,6 +137,35 @@ interface AIConv {
   agent?: 'training' | 'networks' | 'coach'
   // Rattachement à un projet (dossier de conversations). null/absent = hors projet.
   projectId?: string | null
+  // Octets d'images déjà envoyés dans CETTE discussion (quota de stockage par
+  // discussion : au-delà de la limite du tier, on ne peut plus écrire dans ce chat).
+  imageBytes?: number
+}
+
+// Nombre maximum de photos jointes à UN message.
+const MAX_IMAGES_PER_MSG = 10
+
+// Quota de stockage IMAGES par discussion, par formule (octets). Plus la formule
+// est élevée, plus le budget par discussion est grand. Au-delà → chat bloqué.
+const MB = 1024 * 1024
+const IMG_DISC_BUDGET: Record<string, number> = {
+  free:    10 * MB,
+  trial:   25 * MB,
+  premium: 25 * MB,
+  pro:     100 * MB,
+  expert:  300 * MB,
+}
+// Taille réelle en octets d'une donnée base64 (sans le préfixe data:).
+function base64Bytes(b64: string): number {
+  if (!b64) return 0
+  const len = b64.length
+  const pad = b64.endsWith('==') ? 2 : b64.endsWith('=') ? 1 : 0
+  return Math.max(0, Math.floor(len * 3 / 4) - pad)
+}
+// Formate des octets en Ko/Mo lisibles.
+function fmtBytes(n: number): string {
+  if (n >= MB) return `${(n / MB).toFixed(n >= 10 * MB ? 0 : 1)} Mo`
+  return `${Math.max(1, Math.round(n / 1024))} Ko`
 }
 
 type FlowId = 'weakpoints' | 'nutrition' | 'recharge' | 'analyzetest' | 'sessionbuilder' | 'training_plan' | 'rule_helper' | 'analyser_entrainement' | 'estimer_zones' | 'analyser_progression' | 'strategie_course' | 'app_guide' | 'analyze_training' | 'analyser_semaine' | 'analyser_recuperation' | 'conseils_sommeil' | 'quickaction' | null
@@ -20745,6 +20774,8 @@ export default function AIPanel({
   const [method,      setMethod]      = useState<string>('auto')   // méthode d'entraînement (composer)
   const [selPopup,    setSelPopup]    = useState<{ text: string; x: number; y: number } | null>(null)
   const [attachment,    setAttachment]    = useState<AttachedFile | null>(null)
+  const [images,        setImages]        = useState<AttachedFile[]>([])   // photos multiples (max 10) du message en cours
+  const [storageTier,   setStorageTier]   = useState<string>('premium')    // formule → budget stockage/discussion
   const [attachErr,     setAttachErr]     = useState<string | null>(null)
   const [attachParsing, setAttachParsing] = useState(false)
   const [pendingToolCalls, setPendingToolCalls] = useState<PendingToolCall[]>([])
@@ -20850,6 +20881,14 @@ export default function AIPanel({
   const agentDropRef = useRef<HTMLDivElement>(null)
 
   const active = convs.find(c => c.id === activeId) ?? null
+
+  // ── Quota stockage photos PAR DISCUSSION ──────────────────────────────────
+  const imgBudget      = IMG_DISC_BUDGET[storageTier] ?? IMG_DISC_BUDGET.premium
+  const imgUsedSent    = active?.imageBytes ?? 0                                 // déjà envoyé dans ce chat
+  const imgUsedPending = images.reduce((s, im) => s + base64Bytes(im.data), 0)   // en attente d'envoi
+  const imgUsedTotal   = imgUsedSent + imgUsedPending
+  const imgOverBudget  = imgUsedSent >= imgBudget                                // plafond atteint (déjà envoyé) → chat bloqué
+  const imgRemaining   = Math.max(0, imgBudget - imgUsedSent)
 
   // `loading` DÉRIVÉ : vrai uniquement si la conversation ACTIVE génère. Garde
   // le comportement historique de l'UI (barre d'envoi, bouton Stop, TypedText)
@@ -20983,6 +21022,9 @@ export default function AIPanel({
         const user = await getCurrentUser()
         if (!user) return
         syncUserIdRef.current = user.id
+        // Formule → budget de stockage photos par discussion.
+        void sb.from('user_subscriptions').select('tier').eq('user_id', user.id).maybeSingle()
+          .then((r: { data: { tier?: string } | null }) => { const tr = r.data?.tier; if (tr && IMG_DISC_BUDGET[tr]) setStorageTier(tr) })
         const remote = await fetchRemoteConvs(sb, user.id)
         const localNow = loadConvs() as unknown as SyncConv[]
         const merged = mergeConvs(localNow, remote, MAX_CONVS)
@@ -21304,6 +21346,8 @@ export default function AIPanel({
     haptic()
     setActiveId(null)
     setActiveFlow(null)
+    setImages([])          // photos en attente non transférées d'un chat à l'autre
+    setAttachErr(null)
     setHistOpen(false)
     setTimeout(() => areaRef.current?.focus(), 80)
   }
@@ -21314,6 +21358,8 @@ export default function AIPanel({
     setConvs(prev => prev.map(x => x.id === c.id ? { ...x, title: c.title } : x))
     setActiveId(c.id)
     setActiveFlow(null)
+    setImages([])          // photos en attente non transférées d'un chat à l'autre
+    setAttachErr(null)
     // Ouvrir un chat efface son point bleu « réponse terminée non vue ».
     setUnreadDone(prev => { if (!prev.has(c.id)) return prev; const n = new Set(prev); n.delete(c.id); return n })
   }
@@ -22000,10 +22046,18 @@ export default function AIPanel({
 
   // Handler fichier sélectionné (caméra / photos / fichiers / parcours GPX)
   const handleFileSelected = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
+    const fileList = Array.from(e.target.files ?? [])
+    const file = fileList[0]
     if (!file) return
     e.target.value = ''   // reset pour permettre re-sélection
     setAttachErr(null)
+
+    // Photos : sélection multiple → on empile (max 10, budget par discussion).
+    const imgFiles = fileList.filter(f => f.type.startsWith('image/'))
+    if (imgFiles.length > 0 && imgFiles.length === fileList.length) {
+      await addImages(imgFiles)
+      return
+    }
 
     // Trace de parcours (GPX/TCX/KML) → parsée côté serveur en profil
     // altimétrique, puis attachée comme bloc texte « PARCOURS IMPORTÉ ».
@@ -22047,6 +22101,38 @@ export default function AIPanel({
   }, [])
 
   // Attache une photo déjà uploadée (bucket activity-media) via son URL publique.
+  // Refs synchronisées pour lire l'état le plus récent dans addImages (async).
+  const imagesRef = useRef<AttachedFile[]>(images)
+  useEffect(() => { imagesRef.current = images }, [images])
+  const imgRemainingRef = useRef(imgRemaining)
+  useEffect(() => { imgRemainingRef.current = imgRemaining }, [imgRemaining])
+
+  // Ajoute une ou plusieurs photos (max 10 / message), en respectant le budget de
+  // stockage de la discussion. S'arrête dès qu'une limite est atteinte (message).
+  const addImages = useCallback(async (files: File[]) => {
+    const imgs = files.filter(f => f.type.startsWith('image/'))
+    if (imgs.length === 0) return
+    setAttachErr(null)
+    let count = imagesRef.current.length
+    let pending = imagesRef.current.reduce((s, im) => s + base64Bytes(im.data), 0)
+    const remaining = imgRemainingRef.current   // budget de la discussion − déjà envoyé
+    const toAdd: AttachedFile[] = []
+    let hitBudget = false
+    for (const f of imgs) {
+      if (count >= MAX_IMAGES_PER_MSG) { setAttachErr(`Maximum ${MAX_IMAGES_PER_MSG} photos par message.`); break }
+      try {
+        const att = await fileToAttachment(f)
+        const b = base64Bytes(att.data)
+        if (pending + b > remaining) { hitBudget = true; break }
+        toAdd.push(att); count++; pending += b
+      } catch { /* photo illisible → ignorée */ }
+    }
+    if (hitBudget) setAttachErr('Stockage de la discussion presque atteint : ouvre une nouvelle discussion pour envoyer plus de photos.')
+    if (toAdd.length) setImages(prev => [...prev, ...toAdd].slice(0, MAX_IMAGES_PER_MSG))
+    if (toAdd.length || hitBudget) setTimeout(() => setAttachErr(null), 4500)
+    areaRef.current?.focus()
+  }, [])
+
   const handlePickRecentPhoto = useCallback(async (url: string) => {
     setAttachErr(null)
     try {
@@ -22055,27 +22141,15 @@ export default function AIPanel({
       const blob = await res.blob()
       const name = url.split('/').pop()?.split('?')[0] || 'photo.jpg'
       const file = new File([blob], name, { type: blob.type || 'image/jpeg' })
-      const attached = await fileToAttachment(file)
-      setAttachment(attached)
-      areaRef.current?.focus()
+      await addImages([file])
     } catch {
       setAttachErr('Impossible de charger cette photo.')
       setTimeout(() => setAttachErr(null), 4000)
     }
-  }, [])
+  }, [addImages])
 
-  // Attache un File image (issu du sélecteur natif Camera/Photothèque).
-  const attachImageFile = useCallback(async (file: File) => {
-    setAttachErr(null)
-    try {
-      const attached = await fileToAttachment(file)
-      setAttachment(attached)
-      areaRef.current?.focus()
-    } catch {
-      setAttachErr('Impossible de lire cette photo.')
-      setTimeout(() => setAttachErr(null), 4000)
-    }
-  }, [])
+  // Attache un/des File image (issu du sélecteur natif Camera/Photothèque).
+  const attachImageFile = useCallback(async (file: File) => { await addImages([file]) }, [addImages])
 
   // Ouvre l'appareil photo (natif : plugin Camera → direct ; sinon <input>).
   const openCamera = useCallback(async () => {
@@ -22087,10 +22161,12 @@ export default function AIPanel({
   // Ouvre la photothèque (natif : plugin Camera → DIRECT, sans feuille d'actions
   // intermédiaire ; sinon <input type="file">).
   const openPhotos = useCallback(async () => {
-    const f = await pickNativePhoto('photos')
-    if (f) { void attachImageFile(f); return }
+    // Natif : sélection multiple directe (max 10). Web : <input multiple>.
+    const remainingSlots = Math.max(1, MAX_IMAGES_PER_MSG - imagesRef.current.length)
+    const files = await pickNativePhotos(remainingSlots)
+    if (files) { if (files.length) void addImages(files); return }
     photosRef.current?.click()
-  }, [attachImageFile])
+  }, [addImages])
 
   // ── Dictée vocale (Whisper) ──────────────────────────────────
   // L'enregistrement + la transcription sont gérés par VoiceOverlay
@@ -22287,18 +22363,24 @@ export default function AIPanel({
     // composer principal (état global `attachment`).
     const effAttachment: AttachedFile | null = targeted ? (opts?.attachment ?? null) : attachment
     const hasAttachment = !!effAttachment
+    // Photos multiples : uniquement sur le composer principal (pas en volet ciblé).
+    const effImages: AttachedFile[] = targeted ? [] : images
+    const hasImages = effImages.length > 0
     const busy = targeted ? generatingConvs.has(targeted.id) : loading
     if (busy) return
-    if (targeted ? (!txt && !hasAttachment) : (!txt && !hasAttachment && !activeQA)) return
+    // Quota stockage discussion atteint (déjà envoyé) → on bloque l'écriture.
+    if (!targeted && imgOverBudget) { setAttachErr('Stockage de la discussion atteint. Ouvre une nouvelle discussion pour continuer avec des photos.'); return }
+    if (targeted ? (!txt && !hasAttachment) : (!txt && !hasAttachment && !hasImages && !activeQA)) return
 
     const qaForSend    = targeted ? null : activeQA    // capture before clearing
     const quoteForSend = targeted ? null : quotedText
-    const displayText = txt || (qaForSend ? qaForSend.label : '') || (effAttachment ? `[${effAttachment.name}]` : '')
-    if (!displayText && !hasAttachment) return
+    const displayText = txt || (qaForSend ? qaForSend.label : '') || (effAttachment ? `[${effAttachment.name}]` : '') || (hasImages ? `[${effImages.length} photo${effImages.length > 1 ? 's' : ''}]` : '')
+    if (!displayText && !hasAttachment && !hasImages) return
 
     if (!targeted) {
       setInput('')
       setAttachment(null)
+      setImages([])
       setActiveFlow(null)
       setPendingToolCalls([])
       setToolApplyStatus('idle')
@@ -22329,11 +22411,14 @@ export default function AIPanel({
       : displayText
 
     const userMsg: AIMsg = { id: genId(), role: 'user', content: finalDisplayText, ts: Date.now() }
+    // Octets photos de CE message → cumul du stockage de la discussion.
+    const sentImageBytes = effImages.reduce((s, im) => s + base64Bytes(im.data), 0)
     const updated: AIConv = {
       ...conv,
       msgs: [...conv.msgs, userMsg],
       title: conv.msgs.length === 0 ? (displayText.slice(0, 46) + (displayText.length > 46 ? '…' : '')) : conv.title,
       updatedAt: Date.now(),
+      imageBytes: (conv.imageBytes ?? 0) + sentImageBytes,
     }
 
     setConvs(prev => {
@@ -22389,12 +22474,18 @@ export default function AIPanel({
           body: JSON.stringify(effAttachment.parcoursSave),
         }).catch(() => { /* silencieux : l'analyse reste prioritaire */ })
       }
-    } else if (hasAttachment && effAttachment) {
+    } else if ((hasAttachment && effAttachment) || hasImages) {
       const blocks: { type: string; [k: string]: unknown }[] = []
-      if (effAttachment.isImage) {
-        blocks.push({ type: 'image', mediaType: effAttachment.mediaType, data: effAttachment.data })
-      } else {
-        blocks.push({ type: 'document', mediaType: effAttachment.mediaType, data: effAttachment.data, name: effAttachment.name })
+      // Photos multiples (jusqu'à 10) en tête du message.
+      for (const im of effImages) {
+        blocks.push({ type: 'image', mediaType: im.mediaType, data: im.data })
+      }
+      if (hasAttachment && effAttachment) {
+        if (effAttachment.isImage) {
+          blocks.push({ type: 'image', mediaType: effAttachment.mediaType, data: effAttachment.data })
+        } else {
+          blocks.push({ type: 'document', mediaType: effAttachment.mediaType, data: effAttachment.data, name: effAttachment.name })
+        }
       }
       if (apiContentText) blocks.push({ type: 'text', text: apiContentText })
       apiMsgs.push({ role: 'user', content: blocks })
@@ -22812,7 +22903,7 @@ export default function AIPanel({
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [input, loading, active, context, model, activeQA, quotedText, planId, planContext, webSearchOn, startGen, endGen, activeProjectId, projects])
+  }, [input, loading, active, context, model, activeQA, quotedText, planId, planContext, webSearchOn, startGen, endGen, activeProjectId, projects, attachment, images, imgOverBudget])
 
   // ── Enriched actions — charge les données puis appelle send ──
   const handleEnrichedAction = useCallback(async (id: string, label: string) => {
@@ -24216,8 +24307,8 @@ export default function AIPanel({
 
             {/* Hidden file inputs */}
             <input ref={cameraRef} type="file" accept="image/*" capture="environment" style={{ display: 'none' }} onChange={handleFileSelected} />
-            <input ref={photosRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFileSelected} />
-            <input ref={filesRef}  type="file" accept=".pdf,image/*,.doc,.docx,.txt,.gpx,.tcx,.kml" style={{ display: 'none' }} onChange={handleFileSelected} />
+            <input ref={photosRef} type="file" accept="image/*" multiple style={{ display: 'none' }} onChange={handleFileSelected} />
+            <input ref={filesRef}  type="file" accept=".pdf,image/*,.doc,.docx,.txt,.gpx,.tcx,.kml" multiple style={{ display: 'none' }} onChange={handleFileSelected} />
 
             {/* Compétences actives : visibles via le flyout du bouton Compétences
                 (menu « + »), plus affichées en pastilles bleues au-dessus du champ. */}
@@ -24266,6 +24357,35 @@ export default function AIPanel({
                 </div>
               )}
 
+              {/* Photos multiples : rangée défilante « Joindre X photos » (max 10) */}
+              {images.length > 0 && (
+                <div style={{ padding: '8px 12px 0' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                    <span style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--ai-mid)' }}>
+                      {images.length} photo{images.length > 1 ? 's' : ''} · {fmtBytes(imgUsedPending)}
+                    </span>
+                    <button onClick={() => setImages([])} style={{ border: 'none', background: 'transparent', color: 'var(--ai-dim)', fontSize: 11.5, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>Tout retirer</button>
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4, WebkitOverflowScrolling: 'touch' }} data-hscroll>
+                    {images.map((im, idx) => (
+                      <div key={idx} style={{ position: 'relative', flexShrink: 0 }}>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={im.preview} alt={im.name} style={{ width: 66, height: 66, objectFit: 'cover', borderRadius: 12, border: '1px solid var(--ai-border)', display: 'block' }} />
+                        <button onClick={() => setImages(prev => prev.filter((_, i) => i !== idx))} aria-label="Retirer"
+                          style={{ position: 'absolute', top: -6, right: -6, width: 20, height: 20, borderRadius: '50%', border: '2px solid var(--ai-bg)', background: 'rgba(0,0,0,0.72)', color: '#fff', cursor: 'pointer', fontSize: 12, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
+                      </div>
+                    ))}
+                    {/* Bouton « + » pour ajouter encore des photos */}
+                    {images.length < MAX_IMAGES_PER_MSG && (
+                      <button onClick={() => photosRef.current?.click()} aria-label="Ajouter des photos"
+                        style={{ width: 66, height: 66, flexShrink: 0, borderRadius: 12, border: '1px dashed var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {/* Attachment preview */}
               {attachment && (
                 <div style={{ padding: '8px 12px 0', display: 'flex', alignItems: 'flex-start', gap: 8 }}>
@@ -24302,6 +24422,19 @@ export default function AIPanel({
               {/* Attachment error */}
               {attachErr && (
                 <p style={{ fontSize: 11, color: '#ef4444', margin: '4px 12px 0', padding: 0 }}>{attachErr}</p>
+              )}
+
+              {/* Quota stockage discussion atteint → chat bloqué */}
+              {imgOverBudget && (
+                <div style={{ margin: '6px 12px 0', padding: '9px 12px', borderRadius: 10, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)', fontSize: 11.5, color: 'var(--ai-text)', lineHeight: 1.4 }}>
+                  📷 Stockage photos de cette discussion atteint ({fmtBytes(imgBudget)}). Ouvre une <strong>nouvelle discussion</strong> pour continuer à envoyer des photos.
+                </div>
+              )}
+              {/* Jauge de stockage discutée (affichée dès qu'on approche la limite) */}
+              {!imgOverBudget && imgUsedTotal > imgBudget * 0.6 && (
+                <p style={{ fontSize: 10.5, color: 'var(--ai-dim)', margin: '4px 12px 0' }}>
+                  Stockage photos : {fmtBytes(imgUsedTotal)} / {fmtBytes(imgBudget)} dans cette discussion
+                </p>
               )}
 
               {/* Active Quick Action chip */}
@@ -24487,7 +24620,7 @@ export default function AIPanel({
                     </svg>
                   </button>
                 ) : (() => {
-                    const canSend = !!(input.trim() || attachment || activeQA || quotedText)
+                    const canSend = !imgOverBudget && !!(input.trim() || attachment || images.length > 0 || activeQA || quotedText)
                     // Champ vide + vocal dispo → le bouton lance la discussion vocale.
                     if (!canSend && speechSupported && !recording) {
                       return (

@@ -50,3 +50,33 @@ export async function pickNativePhoto(source: PhotoSource): Promise<File | null>
     return null
   }
 }
+
+/**
+ * Ouvre la photothèque en SÉLECTION MULTIPLE (natif uniquement). Renvoie la liste
+ * des images choisies (max `limit`). Renvoie null si indisponible → l'appelant
+ * retombe sur l'<input type="file" multiple> de secours.
+ */
+export async function pickNativePhotos(limit = 10): Promise<File[] | null> {
+  if (!isNativeApp()) return null
+  try {
+    const { Camera } = await import('@capacitor/camera')
+    const result = await Camera.pickImages({ quality: 85, limit })
+    const photos = result?.photos ?? []
+    if (photos.length === 0) return []
+    const files: File[] = []
+    for (const p of photos) {
+      const uri = p.webPath || p.path
+      if (!uri) continue
+      try {
+        const res = await fetch(uri)
+        const blob = await res.blob()
+        const ext = (p.format || 'jpeg').toLowerCase()
+        const type = blob.type || `image/${ext === 'jpg' ? 'jpeg' : ext}`
+        files.push(new File([blob], `photo.${ext}`, { type }))
+      } catch { /* image illisible → ignorée */ }
+    }
+    return files
+  } catch {
+    return null
+  }
+}

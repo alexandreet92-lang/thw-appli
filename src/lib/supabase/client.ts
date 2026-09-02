@@ -57,7 +57,16 @@ function wrapMutationBuilder(builder: any, silent: boolean): any {
   })
 }
 
+// ⚠️ SINGLETON obligatoire. `createClient()` est appelé dans quasiment tous les
+// composants/pages, souvent à chaque navigation. Sans cache, CHAQUE appel créait
+// un nouveau GoTrueClient (auto-refresh du token + écouteurs + detectSessionInUrl)
+// jamais nettoyé → au fil des navigations, des dizaines de clients + timers
+// s'accumulaient → l'app devenait fluide ~2 min puis ramait fortement (WebView).
+// On retourne donc TOUJOURS la même instance dans le navigateur.
+let cachedClient: ReturnType<typeof createBrowserClient> | null = null
+
 export function createClient() {
+  if (cachedClient) return cachedClient
   const client = NATIVE
     ? createSupaClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -93,5 +102,7 @@ export function createClient() {
     }) as any
   }) as typeof client.from
 
+  // On ne met en cache que côté navigateur (là où les timers/écouteurs fuient).
+  if (typeof window !== 'undefined') cachedClient = client
   return client
 }

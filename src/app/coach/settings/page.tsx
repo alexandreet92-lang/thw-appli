@@ -411,8 +411,10 @@ function OffreBloc() {
         await openExternalUrl(d.url)
         return
       }
-    } catch { /* on retombe sur le site ci-dessous */ }
-    await openWebsite('/site/abonnement-coach.html')
+    } catch { /* on retombe sur l'espace facturation ci-dessous */ }
+    // Portail Stripe injoignable → on ouvre l'espace abonnement/facturation du
+    // compte (login d'abord, puis SES reçus et paiements), pas la page marketing.
+    await openWebsite('/settings/subscription')
   }
   return (
     <div>

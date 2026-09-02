@@ -62,7 +62,14 @@ export const WEB_APP_URL =
  * `path` doit commencer par « / ».
  */
 export async function openWebsite(path = '/settings/subscription'): Promise<void> {
-  const url = `${WEB_APP_URL}${path.startsWith('/') ? path : `/${path}`}`
+  const clean = path.startsWith('/') ? path : `/${path}`
+  // Règle : quand on ouvre une page du site qui montre les données PERSONNELLES
+  // (abonnement, recharge, facturation…), on passe D'ABORD par la connexion, puis
+  // on renvoie l'utilisateur sur SA page (il voit ses propres infos). Les pages
+  // publiques (/site/*.html : légal, marketing) et /auth lui-même sont exclus.
+  const isPersonalAppPage = clean.startsWith('/') && !clean.startsWith('/site/') && !clean.startsWith('/auth')
+  const routed = isPersonalAppPage ? `/auth?redirect=${encodeURIComponent(clean)}` : clean
+  const url = `${WEB_APP_URL}${routed}`
   if (isNativeApp()) {
     try {
       const { Browser } = await import('@capacitor/browser')

@@ -173,6 +173,12 @@ function AuthPageInner() {
   // verifier PKCE absent…). Avant, ce paramètre était posé mais JAMAIS lu :
   // l'utilisateur revenait sur l'écran de connexion sans la moindre explication.
   const linkError = params.get('error')
+  // Redirection post-connexion : quand on arrive ici depuis l'app (lien vers
+  // abonnement / recharge / facturation), on affiche la connexion PUIS on
+  // renvoie l'utilisateur sur SA page (il voit ses propres données). On valide
+  // le chemin (relatif au site, jamais une URL externe → pas d'open-redirect).
+  const redirectRaw = params.get('redirect')
+  const dest = redirectRaw && /^\/(?!\/)/.test(redirectRaw) ? redirectRaw : '/'
 
   const [activeTab, setActiveTab] = useState(0) // 0 login, 1 signup
   const [view, setView] = useState<'auth' | 'forgot' | 'verify'>('auth')
@@ -196,12 +202,22 @@ function AuthPageInner() {
   useEffect(() => {
     if (!NATIVE_BUILD) return
     const sb = createClient()
-    void sb.auth.getSession().then((res: { data: { session: Session | null } }) => { if (res.data.session) window.location.href = '/' })
+    void sb.auth.getSession().then((res: { data: { session: Session | null } }) => { if (res.data.session) window.location.href = dest })
     const { data: sub } = sb.auth.onAuthStateChange((event: AuthChangeEvent, session: Session | null) => {
-      if (session && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED')) window.location.href = '/'
+      if (session && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED')) window.location.href = dest
     })
     return () => sub.subscription.unsubscribe()
-  }, [])
+  }, [dest])
+
+  // Web : si on arrive sur /auth avec un ?redirect=… et qu'une session existe
+  // déjà (utilisateur connecté sur le navigateur), on le renvoie directement sur
+  // sa page — inutile de lui redemander le mot de passe. Sans paramètre, le
+  // comportement de /auth reste inchangé.
+  useEffect(() => {
+    if (NATIVE_BUILD || !redirectRaw) return
+    const sb = createClient()
+    void sb.auth.getSession().then((res: { data: { session: Session | null } }) => { if (res.data.session) window.location.replace(dest) })
+  }, [redirectRaw, dest])
 
   const emailValid = EMAIL_RE.test(email)
   const pwMatch = password === confirmPassword
@@ -229,8 +245,8 @@ function AuthPageInner() {
     // App native : rechargement dur → le dashboard se monte à neuf avec la session
     // fraîchement stockée en localStorage (router.refresh() n'a pas de serveur en
     // export statique). Web : navigation SPA classique.
-    if (NATIVE_BUILD) { window.location.href = '/' }
-    else { router.replace('/'); router.refresh() }
+    if (NATIVE_BUILD) { window.location.href = dest }
+    else { router.replace(dest); router.refresh() }
   }
 
   async function handleSignup() {

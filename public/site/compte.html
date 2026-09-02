@@ -139,6 +139,15 @@
     // on renvoie vers la vraie page de connexion de l'app (connexion d'abord).
     const nf = new Intl.NumberFormat('fr-FR');
     const AUTH_URL = '/auth?redirect=' + encodeURIComponent('/site/compte.html');
+    // Ouvert depuis l'app (navigateur in-app, ?app=1) → on ne montre AUCUN prix
+    // (règle App Store). Mémorisé pour toute la session du navigateur in-app.
+    const APP_NOPRICE = (() => {
+      try {
+        const p = new URLSearchParams(location.search);
+        if (p.get('app') === '1') { try { sessionStorage.setItem('thw_app_noprice', '1'); } catch (e) {} return true; }
+        return sessionStorage.getItem('thw_app_noprice') === '1';
+      } catch (e) { return false; }
+    })();
 
     function fmtEur(cents, currency) {
       const v = (cents || 0) / 100;
@@ -167,7 +176,7 @@
           date: fmtDate(inv.date),
           desc: 'Abonnement ' + (s.tierLabel || ''),
           type: 'sub',
-          amount: fmtEur(inv.amount, inv.currency),
+          amount: APP_NOPRICE ? '' : fmtEur(inv.amount, inv.currency),
           url: inv.url || null,
         };
       });
@@ -178,7 +187,7 @@
         plan: {
           name: s.tierLabel || s.tier || '—',
           kind: isCoach ? 'Abonnement coach' : 'Abonnement athlète',
-          price: price,
+          price: APP_NOPRICE ? null : price,
           renews: renewIso ? fmtDate(renewIso) : null,
           cancelAtEnd: !!(d && d.cancel_at_period_end),
         },
@@ -271,8 +280,8 @@
                 {a.plan.kind}{a.plan.price ? ' · ' + a.plan.price : ''}
                 {a.plan.renews ? (<React.Fragment><br/>{a.plan.cancelAtEnd ? 'Se termine le ' : 'Prochain prélèvement le '}{a.plan.renews}</React.Fragment>) : null}
               </p>
-              <a className="ac-link" href={changeHref}>Changer de formule <IcArrow size={13}/></a>
-              <a className="ac-link" href="#" onClick={(e) => { e.preventDefault(); openPortal(); }} style={{ marginTop: 6 }}>Gérer le paiement / résilier <IcArrow size={13}/></a>
+              {!APP_NOPRICE && <a className="ac-link" href={changeHref}>Changer de formule <IcArrow size={13}/></a>}
+              {!APP_NOPRICE && <a className="ac-link" href="#" onClick={(e) => { e.preventDefault(); openPortal(); }} style={{ marginTop: 6 }}>Gérer le paiement / résilier <IcArrow size={13}/></a>}
             </div>
 
             {a.trial && (
@@ -289,14 +298,14 @@
               <TokenCard label="Tokens du chat" icon={<IcToken size={15}/>}
                 balance={a.chatTokens.balance} quota={a.chatTokens.quota}
                 note={`sur ${nf.format(a.chatTokens.quota)} inclus ce mois-ci`}
-                cta={['Recharger', 'recharge-tokens.html']}/>
+                cta={APP_NOPRICE ? null : ['Recharger', 'recharge-tokens.html']}/>
             )}
 
             {a.studioTokens && (
               <TokenCard label="Tokens Studio" icon={<IcLayers size={15}/>}
                 balance={a.studioTokens.balance} quota={a.studioTokens.quota}
                 note={`quota mensuel ${nf.format(a.studioTokens.quota)} · les packs achetés n'expirent jamais`}
-                cta={['Recharger le Studio', 'recharge-tokens.html']}/>
+                cta={APP_NOPRICE ? null : ['Recharger le Studio', 'recharge-tokens.html']}/>
             )}
           </div>
 

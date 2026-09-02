@@ -93,6 +93,14 @@
   <script type="text/babel" src="components/site/SiteChrome.jsx"></script>
 
   <script type="text/babel">
+    // Ouvert depuis l'app (?app=1) → aucun prix affiché (règle App Store).
+    const APP_NOPRICE = (() => {
+      try {
+        const p = new URLSearchParams(window.location.search);
+        if (p.get('app') === '1') { try { sessionStorage.setItem('thw_app_noprice', '1'); } catch (e) {} return true; }
+        return sessionStorage.getItem('thw_app_noprice') === '1';
+      } catch (e) { return false; }
+    })();
     // ── i18n dictionaries ──────────────────────────────────────────────────────
     const I18N = {
       fr: {
@@ -421,7 +429,8 @@
             fontWeight: 800, letterSpacing: '-0.04em', color: 'var(--text)', marginBottom: 18,
           }}>{plan.name}</div>
 
-          {/* Price */}
+          {/* Price — masqué quand ouvert depuis l'app */}
+          {!APP_NOPRICE && (
           <div style={{
             marginBottom: 20,
             opacity: flipping ? 0 : 1,
@@ -450,6 +459,7 @@
               {isAnnual ? T.billedAnnual(plan.price.annual) : T.billedMonthly}
             </div>
           </div>
+          )}
 
           {/* Divider */}
           <div style={{

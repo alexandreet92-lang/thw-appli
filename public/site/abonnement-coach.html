@@ -182,6 +182,14 @@
 
     // Si la page est ouverte depuis l'app avec ?uid=..., on le transmet à Stripe
     // en client_reference_id pour rattacher le paiement au compte à coup sûr.
+    // Ouvert depuis l'app (?app=1) → aucun prix affiché (règle App Store).
+    const APP_NOPRICE = (() => {
+      try {
+        const p = new URLSearchParams(window.location.search);
+        if (p.get('app') === '1') { try { sessionStorage.setItem('thw_app_noprice', '1'); } catch (e) {} return true; }
+        return sessionStorage.getItem('thw_app_noprice') === '1';
+      } catch (e) { return false; }
+    })();
     const APP_UID = (() => { try { return new URLSearchParams(window.location.search).get('uid') || ''; } catch (e) { return ''; } })();
     const stripeUrl = (base) => APP_UID ? base + (base.indexOf('?') === -1 ? '?' : '&') + 'client_reference_id=' + encodeURIComponent(APP_UID) : base;
     const RECOMMENDED = 'coach100';
@@ -257,10 +265,18 @@
             {rec && <span className="cp-tag">Recommandé</span>}
           </div>
           <p className="cp-cap num">{pack.label}</p>
-          <div className="cp-price"><span className="v num">{value}</span><span className="p num">{yearly ? '/an' : '/mois'}</span></div>
-          <p className="cp-per num">{perAthlete(pack, tier)} par athlète et par mois</p>
-          <p className="cp-alt num">{alt}</p>
-          <a className="cp-cta" href={stripeUrl(yearly ? v.links.yearly : v.links.monthly)}>Démarrer l'essai gratuit</a>
+          {APP_NOPRICE ? (
+            <div style={{ flex: 1 }} />
+          ) : (
+            <React.Fragment>
+              <div className="cp-price"><span className="v num">{value}</span><span className="p num">{yearly ? '/an' : '/mois'}</span></div>
+              <p className="cp-per num">{perAthlete(pack, tier)} par athlète et par mois</p>
+              <p className="cp-alt num">{alt}</p>
+            </React.Fragment>
+          )}
+          {APP_NOPRICE
+            ? <a className="cp-cta" href="compte.html?app=1">Gérer sur mon compte</a>
+            : <a className="cp-cta" href={stripeUrl(yearly ? v.links.yearly : v.links.monthly)}>Démarrer l'essai gratuit</a>}
         </article>
       );
     }

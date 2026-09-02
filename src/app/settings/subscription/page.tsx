@@ -690,7 +690,7 @@ export default function SubscriptionPage() {
                   ) : hidePrice ? (
                     <button
                       className="sub-btn"
-                      onClick={() => void openWebsite('/settings/subscription')}
+                      onClick={() => void openWebsite('/site/compte.html')}
                       style={{ background: 'var(--bg-card2)', color: 'var(--text-mid)', width: '100%' }}
                     >
                       {t('native.manageSubOnWeb')} ↗

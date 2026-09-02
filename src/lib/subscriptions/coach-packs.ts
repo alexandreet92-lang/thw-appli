@@ -117,6 +117,27 @@ export function getCoachPackByPriceId(
   return null
 }
 
+/**
+ * Repli d'attribution par MONTANT (€) + période, UNIQUEMENT si un seul
+ * pack/formule correspond (jamais ambigu). Sert aux formules dont le Price ID
+ * n'est pas encore relié (ex. Premium) : le webhook attribue quand même l'accès
+ * si le montant est sans équivoque, et s'abstient sinon (aucune fausse attribution).
+ */
+export function getCoachPackByAmountEur(
+  amountEur: number,
+  period: BillingPeriod,
+): { pack: CoachPack; tier: CoachTier; period: BillingPeriod } | null {
+  const matches: { pack: CoachPack; tier: CoachTier; period: BillingPeriod }[] = []
+  for (const pack of COACH_PACKS) {
+    for (const tier of ['premium', 'pro', 'expert'] as CoachTier[]) {
+      const v = pack.tiers[tier]
+      const amt = period === 'yearly' ? v.yearlyEur : v.monthlyEur
+      if (amt === amountEur) matches.push({ pack, tier, period })
+    }
+  }
+  return matches.length === 1 ? matches[0] : null
+}
+
 /** Niveau d'abonnement ATHLÈTE débloqué pour le coach selon la formule du pack. */
 export function athleteTierForCoachTier(tier: CoachTier): 'premium' | 'pro' | 'expert' {
   return tier

@@ -10,7 +10,7 @@ export const runtime = 'nodejs'
 import { NextRequest, NextResponse } from 'next/server'
 import type Stripe from 'stripe'
 import { stripe, getTierFromPriceId } from '@/lib/stripe/config'
-import { getCoachPackByPriceId, athleteTierForCoachTier, type CoachPack, type CoachTier, type BillingPeriod } from '@/lib/subscriptions/coach-packs'
+import { getCoachPackByPriceId, getCoachPackByAmountEur, athleteTierForCoachTier, type CoachPack, type CoachTier, type BillingPeriod } from '@/lib/subscriptions/coach-packs'
 import { createServiceClient } from '@/lib/supabase/server'
 import { notifyUser } from '@/lib/notifications/dispatch'
 import { creditStudioPack } from '@/lib/tokens/studio'
@@ -67,9 +67,15 @@ function resolveCoachPack(
   subscription: Stripe.Subscription,
 ): { pack: CoachPack; tier: CoachTier; period: BillingPeriod } | null {
   const price = subscription.items.data[0]?.price
-  // Attribution par PRICE ID uniquement (unique, non ambigu) → pas de collision
-  // de montant entre formules (ex. Équipe+Expert et Club peuvent avoir le même prix).
-  return getCoachPackByPriceId(price?.id ?? null)
+  // 1) Attribution par PRICE ID (unique, non ambigu) — Pro/Expert.
+  const byId = getCoachPackByPriceId(price?.id ?? null)
+  if (byId) return byId
+  // 2) Repli par MONTANT si UN SEUL pack/formule correspond (couvre Premium dont
+  //    les Price IDs ne sont pas encore reliés). Ambigu → null (aucune attribution).
+  const cents = price?.unit_amount
+  if (cents == null) return null
+  const period: BillingPeriod = price?.recurring?.interval === 'year' ? 'yearly' : 'monthly'
+  return getCoachPackByAmountEur(cents / 100, period)
 }
 
 // ── Handler ────────────────────────────────────────────────────

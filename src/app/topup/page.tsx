@@ -76,7 +76,7 @@ function PackCard({ pack, loading, onChoose }: { pack: Pack; loading: string | n
       )}
       <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, lineHeight: 1.5, color: 'var(--text-mid)', flex: 1, margin: '6px 0 20px' }}>{packDesc}</p>
       {hidePrice ? (
-        <button onClick={() => void openWebsite('/topup')}
+        <button onClick={() => void openWebsite('/site/recharge-tokens.html')}
           style={{
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%',
             padding: '13px 18px', borderRadius: 10, border: '1px solid var(--border)',

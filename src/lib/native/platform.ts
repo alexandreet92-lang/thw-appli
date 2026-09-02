@@ -69,8 +69,13 @@ export async function openWebsite(path = '/settings/subscription'): Promise<void
   // publiques (/site/*.html : légal, marketing) et /auth lui-même sont exclus.
   const isPersonalAppPage = clean.startsWith('/') && !clean.startsWith('/site/') && !clean.startsWith('/auth')
   const routed = isPersonalAppPage ? `/auth?redirect=${encodeURIComponent(clean)}` : clean
-  const url = `${WEB_APP_URL}${routed}`
-  if (isNativeApp()) {
+  const native = isNativeApp()
+  // Règle App Store : AUCUN prix visible quand la page est ouverte depuis l'app
+  // (navigateur in-app). On tague l'URL avec `app=1` → les pages du site masquent
+  // tous les montants. Le lien reçu par EMAIL (ouvert hors app) garde les prix.
+  const withFlag = native ? `${routed}${routed.includes('?') ? '&' : '?'}app=1` : routed
+  const url = `${WEB_APP_URL}${withFlag}`
+  if (native) {
     try {
       const { Browser } = await import('@capacitor/browser')
       await Browser.open({ url })

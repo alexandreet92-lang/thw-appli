@@ -1939,8 +1939,10 @@ function AbonnementContent() {
         setCancelling(false)
         return
       }
-    } catch { /* on retombe sur le site ci-dessous */ }
-    try { await openWebsite('/site/abonnement-athlete.html'); setCancelConfirm(false) }
+    } catch { /* on retombe sur l'espace abonnement ci-dessous */ }
+    // Portail Stripe injoignable → espace abonnement du compte (login-first),
+    // d'où l'utilisateur gère/résilie, plutôt que la page marketing publique.
+    try { await openWebsite('/settings/subscription'); setCancelConfirm(false) }
     catch { setCancelError(t('profile.cancelFailed')) }
     finally { setCancelling(false) }
   }

@@ -18,7 +18,7 @@ interface Props {
   packLabel: string
   price: number
   billingPeriod: 'monthly' | 'yearly'
-  tier?: 'pro' | 'expert'
+  tier?: 'premium' | 'pro' | 'expert'
   onClose: () => void
 }
 

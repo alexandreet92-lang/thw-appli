@@ -148,28 +148,34 @@
 
     const APP_URL = 'https://app.thwcoaching.com';
 
-    // Chaque pack = une capacité d'athlètes, en 2 formules qui débloquent le
-    // niveau athlète du coach : « Pro » ou « Expert ». Les liens/prix ci-dessous
-    // DOIVENT rester synchronisés avec src/lib/subscriptions/coach-packs.ts
-    // (le webhook identifie le pack par le Price ID Stripe, unique).
+    // Chaque pack = une capacité d'athlètes, en 3 formules qui débloquent le
+    // niveau athlète du coach : « Premium » (inclus de base), « Pro » ou « Expert ».
+    // Les liens/prix DOIVENT rester synchronisés avec
+    // src/lib/subscriptions/coach-packs.ts (le webhook identifie par Price ID).
     const B = 'https://buy.stripe.com/';
     const COACH_PACKS = [
       { key: 'coach10', name: 'Solo', label: "jusqu'à 10 athlètes", maxAthletes: 10, tiers: {
+        premium: { monthlyEur: 29,  yearlyEur: 290,  links: { monthly: B+'bJe5kE1uXaixdsPeEYf3a1m', yearly: B+'7sY7sMehJbmBdsP9kEf3a1n' } },
         pro:    { monthlyEur: 49,  yearlyEur: 490,  links: { monthly: B+'5kQ00kgpRcqFbkH54of3a1y', yearly: B+'14AdRa6Ph8ap3Sf40kf3a1z' } },
         expert: { monthlyEur: 69,  yearlyEur: 690,  links: { monthly: B+'5kQ3cw2z19etfAX1Scf3a1L', yearly: B+'fZu5kEa1tfCRdsP1Scf3a1M' } } } },
       { key: 'coach50', name: 'Équipe', label: "jusqu'à 50 athlètes", maxAthletes: 50, tiers: {
+        premium: { monthlyEur: 59,  yearlyEur: 590,  links: { monthly: B+'bJe9AU7Tl76lgF1aoIf3a1o', yearly: B+'3cIfZigpR62hcoL1Scf3a1p' } },
         pro:    { monthlyEur: 79,  yearlyEur: 790,  links: { monthly: B+'28E9AU1uX9etgF1bsMf3a1A', yearly: B+'dRmdRaddF76l3SfbsMf3a1B' } },
         expert: { monthlyEur: 99,  yearlyEur: 990,  links: { monthly: B+'8x228s4H9cqFewT68sf3a1N', yearly: B+'9B6bJ2gpRbmB0G31Scf3a1O' } } } },
       { key: 'coach100', name: 'Club', label: "jusqu'à 100 athlètes", maxAthletes: 100, tiers: {
+        premium: { monthlyEur: 99,  yearlyEur: 990,  links: { monthly: B+'fZu14oflN2Q52ObeEYf3a1q', yearly: B+'00w14oflN1M1dsP68sf3a1r' } },
         pro:    { monthlyEur: 119, yearlyEur: 1190, links: { monthly: B+'5kQ5kEc9B3U94Wj9kEf3a1C', yearly: B+'aFafZi8XpaixgF1bsMf3a1D' } },
         expert: { monthlyEur: 139, yearlyEur: 1390, links: { monthly: B+'bJe00kddF1M1bkH68sf3a1P', yearly: B+'5kQ00k7TlfCRfAX54of3a1Q' } } } },
       { key: 'coach200', name: 'Académie', label: "jusqu'à 200 athlètes", maxAthletes: 200, tiers: {
+        premium: { monthlyEur: 169, yearlyEur: 1690, links: { monthly: B+'bJe5kEa1t4Yd2Ob0O8f3a1s', yearly: B+'7sY7sM4H92Q5agDeEYf3a1t' } },
         pro:    { monthlyEur: 189, yearlyEur: 1890, links: { monthly: B+'fZueVe6Phaix88vcwQf3a1E', yearly: B+'cNibJ27TlbmBfAX9kEf3a1H' } },
         expert: { monthlyEur: 209, yearlyEur: 2090, links: { monthly: B+'aFa00kehJ76l88v40kf3a1R', yearly: B+'dRm14oflN1M14WjfJ2f3a1S' } } } },
       { key: 'coach300', name: 'Élite', label: "jusqu'à 300 athlètes", maxAthletes: 300, tiers: {
+        premium: { monthlyEur: 229, yearlyEur: 2290, links: { monthly: B+'aFadRagpR3U960nfJ2f3a1u', yearly: B+'3cI8wQc9BbmBgF154of3a1v' } },
         pro:    { monthlyEur: 249, yearlyEur: 2490, links: { monthly: B+'5kQ28s2z18ap74rgN6f3a1G', yearly: B+'aFa28sc9B3U9ewTcwQf3a1I' } },
         expert: { monthlyEur: 269, yearlyEur: 2690, links: { monthly: B+'4gM00k5Ld3U974r1Scf3a1T', yearly: B+'6oU00kehJduJfAX1Scf3a1U' } } } },
       { key: 'coach500', name: 'Fédération', label: "jusqu'à 500 athlètes", maxAthletes: 500, tiers: {
+        premium: { monthlyEur: 349, yearlyEur: 3490, links: { monthly: B+'14A28s8XpbmB1K7bsMf3a1w', yearly: B+'14A8wQ8XpfCRagD2Wgf3a1x' } },
         pro:    { monthlyEur: 369, yearlyEur: 3690, links: { monthly: B+'cNicN68Xp9et0G38gAf3a1J', yearly: B+'28EdRa8Xp4YdgF1fJ2f3a1K' } },
         expert: { monthlyEur: 389, yearlyEur: 3890, links: { monthly: B+'cNi8wQ5Ld2Q52Ob7cwf3a1V', yearly: B+'eVq28s1uXcqFfAXfJ2f3a1W' } } } },
     ];
@@ -181,7 +187,7 @@
     const RECOMMENDED = 'coach100';
 
     const INCLUDED = [
-      'Ton compte athlète personnel (Pro ou Expert selon la formule)',
+      'Ton compte athlète personnel (Premium, Pro ou Expert selon la formule)',
       'Roster complet de tes athlètes',
       'Planning individuel par athlète',
       "Écriture directe dans le calendrier de l'athlète",
@@ -274,7 +280,7 @@
 
     function CoachPricingPage() {
       const [yearly, setYearly] = useState(false);
-      const [tier, setTier] = useState('pro');
+      const [tier, setTier] = useState('premium');
       const [lang, setLang] = useState('fr');
       const ref = useReveal();
       useEffect(() => { document.title = 'Abonnement Coach — THW Coaching'; }, []);
@@ -291,6 +297,7 @@
 
               <div className="cp-togglerow">
                 <div className="cp-toggle" role="group" aria-label="Formule athlète incluse">
+                  <button type="button" aria-pressed={tier === 'premium'} onClick={() => setTier('premium')}>Athlète Premium</button>
                   <button type="button" aria-pressed={tier === 'pro'} onClick={() => setTier('pro')}>Athlète Pro</button>
                   <button type="button" aria-pressed={tier === 'expert'} onClick={() => setTier('expert')}>Athlète Expert</button>
                 </div>
@@ -301,7 +308,7 @@
                   </button>
                 </div>
               </div>
-              <p className="cp-sub" style={{ marginTop: 14, fontSize: 13.5 }}>Ton compte athlète est inclus dans le pack&nbsp;: <strong>{tier === 'expert' ? 'Athlète Expert' : 'Athlète Pro'}</strong>. Toutes les fonctions coach sont identiques quelle que soit la formule.</p>
+              <p className="cp-sub" style={{ marginTop: 14, fontSize: 13.5 }}>Ton compte athlète est inclus dans le pack&nbsp;: <strong>{tier === 'expert' ? 'Athlète Expert' : tier === 'pro' ? 'Athlète Pro' : 'Athlète Premium'}</strong>. Toutes les fonctions coach sont identiques quelle que soit la formule.</p>
             </header>
 
             <CapacityScale/>

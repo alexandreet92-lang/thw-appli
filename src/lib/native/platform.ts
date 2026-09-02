@@ -60,7 +60,10 @@ export function shouldGlassBlur(): boolean {
     if (o === '1') return true
     if (o === '0') return false
   } catch { /* ignore */ }
-  return !isNativeApp()
+  // Activé par défaut partout (web + natif/App Store). Anti-scintillement via
+  // translateZ(0) sur les éléments. Si le dev Xcode scintille, poser
+  // localStorage thw_glass_blur='0' pour prévisualiser sans flou.
+  return true
 }
 
 /** Applique/retire la classe globale qui autorise le flou verre. */

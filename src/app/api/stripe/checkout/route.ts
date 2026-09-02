@@ -9,7 +9,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { stripe, getPriceId } from '@/lib/stripe/config'
 import type { TierName } from '@/lib/subscriptions/tier-limits'
-import { getCoachPack, buildCoachPackCheckoutUrl, type CoachPackKey } from '@/lib/subscriptions/coach-packs'
+import { getCoachPack, buildCoachPackCheckoutUrl, type CoachPackKey, type CoachTier } from '@/lib/subscriptions/coach-packs'
 
 const VALID_TIERS: TierName[] = ['premium', 'pro', 'expert']
 const VALID_PERIODS = ['monthly', 'yearly'] as const
@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
   let checkoutMeta: Record<string, string>
 
   try {
-    const body = await req.json() as { tier?: unknown; coachPack?: unknown; billingPeriod?: unknown }
+    const body = await req.json() as { tier?: unknown; coachPack?: unknown; coachTier?: unknown; billingPeriod?: unknown }
     if (!VALID_PERIODS.includes(body.billingPeriod as BillingPeriod)) {
       return NextResponse.json({ error: `billingPeriod invalide : ${String(body.billingPeriod)}` }, { status: 400 })
     }
@@ -55,7 +55,9 @@ export async function POST(req: NextRequest) {
     if (body.coachPack) {
       const pack = getCoachPack(body.coachPack as string)
       if (!pack) return NextResponse.json({ error: `Pack coach invalide : ${String(body.coachPack)}` }, { status: 400 })
-      const url = buildCoachPackCheckoutUrl(pack.key as CoachPackKey, billingPeriod, userId, userEmail)
+      // Formule athlète incluse (Premium par défaut, la formule de base).
+      const coachTier: CoachTier = body.coachTier === 'expert' ? 'expert' : body.coachTier === 'pro' ? 'pro' : 'premium'
+      const url = buildCoachPackCheckoutUrl(pack.key as CoachPackKey, coachTier, billingPeriod, userId, userEmail)
       if (!url) return NextResponse.json({ error: `Lien de paiement indisponible pour ${pack.key} (${billingPeriod}).` }, { status: 500 })
       console.log('[checkout] coach pack payment link:', pack.key, billingPeriod)
       return NextResponse.json({ url })

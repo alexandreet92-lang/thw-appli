@@ -18,10 +18,11 @@ interface Props {
   packLabel: string
   price: number
   billingPeriod: 'monthly' | 'yearly'
+  tier?: 'pro' | 'expert'
   onClose: () => void
 }
 
-export default function CoachSubscribeEmailModal({ packKey, packName, packLabel, price, billingPeriod, onClose }: Props) {
+export default function CoachSubscribeEmailModal({ packKey, packName, packLabel, price, billingPeriod, tier, onClose }: Props) {
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
   const [sent, setSent] = useState(false)
@@ -47,7 +48,7 @@ export default function CoachSubscribeEmailModal({ packKey, packName, packLabel,
       const res = await fetch('/api/coach/subscription/request-link', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, coachPack: packKey, billingPeriod }),
+        body: JSON.stringify({ email, coachPack: packKey, billingPeriod, tier }),
       })
       const json = await res.json() as { success?: boolean; error?: string }
       if (!res.ok || !json.success) throw new Error(json.error ?? t('w3c.error_generic'))

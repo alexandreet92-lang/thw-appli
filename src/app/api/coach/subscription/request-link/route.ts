@@ -7,7 +7,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { Resend } from 'resend'
-import { getCoachPack, buildCoachPackCheckoutUrl, type CoachPackKey } from '@/lib/subscriptions/coach-packs'
+import { getCoachPack, buildCoachPackCheckoutUrl, coachPackPriceEur, type CoachPackKey, type CoachTier } from '@/lib/subscriptions/coach-packs'
 
 export const dynamic = 'force-dynamic'
 
@@ -21,18 +21,19 @@ export async function POST(req: Request) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const { email, coachPack, billingPeriod } = await req.json() as {
-      email?: string; coachPack?: string; billingPeriod?: Period
+    const { email, coachPack, billingPeriod, tier } = await req.json() as {
+      email?: string; coachPack?: string; billingPeriod?: Period; tier?: string
     }
     if (!email) return NextResponse.json({ error: 'Email requis' }, { status: 400 })
     if (email.toLowerCase() !== (user.email ?? '').toLowerCase()) {
       return NextResponse.json({ error: 'Email non autorisé' }, { status: 403 })
     }
     const period: Period = billingPeriod === 'yearly' ? 'yearly' : 'monthly'
+    const coachTier: CoachTier = tier === 'expert' ? 'expert' : 'pro'
     const pack = getCoachPack(coachPack)
     if (!pack) return NextResponse.json({ error: 'Pack coach invalide' }, { status: 400 })
 
-    const url = buildCoachPackCheckoutUrl(pack.key as CoachPackKey, period, user.id, user.email)
+    const url = buildCoachPackCheckoutUrl(pack.key as CoachPackKey, coachTier, period, user.id, user.email)
     if (!url) return NextResponse.json({ error: 'Lien de paiement indisponible' }, { status: 500 })
 
     const apiKey = process.env.RESEND_API_KEY
@@ -53,7 +54,7 @@ export async function POST(req: Request) {
       if (fn) firstName = fn
     } catch { /* fallback */ }
 
-    const price = period === 'yearly' ? pack.yearlyEur : pack.monthlyEur
+    const price = coachPackPriceEur(pack, coachTier, period)
     const per = period === 'yearly' ? 'an' : 'mois'
     const subject = `${firstName}, ton lien pour l'abonnement coach ${pack.name} est prêt`
 

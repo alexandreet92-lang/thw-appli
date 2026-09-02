@@ -10,7 +10,7 @@ export const runtime = 'nodejs'
 import { NextRequest, NextResponse } from 'next/server'
 import type Stripe from 'stripe'
 import { stripe, getTierFromPriceId } from '@/lib/stripe/config'
-import { getCoachPackFromPriceId, getCoachPackFromAmount, type CoachPack, type BillingPeriod } from '@/lib/subscriptions/coach-packs'
+import { getCoachPackByPriceId, athleteTierForCoachTier, type CoachPack, type CoachTier, type BillingPeriod } from '@/lib/subscriptions/coach-packs'
 import { createServiceClient } from '@/lib/supabase/server'
 import { notifyUser } from '@/lib/notifications/dispatch'
 import { creditStudioPack } from '@/lib/tokens/studio'
@@ -65,13 +65,11 @@ async function findUserIdByEmail(
  */
 function resolveCoachPack(
   subscription: Stripe.Subscription,
-): { pack: CoachPack; period: BillingPeriod | null } | null {
-  const item = subscription.items.data[0]
-  const price = item?.price
-  const byId = price?.id ? getCoachPackFromPriceId(price.id) : null
-  if (byId) return { pack: byId, period: null }
-  const byAmount = getCoachPackFromAmount(price?.unit_amount, price?.recurring?.interval)
-  return byAmount ? { pack: byAmount.pack, period: byAmount.period } : null
+): { pack: CoachPack; tier: CoachTier; period: BillingPeriod } | null {
+  const price = subscription.items.data[0]?.price
+  // Attribution par PRICE ID uniquement (unique, non ambigu) → pas de collision
+  // de montant entre formules (ex. Équipe+Expert et Club peuvent avoir le même prix).
+  return getCoachPackByPriceId(price?.id ?? null)
 }
 
 // ── Handler ────────────────────────────────────────────────────
@@ -256,6 +254,14 @@ export async function POST(req: NextRequest) {
             updated_at: new Date().toISOString(),
           }, { onConflict: 'user_id' })
           await sb.from('profiles').update({ coach_subscribed: true }).eq('id', userId)
+          // Un pack coach INCLUT l'abonnement athlète (Pro ou Expert selon la
+          // formule) → on débloque le tier athlète correspondant pour le coach.
+          await sb.from('user_subscriptions').upsert({
+            user_id: userId, tier: athleteTierForCoachTier(coachMatch.tier),
+            stripe_customer_id: custId, stripe_subscription_id: subscriptionId,
+            current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+            status: mapStatus(subscription.status), updated_at: new Date().toISOString(),
+          }, { onConflict: 'user_id' })
           void notifyUser(userId, 'coach.pack_active', {
             title: 'Abonnement coach activé',
             body: `Pack ${coachPack.name} — ${coachPack.label.toLowerCase()}. Ton espace coach est débloqué.`,
@@ -326,6 +332,15 @@ export async function POST(req: NextRequest) {
             if (updCoachMatch) { patch.pack_key = updCoachMatch.pack.key; patch.max_athletes = updCoachMatch.pack.maxAthletes }
             await sb.from('coach_subscriptions').update(patch).eq('user_id', coachUserId)
             await sb.from('profiles').update({ coach_subscribed: active }).eq('id', coachUserId)
+            // Met à jour le niveau athlète inclus (Pro/Expert) si la formule change.
+            if (updCoachMatch) {
+              await sb.from('user_subscriptions').update({
+                tier: athleteTierForCoachTier(updCoachMatch.tier),
+                status: mapStatus(subscription.status),
+                current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+                updated_at: new Date().toISOString(),
+              }).eq('user_id', coachUserId)
+            }
             console.log(`[stripe/webhook] subscription.updated → coach ${coachUserId} status ${subscription.status}`)
           }
           break

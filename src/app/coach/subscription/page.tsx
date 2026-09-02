@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { getCurrentUser } from '@/lib/auth/currentUser'
-import { COACH_PACKS, getCoachPack, type CoachPackKey } from '@/lib/subscriptions/coach-packs'
+import { COACH_PACKS, getCoachPack, coachPackPriceEur, type CoachPackKey, type CoachTier } from '@/lib/subscriptions/coach-packs'
 import CoachSubscribeEmailModal from '@/components/subscription/CoachSubscribeEmailModal'
 import { getCoachAccessState, startCoachTrial, type CoachAccessState } from '@/lib/coach/owner'
 import { useRouter } from 'next/navigation'
@@ -21,6 +21,7 @@ export default function CoachSubscriptionPage() {
   const router = useRouter()
   const { t } = useI18n()
   const [billing, setBilling] = useState<'monthly' | 'yearly'>('monthly')
+  const [coachTier, setCoachTier] = useState<CoachTier>('pro')
   const [current, setCurrent] = useState<CurrentSub | null>(null)
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState<string | null>(null)
@@ -117,6 +118,18 @@ export default function CoachSubscriptionPage() {
         ))}
       </div>
 
+      {/* Formule athlète incluse : Pro ou Expert (le pack débloque ce niveau athlète). */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20, flexWrap: 'wrap' }}>
+        <span style={{ fontSize: 12.5, color: 'var(--text-dim)', fontWeight: 600 }}>Formule athlète incluse&nbsp;:</span>
+        <div style={{ display: 'inline-flex', gap: 3, padding: 3, borderRadius: 999, background: 'var(--bg-card2)' }}>
+          {(['pro', 'expert'] as const).map(tr => (
+            <button key={tr} onClick={() => setCoachTier(tr)} style={{ padding: '7px 16px', borderRadius: 999, border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 700, background: coachTier === tr ? 'var(--bg-card)' : 'transparent', color: coachTier === tr ? 'var(--primary)' : 'var(--text-mid)', boxShadow: coachTier === tr ? '0 1px 3px rgba(0,0,0,0.12)' : 'none' }}>
+              {tr === 'pro' ? 'Athlète Pro' : 'Athlète Expert'}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {loading ? (
         <p style={{ fontSize: 13, color: 'var(--text-dim)' }}>{t('w3c.loading')}</p>
       ) : (
@@ -153,8 +166,9 @@ export default function CoachSubscriptionPage() {
             packKey={p.key}
             packName={p.name}
             packLabel={p.label}
-            price={billing === 'yearly' ? p.yearlyEur : p.monthlyEur}
+            price={coachPackPriceEur(p, coachTier, billing)}
             billingPeriod={billing}
+            tier={coachTier}
             onClose={() => setEmailPack(null)}
           />
         )

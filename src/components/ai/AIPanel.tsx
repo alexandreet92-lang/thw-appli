@@ -23059,16 +23059,26 @@ export default function AIPanel({
         .aip-user-bubble { background: #EDEDED; color: #15171C; }
         html.dark .aip-user-bubble { background: #26262B; color: #EEF2F7; }
 
-        /* Boutons flottants (mobile) — blancs + ombre légère en mode jour */
+        /* Boutons flottants (mobile) — verre translucide (#7), flou en Release. */
         .aip-float-btn {
-          background: #FFFFFF;
+          background: color-mix(in srgb, #FFFFFF 80%, transparent);
           border: 0.5px solid rgba(0,0,0,0.08);
           box-shadow: 0 2px 8px rgba(0,0,0,0.14);
+          transform: translateZ(0);
         }
         html.dark .aip-float-btn {
-          background: #1A1A1E;
+          background: color-mix(in srgb, #1A1A1E 78%, transparent);
           border: 0.5px solid rgba(255,255,255,0.10);
           box-shadow: 0 2px 10px rgba(0,0,0,0.40);
+        }
+        html.thw-glass-blur .aip-float-btn {
+          background: color-mix(in srgb, #FFFFFF 55%, transparent);
+          -webkit-backdrop-filter: blur(16px) saturate(1.6);
+          backdrop-filter: blur(16px) saturate(1.6);
+        }
+        html.thw-glass-blur.dark .aip-float-btn,
+        html.dark.thw-glass-blur .aip-float-btn {
+          background: color-mix(in srgb, #1A1A1E 52%, transparent);
         }
 
         /* Menu + — liste compacte */

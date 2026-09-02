@@ -272,7 +272,7 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
             <div aria-hidden style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 'calc(env(safe-area-inset-top) + 50px)', pointerEvents: 'none', zIndex: 4, background: 'linear-gradient(to bottom, var(--bg) 0%, var(--bg) 68%, transparent 100%)' }} />
             <div aria-hidden style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 'calc(env(safe-area-inset-bottom) + 60px)', pointerEvents: 'none', zIndex: 4, background: 'linear-gradient(to top, var(--bg) 0%, var(--bg) 55%, transparent 100%)' }} />
           </>}
-          <button aria-label={t('shared.menu')} onClick={() => settle(!open)} style={{ ...fab, ...(isRecord ? { background: 'var(--bg)', border: '1px solid var(--border)' } : null), left: 12, borderRadius: 12, flexDirection: 'column', gap: 4 }}>
+          <button aria-label={t('shared.menu')} onClick={() => settle(!open)} className={isRecord ? undefined : 'thw-glass'} style={{ ...fab, ...(isRecord ? { background: 'var(--bg)', border: '1px solid var(--border)' } : null), left: 12, borderRadius: 12, flexDirection: 'column', gap: 4 }}>
             {[0, 1, 2].map(i => <span key={i} style={{ width: 17, height: 1.6, background: 'var(--text)', borderRadius: 2 }} />)}
           </button>
           {/* Bascule d'interface Athlète ⇄ Coach — réservée au propriétaire de l'espace coach. */}
@@ -288,12 +288,12 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
           {/* IA + notifications masqués sur /record (immersion carte). */}
           {!isRecord && <>
           {/* Rechercher / Guide — à côté des notifications. */}
-          <button data-guide="app-search" aria-label={t('shared.searchApp')} onClick={() => { setOpen(false); openSearch() }}
+          <button data-guide="app-search" aria-label={t('shared.searchApp')} onClick={() => { setOpen(false); openSearch() }} className="thw-glass"
             style={{ ...fab, right: 104, borderRadius: 12 }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text)" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
           </button>
           {/* Cloche notifications — ouvre une surpage centrée (sans quitter la page) */}
-          <button aria-label={t('shared.notifications')} onClick={() => { setOpen(false); setNotifOpen(true) }}
+          <button aria-label={t('shared.notifications')} onClick={() => { setOpen(false); setNotifOpen(true) }} className="thw-glass"
             style={{ ...fab, right: 58, borderRadius: 12 }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text)" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
               <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
@@ -305,7 +305,7 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
               </span>
             )}
           </button>
-          <button aria-label={t('shared.aiCoach')} data-guide="open-ai" onClick={() => setAiOpen(true)}
+          <button aria-label={t('shared.aiCoach')} data-guide="open-ai" onClick={() => setAiOpen(true)} className="thw-glass"
             style={{ ...fab, right: 12, borderRadius: 12, overflow: 'hidden' }}>
             {/* Shuriken Athéna classique 4 branches existant — non redessiné, sur verre neutre */}
             {/* eslint-disable-next-line @next/next/no-img-element */}

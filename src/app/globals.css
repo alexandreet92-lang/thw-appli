@@ -1003,3 +1003,21 @@ html.dark .thw-activity-back-btn {
    embarquées (ajout de séance, objectif calendrier, bulle d'intensité…)
    s'afficher au-dessus de lui. */
 body.thw-drawer-open [data-app-rail] { display: none !important; }
+
+/* ── Boutons/barres « verre fluide » (#7) ────────────────────────────────
+   Aspect translucide façon Claude/Strava. Base SANS flou (fond translucide +
+   bordure fine) → zéro clignotement dans la WebView, y compris en dev/Xcode.
+   Le flou (backdrop-filter) ne s'active QUE si <html> porte .thw-glass-blur —
+   posé en Release/App Store (et sur le web), jamais en dev natif où il scintille.
+   translateZ(0) : couche GPU stable (anti-scintillement). */
+.thw-glass {
+  background: color-mix(in srgb, var(--bg-card) 76%, transparent) !important;
+  border: 1px solid color-mix(in srgb, var(--text) 9%, transparent) !important;
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+}
+html.thw-glass-blur .thw-glass {
+  background: color-mix(in srgb, var(--bg-card) 52%, transparent) !important;
+  -webkit-backdrop-filter: blur(18px) saturate(1.7);
+  backdrop-filter: blur(18px) saturate(1.7);
+}

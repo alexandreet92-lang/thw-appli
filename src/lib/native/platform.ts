@@ -46,6 +46,29 @@ export function hidePricing(): boolean {
   return isNativeApp()
 }
 
+/**
+ * Faut-il activer le FLOU « verre » (#7) ? Le fond translucide est toujours là ;
+ * seul le backdrop-filter (qui scintillait en WebView dev) est conditionnel.
+ * - Web (navigateur) : oui, le flou y est rendu proprement.
+ * - Natif : non par défaut (évite le clignotement en dev/Xcode) — l'App Store /
+ *   Release l'active via le flag localStorage `thw_glass_blur` = '1'.
+ * Override explicite possible dans les deux sens ('1' / '0').
+ */
+export function shouldGlassBlur(): boolean {
+  try {
+    const o = localStorage.getItem('thw_glass_blur')
+    if (o === '1') return true
+    if (o === '0') return false
+  } catch { /* ignore */ }
+  return !isNativeApp()
+}
+
+/** Applique/retire la classe globale qui autorise le flou verre. */
+export function applyGlassBlur(): void {
+  if (typeof document === 'undefined') return
+  document.documentElement.classList.toggle('thw-glass-blur', shouldGlassBlur())
+}
+
 /** URL publique du site web (gestion abonnement/recharge hors app).
  *  On réutilise NEXT_PUBLIC_API_BASE (défini dans le build natif = domaine
  *  Vercel RÉEL) pour éviter un domaine mort : « thw-coaching.vercel.app »

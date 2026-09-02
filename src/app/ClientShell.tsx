@@ -23,6 +23,8 @@ export function ClientShell({ children }: ClientShellProps) {
     // App native : redirige les appels /api vers Vercel + ajoute le token (no-op en web).
     installNativeApiFetch()
     setHydrated(true)
+    // Effet « verre » (#7) : autorise le flou selon le contexte (web/Release).
+    void import('@/lib/native/platform').then(m => m.applyGlassBlur())
     const alreadySeen = sessionStorage.getItem('splash_v1')
     if (!alreadySeen) {
       setShowSplash(true)

@@ -7,6 +7,8 @@ import type { TierName } from '@/lib/subscriptions/tier-limits'
 import type { UsageType } from '@/lib/subscriptions/check-quota'
 import { currentLocale } from '@/lib/i18n'
 import { hidePricing, openWebsite } from '@/lib/native/platform'
+import { refreshEntitlements } from '@/hooks/useEntitlements'
+import { TIER_FEATURES } from '@/lib/subscriptions/tier-features'
 
 // ── Types ──────────────────────────────────────────────────────
 
@@ -52,18 +54,8 @@ const TIER_LABEL: Record<TierName, string> = {
   expert:  'Expert',
 }
 
-const FEATURES: PlanFeature[] = [
-  { label: 'Messages IA / mois',         values: { premium: '30',          pro: '100',          expert: '300'          } },
-  { label: 'Plans d\'entraînement / mois', values: { premium: '2',           pro: '6',            expert: '20'           } },
-  { label: 'Plans nutrition / mois',     values: { premium: '1',           pro: '3',            expert: '10'           } },
-  { label: 'Briefings / semaine',        values: { premium: '4',           pro: '7 (quotidien)', expert: '7 (quotidien)' } },
-  { label: 'Web search dans briefing',   values: { premium: false,         pro: true,           expert: true           } },
-  { label: 'Actions outils / mois',      values: { premium: '50',          pro: '150',          expert: '400'          } },
-  { label: 'Modèle IA',                  values: { premium: 'Haiku',       pro: 'Sonnet',       expert: 'Sonnet Max'   } },
-  { label: 'Historique',                 values: { premium: '6 mois',      pro: '24 mois',      expert: 'Illimité'     } },
-  { label: 'Sync Strava / mois',         values: { premium: '100',         pro: 'Illimité',     expert: 'Illimité'     } },
-  { label: 'Stockage',                   values: { premium: '1 Go',        pro: '5 Go',         expert: '20 Go'        } },
-]
+// Matrice canonique partagée (page abo + fiche plan + animation d'activation).
+const FEATURES: PlanFeature[] = TIER_FEATURES
 
 interface PlanDef {
   tier:           PurchasableTier
@@ -264,6 +256,10 @@ export default function SubscriptionPage() {
         }
         if (cancelled) return
         try { const res = await fetch('/api/subscriptions/summary'); if (res.ok) setData(await res.json() as SummaryData) } catch { /* ignore */ }
+        // Rafraîchit le cache d'entitlements PARTAGÉ (bandeaux, verrous, Studio,
+        // communauté…) → les nouveaux droits s'appliquent partout, et l'animation
+        // « nouvel abonnement » se déclenche si la formule a changé.
+        refreshEntitlements()
         router.refresh()
       } catch { /* le webhook prendra le relais */ }
     })()

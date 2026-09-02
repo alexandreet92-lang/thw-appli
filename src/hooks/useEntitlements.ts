@@ -54,6 +54,29 @@ function derive(s: Summary): Entitlements {
   }
 }
 
+const PAID_TIERS = new Set<TierName>(['premium', 'pro', 'expert'])
+
+// Dernière formule CONNUE (persistée) : sert à détecter un changement (après un
+// paiement) pour déclencher l'animation « nouvel abonnement ».
+function readLastTier(): TierName | null {
+  try { return (localStorage.getItem('thw_last_tier') as TierName | null) || null } catch { return null }
+}
+function writeLastTier(t: TierName): void {
+  try { localStorage.setItem('thw_last_tier', t) } catch { /* ignore */ }
+}
+
+// Détecte un changement vers une formule PAYANTE différente → événement global
+// que l'hôte d'animation écoute. On ne fête pas le tout premier chargement.
+function maybeAnnouncePlanChange(next: Entitlements): void {
+  if (typeof window === 'undefined' || next.loading) return
+  const prev = readLastTier()
+  writeLastTier(next.tier)
+  if (prev === null) return                    // premier chargement → pas d'anim
+  if (prev === next.tier) return               // inchangé
+  if (!PAID_TIERS.has(next.tier)) return       // on ne fête pas free/trial
+  try { window.dispatchEvent(new CustomEvent('thw:plan-activated', { detail: { tier: next.tier, previous: prev } })) } catch { /* ignore */ }
+}
+
 async function load(): Promise<Entitlements> {
   if (cached) return cached
   if (inflight) return inflight
@@ -62,6 +85,7 @@ async function load(): Promise<Entitlements> {
       const r = await fetch('/api/subscriptions/summary')
       const val = r.ok ? derive((await r.json()) as Summary) : { ...DEFAULT, loading: false }
       cached = val
+      maybeAnnouncePlanChange(val)
       subscribers.forEach(fn => fn(val))
       return val
     } catch {
@@ -81,10 +105,30 @@ export function refreshEntitlements(): void {
   void load()
 }
 
+// Rafraîchissement automatique : au RETOUR sur l'app (l'utilisateur revient d'un
+// paiement web) et à la reprise de focus/visibilité → les nouveaux droits
+// s'appliquent immédiatement, sans redémarrer l'app. Throttlé à 8 s.
+let autoRefreshArmed = false
+let lastRefreshAt = 0
+function armAutoRefresh(): void {
+  if (autoRefreshArmed || typeof window === 'undefined') return
+  autoRefreshArmed = true
+  const tick = () => {
+    if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return
+    const now = Date.now()
+    if (now - lastRefreshAt < 8000) return
+    lastRefreshAt = now
+    refreshEntitlements()
+  }
+  window.addEventListener('visibilitychange', tick)
+  window.addEventListener('focus', tick)
+}
+
 export function useEntitlements(): Entitlements {
   const [state, setState] = useState<Entitlements>(cached ?? DEFAULT)
   useEffect(() => {
     let alive = true
+    armAutoRefresh()
     const onChange = (e: Entitlements) => { if (alive) setState(e) }
     subscribers.add(onChange)
     if (cached) setState(cached)

@@ -14,6 +14,7 @@ import { PageTransition } from '@/components/ui/PageTransition'
 import { EntitlementBanner } from '@/components/subscription/EntitlementBanner'
 import { UpgradeModalHost } from '@/components/subscription/UpgradeModal'
 import { TrialEndedModal } from '@/components/subscription/TrialEndedModal'
+import { PlanActivatedHost } from '@/components/subscription/PlanActivatedHost'
 import { isFullscreenRoute } from '@/lib/layout/fullscreenRoutes'
 import { NotificationsOverlay, useUnreadNotifCount } from '@/components/shared/NotificationsOverlay'
 import { useGuide } from '@/components/guide/GuideProvider'
@@ -320,6 +321,7 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
           // Pas de fondu vers le blanc → plus de « bloc blanc » en haut.
           paddingTop: (hideHeader || isRecord) ? 0 : 'calc(env(safe-area-inset-top) + 54px)' }}>
         <TrialEndedModal />
+        <PlanActivatedHost />
         <PageTransition>{children}</PageTransition>
         {/* Espaceur de bas de page : un VRAI élément (jamais rogné par WebKit,
             contrairement à padding-bottom sur un conteneur scrollable) → garantit

@@ -13,6 +13,7 @@ import { PageTransition } from '@/components/ui/PageTransition'
 import { EntitlementBanner } from '@/components/subscription/EntitlementBanner'
 import { UpgradeModalHost } from '@/components/subscription/UpgradeModal'
 import { TrialEndedModal } from '@/components/subscription/TrialEndedModal'
+import { PlanActivatedHost } from '@/components/subscription/PlanActivatedHost'
 import { isFullscreenRoute } from '@/lib/layout/fullscreenRoutes'
 import { NotificationsOverlay, useUnreadNotifCount } from '@/components/shared/NotificationsOverlay'
 import { useGuide } from '@/components/guide/GuideProvider'
@@ -254,6 +255,8 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
         </>)}
 
         <TrialEndedModal />
+
+        <PlanActivatedHost />
         <PageTransition>{children}</PageTransition>
       </main>
 

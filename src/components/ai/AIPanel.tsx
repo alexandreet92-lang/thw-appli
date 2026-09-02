@@ -293,9 +293,9 @@ function fmtMsgTime(ts: number, t: (key: string, vars?: Record<string, string | 
 // ── Markdown renderer ──────────────────────────────────────────
 
 const HEADING_STYLES: Record<number, React.CSSProperties> = {
-  1: { fontSize: 16, fontWeight: 800, lineHeight: 1.3,  marginTop: 20, marginBottom: 8  },
-  2: { fontSize: 14, fontWeight: 700, lineHeight: 1.35, marginTop: 16, marginBottom: 6  },
-  3: { fontSize: 13, fontWeight: 600, lineHeight: 1.4,  marginTop: 12, marginBottom: 4  },
+  1: { fontSize: 19, fontWeight: 800, lineHeight: 1.3,  marginTop: 20, marginBottom: 8  },
+  2: { fontSize: 16.5, fontWeight: 700, lineHeight: 1.35, marginTop: 16, marginBottom: 6  },
+  3: { fontSize: 15, fontWeight: 600, lineHeight: 1.4,  marginTop: 12, marginBottom: 4  },
   4: { fontSize: 12, fontWeight: 500, lineHeight: 1.4,  marginTop: 8,  marginBottom: 3,
        color: 'var(--ai-mid)', letterSpacing: '0.02em' },
 }
@@ -917,7 +917,7 @@ function MsgContent({ text, fontFamily }: { text: string; fontFamily?: string })
     }
 
     blocks.push(
-      <p key={i} style={{ fontSize: 16.5, fontWeight: 450, lineHeight: 1.68, margin: '0 0 9px 0', color: 'var(--ai-text)' }}>
+      <p key={i} style={{ fontSize: 18, fontWeight: 450, lineHeight: 1.62, margin: '0 0 10px 0', color: 'var(--ai-text)' }}>
         {parseBold(line)}
       </p>
     )

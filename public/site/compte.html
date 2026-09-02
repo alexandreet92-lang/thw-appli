@@ -218,18 +218,47 @@
     const IcDown = (p) => <Icon {...p}><path d="M12 4v11M7.5 11l4.5 4.5L16.5 11M5 20h14"/></Icon>;
 
     function LoginView() {
+      const [email, setEmail] = useState('');
+      const [password, setPassword] = useState('');
+      const [loading, setLoading] = useState(false);
+      const [err, setErr] = useState(null);
+      const nextParam = APP_NOPRICE ? '/site/compte.html?app=1' : '/site/compte.html';
+      const oauth = (p) => '/api/auth/site-oauth?provider=' + p + '&next=' + encodeURIComponent(nextParam);
+      const submit = async (e) => {
+        e.preventDefault();
+        if (!email || !password || loading) return;
+        setLoading(true); setErr(null);
+        try {
+          const r = await fetch('/api/auth/site-login', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+            body: JSON.stringify({ email: email, password: password }),
+          });
+          const j = await r.json().catch(() => null);
+          if (!r.ok || !j || !j.success) { setErr((j && j.error) || 'Connexion impossible'); setLoading(false); return; }
+          window.location.reload();
+        } catch (e) { setErr('Connexion impossible. Réessaie.'); setLoading(false); }
+      };
       return (
         <div className="ac-login">
           <span className="eyebrow" style={{ justifyContent: 'center' }}>Espace personnel</span>
           <h1>Se connecter</h1>
           <p className="lead">Connecte-toi pour retrouver ton abonnement, tes tokens et toutes tes factures.</p>
           <div className="ac-oauth">
-            <a href={AUTH_URL}><UIIcon name="google" size={18}/> Continuer avec Google</a>
-            <a href={AUTH_URL}><UIIcon name="apple" size={17}/> Continuer avec Apple</a>
+            <a href={oauth('google')}><UIIcon name="google" size={18}/> Continuer avec Google</a>
+            <a href={oauth('apple')}><UIIcon name="apple" size={17}/> Continuer avec Apple</a>
           </div>
-          <div className="ac-sep">ou</div>
-          <a className="ac-submit" href={AUTH_URL} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none' }}>Se connecter par email</a>
-          <p className="ac-hint">Pas encore de compte ? <a href={AUTH_URL}>Crée-le en 1 minute</a> — 14 jours d'essai, sans carte bancaire.</p>
+          <div className="ac-sep">ou par email</div>
+          <form className="ac-form" style={{ marginTop: 18 }} onSubmit={submit}>
+            <label className="ac-label" htmlFor="ac-email">Email du compte Hybrid</label>
+            <input className="ac-input" id="ac-email" type="email" required placeholder="ton@email.fr"
+              value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email"/>
+            <label className="ac-label" htmlFor="ac-pass" style={{ marginTop: 6 }}>Mot de passe</label>
+            <input className="ac-input" id="ac-pass" type="password" required placeholder="••••••••"
+              value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password"/>
+            {err && <p style={{ color: '#ef4444', fontSize: 12.5, margin: '10px 0 0', textAlign: 'center' }}>{err}</p>}
+            <button className="ac-submit" type="submit" disabled={loading} style={{ opacity: loading ? 0.6 : 1 }}>{loading ? 'Connexion…' : 'Se connecter'}</button>
+          </form>
+          <p className="ac-hint">Pas encore de compte ? <a href={'/auth?redirect=' + encodeURIComponent(nextParam)}>Crée-le en 1 minute</a> — 14 jours d'essai, sans carte bancaire.</p>
         </div>
       );
     }

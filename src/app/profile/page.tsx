@@ -1987,26 +1987,8 @@ function AbonnementContent() {
                   <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: 0 }}>{t('profile.fullAccess')}</p>
                 )}
               </div>
-              {!isCancelling && (hasStripe || tier !== 'expert') && (
-                <div style={{ flexShrink: 0, paddingTop: 2 }}>
-                  {hasStripe ? (
-                    <button
-                      onClick={handlePortal}
-                      disabled={portalLoading}
-                      style={{ padding: '7px 14px', borderRadius: 999, background: 'var(--text)', border: 'none', color: 'var(--bg)', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', opacity: portalLoading ? 0.6 : 1 }}
-                    >
-                      {portalLoading ? '…' : t('profile.manage')}
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => { window.location.href = '/profile?tab=ia' }}
-                      style={{ padding: '7px 14px', borderRadius: 999, background: 'var(--text)', border: 'none', color: 'var(--bg)', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}
-                    >
-                      {t('profile.upgrade')}
-                    </button>
-                  )}
-                </div>
-              )}
+              {/* Boutons « Gérer » / « Upgrade » retirés : redondants avec
+                  « Changer d'abonnement » ci-dessous (même action). */}
             </div>
 
             {/* Barre trial */}

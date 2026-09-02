@@ -20802,6 +20802,14 @@ export default function AIPanel({
   const endRef             = useRef<HTMLDivElement>(null)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const autoScrollRef      = useRef<boolean>(true)
+  // Bouton « descendre en bas » (façon Claude) : visible quand on a remonté la conv.
+  const [showScrollDown, setShowScrollDown] = useState(false)
+  const scrollToBottom = useCallback(() => {
+    const el = scrollContainerRef.current
+    if (el) el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' })
+    autoScrollRef.current = true
+    setShowScrollDown(false)
+  }, [])
   const initMsgRef         = useRef<string | undefined>(undefined)
   // Swipe / drag tracking (mobile) — sidebar coulissante
   const chatColRef = useRef<HTMLDivElement>(null)
@@ -22952,6 +22960,8 @@ export default function AIPanel({
         .aip-textarea:focus { outline: none !important; box-shadow: none !important; }
         /* Bouton d'envoi/vocal : retour tactile au press (façon Claude). */
         .aip-send-live:active { transform: scale(0.9); }
+        .aip-scrolldown { transition: transform 0.12s, opacity 0.15s; animation: ai_slidein 0.18s ease; }
+        .aip-scrolldown:active { transform: translateX(-50%) scale(0.9); }
         /* Icon buttons in header — hover effect */
         .aip-icon-btn {
           background: transparent !important;
@@ -23410,8 +23420,11 @@ export default function AIPanel({
             onScroll={() => {
               const el = scrollContainerRef.current
               if (!el) return
-              const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 60
+              const distToBottom = el.scrollHeight - el.scrollTop - el.clientHeight
+              const atBottom = distToBottom < 60
               autoScrollRef.current = atBottom
+              // Affiche le bouton dès qu'on a remonté d'un écran ~ (et pas au ras du bas).
+              setShowScrollDown(distToBottom > 220)
             }}
           >
 
@@ -24159,6 +24172,24 @@ export default function AIPanel({
             // header (qui reste collé en haut) — marges auto haut/bas.
             marginBottom: showEmpty && !activeFlow ? 'auto' : undefined,
           }}>
+            {/* Bouton « descendre en bas » — flotte juste au-dessus du champ (façon Claude). */}
+            {showScrollDown && active && active.msgs.length > 0 && !activeFlow && (
+              <button
+                onClick={scrollToBottom}
+                aria-label="Descendre en bas de la conversation"
+                className="aip-scrolldown"
+                style={{
+                  position: 'absolute', top: -46, left: '50%', transform: 'translateX(-50%)',
+                  width: 36, height: 36, borderRadius: '50%', zIndex: 40, cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  border: '1px solid var(--ai-border)', background: 'var(--ai-bg)',
+                  boxShadow: '0 4px 16px rgba(0,0,0,0.18)', color: 'var(--ai-text)',
+                }}
+              >
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M19 12l-7 7-7-7"/></svg>
+              </button>
+            )}
+
             {/* Hidden file inputs */}
             <input ref={cameraRef} type="file" accept="image/*" capture="environment" style={{ display: 'none' }} onChange={handleFileSelected} />
             <input ref={photosRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFileSelected} />

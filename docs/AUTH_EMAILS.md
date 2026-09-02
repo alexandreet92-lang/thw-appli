@@ -160,12 +160,15 @@ Deux raisons à ce choix :
 | Type | Destination | Qui consomme le jeton |
 |---|---|---|
 | `signup` | `/auth/callback?token_hash=…&type=signup&next=%2F` | Route serveur → session en cookies, puis accueil |
-| `recovery` | `/auth/reset-password?token_hash=…&type=recovery` | **La page dédiée elle-même**, côté client |
+| `recovery` | `/auth/callback?token_hash=…&type=recovery&next=%2Fauth%2Freset-password` | Route serveur → session en cookies, puis **page dédiée** de création du mot de passe |
 | `magiclink` | `/auth/callback?token_hash=…&type=magiclink&next=%2F` | Route serveur |
 | `email_change` | `/auth/callback?token_hash=…&type=email_change&next=%2Fprofile` | Route serveur |
 
-Le reset pointe **directement** sur la page dédiée `/auth/reset-password`, sans
-passer par `/auth/callback` : un seul saut, et aucune dépendance à l'allowlist.
+Le reset atterrit sur la page dédiée `/auth/reset-password` en passant par
+`/auth/callback`. Ce passage est délibéré : la route sait consommer un
+`token_hash` **depuis la version déjà en production**, donc les templates sont
+utilisables sans attendre un déploiement. La page sait de son côté consommer un
+`token_hash` reçu en direct — les deux formes de lien marchent.
 La page vérifie le jeton, retire celui-ci de la barre d'adresse, affiche le
 formulaire, puis — le mot de passe enregistré — l'utilisateur est **connecté**
 (la vérification du jeton a ouvert la session) et entre dans l'app.

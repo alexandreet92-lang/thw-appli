@@ -42,14 +42,20 @@ sur `{{ .SiteURL }}`. Deux gains :
 | Type | Destination | Qui consomme le jeton |
 |---|---|---|
 | `signup` | `/auth/callback?token_hash=…&type=signup&next=%2F` | Route serveur → pose la session en cookies, puis redirige sur l'accueil |
-| `recovery` | `/auth/reset-password?token_hash=…&type=recovery` | **La page elle-même**, côté client — un seul saut, aucun rebond |
+| `recovery` | `/auth/callback?token_hash=…&type=recovery&next=%2Fauth%2Freset-password` | Route serveur → session en cookies, puis **page dédiée** de création du mot de passe |
 | `magiclink` | `/auth/callback?token_hash=…&type=magiclink&next=%2F` | Route serveur |
 | `email_change` | `/auth/callback?token_hash=…&type=email_change&next=%2Fprofile` | Route serveur |
 
-Le reset pointe **directement** sur `/auth/reset-password` : c'est la page dédiée
-à la création du nouveau mot de passe. Elle vérifie le jeton, affiche le
-formulaire, et une fois le mot de passe enregistré l'utilisateur est **connecté**
-(la vérification du jeton ouvre la session) et entre dans l'app.
+Le reset passe par `/auth/callback` puis atterrit sur `/auth/reset-password`, la
+page dédiée à la création du nouveau mot de passe. Une fois le mot de passe
+enregistré, l'utilisateur est **connecté** (la vérification du jeton a ouvert la
+session) et entre dans l'app.
+
+Ce passage par `/auth/callback` est délibéré : cette route sait consommer un
+`token_hash` **depuis la version déjà en production**. Les templates sont donc
+utilisables immédiatement, sans attendre un déploiement. La page
+`/auth/reset-password` sait aussi consommer un `token_hash` reçu en direct — les
+deux formes de lien fonctionnent, celle-ci est simplement la plus sûre à déployer.
 
 ---
 

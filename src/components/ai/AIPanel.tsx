@@ -13189,6 +13189,10 @@ function HistoryDrawer({
   const [mounted, setMounted] = useState(false)
   useEffect(() => { setMounted(true) }, [])
   const menuRef = useRef<HTMLDivElement>(null)
+  // Sélection fiable au tactile : on ouvre la conversation dès le touchend d'un
+  // vrai tap (peu de déplacement) et on annule le « ghost click » iOS qui, sur un
+  // tiroir coulissant, obligeait à taper 2-3 fois. Fallback onClick pour desktop.
+  const tapRef = useRef<{ x: number; y: number; moved: boolean } | null>(null)
 
   useEffect(() => {
     if (!menuId) { setConfirmId(null); return }
@@ -13548,6 +13552,14 @@ function HistoryDrawer({
             ) : (
               <div
                 onClick={() => { onSelect(conv); if (!persistent) onClose() }}
+                onTouchStart={e => { const t = e.touches[0]; tapRef.current = { x: t.clientX, y: t.clientY, moved: false } }}
+                onTouchMove={e => { const r = tapRef.current; if (!r) return; const t = e.touches[0]; if (Math.abs(t.clientX - r.x) > 10 || Math.abs(t.clientY - r.y) > 10) r.moved = true }}
+                onTouchEnd={e => {
+                  const r = tapRef.current; tapRef.current = null
+                  if (!r || r.moved) return           // scroll/swipe → ne pas sélectionner
+                  e.preventDefault()                  // coupe le ghost click iOS (sinon double)
+                  onSelect(conv); if (!persistent) onClose()
+                }}
                 draggable={!!onConvDragStart}
                 onDragStart={onConvDragStart ? (e) => {
                   e.dataTransfer.effectAllowed = 'copy'
@@ -13560,7 +13572,7 @@ function HistoryDrawer({
                   padding: '11px 10px 11px 12px', borderRadius: 10, cursor: 'pointer',
                   background: conv.id === activeId ? 'rgba(91,111,255,0.14)' : 'transparent',
                   boxShadow: conv.id === activeId ? 'inset 3px 0 0 #5b6fff' : 'none',
-                  border: 'none',
+                  border: 'none', touchAction: 'pan-y', WebkitTapHighlightColor: 'transparent',
                   display: 'flex', alignItems: 'center', gap: 6,
                   transition: 'background 0.1s',
                 }}
@@ -13613,6 +13625,8 @@ function HistoryDrawer({
                   ref={menuId === conv.id ? menuRef : undefined}
                   style={{ position: 'relative', flexShrink: 0 }}
                   onClick={e => e.stopPropagation()}
+                  onTouchStart={e => e.stopPropagation()}
+                  onTouchEnd={e => e.stopPropagation()}
                 >
                   <button
                     onClick={() => setMenuId(menuId === conv.id ? null : conv.id)}

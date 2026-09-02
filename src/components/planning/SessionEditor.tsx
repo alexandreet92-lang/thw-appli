@@ -5230,10 +5230,9 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
       {/* Placeholder du titre bien visible : sinon on ne repère pas que c'est
           un champ éditable (retour utilisateur : « titre difficile à voir »). */}
       <style>{`
-        .sed-title-in::placeholder { color: var(--text-mid); opacity: 0.9; font-weight: 600; }
-        .sed-title-in::-webkit-input-placeholder { color: var(--text-mid); opacity: 0.9; font-weight: 600; }
-        .sed-title-main { border-bottom: 1px dashed var(--border) !important; padding-bottom: 3px !important; }
-        .sed-title-main:focus { border-bottom-color: var(--brand, var(--primary)) !important; border-bottom-style: solid !important; }
+        .sed-title-in::placeholder { color: var(--text-dim); opacity: 0.85; font-weight: 600; }
+        .sed-title-in::-webkit-input-placeholder { color: var(--text-dim); opacity: 0.85; font-weight: 600; }
+        .sed-title-box:focus { border-color: var(--brand, var(--primary)) !important; box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand, var(--primary)) 15%, transparent) !important; }
       `}</style>
 
       {/* Backdrop */}
@@ -5326,14 +5325,18 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
         <div style={{ padding: mobile ? '14px 16px 14px' : '18px 24px 16px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 12 }}>
           <span style={{ width: 11, height: 11, borderRadius: '50%', background: accent, flexShrink: 0 }} />
           <div style={{ flex: 1, minWidth: 0 }}>
-            <input className="sed-title-in sed-title-main" value={title} onChange={e => setTitle(e.target.value)}
+            <label style={{ display: 'block', fontSize: 10.5, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' as const, color: 'var(--text-dim)', marginBottom: 5 }}>
+              {t('sed.sessionTitle')}
+            </label>
+            <input className="sed-title-in sed-title-box" value={title} onChange={e => setTitle(e.target.value)}
               placeholder={`${SPORT_LABEL[sport]} ${trainingTypes.join('+')}`}
               style={{
-                width: '100%', background: 'none', border: 'none', color: 'var(--text)',
-                fontSize: mobile ? 19 : 23, fontWeight: 700, outline: 'none', padding: 0, minWidth: 0,
-                fontFamily: 'var(--font-display)', letterSpacing: '-0.02em',
+                width: '100%', background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 10,
+                color: 'var(--text)', transition: 'border-color 0.15s, box-shadow 0.15s',
+                fontSize: mobile ? 18 : 21, fontWeight: 700, outline: 'none', padding: mobile ? '10px 12px' : '11px 14px', minWidth: 0,
+                fontFamily: 'var(--font-display)', letterSpacing: '-0.02em', boxSizing: 'border-box' as const,
               }} />
-            <p style={{ margin: '2px 0 0', fontSize: 11.5, color: 'var(--text-dim)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
+            <p style={{ margin: '6px 0 0', fontSize: 11.5, color: 'var(--text-dim)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
               {SPORT_LABEL[sport]}{trainingTypes.length ? ` · ${trainingTypes.join(' + ')}` : ''}
             </p>
           </div>

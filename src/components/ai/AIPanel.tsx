@@ -13557,13 +13557,14 @@ function HistoryDrawer({
                 } : undefined}
                 onDragEnd={onConvDragEnd}
                 style={{
-                  padding: '7px 8px 7px 10px', borderRadius: 8, cursor: 'pointer',
-                  background: conv.id === activeId ? 'rgba(255,255,255,0.08)' : 'transparent',
+                  padding: '11px 10px 11px 12px', borderRadius: 10, cursor: 'pointer',
+                  background: conv.id === activeId ? 'rgba(91,111,255,0.14)' : 'transparent',
+                  boxShadow: conv.id === activeId ? 'inset 3px 0 0 #5b6fff' : 'none',
                   border: 'none',
                   display: 'flex', alignItems: 'center', gap: 6,
                   transition: 'background 0.1s',
                 }}
-                onMouseEnter={e => { if (conv.id !== activeId) (e.currentTarget as HTMLDivElement).style.background = 'rgba(255,255,255,0.06)' }}
+                onMouseEnter={e => { if (conv.id !== activeId) (e.currentTarget as HTMLDivElement).style.background = 'rgba(91,111,255,0.06)' }}
                 onMouseLeave={e => { if (conv.id !== activeId) (e.currentTarget as HTMLDivElement).style.background = 'transparent' }}
               >
                 <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'baseline', gap: 6 }}>
@@ -13595,14 +13596,14 @@ function HistoryDrawer({
                   )}
                   <div style={{
                     flex: 1, minWidth: 0,
-                    fontSize: 13, fontWeight: conv.id === activeId ? 550 : 430,
-                    color: conv.id === activeId ? 'var(--ai-text)' : 'var(--ai-mid)',
+                    fontSize: 15, fontWeight: conv.id === activeId ? 650 : 500,
+                    color: conv.id === activeId ? '#5b6fff' : 'var(--ai-text)',
                     overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                    lineHeight: 1.3, letterSpacing: '-0.005em',
+                    lineHeight: 1.35, letterSpacing: '-0.005em',
                   }}>
                     {conv.title}
                   </div>
-                  <div style={{ fontSize: 11, color: 'var(--ai-mid)', flexShrink: 0, whiteSpace: 'nowrap' }}>
+                  <div style={{ fontSize: 12, color: 'var(--ai-mid)', flexShrink: 0, whiteSpace: 'nowrap' }}>
                     {mounted ? fmtDate(conv.updatedAt, t) : ''}
                   </div>
                 </div>
@@ -21425,7 +21426,7 @@ export default function AIPanel({
     dragRef.current = null
     const el = chatColRef.current
     // Restaure la transition animée pour que le snap glisse (et ne saute pas)
-    if (el) el.style.transition = 'transform 0.34s cubic-bezier(0.32,0.72,0,1)'
+    if (el) el.style.transition = 'transform 0.2s cubic-bezier(0.22,0.7,0.15,1)'
     if (d && d.active) {
       // Ouverture au moindre geste : un flick rapide (vitesse) OU un petit
       // déplacement (~18 % de la largeur) suffit, dans le sens du geste.
@@ -23219,7 +23220,7 @@ export default function AIPanel({
               ...(isDesktop ? {} : {
                 position: 'relative', zIndex: 2, background: 'var(--ai-bg)',
                 transform: `translateX(${histOpen ? AI_SIDEBAR_W : 0}px)`,
-                transition: 'transform 0.34s cubic-bezier(0.32,0.72,0,1), filter 0.3s ease',
+                transition: 'transform 0.2s cubic-bezier(0.22,0.7,0.15,1), filter 0.25s ease',
                 willChange: 'transform', touchAction: 'pan-y',
                 borderTopLeftRadius: 26, borderBottomLeftRadius: 26,
                 boxShadow: '-6px 0 48px rgba(0,0,0,0.12)',

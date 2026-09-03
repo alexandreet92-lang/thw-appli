@@ -28,35 +28,36 @@ var PLAY_STORE_URL = '';
    AUJOURD'HUI sur Mac, Windows et Android via le navigateur ; l'app native iPhone
    arrive sur l'App Store. Un bouton principal ouvre l'app web sur tout appareil. */
 function DownloadSection() {
-  var ua = (typeof navigator !== 'undefined' ? navigator.userAgent : '') || '';
-  var isIOS = /iPhone|iPad|iPod/i.test(ua);
-  var isAndroid = /Android/i.test(ua);
-  var chip = function (icon, label, ok) {
+  // Carte plateforme : un magasin (App Store / Google Play) OU l'accès web+PWA.
+  var card = function (opts) {
+    var live = !!opts.href;
+    var Tag = live ? 'a' : 'span';
     return (
-      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 13px', borderRadius: 999, border: '1px solid rgba(140,140,160,0.28)', fontSize: 13, opacity: ok ? 1 : 0.62 }}>
-        <UIIcon name={icon} size={14} /> {label}
-      </span>);
+      <Tag href={live ? opts.href : undefined}
+        style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '18px 16px', borderRadius: 16, textDecoration: 'none', color: 'inherit',
+          border: '1px solid rgba(140,140,160,0.24)', background: 'rgba(140,140,160,0.05)', minWidth: 150, flex: '1 1 150px', maxWidth: 210,
+          cursor: live ? 'pointer' : 'default', opacity: live || opts.web ? 1 : 0.78 }}>
+        <UIIcon name={opts.icon} size={26} />
+        <span style={{ fontWeight: 700, fontSize: 15 }}>{opts.title}</span>
+        <span style={{ fontSize: 12.5, opacity: 0.7, textAlign: 'center', lineHeight: 1.35 }}>{opts.sub}</span>
+        <span style={{ marginTop: 4, fontSize: 12.5, fontWeight: 700, color: opts.web ? 'var(--accent, #22b8cf)' : (live ? 'var(--accent, #22b8cf)' : 'inherit'), opacity: (live || opts.web) ? 1 : 0.6 }}>{opts.action}</span>
+      </Tag>);
   };
   return (
     <section className="section" style={{ paddingTop: 8 }}>
       <div className="cta-band reveal" style={{ textAlign: 'center' }}>
-        <h2>Disponible partout</h2>
-        <p>Une seule app, sur tous tes appareils. Commence en un clic dans ton navigateur — sur iPhone, l'app native arrive sur l'App Store.</p>
-        <div className="cta-band-btns" style={{ justifyContent: 'center', flexWrap: 'wrap' }}>
-          <a className="btn btn-cyan btn-lg" href={APP_URL}><UIIcon name="spark" size={16} /> Ouvrir l'application</a>
-          {isIOS && (APP_STORE_URL
-            ? <a className="btn btn-ghost btn-lg" href={APP_STORE_URL}><UIIcon name="apple" size={16} /> Télécharger sur l'App Store</a>
-            : <span className="btn btn-ghost btn-lg" style={{ opacity: 0.6, pointerEvents: 'none' }}><UIIcon name="apple" size={16} /> Bientôt sur l'App Store</span>)}
-          {isAndroid && PLAY_STORE_URL &&
-            <a className="btn btn-ghost btn-lg" href={PLAY_STORE_URL}><UIIcon name="google" size={16} /> Google Play</a>}
+        <h2>Télécharge l'app — sur toutes les plateformes</h2>
+        <p>iPhone, Android, Mac, Windows : une seule app, partout. Commence tout de suite dans ton navigateur, ou installe l'app native.</p>
+        <div className="cta-band-btns" style={{ justifyContent: 'center', flexWrap: 'wrap', marginBottom: 22 }}>
+          <a className="btn btn-cyan btn-lg" href={APP_URL}><UIIcon name="spark" size={16} /> Ouvrir l'application maintenant</a>
         </div>
-        <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap', marginTop: 18 }}>
-          {chip('apple', 'iPhone · App Store bientôt', false)}
-          {chip('grid', 'Mac · navigateur', true)}
-          {chip('grid', 'Windows · navigateur', true)}
-          {chip('grid', 'Android · navigateur', true)}
+        <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
+          {card({ icon: 'apple', title: 'iPhone', sub: 'App native', action: APP_STORE_URL ? 'App Store →' : 'Bientôt sur l’App Store', href: APP_STORE_URL })}
+          {card({ icon: 'google', title: 'Android', sub: 'App native', action: PLAY_STORE_URL ? 'Google Play →' : 'Bientôt sur Google Play', href: PLAY_STORE_URL })}
+          {card({ icon: 'grid', title: 'Mac', sub: 'Navigateur ou app', action: 'Ouvrir →', href: APP_URL, web: true })}
+          {card({ icon: 'grid', title: 'Windows', sub: 'Navigateur (PWA)', action: 'Ouvrir →', href: APP_URL, web: true })}
         </div>
-        <div className="disc-hero-note" style={{ marginTop: 14 }}>Astuce : depuis Chrome/Safari, « Ajouter à l'écran d'accueil » installe l'app comme une vraie application.</div>
+        <div className="disc-hero-note" style={{ marginTop: 16 }}>Astuce : dans Chrome/Safari, « Installer l’application » / « Ajouter à l’écran d’accueil » pose l’icône comme une vraie app (Windows, Mac, Android).</div>
       </div>
     </section>);
 }

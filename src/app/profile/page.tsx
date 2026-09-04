@@ -1323,6 +1323,61 @@ function BlockedUsersSection() {
   )
 }
 
+// ── Suppression de compte DANS l'app (exigence Apple 5.1.1(v)) ─────
+function DeleteAccountRow() {
+  const [open, setOpen] = useState(false)
+  const [confirmText, setConfirmText] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState<string | null>(null)
+  const router = useRouter()
+
+  const doDelete = async () => {
+    setBusy(true); setErr(null)
+    try {
+      const res = await fetch('/api/account/delete', { method: 'POST' })
+      if (!res.ok) throw new Error('fail')
+      // Compte supprimé → on coupe la session locale et on renvoie sur l'accueil.
+      try { await createClient().auth.signOut() } catch { /* ignore */ }
+      try { localStorage.clear() } catch { /* ignore */ }
+      router.replace('/auth')
+    } catch {
+      setErr('La suppression a échoué. Réessaie, ou écris à contact@thehybridway.app.')
+      setBusy(false)
+    }
+  }
+
+  return (
+    <>
+      <Line onClick={() => { setConfirmText(''); setErr(null); setOpen(true) }}>
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="1.8" strokeLinecap="round" style={{ flexShrink: 0 }}><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p style={{ fontSize: 15, fontWeight: 500, margin: 0, color: '#ef4444' }}>Supprimer mon compte</p>
+          <p style={{ fontSize: 11.5, color: 'rgba(239,68,68,0.7)', margin: '2px 0 0' }}>Suppression définitive de toutes tes données</p>
+        </div>
+      </Line>
+
+      {open && (
+        <div onClick={() => !busy && setOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 2147483000, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+          <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 380, background: 'var(--bg-card)', borderRadius: 18, border: '1px solid var(--border)', boxShadow: '0 24px 60px rgba(0,0,0,0.4)', padding: 22, display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: 'var(--text)' }}>Supprimer ton compte ?</h3>
+            <p style={{ margin: 0, fontSize: 13, color: 'var(--text-dim)', lineHeight: 1.5 }}>
+              Cette action est <strong>définitive</strong>. Ton compte et toutes tes données (entraînements, conversations, plans, messages…) seront <strong>supprimés immédiatement</strong> et ne pourront pas être récupérés.
+            </p>
+            <p style={{ margin: 0, fontSize: 12.5, color: 'var(--text-mid)' }}>Pour confirmer, écris <strong>SUPPRIMER</strong> ci-dessous :</p>
+            <input value={confirmText} onChange={e => setConfirmText(e.target.value)} autoFocus placeholder="SUPPRIMER"
+              style={{ padding: '10px 12px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text)', fontSize: 14, outline: 'none', fontFamily: 'var(--font-body)' }} />
+            {err && <p style={{ margin: 0, fontSize: 12, color: '#ef4444' }}>{err}</p>}
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 4 }}>
+              <button onClick={() => setOpen(false)} disabled={busy} style={{ fontSize: 13, padding: '9px 15px', borderRadius: 10, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-mid)', cursor: 'pointer', fontFamily: 'var(--font-body)' }}>Annuler</button>
+              <button onClick={() => void doDelete()} disabled={busy || confirmText.trim().toUpperCase() !== 'SUPPRIMER'} style={{ fontSize: 13, padding: '9px 16px', borderRadius: 10, border: 'none', background: (confirmText.trim().toUpperCase() === 'SUPPRIMER' && !busy) ? '#ef4444' : 'var(--border-mid)', color: '#fff', cursor: (confirmText.trim().toUpperCase() === 'SUPPRIMER' && !busy) ? 'pointer' : 'default', fontWeight: 700, fontFamily: 'var(--font-body)' }}>{busy ? 'Suppression…' : 'Supprimer définitivement'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  )
+}
+
 // ── Bulle Confidentialité : données & vie privée ──────────────────
 function ConfidentialiteBloc() {
   const { t } = useI18n()
@@ -1370,15 +1425,7 @@ function ConfidentialiteBloc() {
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="2" strokeLinecap="round" style={{ flexShrink: 0 }}><path d="M9 18l6-6-6-6"/></svg>
             </Line>
           </a>
-          <a href="mailto:contact@thehybridway.app?subject=Suppression%20de%20compte" style={{ textDecoration: 'none', display: 'block', color: '#ef4444' }}>
-            <Line>
-              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" style={{ flexShrink: 0 }}><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ fontSize: 15, fontWeight: 500, margin: 0 }}>{t('profile.deleteAccount')}</p>
-                <p style={{ fontSize: 11.5, color: 'rgba(239,68,68,0.7)', margin: '2px 0 0' }}>{t('profile.deleteAccountSub')}</p>
-              </div>
-            </Line>
-          </a>
+          <DeleteAccountRow />
         </Group>
       </Section>
 

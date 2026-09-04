@@ -310,9 +310,12 @@ export default function ManualEntrySheet({ onClose, onSaved }: Props) {
 
         {step === 'sport' ? (
           <>
-            <div style={{ padding: '10px 20px 6px', flexShrink: 0 }}>
-              <h2 style={{ fontFamily: FD, fontSize: 22, fontWeight: 600, margin: 0 }}>{t('w2c.createActivity')}</h2>
-              <p style={{ fontSize: 13, color: 'var(--text-mid)', margin: '4px 0 0' }}>{t('w2c.chooseSport')}</p>
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, padding: '10px 16px 6px 20px', flexShrink: 0 }}>
+              <div style={{ minWidth: 0 }}>
+                <h2 style={{ fontFamily: FD, fontSize: 22, fontWeight: 600, margin: 0 }}>{t('w2c.createActivity')}</h2>
+                <p style={{ fontSize: 13, color: 'var(--text-mid)', margin: '4px 0 0' }}>{t('w2c.chooseSport')}</p>
+              </div>
+              <button onClick={doClose} aria-label="Fermer" style={{ width: 34, height: 34, borderRadius: '50%', background: 'var(--bg-card2)', border: 'none', color: 'var(--text)', fontSize: 21, lineHeight: 1, cursor: 'pointer', flexShrink: 0 }}>×</button>
             </div>
             <div style={{ flex: 1, overflowY: 'auto', padding: '10px 16px calc(env(safe-area-inset-bottom) + 16px)', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
               {SPORTS.map(sp => (
@@ -328,10 +331,11 @@ export default function ManualEntrySheet({ onClose, onSaved }: Props) {
           <>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 16px 6px', flexShrink: 0 }}>
               <button onClick={() => setStep('sport')} aria-label={t('w2c.back')} style={{ width: 34, height: 34, borderRadius: '50%', background: 'var(--bg-card2)', border: 'none', color: 'var(--text)', fontSize: 19, cursor: 'pointer', flexShrink: 0 }}>‹</button>
-              <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
                 <SportIcon sport={builderSport} size={22} circle={false} />
-                <h2 style={{ fontFamily: FD, fontSize: 20, fontWeight: 600, margin: 0 }}>{def ? t('w2c.sport_' + def.id) : ''}</h2>
+                <h2 style={{ fontFamily: FD, fontSize: 20, fontWeight: 600, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{def ? t('w2c.sport_' + def.id) : ''}</h2>
               </span>
+              <button onClick={doClose} aria-label="Fermer" style={{ marginLeft: 'auto', width: 34, height: 34, borderRadius: '50%', background: 'var(--bg-card2)', border: 'none', color: 'var(--text)', fontSize: 21, lineHeight: 1, cursor: 'pointer', flexShrink: 0 }}>×</button>
             </div>
             <div style={{ flex: 1, overflowY: 'auto', padding: '6px 16px 12px', display: 'flex', flexDirection: 'column', gap: 14 }}>
               {def?.id === 'running' && (

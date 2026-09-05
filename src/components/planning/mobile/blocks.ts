@@ -54,6 +54,11 @@ export type MBlock = Block & {
   repValues?: string[]
   // ── Mobilité (HORS volume) : un bloc = un exercice de mobilité ──
   mob?: { region: string; holdSec?: number; reps?: number; perSide?: boolean; sets: number }
+  // ── Aller-retour / navette (course) ──────────────────────────────
+  /** Longueur d'un segment de navette (m). La distance du bloc (`distanceM`)
+   *  est alors parcourue en VA-ET-VIENT sur cette longueur.
+   *  Ex. distanceM 200 + shuttleLegM 50 → 4 × 50 m (aller-retour). Actif si > 0. */
+  shuttleLegM?: number
   // ── Parcours (vélo) ──
   /** Bloc de FOND « endurance Z2 » couvrant tout le parcours. Ses segments
    *  réels sont recalculés autour des blocs d'intensité (cf. parcoursBase.ts). */

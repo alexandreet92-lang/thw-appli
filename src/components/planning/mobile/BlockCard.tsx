@@ -8,7 +8,7 @@
 import { useState } from 'react'
 import { IconDotsVertical, IconCopy, IconTrash } from '@tabler/icons-react'
 import type { SportType, RunningSub } from '@/app/planning/page'
-import { zColor, fmtMMSS, mmssToMin, bumpPaceOrWatts, pctFtp, pctOfThreshold, pctOfCss, paceToSec, secToPace, type AthleteRefs } from './editorial'
+import { zColor, fmtMMSS, mmssToMin, bumpPaceOrWatts, pctFtp, pctOfThreshold, pctOfCss, paceToSec, secToPace, RUN_REF_DISTANCES, type AthleteRefs } from './editorial'
 import { recalc, kmhEquivalent, durFromDistance, BLOCK_NAME_KEY, SWIM_EQUIPMENT, HYPOXIE_DISTANCES, HYPOXIE_STROKES, type MBlock } from './blocks'
 import { Stepper, Segmented, FieldLabel } from './ui'
 import { useI18n } from '@/lib/i18n'
@@ -25,6 +25,8 @@ export function BlockCard({ block: b, sport, runningSub, accent, refs, riderKg, 
 }) {
   const { t: tr } = useI18n()
   const [menu, setMenu] = useState(false)
+  // Distance dont l'athlète n'a pas de temps de référence (message transitoire au tap).
+  const [noRefDist, setNoRefDist] = useState<string | null>(null)
   const isIv = b.mode === 'interval'
   const isProg = b.mode === 'progressive'
   const isTest = b.mode === 'test'
@@ -123,6 +125,50 @@ export function BlockCard({ block: b, sport, runningSub, accent, refs, riderKg, 
             )
           })}
         </div>
+      </div>
+    )
+  }
+
+  // ── Allure de référence (course) — points 3/4 ────────────────────
+  // Sélecteur de distance (100 m → Marathon) qui PRÉ-REMPLIT l'allure cible
+  // depuis le record perso de l'athlète (page Performance). Une distance SANS
+  // record est grisée : au tap, elle n'applique rien et indique qu'il n'y a pas
+  // de temps de référence sur cette distance.
+  const runRecords = refs.runDistanceRecords ?? null
+  function runReferenceRow() {
+    const cur = paceToSec(b.value)
+    return (
+      <div style={{ gridColumn: '1 / -1' }}>
+        <FieldLabel>{tr('planning.paceReference')}</FieldLabel>
+        <div data-hscroll style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 2, marginTop: 4 }}>
+          {RUN_REF_DISTANCES.map(d => {
+            const paceSec = runRecords?.[d.label] ?? null
+            const has = paceSec != null && paceSec > 0
+            const sel = has && effortUnit === 'pace' && !isNaN(cur) && Math.abs(cur - paceSec!) <= 1
+            return (
+              <button key={d.label} type="button"
+                onClick={() => {
+                  if (has) { setNoRefDist(null); set({ effortUnit: 'pace', value: secToPace(paceSec!) }) }
+                  else setNoRefDist(d.label)
+                }}
+                title={has ? `${d.label} · ${secToPace(paceSec!)}/km` : tr('planning.noReferenceTime')}
+                style={{
+                  flexShrink: 0, borderRadius: 999, padding: '5px 11px', fontSize: 11.5, fontWeight: 700, cursor: 'pointer',
+                  border: `1px solid ${sel ? accent : 'var(--se-rule)'}`,
+                  background: 'transparent',
+                  color: !has ? 'var(--se-rule)' : sel ? accent : 'var(--se-dim)',
+                  opacity: has ? 1 : 0.55,
+                }}>
+                {d.label}
+              </button>
+            )
+          })}
+        </div>
+        {noRefDist && (
+          <p style={{ margin: '5px 0 0', fontSize: 10.5, color: 'var(--se-dim)' }}>
+            {tr('planning.noReferenceTime')} ({noRefDist})
+          </p>
+        )}
       </div>
     )
   }
@@ -368,6 +414,9 @@ export function BlockCard({ block: b, sport, runningSub, accent, refs, riderKg, 
               )
             })()}
             {b.progressive && isIv ? progressiveEditor() : effortField()}
+            {/* Allure de référence (course) : distances des records perso — pré-remplit
+                l'allure ; grisée + message si pas de temps de référence. */}
+            {sport === 'run' && effortUnit !== 'kmh' && !(b.progressive && isIv) && runReferenceRow()}
             {sport === 'elliptique' && (
               <Field label={tr('planning.machineLevel')} opt>
                 <Stepper value={String(b.machineLevel ?? 0)} unit="niv." placeholder="—" onChange={v => set({ machineLevel: Math.max(0, parseInt(v) || 0) })}

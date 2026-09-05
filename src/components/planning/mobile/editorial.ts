@@ -123,7 +123,19 @@ export interface AthleteRefs {
   /** Allures repères course (sec/km) : seuil 1 / seuil 2. */
   runSl1PaceSec?: number | null
   runSl2PaceSec?: number | null
+  /** Records course par distance (page Performance) : label → MEILLEURE allure
+   *  sec/km. Base du sélecteur « allure de référence » du builder (course).
+   *  Une distance ABSENTE de cette map = pas de temps de référence (chip grisée). */
+  runDistanceRecords?: Record<string, number> | null
 }
+
+// Distances de référence course (records perso, page Performance) affichées dans
+// le builder — label → km. 100 m → Marathon, ordre de lecture croissant.
+export const RUN_REF_DISTANCES: { label: string; km: number }[] = [
+  { label: '100m', km: 0.1 }, { label: '200m', km: 0.2 }, { label: '400m', km: 0.4 },
+  { label: '1km', km: 1 }, { label: '5km', km: 5 }, { label: '10km', km: 10 },
+  { label: 'Semi', km: 21.1 }, { label: 'Marathon', km: 42.195 },
+]
 /** Watts → "% FTP" (null si pas de FTP). */
 export function pctFtp(watts: number, refs: AthleteRefs): number | null {
   if (!refs.ftp || refs.ftp <= 0 || !watts) return null

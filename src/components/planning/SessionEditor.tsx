@@ -3896,6 +3896,7 @@ export function SessionEditor({ mode, session, dayIndex, weekStart, plan, onClos
     bikeSl2Watts: number | null
     runSl1PaceSec: number | null
     runSl2PaceSec: number | null
+    runDistanceRecords: Record<string, number>
   } | null>(null)
   const [athleteProducts, setAthleteProducts] = useState<Array<{
     name: string; type: string; glucidesG: number; proteinesG: number; quantity: string
@@ -4031,7 +4032,7 @@ export function SessionEditor({ mode, session, dayIndex, weekStart, plan, onClos
         const uid = await resolvePlanningUid(sb)
         if (!uid || cancelled) return
 
-        const [perfRes, actsRes, profileRes, zonesRes, sportProfRes] = await Promise.all([
+        const [perfRes, actsRes, profileRes, zonesRes, sportProfRes, runRecRes] = await Promise.all([
           // athlete_performance_profile — vraies colonnes vérifiées
           sb.from('athlete_performance_profile')
             .select('ftp_watts,hr_max,hr_rest,lthr_run,lthr_bike,threshold_pace_s_km,css_s_100m,rowing_threshold_pace_s_500m,vma_km_h')
@@ -4042,6 +4043,8 @@ export function SessionEditor({ mode, session, dayIndex, weekStart, plan, onClos
           sb.from('training_zones').select('ftp_watts').eq('user_id', uid).eq('sport', 'bike').eq('is_current', true).maybeSingle().then(r => r, () => ({ data: null })),
           // athlete_sport_profile — repères SL1/SL2 (params jsonb) vélo & course
           sb.from('athlete_sport_profile').select('sport,params').eq('user_id', uid).in('sport', ['bike', 'run']).then(r => r, () => ({ data: [] })),
+          // personal_records course — chronos par distance (allure de référence du builder)
+          sb.from('personal_records').select('distance_label,performance').eq('user_id', uid).eq('sport', 'run').then(r => r, () => ({ data: [] })),
         ])
 
         const perf = (perfRes as { data: Record<string, unknown> | null }).data
@@ -4068,6 +4071,31 @@ export function SessionEditor({ mode, session, dayIndex, weekStart, plan, onClos
         const bikeSl2Watts = toW(bikeParams?.watts_sl2)
         const runSl1PaceSec = paceToSec(runParams?.allure_sl1)
         const runSl2PaceSec = paceToSec(runParams?.allure_sl2)
+
+        // Records course (page Performance) → allure de référence par distance.
+        // On convertit chaque chrono en allure sec/km et on garde la MEILLEURE
+        // (plus rapide) par distance. Les distances sans record restent absentes.
+        const RUN_REF_KM: Record<string, number> = {
+          '100m': 0.1, '150m': 0.15, '200m': 0.2, '300m': 0.3, '400m': 0.4,
+          '1km': 1, '5km': 5, '10km': 10, 'Semi': 21.1, 'Marathon': 42.195, '50km': 50, '100km': 100,
+        }
+        const timeToSec = (v: unknown): number => {
+          const s = String(v ?? '').trim()
+          if (!s || s === '—') return 0
+          const p = s.split(':').map(Number)
+          if (p.some(n => isNaN(n))) return 0
+          return p.length === 3 ? p[0] * 3600 + p[1] * 60 + p[2] : p[0] * 60 + (p[1] || 0)
+        }
+        const runRecords = (runRecRes as { data: Array<{ distance_label: string; performance: string }> | null }).data ?? []
+        const runDistanceRecords: Record<string, number> = {}
+        for (const rec of runRecords) {
+          const km = RUN_REF_KM[rec.distance_label]
+          const sec = timeToSec(rec.performance)
+          if (!km || km <= 0 || sec <= 0) continue
+          const paceSecKm = Math.round(sec / km)
+          const cur = runDistanceRecords[rec.distance_label]
+          if (cur == null || paceSecKm < cur) runDistanceRecords[rec.distance_label] = paceSecKm
+        }
         if (!cancelled) {
           if (prof?.weight_kg) setAthleteWeight(prof.weight_kg as number)
           if (prof?.bike_weight_kg) setBikeWeight(prof.bike_weight_kg as number)
@@ -4123,6 +4151,7 @@ export function SessionEditor({ mode, session, dayIndex, weekStart, plan, onClos
             hrMax, hrRest, lthrRun, lthrBike,
             runThresholdPaceStr, swimCSSStr,
             vmaKmh, bikeSl1Watts, bikeSl2Watts, runSl1PaceSec, runSl2PaceSec,
+            runDistanceRecords,
           })
         }
       } catch { /* ignore */ }
@@ -5165,6 +5194,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
         vmaKmh: athleteData?.vmaKmh ?? null, weightKg: athleteWeight,
         bikeSl1Watts: athleteData?.bikeSl1Watts ?? null, bikeSl2Watts: athleteData?.bikeSl2Watts ?? null,
         runSl1PaceSec: athleteData?.runSl1PaceSec ?? null, runSl2PaceSec: athleteData?.runSl2PaceSec ?? null,
+        runDistanceRecords: athleteData?.runDistanceRecords ?? null,
       },
       parcoursData: parcoursData ? {
         gpsTrace: parcoursData.gpsTrace, elevationProfile: parcoursData.elevationProfile,

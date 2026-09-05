@@ -22,57 +22,30 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 // Build natif (Capacitor) : bundle local, redirections adaptées.
 const NATIVE_BUILD = !!process.env.NEXT_PUBLIC_API_BASE
 
-// CTA principal — dégradé cyan→indigo + reflet interne, proportionné (50px).
+// CTA principal — accent unique (--primary), plein et sobre. Halo discret
+// (« raffiné » : on retire le gros glow ; la profondeur suffit à porter l'action).
 function ctaStyle(disabled: boolean): React.CSSProperties {
   return {
     width: '100%', height: 50, borderRadius: 'var(--r-md)', border: 'none',
-    background: disabled ? 'var(--bg-card2)' : 'var(--primary-gradient)',
+    background: disabled ? 'var(--bg-card2)' : 'var(--primary)',
     color: disabled ? 'var(--text-dim)' : '#fff',
     fontFamily: FB, fontSize: 15, fontWeight: 700,
     cursor: disabled ? 'not-allowed' : 'pointer',
-    boxShadow: disabled ? 'none' : 'inset 0 1px 0 rgba(255,255,255,0.22), 0 6px 18px rgba(6,182,212,0.28)',
+    boxShadow: disabled ? 'none' : 'inset 0 1px 0 rgba(255,255,255,0.18), 0 2px 10px rgba(6,182,212,0.16)',
     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
     transition: 'filter 160ms, box-shadow 160ms', position: 'relative',
   }
 }
 
-// ── Hero (colonne gauche desktop / bandeau haut mobile) ───────────
-function Hero() {
+// ── Marque (centrée, sobre — inspiration Claude : une colonne calme) ──
+function Brand() {
   const { t } = useI18n()
-  const metric = (v: string, s: string) => (
-    <div style={{ minWidth: 0 }}>
-      <div style={{ fontFamily: FD, fontSize: 20, fontWeight: 600, color: 'var(--text)', lineHeight: 1 }}>{v}</div>
-      <div style={{ fontFamily: FB, fontSize: 11, color: 'var(--text-dim)', marginTop: 4 }}>{s}</div>
-    </div>
-  )
   return (
-    <div className="hbl-hero">
-      {/* Motif linework en fond (anneaux + tracé), discret */}
-      <svg className="hbl-rings" viewBox="0 0 400 400" fill="none" aria-hidden>
-        <circle cx="300" cy="120" r="150" stroke="var(--primary)" strokeOpacity="0.12" />
-        <circle cx="300" cy="120" r="110" stroke="var(--primary)" strokeOpacity="0.10" />
-        <circle cx="300" cy="120" r="70" stroke="var(--border)" />
-        <path d="M-20 320 C 80 280, 160 340, 240 290 S 400 250, 460 300" stroke="var(--primary)" strokeOpacity="0.14" strokeWidth="1.5" />
-      </svg>
-
-      <div className="hbl-hero-inner">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logos/logo_app.png" alt="Hybrid" style={{ width: 48, height: 48, borderRadius: 13, objectFit: 'cover', flexShrink: 0, boxShadow: '0 4px 14px rgba(6,182,212,0.25)' }} />
-          <div>
-            <div style={{ fontFamily: FD, fontSize: 26, fontWeight: 600, letterSpacing: '-0.5px', color: 'var(--text)', lineHeight: 1 }}>Hybrid</div>
-            <div style={{ fontFamily: FB, fontSize: 10.5, fontWeight: 600, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--text-dim)', marginTop: 4 }}>{t('auth.heroTagline')}</div>
-          </div>
-        </div>
-        <h1 className="hbl-headline" style={{ fontFamily: FD, fontWeight: 600, color: 'var(--text)', margin: '24px 0 0', lineHeight: 1.12, letterSpacing: '-0.01em' }}>
-          {t('auth.heroHeadline')} <span style={{ color: 'var(--primary)' }}>{t('auth.heroAccent')}</span>
-        </h1>
-        <div className="hbl-metrics" style={{ display: 'flex', gap: 26, marginTop: 28, paddingTop: 22, borderTop: '1px solid var(--border)' }}>
-          {metric(t('auth.mScores'), t('auth.mScoresSub'))}
-          {metric(t('auth.mSports'), t('auth.mSportsSub'))}
-          {metric(t('auth.mPlan'), t('auth.mPlanSub'))}
-        </div>
-      </div>
+    <div className="hbl-brand">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="/logos/logo_app.png" alt="Hybrid" style={{ width: 54, height: 54, borderRadius: 15, objectFit: 'cover', boxShadow: 'var(--shadow-card)' }} />
+      <div style={{ fontFamily: FD, fontSize: 22, fontWeight: 600, letterSpacing: '-0.4px', color: 'var(--text)', marginTop: 14, lineHeight: 1 }}>Hybrid</div>
+      <div style={{ fontFamily: FB, fontSize: 10.5, fontWeight: 600, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'var(--text-dim)', marginTop: 7 }}>{t('auth.heroTagline')}</div>
     </div>
   )
 }
@@ -148,19 +121,11 @@ function SocialButtons({ onError }: { onError: (msg: string) => void }) {
 }
 
 const STYLES = `
-.hbl-root{display:flex;flex-direction:column;min-height:100dvh;background:var(--bg)}
-.hbl-hero{position:relative;overflow:hidden;padding:48px 28px 28px}
-.hbl-hero-inner{position:relative;z-index:1;max-width:420px;margin:0 auto}
-.hbl-rings{position:absolute;top:-40px;right:-60px;width:420px;height:420px;pointer-events:none}
-.hbl-headline{font-size:26px;max-width:340px}
-.hbl-form{flex:1;display:flex;align-items:flex-start;justify-content:center;padding:8px 24px 48px}
-.hbl-form-inner{width:100%;max-width:380px}
-@media(min-width:860px){
-  .hbl-root{flex-direction:row}
-  .hbl-hero{flex:1;min-height:100dvh;display:flex;align-items:center;border-right:1px solid var(--border);padding:48px}
-  .hbl-headline{font-size:34px}
-  .hbl-form{flex:0 0 480px;align-items:center;padding:48px}
-}
+.hbl-root{min-height:100dvh;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:40px 20px}
+.hbl-col{width:100%;max-width:400px;margin:0 auto}
+.hbl-brand{display:flex;flex-direction:column;align-items:center;text-align:center;margin-bottom:26px}
+.hbl-head{text-align:center;margin-bottom:24px}
+@media(min-width:860px){.hbl-root{padding:56px 24px}}
 @media(prefers-reduced-motion:reduce){.hbl-root *{transition:none!important}}
 `
 
@@ -325,17 +290,19 @@ function AuthPageInner() {
     <div className="hbl-root">
       <style>{STYLES}</style>
       <LanguageDropdown />
-      <Hero />
 
-      <div className="hbl-form">
-        <div className="hbl-form-inner">
-          <h2 style={{ fontFamily: FD, fontSize: 22, fontWeight: 600, color: 'var(--text)', margin: '0 0 6px' }}>
+      <div className="hbl-col">
+        <Brand />
+        <div className="hbl-head">
+          <h2 style={{ fontFamily: FD, fontSize: 24, fontWeight: 600, color: 'var(--text)', margin: '0 0 6px', letterSpacing: '-0.01em' }}>
             {isLogin ? t('auth.welcomeBack') : t('auth.createAccount')}
           </h2>
-          <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-mid)', margin: '0 0 24px' }}>
+          <p style={{ fontFamily: FB, fontSize: 13.5, color: 'var(--text-mid)', margin: 0, lineHeight: 1.5 }}>
             {isLogin ? t('auth.heroHeadline') : t('auth.heroTagline')}
           </p>
+        </div>
 
+        <div>
           <Segmented value={activeTab} onChange={i => { setActiveTab(i); setError('') }} labels={[t('auth.tabLogin'), t('auth.tabSignup')]} />
 
           <AuthInput label={t('auth.email')} type="email" placeholder="ton@email.com" value={email} onChange={setEmail} autoComplete="email" />

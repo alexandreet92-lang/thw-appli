@@ -77,32 +77,66 @@ export function SessionHoverPreview({ session, anchor }: { session: Session; anc
   // reste réservé à l'endurance, où la lecture par zones a du sens.
   const isRunFractionned = sportKeyFromType(session.sport) === 'run'
     && (session.runFamily === 'intervals' || session.runFamily === 'sprints')
+  // Détail texte sous les barres : réservé course (endurance, non fractionnée) et
+  // vélo — là où le coach veut la donnée EXACTE (allure/watts) sous la silhouette.
+  const sportKey = sportKeyFromType(session.sport)
+  const isEnduranceDetail = (sportKey === 'run' && !isRunFractionned) || sportKey === 'bike'
   const composedSport = (session.sport === 'hybrid' ? 'hybrid' : 'boxe') as ComposedSport
   const composedMoves = session.composed ?? []
   const composedCircuits: ComposedCircuit[] = session.composedCircuits ?? (session.composedCircuit ? [session.composedCircuit] : [{ id: 'c1', rounds: 1, restSec: 0 }])
   const blocks = (session.blocks ?? []).filter(b => b.type !== 'circuit_header' || (b.label ?? '').trim())
   const bars = (isGym || isComposed || isRunFractionned) ? [] : toBars(blocks as MBlock[], session.sport)
 
-  // Décrit un bloc de course fractionnée en une ligne (nom + détail) : gère
-  // l'intervalle (reps × effort @ cible / récup), le progressif et le bloc simple.
+  // Décrit un bloc d'endurance (course / vélo / natation / rameur) en une ligne
+  // (nom + détail) : gère l'intervalle (reps × effort @ cible / récup), le
+  // progressif et le bloc simple. La CIBLE est formatée avec la BONNE unité selon
+  // le sport (course @5:20/km · vélo @280w (Z4) · tapis @12km/h), comme demandé.
   const fmtMin = (m: number) => m % 1 === 0 ? `${m}'` : `${Math.floor(m)}'${String(Math.round((m % 1) * 60)).padStart(2, '0')}''`
+  const fmtDistM = (m: number) => m >= 1000 ? `${String(m / 1000).replace('.', ',')} km` : `${Math.round(m)} m`
+  // Cible d'effort formatée selon l'unité du bloc et le sport. `val` permet de
+  // formater une valeur de récup (mêmes règles) sans réécrire la logique.
+  function effortTarget(b: MBlock, val?: string): string {
+    const v = (val ?? b.value ?? '').trim()
+    const zone = b.zone ? `Z${b.zone}` : ''
+    const paren = (base: string) => (val === undefined && zone && zone !== v) ? `${base} (${zone})` : base
+    if (!v) return val === undefined ? zone : ''
+    if (session.sport === 'bike') return b.effortUnit === 'watts' || /^\d+$/.test(v) ? paren(`@${v}w`) : paren(`@${v}`)
+    if (b.effortUnit === 'kmh') return paren(`@${v}km/h`)
+    if (b.effortUnit === 'pctvma') return paren(`@${v}% VMA`)
+    // allure : /km (course) · /100m (natation) · /500m (rameur)
+    const unit = session.sport === 'swim' ? '/100m' : session.sport === 'rowing' ? '/500m' : '/km'
+    if (/^\d+:\d{2}$/.test(v)) return paren(`@${v}${unit}`)
+    return paren(v)
+  }
+  // Récup en une expression : distance / durée + style (trot/marche) ou cible (@180w).
+  function recupText(b: MBlock): string {
+    const parts: string[] = []
+    if (b.recoveryDistanceM) parts.push(fmtDistM(b.recoveryDistanceM))
+    else if (b.recoveryMin) parts.push(fmtMin(b.recoveryMin))
+    else return ''
+    if (b.recoveryStyle) parts.push(b.recoveryStyle)
+    else if (b.recoveryValue) { const tgt = effortTarget(b, b.recoveryValue); if (tgt) parts.push(tgt) }
+    return `${parts.join(' ')} ${t('w3g.shp_recovery')}`
+  }
   function runBlockLine(b: Block): { name: string; detail: string } {
-    const bb = b as Block & { inputMode?: string; distanceM?: number; progSteps?: number; progStepMin?: number; progStepSec?: number }
+    const bb = b as MBlock & { progSteps?: number; progStepMin?: number; progStepSec?: number }
     const name = (b.label ?? '').trim() || BLOCK_TYPE_LABEL[b.type] || t('w3g.shp_no_block')
-    const zoneTxt = (b.value ?? '').trim() || (b.zone ? `Z${b.zone}` : '')
+    const tgt = effortTarget(bb)
+    const isDist = bb.inputMode === 'distance' && (bb.distanceM ?? 0) > 0
     let detail = ''
     if (b.mode === 'interval' && b.reps) {
-      const per = bb.inputMode === 'distance' && bb.distanceM ? `${bb.distanceM} m` : (b.effortMin ? fmtMin(b.effortMin) : '')
+      const per = isDist ? fmtDistM(bb.distanceM!) : (b.effortMin ? fmtMin(b.effortMin) : '')
       detail = per ? `${b.reps} × ${per}` : `× ${b.reps}`
-      if (zoneTxt) detail += ` @ ${zoneTxt}`
-      if (b.recoveryMin) detail += ` · ${fmtMin(b.recoveryMin)} ${t('w3g.shp_recovery')}`
+      if (tgt) detail += ` ${tgt}`
+      const rec = recupText(bb)
+      if (rec) detail += ` · ${rec}`
     } else if (b.mode === 'progressive' && bb.progSteps) {
       detail = `${bb.progSteps} × ${fmtMin(bb.progStepMin ?? 0)}`
       if (bb.progStepSec) detail += ` · −${bb.progStepSec} s/km`
-      if (zoneTxt) detail += ` @ ${zoneTxt}`
+      if (tgt) detail += ` ${tgt}`
     } else {
-      detail = fmtMin(b.durationMin || 0)
-      if (zoneTxt) detail += ` · ${zoneTxt}`
+      detail = isDist ? fmtDistM(bb.distanceM!) : fmtMin(b.durationMin || 0)
+      if (tgt) detail += ` · ${tgt}`
     }
     return { name, detail }
   }
@@ -256,7 +290,7 @@ export function SessionHoverPreview({ session, anchor }: { session: Session; anc
       {!isGym && !isComposed && !isRunFractionned && (
         <>
           <p style={sectionLabel}>{t('w3g.shp_intensity_profile')}</p>
-          <div data-testid="shp-bars" style={{ height: 56, display: 'flex', alignItems: 'flex-end', gap: 1.5, borderBottom: '1px solid var(--border)', marginBottom: trace || elevProfile ? 10 : 0 }}>
+          <div data-testid="shp-bars" style={{ height: 56, display: 'flex', alignItems: 'flex-end', gap: 1.5, borderBottom: '1px solid var(--border)', marginBottom: 0 }}>
             {bars.length === 0
               ? <span style={{ fontSize: 10, color: 'var(--text-dim)', alignSelf: 'center', margin: '0 auto' }}>{t('w3g.shp_no_block')}</span>
               : bars.map(bar => (
@@ -270,6 +304,24 @@ export function SessionHoverPreview({ session, anchor }: { session: Session; anc
                   }} />
               ))}
           </div>
+
+          {/* Détail EXACT de la séance sous les barres (course / vélo) : chaque bloc
+              avec sa structure et sa cible dans la bonne unité — le graphe donne la
+              silhouette, le texte donne la donnée précise. */}
+          {isEnduranceDetail && blocks.length > 0 && (
+            <div data-testid="shp-endurance-detail" style={{ display: 'flex', flexDirection: 'column', gap: 5, marginTop: 9 }}>
+              {blocks.map((b, i) => {
+                const { name, detail } = runBlockLine(b)
+                return (
+                  <div key={b.id || i} style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
+                    <span style={{ fontSize: 11, color: 'var(--text)', fontWeight: 600, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span>
+                    {detail && <span style={{ fontSize: 10.5, color: 'var(--text-mid)', flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>{detail}</span>}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+          {(trace || elevProfile) && <div style={{ height: 10 }} />}
         </>
       )}
 

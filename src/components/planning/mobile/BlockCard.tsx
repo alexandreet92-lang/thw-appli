@@ -18,9 +18,6 @@ function pctVmaToZone(p: number): number {
   if (p < 102) return 4; if (p < 110) return 5; if (p < 120) return 6; return 7
 }
 
-// Aller-retour (navette course) : longueurs de segment proposées (m).
-const SHUTTLE_LEGS = [5, 10, 12.5, 15, 20, 25, 40, 50, 75, 100, 125, 150, 200]
-
 export function BlockCard({ block: b, sport, runningSub, accent, refs, riderKg, expanded, onToggle, onChange, onRemove, onDuplicate }: {
   block: MBlock; sport: SportType; runningSub?: RunningSub; accent: string; refs: AthleteRefs; riderKg?: number
   expanded: boolean; onToggle: () => void
@@ -345,27 +342,26 @@ export function BlockCard({ block: b, sport, runningSub, accent, refs, riderKg, 
             {sport !== 'bike' && sport !== 'swim' && showDistToggle && !(isTreadmill && effortUnit === 'kmh') && (
               <Field label={tr('planning.mode')}><Segmented accent={accent} value={distMode ? 'distance' : 'time'} onChange={m => set({ inputMode: m, ...(m === 'time' ? { shuttleLegM: 0 } : {}) })} options={[{ key: 'distance', label: tr('planning.distance') }, { key: 'time', label: tr('planning.time') }]} /></Field>
             )}
-            {/* Aller-retour (navette) — course en mode distance uniquement */}
+            {/* Aller-retour (navette) — course en mode distance. La personne fixe la
+                distance totale, puis EN COMBIEN DE FOIS elle est divisée (= segments). */}
             {sport === 'run' && distMode && !isTreadmill && (b.distanceM ?? 0) >= 10 && (() => {
               const on = (b.shuttleLegM ?? 0) > 0
-              const segs = on ? Math.max(2, Math.round((b.distanceM ?? 0) / (b.shuttleLegM ?? 1))) : 0
+              const dist = b.distanceM ?? 0
+              const divs = on ? Math.max(2, Math.round(dist / (b.shuttleLegM ?? 1))) : 0
+              const leg = on && divs > 0 ? Math.round(dist / divs) : 0
+              const setDivs = (n: number) => set({ shuttleLegM: Math.max(1, Math.round(dist / Math.max(2, n))) })
               return (
-                <Field label={tr('planning.shuttle')} eq={on ? `↔ ${segs} × ${String(b.shuttleLegM).replace('.', ',')} m` : undefined}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <Field label={tr('planning.shuttle')} eq={on ? `↔ ${divs} × ${leg} m` : undefined}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                     <button type="button"
-                      onClick={() => set({ shuttleLegM: on ? 0 : (SHUTTLE_LEGS.filter(l => l <= (b.distanceM ?? 0) / 2).pop() ?? SHUTTLE_LEGS[0]) })}
-                      style={{ alignSelf: 'flex-start', display: 'inline-flex', alignItems: 'center', gap: 5, border: `1px solid ${on ? accent : 'var(--se-rule)'}`, background: 'transparent', color: on ? accent : 'var(--se-dim)', borderRadius: 999, padding: '5px 12px', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
+                      onClick={() => set({ shuttleLegM: on ? 0 : Math.round(dist / 2) })}
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: 5, border: `1px solid ${on ? accent : 'var(--se-rule)'}`, background: 'transparent', color: on ? accent : 'var(--se-dim)', borderRadius: 999, padding: '5px 12px', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
                       ↔ {on ? tr('planning.shuttleOn') : tr('planning.shuttleActivate')}
                     </button>
                     {on && (
-                      <div data-hscroll style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 2 }}>
-                        {SHUTTLE_LEGS.filter(l => l <= (b.distanceM ?? Infinity)).map(l => (
-                          <button key={l} type="button" onClick={() => set({ shuttleLegM: l })}
-                            style={{ flexShrink: 0, border: `1px solid ${b.shuttleLegM === l ? accent : 'var(--se-rule)'}`, background: 'transparent', color: b.shuttleLegM === l ? accent : 'var(--se-dim)', borderRadius: 999, padding: '5px 11px', fontSize: 11.5, fontWeight: 700, cursor: 'pointer' }}>
-                            {String(l).replace('.', ',')}m
-                          </button>
-                        ))}
-                      </div>
+                      <Stepper value={String(divs)} unit="×"
+                        onChange={v => setDivs(parseInt(v) || 2)}
+                        onDec={() => setDivs(divs - 1)} onInc={() => setDivs(divs + 1)} />
                     )}
                   </div>
                 </Field>

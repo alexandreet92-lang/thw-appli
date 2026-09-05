@@ -195,7 +195,7 @@ function enduranceRows(sport: SportType, blocks: Block[]): string {
       <div class="row-dur">${esc(blockStructure(sport, b))}</div>
       <div class="row-target">${esc(target || '—')}</div>
       <div class="row-hr">${hr ? `♥ ${esc(hr)}` : ''}</div>
-      <label class="done" title="Cocher quand le bloc est terminé"><input type="checkbox"><span class="box"></span></label>
+      <span class="tick" title="Cocher au stylo quand le bloc est terminé"></span>
     </div>`
   }).join('')
 }
@@ -322,12 +322,6 @@ body{font-family:'DM Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-seri
 .row-dur{font-family:'Syne',sans-serif;font-size:20px;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap;flex-shrink:0}
 .row-target{font-size:18px;font-weight:700;font-variant-numeric:tabular-nums;min-width:78px;text-align:right;flex-shrink:0}
 .row-hr{font-size:13px;font-weight:700;color:#e11d48;min-width:56px;text-align:right;flex-shrink:0}
-/* Case « terminé » (une par bloc) — interactive à l'écran, imprimable vide au stylo */
-.done{flex-shrink:0;cursor:pointer;display:inline-flex;align-items:center}
-.done input{position:absolute;opacity:0;width:0;height:0}
-.done .box{width:20px;height:20px;border:2px solid #999;border-radius:5px;display:inline-block;position:relative}
-.done input:checked + .box{background:#0a0a0a;border-color:#0a0a0a}
-.done input:checked + .box::after{content:'';position:absolute;left:6px;top:2px;width:5px;height:10px;border:solid #fff;border-width:0 2.5px 2.5px 0;transform:rotate(45deg)}
 /* Circuits */
 .circuit{border:1.5px solid #111;border-radius:10px;margin-bottom:12px;overflow:hidden;page-break-inside:avoid}
 .circuit-head{background:#111;color:#fff;padding:9px 13px;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
@@ -339,7 +333,7 @@ body{font-family:'DM Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-seri
 .exo-name{flex:1;font-size:14.5px;font-weight:700}
 .exo-detail{font-size:14px;font-weight:600;color:#333;font-variant-numeric:tabular-nums;white-space:nowrap}
 .exo-ticks{display:flex;gap:5px;flex-shrink:0}
-.tick{width:16px;height:16px;border:1.5px solid #999;border-radius:4px;display:inline-block}
+.tick{width:16px;height:16px;border:1.5px solid #999;border-radius:4px;display:inline-block;flex-shrink:0}
 /* Bike strip */
 .strip-wrap{margin-top:20px;page-break-inside:avoid}
 .strip-cut{font-size:9px;color:#999;letter-spacing:1px;margin:6px 0;font-family:monospace}

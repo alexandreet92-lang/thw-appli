@@ -1536,7 +1536,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
       `}</style>
 
       {/* ══ Header ══ */}
-      <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 10, padding: 'max(12px, env(safe-area-inset-top)) 14px 10px', borderBottom: '0.5px solid var(--border)' }}>
+      <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 10, flexWrap: isMobile ? 'wrap' : 'nowrap', padding: 'max(12px, env(safe-area-inset-top)) 14px 10px', borderBottom: '0.5px solid var(--border)' }}>
         <button onClick={view === 'canvas' ? backToHome : onClose} aria-label={view === 'canvas' ? t('w1i.back_to_systems') : t('w1i.close')} style={iconBtn}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
         </button>
@@ -1565,10 +1565,10 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
         )}
 
         {view === 'canvas' && (<>
-        <div style={{ display: 'flex', gap: 2, marginLeft: access?.allowed ? 0 : 'auto', background: 'var(--bg-alt)', borderRadius: 10, padding: 3 }}>
+        <div style={{ display: 'flex', gap: 2, marginLeft: isMobile ? 0 : (access?.allowed ? 0 : 'auto'), width: isMobile ? '100%' : 'auto', order: isMobile ? 3 : 0, background: 'var(--bg-alt)', borderRadius: 10, padding: 3 }}>
           {(['canvas', 'chat', 'rendu', 'runs'] as Tab[]).map(tb => (
             <button key={tb} onClick={() => setTab(tb)}
-              style={{ padding: isMobile ? '6px 8px' : '6px 14px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: isMobile ? 11.5 : 13, fontWeight: 600, fontFamily: 'var(--font-body)',
+              style={{ flex: isMobile ? 1 : '0 0 auto', padding: isMobile ? '9px 6px' : '6px 14px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: isMobile ? 12.5 : 13, fontWeight: 600, fontFamily: 'var(--font-body)',
                 background: tab === tb ? 'var(--bg)' : 'transparent', color: tab === tb ? 'var(--text)' : 'var(--text-dim)',
                 boxShadow: tab === tb ? 'var(--shadow-card)' : 'none' }}>
               {tb === 'canvas' ? t('w1i.tab_canvas') : tb === 'chat' ? t('w1i.tab_pilotage') : tb === 'rendu' ? t('w1i.tab_rendu') : t('w1i.tab_journal')}
@@ -1656,9 +1656,11 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
         {view === 'canvas' && tab === 'canvas' && (
           <div style={{ position: 'absolute', inset: 0, display: 'flex' }}>
 
-            {/* ── Composeur central — masqué quand le chat est ouvert (un seul champ) ── */}
+            {/* ── Composeur central — ANCRÉ EN BAS (plus lisible, ne masque plus le
+                canvas ni la barre d'outils). Sur mobile il reste au-dessus des
+                contrôles de zoom (bas-droite). Le composant IA lui-même est inchangé. ── */}
             {!chatOpen && !chatFull && (
-              <div style={{ position: 'absolute', top: 14, left: '50%', transform: 'translateX(-50%)', zIndex: 6, width: isMobile ? 'calc(100% - 24px)' : 'min(620px, calc(100% - 220px))' }}>
+              <div style={{ position: 'absolute', bottom: isMobile ? 'calc(68px + env(safe-area-inset-bottom))' : 'max(16px, env(safe-area-inset-bottom))', left: '50%', transform: 'translateX(-50%)', zIndex: 6, width: isMobile ? 'calc(100% - 24px)' : 'min(620px, calc(100% - 220px))' }}>
                 {renderComposer({
                   value: desc,
                   onChange: setDesc,
@@ -1675,7 +1677,9 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
               const expired = dleft !== null && dleft < 0
               const soon = dleft !== null && dleft >= 0 && dleft <= 7
               const accent = expired ? '#EF4444' : soon ? '#F59E0B' : 'var(--studio-accent)'
-              const top = (chatOpen || chatFull) ? 14 : (isMobile ? 88 : 100)
+              // Composeur désormais en bas → l'objectif remonte tout en haut
+              // (en dégageant la barre annuler/rétablir en haut-gauche sur mobile).
+              const top = (chatOpen || chatFull) ? 14 : (isMobile ? 58 : 16)
               return (
                 <div style={{ position: 'absolute', top, left: '50%', transform: 'translateX(-50%)', zIndex: 5, maxWidth: isMobile ? 'calc(100% - 24px)' : 560 }}>
                   <button onClick={openObjEditor} title={t('w1i.objective_tooltip')}

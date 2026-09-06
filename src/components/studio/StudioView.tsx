@@ -861,7 +861,9 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
     fitViewTo(nodes)
   }
 
-  // Molette : deux doigts = pan ; ctrl/cmd (ou pincement trackpad) = zoom au curseur.
+  // Molette : ZOOM au curseur (grossir / rétrécir) — comme Make/Figma.
+  // Un pan horizontal de trackpad (deltaX marqué, deltaY faible) reste un
+  // déplacement ; sinon on zoome. Shift enfoncé force le pan.
   useEffect(() => {
     if (tab !== 'canvas') return
     const el = wrapRef.current
@@ -869,10 +871,11 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
     const onWheel = (e: WheelEvent) => {
       e.preventDefault()
       const r = el.getBoundingClientRect()
-      if (e.ctrlKey || e.metaKey) {
-        zoomAt(e.clientX - r.left, e.clientY - r.top, zoomRef.current * Math.exp(-e.deltaY * 0.0022))
-      } else {
+      const trackpadPan = !e.ctrlKey && !e.metaKey && Math.abs(e.deltaX) > Math.abs(e.deltaY)
+      if (e.shiftKey || trackpadPan) {
         setPan(p => ({ x: p.x - e.deltaX, y: p.y - e.deltaY }))
+      } else {
+        zoomAt(e.clientX - r.left, e.clientY - r.top, zoomRef.current * Math.exp(-e.deltaY * 0.0022))
       }
     }
     el.addEventListener('wheel', onWheel, { passive: false })

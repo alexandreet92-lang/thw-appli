@@ -18,6 +18,27 @@ import { useI18n } from '@/lib/i18n'
 
 interface RunResult { athleteId: string; name: string; status: 'done' | 'error'; renders: { title: string; text: string }[]; error?: string }
 
+// ── Triage : dérive une sévérité + une accroche d'une ligne depuis le rendu ──
+// (heuristique de mots-clés en attendant que les agents émettent une sévérité
+// structurée ; permet déjà de classer les athlètes par urgence dans le cockpit).
+type Sev = 'crit' | 'warn' | 'ok'
+const SEV_RANK: Record<Sev, number> = { crit: 0, warn: 1, ok: 2 }
+function triageOf(r: RunResult): { sev: Sev; headline: string } {
+  if (r.status === 'error') return { sev: 'crit', headline: r.error || 'Échec du run' }
+  const text = r.renders.map(x => x.text).join('\n')
+  const firstLine = (r.renders[0]?.text || '')
+    .split('\n').map(s => s.replace(/^[#>\s*_`-]+/, '').replace(/[*_`]/g, '').trim()).find(Boolean) || ''
+  const headline = firstLine.length > 130 ? firstLine.slice(0, 127) + '…' : firstLine
+  if (/blessur|douleur|surcharg|deload|repos forc|arr[êe]t|surentra|d[ée]croch|manqu[ée]|alerte|urgen/i.test(text)) return { sev: 'crit', headline }
+  if (/stagnation|surveiller|vigilance|attention|recalibr|complian|fatigue|prudent/i.test(text)) return { sev: 'warn', headline }
+  return { sev: 'ok', headline }
+}
+const SEV_TOKEN: Record<Sev, string> = { crit: 'var(--charge-hard)', warn: 'var(--charge-mid)', ok: 'var(--charge-low)' }
+function initials(name: string): string {
+  const p = name.trim().split(/\s+/).filter(Boolean)
+  return ((p[0]?.[0] || '') + (p[1]?.[0] || '')).toUpperCase() || '?'
+}
+
 export default function CoachStudio() {
   const [systems, setSystems] = useState<StudioSystemRow[]>([])
   const [athletes, setAthletes] = useState<AthleteSummary[]>([])
@@ -28,6 +49,8 @@ export default function CoachStudio() {
   const [err, setErr] = useState<string | null>(null)
   const [results, setResults] = useState<RunResult[] | null>(null)
   const [openId, setOpenId] = useState<string | null>(null)
+  // Décisions du coach dans le cockpit (client) : athleteId → 'valide' | 'ignore'.
+  const [handled, setHandled] = useState<Record<string, 'valide' | 'ignore'>>({})
   const searchParams = useSearchParams()
   const { t } = useI18n()
 
@@ -62,7 +85,7 @@ export default function CoachStudio() {
   }
   const run = async () => {
     if (!systemId || selected.size === 0 || running) return
-    setRunning(true); setErr(null); setResults(null)
+    setRunning(true); setErr(null); setResults(null); setHandled({})
     try {
       const res = await fetch('/api/coach/studio-run', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ systemId, athleteIds: [...selected] }) })
       const data = await res.json()
@@ -134,38 +157,87 @@ export default function CoachStudio() {
             {running ? <><span style={{ width: 15, height: 15, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.4)', borderTopColor: '#fff', animation: 'studio_spin 0.7s linear infinite' }} /> {t('w3d.running')}</> : (selected.size > 1 ? t('w3d.run_on_n_plural', { n: selected.size }) : t('w3d.run_on_n', { n: selected.size }))}
           </button>
 
-          {/* Résultats */}
-          {results && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <div style={secLabel}>{t('w3d.results')}</div>
-              {results.map(r => {
-                const open = openId === r.athleteId
-                return (
-                  <div key={r.athleteId} style={{ ...card, padding: 0, overflow: 'hidden' }}>
-                    <button onClick={() => setOpenId(open ? null : r.athleteId)} style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '12px 14px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font-body)' }}>
-                      <span style={{ width: 8, height: 8, borderRadius: '50%', background: r.status === 'done' ? '#22C55E' : '#EF4444', flexShrink: 0 }} />
-                      <span style={{ flex: 1, fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>{r.name}</span>
-                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 200ms' }}><path d="M6 9l6 6 6-6"/></svg>
-                    </button>
-                    {open && (
-                      <div style={{ padding: '0 14px 14px', borderTop: '1px solid var(--border)' }}>
-                        {r.status === 'error' ? (
-                          <p style={{ fontSize: 12.5, color: '#EF4444', marginTop: 10 }}>{r.error}</p>
-                        ) : r.renders.length === 0 ? (
-                          <p style={{ fontSize: 12.5, color: 'var(--text-dim)', marginTop: 10 }}>{t('w3d.no_render')}</p>
-                        ) : r.renders.map((x, i) => (
-                          <div key={i} style={{ marginTop: 10 }}>
-                            {x.title && <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)', marginBottom: 4 }}>{x.title}</div>}
-                            <div style={{ padding: '8px 10px', borderRadius: 9, background: 'var(--bg-alt)' }}><StudioMarkdown text={x.text} /></div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
+          {/* Résultats — COCKPIT DE TRIAGE (athlètes classés par urgence) */}
+          {results && (() => {
+            const SEV_LABEL: Record<Sev, string> = { crit: 'À traiter', warn: 'À surveiller', ok: 'Nominal' }
+            const triaged = results.map(r => ({ r, ...triageOf(r) })).sort((a, b) => {
+              const ha = handled[a.r.athleteId] ? 1 : 0, hb = handled[b.r.athleteId] ? 1 : 0
+              if (ha !== hb) return ha - hb
+              return SEV_RANK[a.sev] - SEV_RANK[b.sev]
+            })
+            const counts: Record<Sev, number> = { crit: 0, warn: 0, ok: 0 }
+            triaged.forEach(t2 => { if (!handled[t2.r.athleteId]) counts[t2.sev]++ })
+            const doneCount = Object.keys(handled).length
+            const tileNum: React.CSSProperties = { fontSize: 26, fontWeight: 800, lineHeight: 1, fontFamily: 'var(--font-display)', fontVariantNumeric: 'tabular-nums' }
+            return (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                {/* Tuiles résumé */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(118px,1fr))', gap: 10 }}>
+                  {(['crit', 'warn', 'ok'] as Sev[]).map(sev => (
+                    <div key={sev} style={{ ...card, padding: '13px 15px' }}>
+                      <div style={{ ...tileNum, color: SEV_TOKEN[sev] }}>{counts[sev]}</div>
+                      <div style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 5 }}>{SEV_LABEL[sev].toLowerCase()}</div>
+                    </div>
+                  ))}
+                  <div style={{ ...card, padding: '13px 15px' }}>
+                    <div style={{ ...tileNum, color: 'var(--text)' }}>{doneCount}</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 5 }}>traité(s)</div>
                   </div>
-                )
-              })}
-            </div>
-          )}
+                </div>
+
+                <div style={secLabel}>{t('w3d.results')} — classés par urgence</div>
+
+                {triaged.map(({ r, sev, headline }) => {
+                  const open = openId === r.athleteId
+                  const state = handled[r.athleteId]
+                  const tok = SEV_TOKEN[sev]
+                  return (
+                    <div key={r.athleteId} style={{ ...card, padding: 0, overflow: 'hidden', display: 'flex', opacity: state ? 0.55 : 1, transition: 'opacity .2s' }}>
+                      <span style={{ width: 4, alignSelf: 'stretch', background: tok, flexShrink: 0 }} />
+                      <div style={{ flex: 1, minWidth: 0, padding: '12px 14px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 11 }}>
+                          <span style={{ width: 38, height: 38, borderRadius: '50%', flexShrink: 0, display: 'grid', placeItems: 'center', fontWeight: 700, fontSize: 13, color: 'var(--text)', background: 'var(--bg-alt)', border: '1px solid var(--border)' }}>{initials(r.name)}</span>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                              <span style={{ fontSize: 14.5, fontWeight: 700, color: 'var(--text)' }}>{r.name}</span>
+                              <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 999, color: tok, background: `color-mix(in srgb, ${tok} 13%, transparent)` }}>{SEV_LABEL[sev]}</span>
+                            </div>
+                            <div style={{ fontSize: 12.5, color: 'var(--text-mid)', marginTop: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{headline || (r.status === 'error' ? r.error : t('w3d.no_render'))}</div>
+                          </div>
+                          {state ? (
+                            <span style={{ flexShrink: 0, fontSize: 12.5, fontWeight: 700, color: state === 'valide' ? 'var(--charge-low)' : 'var(--text-dim)' }}>
+                              {state === 'valide' ? '✓ Validé' : 'Ignoré'}
+                              <button onClick={() => setHandled(h => { const n = { ...h }; delete n[r.athleteId]; return n })} style={{ marginLeft: 8, background: 'none', border: 'none', color: 'var(--primary)', fontSize: 12, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>Annuler</button>
+                            </span>
+                          ) : (
+                            <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                              <button onClick={() => setHandled(h => ({ ...h, [r.athleteId]: 'valide' }))} style={{ padding: '7px 12px', borderRadius: 9, border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>Valider</button>
+                              <button onClick={() => setOpenId(open ? null : r.athleteId)} style={{ padding: '7px 12px', borderRadius: 9, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text)', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>{open ? 'Fermer' : 'Ajuster'}</button>
+                              <button onClick={() => setHandled(h => ({ ...h, [r.athleteId]: 'ignore' }))} style={{ padding: '7px 10px', borderRadius: 9, border: 'none', background: 'transparent', color: 'var(--text-dim)', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>Ignorer</button>
+                            </div>
+                          )}
+                        </div>
+                        {open && (
+                          <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border)' }}>
+                            {r.status === 'error' ? (
+                              <p style={{ fontSize: 12.5, color: 'var(--charge-hard)' }}>{r.error}</p>
+                            ) : r.renders.length === 0 ? (
+                              <p style={{ fontSize: 12.5, color: 'var(--text-dim)' }}>{t('w3d.no_render')}</p>
+                            ) : r.renders.map((x, i) => (
+                              <div key={i} style={{ marginTop: i ? 12 : 0 }}>
+                                {x.title && <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)', marginBottom: 4 }}>{x.title}</div>}
+                                <div style={{ padding: '8px 10px', borderRadius: 9, background: 'var(--bg-alt)' }}><StudioMarkdown text={x.text} /></div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )
+          })()}
         </div>
       )}
     </div>

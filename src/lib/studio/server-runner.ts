@@ -16,7 +16,23 @@ import { getModelMultiplier } from '@/lib/tokens/multipliers'
 import { recordStudioUsage } from '@/lib/tokens/studio'
 import { readSourceWith } from './source-readers'
 import { buildLivingContext } from './living'
-import { SOURCE_LABEL, type StudioGraph } from './graph'
+import { SOURCE_LABEL, type StudioGraph, type StudioMethod } from './graph'
+
+// Traduit la méthode du coach en consignes injectées à TOUS les agents (via le
+// contexte partagé). Le garde-fou clé : jusqu'où l'IA a le droit d'écrire les
+// séances. Vide si aucune méthode définie → comportement inchangé.
+function methodGuidance(m?: StudioMethod | null): string {
+  if (!m) return ''
+  const parts: string[] = []
+  if (m.aiWrites === 'none') parts.push("N'écris JAMAIS le déroulé détaillé d'une séance. Propose seulement l'intention (objectif, type, intensité cible, durée) ; c'est le coach qui écrit le contenu.")
+  else if (m.aiWrites === 'all') parts.push("Tu peux écrire le déroulé complet de toutes les séances.")
+  else parts.push("Tu peux écrire le déroulé complet UNIQUEMENT des séances simples (endurance, récupération, mobilité). Pour les séances clés (force spécifique, fractionné, technique), donne un BRIEF (objectif, intensité, contraintes) et laisse le coach écrire le déroulé.")
+  const cad: Record<string, string> = { weekly: 'la semaine à venir', biweekly: 'les deux semaines à venir', triweekly: 'les trois semaines à venir', block: 'le bloc complet à venir' }
+  if (m.cadence && cad[m.cadence]) parts.push(`Planifie sur ${cad[m.cadence]}.`)
+  const rules = (m.rules ?? []).map(r => r.trim()).filter(Boolean)
+  if (rules.length) parts.push('Règles du coach à respecter impérativement :\n- ' + rules.join('\n- '))
+  return `\n\n--- MÉTHODE DU COACH (à respecter impérativement) ---\n${parts.join('\n')}\n--- fin méthode ---`
+}
 
 const MODEL_BY_KEY: Record<string, string> = {
   hermes: MODELS.fast,
@@ -43,7 +59,7 @@ export async function runGraphServer(userId: string, graph: StudioGraph, runId: 
   const billTo = billUserId ?? userId
   // Contexte « système vivant » (garde-fou santé + mémoire du dernier cycle),
   // partagé par tous les agents — même logique que les runs manuels.
-  const living = await buildLivingContext(sb, userId, systemId)
+  const living = (await buildLivingContext(sb, userId, systemId)) + methodGuidance(graph.method)
   const client = getAnthropicClient()
   const nodes = graph.nodes
   const byId = new Map(nodes.map(n => [n.id, n]))

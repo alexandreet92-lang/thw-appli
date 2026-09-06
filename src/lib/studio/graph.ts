@@ -55,6 +55,19 @@ export interface StudioObjective {
   deadline?: string | null   // YYYY-MM-DD
 }
 
+// Méthode du coach — encodée une fois, appliquée par les agents à chaque run.
+// Stockée dans le graphe (jsonb) → aucun changement de schéma.
+export interface StudioMethod {
+  /** Jusqu'où l'IA écrit les séances : rien / simples seulement / tout. */
+  aiWrites?: 'none' | 'simple' | 'all'
+  /** Horizon d'écriture du programme. */
+  cadence?: 'weekly' | 'biweekly' | 'triweekly' | 'block'
+  /** Envoi à l'athlète : toujours valider, ou auto pour les actions simples. */
+  validation?: 'always' | 'auto_simple'
+  /** Règles libres de la doctrine du coach (une par ligne). */
+  rules?: string[]
+}
+
 export interface StudioGraph {
   id: string
   name: string
@@ -62,6 +75,7 @@ export interface StudioGraph {
   edges: StudioEdge[]
   updatedAt: number
   objective?: StudioObjective | null   // système vivant : objectif du moment
+  method?: StudioMethod | null         // méthode du coach appliquée par les agents
 }
 
 export function genId(): string {

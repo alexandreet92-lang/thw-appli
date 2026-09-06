@@ -11,7 +11,8 @@ export const dynamic = 'force-dynamic'
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { listSystems, type StudioSystemRow } from '@/lib/studio/store'
+import { listSystems, updateSystem, type StudioSystemRow } from '@/lib/studio/store'
+import { type StudioMethod } from '@/lib/studio/graph'
 import { listMyAthletes, type AthleteSummary } from '@/lib/coach/relationships'
 import StudioMarkdown from '@/components/studio/StudioMarkdown'
 import { useI18n } from '@/lib/i18n'
@@ -51,6 +52,13 @@ export default function CoachStudio() {
   const [openId, setOpenId] = useState<string | null>(null)
   // Décisions du coach dans le cockpit (client) : athleteId → 'valide' | 'ignore'.
   const [handled, setHandled] = useState<Record<string, 'valide' | 'ignore'>>({})
+  // Progression du run en streaming (athlètes analysés / total).
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
+  // Panneau « Ma méthode » du système sélectionné (persisté dans graph.method).
+  const [methodOpen, setMethodOpen] = useState(false)
+  const [method, setMethod] = useState<StudioMethod>({})
+  const [savingMethod, setSavingMethod] = useState(false)
+  const [methodSaved, setMethodSaved] = useState(false)
   const searchParams = useSearchParams()
   const { t } = useI18n()
 
@@ -83,17 +91,55 @@ export default function CoachStudio() {
     if (linkedAthleteId) return   // sélection verrouillée sur l'athlète lié
     setSelected(s => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n })
   }
+
+  // Recharge la méthode éditable quand on change de système.
+  useEffect(() => {
+    const sys = systems.find(s => s.id === systemId)
+    setMethod(sys?.graph?.method ?? {}); setMethodSaved(false)
+  }, [systemId, systems])
+
+  const saveMethod = async () => {
+    const sys = systems.find(s => s.id === systemId)
+    if (!sys || savingMethod) return
+    setSavingMethod(true); setMethodSaved(false)
+    try {
+      const newGraph = { ...sys.graph, method }
+      await updateSystem(sys.id, { graph: newGraph })
+      setSystems(list => list.map(s => s.id === sys.id ? { ...s, graph: newGraph } : s))
+      setMethodSaved(true)
+    } catch { setErr(t('w3d.run_failed_retry')) }
+    finally { setSavingMethod(false) }
+  }
   const run = async () => {
     if (!systemId || selected.size === 0 || running) return
-    setRunning(true); setErr(null); setResults(null); setHandled({})
+    setRunning(true); setErr(null); setResults(null); setHandled({}); setProgress(null); setOpenId(null)
     try {
       const res = await fetch('/api/coach/studio-run', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ systemId, athleteIds: [...selected] }) })
-      const data = await res.json()
-      if (!res.ok) { setErr(data?.error || t('w3d.run_failed')); return }
-      setResults(data.results as RunResult[])
-      setOpenId((data.results as RunResult[])[0]?.athleteId ?? null)
+      // Erreur (auth/solde/validation) → réponse JSON classique avant le flux.
+      if (!res.ok || !res.body) {
+        let msg = t('w3d.run_failed')
+        try { const j = await res.json(); if (j?.error) msg = j.error } catch { /* flux illisible */ }
+        setErr(msg); return
+      }
+      // Flux NDJSON : on remplit le cockpit au fur et à mesure.
+      const reader = res.body.getReader(); const dec = new TextDecoder(); let buf = ''
+      const acc: RunResult[] = []; let total = selected.size; setResults([])
+      for (;;) {
+        const { done, value } = await reader.read(); if (done) break
+        buf += dec.decode(value, { stream: true })
+        let nl: number
+        while ((nl = buf.indexOf('\n')) >= 0) {
+          const line = buf.slice(0, nl).trim(); buf = buf.slice(nl + 1)
+          if (!line) continue
+          let msg: { type?: string; total?: number } & Partial<RunResult>
+          try { msg = JSON.parse(line) } catch { continue }
+          if (msg.type === 'start') { total = msg.total ?? total; setProgress({ done: 0, total }) }
+          else if (msg.type === 'result') { acc.push(msg as RunResult); setResults([...acc]); setProgress({ done: acc.length, total: Math.max(total, acc.length) }) }
+        }
+      }
+      if (acc.length === 0) setResults([])
     } catch { setErr(t('w3d.run_failed_retry')) }
-    finally { setRunning(false) }
+    finally { setRunning(false); setProgress(null) }
   }
 
   const card: React.CSSProperties = { borderRadius: 16, border: '1px solid var(--border)', background: 'var(--bg-card)', padding: 16, boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }
@@ -123,6 +169,40 @@ export default function CoachStudio() {
               style={{ width: '100%', maxWidth: 420, padding: '10px 12px', borderRadius: 11, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text)', fontSize: 14, fontFamily: 'var(--font-body)', cursor: 'pointer' }}>
               {systems.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
+
+            {/* Ma méthode — persistée dans le système, appliquée par les agents */}
+            <div style={{ marginTop: 12 }}>
+              <button onClick={() => setMethodOpen(o => !o)}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '8px 13px', borderRadius: 10, border: `1px solid ${methodOpen ? 'var(--primary)' : 'var(--border)'}`, background: methodOpen ? 'color-mix(in srgb, var(--primary) 8%, transparent)' : 'var(--bg-alt)', color: methodOpen ? 'var(--primary)' : 'var(--text)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></svg>
+                {t('w3d.method_btn')}
+              </button>
+            </div>
+            {methodOpen && (
+              <div style={{ marginTop: 12, padding: '14px 15px', borderRadius: 12, background: 'var(--bg-alt)', border: '1px solid var(--border)' }}>
+                <div style={{ fontSize: 13.5, fontWeight: 700, marginBottom: 3 }}>{t('w3d.method_title')}</div>
+                <div style={{ fontSize: 11.5, color: 'var(--text-dim)', marginBottom: 14, lineHeight: 1.5 }}>{t('w3d.method_hint')}</div>
+                <MethodSeg label={t('w3d.method_aiwrites')} value={method.aiWrites ?? 'simple'} onChange={v => setMethod(m => ({ ...m, aiWrites: v as StudioMethod['aiWrites'] }))}
+                  options={[['none', t('w3d.method_ai_none')], ['simple', t('w3d.method_ai_simple')], ['all', t('w3d.method_ai_all')]]} />
+                <MethodSeg label={t('w3d.method_cadence')} value={method.cadence ?? 'weekly'} onChange={v => setMethod(m => ({ ...m, cadence: v as StudioMethod['cadence'] }))}
+                  options={[['weekly', t('w3d.method_cad_weekly')], ['biweekly', t('w3d.method_cad_biweekly')], ['triweekly', t('w3d.method_cad_triweekly')], ['block', t('w3d.method_cad_block')]]} />
+                <MethodSeg label={t('w3d.method_validation')} value={method.validation ?? 'always'} onChange={v => setMethod(m => ({ ...m, validation: v as StudioMethod['validation'] }))}
+                  options={[['always', t('w3d.method_val_always')], ['auto_simple', t('w3d.method_val_auto')]]} />
+                <div style={{ marginTop: 4 }}>
+                  <div style={{ fontSize: 12.5, fontWeight: 600, marginBottom: 6 }}>{t('w3d.method_rules')}</div>
+                  <textarea value={(method.rules ?? []).join('\n')} onChange={e => { setMethod(m => ({ ...m, rules: e.target.value.split('\n') })); setMethodSaved(false) }}
+                    placeholder={t('w3d.method_rules_ph')} rows={4}
+                    style={{ width: '100%', boxSizing: 'border-box', resize: 'vertical', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', borderRadius: 10, padding: '10px 12px', fontFamily: 'var(--font-body)', fontSize: 13, lineHeight: 1.5, outline: 'none' }} />
+                </div>
+                <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <button onClick={() => void saveMethod()} disabled={savingMethod}
+                    style={{ padding: '9px 16px', borderRadius: 10, border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 13, fontWeight: 700, cursor: savingMethod ? 'default' : 'pointer', fontFamily: 'var(--font-body)', opacity: savingMethod ? 0.6 : 1 }}>
+                    {t('w3d.method_save')}
+                  </button>
+                  {methodSaved && <span style={{ fontSize: 12.5, color: 'var(--charge-low)', fontWeight: 700 }}>✓ {t('w3d.method_saved')}</span>}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Choix des athlètes */}
@@ -157,9 +237,23 @@ export default function CoachStudio() {
             {running ? <><span style={{ width: 15, height: 15, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.4)', borderTopColor: '#fff', animation: 'studio_spin 0.7s linear infinite' }} /> {t('w3d.running')}</> : (selected.size > 1 ? t('w3d.run_on_n_plural', { n: selected.size }) : t('w3d.run_on_n', { n: selected.size }))}
           </button>
 
+          {/* Barre de progression pendant le run (streaming) */}
+          {running && progress && (
+            <div style={{ ...card, padding: '13px 15px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', fontSize: 12.5, color: 'var(--text-mid)', marginBottom: 8 }}>
+                <span>{t('w3d.tri_analyzing')}</span>
+                <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 700, color: 'var(--text)' }}>{progress.done}/{progress.total}</span>
+              </div>
+              <div style={{ height: 7, borderRadius: 99, background: 'var(--bg-alt)', overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: `${progress.total ? Math.round((progress.done / progress.total) * 100) : 0}%`, background: 'var(--primary)', borderRadius: 99, transition: 'width .35s ease' }} />
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 8 }}>{t('w3d.tri_keepopen')}</div>
+            </div>
+          )}
+
           {/* Résultats — COCKPIT DE TRIAGE (athlètes classés par urgence) */}
           {results && (() => {
-            const SEV_LABEL: Record<Sev, string> = { crit: 'À traiter', warn: 'À surveiller', ok: 'Nominal' }
+            const SEV_LABEL: Record<Sev, string> = { crit: t('w3d.tri_totreat'), warn: t('w3d.tri_towatch'), ok: t('w3d.tri_nominal') }
             const triaged = results.map(r => ({ r, ...triageOf(r) })).sort((a, b) => {
               const ha = handled[a.r.athleteId] ? 1 : 0, hb = handled[b.r.athleteId] ? 1 : 0
               if (ha !== hb) return ha - hb
@@ -181,11 +275,11 @@ export default function CoachStudio() {
                   ))}
                   <div style={{ ...card, padding: '13px 15px' }}>
                     <div style={{ ...tileNum, color: 'var(--text)' }}>{doneCount}</div>
-                    <div style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 5 }}>traité(s)</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 5 }}>{t('w3d.tri_handled')}</div>
                   </div>
                 </div>
 
-                <div style={secLabel}>{t('w3d.results')} — classés par urgence</div>
+                <div style={secLabel}>{t('w3d.results')} — {t('w3d.tri_by_urgency')}</div>
 
                 {triaged.map(({ r, sev, headline }) => {
                   const open = openId === r.athleteId
@@ -206,14 +300,14 @@ export default function CoachStudio() {
                           </div>
                           {state ? (
                             <span style={{ flexShrink: 0, fontSize: 12.5, fontWeight: 700, color: state === 'valide' ? 'var(--charge-low)' : 'var(--text-dim)' }}>
-                              {state === 'valide' ? '✓ Validé' : 'Ignoré'}
-                              <button onClick={() => setHandled(h => { const n = { ...h }; delete n[r.athleteId]; return n })} style={{ marginLeft: 8, background: 'none', border: 'none', color: 'var(--primary)', fontSize: 12, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>Annuler</button>
+                              {state === 'valide' ? `✓ ${t('w3d.tri_validated')}` : t('w3d.tri_ignored')}
+                              <button onClick={() => setHandled(h => { const n = { ...h }; delete n[r.athleteId]; return n })} style={{ marginLeft: 8, background: 'none', border: 'none', color: 'var(--primary)', fontSize: 12, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>{t('w3d.tri_cancel')}</button>
                             </span>
                           ) : (
                             <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-                              <button onClick={() => setHandled(h => ({ ...h, [r.athleteId]: 'valide' }))} style={{ padding: '7px 12px', borderRadius: 9, border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>Valider</button>
-                              <button onClick={() => setOpenId(open ? null : r.athleteId)} style={{ padding: '7px 12px', borderRadius: 9, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text)', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>{open ? 'Fermer' : 'Ajuster'}</button>
-                              <button onClick={() => setHandled(h => ({ ...h, [r.athleteId]: 'ignore' }))} style={{ padding: '7px 10px', borderRadius: 9, border: 'none', background: 'transparent', color: 'var(--text-dim)', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>Ignorer</button>
+                              <button onClick={() => setHandled(h => ({ ...h, [r.athleteId]: 'valide' }))} style={{ padding: '7px 12px', borderRadius: 9, border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>{t('w3d.tri_validate')}</button>
+                              <button onClick={() => setOpenId(open ? null : r.athleteId)} style={{ padding: '7px 12px', borderRadius: 9, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text)', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>{open ? t('w3d.tri_close') : t('w3d.tri_adjust')}</button>
+                              <button onClick={() => setHandled(h => ({ ...h, [r.athleteId]: 'ignore' }))} style={{ padding: '7px 10px', borderRadius: 9, border: 'none', background: 'transparent', color: 'var(--text-dim)', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>{t('w3d.tri_ignore')}</button>
                             </div>
                           )}
                         </div>
@@ -240,6 +334,26 @@ export default function CoachStudio() {
           })()}
         </div>
       )}
+    </div>
+  )
+}
+
+// Segmenté réutilisable pour les réglages de la méthode.
+function MethodSeg({ label, value, onChange, options }: { label: string; value: string; onChange: (v: string) => void; options: [string, string][] }) {
+  return (
+    <div style={{ marginBottom: 14 }}>
+      <div style={{ fontSize: 12.5, fontWeight: 600, marginBottom: 6 }}>{label}</div>
+      <div style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 3, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 10, padding: 3 }}>
+        {options.map(([v, lbl]) => {
+          const on = value === v
+          return (
+            <button key={v} onClick={() => onChange(v)}
+              style={{ padding: '7px 12px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 12.5, fontWeight: 600, fontFamily: 'var(--font-body)', background: on ? 'var(--primary)' : 'transparent', color: on ? 'var(--on-primary)' : 'var(--text-mid)' }}>
+              {lbl}
+            </button>
+          )
+        })}
+      </div>
     </div>
   )
 }

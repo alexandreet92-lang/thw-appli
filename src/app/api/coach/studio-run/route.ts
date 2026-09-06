@@ -61,21 +61,32 @@ export async function POST(req: NextRequest) {
   const nameById = new Map((profs ?? []).map(p => [p.id as string, (p.full_name as string) || (p.first_name as string) || 'Athlète']))
 
   // Exécute séquentiellement (limite la charge) ; débite le coach.
-  const results: { athleteId: string; name: string; status: 'done' | 'error'; renders: { title: string; text: string }[]; error?: string }[] = []
-  for (const athleteId of targets) {
-    try {
-      const runId = genId()
-      const res = await runGraphServer(athleteId, graph, runId, systemId, coachId)
-      results.push({
-        athleteId, name: nameById.get(athleteId) ?? 'Athlète',
-        status: res.errors.length ? 'error' : 'done',
-        renders: res.renders.filter(r => r.text),
-        error: res.errors.length ? res.errors.map(e => `${e.title} — ${e.message}`).join(' · ') : undefined,
-      })
-    } catch (e) {
-      results.push({ athleteId, name: nameById.get(athleteId) ?? 'Athlète', status: 'error', renders: [], error: e instanceof Error ? e.message : 'Erreur inconnue' })
-    }
-  }
-
-  return NextResponse.json({ system: system.name, results })
+  // STREAMING NDJSON : un objet par ligne — { type:'start' } puis un
+  // { type:'result' } par athlète (dès qu'il est prêt), puis { type:'done' }.
+  // Le cockpit se remplit au fur et à mesure + barre de progression.
+  const encoder = new TextEncoder()
+  const stream = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      const send = (obj: unknown) => controller.enqueue(encoder.encode(JSON.stringify(obj) + '\n'))
+      send({ type: 'start', total: targets.length, system: system.name })
+      for (const athleteId of targets) {
+        const name = nameById.get(athleteId) ?? 'Athlète'
+        try {
+          const runId = genId()
+          const res = await runGraphServer(athleteId, graph, runId, systemId, coachId)
+          send({
+            type: 'result', athleteId, name,
+            status: res.errors.length ? 'error' : 'done',
+            renders: res.renders.filter(r => r.text),
+            error: res.errors.length ? res.errors.map(e => `${e.title} — ${e.message}`).join(' · ') : undefined,
+          })
+        } catch (e) {
+          send({ type: 'result', athleteId, name, status: 'error', renders: [], error: e instanceof Error ? e.message : 'Erreur inconnue' })
+        }
+      }
+      send({ type: 'done' })
+      controller.close()
+    },
+  })
+  return new Response(stream, { headers: { 'Content-Type': 'application/x-ndjson; charset=utf-8', 'Cache-Control': 'no-store' } })
 }

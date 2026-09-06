@@ -15,7 +15,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import {
   emptyGraph, sampleGraph, genId, autoLayout, validateGraph, makeGraphAutonomous,
   MODEL_LABEL, KIND_LABEL, SOURCE_LABEL, ACTION_LABEL,
-  type StudioGraph, type StudioNode, type StudioNodeKind, type StudioModel, type StudioSourceKey, type StudioActionKey, type GraphIssues,
+  type StudioGraph, type StudioNode, type StudioNodeKind, type StudioModel, type StudioSourceKey, type StudioActionKey, type GraphIssues, type StudioMethod,
 } from '@/lib/studio/graph'
 import { runGraph, terminalNodeIds, planningFromText, type NodeStatus } from '@/lib/studio/runner'
 import { converseArchitect, planToGraph, recommendSystems, type ArchitectChatMessage, type ArchitectQuestion } from '@/lib/studio/architect'
@@ -174,7 +174,7 @@ function AppIcon({ id, size = 14 }: { id: string; size?: number }) {
   }
 }
 
-type Tab = 'canvas' | 'chat' | 'rendu' | 'runs'
+type Tab = 'canvas' | 'chat' | 'rendu' | 'runs' | 'methode'
 type LogEntry = { nodeId: string; title: string; text: string }
 type Approval = { node: StudioNode; content: string; resolve: (ok: boolean) => void }
 interface RunRow {
@@ -1566,12 +1566,12 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
 
         {view === 'canvas' && (<>
         <div style={{ display: 'flex', gap: 2, marginLeft: isMobile ? 0 : (access?.allowed ? 0 : 'auto'), width: isMobile ? '100%' : 'auto', order: isMobile ? 3 : 0, background: 'var(--bg-alt)', borderRadius: 10, padding: 3 }}>
-          {(['canvas', 'chat', 'rendu', 'runs'] as Tab[]).map(tb => (
+          {(['canvas', 'chat', 'rendu', 'runs', 'methode'] as Tab[]).map(tb => (
             <button key={tb} onClick={() => setTab(tb)}
               style={{ flex: isMobile ? 1 : '0 0 auto', padding: isMobile ? '9px 6px' : '6px 14px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: isMobile ? 12.5 : 13, fontWeight: 600, fontFamily: 'var(--font-body)',
                 background: tab === tb ? 'var(--bg)' : 'transparent', color: tab === tb ? 'var(--text)' : 'var(--text-dim)',
                 boxShadow: tab === tb ? 'var(--shadow-card)' : 'none' }}>
-              {tb === 'canvas' ? t('w1i.tab_canvas') : tb === 'chat' ? t('w1i.tab_pilotage') : tb === 'rendu' ? t('w1i.tab_rendu') : t('w1i.tab_journal')}
+              {tb === 'canvas' ? t('w1i.tab_canvas') : tb === 'chat' ? t('w1i.tab_pilotage') : tb === 'rendu' ? t('w1i.tab_rendu') : tb === 'runs' ? t('w1i.tab_journal') : t('w1i.tab_method')}
             </button>
           ))}
         </div>
@@ -2165,6 +2165,49 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
         )}
 
         {/* ══ PILOTAGE ══ */}
+        {/* ══ MÉTHODE — réglages du coach, appliqués par les agents à chaque run ══ */}
+        {view === 'canvas' && tab === 'methode' && (() => {
+          const m: StudioMethod = graph.method ?? {}
+          const setM = (patch: Partial<StudioMethod>) => commit({ ...graph, method: { ...m, ...patch } })
+          const segRow = (label: string, hint: string, current: string, opts: [string, string][], pick: (v: string) => void) => (
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-body)' }}>{label}</div>
+              {hint && <div style={{ fontSize: 12, color: 'var(--text-dim)', margin: '3px 0 9px', fontFamily: 'var(--font-body)', lineHeight: 1.5 }}>{hint}</div>}
+              <div style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 4, background: 'var(--bg-alt)', border: '1px solid var(--border)', borderRadius: 12, padding: 4 }}>
+                {opts.map(([v, lbl]) => {
+                  const on = current === v
+                  return (
+                    <button key={v} onClick={() => pick(v)}
+                      style={{ padding: '9px 15px', borderRadius: 9, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'var(--font-body)', background: on ? 'var(--studio-accent)' : 'transparent', color: on ? '#fff' : 'var(--text-mid)' }}>{lbl}</button>
+                  )
+                })}
+              </div>
+            </div>
+          )
+          return (
+            <div style={{ position: 'absolute', inset: 0, overflowY: 'auto', padding: '22px 18px 60px', maxWidth: 680, margin: '0 auto', fontFamily: 'var(--font-body)' }}>
+              <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-display)', margin: '0 0 4px' }}>{t('w3d.method_title')}</h2>
+              <p style={{ fontSize: 12.5, color: 'var(--text-dim)', margin: '0 0 22px', lineHeight: 1.5 }}>{t('w3d.method_hint')}</p>
+              {segRow(t('w3d.method_aiwrites'), t('w1i.method_ai_hint'), m.aiWrites ?? 'simple',
+                [['none', t('w3d.method_ai_none')], ['simple', t('w3d.method_ai_simple')], ['all', t('w3d.method_ai_all')]],
+                v => setM({ aiWrites: v as StudioMethod['aiWrites'] }))}
+              {segRow(t('w3d.method_cadence'), '', m.cadence ?? 'weekly',
+                [['weekly', t('w3d.method_cad_weekly')], ['biweekly', t('w3d.method_cad_biweekly')], ['triweekly', t('w3d.method_cad_triweekly')], ['block', t('w3d.method_cad_block')]],
+                v => setM({ cadence: v as StudioMethod['cadence'] }))}
+              {segRow(t('w3d.method_validation'), '', m.validation ?? 'always',
+                [['always', t('w3d.method_val_always')], ['auto_simple', t('w3d.method_val_auto')]],
+                v => setM({ validation: v as StudioMethod['validation'] }))}
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', marginBottom: 8 }}>{t('w3d.method_rules')}</div>
+                <textarea value={(m.rules ?? []).join('\n')} onChange={e => setM({ rules: e.target.value.split('\n') })}
+                  placeholder={t('w3d.method_rules_ph')} rows={5}
+                  style={{ width: '100%', boxSizing: 'border-box', resize: 'vertical', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', borderRadius: 12, padding: '12px 14px', fontFamily: 'var(--font-body)', fontSize: 13.5, lineHeight: 1.55, outline: 'none' }} />
+                <div style={{ fontSize: 11.5, color: 'var(--text-dim)', marginTop: 8, fontFamily: 'var(--font-body)' }}>{t('w1i.method_autosave')}</div>
+              </div>
+            </div>
+          )
+        })()}
+
         {view === 'canvas' && tab === 'chat' && (
           <div style={{ position: 'absolute', inset: 0, overflowY: 'auto', padding: '20px 18px', maxWidth: 760, margin: '0 auto' }}>
             <label style={lbl}>{t('w1i.collective_objective')}</label>

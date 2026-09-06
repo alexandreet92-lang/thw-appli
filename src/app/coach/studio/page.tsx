@@ -54,6 +54,8 @@ export default function CoachStudio() {
   const [handled, setHandled] = useState<Record<string, 'valide' | 'ignore'>>({})
   // Progression du run en streaming (athlètes analysés / total).
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
+  // Athlètes en cours d'envoi (Valider → application chez l'athlète).
+  const [applying, setApplying] = useState<Set<string>>(new Set())
   // Panneau « Ma méthode » du système sélectionné (persisté dans graph.method).
   const [methodOpen, setMethodOpen] = useState(false)
   const [method, setMethod] = useState<StudioMethod>({})
@@ -109,6 +111,22 @@ export default function CoachStudio() {
       setMethodSaved(true)
     } catch { setErr(t('w3d.run_failed_retry')) }
     finally { setSavingMethod(false) }
+  }
+  // Valider → APPLIQUER chez l'athlète : le contenu approuvé lui est envoyé
+  // (notification). C'est ce qui fait gagner du temps au coach : revue → 1 clic
+  // → l'athlète reçoit sa décision, sans recopie manuelle.
+  const applyToAthlete = async (r: RunResult) => {
+    const sys = systems.find(s => s.id === systemId)
+    const title = sys?.name || t('w3d.studio_title')
+    const content = r.renders.map(x => (x.title ? `## ${x.title}\n` : '') + x.text).join('\n\n').trim()
+    if (!content) { setHandled(h => ({ ...h, [r.athleteId]: 'valide' })); return }
+    setApplying(s => { const n = new Set(s); n.add(r.athleteId); return n }); setErr(null)
+    try {
+      const res = await fetch('/api/coach/studio-apply', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ athleteId: r.athleteId, systemId, title, body: content }) })
+      if (!res.ok) { const j = await res.json().catch(() => ({})); setErr(j?.error || t('w3d.run_failed')); return }
+      setHandled(h => ({ ...h, [r.athleteId]: 'valide' }))
+    } catch { setErr(t('w3d.run_failed_retry')) }
+    finally { setApplying(s => { const n = new Set(s); n.delete(r.athleteId); return n }) }
   }
   const run = async () => {
     if (!systemId || selected.size === 0 || running) return
@@ -300,12 +318,12 @@ export default function CoachStudio() {
                           </div>
                           {state ? (
                             <span style={{ flexShrink: 0, fontSize: 12.5, fontWeight: 700, color: state === 'valide' ? 'var(--charge-low)' : 'var(--text-dim)' }}>
-                              {state === 'valide' ? `✓ ${t('w3d.tri_validated')}` : t('w3d.tri_ignored')}
+                              {state === 'valide' ? `✓ ${t('w3d.tri_sent')}` : t('w3d.tri_ignored')}
                               <button onClick={() => setHandled(h => { const n = { ...h }; delete n[r.athleteId]; return n })} style={{ marginLeft: 8, background: 'none', border: 'none', color: 'var(--primary)', fontSize: 12, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>{t('w3d.tri_cancel')}</button>
                             </span>
                           ) : (
                             <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-                              <button onClick={() => setHandled(h => ({ ...h, [r.athleteId]: 'valide' }))} style={{ padding: '7px 12px', borderRadius: 9, border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>{t('w3d.tri_validate')}</button>
+                              <button onClick={() => void applyToAthlete(r)} disabled={applying.has(r.athleteId)} style={{ padding: '7px 12px', borderRadius: 9, border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 12.5, fontWeight: 700, cursor: applying.has(r.athleteId) ? 'default' : 'pointer', fontFamily: 'var(--font-body)', opacity: applying.has(r.athleteId) ? 0.6 : 1 }}>{applying.has(r.athleteId) ? t('w3d.tri_sending') : t('w3d.tri_validate')}</button>
                               <button onClick={() => setOpenId(open ? null : r.athleteId)} style={{ padding: '7px 12px', borderRadius: 9, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text)', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>{open ? t('w3d.tri_close') : t('w3d.tri_adjust')}</button>
                               <button onClick={() => setHandled(h => ({ ...h, [r.athleteId]: 'ignore' }))} style={{ padding: '7px 10px', borderRadius: 9, border: 'none', background: 'transparent', color: 'var(--text-dim)', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>{t('w3d.tri_ignore')}</button>
                             </div>

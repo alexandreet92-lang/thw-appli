@@ -66,6 +66,30 @@ export interface StudioMethod {
   validation?: 'always' | 'auto_simple'
   /** Règles libres de la doctrine du coach (une par ligne). */
   rules?: string[]
+  /**
+   * Latitude laissée au Studio :
+   *  • strict   — colle au plus près à ce que le coach a écrit (peu d'improvisation).
+   *  • balanced — base du coach + adaptation raisonnée (défaut).
+   *  • creative — le coach donne une base, le Studio improvise davantage.
+   */
+  latitude?: 'strict' | 'balanced' | 'creative'
+  /**
+   * Prudence fatigue : la charge/fatigue calculée est peu fiable. Si activé,
+   * le Studio croise TOUJOURS charge ↔ ressenti (RPE, check-in), ne sur-réagit
+   * pas à un seul chiffre, et signale au coach au lieu de couper la charge seul.
+   */
+  fatigueCaution?: boolean
+  /**
+   * Apprendre du coach : le Studio lit les séances SPÉCIFIQUES déjà écrites par
+   * le coach dans le planning de l'athlète et s'en inspire (style, blocs,
+   * vocabulaire) pour proposer dans la manière du coach.
+   */
+  learnFromCoach?: boolean
+  /** Longueur type d'une phase / mésocycle, en semaines (défaut 3). */
+  phaseWeeks?: number
+  /** Exemples de types de séances fournis par le coach (une par ligne) pour
+   *  combler une lacune ou renforcer une force — guide de style pour le Studio. */
+  sessionExamples?: string[]
 }
 
 export interface StudioGraph {

@@ -1670,6 +1670,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                   onSend: () => void build(),
                   micField: 'desc',
                   placeholder: graph.nodes.length > 0 ? t('w1i.composer_ph_modify') : t('w1i.composer_ph_new'),
+                  menuUp: true,
                 })}
               </div>
             )}
@@ -2200,12 +2201,31 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
               {segRow(t('w3d.method_validation'), '', m.validation ?? 'always',
                 [['always', t('w3d.method_val_always')], ['auto_simple', t('w3d.method_val_auto')]],
                 v => setM({ validation: v as StudioMethod['validation'] }))}
-              <div>
+              {segRow(t('w3d.method_latitude'), t('w3d.method_latitude_hint'), m.latitude ?? 'balanced',
+                [['strict', t('w3d.method_lat_strict')], ['balanced', t('w3d.method_lat_balanced')], ['creative', t('w3d.method_lat_creative')]],
+                v => setM({ latitude: v as StudioMethod['latitude'] }))}
+              {segRow(t('w3d.method_phaselen'), t('w3d.method_phaselen_hint'), String(m.phaseWeeks ?? 3),
+                [['2', '2 sem.'], ['3', '3 sem.'], ['4', '4 sem.']],
+                v => setM({ phaseWeeks: Number(v) }))}
+              {segRow(t('w3d.method_fatigue'), t('w3d.method_fatigue_hint'), m.fatigueCaution === false ? 'off' : 'on',
+                [['on', t('w3d.method_on')], ['off', t('w3d.method_off')]],
+                v => setM({ fatigueCaution: v === 'on' }))}
+              {segRow(t('w3d.method_learn'), t('w3d.method_learn_hint'), m.learnFromCoach === false ? 'off' : 'on',
+                [['on', t('w3d.method_on')], ['off', t('w3d.method_off')]],
+                v => setM({ learnFromCoach: v === 'on' }))}
+              <div style={{ marginBottom: 20 }}>
                 <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', marginBottom: 8 }}>{t('w3d.method_rules')}</div>
                 <textarea value={(m.rules ?? []).join('\n')} onChange={e => setM({ rules: e.target.value.split('\n') })}
                   placeholder={t('w3d.method_rules_ph')} rows={5}
                   style={{ width: '100%', boxSizing: 'border-box', resize: 'vertical', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', borderRadius: 12, padding: '12px 14px', fontFamily: 'var(--font-body)', fontSize: 13.5, lineHeight: 1.55, outline: 'none' }} />
                 <div style={{ fontSize: 11.5, color: 'var(--text-dim)', marginTop: 8, fontFamily: 'var(--font-body)' }}>{t('w1i.method_autosave')}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', marginBottom: 8 }}>{t('w3d.method_examples')}</div>
+                <div style={{ fontSize: 12, color: 'var(--text-dim)', margin: '0 0 9px', lineHeight: 1.5 }}>{t('w3d.method_examples_hint')}</div>
+                <textarea value={(m.sessionExamples ?? []).join('\n')} onChange={e => setM({ sessionExamples: e.target.value.split('\n') })}
+                  placeholder={t('w3d.method_examples_ph')} rows={5}
+                  style={{ width: '100%', boxSizing: 'border-box', resize: 'vertical', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', borderRadius: 12, padding: '12px 14px', fontFamily: 'var(--font-body)', fontSize: 13.5, lineHeight: 1.55, outline: 'none' }} />
               </div>
             </div>
           )

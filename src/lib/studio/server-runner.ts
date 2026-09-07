@@ -21,17 +21,75 @@ import { SOURCE_LABEL, type StudioGraph, type StudioMethod } from './graph'
 // Traduit la méthode du coach en consignes injectées à TOUS les agents (via le
 // contexte partagé). Le garde-fou clé : jusqu'où l'IA a le droit d'écrire les
 // séances. Vide si aucune méthode définie → comportement inchangé.
+// Doctrine d'entraînement TOUJOURS appliquée — indépendante des réglages du
+// coach. C'est la façon de « penser » du Studio : raisonnement par phases +
+// pilotage par forces/faiblesses + prudence sur la fatigue.
+const CORE_DOCTRINE = [
+  "RAISONNE TOUJOURS PAR PHASES (mésocycles), jamais séance par séance isolée. Un plan se construit par blocs successifs de 2 à 4 semaines, chacun avec UNE qualité dominante à développer (ex. seuil, VMA, endurance/durabilité, force, spécifique course). Rétro-planifie les phases depuis la ou les compétitions (de la plus lointaine à la plus proche) : base → développement → spécifique → affûtage.",
+  "PILOTE PAR LES FORCES ET FAIBLESSES : analyse d'abord les données réelles de l'athlète pour identifier son point faible limitant et ses points forts. Mets l'accent des phases sur le point faible qui bride l'objectif. Exemple : un coureur rapide mais peu endurant qui prépare un semi/marathon → accent DURABILITÉ (sorties longues, longues à allure, endurance sous fatigue). À l'inverse, un athlète très endurant mais lent → accent VITESSE/PUISSANCE (VMA, force). Le type de séance qui comble la lacune DIFFÈRE d'un athlète à l'autre, même à objectif identique.",
+  "Annonce explicitement, en tête de proposition, la PHASE en cours (numéro, durée, qualité travaillée, pourquoi) avant de décliner les séances.",
+]
+
 function methodGuidance(m?: StudioMethod | null): string {
-  if (!m) return ''
-  const parts: string[] = []
-  if (m.aiWrites === 'none') parts.push("N'écris JAMAIS le déroulé détaillé d'une séance. Propose seulement l'intention (objectif, type, intensité cible, durée) ; c'est le coach qui écrit le contenu.")
-  else if (m.aiWrites === 'all') parts.push("Tu peux écrire le déroulé complet de toutes les séances.")
-  else parts.push("Tu peux écrire le déroulé complet UNIQUEMENT des séances simples (endurance, récupération, mobilité). Pour les séances clés (force spécifique, fractionné, technique), donne un BRIEF (objectif, intensité, contraintes) et laisse le coach écrire le déroulé.")
-  const cad: Record<string, string> = { weekly: 'la semaine à venir', biweekly: 'les deux semaines à venir', triweekly: 'les trois semaines à venir', block: 'le bloc complet à venir' }
-  if (m.cadence && cad[m.cadence]) parts.push(`Planifie sur ${cad[m.cadence]}.`)
-  const rules = (m.rules ?? []).map(r => r.trim()).filter(Boolean)
-  if (rules.length) parts.push('Règles du coach à respecter impérativement :\n- ' + rules.join('\n- '))
-  return `\n\n--- MÉTHODE DU COACH (à respecter impérativement) ---\n${parts.join('\n')}\n--- fin méthode ---`
+  const parts: string[] = [...CORE_DOCTRINE]
+
+  // Jusqu'où l'IA écrit les séances.
+  if (m?.aiWrites === 'none') parts.push("N'écris JAMAIS le déroulé détaillé d'une séance. Donne seulement l'intention de chaque séance (objectif, type, intensité cible, durée) ; c'est le coach qui écrit le contenu.")
+  else if (m?.aiWrites === 'all') parts.push("Tu peux écrire le déroulé complet de toutes les séances, y compris les séances clés.")
+  else parts.push("Écris le déroulé complet UNIQUEMENT des séances SIMPLES (endurance, footing, récupération, mobilité, renfo générique). Pour les séances SPÉCIFIQUES et complexes (fractionné fin, force spécifique, technique, séances de durabilité travaillées), NE les invente pas : donne un BRIEF (objectif, intensité, contraintes) et laisse le coach écrire le déroulé — SAUF si des exemples de séances du coach te sont fournis ci-dessous, auquel cas tu peux proposer un déroulé dans SA manière, à faire valider.")
+
+  const cad: Record<string, string> = { weekly: 'la semaine à venir', biweekly: 'les deux semaines à venir', triweekly: 'les trois semaines à venir', block: 'le bloc/mésocycle complet à venir' }
+  if (m?.cadence && cad[m.cadence]) parts.push(`Horizon d'écriture détaillée : ${cad[m.cadence]} (mais garde la vision de la phase entière).`)
+  if (m?.phaseWeeks && m.phaseWeeks >= 1) parts.push(`Longueur type d'une phase : ${m.phaseWeeks} semaines (adapte si la proximité d'une compétition l'exige).`)
+
+  // Latitude laissée au Studio.
+  if (m?.latitude === 'strict') parts.push("LATITUDE = STRICTE : colle au plus près à ce que le coach a défini (règles, exemples). N'improvise pas de contenu nouveau ; en cas de doute, propose une variante prudente et signale-la.")
+  else if (m?.latitude === 'creative') parts.push("LATITUDE = CRÉATIVE : le coach te donne une base ; tu peux proposer, varier et innover autour, tant que tu respectes la logique de phase et les forces/faiblesses. Reste physiologiquement cohérent.")
+  else parts.push("LATITUDE = ÉQUILIBRÉE : pars de la base et des règles du coach, adapte avec discernement aux données de l'athlète.")
+
+  // Prudence fatigue (défaut : activée).
+  if (m?.fatigueCaution !== false) parts.push("PRUDENCE FATIGUE : la charge/fatigue CALCULÉE (TSS, load) est peu fiable et peut sur- ou sous-estimer la fatigue réelle. Ne t'y fie JAMAIS seul : croise-la avec le ressenti subjectif (RPE, check-in récupération, sommeil) et la performance réelle. En cas de divergence, privilégie le ressenti et SIGNALE-le au coach au lieu de couper la charge de ta propre initiative. Ne sur-réagis pas à un seul chiffre.")
+
+  const rules = (m?.rules ?? []).map(r => r.trim()).filter(Boolean)
+  if (rules.length) parts.push('Règles propres du coach à respecter impérativement :\n- ' + rules.join('\n- '))
+
+  const examples = (m?.sessionExamples ?? []).map(r => r.trim()).filter(Boolean)
+  if (examples.length) parts.push("Exemples de types de séances fournis par le coach (inspire-t'en pour le style et la structure) :\n- " + examples.join('\n- '))
+
+  return `\n\n--- MÉTHODE & DOCTRINE DU STUDIO (à respecter impérativement) ---\n${parts.map((p, i) => `${i + 1}. ${p}`).join('\n')}\n--- fin méthode ---`
+}
+
+// Séances SPÉCIFIQUES déjà écrites par le coach pour CET athlète → exemples de
+// style. Le Studio s'en inspire (structure des blocs, vocabulaire, dosage) pour
+// proposer dans la manière du coach au lieu d'un contenu générique.
+async function coachStyleExamples(
+  sb: ReturnType<typeof createServiceClient>, athleteUserId: string,
+): Promise<string> {
+  try {
+    const { data } = await sb.from('planned_sessions')
+      .select('sport, title, duration_min, intensity, blocks, notes')
+      .eq('user_id', athleteUserId).eq('source', 'coach')
+      .order('week_start', { ascending: false }).limit(20)
+    const rows = (data ?? []) as { sport: string | null; title: string | null; duration_min: number | null; intensity: string | null; blocks: unknown; notes: string | null }[]
+    const withBlocks = rows.filter(r => Array.isArray(r.blocks) && (r.blocks as unknown[]).length > 0).slice(0, 6)
+    if (withBlocks.length === 0) return ''
+    const fmtBlock = (b: Record<string, unknown>): string => {
+      const reps = b.mode === 'interval' && b.reps ? `${b.reps}× ` : ''
+      const val = b.value ? String(b.value) : ''
+      const dist = b.distanceM ? `${b.distanceM} m` : ''
+      const dur = b.durationMin ? `${b.durationMin} min` : ''
+      const zone = b.zone ? `Z${b.zone}` : ''
+      const rec = b.mode === 'interval' && b.recoveryMin ? ` (récup ${b.recoveryMin} min)` : ''
+      const label = b.label && String(b.label).trim() ? `${String(b.label).trim()} : ` : ''
+      return `${label}${reps}${[dist, val, dur, zone].filter(Boolean).join(' · ')}${rec}`.trim()
+    }
+    const lines = withBlocks.map(r => {
+      const blocks = (r.blocks as Record<string, unknown>[]).map(fmtBlock).filter(Boolean).join(' | ')
+      const meta = [r.sport, r.duration_min ? `${r.duration_min} min` : '', r.intensity].filter(Boolean).join(', ')
+      return `• « ${r.title ?? 'Séance'} » (${meta})\n  ${blocks}${r.notes ? `\n  Note coach : ${r.notes}` : ''}`
+    })
+    return `\n\n--- EXEMPLES DE SÉANCES ÉCRITES PAR LE COACH POUR CET ATHLÈTE (inspire-toi de CE style : structure des blocs, dosage, vocabulaire — n'invente pas au-delà) ---\n${lines.join('\n')}\n--- fin exemples ---`
+  } catch { return '' }
 }
 
 const MODEL_BY_KEY: Record<string, string> = {
@@ -59,7 +117,10 @@ export async function runGraphServer(userId: string, graph: StudioGraph, runId: 
   const billTo = billUserId ?? userId
   // Contexte « système vivant » (garde-fou santé + mémoire du dernier cycle),
   // partagé par tous les agents — même logique que les runs manuels.
-  const living = (await buildLivingContext(sb, userId, systemId)) + methodGuidance(graph.method)
+  const learnFromCoach = graph.method?.learnFromCoach !== false
+  const living = (await buildLivingContext(sb, userId, systemId))
+    + methodGuidance(graph.method)
+    + (learnFromCoach ? await coachStyleExamples(sb, userId) : '')
   const client = getAnthropicClient()
   const nodes = graph.nodes
   const byId = new Map(nodes.map(n => [n.id, n]))

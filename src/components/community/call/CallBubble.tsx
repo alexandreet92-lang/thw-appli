@@ -13,6 +13,13 @@ import { useI18n } from '@/lib/i18n'
 const FB = 'var(--font-body)'
 const W = 220
 
+function fmtDur(s: number): string {
+  const sec = Math.max(0, Math.floor(s))
+  const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), ss = sec % 60
+  const two = (n: number) => n.toString().padStart(2, '0')
+  return h > 0 ? `${h}:${two(m)}:${two(ss)}` : `${m}:${two(ss)}`
+}
+
 export function CallBubble() {
   const { t } = useI18n()
   const call = useCall()
@@ -53,6 +60,9 @@ export function CallBubble() {
         style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', padding: '8px var(--space-3)', cursor: 'grab', touchAction: 'none' }}>
         <span style={{ width: 7, height: 7, borderRadius: '50%', background: connecting ? 'var(--text-dim)' : 'var(--sport-run)', flexShrink: 0 }} />
         <span style={{ flex: 1, minWidth: 0, fontFamily: FB, fontSize: 12, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{call.title}</span>
+        {call.status === 'connected' && (
+          <span style={{ flexShrink: 0, fontFamily: FB, fontSize: 11, color: 'var(--text-mid)', fontVariantNumeric: 'tabular-nums' }}>{fmtDur(call.callSeconds)}</span>
+        )}
         <button onClick={expand} aria-label={t('w3e.expand')} title={t('w3e.expand')} style={{ width: 24, height: 24, border: 'none', borderRadius: 'var(--r-sm)', background: 'transparent', color: 'var(--text-mid)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><ExpandIcon /></button>
       </div>
 

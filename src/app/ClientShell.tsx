@@ -6,6 +6,7 @@ import { ReauthGate } from '@/components/auth/ReauthGate'
 import { I18nProvider } from '@/lib/i18n'
 import { CallProvider } from '@/components/community/call/CallProvider'
 import { CallBubble } from '@/components/community/call/CallBubble'
+import { IncomingCallWatcher } from '@/components/community/call/IncomingCallWatcher'
 import { installNativeApiFetch } from '@/lib/native/apiFetch'
 import { isNativeApp, openWebsite } from '@/lib/native/platform'
 import { createClient } from '@/lib/supabase/client'
@@ -133,6 +134,7 @@ export function ClientShell({ children }: ClientShellProps) {
         )}
         {children}
         <CallBubble />
+        <IncomingCallWatcher />
         <GlobalSaveToast />
         <ReauthGate />
       </CallProvider>

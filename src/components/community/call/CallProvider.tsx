@@ -5,7 +5,7 @@
 // (VoiceView) et la bulle flottante (CallBubble) ne font que consommer ce
 // contexte. livekit-client est chargé en import dynamique (jamais côté SSR).
 // ══════════════════════════════════════════════════════════════════════════
-import { createContext, useCallback, useContext, useRef, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import type {
   Room, Participant, RoomEvent as RoomEventT, RemoteTrack, RemoteTrackPublication, RemoteParticipant, Track, LocalVideoTrack,
 } from 'livekit-client'
@@ -48,6 +48,8 @@ export interface CallCtx {
   channelId: string | null
   minimized: boolean
   showingFull: boolean
+  startedAt: number | null
+  callSeconds: number
   micOn: boolean; camOn: boolean; screenOn: boolean; blurOn: boolean
   needAudioTap: boolean
   notice: string | null
@@ -94,7 +96,17 @@ export function CallProvider({ children }: { children: ReactNode }) {
   const [notice, setNotice] = useState<string | null>(null)
   const [errDetail, setErrDetail] = useState<string | null>(null)
   const [showingFull, setShowingFull] = useState(false)
+  const [startedAt, setStartedAt] = useState<number | null>(null)
+  const [callSeconds, setCallSeconds] = useState(0)
   const fullCount = useRef(0)
+
+  // Chrono d'appel : tic à la seconde tant qu'on est connecté.
+  useEffect(() => {
+    if (startedAt == null) { setCallSeconds(0); return }
+    setCallSeconds(Math.floor((Date.now() - startedAt) / 1000))
+    const iv = setInterval(() => setCallSeconds(Math.floor((Date.now() - startedAt) / 1000)), 1000)
+    return () => clearInterval(iv)
+  }, [startedAt])
 
   const roomRef = useRef<Room | null>(null)
   const audioBoxRef = useRef<HTMLDivElement | null>(null)
@@ -114,7 +126,7 @@ export function CallProvider({ children }: { children: ReactNode }) {
     roomRef.current = null
     detachAllAudio()
     if (room) void room.disconnect()
-    setStatus('idle'); setTKey(null); setTitle(''); setMinimized(false)
+    setStatus('idle'); setTKey(null); setTitle(''); setMinimized(false); setStartedAt(null)
     setMicOn(true); setCamOn(false); setScreenOn(false); setBlurOn(false); setNeedAudioTap(false); setNotice(null); setErrDetail(null)
   }, [detachAllAudio])
 
@@ -177,7 +189,7 @@ export function CallProvider({ children }: { children: ReactNode }) {
           roomRef.current = null; detachAllAudio()
           const rn = reason != null ? (DisconnectReason[reason] ?? String(reason)) : t('w3e.unknown')
           setErrDetail(t('w3e.disconnected_by_server', { reason: rn }))
-          setStatus('error'); setMinimized(false); setMicOn(true); setCamOn(false); setScreenOn(false); setNeedAudioTap(false)
+          setStatus('error'); setMinimized(false); setStartedAt(null); setMicOn(true); setCamOn(false); setScreenOn(false); setNeedAudioTap(false)
         })
 
         await room.connect(url, token)
@@ -185,7 +197,7 @@ export function CallProvider({ children }: { children: ReactNode }) {
         try { await room.localParticipant.setMicrophoneEnabled(true); setMicOn(true) }
         catch { setMicOn(false); setNotice(t('w3e.mic_denied_listen_only')) }
         if (!isThis()) { void room.disconnect(); return }
-        setStatus('connected'); setNeedAudioTap(!room.canPlaybackAudio); bump()
+        setStatus('connected'); setStartedAt(Date.now()); setNeedAudioTap(!room.canPlaybackAudio); bump()
         // Premier arrivé dans un canal → prévient les membres de l'espace.
         if (room.remoteParticipants.size === 0 && 'channelId' in target) {
           void fetch('/api/community/notify-call', {
@@ -266,7 +278,7 @@ export function CallProvider({ children }: { children: ReactNode }) {
   const channelId = tKey && tKey.startsWith('c:') ? tKey.slice(2) : null
 
   const value: CallCtx = {
-    active, status, title, tKey, channelId, minimized, showingFull, micOn, camOn, screenOn, blurOn, needAudioTap, notice, errDetail,
+    active, status, title, tKey, channelId, minimized, showingFull, startedAt, callSeconds, micOn, camOn, screenOn, blurOn, needAudioTap, notice, errDetail,
     screens, people, devices,
     start, leave, toggleMic, toggleCam, toggleScreen, toggleBlur, refreshDevices, setMic, setCam,
     minimize, expand, enableAudio, isTarget, registerFull,

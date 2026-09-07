@@ -8324,20 +8324,11 @@ conseil pour la prochaine séance similaire.`
         )}
         {/* (longueurs natation : édition dans la sur-page « Modifier ») */}
 
-        {/* ── PARTIE 3 : Hero row (carte | stats) ── */}
-        {mapExpanded ? (
-          <div style={{ height: 400, borderRadius: 10, overflow: 'hidden', marginBottom: 20 }}>
-            <ActivityMapCard
-              activity={a as unknown as Record<string, unknown>}
-              isMobile={false}
-              expanded={true}
-              onToggle={() => setMapExpanded(false)}
-              hoverGps={hoverGps}
-            />
-          </div>
-        ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
-            {/* Carte */}
+        {/* ── PARTIE 3 : Hero row (carte | stats). Carte agrandie → déplacée
+             juste au-dessus des COURBES (bureau uniquement). ── */}
+          <div style={{ display: 'grid', gridTemplateColumns: mapExpanded ? '1fr' : '1fr 1fr', gap: 16, marginBottom: 20 }}>
+            {/* Carte — quand agrandie, elle est déplacée au-dessus des courbes (plus bas) */}
+            {!mapExpanded && (
             <div style={{ height: 280, borderRadius: 10, overflow: 'hidden' }}>
               <ActivityMapCard
                 activity={a as unknown as Record<string, unknown>}
@@ -8347,6 +8338,7 @@ conseil pour la prochaine séance similaire.`
                 hoverGps={hoverGps}
               />
             </div>
+            )}
             {/* Stats + Analyse */}
             <div>
               {(() => {
@@ -8423,7 +8415,6 @@ conseil pour la prochaine séance similaire.`
               })()}
             </div>
           </div>
-        )}
 
         {/* ── Jauges Ressenti / Difficulté (desktop) — AFFICHAGE seul (édition
             dans la sur-page « Modifier ») ── */}
@@ -8601,6 +8592,19 @@ conseil pour la prochaine séance similaire.`
 
           </div>
         </div>
+
+        {/* ── CARTE AGRANDIE — placée juste au-dessus des COURBES (bureau) ── */}
+        {mapExpanded && (
+          <div style={{ height: 460, borderRadius: 10, overflow: 'hidden', marginBottom: 20 }}>
+            <ActivityMapCard
+              activity={a as unknown as Record<string, unknown>}
+              isMobile={false}
+              expanded={true}
+              onToggle={() => setMapExpanded(false)}
+              hoverGps={hoverGps}
+            />
+          </div>
+        )}
 
         {/* ── COURBES ── */}
         {a.streams && (

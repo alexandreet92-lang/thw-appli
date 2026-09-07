@@ -7,7 +7,7 @@ import { createPortal } from 'react-dom'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { getCurrentUser } from '@/lib/auth/currentUser'
-import { resolvePlanningUid, isCoachScoped, getPlanningScopeUid } from '@/lib/planning/scope'
+import { resolvePlanningUid, isCoachScoped, getPlanningScopeUid, usePlanningScope } from '@/lib/planning/scope'
 import { useTrainingZones } from '@/hooks/useTrainingZones'
 import { AnimatedBar, CountUp } from '@/components/ui/AnimatedBar'
 import { SkeletonPlanningGrid } from '@/components/ui/Skeleton'
@@ -1063,8 +1063,11 @@ export function ActivityQuickModal({ activity, onClose }:{ activity:TrainingActi
   ) : null
 
   // En vue coach (scope athlète), on emmène vers l'activité de L'ATHLÈTE
-  // (paramètre uid) et non vers la page training du coach.
-  const _scopedUid = isCoachScoped() ? getPlanningScopeUid() : null
+  // (paramètre uid) et non vers la page training du coach. On lit le scope via le
+  // CONTEXTE React (fourni de façon fiable par toutes les vues coach) plutôt que
+  // via la variable module (qui peut ne pas être posée au moment du rendu du lien).
+  const _ctxScopeUid = usePlanningScope()
+  const _scopedUid = _ctxScopeUid ?? (isCoachScoped() ? getPlanningScopeUid() : null)
   const _detailHref = _scopedUid ? `/activities?id=${a.id}&uid=${_scopedUid}` : `/activities?id=${a.id}`
   const detailBtn = (
     <a href={_detailHref}

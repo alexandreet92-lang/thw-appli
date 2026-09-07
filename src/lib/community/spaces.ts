@@ -102,6 +102,16 @@ export async function updateSpaceIcon(spaceId: string, iconUrl: string | null): 
   return !error
 }
 
+/** Supprime définitivement un espace (RLS : réservé au créateur/owner).
+ *  Les canaux, messages et membres liés partent en cascade (FK). */
+export async function deleteSpace(spaceId: string): Promise<boolean> {
+  const { error } = await createClient()
+    .from('community_spaces')
+    .delete()
+    .eq('id', spaceId)
+  return !error
+}
+
 /** Liste des membres d'un espace, avec nom/avatar. */
 export async function listSpaceMembers(spaceId: string): Promise<CommunityMemberInfo[]> {
   const { data } = await createClient()

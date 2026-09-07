@@ -273,7 +273,8 @@ export function CommunityView() {
       )}
 
       {showManage && space && canManage && (
-        <CommunityManageSheet spaceId={space.id} onClose={() => setShowManage(false)} />
+        <CommunityManageSheet spaceId={space.id} onClose={() => setShowManage(false)}
+          onDeleted={() => { setShowManage(false); void loadSpaces() }} />
       )}
 
       {showDiscover && (

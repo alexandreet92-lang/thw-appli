@@ -7,7 +7,7 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useI18n } from '@/lib/i18n'
-import { listSpaceMembers } from '@/lib/community/spaces'
+import { listSpaceMembers, deleteSpace } from '@/lib/community/spaces'
 import {
   getSpaceSettings, updateSpaceSettings, moderate, listReports, resolveReport,
   type CommunitySettings, type ReportInfo,
@@ -18,7 +18,7 @@ import type { CommunityMemberInfo } from '@/types/community'
 const FB = 'var(--font-body)', FD = 'var(--font-display)'
 type Tab = 'settings' | 'members' | 'requests' | 'reports'
 
-export function CommunityManageSheet({ spaceId, onClose }: { spaceId: string; onClose: () => void }) {
+export function CommunityManageSheet({ spaceId, onClose, onDeleted }: { spaceId: string; onClose: () => void; onDeleted?: () => void }) {
   const { t } = useI18n()
   const [mounted, setMounted] = useState(false)
   const [tab, setTab] = useState<Tab>('settings')
@@ -48,7 +48,7 @@ export function CommunityManageSheet({ spaceId, onClose }: { spaceId: string; on
           </div>
         </div>
         <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: 'var(--space-4) var(--space-5) var(--space-8)' }}>
-          {tab === 'settings' && <SettingsTab spaceId={spaceId} />}
+          {tab === 'settings' && <SettingsTab spaceId={spaceId} onDeleted={onDeleted} />}
           {tab === 'members' && <MembersTab spaceId={spaceId} />}
           {tab === 'requests' && <RequestsTab spaceId={spaceId} />}
           {tab === 'reports' && <ReportsTab spaceId={spaceId} />}
@@ -60,12 +60,24 @@ export function CommunityManageSheet({ spaceId, onClose }: { spaceId: string; on
 }
 
 // ── Réglages ────────────────────────────────────────────────────────────────
-function SettingsTab({ spaceId }: { spaceId: string }) {
+function SettingsTab({ spaceId, onDeleted }: { spaceId: string; onDeleted?: () => void }) {
   const { t } = useI18n()
   const [s, setS] = useState<CommunitySettings | null>(null)
   const [words, setWords] = useState('')
   const [saving, setSaving] = useState(false)
   const [done, setDone] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState(false)
+  const [delErr, setDelErr] = useState<string | null>(null)
+
+  async function removeSpace() {
+    if (deleting) return
+    if (typeof window !== 'undefined' && !window.confirm(t('w1g.deleteSpaceConfirm'))) return
+    setDeleting(true); setDelErr(null)
+    const ok = await deleteSpace(spaceId)
+    setDeleting(false)
+    if (ok) onDeleted?.()
+    else setDelErr(t('w1g.deleteSpaceOwnerOnly'))
+  }
 
   useEffect(() => { void getSpaceSettings(spaceId).then(cfg => { if (cfg) { setS(cfg); setWords(cfg.blockedWords.join(', ')) } }) }, [spaceId])
   if (!s) return <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-mid)' }}>{t('w1g.loading')}</p>
@@ -117,6 +129,17 @@ function SettingsTab({ spaceId }: { spaceId: string }) {
         style={{ height: 44, border: 'none', borderRadius: 'var(--r-sm)', background: 'var(--primary)', color: 'var(--on-primary)', fontFamily: FB, fontSize: 13.5, fontWeight: 600, cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.6 : 1 }}>
         {saving ? t('w1g.saving') : t('w1g.saveSettings')}
       </button>
+
+      {/* Zone danger — suppression du groupe (réservée au créateur via RLS) */}
+      <div style={{ marginTop: 'var(--space-4)', paddingTop: 'var(--space-4)', borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+        <span style={{ fontFamily: FB, fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--danger)' }}>{t('w1g.dangerZone')}</span>
+        <span style={{ fontFamily: FB, fontSize: 12.5, color: 'var(--text-mid)', lineHeight: 1.5 }}>{t('w1g.deleteSpaceHint')}</span>
+        {delErr && <span style={{ fontFamily: FB, fontSize: 12.5, color: 'var(--danger)' }}>{delErr}</span>}
+        <button onClick={() => void removeSpace()} disabled={deleting}
+          style={{ alignSelf: 'flex-start', height: 40, padding: '0 var(--space-5)', border: '1px solid var(--danger)', borderRadius: 'var(--r-sm)', background: 'var(--danger-soft)', color: 'var(--danger)', fontFamily: FB, fontSize: 13, fontWeight: 700, cursor: deleting ? 'default' : 'pointer', opacity: deleting ? 0.6 : 1 }}>
+          {deleting ? t('w1g.saving') : t('w1g.deleteSpace')}
+        </button>
+      </div>
     </div>
   )
 }

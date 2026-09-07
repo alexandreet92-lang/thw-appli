@@ -74,6 +74,84 @@ export async function readSourceWith(sb: SupabaseClient, uid: string, key: Studi
     return `PAGE RÉCUPÉRATION — check-ins 14 jours :\n${lines.join('\n')}`
   }
 
+  if (key === 'records') {
+    const { data, error } = await sb.from('personal_records')
+      .select('sport,distance_label,performance,performance_unit,pace_s_km,event_type,race_name,achieved_at,rpe')
+      .eq('user_id', uid).order('achieved_at', { ascending: false }).limit(30)
+    if (error) throw new Error(`Lecture Records : ${error.message}`)
+    if (!data?.length) return 'PAGE RECORDS — aucun record enregistré.'
+    const lines = (data as Record<string, unknown>[]).map(r => {
+      const perf = [r.performance, r.performance_unit].filter(Boolean).join(' ')
+      const pace = r.pace_s_km ? `${Math.floor(Number(r.pace_s_km) / 60)}:${String(Math.round(Number(r.pace_s_km) % 60)).padStart(2, '0')}/km` : ''
+      const when = r.achieved_at ? String(r.achieved_at).slice(0, 10) : ''
+      return `- ${r.sport ?? '?'} · ${cap(String(r.distance_label ?? r.event_type ?? ''), 30)} · ${[perf, pace].filter(Boolean).join(' · ')}${r.race_name ? ` · ${cap(String(r.race_name), 30)}` : ''}${when ? ` · ${when}` : ''}`
+    })
+    return `PAGE RECORDS — ${data.length} performances de référence :\n${lines.join('\n')}`
+  }
+
+  if (key === 'races') {
+    const today = new Date().toISOString().slice(0, 10)
+    const { data, error } = await sb.from('race_events')
+      .select('name,start_date,end_date,description')
+      .eq('user_id', uid).gte('start_date', today).order('start_date', { ascending: true }).limit(20)
+    if (error) throw new Error(`Lecture Compétitions : ${error.message}`)
+    if (!data?.length) return 'PAGE COMPÉTITIONS — aucune compétition à venir.'
+    const lines = (data as Record<string, unknown>[]).map(r => {
+      const days = r.start_date ? Math.ceil((new Date(String(r.start_date) + 'T00:00:00').getTime() - Date.now()) / 86400_000) : null
+      return `- ${String(r.start_date).slice(0, 10)} (J-${days ?? '?'}) · ${cap(String(r.name ?? 'Course'), 40)}${r.description ? ` · ${cap(String(r.description), 60)}` : ''}`
+    })
+    return `PAGE COMPÉTITIONS — objectifs à venir (aujourd'hui ${today}) :\n${lines.join('\n')}`
+  }
+
+  if (key === 'zones') {
+    const { data, error } = await sb.from('athlete_zones')
+      .select('sport,ftp,fthr,vma,css,hr_zones,power_zones,pace_zones,updated_at')
+      .eq('user_id', uid).order('updated_at', { ascending: false }).limit(6)
+    if (error) throw new Error(`Lecture Zones : ${error.message}`)
+    if (!data?.length) return 'PAGE ZONES — aucune zone définie (FC / puissance / allure).'
+    const lines = (data as Record<string, unknown>[]).map(z => {
+      const refs = [z.ftp ? `FTP ${z.ftp}W` : '', z.fthr ? `FTHR ${z.fthr}` : '', z.vma ? `VMA ${z.vma}` : '', z.css ? `CSS ${z.css}` : ''].filter(Boolean).join(' · ')
+      return `- ${z.sport ?? '?'}${refs ? ` · ${refs}` : ''}`
+    })
+    return `PAGE ZONES — repères d'intensité par sport :\n${lines.join('\n')}`
+  }
+
+  if (key === 'questionnaire') {
+    const { data, error } = await sb.from('profiles')
+      .select('primary_goal,sport_experience,weekly_sessions,weekly_volume,sport_hours_per_week,ideal_sleep_hours,work_hours_per_week,onboarding')
+      .eq('id', uid).maybeSingle()
+    if (error) throw new Error(`Lecture Questionnaire : ${error.message}`)
+    if (!data) return 'PAGE QUESTIONNAIRE — aucune réponse.'
+    const p = data as Record<string, unknown>
+    const base = [
+      p.primary_goal ? `Objectif principal : ${p.primary_goal}` : '',
+      p.sport_experience ? `Expérience : ${p.sport_experience}` : '',
+      p.weekly_sessions ? `Séances/sem : ${p.weekly_sessions}` : '',
+      p.weekly_volume ? `Volume hebdo : ${p.weekly_volume}` : '',
+      p.sport_hours_per_week ? `Heures sport/sem : ${p.sport_hours_per_week}` : '',
+      p.work_hours_per_week ? `Heures travail/sem : ${p.work_hours_per_week}` : '',
+      p.ideal_sleep_hours ? `Sommeil idéal : ${p.ideal_sleep_hours} h` : '',
+    ].filter(Boolean)
+    let onboard = ''
+    if (p.onboarding && typeof p.onboarding === 'object') {
+      try { onboard = cap(JSON.stringify(p.onboarding), 900) } catch { /* ignore */ }
+    }
+    if (!base.length && !onboard) return 'PAGE QUESTIONNAIRE — peu de données renseignées.'
+    return `PAGE QUESTIONNAIRE & OBJECTIFS :\n${base.map(b => `- ${b}`).join('\n')}${onboard ? `\n- Onboarding : ${onboard}` : ''}`
+  }
+
+  if (key === 'messages') {
+    const { data, error } = await sb.from('coach_messages')
+      .select('sender_id,body,created_at')
+      .or(`athlete_id.eq.${uid},coach_id.eq.${uid}`).is('deleted_at', null)
+      .order('created_at', { ascending: false }).limit(20)
+    if (error) throw new Error(`Lecture Messages : ${error.message}`)
+    if (!data?.length) return 'PAGE MESSAGES — aucun échange coach ↔ athlète.'
+    const lines = (data as Record<string, unknown>[]).reverse().map(m =>
+      `- ${String(m.created_at ?? '').slice(0, 10)} · ${m.sender_id === uid ? 'athlète' : 'coach'} : ${cap(String(m.body ?? ''), 140)}`)
+    return `PAGE MESSAGES — derniers échanges coach ↔ athlète :\n${lines.join('\n')}`
+  }
+
   // ── Apps externes ──────────────────────────────────────────
   if (key === 'ext_strava') {
     const since = new Date(Date.now() - 30 * 86400_000).toISOString()

@@ -42,7 +42,7 @@ const CHAT_W = 380           // largeur du panneau de chat Architecte (desktop)
 // Variables --ai-* attendues par CoachQuestionCard (normalement portées par
 // .aip-root) — on les fournit localement pour réutiliser la carte dans le Studio.
 const aiVars = {
-  '--ai-bg': 'var(--bg-card)', '--ai-bg2': 'var(--bg-alt)', '--ai-border': 'var(--border)',
+  '--ai-bg': 'var(--bg-card)', '--ai-bg2': 'var(--bg-card2)', '--ai-border': 'var(--border)',
   '--ai-text': 'var(--text)', '--ai-mid': 'var(--text-mid)', '--ai-dim': 'var(--text-dim)',
 } as React.CSSProperties
 
@@ -137,11 +137,17 @@ const APP_CATALOG: AppEntry[] = [
   { id: 'app_injuries',   label: 'Blessures',     color: '#EF4444', kind: 'source', sourceKey: 'injuries',   access: 'lecture' },
   { id: 'app_recovery',   label: 'Récupération',  color: '#14B8A6', kind: 'source', sourceKey: 'recovery',   access: 'lecture' },
   { id: 'app_profile',    label: 'Profil',        color: '#F59E0B', kind: 'source', sourceKey: 'profile',    access: 'lecture' },
+  { id: 'app_records',    label: 'Records',       color: '#EAB308', kind: 'source', sourceKey: 'records',      access: 'lecture' },
+  { id: 'app_races',      label: 'Compétitions',  color: '#F97316', kind: 'source', sourceKey: 'races',        access: 'lecture' },
+  { id: 'app_zones',      label: 'Zones',         color: '#8B5CF6', kind: 'source', sourceKey: 'zones',        access: 'lecture' },
+  { id: 'app_quest',      label: 'Questionnaire', color: '#0EA5E9', kind: 'source', sourceKey: 'questionnaire', access: 'lecture' },
+  { id: 'app_messages',   label: 'Messages',      color: '#6366F1', kind: 'source', sourceKey: 'messages',     access: 'lecture' },
   { id: 'act_planning',   label: 'Planning (ajout)', color: '#EF4444', kind: 'action', actionKey: 'planning_save', access: 'écriture' },
   { id: 'act_plan_repl',  label: 'Planning (remplacer)', color: '#DC2626', kind: 'action', actionKey: 'planning_replace', access: 'écriture' },
   { id: 'act_calendar',   label: 'Calendrier',    color: '#F97316', kind: 'action', actionKey: 'calendar_race', access: 'écriture' },
   { id: 'act_nutrition',  label: 'Nutrition',     color: '#10B981', kind: 'action', actionKey: 'nutrition_save', access: 'écriture' },
   { id: 'act_notify',     label: 'Notification',  color: '#0EA5E9', kind: 'action', actionKey: 'notify_report', access: 'écriture' },
+  { id: 'act_message',    label: 'Message à l’athlète', color: '#6366F1', kind: 'action', actionKey: 'message_athlete', access: 'écriture' },
 ]
 
 // Apps EXTERNES (données synchronisées depuis un service tiers) — visibles dans
@@ -162,6 +168,12 @@ function AppIcon({ id, size = 14 }: { id: string; size?: number }) {
     case 'app_injuries':   return <svg {...p}><path d="M20.8 4.6a5.5 5.5 0 00-7.8 0L12 5.6l-1-1a5.5 5.5 0 00-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 000-7.8z"/></svg>
     case 'app_recovery':   return <svg {...p}><path d="M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z"/></svg>
     case 'app_profile':    return <svg {...p}><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/></svg>
+    case 'app_records':    return <svg {...p}><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 01-10 0zM7 5H4v2a3 3 0 003 3M17 5h3v2a3 3 0 01-3 3"/></svg>
+    case 'app_races':      return <svg {...p}><path d="M4 21V4M4 4h13l-2 4 2 4H4"/></svg>
+    case 'app_zones':      return <svg {...p}><path d="M3 12h4l2-7 3 14 3-9 2 4h4"/></svg>
+    case 'app_quest':      return <svg {...p}><path d="M9.1 9a3 3 0 015.8 1c0 2-3 3-3 3M12 17h.01M12 3a9 9 0 100 18 9 9 0 000-18z"/></svg>
+    case 'app_messages':   return <svg {...p}><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+    case 'act_message':    return <svg {...p}><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/><path d="M8 9h8M8 13h5"/></svg>
     case 'act_planning':   return <svg {...p}><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg>
     case 'act_calendar':   return <svg {...p}><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4M9 14l2 2 4-4"/></svg>
     case 'act_nutrition':  return <svg {...p}><path d="M4 3v7a3 3 0 003 3v8M7 3v7M10 3v7M16 3c-1.5 1-2 3-2 6s.5 5 2 6v3"/></svg>
@@ -1060,7 +1072,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
     const clickable = !!opts?.onSelect
     const bare = !!opts?.bare
     return (
-      <div style={{ position: 'relative', width: '100%', maxWidth: W, height, margin: bare ? '0 auto' : '10px auto 2px', borderRadius: bare ? 0 : 14, border: bare ? 'none' : '1px solid var(--border)', background: bare ? 'transparent' : 'var(--bg-alt)', overflow: 'hidden',
+      <div style={{ position: 'relative', width: '100%', maxWidth: W, height, margin: bare ? '0 auto' : '10px auto 2px', borderRadius: bare ? 0 : 14, border: bare ? 'none' : '1px solid var(--border)', background: bare ? 'transparent' : 'var(--bg-card2)', overflow: 'hidden',
         ...(bare ? {} : { backgroundImage: 'radial-gradient(color-mix(in srgb, var(--text) 8%, transparent) 1px, transparent 1px)', backgroundSize: '14px 14px' }) }}>
         <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none', overflow: 'visible' }} viewBox={`0 0 ${W} ${height}`} preserveAspectRatio="xMidYMid meet">
           {g.edges.map(e => {
@@ -1119,7 +1131,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
           {/* Sélecteur de modèle IA (logo + nom) */}
           <div style={{ position: 'relative' }}>
             <button onClick={() => setModelMenuOpen(o => !o)} disabled={chatBusy} title={t('w1i.ai_model')}
-              style={{ display: 'flex', alignItems: 'center', gap: 6, height: 30, padding: '0 10px 0 8px', borderRadius: 999, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text-mid)', cursor: chatBusy ? 'default' : 'pointer', fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 700 }}>
+              style={{ display: 'flex', alignItems: 'center', gap: 6, height: 30, padding: '0 10px 0 8px', borderRadius: 999, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-mid)', cursor: chatBusy ? 'default' : 'pointer', fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 700 }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={builderModel === 'hermes' ? '/logos/logo_3bras.png' : builderModel === 'zeus' ? '/logos/logo_6bras.png' : '/logos/logo_4bras.png'} alt="" width={16} height={16} style={{ objectFit: 'contain', flexShrink: 0 }} />
               {MODEL_LABEL[builderModel]}
@@ -1231,7 +1243,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                       {t('w1i.confirm')}
                     </button>
                     <button onClick={() => declinePlan(m.id)}
-                      style={{ padding: '9px 14px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text-mid)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
+                      style={{ padding: '9px 14px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-mid)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
                       {t('w1i.no')}
                     </button>
                   </div>
@@ -1546,7 +1558,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
         {!isMobile && <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-display)', whiteSpace: 'nowrap' }}>Studio</div>}
         {/* Aide — sur-page d'explication */}
         <button onClick={() => setHelpOpen(true)} aria-label={t('w1i.how_it_works')} title={t('w1i.how_it_works')}
-          style={{ width: 22, height: 22, borderRadius: '50%', border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text-dim)', fontSize: 12, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-body)', flexShrink: 0 }}>
+          style={{ width: 22, height: 22, borderRadius: '50%', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', fontSize: 12, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-body)', flexShrink: 0 }}>
           ?
         </button>
         {view === 'canvas' && (
@@ -1554,21 +1566,21 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
             value={graph.name}
             onChange={e => commit({ ...graph, name: e.target.value })}
             aria-label={t('w1i.system_name')}
-            style={{ marginLeft: 2, minWidth: 0, flex: '0 1 240px', padding: '6px 10px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text-mid)', fontSize: 13, fontFamily: 'var(--font-body)', outline: 'none' }}
+            style={{ marginLeft: 2, minWidth: 0, flex: '0 1 240px', padding: '6px 10px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-mid)', fontSize: 13, fontFamily: 'var(--font-body)', outline: 'none' }}
           />
         )}
 
         {/* Solde Studio — clic : détail + packs */}
         {access?.allowed && (
           <button onClick={() => setWalletOpen(true)} title={t('w1i.balance_tooltip')}
-            style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6, padding: '6px 11px', borderRadius: 999, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text-mid)', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)', flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>
+            style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6, padding: '6px 11px', borderRadius: 999, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-mid)', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)', flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" style={{ color: 'var(--studio-accent)' }} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
             {access.remaining > 1e12 ? t('w1i.unlimited') : t('w1i.tokens_amount', { n: formatTokens(access.remaining) })}
           </button>
         )}
 
         {view === 'canvas' && (<>
-        <div style={{ display: 'flex', gap: 2, marginLeft: isMobile ? 0 : (access?.allowed ? 0 : 'auto'), width: isMobile ? '100%' : 'auto', order: isMobile ? 3 : 0, background: 'var(--bg-alt)', borderRadius: 10, padding: 3 }}>
+        <div style={{ display: 'flex', gap: 2, marginLeft: isMobile ? 0 : (access?.allowed ? 0 : 'auto'), width: isMobile ? '100%' : 'auto', order: isMobile ? 3 : 0, background: 'var(--bg-card2)', borderRadius: 10, padding: 3 }}>
           {(['canvas', 'chat', 'rendu', 'runs', 'methode'] as Tab[]).map(tb => (
             <button key={tb} onClick={() => setTab(tb)}
               style={{ flex: isMobile ? 1 : '0 0 auto', padding: isMobile ? '9px 6px' : '6px 14px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: isMobile ? 12.5 : 13, fontWeight: 600, fontFamily: 'var(--font-body)',
@@ -1581,21 +1593,21 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
 
         {/* Chat Architecte — ouvre la discussion en plein écran */}
         <button onClick={() => { setChatFull(true); if (tab !== 'canvas') setTab('canvas') }} title={t('w1i.chat_architect_full')} aria-label={t('w1i.chat_architect')}
-          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: isMobile ? '0 9px' : '0 12px', height: 34, borderRadius: 10, border: '1px solid var(--border)', background: chatMsgs.length > 0 ? 'color-mix(in srgb, var(--studio-accent) 10%, transparent)' : 'var(--bg-alt)', color: chatMsgs.length > 0 ? 'var(--studio-accent)' : 'var(--text-mid)', cursor: 'pointer', fontSize: 12.5, fontWeight: 700, fontFamily: 'var(--font-body)', flexShrink: 0 }}>
+          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: isMobile ? '0 9px' : '0 12px', height: 34, borderRadius: 10, border: '1px solid var(--border)', background: chatMsgs.length > 0 ? 'color-mix(in srgb, var(--studio-accent) 10%, transparent)' : 'var(--bg-card2)', color: chatMsgs.length > 0 ? 'var(--studio-accent)' : 'var(--text-mid)', cursor: 'pointer', fontSize: 12.5, fontWeight: 700, fontFamily: 'var(--font-body)', flexShrink: 0 }}>
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.4 8.4 0 01-8.5 8.5 8.6 8.6 0 01-3.9-.9L3 21l1.9-5.6a8.4 8.4 0 01-.9-3.9A8.4 8.4 0 0112.5 3 8.4 8.4 0 0121 11.5z"/></svg>
           {!isMobile && t('w1i.chat')}
         </button>
 
         {/* Planifier — run autonome récurrent */}
         <button onClick={() => setScheduleOpen(true)} title={schedule?.enabled ? t('w1i.schedule_active_edit') : t('w1i.schedule_this_system_auto')} aria-label={t('w1i.schedule_this_system')}
-          style={{ width: 34, height: 34, borderRadius: 10, border: '1px solid var(--border)', background: schedule?.enabled ? 'color-mix(in srgb, var(--studio-accent) 10%, transparent)' : 'var(--bg-alt)', color: schedule?.enabled ? 'var(--studio-accent)' : 'var(--text-mid)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          style={{ width: 34, height: 34, borderRadius: 10, border: '1px solid var(--border)', background: schedule?.enabled ? 'color-mix(in srgb, var(--studio-accent) 10%, transparent)' : 'var(--bg-card2)', color: schedule?.enabled ? 'var(--studio-accent)' : 'var(--text-mid)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
         </button>
 
         {/* Roster — lancer le système sur plusieurs athlètes (coach) */}
         {isCoachSystem && coachAccess && (
           <button onClick={() => { setRosterView(null); setRosterOpen(true) }} title={t('w1i.roster_run_title')} aria-label={t('w1i.roster')}
-            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: isMobile ? '0 9px' : '0 12px', height: 34, borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text-mid)', cursor: 'pointer', fontSize: 12.5, fontWeight: 700, fontFamily: 'var(--font-body)', flexShrink: 0 }}>
+            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: isMobile ? '0 9px' : '0 12px', height: 34, borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-mid)', cursor: 'pointer', fontSize: 12.5, fontWeight: 700, fontFamily: 'var(--font-body)', flexShrink: 0 }}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
             {!isMobile && t('w1i.roster')}
           </button>
@@ -1648,7 +1660,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
             ))}
             {issues.canForce && (
               <button onClick={() => void runOnce(true)}
-                style={{ marginTop: 10, width: '100%', padding: '9px 0', borderRadius: 9, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
+                style={{ marginTop: 10, width: '100%', padding: '9px 0', borderRadius: 9, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
                 {t('w1i.launch_anyway')}
               </button>
             )}
@@ -1788,7 +1800,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                     )}
                     <div style={{ padding: 10, borderBottom: '1px solid var(--border)' }}>
                       <input autoFocus value={pickerQuery} onChange={e => setPickerQuery(e.target.value)} placeholder={t('w1i.search_tool_app')}
-                        style={{ width: '100%', boxSizing: 'border-box', padding: '9px 11px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text)', fontSize: 13, outline: 'none', fontFamily: 'var(--font-body)' }} />
+                        style={{ width: '100%', boxSizing: 'border-box', padding: '9px 11px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 13, outline: 'none', fontFamily: 'var(--font-body)' }} />
                     </div>
                     <div style={{ overflowY: 'auto', padding: 6 }}>
                       {tools.length > 0 && <div style={paletteHdr}>{t('w1i.tools')}</div>}
@@ -2150,7 +2162,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                       {(['hermes', 'athena', 'zeus'] as StudioModel[]).map(m => (
                         <button key={m} onClick={() => patchNode(sel.id, { model: m })}
                           style={{ flex: 1, padding: '8px 0', borderRadius: 8, border: `1px solid ${sel.model === m ? KIND_COLOR[sel.kind] : 'var(--border)'}`, cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'var(--font-body)',
-                            background: sel.model === m ? KIND_COLOR[sel.kind] : 'var(--bg-alt)', color: sel.model === m ? '#fff' : 'var(--text-mid)' }}>
+                            background: sel.model === m ? KIND_COLOR[sel.kind] : 'var(--bg-card2)', color: sel.model === m ? '#fff' : 'var(--text-mid)' }}>
                           {MODEL_LABEL[m]}
                         </button>
                       ))}
@@ -2177,7 +2189,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
             <div style={{ marginBottom: 20 }}>
               <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-body)' }}>{label}</div>
               {hint && <div style={{ fontSize: 12, color: 'var(--text-dim)', margin: '3px 0 9px', fontFamily: 'var(--font-body)', lineHeight: 1.5 }}>{hint}</div>}
-              <div style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 4, background: 'var(--bg-alt)', border: '1px solid var(--border)', borderRadius: 12, padding: 4 }}>
+              <div style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 4, background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 12, padding: 4 }}>
                 {opts.map(([v, lbl]) => {
                   const on = current === v
                   return (
@@ -2258,12 +2270,12 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                   <span style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '0.05em', textTransform: 'uppercase', color: '#F59E0B', background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.35)', borderRadius: 999, padding: '3px 9px' }}>{t('w1i.your_approval')}</span>
                 </div>
                 {approval.node.role && <div style={{ fontSize: 12.5, color: 'var(--text-mid)', marginBottom: 10, lineHeight: 1.5, fontFamily: 'var(--font-body)' }}>{approval.node.role}</div>}
-                <div style={{ maxHeight: 420, overflowY: 'auto', padding: '14px 16px', borderRadius: 12, background: 'var(--bg-alt)', border: '1px solid var(--border)', marginBottom: 14 }}>
+                <div style={{ maxHeight: 420, overflowY: 'auto', padding: '14px 16px', borderRadius: 12, background: 'var(--bg-card2)', border: '1px solid var(--border)', marginBottom: 14 }}>
                   {approval.content ? <StudioMarkdown text={approval.content} /> : <span style={{ fontSize: 13, color: 'var(--text-dim)' }}>{t('w1i.no_input_content')}</span>}
                 </div>
                 <div style={{ display: 'flex', gap: 8 }}>
                   <button onClick={() => approval.resolve(true)} style={{ ...cta, flex: 1, justifyContent: 'center' }}>{t('w1i.validate_continue')}</button>
-                  <button onClick={() => approval.resolve(false)} style={{ flex: 1, padding: '9px 0', borderRadius: 9, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text-mid)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>{t('w1i.refuse')}</button>
+                  <button onClick={() => approval.resolve(false)} style={{ flex: 1, padding: '9px 0', borderRadius: 9, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-mid)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>{t('w1i.refuse')}</button>
                 </div>
               </div>
             )}
@@ -2350,7 +2362,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                         <KindIcon kind={selNode.kind} size={14} />
                       </span>
                       <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-display)' }}>{selNode.title}</span>
-                      <span style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-dim)', background: 'var(--bg-alt)', border: '1px solid var(--border)', borderRadius: 6, padding: '2px 7px' }}>{sub(selNode)}</span>
+                      <span style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-dim)', background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 6, padding: '2px 7px' }}>{sub(selNode)}</span>
                       <div style={{ flex: 1 }} />
                       {selText.trim() && (<>
                         {(selNode.kind === 'agent' || selNode.kind === 'merge') && (
@@ -2505,7 +2517,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                             {(r.renders ?? []).filter(x => x.text).map((x, i) => (
                               <div key={i} style={{ marginTop: 10 }}>
                                 <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)', marginBottom: 4, fontFamily: 'var(--font-body)' }}>{x.title}</div>
-                                <div style={{ maxHeight: 300, overflowY: 'auto', padding: '8px 10px', borderRadius: 9, background: 'var(--bg-alt)' }}>
+                                <div style={{ maxHeight: 300, overflowY: 'auto', padding: '8px 10px', borderRadius: 9, background: 'var(--bg-card2)' }}>
                                   <StudioMarkdown text={x.text} />
                                 </div>
                               </div>
@@ -2629,7 +2641,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                       <span style={{ fontSize: 12, fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--text)', fontFamily: 'var(--font-body)' }}>{t('w1i.recommended_for_you')}</span>
                       <div style={{ flex: 1 }} />
                       <button onClick={() => void loadRecos(true)} disabled={recosLoading} title={t('w1i.regenerate_recos')} aria-label={t('w1i.regenerate')}
-                        style={{ display: 'flex', alignItems: 'center', gap: 5, height: 26, padding: '0 9px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text-mid)', cursor: recosLoading ? 'default' : 'pointer', fontSize: 11.5, fontWeight: 700, fontFamily: 'var(--font-body)' }}>
+                        style={{ display: 'flex', alignItems: 'center', gap: 5, height: 26, padding: '0 9px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-mid)', cursor: recosLoading ? 'default' : 'pointer', fontSize: 11.5, fontWeight: 700, fontFamily: 'var(--font-body)' }}>
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={recosLoading ? { animation: 'studio_spin 0.8s linear infinite' } : undefined}><path d="M21 12a9 9 0 11-2.6-6.4M21 3v6h-6"/></svg>
                         {t('w1i.regenerate')}
                       </button>
@@ -2639,9 +2651,9 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: 12 }}>
                         {[0, 1, 2].map(i => (
                           <div key={i} style={{ minHeight: 118, borderRadius: 16, border: '1px solid var(--border)', background: 'var(--bg-card)', padding: 14, animation: 'studio_pulse 1.4s ease infinite' }}>
-                            <div style={{ width: '55%', height: 13, borderRadius: 6, background: 'var(--bg-alt)' }} />
-                            <div style={{ width: '92%', height: 9, borderRadius: 6, background: 'var(--bg-alt)', marginTop: 12 }} />
-                            <div style={{ width: '80%', height: 9, borderRadius: 6, background: 'var(--bg-alt)', marginTop: 7 }} />
+                            <div style={{ width: '55%', height: 13, borderRadius: 6, background: 'var(--bg-card2)' }} />
+                            <div style={{ width: '92%', height: 9, borderRadius: 6, background: 'var(--bg-card2)', marginTop: 12 }} />
+                            <div style={{ width: '80%', height: 9, borderRadius: 6, background: 'var(--bg-card2)', marginTop: 7 }} />
                           </div>
                         ))}
                       </div>
@@ -2758,7 +2770,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                                     <input value={newFolderName} onChange={e => setNewFolderName(e.target.value)}
                                       onKeyDown={e => { if (e.key === 'Enter' && newFolderName.trim()) void moveToFolder(s.id, newFolderName.trim()) }}
                                       placeholder={t('w1i.new_folder_ph')}
-                                      style={{ flex: 1, minWidth: 0, padding: '6px 8px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text)', fontSize: 12, fontFamily: 'var(--font-body)', outline: 'none' }} />
+                                      style={{ flex: 1, minWidth: 0, padding: '6px 8px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 12, fontFamily: 'var(--font-body)', outline: 'none' }} />
                                     <button onClick={() => { if (newFolderName.trim()) void moveToFolder(s.id, newFolderName.trim()) }}
                                       disabled={!newFolderName.trim()}
                                       style={{ padding: '0 10px', borderRadius: 7, border: 'none', background: newFolderName.trim() ? 'var(--studio-accent)' : 'var(--border)', color: newFolderName.trim() ? '#fff' : 'var(--text-dim)', fontSize: 12, fontWeight: 700, cursor: newFolderName.trim() ? 'pointer' : 'default', fontFamily: 'var(--font-body)' }}>
@@ -2845,14 +2857,14 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                 <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: '0 0 8px', lineHeight: 1.5 }}>{t('w1i.folder_hint')}</p>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
                   <button onClick={() => { setNewSysFolder(null); setNewSysNewFolder('') }}
-                    style={{ padding: '6px 12px', borderRadius: 999, border: `1px solid ${!chosen ? 'var(--studio-accent)' : 'var(--border)'}`, background: !chosen ? 'color-mix(in srgb, var(--studio-accent) 10%, transparent)' : 'var(--bg-alt)', color: !chosen ? 'var(--studio-accent)' : 'var(--text-mid)', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
+                    style={{ padding: '6px 12px', borderRadius: 999, border: `1px solid ${!chosen ? 'var(--studio-accent)' : 'var(--border)'}`, background: !chosen ? 'color-mix(in srgb, var(--studio-accent) 10%, transparent)' : 'var(--bg-card2)', color: !chosen ? 'var(--studio-accent)' : 'var(--text-mid)', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
                     {t('w1i.no_folder')}
                   </button>
                   {folders.map(f => {
                     const on = !newSysNewFolder.trim() && newSysFolder === f
                     return (
                       <button key={f} onClick={() => { setNewSysFolder(f); setNewSysNewFolder('') }}
-                        style={{ padding: '6px 12px', borderRadius: 999, border: `1px solid ${on ? 'var(--studio-accent)' : 'var(--border)'}`, background: on ? 'color-mix(in srgb, var(--studio-accent) 10%, transparent)' : 'var(--bg-alt)', color: on ? 'var(--studio-accent)' : 'var(--text-mid)', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
+                        style={{ padding: '6px 12px', borderRadius: 999, border: `1px solid ${on ? 'var(--studio-accent)' : 'var(--border)'}`, background: on ? 'color-mix(in srgb, var(--studio-accent) 10%, transparent)' : 'var(--bg-card2)', color: on ? 'var(--studio-accent)' : 'var(--text-mid)', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
                         {f}
                       </button>
                     )
@@ -2892,7 +2904,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                   return (
                     <button key={a.id} onClick={() => { setSystemAthlete(a.id); setAthletePickerOpen(false) }}
                       style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 11, border: 'none', background: on ? 'color-mix(in srgb, var(--studio-accent) 10%, transparent)' : 'transparent', cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font-body)', color: on ? 'var(--studio-accent)' : 'var(--text)', fontSize: 13.5, fontWeight: 600 }}>
-                      <span style={{ width: 22, height: 22, borderRadius: '50%', flexShrink: 0, background: 'var(--bg-alt)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: 'var(--text-mid)' }}>{a.name.charAt(0).toUpperCase()}</span>
+                      <span style={{ width: 22, height: 22, borderRadius: '50%', flexShrink: 0, background: 'var(--bg-card2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: 'var(--text-mid)' }}>{a.name.charAt(0).toUpperCase()}</span>
                       {a.name}
                     </button>
                   )
@@ -3018,7 +3030,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                       <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
                         <span style={{ width: 26, height: 26, borderRadius: 8, background: `color-mix(in srgb, ${KIND_COLOR[sel.kind]} 15%, transparent)`, color: KIND_COLOR[sel.kind], display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><KindIcon kind={sel.kind} size={14} /></span>
                         <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-display)' }}>{sel.title}</span>
-                        <span style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-dim)', background: 'var(--bg-alt)', border: '1px solid var(--border)', borderRadius: 6, padding: '2px 8px', marginLeft: 'auto' }}>{sub(sel)}</span>
+                        <span style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-dim)', background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 6, padding: '2px 8px', marginLeft: 'auto' }}>{sub(sel)}</span>
                       </div>
                       {sel.role && <div style={{ fontSize: 13, color: 'var(--text-mid)', marginTop: 7, lineHeight: 1.55, fontFamily: 'var(--font-body)' }}>{sel.role}</div>}
                       {(sel.kind === 'agent' || sel.kind === 'merge') && sel.model && <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase', color: KIND_COLOR[sel.kind], marginTop: 7 }}>{MODEL_LABEL[sel.model]}</div>}
@@ -3030,7 +3042,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                 <div style={{ flexShrink: 0, borderTop: '1px solid var(--border)', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10, width: '100%', boxSizing: 'border-box' }}>
                   <span style={{ flex: 1, fontSize: 12.5, fontWeight: 700, color: 'var(--studio-accent)', fontFamily: 'var(--font-body)' }}>{askLabel}</span>
                   <button onClick={doDecline}
-                    style={{ padding: '10px 16px', borderRadius: 11, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text-mid)', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>{t('w1i.no')}</button>
+                    style={{ padding: '10px 16px', borderRadius: 11, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-mid)', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>{t('w1i.no')}</button>
                   <button onClick={doConfirm}
                     style={{ padding: '10px 22px', borderRadius: 11, border: 'none', background: 'var(--studio-accent)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>{confirmLabel}</button>
                 </div>
@@ -3065,7 +3077,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
               </button>
               {graph.objective && (
                 <button onClick={() => { commit({ ...graph, objective: null }); setObjEditOpen(false) }}
-                  style={{ padding: '10px 14px', borderRadius: 11, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text-mid)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
+                  style={{ padding: '10px 14px', borderRadius: 11, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-mid)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
                   {t('w1i.remove')}
                 </button>
               )}
@@ -3080,7 +3092,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
         const hasHuman = graph.nodes.some(n => n.kind === 'validation' || (n.kind === 'action' && n.actionKey !== 'notify_report'))
         const cur = schedule ?? { frequency: 'weekly' as const, hour: 18, weekday: 6, enabled: false }
         const DAYS = [t('w1i.day_monday'), t('w1i.day_tuesday'), t('w1i.day_wednesday'), t('w1i.day_thursday'), t('w1i.day_friday'), t('w1i.day_saturday'), t('w1i.day_sunday')]
-        const selStyle: React.CSSProperties = { padding: '9px 11px', borderRadius: 9, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text)', fontSize: 13, fontFamily: 'var(--font-body)', outline: 'none', cursor: 'pointer' }
+        const selStyle: React.CSSProperties = { padding: '9px 11px', borderRadius: 9, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 13, fontFamily: 'var(--font-body)', outline: 'none', cursor: 'pointer' }
         return (
           <div onClick={() => setScheduleOpen(false)}
             style={{ position: 'fixed', inset: 0, zIndex: 13700, background: 'rgba(15,23,42,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
@@ -3117,7 +3129,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                   </p>
                   {/* Activation */}
                   <button onClick={() => void saveSchedule({ ...cur, enabled: !cur.enabled })} disabled={scheduleSaving}
-                    style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '11px 14px', borderRadius: 12, border: '1px solid var(--border)', background: cur.enabled ? 'color-mix(in srgb, var(--studio-accent) 8%, transparent)' : 'var(--bg-alt)', cursor: 'pointer', marginBottom: 12 }}>
+                    style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '11px 14px', borderRadius: 12, border: '1px solid var(--border)', background: cur.enabled ? 'color-mix(in srgb, var(--studio-accent) 8%, transparent)' : 'var(--bg-card2)', cursor: 'pointer', marginBottom: 12 }}>
                     <span style={{ width: 38, height: 22, borderRadius: 999, background: cur.enabled ? 'var(--studio-accent)' : 'var(--border-mid)', position: 'relative', transition: 'background 180ms', flexShrink: 0 }}>
                       <span style={{ position: 'absolute', top: 2, left: cur.enabled ? 18 : 2, width: 18, height: 18, borderRadius: '50%', background: '#fff', transition: 'left 180ms', boxShadow: '0 1px 3px rgba(0,0,0,0.25)' }} />
                     </span>
@@ -3163,7 +3175,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
             running: { bg: 'rgba(6,182,212,0.14)', col: '#06B6D4', label: t('w1i.roster_running') },
             done:    { bg: 'rgba(34,197,94,0.14)', col: '#16A34A', label: t('w1i.roster_done') },
             error:   { bg: 'rgba(239,68,68,0.14)', col: '#EF4444', label: t('w1i.roster_error') },
-            idle:    { bg: 'var(--bg-alt)', col: 'var(--text-dim)', label: t('w1i.roster_pending') },
+            idle:    { bg: 'var(--bg-card2)', col: 'var(--text-dim)', label: t('w1i.roster_pending') },
           }
           const c = map[st ?? 'idle']
           return <span style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.03em', textTransform: 'uppercase', color: c.col, background: c.bg, borderRadius: 999, padding: '3px 9px', flexShrink: 0 }}>{c.label}</span>
@@ -3199,7 +3211,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                   {detail.state === 'error'
                     ? <div style={{ padding: '12px 14px', borderRadius: 12, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)', color: '#EF4444', fontSize: 13 }}>{detail.error}</div>
                     : detail.text?.trim()
-                      ? <div style={{ padding: '14px 16px', borderRadius: 14, background: 'var(--bg-alt)', border: '1px solid var(--border)' }}><StudioMarkdown text={detail.text} /></div>
+                      ? <div style={{ padding: '14px 16px', borderRadius: 14, background: 'var(--bg-card2)', border: '1px solid var(--border)' }}><StudioMarkdown text={detail.text} /></div>
                       : <p style={{ fontSize: 13, color: 'var(--text-dim)' }}>{t('w1i.roster_no_output')}</p>}
                 </div>
               ) : (
@@ -3249,7 +3261,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                         {t('w1i.roster_stop')} ({doneN}/{targets.length})
                       </button>
                     ) : hasResults ? (
-                      <button onClick={() => setRosterResults({})} style={{ width: '100%', height: 50, borderRadius: 14, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text)', fontSize: 15, fontWeight: 800, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
+                      <button onClick={() => setRosterResults({})} style={{ width: '100%', height: 50, borderRadius: 14, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 15, fontWeight: 800, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
                         {t('w1i.roster_new')}
                       </button>
                     ) : (
@@ -3282,7 +3294,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
             </div>
 
             {/* Jauge mensuelle */}
-            <div style={{ padding: '12px 14px', borderRadius: 12, background: 'var(--bg-alt)', marginBottom: 10 }}>
+            <div style={{ padding: '12px 14px', borderRadius: 12, background: 'var(--bg-card2)', marginBottom: 10 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, fontWeight: 600, color: 'var(--text-mid)', fontFamily: 'var(--font-body)' }}>
                 <span>{t('w1i.monthly_quota_included', { tier: access.tier === 'expert' ? 'Expert' : 'Pro' })}</span>
                 <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatTokens(Math.min(access.monthlyUsed, access.monthlyLimit))} / {formatTokens(access.monthlyLimit)}</span>
@@ -3391,4 +3403,4 @@ const zBtn: React.CSSProperties = { width: 30, height: 28, borderRadius: 8, bord
 const paletteHdr: React.CSSProperties = { fontSize: 9.5, fontWeight: 800, letterSpacing: '0.09em', textTransform: 'uppercase', color: 'var(--text-dim)', padding: '3px 8px 2px' }
 const cta: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 7, padding: '9px 16px', borderRadius: 10, border: 'none', background: 'var(--primary)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)', flexShrink: 0 }
 const lbl: React.CSSProperties = { fontSize: 12, fontWeight: 600, color: 'var(--text-mid)', margin: '0 0 5px', display: 'block' }
-const fld: React.CSSProperties = { width: '100%', boxSizing: 'border-box', padding: '9px 11px', borderRadius: 9, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text)', fontSize: 13, fontFamily: 'var(--font-body)', outline: 'none', marginBottom: 14 }
+const fld: React.CSSProperties = { width: '100%', boxSizing: 'border-box', padding: '9px 11px', borderRadius: 9, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 13, fontFamily: 'var(--font-body)', outline: 'none', marginBottom: 14 }

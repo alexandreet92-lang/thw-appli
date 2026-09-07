@@ -184,20 +184,20 @@ export default function CoachStudio() {
           <div style={{ ...card }}>
             <div style={secLabel}>{t('w3d.system_to_run')}</div>
             <select value={systemId} onChange={e => setSystemId(e.target.value)}
-              style={{ width: '100%', maxWidth: 420, padding: '10px 12px', borderRadius: 11, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text)', fontSize: 14, fontFamily: 'var(--font-body)', cursor: 'pointer' }}>
+              style={{ width: '100%', maxWidth: 420, padding: '10px 12px', borderRadius: 11, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 14, fontFamily: 'var(--font-body)', cursor: 'pointer' }}>
               {systems.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
 
             {/* Ma méthode — persistée dans le système, appliquée par les agents */}
             <div style={{ marginTop: 12 }}>
               <button onClick={() => setMethodOpen(o => !o)}
-                style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '8px 13px', borderRadius: 10, border: `1px solid ${methodOpen ? 'var(--primary)' : 'var(--border)'}`, background: methodOpen ? 'color-mix(in srgb, var(--primary) 8%, transparent)' : 'var(--bg-alt)', color: methodOpen ? 'var(--primary)' : 'var(--text)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '8px 13px', borderRadius: 10, border: `1px solid ${methodOpen ? 'var(--primary)' : 'var(--border)'}`, background: methodOpen ? 'color-mix(in srgb, var(--primary) 8%, transparent)' : 'var(--bg-card2)', color: methodOpen ? 'var(--primary)' : 'var(--text)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></svg>
                 {t('w3d.method_btn')}
               </button>
             </div>
             {methodOpen && (
-              <div style={{ marginTop: 12, padding: '14px 15px', borderRadius: 12, background: 'var(--bg-alt)', border: '1px solid var(--border)' }}>
+              <div style={{ marginTop: 12, padding: '14px 15px', borderRadius: 12, background: 'var(--bg-card2)', border: '1px solid var(--border)' }}>
                 <div style={{ fontSize: 13.5, fontWeight: 700, marginBottom: 3 }}>{t('w3d.method_title')}</div>
                 <div style={{ fontSize: 11.5, color: 'var(--text-dim)', marginBottom: 14, lineHeight: 1.5 }}>{t('w3d.method_hint')}</div>
                 <MethodSeg label={t('w3d.method_aiwrites')} value={method.aiWrites ?? 'simple'} onChange={v => setMethod(m => ({ ...m, aiWrites: v as StudioMethod['aiWrites'] }))}
@@ -237,7 +237,7 @@ export default function CoachStudio() {
                 const on = selected.has(a.id)
                 return (
                   <button key={a.id} onClick={() => toggle(a.id)}
-                    style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '9px 11px', borderRadius: 11, border: `1px solid ${on ? 'var(--primary)' : 'var(--border)'}`, background: on ? 'color-mix(in srgb, var(--primary) 8%, transparent)' : 'var(--bg-alt)', cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font-body)' }}>
+                    style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '9px 11px', borderRadius: 11, border: `1px solid ${on ? 'var(--primary)' : 'var(--border)'}`, background: on ? 'color-mix(in srgb, var(--primary) 8%, transparent)' : 'var(--bg-card2)', cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font-body)' }}>
                     <span style={{ width: 18, height: 18, borderRadius: 5, border: `1.5px solid ${on ? 'var(--primary)' : 'var(--border-mid)'}`, background: on ? 'var(--primary)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                       {on && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>}
                     </span>
@@ -262,7 +262,7 @@ export default function CoachStudio() {
                 <span>{t('w3d.tri_analyzing')}</span>
                 <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 700, color: 'var(--text)' }}>{progress.done}/{progress.total}</span>
               </div>
-              <div style={{ height: 7, borderRadius: 99, background: 'var(--bg-alt)', overflow: 'hidden' }}>
+              <div style={{ height: 7, borderRadius: 99, background: 'var(--bg-card2)', overflow: 'hidden' }}>
                 <div style={{ height: '100%', width: `${progress.total ? Math.round((progress.done / progress.total) * 100) : 0}%`, background: 'var(--primary)', borderRadius: 99, transition: 'width .35s ease' }} />
               </div>
               <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 8 }}>{t('w3d.tri_keepopen')}</div>
@@ -308,7 +308,7 @@ export default function CoachStudio() {
                       <span style={{ width: 4, alignSelf: 'stretch', background: tok, flexShrink: 0 }} />
                       <div style={{ flex: 1, minWidth: 0, padding: '12px 14px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 11 }}>
-                          <span style={{ width: 38, height: 38, borderRadius: '50%', flexShrink: 0, display: 'grid', placeItems: 'center', fontWeight: 700, fontSize: 13, color: 'var(--text)', background: 'var(--bg-alt)', border: '1px solid var(--border)' }}>{initials(r.name)}</span>
+                          <span style={{ width: 38, height: 38, borderRadius: '50%', flexShrink: 0, display: 'grid', placeItems: 'center', fontWeight: 700, fontSize: 13, color: 'var(--text)', background: 'var(--bg-card2)', border: '1px solid var(--border)' }}>{initials(r.name)}</span>
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                               <span style={{ fontSize: 14.5, fontWeight: 700, color: 'var(--text)' }}>{r.name}</span>
@@ -324,7 +324,7 @@ export default function CoachStudio() {
                           ) : (
                             <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
                               <button onClick={() => void applyToAthlete(r)} disabled={applying.has(r.athleteId)} style={{ padding: '7px 12px', borderRadius: 9, border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 12.5, fontWeight: 700, cursor: applying.has(r.athleteId) ? 'default' : 'pointer', fontFamily: 'var(--font-body)', opacity: applying.has(r.athleteId) ? 0.6 : 1 }}>{applying.has(r.athleteId) ? t('w3d.tri_sending') : t('w3d.tri_validate')}</button>
-                              <button onClick={() => setOpenId(open ? null : r.athleteId)} style={{ padding: '7px 12px', borderRadius: 9, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text)', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>{open ? t('w3d.tri_close') : t('w3d.tri_adjust')}</button>
+                              <button onClick={() => setOpenId(open ? null : r.athleteId)} style={{ padding: '7px 12px', borderRadius: 9, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>{open ? t('w3d.tri_close') : t('w3d.tri_adjust')}</button>
                               <button onClick={() => setHandled(h => ({ ...h, [r.athleteId]: 'ignore' }))} style={{ padding: '7px 10px', borderRadius: 9, border: 'none', background: 'transparent', color: 'var(--text-dim)', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>{t('w3d.tri_ignore')}</button>
                             </div>
                           )}
@@ -338,7 +338,7 @@ export default function CoachStudio() {
                             ) : r.renders.map((x, i) => (
                               <div key={i} style={{ marginTop: i ? 12 : 0 }}>
                                 {x.title && <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)', marginBottom: 4 }}>{x.title}</div>}
-                                <div style={{ padding: '8px 10px', borderRadius: 9, background: 'var(--bg-alt)' }}><StudioMarkdown text={x.text} /></div>
+                                <div style={{ padding: '8px 10px', borderRadius: 9, background: 'var(--bg-card2)' }}><StudioMarkdown text={x.text} /></div>
                               </div>
                             ))}
                           </div>

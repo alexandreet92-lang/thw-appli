@@ -24,10 +24,11 @@ export type StudioNodeKind = 'trigger' | 'agent' | 'merge' | 'validation' | 'sou
 // Pages de l'app branchables en LECTURE.
 export type StudioSourceKey =
   | 'activities' | 'planning' | 'injuries' | 'recovery' | 'profile'
+  | 'records' | 'races' | 'zones' | 'questionnaire' | 'messages'
   // Apps externes connectées (données synchronisées depuis le wearable / service)
   | 'ext_strava' | 'ext_withings' | 'ext_polar'
 // Actions d'ÉCRITURE disponibles.
-export type StudioActionKey = 'planning_save' | 'planning_replace' | 'calendar_race' | 'nutrition_save' | 'notify_report'
+export type StudioActionKey = 'planning_save' | 'planning_replace' | 'calendar_race' | 'nutrition_save' | 'notify_report' | 'message_athlete'
 
 export interface StudioNode {
   id: string
@@ -130,6 +131,11 @@ export const SOURCE_LABEL: Record<StudioSourceKey, string> = {
   injuries:   'Mes blessures',
   recovery:   'Ma récupération (14 j)',
   profile:    'Mon profil',
+  records:    'Records & performances',
+  races:      'Compétitions à venir',
+  zones:      'Zones (FC, puissance, allure)',
+  questionnaire: 'Questionnaire & objectifs',
+  messages:   'Messages avec l’athlète',
   ext_strava:   'Strava · sorties synchronisées',
   ext_withings: 'Withings · poids & mensurations',
   ext_polar:    'Polar · sommeil, HRV & readiness',
@@ -141,6 +147,7 @@ export const ACTION_LABEL: Record<StudioActionKey, string> = {
   calendar_race:    'Créer une course au Calendrier',
   nutrition_save:   'Enregistrer le plan nutrition',
   notify_report:    'Envoyer le rapport en notification',
+  message_athlete:  'Envoyer un message à l’athlète',
 }
 
 // Un système ne peut tourner SEUL (planifié) que s'il n'attend aucun accord

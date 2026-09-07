@@ -192,11 +192,13 @@ export async function runGraphServer(userId: string, graph: StudioGraph, runId: 
           const text = await readSourceWith(sb, userId, key)
           outputs[n.id] = text
           logs.push({ nodeId: n.id, title: `${n.title} (${SOURCE_LABEL[key]})`, text })
-        } else if (n.kind === 'action' && n.actionKey === 'notify_report') {
-          // Seule action autorisée en autonome : le rapport à notifier = le
-          // contenu amont (le planificateur enverra la notification).
+        } else if (n.kind === 'action' && (n.actionKey === 'notify_report' || n.actionKey === 'message_athlete')) {
+          // Actions « sortie texte » : le contenu = l'amont. notify_report est
+          // envoyé par le planificateur ; message_athlete produit un BROUILLON
+          // de message que le coach relira et enverra à la validation (aucun
+          // envoi direct ici).
           const upstream = gatherUpstream(n.id)
-          if (!upstream.trim()) throw new Error('Aucun contenu à envoyer en notification')
+          if (!upstream.trim()) throw new Error('Aucun contenu à envoyer')
           outputs[n.id] = upstream
           logs.push({ nodeId: n.id, title: n.title, text: upstream })
         } else if (n.kind === 'validation' || n.kind === 'action') {

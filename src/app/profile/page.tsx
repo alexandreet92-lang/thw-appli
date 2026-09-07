@@ -923,6 +923,10 @@ function NotificationsBloc() {
   const { t } = useI18n()
   const [globalOn, setGlobalOn] = useState(true)
   const [prefs, setPrefs] = useState<Record<string, boolean>>(NOTIF_DEFAULTS)
+  // Bandeaux de notif au bureau (clé locale lue par NotificationBanners).
+  const [bannersOn, setBannersOn] = useState(true)
+  useEffect(() => { try { setBannersOn(localStorage.getItem('thw_notif_banners') !== '0') } catch { /* ignore */ } }, [])
+  const toggleBanners = () => { setBannersOn(v => { const n = !v; try { localStorage.setItem('thw_notif_banners', n ? '1' : '0') } catch { /* ignore */ } return n }) }
 
   // Persistance LOCALE (miroir) : sur l'app native, l'appel PATCH peut échouer
   // ponctuellement (réseau/token) et faisait « repartir » l'interrupteur à son
@@ -994,6 +998,13 @@ function NotificationsBloc() {
               <p style={{ fontSize:11.5, color:'var(--text-dim)', margin:'2px 0 0' }}>{t('profile.allNotificationsSub')}</p>
             </div>
             <Toggle value={globalOn} onChange={toggleGlobal}/>
+          </Line>
+          <Line>
+            <div style={{ flex:1, minWidth:0 }}>
+              <p style={{ fontSize:15, fontWeight:500, color:'var(--text)', margin:0 }}>{t('profile.deskBanners')}</p>
+              <p style={{ fontSize:11.5, color:'var(--text-dim)', margin:'2px 0 0' }}>{t('profile.deskBannersSub')}</p>
+            </div>
+            <Toggle value={bannersOn} onChange={toggleBanners}/>
           </Line>
         </Group>
       </Section>

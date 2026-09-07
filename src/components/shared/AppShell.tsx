@@ -11,6 +11,7 @@ import { DesktopShell } from '@/components/shared/DesktopShell'
 import { MobileShell } from '@/components/shared/MobileShell'
 import MobileTabBar from '@/components/MobileTabBar'
 import { GuideProvider } from '@/components/guide/GuideProvider'
+import { NotificationBanners } from '@/components/shared/NotificationBanners'
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [isDesktop, setIsDesktop] = useState<boolean>(() =>
@@ -26,6 +27,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <GuideProvider>
+      {/* Bandeaux de notification — bureau uniquement */}
+      {isDesktop && <NotificationBanners />}
       {isDesktop ? <DesktopShell>{children}</DesktopShell> : (
         <>
           <MobileShell>{children}</MobileShell>

@@ -14,6 +14,8 @@ export function Sheet({ title, onClose, children, footer }: {
   const { t } = useI18n()
   const [closing, setClosing] = useState(false)
   const startY = useRef<number | null>(null)
+  const scrollRef = useRef<HTMLDivElement | null>(null)
+  const atTop = useRef(true)   // le geste ne ferme la feuille QUE si le contenu est en haut
   const requestClose = useCallback(() => { setClosing(true); setTimeout(onClose, 260) }, [onClose])
 
   return createPortal(
@@ -21,8 +23,8 @@ export function Sheet({ title, onClose, children, footer }: {
       <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)' /* design-allow-color: voile de modale standard */, backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)',
         animation: `${closing ? 'fadeOutOverlay' : 'fadeInOverlay'} 260ms ease both` }} />
       <div onClick={e => e.stopPropagation()}
-        onTouchStart={e => { startY.current = e.touches[0].clientY }}
-        onTouchEnd={e => { if (startY.current != null && e.changedTouches[0].clientY - startY.current > 60) requestClose() }}
+        onTouchStart={e => { startY.current = e.touches[0].clientY; atTop.current = (scrollRef.current?.scrollTop ?? 0) <= 0 }}
+        onTouchEnd={e => { if (startY.current != null && atTop.current && e.changedTouches[0].clientY - startY.current > 60) requestClose() }}
         style={{
           position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 1, margin: '0 auto', maxWidth: 600,
           maxHeight: '92vh', display: 'flex', flexDirection: 'column', background: 'var(--bg-card)',
@@ -34,7 +36,7 @@ export function Sheet({ title, onClose, children, footer }: {
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12" /></svg>
           </button>
         </div>
-        <div style={{ overflowY: 'auto', padding: '0 var(--space-6) var(--space-6)', flex: 1 }}>{children}</div>
+        <div ref={scrollRef} style={{ overflowY: 'auto', overscrollBehavior: 'contain', padding: '0 var(--space-6) var(--space-6)', flex: 1 }}>{children}</div>
         {footer && <div style={{ padding: 'var(--space-4) var(--space-6)', flexShrink: 0 }}>{footer}</div>}
       </div>
     </div>,

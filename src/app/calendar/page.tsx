@@ -1554,6 +1554,15 @@ function AllTab({ races, eventTypes, events }: { races: Race[]; eventTypes: CalE
   const { t: tr } = useI18n()
   const monthShort = Array.from({ length: 12 }, (_, i) => tr(`lo.monthShort${i}`))
   const [view, setView] = useState<AllView>('vertical')
+  // La vue circulaire (ClockView) est masquée sur mobile → on cache aussi son
+  // bouton et on force la vue verticale sous 768 px.
+  const [isMobile, setIsMobile] = useState(false)
+  useEffect(() => {
+    const f = () => setIsMobile(window.innerWidth < 768)
+    f(); window.addEventListener('resize', f)
+    return () => window.removeEventListener('resize', f)
+  }, [])
+  const effView: AllView = isMobile ? 'vertical' : view
   const [detail, setDetail] = useState<UnifiedEvent | null>(null)
   const [hoveredId, setHoveredId] = useState<string | null>(null)
   const year = new Date().getFullYear()
@@ -1597,15 +1606,18 @@ function AllTab({ races, eventTypes, events }: { races: Race[]; eventTypes: CalE
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      {/* Toggle */}
+      {/* Toggle — la vue circulaire est cachée sur mobile */}
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
-        {([['vertical', tr('calendar.vertical')], ['circular', tr('calendar.circular')]] as [AllView, string][]).map(([v, l]) => (
-          <button key={v} onClick={() => setView(v)} style={{
+        {(isMobile
+          ? [['vertical', tr('calendar.vertical')]]
+          : [['vertical', tr('calendar.vertical')], ['circular', tr('calendar.circular')]]
+        ).map(([v, l]) => (
+          <button key={v} onClick={() => setView(v as AllView)} style={{
             padding: '6px 13px', borderRadius: 9, border: '1px solid', fontSize: 11, cursor: 'pointer',
-            fontWeight: view === v ? 600 : 400,
-            borderColor: view === v ? '#06B6D4' : 'var(--border)',
-            background: view === v ? 'rgba(6,182,212,0.10)' : 'var(--bg-card)',
-            color: view === v ? '#06B6D4' : 'var(--text-mid)',
+            fontWeight: effView === v ? 600 : 400,
+            borderColor: effView === v ? '#06B6D4' : 'var(--border)',
+            background: effView === v ? 'rgba(6,182,212,0.10)' : 'var(--bg-card)',
+            color: effView === v ? '#06B6D4' : 'var(--text-mid)',
           }}>
             {l}
           </button>
@@ -1613,10 +1625,10 @@ function AllTab({ races, eventTypes, events }: { races: Race[]; eventTypes: CalE
       </div>
 
       {/* Circular view */}
-      {view === 'circular' && <ClockView events={clockEvents} year={year} />}
+      {effView === 'circular' && <ClockView events={clockEvents} year={year} />}
 
       {/* Vertical view */}
-      {view === 'vertical' && (
+      {effView === 'vertical' && (
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           {unified.length === 0 && (
             <div style={{ padding: '32px 20px', textAlign: 'center', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 14 }}>

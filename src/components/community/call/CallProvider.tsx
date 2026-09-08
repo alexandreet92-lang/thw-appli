@@ -57,7 +57,7 @@ export interface CallCtx {
   screens: Tile[]
   people: Tile[]
   devices: { mics: MediaDeviceInfo[]; cams: MediaDeviceInfo[] }
-  start: (target: CallTarget, title: string) => void
+  start: (target: CallTarget, title: string, opts?: { muted?: boolean; cam?: boolean }) => void
   leave: () => void
   toggleMic: () => void
   toggleCam: () => void
@@ -130,7 +130,7 @@ export function CallProvider({ children }: { children: ReactNode }) {
     setMicOn(true); setCamOn(false); setScreenOn(false); setBlurOn(false); setNeedAudioTap(false); setNotice(null); setErrDetail(null)
   }, [detachAllAudio])
 
-  const start = useCallback((target: CallTarget, callTitle: string) => {
+  const start = useCallback((target: CallTarget, callTitle: string, opts?: { muted?: boolean; cam?: boolean }) => {
     const key = targetKey(target)
     // Déjà dans cet appel → on ré-agrandit simplement.
     if (roomRef.current && tKey === key) { setMinimized(false); return }
@@ -194,9 +194,15 @@ export function CallProvider({ children }: { children: ReactNode }) {
 
         await room.connect(url, token)
         if (!isThis()) { void room.disconnect(); return }
-        try { await room.localParticipant.setMicrophoneEnabled(true); setMicOn(true) }
+        const micStart = !opts?.muted   // pré-jonction : possibilité d'entrer micro coupé
+        try { await room.localParticipant.setMicrophoneEnabled(micStart); setMicOn(micStart) }
         catch { setMicOn(false); setNotice(t('w3e.mic_denied_listen_only')) }
         if (!isThis()) { void room.disconnect(); return }
+        // Pré-jonction : entrer directement caméra allumée si demandé.
+        if (opts?.cam) {
+          try { await room.localParticipant.setCameraEnabled(true); setCamOn(true) } catch { /* refus caméra : on reste en audio */ }
+          if (!isThis()) { void room.disconnect(); return }
+        }
         setStatus('connected'); setStartedAt(Date.now()); setNeedAudioTap(!room.canPlaybackAudio); bump()
         // Premier arrivé dans un canal → prévient les membres de l'espace.
         if (room.remoteParticipants.size === 0 && 'channelId' in target) {

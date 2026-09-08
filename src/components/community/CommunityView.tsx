@@ -15,6 +15,7 @@ import { listChannels, createChannel, getUnreadChannelIds, getMutedChannelIds, t
 import { getActiveCalls } from '@/lib/community/calls'
 import { uploadCommunityMedia } from '@/lib/community/messages'
 import { ChannelChat } from './ChannelChat'
+import { VoiceChannelSheet } from './VoiceChannelSheet'
 import { EventsView } from './EventsView'
 import { VoiceView } from './VoiceView'
 import { useCall } from './call/CallProvider'
@@ -45,6 +46,7 @@ export function CommunityView() {
   const [showCreate, setShowCreate] = useState(false)
   const [showDiscover, setShowDiscover] = useState(false)
   const [showManage, setShowManage] = useState(false)
+  const [voiceSheetCh, setVoiceSheetCh] = useState<{ id: string; name: string } | null>(null)
   const [unread, setUnread] = useState<Set<string>>(new Set())
   const [muted, setMuted] = useState<Set<string>>(new Set())
   const [activeCalls, setActiveCalls] = useState<Record<string, number>>({})
@@ -133,7 +135,20 @@ export function CommunityView() {
     setSpaceId(id); setChannelId(null); setPanel('chat')
   }
   function selectChannel(id: string) {
+    // Salon VOCAL → ouvre la sur-page de pré-jonction (Rejoindre / micro-cam /
+    // message). Salon TEXTUEL → ouvre la discussion (slide droite→gauche).
+    const ch = channels.find(c => c.id === id)
+    if (ch?.kind === 'voice') { setVoiceSheetCh({ id: ch.id, name: ch.name }); return }
     setChannelId(id); markRead(id); setPanel('chat')
+    if (isNarrow) { setDir('fwd'); setMView('chat') }
+  }
+  function openChannelChat(id: string) {
+    setChannelId(id); markRead(id); setPanel('chat')
+    if (isNarrow) { setDir('fwd'); setMView('chat') }
+  }
+  function joinVoice(id: string, name: string, opts: { muted: boolean; cam: boolean }) {
+    setChannelId(id); setPanel('call')
+    call.start({ channelId: id }, `#${name}`, opts)
     if (isNarrow) { setDir('fwd'); setMView('chat') }
   }
   function selectEvents() {
@@ -281,6 +296,17 @@ export function CommunityView() {
         <DiscoverSheet
           onClose={() => setShowDiscover(false)}
           onJoined={(id) => { setShowDiscover(false); void loadSpaces(id); if (isNarrow) { setDir('fwd'); setMView('home') } }}
+        />
+      )}
+
+      {voiceSheetCh && (
+        <VoiceChannelSheet
+          channel={voiceSheetCh}
+          spaceName={space?.name}
+          isMember={!!space?.isMember}
+          onClose={() => setVoiceSheetCh(null)}
+          onJoin={opts => joinVoice(voiceSheetCh.id, voiceSheetCh.name, opts)}
+          onOpenChat={() => openChannelChat(voiceSheetCh.id)}
         />
       )}
     </div>

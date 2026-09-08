@@ -21174,19 +21174,19 @@ export default function AIPanel({
 
   // ── Détection support voix ───────────────────────────────────
   useEffect(() => {
-    // ⚠️ App native (Capacitor / WKWebView) : accéder au micro (getUserMedia /
-    // SpeechRecognition) FAIT PLANTER l'app si Info.plist n'a pas
-    // NSMicrophoneUsageDescription, et la reco vocale est de toute façon peu
-    // fiable en WebView iOS. → On DÉSACTIVE la voix sur l'app native (les boutons
-    // vocaux n'apparaissent pas) : plus de crash. (Réactivable une fois la
-    // permission micro + une vraie solution audio native en place.)
-    if (isNativeApp()) { setSpeechSupported(false); setDictationSupported(false); return }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
-    setSpeechSupported(!!SR && typeof window.speechSynthesis !== 'undefined')
-    // La dictée capture le PCM via getUserMedia + AudioContext (ScriptProcessor),
-    // PAS via MediaRecorder. On ne doit donc PAS exiger MediaRecorder (absent de
-    // certains WKWebView iOS) sinon le bouton micro disparaît à tort.
+    // CONVERSATION vocale temps réel : repose sur la Web Speech API
+    // (SpeechRecognition), ABSENTE/instable en WKWebView iOS → on la garde
+    // désactivée sur l'app native (le « parler avec l'IA » viendra avec une vraie
+    // solution native, cf. deuxième temps).
+    setSpeechSupported(!isNativeApp() && !!SR && typeof window.speechSynthesis !== 'undefined')
+    // DICTÉE (écrit dans le champ ce que tu dis) : capture le PCM via
+    // getUserMedia + AudioContext puis transcrit via Whisper (/api/stt). Ça
+    // marche AUSSI sur l'app native — à condition que Info.plist déclare
+    // NSMicrophoneUsageDescription (sinon iOS tue l'app au 1er accès micro).
+    // On n'exige PAS MediaRecorder (absent de certains WKWebView iOS) sinon le
+    // bouton micro disparaîtrait à tort.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const hasAudioCtx = typeof window.AudioContext !== 'undefined' || typeof (window as any).webkitAudioContext !== 'undefined'
     setDictationSupported(!!navigator.mediaDevices?.getUserMedia && hasAudioCtx)

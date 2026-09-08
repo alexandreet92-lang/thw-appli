@@ -23,6 +23,28 @@ type Mode = 'main' | 'plan' | 'stats' | 'plus'
 const ACCENT = '#06B6D4'
 const DIM    = '#9CA3AF'
 
+// Une sur-page est ouverte ? Toutes les sur-pages (BottomSheet, SlideSheet, les
+// feuilles bespoke calendar/performance/blessure/communauté, l'AIPanel…) sont
+// montées via createPortal sur <body> avec un fond « plein écran » fixe et un
+// z-index élevé. On détecte cet enfant direct de <body> → on masque alors la
+// barre à bulles (elle transparaissait sous les voiles translucides). Un seul
+// point de contrôle plutôt que de retoucher chaque feuille.
+function anyOverpageOpen(): boolean {
+  if (typeof document === 'undefined') return false
+  const vw = window.innerWidth, vh = window.innerHeight
+  for (const el of Array.from(document.body.children)) {
+    if (!(el instanceof HTMLElement)) continue
+    const cs = getComputedStyle(el)
+    if (cs.position !== 'fixed' || cs.display === 'none' || cs.visibility === 'hidden') continue
+    const z = parseInt(cs.zIndex || '0', 10)
+    if (!(z > 100)) continue
+    const r = el.getBoundingClientRect()
+    // Couvre l'essentiel de l'écran → c'est bien une sur-page, pas un toast/bulle.
+    if (r.width >= vw * 0.85 && r.height >= vh * 0.7) return true
+  }
+  return false
+}
+
 const ROUTE_TO_TAB: Record<string, Exclude<Mode, 'main'>> = {
   '/planning': 'plan',    '/calendar': 'plan',     '/session': 'plan',  '/injuries': 'plan',
   '/activities': 'stats', '/recovery': 'stats',    '/nutrition': 'stats', '/performance': 'stats',
@@ -95,6 +117,7 @@ export default function MobileTabBar() {
   const [exiting, setExiting] = useState(false)
   const [aiOpen, setAiOpen]   = useState(false)
   const [hidden, setHidden]   = useState(false)
+  const [overpage, setOverpage] = useState(false)
 
   // Prefetch all main routes so navigation is instant
   useEffect(() => {
@@ -124,6 +147,20 @@ export default function MobileTabBar() {
   // Return to main on route change
   useEffect(() => { setMode('main') }, [pathname])
 
+  // Masque la barre dès qu'une sur-page (feuille/modale plein écran) est ouverte.
+  // On observe l'ajout/retrait d'enfants de <body> (là où les portails montent).
+  useEffect(() => {
+    if (typeof document === 'undefined') return
+    const scan = () => setOverpage(anyOverpageOpen())
+    let raf = 0
+    const schedule = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(scan) }
+    schedule()
+    const mo = new MutationObserver(schedule)
+    mo.observe(document.body, { childList: true })
+    window.addEventListener('resize', schedule)
+    return () => { cancelAnimationFrame(raf); mo.disconnect(); window.removeEventListener('resize', schedule) }
+  }, [pathname])
+
   function switchTo(next: Mode) {
     if (next === mode) return
     setExiting(true)
@@ -141,7 +178,7 @@ export default function MobileTabBar() {
     if (isFullscreenRoute(pathname)) return null
     return (
       <>
-        {!hidden && (
+        {!hidden && !overpage && (
           <nav className="mobile-tab-bar thw-glass md:hidden" style={BAR}>
             <div style={{ display: 'flex', width: '100%', height: 64, alignItems: 'center' }}>
               {COACH_TABS.map(tab => {
@@ -180,7 +217,7 @@ export default function MobileTabBar() {
 
   return (
     <>
-      {!hidden && (
+      {!hidden && !overpage && (
       <nav className="mobile-tab-bar thw-glass md:hidden" style={BAR}>
         <div style={{
           display: 'flex', width: '100%', height: 64, alignItems: 'center',

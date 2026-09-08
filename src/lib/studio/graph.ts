@@ -101,6 +101,7 @@ export interface StudioGraph {
   updatedAt: number
   objective?: StudioObjective | null   // système vivant : objectif du moment
   method?: StudioMethod | null         // méthode du coach appliquée par les agents
+  athleteIds?: string[] | null         // coach : athlètes ciblés par ce système (run sur la sélection)
 }
 
 export function genId(): string {

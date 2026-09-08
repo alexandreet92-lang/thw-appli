@@ -216,9 +216,12 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
       setCoachAccess(ok)
       if (!ok) return
       const ath = await listMyAthletes().catch(() => [])
-      setCoachAthletes(ath.map(a => ({ id: a.id, name: a.full_name || a.first_name || t('w1i.athlete') })))
+      setCoachAthletes(ath.map(a => ({ id: a.id, name: a.full_name || a.first_name || t('w1i.athlete'), sports: a.sports ?? [], group: a.group ?? null })))
     })
   }, [])
+  // Point 1 — « Recommandés pour mes athlètes » : sélection multiple + filtre sport.
+  const [athleteSel, setAthleteSel] = useState<Set<string>>(new Set())
+  const [sportFilter, setSportFilter] = useState<string | null>(null)
   const [walletOpen, setWalletOpen] = useState(false)
   const [runs, setRuns] = useState<RunRow[] | null>(null)
   const [openRunId, setOpenRunId] = useState<string | null>(null)
@@ -238,7 +241,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
   const [newSysNewFolder, setNewSysNewFolder] = useState('')
   // Coach : rattacher un système « Pour mes athlètes » à un athlète précis (optionnel).
   const [newSysAthlete, setNewSysAthlete] = useState<string | null>(null)
-  const [coachAthletes, setCoachAthletes] = useState<{ id: string; name: string }[]>([])
+  const [coachAthletes, setCoachAthletes] = useState<{ id: string; name: string; sports: string[]; group: string | null }[]>([])
   // Planification autonome (un planning par système)
   const [schedule, setSchedule] = useState<{ frequency: 'daily' | 'weekly'; hour: number; weekday: number; enabled: boolean } | null>(null)
   const [scheduleOpen, setScheduleOpen] = useState(false)
@@ -449,8 +452,20 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
 
   // ── Recommandations « pour toi » : l'IA lit profil + données réelles et
   // propose des systèmes prêts à lancer. Caché 24 h (coût), rafraîchissable. ──
+  // Athlètes ciblés par les recos coach : la sélection, filtrée par sport ;
+  // à défaut de sélection, tout le roster (filtré). Plafonné pour le coût.
+  const recoTargetAthletes = useCallback((): { id: string; name: string }[] => {
+    let list = coachAthletes
+    if (sportFilter) list = list.filter(a => a.sports.includes(sportFilter))
+    const picked = athleteSel.size > 0 ? list.filter(a => athleteSel.has(a.id)) : list
+    return picked.slice(0, 3)
+  }, [coachAthletes, athleteSel, sportFilter])
+
   const loadRecos = useCallback(async (force = false) => {
-    const RECO_KEY = 'thw_studio_recos'
+    const coachMode = scopeTab === 'coach'
+    const targets = coachMode ? recoTargetAthletes() : []
+    const sig = coachMode ? `coach:${targets.map(a => a.id).sort().join(',')}:${sportFilter ?? ''}` : 'perso'
+    const RECO_KEY = `thw_studio_recos_${sig}`
     setRecosError(false)
     if (!force) {
       try {
@@ -466,11 +481,23 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
       const supabase = createClient()
       const user = await getCurrentUser()
       if (!user) return
-      const keys: StudioSourceKey[] = ['profile', 'activities', 'recovery', 'injuries']
-      // Système coach ciblant un athlète : recommandations basées sur SES données.
-      const ctxUid = (scopeTab === 'coach' ? openAthleteId : null) ?? user.id
-      const parts = await Promise.all(keys.map(k => readSourceWith(supabase, ctxUid, k).catch(() => '')))
-      const ctx = parts.filter(Boolean).join('\n\n')
+      let ctx: string
+      if (coachMode) {
+        // Recos « pour mes athlètes » : contexte agrégé des athlètes sélectionnés
+        // (profil + activités + récup), étiqueté par athlète.
+        const keys: StudioSourceKey[] = ['profile', 'activities', 'recovery', 'injuries']
+        const uids = targets.length ? targets : [{ id: user.id, name: '' }]
+        const blocks = await Promise.all(uids.map(async a => {
+          const parts = await Promise.all(keys.map(k => readSourceWith(supabase, a.id, k).catch(() => '')))
+          const body = parts.filter(Boolean).join('\n')
+          return a.name ? `### Athlète : ${a.name}\n${body}` : body
+        }))
+        ctx = blocks.filter(Boolean).join('\n\n')
+      } else {
+        const keys: StudioSourceKey[] = ['profile', 'activities', 'recovery', 'injuries']
+        const parts = await Promise.all(keys.map(k => readSourceWith(supabase, user.id, k).catch(() => '')))
+        ctx = parts.filter(Boolean).join('\n\n')
+      }
       const recommended = await recommendSystems(ctx, builderModel)
       const items = recommended
         .map(r => ({ title: r.title, why: r.why, graph: planToGraph(r.plan, r.why || r.title).graph }))
@@ -482,12 +509,16 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
     } finally {
       setRecosLoading(false)
     }
-  }, [builderModel])
+  }, [builderModel, scopeTab, sportFilter, recoTargetAthletes])
 
-  // Charge les recos une fois l'accès Studio confirmé (Pro/Expert).
+  // Charge les recos une fois l'accès Studio confirmé (Pro/Expert), et à chaque
+  // changement d'espace (Pour moi ↔ Pour mes athlètes) / de filtre sport. Le
+  // changement de sélection d'athlètes NE relance PAS tout seul (coût) : on
+  // recalcule via le bouton « Régénérer » — le cache par signature reste servi.
   useEffect(() => {
     if (access?.allowed) void loadRecos(false)
-  }, [access?.allowed, loadRecos])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [access?.allowed, scopeTab, sportFilter])
 
   // Signaux santé : calculés à l'accueil ET dans un système (garde-fou visible
   // + suggestion proactive). Recalculé quand on change de vue / de système.
@@ -783,7 +814,13 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
   }
   const newSystem = async (name: string, g: StudioGraph, folder?: string | null, athleteId: string | null = null) => {
     try {
-      const row = await createSystem(name, { ...g, name }, scopeTab, athleteId)
+      // Coach : le système cible la SÉLECTION d'athlètes (multi). On stocke la
+      // liste dans le graphe (athleteIds) et le 1er comme athlète « principal »
+      // (badge + contexte). Perso : aucun athlète.
+      const sel = scopeTab === 'coach' ? Array.from(athleteSel) : []
+      const primary = athleteId ?? sel[0] ?? null
+      const g2: StudioGraph = { ...g, name, athleteIds: sel.length ? sel : (g.athleteIds ?? null) }
+      const row = await createSystem(name, g2, scopeTab, primary)
       // Dossier explicite (popover) sinon dossier actif s'il y en a un.
       const dest = folder !== undefined ? folder : activeFolder
       if (dest) { void updateSystem(row.id, { folder: dest }).catch(() => {}); row.folder = dest }
@@ -2633,12 +2670,69 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                   </div>
                 )}
 
-                {/* ── Recommandés pour toi : l'IA propose, tu n'as qu'à confirmer ── */}
+                {/* ── Deux espaces : Pour moi · Pour mes athlètes ── */}
+                {activeFolder === null && (
+                <div style={{ display: 'inline-flex', gap: 3, padding: 3, borderRadius: 12, background: 'var(--bg-card2)', margin: '0 0 14px' }}>
+                  {([['perso', t('w1i.for_me')], ['coach', t('w1i.for_my_athletes')]] as const).map(([v, l]) => {
+                    // « Pour mes athlètes » verrouillé sans abonnement coach.
+                    const locked = v === 'coach' && !coachAccess
+                    return (
+                      <button key={v} onClick={() => { if (locked) { setScopeTab('perso'); alert(t('w1i.athletes_space_locked')); return } setScopeTab(v) }}
+                        title={locked ? t('w1i.coach_only') : undefined}
+                        style={{ padding: '7px 14px', borderRadius: 9, border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 12.5, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 6,
+                          background: scopeTab === v ? 'var(--bg-card)' : 'transparent', color: scopeTab === v ? 'var(--studio-accent)' : 'var(--text-mid)', opacity: locked ? 0.55 : 1, boxShadow: scopeTab === v ? '0 1px 3px rgba(0,0,0,0.12)' : 'none' }}>
+                        {l}
+                        {locked && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>}
+                      </button>
+                    )
+                  })}
+                </div>
+                )}
+
+                {/* ── Coach : filtre par sport + sélection d'athlètes (cible des recos & systèmes) ── */}
+                {activeFolder === null && scopeTab === 'coach' && coachAccess && coachAthletes.length > 0 && (() => {
+                  const sportLabel = (s: string) => ({ running: 'Course', run: 'Course', cycling: 'Vélo', bike: 'Vélo', hyrox: 'Hyrox', gym: 'Muscu', musculation: 'Muscu', swimming: 'Natation', swim: 'Natation', rowing: 'Aviron', triathlon: 'Triathlon' } as Record<string, string>)[s] ?? (s.charAt(0).toUpperCase() + s.slice(1))
+                  const sports = Array.from(new Set(coachAthletes.flatMap(a => a.sports))).filter(Boolean)
+                  const filtered = coachAthletes.filter(a => !sportFilter || a.sports.includes(sportFilter))
+                  const toggle = (id: string) => setAthleteSel(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n })
+                  const chip = (active: boolean) => ({ padding: '6px 12px', borderRadius: 999, border: `1px solid ${active ? 'var(--studio-accent)' : 'var(--border)'}`, background: active ? 'color-mix(in srgb, var(--studio-accent) 12%, var(--bg-card))' : 'var(--bg-card)', color: active ? 'var(--studio-accent)' : 'var(--text-mid)', cursor: 'pointer', fontSize: 12.5, fontWeight: 700, fontFamily: 'var(--font-body)' } as const)
+                  return (
+                    <div style={{ marginBottom: 20, padding: 14, borderRadius: 16, border: '1px solid var(--border)', background: 'var(--bg-card)' }}>
+                      <div style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--text)', fontFamily: 'var(--font-body)', marginBottom: 3 }}>{t('w1i.select_athletes')}</div>
+                      <p style={{ fontSize: 11.5, color: 'var(--text-dim)', margin: '0 0 11px', fontFamily: 'var(--font-body)', lineHeight: 1.5 }}>{t('w1i.select_athletes_hint')}</p>
+                      {sports.length > 1 && (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7, marginBottom: 11 }}>
+                          <button onClick={() => setSportFilter(null)} style={chip(!sportFilter)}>{t('w1i.all_sports')}</button>
+                          {sports.map(s => <button key={s} onClick={() => setSportFilter(s)} style={chip(sportFilter === s)}>{sportLabel(s)}</button>)}
+                        </div>
+                      )}
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7, marginBottom: 11 }}>
+                        {filtered.map(a => {
+                          const on = athleteSel.has(a.id)
+                          return (
+                            <button key={a.id} onClick={() => toggle(a.id)} style={chip(on)}>
+                              {on && <span style={{ marginRight: 5 }}>✓</span>}{a.name}
+                            </button>
+                          )
+                        })}
+                        {filtered.length === 0 && <span style={{ fontSize: 12, color: 'var(--text-dim)', fontFamily: 'var(--font-body)' }}>{t('w1i.no_athlete_for_sport')}</span>}
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 11.5, fontFamily: 'var(--font-body)' }}>
+                        <button onClick={() => setAthleteSel(new Set(filtered.map(a => a.id)))} style={{ background: 'none', border: 'none', color: 'var(--studio-accent)', cursor: 'pointer', fontWeight: 700, padding: 0 }}>{t('w1i.select_all')}</button>
+                        <button onClick={() => setAthleteSel(new Set())} style={{ background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', fontWeight: 700, padding: 0 }}>{t('w1i.select_none')}</button>
+                        <div style={{ flex: 1 }} />
+                        <span style={{ color: 'var(--text-dim)' }}>{t('w1i.n_selected', { n: athleteSel.size })}</span>
+                      </div>
+                    </div>
+                  )
+                })()}
+
+                {/* ── Recommandés (pour toi / pour mes athlètes) : l'IA propose, tu confirmes ── */}
                 {activeFolder === null && (recosLoading || recos.length > 0 || recosError) && (
                   <div style={{ marginBottom: 26 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '4px 0 4px' }}>
                       <span style={{ color: 'var(--studio-accent)', display: 'flex' }}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l2.4 7.4H22l-6 4.6 2.3 7.4-6.3-4.6L5.7 21 8 14 2 9.4h7.6z"/></svg></span>
-                      <span style={{ fontSize: 12, fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--text)', fontFamily: 'var(--font-body)' }}>{t('w1i.recommended_for_you')}</span>
+                      <span style={{ fontSize: 12, fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--text)', fontFamily: 'var(--font-body)' }}>{scopeTab === 'coach' ? t('w1i.recommended_for_athletes') : t('w1i.recommended_for_you')}</span>
                       <div style={{ flex: 1 }} />
                       <button onClick={() => void loadRecos(true)} disabled={recosLoading} title={t('w1i.regenerate_recos')} aria-label={t('w1i.regenerate')}
                         style={{ display: 'flex', alignItems: 'center', gap: 5, height: 26, padding: '0 9px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-mid)', cursor: recosLoading ? 'default' : 'pointer', fontSize: 11.5, fontWeight: 700, fontFamily: 'var(--font-body)' }}>
@@ -2646,7 +2740,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                         {t('w1i.regenerate')}
                       </button>
                     </div>
-                    <p style={{ fontSize: 11.5, color: 'var(--text-dim)', margin: '0 0 12px', fontFamily: 'var(--font-body)' }}>{t('w1i.recos_hint')}</p>
+                    <p style={{ fontSize: 11.5, color: 'var(--text-dim)', margin: '0 0 12px', fontFamily: 'var(--font-body)' }}>{scopeTab === 'coach' ? t('w1i.recos_hint_athletes') : t('w1i.recos_hint')}</p>
                     {recosLoading && recos.length === 0 ? (
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: 12 }}>
                         {[0, 1, 2].map(i => (
@@ -2689,22 +2783,6 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                   </div>
                 )}
 
-                {/* ── Deux espaces : Pour moi · Pour mes athlètes ── */}
-                <div style={{ display: 'inline-flex', gap: 3, padding: 3, borderRadius: 12, background: 'var(--bg-card2)', margin: '0 0 14px' }}>
-                  {([['perso', t('w1i.for_me')], ['coach', t('w1i.for_my_athletes')]] as const).map(([v, l]) => {
-                    // « Pour mes athlètes » verrouillé sans abonnement coach.
-                    const locked = v === 'coach' && !coachAccess
-                    return (
-                      <button key={v} onClick={() => { if (locked) { setScopeTab('perso'); alert(t('w1i.athletes_space_locked')); return } setScopeTab(v) }}
-                        title={locked ? t('w1i.coach_only') : undefined}
-                        style={{ padding: '7px 14px', borderRadius: 9, border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 12.5, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 6,
-                          background: scopeTab === v ? 'var(--bg-card)' : 'transparent', color: scopeTab === v ? 'var(--studio-accent)' : 'var(--text-mid)', opacity: locked ? 0.55 : 1, boxShadow: scopeTab === v ? '0 1px 3px rgba(0,0,0,0.12)' : 'none' }}>
-                        {l}
-                        {locked && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>}
-                      </button>
-                    )
-                  })}
-                </div>
                 {/* ── Mes systèmes ── */}
                 <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--text-dim)', margin: '4px 0 10px', fontFamily: 'var(--font-body)' }}>{activeFolder ?? (scopeTab === 'coach' ? t('w1i.systems_for_athletes') : t('w1i.my_systems'))}</div>
                 {scopeTab === 'coach' && (

@@ -31,6 +31,8 @@ export interface AthleteSummary {
   last_seen_at: string | null
   linkId: string
   since: string | null
+  sports: string[]
+  group: string | null
 }
 
 async function uid(): Promise<string> {
@@ -112,13 +114,13 @@ export async function listMyAthletes(): Promise<AthleteSummary[]> {
   const sb = createClient()
   const coachId = await uid()
   const { data: links } = await sb.from('coach_athlete')
-    .select('id, athlete_id, accepted_at').eq('coach_id', coachId).eq('status', 'accepted')
+    .select('id, athlete_id, accepted_at, group_name').eq('coach_id', coachId).eq('status', 'accepted')
     .order('accepted_at', { ascending: false })
-  const rows = (links ?? []) as { id: string; athlete_id: string; accepted_at: string | null }[]
+  const rows = (links ?? []) as { id: string; athlete_id: string; accepted_at: string | null; group_name: string | null }[]
   if (!rows.length) return []
   const ids = rows.map(r => r.athlete_id)
   const { data: profs } = await sb.from('profiles')
-    .select('id, full_name, first_name, avatar_url, last_seen_at').in('id', ids)
+    .select('id, full_name, first_name, avatar_url, last_seen_at, sports').in('id', ids)
   const byId = new Map((profs ?? []).map(p => [p.id as string, p as Record<string, unknown>]))
   return rows.map(r => {
     const p = byId.get(r.athlete_id)
@@ -130,6 +132,8 @@ export async function listMyAthletes(): Promise<AthleteSummary[]> {
       last_seen_at: (p?.last_seen_at as string | null) ?? null,
       linkId: r.id,
       since: r.accepted_at,
+      sports: Array.isArray(p?.sports) ? (p!.sports as string[]) : [],
+      group: r.group_name,
     }
   })
 }

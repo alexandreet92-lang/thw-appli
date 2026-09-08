@@ -83,14 +83,22 @@ export default function CoachStudio() {
     return () => { cancelled = true }
   }, [searchParams])
 
-  // Système lié à un athlète précis → on cible cet athlète (verrouillé sur lui).
-  const linkedAthleteId = systems.find(s => s.id === systemId)?.athlete_id ?? null
+  // Cible du système : la SÉLECTION d'athlètes définie dans le Studio
+  // (graph.athleteIds, multi) — à défaut l'athlète unique lié (athlete_id).
+  // On pré-remplit à l'ouverture du système ; la sélection reste modifiable.
   useEffect(() => {
-    if (linkedAthleteId) setSelected(new Set([linkedAthleteId]))
-  }, [linkedAthleteId])
+    const sys = systems.find(s => s.id === systemId)
+    const targets = (sys?.graph?.athleteIds && sys.graph.athleteIds.length)
+      ? sys.graph.athleteIds
+      : (sys?.athlete_id ? [sys.athlete_id] : [])
+    if (targets.length) {
+      const valid = new Set(athletes.map(a => a.id))
+      setSelected(new Set(targets.filter(id => valid.has(id))))
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [systemId])
 
   const toggle = (id: string) => {
-    if (linkedAthleteId) return   // sélection verrouillée sur l'athlète lié
     setSelected(s => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n })
   }
 

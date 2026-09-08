@@ -415,28 +415,43 @@ function ChannelColumn({ space, channels, activeId, loading, isNarrow, joining, 
         )}
         {loading ? (
           [0, 1, 2, 3].map(i => <span key={i} style={{ display: 'block', height: 34, borderRadius: 'var(--r-sm)', background: 'var(--surface-neutral)', margin: '0 var(--space-2) var(--space-2)' }} />)
-        ) : channels.map(c => {
-          const active = activeId === c.id
-          const isMuted = muted.has(c.id)
-          const isUnread = unread.has(c.id) && !active && !isMuted
-          return (
-            <button key={c.id} onClick={() => onSelect(c.id)}
-              style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', width: '100%', textAlign: 'left', border: 'none', cursor: 'pointer', borderRadius: 'var(--r-sm)', padding: 'var(--space-2) var(--space-3)', minHeight: 36, background: active ? 'var(--surface-neutral)' : 'transparent', fontFamily: FB, opacity: isMuted ? 0.5 : 1 }}>
-              {c.kind === 'voice'
-                ? <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-dim)', flexShrink: 0 }}><path d="M11 5 6 9H2v6h4l5 4zM15.5 8.5a5 5 0 0 1 0 7M19 5a9 9 0 0 1 0 14" /></svg>
-                : <span style={{ color: 'var(--text-dim)', fontSize: 15, lineHeight: 1 }}>#</span>}
-              <span style={{ flex: 1, minWidth: 0, fontSize: 13.5, fontWeight: active || isUnread ? 600 : 500, color: active || isUnread ? 'var(--text)' : 'var(--text-mid)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</span>
-              {(activeCalls[c.id] ?? 0) > 0 && (
-                <span title={t('w1g.inCall', { n: activeCalls[c.id] })} style={{ display: 'inline-flex', alignItems: 'center', gap: 3, flexShrink: 0, fontFamily: FB, fontSize: 10.5, fontWeight: 700, color: 'var(--sport-run)' }}>
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M23 7l-7 5 7 5V7z" /><rect x="1" y="5" width="15" height="14" rx="2" ry="2" /></svg>
-                  <span className="tnum" style={{ fontVariantNumeric: 'tabular-nums' }}>{activeCalls[c.id]}</span>
-                </span>
-              )}
-              {isMuted && <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-dim)', flexShrink: 0 }}><path d="M13.73 21a2 2 0 0 1-3.46 0M18 8a6 6 0 0 0-9.33-5M5.2 5.2A6 6 0 0 0 6 8c0 7-3 9-3 9h14M1 1l22 22" /></svg>}
-              {isUnread && <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--primary)', flexShrink: 0 }} />}
-            </button>
+        ) : (() => {
+          // Salons regroupés par type (façon Discord) : textuels et vocaux, chacun
+          // dans son compartiment visuel distinct.
+          const renderChan = (c: typeof channels[number]) => {
+            const active = activeId === c.id
+            const isMuted = muted.has(c.id)
+            const isUnread = unread.has(c.id) && !active && !isMuted
+            return (
+              <button key={c.id} onClick={() => onSelect(c.id)}
+                style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', width: '100%', textAlign: 'left', border: 'none', cursor: 'pointer', borderRadius: 'var(--r-sm)', padding: 'var(--space-2) var(--space-3)', minHeight: 36, background: active ? 'var(--surface-neutral)' : 'transparent', fontFamily: FB, opacity: isMuted ? 0.5 : 1 }}>
+                {c.kind === 'voice'
+                  ? <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-dim)', flexShrink: 0 }}><path d="M11 5 6 9H2v6h4l5 4zM15.5 8.5a5 5 0 0 1 0 7M19 5a9 9 0 0 1 0 14" /></svg>
+                  : <span style={{ color: 'var(--text-dim)', fontSize: 15, lineHeight: 1 }}>#</span>}
+                <span style={{ flex: 1, minWidth: 0, fontSize: 13.5, fontWeight: active || isUnread ? 600 : 500, color: active || isUnread ? 'var(--text)' : 'var(--text-mid)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</span>
+                {(activeCalls[c.id] ?? 0) > 0 && (
+                  <span title={t('w1g.inCall', { n: activeCalls[c.id] })} style={{ display: 'inline-flex', alignItems: 'center', gap: 3, flexShrink: 0, fontFamily: FB, fontSize: 10.5, fontWeight: 700, color: 'var(--sport-run)' }}>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M23 7l-7 5 7 5V7z" /><rect x="1" y="5" width="15" height="14" rx="2" ry="2" /></svg>
+                    <span className="tnum" style={{ fontVariantNumeric: 'tabular-nums' }}>{activeCalls[c.id]}</span>
+                  </span>
+                )}
+                {isMuted && <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-dim)', flexShrink: 0 }}><path d="M13.73 21a2 2 0 0 1-3.46 0M18 8a6 6 0 0 0-9.33-5M5.2 5.2A6 6 0 0 0 6 8c0 7-3 9-3 9h14M1 1l22 22" /></svg>}
+                {isUnread && <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--primary)', flexShrink: 0 }} />}
+              </button>
+            )
+          }
+          const textChans = channels.filter(c => c.kind !== 'voice')
+          const voiceChans = channels.filter(c => c.kind === 'voice')
+          const group = (label: string, list: typeof channels) => list.length === 0 ? null : (
+            <div style={{ marginBottom: 'var(--space-2)' }}>
+              <div style={{ padding: '2px var(--space-3) 5px', fontFamily: FB, fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-dim)' }}>{label}</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 1, background: 'var(--bg-card2)', borderRadius: 'var(--r-md)', padding: 'var(--space-1)' }}>
+                {list.map(renderChan)}
+              </div>
+            </div>
           )
-        })}
+          return <>{group(t('w1g.textChannels'), textChans)}{group(t('w1g.voiceChannels'), voiceChans)}</>
+        })()}
       </div>
 
       {/* Liens croisés (règle d'interconnexion des pages) : messagerie privée +

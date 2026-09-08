@@ -24621,8 +24621,12 @@ export default function AIPanel({
                   </button>
                 ) : (() => {
                     const canSend = !imgOverBudget && !!(input.trim() || attachment || images.length > 0 || activeQA || quotedText)
-                    // Champ vide + vocal dispo → le bouton lance la discussion vocale.
-                    if (!canSend && speechSupported && !recording) {
+                    // Champ vide + micro dispo → le bouton lance la discussion vocale.
+                    // On se base sur `dictationSupported` (getUserMedia) et NON sur
+                    // `speechSupported` (Web Speech API) : la discussion vocale
+                    // fonctionne via getUserMedia + Whisper (/api/stt) + TTS (/api/tts),
+                    // donc AUSSI sur l'app native — d'où le bouton qui réapparaît.
+                    if (!canSend && dictationSupported && !recording) {
                       return (
                         <button
                           onClick={() => {

@@ -8,6 +8,7 @@
 // results jsonb). Indépendant du catalogue et du moteur de scoring.
 // ══════════════════════════════════════════════════════════════
 import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { createClient } from '@/lib/supabase/client'
 import { getCurrentUser } from '@/lib/auth/currentUser'
 import { useI18n } from '@/lib/i18n'
@@ -154,9 +155,10 @@ function CustomTestForm({ sport, color, onClose, onSaved }: { sport: string; col
     } finally { setBusy(false) }
   }
 
-  return (
-    <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-      <div onClick={e => e.stopPropagation()} style={{ background: 'var(--bg-card)', borderRadius: 18, border: '1px solid var(--border-mid)', maxWidth: 520, width: '100%', maxHeight: '90vh', display: 'flex', flexDirection: 'column', fontFamily: 'DM Sans,sans-serif' }}>
+  return createPortal(
+    <>
+      <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', animation: 'cardEnter 0.2s ease both' }} />
+      <div onClick={e => e.stopPropagation()} style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 10000, maxHeight: 'calc(100dvh - 72px)', background: 'var(--bg-card)', borderRadius: '22px 22px 0 0', border: '1px solid var(--border)', borderBottom: 'none', display: 'flex', flexDirection: 'column', fontFamily: 'DM Sans,sans-serif', animation: 'slideUp 0.28s cubic-bezier(0.4,0,0.2,1) both' }}>
         {/* En-tête */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '18px 20px 12px', borderBottom: '1px solid var(--border)' }}>
           <span style={{ width: 34, height: 34, borderRadius: 10, background: `color-mix(in srgb, ${color} 14%, transparent)`, color, display: 'grid', placeItems: 'center', flexShrink: 0 }}><FlaskConical size={18} /></span>
@@ -205,7 +207,8 @@ function CustomTestForm({ sport, color, onClose, onSaved }: { sport: string; col
           <button onClick={() => void save()} disabled={!nom.trim() || busy} style={{ flex: 2, padding: 11, borderRadius: 10, background: color, border: 'none', color: 'var(--on-primary)', fontFamily: 'Syne,sans-serif', fontWeight: 700, fontSize: 13, cursor: 'pointer', opacity: !nom.trim() ? 0.5 : 1 }}>{busy ? t('perf.saving') : t('perf.create')}</button>
         </div>
       </div>
-    </div>
+    </>,
+    document.body,
   )
 }
 
@@ -246,9 +249,10 @@ function CustomTestDetail({ test, color, onClose, onSaved }: { test: CustomTest;
     </ul>
   )
 
-  return (
-    <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-      <div onClick={e => e.stopPropagation()} style={{ background: 'var(--bg-card)', borderRadius: 18, border: '1px solid var(--border-mid)', maxWidth: 520, width: '100%', maxHeight: '90vh', display: 'flex', flexDirection: 'column', fontFamily: 'DM Sans,sans-serif' }}>
+  return createPortal(
+    <>
+      <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', animation: 'cardEnter 0.2s ease both' }} />
+      <div onClick={e => e.stopPropagation()} style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 10000, maxHeight: 'calc(100dvh - 72px)', background: 'var(--bg-card)', borderRadius: '22px 22px 0 0', border: '1px solid var(--border)', borderBottom: 'none', display: 'flex', flexDirection: 'column', fontFamily: 'DM Sans,sans-serif', animation: 'slideUp 0.28s cubic-bezier(0.4,0,0.2,1) both' }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 11, padding: '18px 20px 12px', borderBottom: '1px solid var(--border)' }}>
           <span style={{ width: 34, height: 34, borderRadius: 10, background: `color-mix(in srgb, ${color} 14%, transparent)`, color, display: 'grid', placeItems: 'center', flexShrink: 0 }}><FlaskConical size={18} /></span>
           <div style={{ flex: 1, minWidth: 0 }}>
@@ -325,6 +329,7 @@ function CustomTestDetail({ test, color, onClose, onSaved }: { test: CustomTest;
           </Section>
         </div>
       </div>
-    </div>
+    </>,
+    document.body,
   )
 }

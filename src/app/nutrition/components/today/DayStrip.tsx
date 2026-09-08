@@ -67,7 +67,7 @@ export function DayStrip({ today, selected, targetKcal, onSelect }: {
   })
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 6, width: '100%' }}
+    <div data-hswipe style={{ display: 'flex', alignItems: 'center', gap: 6, width: '100%', touchAction: 'pan-y' }}
       onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
       <style>{`
         @keyframes dsR { from { transform: translateX(34px); opacity: 0 } to { transform: translateX(0); opacity: 1 } }

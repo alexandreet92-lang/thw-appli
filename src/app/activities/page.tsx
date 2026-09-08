@@ -5407,7 +5407,6 @@ function SectionDonnees({ activities, zones, profile }: {
 }) {
   const { t } = useI18n()
   const [filter, setFilter] = useState<TimeFilter>('4w')
-  const [dataTab, setDataTab] = useState<'general' | 'specific'>('general')
   const [periodMenuOpen, setPeriodMenuOpen] = useState(false)
   const [selectedWeek, setSelectedWeek] = useState<null | { week: string; total: number; time: number; dist: number; count: number; sports: Map<string, number> }>(null)
   const dbMetrics = useMetricsDaily()
@@ -5698,20 +5697,6 @@ function SectionDonnees({ activities, zones, profile }: {
               </>
             )}
           </div>
-          {/* DROITE: mini toggle Général/Spécifique */}
-          <div style={{ display: 'flex', background: 'var(--bg-card2)', borderRadius: 16, padding: 2, gap: 0 }}>
-            {(['general', 'specific'] as const).map(tab => (
-              <button key={tab} onClick={() => setDataTab(tab)} style={{
-                padding: '5px 12px', fontSize: 12, fontWeight: 600, borderRadius: 14, border: 'none',
-                cursor: 'pointer', transition: 'all 0.15s',
-                background: dataTab === tab ? 'var(--bg-card)' : 'transparent',
-                color: dataTab === tab ? '#06B6D4' : 'var(--text-dim)',
-                boxShadow: dataTab === tab ? '0 1px 2px rgba(0,0,0,0.10)' : 'none',
-              }}>
-                {tab === 'general' ? t('actp.general') : t('actp.specific')}
-              </button>
-            ))}
-          </div>
         </div>
       ) : (
         /* ── Contrôles desktop (pills) ── */
@@ -5730,22 +5715,6 @@ function SectionDonnees({ activities, zones, profile }: {
               </button>
             ))}
           </div>
-          {/* Divider */}
-          <div style={{ width: 1, height: 24, background: 'var(--border)', margin: '0 6px', flexShrink: 0 }} />
-          {/* Tab pills */}
-          <div style={{ display: 'flex', gap: 5 }}>
-            {(['general', 'specific'] as const).map(tab => (
-              <button key={tab} onClick={() => setDataTab(tab)} style={{
-                background: dataTab === tab ? 'linear-gradient(135deg, #06B6D4, #3B82F6)' : 'var(--bg)',
-                color: dataTab === tab ? '#fff' : 'var(--text-dim)',
-                border: `1px solid ${dataTab === tab ? 'transparent' : 'var(--border)'}`,
-                borderRadius: 20, padding: '4px 14px', fontSize: 12, cursor: 'pointer',
-                fontWeight: dataTab === tab ? 600 : 400, transition: 'all 0.15s',
-              }}>
-                {tab === 'general' ? t('actp.general') : t('actp.specific')}
-              </button>
-            ))}
-          </div>
         </div>
       )}
 
@@ -5759,8 +5728,8 @@ function SectionDonnees({ activities, zones, profile }: {
         />
       )}
 
-      {/* === DONNÉES GÉNÉRALES === */}
-      {dataTab === 'general' && (
+      {/* === DONNÉES (vue unique — toggle Général/Spécifique retiré) === */}
+      {(
         <>
 
           {/* ── Récap hebdo (lundi + mardi) puis mensuel (3 premiers jours du mois) ── */}
@@ -6351,12 +6320,7 @@ function SectionDonnees({ activities, zones, profile }: {
               </div>
             )}
           </div>
-        </> /* end general tab */
-      )}
-
-      {/* === DONNÉES SPÉCIFIQUES === */}
-      {dataTab === 'specific' && (
-        <SectionDonneesSpecifiques inRange={inRange} zones={zones} bikeZones={bikeZones} runZones={runZones} hrZones={hrZoneColors} bikeTimesZ={bikeTimesZ} runTimesZ={runTimesZ} hrTimesZ={hrTimesZ} />
+        </> /* end données */
       )}
     </div>
   )

@@ -64,7 +64,7 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
   useNotificationGenerators()
   const [reduce, setReduce] = useState(false)
   const panelRef = useRef<HTMLDivElement>(null)
-  const g = useRef({ active: false, dragging: false, startX: 0, startY: 0, base: 0, last: 0, hscroll: null as HTMLElement | null })
+  const g = useRef({ active: false, dragging: false, startX: 0, startY: 0, base: 0, last: 0, hscroll: null as HTMLElement | null, hswipe: false })
 
   useEffect(() => {
     const m = window.matchMedia('(prefers-reduced-motion: reduce)')
@@ -161,6 +161,9 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
     // Tableau/carrousel défilable sous le doigt → on le mémorise pour lui laisser
     // le scroll horizontal (ne pas ouvrir le menu latéral).
     st.hscroll = hScrollAncestor(e.target, panelRef.current)
+    // Zone à swipe horizontal MANUEL (ex. barre des jours Nutrition) : on ne doit
+    // JAMAIS y ouvrir le menu latéral, même si ce n'est pas un scroller natif.
+    st.hswipe = !!(e.target as HTMLElement | null)?.closest?.('[data-hswipe]')
   }
   function onTouchMove(e: React.TouchEvent) {
     const st = g.current; if (!st.active) return
@@ -168,6 +171,9 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
     if (!st.dragging) {
       if (Math.abs(dx) < 8) return
       if (Math.abs(dy) > Math.abs(dx)) { st.active = false; return } // scroll vertical
+      // Geste horizontal dans une zone à swipe manuel (barre des jours) → on cède
+      // toujours : ce geste lui appartient, jamais d'ouverture de la sidebar.
+      if (st.hswipe) { st.active = false; return }
       // Défilement horizontal d'un tableau : si le conteneur peut encore défiler
       // dans ce sens, on lui cède le geste (pas d'ouverture de la sidebar).
       const hs = st.hscroll

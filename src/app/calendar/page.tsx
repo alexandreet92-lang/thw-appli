@@ -3,6 +3,7 @@
 export const dynamic = 'force-dynamic'
 
 import { useState, useEffect, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { createClient } from '@/lib/supabase/client'
 import { resolvePlanningUid } from '@/lib/planning/scope'
 import GoalBanner from './components/GoalBanner'
@@ -1194,9 +1195,10 @@ function CategoryEventModal({ category, eventTypes, initialDate, onClose, onSave
   const selectedType = types.find(t => t.id === typeId)
   const shade = eventShade(category, importance)
 
-  return (
-    <div onClick={onClose} style={{ position:'fixed',inset:0,zIndex:300,background:'rgba(0,0,0,0.55)',backdropFilter:'blur(4px)',display:'flex',alignItems:'center',justifyContent:'center',padding:16 }}>
-      <div onClick={e => e.stopPropagation()} style={{ background:'var(--bg-card)',borderRadius:18,border:'1px solid var(--border-mid)',padding:22,maxWidth:420,width:'100%' }}>
+  return createPortal(
+    <>
+      <div onClick={onClose} style={{ position:'fixed',inset:0,zIndex:300,background:'rgba(0,0,0,0.55)',backdropFilter:'blur(4px)',animation:'cardEnter 0.2s ease both' }} />
+      <div onClick={e => e.stopPropagation()} style={{ position:'fixed',bottom:0,left:0,right:0,zIndex:301,maxHeight:'calc(100dvh - 72px)',overflowY:'auto',background:'var(--bg-card)',borderRadius:'22px 22px 0 0',border:'1px solid var(--border-mid)',borderBottom:'none',padding:'20px 20px calc(20px + env(safe-area-inset-bottom,0px))',animation:'slideUp 0.28s cubic-bezier(0.4,0,0.2,1) both' }}>
         <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:16 }}>
           <h3 style={{ fontFamily:'Syne,sans-serif',fontSize:15,fontWeight:700,margin:0 }}>
             {tr('calendar.addEventCategory', { category: tr(CATEGORY_LABEL_KEY[category]) })}
@@ -1269,7 +1271,8 @@ function CategoryEventModal({ category, eventTypes, initialDate, onClose, onSave
           </button>
         </div>
       </div>
-    </div>
+    </>,
+    document.body,
   )
 }
 

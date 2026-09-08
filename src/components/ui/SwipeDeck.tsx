@@ -90,6 +90,11 @@ export function SwipeDeck({ index, count, onIndexChange, renderPanel }: Props) {
         // infini des listes fonctionne). Seuls les voisins sont plafonnés pour ne pas
         // gonfler le deck quand l'onglet actif est court.
         display: 'flex',
+        // flex-start : sinon les panneaux s'étirent à la hauteur du plus grand
+        // (align-items:stretch par défaut) → le panneau actif est gonflé et son
+        // scrollHeight renvoie cette hauteur étirée, ce qui bloque `activeH` trop
+        // grand et laisse une grosse zone blanche sous les onglets courts (Tests).
+        alignItems: 'flex-start',
         overflowX: 'auto',
         scrollSnapType: 'x mandatory',
         WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'],

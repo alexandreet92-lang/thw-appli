@@ -29,6 +29,9 @@ import type { CommunityChannel, CommunityMessage, CommunityAttachment, Community
 
 const FB = 'var(--font-body)', FD = 'var(--font-display)'
 
+// « Vu par » : dernier-lu de chaque membre (renvoyé par /api/community/channel-reads).
+interface ChannelRead { userId: string; lastReadAt: string; name: string; avatar: string | null }
+
 function fmtTime(iso: string): string {
   try { return new Date(iso).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) } catch { return '' }
 }
@@ -101,6 +104,7 @@ export function ChannelChat({
   const [replyTo, setReplyTo] = useState<{ id: string; authorName: string } | null>(null)
   const [editing, setEditing] = useState<{ id: string; text: string } | null>(null)
   const [mentionQuery, setMentionQuery] = useState<string | null>(null)
+  const [reads, setReads] = useState<ChannelRead[]>([])
 
   const fileRef = useRef<HTMLInputElement>(null)
   const taRef = useRef<HTMLTextAreaElement>(null)
@@ -114,6 +118,18 @@ export function ChannelChat({
     (text) => setInput((voiceBase.current ? voiceBase.current.trimEnd() + ' ' : '') + text),
   )
 
+  const loadReads = useCallback(async () => {
+    if (!isMember) { setReads([]); return }
+    try {
+      const res = await fetch('/api/community/channel-reads', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ channelId: channel.id }),
+      })
+      if (!res.ok) return
+      const data = (await res.json()) as { reads?: ChannelRead[] }
+      setReads(data.reads ?? [])
+    } catch { /* best-effort : les accusés de lecture sont optionnels */ }
+  }, [channel.id, isMember])
+
   const load = useCallback(async () => {
     if (!isMember) { setMessages([]); setLoading(false); return }
     const [msgs, pins] = await Promise.all([getChannelMessages(channel.id), getPinnedIds(channel.id)])
@@ -121,8 +137,9 @@ export function ChannelChat({
     setMessages(msgs); setPinnedIds(pins)
     setLoading(false)
     void markChannelRead(channel.id)
+    void loadReads()
     onRead?.(channel.id)
-  }, [channel.id, isMember, onRead])
+  }, [channel.id, isMember, onRead, loadReads])
 
   async function pin(m: CommunityMessage) {
     setReactFor(null)
@@ -175,9 +192,11 @@ export function ChannelChat({
         })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'community_pins', filter: `channel_id=eq.${channel.id}` },
         () => void load())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'community_reads', filter: `channel_id=eq.${channel.id}` },
+        () => void loadReads())
       .subscribe()
     return () => { void sb.removeChannel(ch) }
-  }, [channel.id, isMember, load, instanceId])
+  }, [channel.id, isMember, load, loadReads, instanceId])
 
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages])
 
@@ -192,6 +211,20 @@ export function ChannelChat({
     const q = mentionQuery.toLowerCase()
     return members.filter(m => m.name.toLowerCase().includes(q)).slice(0, 6)
   }, [mentionQuery, members])
+
+  // « Vu par » (accusés de lecture, style avatars empilés) : on ne l'affiche que
+  // sous MON dernier message, et seulement pour les membres dont le dernier-lu
+  // est postérieur (ou égal) à la date de ce message. Soi-même exclu.
+  const lastSeen = useMemo(() => {
+    if (!me) return null
+    let mine: CommunityMessage | null = null
+    for (let i = messages.length - 1; i >= 0; i--) { if (messages[i].authorId === me) { mine = messages[i]; break } }
+    if (!mine) return null
+    const at = new Date(mine.createdAt).getTime()
+    const seers = reads.filter(r => r.userId !== me && new Date(r.lastReadAt).getTime() >= at)
+    if (seers.length === 0) return null
+    return { messageId: mine.id, seers }
+  }, [messages, reads, me])
 
   function onInputChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
     const v = e.target.value.slice(0, 4000)
@@ -505,6 +538,7 @@ export function ChannelChat({
                   </div>
                 )}
               </div>
+              {lastSeen?.messageId === m.id && <SeenBy seers={lastSeen.seers} />}
             </div>
           )
         })}
@@ -598,6 +632,31 @@ function RoleBadge({ role }: { role?: string }) {
   const accent = role === 'owner' || role === 'coach'
   return (
     <span style={{ fontFamily: FB, fontSize: 9.5, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', padding: '2px 6px', borderRadius: 'var(--r-sm)', color: accent ? 'var(--primary)' : 'var(--text-mid)', background: accent ? 'var(--primary-dim)' : 'var(--surface-neutral)' }}>{label}</span>
+  )
+}
+
+// Accusés de lecture « à la Discord/iMessage » : avatars empilés sous MON dernier
+// message. Au-delà de 5 lecteurs on affiche un compteur « +N ». Le survol donne
+// les noms complets.
+function SeenBy({ seers }: { seers: ChannelRead[] }) {
+  const { t } = useI18n()
+  const shown = seers.slice(0, 5)
+  const extra = seers.length - shown.length
+  const names = seers.map(s => s.name).join(', ')
+  return (
+    <div title={names} style={{ display: 'flex', alignItems: 'center', gap: 6, margin: '1px 0 var(--space-2)', paddingLeft: 'calc(36px + var(--space-3) + var(--space-2))' }}>
+      <span style={{ fontFamily: FB, fontSize: 10.5, color: 'var(--text-dim)' }}>{t('w1g.seenBy')}</span>
+      <span style={{ display: 'inline-flex', alignItems: 'center' }}>
+        {shown.map((s, i) => (
+          <span key={s.userId} style={{ marginLeft: i === 0 ? 0 : -6, borderRadius: '50%', boxShadow: '0 0 0 1.5px var(--bg-card)', position: 'relative', zIndex: shown.length - i }}>
+            <Avatar name={s.name} url={s.avatar} size={16} />
+          </span>
+        ))}
+        {extra > 0 && (
+          <span className="tnum" style={{ marginLeft: 4, fontFamily: FB, fontSize: 10, fontWeight: 600, color: 'var(--text-dim)', fontVariantNumeric: 'tabular-nums' }}>+{extra}</span>
+        )}
+      </span>
+    </div>
   )
 }
 

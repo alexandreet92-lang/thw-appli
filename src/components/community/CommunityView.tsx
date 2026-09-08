@@ -47,6 +47,7 @@ export function CommunityView() {
   const [showDiscover, setShowDiscover] = useState(false)
   const [showManage, setShowManage] = useState(false)
   const [voiceSheetCh, setVoiceSheetCh] = useState<{ id: string; name: string } | null>(null)
+  const commSwipe = useRef<{ x: number; y: number } | null>(null)
   const [unread, setUnread] = useState<Set<string>>(new Set())
   const [muted, setMuted] = useState<Set<string>>(new Set())
   const [activeCalls, setActiveCalls] = useState<Record<string, number>>({})
@@ -253,7 +254,16 @@ export function CommunityView() {
   return (
     <div style={{ height: '100%', minHeight: 0, display: 'flex', flexDirection: 'column', fontFamily: FB }}>
       {isNarrow ? (
-        <div style={{ flex: 1, minHeight: 0, overflow: 'hidden', borderRadius: 'var(--r-lg)', background: 'var(--bg-card)', position: 'relative' }}>
+        // data-hswipe : dans la communauté, le glissement horizontal N'OUVRE PAS
+        // la sidebar principale de l'app ; il fait revenir au panneau salons/groupes.
+        <div data-hswipe style={{ flex: 1, minHeight: 0, overflow: 'hidden', borderRadius: 'var(--r-lg)', background: 'var(--bg-card)', position: 'relative' }}
+          onTouchStart={e => { commSwipe.current = { x: e.touches[0].clientX, y: e.touches[0].clientY } }}
+          onTouchEnd={e => {
+            const s = commSwipe.current; commSwipe.current = null; if (!s) return
+            const dx = e.changedTouches[0].clientX - s.x, dy = e.changedTouches[0].clientY - s.y
+            // Swipe franc vers la DROITE en vue « chat » → coulisse vers les salons/groupes.
+            if (dx > 55 && Math.abs(dx) > Math.abs(dy) * 1.4 && mView === 'chat' && panel !== 'call') { setDir('back'); setMView('home') }
+          }}>
           {/* Vues empilées avec transition « ouverture de page » fluide (clé = vue). */}
           <div key={mView} className={dir === 'fwd' ? 'comm-slide-fwd' : 'comm-slide-back'} style={{ height: '100%', minHeight: 0 }}>
             {mView === 'home' && (

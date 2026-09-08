@@ -7,13 +7,12 @@
 // tant qu'il n'y a pas eu de geste utilisateur (resume best-effort).
 // ══════════════════════════════════════════════════════════════════════════
 
-export interface Ring { stop: () => void }
+import { getSharedAudioCtx } from './audioUnlock'
 
-type Ctor = typeof AudioContext
+export interface Ring { stop: () => void }
 
 export function playRingtone(maxMs = 30_000): Ring {
   let stopped = false
-  let ctx: AudioContext | null = null
   let loop: ReturnType<typeof setInterval> | null = null
   let endTimer: ReturnType<typeof setTimeout> | null = null
 
@@ -22,14 +21,14 @@ export function playRingtone(maxMs = 30_000): Ring {
     stopped = true
     if (loop) { clearInterval(loop); loop = null }
     if (endTimer) { clearTimeout(endTimer); endTimer = null }
-    if (ctx) { try { void ctx.close() } catch { /* déjà fermé */ } ctx = null }
+    // NB : on NE ferme PAS le contexte — il est PARTAGÉ (débloqué au 1er geste).
   }
 
   try {
-    const AC: Ctor | undefined = window.AudioContext
-      || (window as unknown as { webkitAudioContext?: Ctor }).webkitAudioContext
-    if (!AC) return { stop }
-    ctx = new AC()
+    // Contexte partagé, déjà débloqué par un geste utilisateur (audioUnlock) →
+    // le son passe même si la sonnerie démarre sans interaction.
+    const ctx = getSharedAudioCtx()
+    if (!ctx) return { stop }
     void ctx.resume?.().catch(() => {})
 
     // Une note = sinus avec enveloppe douce (attaque/relâchement) pour éviter le clic.

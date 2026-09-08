@@ -23,6 +23,8 @@ export function ClientShell({ children }: ClientShellProps) {
   useEffect(() => {
     // App native : redirige les appels /api vers Vercel + ajoute le token (no-op en web).
     installNativeApiFetch()
+    // Débloque l'audio (iOS) au 1er geste → la sonnerie d'appel entrant sonnera.
+    void import('@/lib/community/audioUnlock').then(m => m.installAudioUnlock()).catch(() => {})
     setHydrated(true)
     // Effet « verre » (#7) : autorise le flou selon le contexte (web/Release).
     void import('@/lib/native/platform').then(m => m.applyGlassBlur())

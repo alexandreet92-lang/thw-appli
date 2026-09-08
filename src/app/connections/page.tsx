@@ -863,13 +863,15 @@ function ConnectionsInner() {
   }, [connectModal])
 
   const filteredApps = useMemo(() => {
+    // On n'affiche QUE les apps réellement branchables (OAuth en place). Les
+    // « bientôt disponible » (provider absent) sont masquées tant qu'on ne peut
+    // pas les connecter — pour ne pas noyer l'utilisateur.
     return APPS.filter(app => {
-      const matchSearch = search === '' || app.name.toLowerCase().includes(search.toLowerCase())
-      const currentStatus = getEffectiveStatus(app)
-      const matchFilter = statusFilter === 'all' || currentStatus === statusFilter
-      return matchSearch && matchFilter
+      const connectable = !!app.provider && OAUTH_PROVIDERS.has(app.provider)
+      if (!connectable) return false
+      return search === '' || app.name.toLowerCase().includes(search.toLowerCase())
     })
-  }, [search, statusFilter, connectedProviders]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [search, connectedProviders]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const connectedCount = useMemo(
     () => APPS.filter(a => a.provider && connectedProviders[a.provider]).length,
@@ -961,11 +963,6 @@ function ConnectionsInner() {
                     transition: 'border-color 0.14s, box-shadow 0.14s',
                   }} />
               </div>
-              <div style={{ display: 'flex', gap: 6, flexWrap: isMobile ? 'nowrap' : 'wrap', overflowX: isMobile ? 'auto' : 'visible', scrollbarWidth: 'none' as const }}>
-                {filterPills.map(pill => (
-                  <PillFilter key={pill.id} label={pill.label} active={statusFilter === pill.id} onClick={() => setStatusFilter(pill.id)} />
-                ))}
-              </div>
             </div>
           </div>
         </div>
@@ -982,6 +979,8 @@ function ConnectionsInner() {
             }}>
              <div style={{ position: 'sticky', top: 100, paddingTop: 28 }}>
               {CATEGORIES.map(cat => {
+                // On ne liste que les catégories qui ont au moins une app branchable.
+                if (!APPS.some(a => a.category === cat.id && a.provider && OAUTH_PROVIDERS.has(a.provider))) return null
                 const catConnected = APPS.filter(a => a.category === cat.id && a.provider && connectedProviders[a.provider]).length
                 const isActive = catFilter === cat.id
                 return (
@@ -1009,29 +1008,6 @@ function ConnectionsInner() {
                 )
               })}
              </div>
-            </div>
-          )}
-
-          {/* Mobile: horizontal category pills */}
-          {isMobile && (
-            <div style={{ overflowX: 'auto', display: 'flex', gap: 8, padding: '14px 16px 0', scrollbarWidth: 'none' as const, width: '100%', flexShrink: 0 }}>
-              {CATEGORIES.map(cat => {
-                const isActive = catFilter === cat.id
-                return (
-                  <button key={cat.id}
-                    onClick={() => setCatFilter(prev => prev === cat.id ? null : cat.id)}
-                    style={{
-                      flexShrink: 0, padding: '5px 12px', borderRadius: 20,
-                      border: isActive ? 'none' : '1px solid var(--border-mid)',
-                      background: isActive ? ACCENT : 'var(--bg-card)',
-                      color: isActive ? '#fff' : 'var(--text-dim)',
-                      fontFamily: 'DM Sans, sans-serif', fontSize: 12, fontWeight: isActive ? 600 : 400,
-                      cursor: 'pointer', whiteSpace: 'nowrap',
-                    }}>
-                    {t(`connections.category.${cat.id}`)}
-                  </button>
-                )
-              })}
             </div>
           )}
 
@@ -1097,7 +1073,6 @@ function ConnectionsInner() {
                           needsReconnect={app.provider ? isPolarV3Token(connectedProviders[app.provider]) : false} />
                       )
                     })}
-                    <ComingGrid apps={catApps.filter(a => getEffectiveStatus(a) === 'coming')} logoErrors={logoErrors} onLogoError={handleLogoError} />
                   </section>
                 )
               })

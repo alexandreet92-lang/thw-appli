@@ -89,9 +89,12 @@ export function GuideProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     setMounted(true)
     try {
-      const seen = localStorage.getItem(GUIDE_SEEN_KEY)
       const forced = localStorage.getItem(GUIDE_FIRSTRUN_KEY) === 'pending'
-      if (forced || !seen) setTimeout(() => setFirstRun(true), 900)
+      // La proposition de visite au 1er lancement a été DÉPLACÉE dans le
+      // questionnaire d'onboarding (SetupScreen). On N'AFFICHE PLUS le pop-up
+      // automatiquement à l'arrivée — uniquement si l'utilisateur relance la
+      // visite via la loupe (forced).
+      if (forced) setTimeout(() => setFirstRun(true), 900)
     } catch { /* ignore */ }
   }, [])
   const closeFirstRun = useCallback(() => {
@@ -109,6 +112,18 @@ export function GuideProvider({ children }: { children: React.ReactNode }) {
     if (!f.length) f = [{ title: t('w3g.guide_coach_title'), message: t('w3g.guide_coach_msg') }]
     setSteps(f); setIdx(0)
   }, [t])
+  // Le questionnaire d'onboarding (SetupScreen) émet ce choix de visite à la fin.
+  // On lance alors la visite correspondante une fois l'utilisateur DANS l'app.
+  useEffect(() => {
+    const h = (e: Event) => {
+      const kind = (e as CustomEvent).detail as string
+      if (kind === 'express') startSteps(EXPRESS_TOUR)
+      else if (kind === 'full') startSteps(FULL_TOUR)
+    }
+    window.addEventListener('thw:start-guide', h as EventListener)
+    return () => window.removeEventListener('thw:start-guide', h as EventListener)
+  }, [startSteps])
+
   const stop = useCallback(() => { setSteps(null); setIdx(0); setRect(null) }, [])
   const next = useCallback(() => { setIdx(i => { const s = steps; if (s && i + 1 >= s.length) { setSteps(null); setRect(null); return 0 } return i + 1 }) }, [steps])
   const prev = useCallback(() => setIdx(i => Math.max(0, i - 1)), [])

@@ -3,6 +3,9 @@ import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { getCurrentUser } from '@/lib/auth/currentUser'
 import { useI18n } from '@/lib/i18n'
+import { GUIDE_SEEN_KEY } from '@/components/guide/GuideProvider'
+
+type GuideChoice = 'express' | 'full' | 'none'
 
 interface Props { onComplete: () => void }
 
@@ -32,6 +35,7 @@ export default function SetupScreen({ onComplete }: Props) {
   const [ftp, setFtp] = useState(200)
   const [maxHr, setMaxHr] = useState(185)
   const [primarySport, setPrimarySport] = useState('')
+  const [guide, setGuide] = useState<GuideChoice>('express')
   const [saving, setSaving] = useState(false)
 
   const handleStart = async () => {
@@ -48,6 +52,15 @@ export default function SetupScreen({ onComplete }: Props) {
         }, { onConflict: 'user_id' })
       }
     } catch (e) { console.error('[setup] save error:', e) }
+    // Choix de visite guidée fait ICI (plus de pop-up au démarrage). On marque
+    // la visite « vue » dans tous les cas, puis on lance la visite choisie une
+    // fois l'utilisateur entré dans l'app (petit délai → écrans montés).
+    try {
+      localStorage.setItem(GUIDE_SEEN_KEY, '1')
+      if (guide !== 'none') {
+        setTimeout(() => { try { window.dispatchEvent(new CustomEvent('thw:start-guide', { detail: guide })) } catch { /* ignore */ } }, 700)
+      }
+    } catch { /* ignore */ }
     onComplete()
   }
 
@@ -70,6 +83,26 @@ export default function SetupScreen({ onComplete }: Props) {
             {SPORTS.map(s => (
               <button key={s} onClick={() => setPrimarySport(p => p === s ? '' : s)} style={{ padding: '8px 16px', borderRadius: 20, background: primarySport === s ? 'rgba(6,182,212,0.18)' : surface, border: `1px solid ${primarySport === s ? '#06B6D4' : border}`, color: primarySport === s ? '#06B6D4' : 'rgba(255,255,255,0.75)', fontSize: 14, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', transition: 'all 200ms' }}>
                 {s}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Visite guidée — le choix se fait ICI (plus de pop-up au démarrage) */}
+        <div style={{ padding: '16px 0' }}>
+          <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: dim, margin: '0 0 12px', fontFamily: 'DM Sans, sans-serif' }}>{t('onboarding.guideTitle')}</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {([
+              { id: 'express' as GuideChoice, label: t('w3g.guide_express') },
+              { id: 'full' as GuideChoice, label: t('w3g.guide_full') },
+              { id: 'none' as GuideChoice, label: t('onboarding.guideNone') },
+            ]).map(opt => (
+              <button key={opt.id} onClick={() => setGuide(opt.id)}
+                style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', borderRadius: 12, background: guide === opt.id ? 'rgba(6,182,212,0.18)' : surface, border: `1px solid ${guide === opt.id ? '#06B6D4' : border}`, color: guide === opt.id ? '#06B6D4' : 'rgba(255,255,255,0.75)', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', textAlign: 'left', transition: 'all 200ms' }}>
+                <span style={{ width: 16, height: 16, borderRadius: '50%', flexShrink: 0, border: `2px solid ${guide === opt.id ? '#06B6D4' : border}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  {guide === opt.id && <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#06B6D4' }} />}
+                </span>
+                {opt.label}
               </button>
             ))}
           </div>

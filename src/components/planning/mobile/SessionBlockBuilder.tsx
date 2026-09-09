@@ -17,6 +17,7 @@ import { EnduranceLiveSummary } from './EnduranceLiveSummary'
 import { parseSessionText } from './parseSessionText'
 import { Segmented } from './ui'
 import { VoiceOverlay } from '@/components/ai/VoiceOverlay'
+import { isNativeApp } from '@/lib/native/platform'
 import ParcoursViewer from '@/components/gpx/ParcoursViewer'
 import type { PanelParcours } from './panelProps'
 import { useI18n } from '@/lib/i18n'
@@ -426,11 +427,13 @@ export function SessionBlockBuilder({ sport, runningSub, accent, blocks, onChang
               placeholder={sport === 'bike' ? tr('planning.aiPlaceholderBike') : tr('planning.aiPlaceholderDefault')}
               style={{ width: '100%', boxSizing: 'border-box', background: 'var(--bg-card2)', border: '1px solid var(--se-rule)', borderRadius: 'var(--se-r)', color: 'var(--se-text)', padding: '12px 40px 12px 12px', fontSize: 13, outline: 'none', resize: 'vertical', lineHeight: 1.5 }}
             />
-            {/* Dictée : VoiceOverlay → le texte transcrit s'écrit en direct dans le champ */}
+            {/* Dictée : masquée sur l'app native (vocal désactivé pour le moment). */}
+            {!isNativeApp() && (
             <button type="button" onClick={() => { voiceBaseRef.current = aiPrompt; setVoiceOpen(true) }} aria-label={tr('planning.aiDescribeSession')}
               style={{ position: 'absolute', right: 8, bottom: 12, border: 'none', background: 'transparent', color: accent, cursor: 'pointer', display: 'flex', padding: 4 }}>
               <IconMicrophone size={18} />
             </button>
+            )}
           </div>
           <button type="button" onClick={() => void generate()} disabled={aiLoading || !aiPrompt.trim()}
             style={{ marginTop: 8, width: '100%', padding: 12, borderRadius: 'var(--se-r)', border: 'none', background: aiLoading ? 'var(--se-rule)' : accent, color: '#fff', fontSize: 13, fontWeight: 700, cursor: aiLoading || !aiPrompt.trim() ? 'default' : 'pointer', opacity: !aiPrompt.trim() ? 0.5 : 1 }}>

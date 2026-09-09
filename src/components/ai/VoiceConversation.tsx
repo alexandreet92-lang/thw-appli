@@ -16,6 +16,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useI18n } from '@/lib/i18n'
+import { isNativeApp } from '@/lib/native/platform'
 
 const SILENCE_MS = 1200
 const SPEECH_RMS = 0.014   // seuil VAD : au-dessus = on parle
@@ -192,6 +193,9 @@ export function VoiceConversation({ onTurn, onClose }: {
     ;(async () => {
       // Garde : API micro absente (WebView ancienne / origine non sécurisée) → on
       // n'appelle rien (aucune exception JS), on bascule sur l'état « non supporté ».
+      // Sécurité : sur l'app native on NE touche PAS au micro (plante l'app tant
+      // que la permission n'est pas fiable côté iOS) → vocal désactivé sur native.
+      if (isNativeApp()) { setSupported(false); return }
       if (!navigator.mediaDevices?.getUserMedia) { setSupported(false); return }
       let stream: MediaStream
       try {

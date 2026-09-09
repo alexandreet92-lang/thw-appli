@@ -18,6 +18,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useI18n } from '@/lib/i18n'
+import { isNativeApp } from '@/lib/native/platform'
 
 const NBARS = 34
 
@@ -143,6 +144,10 @@ export function VoiceOverlay({
     let chunkTimer: ReturnType<typeof setInterval> | null = null
 
     ;(async () => {
+      // Sécurité app native : on NE touche PAS au micro (plante l'app tant que la
+      // permission n'est pas fiable côté iOS). Vocal désactivé sur native pour le
+      // moment — les boutons micro sont d'ailleurs masqués sur l'app.
+      if (isNativeApp()) { setPhase('error'); setErrorMsg(t('ai.micDenied', { reason: t('ai.unknown') })); return }
       // Garde : API absente (WebView ancienne / origine non sécurisée) → on ne
       // TENTE PAS l'appel (évite toute exception JS), état d'erreur propre.
       if (!navigator.mediaDevices?.getUserMedia) {

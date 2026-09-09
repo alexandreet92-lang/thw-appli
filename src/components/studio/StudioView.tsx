@@ -32,6 +32,7 @@ import { listMyAthletes } from '@/lib/coach/relationships'
 import { VoiceOverlay } from '@/components/ai/VoiceOverlay'
 import StudioMarkdown from './StudioMarkdown'
 import { useI18n } from '@/lib/i18n'
+import { isNativeApp } from '@/lib/native/platform'
 
 // Nœuds = « bulles-logos » circulaires (façon Make) : diamètre fixe, libellé
 // dessous, port d'entrée à gauche / de sortie à droite (au centre vertical).
@@ -1213,13 +1214,17 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
               )}
             </button>
           )}
-          {/* Dictée vocale */}
+          {/* Dictée vocale — masquée sur l'app native (vocal désactivé pour le
+              moment ; le micro plante l'app tant que la permission iOS n'est pas
+              fiable). Reviendra dans une version ultérieure. */}
+          {!isNativeApp() && (
           <button onClick={() => { setMicTarget(micField); micBaseRef.current = micField === 'chat' ? chatInput : desc; setMicOpen(true) }} disabled={chatBusy} title={t('w1i.describe_voice')} aria-label={t('w1i.describe_voice')}
             style={{ width: 32, height: 32, borderRadius: 10, border: 'none', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <rect x="9" y="2" width="6" height="11" rx="3"/><path d="M5 10a7 7 0 0 0 14 0M12 19v3"/>
             </svg>
           </button>
+          )}
           {/* Envoyer */}
           <button onClick={onSend} disabled={!ready} aria-label={t('w1i.send')}
             style={{ width: 34, height: 34, borderRadius: 11, border: 'none', cursor: ready ? 'pointer' : 'not-allowed',

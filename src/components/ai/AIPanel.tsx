@@ -21189,7 +21189,11 @@ export default function AIPanel({
     // bouton micro disparaîtrait à tort.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const hasAudioCtx = typeof window.AudioContext !== 'undefined' || typeof (window as any).webkitAudioContext !== 'undefined'
-    setDictationSupported(!!navigator.mediaDevices?.getUserMedia && hasAudioCtx)
+    // Sur l'app native : AUCUN vocal pour l'instant (le micro plante l'app tant
+    // que la permission n'est pas fiable côté build iOS). On désactive donc la
+    // dictée ET la discussion vocale sur native → reviendra dans une version
+    // ultérieure avec une vraie solution native.
+    setDictationSupported(!isNativeApp() && !!navigator.mediaDevices?.getUserMedia && hasAudioCtx)
   }, [])
 
   // Signale l'ouverture/fermeture du panneau IA (la bulle « Mon coach » s'y masque).

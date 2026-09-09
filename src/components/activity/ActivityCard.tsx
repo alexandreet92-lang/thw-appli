@@ -29,6 +29,7 @@ export interface ActivityCardData {
   distance_m:        number | null
   moving_time_s:     number | null
   elevation_gain_m:  number | null
+  avgHr:             number | null  // FC moyenne (bpm) — affichée pour muscu/hyrox/boxe
   sm:                number | null  // Score Métabolique
   sn:                number | null  // Score Neuromusculaire
   // Polyline encodée Google (Strava format) — déjà extraite côté page
@@ -259,11 +260,15 @@ export function ActivityCard({ data, onClick }: Props) {
         gridTemplateColumns: 'repeat(3, 1fr)',
         gap:     8,
       }}>
-        {(data.sportType === 'gym' || data.sportType === 'hyrox') ? (
+        {(data.sportType === 'gym' || data.sportType === 'hyrox' || data.sportType === 'boxe') ? (
+          /* Muscu / Hyrox / Boxe : sports SANS distance ni dénivelé → on montre la
+             FC moyenne (donnée pertinente), la durée, et exos/circuits. */
           <>
-            <Stat label={t('activities.exercises')} value={data.nbExercises != null ? String(data.nbExercises) : '—'} />
-            <Stat label={t('activities.duration')}  value={fmtDurCompact(data.moving_time_s)} />
-            <Stat label={t('activities.circuits')}  value={data.nbCircuits != null ? String(data.nbCircuits) : '—'} />
+            <Stat label={t('actp.avg_hr')} value={data.avgHr != null ? `${Math.round(data.avgHr)} bpm` : '—'} />
+            <Stat label={t('activities.duration')} value={fmtDurCompact(data.moving_time_s)} />
+            <Stat
+              label={data.nbCircuits != null ? t('activities.circuits') : t('activities.exercises')}
+              value={data.nbCircuits != null ? String(data.nbCircuits) : (data.nbExercises != null ? String(data.nbExercises) : '—')} />
           </>
         ) : (
           <>

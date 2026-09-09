@@ -9866,6 +9866,7 @@ function CardsView({ activities, onSelect, sentinelRef, loadingMore, highlightId
         distance_m:       a.distance_m ? Number(a.distance_m) : null,
         moving_time_s:    a.moving_time_s ? Number(a.moving_time_s) : null,
         elevation_gain_m: a.elevation_gain_m ? Number(a.elevation_gain_m) : null,
+        avgHr:            (a as { avg_hr?: number | null }).avg_hr != null ? Number((a as { avg_hr?: number | null }).avg_hr) : null,
         sm:               smsn.sm,
         sn:               smsn.sn,
         encodedPolyline:  encoded,

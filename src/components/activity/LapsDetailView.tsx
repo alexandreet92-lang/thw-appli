@@ -678,6 +678,21 @@ export function LapsDetailView(props: LapsDetailViewProps) {
           fontFamily: 'Inter, system-ui, -apple-system, sans-serif',
         }}
       >
+        {/* Bouton FERMER toujours visible (fixe) — même si l'en-tête défile hors
+            champ sur mobile, on peut TOUJOURS sortir de la vue (fini « coincé »). */}
+        <button
+          onClick={doClose}
+          aria-label={t('activities.close')}
+          style={{
+            position: 'fixed', top: 'calc(env(safe-area-inset-top) + 8px)', right: 12, zIndex: 3200,
+            width: 40, height: 40, borderRadius: '50%',
+            background: 'var(--bg-card)', border: '1px solid var(--border)',
+            color: 'var(--text)', fontSize: 22, lineHeight: 1, cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            boxShadow: '0 2px 10px rgba(0,0,0,0.15)',
+          }}
+        >×</button>
+
         {/* Header — paddingTop tient compte de l'encoche iOS (safe-area) sinon
             la flèche « retour » passe SOUS la barre d'état sur mobile et devient
             invisible/intappable. */}

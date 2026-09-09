@@ -1164,7 +1164,18 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
         boxShadow: '0 2px 6px rgba(0,0,0,0.06), 0 12px 32px rgba(0,0,0,0.10)',
       }}>
         <AutoGrowTextarea value={value} onChange={onChange} onSend={onSend} placeholder={placeholder} disabled={chatBusy} />
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, minHeight: 34 }}>
+          {micOpen && micTarget === micField ? (
+            /* Dictée INTÉGRÉE dans le champ : X · waveform · ✓ (bleu). Le texte
+               s'écrit en direct dans le champ au fur et à mesure (onLiveText). */
+            <VoiceOverlay
+              inline
+              onCancel={() => { setMicOpen(false); const base = micBaseRef.current; if (micField === 'chat') setChatInput(base); else setDesc(base) }}
+              onLiveText={(text) => { const base = micBaseRef.current; const v = text ? (base ? base.trimEnd() + ' ' : '') + text : base; if (micField === 'chat') setChatInput(v); else setDesc(v) }}
+              onConfirm={(text) => { setMicOpen(false); const base = micBaseRef.current; const v = text ? (base ? base.trimEnd() + ' ' : '') + text.trim() : base; if (micField === 'chat') setChatInput(v); else setDesc(v) }}
+            />
+          ) : (
+          <>
           {/* Sélecteur de modèle IA (logo + nom) */}
           <div style={{ position: 'relative' }}>
             <button onClick={() => setModelMenuOpen(o => !o)} disabled={chatBusy} title={t('w1i.ai_model')}
@@ -1220,6 +1231,8 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
             )}
           </button>
+          </>
+          )}
         </div>
       </div>
     )
@@ -3463,15 +3476,8 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
         </div>
       )}
 
-      {/* ══ Dictée vocale (barre « Décris ton système ») ══ */}
-      {micOpen && (
-        <VoiceOverlay
-          isDesktop
-          onCancel={() => { setMicOpen(false); const base = micBaseRef.current; if (micTarget === 'chat') setChatInput(base); else setDesc(base) }}
-          onLiveText={(text) => { const base = micBaseRef.current; const v = text ? (base ? base.trimEnd() + ' ' : '') + text : base; if (micTarget === 'chat') setChatInput(v); else setDesc(v) }}
-          onConfirm={(text) => { setMicOpen(false); const base = micBaseRef.current; const v = text ? (base ? base.trimEnd() + ' ' : '') + text.trim() : base; if (micTarget === 'chat') setChatInput(v); else setDesc(v) }}
-        />
-      )}
+      {/* La dictée est désormais INTÉGRÉE dans le champ (renderComposer) —
+          plus de barre flottante détachée en bas. */}
     </div>
   )
 }

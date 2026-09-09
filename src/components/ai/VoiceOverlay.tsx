@@ -48,6 +48,7 @@ export function VoiceOverlay({
   isDesktop = false,
   language = 'fr',
   getAudioCtx,
+  inline = false,
 }: {
   onConfirm: (text: string) => void
   onCancel: () => void
@@ -57,6 +58,9 @@ export function VoiceOverlay({
   language?: string
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   getAudioCtx?: () => any
+  /** inline = rendu DANS le champ de saisie (pas de barre flottante en bas) :
+   *  la waveform occupe la ligne d'actions, le bouton ✓ remplace « envoyer ». */
+  inline?: boolean
 }) {
   const { t } = useI18n()
   const [mounted, setMounted] = useState(false)
@@ -276,7 +280,11 @@ export function VoiceOverlay({
   if (!mounted) return null
 
   const bar = (
-    <div style={{
+    <div style={inline ? {
+      // Rendu intégré dans le champ : pas de pill, on épouse la ligne d'actions.
+      pointerEvents: 'auto', width: '100%', display: 'flex', alignItems: 'center', gap: 10,
+      background: 'transparent', border: 'none', borderRadius: 0, padding: 0, boxShadow: 'none',
+    } : {
       pointerEvents: 'auto',
       width: '100%', maxWidth: 620, display: 'flex', alignItems: 'center', gap: 12,
       background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 22,
@@ -322,13 +330,32 @@ export function VoiceOverlay({
     </div>
   )
 
+  const keyframes = (
+    <style>{`
+      @keyframes vo_pill { from { opacity: 0; transform: translateY(12px) } to { opacity: 1; transform: translateY(0) } }
+      @keyframes vo_spin { to { transform: rotate(360deg) } }
+      @keyframes vo_pulse { 0%,100% { box-shadow: 0 4px 16px color-mix(in srgb, var(--primary) 40%, transparent) } 50% { box-shadow: 0 4px 22px color-mix(in srgb, var(--primary) 62%, transparent) } }
+    `}</style>
+  )
+
+  // Rendu INTÉGRÉ (dans le champ de saisie) : pas de portail, pas de barre
+  // flottante — juste la ligne X · waveform · ✓. Le texte live s'écrit dans le
+  // champ via onLiveText (au fur et à mesure).
+  if (inline) {
+    return (
+      <>
+        {keyframes}
+        {phase === 'error' && (
+          <span style={{ flex: 1, fontSize: 12.5, color: 'var(--text-mid)', fontFamily: 'var(--font-body)' }}>{errorMsg}</span>
+        )}
+        {phase !== 'error' && bar}
+      </>
+    )
+  }
+
   return createPortal(
     <>
-      <style>{`
-        @keyframes vo_pill { from { opacity: 0; transform: translateY(12px) } to { opacity: 1; transform: translateY(0) } }
-        @keyframes vo_spin { to { transform: rotate(360deg) } }
-        @keyframes vo_pulse { 0%,100% { box-shadow: 0 4px 16px color-mix(in srgb, var(--primary) 40%, transparent) } 50% { box-shadow: 0 4px 22px color-mix(in srgb, var(--primary) 62%, transparent) } }
-      `}</style>
+      {keyframes}
       {/* Barre flottante en BAS — ne masque pas l'écran (pas de scrim, pointerEvents none autour). */}
       <div style={{
         position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 14500,

@@ -23,24 +23,33 @@ type Mode = 'main' | 'plan' | 'stats' | 'plus'
 const ACCENT = '#06B6D4'
 const DIM    = '#9CA3AF'
 
-// Une sur-page est ouverte ? Toutes les sur-pages (BottomSheet, SlideSheet, les
-// feuilles bespoke calendar/performance/blessure/communauté, l'AIPanel…) sont
-// montées via createPortal sur <body> avec un fond « plein écran » fixe et un
-// z-index élevé. On détecte cet enfant direct de <body> → on masque alors la
-// barre à bulles (elle transparaissait sous les voiles translucides). Un seul
-// point de contrôle plutôt que de retoucher chaque feuille.
+// Une sur-page BLOQUANTE est-elle ouverte ? Toutes les sur-pages (BottomSheet,
+// SlideSheet, feuilles bespoke calendar/performance/blessure/communauté,
+// AIPanel…) montent via createPortal sur <body> un VOILE plein écran, fixe,
+// interactif (il capte les clics), z-index élevé. On détecte ce voile → on
+// masque alors la barre à bulles (elle transparaissait dessous). Un seul point
+// de contrôle, sans retoucher chaque feuille.
+//
+// IMPORTANT — on EXCLUT les couches « pass-through » (pointer-events:none) :
+// coach-marks du guide (z-index 100000, plein écran mais non bloquant), masques
+// en dégradé, etc. Sans ça, la barre disparaîtrait sur une page NORMALE (bug
+// constaté sur un compte neuf où le guide est actif).
 function anyOverpageOpen(): boolean {
   if (typeof document === 'undefined') return false
   const vw = window.innerWidth, vh = window.innerHeight
+  if (vw === 0 || vh === 0) return false
   for (const el of Array.from(document.body.children)) {
     if (!(el instanceof HTMLElement)) continue
     const cs = getComputedStyle(el)
-    if (cs.position !== 'fixed' || cs.display === 'none' || cs.visibility === 'hidden') continue
-    const z = parseInt(cs.zIndex || '0', 10)
-    if (!(z > 100)) continue
+    if (cs.position !== 'fixed') continue
+    if (cs.display === 'none' || cs.visibility === 'hidden') continue
+    if (cs.pointerEvents === 'none') continue                 // couche non bloquante → pas une sur-page
+    if (parseFloat(cs.opacity || '1') < 0.05) continue        // en train de disparaître / masqué
+    const z = parseInt(cs.zIndex, 10)
+    if (!(z > 100)) continue                                  // « auto » (NaN) et wrappers persistants exclus
     const r = el.getBoundingClientRect()
-    // Couvre l'essentiel de l'écran → c'est bien une sur-page, pas un toast/bulle.
-    if (r.width >= vw * 0.85 && r.height >= vh * 0.7) return true
+    // Doit VRAIMENT recouvrir l'écran, centré et à l'écran (pas décalé/animé hors champ).
+    if (r.left <= vw * 0.1 && r.top <= vh * 0.15 && r.right >= vw * 0.9 && r.bottom >= vh * 0.85) return true
   }
   return false
 }

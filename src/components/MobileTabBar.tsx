@@ -158,6 +158,9 @@ export default function MobileTabBar() {
 
   // Masque la barre dès qu'une sur-page (feuille/modale plein écran) est ouverte.
   // On observe l'ajout/retrait d'enfants de <body> (là où les portails montent).
+  // + FILET DE SÉCURITÉ : re-scan périodique et au relâcher du doigt → la barre
+  //   REVIENT toujours quand la sur-page se ferme (fini « elle disparaît après
+  //   l'IA »). setOverpage(même valeur) ne re-rend pas → aucun scintillement.
   useEffect(() => {
     if (typeof document === 'undefined') return
     const scan = () => setOverpage(anyOverpageOpen())
@@ -166,8 +169,14 @@ export default function MobileTabBar() {
     schedule()
     const mo = new MutationObserver(schedule)
     mo.observe(document.body, { childList: true })
+    const iv = window.setInterval(scan, 600)
     window.addEventListener('resize', schedule)
-    return () => { cancelAnimationFrame(raf); mo.disconnect(); window.removeEventListener('resize', schedule) }
+    window.addEventListener('pointerup', schedule, true)
+    return () => {
+      cancelAnimationFrame(raf); mo.disconnect(); window.clearInterval(iv)
+      window.removeEventListener('resize', schedule)
+      window.removeEventListener('pointerup', schedule, true)
+    }
   }, [pathname])
 
   function switchTo(next: Mode) {
@@ -305,7 +314,8 @@ const BAR: React.CSSProperties = {
   // fameux « des fois ça marche, des fois pas »). Fond plein = toujours net.
   position: 'fixed', zIndex: 100,
   left: 12, right: 12,
-  bottom: 'calc(env(safe-area-inset-bottom, 0px) + 8px)',
+  // Plus BAS, quasi collée en bas (façon Strava) : petit décalage seulement.
+  bottom: 'calc(env(safe-area-inset-bottom, 0px) + 2px)',
   borderRadius: 30,
   background: 'var(--bg-card)',
   border: '1px solid var(--border)',

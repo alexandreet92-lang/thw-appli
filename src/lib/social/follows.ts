@@ -39,6 +39,20 @@ export async function getFollowingIds(): Promise<Set<string>> {
 }
 
 export interface Person { id: string; name: string; username: string | null; avatar: string | null; sports: string[] }
+
+/** Profils que JE suis (pour inviter des personnes que je connais / suis). */
+export async function listFollowing(limit = 100): Promise<Person[]> {
+  const sb = createClient()
+  const user = await getCurrentUser()
+  if (!user) return []
+  const { data: f } = await sb.from('follows').select('following_id').eq('follower_id', user.id).limit(limit)
+  const ids = ((f ?? []) as { following_id: string }[]).map(r => r.following_id)
+  if (ids.length === 0) return []
+  const { data } = await sb.from('profiles').select('id, full_name, preferred_name, first_name, username, avatar_url, sports').in('id', ids)
+  return ((data ?? []) as any[])
+    .map(r => ({ id: r.id, name: r.preferred_name || r.full_name || r.first_name || r.username || 'Athlète', username: r.username ?? null, avatar: r.avatar_url ?? null, sports: Array.isArray(r.sports) ? r.sports : [] }))
+}
+
 /** Recherche d'athlètes à suivre (nom / username). Exclut soi-même. */
 export async function searchPeople(q: string, limit = 20): Promise<Person[]> {
   const sb = createClient()

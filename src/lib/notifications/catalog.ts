@@ -22,6 +22,7 @@ export type NotifKey =
   | 'connexions.echec_sync'
   | 'competitions.j7' | 'competitions.j3' | 'competitions.j1' | 'competitions.strategie_dispo'
   | 'communaute.mention' | 'communaute.nouveau_message' | 'communaute.evenement' | 'communaute.appel'
+  | 'communaute.invitation'
   | 'systeme.nouvelle_version' | 'systeme.nouvelle_feature' | 'systeme.maintenance' | 'systeme.astuce'
   // ── Coach ENTRANT (ce que le coach reçoit sur SES athlètes) ──
   | 'coach_in.message' | 'coach_in.activite' | 'coach_in.seance_manquee' | 'coach_in.nouvel_athlete'
@@ -80,6 +81,7 @@ export const NOTIF_DEFAULTS: Record<NotifKey, boolean> = {
   'communaute.nouveau_message': false,
   'communaute.evenement': true,
   'communaute.appel': true,
+  'communaute.invitation': true,
   'systeme.nouvelle_version': true,
   'systeme.nouvelle_feature': true,
   'systeme.maintenance': false,

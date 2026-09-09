@@ -11,7 +11,7 @@ import Link from 'next/link'
 import { useI18n } from '@/lib/i18n'
 import { useEntitlements } from '@/hooks/useEntitlements'
 import { listSpaces, joinSpace, leaveSpace, updateSpaceIcon } from '@/lib/community/spaces'
-import { listChannels, createChannel, getUnreadChannelIds, getMutedChannelIds, toggleChannelMute } from '@/lib/community/channels'
+import { listChannels, createChannel, getUnreadChannelIds, getMutedChannelIds, toggleChannelMute, getPinnedChannelIds, toggleChannelPin, duplicateChannel, deleteChannel } from '@/lib/community/channels'
 import { getActiveCalls } from '@/lib/community/calls'
 import { uploadCommunityMedia } from '@/lib/community/messages'
 import { ChannelChat } from './ChannelChat'
@@ -21,6 +21,9 @@ import { VoiceView } from './VoiceView'
 import { useCall } from './call/CallProvider'
 import { CreateSpaceSheet } from './CreateSpaceSheet'
 import { CreateChannelSheet } from './CreateChannelSheet'
+import { ChannelContextMenu } from './ChannelContextMenu'
+import { ChannelEditSheet } from './ChannelEditSheet'
+import { InviteSheet } from './InviteSheet'
 import { CommunityManageSheet } from './CommunityManageSheet'
 import { DiscoverSheet } from './DiscoverSheet'
 import { SpaceBadge } from './SpaceBadge'
@@ -67,7 +70,11 @@ export function CommunityView() {
   const commSwipe = useRef<{ x: number; y: number } | null>(null)
   const [unread, setUnread] = useState<Set<string>>(new Set())
   const [muted, setMuted] = useState<Set<string>>(new Set())
+  const [pinned, setPinned] = useState<Set<string>>(new Set())
   const [activeCalls, setActiveCalls] = useState<Record<string, number>>({})
+  const [menuChannel, setMenuChannel] = useState<CommunityChannel | null>(null)
+  const [editChannelState, setEditChannelState] = useState<CommunityChannel | null>(null)
+  const [inviteOpen, setInviteOpen] = useState(false)
 
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 767px)')
@@ -119,6 +126,7 @@ export function CommunityView() {
     setChannelId(prev => (prev && list.some(c => c.id === prev) ? prev : list[0]?.id ?? null))
     void getUnreadChannelIds(list.map(c => c.id)).then(setUnread)
     void getMutedChannelIds().then(setMuted)
+    void getPinnedChannelIds().then(setPinned)
   }, [])
 
   const doToggleMute = useCallback(async (channelId: string) => {
@@ -200,6 +208,27 @@ export function CommunityView() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [space, loadChannels])
 
+  // ── Actions du menu contextuel d'un salon (appui long) ──
+  const doTogglePin = useCallback(async (cid: string) => {
+    const was = pinned.has(cid)
+    setPinned(prev => { const n = new Set(prev); was ? n.delete(cid) : n.add(cid); return n })
+    await toggleChannelPin(cid, was)
+  }, [pinned])
+
+  const doDuplicateChannel = useCallback(async (cid: string) => {
+    if (!space) return
+    const created = await duplicateChannel(cid)
+    if (created) await loadChannels(space.id)
+  }, [space, loadChannels])
+
+  const doDeleteChannel = useCallback(async (cid: string) => {
+    if (!space) return
+    if (await deleteChannel(cid)) {
+      if (channelId === cid) setChannelId(null)
+      await loadChannels(space.id)
+    }
+  }, [space, channelId, loadChannels])
+
   const canManage = !!space && (space.myRole === 'owner' || space.myRole === 'admin')
 
   const doSetLogo = useCallback(async (file: File) => {
@@ -219,17 +248,19 @@ export function CommunityView() {
   const channelCol = (
     <ChannelColumn
       space={space} channels={channels} activeId={channelId} loading={loadingChannels}
-      isNarrow={isNarrow} joining={joining} canManage={canManage} unread={unread} muted={muted} activeCalls={activeCalls}
+      isNarrow={isNarrow} joining={joining} canManage={canManage} unread={unread} muted={muted} pinned={pinned} activeCalls={activeCalls}
       canBrand={canManage && ent.community.canBrand}
       panel={panel} onEvents={selectEvents} onManage={() => setShowManage(true)}
       onSelect={selectChannel} onJoin={doJoin} onLeave={doLeave}
       onAddChannel={() => setShowCreateChannel(true)} onSetLogo={doSetLogo}
+      onLongPress={(c) => setMenuChannel(c)}
       onBack={goSpaces}
     />
   )
 
   const eventsPane = space ? (
     <EventsView spaceId={space.id} isMember={space.isMember} canManage={canManage} isNarrow={isNarrow}
+      channels={channels} onChannelsChanged={() => { if (space) void loadChannels(space.id) }}
       onBack={() => { setDir('back'); setMView('home') }} />
   ) : null
 
@@ -341,6 +372,30 @@ export function CommunityView() {
         />
       )}
 
+      {menuChannel && (
+        <ChannelContextMenu
+          channel={menuChannel} isPinned={pinned.has(menuChannel.id)} canManage={canManage}
+          onClose={() => setMenuChannel(null)}
+          onInvite={() => setInviteOpen(true)}
+          onTogglePin={() => void doTogglePin(menuChannel.id)}
+          onEdit={() => setEditChannelState(menuChannel)}
+          onDuplicate={() => void doDuplicateChannel(menuChannel.id)}
+          onDelete={() => void doDeleteChannel(menuChannel.id)}
+        />
+      )}
+
+      {editChannelState && (
+        <ChannelEditSheet
+          channel={editChannelState} isMuted={muted.has(editChannelState.id)}
+          onClose={() => setEditChannelState(null)}
+          onSaved={() => { if (space) void loadChannels(space.id) }}
+        />
+      )}
+
+      {inviteOpen && space && (
+        <InviteSheet spaceId={space.id} spaceName={space.name} onClose={() => setInviteOpen(false)} />
+      )}
+
       {showManage && space && canManage && (
         <CommunityManageSheet spaceId={space.id} onClose={() => setShowManage(false)}
           onDeleted={() => { setShowManage(false); void loadSpaces() }} />
@@ -375,6 +430,12 @@ function SpaceRail({ spaces, activeId, loading, onSelect, onCreate, onDiscover }
   const { t } = useI18n()
   return (
     <div data-guide="comm-spaces" style={{ height: '100%', overflowY: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--space-2)', padding: 'var(--space-3) 0' }}>
+      {/* Messages privés — tout en haut, juste au-dessus des espaces (bulle THW). */}
+      <Link href="/messages" title={t('w1g.privateMessages')} aria-label={t('w1g.privateMessages')}
+        style={{ width: 44, height: 44, borderRadius: 'var(--r-lg)', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--surface-neutral)', color: 'var(--text)', textDecoration: 'none', flexShrink: 0 }}>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
+      </Link>
+      <span aria-hidden style={{ width: 24, height: 1, background: 'var(--border)', flexShrink: 0, margin: '2px 0' }} />
       {loading ? (
         [0, 1, 2, 3].map(i => <span key={i} style={{ width: 44, height: 44, borderRadius: 'var(--r-md)', background: 'var(--surface-neutral)' }} />)
       ) : spaces.map(s => {
@@ -402,14 +463,16 @@ function SpaceRail({ spaces, activeId, loading, onSelect, onCreate, onDiscover }
 }
 
 // ── Colonne des canaux ──────────────────────────────────────────────────────
-function ChannelColumn({ space, channels, activeId, loading, isNarrow, joining, canManage, canBrand, unread, muted, activeCalls, panel, onEvents, onManage, onSelect, onJoin, onLeave, onAddChannel, onSetLogo, onBack }: {
+function ChannelColumn({ space, channels, activeId, loading, isNarrow, joining, canManage, canBrand, unread, muted, pinned, activeCalls, panel, onEvents, onManage, onSelect, onJoin, onLeave, onAddChannel, onSetLogo, onLongPress, onBack }: {
   space: CommunitySpace | null; channels: CommunityChannel[]; activeId: string | null; loading: boolean
-  isNarrow: boolean; joining: boolean; canManage: boolean; canBrand: boolean; unread: Set<string>; muted: Set<string>; activeCalls: Record<string, number>
+  isNarrow: boolean; joining: boolean; canManage: boolean; canBrand: boolean; unread: Set<string>; muted: Set<string>; pinned: Set<string>; activeCalls: Record<string, number>
   panel: 'chat' | 'events' | 'call'; onEvents: () => void; onManage: () => void
-  onSelect: (id: string) => void; onJoin: () => void; onLeave: () => void; onAddChannel: () => void; onSetLogo: (file: File) => void; onBack: () => void
+  onSelect: (id: string) => void; onJoin: () => void; onLeave: () => void; onAddChannel: () => void; onSetLogo: (file: File) => void; onLongPress: (c: CommunityChannel) => void; onBack: () => void
 }) {
   const { t } = useI18n()
   const logoRef = useRef<HTMLInputElement>(null)
+  // Appui long (mobile) / clic droit (desktop) → menu d'actions du salon.
+  const lpRef = useRef<{ timer: ReturnType<typeof setTimeout> | null; fired: boolean }>({ timer: null, fired: false })
   if (!space) {
     return <div style={{ padding: 'var(--space-6)', color: 'var(--text-dim)', fontFamily: FB, fontSize: 13 }}>—</div>
   }
@@ -484,14 +547,21 @@ function ChannelColumn({ space, channels, activeId, loading, isNarrow, joining, 
           const renderChan = (c: typeof channels[number]) => {
             const active = activeId === c.id
             const isMuted = muted.has(c.id)
+            const isPinned = pinned.has(c.id)
             const isUnread = unread.has(c.id) && !active && !isMuted
+            const startPress = () => { lpRef.current.fired = false; lpRef.current.timer = setTimeout(() => { lpRef.current.fired = true; onLongPress(c) }, 480) }
+            const cancelPress = () => { if (lpRef.current.timer) { clearTimeout(lpRef.current.timer); lpRef.current.timer = null } }
             return (
-              <button key={c.id} onClick={() => onSelect(c.id)}
+              <button key={c.id}
+                onClick={() => { if (lpRef.current.fired) { lpRef.current.fired = false; return } onSelect(c.id) }}
+                onContextMenu={e => { e.preventDefault(); onLongPress(c) }}
+                onTouchStart={startPress} onTouchEnd={cancelPress} onTouchMove={cancelPress} onTouchCancel={cancelPress}
                 style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', width: '100%', textAlign: 'left', border: 'none', cursor: 'pointer', borderRadius: 'var(--r-sm)', padding: 'var(--space-2) var(--space-3)', minHeight: 36, background: active ? 'var(--surface-neutral)' : 'transparent', fontFamily: FB, opacity: isMuted ? 0.5 : 1 }}>
                 {c.kind === 'voice'
                   ? <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-dim)', flexShrink: 0 }}><path d="M11 5 6 9H2v6h4l5 4zM15.5 8.5a5 5 0 0 1 0 7M19 5a9 9 0 0 1 0 14" /></svg>
                   : <span style={{ color: 'var(--text-dim)', fontSize: 15, lineHeight: 1 }}>#</span>}
                 <span style={{ flex: 1, minWidth: 0, fontSize: 13.5, fontWeight: active || isUnread ? 600 : 500, color: active || isUnread ? 'var(--text)' : 'var(--text-mid)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</span>
+                {isPinned && <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-dim)', flexShrink: 0 }} aria-label={t('w1g.ch.pin')}><path d="M12 17v5M9 3h6l-1 6 3 3H7l3-3-1-6z" /></svg>}
                 {c.isPrivate && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-dim)', flexShrink: 0 }} aria-label={t('w1g.ch.private')}><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>}
                 {(activeCalls[c.id] ?? 0) > 0 && (
                   <span title={t('w1g.inCall', { n: activeCalls[c.id] })} style={{ display: 'inline-flex', alignItems: 'center', gap: 3, flexShrink: 0, fontFamily: FB, fontSize: 10.5, fontWeight: 700, color: 'var(--sport-run)' }}>
@@ -504,8 +574,10 @@ function ChannelColumn({ space, channels, activeId, loading, isNarrow, joining, 
               </button>
             )
           }
-          const textChans = channels.filter(c => c.kind !== 'voice')
-          const voiceChans = channels.filter(c => c.kind === 'voice')
+          // Salons épinglés en haut (ordre stable sinon).
+          const byPin = (a: typeof channels[number], b: typeof channels[number]) => (pinned.has(b.id) ? 1 : 0) - (pinned.has(a.id) ? 1 : 0)
+          const textChans = channels.filter(c => c.kind !== 'voice').sort(byPin)
+          const voiceChans = channels.filter(c => c.kind === 'voice').sort(byPin)
           const group = (label: string, list: typeof channels) => list.length === 0 ? null : (
             <div style={{ marginBottom: 'var(--space-2)' }}>
               <div style={{ padding: '2px var(--space-3) 5px', fontFamily: FB, fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-dim)' }}>{label}</div>

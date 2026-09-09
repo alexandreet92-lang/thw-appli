@@ -41,6 +41,7 @@ export interface CommunityChannel {
   position: number
   kind: ChannelKind
   isPrivate: boolean
+  themes: string[]
 }
 
 /** Résumé dénormalisé d'une activité partagée (snapshot — les autres membres ne
@@ -142,6 +143,8 @@ export interface CommunityMemberInfo {
 
 export type EventKind = 'sortie' | 'wod' | 'defi' | 'course' | 'autre'
 export type RsvpStatus = 'going' | 'maybe' | 'no'
+/** Fréquence de récurrence d'un événement. */
+export type EventFrequency = 'once' | 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'yearly' | 'weekdays' | 'weekend'
 
 /** Un événement / défi d'un espace, enrichi des compteurs RSVP + ma réponse. */
 export interface CommunityEvent {
@@ -153,6 +156,10 @@ export interface CommunityEvent {
   kind: EventKind
   location: string | null
   startsAt: string
+  endsAt: string | null
+  frequency: EventFrequency
+  theme: string | null
+  channelId: string | null
   createdAt: string
   authorName: string
   goingCount: number

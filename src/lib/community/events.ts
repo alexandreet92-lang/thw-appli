@@ -5,11 +5,12 @@
 // ══════════════════════════════════════════════════════════════════════════
 import { createClient } from '@/lib/supabase/client'
 import { myId, namesFor } from './shared'
-import type { CommunityEvent, EventKind, RsvpStatus } from '@/types/community'
+import type { CommunityEvent, EventKind, EventFrequency, RsvpStatus } from '@/types/community'
 
 interface EventRow {
   id: string; space_id: string; created_by: string; title: string; description: string | null
   kind: EventKind; location: string | null; starts_at: string; created_at: string
+  ends_at: string | null; frequency: EventFrequency | null; theme: string | null; channel_id: string | null
 }
 
 /** Événements à venir (et récents) d'un espace, avec compteurs RSVP + ma réponse. */
@@ -18,7 +19,7 @@ export async function listSpaceEvents(spaceId: string): Promise<CommunityEvent[]
   const me = await myId()
   const { data } = await sb
     .from('community_events')
-    .select('id, space_id, created_by, title, description, kind, location, starts_at, created_at')
+    .select('id, space_id, created_by, title, description, kind, location, starts_at, created_at, ends_at, frequency, theme, channel_id')
     .eq('space_id', spaceId)
     .order('starts_at', { ascending: true })
   const rows = (data ?? []) as EventRow[]
@@ -38,6 +39,7 @@ export async function listSpaceEvents(spaceId: string): Promise<CommunityEvent[]
   return rows.map((r): CommunityEvent => ({
     id: r.id, spaceId: r.space_id, createdBy: r.created_by, title: r.title, description: r.description,
     kind: r.kind, location: r.location, startsAt: r.starts_at, createdAt: r.created_at,
+    endsAt: r.ends_at ?? null, frequency: r.frequency ?? 'once', theme: r.theme ?? null, channelId: r.channel_id ?? null,
     authorName: people.get(r.created_by)?.name ?? 'Membre',
     goingCount: going.get(r.id) ?? 0, maybeCount: maybe.get(r.id) ?? 0, myRsvp: mine.get(r.id) ?? null,
   }))
@@ -45,7 +47,8 @@ export async function listSpaceEvents(spaceId: string): Promise<CommunityEvent[]
 
 /** Crée un événement (via la route serveur → notifie les membres). */
 export async function createEvent(input: {
-  spaceId: string; title: string; description?: string | null; kind: EventKind; location?: string | null; startsAt: string
+  spaceId: string; title: string; description?: string | null; kind: EventKind; location?: string | null
+  startsAt: string; endsAt?: string | null; frequency?: EventFrequency; theme?: string | null; channelId?: string | null
 }): Promise<boolean> {
   const res = await fetch('/api/community/events', {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input),

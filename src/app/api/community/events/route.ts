@@ -12,10 +12,12 @@ import type { EventKind } from '@/types/community'
 export const dynamic = 'force-dynamic'
 
 const KINDS: EventKind[] = ['sortie', 'wod', 'defi', 'course', 'autre']
+const FREQS = ['once', 'daily', 'weekly', 'biweekly', 'monthly', 'yearly', 'weekdays', 'weekend']
 
 interface Body {
   spaceId?: string; title?: string; description?: string | null
   kind?: string; location?: string | null; startsAt?: string
+  endsAt?: string | null; frequency?: string; theme?: string | null; channelId?: string | null
 }
 
 export async function POST(req: Request) {
@@ -32,6 +34,11 @@ export async function POST(req: Request) {
     const when = b.startsAt ? new Date(b.startsAt) : null
     if (!when || isNaN(when.getTime())) return NextResponse.json({ error: 'Date invalide' }, { status: 400 })
     const kind: EventKind = (KINDS as string[]).includes(b.kind ?? '') ? (b.kind as EventKind) : 'sortie'
+    const frequency = FREQS.includes(b.frequency ?? '') ? b.frequency : 'once'
+    const endsAt = b.endsAt ? new Date(b.endsAt) : null
+    const endsIso = endsAt && !isNaN(endsAt.getTime()) && endsAt.getTime() > when.getTime() ? endsAt.toISOString() : null
+    const theme = (b.theme ?? '').toString().trim().slice(0, 60) || null
+    const channelId = (b.channelId ?? '').toString().trim() || null
 
     const { data: ev, error } = await supabase
       .from('community_events')
@@ -40,6 +47,7 @@ export async function POST(req: Request) {
         description: (b.description ?? '').toString().slice(0, 2000) || null,
         kind, location: (b.location ?? '').toString().slice(0, 200) || null,
         starts_at: when.toISOString(),
+        ends_at: endsIso, frequency, theme, channel_id: channelId,
       })
       .select('id')
       .single()

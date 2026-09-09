@@ -9,7 +9,7 @@ import { createClient } from '@/lib/supabase/client'
 import { listSpaceEvents, setRsvp, deleteEvent } from '@/lib/community/events'
 import { myId } from '@/lib/community/shared'
 import { CreateEventSheet } from './CreateEventSheet'
-import type { CommunityEvent } from '@/types/community'
+import type { CommunityEvent, CommunityChannel } from '@/types/community'
 import { useI18n } from '@/lib/i18n'
 
 const FB = 'var(--font-body)', FD = 'var(--font-display)'
@@ -24,8 +24,9 @@ function fmtWhen(iso: string): string {
 }
 const isPast = (iso: string) => { try { return new Date(iso).getTime() < Date.now() } catch { return false } }
 
-export function EventsView({ spaceId, isMember, canManage, isNarrow, onBack }: {
+export function EventsView({ spaceId, isMember, canManage, isNarrow, onBack, channels = [], onChannelsChanged }: {
   spaceId: string; isMember: boolean; canManage: boolean; isNarrow: boolean; onBack: () => void
+  channels?: CommunityChannel[]; onChannelsChanged?: () => void
 }) {
   const [events, setEvents] = useState<CommunityEvent[]>([])
   const [loading, setLoading] = useState(true)
@@ -119,7 +120,14 @@ export function EventsView({ spaceId, isMember, canManage, isNarrow, onBack }: {
           </div>
         )}
       </div>
-      {creating && <CreateEventSheet spaceId={spaceId} onClose={() => setCreating(false)} onCreated={() => { setCreating(false); void load() }} />}
+      {creating && (
+        <CreateEventSheet
+          spaceId={spaceId} channels={channels} canManageChannels={canManage}
+          onClose={() => setCreating(false)}
+          onCreated={() => { setCreating(false); void load() }}
+          onChannelsChanged={onChannelsChanged}
+        />
+      )}
     </div>
   )
 }

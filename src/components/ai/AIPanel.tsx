@@ -24824,15 +24824,24 @@ export default function AIPanel({
         )
       })()}
 
+      {/* Effet coulissant à l'ouverture d'une page (Studio, Routine…) : la page
+          entre depuis la gauche et glisse vers la droite (mouvement fluide, plus
+          d'apparition sèche). */}
+      <style>{`@keyframes thwViewSlideIn{from{transform:translateX(-100%);opacity:.4}to{transform:translateX(0);opacity:1}}`}</style>
+
       {/* ── Interface dédiée « Routines » ── */}
       {routinesOpen && mounted && createPortal(
-        <RoutinesView onClose={() => setRoutinesOpen(false)} />,
+        <div style={{ position: 'fixed', inset: 0, zIndex: 18000, animation: 'thwViewSlideIn 0.32s cubic-bezier(0.32,0.72,0,1)', willChange: 'transform' }}>
+          <RoutinesView onClose={() => setRoutinesOpen(false)} />
+        </div>,
         document.body,
       )}
 
       {/* ── Interface dédiée « Studio » (orchestration multi-agents) ── */}
       {studioOpen && mounted && createPortal(
-        <StudioView onClose={() => setStudioOpen(false)} />,
+        <div style={{ position: 'fixed', inset: 0, zIndex: 18000, animation: 'thwViewSlideIn 0.32s cubic-bezier(0.32,0.72,0,1)', willChange: 'transform' }}>
+          <StudioView onClose={() => setStudioOpen(false)} />
+        </div>,
         document.body,
       )}
 

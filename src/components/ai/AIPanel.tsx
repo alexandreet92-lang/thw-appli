@@ -20712,8 +20712,13 @@ export default function AIPanel({
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null)
   // Interface dédiée « Routines » (ouverte depuis la sidebar ou ?routines=1).
   const [routinesOpen,    setRoutinesOpen]    = useState(false)
+  const [routinesClosing, setRoutinesClosing] = useState(false)
   // Interface dédiée « Studio » (orchestration multi-agents, façon Make).
   const [studioOpen,      setStudioOpen]      = useState(false)
+  const [studioClosing,   setStudioClosing]   = useState(false)
+  // Fermeture ANIMÉE (slide inverse) puis démontage → mouvement dans les 2 sens.
+  const closeStudio   = () => { setStudioClosing(true);   setTimeout(() => { setStudioOpen(false);   setStudioClosing(false) }, 300) }
+  const closeRoutines = () => { setRoutinesClosing(true); setTimeout(() => { setRoutinesOpen(false); setRoutinesClosing(false) }, 300) }
   const [input,       setInput]       = useState('')
   // Génération PARALLÈLE : on suit l'état par conversation (plusieurs chats
   // peuvent tourner en même temps). `generatingConvs` = ids en cours de
@@ -24824,23 +24829,26 @@ export default function AIPanel({
         )
       })()}
 
-      {/* Effet coulissant à l'ouverture d'une page (Studio, Routine…) : la page
-          entre depuis la gauche et glisse vers la droite (mouvement fluide, plus
-          d'apparition sèche). */}
-      <style>{`@keyframes thwViewSlideIn{from{transform:translateX(-100%);opacity:.4}to{transform:translateX(0);opacity:1}}`}</style>
+      {/* Effet coulissant DANS LES DEUX SENS : la page entre depuis la gauche
+          (ouverture) et repart vers la gauche (fermeture). Mouvement fluide,
+          plus jamais d'apparition/disparition sèche. */}
+      <style>{`
+        @keyframes thwViewSlideIn{from{transform:translateX(-100%);opacity:.4}to{transform:translateX(0);opacity:1}}
+        @keyframes thwViewSlideOut{from{transform:translateX(0);opacity:1}to{transform:translateX(-100%);opacity:.2}}
+      `}</style>
 
       {/* ── Interface dédiée « Routines » ── */}
       {routinesOpen && mounted && createPortal(
-        <div style={{ position: 'fixed', inset: 0, zIndex: 18000, animation: 'thwViewSlideIn 0.32s cubic-bezier(0.32,0.72,0,1)', willChange: 'transform' }}>
-          <RoutinesView onClose={() => setRoutinesOpen(false)} />
+        <div style={{ position: 'fixed', inset: 0, zIndex: 18000, animation: routinesClosing ? 'thwViewSlideOut 0.3s cubic-bezier(0.32,0.72,0,1) forwards' : 'thwViewSlideIn 0.32s cubic-bezier(0.32,0.72,0,1)', willChange: 'transform' }}>
+          <RoutinesView onClose={closeRoutines} />
         </div>,
         document.body,
       )}
 
       {/* ── Interface dédiée « Studio » (orchestration multi-agents) ── */}
       {studioOpen && mounted && createPortal(
-        <div style={{ position: 'fixed', inset: 0, zIndex: 18000, animation: 'thwViewSlideIn 0.32s cubic-bezier(0.32,0.72,0,1)', willChange: 'transform' }}>
-          <StudioView onClose={() => setStudioOpen(false)} />
+        <div style={{ position: 'fixed', inset: 0, zIndex: 18000, animation: studioClosing ? 'thwViewSlideOut 0.3s cubic-bezier(0.32,0.72,0,1) forwards' : 'thwViewSlideIn 0.32s cubic-bezier(0.32,0.72,0,1)', willChange: 'transform' }}>
+          <StudioView onClose={closeStudio} />
         </div>,
         document.body,
       )}

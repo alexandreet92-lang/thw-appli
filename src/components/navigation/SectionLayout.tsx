@@ -110,7 +110,10 @@ export function SectionLayout({
         {/* Rail TOUJOURS ouvert, épinglé (sticky) : reste visible au scroll. */}
         <aside
           style={{
-            width: 214, flexShrink: 0, alignSelf: 'flex-start',
+            // alignSelf: 'stretch' (comme la page Training/TabbedPageLayout) →
+            // le rail s'étire sur toute la hauteur : le trait de séparation
+            // descend jusqu'EN BAS au lieu de s'arrêter sous les bulles.
+            width: 214, flexShrink: 0, alignSelf: 'stretch',
             position: 'sticky', top: 0, zIndex: 5,
             maxHeight: 'calc(100vh - var(--header-height))', overflowY: 'auto',
             background: 'var(--bg)', borderRight: '0.5px solid var(--border)',

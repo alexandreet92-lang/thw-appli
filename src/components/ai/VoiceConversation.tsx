@@ -190,6 +190,9 @@ export function VoiceConversation({ onTurn, onClose }: {
     endedRef.current = false
 
     ;(async () => {
+      // Garde : API micro absente (WebView ancienne / origine non sécurisée) → on
+      // n'appelle rien (aucune exception JS), on bascule sur l'état « non supporté ».
+      if (!navigator.mediaDevices?.getUserMedia) { setSupported(false); return }
       let stream: MediaStream
       try {
         stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } })

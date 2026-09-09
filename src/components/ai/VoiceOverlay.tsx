@@ -134,6 +134,12 @@ export function VoiceOverlay({
     let data: Uint8Array | null = null
 
     ;(async () => {
+      // Garde : API absente (WebView ancienne / origine non sécurisée) → on ne
+      // TENTE PAS l'appel (évite toute exception JS), état d'erreur propre.
+      if (!navigator.mediaDevices?.getUserMedia) {
+        if (!srRef.current) { setPhase('error'); setErrorMsg(t('ai.micDenied', { reason: t('ai.unknown') })) }
+        return
+      }
       let stream: MediaStream
       try {
         stream = await navigator.mediaDevices.getUserMedia({
@@ -184,6 +190,7 @@ export function VoiceOverlay({
       } catch { /* waveform indisponible → reco navigateur suffit */ }
     })()
 
+    let idle = 0
     const id = window.setInterval(() => {
       const ctx = ctxRef.current
       if (ctx?.state === 'suspended') ctx.resume?.()
@@ -199,12 +206,19 @@ export function VoiceOverlay({
       }
       const buf = bufRef.current
       buf.push(v); buf.shift()
+      idle += 0.28
+      const quiet = phaseRef.current === 'rec'
       for (let i = 0; i < NBARS; i++) {
         const el = barsRef.current[i]
         if (!el) continue
-        const h = 0.14 + buf[i] * 0.86
+        // Respiration douce au repos : une onde sinusoïdale traverse les barres →
+        // ça « vit » avant même de parler (fluide, façon Claude). Dès qu'on parle,
+        // le vrai volume prend le dessus.
+        const wave = quiet ? (Math.sin(idle - i * 0.45) * 0.5 + 0.5) * 0.14 : 0
+        const amp = Math.max(buf[i], wave)
+        const h = 0.16 + amp * 0.84
         el.style.transform = `scaleY(${h.toFixed(3)})`
-        el.style.opacity = String(0.35 + buf[i] * 0.65)
+        el.style.opacity = String(0.45 + amp * 0.55)
       }
     }, 55)
 
@@ -264,42 +278,46 @@ export function VoiceOverlay({
   const bar = (
     <div style={{
       pointerEvents: 'auto',
-      width: '100%', maxWidth: 620, display: 'flex', alignItems: 'center', gap: 10,
-      background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 16,
-      padding: '8px 10px', boxShadow: '0 10px 34px color-mix(in srgb, var(--text) 16%, transparent)',
-      animation: 'vo_pill 0.24s cubic-bezier(0.32,0.72,0,1)',
+      width: '100%', maxWidth: 620, display: 'flex', alignItems: 'center', gap: 12,
+      background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 22,
+      padding: '9px 12px', boxShadow: '0 14px 44px color-mix(in srgb, var(--text) 15%, transparent)',
+      animation: 'vo_pill 0.26s cubic-bezier(0.32,0.72,0,1)',
     }}>
       {/* X — annuler */}
       <button onClick={cancel} aria-label={t('ai.cancel')} style={{
         width: 40, height: 40, borderRadius: '50%', border: 'none', flexShrink: 0,
-        background: 'var(--bg-card2)', color: 'var(--text)', cursor: 'pointer',
+        background: 'var(--bg-card2)', color: 'var(--text-mid)', cursor: 'pointer',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
+        transition: 'background 0.15s',
       }}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
       </button>
 
-      {/* Waveform */}
-      <div style={{ flex: 1, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 3, overflow: 'hidden', opacity: phase === 'rec' ? 1 : 0.4 }}>
+      {/* Waveform — barres arrondies, respiration douce au repos */}
+      <div style={{ flex: 1, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 3.5, overflow: 'hidden', opacity: phase === 'rec' ? 1 : 0.4 }}>
         {Array.from({ length: NBARS }, (_, i) => (
           <span key={i} ref={el => { barsRef.current[i] = el }} style={{
-            width: 3, height: '100%', borderRadius: 4, flexShrink: 0,
+            width: 3, height: '100%', borderRadius: 999, flexShrink: 0,
             background: 'var(--text)', transformOrigin: 'center',
-            transform: 'scaleY(0.14)', opacity: 0.35,
-            transition: 'transform 0.06s linear, opacity 0.1s linear', willChange: 'transform',
+            transform: 'scaleY(0.16)', opacity: 0.45,
+            transition: 'transform 0.08s ease-out, opacity 0.12s ease-out', willChange: 'transform, opacity',
           }} />
         ))}
       </div>
 
-      {/* ✓ — valider (bleu, façon Claude) */}
+      {/* ✓ — valider (accent, façon Claude), pulsation douce en écoute */}
       <button onClick={confirm} aria-label={t('ai.validate')} disabled={phase !== 'rec'} style={{
-        width: 40, height: 40, borderRadius: '50%', border: 'none', flexShrink: 0,
+        width: 42, height: 42, borderRadius: '50%', border: 'none', flexShrink: 0,
         background: 'var(--primary)', color: 'var(--on-primary)', cursor: phase === 'rec' ? 'pointer' : 'default',
         opacity: phase === 'rec' ? 1 : 0.6,
+        boxShadow: phase === 'rec' ? '0 4px 16px color-mix(in srgb, var(--primary) 45%, transparent)' : 'none',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
+        animation: phase === 'rec' ? 'vo_pulse 2s ease-in-out infinite' : 'none',
+        transition: 'opacity 0.15s, box-shadow 0.15s',
       }}>
         {phase === 'transcribing'
           ? <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" style={{ animation: 'vo_spin 0.8s linear infinite' }}><path d="M21 12a9 9 0 1 1-6.2-8.5" /></svg>
-          : <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>}
+          : <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>}
       </button>
     </div>
   )
@@ -309,6 +327,7 @@ export function VoiceOverlay({
       <style>{`
         @keyframes vo_pill { from { opacity: 0; transform: translateY(12px) } to { opacity: 1; transform: translateY(0) } }
         @keyframes vo_spin { to { transform: rotate(360deg) } }
+        @keyframes vo_pulse { 0%,100% { box-shadow: 0 4px 16px color-mix(in srgb, var(--primary) 40%, transparent) } 50% { box-shadow: 0 4px 22px color-mix(in srgb, var(--primary) 62%, transparent) } }
       `}</style>
       {/* Barre flottante en BAS — ne masque pas l'écran (pas de scrim, pointerEvents none autour). */}
       <div style={{

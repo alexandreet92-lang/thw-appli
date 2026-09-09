@@ -3726,10 +3726,8 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
   return (
     <div style={{ display:'flex',flexDirection:'column',gap:14 }}>
       {tab === 'plan' && (<>
-      {/* ── PLAN HEADER + GRAPHIQUES (visible si plan IA actif) ── */}
-      {aiPlan && (
-        <PlanHeaderAndGraphics plan={aiPlan} sessions={aiPlanSessions} currentWeekStart={currentWeekStart} nextRace={nextRace} onReload={() => setAiPlanReloadTick(t => t + 1)} />
-      )}
+      {/* ── Bloc « Plan en cours » (programme IA + périodisation) RETIRÉ à la
+           demande : on ne bascule plus le programme IA sur la page Planning. ── */}
       {/* ── BANNIÈRE PLAN À VENIR — visible quand le plan démarre dans une semaine future ── */}
       {upcomingPlan && !aiPlan && (
         <div style={{ padding:'14px 18px',borderRadius:14,background:'rgba(6,182,212,0.08)',border:'1px solid rgba(6,182,212,0.30)',display:'flex',alignItems:'center',gap:14,flexWrap:'wrap' as const }}>

@@ -20,6 +20,7 @@ import { EventsView } from './EventsView'
 import { VoiceView } from './VoiceView'
 import { useCall } from './call/CallProvider'
 import { CreateSpaceSheet } from './CreateSpaceSheet'
+import { CreateChannelSheet } from './CreateChannelSheet'
 import { CommunityManageSheet } from './CommunityManageSheet'
 import { DiscoverSheet } from './DiscoverSheet'
 import { SpaceBadge } from './SpaceBadge'
@@ -59,6 +60,7 @@ export function CommunityView() {
   }, [isNarrow, mView, panel])
   const [joining, setJoining] = useState(false)
   const [showCreate, setShowCreate] = useState(false)
+  const [showCreateChannel, setShowCreateChannel] = useState(false)
   const [showDiscover, setShowDiscover] = useState(false)
   const [showManage, setShowManage] = useState(false)
   const [voiceSheetCh, setVoiceSheetCh] = useState<{ id: string; name: string } | null>(null)
@@ -151,10 +153,10 @@ export function CommunityView() {
     setSpaceId(id); setChannelId(null); setPanel('chat')
   }
   function selectChannel(id: string) {
-    // Salon VOCAL → ouvre la sur-page de pré-jonction (Rejoindre / micro-cam /
-    // message). Salon TEXTUEL → ouvre la discussion (slide droite→gauche).
+    // Salon VOCAL → on ENTRE directement dans l'appel (façon Discord : un tap =
+    // on est dans le salon vocal). Salon TEXTUEL → ouvre la discussion.
     const ch = channels.find(c => c.id === id)
-    if (ch?.kind === 'voice') { setVoiceSheetCh({ id: ch.id, name: ch.name }); return }
+    if (ch?.kind === 'voice') { joinVoice(ch.id, ch.name, { muted: false, cam: false }); return }
     setChannelId(id); markRead(id); setPanel('chat')
     if (isNarrow) { setDir('fwd'); setMView('chat') }
   }
@@ -191,9 +193,9 @@ export function CommunityView() {
     if (ok) await loadSpaces(space.id)
   }, [space, loadSpaces])
 
-  const doCreateChannel = useCallback(async (name: string, kind: 'text' | 'voice') => {
+  const doCreateChannel = useCallback(async (name: string, kind: 'text' | 'voice', isPrivate: boolean) => {
     if (!space) return
-    const created = await createChannel(space.id, name, kind)
+    const created = await createChannel(space.id, name, kind, { isPrivate })
     if (created) { await loadChannels(space.id); selectChannel(created.id) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [space, loadChannels])
@@ -221,7 +223,7 @@ export function CommunityView() {
       canBrand={canManage && ent.community.canBrand}
       panel={panel} onEvents={selectEvents} onManage={() => setShowManage(true)}
       onSelect={selectChannel} onJoin={doJoin} onLeave={doLeave}
-      onCreateChannel={doCreateChannel} onSetLogo={doSetLogo}
+      onAddChannel={() => setShowCreateChannel(true)} onSetLogo={doSetLogo}
       onBack={goSpaces}
     />
   )
@@ -300,7 +302,7 @@ export function CommunityView() {
           <div key={mView} className={dir === 'fwd' ? 'comm-slide-fwd' : 'comm-slide-back'} style={{ height: '100%', minHeight: 0 }}>
             {mView === 'home' && (
               <div style={{ display: 'flex', height: '100%', minHeight: 0 }}>
-                <div style={{ width: 60, flexShrink: 0, minHeight: 0, background: 'var(--bg-card2)' }}>{rail}</div>
+                <div style={{ width: 60, flexShrink: 0, minHeight: 0, background: 'var(--bg)' }}>{rail}</div>
                 <div style={{ flex: 1, minWidth: 0, minHeight: 0, background: 'var(--bg-card2)' }}>{channelCol}</div>
               </div>
             )}
@@ -313,10 +315,13 @@ export function CommunityView() {
               (IA / notifications / profil, position fixe top-right) pour que
               l'en-tête du canal (appel, recherche, présence…) reste visible. */}
           <div aria-hidden style={{ height: 46, flexShrink: 0 }} />
+          {/* Séparation Discord-like par le FOND (jamais par des bordures, cf.
+              Design System) : rail le plus sombre (--bg) → colonne salons
+              (--bg-card2) → zone chat/appel la plus claire (--bg-card). */}
           <div style={{ flex: 1, minHeight: 0, display: 'grid', gridTemplateColumns: '56px 248px 1fr', overflow: 'hidden', borderRadius: 'var(--r-lg)', background: 'var(--bg-card)' }}>
-            <div style={{ minHeight: 0, background: 'var(--bg-card2)' }}>{rail}</div>
+            <div style={{ minHeight: 0, background: 'var(--bg)' }}>{rail}</div>
             <div style={{ minHeight: 0, background: 'var(--bg-card2)' }}>{channelCol}</div>
-            <div style={{ minHeight: 0 }}>{centerPane}</div>
+            <div style={{ minHeight: 0, background: 'var(--bg-card)' }}>{centerPane}</div>
           </div>
         </>
       )}
@@ -326,6 +331,13 @@ export function CommunityView() {
           ent={ent.community}
           onClose={() => setShowCreate(false)}
           onCreated={(s) => { setShowCreate(false); void loadSpaces(s.id); setShowManage(true); if (isNarrow) { setDir('fwd'); setMView('home') } }}
+        />
+      )}
+
+      {showCreateChannel && space && canManage && (
+        <CreateChannelSheet
+          onClose={() => setShowCreateChannel(false)}
+          onCreate={async (name, kind, isPrivate) => { await doCreateChannel(name, kind, isPrivate) }}
         />
       )}
 
@@ -390,23 +402,16 @@ function SpaceRail({ spaces, activeId, loading, onSelect, onCreate, onDiscover }
 }
 
 // ── Colonne des canaux ──────────────────────────────────────────────────────
-function ChannelColumn({ space, channels, activeId, loading, isNarrow, joining, canManage, canBrand, unread, muted, activeCalls, panel, onEvents, onManage, onSelect, onJoin, onLeave, onCreateChannel, onSetLogo, onBack }: {
+function ChannelColumn({ space, channels, activeId, loading, isNarrow, joining, canManage, canBrand, unread, muted, activeCalls, panel, onEvents, onManage, onSelect, onJoin, onLeave, onAddChannel, onSetLogo, onBack }: {
   space: CommunitySpace | null; channels: CommunityChannel[]; activeId: string | null; loading: boolean
   isNarrow: boolean; joining: boolean; canManage: boolean; canBrand: boolean; unread: Set<string>; muted: Set<string>; activeCalls: Record<string, number>
   panel: 'chat' | 'events' | 'call'; onEvents: () => void; onManage: () => void
-  onSelect: (id: string) => void; onJoin: () => void; onLeave: () => void; onCreateChannel: (name: string, kind: 'text' | 'voice') => void; onSetLogo: (file: File) => void; onBack: () => void
+  onSelect: (id: string) => void; onJoin: () => void; onLeave: () => void; onAddChannel: () => void; onSetLogo: (file: File) => void; onBack: () => void
 }) {
   const { t } = useI18n()
-  const [adding, setAdding] = useState(false)
-  const [newName, setNewName] = useState('')
   const logoRef = useRef<HTMLInputElement>(null)
   if (!space) {
     return <div style={{ padding: 'var(--space-6)', color: 'var(--text-dim)', fontFamily: FB, fontSize: 13 }}>—</div>
-  }
-  function submitChannel() {
-    const n = newName.trim()
-    if (!n) { setAdding(false); return }
-    onCreateChannel(n, 'text'); setNewName(''); setAdding(false)
   }
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
@@ -465,22 +470,12 @@ function ChannelColumn({ space, channels, activeId, loading, isNarrow, joining, 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 'var(--space-2) var(--space-3)' }}>
           <span style={{ fontFamily: FB, fontSize: 10.5, fontWeight: 600, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{t('w1g.channels')}</span>
           {canManage && (
-            <button onClick={() => setAdding(v => !v)} aria-label={t('w1g.addChannel')} title={t('w1g.addChannel')}
+            <button onClick={onAddChannel} aria-label={t('w1g.addChannel')} title={t('w1g.addChannel')}
               style={{ width: 22, height: 22, borderRadius: 'var(--r-sm)', border: 'none', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14" /></svg>
             </button>
           )}
         </div>
-        {adding && (
-          <div style={{ padding: '0 var(--space-2) var(--space-2)', display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-            <input autoFocus value={newName} onChange={e => setNewName(e.target.value.slice(0, 60))}
-              onKeyDown={e => { if (e.key === 'Enter') submitChannel(); if (e.key === 'Escape') { setAdding(false); setNewName('') } }}
-              placeholder={t('w1g.channelNamePlaceholder')}
-              style={{ width: '100%', boxSizing: 'border-box', background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: 'var(--r-sm)', padding: 'var(--space-2) var(--space-3)', fontFamily: FB, fontSize: 13, color: 'var(--text)', outline: 'none' }} />
-            <button type="button" onClick={submitChannel} disabled={!newName.trim()}
-              style={{ height: 32, border: 'none', borderRadius: 'var(--r-sm)', cursor: newName.trim() ? 'pointer' : 'default', background: 'var(--primary)', color: 'var(--on-primary)', fontFamily: FB, fontSize: 12.5, fontWeight: 600, opacity: newName.trim() ? 1 : 0.5 }}>{t('w1g.createChannel')}</button>
-          </div>
-        )}
         {loading ? (
           [0, 1, 2, 3].map(i => <span key={i} style={{ display: 'block', height: 34, borderRadius: 'var(--r-sm)', background: 'var(--surface-neutral)', margin: '0 var(--space-2) var(--space-2)' }} />)
         ) : (() => {
@@ -497,6 +492,7 @@ function ChannelColumn({ space, channels, activeId, loading, isNarrow, joining, 
                   ? <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-dim)', flexShrink: 0 }}><path d="M11 5 6 9H2v6h4l5 4zM15.5 8.5a5 5 0 0 1 0 7M19 5a9 9 0 0 1 0 14" /></svg>
                   : <span style={{ color: 'var(--text-dim)', fontSize: 15, lineHeight: 1 }}>#</span>}
                 <span style={{ flex: 1, minWidth: 0, fontSize: 13.5, fontWeight: active || isUnread ? 600 : 500, color: active || isUnread ? 'var(--text)' : 'var(--text-mid)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</span>
+                {c.isPrivate && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-dim)', flexShrink: 0 }} aria-label={t('w1g.ch.private')}><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>}
                 {(activeCalls[c.id] ?? 0) > 0 && (
                   <span title={t('w1g.inCall', { n: activeCalls[c.id] })} style={{ display: 'inline-flex', alignItems: 'center', gap: 3, flexShrink: 0, fontFamily: FB, fontSize: 10.5, fontWeight: 700, color: 'var(--sport-run)' }}>
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M23 7l-7 5 7 5V7z" /><rect x="1" y="5" width="15" height="14" rx="2" ry="2" /></svg>

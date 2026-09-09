@@ -40,6 +40,7 @@ export interface CommunityChannel {
   topic: string | null
   position: number
   kind: ChannelKind
+  isPrivate: boolean
 }
 
 /** Résumé dénormalisé d'une activité partagée (snapshot — les autres membres ne

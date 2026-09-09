@@ -15,7 +15,8 @@ import { markChannelRead } from '@/lib/community/channels'
 import { toggleReaction, QUICK_REACTIONS } from '@/lib/community/reactions'
 import { getPinnedIds, getPinnedMessages, togglePin } from '@/lib/community/pins'
 import { listSpaceMembers } from '@/lib/community/spaces'
-import { usePresenceCount } from '@/lib/community/presence'
+import { usePresenceCount, usePresenceIds } from '@/lib/community/presence'
+import { MembersSheet } from './MembersSheet'
 import { useSpeechToText } from '@/hooks/useSpeechToText'
 import { myId } from '@/lib/community/shared'
 import { reportMessage, getSpaceSettings, hasAcceptedRules, acceptRules } from '@/lib/community/moderation'
@@ -67,7 +68,7 @@ function Body({ text }: { text: string }) {
 }
 
 export function ChannelChat({
-  channel, isMember, canPost, canUpload, canModerate, isMuted, onToggleMute, onCall, onJoin, joining, onRead,
+  channel, isMember, canPost, canUpload, canModerate, isMuted, onToggleMute, onCall, onJoin, joining, onRead, onBack,
 }: {
   channel: CommunityChannel
   isMember: boolean
@@ -80,6 +81,9 @@ export function ChannelChat({
   onJoin: () => void
   joining: boolean
   onRead?: (channelId: string) => void
+  /** Fourni en MOBILE (vue immersive) : affiche un en-tête Discord (← nom + « X
+   *  en ligne », nom cliquable → sur-page Membres). Absent = en-tête desktop. */
+  onBack?: () => void
 }) {
   const { t } = useI18n()
   const [messages, setMessages] = useState<CommunityMessage[]>([])
@@ -113,6 +117,8 @@ export function ChannelChat({
   const voiceBase = useRef('')
   const instanceId = useId()
   const presence = usePresenceCount(isMember ? `comm-presence-${channel.spaceId}` : null, me)
+  const onlineIds = usePresenceIds(isMember ? `comm-presence-${channel.spaceId}` : null, me)
+  const [membersOpen, setMembersOpen] = useState(false)
 
   const { supported: micSupported, isListening, toggle: toggleMic } = useSpeechToText(
     (text) => setInput((voiceBase.current ? voiceBase.current.trimEnd() + ' ' : '') + text),
@@ -320,6 +326,29 @@ export function ChannelChat({
   const gatedByRules = rulesGate.required && !rulesGate.accepted
   const canSend = (input.trim().length > 0 || pending.length > 0) && !sending && !uploading && canPost && !gatedByRules
 
+  // En-tête MOBILE immersif (façon Discord) : ← + nom (cliquable → Membres) +
+  // « X en ligne ». Utilisé uniquement quand onBack est fourni (vue mobile).
+  const mobileHeader = (
+    <div style={{ flexShrink: 0, padding: 'var(--space-2) var(--space-3)', background: 'var(--bg-card)', display: 'flex', alignItems: 'center', gap: 'var(--space-1)', borderBottom: '1px solid var(--border)' }}>
+      <button onClick={onBack} aria-label={t('w1g.back')} style={{ width: 36, height: 36, flexShrink: 0, border: 'none', background: 'transparent', color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
+      </button>
+      <button onClick={() => setMembersOpen(true)} style={{ flex: 1, minWidth: 0, border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left', padding: 0 }}>
+        <span style={{ display: 'block', fontFamily: FD, fontSize: 16.5, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>#{channel.name}</span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 1, fontFamily: FB, fontSize: 12, color: 'var(--text-mid)' }}>
+          <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--sport-run)' }} />
+          {t('w1g.mem.nOnline', { n: Math.max(1, presence) })}
+        </span>
+      </button>
+      {isMember && (
+        <button onClick={onCall} aria-label={t('w1g.joinChannelCall')} title={t('w1g.joinChannelCall')}
+          style={{ width: 38, height: 38, flexShrink: 0, border: 'none', borderRadius: '50%', background: 'var(--primary)', color: 'var(--on-primary)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M23 7l-7 5 7 5V7z" /><rect x="1" y="5" width="15" height="14" rx="2" ry="2" /></svg>
+        </button>
+      )}
+    </div>
+  )
+
   const header = (
     <div style={{ flexShrink: 0, padding: 'var(--space-4) var(--space-5) var(--space-3)', background: 'var(--bg-card)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
@@ -368,7 +397,7 @@ export function ChannelChat({
   if (!isMember) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0, background: 'var(--bg-card)' }}>
-        {header}
+        {onBack ? mobileHeader : header}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 'var(--space-4)', padding: 'var(--space-8)', textAlign: 'center' }}>
           <span style={{ fontFamily: FD, fontSize: 18, fontWeight: 500, color: 'var(--text)' }}>{t('w1g.joinToRead')}</span>
           <p style={{ margin: 0, fontFamily: FB, fontSize: 13, color: 'var(--text-mid)', maxWidth: 360, lineHeight: 1.5 }}>
@@ -385,7 +414,8 @@ export function ChannelChat({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0, background: 'var(--bg-card)' }}>
-      {header}
+      {onBack ? mobileHeader : header}
+      {membersOpen && <MembersSheet title={`#${channel.name}`} members={members} onlineIds={onlineIds} onClose={() => setMembersOpen(false)} />}
 
       {/* Panneau messages épinglés */}
       {showPins && (

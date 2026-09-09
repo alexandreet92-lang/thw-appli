@@ -258,12 +258,27 @@ export function CommunityView() {
 
   const chatWithBack = panel === 'events' ? eventsPane : panel === 'call' ? callPane : (
     // Vue immersive : le chrome de l'app est masqué → on réserve nous-mêmes
-    // l'encoche (safe-area) pour que le bouton retour ne passe pas dessous.
+    // l'encoche (safe-area). Le bouton retour est DANS l'en-tête du salon
+    // (ChannelChat, en-tête mobile) via la prop onBack.
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0, paddingTop: 'env(safe-area-inset-top)' }}>
-      <button onClick={() => { setDir('back'); setMView('home') }} style={backBar}>
-        <BackIcon /> <span>{space ? space.name : t('w1g.back')}</span>
-      </button>
-      <div style={{ flex: 1, minHeight: 0 }}>{chat}</div>
+      {channel && space ? (
+        <ChannelChat
+          channel={channel} isMember={space.isMember} canPost={space.isMember}
+          canUpload={space.isMember && ent.community.canUploadFiles}
+          canModerate={canManage}
+          isMuted={muted.has(channel.id)} onToggleMute={() => doToggleMute(channel.id)}
+          onCall={selectCall}
+          onJoin={doJoin} joining={joining} onRead={markRead}
+          onBack={() => { setDir('back'); setMView('home') }}
+        />
+      ) : (
+        <>
+          <button onClick={() => { setDir('back'); setMView('home') }} style={backBar}>
+            <BackIcon /> <span>{space ? space.name : t('w1g.back')}</span>
+          </button>
+          <div style={{ flex: 1, minHeight: 0 }}>{chat}</div>
+        </>
+      )}
     </div>
   )
 

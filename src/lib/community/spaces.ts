@@ -119,12 +119,13 @@ export async function listSpaceMembers(spaceId: string): Promise<CommunityMember
     .select('user_id, role, joined_at')
     .eq('space_id', spaceId)
     .order('joined_at', { ascending: true })
-  const rows = (data ?? []) as { user_id: string; role: MemberRole }[]
+  const rows = (data ?? []) as { user_id: string; role: MemberRole; joined_at?: string | null }[]
   const people = await namesFor(rows.map(r => r.user_id))
   return rows.map((r): CommunityMemberInfo => ({
     userId: r.user_id,
     role: r.role,
     name: people.get(r.user_id)?.name ?? 'Membre',
     avatar: people.get(r.user_id)?.avatar ?? null,
+    joinedAt: r.joined_at ?? null,
   }))
 }

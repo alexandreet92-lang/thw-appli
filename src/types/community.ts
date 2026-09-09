@@ -136,6 +136,7 @@ export interface CommunityMemberInfo {
   role: MemberRole
   name: string
   avatar: string | null
+  joinedAt?: string | null   // date d'adhésion À CE GROUPE
 }
 
 export type EventKind = 'sortie' | 'wod' | 'defi' | 'course' | 'autre'

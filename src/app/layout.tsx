@@ -22,6 +22,10 @@ export function generateViewport(): Viewport {
     initialScale: 1,
     maximumScale: 1,
     userScalable: false,
+    // Clavier virtuel : le viewport se REDIMENSIONNE quand le clavier s'ouvre →
+    // les champs/composers ancrés en bas (position:fixed bottom:0) remontent
+    // COLLÉS au clavier au lieu de laisser un espace / la page qui descend.
+    interactiveWidget: 'resizes-content',
     // Bord à bord : le contenu remplit les zones sûres (encoche / home indicator),
     // pas de bande blanche distincte. La couleur de la barre système suit le thème.
     viewportFit: 'cover',

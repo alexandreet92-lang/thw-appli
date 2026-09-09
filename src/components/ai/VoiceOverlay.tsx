@@ -18,6 +18,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useI18n } from '@/lib/i18n'
+import { isNativeApp } from '@/lib/native/platform'
 
 const NBARS = 34
 
@@ -85,6 +86,8 @@ export function VoiceOverlay({
   const sampleRateRef = useRef(44100)
   const confirmedRef = useRef(false)
   const closedRef = useRef(false)
+  const nativeCurRef = useRef('')     // partiel de la session native en cours
+  const nativeOnRef = useRef(false)   // reco vocale NATIVE (iOS) active ?
   const phaseRef = useRef(phase)
   phaseRef.current = phase
 
@@ -132,12 +135,76 @@ export function VoiceOverlay({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [language])
 
-  // ── Capture audio (waveform + filet Whisper) ──
+  const langTag = language.includes('-') ? language
+    : language === 'fr' ? 'fr-FR' : language === 'en' ? 'en-US' : language === 'es' ? 'es-ES'
+    : `${language}-${language.toUpperCase()}`
+
+  // ── Reconnaissance vocale NATIVE (iOS/Android) — live mot-à-mot ──
+  // Sur l'app native, l'API navigateur SpeechRecognition n'existe pas. On passe
+  // par le module natif (@capacitor-community/speech-recognition, SFSpeechRecognizer
+  // sur iOS) : les résultats PARTIELS arrivent en continu → on écrit au fur et à
+  // mesure dans le champ. Fallback silencieux si le module n'est pas synchronisé.
+  useEffect(() => {
+    if (!isNativeApp()) return
+    let cancelled = false
+    const handles: { remove: () => void }[] = []
+    let lastStart = 0
+    ;(async () => {
+      try {
+        const { SpeechRecognition } = await import('@capacitor-community/speech-recognition')
+        const av = await SpeechRecognition.available().catch(() => ({ available: false }))
+        if (!av?.available) return
+        // Demande les permissions (iOS : reconnaissance vocale ET micro).
+        const perm = await SpeechRecognition.requestPermissions().catch(() => null)
+        if (perm && perm.speechRecognition === 'denied') {
+          if (!cancelled) { setPhase('error'); setErrorMsg(t('ai.micDenied', { reason: 'denied' })) }
+          return
+        }
+        if (cancelled || closedRef.current) return
+        nativeOnRef.current = true
+        const doStart = () => {
+          const now = Date.now()
+          if (now - lastStart < 400 || confirmedRef.current || closedRef.current) return
+          lastStart = now
+          void SpeechRecognition.start({ language: langTag, partialResults: true, popup: false }).catch(() => {})
+        }
+        // iOS renvoie le texte CUMULÉ à chaque partiel → matches[0] = tout le dit.
+        const ph = await SpeechRecognition.addListener('partialResults', (data: { matches?: string[] }) => {
+          if (confirmedRef.current || closedRef.current) return
+          const txt = (data?.matches?.[0] ?? '').trim()
+          nativeCurRef.current = txt
+          pushLive((srFinalRef.current + txt).trim())
+        })
+        handles.push(ph)
+        // La session s'arrête seule (silence / limite iOS ~1 min) → on fige le
+        // segment courant et on relance tant qu'on dicte (continu, sans coupure).
+        const sh = await SpeechRecognition.addListener('listeningState', (st: { status?: string }) => {
+          if (st?.status === 'stopped' && !confirmedRef.current && !closedRef.current) {
+            if (nativeCurRef.current) { srFinalRef.current += nativeCurRef.current + ' '; nativeCurRef.current = '' }
+            doStart()
+          }
+        })
+        handles.push(sh)
+        doStart()
+      } catch { /* module natif absent → pas de live natif (fallback) */ }
+    })()
+    return () => {
+      cancelled = true
+      handles.forEach(h => { try { h.remove() } catch { /* ignore */ } })
+      void (async () => { try { const { SpeechRecognition } = await import('@capacitor-community/speech-recognition'); await SpeechRecognition.stop() } catch { /* ignore */ } })()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [langTag])
+
+  // ── Capture audio (waveform + filet Whisper) — WEB uniquement ──
+  // Sur natif on N'APPELLE PAS getUserMedia (évite le conflit micro avec le
+  // module natif et le crash si la clé Microphone manque) : la waveform tourne
+  // en animation « respiration » et la transcription vient du module natif.
   useEffect(() => {
     let analyser: AnalyserNode | null = null
     let data: Uint8Array | null = null
 
-    ;(async () => {
+    if (!isNativeApp()) (async () => {
       // Garde : API absente (WebView ancienne / origine non sécurisée) → on ne
       // TENTE PAS l'appel (évite toute exception JS), état d'erreur propre.
       if (!navigator.mediaDevices?.getUserMedia) {
@@ -260,7 +327,10 @@ export function VoiceOverlay({
     if (phase !== 'rec') return
     confirmedRef.current = true
     try { srRef.current?.stop() } catch { /* ignore */ }
-    const live = (srFinalRef.current || liveText).trim()
+    if (nativeOnRef.current) { void (async () => { try { const { SpeechRecognition } = await import('@capacitor-community/speech-recognition'); await SpeechRecognition.stop() } catch { /* ignore */ } })() }
+    // liveText = texte affiché complet (segments figés + partiel courant) → source
+    // de vérité pour web ET natif ; on retombe sur les refs si l'état a du retard.
+    const live = (liveText || (srFinalRef.current + nativeCurRef.current)).trim()
     // Texte déjà transcrit → validation INSTANTANÉE (zéro attente serveur).
     if (live) { onConfirm(live); return }
     // Rien côté navigateur → on tente Whisper une seule fois.
@@ -274,6 +344,7 @@ export function VoiceOverlay({
   const cancel = () => {
     confirmedRef.current = true
     try { srRef.current?.stop() } catch { /* ignore */ }
+    if (nativeOnRef.current) { void (async () => { try { const { SpeechRecognition } = await import('@capacitor-community/speech-recognition'); await SpeechRecognition.stop() } catch { /* ignore */ } })() }
     onCancel()
   }
 

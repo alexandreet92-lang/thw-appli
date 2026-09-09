@@ -60,6 +60,14 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
   const [coachSettingsOpen, setCoachSettingsOpen] = useState(false)
   const [aiPrefill, setAiPrefill] = useState<string | undefined>(undefined)
   const [feedbackOpen, setFeedbackOpen] = useState(false)
+  // Vue immersive (salon textuel communauté, mobile) : masque TOUT le chrome du
+  // haut (hamburger, coach, recherche, notif, IA). Signalé par CommunityView.
+  const [immersive, setImmersive] = useState(false)
+  useEffect(() => {
+    const h = (e: Event) => setImmersive(!!(e as CustomEvent).detail)
+    window.addEventListener('thw:immersive', h as EventListener)
+    return () => window.removeEventListener('thw:immersive', h as EventListener)
+  }, [])
   const unreadNotifs = useUnreadNotifCount(notifOpen)
   useNotificationGenerators()
   const [reduce, setReduce] = useState(false)
@@ -200,7 +208,7 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
   if (isFullscreenRoute(pathname)) {
     return <div className="md:hidden" style={{ height: '100dvh', overflowY: 'auto', background: 'var(--bg)' }}>{children}</div>
   }
-  const hideHeader = pathname?.startsWith('/competences')
+  const hideHeader = pathname?.startsWith('/competences') || immersive
   // Page « lancer une activité » : carte plein écran (pas de gap haut), pas de
   // bouton IA ni notifications — seulement le hamburger. Boutons flottants
   // pleins (blanc le jour / noir la nuit) via les tokens --bg / --text.

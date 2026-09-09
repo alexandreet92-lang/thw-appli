@@ -42,6 +42,21 @@ export function CommunityView() {
   const [mView, setMView] = useState<MobileView>('home')
   const [dir, setDir] = useState<'fwd' | 'back'>('fwd')
   const [panel, setPanel] = useState<'chat' | 'events' | 'call'>('chat')
+
+  // Vue IMMERSIVE (mobile uniquement) : quand un salon TEXTUEL est ouvert, on
+  // masque le chrome de l'app (boutons du haut + barre à bulles du bas) façon
+  // Discord. On le signale au shell via un attribut body + un événement.
+  useEffect(() => {
+    const immersive = isNarrow && mView === 'chat' && panel === 'chat'
+    try {
+      if (immersive) document.body.setAttribute('data-immersive', '1')
+      else document.body.removeAttribute('data-immersive')
+      window.dispatchEvent(new CustomEvent('thw:immersive', { detail: immersive }))
+    } catch { /* ignore */ }
+    return () => {
+      try { document.body.removeAttribute('data-immersive'); window.dispatchEvent(new CustomEvent('thw:immersive', { detail: false })) } catch { /* ignore */ }
+    }
+  }, [isNarrow, mView, panel])
   const [joining, setJoining] = useState(false)
   const [showCreate, setShowCreate] = useState(false)
   const [showDiscover, setShowDiscover] = useState(false)
@@ -242,7 +257,9 @@ export function CommunityView() {
   const centerPane = panel === 'events' ? eventsPane : panel === 'call' ? callPane : chat
 
   const chatWithBack = panel === 'events' ? eventsPane : panel === 'call' ? callPane : (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
+    // Vue immersive : le chrome de l'app est masqué → on réserve nous-mêmes
+    // l'encoche (safe-area) pour que le bouton retour ne passe pas dessous.
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0, paddingTop: 'env(safe-area-inset-top)' }}>
       <button onClick={() => { setDir('back'); setMView('home') }} style={backBar}>
         <BackIcon /> <span>{space ? space.name : t('w1g.back')}</span>
       </button>

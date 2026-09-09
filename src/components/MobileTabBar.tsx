@@ -127,6 +127,13 @@ export default function MobileTabBar() {
   const [aiOpen, setAiOpen]   = useState(false)
   const [hidden, setHidden]   = useState(false)
   const [overpage, setOverpage] = useState(false)
+  // Salon textuel communauté ouvert (mobile) → barre masquée (vue immersive).
+  const [immersive, setImmersive] = useState(false)
+  useEffect(() => {
+    const h = (e: Event) => setImmersive(!!(e as CustomEvent).detail)
+    window.addEventListener('thw:immersive', h as EventListener)
+    return () => window.removeEventListener('thw:immersive', h as EventListener)
+  }, [])
 
   // Prefetch all main routes so navigation is instant
   useEffect(() => {
@@ -196,7 +203,7 @@ export default function MobileTabBar() {
     if (isFullscreenRoute(pathname)) return null
     return (
       <>
-        {!hidden && !overpage && (
+        {!hidden && !overpage && !immersive && (
           <nav className="mobile-tab-bar thw-glass md:hidden" style={BAR}>
             <div style={{ display: 'flex', width: '100%', height: 64, alignItems: 'center' }}>
               {COACH_TABS.map(tab => {
@@ -235,7 +242,7 @@ export default function MobileTabBar() {
 
   return (
     <>
-      {!hidden && !overpage && (
+      {!hidden && !overpage && !immersive && (
       <nav className="mobile-tab-bar thw-glass md:hidden" style={BAR}>
         <div style={{
           display: 'flex', width: '100%', height: 64, alignItems: 'center',

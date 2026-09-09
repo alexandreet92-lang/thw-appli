@@ -433,8 +433,11 @@ export function ChannelChat({
         </div>
       )}
 
-      {/* Fil */}
-      <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: 'var(--space-2) var(--space-4) var(--space-4)' }}>
+      {/* Fil — les messages sont ANCRÉS EN BAS (près du composer, façon Discord/
+          iMessage) : marginTop:auto pousse le contenu vers le bas quand il est
+          court ; quand il dépasse, le conteneur défile normalement. */}
+      <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column', padding: 'var(--space-2) var(--space-4) var(--space-4)' }}>
+        <div style={{ marginTop: 'auto' }}>
         {loading ? <MessagesSkeleton /> : messages.length === 0 ? (
           <div style={{ padding: 'var(--space-10) var(--space-4)', textAlign: 'center' }}>
             <p style={{ fontFamily: FD, fontSize: 18, fontWeight: 500, color: 'var(--text)', margin: '0 0 var(--space-2)' }}>{t('w1g.channelStartsHere', { name: channel.name })}</p>
@@ -543,6 +546,7 @@ export function ChannelChat({
           )
         })}
         <div ref={endRef} />
+        </div>
       </div>
 
       {/* Composer */}
@@ -589,32 +593,37 @@ export function ChannelChat({
         )}
 
         <input ref={fileRef} type="file" accept="image/*,application/pdf" multiple style={{ display: 'none' }} onChange={handleFiles} />
-        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 'var(--space-1)', background: 'var(--input-bg)', borderRadius: 'var(--r-lg)', padding: 'var(--space-1) var(--space-2)' }}>
-          <IconBtn label={t('w1g.photoFile')} onClick={openFilePicker} disabled={!canPost}>
-            <path d="M12 5v14M5 12h14" />
-          </IconBtn>
-          <IconBtn label={t('w1g.shareActivity')} onClick={() => canPost && setSharing(true)} disabled={!canPost}>
-            <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
-          </IconBtn>
-          <IconBtn label={t('w1g.shareSession')} onClick={() => canPost && setSharingSession(true)} disabled={!canPost}>
-            <path d="M20 6H4a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2zM6 12h4M12 10v4" />
-          </IconBtn>
+        {/* Composer façon IA : carte arrondie, champ sur une ligne PUIS rangée
+            d'actions en dessous (photo / activité / séance … micro / envoyer). */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 18, padding: '10px 12px 9px', boxShadow: '0 2px 6px rgba(0,0,0,0.05), 0 10px 28px rgba(0,0,0,0.09)' }}>
           <textarea ref={taRef} data-guide="comm-composer" value={input} onChange={onInputChange}
             onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && mentionQuery === null) { e.preventDefault(); void send() } }}
             placeholder={t('w1g.writeInChannel', { name: channel.name })} rows={1} disabled={!canPost}
-            style={{ flex: 1, resize: 'none', border: 'none', outline: 'none', background: 'transparent', color: 'var(--text)', fontFamily: FB, fontSize: 13.5, lineHeight: 1.5, maxHeight: 140, padding: 'var(--space-2) var(--space-1)' }} />
-          {micSupported && (
-            <button type="button" onClick={() => { if (!isListening) voiceBase.current = input; toggleMic() }} disabled={!canPost}
-              aria-label={isListening ? t('w1g.stopDictation') : t('w1g.dictate')} title={isListening ? t('w1g.stopDictation') : t('w1g.dictate')}
-              className={isListening ? 'mic-listening' : undefined}
-              style={{ width: 36, height: 36, flexShrink: 0, border: 'none', borderRadius: 'var(--r-sm)', background: 'transparent', color: isListening ? 'var(--charge-hard)' : 'var(--text-mid)', cursor: canPost ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="2" width="6" height="12" rx="3" /><path d="M5 10a7 7 0 0 0 14 0M12 19v3" /></svg>
+            style={{ width: '100%', boxSizing: 'border-box', resize: 'none', border: 'none', outline: 'none', background: 'transparent', color: 'var(--text)', fontFamily: FB, fontSize: 14, lineHeight: 1.5, maxHeight: 140, padding: '2px 2px' }} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-1)' }}>
+            <IconBtn label={t('w1g.photoFile')} onClick={openFilePicker} disabled={!canPost}>
+              <path d="M12 5v14M5 12h14" />
+            </IconBtn>
+            <IconBtn label={t('w1g.shareActivity')} onClick={() => canPost && setSharing(true)} disabled={!canPost}>
+              <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+            </IconBtn>
+            <IconBtn label={t('w1g.shareSession')} onClick={() => canPost && setSharingSession(true)} disabled={!canPost}>
+              <path d="M20 6H4a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2zM6 12h4M12 10v4" />
+            </IconBtn>
+            <div style={{ flex: 1 }} />
+            {micSupported && (
+              <button type="button" onClick={() => { if (!isListening) voiceBase.current = input; toggleMic() }} disabled={!canPost}
+                aria-label={isListening ? t('w1g.stopDictation') : t('w1g.dictate')} title={isListening ? t('w1g.stopDictation') : t('w1g.dictate')}
+                className={isListening ? 'mic-listening' : undefined}
+                style={{ width: 34, height: 34, flexShrink: 0, border: 'none', borderRadius: 'var(--r-sm)', background: 'transparent', color: isListening ? 'var(--charge-hard)' : 'var(--text-mid)', cursor: canPost ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="2" width="6" height="12" rx="3" /><path d="M5 10a7 7 0 0 0 14 0M12 19v3" /></svg>
+              </button>
+            )}
+            <button onClick={() => void send()} disabled={!canSend} aria-label={t('w1g.send')}
+              style={{ width: 36, height: 36, flexShrink: 0, border: 'none', borderRadius: '50%', background: canSend ? 'var(--primary)' : 'var(--surface-neutral)', color: canSend ? 'var(--on-primary)' : 'var(--text-dim)', cursor: canSend ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.15s' }}>
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7z" /></svg>
             </button>
-          )}
-          <button onClick={() => void send()} disabled={!canSend} aria-label={t('w1g.send')}
-            style={{ width: 36, height: 36, flexShrink: 0, border: 'none', borderRadius: 'var(--r-sm)', background: canSend ? 'var(--primary)' : 'var(--surface-neutral)', color: canSend ? 'var(--on-primary)' : 'var(--text-dim)', cursor: canSend ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.15s' }}>
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7z" /></svg>
-          </button>
+          </div>
         </div>
       </div>
 

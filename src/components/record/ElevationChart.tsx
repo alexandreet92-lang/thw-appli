@@ -2,6 +2,7 @@
 import { useRef, useState, useCallback, useEffect, useMemo } from 'react'
 import { useI18n } from '@/lib/i18n'
 import type { ElevPoint, Surface } from '@/lib/openrouteservice'
+import { cumulativeDistances, pointAtDistance } from '@/lib/elevation'
 import { FinishFlag } from './finishFlag'
 
 interface Props {
@@ -103,6 +104,10 @@ export default function ElevationChart({ data, surfaces, height = 100, isDark = 
     return { minA: Math.min(...alts), maxA: Math.max(...alts), totalM: pts[pts.length - 1].distanceM || 1 }
   }, [pts])
 
+  // Distances cumulées le long du tracé réel (snappedPoints) → permet de placer
+  // le point sur la carte EXACTEMENT à la distance survolée (fini le décalage).
+  const snapCum = useMemo(() => (snappedPoints && snappedPoints.length > 1 ? cumulativeDistances(snappedPoints) : null), [snappedPoints])
+
   // Échelle verticale : léger garde-fou (un parcours PLAT ne devient pas une
   // montagne) mais assez serrée pour qu'un parcours vallonné remplisse la
   // hauteur — le relief ressort, façon Strava.
@@ -131,13 +136,14 @@ export default function ElevationChart({ data, surfaces, height = 100, isDark = 
     // Trait + pastille + bulle posés sur le MÊME point de la courbe → suit l'embout.
     setCursor({ x: getX(pt.distanceM), y: getY(pt.altitudeM), point: pt, slope })
 
-    if (onPositionChange && snappedPoints && snappedPoints.length > 0) {
-      const gIdx = snappedPoints.length === pts.length
-        ? idx
-        : Math.round((idx / (pts.length - 1)) * (snappedPoints.length - 1))
-      onPositionChange(snappedPoints[gIdx] ?? null)
+    if (onPositionChange && snappedPoints && snappedPoints.length > 1 && snapCum) {
+      // Position sur la carte = point INTERPOLÉ à la même fraction de distance
+      // que le curseur du profil (le tracé réel n'est pas régulier en distance).
+      const snapTotal = snapCum[snapCum.length - 1] || totalM
+      const target = (distAtX / totalM) * snapTotal
+      onPositionChange(pointAtDistance(snappedPoints, snapCum, target))
     }
-  }, [pts, cW, W, totalM, getX, getY, snappedPoints, onPositionChange])
+  }, [pts, cW, W, totalM, getX, getY, snappedPoints, snapCum, onPositionChange])
 
   const handleEnd = useCallback(() => {
     setCursor(null)

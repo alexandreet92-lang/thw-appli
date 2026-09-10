@@ -13,6 +13,7 @@ import 'leaflet/dist/leaflet.css'
 import { createClient } from '@/lib/supabase/client'
 import { getCurrentUser } from '@/lib/auth/currentUser'
 import { currentLocale } from '@/lib/i18n'
+import { elevationGainLoss } from '@/lib/elevation'
 
 const TOKEN = process.env.NEXT_PUBLIC_MAPBOX ?? ''
 const ATTR = '© Mapbox © OpenStreetMap'
@@ -64,8 +65,14 @@ export default function RouteDetailView({ route, isDark, sportLabel, onClose, on
   const [confirmDel, setConfirmDel] = useState(false)
   const [author, setAuthor] = useState<string | null>(null)
   const [hover, setHover] = useState<number | null>(null)
+  const [isNarrow, setIsNarrow] = useState(false)
   const profRef = useRef<HTMLDivElement>(null)
 
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 767px)')
+    const f = () => setIsNarrow(mq.matches); f(); mq.addEventListener('change', f)
+    return () => mq.removeEventListener('change', f)
+  }, [])
   useEffect(() => { const r = requestAnimationFrame(() => setShown(true)); return () => cancelAnimationFrame(r) }, [])
   const requestClose = () => { setClosing(true); setShown(false); setTimeout(onClose, 280) }
   useEffect(() => {
@@ -116,14 +123,13 @@ export default function RouteDetailView({ route, isDark, sportLabel, onClose, on
 
   const totalM = samples.length ? samples[samples.length - 1].d : (route.distance_m ?? 0)
   const { gain, loss, minAlt, maxAlt } = useMemo(() => {
-    let g = 0, l = 0, mn = Infinity, mx = -Infinity
-    for (let i = 0; i < samples.length; i++) {
-      const a = samples[i].alt; mn = Math.min(mn, a); mx = Math.max(mx, a)
-      if (i > 0) { const dd = samples[i].alt - samples[i - 1].alt; if (dd > 0) g += dd; else l += -dd }
-    }
+    let mn = Infinity, mx = -Infinity
+    for (const s of samples) { mn = Math.min(mn, s.alt); mx = Math.max(mx, s.alt) }
     if (!isFinite(mn)) { mn = 0; mx = 0 }
-    return { gain: route.elevation_gain_m ?? Math.round(g), loss: Math.round(l), minAlt: mn, maxAlt: mx }
-  }, [samples, route.elevation_gain_m])
+    // D+ / D- réalistes (lissés + seuil), pas la somme brute des deltas.
+    const gl = elevationGainLoss(samples.map(s => ({ distanceM: s.d, altitudeM: s.alt })))
+    return { gain: gl.gain, loss: gl.loss, minAlt: mn, maxAlt: mx }
+  }, [samples])
 
   const speed = SPEED_KMH[route.sport] ?? 18
   const estSec = (totalM / 1000) / speed * 3600
@@ -197,11 +203,15 @@ export default function RouteDetailView({ route, isDark, sportLabel, onClose, on
 
             {/* Actions */}
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 22 }}>
-              <button onClick={onUse} style={{ flex: '1 1 auto', minWidth: 150, height: 44, borderRadius: 12, border: 'none', background: ACCENT, color: '#fff', fontSize: 14.5, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
-                Utiliser ce parcours
-              </button>
-              <div style={{ position: 'relative', display: 'flex' }}>
+              {/* « Utiliser » = démarrer une activité avec ce parcours → mobile uniquement
+                  (on n'enregistre pas depuis un ordinateur). */}
+              {isNarrow && (
+                <button onClick={onUse} style={{ flex: '1 1 auto', minWidth: 150, height: 44, borderRadius: 12, border: 'none', background: ACCENT, color: '#fff', fontSize: 14.5, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
+                  Utiliser ce parcours
+                </button>
+              )}
+              <div style={{ position: 'relative', display: isNarrow ? 'flex' : 'flex', flex: isNarrow ? '0 0 auto' : '1 1 auto' }}>
                 <button onClick={() => onEdit?.()} disabled={!onEdit} style={{ height: 44, padding: '0 16px', borderRadius: '12px 0 0 12px', border: `1px solid ${border}`, borderRight: 'none', background: surface, color: text, fontSize: 14, fontWeight: 700, cursor: onEdit ? 'pointer' : 'default', opacity: onEdit ? 1 : 0.5, display: 'flex', alignItems: 'center', gap: 7 }}>
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4 12.5-12.5z" /></svg>
                   Modifier

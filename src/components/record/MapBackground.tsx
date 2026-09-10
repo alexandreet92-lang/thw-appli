@@ -150,9 +150,14 @@ export default function MapBackground({ trackPoints, currentPosition, activeRout
         {trackPoints && trackPoints.length > 1 && <TrackPolyline points={trackPoints} />}
         {activeRoute && activeRoute.snapped_points.length > 1 && (
           <>
+            {/* Même tracé épais que l'éditeur : halo blanc + trait cyan. */}
             <Polyline
               positions={activeRoute.snapped_points.map(p => [p.lat, p.lng] as [number, number])}
-              pathOptions={{ color: '#06B6D4', weight: 3, opacity: 0.8 }}
+              pathOptions={{ color: '#ffffff', weight: 11, opacity: 0.7, lineCap: 'round', lineJoin: 'round' }}
+            />
+            <Polyline
+              positions={activeRoute.snapped_points.map(p => [p.lat, p.lng] as [number, number])}
+              pathOptions={{ color: '#06B6D4', weight: 7, opacity: 1, lineCap: 'round', lineJoin: 'round' }}
             />
             <CircleMarker
               center={[activeRoute.snapped_points[0].lat, activeRoute.snapped_points[0].lng]}

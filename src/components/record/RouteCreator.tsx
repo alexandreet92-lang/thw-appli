@@ -19,12 +19,12 @@ const FINISH_ICON = L.divIcon({ className: '', html: FINISH_FLAG_HTML, iconSize:
 import { useI18n } from '@/lib/i18n'
 import dynamic from 'next/dynamic'
 import { routeToGpx, downloadGpx } from '@/lib/gpxExport'
+import { elevationGainLoss } from '@/lib/elevation'
 
 const RouteDetailView = dynamic(() => import('./RouteDetailView'), { ssr: false })
 const SPEED_KMH: Record<string, number> = { cycling: 25, gravel: 22, mtb: 15, trail: 9, running: 10, hiking: 4.5, walking: 4.5 }
 const SAVE_BLUE = '#2563EB'
 function fmtDur(sec: number): string { const h = Math.floor(sec / 3600), m = Math.round((sec % 3600) / 60); return h > 0 ? `${h}h${String(m).padStart(2, '0')}` : `${m} min` }
-function computeLoss(profile: ElevPoint[]): number { let l = 0; for (let i = 1; i < profile.length; i++) { const d = profile[i].altitudeM - profile[i - 1].altitudeM; if (d < 0) l -= d } return Math.round(l) }
 
 const TOKEN = process.env.NEXT_PUBLIC_MAPBOX ?? ''
 const ATTR = '© <a href="https://www.mapbox.com/about/maps/">Mapbox</a> © <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
@@ -98,6 +98,7 @@ export default function RouteCreator({ onClose, onLoadRoute, isDark, initialView
   const [snappedPoints, setSnappedPoints] = useState<SnappedPoint[]>([])
   const [distanceM, setDistanceM] = useState(0)
   const [elevGain, setElevGain] = useState(0)
+  const [elevLoss, setElevLoss] = useState(0)
   const [surfaces, setSurfaces] = useState<Surface[]>([])
   const [elevationProfile, setElevationProfile] = useState<ElevPoint[]>([])
   const [redoStack, setRedoStack] = useState<Waypoint[]>([])
@@ -158,7 +159,10 @@ export default function RouteCreator({ onClose, onLoadRoute, isDark, initialView
     try {
       const r = await snapRoute(pts, sp)
       setSnappedPoints(r.snappedPoints); setDistanceM(r.distanceM)
-      setElevGain(r.elevGain); setSurfaces(r.surfaces); setElevationProfile(r.elevationProfile)
+      setSurfaces(r.surfaces); setElevationProfile(r.elevationProfile)
+      // D+ / D- réalistes (lissés + seuil) au lieu de la somme brute des deltas.
+      const gl = elevationGainLoss(r.elevationProfile)
+      setElevGain(gl.gain); setElevLoss(gl.loss)
     } catch {
       // Fallback : segments en ligne droite quand ORS est indisponible
       setSnappedPoints(pts.map(p => ({ ...p, altitude: 0 })))
@@ -175,7 +179,7 @@ export default function RouteCreator({ onClose, onLoadRoute, isDark, initialView
     if (!waypoints.length) return
     const next = waypoints.slice(0, -1)
     setRedoStack(r => [...r, waypoints[waypoints.length - 1]]); setWaypoints(next)
-    if (next.length < 2) { setSnappedPoints([]); setDistanceM(0); setElevGain(0); setSurfaces([]); setElevationProfile([]) }
+    if (next.length < 2) { setSnappedPoints([]); setDistanceM(0); setElevGain(0); setElevLoss(0); setSurfaces([]); setElevationProfile([]) }
     else doSnap(next, sport)
   }, [waypoints, sport, doSnap])
 
@@ -190,7 +194,8 @@ export default function RouteCreator({ onClose, onLoadRoute, isDark, initialView
     const file = e.target.files?.[0]; if (!file) return
     const parsed = parseGPX(await file.text())
     setWaypoints(parsed.waypoints); setElevationProfile(parsed.elevationProfile)
-    setDistanceM(parsed.distanceM); setElevGain(parsed.elevGain); setRedoStack([])
+    setDistanceM(parsed.distanceM); setRedoStack([])
+    { const gl = elevationGainLoss(parsed.elevationProfile); setElevGain(gl.gain); setElevLoss(gl.loss) }
     await doSnap(parsed.waypoints, sport)
   }
 
@@ -218,9 +223,10 @@ export default function RouteCreator({ onClose, onLoadRoute, isDark, initialView
     setWaypoints(wps)
     setSnappedPoints(route.snapped_points ?? [])
     setDistanceM(route.distance_m ?? 0)
-    setElevGain(route.elevation_gain_m ?? 0)
     setSurfaces(route.surfaces ?? [])
     setElevationProfile(route.elevation_profile ?? [])
+    // Recalcule D+/D- lissés depuis le profil (corrige les anciens parcours surestimés).
+    { const gl = elevationGainLoss(route.elevation_profile); setElevGain(route.elevation_profile?.length ? gl.gain : (route.elevation_gain_m ?? 0)); setElevLoss(gl.loss) }
     setSport(route.sport || 'cycling')
     setRouteName(route.name || '')
     setEditingId(route.id)
@@ -237,7 +243,7 @@ export default function RouteCreator({ onClose, onLoadRoute, isDark, initialView
   const resetEditor = () => {
     snapshotRef.current = null
     setEditingId(null); setEditingType('training'); setWaypoints([]); setSnappedPoints([]); setDistanceM(0)
-    setElevGain(0); setSurfaces([]); setElevationProfile([]); setRouteName(''); setRedoStack([])
+    setElevGain(0); setElevLoss(0); setSurfaces([]); setElevationProfile([]); setRouteName(''); setRedoStack([])
   }
 
   // « Effacer les modifications » : revient au dernier état enregistré (ou vide
@@ -550,7 +556,7 @@ export default function RouteCreator({ onClose, onLoadRoute, isDark, initialView
             {[
               { label: t('record.routeCreatorDistance'), value: distanceM >= 1000 ? `${(distanceM / 1000).toFixed(2)}` : `${Math.round(distanceM)}`, unit: distanceM >= 1000 ? 'km' : 'm' },
               { label: 'D+', value: `${Math.round(elevGain)}`, unit: 'm' },
-              { label: 'D-', value: `${computeLoss(elevationProfile)}`, unit: 'm' },
+              { label: 'D-', value: `${elevLoss}`, unit: 'm' },
               { label: t('record.routeCreatorEstDuration'), value: distanceM > 0 ? fmtDur((distanceM / 1000) / (SPEED_KMH[sport] ?? 18) * 3600) : '--', unit: '' },
             ].map((s, i) => (
               <div key={i}>

@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import dynamic from 'next/dynamic'
 import { createClient } from '@/lib/supabase/client'
 import { getCurrentUser } from '@/lib/auth/currentUser'
@@ -8,6 +8,7 @@ import { useI18n } from '@/lib/i18n'
 import { currentLocale } from '@/lib/i18n'
 import { staticRouteMapUrl } from '@/lib/staticMap'
 import { routeToGpx, downloadGpx } from '@/lib/gpxExport'
+import { elevationGainLoss } from '@/lib/elevation'
 import { FinishFlag } from './finishFlag'
 
 const RouteDetailView = dynamic(() => import('./RouteDetailView'), { ssr: false })
@@ -114,6 +115,9 @@ export default function RouteLibrary({ onClose, onUseRoute, onCreate, onEditRout
   const [showPublic, setShowPublic] = useState(false)
   const [search, setSearch] = useState('')
   const [menuId, setMenuId] = useState<string | null>(null)   // ouvert au survol (ou tap mobile)
+  const menuTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const openMenu = (id: string) => { if (menuTimer.current) clearTimeout(menuTimer.current); setMenuId(id) }
+  const scheduleCloseMenu = () => { if (menuTimer.current) clearTimeout(menuTimer.current); menuTimer.current = setTimeout(() => setMenuId(null), 160) }
   const [detail, setDetail] = useState<Route | null>(null)
   // Envoi vers l'appareil (Garmin/Wahoo) — visible seulement si connecté.
   const [pushTargets, setPushTargets] = useState<string[]>([])
@@ -254,14 +258,14 @@ export default function RouteLibrary({ onClose, onUseRoute, onCreate, onEditRout
                     <span style={{ position: 'absolute', top: 8, left: 8, fontSize: 10, fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase', color: '#fff', background: 'rgba(239,68,68,0.92)', padding: '3px 8px', borderRadius: 6 }}>{t('record.routeSaveUsageRace')}</span>
                   )}
                   {/* ⋯ sans bulle noire — s'ouvre au survol (et au tap sur mobile) */}
-                  <div onMouseEnter={() => setMenuId(route.id)} onMouseLeave={() => setMenuId(m => m === route.id ? null : m)}
-                    style={{ position: 'absolute', top: 6, right: 6 }}>
+                  <div onMouseEnter={() => openMenu(route.id)} onMouseLeave={scheduleCloseMenu}
+                    style={{ position: 'absolute', top: 4, right: 4, padding: 4 }}>
                     <button onClick={e => { e.stopPropagation(); setMenuId(m => m === route.id ? null : route.id) }} aria-label="Options"
-                      style={{ width: 32, height: 32, borderRadius: '50%', background: 'transparent', border: 'none', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      style={{ width: 30, height: 30, borderRadius: '50%', background: 'transparent', border: 'none', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style={{ filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.55))' }}><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
                     </button>
                     {menuId === route.id && (
-                      <div onClick={e => e.stopPropagation()} style={{ position: 'absolute', top: 34, right: 0, zIndex: 5, background: popover, border: `1px solid ${border}`, borderRadius: 12, boxShadow: '0 8px 28px rgba(0,0,0,0.22)', padding: 5, minWidth: 158, display: 'flex', flexDirection: 'column', gap: 1 }}>
+                      <div onMouseEnter={() => openMenu(route.id)} onMouseLeave={scheduleCloseMenu} onClick={e => e.stopPropagation()} style={{ position: 'absolute', top: 32, right: 0, zIndex: 5, background: popover, border: `1px solid ${border}`, borderRadius: 12, boxShadow: '0 8px 28px rgba(0,0,0,0.22)', padding: 5, minWidth: 158, display: 'flex', flexDirection: 'column', gap: 1 }}>
                         {onEditRoute && (
                           <button onClick={() => { setMenuId(null); onEditRoute(route) }} style={menuItem(text)}>
                             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
@@ -289,7 +293,7 @@ export default function RouteLibrary({ onClose, onUseRoute, onCreate, onEditRout
                   <p style={{ fontSize: 11.5, color: dim, margin: '0 0 9px' }}>{sportLabel(route.sport)} · {new Date(route.created_at).toLocaleDateString(currentLocale())}</p>
                   <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
                     {route.distance_m != null && <Stat label="km" value={(route.distance_m / 1000).toFixed(1)} text={text} dim={dim} />}
-                    <Stat label="D+" value={route.elevation_gain_m != null ? `${Math.round(route.elevation_gain_m)} m` : '—'} text={text} dim={dim} />
+                    <Stat label="D+" value={route.elevation_profile?.length ? `${elevationGainLoss(route.elevation_profile).gain} m` : (route.elevation_gain_m != null ? `${Math.round(route.elevation_gain_m)} m` : '—')} text={text} dim={dim} />
                     <Stat label="≈ temps" value={estTimeLabel(route.distance_m, route.sport)} text={text} dim={dim} />
                   </div>
                 </div>

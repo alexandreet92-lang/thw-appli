@@ -17,6 +17,14 @@ import { FINISH_FLAG_HTML } from './finishFlag'
 // Marqueur « arrivée » (drapeau à damier) — divIcon Leaflet, pied posé sur le point.
 const FINISH_ICON = L.divIcon({ className: '', html: FINISH_FLAG_HTML, iconSize: [24, 24], iconAnchor: [5, 23] })
 import { useI18n } from '@/lib/i18n'
+import dynamic from 'next/dynamic'
+import { routeToGpx, downloadGpx } from '@/lib/gpxExport'
+
+const RouteDetailView = dynamic(() => import('./RouteDetailView'), { ssr: false })
+const SPEED_KMH: Record<string, number> = { cycling: 25, gravel: 22, mtb: 15, trail: 9, running: 10, hiking: 4.5, walking: 4.5 }
+const SAVE_BLUE = '#2563EB'
+function fmtDur(sec: number): string { const h = Math.floor(sec / 3600), m = Math.round((sec % 3600) / 60); return h > 0 ? `${h}h${String(m).padStart(2, '0')}` : `${m} min` }
+function computeLoss(profile: ElevPoint[]): number { let l = 0; for (let i = 1; i < profile.length; i++) { const d = profile[i].altitudeM - profile[i - 1].altitudeM; if (d < 0) l -= d } return Math.round(l) }
 
 const TOKEN = process.env.NEXT_PUBLIC_MAPBOX ?? ''
 const ATTR = '© <a href="https://www.mapbox.com/about/maps/">Mapbox</a> © <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
@@ -93,7 +101,7 @@ export default function RouteCreator({ onClose, onLoadRoute, isDark, initialView
   const [surfaces, setSurfaces] = useState<Surface[]>([])
   const [elevationProfile, setElevationProfile] = useState<ElevPoint[]>([])
   const [redoStack, setRedoStack] = useState<Waypoint[]>([])
-  const [view, setView] = useState<'creating' | 'library'>(initialView)
+  const [view, setView] = useState<'creating' | 'library' | 'detail'>(initialView)
   const [sport, setSport] = useState('cycling')
   const [routeName, setRouteName] = useState('')
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -109,6 +117,19 @@ export default function RouteCreator({ onClose, onLoadRoute, isDark, initialView
   const [searchResults, setSearchResults] = useState<{ name: string; lat: number; lng: number }[]>([])
   const [searching, setSearching] = useState(false)
   const mapRef = useRef<L.Map | null>(null)
+
+  // Desktop vs mobile : l'éditeur adopte une disposition « Strava » sur ordinateur
+  // (barre d'outils en haut à gauche + bandeau bas pleine largeur), et garde la
+  // feuille du bas coulissante sur mobile (adaptée plus tard).
+  const [isNarrow, setIsNarrow] = useState(false)
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 767px)')
+    const f = () => setIsNarrow(mq.matches); f(); mq.addEventListener('change', f)
+    return () => mq.removeEventListener('change', f)
+  }, [])
+  // Instantané du dernier état enregistré (pour « Effacer les modifications »).
+  const snapshotRef = useRef<SavedRoute | null>(null)
+  const [savedRoute, setSavedRoute] = useState<null | { id: string; name: string; sport: string; distance_m: number | null; elevation_gain_m: number | null; snapped_points: SnappedPoint[]; waypoints: Waypoint[]; elevation_profile: ElevPoint[]; created_at: string; user_id?: string }>(null)
 
   // Panneau bas : un clic sur la poignée = déplié ↔ replié (pas de redimensionnement libre)
   const [panelOpen, setPanelOpen] = useState(true)
@@ -192,6 +213,7 @@ export default function RouteCreator({ onClose, onLoadRoute, isDark, initialView
 
   // « Modifier » depuis la bibliothèque : charge le parcours dans l'éditeur.
   const loadRouteForEdit = (route: SavedRoute) => {
+    snapshotRef.current = route
     const wps: Waypoint[] = (route.waypoints ?? []).map(p => ({ lat: p.lat, lng: p.lng }))
     setWaypoints(wps)
     setSnappedPoints(route.snapped_points ?? [])
@@ -213,8 +235,17 @@ export default function RouteCreator({ onClose, onLoadRoute, isDark, initialView
     }
   }
   const resetEditor = () => {
+    snapshotRef.current = null
     setEditingId(null); setEditingType('training'); setWaypoints([]); setSnappedPoints([]); setDistanceM(0)
     setElevGain(0); setSurfaces([]); setElevationProfile([]); setRouteName(''); setRedoStack([])
+  }
+
+  // « Effacer les modifications » : revient au dernier état enregistré (ou vide
+  // pour un nouveau parcours jamais sauvegardé).
+  const clearRevert = () => {
+    if (snapshotRef.current) loadRouteForEdit(snapshotRef.current)
+    else resetEditor()
+    setRedoStack([])
   }
 
   const handleSave = async (name: string, isPublic: boolean, routeType: RouteType) => {
@@ -226,9 +257,19 @@ export default function RouteCreator({ onClose, onLoadRoute, isDark, initialView
       waypoints, snapped_points: snappedPoints, elevation_profile: elevationProfile, surfaces,
     }
     // Édition d'un parcours existant → mise à jour ; sinon création.
+    let id = editingId
     if (editingId) await supabase.from('routes').update(payload).eq('id', editingId)
-    else await supabase.from('routes').insert(payload)
-    setShowSave(false); requestClose()
+    else {
+      const { data } = await supabase.from('routes').insert(payload).select('id').single()
+      id = (data as { id: string } | null)?.id ?? null
+    }
+    setShowSave(false)
+    if (!id) { requestClose(); return }
+    // Enregistré → page détail (façon Strava).
+    setEditingId(id); setRouteName(name); setEditingType(routeType)
+    snapshotRef.current = { id, name, sport, route_type: routeType, distance_m: distanceM, elevation_gain_m: elevGain, surfaces, snapped_points: snappedPoints, waypoints, elevation_profile: elevationProfile }
+    setSavedRoute({ id, name, sport, distance_m: distanceM, elevation_gain_m: elevGain, snapped_points: snappedPoints, waypoints, elevation_profile: elevationProfile, created_at: new Date().toISOString(), user_id: user.id })
+    setView('detail')
   }
 
   // Bouton flottant : plein, blanc le jour / noir la nuit (tokens), rond.
@@ -256,6 +297,25 @@ export default function RouteCreator({ onClose, onLoadRoute, isDark, initialView
     document.body
   )
 
+  // Après enregistrement → page détail (façon Strava). Flèche retour = page précédente.
+  if (view === 'detail' && savedRoute) return createPortal(
+    <RouteDetailView
+      route={savedRoute} isDark={isDark}
+      sportLabel={SPORT_CHIPS.find(c => c.id === savedRoute.sport)?.label ?? savedRoute.sport}
+      onClose={() => setView(initialView === 'library' ? 'library' : 'creating')}
+      onUse={() => { onLoadRoute({ snapped_points: savedRoute.snapped_points.map(p => ({ lat: p.lat, lng: p.lng })), elevation_profile: savedRoute.elevation_profile, waypoints: savedRoute.waypoints, sport: savedRoute.sport, name: savedRoute.name, distance_m: savedRoute.distance_m, elevation_gain_m: savedRoute.elevation_gain_m }); onClose() }}
+      onEdit={() => setView('creating')}
+      onDuplicate={async () => {
+        const sb = createClient(); const u = await getCurrentUser(); if (!u) return
+        await sb.from('routes').insert({ user_id: u.id, name: `${savedRoute.name} (copie)`, sport: savedRoute.sport, is_public: false, route_type: editingType, distance_m: savedRoute.distance_m, elevation_gain_m: savedRoute.elevation_gain_m, waypoints: savedRoute.waypoints, snapped_points: savedRoute.snapped_points, elevation_profile: savedRoute.elevation_profile, surfaces })
+        setView(initialView === 'library' ? 'library' : 'creating')
+      }}
+      onExport={() => { const pts = (savedRoute.snapped_points.length ? savedRoute.snapped_points : savedRoute.waypoints).map(p => ({ lat: p.lat, lng: p.lng })); if (pts.length >= 2) downloadGpx(savedRoute.name, routeToGpx(savedRoute.name, pts, savedRoute.elevation_profile)) }}
+      onDelete={async () => { await createClient().from('routes').delete().eq('id', savedRoute.id); requestClose() }}
+    />,
+    document.body
+  )
+
   const ui = (
     <div style={{ position: 'fixed', inset: 0, zIndex: 9999, fontFamily: 'var(--font-body)', transform: shown && !closing ? 'translateY(0)' : 'translateY(100%)', transition: 'transform 300ms cubic-bezier(0.16,1,0.3,1)' }}>
       <style>{`
@@ -279,8 +339,8 @@ export default function RouteCreator({ onClose, onLoadRoute, isDark, initialView
         {displayPts.length > 1 && (
           <>
             {/* Halo blanc (casing) sous le tracé → contraste net sur carte & satellite */}
-            <Polyline positions={displayPts} pathOptions={{ color: '#ffffff', weight: 8, opacity: 0.55, lineCap: 'round', lineJoin: 'round' }} />
-            <Polyline positions={displayPts} pathOptions={{ color: '#06B6D4', weight: 4.5, opacity: 1, lineCap: 'round', lineJoin: 'round' }} />
+            <Polyline positions={displayPts} pathOptions={{ color: '#ffffff', weight: 11, opacity: 0.7, lineCap: 'round', lineJoin: 'round' }} />
+            <Polyline positions={displayPts} pathOptions={{ color: '#06B6D4', weight: 7, opacity: 1, lineCap: 'round', lineJoin: 'round' }} />
           </>
         )}
         {waypoints.map((wp, i) => {
@@ -299,10 +359,35 @@ export default function RouteCreator({ onClose, onLoadRoute, isDark, initialView
         )}
       </MapContainer>
 
-      {/* Croix — sortir (haut gauche) */}
-      <button onClick={exitCreate} aria-label={t('record.routeCreatorClose')} style={{ ...fb, position: 'absolute', top: 'calc(env(safe-area-inset-top) + 10px)', left: 12, zIndex: 1000 }}>
-        <svg width="17" height="17" viewBox="0 0 18 18" fill="none"><path d="M2 2l14 14M16 2L2 16" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"/></svg>
-      </button>
+      {/* Haut gauche : flèche retour + (desktop) outils d'édition + Enregistrer (bleu) */}
+      <div style={{ position: 'absolute', top: 'calc(env(safe-area-inset-top) + 10px)', left: 12, zIndex: 1000, display: 'flex', alignItems: 'center', gap: 10 }}>
+        <button onClick={exitCreate} aria-label={t('record.routeCreatorClose')} style={fb}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
+        </button>
+        {!isNarrow && (
+          <>
+            <div style={{ display: 'flex', alignItems: 'center', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 12, boxShadow: '0 2px 10px rgba(0,0,0,0.18)', overflow: 'hidden', height: 44 }}>
+              <button onClick={undo} disabled={!waypoints.length} aria-label={t('record.routeCreatorUndo')} style={{ ...groupBtn, height: 44, opacity: waypoints.length ? 1 : 0.35 }}>
+                <svg width="17" height="17" viewBox="0 0 18 18" fill="none"><path d="M3 9a6 6 0 1 1 1.5 4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"/><path d="M3 5v4h4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              </button>
+              {groupSep}
+              <button onClick={redo} disabled={!redoStack.length} aria-label={t('record.routeCreatorRedo')} style={{ ...groupBtn, height: 44, opacity: redoStack.length ? 1 : 0.35 }}>
+                <svg width="17" height="17" viewBox="0 0 18 18" fill="none"><path d="M15 9a6 6 0 1 0-1.5 4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"/><path d="M15 5v4h-4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              </button>
+              {groupSep}
+              <button onClick={clearRevert} disabled={!waypoints.length} aria-label={t('record.routeCreatorClearEdits')} title={t('record.routeCreatorClearEdits')} style={{ ...groupBtn, height: 44, opacity: waypoints.length ? 1 : 0.35 }}>
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" /></svg>
+              </button>
+            </div>
+            <button onClick={() => setShowSave(true)} disabled={waypoints.length < 2}
+              style={{ height: 44, padding: '0 18px', borderRadius: 12, border: 'none', cursor: waypoints.length < 2 ? 'default' : 'pointer', display: 'flex', alignItems: 'center', gap: 8, fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 700,
+                background: waypoints.length < 2 ? 'var(--bg-card2)' : SAVE_BLUE, color: waypoints.length < 2 ? 'var(--text-dim)' : '#fff', boxShadow: waypoints.length < 2 ? 'none' : '0 2px 12px rgba(37,99,235,0.4)' }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg>
+              {t('record.routeCreatorSaveRoute')}
+            </button>
+          </>
+        )}
+      </div>
 
       {/* Pile latérale droite : recherche · styles de carte · boussole */}
       <div style={{ position: 'absolute', top: 'calc(env(safe-area-inset-top) + 10px)', right: 12, zIndex: 1000, display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -359,7 +444,8 @@ export default function RouteCreator({ onClose, onLoadRoute, isDark, initialView
         </div>
       )}
 
-      {/* Panneau bas — un clic sur le chevron : déplié ↔ replié (replié = juste les stats) */}
+      {/* MOBILE — feuille du bas coulissante (le desktop a un bandeau plein largeur) */}
+      {isNarrow && (
       <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 1000, background: 'var(--bg-card)', borderTopLeftRadius: 22, borderTopRightRadius: 22, boxShadow: '0 -6px 26px rgba(0,0,0,0.18)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
         {/* Poignée-chevron */}
         <button onClick={() => setPanelOpen(o => !o)} aria-expanded={panelOpen} aria-label={panelOpen ? t('record.routeCreatorClose') : t('record.routeCreatorSave')}
@@ -444,6 +530,46 @@ export default function RouteCreator({ onClose, onLoadRoute, isDark, initialView
           </div>
         </div>
       </div>
+      )}
+
+      {/* DESKTOP — bandeau bas pleine largeur : sport + stats + gros profil (façon Strava) */}
+      {!isNarrow && (
+        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 1000, background: 'var(--bg-card)', borderTop: '1px solid var(--border)', boxShadow: '0 -6px 26px rgba(0,0,0,0.14)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 22, padding: '10px 20px', flexWrap: 'wrap', borderBottom: '1px solid var(--border)' }}>
+            <div style={{ display: 'flex', gap: 2, background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 12, padding: 3 }}>
+              {SPORT_CHIPS.map(({ id, Icon, label }) => {
+                const on = sport === id
+                return (
+                  <button key={id} onClick={() => pickSport(id)} title={label}
+                    style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 9, border: 'none', background: on ? 'var(--bg-card)' : 'transparent', color: on ? 'var(--primary)' : 'var(--text-dim)', boxShadow: on ? '0 1px 5px rgba(0,0,0,0.14)' : 'none', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 12.5, fontWeight: on ? 700 : 600 }}>
+                    <Icon size={16} stroke={2} /><span>{label}</span>
+                  </button>
+                )
+              })}
+            </div>
+            {[
+              { label: t('record.routeCreatorDistance'), value: distanceM >= 1000 ? `${(distanceM / 1000).toFixed(2)}` : `${Math.round(distanceM)}`, unit: distanceM >= 1000 ? 'km' : 'm' },
+              { label: 'D+', value: `${Math.round(elevGain)}`, unit: 'm' },
+              { label: 'D-', value: `${computeLoss(elevationProfile)}`, unit: 'm' },
+              { label: t('record.routeCreatorEstDuration'), value: distanceM > 0 ? fmtDur((distanceM / 1000) / (SPEED_KMH[sport] ?? 18) * 3600) : '--', unit: '' },
+            ].map((s, i) => (
+              <div key={i}>
+                <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: 0, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{s.label}</p>
+                <p style={{ fontSize: 18, fontWeight: 800, color: 'var(--text)', margin: '2px 0 0', lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{s.value}{s.unit && <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-dim)' }}> {s.unit}</span>}</p>
+              </div>
+            ))}
+            <div style={{ flex: 1 }} />
+            <span style={{ fontSize: 12, color: 'var(--text-dim)', fontVariantNumeric: 'tabular-nums' }}>{snapping ? t('record.routeCreatorCalculating') : `${waypoints.length} point${waypoints.length !== 1 ? 's' : ''}`}</span>
+            <label style={{ ...groupBtn, width: 40, height: 34, border: '1px solid var(--border)', borderRadius: 10, background: 'var(--bg-card2)' }} aria-label={t('record.routeCreatorImportGpx')} title={t('record.routeCreatorImportGpx')}>
+              <input type="file" accept=".gpx" onChange={handleGPX} style={{ display: 'none' }} />
+              <svg width="16" height="16" viewBox="0 0 18 18" fill="none"><path d="M9 2v10M5 8l4-4 4 4M3 15h12" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            </label>
+          </div>
+          <div style={{ padding: '4px 12px 10px' }}>
+            <ElevationChart data={elevationProfile} surfaces={surfaces} height={190} isDark={isDark} snappedPoints={snappedPoints} onPositionChange={setScrubPosition} />
+          </div>
+        </div>
+      )}
 
       {showSave && <RouteSaveForm routeName={routeName} onChangeName={setRouteName} onSave={handleSave} onClose={() => setShowSave(false)} isDark={isDark} initialType={editingType} />}
     </div>

@@ -14,7 +14,7 @@ import { useI18n, currentLocale } from '@/lib/i18n'
 type Translate = (key: string, vars?: Record<string, string | number>) => string
 const fmtWhen = (d: string, t: Translate) => { if (!d) return ''; const days = Math.floor((Date.now() - new Date(d).getTime()) / 86400_000); if (days <= 0) return t('w3d.today'); if (days === 1) return t('w3d.yesterday'); if (days < 7) return t('w3d.days_short', { n: days }); try { return new Date(d).toLocaleDateString(currentLocale(), { day: 'numeric', month: 'short' }) } catch { return '' } }
 
-export function MessagesView({ role, title, subtitle, initialThread, onBack }: { role: 'coach' | 'athlete'; title: string; subtitle: string; initialThread?: string | null; onBack?: () => void }) {
+export function MessagesView({ role, title, subtitle, initialThread, initialGroup, onBack }: { role: 'coach' | 'athlete'; title: string; subtitle: string; initialThread?: string | null; initialGroup?: string | null; onBack?: () => void }) {
   const { t } = useI18n()
   const [threads, setThreads] = useState<Thread[]>([])
   const [groups, setGroups] = useState<GroupSummary[]>([])
@@ -49,6 +49,12 @@ export function MessagesView({ role, title, subtitle, initialThread, onBack }: {
     if (loading || !initialThread) return
     if (threads.some(t => t.otherId === initialThread)) { setSelId(initialThread); setSelGroup(null) }
   }, [loading, initialThread, threads])
+  // Ouverture directe d'un DM (groupe à 2) — ex. bouton « Message » d'un membre.
+  useEffect(() => {
+    if (!initialGroup) return
+    if (groups.some(g => g.id === initialGroup)) { setSelGroup(initialGroup); setSelId(null) }
+    else void load()
+  }, [initialGroup, groups, load])
   const loadGroups = useCallback(async () => { try { setGroups(await listMyGroups()) } catch { /* */ } }, [])
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 767px)')
@@ -58,6 +64,8 @@ export function MessagesView({ role, title, subtitle, initialThread, onBack }: {
 
   const sel = threads.find(t => t.otherId === selId) ?? null
   const selectedGroup = groups.find(g => g.id === selGroup) ?? null
+  const realGroups = groups.filter(g => !g.isDm)
+  const dms = groups.filter(g => g.isDm)
   const card: React.CSSProperties = { borderRadius: 16, border: '1px solid var(--border)', background: 'var(--bg-card)' }
   const secLabel: React.CSSProperties = { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 13px 6px', fontSize: 10.5, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-dim)' }
   const fmtGroupWhen = (d: string | null) => d ? fmtWhen(d, t) : ''
@@ -70,9 +78,9 @@ export function MessagesView({ role, title, subtitle, initialThread, onBack }: {
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14" /></svg>
         </button>
       </div>
-      {groups.length === 0 ? (
+      {realGroups.length === 0 ? (
         <div style={{ fontSize: 12, color: 'var(--text-dim)', padding: '2px 13px 12px' }}>{t('w3d.create_group_hint')}</div>
-      ) : groups.map(g => (
+      ) : realGroups.map(g => (
         <button key={g.id} onClick={() => { setSelGroup(g.id); setSelId(null) }}
           style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '9px 13px', border: 'none', background: selGroup === g.id ? 'var(--bg-card2)' : 'transparent', cursor: 'pointer', textAlign: 'left', width: '100%', fontFamily: 'var(--font-body)' }}>
           <span style={{ width: 38, height: 38, borderRadius: 11, background: 'color-mix(in srgb, var(--primary) 13%, transparent)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -90,9 +98,33 @@ export function MessagesView({ role, title, subtitle, initialThread, onBack }: {
     </div>
   )
 
+  // Messages directs 1-1 (DM) — affichés comme des personnes, pas des groupes.
+  const dmSection = dms.length > 0 && (
+    <div style={{ flexShrink: 0, borderBottom: '1px solid var(--border)' }}>
+      <div style={secLabel}><span>{t('w1g.privateMessages')}</span></div>
+      {dms.map(g => (
+        <button key={g.id} onClick={() => { setSelGroup(g.id); setSelId(null) }}
+          style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '9px 13px', border: 'none', background: selGroup === g.id ? 'var(--bg-card2)' : 'transparent', cursor: 'pointer', textAlign: 'left', width: '100%', fontFamily: 'var(--font-body)' }}>
+          <span style={{ width: 38, height: 38, borderRadius: '50%', background: 'var(--bg-alt)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0, color: 'var(--text-dim)', fontWeight: 800 }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            {g.dmAvatar ? <img src={g.dmAvatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : g.name.slice(0, 1).toUpperCase()}
+          </span>
+          <span style={{ flex: 1, minWidth: 0 }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{g.name}</span>
+              {g.lastAt && <span style={{ fontSize: 10.5, color: 'var(--text-dim)', flexShrink: 0 }}>{fmtGroupWhen(g.lastAt)}</span>}
+            </span>
+            <span style={{ display: 'block', fontSize: 12, color: 'var(--text-dim)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{g.lastBody || t('w3d.start_conversation')}</span>
+          </span>
+        </button>
+      ))}
+    </div>
+  )
+
   const listPane = (
     <div style={{ ...card, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
       {groupsSection}
+      {dmSection}
       {loading ? (
         <p style={{ fontSize: 13, color: 'var(--text-dim)', padding: 16 }}>{t('w3d.loading')}</p>
       ) : threads.length === 0 ? (

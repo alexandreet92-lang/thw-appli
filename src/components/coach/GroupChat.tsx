@@ -118,16 +118,21 @@ export function GroupChat({ group, onChanged, onClosed }: { group: GroupSummary;
         <button onClick={onClosed} aria-label={t('w2d.back')} style={{ width: 30, height: 30, borderRadius: 9, border: 'none', background: 'var(--bg-card2)', color: 'var(--text-mid)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
         </button>
-        <span style={{ width: 34, height: 34, borderRadius: 11, background: 'color-mix(in srgb, var(--primary) 14%, transparent)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></svg>
+        <span style={{ width: 34, height: 34, borderRadius: group.isDm ? '50%' : 11, overflow: 'hidden', background: 'color-mix(in srgb, var(--primary) 14%, transparent)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontWeight: 800 }}>
+          {group.isDm
+            // eslint-disable-next-line @next/next/no-img-element
+            ? (group.dmAvatar ? <img src={group.dmAvatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : (group.name.slice(0, 1).toUpperCase()))
+            : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></svg>}
         </span>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-display)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{group.name}</div>
-          <div style={{ fontSize: 11.5, color: 'var(--text-dim)' }}>{t(members.length > 1 ? 'w2d.membersCountPlural' : 'w2d.membersCountSingular', { n: members.length })}{isAdmin ? t('w2d.youAreAdmin') : ''}</div>
+          {!group.isDm && <div style={{ fontSize: 11.5, color: 'var(--text-dim)' }}>{t(members.length > 1 ? 'w2d.membersCountPlural' : 'w2d.membersCountSingular', { n: members.length })}{isAdmin ? t('w2d.youAreAdmin') : ''}</div>}
         </div>
-        <button onClick={() => setPanel(true)} aria-label={t('w2d.members')} style={{ width: 32, height: 32, borderRadius: 9, border: 'none', background: 'var(--bg-card2)', color: 'var(--text-mid)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></svg>
-        </button>
+        {!group.isDm && (
+          <button onClick={() => setPanel(true)} aria-label={t('w2d.members')} style={{ width: 32, height: 32, borderRadius: 9, border: 'none', background: 'var(--bg-card2)', color: 'var(--text-mid)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></svg>
+          </button>
+        )}
       </div>
 
       {/* Fil */}

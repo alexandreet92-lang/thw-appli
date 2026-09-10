@@ -79,10 +79,14 @@ export function CommunityView() {
   // Mode « messages » (messagerie privée intégrée à la communauté, façon Discord).
   const [msgMode, setMsgMode] = useState(false)
   const [dmUser, setDmUser] = useState<string | null>(null)
-  const exitMessages = () => { setMsgMode(false); setDmUser(null) }
+  const [dmGroup, setDmGroup] = useState<string | null>(null)
+  const exitMessages = () => { setMsgMode(false); setDmUser(null); setDmGroup(null) }
   // Ouverture d'une conversation depuis « Message » d'un membre.
   useEffect(() => {
-    const h = (e: Event) => { const id = (e as CustomEvent).detail?.userId as string | undefined; setDmUser(id ?? null); setMsgMode(true) }
+    const h = (e: Event) => {
+      const d = (e as CustomEvent).detail as { userId?: string; groupId?: string } | undefined
+      setDmUser(d?.userId ?? null); setDmGroup(d?.groupId ?? null); setMsgMode(true)
+    }
     window.addEventListener('thw:community-dm', h as EventListener)
     return () => window.removeEventListener('thw:community-dm', h as EventListener)
   }, [])
@@ -176,7 +180,7 @@ export function CommunityView() {
   function selectSpace(id: string) {
     // Mobile façon Discord : le rail des espaces reste visible, on ne change que
     // la colonne des canaux (on reste sur « home »).
-    setMsgMode(false); setDmUser(null)
+    setMsgMode(false); setDmUser(null); setDmGroup(null)
     setSpaceId(id); setChannelId(null); setPanel('chat')
   }
   function selectChannel(id: string) {
@@ -260,7 +264,7 @@ export function CommunityView() {
   const rail = (
     <SpaceRail
       spaces={spaces} activeId={spaceId} loading={loadingSpaces} messagesActive={msgMode}
-      onMessages={() => setMsgMode(m => { const n = !m; if (n) setDmUser(null); return n })}
+      onMessages={() => setMsgMode(m => { const n = !m; if (n) { setDmUser(null); setDmGroup(null) } return n })}
       onSelect={selectSpace} onCreate={() => setShowCreate(true)} onDiscover={() => setShowDiscover(true)}
     />
   )
@@ -268,7 +272,7 @@ export function CommunityView() {
   // Messagerie privée intégrée (coach + contacts + groupes), façon Discord.
   const messagesPane = (
     <div style={{ height: '100%', minHeight: 0, background: 'var(--bg-card)', paddingTop: isNarrow ? 'env(safe-area-inset-top)' : 0 }}>
-      <MessagesView role="athlete" title={t('w1g.privateMessages')} subtitle="" initialThread={dmUser} onBack={exitMessages} />
+      <MessagesView role="athlete" title={t('w1g.privateMessages')} subtitle="" initialThread={dmUser} initialGroup={dmGroup} onBack={exitMessages} />
     </div>
   )
 

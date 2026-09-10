@@ -16,6 +16,18 @@ export interface GroupSummary {
   memberCount: number
   lastBody: string | null
   lastAt: string | null
+  isDm: boolean
+  dmOtherId: string | null
+  dmAvatar: string | null
+}
+
+/** Récupère (ou crée) le fil de messages 1-1 avec `otherId`. Retourne l'id du
+ *  « groupe » DM, ou null. Un DM = un groupe à 2 (is_dm), dédoublonné côté RPC. */
+export async function getOrCreateDirectThread(otherId: string): Promise<string | null> {
+  if (!otherId) return null
+  const { data, error } = await createClient().rpc('get_or_create_dm', { p_other: otherId })
+  if (error) return null
+  return (data as string | null) ?? null
 }
 export interface GroupMember {
   userId: string
@@ -71,19 +83,34 @@ export async function listMyGroups(): Promise<GroupSummary[]> {
   const ids = rows.map(r => r.group_id)
   const roleById = new Map(rows.map(r => [r.group_id, r.role]))
   const [{ data: groups }, { data: members }, { data: msgs }] = await Promise.all([
-    sb.from('message_groups').select('id, name, admin_managed, created_by').in('id', ids),
-    sb.from('message_group_members').select('group_id').in('group_id', ids),
+    sb.from('message_groups').select('id, name, admin_managed, created_by, is_dm').in('id', ids),
+    sb.from('message_group_members').select('group_id, user_id').in('group_id', ids),
     sb.from('message_group_messages').select('group_id, body, created_at').in('group_id', ids).order('created_at', { ascending: false }),
   ])
   const countBy = new Map<string, number>()
-  for (const m of (members ?? []) as { group_id: string }[]) countBy.set(m.group_id, (countBy.get(m.group_id) ?? 0) + 1)
+  const membersByGroup = new Map<string, string[]>()
+  for (const m of (members ?? []) as { group_id: string; user_id: string }[]) {
+    countBy.set(m.group_id, (countBy.get(m.group_id) ?? 0) + 1)
+    const arr = membersByGroup.get(m.group_id) ?? []; arr.push(m.user_id); membersByGroup.set(m.group_id, arr)
+  }
   const lastBy = new Map<string, { body: string; created_at: string }>()
   for (const m of (msgs ?? []) as { group_id: string; body: string; created_at: string }[]) if (!lastBy.has(m.group_id)) lastBy.set(m.group_id, m)
-  return ((groups ?? []) as { id: string; name: string; admin_managed: boolean; created_by: string }[]).map(g => ({
-    id: g.id, name: g.name, adminManaged: g.admin_managed, createdBy: g.created_by,
-    myRole: roleById.get(g.id) ?? 'member', memberCount: countBy.get(g.id) ?? 1,
-    lastBody: lastBy.get(g.id)?.body ?? null, lastAt: lastBy.get(g.id)?.created_at ?? null,
-  })).sort((a, b) => (b.lastAt ?? '').localeCompare(a.lastAt ?? ''))
+  const groupRows = (groups ?? []) as { id: string; name: string; admin_managed: boolean; created_by: string; is_dm: boolean }[]
+  // Pour les DM (groupe à 2) : on affiche l'AUTRE personne (nom + avatar).
+  const dmOther = new Map<string, string>()
+  for (const g of groupRows) if (g.is_dm) { const other = (membersByGroup.get(g.id) ?? []).find(u => u !== me); if (other) dmOther.set(g.id, other) }
+  const dmNames = await namesFor([...new Set(dmOther.values())])
+  return groupRows.map(g => {
+    const isDm = !!g.is_dm
+    const otherId = dmOther.get(g.id) ?? null
+    const dmName = otherId ? (dmNames.get(otherId)?.name ?? 'Membre') : null
+    return {
+      id: g.id, name: isDm ? (dmName ?? 'Message') : g.name, adminManaged: g.admin_managed, createdBy: g.created_by,
+      myRole: roleById.get(g.id) ?? 'member', memberCount: countBy.get(g.id) ?? 1,
+      lastBody: lastBy.get(g.id)?.body ?? null, lastAt: lastBy.get(g.id)?.created_at ?? null,
+      isDm, dmOtherId: otherId, dmAvatar: otherId ? (dmNames.get(otherId)?.avatar ?? null) : null,
+    }
+  }).sort((a, b) => (b.lastAt ?? '').localeCompare(a.lastAt ?? ''))
 }
 
 async function namesFor(ids: string[]): Promise<Map<string, { name: string; avatar: string | null }>> {

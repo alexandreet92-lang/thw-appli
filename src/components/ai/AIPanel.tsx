@@ -20,6 +20,7 @@ import { isNativeApp } from '@/lib/native/platform'
 import { openUpgrade } from '@/components/subscription/UpgradeModal'
 import { parseAdvancedSpec, AdvancedChartCard } from '@/components/ai/AdvancedChart'
 import PressPop from '@/components/ui/PressPop'
+import { listContinuationKeyDown } from '@/lib/ui/listContinuation'
 import { createPortal } from 'react-dom'
 import { CheckCircle2, XCircle, ChevronDown, ChevronRight, ArrowLeft, Zap, Globe, Paperclip, Camera, Plug, Brain, Activity, Map as MapIcon, MapPin, Dumbbell, Apple, Target, HelpCircle, Search, Flag, Moon, Calendar, BookOpen, Bike, Footprints, Waves } from 'lucide-react'
 import HybridNetworksPanel, { type HNConv } from './HybridNetworksPanel'
@@ -21379,6 +21380,11 @@ export default function AIPanel({
     el.style.height = Math.min(el.scrollHeight, 200) + 'px'
   }
   const handleKey = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // Auto-continuation de liste (« 1. » / « - » + Entrée) — prioritaire sur l'envoi.
+    if (listContinuationKeyDown(e, input, setInput)) {
+      requestAnimationFrame(() => { const el = areaRef.current; if (el) { el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 200) + 'px' } })
+      return
+    }
     // Sur mobile, Entrée = retour à la ligne (seul le bouton envoie).
     if (e.key === 'Enter' && !e.shiftKey && isDesktop) { e.preventDefault(); void send() }
   }

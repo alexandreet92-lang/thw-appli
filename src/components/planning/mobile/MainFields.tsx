@@ -12,6 +12,7 @@ import {
 import { sportColor, fmtDur, parseDurInput } from './editorial'
 import { Card, FieldLabel, Gauge } from './ui'
 import { useI18n } from '@/lib/i18n'
+import { listContinuationKeyDown } from '@/lib/ui/listContinuation'
 
 const SPORTS: SportType[] = ['run', 'bike', 'swim', 'hyrox', 'gym', 'rowing', 'elliptique', 'hybrid', 'boxe', 'mobilite', 'autres']
 // Clés i18n des descripteurs d'effort perçu (RPE 1→10).
@@ -144,34 +145,36 @@ export function MainFields(p: {
         </div>
       )}
 
-      {/* Effort perçu */}
-      <Card>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-          <div>
-            <p style={{ margin: 0, fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--se-dim)' }}>{tr('planning.perceivedEffort')}</p>
-            <p className="se-fr" style={{ margin: '8px 0 0', fontSize: 15, fontWeight: 600, color: 'var(--se-text)' }}>{tr(RPE_DESC[rpeIdx])}</p>
+      {/* Effort perçu + Durée — sur la MÊME ligne (compacts) pour libérer de la
+          place à la description. */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, alignItems: 'stretch' }}>
+        {/* Effort perçu */}
+        <Card style={{ padding: '12px 14px' }}>
+          <p style={{ margin: 0, fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--se-dim)' }}>{tr('planning.perceivedEffort')}</p>
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 6, marginTop: 6 }}>
+            <p className="se-fr" style={{ margin: 0, fontSize: 13, fontWeight: 600, color: 'var(--se-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tr(RPE_DESC[rpeIdx])}</p>
+            <p className="se-fr se-tnum" style={{ margin: 0, fontSize: 24, fontWeight: 600, color: 'var(--se-text)', lineHeight: 1, flexShrink: 0 }}>{p.rpe}<span style={{ fontSize: 11, color: 'var(--se-dim)' }}>/10</span></p>
           </div>
-          <p className="se-fr se-tnum" style={{ margin: 0, fontSize: 34, fontWeight: 600, color: 'var(--se-text)', lineHeight: 1 }}>{p.rpe}<span style={{ fontSize: 13, color: 'var(--se-dim)' }}>/10</span></p>
-        </div>
-        <div style={{ marginTop: 12 }}>
-          <Gauge value={p.rpe} min={0.5} max={10} step={0.5} onChange={p.setRpe} color="var(--primary)" />
-        </div>
-      </Card>
+          <div style={{ marginTop: 10 }}>
+            <Gauge value={p.rpe} min={0.5} max={10} step={0.5} onChange={p.setRpe} color="var(--primary)" />
+          </div>
+        </Card>
 
-      {/* Durée — jauge (pas 5min, jusqu'à 10h) + saisie manuelle */}
-      <Card>
-        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
+        {/* Durée — jauge (pas 5min, jusqu'à 10h) + saisie manuelle */}
+        <Card style={{ padding: '12px 14px' }}>
           <p style={{ margin: 0, fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--se-dim)' }}>{tr('planning.duration')}</p>
-          <span className="se-fr se-tnum" style={{ fontSize: 26, fontWeight: 600 }}>{fmtDur(p.dur)}</span>
-          <input defaultValue={fmtDur(p.dur)} key={p.dur} placeholder="2h00"
-            onBlur={e => { const v = parseDurInput(e.target.value); if (v != null) p.setDur(Math.max(5, Math.min(600, v))) }}
-            onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
-            style={{ width: 60, textAlign: 'center', background: 'var(--se-card2)', border: '1px solid var(--se-rule)', borderRadius: 8, padding: '5px 4px', fontSize: 12, color: 'var(--se-text)', outline: 'none' }} />
-        </div>
-        <div style={{ marginTop: 12 }}>
-          <Gauge value={p.dur} min={5} max={600} step={5} onChange={n => p.setDur(n)} color={p.accent} />
-        </div>
-      </Card>
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 6, marginTop: 6 }}>
+            <span className="se-fr se-tnum" style={{ fontSize: 22, fontWeight: 600 }}>{fmtDur(p.dur)}</span>
+            <input defaultValue={fmtDur(p.dur)} key={p.dur} placeholder="2h00"
+              onBlur={e => { const v = parseDurInput(e.target.value); if (v != null) p.setDur(Math.max(5, Math.min(600, v))) }}
+              onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
+              style={{ width: 52, textAlign: 'center', background: 'var(--se-card2)', border: '1px solid var(--se-rule)', borderRadius: 8, padding: '5px 4px', fontSize: 12, color: 'var(--se-text)', outline: 'none', flexShrink: 0 }} />
+          </div>
+          <div style={{ marginTop: 10 }}>
+            <Gauge value={p.dur} min={5} max={600} step={5} onChange={n => p.setDur(n)} color={p.accent} />
+          </div>
+        </Card>
+      </div>
 
       {/* Mini-stats */}
       {stats.length > 0 && (
@@ -185,11 +188,14 @@ export function MainFields(p: {
         </div>
       )}
 
-      {/* Description */}
+      {/* Description — agrandie (Effort + Durée sont désormais sur une ligne).
+          Auto-continuation de liste : « 1. » ou « - » + Entrée → marqueur suivant. */}
       <div>
         <FieldLabel>{tr('planning.description')}</FieldLabel>
-        <textarea value={p.desc} onChange={e => p.setDesc(e.target.value)} rows={3} placeholder={tr('planning.notesConsignes')}
-          style={{ width: '100%', resize: 'vertical', background: 'var(--se-card)', border: '1px solid var(--se-rule)', borderRadius: 'var(--se-r)', padding: 12, fontSize: 13, color: 'var(--se-text)', outline: 'none', boxSizing: 'border-box' }} />
+        <textarea value={p.desc} onChange={e => p.setDesc(e.target.value)} rows={7}
+          onKeyDown={e => listContinuationKeyDown(e, p.desc, p.setDesc)}
+          placeholder={tr('planning.notesConsignes')}
+          style={{ width: '100%', minHeight: 150, resize: 'vertical', background: 'var(--se-card)', border: '1px solid var(--se-rule)', borderRadius: 'var(--se-r)', padding: 12, fontSize: 13, color: 'var(--se-text)', outline: 'none', boxSizing: 'border-box', lineHeight: 1.55 }} />
       </div>
     </div>
   )

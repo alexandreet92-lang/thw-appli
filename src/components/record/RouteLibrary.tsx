@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
+import dynamic from 'next/dynamic'
 import { createClient } from '@/lib/supabase/client'
 import { getCurrentUser } from '@/lib/auth/currentUser'
 import type { SnappedPoint } from '@/lib/openrouteservice'
@@ -9,10 +10,12 @@ import { staticRouteMapUrl } from '@/lib/staticMap'
 import { routeToGpx, downloadGpx } from '@/lib/gpxExport'
 import { FinishFlag } from './finishFlag'
 
+const RouteDetailView = dynamic(() => import('./RouteDetailView'), { ssr: false })
+
 type RouteType = 'training' | 'race'
 
 interface Route {
-  id: string; name: string; sport: string; is_public: boolean
+  id: string; name: string; sport: string; is_public: boolean; user_id?: string
   route_type: RouteType | null
   distance_m: number | null; elevation_gain_m: number | null
   surfaces: { type: string; percent: number }[] | null
@@ -39,11 +42,18 @@ interface Props {
   isDark: boolean
 }
 
-// Tracé normalisé en SVG (repli si pas de carte réelle) — ratio géographique
-// respecté (longitude corrigée par cos(lat)), nord en haut, arrivée = drapeau.
-function SvgTrace({ route, accent, mapBg, fallbackStroke }: {
-  route: Route; accent: string; mapBg: string; fallbackStroke: string
-}) {
+const ACCENT = '#06B6D4'
+const SPEED_KMH: Record<string, number> = { cycling: 25, gravel: 22, mtb: 15, trail: 9, running: 10, hiking: 4.5, walking: 4.5 }
+function estTimeLabel(distanceM: number | null, sport: string): string {
+  if (!distanceM) return '—'
+  const v = SPEED_KMH[sport] ?? 18
+  const sec = (distanceM / 1000) / v * 3600
+  const h = Math.floor(sec / 3600), m = Math.round((sec % 3600) / 60)
+  return h > 0 ? `${h}h${String(m).padStart(2, '0')}` : `${m} min`
+}
+
+// Tracé normalisé en SVG (repli si pas de carte réelle).
+function SvgTrace({ route, accent, mapBg, fallbackStroke }: { route: Route; accent: string; mapBg: string; fallbackStroke: string }) {
   const W = 240, H = 150, PAD = 18
   const pts = route.snapped_points ?? route.waypoints ?? []
   if (pts.length < 2) {
@@ -76,37 +86,20 @@ function SvgTrace({ route, accent, mapBg, fallbackStroke }: {
   )
 }
 
-// Vignette : vraie carte Mapbox (villes/relief) avec le tracé ; repli SVG.
+// Vignette : vraie carte Mapbox avec le tracé ; repli SVG.
 function RouteThumbnail(props: { route: Route; accent: string; mapBg: string; fallbackStroke: string }) {
   const [failed, setFailed] = useState(false)
   const pts = props.route.snapped_points ?? props.route.waypoints ?? []
-  const url = pts.length >= 2 ? staticRouteMapUrl(pts, { width: 320, height: 200, pins: true }) : null
+  const url = pts.length >= 2 ? staticRouteMapUrl(pts, { width: 380, height: 238, pins: true }) : null
   if (url && !failed) {
     // eslint-disable-next-line @next/next/no-img-element
-    return <img src={url} alt="" onError={() => setFailed(true)} style={{ display: 'block', width: '100%', aspectRatio: '320 / 200', objectFit: 'cover', background: props.mapBg }} />
+    return <img src={url} alt="" onError={() => setFailed(true)} style={{ display: 'block', width: '100%', aspectRatio: '380 / 238', objectFit: 'cover', background: props.mapBg }} />
   }
   return <SvgTrace {...props} />
 }
 
 function menuItem(color: string): React.CSSProperties {
   return { display: 'flex', alignItems: 'center', gap: 9, width: '100%', padding: '8px 10px', borderRadius: 8, border: 'none', background: 'transparent', color, fontSize: 13, fontWeight: 600, cursor: 'pointer', textAlign: 'left', fontFamily: 'DM Sans, sans-serif' }
-}
-
-interface FilterOpt { id: string; label: string }
-const DIST_BUCKETS: FilterOpt[] = [
-  { id: 'all', label: 'Distance' }, { id: 'd50', label: '≤ 50 km' }, { id: 'd100', label: '50–100 km' },
-  { id: 'd150', label: '100–150 km' }, { id: 'd200', label: '150–200 km' }, { id: 'd200p', label: '> 200 km' },
-]
-const ELEV_BUCKETS: FilterOpt[] = [
-  { id: 'all', label: 'Dénivelé' }, { id: 'e500', label: '≤ 500 m' }, { id: 'e1000', label: '500–1000 m' },
-  { id: 'e2000', label: '1000–2000 m' }, { id: 'e2000p', label: '> 2000 m' },
-]
-
-function inDist(km: number, b: string): boolean {
-  switch (b) { case 'd50': return km <= 50; case 'd100': return km > 50 && km <= 100; case 'd150': return km > 100 && km <= 150; case 'd200': return km > 150 && km <= 200; case 'd200p': return km > 200; default: return true }
-}
-function inElev(m: number, b: string): boolean {
-  switch (b) { case 'e500': return m <= 500; case 'e1000': return m > 500 && m <= 1000; case 'e2000': return m > 1000 && m <= 2000; case 'e2000p': return m > 2000; default: return true }
 }
 
 export default function RouteLibrary({ onClose, onUseRoute, onCreate, onEditRoute, isDark }: Props) {
@@ -116,16 +109,12 @@ export default function RouteLibrary({ onClose, onUseRoute, onCreate, onEditRout
   useEffect(() => { const r = requestAnimationFrame(() => setShown(true)); return () => cancelAnimationFrame(r) }, [])
   const requestClose = () => { setClosing(true); setShown(false); setTimeout(onClose, 280) }
   const SPORT_LABELS: Record<string, string> = { cycling: t('record.routeLibrarySportCycling'), mtb: t('record.routeLibrarySportMtb'), trail: t('record.routeLibrarySportTrail'), hiking: t('record.routeLibrarySportHiking') }
+  const sportLabel = (s: string) => SPORT_LABELS[s] ?? s
   const [routes, setRoutes] = useState<Route[]>([])
   const [showPublic, setShowPublic] = useState(false)
   const [search, setSearch] = useState('')
-  const [menuId, setMenuId] = useState<string | null>(null)
-  // Filtres
-  const [fSport, setFSport] = useState('all')
-  const [fDist, setFDist] = useState('all')
-  const [fElev, setFElev] = useState('all')
-  const [fType, setFType] = useState('all')
-  const [openFilter, setOpenFilter] = useState<string | null>(null)
+  const [menuId, setMenuId] = useState<string | null>(null)   // ouvert au survol (ou tap mobile)
+  const [detail, setDetail] = useState<Route | null>(null)
   // Envoi vers l'appareil (Garmin/Wahoo) — visible seulement si connecté.
   const [pushTargets, setPushTargets] = useState<string[]>([])
   const [notice, setNotice] = useState<string | null>(null)
@@ -158,6 +147,7 @@ export default function RouteLibrary({ onClose, onUseRoute, onCreate, onEditRout
   const surface = isDark ? 'rgba(255,255,255,0.05)' : '#F9FAFB'
   const border = isDark ? 'rgba(255,255,255,0.08)' : '#E5E7EB'
   const mapBg = isDark ? 'rgba(120,180,140,0.10)' : '#EAF1E6'
+  const popover = isDark ? '#101317' : '#FFFFFF'
 
   useEffect(() => {
     const load = async () => {
@@ -208,153 +198,138 @@ export default function RouteLibrary({ onClose, onUseRoute, onCreate, onEditRout
     elevation_gain_m: route.elevation_gain_m,
   })
 
-  const SPORT_OPTS: FilterOpt[] = [{ id: 'all', label: t('record.routeLibraryAllSports') }, { id: 'cycling', label: SPORT_LABELS.cycling }, { id: 'mtb', label: SPORT_LABELS.mtb }, { id: 'trail', label: SPORT_LABELS.trail }, { id: 'hiking', label: SPORT_LABELS.hiking }]
-  const TYPE_OPTS: FilterOpt[] = [{ id: 'all', label: t('record.routeLibraryAllTypes') }, { id: 'training', label: t('record.routeSaveUsageTraining') }, { id: 'race', label: t('record.routeSaveUsageRace') }]
+  const filtered = routes.filter(r => r.name.toLowerCase().includes(search.toLowerCase()))
 
-  const filtered = routes.filter(r => {
-    if (!r.name.toLowerCase().includes(search.toLowerCase())) return false
-    if (fSport !== 'all' && r.sport !== fSport) return false
-    if (fType !== 'all' && (r.route_type ?? 'training') !== fType) return false
-    if (fDist !== 'all' && !inDist((r.distance_m ?? 0) / 1000, fDist)) return false
-    if (fElev !== 'all' && !inElev(r.elevation_gain_m ?? 0, fElev)) return false
-    return true
-  })
-
-  // Menu déroulant de filtre (bouton + popover).
-  const filterDropdown = (key: string, current: string, opts: FilterOpt[], set: (v: string) => void) => {
-    const active = current !== 'all'
-    const label = opts.find(o => o.id === current)?.label ?? opts[0].label
-    return (
-      <div style={{ position: 'relative', flexShrink: 0 }}>
-        <button onClick={() => setOpenFilter(o => o === key ? null : key)}
-          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 12px', borderRadius: 999, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', fontSize: 12.5, fontWeight: 600, whiteSpace: 'nowrap',
-            background: active ? 'rgba(6,182,212,0.12)' : surface, border: `1px solid ${active ? '#06B6D4' : border}`, color: active ? '#06B6D4' : text }}>
-          {label}
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6"/></svg>
-        </button>
-        {openFilter === key && (
-          <div style={{ position: 'absolute', top: 40, left: 0, zIndex: 20, background: bg, border: `1px solid ${border}`, borderRadius: 12, boxShadow: '0 8px 28px rgba(0,0,0,0.22)', padding: 5, minWidth: 150, display: 'flex', flexDirection: 'column', gap: 1 }}>
-            {opts.map(o => (
-              <button key={o.id} onClick={() => { set(o.id); setOpenFilter(null) }}
-                style={{ ...menuItem(current === o.id ? '#06B6D4' : text), background: current === o.id ? 'rgba(6,182,212,0.10)' : 'transparent' }}>
-                {o.label}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-    )
-  }
+  const tabBtn = (label: string, active: boolean, onClick: () => void) => (
+    <button onClick={onClick} style={{ background: 'none', border: 'none', padding: '4px 2px', cursor: 'pointer', fontSize: 14, fontWeight: active ? 800 : 600, color: active ? text : dim, borderBottom: `2px solid ${active ? ACCENT : 'transparent'}`, fontFamily: 'DM Sans, sans-serif' }}>{label}</button>
+  )
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 10005, background: bg, display: 'flex', flexDirection: 'column', fontFamily: 'DM Sans, sans-serif', paddingTop: 'env(safe-area-inset-top)', transform: shown && !closing ? 'translateX(0)' : 'translateX(100%)', transition: 'transform 300ms cubic-bezier(0.32,0.72,0,1)' }}>
-      {/* En-tête */}
-      <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', borderBottom: `1px solid ${separator}` }}>
-        <button onClick={requestClose} style={{ background: 'none', border: 'none', color: '#06B6D4', fontSize: 16, fontWeight: 500, cursor: 'pointer', padding: 0, zIndex: 1 }}>{t('record.routeLibraryCancel')}</button>
-        <p style={{ position: 'absolute', left: 0, right: 0, textAlign: 'center', fontSize: 17, fontWeight: 700, color: text, margin: 0, fontFamily: 'var(--font-display)', pointerEvents: 'none' }}>{t('record.routeLibraryTitle')}</p>
-        <button onClick={onCreate} aria-label={t('record.routeLibraryCreate')} style={{ background: 'none', border: 'none', color: text, cursor: 'pointer', padding: 0, zIndex: 1, display: 'flex' }}>
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
+      {/* En-tête épuré : retour + titre */}
+      <div style={{ position: 'relative', display: 'flex', alignItems: 'center', padding: '14px 16px', borderBottom: `1px solid ${separator}`, flexShrink: 0 }}>
+        <button onClick={requestClose} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', color: ACCENT, fontSize: 15, fontWeight: 600, cursor: 'pointer', padding: 0, zIndex: 1 }}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
+          {t('record.routeLibraryCancel')}
         </button>
+        <p style={{ position: 'absolute', left: 0, right: 0, textAlign: 'center', fontSize: 17, fontWeight: 700, color: text, margin: 0, fontFamily: 'var(--font-display)', pointerEvents: 'none' }}>{t('record.routeLibraryTitle')}</p>
       </div>
 
-      {/* Recherche + bascule Mes / Publics */}
-      <div style={{ padding: '12px 16px 0', display: 'flex', flexDirection: 'column', gap: 10 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: surface, border: `1px solid ${border}`, borderRadius: 12, padding: '10px 12px' }}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={dim} strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder={t('record.routeLibrarySearchPlaceholder')} style={{ flex: 1, border: 'none', background: 'transparent', outline: 'none', color: text, fontSize: 15, fontFamily: 'DM Sans, sans-serif' }} />
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', background: surface, borderRadius: 10, padding: 3, gap: 2 }}>
-            {[t('record.routeLibraryMine'), t('record.routeLibraryPublic')].map((label, i) => (
-              <button key={i} onClick={() => setShowPublic(i === 1)}
-                style={{ padding: '6px 14px', borderRadius: 8, background: showPublic === (i === 1) ? '#06B6D4' : 'transparent', border: 'none', color: showPublic === (i === 1) ? '#fff' : dim, fontSize: 13, fontWeight: 500, cursor: 'pointer' }}>
-                {label}
-              </button>
-            ))}
+      <div style={{ flex: 1, overflowY: 'auto' }}>
+        <div style={{ maxWidth: 1160, margin: '0 auto', padding: '20px 16px 40px' }}>
+          {/* Barre d'actions : Créer + onglets + recherche */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+            <button onClick={onCreate} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, height: 44, padding: '0 18px', borderRadius: 12, border: 'none', background: ACCENT, color: '#fff', fontSize: 14.5, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14" /></svg>
+              {t('record.routeLibraryCreate')}
+            </button>
+            <div style={{ display: 'flex', gap: 16, marginLeft: 4 }}>
+              {tabBtn(t('record.routeLibraryMine'), !showPublic, () => setShowPublic(false))}
+              {tabBtn(t('record.routeLibraryPublic'), showPublic, () => setShowPublic(true))}
+            </div>
+            <div style={{ flex: '1 1 220px', minWidth: 180, display: 'flex', alignItems: 'center', gap: 8, background: surface, border: `1px solid ${border}`, borderRadius: 12, padding: '10px 12px', marginLeft: 'auto' }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={dim} strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+              <input value={search} onChange={e => setSearch(e.target.value)} placeholder={t('record.routeLibrarySearchPlaceholder')} style={{ flex: 1, minWidth: 0, border: 'none', background: 'transparent', outline: 'none', color: text, fontSize: 15, fontFamily: 'DM Sans, sans-serif' }} />
+            </div>
           </div>
-          {/* Filtres */}
-          {filterDropdown('sport', fSport, SPORT_OPTS, setFSport)}
-          {filterDropdown('type', fType, TYPE_OPTS, setFType)}
-          {filterDropdown('dist', fDist, DIST_BUCKETS, setFDist)}
-          {filterDropdown('elev', fElev, ELEV_BUCKETS, setFElev)}
-        </div>
-      </div>
 
-      <div style={{ flex: 1, overflowY: 'auto', padding: '14px 16px' }}>
-        {filtered.length === 0 && (
-          <div style={{ textAlign: 'center', padding: '60px 20px', color: dim }}>
-            <p style={{ fontSize: 14 }}>{
-              showPublic
-                ? (search ? t('record.routeLibraryEmptyPublicSearch') : t('record.routeLibraryEmptyPublic'))
-                : (search ? t('record.routeLibraryEmptySearch') : t('record.routeLibraryEmpty'))
-            }</p>
-          </div>
-        )}
+          {filtered.length === 0 && (
+            <div style={{ textAlign: 'center', padding: '70px 20px', color: dim }}>
+              <p style={{ fontSize: 14 }}>{
+                showPublic
+                  ? (search ? t('record.routeLibraryEmptyPublicSearch') : t('record.routeLibraryEmptyPublic'))
+                  : (search ? t('record.routeLibraryEmptySearch') : t('record.routeLibraryEmpty'))
+              }</p>
+            </div>
+          )}
 
-        {/* Grille de cartes — grandes vignettes, 4 par ligne sur desktop */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))', gap: 16 }}>
-          {filtered.map(route => (
-            <div key={route.id} style={{ background: surface, border: `1px solid ${border}`, borderRadius: 16, overflow: 'hidden', position: 'relative', display: 'flex', flexDirection: 'column', zIndex: menuId === route.id ? 3 : undefined }}>
-              <div onClick={() => useRoute(route)} style={{ position: 'relative', cursor: 'pointer' }} title={t('record.routeLibraryUse')}>
-                <RouteThumbnail route={route} accent="#06B6D4" mapBg={mapBg} fallbackStroke={dim} />
-                {/* Badge Compétition */}
-                {route.route_type === 'race' && (
-                  <span style={{ position: 'absolute', top: 8, left: 8, fontSize: 10, fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase', color: '#fff', background: 'rgba(239,68,68,0.92)', padding: '3px 8px', borderRadius: 6 }}>{t('record.routeSaveUsageRace')}</span>
-                )}
-                {/* Bouton ⋯ */}
-                <button onClick={e => { e.stopPropagation(); setMenuId(m => m === route.id ? null : route.id) }} aria-label="Options"
-                  style={{ position: 'absolute', top: 8, right: 8, width: 30, height: 30, borderRadius: '50%', background: 'rgba(0,0,0,0.5)', border: 'none', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(4px)' }}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
-                </button>
-                {menuId === route.id && (
-                  <div style={{ position: 'absolute', top: 42, right: 8, zIndex: 5, background: bg, border: `1px solid ${border}`, borderRadius: 12, boxShadow: '0 8px 28px rgba(0,0,0,0.22)', padding: 5, minWidth: 150, display: 'flex', flexDirection: 'column', gap: 1 }}>
-                    {onEditRoute && (
-                      <button onClick={e => { e.stopPropagation(); setMenuId(null); onEditRoute(route) }} style={menuItem(text)}>
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
-                        {t('record.routeLibraryEdit')}
-                      </button>
+          {/* Grille : mobile 1 colonne, desktop max 4 (→3→2→1 selon la largeur) */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: 18, marginTop: 14 }}>
+            {filtered.map(route => (
+              <div key={route.id} onClick={() => setDetail(route)}
+                style={{ background: surface, border: `1px solid ${border}`, borderRadius: 16, overflow: 'hidden', position: 'relative', display: 'flex', flexDirection: 'column', cursor: 'pointer' }}>
+                <div style={{ position: 'relative' }}>
+                  <RouteThumbnail route={route} accent={ACCENT} mapBg={mapBg} fallbackStroke={dim} />
+                  {route.route_type === 'race' && (
+                    <span style={{ position: 'absolute', top: 8, left: 8, fontSize: 10, fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase', color: '#fff', background: 'rgba(239,68,68,0.92)', padding: '3px 8px', borderRadius: 6 }}>{t('record.routeSaveUsageRace')}</span>
+                  )}
+                  {/* ⋯ sans bulle noire — s'ouvre au survol (et au tap sur mobile) */}
+                  <div onMouseEnter={() => setMenuId(route.id)} onMouseLeave={() => setMenuId(m => m === route.id ? null : m)}
+                    style={{ position: 'absolute', top: 6, right: 6 }}>
+                    <button onClick={e => { e.stopPropagation(); setMenuId(m => m === route.id ? null : route.id) }} aria-label="Options"
+                      style={{ width: 32, height: 32, borderRadius: '50%', background: 'transparent', border: 'none', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style={{ filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.55))' }}><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
+                    </button>
+                    {menuId === route.id && (
+                      <div onClick={e => e.stopPropagation()} style={{ position: 'absolute', top: 34, right: 0, zIndex: 5, background: popover, border: `1px solid ${border}`, borderRadius: 12, boxShadow: '0 8px 28px rgba(0,0,0,0.22)', padding: 5, minWidth: 158, display: 'flex', flexDirection: 'column', gap: 1 }}>
+                        {onEditRoute && (
+                          <button onClick={() => { setMenuId(null); onEditRoute(route) }} style={menuItem(text)}>
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
+                            {t('record.routeLibraryEdit')}
+                          </button>
+                        )}
+                        <button onClick={() => void handleDuplicate(route)} style={menuItem(text)}>
+                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 012-2h10"/></svg>
+                          {t('record.routeLibraryDuplicate')}
+                        </button>
+                        <button onClick={() => handleExport(route)} style={menuItem(text)}>
+                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v12M8 11l4 4 4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>
+                          {t('record.routeLibraryExport')}
+                        </button>
+                        <button onClick={() => void handleDelete(route.id)} style={menuItem('#EF4444')}>
+                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
+                          {t('record.routeLibraryDelete')}
+                        </button>
+                      </div>
                     )}
-                    <button onClick={e => { e.stopPropagation(); void handleDuplicate(route) }} style={menuItem(text)}>
-                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 012-2h10"/></svg>
-                      {t('record.routeLibraryDuplicate')}
-                    </button>
-                    <button onClick={e => { e.stopPropagation(); handleExport(route) }} style={menuItem(text)}>
-                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v12M8 11l4 4 4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>
-                      {t('record.routeLibraryExport')}
-                    </button>
-                    {pushTargets.map(p => (
-                      <button key={p} onClick={e => { e.stopPropagation(); void pushToDevice(route, p) }} style={menuItem(text)}>
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
-                        {`${t('record.routeLibrarySendTo')} ${DEVICE_NAME[p] ?? p}`}
-                      </button>
-                    ))}
-                    <button onClick={e => { e.stopPropagation(); void handleDelete(route.id) }} style={menuItem('#EF4444')}>
-                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
-                      {t('record.routeLibraryDelete')}
-                    </button>
                   </div>
-                )}
-              </div>
-              <div onClick={() => useRoute(route)} style={{ padding: '10px 12px 12px', cursor: 'pointer' }}>
-                <p style={{ fontSize: 14.5, fontWeight: 700, color: text, margin: '0 0 3px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{route.name}</p>
-                <p style={{ fontSize: 11.5, color: dim, margin: '0 0 7px' }}>{SPORT_LABELS[route.sport] ?? route.sport} · {new Date(route.created_at).toLocaleDateString(currentLocale())}</p>
-                <div style={{ display: 'flex', gap: 12 }}>
-                  {route.distance_m != null && <span style={{ fontSize: 12.5, fontWeight: 600, color: text }}>{(route.distance_m / 1000).toFixed(1)} km</span>}
-                  {route.elevation_gain_m != null && <span style={{ fontSize: 12.5, fontWeight: 600, color: dim }}>D+ {Math.round(route.elevation_gain_m)} m</span>}
+                </div>
+                <div style={{ padding: '11px 13px 13px' }}>
+                  <p style={{ fontSize: 15, fontWeight: 700, color: text, margin: '0 0 3px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{route.name}</p>
+                  <p style={{ fontSize: 11.5, color: dim, margin: '0 0 9px' }}>{sportLabel(route.sport)} · {new Date(route.created_at).toLocaleDateString(currentLocale())}</p>
+                  <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
+                    {route.distance_m != null && <Stat label="km" value={(route.distance_m / 1000).toFixed(1)} text={text} dim={dim} />}
+                    <Stat label="D+" value={route.elevation_gain_m != null ? `${Math.round(route.elevation_gain_m)} m` : '—'} text={text} dim={dim} />
+                    <Stat label="≈ temps" value={estTimeLabel(route.distance_m, route.sport)} text={text} dim={dim} />
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </div>
 
-      {/* Ferme les menus/filtres au clic ailleurs */}
-      {(menuId || openFilter) && <div onClick={() => { setMenuId(null); setOpenFilter(null) }} style={{ position: 'fixed', inset: 0, zIndex: 2 }} />}
+      {/* Ferme le menu ⋯ (tap) au clic ailleurs */}
+      {menuId && <div onClick={() => setMenuId(null)} style={{ position: 'fixed', inset: 0, zIndex: 2 }} />}
+
+      {/* Détail du parcours */}
+      {detail && (
+        <RouteDetailView
+          route={detail} isDark={isDark} sportLabel={sportLabel(detail.sport)}
+          pushTargets={pushTargets}
+          onClose={() => setDetail(null)}
+          onUse={() => { useRoute(detail); onClose() }}
+          onEdit={onEditRoute ? () => onEditRoute(detail) : undefined}
+          onDuplicate={() => void handleDuplicate(detail)}
+          onExport={() => handleExport(detail)}
+          onDelete={() => void handleDelete(detail.id)}
+          onPush={(p) => void pushToDevice(detail, p)}
+        />
+      )}
 
       {/* Retour d'envoi vers l'appareil */}
       {notice && (
         <div style={{ position: 'fixed', left: '50%', bottom: 24, transform: 'translateX(-50%)', zIndex: 30, background: 'var(--bg-card, #12151C)', color: text, border: `1px solid ${border}`, borderRadius: 12, padding: '10px 16px', fontSize: 13, fontWeight: 600, boxShadow: '0 8px 28px rgba(0,0,0,0.28)', maxWidth: '90vw', textAlign: 'center' }}>{notice}</div>
       )}
     </div>
+  )
+}
+
+function Stat({ label, value, text, dim }: { label: string; value: string; text: string; dim: string }) {
+  return (
+    <span style={{ display: 'inline-flex', flexDirection: 'column' }}>
+      <span style={{ fontSize: 14, fontWeight: 800, color: text, fontVariantNumeric: 'tabular-nums', lineHeight: 1.1 }}>{value}</span>
+      <span style={{ fontSize: 10.5, fontWeight: 600, color: dim, textTransform: 'uppercase', letterSpacing: '0.03em' }}>{label}</span>
+    </span>
   )
 }

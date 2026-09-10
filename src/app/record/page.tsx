@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import SportSelector, { type SportId } from '@/components/record/SportSelector'
+import { stopLiveShare } from '@/lib/community/liveShare'
 import Toast from '@/components/record/Toast'
 import { useI18n } from '@/lib/i18n'
 import type { WorkoutExercise } from '@/types/workout'
@@ -35,6 +36,7 @@ const TreadmillScreen  = dynamic(() => import('@/components/record/treadmill/Tre
 const ManualEntrySheet = dynamic(() => import('@/components/record/ManualEntrySheet'), { ssr: false })
 const SensorSheet      = dynamic(() => import('@/components/record/SensorSheet'),      { ssr: false })
 const GpsSettingsSheet = dynamic(() => import('@/components/record/GpsSettingsSheet'), { ssr: false })
+const LiveShareSheet   = dynamic(() => import('@/components/record/LiveShareSheet'),   { ssr: false })
 const PlannedLaunchSheet = dynamic(() => import('@/components/record/PlannedLaunchSheet'), { ssr: false })
 
 type View = 'home' | 'cycling' | 'running' | 'trail' | 'hiking' | 'mtb' | 'swimming' | 'rowing' | 'workout' | 'ski' | 'yoga' | 'padel' | 'openwater' | 'hometrainer' | 'treadmill'
@@ -75,6 +77,8 @@ export default function RecordPage() {
   const [sportSheetOpen, setSportSheetOpen] = useState(false)
   const [sensorSheetOpen, setSensorSheetOpen] = useState(false)
   const [gpsSheetOpen, setGpsSheetOpen] = useState(false)
+  const [liveShareSheetOpen, setLiveShareSheetOpen] = useState(false)
+  const [liveShareId, setLiveShareId] = useState<string | null>(null)
   const [toast, setToast] = useState<string | null>(null)
   const [activeLauncherSport, setActiveLauncherSport] = useState<'gym' | 'hyrox' | null>(null)
 
@@ -491,7 +495,7 @@ export default function RecordPage() {
           <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '6px 4px 10px' }}>{t('record.pageSessionSettings')}</p>
           <div style={{ background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 16, overflow: 'hidden' }}>
             {([
-              { key: 'liveshare', label: t('record.pageLiveShareLabel'), sub: t('record.pageLiveShareSub'), on: liveShare,   set: (v: boolean) => { setLiveShare(v); persist('thw-rec-liveshare', v) },
+              { key: 'liveshare', label: t('record.pageLiveShareLabel'), sub: t('record.pageLiveShareSub'), on: liveShare,   set: (v: boolean) => { if (v) { setLiveShareSheetOpen(true) } else { setLiveShare(false); void stopLiveShare(liveShareId ?? undefined); setLiveShareId(null) } },
                 icon: <><circle cx="12" cy="12" r="2.5"/><path d="M7.5 7.5a6 6 0 0 0 0 9M16.5 7.5a6 6 0 0 1 0 9M4.5 4.5a10 10 0 0 0 0 15M19.5 4.5a10 10 0 0 1 0 15"/></> },
               { key: 'audio',     label: t('record.pageAudioLabel'),        sub: t('record.pageAudioSub'),        on: audioAlerts, set: (v: boolean) => { setAudioAlerts(v); persist('thw-rec-audio', v) },
                 icon: <><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a9 9 0 0 1 0 14"/></> },
@@ -560,6 +564,11 @@ export default function RecordPage() {
 
       {sensorSheetOpen && <SensorSheet isDark={isDark} onClose={() => setSensorSheetOpen(false)} />}
       {gpsSheetOpen && <GpsSettingsSheet isDark={isDark} onClose={() => setGpsSheetOpen(false)} />}
+      {liveShareSheetOpen && (
+        <LiveShareSheet isDark={isDark} sport={sport}
+          onStarted={id => { setLiveShareId(id); setLiveShare(true); persist('thw-rec-liveshare', true) }}
+          onClose={() => setLiveShareSheetOpen(false)} />
+      )}
 
       {routeCreatorOpen && (
         <RouteCreator

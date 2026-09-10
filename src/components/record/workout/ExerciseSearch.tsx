@@ -1,5 +1,5 @@
 'use client'
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import type { WorkoutExercise } from '@/types/workout'
 import { DEFAULT_GYM_EXERCISES, DEFAULT_HYROX_EXERCISES } from '@/types/workout'
 import { useI18n } from '@/lib/i18n'
@@ -14,6 +14,10 @@ interface Props {
 export default function ExerciseSearch({ sport, onAdd, onClose, isDark }: Props) {
   const { t } = useI18n()
   const [query, setQuery] = useState('')
+  const [shown, setShown] = useState(false)
+  const [closing, setClosing] = useState(false)
+  useEffect(() => { const r = requestAnimationFrame(() => setShown(true)); return () => cancelAnimationFrame(r) }, [])
+  const requestClose = () => { setClosing(true); setShown(false); setTimeout(onClose, 280) }
   const pool = sport === 'gym' ? DEFAULT_GYM_EXERCISES : DEFAULT_HYROX_EXERCISES
   const text = 'var(--text)'
   const dim = 'var(--text-mid)'
@@ -29,9 +33,9 @@ export default function ExerciseSearch({ sport, onAdd, onClose, isDark }: Props)
   }, [query, pool])
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 10010, background: bg, display: 'flex', flexDirection: 'column', fontFamily: 'DM Sans, sans-serif' }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 10010, background: bg, display: 'flex', flexDirection: 'column', fontFamily: 'DM Sans, sans-serif', transform: shown && !closing ? 'translateX(0)' : 'translateX(100%)', transition: 'transform 300ms cubic-bezier(0.32,0.72,0,1)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderBottom: `1px solid ${separator}`, paddingTop: 'calc(12px + env(safe-area-inset-top))' }}>
-        <button onClick={onClose} style={{ background: 'none', border: 'none', color: text, fontSize: 22, cursor: 'pointer', lineHeight: 1, padding: 4 }}>×</button>
+        <button onClick={requestClose} style={{ background: 'none', border: 'none', color: text, fontSize: 22, cursor: 'pointer', lineHeight: 1, padding: 4 }}>×</button>
         <input
           autoFocus
           value={query}
@@ -44,7 +48,7 @@ export default function ExerciseSearch({ sport, onAdd, onClose, isDark }: Props)
         {filtered.map((ex, idx) => (
           <button
             key={ex.id}
-            onClick={() => { onAdd({ ...ex, id: `${ex.id}_${Date.now()}` }); onClose() }}
+            onClick={() => { onAdd({ ...ex, id: `${ex.id}_${Date.now()}` }); requestClose() }}
             style={{ width: '100%', display: 'flex', alignItems: 'center', padding: '14px 16px', background: 'none', border: 'none', cursor: 'pointer', borderBottom: idx < filtered.length - 1 ? `1px solid ${separator}` : 'none', gap: 12, textAlign: 'left' }}
           >
             <div style={{ width: 36, height: 36, borderRadius: 10, background: surface, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>

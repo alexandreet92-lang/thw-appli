@@ -158,6 +158,8 @@ export default function AISettingsModal({ open, initialSection = 'profil', onClo
   const [section, setSection] = useState<SettingsSection>(initialSection)
   const [isWide, setIsWide] = useState(true)
   const [showNav, setShowNav] = useState(false)
+  const [mounted, setMounted] = useState(false)
+  const [shown, setShown] = useState(false)
   const [savedAt, setSavedAt] = useState(0)
   const [errorAt, setErrorAt] = useState(0)
   const flashSaved = useCallback(() => { setErrorAt(0); setSavedAt(Date.now()) }, [])
@@ -174,6 +176,10 @@ export default function AISettingsModal({ open, initialSection = 'profil', onClo
   }, [errorAt])
 
   useEffect(() => { if (open) { setSection(initialSection); setShowNav(false) } }, [open, initialSection])
+  useEffect(() => {
+    if (open) { setMounted(true); const r = requestAnimationFrame(() => setShown(true)); return () => cancelAnimationFrame(r) }
+    setShown(false)
+  }, [open])
   useEffect(() => {
     const mq = window.matchMedia('(min-width: 820px)')
     const on = () => setIsWide(mq.matches)
@@ -289,7 +295,7 @@ export default function AISettingsModal({ open, initialSection = 'profil', onClo
     })()
   }, [flashSaved, flashError])
 
-  if (!open) return null
+  if (!mounted && !open) return null
 
   const NAV: { group: string; items: { id: SettingsSection; label: string; disabled?: boolean }[] }[] = [
     { group: t('w1a.navGeneral'), items: [
@@ -332,13 +338,13 @@ export default function AISettingsModal({ open, initialSection = 'profil', onClo
   )
 
   return (
-    <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 13800, background: 'rgba(15,23,42,0.30)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: isWide ? 28 : 0, fontFamily: FB }}>
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 13800, background: 'rgba(15,23,42,0.30)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: isWide ? 28 : 0, fontFamily: FB, opacity: shown ? 1 : 0, pointerEvents: shown ? 'auto' : 'none', transition: 'opacity 0.28s ease' }}>
       <style>{`
         @keyframes thwDDin { from { opacity: 0; transform: translateY(-6px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
         .thw-conn-row:hover { background: var(--bg-hover); }
       `}</style>
       <div onClick={e => e.stopPropagation()}
-        style={{ position: 'relative', width: '100%', maxWidth: 920, height: isWide ? '85vh' : '100%', background: GREY_PAGE, borderRadius: isWide ? 'var(--r-lg)' : 0, border: '1px solid var(--border)', overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 70px rgba(0,0,0,0.4)' }}>
+        style={{ position: 'relative', width: '100%', maxWidth: 920, height: isWide ? '85vh' : '100%', background: GREY_PAGE, borderRadius: isWide ? 'var(--r-lg)' : 0, border: '1px solid var(--border)', overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 70px rgba(0,0,0,0.4)', transform: shown ? 'translateY(0)' : 'translateY(16px)', opacity: shown ? 1 : 0, transition: 'transform 0.28s cubic-bezier(0.32,0.72,0,1), opacity 0.28s ease' }}>
         {/* Header */}
         <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 12, padding: 'max(16px, env(safe-area-inset-top)) 20px 14px', borderBottom: '1px solid var(--border)' }}>
           {!isWide && !showNav && (

@@ -6,6 +6,7 @@
 // 370px / 1fr, chaque colonne scrolle, header & footer sticky. Aucune
 // logique métier ni builder dupliqué.
 // ══════════════════════════════════════════════════════════════════
+import { useEffect, useState } from 'react'
 import { EDITORIAL_CSS } from './editorial'
 import { MainFields } from './MainFields'
 import { BuilderSection } from './BuilderSection'
@@ -13,22 +14,28 @@ import { PanelHeader, PanelFooter } from './PanelChrome'
 import type { SessionEditorPanelProps } from './panelProps'
 
 export function SessionEditorDesktop(p: SessionEditorPanelProps) {
+  const [shown, setShown] = useState(false)
+  useEffect(() => { const r = requestAnimationFrame(() => setShown(true)); return () => cancelAnimationFrame(r) }, [])
+  const requestClose = () => { setShown(false); setTimeout(p.onClose, 240) }
+  const pc = { ...p, onClose: requestClose }
   return (
     <>
       <style>{EDITORIAL_CSS}</style>
       {/* Overlay assombri au-dessus de toute la nav desktop, centre la modale */}
-      <div onClick={p.onClose} style={{
+      <div onClick={requestClose} style={{
         position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(3px)',
         display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2vh 2vw',
+        opacity: shown ? 1 : 0, transition: 'opacity .22s ease',
       }}>
       {/* Modale centrée */}
       <div className="se-d" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} style={{
         width: 'min(1200px, 94vw)', height: 'min(90vh, 920px)',
         display: 'flex', flexDirection: 'column', overflow: 'hidden',
         borderRadius: 18, boxShadow: '0 24px 80px rgba(0,0,0,0.32)',
-        animation: 'seModalIn .22s cubic-bezier(.2,.8,.2,1) forwards',
+        opacity: shown ? 1 : 0, transform: shown ? 'translateY(0)' : 'translateY(14px)',
+        transition: 'transform .22s cubic-bezier(.2,.8,.2,1), opacity .22s ease',
       }}>
-        <PanelHeader p={p} titleSize={23} padding="16px 24px" />
+        <PanelHeader p={pc} titleSize={23} padding="16px 24px" />
 
         {/* Corps : deux colonnes, chacune scrolle */}
         <div style={{ flex: 1, minHeight: 0, display: 'grid', gridTemplateColumns: '370px 1fr' }}>
@@ -55,7 +62,7 @@ export function SessionEditorDesktop(p: SessionEditorPanelProps) {
           </div>
         </div>
 
-        <PanelFooter p={p} />
+        <PanelFooter p={pc} />
       </div>
       </div>
     </>

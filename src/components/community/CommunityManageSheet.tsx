@@ -21,24 +21,26 @@ type Tab = 'settings' | 'members' | 'requests' | 'reports'
 export function CommunityManageSheet({ spaceId, onClose, onDeleted }: { spaceId: string; onClose: () => void; onDeleted?: () => void }) {
   const { t } = useI18n()
   const [mounted, setMounted] = useState(false)
+  const [shown, setShown] = useState(false)
   const [tab, setTab] = useState<Tab>('settings')
 
-  useEffect(() => { setMounted(true) }, [])
+  useEffect(() => { setMounted(true); const r = requestAnimationFrame(() => setShown(true)); return () => cancelAnimationFrame(r) }, [])
+  const requestClose = () => { setShown(false); setTimeout(onClose, 280) }
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') requestClose() }
     window.addEventListener('keydown', onKey); return () => window.removeEventListener('keydown', onKey)
-  }, [onClose])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
   if (!mounted) return null
 
   const sheet = (
-    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'color-mix(in srgb, var(--bg) 55%, transparent)', backdropFilter: 'blur(2px)', zIndex: 1100, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+    <div onClick={requestClose} style={{ position: 'fixed', inset: 0, background: 'color-mix(in srgb, var(--bg) 55%, transparent)', backdropFilter: 'blur(2px)', zIndex: 1100, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', opacity: shown ? 1 : 0, transition: 'opacity 0.26s ease' }}>
       <div onClick={e => e.stopPropagation()} role="dialog" aria-modal="true"
-        style={{ width: '100%', maxWidth: 560, maxHeight: 'calc(100dvh - 56px)', display: 'flex', flexDirection: 'column', background: 'var(--bg-card)', borderTopLeftRadius: 'var(--r-lg)', borderTopRightRadius: 'var(--r-lg)', boxShadow: 'var(--shadow)', animation: 'commDrawerUp 0.24s cubic-bezier(0.22,0.61,0.36,1)' }}>
+        style={{ width: '100%', maxWidth: 560, maxHeight: 'calc(100dvh - 56px)', display: 'flex', flexDirection: 'column', background: 'var(--bg-card)', borderTopLeftRadius: 'var(--r-lg)', borderTopRightRadius: 'var(--r-lg)', boxShadow: 'var(--shadow)', transform: shown ? 'translateY(0)' : 'translateY(100%)', transition: 'transform 0.3s cubic-bezier(0.32,0.72,0,1)' }}>
         <div style={{ flexShrink: 0, padding: 'var(--space-5) var(--space-5) 0' }}>
           <div style={{ width: 36, height: 4, borderRadius: 'var(--r-sm)', background: 'var(--border-mid)', margin: '0 auto var(--space-4)' }} />
           <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', marginBottom: 'var(--space-4)' }}>
             <h2 style={{ fontFamily: FD, fontSize: 19, fontWeight: 600, color: 'var(--text)', margin: 0, flex: 1 }}>{t('w1g.manageSpace')}</h2>
-            <button onClick={onClose} aria-label={t('w1g.close')} style={{ width: 28, height: 28, border: 'none', borderRadius: '50%', background: 'transparent', color: 'var(--text-mid)', cursor: 'pointer', fontSize: 16 }}>×</button>
+            <button onClick={requestClose} aria-label={t('w1g.close')} style={{ width: 28, height: 28, border: 'none', borderRadius: '50%', background: 'transparent', color: 'var(--text-mid)', cursor: 'pointer', fontSize: 16 }}>×</button>
           </div>
           <div style={{ display: 'flex', gap: 'var(--space-1)' }}>
             {([['settings', t('w1g.tabSettings')], ['members', t('w1g.tabMembers')], ['requests', t('w1g.tabRequests')], ['reports', t('w1g.tabReports')]] as const).map(([k, label]) => (

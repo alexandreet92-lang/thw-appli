@@ -24,7 +24,9 @@ export function BrickPicker({ runs, accent, onPick, onCreate, onClose }: {
 }) {
   const { t } = useI18n()
   const [mounted, setMounted] = useState(false)
-  useEffect(() => { setMounted(true) }, [])
+  const [shown, setShown] = useState(false)
+  useEffect(() => { setMounted(true); const r = requestAnimationFrame(() => setShown(true)); return () => cancelAnimationFrame(r) }, [])
+  const requestClose = () => { setShown(false); setTimeout(onClose, 280) }
   if (!mounted || typeof document === 'undefined') return null
 
   const card: React.CSSProperties = {
@@ -34,17 +36,18 @@ export function BrickPicker({ runs, accent, onPick, onCreate, onClose }: {
   }
 
   const node = (
-    <div onClick={onClose} style={{
+    <div onClick={requestClose} style={{
       position: 'fixed', inset: 0, zIndex: 5000, display: 'flex',
       alignItems: 'center', justifyContent: 'center', padding: 16,
       background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(2px)',
-      animation: 'brkFade .16s ease-out forwards',
+      opacity: shown ? 1 : 0, transition: 'opacity 0.2s ease',
     }}>
-      <style>{`@keyframes brkFade{from{opacity:0}to{opacity:1}}@keyframes brkIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}`}</style>
       <div onClick={e => e.stopPropagation()} style={{
         width: 'min(460px, 100%)', maxHeight: '82vh', overflowY: 'auto',
         background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 18,
-        padding: 20, boxShadow: 'var(--shadow-card)', animation: 'brkIn .2s ease-out forwards',
+        padding: 20, boxShadow: 'var(--shadow-card)',
+        opacity: shown ? 1 : 0, transform: shown ? 'translateY(0)' : 'translateY(8px)',
+        transition: 'opacity 0.2s ease, transform 0.28s cubic-bezier(0.32,0.72,0,1)',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
           <span style={{ display: 'inline-flex', alignItems: 'center', color: accent }}>
@@ -53,7 +56,7 @@ export function BrickPicker({ runs, accent, onPick, onCreate, onClose }: {
           <h3 style={{ margin: 0, fontFamily: 'Syne, sans-serif', fontSize: 17, fontWeight: 700, color: 'var(--text)' }}>
             {t('w4c.brick_title')}
           </h3>
-          <button onClick={onClose} aria-label={t('w4c.brick_close_aria')} style={{ marginLeft: 'auto', width: 30, height: 30, borderRadius: '50%', border: 'none', background: 'var(--bg-card2)', color: 'var(--text-mid)', cursor: 'pointer', fontSize: 15 }}>✕</button>
+          <button onClick={requestClose} aria-label={t('w4c.brick_close_aria')} style={{ marginLeft: 'auto', width: 30, height: 30, borderRadius: '50%', border: 'none', background: 'var(--bg-card2)', color: 'var(--text-mid)', cursor: 'pointer', fontSize: 15 }}>✕</button>
         </div>
         <p style={{ margin: '0 0 16px', fontSize: 12.5, color: 'var(--text-mid)', lineHeight: 1.45 }}>
           {t('w4c.brick_description')}

@@ -29,7 +29,9 @@ export function NewGroupModal({ asAdmin, onClose, onCreated }: { asAdmin: boolea
   const [sel, setSel] = useState<Set<string>>(new Set())
   const [busy, setBusy] = useState(false)
   const [mounted, setMounted] = useState(false)
-  useEffect(() => { setMounted(true); void getAddablePeople().then(setPool) }, [])
+  const [shown, setShown] = useState(false)
+  useEffect(() => { setMounted(true); const r = requestAnimationFrame(() => setShown(true)); void getAddablePeople().then(setPool); return () => cancelAnimationFrame(r) }, [])
+  const requestClose = () => { setShown(false); setTimeout(onClose, 280) }
   const toggle = (id: string) => setSel(s => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n })
 
   async function create() {
@@ -42,8 +44,8 @@ export function NewGroupModal({ asAdmin, onClose, onCreated }: { asAdmin: boolea
   if (!mounted) return null
   return createPortal(
     <div style={{ position: 'fixed', inset: 0, zIndex: 12000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, fontFamily: 'var(--font-body)' }}>
-      <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.42)' }} />
-      <div style={{ position: 'relative', width: 'min(460px, 100%)', maxHeight: '82vh', display: 'flex', flexDirection: 'column', background: 'var(--bg)', borderRadius: 20, overflow: 'hidden', boxShadow: '0 24px 70px rgba(0,0,0,0.4)' }}>
+      <div onClick={requestClose} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.42)', opacity: shown ? 1 : 0, transition: 'opacity 0.26s ease' }} />
+      <div style={{ position: 'relative', width: 'min(460px, 100%)', maxHeight: '82vh', display: 'flex', flexDirection: 'column', background: 'var(--bg)', borderRadius: 20, overflow: 'hidden', boxShadow: '0 24px 70px rgba(0,0,0,0.4)', transform: shown ? 'translateY(0)' : 'translateY(100%)', transition: 'transform 0.3s cubic-bezier(0.32,0.72,0,1)' }}>
         <div style={{ flexShrink: 0, padding: '16px 18px 12px', borderBottom: '1px solid var(--border)' }}>
           <div style={{ fontSize: 17, fontWeight: 600, color: 'var(--text)', fontFamily: 'var(--font-display)' }}>{t('w2d.newGroup')}</div>
           <div style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 2 }}>{asAdmin ? t('w2d.newGroupAdminHint') : t('w2d.newGroupNoAdminHint')}</div>
@@ -67,7 +69,7 @@ export function NewGroupModal({ asAdmin, onClose, onCreated }: { asAdmin: boolea
           })}
         </div>
         <div style={{ flexShrink: 0, display: 'flex', gap: 10, padding: '14px 18px', borderTop: '1px solid var(--border)' }}>
-          <button onClick={onClose} style={{ flex: 1, padding: '11px', borderRadius: 12, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-mid)', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>{t('w2d.cancel')}</button>
+          <button onClick={requestClose} style={{ flex: 1, padding: '11px', borderRadius: 12, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-mid)', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>{t('w2d.cancel')}</button>
           <button onClick={() => void create()} disabled={busy || !name.trim()} style={{ flex: 1, padding: '11px', borderRadius: 12, border: 'none', background: name.trim() && !busy ? 'var(--primary)' : 'var(--bg-card2)', color: name.trim() && !busy ? 'var(--on-primary)' : 'var(--text-dim)', fontSize: 14, fontWeight: 700, cursor: name.trim() && !busy ? 'pointer' : 'default', fontFamily: 'var(--font-body)' }}>{t('w2d.create')}</button>
         </div>
       </div>
@@ -197,15 +199,18 @@ function MembersPanel({ group, members, isAdmin, me, onClose, onRefresh, onLeftO
   const [pool, setPool] = useState<Addable[]>([])
   const [renaming, setRenaming] = useState(false)
   const [name, setName] = useState(group.name)
+  const [shown, setShown] = useState(false)
   const memberIds = new Set(members.map(m => m.userId))
 
   useEffect(() => { if (adding) void getAddablePeople().then(p => setPool(p.filter(x => !memberIds.has(x.id)))) }, [adding]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { const r = requestAnimationFrame(() => setShown(true)); return () => cancelAnimationFrame(r) }, [])
+  const requestClose = () => { setShown(false); setTimeout(onClose, 200) }
 
   const row: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 10, padding: '9px 0' }
   return (
-    <div style={{ position: 'absolute', inset: 0, zIndex: 5, background: 'var(--bg)', display: 'flex', flexDirection: 'column', animation: 'thwDDin 0.18s ease' }}>
+    <div style={{ position: 'absolute', inset: 0, zIndex: 5, background: 'var(--bg)', display: 'flex', flexDirection: 'column', opacity: shown ? 1 : 0, transform: shown ? 'translateY(0) scale(1)' : 'translateY(-6px) scale(0.98)', transition: 'opacity 0.18s ease, transform 0.18s ease' }}>
       <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', borderBottom: '1px solid var(--border)' }}>
-        <button onClick={onClose} aria-label={t('w2d.close')} style={{ width: 30, height: 30, borderRadius: 9, border: 'none', background: 'var(--bg-card2)', color: 'var(--text-mid)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <button onClick={requestClose} aria-label={t('w2d.close')} style={{ width: 30, height: 30, borderRadius: 9, border: 'none', background: 'var(--bg-card2)', color: 'var(--text-mid)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
         </button>
         <div style={{ flex: 1, minWidth: 0, fontSize: 15, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-display)' }}>{t('w2d.groupMembers')}</div>

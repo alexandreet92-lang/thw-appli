@@ -4,7 +4,7 @@
 // voir son PROCÉDÉ (protocole détaillé) puis on l'ajoute au planning. Utilisé
 // depuis le Planning (choix « Test » au tap sur un jour). Le parent reçoit un
 // payload prêt à insérer dans planned_sessions.
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useI18n } from '@/lib/i18n'
 import { IconX, IconChevronRight, IconArrowLeft } from '@tabler/icons-react'
@@ -38,6 +38,11 @@ export default function TestPlannerSheet({ dateLabel, onClose, onConfirm }: {
   const [sport, setSport] = useState<TestSport>('running')
   const [open, setOpen] = useState<TestDef | null>(null)
   const [saving, setSaving] = useState(false)
+  const [mounted, setMounted] = useState(false)
+  const [shown, setShown] = useState(false)
+  const [closing, setClosing] = useState(false)
+  useEffect(() => { setMounted(true); const r = requestAnimationFrame(() => setShown(true)); return () => cancelAnimationFrame(r) }, [])
+  const requestClose = () => { setClosing(true); setShown(false); setTimeout(onClose, 280) }
   const accent = SPORT_TABS.find(s => s.id === sport)?.color ?? 'var(--primary)'
   const proto = open ? PROTOCOLS[open.id] : null
 
@@ -52,17 +57,20 @@ export default function TestPlannerSheet({ dateLabel, onClose, onConfirm }: {
         : `${t('w3g.test_note_prefix', { name: open.name })} ${open.desc}`
       const intensity: TestPlanPayload['intensity'] = open.difficulty === 'Maximal' ? 'high' : open.difficulty === 'Intense' ? 'medium' : 'low'
       await onConfirm({ sport: TEST_SPORT_TO_PLANNING[sport], testId: open.id, title: t('w3g.test_title', { name: open.name }), durationMin: durMin, intensity, notes })
-      onClose()
+      requestClose()
     } finally { setSaving(false) }
   }
 
+  if (!mounted) return null
+
   return createPortal(
     <>
-      <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 9998, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }} />
+      <div onClick={requestClose} style={{ position: 'fixed', inset: 0, zIndex: 9998, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', opacity: shown && !closing ? 1 : 0, transition: 'opacity 0.28s ease' }} />
       <div onClick={e => e.stopPropagation()} style={{
         position: 'fixed', left: 0, right: 0, bottom: 0, top: 'max(64px, calc(env(safe-area-inset-top, 0px) + 48px))', zIndex: 9999,
         background: 'var(--bg-card2)', borderRadius: '26px 26px 0 0', boxShadow: '0 -10px 50px rgba(0,0,0,0.22)',
         display: 'flex', flexDirection: 'column', overflow: 'hidden',
+        transform: shown && !closing ? 'translateY(0)' : 'translateY(100%)', transition: 'transform 0.3s cubic-bezier(0.32,0.72,0,1)',
       }}>
         <div style={{ width: 40, height: 4, borderRadius: 4, background: 'var(--border-mid)', margin: '10px auto 0', flexShrink: 0 }} />
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '12px 22px 14px', flexShrink: 0, borderBottom: '1px solid var(--border)' }}>
@@ -72,7 +80,7 @@ export default function TestPlannerSheet({ dateLabel, onClose, onConfirm }: {
               {open ? open.name : t('w3g.test_plan_title')}
             </h3>
           </div>
-          <button onClick={onClose} aria-label={t('w3g.test_close')} style={{ width: 32, height: 32, borderRadius: '50%', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><IconX size={16} /></button>
+          <button onClick={requestClose} aria-label={t('w3g.test_close')} style={{ width: 32, height: 32, borderRadius: '50%', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><IconX size={16} /></button>
         </div>
 
         <div style={{ flex: 1, overflowY: 'auto', padding: '18px 22px 24px' }}>

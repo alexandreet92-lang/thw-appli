@@ -125,6 +125,10 @@ function ListField({ label, icon, accent, items, onChange, placeholder }: {
 // ── Formulaire de création : protocole complet ─────────────────────
 function CustomTestForm({ sport, color, onClose, onSaved }: { sport: string; color: string; onClose: () => void; onSaved: () => void }) {
   const { t } = useI18n()
+  const [shown, setShown] = useState(false)
+  const [closing, setClosing] = useState(false)
+  useEffect(() => { const r = requestAnimationFrame(() => setShown(true)); return () => cancelAnimationFrame(r) }, [])
+  const requestClose = () => { setClosing(true); setShown(false); setTimeout(onClose, 280) }
   const [nom, setNom] = useState('')
   const [unite, setUnite] = useState('')
   const [p, setP] = useState<Protocol>(emptyProtocol)
@@ -157,8 +161,8 @@ function CustomTestForm({ sport, color, onClose, onSaved }: { sport: string; col
 
   return createPortal(
     <>
-      <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', animation: 'cardEnter 0.2s ease both' }} />
-      <div onClick={e => e.stopPropagation()} style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 10000, maxHeight: 'calc(100dvh - 72px)', background: 'var(--bg-card)', borderRadius: '22px 22px 0 0', border: '1px solid var(--border)', borderBottom: 'none', display: 'flex', flexDirection: 'column', fontFamily: 'DM Sans,sans-serif', animation: 'slideUp 0.28s cubic-bezier(0.4,0,0.2,1) both' }}>
+      <div onClick={requestClose} style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', opacity: shown && !closing ? 1 : 0, transition: 'opacity 0.26s ease' }} />
+      <div onClick={e => e.stopPropagation()} style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 10000, maxHeight: 'calc(100dvh - 72px)', background: 'var(--bg-card)', borderRadius: '22px 22px 0 0', border: '1px solid var(--border)', borderBottom: 'none', display: 'flex', flexDirection: 'column', fontFamily: 'DM Sans,sans-serif', transform: shown && !closing ? 'translateY(0)' : 'translateY(100%)', transition: 'transform 0.30s cubic-bezier(0.32,0.72,0,1)' }}>
         {/* En-tête */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '18px 20px 12px', borderBottom: '1px solid var(--border)' }}>
           <span style={{ width: 34, height: 34, borderRadius: 10, background: `color-mix(in srgb, ${color} 14%, transparent)`, color, display: 'grid', placeItems: 'center', flexShrink: 0 }}><FlaskConical size={18} /></span>
@@ -166,7 +170,7 @@ function CustomTestForm({ sport, color, onClose, onSaved }: { sport: string; col
             <h3 style={{ fontFamily: 'Syne,sans-serif', fontSize: 17, fontWeight: 800, margin: 0, color: 'var(--text)' }}>{t('perf.createTest')}</h3>
             <p style={{ fontSize: 12, color: 'var(--text-dim)', margin: '2px 0 0' }}>{t('perf.customTestFormHint')}</p>
           </div>
-          <button onClick={onClose} aria-label={t('perf.close')} style={{ width: 30, height: 30, borderRadius: 8, background: 'var(--bg-card2)', border: '1px solid var(--border)', color: 'var(--text-dim)', cursor: 'pointer', display: 'grid', placeItems: 'center', flexShrink: 0 }}><X size={16} /></button>
+          <button onClick={requestClose} aria-label={t('perf.close')} style={{ width: 30, height: 30, borderRadius: 8, background: 'var(--bg-card2)', border: '1px solid var(--border)', color: 'var(--text-dim)', cursor: 'pointer', display: 'grid', placeItems: 'center', flexShrink: 0 }}><X size={16} /></button>
         </div>
 
         {/* Corps défilant */}
@@ -203,7 +207,7 @@ function CustomTestForm({ sport, color, onClose, onSaved }: { sport: string; col
 
         {/* Pied */}
         <div style={{ display: 'flex', gap: 8, padding: '12px 20px 16px', borderTop: '1px solid var(--border)' }}>
-          <button onClick={onClose} style={{ flex: 1, padding: 11, borderRadius: 10, background: 'var(--bg-card2)', border: '1px solid var(--border)', color: 'var(--text-mid)', fontSize: 13, cursor: 'pointer' }}>{t('perf.cancel')}</button>
+          <button onClick={requestClose} style={{ flex: 1, padding: 11, borderRadius: 10, background: 'var(--bg-card2)', border: '1px solid var(--border)', color: 'var(--text-mid)', fontSize: 13, cursor: 'pointer' }}>{t('perf.cancel')}</button>
           <button onClick={() => void save()} disabled={!nom.trim() || busy} style={{ flex: 2, padding: 11, borderRadius: 10, background: color, border: 'none', color: 'var(--on-primary)', fontFamily: 'Syne,sans-serif', fontWeight: 700, fontSize: 13, cursor: 'pointer', opacity: !nom.trim() ? 0.5 : 1 }}>{busy ? t('perf.saving') : t('perf.create')}</button>
         </div>
       </div>
@@ -215,6 +219,10 @@ function CustomTestForm({ sport, color, onClose, onSaved }: { sport: string; col
 // ── Fiche de test : affiche le protocole (comme le catalogue) + saisie ──
 function CustomTestDetail({ test, color, onClose, onSaved }: { test: CustomTest; color: string; onClose: () => void; onSaved: () => void }) {
   const { t } = useI18n()
+  const [shown, setShown] = useState(false)
+  const [closing, setClosing] = useState(false)
+  useEffect(() => { const r = requestAnimationFrame(() => setShown(true)); return () => cancelAnimationFrame(r) }, [])
+  const requestClose = () => { setClosing(true); setShown(false); setTimeout(onClose, 280) }
   const p = test.protocol
   const [value, setValue] = useState('')
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10))
@@ -229,7 +237,7 @@ function CustomTestDetail({ test, color, onClose, onSaved }: { test: CustomTest;
       const sb = createClient()
       const next: Result[] = [...(test.results ?? []), { date, value: value.trim(), note: note.trim() || undefined }]
       await sb.from('custom_tests').update({ results: next }).eq('id', test.id)
-      onSaved(); onClose()
+      onSaved(); requestClose()
     } finally { setBusy(false) }
   }
   const hist = [...(test.results ?? [])].reverse()
@@ -251,15 +259,15 @@ function CustomTestDetail({ test, color, onClose, onSaved }: { test: CustomTest;
 
   return createPortal(
     <>
-      <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', animation: 'cardEnter 0.2s ease both' }} />
-      <div onClick={e => e.stopPropagation()} style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 10000, maxHeight: 'calc(100dvh - 72px)', background: 'var(--bg-card)', borderRadius: '22px 22px 0 0', border: '1px solid var(--border)', borderBottom: 'none', display: 'flex', flexDirection: 'column', fontFamily: 'DM Sans,sans-serif', animation: 'slideUp 0.28s cubic-bezier(0.4,0,0.2,1) both' }}>
+      <div onClick={requestClose} style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', opacity: shown && !closing ? 1 : 0, transition: 'opacity 0.26s ease' }} />
+      <div onClick={e => e.stopPropagation()} style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 10000, maxHeight: 'calc(100dvh - 72px)', background: 'var(--bg-card)', borderRadius: '22px 22px 0 0', border: '1px solid var(--border)', borderBottom: 'none', display: 'flex', flexDirection: 'column', fontFamily: 'DM Sans,sans-serif', transform: shown && !closing ? 'translateY(0)' : 'translateY(100%)', transition: 'transform 0.30s cubic-bezier(0.32,0.72,0,1)' }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 11, padding: '18px 20px 12px', borderBottom: '1px solid var(--border)' }}>
           <span style={{ width: 34, height: 34, borderRadius: 10, background: `color-mix(in srgb, ${color} 14%, transparent)`, color, display: 'grid', placeItems: 'center', flexShrink: 0 }}><FlaskConical size={18} /></span>
           <div style={{ flex: 1, minWidth: 0 }}>
             <h3 style={{ fontFamily: 'Syne,sans-serif', fontSize: 17, fontWeight: 800, margin: 0, color: 'var(--text)' }}>{test.nom}</h3>
             <p style={{ fontSize: 11.5, color: 'var(--text-dim)', margin: '2px 0 0' }}>{t('perf.customTestBadge')}</p>
           </div>
-          <button onClick={onClose} aria-label={t('perf.close')} style={{ width: 30, height: 30, borderRadius: 8, background: 'var(--bg-card2)', border: '1px solid var(--border)', color: 'var(--text-dim)', cursor: 'pointer', display: 'grid', placeItems: 'center', flexShrink: 0 }}><X size={16} /></button>
+          <button onClick={requestClose} aria-label={t('perf.close')} style={{ width: 30, height: 30, borderRadius: 8, background: 'var(--bg-card2)', border: '1px solid var(--border)', color: 'var(--text-dim)', cursor: 'pointer', display: 'grid', placeItems: 'center', flexShrink: 0 }}><X size={16} /></button>
         </div>
 
         <div style={{ overflowY: 'auto', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>

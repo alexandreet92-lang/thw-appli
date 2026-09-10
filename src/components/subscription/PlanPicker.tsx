@@ -6,7 +6,7 @@
 // Style minimal & raffiné (façon Claude).
 // ══════════════════════════════════════════════════════════════
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Check } from 'lucide-react'
 import { useI18n } from '@/lib/i18n'
 
@@ -25,6 +25,10 @@ export default function PlanPicker({ onClose }: Props) {
   const [period, setPeriod] = useState<Period>('monthly')
   const [loading, setLoading] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [shown, setShown] = useState(false)
+  const [closing, setClosing] = useState(false)
+  useEffect(() => { const r = requestAnimationFrame(() => setShown(true)); return () => cancelAnimationFrame(r) }, [])
+  const requestClose = () => { setClosing(true); setShown(false); setTimeout(onClose, 280) }
 
   async function choose(tier: string) {
     if (loading) return
@@ -45,8 +49,8 @@ export default function PlanPicker({ onClose }: Props) {
   }
 
   return (
-    <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 13000, background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 18 }}>
-      <div onClick={e => e.stopPropagation()} style={{ width: 420, maxWidth: '100%', maxHeight: '88dvh', overflowY: 'auto', background: 'var(--bg-card)', borderRadius: 22, padding: 24, boxShadow: '0 30px 80px rgba(0,0,0,0.35)', border: '1px solid var(--border)' }}>
+    <div onClick={requestClose} style={{ position: 'fixed', inset: 0, zIndex: 13000, background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 18, opacity: shown && !closing ? 1 : 0, transition: 'opacity 0.28s ease' }}>
+      <div onClick={e => e.stopPropagation()} style={{ width: 420, maxWidth: '100%', maxHeight: '88dvh', overflowY: 'auto', background: 'var(--bg-card)', borderRadius: 22, padding: 24, boxShadow: '0 30px 80px rgba(0,0,0,0.35)', border: '1px solid var(--border)', transform: shown && !closing ? 'translateY(0)' : 'translateY(100%)', opacity: shown && !closing ? 1 : 0, transition: 'transform 0.28s cubic-bezier(0.32,0.72,0,1), opacity 0.28s ease' }}>
         <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 700, color: 'var(--text)', textAlign: 'center', margin: '0 0 4px' }}>{t('w3c.pp_title')}</h2>
         <p style={{ fontSize: 13, color: 'var(--text-mid)', textAlign: 'center', margin: '0 0 18px' }}>{t('w3c.pp_subtitle')}</p>
 
@@ -81,7 +85,7 @@ export default function PlanPicker({ onClose }: Props) {
         </div>
 
         {error && <p style={{ fontSize: 12, color: '#EF4444', textAlign: 'center', margin: '14px 0 0' }}>{error}</p>}
-        <button onClick={onClose} style={{ width: '100%', marginTop: 14, padding: 11, borderRadius: 12, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-mid)', fontSize: 13, fontWeight: 500, cursor: 'pointer' }}>{t('w3c.close')}</button>
+        <button onClick={requestClose} style={{ width: '100%', marginTop: 14, padding: 11, borderRadius: 12, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-mid)', fontSize: 13, fontWeight: 500, cursor: 'pointer' }}>{t('w3c.close')}</button>
       </div>
     </div>
   )

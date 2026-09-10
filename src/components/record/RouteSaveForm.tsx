@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useI18n } from '@/lib/i18n'
 
 export type RouteType = 'training' | 'race'
@@ -18,8 +18,10 @@ export default function RouteSaveForm({ routeName, onChangeName, onSave, onClose
   const [isPublic, setIsPublic] = useState(false)
   const [routeType, setRouteType] = useState<RouteType>(initialType)
   const [saving, setSaving] = useState(false)
+  const [shown, setShown] = useState(false)
   const [closing, setClosing] = useState(false)
-  const close = () => { setClosing(true); setTimeout(onClose, 200) }
+  useEffect(() => { const r = requestAnimationFrame(() => setShown(true)); return () => cancelAnimationFrame(r) }, [])
+  const close = () => { setClosing(true); setShown(false); setTimeout(onClose, 280) }
 
   const bg = isDark ? '#0F1117' : '#FFFFFF'
   const text = isDark ? '#EEF2F7' : '#0A0A0A'
@@ -49,13 +51,11 @@ export default function RouteSaveForm({ routeName, onChangeName, onSave, onClose
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 20000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-      <style>{`
-        @keyframes rsfIn { from { opacity: 0; transform: translateY(10px) scale(0.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
-        @keyframes rsfOut { from { opacity: 1; transform: scale(1); } to { opacity: 0; transform: scale(0.97); } }
-      `}</style>
-      <div onClick={close} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(2px)' }} />
+      <div onClick={close} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(2px)', opacity: shown && !closing ? 1 : 0, transition: 'opacity 0.28s ease' }} />
       <div style={{ position: 'relative', width: 'min(440px, 100%)', background: bg, borderRadius: 20, border: `1px solid ${border}`, padding: '22px 22px 20px',
-        boxShadow: '0 24px 70px rgba(0,0,0,0.35)', fontFamily: 'var(--font-body)', animation: `${closing ? 'rsfOut 0.2s ease forwards' : 'rsfIn 0.22s cubic-bezier(0.2,0.8,0.2,1)'}` }}>
+        boxShadow: '0 24px 70px rgba(0,0,0,0.35)', fontFamily: 'var(--font-body)',
+        transform: shown && !closing ? 'translateY(0)' : 'translateY(100%)', opacity: shown && !closing ? 1 : 0,
+        transition: 'transform 0.28s cubic-bezier(0.32,0.72,0,1), opacity 0.28s ease' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
           <p style={{ fontSize: 18, fontWeight: 700, color: text, margin: 0, fontFamily: 'var(--font-display)' }}>{t('record.routeSaveTitle')}</p>
           <button onClick={close} aria-label={t('record.routeCreatorClose')} style={{ width: 30, height: 30, borderRadius: '50%', background: surface, border: 'none', color: mid, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

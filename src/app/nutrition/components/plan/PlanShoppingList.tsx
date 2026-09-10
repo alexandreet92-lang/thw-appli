@@ -8,7 +8,7 @@
 // best-effort (pas de quantités en grammes fiables). Documenté dans le .md.
 // ══════════════════════════════════════════════════════════════════
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { NutritionPlanData, MealSet, MealSlotValue } from '@/hooks/useNutrition'
 import { slotText } from '@/hooks/useNutrition'
@@ -63,6 +63,10 @@ function extractTokens(desc: string): string[] {
 
 export function PlanShoppingList({ plan, variant, selectedDate, isDesktop, onClose }: Props) {
   const { t } = useI18n()
+  const [shown, setShown] = useState(false)
+  const [closing, setClosing] = useState(false)
+  useEffect(() => { const r = requestAnimationFrame(() => setShown(true)); return () => cancelAnimationFrame(r) }, [])
+  const requestClose = () => { setClosing(true); setShown(false); setTimeout(onClose, 280) }
   const [scope, setScope] = useState<'day' | 'week'>(selectedDate ? 'day' : 'week')
 
   const grouped = useMemo(() => {
@@ -97,12 +101,12 @@ export function PlanShoppingList({ plan, variant, selectedDate, isDesktop, onClo
   const isEmpty = grouped.length === 0
 
   return createPortal(
-    <div style={{ position: 'fixed', inset: 0, zIndex: 2100, background: 'rgba(0,0,0,0.62)', display: 'flex', alignItems: isDesktop ? 'center' : 'flex-end', justifyContent: 'center' }} onClick={onClose}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 2100, background: 'rgba(0,0,0,0.62)', display: 'flex', alignItems: isDesktop ? 'center' : 'flex-end', justifyContent: 'center', opacity: shown && !closing ? 1 : 0, transition: 'opacity 0.28s ease' }} onClick={requestClose}>
       <style>{`@media print { body * { visibility: hidden; } #shopping-print, #shopping-print * { visibility: visible; } #shopping-print { position: absolute; inset: 0; } }`}</style>
-      <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 560, background: 'var(--bg-card)', borderRadius: isDesktop ? 16 : '16px 16px 0 0', padding: 22, maxHeight: '90vh', overflowY: 'auto' }}>
+      <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 560, background: 'var(--bg-card)', borderRadius: isDesktop ? 16 : '16px 16px 0 0', padding: 22, maxHeight: '90vh', overflowY: 'auto', transform: shown && !closing ? 'translateY(0)' : 'translateY(100%)', transition: 'transform 0.30s cubic-bezier(0.32,0.72,0,1)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
           <h3 style={{ fontFamily: 'Syne,sans-serif', fontWeight: 800, fontSize: 17, color: 'var(--text)', margin: 0 }}>{t('nutrition.plan.shoppingList')}</h3>
-          <button onClick={onClose} aria-label={t('nutrition.common.close')} style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', cursor: 'pointer' }}>×</button>
+          <button onClick={requestClose} aria-label={t('nutrition.common.close')} style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', cursor: 'pointer' }}>×</button>
         </div>
 
         {/* Bascule Par jour / Semaine */}

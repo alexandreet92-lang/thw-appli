@@ -29,6 +29,7 @@ export function BlocDetailOverlay({ open, blocId, onClose, onChanged, blocs: pro
 }) {
   const { t: tr } = useI18n()
   const isMobile = useWindowWidth() < 768
+  const [mounted, setMounted] = useState(false)
   const [shown, setShown] = useState(false)
   const [blocs, setBlocs] = useState<TrainingBlocData[]>(() => propBlocs ?? loadBlocs())
   const [sport, setSport] = useState<string>('velo')
@@ -37,7 +38,10 @@ export function BlocDetailOverlay({ open, blocId, onClose, onChanged, blocs: pro
   const [sessIdx, setSessIdx] = useState<number | null>(null)
   const options = useMemo<WeekOption[]>(() => weekStartOptions(), [])
 
-  useEffect(() => { const t = setTimeout(() => setShown(open), 10); return () => clearTimeout(t) }, [open])
+  useEffect(() => {
+    if (open) { setMounted(true); const t = setTimeout(() => setShown(true), 10); return () => clearTimeout(t) }
+    setShown(false); const t = setTimeout(() => setMounted(false), 360); return () => clearTimeout(t)
+  }, [open])
   // Garde la liste synchronisée avec le parent (sans réinitialiser la sélection).
   useEffect(() => { if (propBlocs) setBlocs(propBlocs) }, [propBlocs])
   // À l'ouverture / changement de bloc ciblé : sélectionne le bon bloc + sport.
@@ -46,7 +50,7 @@ export function BlocDetailOverlay({ open, blocId, onClose, onChanged, blocs: pro
     const list = propBlocs ?? loadBlocs(); setBlocs(list); setActiveId(blocId)
     const b = list.find(x => x.id === blocId); if (b) setSport(b.sport)
   }, [open, blocId]) // eslint-disable-line react-hooks/exhaustive-deps
-  if (!open) return null
+  if (!mounted && !open) return null
 
   const sportBlocs = blocs.filter(b => b.sport === sport)
   const startTs = (b: TrainingBlocData) => getWeekStart(b.startYear, b.startWeek).getTime()

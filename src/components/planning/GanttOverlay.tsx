@@ -13,10 +13,14 @@ const T = 'var(--text)', DIM = 'var(--text-mid)' // surface/texte = tokens de th
 
 export function GanttOverlay({ open, onClose, onChanged }: { open: boolean; onClose: () => void; onChanged: () => void }) {
   const { t } = useI18n()
+  const [mounted, setMounted] = useState(false)
   const [shown, setShown] = useState(false)
   const [token, setToken] = useState(0)
-  useEffect(() => { const t = setTimeout(() => setShown(open), 10); return () => clearTimeout(t) }, [open])
-  if (!open) return null
+  useEffect(() => {
+    if (open) { setMounted(true); const t = setTimeout(() => setShown(true), 10); return () => clearTimeout(t) }
+    setShown(false); const t = setTimeout(() => setMounted(false), 340); return () => clearTimeout(t)
+  }, [open])
+  if (!mounted && !open) return null
 
   function create(sport: string) { upsertBloc(newBloc(sport)); setToken(t => t + 1); onChanged() }
 

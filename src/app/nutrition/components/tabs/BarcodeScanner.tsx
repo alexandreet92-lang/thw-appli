@@ -25,8 +25,11 @@ export default function BarcodeScanner({ onDetected, onClose }: Props) {
   const activeRef = useRef(true)
   const [error,   setError]   = useState<string | null>(null)
   const [mounted, setMounted] = useState(false)
+  const [shown,   setShown]   = useState(false)
+  const [closing, setClosing] = useState(false)
 
-  useEffect(() => { setMounted(true) }, [])
+  useEffect(() => { setMounted(true); const r = requestAnimationFrame(() => setShown(true)); return () => cancelAnimationFrame(r) }, [])
+  const requestClose = () => { setClosing(true); setShown(false); setTimeout(onClose, 280) }
 
   useEffect(() => {
     if (!mounted) return
@@ -71,7 +74,7 @@ export default function BarcodeScanner({ onDetected, onClose }: Props) {
   if (!mounted) return null
 
   const content = (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.85)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.85)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', transform: shown && !closing ? 'translateX(0)' : 'translateX(100%)', transition: 'transform 0.30s cubic-bezier(0.32,0.72,0,1)' }}>
       <div style={{ position: 'relative', width: 280, maxWidth: '90vw' }}>
         {error ? (
           <div style={{ color: '#fff', fontSize: 14, textAlign: 'center', padding: '40px 20px' }}>{error}</div>
@@ -88,7 +91,7 @@ export default function BarcodeScanner({ onDetected, onClose }: Props) {
           </>
         )}
       </div>
-      <button onClick={onClose}
+      <button onClick={requestClose}
         style={{ marginTop: 24, padding: '10px 28px', borderRadius: 10, border: '1px solid rgba(255,255,255,0.3)', background: 'none', color: '#fff', fontSize: 13, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
         {t('w2b.close')}
       </button>

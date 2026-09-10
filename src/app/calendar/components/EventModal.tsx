@@ -62,7 +62,10 @@ export default function EventModal({ mode = 'create', initialData, initialDate, 
   // (sinon la sheet passe SOUS la barre d'onglets et le bouton Enregistrer
   // devient invisible).
   const [mounted, setMounted] = useState(false)
-  useEffect(() => { setMounted(true) }, [])
+  const [shown, setShown] = useState(false)
+  const [closing, setClosing] = useState(false)
+  useEffect(() => { setMounted(true); const r = requestAnimationFrame(() => setShown(true)); return () => cancelAnimationFrame(r) }, [])
+  const requestClose = () => { setClosing(true); setShown(false); setTimeout(onClose, 300) }
   // Masque la barre d'onglets du bas tant que l'éditeur est ouvert.
   useEffect(() => {
     document.body.classList.add('race-editor-open')
@@ -177,7 +180,7 @@ export default function EventModal({ mode = 'create', initialData, initialDate, 
         { name: name.trim(), startDate, endDate, description: desc || undefined, sports, dailyProgram },
         dayFiles,
       )
-      onClose()
+      requestClose()
     } catch (e) { console.error('[EventModal save]', e) }
     finally { setSaving(false) }
   }
@@ -189,18 +192,19 @@ export default function EventModal({ mode = 'create', initialData, initialDate, 
   return createPortal(
     <>
       <style>{RACE_EDITOR_CSS}</style>
-      <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 9998, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', animation: 'raceScrimIn .2s ease' }} />
+      <div onClick={requestClose} style={{ position: 'fixed', inset: 0, zIndex: 9998, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', opacity: shown && !closing ? 1 : 0, transition: 'opacity 0.26s ease' }} />
       <div className="race-ed" onClick={e => e.stopPropagation()} style={{
         position: 'fixed', left: 0, right: 0, bottom: 0, top: 'max(64px, calc(env(safe-area-inset-top, 0px) + 48px))', zIndex: 9999,
         background: 'var(--bg-card2)', borderRadius: '26px 26px 0 0', boxShadow: '0 -10px 50px rgba(0,0,0,0.22)',
-        display: 'flex', flexDirection: 'column', overflow: 'hidden', animation: 'raceSheetUp .34s cubic-bezier(.2,.8,.2,1) forwards',
+        display: 'flex', flexDirection: 'column', overflow: 'hidden',
+        transform: shown && !closing ? 'translateY(0)' : 'translateY(100%)', transition: 'transform 0.30s cubic-bezier(0.32,0.72,0,1)',
       }}>
         <div style={{ width: 40, height: 4, borderRadius: 4, background: 'var(--border-mid)', margin: '10px auto 0', flexShrink: 0 }} />
 
         {/* Header sticky */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 24px 14px', flexShrink: 0, borderBottom: '1px solid var(--border)' }}>
           <h3 className="ed-fr" style={{ margin: 0, fontSize: 22, fontWeight: 600, color: 'var(--text)' }}>{isEdit ? t('calendar.editStage') : t('calendar.addStage')}</h3>
-          <button onClick={onClose} aria-label={t('calendar.close')} style={{ width: 32, height: 32, borderRadius: '50%', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><IconX size={16} /></button>
+          <button onClick={requestClose} aria-label={t('calendar.close')} style={{ width: 32, height: 32, borderRadius: '50%', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><IconX size={16} /></button>
         </div>
 
         {/* Corps scrollable — contenu centré */}
@@ -316,7 +320,7 @@ export default function EventModal({ mode = 'create', initialData, initialDate, 
               <button onClick={() => setConfirmDelete(true)} style={{ padding: 12, borderRadius: 999, background: 'transparent', border: '1px solid #ef4444', color: '#ef4444', fontSize: 13.5, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>{t('calendar.delete')}</button>
             ))}
             {!confirmDelete && (<>
-              <button onClick={onClose} style={{ flex: 1, padding: 12, borderRadius: 999, background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-mid)', fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}>{t('calendar.close')}</button>
+              <button onClick={requestClose} style={{ flex: 1, padding: 12, borderRadius: 999, background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-mid)', fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}>{t('calendar.close')}</button>
               <button onClick={handleSave} disabled={saving || !name.trim() || !startDate || !endDate} style={{ flex: 2, padding: 12, borderRadius: 999, background: accent, border: 'none', color: '#fff', fontWeight: 700, fontSize: 13.5, cursor: saving ? 'wait' : 'pointer', opacity: (!name.trim() || !startDate || !endDate) ? 0.5 : 1 }}>{saving ? '…' : isEdit ? t('calendar.save') : t('calendar.add')}</button>
             </>)}
           </div>

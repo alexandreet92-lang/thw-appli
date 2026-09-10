@@ -4,7 +4,7 @@
 // Plein écran : header + corps scrollable (MainFields + BuilderSection) +
 // footer flottant. Masque la MobileTabBar (§0). Aucune logique métier ici.
 // ══════════════════════════════════════════════════════════════════
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { EDITORIAL_CSS } from './editorial'
 import { MainFields } from './MainFields'
 import { BuilderSection } from './BuilderSection'
@@ -14,11 +14,15 @@ import type { SessionEditorPanelProps } from './panelProps'
 export type { SessionEditorPanelProps as SessionEditorMobileProps }
 
 export function SessionEditorMobile(p: SessionEditorPanelProps) {
+  const [shown, setShown] = useState(false)
   // §0 — masque la barre d'onglets tant que la feuille est montée
   useEffect(() => {
     document.body.classList.add('se-mobile-open')
     return () => document.body.classList.remove('se-mobile-open')
   }, [])
+  useEffect(() => { const r = requestAnimationFrame(() => setShown(true)); return () => cancelAnimationFrame(r) }, [])
+  const requestClose = () => { setShown(false); setTimeout(p.onClose, 320) }
+  const pc = { ...p, onClose: requestClose }
 
   return (
     <>
@@ -26,9 +30,10 @@ export function SessionEditorMobile(p: SessionEditorPanelProps) {
       <div className="se-m" onClick={e => e.stopPropagation()} style={{
         position: 'fixed', inset: 0, zIndex: 999,
         display: 'flex', flexDirection: 'column', overflow: 'hidden',
-        animation: 'seSheetUp .32s cubic-bezier(.2,.8,.2,1) forwards',
+        transform: shown ? 'translateY(0)' : 'translateY(100%)',
+        transition: 'transform .32s cubic-bezier(.2,.8,.2,1)',
       }}>
-        <PanelHeader p={p} padding={'calc(8px + env(safe-area-inset-top)) 16px 12px'} bordered={false} />
+        <PanelHeader p={pc} padding={'calc(8px + env(safe-area-inset-top)) 16px 12px'} bordered={false} />
 
         {/* Corps scrollable — padding bas pour dégager les boutons flottants */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '8px 16px 96px', WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'] }}>
@@ -50,7 +55,7 @@ export function SessionEditorMobile(p: SessionEditorPanelProps) {
           <BuilderSection p={p} />
         </div>
 
-        <PanelFooter p={p} floating />
+        <PanelFooter p={pc} floating />
       </div>
     </>
   )

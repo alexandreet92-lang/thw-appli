@@ -28,7 +28,9 @@ function Builder({ athleteId, athleteName, onClose, onCreated }: { athleteId: st
   const [fields, setFields] = useState<FormField[]>([{ id: uid(), label: '', type: 'text' }])
   const [busy, setBusy] = useState(false)
   const [mounted, setMounted] = useState(false)
-  useEffect(() => { setMounted(true) }, [])
+  const [shown, setShown] = useState(false)
+  useEffect(() => { setMounted(true); const r = requestAnimationFrame(() => setShown(true)); return () => cancelAnimationFrame(r) }, [])
+  const requestClose = () => { setShown(false); setTimeout(onClose, 280) }
   const patch = (id: string, p: Partial<FormField>) => setFields(f => f.map(x => x.id === id ? { ...x, ...p } : x))
   const valid = title.trim() && fields.some(f => f.label.trim())
 
@@ -43,8 +45,8 @@ function Builder({ athleteId, athleteName, onClose, onCreated }: { athleteId: st
   if (!mounted) return null
   return createPortal(
     <div style={{ position: 'fixed', inset: 0, zIndex: 12000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, fontFamily: 'var(--font-body)' }}>
-      <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.45)' }} />
-      <div style={{ position: 'relative', width: 'min(520px, 100%)', maxHeight: '86vh', display: 'flex', flexDirection: 'column', background: 'var(--bg)', borderRadius: 20, overflow: 'hidden', boxShadow: '0 24px 70px rgba(0,0,0,0.4)' }}>
+      <div onClick={requestClose} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.45)', opacity: shown ? 1 : 0, transition: 'opacity 0.26s ease' }} />
+      <div style={{ position: 'relative', width: 'min(520px, 100%)', maxHeight: '86vh', display: 'flex', flexDirection: 'column', background: 'var(--bg)', borderRadius: 20, overflow: 'hidden', boxShadow: '0 24px 70px rgba(0,0,0,0.4)', transform: shown ? 'translateY(0)' : 'translateY(100%)', transition: 'transform 0.3s cubic-bezier(0.32,0.72,0,1)' }}>
         <div style={{ flexShrink: 0, padding: '16px 18px 12px', borderBottom: '1px solid var(--border)' }}>
           <div style={{ fontSize: 17, fontWeight: 600, color: 'var(--text)', fontFamily: 'var(--font-display)' }}>{t('w2d.newFormFor', { name: athleteName })}</div>
           <div style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 2 }}>{t('w2d.builderHint')}</div>
@@ -71,7 +73,7 @@ function Builder({ athleteId, athleteName, onClose, onCreated }: { athleteId: st
           </button>
         </div>
         <div style={{ flexShrink: 0, display: 'flex', gap: 10, padding: '14px 18px', borderTop: '1px solid var(--border)' }}>
-          <button onClick={onClose} style={{ flex: 1, padding: '11px', borderRadius: 12, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-mid)', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>{t('w2d.cancel')}</button>
+          <button onClick={requestClose} style={{ flex: 1, padding: '11px', borderRadius: 12, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-mid)', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>{t('w2d.cancel')}</button>
           <button onClick={() => void save()} disabled={!valid || busy} style={{ flex: 1, padding: '11px', borderRadius: 12, border: 'none', background: valid && !busy ? 'var(--primary)' : 'var(--bg-card2)', color: valid && !busy ? 'var(--on-primary)' : 'var(--text-dim)', fontSize: 14, fontWeight: 700, cursor: valid && !busy ? 'pointer' : 'default', fontFamily: 'var(--font-body)' }}>{t('w2d.sendToAthlete')}</button>
         </div>
       </div>
@@ -160,14 +162,16 @@ function FillModal({ form, onClose, onDone }: { form: CustomForm; onClose: () =>
   const [vals, setVals] = useState<Record<string, string | number | boolean>>(form.responses ?? {})
   const [busy, setBusy] = useState(false)
   const [mounted, setMounted] = useState(false)
-  useEffect(() => { setMounted(true) }, [])
+  const [shown, setShown] = useState(false)
+  useEffect(() => { setMounted(true); const r = requestAnimationFrame(() => setShown(true)); return () => cancelAnimationFrame(r) }, [])
+  const requestClose = () => { setShown(false); setTimeout(onClose, 280) }
   const set = (id: string, v: string | number | boolean) => setVals(s => ({ ...s, [id]: v }))
   async function submit() { if (busy) return; setBusy(true); const ok = await submitFormResponses(form.id, vals); setBusy(false); if (ok) onDone() }
   if (!mounted) return null
   return createPortal(
     <div style={{ position: 'fixed', inset: 0, zIndex: 12000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, fontFamily: 'var(--font-body)' }}>
-      <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.45)' }} />
-      <div style={{ position: 'relative', width: 'min(500px, 100%)', maxHeight: '86vh', display: 'flex', flexDirection: 'column', background: 'var(--bg)', borderRadius: 20, overflow: 'hidden', boxShadow: '0 24px 70px rgba(0,0,0,0.4)' }}>
+      <div onClick={requestClose} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.45)', opacity: shown ? 1 : 0, transition: 'opacity 0.26s ease' }} />
+      <div style={{ position: 'relative', width: 'min(500px, 100%)', maxHeight: '86vh', display: 'flex', flexDirection: 'column', background: 'var(--bg)', borderRadius: 20, overflow: 'hidden', boxShadow: '0 24px 70px rgba(0,0,0,0.4)', transform: shown ? 'translateY(0)' : 'translateY(100%)', transition: 'transform 0.3s cubic-bezier(0.32,0.72,0,1)' }}>
         <div style={{ flexShrink: 0, padding: '16px 18px 12px', borderBottom: '1px solid var(--border)', fontSize: 17, fontWeight: 600, color: 'var(--text)', fontFamily: 'var(--font-display)' }}>{form.title}</div>
         <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: 18, display: 'flex', flexDirection: 'column', gap: 14 }}>
           {form.fields.map(f => (
@@ -186,7 +190,7 @@ function FillModal({ form, onClose, onDone }: { form: CustomForm; onClose: () =>
           ))}
         </div>
         <div style={{ flexShrink: 0, display: 'flex', gap: 10, padding: '14px 18px', borderTop: '1px solid var(--border)' }}>
-          <button onClick={onClose} style={{ flex: 1, padding: '11px', borderRadius: 12, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-mid)', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>{t('w2d.close')}</button>
+          <button onClick={requestClose} style={{ flex: 1, padding: '11px', borderRadius: 12, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-mid)', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>{t('w2d.close')}</button>
           <button onClick={() => void submit()} disabled={busy} style={{ flex: 1, padding: '11px', borderRadius: 12, border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>{form.status === 'filled' ? t('w2d.update') : t('w2d.send')}</button>
         </div>
       </div>

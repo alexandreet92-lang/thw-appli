@@ -30,7 +30,10 @@ export function VoiceChannelSheet({ channel, spaceName, isMember, onClose, onJoi
   const [camWanted, setCamWanted] = useState(false)
   const [people, setPeople] = useState<string[]>([])
   const [inviteOpen, setInviteOpen] = useState(false)
+  const [shown, setShown] = useState(false)
   const startY = useRef<number | null>(null)
+  useEffect(() => { const r = requestAnimationFrame(() => setShown(true)); return () => cancelAnimationFrame(r) }, [])
+  const requestClose = () => { setShown(false); setTimeout(onClose, 300) }
 
   // Qui est déjà dans le vocal (best-effort, rafraîchi).
   useEffect(() => {
@@ -61,21 +64,22 @@ export function VoiceChannelSheet({ channel, spaceName, isMember, onClose, onJoi
 
   const node = (
     <>
-      <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 3200, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', animation: 'cardEnter 0.2s ease both' }} />
+      <div onClick={requestClose} style={{ position: 'fixed', inset: 0, zIndex: 3200, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', opacity: shown ? 1 : 0, transition: 'opacity 0.28s ease' }} />
       <div
         onTouchStart={e => { startY.current = e.touches[0].clientY }}
-        onTouchEnd={e => { if (startY.current != null && e.changedTouches[0].clientY - startY.current > 60) onClose() }}
+        onTouchEnd={e => { if (startY.current != null && e.changedTouches[0].clientY - startY.current > 60) requestClose() }}
         style={{
           position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 3201, maxWidth: 560, margin: '0 auto',
           maxHeight: 'calc(100dvh - 72px)', overflowY: 'auto',
           background: 'var(--bg-card)', borderRadius: '22px 22px 0 0', border: '1px solid var(--border)', borderBottom: 'none',
-          padding: '10px 20px calc(22px + env(safe-area-inset-bottom, 0px))', animation: 'slideUp 0.28s cubic-bezier(0.4,0,0.2,1) both',
+          padding: '10px 20px calc(22px + env(safe-area-inset-bottom, 0px))',
+          transform: shown ? 'translateY(0)' : 'translateY(100%)', transition: 'transform 0.3s cubic-bezier(0.32,0.72,0,1)',
         }}>
         <div style={{ width: 40, height: 4, borderRadius: 4, background: 'var(--border-mid)', margin: '0 auto 12px' }} />
 
         {/* En-tête : flèche retour · titre · inviter */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-          <button onClick={onClose} aria-label={t('w2g.back')} style={{ width: 34, height: 34, borderRadius: 'var(--r-sm)', border: 'none', background: 'transparent', color: 'var(--text-mid)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <button onClick={requestClose} aria-label={t('w2g.back')} style={{ width: 34, height: 34, borderRadius: 'var(--r-sm)', border: 'none', background: 'transparent', color: 'var(--text-mid)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
           </button>
           <div style={{ flex: 1, minWidth: 0 }}>
@@ -141,8 +145,11 @@ export function VoiceChannelSheet({ channel, spaceName, isMember, onClose, onJoi
 function InviteSheet({ spaceName, onClose }: { spaceName?: string; onClose: () => void }) {
   const { t } = useI18n()
   const [copied, setCopied] = useState(false)
+  const [shown, setShown] = useState(false)
   const startY = useRef<number | null>(null)
   const link = typeof window !== 'undefined' ? `${window.location.origin}/community` : ''
+  useEffect(() => { const r = requestAnimationFrame(() => setShown(true)); return () => cancelAnimationFrame(r) }, [])
+  const requestClose = () => { setShown(false); setTimeout(onClose, 300) }
 
   const copy = async () => {
     try { await navigator.clipboard.writeText(link); setCopied(true); setTimeout(() => setCopied(false), 1800) } catch { /* clipboard indispo */ }
@@ -164,11 +171,11 @@ function InviteSheet({ spaceName, onClose }: { spaceName?: string; onClose: () =
 
   return createPortal(
     <>
-      <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 3300, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', animation: 'cardEnter 0.2s ease both' }} />
+      <div onClick={requestClose} style={{ position: 'fixed', inset: 0, zIndex: 3300, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', opacity: shown ? 1 : 0, transition: 'opacity 0.28s ease' }} />
       <div
         onTouchStart={e => { startY.current = e.touches[0].clientY }}
-        onTouchEnd={e => { if (startY.current != null && e.changedTouches[0].clientY - startY.current > 60) onClose() }}
-        style={{ position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 3301, maxWidth: 560, margin: '0 auto', background: 'var(--bg-card)', borderRadius: '22px 22px 0 0', border: '1px solid var(--border)', borderBottom: 'none', padding: '10px 20px calc(26px + env(safe-area-inset-bottom, 0px))', animation: 'slideUp 0.28s cubic-bezier(0.4,0,0.2,1) both' }}>
+        onTouchEnd={e => { if (startY.current != null && e.changedTouches[0].clientY - startY.current > 60) requestClose() }}
+        style={{ position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 3301, maxWidth: 560, margin: '0 auto', background: 'var(--bg-card)', borderRadius: '22px 22px 0 0', border: '1px solid var(--border)', borderBottom: 'none', padding: '10px 20px calc(26px + env(safe-area-inset-bottom, 0px))', transform: shown ? 'translateY(0)' : 'translateY(100%)', transition: 'transform 0.3s cubic-bezier(0.32,0.72,0,1)' }}>
         <div style={{ width: 40, height: 4, borderRadius: 4, background: 'var(--border-mid)', margin: '0 auto 14px' }} />
         <h3 style={{ fontFamily: FD, fontSize: 17, fontWeight: 600, color: 'var(--text)', margin: '0 0 16px', textAlign: 'center' }}>{t('w2h.inviteFriends')}</h3>
         <div style={{ display: 'flex', justifyContent: 'center', gap: 22, marginBottom: 6 }}>

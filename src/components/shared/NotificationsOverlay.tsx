@@ -61,12 +61,14 @@ function timeAgo(iso: string, t: TFn): string {
 }
 
 export function NotificationsOverlay({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const [mounted, setMounted] = useState(false)
   const [shown, setShown] = useState(false)
   const [notifs, setNotifs] = useState<Notif[]>([])
   const [loading, setLoading] = useState(true)
   const router = useRouter()
   const { t } = useI18n()
 
+  useEffect(() => { if (open) setMounted(true) }, [open])
   useEffect(() => { const t = setTimeout(() => setShown(open), 10); return () => clearTimeout(t) }, [open])
 
   useEffect(() => {
@@ -100,11 +102,11 @@ export function NotificationsOverlay({ open, onClose }: { open: boolean; onClose
     return () => { cancelled = true }
   }, [open])
 
-  if (!open || typeof document === 'undefined') return null
+  if ((!mounted && !open) || typeof document === 'undefined') return null
 
   return createPortal(
     <div onClick={e => { if (e.target === e.currentTarget) onClose() }}
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200, opacity: shown ? 1 : 0, transition: 'opacity .25s', padding: 16 }}>
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200, opacity: shown ? 1 : 0, pointerEvents: open ? 'auto' : 'none', transition: 'opacity .25s', padding: 16 }}>
       <div style={{ background: 'var(--bg-card)', borderRadius: 20, width: 'min(480px, 94vw)', maxHeight: '80vh', overflowY: 'auto', padding: '24px 26px', border: '1px solid var(--border)', boxShadow: '0 24px 60px rgba(0,0,0,.18)', transform: shown ? 'scale(1)' : 'scale(0.92)', transition: 'transform .3s cubic-bezier(.2,.8,.2,1)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
           <span style={{ fontFamily: FD, fontWeight: 600, fontSize: 18, color: 'var(--text)' }}>{t('shared.notifications')}</span>

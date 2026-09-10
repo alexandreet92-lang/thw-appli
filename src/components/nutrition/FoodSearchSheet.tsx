@@ -58,6 +58,10 @@ function Skeleton() {
 
 export function FoodSearchSheet({ onSelect, onClose, initialBarcode }: Props) {
   const { t } = useI18n()
+  const [shown, setShown] = useState(false)
+  const [closing, setClosing] = useState(false)
+  useEffect(() => { const r = requestAnimationFrame(() => setShown(true)); return () => cancelAnimationFrame(r) }, [])
+  const requestClose = () => { setClosing(true); setShown(false); setTimeout(onClose, 280) }
   const [query, setQuery] = useState(initialBarcode ?? '')
   const [loading, setLoading] = useState(!!initialBarcode)
   const [localResults, setLocalResults] = useState<FoodItem[]>([])
@@ -111,8 +115,8 @@ export function FoodSearchSheet({ onSelect, onClose, initialBarcode }: Props) {
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 200, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
-      <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.4)' }} onClick={onClose} />
-      <div style={{ position: 'relative', background: 'var(--bg-card)', borderRadius: '16px 16px 0 0', maxHeight: '85vh', display: 'flex', flexDirection: 'column', boxShadow: '0 -8px 40px rgba(0,0,0,0.2)' }}>
+      <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.4)', opacity: shown && !closing ? 1 : 0, transition: 'opacity 0.28s ease' }} onClick={requestClose} />
+      <div style={{ position: 'relative', background: 'var(--bg-card)', borderRadius: '16px 16px 0 0', maxHeight: '85vh', display: 'flex', flexDirection: 'column', boxShadow: '0 -8px 40px rgba(0,0,0,0.2)', transform: shown && !closing ? 'translateY(0)' : 'translateY(100%)', transition: 'transform 0.30s cubic-bezier(0.32,0.72,0,1)' }}>
         <div style={{ display: 'flex', justifyContent: 'center', padding: '10px 0 8px' }}>
           <div style={{ width: 36, height: 4, borderRadius: 2, background: 'var(--border)' }} />
         </div>
@@ -125,7 +129,7 @@ export function FoodSearchSheet({ onSelect, onClose, initialBarcode }: Props) {
             </svg>
             <input ref={inputRef} value={query} onChange={e => handleChange(e.target.value)} placeholder={t('nutrition.foodSearch.placeholder')} style={{ width: '100%', padding: '9px 9px 9px 32px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card2)', fontSize: 14, color: 'var(--text)', fontFamily: 'DM Sans,sans-serif', outline: 'none', boxSizing: 'border-box' }} />
           </div>
-          <button onClick={onClose} style={{ width: 34, height: 34, borderRadius: 8, border: 'none', background: 'var(--bg-card2)', cursor: 'pointer', color: 'var(--text-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <button onClick={requestClose} style={{ width: 34, height: 34, borderRadius: 8, border: 'none', background: 'var(--bg-card2)', cursor: 'pointer', color: 'var(--text-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
           </button>
         </div>
@@ -185,7 +189,7 @@ export function FoodSearchSheet({ onSelect, onClose, initialBarcode }: Props) {
                       {t('nutrition.foodSearch.notFound', { query })}<br/>
                       <span style={{ fontSize: 11 }}>{t('nutrition.foodSearch.tryAgain')}</span>
                     </p>
-                    <button onClick={onClose} style={{ padding: '8px 18px', borderRadius: 10, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-dim)', fontSize: 12, cursor: 'pointer', marginTop: 4 }}>{t('nutrition.foodSearch.manualEntry')}</button>
+                    <button onClick={requestClose} style={{ padding: '8px 18px', borderRadius: 10, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-dim)', fontSize: 12, cursor: 'pointer', marginTop: 4 }}>{t('nutrition.foodSearch.manualEntry')}</button>
                   </div>
                 )}
               </>

@@ -47,7 +47,10 @@ export default function TestEditorSheet({ mode = 'create', initial, initialDate,
   const { t } = useI18n()
   const isEdit = mode === 'edit'
   const [mounted, setMounted] = useState(false)
-  useEffect(() => { setMounted(true) }, [])
+  const [shown, setShown] = useState(false)
+  const [closing, setClosing] = useState(false)
+  useEffect(() => { setMounted(true); const r = requestAnimationFrame(() => setShown(true)); return () => cancelAnimationFrame(r) }, [])
+  const requestClose = () => { setClosing(true); setShown(false); setTimeout(onClose, 300) }
   useEffect(() => { document.body.classList.add('race-editor-open'); return () => document.body.classList.remove('race-editor-open') }, [])
 
   const [sport, setSport]     = useState<CatalogSport>(initial?.sport ?? 'running')
@@ -74,7 +77,7 @@ export default function TestEditorSheet({ mode = 'create', initial, initialDate,
   async function handleSave() {
     if (!title.trim() || !date) return
     setSaving(true)
-    try { await onSave({ sport, title: title.trim(), protocol: protocol.trim(), date, ref }); onClose() }
+    try { await onSave({ sport, title: title.trim(), protocol: protocol.trim(), date, ref }); requestClose() }
     catch (e) { console.error('[TestEditorSheet save]', e) }
     finally { setSaving(false) }
   }
@@ -85,16 +88,17 @@ export default function TestEditorSheet({ mode = 'create', initial, initialDate,
   return createPortal(
     <>
       <style>{RACE_EDITOR_CSS}</style>
-      <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 9998, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', animation: 'raceScrimIn .2s ease' }} />
+      <div onClick={requestClose} style={{ position: 'fixed', inset: 0, zIndex: 9998, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', opacity: shown && !closing ? 1 : 0, transition: 'opacity 0.26s ease' }} />
       <div className="race-ed" onClick={e => e.stopPropagation()} style={{
         position: 'fixed', left: 0, right: 0, bottom: 0, top: 'max(64px, calc(env(safe-area-inset-top, 0px) + 48px))', zIndex: 9999,
         background: 'var(--bg-card2)', borderRadius: '26px 26px 0 0', boxShadow: '0 -10px 50px rgba(0,0,0,0.22)',
-        display: 'flex', flexDirection: 'column', overflow: 'hidden', animation: 'raceSheetUp .34s cubic-bezier(.2,.8,.2,1) forwards',
+        display: 'flex', flexDirection: 'column', overflow: 'hidden',
+        transform: shown && !closing ? 'translateY(0)' : 'translateY(100%)', transition: 'transform 0.30s cubic-bezier(0.32,0.72,0,1)',
       }}>
         <div style={{ width: 40, height: 4, borderRadius: 4, background: 'var(--border-mid)', margin: '10px auto 0', flexShrink: 0 }} />
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 24px 14px', flexShrink: 0, borderBottom: '1px solid var(--border)' }}>
           <h3 className="ed-fr" style={{ margin: 0, fontSize: 22, fontWeight: 600, color: 'var(--text)' }}>{isEdit ? t('w2e.editTest') : t('w2e.planTest')}</h3>
-          <button onClick={onClose} aria-label={t('w2e.close')} style={{ width: 32, height: 32, borderRadius: '50%', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><IconX size={16} /></button>
+          <button onClick={requestClose} aria-label={t('w2e.close')} style={{ width: 32, height: 32, borderRadius: '50%', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><IconX size={16} /></button>
         </div>
 
         <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px 28px' }}>
@@ -152,7 +156,7 @@ export default function TestEditorSheet({ mode = 'create', initial, initialDate,
               <button onClick={() => setConfirmDelete(true)} style={{ padding: 12, borderRadius: 999, background: 'transparent', border: '1px solid #ef4444', color: '#ef4444', fontSize: 13.5, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>{t('w2e.delete')}</button>
             ))}
             {!confirmDelete && (<>
-              <button onClick={onClose} style={{ flex: 1, padding: 12, borderRadius: 999, background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-mid)', fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}>{t('w2e.close')}</button>
+              <button onClick={requestClose} style={{ flex: 1, padding: 12, borderRadius: 999, background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-mid)', fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}>{t('w2e.close')}</button>
               <button onClick={handleSave} disabled={saving || !title.trim() || !date} style={{ flex: 2, padding: 12, borderRadius: 999, background: accent, border: 'none', color: '#fff', fontWeight: 700, fontSize: 13.5, cursor: saving ? 'wait' : 'pointer', opacity: (!title.trim() || !date) ? 0.5 : 1 }}>{saving ? '…' : isEdit ? t('w2e.save') : t('w2e.schedule')}</button>
             </>)}
           </div>

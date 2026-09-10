@@ -24,6 +24,8 @@ export function UpgradeModalHost() {
   const { t } = useI18n()
   const [reason, setReason] = useState<string | null>(null)
   const [open, setOpen] = useState(false)
+  const [shown, setShown] = useState(false)
+  const [closing, setClosing] = useState(false)
   const [emailModal, setEmailModal] = useState(false)
   const hidePrice = hidePricing()
 
@@ -35,6 +37,13 @@ export function UpgradeModalHost() {
     window.addEventListener(EVT, on)
     return () => window.removeEventListener(EVT, on)
   }, [])
+
+  useEffect(() => {
+    if (open) { setClosing(false); const r = requestAnimationFrame(() => setShown(true)); return () => cancelAnimationFrame(r) }
+    setShown(false)
+  }, [open])
+
+  const requestClose = () => { setClosing(true); setShown(false); setTimeout(() => setOpen(false), 280) }
 
   if (!open && !emailModal) return null
 
@@ -51,11 +60,11 @@ export function UpgradeModalHost() {
   ]
 
   return (
-    <div onClick={() => setOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 12000, background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(3px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-      <div onClick={e => e.stopPropagation()} style={{ width: 'min(440px, 100%)', background: 'var(--bg-card)', borderRadius: 'var(--r-lg)', padding: 24, boxShadow: '0 24px 70px rgba(0,0,0,0.35)' }}>
+    <div onClick={requestClose} style={{ position: 'fixed', inset: 0, zIndex: 12000, background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(3px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, opacity: shown && !closing ? 1 : 0, transition: 'opacity 0.28s ease' }}>
+      <div onClick={e => e.stopPropagation()} style={{ width: 'min(440px, 100%)', background: 'var(--bg-card)', borderRadius: 'var(--r-lg)', padding: 24, boxShadow: '0 24px 70px rgba(0,0,0,0.35)', transform: shown && !closing ? 'translateY(0)' : 'translateY(100%)', opacity: shown && !closing ? 1 : 0, transition: 'transform 0.28s cubic-bezier(0.32,0.72,0,1), opacity 0.28s ease' }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
           <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 600, color: 'var(--text)', margin: 0 }}>{t('w3c.upgrade_title')}</h2>
-          <button onClick={() => setOpen(false)} aria-label={t('w3c.close')} style={{ border: 'none', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', padding: 2 }}>
+          <button onClick={requestClose} aria-label={t('w3c.close')} style={{ border: 'none', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', padding: 2 }}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
           </button>
         </div>
@@ -76,7 +85,7 @@ export function UpgradeModalHost() {
               style={{ width: '100%', marginTop: 14, height: 46, borderRadius: 'var(--r-md)', border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontFamily: 'var(--font-body)', fontSize: 14.5, fontWeight: 700, cursor: 'pointer' }}>
               {t('w3c.upgrade_see_offers')} ✉
             </button>
-            <button onClick={() => setOpen(false)} style={{ width: '100%', marginTop: 10, height: 42, borderRadius: 'var(--r-md)', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-mid)', fontFamily: 'var(--font-body)', fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}>
+            <button onClick={requestClose} style={{ width: '100%', marginTop: 10, height: 42, borderRadius: 'var(--r-md)', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-mid)', fontFamily: 'var(--font-body)', fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}>
               {t('w3c.close')}
             </button>
           </>
@@ -86,7 +95,7 @@ export function UpgradeModalHost() {
               style={{ width: '100%', height: 46, borderRadius: 'var(--r-md)', border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontFamily: 'var(--font-body)', fontSize: 14.5, fontWeight: 700, cursor: 'pointer' }}>
               {t('w3c.upgrade_see_offers')}
             </button>
-            <button onClick={() => setOpen(false)} style={{ width: '100%', marginTop: 8, height: 38, border: 'none', background: 'transparent', color: 'var(--text-mid)', fontFamily: 'var(--font-body)', fontSize: 13, cursor: 'pointer' }}>
+            <button onClick={requestClose} style={{ width: '100%', marginTop: 8, height: 38, border: 'none', background: 'transparent', color: 'var(--text-mid)', fontFamily: 'var(--font-body)', fontSize: 13, cursor: 'pointer' }}>
               {t('w3c.later')}
             </button>
           </>

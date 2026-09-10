@@ -79,6 +79,9 @@ export default function RoutinesView({ onClose }: { onClose: () => void }) {
   const [loading, setLoading]   = useState(true)
   const [view, setView]         = useState<{ mode: 'list' } | { mode: 'form'; form: FormState } | { mode: 'detail'; id: string }>({ mode: 'list' })
   const [err, setErr]           = useState<string | null>(null)
+  const [shown, setShown]       = useState(false)
+  useEffect(() => { const r = requestAnimationFrame(() => setShown(true)); return () => cancelAnimationFrame(r) }, [])
+  const requestClose = () => { setShown(false); setTimeout(onClose, 300) }
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -91,10 +94,10 @@ export default function RoutinesView({ onClose }: { onClose: () => void }) {
   const openEdit = (r: Routine) => setView({ mode: 'form', form: { ...r } })
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 13500, background: 'var(--bg)', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 13500, background: 'var(--bg)', display: 'flex', flexDirection: 'column', transform: shown ? 'translateX(0)' : 'translateX(100%)', transition: 'transform 0.3s cubic-bezier(0.32,0.72,0,1)' }}>
       {/* Header */}
       <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 10, padding: 'max(14px, env(safe-area-inset-top)) 16px 12px', borderBottom: '0.5px solid var(--border)' }}>
-        <button onClick={() => { if (view.mode === 'list') onClose(); else setView({ mode: 'list' }) }}
+        <button onClick={() => { if (view.mode === 'list') requestClose(); else setView({ mode: 'list' }) }}
           aria-label={t('w1a.r_retour')}
           style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text)', display: 'flex', alignItems: 'center', padding: 4 }}>
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>

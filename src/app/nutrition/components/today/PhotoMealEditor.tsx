@@ -40,6 +40,10 @@ const inp: React.CSSProperties = { padding: '7px 9px', borderRadius: 10, border:
 
 export function PhotoMealEditor({ file, onCancel, onConfirm }: { file: File; onCancel: () => void; onConfirm: (r: PhotoConfirm) => void }) {
   const { t: tr } = useI18n()
+  const [shown, setShown] = useState(false)
+  const [closing, setClosing] = useState(false)
+  useEffect(() => { const r = requestAnimationFrame(() => setShown(true)); return () => cancelAnimationFrame(r) }, [])
+  const requestClose = () => { setClosing(true); setShown(false); setTimeout(onCancel, 280) }
   const [preview, setPreview] = useState('')
   const [analyzing, setAnalyzing] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -78,12 +82,12 @@ export function PhotoMealEditor({ file, onCancel, onConfirm }: { file: File; onC
   const t = rows.reduce((a, it) => ({ kcal: a.kcal + it.kcal, prot: a.prot + it.prot, gluc: a.gluc + it.gluc, lip: a.lip + it.lip }), { kcal: 0, prot: 0, gluc: 0, lip: 0 })
 
   return createPortal(
-    <div onClick={onCancel} style={{ position: 'fixed', inset: 0, zIndex: 3000, background: 'rgba(0,0,0,0.72)', display: 'flex', alignItems: 'flex-end' }}>
+    <div onClick={requestClose} style={{ position: 'fixed', inset: 0, zIndex: 3000, background: 'rgba(0,0,0,0.72)', display: 'flex', alignItems: 'flex-end', opacity: shown && !closing ? 1 : 0, transition: 'opacity 0.28s ease' }}>
       <style>{`@keyframes pmaSpin{to{transform:rotate(360deg)}}`}</style>
-      <div onClick={ev => ev.stopPropagation()} style={{ width: '100%', maxHeight: '92vh', background: 'var(--bg-card)', borderRadius: '20px 20px 0 0', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxSizing: 'border-box' }}>
+      <div onClick={ev => ev.stopPropagation()} style={{ width: '100%', maxHeight: '92vh', background: 'var(--bg-card)', borderRadius: '20px 20px 0 0', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxSizing: 'border-box', transform: shown && !closing ? 'translateY(0)' : 'translateY(100%)', transition: 'transform 0.30s cubic-bezier(0.32,0.72,0,1)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid var(--border)' }}>
           <h2 style={{ fontFamily: FD, fontSize: 17, fontWeight: 600, color: 'var(--text)', margin: 0 }}>{tr('nutrition.today.photoAI')}</h2>
-          <button onClick={onCancel} aria-label={tr('nutrition.common.close')} style={{ width: 28, height: 28, borderRadius: '50%', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 16 }}>×</button>
+          <button onClick={requestClose} aria-label={tr('nutrition.common.close')} style={{ width: 28, height: 28, borderRadius: '50%', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 16 }}>×</button>
         </div>
 
         <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px 100px' }}>
@@ -134,7 +138,7 @@ export function PhotoMealEditor({ file, onCancel, onConfirm }: { file: File; onC
         </div>
 
         <div style={{ display: 'flex', gap: 'var(--space-2)', padding: '12px 20px 20px', borderTop: '1px solid var(--border)' }}>
-          <button onClick={onCancel} style={{ flex: 1, padding: '13px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-mid)', fontFamily: FB, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>{tr('nutrition.common.cancel')}</button>
+          <button onClick={requestClose} style={{ flex: 1, padding: '13px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-mid)', fontFamily: FB, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>{tr('nutrition.common.cancel')}</button>
           <button disabled={analyzing || !!error || t.kcal <= 0}
             onClick={() => onConfirm({ items: rows.map(it => ({ name: it.name.trim() || tr('nutrition.photo.defaultFood'), qty: String(it.qty), unit: it.unit, kcal: it.kcal, prot: it.prot, gluc: it.gluc, lip: it.lip })), photoUrl: preview, score, advice })}
             style={{ flex: 2, padding: '13px', borderRadius: 'var(--r-sm)', border: 'none', cursor: analyzing || error || t.kcal <= 0 ? 'not-allowed' : 'pointer', background: analyzing || error || t.kcal <= 0 ? 'var(--bg-card2)' : 'var(--primary)', color: analyzing || error || t.kcal <= 0 ? 'var(--text-dim)' : 'var(--on-primary)', fontFamily: FB, fontSize: 14, fontWeight: 600 }}>{tr('nutrition.common.confirm')}</button>

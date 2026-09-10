@@ -35,11 +35,13 @@ function fmtDate(iso: string): string {
 export function ActivityDetailPanel({ activity, onClose }: { activity: ActivityRef; onClose: () => void }) {
   const { t } = useI18n()
   const [mounted, setMounted] = useState(false)
-  useEffect(() => { setMounted(true) }, [])
+  const [shown, setShown] = useState(false)
+  useEffect(() => { setMounted(true); const r = requestAnimationFrame(() => setShown(true)); return () => cancelAnimationFrame(r) }, [])
+  const requestClose = () => { setShown(false); setTimeout(onClose, 300) }
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') requestClose() }
     window.addEventListener('keydown', onKey); return () => window.removeEventListener('keydown', onKey)
-  }, [onClose])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
   if (!mounted) return null
 
   const col = sportColor(activity.sport)
@@ -54,9 +56,9 @@ export function ActivityDetailPanel({ activity, onClose }: { activity: ActivityR
   if (activity.feeling != null) stats.push({ label: t('w3e.stat_feeling'), value: `${activity.feeling}/5` })
 
   const panel = (
-    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'color-mix(in srgb, var(--bg) 45%, transparent)', backdropFilter: 'blur(2px)', zIndex: 1100, display: 'flex', justifyContent: 'flex-end' }}>
-      <div onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" className="comm-drawer-in"
-        style={{ width: 'min(96vw, 880px)', height: '100%', overflowY: 'auto', background: 'var(--bg-card)', boxShadow: 'var(--shadow)', display: 'flex', flexDirection: 'column' }}>
+    <div onClick={requestClose} style={{ position: 'fixed', inset: 0, background: 'color-mix(in srgb, var(--bg) 45%, transparent)', backdropFilter: 'blur(2px)', zIndex: 1100, display: 'flex', justifyContent: 'flex-end', opacity: shown ? 1 : 0, transition: 'opacity 0.28s ease' }}>
+      <div onClick={e => e.stopPropagation()} role="dialog" aria-modal="true"
+        style={{ width: 'min(96vw, 880px)', height: '100%', overflowY: 'auto', background: 'var(--bg-card)', boxShadow: 'var(--shadow)', display: 'flex', flexDirection: 'column', transform: shown ? 'translateX(0)' : 'translateX(100%)', transition: 'transform 0.3s cubic-bezier(0.32,0.72,0,1)' }}>
         {/* En-tête */}
         <div style={{ flexShrink: 0, padding: 'var(--space-5) var(--space-5) var(--space-3)', display: 'flex', alignItems: 'flex-start', gap: 'var(--space-3)' }}>
           <span style={{ width: 3, alignSelf: 'stretch', borderRadius: 3, background: col, flexShrink: 0 }} />
@@ -67,7 +69,7 @@ export function ActivityDetailPanel({ activity, onClose }: { activity: ActivityR
             <h2 style={{ fontFamily: FD, fontSize: 19, fontWeight: 600, color: 'var(--text)', margin: 0 }}>{activity.title || sportLabel(activity.sport)}</h2>
             <p style={{ margin: '2px 0 0', fontFamily: FB, fontSize: 12, color: 'var(--text-dim)' }}>{fmtDate(activity.startedAt)}</p>
           </div>
-          <button onClick={onClose} aria-label={t('w3e.close')} style={{ width: 30, height: 30, flexShrink: 0, border: 'none', borderRadius: '50%', background: 'var(--surface-neutral)', color: 'var(--text-mid)', cursor: 'pointer', fontSize: 16 }}>×</button>
+          <button onClick={requestClose} aria-label={t('w3e.close')} style={{ width: 30, height: 30, flexShrink: 0, border: 'none', borderRadius: '50%', background: 'var(--surface-neutral)', color: 'var(--text-mid)', cursor: 'pointer', fontSize: 16 }}>×</button>
         </div>
 
         <div style={{ padding: '0 var(--space-5) var(--space-8)', display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>

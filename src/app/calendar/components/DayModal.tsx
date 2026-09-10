@@ -33,7 +33,10 @@ type SaveStatus = 'idle' | 'saving' | 'success' | 'error'
 export default function DayModal({ stage, date, onClose, onSaved, onDeleted }: Props) {
   const { t } = useI18n()
   const [mounted, setMounted] = useState(false)
-  useEffect(() => { setMounted(true) }, [])
+  const [shown, setShown] = useState(false)
+  const [closing, setClosing] = useState(false)
+  useEffect(() => { setMounted(true); const r = requestAnimationFrame(() => setShown(true)); return () => cancelAnimationFrame(r) }, [])
+  const requestClose = () => { setClosing(true); setShown(false); setTimeout(onClose, 280) }
   const supabase = createClient()
   const stageId  = stage.id
 
@@ -236,7 +239,7 @@ export default function DayModal({ stage, date, onClose, onSaved, onDeleted }: P
       }
 
       onDeleted?.(date)
-      onClose()
+      requestClose()
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e)
       console.error('[DayModal delete] error:', msg)
@@ -259,8 +262,8 @@ export default function DayModal({ stage, date, onClose, onSaved, onDeleted }: P
   if (!mounted) return null
 
   return createPortal(
-    <div onClick={onClose} style={{ position:'fixed',inset:0,zIndex:9999,background:'rgba(0,0,0,0.6)',backdropFilter:'blur(4px)',display:'flex',alignItems:'center',justifyContent:'center',padding:16,overflowY:'auto' }}>
-      <div onClick={e => e.stopPropagation()} style={{ background:'var(--bg-card)',borderRadius:18,border:'1px solid var(--border-mid)',padding:24,maxWidth:560,width:'100%',maxHeight:'92vh',overflowY:'auto',display:'flex',flexDirection:'column',gap:16 }}>
+    <div onClick={requestClose} style={{ position:'fixed',inset:0,zIndex:9999,background:'rgba(0,0,0,0.6)',backdropFilter:'blur(4px)',display:'flex',alignItems:'center',justifyContent:'center',padding:16,overflowY:'auto',opacity: shown && !closing ? 1 : 0,transition:'opacity 0.28s ease' }}>
+      <div onClick={e => e.stopPropagation()} style={{ background:'var(--bg-card)',borderRadius:18,border:'1px solid var(--border-mid)',padding:24,maxWidth:560,width:'100%',maxHeight:'92vh',overflowY:'auto',display:'flex',flexDirection:'column',gap:16,transform: shown && !closing ? 'translateY(0)' : 'translateY(100%)',transition:'transform 0.28s cubic-bezier(0.32,0.72,0,1)' }}>
 
         {/* Header */}
         <div style={{ display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:12 }}>
@@ -272,7 +275,7 @@ export default function DayModal({ stage, date, onClose, onSaved, onDeleted }: P
               {labelDay(date)}
             </h3>
           </div>
-          <button onClick={onClose} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius:8,padding:'4px 10px',cursor:'pointer',color:'var(--text-dim)',fontSize:14,flexShrink:0 }}>✕</button>
+          <button onClick={requestClose} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius:8,padding:'4px 10px',cursor:'pointer',color:'var(--text-dim)',fontSize:14,flexShrink:0 }}>✕</button>
         </div>
 
         {/* Guard: missing stageId */}
@@ -364,7 +367,7 @@ export default function DayModal({ stage, date, onClose, onSaved, onDeleted }: P
               </button>
             </div>
           )}
-          <button onClick={onClose} style={{ flex:1,padding:10,borderRadius:10,background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',fontSize:12,cursor:'pointer' }}>
+          <button onClick={requestClose} style={{ flex:1,padding:10,borderRadius:10,background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',fontSize:12,cursor:'pointer' }}>
             {t('calendar.close')}
           </button>
           <button

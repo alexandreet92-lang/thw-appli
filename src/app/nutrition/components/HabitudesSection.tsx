@@ -63,6 +63,10 @@ function RegularMealCreateModal({
   onClose: () => void
 }) {
   const { t } = useI18n()
+  const [shown, setShown] = useState(false)
+  const [closing, setClosing] = useState(false)
+  useEffect(() => { const r = requestAnimationFrame(() => setShown(true)); return () => cancelAnimationFrame(r) }, [])
+  const requestClose = () => { setClosing(true); setShown(false); setTimeout(onClose, 280) }
   const [name, setName] = useState('')
   const [ings, setIngs] = useState<RegularMealFormIng[]>([])
   const [saving, setSaving] = useState(false)
@@ -125,8 +129,9 @@ function RegularMealCreateModal({
         position: 'fixed', inset: 0, zIndex: 2000,
         background: 'rgba(0,0,0,0.72)', backdropFilter: 'blur(4px)',
         display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16,
+        opacity: shown && !closing ? 1 : 0, transition: 'opacity 0.28s ease',
       }}
-      onClick={onClose}
+      onClick={requestClose}
     >
       <div
         onClick={e => e.stopPropagation()}
@@ -134,6 +139,7 @@ function RegularMealCreateModal({
           width: '100%', maxWidth: 540, maxHeight: '85vh', overflowY: 'auto',
           background: 'var(--bg-card)', borderRadius: 16, padding: 24,
           boxShadow: '0 24px 80px rgba(0,0,0,0.4)',
+          transform: shown && !closing ? 'translateY(0)' : 'translateY(100%)', transition: 'transform 0.28s cubic-bezier(0.32,0.72,0,1)',
         }}
       >
         {/* Header */}
@@ -141,7 +147,7 @@ function RegularMealCreateModal({
           <h2 style={{ fontFamily: 'Syne,sans-serif', fontSize: 16, fontWeight: 800, margin: 0, color: 'var(--text)' }}>
             {t('w2a.add_regular_meal')}
           </h2>
-          <button onClick={onClose} style={{
+          <button onClick={requestClose} style={{
             width: 32, height: 32, borderRadius: 8, border: '1px solid var(--border)',
             background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 18,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -239,7 +245,7 @@ function RegularMealCreateModal({
 
           {/* Actions */}
           <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
-            <button onClick={onClose} style={{
+            <button onClick={requestClose} style={{
               padding: '10px 16px', borderRadius: 8,
               border: '1px solid var(--border)', background: 'transparent',
               color: 'var(--text-dim)', fontSize: 12, cursor: 'pointer',

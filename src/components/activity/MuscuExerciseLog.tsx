@@ -8,7 +8,7 @@
 // Persisté en base via activity_extras (RLS user-scoped, multi-appareils).
 // ══════════════════════════════════════════════════════════════════
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useActivityExtras, type Exo, type StrengthLog } from '@/lib/activity/extras'
 import { ExercisePicker } from '@/components/planning/mobile/ExercisePicker'
@@ -46,6 +46,19 @@ export function MuscuExerciseLog({ activityId }: { activityId: string }) {
   const [open, setOpen] = useState(false)
   const [picking, setPicking] = useState(false)
   const [draft, setDraft] = useState<StrengthLog>(EMPTY)
+  const [editorShown, setEditorShown] = useState(false)
+  const [pickShown, setPickShown] = useState(false)
+
+  useEffect(() => {
+    if (open) { const r = requestAnimationFrame(() => setEditorShown(true)); return () => cancelAnimationFrame(r) }
+    setEditorShown(false)
+  }, [open])
+  useEffect(() => {
+    if (picking) { const r = requestAnimationFrame(() => setPickShown(true)); return () => cancelAnimationFrame(r) }
+    setPickShown(false)
+  }, [picking])
+  const closeEditor = () => { setEditorShown(false); setTimeout(() => setOpen(false), 300) }
+  const closePicker = () => { setPickShown(false); setTimeout(() => setPicking(false), 300) }
 
   const nbExos = log.exos.filter(e => e.name.trim()).length
   const nbCircuits = Math.max(1, Number(log.circuits) || 1)
@@ -57,7 +70,7 @@ export function MuscuExerciseLog({ activityId }: { activityId: string }) {
   }
   function commit() {
     const cleaned: StrengthLog = { circuits: draft.circuits || '1', exos: draft.exos.filter(e => e.name.trim()) }
-    void save({ strength_log: cleaned }); setOpen(false)
+    void save({ strength_log: cleaned }); closeEditor()
   }
   function patchExo(id: string, k: keyof Exo, v: string) {
     setDraft(d => ({ ...d, exos: d.exos.map(e => e.id === id ? { ...e, [k]: v } : e) }))
@@ -96,14 +109,15 @@ export function MuscuExerciseLog({ activityId }: { activityId: string }) {
       )}
 
       {open && typeof document !== 'undefined' && createPortal(
-        <div onClick={() => setOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 9998, background: 'rgba(0,0,0,0.5)' /* design-allow-color */, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+        <div onClick={closeEditor} style={{ position: 'fixed', inset: 0, zIndex: 9998, background: 'rgba(0,0,0,0.5)' /* design-allow-color */, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', opacity: editorShown ? 1 : 0, transition: 'opacity 0.28s ease' }}>
           <div onClick={e => e.stopPropagation()} style={{
             width: '100%', maxWidth: 520, maxHeight: '88vh', overflowY: 'auto', background: 'var(--bg)',
             borderRadius: '18px 18px 0 0', padding: 20, boxShadow: '0 -8px 40px rgba(0,0,0,0.3)' /* design-allow-color */,
+            transform: editorShown ? 'translateY(0)' : 'translateY(100%)', transition: 'transform 0.3s cubic-bezier(0.32,0.72,0,1)',
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <h3 style={{ fontSize: 17, fontWeight: 700, color: 'var(--text)', margin: 0 }}>{t('activities.exercisesDone')}</h3>
-              <button onClick={() => setOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-dim)', fontSize: 20, padding: 4 }}>✕</button>
+              <button onClick={closeEditor} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-dim)', fontSize: 20, padding: 4 }}>✕</button>
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
@@ -132,7 +146,7 @@ export function MuscuExerciseLog({ activityId }: { activityId: string }) {
             }}>{t('activities.addExerciseLibrary')}</button>
 
             <div style={{ display: 'flex', gap: 10 }}>
-              <button onClick={() => setOpen(false)} style={{ flex: 1, padding: '12px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontWeight: 600, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>{t('activities.cancel')}</button>
+              <button onClick={closeEditor} style={{ flex: 1, padding: '12px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontWeight: 600, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>{t('activities.cancel')}</button>
               <button onClick={commit} style={{ flex: 1, padding: '12px', borderRadius: 10, border: 'none', background: GYM, color: 'white', fontWeight: 700, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>{t('activities.save')}</button>
             </div>
           </div>
@@ -142,9 +156,9 @@ export function MuscuExerciseLog({ activityId }: { activityId: string }) {
 
       {/* Sélecteur bibliothèque (mêmes exercices/variantes que Session & Planning) */}
       {picking && typeof document !== 'undefined' && createPortal(
-        <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'var(--bg)', display: 'flex', flexDirection: 'column', ...seVars }}>
+        <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'var(--bg)', display: 'flex', flexDirection: 'column', ...seVars, transform: pickShown ? 'translateX(0)' : 'translateX(100%)', transition: 'transform 0.3s cubic-bezier(0.32,0.72,0,1)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', borderBottom: '1px solid var(--border)' }}>
-            <button onClick={() => setPicking(false)} style={{ background: 'none', border: 'none', color: 'var(--text)', fontSize: 22, cursor: 'pointer', lineHeight: 1, padding: 4 }}>×</button>
+            <button onClick={closePicker} style={{ background: 'none', border: 'none', color: 'var(--text)', fontSize: 22, cursor: 'pointer', lineHeight: 1, padding: 4 }}>×</button>
             <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)' }}>{t('activities.addExercise')}</span>
           </div>
           <div style={{ flex: 1, overflowY: 'auto', padding: '8px 12px 24px' }}>

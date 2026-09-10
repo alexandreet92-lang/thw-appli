@@ -16,12 +16,16 @@ export function FocusPicker({ open, sport, mode = 'multi', selected, onToggle, o
   onToggle?: (t: string) => void; onPick?: (t: string) => void; onClose: () => void
 }) {
   const { t: tr } = useI18n()
+  const [mounted, setMounted] = useState(false)
   const [shown, setShown] = useState(false)
   const [newType, setNewType] = useState('')
   const [types, setTypes] = useState<string[]>(() => typesFor(sport))
   useEffect(() => { setTypes(typesFor(sport)) }, [sport, open])
-  useEffect(() => { const t = setTimeout(() => setShown(open), 10); return () => clearTimeout(t) }, [open])
-  if (!open) return null
+  useEffect(() => {
+    if (open) { setMounted(true); const t = setTimeout(() => setShown(true), 10); return () => clearTimeout(t) }
+    setShown(false); const t = setTimeout(() => setMounted(false), 280); return () => clearTimeout(t)
+  }, [open])
+  if (!mounted && !open) return null
 
   function choose(t: string) { if (mode === 'single') { onPick?.(t); onClose() } else onToggle?.(t) }
   function add() {

@@ -94,7 +94,8 @@ function mapboxStaticUrl(encodedPolyline: string, sportColor: string, width: num
   // Liseré blanc dessous + trait couleur du sport dessus → bien lisible (façon Strava).
   const enc = encodeURIComponent(encodedPolyline)
   const overlay = `path-8+ffffff-1(${enc}),path-5+${color}-1(${enc})`
-  return `https://api.mapbox.com/styles/v1/mapbox/outdoors-v12/static/${overlay}/auto/${width}x${height}@2x?access_token=${MAPBOX_TOKEN}`
+  // padding=52 : marge autour du tracé pour qu'il ne touche JAMAIS les rebords.
+  return `https://api.mapbox.com/styles/v1/mapbox/outdoors-v12/static/${overlay}/auto/${width}x${height}@2x?access_token=${MAPBOX_TOKEN}&padding=52`
 }
 
 // ── Trophy icon (lucide-style) ─────────────────────────────────────────
@@ -133,7 +134,10 @@ export function ActivityCard({ data, onClick }: Props) {
   const year    = [...data.records.year].sort((a, b) => durationRank(a.label) - durationRank(b.label))
   const totalRecords = allTime.length + year.length
 
-  const mapUrl = data.encodedPolyline ? mapboxStaticUrl(data.encodedPolyline, data.sportColor, 720, 300) : null
+  // Ratio proche de la boîte d'affichage (pleine largeur × 232) pour minimiser le
+  // recadrage. La marge (padding) est gérée dans mapboxStaticUrl : le tracé complet
+  // tient toujours dans l'image, jamais collé aux rebords.
+  const mapUrl = data.encodedPolyline ? mapboxStaticUrl(data.encodedPolyline, data.sportColor, 760, 470) : null
   const media  = data.media ?? []
   const slides = [...(mapUrl ? [{ kind: 'map' as const, url: mapUrl }] : []), ...media.map(m => ({ kind: m.type, url: m.url }))]
 
@@ -210,13 +214,16 @@ export function ActivityCard({ data, onClick }: Props) {
         >
           {slides.map((s, i) => (
             <div key={i} style={{
-              flex: slides.length > 1 ? '0 0 94%' : '0 0 100%', scrollSnapAlign: 'start',
+              // La carte prend TOUJOURS la pleine largeur (bord à bord) ; les médias
+              // gardent le léger « peek » à 94 % quand il y en a plusieurs.
+              flex: s.kind === 'map' ? '0 0 100%' : (slides.length > 1 ? '0 0 94%' : '0 0 100%'),
+              scrollSnapAlign: 'start',
               height: 232, background: 'var(--bg-card2)', borderRadius: 0, overflow: 'hidden',
               border: 'none', position: 'relative',
             }}>
               {s.kind === 'video'
                 ? <video src={s.url} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} muted playsInline preload="metadata" />
-                : <img src={s.url} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} className={s.kind === 'map' ? 'thw-card-map' : undefined} />}
+                : <img src={s.url} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: s.kind === 'map' ? 'contain' : 'cover', display: 'block' }} className={s.kind === 'map' ? 'thw-card-map' : undefined} />}
               {/* Étiquette Entraînement / Compétition (neutre, sans couleur) — sur la carte */}
               {s.kind === 'map' && (
                 <span style={{

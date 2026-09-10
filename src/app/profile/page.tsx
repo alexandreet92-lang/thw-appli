@@ -1567,7 +1567,11 @@ function UtilisationBloc() {
         <Section label={t('profile.limits')}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {gauges.map(g => {
-              const pct = Math.min(100, Math.round((g.gauge.used / g.gauge.limit) * 100))
+              // Pourcentage réel (non arrondi) : une conso minime (ex. 0,46 %) doit
+              // quand même REMPLIR un peu la jauge au lieu d'arrondir à 0 % → barre vide.
+              const pctRaw = g.gauge.limit > 0 ? Math.min(100, (g.gauge.used / g.gauge.limit) * 100) : 0
+              const barW = g.gauge.used > 0 ? Math.max(pctRaw, 2) : 0
+              const pct = pctRaw === 0 ? '0' : pctRaw < 1 ? pctRaw.toFixed(1).replace('.', ',') : String(Math.round(pctRaw))
               const remaining = g.gauge.limit - g.gauge.used
               return (
                 <div key={g.label} style={{ padding: '16px', borderRadius: 16, background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
@@ -1579,7 +1583,7 @@ function UtilisationBloc() {
                     </div>
                   </div>
                   <div style={{ height: 8, borderRadius: 999, background: 'var(--bg-card2)', overflow: 'hidden', marginBottom: 8 }}>
-                    <div style={{ height: '100%', width: `${pct}%`, background: 'var(--primary)', borderRadius: 999, transition: 'width 0.4s' }}/>
+                    <div style={{ height: '100%', width: `${barW}%`, background: 'var(--primary)', borderRadius: 999, transition: 'width 0.4s' }}/>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <span style={{ fontSize: 11.5, color: 'var(--text-dim)' }}>{t('profile.pctUsed', { pct })}</span>

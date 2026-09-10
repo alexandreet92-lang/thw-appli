@@ -12661,32 +12661,32 @@ function PlusMenu({
   )
 
   const connectorsList = (
-    <div style={{ padding: 6, minWidth: 240, maxHeight: 380, overflowY: 'auto' }}>
+    <div style={{ padding: isMobile ? '4px 4px 8px' : 6, minWidth: 240, maxHeight: isMobile ? undefined : 460, overflowY: 'auto' }}>
       {PLUS_CONNECTORS.map(c => (
         <div key={c.id} style={{
-          display: 'flex', alignItems: 'center', gap: 8,
-          padding: '7px 10px', borderRadius: 10,
-          border: '0.5px solid var(--border)', marginBottom: 4,
+          display: 'flex', alignItems: 'center', gap: 13,
+          padding: '13px 14px', borderRadius: 14,
+          border: '1px solid var(--border)', marginBottom: 8,
         }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={c.logo} alt={c.name} width={20} height={20} style={{ borderRadius: 5, objectFit: 'contain', flexShrink: 0, background: '#fff' }} />
-          <span style={{ flex: 1, minWidth: 0, fontSize: 12, color: 'var(--text)' }}>{c.name}</span>
+          <img src={c.logo} alt={c.name} width={30} height={30} style={{ borderRadius: 8, objectFit: 'contain', flexShrink: 0, background: '#fff' }} />
+          <span style={{ flex: 1, minWidth: 0, fontSize: 15.5, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</span>
           {c.connected ? (
             <>
               <div style={{
-                width: 28, height: 15, borderRadius: 8, background: '#06B6D4', position: 'relative', flexShrink: 0,
+                width: 44, height: 26, borderRadius: 999, background: '#06B6D4', position: 'relative', flexShrink: 0,
                 animation: 'aip_toggle_pulse 0.3s ease-out',
               }}>
-                <div style={{ position: 'absolute', top: 2, right: 2, width: 11, height: 11, borderRadius: '50%', background: '#fff' }} />
+                <div style={{ position: 'absolute', top: 3, right: 3, width: 20, height: 20, borderRadius: '50%', background: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,0.25)' }} />
               </div>
-              <span style={{ fontSize: 10, color: '#06B6D4', fontWeight: 500, flexShrink: 0 }}>{t('aip.ui.connected')}</span>
+              <span style={{ fontSize: 13, color: '#06B6D4', fontWeight: 600, flexShrink: 0 }}>{t('aip.ui.connected')}</span>
             </>
           ) : (
             <>
-              <div style={{ width: 28, height: 15, borderRadius: 8, background: 'var(--border)', position: 'relative', flexShrink: 0 }}>
-                <div style={{ position: 'absolute', top: 2, left: 2, width: 11, height: 11, borderRadius: '50%', background: '#fff' }} />
+              <div style={{ width: 44, height: 26, borderRadius: 999, background: 'var(--border)', position: 'relative', flexShrink: 0 }}>
+                <div style={{ position: 'absolute', top: 3, left: 3, width: 20, height: 20, borderRadius: '50%', background: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,0.25)' }} />
               </div>
-              <a href="/connections" style={{ fontSize: 10, color: '#06B6D4', border: '0.5px solid #06B6D4', borderRadius: 4, padding: '2px 6px', marginLeft: 6, textDecoration: 'none', flexShrink: 0 }}>
+              <a href="/connections" style={{ fontSize: 13, color: '#06B6D4', fontWeight: 600, border: '1px solid #06B6D4', borderRadius: 8, padding: '6px 12px', marginLeft: 4, textDecoration: 'none', flexShrink: 0 }}>
                 Connecter →
               </a>
             </>
@@ -13255,7 +13255,8 @@ function HistoryDrawer({
   // Sélection fiable au tactile : on ouvre la conversation dès le touchend d'un
   // vrai tap (peu de déplacement) et on annule le « ghost click » iOS qui, sur un
   // tiroir coulissant, obligeait à taper 2-3 fois. Fallback onClick pour desktop.
-  const tapRef = useRef<{ x: number; y: number; moved: boolean } | null>(null)
+  const tapRef = useRef<{ x: number; y: number; moved: boolean; long: boolean } | null>(null)
+  const lpTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     if (!menuId) { setConfirmId(null); return }
@@ -13615,11 +13616,22 @@ function HistoryDrawer({
             ) : (
               <div
                 onClick={() => { onSelect(conv); if (!persistent) onClose() }}
-                onTouchStart={e => { const t = e.touches[0]; tapRef.current = { x: t.clientX, y: t.clientY, moved: false } }}
-                onTouchMove={e => { const r = tapRef.current; if (!r) return; const t = e.touches[0]; if (Math.abs(t.clientX - r.x) > 10 || Math.abs(t.clientY - r.y) > 10) r.moved = true }}
+                onTouchStart={e => {
+                  const t = e.touches[0]; tapRef.current = { x: t.clientX, y: t.clientY, moved: false, long: false }
+                  if (lpTimer.current) clearTimeout(lpTimer.current)
+                  // Appui long (~430 ms) → ouvre le menu contextuel (épingler /
+                  // renommer / ajouter au projet / supprimer), façon iOS/Claude.
+                  lpTimer.current = setTimeout(() => {
+                    const r = tapRef.current
+                    if (r && !r.moved) { r.long = true; setMenuId(conv.id); try { haptic() } catch { /* ignore */ } }
+                  }, 430)
+                }}
+                onTouchMove={e => { const r = tapRef.current; if (!r) return; const t = e.touches[0]; if (Math.abs(t.clientX - r.x) > 10 || Math.abs(t.clientY - r.y) > 10) { r.moved = true; if (lpTimer.current) { clearTimeout(lpTimer.current); lpTimer.current = null } } }}
                 onTouchEnd={e => {
+                  if (lpTimer.current) { clearTimeout(lpTimer.current); lpTimer.current = null }
                   const r = tapRef.current; tapRef.current = null
                   if (!r || r.moved) return           // scroll/swipe → ne pas sélectionner
+                  if (r.long) { e.preventDefault(); return } // appui long déjà géré (menu ouvert)
                   e.preventDefault()                  // coupe le ghost click iOS (sinon double)
                   onSelect(conv); if (!persistent) onClose()
                 }}
@@ -13709,9 +13721,11 @@ function HistoryDrawer({
                   {menuId === conv.id && (
                     <div style={{
                       position: 'absolute', right: 0, top: '100%', marginTop: 4, zIndex: 60,
-                      background: 'var(--ai-bg)', border: '1px solid var(--ai-border)',
-                      borderRadius: 12, boxShadow: '0 14px 40px rgba(0,0,0,0.22)',
-                      padding: 5, minWidth: 214,
+                      background: 'color-mix(in srgb, var(--ai-bg) 82%, transparent)',
+                      WebkitBackdropFilter: 'blur(22px) saturate(1.7)', backdropFilter: 'blur(22px) saturate(1.7)',
+                      border: '1px solid var(--ai-border)',
+                      borderRadius: 16, boxShadow: '0 18px 48px rgba(0,0,0,0.28)',
+                      padding: 6, minWidth: 220,
                     }}>
                       {/* Ligne de menu générique (icône · libellé · raccourci) façon menu contextuel. */}
                       {/* Épingler */}

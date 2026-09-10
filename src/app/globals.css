@@ -1031,3 +1031,13 @@ html.thw-glass-blur .thw-glass-bubble {
   -webkit-backdrop-filter: blur(22px) saturate(1.8);
   backdrop-filter: blur(22px) saturate(1.8);
 }
+
+/* ── Effet ressort au toucher (mobile) : le bouton GROSSIT vite avec un léger
+      rebond au press, puis revient (façon Claude/Strava/Polar). translateZ(0)
+      conservé pour garder le calque GPU du verre (anti-scintillement). Bat le
+      « button:active { scale(0.97) } » global via !important. */
+.thw-press { transition: transform 180ms cubic-bezier(0.34, 1.56, 0.64, 1) !important; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+.thw-press:active { transform: translateZ(0) scale(1.16) !important; }
+@media (prefers-reduced-motion: reduce) {
+  .thw-press, .thw-press:active { transition: none !important; transform: translateZ(0) !important; }
+}

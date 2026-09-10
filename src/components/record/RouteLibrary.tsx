@@ -9,7 +9,9 @@ import { currentLocale } from '@/lib/i18n'
 import { staticRouteMapUrl } from '@/lib/staticMap'
 import { routeToGpx, downloadGpx } from '@/lib/gpxExport'
 import { elevationGainLoss } from '@/lib/elevation'
+import { reverseGeocode, cachedPlace } from '@/lib/reverseGeocode'
 import { FinishFlag } from './finishFlag'
+import RouteFilterSheet, { type FilterState } from './RouteFilterSheet'
 
 const RouteDetailView = dynamic(() => import('./RouteDetailView'), { ssr: false })
 
@@ -119,6 +121,16 @@ export default function RouteLibrary({ onClose, onUseRoute, onCreate, onEditRout
   const openMenu = (id: string) => { if (menuTimer.current) clearTimeout(menuTimer.current); setMenuId(id) }
   const scheduleCloseMenu = () => { if (menuTimer.current) clearTimeout(menuTimer.current); menuTimer.current = setTimeout(() => setMenuId(null), 160) }
   const [detail, setDetail] = useState<Route | null>(null)
+  const [isNarrow, setIsNarrow] = useState(false)
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 767px)')
+    const f = () => setIsNarrow(mq.matches); f(); mq.addEventListener('change', f)
+    return () => mq.removeEventListener('change', f)
+  }, [])
+  const [filter, setFilter] = useState<FilterState>({ dist: [0, 160], elev: [0, 3000], sport: 'all' })
+  const [activeFilter, setActiveFilter] = useState<'dist' | 'elev' | 'sport' | null>(null)
+  const [myAvatar, setMyAvatar] = useState<string | null>(null)
+  useEffect(() => { void (async () => { const u = await getCurrentUser(); if (!u) return; const { data } = await createClient().from('profiles').select('avatar_url').eq('id', u.id).maybeSingle(); setMyAvatar((data?.avatar_url as string) ?? null) })() }, [])
   // Envoi vers l'appareil (Garmin/Wahoo) — visible seulement si connecté.
   const [pushTargets, setPushTargets] = useState<string[]>([])
   const [notice, setNotice] = useState<string | null>(null)
@@ -202,10 +214,120 @@ export default function RouteLibrary({ onClose, onUseRoute, onCreate, onEditRout
     elevation_gain_m: route.elevation_gain_m,
   })
 
-  const filtered = routes.filter(r => r.name.toLowerCase().includes(search.toLowerCase()))
+  const dPlusOf = (r: Route) => r.elevation_profile?.length ? elevationGainLoss(r.elevation_profile).gain : Math.round(r.elevation_gain_m ?? 0)
+  const filtered = routes.filter(r => {
+    if (!r.name.toLowerCase().includes(search.toLowerCase())) return false
+    if (filter.sport !== 'all' && r.sport !== filter.sport) return false
+    const km = (r.distance_m ?? 0) / 1000
+    if (km < filter.dist[0]) return false
+    if (filter.dist[1] < 160 && km > filter.dist[1]) return false
+    const dp = dPlusOf(r)
+    if (dp < filter.elev[0]) return false
+    if (filter.elev[1] < 3000 && dp > filter.elev[1]) return false
+    return true
+  })
 
   const tabBtn = (label: string, active: boolean, onClick: () => void) => (
     <button onClick={onClick} style={{ background: 'none', border: 'none', padding: '4px 2px', cursor: 'pointer', fontSize: 14, fontWeight: active ? 800 : 600, color: active ? text : dim, borderBottom: `2px solid ${active ? ACCENT : 'transparent'}`, fontFamily: 'DM Sans, sans-serif' }}>{label}</button>
+  )
+
+  // Overlays partagés (détail + filtre + notice) pour les deux dispositions.
+  const overlays = (
+    <>
+      {detail && (
+        <RouteDetailView
+          route={detail} isDark={isDark} sportLabel={sportLabel(detail.sport)}
+          pushTargets={pushTargets}
+          onClose={() => setDetail(null)}
+          onUse={() => { useRoute(detail); onClose() }}
+          onEdit={onEditRoute ? () => onEditRoute(detail) : undefined}
+          onDuplicate={() => void handleDuplicate(detail)}
+          onExport={() => handleExport(detail)}
+          onDelete={() => void handleDelete(detail.id)}
+          onPush={(p) => void pushToDevice(detail, p)}
+        />
+      )}
+      {activeFilter && (
+        <RouteFilterSheet kind={activeFilter} value={filter} isDark={isDark}
+          onApply={p => setFilter(f => ({ ...f, ...p }))} onClose={() => setActiveFilter(null)} />
+      )}
+      {notice && (
+        <div style={{ position: 'fixed', left: '50%', bottom: 24, transform: 'translateX(-50%)', zIndex: 40, background: 'var(--bg-card, #12151C)', color: text, border: `1px solid ${border}`, borderRadius: 12, padding: '10px 16px', fontSize: 13, fontWeight: 600, boxShadow: '0 8px 28px rgba(0,0,0,0.28)', maxWidth: '90vw', textAlign: 'center' }}>{notice}</div>
+      )}
+    </>
+  )
+
+  const circleBtn: React.CSSProperties = { width: 42, height: 42, borderRadius: '50%', border: 'none', background: surface, color: text, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }
+  const chip = (label: string, active: boolean, onClick: () => void, icon?: React.ReactNode) => (
+    <button onClick={onClick} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: 38, padding: '0 14px', borderRadius: 999, cursor: 'pointer', flexShrink: 0, fontFamily: 'DM Sans, sans-serif', fontSize: 13.5, fontWeight: 600, whiteSpace: 'nowrap', background: active ? 'color-mix(in srgb, ' + ACCENT + ' 14%, transparent)' : 'transparent', border: `1px solid ${active ? ACCENT : border}`, color: active ? ACCENT : text }}>
+      {icon}{label}
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6" /></svg>
+    </button>
+  )
+
+  // ── Disposition MOBILE (façon Strava/plein écran) ──────────────────────────
+  if (isNarrow) return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 10005, background: bg, display: 'flex', flexDirection: 'column', fontFamily: 'DM Sans, sans-serif', paddingTop: 'env(safe-area-inset-top)', transform: shown && !closing ? 'translateX(0)' : 'translateX(100%)', transition: 'transform 300ms cubic-bezier(0.32,0.72,0,1)' }}>
+      {/* En-tête : cercle croix · titre · cercle crayon+ */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 16px 8px' }}>
+        <button onClick={requestClose} aria-label={t('record.routeLibraryCancel')} style={circleBtn}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round"><path d="M6 6l12 12M18 6 6 18" /></svg>
+        </button>
+        <span style={{ flex: 1, textAlign: 'center', fontSize: 18, fontWeight: 800, color: text, fontFamily: 'var(--font-display)' }}>{t('record.routeLibraryTitle')}</span>
+        <button onClick={onCreate} aria-label={t('record.routeLibraryCreate')} style={circleBtn}>
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4 12.5-12.5z" /><path d="M18 2l4 4" opacity="0" /></svg>
+        </button>
+      </div>
+
+      {/* Recherche */}
+      <div style={{ padding: '4px 16px 10px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: surface, borderRadius: 999, padding: '12px 16px' }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={dim} strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" /></svg>
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder={t('record.routeLibrarySearchPlaceholder')} style={{ flex: 1, minWidth: 0, border: 'none', background: 'transparent', outline: 'none', color: text, fontSize: 16, fontFamily: 'DM Sans, sans-serif' }} />
+        </div>
+      </div>
+
+      {/* Chips filtres (défilables) */}
+      <div style={{ display: 'flex', gap: 8, overflowX: 'auto', padding: '0 16px 12px', WebkitOverflowScrolling: 'touch' }}>
+        {chip(filter.sport === 'all' ? t('record.routeLibraryAllSports') : sportLabel(filter.sport), filter.sport !== 'all', () => setActiveFilter('sport'),
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><path d="M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18M3 12h18" /></svg>)}
+        {chip('Distance', filter.dist[0] > 0 || filter.dist[1] < 160, () => setActiveFilter('dist'))}
+        {chip('Dénivelé', filter.elev[0] > 0 || filter.elev[1] < 3000, () => setActiveFilter('elev'))}
+        <button onClick={() => setShowPublic(p => !p)} style={{ display: 'inline-flex', alignItems: 'center', height: 38, padding: '0 14px', borderRadius: 999, cursor: 'pointer', flexShrink: 0, fontFamily: 'DM Sans, sans-serif', fontSize: 13.5, fontWeight: 600, whiteSpace: 'nowrap', background: showPublic ? 'color-mix(in srgb, ' + ACCENT + ' 14%, transparent)' : 'transparent', border: `1px solid ${showPublic ? ACCENT : border}`, color: showPublic ? ACCENT : text }}>{showPublic ? t('record.routeLibraryPublic') : t('record.routeLibraryMine')}</button>
+      </div>
+
+      <div style={{ flex: 1, overflowY: 'auto', padding: '2px 16px calc(24px + env(safe-area-inset-bottom, 0px))' }}>
+        {filtered.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '70px 20px', color: dim }}>
+            <p style={{ fontSize: 14 }}>{showPublic ? (search ? t('record.routeLibraryEmptyPublicSearch') : t('record.routeLibraryEmptyPublic')) : (search ? t('record.routeLibraryEmptySearch') : t('record.routeLibraryEmpty'))}</p>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {filtered.map(route => (
+              <button key={route.id} onClick={() => setDetail(route)}
+                style={{ display: 'flex', gap: 14, width: '100%', textAlign: 'left', border: 'none', background: 'transparent', cursor: 'pointer', padding: 0, alignItems: 'stretch' }}>
+                <span style={{ width: 132, flexShrink: 0, borderRadius: 16, overflow: 'hidden', background: mapBg }}>
+                  <RouteThumbnail route={route} accent={ACCENT} mapBg={mapBg} fallbackStroke={dim} />
+                </span>
+                <span style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 4 }}>
+                  <span style={{ fontSize: 18, fontWeight: 800, color: text, fontFamily: 'var(--font-display)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{route.name}</span>
+                  <span style={{ fontSize: 13.5, color: text, fontVariantNumeric: 'tabular-nums' }}>{(route.distance_m ?? 0) / 1000 >= 100 ? ((route.distance_m ?? 0) / 1000).toFixed(0) : ((route.distance_m ?? 0) / 1000).toFixed(2)} km · {dPlusOf(route)} m · {estTimeLabel(route.distance_m, route.sport)}</span>
+                  <PlaceLine route={route} dim={dim} />
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 2 }}>
+                    <span style={{ width: 20, height: 20, borderRadius: '50%', overflow: 'hidden', background: surface, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      {myAvatar ? <img src={myAvatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : null}
+                    </span>
+                    <span style={{ fontSize: 12.5, color: dim }}>{t('record.routeCardCreatedOn', { date: new Date(route.created_at).toLocaleDateString(currentLocale(), { day: 'numeric', month: 'long', year: 'numeric' }) })}</span>
+                  </span>
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+      {overlays}
+    </div>
   )
 
   return (
@@ -306,27 +428,25 @@ export default function RouteLibrary({ onClose, onUseRoute, onCreate, onEditRout
       {/* Ferme le menu ⋯ (tap) au clic ailleurs */}
       {menuId && <div onClick={() => setMenuId(null)} style={{ position: 'fixed', inset: 0, zIndex: 2 }} />}
 
-      {/* Détail du parcours */}
-      {detail && (
-        <RouteDetailView
-          route={detail} isDark={isDark} sportLabel={sportLabel(detail.sport)}
-          pushTargets={pushTargets}
-          onClose={() => setDetail(null)}
-          onUse={() => { useRoute(detail); onClose() }}
-          onEdit={onEditRoute ? () => onEditRoute(detail) : undefined}
-          onDuplicate={() => void handleDuplicate(detail)}
-          onExport={() => handleExport(detail)}
-          onDelete={() => void handleDelete(detail.id)}
-          onPush={(p) => void pushToDevice(detail, p)}
-        />
-      )}
-
-      {/* Retour d'envoi vers l'appareil */}
-      {notice && (
-        <div style={{ position: 'fixed', left: '50%', bottom: 24, transform: 'translateX(-50%)', zIndex: 30, background: 'var(--bg-card, #12151C)', color: text, border: `1px solid ${border}`, borderRadius: 12, padding: '10px 16px', fontSize: 13, fontWeight: 600, boxShadow: '0 8px 28px rgba(0,0,0,0.28)', maxWidth: '90vw', textAlign: 'center' }}>{notice}</div>
-      )}
+      {overlays}
     </div>
   )
+}
+
+// Lieu (ville, région) du point de départ — géocodage inverse mis en cache.
+function PlaceLine({ route, dim }: { route: Route; dim: string }) {
+  const pts = route.snapped_points ?? route.waypoints ?? []
+  const start = pts[0]
+  const [place, setPlace] = useState<string>(() => (start ? (cachedPlace(start.lat, start.lng) ?? '') : ''))
+  useEffect(() => {
+    if (!start || place) return
+    let alive = true
+    void reverseGeocode(start.lat, start.lng).then(p => { if (alive) setPlace(p) })
+    return () => { alive = false }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [start?.lat, start?.lng])
+  if (!place) return null
+  return <span style={{ fontSize: 13, color: dim, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{place}</span>
 }
 
 function Stat({ label, value, text, dim }: { label: string; value: string; text: string; dim: string }) {

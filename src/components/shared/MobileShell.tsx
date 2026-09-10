@@ -165,6 +165,9 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
     const st = g.current
     st.startX = t.clientX; st.startY = t.clientY; st.dragging = false
     st.base = open ? offsetPx() : 0; st.last = st.base
+    // Sur la page d'enregistrement (carte plein écran), on NE glisse JAMAIS la
+    // sidebar : le doigt sert à déplacer la carte. On n'amorce pas le geste.
+    if (pathname === '/record' && !open) { st.active = false; return }
     st.active = true // façon Claude : on peut amorcer le glissement depuis n'importe où
     // Tableau/carrousel défilable sous le doigt → on le mémorise pour lui laisser
     // le scroll horizontal (ne pas ouvrir le menu latéral).

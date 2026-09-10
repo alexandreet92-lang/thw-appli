@@ -140,6 +140,9 @@ export default function RouteCreator({ onClose, onLoadRoute, isDark, initialView
   const [closing, setClosing] = useState(false)
   useEffect(() => { const r = requestAnimationFrame(() => setShown(true)); return () => cancelAnimationFrame(r) }, [])
   const requestClose = useCallback(() => { setClosing(true); setShown(false); setTimeout(onClose, 300) }, [onClose])
+  // Slide de l'éditeur (bas→haut à l'ouverture, haut→bas à la fermeture) même
+  // quand on arrive depuis la bibliothèque (la surface reste montée).
+  const [editorShown, setEditorShown] = useState(false)
 
   const SPORT_CHIPS: { id: string; Icon: typeof IconBike; label: string }[] = [
     { id: 'cycling', Icon: IconBike, label: t('record.routeCreatorSportCycling') },
@@ -292,8 +295,17 @@ export default function RouteCreator({ onClose, onLoadRoute, isDark, initialView
     ? waypoints.map(p => [p.lat, p.lng])
     : []
 
-  // Sortir de la création : retour à la liste si on y est entré par là, sinon fermer.
-  const exitCreate = initialView === 'library' ? () => setView('library') : requestClose
+  // Anime l'éditeur : monte quand on entre en création, redescend quand on sort.
+  useEffect(() => {
+    if (view === 'creating') { const r = requestAnimationFrame(() => setEditorShown(true)); return () => cancelAnimationFrame(r) }
+    setEditorShown(false)
+  }, [view])
+
+  // Sortir de la création : retour à la liste (slide bas) si on y est entré par
+  // là, sinon fermeture complète.
+  const exitCreate = initialView === 'library'
+    ? () => { setEditorShown(false); setTimeout(() => setView('library'), 300) }
+    : requestClose
 
   if (view === 'library') return createPortal(
     <RouteLibrary isDark={isDark} onClose={onClose}
@@ -323,7 +335,7 @@ export default function RouteCreator({ onClose, onLoadRoute, isDark, initialView
   )
 
   const ui = (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 9999, fontFamily: 'var(--font-body)', transform: shown && !closing ? 'translateY(0)' : 'translateY(100%)', transition: 'transform 300ms cubic-bezier(0.16,1,0.3,1)' }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 9999, fontFamily: 'var(--font-body)', transform: editorShown && !closing ? 'translateY(0)' : 'translateY(100%)', transition: 'transform 300ms cubic-bezier(0.16,1,0.3,1)' }}>
       <style>{`
         /* Curseur en petite croix sur la carte (placement précis des points), façon Strava. */
         .leaflet-container, .leaflet-container .leaflet-grab { cursor: crosshair !important; }

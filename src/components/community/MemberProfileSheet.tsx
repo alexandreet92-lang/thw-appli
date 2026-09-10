@@ -90,7 +90,7 @@ export function MemberProfileSheet({ member, onClose }: { member: CommunityMembe
               background: following ? 'var(--surface-neutral)' : 'var(--primary)', color: following ? 'var(--text)' : 'var(--on-primary)' }}>
             {following ? t('w1g.mem.friendAdded') : t('w1g.mem.addFriend')}
           </button>
-          <button onClick={() => setSoon(true)} aria-label={t('w1g.mem.message')} title={t('w1g.mem.message')}
+          <button onClick={() => { try { window.dispatchEvent(new CustomEvent('thw:community-dm', { detail: { userId: member.userId } })) } catch { /* ignore */ } requestClose() }} aria-label={t('w1g.mem.message')} title={t('w1g.mem.message')}
             style={{ width: 46, height: 42, borderRadius: 'var(--r-md)', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
           </button>

@@ -14,7 +14,7 @@ import { useI18n, currentLocale } from '@/lib/i18n'
 type Translate = (key: string, vars?: Record<string, string | number>) => string
 const fmtWhen = (d: string, t: Translate) => { if (!d) return ''; const days = Math.floor((Date.now() - new Date(d).getTime()) / 86400_000); if (days <= 0) return t('w3d.today'); if (days === 1) return t('w3d.yesterday'); if (days < 7) return t('w3d.days_short', { n: days }); try { return new Date(d).toLocaleDateString(currentLocale(), { day: 'numeric', month: 'short' }) } catch { return '' } }
 
-export function MessagesView({ role, title, subtitle }: { role: 'coach' | 'athlete'; title: string; subtitle: string }) {
+export function MessagesView({ role, title, subtitle, initialThread, onBack }: { role: 'coach' | 'athlete'; title: string; subtitle: string; initialThread?: string | null; onBack?: () => void }) {
   const { t } = useI18n()
   const [threads, setThreads] = useState<Thread[]>([])
   const [groups, setGroups] = useState<GroupSummary[]>([])
@@ -44,6 +44,11 @@ export function MessagesView({ role, title, subtitle }: { role: 'coach' | 'athle
       if (wanted && threads.some(t => t.otherId === wanted)) { setSelId(wanted); setSelGroup(null) }
     } catch { /* pas de deep-link */ }
   }, [loading, threads])
+  // Ouverture directe d'une conversation (ex. bouton « Message » d'un membre).
+  useEffect(() => {
+    if (loading || !initialThread) return
+    if (threads.some(t => t.otherId === initialThread)) { setSelId(initialThread); setSelGroup(null) }
+  }, [loading, initialThread, threads])
   const loadGroups = useCallback(async () => { try { setGroups(await listMyGroups()) } catch { /* */ } }, [])
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 767px)')
@@ -142,8 +147,15 @@ export function MessagesView({ role, title, subtitle }: { role: 'coach' | 'athle
 
   return (
     <div style={{ width: '100%', padding: '20px clamp(16px,4vw,40px) 30px', boxSizing: 'border-box', fontFamily: 'var(--font-body)', height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-      <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)', margin: '0 0 4px', fontFamily: 'var(--font-display)' }}>{title}</h1>
-      <p style={{ fontSize: 12.5, color: 'var(--text-dim)', margin: '0 0 16px' }}>{subtitle}</p>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '0 0 4px' }}>
+        {onBack && (
+          <button onClick={onBack} aria-label={t('w3d.back')} style={{ width: 34, height: 34, flexShrink: 0, border: 'none', background: 'transparent', color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
+          </button>
+        )}
+        <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)', margin: 0, fontFamily: 'var(--font-display)' }}>{title}</h1>
+      </div>
+      <p style={{ fontSize: 12.5, color: 'var(--text-dim)', margin: '0 0 16px', paddingLeft: onBack ? 44 : 0 }}>{subtitle}</p>
       {isNarrow ? (
         <div style={{ flex: 1, minHeight: 0 }}>{rightPane ?? listPane}</div>
       ) : (

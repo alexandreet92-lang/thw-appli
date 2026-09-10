@@ -38,12 +38,12 @@ export function UnreadMessagesCard() {
           <span style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 600, color: 'var(--text)' }}>Messages non lus</span>
           <span style={{ minWidth: 20, height: 20, padding: '0 6px', borderRadius: 999, background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 11.5, fontWeight: 800, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>{total}</span>
         </div>
-        <Link href="/messages" style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--primary)', textDecoration: 'none' }}>Tout voir →</Link>
+        <Link href="/community?dm=1" style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--primary)', textDecoration: 'none' }}>Tout voir →</Link>
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
         {threads.slice(0, 4).map(t => (
-          <Link key={t.otherId} href="/messages"
+          <Link key={t.otherId} href={`/community?dm=${encodeURIComponent(t.otherId)}`}
             style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '9px 8px', borderRadius: 12, textDecoration: 'none' }}
             onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-alt)' }}
             onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}>

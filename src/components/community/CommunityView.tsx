@@ -24,6 +24,7 @@ import { CreateChannelSheet } from './CreateChannelSheet'
 import { ChannelContextMenu } from './ChannelContextMenu'
 import { ChannelEditSheet } from './ChannelEditSheet'
 import { InviteSheet } from './InviteSheet'
+import { MessagesView } from '@/components/coach/MessagesView'
 import { CommunityManageSheet } from './CommunityManageSheet'
 import { DiscoverSheet } from './DiscoverSheet'
 import { SpaceBadge } from './SpaceBadge'
@@ -75,6 +76,23 @@ export function CommunityView() {
   const [menuChannel, setMenuChannel] = useState<CommunityChannel | null>(null)
   const [editChannelState, setEditChannelState] = useState<CommunityChannel | null>(null)
   const [inviteOpen, setInviteOpen] = useState(false)
+  // Mode « messages » (messagerie privée intégrée à la communauté, façon Discord).
+  const [msgMode, setMsgMode] = useState(false)
+  const [dmUser, setDmUser] = useState<string | null>(null)
+  const exitMessages = () => { setMsgMode(false); setDmUser(null) }
+  // Ouverture d'une conversation depuis « Message » d'un membre.
+  useEffect(() => {
+    const h = (e: Event) => { const id = (e as CustomEvent).detail?.userId as string | undefined; setDmUser(id ?? null); setMsgMode(true) }
+    window.addEventListener('thw:community-dm', h as EventListener)
+    return () => window.removeEventListener('thw:community-dm', h as EventListener)
+  }, [])
+  // Ancienne page /messages (supprimée) → /community?dm=… : ouvre le mode messages.
+  useEffect(() => {
+    try {
+      const p = new URLSearchParams(window.location.search)
+      if (p.has('dm')) { const v = p.get('dm') || ''; setMsgMode(true); setDmUser(v && v !== '1' ? v : null) }
+    } catch { /* ignore */ }
+  }, [])
 
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 767px)')
@@ -158,6 +176,7 @@ export function CommunityView() {
   function selectSpace(id: string) {
     // Mobile façon Discord : le rail des espaces reste visible, on ne change que
     // la colonne des canaux (on reste sur « home »).
+    setMsgMode(false); setDmUser(null)
     setSpaceId(id); setChannelId(null); setPanel('chat')
   }
   function selectChannel(id: string) {
@@ -240,9 +259,17 @@ export function CommunityView() {
   // ── Sous-vues ──────────────────────────────────────────────────────────
   const rail = (
     <SpaceRail
-      spaces={spaces} activeId={spaceId} loading={loadingSpaces}
+      spaces={spaces} activeId={spaceId} loading={loadingSpaces} messagesActive={msgMode}
+      onMessages={() => setMsgMode(m => { const n = !m; if (n) setDmUser(null); return n })}
       onSelect={selectSpace} onCreate={() => setShowCreate(true)} onDiscover={() => setShowDiscover(true)}
     />
+  )
+
+  // Messagerie privée intégrée (coach + contacts + groupes), façon Discord.
+  const messagesPane = (
+    <div style={{ height: '100%', minHeight: 0, background: 'var(--bg-card)', paddingTop: isNarrow ? 'env(safe-area-inset-top)' : 0 }}>
+      <MessagesView role="athlete" title={t('w1g.privateMessages')} subtitle="" initialThread={dmUser} onBack={exitMessages} />
+    </div>
   )
 
   const channelCol = (
@@ -329,7 +356,14 @@ export function CommunityView() {
             // Swipe franc vers la DROITE en vue « chat » → coulisse vers les salons/groupes.
             if (dx > 55 && Math.abs(dx) > Math.abs(dy) * 1.4 && mView === 'chat' && panel !== 'call') { setDir('back'); setMView('home') }
           }}>
-          {/* Vues empilées avec transition « ouverture de page » fluide (clé = vue). */}
+          {/* Mode messages (plein écran) : rail des espaces + messagerie. */}
+          {msgMode ? (
+            <div style={{ display: 'flex', height: '100%', minHeight: 0 }}>
+              <div style={{ width: 60, flexShrink: 0, minHeight: 0, background: 'var(--bg)' }}>{rail}</div>
+              <div style={{ flex: 1, minWidth: 0, minHeight: 0 }}>{messagesPane}</div>
+            </div>
+          ) : (
+          /* Vues empilées avec transition « ouverture de page » fluide (clé = vue). */
           <div key={mView} className={dir === 'fwd' ? 'comm-slide-fwd' : 'comm-slide-back'} style={{ height: '100%', minHeight: 0 }}>
             {mView === 'home' && (
               <div style={{ display: 'flex', height: '100%', minHeight: 0 }}>
@@ -339,6 +373,7 @@ export function CommunityView() {
             )}
             {mView === 'chat' && chatWithBack}
           </div>
+          )}
         </div>
       ) : (
         <>
@@ -349,11 +384,18 @@ export function CommunityView() {
           {/* Séparation Discord-like par le FOND (jamais par des bordures, cf.
               Design System) : rail le plus sombre (--bg) → colonne salons
               (--bg-card2) → zone chat/appel la plus claire (--bg-card). */}
-          <div style={{ flex: 1, minHeight: 0, display: 'grid', gridTemplateColumns: '56px 248px 1fr', overflow: 'hidden', borderRadius: 'var(--r-lg)', background: 'var(--bg-card)' }}>
-            <div style={{ minHeight: 0, background: 'var(--bg)' }}>{rail}</div>
-            <div style={{ minHeight: 0, background: 'var(--bg-card2)' }}>{channelCol}</div>
-            <div style={{ minHeight: 0, background: 'var(--bg-card)' }}>{centerPane}</div>
-          </div>
+          {msgMode ? (
+            <div style={{ flex: 1, minHeight: 0, display: 'grid', gridTemplateColumns: '56px 1fr', overflow: 'hidden', borderRadius: 'var(--r-lg)', background: 'var(--bg-card)' }}>
+              <div style={{ minHeight: 0, background: 'var(--bg)' }}>{rail}</div>
+              <div style={{ minHeight: 0, background: 'var(--bg-card)' }}>{messagesPane}</div>
+            </div>
+          ) : (
+            <div style={{ flex: 1, minHeight: 0, display: 'grid', gridTemplateColumns: '56px 248px 1fr', overflow: 'hidden', borderRadius: 'var(--r-lg)', background: 'var(--bg-card)' }}>
+              <div style={{ minHeight: 0, background: 'var(--bg)' }}>{rail}</div>
+              <div style={{ minHeight: 0, background: 'var(--bg-card2)' }}>{channelCol}</div>
+              <div style={{ minHeight: 0, background: 'var(--bg-card)' }}>{centerPane}</div>
+            </div>
+          )}
         </>
       )}
 
@@ -423,18 +465,18 @@ export function CommunityView() {
 }
 
 // ── Rail des espaces (desktop) ──────────────────────────────────────────────
-function SpaceRail({ spaces, activeId, loading, onSelect, onCreate, onDiscover }: {
-  spaces: CommunitySpace[]; activeId: string | null; loading: boolean
-  onSelect: (id: string) => void; onCreate: () => void; onDiscover: () => void
+function SpaceRail({ spaces, activeId, loading, messagesActive, onMessages, onSelect, onCreate, onDiscover }: {
+  spaces: CommunitySpace[]; activeId: string | null; loading: boolean; messagesActive: boolean
+  onMessages: () => void; onSelect: (id: string) => void; onCreate: () => void; onDiscover: () => void
 }) {
   const { t } = useI18n()
   return (
     <div data-guide="comm-spaces" style={{ height: '100%', overflowY: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--space-2)', padding: 'var(--space-3) 0' }}>
-      {/* Messages privés — tout en haut, juste au-dessus des espaces (bulle THW). */}
-      <Link href="/messages" title={t('w1g.privateMessages')} aria-label={t('w1g.privateMessages')}
-        style={{ width: 44, height: 44, borderRadius: 'var(--r-lg)', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--surface-neutral)', color: 'var(--text)', textDecoration: 'none', flexShrink: 0 }}>
+      {/* Messages privés — tout en haut : ouvre la messagerie DANS la communauté. */}
+      <button onClick={onMessages} title={t('w1g.privateMessages')} aria-label={t('w1g.privateMessages')}
+        style={{ width: 44, height: 44, borderRadius: 'var(--r-lg)', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', background: messagesActive ? 'var(--primary)' : 'var(--surface-neutral)', color: messagesActive ? 'var(--on-primary)' : 'var(--text)', cursor: 'pointer', flexShrink: 0 }}>
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
-      </Link>
+      </button>
       <span aria-hidden style={{ width: 24, height: 1, background: 'var(--border)', flexShrink: 0, margin: '2px 0' }} />
       {loading ? (
         [0, 1, 2, 3].map(i => <span key={i} style={{ width: 44, height: 44, borderRadius: 'var(--r-md)', background: 'var(--surface-neutral)' }} />)
@@ -590,13 +632,9 @@ function ChannelColumn({ space, channels, activeId, loading, isNarrow, joining, 
         })()}
       </div>
 
-      {/* Liens croisés (règle d'interconnexion des pages) : messagerie privée +
-          annuaire des coachs publics de l'app. */}
+      {/* Lien croisé (règle d'interconnexion) : annuaire des coachs publics.
+          La messagerie privée est intégrée (bouton en haut du rail). */}
       <div style={{ flexShrink: 0, padding: 'var(--space-3) var(--space-4)', display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-        <Link href="/messages" style={crossLink}>
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
-          {t('w1g.privateMessages')}
-        </Link>
         <Link href="/coaches" style={crossLink}>
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4" /><path d="M4 21a8 8 0 0 1 16 0" /></svg>
           {t('w1g.findCoach')}

@@ -18,6 +18,7 @@ export interface AdminMetrics {
   }
 
   signupsCumulative: DayPoint[]                 // 30 derniers jours, cumulés
+  signupsByDay: DayPoint[]                       // 30 derniers jours, nouveaux/jour
   tierBreakdown: { tier: string; count: number }[]
 
   revenue: {
@@ -27,16 +28,19 @@ export interface AdminMetrics {
     trialToPaidPct: number | null
     activePaid: number
     trials: number
+    mrrByTierEur: { tier: string; eur: number }[]   // MRR par palier (€)
   }
 
   ai: {
     models: { model: string; calls: number; tokens: number; costEur: number; revenueSharePct: number | null }[]
     totalTokens: number
+    totalCalls: number
     totalCostEur: number
     tokensByDay: DayPoint[]
+    callsByDay: DayPoint[]
     conversations: number
     features: { type: string; count: number }[]
-    topConsumers: { userId: string; tokens: number }[]
+    topConsumers: { userId: string; email: string | null; tokens: number }[]
     marginAlert: boolean        // coût IA > seuil % du MRR
   }
 
@@ -45,6 +49,7 @@ export interface AdminMetrics {
     topPages: { path: string; avgMs: number; views: number }[]
     topFeatures: { name: string; count: number }[]
     mobilePct: number | null
+    activities: { total: number; last7: number; last30: number; byDay: DayPoint[] }
   }
 
   engagement: {
@@ -52,11 +57,20 @@ export interface AdminMetrics {
     wau: number
     mau: number
     inactive30: number
+    newToday: number
     newLast7: number
+    newLast30: number
   }
 
   integrations: {
     providers: { provider: string; total: number; ok: number }[]
     sports: { sport: string; count: number }[]
+  }
+
+  community: {
+    members: number
+    messages30: number
+    dms30: number
+    channels: number
   }
 }

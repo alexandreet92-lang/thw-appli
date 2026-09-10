@@ -4,7 +4,7 @@
 // comme la page Récupération) et la charte de l'app (tokens, fond, logo shuriken).
 // Aucune lib de charts : SVG brut. Données reçues en props (calculées serveur).
 
-import { LayoutDashboard, Euro, Cpu, MousePointerClick, Activity, Plug, MessageCircle } from 'lucide-react'
+import { LayoutDashboard, Euro, Cpu, MousePointerClick, Activity, Plug, MessageCircle, Users } from 'lucide-react'
 import { SectionLayout, type SectionDef } from '@/components/navigation/SectionLayout'
 import type { AdminMetrics } from '@/lib/admin/types'
 import type { FeedbackRow } from '@/lib/admin/feedback'
@@ -146,7 +146,11 @@ function Overview({ m }: { m: AdminMetrics }) {
         <Stat label="WAU" value={fmt(o.wau)} sub={t('admin.overview.wauSub')} />
         <Stat label="MAU" value={fmt(o.mau)} sub={t('admin.overview.mauSub')} />
       </Grid></Section>
-      <Section title={t('admin.overview.growthTitle')}><Spark points={m.signupsCumulative} label={t('admin.overview.signups')} /></Section>
+      <Section title={t('admin.overview.growthTitle')}>
+        <Spark points={m.signupsCumulative} label={t('admin.overview.signups')} />
+        <div style={{ height: 'var(--space-3)' }} />
+        <Spark points={m.signupsByDay} label="Nouveaux / jour" />
+      </Section>
       <Section title={t('admin.overview.tierTitle')}>
         <Donut segments={m.tierBreakdown.map(row => ({ label: row.tier, value: row.count, color: TIER_COLOR[row.tier] ?? 'var(--text-dim)' }))} />
       </Section>
@@ -172,6 +176,9 @@ function Revenue({ m }: { m: AdminMetrics }) {
       <Section title={t('admin.revenue.mrrByTier')}>
         <BarList rows={m.tierBreakdown.map(row => ({ label: row.tier, value: row.count, color: TIER_COLOR[row.tier], right: `${row.count}` }))} />
       </Section>
+      <Section title="MRR par palier (€)">
+        <BarList rows={r.mrrByTierEur.map(row => ({ label: row.tier, value: row.eur, color: TIER_COLOR[row.tier], right: eur(row.eur) }))} />
+      </Section>
     </div>
   )
 }
@@ -185,6 +192,7 @@ function AI({ m }: { m: AdminMetrics }) {
         <Stat label={t('admin.ai.topModel')} value={a.models[0]?.model ?? '—'} sub={a.models[0] ? t('admin.ai.callsSub', { n: fmt(a.models[0].calls) }) : undefined} />
         <Stat label={t('admin.ai.tokens30')} value={fmt(a.totalTokens)} />
         <Stat label={t('admin.ai.cost30')} value={eur(a.totalCostEur)} sub={m.revenue.mrrEur > 0 ? t('admin.ai.mrrPctSub', { n: Math.round((a.totalCostEur / m.revenue.mrrEur) * 100) }) : undefined} alert={a.marginAlert} />
+        <Stat label="Appels IA (30 j)" value={fmt(a.totalCalls)} sub={a.totalCalls > 0 ? `${eur(Math.round((a.totalCostEur / a.totalCalls) * 1000) / 1000)} / appel` : undefined} />
         <Stat label="Conversations" value={fmt(a.conversations)} />
       </Grid>
       {a.marginAlert && (
@@ -195,12 +203,16 @@ function AI({ m }: { m: AdminMetrics }) {
       <Section title={t('admin.ai.costUsageByModel')}>
         <BarList rows={a.models.map(mm => ({ label: mm.model, value: mm.tokens, color: 'var(--primary)', right: `${eur(mm.costEur)} · ${fmt(mm.tokens)} tk` }))} />
       </Section>
-      <Section title={t('admin.ai.tokensPerDay')}><Spark points={a.tokensByDay} label="Tokens" /></Section>
+      <Section title={t('admin.ai.tokensPerDay')}>
+        <Spark points={a.tokensByDay} label="Tokens" />
+        <div style={{ height: 'var(--space-3)' }} />
+        <Spark points={a.callsByDay} label="Appels / jour" />
+      </Section>
       <Section title={t('admin.ai.aiActions')}>
         <BarList rows={a.features.map(f => ({ label: f.type, value: f.count }))} />
       </Section>
       <Section title={t('admin.ai.topConsumers')}>
-        <BarList rows={a.topConsumers.map(c => ({ label: `${c.userId.slice(0, 8)}…`, value: c.tokens, right: `${fmt(c.tokens)} tk` }))} />
+        <BarList rows={a.topConsumers.map(c => ({ label: c.email ?? `${c.userId.slice(0, 8)}…`, value: c.tokens, right: `${fmt(c.tokens)} tk` }))} />
       </Section>
     </div>
   )
@@ -211,6 +223,15 @@ function Product({ m }: { m: AdminMetrics }) {
   const p = m.product
   return (
     <div>
+      <Section title="Activités enregistrées">
+        <Grid>
+          <Stat label="Total" value={fmt(p.activities.total)} />
+          <Stat label="7 j" value={fmt(p.activities.last7)} />
+          <Stat label="30 j" value={fmt(p.activities.last30)} />
+        </Grid>
+        <div style={{ height: 'var(--space-3)' }} />
+        <Spark points={p.activities.byDay} label="Activités / jour" />
+      </Section>
       {!p.enabled && <Empty text={t('admin.product.analyticsDisabled')} />}
       <Section title={t('admin.product.pagesAvgTime')}>
         <BarList rows={p.topPages.map(pg => ({ label: pg.path, value: pg.avgMs, right: t('admin.product.pageRight', { s: (pg.avgMs / 1000).toFixed(1), v: pg.views }) }))} />
@@ -234,8 +255,12 @@ function Engagement({ m }: { m: AdminMetrics }) {
         <Stat label="DAU" value={fmt(e.dau)} />
         <Stat label="WAU" value={fmt(e.wau)} />
         <Stat label="MAU" value={fmt(e.mau)} />
-        <Stat label={t('admin.engagement.new7')} value={fmt(e.newLast7)} />
       </Grid>
+      <Section title="Nouveaux inscrits"><Grid>
+        <Stat label="Aujourd'hui" value={fmt(e.newToday)} />
+        <Stat label={t('admin.engagement.new7')} value={fmt(e.newLast7)} />
+        <Stat label="30 jours" value={fmt(e.newLast30)} />
+      </Grid></Section>
       <Section title={t('admin.engagement.retention')}><Grid>
         <Stat label={t('admin.engagement.inactive30')} value={fmt(e.inactive30)} sub={t('admin.engagement.inactiveSub', { n: fmt(m.overview.totalUsers) })} />
       </Grid></Section>
@@ -255,6 +280,20 @@ function Integrations({ m }: { m: AdminMetrics }) {
       <Section title={t('admin.integrations.bySport')}>
         <BarList rows={i.sports.map(s => ({ label: s.sport, value: s.count }))} />
       </Section>
+    </div>
+  )
+}
+
+function Community({ m }: { m: AdminMetrics }) {
+  const c = m.community
+  return (
+    <div>
+      <Grid>
+        <Stat label="Membres" value={fmt(c.members)} />
+        <Stat label="Salons" value={fmt(c.channels)} />
+        <Stat label="Messages (30 j)" value={fmt(c.messages30)} />
+        <Stat label="MP privés (30 j)" value={fmt(c.dms30)} />
+      </Grid>
     </div>
   )
 }
@@ -321,6 +360,7 @@ export function AdminDashboard({ metrics, adminEmail, feedback }: { metrics: Adm
     { id: 'product', label: t('admin.tab.product'), subtitle: t('admin.tab.productSub'), icon: MousePointerClick, content: <Product m={metrics} /> },
     { id: 'engagement', label: 'Engagement', subtitle: t('admin.tab.engagementSub'), icon: Activity, content: <Engagement m={metrics} /> },
     { id: 'integrations', label: t('admin.tab.integrations'), short: t('admin.tab.integrationsShort'), subtitle: 'Syncs · sports', icon: Plug, content: <Integrations m={metrics} /> },
+    { id: 'community', label: 'Communauté', short: 'Commu.', subtitle: 'Membres · messages', icon: Users, content: <Community m={metrics} /> },
     { id: 'messages', label: 'Messages', subtitle: 'Retours des utilisateurs', icon: MessageCircle, content: <Messages rows={feedback} /> },
   ]
 

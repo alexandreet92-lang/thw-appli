@@ -103,6 +103,8 @@ export default function RecordPage() {
   const [yogaTitle, setYogaTitle] = useState('')
   // Course à pied : choix Dehors (GPS) / Tapis (séance guidée) avant de lancer.
   const [runChoiceOpen, setRunChoiceOpen] = useState(false)
+  const [runChoiceShown, setRunChoiceShown] = useState(false)
+  const [runChoiceClosing, setRunChoiceClosing] = useState(false)
   // Création manuelle d'activité (tous sports).
   const [manualOpen, setManualOpen] = useState(false)
   // DÉMO du guide : joue une vraie animation de séance live (chrono, blocs qui
@@ -190,6 +192,18 @@ export default function RecordPage() {
   const handleSelectSport = (s: SportId) => {
     setSport(s)
     setSportSheetOpen(false)
+  }
+
+  // Sur-page « choix course » : slide bas→haut à l'ouverture, haut→bas à la fermeture.
+  useEffect(() => {
+    if (!runChoiceOpen) { setRunChoiceShown(false); return }
+    setRunChoiceClosing(false)
+    const r = requestAnimationFrame(() => setRunChoiceShown(true))
+    return () => cancelAnimationFrame(r)
+  }, [runChoiceOpen])
+  const closeRunChoice = () => {
+    setRunChoiceClosing(true); setRunChoiceShown(false)
+    setTimeout(() => { setRunChoiceOpen(false); setRunChoiceClosing(false) }, 280)
   }
 
   const handleStart = () => {
@@ -662,8 +676,8 @@ export default function RecordPage() {
       {/* Course à pied : choix Dehors (GPS) ou Tapis (séance guidée) */}
       {runChoiceOpen && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 10040, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
-          <div onClick={() => setRunChoiceOpen(false)} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }} />
-          <div style={{ position: 'relative', width: '100%', maxWidth: 520, background: 'var(--bg-card)', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: '18px 18px calc(env(safe-area-inset-bottom) + 20px)', color: 'var(--text)' }}>
+          <div onClick={closeRunChoice} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', opacity: runChoiceShown && !runChoiceClosing ? 1 : 0, transition: 'opacity 0.26s ease' }} />
+          <div style={{ position: 'relative', width: '100%', maxWidth: 520, background: 'var(--bg-card)', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: '18px 18px calc(env(safe-area-inset-bottom) + 20px)', color: 'var(--text)', transform: runChoiceShown && !runChoiceClosing ? 'translateY(0)' : 'translateY(100%)', transition: 'transform 0.30s cubic-bezier(0.32,0.72,0,1)' }}>
             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 14 }}>
               <div style={{ width: 40, height: 4, borderRadius: 2, background: 'var(--border-mid)' }} />
             </div>

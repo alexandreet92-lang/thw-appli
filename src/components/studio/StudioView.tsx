@@ -3091,7 +3091,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                   <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-display)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{headTitle}</div>
                   <div style={{ fontSize: 11.5, color: 'var(--text-dim)' }}>{g.nodes.length} {t('w1i.block_many')} · {g.nodes.filter(n => n.kind === 'agent' || n.kind === 'merge').length} {t('w1i.agent_many')} · {g.edges.length} {t('w1i.link_many')}</div>
                 </div>
-                <button onClick={closeMockup} title={t('w1i.close')} aria-label={t('w1i.close')} style={iconBtn}>
+                <button onClick={requestCloseMockup} title={t('w1i.close')} aria-label={t('w1i.close')} style={iconBtn}>
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
                 </button>
               </div>

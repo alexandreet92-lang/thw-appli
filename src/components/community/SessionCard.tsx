@@ -76,17 +76,21 @@ function todayStr(): string {
 function SessionDetailOverlay({ session, onClose }: { session: SessionRef; onClose: () => void }) {
   const { t } = useI18n()
   const [mounted, setMounted] = useState(false)
+  const [shown, setShown] = useState(false)
+  const [closing, setClosing] = useState(false)
   const [busy, setBusy] = useState<null | 'copy' | 'plan'>(null)
   const [done, setDone] = useState<null | string>(null)
   const [planning, setPlanning] = useState(false)
   const [date, setDate] = useState(todayStr())
   const col = sportColor(session.sport)
 
-  useEffect(() => { setMounted(true) }, [])
+  useEffect(() => { setMounted(true); const r = requestAnimationFrame(() => setShown(true)); return () => cancelAnimationFrame(r) }, [])
+  const requestClose = () => { setClosing(true); setShown(false); setTimeout(onClose, 280) }
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') requestClose() }
     window.addEventListener('keydown', onKey); return () => window.removeEventListener('keydown', onKey)
-  }, [onClose])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   if (!mounted) return null
 
   async function doCopy() {
@@ -106,9 +110,9 @@ function SessionDetailOverlay({ session, onClose }: { session: SessionRef; onClo
   const meta = [sportLabel(session.sport), fmtDuration(session.durationMin), session.rpe ? `RPE ${session.rpe}` : null].filter(Boolean) as string[]
 
   const overlay = (
-    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'color-mix(in srgb, var(--bg) 55%, transparent)', backdropFilter: 'blur(2px)', zIndex: 1100, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+    <div onClick={requestClose} style={{ position: 'fixed', inset: 0, background: 'color-mix(in srgb, var(--bg) 55%, transparent)', backdropFilter: 'blur(2px)', zIndex: 1100, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', opacity: shown && !closing ? 1 : 0, transition: 'opacity 0.26s ease' }}>
       <div onClick={e => e.stopPropagation()} role="dialog" aria-modal="true"
-        style={{ width: '100%', maxWidth: 560, maxHeight: '88vh', display: 'flex', flexDirection: 'column', background: 'var(--bg-card)', borderTopLeftRadius: 'var(--r-lg)', borderTopRightRadius: 'var(--r-lg)', boxShadow: 'var(--shadow)', animation: 'scale-in 0.22s ease' }}>
+        style={{ width: '100%', maxWidth: 560, maxHeight: '88vh', display: 'flex', flexDirection: 'column', background: 'var(--bg-card)', borderTopLeftRadius: 'var(--r-lg)', borderTopRightRadius: 'var(--r-lg)', boxShadow: 'var(--shadow)', transform: shown && !closing ? 'translateY(0)' : 'translateY(100%)', transition: 'transform 0.30s cubic-bezier(0.32,0.72,0,1)' }}>
         {/* En-tête */}
         <div style={{ flexShrink: 0, padding: 'var(--space-5) var(--space-5) var(--space-3)' }}>
           <div style={{ width: 36, height: 4, borderRadius: 'var(--r-sm)', background: 'var(--border-mid)', margin: '0 auto var(--space-4)' }} />
@@ -125,7 +129,7 @@ function SessionDetailOverlay({ session, onClose }: { session: SessionRef; onClo
                 </div>
               ) : null}
             </div>
-            <button onClick={onClose} aria-label={t('w3e.close')} style={{ width: 28, height: 28, flexShrink: 0, border: 'none', borderRadius: '50%', background: 'transparent', color: 'var(--text-mid)', cursor: 'pointer', fontSize: 16 }}>×</button>
+            <button onClick={requestClose} aria-label={t('w3e.close')} style={{ width: 28, height: 28, flexShrink: 0, border: 'none', borderRadius: '50%', background: 'transparent', color: 'var(--text-mid)', cursor: 'pointer', fontSize: 16 }}>×</button>
           </div>
         </div>
 

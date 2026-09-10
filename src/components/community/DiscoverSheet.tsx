@@ -16,15 +16,19 @@ const FB = 'var(--font-body)', FD = 'var(--font-display)'
 export function DiscoverSheet({ onClose, onJoined }: { onClose: () => void; onJoined: (spaceId: string) => void }) {
   const { t } = useI18n()
   const [mounted, setMounted] = useState(false)
+  const [shown, setShown] = useState(false)
+  const [closing, setClosing] = useState(false)
   const [q, setQ] = useState('')
   const [items, setItems] = useState<DiscoverSpace[] | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
 
-  useEffect(() => { setMounted(true) }, [])
+  useEffect(() => { setMounted(true); const r = requestAnimationFrame(() => setShown(true)); return () => cancelAnimationFrame(r) }, [])
+  const requestClose = () => { setClosing(true); setShown(false); setTimeout(onClose, 280) }
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') requestClose() }
     window.addEventListener('keydown', onKey); return () => window.removeEventListener('keydown', onKey)
-  }, [onClose])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   // Recherche (débounce léger).
   useEffect(() => {
     let alive = true
@@ -48,9 +52,9 @@ export function DiscoverSheet({ onClose, onJoined }: { onClose: () => void; onJo
   }
 
   const sheet = (
-    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'color-mix(in srgb, var(--bg) 55%, transparent)', backdropFilter: 'blur(2px)', zIndex: 1000, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+    <div onClick={requestClose} style={{ position: 'fixed', inset: 0, background: 'color-mix(in srgb, var(--bg) 55%, transparent)', backdropFilter: 'blur(2px)', zIndex: 1000, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', opacity: shown && !closing ? 1 : 0, transition: 'opacity 0.26s ease' }}>
       <div onClick={e => e.stopPropagation()} role="dialog" aria-modal="true"
-        style={{ width: '100%', maxWidth: 520, maxHeight: '86vh', display: 'flex', flexDirection: 'column', background: 'var(--bg-card)', borderTopLeftRadius: 'var(--r-lg)', borderTopRightRadius: 'var(--r-lg)', padding: 'var(--space-5) var(--space-5) var(--space-8)', boxShadow: 'var(--shadow)', animation: 'scale-in 0.22s ease' }}>
+        style={{ width: '100%', maxWidth: 520, maxHeight: '86vh', display: 'flex', flexDirection: 'column', background: 'var(--bg-card)', borderTopLeftRadius: 'var(--r-lg)', borderTopRightRadius: 'var(--r-lg)', padding: 'var(--space-5) var(--space-5) var(--space-8)', boxShadow: 'var(--shadow)', transform: shown && !closing ? 'translateY(0)' : 'translateY(100%)', transition: 'transform 0.30s cubic-bezier(0.32,0.72,0,1)' }}>
         <div style={{ width: 36, height: 4, borderRadius: 'var(--r-sm)', background: 'var(--border-mid)', margin: '0 auto var(--space-4)' }} />
         <h2 style={{ fontFamily: FD, fontSize: 19, fontWeight: 600, color: 'var(--text)', margin: '0 0 var(--space-3)' }}>{t('w3e.search_group')}</h2>
         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: 'var(--r-sm)', padding: '0 var(--space-3)', marginBottom: 'var(--space-4)' }}>

@@ -33,6 +33,8 @@ export function CreateSpaceSheet({
 }) {
   const { t } = useI18n()
   const [mounted, setMounted] = useState(false)
+  const [shown, setShown] = useState(false)
+  const [closing, setClosing] = useState(false)
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [sport, setSport] = useState<CommunitySport | ''>('')
@@ -43,12 +45,14 @@ export function CreateSpaceSheet({
   const [error, setError] = useState<string | null>(null)
   const logoRef = useRef<HTMLInputElement>(null)
 
-  useEffect(() => { setMounted(true) }, [])
+  useEffect(() => { setMounted(true); const r = requestAnimationFrame(() => setShown(true)); return () => cancelAnimationFrame(r) }, [])
+  const requestClose = () => { setClosing(true); setShown(false); setTimeout(onClose, 280) }
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') requestClose() }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [onClose])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   if (!mounted) return null
 
@@ -76,13 +80,13 @@ export function CreateSpaceSheet({
   }
 
   const scrim = (
-    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'color-mix(in srgb, var(--bg) 55%, transparent)', backdropFilter: 'blur(2px)', zIndex: 1000, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+    <div onClick={requestClose} style={{ position: 'fixed', inset: 0, background: 'color-mix(in srgb, var(--bg) 55%, transparent)', backdropFilter: 'blur(2px)', zIndex: 1000, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', opacity: shown && !closing ? 1 : 0, transition: 'opacity 0.26s ease' }}>
       <div onClick={e => e.stopPropagation()} role="dialog" aria-modal="true"
-        style={{ width: '100%', maxWidth: 520, maxHeight: '88vh', overflowY: 'auto', background: 'var(--bg-card)', borderTopLeftRadius: 'var(--r-lg)', borderTopRightRadius: 'var(--r-lg)', padding: 'var(--space-6) var(--space-6) var(--space-8)', boxShadow: 'var(--shadow)', animation: 'scale-in 0.22s ease' }}>
+        style={{ width: '100%', maxWidth: 520, maxHeight: '88vh', overflowY: 'auto', background: 'var(--bg-card)', borderTopLeftRadius: 'var(--r-lg)', borderTopRightRadius: 'var(--r-lg)', padding: 'var(--space-6) var(--space-6) var(--space-8)', boxShadow: 'var(--shadow)', transform: shown && !closing ? 'translateY(0)' : 'translateY(100%)', transition: 'transform 0.30s cubic-bezier(0.32,0.72,0,1)' }}>
         <div style={{ width: 36, height: 4, borderRadius: 'var(--r-sm)', background: 'var(--border-mid)', margin: '0 auto var(--space-5)' }} />
 
         {!ent.canCreate ? (
-          <Upsell onClose={onClose} />
+          <Upsell onClose={requestClose} />
         ) : (
           <>
             <h2 style={{ fontFamily: FD, fontSize: 20, fontWeight: 600, color: 'var(--text)', margin: '0 0 var(--space-1)' }}>{t('w1g.createSpace')}</h2>
@@ -140,7 +144,7 @@ export function CreateSpaceSheet({
             {error && <p style={{ fontFamily: FB, fontSize: 12.5, color: 'var(--charge-hard)', margin: 'var(--space-2) 0 0' }}>{error}</p>}
 
             <div style={{ display: 'flex', gap: 'var(--space-2)', marginTop: 'var(--space-6)' }}>
-              <button onClick={onClose} style={{ flex: '0 0 auto', height: 44, padding: '0 var(--space-5)', border: 'none', borderRadius: 'var(--r-sm)', background: 'var(--surface-neutral)', color: 'var(--text-mid)', fontFamily: FB, fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}>{t('w1g.cancel')}</button>
+              <button onClick={requestClose} style={{ flex: '0 0 auto', height: 44, padding: '0 var(--space-5)', border: 'none', borderRadius: 'var(--r-sm)', background: 'var(--surface-neutral)', color: 'var(--text-mid)', fontFamily: FB, fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}>{t('w1g.cancel')}</button>
               <button onClick={() => void submit()} disabled={!name.trim() || busy}
                 style={{ flex: 1, height: 44, border: 'none', borderRadius: 'var(--r-sm)', background: 'var(--primary)', color: 'var(--on-primary)', fontFamily: FB, fontSize: 13.5, fontWeight: 600, cursor: name.trim() && !busy ? 'pointer' : 'default', opacity: name.trim() && !busy ? 1 : 0.6 }}>
                 {busy ? t('w1g.creating') : t('w1g.createSpaceBtn')}

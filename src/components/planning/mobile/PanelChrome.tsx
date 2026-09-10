@@ -97,32 +97,61 @@ function Lbl({ children }: { children: React.ReactNode }) {
 }
 const stepBtn: React.CSSProperties = { width: 40, height: 40, borderRadius: 10, border: '1px solid var(--se-rule)', background: 'var(--se-card)', color: 'var(--se-text)', fontSize: 20, cursor: 'pointer', flexShrink: 0 }
 
-export function PanelHeader({ p, titleSize = 21, padding = '14px 18px', bordered = true }: { p: SessionEditorPanelProps; titleSize?: number; padding?: string; bordered?: boolean }) {
+export function PanelHeader({ p, titleSize = 21, padding = '14px 18px', bordered = true, stacked = false }: { p: SessionEditorPanelProps; titleSize?: number; padding?: string; bordered?: boolean; stacked?: boolean }) {
   const { t } = useI18n()
   const [dupOpen, setDupOpen] = useState(false)
   const planCol = p.selPlan === 'A' ? PLAN_COLOR.A : PLAN_COLOR.B
+
+  const memoBtn = (
+    <button data-guide="builder-memo" type="button" onClick={p.onPrintMemo} aria-label={t('sed.printMemo')} title={t('sed.printMemo')}
+      style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6, height: 30, padding: '0 11px', borderRadius: 999, border: `1px solid ${p.sportAccent}`, background: 'transparent', color: p.sportAccent, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+      <IconPrinter size={15} /> Mémo
+    </button>
+  )
+  const dupBtn = p.onDuplicateRepeat && (
+    <div style={{ position: 'relative', flexShrink: 0 }}>
+      <button type="button" onClick={() => setDupOpen(o => !o)} aria-label={t('pch.duplicateSession')} title={t('pch.duplicateSession')}
+        style={{ display: 'flex', alignItems: 'center', gap: 6, height: 30, padding: '0 11px', borderRadius: 999, border: `1px solid ${p.sportAccent}`, background: dupOpen ? p.sportAccent : 'transparent', color: dupOpen ? '#fff' : p.sportAccent, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+        <IconCopy size={15} /> Dupliquer
+      </button>
+      {dupOpen && <DuplicatePopover accent={p.sportAccent} sport={p.sport} onApply={p.onDuplicateRepeat} onClose={() => setDupOpen(false)} />}
+    </div>
+  )
+  const planBadge = !p.reserveMode && <span style={{ flexShrink: 0, fontSize: 11.5, fontWeight: 700, color: planCol, border: `1px solid ${planCol}`, borderRadius: 999, padding: '3px 11px' }}>{t('planning.planPrefix')} {p.selPlan}</span>
+  const closeBtn = (
+    <button type="button" onClick={p.onClose} style={{ flexShrink: 0, width: 30, height: 30, borderRadius: '50%', border: '1px solid var(--se-rule)', background: 'transparent', color: 'var(--se-dim)', fontSize: 15, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
+  )
+  const titleInput = (
+    <input value={p.title} onChange={e => p.setTitle(e.target.value)} placeholder={`${SPORT_LABEL[p.sport]} ${p.trainingTypes.join('+')}`}
+      className="se-fr" style={{ flex: stacked ? undefined : 1, width: stacked ? '100%' : undefined, minWidth: 0, background: 'none', border: 'none', outline: 'none', color: 'var(--se-text)', fontSize: stacked ? 24 : titleSize, fontWeight: 600, padding: 0 }} />
+  )
+
+  // Mobile : titre sur SA PROPRE LIGNE, sous les boutons (Mémo/Dupliquer/Plan/✕)
+  // → assez de place pour lire et saisir le nom de la séance.
+  if (stacked) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding, flexShrink: 0, background: 'var(--se-bg)', borderBottom: bordered ? '1px solid var(--se-rule)' : 'none' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 14, fontWeight: 600, color: p.sportAccent, flexShrink: 0 }}>{SPORT_LABEL[p.sport]}</span>
+          <div style={{ flex: 1 }} />
+          {memoBtn}
+          {dupBtn}
+          {planBadge}
+          {closeBtn}
+        </div>
+        {titleInput}
+      </div>
+    )
+  }
+
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding, flexShrink: 0, background: 'var(--se-bg)', borderBottom: bordered ? '1px solid var(--se-rule)' : 'none' }}>
       <span style={{ fontSize: 14, fontWeight: 600, color: p.sportAccent, flexShrink: 0 }}>{SPORT_LABEL[p.sport]}</span>
-      <input value={p.title} onChange={e => p.setTitle(e.target.value)} placeholder={`${SPORT_LABEL[p.sport]} ${p.trainingTypes.join('+')}`}
-        className="se-fr" style={{ flex: 1, minWidth: 0, background: 'none', border: 'none', outline: 'none', color: 'var(--se-text)', fontSize: titleSize, fontWeight: 600, padding: 0 }} />
-      {/* Mémo imprimable — antisèche de la séance (une ligne par bloc / circuits). */}
-      <button data-guide="builder-memo" type="button" onClick={p.onPrintMemo} aria-label={t('sed.printMemo')} title={t('sed.printMemo')}
-        style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6, height: 30, padding: '0 11px', borderRadius: 999, border: `1px solid ${p.sportAccent}`, background: 'transparent', color: p.sportAccent, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
-        <IconPrinter size={15} /> Mémo
-      </button>
-      {/* Dupliquer — répétition de la séance (à côté de Mémo). */}
-      {p.onDuplicateRepeat && (
-        <div style={{ position: 'relative', flexShrink: 0 }}>
-          <button type="button" onClick={() => setDupOpen(o => !o)} aria-label={t('pch.duplicateSession')} title={t('pch.duplicateSession')}
-            style={{ display: 'flex', alignItems: 'center', gap: 6, height: 30, padding: '0 11px', borderRadius: 999, border: `1px solid ${p.sportAccent}`, background: dupOpen ? p.sportAccent : 'transparent', color: dupOpen ? '#fff' : p.sportAccent, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
-            <IconCopy size={15} /> Dupliquer
-          </button>
-          {dupOpen && <DuplicatePopover accent={p.sportAccent} sport={p.sport} onApply={p.onDuplicateRepeat} onClose={() => setDupOpen(false)} />}
-        </div>
-      )}
-      {!p.reserveMode && <span style={{ flexShrink: 0, fontSize: 11.5, fontWeight: 700, color: planCol, border: `1px solid ${planCol}`, borderRadius: 999, padding: '3px 11px' }}>{t('planning.planPrefix')} {p.selPlan}</span>}
-      <button type="button" onClick={p.onClose} style={{ flexShrink: 0, width: 30, height: 30, borderRadius: '50%', border: '1px solid var(--se-rule)', background: 'transparent', color: 'var(--se-dim)', fontSize: 15, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
+      {titleInput}
+      {memoBtn}
+      {dupBtn}
+      {planBadge}
+      {closeBtn}
     </div>
   )
 }

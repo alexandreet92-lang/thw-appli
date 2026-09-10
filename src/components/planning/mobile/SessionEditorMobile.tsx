@@ -33,7 +33,7 @@ export function SessionEditorMobile(p: SessionEditorPanelProps) {
         transform: shown ? 'translateY(0)' : 'translateY(100%)',
         transition: 'transform .32s cubic-bezier(.2,.8,.2,1)',
       }}>
-        <PanelHeader p={pc} padding={'calc(8px + env(safe-area-inset-top)) 16px 12px'} bordered={false} />
+        <PanelHeader p={pc} padding={'calc(8px + env(safe-area-inset-top)) 16px 12px'} bordered={false} stacked />
 
         {/* Corps scrollable — padding bas pour dégager les boutons flottants */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '8px 16px 96px', WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'] }}>

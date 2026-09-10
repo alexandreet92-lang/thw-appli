@@ -21,6 +21,7 @@ import {
 import { getPushState, enablePush, disablePush, type PushState } from '@/lib/push/client'
 import { ConnectorLogo, type ConnectorId } from '@/components/ai/ConnectorLogos'
 import SubscriptionEmailModal from '@/components/subscription/SubscriptionEmailModal'
+import PressPop from '@/components/ui/PressPop'
 
 export type SettingsSection =
   | 'profil' | 'instructions' | 'modele' | 'voix' | 'notifications'
@@ -175,7 +176,9 @@ export default function AISettingsModal({ open, initialSection = 'profil', onClo
     return () => clearTimeout(id)
   }, [errorAt])
 
-  useEffect(() => { if (open) { setSection(initialSection); setShowNav(false) } }, [open, initialSection])
+  // À l'ouverture sur mobile : on montre d'abord la LISTE des réglages (image 3).
+  // Choisir un réglage fait ensuite glisser sa sous-page (drill-down horizontal).
+  useEffect(() => { if (open) { setSection(initialSection); setShowNav(true) } }, [open, initialSection])
   useEffect(() => {
     if (open) { setMounted(true); const r = requestAnimationFrame(() => setShown(true)); return () => cancelAnimationFrame(r) }
     setShown(false)
@@ -307,8 +310,24 @@ export default function AISettingsModal({ open, initialSection = 'profil', onClo
     { group: t('w1a.navCompte'), items: [ { id: 'connecteurs', label: t('w1a.navConnecteurs') }, { id: 'abonnement', label: t('w1a.navAbonnement') } ] },
   ]
 
+  const sectionLabel = NAV.flatMap(g => g.items).find(it => it.id === section)?.label ?? t('w1a.parametres')
+  const sectionPane = (
+    <>
+      {section === 'profil' && <ProfilSection profile={profile} setProfile={setProfile} saveProfile={saveProfile} />}
+      {section === 'instructions' && <InstructionsSection value={instruction} setValue={setInstruction} save={saveInstruction} />}
+      {section === 'modele' && <ModeleSection value={defaultModel} onChange={saveModel} />}
+      {section === 'voix' && <VoixSection voice={voice} save={saveVoice} />}
+      {section === 'notifications' && <NotificationsSection prefs={prefs} globalNotif={globalNotif} pushState={pushState} setPushState={setPushState} patchPref={patchPref} setGlobal={setGlobal} />}
+      {section === 'agent_training' && <AgentTrainingSection agent={agent} save={saveAgent} />}
+      {section === 'agent_coach' && <AgentCoachSection agent={coachAgent} save={saveCoachAgent} />}
+      {section === 'agent_networks' && <div style={sectionTitleStyle}>{t('w1a.networksBientot')}</div>}
+      {section === 'studio' && <StudioSection />}
+      {section === 'connecteurs' && <ConnecteursSection />}
+      {section === 'abonnement' && <AbonnementSection />}
+    </>
+  )
   const nav = (
-    <div style={{ width: isWide ? 258 : '100%', flexShrink: 0, borderRight: isWide ? '1px solid var(--border)' : 'none', padding: isWide ? '16px 14px' : '10px 14px 20px', overflowY: 'auto', background: isWide ? GREY_PAGE : 'transparent' }}>
+    <div style={{ width: isWide ? 258 : '100%', flexShrink: 0, borderRight: isWide ? '1px solid var(--border)' : 'none', padding: isWide ? '16px 14px' : '10px 14px 20px', overflowY: isWide ? 'auto' : 'visible', background: isWide ? GREY_PAGE : 'transparent' }}>
       {NAV.map(g => (
         <div key={g.group} style={{ marginBottom: 18 }}>
           {/* Libellé de groupe — même typo que les réglages principaux. */}
@@ -344,39 +363,41 @@ export default function AISettingsModal({ open, initialSection = 'profil', onClo
         .thw-conn-row:hover { background: var(--bg-hover); }
       `}</style>
       <div onClick={e => e.stopPropagation()}
-        style={{ position: 'relative', width: '100%', maxWidth: 920, height: isWide ? '85vh' : '100%', background: GREY_PAGE, borderRadius: isWide ? 'var(--r-lg)' : 0, border: '1px solid var(--border)', overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 70px rgba(0,0,0,0.4)', transform: shown ? 'translateY(0)' : 'translateY(16px)', opacity: shown ? 1 : 0, transition: 'transform 0.28s cubic-bezier(0.32,0.72,0,1), opacity 0.28s ease' }}>
+        style={{ position: 'relative', width: '100%', maxWidth: 920, height: isWide ? '85vh' : '100%', background: GREY_PAGE, borderRadius: isWide ? 'var(--r-lg)' : 0, border: '1px solid var(--border)', overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 70px rgba(0,0,0,0.4)', transform: shown ? 'translateY(0)' : (isWide ? 'translateY(16px)' : 'translateY(100%)'), opacity: isWide ? (shown ? 1 : 0) : 1, transition: isWide ? 'transform 0.28s cubic-bezier(0.32,0.72,0,1), opacity 0.28s ease' : 'transform 0.32s cubic-bezier(0.32,0.72,0,1)' }}>
         {/* Header */}
         <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 12, padding: 'max(16px, env(safe-area-inset-top)) 20px 14px', borderBottom: '1px solid var(--border)' }}>
           {!isWide && !showNav && (
-            <button type="button" onClick={() => setShowNav(true)} aria-label={t('w1a.retour')} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text)', display: 'flex', padding: 4 }}>
+            <PressPop type="button" onClick={() => setShowNav(true)} aria-label={t('w1a.retour')} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text)', display: 'flex', padding: 4 }}>
               <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
-            </button>
+            </PressPop>
           )}
-          <div style={{ flex: 1, fontSize: 19, fontWeight: 600, color: 'var(--text)', fontFamily: 'var(--font-display)', letterSpacing: '-0.01em' }}>{t('w1a.parametres')}</div>
-          <button type="button" onClick={onClose} aria-label={t('w1a.fermer')} style={{ border: 'none', background: 'var(--bg-alt)', cursor: 'pointer', color: 'var(--text-mid)', width: 32, height: 32, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ flex: 1, fontSize: 19, fontWeight: 600, color: 'var(--text)', fontFamily: 'var(--font-display)', letterSpacing: '-0.01em' }}>{(!isWide && !showNav) ? sectionLabel : t('w1a.parametres')}</div>
+          <PressPop type="button" onClick={onClose} aria-label={t('w1a.fermer')} style={{ border: 'none', background: 'var(--bg-alt)', cursor: 'pointer', color: 'var(--text-mid)', width: 32, height: 32, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
-          </button>
+          </PressPop>
         </div>
 
-        {/* Body */}
-        <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
-          {(isWide || showNav) && nav}
-          {(isWide || !showNav) && (
-            <div style={{ flex: 1, overflowY: 'auto', padding: isWide ? '26px 32px' : '22px 20px', paddingBottom: 'calc(40px + env(safe-area-inset-bottom))' }}>
-              {section === 'profil' && <ProfilSection profile={profile} setProfile={setProfile} saveProfile={saveProfile} />}
-              {section === 'instructions' && <InstructionsSection value={instruction} setValue={setInstruction} save={saveInstruction} />}
-              {section === 'modele' && <ModeleSection value={defaultModel} onChange={saveModel} />}
-              {section === 'voix' && <VoixSection voice={voice} save={saveVoice} />}
-              {section === 'notifications' && <NotificationsSection prefs={prefs} globalNotif={globalNotif} pushState={pushState} setPushState={setPushState} patchPref={patchPref} setGlobal={setGlobal} />}
-              {section === 'agent_training' && <AgentTrainingSection agent={agent} save={saveAgent} />}
-              {section === 'agent_coach' && <AgentCoachSection agent={coachAgent} save={saveCoachAgent} />}
-              {section === 'agent_networks' && <div style={sectionTitleStyle}>{t('w1a.networksBientot')}</div>}
-              {section === 'studio' && <StudioSection />}
-              {section === 'connecteurs' && <ConnecteursSection />}
-              {section === 'abonnement' && <AbonnementSection />}
+        {/* Body — desktop : nav + contenu côte à côte. Mobile : deux couches qui
+            glissent horizontalement (liste ⇄ sous-page), effet drill-down. */}
+        {isWide ? (
+          <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
+            {nav}
+            <div style={{ flex: 1, overflowY: 'auto', padding: '26px 32px', paddingBottom: 'calc(40px + env(safe-area-inset-bottom))' }}>
+              {sectionPane}
             </div>
-          )}
-        </div>
+          </div>
+        ) : (
+          <div style={{ flex: 1, position: 'relative', minHeight: 0, overflow: 'hidden' }}>
+            {/* Couche LISTE */}
+            <div style={{ position: 'absolute', inset: 0, overflowY: 'auto', WebkitOverflowScrolling: 'touch', transform: showNav ? 'translateX(0)' : 'translateX(-22%)', opacity: showNav ? 1 : 0, transition: 'transform 0.32s cubic-bezier(0.32,0.72,0,1), opacity 0.26s ease', pointerEvents: showNav ? 'auto' : 'none' }}>
+              {nav}
+            </div>
+            {/* Couche SOUS-PAGE (glisse depuis la droite) */}
+            <div style={{ position: 'absolute', inset: 0, overflowY: 'auto', WebkitOverflowScrolling: 'touch', background: GREY_PAGE, padding: '22px 20px', paddingBottom: 'calc(40px + env(safe-area-inset-bottom))', transform: showNav ? 'translateX(100%)' : 'translateX(0)', transition: 'transform 0.32s cubic-bezier(0.32,0.72,0,1)', pointerEvents: showNav ? 'none' : 'auto' }}>
+              {sectionPane}
+            </div>
+          </div>
+        )}
 
         {/* Toast « Enregistré » */}
         <div aria-live="polite" style={{ position: 'absolute', bottom: 18, left: '50%', transform: `translateX(-50%) translateY(${savedAt ? 0 : 12}px)`, opacity: savedAt ? 1 : 0, pointerEvents: 'none', transition: 'opacity 0.25s, transform 0.25s', display: 'flex', alignItems: 'center', gap: 8, padding: '9px 15px', borderRadius: 999, background: 'var(--text)', color: 'var(--bg)', fontSize: 13, fontWeight: 600, fontFamily: FB, boxShadow: '0 8px 24px rgba(0,0,0,0.25)' }}>

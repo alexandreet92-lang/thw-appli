@@ -12408,6 +12408,9 @@ function PlusMenu({
   const [compNames, setCompNames] = useState<string[]>([])
   // 10 dernières photos de l'utilisateur (médias uploadés sur ses activités).
   const [recentPhotos, setRecentPhotos] = useState<string[]>([])
+  // Photos cochées dans la bande (sélection multiple) → gros bouton « Joindre N photo ».
+  const [selectedPhotos, setSelectedPhotos] = useState<string[]>([])
+  const togglePhoto = (url: string) => setSelectedPhotos(s => s.includes(url) ? s.filter(u => u !== url) : [...s, url])
   // Desktop : flyout latéral (style Claude) ouvert au survol d'une rubrique.
   // Porté vers document.body (position fixe) pour échapper à l'overflow:hidden
   // de la colonne chat qui sinon le coupe.
@@ -12739,14 +12742,22 @@ function PlusMenu({
               <Camera size={24} color="var(--text)" />
               <span style={photoTileLabel}>{t('aip.ui.camera')}</span>
             </button>
-            {recentPhotos.map((url, i) => (
-              <button key={i} onClick={() => { onPickPhoto(url); onClose() }} aria-label={`Photo ${i + 1}`}
-                style={{ flexShrink: 0, width: 102, height: 102, borderRadius: 18, padding: 0, border: 'none', background: 'var(--surface-neutral)', overflow: 'hidden', cursor: 'pointer' }}>
+            {recentPhotos.map((url, i) => {
+              const sel = selectedPhotos.includes(url)
+              return (
+              <button key={i} onClick={() => togglePhoto(url)} aria-label={`Photo ${i + 1}`} aria-pressed={sel}
+                style={{ position: 'relative', flexShrink: 0, width: 102, height: 102, borderRadius: 18, padding: 0, border: sel ? '2.5px solid #06B6D4' : 'none', background: 'var(--surface-neutral)', overflow: 'hidden', cursor: 'pointer' }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={url} alt="" loading="lazy" onError={() => setRecentPhotos(p => p.filter(u => u !== url))}
                   style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                {/* Pastille de sélection (✓) — coin haut-droit, façon Claude */}
+                <span style={{ position: 'absolute', top: 7, right: 7, width: 22, height: 22, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  background: sel ? '#06B6D4' : 'rgba(0,0,0,0.35)', border: sel ? 'none' : '1.5px solid rgba(255,255,255,0.9)', boxShadow: '0 1px 4px rgba(0,0,0,0.3)' }}>
+                  {sel && <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>}
+                </span>
               </button>
-            ))}
+              )
+            })}
           </div>
 
           {/* Groupe : fichiers */}
@@ -12822,6 +12833,18 @@ function PlusMenu({
               </span>
             </button>
           </div>
+
+          {/* Barre « Joindre N photo » — apparaît quand ≥1 photo est cochée (façon Claude) */}
+          {selectedPhotos.length > 0 && (
+            <div style={{ position: 'sticky', bottom: 0, zIndex: 5, padding: '10px 4px calc(6px + env(safe-area-inset-bottom, 0px))', background: 'linear-gradient(to top, var(--bg-card) 62%, transparent)' }}>
+              <PressPop popScale={1.03}
+                onClick={() => { const urls = selectedPhotos; setSelectedPhotos([]); urls.forEach(u => onPickPhoto(u)); onClose() }}
+                style={{ width: '100%', height: 54, borderRadius: 999, border: 'none', cursor: 'pointer', background: 'var(--text)', color: 'var(--bg)', fontFamily: 'DM Sans,sans-serif', fontSize: 16, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, boxShadow: '0 6px 20px rgba(0,0,0,0.22)' }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" /></svg>
+                {selectedPhotos.length > 1 ? `Joindre ${selectedPhotos.length} photos` : 'Joindre 1 photo'}
+              </PressPop>
+            </div>
+          )}
         </div>
       )}
 

@@ -33,6 +33,8 @@ const OpenWaterScreen  = dynamic(() => import('@/components/record/OpenWaterScre
 const HomeTrainerScreen = dynamic(() => import('@/components/record/ride/RideScreen'), { ssr: false })
 const TreadmillScreen  = dynamic(() => import('@/components/record/treadmill/TreadmillScreen'), { ssr: false })
 const ManualEntrySheet = dynamic(() => import('@/components/record/ManualEntrySheet'), { ssr: false })
+const SensorSheet      = dynamic(() => import('@/components/record/SensorSheet'),      { ssr: false })
+const GpsSettingsSheet = dynamic(() => import('@/components/record/GpsSettingsSheet'), { ssr: false })
 const PlannedLaunchSheet = dynamic(() => import('@/components/record/PlannedLaunchSheet'), { ssr: false })
 
 type View = 'home' | 'cycling' | 'running' | 'trail' | 'hiking' | 'mtb' | 'swimming' | 'rowing' | 'workout' | 'ski' | 'yoga' | 'padel' | 'openwater' | 'hometrainer' | 'treadmill'
@@ -71,6 +73,8 @@ export default function RecordPage() {
   const [view, setView] = useState<View>('home')
   const [sport, setSport] = useState<SportId>('cycling')
   const [sportSheetOpen, setSportSheetOpen] = useState(false)
+  const [sensorSheetOpen, setSensorSheetOpen] = useState(false)
+  const [gpsSheetOpen, setGpsSheetOpen] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
   const [activeLauncherSport, setActiveLauncherSport] = useState<'gym' | 'hyrox' | null>(null)
 
@@ -532,7 +536,7 @@ export default function RecordPage() {
               { key: 'sensor', label: t('record.pageAddSensorLabel'), sub: t('record.pageAddSensorSub'), icon: <><path d="M4 12h3l2-7 4 14 2-7h5"/></> },
               { key: 'gps',    label: t('record.pageGpsLabel'), sub: t('record.pageGpsSub'), icon: <><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></> },
             ] as const).map((row, i) => (
-              <button key={row.key} onClick={() => setToast(t('record.pageComingSoon'))} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '13px 14px', background: 'transparent', border: 'none', borderTop: i > 0 ? '1px solid var(--border)' : 'none', cursor: 'pointer', textAlign: 'left' }}>
+              <button key={row.key} onClick={() => { if (row.key === 'sensor') setSensorSheetOpen(true); else setGpsSheetOpen(true) }} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '13px 14px', background: 'transparent', border: 'none', borderTop: i > 0 ? '1px solid var(--border)' : 'none', cursor: 'pointer', textAlign: 'left' }}>
                 <span style={{ width: 32, height: 32, borderRadius: 9, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-card)', color: 'var(--text-mid)' }}>
                   <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">{row.icon}</svg>
                 </span>
@@ -553,6 +557,9 @@ export default function RecordPage() {
         onSelect={handleSelectSport}
         selectedSport={sport}
       />
+
+      {sensorSheetOpen && <SensorSheet isDark={isDark} onClose={() => setSensorSheetOpen(false)} />}
+      {gpsSheetOpen && <GpsSettingsSheet isDark={isDark} onClose={() => setGpsSheetOpen(false)} />}
 
       {routeCreatorOpen && (
         <RouteCreator

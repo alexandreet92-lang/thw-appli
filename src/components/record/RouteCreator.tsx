@@ -113,6 +113,12 @@ export default function RouteCreator({ onClose, onLoadRoute, isDark, initialView
   // Panneau bas : un clic sur la poignée = déplié ↔ replié (pas de redimensionnement libre)
   const [panelOpen, setPanelOpen] = useState(true)
 
+  // Sur-page plein écran : slide bas→haut à l'ouverture, haut→bas à la fermeture.
+  const [shown, setShown] = useState(false)
+  const [closing, setClosing] = useState(false)
+  useEffect(() => { const r = requestAnimationFrame(() => setShown(true)); return () => cancelAnimationFrame(r) }, [])
+  const requestClose = useCallback(() => { setClosing(true); setShown(false); setTimeout(onClose, 300) }, [onClose])
+
   const SPORT_CHIPS: { id: string; Icon: typeof IconBike; label: string }[] = [
     { id: 'cycling', Icon: IconBike, label: t('record.routeCreatorSportCycling') },
     { id: 'mtb', Icon: IconMountain, label: t('record.routeCreatorSportMtb') },
@@ -222,7 +228,7 @@ export default function RouteCreator({ onClose, onLoadRoute, isDark, initialView
     // Édition d'un parcours existant → mise à jour ; sinon création.
     if (editingId) await supabase.from('routes').update(payload).eq('id', editingId)
     else await supabase.from('routes').insert(payload)
-    setShowSave(false); onClose()
+    setShowSave(false); requestClose()
   }
 
   // Bouton flottant : plein, blanc le jour / noir la nuit (tokens), rond.
@@ -240,7 +246,7 @@ export default function RouteCreator({ onClose, onLoadRoute, isDark, initialView
     : []
 
   // Sortir de la création : retour à la liste si on y est entré par là, sinon fermer.
-  const exitCreate = initialView === 'library' ? () => setView('library') : onClose
+  const exitCreate = initialView === 'library' ? () => setView('library') : requestClose
 
   if (view === 'library') return createPortal(
     <RouteLibrary isDark={isDark} onClose={onClose}
@@ -251,9 +257,8 @@ export default function RouteCreator({ onClose, onLoadRoute, isDark, initialView
   )
 
   const ui = (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 9999, fontFamily: 'var(--font-body)', animation: 'slideUp 300ms cubic-bezier(0.16,1,0.3,1)' }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 9999, fontFamily: 'var(--font-body)', transform: shown && !closing ? 'translateY(0)' : 'translateY(100%)', transition: 'transform 300ms cubic-bezier(0.16,1,0.3,1)' }}>
       <style>{`
-        @keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
         /* Curseur en petite croix sur la carte (placement précis des points), façon Strava. */
         .leaflet-container, .leaflet-container .leaflet-grab { cursor: crosshair !important; }
         .leaflet-container.leaflet-dragging, .leaflet-container.leaflet-dragging .leaflet-grab { cursor: crosshair !important; }

@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useI18n } from '@/lib/i18n'
 
@@ -16,6 +16,11 @@ export default function SegmentSaveForm({ defaultName = '', sport, onSave, onClo
   const [name, setName] = useState(defaultName)
   const [isPublic, setIsPublic] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [shown, setShown] = useState(false)
+  const [closing, setClosing] = useState(false)
+
+  useEffect(() => { const r = requestAnimationFrame(() => setShown(true)); return () => cancelAnimationFrame(r) }, [])
+  const requestClose = () => { setClosing(true); setShown(false); setTimeout(onClose, 280) }
 
   const bg = isDark ? '#0A0A0A' : '#fff'
   const text = isDark ? '#fff' : '#0A0A0A'
@@ -39,12 +44,11 @@ export default function SegmentSaveForm({ defaultName = '', sport, onSave, onClo
       display: 'flex', flexDirection: 'column',
       fontFamily: 'DM Sans, sans-serif',
       paddingTop: 'env(safe-area-inset-top)',
-      animation: 'slideUp 280ms cubic-bezier(0.16,1,0.3,1)',
+      transform: shown && !closing ? 'translateY(0)' : 'translateY(100%)',
+      transition: 'transform 280ms cubic-bezier(0.16,1,0.3,1)',
     }}>
-      <style>{`@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}`}</style>
-
       <div style={{ height: 52, flexShrink: 0, display: 'flex', alignItems: 'center', padding: '0 16px', borderBottom: `1px solid ${sep}`, position: 'relative' }}>
-        <button onClick={onClose} style={{ width: 36, height: 36, borderRadius: '50%', background: btnBg, border: 'none', color: text, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <button onClick={requestClose} style={{ width: 36, height: 36, borderRadius: '50%', background: btnBg, border: 'none', color: text, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
         </button>
         <span style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', fontSize: 15, fontWeight: 600 }}>{t('shared.createSegment')}</span>

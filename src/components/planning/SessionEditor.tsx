@@ -7747,7 +7747,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                     })
                     setIsDirty(false)
                     setShowCloseModal(false)
-                    onClose()
+                    requestClose()
                   } catch (e) { console.error('[Save+Close]', e) }
                   finally { setSaving(false) }
                 }} style={{
@@ -7758,7 +7758,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                   {saving ? '…' : t('sed.saveAndQuit')}
                 </button>
                 {/* Quitter sans enregistrer */}
-                <button onClick={() => { setShowCloseModal(false); onClose() }} style={{
+                <button onClick={() => { setShowCloseModal(false); requestClose() }} style={{
                   width: '100%', padding: '12px 16px', borderRadius: 8,
                   background: 'transparent', border: '1px solid #EF4444',
                   color: '#EF4444', fontSize: 14, fontWeight: 600, cursor: 'pointer',
@@ -7793,7 +7793,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
           }
           const doDuplicate = (dayIndex: number, ws: string) => {
             onDuplicate(dayIndex, { ...session, id: '', title: session.title + ` ${t('sed.copySuffix')}`, dayIndex, weekStart: ws }, ws)
-            setShowDuplicateMenu(false); setDupDate(''); onClose()
+            setShowDuplicateMenu(false); setDupDate(''); requestClose()
           }
           const fmtPicked = (() => { try { return new Date(pickedDate + 'T00:00:00').toLocaleDateString(currentLocale(), { weekday: 'long', day: 'numeric', month: 'long' }) } catch { return pickedDate } })()
           return (

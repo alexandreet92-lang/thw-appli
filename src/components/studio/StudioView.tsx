@@ -309,6 +309,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
   const micBaseRef = useRef('')                                             // texte du champ avant dictée (streaming live)
   const [previewSel, setPreviewSel] = useState<{ msgId: string; nodeId: string } | null>(null)  // bulle touchée dans une maquette
   const [mockupMsgId, setMockupMsgId] = useState<string | null>(null)      // sur-page maquette ouverte
+  const [mockClosing, setMockClosing] = useState(false)                    // sur-page maquette : animation de sortie
   // Recommandations « pour toi » : l'IA propose des systèmes prêts à lancer.
   const [recos, setRecos] = useState<{ title: string; why: string; graph: StudioGraph }[]>([])
   const [recosLoading, setRecosLoading] = useState(false)
@@ -1596,7 +1597,10 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
         @keyframes studio_pulse { 0%,100% { opacity: 0.55; } 50% { opacity: 1; } }
         @keyframes studio_slide_r { from { transform: translateX(100%); } to { transform: translateX(0); } }
         @keyframes studio_slide_up { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        @keyframes studio_slide_r_out { from { transform: translateX(0); } to { transform: translateX(100%); } }
+        @keyframes studio_slide_up_out { from { transform: translateY(0); } to { transform: translateY(100%); } }
         @keyframes studio_fade { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes studio_fade_out { from { opacity: 1; } to { opacity: 0; } }
         .studio-shimmer { background: linear-gradient(90deg, var(--text-dim) 0%, var(--text) 40%, var(--text) 60%, var(--text-dim) 100%); background-size: 200% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: studio_shimmer 1.6s linear infinite; }
         @keyframes studio_shimmer { to { background-position: -200% 0; } }
         .studio-node { transition: box-shadow 0.18s ease, transform 0.18s ease, border-color 0.18s ease; }
@@ -3051,8 +3055,10 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
         const sel = previewSel?.msgId === mockKey ? g.nodes.find(n => n.id === previewSel!.nodeId) : null
         const sub = (n: StudioNode) => n.kind === 'source' ? SOURCE_LABEL[n.sourceKey ?? 'activities'] : n.kind === 'action' ? ACTION_LABEL[n.actionKey ?? 'planning_save'] : KIND_LABEL[n.kind]
         const closeMockup = () => { setMockupMsgId(null); setRecoMockup(null); setPreviewSel(null) }
+        // Fermeture animée : glisse la sur-page hors écran avant de la démonter.
+        const requestCloseMockup = () => { setMockClosing(true); setTimeout(() => { closeMockup(); setMockClosing(false) }, 300) }
         const doConfirm = isChat ? () => { confirmPlan(chatMk!.id); closeMockup() } : () => { const r = recoMockup!; closeMockup(); void newSystem(r.title, r.graph) }
-        const doDecline = isChat ? () => { declinePlan(chatMk!.id); closeMockup() } : closeMockup
+        const doDecline = isChat ? () => { declinePlan(chatMk!.id); requestCloseMockup() } : requestCloseMockup
         // « Ce que tu recevras » : décrit, sans appel IA, la sortie de chaque
         // nœud terminal (le rendu concret du système).
         const outLabel = (n: StudioNode): string => {
@@ -3068,12 +3074,12 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
         }
         const outputs = terminalNodeIds(g).map(id => g.nodes.find(n => n.id === id)).filter((n): n is StudioNode => !!n)
         const panelStyle: React.CSSProperties = isMobile
-          ? { position: 'absolute', left: 0, right: 0, bottom: 0, top: 0, background: 'var(--bg)', display: 'flex', flexDirection: 'column', borderTopLeftRadius: 20, borderTopRightRadius: 20, animation: 'studio_slide_up 0.28s cubic-bezier(0.22,0.61,0.36,1)', boxShadow: '0 -12px 40px rgba(0,0,0,0.22)' }
-          : { position: 'absolute', top: 0, right: 0, bottom: 0, width: 'min(760px, 92%)', background: 'var(--bg)', display: 'flex', flexDirection: 'column', animation: 'studio_slide_r 0.3s cubic-bezier(0.22,0.61,0.36,1)', boxShadow: '-18px 0 50px rgba(0,0,0,0.24)', borderLeft: '1px solid var(--border)' }
+          ? { position: 'absolute', left: 0, right: 0, bottom: 0, top: 0, background: 'var(--bg)', display: 'flex', flexDirection: 'column', borderTopLeftRadius: 20, borderTopRightRadius: 20, animation: mockClosing ? 'studio_slide_up_out 0.28s cubic-bezier(0.22,0.61,0.36,1) forwards' : 'studio_slide_up 0.28s cubic-bezier(0.22,0.61,0.36,1)', boxShadow: '0 -12px 40px rgba(0,0,0,0.22)' }
+          : { position: 'absolute', top: 0, right: 0, bottom: 0, width: 'min(760px, 92%)', background: 'var(--bg)', display: 'flex', flexDirection: 'column', animation: mockClosing ? 'studio_slide_r_out 0.3s cubic-bezier(0.22,0.61,0.36,1) forwards' : 'studio_slide_r 0.3s cubic-bezier(0.22,0.61,0.36,1)', boxShadow: '-18px 0 50px rgba(0,0,0,0.24)', borderLeft: '1px solid var(--border)' }
         return (
-          <div style={{ position: 'absolute', inset: 0, zIndex: 32, display: 'flex', justifyContent: 'flex-end', animation: 'studio_fade 0.2s ease' }}>
+          <div style={{ position: 'absolute', inset: 0, zIndex: 32, display: 'flex', justifyContent: 'flex-end', animation: mockClosing ? 'studio_fade_out 0.28s ease forwards' : 'studio_fade 0.2s ease' }}>
             {/* Voile : clic hors panneau = fermeture */}
-            <div onClick={closeMockup} style={{ position: 'absolute', inset: 0, background: 'rgba(15,23,42,0.42)', backdropFilter: 'blur(2px)', WebkitBackdropFilter: 'blur(2px)' }} />
+            <div onClick={requestCloseMockup} style={{ position: 'absolute', inset: 0, background: 'rgba(15,23,42,0.42)', backdropFilter: 'blur(2px)', WebkitBackdropFilter: 'blur(2px)' }} />
             <div onClick={e => e.stopPropagation()} style={panelStyle}>
               {/* Poignée mobile */}
               {isMobile && <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 8 }}><span style={{ width: 40, height: 4, borderRadius: 999, background: 'var(--border-mid)' }} /></div>}

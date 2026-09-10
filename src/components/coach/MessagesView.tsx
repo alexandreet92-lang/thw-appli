@@ -7,7 +7,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { getCoachThreads, getAthleteThreads, type Thread } from '@/lib/coach/messages'
 import { MessageThread } from './MessageThread'
-import { GroupChat, NewGroupModal } from './GroupChat'
+import { GroupChat } from './GroupChat'
 import { listMyGroups, type GroupSummary } from '@/lib/messages/groups'
 import { useI18n, currentLocale } from '@/lib/i18n'
 
@@ -21,7 +21,6 @@ export function MessagesView({ role, title, subtitle, initialThread, initialGrou
   const [loading, setLoading] = useState(true)
   const [selId, setSelId] = useState<string | null>(null)
   const [selGroup, setSelGroup] = useState<string | null>(null)
-  const [showNew, setShowNew] = useState(false)
   const [isNarrow, setIsNarrow] = useState(false)
 
   const load = useCallback(async () => {
@@ -64,48 +63,22 @@ export function MessagesView({ role, title, subtitle, initialThread, initialGrou
 
   const sel = threads.find(t => t.otherId === selId) ?? null
   const selectedGroup = groups.find(g => g.id === selGroup) ?? null
-  const realGroups = groups.filter(g => !g.isDm)
   const dms = groups.filter(g => g.isDm)
   const card: React.CSSProperties = { borderRadius: 16, border: '1px solid var(--border)', background: 'var(--bg-card)' }
-  const secLabel: React.CSSProperties = { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 13px 6px', fontSize: 10.5, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-dim)' }
   const fmtGroupWhen = (d: string | null) => d ? fmtWhen(d, t) : ''
 
-  const groupsSection = (
-    <div style={{ flexShrink: 0, borderBottom: '1px solid var(--border)' }}>
-      <div style={secLabel}>
-        <span>{t('w3d.groups')}</span>
-        <button onClick={() => setShowNew(true)} aria-label={t('w3d.new_group')} style={{ width: 22, height: 22, borderRadius: 7, border: 'none', background: 'color-mix(in srgb, var(--primary) 14%, transparent)', color: 'var(--primary)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14" /></svg>
-        </button>
-      </div>
-      {realGroups.length === 0 ? (
-        <div style={{ fontSize: 12, color: 'var(--text-dim)', padding: '2px 13px 12px' }}>{t('w3d.create_group_hint')}</div>
-      ) : realGroups.map(g => (
-        <button key={g.id} onClick={() => { setSelGroup(g.id); setSelId(null) }}
-          style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '9px 13px', border: 'none', background: selGroup === g.id ? 'var(--bg-card2)' : 'transparent', cursor: 'pointer', textAlign: 'left', width: '100%', fontFamily: 'var(--font-body)' }}>
-          <span style={{ width: 38, height: 38, borderRadius: 11, background: 'color-mix(in srgb, var(--primary) 13%, transparent)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></svg>
-          </span>
-          <span style={{ flex: 1, minWidth: 0 }}>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{g.name}</span>
-              {g.lastAt && <span style={{ fontSize: 10.5, color: 'var(--text-dim)', flexShrink: 0 }}>{fmtGroupWhen(g.lastAt)}</span>}
-            </span>
-            <span style={{ display: 'block', fontSize: 12, color: 'var(--text-dim)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{g.lastBody || (g.memberCount > 1 ? t('w3d.members_count', { n: g.memberCount }) : t('w3d.member_count', { n: g.memberCount }))}</span>
-          </span>
-        </button>
-      ))}
-    </div>
-  )
-
-  // Messages directs 1-1 (DM) — affichés comme des personnes, pas des groupes.
-  const dmSection = dms.length > 0 && (
-    <div style={{ flexShrink: 0, borderBottom: '1px solid var(--border)' }}>
-      <div style={secLabel}><span>{t('w1g.privateMessages')}</span></div>
+  // Liste des personnes : DM 1-1 (communauté) + fils coach/athlète, sans le bloc
+  // « Groupes ». On appuie sur une personne → ouvre la conversation.
+  const empty = !loading && dms.length === 0 && threads.length === 0
+  const listPane = (
+    <div style={{ ...card, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+      {loading && <p style={{ fontSize: 13, color: 'var(--text-dim)', padding: 16 }}>{t('w3d.loading')}</p>}
+      {empty && <p style={{ fontSize: 13, color: 'var(--text-dim)', padding: 20, textAlign: 'center' }}>{t('w3d.start_conversation')}</p>}
+      {/* Messages directs 1-1 (personnes) */}
       {dms.map(g => (
         <button key={g.id} onClick={() => { setSelGroup(g.id); setSelId(null) }}
-          style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '9px 13px', border: 'none', background: selGroup === g.id ? 'var(--bg-card2)' : 'transparent', cursor: 'pointer', textAlign: 'left', width: '100%', fontFamily: 'var(--font-body)' }}>
-          <span style={{ width: 38, height: 38, borderRadius: '50%', background: 'var(--bg-alt)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0, color: 'var(--text-dim)', fontWeight: 800 }}>
+          style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '11px 13px', border: 'none', borderBottom: '1px solid var(--border)', background: selGroup === g.id ? 'var(--bg-alt)' : 'transparent', cursor: 'pointer', textAlign: 'left', width: '100%', fontFamily: 'var(--font-body)' }}>
+          <span style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--bg-alt)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0, color: 'var(--text-dim)', fontWeight: 800 }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             {g.dmAvatar ? <img src={g.dmAvatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : g.name.slice(0, 1).toUpperCase()}
           </span>
@@ -118,20 +91,7 @@ export function MessagesView({ role, title, subtitle, initialThread, initialGrou
           </span>
         </button>
       ))}
-    </div>
-  )
-
-  const listPane = (
-    <div style={{ ...card, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-      {groupsSection}
-      {dmSection}
-      {loading ? (
-        <p style={{ fontSize: 13, color: 'var(--text-dim)', padding: 16 }}>{t('w3d.loading')}</p>
-      ) : threads.length === 0 ? (
-        <p style={{ fontSize: 13, color: 'var(--text-dim)', padding: 20, textAlign: 'center' }}>
-          {role === 'coach' ? t('w3d.no_athlete_invite') : t('w3d.no_coach_add')}
-        </p>
-      ) : threads.map(th => (
+      {threads.map(th => (
         <button key={th.otherId} data-guide="coach-thread" onClick={() => { setSelId(th.otherId); setSelGroup(null) }}
           style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '11px 13px', border: 'none', borderBottom: '1px solid var(--border)', background: sel?.otherId === th.otherId ? 'var(--bg-alt)' : 'transparent', cursor: 'pointer', textAlign: 'left', width: '100%', fontFamily: 'var(--font-body)' }}>
           <span style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--bg-alt)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0, color: 'var(--text-dim)', fontWeight: 800, position: 'relative' }}>
@@ -189,14 +149,22 @@ export function MessagesView({ role, title, subtitle, initialThread, initialGrou
       </div>
       <p style={{ fontSize: 12.5, color: 'var(--text-dim)', margin: '0 0 16px', paddingLeft: onBack ? 44 : 0 }}>{subtitle}</p>
       {isNarrow ? (
-        <div style={{ flex: 1, minHeight: 0 }}>{rightPane ?? listPane}</div>
+        // Mobile : liste ⇄ conversation qui glissent horizontalement (droite→gauche
+        // à l'ouverture, gauche→droite au retour).
+        <div style={{ flex: 1, minHeight: 0, position: 'relative', overflow: 'hidden' }}>
+          <div style={{ position: 'absolute', inset: 0, minHeight: 0, overflowY: 'auto', transform: rightPane ? 'translateX(-22%)' : 'translateX(0)', opacity: rightPane ? 0 : 1, transition: 'transform 0.32s cubic-bezier(0.32,0.72,0,1), opacity 0.26s ease', pointerEvents: rightPane ? 'none' : 'auto' }}>
+            {listPane}
+          </div>
+          <div style={{ position: 'absolute', inset: 0, minHeight: 0, display: 'flex', flexDirection: 'column', transform: rightPane ? 'translateX(0)' : 'translateX(100%)', transition: 'transform 0.32s cubic-bezier(0.32,0.72,0,1)', pointerEvents: rightPane ? 'auto' : 'none' }}>
+            {rightPane}
+          </div>
+        </div>
       ) : (
         <div style={{ flex: 1, minHeight: 0, display: 'grid', gridTemplateColumns: '320px 1fr', gap: 14 }}>
           <div style={{ minHeight: 0, overflowY: 'auto' }}>{listPane}</div>
           {rightPane ?? <div style={{ ...card, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-dim)', fontSize: 14 }}>{t('w3d.choose_conversation')}</div>}
         </div>
       )}
-      {showNew && <NewGroupModal asAdmin={role === 'coach'} onClose={() => setShowNew(false)} onCreated={(id) => { setShowNew(false); setSelGroup(id); setSelId(null); void loadGroups() }} />}
     </div>
   )
 }

@@ -12,10 +12,12 @@ import type { CommunityChannel } from '@/types/community'
 
 const FB = 'var(--font-body)', FD = 'var(--font-display)'
 
-export function ChannelContextMenu({ channel, isPinned, canManage, onInvite, onTogglePin, onEdit, onDuplicate, onDelete, onClose }: {
+export function ChannelContextMenu({ channel, isPinned, canManage, spaceName, spaceAvatarUrl, onInvite, onTogglePin, onEdit, onDuplicate, onDelete, onClose }: {
   channel: CommunityChannel
   isPinned: boolean
   canManage: boolean
+  spaceName?: string | null
+  spaceAvatarUrl?: string | null
   onInvite: () => void
   onTogglePin: () => void
   onEdit: () => void
@@ -38,18 +40,29 @@ export function ChannelContextMenu({ channel, isPinned, canManage, onInvite, onT
   return createPortal(
     <div style={{ position: 'fixed', inset: 0, zIndex: 15400, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
       <div onClick={requestClose} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)', opacity: shown && !closing ? 1 : 0, transition: 'opacity 0.24s ease' }} />
+      {/* Vraie SUR-PAGE (façon Discord) : panneau plein qui monte du bas et
+          redescend à la fermeture. Logo du groupe + nom du salon en tête. */}
       <div role="dialog" aria-modal="true" style={{
         position: 'relative', width: '100%', maxWidth: 560, maxHeight: 'calc(100dvh - 40px)', overflowY: 'auto',
-        background: 'transparent',
+        background: 'var(--bg-card)', borderTopLeftRadius: 24, borderTopRightRadius: 24, boxShadow: '0 -10px 44px rgba(0,0,0,0.34)',
         transform: shown && !closing ? 'translateY(0)' : 'translateY(100%)', transition: 'transform 0.30s cubic-bezier(0.32,0.72,0,1)',
-        padding: '0 var(--space-3) calc(var(--space-3) + env(safe-area-inset-bottom, 0px))',
+        padding: '0 var(--space-3) calc(var(--space-4) + env(safe-area-inset-bottom, 0px))',
       }}>
-        {/* En-tête : avatar/nom du salon */}
-        <div style={{ display: 'flex', justifyContent: 'center', padding: 'var(--space-2) 0' }}>
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '10px 0 4px' }}>
           <span style={{ width: 38, height: 4, borderRadius: 2, background: 'var(--border-mid)' }} />
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', padding: '0 var(--space-2) var(--space-3)' }}>
-          <span style={{ fontFamily: FD, fontSize: 20, fontWeight: 700, color: 'var(--text)' }}>{channel.kind === 'voice' ? '🔊' : '#'}{channel.name}</span>
+        {/* En-tête : logo du groupe + nom du salon (façon Discord) */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', padding: '8px var(--space-2) 16px' }}>
+          <span style={{ width: 46, height: 46, borderRadius: 14, flexShrink: 0, overflow: 'hidden', background: 'var(--surface-neutral)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border)' }}>
+            {spaceAvatarUrl
+              // eslint-disable-next-line @next/next/no-img-element
+              ? <img src={spaceAvatarUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              : <span style={{ fontFamily: FD, fontSize: 20, fontWeight: 700, color: 'var(--text-mid)' }}>{(spaceName || 'C').trim().charAt(0).toUpperCase()}</span>}
+          </span>
+          <span style={{ minWidth: 0 }}>
+            <span style={{ display: 'block', fontFamily: FD, fontSize: 21, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{channel.kind === 'voice' ? '🔊 ' : '#'}{channel.name}</span>
+            {spaceName && <span style={{ display: 'block', fontFamily: FB, fontSize: 12.5, color: 'var(--text-dim)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{spaceName}</span>}
+          </span>
         </div>
 
         {/* Groupe 1 : Inviter / Épingler */}
@@ -89,7 +102,7 @@ export function ChannelContextMenu({ channel, isPinned, canManage, onInvite, onT
 }
 
 function Group({ children }: { children: React.ReactNode }) {
-  return <div style={{ background: 'var(--bg-card)', borderRadius: 'var(--r-md)', overflow: 'hidden', marginBottom: 'var(--space-2)', boxShadow: 'var(--shadow)' }}>{children}</div>
+  return <div style={{ background: 'var(--bg-card2, var(--surface-neutral))', borderRadius: 'var(--r-md)', overflow: 'hidden', marginBottom: 'var(--space-3)', border: '1px solid var(--border)' }}>{children}</div>
 }
 
 function Row({ icon, label, onClick, danger }: { icon: React.ReactNode; label: string; onClick: () => void; danger?: boolean }) {

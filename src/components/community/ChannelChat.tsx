@@ -18,6 +18,7 @@ import { listSpaceMembers } from '@/lib/community/spaces'
 import { usePresenceCount, usePresenceIds } from '@/lib/community/presence'
 import { MembersSheet } from './MembersSheet'
 import { useSpeechToText } from '@/hooks/useSpeechToText'
+import { useKeyboardInset } from '@/hooks/useKeyboardInset'
 import { myId } from '@/lib/community/shared'
 import { reportMessage, getSpaceSettings, hasAcceptedRules, acceptRules } from '@/lib/community/moderation'
 import { enrichActivity } from '@/lib/community/activities'
@@ -86,6 +87,7 @@ export function ChannelChat({
   onBack?: () => void
 }) {
   const { t } = useI18n()
+  const kbInset = useKeyboardInset()
   const [messages, setMessages] = useState<CommunityMessage[]>([])
   const [loading, setLoading] = useState(true)
   const [input, setInput] = useState('')
@@ -566,8 +568,8 @@ export function ChannelChat({
         </div>
       </div>
 
-      {/* Composer */}
-      <div style={{ flexShrink: 0, padding: 'var(--space-2) var(--space-5) var(--space-4)', background: 'var(--bg-card)', position: 'relative' }}>
+      {/* Composer — sur mobile, remonte JUSTE au-dessus du clavier (visualViewport). */}
+      <div style={{ flexShrink: 0, padding: 'var(--space-2) var(--space-5) var(--space-4)', paddingBottom: kbInset ? kbInset + 10 : undefined, background: 'var(--bg-card)', position: 'relative', transition: 'padding-bottom 0.18s ease' }}>
         {notice && <p style={{ margin: '0 0 var(--space-2)', fontFamily: FB, fontSize: 12, color: 'var(--text-mid)' }}>{notice}</p>}
 
         {/* Autocomplétion mentions */}

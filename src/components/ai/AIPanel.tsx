@@ -21,6 +21,7 @@ import { openUpgrade } from '@/components/subscription/UpgradeModal'
 import { parseAdvancedSpec, AdvancedChartCard } from '@/components/ai/AdvancedChart'
 import PressPop from '@/components/ui/PressPop'
 import { listContinuationKeyDown } from '@/lib/ui/listContinuation'
+import { useKeyboardInset } from '@/hooks/useKeyboardInset'
 import { createPortal } from 'react-dom'
 import { CheckCircle2, XCircle, ChevronDown, ChevronRight, ArrowLeft, Zap, Globe, Paperclip, Camera, Plug, Brain, Activity, Map as MapIcon, MapPin, Dumbbell, Apple, Target, HelpCircle, Search, Flag, Moon, Calendar, BookOpen, Bike, Footprints, Waves } from 'lucide-react'
 import HybridNetworksPanel, { type HNConv } from './HybridNetworksPanel'
@@ -20752,6 +20753,7 @@ export default function AIPanel({
   // Fermeture ANIMÉE (slide inverse) puis démontage → mouvement dans les 2 sens.
   const closeStudio   = () => { setStudioClosing(true);   setTimeout(() => { setStudioOpen(false);   setStudioClosing(false) }, 300) }
   const closeRoutines = () => { setRoutinesClosing(true); setTimeout(() => { setRoutinesOpen(false); setRoutinesClosing(false) }, 300) }
+  const kbInset = useKeyboardInset()
   const [input,       setInput]       = useState('')
   // Génération PARALLÈLE : on suit l'état par conversation (plusieurs chats
   // peuvent tourner en même temps). `generatingConvs` = ids en cours de
@@ -24327,6 +24329,9 @@ export default function AIPanel({
           {activeAgent !== 'networks' && <>
           <div className="aip-input-footer" style={{
             padding: '10px 16px calc(14px + env(safe-area-inset-bottom, 0px))',
+            // Mobile : remonte JUSTE au-dessus du clavier (visualViewport).
+            paddingBottom: kbInset ? kbInset + 12 : undefined,
+            transition: 'padding-bottom 0.18s ease',
             borderTop: showEmpty && !activeFlow ? 'none' : '1px solid var(--ai-border)',
             flexShrink: 0, background: 'var(--ai-bg)',
             position: 'relative',

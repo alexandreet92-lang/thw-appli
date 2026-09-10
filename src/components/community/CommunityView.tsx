@@ -421,6 +421,7 @@ export function CommunityView() {
       {menuChannel && (
         <ChannelContextMenu
           channel={menuChannel} isPinned={pinned.has(menuChannel.id)} canManage={canManage}
+          spaceName={space?.name} spaceAvatarUrl={space?.iconUrl}
           onClose={() => setMenuChannel(null)}
           onInvite={() => setInviteOpen(true)}
           onTogglePin={() => void doTogglePin(menuChannel.id)}

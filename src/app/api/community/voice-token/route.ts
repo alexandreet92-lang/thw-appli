@@ -87,8 +87,13 @@ export async function POST(req: Request) {
       name = ((p?.full_name as string) || (p?.first_name as string) || 'Membre').trim()
     } catch { /* fallback */ }
 
-    const token = await mintToken(key, secret, user.id, name, room)
-    return NextResponse.json({ token, url: wsUrl(url), room, identity: user.id })
+    // Identité UNIQUE par connexion (et non l'user.id brut) : LiveKit refuse deux
+    // participants de même identité (DUPLICATE_IDENTITY) → un même compte ouvert
+    // sur 2 appareils (ordi + téléphone) se faisait éjecter. On garde l'user.id en
+    // préfixe (traçabilité) + un suffixe aléatoire par session.
+    const identity = `${user.id}__${Math.random().toString(36).slice(2, 10)}`
+    const token = await mintToken(key, secret, identity, name, room)
+    return NextResponse.json({ token, url: wsUrl(url), room, identity })
   } catch (e) {
     console.error('[community/voice-token] error:', e)
     return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 })

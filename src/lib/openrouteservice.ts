@@ -5,6 +5,8 @@ const ORS_PROFILES: Record<string, string> = {
   mtb:     'cycling-mountain',
   trail:   'foot-hiking',
   hiking:  'foot-hiking',
+  running: 'foot-walking',
+  ski:     'foot-hiking',
 }
 
 const SURFACE_TYPES: Record<number, string> = {

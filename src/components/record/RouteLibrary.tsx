@@ -111,7 +111,7 @@ export default function RouteLibrary({ onClose, onUseRoute, onCreate, onEditRout
   const [closing, setClosing] = useState(false)
   useEffect(() => { const r = requestAnimationFrame(() => setShown(true)); return () => cancelAnimationFrame(r) }, [])
   const requestClose = () => { setClosing(true); setShown(false); setTimeout(onClose, 280) }
-  const SPORT_LABELS: Record<string, string> = { cycling: t('record.routeLibrarySportCycling'), mtb: t('record.routeLibrarySportMtb'), trail: t('record.routeLibrarySportTrail'), hiking: t('record.routeLibrarySportHiking') }
+  const SPORT_LABELS: Record<string, string> = { cycling: t('record.routeLibrarySportCycling'), mtb: t('record.routeLibrarySportMtb'), trail: t('record.routeLibrarySportTrail'), hiking: t('record.routeLibrarySportHiking'), running: t('record.routeLibrarySportRunning'), ski: t('record.routeLibrarySportSki') }
   const sportLabel = (s: string) => SPORT_LABELS[s] ?? s
   const [routes, setRoutes] = useState<Route[]>([])
   const [showPublic, setShowPublic] = useState(false)

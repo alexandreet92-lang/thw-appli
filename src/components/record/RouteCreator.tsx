@@ -156,6 +156,8 @@ export default function RouteCreator({ onClose, onLoadRoute, isDark, initialView
   // Mobile : feuille de sélection du sport (bas → haut) + menu ⋯ (supprimer / inverser).
   const [sportPickerOpen, setSportPickerOpen] = useState(false)
   const [moreOpen, setMoreOpen] = useState(false)
+  // Confirmation de sortie quand un tracé non enregistré est en cours.
+  const [confirmExit, setConfirmExit] = useState(false)
 
   // Sur-page plein écran : slide bas→haut à l'ouverture, haut→bas à la fermeture.
   const [shown, setShown] = useState(false)
@@ -341,6 +343,9 @@ export default function RouteCreator({ onClose, onLoadRoute, isDark, initialView
   const exitCreate = initialView === 'library'
     ? () => { setEditorShown(false); setTimeout(() => setView('library'), 300) }
     : requestClose
+  // Flèche retour : si un tracé est en cours (≥ 2 points), on demande d'abord si
+  // l'utilisateur veut l'enregistrer ou quitter sans enregistrer.
+  const requestExit = () => { if (waypoints.length >= 2) setConfirmExit(true); else exitCreate() }
 
   if (view === 'library') return createPortal(
     <RouteLibrary isDark={isDark} onClose={onClose}
@@ -415,7 +420,7 @@ export default function RouteCreator({ onClose, onLoadRoute, isDark, initialView
 
       {/* Haut gauche : flèche retour + (desktop) outils d'édition + Enregistrer (bleu) */}
       <div style={{ position: 'absolute', top: 'calc(env(safe-area-inset-top) + 10px)', left: 12, zIndex: 1000, display: 'flex', alignItems: 'center', gap: 10 }}>
-        <button onClick={exitCreate} aria-label={t('record.routeCreatorClose')} style={fb}>
+        <button onClick={requestExit} aria-label={t('record.routeCreatorClose')} style={fb}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
         </button>
         {!isNarrow && (
@@ -563,6 +568,12 @@ export default function RouteCreator({ onClose, onLoadRoute, isDark, initialView
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6"/></svg>
             </button>
           </div>
+          {/* Profil altimétrique du parcours en cours de tracé */}
+          {elevationProfile.length > 1 && (
+            <div style={{ margin: '0 -4px 14px' }}>
+              <ElevationChart data={elevationProfile} surfaces={surfaces} height={120} isDark={isDark} snappedPoints={snappedPoints} onPositionChange={setScrubPosition} />
+            </div>
+          )}
           <button onClick={() => setShowSave(true)} disabled={!canSave}
             style={{ width: '100%', height: 52, borderRadius: 15, border: 'none', cursor: canSave ? 'pointer' : 'default',
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 9, fontFamily: 'var(--font-body)', fontSize: 16, fontWeight: 700,
@@ -618,6 +629,29 @@ export default function RouteCreator({ onClose, onLoadRoute, isDark, initialView
       {sportPickerOpen && (
         <SportPickerSheet title={t('record.routeSportPickerTitle')} sports={SPORT_CHIPS} current={sport}
           onPick={pickSport} onClose={() => setSportPickerOpen(false)} isDark={isDark} />
+      )}
+
+      {/* Confirmation de sortie : enregistrer ou quitter sans enregistrer */}
+      {confirmExit && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 20005, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+          <div onClick={() => setConfirmExit(false)} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)' }} />
+          <div style={{ position: 'relative', width: '100%', maxWidth: 460, background: 'var(--bg-card)', borderTopLeftRadius: 22, borderTopRightRadius: 22, padding: '20px 20px calc(20px + env(safe-area-inset-bottom))', boxShadow: '0 -10px 40px rgba(0,0,0,0.3)', fontFamily: 'var(--font-body)' }}>
+            <p style={{ margin: '0 0 6px', fontSize: 18, fontWeight: 800, color: 'var(--text)', fontFamily: 'var(--font-display)' }}>{t('record.routeExitTitle')}</p>
+            <p style={{ margin: '0 0 18px', fontSize: 13.5, color: 'var(--text-dim)', lineHeight: 1.45 }}>{t('record.routeExitSub')}</p>
+            <button onClick={() => { setConfirmExit(false); setShowSave(true) }}
+              style={{ width: '100%', height: 50, borderRadius: 14, border: 'none', background: SAVE_BLUE, color: '#fff', fontSize: 15.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)', marginBottom: 10 }}>
+              {t('record.routeExitSave')}
+            </button>
+            <button onClick={() => { setConfirmExit(false); exitCreate() }}
+              style={{ width: '100%', height: 50, borderRadius: 14, border: '1px solid var(--border)', background: 'transparent', color: '#EF4444', fontSize: 15.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)', marginBottom: 10 }}>
+              {t('record.routeExitDiscard')}
+            </button>
+            <button onClick={() => setConfirmExit(false)}
+              style={{ width: '100%', height: 46, borderRadius: 14, border: 'none', background: 'transparent', color: 'var(--text-dim)', fontSize: 14.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
+              {t('record.routeExitCancel')}
+            </button>
+          </div>
+        </div>
       )}
 
       {showSave && <RouteSaveForm routeName={routeName} onChangeName={setRouteName} onSave={handleSave} onClose={() => setShowSave(false)} isDark={isDark} initialType={editingType}

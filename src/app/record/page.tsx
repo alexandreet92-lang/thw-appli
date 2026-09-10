@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
-import SportSelector, { type SportId, getSportIcon, getSportLabel } from '@/components/record/SportSelector'
+import SportSelector, { type SportId } from '@/components/record/SportSelector'
 import Toast from '@/components/record/Toast'
 import { useI18n } from '@/lib/i18n'
 import type { WorkoutExercise } from '@/types/workout'
@@ -118,7 +118,9 @@ export default function RecordPage() {
   const sheetTouchStartY = useRef(0)
   const sheetBaseH = useRef(0)
   const sheetDragged = useRef(false)
-  const collapsedH = () => (activeRoute && activeRoute.elevation_profile.length > 1 ? 238 : 132)
+  // Replié : grand profil altimétrique (≈2× plus haut) quand un parcours est
+  // chargé, sinon une feuille basse (les boutons Play/Parcours flottent au-dessus).
+  const collapsedH = () => (activeRoute && activeRoute.elevation_profile.length > 1 ? 248 : 96)
   const expandedH = () => Math.min(typeof window !== 'undefined' ? window.innerHeight * 0.82 : 560, 560)
   function sheetDragStart(e: React.TouchEvent) {
     const el = sheetRef.current; if (!el) return
@@ -145,11 +147,15 @@ export default function RecordPage() {
   const [liveShare, setLiveShare]   = useState(false)
   const [audioAlerts, setAudioAlerts] = useState(false)
   const [autoPause, setAutoPause]   = useState(false)
+  // Seuil de vitesse (km/h) sous lequel l'enregistrement se met en pause auto.
+  const [autoPauseSpeed, setAutoPauseSpeed] = useState(3)
   useEffect(() => {
     try {
       setLiveShare(localStorage.getItem('thw-rec-liveshare') === 'true')
       setAudioAlerts(localStorage.getItem('thw-rec-audio') === 'true')
       setAutoPause(localStorage.getItem('thw-rec-autopause') === 'true')
+      const sp = parseInt(localStorage.getItem('thw-rec-autopause-speed') ?? '3', 10)
+      if ([1, 3, 5, 8].includes(sp)) setAutoPauseSpeed(sp)
     } catch { /* ignore */ }
   }, [])
   const persist = (key: string, v: boolean) => { try { localStorage.setItem(key, String(v)) } catch { /* ignore */ } }
@@ -409,14 +415,40 @@ export default function RecordPage() {
           (sidebar) du shell. Le retour réapparaît dans l'écran « créer un
           itinéraire » (RouteCreator), qui remplace le hamburger. */}
 
-      {/* Panel bas — sheet glissable (replié : 3 boutons · déplié : paramètres) */}
+      {/* Boutons flottants sur la carte — JUSTE au-dessus de la feuille (profil).
+          Démarrer (bleu) + Parcours (pour changer de tracé). Plus de bouton sport.
+          Masqués quand la feuille est dépliée (les réglages occupent l'écran). */}
+      {!sheetExpanded && (
+        <div style={{ position: 'fixed', left: 0, right: 0, bottom: `calc(${collapsedH()}px + 16px)`, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 22, pointerEvents: 'none' }}>
+          <button
+            data-guide="rec-start"
+            onClick={() => { if (sheetDragged.current) return; handleStart() }}
+            aria-label={t('record.pageStart')}
+            style={{ pointerEvents: 'auto', width: 66, height: 66, borderRadius: '50%', background: 'linear-gradient(135deg, #06B6D4, #2563EB)', boxShadow: '0 6px 22px rgba(6,182,212,0.5)', border: '3px solid var(--bg-card)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          >
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="#fff"><path d="M8 5v14l11-7z"/></svg>
+          </button>
+          <button
+            onClick={() => { if (sheetDragged.current) return; setRouteCreatorOpen(true) }}
+            aria-label={t('record.pageRoutes')}
+            style={{ pointerEvents: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}
+          >
+            <span style={{ width: 52, height: 52, borderRadius: '50%', background: 'var(--bg-card)', border: '1px solid var(--border)', boxShadow: '0 3px 14px rgba(0,0,0,0.22)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text)' }}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M8.5 6H15a3 3 0 0 1 0 6H9a3 3 0 0 0 0 6h6.5"/></svg>
+            </span>
+            <span style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--text)', textShadow: '0 1px 4px var(--bg-card)' }}>{t('record.pageRoutes')}</span>
+          </button>
+        </div>
+      )}
+
+      {/* Panel bas — sheet glissable (replié : profil · déplié : paramètres) */}
       <div
         ref={sheetRef}
         style={{
           position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 999,
           height: sheetExpanded
             ? 'min(82dvh, 560px)'
-            : (activeRoute && activeRoute.elevation_profile.length > 1 ? 238 : 132),
+            : (activeRoute && activeRoute.elevation_profile.length > 1 ? 248 : 96),
           background: 'var(--bg-card)',
           borderTop: '1px solid var(--border)',
           backdropFilter: 'blur(12px)',
@@ -441,87 +473,13 @@ export default function RecordPage() {
             <div style={{ width: 40, height: 4, borderRadius: 2, background: 'var(--border-mid)' }} />
           </div>
 
-          {/* Profil altimétrique si parcours chargé */}
+          {/* Profil altimétrique — GRAND (≈2×) — si parcours chargé. Les boutons
+              Play / Parcours flottent au-dessus de la feuille (sur la carte). */}
           {activeRoute && activeRoute.elevation_profile.length > 1 && (
-            <div style={{ padding: '4px 16px 0' }}>
-              <ElevationChart data={activeRoute.elevation_profile} height={90} isDark={isDark} />
+            <div style={{ padding: '2px 12px 8px' }}>
+              <ElevationChart data={activeRoute.elevation_profile} height={190} isDark={isDark} />
             </div>
           )}
-
-          {/* 3 boutons — toujours visibles */}
-          <div style={{
-            height: 100,
-            display: 'flex', alignItems: 'center', justifyContent: 'space-around',
-            padding: '0 24px',
-          }}>
-          {/* GAUCHE — Sport */}
-          <button
-            data-guide="rec-sport"
-            onClick={() => { if (sheetDragged.current) return; setSportSheetOpen(true) }}
-            style={{
-              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
-              background: 'transparent', border: 'none', cursor: 'pointer',
-              fontFamily: 'DM Sans, sans-serif',
-            }}
-          >
-            <span style={{
-              width: 52, height: 52, borderRadius: '50%',
-              background: 'var(--bg-card2)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              color: 'var(--text)',
-            }}>
-              {getSportIcon(sport)}
-            </span>
-            <span style={{ fontSize: 12, color: 'var(--text-mid)' }}>
-              {getSportLabel(sport)}
-            </span>
-          </button>
-
-          {/* CENTRE — Démarrer */}
-          <button
-            data-guide="rec-start"
-            onClick={() => { if (sheetDragged.current) return; handleStart() }}
-            aria-label={t('record.pageStart')}
-            style={{
-              width: 64, height: 64, borderRadius: '50%',
-              background: 'linear-gradient(135deg, #06B6D4, #2563EB)',
-              boxShadow: '0 4px 20px rgba(6,182,212,0.40)',
-              border: 'none', cursor: 'pointer',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              transition: 'transform 0.12s',
-            }}
-            onMouseDown={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'scale(0.95)' }}
-            onMouseUp={e   => { (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1)' }}
-          >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="#fff">
-              <path d="M8 5v14l11-7z"/>
-            </svg>
-          </button>
-
-          {/* DROITE — Parcours (ouvre la liste des parcours enregistrés) */}
-          <button
-            onClick={() => { if (sheetDragged.current) return; setRouteCreatorOpen(true) }}
-            style={{
-              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
-              background: 'transparent', border: 'none', cursor: 'pointer',
-              fontFamily: 'DM Sans, sans-serif',
-            }}
-          >
-            <span style={{
-              width: 52, height: 52, borderRadius: '50%',
-              background: 'var(--bg-card2)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              color: 'var(--text)',
-            }}>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="6" cy="6" r="2.5"/>
-                <circle cx="18" cy="18" r="2.5"/>
-                <path d="M8.5 6H15a3 3 0 0 1 0 6H9a3 3 0 0 0 0 6h6.5"/>
-              </svg>
-            </span>
-            <span style={{ fontSize: 12, color: 'var(--text-mid)' }}>{t('record.pageRoutes')}</span>
-          </button>
-          </div>
         </div>
 
         {/* Paramètres de la séance — révélés en dépliant le sheet */}
@@ -549,6 +507,24 @@ export default function RecordPage() {
                 </button>
               </div>
             ))}
+            {/* Seuil de pause auto : l'enregistrement se met en pause sous cette vitesse. */}
+            {autoPause && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '11px 14px', borderTop: '1px solid var(--border)' }}>
+                <span style={{ flex: 1, fontSize: 12.5, color: 'var(--text-mid)' }}>{t('record.pageAutoPauseThreshold')}</span>
+                <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                  {[1, 3, 5, 8].map(v => {
+                    const on = autoPauseSpeed === v
+                    return (
+                      <button key={v} onClick={() => { setAutoPauseSpeed(v); try { localStorage.setItem('thw-rec-autopause-speed', String(v)) } catch { /* ignore */ } }}
+                        style={{ minWidth: 40, height: 30, padding: '0 8px', borderRadius: 9, border: `1px solid ${on ? 'var(--primary)' : 'var(--border)'}`, background: on ? 'var(--primary)' : 'var(--bg-card)', color: on ? 'var(--on-primary)' : 'var(--text)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}>
+                        {v}
+                      </button>
+                    )
+                  })}
+                  <span style={{ alignSelf: 'center', fontSize: 11.5, color: 'var(--text-dim)', marginLeft: 2 }}>km/h</span>
+                </div>
+              </div>
+            )}
           </div>
 
           <div style={{ background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 16, overflow: 'hidden', marginTop: 12 }}>

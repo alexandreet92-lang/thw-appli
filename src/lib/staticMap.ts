@@ -50,5 +50,8 @@ export function staticRouteMapUrl(
     overlays.unshift(`pin-s+ef4444(${e.lng.toFixed(5)},${e.lat.toFixed(5)})`)
     overlays.unshift(`pin-s+10b981(${s.lng.toFixed(5)},${s.lat.toFixed(5)})`)
   }
-  return `https://api.mapbox.com/styles/v1/mapbox/outdoors-v12/static/${overlays.join(',')}/auto/${w}x${h}@2x?access_token=${TOKEN}&padding=26`
+  // padding généreux : Mapbox cadre sur les COORDONNÉES du tracé/pins, or la
+  // bulle des repères (pin) dépasse vers le haut → un padding trop faible la
+  // rognait. 46 px laisse le tracé + les repères entièrement visibles.
+  return `https://api.mapbox.com/styles/v1/mapbox/outdoors-v12/static/${overlays.join(',')}/auto/${w}x${h}@2x?access_token=${TOKEN}&padding=46`
 }

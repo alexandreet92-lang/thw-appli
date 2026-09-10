@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import TrainingTypeSelector from './TrainingTypeSelector'
 import { RUNNING_TYPES } from '@/types/running'
 import { TRAIL_TYPES } from '@/types/trail'
@@ -137,6 +137,11 @@ export default function SessionSaveForm({ sport, startedAt, onBack, onSave, isDa
   const [photos, setPhotos]               = useState<File[]>([])
   const [visibility, setVisibility]       = useState<Visibility>('public')
   const [saving, setSaving]               = useState(false)
+  const [shown, setShown]                 = useState(false)
+  const [closing, setClosing]             = useState(false)
+
+  useEffect(() => { const r = requestAnimationFrame(() => setShown(true)); return () => cancelAnimationFrame(r) }, [])
+  const requestClose = () => { setClosing(true); setShown(false); setTimeout(onBack, 320) }
 
   const handleSave = async () => {
     if (saving) return
@@ -151,9 +156,8 @@ export default function SessionSaveForm({ sport, startedAt, onBack, onSave, isDa
   const cardStyle: React.CSSProperties = { background: t.surface, border: `1px solid ${t.border}`, borderRadius: 18, padding: 20, boxShadow: t.shadow }
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 10005, background: t.bg, color: t.text, display: 'flex', flexDirection: 'column', fontFamily: 'DM Sans, sans-serif', paddingTop: 'env(safe-area-inset-top)', animation: 'slideFromRight 320ms cubic-bezier(0.16,1,0.3,1)' }}>
-      <style>{`@keyframes slideFromRight{from{transform:translateX(100%)}to{transform:translateX(0)}}
-        input[type=range].g{-webkit-appearance:none;appearance:none;height:8px;border-radius:999px;outline:none;width:100%}
+    <div style={{ position: 'fixed', inset: 0, zIndex: 10005, background: t.bg, color: t.text, display: 'flex', flexDirection: 'column', fontFamily: 'DM Sans, sans-serif', paddingTop: 'env(safe-area-inset-top)', transform: shown && !closing ? 'translateX(0)' : 'translateX(100%)', transition: 'transform 320ms cubic-bezier(0.16,1,0.3,1)' }}>
+      <style>{`input[type=range].g{-webkit-appearance:none;appearance:none;height:8px;border-radius:999px;outline:none;width:100%}
         input[type=range].g::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:22px;height:22px;border-radius:50%;background:#fff;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,0.3)}
         input[type=range].g::-moz-range-thumb{width:22px;height:22px;border-radius:50%;background:#fff;cursor:pointer;border:none}
         .ssf-body{max-width:1120px;width:100%;margin:0 auto;padding:26px 24px 130px;box-sizing:border-box}
@@ -166,7 +170,7 @@ export default function SessionSaveForm({ sport, startedAt, onBack, onSave, isDa
 
       {/* Header : retour (→ résumé) + titre + Enregistrer */}
       <div style={{ height: 54, flexShrink: 0, display: 'flex', alignItems: 'center', padding: '0 16px', borderBottom: `1px solid ${t.separator}`, position: 'relative' }}>
-        <button onClick={onBack} style={{ width: 36, height: 36, borderRadius: '50%', background: t.btnBg, border: 'none', color: t.text, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <button onClick={requestClose} style={{ width: 36, height: 36, borderRadius: '50%', background: t.btnBg, border: 'none', color: t.text, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
         </button>
         <span style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', fontSize: 16, fontWeight: 700 }}>{tr('record.sessionSaveHeader')}</span>

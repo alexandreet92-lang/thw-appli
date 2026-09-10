@@ -108,6 +108,8 @@ export function VoiceConversation({ onTurn, onClose }: {
 }) {
   const { t } = useI18n()
   const [mounted, setMounted] = useState(false)
+  const [shown, setShown] = useState(false)
+  const [closing, setClosing] = useState(false)
   const [phase, setPhase] = useState<Phase>('listening')
   const [supported, setSupported] = useState(true)
   const [muted, setMuted] = useState(false)
@@ -169,6 +171,8 @@ export function VoiceConversation({ onTurn, onClose }: {
   const setSpokenBoth = (n: number) => { spokenCharsRef.current = n; setSpokenChars(n) }
 
   useEffect(() => { setMounted(true); setSettings(loadSettings()) }, [])
+  useEffect(() => { const r = requestAnimationFrame(() => setShown(true)); return () => cancelAnimationFrame(r) }, [])
+  const requestClose = () => { setClosing(true); setShown(false); setTimeout(onClose, 280) }
   useEffect(() => { settingsRef.current = settings }, [settings])
 
   // Persistance des réglages
@@ -579,7 +583,7 @@ export function VoiceConversation({ onTurn, onClose }: {
         position: 'fixed', inset: 0, zIndex: 1500, overflow: 'hidden',
         display: 'flex', flexDirection: 'column',
         background: 'var(--bg)', color: 'var(--text)',
-        animation: 'vc_in 0.24s ease',
+        opacity: shown && !closing ? 1 : 0, transition: 'opacity 0.24s ease',
       }}
     >
       {/* ── Halos ambiants superposés (crossfade selon l'état) ── */}
@@ -705,7 +709,7 @@ export function VoiceConversation({ onTurn, onClose }: {
           </button>
 
           {/* Fermer */}
-          <button onClick={onClose} aria-label={t('ai.endConversation')} style={circleBtn('dark')}>
+          <button onClick={requestClose} aria-label={t('ai.endConversation')} style={circleBtn('dark')}>
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
           </button>
         </div>
@@ -760,6 +764,10 @@ function SettingsSheet({ settings, onChange, onClose }: {
   onClose: () => void
 }) {
   const { t } = useI18n()
+  const [shown, setShown] = useState(false)
+  const [closing, setClosing] = useState(false)
+  useEffect(() => { const r = requestAnimationFrame(() => setShown(true)); return () => cancelAnimationFrame(r) }, [])
+  const requestClose = () => { setClosing(true); setShown(false); setTimeout(onClose, 280) }
   const STYLE_LABEL: Record<StyleKey, string> = { douce: t('ai.voiceStyleSoft'), neutre: t('ai.voiceStyleNeutral'), energique: t('ai.voiceStyleEnergetic') }
   const STYLE_DESC: Record<StyleKey, string> = {
     douce: t('ai.voiceStyleSoftDesc'),
@@ -785,11 +793,11 @@ function SettingsSheet({ settings, onChange, onClose }: {
     <>
       {/* Scrim grisé qui assombrit la conversation derrière */}
       <div
-        onClick={onClose}
+        onClick={requestClose}
         style={{
           position: 'absolute', inset: 0, zIndex: 5,
           background: 'color-mix(in srgb, var(--text) 32%, transparent)',
-          animation: 'vc_scrim 0.22s ease',
+          opacity: shown && !closing ? 1 : 0, transition: 'opacity 0.22s ease',
         }}
       />
       {/* Feuille opaque */}
@@ -799,14 +807,15 @@ function SettingsSheet({ settings, onChange, onClose }: {
         background: 'var(--bg-card)', borderRadius: '24px 24px 0 0',
         boxShadow: '0 -16px 50px color-mix(in srgb, var(--text) 22%, transparent)',
         padding: '10px 20px calc(24px + env(safe-area-inset-bottom,0px))',
-        animation: 'vc_sheet 0.30s cubic-bezier(0.32,0.72,0,1)',
+        transform: shown && !closing ? 'translateY(0)' : 'translateY(100%)',
+        transition: 'transform 0.30s cubic-bezier(0.32,0.72,0,1)',
       }}>
         {/* Poignée */}
         <div style={{ width: 38, height: 5, borderRadius: 3, background: 'var(--border)', margin: '0 auto 14px' }} />
 
         {/* En-tête : ✕ à gauche, titre centré */}
         <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 20, minHeight: 40 }}>
-          <button onClick={onClose} aria-label={t('ai.close')} style={{
+          <button onClick={requestClose} aria-label={t('ai.close')} style={{
             position: 'absolute', left: 0, width: 40, height: 40, borderRadius: '50%', border: 'none', cursor: 'pointer',
             background: 'var(--bg-card2)', color: 'var(--text)', display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>

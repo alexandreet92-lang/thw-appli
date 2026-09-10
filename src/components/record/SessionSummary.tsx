@@ -8,6 +8,7 @@
 // géré par le parent). Suit le thème de l'app (clair/sombre) — jamais de fond
 // noir forcé qui rendait certaines données invisibles.
 // ══════════════════════════════════════════════════════════════════════════
+import { useEffect, useState } from 'react'
 import { sportLabel } from '@/components/recovery/helpers'
 import { useI18n } from '@/lib/i18n'
 
@@ -114,6 +115,10 @@ function Legend({ c, label, T }: { c: string; label: string; T: ReturnType<typeo
 export default function SessionSummary({ sportType, startedAt, durationSec, doneList, sets, volumeKg, caloriesEst, doneCount, totalCount, unitLabel, hr, target, accent, isDark, onNext, onClose }: Props) {
   const { t } = useI18n()
   const T = theme(isDark)
+  const [shown, setShown] = useState(false)
+  const [closing, setClosing] = useState(false)
+  useEffect(() => { const r = requestAnimationFrame(() => setShown(true)); return () => cancelAnimationFrame(r) }, [])
+  const requestClose = () => { if (!onClose) return; setClosing(true); setShown(false); setTimeout(onClose, 320) }
   const date = new Date(startedAt).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })
   const kpis: { label: string; value: string; accent?: boolean }[] = [
     { label: t('w3a.kpi_temps'), value: fmtClock(durationSec), accent: true },
@@ -129,11 +134,9 @@ export default function SessionSummary({ sportType, startedAt, durationSec, done
   const label: React.CSSProperties = { fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: T.muted, margin: 0 }
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 10004, background: T.bg, color: T.text, display: 'flex', flexDirection: 'column', fontFamily: 'DM Sans, sans-serif', animation: 'sumUp 320ms cubic-bezier(0.16,1,0.3,1)', paddingTop: 'env(safe-area-inset-top)' }}>
-      <style>{`@keyframes sumUp{from{transform:translateY(100%)}to{transform:translateY(0)}}`}</style>
-
+    <div style={{ position: 'fixed', inset: 0, zIndex: 10004, background: T.bg, color: T.text, display: 'flex', flexDirection: 'column', fontFamily: 'DM Sans, sans-serif', transform: shown && !closing ? 'translateY(0)' : 'translateY(100%)', transition: 'transform 320ms cubic-bezier(0.16,1,0.3,1)', paddingTop: 'env(safe-area-inset-top)' }}>
       {onClose && (
-        <button onClick={onClose} aria-label={t('w3a.close')} style={{ position: 'absolute', top: 'calc(env(safe-area-inset-top) + 12px)', left: 14, width: 38, height: 38, borderRadius: '50%', border: `1px solid ${T.tileBorder}`, background: T.tileBg, color: T.text, cursor: 'pointer', zIndex: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, boxShadow: T.shadow }}>×</button>
+        <button onClick={requestClose} aria-label={t('w3a.close')} style={{ position: 'absolute', top: 'calc(env(safe-area-inset-top) + 12px)', left: 14, width: 38, height: 38, borderRadius: '50%', border: `1px solid ${T.tileBorder}`, background: T.tileBg, color: T.text, cursor: 'pointer', zIndex: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, boxShadow: T.shadow }}>×</button>
       )}
 
       <div style={{ flex: 1, overflowY: 'auto', padding: '30px 20px 130px', maxWidth: 760, width: '100%', margin: '0 auto', boxSizing: 'border-box' }}>

@@ -1,4 +1,5 @@
 'use client'
+import { useEffect, useState } from 'react'
 import { useI18n } from '@/lib/i18n'
 import type { SwimInterval } from './SwimmingIntervals'
 
@@ -31,6 +32,10 @@ interface Props {
 
 export default function SwimmingSummary({ session, onClose }: Props) {
   const { t } = useI18n()
+  const [shown, setShown] = useState(false)
+  const [closing, setClosing] = useState(false)
+  useEffect(() => { const r = requestAnimationFrame(() => setShown(true)); return () => cancelAnimationFrame(r) }, [])
+  const requestClose = () => { setClosing(true); setShown(false); setTimeout(onClose, 300) }
   const poolNum = parseInt(session.poolSize)
   const lengths = !isNaN(poolNum) && poolNum > 0 && session.distanceM > 0
     ? Math.round(session.distanceM / poolNum)
@@ -50,16 +55,17 @@ export default function SwimmingSummary({ session, onClose }: Props) {
       position: 'fixed', inset: 0, zIndex: 10005, background: 'var(--bg)', color: 'var(--text)',
       display: 'flex', flexDirection: 'column', fontFamily: 'DM Sans, sans-serif',
       paddingTop: 'env(safe-area-inset-top)',
-      animation: 'swim-sum-in 300ms cubic-bezier(0.16,1,0.3,1)',
+      transform: shown && !closing ? 'translateY(0)' : 'translateY(40px)',
+      opacity: shown && !closing ? 1 : 0,
+      transition: 'transform 300ms cubic-bezier(0.16,1,0.3,1), opacity 300ms cubic-bezier(0.16,1,0.3,1)',
     }}>
-      <style>{`@keyframes swim-sum-in { from { transform: translateY(40px); opacity:0 } to { transform: translateY(0); opacity:1 } }`}</style>
 
       <div style={{ height: 52, flexShrink: 0, display: 'flex', alignItems: 'center', padding: '0 16px', borderBottom: '1px solid var(--border)', position: 'relative' }}>
         <span style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', fontSize: 15, fontWeight: 600 }}>
           {t('record.swimSummaryTitle')}
         </span>
         <button
-          onClick={onClose}
+          onClick={requestClose}
           style={{ marginLeft: 'auto', background: 'none', border: 'none', color: '#06B6D4', fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}
         >
           {t('record.swimSummaryClose')}

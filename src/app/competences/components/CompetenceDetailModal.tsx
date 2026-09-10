@@ -81,9 +81,10 @@ export default function CompetenceDetailModal({ competence, conflicts, isOpen, o
 
   const dirty = currentPrompt !== basePrompt
 
-  // Fermeture animée (mobile slide-down)
+  // Fermeture animée (mobile slide-down + desktop scale-out)
   const handleClose = useCallback(() => {
     setIsClosing(true)
+    setShown(false)
     setTimeout(() => { setIsClosing(false); onClose() }, 300)
   }, [onClose])
 
@@ -330,7 +331,7 @@ Garde le prompt entre 80 et 150 mots. Réponds d'abord en expliquant brièvement
   // ── DESKTOP : overlay + modal ──
   return (
     <div
-      onClick={onClose}
+      onClick={handleClose}
       style={{
         position: 'fixed', inset: 0, zIndex: 100, padding: 30,
         background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -346,9 +347,9 @@ Garde le prompt entre 80 et 150 mots. Réponds d'abord en expliquant brièvement
           transform: shown ? 'scale(1)' : 'scale(0.95)', transition: 'transform 250ms cubic-bezier(0.2,0.9,0.3,1)',
         }}
       >
-        {headerNode(onClose)}
+        {headerNode(handleClose)}
         {body}
-        {footer(onClose)}
+        {footer(handleClose)}
       </div>
     </div>
   )

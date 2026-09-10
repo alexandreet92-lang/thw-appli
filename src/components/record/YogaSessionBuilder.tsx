@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { createClient } from '@/lib/supabase/client'
 import { getCurrentUser } from '@/lib/auth/currentUser'
@@ -27,6 +27,11 @@ export default function YogaSessionBuilder({ isDark, onClose, onStart }: Props) 
   const [exercises, setExercises] = useState<YogaSessionExercise[]>([])
   const [pickerOpen, setPickerOpen] = useState(false)
   const [saving, setSaving]       = useState(false)
+  const [shown, setShown]         = useState(false)
+  const [closing, setClosing]     = useState(false)
+
+  useEffect(() => { const r = requestAnimationFrame(() => setShown(true)); return () => cancelAnimationFrame(r) }, [])
+  const requestClose = () => { setClosing(true); setShown(false); setTimeout(onClose, 280) }
 
   const bg   = isDark ? '#0A0A0A' : '#FFFFFF'
   const text = isDark ? '#FFFFFF' : '#0A0A0A'
@@ -63,12 +68,11 @@ export default function YogaSessionBuilder({ isDark, onClose, onStart }: Props) 
   }
 
   const content = (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 10003, background: bg, display: 'flex', flexDirection: 'column', fontFamily: 'DM Sans, sans-serif', paddingTop: 'env(safe-area-inset-top)', animation: 'ybuilder-in 280ms cubic-bezier(0.16,1,0.3,1)' }}>
-      <style>{`@keyframes ybuilder-in { from { transform: translateX(100%); } to { transform: translateX(0); } }`}</style>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 10003, background: bg, display: 'flex', flexDirection: 'column', fontFamily: 'DM Sans, sans-serif', paddingTop: 'env(safe-area-inset-top)', transform: shown && !closing ? 'translateX(0)' : 'translateX(100%)', transition: 'transform 280ms cubic-bezier(0.16,1,0.3,1)' }}>
 
       {/* Header */}
       <div style={{ height: 52, flexShrink: 0, display: 'flex', alignItems: 'center', padding: '0 16px', borderBottom: `1px solid ${sep}`, position: 'relative' }}>
-        <button onClick={onClose} style={{ width: 36, height: 36, borderRadius: '50%', background: surf, border: 'none', color: text, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <button onClick={requestClose} style={{ width: 36, height: 36, borderRadius: '50%', background: surf, border: 'none', color: text, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
         </button>
         <span style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', fontSize: 15, fontWeight: 600, color: text }}>{t('record.yogaBuilderNewSession')}</span>

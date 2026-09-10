@@ -23,8 +23,11 @@ export default function SegmentDetail({ segmentId, onClose, isDark }: Props) {
   const [segment, setSegment] = useState<Segment | null>(null)
   const [tab, setTab] = useState<'leaderboard' | 'history'>('leaderboard')
   const [mounted, setMounted] = useState(false)
+  const [shown, setShown] = useState(false)
+  const [closing, setClosing] = useState(false)
 
-  useEffect(() => { setMounted(true) }, [])
+  useEffect(() => { setMounted(true); const r = requestAnimationFrame(() => setShown(true)); return () => cancelAnimationFrame(r) }, [])
+  const requestClose = () => { setClosing(true); setShown(false); setTimeout(onClose, 280) }
 
   useEffect(() => {
     createClient()
@@ -50,13 +53,12 @@ export default function SegmentDetail({ segmentId, onClose, isDark }: Props) {
       display: 'flex', flexDirection: 'column',
       fontFamily: 'DM Sans, sans-serif',
       paddingTop: 'env(safe-area-inset-top)',
-      animation: 'sdSlide 280ms cubic-bezier(0.16,1,0.3,1)',
+      transform: shown && !closing ? 'translateY(0)' : 'translateY(100%)',
+      transition: 'transform 280ms cubic-bezier(0.16,1,0.3,1)',
     }}>
-      <style>{`@keyframes sdSlide{from{transform:translateY(100%)}to{transform:translateY(0)}}`}</style>
-
       {/* Header */}
       <div style={{ height: 52, flexShrink: 0, display: 'flex', alignItems: 'center', padding: '0 16px', borderBottom: `1px solid ${sep}`, gap: 10 }}>
-        <button onClick={onClose} style={{ width: 36, height: 36, borderRadius: '50%', background: btnBg, border: 'none', color: text, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <button onClick={requestClose} style={{ width: 36, height: 36, borderRadius: '50%', background: btnBg, border: 'none', color: text, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
         </button>
         <div style={{ flex: 1, minWidth: 0 }}>

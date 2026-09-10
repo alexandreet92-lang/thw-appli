@@ -40,6 +40,9 @@ export default function ProgramFilters({ programs, value, onChange }: {
 }) {
   const { t } = useI18n()
   const [open, setOpen] = useState(false)
+  const [shown, setShown] = useState(false)
+  const [closing, setClosing] = useState(false)
+  const requestClose = () => { setClosing(true); setShown(false); setTimeout(() => { setOpen(false); setClosing(false); setShown(false) }, 280) }
   // Dans l'app native : aucun filtre de prix (règles App Store — pas de prix affiché).
   const hasPaid = !hidePricing() && programs.some(p => p.price_cents > 0)
   const hasAi = programs.some(p => p.ai_enabled)
@@ -52,10 +55,12 @@ export default function ProgramFilters({ programs, value, onChange }: {
 
   useEffect(() => {
     if (!open) return
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false) }
+    const r = requestAnimationFrame(() => setShown(true))
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') requestClose() }
     window.addEventListener('keydown', onKey)
     const prev = document.body.style.overflow; document.body.style.overflow = 'hidden'
-    return () => { window.removeEventListener('keydown', onKey); document.body.style.overflow = prev }
+    return () => { cancelAnimationFrame(r); window.removeEventListener('keydown', onKey); document.body.style.overflow = prev }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open])
 
   if (!hasPaid && !hasAi && !hasMultiSport) return null
@@ -71,12 +76,11 @@ export default function ProgramFilters({ programs, value, onChange }: {
 
       {open && typeof document !== 'undefined' && createPortal(
         <div style={{ position: 'fixed', inset: 0, zIndex: 14000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-          <div onClick={() => setOpen(false)} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.45)', animation: 'fBg 180ms ease' }} />
-          <div style={{ position: 'relative', width: '100%', maxWidth: 420, background: 'var(--bg-card)', borderRadius: 'var(--r-lg)', padding: 'clamp(20px,5vw,28px)', boxShadow: '0 24px 60px rgba(0,0,0,0.3)', animation: 'fPop 220ms cubic-bezier(0.32,0.72,0,1)' }}>
-            <style>{`@keyframes fBg{from{opacity:0}to{opacity:1}}@keyframes fPop{from{opacity:0;transform:translateY(12px) scale(0.96)}to{opacity:1;transform:none}}`}</style>
+          <div onClick={requestClose} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.45)', opacity: shown && !closing ? 1 : 0, transition: 'opacity 0.18s ease' }} />
+          <div style={{ position: 'relative', width: '100%', maxWidth: 420, background: 'var(--bg-card)', borderRadius: 'var(--r-lg)', padding: 'clamp(20px,5vw,28px)', boxShadow: '0 24px 60px rgba(0,0,0,0.3)', opacity: shown && !closing ? 1 : 0, transform: shown && !closing ? 'none' : 'translateY(12px) scale(0.96)', transition: 'opacity 0.22s ease, transform 0.22s cubic-bezier(0.32,0.72,0,1)' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
               <span style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 600, color: 'var(--text)' }}>{t('w1d.filters')}</span>
-              <button onClick={() => setOpen(false)} aria-label={t('w1d.close')} style={{ width: 34, height: 34, borderRadius: 999, border: 'none', background: 'var(--bg-card2)', color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><IconX size={18} /></button>
+              <button onClick={requestClose} aria-label={t('w1d.close')} style={{ width: 34, height: 34, borderRadius: 999, border: 'none', background: 'var(--bg-card2)', color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><IconX size={18} /></button>
             </div>
 
             {hasMultiSport && <Group label={t('w1d.sport')}>
@@ -92,7 +96,7 @@ export default function ProgramFilters({ programs, value, onChange }: {
 
             <div style={{ display: 'flex', gap: 10, marginTop: 22 }}>
               <button onClick={() => onChange({ ...value, sport: '', specialty: '', ai: 'all', price: 'all' })} style={{ flex: '0 0 auto', padding: '11px 16px', borderRadius: 'var(--r-md)', border: 'none', background: 'var(--bg-card2)', color: 'var(--text-mid)', fontFamily: 'var(--font-body)', fontSize: 13.5, fontWeight: 700, cursor: 'pointer' }}>{t('w1d.reset')}</button>
-              <button onClick={() => setOpen(false)} style={{ flex: 1, padding: '11px 16px', borderRadius: 'var(--r-md)', border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
+              <button onClick={requestClose} style={{ flex: 1, padding: '11px 16px', borderRadius: 'var(--r-md)', border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
                 {resultCount > 0 ? `${t('w1d.see')} ${resultCount} ${t('w1d.programWord')}${resultCount > 1 ? 's' : ''}` : t('w1d.noProgram')}
               </button>
             </div>

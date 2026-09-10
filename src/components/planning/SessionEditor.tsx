@@ -3851,6 +3851,9 @@ export function SessionEditor({ mode, session, dayIndex, weekStart, plan, onClos
   // s'affichait en flash sur desktop avant que le useEffect ne corrige.
   const [mobile, setMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 640)
   const [wide, setWide] = useState(() => typeof window !== 'undefined' && window.innerWidth >= 1024)   // desktop ≥ 1024px → modale 2 colonnes
+  // Sur-page legacy (tablette) : glisse en entrée ET en sortie.
+  const [shown, setShown] = useState(false)
+  const [closing, setClosing] = useState(false)
   const [nutritionOpen, setNutritionOpen] = useState(false)
   const [nutritionLoading, setNutritionLoading] = useState(false)
   const [showDuplicateMenu, setShowDuplicateMenu] = useState(false)
@@ -3975,6 +3978,11 @@ export function SessionEditor({ mode, session, dayIndex, weekStart, plan, onClos
     window.addEventListener('resize', check)
     return () => window.removeEventListener('resize', check)
   }, [])
+
+  // Monte off-screen puis glisse en place ; requestClose rejoue la transition en
+  // sortie (translateY 100%) avant que le parent ne démonte via onClose.
+  useEffect(() => { const r = requestAnimationFrame(() => setShown(true)); return () => cancelAnimationFrame(r) }, [])
+  const requestClose = () => { setClosing(true); setShown(false); setTimeout(onClose, 280) }
 
   // Builder Muscu/Hyrox MOBILE : synchronise les refs utilisées par la sauvegarde.
   // Gardé MOBILE pour ne pas écraser l'ExerciseListBuilder desktop.
@@ -5266,10 +5274,11 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
       `}</style>
 
       {/* Backdrop */}
-      <div onClick={onClose} style={{
+      <div onClick={requestClose} style={{
         position: 'fixed' as const, inset: 0, zIndex: 998,
         background: 'rgba(0,0,0,0.45)',
         backdropFilter: 'blur(4px)',
+        opacity: shown && !closing ? 1 : 0, transition: 'opacity 0.3s ease',
       }} />
 
       {/* Bottom sheet — flex column */}
@@ -5279,7 +5288,8 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
         boxShadow: '0 -8px 40px rgba(0,0,0,0.18)',
         display: 'flex', flexDirection: 'column' as const,
         overflow: 'hidden',
-        animation: 'sheetUp .38s cubic-bezier(.2,.8,.2,1) forwards',
+        transform: shown && !closing ? 'translateY(0)' : 'translateY(100%)',
+        transition: 'transform 0.38s cubic-bezier(.2,.8,.2,1)',
       }}>
 
         {/* Poignée */}
@@ -5325,7 +5335,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
             borderRadius: 6, padding: '3px 10px',
           }}>Plan {selPlan}</span>
 
-          <button onClick={onClose} style={{
+          <button onClick={requestClose} style={{
             width: 32, height: 32, borderRadius: '50%',
             border: '1px solid var(--border)',
             background: 'transparent', cursor: 'pointer',
@@ -5394,7 +5404,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                       { label: 'Toutes les 2 sem. · 4 fois', n: 2, c: 4 },
                       { label: 'Toutes les 2 sem. · 8 fois', n: 2, c: 8 },
                     ].map(opt => (
-                      <button key={opt.label} onClick={() => { setShowRepeatMenu(false); onRepeat({ ...session, sport, title, time, durationMin: dur, rpe, blocks, notes: desc }, opt.n, opt.c); onClose() }}
+                      <button key={opt.label} onClick={() => { setShowRepeatMenu(false); onRepeat({ ...session, sport, title, time, durationMin: dur, rpe, blocks, notes: desc }, opt.n, opt.c); requestClose() }}
                         style={{ width: '100%', textAlign: 'left', padding: '10px 10px', borderRadius: 9, border: 'none', background: 'transparent', color: 'var(--text)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
                         onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-card2)')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
                         {opt.label}
@@ -7484,7 +7494,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
             <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' as const, width: '100%' }}>
               {/* ── Tout à gauche : Fermer ── */}
               <button
-                onClick={() => { if (isDirty) { setShowCloseModal(true) } else { onClose() } }}
+                onClick={() => { if (isDirty) { setShowCloseModal(true) } else { requestClose() } }}
                 onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = '#111827' }}
                 onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = '#6B7280' }}
                 style={{ padding: '8px 10px', borderRadius: 8, border: 'none', background: 'transparent', color: '#6B7280', fontSize: 14, fontWeight: 500, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, transition: 'color 0.15s' }}
@@ -7557,7 +7567,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
 
               {/* ── Droite : actions principales ── */}
               {onDelete && session && (
-                <button onClick={() => { if (confirm(t('sed.deleteSessionConfirm'))) { onDelete(session.id); onClose() } }} style={{
+                <button onClick={() => { if (confirm(t('sed.deleteSessionConfirm'))) { onDelete(session.id); requestClose() } }} style={{
                   padding: '8px 12px', borderRadius: 8,
                   background: 'transparent', border: 'none',
                   color: '#ef4444', fontSize: 11, fontWeight: 600, cursor: 'pointer',
@@ -7640,7 +7650,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
           ) : (
             /* Mode create */
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <button onClick={onClose} style={{
+              <button onClick={requestClose} style={{
                 padding: '10px 20px', borderRadius: 8,
                 background: 'var(--bg-card)', border: '1px solid var(--border)',
                 color: 'var(--text-dim)', fontSize: 12, cursor: 'pointer',

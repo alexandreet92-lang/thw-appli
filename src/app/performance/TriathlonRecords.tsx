@@ -57,7 +57,14 @@ function TriRaceOverlay({ rec, act, onEdit, onDelete, onClose }: {
 }) {
   const { t } = useI18n()
   const [mounted, setMounted] = useState(false)
-  useEffect(() => { const id = setTimeout(() => setMounted(true), 20); return () => clearTimeout(id) }, [])
+  const [shown, setShown] = useState(false)
+  const [closing, setClosing] = useState(false)
+  useEffect(() => {
+    const id = setTimeout(() => setMounted(true), 20)
+    const r = requestAnimationFrame(() => setShown(true))
+    return () => { clearTimeout(id); cancelAnimationFrame(r) }
+  }, [])
+  const requestClose = () => { setClosing(true); setShown(false); setTimeout(onClose, 280) }
   const segLabel = (key: keyof TriRec) => key === 'split_swim' ? t('performance.sportSwimming') : key === 'split_bike' ? t('performance.sportBike') : key === 'split_run' ? t('performance.sportRun') : key === 'split_t1' ? 'T1' : 'T2'
   const segSecs = SEGS.map(s => ({ ...s, sec: toSec((rec[s.key] as string) ?? '') }))
   const total = segSecs.reduce((a, s) => a + s.sec, 0) || toSec(rec.performance)
@@ -71,15 +78,15 @@ function TriRaceOverlay({ rec, act, onEdit, onDelete, onClose }: {
   ]
 
   return createPortal(
-    <div onClick={e => { if (e.target === e.currentTarget) onClose() }}
-      style={{ position: 'fixed', inset: 0, zIndex: 3300, background: SCRIM, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
-      <div style={{ width: '100%', maxWidth: 560, maxHeight: 'calc(100dvh - 56px)', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '20px 20px 0 0', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 3300, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+      <div onClick={requestClose} style={{ position: 'absolute', inset: 0, background: SCRIM, opacity: shown && !closing ? 1 : 0, transition: 'opacity 0.26s ease' }} />
+      <div style={{ position: 'relative', width: '100%', maxWidth: 560, maxHeight: 'calc(100dvh - 56px)', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '20px 20px 0 0', display: 'flex', flexDirection: 'column', overflow: 'hidden', transform: shown && !closing ? 'translateY(0)' : 'translateY(100%)', transition: 'transform 0.30s cubic-bezier(0.32,0.72,0,1)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
           <div>
             <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 700, margin: 0, color: 'var(--text)' }}>{rec.distance_label} · {rec.performance}</h2>
             <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: '3px 0 0' }}>{new Date(rec.achieved_at).toLocaleDateString(currentLocale(), { day: '2-digit', month: 'short', year: 'numeric' })}</p>
           </div>
-          <button onClick={onClose} style={{ width: 30, height: 30, borderRadius: '50%', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 17 }}>×</button>
+          <button onClick={requestClose} style={{ width: 30, height: 30, borderRadius: '50%', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 17 }}>×</button>
         </div>
 
         <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px 24px' }}>

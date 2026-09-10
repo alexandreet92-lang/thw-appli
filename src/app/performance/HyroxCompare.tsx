@@ -36,21 +36,28 @@ function HyroxRaceOverlay({ race, races, onSelect, onClose }: {
 }) {
   const { t } = useI18n()
   const [mounted, setMounted] = useState(false)
-  useEffect(() => { const id = setTimeout(() => setMounted(true), 20); return () => clearTimeout(id) }, [])
+  const [shown, setShown] = useState(false)
+  const [closing, setClosing] = useState(false)
+  useEffect(() => {
+    const id = setTimeout(() => setMounted(true), 20)
+    const r = requestAnimationFrame(() => setShown(true))
+    return () => { clearTimeout(id); cancelAnimationFrame(r) }
+  }, [])
+  const requestClose = () => { setClosing(true); setShown(false); setTimeout(onClose, 280) }
   const bars = [
     ...HYROX_STATIONS.map(s => ({ label: s, color: HYROX, sec: toSec(race.stations[s] ?? ''), max: Math.max(...races.map(r => toSec(r.stations[s] ?? '')), 1), avg: mean(races.map(r => toSec(r.stations[s] ?? ''))) })),
     { label: 'Run compromised', color: 'var(--primary)', sec: toSec(race.temps_run_total ?? ''), max: Math.max(...races.map(r => toSec(r.temps_run_total ?? '')), 1), avg: mean(races.map(r => toSec(r.temps_run_total ?? ''))) },
   ]
   return createPortal(
-    <div onClick={e => { if (e.target === e.currentTarget) onClose() }}
-      style={{ position: 'fixed', inset: 0, zIndex: 3300, background: SCRIM, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
-      <div style={{ width: '100%', maxWidth: 560, maxHeight: 'calc(100dvh - 56px)', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '20px 20px 0 0', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 3300, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+      <div onClick={requestClose} style={{ position: 'absolute', inset: 0, background: SCRIM, opacity: shown && !closing ? 1 : 0, transition: 'opacity 0.26s ease' }} />
+      <div style={{ position: 'relative', width: '100%', maxWidth: 560, maxHeight: 'calc(100dvh - 56px)', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '20px 20px 0 0', display: 'flex', flexDirection: 'column', overflow: 'hidden', transform: shown && !closing ? 'translateY(0)' : 'translateY(100%)', transition: 'transform 0.30s cubic-bezier(0.32,0.72,0,1)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
           <div>
             <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 700, margin: 0, color: 'var(--text)' }}>{race.temps_final}</h2>
             <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: '3px 0 0' }}>{fmtDateFull(race.date)}{race.partenaire ? ` · ${race.partenaire}` : ''}</p>
           </div>
-          <button onClick={onClose} style={{ width: 30, height: 30, borderRadius: '50%', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 17 }}>×</button>
+          <button onClick={requestClose} style={{ width: 30, height: 30, borderRadius: '50%', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 17 }}>×</button>
         </div>
         <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px 24px' }}>
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 14, gap: 8 }}>

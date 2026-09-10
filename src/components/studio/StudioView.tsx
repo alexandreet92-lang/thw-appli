@@ -31,6 +31,7 @@ import { hasCoachAccess } from '@/lib/coach/owner'
 import { listMyAthletes } from '@/lib/coach/relationships'
 import { VoiceOverlay } from '@/components/ai/VoiceOverlay'
 import StudioMarkdown from './StudioMarkdown'
+import PressPop from '@/components/ui/PressPop'
 import { useI18n } from '@/lib/i18n'
 import { isNativeApp } from '@/lib/native/platform'
 
@@ -1180,13 +1181,13 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
           <>
           {/* Sélecteur de modèle IA (logo + nom) */}
           <div style={{ position: 'relative' }}>
-            <button onClick={() => setModelMenuOpen(o => !o)} disabled={chatBusy} title={t('w1i.ai_model')}
-              style={{ display: 'flex', alignItems: 'center', gap: 6, height: 30, padding: '0 10px 0 8px', borderRadius: 999, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-mid)', cursor: chatBusy ? 'default' : 'pointer', fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 700 }}>
+            <PressPop onClick={() => setModelMenuOpen(o => !o)} disabled={chatBusy} title={t('w1i.ai_model')} popScale={1.08}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, height: 32, padding: '0 11px 0 9px', borderRadius: 999, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-mid)', cursor: chatBusy ? 'default' : 'pointer', fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 700 }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={builderModel === 'hermes' ? '/logos/logo_3bras.png' : builderModel === 'zeus' ? '/logos/logo_6bras.png' : '/logos/logo_4bras.png'} alt="" width={16} height={16} style={{ objectFit: 'contain', flexShrink: 0 }} />
+              <img src={builderModel === 'hermes' ? '/logos/logo_3bras.png' : builderModel === 'zeus' ? '/logos/logo_6bras.png' : '/logos/logo_4bras.png'} alt="" width={17} height={17} style={{ objectFit: 'contain', flexShrink: 0 }} />
               {MODEL_LABEL[builderModel]}
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.6 }}><path d="M6 9l6 6 6-6"/></svg>
-            </button>
+            </PressPop>
             {modelMenuOpen && (
               <>
                 <div onClick={() => setModelMenuOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 19 }} />

@@ -12,9 +12,10 @@
 // Dénivelé (m) saisissable pour course/vélo/trail/rando. Écrit dans activities
 // (+ streams pour le tapis) et workout_sessions. Rien de fabriqué : champs vides
 // = non enregistrés / non affichés.
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useI18n } from '@/lib/i18n'
+import PressPop from '@/components/ui/PressPop'
 import { createClient } from '@/lib/supabase/client'
 import { getCurrentUser } from '@/lib/auth/currentUser'
 import { notifyActivitySaved } from '@/lib/notifications/activitySaved'
@@ -85,6 +86,9 @@ export default function ManualEntrySheet({ onClose, onSaved }: Props) {
   const { t } = useI18n()
   const [closing, setClosing] = useState(false)
   const [step, setStep] = useState<'sport' | 'form'>('sport')
+  // Sur-page « construction de la séance » : slide bas→haut à l'ouverture,
+  // haut→bas au retour (par-dessus la grille des sports).
+  const [formShown, setFormShown] = useState(false)
   const [def, setDef] = useState<SportDef | null>(null)
   const [runSurface, setRunSurface] = useState<RunningSub>('outdoor')
 
@@ -122,13 +126,21 @@ export default function ManualEntrySheet({ onClose, onSaved }: Props) {
   const accent = sportColor(builderSport)
   const durationSecManual = intv(h) * 3600 + intv(m) * 60 + intv(s)
 
-  function doClose() { setClosing(true); setTimeout(onClose, 260) }
+  function doClose() { setClosing(true); setFormShown(false); setTimeout(onClose, 300) }
   function pickSport(sp: SportDef) {
     setDef(sp); setStep('form')
     setBlocks([]); setExercises([]); setExoMap({}); setMoves([]); setComposedCircuits([{ id: 'c1', rounds: 1, restSec: 0 }])
     setCircuits(sp.mode === 'muscu' || sp.mode === 'hyrox' ? [defaultCircuit(sp.mode === 'muscu' ? 'gym' : 'hyrox')] : [])
     if (sp.id === 'running') setRunSurface('outdoor')
   }
+  // Retour à la grille des sports : la sur-page redescend, puis on démonte le form.
+  function backToSport() { setFormShown(false); setTimeout(() => setStep('sport'), 300) }
+  // Anime l'entrée de la sur-page dès qu'on passe à l'étape « form ».
+  useEffect(() => {
+    if (step !== 'form') return
+    const r = requestAnimationFrame(() => setFormShown(true))
+    return () => cancelAnimationFrame(r)
+  }, [step])
 
   async function handleSave() {
     if (!def) return
@@ -292,50 +304,67 @@ export default function ManualEntrySheet({ onClose, onSaved }: Props) {
 
   const sheet = (
     <div style={{ position: 'fixed', inset: 0, zIndex: 10060, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
+      <style>{`
+        @keyframes me-fade-in{from{opacity:0}to{opacity:1}} @keyframes me-fade-out{from{opacity:1}to{opacity:0}}
+        @keyframes me-slide-up{from{transform:translateY(100%)}to{transform:translateY(0)}}
+        @keyframes me-slide-down{from{transform:translateY(0)}to{transform:translateY(100%)}}
+      `}</style>
       <div onClick={doClose} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', animation: closing ? 'me-fade-out 0.24s ease forwards' : 'me-fade-in 0.24s ease' }} />
+
+      {/* BASE — grille des sports (« Créer une activité ») */}
       <div style={{
         position: 'relative', width: '100%', maxWidth: 560, margin: '0 auto', maxHeight: '94vh',
         display: 'flex', flexDirection: 'column', background: 'var(--bg)', color: 'var(--text)', fontFamily: FB,
         borderTopLeftRadius: 24, borderTopRightRadius: 24, overflow: 'hidden',
         animation: closing ? 'me-slide-down 0.26s cubic-bezier(0.4,0,1,1) forwards' : 'me-slide-up 0.30s cubic-bezier(0.16,1,0.3,1)',
       }}>
-        <style>{`
-          @keyframes me-fade-in{from{opacity:0}to{opacity:1}} @keyframes me-fade-out{from{opacity:1}to{opacity:0}}
-          @keyframes me-slide-up{from{transform:translateY(100%)}to{transform:translateY(0)}}
-          @keyframes me-slide-down{from{transform:translateY(0)}to{transform:translateY(100%)}}
-        `}</style>
         <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 12, flexShrink: 0 }}>
           <div style={{ width: 40, height: 4, borderRadius: 2, background: 'var(--border-mid)' }} />
         </div>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, padding: '10px 16px 6px 20px', flexShrink: 0 }}>
+          <div style={{ minWidth: 0 }}>
+            <h2 style={{ fontFamily: FD, fontSize: 22, fontWeight: 600, margin: 0 }}>{t('w2c.createActivity')}</h2>
+            <p style={{ fontSize: 13, color: 'var(--text-mid)', margin: '4px 0 0' }}>{t('w2c.chooseSport')}</p>
+          </div>
+          <PressPop onClick={doClose} aria-label="Fermer" style={{ width: 34, height: 34, borderRadius: '50%', background: 'var(--bg-card2)', border: 'none', color: 'var(--text)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
+          </PressPop>
+        </div>
+        <div style={{ flex: 1, overflowY: 'auto', padding: '10px 16px calc(env(safe-area-inset-bottom) + 16px)', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+          {SPORTS.map(sp => (
+            <button key={sp.id} onClick={() => pickSport(sp)}
+              style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '16px 8px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 14, cursor: 'pointer', color: 'var(--text)', fontFamily: FB }}>
+              <SportIcon sport={sp.builderSport ?? sp.id} size={30} circle={false} />
+              <span style={{ fontSize: 12, fontWeight: 600, textAlign: 'center' }}>{t('w2c.sport_' + sp.id)}</span>
+            </button>
+          ))}
+        </div>
+      </div>
 
-        {step === 'sport' ? (
-          <>
-            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, padding: '10px 16px 6px 20px', flexShrink: 0 }}>
-              <div style={{ minWidth: 0 }}>
-                <h2 style={{ fontFamily: FD, fontSize: 22, fontWeight: 600, margin: 0 }}>{t('w2c.createActivity')}</h2>
-                <p style={{ fontSize: 13, color: 'var(--text-mid)', margin: '4px 0 0' }}>{t('w2c.chooseSport')}</p>
-              </div>
-              <button onClick={doClose} aria-label="Fermer" style={{ width: 34, height: 34, borderRadius: '50%', background: 'var(--bg-card2)', border: 'none', color: 'var(--text)', fontSize: 21, lineHeight: 1, cursor: 'pointer', flexShrink: 0 }}>×</button>
+      {/* SUR-PAGE — construction de la séance : slide bas→haut par-dessus la grille */}
+      {step === 'form' && (
+        <>
+          <div onClick={backToSport} style={{ position: 'absolute', inset: 0, zIndex: 1, background: 'rgba(0,0,0,0.4)', opacity: formShown && !closing ? 1 : 0, transition: 'opacity 0.28s ease' }} />
+          <div style={{
+            position: 'absolute', left: 0, right: 0, bottom: 0, margin: '0 auto', zIndex: 2, width: '100%', maxWidth: 560, maxHeight: '94vh',
+            display: 'flex', flexDirection: 'column', background: 'var(--bg)', color: 'var(--text)', fontFamily: FB,
+            borderTopLeftRadius: 24, borderTopRightRadius: 24, overflow: 'hidden', boxShadow: '0 -10px 44px rgba(0,0,0,0.30)',
+            transform: formShown && !closing ? 'translateY(0)' : 'translateY(100%)', transition: 'transform 300ms cubic-bezier(0.16,1,0.3,1)',
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 12, flexShrink: 0 }}>
+              <div style={{ width: 40, height: 4, borderRadius: 2, background: 'var(--border-mid)' }} />
             </div>
-            <div style={{ flex: 1, overflowY: 'auto', padding: '10px 16px calc(env(safe-area-inset-bottom) + 16px)', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
-              {SPORTS.map(sp => (
-                <button key={sp.id} onClick={() => pickSport(sp)}
-                  style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '16px 8px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 14, cursor: 'pointer', color: 'var(--text)', fontFamily: FB }}>
-                  <SportIcon sport={sp.builderSport ?? sp.id} size={30} circle={false} />
-                  <span style={{ fontSize: 12, fontWeight: 600, textAlign: 'center' }}>{t('w2c.sport_' + sp.id)}</span>
-                </button>
-              ))}
-            </div>
-          </>
-        ) : (
-          <>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 16px 6px', flexShrink: 0 }}>
-              <button onClick={() => setStep('sport')} aria-label={t('w2c.back')} style={{ width: 34, height: 34, borderRadius: '50%', background: 'var(--bg-card2)', border: 'none', color: 'var(--text)', fontSize: 19, cursor: 'pointer', flexShrink: 0 }}>‹</button>
+              <PressPop onClick={backToSport} aria-label={t('w2c.back')} style={{ width: 34, height: 34, borderRadius: '50%', background: 'var(--bg-card2)', border: 'none', color: 'var(--text)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
+              </PressPop>
               <span style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
                 <SportIcon sport={builderSport} size={22} circle={false} />
                 <h2 style={{ fontFamily: FD, fontSize: 20, fontWeight: 600, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{def ? t('w2c.sport_' + def.id) : ''}</h2>
               </span>
-              <button onClick={doClose} aria-label="Fermer" style={{ marginLeft: 'auto', width: 34, height: 34, borderRadius: '50%', background: 'var(--bg-card2)', border: 'none', color: 'var(--text)', fontSize: 21, lineHeight: 1, cursor: 'pointer', flexShrink: 0 }}>×</button>
+              <PressPop onClick={doClose} aria-label="Fermer" style={{ marginLeft: 'auto', width: 34, height: 34, borderRadius: '50%', background: 'var(--bg-card2)', border: 'none', color: 'var(--text)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
+              </PressPop>
             </div>
             <div style={{ flex: 1, overflowY: 'auto', padding: '6px 16px 12px', display: 'flex', flexDirection: 'column', gap: 14 }}>
               {def?.id === 'running' && (
@@ -392,9 +421,9 @@ export default function ManualEntrySheet({ onClose, onSaved }: Props) {
                 {saving ? t('w2c.saving') : t('w2c.saveActivity')}
               </button>
             </div>
-          </>
-        )}
-      </div>
+          </div>
+        </>
+      )}
     </div>
   )
   return createPortal(sheet, document.body)

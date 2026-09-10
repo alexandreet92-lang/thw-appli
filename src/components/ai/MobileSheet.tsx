@@ -17,6 +17,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useI18n } from '@/lib/i18n'
+import PressPop from '@/components/ui/PressPop'
 
 const SPRING = 'height 0.34s cubic-bezier(0.32,0.72,0,1), transform 0.34s cubic-bezier(0.32,0.72,0,1)'
 
@@ -35,6 +36,7 @@ export function MobileSheet({
   onClose,
   children,
   collapsedMaxVh,
+  headerAction,
 }: {
   title?: string
   onClose: () => void
@@ -44,6 +46,9 @@ export function MobileSheet({
    *  haut jusqu'à ~94vh. Sans ça, une feuille au contenu long s'ouvre presque
    *  plein écran. */
   collapsedMaxVh?: number
+  /** Bouton d'action optionnel affiché en haut à droite, à gauche de la croix
+   *  (ex. gros « + » qui ouvre le sélecteur de photos). */
+  headerAction?: React.ReactNode
 }) {
   const { t } = useI18n()
   const [mounted, setMounted] = useState(false)
@@ -200,19 +205,22 @@ export function MobileSheet({
         >
           <div style={{ width: 38, height: 4, borderRadius: 2, background: 'var(--border-mid)', margin: '9px auto 2px' }} />
           {title !== undefined && (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 16px 8px' }}>
-              <span style={{ fontSize: 16, fontWeight: 600, fontFamily: 'DM Sans,sans-serif' }}>{title}</span>
-              <button
-                onClick={requestClose}
-                aria-label={t('ai.close')}
-                style={{
-                  width: 30, height: 30, borderRadius: '50%', border: 'none',
-                  background: 'var(--bg-alt)', color: 'var(--text)', cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-                }}
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
-              </button>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '8px 16px 8px' }}>
+              <span style={{ fontSize: 16, fontWeight: 600, fontFamily: 'DM Sans,sans-serif', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{title}</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }} onPointerDown={e => e.stopPropagation()}>
+                {headerAction}
+                <PressPop
+                  onClick={requestClose}
+                  aria-label={t('ai.close')}
+                  style={{
+                    width: 30, height: 30, borderRadius: '50%', border: 'none',
+                    background: 'var(--bg-alt)', color: 'var(--text)', cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                  }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
+                </PressPop>
+              </div>
             </div>
           )}
         </div>

@@ -19,6 +19,7 @@ import { pickNativePhoto, pickNativePhotos } from '@/lib/native/photoPicker'
 import { isNativeApp } from '@/lib/native/platform'
 import { openUpgrade } from '@/components/subscription/UpgradeModal'
 import { parseAdvancedSpec, AdvancedChartCard } from '@/components/ai/AdvancedChart'
+import PressPop from '@/components/ui/PressPop'
 import { createPortal } from 'react-dom'
 import { CheckCircle2, XCircle, ChevronDown, ChevronRight, ArrowLeft, Zap, Globe, Paperclip, Camera, Plug, Brain, Activity, Map as MapIcon, MapPin, Dumbbell, Apple, Target, HelpCircle, Search, Flag, Moon, Calendar, BookOpen, Bike, Footprints, Waves } from 'lucide-react'
 import HybridNetworksPanel, { type HNConv } from './HybridNetworksPanel'
@@ -1978,28 +1979,28 @@ function ModelPicker({ model, onChange, disabled = false, isMobile = false }: {
   return (
     <div ref={ref} style={{ position: 'relative', flexShrink: 0 }}>
 
-      {/* Bouton trigger — rond, monochrome */}
-      <button
+      {/* Bouton trigger — rond, monochrome (plus gros + effet ressort au press) */}
+      <PressPop
         onClick={() => { if (!disabled) setOpen(p => !p) }}
         disabled={disabled}
         title={disabled ? t('aip.model.locked') : `${t('aip.model.label')} : ${cfg.name}`}
         style={{
-          width: 28, height: 28, borderRadius: '50%',
+          width: 34, height: 34, borderRadius: '50%',
           border: `1px solid ${open ? 'var(--ai-mid)' : 'var(--ai-border)'}`,
           background: open ? 'var(--ai-bg2)' : 'transparent',
           cursor: disabled ? 'not-allowed' : 'pointer',
           opacity: disabled ? 0.45 : 1,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          transition: 'all 0.12s',
+          transition: 'background 0.12s, border-color 0.12s',
         }}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={model === 'hermes' ? '/logos/logo_3bras.png' : model === 'zeus' ? '/logos/logo_6bras.png' : '/logos/logo_4bras.png'}
           alt={cfg.name}
-          style={{ width: 16, height: 16, objectFit: 'contain', opacity: 0.75 }}
+          style={{ width: 19, height: 19, objectFit: 'contain', opacity: 0.75 }}
         />
-      </button>
+      </PressPop>
 
       {/* Liste des modèles — dropdown (desktop) ou bottom sheet (mobile) */}
       {open && (() => {
@@ -12732,17 +12733,11 @@ function PlusMenu({
       {/* ════ ÉCRAN PRINCIPAL — MOBILE (cartes groupées façon Claude) ════ */}
       {activeScreen === 'main' && isMobile && (
         <div style={{ padding: '2px 4px 6px' }}>
-          {/* Caméra + Photothèque + dernières photos */}
+          {/* Appareil photo + 10 dernières photos alignées (défilement horizontal) */}
           <div style={{ display: 'flex', gap: 10, padding: '2px 0 14px', overflowX: 'auto', WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none' }}>
             <button onClick={() => { onClose(); setTimeout(onCamera, 80) }} style={mTile}>
               <Camera size={24} color="var(--text)" />
               <span style={photoTileLabel}>{t('aip.ui.camera')}</span>
-            </button>
-            <button onClick={() => { onClose(); setTimeout(onPhotos, 80) }} style={mTile}>
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--text)" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="3" y="3" width="18" height="18" rx="3" /><circle cx="8.5" cy="8.5" r="1.6" /><path d="M21 15l-5-5L5 21" />
-              </svg>
-              <span style={photoTileLabel}>{t('aip.ui.photoLibrary')}</span>
             </button>
             {recentPhotos.map((url, i) => (
               <button key={i} onClick={() => { onPickPhoto(url); onClose() }} aria-label={`Photo ${i + 1}`}
@@ -13078,7 +13073,21 @@ function PlusMenu({
   )
 
   if (isMobile) {
-    return <MobileSheet title={t('aip.ui.addToChat')} onClose={onClose} collapsedMaxVh={0.6}>{body}</MobileSheet>
+    const addPhotosBtn = (
+      <PressPop
+        onClick={() => { onClose(); setTimeout(onPhotos, 80) }}
+        aria-label={t('aip.ui.photoLibrary')}
+        popScale={1.22}
+        style={{
+          width: 40, height: 40, borderRadius: '50%', border: 'none', cursor: 'pointer',
+          background: '#06B6D4', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          boxShadow: '0 3px 12px rgba(6,182,212,0.4)', flexShrink: 0,
+        }}
+      >
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14" /></svg>
+      </PressPop>
+    )
+    return <MobileSheet title={t('aip.ui.addToChat')} onClose={onClose} collapsedMaxVh={0.6} headerAction={addPhotosBtn}>{body}</MobileSheet>
   }
   return (
     <div ref={ref} className="aip-plus-menu" style={{
@@ -24530,23 +24539,23 @@ export default function AIPanel({
                 display: 'flex', alignItems: 'center',
                 padding: '4px 8px 8px', gap: 5,
               }}>
-                {/* + button (avec menu ancré) */}
+                {/* + button (avec menu ancré) — plus gros + effet ressort au press */}
                 <div style={{ position: 'relative', flexShrink: 0 }}>
-                  <button
+                  <PressPop
                     data-guide="ai-plus"
                     onClick={() => setPlusOpen(p => !p)}
                     title="Actions"
                     className="aip-icon-btn"
                     style={{
-                      width: 28, height: 28, borderRadius: 6,
+                      width: 34, height: 34, borderRadius: '50%',
                       color: plusOpen ? 'var(--ai-text)' : 'var(--ai-dim)',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                     }}
                   >
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
                       <path d="M12 5v14M5 12h14" />
                     </svg>
-                  </button>
+                  </PressPop>
                   {/* Plus menu — ancré au bouton + */}
                   {plusOpen && (
                     <PlusMenu

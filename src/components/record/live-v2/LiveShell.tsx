@@ -325,6 +325,16 @@ export default function LiveShell({
     setSummarySnap(snap)
     send({ type: 'FINISH' })
   }
+  // Drapeau (carte) : depuis la pause manuelle → fige la séance et ouvre le résumé.
+  const handleFlagFinish = () => {
+    if (machine.phase !== 'paused' && machine.phase !== 'autopaused') return
+    send({ type: 'REQUEST_STOP' })
+    const snap = buildSnapshot()
+    if (!snap) return
+    saveLiveBackup(snap)
+    setSummarySnap(snap)
+    send({ type: 'FINISH' })
+  }
   const handleDeleteRecording = () => {
     clearLiveBackup()
     send({ type: 'DISCARD' })
@@ -413,7 +423,9 @@ export default function LiveShell({
 
   const onMapPage = pageIndex === 1
   const controlsHidden = started && onMapPage
-  const dotsBottom = controlsHidden ? 34 : 168
+  // Sur la carte en cours d'enregistrement, les commandes vivent dans la console
+  // MapPage (bas de carte) : les points de pagination remontent au-dessus.
+  const dotsBottom = controlsHidden ? 306 : 168
   const currentPos = gps.currentLat != null && gps.currentLng != null
     ? { lat: gps.currentLat, lng: gps.currentLng }
     : null
@@ -534,6 +546,12 @@ export default function LiveShell({
             route={route}
             defaultLayer={settings.navigation.defaultMapType}
             units={settings.units}
+            paused={pausedLike}
+            showFlag={machine.phase === 'paused'}
+            showPlayIcon={showPlayIcon}
+            onCenter={handlePauseToggle}
+            onLap={doLap}
+            onFlag={handleFlagFinish}
             onPrevPage={() => goPage(0)}
             onNextPage={() => goPage(2)}
           />
@@ -560,21 +578,25 @@ export default function LiveShell({
         display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 26px',
         pointerEvents: 'none',
       }}>
-        <button
-          onClick={handleClose}
-          aria-label={t('w2c.close')}
-          className="lv2-press"
-          style={{
-            width: 36, height: 36, borderRadius: '50%', border: onMapPage ? '1px solid var(--live-hairline-2)' : 'none',
-            background: onMapPage ? 'var(--live-btn-map)' : 'var(--live-surface-2)',
-            color: 'var(--live-text)', cursor: 'pointer', flex: 'none', pointerEvents: 'auto',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}
-        >
-          <svg width="14" height="14" viewBox="0 0 14 14">
-            <path d="M1 1 L13 13 M13 1 L1 13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-          </svg>
-        </button>
+        {/* Croix de sortie — MASQUÉE sur la carte (spec §3 : rien ne doit gêner
+            la carte ; on quitte via l'arrêt puis le drapeau / le résumé). */}
+        {!onMapPage ? (
+          <button
+            onClick={handleClose}
+            aria-label={t('w2c.close')}
+            className="lv2-press"
+            style={{
+              width: 36, height: 36, borderRadius: '50%', border: 'none',
+              background: 'var(--live-surface-2)',
+              color: 'var(--live-text)', cursor: 'pointer', flex: 'none', pointerEvents: 'auto',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}
+          >
+            <svg width="14" height="14" viewBox="0 0 14 14">
+              <path d="M1 1 L13 13 M13 1 L1 13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            </svg>
+          </button>
+        ) : <span style={{ width: 36 }} />}
         {!onMapPage && (
           <div style={{
             position: 'absolute', left: '50%', transform: 'translateX(-50%)',

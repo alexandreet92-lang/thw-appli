@@ -150,6 +150,17 @@ const gpsIcon = L.divIcon({
   iconAnchor: [9, 9],
 })
 
+/** Drapeau de course à damier (bouton noir « enregistrer la sortie »). */
+function RaceFlagIcon() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+      <path d="M6 3 V22" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <path d="M6 4 H19 V13 H6 Z" stroke="currentColor" strokeWidth="1.6" fill="none" />
+      <path d="M6 4 h3.25 v2.25 H6 Z M12.5 4 h3.25 v2.25 H12.5 Z M9.25 6.25 h3.25 v2.25 H9.25 Z M15.75 6.25 H19 v2.25 h-3.25 Z M6 8.5 h3.25 v2.25 H6 Z M12.5 8.5 h3.25 v2.25 H12.5 Z M9.25 10.75 h3.25 V13 H9.25 Z M15.75 10.75 H19 V13 h-3.25 Z" fill="currentColor" />
+    </svg>
+  )
+}
+
 interface Props {
   started: boolean
   locked: boolean
@@ -168,13 +179,26 @@ interface Props {
   route: NavRouteInput | null
   defaultLayer: BaseLayerId
   units?: LiveUnits
+  /** Vrai quand la séance est en pause/pause auto (bouton central = reprendre, lap masqué). */
+  paused: boolean
+  /** Vrai uniquement en pause MANUELLE → drapeau « enregistrer » visible (pas en pause auto). */
+  showFlag: boolean
+  /** Icône de lecture (reprendre) sur le bouton central — sinon carré (arrêter). */
+  showPlayIcon: boolean
+  /** Bouton central : arrêter (pause) / reprendre. */
+  onCenter: () => void
+  /** Bouton lap (droite, pendant l'enregistrement). */
+  onLap: () => void
+  /** Drapeau de course (gauche, à l'arrêt) → ouvre le résumé. */
+  onFlag: () => void
   onPrevPage: () => void
   onNextPage: () => void
 }
 
 export default function MapPage({
   started, locked, dim, speedKmh, powerW, heartRateBpm, distanceDoneM, gainDoneM, elapsedSec,
-  points, currentPos, route, defaultLayer, units, onPrevPage, onNextPage,
+  points, currentPos, route, defaultLayer, units, paused, showFlag, showPlayIcon, onCenter, onLap, onFlag,
+  onPrevPage, onNextPage,
 }: Props) {
   const { t } = useI18n()
   const [layer, setLayer] = useState<LayerId>(defaultLayer)
@@ -254,6 +278,9 @@ export default function MapPage({
   // Temps estimé = restant / vitesse lissée, ou 25 km/h par défaut à l'arrêt.
   const avgKmh = speedKmh > 3 ? speedKmh : 25
   const estMin = (remainingM / 1000) / avgKmh * 60
+  // Heure d'arrivée prévue (maintenant + temps estimé) — fluctue avec l'allure.
+  const arrivalClock = new Date(Date.now() + estMin * 60000)
+    .toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
 
   // Distance jusqu'au départ du parcours (bandeau « Rejoignez l'itinéraire »).
   const distToStartM = hasRoute && currentPos ? haversine(currentPos, line[0]) : null
@@ -367,7 +394,7 @@ export default function MapPage({
         onClick={hasRoute && !locked ? () => setGuideOpen(true) : undefined}
         role={hasRoute ? 'button' : undefined}
         style={{
-          position: 'absolute', top: 'calc(env(safe-area-inset-top) + 62px)', left: 68, right: 16,
+          position: 'absolute', top: 'calc(env(safe-area-inset-top) + 62px)', left: 16, right: 16,
           minHeight: 54, borderRadius: 16, zIndex: 30,
           background: 'var(--live-float)', border: '1px solid var(--live-hairline-2)',
           backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
@@ -530,33 +557,85 @@ export default function MapPage({
         </div>
       )}
 
-      {/* Données À MÊME la carte — bas gauche, texte blanc + halo noir fort
-          (lisible sur carte claire ET foncée, façon compteur Garmin) :
-          ligne W · FC au-dessus, VITESSE en très grand en dessous. */}
+      {/* ── Console de commande (au-dessus du bandeau stats bas, spec §3) ──
+          De bas en haut : bandeau stats (rendu plus bas) → ligne VITESSE · W · FC
+          → rangée de boutons (drapeau gauche à l'arrêt · Arrêter/Reprendre au
+          centre · Lap à droite pendant l'enregistrement). */}
       {started && (
         <div style={{
-          position: 'absolute', left: 18, bottom: 178, zIndex: 20, pointerEvents: 'none',
-          color: 'var(--live-map-ink)', textShadow: 'var(--live-map-halo)',
-          opacity: dim ? 0.55 : 1, transition: 'opacity 0.2s',
+          position: 'absolute', left: 0, right: 0, bottom: 160, zIndex: 22,
+          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
+          paddingBottom: 10, pointerEvents: 'none',
         }}>
-          <div style={{ display: 'flex', gap: 26, alignItems: 'flex-end' }}>
+          {/* Rangée de boutons */}
+          <div style={{ position: 'relative', width: '100%', height: 76, pointerEvents: 'none' }}>
+            {/* Drapeau (gauche) — visible en pause manuelle, ouvre le résumé */}
+            {showFlag && (
+              <button
+                onClick={onFlag}
+                aria-label={t('w2c.saveFinish')}
+                className="lv2-press"
+                style={{
+                  position: 'absolute', top: 12, left: '50%', marginLeft: -104,
+                  width: 52, height: 52, borderRadius: '50%', cursor: 'pointer', pointerEvents: 'auto',
+                  background: '#111214', border: '1px solid rgba(255,255,255,0.14)', color: '#fff', // design-allow-color
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  boxShadow: '0 6px 18px rgba(0,0,0,0.35)',
+                }}
+              >
+                <RaceFlagIcon />
+              </button>
+            )}
+            {/* Bouton central bleu — Arrêter (carré) / Reprendre (play) */}
+            <button
+              onClick={onCenter}
+              aria-label={showPlayIcon ? t('w2c.resume') : t('w2c.stop')}
+              className="lv2-press"
+              style={{
+                position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)',
+                width: 72, height: 72, borderRadius: '50%', cursor: 'pointer', pointerEvents: 'auto',
+                background: 'var(--live-accent)', border: 'none', boxShadow: 'var(--live-glow)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}
+            >
+              {showPlayIcon
+                ? <svg width="24" height="28" viewBox="0 0 26 30"><path d="M3 3 L23 15 L3 27 Z" fill="var(--live-accent-on)" stroke="var(--live-accent-on)" strokeWidth="4" strokeLinejoin="round" /></svg>
+                : <svg width="22" height="22" viewBox="0 0 22 22"><rect x="3" y="3" width="16" height="16" rx="3.5" fill="var(--live-accent-on)" /></svg>}
+            </button>
+            {/* Lap (droite) — visible pendant l'enregistrement */}
+            {!paused && (
+              <button
+                onClick={onLap}
+                aria-label={t('w2c.lap')}
+                className="lv2-press"
+                style={{
+                  position: 'absolute', top: 12, left: '50%', marginLeft: 52,
+                  width: 52, height: 52, borderRadius: '50%', cursor: 'pointer', pointerEvents: 'auto',
+                  background: 'var(--live-surface)', border: '1px solid var(--live-hairline-2)', color: 'var(--live-text)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 12, fontWeight: 800, letterSpacing: '0.08em',
+                }}
+              >
+                LAP
+              </button>
+            )}
+          </div>
+          {/* Ligne VITESSE · W · FC (texte à halo, façon compteur) */}
+          <div style={{
+            display: 'flex', gap: 30, alignItems: 'flex-end', justifyContent: 'center',
+            color: 'var(--live-map-ink)', textShadow: 'var(--live-map-halo)',
+            opacity: dim ? 0.55 : 1, transition: 'opacity 0.2s',
+          }}>
             {[
+              { id: 'V', lb: getUnitLabel('km/h', units), v: frNum((dim ? 0 : speedKmh) * df, 1) },
               { id: 'W', lb: 'W', v: powerW != null ? String(Math.round(powerW)) : '—' },
               { id: 'FC', lb: t('w2c.hr'), v: heartRateBpm != null ? String(Math.round(heartRateBpm)) : '—' },
             ].map(c => (
-              <div key={c.id}>
-                <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.16em', opacity: 0.85 }}>{c.lb}</div>
-                <div className="lv2-num" style={{ fontSize: 28, fontWeight: 800, lineHeight: 1.05, marginTop: 1 }}>
-                  {c.v}
-                </div>
+              <div key={c.id} style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '0.14em', opacity: 0.85 }}>{c.lb}</div>
+                <div className="lv2-num" style={{ fontSize: 30, fontWeight: 800, lineHeight: 1.02, marginTop: 1 }}>{c.v}</div>
               </div>
             ))}
-          </div>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginTop: 8 }}>
-            <span className="lv2-num" style={{ fontSize: 60, fontWeight: 800, lineHeight: 0.95, letterSpacing: '-0.01em' }}>
-              {frNum((dim ? 0 : speedKmh) * df, 1)}
-            </span>
-            <span style={{ fontSize: 14, fontWeight: 700, opacity: 0.85 }}>{getUnitLabel('km/h', units)}</span>
           </div>
         </div>
       )}
@@ -570,7 +649,8 @@ export default function MapPage({
           label: t('w2c.estTime'),
           value: estMin >= 60 ? formatHMS(Math.round(estMin * 60), true) : String(Math.round(estMin)),
           unit: estMin < 60 ? 'min' : undefined,
-          sub: started ? t('w2c.elapsedMin', { n: Math.floor(elapsedSec / 60) }) : null,
+          // Pendant l'enregistrement : heure d'arrivée prévue (plus petit).
+          sub: started ? (hasRoute ? t('w2c.arrivalAt', { h: arrivalClock }) : t('w2c.elapsedMin', { n: Math.floor(elapsedSec / 60) })) : null,
         }
         // Colonnes D+ uniquement si un dénivelé RÉEL est connu — jamais de
         // valeur inventée quand le parcours n'a pas d'altitudes.

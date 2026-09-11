@@ -27,6 +27,7 @@ import { MapContainer, TileLayer, Polyline, Marker, useMap } from 'react-leaflet
 import L from 'leaflet'
 import type { NavRouteInput } from '../RouteNavScreen'
 import { navigationRoute, maneuverShortFR, type NavStep } from '@/lib/openrouteservice'
+import { elevationGainLoss } from '@/lib/elevation'
 import { formatHMS, frNum } from './liveMachine'
 import { distFactor, altFactor, getUnitLabel, formatDistShortU, type LiveUnits } from '../units'
 import GuidePanel, { ManeuverIcon, maneuverKind, detectRoadBadge, RoadBadge } from './GuidePanel'
@@ -110,20 +111,14 @@ function projectOnRoute(
   return best ? { progressM: best.progressM, segIdx: best.segIdx } : null
 }
 
-// ── D+ avec hystérésis 1 m (anti-bruit) sur le profil altimétrique ──
-// Somme des montées d'au moins 1 m depuis la dernière altitude de référence ;
-// `fromM` ignore la partie déjà parcourue (D+ restant).
-function smoothedGainM(ep: { distanceM: number; altitudeM: number }[], fromM = 0): number {
-  let g = 0
-  let ref: number | null = null
-  for (const p of ep) {
-    if (p.distanceM < fromM) { ref = p.altitudeM; continue }
-    if (ref == null) { ref = p.altitudeM; continue }
-    const d = p.altitudeM - ref
-    if (d >= 1) { g += d; ref = p.altitudeM }
-    else if (d <= -1) ref = p.altitudeM
-  }
-  return g
+// ── D+ du parcours : EXACTEMENT la même mesure que la fiche du parcours ──
+// On réutilise `elevationGainLoss` (lissage + seuil 4 m, comme au moment de la
+// sauvegarde du parcours) au lieu d'un recalcul maison qui surestimait le D+
+// (ex. 858 m au lieu des ~540 m stockés). `fromM` ignore la partie déjà
+// parcourue pour le D+ RESTANT.
+function routeGainM(ep: { distanceM: number; altitudeM: number }[], fromM = 0): number {
+  const slice = fromM > 0 ? ep.filter(p => p.distanceM >= fromM) : ep
+  return elevationGainLoss(slice).gain
 }
 
 // Recentrage auto sur la position, suspendu 15 s après un pan/zoom manuel.
@@ -223,10 +218,14 @@ export default function MapPage({
   // en base, sinon null → colonne D+ MASQUÉE (jamais de valeur inventée).
   const ep = useMemo(() => route?.elevation_profile ?? [], [route?.elevation_profile])
   const hasElev = ep.length > 1
+  // Priorité au D+ STOCKÉ (fiche parcours) : c'est la valeur de référence que
+  // l'utilisateur a vue en enregistrant le parcours. Recalcul (même algo) en
+  // repli seulement si la base n'a pas de dénivelé stocké.
   const totalGainM: number | null = useMemo(() => {
-    if (hasElev) return smoothedGainM(ep)
-    return route?.elevation_gain_m ?? null
-  }, [hasElev, ep, route?.elevation_gain_m])
+    if (route?.elevation_gain_m != null) return route.elevation_gain_m
+    if (hasElev) return routeGainM(ep)
+    return null
+  }, [route?.elevation_gain_m, hasElev, ep])
 
   // Le verrouillage prime : panneau replié tant que l'écran est verrouillé.
   useEffect(() => { if (locked) setGuideOpen(false) }, [locked])
@@ -246,8 +245,11 @@ export default function MapPage({
   const remainingM = Math.max(0, totalM - traveledOnRouteM)
   const remainingGainM: number | null = useMemo(() => {
     if (!hasRoute || !hasElev) return null
-    return smoothedGainM(ep, traveledOnRouteM)
-  }, [hasRoute, hasElev, ep, traveledOnRouteM])
+    // D+ restant = D+ du profil au-delà de la progression, plafonné au total
+    // de référence (cohérence avec la valeur stockée affichée en haut).
+    const rem = routeGainM(ep, traveledOnRouteM)
+    return totalGainM != null ? Math.min(rem, totalGainM) : rem
+  }, [hasRoute, hasElev, ep, traveledOnRouteM, totalGainM])
 
   // Temps estimé = restant / vitesse lissée, ou 25 km/h par défaut à l'arrêt.
   const avgKmh = speedKmh > 3 ? speedKmh : 25
@@ -435,9 +437,9 @@ export default function MapPage({
           routeName={route?.name ?? null}
           distLabel={`${frNum((totalM / 1000) * df, 1)} ${getUnitLabel('km', units)}`}
           gainLabel={totalGainM != null ? `${Math.round(totalGainM * af)} ${getUnitLabel('m', units)} D+` : null}
-          elevProfile={ep}
+          line={line}
+          cum={cum}
           traveledM={traveledOnRouteM}
-          fmtAlt={m => `${Math.round(m * af)} ${getUnitLabel('m', units)}`}
           onClose={() => setGuideOpen(false)}
         />
       )}

@@ -8,8 +8,9 @@ import { createClient } from '@/lib/supabase/client'
 import { resolvePlanningUid } from '@/lib/planning/scope'
 import GoalBanner from './components/GoalBanner'
 import NextRaceBar from './components/NextRaceBar'
-import AnnualView from './components/AnnualView'
-import AppleCalendarView from './components/AppleCalendarView'
+import YearGridView from './components/YearGridView'
+import MonthPageView from './components/MonthPageView'
+import YearPickerSheet from './components/YearPickerSheet'
 import RaceModal from './components/RaceModal'
 import EventModal from './components/EventModal'
 import TestEditorSheet, { type PlannedTestInput } from './components/TestEditorSheet'
@@ -860,7 +861,6 @@ function RaceTab({ races, raceStages, tests, addEvent, updateEvent, deleteEvent,
   // Year selector
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
   const [yearPickerOpen, setYearPickerOpen] = useState(false)
-  const YEAR_RANGE = [2024, 2025, 2026, 2027, 2028, 2029, 2030]
   const gty  = races.find(r => r.level === 'gty' && new Date(r.date).getFullYear() === selectedYear)
   const yearRaces = races.filter(r => new Date(r.date).getFullYear() === selectedYear)
   const yearStages = raceStages.filter(s => {
@@ -924,93 +924,51 @@ function RaceTab({ races, raceStages, tests, addEvent, updateEvent, deleteEvent,
     <div style={{ display:'flex',flexDirection:'column',gap:14 }}>
       <div data-guide="cal-goal"><GoalBanner gty={gty} races={races} year={selectedYear} /></div>
 
-      {/* Year selector + Controls */}
-      <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap' as const,gap:8 }}>
-        {/* Left: year + view toggle */}
-        <div style={{ display:'flex',alignItems:'center',gap:8 }}>
-          {/* Year picker */}
-          <div style={{ position:'relative' as const }}>
-            <button
-              onClick={() => setYearPickerOpen(o => !o)}
-              style={{
-                fontFamily:'Syne,sans-serif',fontSize:22,fontWeight:800,
-                background:'transparent',border:'none',cursor:'pointer',
-                color:'var(--text)',padding:'0 2px',letterSpacing:'-0.02em',
-                display:'flex',alignItems:'center',gap:4,
-              }}
-            >
-              {selectedYear}
-              <span style={{ fontSize:12,color:'var(--text-dim)',fontWeight:400 }}>▾</span>
-            </button>
-            {yearPickerOpen && (
-              <div
-                onClick={e => e.stopPropagation()}
-                style={{
-                  position:'absolute' as const,top:'calc(100% + 4px)',left:0,zIndex:50,
-                  background:'var(--bg-card)',border:'1px solid var(--border)',
-                  borderRadius:12,padding:8,boxShadow:'0 8px 24px rgba(0,0,0,0.3)',
-                  display:'flex',flexDirection:'column' as const,gap:2,minWidth:90,
-                }}
-              >
-                {YEAR_RANGE.map(y => (
-                  <button key={y} onClick={() => { setSelectedYear(y); setYearPickerOpen(false) }}
-                    style={{
-                      padding:'6px 14px',borderRadius:8,border:'1px solid',cursor:'pointer',
-                      fontFamily:'Syne,sans-serif',fontSize:14,fontWeight:y===selectedYear?700:400,
-                      borderColor:y===selectedYear?'#06B6D4':'transparent',
-                      background:y===selectedYear?'rgba(6,182,212,0.10)':'transparent',
-                      color:y===selectedYear?'#06B6D4':'var(--text)',textAlign:'left' as const,
-                    }}
-                  >
-                    {y}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* View toggle */}
-          <div data-guide="cal-view" style={{ display:'flex',gap:5 }}>
-            {(['year','month'] as CalView[]).map(v => (
-              <button key={v} onClick={() => setCalView(v)} style={{
-                padding:'6px 12px',borderRadius:9,border:'1px solid',fontSize:11,cursor:'pointer',fontWeight:calView===v?600:400,
-                borderColor:calView===v?'#06B6D4':'var(--border)',
-                background:calView===v?'rgba(6,182,212,0.10)':'var(--bg-card)',
-                color:calView===v?'#06B6D4':'var(--text-mid)',
-              }}>
-                {v === 'year' ? t('calendar.annualView') : t('calendar.monthlyView')}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Astuce : l'ajout se fait en cliquant un jour du calendrier */}
-        <span data-guide="cal-add" style={{ fontSize:11, color:'var(--text-dim)' }}>{t('calendar.clickDayToAddGoal')}</span>
-      </div>
-
-      {/* Close year picker on outside click */}
-      {yearPickerOpen && (
-        <div onClick={() => setYearPickerOpen(false)} style={{ position:'fixed',inset:0,zIndex:40 }} />
-      )}
-
-      {/* Views */}
+      {/* Année (tap → sur-page de sélection, bas → haut) — seulement en vue annuelle */}
       {calView === 'year' && (
-        <AnnualView
-          races={yearRaces} stages={yearStages} year={selectedYear}
-          onRaceClick={r => { setEditRace(r); setPrefillDate(undefined); setShowRaceModal(true) }}
-          onStageClick={s => setEventModal({ mode: 'edit', stage: s })}
-          onMonthClick={m => { setCurrentMonth(m); setCalView('month') }}
-          onMarkComplete={markCompleted}
+        <div style={{ display:'flex',alignItems:'center',justifyContent:'flex-start' }}>
+          <button
+            data-guide="cal-view"
+            onClick={() => setYearPickerOpen(true)}
+            style={{
+              fontFamily:'Syne,sans-serif',fontSize:30,fontWeight:800,
+              background:'transparent',border:'none',cursor:'pointer',
+              color:'var(--text)',padding:'0 2px',letterSpacing:'-0.02em',
+              display:'flex',alignItems:'center',gap:6,
+            }}
+          >
+            {selectedYear}
+            <span style={{ fontSize:15,color:'var(--text-dim)',fontWeight:400 }}>▾</span>
+          </button>
+        </div>
+      )}
+
+      {/* Sur-page de sélection d'année (± 100 ans) */}
+      {yearPickerOpen && (
+        <YearPickerSheet
+          selected={selectedYear}
+          onSelect={y => setSelectedYear(y)}
+          onClose={() => setYearPickerOpen(false)}
         />
       )}
-      {calView === 'month' && (
-        <AppleCalendarView
-          races={yearRaces} stages={yearStages} year={selectedYear}
-          onRaceClick={r => { setEditRace(r); setPrefillDate(undefined); setShowRaceModal(true) }}
-          onStageDayClick={(s, date) => setDayModal({ stage: s, date })}
-          onDayClick={date => setChooserDate(date)}
-        />
-      )}
+
+      {/* Views — vue annuelle façon iOS (grille 12 mini-mois) / vue mensuelle */}
+      <div data-guide="cal-day">
+        {calView === 'year' ? (
+          <YearGridView
+            races={yearRaces} stages={yearStages} year={selectedYear}
+            onMonthClick={m => { setCurrentMonth(m); setCalView('month') }}
+          />
+        ) : (
+          <MonthPageView
+            races={yearRaces} stages={yearStages} year={selectedYear} month={currentMonth}
+            onBack={() => setCalView('year')}
+            onRaceClick={r => { setEditRace(r); setPrefillDate(undefined); setShowRaceModal(true) }}
+            onStageDayClick={(s, date) => setDayModal({ stage: s, date })}
+            onDayClick={date => setChooserDate(date)}
+          />
+        )}
+      </div>
 
       {/* Tests planifiés (objectif « Test ») */}
       {yearTests.length > 0 && (
@@ -1133,18 +1091,25 @@ function ObjectiveChooser({ date, onClose, onCourse, onStage, onTest, onEvent }:
 }) {
   const { t } = useI18n()
   const pretty = new Date(date + 'T12:00:00').toLocaleDateString(currentLocale(), { weekday: 'long', day: 'numeric', month: 'long' })
+  // Animation réelle : entrée coulissante bas → haut + fondu, portal au-dessus
+  // du shell (la barre de bulles du haut ne transparaît plus).
+  const [shown, setShown] = useState(false)
+  useEffect(() => { const id = requestAnimationFrame(() => setShown(true)); return () => cancelAnimationFrame(id) }, [])
+  const close = () => { setShown(false); setTimeout(onClose, 280) }
   const card: React.CSSProperties = {
     flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '22px 16px',
     borderRadius: 16, border: '1px solid var(--border)', background: 'var(--bg-card)', cursor: 'pointer',
     color: 'var(--text)', fontFamily: 'inherit',
   }
-  return (
-    <>
-      <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 400, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }} />
+  return createPortal(
+    <div style={{ position: 'fixed', inset: 0, zIndex: 5000 }}>
+      <div onClick={close} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)', opacity: shown ? 1 : 0, transition: 'opacity 0.28s' }} />
       <div onClick={e => e.stopPropagation()} style={{
-        position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 401,
+        position: 'absolute', left: 0, right: 0, bottom: 0,
         background: 'var(--bg-card2)', borderRadius: '26px 26px 0 0', padding: '20px 24px calc(24px + env(safe-area-inset-bottom))',
         boxShadow: '0 -10px 50px rgba(0,0,0,0.22)',
+        transform: shown ? 'translateY(0)' : 'translateY(100%)',
+        transition: 'transform 0.32s cubic-bezier(0.32,0.72,0,1)',
       }}>
         <div style={{ width: 40, height: 4, borderRadius: 4, background: 'var(--border-mid)', margin: '0 auto 14px' }} />
         <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-dim)', margin: 0, textAlign: 'center' }}>{t('calendar.addGoalTitle')}</p>
@@ -1172,7 +1137,8 @@ function ObjectiveChooser({ date, onClose, onCourse, onStage, onTest, onEvent }:
           </button>
         </div>
       </div>
-    </>
+    </div>,
+    document.body,
   )
 }
 

@@ -77,6 +77,9 @@ export default function LiveShell({
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const speedSamples = useRef<TimedSample[]>([])
+  // Vrai quand le résumé vient d'un arrêt de séance (reprenable) et non d'un
+  // backup restauré au montage (rien à reprendre).
+  const summaryFromLiveRef = useRef(false)
 
   const started = isStarted(machine)
   const locked = machine.phase === 'locked'
@@ -321,6 +324,7 @@ export default function LiveShell({
   const handleFinish = () => {
     const snap = buildSnapshot()
     if (!snap) return
+    summaryFromLiveRef.current = true
     saveLiveBackup(snap)
     setSummarySnap(snap)
     send({ type: 'FINISH' })
@@ -331,6 +335,7 @@ export default function LiveShell({
     send({ type: 'REQUEST_STOP' })
     const snap = buildSnapshot()
     if (!snap) return
+    summaryFromLiveRef.current = true
     saveLiveBackup(snap)
     setSummarySnap(snap)
     send({ type: 'FINISH' })
@@ -351,6 +356,7 @@ export default function LiveShell({
   }
   const handleRestoreBackup = () => {
     if (!pendingBackup) return
+    summaryFromLiveRef.current = false // backup restauré : rien à reprendre
     setSummarySnap(pendingBackup.snap)
     setPendingBackup(null)
     send({ type: 'RESTORE_SUMMARY' })
@@ -870,6 +876,9 @@ export default function LiveShell({
         <SummaryScreen
           snap={summarySnap}
           units={settings.units}
+          initialSport={route?.sport ?? null}
+          canResume={summaryFromLiveRef.current}
+          onBack={() => send({ type: 'REOPEN_SESSION' })}
           onUploadStart={() => send({ type: 'UPLOAD' })}
           onUploadDone={() => send({ type: 'UPLOAD_DONE' })}
           onUploadFail={() => send({ type: 'UPLOAD_FAIL' })}

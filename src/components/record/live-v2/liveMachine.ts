@@ -45,6 +45,7 @@ export type LiveEvent =
   | { type: 'CANCEL_STOP' }
   | { type: 'FINISH' }
   | { type: 'RESTORE_SUMMARY' }
+  | { type: 'REOPEN_SESSION' }
   | { type: 'UPLOAD' }
   | { type: 'UPLOAD_DONE' }
   | { type: 'UPLOAD_FAIL' }
@@ -102,6 +103,11 @@ export function liveReducer(s: LiveMachine, e: LiveEvent): LiveMachine {
     case 'RESTORE_SUMMARY':
       // Reprise d'un backup local non envoyé (au montage de l'écran).
       return s.phase === 'idle' ? { phase: 'summary', lockedFrom: null, stoppingFrom: null } : s
+
+    case 'REOPEN_SESSION':
+      // Retour du résumé vers la séance (bouton « revenir en arrière ») : on
+      // repasse en pause pour pouvoir reprendre l'enregistrement.
+      return s.phase === 'summary' ? { phase: 'paused', lockedFrom: null, stoppingFrom: null } : s
 
     case 'UPLOAD':
       return s.phase === 'summary' ? { ...s, phase: 'uploading' } : s

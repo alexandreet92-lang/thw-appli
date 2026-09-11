@@ -26,6 +26,10 @@ export interface FieldCtx {
   gradient: number
   lapSec: number
   lapDistM: number
+  /** Fréquence cardiaque live (capteur BLE) — null si non connecté. */
+  hr: number | null
+  /** Puissance live (capteur BLE) — null si non connecté. */
+  power: number | null
   units?: LiveUnits
 }
 
@@ -74,6 +78,10 @@ function fieldDisplay(id: string, ctx: FieldCtx): { value: string; unit?: string
       return { value: ctx.started ? frNum(ctx.gradient, 1) : '—', unit: '%' }
     case 'calories':
       return { value: ctx.started ? String(Math.round((ctx.durationSec / 3600) * 600)) : '0', unit: 'kcal' }
+    case 'hr':
+      return { value: ctx.hr != null ? String(Math.round(ctx.hr)) : '—', unit: 'bpm' }
+    case 'power':
+      return { value: ctx.power != null ? String(Math.round(ctx.power)) : '—', unit: 'W' }
     default:
       // Champs capteurs (FC/puissance/cadence) et itinéraire : pas de source.
       return na

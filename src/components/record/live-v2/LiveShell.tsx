@@ -26,6 +26,7 @@ import {
   smoothWindow, formatHMS, frNum, type TimedSample, type LiveTimer,
 } from './liveMachine'
 import ConfigDataPage from './ConfigDataPage'
+import { subscribeSensors, getSensorState, type SensorState } from '@/lib/sensors/bluetooth'
 import type { DataPage } from '@/types/cycling'
 import { DEFAULT_PAGES } from '@/types/cycling'
 import ExitSheet from './ExitSheet'
@@ -62,6 +63,11 @@ export default function LiveShell({
   const [machine, send] = useReducer(liveReducer, LIVE_INIT)
   const [timer, setTimer] = useState<LiveTimer>(TIMER_INIT)
   const [nowMs, setNowMs] = useState(() => Date.now())
+  // Capteurs BLE (FC / puissance) : valeurs live du store partagé, affichées sur
+  // le compteur dès qu'un capteur est connecté (Web Bluetooth Android/Chrome ;
+  // iOS via build natif App Store — même store).
+  const [sensors, setSensors] = useState<SensorState>(() => getSensorState())
+  useEffect(() => subscribeSensors(() => setSensors(getSensorState())), [])
   const [pageIndex, setPageIndex] = useState(0)
   const [laps, setLaps] = useState<SessionLap[]>([])
   const [lapStart, setLapStart] = useState({ sec: 0, dist: 0 })
@@ -563,8 +569,8 @@ export default function LiveShell({
                 locked={locked}
                 dim={dim}
                 speedKmh={smoothedSpeed}
-                powerW={null}
-                heartRateBpm={null}
+                powerW={sensors.power}
+                heartRateBpm={sensors.hr}
                 distanceDoneM={gps.distance}
                 gainDoneM={gps.elevationGain}
                 elapsedSec={durationSec}
@@ -590,6 +596,7 @@ export default function LiveShell({
                   maxSpeedKmh: gps.maxSpeed, elevGainM: gps.elevationGain,
                   altitudeM: gps.currentAltitude, gradient: gps.gradient,
                   lapSec, lapDistM,
+                  hr: sensors.hr, power: sensors.power,
                   units: settings.units,
                 }}
                 dataSize={settings.display.dataSize}

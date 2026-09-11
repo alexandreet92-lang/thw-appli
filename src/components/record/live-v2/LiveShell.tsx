@@ -25,8 +25,9 @@ import {
   TIMER_INIT, timerStart, timerPause, timerResume, timerElapsedSec,
   smoothWindow, formatHMS, frNum, type TimedSample, type LiveTimer,
 } from './liveMachine'
-import DataPage from './DataPage'
-import LapsPage from './LapsPage'
+import ConfigDataPage from './ConfigDataPage'
+import type { DataPage } from '@/types/cycling'
+import { DEFAULT_PAGES } from '@/types/cycling'
 import ExitSheet from './ExitSheet'
 import SummaryScreen from './SummaryScreen'
 import {
@@ -45,6 +46,8 @@ export interface LiveShellProps {
   resetTracking: () => void
   restoreTracking: (seed: { points: GPSState['points']; distance: number; elevationGain: number; maxSpeed: number }) => void
   settings: CyclingSettings
+  /** Config des pages de données (réglages) — pilote le carrousel live. */
+  pages: DataPage[]
   route: NavRouteInput | null
   isDark: boolean
   onExit: () => void
@@ -53,7 +56,7 @@ export interface LiveShellProps {
 }
 
 export default function LiveShell({
-  sportTitle, gps, resetTracking, restoreTracking, settings, route, isDark, onExit, onFinished, onOpenSettings,
+  sportTitle, gps, resetTracking, restoreTracking, settings, pages, route, isDark, onExit, onFinished, onOpenSettings,
 }: LiveShellProps) {
   const { t } = useI18n()
   const [machine, send] = useReducer(liveReducer, LIVE_INIT)
@@ -302,12 +305,13 @@ export default function LiveShell({
   }, [resetTracking])
 
   // ── Navigation entre pages (par balayage horizontal) ──
+  const pageCount = pages.length > 0 ? pages.length : DEFAULT_PAGES.length
   const onPagesScroll = useCallback(() => {
     const el = pagesRef.current
     if (!el || el.clientWidth === 0) return
     const i = Math.round(el.scrollLeft / el.clientWidth)
-    setPageIndex(prev => (prev === i ? prev : Math.max(0, Math.min(2, i))))
-  }, [])
+    setPageIndex(prev => (prev === i ? prev : Math.max(0, Math.min(pageCount - 1, i))))
+  }, [pageCount])
 
   // ── Actions principales ──
   const canStart = gps.status === GPSStatus.good || gps.status === GPSStatus.approximate
@@ -459,7 +463,9 @@ export default function LiveShell({
       ? { color: 'var(--live-warn)', text: t('w2c.gpsMedium', { acc: acc ?? 12 }) }
       : { color: 'var(--live-danger)', text: t('w2c.gpsSearching') }
 
-  const onMapPage = pageIndex === 1
+  // Garde-fou : au moins une page (repli sur les défauts si config vide).
+  const livePages = pages.length > 0 ? pages : DEFAULT_PAGES
+  const onMapPage = livePages[pageIndex]?.type === 'map'
   const controlsHidden = started && onMapPage
   // Sur la carte en cours d'enregistrement, les commandes vivent dans la console
   // MapPage (bas de carte) : les points de pagination remontent au-dessus.
@@ -539,73 +545,61 @@ export default function LiveShell({
   return (
     <div data-live-shell="" data-live-theme={isDark ? undefined : 'light'}>
 
-      {/* ── Carrousel 3 pages ── */}
+      {/* ── Carrousel PILOTÉ PAR LA CONFIG (réglages « Pages de données ») ──
+          Chaque page : carte (MapPage) ou grille de champs (ConfigDataPage).
+          Ajouter / réordonner / modifier une page dans les réglages se
+          répercute directement ici. ── */}
       <div
         ref={pagesRef}
         className={locked ? 'lv2-pages lv2-locked' : 'lv2-pages'}
         onScroll={onPagesScroll}
         onPointerDown={handlePagesPointerDown}
       >
-        <section className="lv2-page">
-          <DataPage
-            started={started}
-            dim={dim}
-            durationSec={durationSec}
-            distanceM={gps.distance}
-            speedKmh={smoothedSpeed}
-            avgSpeedKmh={avgSpeedKmh}
-            elevGainM={gps.elevationGain}
-            heartRate={null}
-            cadence={null}
-            powerW={null}
-            avgPowerW={null}
-            npW={null}
-            heroSource="speed"
-            gpsStatus={gps.status}
-            gpsAccuracy={gps.accuracy}
-            dataSize={settings.display.dataSize}
-            units={settings.units}
-            onSensorChipTap={() => showToast(t('w2c.sensorPairingSoon'))}
-          />
-        </section>
-        <section className="lv2-page">
-          <MapPage
-            started={started}
-            locked={locked}
-            dim={dim}
-            speedKmh={smoothedSpeed}
-            powerW={null}
-            heartRateBpm={null}
-            distanceDoneM={gps.distance}
-            gainDoneM={gps.elevationGain}
-            elapsedSec={durationSec}
-            points={gps.points}
-            currentPos={currentPos}
-            route={route}
-            defaultLayer={settings.navigation.defaultMapType}
-            units={settings.units}
-            paused={pausedLike}
-            showFlag={machine.phase === 'paused'}
-            showPlayIcon={showPlayIcon}
-            onCenter={handlePauseToggle}
-            onLap={doLap}
-            onFlag={handleFlagFinish}
-          />
-        </section>
-        <section className="lv2-page">
-          <LapsPage
-            started={started}
-            dim={dim}
-            lapNumber={laps.length + 1}
-            lapSec={lapSec}
-            totalSec={durationSec}
-            distanceM={gps.distance}
-            altitudeM={gps.currentAltitude}
-            laps={laps}
-            dataSize={settings.display.dataSize}
-            units={settings.units}
-          />
-        </section>
+        {livePages.map((page) => (
+          <section className="lv2-page" key={page.id}>
+            {page.type === 'map' ? (
+              <MapPage
+                started={started}
+                locked={locked}
+                dim={dim}
+                speedKmh={smoothedSpeed}
+                powerW={null}
+                heartRateBpm={null}
+                distanceDoneM={gps.distance}
+                gainDoneM={gps.elevationGain}
+                elapsedSec={durationSec}
+                points={gps.points}
+                currentPos={currentPos}
+                route={route}
+                defaultLayer={settings.navigation.defaultMapType}
+                units={settings.units}
+                paused={pausedLike}
+                showFlag={machine.phase === 'paused'}
+                showPlayIcon={showPlayIcon}
+                onCenter={handlePauseToggle}
+                onLap={doLap}
+                onFlag={handleFlagFinish}
+              />
+            ) : (
+              <ConfigDataPage
+                page={page}
+                ctx={{
+                  started, dim,
+                  durationSec, distanceM: gps.distance,
+                  speedKmh: smoothedSpeed, avgSpeedKmh,
+                  maxSpeedKmh: gps.maxSpeed, elevGainM: gps.elevationGain,
+                  altitudeM: gps.currentAltitude, gradient: gps.gradient,
+                  lapSec, lapDistM,
+                  units: settings.units,
+                }}
+                dataSize={settings.display.dataSize}
+                gpsStatus={gps.status}
+                gpsAccuracy={gps.accuracy}
+                onSensorChipTap={() => showToast(t('w2c.sensorPairingSoon'))}
+              />
+            )}
+          </section>
+        ))}
       </div>
 
       {/* ── Header ── */}
@@ -746,7 +740,7 @@ export default function LiveShell({
         bottom: `calc(env(safe-area-inset-bottom) + ${dotsBottom}px)`,
         display: 'flex', gap: 11, zIndex: 54, transition: 'bottom 0.2s',
       }}>
-        {[0, 1, 2].map(i => (
+        {livePages.map((_, i) => (
           <span key={i} style={{
             width: i === pageIndex ? 7 : 6, height: i === pageIndex ? 7 : 6,
             borderRadius: '50%', transition: 'all 0.2s',

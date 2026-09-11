@@ -13,6 +13,7 @@ import dynamic from 'next/dynamic'
 import type { NavRouteInput } from './RouteNavScreen'
 import { useGPSTracking, GPSStatus } from '@/hooks/useGPSTracking'
 import { useCyclingSettings } from '@/hooks/useCyclingSettings'
+import { useCyclingConfig } from '@/hooks/useCyclingConfig'
 import GPSPermissionScreen from './GPSPermissionScreen'
 import GPSPrePermissionScreen from './GPSPrePermissionScreen'
 import CyclingSettings from './CyclingSettings'
@@ -45,6 +46,9 @@ export default function CyclingScreen({ onExit, onFinished, route }: Props) {
   const { settings, updateSetting } = useCyclingSettings()
   // Réglage recording.gpsFrequency : throttling des positions dans le hook GPS.
   const { gps, resetTracking, restoreTracking } = useGPSTracking(gpsEnabled, settings.recording.gpsFrequency)
+  // Config des pages LEVÉE ici : partagée par le carrousel live ET l'éditeur de
+  // réglages, pour que l'ajout/modif d'une page s'applique en direct.
+  const { pages, setPages, savePages } = useCyclingConfig('cycling')
 
   const handleGpsAuthorize = () => {
     localStorage.setItem('gps_permission_explained', 'true')
@@ -68,6 +72,7 @@ export default function CyclingScreen({ onExit, onFinished, route }: Props) {
         resetTracking={resetTracking}
         restoreTracking={restoreTracking}
         settings={settings}
+        pages={pages}
         route={route ?? null}
         isDark={isDark}
         onExit={onExit}
@@ -81,6 +86,9 @@ export default function CyclingScreen({ onExit, onFinished, route }: Props) {
         isDark={isDark}
         settings={settings}
         updateSetting={updateSetting}
+        pages={pages}
+        setPages={setPages}
+        savePages={savePages}
       />
 
       {gps.status === GPSStatus.denied && (

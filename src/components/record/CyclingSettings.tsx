@@ -1,6 +1,5 @@
 'use client'
 import { type ReactElement, useCallback, useEffect, useRef, useState } from 'react'
-import { useCyclingConfig } from '@/hooks/useCyclingConfig'
 import type { CyclingSettings as CyclingSettingsData } from '@/hooks/useCyclingSettings'
 import { fieldById, type DataPage } from '@/types/cycling'
 import PageEditor from './PageEditor'
@@ -16,6 +15,10 @@ interface Props {
   isDark: boolean
   settings: CyclingSettingsData
   updateSetting: (path: string, value: unknown) => void
+  /** Config des pages LEVÉE (partagée avec le carrousel live) — les modifs s'appliquent en direct. */
+  pages: DataPage[]
+  setPages: React.Dispatch<React.SetStateAction<DataPage[]>>
+  savePages: (pages: DataPage[]) => Promise<void>
 }
 
 const SECTION_ICONS: Record<string, ReactElement> = {
@@ -118,11 +121,10 @@ export default function CyclingSettings(props: Props) {
   )
 }
 
-function CyclingSettingsInner({ open, onClose, isDark, settings, updateSetting: updateSetting_prop }: Props) {
+function CyclingSettingsInner({ open, onClose, isDark, settings, updateSetting: updateSetting_prop, pages, setPages, savePages }: Props) {
   const { showToast } = useToast()
   const { t: tr } = useI18n()
   const t = getTheme(isDark)
-  const { pages, setPages, savePages } = useCyclingConfig()
   const updateSetting = useCallback((path: string, value: unknown) => {
     updateSetting_prop(path, value)
     showToast(tr('record.commonSettingsSaved'))

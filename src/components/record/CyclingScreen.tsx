@@ -44,7 +44,7 @@ export default function CyclingScreen({ onExit, onFinished, route }: Props) {
 
   const { settings, updateSetting } = useCyclingSettings()
   // Réglage recording.gpsFrequency : throttling des positions dans le hook GPS.
-  const { gps, resetTracking } = useGPSTracking(gpsEnabled, settings.recording.gpsFrequency)
+  const { gps, resetTracking, restoreTracking } = useGPSTracking(gpsEnabled, settings.recording.gpsFrequency)
 
   const handleGpsAuthorize = () => {
     localStorage.setItem('gps_permission_explained', 'true')
@@ -66,6 +66,7 @@ export default function CyclingScreen({ onExit, onFinished, route }: Props) {
         sportTitle={t('record.cyclingScreenTitle')}
         gps={gps}
         resetTracking={resetTracking}
+        restoreTracking={restoreTracking}
         settings={settings}
         route={route ?? null}
         isDark={isDark}

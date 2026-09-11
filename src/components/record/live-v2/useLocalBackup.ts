@@ -26,6 +26,8 @@ export interface LiveSnapshot {
 export interface LiveBackup {
   snap: LiveSnapshot
   savedAt: number
+  /** true = séance encore EN COURS (interrompue) → reprenable ; false/absent = terminée (à envoyer). */
+  live?: boolean
 }
 
 const KEY = 'thw_live_v2_backup'
@@ -43,15 +45,15 @@ export function loadLiveBackup(): LiveBackup | null {
   }
 }
 
-export function saveLiveBackup(snap: LiveSnapshot): void {
+export function saveLiveBackup(snap: LiveSnapshot, live = false): void {
   if (typeof window === 'undefined') return
   try {
-    localStorage.setItem(KEY, JSON.stringify({ snap, savedAt: Date.now() } satisfies LiveBackup))
+    localStorage.setItem(KEY, JSON.stringify({ snap, savedAt: Date.now(), live } satisfies LiveBackup))
   } catch {
     // localStorage plein (trace GPS longue) : on retente sans les points.
     try {
       const light: LiveSnapshot = { ...snap, gpsPts: [] }
-      localStorage.setItem(KEY, JSON.stringify({ snap: light, savedAt: Date.now() } satisfies LiveBackup))
+      localStorage.setItem(KEY, JSON.stringify({ snap: light, savedAt: Date.now(), live } satisfies LiveBackup))
     } catch { /* stockage indisponible — tant pis */ }
   }
 }
@@ -74,7 +76,7 @@ export function useLocalBackup(active: boolean, getSnapshot: () => LiveSnapshot 
     if (!active) return
     const write = () => {
       const snap = getRef.current()
-      if (snap) saveLiveBackup(snap)
+      if (snap) saveLiveBackup(snap, true) // séance encore en cours → reprenable
     }
     write()
     const iv = setInterval(write, 10_000)

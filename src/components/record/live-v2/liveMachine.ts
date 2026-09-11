@@ -45,6 +45,7 @@ export type LiveEvent =
   | { type: 'CANCEL_STOP' }
   | { type: 'FINISH' }
   | { type: 'RESTORE_SUMMARY' }
+  | { type: 'RESUME_BACKUP' }
   | { type: 'REOPEN_SESSION' }
   | { type: 'UPLOAD' }
   | { type: 'UPLOAD_DONE' }
@@ -108,6 +109,11 @@ export function liveReducer(s: LiveMachine, e: LiveEvent): LiveMachine {
       // Retour du résumé vers la séance (bouton « revenir en arrière ») : on
       // repasse en pause pour pouvoir reprendre l'enregistrement.
       return s.phase === 'summary' ? { phase: 'paused', lockedFrom: null, stoppingFrom: null } : s
+
+    case 'RESUME_BACKUP':
+      // Reprise d'une séance interrompue (app fermée / rechargée) : on repart
+      // en pause, l'utilisateur relance avec le bouton lecture.
+      return s.phase === 'idle' ? { phase: 'paused', lockedFrom: null, stoppingFrom: null } : s
 
     case 'UPLOAD':
       return s.phase === 'summary' ? { ...s, phase: 'uploading' } : s

@@ -43,6 +43,7 @@ export interface LiveShellProps {
   sportTitle: string
   gps: GPSState
   resetTracking: () => void
+  restoreTracking: (seed: { points: GPSState['points']; distance: number; elevationGain: number; maxSpeed: number }) => void
   settings: CyclingSettings
   route: NavRouteInput | null
   isDark: boolean
@@ -52,7 +53,7 @@ export interface LiveShellProps {
 }
 
 export default function LiveShell({
-  sportTitle, gps, resetTracking, settings, route, isDark, onExit, onFinished, onOpenSettings,
+  sportTitle, gps, resetTracking, restoreTracking, settings, route, isDark, onExit, onFinished, onOpenSettings,
 }: LiveShellProps) {
   const { t } = useI18n()
   const [machine, send] = useReducer(liveReducer, LIVE_INIT)
@@ -246,6 +247,16 @@ export default function LiveShell({
   }, [timer, gps.distance, gps.elevationGain, gps.maxSpeed, gps.points, laps])
   useLocalBackup(started, buildSnapshot)
 
+  // Sauvegarde IMMÉDIATE quand l'app passe en arrière-plan / se ferme : la
+  // séance interrompue est toujours récupérable (pas d'attente du tick 10 s).
+  useEffect(() => {
+    if (!started) return
+    const flush = () => { const s = buildSnapshot(); if (s) saveLiveBackup(s, true) }
+    document.addEventListener('visibilitychange', flush)
+    window.addEventListener('pagehide', flush)
+    return () => { document.removeEventListener('visibilitychange', flush); window.removeEventListener('pagehide', flush) }
+  }, [started, buildSnapshot])
+
   // Backup non envoyé au montage → proposer la reprise d'envoi.
   useEffect(() => { setPendingBackup(loadLiveBackup()) }, [])
 
@@ -320,7 +331,7 @@ export default function LiveShell({
     const snap = buildSnapshot()
     if (!snap) return
     summaryFromLiveRef.current = true
-    saveLiveBackup(snap)
+    saveLiveBackup(snap, false) // terminée : plus reprenable, à envoyer
     setSummarySnap(snap)
     send({ type: 'FINISH' })
   }
@@ -331,9 +342,23 @@ export default function LiveShell({
     const snap = buildSnapshot()
     if (!snap) return
     summaryFromLiveRef.current = true
-    saveLiveBackup(snap)
+    saveLiveBackup(snap, false)
     setSummarySnap(snap)
     send({ type: 'FINISH' })
+  }
+  // Reprise d'une séance interrompue (backup « live ») : on restaure le chrono
+  // (figé en pause à la durée sauvegardée), les laps et l'état GPS, puis on
+  // repasse en pause — l'utilisateur relance avec le bouton lecture.
+  const handleResumeBackup = () => {
+    if (!pendingBackup) return
+    const s = pendingBackup.snap
+    const now = Date.now()
+    setTimer({ startedAt: now - s.durationSec * 1000, pausedAccum: 0, pauseStartedAt: now })
+    setLaps(s.laps ?? [])
+    setLapStart({ sec: s.durationSec, dist: s.distM })
+    restoreTracking({ points: s.gpsPts ?? [], distance: s.distM, elevationGain: s.elevM, maxSpeed: s.maxSpeedKmh })
+    setPendingBackup(null)
+    send({ type: 'RESUME_BACKUP' })
   }
   const handleDeleteRecording = () => {
     clearLiveBackup()
@@ -655,46 +680,63 @@ export default function LiveShell({
         </div>
       )}
 
-      {/* ── Reprise d'envoi d'un backup local non envoyé ── */}
+      {/* ── Séance interrompue : reprise (live) ou reprise d'envoi (terminée) ── */}
       {machine.phase === 'idle' && pendingBackup && (
         <div style={{
           position: 'absolute', left: 16, right: 16,
           bottom: 'calc(env(safe-area-inset-bottom) + 172px)', zIndex: 58,
           background: 'var(--live-float)', border: '1px solid var(--live-hairline-2)',
-          borderRadius: 18, padding: '12px 14px',
+          borderRadius: 18, padding: '14px 16px',
           backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
-          display: 'flex', alignItems: 'center', gap: 12,
         }}>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 13.5, fontWeight: 700 }}>{t('w2c.sessionNotSent')}</div>
-            <div className="lv2-num" style={{ fontSize: 12, fontWeight: 500, color: 'var(--live-text-2)', marginTop: 2 }}>
-              {formatHMS(pendingBackup.snap.durationSec, true)} · {frNum(pendingBackup.snap.distM / 1000, 1)} km
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 13.5, fontWeight: 700 }}>
+                {pendingBackup.live ? t('w2c.sessionInProgress') : t('w2c.sessionNotSent')}
+              </div>
+              <div className="lv2-num" style={{ fontSize: 12, fontWeight: 500, color: 'var(--live-text-2)', marginTop: 2 }}>
+                {formatHMS(pendingBackup.snap.durationSec, true)} · {frNum(pendingBackup.snap.distM / 1000, 1)} km
+              </div>
             </div>
+            <button
+              onClick={() => { clearLiveBackup(); setPendingBackup(null); showToast(t('w2c.activityDeleted')) }}
+              className="lv2-press"
+              style={{
+                height: 32, padding: '0 12px', borderRadius: 16, cursor: 'pointer',
+                background: 'transparent', border: '1px solid var(--live-hairline-2)',
+                color: 'var(--live-danger)', fontSize: 12.5, fontWeight: 700, flexShrink: 0,
+              }}
+            >
+              {t('w2c.deleteShort')}
+            </button>
           </div>
-          <button
-            onClick={handleRestoreBackup}
-            className="lv2-press"
-            style={{
-              height: 36, padding: '0 16px', borderRadius: 18, border: 'none', cursor: 'pointer',
-              background: 'var(--live-accent)', color: 'var(--live-accent-on)', fontSize: 13, fontWeight: 800,
-            }}
-          >
-            {t('w2c.resumeUpload')}
-          </button>
-          <button
-            onClick={() => { clearLiveBackup(); setPendingBackup(null) }}
-            aria-label={t('w2c.dismiss')}
-            className="lv2-press"
-            style={{
-              width: 30, height: 30, borderRadius: '50%', border: 'none', cursor: 'pointer',
-              background: 'var(--live-surface-2)', color: 'var(--live-text-2)', flexShrink: 0,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}
-          >
-            <svg width="11" height="11" viewBox="0 0 14 14">
-              <path d="M1 1 L13 13 M13 1 L1 13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-            </svg>
-          </button>
+          <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
+            {pendingBackup.live && (
+              <button
+                onClick={handleResumeBackup}
+                className="lv2-press"
+                style={{
+                  flex: 1, height: 40, borderRadius: 20, border: 'none', cursor: 'pointer',
+                  background: 'var(--live-accent)', color: 'var(--live-accent-on)', fontSize: 13.5, fontWeight: 800,
+                }}
+              >
+                {t('w2c.resumeSession')}
+              </button>
+            )}
+            <button
+              onClick={handleRestoreBackup}
+              className="lv2-press"
+              style={{
+                flex: 1, height: 40, borderRadius: 20, cursor: 'pointer',
+                background: pendingBackup.live ? 'var(--live-surface-2)' : 'var(--live-accent)',
+                border: 'none',
+                color: pendingBackup.live ? 'var(--live-text)' : 'var(--live-accent-on)',
+                fontSize: 13.5, fontWeight: 800,
+              }}
+            >
+              {pendingBackup.live ? t('w2c.finishSession') : t('w2c.resumeUpload')}
+            </button>
+          </div>
         </div>
       )}
 

@@ -79,10 +79,19 @@ const GRADIENT_MIN_SPAN_M = 15
 // pour ne pas rejeter une position à cause du jitter du GPS (~1 Hz natif).
 export type GPSFrequency = number | 'auto'
 
+/** Graine de reprise : état GPS à restaurer pour continuer une séance interrompue. */
+export interface GPSSeed {
+  points: GPSPoint[]
+  distance: number
+  elevationGain: number
+  maxSpeed: number
+}
+
 export function useGPSTracking(isActive: boolean, gpsFrequency?: GPSFrequency): {
   gps: GPSState
   stopWatching: () => void
   resetTracking: () => void
+  restoreTracking: (seed: GPSSeed) => void
 } {
   const [state, setState] = useState<GPSState>(INITIAL_STATE)
   const watchIdRef   = useRef<number | null>(null)
@@ -115,6 +124,24 @@ export function useGPSTracking(isActive: boolean, gpsFrequency?: GPSFrequency): 
       elevationGain: 0,
       maxSpeed: 0,
       gradient: 0,
+    }))
+  }, [])
+
+  // Reprise d'une séance interrompue : on ré-amorce distance / D+ / trace / dernier
+  // point pour que les nouvelles positions CONTINUENT à s'accumuler (jamais un
+  // retour à 0 qui perdrait la séance).
+  const restoreTracking = useCallback((seed: GPSSeed) => {
+    const last = seed.points.length > 0 ? seed.points[seed.points.length - 1] : null
+    lastPointRef.current = last
+    cumDistRef.current = seed.distance
+    altWindowRef.current = []
+    lastAcceptedRef.current = last?.timestamp ?? null
+    setState(prev => ({
+      ...prev,
+      points: seed.points,
+      distance: seed.distance,
+      elevationGain: seed.elevationGain,
+      maxSpeed: seed.maxSpeed,
     }))
   }, [])
 
@@ -214,5 +241,5 @@ export function useGPSTracking(isActive: boolean, gpsFrequency?: GPSFrequency): 
     return stopWatching
   }, [isActive, stopWatching])
 
-  return { gps: state, stopWatching, resetTracking }
+  return { gps: state, stopWatching, resetTracking, restoreTracking }
 }

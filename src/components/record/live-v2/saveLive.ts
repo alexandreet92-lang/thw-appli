@@ -19,6 +19,8 @@ export interface LiveSaveMeta {
   comment: string
   /** RPE /10 (0 = non renseigné). */
   rpe: number
+  /** Ressenti /5 (0 = non renseigné). */
+  sensation: number
   visibility: 'public' | 'followers' | 'private'
   /** Sport de la ligne workout_sessions (cycling, mtb, running, trail, hiking). */
   wsSport: string
@@ -81,6 +83,14 @@ export async function uploadLiveSession(
   }).select('id').single()
   if (e1) throw e1
   const sessionId = (ws as { id: string } | null)?.id ?? null
+
+  // Ressenti /5 — écriture BEST-EFFORT séparée : si la colonne `sensation`
+  // n'existe pas encore (migration 20260911_session_sensation non appliquée),
+  // l'erreur est ignorée et l'enregistrement de la séance n'est pas cassé.
+  if (sessionId && meta?.sensation && meta.sensation > 0) {
+    await sb.from('workout_sessions').update({ sensation: meta.sensation }).eq('id', sessionId)
+      .then(({ error }) => { if (error) console.warn('[live-v2] sensation non enregistré (migration ?)', error.message) })
+  }
   onProgress(STEP_PCT.session)
 
   // 2 — streams (trace GPS).

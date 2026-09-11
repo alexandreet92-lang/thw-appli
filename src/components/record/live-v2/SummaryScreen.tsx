@@ -208,6 +208,7 @@ export default function SummaryScreen({
         title: title.trim() || defaultTitle,
         comment,
         rpe,
+        sensation: feeling,
         visibility,
         wsSport: cfg.wsSport,
         sportType: cfg.sportType,

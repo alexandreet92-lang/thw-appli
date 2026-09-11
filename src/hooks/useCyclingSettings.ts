@@ -62,25 +62,39 @@ export function useCyclingSettings(onSaved?: () => void) {
       try {
         const user = await getCurrentUser()
         if (!user) return
-        const { data } = await supabase
-          .from('sport_page_configs').select('pages')
-          .eq('user_id', user.id).eq('sport', SETTINGS_SPORT_KEY).maybeSingle()
+        const [cfgRes, perfRes] = await Promise.all([
+          supabase.from('sport_page_configs').select('pages')
+            .eq('user_id', user.id).eq('sport', SETTINGS_SPORT_KEY).maybeSingle(),
+          // Interconnexion : FTP / FC de référence = page Performance (source unique).
+          supabase.from('athlete_performance_profile').select('ftp_watts,hr_max,hr_rest')
+            .eq('user_id', user.id).maybeSingle(),
+        ])
+        const data = cfgRes.data
+        // Fusion PAR SECTION : un réglage ajouté depuis (ex. recording.swapPauseLap)
+        // garde sa valeur par défaut même si la section était déjà persistée.
+        let base: CyclingSettings = { ...DEFAULT_CYCLING_SETTINGS }
         if (data?.pages) {
-          // Fusion PAR SECTION : un réglage ajouté depuis (ex. recording.swapPauseLap)
-          // garde sa valeur par défaut même si la section était déjà persistée.
           const stored = data.pages as Partial<CyclingSettings>
-          const merged = (Object.keys(DEFAULT_CYCLING_SETTINGS) as (keyof CyclingSettings)[]).reduce(
+          base = (Object.keys(DEFAULT_CYCLING_SETTINGS) as (keyof CyclingSettings)[]).reduce(
             (acc, key) => {
               acc[key] = { ...DEFAULT_CYCLING_SETTINGS[key], ...(stored[key] ?? {}) } as never
               return acc
             },
             { ...DEFAULT_CYCLING_SETTINGS } as CyclingSettings,
           )
-          setSettings(merged)
-          latestRef.current = merged
         }
-        // Pas de ligne → on reste sur les défauts en mémoire. Aucune écriture
-        // au montage : on ne persiste qu'au premier changement utilisateur.
+        // La page Performance FAIT FOI pour FTP / FC max / FC repos (zones de
+        // puissance correctes, cohérentes partout).
+        const perf = perfRes.data as { ftp_watts: number | null; hr_max: number | null; hr_rest: number | null } | null
+        if (perf) {
+          base = { ...base, athlete: {
+            ftp: perf.ftp_watts ?? base.athlete.ftp,
+            maxHr: perf.hr_max ?? base.athlete.maxHr,
+            restHr: perf.hr_rest ?? base.athlete.restHr,
+          } }
+        }
+        if (data?.pages || perf) { setSettings(base); latestRef.current = base }
+        // Sinon → défauts en mémoire, aucune écriture au montage.
       } catch { /* pas de session — fallback défauts */ }
       finally { setLoaded(true) }
     })()
@@ -108,7 +122,25 @@ export function useCyclingSettings(onSaved?: () => void) {
       saveTimer.current = setTimeout(() => { void persistSettings(latestRef.current) }, 500)
       return next
     })
-  }, [persistSettings])
+    // Write-through vers la source unique (page Performance) : éditer FTP / FC
+    // depuis les réglages vélo met à jour athlete_performance_profile → zones et
+    // page Performance restent cohérentes.
+    const col = path === 'athlete.ftp' ? 'ftp_watts'
+      : path === 'athlete.maxHr' ? 'hr_max'
+      : path === 'athlete.restHr' ? 'hr_rest' : null
+    if (col && typeof value === 'number') {
+      void (async () => {
+        try {
+          const user = await getCurrentUser()
+          if (!user) return
+          await supabase.from('athlete_performance_profile').upsert(
+            { user_id: user.id, [col]: value, updated_at: new Date().toISOString() },
+            { onConflict: 'user_id' },
+          )
+        } catch (e) { console.error('[useCyclingSettings] perf write-through', e) }
+      })()
+    }
+  }, [persistSettings, supabase])
 
   return { settings, updateSetting, saving, loaded }
 }

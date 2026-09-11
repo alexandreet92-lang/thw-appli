@@ -36,6 +36,7 @@ import { SectionLayout } from '@/components/navigation/SectionLayout'
 import { TrainingSummary } from '@/app/planning/components/training/TrainingSummary'
 import { SportIcon, SPORT_ICON, sportKeyFromType, subSportIcon } from '@/components/icons/SportIcon'
 import { SessionEditor } from '@/components/planning/SessionEditor'
+import DayTimelineSheet, { type DayTimelineItem } from '@/components/planning/DayTimelineSheet'
 import type { NutritionItem, ParcoursData } from '@/components/planning/SessionEditor'
 import { getGuideDemoId, GUIDE_DEMO_EVENT } from '@/components/guide/guideDemo'
 import TestPlannerSheet, { type TestPlanPayload } from '@/components/tests/TestPlannerSheet'
@@ -3993,6 +3994,7 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
   const { t } = useI18n()
   const { tasks, activities, intensities, addTask, updateTask, deleteTask } = usePlanning()
   const [editModal,       setEditModal]       = useState<WeekTask|null>(null)
+  const [dayViewDay,      setDayViewDay]       = useState<number|null>(null)
   const [activityDetail,  setActivityDetail]  = useState<TrainingActivity|null>(null)
   const [mobileDayOffset,setMobileDayOffset]= useState(0)
   const [mobileView,     setMobileView]     = useState<'3days'|'today'>('3days')
@@ -4267,6 +4269,30 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
   const desktopVisibleDays = desktopView==='today' ? [todayIdx] : [0,1,2,3,4,5,6]
   const dayLabels = t('plnp.dayAbbrs').split(',').map((d,i)=>`${d} ${dates[i]}`)
 
+  // ── Vue jour (façon iOS) : date réelle d'un index de jour + items du jour ──
+  const weekStartDate = new Date(getWeekStart() + 'T12:00:00')
+  const dateForDay = (d:number) => { const dt = new Date(weekStartDate); dt.setDate(dt.getDate() + d); return dt }
+  function dayItems(d:number): DayTimelineItem[] {
+    const out: DayTimelineItem[] = []
+    for (const a of activities.filter(a=>a.dayIndex===d)) {
+      const sp = normalizeSportType(a.sport); const col = SPORT_BORDER[sp] || '#6b7280'
+      const mins = Math.round(a.elapsedTime/60)
+      out.push({ id:'act-'+a.id, label:a.name, color:col, startHour:a.startHour, startMin:a.startMin, durationMin:mins, done:true,
+        sublabel:`${String(a.startHour).padStart(2,'0')}:${String(a.startMin).padStart(2,'0')} · ${formatHM(mins)}`,
+        onClick:()=>{ setDayViewDay(null); setActivityDetail(a) } })
+    }
+    for (const s of getVisibleTrainingSessions(d)) {
+      out.push({ id:s.id, label:s.title, color:'#3b82f6', startHour:s.startHour, startMin:s.startMin, durationMin:s.durationMin,
+        sublabel:`${String(s.startHour).padStart(2,'0')}:${String(s.startMin).padStart(2,'0')} · ${formatHM(s.durationMin)}` })
+    }
+    for (const wt of getTasksForDay(d).filter(w=>!w.fromTraining&&!w.isMain)) {
+      out.push({ id:wt.id, label:wt.title, color:getTaskColor(wt), startHour:wt.startHour, startMin:wt.startMin, durationMin:wt.durationMin,
+        sublabel:`${String(wt.startHour).padStart(2,'0')}:${String(wt.startMin).padStart(2,'0')} · ${formatHM(wt.durationMin)}`,
+        onClick:()=>{ setDayViewDay(null); setEditModal(wt) } })
+    }
+    return out
+  }
+
   const taskCell = (t:WeekTask) => {
     const col = t.fromTraining ? (t.color||TASK_CONFIG[t.type].color) : getTaskColor(t)
     return (
@@ -4313,13 +4339,16 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
           <div/>
           {days.map(d=>{ const load=dayLoad(d); const loadKey=(intensities[d]??'low') as DayIntensity; const isToday=d===todayIdx; return (
             <div key={d} style={{ padding:'7px 4px',textAlign:'center' as const,borderLeft:'1px solid var(--border)',position:'relative' }}>
-              <p style={{ fontSize:9,color:'var(--text-dim)',textTransform:'uppercase' as const,margin:'0 0 2px' }}>{t('plnp.dayAbbrs').split(',')[d]}</p>
-              <div style={{ display:'inline-flex',alignItems:'center',justifyContent:'center',
-                width:isToday?28:undefined,height:isToday?28:undefined,
-                borderRadius:isToday?'50%':undefined,
-                background:isToday?'#ef4444':undefined,
-                margin:'0 auto 3px' }}>
-                <span style={{ fontSize:13,fontWeight:700,color:isToday?'#fff':'var(--text)' }}>{dates[d]}</span>
+              {/* Tap sur l'en-tête du jour → vue jour façon iOS */}
+              <div onClick={e=>{e.stopPropagation();setDayViewDay(d)}} style={{ cursor:'pointer' }}>
+                <p style={{ fontSize:9,color:'var(--text-dim)',textTransform:'uppercase' as const,margin:'0 0 2px' }}>{t('plnp.dayAbbrs').split(',')[d]}</p>
+                <div style={{ display:'inline-flex',alignItems:'center',justifyContent:'center',
+                  width:isToday?28:undefined,height:isToday?28:undefined,
+                  borderRadius:isToday?'50%':undefined,
+                  background:isToday?'#ef4444':undefined,
+                  margin:'0 auto 3px' }}>
+                  <span style={{ fontSize:13,fontWeight:700,color:isToday?'#fff':'var(--text)' }}>{dates[d]}</span>
+                </div>
               </div>
               <div style={{ display:'flex',alignItems:'center',justifyContent:'center',gap:3 }}>
                 <span style={{ padding:'1px 5px',borderRadius:20,background:load.bg,border:`1px solid ${load.border}`,color:load.color,fontSize:8,fontWeight:700 }}>{t('plnp.intensityCfg.' + loadKey)}</span>
@@ -4616,6 +4645,27 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
 
       {editModal && <TaskEditModal task={editModal} sections={sections} onClose={()=>setEditModal(null)} onSave={handleUpdateTask} onDelete={handleDeleteTask}/>}
       <ActivityQuickModal activity={activityDetail} onClose={()=>setActivityDetail(null)}/>
+
+      {/* ── Vue jour façon iOS (tap sur un jour) ── */}
+      {dayViewDay !== null && (() => {
+        const dt = dateForDay(dayViewDay)
+        const cap = (s:string)=> s.charAt(0).toUpperCase()+s.slice(1)
+        return (
+          <DayTimelineSheet
+            monthLabel={cap(dt.toLocaleDateString('fr-FR',{ month:'long' }))}
+            weekDayLabels={t('plnp.dayAbbrs').split(',').map(s=>s.trim().charAt(0).toUpperCase())}
+            weekDates={dates}
+            selectedDay={dayViewDay}
+            todayIdx={todayIdx}
+            currentTime={currentTime}
+            dayTitle={`${dt.toLocaleDateString('fr-FR',{ weekday:'short' })} - ${dt.getDate()} ${dt.toLocaleDateString('fr-FR',{ month:'short' })}`}
+            items={dayItems(dayViewDay)}
+            onSelectDay={d=>setDayViewDay(d)}
+            onToday={()=>{ if(todayIdx>=0) setDayViewDay(todayIdx) }}
+            onClose={()=>setDayViewDay(null)}
+          />
+        )
+      })()}
 
       {/* ── Modal Nouvelle tâche (grille) ── */}
       {showNewTask && (

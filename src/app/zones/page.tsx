@@ -1,10 +1,16 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/Button'
 import { useI18n } from '@/lib/i18n'
+import { createClient } from '@/lib/supabase/client'
 
 type TFn = (key: string, vars?: Record<string, string | number>) => string
+
+/** sec → « m:ss » (allure au km / CSS au 100 m). */
+function fmtPaceSec(s: number): string {
+  return `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, '0')}`
+}
 
 // ── Calcul des zones ──────────────────────────────
 function calcRunZones(lthr: number, thresholdPace: number, t: TFn) {
@@ -119,6 +125,38 @@ export default function ZonesPage() {
   // Swim
   const [css,    setCss]    = useState('1:28')
   const [lthrS,  setLthrS]  = useState('160')
+
+  // ── Interconnexion : les valeurs viennent de la page Performance
+  // (athlete_performance_profile) — plus de valeurs codées en dur, les zones
+  // reflètent la vraie FTP / LTHR / allure seuil / poids de l'athlète. ──
+  useEffect(() => {
+    let alive = true
+    const sb = createClient()
+    void (async () => {
+      const { data: { user } } = await sb.auth.getUser()
+      if (!user || !alive) return
+      const [perfRes, profRes] = await Promise.all([
+        sb.from('athlete_performance_profile')
+          .select('ftp_watts,lthr_run,threshold_pace_s_km,css_s_100m')
+          .eq('user_id', user.id).maybeSingle(),
+        sb.from('profiles').select('weight_kg').eq('id', user.id).maybeSingle(),
+      ])
+      if (!alive) return
+      const perf = perfRes.data as {
+        ftp_watts: number | null; lthr_run: number | null
+        threshold_pace_s_km: number | null; css_s_100m: number | null
+      } | null
+      if (perf) {
+        if (perf.ftp_watts) setFtp(String(perf.ftp_watts))
+        if (perf.lthr_run) setLthr(String(perf.lthr_run))
+        if (perf.threshold_pace_s_km) setThresholdPace(fmtPaceSec(perf.threshold_pace_s_km))
+        if (perf.css_s_100m) setCss(fmtPaceSec(perf.css_s_100m))
+      }
+      const w = (profRes.data as { weight_kg: number | null } | null)?.weight_kg
+      if (w) setWeight(String(Math.round(w)))
+    })()
+    return () => { alive = false }
+  }, [])
 
   const runZones  = calcRunZones(parseInt(lthr) || 172, parsePace(thresholdPace), t)
   const bikeZones = calcBikeZones(parseInt(ftp) || 300, t)

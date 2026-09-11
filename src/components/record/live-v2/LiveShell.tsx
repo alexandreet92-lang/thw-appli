@@ -290,12 +290,7 @@ export default function LiveShell({
     resetTracking()
   }, [resetTracking])
 
-  // ── Navigation entre pages ──
-  const goPage = useCallback((i: number) => {
-    const el = pagesRef.current
-    if (!el) return
-    el.scrollTo({ left: i * el.clientWidth, behavior: 'smooth' })
-  }, [])
+  // ── Navigation entre pages (par balayage horizontal) ──
   const onPagesScroll = useCallback(() => {
     const el = pagesRef.current
     if (!el || el.clientWidth === 0) return
@@ -360,6 +355,18 @@ export default function LiveShell({
     setSummarySnap(pendingBackup.snap)
     setPendingBackup(null)
     send({ type: 'RESTORE_SUMMARY' })
+  }
+
+  // ── Poignée « Réglages » : ouverture des réglages par tap ou glissé-haut ──
+  // (remplace l'engrenage retiré ; spec §1 : on tire vers le haut les données du bas).
+  const settingsSwipeY = useRef<number | null>(null)
+  const onSettingsPointerDown = (e: React.PointerEvent) => { settingsSwipeY.current = e.clientY }
+  const onSettingsPointerUp = (e: React.PointerEvent) => {
+    const start = settingsSwipeY.current
+    settingsSwipeY.current = null
+    if (start == null) return
+    const dy = start - e.clientY // positif = mouvement vers le haut
+    if (Math.abs(dy) < 10 || dy > 18) onOpenSettings()
   }
 
   // ── Verrouillage : double tap (400 ms) déverrouille, tap simple pulse ──
@@ -558,8 +565,6 @@ export default function LiveShell({
             onCenter={handlePauseToggle}
             onLap={doLap}
             onFlag={handleFlagFinish}
-            onPrevPage={() => goPage(0)}
-            onNextPage={() => goPage(2)}
           />
         </section>
         <section className="lv2-page">
@@ -617,24 +622,9 @@ export default function LiveShell({
             {sportTitle}
           </div>
         )}
-        {/* Engrenage — masqué sur la page carte */}
-        {!onMapPage ? (
-          <button
-            onClick={onOpenSettings}
-            aria-label={t('w2c.settings')}
-            className="lv2-press"
-            style={{
-              width: 36, height: 36, borderRadius: '50%', border: 'none',
-              background: 'var(--live-surface-2)', color: 'var(--live-text)',
-              cursor: 'pointer', flex: 'none', pointerEvents: 'auto',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}
-          >
-            <svg width="19" height="19" viewBox="0 0 20 20">
-              <path d="M10 6.5 a3.5 3.5 0 1 0 0 7 a3.5 3.5 0 1 0 0 -7 M10 1 v2.4 M10 16.6 V19 M1 10 h2.4 M16.6 10 H19 M3.6 3.6 l1.7 1.7 M14.7 14.7 l1.7 1.7 M16.4 3.6 l-1.7 1.7 M5.3 14.7 l-1.7 1.7" stroke="currentColor" strokeWidth="1.8" fill="none" strokeLinecap="round" />
-            </svg>
-          </button>
-        ) : <span style={{ width: 36 }} />}
+        {/* Engrenage RETIRÉ (spec §1) : les réglages s'ouvrent en tirant vers
+            le haut la poignée « Réglages » en bas de la page données. */}
+        <span style={{ width: 36 }} />
       </div>
 
       {/* ── Badge auto-pause (pill 140×30 orange, aucun clignotement) ── */}
@@ -722,6 +712,26 @@ export default function LiveShell({
           }} />
         ))}
       </div>
+
+      {/* ── Poignée « Réglages » (tap ou glissé vers le haut) — pages Données/Laps ── */}
+      {!onMapPage && (
+        <button
+          onPointerDown={onSettingsPointerDown}
+          onPointerUp={onSettingsPointerUp}
+          aria-label={t('w2c.settings')}
+          className="lv2-press"
+          style={{
+            position: 'absolute', left: '50%', transform: 'translateX(-50%)',
+            bottom: 'calc(env(safe-area-inset-bottom) + 8px)', zIndex: 57,
+            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
+            background: 'none', border: 'none', color: 'var(--live-label)',
+            cursor: 'pointer', touchAction: 'none',
+          }}
+        >
+          <svg width="22" height="9" viewBox="0 0 22 9"><path d="M2 7 L11 2 L20 7" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" /></svg>
+          <span style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.1em' }}>{t('w2c.settings')}</span>
+        </button>
+      )}
 
       {/* ── Zone contrôles ── */}
       {!controlsHidden && (

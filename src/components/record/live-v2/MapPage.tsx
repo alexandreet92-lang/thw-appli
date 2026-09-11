@@ -191,14 +191,11 @@ interface Props {
   onLap: () => void
   /** Drapeau de course (gauche, à l'arrêt) → ouvre le résumé. */
   onFlag: () => void
-  onPrevPage: () => void
-  onNextPage: () => void
 }
 
 export default function MapPage({
   started, locked, dim, speedKmh, powerW, heartRateBpm, distanceDoneM, gainDoneM, elapsedSec,
   points, currentPos, route, defaultLayer, units, paused, showFlag, showPlayIcon, onCenter, onLap, onFlag,
-  onPrevPage, onNextPage,
 }: Props) {
   const { t } = useI18n()
   const [layer, setLayer] = useState<LayerId>(defaultLayer)
@@ -524,24 +521,7 @@ export default function MapPage({
         </>
       )}
 
-      {/* Flèches ‹ › à mi-hauteur — TOUJOURS visibles, au-dessus de la carte */}
-      {[{ label: 'w2c.prevPage', side: { left: 10 }, glyph: '‹', on: onPrevPage },
-        { label: 'w2c.nextPage', side: { right: 10 }, glyph: '›', on: onNextPage }].map(a => (
-        <button
-          key={a.glyph}
-          onClick={a.on}
-          aria-label={t(a.label)}
-          style={{
-            position: 'absolute', top: '50%', transform: 'translateY(-50%)', ...a.side,
-            width: 32, height: 32, borderRadius: '50%', zIndex: 20,
-            background: 'var(--live-arrow-bg)', border: '1px solid var(--live-hairline-2)',
-            color: 'var(--live-text-2)', fontSize: 19, cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', paddingBottom: 2,
-          }}
-        >
-          {a.glyph}
-        </button>
-      ))}
+      {/* (Flèches de page retirées — on change de page par balayage horizontal.) */}
 
       {/* Chip itinéraire — avant démarrage, au-dessus du bandeau des totaux */}
       {!started && hasRoute && (

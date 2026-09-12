@@ -2129,9 +2129,10 @@ function AbonnementContent() {
           {details?.invoices && details.invoices.length > 0 && (
             <div>
               <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-dim)', letterSpacing: 0.9, textTransform: 'uppercase', margin: '0 0 12px', borderBottom: '1px solid var(--border)', paddingBottom: 5 }}>
-                {t('profile.lastPayments')}
+                {t('profile.lastPayments')}{details.invoices.length > 2 ? ` · ${details.invoices.length}` : ''}
               </p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {/* Toutes les factures — liste défilante au-delà de quelques-unes. */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: details.invoices.length > 4 ? 340 : undefined, overflowY: details.invoices.length > 4 ? 'auto' : undefined }}>
                 {details.invoices.map((inv, i) => (
                   <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', borderRadius: 12, background: 'var(--bg-card2)', border: '1px solid var(--border)' }}>
                     <div>

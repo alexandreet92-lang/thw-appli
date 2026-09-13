@@ -13,7 +13,7 @@ import { useI18n } from '@/lib/i18n'
 import { currentLocale } from '@/lib/i18n'
 
 interface TokenLimits {
-  monthly:     { used: number; limit: number; resets_at: string }
+  weekly:      { used: number; limit: number; resets_at: string }
   rolling_6h:  { used: number; limit: number; resets_at: string }
   per_request: number
   bonus_tokens: number
@@ -87,7 +87,7 @@ export default function TokenUsageBubble({ onBuyTokens, currentModel = 'athena',
     return () => document.removeEventListener('mousedown', h)
   }, [open, isMobile])
 
-  const maxPct = limits ? Math.max(pct(limits.monthly.used, limits.monthly.limit), pct(limits.rolling_6h.used, limits.rolling_6h.limit)) : 0
+  const maxPct = limits ? Math.max(pct(limits.weekly.used, limits.weekly.limit), pct(limits.rolling_6h.used, limits.rolling_6h.limit)) : 0
 
   return (
     <div ref={ref} style={{ position: 'relative', flexShrink: 0 }}>
@@ -105,7 +105,7 @@ export default function TokenUsageBubble({ onBuyTokens, currentModel = 'athena',
         const inner = (
         <>
           <div style={{ height: 1, background: 'var(--border)' }} />
-          <Gauge label={t('ai.weeklyLimit')} used={limits.monthly.used} limit={limits.monthly.limit} resetLabel={t('ai.resetsIn', { d: untilDays(limits.monthly.resets_at) })} />
+          <Gauge label={t('ai.weeklyLimit')} used={limits.weekly.used} limit={limits.weekly.limit} resetLabel={t('ai.resetsIn', { d: untilDays(limits.weekly.resets_at) })} />
           <div style={{ height: 1, background: 'var(--border)' }} />
           <Gauge label={t('ai.sixHourLimit')} used={limits.rolling_6h.used} limit={limits.rolling_6h.limit} resetLabel={t('ai.resetsIn', { d: untilHours(limits.rolling_6h.resets_at) })} />
           {limits.bonus_tokens > 0 && (

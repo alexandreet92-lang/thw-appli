@@ -10,7 +10,8 @@ import { getModelMultiplier } from './multipliers'
 import { notifyUser } from '@/lib/notifications/dispatch'
 
 export interface TokenLimits {
-  monthly:     { used: number; limit: number; resets_at: string }
+  /** Fenêtre HEBDOMADAIRE glissante (7 jours) — identique pour tous les plans. */
+  weekly:      { used: number; limit: number; resets_at: string }
   rolling_6h:  { used: number; limit: number; resets_at: string }
   per_request: number
   bonus_tokens: number
@@ -18,7 +19,7 @@ export interface TokenLimits {
 }
 
 interface PlanLimitsRow {
-  monthly_tokens: number
+  weekly_tokens: number
   rolling_6h_tokens: number
   per_request_tokens: number
 }
@@ -26,14 +27,35 @@ interface PlanLimitsRow {
 const SIX_HOURS_MS = 6 * 60 * 60 * 1000
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000
 
-// Doit rester aligné avec la migration tokens_limits_rebalance.sql (source de
-// vérité = table token_plan_limits). Calibré pour ~70 % de marge en usage
-// normal dès Pro/Expert, en tenant compte du prompt caching de la boucle coach.
+// Doit rester aligné avec la migration tokens_limits_weekly.sql (source de
+// vérité = table token_plan_limits).
+//
+// MODÈLE : deux fenêtres glissantes, comme Claude / ChatGPT — une courte (6 h)
+// qui lisse les pics, une longue (7 j) qui borne le budget. AUCUNE notion de
+// mois : un utilisateur ne doit pas avoir une limite différente selon qu'il a
+// pris son abonnement en direct ou via un pack coach.
+//
+// CALIBRAGE (coût réel ≈ 1 $ / M tokens pondérés en entrée, 5 $ / M en sortie,
+// les multiplicateurs ×1/×3/×6 égalisant déjà les modèles) :
+//   premium  175k/sem ≈ 0,75 M/mois ≈  1,1 $/mois   sur 14 €  →  7 %
+//   pro      700k/sem ≈ 3,0  M/mois ≈  4,5 $/mois   sur 26 €  → 16 %
+//   expert   2 M/sem  ≈ 8,6  M/mois ≈ 13   $/mois   sur 49 €  → 24 %
+// Seuil d'alerte marge = 30 % du MRR (voir admin/metrics.ts).
 const FALLBACK_LIMITS: Record<string, PlanLimitsRow> = {
-  trial:   { monthly_tokens: 120000,  rolling_6h_tokens: 40000,   per_request_tokens: 12000 },
-  premium: { monthly_tokens: 700000,  rolling_6h_tokens: 200000,  per_request_tokens: 25000 },
-  pro:     { monthly_tokens: 3000000, rolling_6h_tokens: 800000,  per_request_tokens: 60000 },
-  expert:  { monthly_tokens: 8000000, rolling_6h_tokens: 2000000, per_request_tokens: 150000 },
+  trial:   { weekly_tokens: 120000,  rolling_6h_tokens: 40000,  per_request_tokens: 12000 },
+  premium: { weekly_tokens: 175000,  rolling_6h_tokens: 80000,  per_request_tokens: 25000 },
+  pro:     { weekly_tokens: 700000,  rolling_6h_tokens: 300000, per_request_tokens: 60000 },
+  expert:  { weekly_tokens: 2000000, rolling_6h_tokens: 800000, per_request_tokens: 150000 },
+}
+
+/** Clé de semaine ISO (YYYY-Www) — sert à dédupliquer les alertes de quota. */
+function isoWeekKey(d: Date): string {
+  const t = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()))
+  // Jeudi de la semaine courante → détermine l'année ISO.
+  t.setUTCDate(t.getUTCDate() + 4 - (t.getUTCDay() || 7))
+  const yearStart = new Date(Date.UTC(t.getUTCFullYear(), 0, 1))
+  const week = Math.ceil(((t.getTime() - yearStart.getTime()) / 86400000 + 1) / 7)
+  return `${t.getUTCFullYear()}-W${String(week).padStart(2, '0')}`
 }
 
 function sumTokens(rows: { tokens_used: number }[] | null): number {
@@ -47,21 +69,17 @@ export async function getUserTokenLimits(userId: string): Promise<TokenLimits> {
   const unlimited = await isCreatorAccount(userId)
   const plan = unlimited ? 'expert' : await getUserTier(userId) // premium | pro | expert
 
-  // Date de début de période. Avec abonnement → début de période. SANS abonnement
-  // (cas fréquent) → fenêtre glissante de 7 jours (avant : NOW → la jauge hebdo
-  // restait à 0 car la fenêtre démarrait « maintenant » et ne capturait rien).
-  const { data: sub } = await sb
-    .from('user_subscriptions')
-    .select('current_period_start')
-    .eq('user_id', userId)
-    .single()
-  const hasSub = !!sub?.current_period_start
-  const periodStart = hasSub ? new Date(sub!.current_period_start) : new Date(Date.now() - WEEK_MS)
+  // Fenêtre glissante de 7 jours, pour TOUT LE MONDE.
+  // Avant : les abonnés « athlète » (qui ont un current_period_start posé par
+  // Stripe) étaient calés sur leur période de facturation (~1 mois) tandis que
+  // les coachs, les essais et les comptes gratuits tournaient sur 7 jours → deux
+  // utilisateurs du même tier n'avaient pas la même limite. Une seule règle.
+  const periodStart = new Date(Date.now() - WEEK_MS)
 
   // Limites du plan
   const { data: limitsRow } = await sb
     .from('token_plan_limits')
-    .select('monthly_tokens, rolling_6h_tokens, per_request_tokens')
+    .select('weekly_tokens, rolling_6h_tokens, per_request_tokens')
     .eq('plan', plan)
     .single()
   const limits: PlanLimitsRow = (limitsRow as PlanLimitsRow | null) ?? FALLBACK_LIMITS[plan] ?? FALLBACK_LIMITS.premium
@@ -74,14 +92,14 @@ export async function getUserTokenLimits(userId: string): Promise<TokenLimits> {
     .single()
   const bonusTokens = wallet?.bonus_tokens ?? 0
 
-  // Consommation période (source 'plan')
-  const { data: monthlyRows } = await sb
+  // Consommation de la semaine glissante (source 'plan')
+  const { data: weeklyRows } = await sb
     .from('token_usage')
     .select('tokens_used')
     .eq('user_id', userId)
     .eq('source', 'plan')
     .gte('created_at', periodStart.toISOString())
-  const monthlyUsed = sumTokens(monthlyRows as { tokens_used: number }[] | null)
+  const weeklyUsed = sumTokens(weeklyRows as { tokens_used: number }[] | null)
 
   // Consommation 6h glissantes (toutes sources)
   const sixHoursAgo = new Date(Date.now() - SIX_HOURS_MS)
@@ -92,25 +110,20 @@ export async function getUserTokenLimits(userId: string): Promise<TokenLimits> {
     .gte('created_at', sixHoursAgo.toISOString())
   const rolling6hUsed = sumTokens(recentRows as { tokens_used: number }[] | null)
 
-  // Reset hebdo : avec abonnement = periodStart + 7j ; sinon (fenêtre glissante)
-  // = plus ancienne conso de la fenêtre + 7j.
-  let weekResetsAt: string
-  if (hasSub) {
-    const nr = new Date(periodStart); nr.setDate(nr.getDate() + 7); weekResetsAt = nr.toISOString()
-  } else {
-    const { data: oldestWeek } = await sb
-      .from('token_usage')
-      .select('created_at')
-      .eq('user_id', userId)
-      .eq('source', 'plan')
-      .gte('created_at', periodStart.toISOString())
-      .order('created_at', { ascending: true })
-      .limit(1)
-      .maybeSingle()
-    weekResetsAt = oldestWeek?.created_at
-      ? new Date(new Date(oldestWeek.created_at).getTime() + WEEK_MS).toISOString()
-      : new Date(Date.now() + WEEK_MS).toISOString()
-  }
+  // Reset hebdo (fenêtre glissante) = plus ancienne conso de la fenêtre + 7 j :
+  // c'est le moment où des tokens redeviennent réellement disponibles.
+  const { data: oldestWeek } = await sb
+    .from('token_usage')
+    .select('created_at')
+    .eq('user_id', userId)
+    .eq('source', 'plan')
+    .gte('created_at', periodStart.toISOString())
+    .order('created_at', { ascending: true })
+    .limit(1)
+    .maybeSingle()
+  const weekResetsAt = oldestWeek?.created_at
+    ? new Date(new Date(oldestWeek.created_at).getTime() + WEEK_MS).toISOString()
+    : new Date(Date.now() + WEEK_MS).toISOString()
 
   // Reset 6h = plus ancienne conso récente + 6h
   const { data: oldest } = await sb
@@ -126,7 +139,7 @@ export async function getUserTokenLimits(userId: string): Promise<TokenLimits> {
     : new Date(Date.now() + SIX_HOURS_MS).toISOString()
 
   return {
-    monthly:     { used: monthlyUsed, limit: limits.monthly_tokens, resets_at: weekResetsAt },
+    weekly:      { used: weeklyUsed, limit: limits.weekly_tokens, resets_at: weekResetsAt },
     rolling_6h:  { used: rolling6hUsed, limit: limits.rolling_6h_tokens, resets_at: rolling6hResetsAt },
     per_request: limits.per_request_tokens,
     bonus_tokens: bonusTokens,
@@ -148,7 +161,7 @@ export async function recordTokenUsage(userId: string, rawTokens: number, meta: 
     const mult = meta.model ? getModelMultiplier(meta.model) : 1
     const weighted = Math.ceil(rawTokens * mult)
     const limits = await getUserTokenLimits(userId)
-    const remainingPlan = Math.max(0, limits.monthly.limit - limits.monthly.used)
+    const remainingPlan = Math.max(0, limits.weekly.limit - limits.weekly.used)
     const base = {
       user_id: userId, conversation_id: meta.conversationId ?? null,
       message_id: meta.messageId ?? null, model: meta.model ?? null, multiplier: mult,
@@ -166,23 +179,23 @@ export async function recordTokenUsage(userId: string, rawTokens: number, meta: 
         .eq('user_id', userId)
     }
 
-    // ── Seuils de quota mensuel → notification (une fois par mois) ──
+    // ── Seuils de quota hebdomadaire → notification (une fois par semaine) ──
     // On détecte le FRANCHISSEMENT d'un seuil (80 / 95 / 100 %) grâce à
-    // l'usage AVANT (limits.monthly.used) et APRÈS cette consommation.
+    // l'usage AVANT (limits.weekly.used) et APRÈS cette consommation.
     try {
-      const limit = limits.monthly.limit
+      const limit = limits.weekly.limit
       if (limit > 0) {
-        const prevUsed = limits.monthly.used
+        const prevUsed = limits.weekly.used
         const newUsed  = prevUsed + Math.min(weighted, remainingPlan)
         const prev = prevUsed / limit
         const next = newUsed / limit
-        const period = new Date().toISOString().slice(0, 7)   // YYYY-MM
+        const period = isoWeekKey(new Date())   // YYYY-Www (fenêtre hebdo)
         if (prev < 1 && next >= 1) {
-          void notifyUser(userId, 'tokens.quota_epuise', { title: 'Quota épuisé', body: 'Tu as utilisé tout ton quota mensuel. Achète des tokens ou attends le reset.', url: '/settings/subscription', dedupKey: `quota-epuise-${period}`, once: true })
+          void notifyUser(userId, 'tokens.quota_epuise', { title: 'Quota épuisé', body: 'Tu as utilisé tout ton quota hebdomadaire. Achète des tokens ou attends le reset.', url: '/settings/subscription', dedupKey: `quota-epuise-${period}`, once: true })
         } else if (prev < 0.95 && next >= 0.95) {
-          void notifyUser(userId, 'tokens.quota_95', { title: 'Quota à 95%', body: 'Ta limite mensuelle est presque atteinte.', url: '/settings/subscription', dedupKey: `quota-95-${period}`, once: true })
+          void notifyUser(userId, 'tokens.quota_95', { title: 'Quota à 95%', body: 'Ta limite hebdomadaire est presque atteinte.', url: '/settings/subscription', dedupKey: `quota-95-${period}`, once: true })
         } else if (prev < 0.8 && next >= 0.8) {
-          void notifyUser(userId, 'tokens.quota_80', { title: 'Quota à 80%', body: 'Tu approches de ta limite mensuelle.', url: '/settings/subscription', dedupKey: `quota-80-${period}`, once: true })
+          void notifyUser(userId, 'tokens.quota_80', { title: 'Quota à 80%', body: 'Tu approches de ta limite hebdomadaire.', url: '/settings/subscription', dedupKey: `quota-80-${period}`, once: true })
         }
       }
     } catch { /* best-effort */ }
@@ -216,9 +229,9 @@ export async function consumeTokens(
     return { success: false, error: `Cette demande est trop volumineuse (${weighted} tokens). Maximum par requête : ${limits.per_request} tokens.` }
   }
 
-  const remainingMonthly = limits.monthly.limit - limits.monthly.used
+  const remainingWeekly = limits.weekly.limit - limits.weekly.used
   const remainingRolling = limits.rolling_6h.limit - limits.rolling_6h.used
-  const totalAvailable = remainingMonthly + limits.bonus_tokens
+  const totalAvailable = remainingWeekly + limits.bonus_tokens
 
   if (weighted > remainingRolling) {
     const hours = Math.ceil((new Date(limits.rolling_6h.resets_at).getTime() - Date.now()) / (60 * 60 * 1000))

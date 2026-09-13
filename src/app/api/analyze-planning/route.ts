@@ -1,10 +1,16 @@
 export const maxDuration = 60
 import Anthropic from '@anthropic-ai/sdk'
 import { NextRequest, NextResponse } from 'next/server'
+import { guardAiRoute } from '@/lib/ai/guard'
+import { billAnthropicUsage } from '@/lib/ai/billing'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
 export async function POST(req: NextRequest) {
+  const guard = await guardAiRoute('athena')
+  if (!guard.ok) return guard.response
+  const userId = guard.userId
+
   try {
     const body = await req.json()
     const { weekStart, sessions, activities, intensities, kpis } = body
@@ -50,6 +56,8 @@ Retourne UNIQUEMENT le JSON, rien d'autre.`
       max_tokens: 1024,
       messages: [{ role: 'user', content: prompt }],
     })
+
+    billAnthropicUsage(userId, message.usage, 'athena')
 
     const textBlock = message.content.find(b => b.type === 'text')
     if (!textBlock || textBlock.type !== 'text') {

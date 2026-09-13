@@ -14,7 +14,7 @@
 import { useEffect, useState, useCallback } from 'react'
 
 interface MonthlyLimit { used: number; limit: number; resets_at: string }
-interface TokenLimits { monthly: MonthlyLimit }
+interface TokenLimits { weekly: MonthlyLimit }
 
 const THRESHOLDS = [100, 90, 70, 50] as const // décroissant : on prend le plus haut atteint
 
@@ -43,7 +43,7 @@ export default function TokenUsageWarning({ onBuyTokens, isMobile = false }: { o
   const load = useCallback(async () => {
     try {
       const res = await fetch('/api/tokens/limits')
-      if (res.ok) { const d = await res.json() as TokenLimits; setMonthly(d.monthly ?? null) }
+      if (res.ok) { const d = await res.json() as TokenLimits; setMonthly(d.weekly ?? null) }
     } catch { /* silencieux */ }
   }, [])
 

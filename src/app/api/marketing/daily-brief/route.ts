@@ -54,6 +54,7 @@ export async function POST() {
     );
 
     const { brief, meta } = await generateDailyBrief({
+      userId: user!.id,
       activities,
       commits,
       rawIdeas,

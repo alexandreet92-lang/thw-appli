@@ -31,7 +31,8 @@ export async function GET() {
     status:             sub?.status             ?? 'active',
     cancel_at_period_end: sub?.cancel_at_period_end ?? false,
     current_period_end: sub?.current_period_end ?? null,
-    monthly:            limits.monthly,
+    weekly:             limits.weekly,
+    monthly:            limits.weekly,   // alias rétro-compat (anciens clients natifs)
     rolling_6h:         limits.rolling_6h,
     stripe:             null  as null | {
       nextBillingDate?:  string | null

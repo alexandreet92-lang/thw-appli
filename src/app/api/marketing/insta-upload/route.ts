@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
     );
 
     // Analyze via Claude Vision
-    const insights = await analyzeInstaScreenshots(dataUrls);
+    const insights = await analyzeInstaScreenshots(dataUrls, user?.id);
 
     console.log(`[insta-upload] Analyse OK — reach: ${insights.reach_total ?? "N/A"}, followers: ${insights.followers_count ?? "N/A"}`);
 

@@ -1,6 +1,8 @@
 export const maxDuration = 60
 import { NextRequest, NextResponse } from 'next/server'
 import { getAnthropicClient, MODELS } from '@/lib/agents/base'
+import { guardAiRoute } from '@/lib/ai/guard'
+import { billAnthropicUsage } from '@/lib/ai/billing'
 
 interface DayEntry {
   date:   string
@@ -16,6 +18,10 @@ interface DayEntry {
 // Returns : { summary: string }
 // ─────────────────────────────────────────────────────────────────
 export async function POST(req: NextRequest) {
+  const guard = await guardAiRoute('hermes')
+  if (!guard.ok) return guard.response
+  const userId = guard.userId
+
   try {
     const body = await req.json() as { weekData?: DayEntry[]; planType?: string }
     const weekData = body.weekData ?? []
@@ -57,6 +63,7 @@ Rédige une analyse courte (4-5 phrases max) en français, directe et actionnabl
 Ton : coach direct, pas condescendant. Prose, pas de bullet points. Pas de titre ni introduction.`,
       }],
     })
+    billAnthropicUsage(userId, response.usage, 'hermes')
 
     const textBlock = response.content.find(b => b.type === 'text')
     const text = (textBlock && textBlock.type === 'text') ? textBlock.text : ''

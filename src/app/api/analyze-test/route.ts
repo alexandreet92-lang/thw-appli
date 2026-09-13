@@ -3,9 +3,15 @@ export const maxDuration = 60
 
 import { NextRequest, NextResponse } from 'next/server'
 import { getAnthropicClient, MODELS, parseJsonResponse } from '@/lib/agents/base'
+import { guardAiRoute } from '@/lib/ai/guard'
+import { billAnthropicUsage } from '@/lib/ai/billing'
 
 export async function POST(req: NextRequest) {
   try {
+    const guard = await guardAiRoute('zeus')
+    if (!guard.ok) return guard.response
+    const userId = guard.userId
+
     const body = await req.json() as {
       test: { date: string; valeurs: Record<string, unknown>; notes: string | null; test_definitions: { nom: string; sport: string } | null }
       testContext: { tssWeek: number; hrv: number | null; hrvBaseline: number | null; validityScore: number } | null
@@ -103,6 +109,8 @@ Retourne ce JSON (les valeurs dans evolution.tests doivent être des NOMBRES pur
       system: systemPrompt,
       messages: [{ role: 'user', content: userPrompt }],
     })
+
+    billAnthropicUsage(userId, response.usage, 'zeus')
 
     const textBlock = response.content.find(b => b.type === 'text')
     if (!textBlock || textBlock.type !== 'text') throw new Error('No text response')

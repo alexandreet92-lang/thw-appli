@@ -12,6 +12,7 @@ import { NextRequest } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getUserTier, logUsage } from '@/lib/subscriptions/check-quota'
 import { TIER_LIMITS, MODEL_IDS } from '@/lib/subscriptions/tier-limits'
+import { recordTokenUsage } from '@/lib/tokens/limits'
 
 interface ChatMsg { role: 'user' | 'assistant'; content: string }
 
@@ -108,6 +109,9 @@ export async function POST(req: NextRequest) {
       } finally {
         controller.close()
         void logUsage(userId, 'message', { model, stop_reason: 'end_turn', input_tokens: inputTokens, output_tokens: outputTokens })
+        // Débit du portefeuille : logUsage ne remplit que le journal d'usage,
+        // pas le compteur de tokens qui plafonne réellement la consommation.
+        void recordTokenUsage(userId, inputTokens + outputTokens, { model })
       }
     },
   })

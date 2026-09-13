@@ -1552,7 +1552,7 @@ function UtilisationBloc() {
   }, [])
 
   const gauges = ([
-    details?.monthly    && { label: t('profile.weekly'),            gauge: details.monthly,   color: 'var(--primary)' },
+    details?.weekly     && { label: t('profile.weekly'),            gauge: details.weekly,    color: 'var(--primary)' },
     details?.rolling_6h && { label: t('profile.rolling6h'), gauge: details.rolling_6h, color: 'var(--primary)' },
   ].filter(Boolean) as { label: string; gauge: { used: number; limit: number; resets_at: string }; color: string }[])
 
@@ -1950,7 +1950,7 @@ interface SubDetails {
   status:              string
   cancel_at_period_end: boolean
   current_period_end?: string | null
-  monthly?:            { used: number; limit: number; resets_at: string }
+  weekly?:             { used: number; limit: number; resets_at: string }
   rolling_6h?:         { used: number; limit: number; resets_at: string }
   stripe?: {
     nextBillingDate?:  string | null

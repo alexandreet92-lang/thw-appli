@@ -15,7 +15,12 @@ import type { AdminMetrics, DayPoint } from './types'
 // Prix abonnement (EUR / mois) — source : tier-limits (Premium 14 · Pro 26 · Expert 49).
 const TIER_PRICE_EUR: Record<string, number> = { premium: 14, pro: 26, expert: 49 }
 // Coût IA estimé par modèle (EUR / million de tokens, mélangé in/out). À affiner.
-const MODEL_COST_PER_MTOK: Record<string, number> = { hermes: 0.8, athena: 7, zeus: 9 }
+// Coût € par MILLION de tokens RÉELS (raw_tokens), mix observé ~80 % entrée /
+// 20 % sortie. Tarifs API (sept. 2026), convertis à ~0,9 €/$ :
+//   Haiku 4.5  1 $/5 $   → (0,8×1 + 0,2×5)  = 1,8 $ ≈ 1,6 €
+//   Sonnet 4.6 3 $/15 $  → (0,8×3 + 0,2×15) = 5,4 $ ≈ 4,9 € (on garde 7 = marge de sécu)
+//   Opus 4.8   5 $/25 $  → (0,8×5 + 0,2×25) = 9   $ ≈ 8,1 € (on garde 9 = marge de sécu)
+const MODEL_COST_PER_MTOK: Record<string, number> = { hermes: 1.6, athena: 7, zeus: 9 }
 const MODEL_COST_DEFAULT = 5
 // Seuil d'alerte marge : coût IA total > X % du MRR.
 const MARGIN_ALERT_PCT = 30

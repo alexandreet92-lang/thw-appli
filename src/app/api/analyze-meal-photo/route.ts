@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAnthropicClient, MODELS } from '@/lib/agents/base'
 import { anchorMacros } from '@/lib/nutrition/anchorMacros'
+import { guardAiRoute } from '@/lib/ai/guard'
+import { billAnthropicUsage } from '@/lib/ai/billing'
 
 // ── POST /api/analyze-meal-photo ─────────────────────────────────
 // Décompose un plat en INGRÉDIENTS (pas un bloc unique). Les ingrédients comptables
@@ -18,6 +20,10 @@ interface RawIngredient {
 const r0 = (n: unknown) => Math.max(0, Math.round(Number(n) || 0))
 
 export async function POST(req: NextRequest) {
+  const guard = await guardAiRoute('hermes')
+  if (!guard.ok) return guard.response
+  const userId = guard.userId
+
   try {
     const { base64, mimeType } = await req.json() as { base64?: string; mimeType?: string }
     if (!base64) return NextResponse.json({ error: 'Champ base64 manquant' }, { status: 400 })
@@ -56,6 +62,7 @@ Les champs kcal/prot/gluc/lip sont ta meilleure estimation par ingrédient (repl
         ],
       }],
     })
+    billAnthropicUsage(userId, response.usage, 'hermes')
 
     const textBlock = response.content.find(b => b.type === 'text')
     if (!textBlock || textBlock.type !== 'text') throw new Error('Pas de réponse texte')

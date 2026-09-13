@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/server'
 import { enforceQuota } from '@/lib/subscriptions/quota-middleware'
 import { getUserTier, logUsage } from '@/lib/subscriptions/check-quota'
 import { TIER_LIMITS, MODEL_IDS, MODEL_MAX_TOKENS } from '@/lib/subscriptions/tier-limits'
+import { recordTokenUsage } from '@/lib/tokens/limits'
 
 export async function POST(req: NextRequest) {
   let userId: string
@@ -68,6 +69,9 @@ export async function POST(req: NextRequest) {
           input_tokens:  inputTokens,
           output_tokens: outputTokens,
         })
+        // Débit du portefeuille : logUsage ne remplit que le journal d'usage,
+        // pas le compteur de tokens qui plafonne réellement la consommation.
+        void recordTokenUsage(userId, inputTokens + outputTokens, { model })
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'Erreur inconnue'
         controller.enqueue(encoder.encode(`\n\n[Erreur: ${msg}]`))

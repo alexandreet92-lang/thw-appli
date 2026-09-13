@@ -1,6 +1,8 @@
 export const maxDuration = 60
 import { NextRequest, NextResponse } from 'next/server'
 import { getAnthropicClient, MODELS } from '@/lib/agents/base'
+import { guardAiRoute } from '@/lib/ai/guard'
+import { billAnthropicUsage } from '@/lib/ai/billing'
 
 // ── POST /api/suggest-next-meal ──────────────────────────────────
 // Reçoit { remaining: {kcal,prot,gluc,lip}, dayType, nextSlot }.
@@ -14,6 +16,10 @@ interface Body {
 }
 
 export async function POST(req: NextRequest) {
+  const guard = await guardAiRoute('hermes')
+  if (!guard.ok) return guard.response
+  const userId = guard.userId
+
   try {
     const { remaining, dayType, nextSlot } = await req.json() as Body
     if (!remaining) {
@@ -47,6 +53,7 @@ Macros restantes à couvrir aujourd'hui :
 Propose un repas qui s'approche au mieux de ces valeurs (sans forcément les atteindre exactement).`,
       }],
     })
+    billAnthropicUsage(userId, response.usage, 'hermes')
 
     const first = response.content[0]
     const text = first && first.type === 'text' ? first.text : ''

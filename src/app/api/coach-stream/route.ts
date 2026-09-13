@@ -857,7 +857,7 @@ APRÈS l'oral : un résumé SCHÉMATISÉ et aéré pour l'écran. CE N'EST PAS l
     try {
       const tl = await getUserTokenLimits(userId)
       const remainingRolling = tl.rolling_6h.limit - tl.rolling_6h.used
-      const remainingTotal = (tl.monthly.limit - tl.monthly.used) + tl.bonus_tokens
+      const remainingTotal = (tl.weekly.limit - tl.weekly.used) + tl.bonus_tokens
       if (estimate > remainingRolling) {
         const hours = Math.max(1, Math.ceil((new Date(tl.rolling_6h.resets_at).getTime() - Date.now()) / 3_600_000))
         return new Response(JSON.stringify({ error: `Limite de 6h atteinte. Réinitialisation dans ${hours}h.` }), { status: 402, headers: { 'Content-Type': 'application/json' } })

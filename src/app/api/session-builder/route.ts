@@ -2,6 +2,8 @@ export const maxDuration = 60
 import { NextRequest, NextResponse } from 'next/server'
 import { getAnthropicClient, MODELS, parseJsonResponse } from '@/lib/agents/base'
 import { buildAthleteContextSafe } from '@/lib/coach/athlete-context'
+import { guardAiRoute } from '@/lib/ai/guard'
+import { billAnthropicUsage } from '@/lib/ai/billing'
 
 // Types
 interface SessionBuilderRequestBody {
@@ -119,6 +121,10 @@ function validateSession(session: GeneratedSession, expectedSport: string): Vali
 // ─────────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
+  const guard = await guardAiRoute('athena')
+  if (!guard.ok) return guard.response
+  const userId = guard.userId
+
   let body: SessionBuilderRequestBody
   try {
     body = await req.json() as SessionBuilderRequestBody
@@ -242,6 +248,7 @@ ${buildJsonSchema(sport)}`
       system: SYSTEM,
       messages: [{ role: 'user', content: prompt }],
     })
+    billAnthropicUsage(userId, resp.usage, 'athena')
     const text = resp.content.find(b => b.type === 'text')
     if (!text || text.type !== 'text') return null
     return parseJsonResponse<GeneratedSession>(text.text)

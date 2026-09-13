@@ -9,7 +9,8 @@
 //   synthèse vocale du navigateur (dégradé gracieux).
 // ══════════════════════════════════════════════════════════════
 
-import { createClient } from '@/lib/supabase/server'
+import { guardAiRoute } from '@/lib/ai/guard'
+import { billTtsUsage } from '@/lib/ai/billing'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -50,9 +51,11 @@ const LANG_LABEL: Record<string, string> = {
 
 export async function POST(req: Request) {
   try {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return new Response(JSON.stringify({ error: 'Non authentifié' }), { status: 401 })
+    // Auth + limite de vitesse + budget : la voix coûte de l'argent réel
+    // (~0,015 $/min) et n'était ni plafonnée ni comptabilisée.
+    const guard = await guardAiRoute('hermes')
+    if (!guard.ok) return guard.response
+    const userId = guard.userId
 
     const apiKey = process.env.OPENAI_API_KEY
     if (!apiKey) {
@@ -71,6 +74,9 @@ export async function POST(req: Request) {
 
     // Borne de sécurité (coût/latence)
     const input = text.length > 4000 ? text.slice(0, 4000) : text
+
+    // Débit du portefeuille, converti en tokens équivalents (voir billing.ts).
+    billTtsUsage(userId, input.length)
 
     const styleKey: StyleKey = (['douce', 'neutre', 'energique'].includes(body.style ?? '')
       ? body.style

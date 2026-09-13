@@ -4,6 +4,8 @@ import { NextRequest } from 'next/server'
 import { getAnthropicClient, MODELS } from '@/lib/agents/base'
 import { withQuotaCheck } from '@/lib/subscriptions/quota-middleware'
 import { buildAthleteContextSafe } from '@/lib/coach/athlete-context'
+import { guardAiRoute } from '@/lib/ai/guard'
+import { billAnthropicUsage } from '@/lib/ai/billing'
 
 export const runtime = 'nodejs'
 
@@ -472,6 +474,10 @@ ${s('precision_nutrition') ? `Précisions nutrition: ${s('precision_nutrition')}
 // ─────────────────────────────────────────────────────────────
 
 async function postHandler(req: NextRequest): Promise<Response> {
+  const guard = await guardAiRoute('zeus')
+  if (!guard.ok) return guard.response
+  const userId = guard.userId
+
   let body: TrainingPlanRequestBody
   try {
     body = await req.json() as TrainingPlanRequestBody
@@ -610,6 +616,7 @@ RÈGLES GÉNÉRALES — RESPECTER ABSOLUMENT :
       system: SYSTEM + JSON_ONLY,
       messages: [{ role: 'user', content: userPrompt }],
     })
+    billAnthropicUsage(userId, resp.usage, 'zeus')
 
     // stop_reason : si tronqué (max_tokens), on NE rejette PAS — repairJSON
     // récupère les semaines complètes générées (détail progressif).

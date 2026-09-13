@@ -3,6 +3,8 @@ export const maxDuration = 60
 
 import { NextRequest, NextResponse } from 'next/server'
 import { getAnthropicClient, MODELS, parseJsonResponse } from '@/lib/agents/base'
+import { guardAiRoute } from '@/lib/ai/guard'
+import { billAnthropicUsage } from '@/lib/ai/billing'
 
 type StreamData = {
   heartrate?: number[]
@@ -24,6 +26,10 @@ type LapData = {
 
 export async function POST(req: NextRequest) {
   try {
+    const guard = await guardAiRoute('zeus')
+    if (!guard.ok) return guard.response
+    const userId = guard.userId
+
     const body = await req.json() as {
       activities: {
         id: string
@@ -284,6 +290,8 @@ Retourne ce JSON (mode: "${isComparison ? 'comparison' : 'single'}") :
       system: systemPrompt,
       messages: [{ role: 'user', content: userPrompt }],
     })
+
+    billAnthropicUsage(userId, response.usage, 'zeus')
 
     const textBlock = response.content.find(b => b.type === 'text')
     if (!textBlock || textBlock.type !== 'text') throw new Error('No text response')

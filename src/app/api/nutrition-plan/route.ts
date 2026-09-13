@@ -3,8 +3,14 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getAnthropicClient, MODELS, parseJsonResponse } from '@/lib/agents/base'
 import { withQuotaCheck } from '@/lib/subscriptions/quota-middleware'
 import { buildAthleteContextSafe } from '@/lib/coach/athlete-context'
+import { guardAiRoute } from '@/lib/ai/guard'
+import { billAnthropicUsage } from '@/lib/ai/billing'
 
 async function postHandler(req: NextRequest): Promise<Response> {
+  const guard = await guardAiRoute('zeus')
+  if (!guard.ok) return guard.response
+  const userId = guard.userId
+
   try {
     const body = await req.json() as {
       profile: { weight_kg: number | null; height_cm?: number | null; full_name?: string | null }
@@ -157,6 +163,8 @@ Retourne EXACTEMENT ce JSON (remplace les valeurs par les valeurs réelles calcu
       system: systemPrompt,
       messages: [{ role: 'user', content: userPrompt }],
     })
+
+    billAnthropicUsage(userId, response.usage, 'zeus')
 
     const textBlock = response.content.find(b => b.type === 'text')
     if (!textBlock || textBlock.type !== 'text') throw new Error('No text response')

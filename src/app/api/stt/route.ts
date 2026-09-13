@@ -10,7 +10,8 @@
 // · Si OPENAI_API_KEY absente → 503.
 // ══════════════════════════════════════════════════════════════
 
-import { createClient } from '@/lib/supabase/server'
+import { guardAiRoute } from '@/lib/ai/guard'
+import { billSttUsage, estimateAudioSeconds } from '@/lib/ai/billing'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -27,9 +28,11 @@ function extFor(type: string): string {
 
 export async function POST(req: Request) {
   try {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return new Response(JSON.stringify({ error: 'Non authentifié' }), { status: 401 })
+    // Auth + limite de vitesse + budget : la transcription coûte de l'argent
+    // réel (~0,003 $/min) et n'était ni plafonnée ni comptabilisée.
+    const guard = await guardAiRoute('hermes')
+    if (!guard.ok) return guard.response
+    const userId = guard.userId
 
     const apiKey = process.env.OPENAI_API_KEY
     if (!apiKey) return new Response(JSON.stringify({ error: 'STT serveur non configuré' }), { status: 503 })
@@ -40,6 +43,9 @@ export async function POST(req: Request) {
     if (!(file instanceof Blob) || file.size === 0) {
       return new Response(JSON.stringify({ error: 'Audio vide' }), { status: 400 })
     }
+
+    // Débit du portefeuille, converti en tokens équivalents (voir billing.ts).
+    billSttUsage(userId, estimateAudioSeconds(file.size))
 
     const filename = `audio.${extFor(file.type || '')}`
 

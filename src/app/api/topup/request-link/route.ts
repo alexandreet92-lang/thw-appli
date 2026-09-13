@@ -65,8 +65,8 @@ export async function POST(req: Request) {
       }
       planLabel = PLAN_LABELS[planName] ?? 'Premium'
 
-      const monthlyRemaining = Math.max(0, limits.monthly.limit - limits.monthly.used)
-      const totalAvailable = monthlyRemaining + limits.bonus_tokens
+      const weeklyRemaining = Math.max(0, limits.weekly.limit - limits.weekly.used)
+      const totalAvailable = weeklyRemaining + limits.bonus_tokens
       formattedRemaining = totalAvailable.toLocaleString(currentLocale())
     } catch (e) {
       console.error('[topup/request-link] perso data error (fallback):', e)

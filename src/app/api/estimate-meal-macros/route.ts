@@ -2,6 +2,8 @@ export const maxDuration = 60
 import { NextRequest, NextResponse } from 'next/server'
 import { getAnthropicClient, MODELS } from '@/lib/agents/base'
 import { anchorMacros } from '@/lib/nutrition/anchorMacros'
+import { guardAiRoute } from '@/lib/ai/guard'
+import { billAnthropicUsage } from '@/lib/ai/billing'
 
 // ── POST /api/estimate-meal-macros ────────────────────────────────
 // Estime kcal/proteines/glucides/lipides d'un repas décrit en texte.
@@ -18,6 +20,10 @@ interface RawIngredient {
 const r0 = (n: unknown) => Math.max(0, Math.round(Number(n) || 0))
 
 export async function POST(req: NextRequest) {
+  const guard = await guardAiRoute('hermes')
+  if (!guard.ok) return guard.response
+  const userId = guard.userId
+
   try {
     const { description } = await req.json() as { description?: string }
     if (!description || description.trim() === '-') {
@@ -45,6 +51,8 @@ Retourne EXACTEMENT ce JSON (valeurs entières) :
 ]}`,
       }],
     })
+
+    billAnthropicUsage(userId, response.usage, 'hermes')
 
     const textBlock = response.content.find(b => b.type === 'text')
     if (!textBlock || textBlock.type !== 'text') throw new Error('No text response')

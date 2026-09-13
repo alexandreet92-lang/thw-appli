@@ -39,7 +39,7 @@ export async function GET() {
     const preferred = (prof?.preferred_name as string | null)?.trim() || null
     const firstName = (preferred || fullName || user.email || '').split(/\s+/)[0] || null
 
-    const chatRemaining = Math.max(0, (limits.monthly.limit - limits.monthly.used)) + (limits.bonus_tokens ?? 0)
+    const chatRemaining = Math.max(0, (limits.weekly.limit - limits.weekly.used)) + (limits.bonus_tokens ?? 0)
 
     return NextResponse.json({
       loggedIn: true,
@@ -51,7 +51,7 @@ export async function GET() {
       tierLabel: TIER_LABELS[tier] ?? tier,
       isCoach: coach.access,
       coachPaid: coach.paid,
-      chatTokens: { remaining: chatRemaining, limit: limits.monthly.limit },
+      chatTokens: { remaining: chatRemaining, limit: limits.weekly.limit },
       studioTokens: { remaining: studio.remaining, monthlyLimit: studio.monthlyLimit, packTokens: studio.packTokens },
     })
   } catch (e) {

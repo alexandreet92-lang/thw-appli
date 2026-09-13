@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { MARKETING_SYSTEM_PROMPT, buildUserPrompt } from "./prompt";
 import type { DailyBrief, ActivityContext, CommitContext, RawIdea, InstaSnapshot } from "./types";
+import { billAnthropicUsage } from "@/lib/ai/billing";
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY!,
@@ -10,6 +11,8 @@ const anthropic = new Anthropic({
 const MODEL = "claude-sonnet-4-6";
 
 export async function generateDailyBrief(context: {
+  /** Débite le portefeuille IA de cet utilisateur (coût sinon invisible). */
+  userId?: string;
   activities: ActivityContext[];
   commits: CommitContext[];
   rawIdeas: RawIdea[];
@@ -45,6 +48,8 @@ export async function generateDailyBrief(context: {
     system: MARKETING_SYSTEM_PROMPT,
     messages: [{ role: "user", content: userPrompt }],
   });
+
+  if (context.userId) billAnthropicUsage(context.userId, response.usage, "athena");
 
   const generation_ms = Date.now() - start;
 

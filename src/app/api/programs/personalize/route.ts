@@ -11,6 +11,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { MODEL_IDS } from '@/lib/subscriptions/tier-limits'
 import type { ProgramWeek } from '@/lib/coach/programs'
+import { billAnthropicUsage } from '@/lib/ai/billing'
 
 export async function POST(req: Request) {
   try {
@@ -48,6 +49,8 @@ export async function POST(req: Request) {
       model: MODEL_IDS.athena, max_tokens: 8000,
       system: sys, messages: [{ role: 'user', content: usr }],
     })
+
+    billAnthropicUsage(user.id, msg.usage, 'athena')
     const text = msg.content.map(c => (c.type === 'text' ? c.text : '')).join('')
     let structure: ProgramWeek[] = p.structure
     try {

@@ -10,6 +10,7 @@ export const maxDuration = 60
 import { NextRequest, NextResponse } from 'next/server'
 import { getAnthropicClient, MODELS } from '@/lib/agents/base'
 import { createClient } from '@/lib/supabase/server'
+import { billAnthropicUsage } from '@/lib/ai/billing'
 
 const SYSTEM = `Tu es un assistant expert en coaching sportif. L'utilisateur crée une règle personnelle pour son Coach IA.
 
@@ -59,6 +60,7 @@ export async function POST(req: NextRequest) {
       system: SYSTEM,
       messages: [{ role: 'user', content: userPrompt }],
     })
+    billAnthropicUsage(user.id, response.usage, 'hermes')
 
     const textBlock = response.content.find(b => b.type === 'text')
     if (!textBlock || textBlock.type !== 'text') {

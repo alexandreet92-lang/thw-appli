@@ -265,6 +265,10 @@ export async function POST(req: NextRequest) {
           await sb.from('user_subscriptions').upsert({
             user_id: userId, tier: athleteTierForCoachTier(coachMatch.tier),
             stripe_customer_id: custId, stripe_subscription_id: subscriptionId,
+            // Les dates de période DOIVENT être posées comme sur le chemin athlète :
+            // sans elles la ligne coach est incomplète (portail Stripe, relances,
+            // affichage de l'échéance) alors qu'elle représente un vrai abonnement.
+            current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
             current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
             status: mapStatus(subscription.status), updated_at: new Date().toISOString(),
           }, { onConflict: 'user_id' })
@@ -343,6 +347,7 @@ export async function POST(req: NextRequest) {
               await sb.from('user_subscriptions').update({
                 tier: athleteTierForCoachTier(updCoachMatch.tier),
                 status: mapStatus(subscription.status),
+                current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
                 current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
                 updated_at: new Date().toISOString(),
               }).eq('user_id', coachUserId)

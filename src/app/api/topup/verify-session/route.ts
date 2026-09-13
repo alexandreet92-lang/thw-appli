@@ -27,7 +27,8 @@ export async function POST(req: Request) {
       user_id: session.user_id,
       email: session.email,
       plan: limits.plan,
-      monthly: limits.monthly,
+      weekly: limits.weekly,
+      monthly: limits.weekly,   // alias rétro-compat (anciens clients natifs)
       rolling_6h: limits.rolling_6h,
       bonus_tokens: limits.bonus_tokens,
     })

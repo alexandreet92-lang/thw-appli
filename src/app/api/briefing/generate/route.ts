@@ -18,6 +18,7 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { enforceQuota } from '@/lib/subscriptions/quota-middleware'
 import { getUserTier, logUsage } from '@/lib/subscriptions/check-quota'
 import { TIER_LIMITS } from '@/lib/subscriptions/tier-limits'
+import { billAnthropicUsage, billWebSearches, type ServerToolUsage } from '@/lib/ai/billing'
 
 // ── System prompt ─────────────────────────────────────────────
 
@@ -336,6 +337,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       messages: [{ role: 'user', content: userPrompt }],
       ...(webSearchTool ? { tools: webSearchTool } : {}),
     })
+
+    billAnthropicUsage(creatorId, resp.usage, 'athena')
+
+    billWebSearches(creatorId, resp.usage as unknown as ServerToolUsage)
 
     // Avec web_search, le modèle peut émettre plusieurs blocs (tool_use
     // intercalés). Le JSON final est dans le DERNIER bloc de type text.

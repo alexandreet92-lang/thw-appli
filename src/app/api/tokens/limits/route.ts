@@ -12,7 +12,9 @@ export async function GET() {
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const limits = await getUserTokenLimits(user.id)
-    return NextResponse.json(limits)
+    // `monthly` = alias rétro-compatible : un build natif (Capacitor) déjà
+    // installé lit encore ce champ. Même valeur que `weekly`.
+    return NextResponse.json({ ...limits, monthly: limits.weekly })
   } catch (e) {
     console.error('[api/tokens/limits] error:', e)
     return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 })

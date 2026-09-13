@@ -8,6 +8,7 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { requireAdmin } from "@/lib/marketing/auth";
 import { getAnthropicClient, MODELS } from "@/lib/agents/base";
+import { billAnthropicUsage } from '@/lib/ai/billing'
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -181,6 +182,7 @@ Réponds UNIQUEMENT avec ce JSON (max 3 items par tableau, 1-2 phrases par champ
       system: SYSTEM,
       messages: [{ role: "user", content: userPrompt }],
     });
+    billAnthropicUsage(user!.id, resp.usage, 'athena')
 
     const textBlock = resp.content.find(b => b.type === "text");
     if (!textBlock || textBlock.type !== "text") {

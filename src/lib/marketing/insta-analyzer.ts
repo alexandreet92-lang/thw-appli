@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { InstaInsights } from "./types";
+import { billAnthropicUsage } from "@/lib/ai/billing";
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
 
@@ -54,7 +55,9 @@ Règles d'extraction :
  * @param images Array de data URLs (data:image/jpeg;base64,...)
  */
 export async function analyzeInstaScreenshots(
-  images: string[]
+  images: string[],
+  /** Débite le portefeuille IA de cet utilisateur (coût sinon invisible). */
+  userId?: string,
 ): Promise<InstaInsights> {
   if (images.length === 0) {
     throw new Error("Aucune image fournie");
@@ -98,6 +101,8 @@ export async function analyzeInstaScreenshots(
       },
     ],
   });
+
+  if (userId) billAnthropicUsage(userId, response.usage, "athena");
 
   const textContent = response.content.find((b) => b.type === "text");
   if (!textContent || textContent.type !== "text") {

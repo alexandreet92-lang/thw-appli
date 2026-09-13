@@ -3,13 +3,16 @@ export const dynamic = 'force-dynamic'
 
 // ══════════════════════════════════════════════════════════════════
 // Abonnement COACH — 6 packs par capacité d'athlètes. Base commune :
-// Premium athlète + toutes les fonctions coach + 1 M tokens Studio.
+// Premium athlète + toutes les fonctions coach. Le quota Studio, lui, suit la
+// capacité du pack (un système Studio s'exécute athlète par athlète) ; le
+// budget de chat ne dépend QUE de la formule athlète (Premium/Pro/Expert).
 // Changement / annulation via le portail de facturation Stripe.
 // ══════════════════════════════════════════════════════════════════
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { getCurrentUser } from '@/lib/auth/currentUser'
 import { COACH_PACKS, getCoachPack, coachPackPriceEur, type CoachPackKey, type CoachTier } from '@/lib/subscriptions/coach-packs'
+import { formatTokens } from '@/lib/studio/offers'
 import CoachSubscribeEmailModal from '@/components/subscription/CoachSubscribeEmailModal'
 import { getCoachAccessState, startCoachTrial, type CoachAccessState } from '@/lib/coach/owner'
 import { useRouter } from 'next/navigation'
@@ -140,6 +143,11 @@ export default function CoachSubscriptionPage() {
               <div key={p.key} style={{ background: 'var(--bg-card)', borderRadius: 'var(--r-lg)', padding: 20, boxShadow: '0 1px 3px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column', gap: 4 }}>
                 <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 600, color: 'var(--text)' }}>{p.name}</div>
                 <div style={{ fontSize: 12.5, color: 'var(--text-dim)' }}>{p.label}</div>
+                {/* Quota Studio : c'est la SEULE ressource IA qui change d'un pack
+                    à l'autre — un système Studio s'exécute athlète par athlète. */}
+                <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--primary)', marginTop: 2 }}>
+                  {t('w3c.pack_studio', { n: formatTokens(p.studioTokens) })}
+                </div>
                 {/* Prix masqués dans l'app (règles App Store). */}
                 <div style={{ flex: 1 }} />
                 {isCurrent ? (
@@ -156,7 +164,8 @@ export default function CoachSubscriptionPage() {
         </div>
       )}
 
-      <p style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 20, lineHeight: 1.5 }}>{t('w3c.coach_sub_footer')}</p>
+      <p style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 18, lineHeight: 1.5 }}>{t('w3c.pack_chat_note')}</p>
+      <p style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 10, lineHeight: 1.5 }}>{t('w3c.coach_sub_footer')}</p>
 
       {emailPack && (() => {
         const p = getCoachPack(emailPack)

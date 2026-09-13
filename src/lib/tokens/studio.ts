@@ -11,6 +11,10 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { getUserTier, isCreatorAccount } from '@/lib/subscriptions/check-quota'
 import { getModelMultiplier } from './multipliers'
 import { STUDIO_TIERS, STUDIO_MONTHLY_TOKENS, type StudioAccess } from '@/lib/studio/offers'
+import { getCoachPack } from '@/lib/subscriptions/coach-packs'
+
+/** Quota Studio pendant l'essai coach (aucun pack choisi) = celui du pack Solo. */
+const TRIAL_STUDIO_TOKENS = 1_000_000
 
 function monthStartISO(): string {
   const d = new Date()
@@ -21,17 +25,21 @@ export async function getStudioAccess(userId: string): Promise<StudioAccess> {
   const creator = await isCreatorAccount(userId)
   const tier = creator ? 'expert' : await getUserTier(userId)
 
-  // Pack coach (ou essai coach) : inclut le Studio + ~1 M tokens/mois, quel que
-  // soit le tier athlète du coach.
+  // Pack coach (ou essai coach) : inclut le Studio, avec un quota mensuel
+  // PROPORTIONNEL à la capacité d'athlètes du pack (un run s'exécute par
+  // athlète). Avant : 1 M en dur pour tous les packs — le pack Fédération ne
+  // pouvait pas faire tourner un système une seule fois sur ses 500 athlètes.
   let coachStudioTokens = 0
   if (!creator) {
     const sbc = createServiceClient()
-    const { data: cs } = await sbc.from('coach_subscriptions').select('status').eq('user_id', userId).maybeSingle()
-    if (cs && (cs.status === 'active' || cs.status === 'trialing')) coachStudioTokens = 1_000_000
-    else {
+    const { data: cs } = await sbc.from('coach_subscriptions').select('status, pack_key').eq('user_id', userId).maybeSingle()
+    if (cs && (cs.status === 'active' || cs.status === 'trialing')) {
+      coachStudioTokens = getCoachPack((cs as { pack_key?: string | null }).pack_key)?.studioTokens ?? TRIAL_STUDIO_TOKENS
+    } else {
       const { data: prof } = await sbc.from('profiles').select('coach_trial_started_at').eq('id', userId).maybeSingle()
       const startedIso = (prof as { coach_trial_started_at?: string | null } | null)?.coach_trial_started_at
-      if (startedIso && Date.now() - new Date(startedIso).getTime() < 14 * 86400000) coachStudioTokens = 1_000_000
+      // Essai coach : pas encore de pack choisi → quota du plus petit pack.
+      if (startedIso && Date.now() - new Date(startedIso).getTime() < 14 * 86400000) coachStudioTokens = TRIAL_STUDIO_TOKENS
     }
   }
 

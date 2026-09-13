@@ -32,7 +32,11 @@ export const coachScaleTools: Anthropic.Tool[] = [
       "jours depuis la dernière activité, charge 7 j (TSS), blessures actives, prochaine course (jours restants), " +
       "adhérence de la semaine (séances faites/prévues) et un statut (ok / attention / blessé / inactif). " +
       "Utilise-le pour répondre à « qui est en surcharge ? », « qui court dans 15 jours ? », « qui n'a pas synchronisé ? », " +
-      "faire un point global, ou choisir sur quels athlètes agir. Réservé au coach.",
+      "faire un point global, ou choisir sur quels athlètes agir. Réservé au coach. " +
+      "Sur un gros roster, seuls les athlètes les PLUS URGENTS sont listés (blessés, puis inactifs, puis en alerte, " +
+      "puis course la plus proche) : `count` donne le total réel, `summary` la répartition de TOUT le roster, et " +
+      "`not_listed_by_status` ce qui n'est pas détaillé. Appuie-toi sur ces compteurs pour parler du reste du roster — " +
+      "ne dis jamais qu'un athlète absent de la liste n'existe pas.",
     input_schema: { type: 'object', properties: {} },
   },
   {
@@ -147,7 +151,45 @@ export async function resolveCoachScaleTool(name: string, input: Record<string, 
           adherence: adhTotal ? `${adhDone}/${adhTotal}` : null, status,
         }
       })
-      return okJ({ count: athletes.length, athletes })
+      // ── Tri + plafond ────────────────────────────────────────────────
+      // On renvoyait TOUT le roster. Sur un gros pack (500 athlètes) ça fait
+      // ~37 000 tokens injectés dans le contexte à chaque question, pour une
+      // réponse qui ne porte que sur la poignée d'athlètes qui vont mal. On
+      // trie donc par urgence et on plafonne, en donnant au modèle le compte
+      // exact de ce qui n'est pas listé pour qu'il ne croie pas avoir tout vu.
+      const RANK: Record<string, number> = { 'blessé': 0, 'inactif': 1, 'attention': 2, ok: 3 }
+      const sorted = [...athletes].sort((a, b) => {
+        const r = (RANK[a.status] ?? 9) - (RANK[b.status] ?? 9)
+        if (r !== 0) return r
+        // À statut égal : course la plus proche d'abord, puis charge la plus forte.
+        const ra = a.next_race?.in_days ?? Infinity
+        const rb = b.next_race?.in_days ?? Infinity
+        if (ra !== rb) return ra - rb
+        return b.tss_7d - a.tss_7d
+      })
+      const MAX_LISTED = 40
+      const listed = sorted.slice(0, MAX_LISTED)
+      const hidden = sorted.slice(MAX_LISTED)
+      const byStatus = (rows: typeof athletes) => rows.reduce<Record<string, number>>((m, a) => {
+        m[a.status] = (m[a.status] ?? 0) + 1; return m
+      }, {})
+
+      return okJ({
+        count: athletes.length,
+        listed: listed.length,
+        summary: byStatus(athletes),
+        ...(hidden.length
+          ? {
+              not_listed: hidden.length,
+              not_listed_by_status: byStatus(hidden),
+              note: `Roster de ${athletes.length} athlètes. Les ${listed.length} plus urgents sont listés `
+                + `(blessés, puis inactifs, puis en alerte, puis course la plus proche). `
+                + `${hidden.length} autres ne sont pas listés — utilise not_listed_by_status pour en parler `
+                + `globalement, et demande un athlète précis par son nom si besoin.`,
+            }
+          : {}),
+        athletes: listed,
+      })
     }
 
     if (name === 'message_athletes') {

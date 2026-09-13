@@ -8,6 +8,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { Resend } from 'resend'
 import { getCoachPack, buildCoachPackCheckoutUrl, coachPackPriceEur, type CoachPackKey, type CoachTier } from '@/lib/subscriptions/coach-packs'
+import { formatTokens } from '@/lib/studio/offers'
 
 export const dynamic = 'force-dynamic'
 
@@ -75,7 +76,7 @@ export async function POST(req: Request) {
         <tr><td align="center" style="padding:18px 32px 0;">
           <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color:#F8FAFC;border-radius:14px;"><tr><td align="center" style="padding:18px;">
             <div style="font-size:30px;font-weight:700;color:#0F172A;line-height:1;">${price} €<span style="font-size:14px;font-weight:500;color:#64748B;"> / ${per}</span></div>
-            <div style="font-size:12.5px;color:#64748B;margin-top:6px;">Compte ${coachTier === 'expert' ? 'Athlète Expert' : coachTier === 'premium' ? 'Athlète Premium' : 'Athlète Pro'} inclus · toutes les fonctions coach · 1 M tokens Studio / mois</div>
+            <div style="font-size:12.5px;color:#64748B;margin-top:6px;">Compte ${coachTier === 'expert' ? 'Athlète Expert' : coachTier === 'premium' ? 'Athlète Premium' : 'Athlète Pro'} inclus · toutes les fonctions coach · ${formatTokens(pack.studioTokens)} tokens Studio / mois</div>
           </td></tr></table>
         </td></tr>
         <tr><td align="center" style="padding:24px 32px 8px;">

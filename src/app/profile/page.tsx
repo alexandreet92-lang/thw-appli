@@ -2032,28 +2032,43 @@ function AbonnementContent() {
   }
 
   async function handleCancel() {
-    // Résiliation = via le PORTAIL STRIPE (c'est là que sont gérés les paiements
-    // et les résiliations). On ouvre le portail dans le navigateur système ;
-    // s'il n'est pas joignable (WebView native), on retombe sur la page abonnement
-    // du site. Plus de « ça ne fait rien ».
+    // Résiliation IN-APP : on programme la fin d'abonnement à la fin de la
+    // période en cours (cancel_at_period_end) via /api/subscription/cancel, puis
+    // on rafraîchit l'état → le bandeau « résiliation programmée » s'affiche tout
+    // de suite. Repli sur le portail Stripe si pas d'abonnement direct (ex. pack
+    // coach via Payment Link) ou si l'appel échoue.
     setCancelling(true)
     setCancelError(null)
     try {
-      const res = await fetch('/api/stripe/portal', { method: 'POST' })
-      const d = await res.json().catch(() => null) as { url?: string } | null
-      if (d?.url) {
-        const { openExternalUrl } = await import('@/lib/native/platform')
-        await openExternalUrl(d.url)
+      const res = await fetch('/api/subscription/cancel', { method: 'POST' })
+      if (res.ok) {
+        try {
+          const d = await (await fetch('/api/subscription/details')).json() as SubDetails
+          setDetails(d)
+        } catch { /* garde l'état actuel */ }
         setCancelConfirm(false)
         setCancelling(false)
         return
       }
-    } catch { /* on retombe sur l'espace abonnement ci-dessous */ }
-    // Portail Stripe injoignable → espace abonnement du compte (login-first),
-    // d'où l'utilisateur gère/résilie, plutôt que la page marketing publique.
-    try { await openWebsite('/site/compte.html'); setCancelConfirm(false) }
-    catch { setCancelError(t('profile.cancelFailed')) }
-    finally { setCancelling(false) }
+      // 404 = aucun abonnement Stripe direct (pack coach…) → portail Stripe.
+      if (res.status === 404) {
+        const p = await fetch('/api/stripe/portal', { method: 'POST' })
+        const pd = await p.json().catch(() => null) as { url?: string } | null
+        if (pd?.url) {
+          const { openExternalUrl } = await import('@/lib/native/platform')
+          await openExternalUrl(pd.url)
+          setCancelConfirm(false)
+          setCancelling(false)
+          return
+        }
+      }
+      const err = await res.json().catch(() => null) as { error?: string } | null
+      setCancelError(err?.error || t('profile.cancelFailed'))
+    } catch {
+      setCancelError(t('profile.cancelFailed'))
+    } finally {
+      setCancelling(false)
+    }
   }
 
   const tier = details?.tier ?? 'trial'

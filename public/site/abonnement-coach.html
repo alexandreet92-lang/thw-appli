@@ -297,13 +297,21 @@
     function CoachPricingPage() {
       const [yearly, setYearly] = useState(false);
       const [tier, setTier] = useState('premium');
-      const [lang, setLang] = useState('fr');
+      // Langue : pilotée par le sélecteur PARTAGÉ du header (window.THWLang),
+      // et non plus par un état local que rien ne persistait.
+      const [lang, setLang] = useState(() => (window.THWLang ? window.THWLang.getLang() : 'fr'));
+      useEffect(() => {
+        if (!window.THWLang || !window.THWLang.onChange) return undefined;
+        setLang(window.THWLang.getLang());
+        return window.THWLang.onChange(setLang);
+      }, []);
       const ref = useReveal();
       useEffect(() => { document.title = 'Abonnement Coach — THW Coaching'; }, []);
 
       return (
         <div ref={ref}>
-          <SiteHeader active="plans" extra={<LangSelect lang={lang} setLang={setLang}/>}/>
+          {/* Pas de `extra` : sélecteur de langue partagé (cf. abonnement-athlete). */}
+          <SiteHeader active="plans"/>
 
           <main className="cp-wrap">
             <header className="cp-head reveal">
@@ -360,5 +368,21 @@
 
     ReactDOM.createRoot(document.getElementById('root')).render(<CoachPricingPage/>);
   </script>
+
+  <!-- i18n — FR (source) / EN / ES. TOUS les dictionnaires sont chargés sur
+       TOUTES les pages : une page qui n'en charge qu'une partie laisse des
+       textes en français quand on bascule en EN/ES, et une page qui ne charge
+       pas i18n.js du tout affiche un sélecteur de langue qui ne fait rien. -->
+  <!-- Session + compte partagés : doit être chargé AVANT i18n.js, qui lit la
+       langue du compte pour aligner le site sur l'app. -->
+  <script src="components/site/account.js"></script>
+  <script src="components/site/i18n-dict.js"></script>
+  <script src="components/site/i18n-dict-2.js"></script>
+  <script src="components/site/i18n-dict-3.js"></script>
+  <script src="components/site/i18n-dict-4.js"></script>
+  <script src="components/site/i18n-dict-5.js"></script>
+  <script src="components/site/i18n-dict-6.js"></script>
+  <script src="components/site/i18n-dict-7.js"></script>
+  <script src="components/site/i18n.js"></script>
 </body>
 </html>

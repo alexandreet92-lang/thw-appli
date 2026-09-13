@@ -265,20 +265,11 @@
     ];
 
     // ── Compte réel (utilisateur connecté) ───────────────────────────────────────
-    // Même origine → les cookies de session partent avec le fetch : /api/account/summary
-    // renvoie les vrais soldes. Non connecté → on garde les valeurs de démonstration.
-    function useAccount() {
-      const [acc, setAcc] = useState(null);
-      useEffect(() => {
-        let alive = true;
-        fetch('/api/account/summary', { credentials: 'include' })
-          .then(r => r.ok ? r.json() : null)
-          .then(d => { if (alive && d && d.loggedIn) setAcc(d); })
-          .catch(() => {});
-        return () => { alive = false; };
-      }, []);
-      return acc;
-    }
+    // Passe par le compte PARTAGÉ (SiteChrome.jsx) : cette page appelait
+    // /api/account/summary trois fois en parallèle (header + section chat +
+    // section Studio). Trois rafraîchissements de session simultanés se
+    // marchaient dessus et pouvaient déconnecter l'utilisateur.
+    const useAccount = () => window.THWAccount.useAccount();
 
     // ── Hooks ───────────────────────────────────────────────────────────────────
     function useReveal() {
@@ -334,7 +325,11 @@
     const fmt = (n) => n.toLocaleString('fr-FR');
 
     // ── Token gauge (radial) ────────────────────────────────────────────────────
-    function TokenGauge({ value, total, size = 248, label, sub, run = true, delayFill = 200 }) {
+    // `from`/`to`/`halo` permettent de décliner la jauge (cyan pour le chat,
+    // violet pour le Studio). `gradId` DOIT être unique : deux <linearGradient>
+    // avec le même id sur la page et le second est ignoré par le navigateur.
+    function TokenGauge({ value, total, size = 248, label, sub, run = true, delayFill = 200,
+                          from = '#00c8e0', to = '#5b6fff', halo = '0,200,224', gradId = 'gaugeGrad' }) {
       const stroke = 14;
       const r = size / 2 - stroke;
       const circ = 2 * Math.PI * r;
@@ -353,17 +348,17 @@
           {/* glow halo */}
           <div style={{
             position: 'absolute', inset: '-18%', zIndex: 0,
-            background: 'radial-gradient(circle at 50% 50%, rgba(0,200,224,0.22), rgba(91,111,255,0.10) 45%, transparent 70%)',
+            background: 'radial-gradient(circle at 50% 50%, rgba(' + halo + ',0.22), rgba(91,111,255,0.10) 45%, transparent 70%)',
             filter: 'blur(26px)',
           }}/>
           <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ position: 'relative', zIndex: 1, transform: 'rotate(-90deg)' }}>
             <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth={stroke}/>
-            <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="url(#gaugeGrad)" strokeWidth={stroke} strokeLinecap="round"
+            <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={`url(#${gradId})`} strokeWidth={stroke} strokeLinecap="round"
               strokeDasharray={circ} strokeDashoffset={off}
-              style={{ transition: 'stroke-dashoffset 1.4s cubic-bezier(0.34,1,0.5,1)', filter: 'drop-shadow(0 0 8px rgba(0,200,224,0.45))' }}/>
+              style={{ transition: 'stroke-dashoffset 1.4s cubic-bezier(0.34,1,0.5,1)', filter: `drop-shadow(0 0 8px rgba(${halo},0.45))` }}/>
             <defs>
-              <linearGradient id="gaugeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#00c8e0"/><stop offset="100%" stopColor="#5b6fff"/>
+              <linearGradient id={gradId} x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor={from}/><stop offset="100%" stopColor={to}/>
               </linearGradient>
             </defs>
           </svg>
@@ -584,6 +579,77 @@
       );
     }
 
+    // ── Solde Studio (cercle) ────────────────────────────────────────────────────
+    // `remaining` = quota mensuel restant + tokens de packs. On affiche le total
+    // dans le cercle et on détaille dessous, parce que les deux ne se comportent
+    // pas pareil : le quota se remet à zéro chaque mois, les packs n'expirent pas.
+    function StudioBalance({ studio }) {
+      const monthlyLimit = Number(studio.monthlyLimit || 0);
+      const monthlyUsed  = Number(studio.monthlyUsed || 0);
+      const packTokens   = Number(studio.packTokens || 0);
+      const monthlyLeft  = Math.max(0, monthlyLimit - monthlyUsed);
+      const remaining    = Number(studio.remaining || 0);
+      // Le cercle se remplit sur le total disponible ce mois-ci (quota + packs) :
+      // sans packs il vaut le quota, avec packs il ne sature pas à 100 %.
+      const total = Math.max(1, monthlyLimit + packTokens);
+
+      if (!studio.allowed) {
+        return (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 11, flexWrap: 'wrap', justifyContent: 'center',
+            maxWidth: 620, padding: '13px 19px', borderRadius: 'var(--radius-md)',
+            background: 'rgba(139,92,246,0.07)', border: '1px solid rgba(139,92,246,0.3)' }}>
+            <IcLayers size={16} style={{ color: '#a78bfa', flexShrink: 0 }}/>
+            <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13.5, color: 'var(--text-mid)', textWrap: 'pretty' }}>
+              Ton abonnement actuel ne donne pas accès au Studio — passe en Pro ou Expert pour ouvrir ton solde.
+            </span>
+          </div>
+        );
+      }
+
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
+          <TokenGauge
+            value={remaining} total={total} size={214}
+            label="Ton solde Studio" sub="disponible"
+            from="#8b5cf6" to="#c084fc" halo="139,92,246" gradId="studioGaugeGrad"/>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'center' }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '7px 13px', borderRadius: 999,
+              background: 'rgba(139,92,246,0.09)', border: '1px solid rgba(139,92,246,0.28)',
+              fontFamily: "'DM Sans', sans-serif", fontSize: 12.5, color: 'var(--text-mid)' }}>
+              Quota mensuel restant
+              <strong className="num" style={{ color: 'var(--text)', fontWeight: 700 }}>{monthlyLeft.toLocaleString('fr-FR')}</strong>
+              <span style={{ color: 'var(--text-dim)' }}>/ {monthlyLimit.toLocaleString('fr-FR')}</span>
+            </span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '7px 13px', borderRadius: 999,
+              background: 'rgba(139,92,246,0.09)', border: '1px solid rgba(139,92,246,0.28)',
+              fontFamily: "'DM Sans', sans-serif", fontSize: 12.5, color: 'var(--text-mid)' }}>
+              Tokens de packs
+              <strong className="num" style={{ color: 'var(--text)', fontWeight: 700 }}>{packTokens.toLocaleString('fr-FR')}</strong>
+              <span style={{ color: 'var(--text-dim)' }}>· n'expirent jamais</span>
+            </span>
+          </div>
+        </div>
+      );
+    }
+
+    // Non connecté : on ne montre aucun chiffre, on renvoie vers la connexion.
+    function StudioBalanceGuest() {
+      return (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', justifyContent: 'center',
+          maxWidth: 620, padding: '13px 19px', borderRadius: 'var(--radius-md)',
+          background: 'rgba(139,92,246,0.07)', border: '1px solid rgba(139,92,246,0.3)' }}>
+          <IcLock size={15} style={{ color: '#a78bfa', flexShrink: 0 }}/>
+          <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13.5, color: 'var(--text-mid)', textWrap: 'pretty' }}>
+            Connecte-toi pour voir ton solde de tokens Studio.
+          </span>
+          <a href="compte.html" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, flexShrink: 0, textDecoration: 'none',
+            fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 600, color: '#a78bfa' }}>
+            Se connecter <IcArrow size={13}/>
+          </a>
+        </div>
+      );
+    }
+
     // ── Studio section (packs + FAQ) ─────────────────────────────────────────────
     function StudioSection() {
       const acc = useAccount();
@@ -609,17 +675,13 @@
               </p>
             </div>
 
-            {/* Solde Studio réel (connecté) */}
-            {studio && (
-              <div className="reveal" style={{ display: 'flex', alignItems: 'center', gap: 10, justifyContent: 'center', flexWrap: 'wrap',
-                maxWidth: 620, margin: '0 auto 22px', padding: '12px 18px', borderRadius: 'var(--radius-md)',
-                background: 'rgba(139,92,246,0.09)', border: '1px solid rgba(139,92,246,0.32)' }}>
-                <IcLayers size={16} style={{ color: '#a78bfa', flexShrink: 0 }}/>
-                <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13.5, color: 'var(--text-mid)' }}>
-                  Ton solde Studio : <strong style={{ color: 'var(--text)', fontWeight: 700 }}>{Number(studio.remaining || 0).toLocaleString('fr-FR')}</strong> tokens
-                </span>
-              </div>
-            )}
+            {/* ── Solde Studio ──────────────────────────────────────────────
+                Même principe que la jauge des tokens de chat en haut de page :
+                un cercle avec le solde réel. Il faut être connecté ; sinon on
+                invite à se connecter plutôt que d'afficher un faux chiffre. */}
+            <div className="reveal" style={{ display: 'flex', justifyContent: 'center', marginBottom: 26 }}>
+              {studio ? <StudioBalance studio={studio}/> : <StudioBalanceGuest/>}
+            </div>
 
             {/* eligibility notice */}
             <div className="reveal" style={{ display: 'flex', alignItems: 'center', gap: 11, justifyContent: 'center', flexWrap: 'wrap',
@@ -886,5 +948,21 @@
 
     ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
   </script>
+
+  <!-- i18n — FR (source) / EN / ES. TOUS les dictionnaires sont chargés sur
+       TOUTES les pages : une page qui n'en charge qu'une partie laisse des
+       textes en français quand on bascule en EN/ES, et une page qui ne charge
+       pas i18n.js du tout affiche un sélecteur de langue qui ne fait rien. -->
+  <!-- Session + compte partagés : doit être chargé AVANT i18n.js, qui lit la
+       langue du compte pour aligner le site sur l'app. -->
+  <script src="components/site/account.js"></script>
+  <script src="components/site/i18n-dict.js"></script>
+  <script src="components/site/i18n-dict-2.js"></script>
+  <script src="components/site/i18n-dict-3.js"></script>
+  <script src="components/site/i18n-dict-4.js"></script>
+  <script src="components/site/i18n-dict-5.js"></script>
+  <script src="components/site/i18n-dict-6.js"></script>
+  <script src="components/site/i18n-dict-7.js"></script>
+  <script src="components/site/i18n.js"></script>
 </body>
 </html>

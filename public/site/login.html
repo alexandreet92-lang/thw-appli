@@ -675,10 +675,21 @@ wireSubmit(document.getElementById('panel-login'), document.getElementById('logi
 wireSubmit(document.getElementById('panel-signup'), document.getElementById('signup-btn'));
 </script>
 
-<!-- i18n — FR (source) / EN / ES runtime translation + switcher -->
-<script src="components/site/i18n-dict.js"></script>
-<script src="components/site/i18n-dict-6.js"></script>
-<script src="components/site/i18n.js"></script>
 
+  <!-- i18n — FR (source) / EN / ES. TOUS les dictionnaires sont chargés sur
+       TOUTES les pages : une page qui n'en charge qu'une partie laisse des
+       textes en français quand on bascule en EN/ES, et une page qui ne charge
+       pas i18n.js du tout affiche un sélecteur de langue qui ne fait rien. -->
+  <!-- Session + compte partagés : doit être chargé AVANT i18n.js, qui lit la
+       langue du compte pour aligner le site sur l'app. -->
+  <script src="components/site/account.js"></script>
+  <script src="components/site/i18n-dict.js"></script>
+  <script src="components/site/i18n-dict-2.js"></script>
+  <script src="components/site/i18n-dict-3.js"></script>
+  <script src="components/site/i18n-dict-4.js"></script>
+  <script src="components/site/i18n-dict-5.js"></script>
+  <script src="components/site/i18n-dict-6.js"></script>
+  <script src="components/site/i18n-dict-7.js"></script>
+  <script src="components/site/i18n.js"></script>
 </body>
 </html>

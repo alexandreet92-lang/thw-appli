@@ -5,15 +5,16 @@
    ════════════════════════════════════════════════════════════════ */
 
 function MkFrame(props) {
+  // `data-replace` reste le point d'accroche pour remplacer la maquette par une
+  // vraie capture. En revanche plus de `title` ni de pastille visible : c'étaient
+  // des marqueurs de développement affichés aux visiteurs.
   return (
-    <div className="mk" data-replace={'screenshot-' + props.slug}
-         title={'MOCKUP À REMPLACER : capture d\u2019écran ' + props.title}>
+    <div className="mk" data-replace={'screenshot-' + props.slug}>
       <div className="mk-bar">
         <span className="mk-dot"></span><span className="mk-dot"></span><span className="mk-dot"></span>
         <span className="mk-title">{props.bar}</span>
       </div>
       <div className="mk-body">{props.children}</div>
-      <span className="mk-replace-tag">data-replace</span>
     </div>
   );
 }

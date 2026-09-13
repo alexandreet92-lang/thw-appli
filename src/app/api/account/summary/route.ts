@@ -28,7 +28,7 @@ export async function GET() {
 
   try {
     const [{ data: prof }, tier, limits, studio, coach] = await Promise.all([
-      supabase.from('profiles').select('full_name, preferred_name').eq('id', user.id).maybeSingle(),
+      supabase.from('profiles').select('full_name, preferred_name, language').eq('id', user.id).maybeSingle(),
       getUserTier(user.id),
       getUserTokenLimits(user.id),
       getStudioAccess(user.id),
@@ -41,8 +41,15 @@ export async function GET() {
 
     const chatRemaining = Math.max(0, (limits.monthly.limit - limits.monthly.used)) + (limits.bonus_tokens ?? 0)
 
+    // Langue de l'app (profiles.language, réglée dans l'app) → le site vitrine
+    // s'aligne dessus automatiquement, sans que l'utilisateur retouche au
+    // sélecteur. On ne renvoie que les langues réellement gérées par le site.
+    const rawLang = (prof?.language as string | null)?.toLowerCase() ?? null
+    const language = rawLang && ['fr', 'en', 'es'].includes(rawLang) ? rawLang : null
+
     return NextResponse.json({
       loggedIn: true,
+      language,
       email: user.email ?? null,
       name: fullName,
       preferredName: preferred,
@@ -52,7 +59,16 @@ export async function GET() {
       isCoach: coach.access,
       coachPaid: coach.paid,
       chatTokens: { remaining: chatRemaining, limit: limits.monthly.limit },
-      studioTokens: { remaining: studio.remaining, monthlyLimit: studio.monthlyLimit, packTokens: studio.packTokens },
+      // `allowed` et `monthlyUsed` servent à la jauge Studio du site : on doit
+      // pouvoir distinguer « quota mensuel restant » et « tokens de packs »,
+      // et savoir si le compte a droit au Studio (Pro / Expert / coach).
+      studioTokens: {
+        allowed: studio.allowed,
+        remaining: studio.remaining,
+        monthlyUsed: studio.monthlyUsed,
+        monthlyLimit: studio.monthlyLimit,
+        packTokens: studio.packTokens,
+      },
     })
   } catch (e) {
     console.error('[account/summary] error:', e)

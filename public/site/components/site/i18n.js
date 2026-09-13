@@ -13,6 +13,10 @@
    ════════════════════════════════════════════════════════════════ */
 (function () {
   var KEY = 'thw-lang';
+  // Distingue « l'utilisateur a choisi FR » de « personne n'a jamais choisi ».
+  // Sans ce drapeau, impossible de savoir si on a le droit d'aligner le site
+  // sur la langue du compte : 'fr' par défaut est indiscernable d'un choix.
+  var PICKED_KEY = 'thw-lang-picked';
   var DEFAULT = 'fr';
   var LANGS = ['fr', 'en', 'es'];
   var LABEL = { fr: 'FR', en: 'EN', es: 'ES' };
@@ -36,7 +40,20 @@
   var scheduled = false;
 
   function getLang() { try { return localStorage.getItem(KEY) || DEFAULT; } catch (e) { return DEFAULT; } }
-  function setLang(l) { try { localStorage.setItem(KEY, l); } catch (e) {} apply(l); }
+  function hasPicked() { try { return localStorage.getItem(PICKED_KEY) === '1'; } catch (e) { return false; } }
+  // Choix EXPLICITE de l'utilisateur (clic sur le sélecteur) : il gagne sur la
+  // langue du compte, et pour toujours sur cet appareil.
+  function setLang(l) {
+    try { localStorage.setItem(KEY, l); localStorage.setItem(PICKED_KEY, '1'); } catch (e) {}
+    apply(l);
+  }
+  // Alignement AUTOMATIQUE (langue du compte) : on mémorise la langue mais pas
+  // le drapeau de choix, pour continuer à suivre le compte s'il change.
+  function adoptLang(l) {
+    if (LANGS.indexOf(l) < 0 || l === current) return;
+    try { localStorage.setItem(KEY, l); } catch (e) {}
+    apply(l);
+  }
 
   // ── Text nodes ──────────────────────────────────────────────────
   function skip(node) {
@@ -211,7 +228,17 @@
   }
 
   // ── Apply ───────────────────────────────────────────────────────
+  // Abonnés au changement de langue (le header React doit repeindre son
+  // sélecteur quand la langue est adoptée depuis le compte, pas seulement
+  // quand l'utilisateur clique).
+  var langListeners = [];
+  function onChange(fn) {
+    langListeners.push(fn);
+    return function () { langListeners = langListeners.filter(function (f) { return f !== fn; }); };
+  }
+
   function apply(lang) {
+    var changed = current !== lang;
     current = lang;
     document.documentElement.setAttribute('lang', lang);
     if (observer) observer.disconnect();
@@ -223,6 +250,11 @@
     } finally {
       if (observer && document.body) {
         observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+      }
+    }
+    if (changed) {
+      for (var i = 0; i < langListeners.length; i++) {
+        try { langListeners[i](lang); } catch (e) { /* un abonné cassé n'en bloque pas d'autres */ }
       }
     }
   }
@@ -242,6 +274,25 @@
     var iv = setInterval(function () { apply(current); if (++tries >= 14) clearInterval(iv); }, 350);
   }
 
-  window.THWLang = { getLang: getLang, setLang: setLang, apply: apply, langs: LANGS };
+  /* ── Langue du compte ──────────────────────────────────────────────
+     Si la personne est connectée, le site adopte la langue réglée dans
+     l'app (profiles.language, renvoyée par /api/account/summary) — sauf
+     si elle a explicitement choisi une langue sur le site, auquel dernier
+     cas son choix prime. THWAccount mutualise la requête : aucun appel
+     réseau supplémentaire n'est déclenché ici. */
+  function syncWithAccount() {
+    if (hasPicked()) return;
+    var acc = window.THWAccount && window.THWAccount.get
+      ? window.THWAccount.get()
+      : fetch('/api/account/summary', { credentials: 'same-origin' })
+          .then(function (r) { return r.ok ? r.json() : null; })
+          .then(function (j) { return j && j.loggedIn ? j : null; });
+    Promise.resolve(acc)
+      .then(function (a) { if (a && a.language && !hasPicked()) adoptLang(a.language); })
+      .catch(function () { /* hors ligne / non connecté : on garde la langue locale */ });
+  }
+
+  window.THWLang = { getLang: getLang, setLang: setLang, apply: apply, onChange: onChange, langs: LANGS };
   boot();
+  syncWithAccount();
 })();

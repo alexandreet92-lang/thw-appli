@@ -57,6 +57,19 @@
     .ac-input { width: 100%; min-height: 46px; padding: 0 14px; border-radius: 10px; background: var(--bg-card);
       border: 1px solid var(--border-mid); color: var(--text); font-family: var(--font-body); font-size: 14.5px; }
     .ac-input:focus { outline: 2px solid var(--brand); outline-offset: 1px; border-color: transparent; }
+    /* Mot de passe : bouton « afficher / masquer » posé DANS le champ.
+       Le padding droit réserve sa place pour qu'il ne recouvre jamais le texte. */
+    .ac-pass-wrap { position: relative; display: block; }
+    .ac-input-pass { padding-right: 48px; }
+    .ac-pass-eye {
+      position: absolute; top: 50%; right: 6px; transform: translateY(-50%);
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 36px; height: 36px; padding: 0; border: none; border-radius: 9px;
+      background: transparent; color: var(--text-dim); cursor: pointer;
+      transition: color .16s, background .16s;
+    }
+    .ac-pass-eye:hover { color: var(--text); background: var(--bg-hover); }
+    .ac-pass-eye:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }
     .ac-submit { min-height: 46px; margin-top: 6px; border: none; border-radius: 10px; cursor: pointer;
       background: var(--brand-gradient); color: #fff; font-family: var(--font-body); font-size: 14.5px; font-weight: 600;
       box-shadow: 0 4px 20px rgba(0,200,224,.32); transition: filter .16s; }
@@ -216,10 +229,19 @@
     const IcClock = (p) => <Icon {...p}><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></Icon>;
     const IcArrow = (p) => <Icon {...p}><path d="M5 12h14M13 6l6 6-6 6"/></Icon>;
     const IcDown = (p) => <Icon {...p}><path d="M12 4v11M7.5 11l4.5 4.5L16.5 11M5 20h14"/></Icon>;
+    // L'icône montre l'ACTION à venir : œil ouvert = « afficher », œil barré = « masquer ».
+    const IcEye = ({ off, size = 18 }) => (
+      <Icon size={size}>
+        <path d="M2 12s3.8-6.5 10-6.5S22 12 22 12s-3.8 6.5-10 6.5S2 12 2 12z"/>
+        <circle cx="12" cy="12" r="3"/>
+        {off && <path d="M4 20 20 4"/>}
+      </Icon>
+    );
 
     function LoginView() {
       const [email, setEmail] = useState('');
       const [password, setPassword] = useState('');
+      const [showPass, setShowPass] = useState(false);
       const [loading, setLoading] = useState(false);
       const [err, setErr] = useState(null);
       const nextParam = APP_NOPRICE ? '/site/compte.html?app=1' : '/site/compte.html';
@@ -253,8 +275,16 @@
             <input className="ac-input" id="ac-email" type="email" required placeholder="ton@email.fr"
               value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email"/>
             <label className="ac-label" htmlFor="ac-pass" style={{ marginTop: 6 }}>Mot de passe</label>
-            <input className="ac-input" id="ac-pass" type="password" required placeholder="••••••••"
-              value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password"/>
+            <div className="ac-pass-wrap">
+              <input className="ac-input ac-input-pass" id="ac-pass" type={showPass ? 'text' : 'password'} required placeholder="••••••••"
+                value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password"/>
+              <button type="button" className="ac-pass-eye" onClick={() => setShowPass(v => !v)}
+                aria-pressed={showPass} aria-controls="ac-pass"
+                aria-label={showPass ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+                title={showPass ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}>
+                <IcEye off={showPass}/>
+              </button>
+            </div>
             {err && <p style={{ color: '#ef4444', fontSize: 12.5, margin: '10px 0 0', textAlign: 'center' }}>{err}</p>}
             <button className="ac-submit" type="submit" disabled={loading} style={{ opacity: loading ? 0.6 : 1 }}>{loading ? 'Connexion…' : 'Se connecter'}</button>
           </form>
@@ -377,10 +407,10 @@
         let alive = true;
         (async () => {
           try {
-            // Auto-connexion (handoff depuis l'app) avant de lire le compte.
-            try { await (window.__thwSessionReady || Promise.resolve()); } catch (e) {}
-            const r = await fetch('/api/account/summary', { credentials: 'include' });
-            const s = await r.json().catch(() => null);
+            // Compte partagé : MÊME requête que celle du header (une seule pour
+            // toute la page) — deux rafraîchissements de session en parallèle
+            // finissaient par invalider les cookies et déconnecter au hasard.
+            const s = await window.THWAccount.get();
             if (!alive) return;
             if (!s || !s.loggedIn) { setState('guest'); return; }
             let d = null;
@@ -415,5 +445,21 @@
 
     ReactDOM.createRoot(document.getElementById('root')).render(<AccountPage/>);
   </script>
+
+  <!-- i18n — FR (source) / EN / ES. TOUS les dictionnaires sont chargés sur
+       TOUTES les pages : une page qui n'en charge qu'une partie laisse des
+       textes en français quand on bascule en EN/ES, et une page qui ne charge
+       pas i18n.js du tout affiche un sélecteur de langue qui ne fait rien. -->
+  <!-- Session + compte partagés : doit être chargé AVANT i18n.js, qui lit la
+       langue du compte pour aligner le site sur l'app. -->
+  <script src="components/site/account.js"></script>
+  <script src="components/site/i18n-dict.js"></script>
+  <script src="components/site/i18n-dict-2.js"></script>
+  <script src="components/site/i18n-dict-3.js"></script>
+  <script src="components/site/i18n-dict-4.js"></script>
+  <script src="components/site/i18n-dict-5.js"></script>
+  <script src="components/site/i18n-dict-6.js"></script>
+  <script src="components/site/i18n-dict-7.js"></script>
+  <script src="components/site/i18n.js"></script>
 </body>
 </html>

@@ -609,14 +609,22 @@
       const [billing,  setBilling]  = React.useState(defaultBilling);
       const [flipping, setFlipping] = React.useState(false);
 
-      // Language
-      const [lang, setLang] = React.useState(() => localStorage.getItem('thw_lang') || 'fr');
-      const T = I18N[lang];
+      // Langue : pilotée par le sélecteur PARTAGÉ du header (window.THWLang).
+      // Cette page avait son propre état et sa propre clé localStorage
+      // (« thw_lang »), donc deux sélecteurs concurrents dans le header et
+      // deux langues qui pouvaient diverger. Une seule source désormais.
+      const [lang, setLangState] = React.useState(() => (window.THWLang ? window.THWLang.getLang() : 'fr'));
+      const setLang = (l) => { if (window.THWLang) window.THWLang.setLang(l); else setLangState(l); };
+      const T = I18N[lang] || I18N.fr;
       React.useEffect(() => {
-        localStorage.setItem('thw_lang', lang);
+        if (!window.THWLang || !window.THWLang.onChange) return undefined;
+        setLangState(window.THWLang.getLang());
+        return window.THWLang.onChange(setLangState);
+      }, []);
+      React.useEffect(() => {
         document.documentElement.lang = lang;
         document.title = T.title;
-      }, [lang]);
+      }, [lang, T]);
 
       // Theme — driven by shared window.THWTheme (Jour/Nuit/Auto in the header).
       // `eff` (light|dark) only feeds accent-color choices in the cards.
@@ -638,7 +646,9 @@
       return (
         <div style={{ minHeight: '100vh' }}>
 
-          <SiteHeader active="plans" extra={<LangSwitcher lang={lang} setLang={setLang} />} />
+          {/* Pas de `extra` : on garde le sélecteur de langue partagé du header,
+              sinon il y en a deux côte à côte et la barre déborde sur mobile. */}
+          <SiteHeader active="plans" />
 
           {/* ── Header ── */}
           <div className="page-pad" style={{ textAlign: 'center', padding: '64px 24px 52px', maxWidth: 860, margin: '0 auto' }}>
@@ -771,5 +781,21 @@
 
     ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
   </script>
+
+  <!-- i18n — FR (source) / EN / ES. TOUS les dictionnaires sont chargés sur
+       TOUTES les pages : une page qui n'en charge qu'une partie laisse des
+       textes en français quand on bascule en EN/ES, et une page qui ne charge
+       pas i18n.js du tout affiche un sélecteur de langue qui ne fait rien. -->
+  <!-- Session + compte partagés : doit être chargé AVANT i18n.js, qui lit la
+       langue du compte pour aligner le site sur l'app. -->
+  <script src="components/site/account.js"></script>
+  <script src="components/site/i18n-dict.js"></script>
+  <script src="components/site/i18n-dict-2.js"></script>
+  <script src="components/site/i18n-dict-3.js"></script>
+  <script src="components/site/i18n-dict-4.js"></script>
+  <script src="components/site/i18n-dict-5.js"></script>
+  <script src="components/site/i18n-dict-6.js"></script>
+  <script src="components/site/i18n-dict-7.js"></script>
+  <script src="components/site/i18n.js"></script>
 </body>
 </html>

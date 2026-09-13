@@ -26,6 +26,7 @@ import { useI18n } from '@/lib/i18n'
 import { formatHM, parseGymExercise, BLOCK_TYPE_LABEL, type Session, type Block } from '@/app/planning/page'
 import { sportKeyFromType } from '@/components/icons/SportIcon'
 import { toBars, barHeightPct, treadmillProfile, type MBlock } from './mobile/blocks'
+import { blocksToExercises } from './mobile/strength'
 import { zColor } from './mobile/editorial'
 import RouteElevationProfile from '@/components/gpx/RouteElevationProfile'
 import { staticRouteMapUrl } from '@/lib/staticMap'
@@ -222,22 +223,64 @@ export function SessionHoverPreview({ session, anchor }: { session: Session; anc
         </p>
       )}
 
-      {/* 3a. Muscu : liste des exercices (pas de profil d'intensité pertinent) */}
-      {isGym && blocks.length > 0 && (
-        <div data-testid="shp-exercises" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <p style={sectionLabel}>{t('w3g.shp_exercises')}</p>
-          {blocks.map((b, i) => {
-            const ex = parseGymExercise(b)
-            const meta = [ex.sets && ex.reps ? `${ex.sets}×${ex.reps}` : (ex.sets ? t('w3g.shp_sets_count', { n: ex.sets }) : ''), ex.charge ? `@${ex.charge}` : ''].filter(Boolean).join(' ')
-            return (
-              <div key={i} style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
-                <span style={{ fontSize: 11.5, color: 'var(--text)', fontWeight: 600, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ex.nom}</span>
-                {meta && <span style={{ fontSize: 10.5, color: 'var(--text-mid)', flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>{meta}</span>}
-              </div>
-            )
-          })}
-        </div>
-      )}
+      {/* 3a. Muscu : détail PAR CIRCUIT (séries correctes, laps groupés ×N, chaque
+          circuit séparé par un filet) — plus de liste plate qui répétait les exos. */}
+      {isGym && blocks.length > 0 && (() => {
+        const sportKey = session.sport === 'hyrox' ? 'hyrox' : 'gym'
+        const { exercises, circuits, map } = blocksToExercises(blocks as Block[], sportKey)
+        const withExos = circuits.filter(c => exercises.some(e => (map[e.id] ?? circuits[0]?.id) === c.id))
+        // Meta d'un exo : en série → « 3×5 @70kg » ; en lap (circuit répété) → « ×5 @70kg »
+        // (les séries ne se répètent pas par exo, le tour reprend le rôle du ×N).
+        const exoMeta = (e: { sets: number; reps: number; weightKg?: number; distanceM?: number }, lap: boolean): string => {
+          const rr = lap
+            ? (e.reps ? `×${e.reps}` : '')
+            : (e.sets && e.reps ? `${e.sets}×${e.reps}` : (e.sets ? t('w3g.shp_sets_count', { n: e.sets }) : ''))
+          const w = e.weightKg ? `@${e.weightKg}kg` : (e.distanceM ? `${e.distanceM}m` : '')
+          return [rr, w].filter(Boolean).join(' ')
+        }
+        const ExoLines = ({ exos, lap }: { exos: typeof exercises; lap: boolean }) => (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            {exos.map(e => {
+              const meta = exoMeta(e, lap)
+              return (
+                <div key={e.id} style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
+                  <span style={{ fontSize: 11.5, color: 'var(--text)', fontWeight: 600, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.name}</span>
+                  {meta && <span style={{ fontSize: 10.5, color: 'var(--text-mid)', flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>{meta}</span>}
+                </div>
+              )
+            })}
+          </div>
+        )
+        return (
+          <div data-testid="shp-exercises" style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+            <p style={sectionLabel}>{t('w3g.shp_exercises')}</p>
+            {withExos.map((c, ci) => {
+              const exos = exercises.filter(e => (map[e.id] ?? circuits[0]?.id) === c.id)
+              const isLap = c.type !== 'series' && (c.rounds ?? 1) > 1
+              return (
+                <div key={c.id} style={{
+                  paddingTop: ci > 0 ? 8 : 0, marginTop: ci > 0 ? 8 : 0,
+                  borderTop: ci > 0 ? '1px solid var(--border)' : 'none',
+                }}>
+                  {c.name && <p style={{ margin: '0 0 3px', fontSize: 10, fontWeight: 700, color: 'var(--text-dim)' }}>{c.name}</p>}
+                  {isLap ? (
+                    <div style={{ display: 'flex', alignItems: 'stretch', gap: 6 }}>
+                      <span style={{ fontSize: 26, fontWeight: 300, color: 'var(--text-dim)', lineHeight: 1, display: 'flex', alignItems: 'center' }}>(</span>
+                      <div style={{ flex: 1, minWidth: 0 }}><ExoLines exos={exos} lap /></div>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                        <span style={{ fontSize: 26, fontWeight: 300, color: 'var(--text-dim)', lineHeight: 1 }}>)</span>
+                        <span style={{ fontSize: 12, fontWeight: 800, color: 'var(--text)' }}>×{c.rounds}</span>
+                      </span>
+                    </div>
+                  ) : (
+                    <ExoLines exos={exos} lap={false} />
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )
+      })()}
 
       {/* 3a-bis. Boxe / Hybride : détail ligne par ligne, chaque circuit encadré
           par des parenthèses avec ×N tours (comme demandé). */}

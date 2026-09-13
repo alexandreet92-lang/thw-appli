@@ -4527,6 +4527,8 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
           reps: e.reps,
           recoveryMin: e.restSec / 60,
           effortMin: e.targetTimeSec ? e.targetTimeSec / 60 : 0,
+          // Persiste le groupe musculaire choisi (sinon ré-déduit du nom → « Full body »).
+          category: e.category,
         })
       }
     }

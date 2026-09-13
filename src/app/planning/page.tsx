@@ -163,6 +163,9 @@ export interface Block {
   // Circuit (muscu/hyrox) — récup avant le circuit suivant (min), portée par le circuit_header.
   // Champ additif rétro-compatible : absent sur les séances existantes.
   restAfterMin?:number
+  // Muscu : groupe musculaire choisi (push/pull/legs/abdos/mixte) — PERSISTÉ dans
+  // le bloc JSONB pour ne plus être ré-déduit du nom (qui retombait en « Full body »).
+  category?: string
   // Tapis (running indoor) — pente % → dénivelé auto (m)
   inclinePct?: number; elevationM?: number
   // Terrain planning — km sur le parcours (overlay ElevationChart)

@@ -380,6 +380,42 @@ var MOCKS = {
       </MkFrame>
     );
   },
+  notifications: function () {
+    var items = [
+      { ico: 'bell',     title: 'Séance dans 1 h',        body: 'Seuil 5×5 min · 1 h 15',            fresh: true },
+      { ico: 'recovery', title: 'Alerte fatigue',         body: 'TSB à −28 · récupération conseillée', fresh: true },
+      { ico: 'calendar', title: 'Compétition J-7',        body: 'Hyrox Paris · stratégie disponible',  fresh: false },
+      { ico: 'plug',     title: 'Activité synchronisée',  body: 'Strava · sortie longue 2 h 40',       fresh: false },
+    ];
+    return (
+      <MkFrame slug="notifications" title="Notifications" bar={<React.Fragment>Cloche · <span className="acc">2 non lues</span></React.Fragment>}>
+        {items.map(function (n, i) {
+          return (
+            <div key={i} className="mk-card mk-row" style={{ gap: 11, opacity: n.fresh ? 1 : 0.62 }}>
+              <span style={{ width: 30, height: 30, borderRadius: 9, flexShrink: 0,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: 'var(--accent)', background: 'rgba(var(--accent-rgb),0.14)' }}>
+                <ThemeIcon name={n.ico} size={15}/>
+              </span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 12.5, fontWeight: 600 }}>{n.title}</div>
+                <div style={{ fontSize: 11, color: 'var(--text-mid)', marginTop: 2 }}>{n.body}</div>
+              </div>
+              {n.fresh && <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--accent)', flexShrink: 0 }}></span>}
+            </div>
+          );
+        })}
+        <div className="mk-card">
+          <div className="mk-label" style={{ marginBottom: 8 }}>Réglages</div>
+          <div className="mk-row" style={{ gap: 6, flexWrap: 'wrap' }}>
+            {[['Entraînement', 1], ['Récupération', 1], ['Nutrition', 0], ['Compétitions', 1], ['Système', 0]].map(function (c, i) {
+              return <span key={i} className={'mk-tile' + (c[1] ? ' on' : '')} style={{ padding: '5px 10px' }}>{c[0]}</span>;
+            })}
+          </div>
+        </div>
+      </MkFrame>
+    );
+  },
   soon: function () {
     return (
       <MkFrame slug="notifications" title="Notifications" bar={<React.Fragment>En développement</React.Fragment>}>

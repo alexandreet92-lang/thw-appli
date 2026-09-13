@@ -95,40 +95,12 @@ window.THW_THEMES.push(
         desc: 'Appels vocaux et vidéo en direct, avec un badge « X en appel » par canal.' },
     ],
     plans: { caption: 'La communauté est accessible sur tous les plans.' },
-    related: ['fil', 'messagerie', 'profil'],
+    related: ['messagerie', 'profil', 'programmes'],
     cta: 'Rejoins la communauté',
   },
 
   {
-    slug: 'fil', num: 20, icon: 'feed', accent: '#F97316', accentName: 'Orange vif',
-    title: 'Fil',
-    tagline: 'Les séances de ceux que tu suis, en direct.',
-    intro: "Un fil d'actualité façon Strava : suis les athlètes qui t'inspirent et vois leurs dernières séances, avec carte GPS et statistiques.",
-    benefits: [
-      'Les dernières activités des athlètes que tu suis.',
-      'Des cartes riches : sport, carte GPS, distance, durée, dénivelé ou allure.',
-      'Le détail complet de chaque séance, en lecture seule.',
-      'Tu gardes le contrôle sur ce que tu partages.',
-    ],
-    audience: 'tous les membres qui veulent suivre et être suivis.',
-    mockup: 'record',
-    subthemes: [
-      { title: 'Le fil des abonnements', tagline: 'Du plus récent au plus ancien.',
-        desc: 'Les activités des athlètes que tu suis, du plus récent au plus ancien.' },
-      { title: "La carte d'activité", tagline: 'Sport, GPS et stats clés.',
-        desc: 'Sport, carte GPS, date, titre et stats clés.' },
-      { title: 'Le détail en lecture seule', tagline: 'Tout voir, sans rien modifier.',
-        desc: "Ouvre n'importe quelle séance pour voir tout le détail, sans pouvoir la modifier." },
-      { title: 'La confidentialité', tagline: 'Tu choisis ce qui est visible.',
-        desc: 'Chaque athlète choisit ce qu\u2019il rend visible.' },
-    ],
-    plans: { caption: 'Le fil est accessible sur tous les plans.' },
-    related: ['communaute', 'profil', 'performances'],
-    cta: 'Découvre le fil',
-  },
-
-  {
-    slug: 'messagerie', num: 21, icon: 'message', accent: '#6366F1', accentName: 'Indigo',
+    slug: 'messagerie', num: 20, icon: 'message', accent: '#6366F1', accentName: 'Indigo',
     title: 'Messagerie',
     tagline: 'Toi et ton coach, au même endroit.',
     intro: "Une messagerie intégrée entre athlètes et coachs. Échange, partage tes séances et pose tes questions sans quitter l'app.",
@@ -153,7 +125,7 @@ window.THW_THEMES.push(
   },
 
   {
-    slug: 'programmes', num: 22, icon: 'program', accent: '#22C55E', accentName: 'Vert',
+    slug: 'programmes', num: 21, icon: 'program', accent: '#22C55E', accentName: 'Vert',
     title: 'Programmes',
     tagline: 'Des plans prêts à suivre, signés par des coachs.',
     intro: "Un catalogue de programmes d'entraînement créés par des coachs, prêts à suivre. Trouve le plan qui correspond à ton objectif et suis-le dans l'app.",

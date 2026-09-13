@@ -46,7 +46,10 @@
     }
     @media (max-width: 720px) {
       .footer-grid { grid-template-columns: 1fr 1fr !important; gap: 32px !important; }
-      header { padding: 12px 16px !important; }
+      /* Ne s'applique PAS au header partagé (<header class="site-header">) :
+         il gère déjà ses gouttières via .site-header-inner, et ce padding
+         supplémentaire faisait déborder la barre hors de l'écran. */
+      header:not(.site-header) { padding: 12px 16px !important; }
     }
 
     /* Card hover lift */

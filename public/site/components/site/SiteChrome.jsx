@@ -109,7 +109,7 @@ function LangSelect(props) {
   var current = LANGS.filter(function (l) { return l[0] === lang; })[0] || LANGS[0];
   return (
     <div ref={ref} style={{ position: 'relative' }}>
-      <button type="button" onClick={function () { setOpen(function (o) { return !o; }); }}
+      <button type="button" className="lang-select-btn" onClick={function () { setOpen(function (o) { return !o; }); }}
         aria-haspopup="listbox" aria-expanded={open} aria-label="Langue"
         style={{ display: 'inline-flex', alignItems: 'center', gap: 7, cursor: 'pointer',
           padding: '8px 12px', borderRadius: 999, background: 'var(--bg-card)',

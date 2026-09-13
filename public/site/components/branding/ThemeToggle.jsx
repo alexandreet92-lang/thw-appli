@@ -66,6 +66,7 @@ function ThemeToggle(props) {
 
   return (
     <div
+      className="theme-toggle"
       role="group"
       aria-label="Thème de l'interface"
       style={{

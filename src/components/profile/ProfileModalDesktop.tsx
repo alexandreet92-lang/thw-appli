@@ -57,7 +57,7 @@ export function ProfileModalDesktop({ open, onClose }: { open: boolean; onClose:
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
         </button>
-        <div style={{ flex: 1, overflowY: 'auto' }}>
+        <div style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
           <Suspense fallback={<div style={{ padding: 40, color: 'var(--text-dim)', textAlign: 'center' }}>{t('profile.loading')}</div>}>
             <ProfileContent />
           </Suspense>

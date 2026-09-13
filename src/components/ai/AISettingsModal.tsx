@@ -45,7 +45,7 @@ const inputStyle: React.CSSProperties = {
   fontSize: 14, fontFamily: FB, outline: 'none', transition: 'border-color 0.15s, box-shadow 0.15s',
 }
 const fieldLabel: React.CSSProperties = { fontSize: 12.5, fontWeight: 600, color: 'var(--text-mid)', marginBottom: 7, display: 'block', fontFamily: FB }
-const sectionTitleStyle: React.CSSProperties = { fontSize: 20, fontWeight: 600, color: 'var(--text)', fontFamily: 'var(--font-display)', letterSpacing: '-0.01em', marginBottom: 4 }
+const sectionTitleStyle: React.CSSProperties = { fontSize: 23, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-body)', letterSpacing: '-0.01em', marginBottom: 4 }
 const sectionLead: React.CSSProperties = { fontSize: 13, color: 'var(--text-dim)', lineHeight: 1.6, margin: '0 0 20px', maxWidth: 560, fontFamily: FB }
 
 function onFocusRing(e: React.FocusEvent<HTMLElement>) { e.currentTarget.style.borderColor = 'var(--primary)'; e.currentTarget.style.boxShadow = '0 0 0 3px var(--primary-dim)' }
@@ -332,14 +332,14 @@ export default function AISettingsModal({ open, initialSection = 'profil', onClo
         <div key={g.group} style={{ marginBottom: 18 }}>
           {/* Libellé de groupe — même typo que les réglages principaux. */}
           <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.4px', color: 'var(--text-dim)', padding: '0 4px 8px', fontFamily: FB }}>{g.group}</div>
-          {/* Carte grise groupée « façon Claude » : lignes bulles + fins séparateurs. */}
-          <div style={{ background: GREY_CARD, borderRadius: 16, overflow: 'hidden', border: '1px solid var(--border)' }}>
+          {/* Desktop : lignes nues (séparation par le fond). Mobile : carte grise groupée + chevrons. */}
+          <div style={{ background: isWide ? 'transparent' : GREY_CARD, borderRadius: 16, overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: isWide ? 1 : 0 }}>
             {g.items.map((it, idx) => {
               const active = section === it.id && isWide
               return (
                 <button key={it.id} disabled={it.disabled} type="button"
                   onClick={() => { if (it.disabled) return; setSection(it.id); if (!isWide) setShowNav(false) }}
-                  style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left', padding: '13px 15px', borderTop: idx === 0 ? 'none' : '1px solid var(--border)', border: 'none', cursor: it.disabled ? 'not-allowed' : 'pointer', background: active ? 'var(--primary-dim)' : 'transparent', color: it.disabled ? 'var(--text-dim)' : active ? 'var(--primary)' : 'var(--text)', fontSize: 14.5, fontWeight: active ? 700 : 500, fontFamily: FB, transition: 'background 0.12s' }}
+                  style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left', padding: isWide ? '9px 11px' : '13px 15px', borderTop: (!isWide && idx !== 0) ? '1px solid var(--border)' : 'none', borderRadius: isWide ? 10 : 0, border: 'none', cursor: it.disabled ? 'not-allowed' : 'pointer', background: active ? 'var(--primary-dim)' : 'transparent', color: it.disabled ? 'var(--text-dim)' : active ? 'var(--primary)' : isWide ? 'var(--text-mid)' : 'var(--text)', fontSize: isWide ? 14 : 14.5, fontWeight: active ? 600 : 500, fontFamily: FB, transition: 'background 0.12s, color 0.12s' }}
                   onMouseEnter={e => { if (!active && !it.disabled) (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)' }}
                   onMouseLeave={e => { if (!active && !it.disabled) (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}>
                   <span style={{ flex: 1 }}>{it.label}</span>
@@ -371,7 +371,7 @@ export default function AISettingsModal({ open, initialSection = 'profil', onClo
               <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
             </PressPop>
           )}
-          <div style={{ flex: 1, fontSize: 19, fontWeight: 600, color: 'var(--text)', fontFamily: 'var(--font-display)', letterSpacing: '-0.01em' }}>{(!isWide && !showNav) ? sectionLabel : t('w1a.parametres')}</div>
+          <div style={{ flex: 1, fontSize: 19, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-body)', letterSpacing: '-0.01em' }}>{(!isWide && !showNav) ? sectionLabel : t('w1a.parametres')}</div>
           <PressPop type="button" onClick={onClose} aria-label={t('w1a.fermer')} style={{ border: 'none', background: 'var(--bg-alt)', cursor: 'pointer', color: 'var(--text-mid)', width: 32, height: 32, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
           </PressPop>

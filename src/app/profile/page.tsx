@@ -19,6 +19,7 @@ import { getPushState, enablePush, disablePush, type PushState } from '@/lib/pus
 import { hidePricing, openWebsite } from '@/lib/native/platform'
 import { listBlockedUsers, unblockUser, type BlockedUser } from '@/lib/moderation/dm'
 import { Avatar } from '@/components/shared/Sidebar'
+import { useNarrow } from '@/lib/hooks/useNarrow'
 
 // ══════════════════════════════════════════════════
 // TYPES
@@ -126,13 +127,14 @@ const GREY_CARD = 'color-mix(in srgb, var(--text) 6%, var(--bg))'
 const GREY_PAGE = 'color-mix(in srgb, var(--text) 1.5%, var(--bg))'
 
 function Card({ children, style }: { children:React.ReactNode; style?:React.CSSProperties }) {
-  return <div style={{ background:GREY_CARD, border:'1px solid var(--border)', borderRadius:18, padding:20, boxShadow:'var(--shadow-card)', marginBottom:12, ...style }}>{children}</div>
+  // Calme par soustraction : séparation par le fond, pas par la bordure (design system).
+  return <div style={{ background:GREY_CARD, borderRadius:18, padding:20, marginBottom:12, ...style }}>{children}</div>
 }
 function CardTitle({ children, icon }: { children:React.ReactNode; icon?:React.ReactNode }) {
   return (
     <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:16 }}>
       {icon && <span style={{ display:'flex', alignItems:'center', justifyContent:'center', color:'var(--text-mid)', flexShrink:0 }}>{icon}</span>}
-      <p style={{ fontFamily:'var(--font-display)', fontSize:15, fontWeight:600, color:'var(--text)', margin:0 }}>{children}</p>
+      <p style={{ fontFamily:'var(--font-body)', fontSize:15, fontWeight:700, color:'var(--text)', margin:0 }}>{children}</p>
     </div>
   )
 }
@@ -152,7 +154,7 @@ function Section({ label, children, style }: { label?:string; children:React.Rea
   )
 }
 function Group({ children, style }: { children:React.ReactNode; style?:React.CSSProperties }) {
-  return <div className="thw-glass" style={{ background:GREY_CARD, border:'1px solid var(--border)', borderRadius:16, overflow:'hidden', ...style }}>{children}</div>
+  return <div style={{ background:GREY_CARD, borderRadius:16, overflow:'hidden', ...style }}>{children}</div>
 }
 // Ligne dans une Group. `first` retire le séparateur du haut.
 function Line({ first, onClick, align='center', children }: { first?:boolean; onClick?:()=>void; align?:'center'|'flex-start'; children:React.ReactNode }) {
@@ -168,7 +170,7 @@ function Toggle({ value, onChange }: { value:boolean; onChange:(v:boolean)=>void
   return <button onClick={()=>onChange(!value)} style={{ width:50, height:30, borderRadius:15, background:value?'var(--primary)':'var(--border-mid)', border:'none', cursor:'pointer', position:'relative', flexShrink:0, transition:'background 0.2s' }}><div style={{ width:26, height:26, borderRadius:'50%', background:'#fff', position:'absolute', top:2, left:value?22:2, transition:'left 0.2s', boxShadow:'0 1px 3px rgba(0,0,0,0.35)' }}/></button>
 }
 function InfoModal({ title, content, onClose }: { title:string; content:React.ReactNode; onClose:()=>void }) {
-  return <div onClick={onClose} style={{ position:'fixed', inset:0, zIndex:400, background:'rgba(0,0,0,0.6)', backdropFilter:'blur(8px)', display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}><div onClick={e=>e.stopPropagation()} style={{ background:'var(--bg-card)', borderRadius:18, border:'1px solid var(--border-mid)', padding:24, maxWidth:420, width:'100%' }}><div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14 }}><h3 style={{ fontFamily:'var(--font-display)', fontSize:15, fontWeight:700, margin:0 }}>{title}</h3><button onClick={onClose} style={{ background:'var(--bg-card2)', border:'1px solid var(--border)', borderRadius:8, padding:'4px 9px', cursor:'pointer', color:'var(--text-dim)', fontSize:16 }}>×</button></div><div style={{ fontSize:13, color:'var(--text-mid)', lineHeight:1.7 }}>{content}</div></div></div>
+  return <div onClick={onClose} style={{ position:'fixed', inset:0, zIndex:400, background:'rgba(0,0,0,0.6)', backdropFilter:'blur(8px)', display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}><div onClick={e=>e.stopPropagation()} style={{ background:'var(--bg-card)', borderRadius:18, border:'1px solid var(--border-mid)', padding:24, maxWidth:420, width:'100%' }}><div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14 }}><h3 style={{ fontFamily:'var(--font-body)', fontSize:15, fontWeight:700, margin:0 }}>{title}</h3><button onClick={onClose} style={{ background:'var(--bg-card2)', border:'1px solid var(--border)', borderRadius:8, padding:'4px 9px', cursor:'pointer', color:'var(--text-dim)', fontSize:16 }}>×</button></div><div style={{ fontSize:13, color:'var(--text-mid)', lineHeight:1.7 }}>{content}</div></div></div>
 }
 function HelpBtn({ title, content }: { title:string; content:React.ReactNode }) {
   const [open, setOpen] = useState(false)
@@ -189,7 +191,7 @@ function Sheet({ open, onClose, title, subtitle, children }: { open:boolean; onC
       <div onClick={e=>e.stopPropagation()} style={{ background:'var(--bg-card)', borderRadius:'24px 24px 0 0', border:'1px solid var(--border-mid)', borderBottom:'none', width:'100%', maxWidth:600, maxHeight:'92vh', overflowY:'auto', paddingBottom:40 }}>
         <div style={{ position:'sticky', top:0, background:'var(--bg-card)', borderBottom:'1px solid var(--border)', padding:'16px 20px 14px', display:'flex', alignItems:'center', justifyContent:'space-between', zIndex:10 }}>
           <div>
-            <p style={{ fontFamily:'var(--font-display)', fontSize:16, fontWeight:800, margin:0, color:'var(--text)' }}>{title}</p>
+            <p style={{ fontFamily:'var(--font-body)', fontSize:16, fontWeight:800, margin:0, color:'var(--text)' }}>{title}</p>
             {subtitle && <p style={{ fontSize:11, color:'var(--text-dim)', margin:'2px 0 0' }}>{subtitle}</p>}
           </div>
           <button onClick={onClose} style={{ width:32, height:32, borderRadius:10, background:'var(--bg-card2)', border:'1px solid var(--border)', cursor:'pointer', color:'var(--text-dim)', fontSize:18, display:'flex', alignItems:'center', justifyContent:'center' }}>×</button>
@@ -488,7 +490,7 @@ function GearBloc() {
       {modal && (
         <div onClick={() => setModal(null)} style={{ position: 'fixed', inset: 0, zIndex: 500, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
           <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 420, background: 'var(--bg-card)', borderRadius: 14, border: '1px solid var(--border-mid)', padding: 24 }}>
-            <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 700, margin: '0 0 16px', color: 'var(--text)' }}>
+            <h3 style={{ fontFamily: 'var(--font-body)', fontSize: 16, fontWeight: 700, margin: '0 0 16px', color: 'var(--text)' }}>
               {modal === 'bike' ? t('profile.addBikeTitle') : t('profile.addShoesTitle')}
             </h3>
             <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder={t('profile.namePh')} style={inputStyle} />
@@ -610,7 +612,7 @@ function ProfilIdentityBloc() {
               </div>
             </div>
             <div style={{ flex:1, minWidth:0 }}>
-              <input value={profileData.full_name} onChange={e=>setProfileData(p=>({...p,full_name:e.target.value}))} placeholder={t('profile.namePlaceholder')} style={{ fontFamily:'var(--font-display)', fontSize:18, fontWeight:700, background:'transparent', border:'none', padding:0, color:'var(--text)', outline:'none', width:'100%', marginBottom:3, boxSizing:'border-box' as const }}/>
+              <input value={profileData.full_name} onChange={e=>setProfileData(p=>({...p,full_name:e.target.value}))} placeholder={t('profile.namePlaceholder')} style={{ fontFamily:'var(--font-body)', fontSize:18, fontWeight:700, background:'transparent', border:'none', padding:0, color:'var(--text)', outline:'none', width:'100%', marginBottom:3, boxSizing:'border-box' as const }}/>
               <p style={{ fontSize:12.5, color:'var(--text-dim)', margin:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{profileData.email||'—'}</p>
             </div>
           </div>
@@ -627,7 +629,7 @@ function ProfilIdentityBloc() {
               {f.readonly
                 ? <span style={{ fontSize:15, fontWeight:600, color:'var(--text)', fontVariantNumeric:'tabular-nums' }}>{f.val || '—'}</span>
                 : <span style={{ display:'flex', alignItems:'baseline', gap:6 }}>
-                    <input type="number" value={f.val} onChange={e=>setProfileData(p=>({...p,[f.key]:e.target.value}))} placeholder={f.ph} style={{ width:64, fontFamily:'var(--font-display)', fontSize:15, fontWeight:600, background:'var(--input-bg)', border:'1px solid var(--border)', borderRadius:8, padding:'5px 9px', color:'var(--text)', outline:'none', textAlign:'right' as const }}/>
+                    <input type="number" value={f.val} onChange={e=>setProfileData(p=>({...p,[f.key]:e.target.value}))} placeholder={f.ph} style={{ width:64, fontFamily:'var(--font-body)', fontSize:15, fontWeight:600, background:'var(--input-bg)', border:'1px solid var(--border)', borderRadius:8, padding:'5px 9px', color:'var(--text)', outline:'none', textAlign:'right' as const }}/>
                     {f.unit && <span style={{ fontSize:12.5, color:'var(--text-dim)', width:18 }}>{f.unit}</span>}
                   </span>
               }
@@ -1773,7 +1775,7 @@ function RuleCreator({ addRule, onClose }: {
       >
         {/* Header */}
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20 }}>
-          <p style={{ fontFamily:'var(--font-display)', fontSize:16, fontWeight:700, color:'var(--text)', margin:0 }}>{t('profile.newRule')}</p>
+          <p style={{ fontFamily:'var(--font-body)', fontSize:16, fontWeight:700, color:'var(--text)', margin:0 }}>{t('profile.newRule')}</p>
           <button onClick={onClose} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-dim)', fontSize:18, lineHeight:1, padding:'2px 4px' }}>✕</button>
         </div>
 
@@ -1803,7 +1805,7 @@ function RuleCreator({ addRule, onClose }: {
             <button
               onClick={() => void callRuleHelper(userInput)}
               disabled={!ready || loading}
-              style={{ width:'100%', padding:12, borderRadius:10, border:'none', marginBottom:10, background: ready ? 'linear-gradient(135deg,#06B6D4,#5b6fff)' : 'var(--bg-card2)', color: ready ? '#fff' : 'var(--text-dim)', fontWeight:700, fontSize:13, fontFamily:'var(--font-display)', cursor: ready && !loading ? 'pointer' : 'not-allowed', opacity: loading ? 0.7 : 1 }}
+              style={{ width:'100%', padding:12, borderRadius:10, border:'none', marginBottom:10, background: ready ? 'linear-gradient(135deg,#06B6D4,#5b6fff)' : 'var(--bg-card2)', color: ready ? '#fff' : 'var(--text-dim)', fontWeight:700, fontSize:13, fontFamily:'var(--font-body)', cursor: ready && !loading ? 'pointer' : 'not-allowed', opacity: loading ? 0.7 : 1 }}
             >{loading ? t('profile.aiThinking') : t('profile.sendToAi')}</button>
 
             {/* Direct save */}
@@ -1843,7 +1845,7 @@ function RuleCreator({ addRule, onClose }: {
             <button
               onClick={() => void handleValidate()}
               disabled={saving}
-              style={{ width:'100%', padding:12, borderRadius:10, border:'none', marginBottom:8, background:'linear-gradient(135deg,#06B6D4,#5b6fff)', color:'#fff', fontWeight:700, fontSize:13, fontFamily:'var(--font-display)', cursor: saving ? 'wait' : 'pointer', opacity: saving ? 0.7 : 1 }}
+              style={{ width:'100%', padding:12, borderRadius:10, border:'none', marginBottom:8, background:'linear-gradient(135deg,#06B6D4,#5b6fff)', color:'#fff', fontWeight:700, fontSize:13, fontFamily:'var(--font-body)', cursor: saving ? 'wait' : 'pointer', opacity: saving ? 0.7 : 1 }}
             >{saving ? t('profile.saving') : t('profile.validateRule')}</button>
 
             {/* Modify */}
@@ -2089,7 +2091,7 @@ function AbonnementContent() {
           <div style={{ padding: '18px 20px', borderRadius: 16, background: GREY_CARD, border: '1px solid var(--border)' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: tier === 'trial' ? 14 : 0 }}>
               <div style={{ minWidth: 0 }}>
-                <p style={{ fontFamily: 'var(--font-display)', fontSize: 19, fontWeight: 700, margin: '0 0 3px', color: 'var(--text)' }}>
+                <p style={{ fontFamily: 'var(--font-body)', fontSize: 19, fontWeight: 700, margin: '0 0 3px', color: 'var(--text)' }}>
                   THW {planName}
                 </p>
                 {isCancelling ? (
@@ -2256,7 +2258,7 @@ function AbonnementContent() {
             <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round"><path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
             </div>
-            <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 700, textAlign: 'center', margin: '0 0 8px', color: 'var(--text)' }}>{t('profile.cancelSubscriptionConfirm')}</h3>
+            <h3 style={{ fontFamily: 'var(--font-body)', fontSize: 16, fontWeight: 700, textAlign: 'center', margin: '0 0 8px', color: 'var(--text)' }}>{t('profile.cancelSubscriptionConfirm')}</h3>
             <p style={{ fontSize: 12.5, color: 'var(--text-dim)', textAlign: 'center', lineHeight: 1.6, margin: '0 0 20px' }}>
               {t('profile.cancelSubscriptionInfo')}
             </p>
@@ -2542,14 +2544,14 @@ export function IASettingsBloc() {
         <div onClick={()=>setUpgradeOpen(false)} style={{ position:'fixed', inset:0, zIndex:400, background:'rgba(0,0,0,0.65)', backdropFilter:'blur(10px)', display:'flex', alignItems:'center', justifyContent:'center', padding:16, overflowY:'auto' }}>
           <div onClick={e=>e.stopPropagation()} style={{ background:'var(--bg-card)', borderRadius:20, border:'1px solid var(--border-mid)', padding:24, maxWidth:560, width:'100%', maxHeight:'92vh', overflowY:'auto' }}>
             <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20 }}>
-              <h3 style={{ fontFamily:'var(--font-display)', fontSize:17, fontWeight:700, margin:0 }}>{t('profile.chooseSubscription')}</h3>
+              <h3 style={{ fontFamily:'var(--font-body)', fontSize:17, fontWeight:700, margin:0 }}>{t('profile.chooseSubscription')}</h3>
               <button onClick={()=>setUpgradeOpen(false)} style={{ background:'var(--bg-card2)', border:'1px solid var(--border)', borderRadius:8, padding:'4px 9px', cursor:'pointer', color:'var(--text-dim)', fontSize:16 }}>×</button>
             </div>
             <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
               {PLANS.map(p=>(
                 <div key={p.id} style={{ padding:'16px', borderRadius:14, background:'var(--bg-card2)', border:`1px solid ${p.color}44` }}>
                   <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:10 }}>
-                    <span style={{ fontFamily:'var(--font-display)', fontSize:16, fontWeight:700, color:p.color }}>{p.label}</span>
+                    <span style={{ fontFamily:'var(--font-body)', fontSize:16, fontWeight:700, color:p.color }}>{p.label}</span>
                     {!hidePrice && (
                       <div style={{ textAlign:'right' as const }}>
                         <p style={{ fontFamily:'var(--font-body)', fontSize:14, fontWeight:700, color:'var(--text)', margin:0 }}>{p.annual}</p>
@@ -2562,12 +2564,12 @@ export function IASettingsBloc() {
                   </div>
                   {hidePrice ? (
                     <button onClick={() => void openWebsite('/site/compte.html')}
-                      style={{ width:'100%', padding:'9px', borderRadius:10, background:'var(--bg-card2)', border:'1px solid var(--border)', color:'var(--text-mid)', fontFamily:'var(--font-display)', fontWeight:700, fontSize:12, cursor:'pointer' }}>
+                      style={{ width:'100%', padding:'9px', borderRadius:10, background:'var(--bg-card2)', border:'1px solid var(--border)', color:'var(--text-mid)', fontFamily:'var(--font-body)', fontWeight:700, fontSize:12, cursor:'pointer' }}>
                       {t('native.manageSubOnWeb')} ↗
                     </button>
                   ) : (
                     <>
-                      <button style={{ width:'100%', padding:'10px', borderRadius:10, background:`linear-gradient(135deg,${p.color},${p.color}bb)`, border:'none', color:'#fff', fontFamily:'var(--font-display)', fontWeight:700, fontSize:13, cursor:'pointer' }}>{t('profile.choose', { plan: p.label })}</button>
+                      <button style={{ width:'100%', padding:'10px', borderRadius:10, background:`linear-gradient(135deg,${p.color},${p.color}bb)`, border:'none', color:'#fff', fontFamily:'var(--font-body)', fontWeight:700, fontSize:13, cursor:'pointer' }}>{t('profile.choose', { plan: p.label })}</button>
                       <p style={{ fontSize:10, color:'var(--text-dim)', textAlign:'center' as const, margin:'6px 0 0' }}>{t('profile.securePaymentStripe')}</p>
                     </>
                   )}
@@ -2747,6 +2749,7 @@ export function ProfileContent() {
   const { t } = useI18n()
   const router = useRouter()
   const { data: profile } = useProfile()
+  const narrow = useNarrow()
   const [active, setActive] = useState<string | null>(null)
   const [dir, setDir] = useState(1)
   const [signingOut, setSigningOut] = useState(false)
@@ -2814,6 +2817,110 @@ export function ProfileContent() {
   ]
 
   const initial = (profile.full_name || profile.email || '?').trim().charAt(0).toUpperCase()
+  const eff = active ?? 'profil'
+
+  // Confirmation de déconnexion — partagée entre les deux mises en page.
+  const logoutModal = confirmLogout ? (
+    <div onClick={() => { if (!signingOut) setConfirmLogout(false) }} style={{ position: 'fixed', inset: 0, zIndex: 13000, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(3px)', WebkitBackdropFilter: 'blur(3px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+      <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 340, background: 'var(--bg-card)', borderRadius: 18, padding: '22px 20px', boxShadow: '0 24px 60px rgba(0,0,0,0.35)' }}>
+        <p style={{ fontFamily: 'var(--font-body)', fontSize: 17, fontWeight: 700, color: 'var(--text)', margin: '0 0 6px' }}>Se déconnecter ?</p>
+        <p style={{ fontSize: 13.5, color: 'var(--text-mid)', margin: '0 0 18px', lineHeight: 1.5 }}>Tu devras te reconnecter pour accéder à ton compte.</p>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button onClick={() => setConfirmLogout(false)} disabled={signingOut} style={{ flex: 1, padding: '11px', borderRadius: 12, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>Annuler</button>
+          <button onClick={() => { if (!signingOut) void handleSignOut() }} disabled={signingOut} style={{ flex: 1, padding: '11px', borderRadius: 12, border: 'none', background: 'var(--danger,#ef4444)', color: '#fff', fontSize: 14, fontWeight: 700, cursor: signingOut ? 'default' : 'pointer', opacity: signingOut ? 0.6 : 1 }}>{signingOut ? t('profile.signingOut') : t('profile.signOut')}</button>
+        </div>
+      </div>
+    </div>
+  ) : null
+
+  // ══════════════════════════════════════════════════════════════════
+  // DESKTOP — deux colonnes façon Claude : rail de sections à gauche,
+  // contenu de la section active à droite. Tout en sans (var(--font-body)),
+  // séparation par le fond, zéro carte encadrée. (Mobile = drill-down.)
+  // ══════════════════════════════════════════════════════════════════
+  if (!narrow) {
+    const navRow = (r: { id: string; label: string; Icon: typeof User; value?: string }, danger?: boolean) => {
+      const on = !danger && eff === r.id
+      return (
+        <button
+          key={r.id}
+          onClick={r.onClick ?? (() => { setDir(1); setActive(r.id) })}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 11, width: '100%', textAlign: 'left',
+            padding: '9px 10px', borderRadius: 10, border: 'none', cursor: 'pointer',
+            background: on ? 'var(--primary-dim)' : 'transparent',
+            color: danger ? 'var(--danger,#ef4444)' : on ? 'var(--primary)' : 'var(--text-mid)',
+            fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: on ? 600 : 500,
+            transition: 'background 0.14s, color 0.14s',
+          }}
+          onMouseEnter={e => { if (!on) (e.currentTarget as HTMLElement).style.background = 'var(--bg-hover,var(--bg-card2))' }}
+          onMouseLeave={e => { if (!on) (e.currentTarget as HTMLElement).style.background = 'transparent' }}
+        >
+          <r.Icon size={17} strokeWidth={1.9} style={{ flexShrink: 0 }} />
+          <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.label}</span>
+          {r.value && <span style={{ fontSize: 12, color: 'var(--text-dim)', flexShrink: 0 }}>{r.value}</span>}
+        </button>
+      )
+    }
+
+    return (
+      <div style={{ display: 'flex', alignItems: 'stretch', height: '100%', minHeight: '70vh', background: 'var(--bg)', fontFamily: 'var(--font-body)' }}>
+        {/* ── Rail de sections ── */}
+        <aside style={{
+          width: 272, flexShrink: 0, boxSizing: 'border-box',
+          borderRight: '1px solid var(--border)',
+          background: 'color-mix(in srgb, var(--text) 3%, var(--bg))',
+          display: 'flex', flexDirection: 'column', padding: '22px 14px 16px',
+          height: '100%', overflowY: 'auto',
+        }}>
+          {/* Identité */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '0 8px 18px' }}>
+            <div style={{ width: 42, height: 42, borderRadius: '50%', flexShrink: 0, overflow: 'hidden', background: 'var(--primary-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              {profile.avatar_url
+                ? <img src={profile.avatar_url} alt={t('profile.profileAlt')} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                : <span style={{ fontSize: 18, fontWeight: 700, color: 'var(--primary)' }}>{initial}</span>}
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ fontSize: 14.5, fontWeight: 700, margin: 0, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{profile.full_name || t('profile.myProfile')}</p>
+              <p style={{ fontSize: 12, color: 'var(--text-dim)', margin: '2px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{profile.email || '—'}</p>
+            </div>
+          </div>
+
+          <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 18 }}>
+            {GROUPS.map(g => (
+              <div key={g.title}>
+                <p style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 6px 10px' }}>{g.title}</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                  {g.rows.map(r => navRow(r))}
+                </div>
+              </div>
+            ))}
+          </nav>
+
+          <div style={{ marginTop: 14 }}>
+            {navRow({ id: '__logout__', label: signingOut ? t('profile.signingOut') : t('profile.signOut'), Icon: LogOut, onClick: () => { if (!signingOut) setConfirmLogout(true) } } as { id: string; label: string; Icon: typeof User; value?: string; onClick?: () => void }, true)}
+          </div>
+        </aside>
+
+        {/* ── Contenu de la section ── */}
+        <section style={{ flex: 1, minWidth: 0, height: '100%', overflowY: 'auto', overflowX: 'hidden', padding: '30px 36px 52px' }}>
+          <div style={{ maxWidth: 660 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 22 }}>
+              <h2 style={{ fontFamily: 'var(--font-body)', fontSize: 24, fontWeight: 700, letterSpacing: '-0.01em', margin: 0, color: 'var(--text)' }}>{CONTENT[eff]?.label}</h2>
+              {eff === 'profil' && (
+                <button onClick={() => window.dispatchEvent(new Event('thw:profile-save'))} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '8px 15px', borderRadius: 10, border: 'none', background: 'var(--primary)', color: 'var(--on-primary,#fff)', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                  <Check size={16} /> {t('profile.save')}
+                </button>
+              )}
+            </div>
+            {CONTENT[eff]?.node}
+          </div>
+        </section>
+
+        {logoutModal}
+      </div>
+    )
+  }
 
   return (
     <div style={{ width: '100%', minHeight: '100dvh', background: GREY_PAGE, boxSizing: 'border-box' }}>
@@ -2830,7 +2937,7 @@ export function ProfileContent() {
               <PressPop onClick={back} aria-label={t('profile.back')} style={{ position: 'absolute', left: 16, top: 0, width: 40, height: 40, borderRadius: '50%', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 10px rgba(0,0,0,0.14)' }}>
                 <ChevronLeft size={20} />
               </PressPop>
-              <p style={{ fontFamily: 'var(--font-display)', fontSize: 19, fontWeight: 600, margin: 0, color: 'var(--text)' }}>{CONTENT[active]?.label}</p>
+              <p style={{ fontFamily: 'var(--font-body)', fontSize: 19, fontWeight: 600, margin: 0, color: 'var(--text)' }}>{CONTENT[active]?.label}</p>
               {active === 'profil' && (
                 <PressPop onClick={() => window.dispatchEvent(new Event('thw:profile-save'))} aria-label={t('profile.save')} style={{ position: 'absolute', right: 16, top: 0, width: 40, height: 40, borderRadius: '50%', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 10px rgba(0,0,0,0.14)' }}>
                   <Check size={20} />
@@ -2847,10 +2954,10 @@ export function ProfileContent() {
               <div style={{ width: 58, height: 58, borderRadius: '50%', flexShrink: 0, overflow: 'hidden', background: 'var(--primary-dim)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 {profile.avatar_url
                   ? <img src={profile.avatar_url} alt={t('profile.profileAlt')} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  : <span style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 700, color: 'var(--primary)' }}>{initial}</span>}
+                  : <span style={{ fontFamily: 'var(--font-body)', fontSize: 24, fontWeight: 700, color: 'var(--primary)' }}>{initial}</span>}
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 700, margin: 0, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{profile.full_name || t('profile.myProfile')}</p>
+                <p style={{ fontFamily: 'var(--font-body)', fontSize: 20, fontWeight: 700, margin: 0, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{profile.full_name || t('profile.myProfile')}</p>
                 <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: '3px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{profile.email || '—'}</p>
               </div>
             </div>
@@ -2875,19 +2982,8 @@ export function ProfileContent() {
         )}
       </SlideView>
 
-      {/* Confirmation de déconnexion */}
-      {confirmLogout && (
-        <div onClick={() => { if (!signingOut) setConfirmLogout(false) }} style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(3px)', WebkitBackdropFilter: 'blur(3px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-          <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 340, background: 'var(--bg-card)', borderRadius: 18, padding: '22px 20px', boxShadow: '0 24px 60px rgba(0,0,0,0.35)', border: '1px solid var(--border)' }}>
-            <p style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 700, color: 'var(--text)', margin: '0 0 6px' }}>Se déconnecter ?</p>
-            <p style={{ fontSize: 13.5, color: 'var(--text-mid)', margin: '0 0 18px', lineHeight: 1.5 }}>Tu devras te reconnecter pour accéder à ton compte.</p>
-            <div style={{ display: 'flex', gap: 10 }}>
-              <button onClick={() => setConfirmLogout(false)} disabled={signingOut} style={{ flex: 1, padding: '11px', borderRadius: 12, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>Annuler</button>
-              <button onClick={() => { if (!signingOut) void handleSignOut() }} disabled={signingOut} style={{ flex: 1, padding: '11px', borderRadius: 12, border: 'none', background: '#ef4444', color: '#fff', fontSize: 14, fontWeight: 700, cursor: signingOut ? 'default' : 'pointer', opacity: signingOut ? 0.6 : 1 }}>{signingOut ? t('profile.signingOut') : t('profile.signOut')}</button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Confirmation de déconnexion (partagée) */}
+      {logoutModal}
     </div>
     </div>
   )

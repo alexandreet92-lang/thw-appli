@@ -4308,7 +4308,7 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
     )
   }
 
-  const CELL_H = 56 // px per hour
+  const CELL_H = 58 // px per hour (aligné sur la vue jour iOS)
 
   function CalendarGrid({ days, cols }:{ days:number[]; cols:number }) {
     const [dragOverDay, setDragOverDay] = useState<number|null>(null)
@@ -4338,7 +4338,7 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
     return (
       <div style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:16,overflow:'hidden',boxShadow:'var(--shadow-card)' }}>
         {/* Day headers */}
-        <div style={{ display:'grid',gridTemplateColumns:`44px repeat(${cols},1fr)`,borderBottom:'1px solid var(--border)',background:'var(--bg-card2)' }}>
+        <div style={{ display:'grid',gridTemplateColumns:`50px repeat(${cols},1fr)`,borderBottom:'1px solid var(--border)',background:'var(--bg-card2)' }}>
           <div/>
           {days.map(d=>{ const load=dayLoad(d); const loadKey=(intensities[d]??'low') as DayIntensity; const isToday=d===todayIdx; return (
             <div key={d} style={{ padding:'7px 4px',textAlign:'center' as const,borderLeft:'1px solid var(--border)',position:'relative' }}>
@@ -4364,11 +4364,11 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
         {/* Time body — column-based with absolute positioning for proportional height */}
         <div style={{ overflowY:'auto', maxHeight:'60vh' }}>
           <div style={{ display:'flex', height:HOURS.length*CELL_H, position:'relative' }}>
-            {/* Hour labels column */}
-            <div style={{ width:44, flexShrink:0, position:'relative', borderRight:'1px solid var(--border)' }}>
+            {/* Hour labels column — style vue jour iOS */}
+            <div style={{ width:50, flexShrink:0, position:'relative', borderRight:'1px solid var(--border)' }}>
               {HOURS.map((hour,i)=>(
-                <div key={hour} style={{ position:'absolute', top:i*CELL_H, left:0, right:0, height:CELL_H, display:'flex', alignItems:'flex-start', justifyContent:'flex-end', padding:'3px 5px 0' }}>
-                  <span style={{ fontSize:9, fontFamily:'DM Mono,monospace', color:'var(--text-dim)' }}>{String(hour).padStart(2,'0')}h</span>
+                <div key={hour} style={{ position:'absolute', top:i*CELL_H - 6, right:7, fontSize:11, fontFamily:'DM Mono,monospace', color:'var(--text-dim)' }}>
+                  {String(hour).padStart(2,'0')}:00
                 </div>
               ))}
             </div>
@@ -4402,9 +4402,9 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
                   setDragOverDay(null)
                 }}
                 style={{ flex:1, position:'relative', borderLeft:'1px solid var(--border)', overflow:'hidden' as const, background:dragOverDay===d?'rgba(6,182,212,0.04)':'transparent', cursor:'pointer' }}>
-                {/* Hour grid lines */}
+                {/* Hour grid lines — style vue jour iOS */}
                 {HOURS.map((_,i)=>(
-                  <div key={i} style={{ position:'absolute' as const, top:i*CELL_H, left:0, right:0, height:1, background:'var(--border)', opacity:0.25, pointerEvents:'none' as const }} />
+                  <div key={i} style={{ position:'absolute' as const, top:i*CELL_H, left:0, right:0, height:1, background:'var(--border)', opacity:0.4, pointerEvents:'none' as const }} />
                 ))}
                 {/* Past / elapsed hatch overlay */}
                 {hatchH>0&&(
@@ -4413,11 +4413,11 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
                     backgroundColor:'rgba(0,0,0,0.04)',
                     pointerEvents:'none' as const,zIndex:1 }} />
                 )}
-                {/* "Now" line — today only */}
+                {/* "Now" line — today only, style vue jour iOS (pastille + trait rouge) */}
                 {nowTop>=0&&(
                   <div style={{ position:'absolute' as const,top:nowTop,left:0,right:0,zIndex:4,pointerEvents:'none' as const,display:'flex',alignItems:'center' }}>
-                    <div style={{ width:8,height:8,borderRadius:'50%',background:'#ef4444',flexShrink:0,marginLeft:-4,boxShadow:'0 0 4px rgba(239,68,68,0.55)' }}/>
-                    <div style={{ flex:1,height:1.5,background:'#ef4444',boxShadow:'0 0 4px rgba(239,68,68,0.3)' }}/>
+                    <div style={{ width:7,height:7,borderRadius:'50%',background:'#ef4444',flexShrink:0,marginLeft:-3.5 }}/>
+                    <div style={{ flex:1,height:1.5,background:'#ef4444' }}/>
                   </div>
                 )}
                 {/* Activities (Strava/Training imports) — full proportional height */}
@@ -4429,8 +4429,8 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
                   const heightPx=Math.max(actMin/60*CELL_H,28)
                   return (
                     <div key={a.id} onClick={e=>{e.stopPropagation();setActivityDetail(a)}}
-                      style={{ position:'absolute' as const,top:topPx,height:heightPx,left:3,right:3,borderRadius:5,
-                        padding:'3px 5px',background:`${col}18`,borderLeft:`3px solid ${col}`,
+                      style={{ position:'absolute' as const,top:topPx,height:heightPx,left:4,right:4,borderRadius:8,
+                        padding:'4px 6px',background:`color-mix(in srgb, ${col} 14%, transparent)`,borderLeft:`3px solid ${col}`,
                         cursor:'pointer',zIndex:2,overflow:'hidden' as const }}>
                       <div style={{ display:'flex',alignItems:'center',gap:3 }}>
                         <SportBadge sport={sp} size="xs"/>
@@ -4444,7 +4444,7 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
                 {/* Training sessions — TOUJOURS bleu #3b82f6, proportional height, draggable */}
                 {getVisibleTrainingSessions(d).map(t=>{
                   const SESSION_COLOR = '#3b82f6'
-                  const SESSION_BG = 'rgba(59,130,246,0.12)'
+                  const SESSION_BG = 'color-mix(in srgb, #3b82f6 14%, transparent)'
                   const sport = t.sport as string
                   const topPx=Math.max(0,(t.startHour-5+t.startMin/60)*CELL_H)
                   const heightPx=Math.max(t.durationMin/60*CELL_H,28)
@@ -4458,7 +4458,7 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
                       onTouchMove={onSessionTouchMove}
                       onTouchEnd={onSessionTouchEnd}
                       onClick={e=>e.stopPropagation()}
-                      style={{ position:'absolute' as const,top:topPx,height:heightPx,left:3,right:3,borderRadius:5,
+                      style={{ position:'absolute' as const,top:topPx,height:heightPx,left:4,right:4,borderRadius:8,
                         padding:'4px 6px',background:SESSION_BG,borderLeft:`3px solid ${SESSION_COLOR}`,
                         cursor:'grab',zIndex:3,overflow:'hidden' as const,userSelect:'none' as const }}>
                       <p style={{ fontSize:9,fontWeight:700,margin:0,color:SESSION_COLOR,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' as const }}>{sportAbbr?`[${sportAbbr}] `:''}{t.title}</p>
@@ -4485,8 +4485,8 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
                       onTouchMove={onTaskTouchMove}
                       onTouchEnd={onTaskTouchEnd}
                       onClick={e=>{e.stopPropagation();setEditModal(wt)}}
-                      style={{ position:'absolute' as const,top:topPx,height:heightPx,left:3,right:3,borderRadius:5,
-                        padding:'3px 6px',background:`${col}18`,borderLeft:`3px solid ${col}`,
+                      style={{ position:'absolute' as const,top:topPx,height:heightPx,left:4,right:4,borderRadius:8,
+                        padding:'4px 6px',background:`color-mix(in srgb, ${col} 14%, transparent)`,borderLeft:`3px solid ${col}`,
                         cursor:'pointer',zIndex:1,overflow:'hidden' as const }}>
                       {wt.priority&&<span style={{ position:'absolute' as const,top:1,right:2,fontSize:8,color:'#ffb340',fontWeight:900 }}>•</span>}
                       {/* Ligne 1 : titre + horaire */}

@@ -11,8 +11,10 @@ import { Race, RaceStage, MONTHS, RACE_CFG, getDaysInMonth, getFirstDayISO } fro
 
 interface Props {
   year: number
-  races: Race[]
-  stages: RaceStage[]
+  races?: Race[]
+  stages?: RaceStage[]
+  /** Surcharge de la couleur d'un jour (ex. objectifs Pro/Perso) ; sinon dérivée des courses/stages. */
+  colorForDay?: (ds: string) => string | null
   onMonthClick: (month: number) => void
 }
 
@@ -22,18 +24,20 @@ function iso(y: number, m: number, d: number): string {
   return `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
 }
 
-export default function YearGridView({ year, races, stages, onMonthClick }: Props) {
+export default function YearGridView({ year, races, stages, colorForDay, onMonthClick }: Props) {
   const now = new Date()
   const curMonth = now.getMonth()
   const curYear = now.getFullYear()
   const todayISO = iso(curYear, curMonth, now.getDate())
   const [zooming, setZooming] = useState<number | null>(null)
 
-  // Couleur d'objectif d'un jour donné (importance course, sinon stage bleu).
+  // Couleur d'objectif d'un jour donné : surcharge explicite (Pro/Perso), sinon
+  // dérivée des courses (importance) / stages (bleu).
   const dayColor = (ds: string): string | null => {
-    const r = races.find(x => x.date <= ds && (x.endDate || x.date) >= ds)
+    if (colorForDay) return colorForDay(ds)
+    const r = (races ?? []).find(x => x.date <= ds && (x.endDate || x.date) >= ds)
     if (r) return r.level === 'gty' ? RED : RACE_CFG[r.level].color
-    const s = stages.find(x => x.startDate <= ds && x.endDate >= ds)
+    const s = (stages ?? []).find(x => x.startDate <= ds && x.endDate >= ds)
     if (s) return 'var(--cat-pro)'
     return null
   }

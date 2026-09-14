@@ -109,10 +109,11 @@ export default function RouteSheet({
       ref={wrapRef}
       style={{
         position: 'absolute', left: 12, right: 12, bottom: 12,
-        top: 'calc(env(safe-area-inset-top) + 96px)',
+        maxHeight: 'calc(100% - env(safe-area-inset-top) - 92px)',
         borderRadius: 26, zIndex: 45,
         background: 'var(--live-guide-panel)', border: '1px solid var(--live-hairline-2)',
-        backdropFilter: 'blur(22px)', WebkitBackdropFilter: 'blur(22px)',
+        backdropFilter: 'blur(26px) saturate(150%)', WebkitBackdropFilter: 'blur(26px) saturate(150%)',
+        boxShadow: '0 10px 40px rgba(0,0,0,0.28)',
         display: 'flex', flexDirection: 'column', overflow: 'hidden',
         transform, transition: dragging ? 'none' : `transform 0.34s ${SHEET_EASE}`,
         touchAction: 'none',

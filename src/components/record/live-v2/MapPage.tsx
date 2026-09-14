@@ -27,6 +27,7 @@ import { MapContainer, TileLayer, Polyline, Marker, useMap } from 'react-leaflet
 import L from 'leaflet'
 import type { NavRouteInput } from '../RouteNavScreen'
 import { navigationRoute, maneuverShortFR, type NavStep } from '@/lib/openrouteservice'
+import RouteSheet, { type VoiceVolume } from './RouteSheet'
 import { elevationGainLoss } from '@/lib/elevation'
 import { formatHMS, frNum } from './liveMachine'
 import { distFactor, altFactor, getUnitLabel, formatDistShortU, type LiveUnits } from '../units'
@@ -201,6 +202,20 @@ export default function MapPage({
   const [layer, setLayer] = useState<LayerId>(defaultLayer)
   const [layersOpen, setLayersOpen] = useState(false)
   const [guideOpen, setGuideOpen] = useState(false)
+  // Feuille de contrôle (ouverte au tap sur le bandeau stats bas).
+  const [routeSheetOpen, setRouteSheetOpen] = useState(false)
+  // Guidage vocal (persisté) — off par défaut.
+  const [voiceOn, setVoiceOn] = useState(false)
+  const [volume, setVolume] = useState<VoiceVolume>('normal')
+  useEffect(() => {
+    try {
+      setVoiceOn(localStorage.getItem('thw_live_voice_on') === '1')
+      const v = localStorage.getItem('thw_live_voice_vol')
+      if (v === 'loud' || v === 'normal' || v === 'soft') setVolume(v)
+    } catch { /* ignore */ }
+  }, [])
+  const changeVoiceOn = (v: boolean) => { setVoiceOn(v); try { localStorage.setItem('thw_live_voice_on', v ? '1' : '0') } catch { /* ignore */ } }
+  const changeVolume = (v: VoiceVolume) => { setVolume(v); try { localStorage.setItem('thw_live_voice_vol', v) } catch { /* ignore */ } }
   // Manœuvres ORS du parcours — null tant que rien n'est chargé / disponible.
   const [steps, setSteps] = useState<NavStep[] | null>(null)
 
@@ -248,8 +263,8 @@ export default function MapPage({
     return null
   }, [route?.elevation_gain_m, hasElev, ep])
 
-  // Le verrouillage prime : panneau replié tant que l'écran est verrouillé.
-  useEffect(() => { if (locked) setGuideOpen(false) }, [locked])
+  // Le verrouillage prime : panneaux repliés tant que l'écran est verrouillé.
+  useEffect(() => { if (locked) { setGuideOpen(false); setRouteSheetOpen(false) } }, [locked])
 
   // Progression le long du tracé : projection segment + mémoire de la
   // progression précédente (désambiguïsation boucle) — remise à 0 à l'arrêt.
@@ -316,6 +331,26 @@ export default function MapPage({
   const turnMode = started && hasRoute && nextStep != null && distToNextM != null
   const nextBadge = turnMode ? detectRoadBadge(nextStep.name, nextStep.instruction) : null
   const afterBadge = afterStep ? detectRoadBadge(afterStep.name, afterStep.instruction) : null
+
+  // ── Guidage vocal : annonce la prochaine manœuvre à l'approche (best-effort
+  // via l'API navigateur de synthèse vocale ; nécessite un geste utilisateur sur
+  // iOS pour démarrer l'audio). Une annonce par manœuvre. ──
+  const spokenRef = useRef<number>(-1)
+  useEffect(() => {
+    if (!voiceOn || !started || nextStepIdx < 0 || !nextStep || distToNextM == null) return
+    if (distToNextM > 140) return
+    if (spokenRef.current === nextStepIdx) return
+    spokenRef.current = nextStepIdx
+    try {
+      const synth = window.speechSynthesis
+      if (!synth) return
+      const u = new SpeechSynthesisUtterance(`Dans ${Math.round(distToNextM)} mètres, ${nextStep.instruction ?? maneuverShortFR(nextStep)}`)
+      u.lang = 'fr-FR'
+      u.volume = volume === 'loud' ? 1 : volume === 'soft' ? 0.45 : 0.8
+      synth.cancel(); synth.speak(u)
+    } catch { /* TTS indisponible */ }
+  }, [voiceOn, started, nextStepIdx, distToNextM, nextStep, volume])
+  useEffect(() => { if (!started) spokenRef.current = -1 }, [started])
 
   // Parcours restant (le parcouru s'efface, plus dessiné).
   const routeRemaining = hasRoute ? (started ? line.slice(nearestIdx) : line) : []
@@ -479,6 +514,31 @@ export default function MapPage({
         />
       )}
 
+      {/* Feuille de contrôle (tap sur le bandeau stats) : profil altimétrique
+          (réalisé gris / restant bleu), changer l'itinéraire, commandes vocales,
+          Pause/Terminer. */}
+      {routeSheetOpen && !locked && (
+        <RouteSheet
+          routeName={route?.name ?? null}
+          distLabel={`${frNum((totalM / 1000) * df, 1)} ${getUnitLabel('km', units)}`}
+          gainLabel={totalGainM != null ? `${Math.round(totalGainM * af)} ${getUnitLabel('m', units)} D+` : null}
+          ep={ep}
+          totalM={totalM}
+          traveledM={traveledOnRouteM}
+          started={started}
+          paused={paused}
+          showPlayIcon={showPlayIcon}
+          onPauseToggle={onCenter}
+          onFinish={onFlag}
+          voiceOn={voiceOn}
+          setVoiceOn={changeVoiceOn}
+          volume={volume}
+          setVolume={changeVolume}
+          onChangeRoute={() => { setRouteSheetOpen(false); try { window.dispatchEvent(new CustomEvent('thw:live-change-route')) } catch { /* ignore */ } }}
+          onClose={() => setRouteSheetOpen(false)}
+        />
+      )}
+
       {/* Bouton couches UNIQUE + menu (avant démarrage uniquement, cf. maquette) */}
       {!started && (
         <>
@@ -577,22 +637,9 @@ export default function MapPage({
                 <RaceFlagIcon />
               </button>
             )}
-            {/* Bouton central bleu — Arrêter (carré) / Reprendre (play) */}
-            <button
-              onClick={onCenter}
-              aria-label={showPlayIcon ? t('w2c.resume') : t('w2c.stop')}
-              className="lv2-press"
-              style={{
-                position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)',
-                width: 72, height: 72, borderRadius: '50%', cursor: 'pointer', pointerEvents: 'auto',
-                background: 'var(--live-accent)', border: 'none', boxShadow: 'var(--live-glow)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}
-            >
-              {showPlayIcon
-                ? <svg width="24" height="28" viewBox="0 0 26 30"><path d="M3 3 L23 15 L3 27 Z" fill="var(--live-accent-on)" stroke="var(--live-accent-on)" strokeWidth="4" strokeLinejoin="round" /></svg>
-                : <svg width="22" height="22" viewBox="0 0 22 22"><rect x="3" y="3" width="16" height="16" rx="3.5" fill="var(--live-accent-on)" /></svg>}
-            </button>
+            {/* Gros bouton central RETIRÉ de la carte (demande utilisateur) :
+                Pause/Reprendre + Terminer vivent dans la feuille de contrôle
+                (tap sur le bandeau stats bas). */}
             {/* Lap (droite) — visible pendant l'enregistrement */}
             {!paused && (
               <button
@@ -693,16 +740,29 @@ export default function MapPage({
             estCol,
           ]
         return (
-          <div style={{
-            position: 'absolute', left: 0, right: 0, zIndex: 15,
-            bottom: started ? 0 : 'calc(env(safe-area-inset-bottom) + 158px)',
-            height: started ? 160 : 108,
-            background: 'var(--live-band-bg)',
-            borderTop: '1px solid var(--live-hairline-2)',
-            borderBottom: started ? 'none' : '1px solid var(--live-hairline-2)',
-            display: 'grid', gridTemplateColumns: `repeat(${cols.length}, 1fr)`,
-            padding: started ? '22px 6px 0' : '16px 6px 0',
-          }}>
+          <div
+            onClick={() => setRouteSheetOpen(true)}
+            role="button"
+            aria-label={t('w2c.elevProfile')}
+            style={{
+              position: 'absolute', zIndex: 15, cursor: 'pointer',
+              display: 'grid', gridTemplateColumns: `repeat(${cols.length}, 1fr)`,
+              ...(started
+                ? {
+                  left: 10, right: 10, bottom: 'calc(env(safe-area-inset-bottom) + 10px)', height: 132,
+                  borderRadius: 24, padding: '20px 8px 0',
+                  background: 'var(--live-guide-panel)', border: '1px solid var(--live-hairline-2)',
+                  backdropFilter: 'blur(18px)', WebkitBackdropFilter: 'blur(18px)',
+                  boxShadow: '0 8px 30px rgba(0,0,0,0.22)',
+                }
+                : {
+                  left: 0, right: 0, bottom: 'calc(env(safe-area-inset-bottom) + 158px)', height: 108,
+                  padding: '16px 6px 0',
+                  background: 'var(--live-band-bg)', borderTop: '1px solid var(--live-hairline-2)', borderBottom: '1px solid var(--live-hairline-2)',
+                }),
+            }}>
+            {/* Poignée : indique qu'on peut faire glisser vers le haut. */}
+            {started && <span style={{ position: 'absolute', top: 8, left: '50%', transform: 'translateX(-50%)', width: 38, height: 5, borderRadius: 3, background: 'var(--live-hairline-2)' }} />}
             {cols.map((c, i) => (
               <div key={c.label} style={{ textAlign: 'center', position: 'relative' }}>
                 {i > 0 && (

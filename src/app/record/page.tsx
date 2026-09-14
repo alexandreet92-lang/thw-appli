@@ -95,6 +95,8 @@ export default function RecordPage() {
   const [workoutExercises, setWorkoutExercises] = useState<WorkoutExercise[]>([])
   const [workoutTitle, setWorkoutTitle] = useState<string | undefined>()
   const [routeCreatorOpen, setRouteCreatorOpen] = useState(false)
+  // « Changer l'itinéraire » depuis la feuille de contrôle live (événement global).
+  const [liveRoutePickerOpen, setLiveRoutePickerOpen] = useState(false)
   const [activeRoute, setActiveRoute] = useState<ActiveRoute | null>(null)
   // Point qui suit le survol du profil altimétrique → affiché sur la carte.
   const [routeCursor, setRouteCursor] = useState<{ lat: number; lng: number } | null>(null)
@@ -205,6 +207,24 @@ export default function RecordPage() {
     return () => window.removeEventListener(GUIDE_DEMO_EVENT, h)
   }, [])
 
+  // « Changer l'itinéraire » demandé depuis la feuille de contrôle live.
+  useEffect(() => {
+    const h = () => setLiveRoutePickerOpen(true)
+    window.addEventListener('thw:live-change-route', h)
+    return () => window.removeEventListener('thw:live-change-route', h)
+  }, [])
+
+  // Sélecteur de parcours réutilisable (bibliothèque + recherche d'adresse),
+  // monté par-dessus l'écran live pour changer l'itinéraire en cours.
+  const liveRoutePicker = liveRoutePickerOpen ? (
+    <RouteCreator
+      isDark={isDark}
+      initialView="library"
+      onClose={() => setLiveRoutePickerOpen(false)}
+      onLoadRoute={route => { setActiveRoute(route); setLiveRoutePickerOpen(false) }}
+    />
+  ) : null
+
   const handleSelectSport = (s: SportId) => {
     setSport(s)
     setSportSheetOpen(false)
@@ -257,6 +277,7 @@ export default function RecordPage() {
           onExit={() => setView('home')}
           onFinished={() => { setToast(t('record.pageWorkoutSaved')); setView('home') }}
         />
+        {liveRoutePicker}
         {toast && <Toast message={toast} onDismiss={() => setToast(null)} />}
       </>
     )
@@ -270,6 +291,7 @@ export default function RecordPage() {
           onExit={() => setView('home')}
           onFinished={() => { setToast(t('record.pageWorkoutSaved')); setView('home') }}
         />
+        {liveRoutePicker}
         {toast && <Toast message={toast} onDismiss={() => setToast(null)} />}
       </>
     )
@@ -295,6 +317,7 @@ export default function RecordPage() {
           onExit={() => setView('home')}
           onFinished={() => { setToast(t('record.pageWorkoutSaved')); setView('home') }}
         />
+        {liveRoutePicker}
         {toast && <Toast message={toast} onDismiss={() => setToast(null)} />}
       </>
     )

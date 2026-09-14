@@ -78,7 +78,7 @@ function ExoRow({ e, restLabel, done }: { e: WorkoutExercise; restLabel: string;
   )
 }
 
-function SessionCard({ s }: { s: LinkedWorkout }) {
+export function SessionCard({ s }: { s: LinkedWorkout }) {
   const { t } = useI18n()
   const groups = s.exercises_detail ?? []
   // Un exercice est soit « plat » (série simple), soit un groupe (circuit/EMOM/…)

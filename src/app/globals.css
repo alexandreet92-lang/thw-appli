@@ -1041,3 +1041,10 @@ html.thw-glass-blur .thw-glass-bubble {
 @media (prefers-reduced-motion: reduce) {
   .thw-press, .thw-press:active { transition: none !important; transform: translateZ(0) !important; }
 }
+
+/* Carte d'activité (ActivityCard) — le tracé Mapbox.
+   Mobile : bord à bord, tracé jamais coupé (contain).
+   Bureau : la carte remplit la boîte plus large (cover, comme avant) — sinon
+   elle apparaît en letterbox (bandes grises) sur les cartes 2 colonnes. */
+.thw-card-map { object-fit: contain; }
+@media (min-width: 768px) { .thw-card-map { object-fit: cover; } }

@@ -34,6 +34,9 @@ import { ClimbDescentSection, detectSegments } from '@/components/activity/Climb
 import { WorkoutTypeBadges } from '@/components/activity/WorkoutTypeBadges'
 import { ActivitySettingsPanel } from '@/components/activity/ActivitySettingsPanel'
 const MuscuSessionPanel = nextDynamic(() => import('@/components/activity/MuscuSessionPanel').then(m => m.MuscuSessionPanel), { ssr: false })
+// Hero « séance réalisée » (activités sans GPS lancées in-app : boxe, muscu, hyrox…)
+const WorkoutSessionCard = nextDynamic(() => import('@/components/activity/MuscuSessionPanel').then(m => m.SessionCard), { ssr: false })
+import { useLinkedWorkoutSession } from '@/lib/activity/workoutFusion'
 import { SwimLengths } from '@/components/activity/SwimLengths'
 const MuscuActivityView = nextDynamic(() => import('@/components/activity/MuscuActivityView').then(m => m.MuscuActivityView), { ssr: false })
 import ProgressionHub from '@/app/progression/page'
@@ -6810,7 +6813,23 @@ export function ActivityDetail({ a, onClose, closing = false, zones, profile, al
   // Sans trace GPS (muscu, natation piscine, hyrox, box, tapis…) : pas de carte
   // → la sheet s'ouvre directement en plein écran (on n'affiche que les données).
   const hasGpsInit = (a.streams?.latlng?.length ?? 0) > 0 || !!a.summary_polyline
+  // Séance in-app appariée (boxe, muscu, hyrox…) : si l'utilisateur a lancé la
+  // séance DEPUIS l'app avec des exercices, on l'affiche en « hero » derrière la
+  // feuille (à la place de la page blanche). Sinon, pas de hero → feuille figée.
+  const { session: linkedSession } = useLinkedWorkoutSession(a)
+  const hasWorkoutHero = !hasGpsInit && !!linkedSession && ((linkedSession.exercises_detail?.length ?? 0) > 0)
+  // On peut faire glisser la feuille UNIQUEMENT s'il y a quelque chose à révéler
+  // derrière (carte GPS ou séance réalisée). Sinon la feuille reste plein écran.
+  const slidable = hasGpsInit || hasWorkoutHero
+  const slidableRef = useRef(slidable)
+  slidableRef.current = slidable
   const [sheetPos, setSheetPos] = useState<'low' | 'mid' | 'full'>(hasGpsInit ? 'mid' : 'full')
+  // Quand la séance hero devient disponible (chargement async), on entrouvre la
+  // feuille (mid) pour révéler la séance — une seule fois.
+  const heroRevealed = useRef(false)
+  useEffect(() => {
+    if (hasWorkoutHero && !heroRevealed.current) { heroRevealed.current = true; setSheetPos('mid') }
+  }, [hasWorkoutHero])
   const [winH,     setWinH]     = useState<number>(() =>
     typeof window !== 'undefined' ? window.innerHeight : 800,
   )
@@ -6875,6 +6894,8 @@ export function ActivityDetail({ a, onClose, closing = false, zones, profile, al
       // preventDefault arrive trop tard → la feuille ne bouge plus.
       if (!decided) {
         decided = true
+        // Rien à révéler derrière (ni carte GPS ni séance in-app) → feuille figée.
+        if (!slidableRef.current) { active = false; return }
         const notFull = sty > 0.5
         if (notFull) active = true                              // peek → déplacer la feuille (n'importe où)
         else if (el.scrollTop <= 0 && delta > 0) active = true  // plein écran + haut + vers le bas → replier (dévoile la carte)
@@ -7700,9 +7721,16 @@ conseil pour la prochaine séance similaire.`
               hoverGps={hoverGps}
               bottomInset={mapBottomInset}
             />
+          ) : hasWorkoutHero && linkedSession ? (
+            // Pas de GPS mais séance in-app appariée → on montre la SÉANCE RÉALISÉE
+            // en hero (révélée en faisant glisser la feuille), à la place du blanc.
+            <div style={{ position: 'absolute', inset: 0, overflowY: 'auto', WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'], background: 'var(--bg)', padding: 'calc(env(safe-area-inset-top, 0px) + 56px) 16px 16px' }}>
+              <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-dim)', margin: '0 0 2px' }}>{t('act.strengthSession')}</p>
+              <WorkoutSessionCard s={linkedSession} />
+            </div>
           ) : (
-            // Pas de GPS → fond neutre (la sheet plein écran le recouvre). Plus
-            // de placeholder coloré (l'ancien fond orange muscu).
+            // Pas de GPS, pas de séance → fond neutre (la feuille figée le recouvre
+            // entièrement : aucune page blanche révélable).
             <div style={{ width: '100%', height: '100%', background: 'var(--bg)' }} />
           )}
         </div>
@@ -7769,8 +7797,8 @@ conseil pour la prochaine séance similaire.`
                 padding: '10px 12px', borderBottom: '1px solid var(--info-border)',
                 animation: 'thwHeadFade 0.22s ease',
               }}>
-                <button onClick={() => setSheetPos('mid')} aria-label={t('actp.back')} style={{ width: 38, height: 38, borderRadius: '50%', border: 'none', background: 'transparent', color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
-                  <ChevronDown size={24} strokeWidth={2.4} />
+                <button onClick={() => { if (slidable) setSheetPos('mid'); else onClose() }} aria-label={t('actp.back')} style={{ width: 38, height: 38, borderRadius: '50%', border: 'none', background: 'transparent', color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
+                  {slidable ? <ChevronDown size={24} strokeWidth={2.4} /> : <ChevronLeft size={24} strokeWidth={2.4} />}
                 </button>
                 <span style={{ flex: 1, textAlign: 'center', fontSize: 17, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {sportLabel(a.sport_type, t)}

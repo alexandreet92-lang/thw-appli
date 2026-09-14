@@ -39,8 +39,8 @@ const STAGE_SPORTS: { id: StageSport; label: string; color: string }[] = [
 const sportLabel = (s: StageSport) => STAGE_SPORTS.find(x => x.id === s)?.label ?? s
 const sportColor = (s: StageSport) => STAGE_SPORTS.find(x => x.id === s)?.color ?? 'var(--text-dim)'
 
-const LBL: React.CSSProperties = { fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-dim)', margin: '0 0 6px' }
-const INP: React.CSSProperties = { width: '100%', boxSizing: 'border-box', padding: '9px 11px', borderRadius: 9, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 13.5, outline: 'none' }
+const LBL: React.CSSProperties = { fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-dim)', margin: '0 0 8px' }
+const INP: React.CSSProperties = { width: '100%', boxSizing: 'border-box', padding: '11px 13px', borderRadius: 11, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 14, outline: 'none' }
 const isGpx = (n: string) => /\.(gpx|tcx|kml)$/i.test(n)
 
 function getDaysBetween(start: string, end: string): string[] {
@@ -218,7 +218,7 @@ export default function EventModal({ mode = 'create', initialData, initialDate, 
                 {STAGE_SPORTS.map(s => {
                   const on = sports.includes(s.id)
                   return (
-                    <button key={s.id} onClick={() => toggleSport(s.id)} style={{ padding: '8px 14px', borderRadius: 999, border: `1px solid ${on ? s.color : 'var(--border)'}`, cursor: 'pointer', fontSize: 12.5, fontWeight: 600, background: on ? `${s.color}1f` : 'var(--bg-card)', color: on ? s.color : 'var(--text-dim)' }}>{s.label}</button>
+                    <button key={s.id} onClick={() => toggleSport(s.id)} style={{ padding: '9px 16px', borderRadius: 999, border: `1px solid ${on ? 'transparent' : 'var(--border)'}`, cursor: 'pointer', fontSize: 12.5, fontWeight: on ? 700 : 600, background: on ? `${s.color}1f` : 'transparent', color: on ? s.color : 'var(--text-mid)', transition: 'background .15s, color .15s' }}>{s.label}</button>
                   )
                 })}
               </div>

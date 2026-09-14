@@ -202,6 +202,39 @@ function Sheet({ open, onClose, title, subtitle, children }: { open:boolean; onC
   )
 }
 
+// Swipe-back (façon iOS) : un glissement du doigt depuis le bord gauche fait
+// suivre la sous-page sous le doigt ; relâché au-delà du seuil, il revient en
+// arrière (onBack). Sinon, la page revient en place. Vertical = scroll normal.
+function useSwipeBack(onBack: () => void) {
+  const [dragX, setDragX] = useState(0)
+  const st = useRef<{ x: number; y: number; active: boolean; decided: boolean }>({ x: 0, y: 0, active: false, decided: false })
+  const handlers = {
+    onTouchStart: (e: React.TouchEvent) => {
+      const tch = e.touches[0]
+      st.current = { x: tch.clientX, y: tch.clientY, active: tch.clientX <= 40, decided: false }
+    },
+    onTouchMove: (e: React.TouchEvent) => {
+      if (!st.current.active) return
+      const tch = e.touches[0]
+      const dx = tch.clientX - st.current.x
+      const dy = tch.clientY - st.current.y
+      // Premier mouvement significatif : on décide horizontal (back) vs vertical (scroll).
+      if (!st.current.decided) {
+        if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return
+        st.current.decided = true
+        if (Math.abs(dy) > Math.abs(dx)) { st.current.active = false; return }
+      }
+      setDragX(Math.max(0, Math.min(dx, 240)))
+    },
+    onTouchEnd: () => {
+      if (!st.current.active) { setDragX(0); return }
+      st.current.active = false
+      setDragX(cur => { if (cur > 68) onBack(); return 0 })
+    },
+  }
+  return { dragX, handlers }
+}
+
 // Nav row (clickable list item with chevron) — pensé pour vivre dans une Group.
 function NavRow({ label, sub, icon, onClick, first }: { label:string; sub:string; icon:React.ReactNode; onClick:()=>void; first?:boolean }) {
   return (
@@ -590,15 +623,15 @@ function ProfilIdentityBloc() {
     <div style={{ display:'flex', flexDirection:'column' }}>
       {toast && <Toast msg={toast.msg} ok={toast.ok}/>}
 
-      {/* ── Identité ──────────────────────────────────── */}
+      {/* ── Identité — carte avatar épurée (façon Claude) ── */}
       <Section>
         <Group>
-          <div style={{ display:'flex', alignItems:'center', gap:14, padding:'16px' }}>
+          <div style={{ display:'flex', alignItems:'center', gap:15, padding:'16px' }}>
             <div style={{ position:'relative', flexShrink:0 }}>
-              <div onClick={()=>fileRef.current?.click()} style={{ width:66, height:66, borderRadius:'50%', background:'linear-gradient(140deg,var(--bg-card2),var(--bg-card))', border:'2px solid var(--border)', boxShadow:'0 4px 16px rgba(0,0,0,0.08)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', overflow:'hidden', position:'relative' }}>
+              <div onClick={()=>fileRef.current?.click()} style={{ width:60, height:60, borderRadius:'50%', background:'var(--primary-dim)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', overflow:'hidden', position:'relative' }}>
                 {photo
                   ? <img src={photo} alt={t('profile.profileAlt')} style={{ width:'100%', height:'100%', objectFit:'cover' }}/>
-                  : <span style={{ fontSize:22, opacity:0.45 }}>📷</span>
+                  : <span style={{ fontFamily:'var(--font-body)', fontSize:24, fontWeight:700, color:'var(--primary)' }}>{(profileData.full_name||profileData.email||'?').trim().charAt(0).toUpperCase()}</span>
                 }
                 {uploading && (
                   <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,0.45)', display:'flex', alignItems:'center', justifyContent:'center' }}>
@@ -612,25 +645,25 @@ function ProfilIdentityBloc() {
               </div>
             </div>
             <div style={{ flex:1, minWidth:0 }}>
-              <input value={profileData.full_name} onChange={e=>setProfileData(p=>({...p,full_name:e.target.value}))} placeholder={t('profile.namePlaceholder')} style={{ fontFamily:'var(--font-body)', fontSize:18, fontWeight:700, background:'transparent', border:'none', padding:0, color:'var(--text)', outline:'none', width:'100%', marginBottom:3, boxSizing:'border-box' as const }}/>
+              <input value={profileData.full_name} onChange={e=>setProfileData(p=>({...p,full_name:e.target.value}))} placeholder={t('profile.namePlaceholder')} style={{ fontFamily:'var(--font-body)', fontSize:18, fontWeight:700, background:'transparent', border:'none', padding:0, color:'var(--text)', outline:'none', width:'100%', marginBottom:2, boxSizing:'border-box' as const }}/>
               <p style={{ fontSize:12.5, color:'var(--text-dim)', margin:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{profileData.email||'—'}</p>
             </div>
           </div>
         </Group>
-        <p style={{ fontSize:12, color:'var(--text-dim)', margin:'8px 2px 0', lineHeight:1.5 }}>{t('profile.photoHint')}</p>
+        <p style={{ fontSize:12, color:'var(--text-dim)', margin:'8px 6px 0', lineHeight:1.5 }}>{t('profile.photoHint')}</p>
       </Section>
 
-      {/* ── Mensurations ─────────────────────────────── */}
+      {/* ── Mensurations — lignes label / valeur (façon Claude) ── */}
       <Section label={t('profile.measurements')}>
         <Group>
           {STATS.map((f, i) => (
             <Line key={f.label} first={i===0}>
               <span style={{ flex:1, fontSize:15, color:'var(--text)' }}>{f.label}</span>
               {f.readonly
-                ? <span style={{ fontSize:15, fontWeight:600, color:'var(--text)', fontVariantNumeric:'tabular-nums' }}>{f.val || '—'}</span>
-                : <span style={{ display:'flex', alignItems:'baseline', gap:6 }}>
-                    <input type="number" value={f.val} onChange={e=>setProfileData(p=>({...p,[f.key]:e.target.value}))} placeholder={f.ph} style={{ width:64, fontFamily:'var(--font-body)', fontSize:15, fontWeight:600, background:'var(--input-bg)', border:'1px solid var(--border)', borderRadius:8, padding:'5px 9px', color:'var(--text)', outline:'none', textAlign:'right' as const }}/>
-                    {f.unit && <span style={{ fontSize:12.5, color:'var(--text-dim)', width:18 }}>{f.unit}</span>}
+                ? <span style={{ fontSize:15, fontWeight:700, color:'var(--text)', fontVariantNumeric:'tabular-nums' }}>{f.val || '—'}</span>
+                : <span style={{ display:'flex', alignItems:'baseline', gap:4 }}>
+                    <input type="number" inputMode="decimal" value={f.val} onChange={e=>setProfileData(p=>({...p,[f.key]:e.target.value}))} placeholder={f.ph} style={{ width:52, fontFamily:'var(--font-body)', fontSize:15, fontWeight:700, background:'transparent', border:'none', padding:0, color:'var(--text)', outline:'none', textAlign:'right' as const, fontVariantNumeric:'tabular-nums' }}/>
+                    {f.unit && <span style={{ fontSize:13, color:'var(--text-dim)' }}>{f.unit}</span>}
                   </span>
               }
             </Line>
@@ -2768,6 +2801,7 @@ export function ProfileContent() {
 
   function open(id: string) { setDir(1); setActive(id); window.scrollTo({ top: 0 }) }
   function back() { setDir(-1); setActive(null); window.scrollTo({ top: 0 }) }
+  const { dragX: backDragX, handlers: swipeBack } = useSwipeBack(back)
 
   async function handleSignOut() {
     setSigningOut(true)
@@ -2932,7 +2966,8 @@ export function ProfileContent() {
       <SlideView screenKey={active ?? '__list__'} direction={dir}>
         {active ? (
           // ── Drill-down : titre centré + boutons ronds flottants (façon Claude) ──
-          <div>
+          // Swipe-back : glisser depuis le bord gauche fait suivre la page et revient en arrière.
+          <div {...swipeBack} style={{ transform: backDragX ? `translateX(${backDragX}px)` : undefined, transition: backDragX ? 'none' : 'transform 0.26s cubic-bezier(0.32,0.72,0,1)', touchAction: 'pan-y', minHeight: '80dvh' }}>
             <div style={{ position: 'sticky', top: 0, zIndex: 5, background: GREY_PAGE, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 40, margin: '0 -16px 16px', padding: '2px 16px 12px' }}>
               <PressPop onClick={back} aria-label={t('profile.back')} style={{ position: 'absolute', left: 16, top: 0, width: 40, height: 40, borderRadius: '50%', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 10px rgba(0,0,0,0.14)' }}>
                 <ChevronLeft size={20} />

@@ -1,5 +1,6 @@
 'use client'
 import { useI18n } from '@/lib/i18n'
+import { getCurrentPosition } from '@/lib/native/geo'
 
 interface Props {
   onAuthorize: () => void
@@ -25,9 +26,8 @@ export default function GPSPrePermissionScreen({ onAuthorize, onDismiss }: Props
   const { t } = useI18n()
   const FEATURES = FEATURE_KEYS.map(k => t(k))
   const handleAuthorize = () => {
-    if (typeof navigator !== 'undefined' && navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(() => {}, () => {}, { timeout: 1 })
-    }
+    // Déclenche la demande d'autorisation iOS (plugin natif) ou le prompt web.
+    try { getCurrentPosition(() => {}, () => {}, { timeout: 5000 }) } catch { /* ignore */ }
     onAuthorize()
   }
 

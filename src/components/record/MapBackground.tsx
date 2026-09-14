@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import { MapContainer, TileLayer, Marker, Polyline, CircleMarker, useMap } from 'react-leaflet'
 import L from 'leaflet'
+import { getCurrentPosition } from '@/lib/native/geo'
 
 const PARIS: [number, number] = [48.8566, 2.3522]
 
@@ -125,8 +126,7 @@ export default function MapBackground({ trackPoints, currentPosition, activeRout
 
   useEffect(() => {
     if (currentPosition != null) return
-    if (typeof navigator === 'undefined' || !navigator.geolocation) return
-    navigator.geolocation.getCurrentPosition(
+    getCurrentPosition(
       (pos) => setInternalPosition([pos.coords.latitude, pos.coords.longitude]),
       () => setInternalPosition(null),
       { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 }

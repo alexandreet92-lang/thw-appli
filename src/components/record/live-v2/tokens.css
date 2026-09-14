@@ -68,8 +68,8 @@
   --live-float: rgba(255, 255, 255, 0.85); /* design-allow-color */
   --live-veil: rgba(20, 20, 24, 0.45); /* design-allow-color */
   --live-map-bg: #EDEDEB; /* design-allow-color */
-  --live-scrim-top: linear-gradient(rgba(246, 246, 247, 0.95), rgba(246, 246, 247, 0)); /* design-allow-color */
-  --live-scrim-bot: linear-gradient(rgba(246, 246, 247, 0), rgba(246, 246, 247, 0.90) 45%, rgba(246, 246, 247, 0.98)); /* design-allow-color */
+  --live-scrim-top: transparent; /* design-allow-color — pas de voile blanc sur la carte (le bandeau a son propre fond) */
+  --live-scrim-bot: transparent; /* design-allow-color — carte bord à bord, sans traînée blanche */
   --live-band-bg: rgba(255, 255, 255, 0.84); /* design-allow-color */
   --live-arrow-bg: rgba(255, 255, 255, 0.72); /* design-allow-color */
   --live-btn-map: rgba(255, 255, 255, 0.85); /* design-allow-color */

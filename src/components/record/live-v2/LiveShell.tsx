@@ -783,7 +783,7 @@ export default function LiveShell({
           height: 'calc(env(safe-area-inset-bottom) + 158px)', zIndex: 54,
           paddingBottom: 'env(safe-area-inset-bottom)',
         }}>
-          {machine.phase === 'idle' && (
+          {machine.phase === 'idle' && !onMapPage && (
             <>
               {/* Ligne GPS */}
               <div style={{

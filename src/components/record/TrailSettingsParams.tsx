@@ -88,23 +88,8 @@ export default function TrailSettingsParams({ settings, updateSetting, theme, se
         right={<Toggle theme={theme} value={di.keepAwake} onChange={v => { updateSetting('display.keepAwake', v); if (v && 'wakeLock' in navigator) { (navigator as { wakeLock: { request: (t: string) => Promise<unknown> } }).wakeLock.request('screen').catch(() => {}) } }} />} />
       <SettingsRow theme={theme} label={t('record.trailDisplayTheme')}
         right={<Select theme={theme} value={di.theme} options={[{value:'auto',label:t('record.trailThemeAuto')},{value:'light',label:t('record.trailThemeAlwaysLight')},{value:'dark',label:t('record.trailThemeAlwaysDark')}]} onChange={v => updateSetting('display.theme', v)} />} />
-      <SettingsRow theme={theme} label={t('record.trailDisplayDataSize')}
+      <SettingsRow theme={theme} label={t('record.trailDisplayDataSize')} last
         right={<Select theme={theme} value={di.dataSize} options={[{value:'small',label:t('record.trailSizeSmall')},{value:'normal',label:t('record.trailSizeNormal')},{value:'large',label:t('record.trailSizeLarge')}]} onChange={v => updateSetting('display.dataSize', v)} />} />
-      <div style={{ padding:'12px 16px', borderBottom:`1px solid ${theme.separator}` }}>
-        <p style={{ fontSize:15, color:theme.text, margin:'0 0 12px' }}>{t('record.trailDisplayDataFont')}</p>
-        <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-          {FONT_OPTIONS.map(font => {
-            const active = (di.dataFont ?? 'system') === font.id
-            return (
-              <button key={font.id} onClick={() => updateSetting('display.dataFont', font.id)}
-                style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 14px', borderRadius:10, background: active ? 'rgba(245,158,11,0.08)' : 'transparent', border:`1.5px solid ${active ? '#F59E0B' : theme.separator}`, cursor:'pointer' }}>
-                <span style={{ fontSize:14, color:theme.text, fontWeight:500 }}>{t(font.labelKey)}</span>
-                <span style={{ fontSize:24, fontWeight:700, color: active ? '#F59E0B' : theme.text, fontFamily:font.fontFamily }}>4:32</span>
-              </button>
-            )
-          })}
-        </div>
-      </div>
     </SettingsSection>
   )
 

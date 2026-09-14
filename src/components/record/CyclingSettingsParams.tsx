@@ -120,29 +120,8 @@ export default function CyclingSettingsParams({ settings, updateSetting, theme, 
         right={<Toggle theme={theme} value={di.keepAwake} onChange={v => { updateSetting('display.keepAwake', v); if (v && 'wakeLock' in navigator) { (navigator as { wakeLock: { request: (t: string) => Promise<unknown> } }).wakeLock.request('screen').catch(() => {}) } }} />} />
       <SettingsRow theme={theme} label={t('record.cyclingParamsMeterTheme')}
         right={<Select theme={theme} value={di.theme} options={[{value:'auto',label:t('record.cyclingParamsThemeAuto')},{value:'light',label:t('record.cyclingParamsThemeLight')},{value:'dark',label:t('record.cyclingParamsThemeDark')}]} onChange={v => updateSetting('display.theme', v)} />} />
-      <SettingsRow theme={theme} label={t('record.cyclingParamsDataSize')}
+      <SettingsRow theme={theme} label={t('record.cyclingParamsDataSize')} last
         right={<Select theme={theme} value={di.dataSize} options={[{value:'small',label:t('record.cyclingParamsSizeSmall')},{value:'normal',label:t('record.cyclingParamsSizeNormal')},{value:'large',label:t('record.cyclingParamsSizeLarge')}]} onChange={v => updateSetting('display.dataSize', v)} />} />
-      <div style={{ padding: '12px 16px', borderBottom: `1px solid ${theme.separator}` }}>
-        <p style={{ fontSize: 15, color: theme.text, margin: '0 0 12px' }}>{t('record.cyclingParamsDataFont')}</p>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {FONT_OPTIONS.map(font => {
-            const active = (di.dataFont ?? 'system') === font.id
-            return (
-              <button key={font.id} onClick={() => updateSetting('display.dataFont', font.id)}
-                style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  padding: '10px 14px', borderRadius: 10,
-                  background: active ? 'rgba(6,182,212,0.08)' : 'transparent',
-                  border: `1.5px solid ${active ? '#06B6D4' : theme.separator}`,
-                  cursor: 'pointer', transition: 'all 150ms',
-                }}>
-                <span style={{ fontSize: 14, color: theme.text, fontWeight: 500 }}>{t(font.labelKey)}</span>
-                <span style={{ fontSize: 24, fontWeight: 700, color: active ? '#06B6D4' : theme.text, fontFamily: font.fontFamily, letterSpacing: '-0.5px' }}>28.4</span>
-              </button>
-            )
-          })}
-        </div>
-      </div>
     </SettingsSection>
   )
 

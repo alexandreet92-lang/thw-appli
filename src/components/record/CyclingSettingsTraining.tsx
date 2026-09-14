@@ -48,11 +48,9 @@ export default function CyclingSettingsTraining({ theme }: Props) {
       <SettingsSection title={t('record.sectionTrainingUpper')} theme={theme}>
         <SettingsRow theme={theme} label={t('record.cyclingTrainingLinkSession')}
           description={t('record.cyclingTrainingLinkSessionDesc')}
-          onClick={openPicker}
+          disabled
           right={
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-              <path d="M5 3l4 4-4 4" stroke="#8C8C8C" strokeWidth="1.4" strokeLinecap="round"/>
-            </svg>
+            <span style={{ fontSize: 10, color: '#06B6D4', border: '1px solid rgba(6,182,212,0.4)', borderRadius: 20, padding: '2px 8px', whiteSpace: 'nowrap' }}>{t('record.cyclingParamsSoon')}</span>
           }
         />
         {linked && (

@@ -221,21 +221,22 @@ export default function GuidePanel({
   }
   const onGrabMove = (e: React.PointerEvent) => {
     if (!drag.current) return
-    const next = Math.max(0, drag.current.startDy + (e.clientY - drag.current.startY))
+    // Panneau ancré EN HAUT : on ne peut le tirer que vers le HAUT (dy ≤ 0) pour
+    // le replier/fermer (slide vers le haut).
+    const next = Math.min(0, drag.current.startDy + (e.clientY - drag.current.startY))
     setDy(next)
   }
   const onGrabUp = () => {
     if (!drag.current) return
     drag.current = null
     setDragging(false)
-    const collapsed = collapsedYRef.current
-    // Tiré franchement sous le cran réduit → fermeture.
-    if (dy > collapsed + 90) { requestClose(); return }
-    // Sinon on aimante vers le cran le plus proche (déployé / réduit).
-    setDy(dy > collapsed / 2 ? collapsed : 0)
+    // Tiré franchement vers le haut → fermeture (slide vers le haut).
+    if (dy < -90) { requestClose(); return }
+    setDy(0)
   }
 
-  const transform = closing ? 'translateY(100%)' : mounted ? `translateY(${dy}px)` : 'translateY(100%)'
+  // Ouverture : glisse DU HAUT vers le bas ; fermeture : remonte vers le haut.
+  const transform = closing ? 'translateY(-108%)' : mounted ? `translateY(${dy}px)` : 'translateY(-108%)'
 
   const grabHandlers = {
     onPointerDown: onGrabDown, onPointerMove: onGrabMove,
@@ -313,7 +314,7 @@ export default function GuidePanel({
                     <ManeuverIcon kind={maneuverKind(s.type)} size={30} />
                   </div>
                   <div style={{ minWidth: 0 }}>
-                    <div className="lv2-num" style={{ fontSize: 27, fontWeight: 800, lineHeight: 1.05 }}>
+                    <div className="lv2-num" style={{ fontSize: 33, fontWeight: 800, lineHeight: 1.02 }}>
                       {fmtDist(Math.max(0, upcomingDist[i] ?? 0))}
                     </div>
                     <div style={{
@@ -356,7 +357,7 @@ export default function GuidePanel({
                   <ManeuverIcon kind={g.kind} size={30} />
                 </div>
                 <div style={{ minWidth: 0 }}>
-                  <div className="lv2-num" style={{ fontSize: 27, fontWeight: 800, lineHeight: 1.05 }}>
+                  <div className="lv2-num" style={{ fontSize: 33, fontWeight: 800, lineHeight: 1.02 }}>
                     {fmtDist(Math.max(0, g.cumM - traveledM))}
                   </div>
                   <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--live-text-2)', marginTop: 5 }}>

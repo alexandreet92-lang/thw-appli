@@ -390,9 +390,13 @@ export default function MapPage({
         zoom={15}
         zoomControl={false}
         attributionControl={false}
+        preferCanvas
+        zoomSnap={0}
+        zoomDelta={0.4}
+        wheelPxPerZoomLevel={90}
         style={{ position: 'absolute', inset: 0 }}
       >
-        <TileLayer url={tileUrl(layer)} tileSize={512} zoomOffset={-1} detectRetina maxZoom={20} attribution={ATTR} />
+        <TileLayer url={tileUrl(layer)} tileSize={512} zoomOffset={-1} detectRetina maxZoom={20} keepBuffer={6} updateWhenZooming={false} updateWhenIdle attribution={ATTR} />
         {/* Trace réellement parcourue — fine et discrète (breadcrumb gris). */}
         {points.length > 1 && (
           <Polyline

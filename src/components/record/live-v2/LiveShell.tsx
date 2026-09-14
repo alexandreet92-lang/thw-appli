@@ -653,16 +653,16 @@ export default function LiveShell({
         <span style={{ width: 36 }} />
       </div>
 
-      {/* ── Badge auto-pause (pill 140×30 orange, aucun clignotement) ── */}
+      {/* ── Badge auto-pause — discret, en haut à gauche (plus au milieu). ── */}
       {autoPausedNow && (
         <div style={{
-          position: 'absolute', top: 'calc(env(safe-area-inset-top) + 122px)', left: '50%', transform: 'translateX(-50%)',
-          width: 140, height: 30, borderRadius: 15, zIndex: 56,
+          position: 'absolute', top: 'calc(env(safe-area-inset-top) + 54px)', left: 12,
+          height: 24, padding: '0 10px', borderRadius: 12, zIndex: 56,
           background: 'var(--live-warn-bg)', border: '1px solid var(--live-warn-border)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-          fontSize: 12.5, fontWeight: 700, color: 'var(--live-warn)',
+          display: 'inline-flex', alignItems: 'center', gap: 6,
+          fontSize: 11, fontWeight: 700, color: 'var(--live-warn)', opacity: 0.92,
         }}>
-          <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--live-warn)' }} />
+          <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--live-warn)' }} />
           {t('w2c.autoPaused')}
         </div>
       )}

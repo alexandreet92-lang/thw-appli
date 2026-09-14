@@ -115,9 +115,11 @@ interface Props {
   trackPoints?: { lat: number; lng: number }[]
   currentPosition?: [number, number] | null
   activeRoute?: ActiveRoute | null
+  /** Point qui suit le survol du profil altimétrique (sync carte ↔ courbe). */
+  cursorPoint?: { lat: number; lng: number } | null
 }
 
-export default function MapBackground({ trackPoints, currentPosition, activeRoute }: Props) {
+export default function MapBackground({ trackPoints, currentPosition, activeRoute, cursorPoint }: Props) {
   const [internalPosition, setInternalPosition] = useState<[number, number] | null>(null)
   const [layer, setLayer] = useState<LayerId>('std')
 
@@ -171,6 +173,14 @@ export default function MapBackground({ trackPoints, currentPosition, activeRout
             />
             <FitBounds activeRoute={activeRoute} />
           </>
+        )}
+        {/* Point mobile synchronisé avec le survol du profil altimétrique. */}
+        {cursorPoint && (
+          <CircleMarker
+            center={[cursorPoint.lat, cursorPoint.lng]}
+            radius={7}
+            pathOptions={{ fillColor: '#06B6D4', fillOpacity: 1, color: 'white', weight: 3 }}
+          />
         )}
       </MapContainer>
       <LayerSelector layer={layer} onChange={setLayer} />

@@ -43,7 +43,10 @@ export function watchPosition(onPos: (p: GeoPos) => void, onErr: (e: GeoErr) => 
       try { await Geolocation.requestPermissions() } catch { /* l'utilisateur peut refuser */ }
       if (cleared) return
       const id = await Geolocation.watchPosition(
-        { enableHighAccuracy: opts.enableHighAccuracy ?? true, timeout: opts.timeout, maximumAge: opts.maximumAge },
+        // Natif : on laisse du temps au 1er point (GPS lent, surtout en
+        // intérieur) et on accepte un point récent en cache → évite le
+        // « détecte rien » d'un timeout trop court.
+        { enableHighAccuracy: opts.enableHighAccuracy ?? true, timeout: Math.max(opts.timeout ?? 0, 27000), maximumAge: Math.max(opts.maximumAge ?? 0, 10000) },
         (position, err) => {
           if (cleared) return
           if (err) { onErr({ message: String((err as { message?: string })?.message ?? err) }); return }

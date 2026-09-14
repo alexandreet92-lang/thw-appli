@@ -542,14 +542,14 @@ export default function MapPage({
       {/* Feuille de contrôle (façon Apple Plans) — visible pendant l'enregistrement.
           Repliée : données (W/FC + distance/temps/D+ restants). Dépliée : profil,
           changer d'itinéraire, commandes vocales, Pause/Lap/Terminer. */}
-      {started && !locked && (
+      {hasRoute && !locked && (
         <RouteSheet
           routeName={route?.name ?? null}
           distLabel={`${frNum((totalM / 1000) * df, 1)} ${getUnitLabel('km', units)}`}
           gainLabel={totalGainM != null ? `${Math.round(totalGainM * af)} ${getUnitLabel('m', units)} D+` : null}
           ep={ep}
           totalM={totalM}
-          traveledM={traveledOnRouteM}
+          traveledM={started ? traveledOnRouteM : 0}
           started={started}
           paused={paused}
           showPlayIcon={showPlayIcon}
@@ -569,12 +569,12 @@ export default function MapPage({
           }}
           watts={powerW != null ? String(Math.round(powerW)) : '—'}
           hr={heartRateBpm != null ? String(Math.round(heartRateBpm)) : '—'}
-          remainDistLabel={frNum((remainingM / 1000) * df, 1)}
+          remainDistLabel={frNum(((started ? remainingM : totalM) / 1000) * df, 1)}
           remainDistUnit={getUnitLabel('km', units)}
           remainTimeLabel={estMin >= 60 ? formatHMS(Math.round(estMin * 60), true) : String(Math.round(estMin))}
           remainTimeUnit={estMin < 60 ? 'min' : undefined}
-          arrivalLabel={hasRoute ? t('w2c.arrivalAt', { h: arrivalClock }) : null}
-          remainGainLabel={remainingGainM != null ? String(Math.round(remainingGainM * af)) : null}
+          arrivalLabel={started && hasRoute ? t('w2c.arrivalAt', { h: arrivalClock }) : null}
+          remainGainLabel={(started ? remainingGainM : totalGainM) != null ? String(Math.round(((started ? remainingGainM : totalGainM) as number) * af)) : null}
           remainGainUnit={getUnitLabel('m', units)}
         />
       )}
@@ -648,70 +648,6 @@ export default function MapPage({
         </div>
       )}
 
-      {/* Bandeau stats bas — AVANT DÉPART uniquement (totaux du parcours au-dessus
-          de la zone Démarrer). Pendant l'enregistrement, les données vivent dans
-          la feuille de contrôle (RouteSheet). */}
-      {!started && hasRoute && (() => {
-        const estCol = {
-          label: t('w2c.estTime'),
-          value: estMin >= 60 ? formatHMS(Math.round(estMin * 60), true) : String(Math.round(estMin)),
-          unit: estMin < 60 ? 'min' : undefined,
-          sub: null as string | null,
-        }
-        const cols: { label: string; value: string; unit?: string; sub: string | null }[] = [
-          ...(totalGainM != null ? [{
-            label: t('w2c.elevTotal'),
-            value: String(Math.round(totalGainM * af)),
-            unit: getUnitLabel('m', units),
-            sub: null,
-          }] : []),
-          {
-            label: t('w2c.distance'),
-            value: frNum((totalM / 1000) * df, 1),
-            unit: getUnitLabel('km', units),
-            sub: null,
-          },
-          estCol,
-        ]
-        const wfc: [string, string][] = [['W', powerW != null ? String(powerW) : '—'], [t('w2c.hr'), heartRateBpm != null ? String(heartRateBpm) : '—']]
-        return (
-          // Bulle de données (façon Apple Plans) collée en bas : Watts + FC en
-          // haut, puis les totaux du parcours (D+ / distance / temps estimé).
-          <div
-            style={{
-              position: 'absolute', zIndex: 15,
-              left: 10, right: 10, bottom: 'calc(env(safe-area-inset-bottom) + 10px)',
-              borderRadius: 26, overflow: 'hidden',
-              background: 'var(--live-band-bg)', border: '1px solid var(--live-hairline-2)',
-              backdropFilter: 'blur(24px) saturate(160%)', WebkitBackdropFilter: 'blur(24px) saturate(160%)',
-              boxShadow: '0 12px 34px rgba(0,0,0,0.20)',
-            }}>
-            {/* Watts + FC */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', padding: '13px 8px 11px' }}>
-              {wfc.map(([lb, v], i) => (
-                <div key={lb} style={{ textAlign: 'center', position: 'relative' }}>
-                  {i > 0 && <span style={{ position: 'absolute', left: 0, top: 2, bottom: 2, width: 1, background: 'var(--live-hairline)' }} />}
-                  <div className="lv2-eyebrow" style={{ fontSize: 10, letterSpacing: '0.15em' }}>{lb}</div>
-                  <div className="lv2-num" style={{ fontSize: 23, fontWeight: 800, marginTop: 5 }}>{v}</div>
-                </div>
-              ))}
-            </div>
-            {/* Totaux du parcours */}
-            <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols.length}, 1fr)`, borderTop: '1px solid var(--live-hairline)', padding: '11px 6px 13px' }}>
-              {cols.map((c, i) => (
-                <div key={c.label} style={{ textAlign: 'center', position: 'relative' }}>
-                  {i > 0 && <span style={{ position: 'absolute', left: 0, top: 0, bottom: 6, width: 1, background: 'var(--live-hairline)' }} />}
-                  <div className="lv2-eyebrow" style={{ fontSize: 9.5, letterSpacing: '0.13em' }}>{c.label}</div>
-                  <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 3, marginTop: 6 }}>
-                    <span className="lv2-num" style={{ fontSize: 21, fontWeight: 800 }}>{c.value}</span>
-                    {c.unit && <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--live-label)' }}>{c.unit}</span>}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )
-      })()}
     </div>
   )
 }

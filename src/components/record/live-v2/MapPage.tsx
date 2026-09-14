@@ -637,7 +637,7 @@ export default function MapPage({
       {/* Chip itinéraire — avant démarrage, au-dessus du bandeau des totaux */}
       {!started && hasRoute && (
         <div className="lv2-num" style={{
-          position: 'absolute', bottom: 'calc(env(safe-area-inset-bottom) + 282px)', left: '50%', transform: 'translateX(-50%)',
+          position: 'absolute', bottom: 'calc(env(safe-area-inset-bottom) + 156px)', left: '50%', transform: 'translateX(-50%)',
           height: 32, padding: '0 17px', borderRadius: 16, zIndex: 20,
           background: 'var(--live-btn-map)', border: '1px solid var(--live-hairline-2)',
           display: 'flex', alignItems: 'center', whiteSpace: 'nowrap',
@@ -673,31 +673,42 @@ export default function MapPage({
           },
           estCol,
         ]
+        const wfc: [string, string][] = [['W', powerW != null ? String(powerW) : '—'], [t('w2c.hr'), heartRateBpm != null ? String(heartRateBpm) : '—']]
         return (
+          // Bulle de données (façon Apple Plans) collée en bas : Watts + FC en
+          // haut, puis les totaux du parcours (D+ / distance / temps estimé).
           <div
             style={{
               position: 'absolute', zIndex: 15,
-              display: 'grid', gridTemplateColumns: `repeat(${cols.length}, 1fr)`,
-              left: 0, right: 0, bottom: 'calc(env(safe-area-inset-bottom) + 158px)', height: 108,
-              padding: '16px 6px 0',
-              background: 'var(--live-band-bg)', borderTop: '1px solid var(--live-hairline-2)', borderBottom: '1px solid var(--live-hairline-2)',
+              left: 10, right: 10, bottom: 'calc(env(safe-area-inset-bottom) + 10px)',
+              borderRadius: 26, overflow: 'hidden',
+              background: 'var(--live-band-bg)', border: '1px solid var(--live-hairline-2)',
               backdropFilter: 'blur(24px) saturate(160%)', WebkitBackdropFilter: 'blur(24px) saturate(160%)',
+              boxShadow: '0 12px 34px rgba(0,0,0,0.20)',
             }}>
-            {cols.map((c, i) => (
-              <div key={c.label} style={{ textAlign: 'center', position: 'relative' }}>
-                {i > 0 && (
-                  <span style={{ position: 'absolute', left: 0, top: 0, bottom: 14, width: 1, background: 'var(--live-hairline)' }} />
-                )}
-                <div className="lv2-eyebrow" style={{ fontSize: 10, letterSpacing: '0.15em' }}>{c.label}</div>
-                <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 4, marginTop: 8 }}>
-                  <span className="lv2-num" style={{ fontSize: 26, fontWeight: 800 }}>{c.value}</span>
-                  {c.unit && <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--live-label)' }}>{c.unit}</span>}
+            {/* Watts + FC */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', padding: '13px 8px 11px' }}>
+              {wfc.map(([lb, v], i) => (
+                <div key={lb} style={{ textAlign: 'center', position: 'relative' }}>
+                  {i > 0 && <span style={{ position: 'absolute', left: 0, top: 2, bottom: 2, width: 1, background: 'var(--live-hairline)' }} />}
+                  <div className="lv2-eyebrow" style={{ fontSize: 10, letterSpacing: '0.15em' }}>{lb}</div>
+                  <div className="lv2-num" style={{ fontSize: 23, fontWeight: 800, marginTop: 5 }}>{v}</div>
                 </div>
-                {c.sub && (
-                  <div className="lv2-num" style={{ fontSize: 11, fontWeight: 500, color: 'var(--live-dim-sub)', marginTop: 6 }}>{c.sub}</div>
-                )}
-              </div>
-            ))}
+              ))}
+            </div>
+            {/* Totaux du parcours */}
+            <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols.length}, 1fr)`, borderTop: '1px solid var(--live-hairline)', padding: '11px 6px 13px' }}>
+              {cols.map((c, i) => (
+                <div key={c.label} style={{ textAlign: 'center', position: 'relative' }}>
+                  {i > 0 && <span style={{ position: 'absolute', left: 0, top: 0, bottom: 6, width: 1, background: 'var(--live-hairline)' }} />}
+                  <div className="lv2-eyebrow" style={{ fontSize: 9.5, letterSpacing: '0.13em' }}>{c.label}</div>
+                  <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 3, marginTop: 6 }}>
+                    <span className="lv2-num" style={{ fontSize: 21, fontWeight: 800 }}>{c.value}</span>
+                    {c.unit && <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--live-label)' }}>{c.unit}</span>}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )
       })()}

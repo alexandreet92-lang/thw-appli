@@ -317,9 +317,11 @@ export default function MapPage({
   const nextBadge = turnMode ? detectRoadBadge(nextStep.name, nextStep.instruction) : null
   const afterBadge = afterStep ? detectRoadBadge(afterStep.name, afterStep.instruction) : null
 
-  // Découpe du parcours : parcouru (accent-track) / restant (accent).
-  const routeDone = hasRoute && started ? line.slice(0, nearestIdx + 1) : []
+  // Parcours restant (le parcouru s'efface, plus dessiné).
   const routeRemaining = hasRoute ? (started ? line.slice(nearestIdx) : line) : []
+  // Liaison « rejoindre l'itinéraire » : visible tant qu'on est loin du départ
+  // et qu'on n'a pas encore entamé le parcours.
+  const showJoinLink = hasRoute && currentPos != null && distToStartM != null && distToStartM > 25 && traveledOnRouteM < 30
 
   const center: [number, number] = currentPos
     ? [currentPos.lat, currentPos.lng]
@@ -355,25 +357,34 @@ export default function MapPage({
         style={{ position: 'absolute', inset: 0 }}
       >
         <TileLayer url={tileUrl(layer)} tileSize={512} zoomOffset={-1} detectRetina maxZoom={20} attribution={ATTR} />
-        {/* Trace réellement parcourue — accent-track */}
+        {/* Trace réellement parcourue — fine et discrète (breadcrumb gris). */}
         {points.length > 1 && (
           <Polyline
             positions={points.map(p => [p.lat, p.lng] as [number, number])}
-            pathOptions={{ color: ACCENT_TRACK, weight: 5, opacity: 0.95, lineCap: 'round', lineJoin: 'round' }}
+            pathOptions={{ color: ACCENT_TRACK, weight: 4, opacity: 0.55, lineCap: 'round', lineJoin: 'round' }}
           />
         )}
-        {/* Parcours : portion passée en accent-track, restant en accent */}
-        {routeDone.length > 1 && (
+        {/* Trait de liaison pour REJOINDRE l'itinéraire (pointillés) quand on n'est
+            pas encore dessus. Disparaît une fois le parcours entamé. */}
+        {showJoinLink && currentPos && line[0] && (
           <Polyline
-            positions={routeDone.map(p => [p.lat, p.lng] as [number, number])}
-            pathOptions={{ color: ACCENT_TRACK, weight: 5, opacity: 0.9, lineCap: 'round', lineJoin: 'round' }}
+            positions={[[currentPos.lat, currentPos.lng], [line[0].lat, line[0].lng]]}
+            pathOptions={{ color: ACCENT, weight: 5, opacity: 0.85, dashArray: '2 12', lineCap: 'round' }}
           />
         )}
+        {/* Parcours RESTANT — gros trait bleu à halo blanc (façon Apple Plans).
+            La portion DÉJÀ PARCOURUE n'est plus dessinée (elle s'efface). */}
         {routeRemaining.length > 1 && (
-          <Polyline
-            positions={routeRemaining.map(p => [p.lat, p.lng] as [number, number])}
-            pathOptions={{ color: ACCENT, weight: 5, opacity: 0.9, lineCap: 'round', lineJoin: 'round' }}
-          />
+          <>
+            <Polyline
+              positions={routeRemaining.map(p => [p.lat, p.lng] as [number, number])}
+              pathOptions={{ color: '#ffffff', weight: 13, opacity: 0.85, lineCap: 'round', lineJoin: 'round' }}
+            />
+            <Polyline
+              positions={routeRemaining.map(p => [p.lat, p.lng] as [number, number])}
+              pathOptions={{ color: ACCENT, weight: 8, opacity: 1, lineCap: 'round', lineJoin: 'round' }}
+            />
+          </>
         )}
         {currentPos && <Marker position={[currentPos.lat, currentPos.lng]} icon={gpsIcon} />}
         <Follow pos={currentPos} />

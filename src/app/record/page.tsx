@@ -208,18 +208,24 @@ export default function RecordPage() {
   }, [])
 
   // « Changer l'itinéraire » demandé depuis la feuille de contrôle live.
+  // detail.mode : 'library' (parcours enregistrés) ou 'search' (adresse).
+  const [liveRoutePickerMode, setLiveRoutePickerMode] = useState<'library' | 'search'>('library')
   useEffect(() => {
-    const h = () => setLiveRoutePickerOpen(true)
+    const h = (e: Event) => {
+      const mode = (e as CustomEvent<{ mode?: 'library' | 'search' }>).detail?.mode
+      setLiveRoutePickerMode(mode === 'search' ? 'search' : 'library')
+      setLiveRoutePickerOpen(true)
+    }
     window.addEventListener('thw:live-change-route', h)
     return () => window.removeEventListener('thw:live-change-route', h)
   }, [])
 
-  // Sélecteur de parcours réutilisable (bibliothèque + recherche d'adresse),
+  // Sélecteur de parcours réutilisable (bibliothèque OU recherche d'adresse),
   // monté par-dessus l'écran live pour changer l'itinéraire en cours.
   const liveRoutePicker = liveRoutePickerOpen ? (
     <RouteCreator
       isDark={isDark}
-      initialView="library"
+      initialView={liveRoutePickerMode === 'search' ? 'creating' : 'library'}
       onClose={() => setLiveRoutePickerOpen(false)}
       onLoadRoute={route => { setActiveRoute(route); setLiveRoutePickerOpen(false) }}
     />

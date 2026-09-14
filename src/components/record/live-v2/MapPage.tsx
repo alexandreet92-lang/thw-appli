@@ -203,7 +203,8 @@ export default function MapPage({
   const [layersOpen, setLayersOpen] = useState(false)
   const [guideOpen, setGuideOpen] = useState(false)
   // Feuille de contrôle (ouverte au tap sur le bandeau stats bas).
-  const [routeSheetOpen, setRouteSheetOpen] = useState(false)
+  // Vue de la feuille de contrôle : main (peek/données) | voice | route.
+  const [sheetView, setSheetView] = useState<'main' | 'voice' | 'route'>('main')
   // Guidage vocal (persisté) — off par défaut.
   const [voiceOn, setVoiceOn] = useState(false)
   const [volume, setVolume] = useState<VoiceVolume>('normal')
@@ -264,7 +265,7 @@ export default function MapPage({
   }, [route?.elevation_gain_m, hasElev, ep])
 
   // Le verrouillage prime : panneaux repliés tant que l'écran est verrouillé.
-  useEffect(() => { if (locked) { setGuideOpen(false); setRouteSheetOpen(false) } }, [locked])
+  useEffect(() => { if (locked) { setGuideOpen(false); setSheetView('main') } }, [locked])
 
   // Progression le long du tracé : projection segment + mémoire de la
   // progression précédente (désambiguïsation boucle) — remise à 0 à l'arrêt.
@@ -514,10 +515,30 @@ export default function MapPage({
         />
       )}
 
-      {/* Feuille de contrôle (tap sur le bandeau stats) : profil altimétrique
-          (réalisé gris / restant bleu), changer l'itinéraire, commandes vocales,
-          Pause/Terminer. */}
-      {routeSheetOpen && !locked && (
+      {/* Boutons ronds (bulles) à droite pendant l'enregistrement — façon Apple Plans :
+          Parcours (changer d'itinéraire) · Son (commandes vocales). */}
+      {started && !locked && (
+        <div style={{ position: 'absolute', right: 16, top: 'calc(env(safe-area-inset-top) + 120px)', zIndex: 30, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {[
+            { key: 'route', label: t('w2c.changeRoute'), on: () => setSheetView('route'), icon: (
+              <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M8.5 6H15a3 3 0 0 1 0 6H9a3 3 0 0 0 0 6h6.5"/></svg>
+            ) },
+            { key: 'voice', label: t('w2c.voiceGuidance'), on: () => setSheetView('voice'), icon: (
+              <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M11 5 6 9H2v6h4l5 4V5z"/>{voiceOn ? <path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a9 9 0 0 1 0 14" /> : <path d="M22 9l-6 6M16 9l6 6" />}</svg>
+            ) },
+          ].map(b => (
+            <button key={b.key} onClick={b.on} aria-label={b.label} className="lv2-press"
+              style={{ width: 52, height: 52, borderRadius: '50%', background: 'var(--live-btn-map)', border: '1px solid var(--live-hairline-2)', backdropFilter: 'blur(18px)', WebkitBackdropFilter: 'blur(18px)', color: 'var(--live-text)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 16px rgba(0,0,0,0.18)', padding: 0 }}>
+              {b.icon}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Feuille de contrôle (façon Apple Plans) — visible pendant l'enregistrement.
+          Repliée : données (W/FC + distance/temps/D+ restants). Dépliée : profil,
+          changer d'itinéraire, commandes vocales, Pause/Lap/Terminer. */}
+      {started && !locked && (
         <RouteSheet
           routeName={route?.name ?? null}
           distLabel={`${frNum((totalM / 1000) * df, 1)} ${getUnitLabel('km', units)}`}
@@ -530,12 +551,27 @@ export default function MapPage({
           showPlayIcon={showPlayIcon}
           onPauseToggle={onCenter}
           onFinish={onFlag}
+          onLap={onLap}
+          canLap={!paused}
           voiceOn={voiceOn}
           setVoiceOn={changeVoiceOn}
           volume={volume}
           setVolume={changeVolume}
-          onChangeRoute={() => { setRouteSheetOpen(false); try { window.dispatchEvent(new CustomEvent('thw:live-change-route')) } catch { /* ignore */ } }}
-          onClose={() => setRouteSheetOpen(false)}
+          view={sheetView}
+          onSetView={setSheetView}
+          onOpenRoutePicker={mode => {
+            setSheetView('main')
+            try { window.dispatchEvent(new CustomEvent('thw:live-change-route', { detail: { mode } })) } catch { /* ignore */ }
+          }}
+          watts={powerW != null ? String(Math.round(powerW)) : '—'}
+          hr={heartRateBpm != null ? String(Math.round(heartRateBpm)) : '—'}
+          remainDistLabel={frNum((remainingM / 1000) * df, 1)}
+          remainDistUnit={getUnitLabel('km', units)}
+          remainTimeLabel={estMin >= 60 ? formatHMS(Math.round(estMin * 60), true) : String(Math.round(estMin))}
+          remainTimeUnit={estMin < 60 ? 'min' : undefined}
+          arrivalLabel={hasRoute ? t('w2c.arrivalAt', { h: arrivalClock }) : null}
+          remainGainLabel={remainingGainM != null ? String(Math.round(remainingGainM * af)) : null}
+          remainGainUnit={getUnitLabel('m', units)}
         />
       )}
 
@@ -608,165 +644,45 @@ export default function MapPage({
         </div>
       )}
 
-      {/* ── Console de commande (au-dessus du bandeau stats bas, spec §3) ──
-          De bas en haut : bandeau stats (rendu plus bas) → ligne VITESSE · W · FC
-          → rangée de boutons (drapeau gauche à l'arrêt · Arrêter/Reprendre au
-          centre · Lap à droite pendant l'enregistrement). */}
-      {started && (
-        <div style={{
-          position: 'absolute', left: 0, right: 0, bottom: 160, zIndex: 22,
-          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
-          paddingBottom: 10, pointerEvents: 'none',
-        }}>
-          {/* Rangée de boutons */}
-          <div style={{ position: 'relative', width: '100%', height: 76, pointerEvents: 'none' }}>
-            {/* Drapeau (gauche) — visible en pause manuelle, ouvre le résumé */}
-            {showFlag && (
-              <button
-                onClick={onFlag}
-                aria-label={t('w2c.saveFinish')}
-                className="lv2-press"
-                style={{
-                  position: 'absolute', top: 12, left: '50%', marginLeft: -104,
-                  width: 52, height: 52, borderRadius: '50%', cursor: 'pointer', pointerEvents: 'auto',
-                  background: '#111214', border: '1px solid rgba(255,255,255,0.14)', color: '#fff', // design-allow-color
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  boxShadow: '0 6px 18px rgba(0,0,0,0.35)',
-                }}
-              >
-                <RaceFlagIcon />
-              </button>
-            )}
-            {/* Gros bouton central RETIRÉ de la carte (demande utilisateur) :
-                Pause/Reprendre + Terminer vivent dans la feuille de contrôle
-                (tap sur le bandeau stats bas). */}
-            {/* Lap (droite) — visible pendant l'enregistrement */}
-            {!paused && (
-              <button
-                onClick={onLap}
-                aria-label={t('w2c.lap')}
-                className="lv2-press"
-                style={{
-                  position: 'absolute', top: 12, left: '50%', marginLeft: 52,
-                  width: 52, height: 52, borderRadius: '50%', cursor: 'pointer', pointerEvents: 'auto',
-                  background: 'var(--live-surface)', border: '1px solid var(--live-hairline-2)', color: 'var(--live-text)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 12, fontWeight: 800, letterSpacing: '0.08em',
-                }}
-              >
-                LAP
-              </button>
-            )}
-          </div>
-          {/* Ligne VITESSE · W · FC (texte à halo, façon compteur) */}
-          <div style={{
-            display: 'flex', gap: 30, alignItems: 'flex-end', justifyContent: 'center',
-            color: 'var(--live-map-ink)', textShadow: 'var(--live-map-halo)',
-            opacity: dim ? 0.55 : 1, transition: 'opacity 0.2s',
-          }}>
-            {[
-              { id: 'V', lb: getUnitLabel('km/h', units), v: frNum((dim ? 0 : speedKmh) * df, 1) },
-              { id: 'W', lb: 'W', v: powerW != null ? String(Math.round(powerW)) : '—' },
-              { id: 'FC', lb: t('w2c.hr'), v: heartRateBpm != null ? String(Math.round(heartRateBpm)) : '—' },
-            ].map(c => (
-              <div key={c.id} style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '0.14em', opacity: 0.85 }}>{c.lb}</div>
-                <div className="lv2-num" style={{ fontSize: 30, fontWeight: 800, lineHeight: 1.02, marginTop: 1 }}>{c.v}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Bandeau stats bas — 3 colonnes. Visible dès qu'un parcours est chargé
-          (avant départ : TOTAUX du parcours, au-dessus de la zone Démarrer) et
-          pendant l'enregistrement (restants avec parcours, sinon distance /
-          D+ fait / durée). */}
-      {(started || hasRoute) && (() => {
+      {/* Bandeau stats bas — AVANT DÉPART uniquement (totaux du parcours au-dessus
+          de la zone Démarrer). Pendant l'enregistrement, les données vivent dans
+          la feuille de contrôle (RouteSheet). */}
+      {!started && hasRoute && (() => {
         const estCol = {
           label: t('w2c.estTime'),
           value: estMin >= 60 ? formatHMS(Math.round(estMin * 60), true) : String(Math.round(estMin)),
           unit: estMin < 60 ? 'min' : undefined,
-          // Pendant l'enregistrement : heure d'arrivée prévue (plus petit).
-          sub: started ? (hasRoute ? t('w2c.arrivalAt', { h: arrivalClock }) : t('w2c.elapsedMin', { n: Math.floor(elapsedSec / 60) })) : null,
+          sub: null as string | null,
         }
-        // Colonnes D+ uniquement si un dénivelé RÉEL est connu — jamais de
-        // valeur inventée quand le parcours n'a pas d'altitudes.
-        const cols: { label: string; value: string; unit?: string; sub: string | null }[] = started
-          ? hasRoute
-            ? [
-              ...(remainingGainM != null ? [{
-                label: t('w2c.elevRemaining'),
-                value: String(Math.round(remainingGainM * af)),
-                unit: getUnitLabel('m', units),
-                sub: t('w2c.doneValue', { v: `${Math.round(gainDoneM * af)} ${getUnitLabel('m', units)}` }),
-              }] : []),
-              {
-                label: t('w2c.remainingLabel'),
-                value: frNum((remainingM / 1000) * df, 1),
-                unit: getUnitLabel('km', units),
-                sub: t('w2c.doneValue', { v: `${frNum((distanceDoneM / 1000) * df, 2)} ${getUnitLabel('km', units)}` }),
-              },
-              estCol,
-            ]
-            : [
-              {
-                label: t('w2c.distance'),
-                value: frNum((distanceDoneM / 1000) * df, 2),
-                unit: getUnitLabel('km', units),
-                sub: null,
-              },
-              {
-                label: t('w2c.elevDone'),
-                value: String(Math.round(gainDoneM * af)),
-                unit: getUnitLabel('m', units),
-                sub: null,
-              },
-              { label: t('w2c.duration'), value: formatHMS(elapsedSec, true), unit: undefined, sub: null },
-            ]
-          : [
-            ...(totalGainM != null ? [{
-              label: t('w2c.elevTotal'),
-              value: String(Math.round(totalGainM * af)),
-              unit: getUnitLabel('m', units),
-              sub: null,
-            }] : []),
-            {
-              label: t('w2c.distance'),
-              value: frNum((totalM / 1000) * df, 1),
-              unit: getUnitLabel('km', units),
-              sub: null,
-            },
-            estCol,
-          ]
+        const cols: { label: string; value: string; unit?: string; sub: string | null }[] = [
+          ...(totalGainM != null ? [{
+            label: t('w2c.elevTotal'),
+            value: String(Math.round(totalGainM * af)),
+            unit: getUnitLabel('m', units),
+            sub: null,
+          }] : []),
+          {
+            label: t('w2c.distance'),
+            value: frNum((totalM / 1000) * df, 1),
+            unit: getUnitLabel('km', units),
+            sub: null,
+          },
+          estCol,
+        ]
         return (
           <div
-            onClick={() => setRouteSheetOpen(true)}
-            role="button"
-            aria-label={t('w2c.elevProfile')}
             style={{
-              position: 'absolute', zIndex: 15, cursor: 'pointer',
+              position: 'absolute', zIndex: 15,
               display: 'grid', gridTemplateColumns: `repeat(${cols.length}, 1fr)`,
-              ...(started
-                ? {
-                  left: 10, right: 10, bottom: 'calc(env(safe-area-inset-bottom) + 10px)', height: 132,
-                  borderRadius: 24, padding: '20px 8px 0',
-                  background: 'var(--live-guide-panel)', border: '1px solid var(--live-hairline-2)',
-                  backdropFilter: 'blur(18px)', WebkitBackdropFilter: 'blur(18px)',
-                  boxShadow: '0 8px 30px rgba(0,0,0,0.22)',
-                }
-                : {
-                  left: 0, right: 0, bottom: 'calc(env(safe-area-inset-bottom) + 158px)', height: 108,
-                  padding: '16px 6px 0',
-                  background: 'var(--live-band-bg)', borderTop: '1px solid var(--live-hairline-2)', borderBottom: '1px solid var(--live-hairline-2)',
-                }),
+              left: 0, right: 0, bottom: 'calc(env(safe-area-inset-bottom) + 158px)', height: 108,
+              padding: '16px 6px 0',
+              background: 'var(--live-band-bg)', borderTop: '1px solid var(--live-hairline-2)', borderBottom: '1px solid var(--live-hairline-2)',
+              backdropFilter: 'blur(24px) saturate(160%)', WebkitBackdropFilter: 'blur(24px) saturate(160%)',
             }}>
-            {/* Poignée : indique qu'on peut faire glisser vers le haut. */}
-            {started && <span style={{ position: 'absolute', top: 8, left: '50%', transform: 'translateX(-50%)', width: 38, height: 5, borderRadius: 3, background: 'var(--live-hairline-2)' }} />}
             {cols.map((c, i) => (
               <div key={c.label} style={{ textAlign: 'center', position: 'relative' }}>
                 {i > 0 && (
-                  <span style={{ position: 'absolute', left: 0, top: 0, bottom: started ? 66 : 14, width: 1, background: 'var(--live-hairline)' }} />
+                  <span style={{ position: 'absolute', left: 0, top: 0, bottom: 14, width: 1, background: 'var(--live-hairline)' }} />
                 )}
                 <div className="lv2-eyebrow" style={{ fontSize: 10, letterSpacing: '0.15em' }}>{c.label}</div>
                 <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 4, marginTop: 8 }}>

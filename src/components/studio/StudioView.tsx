@@ -3024,7 +3024,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
       {/* ══ Architecte — chat plein écran ══ */}
       {chatFull && (
         <div style={{ position: 'absolute', inset: 0, zIndex: 30, background: 'var(--bg)', display: 'flex', flexDirection: 'column', animation: 'studio_in 0.18s ease' }}>
-          <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px', borderBottom: '1px solid var(--border)' }}>
+          <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 8, padding: 'max(12px, calc(env(safe-area-inset-top) + 8px)) 16px 12px', borderBottom: '1px solid var(--border)' }}>
             <StudioLogo size={19} />
             <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-display)', flex: 1 }}>{t('w1i.architect')}</span>
             {chatMsgs.length > 0 && (

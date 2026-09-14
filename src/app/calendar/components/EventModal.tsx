@@ -253,7 +253,7 @@ export default function EventModal({ mode = 'create', initialData, initialDate, 
                             <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 6px' }}>{slot === 'matin' ? t('calendar.morning') : t('calendar.afternoon')}</p>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                               {dp[slot].map((ses, i) => (
-                                <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: 7, padding: '9px 10px', borderRadius: 11, border: `1px solid ${sportColor(ses.sport)}33`, background: 'var(--bg-card2)' }}>
+                                <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: 7, padding: '10px 11px', borderRadius: 12, border: '1px solid var(--border)', background: 'var(--bg-card2)' }}>
                                   {/* Ligne 1 : sport · heure · supprimer */}
                                   <div style={{ display: 'flex', gap: 7, alignItems: 'center' }}>
                                     <span style={{ width: 8, height: 8, borderRadius: '50%', background: sportColor(ses.sport), flexShrink: 0 }} />

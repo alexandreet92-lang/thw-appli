@@ -13615,7 +13615,7 @@ function HistoryDrawer({
               </div>
             ) : (
               <div
-                onClick={() => { onSelect(conv); if (!persistent) onClose() }}
+                onClick={() => { try { haptic() } catch { /* ignore */ } onSelect(conv); if (!persistent) onClose() }}
                 onTouchStart={e => {
                   const t = e.touches[0]; tapRef.current = { x: t.clientX, y: t.clientY, moved: false, long: false }
                   if (lpTimer.current) clearTimeout(lpTimer.current)
@@ -13633,6 +13633,7 @@ function HistoryDrawer({
                   if (!r || r.moved) return           // scroll/swipe → ne pas sélectionner
                   if (r.long) { e.preventDefault(); return } // appui long déjà géré (menu ouvert)
                   e.preventDefault()                  // coupe le ghost click iOS (sinon double)
+                  try { haptic() } catch { /* ignore */ }
                   onSelect(conv); if (!persistent) onClose()
                 }}
                 draggable={!!onConvDragStart}
@@ -13645,13 +13646,13 @@ function HistoryDrawer({
                 onDragEnd={onConvDragEnd}
                 style={{
                   padding: '11px 10px 11px 12px', borderRadius: 10, cursor: 'pointer',
-                  background: conv.id === activeId ? 'rgba(91,111,255,0.14)' : 'transparent',
-                  boxShadow: conv.id === activeId ? 'inset 3px 0 0 #5b6fff' : 'none',
+                  background: conv.id === activeId ? 'rgba(127,127,127,0.14)' : 'transparent',
+                  boxShadow: 'none',
                   border: 'none', touchAction: 'pan-y', WebkitTapHighlightColor: 'transparent',
                   display: 'flex', alignItems: 'center', gap: 6,
                   transition: 'background 0.1s',
                 }}
-                onMouseEnter={e => { if (conv.id !== activeId) (e.currentTarget as HTMLDivElement).style.background = 'rgba(91,111,255,0.06)' }}
+                onMouseEnter={e => { if (conv.id !== activeId) (e.currentTarget as HTMLDivElement).style.background = 'rgba(127,127,127,0.08)' }}
                 onMouseLeave={e => { if (conv.id !== activeId) (e.currentTarget as HTMLDivElement).style.background = 'transparent' }}
               >
                 <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'baseline', gap: 6 }}>
@@ -13684,7 +13685,7 @@ function HistoryDrawer({
                   <div style={{
                     flex: 1, minWidth: 0,
                     fontSize: 15, fontWeight: conv.id === activeId ? 650 : 500,
-                    color: conv.id === activeId ? '#5b6fff' : 'var(--ai-text)',
+                    color: 'var(--ai-text)',
                     overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                     lineHeight: 1.35, letterSpacing: '-0.005em',
                   }}>
@@ -24747,11 +24748,6 @@ export default function AIPanel({
               </div>
             </div>
 
-            {!recording && (
-              <div style={{ fontSize: 10, color: 'var(--ai-dim)', marginTop: 5, textAlign: 'center' }}>
-                Entrée · Shift+Entrée pour nouvelle ligne
-              </div>
-            )}
           </div>
           </>}
           {/* /chat-col */}

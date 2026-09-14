@@ -295,9 +295,10 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
           </button>
           {/* Bascule d'interface Athlète ⇄ Coach — réservée au propriétaire de l'espace coach. */}
           {!isRecord && coachAccess.access && (
-            <Link href={isCoach ? "/" : "/coach"} aria-label={isCoach ? t('shared.backToApp') : t('shared.coachSpace')} onClick={() => setOpen(false)} className="thw-glass thw-press"
+            <Link href={isCoach ? "/" : "/coach"} aria-label={isCoach ? t('shared.backToApp') : t('shared.coachSpace')} onClick={() => setOpen(false)} className={isCoach ? 'thw-press' : 'thw-glass thw-press'}
               style={{ ...fab, left: 58, borderRadius: 12, textDecoration: 'none',
-                background: isCoach ? 'var(--primary)' : (fab.background as string), border: isCoach ? '1px solid var(--primary)' : (fab.border as string) }}>
+                background: isCoach ? 'var(--primary)' : (fab.background as string), border: isCoach ? '1px solid var(--primary)' : (fab.border as string),
+                boxShadow: isCoach ? '0 6px 18px rgba(6,182,212,0.34)' : undefined }}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={isCoach ? '#fff' : 'var(--text)'} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
                 <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>
               </svg>

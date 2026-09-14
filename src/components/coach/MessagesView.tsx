@@ -14,6 +14,40 @@ import { useI18n, currentLocale } from '@/lib/i18n'
 type Translate = (key: string, vars?: Record<string, string | number>) => string
 const fmtWhen = (d: string, t: Translate) => { if (!d) return ''; const days = Math.floor((Date.now() - new Date(d).getTime()) / 86400_000); if (days <= 0) return t('w3d.today'); if (days === 1) return t('w3d.yesterday'); if (days < 7) return t('w3d.days_short', { n: days }); try { return new Date(d).toLocaleDateString(currentLocale(), { day: 'numeric', month: 'short' }) } catch { return '' } }
 
+// Dégradé d'avatar déterministe (initiales) — même personne = même couleur. design-allow-color
+const AV_GRADS = [
+  'linear-gradient(135deg,#06B6D4,#5b6fff)', 'linear-gradient(135deg,#f59e0b,#ef4444)',
+  'linear-gradient(135deg,#10b981,#06B6D4)', 'linear-gradient(135deg,#8b5cf6,#ec4899)',
+  'linear-gradient(135deg,#f97316,#f43f5e)', 'linear-gradient(135deg,#3b82f6,#06b6d4)',
+] // design-allow-color
+const gradFor = (s: string) => AV_GRADS[Math.abs([...(s || '?')].reduce((a, c) => a + c.charCodeAt(0), 0)) % AV_GRADS.length]
+
+// Ligne de conversation (personne) : avatar dégradé, nom, aperçu, heure, non-lus.
+function PersonRow({ name, avatar, preview, when, unread, active, onClick }: {
+  name: string; avatar?: string | null; preview: string; when?: string; unread?: number; active: boolean; onClick: () => void
+}) {
+  const initial = (name || '?').slice(0, 1).toUpperCase()
+  return (
+    <button onClick={onClick} className="thw-press msg-row"
+      style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 12px', border: 'none', background: active ? 'var(--bg-alt)' : 'transparent', cursor: 'pointer', textAlign: 'left', width: '100%', fontFamily: 'var(--font-body)', borderRadius: 14, transition: 'background .15s' }}>
+      <span style={{ position: 'relative', flexShrink: 0 }}>
+        <span style={{ width: 46, height: 46, borderRadius: '50%', background: avatar ? 'var(--bg-alt)' : gradFor(name), display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', color: '#fff', fontWeight: 800, fontSize: 17 }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          {avatar ? <img src={avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : initial}
+        </span>
+        {!!unread && unread > 0 && <span style={{ position: 'absolute', top: -1, right: -1, minWidth: 18, height: 18, padding: '0 5px', borderRadius: 9, background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 10, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 0 2px var(--bg-card)' }}>{unread > 9 ? '9+' : unread}</span>}
+      </span>
+      <span style={{ flex: 1, minWidth: 0 }}>
+        <span style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+          <span style={{ fontSize: 14.5, fontWeight: unread ? 800 : 700, color: 'var(--text)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: 'var(--font-display)' }}>{name}</span>
+          {when && <span style={{ fontSize: 11, fontWeight: unread ? 700 : 500, color: unread ? 'var(--primary)' : 'var(--text-dim)', flexShrink: 0 }}>{when}</span>}
+        </span>
+        <span style={{ display: 'block', fontSize: 12.5, color: unread ? 'var(--text-mid)' : 'var(--text-dim)', fontWeight: unread ? 600 : 400, marginTop: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{preview}</span>
+      </span>
+    </button>
+  )
+}
+
 export function MessagesView({ role, title, subtitle, initialThread, initialGroup, onBack }: { role: 'coach' | 'athlete'; title: string; subtitle: string; initialThread?: string | null; initialGroup?: string | null; onBack?: () => void }) {
   const { t } = useI18n()
   const [threads, setThreads] = useState<Thread[]>([])
@@ -70,60 +104,53 @@ export function MessagesView({ role, title, subtitle, initialThread, initialGrou
   // Liste des personnes : DM 1-1 (communauté) + fils coach/athlète, sans le bloc
   // « Groupes ». On appuie sur une personne → ouvre la conversation.
   const empty = !loading && dms.length === 0 && threads.length === 0
+  const rows: React.ReactNode[] = [
+    ...dms.map(g => (
+      <PersonRow key={`g-${g.id}`} name={g.name} avatar={g.dmAvatar} preview={g.lastBody || t('w3d.start_conversation')}
+        when={fmtGroupWhen(g.lastAt)} active={selGroup === g.id} onClick={() => { setSelGroup(g.id); setSelId(null) }} />
+    )),
+    ...threads.map(th => (
+      <PersonRow key={`t-${th.otherId}`} name={th.name} avatar={th.avatar} preview={th.lastBody || t('w3d.start_conversation')}
+        when={th.lastAt ? fmtWhen(th.lastAt, t) : ''} unread={th.unread} active={sel?.otherId === th.otherId}
+        onClick={() => { setSelId(th.otherId); setSelGroup(null) }} />
+    )),
+  ]
   const listPane = (
-    <div style={{ ...card, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-      {loading && <p style={{ fontSize: 13, color: 'var(--text-dim)', padding: 16 }}>{t('w3d.loading')}</p>}
-      {empty && <p style={{ fontSize: 13, color: 'var(--text-dim)', padding: 20, textAlign: 'center' }}>{t('w3d.start_conversation')}</p>}
-      {/* Messages directs 1-1 (personnes) */}
-      {dms.map(g => (
-        <button key={g.id} onClick={() => { setSelGroup(g.id); setSelId(null) }}
-          style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '11px 13px', border: 'none', borderBottom: '1px solid var(--border)', background: selGroup === g.id ? 'var(--bg-alt)' : 'transparent', cursor: 'pointer', textAlign: 'left', width: '100%', fontFamily: 'var(--font-body)' }}>
-          <span style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--bg-alt)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0, color: 'var(--text-dim)', fontWeight: 800 }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            {g.dmAvatar ? <img src={g.dmAvatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : g.name.slice(0, 1).toUpperCase()}
+    <div style={{ ...card, overflow: 'hidden', display: 'flex', flexDirection: 'column', padding: empty || loading ? 0 : 6 }}>
+      {loading && <p style={{ fontSize: 13, color: 'var(--text-dim)', padding: 18 }}>{t('w3d.loading')}</p>}
+      {empty && (
+        <div style={{ padding: '44px 24px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 13 }}>
+          <span style={{ width: 60, height: 60, borderRadius: '50%', background: 'var(--primary-dim)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
           </span>
-          <span style={{ flex: 1, minWidth: 0 }}>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{g.name}</span>
-              {g.lastAt && <span style={{ fontSize: 10.5, color: 'var(--text-dim)', flexShrink: 0 }}>{fmtGroupWhen(g.lastAt)}</span>}
-            </span>
-            <span style={{ display: 'block', fontSize: 12, color: 'var(--text-dim)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{g.lastBody || t('w3d.start_conversation')}</span>
-          </span>
-        </button>
-      ))}
-      {threads.map(th => (
-        <button key={th.otherId} data-guide="coach-thread" onClick={() => { setSelId(th.otherId); setSelGroup(null) }}
-          style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '11px 13px', border: 'none', borderBottom: '1px solid var(--border)', background: sel?.otherId === th.otherId ? 'var(--bg-alt)' : 'transparent', cursor: 'pointer', textAlign: 'left', width: '100%', fontFamily: 'var(--font-body)' }}>
-          <span style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--bg-alt)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0, color: 'var(--text-dim)', fontWeight: 800, position: 'relative' }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            {th.avatar ? <img src={th.avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : th.name.slice(0, 1).toUpperCase()}
-            {th.unread > 0 && <span style={{ position: 'absolute', top: -2, right: -2, minWidth: 16, height: 16, padding: '0 4px', borderRadius: 8, background: '#EF4444', color: '#fff', fontSize: 9, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 0 2px var(--bg-card)' }}>{th.unread > 9 ? '9+' : th.unread}</span>}
-          </span>
-          <span style={{ flex: 1, minWidth: 0 }}>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{th.name}</span>
-              {th.lastAt && <span style={{ fontSize: 10.5, color: 'var(--text-dim)', flexShrink: 0 }}>{fmtWhen(th.lastAt, t)}</span>}
-            </span>
-            <span style={{ display: 'block', fontSize: 12, color: 'var(--text-dim)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{th.lastBody || t('w3d.start_conversation')}</span>
-          </span>
-        </button>
+          <p style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 600, color: 'var(--text)', margin: 0 }}>{t('w3d.start_conversation')}</p>
+        </div>
+      )}
+      {rows.map((row, i) => (
+        <div key={i}>
+          {row}
+          {i < rows.length - 1 && <div style={{ height: 1, background: 'var(--border)', margin: '0 12px 0 70px' }} />}
+        </div>
       ))}
     </div>
   )
 
   const threadPane = sel && (
     <div style={{ ...card, overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-      <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderBottom: '1px solid var(--border)' }}>
+      <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 11, padding: '11px 14px', borderBottom: '1px solid var(--border)', background: 'var(--bg-card)' }}>
         {isNarrow && (
-          <button onClick={() => setSelId(null)} aria-label={t('w3d.back')} style={{ width: 30, height: 30, borderRadius: 9, border: 'none', background: 'var(--bg-alt)', color: 'var(--text-mid)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+          <button onClick={() => setSelId(null)} aria-label={t('w3d.back')} className="thw-press" style={{ width: 32, height: 32, borderRadius: 10, border: 'none', background: 'var(--bg-alt)', color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
           </button>
         )}
-        <span style={{ width: 30, height: 30, borderRadius: '50%', background: 'var(--bg-alt)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0, color: 'var(--text-dim)', fontWeight: 800, fontSize: 12 }}>
+        <span style={{ width: 38, height: 38, borderRadius: '50%', background: sel.avatar ? 'var(--bg-alt)' : gradFor(sel.name), display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0, color: '#fff', fontWeight: 800, fontSize: 15 }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           {sel.avatar ? <img src={sel.avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : sel.name.slice(0, 1).toUpperCase()}
         </span>
-        <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-display)' }}>{sel.name}</span>
+        <span style={{ minWidth: 0 }}>
+          <span style={{ display: 'block', fontSize: 15, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-display)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sel.name}</span>
+          <span style={{ display: 'block', fontSize: 11, color: 'var(--text-dim)', marginTop: 1 }}>{role === 'coach' ? t('w3d.athlete_role') : t('w3d.coach_role')}</span>
+        </span>
       </div>
       <div style={{ flex: 1, minHeight: 0 }}><MessageThread coachId={sel.coachId} athleteId={sel.athleteId} /></div>
     </div>

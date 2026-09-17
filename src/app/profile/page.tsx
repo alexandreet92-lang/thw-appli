@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic'
 
 import { Suspense, useState, useRef, useEffect, useCallback } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
-import { User, Bell, Zap, Moon, Apple, TrendingUp, Sparkles, Coins, Plug, Trophy, Settings, Package, Bike, Footprints, Target, Globe, MapPin, Shield, Lock, CreditCard, BarChart3, Dumbbell, LogOut, ChevronLeft, Palette, Sun, Monitor, Check, Ruler, Users, UserCog, Heart, Wand2 } from 'lucide-react'
+import { User, Bell, Zap, Moon, Apple, TrendingUp, Sparkles, Coins, Plug, Trophy, Settings, Package, Bike, Footprints, Target, Globe, MapPin, Shield, Lock, CreditCard, BarChart3, Dumbbell, LogOut, ChevronLeft, Palette, Sun, Monitor, Check, Ruler, Users, UserCog, Heart, Wand2, Trash2 } from 'lucide-react'
 import SubscriptionEmailModal from '@/components/subscription/SubscriptionEmailModal'
 import { createClient } from '@/lib/supabase/client'
 import { getCurrentUser } from '@/lib/auth/currentUser'
@@ -1371,12 +1371,15 @@ function BlockedUsersSection() {
 }
 
 // ── Suppression de compte DANS l'app (exigence Apple 5.1.1(v)) ─────
-function DeleteAccountRow() {
-  const [open, setOpen] = useState(false)
+// Modale de confirmation partagée (saisie « SUPPRIMER » + appel API). Réutilisée
+// par la ligne de la section Confidentialité ET par la ligne rendue directement
+// sur l'écran principal des réglages (découvrabilité — Apple 5.1.1(v)).
+function DeleteAccountModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [confirmText, setConfirmText] = useState('')
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
   const router = useRouter()
+  useEffect(() => { if (open) { setConfirmText(''); setErr(null) } }, [open])
 
   const doDelete = async () => {
     setBusy(true); setErr(null)
@@ -1393,34 +1396,40 @@ function DeleteAccountRow() {
     }
   }
 
+  if (!open) return null
+  return (
+    <div onClick={() => !busy && onClose()} style={{ position: 'fixed', inset: 0, zIndex: 2147483000, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+      <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 380, background: 'var(--bg-card)', borderRadius: 18, border: '1px solid var(--border)', boxShadow: '0 24px 60px rgba(0,0,0,0.4)', padding: 22, display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: 'var(--text)' }}>Supprimer ton compte ?</h3>
+        <p style={{ margin: 0, fontSize: 13, color: 'var(--text-dim)', lineHeight: 1.5 }}>
+          Cette action est <strong>définitive</strong>. Ton compte et toutes tes données (entraînements, conversations, plans, messages…) seront <strong>supprimés immédiatement</strong> et ne pourront pas être récupérés.
+        </p>
+        <p style={{ margin: 0, fontSize: 12.5, color: 'var(--text-mid)' }}>Pour confirmer, écris <strong>SUPPRIMER</strong> ci-dessous :</p>
+        <input value={confirmText} onChange={e => setConfirmText(e.target.value)} autoFocus placeholder="SUPPRIMER"
+          style={{ padding: '10px 12px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text)', fontSize: 14, outline: 'none', fontFamily: 'var(--font-body)' }} />
+        {err && <p style={{ margin: 0, fontSize: 12, color: '#ef4444' }}>{err}</p>}
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 4 }}>
+          <button onClick={onClose} disabled={busy} style={{ fontSize: 13, padding: '9px 15px', borderRadius: 10, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-mid)', cursor: 'pointer', fontFamily: 'var(--font-body)' }}>Annuler</button>
+          <button onClick={() => void doDelete()} disabled={busy || confirmText.trim().toUpperCase() !== 'SUPPRIMER'} style={{ fontSize: 13, padding: '9px 16px', borderRadius: 10, border: 'none', background: (confirmText.trim().toUpperCase() === 'SUPPRIMER' && !busy) ? '#ef4444' : 'var(--border-mid)', color: '#fff', cursor: (confirmText.trim().toUpperCase() === 'SUPPRIMER' && !busy) ? 'pointer' : 'default', fontWeight: 700, fontFamily: 'var(--font-body)' }}>{busy ? 'Suppression…' : 'Supprimer définitivement'}</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Ligne « Supprimer mon compte » de la section Confidentialité (variante Line).
+function DeleteAccountRow() {
+  const [open, setOpen] = useState(false)
   return (
     <>
-      <Line onClick={() => { setConfirmText(''); setErr(null); setOpen(true) }}>
+      <Line onClick={() => setOpen(true)}>
         <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="1.8" strokeLinecap="round" style={{ flexShrink: 0 }}><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
         <div style={{ flex: 1, minWidth: 0 }}>
           <p style={{ fontSize: 15, fontWeight: 500, margin: 0, color: '#ef4444' }}>Supprimer mon compte</p>
           <p style={{ fontSize: 11.5, color: 'rgba(239,68,68,0.7)', margin: '2px 0 0' }}>Suppression définitive de toutes tes données</p>
         </div>
       </Line>
-
-      {open && (
-        <div onClick={() => !busy && setOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 2147483000, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-          <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 380, background: 'var(--bg-card)', borderRadius: 18, border: '1px solid var(--border)', boxShadow: '0 24px 60px rgba(0,0,0,0.4)', padding: 22, display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: 'var(--text)' }}>Supprimer ton compte ?</h3>
-            <p style={{ margin: 0, fontSize: 13, color: 'var(--text-dim)', lineHeight: 1.5 }}>
-              Cette action est <strong>définitive</strong>. Ton compte et toutes tes données (entraînements, conversations, plans, messages…) seront <strong>supprimés immédiatement</strong> et ne pourront pas être récupérés.
-            </p>
-            <p style={{ margin: 0, fontSize: 12.5, color: 'var(--text-mid)' }}>Pour confirmer, écris <strong>SUPPRIMER</strong> ci-dessous :</p>
-            <input value={confirmText} onChange={e => setConfirmText(e.target.value)} autoFocus placeholder="SUPPRIMER"
-              style={{ padding: '10px 12px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text)', fontSize: 14, outline: 'none', fontFamily: 'var(--font-body)' }} />
-            {err && <p style={{ margin: 0, fontSize: 12, color: '#ef4444' }}>{err}</p>}
-            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 4 }}>
-              <button onClick={() => setOpen(false)} disabled={busy} style={{ fontSize: 13, padding: '9px 15px', borderRadius: 10, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-mid)', cursor: 'pointer', fontFamily: 'var(--font-body)' }}>Annuler</button>
-              <button onClick={() => void doDelete()} disabled={busy || confirmText.trim().toUpperCase() !== 'SUPPRIMER'} style={{ fontSize: 13, padding: '9px 16px', borderRadius: 10, border: 'none', background: (confirmText.trim().toUpperCase() === 'SUPPRIMER' && !busy) ? '#ef4444' : 'var(--border-mid)', color: '#fff', cursor: (confirmText.trim().toUpperCase() === 'SUPPRIMER' && !busy) ? 'pointer' : 'default', fontWeight: 700, fontFamily: 'var(--font-body)' }}>{busy ? 'Suppression…' : 'Supprimer définitivement'}</button>
-            </div>
-          </div>
-        </div>
-      )}
+      <DeleteAccountModal open={open} onClose={() => setOpen(false)} />
     </>
   )
 }
@@ -2788,6 +2797,7 @@ export function ProfileContent() {
   const [signingOut, setSigningOut] = useState(false)
   const [planLabel, setPlanLabel] = useState<string | null>(null)
   const [confirmLogout, setConfirmLogout] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
 
   // Libellé d'abonnement affiché dans le menu : détecté depuis le tier réel.
   useEffect(() => {
@@ -2933,6 +2943,7 @@ export function ProfileContent() {
 
           <div style={{ marginTop: 14 }}>
             {navRow({ id: '__logout__', label: signingOut ? t('profile.signingOut') : t('profile.signOut'), Icon: LogOut, onClick: () => { if (!signingOut) setConfirmLogout(true) } } as { id: string; label: string; Icon: typeof User; value?: string; onClick?: () => void }, true)}
+            {navRow({ id: '__delete__', label: 'Supprimer mon compte', Icon: Trash2, onClick: () => setConfirmDelete(true) } as { id: string; label: string; Icon: typeof User; value?: string; onClick?: () => void }, true)}
           </div>
         </aside>
 
@@ -2952,6 +2963,7 @@ export function ProfileContent() {
         </section>
 
         {logoutModal}
+        <DeleteAccountModal open={confirmDelete} onClose={() => setConfirmDelete(false)} />
       </div>
     )
   }
@@ -3009,9 +3021,10 @@ export function ProfileContent() {
               </div>
             ))}
 
-            {/* Se déconnecter */}
+            {/* Se déconnecter + Supprimer mon compte (découvrabilité Apple 5.1.1(v)) */}
             <div style={{ background: GREY_CARD, border: '1px solid var(--border)', borderRadius: 16, overflow: 'hidden', boxShadow: 'var(--shadow-card)' }}>
-              <ListRow Icon={LogOut} label={signingOut ? t('profile.signingOut') : t('profile.signOut')} danger last onClick={() => { if (!signingOut) setConfirmLogout(true) }} />
+              <ListRow Icon={LogOut} label={signingOut ? t('profile.signingOut') : t('profile.signOut')} danger onClick={() => { if (!signingOut) setConfirmLogout(true) }} />
+              <ListRow Icon={Trash2} label="Supprimer mon compte" danger last onClick={() => setConfirmDelete(true)} />
             </div>
           </div>
         )}
@@ -3019,6 +3032,7 @@ export function ProfileContent() {
 
       {/* Confirmation de déconnexion (partagée) */}
       {logoutModal}
+      <DeleteAccountModal open={confirmDelete} onClose={() => setConfirmDelete(false)} />
     </div>
     </div>
   )

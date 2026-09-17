@@ -475,7 +475,39 @@ function ProfilSection({ profile, setProfile, saveProfile }: { profile: ProfileS
             {SPORTS.map(([v]) => <Pill key={v} on={profile.sports.includes(v)} onClick={() => toggleSport(v)}>{t(`w1a.sport_${v}`)}</Pill>)}
           </div>
         </div>
+        <AIConsentBlock />
       </div>
+    </div>
+  )
+}
+
+// ── Confidentialité IA : partage de données avec Anthropic ─────────
+// Reflète et pilote le consentement demandé avant le 1er envoi (clé
+// localStorage 'thw_ai_consent_v1', partagée avec AIPanel). Le retirer
+// désactive l'assistant : le prochain envoi redemandera l'accord.
+function AIConsentBlock() {
+  const [on, setOn] = useState(true)
+  useEffect(() => {
+    try { setOn(localStorage.getItem('thw_ai_consent_v1') === '1') } catch { /* ignore */ }
+  }, [])
+  const change = (v: boolean) => {
+    setOn(v)
+    try { localStorage.setItem('thw_ai_consent_v1', v ? '1' : '0') } catch { /* ignore */ }
+  }
+  return (
+    <div style={{ borderTop: '1px solid var(--border)', paddingTop: 18, display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 14.5, fontWeight: 600, color: 'var(--text)', fontFamily: FB, marginBottom: 3 }}>Partage de données avec l’IA</div>
+          <p style={{ fontSize: 12.5, color: 'var(--text-dim)', lineHeight: 1.5, margin: 0, fontFamily: FB }}>
+            Autorise l’envoi de tes messages et du contexte d’entraînement à <strong>Anthropic</strong> (modèles Claude) pour générer les réponses du coach. Le désactiver coupe l’assistant.
+          </p>
+        </div>
+        <Toggle value={on} onChange={change} />
+      </div>
+      <a href="/site/confidentialite.html" target="_blank" rel="noopener" style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--primary)', textDecoration: 'none', fontFamily: FB }}>
+        Politique de confidentialité →
+      </a>
     </div>
   )
 }

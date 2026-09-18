@@ -216,6 +216,21 @@ function saveConvs(c: AIConv[]) {
 }
 function genId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6) }
 
+// ── Consentement IA (RGPD / App Store 5.1.1) ─────────────────────
+// Avant tout premier envoi, l'utilisateur doit consentir explicitement au
+// transfert de ses messages + contexte d'entraînement vers Anthropic (Claude),
+// notre fournisseur de modèles d'IA. Le choix est mémorisé localement ; le
+// retrait se fait via les réglages (désactive l'assistant).
+const AI_CONSENT_KEY = 'thw_ai_consent_v1'
+function hasAIConsent(): boolean {
+  if (typeof window === 'undefined') return true
+  try { return localStorage.getItem(AI_CONSENT_KEY) === '1' } catch { return false }
+}
+function setAIConsent(ok: boolean) {
+  if (typeof window === 'undefined') return
+  try { localStorage.setItem(AI_CONSENT_KEY, ok ? '1' : '0') } catch { /* ignore */ }
+}
+
 // ── Configs des 3 modèles ─────────────────────────────────────
 
 interface ModelConfig {
@@ -13615,7 +13630,7 @@ function HistoryDrawer({
               </div>
             ) : (
               <div
-                onClick={() => { onSelect(conv); if (!persistent) onClose() }}
+                onClick={() => { try { haptic() } catch { /* ignore */ } onSelect(conv); if (!persistent) onClose() }}
                 onTouchStart={e => {
                   const t = e.touches[0]; tapRef.current = { x: t.clientX, y: t.clientY, moved: false, long: false }
                   if (lpTimer.current) clearTimeout(lpTimer.current)
@@ -13633,6 +13648,7 @@ function HistoryDrawer({
                   if (!r || r.moved) return           // scroll/swipe → ne pas sélectionner
                   if (r.long) { e.preventDefault(); return } // appui long déjà géré (menu ouvert)
                   e.preventDefault()                  // coupe le ghost click iOS (sinon double)
+                  try { haptic() } catch { /* ignore */ }
                   onSelect(conv); if (!persistent) onClose()
                 }}
                 draggable={!!onConvDragStart}
@@ -13645,13 +13661,13 @@ function HistoryDrawer({
                 onDragEnd={onConvDragEnd}
                 style={{
                   padding: '11px 10px 11px 12px', borderRadius: 10, cursor: 'pointer',
-                  background: conv.id === activeId ? 'rgba(91,111,255,0.14)' : 'transparent',
-                  boxShadow: conv.id === activeId ? 'inset 3px 0 0 #5b6fff' : 'none',
+                  background: conv.id === activeId ? 'rgba(127,127,127,0.14)' : 'transparent',
+                  boxShadow: 'none',
                   border: 'none', touchAction: 'pan-y', WebkitTapHighlightColor: 'transparent',
                   display: 'flex', alignItems: 'center', gap: 6,
                   transition: 'background 0.1s',
                 }}
-                onMouseEnter={e => { if (conv.id !== activeId) (e.currentTarget as HTMLDivElement).style.background = 'rgba(91,111,255,0.06)' }}
+                onMouseEnter={e => { if (conv.id !== activeId) (e.currentTarget as HTMLDivElement).style.background = 'rgba(127,127,127,0.08)' }}
                 onMouseLeave={e => { if (conv.id !== activeId) (e.currentTarget as HTMLDivElement).style.background = 'transparent' }}
               >
                 <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'baseline', gap: 6 }}>
@@ -13684,7 +13700,7 @@ function HistoryDrawer({
                   <div style={{
                     flex: 1, minWidth: 0,
                     fontSize: 15, fontWeight: conv.id === activeId ? 650 : 500,
-                    color: conv.id === activeId ? '#5b6fff' : 'var(--ai-text)',
+                    color: 'var(--ai-text)',
                     overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                     lineHeight: 1.35, letterSpacing: '-0.005em',
                   }}>
@@ -20809,6 +20825,10 @@ export default function AIPanel({
   // Feuille « Processus de réflexion » : id du message dont on affiche le
   // raisonnement étendu (null = fermée).
   const [reasoningMsgId, setReasoningMsgId] = useState<string | null>(null)
+  // Consentement IA : modale de disclosure (Anthropic) affichée avant le
+  // premier envoi. `pendingSendRef` mémorise l'appel à rejouer après accord.
+  const [aiConsentOpen, setAiConsentOpen] = useState(false)
+  const pendingSendRef = useRef<null | (() => void)>(null)
   // Sur-page « Réglages IA » ouverte PAR-DESSUS l'interface IA (depuis l'avatar).
   // Nouvelle surpage Paramètres (style Claude) — section ciblée par l'avatar.
   // Sidebar desktop repliable.
@@ -22439,6 +22459,15 @@ export default function AIPanel({
     const quoteForSend = targeted ? null : quotedText
     const displayText = txt || (qaForSend ? qaForSend.label : '') || (effAttachment ? `[${effAttachment.name}]` : '') || (hasImages ? `[${effImages.length} photo${effImages.length > 1 ? 's' : ''}]` : '')
     if (!displayText && !hasAttachment && !hasImages) return
+
+    // ── Barrière de consentement IA (avant tout premier transfert vers
+    // Anthropic). Sans accord, on mémorise l'envoi et on ouvre la modale ;
+    // l'envoi est rejoué à l'acceptation. Le texte saisi n'est pas effacé. ──
+    if (!hasAIConsent()) {
+      pendingSendRef.current = () => { void send(presetDisplay, presetApi, opts) }
+      setAiConsentOpen(true)
+      return
+    }
 
     if (!targeted) {
       setInput('')
@@ -24747,11 +24776,6 @@ export default function AIPanel({
               </div>
             </div>
 
-            {!recording && (
-              <div style={{ fontSize: 10, color: 'var(--ai-dim)', marginTop: 5, textAlign: 'center' }}>
-                Entrée · Shift+Entrée pour nouvelle ligne
-              </div>
-            )}
           </div>
           </>}
           {/* /chat-col */}
@@ -24997,6 +25021,104 @@ export default function AIPanel({
             </svg>
             Demander à THW
           </button>
+        </div>
+      )}
+
+      {/* ── Modale de consentement IA (RGPD / Apple 5.1.1(i)) ──
+          Affichée avant le tout premier envoi. Divulgue le transfert des
+          messages + contexte d'entraînement vers Anthropic (Claude) et
+          demande l'accord explicite. Refus → aucun envoi. */}
+      {aiConsentOpen && mounted && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          onClick={() => { setAiConsentOpen(false); pendingSendRef.current = null }}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 10050,
+            display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+            background: 'rgba(0,0,0,0.45)',
+            backdropFilter: 'blur(3px)', WebkitBackdropFilter: 'blur(3px)',
+            animation: 'ai_actions_in 0.16s ease',
+            padding: 'max(16px, env(safe-area-inset-top)) 14px calc(env(safe-area-inset-bottom) + 16px)',
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              width: '100%', maxWidth: 460,
+              background: 'var(--ai-bg)', color: 'var(--ai-text)',
+              borderRadius: 22,
+              border: '1px solid var(--ai-border, rgba(127,127,127,0.16))',
+              boxShadow: '0 18px 60px rgba(0,0,0,0.34)',
+              padding: '24px 22px 20px',
+              marginBottom: 'env(safe-area-inset-bottom)',
+              animation: 'ai_slidein 0.22s cubic-bezier(0.22,1,0.36,1)',
+            }}
+          >
+            <div style={{
+              width: 46, height: 46, borderRadius: 14,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: 'color-mix(in srgb, var(--ai-text) 8%, transparent)',
+              marginBottom: 14,
+            }}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 2a3 3 0 0 0-3 3v1a3 3 0 0 0-3 3 3 3 0 0 0-1 5.83V17a3 3 0 0 0 3 3h.17A3 3 0 0 0 12 22a3 3 0 0 0 2.83-2H15a3 3 0 0 0 3-3v-2.17A3 3 0 0 0 17 6a3 3 0 0 0-3-3 3 3 0 0 0-2-1Z"/>
+              </svg>
+            </div>
+            <h2 style={{ fontSize: 19, fontWeight: 700, margin: '0 0 8px', lineHeight: 1.25 }}>
+              Ton coach IA utilise Anthropic
+            </h2>
+            <p style={{ fontSize: 14, lineHeight: 1.5, margin: '0 0 10px', color: 'color-mix(in srgb, var(--ai-text) 78%, transparent)' }}>
+              Pour générer les réponses de ton coach, tes messages et le contexte
+              d'entraînement pertinent (sport, objectifs, extraits de tes séances)
+              sont transmis à <strong>Anthropic</strong> (modèles Claude), notre
+              fournisseur d'IA.
+            </p>
+            <p style={{ fontSize: 14, lineHeight: 1.5, margin: '0 0 6px', color: 'color-mix(in srgb, var(--ai-text) 78%, transparent)' }}>
+              Anthropic n'utilise pas ces échanges pour entraîner ses modèles. Tu
+              peux retirer ton accord à tout moment dans les réglages (l'assistant
+              est alors désactivé).
+            </p>
+            <a
+              href="/site/confidentialite.html"
+              target="_blank"
+              rel="noopener"
+              style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-accent, #5b6fff)', textDecoration: 'none' }}
+            >
+              Lire la politique de confidentialité →
+            </a>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 9, marginTop: 20 }}>
+              <button
+                onClick={() => {
+                  setAIConsent(true)
+                  setAiConsentOpen(false)
+                  const replay = pendingSendRef.current
+                  pendingSendRef.current = null
+                  if (replay) setTimeout(replay, 0)
+                }}
+                style={{
+                  width: '100%', padding: '14px', borderRadius: 14, border: 'none',
+                  background: 'var(--ai-text)', color: 'var(--ai-bg)',
+                  fontSize: 15, fontWeight: 700, cursor: 'pointer',
+                  fontFamily: 'DM Sans,sans-serif',
+                }}
+              >
+                Accepter et continuer
+              </button>
+              <button
+                onClick={() => { setAiConsentOpen(false); pendingSendRef.current = null }}
+                style={{
+                  width: '100%', padding: '13px', borderRadius: 14,
+                  border: '1px solid var(--ai-border, rgba(127,127,127,0.18))',
+                  background: 'transparent', color: 'var(--ai-text)',
+                  fontSize: 15, fontWeight: 600, cursor: 'pointer',
+                  fontFamily: 'DM Sans,sans-serif',
+                }}
+              >
+                Refuser
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </>,

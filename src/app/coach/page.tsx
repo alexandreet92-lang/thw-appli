@@ -74,7 +74,7 @@ export default function CoachDashboard() {
   ]
 
   return (
-    <div style={{ width: '100%', padding: '20px clamp(16px,4vw,40px) 60px', boxSizing: 'border-box', fontFamily: BODY }}>
+    <div style={{ width: '100%', padding: '20px clamp(16px,4vw,40px) calc(env(safe-area-inset-bottom) + 104px)', boxSizing: 'border-box', fontFamily: BODY }}>
       <h1 style={{ fontFamily: DISP, fontWeight: 600, fontSize: 28, margin: 0, color: 'var(--text)' }}>{t('w3d.dashboard_title')}</h1>
       <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: '3px 0 0' }}>{t('w3d.dashboard_subtitle')}</p>
 

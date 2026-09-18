@@ -51,6 +51,7 @@ import { Trophy, Briefcase, Heart, LayoutGrid, CalendarDays, Target, PartyPopper
 import { SectionLayout } from '@/components/navigation/SectionLayout'
 import { useI18n, currentLocale } from '@/lib/i18n'
 import { useGuideTabDemo } from '@/components/guide/guideDemo'
+import { useNarrow } from '@/lib/hooks/useNarrow'
 type CalView       = 'year' | 'month'
 type TimelineMode  = 'vertical' | 'horizontal'
 type RaceLevel     = 'secondary' | 'important' | 'main' | 'gty' | 'event'
@@ -1145,99 +1146,124 @@ function ObjectiveChooser({ date, onClose, onCourse, onStage, onTest, onEvent }:
 // ════════════════════════════════════════════════
 // CATEGORY EVENT MODAL (Pro / Perso)
 // ════════════════════════════════════════════════
-function CategoryEventModal({ category, eventTypes, initialDate, onClose, onSave }: {
-  category: 'pro' | 'perso'; eventTypes: CalEventType[]
-  initialDate: string; onClose: () => void
+// Responsive : bureau = sur-page CENTRÉE (milieu de l'écran), mobile = sur-page
+// basse. Types supprimés (comme les objectifs Course) : titre + date +
+// description + importance ; la teinte d'importance donne la couleur (bleu Pro /
+// violet Perso). Sert à la fois à créer et à modifier un objectif.
+function CategoryEventModal({ category, initialDate, initial, onClose, onSave, onDelete }: {
+  category: 'pro' | 'perso'
+  initialDate: string
+  initial?: CalEvent
+  onClose: () => void
   onSave: (e: Omit<CalEvent, 'id'>) => void
+  onDelete?: () => void
 }) {
   const { t: tr } = useI18n()
-  const types = eventTypes.filter(t => t.category === category)
-  const [title, setTitle]     = useState('')
-  const [date, setDate]       = useState(initialDate)
-  const [desc, setDesc]       = useState('')
-  const [typeId, setTypeId]   = useState<string>(types[0]?.id ?? '')
-  const [importance, setImportance] = useState<Importance>('normal')
-
-  const selectedType = types.find(t => t.id === typeId)
+  const narrow = useNarrow()
+  const [title, setTitle]     = useState(initial?.title ?? '')
+  const [date, setDate]       = useState(initial?.date ?? initialDate)
+  const [desc, setDesc]       = useState(initial?.description ?? '')
+  const [importance, setImportance] = useState<Importance>(initial?.importance ?? 'normal')
   const shade = eventShade(category, importance)
 
-  return createPortal(
+  const [shown, setShown] = useState(false)
+  useEffect(() => { const id = requestAnimationFrame(() => setShown(true)); return () => cancelAnimationFrame(id) }, [])
+  const close = () => { setShown(false); setTimeout(onClose, 280) }
+
+  function save() {
+    if (!title.trim() || !date) return
+    onSave({ category, date, title: title.trim(), description: desc || undefined, color: shade, importance, done: initial?.done ?? false })
+    close()
+  }
+
+  const body = (
     <>
-      <div onClick={onClose} style={{ position:'fixed',inset:0,zIndex:300,background:'rgba(0,0,0,0.55)',backdropFilter:'blur(4px)',animation:'cardEnter 0.2s ease both' }} />
-      <div onClick={e => e.stopPropagation()} style={{ position:'fixed',bottom:0,left:0,right:0,zIndex:301,maxHeight:'calc(100dvh - 72px)',overflowY:'auto',background:'var(--bg-card)',borderRadius:'22px 22px 0 0',border:'1px solid var(--border-mid)',borderBottom:'none',padding:'20px 20px calc(20px + env(safe-area-inset-bottom,0px))',animation:'slideUp 0.28s cubic-bezier(0.4,0,0.2,1) both' }}>
-        <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:16 }}>
-          <h3 style={{ fontFamily:'Syne,sans-serif',fontSize:15,fontWeight:700,margin:0 }}>
-            {tr('calendar.addEventCategory', { category: tr(CATEGORY_LABEL_KEY[category]) })}
-          </h3>
-          <button onClick={onClose} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius:8,padding:'4px 8px',cursor:'pointer',color:'var(--text-dim)',fontSize:14 }}>✕</button>
-        </div>
+      <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:16 }}>
+        <h3 style={{ fontFamily:'Syne,sans-serif',fontSize:16,fontWeight:800,margin:0 }}>
+          {initial ? tr('calendar.editBtn') : tr('calendar.addEventCategory', { category: tr(CATEGORY_LABEL_KEY[category]) })}
+        </h3>
+        <button onClick={close} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius:8,padding:'4px 8px',cursor:'pointer',color:'var(--text-dim)',fontSize:14 }}>✕</button>
+      </div>
 
-        {types.length === 0 ? (
-          <div style={{ padding:'16px',textAlign:'center',borderRadius:10,background:'var(--bg-card2)',border:'1px solid var(--border)',marginBottom:14 }}>
-            <p style={{ fontSize:12,color:'var(--text-dim)',margin:0 }}>{tr('calendar.createTypeFirst')}</p>
-          </div>
-        ) : (
-          <div style={{ marginBottom:12 }}>
-            <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:7 }}>{tr('calendar.type')}</p>
-            <div style={{ display:'flex',gap:5,flexWrap:'wrap' }}>
-              {types.map(t => (
-                <button key={t.id} onClick={() => setTypeId(t.id)}
-                  style={{ padding:'5px 10px',borderRadius:20,border:'1px solid',borderColor:typeId===t.id?t.color:'var(--border)',background:typeId===t.id?t.color+'22':'var(--bg-card2)',color:typeId===t.id?t.color:'var(--text-mid)',fontSize:11,cursor:'pointer',fontWeight:typeId===t.id?600:400 }}>
-                  {t.name}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
+      <div style={{ marginBottom:10 }}>
+        <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>{tr('calendar.titleLabel')}</p>
+        <input value={title} onChange={e => setTitle(e.target.value)} placeholder={tr('calendar.eventTitlePlaceholder')} autoFocus
+          style={{ width:'100%',padding:'9px 11px',borderRadius:9,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:13,outline:'none' }}/>
+      </div>
+      <div style={{ marginBottom:10 }}>
+        <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>{tr('calendar.date')}</p>
+        <input type="date" value={date} onChange={e => setDate(e.target.value)}
+          style={{ width:'100%',padding:'9px 11px',borderRadius:9,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:13,outline:'none' }}/>
+      </div>
+      <div style={{ marginBottom:12 }}>
+        <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>{tr('calendar.description')}</p>
+        <textarea value={desc} onChange={e => setDesc(e.target.value)} rows={2} placeholder={tr('calendar.optional')}
+          style={{ width:'100%',padding:'9px 11px',borderRadius:9,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:13,outline:'none',resize:'none' }}/>
+      </div>
 
-        <div style={{ marginBottom:10 }}>
-          <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>{tr('calendar.titleLabel')}</p>
-          <input value={title} onChange={e => setTitle(e.target.value)} placeholder={tr('calendar.eventTitlePlaceholder')}
-            style={{ width:'100%',padding:'7px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:12,outline:'none' }}/>
-        </div>
-        <div style={{ marginBottom:10 }}>
-          <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>{tr('calendar.date')}</p>
-          <input type="date" value={date} onChange={e => setDate(e.target.value)}
-            style={{ width:'100%',padding:'7px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:12,outline:'none' }}/>
-        </div>
-        <div style={{ marginBottom:12 }}>
-          <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>{tr('calendar.description')}</p>
-          <textarea value={desc} onChange={e => setDesc(e.target.value)} rows={2} placeholder={tr('calendar.optional')}
-            style={{ width:'100%',padding:'7px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:12,outline:'none',resize:'none' }}/>
-        </div>
-
-        {/* Importance : dégradé de teinte (bleu pour Pro, violet pour Perso). */}
-        <div style={{ marginBottom:14 }}>
-          <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:7 }}>{tr('calendar.importance')}</p>
-          <div style={{ display:'flex',gap:6 }}>
-            {(['normal','important','primordial'] as Importance[]).map(lvl => {
-              const c = eventShade(category, lvl); const on = importance === lvl
-              return (
-                <button key={lvl} onClick={() => setImportance(lvl)}
-                  style={{ flex:1,display:'flex',alignItems:'center',justifyContent:'center',gap:6,padding:'8px 6px',borderRadius:10,border:`1.5px solid ${on?c:'var(--border)'}`,background:on?`${c}1f`:'var(--bg-card2)',color:on?c:'var(--text-mid)',fontSize:11,fontWeight:on?700:500,cursor:'pointer' }}>
-                  <span style={{ width:10,height:10,borderRadius:'50%',background:c,flexShrink:0 }} />
-                  {tr(IMPORTANCE_LABEL_KEY[lvl])}
-                </button>
-              )
-            })}
-          </div>
-        </div>
-
-        <div style={{ display:'flex',gap:8 }}>
-          <button onClick={onClose} style={{ flex:1,padding:10,borderRadius:10,background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',fontSize:12,cursor:'pointer' }}>{tr('calendar.cancel')}</button>
-          <button
-            onClick={() => {
-              if (!title || !date || !typeId) return
-              // La teinte d'importance PRIME sur la couleur du type pour le rendu.
-              onSave({ category, typeId, date, title, description:desc||undefined, color: shade, importance, done:false })
-              onClose()
-            }}
-            style={{ flex:2,padding:10,borderRadius:10,background:shade,border:'none',color:'#fff',fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:12,cursor:'pointer' }}>
-            {tr('calendar.addBtn')}
-          </button>
+      {/* Importance : dégradé de teinte (bleu pour Pro, violet pour Perso). */}
+      <div style={{ marginBottom:14 }}>
+        <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:7 }}>{tr('calendar.importance')}</p>
+        <div style={{ display:'flex',gap:6 }}>
+          {(['normal','important','primordial'] as Importance[]).map(lvl => {
+            const c = eventShade(category, lvl); const on = importance === lvl
+            return (
+              <button key={lvl} onClick={() => setImportance(lvl)}
+                style={{ flex:1,display:'flex',alignItems:'center',justifyContent:'center',gap:6,padding:'9px 6px',borderRadius:10,border:`1.5px solid ${on?c:'var(--border)'}`,background:on?`${c}1f`:'var(--bg-card2)',color:on?c:'var(--text-mid)',fontSize:11,fontWeight:on?700:500,cursor:'pointer' }}>
+                <span style={{ width:10,height:10,borderRadius:'50%',background:c,flexShrink:0 }} />
+                {tr(IMPORTANCE_LABEL_KEY[lvl])}
+              </button>
+            )
+          })}
         </div>
       </div>
-    </>,
+
+      <div style={{ display:'flex',gap:8 }}>
+        {onDelete && (
+          <button onClick={() => { onDelete(); close() }} aria-label={tr('calendar.delete')}
+            style={{ padding:'11px 14px',borderRadius:11,background:'rgba(239,68,68,0.08)',border:'1px solid rgba(239,68,68,0.24)',color:'#ef4444',fontSize:13,fontWeight:700,cursor:'pointer' }}>✕</button>
+        )}
+        <button onClick={close} style={{ flex:1,padding:11,borderRadius:11,background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',fontSize:13,cursor:'pointer' }}>{tr('calendar.cancel')}</button>
+        <button onClick={save}
+          style={{ flex:2,padding:11,borderRadius:11,background:shade,border:'none',color:'#fff',fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:13,cursor:'pointer' }}>
+          {initial ? tr('calendar.save') : tr('calendar.addBtn')}
+        </button>
+      </div>
+    </>
+  )
+
+  return createPortal(
+    narrow ? (
+      // ── Mobile : sur-page basse (bottom sheet) ──────────────────────
+      <div style={{ position:'fixed',inset:0,zIndex:5000 }}>
+        <div onClick={close} style={{ position:'absolute',inset:0,background:'rgba(0,0,0,0.5)',backdropFilter:'blur(4px)',WebkitBackdropFilter:'blur(4px)',opacity:shown?1:0,transition:'opacity 0.28s' }} />
+        <div onClick={e => e.stopPropagation()} style={{
+          position:'absolute',left:0,right:0,bottom:0,maxHeight:'calc(100dvh - 60px)',overflowY:'auto',
+          background:'var(--bg-card)',borderRadius:'26px 26px 0 0',border:'1px solid var(--border-mid)',borderBottom:'none',
+          padding:'18px 20px calc(20px + env(safe-area-inset-bottom))',boxShadow:'0 -10px 50px rgba(0,0,0,0.22)',
+          transform:shown?'translateY(0)':'translateY(100%)',transition:'transform 0.32s cubic-bezier(0.32,0.72,0,1)',
+        }}>
+          <div style={{ width:40,height:4,borderRadius:4,background:'var(--border-mid)',margin:'0 auto 14px' }} />
+          {body}
+        </div>
+      </div>
+    ) : (
+      // ── Bureau : sur-page CENTRÉE (milieu de l'écran) ───────────────
+      <div onClick={close} style={{
+        position:'fixed',inset:0,zIndex:5000,display:'flex',alignItems:'center',justifyContent:'center',padding:20,
+        background:'rgba(0,0,0,0.5)',backdropFilter:'blur(4px)',WebkitBackdropFilter:'blur(4px)',opacity:shown?1:0,transition:'opacity 0.28s',
+      }}>
+        <div onClick={e => e.stopPropagation()} style={{
+          width:'100%',maxWidth:440,maxHeight:'calc(100dvh - 40px)',overflowY:'auto',
+          background:'var(--bg-card)',borderRadius:20,border:'1px solid var(--border-mid)',
+          padding:'22px 22px',boxShadow:'0 24px 80px rgba(0,0,0,0.35)',
+          transform:shown?'scale(1)':'scale(0.94)',opacity:shown?1:0,
+          transition:'transform 0.26s cubic-bezier(0.32,0.72,0,1), opacity 0.2s ease',
+        }}>
+          {body}
+        </div>
+      </div>
+    ),
     document.body,
   )
 }
@@ -1245,217 +1271,101 @@ function CategoryEventModal({ category, eventTypes, initialDate, onClose, onSave
 // ════════════════════════════════════════════════
 // CATEGORY TAB (Pro / Perso)
 // ════════════════════════════════════════════════
-function CategoryTab({ category, eventTypes, events, addEventType, updateEventType, deleteEventType, addEvent, updateEvent, deleteEvent }: {
+// Objectifs Pro / Perso — MÊME présentation que les objectifs Course : vue
+// annuelle iOS (grille 12 mini-mois) + vue mensuelle iOS, sélecteur d'année,
+// ajout/édition via sur-page (centrée sur bureau, basse sur mobile). Système de
+// « types » supprimé : couleur = teinte d'importance (bleu Pro / violet Perso).
+function CategoryTab({ category, events, addEvent, updateEvent, deleteEvent }: {
   category: 'pro' | 'perso'
-  eventTypes: CalEventType[]; events: CalEvent[]
-  addEventType: (t: Omit<CalEventType, 'id'>) => void
-  updateEventType: (t: CalEventType) => void
-  deleteEventType: (id: string) => void
+  events: CalEvent[]
   addEvent: (e: Omit<CalEvent, 'id'>) => void
   updateEvent: (e: CalEvent) => void
   deleteEvent: (id: string) => void
 }) {
   const { t: tr } = useI18n()
-  const monthsFull = Array.from({ length: 12 }, (_, i) => tr(`lo.month${i}`))
-  const monthShort = Array.from({ length: 12 }, (_, i) => tr(`lo.monthShort${i}`))
-  const cfg = CATEGORY_CONFIG[category]
-  const year = new Date().getFullYear()
   const [calView, setCalView]           = useState<CalView>('year')
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth())
-  const [showTypeManager, setShowTypeManager] = useState(false)
-  const [newTypeName, setNewTypeName]   = useState('')
-  const [newTypeColor, setNewTypeColor] = useState('#3b82f6')
-  const [editingType, setEditingType]   = useState<CalEventType | null>(null)
-  const [addEventModal, setAddEventModal] = useState<string | null>(null) // date string
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
+  const [yearPickerOpen, setYearPickerOpen] = useState(false)
+  // Sur-page d'objectif : { date, ev? } (ev présent → édition, sinon création).
+  const [eventModal, setEventModal] = useState<{ date: string; ev?: CalEvent } | null>(null)
 
-  const myTypes  = eventTypes.filter(t => t.category === category)
   const myEvents = events.filter(e => e.category === category)
+  const yearEvents = myEvents
+    .filter(e => new Date(e.date + 'T12:00:00').getFullYear() === selectedYear)
+    .sort((a, b) => a.date.localeCompare(b.date))
 
-  function getColor(e: CalEvent): string {
-    if (e.color) return e.color
-    const t = eventTypes.find(t => t.id === e.typeId)
-    return t?.color ?? cfg.color
+  const colorOf = (e: CalEvent) => e.color ?? eventShade(category, e.importance)
+
+  // Couleur d'un jour dans la grille annuelle : teinte la plus forte du jour.
+  function colorForDay(ds: string): string | null {
+    const day = myEvents.filter(e => e.date === ds)
+    if (day.length === 0) return null
+    const order: Importance[] = ['primordial', 'important', 'normal']
+    for (const imp of order) { const f = day.find(e => (e.importance ?? 'normal') === imp); if (f) return colorOf(f) }
+    return colorOf(day[0])
   }
-
-  function getEventsForMonth(m: number) {
-    return myEvents.filter(e => { const d = new Date(e.date); return d.getFullYear() === year && d.getMonth() === m })
+  // Pastilles d'un jour dans la vue mensuelle (tap → édition de l'objectif).
+  function itemsForDay(ds: string) {
+    return myEvents.filter(e => e.date === ds).map(e => ({
+      key: e.id, label: e.title, color: colorOf(e),
+      onClick: () => setEventModal({ date: ds, ev: e }),
+    }))
   }
-
-  const PRESET_COLORS = ['#3b82f6','#ef4444','#a855f7','#22c55e','#f97316','#eab308','#ec4899','#14b8a6','#f43f5e','#8b5cf6']
 
   return (
     <div style={{ display:'flex',flexDirection:'column',gap:14 }}>
-      {/* Header */}
-      <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:8 }}>
-        <div style={{ display:'flex',gap:5 }}>
-          {([['year',tr('calendar.annualView')],['month',tr('calendar.monthlyView')]] as [CalView,string][]).map(([v, l]) => (
-            <button key={v} onClick={() => setCalView(v)}
-              style={{ padding:'6px 12px',borderRadius:9,border:'1px solid',borderColor:calView===v?cfg.color:'var(--border)',background:calView===v?cfg.bg:'var(--bg-card)',color:calView===v?cfg.color:'var(--text-mid)',fontSize:11,cursor:'pointer',fontWeight:calView===v?600:400 }}>
-              {l}
-            </button>
-          ))}
-        </div>
-        <div style={{ display:'flex',gap:6 }}>
-          <button onClick={() => setShowTypeManager(!showTypeManager)}
-            style={{ padding:'6px 12px',borderRadius:9,background:showTypeManager?cfg.bg:'var(--bg-card)',border:`1px solid ${showTypeManager?cfg.color:'var(--border)'}`,color:showTypeManager?cfg.color:'var(--text-mid)',fontSize:11,fontWeight:600,cursor:'pointer' }}>
-            {tr('calendar.typesBtn')}
-          </button>
-          <button onClick={() => setAddEventModal(`${year}-${String(currentMonth+1).padStart(2,'0')}-01`)}
-            style={{ padding:'6px 12px',borderRadius:9,background:cfg.color,border:'none',color:'#fff',fontSize:11,fontWeight:600,cursor:'pointer' }}>
-            {tr('calendar.eventBtn')}
-          </button>
-        </div>
-      </div>
-
-      {/* Type Manager */}
-      {showTypeManager && (
-        <div style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:14,padding:16,boxShadow:'var(--shadow-card)' }}>
-          <p style={{ fontFamily:'Syne,sans-serif',fontSize:13,fontWeight:700,margin:'0 0 12px' }}>{tr('calendar.manageTypes')}</p>
-
-          {/* Existing types */}
-          {myTypes.length > 0 && (
-            <div style={{ display:'flex',flexDirection:'column',gap:6,marginBottom:12 }}>
-              {myTypes.map(t => (
-                <div key={t.id} style={{ display:'flex',alignItems:'center',gap:8,padding:'8px 10px',borderRadius:9,background:'var(--bg-card2)',border:'1px solid var(--border)' }}>
-                  <div style={{ width:12,height:12,borderRadius:'50%',background:t.color,flexShrink:0 }}/>
-                  {editingType?.id === t.id ? (
-                    <>
-                      <input value={editingType.name} onChange={e => setEditingType({ ...editingType, name:e.target.value })}
-                        style={{ flex:1,padding:'4px 8px',borderRadius:6,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:12,outline:'none' }}/>
-                      <div style={{ display:'flex',gap:4 }}>
-                        {PRESET_COLORS.map(c => (
-                          <div key={c} onClick={() => setEditingType({ ...editingType, color:c })}
-                            style={{ width:14,height:14,borderRadius:'50%',background:c,cursor:'pointer',border:editingType.color===c?'2px solid var(--text)':'2px solid transparent' }}/>
-                        ))}
-                      </div>
-                      <button onClick={() => { updateEventType(editingType); setEditingType(null) }}
-                        style={{ padding:'3px 8px',borderRadius:6,background:cfg.color,border:'none',color:'#fff',fontSize:10,cursor:'pointer' }}>✓</button>
-                      <button onClick={() => setEditingType(null)}
-                        style={{ padding:'3px 6px',borderRadius:6,background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-dim)',fontSize:10,cursor:'pointer' }}>✕</button>
-                    </>
-                  ) : (
-                    <>
-                      <span style={{ flex:1,fontSize:12,color:'var(--text)' }}>{t.name}</span>
-                      <span style={{ fontSize:10,color:'var(--text-dim)' }}>{tr('calendar.eventsCountParen', { n: myEvents.filter(e => e.typeId === t.id).length })}</span>
-                      <button onClick={() => setEditingType({ ...t })}
-                        style={{ padding:'3px 6px',borderRadius:6,background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',fontSize:10,cursor:'pointer' }}>{tr('calendar.editBtn')}</button>
-                      <button onClick={() => deleteEventType(t.id)}
-                        style={{ padding:'3px 6px',borderRadius:6,background:'rgba(239,68,68,0.08)',border:'1px solid rgba(239,68,68,0.2)',color:'#ef4444',fontSize:10,cursor:'pointer' }}>✕</button>
-                    </>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Add new type */}
-          <div style={{ display:'flex',gap:8,alignItems:'center' }}>
-            <input value={newTypeName} onChange={e => setNewTypeName(e.target.value)} placeholder={tr('calendar.typeNamePlaceholder')}
-              style={{ flex:1,padding:'7px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:12,outline:'none' }}/>
-            <div style={{ display:'flex',gap:4,flexWrap:'wrap' }}>
-              {PRESET_COLORS.map(c => (
-                <div key={c} onClick={() => setNewTypeColor(c)}
-                  style={{ width:16,height:16,borderRadius:'50%',background:c,cursor:'pointer',border:newTypeColor===c?'2px solid var(--text)':'2px solid transparent' }}/>
-              ))}
-            </div>
-            <button onClick={() => { if (newTypeName.trim()) { addEventType({ name:newTypeName.trim(),color:newTypeColor,category }); setNewTypeName('') } }}
-              style={{ padding:'7px 12px',borderRadius:8,background:cfg.color,border:'none',color:'#fff',fontSize:11,fontWeight:600,cursor:'pointer',whiteSpace:'nowrap' }}>
-              {tr('calendar.typeBtn')}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Year view */}
+      {/* Année (tap → sur-page de sélection) — seulement en vue annuelle */}
       {calView === 'year' && (
-        <div style={{ overflowX:'auto' }}>
-          <div style={{ display:'grid',gridTemplateColumns:'repeat(4,minmax(150px,1fr))',gap:10,minWidth:580 }}>
-            {monthsFull.map((_, mi) => {
-              const me = getEventsForMonth(mi).sort((a, b) => new Date(a.date).getDate() - new Date(b.date).getDate())
-              return (
-                <div key={mi} onClick={() => { setCurrentMonth(mi); setCalView('month') }}
-                  style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:12,padding:12,boxShadow:'var(--shadow-card)',cursor:'pointer' }}>
-                  <p style={{ fontFamily:'Syne,sans-serif',fontSize:13,fontWeight:700,margin:'0 0 7px',color:me.length>0?'var(--text)':'var(--text-dim)' }}>{monthShort[mi]}</p>
-                  {me.length > 0 ? me.map(e => {
-                    const col = getColor(e)
-                    return (
-                      <div key={e.id}
-                        style={{ display:'flex',alignItems:'center',gap:5,padding:'4px 6px',borderRadius:7,background:`${col}18`,border:`1px solid ${col}44`,marginBottom:4 }}>
-                        <div style={{ width:6,height:6,borderRadius:'50%',background:col,flexShrink:0 }}/>
-                        <div style={{ flex:1,minWidth:0 }}>
-                          <p style={{ fontSize:10,fontWeight:600,margin:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',color:col }}>{e.title}</p>
-                          <p style={{ fontSize:9,color:'var(--text-dim)',margin:0 }}>{new Date(e.date).getDate()} {monthShort[mi]}</p>
-                        </div>
-                      </div>
-                    )
-                  }) : <p style={{ fontSize:10,color:'var(--text-dim)',margin:0,fontStyle:'italic' }}>{tr('calendar.none')}</p>}
-                </div>
-              )
-            })}
-          </div>
+        <div style={{ display:'flex',alignItems:'center',justifyContent:'flex-start' }}>
+          <button
+            onClick={() => setYearPickerOpen(true)}
+            style={{
+              fontFamily:'Syne,sans-serif',fontSize:30,fontWeight:800,
+              background:'transparent',border:'none',cursor:'pointer',
+              color:'var(--text)',padding:'0 2px',letterSpacing:'-0.02em',
+              display:'flex',alignItems:'center',gap:6,
+            }}
+          >
+            {selectedYear}
+            <span style={{ fontSize:15,color:'var(--text-dim)',fontWeight:400 }}>▾</span>
+          </button>
         </div>
       )}
 
-      {/* Month view */}
-      {calView === 'month' && (
-        <div style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:16,padding:16,boxShadow:'var(--shadow-card)' }}>
-          <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14 }}>
-            <div style={{ display:'flex',alignItems:'center',gap:9 }}>
-              <button onClick={() => setCurrentMonth(m => Math.max(0, m - 1))} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius:8,padding:'5px 10px',cursor:'pointer',color:'var(--text-mid)',fontSize:13 }}>←</button>
-              <h2 style={{ fontFamily:'Syne,sans-serif',fontSize:15,fontWeight:700,margin:0 }}>{monthsFull[currentMonth]} {year}</h2>
-              <button onClick={() => setCurrentMonth(m => Math.min(11, m + 1))} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius:8,padding:'5px 10px',cursor:'pointer',color:'var(--text-mid)',fontSize:13 }}>→</button>
-            </div>
-            <button onClick={() => setAddEventModal(`${year}-${String(currentMonth+1).padStart(2,'0')}-15`)}
-              style={{ padding:'5px 10px',borderRadius:8,background:cfg.bg,border:`1px solid ${cfg.color}44`,color:cfg.color,fontSize:10,cursor:'pointer' }}>
-              {tr('calendar.eventBtn')}
-            </button>
-          </div>
-          <div style={{ display:'grid',gridTemplateColumns:'repeat(7,1fr)',gap:2,marginBottom:5 }}>
-            {[tr('calendar.dow0'),tr('calendar.dow1'),tr('calendar.dow2'),tr('calendar.dow3'),tr('calendar.dow4'),tr('calendar.dow5'),tr('calendar.dow6')].map((d, i) => (
-              <div key={i} style={{ textAlign:'center',fontSize:9,fontWeight:600,color:'var(--text-dim)',padding:'3px 0' }}>{d}</div>
-            ))}
-          </div>
-          <div style={{ display:'grid',gridTemplateColumns:'repeat(7,1fr)',gap:2 }}>
-            {Array.from({ length: getFirstDay(year, currentMonth) - 1 }, (_, i) => (
-              <div key={`e${i}`} style={{ minHeight:60,borderRadius:7,background:'var(--bg-card2)',opacity:0.3 }}/>
-            ))}
-            {Array.from({ length: getDaysInMonth(year, currentMonth) }, (_, i) => {
-              const day = i + 1
-              const ds  = `${year}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
-              const de  = myEvents.filter(e => e.date === ds)
-              const isToday = new Date().toDateString() === new Date(ds).toDateString()
-              return (
-                <div key={day} onClick={() => setAddEventModal(ds)}
-                  style={{ minHeight:60,borderRadius:7,background:'var(--bg-card2)',border:`1px solid ${isToday?cfg.color:'var(--border)'}`,padding:'3px 4px',cursor:'pointer',display:'flex',flexDirection:'column',gap:1 }}>
-                  <p style={{ fontSize:10,fontWeight:isToday?700:500,color:isToday?cfg.color:'var(--text-mid)',margin:0,textAlign:'right' }}>{day}</p>
-                  {de.map(ev => {
-                    const col = getColor(ev)
-                    return (
-                      <div key={ev.id} onClick={e => { e.stopPropagation(); deleteEvent(ev.id) }}
-                        style={{ borderRadius:3,padding:'1px 3px',background:`${col}22`,border:`1px solid ${col}44`,cursor:'pointer' }}
-                        title={tr('calendar.clickToDelete')}>
-                        <p style={{ fontSize:7,fontWeight:600,margin:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',color:col }}>{ev.title}</p>
-                      </div>
-                    )
-                  })}
-                </div>
-              )
-            })}
-          </div>
-        </div>
+      {yearPickerOpen && (
+        <YearPickerSheet
+          selected={selectedYear}
+          onSelect={y => setSelectedYear(y)}
+          onClose={() => setYearPickerOpen(false)}
+        />
+      )}
+
+      {/* Vue annuelle façon iOS / vue mensuelle — identiques aux objectifs Course */}
+      {calView === 'year' ? (
+        <YearGridView
+          year={selectedYear} colorForDay={colorForDay}
+          onMonthClick={m => { setCurrentMonth(m); setCalView('month') }}
+        />
+      ) : (
+        <MonthPageView
+          year={selectedYear} month={currentMonth} itemsForDay={itemsForDay}
+          onBack={() => setCalView('year')}
+          onDayClick={date => setEventModal({ date })}
+        />
       )}
 
       {/* Liste des objectifs {catégorie} : importance (teinte) + Fait / Pas fait. */}
-      {myEvents.length > 0 && (
+      {yearEvents.length > 0 && (
         <div style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:14,padding:14 }}>
           <p style={{ fontFamily:'Syne,sans-serif',fontSize:13,fontWeight:700,margin:'0 0 10px' }}>{tr('calendar.myObjectives', { category: tr(CATEGORY_LABEL_KEY[category]) })}</p>
           <div style={{ display:'flex',flexDirection:'column',gap:6 }}>
-            {[...myEvents].sort((a,b) => a.date.localeCompare(b.date)).map(ev => {
-              const col = getColor(ev)
+            {yearEvents.map(ev => {
+              const col = colorOf(ev)
               return (
                 <div key={ev.id} style={{ display:'flex',alignItems:'center',gap:10,padding:'9px 11px',borderRadius:10,background:'var(--bg-card2)',border:`1px solid ${col}33`,opacity:ev.done?0.62:1 }}>
                   <span style={{ width:9,height:9,borderRadius:'50%',background:col,flexShrink:0 }} />
-                  <div style={{ flex:1,minWidth:0 }}>
+                  <div onClick={() => setEventModal({ date: ev.date, ev })} style={{ flex:1,minWidth:0,cursor:'pointer' }}>
                     <p style={{ fontSize:13,fontWeight:600,margin:0,color:'var(--text)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',textDecoration:ev.done?'line-through':'none' }}>{ev.title}</p>
                     <p style={{ fontSize:10.5,color:'var(--text-dim)',margin:'1px 0 0' }}>{new Date(ev.date+'T12:00:00').toLocaleDateString(currentLocale(),{ day:'numeric',month:'short',year:'numeric' })} · {tr(IMPORTANCE_LABEL_KEY[ev.importance ?? 'normal'])}</p>
                   </div>
@@ -1472,25 +1382,29 @@ function CategoryTab({ category, eventTypes, events, addEventType, updateEventTy
         </div>
       )}
 
-      {myEvents.length === 0 && !showTypeManager && (
+      {yearEvents.length === 0 && (
         <div style={{ padding:'28px 20px',textAlign:'center',background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:14 }}>
-          <div style={{ width:32,height:32,borderRadius:'50%',background:`${cfg.color}20`,border:`1px solid ${cfg.color}40`,margin:'0 auto 10px' }}/>
-
-          <p style={{ fontFamily:'Syne,sans-serif',fontSize:14,fontWeight:700,margin:'0 0 6px' }}>{tr('calendar.noEventCategory', { category: tr(CATEGORY_LABEL_KEY[category]) })}</p>
-          <p style={{ fontSize:12,color:'var(--text-dim)',margin:'0 0 12px' }}>{tr('calendar.createTypesThenEvents')}</p>
-          <button onClick={() => setShowTypeManager(true)}
-            style={{ padding:'8px 16px',borderRadius:9,background:cfg.color,border:'none',color:'#fff',fontFamily:'Syne,sans-serif',fontWeight:600,fontSize:12,cursor:'pointer' }}>
-            {tr('calendar.createType')}
+          <div style={{ width:32,height:32,borderRadius:'50%',background:`${CATEGORY_CONFIG[category].color}20`,border:`1px solid ${CATEGORY_CONFIG[category].color}40`,margin:'0 auto 10px' }}/>
+          <p style={{ fontFamily:'Syne,sans-serif',fontSize:14,fontWeight:700,margin:'0 0 12px' }}>{tr('calendar.noEventCategory', { category: tr(CATEGORY_LABEL_KEY[category]) })}</p>
+          <button onClick={() => setEventModal({ date: new Date().toISOString().split('T')[0] })}
+            style={{ padding:'8px 16px',borderRadius:9,background:CATEGORY_CONFIG[category].color,border:'none',color:'#fff',fontFamily:'Syne,sans-serif',fontWeight:600,fontSize:12,cursor:'pointer' }}>
+            {tr('calendar.addBtn')}
           </button>
         </div>
       )}
 
-      {addEventModal && (
+      {eventModal && (
         <CategoryEventModal
-          category={category} eventTypes={eventTypes}
-          initialDate={addEventModal}
-          onClose={() => setAddEventModal(null)}
-          onSave={e => { addEvent(e); setAddEventModal(null) }}
+          category={category}
+          initialDate={eventModal.date}
+          initial={eventModal.ev}
+          onClose={() => setEventModal(null)}
+          onDelete={eventModal.ev ? () => deleteEvent(eventModal.ev!.id) : undefined}
+          onSave={e => {
+            if (eventModal.ev) updateEvent({ ...eventModal.ev, ...e })
+            else addEvent(e)
+            setEventModal(null)
+          }}
         />
       )}
     </div>
@@ -1809,8 +1723,8 @@ export default function CalendarPage() {
         header={header}
         sections={[
           { id:'race',  label:t('calendar.tabRace'), subtitle:t('calendar.tabRaceSub'),  icon:Trophy,     content: loading ? loader : <RaceTab races={races} raceStages={raceStages} tests={events.filter(e => e.category === 'test')} addEvent={addEvent} updateEvent={updateEvent} deleteEvent={deleteEvent} addRaceWithFiles={addRaceWithFiles} updateRaceWithFiles={updateRaceWithFiles} updateRace={updateRace} deleteRace={deleteRace} markCompleted={markCompleted} addRaceStage={addRaceStage} updateRaceStage={updateRaceStage} deleteRaceStage={deleteRaceStage} patchStageDayLocal={patchStageDayLocal} deleteStageDayLocal={deleteStageDayLocal}/> },
-          { id:'pro',   label:t('calendar.tabPro'),    subtitle:t('calendar.tabProSub'),  icon:Briefcase,  content: loading ? loader : <CategoryTab category="pro"   eventTypes={eventTypes} events={events} addEventType={addEventType} updateEventType={updateEventType} deleteEventType={deleteEventType} addEvent={addEvent} updateEvent={updateEvent} deleteEvent={deleteEvent}/> },
-          { id:'perso', label:t('calendar.tabPerso'),  subtitle:t('calendar.tabPersoSub'),      icon:Heart,      content: loading ? loader : <CategoryTab category="perso" eventTypes={eventTypes} events={events} addEventType={addEventType} updateEventType={updateEventType} deleteEventType={deleteEventType} addEvent={addEvent} updateEvent={updateEvent} deleteEvent={deleteEvent}/> },
+          { id:'pro',   label:t('calendar.tabPro'),    subtitle:t('calendar.tabProSub'),  icon:Briefcase,  content: loading ? loader : <CategoryTab category="pro"   events={events} addEvent={addEvent} updateEvent={updateEvent} deleteEvent={deleteEvent}/> },
+          { id:'perso', label:t('calendar.tabPerso'),  subtitle:t('calendar.tabPersoSub'),      icon:Heart,      content: loading ? loader : <CategoryTab category="perso" events={events} addEvent={addEvent} updateEvent={updateEvent} deleteEvent={deleteEvent}/> },
           { id:'all',   label:t('calendar.tabAll'),   subtitle:t('calendar.tabAllSub'),    icon:LayoutGrid, content: loading ? loader : <AllTab races={races} eventTypes={eventTypes} events={events}/> },
         ]}
       />

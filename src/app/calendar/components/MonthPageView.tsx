@@ -11,15 +11,19 @@ import { useEffect, useState } from 'react'
 import { Race, RaceStage, MONTHS, RACE_CFG, getDaysInMonth, getFirstDayISO } from './types'
 import { useI18n } from '@/lib/i18n'
 
+export type MonthDayItem = { key: string; label: string; color: string; onClick: () => void }
+
 interface Props {
   year: number
   month: number
-  races: Race[]
-  stages: RaceStage[]
+  races?: Race[]
+  stages?: RaceStage[]
+  /** Surcharge des pastilles d'un jour (ex. objectifs Pro/Perso) ; sinon dérivées des courses/stages. */
+  itemsForDay?: (date: string) => MonthDayItem[]
   onBack: () => void
   onDayClick: (date: string) => void
-  onRaceClick: (race: Race) => void
-  onStageDayClick: (stage: RaceStage, date: string) => void
+  onRaceClick?: (race: Race) => void
+  onStageDayClick?: (stage: RaceStage, date: string) => void
 }
 
 const RED = '#ef4444' // design-allow-color
@@ -28,7 +32,7 @@ function iso(y: number, m: number, d: number): string {
   return `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
 }
 
-export default function MonthPageView({ year, month, races, stages, onBack, onDayClick, onRaceClick, onStageDayClick }: Props) {
+export default function MonthPageView({ year, month, races, stages, itemsForDay, onBack, onDayClick, onRaceClick, onStageDayClick }: Props) {
   const { t } = useI18n()
   const DOW = [t('calendar.dow0'), t('calendar.dow1'), t('calendar.dow2'), t('calendar.dow3'), t('calendar.dow4'), t('calendar.dow5'), t('calendar.dow6')]
   const now = new Date()
@@ -39,11 +43,11 @@ export default function MonthPageView({ year, month, races, stages, onBack, onDa
   const [shown, setShown] = useState(false)
   useEffect(() => { const id = requestAnimationFrame(() => setShown(true)); return () => cancelAnimationFrame(id) }, [])
 
-  const monthRaces = races.filter(r => {
+  const monthRaces = (races ?? []).filter(r => {
     const start = new Date(r.date + 'T12:00:00'), end = new Date((r.endDate || r.date) + 'T12:00:00')
     return start <= new Date(year, month + 1, 0) && end >= new Date(year, month, 1)
   })
-  const monthStages = stages.filter(s => {
+  const monthStages = (stages ?? []).filter(s => {
     const start = new Date(s.startDate + 'T12:00:00'), end = new Date(s.endDate + 'T12:00:00')
     return start <= new Date(year, month + 1, 0) && end >= new Date(year, month, 1)
   })
@@ -90,10 +94,9 @@ export default function MonthPageView({ year, month, races, stages, onBack, onDa
           const isToday = ds === todayISO
           const dayRaces = monthRaces.filter(r => r.date <= ds && (r.endDate || r.date) >= ds)
           const dayStages = monthStages.filter(s => s.startDate <= ds && s.endDate >= ds)
-          type Item = { key: string; label: string; color: string; onClick: () => void }
-          const items: Item[] = [
-            ...dayRaces.map(r => ({ key: r.id, label: r.name, color: r.level === 'gty' ? RED : RACE_CFG[r.level].color, onClick: () => onRaceClick(r) })),
-            ...dayStages.map(s => ({ key: s.id, label: s.name, color: 'var(--cat-pro)', onClick: () => onStageDayClick(s, ds) })),
+          const items: MonthDayItem[] = itemsForDay ? itemsForDay(ds) : [
+            ...dayRaces.map(r => ({ key: r.id, label: r.name, color: r.level === 'gty' ? RED : RACE_CFG[r.level].color, onClick: () => onRaceClick?.(r) })),
+            ...dayStages.map(s => ({ key: s.id, label: s.name, color: 'var(--cat-pro)', onClick: () => onStageDayClick?.(s, ds) })),
           ]
           const shownItems = items.slice(0, 2)
           const extra = items.length - shownItems.length

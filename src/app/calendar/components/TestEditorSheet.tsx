@@ -33,8 +33,8 @@ const SPORTS: { id: CatalogSport; label: string; color: string }[] = [
 ]
 const sportColor = (s: CatalogSport) => SPORTS.find(x => x.id === s)?.color ?? '#8b5cf6'
 
-const LBL: React.CSSProperties = { fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-dim)', margin: '0 0 6px' }
-const INP: React.CSSProperties = { width: '100%', boxSizing: 'border-box', padding: '9px 11px', borderRadius: 9, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 13.5, outline: 'none' }
+const LBL: React.CSSProperties = { fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-dim)', margin: '0 0 8px' }
+const INP: React.CSSProperties = { width: '100%', boxSizing: 'border-box', padding: '11px 13px', borderRadius: 11, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 14, outline: 'none' }
 
 export default function TestEditorSheet({ mode = 'create', initial, initialDate, onClose, onDelete, onSave }: {
   mode?: 'create' | 'edit'
@@ -109,7 +109,7 @@ export default function TestEditorSheet({ mode = 'create', initial, initialDate,
               <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}>
                 {SPORTS.map(s => {
                   const on = sport === s.id
-                  return <button key={s.id} onClick={() => { setSport(s.id); setRef(null) }} style={{ padding: '8px 14px', borderRadius: 999, border: `1px solid ${on ? s.color : 'var(--border)'}`, cursor: 'pointer', fontSize: 12.5, fontWeight: 600, background: on ? `${s.color}1f` : 'var(--bg-card)', color: on ? s.color : 'var(--text-dim)' }}>{t(`w2e.sport.${s.id}`)}</button>
+                  return <button key={s.id} onClick={() => { setSport(s.id); setRef(null) }} style={{ padding: '9px 16px', borderRadius: 999, border: `1px solid ${on ? 'transparent' : 'var(--border)'}`, cursor: 'pointer', fontSize: 12.5, fontWeight: on ? 700 : 600, background: on ? `${s.color}1f` : 'transparent', color: on ? s.color : 'var(--text-mid)', transition: 'background .15s, color .15s' }}>{t(`w2e.sport.${s.id}`)}</button>
                 })}
               </div>
             </div>

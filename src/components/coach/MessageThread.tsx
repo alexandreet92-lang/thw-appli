@@ -15,7 +15,9 @@ import { getMessages, sendMessage, markThreadRead, editMessage, deleteMessage, u
 import { ReportBlockActions } from '@/components/moderation/ReportBlockActions'
 import { useI18n } from '@/lib/i18n'
 
-const fmtTime = (d: string) => { try { return new Date(d).toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) } catch { return '' } }
+const fmtTime = (d: string) => { try { return new Date(d).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) } catch { return '' } }
+const sameDay = (a: Date, b: Date) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate()
+const dayKey = (d: string) => { try { const x = new Date(d); return `${x.getFullYear()}-${x.getMonth()}-${x.getDate()}` } catch { return d } }
 
 const menuItem: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '11px 14px', border: 'none', background: 'transparent', color: 'var(--text)', fontSize: 13.5, fontFamily: 'var(--font-body)', cursor: 'pointer', textAlign: 'left' }
 
@@ -151,22 +153,48 @@ export function MessageThread({ coachId, athleteId, compact = false }: { coachId
     try { await deleteMessage(m.id); await refresh() } catch { void refresh() }
   }
 
+  // Étiquette d'un séparateur de jour : Aujourd'hui / Hier / date longue.
+  const dayLabel = (d: string) => {
+    try {
+      const dt = new Date(d); const now = new Date(); const y = new Date(); y.setDate(now.getDate() - 1)
+      if (sameDay(dt, now)) return t('w3d.today')
+      if (sameDay(dt, y)) return t('w3d.yesterday')
+      return dt.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })
+    } catch { return '' }
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
-      <div ref={scroller} style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: compact ? '12px' : '16px', display: 'flex', flexDirection: 'column', gap: 8 }}
+      <style>{`@keyframes mtBubbleIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}`}</style>
+      <div ref={scroller} style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: compact ? '14px 12px' : '18px 16px', display: 'flex', flexDirection: 'column', gap: 0 }}
         onClick={() => menuId && setMenuId(null)}>
         {loading ? (
           <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: 'auto' }}>{t('w2d.loading')}</p>
         ) : msgs.length === 0 ? (
-          <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: 'auto', textAlign: 'center' }}>{t('w2d.noMessages')}</p>
-        ) : msgs.map(m => {
+          <div style={{ margin: 'auto', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 13, padding: '0 26px' }}>
+            <span style={{ width: 66, height: 66, borderRadius: '50%', background: 'var(--primary-dim)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            </span>
+            <p style={{ fontFamily: 'var(--font-display)', fontSize: 16.5, fontWeight: 600, color: 'var(--text)', margin: 0 }}>{t('w2d.noMessages')}</p>
+          </div>
+        ) : msgs.map((m, i) => {
           const deleted = !!m.deleted_at
           const editing = editId === m.id
           const canAct = m.mine && !deleted && !m.id.startsWith('tmp-')
           const canReport = !m.mine && !deleted && !m.id.startsWith('tmp-')
           const hasMenu = canAct || canReport
+          const prev = msgs[i - 1]; const next = msgs[i + 1]
+          const showDay = !prev || dayKey(prev.created_at) !== dayKey(m.created_at)
+          // Regroupement : bulles consécutives du même auteur, à moins de 5 min.
+          const grouped = !!prev && !showDay && prev.mine === m.mine && (new Date(m.created_at).getTime() - new Date(prev.created_at).getTime() < 300000)
+          const groupedNext = !!next && dayKey(next.created_at) === dayKey(m.created_at) && next.mine === m.mine && (new Date(next.created_at).getTime() - new Date(m.created_at).getTime() < 300000)
+          const showMeta = !groupedNext || !!m.edited_at
           return (
-            <div key={m.id} style={{ alignSelf: m.mine ? 'flex-end' : 'flex-start', maxWidth: '82%', position: 'relative' }}>
+            <div key={m.id} style={{ display: 'contents' }}>
+              {showDay && (
+                <div style={{ alignSelf: 'center', margin: i === 0 ? '0 0 12px' : '16px 0 12px', fontSize: 10.5, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-dim)', background: 'var(--bg-card2)', padding: '4px 12px', borderRadius: 999 }}>{dayLabel(m.created_at)}</div>
+              )}
+            <div style={{ alignSelf: m.mine ? 'flex-end' : 'flex-start', maxWidth: '82%', position: 'relative', marginTop: i === 0 || showDay ? 0 : grouped ? 3 : 11, animation: m.id.startsWith('tmp-') ? 'mtBubbleIn .2s ease' : undefined }}>
               {editing ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                   <textarea value={editText} onChange={e => setEditText(e.target.value)} rows={2} autoFocus
@@ -181,13 +209,14 @@ export function MessageThread({ coachId, athleteId, compact = false }: { coachId
                 <>
                   <div
                     onClick={e => { if (hasMenu) { e.stopPropagation(); setMenuId(menuId === m.id ? null : m.id) } }}
-                    style={{ padding: m.media_type === 'image' && !m.body && !deleted ? 4 : '8px 12px', borderRadius: 14, fontSize: 13.5, lineHeight: 1.45, fontFamily: 'var(--font-body)',
+                    style={{ padding: m.media_type === 'image' && !m.body && !deleted ? 4 : '9px 13px', borderRadius: 18, fontSize: 13.5, lineHeight: 1.45, fontFamily: 'var(--font-body)',
                       cursor: hasMenu ? 'pointer' : 'default',
-                      background: deleted ? 'transparent' : m.mine ? 'var(--primary)' : 'color-mix(in srgb, var(--primary) 12%, var(--bg-card))',
+                      background: deleted ? 'transparent' : m.mine ? 'var(--primary)' : 'var(--bg-alt)',
                       color: deleted ? 'var(--text-dim)' : m.mine ? 'var(--on-primary)' : 'var(--text)',
-                      border: deleted ? '1px dashed var(--border)' : m.mine ? 'none' : '1px solid color-mix(in srgb, var(--primary) 18%, transparent)',
+                      border: deleted ? '1px dashed var(--border)' : 'none',
+                      boxShadow: deleted || m.mine ? 'none' : '0 1px 2px rgba(0,0,0,0.04)',
                       fontStyle: deleted ? 'italic' : 'normal',
-                      borderBottomRightRadius: m.mine ? 4 : 14, borderBottomLeftRadius: m.mine ? 14 : 4, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                      borderBottomRightRadius: m.mine && !groupedNext ? 5 : 18, borderBottomLeftRadius: !m.mine && !groupedNext ? 5 : 18, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
                     {deleted ? t('w2d.messageDeleted') : (<>
                       {m.media_url && <MsgMedia url={m.media_url} type={m.media_type} name={m.media_name} mine={m.mine} />}
                       {m.body && <span style={{ display: 'block', ...(m.media_url ? { marginTop: 6 } : {}) }}>{m.body}</span>}
@@ -218,13 +247,16 @@ export function MessageThread({ coachId, athleteId, compact = false }: { coachId
                       )}
                     </div>
                   )}
-                  <div style={{ fontSize: 10, color: 'var(--text-dim)', marginTop: 2, textAlign: m.mine ? 'right' : 'left', display: 'flex', alignItems: 'center', gap: 2, justifyContent: m.mine ? 'flex-end' : 'flex-start' }}>
-                    <span>{fmtTime(m.created_at)}</span>
-                    {m.edited_at && !deleted && <span style={{ fontStyle: 'italic' }}>{t('w2d.editedSuffix')}</span>}
-                    {m.mine && !deleted && <StatusTick m={m} />}
-                  </div>
+                  {showMeta && (
+                    <div style={{ fontSize: 10, color: 'var(--text-dim)', margin: '3px 4px 0', textAlign: m.mine ? 'right' : 'left', display: 'flex', alignItems: 'center', gap: 3, justifyContent: m.mine ? 'flex-end' : 'flex-start' }}>
+                      <span>{fmtTime(m.created_at)}</span>
+                      {m.edited_at && !deleted && <span style={{ fontStyle: 'italic' }}>{t('w2d.editedSuffix')}</span>}
+                      {m.mine && !deleted && <StatusTick m={m} />}
+                    </div>
+                  )}
                 </>
               )}
+            </div>
             </div>
           )
         })}

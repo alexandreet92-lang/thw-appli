@@ -32,8 +32,26 @@ export async function middleware(request: NextRequest) {
   // Routes publiques (vitrines /c, tarifs coach, programmes, auth…).
   const publicRoutes = ['/login', '/auth', '/onboarding', '/access-expired', '/legal', '/decouvrir', '/site', '/c/', '/coach/tarifs', '/programmes']
   if (publicRoutes.some(r => path.startsWith(r))) return response
-  // Routes API — jamais bloquées.
-  if (path.startsWith('/api')) return response
+  // Routes API — jamais bloquées + CORS pour l'app native.
+  // L'app native (origine capacitor://) appelle /api en CROSS-ORIGIN avec un
+  // Bearer token (credentials omis). Sans ces en-têtes CORS, tout POST /api
+  // échoue en « Erreur réseau » (preflight OPTIONS refusé). Le web est
+  // same-origin → aucun impact.
+  if (path.startsWith('/api')) {
+    if (request.method === 'OPTIONS') {
+      return new NextResponse(null, {
+        status: 204,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET,POST,PUT,PATCH,DELETE,OPTIONS',
+          'Access-Control-Allow-Headers': 'authorization, content-type, x-client-info, apikey',
+          'Access-Control-Max-Age': '86400',
+        },
+      })
+    }
+    response.headers.set('Access-Control-Allow-Origin', '*')
+    return response
+  }
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

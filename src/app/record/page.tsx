@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
-import SportSelector, { type SportId } from '@/components/record/SportSelector'
+import SportSelector, { type SportId, getSportIcon, getSportLabel } from '@/components/record/SportSelector'
 import { stopLiveShare } from '@/lib/community/liveShare'
 import Toast from '@/components/record/Toast'
 import { useI18n } from '@/lib/i18n'
@@ -95,7 +95,11 @@ export default function RecordPage() {
   const [workoutExercises, setWorkoutExercises] = useState<WorkoutExercise[]>([])
   const [workoutTitle, setWorkoutTitle] = useState<string | undefined>()
   const [routeCreatorOpen, setRouteCreatorOpen] = useState(false)
+  // « Changer l'itinéraire » depuis la feuille de contrôle live (événement global).
+  const [liveRoutePickerOpen, setLiveRoutePickerOpen] = useState(false)
   const [activeRoute, setActiveRoute] = useState<ActiveRoute | null>(null)
+  // Point qui suit le survol du profil altimétrique → affiché sur la carte.
+  const [routeCursor, setRouteCursor] = useState<{ lat: number; lng: number } | null>(null)
   const [yogaLauncherOpen, setYogaLauncherOpen] = useState(false)
   const [yogaSessionOpen, setYogaSessionOpen] = useState(false)
   const [boxeLauncherOpen, setBoxeLauncherOpen] = useState(false)
@@ -203,6 +207,30 @@ export default function RecordPage() {
     return () => window.removeEventListener(GUIDE_DEMO_EVENT, h)
   }, [])
 
+  // « Changer l'itinéraire » demandé depuis la feuille de contrôle live.
+  // detail.mode : 'library' (parcours enregistrés) ou 'search' (adresse).
+  const [liveRoutePickerMode, setLiveRoutePickerMode] = useState<'library' | 'search'>('library')
+  useEffect(() => {
+    const h = (e: Event) => {
+      const mode = (e as CustomEvent<{ mode?: 'library' | 'search' }>).detail?.mode
+      setLiveRoutePickerMode(mode === 'search' ? 'search' : 'library')
+      setLiveRoutePickerOpen(true)
+    }
+    window.addEventListener('thw:live-change-route', h)
+    return () => window.removeEventListener('thw:live-change-route', h)
+  }, [])
+
+  // Sélecteur de parcours réutilisable (bibliothèque OU recherche d'adresse),
+  // monté par-dessus l'écran live pour changer l'itinéraire en cours.
+  const liveRoutePicker = liveRoutePickerOpen ? (
+    <RouteCreator
+      isDark={isDark}
+      initialView={liveRoutePickerMode === 'search' ? 'creating' : 'library'}
+      onClose={() => setLiveRoutePickerOpen(false)}
+      onLoadRoute={route => { setActiveRoute(route); setLiveRoutePickerOpen(false) }}
+    />
+  ) : null
+
   const handleSelectSport = (s: SportId) => {
     setSport(s)
     setSportSheetOpen(false)
@@ -255,6 +283,7 @@ export default function RecordPage() {
           onExit={() => setView('home')}
           onFinished={() => { setToast(t('record.pageWorkoutSaved')); setView('home') }}
         />
+        {liveRoutePicker}
         {toast && <Toast message={toast} onDismiss={() => setToast(null)} />}
       </>
     )
@@ -268,6 +297,7 @@ export default function RecordPage() {
           onExit={() => setView('home')}
           onFinished={() => { setToast(t('record.pageWorkoutSaved')); setView('home') }}
         />
+        {liveRoutePicker}
         {toast && <Toast message={toast} onDismiss={() => setToast(null)} />}
       </>
     )
@@ -293,6 +323,7 @@ export default function RecordPage() {
           onExit={() => setView('home')}
           onFinished={() => { setToast(t('record.pageWorkoutSaved')); setView('home') }}
         />
+        {liveRoutePicker}
         {toast && <Toast message={toast} onDismiss={() => setToast(null)} />}
       </>
     )
@@ -393,7 +424,7 @@ export default function RecordPage() {
     >
       {/* Carte plein écran */}
       <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
-        <MapBackground activeRoute={activeRoute} />
+        <MapBackground activeRoute={activeRoute} cursorPoint={routeCursor} />
       </div>
 
       {/* Bulle « + » — saisie manuelle d'une activité (tous sports).
@@ -424,27 +455,38 @@ export default function RecordPage() {
           itinéraire » (RouteCreator), qui remplace le hamburger. */}
 
       {/* Boutons flottants sur la carte — JUSTE au-dessus de la feuille (profil).
-          Démarrer (bleu) + Parcours (pour changer de tracé). Plus de bouton sport.
+          Rangée alignée : Sport (change) · Démarrer (bleu, plus gros au centre) ·
+          Parcours. Les pastilles latérales sont alignées sur le centre du bouton
+          Démarrer (libellés en absolu → n'altèrent pas l'alignement).
           Masqués quand la feuille est dépliée (les réglages occupent l'écran). */}
       {!sheetExpanded && (
-        <div style={{ position: 'fixed', left: 0, right: 0, bottom: `calc(${collapsedH()}px + 16px)`, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 22, pointerEvents: 'none' }}>
+        <div style={{ position: 'fixed', left: 0, right: 0, bottom: `calc(${collapsedH()}px + 20px)`, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 30, pointerEvents: 'none' }}>
+          {/* Sport — ouvre le sélecteur (on peut re-changer de sport) */}
+          <button
+            onClick={() => { if (sheetDragged.current) return; setSportSheetOpen(true) }}
+            aria-label={getSportLabel(sport)}
+            style={{ pointerEvents: 'auto', position: 'relative', width: 52, height: 52, borderRadius: '50%', background: 'var(--bg-card)', border: '1px solid var(--border)', boxShadow: '0 3px 14px rgba(0,0,0,0.22)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text)', padding: 0 }}
+          >
+            {getSportIcon(sport)}
+            <span style={{ position: 'absolute', top: 'calc(100% + 5px)', left: '50%', transform: 'translateX(-50%)', whiteSpace: 'nowrap', fontSize: 11.5, fontWeight: 700, color: 'var(--text)', textShadow: '0 1px 4px var(--bg-card)' }}>{getSportLabel(sport)}</span>
+          </button>
+          {/* Démarrer — plus gros, au centre */}
           <button
             data-guide="rec-start"
             onClick={() => { if (sheetDragged.current) return; handleStart() }}
             aria-label={t('record.pageStart')}
-            style={{ pointerEvents: 'auto', width: 66, height: 66, borderRadius: '50%', background: 'linear-gradient(135deg, #06B6D4, #2563EB)', boxShadow: '0 6px 22px rgba(6,182,212,0.5)', border: '3px solid var(--bg-card)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            style={{ pointerEvents: 'auto', width: 66, height: 66, borderRadius: '50%', background: 'linear-gradient(135deg, #06B6D4, #2563EB)', boxShadow: '0 6px 22px rgba(6,182,212,0.5)', border: '3px solid var(--bg-card)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
           >
             <svg width="26" height="26" viewBox="0 0 24 24" fill="#fff"><path d="M8 5v14l11-7z"/></svg>
           </button>
+          {/* Parcours — change le tracé */}
           <button
             onClick={() => { if (sheetDragged.current) return; setRouteCreatorOpen(true) }}
             aria-label={t('record.pageRoutes')}
-            style={{ pointerEvents: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}
+            style={{ pointerEvents: 'auto', position: 'relative', width: 52, height: 52, borderRadius: '50%', background: 'var(--bg-card)', border: '1px solid var(--border)', boxShadow: '0 3px 14px rgba(0,0,0,0.22)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text)', padding: 0 }}
           >
-            <span style={{ width: 52, height: 52, borderRadius: '50%', background: 'var(--bg-card)', border: '1px solid var(--border)', boxShadow: '0 3px 14px rgba(0,0,0,0.22)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text)' }}>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M8.5 6H15a3 3 0 0 1 0 6H9a3 3 0 0 0 0 6h6.5"/></svg>
-            </span>
-            <span style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--text)', textShadow: '0 1px 4px var(--bg-card)' }}>{t('record.pageRoutes')}</span>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M8.5 6H15a3 3 0 0 1 0 6H9a3 3 0 0 0 0 6h6.5"/></svg>
+            <span style={{ position: 'absolute', top: 'calc(100% + 5px)', left: '50%', transform: 'translateX(-50%)', whiteSpace: 'nowrap', fontSize: 11.5, fontWeight: 700, color: 'var(--text)', textShadow: '0 1px 4px var(--bg-card)' }}>{t('record.pageRoutes')}</span>
           </button>
         </div>
       )}
@@ -485,7 +527,13 @@ export default function RecordPage() {
               Play / Parcours flottent au-dessus de la feuille (sur la carte). */}
           {activeRoute && activeRoute.elevation_profile.length > 1 && (
             <div style={{ padding: '2px 12px 8px' }}>
-              <ElevationChart data={activeRoute.elevation_profile} height={190} isDark={isDark} />
+              <ElevationChart
+                data={activeRoute.elevation_profile}
+                height={190}
+                isDark={isDark}
+                snappedPoints={activeRoute.snapped_points}
+                onPositionChange={setRouteCursor}
+              />
             </div>
           )}
         </div>

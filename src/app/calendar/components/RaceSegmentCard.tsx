@@ -9,12 +9,13 @@ export function SegmentCard({ color, label, volume, children }: {
   color: string; label: string; volume?: string; children: ReactNode
 }) {
   return (
-    <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderLeft: `3px solid ${color}`, borderRadius: 14, overflow: 'hidden' }}>
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, padding: '12px 14px', borderBottom: '1px solid var(--border)' }}>
-        <span className="ed-fr" style={{ fontSize: 16, fontWeight: 600, color }}>{label}</span>
-        {volume && <span className="ed-tnum" style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text-dim)' }}>{volume}</span>}
+    <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 16, overflow: 'hidden' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '13px 16px', borderBottom: '1px solid var(--border)' }}>
+        <span style={{ width: 8, height: 8, borderRadius: '50%', background: color, flexShrink: 0 }} />
+        <span className="ed-fr" style={{ fontSize: 15.5, fontWeight: 600, color: 'var(--text)' }}>{label}</span>
+        {volume && <span className="ed-tnum" style={{ marginLeft: 'auto', fontSize: 12.5, fontWeight: 600, color: 'var(--text-dim)' }}>{volume}</span>}
       </div>
-      <div style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 12 }}>{children}</div>
+      <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 13 }}>{children}</div>
     </div>
   )
 }
@@ -62,7 +63,7 @@ export function CalcField({ label, value }: { label: string; value: string }) {
   )
 }
 
-const fLbl: React.CSSProperties = { fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-dim)', margin: '0 0 4px' }
+const fLbl: React.CSSProperties = { fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-dim)', margin: '0 0 6px' }
 
 export const ROW2: React.CSSProperties = { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }
 export const ROW3: React.CSSProperties = { display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }

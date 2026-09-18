@@ -144,7 +144,9 @@ export function blocksToExercises(blocks: Block[], sport: 'gym' | 'hyrox'): { ex
       const distMatch = label.match(/(\d+)\s*m\b/)
       const notesMatch = label.match(/—\s*(.+)$/)
       exercises.push({
-        id: b.id, exoId: 'custom', name, category: lookupCategory(name, fallback),
+        // Groupe musculaire : on privilégie la valeur PERSISTÉE dans le bloc ;
+        // repli sur la déduction par nom (anciennes séances sans category).
+        id: b.id, exoId: 'custom', name, category: (b.category as ExoCategory) ?? lookupCategory(name, fallback),
         sets: b.zone || 1, reps: b.reps ?? 0,
         weightKg: b.value ? parseFloat(b.value) || undefined : undefined,
         distanceM: distMatch ? parseInt(distMatch[1]) : undefined,

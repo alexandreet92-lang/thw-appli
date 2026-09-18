@@ -26,8 +26,15 @@ interface Props {
 }
 const SPORTS: RaceSport[] = ['run', 'trail', 'bike', 'swim', 'hyrox', 'triathlon', 'rowing']
 const LEVELS: RaceLevel[] = ['main', 'important', 'secondary', 'gty']  // GTY = donnée existante, conservée
-const LBL: React.CSSProperties = { fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-dim)', margin: '0 0 6px' }
-const INP: React.CSSProperties = { width: '100%', boxSizing: 'border-box', padding: '9px 11px', borderRadius: 9, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 13.5, outline: 'none' }
+const LBL: React.CSSProperties = { fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-dim)', margin: '0 0 8px' }
+const INP: React.CSSProperties = { width: '100%', boxSizing: 'border-box', padding: '11px 13px', borderRadius: 11, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 14, outline: 'none' }
+// Pastille de sélection (sport / objectif) — sélection = teinte + texte coloré,
+// sans bordure dure (design system : pas de surface/bordure colorée pleine).
+function pill(on: boolean, color: string, bg: string): React.CSSProperties {
+  return { padding: '9px 16px', borderRadius: 999, cursor: 'pointer', fontSize: 12.5, fontWeight: on ? 700 : 600,
+    border: `1px solid ${on ? 'transparent' : 'var(--border)'}`, background: on ? bg : 'transparent',
+    color: on ? color : 'var(--text-mid)', transition: 'background .15s, color .15s' }
+}
 const findGpx = (list: File[]) => list.find(f => /\.(gpx|tcx|kml)$/i.test(f.name))
 
 export default function RaceEditorSheet({ race, initialDate, initialLevel, onClose, onSave, onDelete }: Props) {
@@ -125,7 +132,7 @@ export default function RaceEditorSheet({ race, initialDate, initialLevel, onClo
               <p style={LBL}>{t('calendar.sport')}</p>
               <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}>
                 {SPORTS.map(s => (
-                  <button key={s} onClick={() => { setSport(s); setPd({}) }} style={{ padding: '8px 14px', borderRadius: 999, border: `1px solid ${sport === s ? SPORT_COLOR[s] : 'var(--border)'}`, cursor: 'pointer', fontSize: 12.5, fontWeight: 600, background: sport === s ? SPORT_BG[s] : 'var(--bg-card)', color: sport === s ? SPORT_COLOR[s] : 'var(--text-dim)' }}>{SPORT_LABEL[s]}</button>
+                  <button key={s} onClick={() => { setSport(s); setPd({}) }} style={pill(sport === s, SPORT_COLOR[s], SPORT_BG[s])}>{SPORT_LABEL[s]}</button>
                 ))}
               </div>
             </div>
@@ -135,7 +142,7 @@ export default function RaceEditorSheet({ race, initialDate, initialLevel, onClo
               <p style={LBL}>{t('calendar.goal')}</p>
               <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}>
                 {LEVELS.map(l => { const c = RACE_CFG[l]; return (
-                  <button key={l} onClick={() => setLevel(l)} style={{ padding: '8px 16px', borderRadius: 999, border: `1px solid ${level === l ? c.border : 'var(--border)'}`, cursor: 'pointer', fontSize: 12.5, fontWeight: 600, background: level === l ? c.bg : 'var(--bg-card)', color: level === l ? c.color : 'var(--text-dim)' }}>{c.label}</button>
+                  <button key={l} onClick={() => setLevel(l)} style={pill(level === l, c.color, c.bg)}>{c.label}</button>
                 ) })}
               </div>
             </div>

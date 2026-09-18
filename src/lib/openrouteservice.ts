@@ -44,21 +44,20 @@ function haversine(a: Waypoint, b: Waypoint): number {
 }
 
 export async function snapRoute(waypoints: Waypoint[], sport: string): Promise<SnapResult> {
-  if (!ORS_KEY) throw new Error('NEXT_PUBLIC_ORS_KEY not configured')
   const profile = ORS_PROFILES[sport] ?? 'foot-hiking'
-  const res = await fetch(
-    `https://api.openrouteservice.org/v2/directions/${profile}/geojson`,
-    {
-      method: 'POST',
-      headers: { 'Authorization': ORS_KEY, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        coordinates: waypoints.map(w => [w.lng, w.lat]),
-        elevation: true,
-        extra_info: ['surface'],
-        instructions: false,
-      }),
-    }
-  )
+  // Passe par notre proxy Vercel (/api/parcours/snap) : marche en web ET en
+  // natif (le patch fetch natif route /api/* vers Vercel avec la clé serveur).
+  const res = await fetch('/api/parcours/snap', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      profile,
+      coordinates: waypoints.map(w => [w.lng, w.lat]),
+      elevation: true,
+      extra_info: ['surface'],
+      instructions: false,
+    }),
+  })
   if (!res.ok) throw new Error(`ORS ${res.status}`)
   const data = await res.json() as { features: ORSFeature[] }
   const feature = data.features[0]
@@ -116,16 +115,12 @@ export interface NavRoute { coords: SnappedPoint[]; steps: NavStep[]; distanceM:
 
 // Récupère la géométrie + les étapes de navigation (manœuvres) pour un parcours.
 export async function navigationRoute(waypoints: Waypoint[], sport: string): Promise<NavRoute> {
-  if (!ORS_KEY) throw new Error('NEXT_PUBLIC_ORS_KEY not configured')
   const profile = ORS_PROFILES[sport] ?? 'foot-hiking'
-  const res = await fetch(
-    `https://api.openrouteservice.org/v2/directions/${profile}/geojson`,
-    {
-      method: 'POST',
-      headers: { 'Authorization': ORS_KEY, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ coordinates: waypoints.map(w => [w.lng, w.lat]), elevation: true, instructions: true, language: 'fr', roundabout_exits: true }),
-    },
-  )
+  const res = await fetch('/api/parcours/snap', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ profile, coordinates: waypoints.map(w => [w.lng, w.lat]), elevation: true, instructions: true, language: 'fr', roundabout_exits: true }),
+  })
   if (!res.ok) throw new Error(`ORS ${res.status}`)
   const data = await res.json() as {
     features: { geometry: { coordinates: number[][] }; properties: { segments: { steps: { distance: number; type: number; instruction: string; name?: string; exit_number?: number; way_points: number[] }[] }[] } }[]

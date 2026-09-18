@@ -31,6 +31,7 @@ import { hasCoachAccess } from '@/lib/coach/owner'
 import { listMyAthletes } from '@/lib/coach/relationships'
 import { VoiceOverlay } from '@/components/ai/VoiceOverlay'
 import StudioMarkdown from './StudioMarkdown'
+import TokenEmailModal from './TokenEmailModal'
 import PressPop from '@/components/ui/PressPop'
 import { useI18n } from '@/lib/i18n'
 import { isNativeApp } from '@/lib/native/platform'
@@ -258,6 +259,8 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
   const [pan, setPan] = useState({ x: 0, y: 0 })
   const [zoom, setZoom] = useState(1)
   const [helpOpen, setHelpOpen] = useState(false)
+  // Achat de packs : envoi d'un lien sécurisé par email (pas de redirection directe).
+  const [tokenEmailOpen, setTokenEmailOpen] = useState(false)
   // Contrôle pré-run : erreurs (bloquent) + avertissements (on peut forcer).
   const [issues, setIssues] = useState<(GraphIssues & { canForce: boolean }) | null>(null)
   const [copied, setCopied] = useState<string | null>(null)
@@ -1584,9 +1587,10 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
     setTimeout(() => window.dispatchEvent(new CustomEvent('thw:open-coach')), 80)
   }
 
-  const siteUrl = process.env.NEXT_PUBLIC_MARKETING_SITE_URL
-    ? `${process.env.NEXT_PUBLIC_MARKETING_SITE_URL.replace(/\/$/, '')}/studio`
-    : '/decouvrir'
+  // Guide complet → page Studio du SITE À JOUR (même origine, servi sous /site/),
+  // comme le lien Coach IA des réglages (/site/theme.html#coach-ia). Plus l'ancien
+  // site marketing (NEXT_PUBLIC_MARKETING_SITE_URL) qui n'est pas à jour.
+  const siteUrl = '/site/theme.html#studio'
 
   // ── UI ─────────────────────────────────────────────────────
   return (
@@ -3020,7 +3024,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
       {/* ══ Architecte — chat plein écran ══ */}
       {chatFull && (
         <div style={{ position: 'absolute', inset: 0, zIndex: 30, background: 'var(--bg)', display: 'flex', flexDirection: 'column', animation: 'studio_in 0.18s ease' }}>
-          <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px', borderBottom: '1px solid var(--border)' }}>
+          <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 8, padding: 'max(12px, calc(env(safe-area-inset-top) + 8px)) 16px 12px', borderBottom: '1px solid var(--border)' }}>
             <StudioLogo size={19} />
             <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-display)', flex: 1 }}>{t('w1i.architect')}</span>
             {chatMsgs.length > 0 && (
@@ -3422,25 +3426,18 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                 </div>
               ))}
             </div>
-            <button onClick={() => {
-                // Page tokens du site + uid → les liens Stripe portent client_reference_id
-                // (crédit instantané, sans dépendre de l'email de paiement).
-                void (async () => {
-                  const base = (process.env.NEXT_PUBLIC_MARKETING_SITE_URL ?? '').replace(/\/$/, '')
-                  let uid = ''
-                  try { const user = await getCurrentUser(); uid = user?.id ?? '' } catch { /* ignore */ }
-                  const url = base ? `${base}/tokens.html${uid ? `?uid=${uid}` : ''}` : '/settings/subscription'
-                  window.open(url, '_blank', 'noopener')
-                })()
-              }}
+            <button onClick={() => setTokenEmailOpen(true)}
               style={{ marginTop: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%', padding: '11px 0', borderRadius: 11, border: 'none', background: 'var(--studio-accent)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
               {t('w1i.buy_packs_site')}
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M7 17L17 7M8 7h9v9"/></svg>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 5L2 7"/></svg>
             </button>
             <p style={{ fontSize: 11.5, color: 'var(--text-dim)', marginTop: 10, fontFamily: 'var(--font-body)' }}>{t('w1i.pricing_note')}</p>
           </div>
         </div>
       )}
+
+      {/* ══ Achat de packs : lien sécurisé par email ══ */}
+      {tokenEmailOpen && <TokenEmailModal onClose={() => setTokenEmailOpen(false)} />}
 
       {/* ══ Sur-page d'aide ══ */}
       {helpOpen && (

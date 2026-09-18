@@ -223,7 +223,7 @@ export function ActivityCard({ data, onClick }: Props) {
             }}>
               {s.kind === 'video'
                 ? <video src={s.url} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} muted playsInline preload="metadata" />
-                : <img src={s.url} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: s.kind === 'map' ? 'contain' : 'cover', display: 'block' }} className={s.kind === 'map' ? 'thw-card-map' : undefined} />}
+                : <img src={s.url} alt="" loading="lazy" style={{ width: '100%', height: '100%', ...(s.kind === 'map' ? {} : { objectFit: 'cover' as const }), display: 'block' }} className={s.kind === 'map' ? 'thw-card-map' : undefined} />}
               {/* Étiquette Entraînement / Compétition (neutre, sans couleur) — sur la carte */}
               {s.kind === 'map' && (
                 <span style={{

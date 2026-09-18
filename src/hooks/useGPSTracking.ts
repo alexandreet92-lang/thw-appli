@@ -1,5 +1,7 @@
 'use client'
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { watchPosition as geoWatch, type GeoHandle } from '@/lib/native/geo'
+import { isNativeApp } from '@/lib/native/platform'
 
 export enum GPSStatus {
   idle        = 'idle',
@@ -94,7 +96,7 @@ export function useGPSTracking(isActive: boolean, gpsFrequency?: GPSFrequency): 
   restoreTracking: (seed: GPSSeed) => void
 } {
   const [state, setState] = useState<GPSState>(INITIAL_STATE)
-  const watchIdRef   = useRef<number | null>(null)
+  const watchIdRef   = useRef<GeoHandle | null>(null)
   const lastPointRef = useRef<GPSPoint | null>(null)
   const cumDistRef   = useRef(0)
   const altWindowRef = useRef<{ d: number; alt: number }[]>([])
@@ -107,7 +109,7 @@ export function useGPSTracking(isActive: boolean, gpsFrequency?: GPSFrequency): 
 
   const stopWatching = useCallback(() => {
     if (watchIdRef.current !== null) {
-      navigator.geolocation.clearWatch(watchIdRef.current)
+      watchIdRef.current.clear()
       watchIdRef.current = null
     }
   }, [])
@@ -152,14 +154,16 @@ export function useGPSTracking(isActive: boolean, gpsFrequency?: GPSFrequency): 
       return
     }
 
-    if (typeof navigator === 'undefined' || !navigator.geolocation) {
+    if (!isNativeApp() && (typeof navigator === 'undefined' || !navigator.geolocation)) {
       setState(s => ({ ...s, status: GPSStatus.unavailable }))
       return
     }
 
     setState(s => ({ ...s, status: GPSStatus.requesting }))
 
-    watchIdRef.current = navigator.geolocation.watchPosition(
+    // Natif : plugin @capacitor/geolocation (WKWebView ne supporte pas
+    // navigator.geolocation). Web : navigator.geolocation. Interface unifiée.
+    watchIdRef.current = geoWatch(
       (pos) => {
         // Throttling recording.gpsFrequency : ignorer les positions arrivant
         // plus vite que l'intervalle configuré (la 1re est toujours gardée).
@@ -229,7 +233,9 @@ export function useGPSTracking(isActive: boolean, gpsFrequency?: GPSFrequency): 
         })
       },
       (err) => {
-        if (err.code === err.PERMISSION_DENIED) {
+        const code = (err as { code?: number }).code
+        const msg = String((err as { message?: string }).message ?? '').toLowerCase()
+        if (code === 1 || msg.includes('denied') || msg.includes('permission')) {
           setState(s => ({ ...s, status: GPSStatus.denied }))
         } else {
           setState(s => ({ ...s, status: GPSStatus.error }))

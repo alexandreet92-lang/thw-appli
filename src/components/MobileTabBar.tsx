@@ -265,19 +265,19 @@ export default function MobileTabBar() {
             /* ── Main 5 tabs ────────────────────────────────── */
             <>
               {/* Plan */}
-              <button onClick={() => switchTo('plan')} style={BTN}>
-                <CalendarDays size={22} color={col(activeTab === 'plan')} />
+              <button onClick={() => switchTo('plan')} style={btnStyle(activeTab === 'plan')} className="thw-press">
+                <span style={iconWrap(activeTab === 'plan')}><CalendarDays size={22} color={col(activeTab === 'plan')} /></span>
                 <span style={lbl(activeTab === 'plan')}>{t('nav.tabPlan')}</span>
               </button>
 
               {/* Stats */}
-              <button onClick={() => switchTo('stats')} style={BTN}>
-                <BarChart3 size={22} color={col(activeTab === 'stats')} />
+              <button onClick={() => switchTo('stats')} style={btnStyle(activeTab === 'stats')} className="thw-press">
+                <span style={iconWrap(activeTab === 'stats')}><BarChart3 size={22} color={col(activeTab === 'stats')} /></span>
                 <span style={lbl(activeTab === 'stats')}>{t('nav.tabStats')}</span>
               </button>
 
               {/* Record — centre, plat et aligné avec les autres (façon Strava) */}
-              <Link href="/record" style={{ ...BTN, textDecoration: 'none' }} aria-label={t('nav.startActivity')}>
+              <Link href="/record" style={{ ...btnStyle(false), textDecoration: 'none' }} className="thw-press" aria-label={t('nav.startActivity')}>
                 <svg width="24" height="24" viewBox="0 0 26 26" fill="none">
                   <circle cx="13" cy="13" r="10" stroke={ACCENT} strokeWidth="1.7" />
                   <circle cx="13" cy="13" r="5"  fill={ACCENT} />
@@ -286,13 +286,13 @@ export default function MobileTabBar() {
               </Link>
 
               {/* Plus */}
-              <button onClick={() => switchTo('plus')} style={BTN}>
-                <Grid3x3 size={22} color={col(activeTab === 'plus')} />
+              <button onClick={() => switchTo('plus')} style={btnStyle(activeTab === 'plus')} className="thw-press">
+                <span style={iconWrap(activeTab === 'plus')}><Grid3x3 size={22} color={col(activeTab === 'plus')} /></span>
                 <span style={lbl(activeTab === 'plus')}>{t('nav.tabPlus')}</span>
               </button>
 
               {/* IA */}
-              <button onClick={() => setAiOpen(o => !o)} style={BTN}>
+              <button onClick={() => setAiOpen(o => !o)} style={btnStyle(false)} className="thw-press">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src="/logos/logo_4bras.png"
@@ -316,31 +316,46 @@ export default function MobileTabBar() {
 // ── Static styles ──────────────────────────────────────────────
 
 const BAR: React.CSSProperties = {
-  // Pill flottante à fond PLEIN, SANS backdrop-filter : le flou « verre dépoli »
-  // est bogué dans la WebView iOS (il clignote / disparaît au défilement — le
-  // fameux « des fois ça marche, des fois pas »). Fond plein = toujours net.
+  // Pill flottante translucide + flou (façon Strava/Plans). Fond à opacité
+  // élevée (0,82) → reste net même si le flou backdrop est faible dans la
+  // WebView iOS ; sur Safari le verre dépoli s'affiche pleinement.
   position: 'fixed', zIndex: 100,
   left: 12, right: 12,
-  // Plus BAS, quasi collée en bas (façon Strava) : petit décalage seulement.
   bottom: 'calc(env(safe-area-inset-bottom, 0px) + 2px)',
   borderRadius: 30,
-  background: 'var(--bg-card)',
+  background: 'color-mix(in srgb, var(--bg-card) 82%, transparent)',
+  backdropFilter: 'blur(22px) saturate(180%)',
+  WebkitBackdropFilter: 'blur(22px) saturate(180%)',
   border: '1px solid var(--border)',
   boxShadow: '0 6px 24px rgba(0,0,0,0.16)',
 }
 
-const BTN: React.CSSProperties = {
-  flex: 1, display: 'flex', flexDirection: 'column',
+// Bouton d'onglet : pastille arrondie ; l'actif reçoit un fond teinté (mouvement
+// fluide au changement grâce à la transition).
+const btnStyle = (active: boolean): React.CSSProperties => ({
+  flex: 1, position: 'relative', display: 'flex', flexDirection: 'column',
   alignItems: 'center', justifyContent: 'center', gap: 3,
-  height: 64, padding: '4px 0',
-  border: 'none', background: 'transparent', cursor: 'pointer',
+  height: 56, margin: '4px 3px', borderRadius: 18, padding: '4px 0',
+  border: 'none', cursor: 'pointer',
+  background: active ? 'color-mix(in srgb, var(--primary) 13%, transparent)' : 'transparent',
+  transition: 'background 0.24s cubic-bezier(0.32,0.72,0,1)',
   WebkitTapHighlightColor: 'transparent',
-}
+})
+
+const BTN: React.CSSProperties = btnStyle(false)
 
 const lbl = (on: boolean): React.CSSProperties => ({
   fontSize: 10, lineHeight: 1,
-  fontFamily: 'DM Sans, sans-serif',
-  fontWeight: on ? 600 : 400,
+  fontFamily: 'var(--font-body)',
+  fontWeight: on ? 700 : 500,
   color: on ? ACCENT : DIM,
+  transition: 'color 0.2s ease',
+})
+
+// L'icône active « grossit » légèrement et remonte d'un cheveu → mouvement fluide.
+const iconWrap = (on: boolean): React.CSSProperties => ({
+  display: 'flex', alignItems: 'center', justifyContent: 'center',
+  transform: on ? 'translateY(-1px) scale(1.1)' : 'none',
+  transition: 'transform 0.24s cubic-bezier(0.34,1.56,0.64,1)',
 })
 

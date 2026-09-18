@@ -653,16 +653,16 @@ export default function LiveShell({
         <span style={{ width: 36 }} />
       </div>
 
-      {/* ── Badge auto-pause (pill 140×30 orange, aucun clignotement) ── */}
+      {/* ── Badge auto-pause — discret, en haut à gauche (plus au milieu). ── */}
       {autoPausedNow && (
         <div style={{
-          position: 'absolute', top: 'calc(env(safe-area-inset-top) + 122px)', left: '50%', transform: 'translateX(-50%)',
-          width: 140, height: 30, borderRadius: 15, zIndex: 56,
+          position: 'absolute', top: 'calc(env(safe-area-inset-top) + 54px)', left: 12,
+          height: 24, padding: '0 10px', borderRadius: 12, zIndex: 56,
           background: 'var(--live-warn-bg)', border: '1px solid var(--live-warn-border)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-          fontSize: 12.5, fontWeight: 700, color: 'var(--live-warn)',
+          display: 'inline-flex', alignItems: 'center', gap: 6,
+          fontSize: 11, fontWeight: 700, color: 'var(--live-warn)', opacity: 0.92,
         }}>
-          <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--live-warn)' }} />
+          <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--live-warn)' }} />
           {t('w2c.autoPaused')}
         </div>
       )}
@@ -783,7 +783,7 @@ export default function LiveShell({
           height: 'calc(env(safe-area-inset-bottom) + 158px)', zIndex: 54,
           paddingBottom: 'env(safe-area-inset-bottom)',
         }}>
-          {machine.phase === 'idle' && (
+          {machine.phase === 'idle' && !onMapPage && (
             <>
               {/* Ligne GPS */}
               <div style={{
@@ -803,8 +803,8 @@ export default function LiveShell({
                 aria-label={t('w2c.start')}
                 className="lv2-press"
                 style={{
-                  position: 'absolute', left: '50%', top: 26, transform: 'translateX(-50%)',
-                  width: 88, height: 88, borderRadius: '50%',
+                  position: 'absolute', left: '50%', top: 30, transform: 'translateX(-50%)',
+                  width: 62, height: 62, borderRadius: '50%',
                   background: 'var(--live-accent)', border: 'none',
                   cursor: canStart ? 'pointer' : 'not-allowed',
                   boxShadow: canStart ? 'var(--live-glow)' : 'none',
@@ -812,12 +812,12 @@ export default function LiveShell({
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                 }}
               >
-                <svg width="30" height="34" viewBox="0 0 30 34">
+                <svg width="22" height="25" viewBox="0 0 30 34">
                   <path d="M4 3 L27 17 L4 31 Z" fill="var(--live-accent-on)" stroke="var(--live-accent-on)" strokeWidth="4" strokeLinejoin="round" />
                 </svg>
               </button>
               <div style={{
-                position: 'absolute', left: 0, right: 0, top: 124, textAlign: 'center',
+                position: 'absolute', left: 0, right: 0, top: 100, textAlign: 'center',
                 fontSize: 13, fontWeight: 800, letterSpacing: '0.19em',
                 color: canStart ? 'var(--live-accent)' : 'var(--live-label)',
               }}>

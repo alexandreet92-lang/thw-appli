@@ -63,21 +63,29 @@ export async function GET() {
         cancelAtPeriodEnd: stripeSub.cancel_at_period_end,
       }
 
-      // Dernières factures
-      const invoiceList = await stripe.invoices.list({
-        customer: sub.stripe_customer_id,
-        limit:    3,
-      })
-      base.invoices = invoiceList.data
-        .filter(inv => inv.status !== 'draft')
-        .slice(0, 2)
-        .map(inv => ({
-          amount:   inv.amount_paid,
-          currency: inv.currency,
-          date:     new Date(inv.created * 1000).toISOString(),
-          status:   inv.status ?? 'unknown',
-          url:      inv.hosted_invoice_url ?? null,
-        }))
+      // TOUTES les factures (plus de limite à 2) — pagination Stripe auto (100/req).
+      const allInvoices: typeof base.invoices = []
+      let starting_after: string | undefined
+      for (let page = 0; page < 10; page++) { // garde-fou : 1000 factices max
+        const invoiceList = await stripe.invoices.list({
+          customer: sub.stripe_customer_id,
+          limit: 100,
+          ...(starting_after ? { starting_after } : {}),
+        })
+        for (const inv of invoiceList.data) {
+          if (inv.status === 'draft') continue
+          allInvoices.push({
+            amount:   inv.amount_paid,
+            currency: inv.currency,
+            date:     new Date(inv.created * 1000).toISOString(),
+            status:   inv.status ?? 'unknown',
+            url:      inv.hosted_invoice_url ?? inv.invoice_pdf ?? null,
+          })
+        }
+        if (!invoiceList.has_more || invoiceList.data.length === 0) break
+        starting_after = invoiceList.data[invoiceList.data.length - 1].id
+      }
+      base.invoices = allInvoices
 
       // Moyen de paiement
       const customer = await stripe.customers.retrieve(sub.stripe_customer_id, {

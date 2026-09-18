@@ -1,6 +1,15 @@
 <!DOCTYPE html>
 <html>
 <head>
+  <!-- Icônes : chemins ABSOLUS. En relatif (« assets/logo.png ») l'icône
+       cassait dès que la page n'était pas servie depuis /site/, ce qui est le
+       cas à la racine du domaine — d'où l'absence de logo dans Google. -->
+  <link rel="icon" href="/favicon.ico" sizes="any"/>
+  <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png"/>
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"/>
+  <link rel="manifest" href="/manifest.json"/>
+  <meta name="theme-color" content="#070b0f"/>
+
   <meta charset="utf-8">
   <title>Thème — THW Coaching</title>
   <style>

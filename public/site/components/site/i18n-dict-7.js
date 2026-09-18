@@ -15,6 +15,8 @@
   var D = window.THW_I18N_DICT = window.THW_I18N_DICT || { en: {}, es: {} };
 
   Object.assign(D.en, {
+    "télécharger l'app": "download the app",
+    "Sans engagement · résiliable à tout moment ·": "No commitment · cancel anytime ·",
     "Accueil": "Home",
     "Menu": "Menu",
     "Découvrir les piliers": "Explore the pillars",
@@ -444,6 +446,8 @@
   });
 
   Object.assign(D.es, {
+    "télécharger l'app": "descargar la app",
+    "Sans engagement · résiliable à tout moment ·": "Sin compromiso · cancelable cuando quieras ·",
     "Accueil": "Inicio",
     "Menu": "Menú",
     "Découvrir les piliers": "Descubre los pilares",

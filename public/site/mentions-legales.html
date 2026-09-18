@@ -1,11 +1,32 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
+  <!-- Icônes : chemins ABSOLUS. En relatif (« assets/logo.png ») l'icône
+       cassait dès que la page n'était pas servie depuis /site/, ce qui est le
+       cas à la racine du domaine — d'où l'absence de logo dans Google. -->
+  <link rel="icon" href="/favicon.ico" sizes="any"/>
+  <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png"/>
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"/>
+  <link rel="manifest" href="/manifest.json"/>
+  <meta name="theme-color" content="#070b0f"/>
+
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Mentions légales — THW Coaching</title>
-  <meta name="description" content="Mentions légales de THW Coaching — éditeur, hébergeur et contact."/>
-  <link rel="icon" href="assets/logo.png"/>
+  <title>Legal notice — THW Coaching</title>
+  <meta name="description" content="THW Coaching legal notice: publisher, hosting and contact details."/>
+  <!-- Partage social -->
+  <meta property="og:type" content="website"/>
+  <meta property="og:site_name" content="THW Coaching"/>
+  <meta property="og:title" content="Legal notice — THW Coaching"/>
+  <meta property="og:description" content="THW Coaching legal notice: publisher, hosting and contact details."/>
+  <meta property="og:image" content="https://www.the-hybridway.com/og-image.png"/>
+  <meta property="og:image:width" content="1200"/>
+  <meta property="og:image:height" content="630"/>
+  <meta property="og:url" content="https://www.the-hybridway.com/site/mentions-legales.html"/>
+  <meta name="twitter:card" content="summary_large_image"/>
+  <meta name="twitter:title" content="Legal notice — THW Coaching"/>
+  <meta name="twitter:description" content="THW Coaching legal notice: publisher, hosting and contact details."/>
+  <meta name="twitter:image" content="https://www.the-hybridway.com/og-image.png"/>
   <link rel="stylesheet" href="colors_and_type.css"/>
   <link rel="stylesheet" href="site.css"/>
   <link rel="stylesheet" href="refined.css"/>
@@ -70,6 +91,7 @@
   <script src="components/site/i18n-dict-5.js"></script>
   <script src="components/site/i18n-dict-6.js"></script>
   <script src="components/site/i18n-dict-7.js"></script>
+  <script src="components/site/i18n-dict-8.js"></script>
   <script src="components/site/i18n.js"></script>
 </body>
 </html>

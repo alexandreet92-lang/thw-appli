@@ -44,7 +44,10 @@ function DownloadSection() {
       </Tag>);
   };
   return (
-    <section className="section" style={{ paddingTop: 8 }}>
+    // Placée APRÈS la grille des piliers : elle occupait auparavant le centre
+    // de l'écran, entre la promesse et la preuve, et repoussait les piliers
+    // sous la ligne de flottaison.
+    <section id="telecharger" className="section" style={{ paddingTop: 8 }}>
       <div className="cta-band reveal" style={{ textAlign: 'center' }}>
         <h2>Télécharge l'app — sur toutes les plateformes</h2>
         <p>iPhone, Android, Mac, Windows : une seule app, partout. Commence tout de suite dans ton navigateur, ou installe l'app native.</p>
@@ -83,14 +86,16 @@ function Discover() {
               <a className="btn btn-cyan btn-lg" href={APP_URL}><UIIcon name="spark" size={16} /> Essai gratuit 14 jours</a>
               <a className="btn btn-ghost btn-lg" href="#grille"><UIIcon name="grid" size={16} /> Explorer les piliers</a>
             </div>
-            <div className="disc-hero-note reveal" style={{ transitionDelay: '180ms' }}>Sans engagement · résiliable à tout moment</div>
+            <div className="disc-hero-note reveal" style={{ transitionDelay: '180ms' }}>
+              Sans engagement · résiliable à tout moment · <a href="#telecharger" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>télécharger l'app</a>
+            </div>
           </section>
-
-          <DownloadSection />
 
           <section id="grille" className="bubbles">
             {themes.map(function (t, i) {return <Bubble key={t.slug} theme={t} i={i} />;})}
           </section>
+
+          <DownloadSection />
 
           <section className="section" style={{ paddingTop: 40 }}>
             <div className="cta-band reveal">

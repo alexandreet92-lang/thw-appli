@@ -1,6 +1,15 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
+  <!-- Icônes : chemins ABSOLUS. En relatif (« assets/logo.png ») l'icône
+       cassait dès que la page n'était pas servie depuis /site/, ce qui est le
+       cas à la racine du domaine — d'où l'absence de logo dans Google. -->
+  <link rel="icon" href="/favicon.ico" sizes="any"/>
+  <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png"/>
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"/>
+  <link rel="manifest" href="/manifest.json"/>
+  <meta name="theme-color" content="#070b0f"/>
+
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Hybrid — Connexion (animée)</title>
@@ -690,6 +699,7 @@ wireSubmit(document.getElementById('panel-signup'), document.getElementById('sig
   <script src="components/site/i18n-dict-5.js"></script>
   <script src="components/site/i18n-dict-6.js"></script>
   <script src="components/site/i18n-dict-7.js"></script>
+  <script src="components/site/i18n-dict-8.js"></script>
   <script src="components/site/i18n.js"></script>
 </body>
 </html>

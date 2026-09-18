@@ -27,8 +27,12 @@
   function norm(s) { return (s || '').replace(/\s+/g, ' ').trim(); }
 
   // Pre-build normalised lookup maps (author keys may contain odd spacing).
-  var MAP = { en: {}, es: {} };
-  ['en', 'es'].forEach(function (lg) {
+  // `fr` existe UNIQUEMENT pour le <title> et la meta description : celles-ci
+  // sont écrites en ANGLAIS dans la source, parce que c'est ce que Googlebot
+  // lit (il ne voit pas la traduction faite au runtime). Le corps des pages,
+  // lui, reste rédigé en français et se traduit dans l'autre sens.
+  var MAP = { en: {}, es: {}, fr: {} };
+  ['en', 'es', 'fr'].forEach(function (lg) {
     var src = DICT[lg] || {};
     for (var k in src) { if (src.hasOwnProperty(k)) MAP[lg][norm(k)] = src[k]; }
   });
@@ -104,15 +108,17 @@
 
   // ── Head (title + meta description) ─────────────────────────────
   var origTitle, origDesc;
+  // Contrairement au corps de page, le <head> se traduit AUSSI vers le français
+  // (source anglaise, cf. commentaire sur MAP.fr).
   function translateHead(lang) {
     if (origTitle === undefined) origTitle = document.title;
     var tt = MAP[lang] && MAP[lang][norm(origTitle)];
-    document.title = (lang === 'fr' || tt === undefined) ? origTitle : tt;
+    document.title = tt === undefined ? origTitle : tt;
     var meta = document.querySelector('meta[name="description"]');
     if (meta) {
       if (origDesc === undefined) origDesc = meta.getAttribute('content') || '';
       var td = MAP[lang] && MAP[lang][norm(origDesc)];
-      meta.setAttribute('content', (lang === 'fr' || td === undefined) ? origDesc : td);
+      meta.setAttribute('content', td === undefined ? origDesc : td);
     }
   }
 

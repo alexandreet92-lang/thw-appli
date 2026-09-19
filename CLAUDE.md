@@ -74,8 +74,8 @@ All Pages
 - Lister TOUTES les actions rapides 
 - Lister le process des main actions rapides 
 - Priorité action rapide = Créer un plan d’entrainement 
-token_meta_temporaire.txt : EAAcb8fMi5zIBRT30jCCIYjAIGZBw3EVTfjERDhPkZAzYXww1ZCERMRZAXE6KQUukNHfoYQd15l9ZBzVDlTlJeyR44aARTZBFgk53JyGJefD3bZBIafnvrZB6aoD2TYafZAp3HXd93mhnsyTzLH7m2uMBwVMJNnJHuc190HDUutBIkSgr21vq7mZA8GZBpeqqBxKHk4av7bZBS8CYnA9GoASCwgHJhSzmgx7b28odhwwC7nhTW3yLZCAOgIYrtWYrxX6Np71zPWZCnnfCbsG6SR7yenUZBisirNC
-instagram business id : 17841449112603067
-clé secrète : 2f2f1473d571d775987b003d8b071ac9
 
-https://graph.facebook.com/v21.0/oauth/access_token?grant_type=fb_exchange_token&client_id=2052520568982613&client_secret=2f2f1473d571d775987b003d8b071ac9&fb_exchange_token=EAAcb8fMi5zIBRT30jCCIYjAIGZBw3EVTfjERDhPkZAzYXww1ZCERMRZAXE6KQUukNHfoYQd15l9ZBzVDlTlJeyR44aARTZBFgk53JyGJefD3bZBIafnvrZB6aoD2TYafZAp3HXd93mhnsyTzLH7m2uMBwVMJNnJHuc190HDUutBIkSgr21vq7mZA8GZBpeqqBxKHk4av7bZBS8CYnA9GoASCwgHJhSzmgx7b28odhwwC7nhTW3yLZCAOgIYrtWYrxX6Np71zPWZCnnfCbsG6SR7yenUZBisirNC
+<!-- ⚠️ SÉCURITÉ : ne jamais mettre de secrets ici. Les identifiants Meta/Instagram
+     (App ID/Secret, token long-lived, IG business id) vivent dans .env.local
+     (voir .env.local.example : META_APP_ID / META_APP_SECRET / META_LONG_LIVED_TOKEN / IG_BUSINESS_ID).
+     Le workflow notion-sync.yml supprime automatiquement tout secret détecté avant d'écrire ce fichier. -->

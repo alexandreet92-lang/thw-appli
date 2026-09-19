@@ -61,10 +61,29 @@ jobs:
             }
           }
 
+          // ⚠️ SÉCURITÉ : la page Notion peut contenir des secrets collés à la main.
+          // On les supprime AVANT d'écrire dans le fichier versionné, pour qu'aucun
+          // token / clé ne soit jamais commité, même si Notion en contient encore.
+          const SECRET_PATTERNS = [
+            /EAA[A-Za-z0-9_-]{20,}/g,                                   // tokens Meta/Facebook
+            /https?:\/\/graph\.facebook\.com\/\S+/gi,                   // URLs Graph API (contiennent souvent secret/token)
+            /(client_secret|access_token|fb_exchange_token|app_secret)\s*[:=]\s*[^\s&]+/gi,
+            /\b[A-Fa-f0-9]{32,}\b/g,                                    // secrets hex (ex. app secret)
+          ];
+          function sanitize(line) {
+            let out = line;
+            for (const re of SECRET_PATTERNS) out = out.replace(re, '[REDACTED]');
+            return out;
+          }
+
           async function main() {
             const pageId = '34d1f2da742880bca580e251ff4eaab2';
             const blocks = await getBlocks(pageId);
-            const lines = blocks.map(blockToText).filter(Boolean);
+            const lines = blocks
+              .map(blockToText)
+              .map(sanitize)
+              .filter(Boolean)
+              .filter(l => l.trim() !== '[REDACTED]');
 
             const existing = fs.readFileSync('CLAUDE.md', 'utf8');
             const marker = '\n\n---\n## Notes Notion\n';

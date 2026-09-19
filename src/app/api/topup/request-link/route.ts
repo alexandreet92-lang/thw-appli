@@ -172,7 +172,7 @@ export async function POST(req: Request) {
                   <td align="center" style="padding-bottom: 16px;">
                     <a href="https://thw-appli.vercel.app" style="display: inline-block; margin: 0 8px; font-size: 12px; color: #475569; text-decoration: none;">Retour à l'app</a>
                     <span style="color: #CBD5E1;">·</span>
-                    <a href="mailto:support@the-hybridway.com" style="display: inline-block; margin: 0 8px; font-size: 12px; color: #475569; text-decoration: none;">Support</a>
+                    <a href="mailto:contact@the-hybridway.com" style="display: inline-block; margin: 0 8px; font-size: 12px; color: #475569; text-decoration: none;">Support</a>
                     <span style="color: #CBD5E1;">·</span>
                     <a href="https://thw-appli.vercel.app/legal" style="display: inline-block; margin: 0 8px; font-size: 12px; color: #475569; text-decoration: none;">Mentions légales</a>
                   </td>

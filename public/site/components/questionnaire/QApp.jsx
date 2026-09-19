@@ -8,7 +8,7 @@
 const EMAILJS_SERVICE_ID  = 'service_q6pf4k8';
 const EMAILJS_TEMPLATE_ID = 'template_1nbwaae';
 const EMAILJS_PUBLIC_KEY  = 'CfhphZjWx6KvCRKfx';
-const DEST_EMAIL          = 'alexandre.et92@gmail.com';
+const DEST_EMAIL          = 'contact@the-hybridway.com';
 
 function formatEmailBody(d) {
   const lines = [];

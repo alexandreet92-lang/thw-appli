@@ -40,7 +40,7 @@ export default function TopupSuccessPage() {
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'center' }}>
             <a href={APP_URL} className="btn-primary-lg" style={{ justifyContent: 'center', width: '100%' }}>{t('misc.returnToApp')} <ArrowRight size={15} /></a>
-            <a href="mailto:support@thwcoaching.com" className="btn-ghost-lg" style={{ justifyContent: 'center', width: '100%' }}><Receipt size={15} /> {t('misc.needReceipt')}</a>
+            <a href="mailto:contact@the-hybridway.com" className="btn-ghost-lg" style={{ justifyContent: 'center', width: '100%' }}><Receipt size={15} /> {t('misc.needReceipt')}</a>
           </div>
           <p style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 18 }}>{t('misc.receiptSentNote')}</p>
         </div>

@@ -27,7 +27,7 @@ export type NotifKey =
   // ── Coach ENTRANT (ce que le coach reçoit sur SES athlètes) ──
   | 'coach_in.message' | 'coach_in.activite' | 'coach_in.seance_manquee' | 'coach_in.nouvel_athlete'
   | 'coach_in.blessure' | 'coach_in.readiness' | 'coach_in.record' | 'coach_in.feedback'
-  | 'coach_in.demande' | 'coach_in.paiement'
+  | 'coach_in.demande' | 'coach_in.paiement' | 'coach_in.digest'
   // ── Social / abonnés ──
   | 'social.abonne' | 'social.activite_ami' | 'social.reaction' | 'social.commentaire'
   // ── Studio / Routines ──
@@ -96,6 +96,7 @@ export const NOTIF_DEFAULTS: Record<NotifKey, boolean> = {
   'coach_in.feedback': true,
   'coach_in.demande': true,
   'coach_in.paiement': true,
+  'coach_in.digest': true,
   'social.abonne': true,
   'social.activite_ami': false,
   'social.reaction': true,

@@ -866,6 +866,7 @@ const NOTIF_CATEGORIES: NotifCategory[] = [
     { key:'communaute.nouveau_message', label:'Nouveaux messages', sub:'Activité dans tes espaces', def:false },
   ]},
   { id:'coach_in', label:'Coach — tes athlètes', color:'#5b6fff', Icon: UserCog, items:[
+    { key:'coach_in.digest',         label:'Digest de suivi',       sub:'Synthèse des athlètes à surveiller (hebdo)', def:true },
     { key:'coach_in.message',        label:"Message d'un athlète",  sub:'Un athlète t\'a écrit',                     def:true },
     { key:'coach_in.activite',       label:'Activité enregistrée',  sub:'Un athlète vient de s\'entraîner',          def:true },
     { key:'coach_in.seance_manquee', label:'Séance manquée',        sub:'La séance du jour n\'a pas été faite',      def:true },

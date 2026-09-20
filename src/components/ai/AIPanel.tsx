@@ -55,7 +55,7 @@ import { currentLocale, currentLang } from '@/lib/i18n'
 /** Colonnes SAFE de la table activities — ne JAMAIS ajouter sans vérifier Supabase */
 const ACTIVITIES_SELECT = 'id,title,sport_type,started_at,moving_time_s,distance_m,elevation_gain_m,tss,average_heartrate,max_heartrate,average_speed,avg_cadence,is_race,avg_watts'
 // Analyse de séance : on ajoute les streams (courbes) + laps (structure d'intervalles).
-const ACTIVITIES_SELECT_WITH_STREAMS = ACTIVITIES_SELECT + ',streams,laps'
+const ACTIVITIES_SELECT_WITH_STREAMS = ACTIVITIES_SELECT + ',streams,laps,ai_analysis'
 
 // ── Types ──────────────────────────────────────────────────────
 
@@ -6418,38 +6418,58 @@ function AnalyzeTrainingFlow({ onCancel, onRecordConv, onFollowUp }: {
         ? ((mainEI - eiSimilarAvg) / eiSimilarAvg) * 100
         : null
 
-      const res = await fetch('/api/analyze-training', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          activities: activitiesWithMetrics,
-          zones: zonesRes.data,
-          planned: plannedRes.data,
-          recovery: recoveryRes.data ?? [],
-          similar: similarRes.data ?? [],
-          tssWeekBefore,
-          isRace: mainAct.is_race ?? false,
-          sport: mainAct.sport_type,
-          aiRules: rulesRes.data ?? [],
-          // Métriques pré-calculées
-          cardiac_drift_pct: mainDrift,
-          efficiency_index: mainEI,
-          ei_vs_similar_avg: eiDelta,
-          zone_distribution: null, // calculée par l'IA depuis la FC et les zones
-        }),
-      })
-      const data = await res.json() as { report?: TrainingReport; error?: string }
-      if (data.error || !data.report) throw new Error(data.error ?? t('aip.invalidResponse'))
-      setReport(data.report)
+      // Cache : si l'analyse existe déjà (auto après sync, ou calculée avant),
+      // on l'affiche sans rappeler l'IA — pas de recalcul à chaque ouverture.
+      const cached = (!compareMode && (mainAct as { ai_analysis?: TrainingReport | null }).ai_analysis) || null
+      let report: TrainingReport
+      if (cached) {
+        report = cached
+      } else {
+        const res = await fetch('/api/analyze-training', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            activities: activitiesWithMetrics,
+            zones: zonesRes.data,
+            planned: plannedRes.data,
+            recovery: recoveryRes.data ?? [],
+            similar: similarRes.data ?? [],
+            tssWeekBefore,
+            isRace: mainAct.is_race ?? false,
+            sport: mainAct.sport_type,
+            aiRules: rulesRes.data ?? [],
+            // Métriques pré-calculées
+            cardiac_drift_pct: mainDrift,
+            efficiency_index: mainEI,
+            ei_vs_similar_avg: eiDelta,
+            zone_distribution: null, // calculée par l'IA depuis la FC et les zones
+          }),
+        })
+        const data = await res.json() as { report?: TrainingReport; error?: string }
+        if (data.error || !data.report) throw new Error(data.error ?? t('aip.invalidResponse'))
+        report = data.report
+        // Persiste le résultat pour éviter tout recalcul ultérieur (et pour que
+        // le coach le voie directement en ouvrant la séance de l'athlète).
+        if (!compareMode) {
+          try {
+            await sb.from('activities').update({
+              ai_analysis: report,
+              ai_analysis_status: 'done',
+              ai_analysis_at: new Date().toISOString(),
+            }).eq('id', mainAct.id)
+          } catch { /* best-effort */ }
+        }
+      }
+      setReport(report)
 
       if (onRecordConv) {
         const actNom = mainAct.title ?? t(AE_SPORT_LABELS[mainAct.sport_type] ?? mainAct.sport_type)
         const userMsg = compareMode
           ? t('aip.at.recordCompare', { name: actNom, date: actDate, dateB: selected[1]?.started_at?.slice(0, 10) ?? '' })
           : `${t('aip.ae.label')} — ${actNom} (${actDate})`
-        const aiMsg = `**${t('aip.at.recordAnalysis', { name: actNom })}** (${actDate})\n\n${t('aip.at.verdict')} : ${data.report.verdict}\nTSS : ${data.report.kpis.tss} · EI : ${data.report.kpis.efficiency_index}\n${data.report.interpretation.execution}`
+        const aiMsg = `**${t('aip.at.recordAnalysis', { name: actNom })}** (${actDate})\n\n${t('aip.at.verdict')} : ${report.verdict}\nTSS : ${report.kpis.tss} · EI : ${report.kpis.efficiency_index}\n${report.interpretation.execution}`
         const reportData: TrainingReportData = {
-          report: data.report,
+          report: report,
           activities: selected.map(a => ({
             id: a.id,
             sport_type: a.sport_type,

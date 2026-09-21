@@ -125,7 +125,7 @@ export function Footer() {
         <div style={{ display: 'flex', justifyContent: 'center', gap: 22, flexWrap: 'wrap', marginBottom: 18 }}>
           <a href="#" style={{ fontSize: 12.5, color: 'var(--text-mid)', textDecoration: 'none' }}>{t('misc.termsOfSale')}</a>
           <a href="#" style={{ fontSize: 12.5, color: 'var(--text-mid)', textDecoration: 'none' }}>FAQ</a>
-          <a href="mailto:support@thwcoaching.com" style={{ fontSize: 12.5, color: 'var(--text-mid)', textDecoration: 'none' }}>support@thwcoaching.com</a>
+          <a href="mailto:contact@the-hybridway.com" style={{ fontSize: 12.5, color: 'var(--text-mid)', textDecoration: 'none' }}>contact@the-hybridway.com</a>
         </div>
         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
           {['Stripe', 'Visa', 'Mastercard', 'Apple Pay', 'G Pay'].map(m => (

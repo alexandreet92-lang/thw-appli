@@ -16,7 +16,7 @@ function FAQ() {
           <span className="eyebrow">Questions</span>
           <h2 className="section-title" style={{ fontSize: 'clamp(36px, 4vw, 48px)' }}>Avant de te lancer.</h2>
           <p className="section-sub" style={{ marginBottom: 24 }}>
-            Une autre question ? Écris-nous sur <a href="mailto:hello@thwcoaching.fr" style={{ color: 'var(--brand)', borderBottom: '1px solid var(--brand)' }}>hello@thwcoaching.fr</a>. On répond en moins de 24h.
+            Une autre question ? Écris-nous sur <a href="mailto:contact@the-hybridway.com" style={{ color: 'var(--brand)', borderBottom: '1px solid var(--brand)' }}>contact@the-hybridway.com</a>. On répond en moins de 24h.
           </p>
         </div>
 

@@ -1392,7 +1392,7 @@ function DeleteAccountModal({ open, onClose }: { open: boolean; onClose: () => v
       try { localStorage.clear() } catch { /* ignore */ }
       router.replace('/auth')
     } catch {
-      setErr('La suppression a échoué. Réessaie, ou écris à contact@thehybridway.app.')
+      setErr('La suppression a échoué. Réessaie, ou écris à contact@the-hybridway.com.')
       setBusy(false)
     }
   }

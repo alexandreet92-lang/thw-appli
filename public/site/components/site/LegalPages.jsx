@@ -15,7 +15,7 @@ var LEGAL_PAGES = [
   { key: 'exporter-mes-donnees',    file: 'exporter-mes-donnees.html',    title: 'Exporter mes données' },
 ];
 
-var LEGAL_EMAIL = 'alexandre.et92@gmail.com';
+var LEGAL_EMAIL = 'contact@the-hybridway.com';
 
 /* Placeholder à compléter par l'éditeur — visuellement distinct. */
 function Todo(props) {

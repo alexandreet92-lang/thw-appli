@@ -136,7 +136,7 @@ const fr: Dict = {
   // Profil
   'profile.langTitle': 'Langue de l’application', 'profile.langDesc': 'Choisis la langue de l’interface.',
   // Navigation (sidebar + barre d'onglets mobile)
-  'nav.dashboard': 'Dashboard', 'nav.feed': 'Découvrir', 'nav.coaches': 'Coachs', 'nav.planning': 'Planning', 'nav.calendar': 'Objectifs',
+  'nav.dashboard': 'Dashboard', 'nav.feed': 'Découvrir', 'nav.coaches': 'Coachs', 'nav.planning': 'Planning', 'nav.calendar': 'Objectifs', 'nav.planningWeek': 'Planning Week',
   'nav.session': 'Session', 'nav.training': 'Training', 'nav.recovery': 'Récupération',
   'nav.nutrition': 'Nutrition', 'nav.performance': 'Performance', 'nav.injuries': 'Blessures',
   'nav.messages': 'Messages',
@@ -7283,7 +7283,7 @@ const en: Dict = {
   'q.lvl.elite': 'Elite', 'q.lvl.eliteD': 'High-level competitor.',
   'profile.langTitle': 'App language', 'profile.langDesc': 'Choose the interface language.',
   // Navigation (sidebar + mobile tab bar)
-  'nav.dashboard': 'Dashboard', 'nav.feed': 'Discover', 'nav.coaches': 'Coaches', 'nav.planning': 'Planning', 'nav.calendar': 'Goals',
+  'nav.dashboard': 'Dashboard', 'nav.feed': 'Discover', 'nav.coaches': 'Coaches', 'nav.planning': 'Planning', 'nav.calendar': 'Goals', 'nav.planningWeek': 'Planning Week',
   'nav.session': 'Session', 'nav.training': 'Training', 'nav.recovery': 'Recovery',
   'nav.nutrition': 'Nutrition', 'nav.performance': 'Performance', 'nav.injuries': 'Injuries',
   'nav.messages': 'Messages',
@@ -14256,7 +14256,7 @@ const es: Dict = {
   // Profil
   'profile.langTitle': 'Idioma de la aplicación', 'profile.langDesc': 'Elige el idioma de la interfaz.',
   // Navigation (sidebar + barre d'onglets mobile)
-  'nav.dashboard': 'Dashboard', 'nav.feed': 'Descubrir', 'nav.coaches': 'Entrenadores', 'nav.planning': 'Planificación', 'nav.calendar': 'Objetivos',
+  'nav.dashboard': 'Dashboard', 'nav.feed': 'Descubrir', 'nav.coaches': 'Entrenadores', 'nav.planning': 'Planificación', 'nav.calendar': 'Objetivos', 'nav.planningWeek': 'Planning Week',
   'nav.session': 'Sesión', 'nav.training': 'Training', 'nav.recovery': 'Recuperación',
   'nav.nutrition': 'Nutrición', 'nav.performance': 'Rendimiento', 'nav.injuries': 'Lesiones',
   'nav.messages': 'Mensajes',

@@ -74,8 +74,6 @@ All Pages
 - Lister TOUTES les actions rapides 
 - Lister le process des main actions rapides 
 - Priorité action rapide = Créer un plan d’entrainement 
-
-<!-- ⚠️ SÉCURITÉ : ne jamais mettre de secrets ici. Les identifiants Meta/Instagram
-     (App ID/Secret, token long-lived, IG business id) vivent dans .env.local
-     (voir .env.local.example : META_APP_ID / META_APP_SECRET / META_LONG_LIVED_TOKEN / IG_BUSINESS_ID).
-     Le workflow notion-sync.yml supprime automatiquement tout secret détecté avant d'écrire ce fichier. -->
+token_meta_temporaire.txt : [REDACTED]
+instagram business id : 17841449112603067
+clé secrète : [REDACTED]

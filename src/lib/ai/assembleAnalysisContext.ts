@@ -7,6 +7,7 @@
 // ══════════════════════════════════════════════════════════════════════════
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { computeCardiacDrift } from '@/lib/ai/metrics'
+import { computeZoneDistribution, type ZoneRowLite, type StreamsForZones } from '@/lib/analysis/zoneDistribution'
 import type { AnalyzeTrainingInput, AnalyzeActivityInput, StreamData, LapData, AnalysisDetail } from '@/lib/ai/analyzeTraining'
 
 // Ligne activité brute (colonnes réelles + variantes legacy), tout optionnel.
@@ -137,6 +138,10 @@ export async function assembleAnalysisContext(
   const eiSimilarAvg = eiList.length > 0 ? eiList.reduce((s, v) => s + v, 0) / eiList.length : null
   const eiDelta = mainEI != null && eiSimilarAvg != null && eiSimilarAvg > 0 ? ((mainEI - eiSimilarAvg) / eiSimilarAvg) * 100 : null
 
+  // Répartition en zones calculée sur les vrais streams (Brique 3) — remplace
+  // l'estimation par l'IA. null si non calculable (l'IA retombe sur l'estimation).
+  const zoneDist = computeZoneDistribution(main.streams as StreamsForZones | null, zonesRes.data as ZoneRowLite | null, row.sport_type)
+
   return {
     activities: [main],
     zones: zonesRes.data ?? null,
@@ -150,7 +155,7 @@ export async function assembleAnalysisContext(
     cardiac_drift_pct: main.cardiac_drift_pct ?? null,
     efficiency_index: mainEI,
     ei_vs_similar_avg: eiDelta,
-    zone_distribution: null, // calculée en Brique 3 (zones réelles sur streams)
+    zone_distribution: zoneDist,
     detail,
   }
 }

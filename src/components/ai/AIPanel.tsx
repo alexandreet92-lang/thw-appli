@@ -27,6 +27,7 @@ import { CheckCircle2, XCircle, ChevronDown, ChevronRight, ArrowLeft, Zap, Globe
 import HybridNetworksPanel, { type HNConv } from './HybridNetworksPanel'
 import { MobileSheet } from './MobileSheet'
 import { haptic } from '@/lib/ui/haptic'
+import { computeZoneDistribution, type ZoneRowLite, type StreamsForZones } from '@/lib/analysis/zoneDistribution'
 import { emitNotification } from '@/lib/notifications/emit'
 import { localDateStr } from '@/lib/date/weekStart'
 import RoutinesView from '@/components/ai/RoutinesView'
@@ -6418,6 +6419,14 @@ function AnalyzeTrainingFlow({ onCancel, onRecordConv, onFollowUp }: {
         ? ((mainEI - eiSimilarAvg) / eiSimilarAvg) * 100
         : null
 
+      // Répartition en zones calculée sur les VRAIS streams (Brique 3) au lieu
+      // d'être estimée par l'IA. null si non calculable → l'IA estime comme avant.
+      const mainZoneDist = computeZoneDistribution(
+        mainAct.streams as StreamsForZones | null,
+        zonesRes.data as ZoneRowLite | null,
+        mainAct.sport_type,
+      )
+
       // Cache : si l'analyse existe déjà (auto après sync, ou calculée avant),
       // on l'affiche sans rappeler l'IA — pas de recalcul à chaque ouverture.
       const cached = (!compareMode && (mainAct as { ai_analysis?: TrainingReport | null }).ai_analysis) || null
@@ -6442,7 +6451,7 @@ function AnalyzeTrainingFlow({ onCancel, onRecordConv, onFollowUp }: {
             cardiac_drift_pct: mainDrift,
             efficiency_index: mainEI,
             ei_vs_similar_avg: eiDelta,
-            zone_distribution: null, // calculée par l'IA depuis la FC et les zones
+            zone_distribution: mainZoneDist, // calculée sur les vrais streams (Brique 3)
           }),
         })
         const data = await res.json() as { report?: TrainingReport; error?: string }

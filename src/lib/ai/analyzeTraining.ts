@@ -229,7 +229,7 @@ MÉTRIQUES PRÉ-CALCULÉES :
 Drift cardiaque global : ${body.cardiac_drift_pct != null ? body.cardiac_drift_pct.toFixed(1) + '%' : 'non calculé'}
 Efficiency Index : ${body.efficiency_index != null ? body.efficiency_index.toFixed(3) : 'non calculé'}
 EI vs moyenne séances similaires : ${body.ei_vs_similar_avg != null ? (body.ei_vs_similar_avg > 0 ? '+' : '') + body.ei_vs_similar_avg.toFixed(1) + '%' : 'non calculé'}
-Distribution zones : ${body.zone_distribution ? JSON.stringify(body.zone_distribution) : 'non calculée — à estimer depuis la FC et les zones configurées'}
+Distribution zones : ${body.zone_distribution ? JSON.stringify(body.zone_distribution) + ' (CALCULÉE sur les vrais streams — reprends-la TELLE QUELLE dans le champ zone_distribution, ne la ré-estime pas)' : 'non calculée — à estimer depuis la FC et les zones configurées'}
 
 TSS cumulé semaine avant cette séance : ${tssWeekBefore}pts
 

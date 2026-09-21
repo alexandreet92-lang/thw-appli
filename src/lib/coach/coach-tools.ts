@@ -115,13 +115,13 @@ export async function resolveCoachScaleTool(name: string, input: Record<string, 
       const monday = (() => { const d = new Date(); const dow = (d.getDay() + 6) % 7; d.setDate(d.getDate() - dow); return ymd(d) })()
       const today = ymd(new Date())
       const [prof, acts, injs, races, planned] = await Promise.all([
-        sb.from('profiles').select('id, full_name, first_name, sports, level, main_goal').in('id', ids),
+        sb.from('profiles').select('id, full_name, first_name, sports, level, primary_goal').in('id', ids),
         sb.from('activities').select('user_id, started_at, tss').in('user_id', ids).gte('started_at', since30),
         sb.from('injuries').select('user_id, status').in('user_id', ids).eq('status', 'active'),
         sb.from('planned_races').select('user_id, name, date').in('user_id', ids).gte('date', today).order('date', { ascending: true }),
         sb.from('planned_sessions').select('user_id, status, week_start').in('user_id', ids).eq('week_start', monday),
       ])
-      type P = { id: string; full_name?: string; first_name?: string; sports?: unknown; level?: string; main_goal?: string }
+      type P = { id: string; full_name?: string; first_name?: string; sports?: unknown; level?: string; primary_goal?: string }
       const pmap = new Map<string, P>((prof.data ?? []).map((p: P) => [p.id, p]))
       const athletes = ids.map(id => {
         const p = pmap.get(id)
@@ -141,7 +141,7 @@ export async function resolveCoachScaleTool(name: string, input: Record<string, 
         else if (adhTotal > 0 && adhDone / adhTotal < 0.4) status = 'attention'
         return {
           id, name: p?.full_name || p?.first_name || 'Athlète',
-          sports: Array.isArray(p?.sports) ? p!.sports : [], goal: p?.main_goal ?? null,
+          sports: Array.isArray(p?.sports) ? p!.sports : [], goal: p?.primary_goal ?? null,
           last_activity_days: lastDays, tss_7d: Math.round(tss7), active_injuries: activeInjuries,
           next_race: nextRace ? { name: nextRace.name, in_days: daysSince(nextRace.date) !== null ? -(daysSince(nextRace.date) as number) : null } : null,
           adherence: adhTotal ? `${adhDone}/${adhTotal}` : null, status,

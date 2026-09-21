@@ -136,7 +136,7 @@ const fr: Dict = {
   // Profil
   'profile.langTitle': 'Langue de l’application', 'profile.langDesc': 'Choisis la langue de l’interface.',
   // Navigation (sidebar + barre d'onglets mobile)
-  'nav.dashboard': 'Dashboard', 'nav.feed': 'Découvrir', 'nav.coaches': 'Coachs', 'nav.planning': 'Planning', 'nav.calendar': 'Calendar',
+  'nav.dashboard': 'Dashboard', 'nav.feed': 'Découvrir', 'nav.coaches': 'Coachs', 'nav.planning': 'Planning', 'nav.calendar': 'Objectifs',
   'nav.session': 'Session', 'nav.training': 'Training', 'nav.recovery': 'Récupération',
   'nav.nutrition': 'Nutrition', 'nav.performance': 'Performance', 'nav.injuries': 'Blessures',
   'nav.messages': 'Messages',
@@ -1087,7 +1087,7 @@ const fr: Dict = {
   'calendar.noEventForYear': 'Aucun événement pour {year}', 'calendar.eventsCount': '{n} événement',
   'calendar.eventsCountPlural': '{n} événements', 'calendar.todayAbbr': 'Auj.', 'calendar.jMinus': 'J-{n}',
   'calendar.todayFull': 'Aujourd\'hui', 'calendar.pastCheck': '✓ Passé', 'calendar.runLabel': 'Run',
-  'calendar.strategy': 'Stratégie', 'calendar.pageTitle': 'Calendar',
+  'calendar.strategy': 'Stratégie', 'calendar.pageTitle': 'Objectifs',
   'calendar.pageSubtitle': 'Course · Pro · Perso · Tout', 'calendar.loading': 'Chargement…',
   'calendar.tabRace': 'Course', 'calendar.tabRaceSub': 'Compétitions', 'calendar.tabPro': 'Pro',
   'calendar.tabProSub': 'Professionnel', 'calendar.tabPerso': 'Perso', 'calendar.tabPersoSub': 'Personnel',
@@ -3267,7 +3267,7 @@ const fr: Dict = {
   'sed.zone.anaerobic': 'Anaérobie', 'sed.zone.recup': 'Récup', 'sed.zone.threshold': 'Seuil',
   'sed.zoneRecovery': 'Zone récup',
   // plnp
-  'plnp.pageTitle': 'Planning', 'plnp.pageSubtitle': 'Entraînement · Semaine',
+  'plnp.pageTitle': 'Planning sports', 'plnp.pageSubtitle': 'Entraînement',
   'plnp.section.training': 'Entraînement', 'plnp.section.trainingSub': 'Plan détaillé', 'plnp.section.plan': 'Plan',
   'plnp.section.planSub': 'Blocs, stats & IA', 'plnp.section.week': 'Semaine',
   'plnp.section.weekSub': 'Vue hebdomadaire', 'plnp.field.sport': 'Sport', 'plnp.field.date': 'Date',
@@ -7283,7 +7283,7 @@ const en: Dict = {
   'q.lvl.elite': 'Elite', 'q.lvl.eliteD': 'High-level competitor.',
   'profile.langTitle': 'App language', 'profile.langDesc': 'Choose the interface language.',
   // Navigation (sidebar + mobile tab bar)
-  'nav.dashboard': 'Dashboard', 'nav.feed': 'Discover', 'nav.coaches': 'Coaches', 'nav.planning': 'Planning', 'nav.calendar': 'Calendar',
+  'nav.dashboard': 'Dashboard', 'nav.feed': 'Discover', 'nav.coaches': 'Coaches', 'nav.planning': 'Planning', 'nav.calendar': 'Goals',
   'nav.session': 'Session', 'nav.training': 'Training', 'nav.recovery': 'Recovery',
   'nav.nutrition': 'Nutrition', 'nav.performance': 'Performance', 'nav.injuries': 'Injuries',
   'nav.messages': 'Messages',
@@ -8201,7 +8201,7 @@ const en: Dict = {
   'calendar.noEventForYear': 'No event for {year}', 'calendar.eventsCount': '{n} event',
   'calendar.eventsCountPlural': '{n} events', 'calendar.todayAbbr': 'Today', 'calendar.jMinus': 'D-{n}',
   'calendar.todayFull': 'Today', 'calendar.pastCheck': '✓ Past', 'calendar.runLabel': 'Run',
-  'calendar.strategy': 'Strategy', 'calendar.pageTitle': 'Calendar',
+  'calendar.strategy': 'Strategy', 'calendar.pageTitle': 'Goals',
   'calendar.pageSubtitle': 'Race · Pro · Personal · All', 'calendar.loading': 'Loading…', 'calendar.tabRace': 'Race',
   'calendar.tabRaceSub': 'Competitions', 'calendar.tabPro': 'Pro', 'calendar.tabProSub': 'Professional',
   'calendar.tabPerso': 'Personal', 'calendar.tabPersoSub': 'Personal', 'calendar.tabAll': 'All',
@@ -10270,7 +10270,7 @@ const en: Dict = {
   'sed.zone.anaerobic': 'Anaerobic', 'sed.zone.recup': 'Recovery', 'sed.zone.threshold': 'Threshold',
   'sed.zoneRecovery': 'Recovery zone',
   // plnp
-  'plnp.pageTitle': 'Planning', 'plnp.pageSubtitle': 'Training · Week', 'plnp.section.training': 'Training',
+  'plnp.pageTitle': 'Sports planning', 'plnp.pageSubtitle': 'Training', 'plnp.section.training': 'Training',
   'plnp.section.trainingSub': 'Detailed plan', 'plnp.section.plan': 'Plan',
   'plnp.section.planSub': 'Blocks, stats & AI', 'plnp.section.week': 'Week', 'plnp.section.weekSub': 'Weekly view',
   'plnp.field.sport': 'Sport', 'plnp.field.date': 'Date', 'plnp.field.time': 'Time',
@@ -14256,7 +14256,7 @@ const es: Dict = {
   // Profil
   'profile.langTitle': 'Idioma de la aplicación', 'profile.langDesc': 'Elige el idioma de la interfaz.',
   // Navigation (sidebar + barre d'onglets mobile)
-  'nav.dashboard': 'Dashboard', 'nav.feed': 'Descubrir', 'nav.coaches': 'Entrenadores', 'nav.planning': 'Planificación', 'nav.calendar': 'Calendar',
+  'nav.dashboard': 'Dashboard', 'nav.feed': 'Descubrir', 'nav.coaches': 'Entrenadores', 'nav.planning': 'Planificación', 'nav.calendar': 'Objetivos',
   'nav.session': 'Sesión', 'nav.training': 'Training', 'nav.recovery': 'Recuperación',
   'nav.nutrition': 'Nutrición', 'nav.performance': 'Rendimiento', 'nav.injuries': 'Lesiones',
   'nav.messages': 'Mensajes',
@@ -15207,7 +15207,7 @@ const es: Dict = {
   'calendar.noEventForYear': 'Ningún evento para {year}', 'calendar.eventsCount': '{n} evento',
   'calendar.eventsCountPlural': '{n} eventos', 'calendar.todayAbbr': 'Hoy', 'calendar.jMinus': 'D-{n}',
   'calendar.todayFull': 'Hoy', 'calendar.pastCheck': '✓ Pasado', 'calendar.runLabel': 'Run',
-  'calendar.strategy': 'Estrategia', 'calendar.pageTitle': 'Calendar',
+  'calendar.strategy': 'Estrategia', 'calendar.pageTitle': 'Objetivos',
   'calendar.pageSubtitle': 'Carrera · Pro · Personal · Todo', 'calendar.loading': 'Cargando…',
   'calendar.tabRace': 'Carrera', 'calendar.tabRaceSub': 'Competiciones', 'calendar.tabPro': 'Pro',
   'calendar.tabProSub': 'Profesional', 'calendar.tabPerso': 'Personal', 'calendar.tabPersoSub': 'Personal',
@@ -17387,7 +17387,7 @@ const es: Dict = {
   'sed.zone.anaerobic': 'Anaeróbica', 'sed.zone.recup': 'Recup', 'sed.zone.threshold': 'Umbral',
   'sed.zoneRecovery': 'Zona recuperación',
   // plnp
-  'plnp.pageTitle': 'Planning', 'plnp.pageSubtitle': 'Entrenamiento · Semana',
+  'plnp.pageTitle': 'Planning deportivo', 'plnp.pageSubtitle': 'Entrenamiento',
   'plnp.section.training': 'Entrenamiento', 'plnp.section.trainingSub': 'Plan detallado', 'plnp.section.plan': 'Plan',
   'plnp.section.planSub': 'Bloques, estadísticas e IA', 'plnp.section.week': 'Semana',
   'plnp.section.weekSub': 'Vista semanal', 'plnp.field.sport': 'Deporte', 'plnp.field.date': 'Fecha',

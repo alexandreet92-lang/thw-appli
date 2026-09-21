@@ -181,7 +181,7 @@ export async function buildAthleteContext(
   const since56 = new Date(weekStart); since56.setDate(since56.getDate() - 56)
 
   const [profile, perf, zones, activities56, plannedWeek, races, metrics, injuries, plan] = await Promise.all([
-    single<ProfileRow>(sb.from('profiles').select('first_name,age,weight_kg,height_cm,main_goal,sports,preferred_name,work_profession,work_hours_per_week,ideal_sleep_hours,sport_hours_per_week').eq('id', userId).maybeSingle()),
+    single<ProfileRow>(sb.from('profiles').select('first_name,age,weight_kg,height_cm,main_goal:primary_goal,sports,preferred_name,work_profession,work_hours_per_week,ideal_sleep_hours,sport_hours_per_week').eq('id', userId).maybeSingle()),
     single<PerfRow>(sb.from('athlete_performance_profile').select('*').eq('user_id', userId).maybeSingle()),
     many<ZoneRow>(sb.from('training_zones').select('sport,ftp_watts,sl1,sl2,z1_value,z2_value,z3_value,z4_value,z5_value').eq('user_id', userId).eq('is_current', true)),
     many<ActivityRow>(sb.from('activities').select(ACT_SELECT).eq('user_id', userId).gte('started_at', since56.toISOString()).order('started_at', { ascending: true })),

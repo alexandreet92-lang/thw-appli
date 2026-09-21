@@ -14829,7 +14829,7 @@ async function enrichedConseilsSommeil(
   const [metrics60dRes, activities60dRes, profileRes] = await Promise.all([
     Promise.resolve(sb.from('metrics_daily').select('*').eq('user_id', userId).gte('date', since60d.toISOString().split('T')[0]).order('date', { ascending: true })).catch(() => ({ data: [] })),
     sb.from('activities').select(ACTIVITIES_SELECT).eq('user_id', userId).gte('started_at', since60d.toISOString()).order('started_at', { ascending: true }),
-    sb.from('profiles').select('sports,main_goal,age,weight_kg').eq('id', userId).maybeSingle(),
+    sb.from('profiles').select('sports,main_goal:primary_goal,age,weight_kg').eq('id', userId).maybeSingle(),
   ])
 
   const metrics60d = metrics60dRes.data ?? []
@@ -14985,7 +14985,7 @@ function AppGuideFlow({ onPrepare, onCancel }: {
         const since14d = new Date(now.getTime() - 14 * 86400000).toISOString().slice(0, 10)
 
         const [profileRes, zonesRes, testsRes, planRes, racesRes, actsRes, metricsRes, rulesRes] = await Promise.all([
-          sb.from('profiles').select('first_name,sports,main_goal').eq('id', user.id).maybeSingle(),
+          sb.from('profiles').select('first_name,sports,main_goal:primary_goal').eq('id', user.id).maybeSingle(),
           sb.from('training_zones').select('id,sport').eq('user_id', user.id).eq('is_current', true),
           Promise.resolve({ data: [], error: null }),
           sb.from('nutrition_plans').select('id').eq('user_id', user.id).eq('actif', true).maybeSingle(),
@@ -15229,7 +15229,7 @@ async function enrichedComprendreApp(
   const since14d = new Date(now); since14d.setDate(now.getDate() - 14)
 
   const [profileRes, zonesRes, testsRes, planNutritionRes, racesRes, activitiesCountRes, metricsCountRes, rulesCountRes] = await Promise.all([
-    sb.from('profiles').select('first_name,sports,main_goal,age').eq('id', userId).maybeSingle(),
+    sb.from('profiles').select('first_name,sports,main_goal:primary_goal,age').eq('id', userId).maybeSingle(),
     sb.from('training_zones').select('id,sport').eq('user_id', userId).eq('is_current', true),
     Promise.resolve({ data: [], error: null }),
     sb.from('nutrition_plans').select('id').eq('user_id', userId).eq('actif', true).maybeSingle(),

@@ -85,10 +85,8 @@ do $$ begin
   create policy agenda_events_owner on public.agenda_events
     for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 exception when duplicate_object then null; end $$;
-do $$ begin
-  create policy gcal_conn_read on public.google_calendar_connections
-    for select using (auth.uid() = user_id);
-exception when duplicate_object then null; end $$;
+-- Tokens OAuth server-only : PAS de policy SELECT client (jamais lisibles par
+-- le navigateur) ; tout passe par les routes serveur (service role).
 do $$ begin
   create policy gcal_conn_delete on public.google_calendar_connections
     for delete using (auth.uid() = user_id);

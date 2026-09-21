@@ -50,6 +50,46 @@ export function latestPmc(activities: ActivityRow[]): PmcPoint | null {
   return pts[pts.length - 1] ?? null
 }
 
+/** État de charge à une date donnée (pour l'IA / le coach). */
+export interface LoadState {
+  ctl: number
+  atl: number
+  tsb: number
+  tsbPrev7: number | null
+  trend: 'up' | 'down' | 'stable'      // évolution du TSB sur 7 j
+  ctlTrend: 'up' | 'down' | 'stable'   // évolution de la forme (CTL)
+  verdict: string                       // « Frais / Fatigué / Surcharge… »
+  overload: boolean                     // surcharge marquée (TSB très négatif)
+}
+
+/**
+ * CTL/ATL/TSB « à la date `asOf` » (et non à aujourd'hui) — utile pour analyser
+ * une séance dans son contexte de charge réel. Amorçage EWMA sur ~400 j avant.
+ */
+export function loadAsOf(activities: ActivityRow[], asOf: Date): LoadState | null {
+  if (!activities.length) return null
+  const tssMap: Record<string, number> = {}
+  for (const a of activities) { const d = a.started_at.slice(0, 10); tssMap[d] = (tssMap[d] ?? 0) + estimateTss(a) }
+  const end = new Date(asOf); end.setHours(0, 0, 0, 0)
+  const start = new Date(end); start.setDate(end.getDate() - 400)
+  let ctl = 0, atl = 0
+  const series: { ctl: number; tsb: number }[] = []
+  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+    const tss = tssMap[isoDay(d)] ?? 0
+    ctl = ctl + K_CTL * (tss - ctl)
+    atl = atl + K_ATL * (tss - atl)
+    series.push({ ctl, tsb: ctl - atl })
+  }
+  const last = series[series.length - 1]
+  const prev = series[series.length - 8] ?? null
+  const r1 = (n: number) => Math.round(n * 10) / 10
+  const tsb = r1(last.tsb)
+  const tsbPrev7 = prev ? r1(prev.tsb) : null
+  const trend: LoadState['trend'] = tsbPrev7 == null ? 'stable' : tsb > tsbPrev7 + 2 ? 'up' : tsb < tsbPrev7 - 2 ? 'down' : 'stable'
+  const ctlTrend: LoadState['ctlTrend'] = prev ? (last.ctl > prev.ctl + 1 ? 'up' : last.ctl < prev.ctl - 1 ? 'down' : 'stable') : 'stable'
+  return { ctl: r1(last.ctl), atl: r1(last.ctl - last.tsb), tsb, tsbPrev7, trend, ctlTrend, verdict: tsbVerdict(tsb).label, overload: tsb <= -20 }
+}
+
 // ── Convention couleur CTL/ATL/TSB (cohérence Training) ──────────
 export const LOAD_COLORS = {
   ctl:    '#06B6D4', // cyan — forme (chronique)

@@ -30,7 +30,7 @@ export async function getRosterForCoach(sb: SupabaseClient, coachId: string): Pr
   const monday = mondayOf(new Date())
   const today = new Date().toISOString().slice(0, 10)
 
-  const [profRes, actRes, recRes, injRes, planRes, raceRes, msgRes] = await Promise.all([
+  const [profRes, actRes, recRes, injRes, planRes, raceRes, msgRes, metricsRes] = await Promise.all([
     sb.from('profiles').select('id, full_name, first_name, avatar_url, sports, level, primary_goal, gender').in('id', ids),
     sb.from('activities').select('user_id, started_at, tss, moving_time_s').in('user_id', ids).gte('started_at', since30).order('started_at', { ascending: false }),
     sb.from('recovery_checkin').select('user_id, fatigue, soreness, sleep_quality').in('user_id', ids).gte('date', since7d),
@@ -38,6 +38,7 @@ export async function getRosterForCoach(sb: SupabaseClient, coachId: string): Pr
     sb.from('planned_sessions').select('user_id, status').in('user_id', ids).eq('week_start', monday),
     sb.from('race_events').select('user_id, name, start_date').in('user_id', ids).gte('start_date', today).order('start_date', { ascending: true }),
     sb.from('coach_messages').select('athlete_id, sender_id, read_at').eq('coach_id', coachId).in('athlete_id', ids).is('read_at', null),
+    sb.from('metrics_daily').select('user_id, tsb').in('user_id', ids).eq('date', today),
   ])
 
   const profById = new Map((profRes.data ?? []).map(p => [p.id as string, p as Record<string, unknown>]))
@@ -47,6 +48,7 @@ export async function getRosterForCoach(sb: SupabaseClient, coachId: string): Pr
   const plans = (planRes.data ?? []) as { user_id: string; status: string | null }[]
   const races = (raceRes.data ?? []) as { user_id: string; name: string | null; start_date: string }[]
   const msgs = (msgRes.data ?? []) as { athlete_id: string; sender_id: string; read_at: string | null }[]
+  const tsbById = new Map(((metricsRes.data ?? []) as { user_id: string; tsb: number | null }[]).map(m => [m.user_id, m.tsb]))
 
   const day0 = new Date(now - 6 * 86400_000); day0.setHours(0, 0, 0, 0)
   const bucketIndex = (iso: string) => {
@@ -83,10 +85,13 @@ export async function getRosterForCoach(sb: SupabaseClient, coachId: string): Pr
     const raceObj = race ? { name: race.name || 'Course', days: Math.max(0, Math.ceil((new Date(race.start_date + 'T00:00:00').getTime() - now) / 86400_000)) } : null
 
     const unread = msgs.filter(m => m.athlete_id === id && m.sender_id !== coachId).length
+    const tsb = tsbById.get(id) ?? null
+    const overload = tsb != null && tsb <= -20
 
     let status: Forme = 'ok'; let reason: string | null = null
     if (activeInjuries > 0) { status = 'injured'; reason = `${activeInjuries} blessure${activeInjuries > 1 ? 's' : ''} active${activeInjuries > 1 ? 's' : ''}.` }
     else if (lastDays > 10) { status = 'inactive'; reason = lastDays === Infinity ? 'Aucune activité enregistrée.' : `Inactif depuis ${lastDays} jours.` }
+    else if (overload) { status = 'warn'; reason = `Surcharge — TSB à ${tsb}.` }
     else if ((fatigue ?? 0) >= 4 || soreAvg >= 4) { status = 'warn'; reason = 'Fatigue / courbatures élevées sur 7 jours.' }
 
     const name = (p?.full_name as string) || (p?.first_name as string) || 'Athlète'
@@ -99,7 +104,7 @@ export async function getRosterForCoach(sb: SupabaseClient, coachId: string): Pr
       group: r.group_name, note: r.coach_note,
       status, reason,
       lastActivity: lastAt, lastDays,
-      load7, tss7, fatigue,
+      load7, tss7, fatigue, tsb,
       adhDone, adhTotal, activeInjuries,
       race: raceObj, unread,
     }

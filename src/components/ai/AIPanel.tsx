@@ -28,6 +28,8 @@ import HybridNetworksPanel, { type HNConv } from './HybridNetworksPanel'
 import { MobileSheet } from './MobileSheet'
 import { haptic } from '@/lib/ui/haptic'
 import { computeZoneDistribution, type ZoneRowLite, type StreamsForZones } from '@/lib/analysis/zoneDistribution'
+import { loadAsOf } from '@/lib/training/pmc'
+import type { ActivityRow as PmcActivityRow } from '@/app/recovery/components/types'
 import { emitNotification } from '@/lib/notifications/emit'
 import { localDateStr } from '@/lib/date/weekStart'
 import RoutinesView from '@/components/ai/RoutinesView'
@@ -6427,6 +6429,19 @@ function AnalyzeTrainingFlow({ onCancel, onRecordConv, onFollowUp }: {
         mainAct.sport_type,
       )
 
+      // Charge (PMC : CTL/ATL/TSB) à la date de la séance — donnée réelle de
+      // charge fournie à l'IA (détection surcharge/fraîcheur).
+      let mainLoad = null
+      if (!compareMode) {
+        try {
+          const since = new Date(new Date(actDate).getTime() - 400 * 86400000).toISOString()
+          const until = new Date(new Date(actDate).getTime() + 86400000).toISOString()
+          const { data: hist } = await sb.from('activities').select('id,sport_type,started_at,moving_time_s,tss').eq('user_id', user.id).gte('started_at', since).lte('started_at', until).order('started_at', { ascending: true })
+          const rows = ((hist ?? []) as Record<string, unknown>[]).map(a => ({ id: a.id as string, sport_type: (a.sport_type as string) ?? null, started_at: a.started_at as string, moving_time_s: (a.moving_time_s as number) ?? null, elapsed_time_s: null, tss: (a.tss as number) ?? null })) as PmcActivityRow[]
+          mainLoad = loadAsOf(rows, new Date(actDate))
+        } catch { /* ignore */ }
+      }
+
       // Cache : si l'analyse existe déjà (auto après sync, ou calculée avant),
       // on l'affiche sans rappeler l'IA — pas de recalcul à chaque ouverture.
       const cached = (!compareMode && (mainAct as { ai_analysis?: TrainingReport | null }).ai_analysis) || null
@@ -6452,6 +6467,7 @@ function AnalyzeTrainingFlow({ onCancel, onRecordConv, onFollowUp }: {
             efficiency_index: mainEI,
             ei_vs_similar_avg: eiDelta,
             zone_distribution: mainZoneDist, // calculée sur les vrais streams (Brique 3)
+            load: mainLoad, // charge PMC (CTL/ATL/TSB) à la date de la séance
           }),
         })
         const data = await res.json() as { report?: TrainingReport; error?: string }

@@ -8,6 +8,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { computeCardiacDrift } from '@/lib/ai/metrics'
 import { computeZoneDistribution, type ZoneRowLite, type StreamsForZones } from '@/lib/analysis/zoneDistribution'
+import { computeUserLoad } from '@/lib/training/pmcServer'
 import type { AnalyzeTrainingInput, AnalyzeActivityInput, StreamData, LapData, AnalysisDetail } from '@/lib/ai/analyzeTraining'
 
 // Ligne activité brute (colonnes réelles + variantes legacy), tout optionnel.
@@ -142,6 +143,9 @@ export async function assembleAnalysisContext(
   // l'estimation par l'IA. null si non calculable (l'IA retombe sur l'estimation).
   const zoneDist = computeZoneDistribution(main.streams as StreamsForZones | null, zonesRes.data as ZoneRowLite | null, row.sport_type)
 
+  // Charge d'entraînement (PMC : CTL/ATL/TSB) au jour de la séance.
+  const load = await computeUserLoad(sb, userId, new Date(row.started_at))
+
   return {
     activities: [main],
     zones: zonesRes.data ?? null,
@@ -156,6 +160,7 @@ export async function assembleAnalysisContext(
     efficiency_index: mainEI,
     ei_vs_similar_avg: eiDelta,
     zone_distribution: zoneDist,
+    load,
     detail,
   }
 }

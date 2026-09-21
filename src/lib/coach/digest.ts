@@ -33,6 +33,8 @@ export function buildCoachDigest(roster: RosterAthlete[], mode: 'weekly' | 'dail
   const injured = roster.filter(a => a.status === 'injured')
   const inactive = roster.filter(a => a.status === 'inactive')
   const warn = roster.filter(a => a.status === 'warn')
+  const overload = warn.filter(a => a.tsb != null && a.tsb <= -20)   // surcharge (PMC)
+  const fatigued = warn.filter(a => !(a.tsb != null && a.tsb <= -20)) // fatigue subjective
   const priority = injured.length + inactive.length + warn.length
 
   const races = roster
@@ -57,7 +59,8 @@ export function buildCoachDigest(roster: RosterAthlete[], mode: 'weekly' | 'dail
   const parts: string[] = []
   if (injured.length) parts.push(`🩹 ${names(injured)} (blessé${injured.length > 1 ? 's' : ''})`)
   if (inactive.length) parts.push(`😴 ${names(inactive)} (inactif${inactive.length > 1 ? 's' : ''})`)
-  if (warn.length) parts.push(`⚠️ ${names(warn)} (fatigue)`)
+  if (overload.length) parts.push(`🔥 ${names(overload)} (surcharge)`)
+  if (fatigued.length) parts.push(`⚠️ ${names(fatigued)} (fatigue)`)
 
   const s = priority > 1 ? 's' : ''
   return {

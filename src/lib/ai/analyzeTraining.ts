@@ -6,6 +6,7 @@
 // Une seule source de vérité pour les prompts et l'appel LLM.
 // ══════════════════════════════════════════════════════════════════════════
 import { getAnthropicClient, MODELS, parseJsonResponse } from '@/lib/agents/base'
+import type { LoadState } from '@/lib/training/pmc'
 
 export type StreamData = {
   heartrate?: number[]
@@ -65,6 +66,8 @@ export interface AnalyzeTrainingInput {
   efficiency_index?: number | null
   ei_vs_similar_avg?: number | null
   zone_distribution?: { zone: string; pct: number; minutes: number; color: string }[] | null
+  /** Charge d'entraînement (PMC : CTL/ATL/TSB) au jour de la séance. */
+  load?: LoadState | null
   /** Niveau de détail (défaut : 'advanced'). */
   detail?: AnalysisDetail
 }
@@ -155,8 +158,12 @@ Adapte au sport : vélo = focus puissance/cadence/NP, course = focus allure/cade
 
 "contexte_recuperation" — ÉTAT DE FORME (1-2 paragraphes)
 Si données de récupération disponibles (HRV, sommeil, fatigue) : "Tu as fait cette séance avec un HRV de X (Y% sous ta baseline). Ça explique probablement..."
-Si TSS semaine avant disponible : interpréter la charge accumulée et son impact potentiel.
-Si aucune donnée : signaler clairement ce que cela empêche d'analyser.
+PRIORITÉ à la CHARGE (PMC) quand elle est fournie — c'est ton meilleur signal de charge, bien plus fiable que le TSS cumulé brut :
+- TSB (fraîcheur) : positif = frais/affûté ; entre 0 et -10 = charge normale ; -10 à -25 = fatigue notable ; en dessous de -25 (ou drapeau SURCHARGE) = SURCHARGE → recommande explicitement de la récupération/allègement.
+- CTL (forme) qui monte = progression d'endurance de fond ; qui baisse = perte de forme (repos prolongé, maladie…).
+- ATL (fatigue aiguë) élevée + TSB qui plonge = accumulation récente → risque si ça continue.
+- Relie ces chiffres au ressenti (RPE, HRV, dérive cardiaque) : ex. "TSB à -28 le jour de la séance → ta FC élevée à faible allure s'explique par la fatigue accumulée, pas par une baisse de forme".
+Si aucune donnée de charge : signaler clairement ce que cela empêche d'analyser.
 
 "plan_vs_realise" — PLAN VS RÉALITÉ (1 paragraphe, ou null si pas de planifié)
 Si séance planifiée disponible : l'athlète a-t-il exécuté ce qui était prévu ? Écart significatif ?
@@ -232,6 +239,12 @@ EI vs moyenne séances similaires : ${body.ei_vs_similar_avg != null ? (body.ei_
 Distribution zones : ${body.zone_distribution ? JSON.stringify(body.zone_distribution) + ' (CALCULÉE sur les vrais streams — reprends-la TELLE QUELLE dans le champ zone_distribution, ne la ré-estime pas)' : 'non calculée — à estimer depuis la FC et les zones configurées'}
 
 TSS cumulé semaine avant cette séance : ${tssWeekBefore}pts
+
+CHARGE D'ENTRAÎNEMENT (PMC) LE JOUR DE LA SÉANCE :
+${body.load
+  ? `CTL (forme, chronique 42j) : ${body.load.ctl} · ATL (fatigue, aiguë 7j) : ${body.load.atl} · TSB (fraîcheur = CTL−ATL) : ${body.load.tsb} → « ${body.load.verdict} »${body.load.overload ? ' ⚠️ SURCHARGE' : ''}
+Tendance : TSB il y a 7 jours = ${body.load.tsbPrev7 ?? 'n/a'} (TSB ${body.load.trend}) · forme (CTL) ${body.load.ctlTrend}`
+  : 'non disponible (historique insuffisant)'}
 
 ZONES CONFIGURÉES (${mainAct.sport_type}) :
 ${zones ? JSON.stringify(zones, null, 2) : "Aucune zone configurée — signaler que cela limite l'analyse de la distribution d'intensité"}

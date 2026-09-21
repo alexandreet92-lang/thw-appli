@@ -32,6 +32,7 @@ export type NotifKey =
   | 'social.abonne' | 'social.activite_ami' | 'social.reaction' | 'social.commentaire'
   // ── Studio / Routines ──
   | 'studio.validation' | 'studio.termine' | 'studio.echec' | 'studio.routine'
+  | 'agenda.reminder'
 
 export const NOTIF_DEFAULTS: Record<NotifKey, boolean> = {
   'entrainement.rappel_seance': true,
@@ -105,6 +106,7 @@ export const NOTIF_DEFAULTS: Record<NotifKey, boolean> = {
   'studio.termine': true,
   'studio.echec': true,
   'studio.routine': false,
+  'agenda.reminder': true,
 }
 
 export function defaultFor(key: string): boolean {

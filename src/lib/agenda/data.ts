@@ -17,6 +17,31 @@ function mondayOf(d: Date): Date { const x = new Date(d); const dow = (x.getDay(
 function dayIndexOf(d: Date): number { return (d.getDay() + 6) % 7 } // lundi = 0
 function hhmm(d: Date): string { return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}` }
 
+// Expansion d'une règle de récurrence (sous-ensemble iCal) sur une plage.
+// Supporte FREQ=DAILY|WEEKLY|MONTHLY + BYDAY=MO,TU,… Retourne les débuts d'occurrence.
+const RRULE_DOW: Record<string, number> = { MO: 1, TU: 2, WE: 3, TH: 4, FR: 5, SA: 6, SU: 0 }
+export function expandRRule(baseStart: Date, rrule: string, rangeStart: Date, rangeEnd: Date, cap = 400): Date[] {
+  const parts = Object.fromEntries(rrule.split(';').map(p => p.split('=')) as [string, string][])
+  const freq = parts.FREQ
+  const byday = parts.BYDAY ? parts.BYDAY.split(',').map(d => RRULE_DOW[d]).filter(n => n != null) : null
+  const out: Date[] = []
+  const hh = baseStart.getHours(), mm = baseStart.getMinutes()
+  const push = (d: Date) => { const x = new Date(d); x.setHours(hh, mm, 0, 0); if (x >= rangeStart && x < rangeEnd && x >= baseStart) out.push(x) }
+  if (freq === 'DAILY') {
+    for (let d = new Date(Math.max(baseStart.getTime(), rangeStart.getTime())), i = 0; d < rangeEnd && i < cap; d = new Date(d.getTime() + 86400000), i++) push(d)
+  } else if (freq === 'WEEKLY') {
+    const targets = byday && byday.length ? byday : [baseStart.getDay()]
+    for (let d = new Date(Math.max(baseStart.getTime(), rangeStart.getTime() - 7 * 86400000)), i = 0; d < rangeEnd && i < cap; d = new Date(d.getTime() + 86400000), i++) {
+      if (targets.includes(d.getDay())) push(d)
+    }
+  } else if (freq === 'MONTHLY') {
+    const dom = baseStart.getDate()
+    const d = new Date(rangeStart.getFullYear(), rangeStart.getMonth(), dom)
+    for (let i = 0; i < cap && d < rangeEnd; i++) { if (d >= baseStart) push(new Date(d)); d.setMonth(d.getMonth() + 1) }
+  }
+  return out
+}
+
 // "18:00" / "18h30" / "8h" → minutes depuis minuit ; null si non horaire.
 function parseTimeToMin(t: string | null | undefined): number | null {
   if (!t) return null
@@ -185,21 +210,40 @@ export async function fetchAgenda(startISO: string, endISO: string, calendars: A
     })
   }
   // Événements perso (agenda_events)
-  for (const e of (aeRes.data ?? []) as Record<string, unknown>[]) {
+  // Note : agenda_events récurrents (rrule) — l'occurrence originale peut être
+  // hors plage, on requête donc large côté récurrence ci-dessous.
+  const aeRes2 = await (async () => {
+    const withR = (aeRes.data ?? []) as Record<string, unknown>[]
+    // Récupère aussi les événements récurrents dont l'origine précède la plage.
+    const { data: rec } = await sb.from('agenda_events').select('*').eq('user_id', uid).not('rrule', 'is', null).lt('starts_at', startISO)
+    const seen = new Set(withR.map(r => r.id as string))
+    return withR.concat(((rec ?? []) as Record<string, unknown>[]).filter(r => !seen.has(r.id as string)))
+  })()
+
+  for (const e of aeRes2) {
     const isGoogle = (e.source as string) === 'google'
     const kind: AgendaCalendar['kind'] = isGoogle ? 'google' : 'personal'
     if (!visible(kind)) continue
     const cal = calendars.find(c => c.id === (e.calendar_id as string))
-    out.push({
-      id: `event:${e.id}`, rawId: e.id as string, source: isGoogle ? 'google' : 'event', calendarKind: kind,
+    const base = {
+      rawId: e.id as string, source: (isGoogle ? 'google' : 'event') as CalEvent['source'], calendarKind: kind,
       title: (e.title as string) || '(sans titre)', sport: null,
-      start: e.starts_at as string, end: e.ends_at as string, allDay: !!e.all_day,
+      allDay: !!e.all_day,
       color: (e.color as string) || cal?.color || (isGoogle ? googleColor : persoColor),
       editable: !isGoogle,
-      description: (e.description as string) ?? null, rpe: null, durationMin: null, blocks: null,
+      description: (e.description as string) ?? null, rpe: null, durationMin: null as number | null, blocks: null,
       reminderMin: (e.reminder_min as number) ?? null, rrule: (e.rrule as string) ?? null,
       meta: { location: e.location, calendarId: e.calendar_id, googleEventId: e.google_event_id },
-    })
+    }
+    const bStart = new Date(e.starts_at as string)
+    const durMs = new Date(e.ends_at as string).getTime() - bStart.getTime()
+    if (e.rrule) {
+      for (const occ of expandRRule(bStart, e.rrule as string, start, end)) {
+        out.push({ ...base, id: `event:${e.id}:${occ.getTime()}`, start: iso(occ), end: iso(new Date(occ.getTime() + durMs)) })
+      }
+    } else {
+      out.push({ ...base, id: `event:${e.id}`, start: e.starts_at as string, end: e.ends_at as string })
+    }
   }
 
   return out

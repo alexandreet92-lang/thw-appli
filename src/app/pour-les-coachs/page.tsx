@@ -30,15 +30,48 @@ import fs from 'node:fs'
 import path from 'node:path'
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { authRedirectBase } from '@/lib/auth/redirect'
 
 export const dynamic = 'force-static'
 
+const TITRE = 'THW Coaching — coachez plus d’athlètes sans y passer plus d’heures'
+const RESUME =
+  'L’IA écrit les plans, ajuste les séances et suit la charge. Vous gardez la relation et les décisions. '
+  + 'Six semaines d’accès complet, offertes, pour l’essayer avec vos athlètes.'
+
+// LA CARTE D'APERÇU N'EST PAS UNE DÉCORATION. Le lien de cette page part en
+// message privé Instagram. Sans ces balises, le destinataire voit l'adresse
+// toute nue — et un lien nu envoyé par un inconnu, c'est la forme même du
+// spam, sur le canal précis où le message doit inspirer confiance.
+// L'image est fabriquée par `node scripts/apercu-og.mjs` (1200 × 630).
 export const metadata: Metadata = {
-  title: 'THW Coaching — coachez plus d’athlètes sans y passer plus d’heures',
-  description:
-    'L’IA écrit les plans, ajuste les séances et suit la charge. Vous gardez la relation et les décisions. '
-    + 'Six semaines d’accès complet, offertes, pour l’essayer avec vos athlètes.',
+  // Base publique du site — même source que les liens d'email, pour qu'il n'y
+  // ait qu'UN endroit où corriger le domaine (variable NEXT_PUBLIC_SITE_URL).
+  metadataBase: new URL(authRedirectBase()),
+  title: TITRE,
+  description: RESUME,
   robots: { index: true, follow: true },
+  alternates: { canonical: '/pour-les-coachs' },
+  openGraph: {
+    type: 'website',
+    locale: 'fr_FR',
+    siteName: 'THW Coaching',
+    url: '/pour-les-coachs',
+    title: TITRE,
+    description: RESUME,
+    images: [{
+      url: '/pour-les-coachs/apercu.png',
+      width: 1200,
+      height: 630,
+      alt: 'THW Coaching — coachez plus d’athlètes sans y passer plus d’heures.',
+    }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: TITRE,
+    description: RESUME,
+    images: ['/pour-les-coachs/apercu.png'],
+  },
 }
 
 /** Le lien de prise de rendez-vous. Réglable sans toucher au code. */
@@ -290,7 +323,7 @@ function LeTest() {
             marginTop: 'var(--space-6)',
             display: 'grid',
             gap: 'var(--space-5)',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+            gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
           }}
         >
           {([['6', 'semaines'], ['10', 'athlètes'], ['0', 'euro']] as const).map(([n, quoi]) => (
@@ -339,9 +372,12 @@ function LAppEntiere() {
     <section style={{ marginTop: 'var(--space-8)' }}>
       <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: 'var(--text-dim)', maxWidth: 580 }}>
         Vous voulez voir l’app en entier avant de me répondre ?{' '}
-        <Link href="/decouvrir" style={{ color: 'var(--primary)', textDecoration: 'none' }}>
+        {/* <a> et non <Link> : /decouvrir n'est pas une route de l'app, c'est une
+            redirection de next.config.js vers un fichier statique. Le routeur
+            client n'a aucune page à cette adresse. */}
+        <a href="/decouvrir" style={{ color: 'var(--primary)', textDecoration: 'none' }}>
           La visite complète
-        </Link>{' '}
+        </a>{' '}
         — elle est écrite du point de vue de l’athlète, celui que vos athlètes auront.
       </p>
     </section>
@@ -349,46 +385,51 @@ function LAppEntiere() {
 }
 
 function Appel() {
+  const rdv = CAL ? (CAL.startsWith('http') ? CAL : `https://cal.com/${CAL}`) : ''
+  const mail = `mailto:${CONTACT}?subject=${encodeURIComponent('Je veux tester THW Coaching')}`
+
+  // IL Y A TOUJOURS UN BOUTON. Mesuré sans NEXT_PUBLIC_CAL_COACH : la page
+  // n'avait plus pour seule action qu'un petit lien texte, perdu entre deux
+  // paragraphes — sur un téléphone, rien qui ressemble à un bouton. Or cette
+  // variable est figée au BUILD : posée après un déploiement, elle reste
+  // absente jusqu'au suivant. La page doit donc être bonne sans elle.
+  // Avec un créneau : le rendez-vous est l'action, « m'écrire » est le repli.
+  // Sans créneau : « m'écrire » DEVIENT l'action. Jamais deux boutons pleins.
+  const principal: React.CSSProperties = {
+    display: 'inline-flex',
+    alignItems: 'center',
+    minHeight: 44,
+    padding: '0 var(--space-6)',
+    borderRadius: 'var(--r-pill)',
+    background: 'var(--primary)',
+    color: 'var(--on-primary)',
+    fontSize: 14,
+    fontWeight: 600,
+    textDecoration: 'none',
+  }
+  const secondaire: React.CSSProperties = {
+    display: 'inline-flex',
+    alignItems: 'center',
+    minHeight: 44,
+    fontSize: 14,
+    fontWeight: 500,
+    color: 'var(--text-mid)',
+    textDecoration: 'none',
+  }
+
   return (
     <section style={{ marginTop: 'var(--space-10)' }}>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-4)', alignItems: 'center' }}>
-        {/* UNE SEULE ACTION PRINCIPALE, en accent. Le reste en texte simple. */}
-        {CAL ? (
-          <a
-            href={CAL.startsWith('http') ? CAL : `https://cal.com/${CAL}`}
-            target="_blank"
-            rel="noreferrer noopener"
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              minHeight: 44,
-              padding: '0 var(--space-6)',
-              borderRadius: 'var(--r-pill)',
-              background: 'var(--primary)',
-              color: 'var(--on-primary)',
-              fontSize: 14,
-              fontWeight: 600,
-              textDecoration: 'none',
-            }}
-          >
-            Prendre 15 minutes
-          </a>
-        ) : null}
-
-        <a
-          href={`mailto:${CONTACT}?subject=${encodeURIComponent('Je veux tester THW Coaching')}`}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            minHeight: 44,
-            fontSize: 14,
-            fontWeight: 500,
-            color: CAL ? 'var(--text-mid)' : 'var(--primary)',
-            textDecoration: 'none',
-          }}
-        >
-          M’écrire
-        </a>
+        {rdv ? (
+          <>
+            <a href={rdv} target="_blank" rel="noreferrer noopener" style={principal}>
+              Prendre 15 minutes
+            </a>
+            <a href={mail} style={secondaire}>M’écrire</a>
+          </>
+        ) : (
+          <a href={mail} style={principal}>M’écrire</a>
+        )}
       </div>
 
       <p style={{ margin: 'var(--space-4) 0 0', fontSize: 13, color: 'var(--text-dim)' }}>

@@ -33,7 +33,7 @@ function DownloadSection() {
     var live = !!opts.href;
     var Tag = live ? 'a' : 'span';
     return (
-      <Tag href={live ? opts.href : undefined}
+      <Tag href={live ? opts.href : undefined} className={opts.cls}
         style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '18px 16px', borderRadius: 16, textDecoration: 'none', color: 'inherit',
           border: '1px solid rgba(140,140,160,0.24)', background: 'rgba(140,140,160,0.05)', minWidth: 150, flex: '1 1 150px', maxWidth: 210,
           cursor: live ? 'pointer' : 'default', opacity: live || opts.web ? 1 : 0.78 }}>
@@ -44,7 +44,10 @@ function DownloadSection() {
       </Tag>);
   };
   return (
-    <section className="section" style={{ paddingTop: 8 }}>
+    // Placée APRÈS la grille des piliers : elle occupait auparavant le centre
+    // de l'écran, entre la promesse et la preuve, et repoussait les piliers
+    // sous la ligne de flottaison.
+    <section id="telecharger" className="section" style={{ paddingTop: 8 }}>
       <div className="cta-band reveal" style={{ textAlign: 'center' }}>
         <h2>Télécharge l'app — sur toutes les plateformes</h2>
         <p>iPhone, Android, Mac, Windows : une seule app, partout. Commence tout de suite dans ton navigateur, ou installe l'app native.</p>
@@ -54,8 +57,8 @@ function DownloadSection() {
         <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
           {card({ icon: 'apple', title: 'iPhone', sub: 'App native', action: APP_STORE_URL ? 'App Store →' : 'Bientôt sur l’App Store', href: APP_STORE_URL })}
           {card({ icon: 'google', title: 'Android', sub: 'App native', action: PLAY_STORE_URL ? 'Google Play →' : 'Bientôt sur Google Play', href: PLAY_STORE_URL })}
-          {card({ icon: 'grid', title: 'Mac', sub: 'Navigateur ou app', action: 'Ouvrir →', href: APP_URL, web: true })}
-          {card({ icon: 'grid', title: 'Windows', sub: 'Navigateur (PWA)', action: 'Ouvrir →', href: APP_URL, web: true })}
+          {card({ icon: 'grid', title: 'Mac', sub: 'Navigateur ou app', action: 'Ouvrir →', href: APP_URL, web: true, cls: 'dl-desktop-only' })}
+          {card({ icon: 'grid', title: 'Windows', sub: 'Navigateur (PWA)', action: 'Ouvrir →', href: APP_URL, web: true, cls: 'dl-desktop-only' })}
         </div>
         <div className="disc-hero-note" style={{ marginTop: 16 }}>Astuce : dans Chrome/Safari, « Installer l’application » / « Ajouter à l’écran d’accueil » pose l’icône comme une vraie app (Windows, Mac, Android).</div>
       </div>
@@ -83,14 +86,16 @@ function Discover() {
               <a className="btn btn-cyan btn-lg" href={APP_URL}><UIIcon name="spark" size={16} /> Essai gratuit 14 jours</a>
               <a className="btn btn-ghost btn-lg" href="#grille"><UIIcon name="grid" size={16} /> Explorer les piliers</a>
             </div>
-            <div className="disc-hero-note reveal" style={{ transitionDelay: '180ms' }}>Sans engagement · résiliable à tout moment</div>
+            <div className="disc-hero-note reveal" style={{ transitionDelay: '180ms' }}>
+              Sans engagement · résiliable à tout moment · <a href="#telecharger" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>télécharger l'app</a>
+            </div>
           </section>
-
-          <DownloadSection />
 
           <section id="grille" className="bubbles">
             {themes.map(function (t, i) {return <Bubble key={t.slug} theme={t} i={i} />;})}
           </section>
+
+          <DownloadSection />
 
           <section className="section" style={{ paddingTop: 40 }}>
             <div className="cta-band reveal">

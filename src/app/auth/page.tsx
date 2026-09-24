@@ -73,6 +73,11 @@ function Segmented({ value, onChange, labels }: { value: number; onChange: (i: n
 
 function SocialButtons({ onError }: { onError: (msg: string) => void }) {
   const { t } = useI18n()
+  // App Store 4.8 (Login Services) : un login social tiers (Google) impose de
+  // proposer aussi Sign in with Apple. Tant que ce dernier n'est pas branché, on
+  // NE PROPOSE AUCUN login social dans l'app native iOS → email/mot de passe
+  // uniquement. Google reste disponible sur le web (hors App Store).
+  if (NATIVE_BUILD) return null
   const handleOAuth = async (provider: 'apple' | 'google') => {
     const sb = createClient()
     if (NATIVE_BUILD) {

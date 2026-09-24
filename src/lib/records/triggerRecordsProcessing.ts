@@ -11,6 +11,7 @@ import { createServiceClient }       from '@/lib/supabase/server'
 import { processBikeActivityRecords } from './processBikeActivity'
 import { processPaceActivityRecords, paceSportOf } from './processPaceActivity'
 import { onAthleteRecord }            from '@/lib/notifications/events'
+import { triggerAutoAnalysis }        from '@/lib/ai/triggerAutoAnalysis'
 
 export async function triggerRecordsProcessing(params: {
   activityId: string
@@ -18,6 +19,12 @@ export async function triggerRecordsProcessing(params: {
   sport:      string | null | undefined
 }): Promise<void> {
   const { activityId, userId, sport } = params
+
+  // Enqueue de l'auto-analyse IA (Brique 1). Rapide (simple flag DB), non
+  // bloquant, sa propre éligibilité/kill-switch en interne. On l'attend (c'est
+  // juste un update) mais il n'échoue jamais vers l'appelant.
+  await triggerAutoAnalysis({ activityId, userId, sport })
+
   const s = (sport ?? '').toLowerCase()
   const isBike = s === 'bike' || s === 'cycling' || s === 'cycle' || s === 'velo'
   const paceSport = paceSportOf(sport)   // run / swim / rowing

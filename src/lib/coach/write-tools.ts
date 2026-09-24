@@ -617,7 +617,7 @@ export async function resolveWriteTool(
 
       case 'update_profile': {
         const patch: Record<string, unknown> = {}
-        if (str(input.main_goal)) patch.main_goal = str(input.main_goal)
+        if (str(input.main_goal)) patch.primary_goal = str(input.main_goal)
         if (num(input.weight_kg) !== null) patch.weight_kg = num(input.weight_kg)
         if (num(input.height_cm) !== null) patch.height_cm = num(input.height_cm)
         if (num(input.sport_hours_per_week) !== null) patch.sport_hours_per_week = num(input.sport_hours_per_week)

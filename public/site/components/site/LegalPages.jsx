@@ -15,7 +15,7 @@ var LEGAL_PAGES = [
   { key: 'exporter-mes-donnees',    file: 'exporter-mes-donnees.html',    title: 'Exporter mes données' },
 ];
 
-var LEGAL_EMAIL = 'alexandre.et92@gmail.com';
+var LEGAL_EMAIL = 'contact@the-hybridway.com';
 
 /* Placeholder à compléter par l'éditeur — visuellement distinct. */
 function Todo(props) {
@@ -99,12 +99,14 @@ function BodyConfidentialite() {
 
       <section className="legal-block">
         <h2>4. Assistant IA</h2>
-        <p>Tes messages et le contexte d'entraînement pertinents sont transmis à notre fournisseur de modèles d'IA pour générer les réponses du coach. Ces échanges ne sont pas utilisés pour entraîner des modèles tiers sans ton accord.</p>
+        <p>L'assistant IA (« coach IA ») est propulsé par les modèles de langage d'<strong>Anthropic, PBC</strong> (Claude). Lorsque tu utilises l'assistant, tes messages ainsi que le contexte d'entraînement pertinent (par ex. sport, objectifs, extraits de tes séances récentes) sont transmis à Anthropic pour générer les réponses du coach.</p>
+        <p>Anthropic traite ces données uniquement pour produire la réponse demandée. Conformément à sa politique commerciale, <strong>Anthropic n'utilise pas ces échanges pour entraîner ses modèles</strong>. Aucune donnée n'est transmise à Anthropic tant que tu n'as pas donné ton consentement explicite au premier usage de l'assistant, consentement que tu peux retirer à tout moment depuis les réglages (l'assistant est alors désactivé).</p>
+        <p>Politique de confidentialité d'Anthropic : <a href="https://www.anthropic.com/legal/privacy" target="_blank" rel="noopener">anthropic.com/legal/privacy</a>.</p>
       </section>
 
       <section className="legal-block">
         <h2>5. Hébergement &amp; transferts</h2>
-        <p>L'application est hébergée par Vercel ; les données sont stockées via Supabase dans l'Union européenne. Certains prestataires (paiement, IA) peuvent traiter des données hors UE avec des garanties appropriées (clauses contractuelles types).</p>
+        <p>L'application est hébergée par Vercel ; les données sont stockées via Supabase dans l'Union européenne. Certains prestataires (paiement via <strong>Stripe</strong>, IA via <strong>Anthropic</strong>) peuvent traiter des données hors UE avec des garanties appropriées (clauses contractuelles types).</p>
       </section>
 
       <section className="legal-block">

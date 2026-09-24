@@ -27,6 +27,9 @@ import { CheckCircle2, XCircle, ChevronDown, ChevronRight, ArrowLeft, Zap, Globe
 import HybridNetworksPanel, { type HNConv } from './HybridNetworksPanel'
 import { MobileSheet } from './MobileSheet'
 import { haptic } from '@/lib/ui/haptic'
+import { computeZoneDistribution, type ZoneRowLite, type StreamsForZones } from '@/lib/analysis/zoneDistribution'
+import { loadAsOf } from '@/lib/training/pmc'
+import type { ActivityRow as PmcActivityRow } from '@/app/recovery/components/types'
 import { emitNotification } from '@/lib/notifications/emit'
 import { localDateStr } from '@/lib/date/weekStart'
 import RoutinesView from '@/components/ai/RoutinesView'
@@ -55,7 +58,7 @@ import { currentLocale, currentLang } from '@/lib/i18n'
 /** Colonnes SAFE de la table activities — ne JAMAIS ajouter sans vérifier Supabase */
 const ACTIVITIES_SELECT = 'id,title,sport_type,started_at,moving_time_s,distance_m,elevation_gain_m,tss,average_heartrate,max_heartrate,average_speed,avg_cadence,is_race,avg_watts'
 // Analyse de séance : on ajoute les streams (courbes) + laps (structure d'intervalles).
-const ACTIVITIES_SELECT_WITH_STREAMS = ACTIVITIES_SELECT + ',streams,laps'
+const ACTIVITIES_SELECT_WITH_STREAMS = ACTIVITIES_SELECT + ',streams,laps,ai_analysis'
 
 // ── Types ──────────────────────────────────────────────────────
 
@@ -215,6 +218,21 @@ function saveConvs(c: AIConv[]) {
   try { localStorage.setItem(STORE_KEY, JSON.stringify(c)) } catch {}
 }
 function genId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6) }
+
+// ── Consentement IA (RGPD / App Store 5.1.1) ─────────────────────
+// Avant tout premier envoi, l'utilisateur doit consentir explicitement au
+// transfert de ses messages + contexte d'entraînement vers Anthropic (Claude),
+// notre fournisseur de modèles d'IA. Le choix est mémorisé localement ; le
+// retrait se fait via les réglages (désactive l'assistant).
+const AI_CONSENT_KEY = 'thw_ai_consent_v1'
+function hasAIConsent(): boolean {
+  if (typeof window === 'undefined') return true
+  try { return localStorage.getItem(AI_CONSENT_KEY) === '1' } catch { return false }
+}
+function setAIConsent(ok: boolean) {
+  if (typeof window === 'undefined') return
+  try { localStorage.setItem(AI_CONSENT_KEY, ok ? '1' : '0') } catch { /* ignore */ }
+}
 
 // ── Configs des 3 modèles ─────────────────────────────────────
 
@@ -6403,38 +6421,80 @@ function AnalyzeTrainingFlow({ onCancel, onRecordConv, onFollowUp }: {
         ? ((mainEI - eiSimilarAvg) / eiSimilarAvg) * 100
         : null
 
-      const res = await fetch('/api/analyze-training', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          activities: activitiesWithMetrics,
-          zones: zonesRes.data,
-          planned: plannedRes.data,
-          recovery: recoveryRes.data ?? [],
-          similar: similarRes.data ?? [],
-          tssWeekBefore,
-          isRace: mainAct.is_race ?? false,
-          sport: mainAct.sport_type,
-          aiRules: rulesRes.data ?? [],
-          // Métriques pré-calculées
-          cardiac_drift_pct: mainDrift,
-          efficiency_index: mainEI,
-          ei_vs_similar_avg: eiDelta,
-          zone_distribution: null, // calculée par l'IA depuis la FC et les zones
-        }),
-      })
-      const data = await res.json() as { report?: TrainingReport; error?: string }
-      if (data.error || !data.report) throw new Error(data.error ?? t('aip.invalidResponse'))
-      setReport(data.report)
+      // Répartition en zones calculée sur les VRAIS streams (Brique 3) au lieu
+      // d'être estimée par l'IA. null si non calculable → l'IA estime comme avant.
+      const mainZoneDist = computeZoneDistribution(
+        mainAct.streams as StreamsForZones | null,
+        zonesRes.data as ZoneRowLite | null,
+        mainAct.sport_type,
+      )
+
+      // Charge (PMC : CTL/ATL/TSB) à la date de la séance — donnée réelle de
+      // charge fournie à l'IA (détection surcharge/fraîcheur).
+      let mainLoad = null
+      if (!compareMode) {
+        try {
+          const since = new Date(new Date(actDate).getTime() - 400 * 86400000).toISOString()
+          const until = new Date(new Date(actDate).getTime() + 86400000).toISOString()
+          const { data: hist } = await sb.from('activities').select('id,sport_type,started_at,moving_time_s,tss').eq('user_id', user.id).gte('started_at', since).lte('started_at', until).order('started_at', { ascending: true })
+          const rows = ((hist ?? []) as Record<string, unknown>[]).map(a => ({ id: a.id as string, sport_type: (a.sport_type as string) ?? null, started_at: a.started_at as string, moving_time_s: (a.moving_time_s as number) ?? null, elapsed_time_s: null, tss: (a.tss as number) ?? null })) as PmcActivityRow[]
+          mainLoad = loadAsOf(rows, new Date(actDate))
+        } catch { /* ignore */ }
+      }
+
+      // Cache : si l'analyse existe déjà (auto après sync, ou calculée avant),
+      // on l'affiche sans rappeler l'IA — pas de recalcul à chaque ouverture.
+      const cached = (!compareMode && (mainAct as { ai_analysis?: TrainingReport | null }).ai_analysis) || null
+      let report: TrainingReport
+      if (cached) {
+        report = cached
+      } else {
+        const res = await fetch('/api/analyze-training', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            activities: activitiesWithMetrics,
+            zones: zonesRes.data,
+            planned: plannedRes.data,
+            recovery: recoveryRes.data ?? [],
+            similar: similarRes.data ?? [],
+            tssWeekBefore,
+            isRace: mainAct.is_race ?? false,
+            sport: mainAct.sport_type,
+            aiRules: rulesRes.data ?? [],
+            // Métriques pré-calculées
+            cardiac_drift_pct: mainDrift,
+            efficiency_index: mainEI,
+            ei_vs_similar_avg: eiDelta,
+            zone_distribution: mainZoneDist, // calculée sur les vrais streams (Brique 3)
+            load: mainLoad, // charge PMC (CTL/ATL/TSB) à la date de la séance
+          }),
+        })
+        const data = await res.json() as { report?: TrainingReport; error?: string }
+        if (data.error || !data.report) throw new Error(data.error ?? t('aip.invalidResponse'))
+        report = data.report
+        // Persiste le résultat pour éviter tout recalcul ultérieur (et pour que
+        // le coach le voie directement en ouvrant la séance de l'athlète).
+        if (!compareMode) {
+          try {
+            await sb.from('activities').update({
+              ai_analysis: report,
+              ai_analysis_status: 'done',
+              ai_analysis_at: new Date().toISOString(),
+            }).eq('id', mainAct.id)
+          } catch { /* best-effort */ }
+        }
+      }
+      setReport(report)
 
       if (onRecordConv) {
         const actNom = mainAct.title ?? t(AE_SPORT_LABELS[mainAct.sport_type] ?? mainAct.sport_type)
         const userMsg = compareMode
           ? t('aip.at.recordCompare', { name: actNom, date: actDate, dateB: selected[1]?.started_at?.slice(0, 10) ?? '' })
           : `${t('aip.ae.label')} — ${actNom} (${actDate})`
-        const aiMsg = `**${t('aip.at.recordAnalysis', { name: actNom })}** (${actDate})\n\n${t('aip.at.verdict')} : ${data.report.verdict}\nTSS : ${data.report.kpis.tss} · EI : ${data.report.kpis.efficiency_index}\n${data.report.interpretation.execution}`
+        const aiMsg = `**${t('aip.at.recordAnalysis', { name: actNom })}** (${actDate})\n\n${t('aip.at.verdict')} : ${report.verdict}\nTSS : ${report.kpis.tss} · EI : ${report.kpis.efficiency_index}\n${report.interpretation.execution}`
         const reportData: TrainingReportData = {
-          report: data.report,
+          report: report,
           activities: selected.map(a => ({
             id: a.id,
             sport_type: a.sport_type,
@@ -14785,7 +14845,7 @@ async function enrichedConseilsSommeil(
   const [metrics60dRes, activities60dRes, profileRes] = await Promise.all([
     Promise.resolve(sb.from('metrics_daily').select('*').eq('user_id', userId).gte('date', since60d.toISOString().split('T')[0]).order('date', { ascending: true })).catch(() => ({ data: [] })),
     sb.from('activities').select(ACTIVITIES_SELECT).eq('user_id', userId).gte('started_at', since60d.toISOString()).order('started_at', { ascending: true }),
-    sb.from('profiles').select('sports,main_goal,age,weight_kg').eq('id', userId).maybeSingle(),
+    sb.from('profiles').select('sports,main_goal:primary_goal,age,weight_kg').eq('id', userId).maybeSingle(),
   ])
 
   const metrics60d = metrics60dRes.data ?? []
@@ -14941,7 +15001,7 @@ function AppGuideFlow({ onPrepare, onCancel }: {
         const since14d = new Date(now.getTime() - 14 * 86400000).toISOString().slice(0, 10)
 
         const [profileRes, zonesRes, testsRes, planRes, racesRes, actsRes, metricsRes, rulesRes] = await Promise.all([
-          sb.from('profiles').select('first_name,sports,main_goal').eq('id', user.id).maybeSingle(),
+          sb.from('profiles').select('first_name,sports,main_goal:primary_goal').eq('id', user.id).maybeSingle(),
           sb.from('training_zones').select('id,sport').eq('user_id', user.id).eq('is_current', true),
           Promise.resolve({ data: [], error: null }),
           sb.from('nutrition_plans').select('id').eq('user_id', user.id).eq('actif', true).maybeSingle(),
@@ -15185,7 +15245,7 @@ async function enrichedComprendreApp(
   const since14d = new Date(now); since14d.setDate(now.getDate() - 14)
 
   const [profileRes, zonesRes, testsRes, planNutritionRes, racesRes, activitiesCountRes, metricsCountRes, rulesCountRes] = await Promise.all([
-    sb.from('profiles').select('first_name,sports,main_goal,age').eq('id', userId).maybeSingle(),
+    sb.from('profiles').select('first_name,sports,main_goal:primary_goal,age').eq('id', userId).maybeSingle(),
     sb.from('training_zones').select('id,sport').eq('user_id', userId).eq('is_current', true),
     Promise.resolve({ data: [], error: null }),
     sb.from('nutrition_plans').select('id').eq('user_id', userId).eq('actif', true).maybeSingle(),
@@ -20810,6 +20870,10 @@ export default function AIPanel({
   // Feuille « Processus de réflexion » : id du message dont on affiche le
   // raisonnement étendu (null = fermée).
   const [reasoningMsgId, setReasoningMsgId] = useState<string | null>(null)
+  // Consentement IA : modale de disclosure (Anthropic) affichée avant le
+  // premier envoi. `pendingSendRef` mémorise l'appel à rejouer après accord.
+  const [aiConsentOpen, setAiConsentOpen] = useState(false)
+  const pendingSendRef = useRef<null | (() => void)>(null)
   // Sur-page « Réglages IA » ouverte PAR-DESSUS l'interface IA (depuis l'avatar).
   // Nouvelle surpage Paramètres (style Claude) — section ciblée par l'avatar.
   // Sidebar desktop repliable.
@@ -22440,6 +22504,15 @@ export default function AIPanel({
     const quoteForSend = targeted ? null : quotedText
     const displayText = txt || (qaForSend ? qaForSend.label : '') || (effAttachment ? `[${effAttachment.name}]` : '') || (hasImages ? `[${effImages.length} photo${effImages.length > 1 ? 's' : ''}]` : '')
     if (!displayText && !hasAttachment && !hasImages) return
+
+    // ── Barrière de consentement IA (avant tout premier transfert vers
+    // Anthropic). Sans accord, on mémorise l'envoi et on ouvre la modale ;
+    // l'envoi est rejoué à l'acceptation. Le texte saisi n'est pas effacé. ──
+    if (!hasAIConsent()) {
+      pendingSendRef.current = () => { void send(presetDisplay, presetApi, opts) }
+      setAiConsentOpen(true)
+      return
+    }
 
     if (!targeted) {
       setInput('')
@@ -24993,6 +25066,104 @@ export default function AIPanel({
             </svg>
             Demander à THW
           </button>
+        </div>
+      )}
+
+      {/* ── Modale de consentement IA (RGPD / Apple 5.1.1(i)) ──
+          Affichée avant le tout premier envoi. Divulgue le transfert des
+          messages + contexte d'entraînement vers Anthropic (Claude) et
+          demande l'accord explicite. Refus → aucun envoi. */}
+      {aiConsentOpen && mounted && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          onClick={() => { setAiConsentOpen(false); pendingSendRef.current = null }}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 10050,
+            display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+            background: 'rgba(0,0,0,0.45)',
+            backdropFilter: 'blur(3px)', WebkitBackdropFilter: 'blur(3px)',
+            animation: 'ai_actions_in 0.16s ease',
+            padding: 'max(16px, env(safe-area-inset-top)) 14px calc(env(safe-area-inset-bottom) + 16px)',
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              width: '100%', maxWidth: 460,
+              background: 'var(--ai-bg)', color: 'var(--ai-text)',
+              borderRadius: 22,
+              border: '1px solid var(--ai-border, rgba(127,127,127,0.16))',
+              boxShadow: '0 18px 60px rgba(0,0,0,0.34)',
+              padding: '24px 22px 20px',
+              marginBottom: 'env(safe-area-inset-bottom)',
+              animation: 'ai_slidein 0.22s cubic-bezier(0.22,1,0.36,1)',
+            }}
+          >
+            <div style={{
+              width: 46, height: 46, borderRadius: 14,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: 'color-mix(in srgb, var(--ai-text) 8%, transparent)',
+              marginBottom: 14,
+            }}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 2a3 3 0 0 0-3 3v1a3 3 0 0 0-3 3 3 3 0 0 0-1 5.83V17a3 3 0 0 0 3 3h.17A3 3 0 0 0 12 22a3 3 0 0 0 2.83-2H15a3 3 0 0 0 3-3v-2.17A3 3 0 0 0 17 6a3 3 0 0 0-3-3 3 3 0 0 0-2-1Z"/>
+              </svg>
+            </div>
+            <h2 style={{ fontSize: 19, fontWeight: 700, margin: '0 0 8px', lineHeight: 1.25 }}>
+              Ton coach IA utilise Anthropic
+            </h2>
+            <p style={{ fontSize: 14, lineHeight: 1.5, margin: '0 0 10px', color: 'color-mix(in srgb, var(--ai-text) 78%, transparent)' }}>
+              Pour générer les réponses de ton coach, tes messages et le contexte
+              d'entraînement pertinent (sport, objectifs, extraits de tes séances)
+              sont transmis à <strong>Anthropic</strong> (modèles Claude), notre
+              fournisseur d'IA.
+            </p>
+            <p style={{ fontSize: 14, lineHeight: 1.5, margin: '0 0 6px', color: 'color-mix(in srgb, var(--ai-text) 78%, transparent)' }}>
+              Anthropic n'utilise pas ces échanges pour entraîner ses modèles. Tu
+              peux retirer ton accord à tout moment dans les réglages (l'assistant
+              est alors désactivé).
+            </p>
+            <a
+              href="/site/confidentialite.html"
+              target="_blank"
+              rel="noopener"
+              style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-accent, #5b6fff)', textDecoration: 'none' }}
+            >
+              Lire la politique de confidentialité →
+            </a>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 9, marginTop: 20 }}>
+              <button
+                onClick={() => {
+                  setAIConsent(true)
+                  setAiConsentOpen(false)
+                  const replay = pendingSendRef.current
+                  pendingSendRef.current = null
+                  if (replay) setTimeout(replay, 0)
+                }}
+                style={{
+                  width: '100%', padding: '14px', borderRadius: 14, border: 'none',
+                  background: 'var(--ai-text)', color: 'var(--ai-bg)',
+                  fontSize: 15, fontWeight: 700, cursor: 'pointer',
+                  fontFamily: 'DM Sans,sans-serif',
+                }}
+              >
+                Accepter et continuer
+              </button>
+              <button
+                onClick={() => { setAiConsentOpen(false); pendingSendRef.current = null }}
+                style={{
+                  width: '100%', padding: '13px', borderRadius: 14,
+                  border: '1px solid var(--ai-border, rgba(127,127,127,0.18))',
+                  background: 'transparent', color: 'var(--ai-text)',
+                  fontSize: 15, fontWeight: 600, cursor: 'pointer',
+                  fontFamily: 'DM Sans,sans-serif',
+                }}
+              >
+                Refuser
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </>,

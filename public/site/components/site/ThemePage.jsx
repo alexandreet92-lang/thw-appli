@@ -222,6 +222,10 @@ function ThemeView(props) {
   );
 }
 
+/* Piliers retirés du site. Sans ça, un ancien lien (#fil) retomberait
+   silencieusement sur le premier thème de la liste : on renvoie au hub. */
+var RETIRED_SLUGS = ['fil'];
+
 /* Router: re-reads the hash on navigation and remounts the view
    (so in-page #slug → #slug links update content, accent and reveal). */
 function ThemePage() {
@@ -231,6 +235,9 @@ function ThemePage() {
     window.addEventListener('hashchange', onHash);
     return function () { window.removeEventListener('hashchange', onHash); };
   }, []);
+  React.useEffect(function () {
+    if (RETIRED_SLUGS.indexOf(slug) >= 0) window.location.replace('decouvrir.html');
+  }, [slug]);
   var t = themeBySlug(slug) || (window.THW_THEMES || [])[0];
   return <ThemeView key={slug} theme={t}/>;
 }

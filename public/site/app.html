@@ -1,10 +1,18 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
+  <!-- Icônes : chemins ABSOLUS. En relatif (« assets/logo.png ») l'icône
+       cassait dès que la page n'était pas servie depuis /site/, ce qui est le
+       cas à la racine du domaine — d'où l'absence de logo dans Google. -->
+  <link rel="icon" href="/favicon.ico" sizes="any"/>
+  <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png"/>
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"/>
+  <link rel="manifest" href="/manifest.json"/>
+  <meta name="theme-color" content="#070b0f"/>
+
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>L'app THW Coaching</title>
-  <link rel="icon" href="assets/logo.png"/>
   <link rel="stylesheet" href="colors_and_type.css"/>
   <link rel="stylesheet" href="landing.css"/>
   <link rel="stylesheet" href="app-page.css"/>
@@ -98,9 +106,22 @@
     ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
   </script>
 
-  <!-- i18n — FR (source) / EN / ES runtime translation + switcher -->
+
+  <!-- i18n — FR (source) / EN / ES. TOUS les dictionnaires sont chargés sur
+       TOUTES les pages : une page qui n'en charge qu'une partie laisse des
+       textes en français quand on bascule en EN/ES, et une page qui ne charge
+       pas i18n.js du tout affiche un sélecteur de langue qui ne fait rien. -->
+  <!-- Session + compte partagés : doit être chargé AVANT i18n.js, qui lit la
+       langue du compte pour aligner le site sur l'app. -->
+  <script src="components/site/account.js"></script>
   <script src="components/site/i18n-dict.js"></script>
+  <script src="components/site/i18n-dict-2.js"></script>
+  <script src="components/site/i18n-dict-3.js"></script>
   <script src="components/site/i18n-dict-4.js"></script>
+  <script src="components/site/i18n-dict-5.js"></script>
+  <script src="components/site/i18n-dict-6.js"></script>
+  <script src="components/site/i18n-dict-7.js"></script>
+  <script src="components/site/i18n-dict-8.js"></script>
   <script src="components/site/i18n.js"></script>
 </body>
 </html>

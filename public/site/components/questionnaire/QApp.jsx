@@ -8,7 +8,12 @@
 const EMAILJS_SERVICE_ID  = 'service_q6pf4k8';
 const EMAILJS_TEMPLATE_ID = 'template_1nbwaae';
 const EMAILJS_PUBLIC_KEY  = 'CfhphZjWx6KvCRKfx';
-const DEST_EMAIL          = 'alexandre.et92@gmail.com';
+// ATTENTION : DEST_EMAIL n'est PAS utilisé. Il n'est passé nulle part à
+// emailjs.send() — la destination réelle des candidatures est configurée
+// dans le template EmailJS « template_1nbwaae », côté tableau de bord
+// EmailJS. Changer cette constante ne change RIEN. Laissée ici uniquement
+// pour documenter l'adresse attendue.
+const DEST_EMAIL          = 'contact@the-hybridway.com';
 
 function formatEmailBody(d) {
   const lines = [];

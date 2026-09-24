@@ -3219,11 +3219,7 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
                 {/* cumul volumes / cycle — toggle */}
                 <div data-guide="plan-volume" style={{ padding: '9px 10px', borderLeft: '1px solid var(--border)', background: 'var(--bg-card2)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 6, marginBottom: 8 }}>
-                    <div style={{ display: 'inline-flex', background: 'var(--bg-card)', borderRadius: 7, padding: 2, gap: 2 }}>
-                      {(['volume', 'cycle'] as const).map(tb => (
-                        <button key={tb} onClick={() => setSideTab(tb)} style={{ padding: '3px 8px', fontSize: 9, fontWeight: 700, border: 'none', cursor: 'pointer', borderRadius: 5, background: sideTab === tb ? 'var(--primary-dim)' : 'transparent', color: sideTab === tb ? 'var(--primary)' : 'var(--text-dim)' }}>{tb === 'volume' ? t('plnp.volume') : t('plnp.cycle')}</button>
-                      ))}
-                    </div>
+                    <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-mid)', textTransform: 'uppercase' as const, letterSpacing: '0.04em' }}>{t('plnp.volume')}</span>
                     <button onClick={() => setDatasWeek(ws)} title={t('plnp.datasTitle')} style={{ fontSize: 9, fontWeight: 700, color: 'var(--primary)', background: 'var(--primary-dim)', border: 'none', borderRadius: 6, padding: '3px 8px', cursor: 'pointer' }}>{t('plnp.datas')}</button>
                   </div>
                   {sideTab === 'volume' ? (<>
@@ -3297,11 +3293,7 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
                   {/* PAGE 2 — volume / cycle + Datas (glisser de droite à gauche) */}
                   <div style={{ flex:'0 0 100%', scrollSnapAlign:'start' as const, padding:'0 8px', boxSizing:'border-box' as const }}>
                     <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:6, marginBottom:8 }}>
-                      <div style={{ display:'inline-flex', background:'var(--bg-card2)', borderRadius:7, padding:2, gap:2 }}>
-                        {(['volume','cycle'] as const).map(tb => (
-                          <button key={tb} onClick={()=>setSideTab(tb)} style={{ padding:'4px 12px', fontSize:11, fontWeight:700, border:'none', cursor:'pointer', borderRadius:5, background:sideTab===tb?'var(--primary-dim)':'transparent', color:sideTab===tb?'var(--primary)':'var(--text-dim)' }}>{tb==='volume'?t('plnp.volume'):t('plnp.cycle')}</button>
-                        ))}
-                      </div>
+                      <span style={{ fontSize:11, fontWeight:700, color:'var(--text-mid)', textTransform:'uppercase' as const, letterSpacing:'0.04em' }}>{t('plnp.volume')}</span>
                       <button onClick={()=>setDatasWeek(ws)} style={{ fontSize:10, fontWeight:700, color:'var(--primary)', background:'var(--primary-dim)', border:'none', borderRadius:6, padding:'4px 10px', cursor:'pointer' }}>{t('plnp.datas')}</button>
                     </div>
                     {sideTab==='volume' ? (
@@ -3339,9 +3331,22 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
     const totalMin = dayTotals.reduce((a, b) => a + b, 0)
     const GH = 120
     return (
-      <div onClick={e => { if (e.target === e.currentTarget) setDatasWeek(null) }}
-        style={{ position: 'fixed', inset: 0, zIndex: 400, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(3px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 18, width: 'min(640px,96vw)', maxHeight: '88vh', overflowY: 'auto', padding: '22px 24px', boxShadow: 'var(--shadow)' }}>
+      <div className="thw-datas-overlay" onClick={e => { if (e.target === e.currentTarget) setDatasWeek(null) }}
+        style={{ position: 'fixed', inset: 0, zIndex: 400, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(3px)', display: 'flex' }}>
+        <style>{`
+          .thw-datas-overlay { align-items: center; justify-content: center; padding: 16px; }
+          .thw-datas-panel { width: min(640px,96vw); max-height: 88vh; border-radius: 18px; padding: 22px 24px; animation: thwDatasPop .18s ease; }
+          .thw-datas-grab { display: none; }
+          @keyframes thwDatasPop { from { opacity: 0; transform: scale(.97) } to { opacity: 1; transform: scale(1) } }
+          @media (max-width: 640px) {
+            .thw-datas-overlay { align-items: flex-end; justify-content: center; padding: 0; }
+            .thw-datas-panel { width: 100%; max-width: 100%; max-height: 90vh; border-radius: 22px 22px 0 0; padding: 10px 18px calc(20px + env(safe-area-inset-bottom)); animation: thwDatasUp .3s cubic-bezier(0.32,0.72,0,1); }
+            .thw-datas-grab { display: block; width: 40px; height: 4px; border-radius: 999px; background: var(--border-mid); margin: 2px auto 12px; }
+          }
+          @keyframes thwDatasUp { from { transform: translateY(100%) } to { transform: translateY(0) } }
+        `}</style>
+        <div className="thw-datas-panel" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', overflowY: 'auto', boxShadow: 'var(--shadow)', boxSizing: 'border-box' as const }}>
+          <div className="thw-datas-grab" />
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
             <span style={{ fontFamily: 'Syne,sans-serif', fontWeight: 700, fontSize: 19, color: 'var(--text)' }}>{t('plnp.week')} S{isoWeekNum(datasWeek)} <span style={{ fontSize: 12, color: 'var(--text-dim)', fontWeight: 500 }}>· {new Date(datasWeek + 'T00:00:00').toLocaleDateString(currentLocale(), { day: 'numeric', month: 'short' })}</span></span>
             <button onClick={() => setDatasWeek(null)} style={{ width: 30, height: 30, borderRadius: '50%', background: 'var(--bg-card2)', border: 'none', cursor: 'pointer', color: 'var(--text-mid)', fontSize: 14 }}>✕</button>
@@ -5469,8 +5474,6 @@ export default function PlanningPage() {
         header={header}
         sections={[
           { id:'training', label:t('plnp.section.training'), subtitle:t('plnp.section.trainingSub'),      icon:Dumbbell,        content:<TrainingTab tab="training"/> },
-          { id:'plan',     label:t('plnp.section.plan'),         subtitle:t('plnp.section.planSub'),  icon:LayoutDashboard, content:<TrainingTab tab="plan"/> },
-          { id:'week',     label:t('plnp.section.week'),      subtitle:t('plnp.section.weekSub'),   icon:CalendarDays,    content:<WeekTab trainingWeek={sessions}/> },
         ]}
       />
     </>

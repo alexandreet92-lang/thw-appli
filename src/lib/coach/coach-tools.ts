@@ -114,14 +114,17 @@ export async function resolveCoachScaleTool(name: string, input: Record<string, 
       const since7 = Date.now() - 7 * 86400000
       const monday = (() => { const d = new Date(); const dow = (d.getDay() + 6) % 7; d.setDate(d.getDate() - dow); return ymd(d) })()
       const today = ymd(new Date())
-      const [prof, acts, injs, races, planned] = await Promise.all([
-        sb.from('profiles').select('id, full_name, first_name, sports, level, main_goal').in('id', ids),
+      const [prof, acts, injs, races, planned, metrics] = await Promise.all([
+        sb.from('profiles').select('id, full_name, first_name, sports, level, primary_goal').in('id', ids),
         sb.from('activities').select('user_id, started_at, tss').in('user_id', ids).gte('started_at', since30),
         sb.from('injuries').select('user_id, status').in('user_id', ids).eq('status', 'active'),
         sb.from('planned_races').select('user_id, name, date').in('user_id', ids).gte('date', today).order('date', { ascending: true }),
         sb.from('planned_sessions').select('user_id, status, week_start').in('user_id', ids).eq('week_start', monday),
+        sb.from('metrics_daily').select('user_id, ctl, atl, tsb').in('user_id', ids).eq('date', today),
       ])
-      type P = { id: string; full_name?: string; first_name?: string; sports?: unknown; level?: string; main_goal?: string }
+      const loadMap = new Map<string, { ctl: number | null; atl: number | null; tsb: number | null }>(
+        ((metrics.data ?? []) as { user_id: string; ctl: number | null; atl: number | null; tsb: number | null }[]).map(m => [m.user_id, { ctl: m.ctl, atl: m.atl, tsb: m.tsb }]))
+      type P = { id: string; full_name?: string; first_name?: string; sports?: unknown; level?: string; primary_goal?: string }
       const pmap = new Map<string, P>((prof.data ?? []).map((p: P) => [p.id, p]))
       const athletes = ids.map(id => {
         const p = pmap.get(id)
@@ -135,14 +138,19 @@ export async function resolveCoachScaleTool(name: string, input: Record<string, 
         const adhTotal = wk.length
         const adhDone = wk.filter((s: { status: string }) => s.status === 'done').length
         const lastDays = daysSince(last)
+        const load = loadMap.get(id) ?? null
+        const overload = load?.tsb != null && load.tsb <= -20
         let status = 'ok'
         if (activeInjuries > 0) status = 'blessé'
         else if (lastDays !== null && lastDays >= 10) status = 'inactif'
+        else if (overload) status = 'surcharge'
         else if (adhTotal > 0 && adhDone / adhTotal < 0.4) status = 'attention'
         return {
           id, name: p?.full_name || p?.first_name || 'Athlète',
-          sports: Array.isArray(p?.sports) ? p!.sports : [], goal: p?.main_goal ?? null,
+          sports: Array.isArray(p?.sports) ? p!.sports : [], goal: p?.primary_goal ?? null,
           last_activity_days: lastDays, tss_7d: Math.round(tss7), active_injuries: activeInjuries,
+          // Charge (PMC) du jour : CTL forme, ATL fatigue, TSB fraîcheur (≤ -20 = surcharge).
+          ctl: load?.ctl ?? null, atl: load?.atl ?? null, tsb: load?.tsb ?? null, overload,
           next_race: nextRace ? { name: nextRace.name, in_days: daysSince(nextRace.date) !== null ? -(daysSince(nextRace.date) as number) : null } : null,
           adherence: adhTotal ? `${adhDone}/${adhTotal}` : null, status,
         }

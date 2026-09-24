@@ -28,8 +28,14 @@ export function ClientShell({ children }: ClientShellProps) {
     setHydrated(true)
     // Effet « verre » (#7) : autorise le flou selon le contexte (web/Release).
     void import('@/lib/native/platform').then(m => m.applyGlassBlur())
+    // L'ÉCRAN DE DÉMARRAGE NE S'AFFICHE PAS SUR LES PAGES PUBLIQUES DE
+    // PRÉSENTATION. Mesuré : trois secondes de logo avant le premier mot. Pour
+    // quelqu'un qui ouvre l'app, c'est un lancement ; pour un coach qui arrive
+    // d'un message privé et ne sait pas encore ce qu'on lui veut, c'est trois
+    // secondes d'écran vide, et la moitié repart avant la fin.
+    const vitrine = window.location.pathname.startsWith('/pour-les-coachs')
     const alreadySeen = sessionStorage.getItem('splash_v1')
-    if (!alreadySeen) {
+    if (!alreadySeen && !vitrine) {
       setShowSplash(true)
     }
     // Service worker :

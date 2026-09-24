@@ -19,6 +19,7 @@ import { VoiceChannelSheet } from './VoiceChannelSheet'
 import { EventsView } from './EventsView'
 import { VoiceView } from './VoiceView'
 import { useCall } from './call/CallProvider'
+import { isNativeApp } from '@/lib/native/platform'
 import { CreateSpaceSheet } from './CreateSpaceSheet'
 import { CreateChannelSheet } from './CreateChannelSheet'
 import { ChannelContextMenu } from './ChannelContextMenu'
@@ -187,7 +188,9 @@ export function CommunityView() {
     // Salon VOCAL → on ENTRE directement dans l'appel (façon Discord : un tap =
     // on est dans le salon vocal). Salon TEXTUEL → ouvre la discussion.
     const ch = channels.find(c => c.id === id)
-    if (ch?.kind === 'voice') { joinVoice(ch.id, ch.name, { muted: false, cam: false }); return }
+    // App Store 2.1 : appels désactivés sur iOS natif (les salons vocaux sont
+    // masqués de la liste ; ce garde-fou évite tout tap « mort » résiduel).
+    if (ch?.kind === 'voice') { if (isNativeApp()) return; joinVoice(ch.id, ch.name, { muted: false, cam: false }); return }
     setChannelId(id); markRead(id); setPanel('chat')
     if (isNarrow) { setDir('fwd'); setMView('chat') }
   }
@@ -205,6 +208,7 @@ export function CommunityView() {
     if (isNarrow) { setDir('fwd'); setMView('chat') }
   }
   function selectCall() {
+    if (isNativeApp()) return   // App Store 2.1 : pas d'appels sur iOS natif
     setPanel('call')
     if (channel) call.start({ channelId: channel.id }, `#${channel.name}`)
     if (isNarrow) { setDir('fwd'); setMView('chat') }
@@ -624,7 +628,9 @@ function ChannelColumn({ space, channels, activeId, loading, isNarrow, joining, 
           // Salons épinglés en haut (ordre stable sinon).
           const byPin = (a: typeof channels[number], b: typeof channels[number]) => (pinned.has(b.id) ? 1 : 0) - (pinned.has(a.id) ? 1 : 0)
           const textChans = channels.filter(c => c.kind !== 'voice').sort(byPin)
-          const voiceChans = channels.filter(c => c.kind === 'voice').sort(byPin)
+          // App Store 2.1 : sur l'app native iOS, les salons vocaux sont masqués
+          // (appels désactivés) → aucune entrée d'appel visible. Web : inchangé.
+          const voiceChans = isNativeApp() ? [] : channels.filter(c => c.kind === 'voice').sort(byPin)
           const group = (label: string, list: typeof channels) => list.length === 0 ? null : (
             <div style={{ marginBottom: 'var(--space-2)' }}>
               <div style={{ padding: '2px var(--space-3) 5px', fontFamily: FB, fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-dim)' }}>{label}</div>

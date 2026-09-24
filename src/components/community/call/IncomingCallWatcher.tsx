@@ -16,6 +16,7 @@ import { useCall } from './CallProvider'
 import { useI18n } from '@/lib/i18n'
 import { getCurrentUser } from '@/lib/auth/currentUser'
 import { playRingtone, type Ring } from '@/lib/community/ringtone'
+import { isNativeApp } from '@/lib/native/platform'
 
 interface IncomingCall {
   channelId: string; channelName: string; spaceId: string; spaceName: string; participants: number; names: string[]
@@ -45,6 +46,9 @@ export function IncomingCallWatcher() {
   const stopRing = () => { ringRef.current?.stop(); ringRef.current = null }
 
   useEffect(() => {
+    // App Store 2.1 : pas d'appels sur l'app native iOS → on ne sonde pas les
+    // appels entrants et on ne sonne jamais (aucune modale « Répondre » morte).
+    if (isNativeApp()) return
     let stop = false
 
     const enabled = () => { try { return localStorage.getItem(NOTIF_KEY) !== '0' } catch { return true } }

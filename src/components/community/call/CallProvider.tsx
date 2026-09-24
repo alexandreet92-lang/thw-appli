@@ -12,6 +12,7 @@ import type {
 import type { CallTarget, Tile } from './types'
 import { targetKey } from './types'
 import { useI18n } from '@/lib/i18n'
+import { isNativeApp } from '@/lib/native/platform'
 
 type Status = 'idle' | 'connecting' | 'connected' | 'error' | 'unconfigured' | 'forbidden'
 type Tr = (key: string, vars?: Record<string, string | number>) => string
@@ -131,6 +132,11 @@ export function CallProvider({ children }: { children: ReactNode }) {
   }, [detachAllAudio])
 
   const start = useCallback((target: CallTarget, callTitle: string, opts?: { muted?: boolean; cam?: boolean }) => {
+    // App Store 2.1 (App Completeness) : les appels audio/vidéo sont DÉSACTIVÉS
+    // sur l'app native iOS. Le micro dans la WebView n'est pas fiable → Apple a
+    // rejeté la feature (« microphone icon unresponsive »). Le chat texte de la
+    // communauté reste disponible. Réactivation prévue une fois le vocal fiabilisé.
+    if (isNativeApp()) return
     const key = targetKey(target)
     // Déjà dans cet appel → on ré-agrandit simplement.
     if (roomRef.current && tKey === key) { setMinimized(false); return }

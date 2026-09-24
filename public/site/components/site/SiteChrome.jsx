@@ -169,6 +169,16 @@ function SiteHeader(props) {
     { label: 'Plans', href: 'theme.html#abonnements', key: 'plans' },
     { label: 'Connexion', href: 'compte.html', key: 'login' },
   ];
+  // App Store 3.1.1 : quand une page du site est ouverte DEPUIS l'app (navigateur
+  // in-app, ?app=1 → sessionStorage thw_app_noprice), on masque toute la
+  // navigation du site (nav + CTA compte + burger). Sinon on pourrait, depuis
+  // l'app, atteindre la page « Plans » / tarifs → chemin d'achat interdit par Apple.
+  var IN_APP = (function () {
+    try {
+      if (new URLSearchParams(window.location.search).get('app') === '1') return true;
+      return sessionStorage.getItem('thw_app_noprice') === '1';
+    } catch (e) { return false; }
+  })();
   return (
     <header className="site-header">
       <div className="site-header-inner">
@@ -177,35 +187,41 @@ function SiteHeader(props) {
           <span className="brand-word">THW<span>.</span></span>
         </a>
 
-        <nav className="header-nav">
-          {navLinks.map(function (l) {
-            return (
-              <a key={l.key} className="header-link" href={l.href}
-                 style={l.key === active ? { color: 'var(--text)', background: 'var(--bg-hover)' } : null}>
-                {l.label}
-              </a>
-            );
-          })}
-          <HeaderMenu/>
-        </nav>
+        {!IN_APP && (
+          <nav className="header-nav">
+            {navLinks.map(function (l) {
+              return (
+                <a key={l.key} className="header-link" href={l.href}
+                   style={l.key === active ? { color: 'var(--text)', background: 'var(--bg-hover)' } : null}>
+                  {l.label}
+                </a>
+              );
+            })}
+            <HeaderMenu/>
+          </nav>
+        )}
 
         <div className="header-right">
           {props && props.extra ? props.extra
             : <div data-thw-lang-select="1" data-no-i18n="1"><LangSelect lang={lang} setLang={setLang}/></div>}
           <ThemeToggle/>
-          <a className="btn btn-cyan" href="compte.html" title={account ? (account.email || '') : ''}>
-            <UIIcon name="user" size={15}/>
-            <span className="header-cta-label">
-              {account
-                ? ((account.firstName || 'Mon compte') + (account.tierLabel ? ' · ' + account.tierLabel : ''))
-                : 'Se connecter'}
-            </span>
-          </a>
-          <button type="button" className="btn btn-ghost header-burger"
-                  aria-label="Menu" onClick={function () { setOpen(!open); }}
-                  style={{ padding: 9, display: 'none' }}>
-            <UIIcon name={open ? 'close' : 'menu'} size={18}/>
-          </button>
+          {!IN_APP && (
+            <a className="btn btn-cyan" href="compte.html" title={account ? (account.email || '') : ''}>
+              <UIIcon name="user" size={15}/>
+              <span className="header-cta-label">
+                {account
+                  ? ((account.firstName || 'Mon compte') + (account.tierLabel ? ' · ' + account.tierLabel : ''))
+                  : 'Se connecter'}
+              </span>
+            </a>
+          )}
+          {!IN_APP && (
+            <button type="button" className="btn btn-ghost header-burger"
+                    aria-label="Menu" onClick={function () { setOpen(!open); }}
+                    style={{ padding: 9, display: 'none' }}>
+              <UIIcon name={open ? 'close' : 'menu'} size={18}/>
+            </button>
+          )}
         </div>
       </div>
 
@@ -271,6 +287,14 @@ function FooterSocial(props) {
 
 function SiteFooter() {
   var year = new Date().getFullYear();
+  // App Store 3.1.1 : en mode app (in-app browser), on masque les colonnes qui
+  // mènent aux pages tarifs / abonnement (chemin d'achat). On garde le légal.
+  var IN_APP = (function () {
+    try {
+      if (new URLSearchParams(window.location.search).get('app') === '1') return true;
+      return sessionStorage.getItem('thw_app_noprice') === '1';
+    } catch (e) { return false; }
+  })();
   var col = function (title, links) {
     return (
       <div className="footer-col">
@@ -290,8 +314,8 @@ function SiteFooter() {
             </a>
             <p>Ton entraînement hybride — endurance + force — piloté par une IA qui te connaît.</p>
           </div>
-          {col('Découvrir', [['Tous les piliers', 'decouvrir.html'], ['Coach IA', 'theme.html#coach-ia'], ['Performances', 'theme.html#performances'], ['Compétences', 'theme.html#competences']])}
-          {col('Produit', [['Plans & tarifs', 'theme.html#abonnements'], ['Abonnement coach', 'abonnement-coach.html'], ['Système de tokens', 'theme.html#tokens'], ['Connexion', APP_URL], ['Essai gratuit', APP_URL]])}
+          {!IN_APP && col('Découvrir', [['Tous les piliers', 'decouvrir.html'], ['Coach IA', 'theme.html#coach-ia'], ['Performances', 'theme.html#performances'], ['Compétences', 'theme.html#competences']])}
+          {!IN_APP && col('Produit', [['Plans & tarifs', 'theme.html#abonnements'], ['Abonnement coach', 'abonnement-coach.html'], ['Système de tokens', 'theme.html#tokens'], ['Connexion', APP_URL], ['Essai gratuit', APP_URL]])}
           {col('Support & légal', [['Mentions légales', 'mentions-legales.html'], ['Conditions d\'utilisation', 'conditions-utilisation.html'], ['Confidentialité', 'confidentialite.html'], ['Exporter mes données', 'exporter-mes-donnees.html']])}
         </div>
         <div className="footer-bottom">

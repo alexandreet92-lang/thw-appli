@@ -7,6 +7,7 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useI18n } from '@/lib/i18n'
+import { isNativeApp } from '@/lib/native/platform'
 import type { ChannelKind } from '@/types/community'
 
 const FB = 'var(--font-body)', FD = 'var(--font-display)'
@@ -58,16 +59,21 @@ export function CreateChannelSheet({ onClose, onCreate }: {
       </div>
       <h2 style={{ fontFamily: FD, fontSize: 19, fontWeight: 700, color: 'var(--text)', margin: '0 0 var(--space-4)' }}>{t('w1g.ch.title')}</h2>
 
-      {/* Type de salon : Texte / Vocal */}
-      <label style={labelStyle}>{t('w1g.ch.type')}</label>
-      <div style={{ display: 'flex', gap: 'var(--space-2)', marginBottom: 'var(--space-4)' }}>
-        <TypeBtn active={kind === 'text'} onClick={() => setKind('text')}
-          icon={<span style={{ fontSize: 18, lineHeight: 1 }}>#</span>}
-          title={t('w1g.ch.text')} sub={t('w1g.ch.textSub')} />
-        <TypeBtn active={kind === 'voice'} onClick={() => setKind('voice')}
-          icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M11 5 6 9H2v6h4l5 4zM15.5 8.5a5 5 0 0 1 0 7M19 5a9 9 0 0 1 0 14" /></svg>}
-          title={t('w1g.ch.voice')} sub={t('w1g.ch.voiceSub')} />
-      </div>
+      {/* Type de salon : Texte / Vocal. App Store 2.1 : sur iOS natif, les appels
+          sont désactivés → on ne propose que le salon texte (pas de vocal). */}
+      {!isNativeApp() && (
+        <>
+          <label style={labelStyle}>{t('w1g.ch.type')}</label>
+          <div style={{ display: 'flex', gap: 'var(--space-2)', marginBottom: 'var(--space-4)' }}>
+            <TypeBtn active={kind === 'text'} onClick={() => setKind('text')}
+              icon={<span style={{ fontSize: 18, lineHeight: 1 }}>#</span>}
+              title={t('w1g.ch.text')} sub={t('w1g.ch.textSub')} />
+            <TypeBtn active={kind === 'voice'} onClick={() => setKind('voice')}
+              icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M11 5 6 9H2v6h4l5 4zM15.5 8.5a5 5 0 0 1 0 7M19 5a9 9 0 0 1 0 14" /></svg>}
+              title={t('w1g.ch.voice')} sub={t('w1g.ch.voiceSub')} />
+          </div>
+        </>
+      )}
 
       {/* Nom du salon */}
       <label style={labelStyle}>{t('w1g.ch.name')}</label>

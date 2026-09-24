@@ -30,7 +30,7 @@ export async function middleware(request: NextRequest) {
   // Racine : la page gère elle-même la session/redirect.
   if (path === '/') return response
   // Routes publiques (vitrines /c, tarifs coach, programmes, auth…).
-  const publicRoutes = ['/login', '/auth', '/onboarding', '/access-expired', '/legal', '/decouvrir', '/site', '/c/', '/coach/tarifs', '/programmes']
+  const publicRoutes = ['/login', '/auth', '/onboarding', '/access-expired', '/legal', '/decouvrir', '/site', '/c/', '/coach/tarifs', '/programmes', '/pour-les-coachs']
   if (publicRoutes.some(r => path.startsWith(r))) return response
   // Routes API — jamais bloquées + CORS pour l'app native.
   // L'app native (origine capacitor://) appelle /api en CROSS-ORIGIN avec un

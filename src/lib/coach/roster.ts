@@ -7,6 +7,7 @@
 // ══════════════════════════════════════════════════════════════
 
 import { createClient } from '@/lib/supabase/client'
+import type { AthleteInsight } from '@/lib/coach/athleteInsight'
 
 export type Forme = 'ok' | 'warn' | 'injured' | 'inactive'
 
@@ -34,6 +35,7 @@ export interface RosterAthlete {
   activeInjuries: number
   race: { name: string; days: number } | null
   unread: number
+  insight: AthleteInsight | null   // synthèse IA « vue coach » (cockpit)
 }
 
 async function uid(): Promise<string> {
@@ -61,9 +63,9 @@ export async function getRoster(): Promise<RosterAthlete[]> {
   const me = await uid()
 
   const { data: links } = await sb.from('coach_athlete')
-    .select('id, athlete_id, group_name, coach_note, accepted_at')
+    .select('id, athlete_id, group_name, coach_note, accepted_at, ai_insight, ai_insight_at')
     .eq('coach_id', me).eq('status', 'accepted')
-  const rows = (links ?? []) as { id: string; athlete_id: string; group_name: string | null; coach_note: string | null }[]
+  const rows = (links ?? []) as { id: string; athlete_id: string; group_name: string | null; coach_note: string | null; ai_insight?: AthleteInsight | null }[]
   if (!rows.length) return []
   const ids = rows.map(r => r.athlete_id)
 
@@ -153,6 +155,7 @@ export async function getRoster(): Promise<RosterAthlete[]> {
       load7, tss7, fatigue, tsb,
       adhDone, adhTotal, activeInjuries,
       race: raceObj, unread,
+      insight: (r.ai_insight as AthleteInsight | null) ?? null,
     }
   })
 }

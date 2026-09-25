@@ -204,7 +204,13 @@ export default function CoachAthletes() {
                 {priority.map(a => (
                   <Link key={a.id} href={`/coach/athlete?id=${a.id}`} style={{ flex: '0 0 264px', ...card, borderLeft: `3px solid ${STC[a.status]}`, padding: '12px 14px', textDecoration: 'none', color: 'inherit' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>{avatar(a, 34)}<span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>{a.name}</span></div>
-                    <div style={{ fontSize: 12.5, color: 'var(--text-mid)', marginTop: 9, lineHeight: 1.4 }}><b style={{ color: STC[a.status] }}>{STLABEL[a.status]}</b> — {a.reason}</div>
+                    <div style={{ fontSize: 12.5, color: 'var(--text-mid)', marginTop: 9, lineHeight: 1.4 }}><b style={{ color: STC[a.status] }}>{STLABEL[a.status]}</b> — {a.insight?.headline ?? a.reason}</div>
+                    {a.insight?.action && (
+                      <div style={{ marginTop: 8, fontSize: 11.5, lineHeight: 1.4, color: 'var(--text-mid)', display: 'flex', gap: 6 }}>
+                        <span style={{ flexShrink: 0, fontSize: 9.5, fontWeight: 800, letterSpacing: '0.04em', color: 'var(--primary)', border: '1px solid color-mix(in srgb, var(--primary) 45%, transparent)', borderRadius: 5, padding: '1px 5px', height: 'fit-content' }}>IA</span>
+                        <span>{a.insight.action}</span>
+                      </div>
+                    )}
                   </Link>
                 ))}
               </div>

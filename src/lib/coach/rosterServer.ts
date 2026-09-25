@@ -18,9 +18,9 @@ const DONE = ['done', 'completed', 'valide', 'validé', 'validée', 'fait', 'fai
 
 export async function getRosterForCoach(sb: SupabaseClient, coachId: string): Promise<RosterAthlete[]> {
   const { data: links } = await sb.from('coach_athlete')
-    .select('id, athlete_id, group_name, coach_note, accepted_at')
+    .select('id, athlete_id, group_name, coach_note, accepted_at, ai_insight, ai_insight_at')
     .eq('coach_id', coachId).eq('status', 'accepted')
-  const rows = (links ?? []) as { id: string; athlete_id: string; group_name: string | null; coach_note: string | null }[]
+  const rows = (links ?? []) as { id: string; athlete_id: string; group_name: string | null; coach_note: string | null; ai_insight?: import('@/lib/coach/athleteInsight').AthleteInsight | null }[]
   if (!rows.length) return []
   const ids = rows.map(r => r.athlete_id)
 
@@ -107,6 +107,7 @@ export async function getRosterForCoach(sb: SupabaseClient, coachId: string): Pr
       load7, tss7, fatigue, tsb,
       adhDone, adhTotal, activeInjuries,
       race: raceObj, unread,
+      insight: (r.ai_insight as import('@/lib/coach/athleteInsight').AthleteInsight | null) ?? null,
     }
   })
 }

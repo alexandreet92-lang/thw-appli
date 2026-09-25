@@ -42,6 +42,7 @@ const MuscuActivityView = nextDynamic(() => import('@/components/activity/MuscuA
 import ProgressionHub from '@/app/progression/page'
 import { ProgressionSportView } from '@/app/progression/components/ProgressionSportView'
 const LapsRunChart = nextDynamic(() => import('@/components/activity/LapsRunChart').then(m => m.LapsRunChart), { ssr: false })
+const TrainingAnalysis = nextDynamic(() => import('@/components/activity/TrainingAnalysis').then(m => m.TrainingAnalysis), { ssr: false })
 import { formatPace as fmtPaceMinKm, speedToPace as kmhToPaceMin, formatPaceSwim } from '@/lib/utils/pace'
 import { formatSplit, speedKmhToSplit500 } from '@/lib/utils/split'
 import { computeVapKmh, avgAdjustedPaceMinKm } from '@/lib/utils/vap'
@@ -8337,8 +8338,54 @@ conseil pour la prochaine séance similaire.`
         )}
         {/* (longueurs natation : édition dans la sur-page « Modifier ») */}
 
-        {/* ── PARTIE 3 : Hero row (carte | stats). Carte agrandie → déplacée
-             juste au-dessus des COURBES (bureau uniquement). ── */}
+        {/* ── ANALYSE DE L'ENTRAÎNEMENT (course / trail / rando) — remplace
+             hero + courbes + laps par le bloc Strava-like unifié (bureau). ── */}
+        {isRun && (() => {
+          const vapMoyS = (() => { const v = avgAdjustedPaceMinKm(a.streams?.velocity, a.streams?.altitude, a.streams?.distance); return v > 0 ? fmtPace(v * 60) : null })()
+          const dp: { label: string; value: string }[] = [
+            { label: t('actp.distance'), value: a.distance_m ? fmtDist(a.distance_m) : '—' },
+            isTrail ? { label: 'VAP moy', value: vapMoyS ?? '—' } : { label: t('actp.avg_pace'), value: paceS ? fmtPace(paceS) : '—' },
+            { label: t('actp.duration'), value: a.moving_time_s ? fmtDur(a.moving_time_s) : '—' },
+            { label: 'D+', value: (a.elevation_gain_m ?? 0) > 1 ? `+${Math.round(Number(a.elevation_gain_m))} m` : '—' },
+            { label: 'FC moy', value: a.avg_hr ? `${Math.round(Number(a.avg_hr))} bpm` : '—' },
+            { label: 'SM · SN', value: `${smsn.sm} · ${smsn.sn}` },
+          ]
+          const kpiNode = (
+            <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 12, padding: '14px 16px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px 18px' }}>
+                {dp.map(r => (
+                  <div key={r.label}>
+                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 0.5, textTransform: 'uppercase', color: 'var(--text-dim)', marginBottom: 3 }}>{r.label}</div>
+                    <div style={{ fontSize: 21, fontWeight: 700, color: 'var(--text)', fontVariantNumeric: 'tabular-nums', lineHeight: 1.1 }}>{r.value}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )
+          const mapNode = !mapExpanded ? (
+            <div style={{ aspectRatio: '1 / 1', borderRadius: 12, overflow: 'hidden' }}>
+              <ActivityMapCard activity={a as unknown as Record<string, unknown>} isMobile={false} expanded={false} onToggle={() => setMapExpanded(true)} hoverGps={hoverGps} />
+            </div>
+          ) : null
+          const feelingNode = <FeelingDifficultyCard feeling={localFeeling} difficulty={localDifficulty} onEdit={() => {}} />
+          return (
+            <TrainingAnalysis
+              streams={a.streams}
+              laps={a.laps}
+              activityId={a.id}
+              totalDurationS={a.moving_time_s}
+              paceZones={runZones}
+              onLapTap={i => { setLapsViewInitial(i); setLapsViewOpen(true) }}
+              kpiNode={kpiNode}
+              mapNode={mapNode}
+              feelingNode={feelingNode}
+            />
+          )
+        })()}
+
+        {/* ── PARTIE 3 : Hero row (carte | stats) — autres sports (vélo…). Carte
+             agrandie → déplacée juste au-dessus des COURBES (bureau uniquement). ── */}
+        {!isRun && (
           <div style={{ display: 'grid', gridTemplateColumns: mapExpanded ? '1fr' : '1fr 1fr', gap: 16, marginBottom: 20 }}>
             {/* Carte — quand agrandie, elle est déplacée au-dessus des courbes (plus bas) */}
             {!mapExpanded && (
@@ -8507,6 +8554,7 @@ conseil pour la prochaine séance similaire.`
               <FeelingDifficultyCard feeling={localFeeling} difficulty={localDifficulty} onEdit={() => {}} />
             </div>
           </div>
+        )}
 
         {/* (photos & commentaire : édition dans la sur-page « Modifier ») */}
 
@@ -8547,8 +8595,8 @@ conseil pour la prochaine séance similaire.`
           </div>
         )}
 
-        {/* ── COURBES ── */}
-        {a.streams && (
+        {/* ── COURBES ── (course/trail : intégrées dans TrainingAnalysis ci-dessus) */}
+        {a.streams && !isRun && (
           <div style={{ marginBottom: 32, paddingTop: 24 }}>
             <div style={{ fontSize: 10, fontWeight: 700, color: T.textMuted, letterSpacing: 0.9,
               textTransform: 'uppercase', marginBottom: 16, borderBottom: `1px solid ${T.border}`, paddingBottom: 5, fontFamily: T.fontDisplay }}>
@@ -8558,16 +8606,9 @@ conseil pour la prochaine séance similaire.`
           </div>
         )}
 
-        {/* ── LAPS ── (running/trail : MÊME système que le vélo — barres violettes
-             cliquables → LapsDetailView sport="running" ; vélo : LapsChart/Table watts) */}
-        {isRun ? (
-          <LapsRunChart
-            activityId={a.id}
-            cachedLaps={a.laps}
-            avgSpeedMs={a.distance_m && a.moving_time_s ? a.distance_m / a.moving_time_s : null}
-            onLapTap={i => { setLapsViewInitial(i); setLapsViewOpen(true) }}
-          />
-        ) : a.laps && a.laps.length > 1 ? (
+        {/* ── LAPS ── (vélo : LapsChart/Table watts ; course/trail : gérés par
+             TrainingAnalysis ci-dessus) */}
+        {!isRun && a.laps && a.laps.length > 1 ? (
           <div style={{ marginBottom: 32, paddingTop: 24 }}>
             <div style={{ fontSize: 10, fontWeight: 700, color: T.textMuted, letterSpacing: 0.9,
               textTransform: 'uppercase', marginBottom: 16, borderBottom: `1px solid ${T.border}`, paddingBottom: 5, fontFamily: T.fontDisplay }}>

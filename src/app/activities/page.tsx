@@ -8342,7 +8342,7 @@ conseil pour la prochaine séance similaire.`
           <div style={{ display: 'grid', gridTemplateColumns: mapExpanded ? '1fr' : '1fr 1fr', gap: 16, marginBottom: 20 }}>
             {/* Carte — quand agrandie, elle est déplacée au-dessus des courbes (plus bas) */}
             {!mapExpanded && (
-            <div style={{ height: 280, borderRadius: 10, overflow: 'hidden' }}>
+            <div style={{ aspectRatio: '1 / 1', borderRadius: 10, overflow: 'hidden' }}>
               <ActivityMapCard
                 activity={a as unknown as Record<string, unknown>}
                 isMobile={false}
@@ -8352,116 +8352,12 @@ conseil pour la prochaine séance similaire.`
               />
             </div>
             )}
-            {/* Stats + Analyse */}
-            <div>
-              {(() => {
-                const km = !isGym && a.distance_m ? (Number(a.distance_m)/1000).toFixed(2) : null
-                const avgSpeedKmh = a.avg_speed_ms
-                  ? (Number(a.avg_speed_ms)*3.6).toFixed(1)
-                  : (paceS && paceS > 0) ? (3600/paceS).toFixed(1) : null
-                // Course à pied : 6 stats dédiées (Distance / Allure / D+ / FC / TSS / Allure ajustée).
-                const adjPace = isRun ? avgAdjustedPaceMinKm(a.streams?.velocity, a.streams?.altitude, a.streams?.distance) : 0
-                const avgMs = a.avg_speed_ms ? Number(a.avg_speed_ms) : 0
-                const distAuto = a.distance_m ? (Number(a.distance_m) < 1000 ? `${Math.round(Number(a.distance_m))} m` : `${km} km`) : '—'
-                const STATS_MAIN = isRun ? [
-                  { label: t('actp.distance'),       value: km ? `${km} km` : '—' },
-                  { label: t('actp.avg_pace'),    value: paceS ? fmtPace(paceS) : '—', color: '#10b981' },
-                  { label: 'D+',             value: (a.elevation_gain_m ?? 0) > 5 ? `+${Math.round(Number(a.elevation_gain_m))} m` : '—' },
-                  { label: t('actp.avg_hr'),        value: a.avg_hr ? `${Math.round(Number(a.avg_hr))} bpm` : '—', color: '#f97316' },
-                  { label: 'SM · SN',        value: `${smsn.sm} · ${smsn.sn}` },
-                  { label: t('actp.adjusted_pace'), value: adjPace > 0 ? `${fmtPaceMinKm(adjPace)}/km` : '—', color: '#7c3aed' },
-                ] : isRowing ? [
-                  { label: t('actp.distance'),  value: distAuto },
-                  { label: t('actp.duration'),     value: a.moving_time_s ? fmtDur(a.moving_time_s) : '—' },
-                  { label: t('actp.avg_split'), value: avgMs > 0 ? `${formatSplit(500 / avgMs)}/500` : '—', color: '#06b6d4' },
-                  { label: t('actp.avg_spm'),   value: a.avg_cadence ? `${Math.round(Number(a.avg_cadence))}` : '—', color: '#ec4899' },
-                  { label: t('actp.avg_hr'),   value: a.avg_hr ? `${Math.round(Number(a.avg_hr))} bpm` : '—', color: '#f97316' },
-                  { label: t('actp.avg_power_short'), value: a.avg_watts ? `${Math.round(Number(a.avg_watts))} W` : '—', color: '#6366f1' },
-                ] : isSwim ? [
-                  { label: t('actp.distance'),     value: distAuto },
-                  { label: t('actp.duration'),        value: a.moving_time_s ? fmtDur(a.moving_time_s) : '—' },
-                  { label: t('actp.pace_100m'), value: avgMs > 0 ? formatPaceSwim(100 / avgMs) : '—', color: '#0ea5e9' },
-                  { label: t('actp.avg_hr'),      value: a.avg_hr ? `${Math.round(Number(a.avg_hr))} bpm` : '—', color: '#f97316' },
-                  { label: 'Cadence',      value: a.avg_cadence ? `${Math.round(Number(a.avg_cadence))} c/min` : '—', color: '#ec4899' },
-                  { label: 'SM · SN',      value: `${smsn.sm} · ${smsn.sn}` },
-                ] : [
-                  { label: t('actp.distance'),  value: km ? `${km} km` : '—' },
-                  { label: t('actp.duration'),     value: a.moving_time_s ? fmtDur(a.moving_time_s) : '—' },
-                  { label: t('actp.speed'),   value: avgSpeedKmh ? `${avgSpeedKmh} km/h` : '—' },
-                  { label: isBike ? t('actp.avg_watts') : t('actp.pace'),
-                    value: isBike ? (a.avg_watts ? `${Math.round(Number(a.avg_watts))} W` : '—') : (paceS ? fmtPace(paceS) : '—'),
-                    color: isBike ? '#818CF8' : undefined },
-                  showTerrainData
-                    ? { label: 'D+', value: (a.elevation_gain_m ?? 0) > 5 ? `+${Math.round(Number(a.elevation_gain_m))} m` : '—' }
-                    : { label: t('actp.calories'), value: a.calories ? `${Math.round(Number(a.calories))} kcal` : '—' },
-                  { label: 'SM · SN',   value: `${smsn.sm} · ${smsn.sn}` },
-                ]
-                return (
-                  <>
-                    <div style={{
-                      display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 1,
-                      background: 'var(--border)', border: '1px solid var(--border)',
-                      borderRadius: 10, overflow: 'hidden', marginBottom: 10,
-                    }}>
-                      {STATS_MAIN.map(s => (
-                        <div key={s.label} style={{ background: 'var(--bg)', padding: '10px 12px' }}>
-                          <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '.07em', color: 'var(--text-muted)', marginBottom: 3 }}>{s.label}</div>
-                          <div style={{ fontSize: 20, fontWeight: 500, color: s.color ?? 'var(--text)' }}>{s.value}</div>
-                        </div>
-                      ))}
-                    </div>
-                    {decoupling !== null && !isRun && (
-                      <div style={{
-                        background: decoupling < 5 ? 'var(--zone-good-bg)' : decoupling < 10 ? 'var(--zone-med-bg)' : 'var(--zone-bad-bg)',
-                        border: `1px solid ${decoupling < 5 ? 'var(--zone-good-border)' : decoupling < 10 ? 'var(--zone-med-border)' : 'var(--zone-bad-border)'}`,
-                        borderRadius: 7, padding: '8px 12px',
-                        display: 'flex', gap: 8, alignItems: 'center',
-                      }}>
-                        <div style={{ width: 7, height: 7, borderRadius: '50%', background: decoupling < 5 ? '#10B981' : decoupling < 10 ? '#F59E0B' : '#EF4444', flexShrink: 0 }} />
-                        <span style={{ fontSize: 12, color: 'var(--text-body)' }}>
-                          {decoupling < 5 ? t('actp.good_aerobic_resistance') : decoupling < 10 ? t('actp.slight_hr_drift') : t('actp.high_hr_drift')} — {t('actp.decoupling_lc')} {decoupling.toFixed(1)}%
-                        </span>
-                      </div>
-                    )}
-                  </>
-                )
-              })()}
-            </div>
-          </div>
+            {/* Colonne droite : données détaillées (2 col) puis jauges Ressenti/Difficulté */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14, minWidth: 0 }}>
 
-        {/* ── Jauges Ressenti / Difficulté (desktop) — AFFICHAGE seul (édition
-            dans la sur-page « Modifier ») ── */}
-        <FeelingDifficultyCard feeling={localFeeling} difficulty={localDifficulty} onEdit={() => {}} />
-
-        {/* (photos & commentaire : édition dans la sur-page « Modifier ») */}
-
-        {/* ── Records battus — sous la carte (desktop) ── */}
-        <RecordsBeaten activityId={a.id} isBike={isBike} />
-
-        {/* ── IA ANALYSE GLOBALE (desktop) — masquée en lecture seule ── */}
-        {!readOnly && (
-        <div style={{ marginBottom: 20 }}>
-          <button
-            onClick={() => globalAI.status === 'idle' || globalAI.status === 'done' || globalAI.status === 'error'
-              ? globalAI.run(buildGlobalPrompt())
-              : undefined}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 6,
-              padding: '8px 16px', borderRadius: 8,
-              background: 'none', border: '1px solid var(--border)',
-              color: 'var(--text-mid)', fontSize: 13, cursor: 'pointer',
-            }}
-          >
-            <Sparkles size={14} color="#06B6D4" />
-            {t('actp.full_ai_analysis')}
-          </button>
-          <AIBubble text={globalAI.text} status={globalAI.status} onRetry={() => { globalAI.reset(); globalAI.run(buildGlobalPrompt()) }} />
-        </div>
-        )}
-
-        {/* ── PARTIE 4 : Données détaillées — 4 colonnes ── */}
-        <div style={{ background: 'var(--bg-card)', borderRadius: 10, border: '1px solid var(--border)', marginBottom: 20 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 20, padding: '16px 20px' }}>
+              {/* ── Données détaillées — 2 colonnes (dans la colonne du hero) ── */}
+              <div style={{ background: 'var(--bg-card)', borderRadius: 10, border: '1px solid var(--border)' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 20, padding: '16px 20px' }}>
 
             {/* ── PUISSANCE (bike) / EFFORT (run/gym) ── */}
             <div>
@@ -8603,8 +8499,40 @@ conseil pour la prochaine séance similaire.`
               </div>
             </div>
 
+                </div>
+              </div>
+
+              {/* ── Jauges Ressenti / Difficulté — AFFICHAGE seul (édition dans la
+                  sur-page « Modifier ») ── */}
+              <FeelingDifficultyCard feeling={localFeeling} difficulty={localDifficulty} onEdit={() => {}} />
+            </div>
           </div>
+
+        {/* (photos & commentaire : édition dans la sur-page « Modifier ») */}
+
+        {/* ── Records battus — sous la carte (desktop) ── */}
+        <RecordsBeaten activityId={a.id} isBike={isBike} />
+
+        {/* ── IA ANALYSE GLOBALE (desktop) — masquée en lecture seule ── */}
+        {!readOnly && (
+        <div style={{ marginBottom: 20 }}>
+          <button
+            onClick={() => globalAI.status === 'idle' || globalAI.status === 'done' || globalAI.status === 'error'
+              ? globalAI.run(buildGlobalPrompt())
+              : undefined}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              padding: '8px 16px', borderRadius: 8,
+              background: 'none', border: '1px solid var(--border)',
+              color: 'var(--text-mid)', fontSize: 13, cursor: 'pointer',
+            }}
+          >
+            <Sparkles size={14} color="#06B6D4" />
+            {t('actp.full_ai_analysis')}
+          </button>
+          <AIBubble text={globalAI.text} status={globalAI.status} onRetry={() => { globalAI.reset(); globalAI.run(buildGlobalPrompt()) }} />
         </div>
+        )}
 
         {/* ── CARTE AGRANDIE — placée juste au-dessus des COURBES (bureau) ── */}
         {mapExpanded && (

@@ -94,8 +94,9 @@ function mapboxStaticUrl(encodedPolyline: string, sportColor: string, width: num
   // Liseré blanc dessous + trait couleur du sport dessus → bien lisible (façon Strava).
   const enc = encodeURIComponent(encodedPolyline)
   const overlay = `path-8+ffffff-1(${enc}),path-5+${color}-1(${enc})`
-  // padding=52 : marge autour du tracé pour qu'il ne touche JAMAIS les rebords.
-  return `https://api.mapbox.com/styles/v1/mapbox/outdoors-v12/static/${overlay}/auto/${width}x${height}@2x?access_token=${MAPBOX_TOKEN}&padding=52`
+  // padding=60 : marge autour du tracé pour qu'il ne touche JAMAIS les rebords
+  // (le tracé reste entièrement visible même en « cover »).
+  return `https://api.mapbox.com/styles/v1/mapbox/outdoors-v12/static/${overlay}/auto/${width}x${height}@2x?access_token=${MAPBOX_TOKEN}&padding=60`
 }
 
 // ── Trophy icon (lucide-style) ─────────────────────────────────────────
@@ -218,7 +219,9 @@ export function ActivityCard({ data, onClick }: Props) {
               // gardent le léger « peek » à 94 % quand il y en a plusieurs.
               flex: s.kind === 'map' ? '0 0 100%' : (slides.length > 1 ? '0 0 94%' : '0 0 100%'),
               scrollSnapAlign: 'start',
-              height: 232, background: 'var(--bg-card2)', borderRadius: 0, overflow: 'hidden',
+              // Ratio aligné sur l'image Mapbox (760×470) → « cover » remplit tout
+              // le cadre sans recadrer le tracé (plus de letterbox ni de crop).
+              aspectRatio: '760 / 470', background: 'var(--bg-card2)', borderRadius: 0, overflow: 'hidden',
               border: 'none', position: 'relative',
             }}>
               {s.kind === 'video'

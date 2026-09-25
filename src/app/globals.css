@@ -1046,5 +1046,7 @@ html.thw-glass-blur .thw-glass-bubble {
    Mobile : bord à bord, tracé jamais coupé (contain).
    Bureau : la carte remplit la boîte plus large (cover, comme avant) — sinon
    elle apparaît en letterbox (bandes grises) sur les cartes 2 colonnes. */
-.thw-card-map { object-fit: contain; }
-@media (min-width: 768px) { .thw-card-map { object-fit: cover; } }
+/* La carte remplit tout le cadre (bord à bord, aucun letterbox). Le conteneur a
+   le MÊME ratio que l'image Mapbox → « cover » ne recadre pas, et le padding
+   Mapbox garde le tracé entier visible. */
+.thw-card-map { object-fit: cover; }

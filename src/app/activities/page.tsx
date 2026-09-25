@@ -8601,8 +8601,9 @@ conseil pour la prochaine séance similaire.`
           </div>
         )}
 
-        {/* ── COURBES ── (course/trail : intégrées dans TrainingAnalysis ci-dessus) */}
-        {a.streams && !isRun && (
+        {/* ── COURBES ── (graphique multi-bandes : VAP / Température / Cadence /
+             profil / allure / FC — conservé pour tous les sports, course incluse) */}
+        {a.streams && (
           <div style={{ marginBottom: 32, paddingTop: 24 }}>
             <div style={{ fontSize: 10, fontWeight: 700, color: T.textMuted, letterSpacing: 0.9,
               textTransform: 'uppercase', marginBottom: 16, borderBottom: `1px solid ${T.border}`, paddingBottom: 5, fontFamily: T.fontDisplay }}>

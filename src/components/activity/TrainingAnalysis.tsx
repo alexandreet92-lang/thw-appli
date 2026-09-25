@@ -303,25 +303,26 @@ export function TrainingAnalysis({ streams, laps: lapsProp, activityId, totalDur
     <div>
       <style>{`
         @keyframes thwTaRise { from { opacity: 0; transform: translateY(6px) scaleY(0.92); } to { opacity: 1; transform: none; } }
-        @media (max-width: 1099px){ .thw-ta-top { grid-template-columns: 1fr !important; } .thw-ta-mt { grid-template-columns: 1fr !important; } }
+        @media (max-width: 1099px){ .thw-ta-top { grid-template-columns: 1fr !important; } .thw-ta-rt { grid-template-columns: 1fr !important; } }
       `}</style>
 
-      {/* Haut : données principales | (carte carrée + tableau à côté) */}
-      <div className="thw-ta-top" style={{ display: 'grid', gridTemplateColumns: 'minmax(220px, 280px) 1fr', gap: 20, marginBottom: 20, alignItems: 'start' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, minWidth: 0 }}>{kpiNode}</div>
-        <div className="thw-ta-mt" style={{ display: 'grid', gridTemplateColumns: 'minmax(280px, 400px) 1fr', gap: 18, alignItems: 'start', minWidth: 0 }}>
+      <div className="thw-ta-top" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 22, alignItems: 'start' }}>
+        {/* GAUCHE : données principales + LE graphique (profil + jauges + boutons) */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14, minWidth: 0 }}>
+          {kpiNode}
+          <AnalysisGraph data={data} splits={splits} mode={mode} metric={metric} accent={accent} ramp={ramp} totalDurationS={totalDurationS}
+            onTap={hasLaps && onLapTap ? (sp) => onLapTap(sp.lapIndex) : undefined} t={t} />
+          <AnalysisControls mode={mode} metric={metric} hasLaps={hasLaps} onMode={setMode} onMetric={setMetric} t={t} />
+        </div>
+        {/* DROITE : tableau | carte (à droite) côte à côte ; ressenti/difficulté sous la carte */}
+        <div className="thw-ta-rt" style={{ display: 'grid', gridTemplateColumns: '1fr minmax(200px, 1fr)', gap: 16, alignItems: 'start', minWidth: 0 }}>
+          <AnalysisTable splits={splits} mode={mode} t={t} />
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12, minWidth: 0 }}>
             {mapNode}
             {feelingNode}
           </div>
-          <AnalysisTable splits={splits} mode={mode} t={t} />
         </div>
       </div>
-
-      {/* Bas : LE graphique unique (profil + jauges) + 5 boutons, clic → modal */}
-      <AnalysisGraph data={data} splits={splits} mode={mode} metric={metric} accent={accent} ramp={ramp} totalDurationS={totalDurationS}
-        onTap={hasLaps && onLapTap ? (sp) => onLapTap(sp.lapIndex) : undefined} t={t} />
-      <AnalysisControls mode={mode} metric={metric} hasLaps={hasLaps} onMode={setMode} onMetric={setMetric} t={t} />
     </div>
   )
 }
@@ -588,7 +589,7 @@ function AnalysisGraph({ data, splits, mode, metric, accent, ramp, totalDuration
   onTap?: (sp: Split) => void; t: (k: string) => string
 }) {
   const CH = 224
-  const g = computeGeom(data, splits, metric, CH)
+  const g = computeGeom(data, splits, metric, CH, 820)
   const [hover, setHover] = useState<number | null>(null)
   const [smoothT, setSmoothT] = useState<number | null>(null)
   const wrapRef = useRef<HTMLDivElement>(null)

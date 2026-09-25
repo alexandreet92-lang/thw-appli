@@ -13543,7 +13543,6 @@ function HistoryDrawer({
             <path d="M7.2 7.2 10.5 16M16.8 7.2 13.5 16"/>
           </svg>
           <span style={{ flex: 1 }}>{t('w1a.navStudio')}</span>
-          <span style={{ fontSize: 9, fontWeight: 700, color: '#8B5CF6', background: 'rgba(139,92,246,0.12)', padding: '2px 6px', borderRadius: 6, letterSpacing: '0.03em' }}>NOUVEAU</span>
         </button>
       </div>
 
@@ -20769,7 +20768,6 @@ function SecondaryChatColumn({
             </div>
 
             <ModelPicker model={model} onChange={setModel} disabled={generating} isMobile={false} />
-            <MethodPicker method={method} onChange={setMethod} disabled={generating} isMobile={false} />
 
             <div style={{ flex: 1 }} />
 
@@ -24710,9 +24708,6 @@ export default function AIPanel({
 
                 {/* Agent Coach : sélecteur d'athlète ciblé (à côté du modèle) */}
                 {activeAgent === 'coach' && <AthletePicker athletes={coachRoster} active={coachTarget} onPick={setCoachTarget} disabled={loading} />}
-
-                {/* Sélecteur de méthode d'entraînement — pas pertinent pour l'agent Coach */}
-                {activeAgent !== 'coach' && <MethodPicker method={method} onChange={setMethod} disabled={loading} isMobile={!isDesktop} />}
 
                 {/* Spacer */}
                 <div style={{ flex: 1 }} />

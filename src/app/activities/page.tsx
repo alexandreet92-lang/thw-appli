@@ -4898,10 +4898,27 @@ function WeekDetailModal({ week, activities, zones, onClose }: {
   const weekStart = useMemo(() => { const d = new Date(week.week + 'T00:00:00'); d.setHours(0,0,0,0); return d }, [week.week])
   const weekEnd   = useMemo(() => { const d = new Date(weekStart); d.setDate(d.getDate() + 6); d.setHours(23,59,59,999); return d }, [weekStart])
 
-  const weekActs = useMemo(() =>
-    activities.filter(a => { const d = new Date(a.started_at); return d >= weekStart && d <= weekEnd }),
-    [activities, weekStart, weekEnd]
+  // Activités de la semaine : on part de la liste déjà en mémoire (instantané pour
+  // les semaines récentes) PUIS on va chercher en base la vraie semaine ciblée —
+  // sinon les semaines au-delà de la pagination (8+ semaines en arrière) étaient
+  // vides. Requête bornée à [weekStart, weekEnd] → fonctionne pour n'importe quelle semaine.
+  const [weekActs, setWeekActs] = useState<Activity[]>(() =>
+    activities.filter(a => { const d = new Date(a.started_at); return d >= weekStart && d <= weekEnd })
   )
+  useEffect(() => {
+    let cancelled = false
+    const sb = createClient()
+    void resolvePlanningUid(sb).then(uid => {
+      if (!uid || cancelled) return
+      void sb.from('activities').select(LIST_COLUMNS)
+        .eq('user_id', uid)
+        .gte('started_at', weekStart.toISOString())
+        .lte('started_at', weekEnd.toISOString())
+        .order('started_at', { ascending: false })
+        .then(({ data }) => { if (!cancelled && data) setWeekActs(data as unknown as Activity[]) })
+    })
+    return () => { cancelled = true }
+  }, [weekStart, weekEnd])
 
   // Streams à la demande : la liste est allégée (streams FC/puissance retirés pour
   // la perf). Sans eux, Polarisation FC / Zones FC / Polarisation puissance restent
@@ -6105,22 +6122,26 @@ function SectionDonnees({ activities, zones, profile }: {
                           {w.total === 0 && (
                             <rect x={bx} y={BASE_Y - 2} width={BAR_W} height={2} fill="var(--border)" rx="1" />
                           )}
-                          {/* Sport segments */}
-                          {segs.map((seg, si) => (
-                            <rect
-                              key={seg.sp}
-                              x={bx} y={seg.y} width={BAR_W} height={Math.max(0.5, seg.h)}
-                              fill={isNow ? (SPORT_COLOR[seg.sp as SportType] ?? '#94a3b8') : ((SPORT_COLOR[seg.sp as SportType] ?? '#94a3b8') + 'AA')}
-                              rx={si === 0 ? 2 : 0}
-                            />
-                          ))}
-                          {/* Duration label above bar */}
-                          {durLabel && (
+                          {/* Sport segments — 2px de gap entre segments, coins arrondis en haut/bas */}
+                          {segs.map((seg, si) => {
+                            const isTop = si === segs.length - 1
+                            const hh = Math.max(0.5, seg.h - (isTop ? 0 : 2))
+                            return (
+                              <rect
+                                key={seg.sp}
+                                x={bx} y={seg.y} width={BAR_W} height={hh}
+                                fill={isNow ? (SPORT_COLOR[seg.sp as SportType] ?? '#94a3b8') : ((SPORT_COLOR[seg.sp as SportType] ?? '#94a3b8') + 'AA')}
+                                rx={isTop || si === 0 ? 3 : 0}
+                              />
+                            )
+                          })}
+                          {/* Libellé de durée : UNIQUEMENT sur la semaine courante (évite le chevauchement).
+                              Le détail de chaque semaine s'obtient en cliquant la barre. */}
+                          {durLabel && isNow && (
                             <text
                               x={bx + BAR_W / 2} y={labelY}
-                              textAnchor="middle" fontSize="8"
-                              fill={isNow ? 'var(--text)' : 'var(--text-dim)'}
-                              fontWeight={isNow ? '700' : '400'}
+                              textAnchor="middle" fontSize="9"
+                              fill="var(--text)" fontWeight="700"
                             >
                               {durLabel}
                             </text>

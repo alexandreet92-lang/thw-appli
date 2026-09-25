@@ -304,31 +304,20 @@ export function TwelveWeekVolume({ activities }: { activities: ActLike[] }) {
             <stop offset="100%" stopColor={BLUE} stopOpacity={0.02} />
           </linearGradient>
         </defs>
-        {/* Grille + axe Y (0 / mid / max) */}
+        {/* Grille horizontale recessive (0 / mid / max) — pas de lignes verticales */}
         {[0, maxV / 2, maxV].map((v, i) => (
           <g key={i}>
-            <line x1={PL} y1={Y(v)} x2={PL + cW} y2={Y(v)} stroke="var(--border)" strokeWidth={1} strokeDasharray={i === 0 ? undefined : '3 4'} />
-            <text x={PL - 6} y={Y(v) + 3.5} textAnchor="end" fontSize={fsAxis} fill="var(--text-dim)" style={{ fontVariantNumeric: 'tabular-nums' }}>{fmtVal(v)} {chartUnit}</text>
+            <line x1={PL} y1={Y(v)} x2={PL + cW} y2={Y(v)} stroke="var(--border)" strokeWidth={1} strokeDasharray={i === 0 ? undefined : '2 5'} opacity={i === 0 ? 1 : 0.7} />
+            <text x={PL - 8} y={Y(v) + 3.5} textAnchor="end" fontSize={fsAxis} fill="var(--text-dim)" style={{ fontVariantNumeric: 'tabular-nums' }}>{fmtVal(v)}</text>
           </g>
-        ))}
-        {/* Colonnes de semaines (repères verticaux légers) */}
-        {weeks.map((_, i) => (
-          <line key={i} x1={X(i)} y1={PT} x2={X(i)} y2={PT + cH} stroke="var(--border)" strokeWidth={0.5} opacity={0.5} />
         ))}
         <path d={areaPath} fill="url(#vol12grad)" />
         <path d={linePath} fill="none" stroke={BLUE} strokeWidth={lineW} strokeLinecap="round" strokeLinejoin="round" />
-        {/* Curseur semaine sélectionnée */}
-        <line x1={X(selIdx)} y1={Y(chartVals[selIdx])} x2={X(selIdx)} y2={PT + cH} stroke={BLUE} strokeWidth={2} />
-        {/* Points hebdo */}
-        {chartVals.map((v, i) => (
-          i === selIdx
-            ? <g key={i}>
-                <circle cx={X(i)} cy={Y(v)} r={rHalo} fill={BLUE} opacity={0.18} />
-                <circle cx={X(i)} cy={Y(v)} r={rSel} fill={BLUE} />
-                <text x={X(i)} y={Y(v) - 12} textAnchor="middle" fontSize={fsVal} fontWeight={800} fill="var(--text)" style={{ fontVariantNumeric: 'tabular-nums' }}>{fmtVal(v)} {chartUnit}</text>
-              </g>
-            : <circle key={i} cx={X(i)} cy={Y(v)} r={rDot} fill="var(--bg-card)" stroke={BLUE} strokeWidth={2} />
-        ))}
+        {/* Guide + marqueur UNIQUEMENT sur la semaine sélectionnée (pas de point partout) */}
+        <line x1={X(selIdx)} y1={PT} x2={X(selIdx)} y2={PT + cH} stroke={BLUE} strokeWidth={1} opacity={0.35} />
+        <circle cx={X(selIdx)} cy={Y(chartVals[selIdx])} r={rHalo} fill={BLUE} opacity={0.14} />
+        <circle cx={X(selIdx)} cy={Y(chartVals[selIdx])} r={rSel} fill={BLUE} stroke="var(--bg-card)" strokeWidth={2} />
+        <text x={Math.max(PL + 18, Math.min(PL + cW - 18, X(selIdx)))} y={Math.max(PT + 10, Y(chartVals[selIdx]) - 12)} textAnchor="middle" fontSize={fsVal} fontWeight={800} fill="var(--text)" style={{ fontVariantNumeric: 'tabular-nums' }}>{fmtVal(chartVals[selIdx])} {chartUnit}</text>
         {/* Mois */}
         {monthTicks.map(t2 => (
           <text key={t2.i} x={X(t2.i)} y={PT + cH + 16} textAnchor="middle" fontSize={fsMonth} fill="var(--text-dim)" style={{ textTransform: 'uppercase', letterSpacing: '0.06em' }}>{t2.m}</text>

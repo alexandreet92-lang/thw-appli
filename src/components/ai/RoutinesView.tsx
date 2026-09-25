@@ -5,7 +5,7 @@
 // prompt + l'historique complet des exécutions (chaque run consultable).
 // ══════════════════════════════════════════════════════════════
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useI18n } from '@/lib/i18n'
 import {
   listRoutines, createRoutine, updateRoutine, deleteRoutine, runRoutine, listRuns,
@@ -64,12 +64,83 @@ function fmtWhen(iso: string): string {
   } catch { return iso }
 }
 
+const FB = 'var(--font-body)'
+
+// Champ soigné (façon réglages) : bordure fine, fond carte, radius généreux,
+// focus ring subtil. Réutilisé par les inputs, le textarea et les dropdowns.
 const inputStyle: React.CSSProperties = {
-  width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: 9,
-  border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text)',
-  fontSize: 14, fontFamily: 'DM Sans,sans-serif', outline: 'none',
+  width: '100%', boxSizing: 'border-box', padding: '12px 14px', borderRadius: 12,
+  border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)',
+  fontSize: 14, fontFamily: FB, outline: 'none',
+  transition: 'border-color 0.15s, box-shadow 0.15s',
 }
-const labelStyle: React.CSSProperties = { fontSize: 12, fontWeight: 600, color: 'var(--text-mid)', marginBottom: 5, display: 'block' }
+// Label discret : petite majuscule espacée (var(--text-dim)).
+const labelStyle: React.CSSProperties = {
+  display: 'block', marginBottom: 8, fontSize: 11, fontWeight: 600,
+  letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-dim)', fontFamily: FB,
+}
+
+function onFocusRing(e: React.FocusEvent<HTMLElement>) {
+  e.currentTarget.style.borderColor = 'var(--primary)'
+  e.currentTarget.style.boxShadow = '0 0 0 3px var(--primary-dim)'
+}
+function onBlurRing(e: React.FocusEvent<HTMLElement>) {
+  e.currentTarget.style.borderColor = 'var(--border)'
+  e.currentTarget.style.boxShadow = 'none'
+}
+
+type DDOpt = { value: string; label: string }
+
+// Menu déroulant custom (remplace le <select> système). Même logique de sélection
+// que le natif : onChange(value). Cohérent avec les champs (bordure, focus, radius).
+function Dropdown({ value, onChange, options, ariaLabel }: {
+  value: string; onChange: (v: string) => void; options: DDOpt[]; ariaLabel?: string
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!open) return
+    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false) }
+    document.addEventListener('mousedown', h)
+    return () => document.removeEventListener('mousedown', h)
+  }, [open])
+  const current = options.find(o => o.value === value)?.label ?? '—'
+  return (
+    <div ref={ref} style={{ position: 'relative' }}>
+      <button type="button" aria-label={ariaLabel} onClick={() => setOpen(o => !o)}
+        style={{ ...inputStyle, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, cursor: 'pointer', textAlign: 'left', borderColor: open ? 'var(--primary)' : 'var(--border)', boxShadow: open ? '0 0 0 3px var(--primary-dim)' : 'none' }}>
+        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{current}</span>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.18s' }}><path d="M6 9l6 6 6-6"/></svg>
+      </button>
+      {open && (
+        <div style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, right: 0, zIndex: 30, maxHeight: 240, overflowY: 'auto', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: 5, animation: 'thwRoutDD 0.15s cubic-bezier(0.2,0.9,0.3,1)' }}>
+          {options.map(o => {
+            const on = o.value === value
+            return (
+              <button key={o.value} type="button" onClick={() => { onChange(o.value); setOpen(false) }}
+                onMouseEnter={e => { if (!on) (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)' }}
+                onMouseLeave={e => { if (!on) (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
+                style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left', padding: '9px 11px', border: 'none', borderRadius: 'var(--r-sm)', background: on ? 'var(--primary-dim)' : 'transparent', color: on ? 'var(--primary)' : 'var(--text)', fontSize: 13.5, fontWeight: on ? 600 : 450, cursor: 'pointer', fontFamily: FB }}>
+                <span style={{ flex: 1 }}>{o.label}</span>
+                {on && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>}
+              </button>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Interrupteur propre : piste + pastille qui glisse.
+function Switch({ on, onClick, ariaLabel }: { on: boolean; onClick: () => void; ariaLabel: string }) {
+  return (
+    <button type="button" onClick={onClick} aria-pressed={on} aria-label={ariaLabel}
+      style={{ flexShrink: 0, width: 44, height: 26, borderRadius: 999, border: 'none', cursor: 'pointer', background: on ? 'var(--primary)' : 'var(--border-mid)', position: 'relative', transition: 'background 0.18s', padding: 0 }}>
+      <span style={{ position: 'absolute', top: 3, left: on ? 21 : 3, width: 20, height: 20, borderRadius: '50%', background: 'var(--on-primary)', transition: 'left 0.18s' }} />
+    </button>
+  )
+}
 
 type FormState = Partial<Routine> & { id?: string }
 
@@ -172,6 +243,7 @@ function FormView({ initial, onCancel, onSaved }: { initial: FormState; onCancel
   const [f, setF] = useState<FormState>(initial)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [appliedTpl, setAppliedTpl] = useState<number | null>(null)
   const set = (patch: Partial<FormState>) => setF(prev => ({ ...prev, ...patch }))
 
   const save = async () => {
@@ -193,85 +265,99 @@ function FormView({ initial, onCancel, onSaved }: { initial: FormState; onCancel
     finally { setSaving(false) }
   }
 
+  const freqOptions: DDOpt[] = FREQ_OPTS.map(o => ({ value: o.v, label: t(`w1a.r_freq_${o.v}`) }))
+  const hourOptions: DDOpt[] = Array.from({ length: 24 }, (_, i) => ({ value: String(i), label: t('w1a.r_heureOption', { h: String(i).padStart(2, '0') }) }))
+  const dayOptions: DDOpt[] = DAYS.map((_, i) => ({ value: String(i), label: t(`w1a.r_day_${i}`) }))
+  const modelOptions: DDOpt[] = MODEL_OPTS.map(o => ({ value: o.v, label: t(`w1a.r_model_${o.v}`) }))
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16, maxWidth: 560, margin: '0 auto' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 26, maxWidth: 560, margin: '0 auto', fontFamily: FB }}>
+      <style>{`@keyframes thwRoutDD{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}`}</style>
+
       {!f.id && (
         <div>
           <span style={labelStyle}>{t('w1a.r_modelesPrets')}</span>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
-            {TEMPLATES.map((tpl, i) => (
-              <button key={i} onClick={() => set({ name: t(`w1a.r_tpl_${i}_name`), prompt: t(`w1a.r_tpl_${i}_prompt`), frequency: tpl.frequency, hour: tpl.hour, ...(tpl.model ? { model: tpl.model } : {}) })}
-                style={{ padding: '7px 12px', borderRadius: 999, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text-mid)', fontSize: 12.5, fontWeight: 500, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
-                {t(`w1a.r_tpl_${i}_label`)}
-              </button>
-            ))}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            {TEMPLATES.map((tpl, i) => {
+              const on = appliedTpl === i
+              return (
+                <button key={i} type="button"
+                  onClick={() => { set({ name: t(`w1a.r_tpl_${i}_name`), prompt: t(`w1a.r_tpl_${i}_prompt`), frequency: tpl.frequency, hour: tpl.hour, ...(tpl.model ? { model: tpl.model } : {}) }); setAppliedTpl(i) }}
+                  onMouseEnter={e => { if (!on) (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)' }}
+                  onMouseLeave={e => { if (!on) (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-card2)' }}
+                  style={{ padding: '8px 14px', borderRadius: 10, border: `1px solid ${on ? 'var(--primary)' : 'var(--border)'}`, background: on ? 'var(--primary-dim)' : 'var(--bg-card2)', color: on ? 'var(--primary)' : 'var(--text-mid)', fontSize: 13, fontWeight: on ? 600 : 500, cursor: 'pointer', fontFamily: FB, transition: 'background 0.14s, color 0.14s, border-color 0.14s' }}>
+                  {t(`w1a.r_tpl_${i}_label`)}
+                </button>
+              )
+            })}
           </div>
         </div>
       )}
 
       <div>
         <label style={labelStyle}>{t('w1a.r_nom')}</label>
-        <input value={f.name ?? ''} onChange={e => set({ name: e.target.value })} placeholder={t('w1a.r_nomPh')} style={inputStyle} />
+        <input value={f.name ?? ''} onChange={e => { set({ name: e.target.value }); setAppliedTpl(null) }}
+          onFocus={onFocusRing} onBlur={onBlurRing} placeholder={t('w1a.r_nomPh')} style={inputStyle} />
       </div>
 
       <div>
         <label style={labelStyle}>{t('w1a.r_promptLabel')}</label>
-        <textarea value={f.prompt ?? ''} onChange={e => set({ prompt: e.target.value })} rows={5}
-          placeholder={t('w1a.r_promptPh')}
-          style={{ ...inputStyle, fontSize: 13, lineHeight: 1.5, resize: 'vertical' }} />
+        <textarea value={f.prompt ?? ''} onChange={e => { set({ prompt: e.target.value }); setAppliedTpl(null) }} rows={7}
+          onFocus={onFocusRing} onBlur={onBlurRing} placeholder={t('w1a.r_promptPh')}
+          style={{ ...inputStyle, fontSize: 14, lineHeight: 1.6, resize: 'vertical', minHeight: 140 }} />
       </div>
 
-      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-        <div style={{ flex: '1 1 160px' }}>
+      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+        <div style={{ flex: '1 1 200px' }}>
           <label style={labelStyle}>{t('w1a.r_frequence')}</label>
-          <select value={f.frequency ?? 'daily'} onChange={e => set({ frequency: e.target.value as RoutineInput['frequency'] })} style={inputStyle}>
-            {FREQ_OPTS.map(o => <option key={o.v} value={o.v}>{t(`w1a.r_freq_${o.v}`)}</option>)}
-          </select>
+          <Dropdown value={f.frequency ?? 'daily'} ariaLabel={t('w1a.r_frequence')}
+            onChange={v => set({ frequency: v as RoutineInput['frequency'] })} options={freqOptions} />
         </div>
-        <div style={{ flex: '0 0 110px' }}>
+        <div style={{ flex: '0 0 130px' }}>
           <label style={labelStyle}>{t('w1a.r_heure')}</label>
-          <select value={f.hour ?? 7} onChange={e => set({ hour: Number(e.target.value) })} style={inputStyle}>
-            {Array.from({ length: 24 }, (_, i) => <option key={i} value={i}>{t('w1a.r_heureOption', { h: String(i).padStart(2, '0') })}</option>)}
-          </select>
+          <Dropdown value={String(f.hour ?? 7)} ariaLabel={t('w1a.r_heure')}
+            onChange={v => set({ hour: Number(v) })} options={hourOptions} />
         </div>
       </div>
 
       {f.frequency === 'weekly' && (
         <div>
           <label style={labelStyle}>{t('w1a.r_jour')}</label>
-          <select value={f.weekday ?? 0} onChange={e => set({ weekday: Number(e.target.value) })} style={inputStyle}>
-            {DAYS.map((_, i) => <option key={i} value={i}>{t(`w1a.r_day_${i}`)}</option>)}
-          </select>
+          <Dropdown value={String(f.weekday ?? 0)} ariaLabel={t('w1a.r_jour')}
+            onChange={v => set({ weekday: Number(v) })} options={dayOptions} />
         </div>
       )}
 
       <div>
         <label style={labelStyle}>{t('w1a.r_modeleIA')}</label>
-        <select value={f.model ?? 'athena'} onChange={e => set({ model: e.target.value as RoutineInput['model'] })} style={inputStyle}>
-          {MODEL_OPTS.map(o => <option key={o.v} value={o.v}>{t(`w1a.r_model_${o.v}`)}</option>)}
-        </select>
+        <Dropdown value={f.model ?? 'athena'} ariaLabel={t('w1a.r_modeleIA')}
+          onChange={v => set({ model: v as RoutineInput['model'] })} options={modelOptions} />
       </div>
 
       {/* Garde-fou : autoriser les modifications */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '12px 14px', borderRadius: 10, border: '0.5px solid var(--border)', background: 'var(--bg-alt)' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, padding: '16px 18px', borderRadius: 'var(--r-md)', background: 'var(--bg-card2)' }}>
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--text)' }}>{t('w1a.r_autoriserModifs')}</div>
-          <div style={{ fontSize: 11.5, color: 'var(--text-dim)', marginTop: 3, lineHeight: 1.5 }}>
+          <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>{t('w1a.r_autoriserModifs')}</div>
+          <div style={{ fontSize: 12.5, color: 'var(--text-dim)', marginTop: 4, lineHeight: 1.5 }}>
             {t('w1a.r_autoriserModifsDesc')}
           </div>
         </div>
-        <button onClick={() => set({ allow_write: !f.allow_write })} aria-label={t('w1a.r_autoriserModifs')}
-          style={{ flexShrink: 0, width: 42, height: 25, borderRadius: 999, border: 'none', cursor: 'pointer', background: f.allow_write ? '#f59e0b' : 'var(--border)', position: 'relative', transition: 'background 0.15s' }}>
-          <span style={{ position: 'absolute', top: 3, left: f.allow_write ? 20 : 3, width: 19, height: 19, borderRadius: '50%', background: '#fff', transition: 'left 0.15s' }} />
-        </button>
+        <Switch on={!!f.allow_write} onClick={() => set({ allow_write: !f.allow_write })} ariaLabel={t('w1a.r_autoriserModifs')} />
       </div>
 
-      {error && <div style={{ fontSize: 12.5, color: '#ef4444' }}>{error}</div>}
+      {error && <div style={{ fontSize: 13, color: 'var(--text-mid)', padding: '10px 14px', borderRadius: 'var(--r-sm)', background: 'var(--bg-card2)' }}>{error}</div>}
 
-      <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-        <button onClick={onCancel} style={{ padding: '11px 16px', borderRadius: 10, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-mid)', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>{t('w1a.r_annuler')}</button>
-        <button onClick={save} disabled={saving}
-          style={{ padding: '11px 20px', borderRadius: 10, border: 'none', background: saving ? 'var(--border)' : ACCENT, color: '#fff', fontSize: 14, fontWeight: 700, cursor: saving ? 'default' : 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
+      <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', paddingTop: 2 }}>
+        <button type="button" onClick={onCancel}
+          onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)' }}
+          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
+          style={{ padding: '11px 18px', borderRadius: 'var(--r-sm)', border: 'none', background: 'transparent', color: 'var(--text-mid)', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: FB, transition: 'background 0.14s' }}>
+          {t('w1a.r_annuler')}
+        </button>
+        <button type="button" onClick={save} disabled={saving}
+          onMouseEnter={e => { if (!saving) (e.currentTarget as HTMLButtonElement).style.opacity = '0.9' }}
+          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.opacity = '1' }}
+          style={{ padding: '11px 22px', borderRadius: 'var(--r-sm)', border: 'none', background: saving ? 'var(--border-mid)' : ACCENT, color: 'var(--on-primary)', fontSize: 14, fontWeight: 600, cursor: saving ? 'default' : 'pointer', fontFamily: FB, transition: 'opacity 0.14s, background 0.14s' }}>
           {saving ? '…' : f.id ? t('w1a.r_enregistrer') : t('w1a.r_creerRoutine')}
         </button>
       </div>

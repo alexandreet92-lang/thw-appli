@@ -6517,23 +6517,26 @@ function feelingDescriptor(v: number)    { return FEELING_THRESHOLDS.find(t => v
 function difficultyDescriptor(v: number) { return DIFFICULTY_THRESHOLDS.find(t => v <= t.max) ?? DIFFICULTY_THRESHOLDS[DIFFICULTY_THRESHOLDS.length - 1] }
 function fdFormat(v: number): string     { return Number.isInteger(v) ? `${v}` : v.toString().replace('.', ',') }
 
-function GaugeArc({ value, max, denomLabel, label, descriptor, onEdit }: {
+function GaugeArc({ value, max, denomLabel, label, descriptor, onEdit, compact = false }: {
   value:      number | null
   max:        number
   denomLabel: string
   label:      string
   descriptor: { color: string; label: string } | null
   onEdit:     () => void
+  compact?:   boolean
 }) {
   const { t } = useI18n()
   const isSet  = value != null
   const ratio  = isSet ? Math.max(0, Math.min(1, (value as number) / max)) : 0
   const filled = ratio * FD_ARC_TOTAL
   const color  = isSet && descriptor ? descriptor.color : 'var(--border)'
+  const SZ = compact ? 66 : 110
+  const valF = compact ? 19 : 32
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
-      <div style={{ position: 'relative', width: 110, height: 110 }}>
-        <svg width={110} height={110} viewBox="0 0 110 110">
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: compact ? 4 : 8 }}>
+      <div style={{ position: 'relative', width: SZ, height: SZ }}>
+        <svg width={SZ} height={SZ} viewBox="0 0 110 110">
           <circle cx={55} cy={55} r={46}
                   stroke="var(--border)" strokeWidth={6} fill="none"
                   strokeDasharray={`${FD_ARC_TOTAL} ${FD_ARC_FULL}`}
@@ -6550,13 +6553,13 @@ function GaugeArc({ value, max, denomLabel, label, descriptor, onEdit }: {
           <div
             key={isSet ? String(value) : 'empty'}
             style={{
-              fontSize: 32, fontWeight: 700,
+              fontSize: valF, fontWeight: 700,
               fontVariantNumeric: 'tabular-nums', lineHeight: 1,
               color: isSet ? 'var(--text)' : 'var(--text-dim)',
               animation: isSet ? 'fdGaugePulse 0.3s ease-out' : undefined,
             }}
           >{isSet ? fdFormat(value as number) : '—'}</div>
-          {isSet && (
+          {isSet && !compact && (
             <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 2, fontWeight: 500 }}>
               {denomLabel}
             </div>
@@ -6708,10 +6711,11 @@ function GaugeEditModal({ open, kind, value, onClose, onSave }: {
   )
 }
 
-function FeelingDifficultyCard({ feeling, difficulty, onEdit }: {
+function FeelingDifficultyCard({ feeling, difficulty, onEdit, compact = false }: {
   feeling:    number | null
   difficulty: number | null
   onEdit:     (kind: 'feeling' | 'difficulty') => void
+  compact?:   boolean
 }) {
   const { t } = useI18n()
   const fDesc = feeling    !== null ? feelingDescriptor(feeling)       : null
@@ -6719,12 +6723,12 @@ function FeelingDifficultyCard({ feeling, difficulty, onEdit }: {
 
   return (
     <div style={{
-      background: 'var(--bg-card2)', borderRadius: 14, padding: 20,
-      margin: '16px 0',
-      display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16,
+      background: 'var(--bg-card2)', borderRadius: 14, padding: compact ? 12 : 20,
+      margin: compact ? 0 : '16px 0',
+      display: 'grid', gridTemplateColumns: '1fr 1fr', gap: compact ? 8 : 16,
     }}>
-      <GaugeArc value={feeling}    max={5}  denomLabel={`${t('actp.out_of')} 5`}  label={t('actp.feeling_upper')}   descriptor={fDesc} onEdit={() => onEdit('feeling')} />
-      <GaugeArc value={difficulty} max={10} denomLabel={`${t('actp.out_of')} 10`} label={t('actp.difficulty_upper')} descriptor={dDesc} onEdit={() => onEdit('difficulty')} />
+      <GaugeArc value={feeling}    max={5}  denomLabel={`${t('actp.out_of')} 5`}  label={t('actp.feeling_upper')}   descriptor={fDesc} onEdit={() => onEdit('feeling')} compact={compact} />
+      <GaugeArc value={difficulty} max={10} denomLabel={`${t('actp.out_of')} 10`} label={t('actp.difficulty_upper')} descriptor={dDesc} onEdit={() => onEdit('difficulty')} compact={compact} />
     </div>
   )
 }
@@ -8363,11 +8367,13 @@ conseil pour la prochaine séance similaire.`
             </div>
           )
           const mapNode = !mapExpanded ? (
-            <div style={{ aspectRatio: '1 / 1', borderRadius: 12, overflow: 'hidden' }}>
-              <ActivityMapCard activity={a as unknown as Record<string, unknown>} isMobile={false} expanded={false} onToggle={() => setMapExpanded(true)} hoverGps={hoverGps} />
+            <div style={{ position: 'relative', width: '100%', paddingBottom: '100%', borderRadius: 12, overflow: 'hidden' }}>
+              <div style={{ position: 'absolute', inset: 0 }}>
+                <ActivityMapCard activity={a as unknown as Record<string, unknown>} isMobile={false} expanded={false} onToggle={() => setMapExpanded(true)} hoverGps={hoverGps} />
+              </div>
             </div>
           ) : null
-          const feelingNode = <FeelingDifficultyCard feeling={localFeeling} difficulty={localDifficulty} onEdit={() => {}} />
+          const feelingNode = <FeelingDifficultyCard feeling={localFeeling} difficulty={localDifficulty} onEdit={() => {}} compact />
           return (
             <TrainingAnalysis
               streams={a.streams}
@@ -8852,17 +8858,8 @@ conseil pour la prochaine séance similaire.`
                 </>
               )}
 
-              {/* VAP / allure ajustée (GAP) — la distance est recalculée depuis
-                  la vitesse si le flux distance est absent (≈ 1 échantillon/s). */}
-              {isRun && s.velocity && s.altitude && s.velocity.length > 60 && (() => {
-                let dist = s.distance
-                if (!dist) {
-                  dist = []
-                  let acc = 0
-                  for (const v of s.velocity) { acc += v > 0 ? v : 0; dist.push(acc) }
-                }
-                return <GapChart velocity={s.velocity} altitude={s.altitude} distance={dist} />
-              })()}
+              {/* (GAP « allure réelle vs ajustée » retiré : la VAP est déjà
+                  intégrée à l'Analyse de l'entraînement ci-dessus.) */}
 
               {/* Montées & descentes — trail uniquement, entre la comparaison
                   d'allure (VAP) et les tours. Distance recalculée si absente. */}

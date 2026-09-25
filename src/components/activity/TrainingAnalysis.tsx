@@ -288,50 +288,40 @@ export function TrainingAnalysis({ streams, laps: lapsProp, activityId, totalDur
   const splits = mode === 'laps' ? (data?.lapSplits ?? []) : (data?.kmSplits ?? [])
 
   if (!data || (data.kmSplits.length === 0 && !hasLaps)) {
-    return kpiNode || mapNode ? (
-      <TwoCol left={<>{kpiNode}</>} right={<>{mapNode}{feelingNode}</>} />
+    return (kpiNode || mapNode) ? (
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 20, alignItems: 'start' }}>
+        <div>{kpiNode}</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>{mapNode}{feelingNode}</div>
+      </div>
     ) : null
   }
 
   const accent = metric === 'pace' ? ACCENT_PACE : ACCENT_VAP
   const ramp   = metric === 'pace' ? PACE_BLUE : VAP_VIOLET
 
-  const controls = (
-    <AnalysisControls mode={mode} metric={metric} hasLaps={hasLaps} onMode={setMode} onMetric={setMetric} t={t} />
-  )
-
   return (
     <div>
-      {/* Ligne 1 : (KPIs + courbe) | (carte + ressenti/difficulté) */}
-      <TwoCol
-        left={
-          <>
-            {kpiNode}
-            <AnalysisCurve data={data} splits={splits} mode={mode} metric={metric} accent={accent} ramp={ramp} totalDurationS={totalDurationS} t={t} />
-            {controls}
-          </>
-        }
-        right={<>{mapNode}{feelingNode}</>}
-      />
+      <style>{`
+        @keyframes thwTaRise { from { opacity: 0; transform: translateY(6px) scaleY(0.92); } to { opacity: 1; transform: none; } }
+        @media (max-width: 1099px){ .thw-ta-top { grid-template-columns: 1fr !important; } .thw-ta-mt { grid-template-columns: 1fr !important; } }
+      `}</style>
 
-      {/* Ligne 2 : tableau statique */}
-      <AnalysisTable splits={splits} mode={mode} t={t} />
+      {/* Haut : données principales | (carte carrée + tableau à côté) */}
+      <div className="thw-ta-top" style={{ display: 'grid', gridTemplateColumns: 'minmax(220px, 280px) 1fr', gap: 20, marginBottom: 20, alignItems: 'start' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, minWidth: 0 }}>{kpiNode}</div>
+        <div className="thw-ta-mt" style={{ display: 'grid', gridTemplateColumns: 'minmax(280px, 400px) 1fr', gap: 18, alignItems: 'start', minWidth: 0 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, minWidth: 0 }}>
+            {mapNode}
+            {feelingNode}
+          </div>
+          <AnalysisTable splits={splits} mode={mode} t={t} />
+        </div>
+      </div>
 
-      {/* Ligne 3 : jauges en grand (cliquables → modal tour, si vrais laps) */}
-      <AnalysisGauges data={data} splits={splits} mode={mode} metric={metric} accent={accent} ramp={ramp}
+      {/* Bas : LE graphique unique (profil + jauges) + 5 boutons, clic → modal */}
+      <AnalysisGraph data={data} splits={splits} mode={mode} metric={metric} accent={accent} ramp={ramp} totalDurationS={totalDurationS}
         onTap={hasLaps && onLapTap ? (sp) => onLapTap(sp.lapIndex) : undefined} t={t} />
-    </div>
-  )
-}
-
-// Grille 2 colonnes responsive (>= 900px : 2 col, sinon empilé).
-function TwoCol({ left, right }: { left: ReactNode; right: ReactNode }) {
-  return (
-    <div className="thw-ta-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 22, alignItems: 'start' }}>
-      <style>{`@media (max-width: 899px){ .thw-ta-2col{ grid-template-columns: 1fr !important; } }
-        @keyframes thwTaRise { from { opacity: 0; transform: translateY(6px) scaleY(0.9); } to { opacity: 1; transform: none; } }`}</style>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 14, minWidth: 0 }}>{left}</div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 14, minWidth: 0 }}>{right}</div>
+      <AnalysisControls mode={mode} metric={metric} hasLaps={hasLaps} onMode={setMode} onMetric={setMetric} t={t} />
     </div>
   )
 }
@@ -430,144 +420,6 @@ function yAltTicks(data: AData, g: ReturnType<typeof computeGeom>): { y: number;
     if (y <= g.baseY && y >= g.PAD_T) out.push({ y, label: `${a} m` })
   }
   return out.slice(0, 4)
-}
-
-function AnalysisCurve({ data, splits, mode, metric, accent, ramp, totalDurationS, t }: {
-  data: AData; splits: Split[]; mode: Mode; metric: Metric
-  accent: string; ramp: readonly string[]; totalDurationS: number | null
-  t: (k: string) => string
-}) {
-  const CH = 168
-  const g = computeGeom(data, splits, metric, CH, 720)
-  const [hover, setHover] = useState<number | null>(null)
-  const [smoothT, setSmoothT] = useState<number | null>(null)
-  const wrapRef = useRef<HTMLDivElement>(null)
-
-  const avgSpeed = metric === 'pace' ? data.avgSpeed : data.avgVap
-  const avgY = avgSpeed > 0 ? g.yOf(avgSpeed) : null
-
-  // Extrêmes (km/lissé uniquement) sur les splits.
-  const fastIdx = splits.reduce((best, s, i, arr) => speedOf(s, metric) > speedOf(arr[best], metric) ? i : best, 0)
-  const slowIdx = splits.reduce((worst, s, i, arr) => (speedOf(s, metric) > 0 && speedOf(s, metric) < speedOf(arr[worst], metric)) ? i : worst, 0)
-  const showMarkers = mode !== 'laps'
-
-  function onMove(clientX: number) {
-    const rect = wrapRef.current?.getBoundingClientRect()
-    if (!rect || rect.width === 0) return
-    const xVB = ((clientX - rect.left) / rect.width) * g.VBW
-    if (mode === 'smooth') {
-      const ratio = Math.max(0, Math.min(1, (xVB - g.PAD_L) / g.innerW))
-      setSmoothT(ratio)
-    } else {
-      // trouve la barre sous le curseur
-      let acc = g.PAD_L
-      const widths = barWidths(splits, g, mode)
-      for (let i = 0; i < splits.length; i++) {
-        if (xVB >= acc && xVB < acc + widths[i]) { setHover(i); return }
-        acc += widths[i]
-      }
-      setHover(null)
-    }
-  }
-  function clearHover() { setHover(null); setSmoothT(null) }
-
-  const widths = barWidths(splits, g, mode)
-  const xs: number[] = []
-  { let c = g.PAD_L; for (let i = 0; i < splits.length; i++) { xs.push(c); c += widths[i] } }
-
-  return (
-    <div style={{ position: 'relative' }}>
-      <SectionTitle text={t('actp.training_analysis')} />
-      <div
-        ref={wrapRef}
-        onMouseMove={e => onMove(e.clientX)}
-        onMouseLeave={clearHover}
-        style={{ position: 'relative', width: '100%', paddingBottom: `${((CH + g.PAD_T + g.PAD_B) / g.VBW) * 100}%`, cursor: 'crosshair' }}
-      >
-        <svg viewBox={`0 0 ${g.VBW} ${CH + g.PAD_T + g.PAD_B}`} preserveAspectRatio="none"
-          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block' }}>
-          {/* profil altimétrique */}
-          {data.hasAlt && <path d={altitudePath(data, g)} fill="var(--border)" opacity={0.5} stroke="none" />}
-          {/* grille + Y allure */}
-          {yPaceTicks(g).map((m, i) => (
-            <g key={'yp' + i}>
-              <line x1={g.PAD_L} y1={m.y} x2={g.VBW - g.PAD_R} y2={m.y} stroke="var(--border)" strokeWidth={0.5} strokeDasharray="2 4" vectorEffect="non-scaling-stroke" />
-              <text x={g.PAD_L - 5} y={m.y + 3} textAnchor="end" fontSize={11} fill="var(--text-dim)" style={{ fontVariantNumeric: 'tabular-nums' }}>{m.label}</text>
-            </g>
-          ))}
-          {/* Y altitude (droite) */}
-          {yAltTicks(data, g).map((m, i) => (
-            <text key={'ya' + i} x={g.VBW - g.PAD_R + 5} y={m.y + 3} textAnchor="start" fontSize={10} fill="var(--text-dim)" style={{ fontVariantNumeric: 'tabular-nums' }}>{m.label}</text>
-          ))}
-          {/* X distance (tous les 2 km) */}
-          {xAxisTicks(data, g).map((m, i) => (
-            <text key={'x' + i} x={m.x} y={CH + g.PAD_T + 16} textAnchor="middle" fontSize={11} fill="var(--text-dim)" style={{ fontVariantNumeric: 'tabular-nums' }}>{m.label}</text>
-          ))}
-          <text x={g.PAD_L} y={CH + g.PAD_T + 16} textAnchor="middle" fontSize={11} fill="var(--text-dim)">0</text>
-
-          {/* moyenne */}
-          {avgY !== null && <line x1={g.PAD_L} y1={avgY} x2={g.VBW - g.PAD_R} y2={avgY} stroke={accent} strokeWidth={1} strokeDasharray="5 4" opacity={0.55} vectorEffect="non-scaling-stroke" />}
-
-          {/* ── représentation : barres (km/tours) ou aire (lissé) ── */}
-          {mode === 'smooth'
-            ? <SmoothArea data={data} g={g} metric={metric} accent={accent} />
-            : (
-              <g key={mode + metric} style={{ transformOrigin: 'center bottom', animation: 'thwTaRise .45s cubic-bezier(.22,1,.36,1)' }}>
-                {splits.map((sp, i) => {
-                  const spd = speedOf(sp, metric)
-                  const y = g.yOf(spd), h = Math.max(1.5, g.baseY - y)
-                  const w = Math.max(1.5, widths[i] - 1.2)
-                  const isHov = hover === i
-                  return (
-                    <rect key={i} x={xs[i] + 0.6} y={y} width={w} height={h}
-                      fill={rampColor(spd, g.minSpeed, g.maxSpeed, ramp)}
-                      opacity={hover === null || isHov ? 1 : 0.5}
-                      rx={1.5}
-                      style={{ transition: 'y .4s cubic-bezier(.22,1,.36,1), height .4s cubic-bezier(.22,1,.36,1), fill .3s ease, opacity .15s' }} />
-                  )
-                })}
-              </g>
-            )}
-
-          {/* curseur survol */}
-          {mode !== 'smooth' && hover !== null && splits[hover] && (
-            <line x1={xs[hover] + widths[hover] / 2} y1={g.PAD_T} x2={xs[hover] + widths[hover] / 2} y2={g.baseY}
-              stroke={accent} strokeWidth={1} vectorEffect="non-scaling-stroke" opacity={0.7} />
-          )}
-          {mode === 'smooth' && smoothT !== null && (() => {
-            const x = g.PAD_L + smoothT * g.innerW
-            return <line x1={x} y1={g.PAD_T} x2={x} y2={g.baseY} stroke={accent} strokeWidth={1} vectorEffect="non-scaling-stroke" opacity={0.7} />
-          })()}
-
-          {/* repères droite : rapide / moyenne / lent (km + lissé) */}
-          {showMarkers && avgY !== null && (
-            <MarkerTicks data={data} g={g} splits={splits} metric={metric} accent={accent} fastIdx={fastIdx} slowIdx={slowIdx} avgSpeed={avgSpeed} />
-          )}
-        </svg>
-
-        {/* Tooltips HTML (positionnés en %) */}
-        {mode === 'km' && hover !== null && splits[hover] && (
-          <TooltipBox xPct={(xs[hover] + widths[hover] / 2) / g.VBW} accent={accent}>
-            <KmTooltip sp={splits[hover]} metric={metric} t={t} />
-          </TooltipBox>
-        )}
-        {mode === 'laps' && hover !== null && splits[hover] && (
-          <TooltipBox xPct={(xs[hover] + widths[hover] / 2) / g.VBW} accent={accent}>
-            <LapTooltip sp={splits[hover]} t={t} />
-          </TooltipBox>
-        )}
-        {mode === 'smooth' && smoothT !== null && (() => {
-          const s = sampleAt(data, smoothT)
-          if (!s) return null
-          return (
-            <TooltipBox xPct={(g.PAD_L + smoothT * g.innerW) / g.VBW} accent={accent}>
-              <SmoothTooltip s={s} metric={metric} totalDurationS={totalDurationS} t={t} />
-            </TooltipBox>
-          )
-        })()}
-      </div>
-    </div>
-  )
 }
 
 // Largeurs de barres : km → ∝ distance ; tours → ∝ durée.
@@ -726,19 +578,29 @@ function AnalysisTable({ splits, mode, t }: { splits: Split[]; mode: Mode; t: (k
 const tdR: React.CSSProperties = { padding: '7px 12px', textAlign: 'right', color: 'var(--text)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }
 
 // ══════════════════════════════════════════════════════════════════
-// JAUGES en grand (barres cliquables → modal), ligne en mode lissé
+// LE GRAPHIQUE (unique) — profil altimétrique + jauges rectangulaires
+// (barres cliquables → modal tour) ou ligne fluide (lissé). Y allure
+// gauche + altitude droite, X distance /2 km, repères rapide/moy/lent.
 // ══════════════════════════════════════════════════════════════════
-function AnalysisGauges({ data, splits, mode, metric, accent, ramp, onTap, t }: {
+function AnalysisGraph({ data, splits, mode, metric, accent, ramp, totalDurationS, onTap, t }: {
   data: AData; splits: Split[]; mode: Mode; metric: Metric
-  accent: string; ramp: readonly string[]; onTap?: (sp: Split) => void; t: (k: string) => string
+  accent: string; ramp: readonly string[]; totalDurationS: number | null
+  onTap?: (sp: Split) => void; t: (k: string) => string
 }) {
-  const CH = 220
+  const CH = 224
   const g = computeGeom(data, splits, metric, CH)
   const [hover, setHover] = useState<number | null>(null)
+  const [smoothT, setSmoothT] = useState<number | null>(null)
   const wrapRef = useRef<HTMLDivElement>(null)
   const widths = barWidths(splits, g, mode)
   const xs: number[] = []
   { let c = g.PAD_L; for (let i = 0; i < splits.length; i++) { xs.push(c); c += widths[i] } }
+
+  const avgSpeed = metric === 'pace' ? data.avgSpeed : data.avgVap
+  const avgY = avgSpeed > 0 ? g.yOf(avgSpeed) : null
+  const fastIdx = splits.reduce((best, s, i, arr) => speedOf(s, metric) > speedOf(arr[best], metric) ? i : best, 0)
+  const slowIdx = splits.reduce((worst, s, i, arr) => (speedOf(s, metric) > 0 && speedOf(s, metric) < speedOf(arr[worst], metric)) ? i : worst, 0)
+  const showMarkers = mode !== 'laps' && avgY !== null
 
   function idxAt(clientX: number): number {
     const rect = wrapRef.current?.getBoundingClientRect()
@@ -748,28 +610,42 @@ function AnalysisGauges({ data, splits, mode, metric, accent, ramp, onTap, t }: 
     for (let i = 0; i < splits.length; i++) { if (xVB >= acc && xVB < acc + widths[i]) return i; acc += widths[i] }
     return -1
   }
+  function onMove(clientX: number) {
+    if (mode === 'smooth') {
+      const rect = wrapRef.current?.getBoundingClientRect()
+      if (!rect || rect.width === 0) return
+      const xVB = ((clientX - rect.left) / rect.width) * g.VBW
+      setSmoothT(Math.max(0, Math.min(1, (xVB - g.PAD_L) / g.innerW)))
+    } else setHover(idxAt(clientX))
+  }
 
   return (
-    <div style={{ marginBottom: 12 }}>
-      <SectionTitle text={mode === 'laps' ? t('actp.laps_upper') : t('actp.splits_upper')} />
+    <div style={{ marginBottom: 10 }}>
+      <SectionTitle text={t('actp.training_analysis')} />
       <div
         ref={wrapRef}
-        onMouseMove={e => setHover(idxAt(e.clientX))}
-        onMouseLeave={() => setHover(null)}
+        onMouseMove={e => onMove(e.clientX)}
+        onMouseLeave={() => { setHover(null); setSmoothT(null) }}
         onClick={e => { if (mode !== 'smooth' && onTap) { const i = idxAt(e.clientX); if (i >= 0) onTap(splits[i]) } }}
         style={{ position: 'relative', width: '100%', paddingBottom: `${((CH + g.PAD_T + g.PAD_B) / g.VBW) * 100}%`, cursor: mode !== 'smooth' && onTap ? 'pointer' : 'crosshair' }}
       >
         <svg viewBox={`0 0 ${g.VBW} ${CH + g.PAD_T + g.PAD_B}`} preserveAspectRatio="none" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block' }}>
-          {data.hasAlt && <path d={altitudePath(data, g)} fill="var(--border)" opacity={0.4} stroke="none" />}
+          {data.hasAlt && <path d={altitudePath(data, g)} fill="var(--border)" opacity={0.45} stroke="none" />}
           {yPaceTicks(g).map((m, i) => (
             <g key={'yp' + i}>
               <line x1={g.PAD_L} y1={m.y} x2={g.VBW - g.PAD_R} y2={m.y} stroke="var(--border)" strokeWidth={0.5} strokeDasharray="2 4" vectorEffect="non-scaling-stroke" />
               <text x={g.PAD_L - 5} y={m.y + 3} textAnchor="end" fontSize={10} fill="var(--text-dim)" style={{ fontVariantNumeric: 'tabular-nums' }}>{m.label}</text>
             </g>
           ))}
+          {yAltTicks(data, g).map((m, i) => (
+            <text key={'ya' + i} x={g.VBW - g.PAD_R + 5} y={m.y + 3} textAnchor="start" fontSize={9.5} fill="var(--text-dim)" style={{ fontVariantNumeric: 'tabular-nums' }}>{m.label}</text>
+          ))}
           {xAxisTicks(data, g).map((m, i) => (
             <text key={'x' + i} x={m.x} y={CH + g.PAD_T + 15} textAnchor="middle" fontSize={10} fill="var(--text-dim)" style={{ fontVariantNumeric: 'tabular-nums' }}>{m.label}</text>
           ))}
+          <text x={g.PAD_L} y={CH + g.PAD_T + 15} textAnchor="middle" fontSize={10} fill="var(--text-dim)">0</text>
+
+          {avgY !== null && <line x1={g.PAD_L} y1={avgY} x2={g.VBW - g.PAD_R} y2={avgY} stroke={accent} strokeWidth={1} strokeDasharray="5 4" opacity={0.5} vectorEffect="non-scaling-stroke" />}
 
           {mode === 'smooth'
             ? <SmoothArea data={data} g={g} metric={metric} accent={accent} />
@@ -797,12 +673,31 @@ function AnalysisGauges({ data, splits, mode, metric, accent, ramp, onTap, t }: 
                 })}
               </g>
             )}
+
+          {/* curseur */}
+          {mode !== 'smooth' && hover !== null && splits[hover] && (
+            <line x1={xs[hover] + widths[hover] / 2} y1={g.PAD_T} x2={xs[hover] + widths[hover] / 2} y2={g.baseY} stroke={accent} strokeWidth={1} vectorEffect="non-scaling-stroke" opacity={0.7} />
+          )}
+          {mode === 'smooth' && smoothT !== null && (
+            <line x1={g.PAD_L + smoothT * g.innerW} y1={g.PAD_T} x2={g.PAD_L + smoothT * g.innerW} y2={g.baseY} stroke={accent} strokeWidth={1} vectorEffect="non-scaling-stroke" opacity={0.7} />
+          )}
+
+          {showMarkers && <MarkerTicks data={data} g={g} splits={splits} metric={metric} accent={accent} fastIdx={fastIdx} slowIdx={slowIdx} avgSpeed={avgSpeed} />}
         </svg>
+
         {mode !== 'smooth' && hover !== null && splits[hover] && (
           <TooltipBox xPct={(xs[hover] + widths[hover] / 2) / g.VBW} accent={accent}>
             {mode === 'laps' ? <LapTooltip sp={splits[hover]} t={t} /> : <KmTooltip sp={splits[hover]} metric={metric} t={t} />}
           </TooltipBox>
         )}
+        {mode === 'smooth' && smoothT !== null && (() => {
+          const s = sampleAt(data, smoothT); if (!s) return null
+          return (
+            <TooltipBox xPct={(g.PAD_L + smoothT * g.innerW) / g.VBW} accent={accent}>
+              <SmoothTooltip s={s} metric={metric} totalDurationS={totalDurationS} t={t} />
+            </TooltipBox>
+          )
+        })()}
       </div>
       {mode !== 'smooth' && onTap && (
         <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 4 }}>{t('actp.tap_gauge_hint')}</div>

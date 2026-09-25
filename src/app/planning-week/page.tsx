@@ -5,6 +5,7 @@ import { EventSheet, type SheetDraft } from './EventSheet'
 import { GoogleConnectButton } from './GoogleConnect'
 import { moveEvent, moveSession } from '@/lib/agenda/data'
 import type { CalEvent } from '@/lib/agenda/types'
+import { useNarrow } from '@/lib/hooks/useNarrow'
 
 type View = 'day' | 'week' | 'month' | 'agenda'
 const DAY = 86400000
@@ -25,6 +26,8 @@ export default function PlanningWeekPage() {
   const [anchor, setAnchor] = useState<Date>(() => startOfDay(new Date()))
   const [sheet, setSheet] = useState<{ event: CalEvent | null; draft: SheetDraft | null } | null>(null)
   const [panelOpen, setPanelOpen] = useState(false)
+  const narrow = useNarrow(720)
+  const px = narrow ? 16 : 32   // padding horizontal de contenu (DESIGN_SYSTEM §3)
 
   // Plage visible selon la vue
   const [rangeStart, rangeEnd] = useMemo<[Date, Date]>(() => {
@@ -62,9 +65,9 @@ export default function PlanningWeekPage() {
   const btn: React.CSSProperties = { padding: '7px 12px', borderRadius: 9, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }
 
   return (
-    <div style={{ padding: 'max(16px, env(safe-area-inset-top)) 0 calc(env(safe-area-inset-bottom) + 90px)', maxWidth: 1100, margin: '0 auto', fontFamily: 'var(--font-body)' }}>
+    <div style={{ padding: 'max(16px, env(safe-area-inset-top)) 0 calc(env(safe-area-inset-bottom) + 90px)', width: '100%', fontFamily: 'var(--font-body)' }}>
       {/* Header */}
-      <div style={{ padding: '0 16px 12px' }}>
+      <div style={{ padding: `0 ${px}px 12px` }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
           <div>
             <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 600, margin: 0 }}>Planning Week</h1>
@@ -72,7 +75,7 @@ export default function PlanningWeekPage() {
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
             <button onClick={() => setPanelOpen(p => !p)} style={btn} aria-label="Agendas">☰</button>
-            <button onClick={() => openCreate(new Date(new Date().setMinutes(0, 0, 0)))} style={{ ...btn, background: 'var(--primary)', color: 'var(--on-primary,#fff)', border: 'none' }}>+ Créer</button>
+            <button onClick={() => openCreate(new Date(new Date().setMinutes(0, 0, 0)))} style={{ ...btn, background: 'var(--primary)', color: 'var(--on-primary)', border: 'none' }}>+ Créer</button>
           </div>
         </div>
 
@@ -86,7 +89,7 @@ export default function PlanningWeekPage() {
           </div>
           <div style={{ display: 'inline-flex', background: 'var(--bg-card2)', borderRadius: 9, padding: 3 }}>
             {(['day', 'week', 'month', 'agenda'] as View[]).map(v => (
-              <button key={v} onClick={() => setView(v)} style={{ padding: '6px 12px', borderRadius: 7, border: 'none', cursor: 'pointer', fontSize: 12.5, fontWeight: 700, background: view === v ? 'var(--primary)' : 'transparent', color: view === v ? 'var(--on-primary,#fff)' : 'var(--text-mid)' }}>
+              <button key={v} onClick={() => setView(v)} style={{ padding: '6px 12px', borderRadius: 7, border: 'none', cursor: 'pointer', fontSize: 12.5, fontWeight: 700, background: view === v ? 'var(--primary)' : 'transparent', color: view === v ? 'var(--on-primary)' : 'var(--text-mid)' }}>
                 {v === 'day' ? 'Jour' : v === 'week' ? 'Semaine' : v === 'month' ? 'Mois' : 'Agenda'}
               </button>
             ))}
@@ -96,7 +99,7 @@ export default function PlanningWeekPage() {
 
       {/* Panneau des couches */}
       {panelOpen && (
-        <div style={{ margin: '0 16px 12px', padding: 14, borderRadius: 14, background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+        <div style={{ margin: `0 ${px}px 12px`, padding: 14, borderRadius: 14, background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
           <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-dim)', margin: '0 0 10px' }}>Mes agendas</p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {calendars.map(c => (
@@ -115,9 +118,9 @@ export default function PlanningWeekPage() {
 
       {/* Vues */}
       {view === 'agenda' ? (
-        <AgendaView events={events} onOpen={ev => setSheet({ event: ev, draft: null })} rangeStart={rangeStart} rangeEnd={rangeEnd} />
+        <AgendaView events={events} onOpen={ev => setSheet({ event: ev, draft: null })} rangeStart={rangeStart} rangeEnd={rangeEnd} px={px} />
       ) : view === 'month' ? (
-        <MonthView anchor={anchor} events={events} onOpenDay={d => { setAnchor(startOfDay(d)); setView('day') }} onOpen={ev => setSheet({ event: ev, draft: null })} />
+        <MonthView anchor={anchor} events={events} onOpenDay={d => { setAnchor(startOfDay(d)); setView('day') }} onOpen={ev => setSheet({ event: ev, draft: null })} px={px} />
       ) : (
         <WeekView
           days={view === 'day' ? [startOfDay(anchor)] : Array.from({ length: 7 }, (_, i) => addDays(mondayOf(anchor), i))}
@@ -125,6 +128,7 @@ export default function PlanningWeekPage() {
           onOpen={ev => setSheet({ event: ev, draft: null })}
           onCreate={openCreate}
           onMoved={refresh}
+          px={px}
         />
       )}
 
@@ -136,8 +140,9 @@ export default function PlanningWeekPage() {
 }
 
 // ── Vue Semaine / Jour (grille horaire) ─────────────────────────────────────
-function WeekView({ days, events, onOpen, onCreate, onMoved }: {
-  days: Date[]; events: CalEvent[]; onOpen: (e: CalEvent) => void; onCreate: (d: Date) => void; onMoved: () => void
+const HOUR_GUTTER = 52          // largeur colonne des heures
+function WeekView({ days, events, onOpen, onCreate, onMoved, px }: {
+  days: Date[]; events: CalEvent[]; onOpen: (e: CalEvent) => void; onCreate: (d: Date) => void; onMoved: () => void; px: number
 }) {
   const gridRef = useRef<HTMLDivElement>(null)
   const [drag, setDrag] = useState<{ id: string; ev: CalEvent } | null>(null)
@@ -173,82 +178,90 @@ function WeekView({ days, events, onOpen, onCreate, onMoved }: {
   }, [drag, days, onMoved])
 
   return (
-    <div style={{ borderTop: '1px solid var(--border)' }}>
-      {/* En-tête jours */}
-      <div style={{ display: 'flex', paddingLeft: 46 }}>
-        {days.map((d, i) => {
-          const isToday = sameDay(d, new Date())
-          return (
-            <div key={i} style={{ flex: 1, textAlign: 'center', padding: '8px 0', borderLeft: i ? '1px solid var(--border)' : 'none' }}>
-              <div style={{ fontSize: 11, color: 'var(--text-dim)', fontWeight: 600 }}>{DAY_NAMES[(d.getDay() + 6) % 7]}</div>
-              <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 28, height: 28, borderRadius: '50%', marginTop: 2, fontSize: 14, fontWeight: 700, background: isToday ? 'var(--primary)' : 'transparent', color: isToday ? 'var(--on-primary,#fff)' : 'var(--text)' }}>{d.getDate()}</div>
-            </div>
-          )
-        })}
-      </div>
-
-      {/* Bande all-day */}
-      {allDay.length > 0 && (
-        <div style={{ display: 'flex', paddingLeft: 46, borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)', minHeight: 24, background: 'var(--bg-card2)' }}>
-          {days.map((d, i) => (
-            <div key={i} style={{ flex: 1, padding: '3px 3px', borderLeft: i ? '1px solid var(--border)' : 'none', minWidth: 0 }}>
-              {allDay.filter(e => new Date(e.start) <= addDays(d, 1) && new Date(e.end) >= d && (sameDay(new Date(e.start), d) || (new Date(e.start) < d && new Date(e.end) > d))).map(e => (
-                <div key={e.id} onClick={() => onOpen(e)} title={e.title} style={{ fontSize: 10.5, fontWeight: 700, color: '#fff', background: e.color, borderRadius: 5, padding: '2px 5px', marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', cursor: 'pointer' }}>{e.title}</div>
-              ))}
-            </div>
-          ))}
+    <div style={{ padding: `0 ${px}px`, width: '100%', boxSizing: 'border-box' }}>
+      <div style={{ borderTop: '1px solid var(--border)', width: '100%' }}>
+        {/* En-tête jours */}
+        <div style={{ display: 'flex', paddingLeft: HOUR_GUTTER }}>
+          {days.map((d, i) => {
+            const isToday = sameDay(d, new Date())
+            return (
+              <div key={i} style={{ flex: 1, textAlign: 'center', padding: '10px 0', borderLeft: i ? '1px solid var(--border)' : 'none', background: isToday ? 'var(--primary-dim)' : 'transparent', minWidth: 0 }}>
+                <div style={{ fontSize: 11, color: isToday ? 'var(--primary)' : 'var(--text-dim)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{DAY_NAMES[(d.getDay() + 6) % 7]}</div>
+                <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, borderRadius: '50%', marginTop: 3, fontSize: 15, fontWeight: 700, fontVariantNumeric: 'tabular-nums', background: isToday ? 'var(--primary)' : 'transparent', color: isToday ? 'var(--on-primary)' : 'var(--text)' }}>{d.getDate()}</div>
+              </div>
+            )
+          })}
         </div>
-      )}
 
-      {/* Grille horaire scrollable */}
-      <div ref={scrollRef} style={{ maxHeight: '62vh', overflowY: 'auto', position: 'relative' }}
-        onPointerUp={drag ? (e => void commitDrag(e.clientX, e.clientY)) : undefined}
-      >
-        <div style={{ display: 'flex', position: 'relative' }}>
-          {/* Colonne heures */}
-          <div style={{ width: 46, flexShrink: 0 }}>
-            {Array.from({ length: 24 }, (_, h) => (
-              <div key={h} style={{ height: HOUR_H, position: 'relative' }}>
-                <span style={{ position: 'absolute', top: -6, right: 6, fontSize: 10, color: 'var(--text-dim)' }}>{h ? `${h}h` : ''}</span>
+        {/* Bande all-day */}
+        {allDay.length > 0 && (
+          <div style={{ display: 'flex', paddingLeft: HOUR_GUTTER, borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)', minHeight: 24, background: 'var(--bg-card2)' }}>
+            {days.map((d, i) => (
+              <div key={i} style={{ flex: 1, padding: '3px 3px', borderLeft: i ? '1px solid var(--border)' : 'none', minWidth: 0 }}>
+                {allDay.filter(e => new Date(e.start) <= addDays(d, 1) && new Date(e.end) >= d && (sameDay(new Date(e.start), d) || (new Date(e.start) < d && new Date(e.end) > d))).map(e => (
+                  <div key={e.id} onClick={() => onOpen(e)} title={e.title} style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--on-primary)', background: e.color, borderRadius: 5, padding: '2px 5px', marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', cursor: 'pointer' }}>{e.title}</div>
+                ))}
               </div>
             ))}
           </div>
-          {/* Colonnes jours */}
-          <div ref={gridRef} style={{ flex: 1, display: 'flex', position: 'relative' }}>
-            {/* lignes horaires */}
-            <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+        )}
+
+        {/* Grille horaire scrollable */}
+        <div ref={scrollRef} style={{ maxHeight: '68vh', overflowY: 'auto', position: 'relative' }}
+          onPointerUp={drag ? (e => void commitDrag(e.clientX, e.clientY)) : undefined}
+        >
+          <div style={{ display: 'flex', position: 'relative' }}>
+            {/* Colonne heures */}
+            <div style={{ width: HOUR_GUTTER, flexShrink: 0 }}>
               {Array.from({ length: 24 }, (_, h) => (
-                <div key={h} style={{ position: 'absolute', top: h * HOUR_H, left: 0, right: 0, height: 1, background: 'var(--border)' }} />
+                <div key={h} style={{ height: HOUR_H, position: 'relative' }}>
+                  <span style={{ position: 'absolute', top: -7, right: 8, fontSize: 10, fontVariantNumeric: 'tabular-nums', color: 'var(--text-dim)' }}>{h ? `${String(h).padStart(2, '0')}:00` : ''}</span>
+                </div>
               ))}
             </div>
-            {/* now-line */}
-            {days.some(d => sameDay(d, new Date())) && (
-              <div style={{ position: 'absolute', left: 0, right: 0, top: (minutesOfDay(new Date().toISOString()) / 60) * HOUR_H, height: 2, background: '#ef4444', zIndex: 5, pointerEvents: 'none' }} />
-            )}
-            {days.map((d, di) => {
-              const col = layoutOverlaps(dayCol(d), d)
-              return (
-                <div key={di} onClick={e => { if (e.target === e.currentTarget) { const rect = (e.currentTarget as HTMLElement).getBoundingClientRect(); const y = e.clientY - rect.top; const mins = Math.round((y / HOUR_H) * 60 / 30) * 30; const s = new Date(d); s.setHours(0, mins, 0, 0); onCreate(s) } }}
-                  style={{ flex: 1, position: 'relative', borderLeft: di ? '1px solid var(--border)' : 'none', height: 24 * HOUR_H, minWidth: 0 }}>
-                  {col.map(({ e, lane, lanes }) => {
-                    const top = (minutesOfDay(e.start) / 60) * HOUR_H
-                    const dur = e.durationMin ?? Math.max(20, (new Date(e.end).getTime() - new Date(e.start).getTime()) / 60000)
-                    const h = Math.max(16, (dur / 60) * HOUR_H - 2)
-                    const w = 100 / lanes
-                    return (
-                      <div key={e.id}
-                        onClick={ev => { ev.stopPropagation(); onOpen(e) }}
-                        onPointerDown={e.editable ? (() => setDrag({ id: e.id, ev: e })) : undefined}
-                        title={`${e.title}${e.rpe ? ` · RPE ${e.rpe}` : ''}${e.durationMin ? ` · ${e.durationMin}min` : ''}${e.description ? `\n${e.description}` : ''}`}
-                        style={{ position: 'absolute', top, left: `calc(${lane * w}% + 1px)`, width: `calc(${w}% - 2px)`, height: h, background: e.color, borderRadius: 6, padding: '2px 5px', color: '#fff', fontSize: 11, overflow: 'hidden', cursor: e.editable ? 'grab' : 'pointer', boxShadow: '0 1px 3px rgba(0,0,0,0.2)', opacity: drag?.id === e.id ? 0.5 : 1, zIndex: 2 }}>
-                        <div style={{ fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.title}</div>
-                        {h > 30 && <div style={{ fontSize: 10, opacity: 0.9 }}>{new Date(e.start).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}{e.rpe ? ` · RPE ${e.rpe}` : ''}</div>}
-                      </div>
-                    )
-                  })}
-                </div>
-              )
-            })}
+            {/* Colonnes jours */}
+            <div ref={gridRef} style={{ flex: 1, display: 'flex', position: 'relative' }}>
+              {/* fond colonne du jour courant */}
+              <div style={{ position: 'absolute', inset: 0, display: 'flex', pointerEvents: 'none' }}>
+                {days.map((d, i) => (
+                  <div key={i} style={{ flex: 1, background: sameDay(d, new Date()) ? 'var(--primary-dim)' : 'transparent' }} />
+                ))}
+              </div>
+              {/* lignes horaires */}
+              <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+                {Array.from({ length: 24 }, (_, h) => (
+                  <div key={h} style={{ position: 'absolute', top: h * HOUR_H, left: 0, right: 0, height: 1, background: 'var(--border)' }} />
+                ))}
+              </div>
+              {/* now-line */}
+              {days.some(d => sameDay(d, new Date())) && (
+                <div style={{ position: 'absolute', left: 0, right: 0, top: (minutesOfDay(new Date().toISOString()) / 60) * HOUR_H, height: 2, background: 'var(--danger)', zIndex: 5, pointerEvents: 'none' }} />
+              )}
+              {days.map((d, di) => {
+                const col = layoutOverlaps(dayCol(d), d)
+                return (
+                  <div key={di} onClick={e => { if (e.target === e.currentTarget) { const rect = (e.currentTarget as HTMLElement).getBoundingClientRect(); const y = e.clientY - rect.top; const mins = Math.round((y / HOUR_H) * 60 / 30) * 30; const s = new Date(d); s.setHours(0, mins, 0, 0); onCreate(s) } }}
+                    style={{ flex: 1, position: 'relative', borderLeft: di ? '1px solid var(--border)' : 'none', height: 24 * HOUR_H, minWidth: 0 }}>
+                    {col.map(({ e, lane, lanes }) => {
+                      const top = (minutesOfDay(e.start) / 60) * HOUR_H
+                      const dur = e.durationMin ?? Math.max(20, (new Date(e.end).getTime() - new Date(e.start).getTime()) / 60000)
+                      const h = Math.max(16, (dur / 60) * HOUR_H - 2)
+                      const w = 100 / lanes
+                      return (
+                        <div key={e.id}
+                          onClick={ev => { ev.stopPropagation(); onOpen(e) }}
+                          onPointerDown={e.editable ? (() => setDrag({ id: e.id, ev: e })) : undefined}
+                          title={`${e.title}${e.rpe ? ` · RPE ${e.rpe}` : ''}${e.durationMin ? ` · ${e.durationMin}min` : ''}${e.description ? `\n${e.description}` : ''}`}
+                          style={{ position: 'absolute', top, left: `calc(${lane * w}% + 1px)`, width: `calc(${w}% - 2px)`, height: h, background: e.color, borderRadius: 6, padding: '2px 6px', color: 'var(--on-primary)', fontSize: 11, overflow: 'hidden', cursor: e.editable ? 'grab' : 'pointer', boxShadow: 'var(--shadow-card)', opacity: drag?.id === e.id ? 0.5 : 1, zIndex: 2 }}>
+                          <div style={{ fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.title}</div>
+                          {h > 30 && <div style={{ fontSize: 10, opacity: 0.9, fontVariantNumeric: 'tabular-nums' }}>{new Date(e.start).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}{e.rpe ? ` · RPE ${e.rpe}` : ''}</div>}
+                        </div>
+                      )
+                    })}
+                  </div>
+                )
+              })}
+            </div>
           </div>
         </div>
       </div>
@@ -285,22 +298,22 @@ function layoutOverlaps(evs: CalEvent[], day: Date): { e: CalEvent; lane: number
 }
 
 // ── Vue Mois ────────────────────────────────────────────────────────────────
-function MonthView({ anchor, events, onOpenDay, onOpen }: { anchor: Date; events: CalEvent[]; onOpenDay: (d: Date) => void; onOpen: (e: CalEvent) => void }) {
+function MonthView({ anchor, events, onOpenDay, onOpen, px }: { anchor: Date; events: CalEvent[]; onOpenDay: (d: Date) => void; onOpen: (e: CalEvent) => void; px: number }) {
   const first = new Date(anchor.getFullYear(), anchor.getMonth(), 1)
   const gridStart = mondayOf(first)
   const cells = Array.from({ length: 42 }, (_, i) => addDays(gridStart, i))
   const evByDay = (d: Date) => events.filter(e => sameDay(new Date(e.start), d) || (new Date(e.start) <= d && new Date(e.end) >= d))
   return (
-    <div style={{ padding: '0 8px' }}>
+    <div style={{ padding: `0 ${px}px`, width: '100%', boxSizing: 'border-box' }}>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', borderTop: '1px solid var(--border)', borderLeft: '1px solid var(--border)' }}>
-        {DAY_NAMES.map(d => <div key={d} style={{ padding: '6px 4px', textAlign: 'center', fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', borderRight: '1px solid var(--border)', borderBottom: '1px solid var(--border)' }}>{d}</div>)}
+        {DAY_NAMES.map(d => <div key={d} style={{ padding: '8px 4px', textAlign: 'center', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-dim)', borderRight: '1px solid var(--border)', borderBottom: '1px solid var(--border)' }}>{d}</div>)}
         {cells.map((d, i) => {
           const inMonth = d.getMonth() === anchor.getMonth()
           const isToday = sameDay(d, new Date())
           const evs = evByDay(d).slice(0, 4)
           return (
-            <div key={i} onClick={() => onOpenDay(d)} style={{ minHeight: 78, padding: 4, borderRight: '1px solid var(--border)', borderBottom: '1px solid var(--border)', background: inMonth ? 'transparent' : 'var(--bg-card2)', cursor: 'pointer', overflow: 'hidden' }}>
-              <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 22, height: 22, borderRadius: '50%', fontSize: 12, fontWeight: 700, background: isToday ? 'var(--primary)' : 'transparent', color: isToday ? 'var(--on-primary,#fff)' : inMonth ? 'var(--text)' : 'var(--text-dim)' }}>{d.getDate()}</div>
+            <div key={i} onClick={() => onOpenDay(d)} style={{ minHeight: 96, padding: 5, borderRight: '1px solid var(--border)', borderBottom: '1px solid var(--border)', background: inMonth ? 'transparent' : 'var(--bg-card2)', cursor: 'pointer', overflow: 'hidden' }}>
+              <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 22, height: 22, borderRadius: '50%', fontSize: 12, fontWeight: 700, fontVariantNumeric: 'tabular-nums', background: isToday ? 'var(--primary)' : 'transparent', color: isToday ? 'var(--on-primary)' : inMonth ? 'var(--text)' : 'var(--text-dim)' }}>{d.getDate()}</div>
               {evs.map(e => (
                 <div key={e.id} onClick={ev => { ev.stopPropagation(); onOpen(e) }} title={e.title} style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2, fontSize: 10.5, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   <span style={{ width: 7, height: 7, borderRadius: 2, background: e.color, flexShrink: 0 }} />
@@ -316,7 +329,7 @@ function MonthView({ anchor, events, onOpenDay, onOpen }: { anchor: Date; events
 }
 
 // ── Vue Agenda (liste) ───────────────────────────────────────────────────────
-function AgendaView({ events, onOpen, rangeStart, rangeEnd }: { events: CalEvent[]; onOpen: (e: CalEvent) => void; rangeStart: Date; rangeEnd: Date }) {
+function AgendaView({ events, onOpen, rangeStart, rangeEnd, px }: { events: CalEvent[]; onOpen: (e: CalEvent) => void; rangeStart: Date; rangeEnd: Date; px: number }) {
   const byDay = useMemo(() => {
     const map = new Map<string, CalEvent[]>()
     const sorted = [...events].sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime())
@@ -334,12 +347,12 @@ function AgendaView({ events, onOpen, rangeStart, rangeEnd }: { events: CalEvent
   if (days.length === 0) return <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-dim)', fontSize: 14 }}>Rien de prévu sur cette période.</div>
 
   return (
-    <div style={{ padding: '4px 16px' }}>
+    <div style={{ padding: `4px ${px}px`, width: '100%', boxSizing: 'border-box' }}>
       {days.map(d => (
         <div key={d.toDateString()} style={{ display: 'flex', gap: 14, padding: '12px 0', borderBottom: '1px solid var(--border)' }}>
           <div style={{ width: 54, flexShrink: 0, textAlign: 'center' }}>
             <div style={{ fontSize: 11, color: 'var(--text-dim)', textTransform: 'uppercase', fontWeight: 700 }}>{DAY_NAMES[(d.getDay() + 6) % 7]}</div>
-            <div style={{ fontSize: 22, fontWeight: 700, color: sameDay(d, new Date()) ? 'var(--primary)' : 'var(--text)' }}>{d.getDate()}</div>
+            <div style={{ fontSize: 22, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: sameDay(d, new Date()) ? 'var(--primary)' : 'var(--text)' }}>{d.getDate()}</div>
           </div>
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
             {(byDay.get(d.toDateString()) ?? []).map(e => (

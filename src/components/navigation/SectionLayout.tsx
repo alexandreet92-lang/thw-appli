@@ -29,12 +29,15 @@ interface SectionLayoutProps {
   urlParam?:        string
   /** Largeur max du conteneur de contenu (centré). Défaut : pleine largeur. */
   contentMaxWidth?: number
+  /** Masque la sous-navigation (rail desktop + onglets mobile) : utile quand il n'y
+   *  a qu'une seule section → le contenu prend toute la largeur, sans rail inutile. */
+  hideNav?: boolean
 }
 
 const CYAN = '#06B6D4'
 
 export function SectionLayout({
-  sections, defaultSection, header, urlParam, contentMaxWidth,
+  sections, defaultSection, header, urlParam, contentMaxWidth, hideNav,
 }: SectionLayoutProps) {
   const router = useRouter()
   const ids = sections.map(s => s.id)
@@ -102,6 +105,19 @@ export function SectionLayout({
     `}</style>
   )
 
+  // ── DESKTOP sans sous-nav : contenu pleine largeur, titre en haut ──
+  if (isDesktop && hideNav) {
+    return (
+      <div style={{ width: '100%' }}>
+        {styleBlock}
+        {header && <div style={{ padding: '24px 28px 0' }}>{header}</div>}
+        <main style={{ padding: '16px 28px 80px' }}>
+          <div style={containerStyle}>{content}</div>
+        </main>
+      </div>
+    )
+  }
+
   // ── DESKTOP : rail collé au bord gauche ────────────────────────
   if (isDesktop) {
     return (
@@ -160,6 +176,10 @@ export function SectionLayout({
     <div style={{ width: '100%', maxWidth: '100%', margin: 0, padding: '0 0 80px', overflowX: 'hidden', boxSizing: 'border-box' }}>
       {styleBlock}
       {header && <div style={{ padding: '24px 16px 0' }}>{header}</div>}
+      {hideNav ? (
+        <div style={{ padding: '14px 12px 0' }}><div style={containerStyle}>{activeContent}</div></div>
+      ) : (
+      <>
       {/* Onglets mobile — segmented control « pilule » (style Dashboard), défilable au doigt */}
       <div className="sl-tabscroll" style={{ padding: '12px 12px 0', overflowX: 'auto', WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'] }}>
         <div role="tablist" style={{ display: 'inline-flex', gap: 2, padding: 3, borderRadius: 999, background: 'var(--bg-card2)' }}>
@@ -193,6 +213,8 @@ export function SectionLayout({
           </div>
         )}
       />
+      </>
+      )}
     </div>
   )
 }

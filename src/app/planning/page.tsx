@@ -1026,6 +1026,7 @@ export function ActivityQuickModal({ activity, onClose }:{ activity:TrainingActi
         { label:t('plnp.field.duration'),   value:formatDur(durationMin), mono:true },
         ...(distKm ? [{ label:t('plnp.field.distance'), value: isSwim ? `${Math.round(distM!)} m` : `${distKm} km`, mono:true }] : []),
         ...(paceStr ? [{ label: isPower ? t('plnp.activity.avgPower') : t('plnp.activity.avgPace'), value:paceStr, mono:true }] : []),
+        ...(full?.avgHr ? [{ label:'FC moy', value:`${full.avgHr} bpm`, mono:true }] : []),
         ...(full?.elevM ? [{ label:'D+', value:`${full.elevM} m`, mono:true }] : []),
         ...(full?.rpe != null ? [{ label:'RPE', value:String(Math.round(full.rpe*10)/10), mono:true }] : []),
         ...(a.tss ? [{ label:'SM', value:`${Math.round(a.tss)}`, mono:true, color:'#5b6fff' }] : []),
@@ -1061,7 +1062,7 @@ export function ActivityQuickModal({ activity, onClose }:{ activity:TrainingActi
         <PlannedIntensityBars session={planned} height={64} />
       ) : null}
       {full?.samples && full.samples.some(s => s.ele != null) && (
-        <ActivityElevation full={full} height={72} cursor={cursor} onHover={setCursor} />
+        <ActivityElevation full={full} height={150} cursor={cursor} onHover={setCursor} sport={sp} detailed />
       )}
     </>
   ) : null
@@ -1083,11 +1084,8 @@ export function ActivityQuickModal({ activity, onClose }:{ activity:TrainingActi
   return (
     <BottomSheet isOpen={!!activity} onClose={onClose}>
       <div style={{ maxWidth: wide ? 860 : undefined, margin: wide ? '0 auto' : undefined }}>
-        {/* En-tête */}
+        {/* En-tête (sans logo sport — épuré) */}
         <div style={{ display:'flex',alignItems:'center',gap:10,marginBottom:16 }}>
-          <div style={{ width:44,height:44,borderRadius:12,background:SPORT_BG[sp],border:`1px solid ${col}44`,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0 }}>
-            <SportBadge sport={sp} size="sm"/>
-          </div>
           <div style={{ flex:1,minWidth:0 }}>
             <div style={{ marginBottom:3 }}>
               <span style={{ fontSize:8,fontWeight:800,background:col,color:'#fff',padding:'2px 6px',borderRadius:4,letterSpacing:'0.06em' }}>{t('plnp.activity.completed')}</span>
@@ -5472,6 +5470,7 @@ export default function PlanningPage() {
       <PageHelp config={PLANNING_ONBOARDING} show={show} onDismiss={dismiss} />
       <SectionLayout
         header={header}
+        hideNav
         sections={[
           { id:'training', label:t('plnp.section.training'), subtitle:t('plnp.section.trainingSub'),      icon:Dumbbell,        content:<TrainingTab tab="training"/> },
         ]}

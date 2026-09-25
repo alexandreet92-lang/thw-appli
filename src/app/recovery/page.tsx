@@ -96,7 +96,7 @@ export default function RecoveryPage() {
   return (
     <>
       <PageHelp config={RECOVERY_ONBOARDING} show={show} onDismiss={dismiss} />
-      <SectionLayout key={guideSection ?? 'default'} sections={sections} defaultSection={guideSection ?? 'overview'} urlParam="tab" header={header} contentMaxWidth={1100} />
+      <SectionLayout key={guideSection ?? 'default'} sections={sections} defaultSection={guideSection ?? 'overview'} urlParam="tab" header={header} />
     </>
   )
 }

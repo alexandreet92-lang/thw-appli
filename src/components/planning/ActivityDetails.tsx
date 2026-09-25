@@ -17,7 +17,7 @@
 // Règle streams (CLAUDE.md) : toujours `r.streams ?? r.raw_data?.streams`,
 // avec null-safety (backfill partiel).
 // ══════════════════════════════════════════════════════════════════
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Fragment } from 'react'
 import { createPortal } from 'react-dom'
 import { useI18n } from '@/lib/i18n'
 import { createClient } from '@/lib/supabase/client'
@@ -26,7 +26,6 @@ import { formatHM, matchStatus, normalizeSportType, ATHLETE, type Session, type 
 import { sportKeyFromType, subSportIcon, SPORT_ICON, type SportKey } from '@/components/icons/SportIcon'
 import { toBars, treadmillGainM, totalDistance, barHeightPct, type MBlock } from './mobile/blocks'
 import { zColor, paceToSec, secToPace } from './mobile/editorial'
-import { staticRouteMapUrl } from '@/lib/staticMap'
 import { useAthleteRefs } from '@/hooks/useAthleteRefs'
 
 // ── Modèle ────────────────────────────────────────────────────────
@@ -525,18 +524,73 @@ export function RealizedIntensityBars({ full, sport, height = 56, cursor, onHove
   )
 }
 
-/** Profil altimétrique RÉEL interactif : survol → onHover(fraction 0…1). */
-export function ActivityElevation({ full, height = 64, cursor, onHover, showTitle = true }: {
+// ── Stats par BLOC D'INTENSITÉ (lap) pour le tooltip du profil altimétrique ──
+interface ElevLapStat {
+  f0: number; f1: number
+  distanceM: number; timeS: number
+  hr: number | null; watts: number | null
+  paceS: number | null; speedKmh: number | null
+  gainM: number; vapS: number | null   // vapS = allure ajustée à la pente (course)
+}
+function buildElevLapStats(full: FullActivity, sport: string): ElevLapStat[] {
+  const samples = full.samples ?? []
+  const isPower = sport === 'bike' || sport === 'elliptique'
+  const isSwim = sport === 'swim'
+  // Dénivelé positif sur une plage de temps [t0,t1] à partir des altitudes réelles.
+  const gainBetween = (t0: number, t1: number): number => {
+    let g = 0, prev: number | null = null
+    for (const s of samples) {
+      if (s.tS < t0 || s.tS > t1) { prev = null; continue }
+      if (s.ele == null) continue
+      if (prev != null && s.ele > prev) g += s.ele - prev
+      prev = s.ele
+    }
+    return Math.round(g)
+  }
+  let laps: { timeS: number; distanceM: number; hr: number | null; watts: number | null; speedMs: number | null }[]
+  if (full.laps.length > 1) {
+    laps = full.laps.map(l => ({
+      timeS: l.moving_time_s, distanceM: l.distance_m, hr: l.avg_hr, watts: l.avg_watts,
+      speedMs: l.avg_speed_ms ?? (l.distance_m > 0 && l.moving_time_s > 0 ? l.distance_m / l.moving_time_s : null),
+    }))
+  } else {
+    const speedMs = full.distanceM && full.distanceM > 100 && full.movingS > 0 ? full.distanceM / full.movingS : null
+    laps = [{ timeS: Math.max(1, full.movingS), distanceM: full.distanceM ?? 0, hr: full.avgHr, watts: full.avgWatts, speedMs }]
+  }
+  const total = laps.reduce((s, l) => s + l.timeS, 0) || 1
+  let accT = 0
+  return laps.map(l => {
+    const t0 = accT; accT += l.timeS; const t1 = accT
+    const gainM = full.laps.length > 1 ? gainBetween(t0, t1) : (full.elevM ?? gainBetween(0, total))
+    const paceS = !isPower && l.speedMs && l.speedMs > 0.3 ? (isSwim ? 100 / l.speedMs : 1000 / l.speedMs) : null
+    const speedKmh = l.speedMs != null ? l.speedMs * 3.6 : null
+    // VAP (course) = allure ajustée à la pente (approx) : une montée équivaut à une
+    // allure plate plus rapide. Modèle linéaire simple (coût ~3,5×/pente), pente cap 30%.
+    let vapS: number | null = null
+    if (!isPower && !isSwim && paceS != null && l.distanceM > 0) {
+      const grade = Math.min(0.30, gainM / l.distanceM)
+      vapS = paceS / (1 + 3.5 * grade)
+    }
+    return { f0: t0 / total, f1: t1 / total, distanceM: l.distanceM, timeS: l.timeS, hr: l.hr, watts: l.watts, paceS, speedKmh, gainM, vapS }
+  })
+}
+
+const elevAxisLbl: React.CSSProperties = { fontSize: 9, fontWeight: 600, color: 'var(--text-dim)', fontFamily: 'DM Mono, monospace', letterSpacing: '0.02em', pointerEvents: 'none' }
+
+/** Profil altimétrique RÉEL interactif : survol → onHover(fraction 0…1).
+ *  Mode `detailed` (fiche) : plus haut, axes km + altitude, et tooltip du bloc
+ *  d'intensité (lap) au survol. Sinon : mini-profil compact (popover). */
+export function ActivityElevation({ full, height = 64, cursor, onHover, showTitle = true, sport, detailed = false }: {
   full: FullActivity; height?: number
   cursor?: number | null; onHover?: (frac: number | null) => void
-  showTitle?: boolean
+  showTitle?: boolean; sport?: string; detailed?: boolean
 }) {
   const { t } = useI18n()
   const samples = full.samples
   if (!samples || samples.length < 2) return null
   const pts = samples.map(s => s.ele).filter((e): e is number => e != null)
   if (pts.length < 2) return null
-  const W = 600, PAD = 5
+  const W = 600, PAD = 6
   const lo = Math.min(...pts), hi = Math.max(...pts)
   const range = Math.max(10, hi - lo)
   const X = (i: number) => (i / (samples.length - 1)) * W
@@ -549,22 +603,105 @@ export function ActivityElevation({ full, height = 64, cursor, onHover, showTitl
   })
   const area = `${d} L ${W} ${height} L 0 ${height} Z`
   const cx = cursor != null ? Math.max(0, Math.min(1, cursor)) * W : null
+  const handleMove = onHover ? (e: React.MouseEvent) => {
+    const rect = e.currentTarget.getBoundingClientRect()
+    onHover(Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width)))
+  } : undefined
+
+  // ── Axes + tooltip (mode détaillé uniquement) ──
+  const totalKm = samples[samples.length - 1]?.dKm ?? (full.distanceM ? full.distanceM / 1000 : 0)
+  const ticks: number[] = []
+  if (detailed && totalKm > 0.5) {
+    const raw = totalKm / 6
+    const step = raw >= 5 ? Math.round(raw / 5) * 5 : raw >= 1 ? Math.round(raw) : raw >= 0.5 ? 0.5 : 0.25
+    for (let k = step; k < totalKm; k += step) ticks.push(Math.round(k * 10) / 10)
+  }
+  const lapStats = detailed && sport ? buildElevLapStats(full, sport) : []
+  const curLap = detailed && cursor != null ? (lapStats.find(l => cursor >= l.f0 && cursor <= l.f1) ?? null) : null
+  const isPower = sport === 'bike' || sport === 'elliptique'
+  const isSwim = sport === 'swim'
+  const fmtTime = (s: number) => s >= 3600 ? `${Math.floor(s / 3600)}:${String(Math.floor((s % 3600) / 60)).padStart(2, '0')}` : `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, '0')}`
+  const tooltipRows: [string, string][] = curLap ? (
+    isPower ? [
+      ['Distance', `${(curLap.distanceM / 1000).toFixed(2)} km`],
+      ['FC moy', curLap.hr != null ? `${curLap.hr} bpm` : '—'],
+      ['Vitesse moy', curLap.speedKmh != null ? `${curLap.speedKmh.toFixed(1)} km/h` : '—'],
+      ['Watts moy', curLap.watts != null ? `${Math.round(curLap.watts)} W` : '—'],
+      ['D+', `${curLap.gainM} m`],
+      ['Temps', fmtTime(curLap.timeS)],
+    ] : isSwim ? [
+      ['Distance', `${Math.round(curLap.distanceM)} m`],
+      ['FC moy', curLap.hr != null ? `${curLap.hr} bpm` : '—'],
+      ['Allure moy', curLap.paceS != null ? `${secToPace(curLap.paceS)}/100m` : '—'],
+      ['Temps', fmtTime(curLap.timeS)],
+    ] : [
+      ['Distance', `${(curLap.distanceM / 1000).toFixed(2)} km`],
+      ['FC moy', curLap.hr != null ? `${curLap.hr} bpm` : '—'],
+      ['Allure moy', curLap.paceS != null ? `${secToPace(curLap.paceS)}/km` : '—'],
+      ['VAP moy', curLap.vapS != null ? `${secToPace(curLap.vapS)}/km` : '—'],
+      ['Temps', fmtTime(curLap.timeS)],
+      ['D+', `${curLap.gainM} m`],
+    ]
+  ) : []
+
   return (
     <div>
       {showTitle && <p style={sectionLabel}>{t('w3g.act_elevation_profile')}{full.elevM ? ` · +${full.elevM} m D+` : ''}</p>}
-      <svg width="100%" height={height} viewBox={`0 0 ${W} ${height}`} preserveAspectRatio="none"
-        onMouseMove={onHover ? (e => {
-          const rect = e.currentTarget.getBoundingClientRect()
-          onHover(Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width)))
-        }) : undefined}
-        onMouseLeave={onHover ? (() => onHover(null)) : undefined}
-        style={{ display: 'block', cursor: onHover ? 'crosshair' : undefined }}>
-        <path d={area} fill="var(--primary)" opacity={0.14} />
-        <path d={d} fill="none" stroke="var(--primary)" strokeWidth={1.8} strokeLinecap="round" vectorEffect="non-scaling-stroke" />
-        {cx != null && (
-          <line x1={cx} y1={0} x2={cx} y2={height} stroke="var(--text)" strokeWidth={1.2} vectorEffect="non-scaling-stroke" opacity={0.8} />
+      <div style={{ position: 'relative', paddingBottom: detailed ? 16 : 0 }}
+        onMouseLeave={onHover ? (() => onHover(null)) : undefined}>
+        <svg width="100%" height={height} viewBox={`0 0 ${W} ${height}`} preserveAspectRatio="none"
+          onMouseMove={handleMove}
+          style={{ display: 'block', cursor: onHover ? 'crosshair' : undefined, overflow: 'visible' }}>
+          <defs>
+            <linearGradient id="thwElevGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="var(--primary)" stopOpacity="0.30" />
+              <stop offset="100%" stopColor="var(--primary)" stopOpacity="0.02" />
+            </linearGradient>
+          </defs>
+          {ticks.map(k => (
+            <line key={k} x1={(k / totalKm) * W} y1={0} x2={(k / totalKm) * W} y2={height}
+              stroke="var(--border)" strokeWidth={1} vectorEffect="non-scaling-stroke" opacity={0.5} />
+          ))}
+          <path d={area} fill="url(#thwElevGrad)" />
+          <path d={d} fill="none" stroke="var(--primary)" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+          {cx != null && (
+            <line x1={cx} y1={0} x2={cx} y2={height} stroke="var(--text)" strokeWidth={1.2} vectorEffect="non-scaling-stroke" opacity={0.85} />
+          )}
+        </svg>
+
+        {detailed && (
+          <>
+            {/* Altitude (min / max) */}
+            <span style={{ ...elevAxisLbl, position: 'absolute', left: 4, top: 1 }}>{Math.round(hi)} m</span>
+            <span style={{ ...elevAxisLbl, position: 'absolute', left: 4, top: height - 15 }}>{Math.round(lo)} m</span>
+            {/* Distance (km) en abscisse */}
+            {ticks.map(k => (
+              <span key={k} style={{ ...elevAxisLbl, position: 'absolute', top: height + 1, left: `${(k / totalKm) * 100}%`, transform: 'translateX(-50%)' }}>{k}</span>
+            ))}
+            <span style={{ ...elevAxisLbl, position: 'absolute', top: height + 1, right: 2 }}>km</span>
+          </>
         )}
-      </svg>
+
+        {/* Tooltip du bloc d'intensité au survol */}
+        {curLap && cursor != null && tooltipRows.length > 0 && (
+          <div style={{
+            position: 'absolute', top: 4, left: `${cursor * 100}%`,
+            transform: cursor > 0.6 ? 'translateX(calc(-100% - 10px))' : 'translateX(10px)',
+            background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 9,
+            padding: '8px 10px', pointerEvents: 'none', boxShadow: 'var(--shadow-card)',
+            zIndex: 3, minWidth: 132,
+          }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'auto auto', gap: '3px 12px', alignItems: 'baseline' }}>
+              {tooltipRows.map(([label, value]) => (
+                <Fragment key={label}>
+                  <span style={{ fontSize: 9.5, color: 'var(--text-dim)', fontWeight: 600 }}>{label}</span>
+                  <span style={{ fontSize: 11, color: 'var(--text)', fontWeight: 700, fontFamily: 'DM Mono, monospace', textAlign: 'right', whiteSpace: 'nowrap' }}>{value}</span>
+                </Fragment>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
@@ -600,41 +737,31 @@ export function ActivityMap({ latlng, width, height, color, cursorLL }: {
   latlng: [number, number][]; width: number; height: number; color?: string
   cursorLL?: [number, number] | null
 }) {
-  const { t } = useI18n()
-  const pts = latlng.map(p => ({ lat: p[0], lng: p[1] }))
-  const mapUrl = staticRouteMapUrl(pts, { width, height, pins: true, color })
-  const fit = mercatorFit(latlng, width, height, 26)
-  const cursor = cursorLL ? fit(cursorLL[0], cursorLL[1]) : null
-  if (mapUrl) {
-    return (
-      <div style={{ position: 'relative', width, height }}>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={mapUrl} alt={t('w3g.act_gps_trace')} width={width} height={height}
-          style={{ display: 'block', width, height, objectFit: 'cover', borderRadius: 10, border: '1px solid var(--border)' }} />
-        {cursor && (
-          <span style={{
-            position: 'absolute', left: cursor.x - 7, top: cursor.y - 7, width: 14, height: 14,
-            borderRadius: '50%', background: color ?? 'var(--primary)', border: '2.5px solid var(--bg-card)',
-            boxShadow: '0 1px 6px rgba(0,0,0,0.35)', pointerEvents: 'none',
-          }} />
-        )}
-      </div>
-    )
-  }
-  // Repli SVG sans token Mapbox — même projection, curseur exact.
+  // Tracé SVG propre (pas d'image statique) : même projection pour le tracé ET le
+  // curseur → le point suit EXACTEMENT le tracé au survol du profil. Plus lisible
+  // et cohérent avec le thème que l'ancienne image Mapbox.
+  const stroke = color ? (color.startsWith('#') ? color : `#${color}`) : 'var(--primary)'
+  const fit = mercatorFit(latlng, width, height, 18)
   let d = ''
   latlng.forEach((p, i) => {
     const q = fit(p[0], p[1])
     d += `${i === 0 ? 'M' : 'L'}${q.x.toFixed(1)},${q.y.toFixed(1)}`
   })
+  const start = latlng[0] ? fit(latlng[0][0], latlng[0][1]) : null
+  const last = latlng[latlng.length - 1]
+  const end = last ? fit(last[0], last[1]) : null
+  const cursor = cursorLL ? fit(cursorLL[0], cursorLL[1]) : null
   return (
-    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}
-      style={{ display: 'block', background: 'var(--bg-alt)', borderRadius: 10 }}>
-      <path d={d} fill="none" stroke="var(--bg-card)" strokeWidth={4} strokeLinejoin="round" strokeLinecap="round" opacity={0.9} />
-      <path d={d} fill="none" stroke={color ?? 'var(--primary)'} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
-      {cursor && (
-        <circle cx={cursor.x} cy={cursor.y} r={6} fill={color ?? 'var(--primary)'} stroke="var(--bg-card)" strokeWidth={2.5} />
-      )}
+    <svg width="100%" height={height} viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="xMidYMid meet"
+      style={{ display: 'block', maxWidth: width, background: 'var(--bg-alt)', borderRadius: 12, border: '1px solid var(--border)' }}>
+      {/* Casing (halo) + trait couleur du sport */}
+      <path d={d} fill="none" stroke="var(--bg-card)" strokeWidth={6} strokeLinejoin="round" strokeLinecap="round" />
+      <path d={d} fill="none" stroke={stroke} strokeWidth={3} strokeLinejoin="round" strokeLinecap="round" />
+      {/* Départ (vert) / arrivée (rouge) */}
+      {start && <circle cx={start.x} cy={start.y} r={5} fill="var(--sport-run)" stroke="var(--bg-card)" strokeWidth={2.5} />}
+      {end && <circle cx={end.x} cy={end.y} r={5} fill="var(--danger)" stroke="var(--bg-card)" strokeWidth={2.5} />}
+      {/* Curseur synchronisé avec le profil */}
+      {cursor && <circle cx={cursor.x} cy={cursor.y} r={6.5} fill={stroke} stroke="var(--bg-card)" strokeWidth={3} />}
     </svg>
   )
 }
@@ -716,7 +843,8 @@ export function ActivityHoverPreview({ activity, planned, anchor }: {
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
         <span style={{ fontSize: 7.5, fontWeight: 800, background: color, color: '#fff', padding: '2px 5px', borderRadius: 4, letterSpacing: '0.06em', flexShrink: 0 }}>{t('w3g.act_badge_realized')}</span>
         <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {planned?.title || activity.name}
+          {/* Toujours le nom de l'activité téléchargée (pas la séance prévue). */}
+          {activity.name || planned?.title}
         </p>
       </div>
 
@@ -801,7 +929,8 @@ export function ActivityBubble({ activity, planned, onClick }: {
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 4, minWidth: 0 }}>
           {Ico ? <span style={{ flexShrink: 0, marginTop: 1, display: 'flex' }}><Ico size={13} color="#fff" stroke={2.2} /></span> : <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#fff', flexShrink: 0, marginTop: 3 }} />}
           <span style={{ flex: 1, minWidth: 0, fontSize: 9.5, fontWeight: 700, lineHeight: 1.18, color: '#fff', textAlign: 'left', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', overflowWrap: 'anywhere', wordBreak: 'break-word' }}>
-            {planned?.title || activity.name}
+            {/* Toujours le nom de l'activité téléchargée (pas la séance prévue). */}
+            {activity.name || planned?.title}
           </span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, flexWrap: 'wrap' }}>

@@ -7178,6 +7178,7 @@ export function ActivityDetail({ a, onClose, closing = false, zones, profile, al
   const [fdEditing,       setFdEditing]       = useState<null | 'feeling' | 'difficulty'>(null)
   const [lapsViewOpen,    setLapsViewOpen]    = useState(false)
   const [lapsViewInitial, setLapsViewInitial] = useState(0)
+  const [lapsViewDetailOnly, setLapsViewDetailOnly] = useState(false)
   async function saveFdValue(kind: 'feeling' | 'difficulty', v: number) {
     const sb = createClient()
     // eslint-disable-next-line no-console
@@ -8132,7 +8133,7 @@ conseil pour la prochaine séance similaire.`
                 avgWatts={a.avg_watts}
                 streams={a.streams}
                 ftp={bikeZoneRow?.ftp_watts ?? null}
-                onLapTap={i => { setLapsViewInitial(i); setLapsViewOpen(true) }}
+                onLapTap={i => { setLapsViewInitial(i); setLapsViewDetailOnly(false); setLapsViewOpen(true) }}
               />
             )}
 
@@ -8144,7 +8145,7 @@ conseil pour la prochaine séance similaire.`
                 activityId={a.id}
                 cachedLaps={a.laps}
                 avgSpeedMs={a.distance_m && a.moving_time_s ? a.distance_m / a.moving_time_s : null}
-                onLapTap={i => { setLapsViewInitial(i); setLapsViewOpen(true) }}
+                onLapTap={i => { setLapsViewInitial(i); setLapsViewDetailOnly(false); setLapsViewOpen(true) }}
               />
             )}
 
@@ -8229,6 +8230,7 @@ conseil pour la prochaine séance similaire.`
         hrZones={hrZones}
         maxHrEst={estimateMaxHr(profile.birth_date)}
         sport={isRun ? 'running' : 'cycling'}
+        detailOnly={lapsViewDetailOnly}
       />
     </>
   ), document.body) : createPortal((
@@ -8367,7 +8369,7 @@ conseil pour la prochaine séance similaire.`
             </div>
           )
           const mapNode = !mapExpanded ? (
-            <div style={{ position: 'relative', width: '100%', paddingBottom: '100%', borderRadius: 12, overflow: 'hidden' }}>
+            <div style={{ position: 'relative', width: '100%', paddingBottom: '135%', borderRadius: 12, overflow: 'hidden' }}>
               <div style={{ position: 'absolute', inset: 0 }}>
                 <ActivityMapCard activity={a as unknown as Record<string, unknown>} isMobile={false} expanded={false} onToggle={() => setMapExpanded(true)} hoverGps={hoverGps} />
               </div>
@@ -8381,7 +8383,7 @@ conseil pour la prochaine séance similaire.`
               activityId={a.id}
               totalDurationS={a.moving_time_s}
               paceZones={runZones}
-              onLapTap={i => { setLapsViewInitial(i); setLapsViewOpen(true) }}
+              onLapTap={i => { setLapsViewInitial(i); setLapsViewDetailOnly(true); setLapsViewOpen(true) }}
               kpiNode={kpiNode}
               mapNode={mapNode}
               feelingNode={feelingNode}
@@ -8854,7 +8856,7 @@ conseil pour la prochaine séance similaire.`
                     avgWatts={a.avg_watts}
                     streams={a.streams}
                     ftp={bikeZoneRow?.ftp_watts ?? null}
-                    onLapTap={i => { setLapsViewInitial(i); setLapsViewOpen(true) }}
+                    onLapTap={i => { setLapsViewInitial(i); setLapsViewDetailOnly(false); setLapsViewOpen(true) }}
                   />
                 </>
               )}
@@ -8992,6 +8994,7 @@ conseil pour la prochaine séance similaire.`
         hrZones={hrZones}
         maxHrEst={estimateMaxHr(profile.birth_date)}
         sport={isRun ? 'running' : 'cycling'}
+        detailOnly={lapsViewDetailOnly}
       />
     </div>
   ), document.body)

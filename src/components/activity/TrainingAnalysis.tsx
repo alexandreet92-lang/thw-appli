@@ -74,8 +74,8 @@ interface SmoothSample {
 }
 
 // ── Palettes d'intensité (rapide = foncé). Allure=bleu, VAP=violet ──────
-const PACE_BLUE   = ['#DBEAFE', '#BFDBFE', '#93C5FD', '#60A5FA', '#3B82F6', '#2563EB'] as const
-const VAP_VIOLET  = ['#EDE9FE', '#DDD6FE', '#C4B5FD', '#A78BFA', '#8B5CF6', '#7C3AED'] as const
+const PACE_BLUE   = ['#93C5FD', '#60A5FA', '#3B82F6', '#2563EB', '#1D4ED8', '#1E40AF'] as const
+const VAP_VIOLET  = ['#C4B5FD', '#A78BFA', '#8B5CF6', '#7C3AED', '#6D28D9', '#5B21B6'] as const
 const ACCENT_PACE = '#2563EB'
 const ACCENT_VAP  = '#7C3AED'
 
@@ -376,14 +376,22 @@ function computeGeom(data: AData, splits: Split[], metric: Metric, chartH: numbe
   const allSpeeds = speeds.concat(smoothSpeeds)
   const maxSpeed = allSpeeds.length ? Math.max(...allSpeeds) : 1
   const minSpeed = allSpeeds.length ? Math.min(...allSpeeds) : 0
-  const maxY = maxSpeed * 1.06 || 1
-  const yOf = (sp: number) => PAD_T + chartH - Math.max(0, Math.min(1, sp / maxY)) * chartH
+  // ── Échelle Y en ALLURE (min/km) → lignes rondes (8:00, 7:00 … 2:00) ──
+  // Rapide (petite allure) en haut, lent (grande allure) en bas.
+  const fastestPace = maxSpeed > 0 ? 1000 / maxSpeed / 60 : 6
+  const slowestPace = minSpeed > 0 ? 1000 / minSpeed / 60 : 8
+  const paceTop = Math.max(2, Math.floor(fastestPace))              // haut = rapide
+  let paceBottom = Math.min(9, Math.max(paceTop + 3, Math.ceil(slowestPace))) // bas = lent (borné 9:00)
+  if (paceBottom - paceTop < 3) paceBottom = paceTop + 3           // au moins 3 paliers
+  const paceSpan = paceBottom - paceTop || 1
+  const yOfPace = (p: number) => PAD_T + ((Math.max(paceTop, Math.min(paceBottom, p)) - paceTop) / paceSpan) * chartH
+  const yOf = (sp: number) => sp > 0 ? yOfPace(1000 / sp / 60) : baseY
   const xOf = (dist: number) => PAD_L + (data.totalDist > 0 ? dist / data.totalDist : 0) * innerW
-  // Altitude compressée sur la bande basse (55 % → base).
+  // Altitude compressée sur la bande basse (50 % → base).
   const altTop = PAD_T + chartH * 0.5
   const altSpan = Math.max(1, data.altMax - data.altMin)
   const altYOf = (alt: number) => baseY - ((alt - data.altMin) / altSpan) * (baseY - altTop)
-  return { VBW, PAD_L, PAD_R, PAD_T, PAD_B, innerW, baseY, chartH, maxSpeed, minSpeed, maxY, yOf, xOf, altTop, altSpan, altYOf }
+  return { VBW, PAD_L, PAD_R, PAD_T, PAD_B, innerW, baseY, chartH, maxSpeed, minSpeed, paceTop, paceBottom, yOfPace, yOf, xOf, altTop, altSpan, altYOf }
 }
 
 function altitudePath(data: AData, g: ReturnType<typeof computeGeom>): string {
@@ -391,6 +399,14 @@ function altitudePath(data: AData, g: ReturnType<typeof computeGeom>): string {
   let d = `M ${g.PAD_L} ${g.baseY}`
   for (const s of data.smooth) d += ` L ${g.xOf(s.dist).toFixed(1)} ${g.altYOf(s.alt).toFixed(1)}`
   d += ` L ${g.xOf(data.smooth[data.smooth.length - 1].dist).toFixed(1)} ${g.baseY} Z`
+  return d
+}
+
+// Profil altimétrique en LIGNE (tracé net, dessiné PAR-DESSUS les jauges).
+function altitudeLine(data: AData, g: ReturnType<typeof computeGeom>): string {
+  if (!data.hasAlt || data.smooth.length < 2) return ''
+  let d = ''
+  data.smooth.forEach((s, i) => { d += `${i === 0 ? 'M' : 'L'} ${g.xOf(s.dist).toFixed(1)} ${g.altYOf(s.alt).toFixed(1)} ` })
   return d
 }
 
@@ -403,10 +419,8 @@ function xAxisTicks(data: AData, g: ReturnType<typeof computeGeom>): { x: number
 
 function yPaceTicks(g: ReturnType<typeof computeGeom>): { y: number; label: string }[] {
   const out: { y: number; label: string }[] = []
-  const steps = 4
-  for (let i = 1; i <= steps; i++) {
-    const sp = (g.maxY / steps) * i
-    out.push({ y: g.yOf(sp), label: paceStr(sp) })
+  for (let m = g.paceTop; m <= g.paceBottom; m++) {
+    out.push({ y: g.yOfPace(m), label: `${m}:00` })
   }
   return out
 }
@@ -543,9 +557,8 @@ function SmoothTooltip({ s, metric, totalDurationS, t }: { s: SmoothSample; metr
 function AnalysisTable({ splits, mode, t }: { splits: Split[]; mode: Mode; t: (k: string) => string }) {
   const isLaps = mode === 'laps'
   if (!splits.length) return null
-  const cols = isLaps
-    ? [isLaps ? t('actp.lap_col') : 'Km', t('actp.time'), t('actp.pace'), 'VAP', 'D+', t('actp.hr_short'), t('actp.temp_short')]
-    : ['Km', t('actp.pace'), 'VAP', 'D+', t('actp.hr_short'), t('actp.temp_short')]
+  const firstCol = isLaps ? t('actp.lap_col') : 'Km'
+  const cols = [firstCol, t('actp.pace'), 'VAP', 'D+', t('actp.hr_short'), t('actp.temp_short')]
   return (
     <div style={{ marginBottom: 22 }}>
       <SectionTitle text={t('actp.precise_data')} />
@@ -553,8 +566,8 @@ function AnalysisTable({ splits, mode, t }: { splits: Split[]; mode: Mode; t: (k
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
           <thead>
             <tr style={{ background: 'var(--bg-card2)' }}>
-              {cols.map(c => (
-                <th key={c} style={{ padding: '8px 12px', textAlign: c === (isLaps ? t('actp.lap_col') : 'Km') ? 'left' : 'right', fontSize: 10, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: 0.6, whiteSpace: 'nowrap' }}>{c}</th>
+              {cols.map((c, ci) => (
+                <th key={c} style={{ padding: '8px 12px', textAlign: ci === 0 ? 'left' : 'right', fontSize: 10, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: 0.6, whiteSpace: 'nowrap' }}>{c}</th>
               ))}
             </tr>
           </thead>
@@ -562,7 +575,6 @@ function AnalysisTable({ splits, mode, t }: { splits: Split[]; mode: Mode; t: (k
             {splits.map((sp, i) => (
               <tr key={i} style={{ background: i % 2 ? 'var(--bg-card2)' : 'transparent' }}>
                 <td style={{ padding: '7px 12px', color: 'var(--text-dim)', fontWeight: 700, whiteSpace: 'nowrap' }}>{sp.label}</td>
-                {isLaps && <td style={tdR}>{fmtDurShort(sp.durS)}</td>}
                 <td style={tdR}>{paceStr(sp.speedMs)}/km</td>
                 <td style={{ ...tdR, color: 'var(--primary)' }}>{paceStr(sp.vapMs)}/km</td>
                 <td style={tdR}>{Math.round(sp.dPlus)} m</td>
@@ -674,6 +686,12 @@ function AnalysisGraph({ data, splits, mode, metric, accent, ramp, totalDuration
                 })}
               </g>
             )}
+
+          {/* profil altimétrique — ligne nette PAR-DESSUS les jauges */}
+          {data.hasAlt && (
+            <path d={altitudeLine(data, g)} fill="none" stroke="var(--text-mid)" strokeWidth={2}
+              strokeLinejoin="round" strokeLinecap="round" opacity={0.85} vectorEffect="non-scaling-stroke" />
+          )}
 
           {/* curseur */}
           {mode !== 'smooth' && hover !== null && splits[hover] && (

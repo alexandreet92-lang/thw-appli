@@ -46,6 +46,9 @@ export interface LapsDetailViewProps {
   hrZones:         ParsedZone[] | null    // Z1-Z5 FC utilisateur
   maxHrEst:        number | null
   sport?:          Sport                  // 'cycling' (défaut) | 'running'
+  // detailOnly : ouvre DIRECTEMENT la carte détail du tour (sans la vue
+  // d'ensemble à barres). Utilisé quand on clique une jauge du graphique.
+  detailOnly?:     boolean
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -658,6 +661,24 @@ export function LapsDetailView(props: LapsDetailViewProps) {
   const purplePale   = isDark ? PURPLE_PALE_NGT : PURPLE_PALE_DAY
 
   if (!open || typeof document === 'undefined') return null
+
+  // Mode « carte détail directe » : on n'affiche QUE la sur-page détail du tour
+  // cliqué (image 4), sans la vue d'ensemble à barres (image 3).
+  if (props.detailOnly) {
+    return (
+      <LapDetailsSheet
+        open={open}
+        onClose={onClose}
+        lap={aLap}
+        lapIndex={activeLap}
+        streams={streams}
+        ftp={ftp}
+        bikeZones={bikeZones}
+        hrZones={hrZones}
+        sport={props.sport}
+      />
+    )
+  }
 
   return createPortal(
     <>

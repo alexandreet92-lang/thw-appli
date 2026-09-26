@@ -77,6 +77,16 @@ function extractPoints(activity: Record<string, unknown>): LatLng[] | null {
     return decodePolyline(encoded)
   }
 
+  // Cas 4 : flux latlng des streams (piste / boucles sans summary_polyline).
+  const streams = (activity.streams ?? (rawData?.streams)) as { latlng?: number[][] } | null | undefined
+  const ll = streams?.latlng
+  if (Array.isArray(ll) && ll.length > 1) {
+    const pts = ll
+      .filter(p => Array.isArray(p) && p.length >= 2 && Number.isFinite(p[0]) && Number.isFinite(p[1]))
+      .map(p => ({ lat: p[0], lng: p[1] }))
+    if (pts.length > 1) return pts as LatLng[]
+  }
+
   return null
 }
 
@@ -89,9 +99,12 @@ interface Props {
   hoverGps?: { lat: number; lng: number } | null
   mobileHero?: boolean
   bottomInset?: number
+  // fill : la carte remplit tout son conteneur (hauteur 100%) au lieu des 220px
+  // fixes du bureau — pour un conteneur au ratio imposé (colonne portrait).
+  fill?: boolean
 }
 
-export function ActivityMapCard({ activity, isMobile = false, expanded = false, onToggle, hoverGps, mobileHero = false, bottomInset = 0 }: Props) {
+export function ActivityMapCard({ activity, isMobile = false, expanded = false, onToggle, hoverGps, mobileHero = false, bottomInset = 0, fill = false }: Props) {
   const [layer,           setLayer]           = useState<LayerId>('std')
   const [mobileFullscreen, setMobileFullscreen] = useState(false)
 
@@ -146,6 +159,17 @@ export function ActivityMapCard({ activity, isMobile = false, expanded = false, 
       boxShadow: '0 8px 40px rgba(0,0,0,0.25)',
       zIndex: 1,
       transition: 'height 300ms ease',
+    }
+  } else if (fill) {
+    // Bureau, conteneur à ratio imposé : la carte remplit tout l'espace.
+    cardStyle = {
+      position: 'relative',
+      width: '100%',
+      height: '100%',
+      borderRadius: 12,
+      overflow: 'hidden',
+      boxShadow: '0 4px 24px rgba(0,0,0,0.15)',
+      zIndex: 1,
     }
   } else {
     // Desktop normal

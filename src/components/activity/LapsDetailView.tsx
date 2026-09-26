@@ -52,7 +52,10 @@ export interface LapsDetailViewProps {
   // centered : sur-page centrée à l'écran (bureau) au lieu du bottom-sheet.
   centered?:       boolean
   // renderLapCurves : courbes multi-bandes du segment du lap (bas de la carte).
-  renderLapCurves?: (lapIndex: number) => ReactNode
+  renderLapCurves?: (lap: LapData) => ReactNode
+  // overrideLap : segment synthétique (km / 30 min) à afficher au lieu d'un tour.
+  overrideLap?: LapData | null
+  detailTitle?: string | null
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -350,7 +353,7 @@ function DetailRow({ label, value }: { label: string; value: string }) {
   )
 }
 
-function LapDetailsSheet({ open, onClose, lap, lapIndex, streams, ftp, bikeZones, hrZones, sport, centered = false, renderCurves }: {
+function LapDetailsSheet({ open, onClose, lap, lapIndex, streams, ftp, bikeZones, hrZones, sport, centered = false, titleOverride, renderCurves }: {
   open:      boolean
   onClose:   () => void
   lap:       LapData
@@ -361,6 +364,7 @@ function LapDetailsSheet({ open, onClose, lap, lapIndex, streams, ftp, bikeZones
   hrZones:   ParsedZone[] | null
   sport:     Sport
   centered?: boolean
+  titleOverride?: string
   renderCurves?: ReactNode
 }) {
   const { t } = useI18n()
@@ -506,7 +510,7 @@ function LapDetailsSheet({ open, onClose, lap, lapIndex, streams, ftp, bikeZones
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16, padding: '0 4px' }}>
           <div>
-            <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)' }}>{t('activities.lapDetailsTitle', { n: lapIndex + 1 })}</div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)' }}>{titleOverride ?? t('activities.lapDetailsTitle', { n: lapIndex + 1 })}</div>
             <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 2, fontVariantNumeric: 'tabular-nums' }}>
               {fmtKm(lap.distance_m)} · {fmtDur(lap.moving_time_s)}
               {isRun ? ` · ${formatPace(avgPaceMin)}/km` : ` · ${powerZoneLabel(lap.avg_watts, ftp)}`}
@@ -718,11 +722,12 @@ export function LapsDetailView(props: LapsDetailViewProps) {
   // Mode « carte détail directe » : on n'affiche QUE la sur-page détail du tour
   // cliqué (image 4), sans la vue d'ensemble à barres (image 3).
   if (props.detailOnly) {
+    const theLap = props.overrideLap ?? aLap
     return (
       <LapDetailsSheet
         open={open}
         onClose={onClose}
-        lap={aLap}
+        lap={theLap}
         lapIndex={activeLap}
         streams={streams}
         ftp={ftp}
@@ -730,7 +735,8 @@ export function LapsDetailView(props: LapsDetailViewProps) {
         hrZones={hrZones}
         sport={props.sport}
         centered={props.centered}
-        renderCurves={props.renderLapCurves?.(activeLap)}
+        titleOverride={props.detailTitle ?? undefined}
+        renderCurves={props.renderLapCurves?.(theLap)}
       />
     )
   }
@@ -1070,7 +1076,7 @@ export function LapsDetailView(props: LapsDetailViewProps) {
         hrZones={hrZones}
         sport={isRun ? 'running' : 'cycling'}
         centered={props.centered}
-        renderCurves={props.renderLapCurves?.(activeLap)}
+        renderCurves={props.renderLapCurves?.(aLap)}
       />
     </>,
     document.body,

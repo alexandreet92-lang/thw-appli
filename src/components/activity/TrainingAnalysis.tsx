@@ -47,16 +47,22 @@ interface LapData {
 interface PaceZone { label: string; color: string; min: number; max: number }
 
 type Mode   = 'km' | 'laps' | 'smooth'
-type Metric = 'pace' | 'vap'
+type Metric = 'pace' | 'vap'   // run : allure / VAP ; vélo : watts / watts normalisés
+type Sport  = 'run' | 'bike'
 
 interface Split {
-  label:     string    // "1", "2"… (km) ou "1", "2"… (tour)
+  label:     string    // "1", "2"…
   distM:     number
   durS:      number
   startDist: number
   endDist:   number
+  spanM:     number    // distance « théorique » du segment (km rond) pour l'affichage
+  sampleStart: number  // index d'échantillon (pour ouvrir le détail du segment)
+  sampleEnd: number
   speedMs:   number    // vitesse plate moyenne (allure)
   vapMs:     number    // vitesse ajustée pente moyenne (VAP)
+  watts:     number    // puissance moyenne (vélo)
+  normWatts: number    // puissance normalisée (vélo)
   dPlus:     number
   avgHr:     number | null
   avgTemp:   number | null
@@ -68,6 +74,7 @@ interface SmoothSample {
   dist:     number
   speedMs:  number
   vapMs:    number
+  watts:    number
   alt:      number
   time:     number
   dPlusCum: number
@@ -127,13 +134,16 @@ function movingAvgIgnore(arr: number[], half: number, minVal: number): number[] 
 }
 
 // ── Calcul de tout le jeu de données depuis les streams + laps ──────────
-function useAnalysisData(streams: StreamData | null, laps: LapData[], zones: PaceZone[] | null | undefined) {
+const BIKE_SPLIT_SECONDS = 1800   // vélo : « temps intermédiaires » toutes les 30 min
+
+function useAnalysisData(streams: StreamData | null, laps: LapData[], zones: PaceZone[] | null | undefined, sport: Sport) {
   return useMemo(() => {
     const velocity = streams?.velocity ?? null
     const altitude = streams?.altitude ?? null
     const hr       = streams?.heartrate ?? null
     const temp     = streams?.temp ?? null
     const time     = streams?.time ?? null
+    const watts    = streams?.watts ?? null
     if (!velocity || velocity.length < 2) {
       return null
     }
@@ -152,9 +162,21 @@ function useAnalysisData(streams: StreamData | null, laps: LapData[], zones: Pac
     }
     const totalDist = dist[N - 1] ?? 0
 
-    // ── Splits par km ────────────────────────────────────────────────
+    // ── Splits « intermédiaires » : par km (course) ou par 30 min (vélo) ──
     const kmSplits: Split[] = []
-    {
+    if (sport === 'bike' && time && time.length === N) {
+      const t0 = time[0] ?? 0
+      const totalT = (time[N - 1] ?? 0) - t0
+      const nSeg = Math.max(1, Math.ceil(totalT / BIKE_SPLIT_SECONDS))
+      for (let k = 0; k < nSeg; k++) {
+        const tStart = t0 + k * BIKE_SPLIT_SECONDS
+        const tEnd = t0 + Math.min((k + 1) * BIKE_SPLIT_SECONDS, totalT)
+        let i0 = 0, i1 = N - 1
+        for (let i = 0; i < N; i++) { if ((time[i] ?? 0) >= tStart) { i0 = i; break } }
+        for (let i = i0; i < N; i++) { if ((time[i] ?? 0) >= tEnd) { i1 = i; break }; i1 = i }
+        kmSplits.push(buildSplit(String(k + 1), i0, i1, dist, velocity, vapKmh, watts, alt, hr, temp, dtAt, zones, laps))
+      }
+    } else {
       const nKm = Math.max(1, Math.ceil(totalDist / 1000))
       for (let k = 0; k < nKm; k++) {
         const dStart = k * 1000
@@ -162,7 +184,7 @@ function useAnalysisData(streams: StreamData | null, laps: LapData[], zones: Pac
         let i0 = 0, i1 = N - 1
         for (let i = 0; i < N; i++) { if (dist[i] >= dStart) { i0 = i; break } }
         for (let i = i0; i < N; i++) { if (dist[i] >= dEnd) { i1 = i; break }; i1 = i }
-        kmSplits.push(buildSplit(String(k + 1), i0, i1, dist, velocity, vapKmh, alt, hr, temp, dtAt, zones, laps))
+        kmSplits.push(buildSplit(String(k + 1), i0, i1, dist, velocity, vapKmh, watts, alt, hr, temp, dtAt, zones, laps, dEnd - dStart))
       }
     }
 
@@ -170,13 +192,14 @@ function useAnalysisData(streams: StreamData | null, laps: LapData[], zones: Pac
     const lapSplits: Split[] = laps.map((lap, li) => {
       const i0 = lap.start_index ?? 0
       const i1 = lap.end_index ?? (li < laps.length - 1 ? (laps[li + 1].start_index ?? N - 1) : N - 1)
-      const sp = buildSplit(String(li + 1), Math.min(i0, N - 1), Math.min(i1, N - 1), dist, velocity, vapKmh, alt, hr, temp, dtAt, zones, laps)
+      const sp = buildSplit(String(li + 1), Math.min(i0, N - 1), Math.min(i1, N - 1), dist, velocity, vapKmh, watts, alt, hr, temp, dtAt, zones, laps)
       // Préfère les valeurs officielles du tour quand présentes.
       if (lap.avg_speed_ms && lap.avg_speed_ms > 0) sp.speedMs = lap.avg_speed_ms
       else if (lap.distance_m > 0 && lap.moving_time_s > 0) sp.speedMs = lap.distance_m / lap.moving_time_s
       if (lap.moving_time_s > 0) sp.durS = lap.moving_time_s
-      if (lap.distance_m > 0) sp.distM = lap.distance_m
+      if (lap.distance_m > 0) { sp.distM = lap.distance_m; sp.spanM = lap.distance_m }
       if (lap.avg_hr != null) sp.avgHr = lap.avg_hr
+      if (lap.avg_watts != null) sp.watts = lap.avg_watts
       if (lap.elevation_gain_m != null) sp.dPlus = lap.elevation_gain_m
       sp.zone = zoneIndex(sp.speedMs, zones)
       sp.lapIndex = li
@@ -189,6 +212,7 @@ function useAnalysisData(streams: StreamData | null, laps: LapData[], zones: Pac
     const W = Math.max(10, Math.min(45, Math.round(N / 120)))
     const velSmooth = movingAvgIgnore(velocity, W, 0.3)
     const vapSmooth = movingAvgIgnore(vapKmh, W, 1)
+    const wattSmooth = watts ? movingAvgIgnore(watts, W, 0) : null
     const target = 240
     const step = Math.max(1, Math.floor(N / target))
     const smooth: SmoothSample[] = []
@@ -204,6 +228,7 @@ function useAnalysisData(streams: StreamData | null, laps: LapData[], zones: Pac
         dist: dist[i],
         speedMs: velSmooth[i] > 0 ? velSmooth[i] : 0,
         vapMs: (vapSmooth[i] ?? 0) / 3.6,
+        watts: wattSmooth ? Math.max(0, wattSmooth[i]) : 0,
         alt: alt ? alt[i] : 0,
         time: time && time.length === N ? time[i] : i,
         dPlusCum,
@@ -215,24 +240,39 @@ function useAnalysisData(streams: StreamData | null, laps: LapData[], zones: Pac
     const avgSpeed = movingV.length ? movingV.reduce((a, b) => a + b, 0) / movingV.length : 0
     const movingVap = vapKmh.filter(v => v > 1)
     const avgVap = movingVap.length ? (movingVap.reduce((a, b) => a + b, 0) / movingVap.length) / 3.6 : 0
+    const movingW = watts ? watts.filter(w => w > 0) : []
+    const avgWatts = movingW.length ? movingW.reduce((a, b) => a + b, 0) / movingW.length : 0
+    const avgNorm = watts ? (computeNp(watts) || avgWatts) : 0
 
     const hasAlt = !!alt
 
     return {
       kmSplits, lapSplits, smooth, totalDist,
-      avgSpeed, avgVap, hasAlt,
+      avgSpeed, avgVap, avgWatts, avgNorm, hasAlt,
       altMin: alt ? Math.min(...alt) : 0,
       altMax: alt ? Math.max(...alt) : 0,
     }
-  }, [streams, laps, zones])
+  }, [streams, laps, zones, sport])
+}
+
+// Puissance normalisée (NP) sur une tranche : rolling 30 s, moyenne des ^4, ^0,25.
+function computeNp(w: number[]): number {
+  const nz = w.filter(x => x > 0)
+  if (w.length < 30) return nz.length ? nz.reduce((a, b) => a + b, 0) / nz.length : 0
+  const roll: number[] = []
+  for (let i = 29; i < w.length; i++) { let s = 0; for (let j = i - 29; j <= i; j++) s += w[j]; roll.push(s / 30) }
+  if (!roll.length) return nz.length ? nz.reduce((a, b) => a + b, 0) / nz.length : 0
+  const m4 = roll.reduce((a, b) => a + Math.pow(b, 4), 0) / roll.length
+  return Math.pow(m4, 0.25)
 }
 
 function buildSplit(
   label: string, i0: number, i1: number,
-  dist: number[], velocity: number[], vapKmh: number[],
+  dist: number[], velocity: number[], vapKmh: number[], watts: number[] | null,
   alt: number[] | null, hr: number[] | null, temp: number[] | null,
-  dtAt: (i: number) => number, zones: PaceZone[] | null | undefined, laps: LapData[],
+  dtAt: (i: number) => number, zones: PaceZone[] | null | undefined, laps: LapData[], spanM?: number,
 ): Split {
+  void velocity
   const a = Math.max(0, Math.min(i0, i1)), b = Math.max(i0, i1)
   const distM = Math.max(0, (dist[b] ?? 0) - (dist[a] ?? 0))
   let durS = 0
@@ -242,6 +282,11 @@ function buildSplit(
   let vSum = 0, vN = 0
   for (let i = a; i <= b; i++) { const v = vapKmh[i]; if (v > 1) { vSum += v; vN++ } }
   const vapMs = vN ? (vSum / vN) / 3.6 : speedMs
+  // Watts moyen + normalisé
+  let wSum = 0, wN = 0; const wSlice: number[] = []
+  if (watts) for (let i = a; i <= b; i++) { const w = watts[i]; if (w != null) { wSlice.push(w); if (w > 0) { wSum += w; wN++ } } }
+  const wattsAvg = wN ? wSum / wN : 0
+  const normWatts = watts ? (computeNp(wSlice) || wattsAvg) : 0
   // D+ cumulé positif
   let dPlus = 0
   if (alt) for (let i = a + 1; i <= b; i++) { const d = alt[i] - alt[i - 1]; if (d > 0) dPlus += d }
@@ -263,7 +308,8 @@ function buildSplit(
   }
   return {
     label, distM, durS, startDist: dist[a] ?? 0, endDist: dist[b] ?? 0,
-    speedMs, vapMs, dPlus, avgHr, avgTemp,
+    spanM: spanM ?? distM, sampleStart: a, sampleEnd: b,
+    speedMs, vapMs, watts: wattsAvg, normWatts, dPlus, avgHr, avgTemp,
     zone: zoneIndex(speedMs, zones), lapIndex,
   }
 }
@@ -271,20 +317,28 @@ function buildSplit(
 // ══════════════════════════════════════════════════════════════════
 // Composant principal
 // ══════════════════════════════════════════════════════════════════
+export interface SegmentTapInfo {
+  label: string; startIndex: number; endIndex: number
+  distanceM: number; durationS: number
+  avgHr: number | null; avgSpeedMs: number; avgWatts: number; dPlus: number
+}
+
 interface Props {
   streams:        StreamData | null
   laps:           LapData[] | null
   activityId:     string
   totalDurationS: number | null
+  sport?:         Sport
   paceZones?:     PaceZone[] | null
   onLapTap?:      (lapIndex: number) => void
+  onSegmentTap?:  (seg: SegmentTapInfo) => void     // clic sur un segment km / 30 min → détail du segment
   onHoverRatio?:  (ratio: number | null) => void   // 0..1 le long de l'activité → point rouge carte
   kpiNode?:       ReactNode
   mapNode?:       ReactNode
   feelingNode?:   ReactNode
 }
 
-export function TrainingAnalysis({ streams, laps: lapsProp, activityId, totalDurationS, paceZones, onLapTap, onHoverRatio, kpiNode, mapNode, feelingNode }: Props) {
+export function TrainingAnalysis({ streams, laps: lapsProp, activityId, totalDurationS, sport = 'run', paceZones, onLapTap, onSegmentTap, onHoverRatio, kpiNode, mapNode, feelingNode }: Props) {
   const { t } = useI18n()
   const [mode, setMode]     = useState<Mode>('km')
   const [metric, setMetric] = useState<Metric>('pace')
@@ -306,7 +360,7 @@ export function TrainingAnalysis({ streams, laps: lapsProp, activityId, totalDur
   // Si le mode courant devient indisponible (pas de tours), rebascule.
   useEffect(() => { if (mode === 'laps' && !hasLaps) setMode('km') }, [mode, hasLaps])
 
-  const data = useAnalysisData(streams, laps, paceZones)
+  const data = useAnalysisData(streams, laps, paceZones, sport)
 
   const splits = mode === 'laps' ? (data?.lapSplits ?? []) : (data?.kmSplits ?? [])
 
@@ -327,7 +381,17 @@ export function TrainingAnalysis({ streams, laps: lapsProp, activityId, totalDur
     if (!sp || data.totalDist <= 0) return 0
     return Math.max(0, Math.min(1, ((sp.startDist + sp.endDist) / 2) / data.totalDist))
   }
-  const onTap = hasLaps && onLapTap ? (sp: Split) => onLapTap(sp.lapIndex) : undefined
+  // Clic : mode Tours → détail du tour ; mode km/30 min → détail du segment.
+  const onTap = (sp: Split) => {
+    if (mode === 'laps' && hasLaps && onLapTap) onLapTap(sp.lapIndex)
+    else if (onSegmentTap) onSegmentTap({
+      label: sp.label, startIndex: sp.sampleStart, endIndex: sp.sampleEnd,
+      distanceM: sp.spanM, durationS: sp.durS,
+      avgHr: sp.avgHr, avgSpeedMs: sp.speedMs, avgWatts: sp.watts, dPlus: sp.dPlus,
+    })
+  }
+  const tapEnabled = (mode === 'laps' && hasLaps && !!onLapTap) || (mode !== 'laps' && !!onSegmentTap)
+  const onTapProp = tapEnabled ? onTap : undefined
 
   return (
     <div>
@@ -341,13 +405,13 @@ export function TrainingAnalysis({ streams, laps: lapsProp, activityId, totalDur
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14, minWidth: 0 }}>
           {kpiNode}
           {feelingNode}
-          <AnalysisGraph data={data} splits={splits} mode={mode} metric={metric} accent={accent} ramp={ramp} totalDurationS={totalDurationS}
-            onTap={onTap} hovered={hovered} setHovered={setHovered} onHoverRatio={onHoverRatio} ratioOf={ratioOf} t={t} />
-          <AnalysisControls mode={mode} metric={metric} hasLaps={hasLaps} onMode={setMode} onMetric={setMetric} t={t} />
+          <AnalysisGraph data={data} splits={splits} mode={mode} metric={metric} sport={sport} accent={accent} ramp={ramp} totalDurationS={totalDurationS}
+            onTap={onTapProp} hovered={hovered} setHovered={setHovered} onHoverRatio={onHoverRatio} ratioOf={ratioOf} t={t} />
+          <AnalysisControls mode={mode} metric={metric} sport={sport} hasLaps={hasLaps} onMode={setMode} onMetric={setMetric} t={t} />
         </div>
         {/* DROITE : tableau | carte (à droite) côte à côte */}
         <div className="thw-ta-rt" style={{ display: 'grid', gridTemplateColumns: '1fr minmax(220px, 1fr)', gap: 16, alignItems: 'start', minWidth: 0 }}>
-          <AnalysisTable splits={splits} mode={mode} hovered={hovered} setHovered={setHovered} onTap={onTap} onHoverRatio={onHoverRatio} ratioOf={ratioOf} t={t} />
+          <AnalysisTable splits={splits} mode={mode} sport={sport} hovered={hovered} setHovered={setHovered} onTap={onTapProp} onHoverRatio={onHoverRatio} ratioOf={ratioOf} t={t} />
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12, minWidth: 0 }}>
             {mapNode}
           </div>
@@ -358,8 +422,8 @@ export function TrainingAnalysis({ streams, laps: lapsProp, activityId, totalDur
 }
 
 // ── 5 boutons ───────────────────────────────────────────────────────────
-function AnalysisControls({ mode, metric, hasLaps, onMode, onMetric, t }: {
-  mode: Mode; metric: Metric; hasLaps: boolean
+function AnalysisControls({ mode, metric, sport, hasLaps, onMode, onMetric, t }: {
+  mode: Mode; metric: Metric; sport: Sport; hasLaps: boolean
   onMode: (m: Mode) => void; onMetric: (m: Metric) => void
   t: (k: string) => string
 }) {
@@ -371,18 +435,20 @@ function AnalysisControls({ mode, metric, hasLaps, onMode, onMetric, t }: {
     fontFamily: 'inherit', transition: 'all .15s ease', whiteSpace: 'nowrap',
   })
   const modes: { k: Mode; label: string }[] = [
-    { k: 'km',     label: t('actp.splits_time') },
+    { k: 'km',     label: sport === 'bike' ? t('actp.splits_time_bike') : t('actp.splits_time') },
     ...(hasLaps ? [{ k: 'laps' as Mode, label: t('actp.laps') }] : []),
     { k: 'smooth', label: t('actp.smoothed') },
   ]
+  const m1 = sport === 'bike' ? t('actp.watts') : t('actp.pace')
+  const m2 = sport === 'bike' ? t('actp.norm_watts') : 'VAP'
   return (
     <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'center', marginTop: 2 }}>
       <div style={{ display: 'flex', gap: 6 }}>
         {modes.map(m => <button key={m.k} onClick={() => onMode(m.k)} style={seg(mode === m.k)}>{m.label}</button>)}
       </div>
       <div style={{ display: 'flex', gap: 6 }}>
-        <button onClick={() => onMetric('pace')} style={seg(metric === 'pace')}>{t('actp.pace')}</button>
-        <button onClick={() => onMetric('vap')} style={seg(metric === 'vap')}>VAP</button>
+        <button onClick={() => onMetric('pace')} style={seg(metric === 'pace')}>{m1}</button>
+        <button onClick={() => onMetric('vap')} style={seg(metric === 'vap')}>{m2}</button>
       </div>
     </div>
   )
@@ -393,35 +459,58 @@ function AnalysisControls({ mode, metric, hasLaps, onMode, onMetric, t }: {
 // ══════════════════════════════════════════════════════════════════
 type AData = NonNullable<ReturnType<typeof useAnalysisData>>
 
-function speedOf(sp: Split, metric: Metric): number { return metric === 'pace' ? sp.speedMs : sp.vapMs }
-function smoothSpeed(s: SmoothSample, metric: Metric): number { return metric === 'pace' ? s.speedMs : s.vapMs }
+// Valeur tracée : course → vitesse (allure/VAP) ; vélo → puissance (watts/NP).
+function speedOf(sp: Split, metric: Metric, sport: Sport): number {
+  if (sport === 'bike') return metric === 'pace' ? sp.watts : sp.normWatts
+  return metric === 'pace' ? sp.speedMs : sp.vapMs
+}
+function smoothSpeed(s: SmoothSample, metric: Metric, sport: Sport): number {
+  if (sport === 'bike') return s.watts
+  return metric === 'pace' ? s.speedMs : s.vapMs
+}
+// Formatage d'une valeur tracée en libellé (allure "/km" ou puissance "W").
+function valStr(v: number, sport: Sport): string {
+  return sport === 'bike' ? `${Math.round(v)} W` : `${paceStr(v)}/km`
+}
 
 // Géométrie partagée courbe / jauges.
-function computeGeom(data: AData, splits: Split[], metric: Metric, chartH: number, vbw = 1000) {
+function computeGeom(data: AData, splits: Split[], metric: Metric, sport: Sport, chartH: number, vbw = 1000) {
   const VBW = vbw, PAD_L = 46, PAD_R = 64, PAD_T = 16, PAD_B = 24
   const innerW = VBW - PAD_L - PAD_R
   const baseY = PAD_T + chartH
-  const speeds = splits.map(s => speedOf(s, metric)).filter(s => s > 0)
-  const smoothSpeeds = data.smooth.map(s => smoothSpeed(s, metric)).filter(s => s > 0)
+  const speeds = splits.map(s => speedOf(s, metric, sport)).filter(s => s > 0)
+  const smoothSpeeds = data.smooth.map(s => smoothSpeed(s, metric, sport)).filter(s => s > 0)
   const allSpeeds = speeds.concat(smoothSpeeds)
   const maxSpeed = allSpeeds.length ? Math.max(...allSpeeds) : 1
   const minSpeed = allSpeeds.length ? Math.min(...allSpeeds) : 0
-  // ── Échelle Y en ALLURE (min/km) → lignes rondes (8:00, 7:00 … 2:00) ──
-  // Rapide (petite allure) en haut, lent (grande allure) en bas.
-  const fastestPace = maxSpeed > 0 ? 1000 / maxSpeed / 60 : 6
-  const slowestPace = minSpeed > 0 ? 1000 / minSpeed / 60 : 8
-  const paceTop = Math.max(2, Math.floor(fastestPace))              // haut = rapide
-  let paceBottom = Math.min(9, Math.max(paceTop + 3, Math.ceil(slowestPace))) // bas = lent (borné 9:00)
-  if (paceBottom - paceTop < 3) paceBottom = paceTop + 3           // au moins 3 paliers
-  const paceSpan = paceBottom - paceTop || 1
-  const yOfPace = (p: number) => PAD_T + ((Math.max(paceTop, Math.min(paceBottom, p)) - paceTop) / paceSpan) * chartH
-  const yOf = (sp: number) => sp > 0 ? yOfPace(1000 / sp / 60) : baseY
+
+  let yOf: (v: number) => number
+  const yTicks: { y: number; label: string }[] = []
+  if (sport === 'bike') {
+    // ── Échelle Y en WATTS → lignes rondes, forte puissance en haut ──
+    const maxY = (maxSpeed * 1.08) || 1
+    yOf = (w: number) => w > 0 ? PAD_T + chartH - (Math.min(w, maxY) / maxY) * chartH : baseY
+    const step = Math.max(25, Math.ceil((maxY / 6) / 25) * 25)
+    for (let w = step; w <= maxY; w += step) yTicks.push({ y: yOf(w), label: `${w} W` })
+  } else {
+    // ── Échelle Y en ALLURE (min/km) → lignes rondes (8:00 … 2:00) ──
+    const fastestPace = maxSpeed > 0 ? 1000 / maxSpeed / 60 : 6
+    const slowestPace = minSpeed > 0 ? 1000 / minSpeed / 60 : 8
+    const paceTop = Math.max(2, Math.floor(fastestPace))
+    let paceBottom = Math.min(9, Math.max(paceTop + 3, Math.ceil(slowestPace)))
+    if (paceBottom - paceTop < 3) paceBottom = paceTop + 3
+    const paceSpan = paceBottom - paceTop || 1
+    const yOfPace = (p: number) => PAD_T + ((Math.max(paceTop, Math.min(paceBottom, p)) - paceTop) / paceSpan) * chartH
+    yOf = (sp: number) => sp > 0 ? yOfPace(1000 / sp / 60) : baseY
+    for (let m = paceTop; m <= paceBottom; m++) yTicks.push({ y: yOfPace(m), label: `${m}:00` })
+  }
+
   const xOf = (dist: number) => PAD_L + (data.totalDist > 0 ? dist / data.totalDist : 0) * innerW
   // Altitude compressée sur la bande basse (50 % → base).
   const altTop = PAD_T + chartH * 0.5
   const altSpan = Math.max(1, data.altMax - data.altMin)
   const altYOf = (alt: number) => baseY - ((alt - data.altMin) / altSpan) * (baseY - altTop)
-  return { VBW, PAD_L, PAD_R, PAD_T, PAD_B, innerW, baseY, chartH, maxSpeed, minSpeed, paceTop, paceBottom, yOfPace, yOf, xOf, altTop, altSpan, altYOf }
+  return { VBW, PAD_L, PAD_R, PAD_T, PAD_B, innerW, baseY, chartH, maxSpeed, minSpeed, yTicks, yOf, xOf, altTop, altSpan, altYOf }
 }
 
 function altitudePath(data: AData, g: ReturnType<typeof computeGeom>): string {
@@ -440,13 +529,6 @@ function xAxisTicks(data: AData, g: ReturnType<typeof computeGeom>): { x: number
   return out
 }
 
-function yPaceTicks(g: ReturnType<typeof computeGeom>): { y: number; label: string }[] {
-  const out: { y: number; label: string }[] = []
-  for (let m = g.paceTop; m <= g.paceBottom; m++) {
-    out.push({ y: g.yOfPace(m), label: `${m}:00` })
-  }
-  return out
-}
 function yAltTicks(data: AData, g: ReturnType<typeof computeGeom>): { y: number; label: string }[] {
   if (!data.hasAlt) return []
   const out: { y: number; label: string }[] = []
@@ -460,20 +542,21 @@ function yAltTicks(data: AData, g: ReturnType<typeof computeGeom>): { y: number;
   return out.slice(0, 4)
 }
 
-// Largeurs de barres : km → ∝ distance ; tours → ∝ durée.
-function barWidths(splits: Split[], g: ReturnType<typeof computeGeom>, mode: Mode): number[] {
-  const key = mode === 'laps' ? (s: Split) => Math.max(0.1, s.durS) : (s: Split) => Math.max(0.1, s.distM)
+// Largeurs de barres : course km → ∝ distance ; tours & vélo → ∝ durée.
+function barWidths(splits: Split[], g: ReturnType<typeof computeGeom>, mode: Mode, sport: Sport): number[] {
+  const byTime = mode === 'laps' || sport === 'bike'
+  const key = byTime ? (s: Split) => Math.max(0.1, s.durS) : (s: Split) => Math.max(0.1, s.distM)
   const total = splits.reduce((a, s) => a + key(s), 0) || 1
   return splits.map(s => (key(s) / total) * g.innerW)
 }
 
-function SmoothArea({ data, g, metric, accent }: { data: AData; g: ReturnType<typeof computeGeom>; metric: Metric; accent: string }) {
-  const pts = data.smooth.filter(s => smoothSpeed(s, metric) > 0)
+function SmoothArea({ data, g, metric, sport, accent }: { data: AData; g: ReturnType<typeof computeGeom>; metric: Metric; sport: Sport; accent: string }) {
+  const pts = data.smooth.filter(s => smoothSpeed(s, metric, sport) > 0)
   if (pts.length < 2) return null
   let line = ''
-  pts.forEach((s, i) => { line += `${i === 0 ? 'M' : 'L'} ${g.xOf(s.dist).toFixed(1)} ${g.yOf(smoothSpeed(s, metric)).toFixed(1)} ` })
+  pts.forEach((s, i) => { line += `${i === 0 ? 'M' : 'L'} ${g.xOf(s.dist).toFixed(1)} ${g.yOf(smoothSpeed(s, metric, sport)).toFixed(1)} ` })
   const area = `M ${g.xOf(pts[0].dist).toFixed(1)} ${g.baseY} ` +
-    pts.map(s => `L ${g.xOf(s.dist).toFixed(1)} ${g.yOf(smoothSpeed(s, metric)).toFixed(1)}`).join(' ') +
+    pts.map(s => `L ${g.xOf(s.dist).toFixed(1)} ${g.yOf(smoothSpeed(s, metric, sport)).toFixed(1)}`).join(' ') +
     ` L ${g.xOf(pts[pts.length - 1].dist).toFixed(1)} ${g.baseY} Z`
   return (
     <g key={'sm' + metric} style={{ animation: 'thwTaRise .45s cubic-bezier(.22,1,.36,1)' }}>
@@ -483,17 +566,19 @@ function SmoothArea({ data, g, metric, accent }: { data: AData; g: ReturnType<ty
   )
 }
 
-function MarkerTicks({ data, g, splits, metric, accent, fastIdx, slowIdx, avgSpeed, t }: {
-  data: AData; g: ReturnType<typeof computeGeom>; splits: Split[]; metric: Metric
+function MarkerTicks({ data, g, splits, metric, sport, accent, fastIdx, slowIdx, avgSpeed, t }: {
+  data: AData; g: ReturnType<typeof computeGeom>; splits: Split[]; metric: Metric; sport: Sport
   accent: string; fastIdx: number; slowIdx: number; avgSpeed: number; t: (k: string) => string
 }) {
   void data
   const x = g.VBW - g.PAD_R
   const fast = splits[fastIdx], slow = splits[slowIdx]
+  const fastLabel = sport === 'bike' ? t('actp.strongest') : t('actp.fastest_km')
+  const slowLabel = sport === 'bike' ? t('actp.weakest') : t('actp.slowest_km')
   const rows: { y: number; val: string; label: string; c: string }[] = []
-  if (fast) rows.push({ y: g.yOf(speedOf(fast, metric)), val: paceStr(speedOf(fast, metric)), label: t('actp.fastest_km'), c: accent })
-  rows.push({ y: g.yOf(avgSpeed), val: paceStr(avgSpeed), label: t('actp.average_short'), c: 'var(--text-mid)' })
-  if (slow) rows.push({ y: g.yOf(speedOf(slow, metric)), val: paceStr(speedOf(slow, metric)), label: t('actp.slowest_km'), c: 'var(--text-dim)' })
+  if (fast) rows.push({ y: g.yOf(speedOf(fast, metric, sport)), val: valStr(speedOf(fast, metric, sport), sport), label: fastLabel, c: accent })
+  rows.push({ y: g.yOf(avgSpeed), val: valStr(avgSpeed, sport), label: t('actp.average_short'), c: 'var(--text-mid)' })
+  if (slow) rows.push({ y: g.yOf(speedOf(slow, metric, sport)), val: valStr(speedOf(slow, metric, sport), sport), label: slowLabel, c: 'var(--text-dim)' })
   return (
     <g>
       {rows.map((r, i) => (
@@ -537,37 +622,52 @@ function TT({ l, v, c }: { l: string; v: string; c?: string }) {
     </div>
   )
 }
-function KmTooltip({ sp, metric, t }: { sp: Split; metric: Metric; t: (k: string) => string }) {
-  void metric
+function KmTooltip({ sp, sport, t }: { sp: Split; sport: Sport; t: (k: string) => string }) {
+  const label = sport === 'bike' ? t('actp.splits_seg_label') : t('actp.km_label')
   return (
     <>
-      <div style={{ fontWeight: 700, marginBottom: 4 }}>{t('actp.km_label')} {sp.label}</div>
-      <TT l={t('actp.pace')} v={`${paceStr(sp.speedMs)}/km`} />
-      <TT l="VAP" v={`${paceStr(sp.vapMs)}/km`} />
-      <TT l={t('actp.hr_short')} v={sp.avgHr != null ? `${Math.round(sp.avgHr)} bpm` : '—'} />
-      <TT l="D+" v={`${Math.round(sp.dPlus)} m`} />
-      <TT l="Zone" v={sp.zone != null ? `Z${sp.zone + 1}` : '—'} c="var(--primary)" />
+      <div style={{ fontWeight: 700, marginBottom: 4 }}>{label} {sp.label}</div>
+      {sport === 'bike' ? (
+        <>
+          <TT l={t('actp.watts')} v={`${Math.round(sp.watts)} W`} />
+          <TT l={t('actp.norm_watts')} v={`${Math.round(sp.normWatts)} W`} />
+          <TT l={t('actp.hr_short')} v={sp.avgHr != null ? `${Math.round(sp.avgHr)} bpm` : '—'} />
+          <TT l="D+" v={`${Math.round(sp.dPlus)} m`} />
+        </>
+      ) : (
+        <>
+          <TT l={t('actp.pace')} v={`${paceStr(sp.speedMs)}/km`} />
+          <TT l="VAP" v={`${paceStr(sp.vapMs)}/km`} />
+          <TT l={t('actp.hr_short')} v={sp.avgHr != null ? `${Math.round(sp.avgHr)} bpm` : '—'} />
+          <TT l="D+" v={`${Math.round(sp.dPlus)} m`} />
+          <TT l="Zone" v={sp.zone != null ? `Z${sp.zone + 1}` : '—'} c="var(--primary)" />
+        </>
+      )}
     </>
   )
 }
-function LapTooltip({ sp, t }: { sp: Split; t: (k: string) => string }) {
+function LapTooltip({ sp, sport, t }: { sp: Split; sport: Sport; t: (k: string) => string }) {
   return (
     <>
       <div style={{ fontWeight: 700, marginBottom: 4 }}>{t('actp.lap_label')} {sp.label}</div>
       <TT l={t('actp.duration')} v={fmtDurShort(sp.durS)} />
       <TT l={t('actp.distance')} v={fmtDistKm(sp.distM)} />
-      <TT l={t('actp.pace')} v={`${paceStr(sp.speedMs)}/km`} />
+      {sport === 'bike'
+        ? <TT l={t('actp.watts')} v={`${Math.round(sp.watts)} W`} />
+        : <TT l={t('actp.pace')} v={`${paceStr(sp.speedMs)}/km`} />}
       <TT l={t('actp.hr_short')} v={sp.avgHr != null ? `${Math.round(sp.avgHr)} bpm` : '—'} />
       <TT l="D+" v={`${Math.round(sp.dPlus)} m`} />
     </>
   )
 }
-function SmoothTooltip({ s, metric, totalDurationS, t }: { s: SmoothSample; metric: Metric; totalDurationS: number | null; t: (k: string) => string }) {
+function SmoothTooltip({ s, metric, sport, totalDurationS, t }: { s: SmoothSample; metric: Metric; sport: Sport; totalDurationS: number | null; t: (k: string) => string }) {
   void totalDurationS
   return (
     <>
       <TT l={t('actp.time')} v={fmtDurShort(s.time)} />
-      <TT l={t('actp.pace')} v={`${paceStr(smoothSpeed(s, metric))}/km`} />
+      {sport === 'bike'
+        ? <TT l={t('actp.watts')} v={`${Math.round(smoothSpeed(s, metric, sport))} W`} />
+        : <TT l={t('actp.pace')} v={`${paceStr(smoothSpeed(s, metric, sport))}/km`} />}
       <TT l={t('actp.distance')} v={fmtDistKm(s.dist)} />
       <TT l={t('actp.altitude')} v={`${Math.round(s.alt)} m`} />
       <TT l="D+" v={`${Math.round(s.dPlusCum)} m`} />
@@ -578,16 +678,19 @@ function SmoothTooltip({ s, metric, totalDurationS, t }: { s: SmoothSample; metr
 // ══════════════════════════════════════════════════════════════════
 // TABLEAU statique
 // ══════════════════════════════════════════════════════════════════
-function AnalysisTable({ splits, mode, hovered, setHovered, onTap, onHoverRatio, ratioOf, t }: {
-  splits: Split[]; mode: Mode
+function AnalysisTable({ splits, mode, sport, hovered, setHovered, onTap, onHoverRatio, ratioOf, t }: {
+  splits: Split[]; mode: Mode; sport: Sport
   hovered: number | null; setHovered: (i: number | null) => void
   onTap?: (sp: Split) => void; onHoverRatio?: (r: number | null) => void; ratioOf: (i: number) => number
   t: (k: string) => string
 }) {
   const isLaps = mode === 'laps'
+  const isBike = sport === 'bike'
   if (!splits.length) return null
-  const firstCol = isLaps ? t('actp.lap_col') : 'Km'
-  const cols = [firstCol, t('actp.pace'), 'VAP', 'D+', t('actp.hr_short'), t('actp.temp_short')]
+  const firstCol = isLaps ? t('actp.lap_col') : (isBike ? t('actp.seg_col') : 'Km')
+  const cols = isBike
+    ? [firstCol, t('actp.watts'), t('actp.norm_watts'), 'D+', t('actp.hr_short'), t('actp.temp_short')]
+    : [firstCol, t('actp.pace'), 'VAP', 'D+', t('actp.hr_short'), t('actp.temp_short')]
   return (
     <div style={{ marginBottom: 22 }}>
       <SectionTitle text={t('actp.precise_data')} />
@@ -615,8 +718,17 @@ function AnalysisTable({ splits, mode, hovered, setHovered, onTap, onHoverRatio,
                     transition: 'background .12s, border-color .12s',
                   }}>
                   <td style={{ padding: '7px 12px', color: 'var(--text-dim)', fontWeight: 700, whiteSpace: 'nowrap' }}>{sp.label}</td>
-                  <td style={tdR}>{paceStr(sp.speedMs)}/km</td>
-                  <td style={{ ...tdR, color: 'var(--primary)' }}>{paceStr(sp.vapMs)}/km</td>
+                  {isBike ? (
+                    <>
+                      <td style={tdR}>{Math.round(sp.watts)} W</td>
+                      <td style={{ ...tdR, color: 'var(--primary)' }}>{Math.round(sp.normWatts)} W</td>
+                    </>
+                  ) : (
+                    <>
+                      <td style={tdR}>{paceStr(sp.speedMs)}/km</td>
+                      <td style={{ ...tdR, color: 'var(--primary)' }}>{paceStr(sp.vapMs)}/km</td>
+                    </>
+                  )}
                   <td style={tdR}>{Math.round(sp.dPlus)} m</td>
                   <td style={tdR}>{sp.avgHr != null ? `${Math.round(sp.avgHr)}` : '—'}</td>
                   <td style={tdR}>{sp.avgTemp != null ? `${Math.round(sp.avgTemp)}°` : '—'}</td>
@@ -636,8 +748,8 @@ const tdR: React.CSSProperties = { padding: '7px 12px', textAlign: 'right', colo
 // (barres cliquables → modal tour) ou ligne fluide (lissé). Y allure
 // gauche + altitude droite, X distance /2 km, repères rapide/moy/lent.
 // ══════════════════════════════════════════════════════════════════
-function AnalysisGraph({ data, splits, mode, metric, accent, ramp, totalDurationS, onTap, hovered, setHovered, onHoverRatio, ratioOf, t }: {
-  data: AData; splits: Split[]; mode: Mode; metric: Metric
+function AnalysisGraph({ data, splits, mode, metric, sport, accent, ramp, totalDurationS, onTap, hovered, setHovered, onHoverRatio, ratioOf, t }: {
+  data: AData; splits: Split[]; mode: Mode; metric: Metric; sport: Sport
   accent: string; ramp: readonly string[]; totalDurationS: number | null
   onTap?: (sp: Split) => void
   hovered: number | null; setHovered: (i: number | null) => void
@@ -645,19 +757,21 @@ function AnalysisGraph({ data, splits, mode, metric, accent, ramp, totalDuration
   t: (k: string) => string
 }) {
   const CH = 224
-  const g = computeGeom(data, splits, metric, CH, 820)
+  const g = computeGeom(data, splits, metric, sport, CH, 820)
   const hover = hovered
   const setHover = setHovered
   const [smoothT, setSmoothT] = useState<number | null>(null)
   const wrapRef = useRef<HTMLDivElement>(null)
-  const widths = barWidths(splits, g, mode)
+  const widths = barWidths(splits, g, mode, sport)
   const xs: number[] = []
   { let c = g.PAD_L; for (let i = 0; i < splits.length; i++) { xs.push(c); c += widths[i] } }
 
-  const avgSpeed = metric === 'pace' ? data.avgSpeed : data.avgVap
+  const avgSpeed = sport === 'bike'
+    ? (metric === 'pace' ? data.avgWatts : data.avgNorm)
+    : (metric === 'pace' ? data.avgSpeed : data.avgVap)
   const avgY = avgSpeed > 0 ? g.yOf(avgSpeed) : null
-  const fastIdx = splits.reduce((best, s, i, arr) => speedOf(s, metric) > speedOf(arr[best], metric) ? i : best, 0)
-  const slowIdx = splits.reduce((worst, s, i, arr) => (speedOf(s, metric) > 0 && speedOf(s, metric) < speedOf(arr[worst], metric)) ? i : worst, 0)
+  const fastIdx = splits.reduce((best, s, i, arr) => speedOf(s, metric, sport) > speedOf(arr[best], metric, sport) ? i : best, 0)
+  const slowIdx = splits.reduce((worst, s, i, arr) => (speedOf(s, metric, sport) > 0 && speedOf(s, metric, sport) < speedOf(arr[worst], metric, sport)) ? i : worst, 0)
   const showMarkers = mode !== 'laps' && avgY !== null
 
   function idxAt(clientX: number): number {
@@ -696,7 +810,7 @@ function AnalysisGraph({ data, splits, mode, metric, accent, ramp, totalDuration
           {/* profil altimétrique — aire grise pleine, discrète, DERRIÈRE les jauges
               (les jauges sont semi-transparentes → le profil transparaît, façon Strava) */}
           {data.hasAlt && <path d={altitudePath(data, g)} fill="#94a3b8" opacity={0.3} stroke="none" />}
-          {yPaceTicks(g).map((m, i) => (
+          {g.yTicks.map((m, i) => (
             <g key={'yp' + i}>
               <line x1={g.PAD_L} y1={m.y} x2={g.VBW - g.PAD_R} y2={m.y} stroke="var(--border)" strokeWidth={0.5} strokeDasharray="2 4" vectorEffect="non-scaling-stroke" />
               <text x={g.PAD_L - 5} y={m.y + 3} textAnchor="end" fontSize={10} fill="var(--text-dim)" style={{ fontVariantNumeric: 'tabular-nums' }}>{m.label}</text>
@@ -713,11 +827,11 @@ function AnalysisGraph({ data, splits, mode, metric, accent, ramp, totalDuration
           {avgY !== null && <line x1={g.PAD_L} y1={avgY} x2={g.VBW - g.PAD_R} y2={avgY} stroke={accent} strokeWidth={1} strokeDasharray="5 4" opacity={0.5} vectorEffect="non-scaling-stroke" />}
 
           {mode === 'smooth'
-            ? <SmoothArea data={data} g={g} metric={metric} accent={accent} />
+            ? <SmoothArea data={data} g={g} metric={metric} sport={sport} accent={accent} />
             : (
               <g key={mode + metric} style={{ transformOrigin: 'center bottom', animation: 'thwTaRise .45s cubic-bezier(.22,1,.36,1)' }}>
                 {splits.map((sp, i) => {
-                  const spd = speedOf(sp, metric)
+                  const spd = speedOf(sp, metric, sport)
                   const y = g.yOf(spd), h = Math.max(2, g.baseY - y)
                   const w = Math.max(2, widths[i] - 1.4)
                   const isHov = hover === i
@@ -729,7 +843,7 @@ function AnalysisGraph({ data, splits, mode, metric, accent, ramp, totalDuration
                         style={{ transition: 'y .4s cubic-bezier(.22,1,.36,1), height .4s cubic-bezier(.22,1,.36,1), fill .3s ease, opacity .15s' }} />
                       {w >= 16 && h >= 16 && (
                         <text x={xs[i] + widths[i] / 2} y={y - 5} textAnchor="middle" fontSize={11} fontWeight={700} fill={accent}
-                          style={{ fontVariantNumeric: 'tabular-nums' }}>{paceStr(spd)}</text>
+                          style={{ fontVariantNumeric: 'tabular-nums' }}>{sport === 'bike' ? Math.round(spd) : paceStr(spd)}</text>
                       )}
                       <text x={xs[i] + widths[i] / 2} y={CH + g.PAD_T + 15} textAnchor="middle" fontSize={10} fill="var(--text-dim)"
                         style={{ fontVariantNumeric: 'tabular-nums', opacity: (i === 0 || (i + 1) % Math.max(1, Math.ceil(splits.length / 14)) === 0) ? 1 : 0 }}>{sp.label}</text>
@@ -747,19 +861,19 @@ function AnalysisGraph({ data, splits, mode, metric, accent, ramp, totalDuration
             <line x1={g.PAD_L + smoothT * g.innerW} y1={g.PAD_T} x2={g.PAD_L + smoothT * g.innerW} y2={g.baseY} stroke={accent} strokeWidth={1} vectorEffect="non-scaling-stroke" opacity={0.7} />
           )}
 
-          {showMarkers && <MarkerTicks data={data} g={g} splits={splits} metric={metric} accent={accent} fastIdx={fastIdx} slowIdx={slowIdx} avgSpeed={avgSpeed} t={t} />}
+          {showMarkers && <MarkerTicks data={data} g={g} splits={splits} metric={metric} sport={sport} accent={accent} fastIdx={fastIdx} slowIdx={slowIdx} avgSpeed={avgSpeed} t={t} />}
         </svg>
 
         {mode !== 'smooth' && hover !== null && splits[hover] && (
           <TooltipBox xPct={(xs[hover] + widths[hover] / 2) / g.VBW} accent={accent}>
-            {mode === 'laps' ? <LapTooltip sp={splits[hover]} t={t} /> : <KmTooltip sp={splits[hover]} metric={metric} t={t} />}
+            {mode === 'laps' ? <LapTooltip sp={splits[hover]} sport={sport} t={t} /> : <KmTooltip sp={splits[hover]} sport={sport} t={t} />}
           </TooltipBox>
         )}
         {mode === 'smooth' && smoothT !== null && (() => {
           const s = sampleAt(data, smoothT); if (!s) return null
           return (
             <TooltipBox xPct={(g.PAD_L + smoothT * g.innerW) / g.VBW} accent={accent}>
-              <SmoothTooltip s={s} metric={metric} totalDurationS={totalDurationS} t={t} />
+              <SmoothTooltip s={s} metric={metric} sport={sport} totalDurationS={totalDurationS} t={t} />
             </TooltipBox>
           )
         })()}

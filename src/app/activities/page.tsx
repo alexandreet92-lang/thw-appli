@@ -7190,6 +7190,8 @@ export function ActivityDetail({ a, onClose, closing = false, zones, profile, al
   const [lapsViewOpen,    setLapsViewOpen]    = useState(false)
   const [lapsViewInitial, setLapsViewInitial] = useState(0)
   const [lapsViewDetailOnly, setLapsViewDetailOnly] = useState(false)
+  const [lapsViewSegment,  setLapsViewSegment]  = useState<LapData | null>(null)
+  const [lapsViewSegTitle, setLapsViewSegTitle] = useState<string | null>(null)
   async function saveFdValue(kind: 'feeling' | 'difficulty', v: number) {
     const sb = createClient()
     // eslint-disable-next-line no-console
@@ -8355,16 +8357,27 @@ conseil pour la prochaine séance similaire.`
         )}
         {/* (longueurs natation : édition dans la sur-page « Modifier ») */}
 
-        {/* ── ANALYSE DE L'ENTRAÎNEMENT (course / trail / rando) — remplace
+        {/* ── ANALYSE DE L'ENTRAÎNEMENT (course / trail / vélo) — remplace
              hero + courbes + laps par le bloc Strava-like unifié (bureau). ── */}
-        {isRun && (() => {
+        {(isRun || isBike) && (() => {
           const vapMoyS = (() => { const v = avgAdjustedPaceMinKm(a.streams?.velocity, a.streams?.altitude, a.streams?.distance); return v > 0 ? fmtPace(v * 60) : null })()
-          const dp: { label: string; value: string }[] = [
+          // FC moy : colonne dédiée sinon moyenne du flux cardiaque.
+          const fcMoy = a.avg_hr ?? (a.streams?.heartrate?.length ? (() => { const nz = a.streams!.heartrate!.filter(h => h > 0); return nz.length ? Math.round(nz.reduce((s, v) => s + v, 0) / nz.length) : null })() : null)
+          const vitMoy = a.avg_speed_ms ? (Number(a.avg_speed_ms) * 3.6).toFixed(1).replace('.', ',') : (a.distance_m && a.moving_time_s ? ((a.distance_m / a.moving_time_s) * 3.6).toFixed(1).replace('.', ',') : null)
+          const dp: { label: string; value: string }[] = isBike ? [
+            { label: t('actp.distance'), value: a.distance_m ? fmtDist(a.distance_m) : '—' },
+            { label: t('actp.duration'), value: a.moving_time_s ? fmtDur(a.moving_time_s) : '—' },
+            { label: 'FC moy', value: fcMoy != null ? `${fcMoy} bpm` : '—' },
+            { label: 'Vitesse moy', value: vitMoy != null ? `${vitMoy} km/h` : '—' },
+            { label: 'D+', value: (a.elevation_gain_m ?? 0) > 1 ? `+${Math.round(Number(a.elevation_gain_m))} m` : '—' },
+            { label: 'Watts moy', value: a.avg_watts ? `${Math.round(Number(a.avg_watts))} W` : '—' },
+            { label: 'SM · SN', value: `${smsn.sm} · ${smsn.sn}` },
+          ] : [
             { label: t('actp.distance'), value: a.distance_m ? fmtDist(a.distance_m) : '—' },
             isTrail ? { label: 'VAP moy', value: vapMoyS ?? '—' } : { label: t('actp.avg_pace'), value: paceS ? fmtPace(paceS) : '—' },
             { label: t('actp.duration'), value: a.moving_time_s ? fmtDur(a.moving_time_s) : '—' },
             { label: 'D+', value: (a.elevation_gain_m ?? 0) > 1 ? `+${Math.round(Number(a.elevation_gain_m))} m` : '—' },
-            { label: 'FC moy', value: a.avg_hr ? `${Math.round(Number(a.avg_hr))} bpm` : '—' },
+            { label: 'FC moy', value: fcMoy != null ? `${fcMoy} bpm` : '—' },
             { label: 'SM · SN', value: `${smsn.sm} · ${smsn.sn}` },
           ]
           const kpiNode = (
@@ -8382,7 +8395,7 @@ conseil pour la prochaine séance similaire.`
           const mapNode = !mapExpanded ? (
             <div style={{ position: 'relative', width: '100%', paddingBottom: '175%', borderRadius: 12, overflow: 'hidden' }}>
               <div style={{ position: 'absolute', inset: 0 }}>
-                <ActivityMapCard activity={a as unknown as Record<string, unknown>} isMobile={false} expanded={false} onToggle={() => setMapExpanded(true)} hoverGps={hoverGps} />
+                <ActivityMapCard activity={a as unknown as Record<string, unknown>} isMobile={false} expanded={false} fill onToggle={() => setMapExpanded(true)} hoverGps={hoverGps} />
               </div>
             </div>
           ) : null
@@ -8393,8 +8406,22 @@ conseil pour la prochaine séance similaire.`
               laps={a.laps}
               activityId={a.id}
               totalDurationS={a.moving_time_s}
+              sport={isBike ? 'bike' : 'run'}
               paceZones={runZones}
-              onLapTap={i => { setLapsViewInitial(i); setLapsViewDetailOnly(true); setLapsViewOpen(true) }}
+              onLapTap={i => { setLapsViewSegment(null); setLapsViewSegTitle(null); setLapsViewInitial(i); setLapsViewDetailOnly(true); setLapsViewOpen(true) }}
+              onSegmentTap={seg => {
+                const lap: LapData = {
+                  start_index: seg.startIndex, end_index: seg.endIndex,
+                  distance_m: seg.distanceM, moving_time_s: seg.durationS,
+                  avg_hr: seg.avgHr, avg_speed_ms: seg.avgSpeedMs || null,
+                  avg_watts: seg.avgWatts || null, elevation_gain_m: seg.dPlus,
+                }
+                setLapsViewSegment(lap)
+                setLapsViewSegTitle(`${isBike ? 'Segment' : 'Km'} ${seg.label}`)
+                setLapsViewInitial(0)
+                setLapsViewDetailOnly(true)
+                setLapsViewOpen(true)
+              }}
               onHoverRatio={onCurveHover}
               kpiNode={kpiNode}
               mapNode={mapNode}
@@ -8403,9 +8430,9 @@ conseil pour la prochaine séance similaire.`
           )
         })()}
 
-        {/* ── PARTIE 3 : Hero row (carte | stats) — autres sports (vélo…). Carte
-             agrandie → déplacée juste au-dessus des COURBES (bureau uniquement). ── */}
-        {!isRun && (
+        {/* ── PARTIE 3 : Hero row (carte | stats) — autres sports (natation…).
+             Course & vélo : gérés par TrainingAnalysis ci-dessus. ── */}
+        {!isRun && !isBike && (
           <div style={{ display: 'grid', gridTemplateColumns: mapExpanded ? '1fr' : '1fr 1fr', gap: 16, marginBottom: 20 }}>
             {/* Carte — quand agrandie, elle est déplacée au-dessus des courbes (plus bas) */}
             {!mapExpanded && (
@@ -8627,9 +8654,8 @@ conseil pour la prochaine séance similaire.`
           </div>
         )}
 
-        {/* ── LAPS ── (vélo : LapsChart/Table watts ; course/trail : gérés par
-             TrainingAnalysis ci-dessus) */}
-        {!isRun && a.laps && a.laps.length > 1 ? (
+        {/* ── LAPS ── (course/trail & vélo : gérés par TrainingAnalysis ci-dessus) */}
+        {!isRun && !isBike && a.laps && a.laps.length > 1 ? (
           <div style={{ marginBottom: 32, paddingTop: 24 }}>
             <div style={{ fontSize: 10, fontWeight: 700, color: T.textMuted, letterSpacing: 0.9,
               textTransform: 'uppercase', marginBottom: 16, borderBottom: `1px solid ${T.border}`, paddingBottom: 5, fontFamily: T.fontDisplay }}>
@@ -8859,19 +8885,7 @@ conseil pour la prochaine séance similaire.`
                 />
               )}
 
-              {/* Laps bar chart — cyclisme uniquement, sous la courbe de puissance */}
-              {isBike && (
-                <>
-                  <LapsBikeChart
-                    activityId={a.id}
-                    cachedLaps={a.laps}
-                    avgWatts={a.avg_watts}
-                    streams={a.streams}
-                    ftp={bikeZoneRow?.ftp_watts ?? null}
-                    onLapTap={i => { setLapsViewInitial(i); setLapsViewDetailOnly(false); setLapsViewOpen(true) }}
-                  />
-                </>
-              )}
+              {/* Laps vélo : gérés par TrainingAnalysis ci-dessus (plus de doublon). */}
 
               {/* (GAP « allure réelle vs ajustée » retiré : la VAP est déjà
                   intégrée à l'Analyse de l'entraînement ci-dessus.) */}
@@ -9008,8 +9022,9 @@ conseil pour la prochaine séance similaire.`
         sport={isRun ? 'running' : 'cycling'}
         detailOnly={lapsViewDetailOnly}
         centered
-        renderLapCurves={(li) => {
-          const lap = (a.laps ?? [])[li]
+        overrideLap={lapsViewSegment}
+        detailTitle={lapsViewSegTitle}
+        renderLapCurves={(lap) => {
           if (!lap || !a.streams) return null
           const n = a.streams.altitude?.length ?? a.streams.heartrate?.length ?? a.streams.velocity?.length ?? 0
           const i1 = lap.start_index ?? 0

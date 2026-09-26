@@ -110,6 +110,22 @@ function zoneIndex(speedMs: number, zones: PaceZone[] | null | undefined): numbe
   return null
 }
 
+// Moyenne mobile (fenêtre ±half) ignorant les valeurs <= minVal (arrêts).
+// Reporte la dernière valeur valide quand la fenêtre est vide → courbe continue.
+function movingAvgIgnore(arr: number[], half: number, minVal: number): number[] {
+  const n = arr.length
+  const out = new Array<number>(n)
+  let last = 0
+  for (let i = 0; i < n; i++) {
+    let s = 0, c = 0
+    const a = Math.max(0, i - half), b = Math.min(n - 1, i + half)
+    for (let j = a; j <= b; j++) { const v = arr[j]; if (v > minVal) { s += v; c++ } }
+    out[i] = c ? s / c : last
+    if (c) last = out[i]
+  }
+  return out
+}
+
 // ── Calcul de tout le jeu de données depuis les streams + laps ──────────
 function useAnalysisData(streams: StreamData | null, laps: LapData[], zones: PaceZone[] | null | undefined) {
   return useMemo(() => {
@@ -168,6 +184,11 @@ function useAnalysisData(streams: StreamData | null, laps: LapData[], zones: Pac
     })
 
     // ── Échantillons lissés (≈240 pts) pour la ligne + le profil ─────
+    // Lissage type Strava : moyenne mobile de la vitesse (et de la VAP), en
+    // ignorant les valeurs nulles/arrêts (sinon pics d'allure aberrants).
+    const W = Math.max(10, Math.min(45, Math.round(N / 120)))
+    const velSmooth = movingAvgIgnore(velocity, W, 0.3)
+    const vapSmooth = movingAvgIgnore(vapKmh, W, 1)
     const target = 240
     const step = Math.max(1, Math.floor(N / target))
     const smooth: SmoothSample[] = []
@@ -181,8 +202,8 @@ function useAnalysisData(streams: StreamData | null, laps: LapData[], zones: Pac
       }
       smooth.push({
         dist: dist[i],
-        speedMs: velocity[i] > 0 ? velocity[i] : 0,
-        vapMs: (vapKmh[i] ?? 0) / 3.6,
+        speedMs: velSmooth[i] > 0 ? velSmooth[i] : 0,
+        vapMs: (vapSmooth[i] ?? 0) / 3.6,
         alt: alt ? alt[i] : 0,
         time: time && time.length === N ? time[i] : i,
         dPlusCum,
@@ -377,7 +398,7 @@ function smoothSpeed(s: SmoothSample, metric: Metric): number { return metric ==
 
 // Géométrie partagée courbe / jauges.
 function computeGeom(data: AData, splits: Split[], metric: Metric, chartH: number, vbw = 1000) {
-  const VBW = vbw, PAD_L = 46, PAD_R = 52, PAD_T = 16, PAD_B = 24
+  const VBW = vbw, PAD_L = 46, PAD_R = 64, PAD_T = 16, PAD_B = 24
   const innerW = VBW - PAD_L - PAD_R
   const baseY = PAD_T + chartH
   const speeds = splits.map(s => speedOf(s, metric)).filter(s => s > 0)
@@ -462,23 +483,24 @@ function SmoothArea({ data, g, metric, accent }: { data: AData; g: ReturnType<ty
   )
 }
 
-function MarkerTicks({ data, g, splits, metric, accent, fastIdx, slowIdx, avgSpeed }: {
+function MarkerTicks({ data, g, splits, metric, accent, fastIdx, slowIdx, avgSpeed, t }: {
   data: AData; g: ReturnType<typeof computeGeom>; splits: Split[]; metric: Metric
-  accent: string; fastIdx: number; slowIdx: number; avgSpeed: number
+  accent: string; fastIdx: number; slowIdx: number; avgSpeed: number; t: (k: string) => string
 }) {
   void data
   const x = g.VBW - g.PAD_R
   const fast = splits[fastIdx], slow = splits[slowIdx]
-  const rows: { y: number; val: string; c: string }[] = []
-  if (fast) rows.push({ y: g.yOf(speedOf(fast, metric)), val: paceStr(speedOf(fast, metric)), c: accent })
-  rows.push({ y: g.yOf(avgSpeed), val: paceStr(avgSpeed), c: 'var(--text-mid)' })
-  if (slow) rows.push({ y: g.yOf(speedOf(slow, metric)), val: paceStr(speedOf(slow, metric)), c: 'var(--text-dim)' })
+  const rows: { y: number; val: string; label: string; c: string }[] = []
+  if (fast) rows.push({ y: g.yOf(speedOf(fast, metric)), val: paceStr(speedOf(fast, metric)), label: t('actp.fastest_km'), c: accent })
+  rows.push({ y: g.yOf(avgSpeed), val: paceStr(avgSpeed), label: t('actp.average_short'), c: 'var(--text-mid)' })
+  if (slow) rows.push({ y: g.yOf(speedOf(slow, metric)), val: paceStr(speedOf(slow, metric)), label: t('actp.slowest_km'), c: 'var(--text-dim)' })
   return (
     <g>
       {rows.map((r, i) => (
         <g key={i}>
-          <line x1={x - 5} y1={r.y} x2={x + 3} y2={r.y} stroke={r.c} strokeWidth={1.4} vectorEffect="non-scaling-stroke" />
-          <text x={x + 6} y={r.y + 3.5} textAnchor="start" fontSize={10.5} fontWeight={700} fill={r.c} style={{ fontVariantNumeric: 'tabular-nums' }}>{r.val}</text>
+          <line x1={x - 6} y1={r.y} x2={x + 4} y2={r.y} stroke={r.c} strokeWidth={1.6} vectorEffect="non-scaling-stroke" />
+          <text x={x + 7} y={r.y - 1.5} textAnchor="start" fontSize={7} fontWeight={600} fill="var(--text-dim)">{r.label}</text>
+          <text x={x + 7} y={r.y + 8} textAnchor="start" fontSize={10.5} fontWeight={700} fill={r.c} style={{ fontVariantNumeric: 'tabular-nums' }}>{r.val}</text>
         </g>
       ))}
     </g>
@@ -725,7 +747,7 @@ function AnalysisGraph({ data, splits, mode, metric, accent, ramp, totalDuration
             <line x1={g.PAD_L + smoothT * g.innerW} y1={g.PAD_T} x2={g.PAD_L + smoothT * g.innerW} y2={g.baseY} stroke={accent} strokeWidth={1} vectorEffect="non-scaling-stroke" opacity={0.7} />
           )}
 
-          {showMarkers && <MarkerTicks data={data} g={g} splits={splits} metric={metric} accent={accent} fastIdx={fastIdx} slowIdx={slowIdx} avgSpeed={avgSpeed} />}
+          {showMarkers && <MarkerTicks data={data} g={g} splits={splits} metric={metric} accent={accent} fastIdx={fastIdx} slowIdx={slowIdx} avgSpeed={avgSpeed} t={t} />}
         </svg>
 
         {mode !== 'smooth' && hover !== null && splits[hover] && (

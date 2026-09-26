@@ -57,9 +57,9 @@ export default function PlanningWeekPage() {
     return `${ms.getDate()} ${MONTHS[ms.getMonth()].slice(0, 4)}. – ${me.getDate()} ${MONTHS[me.getMonth()].slice(0, 4)}. ${me.getFullYear()}`
   }, [view, anchor])
 
-  const openCreate = (start: Date, allDay = false) => {
-    const end = new Date(start.getTime() + 3600000)
-    setSheet({ event: null, draft: { start: start.toISOString(), end: end.toISOString(), allDay } })
+  const openCreate = (start: Date, end?: Date | null, allDay = false) => {
+    const e = end ?? new Date(start.getTime() + 3600000)
+    setSheet({ event: null, draft: { start: start.toISOString(), end: e.toISOString(), allDay } })
   }
 
   const btn: React.CSSProperties = { padding: '7px 12px', borderRadius: 9, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }
@@ -100,6 +100,7 @@ export default function PlanningWeekPage() {
       {/* Panneau des couches */}
       {panelOpen && (
         <div style={{ margin: `0 ${px}px 12px`, padding: 14, borderRadius: 14, background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+          <MiniCalendar anchor={anchor} onPick={d => setAnchor(startOfDay(d))} />
           <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-dim)', margin: '0 0 10px' }}>Mes agendas</p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {calendars.map(c => (
@@ -142,10 +143,11 @@ export default function PlanningWeekPage() {
 // ── Vue Semaine / Jour (grille horaire) ─────────────────────────────────────
 const HOUR_GUTTER = 52          // largeur colonne des heures
 function WeekView({ days, events, onOpen, onCreate, onMoved, px }: {
-  days: Date[]; events: CalEvent[]; onOpen: (e: CalEvent) => void; onCreate: (d: Date) => void; onMoved: () => void; px: number
+  days: Date[]; events: CalEvent[]; onOpen: (e: CalEvent) => void; onCreate: (start: Date, end?: Date) => void; onMoved: () => void; px: number
 }) {
   const gridRef = useRef<HTMLDivElement>(null)
   const [drag, setDrag] = useState<{ id: string; ev: CalEvent } | null>(null)
+  const [createDrag, setCreateDrag] = useState<{ dayIdx: number; aMin: number; bMin: number } | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -158,6 +160,34 @@ function WeekView({ days, events, onOpen, onCreate, onMoved, px }: {
 
   // Événements par jour
   const dayCol = (d: Date) => timed.filter(e => sameDay(new Date(e.start), d) || (new Date(e.start) < d && new Date(e.end) > d))
+
+  // Minutes depuis minuit à partir d'une position Y (snap 15 min).
+  const yToMin = useCallback((clientY: number, snap = SNAP_MIN): number => {
+    const rect = gridRef.current?.getBoundingClientRect()
+    const y = clientY - (rect?.top ?? 0) + (scrollRef.current?.scrollTop ?? 0)
+    const mins = Math.round((y / HOUR_H) * 60 / snap) * snap
+    return Math.max(0, Math.min(24 * 60, mins))
+  }, [])
+
+  const onCreateMove = useCallback((e: React.PointerEvent) => {
+    setCreateDrag(cd => cd ? { ...cd, bMin: yToMin(e.clientY) } : cd)
+  }, [yToMin])
+
+  const onCreateUp = useCallback(() => {
+    setCreateDrag(cd => {
+      if (cd) {
+        let s = Math.min(cd.aMin, cd.bMin)
+        let en = Math.max(cd.aMin, cd.bMin)
+        if (en - s < SNAP_MIN) en = s + 60 // simple clic → 1 h
+        s = Math.max(0, Math.min(24 * 60 - SNAP_MIN, s))
+        en = Math.min(24 * 60, Math.max(s + SNAP_MIN, en))
+        const start = new Date(days[cd.dayIdx]); start.setHours(0, s, 0, 0)
+        const end = new Date(days[cd.dayIdx]); end.setHours(0, en, 0, 0)
+        onCreate(start, end)
+      }
+      return null
+    })
+  }, [days, onCreate])
 
   const commitDrag = useCallback(async (clientX: number, clientY: number) => {
     if (!drag || !gridRef.current) { setDrag(null); return }
@@ -207,8 +237,9 @@ function WeekView({ days, events, onOpen, onCreate, onMoved, px }: {
         )}
 
         {/* Grille horaire scrollable */}
-        <div ref={scrollRef} style={{ maxHeight: '68vh', overflowY: 'auto', position: 'relative' }}
-          onPointerUp={drag ? (e => void commitDrag(e.clientX, e.clientY)) : undefined}
+        <div ref={scrollRef} style={{ maxHeight: '68vh', overflowY: 'auto', position: 'relative', userSelect: createDrag ? 'none' : undefined }}
+          onPointerMove={createDrag ? onCreateMove : undefined}
+          onPointerUp={createDrag ? (() => onCreateUp()) : (drag ? (e => void commitDrag(e.clientX, e.clientY)) : undefined)}
         >
           <div style={{ display: 'flex', position: 'relative' }}>
             {/* Colonne heures */}
@@ -221,12 +252,6 @@ function WeekView({ days, events, onOpen, onCreate, onMoved, px }: {
             </div>
             {/* Colonnes jours */}
             <div ref={gridRef} style={{ flex: 1, display: 'flex', position: 'relative' }}>
-              {/* fond colonne du jour courant */}
-              <div style={{ position: 'absolute', inset: 0, display: 'flex', pointerEvents: 'none' }}>
-                {days.map((d, i) => (
-                  <div key={i} style={{ flex: 1, background: sameDay(d, new Date()) ? 'var(--primary-dim)' : 'transparent' }} />
-                ))}
-              </div>
               {/* lignes horaires */}
               <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
                 {Array.from({ length: 24 }, (_, h) => (
@@ -239,9 +264,17 @@ function WeekView({ days, events, onOpen, onCreate, onMoved, px }: {
               )}
               {days.map((d, di) => {
                 const col = layoutOverlaps(dayCol(d), d)
+                const isToday = sameDay(d, new Date())
                 return (
-                  <div key={di} onClick={e => { if (e.target === e.currentTarget) { const rect = (e.currentTarget as HTMLElement).getBoundingClientRect(); const y = e.clientY - rect.top; const mins = Math.round((y / HOUR_H) * 60 / 30) * 30; const s = new Date(d); s.setHours(0, mins, 0, 0); onCreate(s) } }}
-                    style={{ flex: 1, position: 'relative', borderLeft: di ? '1px solid var(--border)' : 'none', height: 24 * HOUR_H, minWidth: 0 }}>
+                  <div key={di}
+                    onPointerDown={e => { if (e.target === e.currentTarget && e.button === 0) { const m = yToMin(e.clientY); setCreateDrag({ dayIdx: di, aMin: m, bMin: m }) } }}
+                    style={{ flex: 1, position: 'relative', borderLeft: di ? '1px solid var(--border)' : 'none', height: 24 * HOUR_H, minWidth: 0, background: isToday ? 'var(--primary-dim)' : 'transparent' }}>
+                    {/* Bloc provisoire (drag-to-create) */}
+                    {createDrag && createDrag.dayIdx === di && (() => {
+                      const s = Math.min(createDrag.aMin, createDrag.bMin)
+                      const en = Math.max(createDrag.aMin, createDrag.bMin)
+                      return <div style={{ position: 'absolute', top: (s / 60) * HOUR_H, left: 2, right: 2, height: Math.max(4, ((en - s) / 60) * HOUR_H), background: 'var(--primary-dim)', border: '1px solid var(--primary)', borderRadius: 6, zIndex: 3, pointerEvents: 'none' }} />
+                    })()}
                     {col.map(({ e, lane, lanes }) => {
                       const top = (minutesOfDay(e.start) / 60) * HOUR_H
                       const dur = e.durationMin ?? Math.max(20, (new Date(e.end).getTime() - new Date(e.start).getTime()) / 60000)
@@ -295,6 +328,40 @@ function layoutOverlaps(evs: CalEvent[], day: Date): { e: CalEvent; lane: number
   }
   if (cluster.length) flush()
   return res
+}
+
+// ── Mini-calendrier (sidebar) ────────────────────────────────────────────────
+const miniNav: React.CSSProperties = { width: 24, height: 24, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }
+function MiniCalendar({ anchor, onPick }: { anchor: Date; onPick: (d: Date) => void }) {
+  const [month, setMonth] = useState<Date>(() => new Date(anchor.getFullYear(), anchor.getMonth(), 1))
+  useEffect(() => { setMonth(new Date(anchor.getFullYear(), anchor.getMonth(), 1)) }, [anchor])
+  const gridStart = mondayOf(new Date(month.getFullYear(), month.getMonth(), 1))
+  const cells = Array.from({ length: 42 }, (_, i) => addDays(gridStart, i))
+  const now = new Date()
+  const initials = ['L', 'M', 'M', 'J', 'V', 'S', 'D']
+  return (
+    <div style={{ marginBottom: 14, paddingBottom: 14, borderBottom: '1px solid var(--border)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+        <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', textTransform: 'capitalize' }}>{MONTHS[month.getMonth()]} {month.getFullYear()}</span>
+        <div style={{ display: 'flex', gap: 4 }}>
+          <button onClick={() => setMonth(m => new Date(m.getFullYear(), m.getMonth() - 1, 1))} style={miniNav} aria-label="Mois précédent">‹</button>
+          <button onClick={() => setMonth(m => new Date(m.getFullYear(), m.getMonth() + 1, 1))} style={miniNav} aria-label="Mois suivant">›</button>
+        </div>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 2 }}>
+        {initials.map((w, i) => <div key={i} style={{ textAlign: 'center', fontSize: 9.5, fontWeight: 700, color: 'var(--text-dim)', padding: '2px 0' }}>{w}</div>)}
+        {cells.map((d, i) => {
+          const inMonth = d.getMonth() === month.getMonth()
+          const isToday = sameDay(d, now)
+          const isSel = sameDay(d, anchor)
+          return (
+            <button key={i} onClick={() => onPick(d)}
+              style={{ aspectRatio: '1', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', border: isSel && !isToday ? '1px solid var(--primary)' : '1px solid transparent', cursor: 'pointer', fontSize: 11, fontWeight: isToday || isSel ? 700 : 500, fontVariantNumeric: 'tabular-nums', background: isToday ? 'var(--primary)' : isSel ? 'var(--primary-dim)' : 'transparent', color: isToday ? 'var(--on-primary)' : inMonth ? 'var(--text)' : 'var(--text-dim)', padding: 0 }}>{d.getDate()}</button>
+          )
+        })}
+      </div>
+    </div>
+  )
 }
 
 // ── Vue Mois ────────────────────────────────────────────────────────────────

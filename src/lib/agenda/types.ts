@@ -63,6 +63,7 @@ export interface SessionLightInput {
   rpe?: number | null
   description?: string | null
   reminderMin?: number | null
+  color?: string | null
 }
 
 export const DEFAULT_REMINDER_MIN = 30

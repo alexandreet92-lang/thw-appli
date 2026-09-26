@@ -18,26 +18,81 @@ function dayIndexOf(d: Date): number { return (d.getDay() + 6) % 7 } // lundi = 
 function hhmm(d: Date): string { return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}` }
 
 // Expansion d'une règle de récurrence (sous-ensemble iCal) sur une plage.
-// Supporte FREQ=DAILY|WEEKLY|MONTHLY + BYDAY=MO,TU,… Retourne les débuts d'occurrence.
+// Supporte FREQ=DAILY|WEEKLY|MONTHLY, BYDAY=MO,TU,…, INTERVAL=N (tou(te)s les N),
+// COUNT=N (nombre max d'occurrences depuis baseStart) et UNTIL=YYYYMMDD (date de
+// fin incluse). Retourne les débuts d'occurrence dans la plage.
 const RRULE_DOW: Record<string, number> = { MO: 1, TU: 2, WE: 3, TH: 4, FR: 5, SA: 6, SU: 0 }
+function startOfLocalDay(d: Date): Date { const x = new Date(d); x.setHours(0, 0, 0, 0); return x }
+function addLocalDays(d: Date, n: number): Date { const x = new Date(d); x.setDate(x.getDate() + n); return x }
+function parseUntil(s: string | undefined): Date | null {
+  if (!s) return null
+  const m = s.match(/^(\d{4})(\d{2})(\d{2})/)
+  if (!m) return null
+  const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]))
+  d.setHours(23, 59, 59, 999) // fin de journée : UNTIL est inclusif
+  return d
+}
 export function expandRRule(baseStart: Date, rrule: string, rangeStart: Date, rangeEnd: Date, cap = 400): Date[] {
   const parts = Object.fromEntries(rrule.split(';').map(p => p.split('=')) as [string, string][])
   const freq = parts.FREQ
+  const interval = Math.max(1, parseInt(parts.INTERVAL ?? '1', 10) || 1)
+  const count = parts.COUNT != null ? Math.max(0, parseInt(parts.COUNT, 10) || 0) : null
+  const until = parseUntil(parts.UNTIL)
   const byday = parts.BYDAY ? parts.BYDAY.split(',').map(d => RRULE_DOW[d]).filter(n => n != null) : null
   const out: Date[] = []
   const hh = baseStart.getHours(), mm = baseStart.getMinutes()
-  const push = (d: Date) => { const x = new Date(d); x.setHours(hh, mm, 0, 0); if (x >= rangeStart && x < rangeEnd && x >= baseStart) out.push(x) }
+  const baseDay = startOfLocalDay(baseStart)
+  let n = 0 // occurrences vues depuis baseStart (pour COUNT)
+
+  // Traite une date candidate (au jour). Retourne false pour arrêter l'énumération.
+  const consider = (day: Date): boolean => {
+    const x = new Date(day); x.setHours(hh, mm, 0, 0)
+    if (count != null && n >= count) return false
+    if (until && x > until) return false
+    if (x >= rangeEnd) return false // toutes les suivantes seront aussi hors plage
+    n++
+    if (x >= rangeStart && x >= baseStart) out.push(x)
+    return true
+  }
+  // Quand il n'y a pas de COUNT, on peut sauter directement près de rangeStart.
+  const canFastForward = count == null
+
   if (freq === 'DAILY') {
-    for (let d = new Date(Math.max(baseStart.getTime(), rangeStart.getTime())), i = 0; d < rangeEnd && i < cap; d = new Date(d.getTime() + 86400000), i++) push(d)
+    const stepDays = interval
+    let start = new Date(baseDay)
+    if (canFastForward && start < rangeStart) {
+      const diff = Math.floor((startOfLocalDay(rangeStart).getTime() - baseDay.getTime()) / DAY)
+      if (diff > 0) start = addLocalDays(baseDay, Math.floor(diff / stepDays) * stepDays)
+    }
+    for (let d = start, i = 0; i < cap; d = addLocalDays(d, stepDays), i++) if (!consider(d)) break
   } else if (freq === 'WEEKLY') {
     const targets = byday && byday.length ? byday : [baseStart.getDay()]
-    for (let d = new Date(Math.max(baseStart.getTime(), rangeStart.getTime() - 7 * 86400000)), i = 0; d < rangeEnd && i < cap; d = new Date(d.getTime() + 86400000), i++) {
-      if (targets.includes(d.getDay())) push(d)
+    // Début de semaine (dimanche) de baseStart, aligné sur INTERVAL semaines.
+    let wk = addLocalDays(baseDay, -baseDay.getDay())
+    if (canFastForward && wk < rangeStart) {
+      const weeks = Math.floor((startOfLocalDay(rangeStart).getTime() - wk.getTime()) / (7 * DAY))
+      if (weeks > 0) wk = addLocalDays(wk, Math.floor(weeks / interval) * interval * 7)
+    }
+    outer: for (let i = 0; i < cap; i++, wk = addLocalDays(wk, 7 * interval)) {
+      for (let dow = 0; dow < 7; dow++) {
+        const d = addLocalDays(wk, dow)
+        if (!targets.includes(d.getDay())) continue
+        if (d < baseDay) continue // avant l'origine dans la première semaine
+        if (!consider(d)) break outer
+      }
     }
   } else if (freq === 'MONTHLY') {
     const dom = baseStart.getDate()
-    const d = new Date(rangeStart.getFullYear(), rangeStart.getMonth(), dom)
-    for (let i = 0; i < cap && d < rangeEnd; i++) { if (d >= baseStart) push(new Date(d)); d.setMonth(d.getMonth() + 1) }
+    let i0 = 0
+    if (canFastForward) {
+      const monthsDiff = (rangeStart.getFullYear() - baseStart.getFullYear()) * 12 + (rangeStart.getMonth() - baseStart.getMonth())
+      if (monthsDiff > 0) i0 = Math.floor(monthsDiff / interval)
+    }
+    for (let i = i0; i < i0 + cap; i++) {
+      const d = new Date(baseStart.getFullYear(), baseStart.getMonth() + i * interval, dom)
+      if (d.getDate() !== dom) { if (d >= rangeEnd) break; continue } // mois sans ce quantième
+      if (!consider(d)) break
+    }
   }
   return out
 }
@@ -296,7 +351,7 @@ export async function createSessionLight(input: SessionLightInput): Promise<stri
     title: input.title, sport: input.sport,
     week_start: ymd(mondayOf(st)), day_index: dayIndexOf(st), time: hhmm(st),
     duration_min: input.durationMin, rpe: input.rpe ?? null, notes: input.description ?? null,
-    starts_at: iso(st), ends_at: iso(en),
+    starts_at: iso(st), ends_at: iso(en), color: input.color ?? null,
     reminder_min: input.reminderMin ?? null, status: 'planned',
   }).select('id').maybeSingle()
   return (data as { id?: string } | null)?.id ?? null
@@ -309,6 +364,7 @@ export async function updateSessionLight(id: string, patch: Partial<SessionLight
   if (patch.rpe !== undefined) row.rpe = patch.rpe
   if (patch.description !== undefined) row.notes = patch.description
   if (patch.reminderMin !== undefined) row.reminder_min = patch.reminderMin
+  if (patch.color !== undefined) row.color = patch.color
   if (patch.start != null || patch.durationMin != null) {
     // recalcul des heures si start/durée changent
   }

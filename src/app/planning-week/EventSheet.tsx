@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import type { AgendaCalendar, CalEvent } from '@/lib/agenda/types'
-import { DEFAULT_REMINDER_MIN } from '@/lib/agenda/types'
+import { DEFAULT_REMINDER_MIN, sportColor } from '@/lib/agenda/types'
 import { createEvent, updateEvent, deleteEvent, createSessionLight, updateSessionLight } from '@/lib/agenda/data'
 
 // Sports proposés (cohérent avec l'app).
@@ -11,11 +11,39 @@ const REMINDERS: { v: number; label: string }[] = [
   { v: -1, label: 'Aucun' }, { v: 0, label: 'À l\'heure' }, { v: 10, label: '10 min avant' },
   { v: 30, label: '30 min avant' }, { v: 60, label: '1 h avant' }, { v: 1440, label: '1 jour avant' },
 ]
-const RRULES: { v: string; label: string }[] = [
-  { v: '', label: 'Ne pas répéter' }, { v: 'FREQ=DAILY', label: 'Tous les jours' },
-  { v: 'FREQ=WEEKLY', label: 'Toutes les semaines' }, { v: 'FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR', label: 'En semaine (lun→ven)' },
-  { v: 'FREQ=MONTHLY', label: 'Tous les mois' },
+
+// Palette de 24 couleurs distinctes (style Google Agenda).
+const COLOR_PALETTE = [
+  '#7986CB', '#33B679', '#8E24AA', '#E67C73', '#F6BF26', '#F4511E',
+  '#039BE5', '#616161', '#3F51B5', '#0B8043', '#D50000', '#06B6D4',
+  '#22C55E', '#F97316', '#8B5CF6', '#EF4444', '#EC4899', '#14B8A6',
+  '#EAB308', '#3B82F6', '#A855F7', '#10B981', '#F43F5E', '#64748B',
 ]
+
+// Récurrence — helpers iCal.
+const BYDAY_CODES = ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA']       // indexé par getDay()
+const WEEKDAY_LONG = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi']
+const WEEKDAY_INITIAL = ['D', 'L', 'M', 'M', 'J', 'V', 'S']          // cercles du modal (dim→sam)
+type CustomUnit = 'jour' | 'semaine' | 'mois'
+type CustomEnd = 'never' | 'on' | 'after'
+
+function rruleParts(rrule: string): Record<string, string> {
+  return Object.fromEntries(rrule.split(';').filter(Boolean).map(p => p.split('=')) as [string, string][])
+}
+// Résumé lisible d'une règle personnalisée (pour l'option sélectionnée).
+function summarizeRRule(rrule: string): string {
+  const p = rruleParts(rrule)
+  const n = Math.max(1, parseInt(p.INTERVAL ?? '1', 10) || 1)
+  const unit = p.FREQ === 'DAILY' ? 'jour' : p.FREQ === 'MONTHLY' ? 'mois' : 'semaine'
+  let s = n > 1 ? `Tou(te)s les ${n} ${unit}${unit === 'mois' ? '' : 's'}` : `Chaque ${unit}`
+  if (p.FREQ === 'WEEKLY' && p.BYDAY) {
+    const days = p.BYDAY.split(',').map(c => WEEKDAY_LONG[BYDAY_CODES.indexOf(c)]).filter(Boolean)
+    if (days.length) s += ` (${days.join(', ')})`
+  }
+  if (p.COUNT) s += `, ${p.COUNT}×`
+  else if (p.UNTIL) s += `, jusqu'au ${p.UNTIL.slice(6, 8)}/${p.UNTIL.slice(4, 6)}/${p.UNTIL.slice(0, 4)}`
+  return s
+}
 
 function toDateInput(iso: string): string { return new Date(iso).toISOString().slice(0, 10) }
 function toTimeInput(iso: string): string { const d = new Date(iso); return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}` }
@@ -53,7 +81,58 @@ export function EventSheet({ event, draft, calendars, onClose, onSaved }: {
   const [calendarId, setCalendarId] = useState<string>((event?.meta?.calendarId as string) ?? calendars.find(c => c.kind === 'personal')?.id ?? '')
   const [reminder, setReminder] = useState<number>(event?.reminderMin ?? DEFAULT_REMINDER_MIN)
   const [rrule, setRrule] = useState<string>(event?.rrule ?? '')
+  const [color, setColor] = useState<string>(() =>
+    event?.color
+    ?? (event?.source === 'session' ? sportColor(event?.sport) : undefined)
+    ?? calendars.find(c => c.kind === 'personal')?.color
+    ?? COLOR_PALETTE[0]
+  )
   const [busy, setBusy] = useState(false)
+
+  // ── Récurrence personnalisée (modal) ──
+  const eventDow = new Date(dateStr + 'T00:00:00').getDay()
+  const [customOpen, setCustomOpen] = useState(false)
+  const [cInterval, setCInterval] = useState(1)
+  const [cUnit, setCUnit] = useState<CustomUnit>('semaine')
+  const [cDays, setCDays] = useState<number[]>([eventDow])
+  const [cEnd, setCEnd] = useState<CustomEnd>('never')
+  const [cUntil, setCUntil] = useState<string>(() => { const d = new Date(initStart); d.setMonth(d.getMonth() + 3); return d.toISOString().slice(0, 10) })
+  const [cCount, setCCount] = useState<number>(13)
+
+  const recurrencePresets = [
+    { v: '', label: 'Une seule fois' },
+    { v: 'FREQ=DAILY', label: 'Tous les jours' },
+    { v: `FREQ=WEEKLY;BYDAY=${BYDAY_CODES[eventDow]}`, label: `Toutes les semaines le ${WEEKDAY_LONG[eventDow]}` },
+    { v: 'FREQ=MONTHLY', label: 'Tous les mois' },
+    { v: 'FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR', label: 'Tous les jours de la semaine (lun. à ven.)' },
+  ]
+  const isCustomActive = rrule !== '' && !recurrencePresets.some(p => p.v === rrule)
+
+  function openCustomModal() {
+    // Préremplit depuis la règle courante si elle est déjà personnalisée.
+    const p = rruleParts(rrule)
+    if (p.FREQ) {
+      setCUnit(p.FREQ === 'DAILY' ? 'jour' : p.FREQ === 'MONTHLY' ? 'mois' : 'semaine')
+      setCInterval(Math.max(1, parseInt(p.INTERVAL ?? '1', 10) || 1))
+      setCDays(p.BYDAY ? p.BYDAY.split(',').map(c => BYDAY_CODES.indexOf(c)).filter(i => i >= 0) : [eventDow])
+      if (p.COUNT) { setCEnd('after'); setCCount(Math.max(1, parseInt(p.COUNT, 10) || 1)) }
+      else if (p.UNTIL) { setCEnd('on'); setCUntil(`${p.UNTIL.slice(0, 4)}-${p.UNTIL.slice(4, 6)}-${p.UNTIL.slice(6, 8)}`) }
+      else setCEnd('never')
+    } else {
+      setCUnit('semaine'); setCInterval(1); setCDays([eventDow]); setCEnd('never')
+    }
+    setCustomOpen(true)
+  }
+
+  function applyCustom() {
+    const freq = cUnit === 'jour' ? 'DAILY' : cUnit === 'semaine' ? 'WEEKLY' : 'MONTHLY'
+    let s = `FREQ=${freq}`
+    if (cInterval > 1) s += `;INTERVAL=${cInterval}`
+    if (freq === 'WEEKLY' && cDays.length) s += `;BYDAY=${[...cDays].sort((a, b) => a - b).map(d => BYDAY_CODES[d]).join(',')}`
+    if (cEnd === 'on') s += `;UNTIL=${cUntil.replace(/-/g, '')}`
+    else if (cEnd === 'after') s += `;COUNT=${Math.max(1, cCount)}`
+    setRrule(s); setCustomOpen(false)
+  }
 
   useEffect(() => {
     // durée séance = end-start en minutes
@@ -68,15 +147,15 @@ export function EventSheet({ event, draft, calendars, onClose, onSaved }: {
       const end = allDay ? combine(dateStr, '23:59') : combine(dateStr, endT)
       if (kind === 'session') {
         if (editing && event) {
-          await updateSessionLight(event.rawId, { title: title || sport, sport, rpe: rpe ? Number(rpe) : null, description: desc, reminderMin: reminder })
+          await updateSessionLight(event.rawId, { title: title || sport, sport, rpe: rpe ? Number(rpe) : null, description: desc, reminderMin: reminder, color })
         } else {
-          await createSessionLight({ title: title || sport, sport, start, durationMin, rpe: rpe ? Number(rpe) : null, description: desc, reminderMin: reminder })
+          await createSessionLight({ title: title || sport, sport, start, durationMin, rpe: rpe ? Number(rpe) : null, description: desc, reminderMin: reminder, color })
         }
       } else {
         if (editing && event) {
-          await updateEvent(event.rawId, { title, description: desc, start, end, allDay, calendarId, reminderMin: reminder, rrule: rrule || null })
+          await updateEvent(event.rawId, { title, description: desc, start, end, allDay, calendarId, reminderMin: reminder, rrule: rrule || null, color })
         } else {
-          await createEvent({ title, description: desc, start, end, allDay, calendarId, reminderMin: reminder, rrule: rrule || null })
+          await createEvent({ title, description: desc, start, end, allDay, calendarId, reminderMin: reminder, rrule: rrule || null, color })
         }
       }
       window.dispatchEvent(new Event('thw:agenda-changed'))
@@ -190,21 +269,37 @@ export function EventSheet({ event, draft, calendars, onClose, onSaved }: {
                 </div>
               )}
 
-              <div style={{ display: 'flex', gap: 10, marginBottom: 12 }}>
-                <div style={{ flex: 1 }}>
-                  <p style={label}>Rappel</p>
-                  <select style={field} value={reminder} onChange={e => setReminder(Number(e.target.value))}>
-                    {REMINDERS.map(r => <option key={r.v} value={r.v}>{r.label}</option>)}
+              <div style={{ marginBottom: 12 }}>
+                <p style={label}>Rappel</p>
+                <select style={field} value={reminder} onChange={e => setReminder(Number(e.target.value))}>
+                  {REMINDERS.map(r => <option key={r.v} value={r.v}>{r.label}</option>)}
+                </select>
+              </div>
+
+              {kind === 'event' && (
+                <div style={{ marginBottom: 12 }}>
+                  <p style={label}>Répétition</p>
+                  <select style={field}
+                    value={isCustomActive ? '__active__' : rrule}
+                    onChange={e => { const v = e.target.value; if (v === '__custom__') openCustomModal(); else if (v !== '__active__') setRrule(v) }}>
+                    {isCustomActive && <option value="__active__">{summarizeRRule(rrule)}</option>}
+                    {recurrencePresets.map(r => <option key={r.v || 'once'} value={r.v}>{r.label}</option>)}
+                    <option value="__custom__">Personnaliser…</option>
                   </select>
                 </div>
-                {kind === 'event' && (
-                  <div style={{ flex: 1 }}>
-                    <p style={label}>Répétition</p>
-                    <select style={field} value={rrule} onChange={e => setRrule(e.target.value)}>
-                      {RRULES.map(r => <option key={r.v} value={r.v}>{r.label}</option>)}
-                    </select>
-                  </div>
-                )}
+              )}
+
+              <div style={{ marginBottom: 12 }}>
+                <p style={label}>Couleur</p>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(12, 1fr)', gap: 8 }}>
+                  {COLOR_PALETTE.map(c => {
+                    const on = color.toLowerCase() === c.toLowerCase()
+                    return (
+                      <button key={c} type="button" aria-label={`Couleur ${c}`} onClick={() => setColor(c)}
+                        style={{ width: '100%', aspectRatio: '1', borderRadius: '50%', background: c, border: 'none', cursor: 'pointer', padding: 0, boxShadow: on ? '0 0 0 2px var(--bg-card), 0 0 0 4px var(--text)' : 'none' }} />
+                    )
+                  })}
+                </div>
               </div>
 
               <div style={{ marginBottom: 14 }}>
@@ -238,6 +333,69 @@ export function EventSheet({ event, draft, calendars, onClose, onSaved }: {
           )}
         </div>
       </div>
+
+      {/* Modal récurrence personnalisée (style Google Agenda) */}
+      {customOpen && (
+        <div onClick={e => { if (e.target === e.currentTarget) setCustomOpen(false) }}
+          style={{ position: 'fixed', inset: 0, zIndex: 600, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(3px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <div style={{ width: 'min(400px,96vw)', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 18, boxShadow: 'var(--shadow)', padding: '20px 22px', boxSizing: 'border-box' }}>
+            <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 700, margin: '0 0 18px', color: 'var(--text)' }}>Récurrence personnalisée</h3>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
+              <span style={{ fontSize: 14, color: 'var(--text-mid)' }}>Répéter tou(te)s les</span>
+              <input type="number" min={1} value={cInterval} onChange={e => setCInterval(Math.max(1, Number(e.target.value) || 1))}
+                style={{ ...field, width: 64, padding: '8px 10px' }} />
+              <select value={cUnit} onChange={e => setCUnit(e.target.value as CustomUnit)} style={{ ...field, width: 130, padding: '8px 10px' }}>
+                <option value="jour">jour(s)</option>
+                <option value="semaine">semaine(s)</option>
+                <option value="mois">mois</option>
+              </select>
+            </div>
+
+            {cUnit === 'semaine' && (
+              <div style={{ marginBottom: 16 }}>
+                <p style={label}>Répéter le</p>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  {WEEKDAY_INITIAL.map((w, i) => {
+                    const on = cDays.includes(i)
+                    return (
+                      <button key={i} type="button" onClick={() => setCDays(d => on ? d.filter(x => x !== i) : [...d, i])}
+                        style={{ width: 34, height: 34, borderRadius: '50%', border: 'none', cursor: 'pointer', fontSize: 12.5, fontWeight: 700, background: on ? 'var(--primary)' : 'var(--bg-card2)', color: on ? 'var(--on-primary)' : 'var(--text-mid)' }}>{w}</button>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
+            <div style={{ marginBottom: 18 }}>
+              <p style={label}>Se termine</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 14, color: 'var(--text)', cursor: 'pointer' }}>
+                  <input type="radio" name="cend" checked={cEnd === 'never'} onChange={() => setCEnd('never')} /> Jamais
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 14, color: 'var(--text)', cursor: 'pointer' }}>
+                  <input type="radio" name="cend" checked={cEnd === 'on'} onChange={() => setCEnd('on')} />
+                  <span style={{ width: 40 }}>Le</span>
+                  <input type="date" value={cUntil} onClick={() => setCEnd('on')} onChange={e => { setCUntil(e.target.value); setCEnd('on') }}
+                    style={{ ...field, flex: 1, padding: '8px 10px', opacity: cEnd === 'on' ? 1 : 0.5 }} />
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 14, color: 'var(--text)', cursor: 'pointer' }}>
+                  <input type="radio" name="cend" checked={cEnd === 'after'} onChange={() => setCEnd('after')} />
+                  <span style={{ width: 40 }}>Après</span>
+                  <input type="number" min={1} value={cCount} onClick={() => setCEnd('after')} onChange={e => { setCCount(Math.max(1, Number(e.target.value) || 1)); setCEnd('after') }}
+                    style={{ ...field, width: 72, padding: '8px 10px', opacity: cEnd === 'after' ? 1 : 0.5 }} />
+                  <span style={{ fontSize: 14, color: 'var(--text-mid)' }}>occurrences</span>
+                </label>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+              <button onClick={() => setCustomOpen(false)} style={{ padding: '10px 16px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}>Annuler</button>
+              <button onClick={applyCustom} style={{ padding: '10px 18px', borderRadius: 10, border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 13.5, fontWeight: 700, cursor: 'pointer' }}>Terminé</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -337,9 +337,10 @@ interface Props {
   kpiNode?:       ReactNode
   mapNode?:       ReactNode
   feelingNode?:   ReactNode
+  mobile?:        boolean            // rendu mobile : colonne unique + graphique ajusté à l'écran
 }
 
-export function TrainingAnalysis({ streams, laps: lapsProp, activityId, totalDurationS, sport = 'run', paceZones, onLapTap, onSegmentTap, onHoverRatio, onHoverSegment, kpiNode, mapNode, feelingNode }: Props) {
+export function TrainingAnalysis({ streams, laps: lapsProp, activityId, totalDurationS, sport = 'run', paceZones, onLapTap, onSegmentTap, onHoverRatio, onHoverSegment, kpiNode, mapNode, feelingNode, mobile = false }: Props) {
   const { t } = useI18n()
   const [mode, setMode]     = useState<Mode>('km')
   const [metric, setMetric] = useState<Metric>('pace')
@@ -399,6 +400,26 @@ export function TrainingAnalysis({ streams, laps: lapsProp, activityId, totalDur
   }
   const tapEnabled = (mode === 'laps' && hasLaps && !!onLapTap) || (mode !== 'laps' && !!onSegmentTap)
   const onTapProp = tapEnabled ? onTap : undefined
+
+  // ── MOBILE : colonne unique, graphique ajusté à l'écran (plus haut, gros texte) ──
+  if (mobile) {
+    return (
+      <div>
+        <style>{`
+          @keyframes thwTaRise { from { opacity: 0; transform: translateY(6px) scaleY(0.92); } to { opacity: 1; transform: none; } }
+        `}</style>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14, minWidth: 0 }}>
+          {kpiNode}
+          {feelingNode}
+          <AnalysisGraph data={data} splits={splits} mode={mode} metric={metric} sport={sport} accent={accent} ramp={ramp} totalDurationS={totalDurationS}
+            onTap={onTapProp} hovered={hovered} setHovered={setHovered} onHoverRatio={onHoverRatio} onHoverSegment={onHoverSegment} ratioOf={ratioOf} segOf={segOf} t={t} mobile />
+          <AnalysisControls mode={mode} metric={metric} sport={sport} hasLaps={hasLaps} onMode={setMode} onMetric={setMetric} t={t} />
+          {mapNode}
+          <AnalysisTable splits={splits} mode={mode} sport={sport} hovered={hovered} setHovered={setHovered} onTap={onTapProp} onHoverRatio={onHoverRatio} onHoverSegment={onHoverSegment} ratioOf={ratioOf} segOf={segOf} t={t} />
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div>
@@ -481,8 +502,8 @@ function valStr(v: number, sport: Sport): string {
 }
 
 // Géométrie partagée courbe / jauges.
-function computeGeom(data: AData, splits: Split[], metric: Metric, sport: Sport, chartH: number, vbw = 1000) {
-  const VBW = vbw, PAD_L = 46, PAD_R = 64, PAD_T = 16, PAD_B = 24
+function computeGeom(data: AData, splits: Split[], metric: Metric, sport: Sport, chartH: number, vbw = 1000, compact = false) {
+  const VBW = vbw, PAD_L = compact ? 40 : 46, PAD_R = compact ? 52 : 64, PAD_T = 16, PAD_B = 24
   const innerW = VBW - PAD_L - PAD_R
   const baseY = PAD_T + chartH
   const speeds = splits.map(s => speedOf(s, metric, sport)).filter(s => s > 0)
@@ -573,9 +594,9 @@ function SmoothArea({ data, g, metric, sport, accent }: { data: AData; g: Return
   )
 }
 
-function MarkerTicks({ data, g, splits, metric, sport, accent, fastIdx, slowIdx, avgSpeed, t }: {
+function MarkerTicks({ data, g, splits, metric, sport, accent, fastIdx, slowIdx, avgSpeed, fs, t }: {
   data: AData; g: ReturnType<typeof computeGeom>; splits: Split[]; metric: Metric; sport: Sport
-  accent: string; fastIdx: number; slowIdx: number; avgSpeed: number; t: (k: string) => string
+  accent: string; fastIdx: number; slowIdx: number; avgSpeed: number; fs: number; t: (k: string) => string
 }) {
   void data
   const x = g.VBW - g.PAD_R
@@ -591,8 +612,8 @@ function MarkerTicks({ data, g, splits, metric, sport, accent, fastIdx, slowIdx,
       {rows.map((r, i) => (
         <g key={i}>
           <line x1={x - 6} y1={r.y} x2={x + 4} y2={r.y} stroke={r.c} strokeWidth={1.6} vectorEffect="non-scaling-stroke" />
-          <text x={x + 7} y={r.y - 1.5} textAnchor="start" fontSize={7} fontWeight={600} fill="var(--text-dim)">{r.label}</text>
-          <text x={x + 7} y={r.y + 8} textAnchor="start" fontSize={10.5} fontWeight={700} fill={r.c} style={{ fontVariantNumeric: 'tabular-nums' }}>{r.val}</text>
+          <text x={x + 7} y={r.y - 1.5} textAnchor="start" fontSize={7 * fs} fontWeight={600} fill="var(--text-dim)">{r.label}</text>
+          <text x={x + 7} y={r.y + 8} textAnchor="start" fontSize={10.5 * fs} fontWeight={700} fill={r.c} style={{ fontVariantNumeric: 'tabular-nums' }}>{r.val}</text>
         </g>
       ))}
     </g>
@@ -757,7 +778,7 @@ const tdR: React.CSSProperties = { padding: '7px 12px', textAlign: 'right', colo
 // (barres cliquables → modal tour) ou ligne fluide (lissé). Y allure
 // gauche + altitude droite, X distance /2 km, repères rapide/moy/lent.
 // ══════════════════════════════════════════════════════════════════
-function AnalysisGraph({ data, splits, mode, metric, sport, accent, ramp, totalDurationS, onTap, hovered, setHovered, onHoverRatio, onHoverSegment, ratioOf, segOf, t }: {
+function AnalysisGraph({ data, splits, mode, metric, sport, accent, ramp, totalDurationS, onTap, hovered, setHovered, onHoverRatio, onHoverSegment, ratioOf, segOf, t, mobile = false }: {
   data: AData; splits: Split[]; mode: Mode; metric: Metric; sport: Sport
   accent: string; ramp: readonly string[]; totalDurationS: number | null
   onTap?: (sp: Split) => void
@@ -765,13 +786,18 @@ function AnalysisGraph({ data, splits, mode, metric, sport, accent, ramp, totalD
   onHoverRatio?: (r: number | null) => void; onHoverSegment?: (s: { start: number; end: number } | null) => void
   ratioOf: (i: number) => number; segOf: (i: number) => { start: number; end: number } | null
   t: (k: string) => string
+  mobile?: boolean
 }) {
-  const CH = 224
-  const g = computeGeom(data, splits, metric, sport, CH, 820)
+  // Mobile : viewBox plus étroit → graphique plus haut (ajusté à l'écran) + texte agrandi.
+  const CH = mobile ? 268 : 224
+  const VBW = mobile ? 430 : 820
+  const fs = mobile ? 1.45 : 1     // facteur d'agrandissement typographique mobile
+  const g = computeGeom(data, splits, metric, sport, CH, VBW, mobile)
   const hover = hovered
   const setHover = setHovered
   const [smoothT, setSmoothT] = useState<number | null>(null)
   const wrapRef = useRef<HTMLDivElement>(null)
+  const touchRef = useRef<{ x: number; moved: boolean } | null>(null)
   const widths = barWidths(splits, g, mode, sport)
   const xs: number[] = []
   { let c = g.PAD_L; for (let i = 0; i < splits.length; i++) { xs.push(c); c += widths[i] } }
@@ -812,10 +838,17 @@ function AnalysisGraph({ data, splits, mode, metric, sport, accent, ramp, totalD
       <SectionTitle text={t('actp.training_analysis')} />
       <div
         ref={wrapRef}
-        onMouseMove={e => onMove(e.clientX)}
-        onMouseLeave={() => { setHover(null); setSmoothT(null); onHoverRatio?.(null); onHoverSegment?.(null) }}
-        onClick={e => { if (mode !== 'smooth' && onTap) { const i = idxAt(e.clientX); if (i >= 0) onTap(splits[i]) } }}
-        style={{ position: 'relative', width: '100%', paddingBottom: `${((CH + g.PAD_T + g.PAD_B) / g.VBW) * 100}%`, cursor: mode !== 'smooth' && onTap ? 'pointer' : 'crosshair' }}
+        onMouseMove={mobile ? undefined : e => onMove(e.clientX)}
+        onMouseLeave={mobile ? undefined : () => { setHover(null); setSmoothT(null); onHoverRatio?.(null); onHoverSegment?.(null) }}
+        onClick={mobile ? undefined : e => { if (mode !== 'smooth' && onTap) { const i = idxAt(e.clientX); if (i >= 0) onTap(splits[i]) } }}
+        onTouchStart={mobile ? e => { const tx = e.touches[0]; touchRef.current = { x: tx.clientX, moved: false }; onMove(tx.clientX) } : undefined}
+        onTouchMove={mobile ? e => { const tx = e.touches[0]; const s = touchRef.current; if (s && Math.abs(tx.clientX - s.x) > 5) s.moved = true; onMove(tx.clientX) } : undefined}
+        onTouchEnd={mobile ? () => {
+          const s = touchRef.current; touchRef.current = null
+          if (s && !s.moved && mode !== 'smooth' && onTap) { const i = idxAt(s.x); if (i >= 0) { onTap(splits[i]); return } }
+          setHover(null); setSmoothT(null); onHoverRatio?.(null); onHoverSegment?.(null)
+        } : undefined}
+        style={{ position: 'relative', width: '100%', paddingBottom: `${((CH + g.PAD_T + g.PAD_B) / g.VBW) * 100}%`, cursor: mode !== 'smooth' && onTap ? 'pointer' : 'crosshair', touchAction: mobile ? 'none' : undefined }}
       >
         <svg viewBox={`0 0 ${g.VBW} ${CH + g.PAD_T + g.PAD_B}`} preserveAspectRatio="none" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block' }}>
           {/* profil altimétrique — aire grise pleine, discrète, DERRIÈRE les jauges
@@ -824,16 +857,16 @@ function AnalysisGraph({ data, splits, mode, metric, sport, accent, ramp, totalD
           {g.yTicks.map((m, i) => (
             <g key={'yp' + i}>
               <line x1={g.PAD_L} y1={m.y} x2={g.VBW - g.PAD_R} y2={m.y} stroke="var(--border)" strokeWidth={0.5} strokeDasharray="2 4" vectorEffect="non-scaling-stroke" />
-              <text x={g.PAD_L - 5} y={m.y + 3} textAnchor="end" fontSize={10} fill="var(--text-dim)" style={{ fontVariantNumeric: 'tabular-nums' }}>{m.label}</text>
+              <text x={g.PAD_L - 5} y={m.y + 3} textAnchor="end" fontSize={10 * fs} fill="var(--text-dim)" style={{ fontVariantNumeric: 'tabular-nums' }}>{m.label}</text>
             </g>
           ))}
           {yAltTicks(data, g).map((m, i) => (
-            <text key={'ya' + i} x={g.VBW - g.PAD_R + 5} y={m.y + 3} textAnchor="start" fontSize={9.5} fill="var(--text-dim)" style={{ fontVariantNumeric: 'tabular-nums' }}>{m.label}</text>
+            <text key={'ya' + i} x={g.VBW - g.PAD_R + 5} y={m.y + 3} textAnchor="start" fontSize={9.5 * fs} fill="var(--text-dim)" style={{ fontVariantNumeric: 'tabular-nums' }}>{m.label}</text>
           ))}
           {xAxisTicks(data, g).map((m, i) => (
-            <text key={'x' + i} x={m.x} y={CH + g.PAD_T + 15} textAnchor="middle" fontSize={10} fill="var(--text-dim)" style={{ fontVariantNumeric: 'tabular-nums' }}>{m.label}</text>
+            <text key={'x' + i} x={m.x} y={CH + g.PAD_T + 15} textAnchor="middle" fontSize={10 * fs} fill="var(--text-dim)" style={{ fontVariantNumeric: 'tabular-nums' }}>{m.label}</text>
           ))}
-          <text x={g.PAD_L} y={CH + g.PAD_T + 15} textAnchor="middle" fontSize={10} fill="var(--text-dim)">0</text>
+          <text x={g.PAD_L} y={CH + g.PAD_T + 15} textAnchor="middle" fontSize={10 * fs} fill="var(--text-dim)">0</text>
 
           {avgY !== null && <line x1={g.PAD_L} y1={avgY} x2={g.VBW - g.PAD_R} y2={avgY} stroke={accent} strokeWidth={1} strokeDasharray="5 4" opacity={0.5} vectorEffect="non-scaling-stroke" />}
 
@@ -853,11 +886,11 @@ function AnalysisGraph({ data, splits, mode, metric, sport, accent, ramp, totalD
                         opacity={isHov ? 0.92 : (hover === null ? 0.72 : 0.4)} rx={2}
                         style={{ transition: 'y .4s cubic-bezier(.22,1,.36,1), height .4s cubic-bezier(.22,1,.36,1), fill .3s ease, opacity .15s' }} />
                       {w >= 16 && h >= 16 && (
-                        <text x={xs[i] + widths[i] / 2} y={y - 5} textAnchor="middle" fontSize={11} fontWeight={700} fill={accent}
+                        <text x={xs[i] + widths[i] / 2} y={y - 5} textAnchor="middle" fontSize={11 * fs} fontWeight={700} fill={accent}
                           style={{ fontVariantNumeric: 'tabular-nums' }}>{sport === 'bike' ? Math.round(spd) : paceStr(spd)}</text>
                       )}
-                      <text x={xs[i] + widths[i] / 2} y={CH + g.PAD_T + 15} textAnchor="middle" fontSize={10} fill="var(--text-dim)"
-                        style={{ fontVariantNumeric: 'tabular-nums', opacity: (i === 0 || (i + 1) % Math.max(1, Math.ceil(splits.length / 14)) === 0) ? 1 : 0 }}>{sp.label}</text>
+                      <text x={xs[i] + widths[i] / 2} y={CH + g.PAD_T + 15} textAnchor="middle" fontSize={10 * fs} fill="var(--text-dim)"
+                        style={{ fontVariantNumeric: 'tabular-nums', opacity: (i === 0 || (i + 1) % Math.max(1, Math.ceil(splits.length / (mobile ? 8 : 14))) === 0) ? 1 : 0 }}>{sp.label}</text>
                     </g>
                   )
                 })}
@@ -872,7 +905,7 @@ function AnalysisGraph({ data, splits, mode, metric, sport, accent, ramp, totalD
             <line x1={g.PAD_L + smoothT * g.innerW} y1={g.PAD_T} x2={g.PAD_L + smoothT * g.innerW} y2={g.baseY} stroke={accent} strokeWidth={1} vectorEffect="non-scaling-stroke" opacity={0.7} />
           )}
 
-          {showMarkers && <MarkerTicks data={data} g={g} splits={splits} metric={metric} sport={sport} accent={accent} fastIdx={fastIdx} slowIdx={slowIdx} avgSpeed={avgSpeed} t={t} />}
+          {showMarkers && <MarkerTicks data={data} g={g} splits={splits} metric={metric} sport={sport} accent={accent} fastIdx={fastIdx} slowIdx={slowIdx} avgSpeed={avgSpeed} fs={fs} t={t} />}
         </svg>
 
         {mode !== 'smooth' && hover !== null && splits[hover] && (

@@ -28,7 +28,6 @@ import nextDynamic from 'next/dynamic'
 import { ActivityMapCard } from '@/components/activity/ActivityMapCard'
 const LapsChart = nextDynamic(() => import('@/components/activity/LapsChart').then(m => m.LapsChart), { ssr: false })
 const LapsTable = nextDynamic(() => import('@/components/activity/LapsTable').then(m => m.LapsTable), { ssr: false })
-const LapsBikeChart = nextDynamic(() => import('@/components/activity/LapsBikeChart').then(m => m.LapsBikeChart), { ssr: false })
 const LapsDetailView = nextDynamic(() => import('@/components/activity/LapsDetailView').then(m => m.LapsDetailView), { ssr: false })
 import { ClimbDescentSection, detectSegments } from '@/components/activity/ClimbDescentSection'
 import { WorkoutTypeBadges } from '@/components/activity/WorkoutTypeBadges'
@@ -41,7 +40,6 @@ import { SwimLengths } from '@/components/activity/SwimLengths'
 const MuscuActivityView = nextDynamic(() => import('@/components/activity/MuscuActivityView').then(m => m.MuscuActivityView), { ssr: false })
 import ProgressionHub from '@/app/progression/page'
 import { ProgressionSportView } from '@/app/progression/components/ProgressionSportView'
-const LapsRunChart = nextDynamic(() => import('@/components/activity/LapsRunChart').then(m => m.LapsRunChart), { ssr: false })
 const TrainingAnalysis = nextDynamic(() => import('@/components/activity/TrainingAnalysis').then(m => m.TrainingAnalysis), { ssr: false })
 import { formatPace as fmtPaceMinKm, speedToPace as kmhToPaceMin, formatPaceSwim } from '@/lib/utils/pace'
 import { formatSplit, speedKmhToSplit500 } from '@/lib/utils/split'
@@ -7760,6 +7758,7 @@ conseil pour la prochaine séance similaire.`
               activity={a as unknown as Record<string, unknown>}
               mobileHero={true}
               hoverGps={hoverGps}
+              highlights={hoverHighlight ?? undefined}
               bottomInset={mapBottomInset}
             />
           ) : hasWorkoutHero && linkedSession ? (
@@ -7989,6 +7988,46 @@ conseil pour la prochaine séance similaire.`
           {/* ── SECTIONS dans le sheet ── */}
           <div style={{ padding: '0 16px' }}>
 
+            {/* ── ANALYSE DE L'ENTRAÎNEMENT (course / trail / vélo) — version
+                 mobile du bloc Strava-like : graphique ajusté à l'écran, jauges
+                 tactiles (appui → détail), tableau des splits. Remplace les
+                 anciennes barres LapsRunChart / LapsBikeChart. ── */}
+            {(isRun || isBike) && a.streams && (
+              <div style={{ marginBottom: 24 }}>
+                <TrainingAnalysis
+                  streams={a.streams}
+                  laps={a.laps}
+                  activityId={a.id}
+                  totalDurationS={a.moving_time_s}
+                  sport={isBike ? 'bike' : 'run'}
+                  paceZones={runZones}
+                  mobile
+                  onLapTap={i => { setLapsViewSegment(null); setLapsViewSegTitle(null); setLapsViewInitial(i); setLapsViewDetailOnly(true); setLapsViewOpen(true) }}
+                  onSegmentTap={seg => {
+                    const lap: LapData = {
+                      start_index: seg.startIndex, end_index: seg.endIndex,
+                      distance_m: seg.distanceM, moving_time_s: seg.durationS,
+                      avg_hr: seg.avgHr, avg_speed_ms: seg.avgSpeedMs || null,
+                      avg_watts: seg.avgWatts || null, elevation_gain_m: seg.dPlus,
+                    }
+                    setLapsViewSegment(lap)
+                    setLapsViewSegTitle(`${isBike ? 'Segment' : 'Km'} ${seg.label}`)
+                    setLapsViewInitial(0)
+                    setLapsViewDetailOnly(true)
+                    setLapsViewOpen(true)
+                  }}
+                  onHoverRatio={onCurveHover}
+                  onHoverSegment={seg => {
+                    if (!seg || !polylinePoints || polylinePoints.length < 2) { setHoverHighlight(null); return }
+                    const n = polylinePoints.length
+                    const i0 = Math.max(0, Math.floor(seg.start * (n - 1)))
+                    const i1 = Math.min(n - 1, Math.ceil(seg.end * (n - 1)))
+                    setHoverHighlight(i1 > i0 ? [polylinePoints.slice(i0, i1 + 1)] : null)
+                  }}
+                />
+              </div>
+            )}
+
             {/* DONNÉES */}
             <Section title={t('actp.data')}>
               {(() => {
@@ -8140,28 +8179,7 @@ conseil pour la prochaine séance similaire.`
                 s'il n'y a qu'un tour. Plus de garde `a.laps.length > 1` en amont :
                 c'était la cause du graphe manquant sur mobile (les laps n'étant
                 jamais re-fetchés après ouverture de la fiche). */}
-            {isBike && a.streams?.watts && a.streams.watts.length >= 2 && (
-              <LapsBikeChart
-                activityId={a.id}
-                cachedLaps={a.laps}
-                avgWatts={a.avg_watts}
-                streams={a.streams}
-                ftp={bikeZoneRow?.ftp_watts ?? null}
-                onLapTap={i => { setLapsViewInitial(i); setLapsViewDetailOnly(false); setLapsViewOpen(true) }}
-              />
-            )}
-
-            {/* LAPS course — MÊME système que le vélo : barres violettes cliquables
-                → LapsDetailView sport="running". Se monte toujours (self-fetch + se
-                masque seul s'il n'y a qu'un tour), comme le vélo. */}
-            {isRun && (
-              <LapsRunChart
-                activityId={a.id}
-                cachedLaps={a.laps}
-                avgSpeedMs={a.distance_m && a.moving_time_s ? a.distance_m / a.moving_time_s : null}
-                onLapTap={i => { setLapsViewInitial(i); setLapsViewDetailOnly(false); setLapsViewOpen(true) }}
-              />
-            )}
+            {/* Course & vélo : tours gérés par TrainingAnalysis (mobile) ci-dessus. */}
 
             {/* Tableau de repli — autres sports (natation, muscu…) qui ont des laps
                 mais ni watts (vélo) ni allure cliquable (course) déjà couverts. */}
@@ -8245,6 +8263,16 @@ conseil pour la prochaine séance similaire.`
         maxHrEst={estimateMaxHr(profile.birth_date)}
         sport={isRun ? 'running' : 'cycling'}
         detailOnly={lapsViewDetailOnly}
+        centered
+        overrideLap={lapsViewSegment}
+        detailTitle={lapsViewSegTitle}
+        renderLapCurves={(lap) => {
+          if (!lap || !a.streams) return null
+          const n = a.streams.altitude?.length ?? a.streams.heartrate?.length ?? a.streams.velocity?.length ?? 0
+          const i1 = lap.start_index ?? 0
+          const i2 = lap.end_index ?? (n > 0 ? n - 1 : i1)
+          return <ActivityCurves activity={{ ...a, streams: sliceStreamsForLap(a.streams, i1, i2) } as Activity} />
+        }}
       />
     </>
   ), document.body) : createPortal((

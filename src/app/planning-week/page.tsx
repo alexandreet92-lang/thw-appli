@@ -27,7 +27,16 @@ export default function PlanningWeekPage() {
   const [sheet, setSheet] = useState<{ event: CalEvent | null; draft: SheetDraft | null } | null>(null)
   const [panelOpen, setPanelOpen] = useState(false)
   const narrow = useNarrow(720)
+  const isMobile = useNarrow(640)
   const px = narrow ? 16 : 32   // padding horizontal de contenu (DESIGN_SYSTEM §3)
+
+  // Sur mobile, la vue par défaut est « Mois » (façon Google Agenda). Appliqué
+  // une seule fois au premier passage en mode mobile pour ne pas forcer ensuite.
+  const didInitView = useRef(false)
+  useEffect(() => {
+    if (didInitView.current) return
+    if (isMobile) { setView('month'); didInitView.current = true }
+  }, [isMobile])
 
   // Plage visible selon la vue
   const [rangeStart, rangeEnd] = useMemo<[Date, Date]>(() => {
@@ -82,6 +91,9 @@ export default function PlanningWeekPage() {
         {/* Barre navigation + vues */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginTop: 12, flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {isMobile && view === 'day' && (
+              <button onClick={() => setView('month')} style={{ ...btn, padding: '7px 11px', fontWeight: 700 }} aria-label="Retour au mois">‹ Mois</button>
+            )}
             <button onClick={() => go(-1)} style={{ ...btn, padding: '7px 11px' }}>‹</button>
             <button onClick={today} style={btn}>Aujourd'hui</button>
             <button onClick={() => go(1)} style={{ ...btn, padding: '7px 11px' }}>›</button>
@@ -100,7 +112,7 @@ export default function PlanningWeekPage() {
       {/* Panneau des couches */}
       {panelOpen && (
         <div style={{ margin: `0 ${px}px 12px`, padding: 14, borderRadius: 14, background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
-          <MiniCalendar anchor={anchor} onPick={d => setAnchor(startOfDay(d))} />
+          {!isMobile && <MiniCalendar anchor={anchor} onPick={d => setAnchor(startOfDay(d))} />}
           <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-dim)', margin: '0 0 10px' }}>Mes agendas</p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {calendars.map(c => (
@@ -121,7 +133,7 @@ export default function PlanningWeekPage() {
       {view === 'agenda' ? (
         <AgendaView events={events} onOpen={ev => setSheet({ event: ev, draft: null })} rangeStart={rangeStart} rangeEnd={rangeEnd} px={px} />
       ) : view === 'month' ? (
-        <MonthView anchor={anchor} events={events} onOpenDay={d => { setAnchor(startOfDay(d)); setView('day') }} onOpen={ev => setSheet({ event: ev, draft: null })} px={px} />
+        <MonthView anchor={anchor} events={events} onOpenDay={d => { setAnchor(startOfDay(d)); setView('day') }} onOpen={ev => setSheet({ event: ev, draft: null })} px={px} mobile={isMobile} />
       ) : (
         <WeekView
           days={view === 'day' ? [startOfDay(anchor)] : Array.from({ length: 7 }, (_, i) => addDays(mondayOf(anchor), i))}
@@ -268,7 +280,7 @@ function WeekView({ days, events, onOpen, onCreate, onMoved, px }: {
                 return (
                   <div key={di}
                     onPointerDown={e => { if (e.target === e.currentTarget && e.button === 0) { const m = yToMin(e.clientY); setCreateDrag({ dayIdx: di, aMin: m, bMin: m }) } }}
-                    style={{ flex: 1, position: 'relative', borderLeft: di ? '1px solid var(--border)' : 'none', height: 24 * HOUR_H, minWidth: 0, background: isToday ? 'var(--primary-dim)' : 'transparent' }}>
+                    style={{ flex: 1, position: 'relative', borderLeft: di ? '1px solid var(--border)' : 'none', height: 24 * HOUR_H, minWidth: 0, background: isToday ? 'var(--primary-dim)' : 'transparent', touchAction: 'none' }}>
                     {/* Bloc provisoire (drag-to-create) */}
                     {createDrag && createDrag.dayIdx === di && (() => {
                       const s = Math.min(createDrag.aMin, createDrag.bMin)
@@ -285,7 +297,7 @@ function WeekView({ days, events, onOpen, onCreate, onMoved, px }: {
                           onClick={ev => { ev.stopPropagation(); onOpen(e) }}
                           onPointerDown={e.editable ? (() => setDrag({ id: e.id, ev: e })) : undefined}
                           title={`${e.title}${e.rpe ? ` · RPE ${e.rpe}` : ''}${e.durationMin ? ` · ${e.durationMin}min` : ''}${e.description ? `\n${e.description}` : ''}`}
-                          style={{ position: 'absolute', top, left: `calc(${lane * w}% + 1px)`, width: `calc(${w}% - 2px)`, height: h, background: e.color, borderRadius: 6, padding: '2px 6px', color: 'var(--on-primary)', fontSize: 11, overflow: 'hidden', cursor: e.editable ? 'grab' : 'pointer', boxShadow: 'var(--shadow-card)', opacity: drag?.id === e.id ? 0.5 : 1, zIndex: 2 }}>
+                          style={{ position: 'absolute', top, left: `calc(${lane * w}% + 1px)`, width: `calc(${w}% - 2px)`, height: h, background: e.color, borderRadius: 6, padding: '2px 6px', color: 'var(--on-primary)', fontSize: 11, overflow: 'hidden', cursor: e.editable ? 'grab' : 'pointer', boxShadow: 'var(--shadow-card)', opacity: drag?.id === e.id ? 0.5 : 1, zIndex: 2, touchAction: e.editable ? 'none' : 'auto' }}>
                           <div style={{ fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.title}</div>
                           {h > 30 && <div style={{ fontSize: 10, opacity: 0.9, fontVariantNumeric: 'tabular-nums' }}>{new Date(e.start).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}{e.rpe ? ` · RPE ${e.rpe}` : ''}</div>}
                         </div>
@@ -365,28 +377,39 @@ function MiniCalendar({ anchor, onPick }: { anchor: Date; onPick: (d: Date) => v
 }
 
 // ── Vue Mois ────────────────────────────────────────────────────────────────
-function MonthView({ anchor, events, onOpenDay, onOpen, px }: { anchor: Date; events: CalEvent[]; onOpenDay: (d: Date) => void; onOpen: (e: CalEvent) => void; px: number }) {
+function MonthView({ anchor, events, onOpenDay, onOpen, px, mobile }: { anchor: Date; events: CalEvent[]; onOpenDay: (d: Date) => void; onOpen: (e: CalEvent) => void; px: number; mobile?: boolean }) {
   const first = new Date(anchor.getFullYear(), anchor.getMonth(), 1)
   const gridStart = mondayOf(first)
   const cells = Array.from({ length: 42 }, (_, i) => addDays(gridStart, i))
   const evByDay = (d: Date) => events.filter(e => sameDay(new Date(e.start), d) || (new Date(e.start) <= d && new Date(e.end) >= d))
+  const headers = mobile ? ['L', 'M', 'M', 'J', 'V', 'S', 'D'] : DAY_NAMES
+  const maxShown = mobile ? 4 : 4
   return (
     <div style={{ padding: `0 ${px}px`, width: '100%', boxSizing: 'border-box' }}>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', borderTop: '1px solid var(--border)', borderLeft: '1px solid var(--border)' }}>
-        {DAY_NAMES.map(d => <div key={d} style={{ padding: '8px 4px', textAlign: 'center', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-dim)', borderRight: '1px solid var(--border)', borderBottom: '1px solid var(--border)' }}>{d}</div>)}
+        {headers.map((d, i) => <div key={i} style={{ padding: mobile ? '6px 2px' : '8px 4px', textAlign: 'center', fontSize: mobile ? 10 : 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-dim)', borderRight: '1px solid var(--border)', borderBottom: '1px solid var(--border)' }}>{d}</div>)}
         {cells.map((d, i) => {
           const inMonth = d.getMonth() === anchor.getMonth()
           const isToday = sameDay(d, new Date())
-          const evs = evByDay(d).slice(0, 4)
+          const dayEvents = evByDay(d)
+          const evs = dayEvents.slice(0, maxShown)
+          const extra = dayEvents.length - evs.length
           return (
-            <div key={i} onClick={() => onOpenDay(d)} style={{ minHeight: 96, padding: 5, borderRight: '1px solid var(--border)', borderBottom: '1px solid var(--border)', background: inMonth ? 'transparent' : 'var(--bg-card2)', cursor: 'pointer', overflow: 'hidden' }}>
-              <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 22, height: 22, borderRadius: '50%', fontSize: 12, fontWeight: 700, fontVariantNumeric: 'tabular-nums', background: isToday ? 'var(--primary)' : 'transparent', color: isToday ? 'var(--on-primary)' : inMonth ? 'var(--text)' : 'var(--text-dim)' }}>{d.getDate()}</div>
-              {evs.map(e => (
-                <div key={e.id} onClick={ev => { ev.stopPropagation(); onOpen(e) }} title={e.title} style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2, fontSize: 10.5, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  <span style={{ width: 7, height: 7, borderRadius: 2, background: e.color, flexShrink: 0 }} />
-                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{e.title}</span>
+            <div key={i} onClick={() => onOpenDay(d)} style={{ minHeight: mobile ? 60 : 96, padding: mobile ? 3 : 5, borderRight: '1px solid var(--border)', borderBottom: '1px solid var(--border)', background: inMonth ? 'transparent' : 'var(--bg-card2)', cursor: 'pointer', overflow: 'hidden', minWidth: 0 }}>
+              <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: mobile ? 20 : 22, height: mobile ? 20 : 22, borderRadius: '50%', fontSize: mobile ? 11 : 12, fontWeight: 700, fontVariantNumeric: 'tabular-nums', background: isToday ? 'var(--primary)' : 'transparent', color: isToday ? 'var(--on-primary)' : inMonth ? 'var(--text)' : 'var(--text-dim)' }}>{d.getDate()}</div>
+              {mobile ? (
+                <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 3, marginTop: 3 }}>
+                  {evs.map(e => <span key={e.id} title={e.title} style={{ width: 6, height: 6, borderRadius: '50%', background: e.color, flexShrink: 0 }} />)}
+                  {extra > 0 && <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-dim)', lineHeight: 1 }}>+{extra}</span>}
                 </div>
-              ))}
+              ) : (
+                evs.map(e => (
+                  <div key={e.id} onClick={ev => { ev.stopPropagation(); onOpen(e) }} title={e.title} style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2, fontSize: 10.5, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <span style={{ width: 7, height: 7, borderRadius: 2, background: e.color, flexShrink: 0 }} />
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{e.title}</span>
+                  </div>
+                ))
+              )}
             </div>
           )
         })}

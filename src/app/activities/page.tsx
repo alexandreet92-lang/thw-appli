@@ -6792,6 +6792,7 @@ export function ActivityDetail({ a, onClose, closing = false, zones, profile, al
   const [deleteError,          setDeleteError]          = useState<string | null>(null)
   const [mapExpanded,          setMapExpanded]          = useState(false)
   const [hoverGps,             setHoverGps]             = useState<LatLngPoint | null>(null)
+  const [hoverHighlight,       setHoverHighlight]       = useState<LatLngPoint[][] | null>(null)
   // Mobile — sections repliables
   const [showDecoupling,       setShowDecoupling]       = useState(false)
   const [showHrCumulative,     setShowHrCumulative]     = useState(false)
@@ -8395,7 +8396,7 @@ conseil pour la prochaine séance similaire.`
           const mapNode = !mapExpanded ? (
             <div style={{ position: 'relative', width: '100%', paddingBottom: '175%', borderRadius: 12, overflow: 'hidden' }}>
               <div style={{ position: 'absolute', inset: 0 }}>
-                <ActivityMapCard activity={a as unknown as Record<string, unknown>} isMobile={false} expanded={false} fill onToggle={() => setMapExpanded(true)} hoverGps={hoverGps} />
+                <ActivityMapCard activity={a as unknown as Record<string, unknown>} isMobile={false} expanded={false} fill onToggle={() => setMapExpanded(true)} hoverGps={hoverGps} highlights={hoverHighlight ?? undefined} />
               </div>
             </div>
           ) : null
@@ -8423,6 +8424,13 @@ conseil pour la prochaine séance similaire.`
                 setLapsViewOpen(true)
               }}
               onHoverRatio={onCurveHover}
+              onHoverSegment={seg => {
+                if (!seg || !polylinePoints || polylinePoints.length < 2) { setHoverHighlight(null); return }
+                const n = polylinePoints.length
+                const i0 = Math.max(0, Math.floor(seg.start * (n - 1)))
+                const i1 = Math.min(n - 1, Math.ceil(seg.end * (n - 1)))
+                setHoverHighlight(i1 > i0 ? [polylinePoints.slice(i0, i1 + 1)] : null)
+              }}
               kpiNode={kpiNode}
               mapNode={mapNode}
               feelingNode={feelingNode}

@@ -333,12 +333,13 @@ interface Props {
   onLapTap?:      (lapIndex: number) => void
   onSegmentTap?:  (seg: SegmentTapInfo) => void     // clic sur un segment km / 30 min → détail du segment
   onHoverRatio?:  (ratio: number | null) => void   // 0..1 le long de l'activité → point rouge carte
+  onHoverSegment?: (seg: { start: number; end: number } | null) => void // survol → segment rouge sur la carte
   kpiNode?:       ReactNode
   mapNode?:       ReactNode
   feelingNode?:   ReactNode
 }
 
-export function TrainingAnalysis({ streams, laps: lapsProp, activityId, totalDurationS, sport = 'run', paceZones, onLapTap, onSegmentTap, onHoverRatio, kpiNode, mapNode, feelingNode }: Props) {
+export function TrainingAnalysis({ streams, laps: lapsProp, activityId, totalDurationS, sport = 'run', paceZones, onLapTap, onSegmentTap, onHoverRatio, onHoverSegment, kpiNode, mapNode, feelingNode }: Props) {
   const { t } = useI18n()
   const [mode, setMode]     = useState<Mode>('km')
   const [metric, setMetric] = useState<Metric>('pace')
@@ -381,6 +382,12 @@ export function TrainingAnalysis({ streams, laps: lapsProp, activityId, totalDur
     if (!sp || data.totalDist <= 0) return 0
     return Math.max(0, Math.min(1, ((sp.startDist + sp.endDist) / 2) / data.totalDist))
   }
+  // Survol → segment [start,end] (0..1) pour surligner la carte en rouge.
+  const segOf = (i: number): { start: number; end: number } | null => {
+    const sp = splits[i]
+    if (!sp || data.totalDist <= 0) return null
+    return { start: sp.startDist / data.totalDist, end: sp.endDist / data.totalDist }
+  }
   // Clic : mode Tours → détail du tour ; mode km/30 min → détail du segment.
   const onTap = (sp: Split) => {
     if (mode === 'laps' && hasLaps && onLapTap) onLapTap(sp.lapIndex)
@@ -406,12 +413,12 @@ export function TrainingAnalysis({ streams, laps: lapsProp, activityId, totalDur
           {kpiNode}
           {feelingNode}
           <AnalysisGraph data={data} splits={splits} mode={mode} metric={metric} sport={sport} accent={accent} ramp={ramp} totalDurationS={totalDurationS}
-            onTap={onTapProp} hovered={hovered} setHovered={setHovered} onHoverRatio={onHoverRatio} ratioOf={ratioOf} t={t} />
+            onTap={onTapProp} hovered={hovered} setHovered={setHovered} onHoverRatio={onHoverRatio} onHoverSegment={onHoverSegment} ratioOf={ratioOf} segOf={segOf} t={t} />
           <AnalysisControls mode={mode} metric={metric} sport={sport} hasLaps={hasLaps} onMode={setMode} onMetric={setMetric} t={t} />
         </div>
         {/* DROITE : tableau | carte (à droite) côte à côte */}
         <div className="thw-ta-rt" style={{ display: 'grid', gridTemplateColumns: '1fr minmax(220px, 1fr)', gap: 16, alignItems: 'start', minWidth: 0 }}>
-          <AnalysisTable splits={splits} mode={mode} sport={sport} hovered={hovered} setHovered={setHovered} onTap={onTapProp} onHoverRatio={onHoverRatio} ratioOf={ratioOf} t={t} />
+          <AnalysisTable splits={splits} mode={mode} sport={sport} hovered={hovered} setHovered={setHovered} onTap={onTapProp} onHoverRatio={onHoverRatio} onHoverSegment={onHoverSegment} ratioOf={ratioOf} segOf={segOf} t={t} />
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12, minWidth: 0 }}>
             {mapNode}
           </div>
@@ -678,10 +685,12 @@ function SmoothTooltip({ s, metric, sport, totalDurationS, t }: { s: SmoothSampl
 // ══════════════════════════════════════════════════════════════════
 // TABLEAU statique
 // ══════════════════════════════════════════════════════════════════
-function AnalysisTable({ splits, mode, sport, hovered, setHovered, onTap, onHoverRatio, ratioOf, t }: {
+function AnalysisTable({ splits, mode, sport, hovered, setHovered, onTap, onHoverRatio, onHoverSegment, ratioOf, segOf, t }: {
   splits: Split[]; mode: Mode; sport: Sport
   hovered: number | null; setHovered: (i: number | null) => void
-  onTap?: (sp: Split) => void; onHoverRatio?: (r: number | null) => void; ratioOf: (i: number) => number
+  onTap?: (sp: Split) => void
+  onHoverRatio?: (r: number | null) => void; onHoverSegment?: (s: { start: number; end: number } | null) => void
+  ratioOf: (i: number) => number; segOf: (i: number) => { start: number; end: number } | null
   t: (k: string) => string
 }) {
   const isLaps = mode === 'laps'
@@ -708,8 +717,8 @@ function AnalysisTable({ splits, mode, sport, hovered, setHovered, onTap, onHove
               const isHov = hovered === i
               return (
                 <tr key={i}
-                  onMouseEnter={() => { setHovered(i); onHoverRatio?.(ratioOf(i)) }}
-                  onMouseLeave={() => { setHovered(null); onHoverRatio?.(null) }}
+                  onMouseEnter={() => { setHovered(i); onHoverRatio?.(ratioOf(i)); onHoverSegment?.(segOf(i)) }}
+                  onMouseLeave={() => { setHovered(null); onHoverRatio?.(null); onHoverSegment?.(null) }}
                   onClick={() => onTap?.(sp)}
                   style={{
                     background: isHov ? 'var(--bg-card3, rgba(120,120,120,0.16))' : (i % 2 ? 'var(--bg-card2)' : 'transparent'),
@@ -748,12 +757,13 @@ const tdR: React.CSSProperties = { padding: '7px 12px', textAlign: 'right', colo
 // (barres cliquables → modal tour) ou ligne fluide (lissé). Y allure
 // gauche + altitude droite, X distance /2 km, repères rapide/moy/lent.
 // ══════════════════════════════════════════════════════════════════
-function AnalysisGraph({ data, splits, mode, metric, sport, accent, ramp, totalDurationS, onTap, hovered, setHovered, onHoverRatio, ratioOf, t }: {
+function AnalysisGraph({ data, splits, mode, metric, sport, accent, ramp, totalDurationS, onTap, hovered, setHovered, onHoverRatio, onHoverSegment, ratioOf, segOf, t }: {
   data: AData; splits: Split[]; mode: Mode; metric: Metric; sport: Sport
   accent: string; ramp: readonly string[]; totalDurationS: number | null
   onTap?: (sp: Split) => void
   hovered: number | null; setHovered: (i: number | null) => void
-  onHoverRatio?: (r: number | null) => void; ratioOf: (i: number) => number
+  onHoverRatio?: (r: number | null) => void; onHoverSegment?: (s: { start: number; end: number } | null) => void
+  ratioOf: (i: number) => number; segOf: (i: number) => { start: number; end: number } | null
   t: (k: string) => string
 }) {
   const CH = 224
@@ -788,11 +798,12 @@ function AnalysisGraph({ data, splits, mode, metric, sport, accent, ramp, totalD
       if (!rect || rect.width === 0) return
       const xVB = ((clientX - rect.left) / rect.width) * g.VBW
       const rt = Math.max(0, Math.min(1, (xVB - g.PAD_L) / g.innerW))
-      setSmoothT(rt); onHoverRatio?.(rt)
+      setSmoothT(rt); onHoverRatio?.(rt); onHoverSegment?.(null)
     } else {
       const i = idxAt(clientX)
       setHover(i >= 0 ? i : null)
       onHoverRatio?.(i >= 0 ? ratioOf(i) : null)
+      onHoverSegment?.(i >= 0 ? segOf(i) : null)
     }
   }
 
@@ -802,7 +813,7 @@ function AnalysisGraph({ data, splits, mode, metric, sport, accent, ramp, totalD
       <div
         ref={wrapRef}
         onMouseMove={e => onMove(e.clientX)}
-        onMouseLeave={() => { setHover(null); setSmoothT(null); onHoverRatio?.(null) }}
+        onMouseLeave={() => { setHover(null); setSmoothT(null); onHoverRatio?.(null); onHoverSegment?.(null) }}
         onClick={e => { if (mode !== 'smooth' && onTap) { const i = idxAt(e.clientX); if (i >= 0) onTap(splits[i]) } }}
         style={{ position: 'relative', width: '100%', paddingBottom: `${((CH + g.PAD_T + g.PAD_B) / g.VBW) * 100}%`, cursor: mode !== 'smooth' && onTap ? 'pointer' : 'crosshair' }}
       >

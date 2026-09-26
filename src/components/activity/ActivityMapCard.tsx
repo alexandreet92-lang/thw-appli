@@ -102,9 +102,11 @@ interface Props {
   // fill : la carte remplit tout son conteneur (hauteur 100%) au lieu des 220px
   // fixes du bureau — pour un conteneur au ratio imposé (colonne portrait).
   fill?: boolean
+  // highlights : segments du tracé à surligner en rouge (survol d'un lap/km).
+  highlights?: { lat: number; lng: number }[][]
 }
 
-export function ActivityMapCard({ activity, isMobile = false, expanded = false, onToggle, hoverGps, mobileHero = false, bottomInset = 0, fill = false }: Props) {
+export function ActivityMapCard({ activity, isMobile = false, expanded = false, onToggle, hoverGps, mobileHero = false, bottomInset = 0, fill = false, highlights }: Props) {
   const [layer,           setLayer]           = useState<LayerId>('std')
   const [mobileFullscreen, setMobileFullscreen] = useState(false)
 
@@ -187,7 +189,7 @@ export function ActivityMapCard({ activity, isMobile = false, expanded = false, 
 
   return (
     <div style={cardStyle}>
-      <ActivityMapInner points={points} layer={layer} onLayerChange={setLayer} hoverGps={hoverGps} bottomInset={bottomInset} />
+      <ActivityMapInner points={points} layer={layer} onLayerChange={setLayer} hoverGps={hoverGps} bottomInset={bottomInset} highlights={highlights} />
 
       {/* Bouton plein écran mobile — masqué en mode mobileHero */}
       {isMobile && !mobileHero && (

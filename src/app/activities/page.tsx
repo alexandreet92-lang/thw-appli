@@ -3426,6 +3426,17 @@ interface ActivityCurvesProps {
 
 type CurvesFormat = 'stacked' | 'overlaid' | 'mono'
 
+// Coupe tous les flux d'un lap [i1..i2] pour n'afficher que ce segment.
+function sliceStreamsForLap(s: StreamData, i1: number, i2: number): StreamData {
+  const a = Math.max(0, i1), b = Math.max(a + 1, i2 + 1)
+  function sl<T>(arr: T[] | undefined): T[] | undefined { return arr ? arr.slice(a, b) : undefined }
+  return {
+    time: sl(s.time), distance: sl(s.distance), altitude: sl(s.altitude),
+    heartrate: sl(s.heartrate), velocity: sl(s.velocity), watts: sl(s.watts),
+    cadence: sl(s.cadence), temp: sl(s.temp), latlng: sl(s.latlng),
+  }
+}
+
 export function ActivityCurves({ activity, onHoverRatio }: ActivityCurvesProps) {
   const { t } = useI18n()
   void useWindowWidth() // force re-render au resize, mais on s'en sert pas autrement
@@ -8357,19 +8368,19 @@ conseil pour la prochaine séance similaire.`
             { label: 'SM · SN', value: `${smsn.sm} · ${smsn.sn}` },
           ]
           const kpiNode = (
-            <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 12, padding: '14px 16px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px 18px' }}>
+            <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 12, padding: '12px 16px' }}>
+              <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', alignItems: 'flex-end' }}>
                 {dp.map(r => (
-                  <div key={r.label}>
-                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 0.5, textTransform: 'uppercase', color: 'var(--text-dim)', marginBottom: 3 }}>{r.label}</div>
-                    <div style={{ fontSize: 21, fontWeight: 700, color: 'var(--text)', fontVariantNumeric: 'tabular-nums', lineHeight: 1.1 }}>{r.value}</div>
+                  <div key={r.label} style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 0.4, textTransform: 'uppercase', color: 'var(--text-dim)', marginBottom: 2, whiteSpace: 'nowrap' }}>{r.label}</div>
+                    <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)', fontVariantNumeric: 'tabular-nums', lineHeight: 1.05, whiteSpace: 'nowrap' }}>{r.value}</div>
                   </div>
                 ))}
               </div>
             </div>
           )
           const mapNode = !mapExpanded ? (
-            <div style={{ position: 'relative', width: '100%', paddingBottom: '135%', borderRadius: 12, overflow: 'hidden' }}>
+            <div style={{ position: 'relative', width: '100%', paddingBottom: '175%', borderRadius: 12, overflow: 'hidden' }}>
               <div style={{ position: 'absolute', inset: 0 }}>
                 <ActivityMapCard activity={a as unknown as Record<string, unknown>} isMobile={false} expanded={false} onToggle={() => setMapExpanded(true)} hoverGps={hoverGps} />
               </div>
@@ -8384,6 +8395,7 @@ conseil pour la prochaine séance similaire.`
               totalDurationS={a.moving_time_s}
               paceZones={runZones}
               onLapTap={i => { setLapsViewInitial(i); setLapsViewDetailOnly(true); setLapsViewOpen(true) }}
+              onHoverRatio={onCurveHover}
               kpiNode={kpiNode}
               mapNode={mapNode}
               feelingNode={feelingNode}
@@ -8995,6 +9007,15 @@ conseil pour la prochaine séance similaire.`
         maxHrEst={estimateMaxHr(profile.birth_date)}
         sport={isRun ? 'running' : 'cycling'}
         detailOnly={lapsViewDetailOnly}
+        centered
+        renderLapCurves={(li) => {
+          const lap = (a.laps ?? [])[li]
+          if (!lap || !a.streams) return null
+          const n = a.streams.altitude?.length ?? a.streams.heartrate?.length ?? a.streams.velocity?.length ?? 0
+          const i1 = lap.start_index ?? 0
+          const i2 = lap.end_index ?? (n > 0 ? n - 1 : i1)
+          return <ActivityCurves activity={{ ...a, streams: sliceStreamsForLap(a.streams, i1, i2) } as Activity} />
+        }}
       />
     </div>
   ), document.body)

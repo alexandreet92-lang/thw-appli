@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { formatPace, speedMsToPace } from '@/lib/utils/pace'
 import { useI18n } from '@/lib/i18n'
@@ -49,6 +49,10 @@ export interface LapsDetailViewProps {
   // detailOnly : ouvre DIRECTEMENT la carte détail du tour (sans la vue
   // d'ensemble à barres). Utilisé quand on clique une jauge du graphique.
   detailOnly?:     boolean
+  // centered : sur-page centrée à l'écran (bureau) au lieu du bottom-sheet.
+  centered?:       boolean
+  // renderLapCurves : courbes multi-bandes du segment du lap (bas de la carte).
+  renderLapCurves?: (lapIndex: number) => ReactNode
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -209,6 +213,12 @@ function MiniDonut({ title, data, size = 80 }: { title: string; data: ZoneArc[];
         <circle cx={CX} cy={CY} r={(R_OUT + R_IN) / 2} fill="none" stroke="var(--bg-card2)" strokeWidth={R_OUT - R_IN} />
         {data.map((d, i) => {
           if (d.pct <= 0) return null
+          const frac = d.pct / totalPct
+          // Une seule donnée à ~100 % : un arc SVG ne peut pas dessiner un cercle
+          // complet (départ = arrivée) → on trace un anneau plein à la place.
+          if (frac >= 0.999) {
+            return <circle key={i} cx={CX} cy={CY} r={(R_OUT + R_IN) / 2} fill="none" stroke={d.color} strokeWidth={R_OUT - R_IN} />
+          }
           const sa = -Math.PI / 2 + (cum / totalPct) * 2 * Math.PI
           const ea = -Math.PI / 2 + ((cum + d.pct) / totalPct) * 2 * Math.PI
           cum += d.pct
@@ -340,7 +350,7 @@ function DetailRow({ label, value }: { label: string; value: string }) {
   )
 }
 
-function LapDetailsSheet({ open, onClose, lap, lapIndex, streams, ftp, bikeZones, hrZones, sport }: {
+function LapDetailsSheet({ open, onClose, lap, lapIndex, streams, ftp, bikeZones, hrZones, sport, centered = false, renderCurves }: {
   open:      boolean
   onClose:   () => void
   lap:       LapData
@@ -350,6 +360,8 @@ function LapDetailsSheet({ open, onClose, lap, lapIndex, streams, ftp, bikeZones
   bikeZones: ParsedZone[] | null
   hrZones:   ParsedZone[] | null
   sport:     Sport
+  centered?: boolean
+  renderCurves?: ReactNode
 }) {
   const { t } = useI18n()
   void bikeZones
@@ -432,15 +444,39 @@ function LapDetailsSheet({ open, onClose, lap, lapIndex, streams, ftp, bikeZones
         @keyframes lapSheetFadeOut { from{opacity:1} to{opacity:0} }
         @keyframes lapSheetUp      { from{transform:translateY(100%)} to{transform:translateY(0)} }
         @keyframes lapSheetDown    { from{transform:translateY(0)} to{transform:translateY(100%)} }
+        @keyframes lapSheetPopIn   { from{transform:scale(0.94);opacity:0} to{transform:scale(1);opacity:1} }
+        @keyframes lapSheetPopOut  { from{transform:scale(1);opacity:1} to{transform:scale(0.96);opacity:0} }
       `}</style>
       <div
         onClick={doClose}
         style={{
           position: 'fixed', inset: 0, zIndex: 14800,
           background: 'rgba(0,0,0,0.55)',
+          display: centered ? 'flex' : undefined,
+          alignItems: centered ? 'center' : undefined,
+          justifyContent: centered ? 'center' : undefined,
+          padding: centered ? 24 : undefined,
           animation: `${closing ? 'lapSheetFadeOut 0.28s ease-in forwards' : 'lapSheetFadeIn 0.3s ease-out'}`,
         }}
-      />
+      >
+      {centered && (
+        <div
+          onClick={e => e.stopPropagation()}
+          style={{
+            position: 'relative', zIndex: 14900,
+            background: 'var(--bg)', borderRadius: 18,
+            width: 'min(680px, 100%)', maxHeight: '88vh', overflowY: 'auto',
+            padding: '22px 24px 26px',
+            boxShadow: '0 24px 70px rgba(0,0,0,0.45)',
+            animation: `${closing ? 'lapSheetPopOut 0.22s ease-in forwards' : 'lapSheetPopIn 0.26s cubic-bezier(0.34,1.3,0.5,1)'}`,
+            fontFamily: 'Inter, system-ui, -apple-system, sans-serif',
+          }}
+        >
+          {renderLapBody()}
+        </div>
+      )}
+      </div>
+      {!centered && (
       <div
         style={{
           position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 14900,
@@ -456,6 +492,16 @@ function LapDetailsSheet({ open, onClose, lap, lapIndex, streams, ftp, bikeZones
       >
         {/* Handle */}
         <div style={{ width: 40, height: 4, borderRadius: 2, background: 'var(--text-dim)', opacity: 0.4, margin: '0 auto 14px' }} />
+        {renderLapBody()}
+      </div>
+      )}
+    </>,
+    document.body,
+  )
+
+  function renderLapBody() {
+    return (
+      <>
 
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16, padding: '0 4px' }}>
@@ -533,10 +579,17 @@ function LapDetailsSheet({ open, onClose, lap, lapIndex, streams, ftp, bikeZones
             </div>
           </div>
         )}
-      </div>
-    </>,
-    document.body,
-  )
+
+        {/* Courbes multi-bandes du SEGMENT de ce lap uniquement */}
+        {renderCurves && (
+          <div style={{ marginTop: 8, paddingTop: 16, borderTop: '1px solid var(--border)' }}>
+            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-dim)', marginBottom: 10 }}>{t('actp.curves')}</div>
+            {renderCurves}
+          </div>
+        )}
+      </>
+    )
+  }
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -676,6 +729,8 @@ export function LapsDetailView(props: LapsDetailViewProps) {
         bikeZones={bikeZones}
         hrZones={hrZones}
         sport={props.sport}
+        centered={props.centered}
+        renderCurves={props.renderLapCurves?.(activeLap)}
       />
     )
   }
@@ -1014,6 +1069,8 @@ export function LapsDetailView(props: LapsDetailViewProps) {
         bikeZones={bikeZones}
         hrZones={hrZones}
         sport={isRun ? 'running' : 'cycling'}
+        centered={props.centered}
+        renderCurves={props.renderLapCurves?.(activeLap)}
       />
     </>,
     document.body,

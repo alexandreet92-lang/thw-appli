@@ -257,15 +257,17 @@ interface Props {
   totalDurationS: number | null
   paceZones?:     PaceZone[] | null
   onLapTap?:      (lapIndex: number) => void
+  onHoverRatio?:  (ratio: number | null) => void   // 0..1 le long de l'activité → point rouge carte
   kpiNode?:       ReactNode
   mapNode?:       ReactNode
   feelingNode?:   ReactNode
 }
 
-export function TrainingAnalysis({ streams, laps: lapsProp, activityId, totalDurationS, paceZones, onLapTap, kpiNode, mapNode, feelingNode }: Props) {
+export function TrainingAnalysis({ streams, laps: lapsProp, activityId, totalDurationS, paceZones, onLapTap, onHoverRatio, kpiNode, mapNode, feelingNode }: Props) {
   const { t } = useI18n()
   const [mode, setMode]     = useState<Mode>('km')
   const [metric, setMetric] = useState<Metric>('pace')
+  const [hovered, setHovered] = useState<number | null>(null)
 
   // Laps : prop, sinon self-fetch (comme LapsRunChart).
   const [laps, setLaps] = useState<LapData[]>(lapsProp && lapsProp.length > 1 ? lapsProp : [])
@@ -299,6 +301,13 @@ export function TrainingAnalysis({ streams, laps: lapsProp, activityId, totalDur
   const accent = metric === 'pace' ? ACCENT_PACE : ACCENT_VAP
   const ramp   = metric === 'pace' ? PACE_BLUE : VAP_VIOLET
 
+  const ratioOf = (i: number): number => {
+    const sp = splits[i]
+    if (!sp || data.totalDist <= 0) return 0
+    return Math.max(0, Math.min(1, ((sp.startDist + sp.endDist) / 2) / data.totalDist))
+  }
+  const onTap = hasLaps && onLapTap ? (sp: Split) => onLapTap(sp.lapIndex) : undefined
+
   return (
     <div>
       <style>{`
@@ -307,19 +316,19 @@ export function TrainingAnalysis({ streams, laps: lapsProp, activityId, totalDur
       `}</style>
 
       <div className="thw-ta-top" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 22, alignItems: 'start' }}>
-        {/* GAUCHE : données principales + LE graphique (profil + jauges + boutons) */}
+        {/* GAUCHE : données → ressenti/difficulté → LE graphique + boutons */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14, minWidth: 0 }}>
           {kpiNode}
+          {feelingNode}
           <AnalysisGraph data={data} splits={splits} mode={mode} metric={metric} accent={accent} ramp={ramp} totalDurationS={totalDurationS}
-            onTap={hasLaps && onLapTap ? (sp) => onLapTap(sp.lapIndex) : undefined} t={t} />
+            onTap={onTap} hovered={hovered} setHovered={setHovered} onHoverRatio={onHoverRatio} ratioOf={ratioOf} t={t} />
           <AnalysisControls mode={mode} metric={metric} hasLaps={hasLaps} onMode={setMode} onMetric={setMetric} t={t} />
         </div>
-        {/* DROITE : tableau | carte (à droite) côte à côte ; ressenti/difficulté sous la carte */}
-        <div className="thw-ta-rt" style={{ display: 'grid', gridTemplateColumns: '1fr minmax(200px, 1fr)', gap: 16, alignItems: 'start', minWidth: 0 }}>
-          <AnalysisTable splits={splits} mode={mode} t={t} />
+        {/* DROITE : tableau | carte (à droite) côte à côte */}
+        <div className="thw-ta-rt" style={{ display: 'grid', gridTemplateColumns: '1fr minmax(220px, 1fr)', gap: 16, alignItems: 'start', minWidth: 0 }}>
+          <AnalysisTable splits={splits} mode={mode} hovered={hovered} setHovered={setHovered} onTap={onTap} onHoverRatio={onHoverRatio} ratioOf={ratioOf} t={t} />
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12, minWidth: 0 }}>
             {mapNode}
-            {feelingNode}
           </div>
         </div>
       </div>
@@ -402,13 +411,6 @@ function altitudePath(data: AData, g: ReturnType<typeof computeGeom>): string {
   return d
 }
 
-// Profil altimétrique en LIGNE (tracé net, dessiné PAR-DESSUS les jauges).
-function altitudeLine(data: AData, g: ReturnType<typeof computeGeom>): string {
-  if (!data.hasAlt || data.smooth.length < 2) return ''
-  let d = ''
-  data.smooth.forEach((s, i) => { d += `${i === 0 ? 'M' : 'L'} ${g.xOf(s.dist).toFixed(1)} ${g.altYOf(s.alt).toFixed(1)} ` })
-  return d
-}
 
 function xAxisTicks(data: AData, g: ReturnType<typeof computeGeom>): { x: number; label: string }[] {
   const totalKm = data.totalDist / 1000
@@ -554,7 +556,12 @@ function SmoothTooltip({ s, metric, totalDurationS, t }: { s: SmoothSample; metr
 // ══════════════════════════════════════════════════════════════════
 // TABLEAU statique
 // ══════════════════════════════════════════════════════════════════
-function AnalysisTable({ splits, mode, t }: { splits: Split[]; mode: Mode; t: (k: string) => string }) {
+function AnalysisTable({ splits, mode, hovered, setHovered, onTap, onHoverRatio, ratioOf, t }: {
+  splits: Split[]; mode: Mode
+  hovered: number | null; setHovered: (i: number | null) => void
+  onTap?: (sp: Split) => void; onHoverRatio?: (r: number | null) => void; ratioOf: (i: number) => number
+  t: (k: string) => string
+}) {
   const isLaps = mode === 'laps'
   if (!splits.length) return null
   const firstCol = isLaps ? t('actp.lap_col') : 'Km'
@@ -572,16 +579,28 @@ function AnalysisTable({ splits, mode, t }: { splits: Split[]; mode: Mode; t: (k
             </tr>
           </thead>
           <tbody>
-            {splits.map((sp, i) => (
-              <tr key={i} style={{ background: i % 2 ? 'var(--bg-card2)' : 'transparent' }}>
-                <td style={{ padding: '7px 12px', color: 'var(--text-dim)', fontWeight: 700, whiteSpace: 'nowrap' }}>{sp.label}</td>
-                <td style={tdR}>{paceStr(sp.speedMs)}/km</td>
-                <td style={{ ...tdR, color: 'var(--primary)' }}>{paceStr(sp.vapMs)}/km</td>
-                <td style={tdR}>{Math.round(sp.dPlus)} m</td>
-                <td style={tdR}>{sp.avgHr != null ? `${Math.round(sp.avgHr)}` : '—'}</td>
-                <td style={tdR}>{sp.avgTemp != null ? `${Math.round(sp.avgTemp)}°` : '—'}</td>
-              </tr>
-            ))}
+            {splits.map((sp, i) => {
+              const isHov = hovered === i
+              return (
+                <tr key={i}
+                  onMouseEnter={() => { setHovered(i); onHoverRatio?.(ratioOf(i)) }}
+                  onMouseLeave={() => { setHovered(null); onHoverRatio?.(null) }}
+                  onClick={() => onTap?.(sp)}
+                  style={{
+                    background: isHov ? 'var(--bg-card3, rgba(120,120,120,0.16))' : (i % 2 ? 'var(--bg-card2)' : 'transparent'),
+                    borderLeft: `3px solid ${isHov ? 'var(--text-mid)' : 'transparent'}`,
+                    cursor: onTap ? 'pointer' : 'default',
+                    transition: 'background .12s, border-color .12s',
+                  }}>
+                  <td style={{ padding: '7px 12px', color: 'var(--text-dim)', fontWeight: 700, whiteSpace: 'nowrap' }}>{sp.label}</td>
+                  <td style={tdR}>{paceStr(sp.speedMs)}/km</td>
+                  <td style={{ ...tdR, color: 'var(--primary)' }}>{paceStr(sp.vapMs)}/km</td>
+                  <td style={tdR}>{Math.round(sp.dPlus)} m</td>
+                  <td style={tdR}>{sp.avgHr != null ? `${Math.round(sp.avgHr)}` : '—'}</td>
+                  <td style={tdR}>{sp.avgTemp != null ? `${Math.round(sp.avgTemp)}°` : '—'}</td>
+                </tr>
+              )
+            })}
           </tbody>
         </table>
       </div>
@@ -595,14 +614,18 @@ const tdR: React.CSSProperties = { padding: '7px 12px', textAlign: 'right', colo
 // (barres cliquables → modal tour) ou ligne fluide (lissé). Y allure
 // gauche + altitude droite, X distance /2 km, repères rapide/moy/lent.
 // ══════════════════════════════════════════════════════════════════
-function AnalysisGraph({ data, splits, mode, metric, accent, ramp, totalDurationS, onTap, t }: {
+function AnalysisGraph({ data, splits, mode, metric, accent, ramp, totalDurationS, onTap, hovered, setHovered, onHoverRatio, ratioOf, t }: {
   data: AData; splits: Split[]; mode: Mode; metric: Metric
   accent: string; ramp: readonly string[]; totalDurationS: number | null
-  onTap?: (sp: Split) => void; t: (k: string) => string
+  onTap?: (sp: Split) => void
+  hovered: number | null; setHovered: (i: number | null) => void
+  onHoverRatio?: (r: number | null) => void; ratioOf: (i: number) => number
+  t: (k: string) => string
 }) {
   const CH = 224
   const g = computeGeom(data, splits, metric, CH, 820)
-  const [hover, setHover] = useState<number | null>(null)
+  const hover = hovered
+  const setHover = setHovered
   const [smoothT, setSmoothT] = useState<number | null>(null)
   const wrapRef = useRef<HTMLDivElement>(null)
   const widths = barWidths(splits, g, mode)
@@ -628,8 +651,13 @@ function AnalysisGraph({ data, splits, mode, metric, accent, ramp, totalDuration
       const rect = wrapRef.current?.getBoundingClientRect()
       if (!rect || rect.width === 0) return
       const xVB = ((clientX - rect.left) / rect.width) * g.VBW
-      setSmoothT(Math.max(0, Math.min(1, (xVB - g.PAD_L) / g.innerW)))
-    } else setHover(idxAt(clientX))
+      const rt = Math.max(0, Math.min(1, (xVB - g.PAD_L) / g.innerW))
+      setSmoothT(rt); onHoverRatio?.(rt)
+    } else {
+      const i = idxAt(clientX)
+      setHover(i >= 0 ? i : null)
+      onHoverRatio?.(i >= 0 ? ratioOf(i) : null)
+    }
   }
 
   return (
@@ -638,12 +666,14 @@ function AnalysisGraph({ data, splits, mode, metric, accent, ramp, totalDuration
       <div
         ref={wrapRef}
         onMouseMove={e => onMove(e.clientX)}
-        onMouseLeave={() => { setHover(null); setSmoothT(null) }}
+        onMouseLeave={() => { setHover(null); setSmoothT(null); onHoverRatio?.(null) }}
         onClick={e => { if (mode !== 'smooth' && onTap) { const i = idxAt(e.clientX); if (i >= 0) onTap(splits[i]) } }}
         style={{ position: 'relative', width: '100%', paddingBottom: `${((CH + g.PAD_T + g.PAD_B) / g.VBW) * 100}%`, cursor: mode !== 'smooth' && onTap ? 'pointer' : 'crosshair' }}
       >
         <svg viewBox={`0 0 ${g.VBW} ${CH + g.PAD_T + g.PAD_B}`} preserveAspectRatio="none" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block' }}>
-          {data.hasAlt && <path d={altitudePath(data, g)} fill="var(--border)" opacity={0.45} stroke="none" />}
+          {/* profil altimétrique — aire grise pleine, discrète, DERRIÈRE les jauges
+              (les jauges sont semi-transparentes → le profil transparaît, façon Strava) */}
+          {data.hasAlt && <path d={altitudePath(data, g)} fill="#94a3b8" opacity={0.3} stroke="none" />}
           {yPaceTicks(g).map((m, i) => (
             <g key={'yp' + i}>
               <line x1={g.PAD_L} y1={m.y} x2={g.VBW - g.PAD_R} y2={m.y} stroke="var(--border)" strokeWidth={0.5} strokeDasharray="2 4" vectorEffect="non-scaling-stroke" />
@@ -673,7 +703,7 @@ function AnalysisGraph({ data, splits, mode, metric, accent, ramp, totalDuration
                     <g key={i}>
                       <rect x={xs[i] + 0.7} y={y} width={w} height={h}
                         fill={rampColor(spd, g.minSpeed, g.maxSpeed, ramp)}
-                        opacity={hover === null || isHov ? 1 : 0.55} rx={2}
+                        opacity={isHov ? 0.92 : (hover === null ? 0.72 : 0.4)} rx={2}
                         style={{ transition: 'y .4s cubic-bezier(.22,1,.36,1), height .4s cubic-bezier(.22,1,.36,1), fill .3s ease, opacity .15s' }} />
                       {w >= 16 && h >= 16 && (
                         <text x={xs[i] + widths[i] / 2} y={y - 5} textAnchor="middle" fontSize={11} fontWeight={700} fill={accent}
@@ -686,12 +716,6 @@ function AnalysisGraph({ data, splits, mode, metric, accent, ramp, totalDuration
                 })}
               </g>
             )}
-
-          {/* profil altimétrique — ligne nette PAR-DESSUS les jauges */}
-          {data.hasAlt && (
-            <path d={altitudeLine(data, g)} fill="none" stroke="var(--text-mid)" strokeWidth={2}
-              strokeLinejoin="round" strokeLinecap="round" opacity={0.85} vectorEffect="non-scaling-stroke" />
-          )}
 
           {/* curseur */}
           {mode !== 'smooth' && hover !== null && splits[hover] && (

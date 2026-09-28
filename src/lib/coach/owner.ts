@@ -38,14 +38,18 @@ export async function getCoachAccessState(): Promise<CoachAccessState> {
   if (!user) return empty
   if (isCoachOwner(user.id)) return { access: true, paid: true, isTrial: false, trialDaysLeft: 0, everStarted: true, expired: false }
   try {
-    const { data } = await sb.from('profiles').select('coach_subscribed, coach_trial_started_at').eq('id', user.id).maybeSingle()
+    const { data } = await sb.from('profiles').select('coach_subscribed, coach_trial_started_at, coach_access_until').eq('id', user.id).maybeSingle()
     const paid = !!(data as { coach_subscribed?: boolean } | null)?.coach_subscribed
     const startedIso = (data as { coach_trial_started_at?: string | null } | null)?.coach_trial_started_at ?? null
+    // Accès OFFERT par l'admin : actif tant que la date est dans le futur.
+    // Indépendant de l'abonnement payant et de l'essai 14 j.
+    const untilIso = (data as { coach_access_until?: string | null } | null)?.coach_access_until ?? null
+    const granted = !!untilIso && new Date(untilIso).getTime() > Date.now()
     const everStarted = !!startedIso
     const trialDaysLeft = trialDaysLeftFrom(startedIso)
-    const isTrial = !paid && trialDaysLeft > 0
-    const expired = !paid && everStarted && trialDaysLeft === 0
-    return { access: paid || isTrial, paid, isTrial, trialDaysLeft, everStarted, expired }
+    const isTrial = !paid && !granted && trialDaysLeft > 0
+    const expired = !paid && !granted && everStarted && trialDaysLeft === 0
+    return { access: paid || granted || isTrial, paid, isTrial, trialDaysLeft, everStarted, expired }
   } catch { return empty }
 }
 

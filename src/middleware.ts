@@ -105,8 +105,8 @@ export async function middleware(request: NextRequest) {
   // fail-open : on laisse passer, la page et la RLS prennent le relais. ──
   const gate = await withTimeout(
     Promise.all([
-      supabase.from('user_subscriptions').select('status').eq('user_id', user.id).single(),
-      supabase.from('profiles').select('profile_setup_done, coach_subscribed, coach_trial_started_at').eq('id', user.id).single(),
+      supabase.from('user_subscriptions').select('status, stripe_subscription_id, current_period_end').eq('user_id', user.id).single(),
+      supabase.from('profiles').select('profile_setup_done, coach_subscribed, coach_trial_started_at, coach_access_until').eq('id', user.id).single(),
     ]),
     1500, TIMED_OUT,
   )
@@ -116,11 +116,21 @@ export async function middleware(request: NextRequest) {
 
   const startedIso = profile?.coach_trial_started_at as string | null | undefined
   const coachTrialActive = !!startedIso && Date.now() - new Date(startedIso).getTime() < COACH_TRIAL_DAYS * 86400000
-  const coachEntitled = user.id === COACH_OWNER_ID || profile?.coach_subscribed === true || coachTrialActive
+  // Accès coach OFFERT par l'admin : actif tant que la date est dans le futur.
+  const grantedIso = profile?.coach_access_until as string | null | undefined
+  const coachGranted = !!grantedIso && new Date(grantedIso).getTime() > Date.now()
+  const coachEntitled = user.id === COACH_OWNER_ID || profile?.coach_subscribed === true || coachTrialActive || coachGranted
 
   const blockedStatuses = ['trial_expired', 'cancelled', 'canceled']
+  // ACCÈS OFFERT ATHLÈTE EXPIRÉ. Un abonnement au SCEAU (stripe_subscription_id
+  // === 'comp') dont la date est passée est traité comme expiré. Le test est
+  // conditionné au sceau : un abonné Stripe, lui, n'est JAMAIS fermé par cette
+  // date — son statut reste seul juge, même si son webhook tarde.
+  const compExpired = subscription?.stripe_subscription_id === 'comp'
+    && !!subscription.current_period_end
+    && new Date(subscription.current_period_end).getTime() < Date.now()
   // Un coach entitled n'est jamais bloqué par un abonnement athlète expiré.
-  if (!coachEntitled && subscription && blockedStatuses.includes(subscription.status)) {
+  if (!coachEntitled && subscription && (blockedStatuses.includes(subscription.status) || compExpired)) {
     return NextResponse.redirect(new URL('/access-expired', request.url))
   }
 

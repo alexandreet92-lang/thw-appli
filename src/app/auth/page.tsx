@@ -15,11 +15,15 @@ import { getAuthError, isRetryableAuthError, getAuthLinkError } from '@/lib/auth
 import { authCallbackUrl } from '@/lib/auth/redirect'
 import { useI18n } from '@/lib/i18n'
 import { LanguageDropdown } from '@/components/i18n/LanguageDropdown'
+import { isNativeApp } from '@/lib/native/platform'
 
 const FB = 'var(--font-body)', FD = 'var(--font-display)'
 const TERMS_VERSION = '2025-06'
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-// Build natif (Capacitor) : bundle local, redirections adaptées.
+// Build natif (Capacitor) : détection ROBUSTE (flag de build NEXT_PUBLIC_NATIVE_APP
+// + vérif runtime Capacitor.isNativePlatform()). L'ancien test !!NEXT_PUBLIC_API_BASE
+// pouvait être faux dans le binaire soumis → Google restait visible sur iOS et
+// déclenchait le rejet App Store 4.8. isNativeApp() couvre les deux cas.
 const NATIVE_BUILD = !!process.env.NEXT_PUBLIC_API_BASE
 
 // CTA principal — accent unique (--primary), plein et sobre. Halo discret
@@ -77,10 +81,10 @@ function SocialButtons({ onError }: { onError: (msg: string) => void }) {
   // proposer aussi Sign in with Apple. Tant que ce dernier n'est pas branché, on
   // NE PROPOSE AUCUN login social dans l'app native iOS → email/mot de passe
   // uniquement. Google reste disponible sur le web (hors App Store).
-  if (NATIVE_BUILD) return null
+  if (isNativeApp()) return null
   const handleOAuth = async (provider: 'apple' | 'google') => {
     const sb = createClient()
-    if (NATIVE_BUILD) {
+    if (isNativeApp()) {
       // Google refuse les webviews intégrées → on ouvre Safari natif, et on revient
       // dans l'app via le lien com.thehybridway.app://auth-callback (capté par
       // App.addListener côté ClientShell). skipBrowserRedirect : on gère l'ouverture.

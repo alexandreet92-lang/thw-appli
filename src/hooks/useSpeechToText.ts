@@ -45,6 +45,18 @@ function getCtor(): SpeechRecognitionCtor | null {
   return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null
 }
 
+// iOS natif (WKWebView / Capacitor) : l'objet webkitSpeechRecognition EXISTE
+// mais ne fonctionne pas (start() sans effet → « micro qui ne répond pas »,
+// rejet App Store 2.1a). On considère donc la dictée non supportée sur iOS natif
+// pour que l'icône micro se masque au lieu de rester inerte.
+function isNativeIOS(): boolean {
+  if (typeof window === 'undefined') return false
+  const cap = (window as unknown as {
+    Capacitor?: { isNativePlatform?: () => boolean; getPlatform?: () => string }
+  }).Capacitor
+  return !!cap?.isNativePlatform?.() && cap?.getPlatform?.() === 'ios'
+}
+
 export function useSpeechToText(onTranscript: (text: string) => void) {
   const [supported, setSupported] = useState(false)
   const [isListening, setIsListening] = useState(false)
@@ -53,7 +65,7 @@ export function useSpeechToText(onTranscript: (text: string) => void) {
   const cbRef = useRef(onTranscript)
   cbRef.current = onTranscript
 
-  useEffect(() => { setSupported(getCtor() !== null) }, [])
+  useEffect(() => { setSupported(getCtor() !== null && !isNativeIOS()) }, [])
 
   const start = useCallback(() => {
     const Ctor = getCtor()

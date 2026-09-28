@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/Button'
 import { useI18n } from '@/lib/i18n'
+import { useNarrow } from '@/lib/hooks/useNarrow'
 import { createClient } from '@/lib/supabase/client'
 
 type TFn = (key: string, vars?: Record<string, string | number>) => string
@@ -111,6 +112,7 @@ function Field({ label, value, onChange, placeholder, hint }: {
 // ═══════════════════════════════════════════════════
 export default function ZonesPage() {
   const { t } = useI18n()
+  const narrow = useNarrow(720)
   const [tab, setTab] = useState<'run' | 'bike' | 'swim'>('run')
 
   // Run
@@ -190,7 +192,7 @@ export default function ZonesPage() {
         ))}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }} className="md:grid-cols-2">
+      <div style={{ display: 'grid', gridTemplateColumns: narrow ? '1fr' : '1fr 1fr', gap: 20 }} className="md:grid-cols-2">
 
         {/* ── RUNNING ── */}
         {tab === 'run' && (
@@ -206,7 +208,7 @@ export default function ZonesPage() {
               {/* Records */}
               <div style={{ marginTop: 20, padding: '14px 16px', borderRadius: 12, background: 'rgba(6,182,212,0.06)', border: '1px solid rgba(6,182,212,0.15)' }}>
                 <p style={{ fontSize: 11, fontWeight: 600, color: '#06B6D4', margin: '0 0 12px' }}>📊 {t('misc.personalRecords')}</p>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: narrow ? '1fr' : '1fr 1fr', gap: 10 }}>
                   {[
                     { label: '1km', placeholder: "2:45" },
                     { label: '5km', placeholder: "18:30" },
@@ -261,7 +263,7 @@ export default function ZonesPage() {
 
               <div style={{ marginTop: 14, padding: '14px 16px', borderRadius: 12, background: 'rgba(6,182,212,0.06)', border: '1px solid rgba(6,182,212,0.15)' }}>
                 <p style={{ fontSize: 11, fontWeight: 600, color: '#06B6D4', margin: '0 0 12px' }}>📊 {t('misc.personalRecords')}</p>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: narrow ? '1fr' : '1fr 1fr', gap: 10 }}>
                   {['5min', '20min', '1h', 'Sprints'].map((r) => (
                     <div key={r}>
                       <p style={{ fontSize: 10, color: 'var(--text-dim)', marginBottom: 3 }}>{t('misc.power')} {r}</p>
@@ -296,7 +298,7 @@ export default function ZonesPage() {
 
               <div style={{ marginTop: 20, padding: '14px 16px', borderRadius: 12, background: 'rgba(6,182,212,0.06)', border: '1px solid rgba(6,182,212,0.15)' }}>
                 <p style={{ fontSize: 11, fontWeight: 600, color: '#06B6D4', margin: '0 0 12px' }}>📊 {t('misc.personalRecords')}</p>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: narrow ? '1fr' : '1fr 1fr', gap: 10 }}>
                   {['100m', '200m', '400m', '1500m'].map((r) => (
                     <div key={r}>
                       <p style={{ fontSize: 10, color: 'var(--text-dim)', marginBottom: 3 }}>{r}</p>

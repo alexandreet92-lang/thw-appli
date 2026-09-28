@@ -1,55 +1,44 @@
 'use client'
 
+export const dynamic = 'force-dynamic'
+
+// ══════════════════════════════════════════════════════════════
+// PAGE ATHLÈTES — grille de cartes athlètes. Données RÉELLES via getRoster()
+// (même source que /coach/athletes). Chaque carte est un lien vers la fiche
+// dédiée /coach/athlete?id=<id>. États chargement / vide gérés. Zéro mock.
+// ══════════════════════════════════════════════════════════════
+
+import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
-import { Badge } from '@/components/ui/Badge'
 import { cn } from '@/lib/utils'
 import { useI18n } from '@/lib/i18n'
+import { getRoster, type RosterAthlete, type Forme } from '@/lib/coach/roster'
 
-const ATHLETES = [
-  {
-    initial: 'M',
-    name: 'Marie D.',
-    sport: 'Triathlon · 32 ans',
-    goal: '🏆 Ironman 70.3',
-    goalVariant: 'blue',
-    week: 'S12',
-    ctl: 72,
-    ctlColor: 'bg-brand',
-    next: 'Natation 06h00',
-    online: true,
-    avatarColor: 'bg-[rgba(6,182,212,0.15)] text-brand',
-  },
-  {
-    initial: 'A',
-    name: 'Alex R.',
-    sport: 'Hyrox · Running · 28 ans',
-    goal: '🏋️ Hyrox World',
-    goalVariant: 'orange',
-    week: 'S12',
-    ctl: 91,
-    ctlColor: 'bg-[#5b6fff]',
-    next: 'Hyrox Sim 18h00',
-    online: false,
-    avatarColor: 'bg-[rgba(91,111,255,0.15)] text-[#5b6fff]',
-  },
-  {
-    initial: 'S',
-    name: 'Sophie M.',
-    sport: 'Running · Cyclisme · 35 ans',
-    goal: '🏃 Marathon Paris',
-    goalVariant: 'brand',
-    week: 'S8',
-    ctl: 58,
-    ctlColor: 'bg-[#ff5f5f]',
-    next: 'Tempo Z3 17h00',
-    online: false,
-    avatarColor: 'bg-[rgba(255,95,95,0.15)] text-[#ff5f5f]',
-  },
-]
+const STC: Record<Forme, string> = { ok: '#22C55E', warn: '#F59E0B', injured: '#EF4444', inactive: '#94A3B8' }
+const initials = (n: string) => n.split(' ').map(x => x[0]).slice(0, 2).join('').toUpperCase()
 
 export default function AthletesPage() {
   const { t } = useI18n()
+  const [roster, setRoster] = useState<RosterAthlete[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      try {
+        const r = await getRoster()
+        if (!cancelled) setRoster(r)
+      } catch {
+        /* on garde la liste précédente en cas d'erreur réseau */
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    })()
+    return () => { cancelled = true }
+  }, [])
+
   return (
     <div className="p-8">
 
@@ -59,54 +48,62 @@ export default function AthletesPage() {
           <h1 className="font-display text-[27px] font-bold tracking-[-0.03em]">{t('misc.myAthletes')}</h1>
           <p className="text-[12.5px] text-[var(--text-dim)] mt-1">{t('misc.athletesSubtitle')}</p>
         </div>
-        <Button variant="primary">{t('misc.addAthlete')}</Button>
+        <Link href="/coach/athletes">
+          <Button variant="primary">{t('misc.addAthlete')}</Button>
+        </Link>
       </div>
 
-      <div className="grid grid-cols-3 gap-3.5">
-        {ATHLETES.map((a) => (
-          <Card key={a.name} className="cursor-pointer hover:border-brand transition-all">
+      {loading ? (
+        <p className="text-[13px] text-[var(--text-dim)]">{t('w1h.loading_roster')}</p>
+      ) : roster.length === 0 ? (
+        <p className="text-[14px] text-[var(--text-mid)] leading-relaxed max-w-[520px]">{t('w1h.empty_roster')}</p>
+      ) : (
+        <div className="grid grid-cols-3 gap-3.5">
+          {roster.map((a) => (
+            <Link
+              key={a.id}
+              href={`/coach/athlete?id=${a.id}`}
+              className="block cursor-pointer"
+            >
+              <Card className="hover:border-brand transition-all">
 
-            {/* Avatar + nom */}
-            <div className="flex items-center gap-3 mb-4">
-              <div className={cn(
-                'w-11 h-11 rounded-[12px] flex items-center justify-center',
-                'font-display text-[18px] font-bold flex-shrink-0',
-                a.avatarColor
-              )}>
-                {a.initial}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-[14px] font-semibold">{a.name}</p>
-                <p className="text-[11px] text-[var(--text-dim)]">{a.sport}</p>
-              </div>
-              {a.online && (
-                <span className="w-2 h-2 rounded-full bg-brand shadow-brand-sm flex-shrink-0"/>
-              )}
-            </div>
+                {/* Avatar + nom */}
+                <div className="flex items-center gap-3 mb-4">
+                  <div className={cn(
+                    'w-11 h-11 rounded-[12px] flex items-center justify-center overflow-hidden',
+                    'font-display text-[18px] font-bold flex-shrink-0'
+                  )} style={{ background: 'var(--bg-alt)', color: 'var(--text-dim)' }}>
+                    {a.avatar
+                      // eslint-disable-next-line @next/next/no-img-element
+                      ? <img src={a.avatar} alt="" className="w-full h-full object-cover" />
+                      : initials(a.name)}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[14px] font-semibold truncate">{a.name}</p>
+                    <p className="text-[11px] text-[var(--text-dim)] truncate">{a.sports.slice(0, 2).join(', ') || '—'}{a.group ? ` · ${a.group}` : ''}</p>
+                  </div>
+                  <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: STC[a.status] }} />
+                </div>
 
-            {/* Badges */}
-            <div className="flex gap-2 flex-wrap mb-3">
-              <Badge variant={a.goalVariant as any}>{a.goal}</Badge>
-              <Badge variant="blue">{a.week}</Badge>
-            </div>
+                {/* Charge 7 jours */}
+                <div className="mb-3">
+                  <div className="flex justify-between text-xs mb-1.5">
+                    <span className="text-[var(--text-mid)]">{t('w1h.col_load_7d')}</span>
+                    <span className="font-medium" style={{ fontVariantNumeric: 'tabular-nums' }}>{a.tss7}</span>
+                  </div>
+                  <div className="h-[5px] rounded-full overflow-hidden" style={{ background: 'var(--border)' }}>
+                    <div className="h-full rounded-full" style={{ width: `${Math.min(100, a.tss7)}%`, background: STC[a.status] }} />
+                  </div>
+                </div>
 
-            {/* CTL bar */}
-            <div className="mb-3">
-              <div className="flex justify-between text-xs mb-1.5">
-                <span className="text-[var(--text-mid)]">CTL</span>
-                <span className="font-mono font-medium">{a.ctl}</span>
-              </div>
-              <div className="h-[5px] rounded-full overflow-hidden bg-[var(--border)]">
-                <div className={`h-full rounded-full ${a.ctlColor}`} style={{ width: `${a.ctl}%` }}/>
-              </div>
-            </div>
-
-            <p className="text-[11px] text-[var(--text-dim)]">
-              {t('misc.next')} {a.next}
-            </p>
-          </Card>
-        ))}
-      </div>
+                <p className="text-[11px] text-[var(--text-dim)]">
+                  {a.race ? `${t('misc.next')} ${a.race.name}` : t('w1e.noRacePlanned')}
+                </p>
+              </Card>
+            </Link>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

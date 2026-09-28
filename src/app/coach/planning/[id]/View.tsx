@@ -49,7 +49,7 @@ export default function CoachAthletePlanningPage() {
 
   const [athlete, setAthlete] = useState<{ name: string; avatar: string | null; email: string | null } | null>(null)
   const [today, setToday] = useState<TodaySession[] | null>(null)
-  const [objective, setObjective] = useState<{ name: string; days: number } | null>(null)
+  const [objective, setObjective] = useState<{ id: string; name: string; days: number } | null>(null)
 
   useEffect(() => {
     let alive = true
@@ -63,14 +63,14 @@ export default function CoachAthletePlanningPage() {
         sb.from('profiles').select('full_name, first_name, avatar_url').eq('id', athleteId).single(),
         sb.rpc('my_athlete_emails'),
         sb.from('planned_sessions').select('sport,title,duration_min').eq('user_id', athleteId).eq('week_start', weekStart).eq('day_index', todayIdx),
-        sb.from('planned_races').select('name,date').eq('user_id', athleteId).gte('date', todayStr).order('date').limit(1),
+        sb.from('planned_races').select('id,name,date').eq('user_id', athleteId).gte('date', todayStr).order('date').limit(1),
       ])
       if (!alive) return
       const email = Array.isArray(emails) ? (emails.find((e: { athlete_id: string; email: string }) => e.athlete_id === athleteId)?.email ?? null) : null
       setAthlete({ name: (p?.full_name as string) || (p?.first_name as string) || t('w1h.athlete'), avatar: (p?.avatar_url as string | null) ?? null, email })
       setToday((sess ?? []) as TodaySession[])
-      const r = Array.isArray(races) && races[0] ? races[0] as { name: string; date: string } : null
-      setObjective(r ? { name: r.name, days: Math.max(0, Math.ceil((new Date(r.date + 'T00:00:00').getTime() - new Date(todayStr + 'T00:00:00').getTime()) / 86400000)) } : null)
+      const r = Array.isArray(races) && races[0] ? races[0] as { id: string; name: string; date: string } : null
+      setObjective(r ? { id: r.id, name: r.name, days: Math.max(0, Math.ceil((new Date(r.date + 'T00:00:00').getTime() - new Date(todayStr + 'T00:00:00').getTime()) / 86400000)) } : null)
     })()
     return () => { alive = false }
   }, [athleteId])
@@ -107,7 +107,7 @@ export default function CoachAthletePlanningPage() {
                 <span style={{ fontFamily: 'var(--font-body)', fontSize: 22, fontWeight: 800, color: cd.d <= 14 ? '#ef4444' : 'var(--text)', lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{t('w1h.days_to', { n: cd.d })}</span>
                 <span style={{ fontSize: 11.5, color: 'var(--text-mid)', fontWeight: 600 }}>{cd.w > 0 ? `${cd.w} ${t('w1h.wk_abbr')}${cd.r ? ` ${cd.r} ${t('w1h.day_abbr')}` : ''}` : `${cd.d} ${t('w1h.day_abbr')}`}</span>
               </div>
-              <div style={{ fontSize: 12, color: 'var(--text)', fontWeight: 600, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{objective!.name}</div>
+              <Link href={`/calendar?race=${objective!.id}`} style={{ display: 'block', fontSize: 12, color: 'var(--text)', fontWeight: 600, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textDecoration: 'none', cursor: 'pointer' }}>{objective!.name}</Link>
             </div>
           )}
 
@@ -119,10 +119,10 @@ export default function CoachAthletePlanningPage() {
               : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                   {today.slice(0, 2).map((s, i) => (
-                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, paddingLeft: 8, borderLeft: `3px solid ${sportColor(s.sport)}` }}>
+                    <Link key={i} href="/planning" style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, paddingLeft: 8, borderLeft: `3px solid ${sportColor(s.sport)}`, textDecoration: 'none', cursor: 'pointer' }}>
                       <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 150 }}>{s.title}</span>
                       <span style={{ fontSize: 11, color: 'var(--text-dim)', flexShrink: 0 }}>{[sportLabel(s.sport), s.duration_min ? `${s.duration_min}′` : ''].filter(Boolean).join(' · ')}</span>
-                    </div>
+                    </Link>
                   ))}
                 </div>
               )}

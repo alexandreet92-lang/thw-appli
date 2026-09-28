@@ -3851,7 +3851,7 @@ export function ActivityCurves({ activity, onHoverRatio }: ActivityCurvesProps) 
         boxShadow:     '0 4px 16px rgba(0,0,0,0.10)',
         pointerEvents: 'none',
         ...(isDesktop
-          ? { position: 'fixed' as const, left: -9999, top: -9999, zIndex: 9999, marginBottom: 0 }
+          ? { position: 'fixed' as const, left: -9999, top: -9999, zIndex: 2147483000, marginBottom: 0 }
           : { position: 'static' as const, marginBottom: 10 }
         ),
       }}
@@ -3908,7 +3908,7 @@ export function ActivityCurves({ activity, onHoverRatio }: ActivityCurvesProps) 
         boxShadow:     '0 4px 16px rgba(0,0,0,0.15)',
         pointerEvents: 'none',
         ...(isDesktop
-          ? { position: 'fixed' as const, left: -9999, top: -9999, zIndex: 9999, marginBottom: 0 }
+          ? { position: 'fixed' as const, left: -9999, top: -9999, zIndex: 2147483000, marginBottom: 0 }
           : { position: 'static' as const, marginBottom: 10 }
         ),
       }}
@@ -4820,9 +4820,20 @@ function SectionDonneesSpecifiques({ inRange, zones, bikeZones, runZones, hrZone
             <StatCard label={t('actp.total_time')} value={fmtDur(totalTime)} />
             {avgCal != null && <StatCard label={t('actp.avg_calories')} value={`${avgCal} kcal`} />}
           </div>
-          <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '16px 18px', textAlign: 'center' }}>
-            <div style={{ fontSize: 12, color: T.textMuted }}>{t('actp.gym_analysis_coming')}</div>
-          </div>
+          {hasHrForSport ? (
+            <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '16px 18px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+                <SectionTitle>{t('actp.zones_hr')}</SectionTitle>
+                <SportZoneDonut timesS={hrTimesForSport} colors={ZONE_COLORS} size={64} />
+              </div>
+              <ZoneBars zones={hrZones} timesS={hrTimesForSport} />
+            </div>
+          ) : (
+            <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '20px 18px', textAlign: 'center' }}>
+              <div style={{ fontSize: 12, color: T.textMuted, marginBottom: 10 }}>{t('actp.no_hr_data')}</div>
+              <a href="/connections" style={{ display: 'inline-flex', alignItems: 'center', fontSize: 13, fontWeight: 600, color: 'var(--primary)', textDecoration: 'none' }}>{t('actp.connect_sensor')}</a>
+            </div>
+          )}
         </div>
       )}
 
@@ -4845,8 +4856,9 @@ function SectionDonneesSpecifiques({ inRange, zones, bikeZones, runZones, hrZone
             </div>
           )}
           {!hasHrForSport && (
-            <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '16px 18px', textAlign: 'center' }}>
-              <div style={{ fontSize: 12, color: T.textMuted }}>{t('actp.hyrox_analysis_coming')}</div>
+            <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '20px 18px', textAlign: 'center' }}>
+              <div style={{ fontSize: 12, color: T.textMuted, marginBottom: 10 }}>{t('actp.no_hr_data')}</div>
+              <a href="/connections" style={{ display: 'inline-flex', alignItems: 'center', fontSize: 13, fontWeight: 600, color: 'var(--primary)', textDecoration: 'none' }}>{t('actp.connect_sensor')}</a>
             </div>
           )}
         </div>

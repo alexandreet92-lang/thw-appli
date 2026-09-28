@@ -54,15 +54,20 @@ export default function CoachCalendar() {
           {items.map(it => {
             const d = daysTo(it.date)
             return (
-              <Link key={it.id} href={`/coach/athlete?id=${it.athleteId}`} style={{ ...card, display: 'flex', alignItems: 'center', gap: 14, textDecoration: 'none', color: 'inherit', padding: 14 }}>
-                <div style={{ width: 58, flexShrink: 0, textAlign: 'center' }}>
-                  <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--primary)', fontFamily: 'var(--font-display)', lineHeight: 1 }}>{d <= 0 ? t('w2h.calendar.dday') : t('w2h.calendar.dMinus', { d })}</div>
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 14.5, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{it.name}</div>
-                  <div style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 2 }}>{it.athlete} · {fmtDate(it.date)}</div>
-                </div>
-              </Link>
+              <div key={it.id} style={{ ...card, display: 'flex', alignItems: 'center', gap: 14, padding: 14 }}>
+                {/* Bloc course (date + nom) → page de la course */}
+                <Link href={`/calendar?race=${it.id}`} style={{ display: 'flex', alignItems: 'center', gap: 14, flex: 1, minWidth: 0, textDecoration: 'none', color: 'inherit', cursor: 'pointer' }}>
+                  <div style={{ width: 58, flexShrink: 0, textAlign: 'center' }}>
+                    <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--primary)', fontFamily: 'var(--font-display)', lineHeight: 1 }}>{d <= 0 ? t('w2h.calendar.dday') : t('w2h.calendar.dMinus', { d })}</div>
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 14.5, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{it.name}</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 2 }}>{fmtDate(it.date)}</div>
+                  </div>
+                </Link>
+                {/* Nom athlète → fiche athlète (lien distinct, pas imbriqué) */}
+                <Link href={`/coach/athlete?id=${it.athleteId}`} style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--primary)', textDecoration: 'none', cursor: 'pointer', flexShrink: 0, whiteSpace: 'nowrap' }}>{it.athlete}</Link>
+              </div>
             )
           })}
         </div>

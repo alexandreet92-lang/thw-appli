@@ -102,6 +102,24 @@ export default function RecoveryTrendChart({ weeks }: Props) {
           const delta = f != null && l != null ? l - f : 0
           const good = cfg.upGood ? delta > 0 : delta < 0
           const dColor = delta === 0 ? 'var(--text-dim)' : good ? 'var(--charge-low)' : 'var(--charge-hard)'
+          // Séries capteur (HRV / FC repos) sans donnée : CTA honnête vers /connections
+          // plutôt qu'un « bientôt » inerte.
+          const sensorEmpty = !live && cfg.emptyKey === 'recovery.series.comingSoon'
+          if (sensorEmpty) {
+            return (
+              <a key={s} href="/connections"
+                style={{ display: 'block', textAlign: 'left', padding: '9px 11px', borderRadius: 12,
+                  background: 'transparent', border: '1px solid var(--border)', textDecoration: 'none' }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ width: 7, height: 7, borderRadius: 2, background: 'var(--text-dim)', flexShrink: 0 }} />
+                  <span style={{ fontFamily: 'var(--font-body)', fontSize: 10.5, color: 'var(--text-mid)', fontWeight: 600 }}>{t(cfg.labelKey)}</span>
+                </span>
+                <span style={{ display: 'block', marginTop: 6, fontFamily: 'var(--font-body)', fontSize: 11, fontWeight: 600, color: 'var(--primary)' }}>
+                  {t('recovery.series.connectSensor')}
+                </span>
+              </a>
+            )
+          }
           return (
             <button key={s} onClick={() => toggle(s)} onDoubleClick={() => isolate(s)} disabled={!live} title={live ? t(cfg.labelKey) : t(cfg.emptyKey)}
               style={{ textAlign: 'left', padding: '9px 11px', borderRadius: 12, cursor: live ? 'pointer' : 'default',

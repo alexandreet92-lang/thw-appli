@@ -7,7 +7,6 @@
 // (Trail = « À venir » : pas de navigation.)
 // ══════════════════════════════════════════════════════════════════
 
-import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useI18n } from '@/lib/i18n'
 import { ShurikenAnimated } from './components/ShurikenAnimated'
@@ -40,10 +39,10 @@ const SPORTS: (SportDef & { x: number; y: number })[] = RAW_SPORTS.map((s, i) =>
 export default function ProgressionHub({ onSelectSport }: { onSelectSport?: (id: string) => void } = {}) {
   const router = useRouter()
   const { t } = useI18n()
-  const [soon, setSoon] = useState(false)
 
   function handleClick(sport: SportDef, el: HTMLButtonElement) {
-    if (sport.comingSoon) { setSoon(true); setTimeout(() => setSoon(false), 2200); return }
+    // Sports « à venir » : bulle rendue non cliquable (cf. SportBubble), pas de nav.
+    if (sport.comingSoon) return
     el.classList.add('prog-bubble-exploding')
     // Rendu inline dans /activities (garde la nav) si callback fourni, sinon route.
     setTimeout(() => { if (onSelectSport) onSelectSport(sport.id); else router.push(`/progression/${sport.id}`) }, 480)
@@ -97,7 +96,6 @@ export default function ProgressionHub({ onSelectSport }: { onSelectSport?: (id:
       <div className="prog-hub-title">
         <h2 style={{ fontFamily: 'Syne,sans-serif', fontWeight: 800, fontSize: 18, color: 'var(--text)', margin: 0 }}>{t('progression.hubTitle')}</h2>
         <p style={{ fontSize: 12, color: 'var(--text-dim)', margin: '4px 0 0' }}>{t('progression.hubSubtitle')}</p>
-        {soon && <p style={{ fontSize: 12, color: '#84cc16', marginTop: 8, fontWeight: 600 }}>{t('progression.trailComingSoon')}</p>}
       </div>
     </div>
   )

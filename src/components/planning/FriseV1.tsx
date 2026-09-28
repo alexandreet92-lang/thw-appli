@@ -5,6 +5,7 @@
 // semaines (jour/mois, aucun numéro ISO) + courses réelles (planned_races) + segments blocs.
 // Surfaces/textes = tokens de thème (jour/nuit) ; cyan/sport/rouge = couleurs assumées.
 import { useMemo, useRef, useState, useEffect } from 'react'
+import Link from 'next/link'
 import { BLOC_SPORT_KEYS, SPORT_LABELS, SPORT_COLORS } from '@/lib/constants/blocTypes'
 import { getWeekStart, getWeekEnd, isoWeekYear } from '@/lib/utils/weekDates'
 import { loadBlocs, upsertBloc } from '@/app/planning/trainingBlocks'
@@ -106,10 +107,10 @@ export function FriseV1({ readOnly = true, reloadToken = 0, onEdited }: { readOn
             const m = new Date(r.date); m.setDate(m.getDate() - ((m.getDay() + 6) % 7))
             const sun = new Date(m); sun.setDate(m.getDate() + 6)
             return (
-              <div key={r.id} style={{ position: 'absolute', top: level * 24, left: `${((idx + 0.5) / COLS) * 100}%`, transform: 'translateX(-50%)', display: 'flex', flexDirection: 'column', alignItems: 'center', zIndex: 5 - level }}>
+              <Link key={r.id} href={`/calendar?race=${r.id}`} style={{ position: 'absolute', top: level * 24, left: `${((idx + 0.5) / COLS) * 100}%`, transform: 'translateX(-50%)', display: 'flex', flexDirection: 'column', alignItems: 'center', zIndex: 5 - level, textDecoration: 'none', cursor: 'pointer' }}>
                 <div style={{ fontSize: 8.5, fontWeight: 700, color: RED, background: 'var(--bg-card)', border: '1px solid rgba(239,68,68,.3)', borderRadius: 4, padding: '2px 7px', whiteSpace: 'nowrap', boxShadow: '0 1px 4px rgba(0,0,0,.15)' }}>{r.name} · {fmt(m)}–{fmt(sun)}</div>
                 {level === 0 && <div style={{ width: 1.5, height: 8, background: 'rgba(239,68,68,.5)', marginTop: 2 }} />}
-              </div>
+              </Link>
             )
           })}
         </div>

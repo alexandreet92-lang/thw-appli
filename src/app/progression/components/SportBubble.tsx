@@ -15,12 +15,18 @@ export interface SportDef {
 export function SportBubble({ sport, onClick }: { sport: SportDef; onClick: (el: HTMLButtonElement) => void }) {
   const { t } = useI18n()
   const ref = useRef<HTMLButtonElement>(null)
+  const comingSoon = !!sport.comingSoon
   return (
     <button
       ref={ref}
       className="prog-bubble"
-      style={{ background: sport.gradient, left: sport.pos.left, top: sport.pos.top, animationDelay: sport.floatDelay }}
-      onClick={() => ref.current && onClick(ref.current)}
+      disabled={comingSoon}
+      aria-disabled={comingSoon || undefined}
+      style={{
+        background: sport.gradient, left: sport.pos.left, top: sport.pos.top, animationDelay: sport.floatDelay,
+        ...(comingSoon ? { opacity: 0.45, cursor: 'default', pointerEvents: 'none' as const } : null),
+      }}
+      onClick={comingSoon ? undefined : () => ref.current && onClick(ref.current)}
       aria-label={t('progression.bubbleAria', { sport: sport.label })}
     >
       <span className="prog-bubble-label">{sport.label}</span>

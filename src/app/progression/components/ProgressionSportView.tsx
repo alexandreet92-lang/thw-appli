@@ -47,14 +47,27 @@ export function ProgressionSportView({ sport, onBack }: { sport: string; onBack:
     <div style={{ maxWidth: 900, margin: '0 auto', padding: '4px 0 40px' }}>
       {header}
       <div style={{ display: 'flex', gap: 8, overflowX: 'auto', marginBottom: 20, paddingBottom: 4 }}>
-        {config.families.map(f => (
-          <button key={f.id} onClick={() => setActive(f.id)} style={{
-            padding: '7px 14px', borderRadius: 999, border: '1px solid var(--border)', cursor: 'pointer',
-            whiteSpace: 'nowrap', fontSize: 12, fontWeight: active === f.id ? 700 : 500, fontFamily: 'DM Sans,sans-serif',
-            background: active === f.id ? `${config.color}1f` : 'var(--bg-card2)',
-            color: active === f.id ? config.color : 'var(--text-dim)',
-          }}>{t(f.labelKey)}</button>
-        ))}
+        {config.families.map(f => {
+          // Seule la famille « Général » a une vue réelle ; les autres sont
+          // « à venir » → onglet non cliquable (pas de dead-end vers un vide).
+          const comingSoon = !f.isGeneral
+          return (
+            <button
+              key={f.id}
+              onClick={comingSoon ? undefined : () => setActive(f.id)}
+              disabled={comingSoon}
+              aria-disabled={comingSoon || undefined}
+              title={comingSoon ? t('progression.familyComingSoon', { label: t(f.labelKey) }) : undefined}
+              style={{
+                padding: '7px 14px', borderRadius: 999, border: '1px solid var(--border)',
+                cursor: comingSoon ? 'default' : 'pointer', opacity: comingSoon ? 0.45 : 1,
+                whiteSpace: 'nowrap', fontSize: 12, fontWeight: active === f.id ? 700 : 500, fontFamily: 'DM Sans,sans-serif',
+                background: active === f.id ? `${config.color}1f` : 'var(--bg-card2)',
+                color: active === f.id ? config.color : 'var(--text-dim)',
+              }}
+            >{t(f.labelKey)}</button>
+          )
+        })}
       </div>
 
       {activeFamily.isGeneral

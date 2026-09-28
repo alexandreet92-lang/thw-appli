@@ -83,7 +83,7 @@ export default function PlanningWeekPage() {
             <p style={{ fontSize: 12, color: 'var(--text-dim)', margin: '4px 0 0' }}>Agenda</p>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
-            <button onClick={() => setPanelOpen(p => !p)} style={btn} aria-label="Agendas">☰</button>
+            {narrow && <button onClick={() => setPanelOpen(p => !p)} style={btn} aria-label="Agendas">☰</button>}
             <button onClick={() => openCreate(new Date(new Date().setMinutes(0, 0, 0)))} style={{ ...btn, background: 'var(--primary)', color: 'var(--on-primary)', border: 'none' }}>+ Créer</button>
           </div>
         </div>
@@ -129,21 +129,45 @@ export default function PlanningWeekPage() {
         </div>
       )}
 
-      {/* Vues */}
-      {view === 'agenda' ? (
-        <AgendaView events={events} onOpen={ev => setSheet({ event: ev, draft: null })} rangeStart={rangeStart} rangeEnd={rangeEnd} px={px} />
-      ) : view === 'month' ? (
-        <MonthView anchor={anchor} events={events} onOpenDay={d => { setAnchor(startOfDay(d)); setView('day') }} onOpen={ev => setSheet({ event: ev, draft: null })} px={px} mobile={isMobile} />
-      ) : (
-        <WeekView
-          days={view === 'day' ? [startOfDay(anchor)] : Array.from({ length: 7 }, (_, i) => addDays(mondayOf(anchor), i))}
-          events={events}
-          onOpen={ev => setSheet({ event: ev, draft: null })}
-          onCreate={openCreate}
-          onMoved={refresh}
-          px={px}
-        />
-      )}
+      {/* Vues — sur desktop, mini-calendrier + agendas en colonne de gauche
+          (façon Google Agenda) ; sur mobile, colonne unique (le panneau ☰
+          donne accès aux agendas). */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', width: '100%' }}>
+        {!narrow && (
+          <aside style={{ width: 236, flexShrink: 0, padding: `0 0 0 ${px}px`, boxSizing: 'border-box' }}>
+            <MiniCalendar anchor={anchor} onPick={d => setAnchor(startOfDay(d))} />
+            <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-dim)', margin: '0 0 10px' }}>Mes agendas</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {calendars.map(c => (
+                <label key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 13.5, color: 'var(--text)' }}>
+                  <input type="checkbox" checked={c.visible} onChange={e => void toggleCalendar(c.id, e.target.checked)} />
+                  <span style={{ width: 12, height: 12, borderRadius: 3, background: c.color, flexShrink: 0 }} />
+                  {c.name}
+                </label>
+              ))}
+            </div>
+            <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border)' }}>
+              <GoogleConnectButton onChange={refresh} />
+            </div>
+          </aside>
+        )}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          {view === 'agenda' ? (
+            <AgendaView events={events} onOpen={ev => setSheet({ event: ev, draft: null })} rangeStart={rangeStart} rangeEnd={rangeEnd} px={px} />
+          ) : view === 'month' ? (
+            <MonthView anchor={anchor} events={events} onOpenDay={d => { setAnchor(startOfDay(d)); setView('day') }} onOpen={ev => setSheet({ event: ev, draft: null })} px={px} mobile={isMobile} />
+          ) : (
+            <WeekView
+              days={view === 'day' ? [startOfDay(anchor)] : Array.from({ length: 7 }, (_, i) => addDays(mondayOf(anchor), i))}
+              events={events}
+              onOpen={ev => setSheet({ event: ev, draft: null })}
+              onCreate={openCreate}
+              onMoved={refresh}
+              px={px}
+            />
+          )}
+        </div>
+      </div>
 
       {sheet && (
         <EventSheet event={sheet.event} draft={sheet.draft} calendars={calendars} onClose={() => setSheet(null)} onSaved={refresh} />
@@ -222,37 +246,40 @@ function WeekView({ days, events, onOpen, onCreate, onMoved, px }: {
   return (
     <div style={{ padding: `0 ${px}px`, width: '100%', boxSizing: 'border-box' }}>
       <div style={{ borderTop: '1px solid var(--border)', width: '100%' }}>
-        {/* En-tête jours */}
-        <div style={{ display: 'flex', paddingLeft: HOUR_GUTTER }}>
-          {days.map((d, i) => {
-            const isToday = sameDay(d, new Date())
-            return (
-              <div key={i} style={{ flex: 1, textAlign: 'center', padding: '10px 0', borderLeft: i ? '1px solid var(--border)' : 'none', background: isToday ? 'var(--primary-dim)' : 'transparent', minWidth: 0 }}>
-                <div style={{ fontSize: 11, color: isToday ? 'var(--primary)' : 'var(--text-dim)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{DAY_NAMES[(d.getDay() + 6) % 7]}</div>
-                <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, borderRadius: '50%', marginTop: 3, fontSize: 15, fontWeight: 700, fontVariantNumeric: 'tabular-nums', background: isToday ? 'var(--primary)' : 'transparent', color: isToday ? 'var(--on-primary)' : 'var(--text)' }}>{d.getDate()}</div>
-              </div>
-            )
-          })}
-        </div>
-
-        {/* Bande all-day */}
-        {allDay.length > 0 && (
-          <div style={{ display: 'flex', paddingLeft: HOUR_GUTTER, borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)', minHeight: 24, background: 'var(--bg-card2)' }}>
-            {days.map((d, i) => (
-              <div key={i} style={{ flex: 1, padding: '3px 3px', borderLeft: i ? '1px solid var(--border)' : 'none', minWidth: 0 }}>
-                {allDay.filter(e => new Date(e.start) <= addDays(d, 1) && new Date(e.end) >= d && (sameDay(new Date(e.start), d) || (new Date(e.start) < d && new Date(e.end) > d))).map(e => (
-                  <div key={e.id} onClick={() => onOpen(e)} title={e.title} style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--on-primary)', background: e.color, borderRadius: 5, padding: '2px 5px', marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', cursor: 'pointer' }}>{e.title}</div>
-                ))}
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Grille horaire scrollable */}
-        <div ref={scrollRef} style={{ maxHeight: '68vh', overflowY: 'auto', position: 'relative', userSelect: createDrag ? 'none' : undefined }}
+        {/* Grille horaire scrollable — l'en-tête des jours est DANS le conteneur
+            scrollable (sticky) : ainsi l'en-tête et les colonnes partagent la
+            même largeur, y compris quand la barre de défilement apparaît
+            (sinon décalage ~15px = bug d'alignement du jour actuel). */}
+        <div ref={scrollRef} style={{ maxHeight: '72vh', overflowY: 'auto', position: 'relative', userSelect: createDrag ? 'none' : undefined }}
           onPointerMove={createDrag ? onCreateMove : undefined}
           onPointerUp={createDrag ? (() => onCreateUp()) : (drag ? (e => void commitDrag(e.clientX, e.clientY)) : undefined)}
         >
+          {/* En-tête jours (sticky) */}
+          <div style={{ display: 'flex', paddingLeft: HOUR_GUTTER, position: 'sticky', top: 0, zIndex: 6, background: 'var(--bg)' }}>
+            {days.map((d, i) => {
+              const isToday = sameDay(d, new Date())
+              return (
+                <div key={i} style={{ flex: 1, textAlign: 'center', padding: '10px 0', borderLeft: i ? '1px solid var(--border)' : 'none', background: isToday ? 'var(--primary-dim)' : 'var(--bg)', minWidth: 0 }}>
+                  <div style={{ fontSize: 11, color: isToday ? 'var(--primary)' : 'var(--text-dim)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{DAY_NAMES[(d.getDay() + 6) % 7]}</div>
+                  <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, borderRadius: '50%', marginTop: 3, fontSize: 15, fontWeight: 700, fontVariantNumeric: 'tabular-nums', background: isToday ? 'var(--primary)' : 'transparent', color: isToday ? 'var(--on-primary)' : 'var(--text)' }}>{d.getDate()}</div>
+                </div>
+              )
+            })}
+          </div>
+
+          {/* Bande all-day */}
+          {allDay.length > 0 && (
+            <div style={{ display: 'flex', paddingLeft: HOUR_GUTTER, borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)', minHeight: 24, background: 'var(--bg-card2)' }}>
+              {days.map((d, i) => (
+                <div key={i} style={{ flex: 1, padding: '3px 3px', borderLeft: i ? '1px solid var(--border)' : 'none', minWidth: 0 }}>
+                  {allDay.filter(e => new Date(e.start) <= addDays(d, 1) && new Date(e.end) >= d && (sameDay(new Date(e.start), d) || (new Date(e.start) < d && new Date(e.end) > d))).map(e => (
+                    <div key={e.id} onClick={() => onOpen(e)} title={e.title} style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--on-primary)', background: e.color, borderRadius: 5, padding: '2px 5px', marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', cursor: 'pointer' }}>{e.title}</div>
+                  ))}
+                </div>
+              ))}
+            </div>
+          )}
+
           <div style={{ display: 'flex', position: 'relative' }}>
             {/* Colonne heures */}
             <div style={{ width: HOUR_GUTTER, flexShrink: 0 }}>

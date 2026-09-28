@@ -1,7 +1,18 @@
 'use client'
 import { useState, useRef, useEffect } from 'react'
 import type { NutritionHabit, HabitIngredient } from '@/hooks/useNutritionHabits'
+import { useDailyMeals, type MealSlotKey, type MealIngredient } from '@/hooks/useDailyMeals'
 import { useI18n } from '@/lib/i18n'
+
+// Créneau du journal selon l'heure courante.
+function slotForHour(h: number): MealSlotKey {
+  if (h < 10) return 'breakfast'
+  if (h < 12) return 'morning_snack'
+  if (h < 15) return 'lunch'
+  if (h < 18) return 'afternoon_snack'
+  if (h < 22) return 'dinner'
+  return 'evening_snack'
+}
 
 // ── Shared styles ─────────────────────────────────────────────────
 const inputStyle: React.CSSProperties = {
@@ -30,8 +41,7 @@ function sumIngredients(ings: HabitIngredient[]) {
 }
 
 // ── Toast ─────────────────────────────────────────────────────────
-function Toast({ visible }: { visible: boolean }) {
-  const { t } = useI18n()
+function Toast({ visible, message }: { visible: boolean; message: string }) {
   return (
     <div style={{
       position: 'fixed', bottom: 32, left: '50%', transform: 'translateX(-50%)',
@@ -40,7 +50,7 @@ function Toast({ visible }: { visible: boolean }) {
       zIndex: 9999, transition: 'opacity 0.3s', opacity: visible ? 1 : 0,
       pointerEvents: 'none',
     }}>
-      {t('w2a.feature_coming')}
+      {message}
     </div>
   )
 }
@@ -272,17 +282,24 @@ function RegularMealCreateModal({
 function RegularMealCard({
   habit,
   onDelete,
+  onUse,
 }: {
   habit: NutritionHabit
   onDelete: (id: string) => Promise<void>
+  onUse: (habit: NutritionHabit) => Promise<boolean>
 }) {
   const { t } = useI18n()
   const [confirmDelete, setConfirmDelete] = useState(false)
-  const [toastVisible, setToastVisible] = useState(false)
+  const [toast, setToast] = useState<{ visible: boolean; message: string }>({ visible: false, message: '' })
+  const [using, setUsing] = useState(false)
 
-  function handleUtiliser() {
-    setToastVisible(true)
-    setTimeout(() => setToastVisible(false), 2500)
+  async function handleUtiliser() {
+    if (using) return
+    setUsing(true)
+    const ok = await onUse(habit)
+    setUsing(false)
+    setToast({ visible: true, message: ok ? t('w2a.meal_saved') : t('w2a.save_error') })
+    setTimeout(() => setToast(prev => ({ ...prev, visible: false })), 2500)
   }
 
   const macroSummary = [
@@ -293,7 +310,7 @@ function RegularMealCard({
 
   return (
     <>
-      <Toast visible={toastVisible} />
+      <Toast visible={toast.visible} message={toast.message} />
       <div style={{
         background: 'var(--bg-card2)', border: '1px solid var(--border)',
         borderRadius: 12, padding: '12px 14px',
@@ -333,12 +350,14 @@ function RegularMealCard({
           {/* Actions */}
           <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
             <button
-              onClick={handleUtiliser}
+              onClick={() => void handleUtiliser()}
+              disabled={using}
               style={{
                 padding: '5px 11px', borderRadius: 7,
                 border: '1px solid var(--border)', background: 'transparent',
                 color: 'var(--text-dim)', fontSize: 11,
-                cursor: 'pointer', fontFamily: 'Syne,sans-serif', fontWeight: 600,
+                cursor: using ? 'default' : 'pointer', opacity: using ? 0.6 : 1,
+                fontFamily: 'Syne,sans-serif', fontWeight: 600,
                 whiteSpace: 'nowrap',
               }}
             >{t('w2a.use')}</button>
@@ -653,6 +672,39 @@ export default function HabitudesSection({
   const { t } = useI18n()
   const [creatingMeal, setCreatingMeal] = useState(false)
 
+  // Journal du jour — permet à « Utiliser » d'ajouter réellement un repas.
+  const now = new Date()
+  const todayISO = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+  const { saveEntry } = useDailyMeals(todayISO)
+
+  async function handleUseMeal(habit: NutritionHabit): Promise<boolean> {
+    try {
+      const slot = slotForHour(new Date().getHours())
+      const mealIngredients: MealIngredient[] = (habit.ingredients ?? []).map(ing => ({
+        name: ing.name,
+        qty:  ing.quantity_g != null ? String(ing.quantity_g) : '',
+        unit: ing.quantity_g != null ? 'g' : '',
+        kcal: ing.calories  ?? undefined,
+        prot: ing.protein_g ?? undefined,
+        gluc: ing.carbs_g   ?? undefined,
+        lip:  ing.fat_g     ?? undefined,
+      }))
+      const sums = sumIngredients(habit.ingredients ?? [])
+      await saveEntry(slot, {
+        meal_name:   habit.name,
+        ingredients: mealIngredients.length ? mealIngredients : null,
+        actual_kcal: habit.total_calories  ?? (sums.calories  > 0 ? Math.round(sums.calories) : null),
+        actual_prot: habit.total_protein_g ?? (sums.protein_g > 0 ? sums.protein_g : null),
+        actual_gluc: habit.total_carbs_g   ?? (sums.carbs_g   > 0 ? sums.carbs_g   : null),
+        actual_lip:  sums.fat_g > 0 ? sums.fat_g : null,
+        source:      'habit',
+      })
+      return true
+    } catch {
+      return false
+    }
+  }
+
   const regularMeals = habits.filter(h => h.habit_type === 'regular_meal')
   const fuelProducts  = habits.filter(h => h.habit_type === 'training_fuel')
 
@@ -704,7 +756,7 @@ export default function HabitudesSection({
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {regularMeals.map(h => (
-                  <RegularMealCard key={h.id} habit={h} onDelete={onDelete} />
+                  <RegularMealCard key={h.id} habit={h} onDelete={onDelete} onUse={handleUseMeal} />
                 ))}
               </div>
             )}

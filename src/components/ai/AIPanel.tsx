@@ -12875,12 +12875,6 @@ function PlusMenu({
 
           {/* Groupe : recherche */}
           <div style={mGroup}>
-            <div style={{ ...mRow, opacity: 0.45, cursor: 'not-allowed' }} title={t('aip.ui.comingSoon')}>
-              <Search size={20} color="var(--text-mid)" style={{ flexShrink: 0 }} />
-              <span style={{ flex: 1 }}>Recherche</span>
-              <span style={mHint}>{t('aip.ui.soon')}</span>
-            </div>
-            <div style={mDiv} />
             <button style={mRow} onClick={() => { onWebSearch() }}>
               <Globe size={20} color="var(--text-mid)" style={{ flexShrink: 0 }} />
               <span style={{ flex: 1 }}>Recherche Web</span>
@@ -13025,13 +13019,6 @@ function PlusMenu({
 
           <div style={sepStyle} />
 
-          {/* 8. Recherche — inactif (bientôt) */}
-          <div style={{ ...rowStyle, opacity: 0.45, cursor: 'not-allowed' }} title={t('aip.ui.comingSoon')}>
-            <Search size={16} color="var(--text-mid)" style={{ flexShrink: 0 }} />
-            <span style={{ flex: 1 }}>Recherche</span>
-            <span style={{ fontSize: 10, color: 'var(--text-dim)', flexShrink: 0 }}>{t('aip.ui.soon')}</span>
-          </div>
-
           {/* 9. Recherche Web — réglage persistant activé/désactivé (défaut activé) */}
           <button style={rowStyle} onClick={() => { onWebSearch() }} onMouseEnter={hoverOn} onMouseLeave={hoverOff}>
             <Globe size={16} color="var(--text-mid)" style={{ flexShrink: 0 }} />
@@ -13149,8 +13136,8 @@ function PlusMenu({
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', margin: '20px 0' }}>
             <Brain size={28} color="var(--text-dim)" />
-            <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: '12px 0 2px' }}>{t('aip.ui.noSkills')}</p>
-            <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: 0 }}>{t('aip.ui.comingSoon')}</p>
+            <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: '12px 0 8px' }}>{t('aip.ui.noSkills')}</p>
+            <a href="/competences" style={{ fontSize: 12, fontWeight: 600, color: 'var(--ai-accent, var(--primary))', textDecoration: 'none' }}>{t('aip.ui.openSkills')}</a>
           </div>
         </div>
       )}
@@ -13592,19 +13579,7 @@ function HistoryDrawer({
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
           )}
         </button>
-        <div
-          title={t('aip.ui.comingSoon')}
-          style={{
-            display: 'flex', alignItems: 'center', gap: 10,
-            width: '100%', padding: '9px 9px', borderRadius: 9,
-            color: 'var(--text)', fontSize: 15, fontWeight: 500,
-            fontFamily: 'var(--font-body)',
-            opacity: 0.4, cursor: 'not-allowed', pointerEvents: 'none',
-          }}
-        >
-          <Globe size={16} color="var(--text-mid)" style={{ flexShrink: 0 }} />
-          Networks
-        </div>
+        {/* « Networks » masqué tant qu'inactif (pas d'item mort). */}
       </div>
 
       <div style={dividerStyle} />

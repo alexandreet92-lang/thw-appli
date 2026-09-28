@@ -51,7 +51,7 @@ interface PlanSemaine {
   tss_semaine: number
   theme: string
   note_coach?: string
-  // Toutes les semaines ont des séances ; les blocs sont détaillés S1-S2 uniquement
+  // Toutes les semaines ont des métadonnées ; les séances (blocs) sont détaillées S1-S3, S4+ à la demande
   seances?: PlanSeance[]
 }
 
@@ -595,12 +595,12 @@ RÈGLES GÉNÉRALES — RESPECTER ABSOLUMENT :
 2. Progression logique et périodisée (Base → Intensité → Spécifique → Affûtage → Compétition), cohérente avec l'historique et la forme actuelle.
 3. TSS cohérent avec la durée et l'intensité. Respect strict des jours de repos et des contraintes.
 4. EXPLIQUE TES CHOIX : note_coach par semaine + conseils_adaptation + points_cles rendent la LOGIQUE du plan limpide.
-5. TAILLE OBLIGATOIRE : seules les semaines 1-2 ont des seances[] (avec blocs) ; TOUTES les semaines 3+ ont "seances": [] (vide). Ne dépasse jamais cette règle — c'est ce qui garantit que la génération aboutit dans le temps imparti.`
+5. TAILLE OBLIGATOIRE : seules les semaines 1 à 3 ont des seances[] (avec blocs) ; TOUTES les semaines 4+ ont "seances": [] (vide). Ne dépasse jamais cette règle — c'est ce qui garantit que la génération aboutit dans le temps imparti. Les semaines 4+ seront détaillées à la demande via le bouton « Détailler cette semaine » du planning.`
 
   // Le générateur reste un PRODUCTEUR DE JSON PUR : on n'y injecte PAS la doctrine
   // markdown (elle pousse le modèle à répondre en markdown → JSON cassé). Le
   // raisonnement de coach arrive déjà via "methodologie" (texte) dans le userPrompt.
-  const JSON_ONLY = `\n\n========== RAPPEL FINAL ABSOLU ==========\nTa réponse est EXCLUSIVEMENT l'objet JSON du schéma demandé : aucun texte, aucun markdown, aucun commentaire, aucune balise \`\`\` — ni avant, ni autour, ni après. Le premier caractère est { et le dernier est }.\nRappel structure : blocs détaillés pour les semaines 1-2 ; semaines 3+ avec "seances":[].`
+  const JSON_ONLY = `\n\n========== RAPPEL FINAL ABSOLU ==========\nTa réponse est EXCLUSIVEMENT l'objet JSON du schéma demandé : aucun texte, aucun markdown, aucun commentaire, aucune balise \`\`\` — ni avant, ni autour, ni après. Le premier caractère est { et le dernier est }.\nRappel structure : blocs détaillés pour les semaines 1 à 3 ; semaines 4+ avec "seances":[].`
 
   try {
     const client = getAnthropicClient()

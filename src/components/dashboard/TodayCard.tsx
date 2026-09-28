@@ -6,6 +6,7 @@
 // ══════════════════════════════════════════════════════════════
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useI18n } from '@/lib/i18n'
 import { createClient } from '@/lib/supabase/client'
@@ -78,7 +79,9 @@ export function TodayCard() {
               {sportLabel(session.sport)}
             </span>
           </div>
-          <p style={{ margin: 0, fontFamily: FD, fontSize: 17, fontWeight: 500, color: 'var(--text)', lineHeight: 1.3 }}>{session.title}</p>
+          <Link href={`/planning?week=${weekStartIso()}`} style={{ textDecoration: 'none', cursor: 'pointer' }}>
+            <p style={{ margin: 0, fontFamily: FD, fontSize: 17, fontWeight: 500, color: 'var(--text)', lineHeight: 1.3 }}>{session.title}</p>
+          </Link>
           {meta && <p style={{ margin: 'var(--space-2) 0 0', ...NUM, fontSize: 13, color: 'var(--text-mid)' }}>{meta}</p>}
           {session.notes && (
             <p style={{ margin: 'var(--space-3) 0 0', fontFamily: FB, fontSize: 13, color: 'var(--text-mid)', lineHeight: 1.55 }}>{session.notes}</p>

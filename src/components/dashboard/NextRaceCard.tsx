@@ -43,7 +43,7 @@ export function NextRaceCard() {
   if (loading) return <Skeleton height={120} />
 
   return (
-    <Card href={race ? '/planning' : undefined}>
+    <Card href={race ? `/calendar?race=${race.id}` : undefined}>
       <SectionTitle>{t('dashboard.nextRace')}</SectionTitle>
 
       {!race ? (

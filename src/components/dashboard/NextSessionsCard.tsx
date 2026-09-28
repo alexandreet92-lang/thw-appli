@@ -7,6 +7,7 @@
 // ══════════════════════════════════════════════════════════════
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { useI18n } from '@/lib/i18n'
 import { createClient } from '@/lib/supabase/client'
 import { getCurrentUser } from '@/lib/auth/currentUser'
@@ -16,7 +17,7 @@ import { FD, FB, NUM, iso, todayIso, weekStartIso, formatDuration } from './lib'
 import { currentLocale } from '@/lib/i18n'
 
 interface Row { week_start: string; day_index: number; sport: string; title: string; duration_min: number | null; intensity: string | null; status: string }
-interface Next { key: string; date: string; sport: string; title: string; duration_min: number | null; intensity: string | null }
+interface Next { key: string; date: string; sport: string; title: string; duration_min: number | null; intensity: string | null; weekStart: string }
 
 const ZONE_KEY: Record<string, string> = { low: 'dashboard.zoneEasy', recovery: 'dashboard.zoneRecovery', moderate: 'dashboard.zoneModerate', mid: 'dashboard.zoneModerate', high: 'dashboard.zoneIntense', hard: 'dashboard.zoneIntense', max: 'dashboard.zoneMax' }
 
@@ -55,7 +56,7 @@ export function NextSessionsCard() {
         .filter(r => r.date > today)
         .sort((a, b) => a.date.localeCompare(b.date))
         .slice(0, 3)
-        .map(r => ({ key: `${r.week_start}-${r.day_index}-${r.title}`, date: r.date, sport: r.sport, title: r.title, duration_min: r.duration_min, intensity: r.intensity }))
+        .map(r => ({ key: `${r.week_start}-${r.day_index}-${r.title}`, date: r.date, sport: r.sport, title: r.title, duration_min: r.duration_min, intensity: r.intensity, weekStart: r.week_start }))
       setItems(next)
       setLoading(false)
     })()
@@ -66,21 +67,21 @@ export function NextSessionsCard() {
   if (items.length === 0) return null // rien à venir → masqué
 
   return (
-    <Card href="/planning">
+    <Card>
       <SectionTitle action={<span style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-dim)' }}>→</span>}>{t('dashboard.nextSessions')}</SectionTitle>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
         {items.map(s => {
           const zone = s.intensity ? (ZONE_KEY[s.intensity] ? t(ZONE_KEY[s.intensity]) : s.intensity) : null
           const meta = [formatDuration(s.duration_min), zone].filter(v => v && v !== '—').join(' · ')
           return (
-            <div key={s.key} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+            <Link key={s.key} href={`/planning?week=${s.weekStart}`} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', textDecoration: 'none', color: 'inherit', cursor: 'pointer' }}>
               <span style={{ ...NUM, fontSize: 12, color: 'var(--text-dim)', width: 56, flexShrink: 0 }}>{dayShort(s.date)}</span>
               <SportDot color={sportColor(s.sport)} />
               <div style={{ minWidth: 0, flex: 1 }}>
                 <p style={{ margin: 0, fontFamily: FD, fontSize: 14, fontWeight: 500, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.title}</p>
                 {meta && <p style={{ margin: '2px 0 0', ...NUM, fontSize: 12, color: 'var(--text-mid)' }}>{meta}</p>}
               </div>
-            </div>
+            </Link>
           )
         })}
       </div>

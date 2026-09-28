@@ -81,13 +81,17 @@ export function EventSheet({ event, draft, calendars, onClose, onSaved }: {
   const [calendarId, setCalendarId] = useState<string>((event?.meta?.calendarId as string) ?? calendars.find(c => c.kind === 'personal')?.id ?? '')
   const [reminder, setReminder] = useState<number>(event?.reminderMin ?? DEFAULT_REMINDER_MIN)
   const [rrule, setRrule] = useState<string>(event?.rrule ?? '')
+  // Bleu par défaut (demande produit). On garde la couleur existante en édition
+  // et la couleur du sport pour une séance.
   const [color, setColor] = useState<string>(() =>
     event?.color
     ?? (event?.source === 'session' ? sportColor(event?.sport) : undefined)
-    ?? calendars.find(c => c.kind === 'personal')?.color
-    ?? COLOR_PALETTE[0]
+    ?? '#3B82F6'
   )
   const [busy, setBusy] = useState(false)
+  const [paletteOpen, setPaletteOpen] = useState(false)   // palette repliée par défaut
+  const [recOpen, setRecOpen] = useState(false)           // menu récurrence custom
+  const [confirmDel, setConfirmDel] = useState(false)     // confirmation suppression
 
   // ── Récurrence personnalisée (modal) ──
   const eventDow = new Date(dateStr + 'T00:00:00').getDay()
@@ -107,6 +111,7 @@ export function EventSheet({ event, draft, calendars, onClose, onSaved }: {
     { v: 'FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR', label: 'Tous les jours de la semaine (lun. à ven.)' },
   ]
   const isCustomActive = rrule !== '' && !recurrencePresets.some(p => p.v === rrule)
+  const currentRecLabel = isCustomActive ? summarizeRRule(rrule) : (recurrencePresets.find(p => p.v === rrule)?.label ?? 'Une seule fois')
 
   function openCustomModal() {
     // Préremplit depuis la règle courante si elle est déjà personnalisée.
@@ -277,29 +282,69 @@ export function EventSheet({ event, draft, calendars, onClose, onSaved }: {
               </div>
 
               {kind === 'event' && (
-                <div style={{ marginBottom: 12 }}>
+                <div style={{ marginBottom: 12, position: 'relative' }}>
                   <p style={label}>Répétition</p>
-                  <select style={field}
-                    value={isCustomActive ? '__active__' : rrule}
-                    onChange={e => { const v = e.target.value; if (v === '__custom__') openCustomModal(); else if (v !== '__active__') setRrule(v) }}>
-                    {isCustomActive && <option value="__active__">{summarizeRRule(rrule)}</option>}
-                    {recurrencePresets.map(r => <option key={r.v || 'once'} value={r.v}>{r.label}</option>)}
-                    <option value="__custom__">Personnaliser…</option>
-                  </select>
+                  {/* Menu déroulant custom (le <select> natif ne s'ouvrait pas de
+                      façon fiable en thème sombre / dans l'overlay). */}
+                  <button type="button" onClick={() => setRecOpen(o => !o)}
+                    style={{ ...field, display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', textAlign: 'left' }}>
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{currentRecLabel}</span>
+                    <span style={{ marginLeft: 8, transition: 'transform .15s', transform: recOpen ? 'rotate(180deg)' : 'none', color: 'var(--text-dim)', flexShrink: 0 }}>▾</span>
+                  </button>
+                  {recOpen && (
+                    <>
+                      <div onClick={() => setRecOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 40 }} />
+                      <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4, zIndex: 50,
+                        background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 12, boxShadow: 'var(--shadow)', overflow: 'hidden', padding: 4 }}>
+                        {recurrencePresets.map(r => {
+                          const on = !isCustomActive && rrule === r.v
+                          return (
+                            <button key={r.v || 'once'} type="button"
+                              onClick={() => { setRrule(r.v); setRecOpen(false) }}
+                              style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left', padding: '9px 11px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 13.5, fontFamily: 'inherit',
+                                background: on ? 'var(--primary-dim)' : 'transparent', color: on ? 'var(--primary)' : 'var(--text)', fontWeight: on ? 700 : 500 }}>
+                              <span style={{ width: 16, flexShrink: 0 }}>{on ? '✓' : ''}</span>{r.label}
+                            </button>
+                          )
+                        })}
+                        {isCustomActive && (
+                          <button type="button" onClick={() => { openCustomModal(); setRecOpen(false) }}
+                            style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left', padding: '9px 11px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 13.5, fontFamily: 'inherit', background: 'var(--primary-dim)', color: 'var(--primary)', fontWeight: 700 }}>
+                            <span style={{ width: 16, flexShrink: 0 }}>✓</span>{summarizeRRule(rrule)}
+                          </button>
+                        )}
+                        <div style={{ height: 1, background: 'var(--border)', margin: '4px 0' }} />
+                        <button type="button" onClick={() => { openCustomModal(); setRecOpen(false) }}
+                          style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left', padding: '9px 11px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 13.5, fontFamily: 'inherit', background: 'transparent', color: 'var(--text-mid)', fontWeight: 600 }}>
+                          <span style={{ width: 16, flexShrink: 0 }}>⚙</span>Personnaliser…
+                        </button>
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
 
               <div style={{ marginBottom: 12 }}>
                 <p style={label}>Couleur</p>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(12, 1fr)', gap: 8 }}>
-                  {COLOR_PALETTE.map(c => {
-                    const on = color.toLowerCase() === c.toLowerCase()
-                    return (
-                      <button key={c} type="button" aria-label={`Couleur ${c}`} onClick={() => setColor(c)}
-                        style={{ width: '100%', aspectRatio: '1', borderRadius: '50%', background: c, border: 'none', cursor: 'pointer', padding: 0, boxShadow: on ? '0 0 0 2px var(--bg-card), 0 0 0 4px var(--text)' : 'none' }} />
-                    )
-                  })}
+                {/* Repliée : pastille courante + bouton pour dérouler la palette. */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span aria-hidden style={{ width: 26, height: 26, borderRadius: '50%', background: color, flexShrink: 0, boxShadow: '0 0 0 2px var(--bg-card), 0 0 0 3px var(--border)' }} />
+                  <button type="button" onClick={() => setPaletteOpen(o => !o)}
+                    style={{ padding: '7px 12px', borderRadius: 9, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                    {paletteOpen ? 'Fermer' : 'Autres couleurs'}
+                  </button>
                 </div>
+                {paletteOpen && (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(12, 1fr)', gap: 8, marginTop: 10 }}>
+                    {COLOR_PALETTE.map(c => {
+                      const on = color.toLowerCase() === c.toLowerCase()
+                      return (
+                        <button key={c} type="button" aria-label={`Couleur ${c}`} onClick={() => { setColor(c); setPaletteOpen(false) }}
+                          style={{ width: '100%', aspectRatio: '1', borderRadius: '50%', background: c, border: 'none', cursor: 'pointer', padding: 0, boxShadow: on ? '0 0 0 2px var(--bg-card), 0 0 0 4px var(--text)' : 'none' }} />
+                      )
+                    })}
+                  </div>
+                )}
               </div>
 
               <div style={{ marginBottom: 14 }}>
@@ -324,7 +369,7 @@ export function EventSheet({ event, draft, calendars, onClose, onSaved }: {
 
               <div style={{ display: 'flex', gap: 10, marginTop: 6 }}>
                 {editing && (event!.source === 'event' || event!.source === 'google') && (
-                  <button onClick={remove} disabled={busy} style={{ padding: '12px 16px', borderRadius: 12, border: '1px solid var(--border)', background: 'transparent', color: '#ef4444', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>Supprimer</button>
+                  <button onClick={() => setConfirmDel(true)} disabled={busy} style={{ padding: '12px 16px', borderRadius: 12, border: '1px solid var(--border)', background: 'transparent', color: '#ef4444', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>Supprimer</button>
                 )}
                 <button onClick={onClose} disabled={busy} style={{ flex: 1, padding: 12, borderRadius: 12, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>Annuler</button>
                 <button onClick={save} disabled={busy} style={{ flex: 1, padding: 12, borderRadius: 12, border: 'none', background: 'var(--primary)', color: 'var(--on-primary,#fff)', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>{busy ? '…' : editing ? 'Enregistrer' : 'Créer'}</button>
@@ -333,6 +378,21 @@ export function EventSheet({ event, draft, calendars, onClose, onSaved }: {
           )}
         </div>
       </div>
+
+      {/* Confirmation de suppression (toujours demandée) */}
+      {confirmDel && (
+        <div onClick={e => { if (e.target === e.currentTarget) setConfirmDel(false) }}
+          style={{ position: 'fixed', inset: 0, zIndex: 620, background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(3px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <div style={{ width: 'min(360px,96vw)', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 18, boxShadow: 'var(--shadow)', padding: '20px 22px', boxSizing: 'border-box' }}>
+            <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 700, margin: '0 0 8px', color: 'var(--text)' }}>Supprimer cet événement ?</h3>
+            <p style={{ fontSize: 13.5, color: 'var(--text-mid)', margin: '0 0 18px', lineHeight: 1.5 }}>Cette action est définitive et ne peut pas être annulée.</p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+              <button onClick={() => setConfirmDel(false)} disabled={busy} style={{ padding: '10px 16px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}>Annuler</button>
+              <button onClick={() => { setConfirmDel(false); void remove() }} disabled={busy} style={{ padding: '10px 18px', borderRadius: 10, border: 'none', background: '#ef4444', color: '#fff', fontSize: 13.5, fontWeight: 700, cursor: 'pointer' }}>{busy ? '…' : 'Supprimer'}</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal récurrence personnalisée (style Google Agenda) */}
       {customOpen && (

@@ -2862,6 +2862,62 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
   // ── AI training plan détecté pour la semaine courante ──
   const [aiPlan,        setAiPlan]        = useState<AiTrainingPlan | null>(null)
   const [aiPlanSessions, setAiPlanSessions] = useState<AiPlanSessionAgg[]>([])
+
+  // « Détailler cette semaine » : les semaines S4+ d'un plan sont volontairement
+  // vides à la création (évite la troncature IA). Ce handler génère à la demande
+  // les séances d'une semaine, les écrit, puis rafraîchit le planning.
+  const [detailingWeek, setDetailingWeek] = useState<number | null>(null)
+  const [detailWeekErr, setDetailWeekErr] = useState<{ week: number; msg: string } | null>(null)
+  const detailPlanWeek = useCallback(async (weekNum: number) => {
+    if (!aiPlan?.id) return
+    setDetailingWeek(weekNum); setDetailWeekErr(null)
+    try {
+      const res = await fetch('/api/training-plan/week', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ planId: aiPlan.id, weekNumber: weekNum }),
+      })
+      const data = await res.json().catch(() => ({})) as { error?: string; created?: number }
+      if (!res.ok || (data.created ?? 0) === 0) { setDetailWeekErr({ week: weekNum, msg: data?.error || 'Génération impossible, réessaie' }); return }
+      window.dispatchEvent(new Event('thw:sessions-changed'))
+    } catch {
+      setDetailWeekErr({ week: weekNum, msg: 'Erreur réseau, réessaie' })
+    } finally {
+      setDetailingWeek(null)
+    }
+  }, [aiPlan?.id])
+
+  // Renvoie le numéro de semaine du plan si cette date de début de semaine
+  // correspond à une semaine du plan ENCORE non détaillée (séances vides), sinon null.
+  const planWeekNeedingDetail = useCallback((ws: string): number | null => {
+    const semaines = aiPlan?.ai_context?.program?.semaines
+    if (!aiPlan?.start_date || !Array.isArray(semaines)) return null
+    const num = Math.round((new Date(ws + 'T00:00:00').getTime() - new Date(aiPlan.start_date + 'T00:00:00').getTime()) / (7 * 86400000)) + 1
+    if (num < 1 || num > (aiPlan.duree_semaines ?? 0)) return null
+    const sem = semaines.find(s => Number(s.numero) === num)
+    if (!sem) return null
+    return (Array.isArray(sem.seances) && sem.seances.length > 0) ? null : num
+  }, [aiPlan])
+
+  // Bouton « Détailler » d'une semaine de plan encore vide (rendu dans la
+  // colonne volume de chaque ligne semaine, desktop + mobile).
+  const renderDetailWeekBtn = (ws: string) => {
+    if (compareMode) return null
+    const dwk = planWeekNeedingDetail(ws)
+    if (dwk == null) return null
+    const busy = detailingWeek === dwk
+    return (
+      <div style={{ marginTop: 8 }}>
+        <button onClick={() => detailPlanWeek(dwk)} disabled={busy}
+          style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, padding: '7px 8px', borderRadius: 8, border: 'none',
+            background: busy ? 'var(--bg-card3, rgba(120,120,120,0.16))' : 'var(--primary)', color: busy ? 'var(--text-mid)' : 'var(--on-primary)',
+            fontSize: 9.5, fontWeight: 800, lineHeight: 1.2, cursor: busy ? 'default' : 'pointer', fontFamily: 'inherit' }}
+          title="Générer les séances de cette semaine (calibrées sur tes zones)">
+          {busy ? 'Génération…' : '✨ Détailler'}
+        </button>
+        {detailWeekErr?.week === dwk && <p style={{ fontSize: 8.5, color: 'var(--danger)', margin: '4px 0 0', lineHeight: 1.3 }}>{detailWeekErr.msg}</p>}
+      </div>
+    )
+  }
   // Plan actif qui commence dans une semaine future (pas encore dans la vue courante)
   const [upcomingPlan,  setUpcomingPlan]  = useState<{name:string;startDate:string} | null>(null)
 
@@ -3225,8 +3281,9 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
                     {sportsSet.map(sp => (
                       <VolBar key={sp} sport={sp} planned={volPlanned[sp] || 0} done={volDone[sp] || 0} />
                     ))}
-                    {plannedTotal === 0 && doneTotal === 0 && <span style={{ fontSize: 9, color: 'var(--text-dim)', fontStyle: 'italic' as const }}>{t('plnp.rest')}</span>}
+                    {plannedTotal === 0 && doneTotal === 0 && !planWeekNeedingDetail(ws) && <span style={{ fontSize: 9, color: 'var(--text-dim)', fontStyle: 'italic' as const }}>{t('plnp.rest')}</span>}
                   </>) : <WeekCycles ws={ws} blocs={cycleBlocs} />}
+                  {renderDetailWeekBtn(ws)}
                 </div>
               </div>
             )
@@ -3296,8 +3353,9 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
                     </div>
                     {sideTab==='volume' ? (
                       mSports.length ? mSports.map(sp=><VolBar key={sp} sport={sp} planned={mPlan[sp]||0} done={mDone[sp]||0} />)
-                        : <span style={{ fontSize:11, color:'var(--text-dim)', fontStyle:'italic' as const }}>{t('plnp.rest')}</span>
+                        : (!planWeekNeedingDetail(ws) && <span style={{ fontSize:11, color:'var(--text-dim)', fontStyle:'italic' as const }}>{t('plnp.rest')}</span>)
                     ) : <WeekCycles ws={ws} blocs={cycleBlocs} />}
+                    {renderDetailWeekBtn(ws)}
                   </div>
                 </div>
               </div>

@@ -497,7 +497,7 @@ function ProfilTab({ onSelect, selectedDatum, profile: p, setProfile: setP, onAn
         </div>
         {editing ? (
           // Mêmes 8 données que la grille d'affichage (sans Poids ni Âge).
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 10 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2,1fr)', gap: 10 }}>
             <NInput label="FTP" unit="W" value={p.ftp} onChange={v => setP({ ...p, ftp: v })} />
             <TInput label={t('performance.thresholdPace')} value={p.thresholdPace} onChange={v => setP({ ...p, thresholdPace: v })} placeholder="4:08" />
             <NInput label="VMA" unit="km/h" value={p.vma} onChange={v => setP({ ...p, vma: v })} step={0.5} />
@@ -633,6 +633,7 @@ function TestProtocolPanel({ open: ot, onClose, onFtpUpdate }: { open: OpenTest 
   const [planDone, setPlanDone]       = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { t } = useI18n()
+  const isMobile = useWindowWidth() < 768
 
   const testId = ot?.test.id ?? null
 
@@ -936,7 +937,7 @@ function TestProtocolPanel({ open: ot, onClose, onFtpUpdate }: { open: OpenTest 
             )}
 
             {/* Conditions + Échauffement — grid 2 col */}
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+            <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap:10 }}>
               <div style={{ padding:'12px 14px', borderRadius:12, background:'var(--bg-card2)', border:'1px solid var(--border)' }}>
                 <SH icon={<IcoCheck/>} label={t('performance.conditions')} color="var(--text-mid)"/>
                 <ul style={{ margin:0, padding:'0 0 0 14px', display:'flex', flexDirection:'column', gap:4 }}>
@@ -982,7 +983,7 @@ function TestProtocolPanel({ open: ot, onClose, onFtpUpdate }: { open: OpenTest 
             </div>
 
             {/* Erreurs + Fréquence — grid 2 col */}
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+            <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap:10 }}>
               <div style={{ padding:'12px 14px', borderRadius:12, background:'rgba(239,68,68,0.06)', border:'1px solid rgba(239,68,68,0.20)' }}>
                 <SH icon={<IcoWarn/>} label={t('performance.commonMistakes')} color="#ef4444"/>
                 <ul style={{ margin:0, padding:'0 0 0 14px', display:'flex', flexDirection:'column', gap:4 }}>
@@ -1019,7 +1020,7 @@ function TestProtocolPanel({ open: ot, onClose, onFtpUpdate }: { open: OpenTest 
                         </div>
                       )}
                     </div>
-                    <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:9 }}>
+                    <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap:9 }}>
                       {inputFields.map(f => (
                         <div key={f.cle} style={{ display:'flex', flexDirection:'column', gap:4 }}>
                           <label style={{ fontSize:11, color:'var(--text-dim)', fontWeight:600 }}>
@@ -1054,7 +1055,7 @@ function TestProtocolPanel({ open: ot, onClose, onFtpUpdate }: { open: OpenTest 
                     {derived.length > 0 && (
                       <div style={{ marginTop:11, padding:'11px 13px', borderRadius:10, background:`${cfg.color}0d`, border:`1px solid ${cfg.color}30` }}>
                         <div style={{ fontFamily:'Syne,sans-serif', fontSize:10, fontWeight:700, textTransform:'uppercase' as const, letterSpacing:'0.07em', color:cfg.color, marginBottom:8 }}>{t('performance.computedResults')}</div>
-                        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'8px 12px' }}>
+                        <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap:'8px 12px' }}>
                           {derived.filter(d => !d.hidden).map(d => (
                             <div key={d.key} style={{ display:'flex', flexDirection:'column', gap:1 }}>
                               <span style={{ fontSize:10, color:'var(--text-dim)', fontWeight:600 }}>{d.label}</span>

@@ -1,8 +1,18 @@
-import { redirect } from 'next/navigation'
-
-export const dynamic = 'force-dynamic'
+'use client'
+import { useEffect } from 'react'
 
 // Le contenu réel de la Politique de confidentialité est servi en statique.
-export default function PrivacyPage(): never {
-  redirect('/site/confidentialite.html')
+// Redirection CÔTÉ CLIENT (compatible export statique Capacitor).
+const DEST = '/site/confidentialite.html'
+
+export default function PrivacyPage() {
+  useEffect(() => { window.location.replace(DEST) }, [])
+  return (
+    <main style={{ minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, textAlign: 'center', fontFamily: 'system-ui, sans-serif' }}>
+      <p style={{ fontSize: 14, color: '#64748b' }}>
+        Redirection…{' '}
+        <a href={DEST} style={{ color: '#06B6D4', fontWeight: 600 }}>Ouvrir la Politique de confidentialité</a>
+      </p>
+    </main>
+  )
 }

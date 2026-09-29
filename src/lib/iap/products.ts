@@ -13,8 +13,7 @@ export type AthleteTier = 'premium' | 'pro' | 'expert'
 
 export type IapProduct =
   | { kind: 'athlete_sub'; tier: AthleteTier; period: BillingPeriod }
-  | { kind: 'coach_sub'; packKey: CoachPackKey; period: BillingPeriod }
-  | { kind: 'coach_addon'; tier: 'pro' | 'expert' }   // upgrade niveau athlète du coach
+  | { kind: 'coach_sub'; packKey: CoachPackKey; tier: AthleteTier; period: BillingPeriod }
   | { kind: 'tokens'; amount: number }
 
 // Étiquette commerciale coach → clé interne du pack (capacité).
@@ -36,19 +35,20 @@ export function parseIapProduct(productId: string): IapProduct | null {
   // Tokens (consommables)
   if (id in TOKEN_AMOUNTS) return { kind: 'tokens', amount: TOKEN_AMOUNTS[id] }
 
-  // Options coach (upgrade niveau athlète)
-  if (id === 'coach_addon_athlete_pro_monthly') return { kind: 'coach_addon', tier: 'pro' }
-  if (id === 'coach_addon_athlete_expert_monthly') return { kind: 'coach_addon', tier: 'expert' }
-
   // Abonnement athlète : athlete_<tier>_<period>
   const aMatch = id.match(/^athlete_(premium|pro|expert)_(monthly|yearly)$/)
   if (aMatch) return { kind: 'athlete_sub', tier: aMatch[1] as AthleteTier, period: aMatch[2] as BillingPeriod }
 
-  // Abonnement coach : coach_<label>_<period>
-  const cMatch = id.match(/^coach_(solo|team|club|academy|elite|federation)_(monthly|yearly)$/)
+  // Abonnement coach : coach_<label>[_<tier>]_<period>
+  // Le niveau athlète inclus (l'« option ») est INTÉGRÉ à l'abonnement coach :
+  //  - coach_solo_monthly           → premium (base)
+  //  - coach_solo_pro_monthly       → pro
+  //  - coach_solo_expert_monthly    → expert
+  const cMatch = id.match(/^coach_(solo|team|club|academy|elite|federation)(?:_(pro|expert))?_(monthly|yearly)$/)
   if (cMatch) {
     const packKey = COACH_LABEL_TO_KEY[cMatch[1]]
-    if (packKey) return { kind: 'coach_sub', packKey, period: cMatch[2] as BillingPeriod }
+    const tier: AthleteTier = (cMatch[2] as 'pro' | 'expert' | undefined) ?? 'premium'
+    if (packKey) return { kind: 'coach_sub', packKey, tier, period: cMatch[3] as BillingPeriod }
   }
 
   return null
@@ -57,7 +57,11 @@ export function parseIapProduct(productId: string): IapProduct | null {
 /** Tous les identifiants de produits attendus (pour la doc / le contrôle). */
 export const ALL_IAP_PRODUCT_IDS: string[] = [
   ...(['premium', 'pro', 'expert'] as const).flatMap(t => [`athlete_${t}_monthly`, `athlete_${t}_yearly`]),
-  ...(['solo', 'team', 'club', 'academy', 'elite', 'federation'] as const).flatMap(l => [`coach_${l}_monthly`, `coach_${l}_yearly`]),
-  'coach_addon_athlete_pro_monthly', 'coach_addon_athlete_expert_monthly',
+  // Coach : solo/team/club (les gros paliers restent web) × premium(base)/pro/expert × mensuel/annuel
+  ...(['solo', 'team', 'club'] as const).flatMap(l => [
+    `coach_${l}_monthly`, `coach_${l}_yearly`,
+    `coach_${l}_pro_monthly`, `coach_${l}_pro_yearly`,
+    `coach_${l}_expert_monthly`, `coach_${l}_expert_yearly`,
+  ]),
   'tokens_100k', 'tokens_500k', 'tokens_1m',
 ]

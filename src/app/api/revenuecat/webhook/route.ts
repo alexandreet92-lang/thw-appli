@@ -18,7 +18,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { notifyUser } from '@/lib/notifications/dispatch'
 import { parseIapProduct } from '@/lib/iap/products'
-import { getCoachPack, athleteTierForCoachTier } from '@/lib/subscriptions/coach-packs'
+import { getCoachPack } from '@/lib/subscriptions/coach-packs'
 
 interface RcEvent {
   id?: string
@@ -94,10 +94,6 @@ export async function POST(req: NextRequest) {
         await sb.from('coach_subscriptions').update({ status: 'canceled', updated_at: now }).eq('user_id', userId)
         await sb.from('profiles').update({ coach_subscribed: false }).eq('id', userId)
         await sb.from('user_subscriptions').update({ status: 'canceled', updated_at: now }).eq('user_id', userId)
-      } else if (product.kind === 'coach_addon') {
-        // Fin de l'option → l'expérience athlète du coach retombe à premium.
-        await sb.from('user_subscriptions').update({ tier: 'premium', updated_at: now }).eq('user_id', userId)
-        await sb.from('coach_subscriptions').update({ included_tier: 'premium', updated_at: now }).eq('user_id', userId)
       }
       return NextResponse.json({ received: true })
     }
@@ -113,23 +109,15 @@ export async function POST(req: NextRequest) {
         const pack = getCoachPack(product.packKey)
         await sb.from('coach_subscriptions').upsert({
           user_id: userId, pack_key: product.packKey, max_athletes: pack?.maxAthletes ?? null,
-          status: 'active', current_period_end: periodEnd, store: 'app_store', provider_sub_id: ev.product_id, updated_at: now,
+          included_tier: product.tier, status: 'active', current_period_end: periodEnd,
+          store: 'app_store', provider_sub_id: ev.product_id, updated_at: now,
         }, { onConflict: 'user_id' })
         await sb.from('profiles').update({ coach_subscribed: true }).eq('id', userId)
-        // Expérience athlète du coach : premium de base, sauf option pro/expert déjà active (ne pas rétrograder).
-        const { data: cur } = await sb.from('user_subscriptions').select('tier').eq('user_id', userId).maybeSingle()
-        const keepTier = (cur?.tier === 'pro' || cur?.tier === 'expert') ? cur.tier : athleteTierForCoachTier('premium')
-        await sb.from('user_subscriptions').upsert({
-          user_id: userId, tier: keepTier, status: 'active',
-          current_period_end: periodEnd, store: 'app_store', provider_sub_id: ev.product_id, updated_at: now,
-        }, { onConflict: 'user_id' })
-      } else if (product.kind === 'coach_addon') {
-        // Option coach → relève l'expérience athlète (pro / expert).
+        // L'expérience athlète incluse (premium/pro/expert) est INTÉGRÉE au tier coach choisi.
         await sb.from('user_subscriptions').upsert({
           user_id: userId, tier: product.tier, status: 'active',
           current_period_end: periodEnd, store: 'app_store', provider_sub_id: ev.product_id, updated_at: now,
         }, { onConflict: 'user_id' })
-        await sb.from('coach_subscriptions').update({ included_tier: product.tier, updated_at: now }).eq('user_id', userId)
       }
       return NextResponse.json({ received: true })
     }

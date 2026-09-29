@@ -148,15 +148,17 @@ export async function getUserTier(userId: string): Promise<TierName> {
   const supabase = createServiceClient()
   const { data } = await supabase
     .from('user_subscriptions')
-    .select('tier, status, stripe_subscription_id, current_period_end')
+    .select('tier, status, stripe_subscription_id, provider_sub_id, current_period_end')
     .eq('user_id', userId)
     .single()
 
-  // SÉCURITÉ : on n'accorde un tier payant que si un abonnement Stripe RÉEL existe
-  // (stripe_subscription_id non nul, posé par le webhook après paiement). Sinon un
-  // checkout ABANDONNÉ — qui pré-crée une ligne AVANT paiement — donnerait Premium
-  // gratuit à vie. On retombe alors sur l'essai/gratuit.
-  if (data?.stripe_subscription_id) {
+  // SÉCURITÉ : on n'accorde un tier payant que si un abonnement RÉEL existe —
+  // Stripe (stripe_subscription_id) OU store Apple/Google (provider_sub_id),
+  // posé par le webhook APRÈS paiement. Sinon un checkout ABANDONNÉ — qui
+  // pré-crée une ligne AVANT paiement — donnerait Premium gratuit à vie. On
+  // retombe alors sur l'essai/gratuit.
+  const hasPaidSub = !!(data?.stripe_subscription_id || data?.provider_sub_id)
+  if (hasPaidSub) {
     // Abonnement en règle (ou en essai Stripe) → tier accordé.
     if (data.status === 'active' || data.status === 'trialing') {
       return data.tier as TierName

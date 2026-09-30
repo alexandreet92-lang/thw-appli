@@ -24,9 +24,11 @@ Utilise EXACTEMENT ces identifiants (le code s'appuie dessus).
 | `coach_elite_monthly` / `_yearly` | 229€ / 2290€ |
 | `coach_federation_monthly` / `_yearly` | 349€ / 3490€ |
 
-### Options coach (abonnements auto-renouvelables mensuels)
-| `coach_addon_athlete_pro_monthly` | 20€ |
-| `coach_addon_athlete_expert_monthly` | 40€ |
+### Coach : option athlète INTÉGRÉE au pack (même groupe d'abonnements)
+Identifiant : `coach_<solo|team|club>[_<pro|expert>]_<monthly|yearly>` — sans suffixe = sans option (premium).
+Exemples : `coach_solo_monthly`, `coach_solo_pro_monthly`, `coach_team_expert_yearly`.
+Les paliers Académie / Élite / Fédération (et `coach_club_pro_yearly`, `coach_club_expert_yearly`) dépassent le
+plafond Apple (~1000 €) : web / sur mesure uniquement, non créés sur iOS.
 
 ### Tokens (produits consommables)
 | `tokens_100k` 4€ · `tokens_500k` 15€ · `tokens_1m` 25€ |
@@ -57,8 +59,8 @@ Test en **sandbox** (compte de test App Store Connect → Utilisateurs et accès
 - `src/app/api/revenuecat/webhook/route.ts` : débloque tier / crédite tokens (miroir du webhook Stripe), idempotent.
 - `src/lib/subscriptions/check-quota.ts` : accorde le tier sur un abonnement Apple actif.
 - `src/lib/iap/purchases.ts` : `initIap`, `iapPrices`, `buyIap`, `restoreIap` (iOS natif).
+- `src/components/iap/IapStoreHost.tsx` : boutique in-app (abonnement athlète, pack coach + option, tokens, restauration, mentions Apple), ouverte par `openIapStore(tab)`.
 - Migration `20260929_iap_store_columns.sql` : colonnes `store` / `provider_sub_id` + table `iap_events` (déjà appliquée en prod).
 
-## Reste à finaliser ensemble (sur ton iPhone)
-- L'écran d'achat dans la page Abonnement native (boutons qui appellent `buyIap`), + le bouton « Restaurer mes achats ».
-- Test bout-en-bout en sandbox (achat → webhook → déblocage).
+## Reste à faire
+- Déployer (`[deploy]`) pour publier le webhook, puis test bout-en-bout en sandbox (achat → webhook → déblocage).

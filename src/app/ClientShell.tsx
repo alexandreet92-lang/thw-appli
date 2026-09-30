@@ -10,7 +10,10 @@ import { IncomingCallWatcher } from '@/components/community/call/IncomingCallWat
 import { installNativeApiFetch } from '@/lib/native/apiFetch'
 import { isNativeApp, openWebsite } from '@/lib/native/platform'
 import { createClient } from '@/lib/supabase/client'
-import type { EmailOtpType } from '@supabase/supabase-js'
+import { IapStoreHost } from '@/components/iap/IapStoreHost'
+import { getCurrentUser } from '@/lib/auth/currentUser'
+import { initIap } from '@/lib/iap/purchases'
+import type { EmailOtpType, Session, AuthChangeEvent } from '@supabase/supabase-js'
 
 interface ClientShellProps {
   children: React.ReactNode
@@ -55,6 +58,16 @@ export function ClientShell({ children }: ClientShellProps) {
         navigator.serviceWorker.register('/sw.js').catch(() => { /* ignore */ })
       }
     }
+  }, [])
+
+  // App iOS : rattache RevenueCat à l'utilisateur connecté (achats in-app).
+  useEffect(() => {
+    if (!isNativeApp()) return
+    void getCurrentUser().then(u => { if (u?.id) void initIap(u.id) })
+    const { data } = createClient().auth.onAuthStateChange((_evt: AuthChangeEvent, session: Session | null) => {
+      if (session?.user?.id) void initIap(session.user.id)
+    })
+    return () => { data.subscription.unsubscribe() }
   }, [])
 
   // App native : les liens vers le SITE (/site/*.html, ou target="_blank") ne
@@ -145,6 +158,7 @@ export function ClientShell({ children }: ClientShellProps) {
         <IncomingCallWatcher />
         <GlobalSaveToast />
         <ReauthGate />
+        <IapStoreHost />
       </CallProvider>
     </I18nProvider>
   )

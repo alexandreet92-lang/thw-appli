@@ -17,7 +17,8 @@ import { User, CreditCard, Users, Sparkles, Share2, ClipboardList, Bell, Sliders
 import { useProfile } from '@/hooks/useProfile'
 import { SlideView } from '@/components/ui/SlideView'
 import { useI18n } from '@/lib/i18n'
-import { openWebsite } from '@/lib/native/platform'
+import { openWebsite, isNativeApp } from '@/lib/native/platform'
+import { openIapStore } from '@/lib/iap/store-events'
 import SubscriptionEmailModal from '@/components/subscription/SubscriptionEmailModal'
 
 // ── Fonds « façon Claude » (identiques à ProfileContent) ─────────────
@@ -420,7 +421,7 @@ function OffreBloc() {
       </Section>
       <Section label={t('w1b.sec_billing')}>
         <Group>
-          <LinkRow first label={t('w1b.link_token_packs')} sub={t('w1b.link_token_packs_sub')} onClick={() => void openWebsite('/site/recharge-tokens.html')} />
+          <LinkRow first label={t('w1b.link_token_packs')} sub={t('w1b.link_token_packs_sub')} onClick={() => { if (isNativeApp()) openIapStore('tokens'); else void openWebsite('/site/recharge-tokens.html') }} />
           <LinkRow label={t('w1b.link_billing_history')} sub={t('w1b.link_billing_history_sub')} onClick={openBilling} />
         </Group>
       </Section>

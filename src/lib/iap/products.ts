@@ -54,6 +54,28 @@ export function parseIapProduct(productId: string): IapProduct | null {
   return null
 }
 
+/** Identifiant produit Apple d'un abonnement athlète. */
+export function athleteProductId(tier: AthleteTier, period: BillingPeriod): string {
+  return `athlete_${tier}_${period}`
+}
+
+/** Identifiant produit Apple d'un pack coach (tier « premium » = pas de suffixe). */
+export function coachProductId(packKey: CoachPackKey, tier: AthleteTier, period: BillingPeriod): string | null {
+  const label = Object.entries(COACH_LABEL_TO_KEY).find(([, k]) => k === packKey)?.[0]
+  if (!label) return null
+  return tier === 'premium' ? `coach_${label}_${period}` : `coach_${label}_${tier}_${period}`
+}
+
+/** Packs coach vendables dans l'app (les paliers supérieurs dépassent le plafond Apple). */
+export const IAP_COACH_PACK_KEYS: CoachPackKey[] = ['coach10', 'coach50', 'coach100']
+
+/** Packs de tokens vendables dans l'app (ordre d'affichage). */
+export const IAP_TOKEN_PRODUCTS: { id: string; amount: number }[] = [
+  { id: 'tokens_100k', amount: 100_000 },
+  { id: 'tokens_500k', amount: 500_000 },
+  { id: 'tokens_1m',   amount: 1_000_000 },
+]
+
 /** Tous les identifiants de produits attendus (pour la doc / le contrôle). */
 export const ALL_IAP_PRODUCT_IDS: string[] = [
   ...(['premium', 'pro', 'expert'] as const).flatMap(t => [`athlete_${t}_monthly`, `athlete_${t}_yearly`]),

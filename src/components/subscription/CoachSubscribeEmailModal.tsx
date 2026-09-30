@@ -10,7 +10,8 @@ import { useEffect, useState } from 'react'
 import { getCurrentUser } from "@/lib/auth/currentUser"
 import { Mail, Check } from 'lucide-react'
 import { useI18n } from '@/lib/i18n'
-import { hidePricing, openWebsite } from '@/lib/native/platform'
+import { hidePricing } from '@/lib/native/platform'
+import { openIapStore } from '@/lib/iap/store-events'
 
 interface Props {
   packKey: string
@@ -86,10 +87,10 @@ export default function CoachSubscribeEmailModal({ packKey, packName, packLabel,
             {hidePrice ? (
               <>
                 <button
-                  onClick={() => { onClose(); void openWebsite('/coach/subscription') }}
+                  onClick={() => { onClose(); openIapStore('coach') }}
                   style={{ width: '100%', padding: 14, borderRadius: 'var(--r-md)', border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontFamily: 'var(--font-body)', fontSize: 14.5, fontWeight: 700, cursor: 'pointer', marginTop: 6 }}
                 >
-                  {t('native.manageSubOnWeb')} ↗
+                  {t('w3d.see_packs')}
                 </button>
                 <button
                   onClick={onClose}

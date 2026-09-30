@@ -11,7 +11,8 @@ import { useEffect, useState } from 'react'
 import { getCurrentUser } from "@/lib/auth/currentUser"
 import { Mail, Check } from 'lucide-react'
 import { useI18n } from '@/lib/i18n'
-import { openWebsite } from '@/lib/native/platform'
+import { isNativeApp, openWebsite, openExternalUrl } from '@/lib/native/platform'
+import { openIapStore } from '@/lib/iap/store-events'
 
 interface Props {
   action: 'change' | 'cancel'
@@ -29,7 +30,19 @@ export default function SubscriptionEmailModal({ action, plan = 'athlete', onClo
   const [fallback, setFallback] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // App iOS : plus d'envoi de lien vers le site. Résilier → réglages Apple ;
+  // changer d'offre → boutique in-app (achat intégré).
+  const native = isNativeApp()
   useEffect(() => {
+    if (!native) return
+    onClose()
+    if (action === 'cancel') void openExternalUrl('https://apps.apple.com/account/subscriptions')
+    else openIapStore(plan === 'coach' ? 'coach' : 'athlete')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  useEffect(() => {
+    if (native) return
     ;(async () => {
       try {
         const { createClient } = await import('@/lib/supabase/client')
@@ -65,6 +78,8 @@ export default function SubscriptionEmailModal({ action, plan = 'athlete', onClo
       setLoading(false)
     }
   }
+
+  if (native) return null
 
   const btnBg = action === 'cancel' ? '#ef4444' : 'var(--text)'
   const btnColor = action === 'cancel' ? '#fff' : 'var(--bg)'

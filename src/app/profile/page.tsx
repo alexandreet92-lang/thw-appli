@@ -17,6 +17,7 @@ import { LanguageSelector } from '@/components/i18n/LanguageSelector'
 import { currentLocale } from '@/lib/i18n'
 import { getPushState, enablePush, disablePush, type PushState } from '@/lib/push/client'
 import { hidePricing, openWebsite } from '@/lib/native/platform'
+import { openIapStore } from '@/lib/iap/store-events'
 import { listBlockedUsers, unblockUser, type BlockedUser } from '@/lib/moderation/dm'
 import { Avatar } from '@/components/shared/Sidebar'
 import { useNarrow } from '@/lib/hooks/useNarrow'
@@ -2606,9 +2607,9 @@ export function IASettingsBloc() {
                     {p.features.map((f,i)=><div key={i} style={{ display:'flex', alignItems:'center', gap:7 }}><span style={{ color:p.color, fontSize:11 }}>✓</span><span style={{ fontSize:12, color:'var(--text-mid)' }}>{t('profile.plan.'+p.id+'.feat'+i)}</span></div>)}
                   </div>
                   {hidePrice ? (
-                    <button onClick={() => void openWebsite('/site/compte.html')}
+                    <button onClick={() => openIapStore('athlete')}
                       style={{ width:'100%', padding:'9px', borderRadius:10, background:'var(--bg-card2)', border:'1px solid var(--border)', color:'var(--text-mid)', fontFamily:'var(--font-body)', fontWeight:700, fontSize:12, cursor:'pointer' }}>
-                      {t('native.manageSubOnWeb')} ↗
+                      {t('profile.choose', { plan: p.label })}
                     </button>
                   ) : (
                     <>

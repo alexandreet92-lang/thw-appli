@@ -6,7 +6,8 @@ import { Suspense, useEffect, useState } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { useTheme } from '@/hooks/useTheme'
 import { useI18n } from '@/lib/i18n'
-import { hidePricing, openWebsite } from '@/lib/native/platform'
+import { hidePricing } from '@/lib/native/platform'
+import { openIapStore } from '@/lib/iap/store-events'
 import { CheckCircle2, Lock, Zap, ArrowRight } from 'lucide-react'
 import {
   GRAD, GRAD_H, PACKS, USAGES, TokenGauge, Header, Footer, TopupStyles, type Pack,
@@ -76,7 +77,7 @@ function PackCard({ pack, loading, onChoose }: { pack: Pack; loading: string | n
       )}
       <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, lineHeight: 1.5, color: 'var(--text-mid)', flex: 1, margin: '6px 0 20px' }}>{packDesc}</p>
       {hidePrice ? (
-        <button onClick={() => void openWebsite('/site/recharge-tokens.html')}
+        <button onClick={() => openIapStore('tokens')}
           style={{
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%',
             padding: '13px 18px', borderRadius: 10, border: '1px solid var(--border)',
@@ -84,7 +85,7 @@ function PackCard({ pack, loading, onChoose }: { pack: Pack; loading: string | n
             fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 600, cursor: 'pointer',
           }}
         >
-          {t('native.topupOnWeb')} ↗
+          {t('misc.chooseThisPack')}
         </button>
       ) : (
         <button onClick={() => onChoose(pack)} disabled={!!loading} aria-label={t('misc.choosePackAria', { name: packName })}

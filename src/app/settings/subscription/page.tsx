@@ -6,7 +6,8 @@ import { useI18n } from '@/lib/i18n'
 import type { TierName } from '@/lib/subscriptions/tier-limits'
 import type { UsageType } from '@/lib/subscriptions/check-quota'
 import { currentLocale } from '@/lib/i18n'
-import { hidePricing, openWebsite } from '@/lib/native/platform'
+import { hidePricing } from '@/lib/native/platform'
+import { openIapStore } from '@/lib/iap/store-events'
 import { refreshEntitlements } from '@/hooks/useEntitlements'
 import { TIER_FEATURES } from '@/lib/subscriptions/tier-features'
 
@@ -686,10 +687,10 @@ export default function SubscriptionPage() {
                   ) : hidePrice ? (
                     <button
                       className="sub-btn"
-                      onClick={() => void openWebsite('/site/compte.html')}
-                      style={{ background: 'var(--bg-card2)', color: 'var(--text-mid)', width: '100%' }}
+                      onClick={() => openIapStore('athlete')}
+                      style={{ background: '#06B6D4', color: '#0a0a0a', width: '100%' }}
                     >
-                      {t('native.manageSubOnWeb')} ↗
+                      {t('misc.choosePlan', { name: plan.name })}
                     </button>
                   ) : (
                     <button

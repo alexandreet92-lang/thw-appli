@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { useI18n } from '@/lib/i18n'
 import { hidePricing, openWebsite } from '@/lib/native/platform'
+import { openIapStore } from '@/lib/iap/store-events'
 
 const PLANS = [
   {
@@ -75,9 +76,9 @@ export default function SelectPlanPage() {
             </div>
             {hidePrice ? (
               <button
-                onClick={()=>void openWebsite('/site/compte.html')}
+                onClick={()=>openIapStore('athlete')}
                 style={{ width:'100%', padding:'12px', borderRadius:11, background:'var(--bg-card2)', border:'1px solid var(--border)', color:'var(--text-mid)', fontFamily:'Syne,sans-serif', fontWeight:700, fontSize:13, cursor:'pointer' }}>
-                {t('native.manageSubOnWeb')} ↗
+                {t('onboarding.choosePlanLabel', { label: p.label })}
               </button>
             ) : (
               <>

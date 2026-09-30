@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
-import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import { isFullscreenRoute } from '@/lib/layout/fullscreenRoutes'
 import { useI18n } from '@/lib/i18n'
@@ -13,6 +12,8 @@ import {
   Activity, Moon, Apple, Trophy,
   Link as LinkIcon, FileText, User, Settings, MessageCircle, Users,
 } from 'lucide-react'
+
+import { TabCapsule, type CapsuleItem } from '@/components/nav/TabCapsule'
 
 const AIPanel = dynamic(() => import('@/components/ai/AIPanel'), { ssr: false })
 
@@ -94,28 +95,6 @@ const COACH_TABS: { href: string; labelKey: string; Icon: LucideIcon; match: (p:
   { href: '/coach/messages', labelKey: 'nav.coachMessages', Icon: MessageCircle, match: p => p.startsWith('/coach/messages') },
 ]
 
-// ── Sub-item component ─────────────────────────────────────────
-
-function SubItem({ href, labelKey, Icon, active }: Sub & { active: boolean }) {
-  const { t } = useI18n()
-  // « Mon Profil » et « Message » s'ouvrent en sur-page (par-dessus la page courante).
-  if (href === '/profile' || href === '#feedback') {
-    const evt = href === '/profile' ? 'thw:open-profile' : 'thw:open-feedback'
-    return (
-      <button onClick={() => window.dispatchEvent(new Event(evt))} style={{ ...BTN, background: 'none', border: 'none', cursor: 'pointer' }}>
-        <Icon size={24} color={active ? ACCENT : DIM} />
-        <span style={lbl(active)}>{t(labelKey)}</span>
-      </button>
-    )
-  }
-  return (
-    <Link href={href} style={{ ...BTN, textDecoration: 'none' }}>
-      <Icon size={24} color={active ? ACCENT : DIM} />
-      <span style={lbl(active)}>{t(labelKey)}</span>
-    </Link>
-  )
-}
-
 // ── Main component ─────────────────────────────────────────────
 
 export default function MobileTabBar() {
@@ -123,7 +102,6 @@ export default function MobileTabBar() {
   const router                = useRouter()
   const { t }                 = useI18n()
   const [mode, setMode]       = useState<Mode>('main')
-  const [exiting, setExiting] = useState(false)
   const [aiOpen, setAiOpen]   = useState(false)
   const [hidden, setHidden]   = useState(false)
   const [overpage, setOverpage] = useState(false)
@@ -186,11 +164,7 @@ export default function MobileTabBar() {
     }
   }, [pathname])
 
-  function switchTo(next: Mode) {
-    if (next === mode) return
-    setExiting(true)
-    setTimeout(() => { setMode(next); setExiting(false) }, 180)
-  }
+  function switchTo(next: Mode) { if (next !== mode) setMode(next) }
 
   // NB : `hidden` (clavier logiciel) ne doit PAS court-circuiter le rendu ici,
   // sinon l'AIPanel (enfant) se démonte quand le clavier s'ouvre → il se referme,
@@ -201,26 +175,20 @@ export default function MobileTabBar() {
   // Espace coach : barre de nav rapide dédiée (mêmes bulles que côté athlète).
   if (pathname?.startsWith('/coach')) {
     if (isFullscreenRoute(pathname)) return null
+    const coachItems: CapsuleItem[] = [
+      ...COACH_TABS.map(tab => ({
+        key: tab.href, label: t(tab.labelKey), ariaLabel: t(tab.labelKey),
+        icon: (c: string) => <tab.Icon size={25} color={c} />,
+        onSelect: () => router.push(tab.href),
+      })),
+      { key: 'ai', ariaLabel: t('nav.coachAI'), transient: true, onSelect: () => setAiOpen(o => !o),
+        icon: () => (/* eslint-disable-next-line @next/next/no-img-element */ <img src="/logos/logo_4bras.png" alt="" width={27} height={27} style={{ objectFit: 'contain' }} />) },
+    ]
+    const coachActive = COACH_TABS.findIndex(tab => tab.match(pathname))
     return (
       <>
         {!hidden && !overpage && !immersive && (
-          <nav className="mobile-tab-bar md:hidden" style={BAR}>
-            <div style={{ display: 'flex', width: '100%', height: 68, alignItems: 'center' }}>
-              {COACH_TABS.map(tab => {
-                const active = tab.match(pathname)
-                return (
-                  <Link key={tab.href} href={tab.href} style={{ ...BTN, textDecoration: 'none' }} aria-label={t(tab.labelKey)}>
-                    <tab.Icon size={25} color={active ? ACCENT : DIM} />
-                    <span style={lbl(active)}>{t(tab.labelKey)}</span>
-                  </Link>
-                )
-              })}
-              <button onClick={() => setAiOpen(o => !o)} style={BTN} aria-label={t('nav.coachAI')}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/logos/logo_4bras.png" alt={t('nav.coachAI')} width={24} height={24} style={{ objectFit: 'contain' }} />
-              </button>
-            </div>
-          </nav>
+          <TabCapsule className="mobile-tab-bar md:hidden" items={coachItems} activeIndex={coachActive >= 0 ? coachActive : null} motionKey="coach" accent={ACCENT} dim={DIM} />
         )}
         <AIPanel open={aiOpen} onClose={() => setAiOpen(false)} initialAgent="coach" />
       </>
@@ -236,127 +204,56 @@ export default function MobileTabBar() {
   if (isFullscreenRoute(pathname)) return null
 
   const activeTab = ROUTE_TO_TAB[pathname]
-  const col       = (on: boolean) => on ? ACCENT : DIM
-
   const isSubMode = mode !== 'main'
+
+  const aiIcon = () => (/* eslint-disable-next-line @next/next/no-img-element */ <img src="/logos/logo_4bras.png" alt="" width={27} height={27} style={{ objectFit: 'contain' }} />)
+
+  let items: CapsuleItem[]
+  let activeIndex: number | null
+  if (isSubMode) {
+    const subs = SUBS[mode as Exclude<Mode, 'main'>]
+    items = [
+      { key: 'back', ariaLabel: t('profile.back'), fixedWidth: 48, onSelect: () => switchTo('main'), icon: (c: string) => <ChevronLeft size={26} color={c} /> },
+      ...subs.map(sub => ({
+        key: sub.href, label: t(sub.labelKey), ariaLabel: t(sub.labelKey),
+        icon: (c: string) => <sub.Icon size={24} color={c} />,
+        onSelect: () => {
+          // « Mon Profil » et « Message » s'ouvrent en sur-page (par-dessus la page courante).
+          if (sub.href === '/profile') window.dispatchEvent(new Event('thw:open-profile'))
+          else if (sub.href === '#feedback') window.dispatchEvent(new Event('thw:open-feedback'))
+          else router.push(sub.href)
+        },
+        transient: sub.href === '/profile' || sub.href === '#feedback',
+      })),
+    ]
+    const i = subs.findIndex(sub => sub.href === pathname)
+    activeIndex = i >= 0 ? i + 1 : null
+  } else {
+    const order: Exclude<Mode, 'main'>[] = ['plan', 'stats', 'plus']
+    items = [
+      { key: 'plan', label: t('nav.tabPlan'), ariaLabel: t('nav.tabPlan'), onSelect: () => switchTo('plan'), icon: c => <CalendarDays size={25} color={c} /> },
+      { key: 'stats', label: t('nav.tabStats'), ariaLabel: t('nav.tabStats'), onSelect: () => switchTo('stats'), icon: c => <BarChart3 size={25} color={c} /> },
+      { key: 'start', label: t('nav.tabStart'), ariaLabel: t('nav.startActivity'), onSelect: () => router.push('/record'),
+        icon: () => (
+          <svg width="27" height="27" viewBox="0 0 26 26" fill="none">
+            <circle cx="13" cy="13" r="10" stroke={ACCENT} strokeWidth="1.7" />
+            <circle cx="13" cy="13" r="5" fill={ACCENT} />
+          </svg>
+        ) },
+      { key: 'plus', label: t('nav.tabPlus'), ariaLabel: t('nav.tabPlus'), onSelect: () => switchTo('plus'), icon: c => <Grid3x3 size={25} color={c} /> },
+      { key: 'ai', ariaLabel: t('nav.coachAI'), transient: true, onSelect: () => setAiOpen(o => !o), icon: aiIcon },
+    ]
+    const i = activeTab ? order.indexOf(activeTab) : -1
+    activeIndex = i >= 0 ? (i === 2 ? 3 : i) : null
+  }
 
   return (
     <>
       {!hidden && !overpage && !immersive && (
-      <nav className="mobile-tab-bar md:hidden" style={BAR}>
-        <div style={{
-          display: 'flex', width: '100%', height: 68, alignItems: 'center',
-          opacity:   exiting ? 0 : 1,
-          transform: exiting ? 'translateY(8px)' : 'translateY(0)',
-          transition: 'opacity 0.18s ease, transform 0.18s ease',
-        }}>
-
-          {isSubMode ? (
-            /* ── Sub-pages ──────────────────────────────────── */
-            <>
-              <button onClick={() => switchTo('main')} style={{ ...BTN, flex: '0 0 48px' as unknown as number }}>
-                <ChevronLeft size={26} color={DIM} />
-              </button>
-              {SUBS[mode as Exclude<Mode, 'main'>].map(s => (
-                <SubItem key={s.href} {...s} active={pathname === s.href} />
-              ))}
-            </>
-          ) : (
-            /* ── Main 5 tabs ────────────────────────────────── */
-            <>
-              {/* Plan */}
-              <button onClick={() => switchTo('plan')} style={btnStyle(activeTab === 'plan')} className="thw-press">
-                <span style={iconWrap(activeTab === 'plan')}><CalendarDays size={25} color={col(activeTab === 'plan')} /></span>
-                <span style={lbl(activeTab === 'plan')}>{t('nav.tabPlan')}</span>
-              </button>
-
-              {/* Stats */}
-              <button onClick={() => switchTo('stats')} style={btnStyle(activeTab === 'stats')} className="thw-press">
-                <span style={iconWrap(activeTab === 'stats')}><BarChart3 size={25} color={col(activeTab === 'stats')} /></span>
-                <span style={lbl(activeTab === 'stats')}>{t('nav.tabStats')}</span>
-              </button>
-
-              {/* Record — centre, plat et aligné avec les autres (façon Strava) */}
-              <Link href="/record" style={{ ...btnStyle(false), textDecoration: 'none' }} className="thw-press" aria-label={t('nav.startActivity')}>
-                <svg width="27" height="27" viewBox="0 0 26 26" fill="none">
-                  <circle cx="13" cy="13" r="10" stroke={ACCENT} strokeWidth="1.7" />
-                  <circle cx="13" cy="13" r="5"  fill={ACCENT} />
-                </svg>
-                <span style={lbl(false)}>{t('nav.tabStart')}</span>
-              </Link>
-
-              {/* Plus */}
-              <button onClick={() => switchTo('plus')} style={btnStyle(activeTab === 'plus')} className="thw-press">
-                <span style={iconWrap(activeTab === 'plus')}><Grid3x3 size={25} color={col(activeTab === 'plus')} /></span>
-                <span style={lbl(activeTab === 'plus')}>{t('nav.tabPlus')}</span>
-              </button>
-
-              {/* IA */}
-              <button onClick={() => setAiOpen(o => !o)} style={btnStyle(false)} className="thw-press">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src="/logos/logo_4bras.png"
-                  alt={t('nav.coachAI')}
-                  width={27} height={27}
-                  style={{ objectFit: 'contain' }}
-                />
-              </button>
-            </>
-          )}
-
-        </div>
-      </nav>
+        <TabCapsule className="mobile-tab-bar md:hidden" items={items} activeIndex={activeIndex} motionKey={mode} accent={ACCENT} dim={DIM} />
       )}
 
       <AIPanel open={aiOpen} onClose={() => setAiOpen(false)} initialAgent="planning" />
     </>
   )
 }
-
-// ── Static styles ──────────────────────────────────────────────
-
-const BAR: React.CSSProperties = {
-  // Pill flottante translucide + flou (façon Strava/Plans). Fond à opacité
-  // élevée (0,82) → reste net même si le flou backdrop est faible dans la
-  // WebView iOS ; sur Safari le verre dépoli s'affiche pleinement.
-  position: 'fixed', zIndex: 100,
-  left: 16, right: 16,
-  bottom: 'calc(env(safe-area-inset-bottom, 0px) + 2px)',
-  borderRadius: 'var(--r-pill)',
-  background: 'color-mix(in srgb, color-mix(in srgb, var(--text) 9%, var(--bg)) 94%, transparent)',
-  backdropFilter: 'blur(22px) saturate(180%)',
-  WebkitBackdropFilter: 'blur(22px) saturate(180%)',
-  border: 'none',
-  boxShadow: '0 8px 28px rgba(0,0,0,0.28)',
-  WebkitTransform: 'translateZ(0)',
-}
-
-// Bouton d'onglet : pastille arrondie ; l'actif reçoit un fond teinté (mouvement
-// fluide au changement grâce à la transition).
-const btnStyle = (active: boolean): React.CSSProperties => ({
-  flex: 1, position: 'relative', display: 'flex', flexDirection: 'column',
-  alignItems: 'center', justifyContent: 'center', gap: 3,
-  height: 60, margin: '4px', borderRadius: 'var(--r-pill)', padding: '4px 0',
-  border: 'none', cursor: 'pointer',
-  background: active ? 'color-mix(in srgb, var(--text) 14%, transparent)' : 'transparent',
-  transition: 'background 0.24s cubic-bezier(0.32,0.72,0,1)',
-  WebkitTapHighlightColor: 'transparent',
-})
-
-const BTN: React.CSSProperties = btnStyle(false)
-
-const lbl = (on: boolean): React.CSSProperties => ({
-  fontSize: 12, lineHeight: 1,
-  fontFamily: 'var(--font-body)',
-  fontWeight: 600,
-  color: on ? ACCENT : DIM,
-  transition: 'color 0.2s ease',
-})
-
-// L'icône active « grossit » légèrement et remonte d'un cheveu → mouvement fluide.
-const iconWrap = (on: boolean): React.CSSProperties => ({
-  display: 'flex', alignItems: 'center', justifyContent: 'center',
-  transform: on ? 'translateY(-1px) scale(1.1)' : 'none',
-  transition: 'transform 0.24s cubic-bezier(0.34,1.56,0.64,1)',
-})
-

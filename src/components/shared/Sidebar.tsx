@@ -222,6 +222,7 @@ function NavItem({
     <Link
       href={href}
       className="thw-nav-item"
+      data-active={active ? '1' : '0'}
       data-guide={`nav-${href.replace(/^\//, '') || 'home'}`}
       onClick={onClick}
       style={{

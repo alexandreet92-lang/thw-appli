@@ -26,6 +26,7 @@ import { createPortal } from 'react-dom'
 import { CheckCircle2, XCircle, ChevronDown, ChevronRight, ArrowLeft, Zap, Globe, Paperclip, Camera, Plug, Brain, Activity, Map as MapIcon, MapPin, Dumbbell, Apple, Target, HelpCircle, Search, Flag, Moon, Calendar, BookOpen, Bike, Footprints, Waves } from 'lucide-react'
 import HybridNetworksPanel, { type HNConv } from './HybridNetworksPanel'
 import { MobileSheet } from './MobileSheet'
+import { openIapStore } from '@/lib/iap/store-events'
 import { haptic } from '@/lib/ui/haptic'
 import { haptic as hapticNative } from '@/lib/haptics'
 import { computeZoneDistribution, type ZoneRowLite, type StreamsForZones } from '@/lib/analysis/zoneDistribution'
@@ -34,6 +35,7 @@ import type { ActivityRow as PmcActivityRow } from '@/app/recovery/components/ty
 import { emitNotification } from '@/lib/notifications/emit'
 import { localDateStr } from '@/lib/date/weekStart'
 import RoutinesView from '@/components/ai/RoutinesView'
+import { SlideOverlay } from '@/components/ui/SlideOverlay'
 import StudioView from '@/components/studio/StudioView'
 import { getGuideDemoId, GUIDE_DEMO_EVENT } from '@/components/guide/guideDemo'
 import { QUICK_ACTION_SPECS, specToClarifyQuestions } from '@/lib/quick-actions/specs'
@@ -13357,7 +13359,7 @@ function HistoryDrawer({
         <div ref={avatarRef} style={underlay ? { position: 'absolute', left: 16, bottom: 20, zIndex: 6 } : { position: 'relative', flexShrink: 0 }}>
           <button
             type="button"
-            onClick={() => { haptic(); setAvatarMenu(o => !o) }}
+            onClick={() => { haptic(); if (underlay) openSettings('profil'); else setAvatarMenu(o => !o) }}
             aria-label={t('aip.accountSettings')}
             style={{
               width: underlay ? 56 : 34, height: underlay ? 56 : 34, borderRadius: '50%', flexShrink: 0,
@@ -20810,13 +20812,9 @@ export default function AIPanel({
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null)
   // Interface dédiée « Routines » (ouverte depuis la sidebar ou ?routines=1).
   const [routinesOpen,    setRoutinesOpen]    = useState(false)
-  const [routinesClosing, setRoutinesClosing] = useState(false)
   // Interface dédiée « Studio » (orchestration multi-agents, façon Make).
   const [studioOpen,      setStudioOpen]      = useState(false)
-  const [studioClosing,   setStudioClosing]   = useState(false)
   // Fermeture ANIMÉE (slide inverse) puis démontage → mouvement dans les 2 sens.
-  const closeStudio   = () => { setStudioClosing(true);   setTimeout(() => { setStudioOpen(false);   setStudioClosing(false) }, 300) }
-  const closeRoutines = () => { setRoutinesClosing(true); setTimeout(() => { setRoutinesOpen(false); setRoutinesClosing(false) }, 300) }
   const kbInset = useKeyboardInset()
   const [input,       setInput]       = useState('')
   // Génération PARALLÈLE : on suit l'état par conversation (plusieurs chats
@@ -20837,6 +20835,8 @@ export default function AIPanel({
   const [splitPickerOpen, setSplitPickerOpen] = useState(false)
   const [dragOverSplit,   setDragOverSplit]   = useState(false)
   const [topupOpen,   setTopupOpen]   = useState(false)
+  // App iOS : les tokens s'achètent par achat intégré Apple (jamais de lien web, règle 3.1.1).
+  const openTopup = () => { if (isNativeApp()) openIapStore('tokens'); else setTopupOpen(true) }
   const [tokenLimitMsg, setTokenLimitMsg] = useState<string | null>(null)
   const [activeFlow,  setActiveFlow]  = useState<FlowId>(null)
   const [activeQA,    setActiveQA]    = useState<ActiveQuickAction | null>(null)
@@ -24466,7 +24466,7 @@ export default function AIPanel({
                 (menu « + »), plus affichées en pastilles bleues au-dessus du champ. */}
 
             {/* Bandeau d'alerte de consommation (50/70/90/100 %) — juste au-dessus du champ. */}
-            {activeAgent !== 'coach' && <TokenUsageWarning onBuyTokens={() => setTopupOpen(true)} isMobile={!isDesktop} />}
+            {activeAgent !== 'coach' && <TokenUsageWarning onBuyTokens={() => openTopup()} isMobile={!isDesktop} />}
 
             {/* ── Conteneur principal de saisie ── */}
             <div className="aip-input-wrap" style={{
@@ -24727,7 +24727,7 @@ export default function AIPanel({
                 <div style={{ flex: 1 }} />
 
                 {/* Jauge tokens — à gauche du micro */}
-                <TokenUsageBubble onBuyTokens={() => setTopupOpen(true)} currentModel={model} isMobile={!isDesktop} />
+                <TokenUsageBubble onBuyTokens={() => openTopup()} currentModel={model} isMobile={!isDesktop} />
 
                 {/* Mic button — dictée Whisper (caché si non supporté) */}
                 {dictationSupported && !loading && (
@@ -24850,7 +24850,7 @@ export default function AIPanel({
                 onSend={(txt, cfg) => { void send(txt, undefined, { targetConv: c, model: cfg.model, method: cfg.method, webSearch: cfg.webSearch, attachment: cfg.attachment }) }}
                 onStop={() => stopConv(c.id)}
                 onClose={() => closeSplit(c.id)}
-                onBuyTokens={() => setTopupOpen(true)}
+                onBuyTokens={() => openTopup()}
               />
             )
           })}
@@ -24964,27 +24964,19 @@ export default function AIPanel({
         )
       })()}
 
-      {/* Effet coulissant DANS LES DEUX SENS : la page entre depuis la gauche
-          (ouverture) et repart vers la gauche (fermeture). Mouvement fluide,
-          plus jamais d'apparition/disparition sèche. */}
-      <style>{`
-        @keyframes thwViewSlideIn{from{transform:translateX(-100%);opacity:.4}to{transform:translateX(0);opacity:1}}
-        @keyframes thwViewSlideOut{from{transform:translateX(0);opacity:1}to{transform:translateX(-100%);opacity:.2}}
-      `}</style>
-
-      {/* ── Interface dédiée « Routines » ── */}
+      {/* Routines / Studio : pages plein écran qui glissent depuis la droite
+          (entrée ET sortie animées, retour au doigt depuis le bord gauche). */}
       {routinesOpen && mounted && createPortal(
-        <div style={{ position: 'fixed', inset: 0, zIndex: 18000, animation: routinesClosing ? 'thwViewSlideOut 0.3s cubic-bezier(0.32,0.72,0,1) forwards' : 'thwViewSlideIn 0.32s cubic-bezier(0.32,0.72,0,1)', willChange: 'transform' }}>
-          <RoutinesView onClose={closeRoutines} />
-        </div>,
+        <SlideOverlay onClosed={() => setRoutinesOpen(false)}>
+          {close => <RoutinesView onClose={close} />}
+        </SlideOverlay>,
         document.body,
       )}
 
-      {/* ── Interface dédiée « Studio » (orchestration multi-agents) ── */}
       {studioOpen && mounted && createPortal(
-        <div style={{ position: 'fixed', inset: 0, zIndex: 18000, animation: studioClosing ? 'thwViewSlideOut 0.3s cubic-bezier(0.32,0.72,0,1) forwards' : 'thwViewSlideIn 0.32s cubic-bezier(0.32,0.72,0,1)', willChange: 'transform' }}>
-          <StudioView onClose={closeStudio} />
-        </div>,
+        <SlideOverlay onClosed={() => setStudioOpen(false)}>
+          {close => <StudioView onClose={close} />}
+        </SlideOverlay>,
         document.body,
       )}
 
@@ -25016,7 +25008,7 @@ export default function AIPanel({
                     Switcher sur Hermès (× 1)
                   </button>
                 )}
-                <button onClick={() => { setTokenLimitMsg(null); setTopupOpen(true) }}
+                <button onClick={() => { setTokenLimitMsg(null); openTopup() }}
                   style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: 'none', background: '#06B6D4', color: '#fff', fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}>
                   Acheter des tokens
                 </button>

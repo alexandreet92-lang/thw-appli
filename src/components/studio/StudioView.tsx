@@ -1615,14 +1615,14 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
       `}</style>
 
       {/* ══ Header ══ */}
-      <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 10, flexWrap: isMobile ? 'wrap' : 'nowrap', padding: 'max(12px, env(safe-area-inset-top)) 14px 10px', borderBottom: '0.5px solid var(--border)' }}>
+      <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 10, flexWrap: isMobile ? 'wrap' : 'nowrap', padding: 'max(12px, env(safe-area-inset-top)) 16px 12px' }}>
         <button onClick={view === 'canvas' ? backToHome : onClose} aria-label={view === 'canvas' ? t('w1i.back_to_systems') : t('w1i.close')} style={iconBtn}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
         </button>
         {!isMobile && <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-display)', whiteSpace: 'nowrap' }}>Studio</div>}
         {/* Aide — sur-page d'explication */}
         <button onClick={() => setHelpOpen(true)} aria-label={t('w1i.how_it_works')} title={t('w1i.how_it_works')}
-          style={{ width: 22, height: 22, borderRadius: '50%', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', fontSize: 12, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-body)', flexShrink: 0 }}>
+          style={{ width: 44, height: 44, borderRadius: '50%', border: 'none', background: 'color-mix(in srgb, var(--text) 10%, var(--bg))', color: 'var(--text)', fontSize: 17, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-body)', flexShrink: 0 }}>
           ?
         </button>
         {view === 'canvas' && (
@@ -1637,7 +1637,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
         {/* Solde Studio — clic : détail + packs */}
         {access?.allowed && (
           <button onClick={() => setWalletOpen(true)} title={t('w1i.balance_tooltip')}
-            style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6, padding: '6px 11px', borderRadius: 999, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-mid)', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)', flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>
+            style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8, padding: '0 18px', minHeight: 44, borderRadius: 999, border: 'none', background: 'color-mix(in srgb, var(--text) 10%, var(--bg))', color: 'var(--text)', fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)', flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" style={{ color: 'var(--studio-accent)' }} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
             {access.remaining > 1e12 ? t('w1i.unlimited') : t('w1i.tokens_amount', { n: formatTokens(access.remaining) })}
           </button>
@@ -2628,24 +2628,24 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
               <div style={{ maxWidth: 1020, margin: '0 auto', display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: isMobile ? 14 : 22, alignItems: isMobile ? 'stretch' : 'flex-start' }}>
                 {/* ── Rail des dossiers (horizontal sur mobile) ── */}
                 <div style={isMobile ? { width: '100%' } : { width: 170, flexShrink: 0, position: 'sticky', top: 0 }}>
-                  <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--text-dim)', margin: '4px 0 10px', fontFamily: 'var(--font-body)' }}>{t('w1i.folders')}</div>
+                  <div style={{ fontSize: 15, fontWeight: 500, color: 'var(--text-mid)', margin: '8px 0 12px', fontFamily: 'var(--font-body)' }}>{t('w1i.folders')}</div>
                   {([null, ...Array.from(new Set(systems.map(s => s.folder).filter((f): f is string => Boolean(f)))).sort()] as (string | null)[]).map(f => {
                     const on = activeFolder === f
                     const count = f === null ? systems.length : systems.filter(s => s.folder === f).length
                     return (
                       <button key={f ?? '__all'} onClick={() => setActiveFolder(f)}
-                        style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '8px 10px', borderRadius: 10, border: 'none', cursor: 'pointer', textAlign: 'left',
-                          background: on ? 'color-mix(in srgb, var(--studio-accent) 10%, transparent)' : 'transparent', color: on ? 'var(--studio-accent)' : 'var(--text-mid)',
-                          fontSize: 13, fontWeight: on ? 700 : 600, fontFamily: 'var(--font-body)' }}>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                        style={{ display: 'flex', alignItems: 'center', gap: 14, width: '100%', padding: '0 14px', minHeight: isMobile ? 50 : 40, borderRadius: 18, border: 'none', cursor: 'pointer', textAlign: 'left',
+                          background: on ? 'color-mix(in srgb, var(--text) 13%, var(--bg))' : 'transparent', color: 'var(--text)',
+                          fontSize: isMobile ? 17 : 13, fontWeight: 500, fontFamily: 'var(--font-body)' }}>
+                        <svg width={isMobile ? 22 : 14} height={isMobile ? 22 : 14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
                           {f === null ? <><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></> : <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/>}
                         </svg>
                         <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f ?? t('w1i.all_systems')}</span>
-                        <span style={{ fontSize: 11, color: on ? 'var(--studio-accent)' : 'var(--text-dim)', fontVariantNumeric: 'tabular-nums' }}>{count}</span>
+                        <span style={{ fontSize: isMobile ? 15 : 11, color: 'var(--text-dim)', fontVariantNumeric: 'tabular-nums' }}>{count}</span>
                       </button>
                     )
                   })}
-                  <p style={{ fontSize: 10.5, color: 'var(--text-dim)', lineHeight: 1.5, margin: '10px 10px 0', fontFamily: 'var(--font-body)' }}>
+                  <p style={{ fontSize: 13, color: 'var(--text-dim)', lineHeight: 1.5, margin: '10px 14px 0', fontFamily: 'var(--font-body)' }}>
                     {t('w1i.folder_rail_hint')}
                   </p>
                 </div>
@@ -2657,16 +2657,16 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
 
                 {/* ── Suggestion proactive : signal santé détecté → système dédié ── */}
                 {activeFolder === null && !homeLoading && healthAlert && !systems.some(s => /bless|retour|récup|recup|rééduc|reeduc|prudent/.test(`${s.name} ${s.graph?.objective?.text ?? ''}`.toLowerCase())) && (
-                  <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'stretch' : 'center', gap: 12, padding: '13px 16px', borderRadius: 16, background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.35)', marginBottom: 18 }}>
+                  <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'stretch' : 'center', gap: 12, padding: '20px', borderRadius: 'var(--r-lg)', background: 'var(--bg-card2)', marginBottom: 18 }}>
                     <span style={{ width: 34, height: 34, borderRadius: 10, background: 'rgba(245,158,11,0.15)', color: '#F59E0B', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4M12 17h.01"/></svg>
                     </span>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-body)' }}>{t('w1i.ease_off_title')}</div>
-                      <div style={{ fontSize: 12, color: 'var(--text-mid)', marginTop: 2, fontFamily: 'var(--font-body)', lineHeight: 1.45 }}>{t('w1i.ease_off_body', { alert: healthAlert })}</div>
+                      <div style={{ fontSize: 17, fontWeight: 600, color: 'var(--text)', fontFamily: 'var(--font-body)' }}>{t('w1i.ease_off_title')}</div>
+                      <div style={{ fontSize: 14, color: 'var(--text-mid)', marginTop: 4, fontFamily: 'var(--font-body)', lineHeight: 1.5 }}>{t('w1i.ease_off_body', { alert: healthAlert })}</div>
                     </div>
                     <button onClick={() => void startFirstSystem(t('w1i.manage_situation_obj', { alert: healthAlert }))}
-                      style={{ padding: '10px 16px', borderRadius: 11, border: 'none', background: '#F59E0B', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)', flexShrink: 0, whiteSpace: 'nowrap' }}>
+                      style={{ padding: '0 22px', minHeight: 48, borderRadius: 999, border: 'none', background: 'var(--text)', color: 'var(--bg)', fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)', flexShrink: 0, whiteSpace: 'nowrap' }}>
                       {t('w1i.create_this_system')}
                     </button>
                   </div>
@@ -2674,7 +2674,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
 
                 {/* ── Onboarding : première fois, aucun système → on démarre ── */}
                 {activeFolder === null && !homeLoading && systems.length === 0 && (
-                  <div style={{ padding: isMobile ? '20px 16px' : '26px 24px', borderRadius: 20, background: 'linear-gradient(150deg, color-mix(in srgb, var(--studio-accent) 12%, var(--bg-card)), var(--bg-card))', border: '1px solid color-mix(in srgb, var(--studio-accent) 26%, var(--border))', marginBottom: 24, boxShadow: '0 1px 3px rgba(0,0,0,0.05), 0 18px 44px rgba(0,0,0,0.06)' }}>
+                  <div style={{ padding: isMobile ? '20px 16px' : '26px 24px', borderRadius: 'var(--r-lg)', background: 'var(--bg-card2)', marginBottom: 24, boxShadow: '0 1px 3px rgba(0,0,0,0.05), 0 18px 44px rgba(0,0,0,0.06)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
                       <StudioLogo size={26} />
                       <span style={{ fontSize: isMobile ? 18 : 20, fontWeight: 800, color: 'var(--text)', fontFamily: 'var(--font-display)' }}>{t('w1i.your_first_system')}</span>
@@ -2699,15 +2699,15 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
 
                 {/* ── Deux espaces : Pour moi · Pour mes athlètes ── */}
                 {activeFolder === null && (
-                <div style={{ display: 'inline-flex', gap: 3, padding: 3, borderRadius: 12, background: 'var(--bg-card2)', margin: '0 0 14px' }}>
+                <div style={{ display: 'inline-flex', gap: 4, padding: 4, borderRadius: 999, background: 'var(--bg-card2)', margin: '0 0 18px' }}>
                   {([['perso', t('w1i.for_me')], ['coach', t('w1i.for_my_athletes')]] as const).map(([v, l]) => {
                     // « Pour mes athlètes » verrouillé sans abonnement coach.
                     const locked = v === 'coach' && !coachAccess
                     return (
                       <button key={v} onClick={() => { if (locked) { setScopeTab('perso'); alert(t('w1i.athletes_space_locked')); return } setScopeTab(v) }}
                         title={locked ? t('w1i.coach_only') : undefined}
-                        style={{ padding: '7px 14px', borderRadius: 9, border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 12.5, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 6,
-                          background: scopeTab === v ? 'var(--bg-card)' : 'transparent', color: scopeTab === v ? 'var(--studio-accent)' : 'var(--text-mid)', opacity: locked ? 0.55 : 1, boxShadow: scopeTab === v ? '0 1px 3px rgba(0,0,0,0.12)' : 'none' }}>
+                        style={{ padding: '0 20px', minHeight: 44, borderRadius: 999, border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 15, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 6,
+                          background: scopeTab === v ? 'var(--bg)' : 'transparent', color: scopeTab === v ? 'var(--text)' : 'var(--text-mid)', opacity: locked ? 0.55 : 1, transition: 'background 0.25s ease, color 0.25s ease' }}>
                         {l}
                         {locked && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>}
                       </button>
@@ -2759,19 +2759,19 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                   <div style={{ marginBottom: 26 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '4px 0 4px' }}>
                       <span style={{ color: 'var(--studio-accent)', display: 'flex' }}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l2.4 7.4H22l-6 4.6 2.3 7.4-6.3-4.6L5.7 21 8 14 2 9.4h7.6z"/></svg></span>
-                      <span style={{ fontSize: 12, fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--text)', fontFamily: 'var(--font-body)' }}>{scopeTab === 'coach' ? t('w1i.recommended_for_athletes') : t('w1i.recommended_for_you')}</span>
+                      <span style={{ fontSize: 17, fontWeight: 600, color: 'var(--text)', fontFamily: 'var(--font-body)' }}>{scopeTab === 'coach' ? t('w1i.recommended_for_athletes') : t('w1i.recommended_for_you')}</span>
                       <div style={{ flex: 1 }} />
                       <button onClick={() => void loadRecos(true)} disabled={recosLoading} title={t('w1i.regenerate_recos')} aria-label={t('w1i.regenerate')}
-                        style={{ display: 'flex', alignItems: 'center', gap: 5, height: 26, padding: '0 9px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-mid)', cursor: recosLoading ? 'default' : 'pointer', fontSize: 11.5, fontWeight: 700, fontFamily: 'var(--font-body)' }}>
+                        style={{ display: 'flex', alignItems: 'center', gap: 5, height: 40, padding: '0 16px', borderRadius: 999, border: 'none', background: 'var(--bg-card2)', color: 'var(--text-mid)', cursor: recosLoading ? 'default' : 'pointer', fontSize: 14, fontWeight: 600, fontFamily: 'var(--font-body)' }}>
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={recosLoading ? { animation: 'studio_spin 0.8s linear infinite' } : undefined}><path d="M21 12a9 9 0 11-2.6-6.4M21 3v6h-6"/></svg>
                         {t('w1i.regenerate')}
                       </button>
                     </div>
-                    <p style={{ fontSize: 11.5, color: 'var(--text-dim)', margin: '0 0 12px', fontFamily: 'var(--font-body)' }}>{scopeTab === 'coach' ? t('w1i.recos_hint_athletes') : t('w1i.recos_hint')}</p>
+                    <p style={{ fontSize: 14, color: 'var(--text-dim)', margin: '0 0 14px', fontFamily: 'var(--font-body)', lineHeight: 1.5 }}>{scopeTab === 'coach' ? t('w1i.recos_hint_athletes') : t('w1i.recos_hint')}</p>
                     {recosLoading && recos.length === 0 ? (
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: 12 }}>
                         {[0, 1, 2].map(i => (
-                          <div key={i} style={{ minHeight: 118, borderRadius: 16, border: '1px solid var(--border)', background: 'var(--bg-card)', padding: 14, animation: 'studio_pulse 1.4s ease infinite' }}>
+                          <div key={i} style={{ minHeight: 130, borderRadius: 'var(--r-lg)', background: 'var(--bg-card2)', padding: 20, animation: 'studio_pulse 1.4s ease infinite' }}>
                             <div style={{ width: '55%', height: 13, borderRadius: 6, background: 'var(--bg-card2)' }} />
                             <div style={{ width: '92%', height: 9, borderRadius: 6, background: 'var(--bg-card2)', marginTop: 12 }} />
                             <div style={{ width: '80%', height: 9, borderRadius: 6, background: 'var(--bg-card2)', marginTop: 7 }} />
@@ -2786,19 +2786,19 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                           const nAgents = r.graph.nodes.filter(n => n.kind === 'agent' || n.kind === 'merge').length
                           return (
                             <button key={i} onClick={() => { setPreviewSel(null); setRecoMockup(r) }}
-                              style={{ textAlign: 'left', minHeight: 118, borderRadius: 16, border: '1px solid color-mix(in srgb, var(--studio-accent) 22%, var(--border))', background: 'linear-gradient(150deg, color-mix(in srgb, var(--studio-accent) 6%, var(--bg-card)), var(--bg-card))', cursor: 'pointer', padding: '14px 14px 12px', display: 'flex', flexDirection: 'column', fontFamily: 'var(--font-body)', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', transition: 'box-shadow 150ms, transform 150ms' }}
+                              style={{ textAlign: 'left', minHeight: 130, borderRadius: 'var(--r-lg)', border: 'none', background: 'var(--bg-card2)', cursor: 'pointer', padding: '14px 14px 12px', display: 'flex', flexDirection: 'column', fontFamily: 'var(--font-body)', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', transition: 'box-shadow 150ms, transform 150ms' }}
                               onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 6px 20px rgba(59,146,212,0.16)'; (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-1px)' }}
                               onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 1px 3px rgba(0,0,0,0.05)'; (e.currentTarget as HTMLButtonElement).style.transform = 'none' }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                 <span style={{ width: 26, height: 26, borderRadius: 8, background: 'rgba(59,146,212,0.14)', color: 'var(--studio-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="5" cy="6" r="2.4"/><circle cx="19" cy="6" r="2.4"/><circle cx="12" cy="18" r="2.4"/><path d="M7.2 7.2 10.5 16M16.8 7.2 13.5 16"/></svg>
                                 </span>
-                                <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.title}</span>
+                                <span style={{ fontSize: 17, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.title}</span>
                               </div>
-                              <p style={{ fontSize: 12, color: 'var(--text-mid)', lineHeight: 1.5, margin: '8px 0 0', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{r.why}</p>
+                              <p style={{ fontSize: 14, color: 'var(--text-mid)', lineHeight: 1.5, margin: '10px 0 0', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{r.why}</p>
                               <div style={{ flex: 1 }} />
                               <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 10 }}>
-                                <span style={{ fontSize: 10.5, color: 'var(--text-dim)' }}>{r.graph.nodes.length} {t('w1i.block_many')} · {nAgents} {t(nAgents !== 1 ? 'w1i.agent_many' : 'w1i.agent_one')}</span>
+                                <span style={{ fontSize: 13, color: 'var(--text-dim)' }}>{r.graph.nodes.length} {t('w1i.block_many')} · {nAgents} {t(nAgents !== 1 ? 'w1i.agent_many' : 'w1i.agent_one')}</span>
                                 <div style={{ flex: 1 }} />
                                 <span style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--studio-accent)', display: 'flex', alignItems: 'center', gap: 3 }}>{t('w1i.view')} <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6"/></svg></span>
                               </div>
@@ -2811,7 +2811,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                 )}
 
                 {/* ── Mes systèmes ── */}
-                <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--text-dim)', margin: '4px 0 10px', fontFamily: 'var(--font-body)' }}>{activeFolder ?? (scopeTab === 'coach' ? t('w1i.systems_for_athletes') : t('w1i.my_systems'))}</div>
+                <div style={{ fontSize: 15, fontWeight: 500, color: 'var(--text-mid)', margin: '8px 0 12px', fontFamily: 'var(--font-body)' }}>{activeFolder ?? (scopeTab === 'coach' ? t('w1i.systems_for_athletes') : t('w1i.my_systems'))}</div>
                 {scopeTab === 'coach' && (
                   <p style={{ fontSize: 12.5, color: 'var(--text-dim)', margin: '-4px 0 12px', lineHeight: 1.5, fontFamily: 'var(--font-body)', maxWidth: 520 }}>{t('w1i.coach_systems_hint')}</p>
                 )}
@@ -2821,7 +2821,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))', gap: 12 }}>
                     {/* Nouveau système → popover (nom + dossier) */}
                     <button onClick={() => { setNewSysName(t('w1i.my_system')); setNewSysFolder(activeFolder); setNewSysNewFolder(''); setNewSysAthlete(null); setNewSysOpen(true) }}
-                      style={{ minHeight: 110, borderRadius: 16, border: '2px dashed color-mix(in srgb, var(--studio-accent) 40%, transparent)', background: 'color-mix(in srgb, var(--studio-accent) 5%, var(--bg-card))', color: 'var(--studio-accent)', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, fontFamily: 'var(--font-body)', fontSize: 13.5, fontWeight: 700 }}>
+                      style={{ minHeight: 120, borderRadius: 'var(--r-lg)', border: 'none', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 17, fontWeight: 600, cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, fontFamily: 'var(--font-body)' }}>
                       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
                       {t('w1i.new_system')}
                     </button>
@@ -2830,11 +2830,11 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                       return (
                         <div key={s.id} onClick={() => openSystem(s)} role="button" tabIndex={0}
                           onKeyDown={e => { if (e.key === 'Enter') openSystem(s) }}
-                          style={{ minHeight: 110, borderRadius: 16, border: '1px solid var(--border)', background: 'var(--bg-card)', cursor: 'pointer', padding: '14px 14px 12px', display: 'flex', flexDirection: 'column', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', transition: 'box-shadow 150ms, transform 150ms' }}
+                          style={{ minHeight: 120, borderRadius: 'var(--r-lg)', border: 'none', background: 'var(--bg-card2)', cursor: 'pointer', padding: '20px', display: 'flex', flexDirection: 'column', transition: 'box-shadow 150ms, transform 150ms' }}
                           onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.boxShadow = '0 6px 20px rgba(0,0,0,0.10)'; (e.currentTarget as HTMLDivElement).style.transform = 'translateY(-1px)' }}
                           onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.boxShadow = '0 1px 3px rgba(0,0,0,0.05)'; (e.currentTarget as HTMLDivElement).style.transform = 'none' }}>
-                          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-body)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.name}</div>
-                          <div style={{ fontSize: 11.5, color: 'var(--text-dim)', marginTop: 4, fontFamily: 'var(--font-body)' }}>
+                          <div style={{ fontSize: 17, fontWeight: 600, color: 'var(--text)', fontFamily: 'var(--font-body)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.name}</div>
+                          <div style={{ fontSize: 14, color: 'var(--text-mid)', marginTop: 4, fontFamily: 'var(--font-body)' }}>
                             {(s.graph?.nodes ?? []).length} {t((s.graph?.nodes ?? []).length !== 1 ? 'w1i.block_many' : 'w1i.block_one')} · {nAgents} {t(nAgents !== 1 ? 'w1i.agent_many' : 'w1i.agent_one')}
                           </div>
                           {s.scope === 'coach' && s.athlete_id && (
@@ -2845,7 +2845,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                           )}
                           <div style={{ flex: 1 }} />
                           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <span style={{ fontSize: 10.5, color: 'var(--text-dim)', fontFamily: 'var(--font-body)' }}>
+                            <span style={{ fontSize: 13, color: 'var(--text-dim)', fontFamily: 'var(--font-body)' }}>
                               {new Date(s.updated_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
                             </span>
                             <div style={{ flex: 1 }} />
@@ -3491,9 +3491,9 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
   )
 }
 
-const iconBtn: React.CSSProperties = { border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text)', display: 'flex', alignItems: 'center', padding: 4 }
+const iconBtn: React.CSSProperties = { border: 'none', background: 'color-mix(in srgb, var(--text) 10%, var(--bg))', cursor: 'pointer', color: 'var(--text)', display: 'flex', alignItems: 'center', justifyContent: 'center', width: 44, height: 44, borderRadius: '50%', flexShrink: 0, boxShadow: '0 2px 12px rgba(0,0,0,0.20)' }
 const zBtn: React.CSSProperties = { width: 30, height: 28, borderRadius: 8, border: 'none', background: 'transparent', color: 'var(--text-mid)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }
 const paletteHdr: React.CSSProperties = { fontSize: 9.5, fontWeight: 800, letterSpacing: '0.09em', textTransform: 'uppercase', color: 'var(--text-dim)', padding: '3px 8px 2px' }
-const cta: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 7, padding: '9px 16px', borderRadius: 10, border: 'none', background: 'var(--primary)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)', flexShrink: 0 }
+const cta: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 7, padding: '0 20px', minHeight: 44, borderRadius: 999, border: 'none', background: 'var(--primary)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)', flexShrink: 0 }
 const lbl: React.CSSProperties = { fontSize: 12, fontWeight: 600, color: 'var(--text-mid)', margin: '0 0 5px', display: 'block' }
 const fld: React.CSSProperties = { width: '100%', boxSizing: 'border-box', padding: '9px 11px', borderRadius: 9, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 13, fontFamily: 'var(--font-body)', outline: 'none', marginBottom: 14 }

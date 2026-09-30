@@ -405,6 +405,7 @@ export function SidebarContent({ onClose, headerSlot, expanded = true }: { onClo
         )}
         <button
           onClick={toggleTheme}
+          className="thw-nav-item" data-active="0"
           style={{
             display: 'flex', alignItems: 'center', gap: 10,
             padding: '9px 12px', borderRadius: 10,

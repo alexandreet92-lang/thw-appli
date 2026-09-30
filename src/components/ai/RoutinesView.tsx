@@ -7,6 +7,8 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useI18n } from '@/lib/i18n'
+import { SlideView } from '@/components/ui/SlideView'
+import PressPop from '@/components/ui/PressPop'
 import {
   listRoutines, createRoutine, updateRoutine, deleteRoutine, runRoutine, listRuns,
   scheduleLabel, type Routine, type RoutineRun, type RoutineInput,
@@ -69,15 +71,15 @@ const FB = 'var(--font-body)'
 // Champ soigné (façon réglages) : bordure fine, fond carte, radius généreux,
 // focus ring subtil. Réutilisé par les inputs, le textarea et les dropdowns.
 const inputStyle: React.CSSProperties = {
-  width: '100%', boxSizing: 'border-box', padding: '12px 14px', borderRadius: 12,
-  border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)',
-  fontSize: 14, fontFamily: FB, outline: 'none',
+  width: '100%', boxSizing: 'border-box', padding: '16px 18px', borderRadius: 'var(--r-md)',
+  border: 'none', background: 'var(--bg-card2)', color: 'var(--text)',
+  fontSize: 17, fontFamily: FB, outline: 'none',
   transition: 'border-color 0.15s, box-shadow 0.15s',
 }
 // Label discret : petite majuscule espacée (var(--text-dim)).
 const labelStyle: React.CSSProperties = {
-  display: 'block', marginBottom: 8, fontSize: 11, fontWeight: 600,
-  letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-dim)', fontFamily: FB,
+  display: 'block', marginBottom: 10, fontSize: 14, fontWeight: 500,
+  color: 'var(--text-mid)', fontFamily: FB,
 }
 
 function onFocusRing(e: React.FocusEvent<HTMLElement>) {
@@ -150,9 +152,11 @@ export default function RoutinesView({ onClose }: { onClose: () => void }) {
   const [loading, setLoading]   = useState(true)
   const [view, setView]         = useState<{ mode: 'list' } | { mode: 'form'; form: FormState } | { mode: 'detail'; id: string }>({ mode: 'list' })
   const [err, setErr]           = useState<string | null>(null)
-  const [shown, setShown]       = useState(false)
-  useEffect(() => { const r = requestAnimationFrame(() => setShown(true)); return () => cancelAnimationFrame(r) }, [])
-  const requestClose = () => { setShown(false); setTimeout(onClose, 300) }
+  // Direction du glissement interne : 1 = on avance (liste → détail/formulaire), -1 = retour.
+  const [dir, setDir] = useState(1)
+  const go = (next: typeof view, d: number) => { setDir(d); setView(next) }
+  const toList = () => go({ mode: 'list' }, -1)
+  const requestClose = onClose
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -161,34 +165,41 @@ export default function RoutinesView({ onClose }: { onClose: () => void }) {
   }, [t])
   useEffect(() => { void load() }, [load])
 
-  const openNew = () => setView({ mode: 'form', form: { name: '', prompt: '', frequency: 'daily', hour: 7, weekday: 0, model: 'athena', allow_write: false } })
-  const openEdit = (r: Routine) => setView({ mode: 'form', form: { ...r } })
+  const openNew = () => go({ mode: 'form', form: { name: '', prompt: '', frequency: 'daily', hour: 7, weekday: 0, model: 'athena', allow_write: false } }, 1)
+  const openEdit = (r: Routine) => go({ mode: 'form', form: { ...r } }, 1)
+
+  const roundBtn: React.CSSProperties = {
+    width: 44, height: 44, borderRadius: '50%', border: 'none', cursor: 'pointer', flexShrink: 0,
+    background: 'color-mix(in srgb, var(--text) 10%, var(--bg))', color: 'var(--text)',
+    display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 12px rgba(0,0,0,0.20)',
+  }
+  const screenKey = view.mode === 'detail' ? `detail-${view.id}` : view.mode
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 13500, background: 'var(--bg)', display: 'flex', flexDirection: 'column', transform: shown ? 'translateX(0)' : 'translateX(100%)', transition: 'transform 0.3s cubic-bezier(0.32,0.72,0,1)' }}>
-      {/* Header */}
-      <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 10, padding: 'max(14px, env(safe-area-inset-top)) 16px 12px', borderBottom: '0.5px solid var(--border)' }}>
-        <button onClick={() => { if (view.mode === 'list') requestClose(); else setView({ mode: 'list' }) }}
+    <div style={{ position: 'absolute', inset: 0, background: 'var(--bg)', display: 'flex', flexDirection: 'column' }}>
+      {/* En-tête : retour rond · titre centré · action ronde (comme Paramètres) */}
+      <div style={{ flexShrink: 0, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 'calc(max(14px, env(safe-area-inset-top)) + 58px)', padding: 'max(14px, env(safe-area-inset-top)) 16px 14px', boxSizing: 'border-box' }}>
+        <PressPop onClick={() => { if (view.mode === 'list') requestClose(); else toList() }}
           aria-label={t('w1a.r_retour')}
-          style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text)', display: 'flex', alignItems: 'center', padding: 4 }}>
+          style={{ ...roundBtn, position: 'absolute', left: 16, top: 'max(14px, env(safe-area-inset-top))' }}>
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
-        </button>
-        <div style={{ flex: 1, fontSize: 19, fontWeight: 700, color: 'var(--text)', fontFamily: 'Syne,DM Sans,sans-serif' }}>
+        </PressPop>
+        <div style={{ fontSize: 19, fontWeight: 600, color: 'var(--text)', fontFamily: 'var(--font-body)' }}>
           {view.mode === 'form' ? (view.form.id ? t('w1a.r_modifierRoutine') : t('w1a.r_nouvelleRoutine')) : t('w1a.r_routines')}
         </div>
         {view.mode === 'list' && (
-          <button onClick={openNew}
-            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 12px', borderRadius: 9, border: 'none', background: ACCENT, color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
-            {t('w1a.r_nouvelle')}
-          </button>
+          <PressPop onClick={openNew} aria-label={t('w1a.r_nouvelle')} style={{ ...roundBtn, position: 'absolute', right: 16, top: 'max(14px, env(safe-area-inset-top))' }}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
+          </PressPop>
         )}
       </div>
 
-      <div style={{ flex: 1, overflowY: 'auto', padding: '16px', paddingBottom: 'calc(24px + env(safe-area-inset-bottom))' }}>
-        {view.mode === 'list' && <ListView routines={routines} loading={loading} err={err} onNew={openNew} onOpen={(id) => setView({ mode: 'detail', id })} onToggle={async (r) => { await updateRoutine(r.id, { enabled: !r.enabled }); void load() }} />}
-        {view.mode === 'form' && <FormView initial={view.form} onCancel={() => setView({ mode: 'list' })} onSaved={() => { setView({ mode: 'list' }); void load() }} />}
-        {view.mode === 'detail' && <DetailView id={view.id} routine={routines.find(r => r.id === view.id) ?? null} onEdit={openEdit} onChanged={load} onDeleted={() => { setView({ mode: 'list' }); void load() }} />}
+      <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '8px 16px', paddingBottom: 'calc(24px + env(safe-area-inset-bottom))' }}>
+        <SlideView screenKey={screenKey} direction={dir} variant="push" onBack={view.mode === 'list' ? undefined : toList}>
+          {view.mode === 'list' && <ListView routines={routines} loading={loading} err={err} onNew={openNew} onOpen={(id) => go({ mode: 'detail', id }, 1)} onToggle={async (r) => { await updateRoutine(r.id, { enabled: !r.enabled }); void load() }} />}
+          {view.mode === 'form' && <FormView initial={view.form} onCancel={toList} onSaved={() => { toList(); void load() }} />}
+          {view.mode === 'detail' && <DetailView id={view.id} routine={routines.find(r => r.id === view.id) ?? null} onEdit={openEdit} onChanged={load} onDeleted={() => { toList(); void load() }} />}
+        </SlideView>
       </div>
     </div>
   )
@@ -209,27 +220,27 @@ function ListView({ routines, loading, err, onNew, onOpen, onToggle }: {
         <p style={{ fontSize: 13, color: 'var(--text-dim)', lineHeight: 1.6, maxWidth: 320, margin: '0 auto 18px' }}>
           {t('w1a.r_aucuneRoutineDesc')}
         </p>
-        <button onClick={onNew} style={{ padding: '11px 18px', borderRadius: 10, border: 'none', background: ACCENT, color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>{t('w1a.r_creerPremiere')}</button>
+        <button onClick={onNew} style={{ padding: '0 24px', minHeight: 52, borderRadius: 999, border: 'none', background: ACCENT, color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>{t('w1a.r_creerPremiere')}</button>
       </div>
     )
   }
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxWidth: 640, margin: '0 auto' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 640, margin: '0 auto' }}>
       {routines.map(r => (
         <div key={r.id} onClick={() => onOpen(r.id)}
-          style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', borderRadius: 12, border: '0.5px solid var(--border)', background: 'var(--bg-card)', cursor: 'pointer' }}>
-          <div style={{ width: 38, height: 38, borderRadius: 10, background: r.enabled ? 'var(--primary-dim)' : 'var(--bg-alt)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '18px 20px', minHeight: 76, borderRadius: 'var(--r-lg)', background: 'var(--bg-card2)', cursor: 'pointer' }}>
+          <div style={{ width: 44, height: 44, borderRadius: 14, background: r.enabled ? 'var(--primary-dim)' : 'var(--bg-alt)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={r.enabled ? ACCENT : 'var(--text-dim)'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4M4.9 19.1l2.8-2.8M16.3 7.7l2.8-2.8"/></svg>
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.name}</div>
-            <div style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 2 }}>{scheduleLabel(r)}{!r.enabled && t('w1a.r_enPause')}</div>
+            <div style={{ fontSize: 17, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.name}</div>
+            <div style={{ fontSize: 14, color: 'var(--text-mid)', marginTop: 3 }}>{scheduleLabel(r)}{!r.enabled && t('w1a.r_enPause')}</div>
           </div>
           <button
             onClick={(e) => { e.stopPropagation(); onToggle(r) }}
             aria-label={r.enabled ? t('w1a.r_mettrePause') : t('w1a.r_activer')}
-            style={{ flexShrink: 0, width: 42, height: 25, borderRadius: 999, border: 'none', cursor: 'pointer', background: r.enabled ? ACCENT : 'var(--border)', position: 'relative', transition: 'background 0.15s' }}>
-            <span style={{ position: 'absolute', top: 3, left: r.enabled ? 20 : 3, width: 19, height: 19, borderRadius: '50%', background: '#fff', transition: 'left 0.15s' }} />
+            style={{ flexShrink: 0, width: 54, height: 32, borderRadius: 999, border: 'none', cursor: 'pointer', background: r.enabled ? ACCENT : 'color-mix(in srgb, var(--text) 18%, var(--bg))', position: 'relative', transition: 'background 0.25s ease' }}>
+            <span style={{ position: 'absolute', top: 3, left: r.enabled ? 25 : 3, width: 26, height: 26, borderRadius: '50%', background: '#fff', transition: 'left 0.25s cubic-bezier(0.22,1,0.36,1)', boxShadow: '0 1px 4px rgba(0,0,0,0.3)' }} />
           </button>
         </div>
       ))}
@@ -351,13 +362,13 @@ function FormView({ initial, onCancel, onSaved }: { initial: FormState; onCancel
         <button type="button" onClick={onCancel}
           onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)' }}
           onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
-          style={{ padding: '11px 18px', borderRadius: 'var(--r-sm)', border: 'none', background: 'transparent', color: 'var(--text-mid)', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: FB, transition: 'background 0.14s' }}>
+          style={{ padding: '0 22px', minHeight: 52, borderRadius: 999, border: 'none', background: 'transparent', color: 'var(--text-mid)', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: FB, transition: 'background 0.14s' }}>
           {t('w1a.r_annuler')}
         </button>
         <button type="button" onClick={save} disabled={saving}
           onMouseEnter={e => { if (!saving) (e.currentTarget as HTMLButtonElement).style.opacity = '0.9' }}
           onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.opacity = '1' }}
-          style={{ padding: '11px 22px', borderRadius: 'var(--r-sm)', border: 'none', background: saving ? 'var(--border-mid)' : ACCENT, color: 'var(--on-primary)', fontSize: 14, fontWeight: 600, cursor: saving ? 'default' : 'pointer', fontFamily: FB, transition: 'opacity 0.14s, background 0.14s' }}>
+          style={{ padding: '0 26px', minHeight: 52, borderRadius: 999, border: 'none', background: saving ? 'var(--border-mid)' : ACCENT, color: 'var(--on-primary)', fontSize: 14, fontWeight: 600, cursor: saving ? 'default' : 'pointer', fontFamily: FB, transition: 'opacity 0.14s, background 0.14s' }}>
           {saving ? '…' : f.id ? t('w1a.r_enregistrer') : t('w1a.r_creerRoutine')}
         </button>
       </div>
@@ -401,26 +412,26 @@ function DetailView({ id, routine, onEdit, onChanged, onDeleted }: {
       {/* Actions */}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
         <button onClick={doRunNow} disabled={running}
-          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 14px', borderRadius: 9, border: 'none', background: ACCENT, color: '#fff', fontSize: 13, fontWeight: 700, cursor: running ? 'default' : 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
+          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0 20px', minHeight: 48, borderRadius: 999, border: 'none', background: ACCENT, color: '#fff', fontSize: 15, fontWeight: 600, cursor: running ? 'default' : 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
           {running ? t('w1a.r_execution') : t('w1a.r_executerMaintenant')}
         </button>
         <button onClick={() => updateRoutine(id, { enabled: !routine.enabled }).then(onChanged)}
-          style={{ padding: '9px 14px', borderRadius: 9, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-mid)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
+          style={{ padding: '0 20px', minHeight: 48, borderRadius: 999, border: 'none', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
           {routine.enabled ? t('w1a.r_mettrePause') : t('w1a.r_activer')}
         </button>
         <button onClick={() => onEdit(routine)}
-          style={{ padding: '9px 14px', borderRadius: 9, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-mid)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
+          style={{ padding: '0 20px', minHeight: 48, borderRadius: 999, border: 'none', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
           {t('w1a.r_modifier')}
         </button>
         {confirmDel ? (
           <button onClick={() => deleteRoutine(id).then(onDeleted)}
-            style={{ padding: '9px 14px', borderRadius: 9, border: 'none', background: '#ef4444', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
+            style={{ padding: '0 20px', minHeight: 48, borderRadius: 999, border: 'none', background: '#ef4444', color: '#fff', fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
             {t('w1a.r_confirmerSuppression')}
           </button>
         ) : (
           <button onClick={() => setConfirmDel(true)}
-            style={{ padding: '9px 14px', borderRadius: 9, border: '1px solid var(--border)', background: 'transparent', color: '#ef4444', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
+            style={{ padding: '0 20px', minHeight: 48, borderRadius: 999, border: 'none', background: 'var(--bg-card2)', color: '#ef4444', fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
             {t('w1a.r_supprimer')}
           </button>
         )}

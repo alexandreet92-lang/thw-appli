@@ -29,7 +29,7 @@ import { useI18n } from '@/lib/i18n'
 
 const AIPanel = dynamic(() => import('@/components/ai/AIPanel'), { ssr: false })
 const FD = 'var(--font-display)'
-const MOTION = 'transform 0.32s cubic-bezier(0.32,0.72,0,1), border-radius 0.32s, box-shadow 0.32s'
+const MOTION = 'transform 0.42s cubic-bezier(0.22, 1, 0.36, 1), border-radius 0.42s, box-shadow 0.42s'
 const OPEN_RATIO = 0.80
 const OPEN_MAX = 360
 
@@ -73,7 +73,7 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
   useNotificationGenerators()
   const [reduce, setReduce] = useState(false)
   const panelRef = useRef<HTMLDivElement>(null)
-  const g = useRef({ active: false, dragging: false, startX: 0, startY: 0, base: 0, last: 0, hscroll: null as HTMLElement | null, hswipe: false, past: false })
+  const g = useRef({ active: false, dragging: false, startX: 0, startY: 0, base: 0, last: 0, hscroll: null as HTMLElement | null, hswipe: false, past: false, vx: 0, lx: 0, lt: 0 })
 
   useEffect(() => {
     const m = window.matchMedia('(prefers-reduced-motion: reduce)')
@@ -164,7 +164,7 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
   function onTouchStart(e: React.TouchEvent) {
     const t = e.touches[0]
     const st = g.current
-    st.startX = t.clientX; st.startY = t.clientY; st.dragging = false; st.past = false
+    st.startX = t.clientX; st.startY = t.clientY; st.dragging = false; st.past = false; st.vx = 0; st.lx = t.clientX; st.lt = Date.now()
     // Feuilles / modales (portails hors de la page) : leur geste ne doit JAMAIS
     // ouvrir la sidebar — React remonte pourtant l'événement jusqu'ici.
     if (!panelRef.current?.contains(e.target as Node)) { st.active = false; return }
@@ -201,15 +201,24 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
       if (panelRef.current) panelRef.current.style.transition = 'none'
     }
     const x = Math.max(0, Math.min(offsetPx(), st.base + dx))
+    const now = Date.now()
+    if (now > st.lt) st.vx = (t.clientX - st.lx) / (now - st.lt)
+    st.lx = t.clientX; st.lt = now
     st.last = x; paint(x)
     // Légère vibration quand le geste franchit le seuil d'ouverture (et au retour).
-    const past = x > offsetPx() * 0.4
+    const past = x > offsetPx() * 0.12
     if (past !== st.past) { st.past = past; hapticNative('light') }
   }
   function onTouchEnd() {
     const st = g.current; if (!st.dragging) { st.active = false; return }
     st.dragging = false; st.active = false
-    settle(st.last > offsetPx() * 0.4)
+    // Un petit geste suffit (façon Claude) : un flick rapide décide seul dans son
+    // sens ; sinon ~12 % de la largeur pour ouvrir, ~88 % restant pour fermer.
+    let next: boolean
+    if (Math.abs(st.vx) > 0.3) next = st.vx > 0
+    else if (st.base === 0) next = st.last > offsetPx() * 0.12
+    else next = st.last > offsetPx() * 0.88
+    settle(next)
   }
 
   // /topup : page autonome (lien email), aucun chrome.

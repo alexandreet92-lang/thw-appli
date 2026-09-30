@@ -32,7 +32,7 @@ function isActive(pathname: string, href: string): boolean {
 
 function CoachNavItem({ href, label, icon, active, onClick, expanded }: { href: string; label: string; icon: React.ReactNode; active: boolean; onClick?: () => void; expanded: boolean }) {
   return (
-    <Link href={href} onClick={onClick}
+    <Link href={href} onClick={onClick} className="thw-nav-item" data-active={active ? '1' : '0'}
       style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', borderRadius: 10, textDecoration: 'none',
         fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: active ? 600 : 400,
         color: active ? COACH_ACCENT : 'var(--text-mid)', background: active ? 'color-mix(in srgb, var(--primary) 10%, transparent)' : 'transparent',
@@ -76,20 +76,20 @@ export function CoachSidebarContent({ onClose, onOpenAI, headerSlot, expanded = 
 
       {/* Bas : retour appli athlète + assistant coach + thème */}
       <div style={{ borderTop: '1px solid var(--nav-border)', padding: '8px', display: 'flex', flexDirection: 'column', gap: 2, flexShrink: 0 }}>
-        <Link href="/" onClick={onClose}
+        <Link href="/" onClick={onClose} className="thw-nav-item" data-active="0"
           style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', borderRadius: 10, textDecoration: 'none', color: 'var(--text-mid)', fontFamily: 'var(--font-body)', fontSize: 13 }}>
           <span style={{ flexShrink: 0, opacity: 0.6, display: 'flex' }}><svg {...ic}><path d="M19 12H5M11 18l-6-6 6-6"/></svg></span>
           <span style={lbl}>{t('coach.backToMyApp')}</span>
         </Link>
         {onOpenAI && (
-          <button onClick={onOpenAI}
+          <button onClick={onOpenAI} className="thw-nav-item" data-active="0"
             style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', borderRadius: 10, border: 'none', background: 'transparent', color: 'var(--text-mid)', fontFamily: 'var(--font-body)', fontSize: 13, cursor: 'pointer', textAlign: 'left' }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/logos/logo_4bras.png" alt="" style={{ width: 18, height: 18, objectFit: 'contain', flexShrink: 0 }} />
             <span style={lbl}>Assistant coach</span>
           </button>
         )}
-        <button onClick={toggleTheme}
+        <button onClick={toggleTheme} className="thw-nav-item" data-active="0"
           style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', borderRadius: 10, border: 'none', background: 'transparent', color: 'var(--text-mid)', fontFamily: 'var(--font-body)', fontSize: 13, cursor: 'pointer', textAlign: 'left' }}>
           <span style={{ flexShrink: 0, opacity: 0.6, display: 'flex' }}>
             {mode === 'dark'

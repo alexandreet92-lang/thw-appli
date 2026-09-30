@@ -48,8 +48,22 @@ function fmt(n: number): string {
   return n.toLocaleString(currentLocale())
 }
 
-function Gauge({ label, used, limit, resetLabel }: { label: string; used: number; limit: number; resetLabel: string }) {
+function Gauge({ label, used, limit, resetLabel, big }: { label: string; used: number; limit: number; resetLabel: string; big?: boolean }) {
   const p = pct(used, limit)
+  if (big) {
+    return (
+      <div style={{ padding: 20, borderRadius: 'var(--r-lg)', background: 'var(--bg-card2)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12, marginBottom: 14 }}>
+          <span style={{ fontSize: 17, fontWeight: 600, color: 'var(--text)', fontFamily: 'var(--font-body)' }}>{label}</span>
+          <span style={{ fontSize: 14, color: 'var(--text-mid)', fontVariantNumeric: 'tabular-nums' }}>{Math.round(p)} % · {resetLabel}</span>
+        </div>
+        <div style={{ height: 8, background: 'color-mix(in srgb, var(--text) 12%, var(--bg))', borderRadius: 999, overflow: 'hidden' }}>
+          <div style={{ height: '100%', width: `${p}%`, background: barColor(p), borderRadius: 999, transition: 'width 0.6s cubic-bezier(0.22,1,0.36,1)' }} />
+        </div>
+        <div style={{ fontSize: 14, color: 'var(--text-dim)', marginTop: 12, fontVariantNumeric: 'tabular-nums' }}>{fmt(used)} / {fmt(limit)} tokens</div>
+      </div>
+    )
+  }
   return (
     <div style={{ padding: '12px 16px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 7 }}>
@@ -158,7 +172,38 @@ export default function TokenUsageBubble({ onBuyTokens, currentModel = 'athena',
         )
 
         if (isMobile) {
-          return <MobileSheet title={t('ai.tokenUsage')} onClose={() => setOpen(false)}>{inner}</MobileSheet>
+          const mult = getModelMultiplier(currentModel)
+          const name = getModelDisplayName(currentModel)
+          return (
+            <MobileSheet title={t('ai.tokenUsage')} onClose={() => setOpen(false)}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: '8px 12px 12px' }}>
+                <Gauge big label={t('ai.weeklyLimit')} used={limits.monthly.used} limit={limits.monthly.limit} resetLabel={t('ai.resetsIn', { d: untilDays(limits.monthly.resets_at) })} />
+                <Gauge big label={t('ai.sixHourLimit')} used={limits.rolling_6h.used} limit={limits.rolling_6h.limit} resetLabel={t('ai.resetsIn', { d: untilHours(limits.rolling_6h.resets_at) })} />
+                {limits.bonus_tokens > 0 && (
+                  <div style={{ padding: 20, borderRadius: 'var(--r-lg)', background: 'var(--bg-card2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: 17, fontWeight: 600, color: 'var(--text)' }}>{t('ai.bonusTokens')}</span>
+                    <span style={{ fontSize: 17, fontWeight: 600, color: 'var(--primary)', fontVariantNumeric: 'tabular-nums' }}>{fmt(limits.bonus_tokens)}</span>
+                  </div>
+                )}
+                <div style={{ padding: 20, borderRadius: 'var(--r-lg)', background: 'var(--bg-card2)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+                    <span style={{ fontSize: 17, fontWeight: 600, color: 'var(--text)' }}>{t('ai.currentModel')}</span>
+                    <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--primary)' }}>{name}</span>
+                  </div>
+                  {mult > 1 && <p style={{ fontSize: 14, color: 'var(--text-mid)', lineHeight: 1.5, margin: '10px 0 0' }}>{t('ai.modelMultiplierNote', { name, mult })}</p>}
+                  <div style={{ fontSize: 14, color: 'var(--text-dim)', display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
+                    <span>Hermès ×1</span><span>·</span><span>Athéna ×3</span><span>·</span><span>Zeus ×8</span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => { setOpen(false); onBuyTokens() }}
+                  style={{ width: '100%', minHeight: 56, borderRadius: 999, border: 'none', cursor: 'pointer', background: 'var(--text)', color: 'var(--bg)', fontSize: 17, fontWeight: 600, fontFamily: 'var(--font-body)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}
+                >
+                  <ShoppingBag size={20} /> {t('ai.buyTokens')}
+                </button>
+              </div>
+            </MobileSheet>
+          )
         }
         return (
           <div style={{

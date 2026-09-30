@@ -1059,6 +1059,8 @@ html.thw-glass-blur .thw-glass-bubble {
     border-left: 0 !important; color: var(--text) !important;
   }
   .thw-nav-item svg { width: 20px; height: 20px; }
+  .thw-nav-item img { width: 20px !important; height: 20px !important; }
+  .thw-nav-item span { opacity: 1 !important; }
   .thw-nav-item[data-active="1"] { background: color-mix(in srgb, var(--text) 13%, var(--bg-card)) !important; }
 }
 @media (prefers-reduced-motion: reduce) {

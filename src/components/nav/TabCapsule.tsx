@@ -134,14 +134,13 @@ export function TabCapsule({ items, activeIndex, motionKey, accent, dim, classNa
     transform: `translate(${r.x + padX}px, ${lens ? -9.5 : 0}px)`,
     borderRadius: 999,
     background: lens
-      ? 'color-mix(in srgb, var(--text) 20%, transparent)'
-      : 'color-mix(in srgb, var(--text) 14%, transparent)',
-    backdropFilter: lens ? 'blur(6px) saturate(1.8) brightness(1.15)' : undefined,
-    WebkitBackdropFilter: lens ? 'blur(6px) saturate(1.8) brightness(1.15)' : undefined,
-    boxShadow: lens
-      ? 'inset 0 0 0 1.5px color-mix(in srgb, #fff 55%, transparent), inset 0 8px 16px color-mix(in srgb, #fff 16%, transparent), 0 10px 30px rgba(0,0,0,0.45)'
-      : 'none',
-    transition: `transform 380ms ${EASE}, width 380ms ${EASE}, height 260ms ${EASE}, background 200ms ease, box-shadow 200ms ease`,
+      ? 'color-mix(in srgb, var(--text) 16%, var(--bg))'
+      : 'color-mix(in srgb, var(--text) 13%, transparent)',
+    // Pas de backdrop-filter ici : il force un recalcul du flou à chaque image
+    // (saccades sur iPhone). Fond plein + ombre = fluide et sans halo blanc.
+    boxShadow: lens ? '0 8px 26px rgba(0,0,0,0.42), inset 0 0 0 1px color-mix(in srgb, var(--text) 14%, transparent)' : 'none',
+    willChange: 'transform, width, height',
+    transition: `transform 320ms ${EASE}, width 320ms ${EASE}, height 240ms ${EASE}, background 160ms ease, box-shadow 160ms ease`,
   } : { display: 'none' }
 
   return (
@@ -161,9 +160,7 @@ export function TabCapsule({ items, activeIndex, motionKey, accent, dim, classNa
         bottom: 'max(8px, calc(env(safe-area-inset-bottom, 0px) - 14px))',
         height: BAR_H, padding: PAD, boxSizing: 'border-box',
         borderRadius: 999,
-        background: 'color-mix(in srgb, color-mix(in srgb, var(--text) 9%, var(--bg)) 94%, transparent)',
-        backdropFilter: 'blur(22px) saturate(180%)',
-        WebkitBackdropFilter: 'blur(22px) saturate(180%)',
+        background: 'color-mix(in srgb, var(--text) 9%, var(--bg))',
         boxShadow: 'inset 0 0 0 1px color-mix(in srgb, var(--text) 10%, transparent), 0 8px 28px rgba(0,0,0,0.28)',
         touchAction: 'none', WebkitTransform: 'translateZ(0)', userSelect: 'none', WebkitUserSelect: 'none',
       }}

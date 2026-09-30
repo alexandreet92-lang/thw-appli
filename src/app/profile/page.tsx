@@ -19,6 +19,7 @@ import { getPushState, enablePush, disablePush, type PushState } from '@/lib/pus
 import { hidePricing, openWebsite } from '@/lib/native/platform'
 import { openIapStore } from '@/lib/iap/store-events'
 import NativeBilling from '@/components/iap/NativeBilling'
+import { useSwipeBack } from '@/hooks/useSwipeBack'
 import { listBlockedUsers, unblockUser, type BlockedUser } from '@/lib/moderation/dm'
 import { Avatar } from '@/components/shared/Sidebar'
 import { useNarrow } from '@/lib/hooks/useNarrow'
@@ -202,39 +203,6 @@ function Sheet({ open, onClose, title, subtitle, children }: { open:boolean; onC
       </div>
     </div>
   )
-}
-
-// Swipe-back (façon iOS) : un glissement du doigt depuis le bord gauche fait
-// suivre la sous-page sous le doigt ; relâché au-delà du seuil, il revient en
-// arrière (onBack). Sinon, la page revient en place. Vertical = scroll normal.
-function useSwipeBack(onBack: () => void) {
-  const [dragX, setDragX] = useState(0)
-  const st = useRef<{ x: number; y: number; active: boolean; decided: boolean }>({ x: 0, y: 0, active: false, decided: false })
-  const handlers = {
-    onTouchStart: (e: React.TouchEvent) => {
-      const tch = e.touches[0]
-      st.current = { x: tch.clientX, y: tch.clientY, active: tch.clientX <= 40, decided: false }
-    },
-    onTouchMove: (e: React.TouchEvent) => {
-      if (!st.current.active) return
-      const tch = e.touches[0]
-      const dx = tch.clientX - st.current.x
-      const dy = tch.clientY - st.current.y
-      // Premier mouvement significatif : on décide horizontal (back) vs vertical (scroll).
-      if (!st.current.decided) {
-        if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return
-        st.current.decided = true
-        if (Math.abs(dy) > Math.abs(dx)) { st.current.active = false; return }
-      }
-      setDragX(Math.max(0, Math.min(dx, 240)))
-    },
-    onTouchEnd: () => {
-      if (!st.current.active) { setDragX(0); return }
-      st.current.active = false
-      setDragX(cur => { if (cur > 68) onBack(); return 0 })
-    },
-  }
-  return { dragX, handlers }
 }
 
 // Nav row (clickable list item with chevron) — pensé pour vivre dans une Group.

@@ -7,6 +7,7 @@
 // ══════════════════════════════════════════════════════════════════
 import type { CSSProperties, ReactNode } from 'react'
 import { Check, X } from 'lucide-react'
+import { useSwipeBack, useSwipeDown } from '@/hooks/useSwipeBack'
 import type { AthleteTier } from '@/lib/iap/products'
 import type { BillingPeriod, CoachPackKey } from '@/lib/subscriptions/coach-packs'
 
@@ -93,10 +94,10 @@ function OptionCard({ title, subs, on, onClick, disabled }: { title: string; sub
 
 function Segmented<T extends string>({ value, options, onChange }: { value: T; options: { id: T; label: string }[]; onChange: (v: T) => void }) {
   return (
-    <div style={{ display: 'flex', background: 'var(--bg-card2)', borderRadius: 'var(--r-md)', padding: 'var(--space-1)', gap: 'var(--space-1)' }}>
+    <div style={{ display: 'flex', background: 'var(--bg-card2)', borderRadius: 'var(--r-pill)', padding: 'var(--space-1)', gap: 'var(--space-1)' }}>
       {options.map(o => (
         <button key={o.id} type="button" onClick={() => onChange(o.id)} style={{
-          flex: 1, minHeight: 40, borderRadius: 'var(--r-sm)', border: 'none', cursor: 'pointer',
+          flex: 1, minHeight: 44, borderRadius: 'var(--r-pill)', border: 'none', cursor: 'pointer',
           background: value === o.id ? 'var(--bg)' : 'transparent', color: value === o.id ? 'var(--text)' : 'var(--text-mid)',
           fontFamily: 'var(--font-body)', fontSize: 13.5, fontWeight: 600,
         }}>{o.label}</button>
@@ -116,6 +117,10 @@ const linkBtn: CSSProperties = {
 
 export function IapStoreSheet(p: IapStoreSheetProps) {
   const L = p.labels
+  // Gestes : glisser du bord gauche vers la droite, ou tirer vers le bas → ferme la feuille.
+  const back = useSwipeBack(p.onClose)
+  const down = useSwipeDown(p.onClose)
+  const dragging = back.dragX > 0 || down.dragY > 0
   const perLabel = p.period === 'yearly' ? 'par an' : 'par mois'
   const priceOf = (id: string | null) => (id ? p.prices[id] : undefined)
   const noPrices = !p.loading && Object.keys(p.prices).length === 0
@@ -141,13 +146,15 @@ export function IapStoreSheet(p: IapStoreSheetProps) {
       position: 'fixed', inset: 0, zIndex: 14000, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
       opacity: p.shown ? 1 : 0, transition: 'opacity 0.26s ease',
     }}>
-      <div onClick={e => e.stopPropagation()} style={{
+      <div onClick={e => e.stopPropagation()} {...back.handlers} style={{
         width: 'min(560px, 100%)', height: '94dvh', display: 'flex', flexDirection: 'column', background: 'var(--bg)',
-        borderRadius: 'var(--r-lg) var(--r-lg) 0 0',
-        transform: p.shown ? 'translateY(0)' : 'translateY(100%)', transition: 'transform 0.28s cubic-bezier(0.32,0.72,0,1)',
+        borderRadius: 'var(--r-lg) var(--r-lg) 0 0', touchAction: 'pan-y',
+        transform: p.shown ? `translate(${back.dragX}px, ${down.dragY}px)` : 'translateY(100%)',
+        transition: dragging ? 'none' : 'transform 0.28s cubic-bezier(0.32,0.72,0,1)',
       }}>
         {/* En-tête */}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', padding: 'var(--space-4) var(--space-4) 0' }}>
+        <div {...down.handlers} style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', position: 'relative', padding: 'var(--space-4) var(--space-4) 0', minHeight: 60 }}>
+          <span aria-hidden style={{ position: 'absolute', top: 'var(--space-2)', left: '50%', width: 36, height: 5, marginLeft: -18, borderRadius: 3, background: 'var(--text-dim)', opacity: 0.5 }} />
           <button type="button" onClick={p.onClose} aria-label={L.close} style={{
             width: 44, height: 44, borderRadius: '50%', border: 'none', cursor: 'pointer', background: 'var(--bg-card2)', color: 'var(--text)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -257,7 +264,7 @@ export function IapStoreSheet(p: IapStoreSheetProps) {
         {/* Bouton d'achat fixe */}
         <div style={{ padding: 'var(--space-3) var(--space-5)', paddingBottom: 'calc(var(--space-4) + env(safe-area-inset-bottom))', background: 'var(--bg)' }}>
           <button type="button" disabled={!canBuy} onClick={() => productId && p.onBuy(productId, kind)} style={{
-            width: '100%', minHeight: 54, borderRadius: 'var(--r-lg)', border: 'none', background: 'var(--primary)', color: 'var(--on-primary)',
+            width: '100%', minHeight: 56, borderRadius: 'var(--r-pill)', border: 'none', background: 'var(--primary)', color: 'var(--on-primary)',
             fontFamily: 'var(--font-body)', fontSize: 16, fontWeight: 700, cursor: canBuy ? 'pointer' : 'default', opacity: canBuy ? 1 : 0.5,
           }}>
             {cta}{selectedPrice && p.tab !== 'tokens' ? ` · ${selectedPrice} ${perLabel}` : selectedPrice ? ` · ${selectedPrice}` : ''}

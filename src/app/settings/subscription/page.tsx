@@ -6,7 +6,7 @@ import { useI18n } from '@/lib/i18n'
 import type { TierName } from '@/lib/subscriptions/tier-limits'
 import type { UsageType } from '@/lib/subscriptions/check-quota'
 import { currentLocale } from '@/lib/i18n'
-import { hidePricing } from '@/lib/native/platform'
+import { hidePricing, openWebsite } from '@/lib/native/platform'
 import { openIapStore } from '@/lib/iap/store-events'
 import { refreshEntitlements } from '@/hooks/useEntitlements'
 import { TIER_FEATURES } from '@/lib/subscriptions/tier-features'
@@ -215,9 +215,6 @@ export default function SubscriptionPage() {
 
   const [data,        setData]        = useState<SummaryData | null>(null)
   const [loading,     setLoading]     = useState(true)
-  const [billing,     setBilling]     = useState<'monthly' | 'yearly'>('monthly')
-  const [ctaLoading,  setCtaLoading]  = useState<string | null>(null)  // tier en cours de checkout
-  const [portalLoading, setPortalLoading] = useState(false)
   const [banner, setBanner] = useState<{ type: 'success' | 'error'; msg: string } | null>(
     success ? { type: 'success', msg: t('misc.subActivated') } : null,
   )
@@ -266,42 +263,6 @@ export default function SubscriptionPage() {
     })()
     return () => { cancelled = true }
   }, [success, sessionId, router])
-
-  // ── Checkout ──────────────────────────────────────────────────
-  const handleCheckout = useCallback(async (tier: PurchasableTier) => {
-    setCtaLoading(tier)
-    setBanner(null)
-    try {
-      const res = await fetch('/api/stripe/checkout', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ tier, billingPeriod: billing }),
-      })
-      const json = await res.json() as { url?: string; error?: string }
-      if (!res.ok || !json.url) throw new Error(json.error ?? t('misc.unknownError'))
-      window.location.href = json.url
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err)
-      setBanner({ type: 'error', msg: `${t('misc.error')} : ${msg}` })
-      setCtaLoading(null)
-    }
-  }, [billing, t])
-
-  // ── Portal ────────────────────────────────────────────────────
-  const handlePortal = useCallback(async () => {
-    setPortalLoading(true)
-    setBanner(null)
-    try {
-      const res  = await fetch('/api/stripe/portal', { method: 'POST' })
-      const json = await res.json() as { url?: string; error?: string }
-      if (!res.ok || !json.url) throw new Error(json.error ?? t('misc.unknownError'))
-      window.location.href = json.url
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err)
-      setBanner({ type: 'error', msg: `${t('misc.portalError')} : ${msg}` })
-      setPortalLoading(false)
-    }
-  }, [t])
 
   const currentTier = data?.tier ?? 'premium'
   const isUnlimited = data?.unlimited === true
@@ -533,11 +494,10 @@ export default function SubscriptionPage() {
           {hasBilling && (
             <button
               className="sub-btn"
-              onClick={() => void handlePortal()}
-              disabled={portalLoading}
+              onClick={() => void openWebsite('/site/compte.html')}
               style={{ background: 'var(--bg-card2)', color: 'var(--text)', border: '1.5px solid var(--border)' }}
             >
-              {portalLoading ? t('misc.loading') : t('misc.manageSubscription')}
+              {t('misc.manageSubscription')} ↗
             </button>
           )}
         </section>
@@ -587,24 +547,6 @@ export default function SubscriptionPage() {
             <h2 style={{ fontFamily: 'Syne, sans-serif', fontSize: 16, fontWeight: 700, margin: 0, color: 'var(--text)' }}>
               {t('misc.changePlan')}
             </h2>
-            {/* Toggle mensuel / annuel — masqué dans l'app native (pas d'achat
-                in-app, et le badge −20% est une indication de prix). */}
-            {!hidePrice && (
-              <div className="toggle-pill">
-                <button
-                  className={`toggle-option${billing === 'monthly' ? ' selected' : ''}`}
-                  onClick={() => setBilling('monthly')}
-                >
-                  {t('misc.monthly')}
-                </button>
-                <button
-                  className={`toggle-option${billing === 'yearly' ? ' selected' : ''}`}
-                  onClick={() => setBilling('yearly')}
-                >
-                  {t('misc.yearly')} <span style={{ fontSize: 11, marginLeft: 4, opacity: 0.8 }}>−20%</span>
-                </button>
-              </div>
-            )}
           </div>
 
           <div style={{
@@ -614,7 +556,6 @@ export default function SubscriptionPage() {
           }}>
             {PLANS.map(plan => {
               const isActive      = currentTier === plan.tier
-              const isCta         = ctaLoading === plan.tier
 
               return (
                 <div
@@ -695,15 +636,14 @@ export default function SubscriptionPage() {
                   ) : (
                     <button
                       className="sub-btn"
-                      onClick={() => void handleCheckout(plan.tier)}
-                      disabled={ctaLoading !== null}
+                      onClick={() => void openWebsite('/site/compte.html')}
                       style={{
                         background: '#06B6D4',
                         color:      '#0a0a0a',
                         width:      '100%',
                       }}
                     >
-                      {isCta ? t('misc.loading') : t('misc.choosePlan', { name: plan.name })}
+                      {t('misc.choosePlan', { name: plan.name })} ↗
                     </button>
                   )}
                 </div>

@@ -19,7 +19,6 @@ import { getPushState, enablePush, disablePush, type PushState } from '@/lib/pus
 import { hidePricing, openWebsite } from '@/lib/native/platform'
 import { openIapStore } from '@/lib/iap/store-events'
 import NativeBilling from '@/components/iap/NativeBilling'
-import { useSwipeBack } from '@/hooks/useSwipeBack'
 import { listBlockedUsers, unblockUser, type BlockedUser } from '@/lib/moderation/dm'
 import { Avatar } from '@/components/shared/Sidebar'
 import { useNarrow } from '@/lib/hooks/useNarrow'
@@ -577,7 +576,7 @@ function ProfilIdentityBloc() {
   async function handleSave() {
     const err = await saveProfile()
     if (err) { setToast({ msg:t('profile.photoUploadError'), ok:false }); setTimeout(()=>setToast(null), 4000) }
-    else { setToast({ msg:t('profile.profileSaved'), ok:true }); setTimeout(()=>setToast(null), 2500) }
+    // Succès : l'animation « Enregistré » globale (GlobalSaveToast) suffit — pas de second bandeau.
   }
 
   const imc = profileData.height_cm && profileData.weight_kg
@@ -2784,7 +2783,6 @@ export function ProfileContent() {
 
   function open(id: string) { setDir(1); setActive(id); window.scrollTo({ top: 0 }) }
   function back() { setDir(-1); setActive(null); window.scrollTo({ top: 0 }) }
-  const { dragX: backDragX, handlers: swipeBack } = useSwipeBack(back)
 
   async function handleSignOut() {
     setSigningOut(true)
@@ -2948,11 +2946,11 @@ export function ProfileContent() {
         .profile-notif-grid { display: flex; flex-direction: column; }
       `}</style>
 
-      <SlideView screenKey={active ?? '__list__'} direction={dir}>
+      <SlideView screenKey={active ?? '__list__'} direction={dir} variant="push" onBack={active ? back : undefined} background={GREY_PAGE}>
         {active ? (
           // ── Drill-down : titre centré + boutons ronds flottants (façon Claude) ──
           // Swipe-back : glisser depuis le bord gauche fait suivre la page et revient en arrière.
-          <div {...swipeBack} style={{ transform: backDragX ? `translateX(${backDragX}px)` : undefined, transition: backDragX ? 'none' : 'transform 0.26s cubic-bezier(0.32,0.72,0,1)', touchAction: 'pan-y', minHeight: '80dvh' }}>
+          <div style={{ minHeight: '80dvh' }}>
             <div style={{ position: 'sticky', top: 0, zIndex: 5, background: GREY_PAGE, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 40, margin: '0 -16px 16px', padding: '2px 16px 12px' }}>
               <PressPop onClick={back} aria-label={t('profile.back')} style={{ position: 'absolute', left: 16, top: -2, width: 44, height: 44, borderRadius: '50%', border: 'none', background: 'color-mix(in srgb, var(--text) 10%, var(--bg))', color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 12px rgba(0,0,0,0.20)' }}>
                 <ChevronLeft size={22} />

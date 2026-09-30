@@ -154,6 +154,10 @@ export default function RecordPage() {
     const next = el.offsetHeight > (collapsedH() + expandedH()) / 2
     el.style.height = next ? 'min(82dvh, 560px)' : `${collapsedH()}px`
     setSheetExpanded(next)
+    // Le clic « fantôme » suit le relâcher dans les ~300 ms : on garde le drapeau
+    // jusque-là, puis on le libère — sinon Sport / Démarrer / Parcours restaient
+    // ignorés jusqu'au prochain toucher de la feuille.
+    window.setTimeout(() => { sheetDragged.current = false }, 350)
   }
   // Réglages de session — togglés en local, mémorisés (logique détaillée plus tard).
   const [liveShare, setLiveShare]   = useState(false)
@@ -437,13 +441,13 @@ export default function RecordPage() {
         @media (min-width: 768px) { .thw-record-plus { top: 12px; right: 240px; } }
       `}</style>
       <button
-        className="thw-record-plus"
+        className="thw-record-plus thw-press"
         aria-label={t('record.createManualActivity')}
         onClick={() => setManualOpen(true)}
         style={{
-          width: 38, height: 38, borderRadius: 12, zIndex: 121,
-          background: 'var(--bg)', border: '1px solid var(--border)',
-          boxShadow: '0 2px 10px rgba(0,0,0,0.07)', cursor: 'pointer',
+          width: 44, height: 44, borderRadius: '50%', zIndex: 121,
+          background: 'var(--bg)', border: 'none',
+          boxShadow: '0 2px 12px rgba(0,0,0,0.20)', cursor: 'pointer',
           display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0,
         }}
       >
@@ -463,9 +467,10 @@ export default function RecordPage() {
         <div style={{ position: 'fixed', left: 0, right: 0, bottom: `calc(${collapsedH()}px + 20px)`, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 30, pointerEvents: 'none' }}>
           {/* Sport — ouvre le sélecteur (on peut re-changer de sport) */}
           <button
+            className="thw-press"
             onClick={() => { if (sheetDragged.current) return; setSportSheetOpen(true) }}
             aria-label={getSportLabel(sport)}
-            style={{ pointerEvents: 'auto', position: 'relative', width: 52, height: 52, borderRadius: '50%', background: 'var(--bg-card)', border: '1px solid var(--border)', boxShadow: '0 3px 14px rgba(0,0,0,0.22)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text)', padding: 0 }}
+            style={{ pointerEvents: 'auto', position: 'relative', width: 52, height: 52, borderRadius: '50%', background: 'var(--bg-card)', border: 'none', boxShadow: '0 3px 14px rgba(0,0,0,0.28)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text)', padding: 0 }}
           >
             {getSportIcon(sport)}
             <span style={{ position: 'absolute', top: 'calc(100% + 5px)', left: '50%', transform: 'translateX(-50%)', whiteSpace: 'nowrap', fontSize: 11.5, fontWeight: 700, color: 'var(--text)', textShadow: '0 1px 4px var(--bg-card)' }}>{getSportLabel(sport)}</span>
@@ -481,9 +486,10 @@ export default function RecordPage() {
           </button>
           {/* Parcours — change le tracé */}
           <button
+            className="thw-press"
             onClick={() => { if (sheetDragged.current) return; setRouteCreatorOpen(true) }}
             aria-label={t('record.pageRoutes')}
-            style={{ pointerEvents: 'auto', position: 'relative', width: 52, height: 52, borderRadius: '50%', background: 'var(--bg-card)', border: '1px solid var(--border)', boxShadow: '0 3px 14px rgba(0,0,0,0.22)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text)', padding: 0 }}
+            style={{ pointerEvents: 'auto', position: 'relative', width: 52, height: 52, borderRadius: '50%', background: 'var(--bg-card)', border: 'none', boxShadow: '0 3px 14px rgba(0,0,0,0.28)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text)', padding: 0 }}
           >
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M8.5 6H15a3 3 0 0 1 0 6H9a3 3 0 0 0 0 6h6.5"/></svg>
             <span style={{ position: 'absolute', top: 'calc(100% + 5px)', left: '50%', transform: 'translateX(-50%)', whiteSpace: 'nowrap', fontSize: 11.5, fontWeight: 700, color: 'var(--text)', textShadow: '0 1px 4px var(--bg-card)' }}>{t('record.pageRoutes')}</span>
@@ -516,6 +522,7 @@ export default function RecordPage() {
           onTouchStart={sheetDragStart}
           onTouchMove={sheetDragMove}
           onTouchEnd={sheetDragEnd}
+          onTouchCancel={sheetDragEnd}
           style={{ flexShrink: 0, touchAction: 'none' }}
         >
           <div onClick={() => { if (!sheetDragged.current) setSheetExpanded(e => !e) }}

@@ -18,7 +18,7 @@ interface Props extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 const SPRING = 'transform 170ms cubic-bezier(0.34, 1.56, 0.64, 1)'
 
 const PressPop = forwardRef<HTMLButtonElement, Props>(function PressPop(
-  { popScale = 1.18, style, disabled, onPointerDown, onPointerUp, onPointerLeave, onPointerCancel, children, ...rest },
+  { popScale = 1.2, style, disabled, onPointerDown, onPointerUp, onPointerLeave, onPointerCancel, children, ...rest },
   ref,
 ) {
   const [pressed, setPressed] = useState(false)
@@ -36,6 +36,10 @@ const PressPop = forwardRef<HTMLButtonElement, Props>(function PressPop(
       onPointerCancel={e => { setPressed(false); onPointerCancel?.(e) }}
       style={{
         ...style,
+        ...(pressed && !disabled ? {
+          background: 'color-mix(in srgb, var(--text) 32%, var(--bg))',
+          boxShadow: 'inset 0 0 0 1.5px color-mix(in srgb, #fff 55%, transparent), 0 4px 18px rgba(0,0,0,0.35)',
+        } : null),
         transform: `${base}scale(${pressed && !disabled ? popScale : 1})`,
         transformOrigin: 'center',
         transition: style?.transition ? `${style.transition}, ${SPRING}` : SPRING,

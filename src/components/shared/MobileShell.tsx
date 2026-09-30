@@ -3,6 +3,7 @@
 // glisse vers la droite par-dessus (coins arrondis + ombre). Header flottant (menu +
 // shuriken IA). Gestes au doigt (drag + snap) pilotés en refs (transform, 60 fps).
 // MOBILE UNIQUEMENT — le desktop n'est pas concerné (rendu via layout, branche md:hidden).
+import { haptic as hapticNative } from '@/lib/haptics'
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
@@ -72,7 +73,7 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
   useNotificationGenerators()
   const [reduce, setReduce] = useState(false)
   const panelRef = useRef<HTMLDivElement>(null)
-  const g = useRef({ active: false, dragging: false, startX: 0, startY: 0, base: 0, last: 0, hscroll: null as HTMLElement | null, hswipe: false })
+  const g = useRef({ active: false, dragging: false, startX: 0, startY: 0, base: 0, last: 0, hscroll: null as HTMLElement | null, hswipe: false, past: false })
 
   useEffect(() => {
     const m = window.matchMedia('(prefers-reduced-motion: reduce)')
@@ -163,7 +164,10 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
   function onTouchStart(e: React.TouchEvent) {
     const t = e.touches[0]
     const st = g.current
-    st.startX = t.clientX; st.startY = t.clientY; st.dragging = false
+    st.startX = t.clientX; st.startY = t.clientY; st.dragging = false; st.past = false
+    // Feuilles / modales (portails hors de la page) : leur geste ne doit JAMAIS
+    // ouvrir la sidebar — React remonte pourtant l'événement jusqu'ici.
+    if (!panelRef.current?.contains(e.target as Node)) { st.active = false; return }
     st.base = open ? offsetPx() : 0; st.last = st.base
     // Sur la page d'enregistrement (carte plein écran), on NE glisse JAMAIS la
     // sidebar : le doigt sert à déplacer la carte. On n'amorce pas le geste.
@@ -198,6 +202,9 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
     }
     const x = Math.max(0, Math.min(offsetPx(), st.base + dx))
     st.last = x; paint(x)
+    // Légère vibration quand le geste franchit le seuil d'ouverture (et au retour).
+    const past = x > offsetPx() * 0.4
+    if (past !== st.past) { st.past = past; hapticNative('light') }
   }
   function onTouchEnd() {
     const st = g.current; if (!st.dragging) { st.active = false; return }

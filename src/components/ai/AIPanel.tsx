@@ -27,6 +27,7 @@ import { CheckCircle2, XCircle, ChevronDown, ChevronRight, ArrowLeft, Zap, Globe
 import HybridNetworksPanel, { type HNConv } from './HybridNetworksPanel'
 import { MobileSheet } from './MobileSheet'
 import { haptic } from '@/lib/ui/haptic'
+import { haptic as hapticNative } from '@/lib/haptics'
 import { computeZoneDistribution, type ZoneRowLite, type StreamsForZones } from '@/lib/analysis/zoneDistribution'
 import { loadAsOf } from '@/lib/training/pmc'
 import type { ActivityRow as PmcActivityRow } from '@/app/recovery/components/types'
@@ -20950,7 +20951,7 @@ export default function AIPanel({
   const initMsgRef         = useRef<string | undefined>(undefined)
   // Swipe / drag tracking (mobile) — sidebar coulissante
   const chatColRef = useRef<HTMLDivElement>(null)
-  const dragRef    = useRef<{ startX: number; startY: number; startOffset: number; active: boolean; lastOff: number; lastX: number; lastT: number; vx: number } | null>(null)
+  const dragRef    = useRef<{ startX: number; startY: number; startOffset: number; active: boolean; lastOff: number; lastX: number; lastT: number; vx: number; past?: boolean } | null>(null)
   // Selection popup ref (pour détecter clic extérieur)
   const selPopupRef = useRef<HTMLDivElement>(null)
   // File inputs for attachment
@@ -21578,6 +21579,9 @@ export default function AIPanel({
     }
     const off = Math.max(0, Math.min(AI_SIDEBAR_W, d.startOffset + dx))
     d.lastOff = off
+    // Légère vibration au franchissement du seuil d'ouverture / de fermeture.
+    const crossed = d.startOffset < AI_SIDEBAR_W / 2 ? off > AI_SIDEBAR_W * 0.18 : off > AI_SIDEBAR_W * 0.82
+    if (crossed !== (d.past ?? (d.startOffset >= AI_SIDEBAR_W / 2))) { d.past = crossed; hapticNative('light') }
     // Vitesse instantanée (px/ms) pour détecter un « flick » : un petit geste
     // rapide suffit à ouvrir/fermer, comme dans Claude.
     const now = Date.now()

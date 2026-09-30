@@ -70,6 +70,8 @@ try {
       // Marqueur explicite « app native » : masque les prix / achats in-app
       // (paiement Stripe hors app — règles App Store). Voir lib/native/platform.
       NEXT_PUBLIC_NATIVE_APP: '1',
+      // Clé publique RevenueCat (iOS) — publique par conception, embarquée dans l'app.
+      NEXT_PUBLIC_REVENUECAT_IOS_KEY: process.env.NEXT_PUBLIC_REVENUECAT_IOS_KEY || 'appl_iMcOAUDXHXCTVDjTTSfeTzxDPpH',
     },
   })
   console.log('\n✅ Build statique terminé → dossier out/  (prêt pour `npx cap sync`)')

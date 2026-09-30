@@ -13317,14 +13317,25 @@ function HistoryDrawer({
 
   // ── Contenu partagé (header + liste + settings) ─────────────
 
-  const sectionLabelStyle: React.CSSProperties = {
+  const sectionLabelStyle: React.CSSProperties = underlay ? {
+    fontSize: 15, fontWeight: 500, color: 'var(--text-mid)',
+    margin: '16px 0 6px', padding: '0 14px',
+  } : {
     fontSize: 10, fontWeight: 600, letterSpacing: '1.2px',
     textTransform: 'uppercase' as const, color: 'var(--text-dim)',
     margin: '10px 0 4px', padding: '0 8px',
   }
-  const dividerStyle: React.CSSProperties = {
+  const dividerStyle: React.CSSProperties = underlay ? { height: 0, margin: '4px 0' } : {
     height: 1, background: 'var(--border)', margin: '8px 12px',
   }
+  // Lignes de navigation de la sidebar mobile : mêmes proportions que Claude
+  // (50 px de haut, texte blanc 17 px, icône 22 px).
+  const rowBtn: React.CSSProperties = underlay ? {
+    display: 'flex', alignItems: 'center', gap: 14, width: '100%', minHeight: 50, padding: '0 14px',
+    borderRadius: 18, border: 'none', background: 'transparent', cursor: 'pointer',
+    color: 'var(--text)', fontSize: 17, fontWeight: 500, fontFamily: 'var(--font-body)', textAlign: 'left',
+  } : {}
+  const ic = underlay ? 22 : 15
 
   const sidebarContent = (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -13343,17 +13354,18 @@ function HistoryDrawer({
             </button>
           )}
         </div>
-        <div ref={avatarRef} style={{ position: 'relative', flexShrink: 0 }}>
+        <div ref={avatarRef} style={underlay ? { position: 'absolute', left: 16, bottom: 20, zIndex: 6 } : { position: 'relative', flexShrink: 0 }}>
           <button
             type="button"
             onClick={() => { haptic(); setAvatarMenu(o => !o) }}
             aria-label={t('aip.accountSettings')}
             style={{
-              width: 34, height: 34, borderRadius: '50%', flexShrink: 0,
+              width: underlay ? 56 : 34, height: underlay ? 56 : 34, borderRadius: '50%', flexShrink: 0,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               overflow: 'hidden', cursor: 'pointer', padding: 0,
-              border: '0.5px solid var(--border)', background: 'var(--bg-alt)',
-              color: 'var(--text)', fontSize: 13, fontWeight: 600,
+              border: underlay ? 'none' : '0.5px solid var(--border)', background: underlay ? 'color-mix(in srgb, var(--text) 12%, var(--bg-card))' : 'var(--bg-alt)',
+              boxShadow: underlay ? '0 4px 16px rgba(0,0,0,0.3)' : undefined,
+              color: 'var(--text)', fontSize: underlay ? 20 : 13, fontWeight: 600,
               fontFamily: 'DM Sans,sans-serif',
             }}
           >
@@ -13363,7 +13375,7 @@ function HistoryDrawer({
               : (initials || '?')}
           </button>
           {avatarMenu && (
-            <div style={{ position: 'absolute', top: '110%', right: 0, zIndex: 100, minWidth: 190, background: 'var(--bg-card)', border: '0.5px solid var(--border)', borderRadius: 12, boxShadow: '0 10px 34px rgba(0,0,0,0.22)', overflow: 'hidden', padding: 4 }}>
+            <div style={{ position: 'absolute', ...(underlay ? { bottom: '115%', left: 0 } : { top: '110%', right: 0 }), zIndex: 100, minWidth: 210, background: 'var(--bg-card)', border: '0.5px solid var(--border)', borderRadius: 12, boxShadow: '0 10px 34px rgba(0,0,0,0.22)', overflow: 'hidden', padding: 4 }}>
               {[
                 { label: 'Paramètres', section: 'profil' },
                 { label: 'Modèles', section: 'modele' },
@@ -13429,11 +13441,12 @@ function HistoryDrawer({
             border: 'none', background: 'transparent', cursor: 'pointer',
             color: 'var(--text-mid)', fontSize: 14, fontWeight: 400,
             fontFamily: 'DM Sans,sans-serif', textAlign: 'left',
+            ...rowBtn,
           }}
           onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)' }}
           onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
         >
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+          <svg width={ic} height={ic} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
             <path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
           </svg>
           <span style={{ flex: 1 }}>{t('ai.projects')}</span>
@@ -13482,7 +13495,7 @@ function HistoryDrawer({
               style={{
                 display: 'flex', alignItems: 'center', gap: 8, width: '100%',
                 padding: '6px 8px', borderRadius: 7, border: 'none', cursor: 'pointer',
-                background: 'transparent', color: 'var(--text-dim)', fontSize: 12.5,
+                background: 'transparent', color: 'var(--text-mid)', fontSize: underlay ? 16 : 12.5, minHeight: underlay ? 44 : undefined,
                 fontFamily: 'DM Sans,sans-serif', textAlign: 'left',
               }}
               onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)' }}
@@ -13503,11 +13516,12 @@ function HistoryDrawer({
             border: 'none', background: 'transparent', cursor: 'pointer',
             color: 'var(--text-mid)', fontSize: 14, fontWeight: 400,
             fontFamily: 'DM Sans,sans-serif', textAlign: 'left',
+            ...rowBtn,
           }}
           onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)' }}
           onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
         >
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+          <svg width={ic} height={ic} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
             <path d="M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4M4.9 19.1l2.8-2.8M16.3 7.7l2.8-2.8" />
           </svg>
           <span style={{ flex: 1 }}>Routine</span>
@@ -13522,11 +13536,12 @@ function HistoryDrawer({
             border: 'none', background: 'transparent', cursor: 'pointer',
             color: 'var(--text-mid)', fontSize: 14, fontWeight: 400,
             fontFamily: 'DM Sans,sans-serif', textAlign: 'left',
+            ...rowBtn,
           }}
           onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)' }}
           onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
         >
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+          <svg width={ic} height={ic} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
             <circle cx="5" cy="6" r="2.4"/><circle cx="19" cy="6" r="2.4"/><circle cx="12" cy="18" r="2.4"/>
             <path d="M7.2 7.2 10.5 16M16.8 7.2 13.5 16"/>
           </svg>
@@ -13542,11 +13557,11 @@ function HistoryDrawer({
         <button
           onClick={() => onAgentChange('training')}
           style={{
-            display: 'flex', alignItems: 'center', gap: 10,
-            width: '100%', padding: '9px 9px', borderRadius: 9,
+            display: 'flex', alignItems: 'center', gap: underlay ? 14 : 10,
+            width: '100%', padding: underlay ? '0 14px' : '9px 9px', minHeight: underlay ? 50 : undefined, borderRadius: underlay ? 18 : 9,
             border: 'none',
             background: activeAgent === 'training' ? 'var(--bg-hover)' : 'transparent',
-            color: 'var(--text)', fontSize: 15,
+            color: 'var(--text)', fontSize: underlay ? 17 : 15,
             fontWeight: activeAgent === 'training' ? 600 : 500,
             cursor: 'pointer', fontFamily: 'var(--font-body)', textAlign: 'left',
             transition: 'background 0.12s',
@@ -13554,7 +13569,7 @@ function HistoryDrawer({
           onMouseEnter={e => { if (activeAgent !== 'training') (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)' }}
           onMouseLeave={e => { if (activeAgent !== 'training') (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
         >
-          <Zap size={16} color={activeAgent === 'training' ? '#06B6D4' : 'var(--text-mid)'} style={{ flexShrink: 0 }} />
+          <Zap size={underlay ? 22 : 16} color={activeAgent === 'training' ? '#06B6D4' : 'var(--text-mid)'} style={{ flexShrink: 0 }} />
           Athlete
         </button>
         {/* Agent Coach — visible partout, ouvrable seulement avec un abonnement coach */}
@@ -13562,11 +13577,11 @@ function HistoryDrawer({
           onClick={() => { if (coachAccess) onAgentChange('coach') }}
           title={coachAccess ? 'Agent Coach' : 'Réservé à l’abonnement coach'}
           style={{
-            display: 'flex', alignItems: 'center', gap: 10,
-            width: '100%', padding: '9px 9px', borderRadius: 9,
+            display: 'flex', alignItems: 'center', gap: underlay ? 14 : 10,
+            width: '100%', padding: underlay ? '0 14px' : '9px 9px', minHeight: underlay ? 50 : undefined, borderRadius: underlay ? 18 : 9,
             border: 'none',
             background: activeAgent === 'coach' ? 'var(--bg-hover)' : 'transparent',
-            color: 'var(--text)', fontSize: 15,
+            color: 'var(--text)', fontSize: underlay ? 17 : 15,
             fontWeight: activeAgent === 'coach' ? 600 : 500,
             cursor: coachAccess ? 'pointer' : 'not-allowed', opacity: coachAccess ? 1 : 0.55,
             fontFamily: 'var(--font-body)', textAlign: 'left', transition: 'background 0.12s',
@@ -13574,7 +13589,7 @@ function HistoryDrawer({
           onMouseEnter={e => { if (coachAccess && activeAgent !== 'coach') (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)' }}
           onMouseLeave={e => { if (activeAgent !== 'coach') (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={activeAgent === 'coach' ? '#3B92D4' : 'var(--text-mid)'} strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          <svg width={underlay ? 22 : 16} height={underlay ? 22 : 16} viewBox="0 0 24 24" fill="none" stroke={activeAgent === 'coach' ? '#3B92D4' : 'var(--text-mid)'} strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
           <span style={{ flex: 1 }}>Coach</span>
           {!coachAccess && (
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
@@ -13612,7 +13627,7 @@ function HistoryDrawer({
       </div>
 
       {/* Conversation list */}
-      <div className="aip-hist-list" style={{ flex: 1, overflowY: 'auto', padding: underlay ? '4px 6px 76px' : '4px 6px' }}>
+      <div className="aip-hist-list" style={{ flex: 1, overflowY: 'auto', padding: underlay ? '4px 6px 100px' : '4px 6px' }}>
         {convs.length === 0 ? (
           <div style={{ padding: '18px 8px', textAlign: 'center', color: 'var(--ai-dim)', fontSize: 11, lineHeight: 1.6 }}>
             Aucune conversation.<br />Pose une question pour commencer.
@@ -13860,16 +13875,16 @@ function HistoryDrawer({
         <button
           onClick={onNew}
           style={{
-            position: 'absolute', bottom: 20, left: '50%', transform: 'translateX(-50%)',
-            display: 'flex', alignItems: 'center', gap: 8, zIndex: 5,
-            padding: '11px 20px', borderRadius: 999, border: 'none',
+            position: 'absolute', bottom: 20, left: 84, right: 16,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, zIndex: 5,
+            minHeight: 56, padding: '0 20px', borderRadius: 999, border: 'none',
             background: 'var(--text)', color: 'var(--bg-card)',
-            fontSize: 14, fontWeight: 600, fontFamily: 'DM Sans,sans-serif',
+            fontSize: 17, fontWeight: 600, fontFamily: 'var(--font-body)',
             cursor: 'pointer', whiteSpace: 'nowrap',
             boxShadow: '0 8px 24px rgba(0,0,0,0.24)',
           }}
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" style={{ flexShrink: 0 }}>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" style={{ flexShrink: 0 }}>
             <path d="M12 5v14M5 12h14" />
           </svg>
           {t('w1i.new_conversation')}
@@ -21599,7 +21614,7 @@ export default function AIPanel({
     dragRef.current = null
     const el = chatColRef.current
     // Restaure la transition animée pour que le snap glisse (et ne saute pas)
-    if (el) el.style.transition = 'transform 0.2s cubic-bezier(0.22,0.7,0.15,1)'
+    if (el) el.style.transition = 'transform 0.36s cubic-bezier(0.22, 1, 0.36, 1)'
     if (d && d.active) {
       // Ouverture au moindre geste : un flick rapide (vitesse) OU un petit
       // déplacement (~18 % de la largeur) suffit, dans le sens du geste.
@@ -23273,6 +23288,26 @@ export default function AIPanel({
           box-shadow: 0 0 0 3px rgba(6,182,212,0.15) !important;
         }
         .aip-input-wrap *:focus-visible { outline: none !important; }
+
+        /* Champ d'écriture mobile — même langage que Claude : grande capsule grise
+           sans bordure, texte 17 px, gros bouton « + » rond, envoi rond 44 px. */
+        @media (max-width: 767px) {
+          html .aip-input-wrap, html.dark .aip-input-wrap {
+            border-radius: 30px !important; border: none !important; box-shadow: none !important;
+            background: color-mix(in srgb, var(--text) 9%, var(--bg)) !important;
+          }
+          html .aip-input-wrap:focus-within, html.dark .aip-input-wrap:focus-within {
+            border: none !important;
+            box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--text) 18%, transparent) !important;
+          }
+          .aip-input-wrap .aip-textarea { font-size: 17px !important; padding: 18px 22px 4px !important; min-height: 60px !important; }
+          .aip-input-wrap [data-guide="ai-plus"] {
+            width: 44px !important; height: 44px !important;
+            background: color-mix(in srgb, var(--text) 13%, var(--bg)) !important; color: var(--text) !important;
+          }
+          .aip-input-wrap [data-guide="ai-plus"] svg { width: 22px; height: 22px; }
+          .aip-input-wrap .aip-send-live, .aip-input-wrap [data-guide="ai-send"] { width: 44px !important; height: 44px !important; }
+        }
 
         /* Bulle message utilisateur — gris (jour) / noir distinct du fond (nuit) */
         .aip-user-bubble { background: #EDEDED; color: #15171C; }

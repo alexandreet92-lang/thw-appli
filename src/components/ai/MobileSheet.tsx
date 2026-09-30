@@ -19,7 +19,7 @@ import { createPortal } from 'react-dom'
 import { useI18n } from '@/lib/i18n'
 import PressPop from '@/components/ui/PressPop'
 
-const SPRING = 'height 0.34s cubic-bezier(0.32,0.72,0,1), transform 0.34s cubic-bezier(0.32,0.72,0,1)'
+const SPRING = 'height 0.5s cubic-bezier(0.22, 1, 0.36, 1), transform 0.5s cubic-bezier(0.22, 1, 0.36, 1)'
 
 type Drag = {
   startY: number
@@ -93,13 +93,13 @@ export function MobileSheet({
     closingRef.current = true
     const el = panelRef.current
     const bd = backdropRef.current
-    if (bd) { bd.style.transition = 'opacity 0.28s ease'; bd.style.opacity = '0' }
+    if (bd) { bd.style.transition = 'opacity 0.4s ease'; bd.style.opacity = '0' }
     if (el) {
       const h = el.getBoundingClientRect().height
-      el.style.transition = 'transform 0.30s cubic-bezier(0.32,0.72,0,1)'
+      el.style.transition = 'transform 0.42s cubic-bezier(0.22, 1, 0.36, 1)'
       el.style.transform = `translateY(${h + 48}px)`
     }
-    window.setTimeout(onClose, 280)
+    window.setTimeout(onClose, 400)
   }
 
   useEffect(() => {
@@ -109,29 +109,32 @@ export function MobileSheet({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // ── Gestes de drag (poignée + en-tête) ──────────────────────
-  const onPointerDown = (e: React.PointerEvent) => {
+  // ── Gestes de drag : sur TOUTE la feuille (pas seulement la poignée) ──
+  // Tactile : écouteurs natifs non passifs (preventDefault pendant le drag).
+  // Règle : tirer vers le HAUT agrandit tant qu'il reste de la place ; tirer vers
+  // le BAS déplace la feuille si le contenu est en haut de sa course, sinon le
+  // contenu défile normalement.
+  const dragStart = (y: number) => {
     const dims = dimsRef.current
     const el = panelRef.current
     if (!dims || !el || closingRef.current) return
     el.style.transition = 'none'
     const h = el.getBoundingClientRect().height
-    dragRef.current = { startY: e.clientY, startH: h, h, ty: 0, vel: 0, lastY: e.clientY, lastT: performance.now() }
-    ;(e.target as Element).setPointerCapture?.(e.pointerId)
+    dragRef.current = { startY: y, startH: h, h, ty: 0, vel: 0, lastY: y, lastT: performance.now() }
   }
 
-  const onPointerMove = (e: React.PointerEvent) => {
+  const dragMove = (y: number) => {
     const d = dragRef.current
     const dims = dimsRef.current
     const el = panelRef.current
     if (!d || !dims || !el) return
     const now = performance.now()
-    d.vel = (e.clientY - d.lastY) / Math.max(1, now - d.lastT)
-    d.lastY = e.clientY
+    d.vel = (y - d.lastY) / Math.max(1, now - d.lastT)
+    d.lastY = y
     d.lastT = now
 
-    const dy = e.clientY - d.startY      // +bas / -haut
-    let newH = d.startH - dy             // tirer haut → plus grand
+    const dy = y - d.startY      // +bas / -haut
+    let newH = d.startH - dy     // tirer haut → plus grand
 
     if (newH > dims.exp) {
       // résistance élastique au-dessus de la détente max
@@ -151,7 +154,7 @@ export function MobileSheet({
     }
   }
 
-  const onPointerUp = () => {
+  const dragEnd = () => {
     const d = dragRef.current
     const dims = dimsRef.current
     const el = panelRef.current
@@ -172,6 +175,59 @@ export function MobileSheet({
     el.style.height = (goExp ? dims.exp : dims.col) + 'px'
   }
 
+  // Souris (bureau) : poignée + en-tête ; le tactile passe par les écouteurs natifs.
+  const onPointerDown = (e: React.PointerEvent) => {
+    if (e.pointerType === 'touch') return
+    dragStart(e.clientY)
+    ;(e.target as Element).setPointerCapture?.(e.pointerId)
+  }
+  const onPointerMove = (e: React.PointerEvent) => { if (e.pointerType !== 'touch') dragMove(e.clientY) }
+  const onPointerUp = (e: React.PointerEvent) => { if (e.pointerType !== 'touch') dragEnd() }
+
+  useEffect(() => {
+    if (!mounted) return
+    const el = panelRef.current
+    if (!el) return
+    let t0: { x: number; y: number } | null = null
+    let dragging = false
+    const scroller = () => el.querySelector<HTMLElement>('[data-sheet-scroll]')
+    const onStart = (e: TouchEvent) => {
+      const t = e.touches[0]
+      t0 = { x: t.clientX, y: t.clientY }; dragging = false
+    }
+    const onMove = (e: TouchEvent) => {
+      if (!t0) return
+      const t = e.touches[0]
+      if (!dragging) {
+        const dx = t.clientX - t0.x, dy = t.clientY - t0.y
+        if (Math.abs(dy) < 6 || Math.abs(dy) < Math.abs(dx)) return
+        const dims = dimsRef.current
+        const sc = scroller()
+        const inHeader = !!(e.target as Element | null)?.closest?.('[data-sheet-drag]')
+        const canGrow = !!dims && (el.getBoundingClientRect().height < dims.exp - 2)
+        const atTop = !sc || sc.scrollTop <= 0
+        const ok = inHeader || (dy < 0 ? canGrow : atTop)
+        if (!ok) { t0 = null; return }
+        dragging = true
+        dragStart(t0.y)
+      }
+      e.preventDefault()
+      dragMove(t.clientY)
+    }
+    const onEnd = () => { t0 = null; if (dragging) { dragging = false; dragEnd() } }
+    el.addEventListener('touchstart', onStart, { passive: true })
+    el.addEventListener('touchmove', onMove, { passive: false })
+    el.addEventListener('touchend', onEnd)
+    el.addEventListener('touchcancel', onEnd)
+    return () => {
+      el.removeEventListener('touchstart', onStart)
+      el.removeEventListener('touchmove', onMove)
+      el.removeEventListener('touchend', onEnd)
+      el.removeEventListener('touchcancel', onEnd)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mounted])
+
   if (!mounted) return null
 
   return createPortal(
@@ -179,7 +235,7 @@ export function MobileSheet({
       <div
         ref={backdropRef}
         onClick={requestClose}
-        style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 1400, opacity: 0, transition: 'opacity 0.24s ease' }}
+        style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 1400, opacity: 0, transition: 'opacity 0.4s ease' }}
       />
       <div
         ref={panelRef}
@@ -201,6 +257,7 @@ export function MobileSheet({
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
           onPointerCancel={onPointerUp}
+          data-sheet-drag
           style={{ flexShrink: 0, cursor: 'grab', touchAction: 'none', userSelect: 'none' }}
         >
           <div style={{ width: 38, height: 4, borderRadius: 2, background: 'var(--border-mid)', margin: '9px auto 2px' }} />
@@ -226,7 +283,7 @@ export function MobileSheet({
         </div>
 
         {/* Contenu défilable */}
-        <div style={{
+        <div data-sheet-scroll style={{
           flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch',
           padding: '2px 8px calc(8px + env(safe-area-inset-bottom, 0px))',
         }}>

@@ -11,6 +11,7 @@ import { installNativeApiFetch } from '@/lib/native/apiFetch'
 import { isNativeApp, openWebsite } from '@/lib/native/platform'
 import { createClient } from '@/lib/supabase/client'
 import { IapStoreHost } from '@/components/iap/IapStoreHost'
+import { installOverlayMotion } from '@/lib/ui/overlayMotion'
 import { getCurrentUser } from '@/lib/auth/currentUser'
 import { initIap } from '@/lib/iap/purchases'
 import type { EmailOtpType, Session, AuthChangeEvent } from '@supabase/supabase-js'
@@ -26,6 +27,8 @@ export function ClientShell({ children }: ClientShellProps) {
   useEffect(() => {
     // App native : redirige les appels /api vers Vercel + ajoute le token (no-op en web).
     installNativeApiFetch()
+    // Toute fenêtre / feuille / menu qui apparaît est animée (jamais d'apparition sèche).
+    const stopMotion = installOverlayMotion()
     // Débloque l'audio (iOS) au 1er geste → la sonnerie d'appel entrant sonnera.
     void import('@/lib/community/audioUnlock').then(m => m.installAudioUnlock()).catch(() => {})
     setHydrated(true)
@@ -58,6 +61,7 @@ export function ClientShell({ children }: ClientShellProps) {
         navigator.serviceWorker.register('/sw.js').catch(() => { /* ignore */ })
       }
     }
+    return () => stopMotion()
   }, [])
 
   // App iOS : rattache RevenueCat à l'utilisateur connecté (achats in-app).

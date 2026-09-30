@@ -103,14 +103,14 @@ function SubItem({ href, labelKey, Icon, active }: Sub & { active: boolean }) {
     const evt = href === '/profile' ? 'thw:open-profile' : 'thw:open-feedback'
     return (
       <button onClick={() => window.dispatchEvent(new Event(evt))} style={{ ...BTN, background: 'none', border: 'none', cursor: 'pointer' }}>
-        <Icon size={20} color={active ? ACCENT : DIM} />
+        <Icon size={24} color={active ? ACCENT : DIM} />
         <span style={lbl(active)}>{t(labelKey)}</span>
       </button>
     )
   }
   return (
     <Link href={href} style={{ ...BTN, textDecoration: 'none' }}>
-      <Icon size={20} color={active ? ACCENT : DIM} />
+      <Icon size={24} color={active ? ACCENT : DIM} />
       <span style={lbl(active)}>{t(labelKey)}</span>
     </Link>
   )
@@ -204,13 +204,13 @@ export default function MobileTabBar() {
     return (
       <>
         {!hidden && !overpage && !immersive && (
-          <nav className="mobile-tab-bar thw-glass md:hidden" style={BAR}>
-            <div style={{ display: 'flex', width: '100%', height: 64, alignItems: 'center' }}>
+          <nav className="mobile-tab-bar md:hidden" style={BAR}>
+            <div style={{ display: 'flex', width: '100%', height: 68, alignItems: 'center' }}>
               {COACH_TABS.map(tab => {
                 const active = tab.match(pathname)
                 return (
                   <Link key={tab.href} href={tab.href} style={{ ...BTN, textDecoration: 'none' }} aria-label={t(tab.labelKey)}>
-                    <tab.Icon size={22} color={active ? ACCENT : DIM} />
+                    <tab.Icon size={25} color={active ? ACCENT : DIM} />
                     <span style={lbl(active)}>{t(tab.labelKey)}</span>
                   </Link>
                 )
@@ -243,9 +243,9 @@ export default function MobileTabBar() {
   return (
     <>
       {!hidden && !overpage && !immersive && (
-      <nav className="mobile-tab-bar thw-glass md:hidden" style={BAR}>
+      <nav className="mobile-tab-bar md:hidden" style={BAR}>
         <div style={{
-          display: 'flex', width: '100%', height: 64, alignItems: 'center',
+          display: 'flex', width: '100%', height: 68, alignItems: 'center',
           opacity:   exiting ? 0 : 1,
           transform: exiting ? 'translateY(8px)' : 'translateY(0)',
           transition: 'opacity 0.18s ease, transform 0.18s ease',
@@ -255,7 +255,7 @@ export default function MobileTabBar() {
             /* ── Sub-pages ──────────────────────────────────── */
             <>
               <button onClick={() => switchTo('main')} style={{ ...BTN, flex: '0 0 48px' as unknown as number }}>
-                <ChevronLeft size={24} color={DIM} />
+                <ChevronLeft size={26} color={DIM} />
               </button>
               {SUBS[mode as Exclude<Mode, 'main'>].map(s => (
                 <SubItem key={s.href} {...s} active={pathname === s.href} />
@@ -266,19 +266,19 @@ export default function MobileTabBar() {
             <>
               {/* Plan */}
               <button onClick={() => switchTo('plan')} style={btnStyle(activeTab === 'plan')} className="thw-press">
-                <span style={iconWrap(activeTab === 'plan')}><CalendarDays size={22} color={col(activeTab === 'plan')} /></span>
+                <span style={iconWrap(activeTab === 'plan')}><CalendarDays size={25} color={col(activeTab === 'plan')} /></span>
                 <span style={lbl(activeTab === 'plan')}>{t('nav.tabPlan')}</span>
               </button>
 
               {/* Stats */}
               <button onClick={() => switchTo('stats')} style={btnStyle(activeTab === 'stats')} className="thw-press">
-                <span style={iconWrap(activeTab === 'stats')}><BarChart3 size={22} color={col(activeTab === 'stats')} /></span>
+                <span style={iconWrap(activeTab === 'stats')}><BarChart3 size={25} color={col(activeTab === 'stats')} /></span>
                 <span style={lbl(activeTab === 'stats')}>{t('nav.tabStats')}</span>
               </button>
 
               {/* Record — centre, plat et aligné avec les autres (façon Strava) */}
               <Link href="/record" style={{ ...btnStyle(false), textDecoration: 'none' }} className="thw-press" aria-label={t('nav.startActivity')}>
-                <svg width="24" height="24" viewBox="0 0 26 26" fill="none">
+                <svg width="27" height="27" viewBox="0 0 26 26" fill="none">
                   <circle cx="13" cy="13" r="10" stroke={ACCENT} strokeWidth="1.7" />
                   <circle cx="13" cy="13" r="5"  fill={ACCENT} />
                 </svg>
@@ -287,7 +287,7 @@ export default function MobileTabBar() {
 
               {/* Plus */}
               <button onClick={() => switchTo('plus')} style={btnStyle(activeTab === 'plus')} className="thw-press">
-                <span style={iconWrap(activeTab === 'plus')}><Grid3x3 size={22} color={col(activeTab === 'plus')} /></span>
+                <span style={iconWrap(activeTab === 'plus')}><Grid3x3 size={25} color={col(activeTab === 'plus')} /></span>
                 <span style={lbl(activeTab === 'plus')}>{t('nav.tabPlus')}</span>
               </button>
 
@@ -297,7 +297,7 @@ export default function MobileTabBar() {
                 <img
                   src="/logos/logo_4bras.png"
                   alt={t('nav.coachAI')}
-                  width={24} height={24}
+                  width={27} height={27}
                   style={{ objectFit: 'contain' }}
                 />
               </button>
@@ -320,14 +320,15 @@ const BAR: React.CSSProperties = {
   // élevée (0,82) → reste net même si le flou backdrop est faible dans la
   // WebView iOS ; sur Safari le verre dépoli s'affiche pleinement.
   position: 'fixed', zIndex: 100,
-  left: 12, right: 12,
+  left: 16, right: 16,
   bottom: 'calc(env(safe-area-inset-bottom, 0px) + 2px)',
-  borderRadius: 30,
-  background: 'color-mix(in srgb, var(--bg-card) 82%, transparent)',
+  borderRadius: 'var(--r-pill)',
+  background: 'color-mix(in srgb, color-mix(in srgb, var(--text) 9%, var(--bg)) 94%, transparent)',
   backdropFilter: 'blur(22px) saturate(180%)',
   WebkitBackdropFilter: 'blur(22px) saturate(180%)',
-  border: '1px solid var(--border)',
-  boxShadow: '0 6px 24px rgba(0,0,0,0.16)',
+  border: 'none',
+  boxShadow: '0 8px 28px rgba(0,0,0,0.28)',
+  WebkitTransform: 'translateZ(0)',
 }
 
 // Bouton d'onglet : pastille arrondie ; l'actif reçoit un fond teinté (mouvement
@@ -335,9 +336,9 @@ const BAR: React.CSSProperties = {
 const btnStyle = (active: boolean): React.CSSProperties => ({
   flex: 1, position: 'relative', display: 'flex', flexDirection: 'column',
   alignItems: 'center', justifyContent: 'center', gap: 3,
-  height: 56, margin: '4px 3px', borderRadius: 18, padding: '4px 0',
+  height: 60, margin: '4px', borderRadius: 'var(--r-pill)', padding: '4px 0',
   border: 'none', cursor: 'pointer',
-  background: active ? 'color-mix(in srgb, var(--primary) 13%, transparent)' : 'transparent',
+  background: active ? 'color-mix(in srgb, var(--text) 14%, transparent)' : 'transparent',
   transition: 'background 0.24s cubic-bezier(0.32,0.72,0,1)',
   WebkitTapHighlightColor: 'transparent',
 })
@@ -345,9 +346,9 @@ const btnStyle = (active: boolean): React.CSSProperties => ({
 const BTN: React.CSSProperties = btnStyle(false)
 
 const lbl = (on: boolean): React.CSSProperties => ({
-  fontSize: 10, lineHeight: 1,
+  fontSize: 12, lineHeight: 1,
   fontFamily: 'var(--font-body)',
-  fontWeight: on ? 700 : 500,
+  fontWeight: 600,
   color: on ? ACCENT : DIM,
   transition: 'color 0.2s ease',
 })

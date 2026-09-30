@@ -249,10 +249,10 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
   // il s'affiche par intermittence (« des fois ça marche, des fois pas »). Un
   // fond plein est 100 % constant → plus de clignotement, boutons toujours nets.
   const fab: React.CSSProperties = {
-    position: 'absolute', top: 'calc(env(safe-area-inset-top) + 10px)', width: 38, height: 38,
-    display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border)',
-    background: 'var(--bg-card)',
-    boxShadow: '0 2px 10px rgba(0,0,0,0.10)', cursor: 'pointer', zIndex: 5, padding: 0,
+    position: 'absolute', top: 'calc(env(safe-area-inset-top) + 7px)', width: 44, height: 44, borderRadius: '50%',
+    display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none',
+    background: 'color-mix(in srgb, var(--text) 10%, var(--bg))',
+    boxShadow: '0 2px 12px rgba(0,0,0,0.20)', cursor: 'pointer', zIndex: 5, padding: 0, WebkitTransform: 'translateZ(0)',
   }
 
   return (
@@ -287,19 +287,19 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
                 Ce dégradé de fond plein est 100 % fiable : plein (jamais see-through)
                 sur la zone des boutons/barre d'état, puis fondu doux vers le contenu
                 → ne cache pas le contenu plus bas. z 4 < 5 (boutons nets), no tap. */}
-            <div aria-hidden style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 'calc(env(safe-area-inset-top) + 50px)', pointerEvents: 'none', zIndex: 4, background: 'linear-gradient(to bottom, var(--bg) 0%, var(--bg) 68%, transparent 100%)' }} />
+            <div aria-hidden style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 'calc(env(safe-area-inset-top) + 56px)', pointerEvents: 'none', zIndex: 4, background: 'linear-gradient(to bottom, var(--bg) 0%, var(--bg) 68%, transparent 100%)' }} />
             <div aria-hidden style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 'calc(env(safe-area-inset-bottom) + 60px)', pointerEvents: 'none', zIndex: 4, background: 'linear-gradient(to top, var(--bg) 0%, var(--bg) 55%, transparent 100%)' }} />
           </>}
-          <button aria-label={t('shared.menu')} onClick={() => settle(!open)} className="thw-glass thw-press" style={{ ...fab, ...(isRecord ? { background: 'var(--bg)', border: '1px solid var(--border)' } : null), left: 12, borderRadius: 12, flexDirection: 'column', gap: 4 }}>
-            {[0, 1, 2].map(i => <span key={i} style={{ width: 17, height: 1.6, background: 'var(--text)', borderRadius: 2 }} />)}
+          <button aria-label={t('shared.menu')} onClick={() => settle(!open)} className="thw-press" style={{ ...fab, ...(isRecord ? { background: 'var(--bg)' } : null), left: 12, flexDirection: 'column', gap: 5 }}>
+            {[0, 1, 2].map(i => <span key={i} style={{ width: 20, height: 2, background: 'var(--text)', borderRadius: 2 }} />)}
           </button>
           {/* Bascule d'interface Athlète ⇄ Coach — réservée au propriétaire de l'espace coach. */}
           {!isRecord && coachAccess.access && (
-            <Link href={isCoach ? "/" : "/coach"} aria-label={isCoach ? t('shared.backToApp') : t('shared.coachSpace')} onClick={() => setOpen(false)} className={isCoach ? 'thw-press' : 'thw-glass thw-press'}
-              style={{ ...fab, left: 58, borderRadius: 12, textDecoration: 'none',
-                background: isCoach ? 'var(--primary)' : (fab.background as string), border: isCoach ? '1px solid var(--primary)' : (fab.border as string),
+            <Link href={isCoach ? "/" : "/coach"} aria-label={isCoach ? t('shared.backToApp') : t('shared.coachSpace')} onClick={() => setOpen(false)} className="thw-press"
+              style={{ ...fab, left: 64, textDecoration: 'none',
+                background: isCoach ? 'var(--primary)' : (fab.background as string), border: 'none',
                 boxShadow: isCoach ? '0 6px 18px rgba(6,182,212,0.34)' : undefined }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={isCoach ? '#fff' : 'var(--text)'} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={isCoach ? '#fff' : 'var(--text)'} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
                 <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>
               </svg>
             </Link>
@@ -307,28 +307,28 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
           {/* IA + notifications masqués sur /record (immersion carte). */}
           {!isRecord && <>
           {/* Rechercher / Guide — à côté des notifications. */}
-          <button data-guide="app-search" aria-label={t('shared.searchApp')} onClick={() => { setOpen(false); openSearch() }} className="thw-glass thw-press"
-            style={{ ...fab, right: 104, borderRadius: 12 }}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text)" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
+          <button data-guide="app-search" aria-label={t('shared.searchApp')} onClick={() => { setOpen(false); openSearch() }} className="thw-press"
+            style={{ ...fab, right: 116 }}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--text)" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
           </button>
           {/* Cloche notifications — ouvre une surpage centrée (sans quitter la page) */}
-          <button aria-label={t('shared.notifications')} onClick={() => { setOpen(false); setNotifOpen(true) }} className="thw-glass thw-press"
-            style={{ ...fab, right: 58, borderRadius: 12 }}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text)" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+          <button aria-label={t('shared.notifications')} onClick={() => { setOpen(false); setNotifOpen(true) }} className="thw-press"
+            style={{ ...fab, right: 64 }}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--text)" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
               <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
               <path d="M13.73 21a2 2 0 0 1-3.46 0" />
             </svg>
             {unreadNotifs > 0 && (
-              <span style={{ position: 'absolute', top: 7, right: 7, minWidth: 15, height: 15, padding: '0 4px', borderRadius: 8, background: '#EF4444', color: '#fff', fontSize: 9, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1, boxShadow: '0 0 0 2px var(--bg)' }}>
+              <span style={{ position: 'absolute', top: 5, right: 5, minWidth: 15, height: 15, padding: '0 4px', borderRadius: 8, background: '#EF4444', color: '#fff', fontSize: 9, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1, boxShadow: '0 0 0 2px var(--bg)' }}>
                 {unreadNotifs > 9 ? '9+' : unreadNotifs}
               </span>
             )}
           </button>
-          <button aria-label={t('shared.aiCoach')} data-guide="open-ai" onClick={() => setAiOpen(true)} className="thw-glass thw-press"
-            style={{ ...fab, right: 12, borderRadius: 12, overflow: 'hidden' }}>
+          <button aria-label={t('shared.aiCoach')} data-guide="open-ai" onClick={() => setAiOpen(true)} className="thw-press"
+            style={{ ...fab, right: 12, overflow: 'hidden' }}>
             {/* Shuriken Athéna classique 4 branches existant — non redessiné, sur verre neutre */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logos/logo_4bras.png" alt={t('shared.aiCoach')} style={{ width: 24, height: 24, objectFit: 'contain' }} />
+            <img src="/logos/logo_4bras.png" alt={t('shared.aiCoach')} style={{ width: 28, height: 28, objectFit: 'contain' }} />
           </button>
           </>}
         </>}

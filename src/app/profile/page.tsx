@@ -157,11 +157,11 @@ function Section({ label, children, style }: { label?:string; children:React.Rea
   )
 }
 function Group({ children, style }: { children:React.ReactNode; style?:React.CSSProperties }) {
-  return <div style={{ background:GREY_CARD, borderRadius:16, overflow:'hidden', ...style }}>{children}</div>
+  return <div style={{ background:GREY_CARD, borderRadius:'var(--r-lg)', overflow:'hidden', ...style }}>{children}</div>
 }
 // Ligne dans une Group. `first` retire le séparateur du haut.
 function Line({ first, onClick, align='center', children }: { first?:boolean; onClick?:()=>void; align?:'center'|'flex-start'; children:React.ReactNode }) {
-  const base: React.CSSProperties = { display:'flex', alignItems:align, gap:12, padding:'13px 16px', borderTop:first?'none':'1px solid var(--border)', width:'100%', boxSizing:'border-box', textAlign:'left' as const }
+  const base: React.CSSProperties = { display:'flex', alignItems:align, gap:14, padding:'18px 20px', minHeight:64, borderTop:first?'none':'2px solid var(--bg)', width:'100%', boxSizing:'border-box', textAlign:'left' as const }
   if (onClick) return <button onClick={onClick} style={{ ...base, background:'transparent', cursor:'pointer' }}>{children}</button>
   return <div style={base}>{children}</div>
 }
@@ -208,11 +208,11 @@ function Sheet({ open, onClose, title, subtitle, children }: { open:boolean; onC
 // Nav row (clickable list item with chevron) — pensé pour vivre dans une Group.
 function NavRow({ label, sub, icon, onClick, first }: { label:string; sub:string; icon:React.ReactNode; onClick:()=>void; first?:boolean }) {
   return (
-    <button onClick={onClick} style={{ display:'flex', alignItems:'center', gap:12, padding:'13px 16px', borderTop:first?'none':'1px solid var(--border)', background:'transparent', cursor:'pointer', textAlign:'left' as const, width:'100%', boxSizing:'border-box' as const }}>
+    <button onClick={onClick} style={{ display:'flex', alignItems:'center', gap:14, padding:'18px 20px', minHeight:64, borderTop:first?'none':'2px solid var(--bg)', background:'transparent', cursor:'pointer', textAlign:'left' as const, width:'100%', boxSizing:'border-box' as const }}>
       <span style={{ display:'flex', alignItems:'center', justifyContent:'center', color:'var(--text-mid)', flexShrink:0 }}>{icon}</span>
       <div style={{ flex:1, minWidth:0 }}>
-        <p style={{ fontSize:15, fontWeight:500, color:'var(--text)', margin:0 }}>{label}</p>
-        <p style={{ fontSize:11.5, color:'var(--text-dim)', margin:'2px 0 0' }}>{sub}</p>
+        <p style={{ fontSize:17, fontWeight:500, color:'var(--text)', margin:0 }}>{label}</p>
+        <p style={{ fontSize:13, color:'var(--text-dim)', margin:'3px 0 0' }}>{sub}</p>
       </div>
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="2" strokeLinecap="round"><path d="M9 18l6-6-6-6"/></svg>
     </button>
@@ -2671,19 +2671,19 @@ function ListRow({ Icon, label, value, danger, last, onClick }: {
 }) {
   return (
     <button onClick={onClick} style={{
-      display: 'flex', alignItems: 'center', gap: 13, width: '100%', textAlign: 'left' as const,
-      padding: '0 16px', background: 'transparent', border: 'none', cursor: 'pointer', transition: 'background 0.14s',
+      display: 'flex', alignItems: 'center', gap: 16, width: '100%', textAlign: 'left' as const,
+      padding: '0 20px', minHeight: 64, background: 'transparent', border: 'none', cursor: 'pointer', transition: 'background 0.14s',
     }}
       onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'var(--bg-card2)'}
       onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}
     >
       <span style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: danger ? '#ef4444' : 'var(--text-mid)' }}>
-        <Icon size={19} strokeWidth={1.8} />
+        <Icon size={22} strokeWidth={1.7} />
       </span>
-      <span style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 10, padding: '13px 0', borderBottom: last ? 'none' : '1px solid var(--border)' }}>
-        <span style={{ flex: 1, minWidth: 0, fontSize: 15, fontWeight: 500, color: danger ? '#ef4444' : 'var(--text)' }}>{label}</span>
-        {value && <span style={{ fontSize: 13, color: 'var(--text-dim)', flexShrink: 0 }}>{value}</span>}
-        {!danger && <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="2" strokeLinecap="round" style={{ flexShrink: 0 }}><path d="M9 18l6-6-6-6"/></svg>}
+      <span style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 10, padding: '18px 0' }}>
+        <span style={{ flex: 1, minWidth: 0, fontSize: 17, fontWeight: 500, color: danger ? '#ef4444' : 'var(--text)' }}>{label}</span>
+        {value && <span style={{ fontSize: 15, color: 'var(--text-dim)', flexShrink: 0 }}>{value}</span>}
+        {!danger && <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="2" strokeLinecap="round" style={{ flexShrink: 0 }}><path d="M9 18l6-6-6-6"/></svg>}
       </span>
     </button>
   )
@@ -2954,12 +2954,12 @@ export function ProfileContent() {
           // Swipe-back : glisser depuis le bord gauche fait suivre la page et revient en arrière.
           <div {...swipeBack} style={{ transform: backDragX ? `translateX(${backDragX}px)` : undefined, transition: backDragX ? 'none' : 'transform 0.26s cubic-bezier(0.32,0.72,0,1)', touchAction: 'pan-y', minHeight: '80dvh' }}>
             <div style={{ position: 'sticky', top: 0, zIndex: 5, background: GREY_PAGE, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 40, margin: '0 -16px 16px', padding: '2px 16px 12px' }}>
-              <PressPop onClick={back} aria-label={t('profile.back')} style={{ position: 'absolute', left: 16, top: 0, width: 40, height: 40, borderRadius: '50%', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 10px rgba(0,0,0,0.14)' }}>
-                <ChevronLeft size={20} />
+              <PressPop onClick={back} aria-label={t('profile.back')} style={{ position: 'absolute', left: 16, top: -2, width: 44, height: 44, borderRadius: '50%', border: 'none', background: 'color-mix(in srgb, var(--text) 10%, var(--bg))', color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 12px rgba(0,0,0,0.20)' }}>
+                <ChevronLeft size={22} />
               </PressPop>
               <p style={{ fontFamily: 'var(--font-body)', fontSize: 19, fontWeight: 600, margin: 0, color: 'var(--text)' }}>{CONTENT[active]?.label}</p>
               {active === 'profil' && (
-                <PressPop onClick={() => window.dispatchEvent(new Event('thw:profile-save'))} aria-label={t('profile.save')} style={{ position: 'absolute', right: 16, top: 0, width: 40, height: 40, borderRadius: '50%', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 10px rgba(0,0,0,0.14)' }}>
+                <PressPop onClick={() => window.dispatchEvent(new Event('thw:profile-save'))} aria-label={t('profile.save')} style={{ position: 'absolute', right: 16, top: -2, width: 44, height: 44, borderRadius: '50%', border: 'none', background: 'color-mix(in srgb, var(--text) 10%, var(--bg))', color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 12px rgba(0,0,0,0.20)' }}>
                   <Check size={20} />
                 </PressPop>
               )}
@@ -2986,7 +2986,7 @@ export function ProfileContent() {
             {GROUPS.map(g => (
               <div key={g.title} style={{ marginBottom: 22 }}>
                 <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.08em', margin: '0 0 8px 4px' }}>{g.title}</p>
-                <div style={{ background: GREY_CARD, border: '1px solid var(--border)', borderRadius: 16, overflow: 'hidden', boxShadow: 'var(--shadow-card)' }}>
+                <div style={{ background: GREY_CARD, borderRadius: 'var(--r-lg)', overflow: 'hidden' }}>
                   {g.rows.map((r, i) => (
                     <ListRow key={r.id} Icon={r.Icon} label={r.label} value={r.value} last={i === g.rows.length - 1} onClick={() => open(r.id)} />
                   ))}
@@ -2995,7 +2995,7 @@ export function ProfileContent() {
             ))}
 
             {/* Se déconnecter + Supprimer mon compte (découvrabilité Apple 5.1.1(v)) */}
-            <div style={{ background: GREY_CARD, border: '1px solid var(--border)', borderRadius: 16, overflow: 'hidden', boxShadow: 'var(--shadow-card)' }}>
+            <div style={{ background: GREY_CARD, borderRadius: 'var(--r-lg)', overflow: 'hidden' }}>
               <ListRow Icon={LogOut} label={signingOut ? t('profile.signingOut') : t('profile.signOut')} danger onClick={() => { if (!signingOut) setConfirmLogout(true) }} />
               <ListRow Icon={Trash2} label="Supprimer mon compte" danger last onClick={() => setConfirmDelete(true)} />
             </div>

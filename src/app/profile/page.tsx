@@ -18,6 +18,7 @@ import { currentLocale } from '@/lib/i18n'
 import { getPushState, enablePush, disablePush, type PushState } from '@/lib/push/client'
 import { hidePricing, openWebsite } from '@/lib/native/platform'
 import { openIapStore } from '@/lib/iap/store-events'
+import NativeBilling from '@/components/iap/NativeBilling'
 import { listBlockedUsers, unblockUser, type BlockedUser } from '@/lib/moderation/dm'
 import { Avatar } from '@/components/shared/Sidebar'
 import { useNarrow } from '@/lib/hooks/useNarrow'
@@ -2119,6 +2120,8 @@ function AbonnementContent() {
 
   const tier = details?.tier ?? 'trial'
   const planName  = tierPlanName(tier)
+  // App iOS : écran « Facturation » façon Apple (achats intégrés), sans Stripe ni liens web.
+  if (hidePrice) return <NativeBilling planName={planName} isCoach={subPlan === 'coach'} loading={loading} />
   const hasStripe = !!(details?.stripe?.nextBillingDate)
   const isCancelling = details?.cancel_at_period_end || details?.stripe?.cancelAtPeriodEnd
 

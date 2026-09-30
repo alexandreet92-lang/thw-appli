@@ -48,7 +48,7 @@ function Sparkline({ data, metricKey, color, delayMs }: { data: ScoredCheckin[],
     <div>
       <div style={{ display:'flex',justifyContent:'space-between',alignItems:'baseline',marginBottom:4 }}>
         <span style={{ fontFamily:'Syne,sans-serif',fontSize:24,fontWeight:800,color }}>{cur}</span>
-        <span style={{ fontSize:10,color:delta>=0?'#10B981':'#ef4444',fontWeight:600 }}>{delta>=0?'+':''}{delta} {t('recovery.trends.vsAvg')}</span>
+        <span style={{ fontSize:10,color:delta>=0?'#10B981':'var(--danger)',fontWeight:600 }}>{delta>=0?'+':''}{delta} {t('recovery.trends.vsAvg')}</span>
       </div>
       <svg viewBox={`0 0 ${W} ${H}`} style={{ width:'100%',height:H,display:'block' }}>
         <LinePath pts={pts} W={W} H={H} minV={mn} maxV={mx} color={color} delayMs={delayMs} />

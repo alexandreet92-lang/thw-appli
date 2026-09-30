@@ -96,7 +96,7 @@ function StatBox({ label, value, unit, sub, color, onSelect, selected }: {
       }}
     >
       <p style={{ fontSize:10, fontWeight:600, textTransform:'uppercase' as const, letterSpacing:'0.07em', color:'var(--text-dim)', margin:'0 0 4px' }}>{label}</p>
-      <p style={{ fontFamily:'Syne,sans-serif', fontSize:20, fontWeight:700, color:selected?'#06B6D4':color||'var(--text)', margin:0, lineHeight:1 }}>
+      <p style={{ fontFamily:'Syne,sans-serif', fontSize:20, fontWeight:700, color:selected?'var(--primary)':color||'var(--text)', margin:0, lineHeight:1 }}>
         {isInt ? <CountUp value={value as number} /> : value}
         {unit && <span style={{ fontSize:11, fontWeight:400, color:'var(--text-dim)', marginLeft:3 }}>{unit}</span>}
       </p>
@@ -164,7 +164,7 @@ function SelectedDatumBubble({ datum, onClear, onAsk }: {
     }}>
       <div style={{ minWidth:0 }}>
         <p style={{ fontSize:9, fontWeight:600, textTransform:'uppercase' as const, letterSpacing:'0.07em', color:'var(--text-dim)', margin:0 }}>{datum.label}</p>
-        <p style={{ fontFamily:'DM Mono,monospace', fontSize:14, fontWeight:700, color:'#06B6D4', margin:0 }}>{datum.value}</p>
+        <p style={{ fontFamily:'DM Mono,monospace', fontSize:14, fontWeight:700, color:'var(--primary)', margin:0 }}>{datum.value}</p>
       </div>
       <button
         onClick={onAsk}
@@ -455,7 +455,7 @@ function ProfilTab({ onSelect, selectedDatum, profile: p, setProfile: setP, onAn
   if (profLoading) {
     return (
       <div style={{ display:'flex', alignItems:'center', justifyContent:'center', padding:'40px 0', color:'var(--text-dim)', fontSize:13, gap:10 }}>
-        <span style={{ width:16, height:16, border:'2px solid var(--border)', borderTopColor:'#06B6D4', borderRadius:'50%', display:'inline-block', animation:'spin 0.8s linear infinite' }}/>
+        <span style={{ width:16, height:16, border:'2px solid var(--border)', borderTopColor:'var(--primary)', borderRadius:'50%', display:'inline-block', animation:'spin 0.8s linear infinite' }}/>
         {t('performance.loadingProfile')}
       </div>
     )

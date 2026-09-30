@@ -11,6 +11,7 @@ import { useEffect, useState } from 'react'
 import { getCurrentUser } from "@/lib/auth/currentUser"
 import { Mail, Check } from 'lucide-react'
 import { useI18n } from '@/lib/i18n'
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/shadcn/dialog'
 import { isNativeApp, openWebsite, openExternalUrl } from '@/lib/native/platform'
 import { openIapStore } from '@/lib/iap/store-events'
 
@@ -85,8 +86,10 @@ export default function SubscriptionEmailModal({ action, plan = 'athlete', onClo
   const btnColor = action === 'cancel' ? '#fff' : 'var(--bg)'
 
   return (
-    <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 13000, background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-      <div onClick={e => e.stopPropagation()} style={{ width: 400, maxWidth: '100%', background: 'var(--bg-card)', borderRadius: 22, padding: 28, boxShadow: '0 30px 80px rgba(0,0,0,0.35)', border: '1px solid var(--border)' }}>
+    <Dialog open onOpenChange={o => { if (!o) onClose() }}>
+      <DialogContent showClose={false} className="max-w-[400px] gap-0 p-7">
+        <DialogTitle className="sr-only">{t('w3c.subemail_title_' + action)}</DialogTitle>
+        <DialogDescription className="sr-only">{''}</DialogDescription>
         {fallback ? (
           <div style={{ textAlign: 'center' }}>
             <div style={{ width: 46, height: 46, borderRadius: '50%', background: 'var(--bg-alt)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 18px' }}>
@@ -131,7 +134,7 @@ export default function SubscriptionEmailModal({ action, plan = 'athlete', onClo
               placeholder={t('w3c.email_placeholder')}
               style={{ width: '100%', background: 'var(--bg-alt)', border: '1px solid var(--border)', borderRadius: 14, padding: '13px 15px', fontSize: 14, color: 'var(--text)', outline: 'none', marginBottom: 12, fontFamily: 'DM Sans, sans-serif', boxSizing: 'border-box', textAlign: 'center' }}
             />
-            {error && <p style={{ fontSize: 12, color: '#EF4444', margin: '0 0 12px', textAlign: 'center' }}>{error}</p>}
+            {error && <p style={{ fontSize: 12, color: 'var(--danger)', margin: '0 0 12px', textAlign: 'center' }}>{error}</p>}
             <button
               onClick={() => void submit()}
               disabled={loading || !email}
@@ -144,7 +147,7 @@ export default function SubscriptionEmailModal({ action, plan = 'athlete', onClo
             </p>
           </>
         )}
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   )
 }

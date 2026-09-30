@@ -93,7 +93,7 @@ export function StridesBuilder({ blocks, onChange, accent }: { blocks: MBlock[];
               style={{ flex: 1, minWidth: 0, fontFamily: 'Syne, sans-serif', fontSize: 15, fontWeight: 700, color: 'var(--se-text)', border: 'none', background: 'transparent', outline: 'none' }} />
             <button type="button" onClick={() => move(b.id, -1)} disabled={i === 0} style={{ width: 28, height: 28, borderRadius: 7, border: '1px solid var(--se-rule)', background: 'var(--se-card)', color: 'var(--se-dim)', cursor: i === 0 ? 'default' : 'pointer', opacity: i === 0 ? 0.35 : 1 }}>↑</button>
             <button type="button" onClick={() => move(b.id, 1)} disabled={i === sBlocks.length - 1} style={{ width: 28, height: 28, borderRadius: 7, border: '1px solid var(--se-rule)', background: 'var(--se-card)', color: 'var(--se-dim)', cursor: i === sBlocks.length - 1 ? 'default' : 'pointer', opacity: i === sBlocks.length - 1 ? 0.35 : 1 }}>↓</button>
-            <button type="button" onClick={() => remove(b.id)} style={{ width: 28, height: 28, borderRadius: 7, border: '1px solid var(--se-rule)', background: 'var(--se-card)', color: '#ef4444', cursor: 'pointer' }}>×</button>
+            <button type="button" onClick={() => remove(b.id)} style={{ width: 28, height: 28, borderRadius: 7, border: '1px solid var(--se-rule)', background: 'var(--se-card)', color: 'var(--danger)', cursor: 'pointer' }}>×</button>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12, marginBottom: 12 }}>

@@ -586,7 +586,7 @@ function HyroxTestsBandeau({ onNavigateToTests }: { onNavigateToTests?: () => vo
           padding: '5px 11px', borderRadius: 8,
           border: '1px solid rgba(239,68,68,0.35)',
           background: 'rgba(239,68,68,0.08)',
-          color: '#ef4444', fontSize: 11, fontWeight: 600,
+          color: 'var(--danger)', fontSize: 11, fontWeight: 600,
           cursor: 'pointer', whiteSpace: 'nowrap',
         }}>
           {t('perf2.takeATest')}
@@ -619,7 +619,7 @@ function HyroxTestsBandeau({ onNavigateToTests }: { onNavigateToTests?: () => vo
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <div style={{
                     width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
-                    background: latest ? '#ef4444' : 'var(--text-dim)',
+                    background: latest ? 'var(--danger)' : 'var(--text-dim)',
                   }} />
                   <div>
                     <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)', margin: 0, fontFamily: 'Syne,sans-serif' }}>{t(HYROX_TEST_LABEL_KEY[td.id] ?? '')}</p>
@@ -974,7 +974,7 @@ function RecordsAllOverlay({ title, records, actMap, distKm, onEdit, onDelete, o
                   </div>
                 </div>
                 <button onClick={() => onEdit(r)} style={{ flexShrink: 0, padding: '5px 10px', borderRadius: 7, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-mid)', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>{t('perf2.edit')}</button>
-                <button onClick={() => { if (window.confirm(t('perf2.confirmDelete'))) onDelete(r.id) }} style={{ flexShrink: 0, padding: '5px 10px', borderRadius: 7, border: '1px solid var(--border)', background: 'transparent', color: '#EF4444', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>{t('perf2.delete')}</button>
+                <button onClick={() => { if (window.confirm(t('perf2.confirmDelete'))) onDelete(r.id) }} style={{ flexShrink: 0, padding: '5px 10px', borderRadius: 7, border: '1px solid var(--border)', background: 'transparent', color: 'var(--danger)', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>{t('perf2.delete')}</button>
               </div>
             )
           })}
@@ -1871,7 +1871,7 @@ function ZonesSubTab({ profile, onSelect, selectedDatum, onOpenAI }: {
                 <button
                   onClick={() => { void handleSaveZones('bike') }}
                   disabled={saving2}
-                  style={{ marginTop: 10, padding: '6px 16px', borderRadius: 7, border: 'none', background: '#06B6D4', color: '#fff', fontSize: 11, fontWeight: 700, cursor: saving2 ? 'not-allowed' : 'pointer', opacity: saving2 ? 0.7 : 1 }}
+                  style={{ marginTop: 10, padding: '6px 16px', borderRadius: 7, border: 'none', background: 'var(--primary)', color: '#fff', fontSize: 11, fontWeight: 700, cursor: saving2 ? 'not-allowed' : 'pointer', opacity: saving2 ? 0.7 : 1 }}
                 >
                   {saving2 ? t('perf2.saving') : t('perf2.save')}
                 </button>
@@ -1894,7 +1894,7 @@ function ZonesSubTab({ profile, onSelect, selectedDatum, onOpenAI }: {
               <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
                 <button onClick={resetBike} style={{ padding: '5px 12px', borderRadius: 7, background: 'var(--bg-card2)', border: '1px solid var(--border)', color: 'var(--text-dim)', fontSize: 11, cursor: 'pointer' }}>{t('perf2.reset')}</button>
                 {isDirty && (
-                  <button onClick={() => { void handleSaveZones('bike') }} disabled={saving2} style={{ padding: '5px 14px', borderRadius: 7, border: 'none', background: '#06B6D4', color: '#fff', fontSize: 11, fontWeight: 700, cursor: saving2 ? 'not-allowed' : 'pointer', opacity: saving2 ? 0.7 : 1 }}>
+                  <button onClick={() => { void handleSaveZones('bike') }} disabled={saving2} style={{ padding: '5px 14px', borderRadius: 7, border: 'none', background: 'var(--primary)', color: '#fff', fontSize: 11, fontWeight: 700, cursor: saving2 ? 'not-allowed' : 'pointer', opacity: saving2 ? 0.7 : 1 }}>
                     {saving2 ? t('perf2.saving') : t('perf2.save')}
                   </button>
                 )}
@@ -1945,7 +1945,7 @@ function ZonesSubTab({ profile, onSelect, selectedDatum, onOpenAI }: {
                 editSaving={sbSaving}
               />
               {isRunDirty && (
-                <button onClick={() => { void handleSaveZones('run') }} disabled={saving2} style={{ marginTop: 10, padding: '6px 16px', borderRadius: 7, border: 'none', background: '#06B6D4', color: '#fff', fontSize: 11, fontWeight: 700, cursor: saving2 ? 'not-allowed' : 'pointer', opacity: saving2 ? 0.7 : 1 }}>
+                <button onClick={() => { void handleSaveZones('run') }} disabled={saving2} style={{ marginTop: 10, padding: '6px 16px', borderRadius: 7, border: 'none', background: 'var(--primary)', color: '#fff', fontSize: 11, fontWeight: 700, cursor: saving2 ? 'not-allowed' : 'pointer', opacity: saving2 ? 0.7 : 1 }}>
                   {saving2 ? t('perf2.saving') : t('perf2.save')}
                 </button>
               )}
@@ -1967,7 +1967,7 @@ function ZonesSubTab({ profile, onSelect, selectedDatum, onOpenAI }: {
               <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
                 <button onClick={resetRun} style={{ padding: '5px 12px', borderRadius: 7, background: 'var(--bg-card2)', border: '1px solid var(--border)', color: 'var(--text-dim)', fontSize: 11, cursor: 'pointer' }}>{t('perf2.reset')}</button>
                 {isRunDirty && (
-                  <button onClick={() => { void handleSaveZones('run') }} disabled={saving2} style={{ padding: '5px 14px', borderRadius: 7, border: 'none', background: '#06B6D4', color: '#fff', fontSize: 11, fontWeight: 700, cursor: saving2 ? 'not-allowed' : 'pointer', opacity: saving2 ? 0.7 : 1 }}>
+                  <button onClick={() => { void handleSaveZones('run') }} disabled={saving2} style={{ padding: '5px 14px', borderRadius: 7, border: 'none', background: 'var(--primary)', color: '#fff', fontSize: 11, fontWeight: 700, cursor: saving2 ? 'not-allowed' : 'pointer', opacity: saving2 ? 0.7 : 1 }}>
                     {saving2 ? t('perf2.saving') : t('perf2.save')}
                   </button>
                 )}
@@ -1984,7 +1984,7 @@ function ZonesSubTab({ profile, onSelect, selectedDatum, onOpenAI }: {
             <div>
               <h3 style={{ fontFamily: 'Syne,sans-serif', fontSize: 13, fontWeight: 700, margin: 0 }}>{t('perf2.rowing')}</h3>
               <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: '2px 0 0' }}>
-                {t('perf2.thresholdSplit')} : <strong style={{ fontFamily: 'DM Mono,monospace', color: '#06B6D4' }}>{localRowSplit}/500m</strong>
+                {t('perf2.thresholdSplit')} : <strong style={{ fontFamily: 'DM Mono,monospace', color: 'var(--primary)' }}>{localRowSplit}/500m</strong>
                 {time2000mInput && <span style={{ color: '#8b5cf6', marginLeft: 6 }}>{t('perf2.from2000m')}</span>}
               </p>
             </div>
@@ -2004,10 +2004,10 @@ function ZonesSubTab({ profile, onSelect, selectedDatum, onOpenAI }: {
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <input type="text" value={rowThreshSplit} onChange={e => { setRowThreshSplit(e.target.value); setIsDirty(true) }}
                   style={{ width: 56, padding: '3px 6px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontFamily: 'DM Mono,monospace', fontSize: 11, outline: 'none' }} />
-                <button onClick={() => setEditRowThresh(false)} style={{ padding: '3px 8px', borderRadius: 5, border: 'none', background: '#06B6D4', color: '#fff', fontSize: 10, cursor: 'pointer' }}>OK</button>
+                <button onClick={() => setEditRowThresh(false)} style={{ padding: '3px 8px', borderRadius: 5, border: 'none', background: 'var(--primary)', color: '#fff', fontSize: 10, cursor: 'pointer' }}>OK</button>
               </div>
             ) : (
-              <button onClick={() => setEditRowThresh(true)} style={{ padding: '2px 8px', borderRadius: 5, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: '#06B6D4', fontFamily: 'DM Mono,monospace', fontSize: 11, cursor: 'pointer' }}>
+              <button onClick={() => setEditRowThresh(true)} style={{ padding: '2px 8px', borderRadius: 5, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--primary)', fontFamily: 'DM Mono,monospace', fontSize: 11, cursor: 'pointer' }}>
                 {rowThreshSplit}/500m
               </button>
             )}
@@ -2028,7 +2028,7 @@ function ZonesSubTab({ profile, onSelect, selectedDatum, onOpenAI }: {
                 editSaving={sbSaving}
               />
               {isDirty && (
-                <button onClick={() => { void handleSaveZones('rowing') }} disabled={saving2} style={{ marginTop: 10, padding: '6px 16px', borderRadius: 7, border: 'none', background: '#06B6D4', color: '#fff', fontSize: 11, fontWeight: 700, cursor: saving2 ? 'not-allowed' : 'pointer', opacity: saving2 ? 0.7 : 1 }}>
+                <button onClick={() => { void handleSaveZones('rowing') }} disabled={saving2} style={{ marginTop: 10, padding: '6px 16px', borderRadius: 7, border: 'none', background: 'var(--primary)', color: '#fff', fontSize: 11, fontWeight: 700, cursor: saving2 ? 'not-allowed' : 'pointer', opacity: saving2 ? 0.7 : 1 }}>
                   {saving2 ? t('perf2.saving') : t('perf2.save')}
                 </button>
               )}
@@ -2050,7 +2050,7 @@ function ZonesSubTab({ profile, onSelect, selectedDatum, onOpenAI }: {
               <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
                 <button onClick={resetRow} style={{ padding: '5px 12px', borderRadius: 7, background: 'var(--bg-card2)', border: '1px solid var(--border)', color: 'var(--text-dim)', fontSize: 11, cursor: 'pointer' }}>{t('perf2.reset')}</button>
                 {isDirty && (
-                  <button onClick={() => { void handleSaveZones('rowing') }} disabled={saving2} style={{ padding: '5px 14px', borderRadius: 7, border: 'none', background: '#06B6D4', color: '#fff', fontSize: 11, fontWeight: 700, cursor: saving2 ? 'not-allowed' : 'pointer', opacity: saving2 ? 0.7 : 1 }}>
+                  <button onClick={() => { void handleSaveZones('rowing') }} disabled={saving2} style={{ padding: '5px 14px', borderRadius: 7, border: 'none', background: 'var(--primary)', color: '#fff', fontSize: 11, fontWeight: 700, cursor: saving2 ? 'not-allowed' : 'pointer', opacity: saving2 ? 0.7 : 1 }}>
                     {saving2 ? t('perf2.saving') : t('perf2.save')}
                   </button>
                 )}
@@ -2067,7 +2067,7 @@ function ZonesSubTab({ profile, onSelect, selectedDatum, onOpenAI }: {
             <div>
               <h3 style={{ fontFamily: 'Syne,sans-serif', fontSize: 13, fontWeight: 700, margin: 0 }}>{t('perf2.swimming')}</h3>
               <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: '2px 0 0' }}>
-                CSS : <strong style={{ fontFamily: 'DM Mono,monospace', color: '#06B6D4' }}>{localCSS}/100m</strong>
+                CSS : <strong style={{ fontFamily: 'DM Mono,monospace', color: 'var(--primary)' }}>{localCSS}/100m</strong>
                 {time400mInput && <span style={{ color: '#8b5cf6', marginLeft: 6 }}>{t('perf2.from400m')}</span>}
               </p>
             </div>
@@ -2100,7 +2100,7 @@ function ZonesSubTab({ profile, onSelect, selectedDatum, onOpenAI }: {
                 editSaving={sbSaving}
               />
               {isDirty && (
-                <button onClick={() => { void handleSaveZones('swim') }} disabled={saving2} style={{ marginTop: 10, padding: '6px 16px', borderRadius: 7, border: 'none', background: '#06B6D4', color: '#fff', fontSize: 11, fontWeight: 700, cursor: saving2 ? 'not-allowed' : 'pointer', opacity: saving2 ? 0.7 : 1 }}>
+                <button onClick={() => { void handleSaveZones('swim') }} disabled={saving2} style={{ marginTop: 10, padding: '6px 16px', borderRadius: 7, border: 'none', background: 'var(--primary)', color: '#fff', fontSize: 11, fontWeight: 700, cursor: saving2 ? 'not-allowed' : 'pointer', opacity: saving2 ? 0.7 : 1 }}>
                   {saving2 ? t('perf2.saving') : t('perf2.save')}
                 </button>
               )}
@@ -2122,7 +2122,7 @@ function ZonesSubTab({ profile, onSelect, selectedDatum, onOpenAI }: {
               <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
                 <button onClick={resetSwim} style={{ padding: '5px 12px', borderRadius: 7, background: 'var(--bg-card2)', border: '1px solid var(--border)', color: 'var(--text-dim)', fontSize: 11, cursor: 'pointer' }}>{t('perf2.reset')}</button>
                 {isDirty && (
-                  <button onClick={() => { void handleSaveZones('swim') }} disabled={saving2} style={{ padding: '5px 14px', borderRadius: 7, border: 'none', background: '#06B6D4', color: '#fff', fontSize: 11, fontWeight: 700, cursor: saving2 ? 'not-allowed' : 'pointer', opacity: saving2 ? 0.7 : 1 }}>
+                  <button onClick={() => { void handleSaveZones('swim') }} disabled={saving2} style={{ padding: '5px 14px', borderRadius: 7, border: 'none', background: 'var(--primary)', color: '#fff', fontSize: 11, fontWeight: 700, cursor: saving2 ? 'not-allowed' : 'pointer', opacity: saving2 ? 0.7 : 1 }}>
                     {saving2 ? t('perf2.saving') : t('perf2.save')}
                   </button>
                 )}
@@ -2142,7 +2142,7 @@ function ZonesSubTab({ profile, onSelect, selectedDatum, onOpenAI }: {
             <div style={{ display: 'flex', gap: 12, fontSize: 11, marginTop: 4 }}>
               <span style={{ color: 'var(--text-dim)' }}>{t('perf2.rest')} : <strong style={{ color: '#22c55e', fontFamily: 'DM Mono,monospace' }}>{profile.hrRest}bpm</strong></span>
               <span style={{ color: 'var(--text-dim)' }}>LTHR : <strong style={{ color: '#f97316', fontFamily: 'DM Mono,monospace' }}>{profile.lthr}bpm</strong></span>
-              <span style={{ color: 'var(--text-dim)' }}>Max : <strong style={{ color: '#ef4444', fontFamily: 'DM Mono,monospace' }}>{localHrMax}bpm</strong></span>
+              <span style={{ color: 'var(--text-dim)' }}>Max : <strong style={{ color: 'var(--danger)', fontFamily: 'DM Mono,monospace' }}>{localHrMax}bpm</strong></span>
             </div>
           </div>
           <ModeToggle mode={hrMode} onChange={setHrMode} />
@@ -2175,12 +2175,12 @@ function ZonesSubTab({ profile, onSelect, selectedDatum, onOpenAI }: {
               editSaving={false}
             />
             {isHrDirty && (
-              <button onClick={() => { void handleSaveHR() }} disabled={saving2} style={{ marginTop: 10, padding: '6px 16px', borderRadius: 7, border: 'none', background: '#ef4444', color: '#fff', fontSize: 11, fontWeight: 700, cursor: saving2 ? 'not-allowed' : 'pointer', opacity: saving2 ? 0.7 : 1 }}>
+              <button onClick={() => { void handleSaveHR() }} disabled={saving2} style={{ marginTop: 10, padding: '6px 16px', borderRadius: 7, border: 'none', background: 'var(--danger)', color: '#fff', fontSize: 11, fontWeight: 700, cursor: saving2 ? 'not-allowed' : 'pointer', opacity: saving2 ? 0.7 : 1 }}>
                 {saving2 ? t('perf2.saving') : t('perf2.save')}
               </button>
             )}
             {hrSaveError && (
-              <p style={{ fontSize: 10, color: '#ef4444', marginTop: 6 }}>{t('perf2.error')} : {hrSaveError}</p>
+              <p style={{ fontSize: 10, color: 'var(--danger)', marginTop: 6 }}>{t('perf2.error')} : {hrSaveError}</p>
             )}
           </>
         ) : (
@@ -2200,7 +2200,7 @@ function ZonesSubTab({ profile, onSelect, selectedDatum, onOpenAI }: {
             <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
               <button onClick={resetHR} style={{ padding: '5px 12px', borderRadius: 7, background: 'var(--bg-card2)', border: '1px solid var(--border)', color: 'var(--text-dim)', fontSize: 11, cursor: 'pointer' }}>{t('perf2.reset')}</button>
               {isHrDirty && (
-                <button onClick={() => { void handleSaveHR() }} disabled={saving2} style={{ padding: '5px 14px', borderRadius: 7, border: 'none', background: '#ef4444', color: '#fff', fontSize: 11, fontWeight: 700, cursor: saving2 ? 'not-allowed' : 'pointer', opacity: saving2 ? 0.7 : 1 }}>
+                <button onClick={() => { void handleSaveHR() }} disabled={saving2} style={{ padding: '5px 14px', borderRadius: 7, border: 'none', background: 'var(--danger)', color: '#fff', fontSize: 11, fontWeight: 700, cursor: saving2 ? 'not-allowed' : 'pointer', opacity: saving2 ? 0.7 : 1 }}>
                   {saving2 ? t('perf2.saving') : t('perf2.save')}
                 </button>
               )}
@@ -3137,7 +3137,7 @@ function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests }: 
                   </span>
                 )}
                 {bikeSyncStatus.kind === 'error' && (
-                  <span style={{ fontSize: 10, color: '#EF4444', fontWeight: 600 }}>
+                  <span style={{ fontSize: 10, color: 'var(--danger)', fontWeight: 600 }}>
                     ⚠ {bikeSyncStatus.msg}
                   </span>
                 )}
@@ -4424,7 +4424,7 @@ function YearDatasSubTab() {
             </>
           ) : (
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: 12, color: importProgress.error ? '#ef4444' : '#22c55e', fontWeight: 500 }}>
+              <span style={{ fontSize: 12, color: importProgress.error ? 'var(--danger)' : '#22c55e', fontWeight: 500 }}>
                 {importProgress.error
                   ? importProgress.error
                   : `${importProgress.imported} ${importProgress.imported !== 1 ? t('perf2.activitiesImportedPlural') : t('perf2.activityImportedSingular')} · ${importProgress.skipped} ${t('perf2.alreadyInDb')}`}
@@ -4558,17 +4558,17 @@ function YearDatasSubTab() {
                     <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
                       <input type="checkbox" checked={c1ShowRaces}
                         onChange={() => setC1ShowRaces(v => !v)}
-                        style={{ accentColor: '#ef4444', cursor: 'pointer', width: 14, height: 14 }}
+                        style={{ accentColor: 'var(--danger)', cursor: 'pointer', width: 14, height: 14 }}
                       />
                       <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: 'var(--text)' }}>
-                        <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#ef4444', border: '1.5px solid white', boxShadow: '0 0 0 1px #ef4444', flexShrink: 0 }} />
+                        <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--danger)', border: '1.5px solid white', boxShadow: '0 0 0 1px #ef4444', flexShrink: 0 }} />
                         {t('perf2.races')}
                       </span>
                     </label>
                     <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
                       <input type="checkbox" checked={c1ShowBlessures}
                         onChange={() => setC1ShowBlessures(v => !v)}
-                        style={{ accentColor: '#ef4444', cursor: 'pointer', width: 14, height: 14 }}
+                        style={{ accentColor: 'var(--danger)', cursor: 'pointer', width: 14, height: 14 }}
                       />
                       <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: 'var(--text)' }}>
                         <span style={{ fontSize: 10 }}>⚡</span>
@@ -4657,14 +4657,14 @@ function YearDatasSubTab() {
                 {/* Section blessure */}
                 {c1HoveredInjury && (
                   <div style={{ marginBottom: 6, borderBottom: '1px solid var(--border)', paddingBottom: 6 }}>
-                    <p style={{ fontSize: 10, fontWeight: 700, color: '#ef4444', margin: '0 0 3px' }}>⚡ {t('perf2.injury')}</p>
+                    <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--danger)', margin: '0 0 3px' }}>⚡ {t('perf2.injury')}</p>
                     <p style={{ fontSize: 10, fontWeight: 600, color: 'var(--text)', margin: '0 0 2px' }}>{c1HoveredInjury.nom}</p>
                     <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '0 0 2px' }}>{c1HoveredInjury.type}</p>
                     <p style={{ fontSize: 10, fontFamily: 'DM Mono,monospace', color: 'var(--text-dim)', margin: 0 }}>
                       {fmtDate(c1HoveredInjury.date_debut)}
                       {c1HoveredInjury.date_fin ? ` → ${fmtDate(c1HoveredInjury.date_fin)}` : ` (${t('perf2.ongoing')})`}
                     </p>
-                    <p style={{ fontSize: 9, color: '#ef4444', margin: '3px 0 0', fontWeight: 600 }}>{t('perf2.clickInjuries')}</p>
+                    <p style={{ fontSize: 9, color: 'var(--danger)', margin: '3px 0 0', fontWeight: 600 }}>{t('perf2.clickInjuries')}</p>
                   </div>
                 )}
                 {hoveredPoint !== null && (c1CompareMode ? (
@@ -4777,7 +4777,7 @@ function YearDatasSubTab() {
                   <circle key={`inj-pt-${idx}`}
                     cx={band.x1} cy={C1_PT + c1PlotH + 6}
                     r={isMobile ? 3 : 4}
-                    fill="#ef4444" stroke="white" strokeWidth={1}
+                    fill="var(--danger)" stroke="white" strokeWidth={1}
                     style={{ pointerEvents: 'none' }}
                   />
                 ) : (
@@ -4833,7 +4833,7 @@ function YearDatasSubTab() {
                   <circle key={`race-${idx}`}
                     cx={marker.x} cy={C1_PT + c1PlotH + 6}
                     r={3}
-                    fill="#ef4444"
+                    fill="var(--danger)"
                     opacity={isH ? 1 : 0.75}
                     style={{ pointerEvents: 'none' }}
                   />

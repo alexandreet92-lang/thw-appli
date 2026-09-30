@@ -179,7 +179,7 @@ export default function ResetPasswordPage() {
             <AuthInput label={t('auth.confirm')} type="password" placeholder="••••••••" value={confirm} onChange={setConfirm} showToggle />
 
             {confirm && password !== confirm && (
-              <p style={{ fontSize: 12, color: '#EF4444', margin: '4px 0 0', fontFamily: 'DM Sans, sans-serif' }}>
+              <p style={{ fontSize: 12, color: 'var(--danger)', margin: '4px 0 0', fontFamily: 'DM Sans, sans-serif' }}>
                 {t('auth.pwMismatch')}
               </p>
             )}

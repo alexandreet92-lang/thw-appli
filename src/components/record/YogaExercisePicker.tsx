@@ -96,7 +96,7 @@ export default function YogaExercisePicker({ open, onClose, onAdd, isDark }: Pro
         </div>
         <div style={{ display: 'flex', gap: 6, padding: '0 16px 10px', overflowX: 'auto', flexShrink: 0 }}>
           {CAT_TABS.map(c => (
-            <button key={c.id} onClick={() => setTab(c.id as 'all' | YogaCategory)} style={{ padding: '6px 14px', borderRadius: 20, border: 'none', background: tab === c.id ? '#06B6D4' : surf, color: tab === c.id ? '#FFF' : text, fontSize: 13, fontWeight: 500, cursor: 'pointer', whiteSpace: 'nowrap' }}>{c.labelKey ? t(c.labelKey) : c.label}</button>
+            <button key={c.id} onClick={() => setTab(c.id as 'all' | YogaCategory)} style={{ padding: '6px 14px', borderRadius: 20, border: 'none', background: tab === c.id ? 'var(--primary)' : surf, color: tab === c.id ? '#FFF' : text, fontSize: 13, fontWeight: 500, cursor: 'pointer', whiteSpace: 'nowrap' }}>{c.labelKey ? t(c.labelKey) : c.label}</button>
           ))}
         </div>
         <div style={{ flex: 1, overflowY: 'auto', padding: '0 8px' }}>
@@ -106,7 +106,7 @@ export default function YogaExercisePicker({ open, onClose, onAdd, isDark }: Pro
                 <p style={{ fontSize: 15, color: text, margin: 0 }}>{e.name}</p>
                 <p style={{ fontSize: 12, color: dim, margin: '2px 0 0' }}>{e.default_duration_seconds}s</p>
               </div>
-              <button onClick={() => onAdd({ exerciseId: e.id, name: e.name, category: e.category as YogaCategory, duration_seconds: e.default_duration_seconds })} style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(6,182,212,0.15)', border: 'none', color: '#06B6D4', fontSize: 20, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
+              <button onClick={() => onAdd({ exerciseId: e.id, name: e.name, category: e.category as YogaCategory, duration_seconds: e.default_duration_seconds })} style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(6,182,212,0.15)', border: 'none', color: 'var(--primary)', fontSize: 20, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
             </div>
           ))}
           {!creating ? (
@@ -122,7 +122,7 @@ export default function YogaExercisePicker({ open, onClose, onAdd, isDark }: Pro
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
                 <button onClick={() => setCreating(false)} style={{ flex: 1, height: 40, borderRadius: 10, background: surf, border: `1px solid ${bord}`, color: text, fontSize: 14, cursor: 'pointer' }}>{t('record.yogaPickerCancel')}</button>
-                <button onClick={handleCreate} style={{ flex: 1, height: 40, borderRadius: 10, background: '#06B6D4', border: 'none', color: '#FFF', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>{t('record.yogaPickerCreate')}</button>
+                <button onClick={handleCreate} style={{ flex: 1, height: 40, borderRadius: 10, background: 'var(--primary)', border: 'none', color: '#FFF', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>{t('record.yogaPickerCreate')}</button>
               </div>
             </div>
           )}

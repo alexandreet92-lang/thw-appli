@@ -203,12 +203,12 @@ function FieldRow({ field, theme, onClick, categoryLabel }: {
           </span>
           {field.unit && <span style={{ fontSize: 12, color: '#8C8C8C' }}>{field.unit}</span>}
           {field.type === 'chart' && (
-            <span style={{ fontSize: 10, color: '#06B6D4',
+            <span style={{ fontSize: 10, color: 'var(--primary)',
                            border: '1px solid rgba(6,182,212,0.4)',
                            borderRadius: 4, padding: '1px 5px' }}>{t('record.fieldPickerBadgeChart')}</span>
           )}
           {field.type === 'climb_profile' && (
-            <span style={{ fontSize: 10, color: '#06B6D4',
+            <span style={{ fontSize: 10, color: 'var(--primary)',
                            border: '1px solid rgba(139,92,246,0.4)',
                            borderRadius: 4, padding: '1px 5px' }}>{t('record.fieldPickerBadgeVisual')}</span>
           )}

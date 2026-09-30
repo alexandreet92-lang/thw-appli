@@ -32,7 +32,7 @@ export default function TestProtocolView({ proto, accent = 'var(--primary)' }: {
       </div>
       {proto.avertissement && (
         <div style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.30)', borderRadius: 12, padding: '11px 14px' }}>
-          <p style={{ ...HEAD, color: '#ef4444' }}>{t('w4c.test_warning')}</p>
+          <p style={{ ...HEAD, color: 'var(--danger)' }}>{t('w4c.test_warning')}</p>
           <p style={{ fontSize: 12.5, lineHeight: 1.5, color: 'var(--text-mid)', margin: 0 }}>{proto.avertissement}</p>
         </div>
       )}

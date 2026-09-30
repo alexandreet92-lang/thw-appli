@@ -24,7 +24,7 @@ export default function SwimmingSettings({ open, onClose }: Props) {
       <span style={{ fontSize: 15, color: 'var(--text)' }}>{label}</span>
       <button
         onClick={onToggle}
-        style={{ width: 44, height: 24, borderRadius: 12, background: value ? '#06B6D4' : 'var(--bg-card2)', border: 'none', cursor: 'pointer', position: 'relative', transition: 'background 200ms', flexShrink: 0 }}
+        style={{ width: 44, height: 24, borderRadius: 12, background: value ? 'var(--primary)' : 'var(--bg-card2)', border: 'none', cursor: 'pointer', position: 'relative', transition: 'background 200ms', flexShrink: 0 }}
       >
         <span style={{ position: 'absolute', top: 2, left: value ? 22 : 2, width: 20, height: 20, borderRadius: '50%', background: '#fff', transition: 'left 200ms', boxShadow: '0 1px 3px rgba(0,0,0,0.25)' }} />
       </button>

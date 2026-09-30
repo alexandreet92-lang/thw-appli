@@ -132,7 +132,7 @@ export default function SeedDishesPage() {
               )}
             </>
           ) : (
-            <div style={{ fontFamily: 'DM Sans,sans-serif', fontSize: 13, color: '#ef4444', lineHeight: 1.5 }}>
+            <div style={{ fontFamily: 'DM Sans,sans-serif', fontSize: 13, color: 'var(--danger)', lineHeight: 1.5 }}>
               ✗ {result.error}
             </div>
           )}

@@ -118,7 +118,7 @@ export default function CheckInModal({ existing, onClose, onSaved }: Props) {
           </div>
         </div>
 
-        {err && <p style={{ fontSize:11,color:'#ef4444',margin:'10px 0 0' }}>{err}</p>}
+        {err && <p style={{ fontSize:11,color:'var(--danger)',margin:'10px 0 0' }}>{err}</p>}
 
         <div style={{ display:'flex',gap:8,marginTop:20 }}>
           <button onClick={onClose} style={{ flex:1,padding:'10px',borderRadius:11,background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',fontSize:12,cursor:'pointer' }}>{t('recovery.cancel')}</button>

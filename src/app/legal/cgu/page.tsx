@@ -12,7 +12,7 @@ export default function CguPage() {
     <main style={{ minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, textAlign: 'center', fontFamily: 'system-ui, sans-serif' }}>
       <p style={{ fontSize: 14, color: '#64748b' }}>
         Redirection…{' '}
-        <a href={DEST} style={{ color: '#06B6D4', fontWeight: 600 }}>Ouvrir les Conditions d’utilisation</a>
+        <a href={DEST} style={{ color: 'var(--primary)', fontWeight: 600 }}>Ouvrir les Conditions d’utilisation</a>
       </p>
     </main>
   )

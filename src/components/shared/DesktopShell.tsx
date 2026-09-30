@@ -108,7 +108,7 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
 
   // /topup : page autonome (lien email), aucun chrome.
   if (pathname?.startsWith('/topup')) {
-    return <div className="hidden md:block" style={{ height: '100vh', overflowY: 'auto', background: 'var(--bg)' }}>{children}</div>
+    return <div className="hidden md:block" style={{ height: '100vh', overflowY: 'auto', background: 'var(--bg)' }}><PageTransition>{children}</PageTransition></div>
   }
 
   // Pages d'entrée (connexion, onboarding…) : plein écran, sans sidebar.
@@ -240,7 +240,7 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
             <path d="M13.73 21a2 2 0 0 1-3.46 0" />
           </svg>
           {unreadNotifs > 0 && (
-            <span style={{ position: 'absolute', top: 7, right: 7, minWidth: 15, height: 15, padding: '0 4px', borderRadius: 8, background: '#EF4444', color: '#fff', fontSize: 9, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1, boxShadow: '0 0 0 2px var(--bg)' }}>
+            <span style={{ position: 'absolute', top: 7, right: 7, minWidth: 15, height: 15, padding: '0 4px', borderRadius: 8, background: 'var(--danger)', color: '#fff', fontSize: 9, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1, boxShadow: '0 0 0 2px var(--bg)' }}>
               {unreadNotifs > 9 ? '9+' : unreadNotifs}
             </span>
           )}

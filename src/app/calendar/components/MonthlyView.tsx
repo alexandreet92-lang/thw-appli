@@ -186,7 +186,7 @@ export default function MonthlyView({ races, stages, year, initialMonth, onRaceC
                   cursor: onDayClick ? 'pointer' : 'default',
                 }}
               >
-                <p style={{ fontSize:10,fontWeight:isToday?700:500,color:isToday?'#06B6D4':'var(--text-mid)',margin:0,textAlign:'right' as const }}>
+                <p style={{ fontSize:10,fontWeight:isToday?700:500,color:isToday?'var(--primary)':'var(--text-mid)',margin:0,textAlign:'right' as const }}>
                   {day}
                 </p>
 

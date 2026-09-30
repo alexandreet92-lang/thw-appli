@@ -143,7 +143,7 @@ export default function TokenUsageBubble({ onBuyTokens, currentModel = 'athena',
               <div style={{ padding: '12px 16px', borderTop: '1px solid var(--border)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                   <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text)' }}>{t('ai.currentModel')}</span>
-                  <span style={{ padding: '2px 8px', borderRadius: 12, fontSize: 10, fontWeight: 500, color: '#06B6D4', background: 'rgba(6,182,212,0.10)', border: '0.5px solid rgba(6,182,212,0.25)' }}>{name}</span>
+                  <span style={{ padding: '2px 8px', borderRadius: 12, fontSize: 10, fontWeight: 500, color: 'var(--primary)', background: 'rgba(6,182,212,0.10)', border: '0.5px solid rgba(6,182,212,0.25)' }}>{name}</span>
                 </div>
                 {mult > 1 && (
                   <p style={{ fontSize: 11, color: 'var(--text-mid)', lineHeight: 1.5, margin: '6px 0 8px' }}>

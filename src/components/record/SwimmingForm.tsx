@@ -127,7 +127,7 @@ export default function SwimmingForm({ onClose }: Props) {
       <div style={{ height: 52, flexShrink: 0, display: 'flex', alignItems: 'center', padding: '0 16px', borderBottom: '1px solid var(--border)', position: 'relative' }}>
         <button onClick={requestClose} style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--bg-card2)', border: 'none', color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, lineHeight: 1 }}>×</button>
         <span style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', fontSize: 15, fontWeight: 600 }}>{t('record.swimFormTitle')}</span>
-        <button onClick={handleSave} disabled={saving} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: '#06B6D4', fontSize: 15, fontWeight: 600, cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.5 : 1 }}>
+        <button onClick={handleSave} disabled={saving} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'var(--primary)', fontSize: 15, fontWeight: 600, cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.5 : 1 }}>
           {saving ? '…' : t('record.swimSave')}
         </button>
       </div>
@@ -153,7 +153,7 @@ export default function SwimmingForm({ onClose }: Props) {
             <NumInput val={mins}  set={setMins}  max={59} label="min" />
             <NumInput val={secs}  set={setSecs}  max={59} label="sec" />
           </div>
-          <p style={{ margin: '10px 0 0', fontSize: 24, fontWeight: 700, color: '#06B6D4', textAlign: 'center' as const }}>{fmtDur}</p>
+          <p style={{ margin: '10px 0 0', fontSize: 24, fontWeight: 700, color: 'var(--primary)', textAlign: 'center' as const }}>{fmtDur}</p>
         </div>
         <div style={{ marginBottom: 24 }}>
           <label style={LABEL}>{t('record.swimLabelDistance')}</label>
@@ -166,7 +166,7 @@ export default function SwimmingForm({ onClose }: Props) {
             />
             <div style={{ display: 'flex', gap: 4 }}>
               {(['m', 'yd'] as const).map(u => (
-                <button key={u} onClick={() => setDistUnit(u)} style={{ padding: '10px 14px', borderRadius: 10, border: distUnit === u ? 'none' : '1px solid var(--border)', background: distUnit === u ? '#06B6D4' : 'transparent', color: distUnit === u ? '#fff' : 'var(--text)', cursor: 'pointer', fontSize: 14, fontFamily: 'DM Sans, sans-serif' }}>{u}</button>
+                <button key={u} onClick={() => setDistUnit(u)} style={{ padding: '10px 14px', borderRadius: 10, border: distUnit === u ? 'none' : '1px solid var(--border)', background: distUnit === u ? 'var(--primary)' : 'transparent', color: distUnit === u ? '#fff' : 'var(--text)', cursor: 'pointer', fontSize: 14, fontFamily: 'DM Sans, sans-serif' }}>{u}</button>
               ))}
             </div>
           </div>

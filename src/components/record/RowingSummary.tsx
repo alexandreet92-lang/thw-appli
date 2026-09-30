@@ -45,7 +45,7 @@ export default function RowingSummary({ session, onClose }: Props) {
       <div style={{ flex:1, overflowY:'auto', padding:'20px 16px' }}>
         <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:12, marginBottom:24 }}>
           <div style={{ width:48, height:48, borderRadius:'50%', background:'rgba(6,182,212,0.15)', display:'flex', alignItems:'center', justifyContent:'center' }}>
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#06B6D4" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
               <path d="M3 17c3-3 7-3 9 0s7 3 9 0"/><path d="M12 17V7"/><path d="M9 7h6"/>
             </svg>
           </div>
@@ -70,9 +70,9 @@ export default function RowingSummary({ session, onClose }: Props) {
               const watts = calcWatts(split)
               return (
                 <div key={p.id} style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 14px', background:'rgba(255,255,255,0.04)', borderRadius:10, marginBottom:8 }}>
-                  <span style={{ fontSize:12, fontWeight:700, color:'#06B6D4', minWidth:20 }}>#{i+1}</span>
+                  <span style={{ fontSize:12, fontWeight:700, color:'var(--primary)', minWidth:20 }}>#{i+1}</span>
                   <span style={{ fontSize:14, color:'#FFF', flex:1 }}>{p.distanceM >= 1000 ? `${p.distanceM/1000}km` : `${p.distanceM}m`}</span>
-                  <span style={{ fontSize:13, color:'#06B6D4', fontWeight:600 }}>{formatSplit(split)}</span>
+                  <span style={{ fontSize:13, color:'var(--primary)', fontWeight:600 }}>{formatSplit(split)}</span>
                   {watts > 0 && <span style={{ fontSize:12, color:'rgba(255,255,255,0.55)' }}>{watts}w</span>}
                 </div>
               )

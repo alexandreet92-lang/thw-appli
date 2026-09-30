@@ -48,7 +48,7 @@ export default function RowingSettings({ open, onClose, isDark }: Props) {
           <SettingsSection title={tr('record.rowingSettingsPostSession')} theme={t}>
             <SettingsRow theme={t} label={tr('record.rowingSettingsAutoStrava')} disabled={!stravaConnected}
               right={<Toggle theme={t} value={autoStrava} onChange={setAutoStrava} disabled={!stravaConnected} />} />
-            {!stravaConnected && <p style={{ fontSize:12, color:'#8C8C8C', padding:'4px 16px 8px', margin:0 }}><a href="/connections" style={{ color:'#06B6D4', textDecoration:'none' }}>{tr('record.rowingSettingsConnectStrava')}</a>{tr('record.rowingSettingsConnectStravaSuffix')}</p>}
+            {!stravaConnected && <p style={{ fontSize:12, color:'#8C8C8C', padding:'4px 16px 8px', margin:0 }}><a href="/connections" style={{ color:'var(--primary)', textDecoration:'none' }}>{tr('record.rowingSettingsConnectStrava')}</a>{tr('record.rowingSettingsConnectStravaSuffix')}</p>}
             <SettingsRow theme={t} label={tr('record.rowingSettingsSummary')} last
               right={<Toggle theme={t} value={showSummary} onChange={setShowSummary} />} />
           </SettingsSection>

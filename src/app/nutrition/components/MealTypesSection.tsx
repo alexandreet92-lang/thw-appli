@@ -210,7 +210,7 @@ export default function MealTypesSection({
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                     }}
                   >
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" strokeWidth="2">
                       <polyline points="3 6 5 6 21 6" />
                       <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" />
                       <path d="M10 11v6M14 11v6M9 6V4h6v2" />

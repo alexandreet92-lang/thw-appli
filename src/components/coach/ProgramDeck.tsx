@@ -9,7 +9,7 @@
 // Volume horaire affiché EN HAUT à côté des séances.
 // ══════════════════════════════════════════════════════════════════
 import { useRef, useState, type ComponentType } from 'react'
-import { AnimatePresence, motion } from 'framer-motion'
+import { AnimatePresence, motion } from 'motion/react'
 import { IconRun, IconBike, IconSwimming, IconBarbell, IconStretching2, IconKayak, IconChevronLeft, IconChevronRight } from '@tabler/icons-react'
 import type { CoachProgram } from '@/lib/coach/programs'
 import { programHours } from '@/lib/coach/programs'

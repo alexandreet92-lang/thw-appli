@@ -85,7 +85,7 @@ export default function CoachSubscriptionPage() {
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>{t('w3c.coach_trial_title')}</div>
             <div style={{ fontSize: 12.5, color: 'var(--text-dim)', marginTop: 2 }}>{t('w3c.coach_trial_desc')}</div>
-            {trialErr && <div style={{ fontSize: 11.5, color: '#ef4444', fontWeight: 600, marginTop: 4 }}>{trialErr}</div>}
+            {trialErr && <div style={{ fontSize: 11.5, color: 'var(--danger)', fontWeight: 600, marginTop: 4 }}>{trialErr}</div>}
           </div>
           <button onClick={startTrial} disabled={busy === 'trial'} style={{ ...btnManage, background: 'var(--primary)', color: 'var(--on-primary)', opacity: busy === 'trial' ? 0.6 : 1 }}>{busy === 'trial' ? '…' : t('w3c.coach_trial_start')}</button>
         </div>
@@ -98,7 +98,7 @@ export default function CoachSubscriptionPage() {
             {athleteCount !== null && (() => {
               const full = athleteCount >= activePack.maxAthletes
               return (
-                <div style={{ fontSize: 12.5, color: full ? '#ef4444' : 'var(--text-dim)', fontWeight: full ? 700 : 400, marginTop: 2 }}>
+                <div style={{ fontSize: 12.5, color: full ? 'var(--danger)' : 'var(--text-dim)', fontWeight: full ? 700 : 400, marginTop: 2 }}>
                   {athleteCount} / {activePack.maxAthletes} {t('w3c.athletes_capacity')}{full ? ` — ${t('w3c.capacity_full')}` : ''}
                 </div>
               )

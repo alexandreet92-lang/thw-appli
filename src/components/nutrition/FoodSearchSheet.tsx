@@ -32,7 +32,7 @@ function FoodRow({ food, onSelect }: { food: FoodItem; onSelect: (food: FoodItem
           {food.product_name}
         </p>
         <div style={{ display: 'flex', gap: 8, marginTop: 2 }}>
-          <span style={{ fontSize: 10, color: '#06B6D4', fontFamily: 'DM Mono,monospace' }}>{n['energy-kcal_100g']} kcal</span>
+          <span style={{ fontSize: 10, color: 'var(--primary)', fontFamily: 'DM Mono,monospace' }}>{n['energy-kcal_100g']} kcal</span>
           <MacroPill label="P" value={n.proteins_100g} color="#22c55e" />
           <MacroPill label="G" value={n.carbohydrates_100g} color="#eab308" />
           <MacroPill label="L" value={n.fat_100g} color="#f97316" />

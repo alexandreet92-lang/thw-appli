@@ -87,7 +87,7 @@ export default function OnboardingScreen({ onComplete }: Props) {
           {/* Dots */}
           <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginBottom: 20 }}>
             {SLIDES.map((_, i) => (
-              <button key={i} onClick={() => goTo(i)} style={{ width: i === current ? 24 : 8, height: 8, borderRadius: 4, background: i === current ? '#06B6D4' : 'rgba(255,255,255,0.28)', border: 'none', cursor: 'pointer', padding: 0, transition: 'all 300ms cubic-bezier(0.16,1,0.3,1)' }} />
+              <button key={i} onClick={() => goTo(i)} style={{ width: i === current ? 24 : 8, height: 8, borderRadius: 4, background: i === current ? 'var(--primary)' : 'rgba(255,255,255,0.28)', border: 'none', cursor: 'pointer', padding: 0, transition: 'all 300ms cubic-bezier(0.16,1,0.3,1)' }} />
             ))}
           </div>
 

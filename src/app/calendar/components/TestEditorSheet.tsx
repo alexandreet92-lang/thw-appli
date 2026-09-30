@@ -148,12 +148,12 @@ export default function TestEditorSheet({ mode = 'create', initial, initialDate,
           <div style={{ display: 'flex', gap: 10, width: '100%', maxWidth: 720, alignItems: 'center' }}>
             {isEdit && onDelete && (confirmDelete ? (
               <div style={{ display: 'flex', gap: 8, alignItems: 'center', flex: 1, flexWrap: 'wrap' }}>
-                <span style={{ fontSize: 12.5, fontWeight: 600, color: '#ef4444' }}>{t('w2e.deleteTestConfirm')}</span>
-                <button onClick={onDelete} style={{ padding: '10px 16px', borderRadius: 999, background: '#ef4444', border: 'none', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>{t('w2e.confirm')}</button>
+                <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--danger)' }}>{t('w2e.deleteTestConfirm')}</span>
+                <button onClick={onDelete} style={{ padding: '10px 16px', borderRadius: 999, background: 'var(--danger)', border: 'none', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>{t('w2e.confirm')}</button>
                 <button onClick={() => setConfirmDelete(false)} style={{ padding: '10px 14px', borderRadius: 999, background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-mid)', fontSize: 13, cursor: 'pointer' }}>{t('w2e.cancel')}</button>
               </div>
             ) : (
-              <button onClick={() => setConfirmDelete(true)} style={{ padding: 12, borderRadius: 999, background: 'transparent', border: '1px solid #ef4444', color: '#ef4444', fontSize: 13.5, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>{t('w2e.delete')}</button>
+              <button onClick={() => setConfirmDelete(true)} style={{ padding: 12, borderRadius: 999, background: 'transparent', border: '1px solid #ef4444', color: 'var(--danger)', fontSize: 13.5, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>{t('w2e.delete')}</button>
             ))}
             {!confirmDelete && (<>
               <button onClick={requestClose} style={{ flex: 1, padding: 12, borderRadius: 999, background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-mid)', fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}>{t('w2e.close')}</button>

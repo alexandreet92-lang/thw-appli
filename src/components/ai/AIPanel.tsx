@@ -36,6 +36,7 @@ import { emitNotification } from '@/lib/notifications/emit'
 import { localDateStr } from '@/lib/date/weekStart'
 import RoutinesView from '@/components/ai/RoutinesView'
 import { SlideOverlay } from '@/components/ui/SlideOverlay'
+import { AnimatedList, AnimatedItem } from '@/components/motion/AnimatedList'
 import StudioView from '@/components/studio/StudioView'
 import { getGuideDemoId, GUIDE_DEMO_EVENT } from '@/components/guide/guideDemo'
 import { QUICK_ACTION_SPECS, specToClarifyQuestions } from '@/lib/quick-actions/specs'
@@ -13634,14 +13635,14 @@ function HistoryDrawer({
           <div style={{ padding: '18px 8px', textAlign: 'center', color: 'var(--ai-dim)', fontSize: 11, lineHeight: 1.6 }}>
             Aucune conversation.<br />Pose une question pour commencer.
           </div>
-        ) : [...convs]
+        ) : <AnimatedList>{[...convs]
             // Projet actif → uniquement ses conversations. Sinon → conversations
             // hors projet (les convs rangées dans un projet n'encombrent pas la liste).
             .filter(c => activeProjectId ? c.projectId === activeProjectId : !c.projectId)
             .filter(c => !searchQ.trim() || c.title.toLowerCase().includes(searchQ.toLowerCase()))
             .sort((a, b) => (b.isPinned ? 1 : 0) - (a.isPinned ? 1 : 0))
             .map(conv => (
-          <div key={conv.id} className="aip-hist-item" style={{ position: 'relative', marginBottom: 1 }}>
+          <AnimatedItem key={conv.id} className="aip-hist-item" style={{ position: 'relative', marginBottom: 1 }}>
             {renId === conv.id ? (
               <div style={{ padding: '3px 4px' }}>
                 <input
@@ -13868,8 +13869,8 @@ function HistoryDrawer({
                 </div>
               </div>
             )}
-          </div>
-        ))}
+          </AnimatedItem>
+        ))}</AnimatedList>}
       </div>
 
       {/* Nouvelle conversation — bulle flottante (mobile, style Claude) */}

@@ -280,7 +280,7 @@ export default function DayModal({ stage, date, onClose, onSaved, onDeleted }: P
 
         {/* Guard: missing stageId */}
         {!hasId && (
-          <div style={{ padding:'10px 14px',borderRadius:9,background:'rgba(239,68,68,0.10)',border:'1px solid rgba(239,68,68,0.3)',color:'#ef4444',fontSize:12 }}>
+          <div style={{ padding:'10px 14px',borderRadius:9,background:'rgba(239,68,68,0.10)',border:'1px solid rgba(239,68,68,0.3)',color:'var(--danger)',fontSize:12 }}>
             {t('calendar.errEventIdNotFound')}
           </div>
         )}
@@ -318,7 +318,7 @@ export default function DayModal({ stage, date, onClose, onSaved, onDeleted }: P
           {newFile ? (
             <div style={{ display:'flex',alignItems:'center',gap:6,padding:'6px 10px',borderRadius:8,background:'var(--bg-card2)',border:'1px solid var(--border)' }}>
               <span style={{ flex:1,fontSize:11,color:'var(--text-mid)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' }}>{newFile.name}</span>
-              <button onClick={() => setNewFile(null)} style={{ background:'none',border:'none',color:'#ef4444',cursor:'pointer',fontSize:13 }}>✕</button>
+              <button onClick={() => setNewFile(null)} style={{ background:'none',border:'none',color:'var(--danger)',cursor:'pointer',fontSize:13 }}>✕</button>
             </div>
           ) : (
             <button onClick={() => fileRef.current?.click()} style={{
@@ -340,7 +340,7 @@ export default function DayModal({ stage, date, onClose, onSaved, onDeleted }: P
           </div>
         )}
         {saveStatus === 'error' && (
-          <div style={{ padding:'8px 12px',borderRadius:9,background:'rgba(239,68,68,0.10)',border:'1px solid rgba(239,68,68,0.3)',color:'#ef4444',fontSize:12 }}>
+          <div style={{ padding:'8px 12px',borderRadius:9,background:'rgba(239,68,68,0.10)',border:'1px solid rgba(239,68,68,0.3)',color:'var(--danger)',fontSize:12 }}>
             {saveMsg}
           </div>
         )}
@@ -351,14 +351,14 @@ export default function DayModal({ stage, date, onClose, onSaved, onDeleted }: P
             <button
               onClick={() => setConfirmDelete(true)}
               disabled={deleting || !hasId}
-              style={{ padding:'10px 14px',borderRadius:10,background:'transparent',border:'1px solid rgba(239,68,68,0.4)',color:'#ef4444',fontSize:12,cursor:'pointer',flexShrink:0 }}>
+              style={{ padding:'10px 14px',borderRadius:10,background:'transparent',border:'1px solid rgba(239,68,68,0.4)',color:'var(--danger)',fontSize:12,cursor:'pointer',flexShrink:0 }}>
               {t('calendar.delete')}
             </button>
           ) : (
             <div style={{ display:'flex',gap:4,alignItems:'center' }}>
               <span style={{ fontSize:11,color:'var(--text-dim)',whiteSpace:'nowrap' }}>{t('calendar.confirmQ')}</span>
               <button onClick={handleDelete} disabled={deleting}
-                style={{ padding:'6px 10px',borderRadius:8,background:'rgba(239,68,68,0.12)',border:'1px solid rgba(239,68,68,0.4)',color:'#ef4444',fontSize:11,cursor:'pointer' }}>
+                style={{ padding:'6px 10px',borderRadius:8,background:'rgba(239,68,68,0.12)',border:'1px solid rgba(239,68,68,0.4)',color:'var(--danger)',fontSize:11,cursor:'pointer' }}>
                 {deleting ? '…' : t('calendar.yes')}
               </button>
               <button onClick={() => setConfirmDelete(false)}

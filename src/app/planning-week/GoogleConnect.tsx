@@ -49,7 +49,7 @@ export function GoogleConnectButton({ onChange }: { onChange: () => void }) {
         <input type="checkbox" checked={status.suppressReminders !== false} onChange={e => void toggleSuppress(e.target.checked)} />
         Laisser Google gérer les rappels de cette page (éviter les doublons)
       </label>
-      <button onClick={disconnect} disabled={busy} style={{ padding: '8px', borderRadius: 9, border: '1px solid var(--border)', background: 'transparent', color: '#ef4444', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>Déconnecter</button>
+      <button onClick={disconnect} disabled={busy} style={{ padding: '8px', borderRadius: 9, border: '1px solid var(--border)', background: 'transparent', color: 'var(--danger)', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>Déconnecter</button>
     </div>
   )
 }

@@ -25,14 +25,14 @@ export default function IngredientRow({ ingredient, onRemove }: Props) {
         </div>
         <div style={{ fontSize: 10, color: 'var(--text-dim)', display: 'flex', gap: 8, marginTop: 1 }}>
           <span>{qty}g</span>
-          <span style={{ color: '#06B6D4' }}>{m.kcal} kcal</span>
+          <span style={{ color: 'var(--primary)' }}>{m.kcal} kcal</span>
           <span>P{m.prot}</span>
           <span>G{m.gluc}</span>
           <span>L{m.lip}</span>
         </div>
       </div>
       <button onClick={onRemove}
-        style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: '0 4px', flexShrink: 0 }}>
+        style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: '0 4px', flexShrink: 0 }}>
         ×
       </button>
     </div>

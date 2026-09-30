@@ -74,7 +74,7 @@ export function CoachChatBubble() {
         <button onClick={() => setOpen(true)} aria-label={t('w4c.coach_messages_aria')}
           style={{ position: 'fixed', right: 16, bottom: 'calc(84px + env(safe-area-inset-bottom))', zIndex: 1200, width: 52, height: 52, borderRadius: '50%', border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', cursor: 'pointer', boxShadow: '0 6px 22px rgba(0,0,0,0.22)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-          {unread > 0 && <span style={{ position: 'absolute', top: 0, right: 0, minWidth: 18, height: 18, padding: '0 5px', borderRadius: 9, background: '#EF4444', color: '#fff', fontSize: 10, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 0 2px var(--bg)' }}>{unread > 9 ? '9+' : unread}</span>}
+          {unread > 0 && <span style={{ position: 'absolute', top: 0, right: 0, minWidth: 18, height: 18, padding: '0 5px', borderRadius: 9, background: 'var(--danger)', color: '#fff', fontSize: 10, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 0 2px var(--bg)' }}>{unread > 9 ? '9+' : unread}</span>}
         </button>
       )}
 
@@ -111,7 +111,7 @@ export function CoachChatBubble() {
                       <span style={{ display: 'block', fontSize: 13.5, fontWeight: 700, color: 'var(--text)' }}>{th.name}</span>
                       <span style={{ display: 'block', fontSize: 12, color: 'var(--text-dim)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{th.lastBody || t('w4c.coach_start_conversation')}</span>
                     </span>
-                    {th.unread > 0 && <span style={{ minWidth: 16, height: 16, padding: '0 4px', borderRadius: 8, background: '#EF4444', color: '#fff', fontSize: 9, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{th.unread}</span>}
+                    {th.unread > 0 && <span style={{ minWidth: 16, height: 16, padding: '0 4px', borderRadius: 8, background: 'var(--danger)', color: '#fff', fontSize: 9, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{th.unread}</span>}
                   </button>
                 ))}
               </div>

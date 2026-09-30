@@ -34,10 +34,10 @@ function Item({ active, icon, label, onClick }: { active: boolean; icon?: React.
         padding: '9px 10px', borderRadius: 8, border: 'none', textAlign: 'left',
         cursor: 'pointer', fontSize: 13.5, fontFamily: 'DM Sans, sans-serif',
         background: active ? 'rgba(6,182,212,0.10)' : 'transparent',
-        color: active ? '#06B6D4' : 'var(--text-mid)', fontWeight: active ? 500 : 400,
+        color: active ? 'var(--primary)' : 'var(--text-mid)', fontWeight: active ? 500 : 400,
       }}
     >
-      {icon && <span style={{ flexShrink: 0, display: 'flex', color: active ? '#06B6D4' : 'var(--text-mid)' }}>{icon}</span>}
+      {icon && <span style={{ flexShrink: 0, display: 'flex', color: active ? 'var(--primary)' : 'var(--text-mid)' }}>{icon}</span>}
       {label}
     </button>
   )

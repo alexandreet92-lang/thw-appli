@@ -52,7 +52,7 @@ export default function SegmentSaveForm({ defaultName = '', sport, onSave, onClo
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
         </button>
         <span style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', fontSize: 15, fontWeight: 600 }}>{t('shared.createSegment')}</span>
-        <button onClick={handleSave} disabled={saving || !name.trim()} style={{ marginLeft: 'auto', padding: '7px 14px', borderRadius: 10, background: 'none', border: 'none', color: name.trim() ? '#06B6D4' : dim, fontSize: 15, fontWeight: 600, cursor: name.trim() ? 'pointer' : 'default', opacity: saving ? 0.5 : 1 }}>
+        <button onClick={handleSave} disabled={saving || !name.trim()} style={{ marginLeft: 'auto', padding: '7px 14px', borderRadius: 10, background: 'none', border: 'none', color: name.trim() ? 'var(--primary)' : dim, fontSize: 15, fontWeight: 600, cursor: name.trim() ? 'pointer' : 'default', opacity: saving ? 0.5 : 1 }}>
           {saving ? '…' : t('shared.create')}
         </button>
       </div>
@@ -85,7 +85,7 @@ export default function SegmentSaveForm({ defaultName = '', sport, onSave, onClo
           </div>
           <button
             onClick={() => setIsPublic(p => !p)}
-            style={{ width: 44, height: 26, borderRadius: 13, background: isPublic ? '#06B6D4' : (isDark ? 'rgba(255,255,255,0.15)' : '#D1D5DB'), border: 'none', cursor: 'pointer', position: 'relative', transition: 'background 200ms' }}
+            style={{ width: 44, height: 26, borderRadius: 13, background: isPublic ? 'var(--primary)' : (isDark ? 'rgba(255,255,255,0.15)' : '#D1D5DB'), border: 'none', cursor: 'pointer', position: 'relative', transition: 'background 200ms' }}
           >
             <span style={{ position: 'absolute', top: 3, left: isPublic ? 21 : 3, width: 20, height: 20, borderRadius: '50%', background: '#fff', transition: 'left 200ms', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
           </button>

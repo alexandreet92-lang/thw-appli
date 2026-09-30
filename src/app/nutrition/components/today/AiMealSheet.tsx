@@ -107,7 +107,7 @@ export function AiMealSheet({ slotLabel, onClose, onConfirm }: {
           </>
         )}
 
-        {err && <p style={{ fontFamily: FB, fontSize: 12, color: '#ef4444', margin: 'var(--space-2) 0 0' }}>{err}</p>}
+        {err && <p style={{ fontFamily: FB, fontSize: 12, color: 'var(--danger)', margin: 'var(--space-2) 0 0' }}>{err}</p>}
       </div>
     </div>,
     document.body,

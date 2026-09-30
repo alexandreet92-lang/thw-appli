@@ -440,7 +440,7 @@ export function SessionBlockBuilder({ sport, runningSub, accent, blocks, onChang
             {aiLoading ? tr('planning.generating') : tr('planning.generateBlocks')}
           </button>
           {aiError && (
-            <p style={{ margin: '8px 0 0', padding: '8px 10px', borderRadius: 8, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#ef4444', fontSize: 11, lineHeight: 1.4 }}>{aiError}</p>
+            <p style={{ margin: '8px 0 0', padding: '8px 10px', borderRadius: 8, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: 'var(--danger)', fontSize: 11, lineHeight: 1.4 }}>{aiError}</p>
           )}
           {/* Résumé live sous « Générer les blocs » : dès qu'il y a des blocs,
               leurs stats ; SINON, estimation EN DIRECT du texte tapé (parseur
@@ -476,7 +476,7 @@ export function SessionBlockBuilder({ sport, runningSub, accent, blocks, onChang
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
               <IconMapPin size={15} color={accent} />
               <span style={{ flex: 1, fontSize: 12, color: 'var(--se-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{parcoursFile.name}</span>
-              <button type="button" onClick={() => setParcoursFile(null)} aria-label={tr('planning.removeParcours')} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', display: 'flex', padding: 2 }}><IconX size={15} /></button>
+              <button type="button" onClick={() => setParcoursFile(null)} aria-label={tr('planning.removeParcours')} style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', display: 'flex', padding: 2 }}><IconX size={15} /></button>
             </div>
             <ParcoursViewer file={parcoursFile} />
           </div>
@@ -487,7 +487,7 @@ export function SessionBlockBuilder({ sport, runningSub, accent, blocks, onChang
               <span style={{ flex: 1, fontSize: 12, fontWeight: 600, color: 'var(--se-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{parcoursData.name || tr('planning.stageParcours')}</span>
               <button type="button" onClick={() => parcoursInputRef.current?.click()} style={{ background: 'none', border: 'none', color: accent, cursor: 'pointer', fontSize: 11, fontWeight: 600 }}>{tr('planning.replace')}</button>
               {onParcoursRemove && (
-                <button type="button" onClick={onParcoursRemove} aria-label={tr('planning.removeParcours')} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', display: 'flex', padding: 2 }}><IconX size={15} /></button>
+                <button type="button" onClick={onParcoursRemove} aria-label={tr('planning.removeParcours')} style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', display: 'flex', padding: 2 }}><IconX size={15} /></button>
               )}
             </div>
             <ParcoursViewer

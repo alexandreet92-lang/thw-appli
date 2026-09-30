@@ -99,7 +99,7 @@ export default function UpdatePasswordPage() {
           </div>
 
           {error && (
-            <div style={{ padding: '9px 12px', borderRadius: 9, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#ef4444', fontSize: 12 }}>
+            <div style={{ padding: '9px 12px', borderRadius: 9, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: 'var(--danger)', fontSize: 12 }}>
               {error}
             </div>
           )}

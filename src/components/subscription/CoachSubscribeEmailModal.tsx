@@ -10,6 +10,7 @@ import { useEffect, useState } from 'react'
 import { getCurrentUser } from "@/lib/auth/currentUser"
 import { Mail, Check } from 'lucide-react'
 import { useI18n } from '@/lib/i18n'
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/shadcn/dialog'
 import { hidePricing } from '@/lib/native/platform'
 import { openIapStore } from '@/lib/iap/store-events'
 
@@ -62,8 +63,10 @@ export default function CoachSubscribeEmailModal({ packKey, packName, packLabel,
   }
 
   return (
-    <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 13000, background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, fontFamily: 'var(--font-body)' }}>
-      <div onClick={e => e.stopPropagation()} style={{ width: 400, maxWidth: '100%', background: 'var(--bg-card)', borderRadius: 'var(--r-lg)', padding: 28, boxShadow: '0 30px 80px rgba(0,0,0,0.35)' }}>
+    <Dialog open onOpenChange={o => { if (!o) onClose() }}>
+      <DialogContent showClose={false} className="max-w-[400px] gap-0 p-7">
+        <DialogTitle className="sr-only">{t('w3c.coachsub_pack', { name: packName })}</DialogTitle>
+        <DialogDescription className="sr-only">{''}</DialogDescription>
         {sent ? (
           <div style={{ textAlign: 'center' }}>
             <div style={{ width: 46, height: 46, borderRadius: '50%', background: 'var(--bg-card2)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 18px' }}>
@@ -131,7 +134,7 @@ export default function CoachSubscribeEmailModal({ packKey, packName, packLabel,
             )}
           </>
         )}
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   )
 }

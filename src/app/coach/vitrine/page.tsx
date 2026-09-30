@@ -7,6 +7,7 @@ export const dynamic = 'force-dynamic'
 // vidéo de présentation, galerie, diplômes, palmarès, coordonnées…).
 // La vitrine se partage via /c/[slug].
 // ══════════════════════════════════════════════════════════════════
+import { Switch } from '@/components/shadcn/switch'
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import {
@@ -324,12 +325,10 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
 }
 function Toggle({ on, onClick, label }: { on: boolean; onClick: () => void; label: string }) {
   return (
-    <button onClick={onClick} style={{ display: 'inline-flex', alignItems: 'center', gap: 9, border: 'none', background: 'transparent', cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
-      <span style={{ width: 40, height: 24, borderRadius: 999, background: on ? 'var(--primary)' : 'var(--border-mid)', position: 'relative', transition: 'background 160ms', flexShrink: 0 }}>
-        <span style={{ position: 'absolute', top: 3, left: on ? 19 : 3, width: 18, height: 18, borderRadius: '50%', background: '#fff', transition: 'left 160ms', boxShadow: '0 1px 2px rgba(0,0,0,0.25)' }} />
-      </span>
-      <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{label}</span>
-    </button>
+    <label style={{ display: 'inline-flex', alignItems: 'center', gap: 12, cursor: 'pointer', fontFamily: 'var(--font-body)', textAlign: 'left' }}>
+      <Switch checked={on} onCheckedChange={() => onClick()} />
+      <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>{label}</span>
+    </label>
   )
 }
 

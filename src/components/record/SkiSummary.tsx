@@ -56,7 +56,7 @@ export default function SkiSummary({ snap, isDark, onClose }: Props) {
 
       {/* Page dots */}
       <div style={{ display:'flex', justifyContent:'center', gap:6, padding:'10px 0', flexShrink:0 }}>
-        {[0,1].map(i => <span key={i} onClick={() => setPage(i)} style={{ width:6, height:6, borderRadius:'50%', background: i===page ? '#06B6D4' : dim, cursor:'pointer', transition:'background 0.2s' }} />)}
+        {[0,1].map(i => <span key={i} onClick={() => setPage(i)} style={{ width:6, height:6, borderRadius:'50%', background: i===page ? 'var(--primary)' : dim, cursor:'pointer', transition:'background 0.2s' }} />)}
       </div>
 
       <div style={{ flex:1, overflow:'hidden' }}>

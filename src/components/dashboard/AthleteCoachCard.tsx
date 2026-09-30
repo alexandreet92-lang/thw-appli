@@ -118,7 +118,7 @@ export function AthleteCoachCard() {
             style={{ minWidth: 170, marginTop: 18, padding: '12px 22px', borderRadius: 12, border: 'none', background: code.length === 8 && !busy ? 'var(--primary)' : 'var(--bg-alt)', color: code.length === 8 && !busy ? 'var(--on-primary)' : 'var(--text-dim)', fontSize: 14.5, fontWeight: 700, cursor: code.length === 8 && !busy ? 'pointer' : 'not-allowed', fontFamily: 'var(--font-body)', transition: 'background .15s' }}>
             {busy ? t('w2d.connecting') : t('w2d.connect')}
           </button>
-          {msg && <p style={{ fontSize: 13, color: msg.ok ? '#22c55e' : '#ef4444', margin: '14px 0 0', fontWeight: 600 }}>{msg.text}</p>}
+          {msg && <p style={{ fontSize: 13, color: msg.ok ? '#22c55e' : 'var(--danger)', margin: '14px 0 0', fontWeight: 600 }}>{msg.text}</p>}
         </div>
       </SlideSheet>
     </div>

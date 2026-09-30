@@ -154,7 +154,7 @@ export function AIBubble({ text, status, onRetry }: Props) {
           {t('activities.errorOccurred')}{' '}
           <button
             onClick={onRetry}
-            style={{ color: '#06B6D4', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', padding: 0 }}
+            style={{ color: 'var(--primary)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', padding: 0 }}
           >
             {t('activities.retry')}
           </button>
@@ -230,7 +230,7 @@ export function AIBubble({ text, status, onRetry }: Props) {
               <button
                 onClick={onRetry}
                 style={{
-                  fontSize: 12, color: '#06B6D4',
+                  fontSize: 12, color: 'var(--primary)',
                   background: 'none', border: 'none', cursor: 'pointer',
                 }}
               >

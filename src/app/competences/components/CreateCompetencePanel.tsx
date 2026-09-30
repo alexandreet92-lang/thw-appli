@@ -90,7 +90,7 @@ export default function CreateCompetencePanel({ variant = 'desktop', limitReache
         if (m.role === 'user') {
           return (
             <div key={i} style={{ display: 'flex', justifyContent: 'flex-end', margin: '10px 0' }}>
-              <div style={{ maxWidth: '85%', background: '#06B6D4', color: '#fff', borderRadius: '14px 14px 4px 14px', padding: '8px 12px', fontSize: 13, lineHeight: 1.5 }}>{m.content}</div>
+              <div style={{ maxWidth: '85%', background: 'var(--primary)', color: '#fff', borderRadius: '14px 14px 4px 14px', padding: '8px 12px', fontSize: 13, lineHeight: 1.5 }}>{m.content}</div>
             </div>
           )
         }
@@ -128,14 +128,14 @@ export default function CreateCompetencePanel({ variant = 'desktop', limitReache
           </div>
           <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
             <button onClick={() => inputRef.current?.focus()} style={{ fontSize: 12, background: 'transparent', color: 'var(--text-mid)', border: '0.5px solid var(--border)', borderRadius: 8, padding: '7px 14px', cursor: 'pointer' }}>{t('competences.refine')}</button>
-            <button onClick={() => void doSave()} disabled={saving} style={{ flex: 1, fontSize: 12, fontWeight: 500, background: '#06B6D4', color: '#fff', border: 'none', borderRadius: 8, padding: '7px 14px', cursor: saving ? 'wait' : 'pointer' }}>
+            <button onClick={() => void doSave()} disabled={saving} style={{ flex: 1, fontSize: 12, fontWeight: 500, background: 'var(--primary)', color: '#fff', border: 'none', borderRadius: 8, padding: '7px 14px', cursor: saving ? 'wait' : 'pointer' }}>
               {saving ? t('competences.saving') : t('competences.saveThisSkill')}
             </button>
           </div>
         </div>
       )}
 
-      {conv.error && <p style={{ fontSize: 11, color: '#ef4444', marginTop: 8 }}>{conv.error}</p>}
+      {conv.error && <p style={{ fontSize: 11, color: 'var(--danger)', marginTop: 8 }}>{conv.error}</p>}
       <div ref={endRef} />
     </>
   )
@@ -214,7 +214,7 @@ function sendBtn(active: boolean): React.CSSProperties {
   return {
     width: 28, height: 28, borderRadius: '50%', border: 'none', flexShrink: 0,
     cursor: active ? 'pointer' : 'not-allowed',
-    background: active ? '#06B6D4' : 'var(--border)',
+    background: active ? 'var(--primary)' : 'var(--border)',
     opacity: active ? 1 : 0.5,
     display: 'flex', alignItems: 'center', justifyContent: 'center',
   }

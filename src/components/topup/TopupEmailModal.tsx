@@ -95,11 +95,11 @@ export default function TopupEmailModal({ isOpen, onClose }: Props) {
               className="topup-email-input"
               style={{ width: '100%', background: 'var(--bg-alt)', border: '1px solid var(--border-mid)', borderRadius: 10, padding: '12px 14px', fontSize: 14, color: 'var(--text)', outline: 'none', marginBottom: 14, fontFamily: 'DM Sans, sans-serif' }}
             />
-            {error && <p style={{ fontSize: 12, color: '#EF4444', margin: '0 0 12px', textAlign: 'center' }}>{error}</p>}
+            {error && <p style={{ fontSize: 12, color: 'var(--danger)', margin: '0 0 12px', textAlign: 'center' }}>{error}</p>}
             <button
               onClick={() => void submit()}
               disabled={loading || !email}
-              style={{ width: '100%', padding: 12, borderRadius: 10, border: 'none', background: '#06B6D4', color: '#fff', fontSize: 14, fontWeight: 500, cursor: loading || !email ? 'not-allowed' : 'pointer', opacity: loading || !email ? 0.6 : 1 }}
+              style={{ width: '100%', padding: 12, borderRadius: 10, border: 'none', background: 'var(--primary)', color: '#fff', fontSize: 14, fontWeight: 500, cursor: loading || !email ? 'not-allowed' : 'pointer', opacity: loading || !email ? 0.6 : 1 }}
             >
               {loading ? t('shared.sending') : t('shared.sendLink')}
             </button>

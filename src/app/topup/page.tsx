@@ -92,7 +92,7 @@ function PackCard({ pack, loading, onChoose }: { pack: Pack; loading: string | n
           style={{
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%',
             padding: '13px 18px', borderRadius: 10, border: feat ? 'none' : '1px solid #06B6D4',
-            background: feat ? GRAD : 'rgba(6,182,212,0.08)', color: feat ? '#fff' : '#06B6D4',
+            background: feat ? GRAD : 'rgba(6,182,212,0.08)', color: feat ? '#fff' : 'var(--primary)',
             fontFamily: "'DM Sans', sans-serif", fontSize: 14, fontWeight: 600,
             cursor: loading ? 'default' : 'pointer', opacity: loading && loading !== pack.id ? 0.5 : 1,
             boxShadow: feat ? '0 4px 22px rgba(6,182,212,0.36)' : 'none',
@@ -172,15 +172,15 @@ function TopupInner() {
       <section style={{ paddingTop: 64, paddingBottom: 8 }}>
         <div className="topup-wrap" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
           <div className="topup-reveal topup-eyebrow" style={{ marginBottom: 26 }}>
-            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#06B6D4', boxShadow: '0 0 8px #06B6D4', animation: 'topupPulse 2s infinite', display: 'inline-block' }} />
+            <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--primary)', boxShadow: '0 0 8px #06B6D4', animation: 'topupPulse 2s infinite', display: 'inline-block' }} />
             {t('misc.secureLink24h')}
           </div>
           <div className="topup-reveal" style={{ marginBottom: 22 }}>
             <TokenGauge value={remaining} total={limit} label={t('misc.currentBalance')} sub={t('misc.monthlyQuota')} />
           </div>
           <div className="topup-reveal" style={{ display: 'inline-flex', alignItems: 'center', gap: 10, padding: '8px 16px', borderRadius: 999, border: '1px solid var(--border-mid)', background: 'var(--bg-card)' }}>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: "'DM Mono', monospace", fontSize: 12, color: '#06B6D4' }}>
-              <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#06B6D4', display: 'inline-block' }} /> {planLabel}
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: "'DM Mono', monospace", fontSize: 12, color: 'var(--primary)' }}>
+              <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--primary)', display: 'inline-block' }} /> {planLabel}
             </span>
             {resetDays !== null && <>
               <span style={{ width: 1, height: 12, background: 'var(--border-mid)' }} />
@@ -200,7 +200,7 @@ function TopupInner() {
             <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 15, lineHeight: 1.6, color: 'var(--text-mid)' }}>
               {t('misc.topupIntro')}
             </p>
-            {error && <p style={{ marginTop: 16, fontSize: 13, color: '#ef4444' }}>{error}</p>}
+            {error && <p style={{ marginTop: 16, fontSize: 13, color: 'var(--danger)' }}>{error}</p>}
           </div>
           <div className="packs-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1.05fr 1fr', gap: 16, maxWidth: 940, margin: '0 auto', alignItems: 'stretch' }}>
             {PACKS.map(p => <PackCard key={p.id} pack={p} loading={loading} onChoose={choose} />)}
@@ -242,7 +242,7 @@ function TopupInner() {
             <div className="steps-line" style={{ position: 'absolute', top: 30, left: '16%', right: '16%', height: 2, background: 'linear-gradient(90deg, transparent, rgba(6,182,212,0.4), rgba(91,111,255,0.4), transparent)', zIndex: 0 }} />
             {STEPS.map(({ Ic }, i) => (
               <div key={i} className="topup-reveal" style={{ textAlign: 'center', position: 'relative', zIndex: 1 }}>
-                <div style={{ width: 60, height: 60, borderRadius: '50%', margin: '0 auto 18px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)', border: '1px solid rgba(6,182,212,0.4)', color: '#06B6D4', boxShadow: '0 0 28px rgba(6,182,212,0.22), 0 0 0 6px var(--bg)' }}><Ic size={24} /></div>
+                <div style={{ width: 60, height: 60, borderRadius: '50%', margin: '0 auto 18px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)', border: '1px solid rgba(6,182,212,0.4)', color: 'var(--primary)', boxShadow: '0 0 28px rgba(6,182,212,0.22), 0 0 0 6px var(--bg)' }}><Ic size={24} /></div>
                 <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 16, fontWeight: 700, letterSpacing: '-0.01em', color: 'var(--text)', marginBottom: 7 }}>{stepTitles[i]}</div>
                 <div style={{ fontSize: 12.5, lineHeight: 1.55, color: 'var(--text-mid)', maxWidth: 220, margin: '0 auto' }}>{stepDescs[i]}</div>
               </div>

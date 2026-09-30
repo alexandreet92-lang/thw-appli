@@ -168,7 +168,7 @@ export default function ParcoursViewer({ file, fileUrl, data: dataProp, mapHeigh
   }
 
   if (status === 'error') {
-    return <p style={{ fontSize:12, color:'#ef4444', margin:'8px 0 0' }}>{t('shared.gpxInvalid')}</p>
+    return <p style={{ fontSize:12, color:'var(--danger)', margin:'8px 0 0' }}>{t('shared.gpxInvalid')}</p>
   }
   if (status === 'loading' || !data) {
     return <div style={{ height: mapHeight, borderRadius:12, background:'#0F172A', display:'flex', alignItems:'center', justifyContent:'center', color:'#64748B', fontSize:12 }}>{t('shared.readingRoute')}</div>

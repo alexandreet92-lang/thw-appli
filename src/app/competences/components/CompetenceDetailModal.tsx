@@ -159,7 +159,7 @@ Garde le prompt entre 80 et 150 mots. Réponds d'abord en expliquant brièvement
           {(isActive || conflicts.length > 0) && (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 7 }}>
               {isActive && (
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, fontWeight: 600, color: '#06B6D4', background: 'rgba(6,182,212,0.12)', border: '0.5px solid rgba(6,182,212,0.3)', borderRadius: 5, padding: '2px 8px' }}>{t('competences.active')}</span>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, fontWeight: 600, color: 'var(--primary)', background: 'rgba(6,182,212,0.12)', border: '0.5px solid rgba(6,182,212,0.3)', borderRadius: 5, padding: '2px 8px' }}>{t('competences.active')}</span>
               )}
               {conflicts.map(c => (
                 <span key={c.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, color: 'rgba(239,68,68,0.9)', border: '0.5px solid rgba(239,68,68,0.35)', borderRadius: 5, padding: '2px 8px' }}>
@@ -218,7 +218,7 @@ Garde le prompt entre 80 et 150 mots. Réponds d'abord en expliquant brièvement
           if (m.role === 'user') {
             return (
               <div key={i} style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 10 }}>
-                <div style={{ maxWidth: '80%', background: '#06B6D4', color: '#fff', borderRadius: '14px 14px 4px 14px', padding: '8px 12px', fontSize: 13, lineHeight: 1.5 }}>
+                <div style={{ maxWidth: '80%', background: 'var(--primary)', color: '#fff', borderRadius: '14px 14px 4px 14px', padding: '8px 12px', fontSize: 13, lineHeight: 1.5 }}>
                   {m.content}
                 </div>
               </div>
@@ -241,7 +241,7 @@ Garde le prompt entre 80 et 150 mots. Réponds d'abord en expliquant brièvement
                     </div>
                     <button
                       onClick={() => setCurrentPrompt(proposed)}
-                      style={{ fontSize: 11, background: '#06B6D4', color: '#fff', border: 'none', borderRadius: 6, padding: '5px 12px', cursor: 'pointer', fontWeight: 500 }}
+                      style={{ fontSize: 11, background: 'var(--primary)', color: '#fff', border: 'none', borderRadius: 6, padding: '5px 12px', cursor: 'pointer', fontWeight: 500 }}
                     >
                       {t('competences.applyThisVersion')}
                     </button>
@@ -270,7 +270,7 @@ Garde le prompt entre 80 et 150 mots. Réponds d'abord en expliquant brièvement
               onClick={() => void send()}
               disabled={!input.trim() || isStreaming}
               aria-label={t('competences.send')}
-              style={{ width: 28, height: 28, borderRadius: '50%', border: 'none', flexShrink: 0, cursor: input.trim() && !isStreaming ? 'pointer' : 'not-allowed', background: input.trim() && !isStreaming ? '#06B6D4' : 'var(--border)', opacity: input.trim() && !isStreaming ? 1 : 0.5, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              style={{ width: 28, height: 28, borderRadius: '50%', border: 'none', flexShrink: 0, cursor: input.trim() && !isStreaming ? 'pointer' : 'not-allowed', background: input.trim() && !isStreaming ? 'var(--primary)' : 'var(--border)', opacity: input.trim() && !isStreaming ? 1 : 0.5, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
             >
               <ArrowUp size={15} color="#fff" />
             </button>
@@ -285,7 +285,7 @@ Garde le prompt entre 80 et 150 mots. Réponds d'abord en expliquant brièvement
       {isCustom ? (
         <button
           onClick={() => { if (confirm(t('competences.deleteConfirm'))) onDelete() }}
-          style={{ background: 'transparent', color: '#EF4444', border: '0.5px solid rgba(239,68,68,0.3)', borderRadius: 8, padding: '8px 16px', fontSize: 12, fontWeight: 500, cursor: 'pointer' }}
+          style={{ background: 'transparent', color: 'var(--danger)', border: '0.5px solid rgba(239,68,68,0.3)', borderRadius: 8, padding: '8px 16px', fontSize: 12, fontWeight: 500, cursor: 'pointer' }}
         >{t('competences.delete')}</button>
       ) : <span />}
       <div style={{ display: 'flex', gap: 8 }}>
@@ -293,7 +293,7 @@ Garde le prompt entre 80 et 150 mots. Réponds d'abord en expliquant brièvement
         <button
           onClick={() => onSave(currentPrompt)}
           disabled={!dirty}
-          style={{ background: dirty ? '#06B6D4' : 'var(--border)', color: dirty ? '#fff' : 'var(--text-dim)', border: 'none', borderRadius: 8, padding: '8px 18px', fontSize: 12, fontWeight: 500, cursor: dirty ? 'pointer' : 'not-allowed', opacity: dirty ? 1 : 0.6 }}
+          style={{ background: dirty ? 'var(--primary)' : 'var(--border)', color: dirty ? '#fff' : 'var(--text-dim)', border: 'none', borderRadius: 8, padding: '8px 18px', fontSize: 12, fontWeight: 500, cursor: dirty ? 'pointer' : 'not-allowed', opacity: dirty ? 1 : 0.6 }}
         >{t('competences.save')}</button>
       </div>
     </div>

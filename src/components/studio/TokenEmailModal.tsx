@@ -82,7 +82,7 @@ export default function TokenEmailModal({ onClose }: { onClose: () => void }) {
               placeholder={t('w3c.email_placeholder')}
               style={{ width: '100%', background: 'var(--bg-alt)', border: '1px solid var(--border)', borderRadius: 14, padding: '13px 15px', fontSize: 14, color: 'var(--text)', outline: 'none', marginBottom: 12, fontFamily: 'var(--font-body)', boxSizing: 'border-box', textAlign: 'center' }}
             />
-            {error && <p style={{ fontSize: 12, color: '#EF4444', margin: '0 0 12px', textAlign: 'center' }}>{error}</p>}
+            {error && <p style={{ fontSize: 12, color: 'var(--danger)', margin: '0 0 12px', textAlign: 'center' }}>{error}</p>}
             <button
               onClick={() => void submit()}
               disabled={loading || !email}

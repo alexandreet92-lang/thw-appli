@@ -164,7 +164,7 @@ export default function CompetencesPage() {
 
   const badge = (
     <span style={{ fontSize: 12, fontWeight: 500, background: 'var(--bg-alt)', border: '0.5px solid var(--border-mid)', borderRadius: 20, padding: '5px 14px', color: 'var(--text)', whiteSpace: 'nowrap' }}>
-      <span style={{ color: '#06B6D4', fontWeight: 700, fontSize: 13 }}>{limit.active_count}</span> / {limit.limit} {t('competences.activesPlan', { plan: limit.planLabel })}
+      <span style={{ color: 'var(--primary)', fontWeight: 700, fontSize: 13 }}>{limit.active_count}</span> / {limit.limit} {t('competences.activesPlan', { plan: limit.planLabel })}
     </span>
   )
 
@@ -220,7 +220,7 @@ export default function CompetencesPage() {
               </button>
               <button
                 onClick={() => router.push('/settings/subscription')}
-                style={{ flex: 1, fontSize: 12.5, fontWeight: 500, background: '#06B6D4', color: '#fff', border: 'none', borderRadius: 9, padding: '9px 14px', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}
+                style={{ flex: 1, fontSize: 12.5, fontWeight: 500, background: 'var(--primary)', color: '#fff', border: 'none', borderRadius: 9, padding: '9px 14px', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}
               >
                 {t('competences.discoverPlans')}
               </button>
@@ -241,7 +241,7 @@ export default function CompetencesPage() {
           </span>
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
             <button onClick={() => setConflictState(null)} style={{ fontSize: 12, background: 'transparent', color: 'var(--text-mid)', border: '0.5px solid var(--border)', borderRadius: 8, padding: '7px 14px', cursor: 'pointer' }}>{t('competences.cancel')}</button>
-            <button onClick={() => void resolveConflict()} style={{ fontSize: 12, fontWeight: 500, background: '#06B6D4', color: '#fff', border: 'none', borderRadius: 8, padding: '7px 14px', cursor: 'pointer' }}>{t('competences.deactivateOtherActivateThis')}</button>
+            <button onClick={() => void resolveConflict()} style={{ fontSize: 12, fontWeight: 500, background: 'var(--primary)', color: '#fff', border: 'none', borderRadius: 8, padding: '7px 14px', cursor: 'pointer' }}>{t('competences.deactivateOtherActivateThis')}</button>
           </div>
         </div>
       )}
@@ -295,7 +295,7 @@ export default function CompetencesPage() {
 
         {/* Compteur sous les chips */}
         <div style={{ fontSize: 12, color: 'var(--text-mid)', padding: '0 16px 12px' }}>
-          <span style={{ color: '#06B6D4', fontWeight: 700, fontSize: 13 }}>{limit.active_count}</span> / {limit.limit} {t('competences.activesPlan', { plan: limit.planLabel })}
+          <span style={{ color: 'var(--primary)', fontWeight: 700, fontSize: 13 }}>{limit.active_count}</span> / {limit.limit} {t('competences.activesPlan', { plan: limit.planLabel })}
         </div>
 
         {/* Notice */}
@@ -345,7 +345,7 @@ export default function CompetencesPage() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           {badge}
           <button onClick={focusCreate}
-            style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#06B6D4', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}>
+            style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--primary)', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}>
             <Plus size={15} /> {t('competences.create')}
           </button>
         </div>
@@ -385,5 +385,5 @@ export default function CompetencesPage() {
 const noticeStyle: React.CSSProperties = {
   margin: '8px 14px', padding: '8px 12px', borderRadius: 8,
   background: 'rgba(239,68,68,0.08)', border: '0.5px solid rgba(239,68,68,0.3)',
-  color: '#ef4444', fontSize: 12,
+  color: 'var(--danger)', fontSize: 12,
 }

@@ -79,7 +79,7 @@ export function BottomSheet({
         {/* Header optionnel */}
         {(title || icon) && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 20px 8px', flexShrink: 0 }}>
-            {icon && <span style={{ color: '#06B6D4', display: 'flex' }}>{icon}</span>}
+            {icon && <span style={{ color: 'var(--primary)', display: 'flex' }}>{icon}</span>}
             {title && (
               <h2 style={{ margin: 0, fontSize: 15, fontWeight: 600, color: 'var(--foreground)' }}>
                 {title}

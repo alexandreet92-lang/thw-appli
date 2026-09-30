@@ -149,7 +149,7 @@ export function AerobicEfficiency({ watts, heartrate, time }: Props) {
         <path d={fillPath} fill="url(#efFill)" />
 
         {/* EF line */}
-        <path d={linePath} fill="none" stroke="#06B6D4" strokeWidth="1.8" strokeLinejoin="round" />
+        <path d={linePath} fill="none" stroke="var(--primary)" strokeWidth="1.8" strokeLinejoin="round" />
 
         {/* Trend line */}
         <line
@@ -162,7 +162,7 @@ export function AerobicEfficiency({ watts, heartrate, time }: Props) {
         <line
           x1={0}  y1={yMap(avgEF)}
           x2={W}  y2={yMap(avgEF)}
-          stroke="#06B6D4" strokeWidth="0.8" strokeDasharray="3 4" opacity="0.4"
+          stroke="var(--primary)" strokeWidth="0.8" strokeDasharray="3 4" opacity="0.4"
         />
       </svg>
 

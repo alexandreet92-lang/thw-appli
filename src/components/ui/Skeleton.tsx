@@ -4,6 +4,8 @@
  * Design rule: skeleton screens replace ALL spinners/loaders.
  */
 
+import { Skeleton as ShadSkeleton } from '@/components/shadcn/skeleton'
+
 // ── Base shimmer block ────────────────────────────────────────────
 interface SkeletonProps {
   height?:       number | string
@@ -21,8 +23,8 @@ export function Skeleton({
   style,
 }: SkeletonProps) {
   return (
-    <div
-      className={`skeleton-shimmer${className ? ' ' + className : ''}`}
+    <ShadSkeleton
+      className={className}
       style={{ height, width, borderRadius, flexShrink: 0, ...style }}
     />
   )

@@ -59,7 +59,7 @@ export default function RunningSettingsParams({ settings, updateSetting, theme, 
   const renderSensors = () => (
     <SettingsSection title={t('record.runningParamsSensorsTitle')} theme={theme}>
       <div style={{ padding: '10px 16px 14px', background: 'rgba(6,182,212,0.06)', borderBottom: `1px solid ${theme.separator}` }}>
-        <p style={{ fontSize: 12, color: '#06B6D4', margin: 0, lineHeight: 1.5 }}>{t('record.runningParamsBluetoothSoon')}</p>
+        <p style={{ fontSize: 12, color: 'var(--primary)', margin: 0, lineHeight: 1.5 }}>{t('record.runningParamsBluetoothSoon')}</p>
       </div>
       {[
         { id:'hr',      label:t('record.runningParamsHeartRate'), desc:t('record.runningParamsHrSensorDesc') },
@@ -72,7 +72,7 @@ export default function RunningSettingsParams({ settings, updateSetting, theme, 
           </div>
           <div style={{ display:'flex', alignItems:'center', gap:8 }}>
             <span style={{ fontSize:12, color:'#8C8C8C' }}>{t('record.runningParamsNotConnected')}</span>
-            <span style={{ fontSize:10, color:'#06B6D4', border:'1px solid rgba(6,182,212,0.4)', borderRadius:20, padding:'2px 8px' }}>{t('record.runningParamsSoon')}</span>
+            <span style={{ fontSize:10, color:'var(--primary)', border:'1px solid rgba(6,182,212,0.4)', borderRadius:20, padding:'2px 8px' }}>{t('record.runningParamsSoon')}</span>
           </div>
         </div>
       ))}
@@ -163,7 +163,7 @@ export default function RunningSettingsParams({ settings, updateSetting, theme, 
         </div>
       ) : (
         <p style={{ fontSize: 12, color: '#8C8C8C', padding: '4px 16px 8px', margin: 0 }}>
-          <a href="/connections" style={{ color: '#06B6D4', textDecoration: 'none' }}>{t('record.runningParamsConnectStrava')}</a>{t('record.runningParamsConnectStravaSuffix')}
+          <a href="/connections" style={{ color: 'var(--primary)', textDecoration: 'none' }}>{t('record.runningParamsConnectStrava')}</a>{t('record.runningParamsConnectStravaSuffix')}
         </p>
       )}
       <SettingsRow theme={theme} label={t('record.runningParamsSummary')} description={t('record.runningParamsSummaryDesc')} last

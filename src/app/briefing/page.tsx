@@ -636,7 +636,7 @@ export default function BriefingPage() {
       <div style={page}>
         <div style={{ ...card, padding: 24 }}>
           <h1 style={h1Style}>{t('briefing.title')}</h1>
-          <p style={{ margin: 0, color: '#ef4444', fontSize: 14 }}>
+          <p style={{ margin: 0, color: 'var(--danger)', fontSize: 14 }}>
             {t('briefing.errorOccurred', { error })}
           </p>
         </div>
@@ -774,7 +774,7 @@ export default function BriefingPage() {
                     style={{
                       marginTop: 3,
                       width: 16, height: 16,
-                      accentColor: '#06B6D4',
+                      accentColor: 'var(--primary)',
                       cursor: 'pointer',
                       flexShrink: 0,
                     }}
@@ -798,7 +798,7 @@ export default function BriefingPage() {
                         <span style={{
                           fontSize: 10, fontWeight: 700,
                           padding: '2px 7px', borderRadius: 99,
-                          background: 'rgba(239,68,68,0.12)', color: '#ef4444',
+                          background: 'rgba(239,68,68,0.12)', color: 'var(--danger)',
                         }}>
                           {t('briefing.priority')}
                         </span>
@@ -885,7 +885,7 @@ export default function BriefingPage() {
                         <span style={{
                           flexShrink: 0, marginTop: 7,
                           width: 6, height: 6, borderRadius: '50%',
-                          background: '#06B6D4',
+                          background: 'var(--primary)',
                         }} />
                         <span>{b}</span>
                       </li>
@@ -1110,7 +1110,7 @@ export default function BriefingPage() {
           {/* Statut / erreur Instagram */}
           <div style={{ marginBottom: 20, minHeight: 18 }}>
             {instaApiError && (
-              <span style={{ fontSize: 12, color: '#ef4444' }}>⚠ {instaApiError}</span>
+              <span style={{ fontSize: 12, color: 'var(--danger)' }}>⚠ {instaApiError}</span>
             )}
             {!instaApiError && instaApiSnapshot?.snapshot_date && (
               <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>
@@ -1126,7 +1126,7 @@ export default function BriefingPage() {
             <div style={{
               background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)',
               padding: '10px 14px', borderRadius: 8, marginBottom: 14,
-              fontSize: 13, color: '#ef4444',
+              fontSize: 13, color: 'var(--danger)',
             }}>
               {mktError}
             </div>
@@ -1307,7 +1307,7 @@ export default function BriefingPage() {
             <div style={{
               background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)',
               padding: '10px 14px', borderRadius: 8, marginBottom: 10,
-              fontSize: 13, color: '#ef4444',
+              fontSize: 13, color: 'var(--danger)',
             }}>
               {instaError}
             </div>
@@ -1503,7 +1503,7 @@ function InstaSnapshotCard({ snapshot, compact = false }: { snapshot: InstaSnaps
             <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)', fontVariantNumeric: 'tabular-nums', display: 'flex', alignItems: 'center', gap: 6 }}>
               {snapshot.followers_count.toLocaleString(currentLocale())}
               {delta != null && (
-                <span style={{ fontSize: 13, color: delta >= 0 ? '#10b981' : '#ef4444', fontWeight: 600 }}>
+                <span style={{ fontSize: 13, color: delta >= 0 ? '#10b981' : 'var(--danger)', fontWeight: 600 }}>
                   {delta >= 0 ? '+' : ''}{delta}
                 </span>
               )}

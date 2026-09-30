@@ -243,3 +243,14 @@ d'intensité (vélo Z2→Z7, course Z2→Z5), bornes issues des mêmes formules 
 page Performance (`powerZones` / `paceZones`). Défauts « aucune donnée athlète » :
 FTP 200 W · VMA 12,8 km/h (⇒ Z2 endurance ≈ 10 km/h). Sous le tableau : repères
 SL1 · SL2 · FTP (vélo) / SL1 · SL2 allure (course).
+
+---
+
+## 9. shadcn/ui + motion (composants et animations)
+
+- **Composants** : `src/components/shadcn/` (Button, Card, Input, Label, Switch, Tabs, Dialog, Sheet, Badge, Skeleton, Separator), écrits à la manière de shadcn/ui *new-york* mais **thémés sur ce design system** : rôles shadcn → tokens (`tailwind.config.js` : `primary`→`--primary`, `secondary`→`--bg-card2`, `destructive`→`--danger`…), pilule, **aucune bordure** (sauf focus des champs), rayons `--r-*`. Le dossier n'est pas `ui/` pour éviter la collision de casse (`Button.tsx`/`button.tsx`) sur macOS.
+- **Ajouter un composant** : `npx shadcn@latest add <nom>` (alias dans `components.json`), puis **réaligner sur les tokens** (pas de couleur en dur, pas de bordure décorative).
+- **Enveloppes historiques** `components/ui/{Button,Card,Badge,Skeleton,Segmented}` : API inchangée, rendu shadcn.
+- **Animation (`motion/react`)** : entrée de page = fondu + glissement ~14 px, 250 ms (`ui/PageTransition`, posé dans les deux shells, y compris pages plein écran) ; listes = `motion/AnimatedList` (`AnimatedList` + `AnimatedItem`) → apparition, disparition et réorganisation fluides ; bloc isolé = `motion/Reveal` ; pages qui glissent = `ui/SlideOverlay` / `ui/SlideView`.
+- **Boutons** : micro-animation globale dans `globals.css` (éclaircissement au survol souris, compression au clic) ; `data-no-fx` pour l'exclure.
+- **Couleurs** : cyan de marque → `var(--primary)`, rouge → `var(--danger)` ; scrim/ombres flottantes → `--scrim`, `--shadow-float`, `--shadow-lens`, `--edge-shadow`.

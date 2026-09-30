@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils'
+import { Card as ShadCard } from '@/components/shadcn/card'
 
 type ColorVariant = 'brand' | 'blue' | 'red' | 'orange' | 'green' | 'default'
 
@@ -26,29 +27,13 @@ interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode
 }
 
-export function Card({ variant, noPadding, children, className, ...props }: CardProps) {
+// Enveloppe historique → shadcn Card (bulle sans bordure). `variant` ne sert plus
+// qu'à teinter la valeur d'un StatCard (plus de barre colorée : surface neutre).
+export function Card({ noPadding, children, className, ...props }: CardProps) {
   return (
-    <div
-      className={cn(
-        'relative overflow-hidden rounded-[16px] transition-all duration-200',
-        !noPadding && 'p-5',
-        className
-      )}
-      style={{
-        background: 'var(--bg-card)',
-        border: '1px solid var(--border)',
-        boxShadow: 'var(--shadow-card)',
-      }}
-      {...props}
-    >
-      {variant && variant !== 'default' && (
-        <div className={cn(
-          'absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r',
-          topBarColors[variant]
-        )} />
-      )}
+    <ShadCard className={cn('relative overflow-hidden', noPadding && 'p-0', className)} {...props}>
       {children}
-    </div>
+    </ShadCard>
   )
 }
 

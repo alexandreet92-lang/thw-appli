@@ -92,7 +92,7 @@ export default function CyclingSettingsParams({ settings, updateSetting, theme, 
   const renderSensors = () => (
     <SettingsSection title={t('record.sectionSensorsUpper')} theme={theme}>
       <div style={{ padding: '10px 16px 14px', background: 'rgba(6,182,212,0.06)', borderBottom: `1px solid ${theme.separator}` }}>
-        <p style={{ fontSize: 12, color: '#06B6D4', margin: 0, lineHeight: 1.5 }}>{t('record.cyclingParamsBluetoothSoon')}</p>
+        <p style={{ fontSize: 12, color: 'var(--primary)', margin: 0, lineHeight: 1.5 }}>{t('record.cyclingParamsBluetoothSoon')}</p>
       </div>
       {[
         { id:'hr',      label:t('record.cyclingParamsSensorHr'),      desc:t('record.cyclingParamsSensorHrDesc') },
@@ -107,7 +107,7 @@ export default function CyclingSettingsParams({ settings, updateSetting, theme, 
           </div>
           <div style={{ display:'flex', alignItems:'center', gap:8 }}>
             <span style={{ fontSize:12, color:'#8C8C8C' }}>{t('record.cyclingParamsNotConnected')}</span>
-            <span style={{ fontSize:10, color:'#06B6D4', border:'1px solid rgba(6,182,212,0.4)', borderRadius:20, padding:'2px 8px' }}>{t('record.cyclingParamsSoon')}</span>
+            <span style={{ fontSize:10, color:'var(--primary)', border:'1px solid rgba(6,182,212,0.4)', borderRadius:20, padding:'2px 8px' }}>{t('record.cyclingParamsSoon')}</span>
           </div>
         </div>
       ))}
@@ -159,7 +159,7 @@ export default function CyclingSettingsParams({ settings, updateSetting, theme, 
           {bikeZones.ftp_watts && (
             <div style={{ padding:'10px 16px', display:'flex', justifyContent:'space-between' }}>
               <span style={{ fontSize:13, color:theme.dim }}>{t('record.cyclingParamsReferenceFtp')}</span>
-              <span style={{ fontSize:13, fontWeight:600, color:'#06B6D4' }}>{bikeZones.ftp_watts} w</span>
+              <span style={{ fontSize:13, fontWeight:600, color:'var(--primary)' }}>{bikeZones.ftp_watts} w</span>
             </div>
           )}
         </div>
@@ -167,7 +167,7 @@ export default function CyclingSettingsParams({ settings, updateSetting, theme, 
         <div style={{ padding:'12px 16px 16px' }}>
           <p style={{ fontSize:13, color:'#8C8C8C', fontStyle:'italic', margin:0 }}>
             {t('record.cyclingParamsNoZones')}{' '}
-            <a href="/performance" style={{ color:'#06B6D4', textDecoration:'none' }}>{t('record.cyclingParamsConfigureInPerf')}</a>
+            <a href="/performance" style={{ color:'var(--primary)', textDecoration:'none' }}>{t('record.cyclingParamsConfigureInPerf')}</a>
           </p>
         </div>
       )}
@@ -217,7 +217,7 @@ export default function CyclingSettingsParams({ settings, updateSetting, theme, 
         </div>
       ) : (
         <p style={{ fontSize: 12, color: '#8C8C8C', padding: '4px 16px 8px', margin: 0 }}>
-          <a href="/connections" style={{ color: '#06B6D4', textDecoration: 'none' }}>{t('record.cyclingParamsConnectStrava')}</a> {t('record.cyclingParamsConnectStravaSuffix')}
+          <a href="/connections" style={{ color: 'var(--primary)', textDecoration: 'none' }}>{t('record.cyclingParamsConnectStrava')}</a> {t('record.cyclingParamsConnectStravaSuffix')}
         </p>
       )}
       <SettingsRow theme={theme} label={t('record.cyclingParamsEndSummary')} description={t('record.cyclingParamsEndSummaryDesc')} last

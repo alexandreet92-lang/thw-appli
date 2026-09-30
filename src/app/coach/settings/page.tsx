@@ -11,6 +11,7 @@ export const dynamic = 'force-dynamic'
 // (thw_coach_settings), branché au backend progressivement.
 // ══════════════════════════════════════════════════════════════
 
+import { Switch } from '@/components/shadcn/switch'
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { User, CreditCard, Users, Sparkles, Share2, ClipboardList, Bell, SlidersHorizontal, Zap, Shield, Palette, LogOut, ChevronLeft, Check, Languages } from 'lucide-react'
@@ -73,11 +74,7 @@ function Intro({ children }: { children: React.ReactNode }) {
   return <p style={{ fontSize: 13, color: 'var(--text-mid)', lineHeight: 1.6, margin: '0 0 18px 2px' }}>{children}</p>
 }
 function Toggle({ value, onChange, locked }: { value: boolean; onChange?: (v: boolean) => void; locked?: boolean }) {
-  return (
-    <button onClick={() => !locked && onChange?.(!value)} disabled={locked} style={{ width: 50, height: 30, borderRadius: 15, background: value ? 'var(--primary)' : 'var(--border-mid)', border: 'none', cursor: locked ? 'default' : 'pointer', position: 'relative', flexShrink: 0, transition: 'background 0.2s', opacity: locked ? 0.65 : 1 }}>
-      <div style={{ width: 26, height: 26, borderRadius: '50%', background: '#fff', position: 'absolute', top: 2, left: value ? 22 : 2, transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.35)' }} />
-    </button>
-  )
+  return <Switch checked={value} disabled={locked} onCheckedChange={v => !locked && onChange?.(v)} />
 }
 
 // Ligne label + toggle (façon DevicePushSection athlète).
@@ -139,11 +136,11 @@ function ListRow({ Icon, label, value, danger, last, onClick }: { Icon: typeof U
     <button onClick={onClick} style={{ display: 'flex', alignItems: 'center', gap: 13, width: '100%', textAlign: 'left' as const, padding: '0 16px', background: 'transparent', border: 'none', cursor: 'pointer', transition: 'background 0.14s' }}
       onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'var(--bg-card2)'}
       onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}>
-      <span style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: danger ? '#ef4444' : 'var(--text-mid)' }}>
+      <span style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: danger ? 'var(--danger)' : 'var(--text-mid)' }}>
         <Icon size={19} strokeWidth={1.8} />
       </span>
       <span style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 10, padding: '13px 0', borderBottom: last ? 'none' : '1px solid var(--border)' }}>
-        <span style={{ flex: 1, minWidth: 0, fontSize: 15, fontWeight: 500, color: danger ? '#ef4444' : 'var(--text)' }}>{label}</span>
+        <span style={{ flex: 1, minWidth: 0, fontSize: 15, fontWeight: 500, color: danger ? 'var(--danger)' : 'var(--text)' }}>{label}</span>
         {value && <span style={{ fontSize: 13, color: 'var(--text-dim)', flexShrink: 0 }}>{value}</span>}
         {!danger && <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="2" strokeLinecap="round" style={{ flexShrink: 0 }}><path d="M9 18l6-6-6-6" /></svg>}
       </span>

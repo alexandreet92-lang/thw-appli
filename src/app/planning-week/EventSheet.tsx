@@ -369,7 +369,7 @@ export function EventSheet({ event, draft, calendars, onClose, onSaved }: {
 
               <div style={{ display: 'flex', gap: 10, marginTop: 6 }}>
                 {editing && (event!.source === 'event' || event!.source === 'google') && (
-                  <button onClick={() => setConfirmDel(true)} disabled={busy} style={{ padding: '12px 16px', borderRadius: 12, border: '1px solid var(--border)', background: 'transparent', color: '#ef4444', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>Supprimer</button>
+                  <button onClick={() => setConfirmDel(true)} disabled={busy} style={{ padding: '12px 16px', borderRadius: 12, border: '1px solid var(--border)', background: 'transparent', color: 'var(--danger)', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>Supprimer</button>
                 )}
                 <button onClick={onClose} disabled={busy} style={{ flex: 1, padding: 12, borderRadius: 12, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>Annuler</button>
                 <button onClick={save} disabled={busy} style={{ flex: 1, padding: 12, borderRadius: 12, border: 'none', background: 'var(--primary)', color: 'var(--on-primary,#fff)', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>{busy ? '…' : editing ? 'Enregistrer' : 'Créer'}</button>
@@ -388,7 +388,7 @@ export function EventSheet({ event, draft, calendars, onClose, onSaved }: {
             <p style={{ fontSize: 13.5, color: 'var(--text-mid)', margin: '0 0 18px', lineHeight: 1.5 }}>Cette action est définitive et ne peut pas être annulée.</p>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
               <button onClick={() => setConfirmDel(false)} disabled={busy} style={{ padding: '10px 16px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}>Annuler</button>
-              <button onClick={() => { setConfirmDel(false); void remove() }} disabled={busy} style={{ padding: '10px 18px', borderRadius: 10, border: 'none', background: '#ef4444', color: '#fff', fontSize: 13.5, fontWeight: 700, cursor: 'pointer' }}>{busy ? '…' : 'Supprimer'}</button>
+              <button onClick={() => { setConfirmDel(false); void remove() }} disabled={busy} style={{ padding: '10px 18px', borderRadius: 10, border: 'none', background: 'var(--danger)', color: '#fff', fontSize: 13.5, fontWeight: 700, cursor: 'pointer' }}>{busy ? '…' : 'Supprimer'}</button>
             </div>
           </div>
         </div>

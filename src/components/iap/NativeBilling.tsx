@@ -4,19 +4,15 @@
 // Même structure que « Facturation » d'Apple/Claude : une ligne Forfait, puis
 // une liste d'actions à icône. Aucun lien vers le site (règle App Store 3.1.1).
 // ══════════════════════════════════════════════════════════════════
-import { useState, type CSSProperties, type ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
+import { Card } from '@/components/shadcn/card'
+import { Button } from '@/components/shadcn/button'
 import { ChevronRight, CircleDollarSign, RefreshCw, Sparkles, Zap } from 'lucide-react'
 import { openExternalUrl } from '@/lib/native/platform'
 import { restoreIap } from '@/lib/iap/purchases'
 import { openIapStore } from '@/lib/iap/store-events'
 
 const APPLE_SUBSCRIPTIONS_URL = 'https://apps.apple.com/account/subscriptions'
-
-const rowStyle: CSSProperties = {
-  display: 'flex', alignItems: 'center', gap: 'var(--space-4)', width: '100%', textAlign: 'left',
-  padding: 'var(--space-4) var(--space-5)', minHeight: 64, background: 'transparent', border: 'none', cursor: 'pointer',
-  color: 'var(--text)', fontFamily: 'var(--font-body)', fontSize: 17, fontWeight: 500,
-}
 
 export default function NativeBilling({ planName, isCoach, loading }: { planName: string; isCoach: boolean; loading: boolean }) {
   const [note, setNote] = useState<string | null>(null)
@@ -38,23 +34,24 @@ export default function NativeBilling({ planName, isCoach, loading }: { planName
   ]
 
   return (
-    <div style={{ padding: 'var(--space-2) 0 var(--space-6)', maxWidth: 560, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-3)', padding: 'var(--space-5)', borderRadius: 'var(--r-lg)', background: 'var(--bg-card2)' }}>
-        <span style={{ fontFamily: 'var(--font-body)', fontSize: 20, fontWeight: 600, color: 'var(--text)' }}>Forfait</span>
-        <span style={{ fontFamily: 'var(--font-body)', fontSize: 18, color: 'var(--text-mid)' }}>
+    <div className="mx-auto flex max-w-[560px] flex-col gap-4 pt-2 pb-6">
+      <Card className="flex-row items-center justify-between gap-3 p-5">
+        <span className="text-xl font-semibold">Forfait</span>
+        <span className="text-lg text-muted-foreground">
           {loading ? '…' : `THW ${planName}`}{isCoach && !loading ? ' · Coach' : ''}
         </span>
-      </div>
-      <div style={{ borderRadius: 'var(--r-lg)', background: 'var(--bg-card2)', overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: 2 }}>
+      </Card>
+      <Card className="gap-0.5 overflow-hidden p-0">
         {rows.map(r => (
-          <button key={r.label} type="button" onClick={r.onClick} style={rowStyle}>
-            <span style={{ display: 'flex', color: 'var(--text-mid)' }}>{r.icon}</span>
-            <span style={{ flex: 1 }}>{r.label}</span>
-            <ChevronRight size={18} color="var(--text-dim)" />
-          </button>
+          <Button key={r.label} type="button" variant="ghost" onClick={r.onClick}
+            className="min-h-16 w-full justify-start gap-4 rounded-none px-5 text-[17px] font-medium">
+            <span className="flex text-muted-foreground">{r.icon}</span>
+            <span className="flex-1 text-left">{r.label}</span>
+            <ChevronRight size={18} className="text-[var(--text-dim)]" />
+          </Button>
         ))}
-      </div>
-      {note && <p style={{ margin: 0, textAlign: 'center', fontFamily: 'var(--font-body)', fontSize: 13.5, color: 'var(--text-mid)' }}>{note}</p>}
+      </Card>
+      {note && <p className="m-0 text-center text-[13.5px] text-muted-foreground">{note}</p>}
     </div>
   )
 }

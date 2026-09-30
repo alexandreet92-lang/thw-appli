@@ -5,7 +5,7 @@
 // en haut + transition. Version CONTRÔLÉE (active/onChange) + tokens uniquement.
 // Transparent tant qu'il y a < 2 onglets ; respecte prefers-reduced-motion.
 import { useEffect, useRef, useState } from 'react'
-import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import type { LucideIcon } from 'lucide-react'
 import { SwipeDeck } from '@/components/ui/SwipeDeck'
 

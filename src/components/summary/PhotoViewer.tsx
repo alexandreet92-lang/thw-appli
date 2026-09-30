@@ -62,7 +62,7 @@ export default function PhotoViewer({ photos, initialIndex, onClose }: Props) {
             <button
               key={i}
               onClick={e => { e.stopPropagation(); setIdx(i) }}
-              style={{ width: i === idx ? 20 : 7, height: 7, borderRadius: 4, background: i === idx ? '#06B6D4' : 'rgba(255,255,255,0.35)', border: 'none', cursor: 'pointer', padding: 0, transition: 'all 200ms' }}
+              style={{ width: i === idx ? 20 : 7, height: 7, borderRadius: 4, background: i === idx ? 'var(--primary)' : 'rgba(255,255,255,0.35)', border: 'none', cursor: 'pointer', padding: 0, transition: 'all 200ms' }}
             />
           ))}
         </div>

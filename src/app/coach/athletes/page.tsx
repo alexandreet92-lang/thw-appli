@@ -240,7 +240,7 @@ export default function CoachAthletes() {
                     <div style={{ minWidth: 0 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         <span style={{ fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.name}</span>
-                        {a.unread > 0 && <span style={{ background: '#EF4444', color: '#fff', fontSize: 9.5, fontWeight: 800, borderRadius: 9, minWidth: 16, height: 16, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px', flexShrink: 0 }}>{a.unread}</span>}
+                        {a.unread > 0 && <span style={{ background: 'var(--danger)', color: '#fff', fontSize: 9.5, fontWeight: 800, borderRadius: 9, minWidth: 16, height: 16, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px', flexShrink: 0 }}>{a.unread}</span>}
                       </div>
                       <div style={{ fontSize: 11.5, color: 'var(--text-dim)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.sports.slice(0, 2).join(', ') || '—'}{a.group ? ` · ${a.group}` : ''}</div>
                     </div>
@@ -257,10 +257,10 @@ export default function CoachAthletes() {
                   <div style={{ ...NUM, fontWeight: 700, color: (a.fatigue ?? 0) >= 4 ? '#F59E0B' : 'var(--text)' }}>{a.fatigue ? `${a.fatigue.toFixed(1)}/5` : '—'}</div>
                   {/* Prochaine course */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, color: a.race ? 'var(--text-mid)' : 'var(--text-dim)' }}>
-                    {a.race ? <><span style={{ ...NUM, fontWeight: 800, color: a.race.days <= 14 ? '#ef4444' : 'var(--primary)', flexShrink: 0 }}>{t('w1h.days_to', { n: a.race.days })}</span><span style={{ fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.race.name}</span></> : <span style={{ fontSize: 12 }}>—</span>}
+                    {a.race ? <><span style={{ ...NUM, fontWeight: 800, color: a.race.days <= 14 ? 'var(--danger)' : 'var(--primary)', flexShrink: 0 }}>{t('w1h.days_to', { n: a.race.days })}</span><span style={{ fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.race.name}</span></> : <span style={{ fontSize: 12 }}>—</span>}
                   </div>
                   {/* Blessures actives */}
-                  <div style={{ ...NUM, fontWeight: 700, color: a.activeInjuries > 0 ? '#ef4444' : 'var(--text-dim)' }}>{a.activeInjuries > 0 ? a.activeInjuries : '—'}</div>
+                  <div style={{ ...NUM, fontWeight: 700, color: a.activeInjuries > 0 ? 'var(--danger)' : 'var(--text-dim)' }}>{a.activeInjuries > 0 ? a.activeInjuries : '—'}</div>
                   {/* Gérer */}
                   <button onClick={e => { e.preventDefault(); e.stopPropagation(); setManage(a) }} aria-label={t('w1h.aria_manage')} style={{ width: 30, height: 30, borderRadius: 8, border: 'none', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                     onMouseEnter={ev => { (ev.currentTarget as HTMLElement).style.background = 'var(--bg-alt)' }} onMouseLeave={ev => { (ev.currentTarget as HTMLElement).style.background = 'transparent' }}>
@@ -293,7 +293,7 @@ export default function CoachAthletes() {
                   {pending.map(p => (
                     <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderTop: '1px solid var(--border)' }}>
                       <span style={{ ...NUM, fontSize: 14, fontWeight: 700, color: 'var(--text)', letterSpacing: '0.06em' }}>{p.code}</span>
-                      <button onClick={() => onRevoke(p.id)} style={{ marginLeft: 'auto', fontSize: 12, color: '#EF4444', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 700 }}>{t('w1h.cancel')}</button>
+                      <button onClick={() => onRevoke(p.id)} style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--danger)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 700 }}>{t('w1h.cancel')}</button>
                     </div>
                   ))}
                 </div>
@@ -316,7 +316,7 @@ export default function CoachAthletes() {
               {coaches.length > 0 && coaches.map(c => (
                 <div key={c.linkId} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 0', borderTop: '1px solid var(--border)', marginTop: 4 }}>
                   <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)', flex: 1 }}>{t('w1h.linked_coach')}</span>
-                  <button onClick={() => onRevoke(c.linkId)} style={{ fontSize: 12, color: '#EF4444', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 700 }}>{t('w1h.revoke')}</button>
+                  <button onClick={() => onRevoke(c.linkId)} style={{ fontSize: 12, color: 'var(--danger)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 700 }}>{t('w1h.revoke')}</button>
                 </div>
               ))}
             </div>
@@ -347,7 +347,7 @@ export default function CoachAthletes() {
               <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-dim)', fontFamily: BODY }}>{t('w1h.private_note')}</label>
               <textarea defaultValue={a.note ?? ''} onBlur={async e => { await setAthleteNote(a.linkId, e.target.value); await reload() }} rows={3} placeholder={t('w1h.ph_private_note')} style={{ width: '100%', boxSizing: 'border-box', margin: '5px 0 14px', padding: '10px 12px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text)', fontSize: 13.5, fontFamily: BODY, outline: 'none', resize: 'vertical' }} />
               <div style={{ display: 'flex', gap: 8, justifyContent: 'space-between' }}>
-                <button onClick={() => { setManage(null); void onRevoke(a.linkId) }} style={{ padding: '9px 14px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: '#EF4444', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: BODY }}>{t('w1h.remove_athlete')}</button>
+                <button onClick={() => { setManage(null); void onRevoke(a.linkId) }} style={{ padding: '9px 14px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--danger)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: BODY }}>{t('w1h.remove_athlete')}</button>
                 <button onClick={() => setManage(null)} style={{ padding: '9px 18px', borderRadius: 10, border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: BODY }}>{t('w1h.done')}</button>
               </div>
             </div>

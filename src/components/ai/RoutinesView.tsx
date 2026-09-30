@@ -5,10 +5,14 @@
 // prompt + l'historique complet des exécutions (chaque run consultable).
 // ══════════════════════════════════════════════════════════════
 
+import { Switch } from '@/components/shadcn/switch'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useI18n } from '@/lib/i18n'
 import { SlideView } from '@/components/ui/SlideView'
 import PressPop from '@/components/ui/PressPop'
+import { AnimatedList, AnimatedItem } from '@/components/motion/AnimatedList'
+import { Card } from '@/components/shadcn/card'
+import { Button } from '@/components/shadcn/button'
 import {
   listRoutines, createRoutine, updateRoutine, deleteRoutine, runRoutine, listRuns,
   scheduleLabel, type Routine, type RoutineRun, type RoutineInput,
@@ -135,13 +139,8 @@ function Dropdown({ value, onChange, options, ariaLabel }: {
 }
 
 // Interrupteur propre : piste + pastille qui glisse.
-function Switch({ on, onClick, ariaLabel }: { on: boolean; onClick: () => void; ariaLabel: string }) {
-  return (
-    <button type="button" onClick={onClick} aria-pressed={on} aria-label={ariaLabel}
-      style={{ flexShrink: 0, width: 44, height: 26, borderRadius: 999, border: 'none', cursor: 'pointer', background: on ? 'var(--primary)' : 'var(--border-mid)', position: 'relative', transition: 'background 0.18s', padding: 0 }}>
-      <span style={{ position: 'absolute', top: 3, left: on ? 21 : 3, width: 20, height: 20, borderRadius: '50%', background: 'var(--on-primary)', transition: 'left 0.18s' }} />
-    </button>
-  )
+function RoutineSwitch({ on, onClick, ariaLabel }: { on: boolean; onClick: () => void; ariaLabel: string }) {
+  return <Switch checked={on} onCheckedChange={() => onClick()} aria-label={ariaLabel} />
 }
 
 type FormState = Partial<Routine> & { id?: string }
@@ -212,7 +211,7 @@ function ListView({ routines, loading, err, onNew, onOpen, onToggle }: {
 }) {
   const { t } = useI18n()
   if (loading) return <div style={{ textAlign: 'center', color: 'var(--text-dim)', fontSize: 13, padding: 40 }}>{t('w1a.r_chargement')}</div>
-  if (err) return <div style={{ textAlign: 'center', color: '#ef4444', fontSize: 13, padding: 40 }}>{err}</div>
+  if (err) return <div style={{ textAlign: 'center', color: 'var(--danger)', fontSize: 13, padding: 40 }}>{err}</div>
   if (routines.length === 0) {
     return (
       <div style={{ textAlign: 'center', padding: '40px 20px' }}>
@@ -220,15 +219,16 @@ function ListView({ routines, loading, err, onNew, onOpen, onToggle }: {
         <p style={{ fontSize: 13, color: 'var(--text-dim)', lineHeight: 1.6, maxWidth: 320, margin: '0 auto 18px' }}>
           {t('w1a.r_aucuneRoutineDesc')}
         </p>
-        <button onClick={onNew} style={{ padding: '0 24px', minHeight: 52, borderRadius: 999, border: 'none', background: ACCENT, color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>{t('w1a.r_creerPremiere')}</button>
+        <Button onClick={onNew} size="lg">{t('w1a.r_creerPremiere')}</Button>
       </div>
     )
   }
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 640, margin: '0 auto' }}>
-      {routines.map(r => (
-        <div key={r.id} onClick={() => onOpen(r.id)}
-          style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '18px 20px', minHeight: 76, borderRadius: 'var(--r-lg)', background: 'var(--bg-card2)', cursor: 'pointer' }}>
+      <AnimatedList>
+      {routines.map((r, i) => (
+        <AnimatedItem key={r.id} index={i}>
+        <Card onClick={() => onOpen(r.id)} className="cursor-pointer flex-row items-center gap-3.5 px-5 py-[18px] min-h-[76px] transition-transform duration-200 active:scale-[0.985]">
           <div style={{ width: 44, height: 44, borderRadius: 14, background: r.enabled ? 'var(--primary-dim)' : 'var(--bg-alt)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={r.enabled ? ACCENT : 'var(--text-dim)'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4M4.9 19.1l2.8-2.8M16.3 7.7l2.8-2.8"/></svg>
           </div>
@@ -236,14 +236,13 @@ function ListView({ routines, loading, err, onNew, onOpen, onToggle }: {
             <div style={{ fontSize: 17, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.name}</div>
             <div style={{ fontSize: 14, color: 'var(--text-mid)', marginTop: 3 }}>{scheduleLabel(r)}{!r.enabled && t('w1a.r_enPause')}</div>
           </div>
-          <button
-            onClick={(e) => { e.stopPropagation(); onToggle(r) }}
-            aria-label={r.enabled ? t('w1a.r_mettrePause') : t('w1a.r_activer')}
-            style={{ flexShrink: 0, width: 54, height: 32, borderRadius: 999, border: 'none', cursor: 'pointer', background: r.enabled ? ACCENT : 'color-mix(in srgb, var(--text) 18%, var(--bg))', position: 'relative', transition: 'background 0.25s ease' }}>
-            <span style={{ position: 'absolute', top: 3, left: r.enabled ? 25 : 3, width: 26, height: 26, borderRadius: '50%', background: '#fff', transition: 'left 0.25s cubic-bezier(0.22,1,0.36,1)', boxShadow: '0 1px 4px rgba(0,0,0,0.3)' }} />
-          </button>
-        </div>
+          <div onClick={e => e.stopPropagation()}>
+            <Switch checked={r.enabled} onCheckedChange={() => onToggle(r)} aria-label={r.enabled ? t('w1a.r_mettrePause') : t('w1a.r_activer')} />
+          </div>
+        </Card>
+        </AnimatedItem>
       ))}
+      </AnimatedList>
     </div>
   )
 }
@@ -353,24 +352,16 @@ function FormView({ initial, onCancel, onSaved }: { initial: FormState; onCancel
             {t('w1a.r_autoriserModifsDesc')}
           </div>
         </div>
-        <Switch on={!!f.allow_write} onClick={() => set({ allow_write: !f.allow_write })} ariaLabel={t('w1a.r_autoriserModifs')} />
+        <RoutineSwitch on={!!f.allow_write} onClick={() => set({ allow_write: !f.allow_write })} ariaLabel={t('w1a.r_autoriserModifs')} />
       </div>
 
       {error && <div style={{ fontSize: 13, color: 'var(--text-mid)', padding: '10px 14px', borderRadius: 'var(--r-sm)', background: 'var(--bg-card2)' }}>{error}</div>}
 
       <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', paddingTop: 2 }}>
-        <button type="button" onClick={onCancel}
-          onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)' }}
-          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
-          style={{ padding: '0 22px', minHeight: 52, borderRadius: 999, border: 'none', background: 'transparent', color: 'var(--text-mid)', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: FB, transition: 'background 0.14s' }}>
-          {t('w1a.r_annuler')}
-        </button>
-        <button type="button" onClick={save} disabled={saving}
-          onMouseEnter={e => { if (!saving) (e.currentTarget as HTMLButtonElement).style.opacity = '0.9' }}
-          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.opacity = '1' }}
-          style={{ padding: '0 26px', minHeight: 52, borderRadius: 999, border: 'none', background: saving ? 'var(--border-mid)' : ACCENT, color: 'var(--on-primary)', fontSize: 14, fontWeight: 600, cursor: saving ? 'default' : 'pointer', fontFamily: FB, transition: 'opacity 0.14s, background 0.14s' }}>
+        <Button type="button" variant="ghost" onClick={onCancel}>{t('w1a.r_annuler')}</Button>
+        <Button type="button" onClick={save} disabled={saving}>
           {saving ? '…' : f.id ? t('w1a.r_enregistrer') : t('w1a.r_creerRoutine')}
-        </button>
+        </Button>
       </div>
     </div>
   )
@@ -411,29 +402,18 @@ function DetailView({ id, routine, onEdit, onChanged, onDeleted }: {
 
       {/* Actions */}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-        <button onClick={doRunNow} disabled={running}
-          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0 20px', minHeight: 48, borderRadius: 999, border: 'none', background: ACCENT, color: '#fff', fontSize: 15, fontWeight: 600, cursor: running ? 'default' : 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
+        <Button onClick={doRunNow} disabled={running}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
           {running ? t('w1a.r_execution') : t('w1a.r_executerMaintenant')}
-        </button>
-        <button onClick={() => updateRoutine(id, { enabled: !routine.enabled }).then(onChanged)}
-          style={{ padding: '0 20px', minHeight: 48, borderRadius: 999, border: 'none', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
+        </Button>
+        <Button variant="secondary" onClick={() => updateRoutine(id, { enabled: !routine.enabled }).then(onChanged)}>
           {routine.enabled ? t('w1a.r_mettrePause') : t('w1a.r_activer')}
-        </button>
-        <button onClick={() => onEdit(routine)}
-          style={{ padding: '0 20px', minHeight: 48, borderRadius: 999, border: 'none', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
-          {t('w1a.r_modifier')}
-        </button>
+        </Button>
+        <Button variant="secondary" onClick={() => onEdit(routine)}>{t('w1a.r_modifier')}</Button>
         {confirmDel ? (
-          <button onClick={() => deleteRoutine(id).then(onDeleted)}
-            style={{ padding: '0 20px', minHeight: 48, borderRadius: 999, border: 'none', background: '#ef4444', color: '#fff', fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
-            {t('w1a.r_confirmerSuppression')}
-          </button>
+          <Button variant="destructive" onClick={() => deleteRoutine(id).then(onDeleted)}>{t('w1a.r_confirmerSuppression')}</Button>
         ) : (
-          <button onClick={() => setConfirmDel(true)}
-            style={{ padding: '0 20px', minHeight: 48, borderRadius: 999, border: 'none', background: 'var(--bg-card2)', color: '#ef4444', fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
-            {t('w1a.r_supprimer')}
-          </button>
+          <Button variant="secondary" className="text-destructive" onClick={() => setConfirmDel(true)}>{t('w1a.r_supprimer')}</Button>
         )}
       </div>
 
@@ -466,7 +446,7 @@ function DetailView({ id, routine, onEdit, onChanged, onDeleted }: {
                   </button>
                   {isOpen && (
                     <div style={{ padding: '4px 14px 14px', fontSize: 13.5, lineHeight: 1.65, color: 'var(--text)', whiteSpace: 'pre-wrap', borderTop: '0.5px solid var(--border)' }}>
-                      {run.error ? <span style={{ color: '#ef4444' }}>{run.error}</span> : (run.output || '—')}
+                      {run.error ? <span style={{ color: 'var(--danger)' }}>{run.error}</span> : (run.output || '—')}
                     </div>
                   )}
                 </div>

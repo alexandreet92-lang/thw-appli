@@ -174,7 +174,7 @@ function PageEditorInner({ page: initial, allPages, onPageUpdated, onClose, isDa
             <div style={{
               width: 12, height: 12, borderRadius: '50%',
               border: '2px solid rgba(6,182,212,0.25)',
-              borderTopColor: '#06B6D4',
+              borderTopColor: 'var(--primary)',
               animation: 'spin 0.7s linear infinite',
             }} />
           )}

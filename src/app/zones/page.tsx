@@ -186,7 +186,7 @@ export default function ZonesPage() {
       {/* Tabs */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
         {TABS.map((t) => (
-          <button key={t.id} onClick={() => setTab(t.id)} style={{ padding: '9px 18px', borderRadius: 11, border: '1px solid', borderColor: tab === t.id ? '#06B6D4' : 'var(--border)', background: tab === t.id ? 'rgba(6,182,212,0.10)' : 'var(--bg-card)', color: tab === t.id ? '#06B6D4' : 'var(--text-mid)', fontFamily: 'DM Sans,sans-serif', fontSize: 13, fontWeight: tab === t.id ? 600 : 400, cursor: 'pointer' }}>
+          <button key={t.id} onClick={() => setTab(t.id)} style={{ padding: '9px 18px', borderRadius: 11, border: '1px solid', borderColor: tab === t.id ? 'var(--primary)' : 'var(--border)', background: tab === t.id ? 'rgba(6,182,212,0.10)' : 'var(--bg-card)', color: tab === t.id ? 'var(--primary)' : 'var(--text-mid)', fontFamily: 'DM Sans,sans-serif', fontSize: 13, fontWeight: tab === t.id ? 600 : 400, cursor: 'pointer' }}>
             {t.emoji} {t.label}
           </button>
         ))}
@@ -207,7 +207,7 @@ export default function ZonesPage() {
 
               {/* Records */}
               <div style={{ marginTop: 20, padding: '14px 16px', borderRadius: 12, background: 'rgba(6,182,212,0.06)', border: '1px solid rgba(6,182,212,0.15)' }}>
-                <p style={{ fontSize: 11, fontWeight: 600, color: '#06B6D4', margin: '0 0 12px' }}>📊 {t('misc.personalRecords')}</p>
+                <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--primary)', margin: '0 0 12px' }}>📊 {t('misc.personalRecords')}</p>
                 <div style={{ display: 'grid', gridTemplateColumns: narrow ? '1fr' : '1fr 1fr', gap: 10 }}>
                   {[
                     { label: '1km', placeholder: "2:45" },
@@ -262,7 +262,7 @@ export default function ZonesPage() {
               </div>
 
               <div style={{ marginTop: 14, padding: '14px 16px', borderRadius: 12, background: 'rgba(6,182,212,0.06)', border: '1px solid rgba(6,182,212,0.15)' }}>
-                <p style={{ fontSize: 11, fontWeight: 600, color: '#06B6D4', margin: '0 0 12px' }}>📊 {t('misc.personalRecords')}</p>
+                <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--primary)', margin: '0 0 12px' }}>📊 {t('misc.personalRecords')}</p>
                 <div style={{ display: 'grid', gridTemplateColumns: narrow ? '1fr' : '1fr 1fr', gap: 10 }}>
                   {['5min', '20min', '1h', 'Sprints'].map((r) => (
                     <div key={r}>
@@ -297,7 +297,7 @@ export default function ZonesPage() {
               </div>
 
               <div style={{ marginTop: 20, padding: '14px 16px', borderRadius: 12, background: 'rgba(6,182,212,0.06)', border: '1px solid rgba(6,182,212,0.15)' }}>
-                <p style={{ fontSize: 11, fontWeight: 600, color: '#06B6D4', margin: '0 0 12px' }}>📊 {t('misc.personalRecords')}</p>
+                <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--primary)', margin: '0 0 12px' }}>📊 {t('misc.personalRecords')}</p>
                 <div style={{ display: 'grid', gridTemplateColumns: narrow ? '1fr' : '1fr 1fr', gap: 10 }}>
                   {['100m', '200m', '400m', '1500m'].map((r) => (
                     <div key={r}>

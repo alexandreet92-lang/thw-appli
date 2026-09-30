@@ -2,6 +2,7 @@
 
 export const dynamic = 'force-dynamic'
 
+import { Switch } from '@/components/shadcn/switch'
 import { Suspense, useState, useRef, useEffect, useCallback } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { User, Bell, Zap, Moon, Apple, TrendingUp, Sparkles, Coins, Plug, Trophy, Settings, Package, Bike, Footprints, Target, Globe, MapPin, Shield, Lock, CreditCard, BarChart3, Dumbbell, LogOut, ChevronLeft, Palette, Sun, Monitor, Check, Ruler, Users, UserCog, Heart, Wand2, Trash2 } from 'lucide-react'
@@ -169,7 +170,7 @@ function Intro({ children }: { children:React.ReactNode }) {
   return <p style={{ fontSize:13, color:'var(--text-mid)', lineHeight:1.6, margin:'0 0 18px 2px' }}>{children}</p>
 }
 function Toggle({ value, onChange }: { value:boolean; onChange:(v:boolean)=>void }) {
-  return <button onClick={()=>onChange(!value)} style={{ width:50, height:30, borderRadius:15, background:value?'var(--primary)':'var(--border-mid)', border:'none', cursor:'pointer', position:'relative', flexShrink:0, transition:'background 0.2s' }}><div style={{ width:26, height:26, borderRadius:'50%', background:'#fff', position:'absolute', top:2, left:value?22:2, transition:'left 0.2s', boxShadow:'0 1px 3px rgba(0,0,0,0.35)' }}/></button>
+  return <Switch checked={value} onCheckedChange={onChange} />
 }
 function InfoModal({ title, content, onClose }: { title:string; content:React.ReactNode; onClose:()=>void }) {
   return <div onClick={onClose} style={{ position:'fixed', inset:0, zIndex:400, background:'rgba(0,0,0,0.6)', backdropFilter:'blur(8px)', display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}><div onClick={e=>e.stopPropagation()} style={{ background:'var(--bg-card)', borderRadius:18, border:'1px solid var(--border-mid)', padding:24, maxWidth:420, width:'100%' }}><div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14 }}><h3 style={{ fontFamily:'var(--font-body)', fontSize:15, fontWeight:700, margin:0 }}>{title}</h3><button onClick={onClose} style={{ background:'var(--bg-card2)', border:'1px solid var(--border)', borderRadius:8, padding:'4px 9px', cursor:'pointer', color:'var(--text-dim)', fontSize:16 }}>×</button></div><div style={{ fontSize:13, color:'var(--text-mid)', lineHeight:1.7 }}>{content}</div></div></div>
@@ -519,7 +520,7 @@ function GearBloc() {
             <p style={{ fontSize: 12.5, color: 'var(--text-mid)', margin: '0 0 16px', lineHeight: 1.5 }}>{t('profile.gearRemovedInfo')}</p>
             <div style={{ display: 'flex', gap: 8 }}>
               <button onClick={() => setConfirmDel(null)} style={{ flex: 1, padding: '10px', borderRadius: 10, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-mid)', fontSize: 13, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>{t('profile.cancel')}</button>
-              <button onClick={() => void doDelete()} style={{ flex: 1, padding: '10px', borderRadius: 10, border: 'none', background: '#ef4444', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>{t('profile.delete')}</button>
+              <button onClick={() => void doDelete()} style={{ flex: 1, padding: '10px', borderRadius: 10, border: 'none', background: 'var(--danger)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>{t('profile.delete')}</button>
             </div>
           </div>
         </div>
@@ -1377,10 +1378,10 @@ function DeleteAccountModal({ open, onClose }: { open: boolean; onClose: () => v
         <p style={{ margin: 0, fontSize: 12.5, color: 'var(--text-mid)' }}>Pour confirmer, écris <strong>SUPPRIMER</strong> ci-dessous :</p>
         <input value={confirmText} onChange={e => setConfirmText(e.target.value)} autoFocus placeholder="SUPPRIMER"
           style={{ padding: '10px 12px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text)', fontSize: 14, outline: 'none', fontFamily: 'var(--font-body)' }} />
-        {err && <p style={{ margin: 0, fontSize: 12, color: '#ef4444' }}>{err}</p>}
+        {err && <p style={{ margin: 0, fontSize: 12, color: 'var(--danger)' }}>{err}</p>}
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 4 }}>
           <button onClick={onClose} disabled={busy} style={{ fontSize: 13, padding: '9px 15px', borderRadius: 10, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-mid)', cursor: 'pointer', fontFamily: 'var(--font-body)' }}>Annuler</button>
-          <button onClick={() => void doDelete()} disabled={busy || confirmText.trim().toUpperCase() !== 'SUPPRIMER'} style={{ fontSize: 13, padding: '9px 16px', borderRadius: 10, border: 'none', background: (confirmText.trim().toUpperCase() === 'SUPPRIMER' && !busy) ? '#ef4444' : 'var(--border-mid)', color: '#fff', cursor: (confirmText.trim().toUpperCase() === 'SUPPRIMER' && !busy) ? 'pointer' : 'default', fontWeight: 700, fontFamily: 'var(--font-body)' }}>{busy ? 'Suppression…' : 'Supprimer définitivement'}</button>
+          <button onClick={() => void doDelete()} disabled={busy || confirmText.trim().toUpperCase() !== 'SUPPRIMER'} style={{ fontSize: 13, padding: '9px 16px', borderRadius: 10, border: 'none', background: (confirmText.trim().toUpperCase() === 'SUPPRIMER' && !busy) ? 'var(--danger)' : 'var(--border-mid)', color: '#fff', cursor: (confirmText.trim().toUpperCase() === 'SUPPRIMER' && !busy) ? 'pointer' : 'default', fontWeight: 700, fontFamily: 'var(--font-body)' }}>{busy ? 'Suppression…' : 'Supprimer définitivement'}</button>
         </div>
       </div>
     </div>
@@ -1393,9 +1394,9 @@ function DeleteAccountRow() {
   return (
     <>
       <Line onClick={() => setOpen(true)}>
-        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="1.8" strokeLinecap="round" style={{ flexShrink: 0 }}><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" strokeWidth="1.8" strokeLinecap="round" style={{ flexShrink: 0 }}><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <p style={{ fontSize: 15, fontWeight: 500, margin: 0, color: '#ef4444' }}>Supprimer mon compte</p>
+          <p style={{ fontSize: 15, fontWeight: 500, margin: 0, color: 'var(--danger)' }}>Supprimer mon compte</p>
           <p style={{ fontSize: 11.5, color: 'rgba(239,68,68,0.7)', margin: '2px 0 0' }}>Suppression définitive de toutes tes données</p>
         </div>
       </Line>
@@ -2109,7 +2110,7 @@ function AbonnementContent() {
                   THW {planName}
                 </p>
                 {isCancelling ? (
-                  <p style={{ fontSize: 11, color: '#ef4444', margin: 0, fontWeight: 600 }}>
+                  <p style={{ fontSize: 11, color: 'var(--danger)', margin: 0, fontWeight: 600 }}>
                     {t('profile.cancellingExpires', { date: details?.current_period_end ? fmtDate(details.current_period_end) : '—' })}
                   </p>
                 ) : hasStripe && details?.stripe?.nextBillingDate ? (
@@ -2225,7 +2226,7 @@ function AbonnementContent() {
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="2" strokeLinecap="round"><path d="M9 18l6-6-6-6"/></svg>
               </button>
               <button onClick={() => setSubEmail('cancel')} style={{ display: 'flex', alignItems: 'center', width: '100%', textAlign: 'left', padding: '15px 16px', background: 'transparent', border: 'none', borderTop: '1px solid var(--border)', cursor: 'pointer' }}>
-                <span style={{ flex: 1, fontSize: 15, fontWeight: 500, color: '#ef4444' }}>Résilier l&apos;abonnement</span>
+                <span style={{ flex: 1, fontSize: 15, fontWeight: 500, color: 'var(--danger)' }}>Résilier l&apos;abonnement</span>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="2" strokeLinecap="round"><path d="M9 18l6-6-6-6"/></svg>
               </button>
             </div>
@@ -2248,7 +2249,7 @@ function AbonnementContent() {
 
           {isCancelling && (
             <div style={{ padding: '12px 16px', borderRadius: 12, background: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.25)', textAlign: 'center' }}>
-              <p style={{ fontSize: 12, color: '#ef4444', margin: 0, fontWeight: 600 }}>{t('profile.cancellationScheduled')}</p>
+              <p style={{ fontSize: 12, color: 'var(--danger)', margin: 0, fontWeight: 600 }}>{t('profile.cancellationScheduled')}</p>
               <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: '3px 0 0' }}>
                 {t('profile.accessActiveUntil', { date: details?.current_period_end ? fmtDate(details.current_period_end) : '—' })}
               </p>
@@ -2270,14 +2271,14 @@ function AbonnementContent() {
             style={{ background: 'var(--bg-card)', borderRadius: 20, border: '1px solid var(--border-mid)', padding: '24px 24px 20px', maxWidth: 400, width: 'calc(100% - 32px)' }}
           >
             <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round"><path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" strokeWidth="2" strokeLinecap="round"><path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
             </div>
             <h3 style={{ fontFamily: 'var(--font-body)', fontSize: 16, fontWeight: 700, textAlign: 'center', margin: '0 0 8px', color: 'var(--text)' }}>{t('profile.cancelSubscriptionConfirm')}</h3>
             <p style={{ fontSize: 12.5, color: 'var(--text-dim)', textAlign: 'center', lineHeight: 1.6, margin: '0 0 20px' }}>
               {t('profile.cancelSubscriptionInfo')}
             </p>
             {cancelError && (
-              <p style={{ fontSize: 12, color: '#ef4444', textAlign: 'center', lineHeight: 1.5, margin: '0 0 16px' }}>
+              <p style={{ fontSize: 12, color: 'var(--danger)', textAlign: 'center', lineHeight: 1.5, margin: '0 0 16px' }}>
                 {cancelError}
               </p>
             )}
@@ -2291,7 +2292,7 @@ function AbonnementContent() {
               <button
                 onClick={handleCancel}
                 disabled={cancelling}
-                style={{ flex: 1, padding: '11px', borderRadius: 11, background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.35)', color: '#ef4444', fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: cancelling ? 0.6 : 1 }}
+                style={{ flex: 1, padding: '11px', borderRadius: 11, background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.35)', color: 'var(--danger)', fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: cancelling ? 0.6 : 1 }}
               >
                 {cancelling ? '…' : t('profile.confirm')}
               </button>
@@ -2676,11 +2677,11 @@ function ListRow({ Icon, label, value, danger, last, onClick }: {
       onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'var(--bg-card2)'}
       onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}
     >
-      <span style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: danger ? '#ef4444' : 'var(--text-mid)' }}>
+      <span style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: danger ? 'var(--danger)' : 'var(--text-mid)' }}>
         <Icon size={22} strokeWidth={1.7} />
       </span>
       <span style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 10, padding: '18px 0' }}>
-        <span style={{ flex: 1, minWidth: 0, fontSize: 17, fontWeight: 500, color: danger ? '#ef4444' : 'var(--text)' }}>{label}</span>
+        <span style={{ flex: 1, minWidth: 0, fontSize: 17, fontWeight: 500, color: danger ? 'var(--danger)' : 'var(--text)' }}>{label}</span>
         {value && <span style={{ fontSize: 15, color: 'var(--text-dim)', flexShrink: 0 }}>{value}</span>}
         {!danger && <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="2" strokeLinecap="round" style={{ flexShrink: 0 }}><path d="M9 18l6-6-6-6"/></svg>}
       </span>

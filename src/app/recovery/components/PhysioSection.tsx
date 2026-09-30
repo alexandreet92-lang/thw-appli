@@ -67,9 +67,9 @@ function RhrChart({ points }: { points: { date: string; rhr: number }[] }) {
   return (
     <svg viewBox={`0 0 ${W} ${H+12}`} style={{ width:'100%',height:'auto',display:'block',marginTop:6 }}>
       {/* MA line (dashed) */}
-      {animated && <path d={maPath} fill="none" stroke="#EF4444" strokeWidth={1} strokeDasharray="3 3" opacity={0.5} />}
+      {animated && <path d={maPath} fill="none" stroke="var(--danger)" strokeWidth={1} strokeDasharray="3 3" opacity={0.5} />}
       {/* Main line */}
-      <path d={linePath} fill="none" stroke="#EF4444" strokeWidth={2} strokeLinecap="round"
+      <path d={linePath} fill="none" stroke="var(--danger)" strokeWidth={2} strokeLinecap="round"
         strokeDasharray={pathLen} strokeDashoffset={animated ? 0 : pathLen}
         style={{ transition:'stroke-dashoffset 1.2s ease-out' }} />
       {pts.map((p, i) => {
@@ -160,12 +160,12 @@ export default function PhysioSection() {
         <div style={{ padding:'20px 16px',borderRadius:12,background:'var(--bg-card2)',border:'1px solid #E5E7EB',display:'flex',flexDirection:'column' as const,alignItems:'center',gap:6,textAlign:'center' as const,transition:'box-shadow 0.2s' }}
           onMouseEnter={e => (e.currentTarget.style.boxShadow='0 4px 16px rgba(0,0,0,0.1)')}
           onMouseLeave={e => (e.currentTarget.style.boxShadow='none')}>
-          <div style={{ color: rhrValue ? '#EF4444' : '#9CA3AF' }}><IcoHeart /></div>
+          <div style={{ color: rhrValue ? 'var(--danger)' : '#9CA3AF' }}><IcoHeart /></div>
           <p style={{ fontFamily:'Syne,sans-serif',fontSize:15,fontWeight:700,margin:0,color: rhrValue ? 'var(--text)' : 'var(--text-dim)' }}>{t('recovery.physio.restingHr')}</p>
           <p style={{ fontSize:10,color:'var(--text-dim)',margin:0,lineHeight:1.4 }}>{t('recovery.physio.restingHrSub')}</p>
           {rhrValue ? (
             <>
-              <p style={{ fontFamily:'Syne,sans-serif',fontSize:28,fontWeight:800,margin:0,color:'#EF4444',lineHeight:1 }}>
+              <p style={{ fontFamily:'Syne,sans-serif',fontSize:28,fontWeight:800,margin:0,color:'var(--danger)',lineHeight:1 }}>
                 {rhrValue}<span style={{ fontSize:13,fontWeight:600,marginLeft:3 }}>bpm</span>
               </p>
               {latest?.date && <span style={{ fontSize:9,color:'var(--text-dim)',fontStyle:'italic' }}>{fmtDate(latest.date)}</span>}
@@ -177,7 +177,7 @@ export default function PhysioSection() {
                   </p>
                 </div>
               )}
-              <span style={{ padding:'3px 9px',borderRadius:20,background:'rgba(239,68,68,0.1)',border:'1px solid rgba(239,68,68,0.25)',fontSize:9,color:'#EF4444',lineHeight:1.5 }}>Polar</span>
+              <span style={{ padding:'3px 9px',borderRadius:20,background:'rgba(239,68,68,0.1)',border:'1px solid rgba(239,68,68,0.25)',fontSize:9,color:'var(--danger)',lineHeight:1.5 }}>Polar</span>
             </>
           ) : (
             <>

@@ -104,7 +104,7 @@ export default function CoachDashboard() {
                       <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.name}</div>
                       <div style={{ fontSize: 12, color: 'var(--text-mid)', marginTop: 1 }}><b style={{ color: STC[a.status] }}>{t(`w3d.forme_${a.status}`)}</b>{a.reason ? ` — ${a.reason}` : ''}</div>
                     </div>
-                    {a.unread > 0 && <span style={{ ...num, background: '#EF4444', color: '#fff', fontSize: 10, fontWeight: 800, borderRadius: 9, minWidth: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 5px', flexShrink: 0 }}>{a.unread}</span>}
+                    {a.unread > 0 && <span style={{ ...num, background: 'var(--danger)', color: '#fff', fontSize: 10, fontWeight: 800, borderRadius: 9, minWidth: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 5px', flexShrink: 0 }}>{a.unread}</span>}
                   </Link>
                 ))}
               </div>
@@ -120,7 +120,7 @@ export default function CoachDashboard() {
               <div style={{ display: 'flex', flexDirection: 'column' }}>
                 {races.map(({ a, race }, i) => (
                   <Link key={a.id + race.name} href={`/coach/athlete?id=${a.id}`} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 0', borderTop: i ? '1px solid var(--border)' : 'none', textDecoration: 'none', color: 'inherit' }}>
-                    <span style={{ ...num, fontSize: 16, fontWeight: 800, color: race.days <= 14 ? '#ef4444' : 'var(--primary)', width: 50, flexShrink: 0 }}>{t('w3d.days_until', { days: race.days })}</span>
+                    <span style={{ ...num, fontSize: 16, fontWeight: 800, color: race.days <= 14 ? 'var(--danger)' : 'var(--primary)', width: 50, flexShrink: 0 }}>{t('w3d.days_until', { days: race.days })}</span>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{race.name}</div>
                       <div style={{ fontSize: 12, color: 'var(--text-dim)' }}>{a.name}</div>

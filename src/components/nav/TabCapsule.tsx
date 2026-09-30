@@ -138,7 +138,7 @@ export function TabCapsule({ items, activeIndex, motionKey, accent, dim, classNa
       : 'color-mix(in srgb, var(--text) 13%, transparent)',
     // Pas de backdrop-filter ici : il force un recalcul du flou à chaque image
     // (saccades sur iPhone). Fond plein + ombre = fluide et sans halo blanc.
-    boxShadow: lens ? '0 8px 26px rgba(0,0,0,0.42), inset 0 0 0 1px color-mix(in srgb, var(--text) 14%, transparent)' : 'none',
+    boxShadow: lens ? 'var(--shadow-lens), inset 0 0 0 1px color-mix(in srgb, var(--text) 14%, transparent)' : 'none',
     willChange: 'transform, width, height',
     transition: `transform 320ms ${EASE}, width 320ms ${EASE}, height 240ms ${EASE}, background 160ms ease, box-shadow 160ms ease`,
   } : { display: 'none' }
@@ -161,7 +161,7 @@ export function TabCapsule({ items, activeIndex, motionKey, accent, dim, classNa
         height: BAR_H, padding: PAD, boxSizing: 'border-box',
         borderRadius: 999,
         background: 'color-mix(in srgb, var(--text) 9%, var(--bg))',
-        boxShadow: 'inset 0 0 0 1px color-mix(in srgb, var(--text) 10%, transparent), 0 8px 28px rgba(0,0,0,0.28)',
+        boxShadow: 'inset 0 0 0 1px color-mix(in srgb, var(--text) 10%, transparent), var(--shadow-float)',
         touchAction: 'none', WebkitTransform: 'translateZ(0)', userSelect: 'none', WebkitUserSelect: 'none',
       }}
     >

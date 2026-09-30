@@ -82,14 +82,14 @@ export default function WeeklySummary({ history, prevHistory, activities, prevAc
       <div style={{ display:'flex',gap:16,flexWrap:'wrap' as const }}>
         {deltaScore != null && (
           <div style={{ display:'flex',alignItems:'center',gap:5,padding:'4px 10px',borderRadius:20,background:deltaScore>=0?'rgba(16,185,129,0.1)':'rgba(239,68,68,0.1)',border:`1px solid ${deltaScore>=0?'rgba(16,185,129,0.3)':'rgba(239,68,68,0.3)'}` }}>
-            <span style={{ fontSize:11,color:deltaScore>=0?'#10B981':'#ef4444',fontWeight:600 }}>
+            <span style={{ fontSize:11,color:deltaScore>=0?'#10B981':'var(--danger)',fontWeight:600 }}>
               {deltaScore>=0?'↑':'↓'} {deltaScore>=0?'+':''}{deltaScore} {t('recovery.weekly.ptsAvgScore')}
             </span>
           </div>
         )}
         {Math.abs(deltaVol) > 60 && (
           <div style={{ display:'flex',alignItems:'center',gap:5,padding:'4px 10px',borderRadius:20,background:deltaVol>=0?'rgba(16,185,129,0.1)':'rgba(239,68,68,0.1)',border:`1px solid ${deltaVol>=0?'rgba(16,185,129,0.3)':'rgba(239,68,68,0.3)'}` }}>
-            <span style={{ fontSize:11,color:deltaVol>=0?'#10B981':'#ef4444',fontWeight:600 }}>
+            <span style={{ fontSize:11,color:deltaVol>=0?'#10B981':'var(--danger)',fontWeight:600 }}>
               {deltaVol>=0?'↑':'↓'} {deltaVol>=0?'+':''}{fmtSec(Math.abs(deltaVol))} {t('recovery.weekly.volumeSuffix')}
             </span>
           </div>

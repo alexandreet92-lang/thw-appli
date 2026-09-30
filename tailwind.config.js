@@ -28,6 +28,15 @@ module.exports = {
           foreground: 'var(--text-mid)',
         },
         border: 'var(--border)',
+        // shadcn/ui → design system : chaque rôle shadcn pointe sur un token existant
+        // (une seule source de vérité ; thème clair/sombre géré par globals.css).
+        primary:     { DEFAULT: 'var(--primary)',  foreground: 'var(--on-primary)' },
+        secondary:   { DEFAULT: 'var(--bg-card2)', foreground: 'var(--text)' },
+        accent:      { DEFAULT: 'var(--bg-hover)', foreground: 'var(--text)' },
+        destructive: { DEFAULT: 'var(--danger)',   foreground: 'var(--on-primary)' },
+        popover:     { DEFAULT: 'var(--bg-card)',  foreground: 'var(--text)' },
+        input:       'var(--border-mid)',
+        ring:        'var(--primary)',
       },
       fontFamily: {
         display: ['Syne', 'sans-serif'],

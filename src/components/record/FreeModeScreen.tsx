@@ -147,7 +147,7 @@ export default function FreeModeScreen({ sport, onClose, isDark }: Props) {
             <p style={{ fontSize: 14, color: 'var(--text-mid)', margin: '0 0 20px' }}>{t('record.freeModeQuitWarning')}</p>
             <div style={{ display: 'flex', gap: 10 }}>
               <button onClick={() => setConfirmClose(false)} style={{ flex: 1, height: 44, borderRadius: 12, background: 'var(--bg-card2)', border: '1px solid var(--border)', color: 'var(--text)', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>{t('record.commonCancel')}</button>
-              <button onClick={onClose} style={{ flex: 1, height: 44, borderRadius: 12, background: '#EF4444', border: 'none', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>{t('record.commonQuit')}</button>
+              <button onClick={onClose} style={{ flex: 1, height: 44, borderRadius: 12, background: 'var(--danger)', border: 'none', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>{t('record.commonQuit')}</button>
             </div>
           </div>
         </div>

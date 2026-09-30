@@ -60,7 +60,7 @@ function Builder({ athleteId, athleteName, onClose, onCreated }: { athleteId: st
                 <select value={f.type} onChange={e => patch(f.id, { type: e.target.value as FieldType })} style={{ ...inp, width: 130, cursor: 'pointer' }}>
                   {TYPES.map(ft => <option key={ft.v} value={ft.v}>{t(`w2d.ftype_${ft.v}`)}</option>)}
                 </select>
-                {fields.length > 1 && <button onClick={() => setFields(x => x.filter(y => y.id !== f.id))} aria-label={t('w2d.remove')} style={{ width: 34, borderRadius: 9, border: 'none', background: 'var(--bg-card)', color: '#ef4444', cursor: 'pointer', flexShrink: 0 }}>✕</button>}
+                {fields.length > 1 && <button onClick={() => setFields(x => x.filter(y => y.id !== f.id))} aria-label={t('w2d.remove')} style={{ width: 34, borderRadius: 9, border: 'none', background: 'var(--bg-card)', color: 'var(--danger)', cursor: 'pointer', flexShrink: 0 }}>✕</button>}
               </div>
               {f.type === 'select' && (
                 <input value={(f.options ?? []).join(', ')} onChange={e => patch(f.id, { options: e.target.value.split(',').map(s => s.trim()) })} placeholder={t('w2d.optionsPlaceholder')} style={{ ...inp, fontSize: 12.5 }} />

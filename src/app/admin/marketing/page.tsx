@@ -279,7 +279,7 @@ export default function MarketingAdminPage() {
         )}
 
         {instaApiError && (
-          <span style={{ fontSize: 12, color: "#ef4444", maxWidth: 300 }}>
+          <span style={{ fontSize: 12, color: "var(--danger)", maxWidth: 300 }}>
             ⚠ {instaApiError}
           </span>
         )}
@@ -778,7 +778,7 @@ function AdminInstaCard({ snapshot, defaultOpen }: { snapshot: InstaSnapshot; de
           <span style={{ color: "#666" }}>
             Followers {snapshot.followers_count.toLocaleString(currentLocale())}
             {delta != null && (
-              <span style={{ color: delta >= 0 ? "#10b981" : "#ef4444", marginLeft: 4 }}>
+              <span style={{ color: delta >= 0 ? "#10b981" : "var(--danger)", marginLeft: 4 }}>
                 ({delta >= 0 ? "+" : ""}{delta})
               </span>
             )}
@@ -812,7 +812,7 @@ function AdminInstaCard({ snapshot, defaultOpen }: { snapshot: InstaSnapshot; de
               <div style={{ fontSize: 20, fontWeight: 700 }}>
                 {snapshot.followers_count.toLocaleString(currentLocale())}
                 {delta != null && (
-                  <span style={{ fontSize: 14, color: delta >= 0 ? "#10b981" : "#ef4444", marginLeft: 6 }}>
+                  <span style={{ fontSize: 14, color: delta >= 0 ? "#10b981" : "var(--danger)", marginLeft: 6 }}>
                     {delta >= 0 ? "+" : ""}{delta}
                   </span>
                 )}

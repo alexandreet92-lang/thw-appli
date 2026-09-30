@@ -98,7 +98,7 @@ export default function SectionTrends({ history }: Props) {
                   </p>
                 </div>
                 <div style={{ display:'flex',flexDirection:'column' as const,alignItems:'flex-end',gap:2 }}>
-                  <span style={{ fontSize:10,fontWeight:600,color:up?'#22c55e':'#ef4444' }}>
+                  <span style={{ fontSize:10,fontWeight:600,color:up?'#22c55e':'var(--danger)' }}>
                     {delta>=0?'+':''}{delta}
                   </span>
                   <span style={{ fontSize:9,color:'var(--text-dim)' }}>moy. {mean}{chart.unit}</span>

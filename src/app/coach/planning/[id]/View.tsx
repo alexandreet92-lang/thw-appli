@@ -104,7 +104,7 @@ export default function CoachAthletePlanningPage() {
             <div style={{ flex: '0 1 190px', minWidth: 0, paddingLeft: 14, borderLeft: '1px solid var(--border)' }}>
               <div style={{ fontSize: 9.5, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 2 }}>{t('w1h.objective')}</div>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 7 }}>
-                <span style={{ fontFamily: 'var(--font-body)', fontSize: 22, fontWeight: 800, color: cd.d <= 14 ? '#ef4444' : 'var(--text)', lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{t('w1h.days_to', { n: cd.d })}</span>
+                <span style={{ fontFamily: 'var(--font-body)', fontSize: 22, fontWeight: 800, color: cd.d <= 14 ? 'var(--danger)' : 'var(--text)', lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{t('w1h.days_to', { n: cd.d })}</span>
                 <span style={{ fontSize: 11.5, color: 'var(--text-mid)', fontWeight: 600 }}>{cd.w > 0 ? `${cd.w} ${t('w1h.wk_abbr')}${cd.r ? ` ${cd.r} ${t('w1h.day_abbr')}` : ''}` : `${cd.d} ${t('w1h.day_abbr')}`}</span>
               </div>
               <Link href={`/calendar?race=${objective!.id}`} style={{ display: 'block', fontSize: 12, color: 'var(--text)', fontWeight: 600, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textDecoration: 'none', cursor: 'pointer' }}>{objective!.name}</Link>

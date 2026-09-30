@@ -128,14 +128,14 @@ function HikingSettingsInner({ open, onClose, isDark, settings, updateSetting: u
             <div ref={menuRef} style={{ position:'absolute', right:8, top:'50%', transform:'translateY(-50%)', zIndex:100, background:t.bg, border:`1px solid ${t.separator}`, borderRadius:12, overflow:'hidden', boxShadow:'0 8px 24px rgba(0,0,0,0.15)', minWidth:150 }}>
               <button onClick={e => { e.stopPropagation(); setRenamingId(page.id); setMenuOpenId(null) }} style={{ width:'100%', padding:'13px 16px', background:'none', border:'none', textAlign:'left', fontSize:15, color:t.text, cursor:'pointer' }}>{tr('record.commonRename')}</button>
               <div style={{ height:1, background:t.separator }} />
-              <button onClick={e => { e.stopPropagation(); setConfirmDeleteId(page.id); setMenuOpenId(null) }} style={{ width:'100%', padding:'13px 16px', background:'none', border:'none', textAlign:'left', fontSize:15, color:'#EF4444', cursor:'pointer' }}>{tr('record.commonDelete')}</button>
+              <button onClick={e => { e.stopPropagation(); setConfirmDeleteId(page.id); setMenuOpenId(null) }} style={{ width:'100%', padding:'13px 16px', background:'none', border:'none', textAlign:'left', fontSize:15, color:'var(--danger)', cursor:'pointer' }}>{tr('record.commonDelete')}</button>
             </div>
           )}
           {confirmDeleteId === page.id && (
             <div style={{ padding:'10px 16px', background:'rgba(239,68,68,0.08)', borderRadius:10, display:'flex', alignItems:'center', justifyContent:'space-between', margin:'4px 0' }}>
-              <span style={{ fontSize:13, color:'#EF4444' }}>{tr('record.commonDeletePageConfirm')}</span>
+              <span style={{ fontSize:13, color:'var(--danger)' }}>{tr('record.commonDeletePageConfirm')}</span>
               <div style={{ display:'flex', gap:8 }}>
-                <button onClick={() => { deletePage(page.id); setConfirmDeleteId(null) }} style={{ padding:'5px 14px', borderRadius:8, background:'#EF4444', border:'none', color:'white', fontSize:13, cursor:'pointer' }}>{tr('record.commonYes')}</button>
+                <button onClick={() => { deletePage(page.id); setConfirmDeleteId(null) }} style={{ padding:'5px 14px', borderRadius:8, background:'var(--danger)', border:'none', color:'white', fontSize:13, cursor:'pointer' }}>{tr('record.commonYes')}</button>
                 <button onClick={() => setConfirmDeleteId(null)} style={{ padding:'5px 14px', borderRadius:8, background:t.separator, border:'none', color:t.text, fontSize:13, cursor:'pointer' }}>{tr('record.commonNo')}</button>
               </div>
             </div>

@@ -103,7 +103,7 @@ export default function SegmentHistory({ segmentId, isDark }: Props) {
           })}
 
           {/* Line */}
-          <polyline points={polyline} fill="none" stroke="#06B6D4" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+          <polyline points={polyline} fill="none" stroke="var(--primary)" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
 
           {/* Area fill */}
           <polyline

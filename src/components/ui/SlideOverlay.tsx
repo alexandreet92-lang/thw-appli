@@ -8,7 +8,7 @@
 //  • Remplace les animations CSS ad hoc : une seule source de mouvement.
 // Toujours monté via createPortal par l'appelant ; `onClosed` démonte après la sortie.
 // ══════════════════════════════════════════════════════════════════
-import { animate, motion, useMotionValue } from 'framer-motion'
+import { animate, motion, useMotionValue } from 'motion/react'
 import { useCallback, useEffect, useRef, type ReactNode, type TouchEvent } from 'react'
 import { haptic } from '@/lib/haptics'
 
@@ -69,7 +69,7 @@ export function SlideOverlay({ onClosed, children, zIndex = 18000 }: {
       onTouchStart={start} onTouchMove={move} onTouchEnd={end} onTouchCancel={end}
     >
       {/* ombre du bord gauche pendant le glissement */}
-      <div aria-hidden style={{ position: 'absolute', top: 0, bottom: 0, left: -28, width: 28, pointerEvents: 'none', background: 'linear-gradient(to left, rgba(0,0,0,0.25), transparent)' }} />
+      <div aria-hidden style={{ position: 'absolute', top: 0, bottom: 0, left: -28, width: 28, pointerEvents: 'none', background: 'var(--edge-shadow)' }} />
       {children(close)}
     </motion.div>
   )

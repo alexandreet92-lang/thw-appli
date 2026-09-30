@@ -261,7 +261,7 @@ export default function EventModal({ mode = 'create', initialData, initialDate, 
                                       {sportOptions.map(sp => <option key={sp} value={sp}>{sportLabel(sp)}</option>)}
                                     </select>
                                     <input type="time" value={ses.time ?? ''} onChange={e => updSession(d, slot, i, { time: e.target.value })} style={{ ...INP, width: 118, flex: 'none', padding: '8px 10px' }} />
-                                    <button onClick={() => rmSession(d, slot, i)} aria-label={t('calendar.remove')} style={{ width: 30, height: 30, borderRadius: 8, background: 'var(--bg-card)', border: '1px solid var(--border)', color: '#ef4444', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><IconX size={15} /></button>
+                                    <button onClick={() => rmSession(d, slot, i)} aria-label={t('calendar.remove')} style={{ width: 30, height: 30, borderRadius: 8, background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--danger)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><IconX size={15} /></button>
                                   </div>
                                   {/* Ligne 2 : titre */}
                                   <input value={ses.title ?? ''} onChange={e => updSession(d, slot, i, { title: e.target.value })} placeholder={t('calendar.sessionTitlePlaceholder')} style={{ ...INP, padding: '8px 10px' }} />
@@ -285,7 +285,7 @@ export default function EventModal({ mode = 'create', initialData, initialDate, 
                                 <span style={{ fontSize: 11.5, color: 'var(--text-mid)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                   📍 {dayParcoursFile[d]?.name ?? dayParcoursUrl[d]?.name}
                                 </span>
-                                <button onClick={() => clearDayParcours(d)} aria-label={t('calendar.removeRoute')} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', display: 'flex', padding: 2, flexShrink: 0 }}><IconX size={15} /></button>
+                                <button onClick={() => clearDayParcours(d)} aria-label={t('calendar.removeRoute')} style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', display: 'flex', padding: 2, flexShrink: 0 }}><IconX size={15} /></button>
                               </div>
                               {dayParcoursFile[d]
                                 ? <ParcoursViewer file={dayParcoursFile[d] as File} />
@@ -312,12 +312,12 @@ export default function EventModal({ mode = 'create', initialData, initialDate, 
           <div style={{ display: 'flex', gap: 10, width: '100%', maxWidth: 900, alignItems: 'center' }}>
             {isEdit && onDelete && (confirmDelete ? (
               <div style={{ display: 'flex', gap: 8, alignItems: 'center', flex: 1, flexWrap: 'wrap' }}>
-                <span style={{ fontSize: 12.5, fontWeight: 600, color: '#ef4444' }}>{t('calendar.deleteStageConfirm')}</span>
-                <button onClick={onDelete} style={{ padding: '10px 16px', borderRadius: 999, background: '#ef4444', border: 'none', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>{t('calendar.confirm')}</button>
+                <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--danger)' }}>{t('calendar.deleteStageConfirm')}</span>
+                <button onClick={onDelete} style={{ padding: '10px 16px', borderRadius: 999, background: 'var(--danger)', border: 'none', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>{t('calendar.confirm')}</button>
                 <button onClick={() => setConfirmDelete(false)} style={{ padding: '10px 14px', borderRadius: 999, background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-mid)', fontSize: 13, cursor: 'pointer' }}>{t('calendar.cancel')}</button>
               </div>
             ) : (
-              <button onClick={() => setConfirmDelete(true)} style={{ padding: 12, borderRadius: 999, background: 'transparent', border: '1px solid #ef4444', color: '#ef4444', fontSize: 13.5, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>{t('calendar.delete')}</button>
+              <button onClick={() => setConfirmDelete(true)} style={{ padding: 12, borderRadius: 999, background: 'transparent', border: '1px solid #ef4444', color: 'var(--danger)', fontSize: 13.5, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>{t('calendar.delete')}</button>
             ))}
             {!confirmDelete && (<>
               <button onClick={requestClose} style={{ flex: 1, padding: 12, borderRadius: 999, background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-mid)', fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}>{t('calendar.close')}</button>

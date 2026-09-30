@@ -35,7 +35,7 @@ export default function SkiSettings(props: Props) {
 
 function Toggle({ value, onChange, t }: { value: boolean; onChange: (v: boolean) => void; t: ReturnType<typeof getTheme> }) {
   return (
-    <div onClick={() => onChange(!value)} style={{ width:44, height:26, borderRadius:13, background: value ? '#06B6D4' : t.separator, cursor:'pointer', position:'relative', transition:'background 0.2s', flexShrink:0 }}>
+    <div onClick={() => onChange(!value)} style={{ width:44, height:26, borderRadius:13, background: value ? 'var(--primary)' : t.separator, cursor:'pointer', position:'relative', transition:'background 0.2s', flexShrink:0 }}>
       <div style={{ position:'absolute', top:3, left: value ? 21 : 3, width:20, height:20, borderRadius:'50%', background:'white', transition:'left 0.2s', boxShadow:'0 1px 4px rgba(0,0,0,0.2)' }} />
     </div>
   )
@@ -100,7 +100,7 @@ function SkiSettingsInner({ open, onClose, isDark, settings, updateSetting: upda
     <div>
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'12px 16px 8px' }}>
         <span style={{ fontSize:11, fontWeight:700, color:t.dim, letterSpacing:'0.08em', textTransform:'uppercase' }}>{tr('record.settingsDataPages')}</span>
-        <button onClick={addNewPage} style={{ fontSize:12, color:'#06B6D4', background:'none', border:'none', cursor:'pointer', fontWeight:600 }}>{tr('record.settingsAdd')}</button>
+        <button onClick={addNewPage} style={{ fontSize:12, color:'var(--primary)', background:'none', border:'none', cursor:'pointer', fontWeight:600 }}>{tr('record.settingsAdd')}</button>
       </div>
       {(pages as DataPage[]).map((page, idx) => (
         <div key={page.id} style={{ position:'relative' }}>
@@ -109,7 +109,7 @@ function SkiSettingsInner({ open, onClose, isDark, settings, updateSetting: upda
               <button onClick={() => movePage(idx, idx-1)} disabled={idx===0} style={{ background:'none', border:'none', cursor:idx===0?'default':'pointer', opacity:idx===0?0.2:0.55, color:t.text, padding:'2px 4px' }}><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 9l5-5 5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg></button>
               <button onClick={() => movePage(idx, idx+1)} disabled={idx===pages.length-1} style={{ background:'none', border:'none', cursor:idx===pages.length-1?'default':'pointer', opacity:idx===pages.length-1?0.2:0.55, color:t.text, padding:'2px 4px' }}><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 5l5 5 5-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg></button>
             </div>
-            <div style={{ width:28, height:28, borderRadius:'50%', flexShrink:0, background:'rgba(6,182,212,0.15)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:700, color:'#06B6D4' }}>{idx+1}</div>
+            <div style={{ width:28, height:28, borderRadius:'50%', flexShrink:0, background:'rgba(6,182,212,0.15)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:700, color:'var(--primary)' }}>{idx+1}</div>
             <div style={{ flex:1, minWidth:0 }}>
               {renamingId === page.id
                 ? <input autoFocus defaultValue={page.name} onBlur={e => finishRename(page.id, e.target.value)} onKeyDown={e => { if (e.key==='Enter') finishRename(page.id, e.currentTarget.value); if (e.key==='Escape') setRenamingId(null) }} onClick={e => e.stopPropagation()} style={{ fontSize:15, fontWeight:600, background:'none', border:'none', borderBottom:'1px solid #06B6D4', color:t.text, outline:'none', width:'100%' }} />
@@ -125,14 +125,14 @@ function SkiSettingsInner({ open, onClose, isDark, settings, updateSetting: upda
             <div ref={menuRef} style={{ position:'absolute', right:8, top:'50%', transform:'translateY(-50%)', zIndex:100, background:t.bg, border:`1px solid ${t.separator}`, borderRadius:12, overflow:'hidden', boxShadow:'0 8px 24px rgba(0,0,0,0.15)', minWidth:150 }}>
               <button onClick={e => { e.stopPropagation(); setRenamingId(page.id); setMenuOpenId(null) }} style={{ width:'100%', padding:'13px 16px', background:'none', border:'none', textAlign:'left', fontSize:15, color:t.text, cursor:'pointer' }}>{tr('record.settingsRename')}</button>
               <div style={{ height:1, background:t.separator }} />
-              <button onClick={e => { e.stopPropagation(); setConfirmDeleteId(page.id); setMenuOpenId(null) }} style={{ width:'100%', padding:'13px 16px', background:'none', border:'none', textAlign:'left', fontSize:15, color:'#EF4444', cursor:'pointer' }}>{tr('record.settingsDelete')}</button>
+              <button onClick={e => { e.stopPropagation(); setConfirmDeleteId(page.id); setMenuOpenId(null) }} style={{ width:'100%', padding:'13px 16px', background:'none', border:'none', textAlign:'left', fontSize:15, color:'var(--danger)', cursor:'pointer' }}>{tr('record.settingsDelete')}</button>
             </div>
           )}
           {confirmDeleteId === page.id && (
             <div style={{ padding:'10px 16px', background:'rgba(239,68,68,0.08)', borderRadius:10, display:'flex', alignItems:'center', justifyContent:'space-between', margin:'4px 0' }}>
-              <span style={{ fontSize:13, color:'#EF4444' }}>{tr('record.settingsDeletePageConfirm')}</span>
+              <span style={{ fontSize:13, color:'var(--danger)' }}>{tr('record.settingsDeletePageConfirm')}</span>
               <div style={{ display:'flex', gap:8 }}>
-                <button onClick={() => { deletePage(page.id); setConfirmDeleteId(null) }} style={{ padding:'5px 14px', borderRadius:8, background:'#EF4444', border:'none', color:'white', fontSize:13, cursor:'pointer' }}>{tr('record.settingsYes')}</button>
+                <button onClick={() => { deletePage(page.id); setConfirmDeleteId(null) }} style={{ padding:'5px 14px', borderRadius:8, background:'var(--danger)', border:'none', color:'white', fontSize:13, cursor:'pointer' }}>{tr('record.settingsYes')}</button>
                 <button onClick={() => setConfirmDeleteId(null)} style={{ padding:'5px 14px', borderRadius:8, background:t.separator, border:'none', color:t.text, fontSize:13, cursor:'pointer' }}>{tr('record.settingsNo')}</button>
               </div>
             </div>
@@ -246,7 +246,7 @@ function SkiSettingsInner({ open, onClose, isDark, settings, updateSetting: upda
           <div style={{ height:'100%', overflowY:'auto', paddingBottom:24 }}>
             {SECTION_IDS.map(secId => (
               <button key={secId} onClick={() => openSection(secId)} style={{ width:'100%', display:'flex', alignItems:'center', gap:14, padding:'14px 20px', background:'none', border:'none', cursor:'pointer', borderBottom:`1px solid ${t.separator}`, textAlign:'left', fontFamily:'DM Sans, sans-serif' }}>
-                <div style={{ width:36, height:36, borderRadius:10, background:'rgba(6,182,212,0.10)', color:'#06B6D4', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>{SECTION_ICONS[secId]}</div>
+                <div style={{ width:36, height:36, borderRadius:10, background:'rgba(6,182,212,0.10)', color:'var(--primary)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>{SECTION_ICONS[secId]}</div>
                 <div style={{ flex:1 }}>
                   <p style={{ fontSize:15, fontWeight:500, color:t.text, margin:0 }}>{sectionLabel(secId)}</p>
                   <p style={{ fontSize:12, color:'#8C8C8C', margin:'2px 0 0' }}>{sectionDesc(secId)}</p>

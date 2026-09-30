@@ -81,7 +81,7 @@ export function ReauthGate() {
         <input value={email} onChange={e => setEmail(e.target.value)} placeholder={t('authpage.emailPlaceholder')} type="email" style={field} />
         <div style={{ height: 10 }} />
         <input value={password} onChange={e => setPassword(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') void confirm() }} placeholder={t('auth.password')} type="password" autoFocus style={field} />
-        {error && <p style={{ color: '#EF4444', fontFamily: FB, fontSize: 12, margin: '10px 0 0' }}>{error}</p>}
+        {error && <p style={{ color: 'var(--danger)', fontFamily: FB, fontSize: 12, margin: '10px 0 0' }}>{error}</p>}
         <button onClick={() => void confirm()} disabled={disabled} style={{ width: '100%', height: 48, marginTop: 16, borderRadius: 12, border: 'none', background: disabled ? 'var(--bg-card2)' : 'var(--primary-gradient)', color: disabled ? 'var(--text-dim)' : '#fff', fontFamily: FB, fontSize: 15, fontWeight: 700, cursor: disabled ? 'not-allowed' : 'pointer' }}>
           {loading ? t('authpage.verifying') : t('authpage.confirmBtn')}
         </button>

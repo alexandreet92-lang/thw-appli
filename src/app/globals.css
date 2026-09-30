@@ -16,6 +16,7 @@
    (couleurs brand, polices, darkMode class…) via @config. */
 @import 'tailwindcss';
 @config '../../tailwind.config.js';
+@import 'tw-animate-css';
 
 @keyframes scale-in {
   from { transform: scale(0.9); opacity: 0; }
@@ -116,6 +117,11 @@
   --on-primary:   #ffffff;   /* texte sur surface --primary (bouton cyan) */
   /* Danger / destructif (quitter un appel, erreur) — 2 thèmes, tokenisé */
   --danger:       #ef4444;
+  /* Voiles, ombres flottantes et ombre de bord des pages qui glissent (tokenisés). */
+  --scrim:        rgba(0,0,0,0.5);
+  --shadow-float: 0 8px 28px rgba(0,0,0,0.28);
+  --shadow-lens:  0 8px 26px rgba(0,0,0,0.42);
+  --edge-shadow:  linear-gradient(to left, rgba(0,0,0,0.25), transparent);
   --danger-soft:  rgba(239,68,68,0.12);
   --ai-accent:    #9D7DFF;
   --ai-accent-dim:rgba(157,125,255,0.12);
@@ -533,7 +539,13 @@ select:-webkit-autofill {
 
 /* ── Button tap feedback (Framer Motion applies scale; this is the
       CSS fallback for reduced-motion users) ─────────────────────── */
+/* Micro-animations des boutons — TOUS les boutons de l'app : transition douce,
+   léger éclaircissement au survol (souris), compression au clic (toucher/souris).
+   Les boutons qui déclarent leur propre transition / transform gardent la leur. */
+button:not(:disabled) { transition-property: transform, filter, background-color, box-shadow, opacity, color; transition-duration: 0.18s; transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1); }
+@media (hover: hover) { button:not(:disabled):not([data-no-fx]):hover { filter: brightness(1.08); } }
 button:active { transform: scale(0.97); }
+@media (prefers-reduced-motion: reduce) { button:not(:disabled) { transition: none; } button:active { transform: none; } }
 
 /* ── Tab / filter pill — design system uniforme ──────────────────
    Usage : className="tab-btn" + className="tab-btn active"

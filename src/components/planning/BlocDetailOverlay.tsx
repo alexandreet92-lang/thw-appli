@@ -100,7 +100,7 @@ export function BlocDetailOverlay({ open, blocId, onClose, onChanged, blocs: pro
           ))}
           <button onClick={create} style={{ padding: '5px 11px', fontSize: 11.5, fontWeight: 600, borderRadius: 8, border: '1px dashed var(--border)', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer' }}>{tr('planning.newPlus')}</button>
           {pastAll.length > 10 && <span style={{ fontSize: 10.5, color: 'var(--text-dim)', padding: '5px 8px' }}>{tr('planning.archivedBlocs', { n: pastAll.length - 10 })}</span>}
-          {bloc && <button onClick={remove} style={{ padding: '5px 9px', fontSize: 11, borderRadius: 8, border: 'none', background: 'rgba(239,68,68,.1)', color: '#ef4444', cursor: 'pointer', marginLeft: 'auto' }}>{tr('planning.delete')}</button>}
+          {bloc && <button onClick={remove} style={{ padding: '5px 9px', fontSize: 11, borderRadius: 8, border: 'none', background: 'rgba(239,68,68,.1)', color: 'var(--danger)', cursor: 'pointer', marginLeft: 'auto' }}>{tr('planning.delete')}</button>}
         </div>
 
         {!bloc ? (

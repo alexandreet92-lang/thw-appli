@@ -200,7 +200,7 @@ function computeSplits(streams: SplitStreams, intervalS: number, sport: 'bike' |
 // Couleur de dérive : vert stable, ambre > seuil doux, rouge > seuil fort.
 function driftColor(pct: number | null, soft: number, hard: number): { color?: string; background?: string } {
   if (pct == null) return {}
-  if (pct > hard) return { color: '#EF4444', background: 'rgba(239,68,68,0.08)' }
+  if (pct > hard) return { color: 'var(--danger)', background: 'rgba(239,68,68,0.08)' }
   if (pct > soft) return { color: '#F59E0B', background: 'rgba(245,158,11,0.10)' }
   return { color: '#10B981' }
 }

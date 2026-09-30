@@ -74,7 +74,7 @@ export default function SensorSheet({ onClose, isDark }: { onClose: () => void; 
             {row('power', t('record.sensorPower'),
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg>,
               s.power, t('record.sensorWatts'), s.powerDevice)}
-            {s.error && <p style={{ fontSize: 12.5, color: '#EF4444', margin: '4px 2px 0' }}>{t('record.sensorError')}</p>}
+            {s.error && <p style={{ fontSize: 12.5, color: 'var(--danger)', margin: '4px 2px 0' }}>{t('record.sensorError')}</p>}
             <p style={{ fontSize: 11.5, color: dim, margin: '10px 2px 0', lineHeight: 1.5 }}>{t('record.sensorHint')}</p>
           </>
         )}

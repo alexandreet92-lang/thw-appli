@@ -121,9 +121,9 @@ export default function HomeTrainerScreen({ onExit, onFinished }: Props) {
         <div style={{ padding: '0 16px 12px', flexShrink: 0 }}>
           <p style={{ fontSize: 10, fontWeight: 700, color: dim, textTransform: 'uppercase', letterSpacing: '0.08em', margin: '8px 0 8px' }}>{t('record.homeTrainerProgram')}</p>
           <div style={{ display: 'flex', gap: 8, overflowX: 'auto' }}>
-            <button onClick={() => setProgram(null)} style={{ padding: '8px 16px', borderRadius: 20, border: 'none', background: !program ? '#06B6D4' : btnBg, color: !program ? '#FFF' : text, fontSize: 13, fontWeight: 500, cursor: 'pointer', whiteSpace: 'nowrap' }}>{t('record.homeTrainerFree')}</button>
+            <button onClick={() => setProgram(null)} style={{ padding: '8px 16px', borderRadius: 20, border: 'none', background: !program ? 'var(--primary)' : btnBg, color: !program ? '#FFF' : text, fontSize: 13, fontWeight: 500, cursor: 'pointer', whiteSpace: 'nowrap' }}>{t('record.homeTrainerFree')}</button>
             {HT_PROGRAMS.map(p => (
-              <button key={p.name} onClick={() => setProgram(p)} style={{ padding: '8px 16px', borderRadius: 20, border: 'none', background: program?.name === p.name ? '#06B6D4' : btnBg, color: program?.name === p.name ? '#FFF' : text, fontSize: 13, fontWeight: 500, cursor: 'pointer', whiteSpace: 'nowrap' }}>{p.nameKey ? t(p.nameKey) : p.name}</button>
+              <button key={p.name} onClick={() => setProgram(p)} style={{ padding: '8px 16px', borderRadius: 20, border: 'none', background: program?.name === p.name ? 'var(--primary)' : btnBg, color: program?.name === p.name ? '#FFF' : text, fontSize: 13, fontWeight: 500, cursor: 'pointer', whiteSpace: 'nowrap' }}>{p.nameKey ? t(p.nameKey) : p.name}</button>
             ))}
           </div>
         </div>
@@ -166,7 +166,7 @@ export default function HomeTrainerScreen({ onExit, onFinished }: Props) {
         )}
         {phase === 'running' && <>
           <button onClick={() => setPhase('paused')} style={{ flex: 1, height: 52, borderRadius: 14, background: btnBg, border: 'none', color: text, fontSize: 15, fontWeight: 600, cursor: 'pointer' }}>{t('record.commonPause')}</button>
-          <button onClick={handleStop} style={{ flex: 1, height: 52, borderRadius: 14, background: 'rgba(239,68,68,0.15)', border: 'none', color: '#EF4444', fontSize: 15, fontWeight: 600, cursor: 'pointer' }}>{t('record.commonFinish')}</button>
+          <button onClick={handleStop} style={{ flex: 1, height: 52, borderRadius: 14, background: 'rgba(239,68,68,0.15)', border: 'none', color: 'var(--danger)', fontSize: 15, fontWeight: 600, cursor: 'pointer' }}>{t('record.commonFinish')}</button>
         </>}
         {phase === 'paused' && <>
           <button onClick={() => setPhase('running')} style={{ flex: 1, height: 52, borderRadius: 14, background: 'linear-gradient(135deg,#06B6D4,#2563EB)', border: 'none', color: '#FFF', fontSize: 15, fontWeight: 600, cursor: 'pointer' }}>{t('record.commonResume')}</button>

@@ -768,7 +768,7 @@ function RaceDetailModal({ race, onClose, onDelete, onEdit }: {
         )}
         <div style={{ display:'flex',gap:7 }}>
           <button onClick={() => { onDelete(race.id); onClose() }}
-            style={{ padding:'8px 12px',borderRadius:9,background:'rgba(239,68,68,0.10)',border:'1px solid rgba(239,68,68,0.3)',color:'#ef4444',fontSize:11,cursor:'pointer' }}>
+            style={{ padding:'8px 12px',borderRadius:9,background:'rgba(239,68,68,0.10)',border:'1px solid rgba(239,68,68,0.3)',color:'var(--danger)',fontSize:11,cursor:'pointer' }}>
             {t('calendar.delete')}
           </button>
           <button onClick={onEdit}
@@ -1221,7 +1221,7 @@ function CategoryEventModal({ category, initialDate, initial, onClose, onSave, o
       <div style={{ display:'flex',gap:8 }}>
         {onDelete && (
           <button onClick={() => { onDelete(); close() }} aria-label={tr('calendar.delete')}
-            style={{ padding:'11px 14px',borderRadius:11,background:'rgba(239,68,68,0.08)',border:'1px solid rgba(239,68,68,0.24)',color:'#ef4444',fontSize:13,fontWeight:700,cursor:'pointer' }}>✕</button>
+            style={{ padding:'11px 14px',borderRadius:11,background:'rgba(239,68,68,0.08)',border:'1px solid rgba(239,68,68,0.24)',color:'var(--danger)',fontSize:13,fontWeight:700,cursor:'pointer' }}>✕</button>
         )}
         <button onClick={close} style={{ flex:1,padding:11,borderRadius:11,background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',fontSize:13,cursor:'pointer' }}>{tr('calendar.cancel')}</button>
         <button onClick={save}
@@ -1495,7 +1495,7 @@ function AllTab({ races, eventTypes, events }: { races: Race[]; eventTypes: CalE
           <button key={v} onClick={() => setView(v as AllView)} style={{
             padding: '6px 13px', borderRadius: 9, border: '1px solid', fontSize: 11, cursor: 'pointer',
             fontWeight: effView === v ? 600 : 400,
-            borderColor: effView === v ? '#06B6D4' : 'var(--border)',
+            borderColor: effView === v ? 'var(--primary)' : 'var(--border)',
             background: effView === v ? 'rgba(6,182,212,0.10)' : 'var(--bg-card)',
             color: effView === v ? '#06B6D4' : 'var(--text-mid)',
           }}>
@@ -1622,7 +1622,7 @@ function AllTab({ races, eventTypes, events }: { races: Race[]; eventTypes: CalE
             <div style={{ flex:1 }}>
               <p style={{ fontSize:9,color:'var(--text-dim)',margin:'0 0 2px',textTransform:'capitalize' as const }}>{dateLabel}</p>
             </div>
-            <span style={{ fontSize:20,fontWeight:800,color:isPast?'var(--text-dim)':days<7?'#ef4444':days<30?'#f97316':'var(--text)',fontFamily:'DM Mono,monospace' }}>
+            <span style={{ fontSize:20,fontWeight:800,color:isPast?'var(--text-dim)':days<7?'var(--danger)':days<30?'#f97316':'var(--text)',fontFamily:'DM Mono,monospace' }}>
               {isPast ? tr('calendar.pastCheck') : days === 0 ? tr('calendar.todayFull') : tr('calendar.jMinus', { n: days })}
             </span>
           </div>

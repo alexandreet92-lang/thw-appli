@@ -84,7 +84,7 @@ export default function PlanPicker({ onClose }: Props) {
           ))}
         </div>
 
-        {error && <p style={{ fontSize: 12, color: '#EF4444', textAlign: 'center', margin: '14px 0 0' }}>{error}</p>}
+        {error && <p style={{ fontSize: 12, color: 'var(--danger)', textAlign: 'center', margin: '14px 0 0' }}>{error}</p>}
         <button onClick={requestClose} style={{ width: '100%', marginTop: 14, padding: 11, borderRadius: 12, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-mid)', fontSize: 13, fontWeight: 500, cursor: 'pointer' }}>{t('w3c.close')}</button>
       </div>
     </div>

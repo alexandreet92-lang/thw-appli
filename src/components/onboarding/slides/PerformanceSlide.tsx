@@ -34,7 +34,7 @@ function ChartMockup() {
         {kpis.map(k => (
           <div key={k.l} style={{ flex: 1, background: 'rgba(255,255,255,0.05)', borderRadius: 10, padding: '8px 10px' }}>
             <p style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)', margin: '0 0 2px', textTransform: 'uppercase', fontFamily: 'DM Sans, sans-serif' }}>{k.l}</p>
-            <p style={{ fontSize: 20, fontWeight: 700, color: '#06B6D4', margin: 0, fontFamily: 'DM Mono, monospace' }}>{k.v}</p>
+            <p style={{ fontSize: 20, fontWeight: 700, color: 'var(--primary)', margin: 0, fontFamily: 'DM Mono, monospace' }}>{k.v}</p>
           </div>
         ))}
       </div>
@@ -46,13 +46,13 @@ function ChartMockup() {
           </linearGradient>
         </defs>
         <path d={AREA} fill="url(#obGrad)" />
-        <path d={LINE} fill="none" stroke="#06B6D4" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"
+        <path d={LINE} fill="none" stroke="var(--primary)" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"
           strokeDasharray={PATH_LEN} strokeDashoffset={PATH_LEN * (1 - prog / 100)}
           style={{ transition: 'stroke-dashoffset 0.04s linear' }} />
         {PTS.map((v, i) => {
           const threshold = (i / (PTS.length - 1)) * 100
           return prog >= threshold ? (
-            <circle key={i} cx={px(i)} cy={py(v)} r={4} fill="#06B6D4" stroke="#0A0A0F" strokeWidth={2} />
+            <circle key={i} cx={px(i)} cy={py(v)} r={4} fill="var(--primary)" stroke="#0A0A0F" strokeWidth={2} />
           ) : null
         })}
       </svg>

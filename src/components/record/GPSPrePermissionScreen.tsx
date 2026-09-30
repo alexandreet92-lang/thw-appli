@@ -17,7 +17,7 @@ function CheckIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style={{ flexShrink: 0, marginTop: 1 }}>
       <circle cx="8" cy="8" r="8" fill="rgba(6,182,212,0.15)"/>
-      <path d="M5 8l2 2 4-4" stroke="#06B6D4" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M5 8l2 2 4-4" stroke="var(--primary)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
     </svg>
   )
 }
@@ -47,7 +47,7 @@ export default function GPSPrePermissionScreen({ onAuthorize, onDismiss }: Props
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         marginBottom: 24,
       }}>
-        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#06B6D4" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
           <circle cx="12" cy="12" r="3"/>
           <path d="M12 1v4M12 19v4M1 12h4M19 12h4"/>
           <path d="M12 8a4 4 0 1 1 0 8 4 4 0 0 1 0-8z" strokeWidth="0" fill="rgba(6,182,212,0.2)"/>

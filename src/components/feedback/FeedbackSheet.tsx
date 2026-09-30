@@ -77,7 +77,7 @@ export function FeedbackSheet({ open, onClose }: { open: boolean; onClose: () =>
           <textarea value={msg} onChange={e => setMsg(e.target.value)} rows={5} placeholder={t('w3h.fb_placeholder')}
             style={{ width: '100%', boxSizing: 'border-box', padding: '12px 14px', borderRadius: 12, border: '1px solid var(--border)',
               background: 'var(--bg-card2)', color: 'var(--text)', fontFamily: FB, fontSize: 14, outline: 'none', resize: 'vertical', marginBottom: 'var(--space-3)' }} />
-          {err && <p style={{ fontFamily: FB, fontSize: 12.5, color: '#ef4444', margin: '0 0 var(--space-3)' }}>{err}</p>}
+          {err && <p style={{ fontFamily: FB, fontSize: 12.5, color: 'var(--danger)', margin: '0 0 var(--space-3)' }}>{err}</p>}
           <button onClick={submit} disabled={saving || !msg.trim()} style={{
             width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
             padding: '14px 16px', borderRadius: 14, border: 'none', cursor: saving || !msg.trim() ? 'default' : 'pointer',

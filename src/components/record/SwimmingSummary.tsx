@@ -66,7 +66,7 @@ export default function SwimmingSummary({ session, onClose }: Props) {
         </span>
         <button
           onClick={requestClose}
-          style={{ marginLeft: 'auto', background: 'none', border: 'none', color: '#06B6D4', fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}
+          style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'var(--primary)', fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}
         >
           {t('record.swimSummaryClose')}
         </button>
@@ -95,7 +95,7 @@ export default function SwimmingSummary({ session, onClose }: Props) {
             {session.intervals.map((iv, idx) => (
               <div key={iv.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', background: 'var(--bg-card)', borderRadius: 10, marginBottom: 6, border: '1px solid var(--border)' }}>
                 <span style={{ fontSize: 14, fontWeight: 500 }}>{t('record.swimSet', { n: idx + 1 })} — {iv.distanceM}m</span>
-                <span style={{ fontSize: 13, color: '#06B6D4', fontWeight: 600 }}>{pace100m(iv.distanceM, iv.durationSec)}</span>
+                <span style={{ fontSize: 13, color: 'var(--primary)', fontWeight: 600 }}>{pace100m(iv.distanceM, iv.durationSec)}</span>
               </div>
             ))}
           </div>

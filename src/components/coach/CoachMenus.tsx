@@ -86,10 +86,10 @@ export function RowActionsMenu({ actions }: { actions: Action[] }) {
           <div style={{ position: 'fixed', top: pos.top, left: pos.left, width: W, zIndex: 13001, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 14, boxShadow: '0 18px 48px rgba(0,0,0,0.28)', padding: 6, animation: 'cmMenuIn .16s cubic-bezier(.32,.72,0,1)' }}>
             {actions.map((a, i) => (
               <button key={i} onClick={e => { e.stopPropagation(); setOpen(false); a.onClick() }}
-                style={{ display: 'flex', alignItems: 'center', gap: 11, width: '100%', textAlign: 'left', padding: '10px 11px', borderRadius: 9, border: 'none', background: 'transparent', cursor: 'pointer', fontFamily: BODY, color: a.danger ? '#ef4444' : 'var(--text)' }}
+                style={{ display: 'flex', alignItems: 'center', gap: 11, width: '100%', textAlign: 'left', padding: '10px 11px', borderRadius: 9, border: 'none', background: 'transparent', cursor: 'pointer', fontFamily: BODY, color: a.danger ? 'var(--danger)' : 'var(--text)' }}
                 onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = a.danger ? 'rgba(239,68,68,0.08)' : 'var(--bg-alt)'}
                 onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}>
-                <span style={{ display: 'flex', flexShrink: 0, color: a.danger ? '#ef4444' : 'var(--text-mid)' }}>{a.icon}</span>
+                <span style={{ display: 'flex', flexShrink: 0, color: a.danger ? 'var(--danger)' : 'var(--text-mid)' }}>{a.icon}</span>
                 <span style={{ fontSize: 13.5, fontWeight: 600 }}>{a.label}</span>
               </button>
             ))}

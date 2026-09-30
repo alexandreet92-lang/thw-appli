@@ -83,7 +83,7 @@ export default function YogaSession({ exercises, title, isDark, onClose }: Props
         </button>
         <p style={{ flex: 1, textAlign: 'center', fontSize: 15, fontWeight: 600, color: text, margin: 0 }}>{title}</p>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span style={{ fontSize: 15, fontWeight: 700, color: '#06B6D4', fontVariantNumeric: 'tabular-nums' }}>{fmt(session.elapsed)}</span>
+          <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--primary)', fontVariantNumeric: 'tabular-nums' }}>{fmt(session.elapsed)}</span>
           <button onClick={() => setSettingsOpen(true)} style={{ width: 36, height: 36, borderRadius: '50%', background: btnBg, border: 'none', color: dim, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9"/></svg>
           </button>
@@ -98,7 +98,7 @@ export default function YogaSession({ exercises, title, isDark, onClose }: Props
           <div style={{ textAlign: 'center' }}>
             <p style={{ fontSize: 14, color: dim, textTransform: 'uppercase', letterSpacing: 1, margin: '0 0 12px' }}>{t('record.yogaRest')}</p>
             <p style={{ fontSize: 80, fontWeight: 700, color: text, margin: '0 0 12px', lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{session.restRemaining}</p>
-            {next && <p style={{ fontSize: 16, color: '#06B6D4', fontWeight: 600, margin: 0 }}>{t('record.yogaNext', { name: next.name })}</p>}
+            {next && <p style={{ fontSize: 16, color: 'var(--primary)', fontWeight: 600, margin: 0 }}>{t('record.yogaNext', { name: next.name })}</p>}
           </div>
         ) : (
           <>
@@ -136,7 +136,7 @@ export default function YogaSession({ exercises, title, isDark, onClose }: Props
       {session.phase !== 'idle' && session.phase !== 'finished' && (
         <div style={{ padding: '12px 20px', paddingBottom: 'max(env(safe-area-inset-bottom),16px)', display: 'flex', gap: 10, flexShrink: 0 }}>
           <button onClick={session.skip} style={{ flex: 1, height: 48, borderRadius: 14, background: btnBg, border: 'none', color: text, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>{t('record.yogaSkip')}</button>
-          <button onClick={isRunning ? session.pause : session.resume} style={{ flex: 2, height: 48, borderRadius: 14, background: isRunning ? 'rgba(6,182,212,0.15)' : 'linear-gradient(135deg,#06B6D4,#2563EB)', border: 'none', color: isRunning ? '#06B6D4' : '#FFF', fontSize: 15, fontWeight: 600, cursor: 'pointer' }}>
+          <button onClick={isRunning ? session.pause : session.resume} style={{ flex: 2, height: 48, borderRadius: 14, background: isRunning ? 'rgba(6,182,212,0.15)' : 'linear-gradient(135deg,#06B6D4,#2563EB)', border: 'none', color: isRunning ? 'var(--primary)' : '#FFF', fontSize: 15, fontWeight: 600, cursor: 'pointer' }}>
             {isRunning ? t('record.yogaPause') : t('record.yogaResume')}
           </button>
           {session.phase === 'exercise' && (
@@ -153,7 +153,7 @@ export default function YogaSession({ exercises, title, isDark, onClose }: Props
             <p style={{ fontSize: 14, color: dim, margin: '0 0 20px' }}>{t('record.yogaQuitWarning')}</p>
             <div style={{ display: 'flex', gap: 10 }}>
               <button onClick={() => { setConfirmClose(false); session.resume() }} style={{ flex: 1, height: 44, borderRadius: 12, background: btnBg, border: 'none', color: text, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>{t('record.yogaCancel')}</button>
-              <button onClick={onClose} style={{ flex: 1, height: 44, borderRadius: 12, background: '#EF4444', border: 'none', color: '#FFF', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>{t('record.yogaQuit')}</button>
+              <button onClick={onClose} style={{ flex: 1, height: 44, borderRadius: 12, background: 'var(--danger)', border: 'none', color: '#FFF', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>{t('record.yogaQuit')}</button>
             </div>
           </div>
         </div>

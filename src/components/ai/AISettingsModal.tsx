@@ -6,6 +6,7 @@
 // menus déroulants custom, feedback « Enregistré » à chaque sauvegarde.
 // ══════════════════════════════════════════════════════════════
 
+import { Switch } from '@/components/shadcn/switch'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useI18n } from '@/lib/i18n'
 import { createClient } from '@/lib/supabase/client'
@@ -52,12 +53,7 @@ function onFocusRing(e: React.FocusEvent<HTMLElement>) { e.currentTarget.style.b
 function onBlurRing(e: React.FocusEvent<HTMLElement>) { e.currentTarget.style.borderColor = 'var(--border-mid)'; e.currentTarget.style.boxShadow = 'none' }
 
 function Toggle({ value, onChange }: { value: boolean; onChange: (v: boolean) => void }) {
-  return (
-    <button onClick={() => onChange(!value)} aria-pressed={value} type="button"
-      style={{ flexShrink: 0, width: 44, height: 26, borderRadius: 999, border: 'none', cursor: 'pointer', background: value ? 'var(--primary)' : 'var(--border-mid)', position: 'relative', transition: 'background 0.18s' }}>
-      <span style={{ position: 'absolute', top: 3, left: value ? 21 : 3, width: 20, height: 20, borderRadius: '50%', background: '#fff', transition: 'left 0.18s', boxShadow: '0 1px 3px rgba(0,0,0,0.25)' }} />
-    </button>
-  )
+  return <Switch checked={value} onCheckedChange={onChange} />
 }
 
 // Menu déroulant custom (remplace <select> natif).

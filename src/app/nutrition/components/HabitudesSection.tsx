@@ -211,7 +211,7 @@ function RegularMealCreateModal({
                   <button onClick={() => removeIng(i)} style={{
                     width: 28, height: 36, borderRadius: 7,
                     border: '1px solid rgba(239,68,68,0.35)', background: 'transparent',
-                    color: '#ef4444', cursor: 'pointer', fontSize: 16,
+                    color: 'var(--danger)', cursor: 'pointer', fontSize: 16,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                   }}>x</button>
                 </div>
@@ -322,7 +322,7 @@ function RegularMealCard({
             background: 'rgba(6,182,212,0.12)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#06B6D4" strokeWidth="1.5">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="1.5">
               <circle cx="12" cy="12" r="9" />
               <path d="M8 12h8M12 8v8" />
             </svg>
@@ -370,7 +370,7 @@ function RegularMealCard({
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}
             >
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" strokeWidth="2">
                 <polyline points="3 6 5 6 21 6" />
                 <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" />
                 <path d="M10 11v6M14 11v6M9 6V4h6v2" />
@@ -393,7 +393,7 @@ function RegularMealCard({
                 onClick={() => void onDelete(habit.id)}
                 style={{
                   padding: '4px 12px', borderRadius: 6, border: 'none',
-                  background: '#ef4444', color: '#fff',
+                  background: 'var(--danger)', color: '#fff',
                   fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'Syne,sans-serif',
                 }}
               >{t('w2a.yes')}</button>
@@ -596,7 +596,7 @@ function TrainingFuelSection({
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}
             >
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" strokeWidth="2">
                 <polyline points="3 6 5 6 21 6" />
                 <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" />
                 <path d="M10 11v6M14 11v6M9 6V4h6v2" />

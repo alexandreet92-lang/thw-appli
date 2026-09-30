@@ -255,7 +255,7 @@ export default function MealCreateModal({
                   <button onClick={() => removeIngredient(i)} style={{
                     width: 28, height: 36, borderRadius: 7,
                     border: '1px solid rgba(239,68,68,0.35)', background: 'transparent',
-                    color: '#ef4444', cursor: 'pointer', fontSize: 16,
+                    color: 'var(--danger)', cursor: 'pointer', fontSize: 16,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                   }}>×</button>
                 </div>

@@ -247,7 +247,7 @@ function MembersPanel({ group, members, isAdmin, me, onClose, onRefresh, onLeftO
               {m.role === 'admin' && <div style={{ fontSize: 11, color: 'var(--primary)', fontWeight: 700 }}>{t('w2d.admin')}</div>}
             </div>
             {isAdmin && m.userId !== me && (
-              <button onClick={async () => { await removeMember(group.id, m.userId); await onRefresh() }} aria-label={t('w2d.remove')} style={{ width: 30, height: 30, borderRadius: 8, border: 'none', background: 'var(--bg-card2)', color: '#ef4444', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <button onClick={async () => { await removeMember(group.id, m.userId); await onRefresh() }} aria-label={t('w2d.remove')} style={{ width: 30, height: 30, borderRadius: 8, border: 'none', background: 'var(--bg-card2)', color: 'var(--danger)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6L6 18M6 6l12 12" /></svg>
               </button>
             )}
@@ -276,8 +276,8 @@ function MembersPanel({ group, members, isAdmin, me, onClose, onRefresh, onLeftO
         )}
 
         <div style={{ marginTop: 22, borderTop: '1px solid var(--border)', paddingTop: 14, display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <button onClick={async () => { await leaveGroup(group.id); onLeftOrDeleted() }} style={{ textAlign: 'left', background: 'none', border: 'none', color: '#ef4444', fontSize: 13, fontWeight: 600, cursor: 'pointer', padding: '8px 0', fontFamily: 'var(--font-body)' }}>{t('w2d.leaveGroup')}</button>
-          {isAdmin && <button onClick={async () => { if (confirm(t('w2d.confirmDeleteGroup'))) { await deleteGroup(group.id); onLeftOrDeleted() } }} style={{ textAlign: 'left', background: 'none', border: 'none', color: '#ef4444', fontSize: 13, fontWeight: 600, cursor: 'pointer', padding: '8px 0', fontFamily: 'var(--font-body)' }}>{t('w2d.deleteGroup')}</button>}
+          <button onClick={async () => { await leaveGroup(group.id); onLeftOrDeleted() }} style={{ textAlign: 'left', background: 'none', border: 'none', color: 'var(--danger)', fontSize: 13, fontWeight: 600, cursor: 'pointer', padding: '8px 0', fontFamily: 'var(--font-body)' }}>{t('w2d.leaveGroup')}</button>
+          {isAdmin && <button onClick={async () => { if (confirm(t('w2d.confirmDeleteGroup'))) { await deleteGroup(group.id); onLeftOrDeleted() } }} style={{ textAlign: 'left', background: 'none', border: 'none', color: 'var(--danger)', fontSize: 13, fontWeight: 600, cursor: 'pointer', padding: '8px 0', fontFamily: 'var(--font-body)' }}>{t('w2d.deleteGroup')}</button>}
         </div>
       </div>
     </div>

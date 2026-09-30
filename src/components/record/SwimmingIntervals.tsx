@@ -90,7 +90,7 @@ export default function SwimmingIntervals({ intervals, onChange, poolSizeM, isDa
       {intervals.map((iv, idx) => (
         <div key={iv.id} style={{ background: 'var(--bg-card2)', borderRadius: 12, padding: '14px', border: `1px solid ${sep}` }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-            <span style={{ fontSize: 12, fontWeight: 700, color: '#06B6D4' }}>{t('record.swimSet', { n: idx + 1 })}</span>
+            <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--primary)' }}>{t('record.swimSet', { n: idx + 1 })}</span>
             <button onClick={() => remove(iv.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: dim, fontSize: 20, lineHeight: 1, padding: '0 4px' }}>×</button>
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'flex-end' }}>
@@ -130,7 +130,7 @@ export default function SwimmingIntervals({ intervals, onChange, poolSizeM, isDa
               />
             </div>
           </div>
-          <p style={{ margin: '10px 0 0', fontSize: 13, color: '#06B6D4', fontWeight: 600 }}>
+          <p style={{ margin: '10px 0 0', fontSize: 13, color: 'var(--primary)', fontWeight: 600 }}>
             {pace100m(iv.distanceM, iv.durationSec)}
           </p>
         </div>
@@ -141,7 +141,7 @@ export default function SwimmingIntervals({ intervals, onChange, poolSizeM, isDa
         style={{
           width: '100%', padding: '12px', borderRadius: 12,
           border: `1.5px dashed ${isDark ? 'rgba(255,255,255,0.20)' : '#D1D5DB'}`,
-          background: 'none', color: '#06B6D4', fontSize: 14, fontWeight: 500,
+          background: 'none', color: 'var(--primary)', fontSize: 14, fontWeight: 500,
           cursor: 'pointer', fontFamily: 'DM Sans, sans-serif',
         }}
       >

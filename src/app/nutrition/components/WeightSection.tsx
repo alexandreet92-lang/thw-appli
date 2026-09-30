@@ -41,7 +41,7 @@ function IconPencil() {
 }
 function IconTrash() {
   return (
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" strokeWidth="2">
       <polyline points="3 6 5 6 21 6" />
       <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" />
       <path d="M10 11v6M14 11v6M9 6V4h6v2" />
@@ -57,7 +57,7 @@ function IconCheck() {
 }
 function IconX() {
   return (
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2.5">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" strokeWidth="2.5">
       <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
     </svg>
   )
@@ -157,7 +157,7 @@ function HistoryTable({
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                           <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>{t('w2a.delete_measure_confirm')}</span>
                           <button onClick={() => void onDelete(m.id).then(() => setConfirmId(null))}
-                            style={{ padding: '3px 10px', borderRadius: 6, border: 'none', background: '#ef4444', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
+                            style={{ padding: '3px 10px', borderRadius: 6, border: 'none', background: 'var(--danger)', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
                             {t('w2a.yes')}
                           </button>
                           <button onClick={() => setConfirmId(null)}
@@ -298,7 +298,7 @@ export default function WeightSection({ showToast }: WeightSectionProps) {
       {last && (
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 14 }}>
           {last.weight_kg != null && (
-            <span style={{ padding: '3px 10px', borderRadius: 20, background: 'rgba(6,182,212,0.12)', border: '1px solid #06B6D4', color: '#06B6D4', fontSize: 11, fontFamily: 'DM Mono,monospace', fontWeight: 600 }}>
+            <span style={{ padding: '3px 10px', borderRadius: 20, background: 'rgba(6,182,212,0.12)', border: '1px solid #06B6D4', color: 'var(--primary)', fontSize: 11, fontFamily: 'DM Mono,monospace', fontWeight: 600 }}>
               {last.weight_kg.toFixed(1)} kg
             </span>
           )}
@@ -381,7 +381,7 @@ export default function WeightSection({ showToast }: WeightSectionProps) {
                   onClick={() => setWindowEnd(Math.min(sorted.length - 1, i * WINDOW_SIZE + WINDOW_SIZE - 1))}
                   style={{
                     width: i === currentDot ? 16 : 6, height: 6, borderRadius: 3,
-                    background: i === currentDot ? '#06B6D4' : 'var(--border)',
+                    background: i === currentDot ? 'var(--primary)' : 'var(--border)',
                     cursor: 'pointer', transition: 'width 0.2s, background 0.2s',
                   }} />
               ))}

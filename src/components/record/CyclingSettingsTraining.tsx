@@ -50,15 +50,15 @@ export default function CyclingSettingsTraining({ theme }: Props) {
           description={t('record.cyclingTrainingLinkSessionDesc')}
           disabled
           right={
-            <span style={{ fontSize: 10, color: '#06B6D4', border: '1px solid rgba(6,182,212,0.4)', borderRadius: 20, padding: '2px 8px', whiteSpace: 'nowrap' }}>{t('record.cyclingParamsSoon')}</span>
+            <span style={{ fontSize: 10, color: 'var(--primary)', border: '1px solid rgba(6,182,212,0.4)', borderRadius: 20, padding: '2px 8px', whiteSpace: 'nowrap' }}>{t('record.cyclingParamsSoon')}</span>
           }
         />
         {linked && (
           <div style={{ padding: '12px 16px', background: 'rgba(6,182,212,0.08)', borderBottom: `1px solid ${theme.separator}` }}>
-            <p style={{ fontSize: 13, fontWeight: 600, color: '#06B6D4', margin: 0 }}>{linked.name}</p>
+            <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--primary)', margin: 0 }}>{linked.name}</p>
             <p style={{ fontSize: 12, color: '#8C8C8C', margin: '3px 0 0' }}>{linked.day} · {linked.duration}</p>
             <button onClick={() => setLinked(null)}
-              style={{ fontSize: 12, color: '#EF4444', background: 'none', border: 'none', padding: 0, marginTop: 6, cursor: 'pointer' }}>
+              style={{ fontSize: 12, color: 'var(--danger)', background: 'none', border: 'none', padding: 0, marginTop: 6, cursor: 'pointer' }}>
               {t('record.cyclingTrainingUnlink')}
             </button>
           </div>

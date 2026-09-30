@@ -94,7 +94,7 @@ export default function CoachFeedbackAdminPage() {
     <div style={{ maxWidth: 880, margin: "0 auto", padding: "32px 20px", fontFamily: "DM Sans, sans-serif", color: "#111827" }}>
       <div style={{ display: "flex", alignItems: "baseline", gap: 12, flexWrap: "wrap" }}>
         <h1 style={{ fontSize: 24, fontWeight: 700, margin: 0 }}>{t("admin.feedback.title")}</h1>
-        <Link href="/admin/coach-insights" style={{ fontSize: 13, color: "#06B6D4" }}>{t("admin.feedback.curateLink")}</Link>
+        <Link href="/admin/coach-insights" style={{ fontSize: 13, color: "var(--primary)" }}>{t("admin.feedback.curateLink")}</Link>
       </div>
       <p style={{ color: "#6B7280", fontSize: 14, marginTop: 6 }}>
         {t("admin.feedback.intro")}

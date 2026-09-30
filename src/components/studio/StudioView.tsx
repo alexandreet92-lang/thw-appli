@@ -11,6 +11,7 @@
 // Un bouton « ? » ouvre une sur-page d'explication (+ lien vers le site).
 // ══════════════════════════════════════════════════════════════
 
+import { AnimatedList, AnimatedItem } from '@/components/motion/AnimatedList'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import {
   emptyGraph, sampleGraph, genId, autoLayout, validateGraph, makeGraphAutonomous,
@@ -1148,7 +1149,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                 {iconId ? <AppIcon id={iconId} size={Math.round(d * 0.44)} /> : <KindIcon kind={n.kind} size={Math.round(d * 0.44)} />}
                 {st === 'done' && <span style={{ position: 'absolute', top: -3, right: -3, width: 13, height: 13, borderRadius: '50%', background: '#22C55E', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg></span>}
                 {st === 'running' && <span style={{ position: 'absolute', top: -3, right: -3, width: 12, height: 12, borderRadius: '50%', background: 'var(--bg-card)', border: `2px solid color-mix(in srgb, ${col} 25%, transparent)`, borderTopColor: col, animation: 'studio_spin 0.7s linear infinite' }} />}
-                {st === 'error' && <span style={{ position: 'absolute', top: -3, right: -3, width: 13, height: 13, borderRadius: '50%', background: '#EF4444', color: '#fff', fontSize: 9, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>!</span>}
+                {st === 'error' && <span style={{ position: 'absolute', top: -3, right: -3, width: 13, height: 13, borderRadius: '50%', background: 'var(--danger)', color: '#fff', fontSize: 9, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>!</span>}
               </div>
               <span style={{ marginTop: 2, maxWidth: d + 30, fontSize: 7.5, fontWeight: 700, color: on ? col : 'var(--text-mid)', textAlign: 'center', lineHeight: 1.05, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: 'var(--font-body)' }}>{n.title}</span>
             </div>
@@ -1215,7 +1216,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
               style={{ width: 32, height: 32, borderRadius: 10, border: 'none', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, position: 'relative' }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 21a9 9 0 100-18 9 9 0 000 18z" opacity="0.4"/><path d="M12 3a9 9 0 018.5 6"/><path d="M12 12l3.5-3.5"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/></svg>
               {access.monthlyLimit > 0 && access.remaining < 1e12 && (
-                <span style={{ position: 'absolute', top: 5, right: 5, width: 6, height: 6, borderRadius: '50%', background: access.remaining <= 0 ? '#EF4444' : (access.monthlyUsed / Math.max(1, access.monthlyLimit)) > 0.85 ? '#F59E0B' : '#22C55E' }} />
+                <span style={{ position: 'absolute', top: 5, right: 5, width: 6, height: 6, borderRadius: '50%', background: access.remaining <= 0 ? 'var(--danger)' : (access.monthlyUsed / Math.max(1, access.monthlyLimit)) > 0.85 ? '#F59E0B' : '#22C55E' }} />
               )}
             </button>
           )}
@@ -1264,7 +1265,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
           )
           // Réponses de l'IA : à même le fond (pas de bulle), comme l'interface IA principale.
           const plain = (children: React.ReactNode, tone?: 'error') => (
-            <div key={m.id} style={{ alignSelf: 'stretch', color: tone === 'error' ? '#EF4444' : 'var(--text)', fontSize: 14, lineHeight: 1.6, fontFamily: 'var(--font-body)', padding: '2px 2px' }}>{children}</div>
+            <div key={m.id} style={{ alignSelf: 'stretch', color: tone === 'error' ? 'var(--danger)' : 'var(--text)', fontSize: 14, lineHeight: 1.6, fontFamily: 'var(--font-body)', padding: '2px 2px' }}>{children}</div>
           )
           if (m.kind === 'reply') return plain(<span style={{ whiteSpace: 'pre-wrap' }}>{m.text}</span>)
           if (m.kind === 'error') return plain(<span style={{ whiteSpace: 'pre-wrap' }}>{m.text}</span>, 'error')
@@ -1700,7 +1701,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
         {issues && (
           <div style={{ position: 'absolute', top: 12, right: 12, zIndex: 9, width: 330, maxHeight: 'calc(100% - 24px)', overflowY: 'auto', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 14, boxShadow: '0 2px 6px rgba(0,0,0,0.06), 0 14px 40px rgba(0,0,0,0.16)', padding: 14, animation: 'studio_in 0.18s ease' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-              <span style={{ width: 24, height: 24, borderRadius: 8, background: issues.errors.length ? 'rgba(239,68,68,0.12)' : 'rgba(245,158,11,0.14)', color: issues.errors.length ? '#EF4444' : '#F59E0B', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <span style={{ width: 24, height: 24, borderRadius: 8, background: issues.errors.length ? 'rgba(239,68,68,0.12)' : 'rgba(245,158,11,0.14)', color: issues.errors.length ? 'var(--danger)' : '#F59E0B', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg>
               </span>
               <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-body)', flex: 1 }}>
@@ -1712,7 +1713,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
             </div>
             {issues.errors.map((msg, i) => (
               <div key={`e${i}`} style={{ display: 'flex', gap: 7, padding: '6px 0', fontSize: 12.5, color: 'var(--text-mid)', lineHeight: 1.45, fontFamily: 'var(--font-body)' }}>
-                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#EF4444', flexShrink: 0, marginTop: 5 }} />
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--danger)', flexShrink: 0, marginTop: 5 }} />
                 <span>{msg}</span>
               </div>
             ))}
@@ -1779,7 +1780,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                     )}
                   </button>
                   {expired && (
-                    <div style={{ marginTop: 6, padding: '7px 11px', borderRadius: 10, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)', fontSize: 11.5, color: '#EF4444', fontFamily: 'var(--font-body)', lineHeight: 1.45 }}>
+                    <div style={{ marginTop: 6, padding: '7px 11px', borderRadius: 10, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)', fontSize: 11.5, color: 'var(--danger)', fontFamily: 'var(--font-body)', lineHeight: 1.45 }}>
                       {t('w1i.objective_expired_msg')}
                     </div>
                   )}
@@ -1966,7 +1967,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                         )}
                         {sel && (
                           <g transform={`translate(${mid.x},${mid.y})`} style={{ pointerEvents: 'all', cursor: 'pointer' }} onPointerDown={(ev) => { ev.stopPropagation(); deleteEdge(e.id) }}>
-                            <circle r="10" fill="#EF4444" style={{ filter: 'drop-shadow(0 2px 6px rgba(239,68,68,0.45))' }} />
+                            <circle r="10" fill="var(--danger)" style={{ filter: 'drop-shadow(0 2px 6px rgba(239,68,68,0.45))' }} />
                             <path d="M -3.4 -3.4 L 3.4 3.4 M 3.4 -3.4 L -3.4 3.4" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" />
                           </g>
                         )}
@@ -2038,7 +2039,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                         {st === 'running' && <span style={{ position: 'absolute', top: -3, right: -3, width: 16, height: 16, borderRadius: '50%', background: 'var(--bg-card)', border: `2px solid color-mix(in srgb, ${col} 25%, transparent)`, borderTopColor: col, animation: 'studio_spin 0.7s linear infinite' }} />}
                         {st === 'done' && <span style={{ position: 'absolute', top: -4, right: -4, width: 18, height: 18, borderRadius: '50%', background: '#22C55E', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg></span>}
                         {st === 'waiting' && <span style={{ position: 'absolute', top: -4, right: -4, width: 18, height: 18, borderRadius: '50%', background: '#F59E0B', display: 'flex', alignItems: 'center', justifyContent: 'center', animation: 'studio_pulse 1.4s ease infinite' }}><svg width="9" height="9" viewBox="0 0 24 24" fill="#fff"><rect x="6" y="4" width="4" height="16" rx="1.2"/><rect x="14" y="4" width="4" height="16" rx="1.2"/></svg></span>}
-                        {st === 'error' && <span style={{ position: 'absolute', top: -4, right: -4, width: 18, height: 18, borderRadius: '50%', background: '#EF4444', color: '#fff', fontSize: 12, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>!</span>}
+                        {st === 'error' && <span style={{ position: 'absolute', top: -4, right: -4, width: 18, height: 18, borderRadius: '50%', background: 'var(--danger)', color: '#fff', fontSize: 12, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>!</span>}
                         {/* Poignée de sortie (glisser pour relier) — à droite, au
                             survol seulement pour garder la bulle épurée. */}
                         {open && hasStudioOutput(n.kind) && (
@@ -2235,7 +2236,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                 )}
                 {sel.kind !== 'trigger' && (
                   <button onClick={() => deleteNode(sel.id)}
-                    style={{ marginTop: 18, width: '100%', padding: '10px 0', borderRadius: 9, border: '1px solid rgba(239,68,68,0.4)', background: 'rgba(239,68,68,0.08)', color: '#EF4444', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
+                    style={{ marginTop: 18, width: '100%', padding: '10px 0', borderRadius: 9, border: '1px solid rgba(239,68,68,0.4)', background: 'rgba(239,68,68,0.08)', color: 'var(--danger)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
                     {t('w1i.delete_node')}
                   </button>
                 )}
@@ -2315,7 +2316,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                 style={{ ...fld, resize: 'vertical', lineHeight: 1.5, marginBottom: 18 }} placeholder={t('w1i.agents_together_ph')} />
             ) : <p style={{ fontSize: 13, color: 'var(--text-dim)' }}>{t('w1i.no_trigger_hint')}</p>}
 
-            {runErr && <div style={{ padding: 12, borderRadius: 10, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)', color: '#EF4444', fontSize: 13, marginBottom: 16 }}>{runErr}</div>}
+            {runErr && <div style={{ padding: 12, borderRadius: 10, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)', color: 'var(--danger)', fontSize: 13, marginBottom: 16 }}>{runErr}</div>}
 
             {runCost !== null && (
               <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '6px 12px', borderRadius: 999, background: 'rgba(59,146,212,0.08)', border: '1px solid rgba(59,146,212,0.25)', marginBottom: 16, fontSize: 12, fontWeight: 700, color: 'var(--studio-accent)', fontFamily: 'var(--font-body)', fontVariantNumeric: 'tabular-nums' }}>
@@ -2402,7 +2403,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
               <div style={{ marginBottom: 16, padding: '12px 14px', borderRadius: 14, display: 'flex', alignItems: 'center', gap: 10,
                 background: applyResult.ok ? 'rgba(34,197,94,0.07)' : 'rgba(239,68,68,0.07)',
                 border: `1px solid ${applyResult.ok ? 'rgba(34,197,94,0.35)' : 'rgba(239,68,68,0.35)'}` }}>
-                <span style={{ flex: 1, fontSize: 12.5, fontWeight: 700, color: applyResult.ok ? '#16A34A' : '#EF4444', fontFamily: 'var(--font-body)' }}>{applyResult.text}</span>
+                <span style={{ flex: 1, fontSize: 12.5, fontWeight: 700, color: applyResult.ok ? '#16A34A' : 'var(--danger)', fontFamily: 'var(--font-body)' }}>{applyResult.text}</span>
                 {applyResult.ok && <a href="/planning" style={{ flexShrink: 0, fontSize: 12, fontWeight: 700, color: '#16A34A', textDecoration: 'none', fontFamily: 'var(--font-body)' }}>{t('w1i.open_planning')} →</a>}
               </div>
             )}
@@ -2652,7 +2653,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
 
                 <div style={{ flex: 1, minWidth: 0 }}>
                 {homeErr && (
-                  <div style={{ marginBottom: 14, padding: '10px 14px', borderRadius: 10, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)', color: '#EF4444', fontSize: 12.5, fontFamily: 'var(--font-body)' }}>{homeErr}</div>
+                  <div style={{ marginBottom: 14, padding: '10px 14px', borderRadius: 10, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)', color: 'var(--danger)', fontSize: 12.5, fontFamily: 'var(--font-body)' }}>{homeErr}</div>
                 )}
 
                 {/* ── Suggestion proactive : signal santé détecté → système dédié ── */}
@@ -2825,10 +2826,10 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
                       {t('w1i.new_system')}
                     </button>
-                    {systems.filter(s => s.scope === scopeTab && (activeFolder === null || s.folder === activeFolder)).map(s => {
+                    <AnimatedList>{systems.filter(s => s.scope === scopeTab && (activeFolder === null || s.folder === activeFolder)).map(s => {
                       const nAgents = (s.graph?.nodes ?? []).filter(n => n.kind === 'agent' || n.kind === 'merge').length
                       return (
-                        <div key={s.id} onClick={() => openSystem(s)} role="button" tabIndex={0}
+                        <AnimatedItem key={s.id} onClick={() => openSystem(s)} role="button" tabIndex={0}
                           onKeyDown={e => { if (e.key === 'Enter') openSystem(s) }}
                           style={{ minHeight: 120, borderRadius: 'var(--r-lg)', border: 'none', background: 'var(--bg-card2)', cursor: 'pointer', padding: '20px', display: 'flex', flexDirection: 'column', transition: 'box-shadow 150ms, transform 150ms' }}
                           onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.boxShadow = '0 6px 20px rgba(0,0,0,0.10)'; (e.currentTarget as HTMLDivElement).style.transform = 'translateY(-1px)' }}
@@ -2890,13 +2891,14 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
                             </button>
                             <button onClick={e => { e.stopPropagation(); void removeSystem(s.id) }} title={t('w1i.delete')} aria-label={t('w1i.delete')}
-                              style={{ ...zBtn, width: 26, height: 24, color: '#EF4444' }}>
+                              style={{ ...zBtn, width: 26, height: 24, color: 'var(--danger)' }}>
                               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6"/></svg>
                             </button>
                           </div>
-                        </div>
+                        </AnimatedItem>
                       )
                     })}
+                    </AnimatedList>
                   </div>
                 )}
 
@@ -3316,7 +3318,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
               {rosterView && detail ? (
                 <div style={{ flex: 1, overflowY: 'auto', padding: '0 20px 18px' }}>
                   {detail.state === 'error'
-                    ? <div style={{ padding: '12px 14px', borderRadius: 12, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)', color: '#EF4444', fontSize: 13 }}>{detail.error}</div>
+                    ? <div style={{ padding: '12px 14px', borderRadius: 12, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)', color: 'var(--danger)', fontSize: 13 }}>{detail.error}</div>
                     : detail.text?.trim()
                       ? <div style={{ padding: '14px 16px', borderRadius: 14, background: 'var(--bg-card2)', border: '1px solid var(--border)' }}><StudioMarkdown text={detail.text} /></div>
                       : <p style={{ fontSize: 13, color: 'var(--text-dim)' }}>{t('w1i.roster_no_output')}</p>}
@@ -3347,7 +3349,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ fontSize: 14.5, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.name}</div>
                             {res?.summary && <div style={{ fontSize: 11.5, color: 'var(--text-dim)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{res.summary}…</div>}
-                            {res?.state === 'error' && <div style={{ fontSize: 11.5, color: '#EF4444', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{res.error}</div>}
+                            {res?.state === 'error' && <div style={{ fontSize: 11.5, color: 'var(--danger)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{res.error}</div>}
                           </div>
                           {hasResults ? chip(res?.state) : null}
                           {hasResults && clickable && <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M9 18l6-6-6-6"/></svg>}

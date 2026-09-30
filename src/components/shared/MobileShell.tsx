@@ -225,7 +225,7 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
   if (pathname?.startsWith('/topup')) return <>{children}</>
   // Pages d'entrée (connexion, onboarding…) : plein écran, sans chrome.
   if (isFullscreenRoute(pathname)) {
-    return <div className="md:hidden" style={{ height: '100dvh', overflowY: 'auto', background: 'var(--bg)' }}>{children}</div>
+    return <div className="md:hidden" style={{ height: '100dvh', overflowY: 'auto', background: 'var(--bg)' }}><PageTransition>{children}</PageTransition></div>
   }
   const hideHeader = pathname?.startsWith('/competences') || immersive
   // Page « lancer une activité » : carte plein écran (pas de gap haut), pas de
@@ -335,7 +335,7 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
               <path d="M13.73 21a2 2 0 0 1-3.46 0" />
             </svg>
             {unreadNotifs > 0 && (
-              <span style={{ position: 'absolute', top: 5, right: 5, minWidth: 15, height: 15, padding: '0 4px', borderRadius: 8, background: '#EF4444', color: '#fff', fontSize: 9, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1, boxShadow: '0 0 0 2px var(--bg)' }}>
+              <span style={{ position: 'absolute', top: 5, right: 5, minWidth: 15, height: 15, padding: '0 4px', borderRadius: 8, background: 'var(--danger)', color: '#fff', fontSize: 9, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1, boxShadow: '0 0 0 2px var(--bg)' }}>
                 {unreadNotifs > 9 ? '9+' : unreadNotifs}
               </span>
             )}

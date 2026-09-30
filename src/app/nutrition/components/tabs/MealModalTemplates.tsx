@@ -97,7 +97,7 @@ export default function MealModalTemplates({ slot, onSelect }: Props) {
                 {t.nom}
               </div>
               <div style={{ display: 'flex', gap: 10, fontSize: 10, fontFamily: 'DM Mono,monospace', flexWrap: 'wrap' }}>
-                {t.kcal      != null && <span style={{ color: '#06B6D4' }}>{t.kcal} kcal</span>}
+                {t.kcal      != null && <span style={{ color: 'var(--primary)' }}>{t.kcal} kcal</span>}
                 {t.proteines != null && <span style={{ color: '#3B82F6' }}>{tr('w4b.ml_p')} {t.proteines}g</span>}
                 {t.glucides  != null && <span style={{ color: '#F97316' }}>{tr('w4b.ml_g')} {t.glucides}g</span>}
                 {t.lipides   != null && <span style={{ color: '#8B5CF6' }}>{tr('w4b.ml_l')} {t.lipides}g</span>}

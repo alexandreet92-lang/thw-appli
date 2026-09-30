@@ -81,7 +81,7 @@ export default function SegmentLeaderboard({ segmentId, isDark }: Props) {
               )}
             </div>
             <div style={{ flex: 1 }}>
-              <p style={{ fontSize: 14, fontWeight: isMe ? 600 : 400, color: isMe ? '#06B6D4' : text, margin: 0 }}>
+              <p style={{ fontSize: 14, fontWeight: isMe ? 600 : 400, color: isMe ? 'var(--primary)' : text, margin: 0 }}>
                 {isMe ? t('shared.me') : t('shared.athleteN', { id: e.user_id.slice(0, 6) })}
               </p>
               <p style={{ fontSize: 11, color: dim, margin: '2px 0 0' }}>

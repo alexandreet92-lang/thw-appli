@@ -185,7 +185,7 @@ export default function ElevationChart({ data, surfaces, height = 100, isDark = 
         ))}
 
         <path d={areaD} fill="url(#elevGrad)" />
-        <path d={pathD} fill="none" stroke="#06B6D4" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+        <path d={pathD} fill="none" stroke="var(--primary)" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
 
         {/* Graduations altitude (Y) */}
         {yTicks.map((alt, i) => (
@@ -204,8 +204,8 @@ export default function ElevationChart({ data, surfaces, height = 100, isDark = 
         {/* Curseur — trait + pastille alignés sur la courbe */}
         {cursor && (
           <>
-            <line x1={cursor.x} y1={PAD.top} x2={cursor.x} y2={PAD.top + cH} stroke="#06B6D4" strokeWidth={1.4} strokeDasharray="3 3" vectorEffect="non-scaling-stroke" />
-            <circle cx={cursor.x} cy={cursor.y} r={4.5} fill="#06B6D4" stroke="#fff" strokeWidth={2} vectorEffect="non-scaling-stroke" />
+            <line x1={cursor.x} y1={PAD.top} x2={cursor.x} y2={PAD.top + cH} stroke="var(--primary)" strokeWidth={1.4} strokeDasharray="3 3" vectorEffect="non-scaling-stroke" />
+            <circle cx={cursor.x} cy={cursor.y} r={4.5} fill="var(--primary)" stroke="#fff" strokeWidth={2} vectorEffect="non-scaling-stroke" />
           </>
         )}
       </svg>

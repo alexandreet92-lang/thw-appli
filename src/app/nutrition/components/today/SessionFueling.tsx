@@ -74,7 +74,7 @@ function SessionCard({ session }: { session: PlannedSession }) {
               <div key={i} style={{ animation: 'thwFoodIn 0.28s ease both', display: 'flex', alignItems: 'baseline', gap: 'var(--space-2)' }}>
                 <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: FB, fontSize: 13, color: 'var(--text)' }}>{f.name}</span>
                 <span className="tnum" style={{ flexShrink: 0, fontFamily: FB, fontSize: 12, color: 'var(--text-dim)' }}>{f.kcal} kcal</span>
-                <button onClick={() => void persist(foods.filter((_, j) => j !== i))} aria-label={tr('nutrition.common.remove')} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: 13, lineHeight: 1, padding: '0 2px', flexShrink: 0 }}>✕</button>
+                <button onClick={() => void persist(foods.filter((_, j) => j !== i))} aria-label={tr('nutrition.common.remove')} style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', fontSize: 13, lineHeight: 1, padding: '0 2px', flexShrink: 0 }}>✕</button>
               </div>
             ))}
           </div>

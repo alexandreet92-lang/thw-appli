@@ -76,8 +76,8 @@ export function GuideLiveDemo({ dataGuide }: { dataGuide?: string }) {
 
       {/* Bandeau haut : REC + sport */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '18px 18px 8px', flexShrink: 0 }}>
-        <span style={{ width: 9, height: 9, borderRadius: '50%', background: '#ef4444', animation: 'gld_rec 1s ease-in-out infinite' }} />
-        <span style={{ fontSize: 12, fontWeight: 800, letterSpacing: '0.08em', color: '#ef4444' }}>REC</span>
+        <span style={{ width: 9, height: 9, borderRadius: '50%', background: 'var(--danger)', animation: 'gld_rec 1s ease-in-out infinite' }} />
+        <span style={{ fontSize: 12, fontWeight: 800, letterSpacing: '0.08em', color: 'var(--danger)' }}>REC</span>
         <span style={{ marginLeft: 8, fontSize: 13, fontWeight: 700, color: 'var(--text-mid)' }}>{t('gld.session_type')}</span>
         <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--text-dim)' }}>{t('gld.demo')}</span>
       </div>
@@ -138,7 +138,7 @@ export function GuideLiveDemo({ dataGuide }: { dataGuide?: string }) {
       {/* Barre d'action live (Pause / Terminer) — illustratif */}
       <div style={{ marginTop: 'auto', display: 'flex', gap: 10, padding: '12px 16px calc(16px + env(safe-area-inset-bottom))', flexShrink: 0 }}>
         <button disabled style={{ flex: 1, padding: 14, borderRadius: 14, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-mid)', fontSize: 14, fontWeight: 700, cursor: 'default' }}>{t('gld.pause')}</button>
-        <button disabled style={{ flex: 1, padding: 14, borderRadius: 14, border: 'none', background: '#ef4444', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'default' }}>{t('gld.finish')}</button>
+        <button disabled style={{ flex: 1, padding: 14, borderRadius: 14, border: 'none', background: 'var(--danger)', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'default' }}>{t('gld.finish')}</button>
       </div>
     </div>
   )

@@ -91,7 +91,7 @@ export default function PmcChart({ activities }: { activities: ActivityRow[] }) 
           {/* Curves */}
           {animating && <>
             <path d={pathCTL} fill="none" stroke="#3B8FD4" strokeWidth={2} strokeLinecap="round" strokeDasharray={totalLen} strokeDashoffset={0} style={{ animation:'pmcDraw 1.5s ease-out' }} />
-            <path d={pathATL} fill="none" stroke="#ef4444" strokeWidth={2} strokeLinecap="round" strokeDasharray={totalLen} strokeDashoffset={0} style={{ animation:'pmcDraw 1.5s ease-out 0.2s both' }} />
+            <path d={pathATL} fill="none" stroke="var(--danger)" strokeWidth={2} strokeLinecap="round" strokeDasharray={totalLen} strokeDashoffset={0} style={{ animation:'pmcDraw 1.5s ease-out 0.2s both' }} />
             <path d={pathTSB} fill="none" stroke="#10B981" strokeWidth={1.5} strokeLinecap="round" strokeDasharray={totalLen} strokeDashoffset={0} style={{ animation:'pmcDraw 1.5s ease-out 0.4s both' }} />
           </>}
           {/* X axis labels */}
@@ -114,7 +114,7 @@ export default function PmcChart({ activities }: { activities: ActivityRow[] }) 
           <div style={{ position:'absolute' as const,left:Math.min(tooltip.x+8,W-140),top:Math.max(tooltip.y-60,0),background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:9,padding:'7px 10px',fontSize:11,pointerEvents:'none' as const,boxShadow:'0 4px 12px rgba(0,0,0,0.2)',zIndex:10,minWidth:130 }}>
             <p style={{ margin:'0 0 3px',fontWeight:600 }}>{tooltip.point.date}</p>
             <p style={{ margin:'1px 0',color:'#3B8FD4' }}>CTL: {tooltip.point.ctl.toFixed(1)}</p>
-            <p style={{ margin:'1px 0',color:'#ef4444' }}>ATL: {tooltip.point.atl.toFixed(1)}</p>
+            <p style={{ margin:'1px 0',color:'var(--danger)' }}>ATL: {tooltip.point.atl.toFixed(1)}</p>
             <p style={{ margin:'1px 0',color:'#10B981' }}>TSB: {tooltip.point.tsb.toFixed(1)}</p>
           </div>
         )}

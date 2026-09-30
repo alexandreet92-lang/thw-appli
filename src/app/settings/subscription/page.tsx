@@ -166,7 +166,7 @@ function UsageBar({ used, limit, label, resetAt }: {
 
 function FeatureValue({ value }: { value: string | boolean }) {
   const { t } = useI18n()
-  if (value === true)  return <span style={{ color: '#06B6D4', fontSize: 14 }}>✓</span>
+  if (value === true)  return <span style={{ color: 'var(--primary)', fontSize: 14 }}>✓</span>
   if (value === false) return <span style={{ color: 'var(--text-dim)', fontSize: 14, opacity: 0.4 }}>–</span>
   const valueMap: Record<string, string> = {
     'Illimité':        t('misc.unlimited'),
@@ -629,7 +629,7 @@ export default function SubscriptionPage() {
                     <button
                       className="sub-btn"
                       onClick={() => openIapStore('athlete')}
-                      style={{ background: '#06B6D4', color: '#0a0a0a', width: '100%' }}
+                      style={{ background: 'var(--primary)', color: '#0a0a0a', width: '100%' }}
                     >
                       {t('misc.choosePlan', { name: plan.name })}
                     </button>
@@ -638,7 +638,7 @@ export default function SubscriptionPage() {
                       className="sub-btn"
                       onClick={() => void openWebsite('/site/compte.html')}
                       style={{
-                        background: '#06B6D4',
+                        background: 'var(--primary)',
                         color:      '#0a0a0a',
                         width:      '100%',
                       }}

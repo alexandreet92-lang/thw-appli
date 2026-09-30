@@ -74,7 +74,7 @@ export default function KcalBarChart({ entries }: { entries: KcalEntry[] }) {
                 fill="var(--border)" rx={3} opacity={isHov ? 0.7 : 0.45} />
               {/* Consumed */}
               <rect x={xC(i)} y={by - ch} width={barW} height={ch}
-                fill="#06B6D4" rx={3} opacity={isHov ? 1 : 0.85} />
+                fill="var(--primary)" rx={3} opacity={isHov ? 1 : 0.85} />
               {/* X day name */}
               <text x={slotCX(i)} y={by + 14} textAnchor="middle"
                 fill={isHov ? 'var(--text)' : 'var(--text-dim)'} fontSize={9} fontFamily="DM Sans,sans-serif">
@@ -108,7 +108,7 @@ export default function KcalBarChart({ entries }: { entries: KcalEntry[] }) {
               weekday: 'long', day: '2-digit', month: '2-digit',
             })}
           </div>
-          <div style={{ color: '#06B6D4', marginBottom: 2 }}>
+          <div style={{ color: 'var(--primary)', marginBottom: 2 }}>
             Consomme : {hEntry.consumed.toLocaleString(currentLocale())} kcal
           </div>
           {hEntry.planned > 0 && (
@@ -122,7 +122,7 @@ export default function KcalBarChart({ entries }: { entries: KcalEntry[] }) {
       {/* Legend */}
       <div style={{ display: 'flex', gap: 14, marginTop: 6 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-          <div style={{ width: 12, height: 8, borderRadius: 2, background: '#06B6D4' }} />
+          <div style={{ width: 12, height: 8, borderRadius: 2, background: 'var(--primary)' }} />
           <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>Consomme</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>

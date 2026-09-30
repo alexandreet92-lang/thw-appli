@@ -45,7 +45,7 @@ export default function ExitConfirmOverlay({ open, isDark, onQuit, onStay }: Pro
           onClick={onStay}
           style={{
             width: '100%', padding: '13px 16px', borderRadius: 12, border: 'none',
-            background: '#06B6D4', color: '#FFFFFF', // design-allow-color
+            background: 'var(--primary)', color: '#FFFFFF', // design-allow-color
             fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)',
           }}
         >

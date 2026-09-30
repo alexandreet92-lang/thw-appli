@@ -96,7 +96,7 @@ export default function SleepTrends({ nights }: { nights: TrendNight[] }) {
         </div>
         <div style={{ display:'flex', gap:8, alignItems:'center' }}>
           {curAvg != null && <span style={{ fontSize:10, color:'var(--text-dim)' }}>{t('recovery.avgShort')} {fmtMin(Math.round(curAvg))}</span>}
-          {pct != null && <span style={{ fontSize:10, fontWeight:700, color: pct >= 0 ? '#10B981' : '#EF4444' }}>
+          {pct != null && <span style={{ fontSize:10, fontWeight:700, color: pct >= 0 ? '#10B981' : 'var(--danger)' }}>
             {pct >= 0 ? '↑' : '↓'} {Math.abs(pct)}%
           </span>}
         </div>

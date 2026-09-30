@@ -599,7 +599,7 @@ export default function HybridNetworksPanel({
 
         {/* ── ERRORS ─────────────────────────────────────────── */}
         {(syncError || briefError || analyzeError) && (
-          <div style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 8, padding: '8px 12px', marginBottom: 16, fontSize: 12, color: '#ef4444' }}>
+          <div style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 8, padding: '8px 12px', marginBottom: 16, fontSize: 12, color: 'var(--danger)' }}>
             {syncError ?? briefError ?? analyzeError}
           </div>
         )}
@@ -709,7 +709,7 @@ export default function HybridNetworksPanel({
                 <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 2px' }}>{t('ai.overallScore')}</p>
                 <div style={{ display: 'flex', gap: 10, fontSize: 11, color: 'var(--ai-dim)', flexWrap: 'wrap' }}>
                   <span>{t('ai.engagement')} : <strong style={{ color: 'var(--ai-mid)' }}>{analysis.engagement_rate}</strong></span>
-                  <span>{t('ai.trend')} : <strong style={{ color: analysis.follower_trend === 'growing' ? '#22c55e' : analysis.follower_trend === 'declining' ? '#ef4444' : 'var(--ai-mid)' }}>{analysis.follower_trend === 'growing' ? t('ai.trendGrowing') : analysis.follower_trend === 'declining' ? t('ai.trendDeclining') : t('ai.trendStable')}</strong></span>
+                  <span>{t('ai.trend')} : <strong style={{ color: analysis.follower_trend === 'growing' ? '#22c55e' : analysis.follower_trend === 'declining' ? 'var(--danger)' : 'var(--ai-mid)' }}>{analysis.follower_trend === 'growing' ? t('ai.trendGrowing') : analysis.follower_trend === 'declining' ? t('ai.trendDeclining') : t('ai.trendStable')}</strong></span>
                 </div>
               </div>
             </div>
@@ -739,7 +739,7 @@ export default function HybridNetworksPanel({
             {/* C — Ce qui ne marche pas */}
             {(analysis.what_doesnt_work?.length ?? 0) > 0 && (
               <div style={{ marginBottom: 14 }}>
-                <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: '#ef4444', margin: '0 0 7px' }}>{t('ai.whatDoesntWork')}</p>
+                <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--danger)', margin: '0 0 7px' }}>{t('ai.whatDoesntWork')}</p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                   {(analysis.what_doesnt_work ?? []).map((item, i) => (
                     <div key={i} style={{ background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 8, padding: '9px 12px' }}>

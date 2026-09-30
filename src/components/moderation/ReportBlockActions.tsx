@@ -85,7 +85,7 @@ export function ReportBlockActions({
       </button>
       <button
         onClick={e => { e.stopPropagation(); setDialog('block') }}
-        style={{ ...itemStyle, borderTop: '1px solid var(--border)', color: '#EF4444' }}>
+        style={{ ...itemStyle, borderTop: '1px solid var(--border)', color: 'var(--danger)' }}>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="4.9" y1="4.9" x2="19.1" y2="19.1"/></svg>
         Bloquer
       </button>
@@ -125,7 +125,7 @@ export function ReportBlockActions({
             </p>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 4 }}>
               <button onClick={() => closeOverlay(() => { setDialog(null); onClose?.() })} style={{ fontSize: 13, padding: '8px 14px', borderRadius: 10, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-mid)', cursor: 'pointer' }}>Annuler</button>
-              <button onClick={() => void confirmBlock()} disabled={busy} style={{ fontSize: 13, padding: '8px 16px', borderRadius: 10, border: 'none', background: '#EF4444', color: '#fff', cursor: busy ? 'default' : 'pointer', fontWeight: 700, opacity: busy ? 0.6 : 1 }}>{busy ? '…' : 'Bloquer'}</button>
+              <button onClick={() => void confirmBlock()} disabled={busy} style={{ fontSize: 13, padding: '8px 16px', borderRadius: 10, border: 'none', background: 'var(--danger)', color: '#fff', cursor: busy ? 'default' : 'pointer', fontWeight: 700, opacity: busy ? 0.6 : 1 }}>{busy ? '…' : 'Bloquer'}</button>
             </div>
           </div>
         </div>

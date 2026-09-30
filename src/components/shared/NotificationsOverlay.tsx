@@ -2,6 +2,7 @@
 // Surpage Notifications — overlay centré ouvert par la cloche du header. Affiche
 // le fil de notifications de l'utilisateur (table `notifications`), marque tout
 // comme lu à l'ouverture. createPortal + tokens de thème. Clic fond/✕ = fermeture.
+import { AnimatedList, AnimatedItem } from '@/components/motion/AnimatedList'
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
@@ -122,24 +123,27 @@ export function NotificationsOverlay({ open, onClose }: { open: boolean; onClose
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {notifs.map(n => (
+            <AnimatedList>
+            {notifs.map((n, i) => (
+              <AnimatedItem key={n.id} index={i}>
               <button
-                key={n.id}
                 onClick={() => { if (n.link) { onClose(); router.push(n.link) } }}
                 style={{
                   display: 'block', width: '100%', textAlign: 'left', cursor: n.link ? 'pointer' : 'default',
-                  background: n.read ? 'transparent' : 'rgba(6,182,212,0.06)',
-                  border: '1px solid var(--border)', borderRadius: 12, padding: '12px 14px',
+                  background: n.read ? 'var(--bg-card2)' : 'var(--primary-dim)',
+                  border: 'none', borderRadius: 'var(--r-md)', padding: '16px 18px',
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
-                  {!n.read && <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#06B6D4', flexShrink: 0 }} />}
+                  {!n.read && <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--primary)', flexShrink: 0 }} />}
                   <span style={{ fontFamily: FD, fontWeight: 600, fontSize: 14, color: 'var(--text)' }}>{n.title}</span>
                   <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--text-dim)', whiteSpace: 'nowrap' }}>{timeAgo(n.created_at, t)}</span>
                 </div>
                 {n.body && <p style={{ margin: 0, fontSize: 13, color: 'var(--text-mid)', lineHeight: 1.5 }}>{n.body}</p>}
               </button>
+              </AnimatedItem>
             ))}
+            </AnimatedList>
           </div>
         )}
       </div>

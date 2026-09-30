@@ -39,7 +39,7 @@ function CalendarMockup() {
         <div style={{ flex: 1, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.08)' }}>
           <div style={{ width: '68%', height: '100%', borderRadius: 2, background: 'linear-gradient(90deg,#06B6D4,#2563EB)', animation: 'fade-in 0.6s 0.4s both' }} />
         </div>
-        <p style={{ fontSize: 9, color: '#06B6D4', margin: 0, fontFamily: 'DM Mono, monospace' }}>68%</p>
+        <p style={{ fontSize: 9, color: 'var(--primary)', margin: 0, fontFamily: 'DM Mono, monospace' }}>68%</p>
       </div>
     </div>
   )

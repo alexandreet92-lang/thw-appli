@@ -52,8 +52,8 @@ export function EmailVerification({ email, onBack }: Props) {
         animation: 'ev-pulse 3s ease-in-out infinite',
       }}>
         <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
-          <rect x="4" y="10" width="40" height="28" rx="3" stroke="#06B6D4" strokeWidth="2"/>
-          <path d="M4 14l20 14 20-14" stroke="#06B6D4" strokeWidth="2" strokeLinecap="round"/>
+          <rect x="4" y="10" width="40" height="28" rx="3" stroke="var(--primary)" strokeWidth="2"/>
+          <path d="M4 14l20 14 20-14" stroke="var(--primary)" strokeWidth="2" strokeLinecap="round"/>
           <circle cx="36" cy="12" r="5" fill="#10B981" style={{ animation: 'ev-bounce 1s ease-in-out infinite' }}/>
         </svg>
       </div>
@@ -87,7 +87,7 @@ export function EmailVerification({ email, onBack }: Props) {
       </button>
 
       {error && (
-        <p style={{ fontSize: 13, color: '#ef4444', margin: '0 0 12px', lineHeight: 1.5, fontFamily: 'var(--font-body)' }}>
+        <p style={{ fontSize: 13, color: 'var(--danger)', margin: '0 0 12px', lineHeight: 1.5, fontFamily: 'var(--font-body)' }}>
           {error}
         </p>
       )}

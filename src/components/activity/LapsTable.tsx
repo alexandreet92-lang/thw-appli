@@ -126,7 +126,7 @@ export function LapsTable({ laps, streams, maxHrEst, hoveredLap, onHoverLap }: P
                 <td style={{ ...tdBase, color: 'var(--text)' }}>
                   {lap.avg_hr != null ? `${Math.round(lap.avg_hr)} bpm` : '—'}
                 </td>
-                <td style={{ ...tdBase, color: hrMaxPct != null && hrMaxPct > 90 ? '#EF4444' : 'var(--text)' }}>
+                <td style={{ ...tdBase, color: hrMaxPct != null && hrMaxPct > 90 ? 'var(--danger)' : 'var(--text)' }}>
                   {lap.max_heartrate != null ? `${Math.round(lap.max_heartrate)} bpm` : '—'}
                 </td>
                 <td style={{ ...tdBase, color: 'var(--text)' }}>

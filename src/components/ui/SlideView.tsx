@@ -11,7 +11,7 @@
 //    doigt ; relâchée au-delà du seuil elle revient en arrière, sinon elle
 //    reprend sa place (ressort).
 import { forwardRef, useRef, type ReactNode, type TouchEvent } from 'react'
-import { AnimatePresence, animate, motion, useMotionValue, useReducedMotion } from 'framer-motion'
+import { AnimatePresence, animate, motion, useMotionValue, useReducedMotion } from 'motion/react'
 
 interface Props {
   /** Clé unique de l'écran courant — un changement déclenche la transition. */
@@ -88,7 +88,7 @@ const PushPage = forwardRef<HTMLDivElement, PushProps>(function PushPage({ child
       onTouchCancel={end}
     >
       {/* Ombre du bord gauche (sans débordement vertical) */}
-      <div aria-hidden style={{ position: 'absolute', top: 0, bottom: 0, left: -24, width: 24, pointerEvents: 'none', background: 'linear-gradient(to left, rgba(0,0,0,0.22), transparent)' }} />
+      <div aria-hidden style={{ position: 'absolute', top: 0, bottom: 0, left: -24, width: 24, pointerEvents: 'none', background: 'var(--edge-shadow)' }} />
       {children}
     </motion.div>
   )

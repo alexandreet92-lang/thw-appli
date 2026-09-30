@@ -2,7 +2,7 @@
 // Bottom sheet de filtre Running (portail sur document.body, coulisse bas↔haut).
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { IconX } from '@tabler/icons-react'
 import { useI18n } from '@/lib/i18n'
 import {

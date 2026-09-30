@@ -79,7 +79,7 @@ export function PlanProposalCard({
   if (proposal.status === 'error') {
     return (
       <div style={card}>
-        <p style={{ margin: 0, fontSize: 12.5, color: '#ef4444' }}>{proposal.error ?? t('ai.genFailed')}</p>
+        <p style={{ margin: 0, fontSize: 12.5, color: 'var(--danger)' }}>{proposal.error ?? t('ai.genFailed')}</p>
         <button onClick={onCancel} style={ghostBtn}>{t('ai.close')}</button>
       </div>
     )

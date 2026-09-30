@@ -56,12 +56,12 @@ export function ClimbProfile({ data, theme }: Props) {
               <stop offset="100%" stopColor="#06B6D4" stopOpacity={0.05}/>
             </linearGradient>
           </defs>
-          <path d={buildProfilePath(data.elevationProfile)} fill="url(#climbGrad)" stroke="#06B6D4" strokeWidth={0.8}/>
+          <path d={buildProfilePath(data.elevationProfile)} fill="url(#climbGrad)" stroke="var(--primary)" strokeWidth={0.8}/>
           <line x1={progress * 100} y1={0} x2={progress * 100} y2={40}
-                stroke="#06B6D4" strokeWidth={1.5} strokeDasharray="2 1"/>
+                stroke="var(--primary)" strokeWidth={1.5} strokeDasharray="2 1"/>
           <circle cx={progress * 100}
                   cy={getElevationAtProgress(data.elevationProfile, progress) * 40}
-                  r={2} fill="#06B6D4"/>
+                  r={2} fill="var(--primary)"/>
         </svg>
       </div>
       <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: 6 }}>

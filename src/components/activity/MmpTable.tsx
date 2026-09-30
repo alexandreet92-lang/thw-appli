@@ -45,7 +45,7 @@ export function MmpTable({ sessionMmp, recordMmp, durations, labels, sessionN, f
             <tr style={{ background: 'var(--bg-card2)' }}>
               <th style={{
                 padding: '10px 18px', textAlign: 'right',
-                fontSize: 11, fontWeight: 700, color: '#EF4444',
+                fontSize: 11, fontWeight: 700, color: 'var(--danger)',
                 textTransform: 'uppercase', letterSpacing: 0.8,
                 borderRight: '1px solid var(--border)',
               }}>

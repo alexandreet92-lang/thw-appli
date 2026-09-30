@@ -292,7 +292,7 @@ export default function AthleteFiche() {
               {/* Blessures */}
               <button onClick={() => setDrawer('recovery')} style={{ ...card, textAlign: 'left', cursor: 'pointer' }}>
                 <div style={secLabel}>{t('w1e.injuriesLabel')}</div>
-                <div style={{ ...num, fontSize: 22, fontWeight: 700, color: activeInj.length ? '#ef4444' : 'var(--text)' }}>{activeInj.length}<span style={{ fontSize: 13, color: 'var(--text-dim)', fontWeight: 600 }}> {activeInj.length > 1 ? t('w1e.activeFemN') : t('w1e.activeFem1')}</span></div>
+                <div style={{ ...num, fontSize: 22, fontWeight: 700, color: activeInj.length ? 'var(--danger)' : 'var(--text)' }}>{activeInj.length}<span style={{ fontSize: 13, color: 'var(--text-dim)', fontWeight: 600 }}> {activeInj.length > 1 ? t('w1e.activeFemN') : t('w1e.activeFem1')}</span></div>
                 {activeInj.length === 0 ? <div style={{ fontSize: 12.5, color: 'var(--text-dim)', marginTop: 6 }}>{t('w1e.noActiveInjury')}</div> : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 10 }}>
                     {activeInj.slice(0, 3).map(x => (
@@ -304,7 +304,7 @@ export default function AthleteFiche() {
                         onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); router.push('/injuries') } }}
                         style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer' }}
                       >
-                        <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#ef4444', flexShrink: 0 }} />
+                        <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--danger)', flexShrink: 0 }} />
                         <span style={{ color: 'var(--text)', fontWeight: 600, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{x.label}</span>
                       </span>
                     ))}
@@ -329,7 +329,7 @@ export default function AthleteFiche() {
                       const d = daysTo(r.start_date); const w = Math.floor(d / 7)
                       return (
                         <Link key={r.id} href={`/calendar?race=${r.id}`} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 0', borderTop: i ? '1px solid var(--border)' : 'none', textDecoration: 'none', color: 'inherit', cursor: 'pointer' }}>
-                          <div style={{ ...num, fontFamily: 'var(--font-body)', fontSize: 17, fontWeight: 800, color: d <= 14 ? '#ef4444' : 'var(--primary)', width: 54, flexShrink: 0 }}>{t('w1e.dayCountdown', { d })}</div>
+                          <div style={{ ...num, fontFamily: 'var(--font-body)', fontSize: 17, fontWeight: 800, color: d <= 14 ? 'var(--danger)' : 'var(--primary)', width: 54, flexShrink: 0 }}>{t('w1e.dayCountdown', { d })}</div>
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.name || t('w1e.race')}</div>
                             <div style={{ ...num, fontSize: 12, color: 'var(--text-dim)', marginTop: 2 }}>{fmtDate(r.start_date)} · {w > 0 ? t('w1e.weeksShort', { w }) : t('w1e.daysShort', { d })}</div>
@@ -362,11 +362,11 @@ export default function AthleteFiche() {
                           <span style={{ width: 38, height: 38, borderRadius: 10, background: `color-mix(in srgb, ${m.color} 16%, transparent)`, color: m.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12.5, fontWeight: 800, flexShrink: 0, letterSpacing: '0.02em' }}>{m.initials}</span>
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>{m.name}</div>
-                            <div style={{ ...num, fontSize: 12, color: c.last_error ? '#ef4444' : 'var(--text-dim)', marginTop: 2 }}>
+                            <div style={{ ...num, fontSize: 12, color: c.last_error ? 'var(--danger)' : 'var(--text-dim)', marginTop: 2 }}>
                               {c.last_error ? t('w1e.syncError') : c.last_used_at ? t('w1e.syncedOn', { date: fmtDate(c.last_used_at) }) : t('w1e.connected')}
                             </div>
                           </div>
-                          <span style={{ width: 8, height: 8, borderRadius: '50%', background: c.last_error ? '#ef4444' : '#22c55e', flexShrink: 0 }} />
+                          <span style={{ width: 8, height: 8, borderRadius: '50%', background: c.last_error ? 'var(--danger)' : '#22c55e', flexShrink: 0 }} />
                         </div>
                       )
                     })}

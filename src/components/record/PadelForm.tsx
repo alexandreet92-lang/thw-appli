@@ -26,7 +26,7 @@ function Chips<T extends string>({ items, value, onChange }: { items: { id: T; l
   return (
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
       {items.map(it => (
-        <button key={it.id} onClick={() => onChange(it.id)} style={{ padding: '8px 16px', borderRadius: 20, border: 'none', background: value === it.id ? '#06B6D4' : 'var(--bg-card2)', color: value === it.id ? '#FFF' : 'var(--text)', fontSize: 14, fontWeight: 500, cursor: 'pointer' }}>{it.labelKey ? t(it.labelKey) : it.label}</button>
+        <button key={it.id} onClick={() => onChange(it.id)} style={{ padding: '8px 16px', borderRadius: 20, border: 'none', background: value === it.id ? 'var(--primary)' : 'var(--bg-card2)', color: value === it.id ? '#FFF' : 'var(--text)', fontSize: 14, fontWeight: 500, cursor: 'pointer' }}>{it.labelKey ? t(it.labelKey) : it.label}</button>
       ))}
     </div>
   )
@@ -102,7 +102,7 @@ export default function PadelForm({ onClose }: Props) {
         <span style={{ fontSize: 48 }}>🎾</span>
         <p style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>{t('record.padelSessionSaved')}</p>
         <div style={{ display: 'inline-block', padding: '6px 20px', borderRadius: 20, background: resultColors[saved.result], color: '#FFF', fontWeight: 700, fontSize: 15 }}>{resultLabels[saved.result]}</div>
-        {saved.sets.length > 0 && <p style={{ fontSize: 18, fontWeight: 600, color: '#06B6D4', margin: 0 }}>{setsWonMe} — {setsWonOpp}</p>}
+        {saved.sets.length > 0 && <p style={{ fontSize: 18, fontWeight: 600, color: 'var(--primary)', margin: 0 }}>{setsWonMe} — {setsWonOpp}</p>}
         <div style={{ textAlign: 'center', color: 'var(--text-dim)', fontSize: 14, lineHeight: 2 }}>
           <p style={{ margin: 0 }}>{t('record.padelSummaryDuration')} {fmtDur}</p>
           {saved.opponent && <p style={{ margin: 0 }}>{t('record.padelSummaryOpponent')} {saved.opponent}</p>}
@@ -123,7 +123,7 @@ export default function PadelForm({ onClose }: Props) {
       <div style={{ height: 52, flexShrink: 0, display: 'flex', alignItems: 'center', padding: '0 16px', borderBottom: '1px solid var(--border)', position: 'relative' }}>
         <button onClick={onClose} style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--bg-card2)', border: 'none', color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, lineHeight: 1 }}>×</button>
         <span style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', fontSize: 15, fontWeight: 600 }}>{t('record.padelNewSession')}</span>
-        <button onClick={handleSave} disabled={saving} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: '#06B6D4', fontSize: 15, fontWeight: 600, cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.5 : 1 }}>{saving ? '…' : t('record.padelSave')}</button>
+        <button onClick={handleSave} disabled={saving} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'var(--primary)', fontSize: 15, fontWeight: 600, cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.5 : 1 }}>{saving ? '…' : t('record.padelSave')}</button>
       </div>
 
       <div style={{ flex: 1, overflowY: 'auto', padding: '24px 20px', paddingBottom: 120 }}>
@@ -132,7 +132,7 @@ export default function PadelForm({ onClose }: Props) {
           <label style={LABEL}>{t('record.padelOpponent')}</label>
           <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
             {([{ id: 'solo', label: t('record.padelSolo') }, { id: 'double', label: t('record.padelDoubleMode') }] as const).map(m => (
-              <button key={m.id} onClick={() => setIsDouble(m.id === 'double')} style={{ padding: '8px 20px', borderRadius: 20, border: 'none', background: (m.id === 'double') === isDouble ? '#06B6D4' : 'var(--bg-card2)', color: (m.id === 'double') === isDouble ? '#FFF' : 'var(--text)', fontSize: 14, fontWeight: 500, cursor: 'pointer' }}>{m.label}</button>
+              <button key={m.id} onClick={() => setIsDouble(m.id === 'double')} style={{ padding: '8px 20px', borderRadius: 20, border: 'none', background: (m.id === 'double') === isDouble ? 'var(--primary)' : 'var(--bg-card2)', color: (m.id === 'double') === isDouble ? '#FFF' : 'var(--text)', fontSize: 14, fontWeight: 500, cursor: 'pointer' }}>{m.label}</button>
             ))}
           </div>
           <input value={opponent} onChange={e => setOpponent(e.target.value)} placeholder={t('record.padelOpponentPlaceholder')} style={{ ...INPUT, marginBottom: isDouble ? 8 : 0 }} />
@@ -162,7 +162,7 @@ export default function PadelForm({ onClose }: Props) {
               </div>
             ))}
           </div>
-          <p style={{ margin: '10px 0 0', fontSize: 24, fontWeight: 700, color: '#06B6D4', textAlign: 'center' }}>{fmtDur}</p>
+          <p style={{ margin: '10px 0 0', fontSize: 24, fontWeight: 700, color: 'var(--primary)', textAlign: 'center' }}>{fmtDur}</p>
         </div>
         <div style={{ marginBottom: 24 }}><label style={LABEL}>{t('record.padelFeeling')}</label><RPESlider value={rpe} onChange={setRpe} isDark={true} /></div>
         <div style={{ marginBottom: 12 }}><label style={LABEL}>{t('record.padelComment')}</label><textarea value={comment} onChange={e => setComment(e.target.value)} rows={4} placeholder={t('record.padelCommentPlaceholder')} style={{ ...INPUT, resize: 'none' }} /></div>

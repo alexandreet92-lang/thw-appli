@@ -192,7 +192,7 @@ function CyclingSettingsInner({ open, onClose, isDark, settings, updateSetting: 
     <div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px 8px' }}>
         <span style={{ fontSize: 11, fontWeight: 700, color: t.dim, letterSpacing: '0.08em', textTransform: 'uppercase' }}>{tr('record.commonPagesData')}</span>
-        <button onClick={addNewPage} style={{ fontSize: 12, color: '#06B6D4', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}>{tr('record.commonAdd')}</button>
+        <button onClick={addNewPage} style={{ fontSize: 12, color: 'var(--primary)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}>{tr('record.commonAdd')}</button>
       </div>
       {pages.map((page, idx) => (
         <div key={page.id} style={{ position: 'relative' }}>
@@ -207,7 +207,7 @@ function CyclingSettingsInner({ open, onClose, isDark, settings, updateSetting: 
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 5l5 5 5-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
               </button>
             </div>
-            <div style={{ width: 28, height: 28, borderRadius: '50%', flexShrink: 0, background: 'rgba(6,182,212,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: '#06B6D4' }}>{idx + 1}</div>
+            <div style={{ width: 28, height: 28, borderRadius: '50%', flexShrink: 0, background: 'rgba(6,182,212,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: 'var(--primary)' }}>{idx + 1}</div>
             <div style={{ flex: 1, minWidth: 0 }}>
               {renamingId === page.id ? (
                 <input autoFocus defaultValue={page.name}
@@ -233,16 +233,16 @@ function CyclingSettingsInner({ open, onClose, isDark, settings, updateSetting: 
                 style={{ width: '100%', padding: '13px 16px', background: 'none', border: 'none', textAlign: 'left', fontSize: 15, color: t.text, cursor: 'pointer' }}>{tr('record.commonRename')}</button>
               <div style={{ height: 1, background: t.separator }} />
               <button onClick={e => { e.stopPropagation(); setConfirmDeleteId(page.id); setMenuOpenId(null) }}
-                style={{ width: '100%', padding: '13px 16px', background: 'none', border: 'none', textAlign: 'left', fontSize: 15, color: '#EF4444', cursor: 'pointer' }}>{tr('record.commonDelete')}</button>
+                style={{ width: '100%', padding: '13px 16px', background: 'none', border: 'none', textAlign: 'left', fontSize: 15, color: 'var(--danger)', cursor: 'pointer' }}>{tr('record.commonDelete')}</button>
             </div>
           )}
 
           {confirmDeleteId === page.id && (
             <div style={{ padding: '10px 16px', background: 'rgba(239,68,68,0.08)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 4, marginBottom: 4 }}>
-              <span style={{ fontSize: 13, color: '#EF4444' }}>{tr('record.commonDeletePageConfirm')}</span>
+              <span style={{ fontSize: 13, color: 'var(--danger)' }}>{tr('record.commonDeletePageConfirm')}</span>
               <div style={{ display: 'flex', gap: 8 }}>
                 <button onClick={() => { deletePage(page.id); setConfirmDeleteId(null) }}
-                  style={{ padding: '5px 14px', borderRadius: 8, background: '#EF4444', border: 'none', color: 'white', fontSize: 13, cursor: 'pointer' }}>{tr('record.commonYes')}</button>
+                  style={{ padding: '5px 14px', borderRadius: 8, background: 'var(--danger)', border: 'none', color: 'white', fontSize: 13, cursor: 'pointer' }}>{tr('record.commonYes')}</button>
                 <button onClick={() => setConfirmDeleteId(null)}
                   style={{ padding: '5px 14px', borderRadius: 8, background: t.separator, border: 'none', color: t.text, fontSize: 13, cursor: 'pointer' }}>{tr('record.commonNo')}</button>
               </div>

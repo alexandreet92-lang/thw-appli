@@ -43,7 +43,7 @@ export default function CompetenceCard({ competence, conflicts, onToggle, onOpen
           style={{
             width: 32, height: 17, borderRadius: 9, flexShrink: 0,
             cursor: 'pointer', position: 'relative',
-            background: active ? '#06B6D4' : 'var(--toggle-off)',
+            background: active ? 'var(--primary)' : 'var(--toggle-off)',
             border: active ? 'none' : '1px solid rgba(0,0,0,0.05)',
             transition: 'background 180ms',
           }}

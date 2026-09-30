@@ -57,13 +57,13 @@ export default function ActiveCompetencesBadge() {
   const pill: React.CSSProperties = {
     display: 'inline-flex', alignItems: 'center', gap: 4,
     padding: '3px 9px', borderRadius: 999, fontSize: 11, fontWeight: 600,
-    background: 'rgba(6,182,212,0.12)', color: '#06B6D4',
+    background: 'rgba(6,182,212,0.12)', color: 'var(--primary)',
     border: '1px solid rgba(6,182,212,0.3)', cursor: 'pointer', whiteSpace: 'nowrap',
   }
 
   return (
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center', marginBottom: 8 }}>
-      <Sparkles size={13} style={{ color: '#06B6D4', opacity: 0.8 }} />
+      <Sparkles size={13} style={{ color: 'var(--primary)', opacity: 0.8 }} />
       {shown.map(c => (
         <button key={c.id} type="button" style={pill} onClick={() => router.push('/competences')} title={t('ai.activeCompetence', { name: c.nom })}>
           {c.nom}

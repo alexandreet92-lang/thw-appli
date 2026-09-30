@@ -23,7 +23,7 @@ function NumRow({ label, desc, value, onChange, min, max, step, unit }: { label:
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         <button onClick={() => onChange(Math.max(min, value - step))} style={{ width: 36, height: 36, borderRadius: '50%', background: surface, border: `1px solid ${border}`, color: '#fff', fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>−</button>
-        <span style={{ fontSize: 20, fontWeight: 700, color: '#06B6D4', minWidth: 56, textAlign: 'center', fontFamily: 'DM Mono, monospace' }}>{value}<span style={{ fontSize: 11, color: dim, fontWeight: 400, marginLeft: 2 }}>{unit}</span></span>
+        <span style={{ fontSize: 20, fontWeight: 700, color: 'var(--primary)', minWidth: 56, textAlign: 'center', fontFamily: 'DM Mono, monospace' }}>{value}<span style={{ fontSize: 11, color: dim, fontWeight: 400, marginLeft: 2 }}>{unit}</span></span>
         <button onClick={() => onChange(Math.min(max, value + step))} style={{ width: 36, height: 36, borderRadius: '50%', background: surface, border: `1px solid ${border}`, color: '#fff', fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
       </div>
     </div>
@@ -100,7 +100,7 @@ export default function SetupScreen({ onComplete }: Props) {
               <button key={opt.id} onClick={() => setGuide(opt.id)}
                 style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', borderRadius: 12, background: guide === opt.id ? 'rgba(6,182,212,0.18)' : surface, border: `1px solid ${guide === opt.id ? '#06B6D4' : border}`, color: guide === opt.id ? '#06B6D4' : 'rgba(255,255,255,0.75)', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', textAlign: 'left', transition: 'all 200ms' }}>
                 <span style={{ width: 16, height: 16, borderRadius: '50%', flexShrink: 0, border: `2px solid ${guide === opt.id ? '#06B6D4' : border}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  {guide === opt.id && <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#06B6D4' }} />}
+                  {guide === opt.id && <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--primary)' }} />}
                 </span>
                 {opt.label}
               </button>

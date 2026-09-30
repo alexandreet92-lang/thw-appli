@@ -133,7 +133,7 @@ export default function CoachInsightsAdminPage() {
     <div style={{ maxWidth: 880, margin: "0 auto", padding: "32px 20px", fontFamily: "DM Sans, sans-serif", color: "#111827" }}>
       <div style={{ display: "flex", alignItems: "baseline", gap: 12, flexWrap: "wrap" }}>
         <h1 style={{ fontSize: 24, fontWeight: 700, margin: 0 }}>{t("admin.insights.title")}</h1>
-        <Link href="/admin/coach-feedback" style={{ fontSize: 13, color: "#06B6D4" }}>{t("admin.insights.feedbackLink")}</Link>
+        <Link href="/admin/coach-feedback" style={{ fontSize: 13, color: "var(--primary)" }}>{t("admin.insights.feedbackLink")}</Link>
       </div>
       <p style={{ color: "#6B7280", fontSize: 14, marginTop: 6 }}>
         {t("admin.insights.introBefore")}<strong>{t("admin.insights.introStrong")}</strong>{t("admin.insights.introAfter")}
@@ -162,7 +162,7 @@ export default function CoachInsightsAdminPage() {
           placeholder={t("admin.insights.textPlaceholder")}
           style={{ ...input(0), width: "100%", resize: "vertical", marginBottom: 8 }} />
         <button onClick={() => void create()} disabled={saving || !topic.trim() || !text.trim()}
-          style={{ padding: "9px 18px", borderRadius: 9, border: "none", cursor: "pointer", background: "#06B6D4", color: "#fff", fontWeight: 600, opacity: saving || !topic.trim() || !text.trim() ? 0.5 : 1 }}>
+          style={{ padding: "9px 18px", borderRadius: 9, border: "none", cursor: "pointer", background: "var(--primary)", color: "#fff", fontWeight: 600, opacity: saving || !topic.trim() || !text.trim() ? 0.5 : 1 }}>
           {saving ? t("admin.insights.saving") : t("admin.insights.addActive")}
         </button>
       </div>

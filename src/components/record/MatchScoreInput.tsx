@@ -34,7 +34,7 @@ export default function MatchScoreInput({ sets, onChange, isDark }: Props) {
           <input type="number" value={set.me  || ''} placeholder="0" onChange={e => update(i, 'me',  parseInt(e.target.value) || 0)} style={numStyle} />
           <span style={{ fontSize: 16, color: dim, fontWeight: 700 }}>—</span>
           <input type="number" value={set.opp || ''} placeholder="0" onChange={e => update(i, 'opp', parseInt(e.target.value) || 0)} style={numStyle} />
-          <button onClick={() => onChange(sets.filter((_, j) => j !== i))} style={{ marginLeft: 'auto', width: 28, height: 28, borderRadius: 8, background: 'rgba(239,68,68,0.10)', border: 'none', color: '#EF4444', cursor: 'pointer', fontSize: 16 }}>×</button>
+          <button onClick={() => onChange(sets.filter((_, j) => j !== i))} style={{ marginLeft: 'auto', width: 28, height: 28, borderRadius: 8, background: 'rgba(239,68,68,0.10)', border: 'none', color: 'var(--danger)', cursor: 'pointer', fontSize: 16 }}>×</button>
         </div>
       ))}
       {sets.length < 5 && (
@@ -43,7 +43,7 @@ export default function MatchScoreInput({ sets, onChange, isDark }: Props) {
         </button>
       )}
       {sets.length > 0 && (
-        <p style={{ fontSize: 16, fontWeight: 600, color: '#06B6D4', textAlign: 'center', margin: '10px 0 0' }}>
+        <p style={{ fontSize: 16, fontWeight: 600, color: 'var(--primary)', textAlign: 'center', margin: '10px 0 0' }}>
           {t('record.matchScoreSetsTo', { me: setsWonMe, opp: setsWonOpp })}
         </p>
       )}

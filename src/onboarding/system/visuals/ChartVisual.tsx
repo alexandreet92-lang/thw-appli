@@ -83,7 +83,7 @@ export function ChartVisual({ config }: Props) {
           </div>
           <div style={{
             position: 'absolute', bottom: `${(target / mx) * 100}%`, left: 0, right: 0,
-            height: 1.5, background: '#EF4444',
+            height: 1.5, background: 'var(--danger)',
             borderRadius: 1,
             boxShadow: '0 0 4px rgba(239,68,68,0.6)',
           }} />
@@ -148,7 +148,7 @@ export function ChartVisual({ config }: Props) {
           </defs>
           <path d={area} fill="url(#elev-grad)" />
           <AnimatedPath d={line} color={color} />
-          <circle cx={xs[scrubIdx]} cy={ys[scrubIdx]} r={5} fill="#EF4444" stroke="white" strokeWidth={1.5} />
+          <circle cx={xs[scrubIdx]} cy={ys[scrubIdx]} r={5} fill="var(--danger)" stroke="white" strokeWidth={1.5} />
           <line x1={xs[scrubIdx]} y1={pad.t} x2={xs[scrubIdx]} y2={H - pad.b} stroke="rgba(255,255,255,0.3)" strokeWidth={1} strokeDasharray="3,2" />
         </svg>
       </div>

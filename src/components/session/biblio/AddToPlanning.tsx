@@ -279,7 +279,7 @@ export function AddToPlanning({ sport, title, objectif, niveaux, defaultNiveau, 
               )}
             </div>
 
-            {errMsg && <p style={{ fontFamily: FB, fontSize: 12.5, color: '#ef4444', margin: '0 0 var(--space-3)' }}>{errMsg}</p>}
+            {errMsg && <p style={{ fontFamily: FB, fontSize: 12.5, color: 'var(--danger)', margin: '0 0 var(--space-3)' }}>{errMsg}</p>}
 
             <button onClick={computeBlocks ? goToEditor : directAdd} disabled={saving} style={{
               width: '100%', padding: '14px 16px', borderRadius: 14, border: 'none',

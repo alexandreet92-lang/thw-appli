@@ -1,7 +1,7 @@
 'use client'
-// Segmented control neutre (DESIGN_SYSTEM.md §2/§3) : piste --bg-card2, segment
-// actif élevé sur --bg-elev, inactif --text-dim. Aucun aplat coloré, tokens only.
-// Défile horizontalement si la liste est longue (ex. années de records).
+// Segmented control (DESIGN_SYSTEM.md §2/§3) — rendu shadcn/ui Tabs : piste
+// arrondie, segment actif élevé. API inchangée. Défile si la liste est longue.
+import { Tabs, TabsList, TabsTrigger } from '@/components/shadcn/tabs'
 
 export interface SegmentedOption<T extends string> {
   id: T
@@ -17,32 +17,16 @@ interface Props<T extends string> {
 }
 
 export function Segmented<T extends string>({ options, value, onChange, size = 'md', ariaLabel }: Props<T>) {
-  const padV = size === 'sm' ? 4 : 6
-  const padH = size === 'sm' ? 10 : 13
-  const font = size === 'sm' ? 11 : 12
+  const small = size === 'sm'
   return (
-    <div role="tablist" aria-label={ariaLabel}
-      style={{
-        display: 'inline-flex', gap: 2, padding: 3, maxWidth: '100%', overflowX: 'auto',
-        background: 'var(--bg-card2)', borderRadius: 'var(--r-sm)', scrollbarWidth: 'none',
-      }}>
-      {options.map(o => {
-        const on = o.id === value
-        return (
-          <button key={o.id} role="tab" aria-selected={on} onClick={() => onChange(o.id)}
-            style={{
-              flexShrink: 0, padding: `${padV}px ${padH}px`, borderRadius: 'calc(var(--r-sm) - 2px)',
-              border: 'none', cursor: 'pointer', whiteSpace: 'nowrap', fontFamily: 'var(--font-body)',
-              fontSize: font, fontWeight: on ? 600 : 500,
-              background: on ? 'var(--bg-elev)' : 'transparent',
-              color: on ? 'var(--text)' : 'var(--text-dim)',
-              boxShadow: on ? 'var(--shadow-card)' : 'none',
-              transition: 'background 0.15s, color 0.15s',
-            }}>
+    <Tabs value={value} onValueChange={v => onChange(v as T)} className="max-w-full">
+      <TabsList aria-label={ariaLabel} className="w-auto max-w-full overflow-x-auto [scrollbar-width:none]">
+        {options.map(o => (
+          <TabsTrigger key={o.id} value={o.id} className={small ? 'min-h-8 flex-none px-3 text-xs' : 'min-h-9 flex-none px-4 text-[13px]'}>
             {o.label}
-          </button>
-        )
-      })}
-    </div>
+          </TabsTrigger>
+        ))}
+      </TabsList>
+    </Tabs>
   )
 }

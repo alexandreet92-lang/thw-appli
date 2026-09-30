@@ -133,7 +133,7 @@ export default function CyclingControls({
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
             <button onClick={onFinish} aria-label={tr('record.cyclingControlsStop')} className="cyc-ctl-btn" style={{
               width: 52, height: 52, borderRadius: '50%',
-              background: 'rgba(239,68,68,0.15)', color: '#ef4444',
+              background: 'rgba(239,68,68,0.15)', color: 'var(--danger)',
               border: 'none', cursor: 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>
@@ -173,10 +173,10 @@ export default function CyclingControls({
               }}
             >
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                <path d="M6 4l13 8-13 8V4z" fill="#06B6D4"/>
+                <path d="M6 4l13 8-13 8V4z" fill="var(--primary)"/>
               </svg>
             </button>
-            <span style={{ fontSize: 11, fontWeight: 600, color: '#06B6D4', letterSpacing: 0.5 }}>
+            <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--primary)', letterSpacing: 0.5 }}>
               {tr('record.cyclingControlsResumeCap')}
             </span>
           </div>
@@ -194,10 +194,10 @@ export default function CyclingControls({
               }}
             >
               <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-                <rect x="4" y="4" width="14" height="14" rx="2" fill="#EF4444"/>
+                <rect x="4" y="4" width="14" height="14" rx="2" fill="var(--danger)"/>
               </svg>
             </button>
-            <span style={{ fontSize: 11, fontWeight: 600, color: '#EF4444', letterSpacing: 0.5 }}>
+            <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--danger)', letterSpacing: 0.5 }}>
               {tr('record.cyclingControlsFinishCap')}
             </span>
           </div>

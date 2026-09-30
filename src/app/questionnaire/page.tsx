@@ -340,7 +340,7 @@ function DetailPanel({
                 </div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
                   {q.jours_disponibles.map(j => (
-                    <span key={j} style={{ padding: '3px 9px', borderRadius: 6, background: 'rgba(6,182,212,0.1)', color: '#06B6D4', fontSize: 11, fontWeight: 600, fontFamily: 'DM Sans, sans-serif', border: '1px solid rgba(6,182,212,0.2)' }}>
+                    <span key={j} style={{ padding: '3px 9px', borderRadius: 6, background: 'rgba(6,182,212,0.1)', color: 'var(--primary)', fontSize: 11, fontWeight: 600, fontFamily: 'DM Sans, sans-serif', border: '1px solid rgba(6,182,212,0.2)' }}>
                       {j}
                     </span>
                   ))}
@@ -407,7 +407,7 @@ function DetailPanel({
               disabled={saving}
               style={{
                 marginTop: 8, padding: '8px 18px', borderRadius: 8,
-                background: saving ? 'var(--bg-card2)' : '#06B6D4',
+                background: saving ? 'var(--bg-card2)' : 'var(--primary)',
                 color: saving ? 'var(--text-dim)' : '#000',
                 border: 'none', cursor: saving ? 'not-allowed' : 'pointer',
                 fontSize: 12, fontWeight: 700, fontFamily: 'DM Sans, sans-serif',
@@ -523,7 +523,7 @@ export default function QuestionnairePage() {
           {countNouveau > 0 && (
             <span style={{
               padding: '4px 11px', borderRadius: 99, marginBottom: 3,
-              background: 'rgba(6,182,212,0.12)', color: '#06B6D4',
+              background: 'rgba(6,182,212,0.12)', color: 'var(--primary)',
               fontSize: 12, fontWeight: 700,
               border: '1px solid rgba(6,182,212,0.3)',
             }}>

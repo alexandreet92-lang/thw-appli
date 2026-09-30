@@ -7,6 +7,8 @@
 // ══════════════════════════════════════════════════════════════════
 import type { CSSProperties, ReactNode } from 'react'
 import { Check, X } from 'lucide-react'
+import { Tabs, TabsList, TabsTrigger } from '@/components/shadcn/tabs'
+import { Button } from '@/components/shadcn/button'
 import { useSwipeBack, useSwipeDown } from '@/hooks/useSwipeBack'
 import type { AthleteTier } from '@/lib/iap/products'
 import type { BillingPeriod, CoachPackKey } from '@/lib/subscriptions/coach-packs'
@@ -94,15 +96,11 @@ function OptionCard({ title, subs, on, onClick, disabled }: { title: string; sub
 
 function Segmented<T extends string>({ value, options, onChange }: { value: T; options: { id: T; label: string }[]; onChange: (v: T) => void }) {
   return (
-    <div style={{ display: 'flex', background: 'var(--bg-card2)', borderRadius: 'var(--r-pill)', padding: 'var(--space-1)', gap: 'var(--space-1)' }}>
-      {options.map(o => (
-        <button key={o.id} type="button" onClick={() => onChange(o.id)} style={{
-          flex: 1, minHeight: 44, borderRadius: 'var(--r-pill)', border: 'none', cursor: 'pointer',
-          background: value === o.id ? 'var(--bg)' : 'transparent', color: value === o.id ? 'var(--text)' : 'var(--text-mid)',
-          fontFamily: 'var(--font-body)', fontSize: 13.5, fontWeight: 600,
-        }}>{o.label}</button>
-      ))}
-    </div>
+    <Tabs value={value} onValueChange={v => onChange(v as T)}>
+      <TabsList>
+        {options.map(o => <TabsTrigger key={o.id} value={o.id}>{o.label}</TabsTrigger>)}
+      </TabsList>
+    </Tabs>
   )
 }
 
@@ -143,7 +141,7 @@ export function IapStoreSheet(p: IapStoreSheetProps) {
 
   return (
     <div onClick={p.onClose} style={{
-      position: 'fixed', inset: 0, zIndex: 14000, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+      position: 'fixed', inset: 0, zIndex: 14000, background: 'var(--scrim)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
       opacity: p.shown ? 1 : 0, transition: 'opacity 0.26s ease',
     }}>
       <div onClick={e => e.stopPropagation()} {...back.handlers} style={{
@@ -155,10 +153,7 @@ export function IapStoreSheet(p: IapStoreSheetProps) {
         {/* En-tête */}
         <div {...down.handlers} style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', position: 'relative', padding: 'var(--space-4) var(--space-4) 0', minHeight: 60 }}>
           <span aria-hidden style={{ position: 'absolute', top: 'var(--space-2)', left: '50%', width: 36, height: 5, marginLeft: -18, borderRadius: 3, background: 'var(--text-dim)', opacity: 0.5 }} />
-          <button type="button" onClick={p.onClose} aria-label={L.close} style={{
-            width: 44, height: 44, borderRadius: '50%', border: 'none', cursor: 'pointer', background: 'var(--bg-card2)', color: 'var(--text)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}><X size={20} strokeWidth={2.4} /></button>
+          <Button type="button" variant="secondary" size="icon" onClick={p.onClose} aria-label={L.close}><X size={20} strokeWidth={2.4} /></Button>
         </div>
 
         <div style={{ flex: 1, overflowY: 'auto', padding: '0 var(--space-5) var(--space-5)' }}>
@@ -263,12 +258,9 @@ export function IapStoreSheet(p: IapStoreSheetProps) {
 
         {/* Bouton d'achat fixe */}
         <div style={{ padding: 'var(--space-3) var(--space-5)', paddingBottom: 'calc(var(--space-4) + env(safe-area-inset-bottom))', background: 'var(--bg)' }}>
-          <button type="button" disabled={!canBuy} onClick={() => productId && p.onBuy(productId, kind)} style={{
-            width: '100%', minHeight: 56, borderRadius: 'var(--r-pill)', border: 'none', background: 'var(--primary)', color: 'var(--on-primary)',
-            fontFamily: 'var(--font-body)', fontSize: 16, fontWeight: 700, cursor: canBuy ? 'pointer' : 'default', opacity: canBuy ? 1 : 0.5,
-          }}>
+          <Button type="button" size="lg" className="w-full" disabled={!canBuy} onClick={() => productId && p.onBuy(productId, kind)}>
             {cta}{selectedPrice && p.tab !== 'tokens' ? ` · ${selectedPrice} ${perLabel}` : selectedPrice ? ` · ${selectedPrice}` : ''}
-          </button>
+          </Button>
         </div>
       </div>
     </div>

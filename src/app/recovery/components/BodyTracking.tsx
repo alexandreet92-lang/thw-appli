@@ -132,7 +132,7 @@ export default function BodyTracking() {
             <div>
               <div style={{ display:'flex',justifyContent:'space-between',marginBottom:4 }}>
                 <span style={{ fontSize:10,color:'var(--text-dim)' }}>{t('recovery.body.last30days')}</span>
-                {weights.length>=2 && <span style={{ fontSize:11,fontWeight:600,color:weights[weights.length-1].weight_kg<=weights[0].weight_kg?'#10B981':'#ef4444' }}>
+                {weights.length>=2 && <span style={{ fontSize:11,fontWeight:600,color:weights[weights.length-1].weight_kg<=weights[0].weight_kg?'#10B981':'var(--danger)' }}>
                   {(weights[weights.length-1].weight_kg-weights[0].weight_kg>=0?'+':'')+((weights[weights.length-1].weight_kg-weights[0].weight_kg).toFixed(1))}kg
                 </span>}
               </div>
@@ -151,7 +151,7 @@ export default function BodyTracking() {
             <svg width={36} height={50} viewBox="0 0 36 50">
               <path d="M6 5 L4 45 L32 45 L30 5 Z" fill="none" stroke="var(--text-dim)" strokeWidth={1.5} />
               <clipPath id="glassFill"><path d="M6 5 L4 45 L32 45 L30 5 Z" /></clipPath>
-              <rect x={0} y={5+45*(1-fillPct/100)} width={36} height={45*(fillPct/100)} fill="#06B6D4" opacity={0.6} clipPath="url(#glassFill)" style={{ transition:'height 0.8s ease-out,y 0.8s ease-out' }} />
+              <rect x={0} y={5+45*(1-fillPct/100)} width={36} height={45*(fillPct/100)} fill="var(--primary)" opacity={0.6} clipPath="url(#glassFill)" style={{ transition:'height 0.8s ease-out,y 0.8s ease-out' }} />
               <text x={18} y={28} textAnchor="middle" fill="var(--text)" fontSize={9} fontWeight={700}>{todayHyd}L</text>
             </svg>
             <div style={{ flex:1 }}>
@@ -159,7 +159,7 @@ export default function BodyTracking() {
               <div style={{ display:'flex',gap:6,flexWrap:'wrap' as const }}>
                 {HYDRATION_OPTS.map(v=>(
                   <button key={v} onClick={()=>saveHydration(v)}
-                    style={{ padding:'4px 9px',borderRadius:7,border:'1px solid',fontSize:11,cursor:'pointer',borderColor:todayHyd===v?'#06B6D4':'var(--border)',background:todayHyd===v?'rgba(6,182,212,0.12)':'var(--bg-card2)',color:todayHyd===v?'#06B6D4':'var(--text-mid)',fontWeight:todayHyd===v?600:400,opacity:saving==='hyd'?0.6:1 }}>
+                    style={{ padding:'4px 9px',borderRadius:7,border:'1px solid',fontSize:11,cursor:'pointer',borderColor:todayHyd===v?'var(--primary)':'var(--border)',background:todayHyd===v?'rgba(6,182,212,0.12)':'var(--bg-card2)',color:todayHyd===v?'var(--primary)':'var(--text-mid)',fontWeight:todayHyd===v?600:400,opacity:saving==='hyd'?0.6:1 }}>
                     {v}L
                   </button>
                 ))}
@@ -201,7 +201,7 @@ export default function BodyTracking() {
             )
           })}
         </div>
-        <p style={{ fontSize:11,color:painZones.length>0?'#ef4444':'var(--text-dim)',fontWeight:painZones.length>0?600:400,margin:0 }}>
+        <p style={{ fontSize:11,color:painZones.length>0?'var(--danger)':'var(--text-dim)',fontWeight:painZones.length>0?600:400,margin:0 }}>
           {painZones.length > 0
             ? t(painZones.length>1?'recovery.body.zonesReported.other':'recovery.body.zonesReported.one', { n: painZones.length })
             : t('recovery.body.noPain')}
@@ -213,7 +213,7 @@ export default function BodyTracking() {
               const info = BODY_ZONES.find(bz=>bz.id===z)
               return <div key={z} style={{ display:'flex',justifyContent:'space-between',marginBottom:3 }}>
                 <span style={{ fontSize:11,color:'var(--text-mid)' }}>{info?.labelKey?t(info.labelKey):z}</span>
-                <span style={{ fontSize:11,color:'#ef4444',fontWeight:600 }}>{t('recovery.body.countPer30', { n: c })}</span>
+                <span style={{ fontSize:11,color:'var(--danger)',fontWeight:600 }}>{t('recovery.body.countPer30', { n: c })}</span>
               </div>
             })}
           </div>

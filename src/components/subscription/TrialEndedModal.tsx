@@ -92,7 +92,7 @@ export function TrialEndedModal() {
               <button onClick={() => { dismiss(); router.push('/settings/subscription') }} style={ghostBtn}>{t('w3c.trial_see_plans')}</button>
               <button onClick={dismiss} style={{ ...ghostBtn, background: 'transparent', color: 'var(--text-dim)' }}>{t('w3c.trial_continue_free')}</button>
             </div>
-            {err && <p style={{ fontFamily: 'var(--font-body)', fontSize: 12.5, color: '#ef4444', margin: '10px 0 0' }}>{err}</p>}
+            {err && <p style={{ fontFamily: 'var(--font-body)', fontSize: 12.5, color: 'var(--danger)', margin: '10px 0 0' }}>{err}</p>}
             <p style={{ fontFamily: 'var(--font-body)', fontSize: 11.5, color: 'var(--text-dim)', margin: '14px 0 0' }}>{t('w3c.trial_secure_note')}</p>
           </>
         )}

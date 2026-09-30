@@ -47,7 +47,7 @@ export default function AICoachingTip({ exercise, enabled, isDark }: Props) {
             <div style={{
               width: 12, height: 12, borderRadius: '50%',
               border: '2px solid rgba(6,182,212,0.3)',
-              borderTopColor: '#06B6D4',
+              borderTopColor: 'var(--primary)',
               animation: 'spin 0.8s linear infinite',
             }} />
             <span style={{ fontSize: 13, color: '#8C8C8C' }}>{t('record.aiCoachingTipLoading')}</span>

@@ -61,7 +61,7 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
             {isChunk ? tx.deployed : tx.reload_hint}
           </p>
           <button onClick={() => { try { sessionStorage.removeItem('thw_chunk_reloaded') } catch { /* ignore */ } location.reload() }}
-            style={{ padding: '10px 18px', borderRadius: 12, border: 'none', background: '#06B6D4', color: '#fff', fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>{tx.reload}</button>
+            style={{ padding: '10px 18px', borderRadius: 12, border: 'none', background: 'var(--primary)', color: '#fff', fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>{tx.reload}</button>
           {!isChunk && (error?.message || error?.digest) && (
             <pre style={{ textAlign: 'left', whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontSize: 11.5, lineHeight: 1.5, color: '#6b7075', background: '#101014', border: '1px solid #26262b', borderRadius: 10, padding: '10px 12px', marginTop: 16, maxHeight: 200, overflow: 'auto' }}>
               {error?.message || ''}{error?.digest ? `\n\n[digest] ${error.digest}` : ''}

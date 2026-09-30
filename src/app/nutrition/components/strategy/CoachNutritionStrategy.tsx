@@ -281,7 +281,7 @@ export default function CoachNutritionStrategy({ athleteName, activePlan, onSave
           <button onClick={generateManual} disabled={!intake.targetWeightKg} style={{ flex: '1 1 180px', padding: 13, borderRadius: 12, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontWeight: 700, fontSize: 13.5, cursor: 'pointer' }}>{t('w2b.calcManual')}</button>
           <button onClick={() => void generateAI()} disabled={aiBusy || !intake.targetWeightKg} style={{ flex: '1 1 180px', padding: 13, borderRadius: 12, border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontWeight: 700, fontSize: 13.5, cursor: aiBusy ? 'wait' : 'pointer', opacity: aiBusy ? 0.6 : 1, boxShadow: '0 4px 14px color-mix(in srgb, var(--primary) 30%, transparent)' }}>{aiBusy ? t('w2b.aiThinking') : t('w2b.generateAI')}</button>
         </div>
-        {aiErr && <p style={{ fontSize: 12, color: '#ef4444', margin: '8px 0 0', fontWeight: 600 }}>{aiErr}</p>}
+        {aiErr && <p style={{ fontSize: 12, color: 'var(--danger)', margin: '8px 0 0', fontWeight: 600 }}>{aiErr}</p>}
       </div>
 
       {/* ── 2. RÉSULTATS ──────────────────────────────────────── */}

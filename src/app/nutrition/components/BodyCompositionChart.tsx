@@ -183,7 +183,7 @@ export default function BodyCompositionChart({ logs }: { logs: BodLog[] }) {
         {/* Weight line */}
         {linePath && (
           <path d={linePath} fill="none"
-            stroke="#06B6D4" strokeWidth={2.5}
+            stroke="var(--primary)" strokeWidth={2.5}
             strokeLinejoin="round" strokeLinecap="round"
           />
         )}
@@ -215,7 +215,7 @@ export default function BodyCompositionChart({ logs }: { logs: BodLog[] }) {
               {showLabels && (
                 <text x={x} y={y - 9}
                   textAnchor="middle"
-                  fill="#06B6D4" fontSize={11} fontWeight={600}
+                  fill="var(--primary)" fontSize={11} fontWeight={600}
                   fontFamily="DM Sans,sans-serif">
                   {l.poids.toFixed(1)}
                 </text>
@@ -223,7 +223,7 @@ export default function BodyCompositionChart({ logs }: { logs: BodLog[] }) {
               <circle
                 cx={x} cy={y}
                 r={isHovered ? 6 : 5}
-                fill="white" stroke="#06B6D4"
+                fill="white" stroke="var(--primary)"
                 strokeWidth={2}
                 style={{ transition: 'r 0.1s' }}
               />
@@ -238,7 +238,7 @@ export default function BodyCompositionChart({ logs }: { logs: BodLog[] }) {
           return (
             <>
               <line x1={x} y1={PAD_T} x2={x} y2={bottomY}
-                stroke="#06B6D4" strokeWidth={1}
+                stroke="var(--primary)" strokeWidth={1}
                 strokeDasharray="3 3" opacity={0.45}
               />
               {l.mm != null && (
@@ -290,7 +290,7 @@ export default function BodyCompositionChart({ logs }: { logs: BodLog[] }) {
             })}
           </div>
           {hRow.poids != null && (
-            <div style={{ color: '#06B6D4', marginBottom: 2 }}>
+            <div style={{ color: 'var(--primary)', marginBottom: 2 }}>
               {t('w4b.weight')} : {hRow.poids.toFixed(1)} kg
             </div>
           )}
@@ -311,7 +311,7 @@ export default function BodyCompositionChart({ logs }: { logs: BodLog[] }) {
       <div style={{ display: 'flex', gap: 14, marginTop: 8, flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
           <svg width={20} height={8}>
-            <line x1={0} y1={4} x2={20} y2={4} stroke="#06B6D4" strokeWidth={2} />
+            <line x1={0} y1={4} x2={20} y2={4} stroke="var(--primary)" strokeWidth={2} />
           </svg>
           <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>{t('w4b.weight')} (kg)</span>
         </div>

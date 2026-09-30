@@ -41,7 +41,7 @@ export function SettingsSectionSubtitle({ label, badge, theme }: SubtitleProps) 
       </span>
       {badge && (
         <span style={{
-          fontSize: 9, color: '#06B6D4',
+          fontSize: 9, color: 'var(--primary)',
           border: '1px solid rgba(6,182,212,0.4)',
           borderRadius: 4, padding: '1px 6px', fontWeight: 700,
         }}>{badge}</span>

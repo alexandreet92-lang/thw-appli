@@ -114,7 +114,7 @@ export function OnboardingOverlay({ config, onDismiss }: Props) {
             border: '1px solid rgba(6,182,212,0.3)',
             marginBottom: 10,
           }}>
-            <span style={{ fontSize: 10, color: '#06B6D4', fontWeight: 600, letterSpacing: 1, textTransform: 'uppercase' }}>
+            <span style={{ fontSize: 10, color: 'var(--primary)', fontWeight: 600, letterSpacing: 1, textTransform: 'uppercase' }}>
               {slide.badgeKey ? t(slide.badgeKey) : slide.badge}
             </span>
           </div>
@@ -160,7 +160,7 @@ export function OnboardingOverlay({ config, onDismiss }: Props) {
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   flexShrink: 0, marginTop: 2,
                 }}>
-                  <div style={{ width: 4, height: 4, borderRadius: '50%', background: '#06B6D4' }} />
+                  <div style={{ width: 4, height: 4, borderRadius: '50%', background: 'var(--primary)' }} />
                 </div>
                 <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', lineHeight: 1.5 }}>
                   {slide.keyPointsKeys?.[i] ? t(slide.keyPointsKeys[i]) : point}
@@ -181,7 +181,7 @@ export function OnboardingOverlay({ config, onDismiss }: Props) {
               <button key={i} onClick={() => goTo(i)} style={{
                 width: i === current ? 22 : 5,
                 height: 5, borderRadius: 3,
-                background: i === current ? '#06B6D4' : 'rgba(255,255,255,0.2)',
+                background: i === current ? 'var(--primary)' : 'rgba(255,255,255,0.2)',
                 border: 'none', cursor: 'pointer', padding: 0,
                 transition: 'all 350ms cubic-bezier(0.16,1,0.3,1)',
               }} />

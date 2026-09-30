@@ -253,7 +253,7 @@ export default function SessionSaveForm({ sport, startedAt, onBack, onSave, isDa
                     // eslint-disable-next-line @next/next/no-img-element
                     <div key={i} style={{ position: 'relative' }}>
                       <img src={URL.createObjectURL(f)} alt="" style={{ width: 78, height: 78, objectFit: 'cover', borderRadius: 12 }} />
-                      <button onClick={() => setPhotos(p => p.filter((_, j) => j !== i))} style={{ position: 'absolute', top: -6, right: -6, width: 20, height: 20, borderRadius: '50%', background: '#ef4444', color: '#fff', border: 'none', fontSize: 13, cursor: 'pointer', lineHeight: 1 }}>×</button>
+                      <button onClick={() => setPhotos(p => p.filter((_, j) => j !== i))} style={{ position: 'absolute', top: -6, right: -6, width: 20, height: 20, borderRadius: '50%', background: 'var(--danger)', color: '#fff', border: 'none', fontSize: 13, cursor: 'pointer', lineHeight: 1 }}>×</button>
                     </div>
                   ))}
                   <label style={{ width: 78, height: 78, borderRadius: 12, border: `1px dashed ${t.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: t.muted, fontSize: 26, background: t.field }}>

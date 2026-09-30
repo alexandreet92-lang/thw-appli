@@ -76,7 +76,7 @@ export default function YogaSessionBuilder({ isDark, onClose, onStart }: Props) 
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
         </button>
         <span style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', fontSize: 15, fontWeight: 600, color: text }}>{t('record.yogaBuilderNewSession')}</span>
-        <button onClick={handleSave} disabled={saving || !exercises.length} style={{ marginLeft: 'auto', padding: '7px 14px', borderRadius: 10, background: 'none', border: 'none', color: exercises.length ? '#06B6D4' : dim, fontSize: 15, fontWeight: 600, cursor: exercises.length ? 'pointer' : 'default' }}>
+        <button onClick={handleSave} disabled={saving || !exercises.length} style={{ marginLeft: 'auto', padding: '7px 14px', borderRadius: 10, background: 'none', border: 'none', color: exercises.length ? 'var(--primary)' : dim, fontSize: 15, fontWeight: 600, cursor: exercises.length ? 'pointer' : 'default' }}>
           {saving ? '…' : t('record.yogaBuilderSave')}
         </button>
       </div>
@@ -90,14 +90,14 @@ export default function YogaSessionBuilder({ isDark, onClose, onStart }: Props) 
         <p style={{ fontSize: 10, fontWeight: 700, color: dim, textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 10px' }}>{t('record.yogaBuilderTargetDuration')}</p>
         <div style={{ display: 'flex', gap: 8, marginBottom: 24, flexWrap: 'wrap' }}>
           {DURATIONS.map(d => (
-            <button key={d} onClick={() => setTargetMin(d)} style={{ padding: '8px 16px', borderRadius: 20, border: 'none', background: targetMin === d ? '#06B6D4' : surf, color: targetMin === d ? '#FFF' : text, fontSize: 14, fontWeight: 500, cursor: 'pointer' }}>{d} min</button>
+            <button key={d} onClick={() => setTargetMin(d)} style={{ padding: '8px 16px', borderRadius: 20, border: 'none', background: targetMin === d ? 'var(--primary)' : surf, color: targetMin === d ? '#FFF' : text, fontSize: 14, fontWeight: 500, cursor: 'pointer' }}>{d} min</button>
           ))}
         </div>
 
         {/* Exercices */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
           <p style={{ fontSize: 10, fontWeight: 700, color: dim, textTransform: 'uppercase', letterSpacing: '0.1em', margin: 0 }}>{t('record.yogaBuilderExercises', { n: exercises.length })}</p>
-          <button onClick={() => setPickerOpen(true)} style={{ padding: '6px 14px', borderRadius: 20, background: 'rgba(6,182,212,0.12)', border: 'none', color: '#06B6D4', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>{t('record.settingsAdd')}</button>
+          <button onClick={() => setPickerOpen(true)} style={{ padding: '6px 14px', borderRadius: 20, background: 'rgba(6,182,212,0.12)', border: 'none', color: 'var(--primary)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>{t('record.settingsAdd')}</button>
         </div>
 
         {exercises.length === 0 && (
@@ -115,7 +115,7 @@ export default function YogaSessionBuilder({ isDark, onClose, onStart }: Props) 
             <span style={{ fontSize: 12, color: dim }}>s</span>
             <button onClick={() => move(i, -1)} disabled={i === 0} style={{ width: 28, height: 28, borderRadius: 6, background: surf, border: `1px solid ${bord}`, color: i === 0 ? dim : text, cursor: i === 0 ? 'default' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>↑</button>
             <button onClick={() => move(i, 1)} disabled={i === exercises.length - 1} style={{ width: 28, height: 28, borderRadius: 6, background: surf, border: `1px solid ${bord}`, color: i === exercises.length - 1 ? dim : text, cursor: i === exercises.length - 1 ? 'default' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>↓</button>
-            <button onClick={() => setExercises(exercises.filter((_, j) => j !== i))} style={{ width: 28, height: 28, borderRadius: 6, background: 'rgba(239,68,68,0.1)', border: 'none', color: '#EF4444', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
+            <button onClick={() => setExercises(exercises.filter((_, j) => j !== i))} style={{ width: 28, height: 28, borderRadius: 6, background: 'rgba(239,68,68,0.1)', border: 'none', color: 'var(--danger)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
           </div>
         ))}
 

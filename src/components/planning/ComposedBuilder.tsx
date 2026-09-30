@@ -119,7 +119,7 @@ export function ComposedBuilder({ sport, moves, accent, onChange, circuits, onCi
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
               <input value={circuit.name ?? `Circuit ${ci + 1}`} onChange={e => patchCircuit(circuit.id, { name: e.target.value })}
                 style={{ flex: 1, minWidth: 0, background: 'transparent', border: 'none', outline: 'none', fontFamily: 'Syne, sans-serif', fontSize: 15, fontWeight: 700, color: 'var(--text)', padding: 0 }} />
-              {isMulti && <button onClick={() => removeCircuit(circuit.id)} aria-label="Supprimer le circuit" style={{ ...iconBtn, color: '#ef4444' }}><IconTrash size={16} /></button>}
+              {isMulti && <button onClick={() => removeCircuit(circuit.id)} aria-label="Supprimer le circuit" style={{ ...iconBtn, color: 'var(--danger)' }}><IconTrash size={16} /></button>}
             </div>
             {/* Tours + récup du circuit (+ récup avant le circuit suivant si multi). */}
             <div style={{ display: 'grid', gridTemplateColumns: ci < circList.length - 1 ? 'repeat(3, 1fr)' : 'repeat(2, 1fr)', gap: 10, marginBottom: 12, background: 'var(--bg-card2)', borderRadius: 10, padding: 10 }}>
@@ -145,7 +145,7 @@ export function ComposedBuilder({ sport, moves, accent, onChange, circuits, onCi
                     <span style={{ fontSize: 11, fontWeight: 700, color: accent, fontFamily: 'DM Mono, monospace' }}>{moveMinutes(m) > 0 ? `${Math.round(moveMinutes(m))} min` : ''}</span>
                     <button onClick={() => move(i, -1, cIds)} disabled={i === 0} aria-label="Monter" style={{ ...iconBtn, opacity: i === 0 ? 0.3 : 1 }}><IconChevronUp size={16} /></button>
                     <button onClick={() => move(i, 1, cIds)} disabled={i === cIds.length - 1} aria-label="Descendre" style={{ ...iconBtn, opacity: i === cIds.length - 1 ? 0.3 : 1 }}><IconChevronDown size={16} /></button>
-                    <button onClick={() => remove(m.id)} aria-label="Supprimer" style={{ ...iconBtn, color: '#ef4444' }}><IconTrash size={16} /></button>
+                    <button onClick={() => remove(m.id)} aria-label="Supprimer" style={{ ...iconBtn, color: 'var(--danger)' }}><IconTrash size={16} /></button>
                   </div>
 
                   {d.variants && d.variants.length > 0 && (

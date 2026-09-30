@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic'
 import { useState, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import dynamicImport from 'next/dynamic'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion, AnimatePresence } from 'motion/react'
 import { Button } from '@/components/ui/Button'
 import { MacroDonut } from '@/components/ui/MacroDonut'
 import { useGuideTabDemo } from '@/components/guide/guideDemo'
@@ -226,7 +226,7 @@ function KcalHistoryChart({ logs, range, activePlan }: { logs: DailyLog[]; range
             {/* Consumed (filled) */}
             <rect
               x={x} y={chartH - consumedH} width={barW} height={consumedH}
-              fill="#06B6D4" rx={2}
+              fill="var(--primary)" rx={2}
               opacity={0.85}
             />
             <text x={x + barW / 2} y={chartH + 16} textAnchor="middle" fill="var(--text-dim)" fontSize={9} fontFamily="DM Sans,sans-serif">
@@ -752,7 +752,7 @@ function MealTemplatesSection({
                             style={{
                               width: 28, height: 28, borderRadius: 7,
                               border: '1px solid rgba(239,68,68,0.3)', background: 'transparent',
-                              color: '#ef4444', cursor: 'pointer', fontSize: 13,
+                              color: 'var(--danger)', cursor: 'pointer', fontSize: 13,
                               display: 'flex', alignItems: 'center', justifyContent: 'center',
                             }}
                           >
@@ -1141,7 +1141,7 @@ export default function NutritionPage() {
       {scannedBarcode && (
         <div style={{ margin: '12px 20px 0', padding: '10px 14px', borderRadius: 10, background: 'rgba(6,182,212,0.08)', border: '1px solid rgba(6,182,212,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
           <div>
-            <p style={{ fontSize: 11, color: '#06B6D4', fontWeight: 700, margin: 0, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('nutrition.scannedCode')}</p>
+            <p style={{ fontSize: 11, color: 'var(--primary)', fontWeight: 700, margin: 0, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('nutrition.scannedCode')}</p>
             <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', margin: '2px 0 0', fontFamily: 'DM Mono,monospace' }}>{scannedBarcode}</p>
           </div>
           <button
@@ -1314,7 +1314,7 @@ export default function NutritionPage() {
                 </div>
                 {/* Interconnexion → séance qui justifie le type de jour */}
                 {daySess.length > 0 ? (
-                  <a href="/planning" style={{ display: 'block', marginTop: 8, fontSize: 12, color: '#06B6D4', fontFamily: 'DM Sans,sans-serif', fontWeight: 600, textDecoration: 'none' }}>
+                  <a href="/planning" style={{ display: 'block', marginTop: 8, fontSize: 12, color: 'var(--primary)', fontFamily: 'DM Sans,sans-serif', fontWeight: 600, textDecoration: 'none' }}>
                     {daySess.map(s => s.title).filter(Boolean).join(' · ') || t('nutrition.plannedSession')} →
                   </a>
                 ) : (
@@ -1550,7 +1550,7 @@ export default function NutritionPage() {
                           style={{
                             flex: 1, padding: '7px 0', borderRadius: 8,
                             background: 'rgba(6,182,212,0.15)', border: '1px solid rgba(6,182,212,0.35)',
-                            color: '#06B6D4', fontFamily: 'Syne,sans-serif', fontWeight: 700,
+                            color: 'var(--primary)', fontFamily: 'Syne,sans-serif', fontWeight: 700,
                             fontSize: 12, cursor: 'pointer',
                           }}
                         >

@@ -112,7 +112,7 @@ function SlotCard({ slot, entry, onAdd, onEdit }: {
         </span>
       )}
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 2 }}>
-        {entry.actual_kcal != null && <span style={{ fontSize: 10, color: '#06B6D4', fontFamily: 'DM Mono,monospace', fontWeight: 700 }}>{entry.actual_kcal} kcal</span>}
+        {entry.actual_kcal != null && <span style={{ fontSize: 10, color: 'var(--primary)', fontFamily: 'DM Mono,monospace', fontWeight: 700 }}>{entry.actual_kcal} kcal</span>}
         {entry.actual_prot != null && <span style={{ fontSize: 10, color: '#3B82F6', fontFamily: 'DM Mono,monospace' }}>{t('w2a.abbr_prot', { n: entry.actual_prot })}</span>}
         {entry.actual_gluc != null && <span style={{ fontSize: 10, color: '#F97316', fontFamily: 'DM Mono,monospace' }}>{t('w2a.abbr_gluc', { n: entry.actual_gluc })}</span>}
         {entry.actual_lip  != null && <span style={{ fontSize: 10, color: '#8B5CF6', fontFamily: 'DM Mono,monospace' }}>{t('w2a.abbr_lip', { n: entry.actual_lip })}</span>}

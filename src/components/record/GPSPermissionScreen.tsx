@@ -37,7 +37,7 @@ export default function GPSPermissionScreen({ isDark = false }: Props) {
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         marginBottom: 24, flexShrink: 0,
       }}>
-        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
           <line x1="1" y1="1" x2="23" y2="23"/>
           <path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55M5 12.55a10.94 10.94 0 0 1 5.17-2.39M10.71 5.05A16 16 0 0 1 22.56 9M1.42 9a15.91 15.91 0 0 1 4.7-2.88"/>
           <path d="M8.53 16.11a6 6 0 0 1 6.95 0M12 20h.01"/>
@@ -59,7 +59,7 @@ export default function GPSPermissionScreen({ isDark = false }: Props) {
           <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: i < IOS_STEPS.length - 1 ? 10 : 0 }}>
             <span style={{
               width: 20, height: 20, borderRadius: '50%',
-              background: 'rgba(239,68,68,0.15)', color: '#EF4444',
+              background: 'rgba(239,68,68,0.15)', color: 'var(--danger)',
               fontSize: 11, fontWeight: 700,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               flexShrink: 0, marginTop: 1,

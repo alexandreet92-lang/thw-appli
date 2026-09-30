@@ -79,7 +79,7 @@ export default function YogaLauncher({ open, onClose, onStart, isDark }: Props) 
                         <p style={{ fontSize: 15, fontWeight: 600, margin: 0 }}>{s.title}</p>
                         <p style={{ fontSize: 12, color: dim, margin: '2px 0 0' }}>{s.exercises.length} {t('record.yogaExercisesLabel')} · {s.target_duration_min} min</p>
                       </div>
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="#06B6D4"><path d="M8 5v14l11-7z"/></svg>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="var(--primary)"><path d="M8 5v14l11-7z"/></svg>
                     </button>
                   ))}
                 </>

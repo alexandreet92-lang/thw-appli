@@ -40,7 +40,7 @@ export function BecomeCoachCard() {
             ? t('w3d.trial_ended_desc')
             : t('w3d.become_coach_desc')}
         </p>
-        {err && <p style={{ fontSize: 11.5, color: '#ef4444', margin: '6px 0 0', fontWeight: 600 }}>{err}</p>}
+        {err && <p style={{ fontSize: 11.5, color: 'var(--danger)', margin: '6px 0 0', fontWeight: 600 }}>{err}</p>}
       </div>
       {expired ? (
         <button onClick={() => router.push('/coach/subscription')} style={cta}>{t('w3d.see_packs')}</button>

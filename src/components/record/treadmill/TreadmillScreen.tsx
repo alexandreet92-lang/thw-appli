@@ -568,7 +568,7 @@ export default function TreadmillScreen({ onExit, onFinished }: Props) {
           Enregistrer la séance
         </button>
         <button onClick={() => setConfirmDelete(true)}
-          style={{ width: '100%', height: 48, borderRadius: 14, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.4)', color: '#EF4444', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: FB, marginBottom: 10 }}>
+          style={{ width: '100%', height: 48, borderRadius: 14, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.4)', color: 'var(--danger)', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: FB, marginBottom: 10 }}>
           Supprimer la séance
         </button>
         <button onClick={() => { setPhase('live'); setRunning(true) }}
@@ -591,7 +591,7 @@ export default function TreadmillScreen({ onExit, onFinished }: Props) {
                 Annuler
               </button>
               <button onClick={onExit}
-                style={{ flex: 1, height: 44, borderRadius: 12, background: '#EF4444', border: 'none', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: FB }}>
+                style={{ flex: 1, height: 44, borderRadius: 12, background: 'var(--danger)', border: 'none', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: FB }}>
                 Supprimer
               </button>
             </div>

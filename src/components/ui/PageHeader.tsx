@@ -24,7 +24,7 @@ export function PageHeader({ title, subtitle, action }: PageHeaderProps) {
           margin: 0,
           fontSize: 24,
           fontWeight: 700,
-          fontFamily: "'Syne', sans-serif",
+          fontFamily: 'var(--font-display)',
           color: 'var(--text)',
           letterSpacing: '-0.3px',
           lineHeight: 1.2,

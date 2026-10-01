@@ -72,7 +72,7 @@ export default function GlobalSaveToast() {
           border: `1px solid ${accent}66`,
           color: 'var(--text)', borderRadius: 'var(--r-pill)', padding: '8px 15px 8px 9px',
           fontSize: 13, fontWeight: 700, letterSpacing: '-0.01em',
-          fontFamily: 'var(--font-body, "DM Sans", sans-serif)',
+          fontFamily: 'var(--font-body)',
           backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
           boxShadow: '0 10px 30px rgba(0,0,0,0.22)',
           animation: leaving ? 'thwSaveOut .3s ease forwards' : 'thwSaveIn .34s cubic-bezier(.2,.9,.3,1.25)',

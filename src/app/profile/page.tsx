@@ -43,7 +43,7 @@ interface AiRule {
 }
 
 const CHAT_FONTS: { id: ChatFontId; label: string; family: string; preview: string }[] = [
-  { id: 'dm_sans', label: 'DM Sans',  family: 'var(--font-body)',                                        preview: 'Analyse ta semaine et optimise ta charge.' },
+  { id: 'dm_sans', label: 'var(--font-body)',  family: 'var(--font-body)',                                        preview: 'Analyse ta semaine et optimise ta charge.' },
   { id: 'inter',   label: 'Inter',    family: 'Inter, sans-serif',                                           preview: 'Analyse ta semaine et optimise ta charge.' },
   { id: 'system',  label: 'Système',  family: '-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif',     preview: 'Analyse ta semaine et optimise ta charge.' },
   { id: 'serif',   label: 'Serif',    family: 'Georgia, Times New Roman, serif',                             preview: 'Analyse ta semaine et optimise ta charge.' },

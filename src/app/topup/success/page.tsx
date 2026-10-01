@@ -26,7 +26,7 @@ export default function TopupSuccessPage() {
               strokeDasharray="58" strokeDashoffset="58" style={{ animation: 'topupDrawCheck 0.4s 0.66s cubic-bezier(0.4,0,0.2,1) forwards' }} />
           </svg>
 
-          <h1 style={{ fontFamily: "'Syne', sans-serif", fontSize: 'clamp(28px, 4vw, 36px)', fontWeight: 800, letterSpacing: '-0.04em', color: 'var(--text)', marginBottom: 12 }}>{t('misc.paymentConfirmed')}</h1>
+          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(28px, 4vw, 36px)', fontWeight: 800, letterSpacing: '-0.04em', color: 'var(--text)', marginBottom: 12 }}>{t('misc.paymentConfirmed')}</h1>
           <p style={{ fontSize: 16, color: 'var(--text-mid)', marginBottom: 28, lineHeight: 1.5 }}>
             {t('misc.tokensAddedBody')}
           </p>

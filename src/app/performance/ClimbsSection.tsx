@@ -317,11 +317,11 @@ function ScatterSVG({ climbs, allYears, onPointClick, highlightIds }: {
         <line x1={PL} y1={PT} x2={PL} y2={PT+CH} stroke={axisColor} strokeWidth={1}/>
         <line x1={PL} y1={PT+CH} x2={PL+CW} y2={PT+CH} stroke={axisColor} strokeWidth={1}/>
         {/* Labels axe X */}
-        {xTicks.map(v => <text key={`xl${v}`} x={xPos(v)} y={PT+CH+14} textAnchor="middle" fontSize={9} fontFamily="DM Mono,monospace" fill={labelColor}>{v}</text>)}
-        <text x={PL+CW/2} y={H-2} textAnchor="middle" fontSize={9} fontFamily="DM Sans,sans-serif" fill={axisLblColor}>{t('lo2.durationMinAxis')}</text>
+        {xTicks.map(v => <text key={`xl${v}`} x={xPos(v)} y={PT+CH+14} textAnchor="middle" fontSize={9} fontFamily="var(--font-body)" fill={labelColor}>{v}</text>)}
+        <text x={PL+CW/2} y={H-2} textAnchor="middle" fontSize={9} fontFamily="var(--font-body)" fill={axisLblColor}>{t('lo2.durationMinAxis')}</text>
         {/* Labels axe Y */}
-        {yTicks.map(v => <text key={`yl${v}`} x={PL-7} y={yPos(v)+3} textAnchor="end" fontSize={9} fontFamily="DM Mono,monospace" fill={labelColor}>{v.toFixed(1)}</text>)}
-        <text x={11} y={PT+CH/2} textAnchor="middle" fontSize={9} fontFamily="DM Sans,sans-serif" fill={axisLblColor} transform={`rotate(-90,11,${PT+CH/2})`}>W/kg</text>
+        {yTicks.map(v => <text key={`yl${v}`} x={PL-7} y={yPos(v)+3} textAnchor="end" fontSize={9} fontFamily="var(--font-body)" fill={labelColor}>{v.toFixed(1)}</text>)}
+        <text x={11} y={PT+CH/2} textAnchor="middle" fontSize={9} fontFamily="var(--font-body)" fill={axisLblColor} transform={`rotate(-90,11,${PT+CH/2})`}>W/kg</text>
         {/* Points — grisés si hors filtre actif */}
         {climbs.map(c => {
           const cx  = xPos(c.duration_seconds / 60)

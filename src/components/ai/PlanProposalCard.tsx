@@ -352,7 +352,7 @@ function VolumeChart({ weeks, blocs }: { weeks: GenWeek[]; blocs: GenBloc[] }) {
           <g key={i}>
             <rect x={x} y={H - h} width={bw} height={h} rx={1.5} fill={weekPhaseColor(num, blocs)} opacity={0.92} />
             {(n <= 14 || i % 2 === 0) && (
-              <text x={x + bw / 2} y={H + 10} textAnchor="middle" fontSize="7" fill="var(--ai-dim)" fontFamily="DM Mono,monospace">{num}</text>
+              <text x={x + bw / 2} y={H + 10} textAnchor="middle" fontSize="7" fill="var(--ai-dim)" fontFamily="var(--font-body)">{num}</text>
             )}
           </g>
         )
@@ -380,7 +380,7 @@ function SportDonut({ dist }: { dist: { sport: string; min: number; color: strin
           return seg
         })}
       </g>
-      <text x="36" y="33" textAnchor="middle" fontSize="12" fontWeight="700" fill="var(--ai-text)" fontFamily="DM Mono,monospace">{Math.round(total / 60)}h</text>
+      <text x="36" y="33" textAnchor="middle" fontSize="12" fontWeight="700" fill="var(--ai-text)" fontFamily="var(--font-body)">{Math.round(total / 60)}h</text>
       <text x="36" y="44" textAnchor="middle" fontSize="6.5" fill="var(--ai-dim)">sem 1-2</text>
     </svg>
   )

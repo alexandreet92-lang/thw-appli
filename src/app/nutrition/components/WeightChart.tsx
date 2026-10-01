@@ -154,7 +154,7 @@ export default function WeightChart({ measurements, heightCm, targetWeight }: Pr
                   <line x1={PAD.l} y1={toY(v)} x2={svgW - PAD.r} y2={toY(v)}
                     stroke="var(--border)" strokeWidth={0.6} strokeDasharray="4 4" opacity={0.5} />
                   <text x={PAD.l - 5} y={toY(v) + 4} textAnchor="end"
-                    fill="var(--text-dim)" fontSize={9} fontFamily="DM Mono,monospace">
+                    fill="var(--text-dim)" fontSize={9} fontFamily="var(--font-body)">
                     {v.toFixed(cfg.dec)}
                   </text>
                 </g>
@@ -165,7 +165,7 @@ export default function WeightChart({ measurements, heightCm, targetWeight }: Pr
                   <line x1={PAD.l} y1={toY(targetWeight)} x2={svgW - PAD.r} y2={toY(targetWeight)}
                     stroke="#6B7280" strokeWidth={1} strokeDasharray="6 3" />
                   <text x={svgW - PAD.r + 3} y={toY(targetWeight) + 4}
-                    fill="#6B7280" fontSize={9} fontFamily="DM Sans,sans-serif">{t('w3h.target')}</text>
+                    fill="#6B7280" fontSize={9} fontFamily="var(--font-body)">{t('w3h.target')}</text>
                 </g>
               )}
               {/* Area + line */}
@@ -186,7 +186,7 @@ export default function WeightChart({ measurements, heightCm, targetWeight }: Pr
                 const [, mo, d] = m.measured_at.split('-')
                 return (
                   <text key={i} x={toX(i)} y={SVG_H - 6} textAnchor="middle"
-                    fill="var(--text-dim)" fontSize={9} fontFamily="DM Sans,sans-serif">
+                    fill="var(--text-dim)" fontSize={9} fontFamily="var(--font-body)">
                     {d}/{mo}
                   </text>
                 )

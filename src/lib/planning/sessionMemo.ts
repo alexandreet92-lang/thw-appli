@@ -303,10 +303,10 @@ function circuitsBlocks(sport: SportType, exercises: ExerciseItem[], circuits: E
 
 const CSS = `
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'DM Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#0a0a0a;background:#fff;padding:0}
+body{font-family:'var(--font-body)',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#0a0a0a;background:#fff;padding:0}
 .sheet{max-width:190mm;margin:0 auto;padding:14mm 12mm}
 .hd{display:flex;align-items:flex-start;justify-content:space-between;border-bottom:3px solid #0a0a0a;padding-bottom:12px;margin-bottom:6px}
-.hd h1{font-family:'Syne','DM Sans',sans-serif;font-size:30px;font-weight:800;letter-spacing:-0.03em;line-height:1.05}
+.hd h1{font-family:'Syne','var(--font-body)',sans-serif;font-size:30px;font-weight:800;letter-spacing:-0.03em;line-height:1.05}
 .hd .sub{font-size:13px;color:#555;margin-top:3px;font-weight:600}
 .hd .meta{text-align:right;font-size:12px;color:#333;white-space:nowrap;padding-top:4px}
 .hd .meta b{font-size:22px;font-weight:800;display:block;font-variant-numeric:tabular-nums}

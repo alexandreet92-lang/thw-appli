@@ -147,10 +147,10 @@ function KcalGauge({ consumed, objective }: { consumed: number; objective: numbe
         strokeLinecap="round"
         style={{ transition: 'stroke-dasharray 0.6s ease' }}
       />
-      <text x={65} y={60} textAnchor="middle" fill="var(--text)" fontSize={20} fontFamily="Syne,sans-serif" fontWeight={700}>
+      <text x={65} y={60} textAnchor="middle" fill="var(--text)" fontSize={20} fontFamily="var(--font-display)" fontWeight={700}>
         {Math.round(consumed)}
       </text>
-      <text x={65} y={78} textAnchor="middle" fill="var(--text-dim)" fontSize={11} fontFamily="DM Sans,sans-serif">
+      <text x={65} y={78} textAnchor="middle" fill="var(--text-dim)" fontSize={11} fontFamily="var(--font-body)">
         {`/ ${Math.round(objective)} kcal`}
       </text>
     </svg>
@@ -205,7 +205,7 @@ function KcalHistoryChart({ logs, range, activePlan }: { logs: DailyLog[]; range
         return (
           <g key={frac}>
             <line x1={leftPad} y1={y} x2={chartW + leftPad} y2={y} stroke="var(--border)" strokeWidth={1} />
-            <text x={leftPad - 4} y={y + 4} textAnchor="end" fill="var(--text-dim)" fontSize={9} fontFamily="DM Mono,monospace">
+            <text x={leftPad - 4} y={y + 4} textAnchor="end" fill="var(--text-dim)" fontSize={9} fontFamily="var(--font-body)">
               {val}
             </text>
           </g>
@@ -229,10 +229,10 @@ function KcalHistoryChart({ logs, range, activePlan }: { logs: DailyLog[]; range
               fill="var(--primary)" rx={2}
               opacity={0.85}
             />
-            <text x={x + barW / 2} y={chartH + 16} textAnchor="middle" fill="var(--text-dim)" fontSize={9} fontFamily="DM Sans,sans-serif">
+            <text x={x + barW / 2} y={chartH + 16} textAnchor="middle" fill="var(--text-dim)" fontSize={9} fontFamily="var(--font-body)">
               {e.label.split(' ')[0]}
             </text>
-            <text x={x + barW / 2} y={chartH + 26} textAnchor="middle" fill="var(--text-dim)" fontSize={8} fontFamily="DM Mono,monospace">
+            <text x={x + barW / 2} y={chartH + 26} textAnchor="middle" fill="var(--text-dim)" fontSize={8} fontFamily="var(--font-body)">
               {e.label.split(' ')[1]}
             </text>
           </g>
@@ -289,7 +289,7 @@ function MacrosChart({ logs, activePlan }: { logs: DailyLog[]; activePlan: Nutri
           return (
             <g key={frac}>
               <line x1={leftPad} y1={y} x2={chartW + leftPad} y2={y} stroke="var(--border)" strokeWidth={1} />
-              <text x={leftPad - 4} y={y + 4} textAnchor="end" fill="var(--text-dim)" fontSize={9} fontFamily="DM Mono,monospace">
+              <text x={leftPad - 4} y={y + 4} textAnchor="end" fill="var(--text-dim)" fontSize={9} fontFamily="var(--font-body)">
                 {val}
               </text>
             </g>
@@ -313,7 +313,7 @@ function MacrosChart({ logs, activePlan }: { logs: DailyLog[]; activePlan: Nutri
         {dates.map((date, i) => {
           const x = leftPad + (i / (n - 1)) * chartW
           return (
-            <text key={date} x={x} y={chartH + 14} textAnchor="middle" fill="var(--text-dim)" fontSize={8} fontFamily="DM Sans,sans-serif">
+            <text key={date} x={x} y={chartH + 14} textAnchor="middle" fill="var(--text-dim)" fontSize={8} fontFamily="var(--font-body)">
               {formatDate(date).split(' ')[1]}
             </text>
           )

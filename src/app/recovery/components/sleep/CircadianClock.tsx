@@ -94,7 +94,7 @@ export default function CircadianClock({ windows }: Props) {
         })}
         {/* Center score */}
         <text x={cx} y={cy - 7} textAnchor="middle" fill={scoreColor}
-          fontSize={24} fontWeight={800} fontFamily="Syne,sans-serif">{score}</text>
+          fontSize={24} fontWeight={800} fontFamily="var(--font-display)">{score}</text>
         <text x={cx} y={cy + 10} textAnchor="middle" fill="var(--text-dim)" fontSize={9}>/10</text>
         <text x={cx} y={cy + 23} textAnchor="middle" fill="var(--text-dim)" fontSize={8}>{t('recovery.circadian.regularity')}</text>
       </svg>

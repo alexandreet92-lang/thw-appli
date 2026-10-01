@@ -65,7 +65,7 @@ export default function MacrosLineChart({
             <line x1={PAD_L} y1={toY(v)} x2={W - PAD_R} y2={toY(v)}
               stroke="var(--border)" strokeWidth={0.5} strokeDasharray="3 3" />
             <text x={PAD_L - 4} y={toY(v) + 4} textAnchor="end"
-              fill="var(--text-dim)" fontSize={8} fontFamily="DM Mono,monospace">
+              fill="var(--text-dim)" fontSize={8} fontFamily="var(--font-body)">
               {v > 0 ? v : ''}
             </text>
           </g>
@@ -114,11 +114,11 @@ export default function MacrosLineChart({
           return (
             <g key={e.date}>
               <text x={toX(i)} y={H - 18} textAnchor="middle"
-                fill="var(--text-dim)" fontSize={9} fontFamily="DM Sans,sans-serif">
+                fill="var(--text-dim)" fontSize={9} fontFamily="var(--font-body)">
                 {e.label.split(' ')[0]}
               </text>
               <text x={toX(i)} y={H - 6} textAnchor="middle"
-                fill="var(--text-dim)" fontSize={8} fontFamily="DM Mono,monospace">
+                fill="var(--text-dim)" fontSize={8} fontFamily="var(--font-body)">
                 {e.label.split(' ')[1]}
               </text>
             </g>

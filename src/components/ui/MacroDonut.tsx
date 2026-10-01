@@ -152,7 +152,7 @@ export function MacroDonut({
           textAnchor="middle"
           fill={overTarget ? '#ef4444' : 'var(--text)'}
           fontSize={valFontSize}
-          fontFamily="DM Mono,monospace"
+          fontFamily="var(--font-body)"
           fontWeight={700}
         >
           {displayValue}
@@ -164,7 +164,7 @@ export function MacroDonut({
           textAnchor="middle"
           fill="var(--text-dim)"
           fontSize={subFontSize}
-          fontFamily="DM Sans,sans-serif"
+          fontFamily="var(--font-body)"
         >
           {objective > 0 ? `/ ${Math.round(objective)}` : '—'}
         </text>

@@ -32,7 +32,8 @@ const files = []
 })(SRC)
 
 const BODY = 'var(--font-body)', DISPLAY = 'var(--font-display)'
-const FAMILY = /fontFamily:\s*(['"])([^'"]*)\1/g
+// Formes couvertes : fontFamily: 'X' | fontFamily: "X" | fontFamily: '"X", serif' | fontFamily="X" (JSX)
+const FAMILY = /fontFamily(?::\s*|=)('(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*")/g
 const RADIUS = /borderRadius:\s*(\d+)(?=\s*[,}\n])/g
 const SIZE = /fontSize:\s*(\d+)(?=\s*[,}\n])/g
 const SIZE_MAP = { 7: 10, 8: 10, 9: 10, 21: 22, 23: 22, 27: 28 }
@@ -51,11 +52,13 @@ for (const f of files) {
     if (!/fontFamily:/.test(line)) return line
     const sz = line.match(/fontSize:\s*(\d+)/)
     const size = sz ? Number(sz[1]) : null
-    return line.replace(FAMILY, (m, q, v) => {
-      if (isToken(v)) return m
+    return line.replace(FAMILY, (m, lit) => {
+      const v = lit.slice(1, -1)
+      if (isToken(v) || /^var\(/.test(v)) return m
       counts.font++
       const display = /Syne|Fraunces/.test(v) && size !== null && size >= 18
-      return `fontFamily: '${display ? DISPLAY : BODY}'`
+      const tok = display ? DISPLAY : BODY
+      return m.includes('=') ? `fontFamily="${tok}"` : `fontFamily: '${tok}'`
     })
   })
   s = s.replace(RADIUS, (m, n) => { const t = radiusToken(Number(n)); if (!t) return m; counts.radius++; return `borderRadius: '${t}'` })

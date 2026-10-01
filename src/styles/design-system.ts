@@ -53,34 +53,34 @@ export function alpha(hex: string, opacity: number): string {
 // ─── Typographie ─────────────────────────────────────────────────
 export const type = {
   // Familles
-  syne:   "'Syne', sans-serif",
-  dm:     "'DM Sans', sans-serif",
-  mono:   "'DM Mono', monospace",
+  syne:   'var(--font-display)',
+  dm:     "'var(--font-body)', sans-serif",
+  mono:   "'var(--font-body)', monospace",
 
   // Échelle
-  display: { fontFamily: "'Syne', sans-serif", fontSize: 36, fontWeight: 800, letterSpacing: '-0.04em', lineHeight: 1 },
-  h1:      { fontFamily: "'Syne', sans-serif", fontSize: 28, fontWeight: 700, letterSpacing: '-0.03em', lineHeight: 1.1 },
-  h2:      { fontFamily: "'Syne', sans-serif", fontSize: 18, fontWeight: 700, letterSpacing: '-0.02em', lineHeight: 1.2 },
-  h3:      { fontFamily: "'Syne', sans-serif", fontSize: 14, fontWeight: 600, letterSpacing: '-0.01em', lineHeight: 1.3 },
+  display: { fontFamily: 'var(--font-display)', fontSize: 36, fontWeight: 800, letterSpacing: '-0.04em', lineHeight: 1 },
+  h1:      { fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 700, letterSpacing: '-0.03em', lineHeight: 1.1 },
+  h2:      { fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700, letterSpacing: '-0.02em', lineHeight: 1.2 },
+  h3:      { fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 600, letterSpacing: '-0.01em', lineHeight: 1.3 },
 
   // Labels de section
-  label:   { fontFamily: "'DM Sans', sans-serif", fontSize: 11, fontWeight: 500, letterSpacing: '0.08em', textTransform: 'uppercase' as const, lineHeight: 1 },
-  labelMd: { fontFamily: "'DM Sans', sans-serif", fontSize: 12, fontWeight: 500, letterSpacing: '0.06em', textTransform: 'uppercase' as const, lineHeight: 1 },
+  label:   { fontFamily: 'var(--font-body)', fontSize: 11, fontWeight: 500, letterSpacing: '0.08em', textTransform: 'uppercase' as const, lineHeight: 1 },
+  labelMd: { fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 500, letterSpacing: '0.06em', textTransform: 'uppercase' as const, lineHeight: 1 },
 
   // Métriques chiffrées
-  metricXl: { fontFamily: "'Syne', sans-serif", fontSize: 40, fontWeight: 800, letterSpacing: '-0.05em', lineHeight: 1 },
-  metricLg: { fontFamily: "'Syne', sans-serif", fontSize: 32, fontWeight: 800, letterSpacing: '-0.04em', lineHeight: 1 },
-  metricMd: { fontFamily: "'Syne', sans-serif", fontSize: 24, fontWeight: 700, letterSpacing: '-0.03em', lineHeight: 1 },
+  metricXl: { fontFamily: 'var(--font-display)', fontSize: 40, fontWeight: 800, letterSpacing: '-0.05em', lineHeight: 1 },
+  metricLg: { fontFamily: 'var(--font-display)', fontSize: 32, fontWeight: 800, letterSpacing: '-0.04em', lineHeight: 1 },
+  metricMd: { fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 700, letterSpacing: '-0.03em', lineHeight: 1 },
 
   // Corps
-  body:   { fontFamily: "'DM Sans', sans-serif", fontSize: 14, fontWeight: 400, lineHeight: 1.5 },
-  bodySm: { fontFamily: "'DM Sans', sans-serif", fontSize: 12, fontWeight: 400, lineHeight: 1.5 },
-  bodyXs: { fontFamily: "'DM Sans', sans-serif", fontSize: 11, fontWeight: 400, lineHeight: 1.4 },
+  body:   { fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 400, lineHeight: 1.5 },
+  bodySm: { fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 400, lineHeight: 1.5 },
+  bodyXs: { fontFamily: 'var(--font-body)', fontSize: 11, fontWeight: 400, lineHeight: 1.4 },
 
   // Mono
-  monoMd: { fontFamily: "'DM Mono', monospace", fontSize: 14, fontWeight: 500 },
-  monoSm: { fontFamily: "'DM Mono', monospace", fontSize: 12, fontWeight: 500 },
-  monoXs: { fontFamily: "'DM Mono', monospace", fontSize: 11, fontWeight: 500 },
+  monoMd: { fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 500 },
+  monoSm: { fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 500 },
+  monoXs: { fontFamily: 'var(--font-body)', fontSize: 11, fontWeight: 500 },
 } as const
 
 // ─── Espacement ──────────────────────────────────────────────────

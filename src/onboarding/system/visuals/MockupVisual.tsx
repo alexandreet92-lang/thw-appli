@@ -226,10 +226,10 @@ function NutritionRings() {
             </g>
           )
         })}
-        <text x={cx} y={cy - 6} textAnchor="middle" fill="white" fontSize={18} fontWeight="800" fontFamily="DM Mono">1840</text>
-        <text x={cx} y={cy + 12} textAnchor="middle" fill="rgba(255,255,255,0.45)" fontSize={9} fontFamily="DM Sans">/ 2000 kcal</text>
+        <text x={cx} y={cy - 6} textAnchor="middle" fill="white" fontSize={18} fontWeight="800" fontFamily="var(--font-body)">1840</text>
+        <text x={cx} y={cy + 12} textAnchor="middle" fill="rgba(255,255,255,0.45)" fontSize={9} fontFamily="var(--font-body)">/ 2000 kcal</text>
         {rings.map(({ label, color, percent }, i) => (
-          <text key={label} x={cx + 16 + (r + i * gap)} y={cy + 4} fill={color} fontSize={9} fontFamily="DM Sans">{percent}% {label}</text>
+          <text key={label} x={cx + 16 + (r + i * gap)} y={cy + 4} fill={color} fontSize={9} fontFamily="var(--font-body)">{percent}% {label}</text>
         ))}
       </svg>
     </div>

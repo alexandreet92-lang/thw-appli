@@ -641,7 +641,7 @@ function StrengthBlockRenderer({ blocks, onChange, accent, exoHistory }: {
                         else upd[i] = { ...b, zone: parseInt(e.target.value) || 1 }
                         onChange(upd)
                       }}
-                      style={{ width: 38, padding: '3px 6px', borderRadius: 'var(--r-sm)', border: `1px solid ${accent}44`, background: `${accent}08`, color: accent, fontSize: 12, fontFamily: '"DM Mono",monospace', textAlign: 'center' as const, outline: 'none' }} />
+                      style={{ width: 38, padding: '3px 6px', borderRadius: 'var(--r-sm)', border: `1px solid ${accent}44`, background: `${accent}08`, color: accent, fontSize: 12, fontFamily: 'var(--font-body)', textAlign: 'center' as const, outline: 'none' }} />
                     <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>{isEmom ? 'min' : t('sed.roundsShort')}</span>
                   </div>
                 )}
@@ -651,7 +651,7 @@ function StrengthBlockRenderer({ blocks, onChange, accent, exoHistory }: {
                     <input type="number" min={0} max={600} step={15}
                       value={b.recoveryMin != null ? Math.round(b.recoveryMin * 60) : 90}
                       onChange={e => { const upd = [...blocks]; upd[i] = { ...b, recoveryMin: (parseInt(e.target.value) || 0) / 60 }; onChange(upd) }}
-                      style={{ width: 42, padding: '3px 6px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-dim)', fontSize: 12, fontFamily: '"DM Mono",monospace', textAlign: 'center' as const, outline: 'none' }} />
+                      style={{ width: 42, padding: '3px 6px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-dim)', fontSize: 12, fontFamily: 'var(--font-body)', textAlign: 'center' as const, outline: 'none' }} />
                     <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>{t('sed.sRest')}</span>
                   </div>
                 )}
@@ -765,7 +765,7 @@ function StrengthBlockRenderer({ blocks, onChange, accent, exoHistory }: {
             }}>
               {/* Ligne 1 : numéro + nom + supprimer */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                <span style={{ fontSize: 10, color: 'var(--text-dim)', fontFamily: '"DM Mono", monospace', width: 18, flexShrink: 0 }}>{exoCount(i)}</span>
+                <span style={{ fontSize: 10, color: 'var(--text-dim)', fontFamily: 'var(--font-body)', width: 18, flexShrink: 0 }}>{exoCount(i)}</span>
                 <input value={b.label} onChange={e => {
                   const upd = [...blocks]; upd[i] = { ...b, label: e.target.value }; onChange(upd)
                 }} style={{
@@ -798,7 +798,7 @@ function StrengthBlockRenderer({ blocks, onChange, accent, exoHistory }: {
                     <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>{t('sed.series')}</span>
                     <input type="number" min={1} max={20} value={b.zone ?? 3}
                       onChange={e => { const upd = [...blocks]; upd[i] = { ...b, zone: parseInt(e.target.value) || 1 }; onChange(upd) }}
-                      style={{ width: 40, padding: '4px 6px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 13, fontFamily: '"DM Mono", monospace', textAlign: 'center' as const, outline: 'none' }} />
+                      style={{ width: 40, padding: '4px 6px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 13, fontFamily: 'var(--font-body)', textAlign: 'center' as const, outline: 'none' }} />
                   </div>
                 )}
 
@@ -809,7 +809,7 @@ function StrengthBlockRenderer({ blocks, onChange, accent, exoHistory }: {
                   <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>Reps</span>
                   <input type="number" min={0} max={200} value={b.reps ?? 10}
                     onChange={e => { const upd = [...blocks]; upd[i] = { ...b, reps: parseInt(e.target.value) || 0 }; onChange(upd) }}
-                    style={{ width: 44, padding: '4px 6px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 13, fontFamily: '"DM Mono", monospace', textAlign: 'center' as const, outline: 'none' }} />
+                    style={{ width: 44, padding: '4px 6px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 13, fontFamily: 'var(--font-body)', textAlign: 'center' as const, outline: 'none' }} />
                 </div>
 
                 {/* Charge */}
@@ -817,7 +817,7 @@ function StrengthBlockRenderer({ blocks, onChange, accent, exoHistory }: {
                   <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>{t('sed.load')}</span>
                   <input value={b.value || ''} placeholder="—"
                     onChange={e => { const upd = [...blocks]; upd[i] = { ...b, value: e.target.value }; onChange(upd) }}
-                    style={{ width: 56, padding: '4px 6px', borderRadius: 'var(--r-sm)', border: `1px solid ${accent}44`, background: `${accent}08`, color: accent, fontSize: 13, fontFamily: '"DM Mono", monospace', textAlign: 'center' as const, fontWeight: 700, outline: 'none' }} />
+                    style={{ width: 56, padding: '4px 6px', borderRadius: 'var(--r-sm)', border: `1px solid ${accent}44`, background: `${accent}08`, color: accent, fontSize: 13, fontFamily: 'var(--font-body)', textAlign: 'center' as const, fontWeight: 700, outline: 'none' }} />
                   <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>kg</span>
                 </div>
 
@@ -827,7 +827,7 @@ function StrengthBlockRenderer({ blocks, onChange, accent, exoHistory }: {
                   <input type="number" min={0} max={600} step={15}
                     value={b.recoveryMin != null ? Math.round(b.recoveryMin * 60) : 90}
                     onChange={e => { const upd = [...blocks]; upd[i] = { ...b, recoveryMin: (parseInt(e.target.value) || 0) / 60 }; onChange(upd) }}
-                    style={{ width: 48, padding: '4px 6px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 13, fontFamily: '"DM Mono", monospace', textAlign: 'center' as const, outline: 'none' }} />
+                    style={{ width: 48, padding: '4px 6px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 13, fontFamily: 'var(--font-body)', textAlign: 'center' as const, outline: 'none' }} />
                   <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>s</span>
                 </div>
 
@@ -835,7 +835,7 @@ function StrengthBlockRenderer({ blocks, onChange, accent, exoHistory }: {
                 {(b.effortMin ?? 0) > 0 && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                     <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>{t('sed.time')}</span>
-                    <span style={{ fontSize: 13, fontFamily: '"DM Mono", monospace', color: accent, fontWeight: 600 }}>
+                    <span style={{ fontSize: 13, fontFamily: 'var(--font-body)', color: accent, fontWeight: 600 }}>
                       {Math.round((b.effortMin ?? 0) * 60)}s
                     </span>
                   </div>
@@ -1283,7 +1283,7 @@ function BlockBuilder({ sport, blocks, onChange, nutritionItems, exoHistory, ath
           <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 3 }}>
             {CIRCUIT_TYPES.map(ct => (
               <div key={ct.id} style={{ display: 'flex', gap: 8, alignItems: 'baseline' }}>
-                <span style={{ fontSize: 11, fontFamily: '"DM Mono",monospace', color: accentBB, fontWeight: 700, minWidth: 18, flexShrink: 0 }}>{ct.icon}</span>
+                <span style={{ fontSize: 11, fontFamily: 'var(--font-body)', color: accentBB, fontWeight: 700, minWidth: 18, flexShrink: 0 }}>{ct.icon}</span>
                 <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text)', minWidth: 58, flexShrink: 0 }}>{ct.label}</span>
                 <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>{ct.desc}</span>
               </div>
@@ -1346,11 +1346,11 @@ function BlockBuilder({ sport, blocks, onChange, nutritionItems, exoHistory, ath
                   <input value={b.label} onChange={e => onChange(blocks.map((x,j)=>j===bi?{...x,label:e.target.value}:x))} style={{ flex:1, background:'none', border:'none', outline:'none', fontSize:13, fontWeight:700, color:'var(--text)', fontFamily: 'var(--font-body)', minWidth:0 }} />
                   <div style={{ display:'flex', gap:8, alignItems:'center', flexShrink:0 }}>
                     <div style={{ display:'flex', alignItems:'center', gap:4 }}>
-                      <input type="number" min={1} max={20} value={b.zone??3} onChange={e=>onChange(blocks.map((x,j)=>j===bi?{...x,zone:parseInt(e.target.value)||3}:x))} style={{ width:36,padding:'3px 5px',borderRadius: 'var(--r-sm)',border:'1px solid var(--border)',background:'var(--bg-card2)',color:cc,fontSize:12,fontFamily:'"DM Mono",monospace',textAlign:'center' as const,outline:'none' }}/>
+                      <input type="number" min={1} max={20} value={b.zone??3} onChange={e=>onChange(blocks.map((x,j)=>j===bi?{...x,zone:parseInt(e.target.value)||3}:x))} style={{ width:36,padding:'3px 5px',borderRadius: 'var(--r-sm)',border:'1px solid var(--border)',background:'var(--bg-card2)',color:cc,fontSize:12,fontFamily:'var(--font-body)',textAlign:'center' as const,outline:'none' }}/>
                       <span style={{fontSize:10,color:'var(--text-dim)'}}>rounds</span>
                     </div>
                     <div style={{ display:'flex', alignItems:'center', gap:4 }}>
-                      <input type="number" min={0} max={10} step={0.5} value={b.recoveryMin??2} onChange={e=>onChange(blocks.map((x,j)=>j===bi?{...x,recoveryMin:parseFloat(e.target.value)||0}:x))} style={{ width:42,padding:'3px 5px',borderRadius: 'var(--r-sm)',border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text-dim)',fontSize:12,fontFamily:'"DM Mono",monospace',textAlign:'center' as const,outline:'none' }}/>
+                      <input type="number" min={0} max={10} step={0.5} value={b.recoveryMin??2} onChange={e=>onChange(blocks.map((x,j)=>j===bi?{...x,recoveryMin:parseFloat(e.target.value)||0}:x))} style={{ width:42,padding:'3px 5px',borderRadius: 'var(--r-sm)',border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text-dim)',fontSize:12,fontFamily:'var(--font-body)',textAlign:'center' as const,outline:'none' }}/>
                       <span style={{fontSize:10,color:'var(--text-dim)'}}>{t('sed.minRest')}</span>
                     </div>
                   </div>
@@ -2353,7 +2353,7 @@ function ElevationChart({ profile, totalKm, accent, onHover, terrainBlocks, onBl
           return (
             <g key={`y${ele}`}>
               <line x1={PL} y1={y} x2={W - PR} y2={y} stroke="var(--border)" strokeWidth={0.6} opacity={0.5} />
-              <text x={PL - 7} y={y + 3.5} textAnchor="end" fontSize={10.5} fill="var(--text-mid)" fontWeight={600} fontFamily='"DM Mono",monospace'>{ele}</text>
+              <text x={PL - 7} y={y + 3.5} textAnchor="end" fontSize={10.5} fill="var(--text-mid)" fontWeight={600} fontFamily='var(--font-body)'>{ele}</text>
             </g>
           )
         })}
@@ -2363,13 +2363,13 @@ function ElevationChart({ profile, totalKm, accent, onHover, terrainBlocks, onBl
           return (
             <g key={`x${km}`}>
               <line x1={x} y1={PT} x2={x} y2={PT + pH} stroke="var(--border)" strokeWidth={0.6} opacity={0.35} />
-              <text x={x} y={H - 8} textAnchor="middle" fontSize={10.5} fill="var(--text-mid)" fontWeight={600} fontFamily='"DM Mono",monospace'>{km}</text>
+              <text x={x} y={H - 8} textAnchor="middle" fontSize={10.5} fill="var(--text-mid)" fontWeight={600} fontFamily='var(--font-body)'>{km}</text>
             </g>
           )
         })}
         {/* Axis unit labels */}
-        <text x={PL - 7} y={PT - 5} textAnchor="end" fontSize={9.5} fill="var(--text-dim)" fontWeight={700} fontFamily='"DM Mono",monospace'>m</text>
-        <text x={W - PR} y={H - 8} textAnchor="end" fontSize={9.5} fill="var(--text-dim)" fontWeight={700} fontFamily='"DM Mono",monospace'>km</text>
+        <text x={PL - 7} y={PT - 5} textAnchor="end" fontSize={9.5} fill="var(--text-dim)" fontWeight={700} fontFamily='var(--font-body)'>m</text>
+        <text x={W - PR} y={H - 8} textAnchor="end" fontSize={9.5} fill="var(--text-dim)" fontWeight={700} fontFamily='var(--font-body)'>km</text>
         {/* Axes */}
         <line x1={PL} y1={PT} x2={PL} y2={PT + pH} stroke="var(--border)" strokeWidth={0.9} />
         <line x1={PL} y1={PT + pH} x2={W - PR} y2={PT + pH} stroke="var(--border)" strokeWidth={0.9} />
@@ -2394,7 +2394,7 @@ function ElevationChart({ profile, totalKm, accent, onHover, terrainBlocks, onBl
               />
               {/* Label above chart area */}
               {w > 18 && (
-                <text x={(x1 + x2) / 2} y={PT - 2} textAnchor="middle" fontSize={7} fill={zc} fontWeight={700} fontFamily='"DM Mono",monospace'>
+                <text x={(x1 + x2) / 2} y={PT - 2} textAnchor="middle" fontSize={7} fill={zc} fontWeight={700} fontFamily='var(--font-body)'>
                   {block.value ? `${block.value}W` : `Z${block.zone}`}
                 </text>
               )}
@@ -2513,14 +2513,14 @@ function ElevationChart({ profile, totalKm, accent, onHover, terrainBlocks, onBl
               {/* Watts label — white bold, centered */}
               {w > 20 && gaugeH > 28 && (
                 <text x={(x1+x2)/2} y={yTop+14} textAnchor="middle" fontSize={hasIntervals?9:10}
-                  fill="#fff" fontWeight={900} fontFamily='"DM Mono",monospace' opacity={0.95}
+                  fill="#fff" fontWeight={900} fontFamily='var(--font-body)' opacity={0.95}
                   style={{ pointerEvents:'none' }}>
                   {hasIntervals ? `⚡ ${pg.label.replace('⚡','').trim()}` : `${pg.watts}W`}
                 </text>
               )}
               {w > 20 && gaugeH > 44 && !hasIntervals && (
                 <text x={(x1+x2)/2} y={yTop+26} textAnchor="middle" fontSize={8}
-                  fill="#fff" fontWeight={600} fontFamily='"DM Mono",monospace' opacity={0.7}
+                  fill="#fff" fontWeight={600} fontFamily='var(--font-body)' opacity={0.7}
                   style={{ pointerEvents:'none' }}>
                   {zLbl}
                 </text>
@@ -2569,15 +2569,15 @@ function ElevationChart({ profile, totalKm, accent, onHover, terrainBlocks, onBl
               <rect x={x1} y={PT} width={w} height={pH} fill="#f97316" opacity={0.18} rx={3} />
               <line x1={x1} y1={PT} x2={x1} y2={PT + pH} stroke="#f97316" strokeWidth={2} opacity={0.9} strokeDasharray="4 2" />
               <line x1={x2} y1={PT} x2={x2} y2={PT + pH} stroke="#f97316" strokeWidth={2} opacity={0.9} strokeDasharray="4 2" />
-              <text x={(x1 + x2) / 2} y={PT + 14} textAnchor="middle" fontSize={8} fill="#f97316" fontWeight={800} fontFamily='"DM Mono",monospace'>
+              <text x={(x1 + x2) / 2} y={PT + 14} textAnchor="middle" fontSize={8} fill="#f97316" fontWeight={800} fontFamily='var(--font-body)'>
                 {Math.abs(drawDrag.currentKm - drawDrag.startKm).toFixed(1)} km
               </text>
             </g>
           )
         })()}
         {/* min/max labels */}
-        <text x={PL + 6} y={PT + pH - 6} fontSize={8} fill="var(--text-dim)" fontFamily='"DM Mono",monospace'>{Math.round(minEle)}m</text>
-        <text x={W - PR - 6} y={PT + 10} textAnchor="end" fontSize={8} fill={accent} fontWeight={600} fontFamily='"DM Mono",monospace'>{Math.round(maxEle)}m</text>
+        <text x={PL + 6} y={PT + pH - 6} fontSize={8} fill="var(--text-dim)" fontFamily='var(--font-body)'>{Math.round(minEle)}m</text>
+        <text x={W - PR - 6} y={PT + 10} textAnchor="end" fontSize={8} fill={accent} fontWeight={600} fontFamily='var(--font-body)'>{Math.round(maxEle)}m</text>
         {/* Cursor */}
         {cursor && !dragging && (
           <g>
@@ -2665,7 +2665,7 @@ function ElevationChart({ profile, totalKm, accent, onHover, terrainBlocks, onBl
               <div key={ri} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, marginBottom: 4 }}>
                 <span style={{ width: 18, textAlign: 'center' }}>{icon}</span>
                 <span style={{ color: 'var(--text-dim)', flex: 1 }}>{label}</span>
-                <span style={{ fontWeight: 700, fontFamily: '"DM Mono",monospace', color: ri === 0 ? gradTopT : 'var(--text)' }}>{val}</span>
+                <span style={{ fontWeight: 700, fontFamily: 'var(--font-body)', color: ri === 0 ? gradTopT : 'var(--text)' }}>{val}</span>
               </div>
             ))}
             {/* Action buttons */}
@@ -2695,9 +2695,9 @@ function ElevationChart({ profile, totalKm, accent, onHover, terrainBlocks, onBl
           borderRadius: 'var(--r-sm)', background: 'var(--bg-card)', border: '1px solid var(--border)',
           marginTop: 5, fontSize: 11, justifyContent: 'center', flexWrap: 'wrap' as const,
         }}>
-          <span style={{ color: 'var(--text-dim)' }}>km <strong style={{ color: 'var(--text)', fontFamily: '"DM Mono",monospace' }}>{cursor.distKm.toFixed(1)}</strong></span>
-          <span style={{ color: 'var(--text-dim)' }}>{t('sed.altitude')} <strong style={{ color: accent, fontFamily: '"DM Mono",monospace' }}>{cursor.ele}m</strong></span>
-          <span style={{ color: 'var(--text-dim)' }}>{t('sed.slopeLower')} <strong style={{ color: slopeColor, fontFamily: '"DM Mono",monospace' }}>{cursor.slope > 0 ? '+' : ''}{cursor.slope}%</strong></span>
+          <span style={{ color: 'var(--text-dim)' }}>km <strong style={{ color: 'var(--text)', fontFamily: 'var(--font-body)' }}>{cursor.distKm.toFixed(1)}</strong></span>
+          <span style={{ color: 'var(--text-dim)' }}>{t('sed.altitude')} <strong style={{ color: accent, fontFamily: 'var(--font-body)' }}>{cursor.ele}m</strong></span>
+          <span style={{ color: 'var(--text-dim)' }}>{t('sed.slopeLower')} <strong style={{ color: slopeColor, fontFamily: 'var(--font-body)' }}>{cursor.slope > 0 ? '+' : ''}{cursor.slope}%</strong></span>
         </div>
       )}
     </div>
@@ -3259,17 +3259,17 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog, exoHis
               <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 5 }}>
                 {circ.exos.map((exo, ei) => (
                   <div key={exo.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-card)' }}>
-                    <span style={{ fontSize: 11, color: 'var(--text-dim)', fontFamily: '"DM Mono",monospace', width: 18, flexShrink: 0 }}>{ei + 1}</span>
+                    <span style={{ fontSize: 11, color: 'var(--text-dim)', fontFamily: 'var(--font-body)', width: 18, flexShrink: 0 }}>{ei + 1}</span>
                     <div style={{ flex: 1 }}>
                       <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{exo.label}</span>
-                      <span style={{ fontSize: 11, color: 'var(--text-dim)', marginLeft: 8, fontFamily: '"DM Mono",monospace' }}>
+                      <span style={{ fontSize: 11, color: 'var(--text-dim)', marginLeft: 8, fontFamily: 'var(--font-body)' }}>
                         {circ.type === 'series'
                           ? `${exo.targetSets}×${exo.targetReps}${exo.targetWeight ? ` @${exo.targetWeight}kg` : ''}`
                           : `${exo.targetReps} reps${exo.targetWeight ? ` @${exo.targetWeight}kg` : ''}`
                         }
                       </span>
                     </div>
-                    <span style={{ fontSize: 10, color: 'var(--text-dim)', fontFamily: '"DM Mono",monospace' }}>{fmtTimer(exo.restSec)}</span>
+                    <span style={{ fontSize: 10, color: 'var(--text-dim)', fontFamily: 'var(--font-body)' }}>{fmtTimer(exo.restSec)}</span>
                   </div>
                 ))}
               </div>
@@ -3295,7 +3295,7 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog, exoHis
     return (
       <div onClick={e => e.stopPropagation()} style={{ position: 'fixed' as const, inset: 0, zIndex: 2000, background: 'var(--bg)', display: 'flex', flexDirection: 'column' as const, alignItems: 'center', justifyContent: 'center' }}>
         <p style={{ fontSize: 11, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.12em', margin: '0 0 20px', fontWeight: 600 }}>{t('sed.getReady')}</p>
-        <div style={{ fontSize: 100, fontWeight: 900, fontFamily: '"DM Mono",monospace', color: accent, lineHeight: 1, animation: 'pulse 1s ease-in-out infinite' }}>{countdownSec}</div>
+        <div style={{ fontSize: 100, fontWeight: 900, fontFamily: 'var(--font-body)', color: accent, lineHeight: 1, animation: 'pulse 1s ease-in-out infinite' }}>{countdownSec}</div>
         <p style={{ fontSize: 14, color: 'var(--text)', margin: '24px 0 0', fontWeight: 600 }}>{currentCircuit?.exos[0]?.label ?? sessionTitle}</p>
         <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: '6px 0 0' }}>
           {currentCircuit?.exos[0]?.targetSets}×{currentCircuit?.exos[0]?.targetReps}
@@ -3355,7 +3355,7 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog, exoHis
             ] as { label: string; value: string }[]).map(kpi => (
               <div key={kpi.label} style={{ padding: '10px 6px', borderRadius: 'var(--r-sm)', background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
                 <p style={{ fontSize: 10, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.07em', margin: '0 0 3px' }}>{kpi.label}</p>
-                <p style={{ fontSize: 15, fontWeight: 800, fontFamily: '"DM Mono",monospace', color: accent, margin: 0 }}>{kpi.value}</p>
+                <p style={{ fontSize: 15, fontWeight: 800, fontFamily: 'var(--font-body)', color: accent, margin: 0 }}>{kpi.value}</p>
               </div>
             ))}
           </div>
@@ -3371,12 +3371,12 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog, exoHis
                   <div key={e.id} style={{ padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
                       <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{e.label}</span>
-                      <span style={{ fontSize: 11, color: 'var(--text-dim)', fontFamily: '"DM Mono",monospace' }}>{t('sed.setsCount', { n: e.logSets.length })}</span>
+                      <span style={{ fontSize: 11, color: 'var(--text-dim)', fontFamily: 'var(--font-body)' }}>{t('sed.setsCount', { n: e.logSets.length })}</span>
                     </div>
                     <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' as const }}>
                       {e.logSets.map((set, si) => (
                         <span key={si} style={{
-                          fontSize: 10, fontFamily: '"DM Mono",monospace', padding: '3px 8px', borderRadius: 'var(--r-sm)',
+                          fontSize: 10, fontFamily: 'var(--font-body)', padding: '3px 8px', borderRadius: 'var(--r-sm)',
                           background: set.note === 'fail' ? 'rgba(239,68,68,0.12)' : set.note === 'hard' ? 'rgba(249,115,22,0.12)' : 'var(--bg-card)',
                           border: '1px solid var(--border)',
                           color: set.note === 'fail' ? '#ef4444' : set.note === 'hard' ? '#f97316' : 'var(--text-mid)',
@@ -3450,7 +3450,7 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog, exoHis
                 : ''}
             </p>
           </div>
-          <span style={{ fontSize: 16, fontFamily: '"DM Mono",monospace', color: 'var(--text-mid)', fontWeight: 700, margin: '0 12px', flexShrink: 0 }}>{fmtTimer(elapsed)}</span>
+          <span style={{ fontSize: 16, fontFamily: 'var(--font-body)', color: 'var(--text-mid)', fontWeight: 700, margin: '0 12px', flexShrink: 0 }}>{fmtTimer(elapsed)}</span>
           <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
             <button onClick={() => setVibrateEnabled(v => !v)} title={vibrateEnabled ? t('sed.vibrationOn') : t('sed.vibrationOff')} style={{ background: 'none', border: '1px solid var(--border)', color: vibrateEnabled ? accent : 'var(--text-dim)', fontSize: 14, cursor: 'pointer', padding: '5px 8px', borderRadius: 'var(--r-sm)', lineHeight: 1 }}>
               {vibrateEnabled ? '📳' : '🔕'}
@@ -3531,8 +3531,8 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog, exoHis
                       color: done ? '#fff' : active ? accent : 'var(--text-dim)',
                       transition: 'all 0.25s',
                     }}>
-                      <span style={{ fontSize: 14, fontWeight: 800, fontFamily: '"DM Mono",monospace', lineHeight: 1 }}>{i + 1}</span>
-                      {done && set && <span style={{ fontSize: 10, opacity: 0.85, marginTop: 2, fontFamily: '"DM Mono",monospace' }}>{set.weight || '—'}×{set.reps}</span>}
+                      <span style={{ fontSize: 14, fontWeight: 800, fontFamily: 'var(--font-body)', lineHeight: 1 }}>{i + 1}</span>
+                      {done && set && <span style={{ fontSize: 10, opacity: 0.85, marginTop: 2, fontFamily: 'var(--font-body)' }}>{set.weight || '—'}×{set.reps}</span>}
                     </div>
                   )
                 })}
@@ -3552,7 +3552,7 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog, exoHis
                     />
                   </svg>
                   <div style={{ position: 'absolute' as const, inset: 0, display: 'flex', flexDirection: 'column' as const, alignItems: 'center', justifyContent: 'center' }}>
-                    <span style={{ fontSize: 44, fontWeight: 900, fontFamily: '"DM Mono",monospace', color: accent, lineHeight: 1 }}>{fmtTimer(restRemaining)}</span>
+                    <span style={{ fontSize: 44, fontWeight: 900, fontFamily: 'var(--font-body)', color: accent, lineHeight: 1 }}>{fmtTimer(restRemaining)}</span>
                     <span style={{ fontSize: 10, color: 'var(--text-dim)', marginTop: 5, letterSpacing: '0.08em' }}>{t('sed.remaining')}</span>
                   </div>
                 </div>
@@ -3560,7 +3560,7 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog, exoHis
                   {[-30, -10, +10, +30].map(d => (
                     <button key={d} onClick={() => adjustRest(d)} style={{
                       padding: '9px 16px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)',
-                      background: 'var(--bg-card)', color: 'var(--text-mid)', fontSize: 12, cursor: 'pointer', fontFamily: '"DM Mono",monospace', fontWeight: 600,
+                      background: 'var(--bg-card)', color: 'var(--text-mid)', fontSize: 12, cursor: 'pointer', fontFamily: 'var(--font-body)', fontWeight: 600,
                     }}>{d > 0 ? '+' : ''}{d}s</button>
                   ))}
                 </div>
@@ -3572,7 +3572,7 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog, exoHis
                     </p>
                     <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', margin: 0 }}>
                       {nextExo.label}
-                      <span style={{ fontSize: 11, color: 'var(--text-dim)', marginLeft: 8, fontFamily: '"DM Mono",monospace' }}>
+                      <span style={{ fontSize: 11, color: 'var(--text-dim)', marginLeft: 8, fontFamily: 'var(--font-body)' }}>
                         {nextExo.targetReps} reps{nextExo.targetWeight ? ` @${nextExo.targetWeight}kg` : ''}
                       </span>
                     </p>
@@ -3600,7 +3600,7 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog, exoHis
                         width: 100, padding: '12px 10px', borderRadius: 'var(--r-md)',
                         border: `2px solid ${accent}55`,
                         background: 'var(--bg-card)', color: accent,
-                        fontSize: 36, fontFamily: '"DM Mono",monospace',
+                        fontSize: 36, fontFamily: 'var(--font-body)',
                         textAlign: 'center' as const, fontWeight: 900, outline: 'none',
                       }}
                     />
@@ -3617,7 +3617,7 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog, exoHis
                         width: 80, padding: '12px 8px', borderRadius: 'var(--r-md)',
                         border: '1px solid var(--border)',
                         background: 'var(--bg-card)', color: 'var(--text)',
-                        fontSize: 32, fontFamily: '"DM Mono",monospace',
+                        fontSize: 32, fontFamily: 'var(--font-body)',
                         textAlign: 'center' as const, fontWeight: 800, outline: 'none',
                       }}
                     />
@@ -3679,7 +3679,7 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog, exoHis
                 </p>
                 <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-mid)', margin: 0 }}>
                   {nextExo.label}
-                  <span style={{ fontSize: 11, color: 'var(--text-dim)', marginLeft: 8, fontFamily: '"DM Mono",monospace' }}>
+                  <span style={{ fontSize: 11, color: 'var(--text-dim)', marginLeft: 8, fontFamily: 'var(--font-body)' }}>
                     {nextExo.targetReps} reps{nextExo.targetWeight ? ` @${nextExo.targetWeight}kg` : ''}
                   </span>
                 </p>
@@ -5711,7 +5711,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                     <span style={{ fontSize: 10, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.08em', lineHeight: 1.4 }}>
                       {sport === 'bike' || sport === 'elliptique' ? t('sed.estAvgWatts') : t('sed.estAvgPace')}
                     </span>
-                    <span style={{ fontSize: 17, fontWeight: 800, color: accent, fontFamily: '"DM Mono", monospace', letterSpacing: '-0.02em' }}>
+                    <span style={{ fontSize: 17, fontWeight: 800, color: accent, fontFamily: 'var(--font-body)', letterSpacing: '-0.02em' }}>
                       {sessionAvg.avgWatts ? `${sessionAvg.avgWatts}W` : sessionAvg.avgPace}
                     </span>
                   </div>
@@ -5722,13 +5722,13 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                     {ref && (
                       <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>
                         {ref.label}{' '}
-                        <strong style={{ fontFamily: '"DM Mono", monospace', color: 'var(--text-mid)', fontWeight: 700 }}>{ref.value}</strong>
+                        <strong style={{ fontFamily: 'var(--font-body)', color: 'var(--text-mid)', fontWeight: 700 }}>{ref.value}</strong>
                       </span>
                     )}
                     {hrRef && (
                       <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>
                         {hrRef.label}{' '}
-                        <strong style={{ fontFamily: '"DM Mono", monospace', color: 'var(--text-mid)', fontWeight: 700 }}>{hrRef.value}</strong>
+                        <strong style={{ fontFamily: 'var(--font-body)', color: 'var(--text-mid)', fontWeight: 700 }}>{hrRef.value}</strong>
                         {athleteData?.hrMax && (
                           <span style={{ fontSize: 10, color: 'var(--text-dim)', marginLeft: 4 }}>/ {t('sed.hrMax')} {athleteData.hrMax}</span>
                         )}
@@ -5812,17 +5812,17 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                   <div style={{ display: 'flex', gap: 14, alignItems: 'center', flexShrink: 0 }}>
                     {parcoursData.distance != null && (
                       <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>
-                        <strong style={{ color: accent, fontFamily: '"DM Mono",monospace', fontSize: 13 }}>{parcoursData.distance}</strong> km
+                        <strong style={{ color: accent, fontFamily: 'var(--font-body)', fontSize: 13 }}>{parcoursData.distance}</strong> km
                       </span>
                     )}
                     {parcoursData.elevation != null && (
                       <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>
-                        <strong style={{ color: 'var(--text)', fontFamily: '"DM Mono",monospace', fontSize: 13 }}>{parcoursData.elevation}</strong> m D+
+                        <strong style={{ color: 'var(--text)', fontFamily: 'var(--font-body)', fontSize: 13 }}>{parcoursData.elevation}</strong> m D+
                       </span>
                     )}
                     {parcoursData.distance != null && dur > 0 && (
                       <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>
-                        <strong style={{ color: 'var(--text)', fontFamily: '"DM Mono",monospace', fontSize: 13 }}>
+                        <strong style={{ color: 'var(--text)', fontFamily: 'var(--font-body)', fontSize: 13 }}>
                           {Math.round((parcoursData.distance / (dur / 60)) * 10) / 10}
                         </strong> km/h
                       </span>
@@ -6270,13 +6270,13 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                       <g key={i}>
                         <path d={secP(R, sa, ea)} fill={z.c} opacity={0.13} />
                         {fillR > RI && <path d={secP(fillR, sa, ea)} fill={z.c} opacity={0.78} />}
-                        <text x={lOx.toFixed(1)} y={(lOy + fSz * 0.45).toFixed(1)} textAnchor="middle" fontSize={fSz} fontWeight={700} fill={pct > 0 ? z.c : 'var(--text-dim)'} fontFamily="DM Mono,monospace">{z.label}</text>
-                        {pct > 0 && <text x={lIx.toFixed(1)} y={(lIy + fSz * 0.4).toFixed(1)} textAnchor="middle" fontSize={fSz * 0.88} fontWeight={600} fill={z.c} fontFamily="DM Mono,monospace">{pct}%</text>}
+                        <text x={lOx.toFixed(1)} y={(lOy + fSz * 0.45).toFixed(1)} textAnchor="middle" fontSize={fSz} fontWeight={700} fill={pct > 0 ? z.c : 'var(--text-dim)'} fontFamily="var(--font-body)">{z.label}</text>
+                        {pct > 0 && <text x={lIx.toFixed(1)} y={(lIy + fSz * 0.4).toFixed(1)} textAnchor="middle" fontSize={fSz * 0.88} fontWeight={600} fill={z.c} fontFamily="var(--font-body)">{pct}%</text>}
                       </g>
                     )
                   })}
                   <circle cx={cx} cy={cy} r={RI} fill="var(--bg-card)" />
-                  <text x={cx} y={cy + sz * 0.025} textAnchor="middle" fontSize={sz >= 160 ? 9 : 7.5} fontWeight={800} fill="var(--text-dim)" fontFamily="DM Mono,monospace">{unit}</text>
+                  <text x={cx} y={cy + sz * 0.025} textAnchor="middle" fontSize={sz >= 160 ? 9 : 7.5} fontWeight={800} fill="var(--text-dim)" fontFamily="var(--font-body)">{unit}</text>
                 </svg>
                 {/* Legend */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px 6px', width: '100%' }}>
@@ -7122,7 +7122,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                     {!isStrength && (() => {
                       const tot = parseSessionTextMinutes(aiPrompt)
                       return tot > 0 ? (
-                        <span style={{ position: 'absolute', top: 10, right: 10, zIndex: 3, padding: '3px 10px', borderRadius: 'var(--r-pill)', background: accent, color: '#fff', fontSize: 11.5, fontWeight: 800, fontFamily: '"DM Mono", monospace', boxShadow: '0 1px 5px rgba(0,0,0,0.18)', pointerEvents: 'none' }}>{formatHM(tot)}</span>
+                        <span style={{ position: 'absolute', top: 10, right: 10, zIndex: 3, padding: '3px 10px', borderRadius: 'var(--r-pill)', background: accent, color: '#fff', fontSize: 11.5, fontWeight: 800, fontFamily: 'var(--font-body)', boxShadow: '0 1px 5px rgba(0,0,0,0.18)', pointerEvents: 'none' }}>{formatHM(tot)}</span>
                       ) : null
                     })()}
                     <textarea value={aiPrompt}
@@ -7143,7 +7143,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                       style={{
                         width: '100%', background: 'var(--bg-card2)', border: '1px solid var(--border)',
                         borderRadius: 'var(--r-sm)', color: 'var(--text)', padding: 12, fontSize: 13, outline: 'none',
-                        resize: 'vertical' as const, fontFamily: '"DM Sans", sans-serif', lineHeight: 1.6,
+                        resize: 'vertical' as const, fontFamily: 'var(--font-body)', lineHeight: 1.6,
                         boxSizing: 'border-box' as const, minHeight: 140,
                       }} />
                     {showSlashMenu && isStrength && (() => {
@@ -7260,7 +7260,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                             }}>
                               {/* En-tête du moment */}
                               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: items.length > 0 ? 8 : 0 }}>
-                                <span style={{ fontSize: 12, fontWeight: 700, color: accent, fontFamily: '"DM Mono", monospace', minWidth: 44 }}>
+                                <span style={{ fontSize: 12, fontWeight: 700, color: accent, fontFamily: 'var(--font-body)', minWidth: 44 }}>
                                   {timeMin === 0 ? t('sed.startShort') : `${timeMin}'`}
                                 </span>
                                 <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
@@ -7308,13 +7308,13 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                                   <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
                                     <input type="number" min={0} value={item.glucidesG}
                                       onChange={e => setNutritionItems(prev => prev.map(x => x.id === item.id ? { ...x, glucidesG: parseInt(e.target.value) || 0 } : x))}
-                                      style={{ width: 38, padding: '3px 6px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-card)', color: accent, fontSize: 11, fontFamily: '"DM Mono",monospace', fontWeight: 700, textAlign: 'center' as const, outline: 'none' }} />
+                                      style={{ width: 38, padding: '3px 6px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-card)', color: accent, fontSize: 11, fontFamily: 'var(--font-body)', fontWeight: 700, textAlign: 'center' as const, outline: 'none' }} />
                                     <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>g</span>
                                   </div>
                                   {/* Quantité */}
                                   <input value={item.quantity} placeholder={t('sed.qtyShort')}
                                     onChange={e => setNutritionItems(prev => prev.map(x => x.id === item.id ? { ...x, quantity: e.target.value } : x))}
-                                    style={{ width: 56, padding: '3px 6px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-mid)', fontSize: 11, fontFamily: '"DM Mono",monospace', outline: 'none' }} />
+                                    style={{ width: 56, padding: '3px 6px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-mid)', fontSize: 11, fontFamily: 'var(--font-body)', outline: 'none' }} />
                                   {/* Supprimer */}
                                   <button onClick={() => setNutritionItems(prev => prev.filter(x => x.id !== item.id))} style={{
                                     background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 14, padding: 0, lineHeight: 1,
@@ -7373,7 +7373,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                     style={{
                       width: '100%', background: 'var(--bg-card)', border: '1px solid var(--border)',
                       borderRadius: 'var(--r-sm)', color: 'var(--text)', padding: 12, fontSize: 12, outline: 'none',
-                      resize: 'vertical' as const, fontFamily: '"DM Sans", sans-serif', lineHeight: 1.5,
+                      resize: 'vertical' as const, fontFamily: 'var(--font-body)', lineHeight: 1.5,
                       boxSizing: 'border-box' as const,
                     }} />
                   <button onClick={async () => {

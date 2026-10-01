@@ -90,9 +90,9 @@ export function TokenGauge({ value, total, size = 248, label, sub, run = true, d
         </defs>
       </svg>
       <div style={{ position: 'absolute', inset: 0, zIndex: 2, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
-        <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 10, fontWeight: 500, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'var(--text-dim)', marginBottom: 6 }}>{label}</div>
-        <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 46, fontWeight: 800, letterSpacing: '-0.045em', lineHeight: 0.95, color: 'var(--text)' }}>{fmt(shown)}</div>
-        <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, color: 'var(--text-dim)', marginTop: 6 }}>{sub}</div>
+        <div style={{ fontFamily: 'var(--font-body)', fontSize: 10, fontWeight: 500, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'var(--text-dim)', marginBottom: 6 }}>{label}</div>
+        <div style={{ fontFamily: 'var(--font-display)', fontSize: 46, fontWeight: 800, letterSpacing: '-0.045em', lineHeight: 0.95, color: 'var(--text)' }}>{fmt(shown)}</div>
+        <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--text-dim)', marginTop: 6 }}>{sub}</div>
       </div>
     </div>
   )
@@ -106,7 +106,7 @@ export function Header() {
         <a href={APP_URL} style={{ display: 'flex', alignItems: 'center', gap: 11, color: 'var(--text)', textDecoration: 'none' }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/logo.png" alt="Hybrid Training" style={{ width: 32, height: 32, borderRadius: 'var(--r-sm)' }} />
-          <span style={{ fontFamily: "'Syne', sans-serif", fontSize: 17, fontWeight: 700, letterSpacing: '-0.02em' }}>Hybrid Training</span>
+          <span style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 700, letterSpacing: '-0.02em' }}>Hybrid Training</span>
         </a>
         <a href={APP_URL} className="topup-back" style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '9px 16px', borderRadius: 'var(--r-sm)', background: 'var(--bg-card)', border: '1px solid var(--border-mid)', color: 'var(--text-mid)', fontSize: 13, fontWeight: 500, textDecoration: 'none' }}>
           <span className="hdr-back-txt">{t('misc.backToApp')}</span>
@@ -129,7 +129,7 @@ export function Footer() {
         </div>
         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
           {['Stripe', 'Visa', 'Mastercard', 'Apple Pay', 'G Pay'].map(m => (
-            <span key={m} style={{ fontFamily: "'DM Mono', monospace", fontSize: 10.5, color: 'var(--text-dim)', padding: '4px 9px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-card)' }}>{m}</span>
+            <span key={m} style={{ fontFamily: 'var(--font-body)', fontSize: 10.5, color: 'var(--text-dim)', padding: '4px 9px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-card)' }}>{m}</span>
           ))}
         </div>
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 12, color: 'var(--text-dim)' }}>
@@ -152,7 +152,7 @@ export function TopupStyles() {
       .topup-back:hover { color: #06B6D4; border-color: #06B6D4; }
       .topup-eyebrow {
         display: inline-flex; align-items: center; gap: 8px;
-        font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: .14em;
+        font-family: 'var(--font-body)', monospace; font-size: 11px; letter-spacing: .14em;
         text-transform: uppercase; color: var(--text-dim);
         padding: 6px 12px; border-radius: 999px; border: 1px solid var(--border-mid);
         background: var(--bg-card);
@@ -162,7 +162,7 @@ export function TopupStyles() {
         display: inline-flex; align-items: center; gap: 9px;
         padding: 14px 26px; border-radius: 12px; border: none;
         background: linear-gradient(135deg,#06B6D4,#5b6fff); color: #fff;
-        font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 600;
+        font-family: 'var(--font-body)', sans-serif; font-size: 15px; font-weight: 600;
         text-decoration: none; cursor: pointer; box-shadow: 0 4px 22px rgba(6,182,212,0.36);
         transition: filter .16s, transform .16s;
       }
@@ -172,7 +172,7 @@ export function TopupStyles() {
         display: inline-flex; align-items: center; gap: 9px;
         padding: 13px 24px; border-radius: 12px; border: 1px solid var(--border-mid);
         background: var(--bg-card); color: var(--text-mid);
-        font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 500;
+        font-family: 'var(--font-body)', sans-serif; font-size: 14px; font-weight: 500;
         text-decoration: none; cursor: pointer; transition: color .16s, border-color .16s;
       }
       .btn-ghost-lg:hover { color: #06B6D4; border-color: #06B6D4; }

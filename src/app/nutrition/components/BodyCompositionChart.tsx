@@ -161,7 +161,7 @@ export default function BodyCompositionChart({ logs }: { logs: BodLog[] }) {
         {kgTicksArr.map((v, i) => (
           <text key={i} x={PAD_L - 6} y={toYkg(v) + 4}
             textAnchor="end" fill="var(--text-dim)"
-            fontSize={9} fontFamily="DM Mono,monospace">
+            fontSize={9} fontFamily="var(--font-body)">
             {v.toFixed(0)}
           </text>
         ))}
@@ -170,7 +170,7 @@ export default function BodyCompositionChart({ logs }: { logs: BodLog[] }) {
         {hasFat && fatTicksArr.map((v, i) => (
           <text key={i} x={W - PAD_R + 5} y={toYfat(v) + 4}
             textAnchor="start" fill="var(--text-dim)"
-            fontSize={9} fontFamily="DM Mono,monospace">
+            fontSize={9} fontFamily="var(--font-body)">
             {v.toFixed(0)}%
           </text>
         ))}
@@ -216,7 +216,7 @@ export default function BodyCompositionChart({ logs }: { logs: BodLog[] }) {
                 <text x={x} y={y - 9}
                   textAnchor="middle"
                   fill="var(--primary)" fontSize={11} fontWeight={600}
-                  fontFamily="DM Sans,sans-serif">
+                  fontFamily="var(--font-body)">
                   {l.poids.toFixed(1)}
                 </text>
               )}
@@ -259,7 +259,7 @@ export default function BodyCompositionChart({ logs }: { logs: BodLog[] }) {
           return (
             <text key={i} x={toX(i)} y={H - 6}
               textAnchor="middle" fill="var(--text-dim)"
-              fontSize={9} fontFamily="DM Sans,sans-serif">
+              fontSize={9} fontFamily="var(--font-body)">
               {parts[2]}/{parts[1]}
             </text>
           )

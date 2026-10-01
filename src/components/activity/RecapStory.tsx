@@ -189,10 +189,10 @@ function RecordsList({ title, entries, accent, fmtVal, active, periodLabel }: {
             return (
               <div key={e.key} style={{ display: 'flex', alignItems: 'center', gap: 8, background: e.pr ? `${rec!.col}1f` : 'rgba(255,255,255,0.08)', border: e.pr ? `1px solid ${rec!.col}66` : '1px solid transparent', borderRadius: 'var(--r-sm)', padding: '9px 12px', opacity: active ? 1 : 0, transform: active ? 'none' : 'translateY(8px)', transition: `all .4s ${Math.min(i * 35, 500)}ms` }}>
                 <span style={{ width: 74, fontSize: 13, fontWeight: 700, color: '#fff', flexShrink: 0 }}>{e.label}</span>
-                <span style={{ flex: 1, fontSize: 17, fontWeight: 800, color: accent, fontFamily: '"DM Mono",monospace' }}>{fmtVal(e.periodValue)}</span>
+                <span style={{ flex: 1, fontSize: 17, fontWeight: 800, color: accent, fontFamily: 'var(--font-body)' }}>{fmtVal(e.periodValue)}</span>
                 {rec
                   ? <span style={{ fontSize: 11, fontWeight: 800, color: rec.col, flexShrink: 0 }}>{rec.txt}</span>
-                  : beat && <span style={{ fontSize: 10.5, fontWeight: 600, color: 'rgba(255,255,255,0.45)', fontFamily: '"DM Mono",monospace', flexShrink: 0 }}>{beat}</span>}
+                  : beat && <span style={{ fontSize: 10.5, fontWeight: 600, color: 'rgba(255,255,255,0.45)', fontFamily: 'var(--font-body)', flexShrink: 0 }}>{beat}</span>}
               </div>
             )
           })}

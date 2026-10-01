@@ -20,7 +20,7 @@ export default function TopupExpiredPage() {
           <div style={{ width: 74, height: 74, borderRadius: '50%', margin: '0 auto 24px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(245,158,11,0.10)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.3)', boxShadow: '0 0 28px rgba(245,158,11,0.18)' }}>
             <AlertCircle size={36} />
           </div>
-          <h1 style={{ fontFamily: "'Syne', sans-serif", fontSize: 'clamp(26px, 4vw, 32px)', fontWeight: 800, letterSpacing: '-0.04em', color: 'var(--text)', marginBottom: 12 }}>{t('misc.linkExpiredTitle')}</h1>
+          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(26px, 4vw, 32px)', fontWeight: 800, letterSpacing: '-0.04em', color: 'var(--text)', marginBottom: 12 }}>{t('misc.linkExpiredTitle')}</h1>
           <p style={{ fontSize: 15, color: 'var(--text-mid)', lineHeight: 1.6, marginBottom: 28 }}>
             {t('misc.linkExpiredBody')}
           </p>

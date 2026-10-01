@@ -1,9 +1,8 @@
 /* Polices du design system (DESIGN_SYSTEM.md §1) : Fraunces (display) + Inter (body). */
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap');
-/* Polices héritées — TRANSITOIRES : conservées le temps de migrer les pages qui
-   les référencent encore en littéral (Syne/DM Mono/…). À retirer une fois la
-   refonte des pages faite (cf. DESIGN_SYSTEM.md §1, polices supprimées). */
-@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&family=Nunito:wght@700&family=Barlow+Condensed:wght@600;700&family=Bebas+Neue&family=Roboto+Mono:wght@700&display=swap');
+/* Polices d'habillage des RECORDS (exports image, choix utilisateur — src/types/cycling.ts) :
+   hors design system, jamais dans l'interface. */
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@700&family=Barlow+Condensed:wght@600;700&family=Bebas+Neue&family=Roboto+Mono:wght@700&display=swap');
 @import 'leaflet/dist/leaflet.css';
 
 /* Tailwind v4 : le package installé est @tailwindcss/postcss v4, mais le projet
@@ -439,9 +438,9 @@ body {
   font-feature-settings: 'zero' 0;
 }
 
-/* Barlow Condensed utility — grands chiffres */
+/* Grands chiffres — Inter tabulaire (DESIGN_SYSTEM.md §1) */
 .stat-number {
-  font-family: 'Barlow Condensed', sans-serif;
+  font-family: var(--font-body);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.01em;
@@ -560,7 +559,7 @@ button:active { transform: scale(0.97); }
   border: none;
   background: transparent;
   color: var(--text-mid);
-  font-family: 'DM Sans', sans-serif;
+  font-family: var(--font-body);
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;

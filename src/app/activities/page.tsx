@@ -89,9 +89,9 @@ const T = {
   radiusSm:    10,
   shadow:      'var(--shadow-card)',
   shadowCard:  'var(--shadow)',
-  fontDisplay: "'Syne', sans-serif",
-  fontBody:    "'DM Sans', sans-serif",
-  fontMono:    "'DM Mono', monospace",
+  fontDisplay: 'var(--font-display)',
+  fontBody:    "'var(--font-body)', sans-serif",
+  fontMono:    "'var(--font-body)', monospace",
 } as const
 
 // ─────────────────────────────────────────────────────────────
@@ -5816,7 +5816,7 @@ function SectionDonnees({ activities, zones, profile }: {
                     style={{ transition: 'stroke-dasharray 0.5s ease' }}
                   />
                   {/* Center text */}
-                  <text x={arcCx} y={arcCy - 6} textAnchor="middle" fontSize="22" fontWeight="700" fill="var(--text)" fontFamily="'Barlow Condensed', sans-serif">{tsb > 0 ? '+' : ''}{Math.round(tsb)}</text>
+                  <text x={arcCx} y={arcCy - 6} textAnchor="middle" fontSize="22" fontWeight="700" fill="var(--text)" fontFamily="'var(--font-body)', sans-serif">{tsb > 0 ? '+' : ''}{Math.round(tsb)}</text>
                   <text x={arcCx} y={arcCy + 12} textAnchor="middle" fontSize="10" fill="var(--text-dim)" fontWeight="600" letterSpacing="0.06em">TSB</text>
                 </svg>
                 <div>

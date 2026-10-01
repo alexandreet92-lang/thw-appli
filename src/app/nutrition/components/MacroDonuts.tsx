@@ -35,7 +35,7 @@ function Donut({ value, max, color, label, size }: {
           transform={`rotate(-90 ${cx} ${cx})`} />
         <text x={cx} y={cx + 4} textAnchor="middle"
           fill="var(--text)" fontSize={size < 52 ? 8 : 10}
-          fontFamily="DM Mono,monospace" fontWeight={700}>
+          fontFamily="var(--font-body)" fontWeight={700}>
           {value}
         </text>
       </svg>

@@ -93,7 +93,7 @@ export default function SleepScoreRing(p: SleepRingData) {
         })}
         {/* Score */}
         <text x={cx} y={cy - 6} textAnchor="middle" fill="var(--text)"
-          fontSize={34} fontWeight={800} fontFamily="Syne,sans-serif">{p.score}</text>
+          fontSize={34} fontWeight={800} fontFamily="var(--font-display)">{p.score}</text>
         <text x={cx} y={cy + 13} textAnchor="middle" fill="var(--text-dim)" fontSize={11}>/100</text>
         {/* Badge */}
         <rect x={cx - 55} y={cy + 24} width={110} height={20} rx={10}

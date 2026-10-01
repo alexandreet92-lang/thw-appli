@@ -54,7 +54,7 @@ export default function KcalBarChart({ entries }: { entries: KcalEntry[] }) {
               <line x1={PAD_L} y1={y} x2={W - PAD_R} y2={y}
                 stroke="var(--border)" strokeWidth={0.5} strokeDasharray="3 3" />
               <text x={PAD_L - 4} y={y + 4} textAnchor="end"
-                fill="var(--text-dim)" fontSize={8} fontFamily="DM Mono,monospace">
+                fill="var(--text-dim)" fontSize={8} fontFamily="var(--font-body)">
                 {v === 0 ? '' : v >= 1000 ? `${(v / 1000).toFixed(1)}k` : String(v)}
               </text>
             </g>
@@ -77,12 +77,12 @@ export default function KcalBarChart({ entries }: { entries: KcalEntry[] }) {
                 fill="var(--primary)" rx={3} opacity={isHov ? 1 : 0.85} />
               {/* X day name */}
               <text x={slotCX(i)} y={by + 14} textAnchor="middle"
-                fill={isHov ? 'var(--text)' : 'var(--text-dim)'} fontSize={9} fontFamily="DM Sans,sans-serif">
+                fill={isHov ? 'var(--text)' : 'var(--text-dim)'} fontSize={9} fontFamily="var(--font-body)">
                 {e.label.split(' ')[0]}
               </text>
               {/* X date number */}
               <text x={slotCX(i)} y={by + 25} textAnchor="middle"
-                fill={isHov ? 'var(--text)' : 'var(--text-dim)'} fontSize={8} fontFamily="DM Mono,monospace">
+                fill={isHov ? 'var(--text)' : 'var(--text-dim)'} fontSize={8} fontFamily="var(--font-body)">
                 {e.label.split(' ')[1]}
               </text>
               {/* Hover zone */}

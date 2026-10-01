@@ -435,7 +435,7 @@ function ChartBlock({ spec, embedded = false }: { spec: ChartSpec; embedded?: bo
           return (
             <g key={k}>
               <line x1={PL} y1={y} x2={W - PR} y2={y} stroke="var(--border)" strokeWidth={1} strokeDasharray={k === 0 ? undefined : '2 4'} />
-              <text x={PL - 8} y={y + 3.5} textAnchor="end" fontSize={11} fill="var(--text-mid)" fontFamily="DM Mono,monospace">{fmt(v)}</text>
+              <text x={PL - 8} y={y + 3.5} textAnchor="end" fontSize={11} fill="var(--text-mid)" fontFamily="var(--font-body)">{fmt(v)}</text>
             </g>
           )
         })}
@@ -469,7 +469,7 @@ function ChartBlock({ spec, embedded = false }: { spec: ChartSpec; embedded?: bo
 
         {/* Valeurs sur chaque barre/point (série unique) */}
         {showValueLabels && series[0].points.map((p, i) => (
-          <text key={i} x={cx(i)} y={yToPx(p.y) - 7} textAnchor="middle" fontSize={11} fontWeight={700} fill="var(--text)" fontFamily="DM Mono,monospace">{fmt(p.y)}</text>
+          <text key={i} x={cx(i)} y={yToPx(p.y) - 7} textAnchor="middle" fontSize={11} fontWeight={700} fill="var(--text)" fontFamily="var(--font-body)">{fmt(p.y)}</text>
         ))}
 
         {/* Labels X */}
@@ -983,7 +983,7 @@ const MsgContent = memo(function MsgContent({ text, fontFamily }: { text: string
     i++
   }
 
-  return <div style={{ fontFamily: fontFamily ?? 'DM Sans, sans-serif' }}>{blocks}</div>
+  return <div style={{ fontFamily: fontFamily ?? 'var(--font-body)' }}>{blocks}</div>
 })
 
 // ── Typed text — streaming character-by-character reveal ──────────
@@ -2467,10 +2467,10 @@ function WeakpointsFlow({ onCancel, onRecordConv }: {
           <circle cx="44" cy="44" r="36" fill="none" stroke={scoreColor} strokeWidth="6"
             strokeDasharray={circumference} strokeDashoffset={dashOffset}
             strokeLinecap="round" transform="rotate(-90 44 44)" />
-          <text x="44" y="48" textAnchor="middle" fontSize="18" fontWeight="700" fill={scoreColor} fontFamily="Syne,sans-serif">
+          <text x="44" y="48" textAnchor="middle" fontSize="18" fontWeight="700" fill={scoreColor} fontFamily="var(--font-display)">
             {report.score_global}
           </text>
-          <text x="44" y="60" textAnchor="middle" fontSize="9" fill="var(--ai-dim)" fontFamily="DM Sans,sans-serif">
+          <text x="44" y="60" textAnchor="middle" fontSize="9" fill="var(--ai-dim)" fontFamily="var(--font-body)">
             /100
           </text>
         </svg>
@@ -4165,7 +4165,7 @@ function TestEvolutionMiniChart({ points }: { points: { date: string; valeur: nu
       {points.map((p, i) => (
         <g key={i}>
           <circle cx={sx(i)} cy={sy(p.valeur)} r={3} fill="var(--ai-accent)" />
-          <text x={sx(i)} y={sy(p.valeur) - 6} textAnchor="middle" fontSize="8" fill="var(--ai-text)" fontFamily="DM Mono,monospace">{p.valeur}</text>
+          <text x={sx(i)} y={sy(p.valeur) - 6} textAnchor="middle" fontSize="8" fill="var(--ai-text)" fontFamily="var(--font-body)">{p.valeur}</text>
           <text x={sx(i)} y={H - 2} textAnchor="middle" fontSize="7" fill="var(--ai-dim)">{new Date(p.date).toLocaleDateString(currentLocale(), { month: 'short', day: 'numeric' })}</text>
         </g>
       ))}
@@ -5385,11 +5385,11 @@ function ElevationProfile({ profile, cursor, onHover }: {
       {cx != null && curPt && (
         <>
           <circle cx={cx} cy={y(curPt.alt)} r={3.2} fill="var(--ai-accent)" stroke="#fff" strokeWidth={1.2} />
-          <text x={Math.min(W - 4, Math.max(28, cx))} y={PADT + 8} fontSize={9} fill="var(--ai-text)" fontFamily="DM Mono, monospace" textAnchor="middle" fontWeight={700}>{Math.round(curPt.alt)}m · {curPt.km.toFixed(1)}km</text>
+          <text x={Math.min(W - 4, Math.max(28, cx))} y={PADT + 8} fontSize={9} fill="var(--ai-text)" fontFamily="var(--font-body)" textAnchor="middle" fontWeight={700}>{Math.round(curPt.alt)}m · {curPt.km.toFixed(1)}km</text>
         </>
       )}
-      <text x={PADX} y={H - 4} fontSize={9} fill="var(--ai-dim)" fontFamily="DM Mono, monospace">{Math.round(minAlt)}m</text>
-      <text x={W - PADX} y={H - 4} fontSize={9} fill="var(--ai-dim)" fontFamily="DM Mono, monospace" textAnchor="end">{maxKm.toFixed(1)}km · {Math.round(maxAlt)}m</text>
+      <text x={PADX} y={H - 4} fontSize={9} fill="var(--ai-dim)" fontFamily="var(--font-body)">{Math.round(minAlt)}m</text>
+      <text x={W - PADX} y={H - 4} fontSize={9} fill="var(--ai-dim)" fontFamily="var(--font-body)" textAnchor="end">{maxKm.toFixed(1)}km · {Math.round(maxAlt)}m</text>
     </svg>
   )
 }
@@ -5775,7 +5775,7 @@ function StreamProfileChart({ streams, zones, sport }: {
                   return (
                     <g key={`ann-${ai}`}>
                       <circle cx={x} cy={6} r={2.5} fill={a.color} />
-                      <text x={x + 8} y={9} fontSize="9" fontWeight="700" fill={a.color} fontFamily="DM Mono, monospace">{a.label}</text>
+                      <text x={x + 8} y={9} fontSize="9" fontWeight="700" fill={a.color} fontFamily="var(--font-body)">{a.label}</text>
                     </g>
                   )
                 })}
@@ -5902,8 +5902,8 @@ function CardiacDriftChart({ heartrate, driftPct }: { heartrate: number[]; drift
         <path d={path} fill="none" stroke="rgba(239,68,68,0.3)" strokeWidth="1" />
         <line x1={scaleX(0)} y1={scaleY(avg1)} x2={scaleX(half)} y2={scaleY(avg1)} stroke={driftColor} strokeWidth="1.5" strokeDasharray="4,3" />
         <line x1={scaleX(half)} y1={scaleY(avg2)} x2={scaleX(ds.length - 1)} y2={scaleY(avg2)} stroke={driftColor} strokeWidth="1.5" strokeDasharray="4,3" />
-        <text x={scaleX(half / 2)} y={scaleY(avg1) - 4} textAnchor="middle" fontSize="8" fill={driftColor} fontFamily="DM Mono,monospace">{Math.round(avg1)}bpm</text>
-        <text x={scaleX(half + (ds.length - half) / 2)} y={scaleY(avg2) - 4} textAnchor="middle" fontSize="8" fill={driftColor} fontFamily="DM Mono,monospace">{Math.round(avg2)}bpm</text>
+        <text x={scaleX(half / 2)} y={scaleY(avg1) - 4} textAnchor="middle" fontSize="8" fill={driftColor} fontFamily="var(--font-body)">{Math.round(avg1)}bpm</text>
+        <text x={scaleX(half + (ds.length - half) / 2)} y={scaleY(avg2) - 4} textAnchor="middle" fontSize="8" fill={driftColor} fontFamily="var(--font-body)">{Math.round(avg2)}bpm</text>
         <line x1={scaleX(half)} y1={4} x2={scaleX(half)} y2={H - 4} stroke="var(--ai-border)" strokeWidth="1" strokeDasharray="2,2" />
         <text x={scaleX(half)} y={H - 1} textAnchor="middle" fontSize="7" fill="var(--ai-dim)">½</text>
       </svg>
@@ -16476,10 +16476,10 @@ FORMAT OBLIGATOIRE (JSON uniquement) :
           <circle cx="40" cy="40" r="34" fill="none" stroke={sc} strokeWidth="5"
             strokeDasharray={circumference} strokeDashoffset={dashOffset}
             strokeLinecap="round" transform="rotate(-90 40 40)" />
-          <text x="40" y="44" textAnchor="middle" fontSize="16" fontWeight="700" fill={sc} fontFamily="Syne,sans-serif">
+          <text x="40" y="44" textAnchor="middle" fontSize="16" fontWeight="700" fill={sc} fontFamily="var(--font-display)">
             {result.score_progression_global}
           </text>
-          <text x="40" y="55" textAnchor="middle" fontSize="8" fill="var(--ai-dim)" fontFamily="DM Sans,sans-serif">
+          <text x="40" y="55" textAnchor="middle" fontSize="8" fill="var(--ai-dim)" fontFamily="var(--font-body)">
             /100
           </text>
         </svg>
@@ -18834,14 +18834,14 @@ function ElevationProfileChart({ profile, height = 140, climbs: climbsOverride }
             <line x1={padL} y1={yFromEle(e)} x2={W - padR} y2={yFromEle(e)}
               stroke="var(--ai-border, #333)" strokeWidth="0.5" strokeDasharray="4,4" />
             <text x={padL - 4} y={yFromEle(e) + 3} textAnchor="end" fontSize="8"
-              fill="var(--ai-dim, #888)" fontFamily="DM Mono,monospace">{e}m</text>
+              fill="var(--ai-dim, #888)" fontFamily="var(--font-body)">{e}m</text>
           </g>
         ))}
 
         {/* Labels distance en bas */}
         {distLabels.map(d => (
           <text key={`dg-${d}`} x={xFromDist(d)} y={H - 3} textAnchor="middle" fontSize="8"
-            fill="var(--ai-dim, #888)" fontFamily="DM Mono,monospace">{d}km</text>
+            fill="var(--ai-dim, #888)" fontFamily="var(--font-body)">{d}km</text>
         ))}
 
         {/* Encadrés montées majeures */}
@@ -18873,7 +18873,7 @@ function ElevationProfileChart({ profile, height = 140, climbs: climbsOverride }
                 fontSize="7"
                 fill="#fff"
                 fontWeight="700"
-                fontFamily="DM Mono, monospace"
+                fontFamily="var(--font-body)"
               >
                 {labelText}
               </text>

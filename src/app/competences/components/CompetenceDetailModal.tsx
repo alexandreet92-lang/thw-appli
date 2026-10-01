@@ -236,7 +236,7 @@ Garde le prompt entre 80 et 150 mots. Réponds d'abord en expliquant brièvement
                 </div>
                 {proposed && (
                   <div style={{ marginTop: 8, background: 'var(--bg-alt)', border: '0.5px solid var(--border)', borderRadius: 'var(--r-sm)', padding: 12 }}>
-                    <div style={{ fontSize: 13, lineHeight: 1.6, color: 'var(--text-mid)', whiteSpace: 'pre-wrap', marginBottom: 8, fontFamily: "'Inter', system-ui, sans-serif" }}>
+                    <div style={{ fontSize: 13, lineHeight: 1.6, color: 'var(--text-mid)', whiteSpace: 'pre-wrap', marginBottom: 8, fontFamily: 'var(--font-body)' }}>
                       {proposed}
                     </div>
                     <button

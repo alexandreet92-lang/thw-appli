@@ -286,7 +286,7 @@ export default function SubscriptionPage() {
         .sub-btn {
           min-height: 44px;
           border-radius: 8px;
-          font-family: 'DM Sans', sans-serif;
+          font-family: 'var(--font-body)', sans-serif;
           font-size: 14px;
           font-weight: 600;
           cursor: pointer;
@@ -327,7 +327,7 @@ export default function SubscriptionPage() {
         }
         .toggle-option {
           padding: 8px 20px;
-          font-family: 'DM Sans', sans-serif;
+          font-family: 'var(--font-body)', sans-serif;
           font-size: 13px;
           font-weight: 500;
           cursor: pointer;

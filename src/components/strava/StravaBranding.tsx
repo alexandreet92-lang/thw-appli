@@ -37,7 +37,7 @@ function StravaWordmark({ height = 12, color = STRAVA_ORANGE }: { height?: numbe
   return (
     <span
       style={{
-        fontFamily: '"Arial Narrow", "Helvetica Neue", Arial, sans-serif',
+        fontFamily: 'var(--font-body)',
         fontWeight: 800,
         fontSize: height,
         letterSpacing: '0.06em',
@@ -69,7 +69,7 @@ export function ConnectWithStrava({
       <StravaMark size={Math.round(height * 0.5)} color="#fff" />
       <span
         style={{
-          fontFamily: 'DM Sans, "Helvetica Neue", Arial, sans-serif',
+          fontFamily: 'var(--font-body)',
           fontWeight: 700,
           fontSize: Math.max(12, Math.round(height * 0.34)),
           color: '#fff',
@@ -131,7 +131,7 @@ export function PoweredByStrava({
     >
       <span
         style={{
-          fontFamily: 'DM Sans, "Helvetica Neue", Arial, sans-serif',
+          fontFamily: 'var(--font-body)',
           fontSize: Math.round(height * 0.72),
           fontWeight: 600,
           letterSpacing: '0.04em',

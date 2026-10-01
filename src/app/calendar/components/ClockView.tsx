@@ -164,7 +164,7 @@ export default function ClockView({ events, year }: Props) {
                   x={lp.x} y={lp.y}
                   textAnchor="middle" dominantBaseline="middle"
                   fontSize={11}
-                  fontFamily="DM Mono, monospace"
+                  fontFamily="var(--font-body)"
                   fontWeight={isCurrent ? 700 : 400}
                   fill={isCurrent ? ACCENT : 'var(--text-mid)'}
                   transform={`rotate(${angle <= 180 ? angle : angle + 180}, ${lp.x}, ${lp.y})`}
@@ -179,7 +179,7 @@ export default function ClockView({ events, year }: Props) {
                     <text x={bp.x} y={bp.y}
                       textAnchor="middle" dominantBaseline="middle"
                       fontSize={9} fontWeight={600}
-                      fontFamily="DM Mono, monospace"
+                      fontFamily="var(--font-body)"
                       fill="#fff">
                       {count}
                     </text>
@@ -258,14 +258,14 @@ export default function ClockView({ events, year }: Props) {
           <text x={CX} y={CY - 26}
             textAnchor="middle" dominantBaseline="middle"
             fontSize={32} fontWeight={800}
-            fontFamily="Syne, sans-serif" fill="var(--text)">
+            fontFamily="var(--font-display)" fill="var(--text)">
             {year}
           </text>
           {/* Date */}
           <text x={CX} y={CY + 8}
             textAnchor="middle" dominantBaseline="middle"
             fontSize={13}
-            fontFamily="DM Mono, monospace" fill="var(--text-mid)">
+            fontFamily="var(--font-body)" fill="var(--text-mid)">
             {dayStr}
           </text>
           {/* Time */}
@@ -273,7 +273,7 @@ export default function ClockView({ events, year }: Props) {
             <text x={CX} y={CY + 26}
               textAnchor="middle" dominantBaseline="middle"
               fontSize={10}
-              fontFamily="DM Mono, monospace" fill="var(--text-dim)">
+              fontFamily="var(--font-body)" fill="var(--text-dim)">
               {timeStr}
             </text>
           )}

@@ -1033,7 +1033,7 @@ export function ActivityQuickModal({ activity, onClose }:{ activity:TrainingActi
       ].map(({ label, value, mono, small, color })=>(
         <div key={label} style={{ background:'var(--bg-card2)',borderRadius: 'var(--r-sm)',padding:'10px 12px' }}>
           <p style={{ fontSize: 10,color:'var(--text-dim)',margin:'0 0 3px',textTransform:'uppercase' as const,letterSpacing:'0.07em' }}>{label}</p>
-          <p style={{ fontSize:small?11:13,fontWeight:700,margin:0,fontFamily:mono?'DM Mono,monospace':'inherit',color:color??'var(--text)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' as const }}>{value}</p>
+          <p style={{ fontSize:small?11:13,fontWeight:700,margin:0,fontFamily:mono?'var(--font-body)':'inherit',color:color??'var(--text)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' as const }}>{value}</p>
         </div>
       ))}
     </div>
@@ -1191,7 +1191,7 @@ function RaceDetailSheet({ race, onClose, onEdit }: { race: FullRace|null; onClo
         {cells.map(({ label, value, mono, small })=>(
           <div key={label} style={{ background:'var(--bg-card2)', borderRadius: 'var(--r-sm)', padding:'10px 12px' }}>
             <p style={{ fontSize: 10, color:'var(--text-dim)', margin:'0 0 3px', textTransform:'uppercase' as const, letterSpacing:'0.07em' }}>{label}</p>
-            <p style={{ fontSize:small?12:14, fontWeight:700, margin:0, fontFamily:mono?'DM Mono,monospace':'inherit', color:'var(--text)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:small?'normal':'nowrap' as const, textTransform:small?'capitalize' as const:undefined }}>{value}</p>
+            <p style={{ fontSize:small?12:14, fontWeight:700, margin:0, fontFamily:mono?'var(--font-body)':'inherit', color:'var(--text)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:small?'normal':'nowrap' as const, textTransform:small?'capitalize' as const:undefined }}>{value}</p>
           </div>
         ))}
       </div>
@@ -2393,7 +2393,7 @@ function PlanHeaderAndGraphics({ plan, sessions, currentWeekStart, nextRace, onR
                     />
                   ))
                 }
-                <text x={cx} y={cy + 4} textAnchor="middle" fontSize={8} fontWeight={700} fill="var(--text)" fontFamily="DM Mono,monospace">{sub}</text>
+                <text x={cx} y={cy + 4} textAnchor="middle" fontSize={8} fontWeight={700} fill="var(--text)" fontFamily="var(--font-body)">{sub}</text>
               </svg>
               <span style={{ fontSize: 10, color: 'var(--text-dim)', textAlign: 'center' as const, lineHeight: 1.3 }}>{label}</span>
             </div>
@@ -2673,9 +2673,12 @@ function DayHeader({ abbr, num, intensity, isToday, onNum, plus, onPlus, open, o
   return (
     <div ref={ref} data-day-picker style={{ position:'relative', display:'flex', flexDirection:'column', alignItems:'center', gap:1, width:'100%' }}>
       {plus && <button onClick={onPlus} aria-label={t('plnp.day.setType')} style={{ border:'none', background:'transparent', color:'var(--text-dim)', fontSize:14, lineHeight:1, cursor:'pointer', padding:0, height:13 }}>+</button>}
-      {abbr && <span style={{ fontSize:8.5, fontWeight:700, textTransform:'uppercase' as const, letterSpacing:'0.02em', color:'var(--text-dim)' }}>{abbr}</span>}
-      <button data-guide="plan-daytype" onClick={onNum} aria-label={t('plnp.day.label')} style={{ border:'none', background:'transparent', cursor:'pointer', padding:0, display:'flex' }}>
-        <span className="tnum" style={{ width:26, height:26, borderRadius:'50%', background:cfg.color, display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, fontWeight:700, color:'var(--on-primary)', boxSizing:'border-box' as const, boxShadow:isToday?'0 0 0 2px var(--bg), 0 0 0 4px var(--primary)':undefined }}>{num}</span>
+      {abbr && <span style={{ fontSize:10, fontWeight:600, textTransform:'uppercase' as const, letterSpacing:'0.04em', color:'var(--text-dim)', fontFamily:'var(--font-body)' }}>{abbr}</span>}
+      {/* Jour : cercle calme (aujourd'hui = cyan plein) ; l'intensité est un point sous le chiffre,
+          absent pour « Low » (valeur par défaut) afin de ne pas colorer toute la grille. */}
+      <button data-guide="plan-daytype" onClick={onNum} aria-label={t('plnp.day.label')} style={{ border:'none', background:'transparent', cursor:'pointer', padding:0, display:'flex', flexDirection:'column', alignItems:'center', gap:3 }}>
+        <span className="tnum" style={{ width:32, height:32, borderRadius:'50%', background:isToday?'var(--primary)':'transparent', display:'flex', alignItems:'center', justifyContent:'center', fontSize:14, fontWeight:600, color:isToday?'var(--on-primary)':'var(--text)', boxSizing:'border-box' as const, fontFamily:'var(--font-body)', transition:'background .15s' }}>{num}</span>
+        <span aria-hidden style={{ width:5, height:5, borderRadius:'50%', background:intensity==='low'?'transparent':cfg.color }} />
       </button>
       {open && rect && <IntensityMenuPortal anchor={rect} value={intensity} onPick={onPick} />}
     </div>
@@ -3306,11 +3309,11 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
             const mPlanTot = Object.values(mPlan).reduce((a, b) => a + b, 0)
             const mDoneTot = Object.values(mDone).reduce((a, b) => a + b, 0)
             return (
-              <div key={`${ws}_${pv}`} style={{ borderBottom:'1px solid var(--border)', padding:'8px 0' }}>
+              <div key={`${ws}_${pv}`} style={{ background:'var(--bg-card2)', borderRadius:'var(--r-md)', padding:'10px 6px 4px', marginBottom:8 }}>
                 {/* En-tête semaine : S## + volume réalisé / prévu à droite */}
-                <div style={{ display:'flex', alignItems:'baseline', justifyContent:'space-between', gap:6, margin:'0 8px 6px' }}>
-                  <span style={{ fontSize:11, fontWeight:800, color:'var(--text)', fontFamily: 'var(--font-body)' }}>S{isoWeekNum(ws)}<span style={{ fontWeight:500, color:'var(--text-dim)', marginLeft:5 }}>{new Date(ws+'T00:00:00').toLocaleDateString(currentLocale(),{ day:'numeric', month:'short' })}</span></span>{compareMode && <span style={{ fontSize:10, fontWeight:800, color: pv==='A'?'var(--primary)':'#a78bfa', marginLeft:8 }}>Plan {pv}</span>}
-                  <span data-guide="plan-volume" className="tnum" style={{ fontSize:11, fontWeight:700, color:'var(--text-dim)' }}><span style={{ color:'var(--text)' }}>{formatHM(mDoneTot)}</span> / {formatHM(mPlanTot)}</span>
+                <div style={{ display:'flex', alignItems:'baseline', justifyContent:'space-between', gap:6, margin:'0 10px 10px' }}>
+                  <span style={{ fontSize:14, fontWeight:600, color:'var(--text)', fontFamily: 'var(--font-body)' }}>S{isoWeekNum(ws)}<span style={{ fontWeight:500, fontSize:12, color:'var(--text-dim)', marginLeft:6 }}>{new Date(ws+'T00:00:00').toLocaleDateString(currentLocale(),{ day:'numeric', month:'short' })}</span></span>{compareMode && <span style={{ fontSize:10, fontWeight:800, color: pv==='A'?'var(--primary)':'#a78bfa', marginLeft:8 }}>Plan {pv}</span>}
+                  <span data-guide="plan-volume" className="tnum" style={{ fontSize:12, fontWeight:600, color:'var(--text-dim)', fontFamily:'var(--font-body)' }}><span style={{ color:'var(--text)' }}>{formatHM(mDoneTot)}</span> / {formatHM(mPlanTot)}</span>
                 </div>
                 {/* Carrousel coulissant : page 1 = jours · page 2 = volume/cycle + Datas */}
                 <div className="wk-carousel" style={{ display:'flex', overflowX:'auto', scrollSnapType:'x mandatory', WebkitOverflowScrolling:'touch' as React.CSSProperties['WebkitOverflowScrolling'], touchAction: tDrag ? 'none' : undefined }}>
@@ -4590,7 +4593,7 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
                   <div style={{ height:'100%',borderRadius: 'var(--r-pill)',transition:'width 0.3s',width:`${pct}%`,
                     background:pct===100?'#22c55e':pct>50?'#facc15':'var(--primary)' }}/>
                 </div>
-                <span style={{ fontSize:11,fontWeight:700,fontFamily:'"DM Mono",monospace',color:pct===100?'#22c55e':'var(--text-mid)',flexShrink:0 }}>{pct}%</span>
+                <span style={{ fontSize:11,fontWeight:700,fontFamily:'var(--font-body)',color:pct===100?'#22c55e':'var(--text-mid)',flexShrink:0 }}>{pct}%</span>
                 <span style={{ fontSize: 10,color:'var(--text-dim)',flexShrink:0 }}>{done}/{total}</span>
               </div>
             )
@@ -4783,7 +4786,7 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
               <p style={{ fontSize: 10,fontWeight:600,color:'var(--text-dim)',textTransform:'uppercase' as const,letterSpacing:'0.08em',margin:'0 0 6px' }}>{t('plnp.task.description')}</p>
               <textarea value={newTask.description} onChange={e=>setNewTask(nt=>({...nt,description:e.target.value}))}
                 placeholder={t('plnp.task.descPlaceholder')} rows={3}
-                style={{ width:'100%',padding:'8px 12px',borderRadius: 'var(--r-sm)',border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text-mid)',fontSize:12,outline:'none',resize:'vertical' as const,fontFamily:'"DM Sans",sans-serif',lineHeight:1.5,boxSizing:'border-box' as const }}/>
+                style={{ width:'100%',padding:'8px 12px',borderRadius: 'var(--r-sm)',border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text-mid)',fontSize:12,outline:'none',resize:'vertical' as const,fontFamily:'var(--font-body)',lineHeight:1.5,boxSizing:'border-box' as const }}/>
             </div>
 
             {/* 4. Horaire */}
@@ -4794,27 +4797,27 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
                   <span style={{ fontSize:10,color:'var(--text-dim)' }}>{t('plnp.task.start')}</span>
                   <input type="number" min={0} max={23} value={newTask.startHour}
                     onChange={e=>setNewTask(nt=>({...nt,startHour:parseInt(e.target.value)||0}))}
-                    style={{ width:40,padding:'6px',borderRadius: 'var(--r-sm)',border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text)',fontSize:13,fontFamily:'"DM Mono",monospace',textAlign:'center' as const,outline:'none' }}/>
+                    style={{ width:40,padding:'6px',borderRadius: 'var(--r-sm)',border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text)',fontSize:13,fontFamily:'var(--font-body)',textAlign:'center' as const,outline:'none' }}/>
                   <span style={{ color:'var(--text-dim)' }}>:</span>
                   <input type="number" min={0} max={59} step={5} value={newTask.startMin}
                     onChange={e=>setNewTask(nt=>({...nt,startMin:parseInt(e.target.value)||0}))}
-                    style={{ width:40,padding:'6px',borderRadius: 'var(--r-sm)',border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text)',fontSize:13,fontFamily:'"DM Mono",monospace',textAlign:'center' as const,outline:'none' }}/>
+                    style={{ width:40,padding:'6px',borderRadius: 'var(--r-sm)',border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text)',fontSize:13,fontFamily:'var(--font-body)',textAlign:'center' as const,outline:'none' }}/>
                 </div>
                 <div style={{ display:'flex',alignItems:'center',gap:4 }}>
                   <span style={{ fontSize:10,color:'var(--text-dim)' }}>{t('plnp.field.duration')}</span>
                   <input type="number" min={0} max={12}
                     value={Math.floor((newTask.durationMin||0)/60)}
                     onChange={e=>{ const h=parseInt(e.target.value)||0; const m=(newTask.durationMin||0)%60; setNewTask(nt=>({...nt,durationMin:h*60+m})) }}
-                    style={{ width:36,padding:'6px',borderRadius: 'var(--r-sm)',border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text)',fontSize:13,fontFamily:'"DM Mono",monospace',textAlign:'center' as const,outline:'none' }}/>
+                    style={{ width:36,padding:'6px',borderRadius: 'var(--r-sm)',border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text)',fontSize:13,fontFamily:'var(--font-body)',textAlign:'center' as const,outline:'none' }}/>
                   <span style={{ fontSize:10,color:'var(--text-dim)' }}>h</span>
                   <input type="number" min={0} max={59} step={5}
                     value={(newTask.durationMin||0)%60}
                     onChange={e=>{ const h=Math.floor((newTask.durationMin||0)/60); const m=parseInt(e.target.value)||0; setNewTask(nt=>({...nt,durationMin:h*60+m})) }}
-                    style={{ width:36,padding:'6px',borderRadius: 'var(--r-sm)',border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text)',fontSize:13,fontFamily:'"DM Mono",monospace',textAlign:'center' as const,outline:'none' }}/>
+                    style={{ width:36,padding:'6px',borderRadius: 'var(--r-sm)',border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text)',fontSize:13,fontFamily:'var(--font-body)',textAlign:'center' as const,outline:'none' }}/>
                   <span style={{ fontSize:10,color:'var(--text-dim)' }}>min</span>
                 </div>
                 {(newTask.durationMin||0)>0&&(
-                  <span style={{ fontSize:11,color:'var(--text-dim)',fontFamily:'"DM Mono",monospace' }}>
+                  <span style={{ fontSize:11,color:'var(--text-dim)',fontFamily:'var(--font-body)' }}>
                     → {String(Math.floor((newTask.startHour*60+newTask.startMin+(newTask.durationMin||0))/60)%24).padStart(2,'0')}:{String((newTask.startHour*60+newTask.startMin+(newTask.durationMin||0))%60).padStart(2,'0')}
                   </span>
                 )}
@@ -4966,7 +4969,7 @@ function TaskEditModal({ task, sections, onClose, onSave, onDelete }:{
           <p style={{ fontSize: 10,fontWeight:600,color:'var(--text-dim)',textTransform:'uppercase' as const,letterSpacing:'0.08em',margin:'0 0 6px' }}>{t('plnp.task.description')}</p>
           <textarea value={form.description??''} onChange={e=>setForm(f=>({...f,description:e.target.value}))}
             placeholder={t('plnp.task.descPlaceholder')} rows={3}
-            style={{ width:'100%',padding:'8px 12px',borderRadius: 'var(--r-sm)',border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text-mid)',fontSize:12,outline:'none',resize:'vertical' as const,fontFamily:'"DM Sans",sans-serif',lineHeight:1.5,boxSizing:'border-box' as const }}/>
+            style={{ width:'100%',padding:'8px 12px',borderRadius: 'var(--r-sm)',border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text-mid)',fontSize:12,outline:'none',resize:'vertical' as const,fontFamily:'var(--font-body)',lineHeight:1.5,boxSizing:'border-box' as const }}/>
         </div>
 
         {/* 4. Horaire */}
@@ -4977,25 +4980,25 @@ function TaskEditModal({ task, sections, onClose, onSave, onDelete }:{
               <span style={{ fontSize:10,color:'var(--text-dim)' }}>{t('plnp.task.start')}</span>
               <input type="number" min={0} max={23} value={form.startHour}
                 onChange={e=>setForm(f=>({...f,startHour:parseInt(e.target.value)||0}))}
-                style={{ width:40,padding:'6px',borderRadius: 'var(--r-sm)',border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text)',fontSize:13,fontFamily:'"DM Mono",monospace',textAlign:'center' as const,outline:'none' }}/>
+                style={{ width:40,padding:'6px',borderRadius: 'var(--r-sm)',border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text)',fontSize:13,fontFamily:'var(--font-body)',textAlign:'center' as const,outline:'none' }}/>
               <span style={{ color:'var(--text-dim)' }}>:</span>
               <input type="number" min={0} max={59} step={5} value={form.startMin}
                 onChange={e=>setForm(f=>({...f,startMin:parseInt(e.target.value)||0}))}
-                style={{ width:40,padding:'6px',borderRadius: 'var(--r-sm)',border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text)',fontSize:13,fontFamily:'"DM Mono",monospace',textAlign:'center' as const,outline:'none' }}/>
+                style={{ width:40,padding:'6px',borderRadius: 'var(--r-sm)',border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text)',fontSize:13,fontFamily:'var(--font-body)',textAlign:'center' as const,outline:'none' }}/>
             </div>
             <div style={{ display:'flex',alignItems:'center',gap:4 }}>
               <span style={{ fontSize:10,color:'var(--text-dim)' }}>{t('plnp.field.duration')}</span>
               <input type="number" min={0} max={12} value={Math.floor(form.durationMin/60)}
                 onChange={e=>{ const h=parseInt(e.target.value)||0; const m=form.durationMin%60; setForm(f=>({...f,durationMin:h*60+m})) }}
-                style={{ width:36,padding:'6px',borderRadius: 'var(--r-sm)',border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text)',fontSize:13,fontFamily:'"DM Mono",monospace',textAlign:'center' as const,outline:'none' }}/>
+                style={{ width:36,padding:'6px',borderRadius: 'var(--r-sm)',border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text)',fontSize:13,fontFamily:'var(--font-body)',textAlign:'center' as const,outline:'none' }}/>
               <span style={{ fontSize:10,color:'var(--text-dim)' }}>h</span>
               <input type="number" min={0} max={59} step={5} value={form.durationMin%60}
                 onChange={e=>{ const h=Math.floor(form.durationMin/60); const m=parseInt(e.target.value)||0; setForm(f=>({...f,durationMin:h*60+m})) }}
-                style={{ width:36,padding:'6px',borderRadius: 'var(--r-sm)',border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text)',fontSize:13,fontFamily:'"DM Mono",monospace',textAlign:'center' as const,outline:'none' }}/>
+                style={{ width:36,padding:'6px',borderRadius: 'var(--r-sm)',border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text)',fontSize:13,fontFamily:'var(--font-body)',textAlign:'center' as const,outline:'none' }}/>
               <span style={{ fontSize:10,color:'var(--text-dim)' }}>min</span>
             </div>
             {form.durationMin>0&&(
-              <span style={{ fontSize:11,color:'var(--text-dim)',fontFamily:'"DM Mono",monospace' }}>
+              <span style={{ fontSize:11,color:'var(--text-dim)',fontFamily:'var(--font-body)' }}>
                 → {String(endH).padStart(2,'0')}:{String(endM).padStart(2,'0')}
               </span>
             )}

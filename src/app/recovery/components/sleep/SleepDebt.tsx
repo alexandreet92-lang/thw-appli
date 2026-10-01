@@ -53,7 +53,7 @@ export default function SleepDebt({ nights7, recommended = 8 }: Props) {
           transform="rotate(-90 36 36)"
           style={{ transition: 'stroke-dashoffset 1s ease-out' }} />
         <text x={36} y={36} textAnchor="middle" dominantBaseline="central"
-          fill={color} fontSize={12} fontWeight={700} fontFamily="DM Mono,monospace">
+          fill={color} fontSize={12} fontWeight={700} fontFamily="var(--font-body)">
           {fmtDebt(debt)}
         </text>
       </svg>

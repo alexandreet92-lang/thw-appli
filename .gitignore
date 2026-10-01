@@ -30,3 +30,4 @@ tsconfig.tsbuildinfo
 
 # Build Capacitor (phase 5)
 .cap-build-hidden/
+design-shots/

@@ -10,7 +10,10 @@
     "check:colors": "node scripts/check-colors.mjs",
     "check:colors:enforce": "node scripts/check-colors.mjs --enforce",
     "build:cap": "node scripts/build-cap.mjs",
-    "cap:sync": "node scripts/build-cap.mjs && npx cap sync ios"
+    "cap:sync": "node scripts/build-cap.mjs && npx cap sync ios",
+    "design:check": "node scripts/design-fix.mjs --enforce",
+    "design:fix": "node scripts/design-fix.mjs --fix",
+    "design:shots": "node scripts/design-shots.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.88.0",
@@ -72,6 +75,9 @@
     "@types/react-dom": "19.1.0",
     "@types/three": "^0.183.1",
     "autoprefixer": "^10.4.17",
+    "pixelmatch": "^7.2.0",
+    "playwright-core": "^1.63.0",
+    "pngjs": "^7.0.0",
     "prettier": "^3.2.5",
     "prettier-plugin-tailwindcss": "^0.6.11",
     "typescript": "^5.3.3"

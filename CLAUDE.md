@@ -51,7 +51,7 @@ Benchmark UI/UX : Strava + TrainingPeaks.
 Toutes les pages de l'app sont interconnectées. Chaque page qui affiche une entité (activité, blessure, compétition, séance) doit avoir un lien cliquable vers la page dédiée de cette entité. Une page ne refuse jamais d'afficher un lien vers une autre page sous prétexte que les données ne sont "pas pertinentes". L'interconnexion est obligatoire et permanente.
 
 ## Design System
-Avant toute modification ou création de composant UI, lis `docs/DESIGN_SYSTEM.md` et applique ses règles sans exception.
+Avant toute modification ou création de composant UI, lis `DESIGN.md` (racine) puis `docs/DESIGN_SYSTEM.md` et applique leurs règles sans exception. Après toute modif UI : `npm run design:check` doit passer ; vérifier visuellement avec `npm run design:shots -- <label>`. Si le connecteur Figma est disponible, consulter la maquette Figma avant de coder un écran.
 
 ---
 ## Notes Notion

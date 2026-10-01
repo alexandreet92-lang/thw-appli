@@ -1774,6 +1774,9 @@ function MobileObjectifs({ cal }: { cal: ReturnType<typeof useCalendar> }) {
       {t('calendar.addGoal')}
     </button>
   )
+  const cap = (x: string) => x.charAt(0).toUpperCase() + x.slice(1)
+  // La vue Année (et le retour) repart toujours du haut de la page.
+  const openYear = (open: boolean) => { setYearOpen(open); document.querySelector('main')?.scrollTo({ top: 0 }) }
   const fmtShort = (d: string) => new Date(d + 'T12:00:00').toLocaleDateString(currentLocale(), { day: 'numeric', month: 'short' })
 
   let body: React.ReactNode
@@ -1789,8 +1792,8 @@ function MobileObjectifs({ cal }: { cal: ReturnType<typeof useCalendar> }) {
               <div style={{ minWidth: 0 }}>
                 <p style={{ margin: '0 0 2px', fontSize: 15, color: 'var(--text-mid)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{main.name}</p>
                 <span className="tnum" style={{ display: 'block', fontSize: 40, fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1.05, color: 'var(--text)' }}>{jx(main.date)}</span>
-                <p style={{ margin: '6px 0 0', fontSize: 14, color: 'var(--text-mid)', textTransform: 'capitalize' }}>
-                  {[new Date(main.date + 'T12:00:00').toLocaleDateString(currentLocale(), { weekday: 'short', day: 'numeric', month: 'long' }), main.distance || main.goal].filter(Boolean).join(' · ')}
+                <p style={{ margin: '6px 0 0', fontSize: 14, color: 'var(--text-mid)' }}>
+                  {[cap(new Date(main.date + 'T12:00:00').toLocaleDateString(currentLocale(), { weekday: 'short', day: 'numeric', month: 'long' })), main.distance || main.goal].filter(Boolean).join(' · ')}
                 </p>
               </div>
               <svg aria-hidden width="64" height="64" viewBox="0 0 64 64" style={{ flexShrink: 0 }}>
@@ -1820,7 +1823,7 @@ function MobileObjectifs({ cal }: { cal: ReturnType<typeof useCalendar> }) {
         </div>
       </>)}
       {addBtn}
-      <div role="button" tabIndex={0} className="dash-tap" onClick={() => setYearOpen(true)} onKeyDown={e => { if (e.key === 'Enter') setYearOpen(true) }} style={{ cursor: 'pointer' }}>
+      <div role="button" tabIndex={0} className="dash-tap" onClick={() => openYear(true)} onKeyDown={e => { if (e.key === 'Enter') openYear(true) }} style={{ cursor: 'pointer' }}>
         {card(<>
           {head(<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zM16 2v4M8 2v4M3 10h18" /></svg>,
             t('calendar.mYear', { year }), <span style={{ display: 'flex', alignItems: 'center', gap: 2, fontSize: 14, color: 'var(--text-mid)' }}>{t('calendar.mSee')}{chevron}</span>)}
@@ -1841,7 +1844,7 @@ function MobileObjectifs({ cal }: { cal: ReturnType<typeof useCalendar> }) {
     )
     const n = yItems.filter(i => (i.endDate ?? i.date) >= today).length
     body = <>
-      <button type="button" onClick={() => setYearOpen(false)} style={{ alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: 2, border: 'none', background: 'none', padding: 0, cursor: 'pointer', fontSize: 15, fontWeight: 600, color: 'var(--primary)', fontFamily: 'inherit' }}>
+      <button type="button" onClick={() => openYear(false)} style={{ alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: 2, border: 'none', background: 'none', padding: 0, cursor: 'pointer', fontSize: 15, fontWeight: 600, color: 'var(--primary)', fontFamily: 'inherit' }}>
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
         {t('calendar.mUpcoming')}
       </button>

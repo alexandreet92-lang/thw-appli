@@ -3,7 +3,7 @@
 // Blessures — version mobile façon Strava : bouton Signaler, puis une carte
 // par sujet (disponibilité + risque, prévention, en cours, check-in de
 // douleur, historique, analyse). Historique / Analyse s'ouvrent en vue détail
-// qui glisse de la droite et réutilisent les onglets existants.
+// native mobile qui glisse de la droite (mêmes calculs que les onglets desktop).
 // ══════════════════════════════════════════════════════════════
 
 import { useState } from 'react'
@@ -13,8 +13,8 @@ import { DetailSlide } from '@/components/ui/DetailSlide'
 import { useDetailView } from '@/hooks/useDetailView'
 import { SEV, PHASES, type Injury, type InjuryLog } from '../types'
 import { availability12mo, daysSince, phasePct, riskIndex, returnProgress, preventionAlerts, stats12mo, zonesRanking } from '../lib'
-import { HistoryTab } from './HistoryTab'
-import { AnalysisTab } from './AnalysisTab'
+import { MobileInjuryHistory } from './MobileInjuryHistory'
+import { MobileInjuryAnalysis } from './MobileInjuryAnalysis'
 
 type View = 'history' | 'analysis'
 const NUM: React.CSSProperties = { fontVariantNumeric: 'tabular-nums', fontFeatureSettings: "'zero' 0" }
@@ -78,9 +78,9 @@ export function MobileInjuries({ injuries, logs, onReport, onOpen, onCheckin }: 
     return (
       <div style={{ padding: '14px 16px 24px', fontFamily: 'var(--font-body)' }}>
         <DetailSlide backLabel={t('injuries.pageTitle')} onBack={close}>
-          <div className="thw-mdetail">
-            {view === 'history' ? <HistoryTab injuries={injuries} onOpen={onOpen} /> : <AnalysisTab injuries={injuries} logs={logs} />}
-          </div>
+          {view === 'history'
+            ? <MobileInjuryHistory injuries={injuries} onOpen={onOpen} onReport={onReport} />
+            : <MobileInjuryAnalysis injuries={injuries} logs={logs} onOpen={onOpen} />}
         </DetailSlide>
       </div>
     )

@@ -4,7 +4,8 @@
 // par sujet : Aujourd'hui, Prochain repas, Repas du jour, Hydratation, Autour
 // de ta séance, Mon plan, Suivi, Poids & composition. Tap → vue détail qui
 // glisse de la droite. Les détails réutilisent les flux existants (journal des
-// repas, onglets Plan / Suivi / Composition) : aucune logique dupliquée.
+// repas) ; Plan / Suivi / Composition ont leurs vues mobiles natives
+// (./mobile/*) branchées sur les mêmes données et handlers que le bureau.
 // ══════════════════════════════════════════════════════════════
 
 import { useMemo, useRef, useState } from 'react'
@@ -22,6 +23,9 @@ import { SportIcon } from '@/components/icons/SportIcon'
 import { sportColor } from '@/lib/agenda/types'
 import { DayFoodJournal } from './DayFoodJournal'
 import { CHARGE_COLOR, type DayType } from './plan/planFormat'
+import { MobilePlanDetail, type MobilePlanDetailProps } from './mobile/MobilePlanDetail'
+import { MobileSuiviDetail, type MobileSuiviDetailProps } from './mobile/MobileSuiviDetail'
+import { MobileBodyDetail, type MobileBodyDetailProps } from './mobile/MobileBodyDetail'
 
 type View = 'plan' | 'suivi' | 'body' | `meal:${MealSlotKey}`
 type MealAction = { kind: 'ai' | 'manual' } | { kind: 'photo'; file: File }
@@ -101,9 +105,10 @@ export interface MobileNutritionProps {
   todaySessions: PlannedSession[]
   suivi7: { daysLogged: number; avgKcal: number | null; adherencePct: number | null; kcalByDay: number[] }
   weightLogs: WeightLog[]
-  planNode: React.ReactNode
-  suiviNode: React.ReactNode
-  bodyNode: React.ReactNode
+  /** Vues détail natives : données + handlers (les mêmes que les onglets bureau). */
+  planDetail: Omit<MobilePlanDetailProps, 'today' | 'realToday' | 'todayType' | 'todayKcalObj' | 'todayMacroObj' | 'todaySessions' | 'activePlan'>
+  suiviDetail: MobileSuiviDetailProps
+  bodyDetail: Omit<MobileBodyDetailProps, 'onGoToPlan'>
   onCreatePlan: () => void
 }
 
@@ -171,9 +176,11 @@ export default function MobileNutrition(p: MobileNutritionProps) {
           </DashCard>
         )}
       </>
-    } else if (view === 'plan') body = <div className="nt-mdetail">{p.planNode}</div>
-    else if (view === 'suivi') body = <div className="nt-mdetail">{p.suiviNode}</div>
-    else body = <div className="nt-mdetail">{p.bodyNode}</div>
+    } else if (view === 'plan') {
+      body = <MobilePlanDetail {...p.planDetail} activePlan={p.activePlan} today={p.today} realToday={p.realToday} todayType={p.todayType}
+        todayKcalObj={p.todayKcalObj} todayMacroObj={p.todayMacroObj} todaySessions={p.todaySessions} />
+    } else if (view === 'suivi') body = <MobileSuiviDetail {...p.suiviDetail} />
+    else body = <MobileBodyDetail {...p.bodyDetail} onGoToPlan={() => open('plan')} />
     return (
       <div style={{ padding: '14px 16px 24px', fontFamily: 'var(--font-body)' }}>
         <DetailSlide backLabel={t('nutrition.title')} onBack={() => { setAction(undefined); close() }}>{body}</DetailSlide>

@@ -1146,25 +1146,18 @@ export default function NutritionPage() {
           })()}
           weightLogs={weightLogs}
           onCreatePlan={() => setAiPanelOpen(true)}
-          planNode={
-            <PlanTab
-              activePlan={activePlan}
-              today={today}
-              todayType={todayType}
-              todayKcalObj={todayKcalObj}
-              todayMacroObj={todayMacroObj}
-              todaySessions={todaySessions}
-              next14Days={next14Days}
-              onOpenDay={setDayDetailOpen}
-              onOpenAI={() => setAiPanelOpen(true)}
-              onOpenShopping={() => setShoppingOpen(true)}
-              onRegen={() => setRegenConfirm(true)}
-              onDelete={() => void handleDeletePlan()}
-              isDesktop={false}
-            />
-          }
-          suiviNode={<SuiviSection dailyLogs={dailyLogs} plan={activePlan?.plan_data ?? null} weightKg={profile?.weight_kg ?? null} today={today} />}
-          bodyNode={<CompositionTab weightLogs={weightLogs} heightCm={profile?.height_cm ?? null} saveWeightLog={saveWeightLog} onGoToPlan={() => setTab('plan')} isDesktop={false} />}
+          planDetail={{
+            next14Days,
+            templatesCount: templates.length,
+            onOpenDay: setDayDetailOpen,
+            onOpenAI: () => setAiPanelOpen(true),
+            onOpenShopping: () => setShoppingOpen(true),
+            onOpenTemplates: () => setShowTemplates(true),
+            onRegen: () => setRegenConfirm(true),
+            onDelete: () => void handleDeletePlan(),
+          }}
+          suiviDetail={{ dailyLogs, plan: activePlan?.plan_data ?? null, weightKg: profile?.weight_kg ?? null, today }}
+          bodyDetail={{ weightLogs, heightCm: profile?.height_cm ?? null, saveWeightLog }}
         />
       ) : (<>
       {/* ── HEADER (mobile) — sur desktop le titre est dans le rail ─── */}

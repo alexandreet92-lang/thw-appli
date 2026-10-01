@@ -31,8 +31,9 @@ function segStr(sec: number, seg: Seg): string {
 }
 
 // ── Surpage détail d'une course ───────────────────────────────────
-function HyroxRaceOverlay({ race, races, onSelect, onClose }: {
+function HyroxRaceOverlay({ race, races, onSelect, onClose, onEdit, onDelete }: {
   race: HyroxRace; races: HyroxRace[]; onSelect?: (l: string, v: string) => void; onClose: () => void
+  onEdit?: (r: HyroxRace) => void; onDelete?: (r: HyroxRace) => void
 }) {
   const { t } = useI18n()
   const [mounted, setMounted] = useState(false)
@@ -89,6 +90,22 @@ function HyroxRaceOverlay({ race, races, onSelect, onClose }: {
               </div>
             </div>
           )}
+          {(onEdit || onDelete) && (
+            <div style={{ display: 'flex', gap: 8, marginTop: 20 }}>
+              {onEdit && (
+                <button onClick={() => { onEdit(race); requestClose() }}
+                  style={{ flex: 1, padding: '11px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border-mid)', background: 'var(--bg-card2)', color: 'var(--text)', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                  {t('performance.edit')}
+                </button>
+              )}
+              {onDelete && (
+                <button onClick={() => { if (window.confirm(t('performance.deleteRaceConfirm'))) { onDelete(race); requestClose() } }}
+                  style={{ flex: 1, padding: '11px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border-mid)', background: 'transparent', color: 'var(--danger)', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                  {t('perf.delete')}
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>,
@@ -96,7 +113,10 @@ function HyroxRaceOverlay({ race, races, onSelect, onClose }: {
   )
 }
 
-export function HyroxCompare({ races, onSelect }: { races: HyroxRace[]; onSelect?: (label: string, value: string) => void }) {
+export function HyroxCompare({ races, onSelect, onEdit, onDelete }: {
+  races: HyroxRace[]; onSelect?: (label: string, value: string) => void
+  onEdit?: (r: HyroxRace) => void; onDelete?: (r: HyroxRace) => void
+}) {
   const { t } = useI18n()
   const [seg, setSeg] = useState<Seg>('overall')
   const [detail, setDetail] = useState<HyroxRace | null>(null)
@@ -163,7 +183,7 @@ export function HyroxCompare({ races, onSelect }: { races: HyroxRace[]; onSelect
         <p style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: 'var(--text-dim)', margin: '10px 0 0' }}>{t('perf2.tapRaceForBreakdown')}</p>
       </div>
 
-      {detail && <HyroxRaceOverlay race={detail} races={races} onSelect={onSelect} onClose={() => setDetail(null)} />}
+      {detail && <HyroxRaceOverlay race={detail} races={races} onSelect={onSelect} onEdit={onEdit} onDelete={onDelete} onClose={() => setDetail(null)} />}
     </div>
   )
 }

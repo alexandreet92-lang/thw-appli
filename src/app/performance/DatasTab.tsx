@@ -332,6 +332,22 @@ const TRI_DIST: Record<string, { swimM: number; runKm: number }> = {
 }
 
 // ── Sports Records Types ─────────────────────────────────────────
+// Conditions d'un record saisies dans le RecordDrawer (stockées en JSON dans
+// personal_records.notes ; D+ aussi dans elevation_gain_m).
+export interface RecordExtras {
+  np?: string; dur?: string; env?: 'home' | 'ext'; surface?: 'route' | 'piste' | 'trail'; dplus?: string
+  pool?: '25m' | '50m' | 'open'; combi?: boolean; ergo?: boolean; damper?: string
+}
+function parseExtras(notes: string | null | undefined): RecordExtras {
+  if (!notes || !notes.trim().startsWith('{')) return {}
+  try { const o = JSON.parse(notes) as { extras?: RecordExtras }; return o.extras ?? {} } catch { return {} }
+}
+function extrasPayload(x: RecordExtras): { notes: string | null; elevation_gain_m: number | null } {
+  const clean = Object.fromEntries(Object.entries(x).filter(([, v]) => v !== '' && v != null))
+  const d = parseInt(x.dplus ?? '', 10)
+  return { notes: Object.keys(clean).length ? JSON.stringify({ extras: clean }) : null, elevation_gain_m: Number.isFinite(d) && d > 0 ? d : null }
+}
+
 interface SpRecord {
   id: string
   sport: string
@@ -339,6 +355,7 @@ interface SpRecord {
   performance: string
   performance_unit: string
   achieved_at: string
+  notes?: string | null
   activity_id?: string | null
   split_swim?: string | null
   split_t1?:   string | null
@@ -1004,25 +1021,33 @@ interface RecordDrawerProps {
   date: string
   setDate: (v: string) => void
   saving: boolean
-  onConfirm: () => Promise<void>
+  onConfirm: (extras: RecordExtras) => Promise<void>
   onClose: () => void
   profile: Props['profile']
+  initialExtras?: RecordExtras
   activityId?: string | null
   onOpenLink?: () => void
   onUnlink?: () => void
 }
 
-function RecordDrawer({ sport, distLabel, draft, setDraft, date, setDate, saving, onConfirm, onClose, profile, activityId, onOpenLink, onUnlink }: RecordDrawerProps) {
+function RecordDrawer({ sport, distLabel, draft, setDraft, date, setDate, saving, onConfirm, onClose, profile, initialExtras, activityId, onOpenLink, onUnlink }: RecordDrawerProps) {
   const { t } = useI18n()
+  const ix = initialExtras ?? {}
   const [mounted, setMounted] = useState(false)
-  const [np,      setNp]      = useState('')
-  const [dur,     setDur]     = useState('')
-  const [surface, setSurface] = useState<'route'|'piste'|'trail'>('route')
-  const [dplus,   setDplus]   = useState('')
-  const [pool,    setPool]    = useState<'25m'|'50m'|'open'>('25m')
-  const [combi,   setCombi]   = useState(false)
-  const [ergo,    setErgo]    = useState(true)
-  const [damper,  setDamper]  = useState('')
+  const [np,      setNp]      = useState(ix.np ?? '')
+  const [dur,     setDur]     = useState(ix.dur ?? '')
+  const [surface, setSurface] = useState<'route'|'piste'|'trail'>(ix.surface ?? 'route')
+  const [dplus,   setDplus]   = useState(ix.dplus ?? '')
+  const [pool,    setPool]    = useState<'25m'|'50m'|'open'>(ix.pool ?? '25m')
+  const [combi,   setCombi]   = useState(ix.combi ?? false)
+  const [ergo,    setErgo]    = useState(ix.env ? ix.env === 'home' : (ix.ergo ?? true))
+  const [damper,  setDamper]  = useState(ix.damper ?? '')
+  const collectExtras = (): RecordExtras =>
+    sport === 'bike' ? { np, dur, env: ergo ? 'home' : 'ext', dplus: ergo ? '' : dplus }
+    : sport === 'run' ? { surface, dplus: surface === 'trail' ? dplus : '' }
+    : sport === 'swim' ? { pool, combi }
+    : sport === 'rowing' ? { ergo, damper: ergo ? damper : '' }
+    : {}
 
   useEffect(() => { setMounted(true) }, [])
   if (!mounted) return null
@@ -1379,7 +1404,7 @@ function RecordDrawer({ sport, distLabel, draft, setDraft, date, setDate, saving
         {/* Fixed save */}
         <div style={{ position:'absolute', bottom:0, left:0, right:0, padding:'12px 20px 20px', background:'var(--bg-card)', borderTop:'1px solid var(--border)' }}>
           <button
-            onClick={() => void onConfirm()}
+            onClick={() => void onConfirm(collectExtras())}
             disabled={!canSave || saving}
             style={{
               width:'100%', padding:'14px',
@@ -2506,6 +2531,8 @@ export function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTe
   const [editDraft, setEditDraft] = useState('')       // temps final
   const [editDate, setEditDate] = useState('')
   const [editActivityId, setEditActivityId] = useState<string | null>(null)  // activité liée au record
+  const [editExtras, setEditExtras] = useState<RecordExtras>({})              // conditions saisies dans le drawer
+  const extrasRef = useRef<RecordExtras>({})
   const [recordSaving, setRecordSaving] = useState(false)
   // Splits triathlon
   const [editSplitSwim, setEditSplitSwim] = useState('')
@@ -2533,7 +2560,10 @@ export function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTe
     setActiveEdit(`${sport}-record-${distLabel}`)
     setEditingRecordId(id)
     setEditDraft(perf)
-    setEditDate(new Date().toISOString().slice(0, 10))
+    // Record existant : on garde SA date et ses conditions (plus de remise à aujourd'hui).
+    const rec = id ? (sport === 'bike' ? bikeAllRecords.find(r => r.id === id) : allSpRecords.find(r => r.id === id)) : undefined
+    setEditDate(rec?.achieved_at?.slice(0, 10) ?? new Date().toISOString().slice(0, 10))
+    setEditExtras(parseExtras(rec?.notes))
     setEditActivityId(id ? (allSpRecords.find(r => r.id === id)?.activity_id ?? null) : null)
     setDrawerSpec({ sport, distLabel })
   }
@@ -2566,7 +2596,7 @@ export function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTe
   }
 
   // Tous les records vélo depuis Supabase (toutes années)
-  const [bikeAllRecords, setBikeAllRecords] = useState<{id: string; distance_label: string; performance: string; achieved_at: string}[]>([])
+  const [bikeAllRecords, setBikeAllRecords] = useState<{id: string; distance_label: string; performance: string; achieved_at: string; notes?: string | null}[]>([])
 
   // All personal records for run/swim/rowing/gym from Supabase
   const [allSpRecords, setAllSpRecords] = useState<SpRecord[]>([])
@@ -2588,11 +2618,11 @@ export function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTe
     if (!uid) return
     const { data } = await supabase
       .from('personal_records')
-      .select('id, distance_label, performance, achieved_at')
+      .select('id, distance_label, performance, achieved_at, notes')
       .eq('user_id', uid)
       .eq('sport', 'bike')
       .order('achieved_at', { ascending: false })
-    if (data) setBikeAllRecords(data as {id: string; distance_label: string; performance: string; achieved_at: string}[])
+    if (data) setBikeAllRecords(data as {id: string; distance_label: string; performance: string; achieved_at: string; notes?: string | null}[])
   }, [])
 
   // 1. Charger les records bike depuis personal_records (au mount)
@@ -2639,7 +2669,7 @@ export function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTe
       if (!uid) return
       const { data } = await supabase
         .from('personal_records')
-        .select('id, sport, distance_label, performance, performance_unit, achieved_at, activity_id, split_swim, split_t1, split_bike, split_t2, split_run')
+        .select('id, sport, distance_label, performance, performance_unit, achieved_at, activity_id, notes, split_swim, split_t1, split_bike, split_t2, split_run')
         .eq('user_id', uid)
         .in('sport', ['run', 'swim', 'rowing', 'gym', 'triathlon'])
         .order('achieved_at', { ascending: false })
@@ -2681,7 +2711,7 @@ export function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTe
         if (!uid) return
         const { data } = await supabase
           .from('personal_records')
-          .select('id, sport, distance_label, performance, performance_unit, achieved_at, activity_id, split_swim, split_t1, split_bike, split_t2, split_run')
+          .select('id, sport, distance_label, performance, performance_unit, achieved_at, activity_id, notes, split_swim, split_t1, split_bike, split_t2, split_run')
           .eq('user_id', uid)
           .in('sport', ['run', 'swim', 'rowing', 'gym', 'triathlon'])
           .order('achieved_at', { ascending: false })
@@ -2859,6 +2889,7 @@ export function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTe
             performance_unit: unit,
             achieved_at:      achievedAt,
             activity_id:      editActivityId,
+            ...extrasPayload(extrasRef.current),
           }).eq('id', editingRecordId)
           setAllSpRecords(prev => prev.map(r =>
             r.id === editingRecordId
@@ -2878,13 +2909,12 @@ export function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTe
             activity_id:      editActivityId,
             race_name:        null,
             pace_s_km:        null,
-            elevation_gain_m: null,
             split_swim:       null,
             split_bike:       null,
             split_run:        null,
             station_times:    null,
-            notes:            null,
-          }).select('id, sport, distance_label, performance, performance_unit, achieved_at, activity_id').single()
+            ...extrasPayload(extrasRef.current),
+          }).select('id, sport, distance_label, performance, performance_unit, achieved_at, activity_id, notes').single()
           if (inserted) setAllSpRecords(prev => [...prev, inserted as SpRecord])
         }
       }
@@ -2908,10 +2938,11 @@ export function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTe
           await supabase.from('personal_records').update({
             performance: String(watts),
             achieved_at: achievedAt,
+            ...extrasPayload(extrasRef.current),
           }).eq('id', editingRecordId)
           setBikeAllRecords(prev => prev.map(r =>
             r.id === editingRecordId
-              ? { ...r, performance: String(watts), achieved_at: achievedAt }
+              ? { ...r, performance: String(watts), achieved_at: achievedAt, notes: extrasPayload(extrasRef.current).notes }
               : r
           ))
         } else {
@@ -2926,13 +2957,12 @@ export function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTe
             achieved_at:      achievedAt,
             race_name:        null,
             pace_s_km:        null,
-            elevation_gain_m: null,
             split_swim:       null,
             split_bike:       null,
             split_run:        null,
             station_times:    null,
-            notes:            null,
-          }).select('id, distance_label, performance, achieved_at').single()
+            ...extrasPayload(extrasRef.current),
+          }).select('id, distance_label, performance, achieved_at, notes').single()
           if (inserted) setBikeAllRecords(prev => [...prev, inserted as typeof bikeAllRecords[0]])
         }
       }
@@ -2988,7 +3018,9 @@ export function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTe
           date={editDate}
           setDate={setEditDate}
           saving={recordSaving}
-          onConfirm={async () => {
+          initialExtras={editExtras}
+          onConfirm={async (extras) => {
+            extrasRef.current = extras
             if (drawerSpec.sport === 'bike') {
               await confirmBikeRecord(drawerSpec.distLabel)
             } else {

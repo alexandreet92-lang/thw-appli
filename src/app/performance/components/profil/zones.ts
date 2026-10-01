@@ -28,6 +28,15 @@ export function paceZones(vma: number): Zone[] {
   })
 }
 
+// Natation : allures /100 m dérivées de la CSS (et non de la VMA course).
+export function swimZones(cssSec: number): Zone[] {
+  const defs: [string, number][] = [['Récupération', 1.15], ['Endurance', 1.08], ['Tempo', 1.04], ['Seuil', 1.0], ['VO2max', 0.95]]
+  return defs.map(([label, f], i) => ({
+    z: `Z${i + 1}`, label, color: Z5[i], pct: (i + 1) * 20,
+    range: cssSec > 0 ? `${paceStr(cssSec * f)}/100m` : '—',
+  }))
+}
+
 export function powerZones(ftp: number): Zone[] {
   const defs: [string, number, number][] = [
     ['Récupération', 0, 0.55], ['Endurance', 0.56, 0.75], ['Tempo', 0.76, 0.90], ['Seuil', 0.91, 1.05],

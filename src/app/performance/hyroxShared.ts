@@ -61,3 +61,13 @@ export async function insertRace(n: NewRace): Promise<HyroxRace | null> {
   const { data } = await supabase.from('hyrox_races').insert({ user_id: uid, ...n }).select().single()
   return (data as HyroxRace) ?? null
 }
+export async function updateRace(id: string, n: NewRace): Promise<HyroxRace | null> {
+  const supabase = createClient()
+  const { data } = await supabase.from('hyrox_races').update(n).eq('id', id).select().single()
+  return (data as HyroxRace) ?? null
+}
+export async function deleteRace(id: string): Promise<boolean> {
+  const supabase = createClient()
+  const { error } = await supabase.from('hyrox_races').delete().eq('id', id)
+  return !error
+}

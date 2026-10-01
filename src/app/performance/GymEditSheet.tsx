@@ -5,18 +5,19 @@ import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useI18n } from '@/lib/i18n'
 import { Segmented } from '@/components/ui/Segmented'
-import { unitKind, typeLabel, upsertGym, type GymRec } from './gymShared'
+import { unitKind, typeLabel, upsertGym, deleteGym, type GymRec } from './gymShared'
 
 const GYM_DOT = '#8b5cf6' // design-allow-color — teinte sport muscu sanctionnée
 const SCRIM = 'rgba(0,0,0,0.72)' // design-allow-color — voile de feuille
 
-export function GymEditSheet({ exercise, types, initialType, getBest, onClose, onSaved }: {
+export function GymEditSheet({ exercise, types, initialType, getBest, onClose, onSaved, onDeleted }: {
   exercise: string
   types: string[]
   initialType: string
   getBest: (type: string) => GymRec | null
   onClose: () => void
   onSaved: (rec: GymRec) => void
+  onDeleted?: (id: string) => void
 }) {
   const { t } = useI18n()
   const [type, setType] = useState(initialType)
@@ -47,6 +48,14 @@ export function GymEditSheet({ exercise, types, initialType, getBest, onClose, o
     if (rec) { onSaved(rec); close() }
   }
 
+  async function remove() {
+    if (!cur || !window.confirm(t('performance.deleteRecordConfirm'))) return
+    setSaving(true)
+    const ok = await deleteGym([cur.id])
+    setSaving(false)
+    if (ok) { onDeleted?.(cur.id); close() }
+  }
+
   return createPortal(
     <div onClick={close} className="rec-drawer" style={{ position: 'fixed', inset: 0, zIndex: 3000, background: SCRIM, display: 'flex', alignItems: 'flex-end' }}>
       <div onClick={e => e.stopPropagation()} className={closing ? 'sheet-close' : 'sheet-open'} style={{ width: '100%', maxHeight: 'calc(100dvh - 72px)', background: 'var(--bg-card)', borderRadius: '20px 20px 0 0', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', overflow: 'hidden', willChange: 'transform' }}>
@@ -63,7 +72,7 @@ export function GymEditSheet({ exercise, types, initialType, getBest, onClose, o
         </div>
 
         {/* Body */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px 100px' }}>
+        <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px 150px' }}>
           <p style={{ fontFamily: 'var(--font-body)', fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-dim)', margin: '0 0 8px' }}>{t('performance.recordType')}</p>
           <Segmented size="sm" ariaLabel="Type" value={type} onChange={pickType} options={types.map(t => ({ id: t, label: typeLabel(t) }))} />
 
@@ -89,6 +98,12 @@ export function GymEditSheet({ exercise, types, initialType, getBest, onClose, o
             style={{ width: '100%', padding: '14px', borderRadius: 'var(--r-sm)', border: 'none', cursor: canSave && !saving ? 'pointer' : 'not-allowed', background: canSave && !saving ? 'var(--primary)' : 'var(--bg-card2)', color: canSave && !saving ? 'var(--on-primary)' : 'var(--text-dim)', fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 600 }}>
             {saving ? t('performance.saving') : t('performance.saveThisRecord')}
           </button>
+          {cur && onDeleted && (
+            <button onClick={() => void remove()} disabled={saving}
+              style={{ width: '100%', marginTop: 8, padding: '10px', borderRadius: 'var(--r-sm)', border: 'none', background: 'transparent', color: 'var(--danger)', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+              {t('performance.deleteThisRecord')}
+            </button>
+          )}
         </div>
       </div>
     </div>,

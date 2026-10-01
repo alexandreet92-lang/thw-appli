@@ -6,7 +6,7 @@ import { useI18n } from '@/lib/i18n'
 import { Segmented } from '@/components/ui/Segmented'
 import { HyroxCompare } from './HyroxCompare'
 import { HyroxRaceSheet } from './HyroxRaceSheet'
-import { fetchRaces, HYROX_FORMAT_LABELS, type HyroxRace } from './hyroxShared'
+import { fetchRaces, deleteRace, HYROX_FORMAT_LABELS, type HyroxRace } from './hyroxShared'
 
 type FilterFmt = 'all' | keyof typeof HYROX_FORMAT_LABELS
 
@@ -15,6 +15,7 @@ export function HyroxRecords({ onSelect }: { onSelect?: (label: string, value: s
   const [races, setRaces] = useState<HyroxRace[] | null>(null)
   const [fmt, setFmt] = useState<FilterFmt>('all')
   const [adding, setAdding] = useState(false)
+  const [editing, setEditing] = useState<HyroxRace | null>(null)
 
   useEffect(() => { void fetchRaces().then(setRaces) }, [])
 
@@ -47,9 +48,12 @@ export function HyroxRecords({ onSelect }: { onSelect?: (label: string, value: s
           </p>
         </div>
       ) : (
-        <HyroxCompare races={filtered} onSelect={onSelect} />
+        <HyroxCompare races={filtered} onSelect={onSelect}
+          onEdit={r => setEditing(r)}
+          onDelete={r => { void deleteRace(r.id).then(ok => { if (ok) setRaces(prev => (prev ?? []).filter(x => x.id !== r.id)) }) }} />
       )}
 
+      {editing && <HyroxRaceSheet initial={editing} onClose={() => setEditing(null)} onSaved={r => setRaces(prev => (prev ?? []).map(x => x.id === r.id ? r : x).sort((a, b) => b.date.localeCompare(a.date)))} />}
       {adding && <HyroxRaceSheet onClose={() => setAdding(false)} onSaved={r => setRaces(prev => [r, ...(prev ?? [])])} />}
     </div>
   )

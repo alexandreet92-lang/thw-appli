@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useI18n } from '@/lib/i18n'
 import { GymEditSheet } from './GymEditSheet'
 import { AddExerciseSheet } from './AddExerciseSheet'
-import { allExercises, fetchGym, fmtValue, typeLabel, type GymExercise, type GymRec } from './gymShared'
+import { allExercises, isCustom, removeCustom, deleteGym, fetchGym, fmtValue, typeLabel, type GymExercise, type GymRec } from './gymShared'
 
 const GYM = '#8b5cf6' // design-allow-color — teinte sport muscu sanctionnée
 
@@ -43,6 +43,16 @@ export function GymRecords({ recordYear, onSelect, selectedDatum }: {
 
   function onSaved(rec: GymRec) { setRecords(prev => [rec, ...prev.filter(r => r.id !== rec.id)]) }
 
+  // Exercice personnalisé : retiré de la liste + ses records supprimés.
+  async function removeExercise(name: string) {
+    if (!window.confirm(tr('performance.deleteExerciseConfirm'))) return
+    const ids = records.filter(r => r.distance_label.startsWith(`${name} — `)).map(r => r.id)
+    if (!(await deleteGym(ids))) return
+    removeCustom(name)
+    setExercises(allExercises())
+    setRecords(prev => prev.filter(r => !ids.includes(r.id)))
+  }
+
   const card: React.CSSProperties = { background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: 18 }
 
   return (
@@ -54,7 +64,13 @@ export function GymRecords({ recordYear, onSelect, selectedDatum }: {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }}>
         {exercises.map(ex => (
           <div key={ex.name} style={card}>
-            <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 600, color: 'var(--text)', margin: '0 0 12px' }}>{ex.name}</h3>
+            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, margin: '0 0 12px' }}>
+              <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 600, color: 'var(--text)', margin: 0 }}>{ex.name}</h3>
+              {isCustom(ex.name) && (
+                <button onClick={() => void removeExercise(ex.name)}
+                  style={{ padding: 0, border: 'none', background: 'transparent', color: 'var(--text-dim)', fontFamily: 'var(--font-body)', fontSize: 11, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>{tr('perf.delete')}</button>
+              )}
+            </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
               {ex.types.map(t => {
                 const b = best(ex.name, t)
@@ -82,7 +98,8 @@ export function GymRecords({ recordYear, onSelect, selectedDatum }: {
 
       {edit && (
         <GymEditSheet exercise={edit.exercise} types={edit.types} initialType={edit.type}
-          getBest={t => best(edit.exercise, t)} onClose={() => setEdit(null)} onSaved={onSaved} />
+          getBest={t => best(edit.exercise, t)} onClose={() => setEdit(null)} onSaved={onSaved}
+          onDeleted={id => setRecords(prev => prev.filter(r => r.id !== id))} />
       )}
       {adding && <AddExerciseSheet onClose={() => setAdding(false)} onAdded={() => setExercises(allExercises())} />}
     </div>

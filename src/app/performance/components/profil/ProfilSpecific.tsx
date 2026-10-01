@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react'
 import { useI18n } from '@/lib/i18n'
 import { ZoneBars } from './ZoneBars'
 import { Radar } from './Radar'
-import { fcZones, paceZones, powerZones } from './zones'
+import { fcZones, paceZones, swimZones, powerZones } from './zones'
 import type { BenchField } from './BenchmarkSheet'
 
 const FB = 'var(--font-body)'
@@ -42,8 +42,11 @@ export function ProfilSpecific({ p, wkg, specSport, onSport, params, fields, onE
 
   // « — » tant que la donnée source n'est pas renseignée par l'athlète.
   const dN = (n: number, unit: string) => n > 0 ? { value: `${n}`, unit } : { value: '—', unit: '' }
-  const zonesAvailable = ztype === 'pace' ? p.vma > 0 : ztype === 'power' ? p.ftp > 0 : (p.hrMax > 0 && p.hrRest > 0)
-  const zones = ztype === 'pace' ? paceZones(p.vma) : ztype === 'power' ? powerZones(p.ftp) : fcZones(p.hrMax, p.hrRest)
+  // CSS « m:ss » → secondes /100 m. La natation ne dépend jamais de la VMA course.
+  const cssSec = (() => { const m = (p.css || '').split(':').map(x => parseInt(x, 10)); return m.length === 2 && !m.some(isNaN) ? m[0] * 60 + m[1] : 0 })()
+  const swimPace = ztype === 'pace' && specSport === 'swimming'
+  const zonesAvailable = swimPace ? cssSec > 0 : ztype === 'pace' ? p.vma > 0 : ztype === 'power' ? p.ftp > 0 : (p.hrMax > 0 && p.hrRest > 0)
+  const zones = swimPace ? swimZones(cssSec) : ztype === 'pace' ? paceZones(p.vma) : ztype === 'power' ? powerZones(p.ftp) : fcZones(p.hrMax, p.hrRest)
   const subs: { label: string; value: string; unit: string }[] =
     specSport === 'running' ? [{ label: 'VMA', ...dN(p.vma, 'km/h') }, { label: 'LTHR', ...dN(p.lthr, 'bpm') }, { label: 'VO2max', ...dN(p.vo2max, 'ml/kg/min') }]
       : specSport === 'cycling' ? [{ label: 'FTP', ...dN(p.ftp, 'W') }, { label: 'W/kg', value: wkg, unit: '' }, { label: 'LTHR', ...dN(p.lthr, 'bpm') }]
@@ -76,8 +79,9 @@ export function ProfilSpecific({ p, wkg, specSport, onSport, params, fields, onE
       { id: 'grimpeur',  label: 'Grimp.',     base: 0 },   // régularité col — test
     ]
     : specSport === 'swimming' ? [
-      { id: 'css',   label: 'CSS',                    base: p.css ? 60 : 0 },
-      { id: 'speed', label: t('performance.speed'),   base: clamp((p.vma - 10) / 10 * 100) },
+      // CSS 2:30/100 m = 0, 1:10/100 m = 100. Vitesse : test 100 m / analyse IA.
+      { id: 'css',   label: 'CSS',                    base: cssSec > 0 ? clamp((150 - cssSec) / 80 * 100) : 0 },
+      { id: 'speed', label: t('performance.speed'),   base: 0 },
       { id: 'endur', label: t('performance.endurance'), base: clamp((p.vo2max - 30) / 40 * 100) },
     ]
     : [

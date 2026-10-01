@@ -690,7 +690,7 @@ function TestProtocolPanel({ open: ot, onClose, onFtpUpdate }: { open: OpenTest 
     }
   }, [])
 
-  const loadHistory = useCallback(async (testName: string, sport: string) => {
+  const loadHistory = useCallback(async (testName: string, sport: string, testId: string) => {
     setHistLoading(true)
     try {
       const sb = createClient()
@@ -702,14 +702,13 @@ function TestProtocolPanel({ open: ot, onClose, onFtpUpdate }: { open: OpenTest 
         .eq('nom', testName)
         .eq('sport', sport)
         .maybeSingle()
-      if (!defData?.id) return
-      const { data } = await sb
-        .from('test_results')
-        .select('id, date, valeurs, documents')
-        .eq('user_id', uid)
-        .eq('test_definition_id', defData.id)
-        .order('date', { ascending: false })
-        .limit(10)
+      // Résultats rattachés par définition (si elle existe) OU par identifiant
+      // de test stocké dans les valeurs (__test_id) — tests absents de test_definitions.
+      const q = sb.from('test_results').select('id, date, valeurs, documents').eq('user_id', uid)
+      const filtered = defData?.id
+        ? q.or(`test_definition_id.eq.${defData.id},valeurs->>__test_id.eq.${testId}`)
+        : q.eq('valeurs->>__test_id', testId)
+      const { data } = await filtered.order('date', { ascending: false }).limit(10)
       if (data) setHistory(data as TestHistoryEntry[])
     } finally {
       setHistLoading(false)
@@ -721,7 +720,7 @@ function TestProtocolPanel({ open: ot, onClose, onFtpUpdate }: { open: OpenTest 
     setVals({})
     setSaved(false)
     setShowHistory(false)
-    void loadHistory(ot.test.name, ot.sport)
+    void loadHistory(ot.test.name, ot.sport, ot.test.id)
   }, [testId, loadHistory])
 
   if (!ot || typeof document === 'undefined') return null
@@ -741,6 +740,10 @@ function TestProtocolPanel({ open: ot, onClose, onFtpUpdate }: { open: OpenTest 
     const derived = computeDerived(ot.test.id, vals, weightKg, gender)
     const out: Record<string, string> = { ...vals, ...derivedToVals(derived) }
     if (weightKg > 0) out['__weight_kg'] = String(weightKg)
+    // Identifiant du test + sport : l'historique ne dépend plus du nom dans
+    // test_definitions (plusieurs tests du catalogue n'y figurent pas).
+    out['__test_id'] = ot.test.id
+    out['__sport'] = ot.sport
     return out
   }
 
@@ -838,7 +841,7 @@ function TestProtocolPanel({ open: ot, onClose, onFtpUpdate }: { open: OpenTest 
       setVals({})
       setPendingDocs([])
       setTimeout(() => setSaved(false), 3000)
-      void loadHistory(ot.test.name, ot.sport)
+      void loadHistory(ot.test.name, ot.sport, ot.test.id)
     } finally {
       setSaving(false)
     }
@@ -1233,7 +1236,7 @@ function TestProtocolPanel({ open: ot, onClose, onFtpUpdate }: { open: OpenTest 
                             )}
                           </div>
                           <div style={{ display:'flex', flexWrap:'wrap' as const, gap:'4px 12px' }}>
-                            {Object.entries(entry.valeurs).map(([k, v]) => {
+                            {Object.entries(entry.valeurs).filter(([k]) => !k.startsWith("__")).map(([k, v]) => {
                               if (!v) return null
                               const fieldDef = proto?.fields.find(f => f.cle === k)
                               return (
@@ -1292,13 +1295,16 @@ function HistoriqueTestsPanel({ onClose }: { onClose: () => void }) {
       if (data) {
         setResults(data.map((r: Record<string, unknown>) => {
           const td = r.test_definitions as { nom?: string; sport?: string } | null
+          const v = (r.valeurs ?? {}) as Record<string, string>
+          // Nom retrouvé via l'identifiant stocké quand la définition manque.
+          const cat = v.__sport && v.__test_id ? TESTS[v.__sport as TestSport]?.find(x => x.id === v.__test_id) : undefined
           return {
             id: r.id as string,
             date: r.date as string,
-            valeurs: (r.valeurs ?? {}) as Record<string, string>,
+            valeurs: Object.fromEntries(Object.entries(v).filter(([k]) => !k.startsWith('__'))),
             documents: (r.documents ?? []) as GlobalTestResult['documents'],
-            nom: td?.nom ?? '—',
-            sport: td?.sport,
+            nom: td?.nom ?? cat?.name ?? '—',
+            sport: td?.sport ?? v.__sport,
           }
         }))
       }

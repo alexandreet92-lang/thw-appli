@@ -45,6 +45,13 @@ export function addCustom(ex: GymExercise) {
   list.push(ex)
   localStorage.setItem(LS_KEY, JSON.stringify(list))
 }
+export function isCustom(name: string): boolean {
+  return !BUILTIN_EXERCISES.some(b => b.name.toLowerCase() === name.toLowerCase())
+}
+export function removeCustom(name: string) {
+  const list = loadCustom().filter(e => e.name.toLowerCase() !== name.toLowerCase())
+  localStorage.setItem(LS_KEY, JSON.stringify(list))
+}
 export function allExercises(): GymExercise[] {
   const custom = loadCustom().filter(c => !BUILTIN_EXERCISES.some(b => b.name.toLowerCase() === c.name.toLowerCase()))
   return [...BUILTIN_EXERCISES, ...custom]
@@ -77,4 +84,11 @@ export async function upsertGym(p: { id: string | null; name: string; type: stri
     performance: p.value, performance_unit: unit, event_type: 'training', achieved_at: p.dateISO, race_name: null,
   }).select('id, distance_label, performance, performance_unit, achieved_at').single()
   return (data as GymRec) ?? null
+}
+
+export async function deleteGym(ids: string[]): Promise<boolean> {
+  if (!ids.length) return true
+  const supabase = createClient()
+  const { error } = await supabase.from('personal_records').delete().in('id', ids)
+  return !error
 }

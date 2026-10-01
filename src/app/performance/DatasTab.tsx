@@ -22,7 +22,7 @@ import { LinkActivitySheet } from './LinkActivitySheet'
 import { currentLocale } from '@/lib/i18n'
 
 // ── Types ────────────────────────────────────────────────────────
-type RecordSport = 'bike' | 'run' | 'swim' | 'rowing' | 'triathlon' | 'hyrox' | 'gym'
+export type RecordSport = 'bike' | 'run' | 'swim' | 'rowing' | 'triathlon' | 'hyrox' | 'gym'
 
 interface Props {
   onSelect: (label: string, value: string) => void
@@ -2486,14 +2486,16 @@ function PowerCurveLogSVG({ bikeByYear, hiddenYears, selectedYear, weight }: {
 // ════════════════════════════════════════════════
 // SUB-TAB 2: RECORDS PERSONNELS
 // ════════════════════════════════════════════════
-function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests }: {
+export function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests, fixedSport }: {
   onSelect: Props['onSelect']
   selectedDatum: Props['selectedDatum']
   profile: Props['profile']
   onNavigateToTests?: () => void
+  /** Mobile : page d'un seul sport (pas d'en-tête ni d'onglets de sport). */
+  fixedSport?: RecordSport
 }) {
   const { t } = useI18n()
-  const [sport, setSport] = useState<RecordSport>('bike')
+  const [sport, setSport] = useState<RecordSport>(fixedSport ?? 'bike')
   const isMobile = useWindowWidth() < 768
   // ── Année globale (pills DS §16) ─────────────────────────────────
   const [recordYear, setRecordYear] = useState('All Time')
@@ -2974,7 +2976,7 @@ function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests }: 
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-      <SectionHeader label={t('perf2.personalRecords')} gradient="linear-gradient(180deg,#ffb340,#f97316)" />
+      {!fixedSport && <SectionHeader label={t('perf2.personalRecords')} gradient="linear-gradient(180deg,#ffb340,#f97316)" />}
 
       {/* Wingate-style record drawer — bike / run / swim / rowing / gym */}
       {drawerSpec && (
@@ -3042,11 +3044,11 @@ function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests }: 
       })()}
 
       {/* Sport tabs */}
-      <SportTabs
+      {!fixedSport && <SportTabs
         tabs={SPORT_TABS.map(([id, label, color]) => ({ id, label, color }))}
         value={sport}
         onChange={(id) => setSport(id as RecordSport)}
-      />
+      />}
 
       {/* Période (All Time / années) — segmented control neutre */}
       <Segmented
@@ -3060,6 +3062,7 @@ function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests }: 
       {sport === 'bike' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <CyclingRadar profile={profile} />
+          <span id="perf-power" />
           <Card>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, flexWrap: 'wrap', gap: 8 }}>
               <h2 style={{ fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 700, margin: 0 }}>Power Curve</h2>
@@ -3111,6 +3114,7 @@ function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests }: 
             </div>
           </Card>
 
+          <span id="perf-records" />
           <Card>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, gap: 8 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
@@ -3175,7 +3179,9 @@ function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests }: 
             })}
           </Card>
 
+          <span id="perf-climbs" />
           <ClimbsSection profile={profile} />
+          <span id="perf-races" />
           <RacesSection profile={profile} />
           {compareOpen && <PowerCompareOverlay bikeByYear={bikeByYear} weight={profile.weight} onClose={() => setCompareOpen(false)} />}
         </div>
@@ -3444,7 +3450,7 @@ const YD_METRIC_KEY: Record<string, string> = {
   nb_sorties: 'perf2.metricSessions', tss: 'perf2.metricSm', volume_tonnes: 'perf2.metricVolume',
 }
 
-function YearDatasSubTab() {
+export function YearDatasSubTab() {
   const { t } = useI18n()
   const router = useRouter()
   const [loading, setLoading]         = useState(true)
@@ -3643,14 +3649,18 @@ function YearDatasSubTab() {
         .select('id, title, started_at, sport_type, moving_time_s, distance_m')
         .eq('user_id', uid).filter('raw_data->>workout_type', 'eq', '11'),
       // Blessures — erreur silencieuse si table absente (data sera null)
-      sb.from('injuries').select('id, nom, type, date_debut, date_fin').eq('user_id', uid),
+      // Colonnes actuelles (zone / severity / onset_date / resolved_date) → forme C1Injury.
+      sb.from('injuries').select('id, zone, side, severity, onset_date, resolved_date').eq('user_id', uid),
     ])
     const merged = [...(runRaces ?? []), ...(cycleRaces ?? [])]
     // Dédupliquer par id (une course running peut matcher les deux requêtes)
     const seen = new Set<string>()
     const unique = merged.filter(r => { if (seen.has(r.id)) return false; seen.add(r.id); return true })
     setC1Races(unique as C1Race[])
-    setC1Injuries((injuriesData ?? []) as C1Injury[])
+    type InjRow = { id: string; zone: string | null; side: string | null; severity: string | null; onset_date: string | null; resolved_date: string | null }
+    setC1Injuries(((injuriesData ?? []) as InjRow[])
+      .filter(r => !!r.onset_date)
+      .map(r => ({ id: r.id, nom: [r.zone, r.side && r.side !== 'central' ? r.side : null].filter(Boolean).join(' · ') || '—', type: r.severity ?? '', date_debut: r.onset_date as string, date_fin: r.resolved_date })))
   }, [])
 
   useEffect(() => { void fetchMarkers() }, [fetchMarkers])

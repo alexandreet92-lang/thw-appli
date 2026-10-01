@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { resolvePlanningUid } from '@/lib/planning/scope'
 import { Segmented } from '@/components/ui/Segmented'
 import { useI18n } from '@/lib/i18n'
+import { DashCard, Metric } from '@/components/dashboard/primitives'
 
 // ─── Levels ──────────────────────────────────────────────────────────────────
 const LEVELS = [
@@ -1133,9 +1134,24 @@ interface RadarCardProps {
   defaultValues?: Record<string, number>
   extraControls?: React.ReactNode
   children?: React.ReactNode  // extra content below radar
+  /** Mobile : carte résumé (niveau + point fort + mini radar), tap → onOpen. */
+  compact?: boolean
+  onOpen?: () => void
 }
 
-function RadarCard({ dbSport, title, sportColor, axisDefs, defaultValues, extraControls, children }: RadarCardProps) {
+// Mini radar (sans libellés) pour la carte résumé mobile.
+function MiniRadar({ scores, color }: { scores: number[]; color: string }) {
+  const n = scores.length, S = 84, c = S / 2, R = S / 2 - 6
+  const pt = (i: number, r: number) => `${(c + r * Math.sin((2 * Math.PI * i) / n)).toFixed(1)},${(c - r * Math.cos((2 * Math.PI * i) / n)).toFixed(1)}`
+  return (
+    <svg width={S} height={S} viewBox={`0 0 ${S} ${S}`} aria-hidden>
+      {[0.5, 0.75, 1].map(k => <polygon key={k} points={scores.map((_, i) => pt(i, R * k)).join(' ')} fill="none" stroke="var(--bg-hover)" strokeWidth={1} />)}
+      <polygon points={scores.map((v, i) => pt(i, (R * Math.max(0.6, v)) / 10)).join(' ')} fill={`color-mix(in srgb, ${color} 24%, transparent)`} stroke={color} strokeWidth={2} />
+    </svg>
+  )
+}
+
+function RadarCard({ dbSport, title, sportColor, axisDefs, defaultValues, extraControls, children, compact, onOpen }: RadarCardProps) {
   const { t } = useI18n()
   const [gender, setGender] = useState<'M' | 'F'>('M')
   const [rawValues, setRawValues] = useState<Record<string, number>>({})
@@ -1234,6 +1250,20 @@ function RadarCard({ dbSport, title, sportColor, axisDefs, defaultValues, extraC
   function handleSaved(newValues: Record<string, number>) {
     setRawValues(prev => ({ ...prev, ...newValues }))
     setShowModal(false)
+  }
+
+
+  if (compact) {
+    const best = [...axes].filter(a => a.score > 0).sort((a, b) => b.score - a.score)[0]
+    return (
+      <DashCard icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v18h18M7 16v-4M12 16V8M17 16v-7" /></svg>}
+        title={title} meta={t('w1c.bareme')} onOpen={onOpen}>
+        <Metric label={t('perf.m.level')} value={overallLevel ? overallLevel.label : '—'}
+          chip={overallLevel ? overall.toFixed(1).replace('.', ',') : undefined} chipColor={overallLevel?.color}
+          sub={!loaded ? undefined : best ? t('perf.m.strength', { axis: best.label }) : t('w1c.aucune_donnee')}
+          right={<MiniRadar scores={axes.map(a => a.score)} color={sportColor} />} />
+      </DashCard>
+    )
   }
 
   return (
@@ -1348,7 +1378,7 @@ interface ProfileHint {
   thresholdPace?: string
 }
 
-export function CyclingRadar({ profile }: { profile?: ProfileHint }) {
+export function CyclingRadar({ profile, compact, onOpen }: { profile?: ProfileHint; compact?: boolean; onOpen?: () => void }) {
   const { t } = useI18n()
   const defaults: Record<string, number> = {}
   if (profile?.ftp && profile?.weight && profile.weight > 0) {
@@ -1362,6 +1392,7 @@ export function CyclingRadar({ profile }: { profile?: ProfileHint }) {
       sportColor="#3b82f6"
       axisDefs={CYCLING_AXES}
       defaultValues={defaults}
+      compact={compact} onOpen={onOpen}
     />
   )
 }
@@ -1374,7 +1405,7 @@ function paceStringToSec(pace: string): number {
   return parts.length === 2 ? parts[0] * 60 + parts[1] : 0
 }
 
-export function RunningRadar({ profile }: { profile?: ProfileHint }) {
+export function RunningRadar({ profile, compact, onOpen }: { profile?: ProfileHint; compact?: boolean; onOpen?: () => void }) {
   const { t } = useI18n()
   const defaults: Record<string, number> = {}
   if (profile?.vma && profile.vma > 0) defaults['vma'] = profile.vma
@@ -1391,12 +1422,13 @@ export function RunningRadar({ profile }: { profile?: ProfileHint }) {
       sportColor="#22c55e"
       axisDefs={RUNNING_AXES}
       defaultValues={defaults}
+      compact={compact} onOpen={onOpen}
     />
   )
 }
 
 // ─── HyroxRadar ───────────────────────────────────────────────────────────────
-export function HyroxRadar() {
+export function HyroxRadar({ compact, onOpen }: { compact?: boolean; onOpen?: () => void } = {}) {
   const { t } = useI18n()
   const [view, setView] = useState<'main' | 'stations'>('main')
 
@@ -1437,6 +1469,7 @@ export function HyroxRadar() {
       sportColor="#ef4444"
       axisDefs={HYROX_MAIN_AXES}
       extraControls={toggle}
+      compact={compact} onOpen={onOpen}
     />
   )
 }
@@ -1450,7 +1483,7 @@ const TRI_FORMAT_LABELS: Record<TriFormat, string> = {
 
 // `format`/`onFormat` optionnels : si fournis, le sélecteur est piloté par le parent
 // (la page Records) et le sélecteur interne disparaît.
-export function TriathlonRadar({ profile, format: controlled, onFormat }: { profile?: ProfileHint; format?: TriFormat; onFormat?: (f: TriFormat) => void }) {
+export function TriathlonRadar({ profile, format: controlled, onFormat, compact, onOpen }: { profile?: ProfileHint; format?: TriFormat; onFormat?: (f: TriFormat) => void; compact?: boolean; onOpen?: () => void }) {
   const { t } = useI18n()
   const [internal, setInternal] = useState<TriFormat>('703')
   const format = controlled ?? internal
@@ -1475,6 +1508,7 @@ export function TriathlonRadar({ profile, format: controlled, onFormat }: { prof
       axisDefs={TRIATHLON_AXES[format]}
       defaultValues={defaults}
       extraControls={formatSelector}
+      compact={compact} onOpen={onOpen}
     />
   )
 }

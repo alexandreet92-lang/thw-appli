@@ -4,7 +4,9 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import dynamic from 'next/dynamic'
 import { CountUp } from '@/components/ui/AnimatedBar'
-import DatasTab from './DatasTab'
+import DatasTab, { RecordsSubTab, YearDatasSubTab } from './DatasTab'
+import { MobilePerformance } from './components/MobilePerformance'
+import { useNarrow } from '@/lib/hooks/useNarrow'
 import { useI18n } from '@/lib/i18n'
 import { createClient } from '@/lib/supabase/client'
 import { resolvePlanningUid, isCoachScoped } from '@/lib/planning/scope'
@@ -1495,6 +1497,9 @@ const HYROX_TEST_URL_MAP: Record<string, string> = {
 
 export default function PerformancePage() {
   const [tab, setTab]                   = useState<PerfTab>('profil')
+  // Mobile : page d'accueil en cartes ; « Faire un test » (Hyrox) rouvre l'onglet Tests.
+  const isMobileUI = useNarrow(767)
+  const [mobileTestsKey, setMobileTestsKey] = useState(0)
   const [profile, setProfile]           = useState({ ...INIT_PROFILE })
   const { show, dismiss }               = usePageOnboarding(PERFORMANCE_ONBOARDING.pageId, PERFORMANCE_ONBOARDING.version)
   const [selectedDatum, setSelectedDatum] = useState<SelectedDatum | null>(null)
@@ -1586,6 +1591,39 @@ export default function PerformancePage() {
       setAiPrefill(buildAIMessage(selectedDatum))
       setAiOpen(true)
     }
+  }
+
+  const overlays = (
+    <>
+      {selectedDatum && <SelectedDatumBubble datum={selectedDatum} onClear={() => setSelectedDatum(null)} onAsk={handleAsk} />}
+      <AIPanel
+        open={aiOpen}
+        onClose={() => { setAiOpen(false); setAiPrefill(''); setAiInitMsg(undefined); setAiInitLabel(undefined) }}
+        initialAgent="performance"
+        prefillMessage={aiPrefill}
+        initialUserLabel={aiInitLabel}
+        initialAssistantMsg={aiInitMsg}
+        context={{ page:'performance', profile }}
+      />
+    </>
+  )
+  if (isMobileUI) {
+    return (
+      <>
+        <PageHelp config={PERFORMANCE_ONBOARDING} show={show} onDismiss={dismiss} />
+        <MobilePerformance
+          key={mobileTestsKey}
+          profile={profile}
+          setProfile={setProfile}
+          initialView={tab === 'tests' || mobileTestsKey > 0 ? 'tests' : null}
+          profileNode={<ProfilTab onSelect={onSelectDatum} selectedDatum={selectedDatum} profile={profile} setProfile={setProfile} onAnalyzeProfile={handleAnalyzeProfile} />}
+          testsNode={<TestsTab profile={profile} onAnalyzeTest={handleAnalyzeTest} initialSport={initialTest?.sport} initialTestId={initialTest?.testId} onFtpUpdate={ftp => setProfile(prev => ({ ...prev, ftp }))} />}
+          yearNode={<YearDatasSubTab />}
+          renderSport={sp => <RecordsSubTab onSelect={onSelectDatum} selectedDatum={selectedDatum} profile={profile} fixedSport={sp} onNavigateToTests={() => setMobileTestsKey(k => k + 1)} />}
+        />
+        {overlays}
+      </>
+    )
   }
 
   return (

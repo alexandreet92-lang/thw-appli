@@ -53,14 +53,14 @@ export function ChannelContextMenu({ channel, isPinned, canManage, spaceName, sp
         </div>
         {/* En-tête : logo du groupe + nom du salon (façon Discord) */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', padding: '8px var(--space-2) 16px' }}>
-          <span style={{ width: 46, height: 46, borderRadius: 14, flexShrink: 0, overflow: 'hidden', background: 'var(--surface-neutral)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border)' }}>
+          <span style={{ width: 46, height: 46, borderRadius: 'var(--r-md)', flexShrink: 0, overflow: 'hidden', background: 'var(--surface-neutral)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border)' }}>
             {spaceAvatarUrl
               // eslint-disable-next-line @next/next/no-img-element
               ? <img src={spaceAvatarUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               : <span style={{ fontFamily: FD, fontSize: 20, fontWeight: 700, color: 'var(--text-mid)' }}>{(spaceName || 'C').trim().charAt(0).toUpperCase()}</span>}
           </span>
           <span style={{ minWidth: 0 }}>
-            <span style={{ display: 'block', fontFamily: FD, fontSize: 21, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{channel.kind === 'voice' ? '🔊 ' : '#'}{channel.name}</span>
+            <span style={{ display: 'block', fontFamily: FD, fontSize: 22, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{channel.kind === 'voice' ? '🔊 ' : '#'}{channel.name}</span>
             {spaceName && <span style={{ display: 'block', fontFamily: FB, fontSize: 12.5, color: 'var(--text-dim)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{spaceName}</span>}
           </span>
         </div>

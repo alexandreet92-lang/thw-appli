@@ -29,7 +29,7 @@ function Num({ value, onChange, unit, w = 66, min = 0, step = 1 }: { value: numb
     <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', width: w }}>
       <input type="number" value={Number.isFinite(value) ? value : ''} min={min} step={step}
         onChange={e => onChange(Math.max(min, Number(e.target.value) || 0))} inputMode="numeric"
-        className="se-tnum" style={{ width: '100%', boxSizing: 'border-box', textAlign: 'center', padding: unit ? '8px 22px 8px 8px' : '8px', borderRadius: 9, border: '1px solid var(--se-rule)', background: 'var(--se-card)', color: 'var(--se-text)', fontSize: 14, fontWeight: 600, outline: 'none' }} />
+        className="se-tnum" style={{ width: '100%', boxSizing: 'border-box', textAlign: 'center', padding: unit ? '8px 22px 8px 8px' : '8px', borderRadius: 'var(--r-sm)', border: '1px solid var(--se-rule)', background: 'var(--se-card)', color: 'var(--se-text)', fontSize: 14, fontWeight: 600, outline: 'none' }} />
       {unit && <span style={{ position: 'absolute', right: 7, fontSize: 9.5, color: 'var(--se-dim)', pointerEvents: 'none' }}>{unit}</span>}
     </div>
   )
@@ -88,12 +88,12 @@ export function StridesBuilder({ blocks, onChange, accent }: { blocks: MBlock[];
       {sBlocks.map((b, i) => (
         <Card key={b.id} style={{ padding: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-            {b.at.svg && <div style={{ flexShrink: 0, width: 64, height: 32, border: '1px solid var(--se-rule)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}><Diagram svg={b.at.svg} accent={accent} size={60} /></div>}
+            {b.at.svg && <div style={{ flexShrink: 0, width: 64, height: 32, border: '1px solid var(--se-rule)', borderRadius: 'var(--r-sm)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}><Diagram svg={b.at.svg} accent={accent} size={60} /></div>}
             <input value={b.at.name} onChange={e => setAt(b.id, { ...b.at, name: e.target.value })}
-              style={{ flex: 1, minWidth: 0, fontFamily: 'Syne, sans-serif', fontSize: 15, fontWeight: 700, color: 'var(--se-text)', border: 'none', background: 'transparent', outline: 'none' }} />
-            <button type="button" onClick={() => move(b.id, -1)} disabled={i === 0} style={{ width: 28, height: 28, borderRadius: 7, border: '1px solid var(--se-rule)', background: 'var(--se-card)', color: 'var(--se-dim)', cursor: i === 0 ? 'default' : 'pointer', opacity: i === 0 ? 0.35 : 1 }}>↑</button>
-            <button type="button" onClick={() => move(b.id, 1)} disabled={i === sBlocks.length - 1} style={{ width: 28, height: 28, borderRadius: 7, border: '1px solid var(--se-rule)', background: 'var(--se-card)', color: 'var(--se-dim)', cursor: i === sBlocks.length - 1 ? 'default' : 'pointer', opacity: i === sBlocks.length - 1 ? 0.35 : 1 }}>↓</button>
-            <button type="button" onClick={() => remove(b.id)} style={{ width: 28, height: 28, borderRadius: 7, border: '1px solid var(--se-rule)', background: 'var(--se-card)', color: 'var(--danger)', cursor: 'pointer' }}>×</button>
+              style={{ flex: 1, minWidth: 0, fontFamily: 'var(--font-body)', fontSize: 15, fontWeight: 700, color: 'var(--se-text)', border: 'none', background: 'transparent', outline: 'none' }} />
+            <button type="button" onClick={() => move(b.id, -1)} disabled={i === 0} style={{ width: 28, height: 28, borderRadius: 'var(--r-sm)', border: '1px solid var(--se-rule)', background: 'var(--se-card)', color: 'var(--se-dim)', cursor: i === 0 ? 'default' : 'pointer', opacity: i === 0 ? 0.35 : 1 }}>↑</button>
+            <button type="button" onClick={() => move(b.id, 1)} disabled={i === sBlocks.length - 1} style={{ width: 28, height: 28, borderRadius: 'var(--r-sm)', border: '1px solid var(--se-rule)', background: 'var(--se-card)', color: 'var(--se-dim)', cursor: i === sBlocks.length - 1 ? 'default' : 'pointer', opacity: i === sBlocks.length - 1 ? 0.35 : 1 }}>↓</button>
+            <button type="button" onClick={() => remove(b.id)} style={{ width: 28, height: 28, borderRadius: 'var(--r-sm)', border: '1px solid var(--se-rule)', background: 'var(--se-card)', color: 'var(--danger)', cursor: 'pointer' }}>×</button>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12, marginBottom: 12 }}>
@@ -103,11 +103,11 @@ export function StridesBuilder({ blocks, onChange, accent }: { blocks: MBlock[];
             <div><FieldLabel>{t('w3g.strides_rest_between_blocks')}</FieldLabel><Num value={b.at.restBetweenSec} onChange={n => setAt(b.id, { ...b.at, restBetweenSec: n })} unit="s" w={78} step={5} /></div>
           </div>
           <div style={{ marginBottom: 10 }}>
-            <FieldLabel right={<span style={{ display: 'inline-flex', gap: 4 }}>{[1, 2, 3, 4, 5].map(z => <button key={z} type="button" onClick={() => setAt(b.id, { ...b.at, zone: z })} style={{ width: 22, height: 20, borderRadius: 5, fontSize: 10, fontWeight: 700, cursor: 'pointer', border: `1px solid ${b.at.zone === z ? accent : 'var(--se-rule)'}`, background: b.at.zone === z ? accent : 'var(--se-card)', color: b.at.zone === z ? '#fff' : 'var(--se-dim)' }}>{z}</button>)}</span>}>{t('w3g.strides_zone_note')}</FieldLabel>
+            <FieldLabel right={<span style={{ display: 'inline-flex', gap: 4 }}>{[1, 2, 3, 4, 5].map(z => <button key={z} type="button" onClick={() => setAt(b.id, { ...b.at, zone: z })} style={{ width: 22, height: 20, borderRadius: 'var(--r-sm)', fontSize: 10, fontWeight: 700, cursor: 'pointer', border: `1px solid ${b.at.zone === z ? accent : 'var(--se-rule)'}`, background: b.at.zone === z ? accent : 'var(--se-card)', color: b.at.zone === z ? '#fff' : 'var(--se-dim)' }}>{z}</button>)}</span>}>{t('w3g.strides_zone_note')}</FieldLabel>
             <input value={b.at.note} onChange={e => setAt(b.id, { ...b.at, note: e.target.value })} placeholder={t('w3g.strides_note_placeholder')}
-              style={{ width: '100%', boxSizing: 'border-box', padding: '9px 12px', borderRadius: 9, border: '1px solid var(--se-rule)', background: 'var(--se-card)', color: 'var(--se-text)', fontSize: 13, outline: 'none' }} />
+              style={{ width: '100%', boxSizing: 'border-box', padding: '9px 12px', borderRadius: 'var(--r-sm)', border: '1px solid var(--se-rule)', background: 'var(--se-card)', color: 'var(--se-text)', fontSize: 13, outline: 'none' }} />
           </div>
-          <button type="button" onClick={() => saveReusable(b)} style={{ width: '100%', padding: '9px', borderRadius: 9, border: `1px dashed ${accent}`, background: 'transparent', color: accent, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+          <button type="button" onClick={() => saveReusable(b)} style={{ width: '100%', padding: '9px', borderRadius: 'var(--r-sm)', border: `1px dashed ${accent}`, background: 'transparent', color: accent, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
             {savedFlash === b.id ? t('w3g.strides_saved_flash') : t('w3g.strides_save_reusable')}
           </button>
         </Card>
@@ -115,7 +115,7 @@ export function StridesBuilder({ blocks, onChange, accent }: { blocks: MBlock[];
 
       {!sBlocks.length && <p style={{ margin: '4px 0', fontSize: 13, color: 'var(--se-dim)', textAlign: 'center' }}>{t('w3g.strides_empty')}</p>}
 
-      <button type="button" onClick={() => setGallery(g => !g)} style={{ padding: '13px', borderRadius: 12, border: `1px solid ${accent}`, background: gallery ? accent : 'var(--se-card)', color: gallery ? '#fff' : accent, fontSize: 13.5, fontWeight: 700, cursor: 'pointer' }}>
+      <button type="button" onClick={() => setGallery(g => !g)} style={{ padding: '13px', borderRadius: 'var(--r-md)', border: `1px solid ${accent}`, background: gallery ? accent : 'var(--se-card)', color: gallery ? '#fff' : accent, fontSize: 13.5, fontWeight: 700, cursor: 'pointer' }}>
         {gallery ? t('w3g.strides_close_library') : t('w3g.strides_add_atelier')}
       </button>
 
@@ -159,6 +159,6 @@ export function StridesBuilder({ blocks, onChange, accent }: { blocks: MBlock[];
 }
 
 function tileStyle(_accent: string): React.CSSProperties {
-  return { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, padding: '10px 6px 8px', borderRadius: 10, border: '1px solid var(--se-rule)', background: 'var(--se-card)', cursor: 'pointer', minHeight: 78, width: '100%' }
+  return { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, padding: '10px 6px 8px', borderRadius: 'var(--r-sm)', border: '1px solid var(--se-rule)', background: 'var(--se-card)', cursor: 'pointer', minHeight: 78, width: '100%' }
 }
 const tileName: React.CSSProperties = { fontSize: 10, fontWeight: 600, color: 'var(--se-text)', textAlign: 'center', lineHeight: 1.15 }

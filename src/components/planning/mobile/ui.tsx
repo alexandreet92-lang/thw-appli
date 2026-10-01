@@ -38,7 +38,7 @@ export function Banner({ cells }: { cells: { label: string; value: string; color
       {cells.map((c, i) => (
         <div key={c.label} style={{ padding: '12px 10px', borderLeft: i ? '1px solid var(--se-rule)' : 'none' }}>
           <p style={{ margin: 0, fontSize: 8.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--se-dim)' }}>{c.label}</p>
-          <p className="se-fr se-tnum" style={{ margin: '4px 0 0', fontSize: 21, fontWeight: 600, color: c.color ?? 'var(--se-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.value}</p>
+          <p className="se-fr se-tnum" style={{ margin: '4px 0 0', fontSize: 22, fontWeight: 600, color: c.color ?? 'var(--se-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.value}</p>
         </div>
       ))}
     </div>
@@ -61,12 +61,12 @@ export function Segmented<T extends string>({ value, options, onChange, accent }
   value: T; options: { key: T; label: string }[]; onChange: (v: T) => void; accent: string
 }) {
   return (
-    <div style={{ display: 'inline-flex', gap: 2, padding: 3, borderRadius: 999, background: 'var(--se-card2)', border: '1px solid var(--se-rule)' }}>
+    <div style={{ display: 'inline-flex', gap: 2, padding: 3, borderRadius: 'var(--r-pill)', background: 'var(--se-card2)', border: '1px solid var(--se-rule)' }}>
       {options.map(o => {
         const on = o.key === value
         return (
           <button key={o.key} type="button" onClick={() => onChange(o.key)} style={{
-            border: 'none', cursor: 'pointer', borderRadius: 999, padding: '5px 13px',
+            border: 'none', cursor: 'pointer', borderRadius: 'var(--r-pill)', padding: '5px 13px',
             fontSize: 11.5, fontWeight: on ? 700 : 600,
             background: on ? 'var(--se-card)' : 'transparent',
             color: on ? accent : 'var(--se-dim)',
@@ -101,8 +101,8 @@ export function Gauge({ value, min, max, step, onChange, color, gradient }: {
   return (
     <div ref={ref} onPointerDown={down} onPointerMove={move}
       style={{ position: 'relative', height: 22, display: 'flex', alignItems: 'center', cursor: 'pointer', touchAction: 'none' }}>
-      <div style={{ width: '100%', height: 8, borderRadius: 5, background: gradient ?? 'var(--se-rule)' }} />
-      {!gradient && <div style={{ position: 'absolute', left: 0, height: 8, width: `${pct * 100}%`, borderRadius: 5, background: color, pointerEvents: 'none' }} />}
+      <div style={{ width: '100%', height: 8, borderRadius: 'var(--r-sm)', background: gradient ?? 'var(--se-rule)' }} />
+      {!gradient && <div style={{ position: 'absolute', left: 0, height: 8, width: `${pct * 100}%`, borderRadius: 'var(--r-sm)', background: color, pointerEvents: 'none' }} />}
       <span style={{ position: 'absolute', left: `${pct * 100}%`, width: 18, height: 18, borderRadius: '50%', background: 'var(--se-card)', border: `2px solid ${color}`, boxShadow: '0 1px 4px rgba(0,0,0,0.15)', transform: 'translateX(-50%)', pointerEvents: 'none' }} />
     </div>
   )

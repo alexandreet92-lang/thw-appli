@@ -8,7 +8,7 @@ export default function IconsDemo() {
   return (
     <div style={{ padding: 40, display: 'flex', flexDirection: 'column', gap: 40 }}>
       {(['#0f1117', '#f4f5f7'] as const).map(bg => (
-        <div key={bg} style={{ background: bg, padding: 32, borderRadius: 16, display: 'flex', gap: 32, flexWrap: 'wrap' }}>
+        <div key={bg} style={{ background: bg, padding: 32, borderRadius: 'var(--r-md)', display: 'flex', gap: 32, flexWrap: 'wrap' }}>
           {sports.map(s => (
             <div key={s} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
               <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>

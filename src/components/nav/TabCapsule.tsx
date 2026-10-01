@@ -132,7 +132,7 @@ export function TabCapsule({ items, activeIndex, motionKey, accent, dim, classNa
     width: r.w - padX * 2,
     height: lens ? INNER_H + 19 : INNER_H,
     transform: `translate(${r.x + padX}px, ${lens ? -9.5 : 0}px)`,
-    borderRadius: 999,
+    borderRadius: 'var(--r-pill)',
     background: lens
       ? 'color-mix(in srgb, var(--text) 16%, var(--bg))'
       : 'color-mix(in srgb, var(--text) 13%, transparent)',
@@ -159,7 +159,7 @@ export function TabCapsule({ items, activeIndex, motionKey, accent, dim, classNa
         left: 20, right: 20,
         bottom: 'max(8px, calc(env(safe-area-inset-bottom, 0px) - 14px))',
         height: BAR_H, padding: PAD, boxSizing: 'border-box',
-        borderRadius: 999,
+        borderRadius: 'var(--r-pill)',
         background: 'color-mix(in srgb, var(--text) 9%, var(--bg))',
         boxShadow: 'inset 0 0 0 1px color-mix(in srgb, var(--text) 10%, transparent), var(--shadow-float)',
         touchAction: 'none', WebkitTransform: 'translateZ(0)', userSelect: 'none', WebkitUserSelect: 'none',

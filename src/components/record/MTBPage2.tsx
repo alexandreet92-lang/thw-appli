@@ -36,7 +36,7 @@ export default function MTBPage2({ isDark, distanceM, speedKmh, gradientPercent,
   return (
     <div style={{ flex:1, display:'flex', flexDirection:'column', minHeight:0 }}>
       <div style={{ flexBasis:'58%', flexShrink:0, padding:'0 12px 12px', minHeight:0 }}>
-        <div style={{ width:'100%', height:'100%', borderRadius:16, overflow:'hidden', border:`1px solid ${t.separator}` }}>
+        <div style={{ width:'100%', height:'100%', borderRadius: 'var(--r-md)', overflow:'hidden', border:`1px solid ${t.separator}` }}>
           <MapBackground trackPoints={trackPoints} currentPosition={currentPosition} />
         </div>
       </div>
@@ -44,12 +44,12 @@ export default function MTBPage2({ isDark, distanceM, speedKmh, gradientPercent,
       <div style={{ flex:1, minHeight:0, display:'grid', gridTemplateColumns:'1fr 1fr', borderTop:`1px solid ${t.separator}` }}>
         <div style={{ padding:'16px 12px', borderRight:`1px solid ${t.separator}` }}>
           <p style={{ margin:0, fontSize:10, fontWeight:700, color:t.label, textTransform:'uppercase', letterSpacing:'0.15em' }}>{tr('record.commonDistance')}</p>
-          <p style={{ margin:'6px 0 0', fontSize:40, fontWeight:700, lineHeight:1, color:t.text, fontFamily:'DM Mono, monospace' }}>{distanceKm}</p>
+          <p style={{ margin:'6px 0 0', fontSize:40, fontWeight:700, lineHeight:1, color:t.text, fontFamily: 'var(--font-body)' }}>{distanceKm}</p>
           <p style={{ margin:'4px 0 0', fontSize:12, color:t.label }}>{getUnitLabel('km', units)}</p>
         </div>
         <div style={{ padding:'12px', display:'flex', flexDirection:'column', justifyContent:'center', gap:6 }}>
           <p style={{ margin:0, fontSize:10, fontWeight:700, color:t.label, textTransform:'uppercase', letterSpacing:'0.12em' }}>{tr('record.mtbPage2EstimatedTerrain')}</p>
-          <div style={{ display:'inline-flex', alignSelf:'flex-start', background:'rgba(249,115,22,0.12)', borderRadius:20, padding:'4px 10px' }}>
+          <div style={{ display:'inline-flex', alignSelf:'flex-start', background:'rgba(249,115,22,0.12)', borderRadius: 'var(--r-lg)', padding:'4px 10px' }}>
             <span style={{ fontSize:13, fontWeight:600, color:'#F97316' }}>{terrainType}</span>
           </div>
           <p style={{ margin:0, fontSize:10, color:t.label, fontStyle:'italic' }}>{tr('record.mtbPage2TerrainHint')}</p>

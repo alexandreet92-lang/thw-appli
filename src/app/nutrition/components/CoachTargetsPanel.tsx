@@ -12,7 +12,7 @@ import type { NutritionPlanData } from '@/hooks/useNutrition'
 import { useI18n } from '@/lib/i18n'
 
 const LBL: React.CSSProperties = { fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-dim)', margin: '0 0 6px' }
-const INP: React.CSSProperties = { width: '100%', boxSizing: 'border-box', padding: '9px 11px', borderRadius: 9, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 14, outline: 'none', fontVariantNumeric: 'tabular-nums' }
+const INP: React.CSSProperties = { width: '100%', boxSizing: 'border-box', padding: '9px 11px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 14, outline: 'none', fontVariantNumeric: 'tabular-nums' }
 
 // Décline les cibles « repos » en modéré / dur (+kcal, +protéines les jours durs).
 function buildPlanData(kcal: number, prot: number, existing: NutritionPlanData | null): NutritionPlanData {
@@ -53,7 +53,7 @@ export default function CoachTargetsPanel({ athleteName, activePlan, onSave }: {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 16, padding: '18px 18px 20px' }}>
+      <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: '18px 18px 20px' }}>
         <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 600, margin: '0 0 4px' }}>{t('w2b.targetsTitle', { athleteName })}</h3>
         <p style={{ fontSize: 12.5, color: 'var(--text-dim)', margin: '0 0 16px' }}>
           {t('w2b.targetsIntro')}
@@ -70,12 +70,12 @@ export default function CoachTargetsPanel({ athleteName, activePlan, onSave }: {
           </div>
         )}
         <button onClick={() => void save()} disabled={saving || !(parseInt(kcal) > 0 && parseInt(prot) > 0)}
-          style={{ marginTop: 16, width: '100%', padding: 12, borderRadius: 12, border: 'none', background: saved ? '#22c55e' : 'var(--primary)', color: 'var(--on-primary)', fontWeight: 700, fontSize: 14, cursor: saving ? 'wait' : 'pointer', opacity: !(parseInt(kcal) > 0 && parseInt(prot) > 0) ? 0.5 : 1 }}>
+          style={{ marginTop: 16, width: '100%', padding: 12, borderRadius: 'var(--r-md)', border: 'none', background: saved ? '#22c55e' : 'var(--primary)', color: 'var(--on-primary)', fontWeight: 700, fontSize: 14, cursor: saving ? 'wait' : 'pointer', opacity: !(parseInt(kcal) > 0 && parseInt(prot) > 0) ? 0.5 : 1 }}>
           {saving ? '…' : saved ? t('w2b.targetsSaved') : t('w2b.setWeekTargets')}
         </button>
       </div>
 
-      <div style={{ background: 'var(--bg-alt)', border: '1px solid var(--border)', borderRadius: 12, padding: '12px 14px', fontSize: 12.5, color: 'var(--text-mid)', lineHeight: 1.5 }}>
+      <div style={{ background: 'var(--bg-alt)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: '12px 14px', fontSize: 12.5, color: 'var(--text-mid)', lineHeight: 1.5 }}>
         {t('w2b.coachNotePart1')}<strong>{t('w2b.coachNoteStrong')}</strong>{t('w2b.coachNotePart2')}
       </div>
     </div>

@@ -87,11 +87,11 @@ export function NotificationBanners() {
           style={{
             pointerEvents: 'auto', cursor: b.link ? 'pointer' : 'default',
             background: 'var(--bg-elev, var(--bg-card))', border: '1px solid var(--border)',
-            borderRadius: 14, boxShadow: 'var(--shadow-card, 0 8px 30px rgba(0,0,0,0.18))',
+            borderRadius: 'var(--r-md)', boxShadow: 'var(--shadow-card, 0 8px 30px rgba(0,0,0,0.18))',
             padding: '11px 13px', display: 'flex', gap: 10, alignItems: 'flex-start',
             animation: 'nbSlideIn .32s cubic-bezier(0.22,0.61,0.36,1) both',
           }}>
-          <span aria-hidden style={{ marginTop: 1, width: 20, height: 20, flexShrink: 0, borderRadius: 6, display: 'grid', placeItems: 'center', color: 'var(--primary)', background: 'var(--primary-dim, rgba(6,182,212,0.12))' }}>
+          <span aria-hidden style={{ marginTop: 1, width: 20, height: 20, flexShrink: 0, borderRadius: 'var(--r-sm)', display: 'grid', placeItems: 'center', color: 'var(--primary)', background: 'var(--primary-dim, rgba(6,182,212,0.12))' }}>
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" /><path d="M10.3 21a2 2 0 0 0 3.4 0" /></svg>
           </span>
           <div style={{ minWidth: 0, flex: 1 }}>

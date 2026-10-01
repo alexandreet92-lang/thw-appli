@@ -10,7 +10,7 @@ export default function ZoneBar({ active }: { active: number }) {
         const on = i === active
         return (
           <div key={z.key} style={{
-            flex: 1, height: 34, borderRadius: 7, display: 'grid', placeItems: 'center',
+            flex: 1, height: 34, borderRadius: 'var(--r-sm)', display: 'grid', placeItems: 'center',
             fontSize: 10, fontWeight: 800, transition: 'background .2s',
             background: on ? z.token : 'var(--bg-card2)',
             color: on ? 'var(--ride-zone-ink)' : 'var(--text-dim)',

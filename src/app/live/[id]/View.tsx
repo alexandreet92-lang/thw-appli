@@ -45,7 +45,7 @@ export default function LiveTrackView() {
     return () => { alive = false; void sb.removeChannel(ch) }
   }, [id])
 
-  const wrap: React.CSSProperties = { minHeight: '100dvh', background: 'var(--bg)', display: 'flex', flexDirection: 'column', fontFamily: 'DM Sans, sans-serif' }
+  const wrap: React.CSSProperties = { minHeight: '100dvh', background: 'var(--bg)', display: 'flex', flexDirection: 'column', fontFamily: 'var(--font-body)' }
 
   if (state === 'loading') return <div style={{ ...wrap, alignItems: 'center', justifyContent: 'center', color: 'var(--text-dim)' }}>Chargement…</div>
   if (state === 'denied' || !row) return (

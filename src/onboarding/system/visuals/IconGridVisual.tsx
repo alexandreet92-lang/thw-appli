@@ -66,12 +66,12 @@ export function IconGridVisual({ config }: Props) {
       <div style={{ display: 'grid', gridTemplateColumns: `repeat(${icons.length <= 4 ? 2 : 3}, 1fr)`, gap: 12, width: '100%' }}>
         {icons.map(({ label, labelKey, color }, i) => (
           <div key={label} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, opacity: 0, animation: `stagger-in 350ms ${i * 100}ms cubic-bezier(0.34,1.56,0.64,1) forwards` }}>
-            <div style={{ width: 44, height: 44, borderRadius: 12, background: `${color}22`, border: `1.5px solid ${color}55`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ width: 44, height: 44, borderRadius: 'var(--r-md)', background: `${color}22`, border: `1.5px solid ${color}55`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                 <path d={getPath(label)} />
               </svg>
             </div>
-            <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)', textAlign: 'center', fontFamily: 'DM Sans, sans-serif' }}>{labelKey ? t(labelKey) : label}</span>
+            <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)', textAlign: 'center', fontFamily: 'var(--font-body)' }}>{labelKey ? t(labelKey) : label}</span>
           </div>
         ))}
       </div>

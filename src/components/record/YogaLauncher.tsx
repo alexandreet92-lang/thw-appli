@@ -53,20 +53,20 @@ export default function YogaLauncher({ open, onClose, onStart, isDark }: Props) 
       {open && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 9000, display: 'flex', alignItems: 'flex-end' }}>
           <div onClick={handleClose} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.50)', backdropFilter: 'blur(4px)', animation: closing ? 'ylnch-out 200ms ease-in forwards' : 'ylnch-in 200ms ease-out forwards' }} />
-          <div className={closing ? 'sheet-close' : 'sheet-open'} style={{ position: 'relative', width: '100%', maxHeight: '80vh', background: bg, borderTopLeftRadius: 24, borderTopRightRadius: 24, display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 -8px 32px rgba(0,0,0,0.18)', fontFamily: 'DM Sans, sans-serif', color: text, paddingBottom: 'env(safe-area-inset-bottom)' }}>
+          <div className={closing ? 'sheet-close' : 'sheet-open'} style={{ position: 'relative', width: '100%', maxHeight: '80vh', background: bg, borderTopLeftRadius: 24, borderTopRightRadius: 24, display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 -8px 32px rgba(0,0,0,0.18)', fontFamily: 'var(--font-body)', color: text, paddingBottom: 'env(safe-area-inset-bottom)' }}>
             <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0 4px', flexShrink: 0 }}>
               <div style={{ width: 36, height: 4, borderRadius: 2, background: dim }} />
             </div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 20px 16px', flexShrink: 0 }}>
-              <p style={{ fontSize: 18, fontWeight: 700, margin: 0, fontFamily: 'Syne, sans-serif' }}>{t('record.yogaLauncherTitle')}</p>
+              <p style={{ fontSize: 18, fontWeight: 700, margin: 0, fontFamily: 'var(--font-display)' }}>{t('record.yogaLauncherTitle')}</p>
               <button onClick={handleClose} style={{ background: 'none', border: 'none', color: dim, fontSize: 22, cursor: 'pointer', lineHeight: 1 }}>×</button>
             </div>
 
             <div style={{ flex: 1, overflowY: 'auto', padding: '0 16px 16px' }}>
               {/* CTA buttons */}
               <div style={{ display: 'flex', gap: 10, marginBottom: 24 }}>
-                <button onClick={() => setBuilderOpen(true)} style={{ flex: 1, height: 52, borderRadius: 14, background: 'linear-gradient(135deg,#06B6D4,#2563EB)', border: 'none', color: '#FFF', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>{t('record.yogaCreateSession')}</button>
-                <button onClick={launchFree} style={{ flex: 1, height: 52, borderRadius: 14, background: surf, border: `1px solid ${bord}`, color: text, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>{t('record.yogaLaunchFree')}</button>
+                <button onClick={() => setBuilderOpen(true)} style={{ flex: 1, height: 52, borderRadius: 'var(--r-md)', background: 'linear-gradient(135deg,#06B6D4,#2563EB)', border: 'none', color: '#FFF', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>{t('record.yogaCreateSession')}</button>
+                <button onClick={launchFree} style={{ flex: 1, height: 52, borderRadius: 'var(--r-md)', background: surf, border: `1px solid ${bord}`, color: text, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>{t('record.yogaLaunchFree')}</button>
               </div>
 
               {/* Mes séances */}
@@ -74,7 +74,7 @@ export default function YogaLauncher({ open, onClose, onStart, isDark }: Props) 
                 <>
                   <p style={{ fontSize: 11, fontWeight: 700, color: dim, textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 10px' }}>{t('record.yogaMySessions')}</p>
                   {sessions.map(s => (
-                    <button key={s.id} onClick={() => onStart(s.exercises, s.title)} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', background: surf, border: `1px solid ${bord}`, borderRadius: 12, color: text, cursor: 'pointer', marginBottom: 8, textAlign: 'left' }}>
+                    <button key={s.id} onClick={() => onStart(s.exercises, s.title)} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', background: surf, border: `1px solid ${bord}`, borderRadius: 'var(--r-md)', color: text, cursor: 'pointer', marginBottom: 8, textAlign: 'left' }}>
                       <div>
                         <p style={{ fontSize: 15, fontWeight: 600, margin: 0 }}>{s.title}</p>
                         <p style={{ fontSize: 12, color: dim, margin: '2px 0 0' }}>{s.exercises.length} {t('record.yogaExercisesLabel')} · {s.target_duration_min} min</p>

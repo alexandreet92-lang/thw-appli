@@ -21,7 +21,7 @@ export default function AccessExpiredPage() {
         width: '100%',
         background: 'var(--bg-card, #12151e)',
         border: '1px solid var(--border, rgba(255,255,255,0.08))',
-        borderRadius: 20,
+        borderRadius: 'var(--r-lg)',
         padding: '40px 36px',
         textAlign: 'center',
       }}>
@@ -46,7 +46,7 @@ export default function AccessExpiredPage() {
 
         {/* Titre */}
         <h1 style={{
-          fontFamily: 'Syne, sans-serif',
+          fontFamily: 'var(--font-body)',
           fontSize: 20,
           fontWeight: 700,
           color: 'var(--text, #f0f0f0)',
@@ -79,10 +79,10 @@ export default function AccessExpiredPage() {
           style={{
             display: 'inline-block',
             padding: '13px 28px',
-            borderRadius: 10,
+            borderRadius: 'var(--r-sm)',
             background: 'linear-gradient(135deg, #06B6D4, #5b6fff)',
             color: '#fff',
-            fontFamily: 'Syne, sans-serif',
+            fontFamily: 'var(--font-body)',
             fontSize: 14,
             fontWeight: 600,
             textDecoration: 'none',

@@ -39,7 +39,7 @@ export default function GPSIndicator({ status, accuracy, isDark = false }: Props
         background: cfg.color, flexShrink: 0,
         animation: cfg.blink ? 'gps-blink 1s ease-in-out infinite' : 'none',
       }} />
-      <span style={{ fontSize: 11, color: dim, fontFamily: 'DM Sans, sans-serif', whiteSpace: 'nowrap' }}>
+      <span style={{ fontSize: 11, color: dim, fontFamily: 'var(--font-body)', whiteSpace: 'nowrap' }}>
         {label}
       </span>
     </div>

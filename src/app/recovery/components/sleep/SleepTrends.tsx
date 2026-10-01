@@ -86,7 +86,7 @@ export default function SleepTrends({ nights }: { nights: TrendNight[] }) {
         <div style={{ display:'flex', gap:3 }}>
           {PERIODS.map((p, i) => (
             <button key={i} onClick={() => setPeriod(i)}
-              style={{ padding:'3px 9px', borderRadius:6, border:'1px solid', fontSize:9, cursor:'pointer',
+              style={{ padding:'3px 9px', borderRadius: 'var(--r-sm)', border:'1px solid', fontSize: 10, cursor:'pointer',
                 borderColor: period===i ? '#3B82F6' : 'var(--border)',
                 background: period===i ? 'rgba(59,130,246,0.10)' : 'transparent',
                 color: period===i ? '#3B82F6' : 'var(--text-dim)', fontWeight: period===i ? 700 : 400 }}>
@@ -108,14 +108,14 @@ export default function SleepTrends({ nights }: { nights: TrendNight[] }) {
           const on = visible(c.key)
           return (
             <button key={c.key} onClick={() => toggle(c.key)}
-              style={{ display:'flex', alignItems:'center', gap:4, padding:'2px 7px', borderRadius:5, cursor:'pointer',
+              style={{ display:'flex', alignItems:'center', gap:4, padding:'2px 7px', borderRadius: 'var(--r-sm)', cursor:'pointer',
                 background: on ? `${c.color}15` : 'transparent',
                 border: `1px solid ${on ? c.color + '60' : 'var(--border)'}`, opacity: on ? 1 : 0.4 }}>
               <div style={{ width: c.dash ? 14 : 12, height: 2, background: c.color, borderRadius: 1,
                 backgroundImage: c.dash
                   ? `repeating-linear-gradient(90deg,${c.color} 0,${c.color} 3px,transparent 3px,transparent 6px)`
                   : 'none' }} />
-              <span style={{ fontSize:9, color: c.color, fontWeight:600 }}>{t(c.labelKey)}</span>
+              <span style={{ fontSize: 10, color: c.color, fontWeight:600 }}>{t(c.labelKey)}</span>
             </button>
           )
         })}

@@ -91,7 +91,7 @@ export default function CoachFeedbackAdminPage() {
   if (!authChecked) return null;
 
   return (
-    <div style={{ maxWidth: 880, margin: "0 auto", padding: "32px 20px", fontFamily: "DM Sans, sans-serif", color: "#111827" }}>
+    <div style={{ maxWidth: 880, margin: "0 auto", padding: "32px 20px", fontFamily: 'var(--font-body)', color: "#111827" }}>
       <div style={{ display: "flex", alignItems: "baseline", gap: 12, flexWrap: "wrap" }}>
         <h1 style={{ fontSize: 24, fontWeight: 700, margin: 0 }}>{t("admin.feedback.title")}</h1>
         <Link href="/admin/coach-insights" style={{ fontSize: 13, color: "var(--primary)" }}>{t("admin.feedback.curateLink")}</Link>
@@ -137,7 +137,7 @@ export default function CoachFeedbackAdminPage() {
           <div key={r.id} style={{
             border: `1px solid ${r.rating === 1 ? "rgba(34,197,94,0.35)" : "rgba(239,68,68,0.35)"}`,
             borderLeft: `4px solid ${r.rating === 1 ? "#22c55e" : "#ef4444"}`,
-            borderRadius: 12, padding: "14px 16px", background: "#fff",
+            borderRadius: 'var(--r-md)', padding: "14px 16px", background: "#fff",
           }}>
             <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginBottom: 8 }}>
               <span style={{ fontSize: 16 }}>{r.rating === 1 ? "👍" : "👎"}</span>
@@ -170,7 +170,7 @@ export default function CoachFeedbackAdminPage() {
 
 function StatCard({ label, value, color = "#111827" }: { label: string; value: string; color?: string }) {
   return (
-    <div style={{ flex: "1 1 140px", border: "1px solid #E5E7EB", borderRadius: 12, padding: "12px 14px", background: "#fff" }}>
+    <div style={{ flex: "1 1 140px", border: "1px solid #E5E7EB", borderRadius: 'var(--r-md)', padding: "12px 14px", background: "#fff" }}>
       <div style={{ fontSize: 12, color: "#6B7280" }}>{label}</div>
       <div style={{ fontSize: 22, fontWeight: 700, color, marginTop: 2 }}>{value}</div>
     </div>
@@ -179,7 +179,7 @@ function StatCard({ label, value, color = "#111827" }: { label: string; value: s
 
 function chip(active: boolean): React.CSSProperties {
   return {
-    padding: "6px 12px", borderRadius: 999, fontSize: 13, cursor: "pointer",
+    padding: "6px 12px", borderRadius: 'var(--r-pill)', fontSize: 13, cursor: "pointer",
     border: `1px solid ${active ? "#06B6D4" : "#E5E7EB"}`,
     background: active ? "rgba(6,182,212,0.10)" : "#fff",
     color: active ? "#0E7490" : "#374151",
@@ -187,5 +187,5 @@ function chip(active: boolean): React.CSSProperties {
 }
 
 function tag(bg = "rgba(6,182,212,0.10)", color = "#0E7490"): React.CSSProperties {
-  return { padding: "2px 8px", borderRadius: 6, fontSize: 11, fontWeight: 600, background: bg, color };
+  return { padding: "2px 8px", borderRadius: 'var(--r-sm)', fontSize: 11, fontWeight: 600, background: bg, color };
 }

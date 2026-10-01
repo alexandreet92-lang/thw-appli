@@ -84,7 +84,7 @@ export function ReportSheet({ onClose, onSave }: { onClose: () => void; onSave: 
           {COMMON_ZONES.map(z => {
             const a = zone.trim().toLowerCase() === z.toLowerCase()
             return (
-              <button key={z} type="button" onClick={() => setZone(z)} style={{ padding: '6px 11px', borderRadius: 999, border: `1px solid ${a ? 'var(--primary)' : 'var(--border)'}`, background: a ? 'color-mix(in srgb, var(--primary) 14%, transparent)' : 'var(--bg-card2)', color: a ? 'var(--primary)' : 'var(--text-mid)', fontFamily: FB, fontSize: 12, fontWeight: a ? 600 : 500, cursor: 'pointer' }}>{z}</button>
+              <button key={z} type="button" onClick={() => setZone(z)} style={{ padding: '6px 11px', borderRadius: 'var(--r-pill)', border: `1px solid ${a ? 'var(--primary)' : 'var(--border)'}`, background: a ? 'color-mix(in srgb, var(--primary) 14%, transparent)' : 'var(--bg-card2)', color: a ? 'var(--primary)' : 'var(--text-mid)', fontFamily: FB, fontSize: 12, fontWeight: a ? 600 : 500, cursor: 'pointer' }}>{z}</button>
             )
           })}
         </div>

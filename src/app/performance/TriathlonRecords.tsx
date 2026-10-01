@@ -117,7 +117,7 @@ function TriRaceOverlay({ rec, act, onEdit, onDelete, onClose }: {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(90px, 1fr))', gap: 10, marginTop: 18 }}>
             {segSecs.filter(s => s.sec > 0).map(s => (
               <div key={s.key}>
-                <p style={{ fontFamily: 'var(--font-body)', fontSize: 9, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 2px' }}>{segLabel(s.key)}</p>
+                <p style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 2px' }}>{segLabel(s.key)}</p>
                 <p className="tnum" style={{ fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600, color: 'var(--text)', margin: 0 }}>{hmsFull(s.sec)}</p>
               </div>
             ))}
@@ -126,7 +126,7 @@ function TriRaceOverlay({ rec, act, onEdit, onDelete, onClose }: {
           {/* Activité liée */}
           {act && (
             <div style={{ marginTop: 18, paddingTop: 14, borderTop: '1px solid var(--border)' }}>
-              <p style={{ fontFamily: 'var(--font-body)', fontSize: 9, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 6px' }}>{t('perf2.linkedActivity')}</p>
+              <p style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 6px' }}>{t('perf2.linkedActivity')}</p>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px 14px' }}>
                 {act.elevation_gain_m != null && <span className="tnum" style={{ fontSize: 11, color: 'var(--text-mid)' }}>D+ {Math.round(act.elevation_gain_m)} m</span>}
                 {act.avg_hr != null && <span className="tnum" style={{ fontSize: 11, color: 'var(--text-mid)' }}>FC {act.avg_hr}{act.max_hr ? ` / ${act.max_hr}` : ''} bpm</span>}
@@ -167,10 +167,10 @@ export function TriathlonRecords({ records, profile, actMap, onEdit, onDelete }:
   const topSec = (secs.length ? Math.max(...secs) : 3600) * 1.12
   const bestSec = secs.length ? Math.min(...secs) : 0
 
-  const card: React.CSSProperties = { background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 16, padding: 20 }
+  const card: React.CSSProperties = { background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: 20 }
   const fmtDay = (iso: string) => new Date(iso).toLocaleDateString(currentLocale(), { day: '2-digit', month: 'short' })
   const distTabBtn = (active: boolean): React.CSSProperties => ({
-    padding: '5px 13px', borderRadius: 999, cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 12,
+    padding: '5px 13px', borderRadius: 'var(--r-pill)', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 12,
     fontWeight: active ? 600 : 500, border: `1px solid ${active ? 'var(--primary)' : 'var(--border)'}`,
     background: active ? 'var(--primary-dim)' : 'transparent', color: active ? 'var(--primary)' : 'var(--text-dim)',
   })
@@ -194,7 +194,7 @@ export function TriathlonRecords({ records, profile, actMap, onEdit, onDelete }:
           <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 600, color: 'var(--text)', margin: 0 }}>
             {showAll ? t('performance.recordsByDistance') : selDef.label}
           </h2>
-          <button onClick={() => onEdit(showAll ? 'M' : sel, null)} style={{ padding: '5px 12px', borderRadius: 8, border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
+          <button onClick={() => onEdit(showAll ? 'M' : sel, null)} style={{ padding: '5px 12px', borderRadius: 'var(--r-sm)', border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
             + {t('perf2.addRace') /* Ajouter une course */}
           </button>
         </div>
@@ -212,13 +212,13 @@ export function TriathlonRecords({ records, profile, actMap, onEdit, onDelete }:
                   style={{ flex: '0 0 72px', width: 72, border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, padding: 0 }}>
                   <span className="tnum" style={{ fontFamily: 'var(--font-body)', fontSize: 11, fontWeight: 700, color: 'var(--text)' }}>{r.performance}</span>
                   <div style={{ height: 104, width: '100%', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
-                    <div style={{ width: 16, height: mounted ? `${hPct}%` : '0%', background: TRI, borderRadius: 8,
+                    <div style={{ width: 16, height: mounted ? `${hPct}%` : '0%', background: TRI, borderRadius: 'var(--r-sm)',
                       boxShadow: isBest ? `0 0 0 2px var(--bg-card), 0 0 0 3px ${TRI}` : 'none',
                       transition: 'height 0.9s cubic-bezier(0.25,1,0.5,1)' }} />
                   </div>
-                  {showAll && <span style={{ fontFamily: 'var(--font-body)', fontSize: 9, color: 'var(--text-dim)', fontWeight: 600 }}>{r.distance_label}</span>}
+                  {showAll && <span style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: 'var(--text-dim)', fontWeight: 600 }}>{r.distance_label}</span>}
                   <span style={{ fontFamily: 'var(--font-body)', fontSize: 9.5, color: 'var(--text-dim)', whiteSpace: 'nowrap' }}>{fmtDay(r.achieved_at)}</span>
-                  {isBest && <span style={{ fontSize: 8, fontWeight: 700, color: TRI }}>★ PR</span>}
+                  {isBest && <span style={{ fontSize: 10, fontWeight: 700, color: TRI }}>★ PR</span>}
                 </button>
               )
             })}

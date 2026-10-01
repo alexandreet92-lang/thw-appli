@@ -581,16 +581,16 @@ function RaceAddModal({ month, day, year, onClose, onSave }: {
 
   return (
     <div onClick={onClose} style={{ position:'fixed',inset:0,zIndex:300,background:'rgba(0,0,0,0.55)',backdropFilter:'blur(4px)',display:'flex',alignItems:'center',justifyContent:'center',padding:16,overflowY:'auto' }}>
-      <div onClick={e => e.stopPropagation()} style={{ background:'var(--bg-card)',borderRadius:18,border:'1px solid var(--border-mid)',padding:22,maxWidth:500,width:'100%',maxHeight:'92vh',overflowY:'auto' }}>
+      <div onClick={e => e.stopPropagation()} style={{ background:'var(--bg-card)',borderRadius: 'var(--r-lg)',border:'1px solid var(--border-mid)',padding:22,maxWidth:500,width:'100%',maxHeight:'92vh',overflowY:'auto' }}>
         <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:16 }}>
-          <h3 style={{ fontFamily:'Syne,sans-serif',fontSize:15,fontWeight:700,margin:0 }}>{t('calendar.addRace')}</h3>
-          <button onClick={onClose} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius:8,padding:'4px 8px',cursor:'pointer',color:'var(--text-dim)',fontSize:14 }}>✕</button>
+          <h3 style={{ fontFamily: 'var(--font-body)',fontSize:15,fontWeight:700,margin:0 }}>{t('calendar.addRace')}</h3>
+          <button onClick={onClose} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius: 'var(--r-sm)',padding:'4px 8px',cursor:'pointer',color:'var(--text-dim)',fontSize:14 }}>✕</button>
         </div>
         <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:7 }}>{t('calendar.sport')}</p>
         <div style={{ display:'flex',gap:5,flexWrap:'wrap',marginBottom:14 }}>
           {RACE_SPORTS.map(s => (
             <button key={s} onClick={() => { setSport(s); setHyroxCat(''); setHyroxLvl(''); setHyroxGen('') }}
-              style={{ padding:'5px 9px',borderRadius:8,border:'1px solid',borderColor:sport===s?SPORT_BORDER[s as SportType]:'var(--border)',background:sport===s?SPORT_BG[s as SportType]:'var(--bg-card2)',color:sport===s?SPORT_BORDER[s as SportType]:'var(--text-mid)',fontSize:11,cursor:'pointer' }}>
+              style={{ padding:'5px 9px',borderRadius: 'var(--r-sm)',border:'1px solid',borderColor:sport===s?SPORT_BORDER[s as SportType]:'var(--border)',background:sport===s?SPORT_BG[s as SportType]:'var(--bg-card2)',color:sport===s?SPORT_BORDER[s as SportType]:'var(--text-mid)',fontSize:11,cursor:'pointer' }}>
               {t(RSL[s])}
             </button>
           ))}
@@ -601,7 +601,7 @@ function RaceAddModal({ month, day, year, onClose, onSave }: {
             const cfg = RACE_CONFIG[l]
             return (
               <button key={l} onClick={() => setLevel(l)}
-                style={{ padding:'8px 10px',borderRadius:9,border:'1px solid',cursor:'pointer',textAlign:'left',borderColor:level===l?cfg.border:'var(--border)',background:level===l?cfg.bg:'var(--bg-card2)' }}>
+                style={{ padding:'8px 10px',borderRadius: 'var(--r-sm)',border:'1px solid',cursor:'pointer',textAlign:'left',borderColor:level===l?cfg.border:'var(--border)',background:level===l?cfg.bg:'var(--bg-card2)' }}>
                 <p style={{ fontSize:11,fontWeight:600,margin:0,color:level===l?l==='gty'?'var(--gty-text)':cfg.color:'var(--text)' }}>{cfg.label}</p>
               </button>
             )
@@ -611,12 +611,12 @@ function RaceAddModal({ month, day, year, onClose, onSave }: {
           <div>
             <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>{t('calendar.name')}</p>
             <input value={name} onChange={e => setName(e.target.value)} placeholder={t('calendar.namePhIronman')}
-              style={{ width:'100%',padding:'7px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:12,outline:'none' }}/>
+              style={{ width:'100%',padding:'7px 10px',borderRadius: 'var(--r-sm)',border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:12,outline:'none' }}/>
           </div>
           <div>
             <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>{t('calendar.date')}</p>
             <input type="date" value={date} onChange={e => setDate(e.target.value)}
-              style={{ width:'100%',padding:'7px 9px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:12,outline:'none' }}/>
+              style={{ width:'100%',padding:'7px 9px',borderRadius: 'var(--r-sm)',border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:12,outline:'none' }}/>
           </div>
         </div>
         {sport === 'run' && (
@@ -624,12 +624,12 @@ function RaceAddModal({ month, day, year, onClose, onSave }: {
             <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:7 }}>{t('calendar.distance')}</p>
             <div style={{ display:'flex',gap:5,flexWrap:'wrap',marginBottom:8 }}>
               {RUN_DISTANCES.map(d => (
-                <button key={d} onClick={() => setRunDist(d)} style={{ padding:'5px 10px',borderRadius:8,border:'1px solid',borderColor:runDist===d?'#22c55e':'var(--border)',background:runDist===d?'rgba(34,197,94,0.10)':'var(--bg-card2)',color:runDist===d?'#22c55e':'var(--text-mid)',fontSize:11,cursor:'pointer' }}>{d}</button>
+                <button key={d} onClick={() => setRunDist(d)} style={{ padding:'5px 10px',borderRadius: 'var(--r-sm)',border:'1px solid',borderColor:runDist===d?'#22c55e':'var(--border)',background:runDist===d?'rgba(34,197,94,0.10)':'var(--bg-card2)',color:runDist===d?'#22c55e':'var(--text-mid)',fontSize:11,cursor:'pointer' }}>{d}</button>
               ))}
             </div>
             <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>{t('calendar.goalTime')}</p>
             <input value={goalTime} onChange={e => setGoalTime(e.target.value)} placeholder={t('calendar.goalTimePh')}
-              style={{ width:'100%',padding:'7px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontFamily:'DM Mono,monospace',fontSize:12,outline:'none' }}/>
+              style={{ width:'100%',padding:'7px 10px',borderRadius: 'var(--r-sm)',border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontFamily: 'var(--font-body)',fontSize:12,outline:'none' }}/>
           </div>
         )}
         {sport === 'triathlon' && (
@@ -637,7 +637,7 @@ function RaceAddModal({ month, day, year, onClose, onSave }: {
             <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:7 }}>{t('calendar.distance')}</p>
             <div style={{ display:'flex',flexDirection:'column',gap:5,marginBottom:10 }}>
               {TRI_DISTANCES.map(d => (
-                <button key={d} onClick={() => setTriDist(d)} style={{ padding:'8px 12px',borderRadius:9,border:'1px solid',borderColor:triDist===d?'#a855f7':'var(--border)',background:triDist===d?'rgba(168,85,247,0.10)':'var(--bg-card2)',cursor:'pointer',textAlign:'left' }}>
+                <button key={d} onClick={() => setTriDist(d)} style={{ padding:'8px 12px',borderRadius: 'var(--r-sm)',border:'1px solid',borderColor:triDist===d?'#a855f7':'var(--border)',background:triDist===d?'rgba(168,85,247,0.10)':'var(--bg-card2)',cursor:'pointer',textAlign:'left' }}>
                   <p style={{ fontSize:12,fontWeight:600,margin:0,color:triDist===d?'#a855f7':'var(--text)' }}>{d}</p>
                   <p style={{ fontSize:10,color:'var(--text-dim)',margin:'2px 0 0' }}>{t('calendar.abbrNat')} {TRI_SWIM[d]} · {t('calendar.triBike')} {TRI_BIKE[d]} · {t('calendar.triRun')} {TRI_RUN[d]}</p>
                 </button>
@@ -648,7 +648,7 @@ function RaceAddModal({ month, day, year, onClose, onSave }: {
                 <div key={x.l}>
                   <p style={{ fontSize:10,color:'var(--text-dim)',marginBottom:3 }}>{t(x.l)}</p>
                   <input value={x.v} onChange={e => x.s(e.target.value)} placeholder={x.p}
-                    style={{ width:'100%',padding:'6px 8px',borderRadius:7,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontFamily:'DM Mono,monospace',fontSize:11,outline:'none' }}/>
+                    style={{ width:'100%',padding:'6px 8px',borderRadius: 'var(--r-sm)',border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontFamily: 'var(--font-body)',fontSize:11,outline:'none' }}/>
                 </div>
               ))}
             </div>
@@ -658,13 +658,13 @@ function RaceAddModal({ month, day, year, onClose, onSave }: {
           <div style={{ marginBottom:12 }}>
             <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>{t('calendar.objective')}</p>
             <input value={goalTime} onChange={e => setGoalTime(e.target.value)} placeholder={t('calendar.goalPhPodium')}
-              style={{ width:'100%',padding:'7px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:12,outline:'none' }}/>
+              style={{ width:'100%',padding:'7px 10px',borderRadius: 'var(--r-sm)',border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:12,outline:'none' }}/>
           </div>
         )}
         <div style={{ display:'flex',gap:8 }}>
-          <button onClick={onClose} style={{ flex:1,padding:10,borderRadius:10,background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',fontSize:12,cursor:'pointer' }}>{t('calendar.cancel')}</button>
+          <button onClick={onClose} style={{ flex:1,padding:10,borderRadius: 'var(--r-sm)',background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',fontSize:12,cursor:'pointer' }}>{t('calendar.cancel')}</button>
           <button onClick={() => onSave({ name:name||'Course',sport,date,level,goal:goalTime||undefined,runDistance:sport==='run'?runDist:undefined,triDistance:sport==='triathlon'?triDist:undefined,hyroxCategory:hyroxCat||undefined,hyroxLevel:hyroxLvl||undefined,hyroxGender:hyroxGen||undefined,goalTime:goalTime||undefined,goalSwimTime:goalSwim||undefined,goalBikeTime:goalBike||undefined,goalRunTime:goalRun||undefined })}
-            style={{ flex:2,padding:10,borderRadius:10,background:'linear-gradient(135deg,#06B6D4,#5b6fff)',border:'none',color:'#fff',fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:12,cursor:'pointer' }}>
+            style={{ flex:2,padding:10,borderRadius: 'var(--r-sm)',background:'linear-gradient(135deg,#06B6D4,#5b6fff)',border:'none',color:'#fff',fontFamily: 'var(--font-body)',fontWeight:700,fontSize:12,cursor:'pointer' }}>
             {t('calendar.addPlus')}
           </button>
         </div>
@@ -678,20 +678,20 @@ function RaceEditModal({ race, onClose, onSave }: { race: Race; onClose: () => v
   const [form, setForm] = useState<Race>({ ...race })
   return (
     <div onClick={onClose} style={{ position:'fixed',inset:0,zIndex:300,background:'rgba(0,0,0,0.55)',backdropFilter:'blur(4px)',display:'flex',alignItems:'center',justifyContent:'center',padding:16 }}>
-      <div onClick={e => e.stopPropagation()} style={{ background:'var(--bg-card)',borderRadius:18,border:'1px solid var(--border-mid)',padding:22,maxWidth:440,width:'100%',maxHeight:'92vh',overflowY:'auto' }}>
+      <div onClick={e => e.stopPropagation()} style={{ background:'var(--bg-card)',borderRadius: 'var(--r-lg)',border:'1px solid var(--border-mid)',padding:22,maxWidth:440,width:'100%',maxHeight:'92vh',overflowY:'auto' }}>
         <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:16 }}>
-          <h3 style={{ fontFamily:'Syne,sans-serif',fontSize:15,fontWeight:700,margin:0 }}>{t('calendar.editRace')}</h3>
-          <button onClick={onClose} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius:8,padding:'4px 8px',cursor:'pointer',color:'var(--text-dim)',fontSize:14 }}>✕</button>
+          <h3 style={{ fontFamily: 'var(--font-body)',fontSize:15,fontWeight:700,margin:0 }}>{t('calendar.editRace')}</h3>
+          <button onClick={onClose} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius: 'var(--r-sm)',padding:'4px 8px',cursor:'pointer',color:'var(--text-dim)',fontSize:14 }}>✕</button>
         </div>
         <div style={{ marginBottom:10 }}>
           <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>{t('calendar.name')}</p>
           <input value={form.name} onChange={e => setForm({ ...form, name:e.target.value })}
-            style={{ width:'100%',padding:'7px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:12,outline:'none' }}/>
+            style={{ width:'100%',padding:'7px 10px',borderRadius: 'var(--r-sm)',border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:12,outline:'none' }}/>
         </div>
         <div style={{ marginBottom:10 }}>
           <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>{t('calendar.date')}</p>
           <input type="date" value={form.date} onChange={e => setForm({ ...form, date:e.target.value })}
-            style={{ width:'100%',padding:'7px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:12,outline:'none' }}/>
+            style={{ width:'100%',padding:'7px 10px',borderRadius: 'var(--r-sm)',border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:12,outline:'none' }}/>
         </div>
         <div style={{ marginBottom:10 }}>
           <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:6 }}>{t('calendar.level')}</p>
@@ -700,7 +700,7 @@ function RaceEditModal({ race, onClose, onSave }: { race: Race; onClose: () => v
               const cfg = RACE_CONFIG[l]
               return (
                 <button key={l} onClick={() => setForm({ ...form, level:l })}
-                  style={{ padding:'4px 9px',borderRadius:7,border:'1px solid',borderColor:form.level===l?cfg.border:'var(--border)',background:form.level===l?cfg.bg:'var(--bg-card2)',color:form.level===l?l==='gty'?'var(--gty-text)':cfg.color:'var(--text-mid)',fontSize:10,cursor:'pointer',fontWeight:form.level===l?700:400 }}>
+                  style={{ padding:'4px 9px',borderRadius: 'var(--r-sm)',border:'1px solid',borderColor:form.level===l?cfg.border:'var(--border)',background:form.level===l?cfg.bg:'var(--bg-card2)',color:form.level===l?l==='gty'?'var(--gty-text)':cfg.color:'var(--text-mid)',fontSize:10,cursor:'pointer',fontWeight:form.level===l?700:400 }}>
                   {cfg.label}
                 </button>
               )
@@ -710,17 +710,17 @@ function RaceEditModal({ race, onClose, onSave }: { race: Race; onClose: () => v
         <div style={{ marginBottom:10 }}>
           <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>{t('calendar.objective')}</p>
           <input value={form.goal ?? ''} onChange={e => setForm({ ...form, goal:e.target.value })}
-            style={{ width:'100%',padding:'7px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:12,outline:'none' }}/>
+            style={{ width:'100%',padding:'7px 10px',borderRadius: 'var(--r-sm)',border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:12,outline:'none' }}/>
         </div>
         <div style={{ marginBottom:14 }}>
           <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>{t('calendar.strategy')}</p>
           <textarea value={form.strategy ?? ''} onChange={e => setForm({ ...form, strategy:e.target.value })} rows={2}
-            style={{ width:'100%',padding:'7px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:12,outline:'none',resize:'none' }}/>
+            style={{ width:'100%',padding:'7px 10px',borderRadius: 'var(--r-sm)',border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:12,outline:'none',resize:'none' }}/>
         </div>
         <div style={{ display:'flex',gap:8 }}>
-          <button onClick={onClose} style={{ flex:1,padding:10,borderRadius:10,background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',fontSize:12,cursor:'pointer' }}>{t('calendar.cancel')}</button>
+          <button onClick={onClose} style={{ flex:1,padding:10,borderRadius: 'var(--r-sm)',background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',fontSize:12,cursor:'pointer' }}>{t('calendar.cancel')}</button>
           <button onClick={() => onSave(form)}
-            style={{ flex:2,padding:10,borderRadius:10,background:'linear-gradient(135deg,#06B6D4,#5b6fff)',border:'none',color:'#fff',fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:12,cursor:'pointer' }}>
+            style={{ flex:2,padding:10,borderRadius: 'var(--r-sm)',background:'linear-gradient(135deg,#06B6D4,#5b6fff)',border:'none',color:'#fff',fontFamily: 'var(--font-body)',fontWeight:700,fontSize:12,cursor:'pointer' }}>
             {t('calendar.saveRace')}
           </button>
         </div>
@@ -737,42 +737,42 @@ function RaceDetailModal({ race, onClose, onDelete, onEdit }: {
   const days = daysUntil(race.date)
   return (
     <div onClick={onClose} style={{ position:'fixed',inset:0,zIndex:300,background:'rgba(0,0,0,0.55)',backdropFilter:'blur(4px)',display:'flex',alignItems:'center',justifyContent:'center',padding:16 }}>
-      <div onClick={e => e.stopPropagation()} style={{ background:'var(--bg-card)',borderRadius:18,border:'1px solid var(--border-mid)',padding:22,maxWidth:460,width:'100%' }}>
+      <div onClick={e => e.stopPropagation()} style={{ background:'var(--bg-card)',borderRadius: 'var(--r-lg)',border:'1px solid var(--border-mid)',padding:22,maxWidth:460,width:'100%' }}>
         <div style={{ display:'flex',alignItems:'flex-start',justifyContent:'space-between',marginBottom:14 }}>
           <div>
-            <span style={{ padding:'2px 8px',borderRadius:20,background:cfg.bg,border:`1px solid ${cfg.border}`,color:race.level==='gty'?'var(--gty-text)':cfg.color,fontSize:9,fontWeight:700 }}>{cfg.label}</span>
-            <h3 style={{ fontFamily:'Syne,sans-serif',fontSize:16,fontWeight:700,margin:'6px 0 2px' }}>{race.name}</h3>
+            <span style={{ padding:'2px 8px',borderRadius: 'var(--r-lg)',background:cfg.bg,border:`1px solid ${cfg.border}`,color:race.level==='gty'?'var(--gty-text)':cfg.color,fontSize: 10,fontWeight:700 }}>{cfg.label}</span>
+            <h3 style={{ fontFamily: 'var(--font-body)',fontSize:16,fontWeight:700,margin:'6px 0 2px' }}>{race.name}</h3>
             <p style={{ fontSize:11,color:'var(--text-dim)',margin:0 }}>{race.sport} · {new Date(race.date).toLocaleDateString(currentLocale(),{ weekday:'long',day:'numeric',month:'long',year:'numeric' })}</p>
             {race.runDistance && <p style={{ fontSize:11,color:'var(--text-mid)',margin:'3px 0 0' }}>{race.runDistance}</p>}
             {race.triDistance && <p style={{ fontSize:11,color:'var(--text-mid)',margin:'3px 0 0' }}>{race.triDistance}</p>}
           </div>
-          <button onClick={onClose} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius:8,padding:'4px 8px',cursor:'pointer',color:'var(--text-dim)',fontSize:14 }}>✕</button>
+          <button onClick={onClose} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius: 'var(--r-sm)',padding:'4px 8px',cursor:'pointer',color:'var(--text-dim)',fontSize:14 }}>✕</button>
         </div>
-        <div style={{ display:'flex',alignItems:'center',gap:14,padding:'12px 14px',borderRadius:11,background:days > 0 ? cfg.bg : 'var(--bg-card2)',border:`1px solid ${days > 0 ? cfg.border + '44' : 'var(--border)'}`,marginBottom:12 }}>
+        <div style={{ display:'flex',alignItems:'center',gap:14,padding:'12px 14px',borderRadius: 'var(--r-md)',background:days > 0 ? cfg.bg : 'var(--bg-card2)',border:`1px solid ${days > 0 ? cfg.border + '44' : 'var(--border)'}`,marginBottom:12 }}>
           <div style={{ textAlign:'center',minWidth:44 }}>
-            <p style={{ fontFamily:'Syne,sans-serif',fontSize:days > 0 ? 26 : 16,fontWeight:800,color:days > 0 ? race.level==='gty'?'var(--gty-text)':cfg.color : 'var(--text-dim)',margin:0,lineHeight:1 }}>{days > 0 ? days : '✓'}</p>
-            <p style={{ fontSize:9,color:'var(--text-dim)',margin:'2px 0 0' }}>{days > 0 ? t('calendar.days') : t('calendar.past')}</p>
+            <p style={{ fontFamily: 'var(--font-body)',fontSize:days > 0 ? 26 : 16,fontWeight:800,color:days > 0 ? race.level==='gty'?'var(--gty-text)':cfg.color : 'var(--text-dim)',margin:0,lineHeight:1 }}>{days > 0 ? days : '✓'}</p>
+            <p style={{ fontSize: 10,color:'var(--text-dim)',margin:'2px 0 0' }}>{days > 0 ? t('calendar.days') : t('calendar.past')}</p>
           </div>
           {race.goal && (
             <div>
-              <p style={{ fontSize:9,color:'var(--text-dim)',margin:'0 0 2px' }}>{t('calendar.objective')}</p>
+              <p style={{ fontSize: 10,color:'var(--text-dim)',margin:'0 0 2px' }}>{t('calendar.objective')}</p>
               <p style={{ fontSize:13,fontWeight:600,margin:0 }}>{race.goal}</p>
             </div>
           )}
         </div>
         {race.strategy && (
-          <div style={{ padding:'10px 12px',borderRadius:9,background:'var(--bg-card2)',border:'1px solid var(--border)',marginBottom:12 }}>
-            <p style={{ fontSize:9,color:'var(--text-dim)',margin:'0 0 4px' }}>{t('calendar.strategy')}</p>
+          <div style={{ padding:'10px 12px',borderRadius: 'var(--r-sm)',background:'var(--bg-card2)',border:'1px solid var(--border)',marginBottom:12 }}>
+            <p style={{ fontSize: 10,color:'var(--text-dim)',margin:'0 0 4px' }}>{t('calendar.strategy')}</p>
             <p style={{ fontSize:12,margin:0,color:'var(--text-mid)',lineHeight:1.5 }}>{race.strategy}</p>
           </div>
         )}
         <div style={{ display:'flex',gap:7 }}>
           <button onClick={() => { onDelete(race.id); onClose() }}
-            style={{ padding:'8px 12px',borderRadius:9,background:'rgba(239,68,68,0.10)',border:'1px solid rgba(239,68,68,0.3)',color:'var(--danger)',fontSize:11,cursor:'pointer' }}>
+            style={{ padding:'8px 12px',borderRadius: 'var(--r-sm)',background:'rgba(239,68,68,0.10)',border:'1px solid rgba(239,68,68,0.3)',color:'var(--danger)',fontSize:11,cursor:'pointer' }}>
             {t('calendar.delete')}
           </button>
           <button onClick={onEdit}
-            style={{ flex:1,padding:'8px 12px',borderRadius:9,background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',fontSize:11,cursor:'pointer' }}>
+            style={{ flex:1,padding:'8px 12px',borderRadius: 'var(--r-sm)',background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',fontSize:11,cursor:'pointer' }}>
             {t('calendar.edit')}
           </button>
         </div>
@@ -793,30 +793,30 @@ function RaceEventModal({ month, day, year, onClose, onSave }: {
   const [description, setDesc]  = useState('')
   return (
     <div onClick={onClose} style={{ position:'fixed',inset:0,zIndex:300,background:'rgba(0,0,0,0.55)',backdropFilter:'blur(4px)',display:'flex',alignItems:'center',justifyContent:'center',padding:16 }}>
-      <div onClick={e => e.stopPropagation()} style={{ background:'var(--bg-card)',borderRadius:18,border:'1px solid var(--border-mid)',padding:22,maxWidth:420,width:'100%' }}>
+      <div onClick={e => e.stopPropagation()} style={{ background:'var(--bg-card)',borderRadius: 'var(--r-lg)',border:'1px solid var(--border-mid)',padding:22,maxWidth:420,width:'100%' }}>
         <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:16 }}>
-          <h3 style={{ fontFamily:'Syne,sans-serif',fontSize:15,fontWeight:700,margin:0 }}>{t('calendar.addEvent')}</h3>
-          <button onClick={onClose} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius:8,padding:'4px 8px',cursor:'pointer',color:'var(--text-dim)',fontSize:14 }}>✕</button>
+          <h3 style={{ fontFamily: 'var(--font-body)',fontSize:15,fontWeight:700,margin:0 }}>{t('calendar.addEvent')}</h3>
+          <button onClick={onClose} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius: 'var(--r-sm)',padding:'4px 8px',cursor:'pointer',color:'var(--text-dim)',fontSize:14 }}>✕</button>
         </div>
         <div style={{ marginBottom:10 }}>
           <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>{t('calendar.eventTitle')}</p>
           <input value={title} onChange={e => setTitle(e.target.value)} placeholder={t('calendar.eventTitlePh')}
-            style={{ width:'100%',padding:'7px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:12,outline:'none' }}/>
+            style={{ width:'100%',padding:'7px 10px',borderRadius: 'var(--r-sm)',border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:12,outline:'none' }}/>
         </div>
         <div style={{ marginBottom:10 }}>
           <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>{t('calendar.date')}</p>
           <input type="date" value={date} onChange={e => setDate(e.target.value)}
-            style={{ width:'100%',padding:'7px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:12,outline:'none' }}/>
+            style={{ width:'100%',padding:'7px 10px',borderRadius: 'var(--r-sm)',border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:12,outline:'none' }}/>
         </div>
         <div style={{ marginBottom:14 }}>
           <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>{t('calendar.description')}</p>
           <textarea value={description} onChange={e => setDesc(e.target.value)} rows={2} placeholder={t('calendar.optionalPh')}
-            style={{ width:'100%',padding:'7px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:12,outline:'none',resize:'none' }}/>
+            style={{ width:'100%',padding:'7px 10px',borderRadius: 'var(--r-sm)',border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:12,outline:'none',resize:'none' }}/>
         </div>
         <div style={{ display:'flex',gap:8 }}>
-          <button onClick={onClose} style={{ flex:1,padding:10,borderRadius:10,background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',fontSize:12,cursor:'pointer' }}>{t('calendar.cancel')}</button>
+          <button onClick={onClose} style={{ flex:1,padding:10,borderRadius: 'var(--r-sm)',background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',fontSize:12,cursor:'pointer' }}>{t('calendar.cancel')}</button>
           <button onClick={() => { if (title && date) { onSave({ category:'race',date,title,description:description||undefined,color:'#9ca3af' }); onClose() } }}
-            style={{ flex:2,padding:10,borderRadius:10,background:'linear-gradient(135deg,#6b7280,#9ca3af)',border:'none',color:'#fff',fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:12,cursor:'pointer' }}>
+            style={{ flex:2,padding:10,borderRadius: 'var(--r-sm)',background:'linear-gradient(135deg,#6b7280,#9ca3af)',border:'none',color:'#fff',fontFamily: 'var(--font-body)',fontWeight:700,fontSize:12,cursor:'pointer' }}>
             {t('calendar.addPlus')}
           </button>
         </div>
@@ -932,7 +932,7 @@ function RaceTab({ races, raceStages, tests, addEvent, updateEvent, deleteEvent,
             data-guide="cal-view"
             onClick={() => setYearPickerOpen(true)}
             style={{
-              fontFamily:'Syne,sans-serif',fontSize:30,fontWeight:800,
+              fontFamily: 'var(--font-display)',fontSize:30,fontWeight:800,
               background:'transparent',border:'none',cursor:'pointer',
               color:'var(--text)',padding:'0 2px',letterSpacing:'-0.02em',
               display:'flex',alignItems:'center',gap:6,
@@ -973,7 +973,7 @@ function RaceTab({ races, raceStages, tests, addEvent, updateEvent, deleteEvent,
 
       {/* Tests planifiés (objectif « Test ») */}
       {yearTests.length > 0 && (
-        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 14, padding: '14px 16px' }}>
+        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: '14px 16px' }}>
           <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-dim)', margin: '0 0 10px' }}>Tests planifiés · {selectedYear}</p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {yearTests.map(ev => {
@@ -982,7 +982,7 @@ function RaceTab({ races, raceStages, tests, addEvent, updateEvent, deleteEvent,
               const d = new Date(ev.date + 'T12:00:00')
               return (
                 <div key={ev.id} onClick={() => setTestSheet({ mode: 'edit', ev })}
-                  style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '10px 12px', borderRadius: 11, border: `1px solid ${color}33`, borderLeft: `3px solid ${color}`, background: 'var(--bg-card2)', cursor: 'pointer' }}>
+                  style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '10px 12px', borderRadius: 'var(--r-md)', border: `1px solid ${color}33`, borderLeft: `3px solid ${color}`, background: 'var(--bg-card2)', cursor: 'pointer' }}>
                   <Target size={17} color={color} style={{ flexShrink: 0 }} />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ev.title}</div>
@@ -991,7 +991,7 @@ function RaceTab({ races, raceStages, tests, addEvent, updateEvent, deleteEvent,
                   {slug && (
                     // Interconnexion : lien direct vers le test dans la page Performance.
                     <a href={`/performance?test=${encodeURIComponent(slug)}`} onClick={e => e.stopPropagation()}
-                      style={{ flexShrink: 0, fontSize: 11, fontWeight: 700, color, textDecoration: 'none', border: `1px solid ${color}55`, borderRadius: 8, padding: '5px 9px' }}>
+                      style={{ flexShrink: 0, fontSize: 11, fontWeight: 700, color, textDecoration: 'none', border: `1px solid ${color}55`, borderRadius: 'var(--r-sm)', padding: '5px 9px' }}>
                       Voir le test →
                     </a>
                   )}
@@ -1007,11 +1007,11 @@ function RaceTab({ races, raceStages, tests, addEvent, updateEvent, deleteEvent,
 
       {/* Empty state */}
       {yearRaces.length === 0 && yearStages.length === 0 && (
-        <div style={{ padding:'32px 20px',textAlign:'center',background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:14 }}>
-          <p style={{ fontFamily:'Syne,sans-serif',fontSize:15,fontWeight:700,margin:'0 0 6px' }}>{t('calendar.noGoalPlanned', { year: selectedYear })}</p>
+        <div style={{ padding:'32px 20px',textAlign:'center',background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius: 'var(--r-md)' }}>
+          <p style={{ fontFamily: 'var(--font-body)',fontSize:15,fontWeight:700,margin:'0 0 6px' }}>{t('calendar.noGoalPlanned', { year: selectedYear })}</p>
           <button onClick={() => setChooserDate(new Date().toISOString().split('T')[0])} style={{
-            padding:'9px 20px',borderRadius:10,background:'linear-gradient(135deg,#06B6D4,#5b6fff)',
-            border:'none',color:'#fff',fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:13,cursor:'pointer',
+            padding:'9px 20px',borderRadius: 'var(--r-sm)',background:'linear-gradient(135deg,#06B6D4,#5b6fff)',
+            border:'none',color:'#fff',fontFamily: 'var(--font-body)',fontWeight:700,fontSize:13,cursor:'pointer',
           }}>
             {t('calendar.addGoal')}
           </button>
@@ -1099,7 +1099,7 @@ function ObjectiveChooser({ date, onClose, onCourse, onStage, onTest, onEvent }:
   const close = () => { setShown(false); setTimeout(onClose, 280) }
   const card: React.CSSProperties = {
     flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '22px 16px',
-    borderRadius: 16, border: '1px solid var(--border)', background: 'var(--bg-card)', cursor: 'pointer',
+    borderRadius: 'var(--r-md)', border: '1px solid var(--border)', background: 'var(--bg-card)', cursor: 'pointer',
     color: 'var(--text)', fontFamily: 'inherit',
   }
   return createPortal(
@@ -1114,7 +1114,7 @@ function ObjectiveChooser({ date, onClose, onCourse, onStage, onTest, onEvent }:
       }}>
         <div style={{ width: 40, height: 4, borderRadius: 4, background: 'var(--border-mid)', margin: '0 auto 14px' }} />
         <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-dim)', margin: 0, textAlign: 'center' }}>{t('calendar.addGoalTitle')}</p>
-        <h3 style={{ fontFamily: 'Syne,sans-serif', fontSize: 18, fontWeight: 700, margin: '4px 0 18px', textAlign: 'center', textTransform: 'capitalize' }}>{pretty}</h3>
+        <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700, margin: '4px 0 18px', textAlign: 'center', textTransform: 'capitalize' }}>{pretty}</h3>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, maxWidth: 460, margin: '0 auto' }}>
           <button onClick={onCourse} style={card}>
             <Trophy size={26} color="#06B6D4" />
@@ -1179,26 +1179,26 @@ function CategoryEventModal({ category, initialDate, initial, onClose, onSave, o
   const body = (
     <>
       <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:16 }}>
-        <h3 style={{ fontFamily:'Syne,sans-serif',fontSize:16,fontWeight:800,margin:0 }}>
+        <h3 style={{ fontFamily: 'var(--font-body)',fontSize:16,fontWeight:800,margin:0 }}>
           {initial ? tr('calendar.editBtn') : tr('calendar.addEventCategory', { category: tr(CATEGORY_LABEL_KEY[category]) })}
         </h3>
-        <button onClick={close} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius:8,padding:'4px 8px',cursor:'pointer',color:'var(--text-dim)',fontSize:14 }}>✕</button>
+        <button onClick={close} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius: 'var(--r-sm)',padding:'4px 8px',cursor:'pointer',color:'var(--text-dim)',fontSize:14 }}>✕</button>
       </div>
 
       <div style={{ marginBottom:10 }}>
         <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>{tr('calendar.titleLabel')}</p>
         <input value={title} onChange={e => setTitle(e.target.value)} placeholder={tr('calendar.eventTitlePlaceholder')} autoFocus
-          style={{ width:'100%',padding:'9px 11px',borderRadius:9,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:13,outline:'none' }}/>
+          style={{ width:'100%',padding:'9px 11px',borderRadius: 'var(--r-sm)',border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:13,outline:'none' }}/>
       </div>
       <div style={{ marginBottom:10 }}>
         <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>{tr('calendar.date')}</p>
         <input type="date" value={date} onChange={e => setDate(e.target.value)}
-          style={{ width:'100%',padding:'9px 11px',borderRadius:9,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:13,outline:'none' }}/>
+          style={{ width:'100%',padding:'9px 11px',borderRadius: 'var(--r-sm)',border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:13,outline:'none' }}/>
       </div>
       <div style={{ marginBottom:12 }}>
         <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>{tr('calendar.description')}</p>
         <textarea value={desc} onChange={e => setDesc(e.target.value)} rows={2} placeholder={tr('calendar.optional')}
-          style={{ width:'100%',padding:'9px 11px',borderRadius:9,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:13,outline:'none',resize:'none' }}/>
+          style={{ width:'100%',padding:'9px 11px',borderRadius: 'var(--r-sm)',border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:13,outline:'none',resize:'none' }}/>
       </div>
 
       {/* Importance : dégradé de teinte (bleu pour Pro, violet pour Perso). */}
@@ -1209,7 +1209,7 @@ function CategoryEventModal({ category, initialDate, initial, onClose, onSave, o
             const c = eventShade(category, lvl); const on = importance === lvl
             return (
               <button key={lvl} onClick={() => setImportance(lvl)}
-                style={{ flex:1,display:'flex',alignItems:'center',justifyContent:'center',gap:6,padding:'9px 6px',borderRadius:10,border:`1.5px solid ${on?c:'var(--border)'}`,background:on?`${c}1f`:'var(--bg-card2)',color:on?c:'var(--text-mid)',fontSize:11,fontWeight:on?700:500,cursor:'pointer' }}>
+                style={{ flex:1,display:'flex',alignItems:'center',justifyContent:'center',gap:6,padding:'9px 6px',borderRadius: 'var(--r-sm)',border:`1.5px solid ${on?c:'var(--border)'}`,background:on?`${c}1f`:'var(--bg-card2)',color:on?c:'var(--text-mid)',fontSize:11,fontWeight:on?700:500,cursor:'pointer' }}>
                 <span style={{ width:10,height:10,borderRadius:'50%',background:c,flexShrink:0 }} />
                 {tr(IMPORTANCE_LABEL_KEY[lvl])}
               </button>
@@ -1221,11 +1221,11 @@ function CategoryEventModal({ category, initialDate, initial, onClose, onSave, o
       <div style={{ display:'flex',gap:8 }}>
         {onDelete && (
           <button onClick={() => { onDelete(); close() }} aria-label={tr('calendar.delete')}
-            style={{ padding:'11px 14px',borderRadius:11,background:'rgba(239,68,68,0.08)',border:'1px solid rgba(239,68,68,0.24)',color:'var(--danger)',fontSize:13,fontWeight:700,cursor:'pointer' }}>✕</button>
+            style={{ padding:'11px 14px',borderRadius: 'var(--r-md)',background:'rgba(239,68,68,0.08)',border:'1px solid rgba(239,68,68,0.24)',color:'var(--danger)',fontSize:13,fontWeight:700,cursor:'pointer' }}>✕</button>
         )}
-        <button onClick={close} style={{ flex:1,padding:11,borderRadius:11,background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',fontSize:13,cursor:'pointer' }}>{tr('calendar.cancel')}</button>
+        <button onClick={close} style={{ flex:1,padding:11,borderRadius: 'var(--r-md)',background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',fontSize:13,cursor:'pointer' }}>{tr('calendar.cancel')}</button>
         <button onClick={save}
-          style={{ flex:2,padding:11,borderRadius:11,background:shade,border:'none',color:'#fff',fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:13,cursor:'pointer' }}>
+          style={{ flex:2,padding:11,borderRadius: 'var(--r-md)',background:shade,border:'none',color:'#fff',fontFamily: 'var(--font-body)',fontWeight:700,fontSize:13,cursor:'pointer' }}>
           {initial ? tr('calendar.save') : tr('calendar.addBtn')}
         </button>
       </div>
@@ -1255,7 +1255,7 @@ function CategoryEventModal({ category, initialDate, initial, onClose, onSave, o
       }}>
         <div onClick={e => e.stopPropagation()} style={{
           width:'100%',maxWidth:440,maxHeight:'calc(100dvh - 40px)',overflowY:'auto',
-          background:'var(--bg-card)',borderRadius:20,border:'1px solid var(--border-mid)',
+          background:'var(--bg-card)',borderRadius: 'var(--r-lg)',border:'1px solid var(--border-mid)',
           padding:'22px 22px',boxShadow:'0 24px 80px rgba(0,0,0,0.35)',
           transform:shown?'scale(1)':'scale(0.94)',opacity:shown?1:0,
           transition:'transform 0.26s cubic-bezier(0.32,0.72,0,1), opacity 0.2s ease',
@@ -1321,7 +1321,7 @@ function CategoryTab({ category, events, addEvent, updateEvent, deleteEvent }: {
           <button
             onClick={() => setYearPickerOpen(true)}
             style={{
-              fontFamily:'Syne,sans-serif',fontSize:30,fontWeight:800,
+              fontFamily: 'var(--font-display)',fontSize:30,fontWeight:800,
               background:'transparent',border:'none',cursor:'pointer',
               color:'var(--text)',padding:'0 2px',letterSpacing:'-0.02em',
               display:'flex',alignItems:'center',gap:6,
@@ -1357,24 +1357,24 @@ function CategoryTab({ category, events, addEvent, updateEvent, deleteEvent }: {
 
       {/* Liste des objectifs {catégorie} : importance (teinte) + Fait / Pas fait. */}
       {yearEvents.length > 0 && (
-        <div style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:14,padding:14 }}>
-          <p style={{ fontFamily:'Syne,sans-serif',fontSize:13,fontWeight:700,margin:'0 0 10px' }}>{tr('calendar.myObjectives', { category: tr(CATEGORY_LABEL_KEY[category]) })}</p>
+        <div style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius: 'var(--r-md)',padding:14 }}>
+          <p style={{ fontFamily: 'var(--font-body)',fontSize:13,fontWeight:700,margin:'0 0 10px' }}>{tr('calendar.myObjectives', { category: tr(CATEGORY_LABEL_KEY[category]) })}</p>
           <div style={{ display:'flex',flexDirection:'column',gap:6 }}>
             {yearEvents.map(ev => {
               const col = colorOf(ev)
               return (
-                <div key={ev.id} style={{ display:'flex',alignItems:'center',gap:10,padding:'9px 11px',borderRadius:10,background:'var(--bg-card2)',border:`1px solid ${col}33`,opacity:ev.done?0.62:1 }}>
+                <div key={ev.id} style={{ display:'flex',alignItems:'center',gap:10,padding:'9px 11px',borderRadius: 'var(--r-sm)',background:'var(--bg-card2)',border:`1px solid ${col}33`,opacity:ev.done?0.62:1 }}>
                   <span style={{ width:9,height:9,borderRadius:'50%',background:col,flexShrink:0 }} />
                   <div onClick={() => setEventModal({ date: ev.date, ev })} style={{ flex:1,minWidth:0,cursor:'pointer' }}>
                     <p style={{ fontSize:13,fontWeight:600,margin:0,color:'var(--text)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',textDecoration:ev.done?'line-through':'none' }}>{ev.title}</p>
                     <p style={{ fontSize:10.5,color:'var(--text-dim)',margin:'1px 0 0' }}>{new Date(ev.date+'T12:00:00').toLocaleDateString(currentLocale(),{ day:'numeric',month:'short',year:'numeric' })} · {tr(IMPORTANCE_LABEL_KEY[ev.importance ?? 'normal'])}</p>
                   </div>
                   <button onClick={() => updateEvent({ ...ev, done: !ev.done })}
-                    style={{ display:'flex',alignItems:'center',gap:5,padding:'6px 11px',borderRadius:999,border:`1px solid ${ev.done?'#22c55e':'var(--border)'}`,background:ev.done?'rgba(34,197,94,0.14)':'var(--bg-card)',color:ev.done?'#22c55e':'var(--text-mid)',fontSize:11,fontWeight:700,cursor:'pointer',flexShrink:0 }}>
+                    style={{ display:'flex',alignItems:'center',gap:5,padding:'6px 11px',borderRadius: 'var(--r-pill)',border:`1px solid ${ev.done?'#22c55e':'var(--border)'}`,background:ev.done?'rgba(34,197,94,0.14)':'var(--bg-card)',color:ev.done?'#22c55e':'var(--text-mid)',fontSize:11,fontWeight:700,cursor:'pointer',flexShrink:0 }}>
                     {ev.done ? `✓ ${tr('calendar.statusDone')}` : tr('calendar.statusNotDone')}
                   </button>
                   <button onClick={() => deleteEvent(ev.id)} aria-label={tr('calendar.delete')}
-                    style={{ width:28,height:28,borderRadius:8,border:'none',background:'transparent',color:'var(--text-dim)',cursor:'pointer',flexShrink:0 }}>✕</button>
+                    style={{ width:28,height:28,borderRadius: 'var(--r-sm)',border:'none',background:'transparent',color:'var(--text-dim)',cursor:'pointer',flexShrink:0 }}>✕</button>
                 </div>
               )
             })}
@@ -1383,11 +1383,11 @@ function CategoryTab({ category, events, addEvent, updateEvent, deleteEvent }: {
       )}
 
       {yearEvents.length === 0 && (
-        <div style={{ padding:'28px 20px',textAlign:'center',background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:14 }}>
+        <div style={{ padding:'28px 20px',textAlign:'center',background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius: 'var(--r-md)' }}>
           <div style={{ width:32,height:32,borderRadius:'50%',background:`${CATEGORY_CONFIG[category].color}20`,border:`1px solid ${CATEGORY_CONFIG[category].color}40`,margin:'0 auto 10px' }}/>
-          <p style={{ fontFamily:'Syne,sans-serif',fontSize:14,fontWeight:700,margin:'0 0 12px' }}>{tr('calendar.noEventCategory', { category: tr(CATEGORY_LABEL_KEY[category]) })}</p>
+          <p style={{ fontFamily: 'var(--font-body)',fontSize:14,fontWeight:700,margin:'0 0 12px' }}>{tr('calendar.noEventCategory', { category: tr(CATEGORY_LABEL_KEY[category]) })}</p>
           <button onClick={() => setEventModal({ date: new Date().toISOString().split('T')[0] })}
-            style={{ padding:'8px 16px',borderRadius:9,background:CATEGORY_CONFIG[category].color,border:'none',color:'#fff',fontFamily:'Syne,sans-serif',fontWeight:600,fontSize:12,cursor:'pointer' }}>
+            style={{ padding:'8px 16px',borderRadius: 'var(--r-sm)',background:CATEGORY_CONFIG[category].color,border:'none',color:'#fff',fontFamily: 'var(--font-body)',fontWeight:600,fontSize:12,cursor:'pointer' }}>
             {tr('calendar.addBtn')}
           </button>
         </div>
@@ -1493,7 +1493,7 @@ function AllTab({ races, eventTypes, events }: { races: Race[]; eventTypes: CalE
           : [['vertical', tr('calendar.vertical')], ['circular', tr('calendar.circular')]]
         ).map(([v, l]) => (
           <button key={v} onClick={() => setView(v as AllView)} style={{
-            padding: '6px 13px', borderRadius: 9, border: '1px solid', fontSize: 11, cursor: 'pointer',
+            padding: '6px 13px', borderRadius: 'var(--r-sm)', border: '1px solid', fontSize: 11, cursor: 'pointer',
             fontWeight: effView === v ? 600 : 400,
             borderColor: effView === v ? 'var(--primary)' : 'var(--border)',
             background: effView === v ? 'rgba(6,182,212,0.10)' : 'var(--bg-card)',
@@ -1511,7 +1511,7 @@ function AllTab({ races, eventTypes, events }: { races: Race[]; eventTypes: CalE
       {effView === 'vertical' && (
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           {unified.length === 0 && (
-            <div style={{ padding: '32px 20px', textAlign: 'center', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 14 }}>
+            <div style={{ padding: '32px 20px', textAlign: 'center', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)' }}>
               <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: 0, fontStyle: 'italic' }}>{tr('calendar.noEventForYear', { year })}</p>
             </div>
           )}
@@ -1547,7 +1547,7 @@ function AllTab({ races, eventTypes, events }: { races: Race[]; eventTypes: CalE
                       onMouseLeave={() => setHoveredId(null)}
                       style={{
                         background: 'var(--bg-card)',
-                        borderRadius: 8,
+                        borderRadius: 'var(--r-sm)',
                         borderLeft: `3px solid ${borderColor}`,
                         padding: '12px 16px',
                         marginBottom: 6,
@@ -1570,7 +1570,7 @@ function AllTab({ races, eventTypes, events }: { races: Race[]; eventTypes: CalE
                             </span>
                           )}
                         </div>
-                        <span style={{ fontSize:15, fontWeight:700, color:cdColor, flexShrink:0, fontFamily:'DM Mono,monospace' }}>
+                        <span style={{ fontSize:15, fontWeight:700, color:cdColor, flexShrink:0, fontFamily: 'var(--font-body)' }}>
                           {isPast ? '✓' : days === 0 ? tr('calendar.todayAbbr') : tr('calendar.jMinus', { n: days })}
                         </span>
                       </div>
@@ -1608,21 +1608,21 @@ function AllTab({ races, eventTypes, events }: { races: Race[]; eventTypes: CalE
 
     return (
       <div onClick={onClose} style={{ position:'fixed',inset:0,zIndex:500,background:'rgba(0,0,0,0.6)',backdropFilter:'blur(4px)',display:'flex',alignItems:'center',justifyContent:'center',padding:16,overflowY:'auto' }}>
-        <div onClick={e => e.stopPropagation()} style={{ background:'var(--bg-card)',borderRadius:18,borderLeft:`4px solid ${borderColor}`,border:`1px solid var(--border-mid)`,padding:24,maxWidth:480,width:'100%',maxHeight:'88vh',overflowY:'auto',display:'flex',flexDirection:'column',gap:14 }}>
+        <div onClick={e => e.stopPropagation()} style={{ background:'var(--bg-card)',borderRadius: 'var(--r-lg)',borderLeft:`4px solid ${borderColor}`,border:`1px solid var(--border-mid)`,padding:24,maxWidth:480,width:'100%',maxHeight:'88vh',overflowY:'auto',display:'flex',flexDirection:'column',gap:14 }}>
           {/* Header */}
           <div style={{ display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:12 }}>
             <div>
-              <span style={{ fontSize:9,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.08em',color:borderColor }}>{catLabel}</span>
-              <h3 style={{ fontFamily:'Syne,sans-serif',fontSize:18,fontWeight:700,margin:'4px 0 0' }}>{ev.title}</h3>
+              <span style={{ fontSize: 10,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.08em',color:borderColor }}>{catLabel}</span>
+              <h3 style={{ fontFamily: 'var(--font-display)',fontSize:18,fontWeight:700,margin:'4px 0 0' }}>{ev.title}</h3>
             </div>
-            <button onClick={onClose} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius:8,padding:'4px 10px',cursor:'pointer',color:'var(--text-dim)',fontSize:14,flexShrink:0 }}>✕</button>
+            <button onClick={onClose} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius: 'var(--r-sm)',padding:'4px 10px',cursor:'pointer',color:'var(--text-dim)',fontSize:14,flexShrink:0 }}>✕</button>
           </div>
           {/* Date + countdown */}
-          <div style={{ display:'flex',alignItems:'center',gap:12,padding:'10px 14px',borderRadius:10,background:'var(--bg-card2)',border:'1px solid var(--border)' }}>
+          <div style={{ display:'flex',alignItems:'center',gap:12,padding:'10px 14px',borderRadius: 'var(--r-sm)',background:'var(--bg-card2)',border:'1px solid var(--border)' }}>
             <div style={{ flex:1 }}>
-              <p style={{ fontSize:9,color:'var(--text-dim)',margin:'0 0 2px',textTransform:'capitalize' as const }}>{dateLabel}</p>
+              <p style={{ fontSize: 10,color:'var(--text-dim)',margin:'0 0 2px',textTransform:'capitalize' as const }}>{dateLabel}</p>
             </div>
-            <span style={{ fontSize:20,fontWeight:800,color:isPast?'var(--text-dim)':days<7?'var(--danger)':days<30?'#f97316':'var(--text)',fontFamily:'DM Mono,monospace' }}>
+            <span style={{ fontSize:20,fontWeight:800,color:isPast?'var(--text-dim)':days<7?'var(--danger)':days<30?'#f97316':'var(--text)',fontFamily: 'var(--font-body)' }}>
               {isPast ? tr('calendar.pastCheck') : days === 0 ? tr('calendar.todayFull') : tr('calendar.jMinus', { n: days })}
             </span>
           </div>
@@ -1631,32 +1631,32 @@ function AllTab({ races, eventTypes, events }: { races: Race[]; eventTypes: CalE
             <>
               {(race.sport || race.level) && (
                 <div style={{ display:'flex',gap:8,flexWrap:'wrap' as const }}>
-                  {race.sport && <span style={{ fontSize:11,padding:'3px 10px',borderRadius:20,background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)' }}>{race.sport}</span>}
-                  {race.level && <span style={{ fontSize:11,padding:'3px 10px',borderRadius:20,background:`${RACE_CONFIG[race.level].color}18`,border:`1px solid ${RACE_CONFIG[race.level].color}44`,color:RACE_CONFIG[race.level].color }}>{tr(RACE_LEVEL_KEY[race.level])}</span>}
-                  {race.runDistance && <span style={{ fontSize:11,padding:'3px 10px',borderRadius:20,background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)' }}>{race.runDistance}</span>}
-                  {race.triDistance && <span style={{ fontSize:11,padding:'3px 10px',borderRadius:20,background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)' }}>{race.triDistance}</span>}
+                  {race.sport && <span style={{ fontSize:11,padding:'3px 10px',borderRadius: 'var(--r-lg)',background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)' }}>{race.sport}</span>}
+                  {race.level && <span style={{ fontSize:11,padding:'3px 10px',borderRadius: 'var(--r-lg)',background:`${RACE_CONFIG[race.level].color}18`,border:`1px solid ${RACE_CONFIG[race.level].color}44`,color:RACE_CONFIG[race.level].color }}>{tr(RACE_LEVEL_KEY[race.level])}</span>}
+                  {race.runDistance && <span style={{ fontSize:11,padding:'3px 10px',borderRadius: 'var(--r-lg)',background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)' }}>{race.runDistance}</span>}
+                  {race.triDistance && <span style={{ fontSize:11,padding:'3px 10px',borderRadius: 'var(--r-lg)',background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)' }}>{race.triDistance}</span>}
                 </div>
               )}
               {(race.goalTime || race.goalSwimTime || race.goalBikeTime || race.goalRunTime) && (
-                <div style={{ padding:'10px 14px',borderRadius:10,background:'var(--bg-card2)',border:'1px solid var(--border)' }}>
-                  <p style={{ fontSize:9,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',margin:'0 0 6px' }}>{tr('calendar.goal')}</p>
+                <div style={{ padding:'10px 14px',borderRadius: 'var(--r-sm)',background:'var(--bg-card2)',border:'1px solid var(--border)' }}>
+                  <p style={{ fontSize: 10,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',margin:'0 0 6px' }}>{tr('calendar.goal')}</p>
                   <div style={{ display:'flex',gap:16,flexWrap:'wrap' as const }}>
-                    {race.goalTime && <div><p style={{ fontSize:9,color:'var(--text-dim)',margin:'0 0 1px' }}>{tr('calendar.time')}</p><p style={{ fontSize:14,fontWeight:700,margin:0,fontFamily:'DM Mono,monospace' }}>{race.goalTime}</p></div>}
-                    {race.goalSwimTime && <div><p style={{ fontSize:9,color:'var(--text-dim)',margin:'0 0 1px' }}>{tr('calendar.swimming')}</p><p style={{ fontSize:14,fontWeight:700,margin:0,fontFamily:'DM Mono,monospace' }}>{race.goalSwimTime}</p></div>}
-                    {race.goalBikeTime && <div><p style={{ fontSize:9,color:'var(--text-dim)',margin:'0 0 1px' }}>{tr('calendar.cycling')}</p><p style={{ fontSize:14,fontWeight:700,margin:0,fontFamily:'DM Mono,monospace' }}>{race.goalBikeTime}</p></div>}
-                    {race.goalRunTime && <div><p style={{ fontSize:9,color:'var(--text-dim)',margin:'0 0 1px' }}>{tr('calendar.runLabel')}</p><p style={{ fontSize:14,fontWeight:700,margin:0,fontFamily:'DM Mono,monospace' }}>{race.goalRunTime}</p></div>}
+                    {race.goalTime && <div><p style={{ fontSize: 10,color:'var(--text-dim)',margin:'0 0 1px' }}>{tr('calendar.time')}</p><p style={{ fontSize:14,fontWeight:700,margin:0,fontFamily: 'var(--font-body)' }}>{race.goalTime}</p></div>}
+                    {race.goalSwimTime && <div><p style={{ fontSize: 10,color:'var(--text-dim)',margin:'0 0 1px' }}>{tr('calendar.swimming')}</p><p style={{ fontSize:14,fontWeight:700,margin:0,fontFamily: 'var(--font-body)' }}>{race.goalSwimTime}</p></div>}
+                    {race.goalBikeTime && <div><p style={{ fontSize: 10,color:'var(--text-dim)',margin:'0 0 1px' }}>{tr('calendar.cycling')}</p><p style={{ fontSize:14,fontWeight:700,margin:0,fontFamily: 'var(--font-body)' }}>{race.goalBikeTime}</p></div>}
+                    {race.goalRunTime && <div><p style={{ fontSize: 10,color:'var(--text-dim)',margin:'0 0 1px' }}>{tr('calendar.runLabel')}</p><p style={{ fontSize:14,fontWeight:700,margin:0,fontFamily: 'var(--font-body)' }}>{race.goalRunTime}</p></div>}
                   </div>
                 </div>
               )}
               {race.strategy && (
-                <div style={{ padding:'10px 14px',borderRadius:10,background:'var(--bg-card2)',border:'1px solid var(--border)' }}>
-                  <p style={{ fontSize:9,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',margin:'0 0 6px' }}>{tr('calendar.strategy')}</p>
+                <div style={{ padding:'10px 14px',borderRadius: 'var(--r-sm)',background:'var(--bg-card2)',border:'1px solid var(--border)' }}>
+                  <p style={{ fontSize: 10,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',margin:'0 0 6px' }}>{tr('calendar.strategy')}</p>
                   <p style={{ fontSize:12,color:'var(--text-mid)',margin:0,lineHeight:1.6 }}>{race.strategy}</p>
                 </div>
               )}
               {race.notes && (
-                <div style={{ padding:'10px 14px',borderRadius:10,background:'var(--bg-card2)',border:'1px solid var(--border)' }}>
-                  <p style={{ fontSize:9,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',margin:'0 0 6px' }}>{tr('calendar.notes')}</p>
+                <div style={{ padding:'10px 14px',borderRadius: 'var(--r-sm)',background:'var(--bg-card2)',border:'1px solid var(--border)' }}>
+                  <p style={{ fontSize: 10,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',margin:'0 0 6px' }}>{tr('calendar.notes')}</p>
                   <p style={{ fontSize:12,color:'var(--text-mid)',margin:0,lineHeight:1.6 }}>{race.notes}</p>
                 </div>
               )}
@@ -1664,13 +1664,13 @@ function AllTab({ races, eventTypes, events }: { races: Race[]; eventTypes: CalE
           )}
           {/* Pro/Perso event details */}
           {calEv?.description && (
-            <div style={{ padding:'10px 14px',borderRadius:10,background:'var(--bg-card2)',border:'1px solid var(--border)' }}>
-              <p style={{ fontSize:9,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',margin:'0 0 6px' }}>{tr('calendar.description')}</p>
+            <div style={{ padding:'10px 14px',borderRadius: 'var(--r-sm)',background:'var(--bg-card2)',border:'1px solid var(--border)' }}>
+              <p style={{ fontSize: 10,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',margin:'0 0 6px' }}>{tr('calendar.description')}</p>
               <p style={{ fontSize:12,color:'var(--text-mid)',margin:0,lineHeight:1.6 }}>{calEv.description}</p>
             </div>
           )}
           {/* Close */}
-          <button onClick={onClose} style={{ padding:10,borderRadius:10,background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',fontSize:12,cursor:'pointer',marginTop:4 }}>
+          <button onClick={onClose} style={{ padding:10,borderRadius: 'var(--r-sm)',background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',fontSize:12,cursor:'pointer',marginTop:4 }}>
             {tr('calendar.close')}
           </button>
         </div>

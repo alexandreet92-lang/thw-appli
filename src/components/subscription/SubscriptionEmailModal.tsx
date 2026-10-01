@@ -99,10 +99,10 @@ export default function SubscriptionEmailModal({ action, plan = 'athlete', onClo
             <p style={{ fontSize: 13.5, color: 'var(--text-mid)', lineHeight: 1.6, margin: '0 0 22px' }}>
               Ouvre ton espace compte pour {action === 'cancel' ? 'résilier' : 'changer d’abonnement'}. Tu te connectes, puis tu gères tout depuis ton compte.
             </p>
-            <button onClick={() => { onClose(); void openWebsite('/site/compte.html') }} style={{ width: '100%', padding: 14, borderRadius: 14, border: 'none', background: btnBg, color: btnColor, fontSize: 14.5, fontWeight: 600, cursor: 'pointer' }}>
+            <button onClick={() => { onClose(); void openWebsite('/site/compte.html') }} style={{ width: '100%', padding: 14, borderRadius: 'var(--r-md)', border: 'none', background: btnBg, color: btnColor, fontSize: 14.5, fontWeight: 600, cursor: 'pointer' }}>
               Ouvrir mon compte →
             </button>
-            <button onClick={onClose} style={{ width: '100%', padding: 12, marginTop: 10, borderRadius: 14, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-mid)', fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}>
+            <button onClick={onClose} style={{ width: '100%', padding: 12, marginTop: 10, borderRadius: 'var(--r-md)', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-mid)', fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}>
               {t('w3c.close')}
             </button>
           </div>
@@ -115,7 +115,7 @@ export default function SubscriptionEmailModal({ action, plan = 'athlete', onClo
             <p style={{ fontSize: 13.5, color: 'var(--text-mid)', lineHeight: 1.6, margin: '0 0 22px' }}>
               {t('w3c.subemail_sent_pre')}<strong style={{ color: 'var(--text)' }}>{email}</strong>{t('w3c.subemail_sent_post')}
             </p>
-            <button onClick={onClose} style={{ width: '100%', padding: 13, borderRadius: 14, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text)', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
+            <button onClick={onClose} style={{ width: '100%', padding: 13, borderRadius: 'var(--r-md)', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text)', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
               {t('w3c.close')}
             </button>
           </div>
@@ -132,13 +132,13 @@ export default function SubscriptionEmailModal({ action, plan = 'athlete', onClo
               onChange={e => setEmail(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') void submit() }}
               placeholder={t('w3c.email_placeholder')}
-              style={{ width: '100%', background: 'var(--bg-alt)', border: '1px solid var(--border)', borderRadius: 14, padding: '13px 15px', fontSize: 14, color: 'var(--text)', outline: 'none', marginBottom: 12, fontFamily: 'DM Sans, sans-serif', boxSizing: 'border-box', textAlign: 'center' }}
+              style={{ width: '100%', background: 'var(--bg-alt)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: '13px 15px', fontSize: 14, color: 'var(--text)', outline: 'none', marginBottom: 12, fontFamily: 'var(--font-body)', boxSizing: 'border-box', textAlign: 'center' }}
             />
             {error && <p style={{ fontSize: 12, color: 'var(--danger)', margin: '0 0 12px', textAlign: 'center' }}>{error}</p>}
             <button
               onClick={() => void submit()}
               disabled={loading || !email}
-              style={{ width: '100%', padding: 14, borderRadius: 14, border: 'none', background: btnBg, color: btnColor, fontSize: 14.5, fontWeight: 600, cursor: loading || !email ? 'not-allowed' : 'pointer', opacity: loading || !email ? 0.55 : 1 }}
+              style={{ width: '100%', padding: 14, borderRadius: 'var(--r-md)', border: 'none', background: btnBg, color: btnColor, fontSize: 14.5, fontWeight: 600, cursor: loading || !email ? 'not-allowed' : 'pointer', opacity: loading || !email ? 0.55 : 1 }}
             >
               {loading ? t('w3c.sending') : t('w3c.receive_link')}
             </button>

@@ -62,7 +62,7 @@ function ConfidenceBadge({ level }: { level: 'low' | 'medium' | 'high' }) {
     high:   { bg: 'rgba(34,197,94,0.12)',  color: '#22C55E' },
   }[level]
   return (
-    <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 20, fontWeight: 700, background: cfg.bg, color: cfg.color }}>
+    <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 'var(--r-lg)', fontWeight: 700, background: cfg.bg, color: cfg.color }}>
       {t(`w2b.confidence.${level}`)}
     </span>
   )
@@ -218,7 +218,7 @@ export default function MealModalPhotoAI({ onSave }: Props) {
         {isMobile ? (
           <div style={{ display: 'flex', gap: 8 }}>
             <button onClick={() => cameraRef.current?.click()}
-              style={{ flex: 1, padding: '14px 0', borderRadius: 10, border: '1.5px dashed var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 12, fontFamily: 'DM Sans,sans-serif', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+              style={{ flex: 1, padding: '14px 0', borderRadius: 'var(--r-sm)', border: '1.5px dashed var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 12, fontFamily: 'var(--font-body)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
               <svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round">
                 <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
                 <circle cx="12" cy="13" r="4"/>
@@ -226,7 +226,7 @@ export default function MealModalPhotoAI({ onSave }: Props) {
               {t('w2b.camera')}
             </button>
             <button onClick={() => galleryRef.current?.click()}
-              style={{ flex: 1, padding: '14px 0', borderRadius: 10, border: '1.5px dashed var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 12, fontFamily: 'DM Sans,sans-serif', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+              style={{ flex: 1, padding: '14px 0', borderRadius: 'var(--r-sm)', border: '1.5px dashed var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 12, fontFamily: 'var(--font-body)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
               <svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round">
                 <rect x="3" y="3" width="18" height="18" rx="3"/>
                 <circle cx="8.5" cy="8.5" r="1.5"/>
@@ -246,7 +246,7 @@ export default function MealModalPhotoAI({ onSave }: Props) {
             onClick={() => galleryRef.current?.click()}
             style={{
               border: `2px dashed ${dragging ? '#06B6D4' : 'var(--border)'}`,
-              borderRadius: 12, padding: 32, textAlign: 'center', cursor: 'pointer',
+              borderRadius: 'var(--r-md)', padding: 32, textAlign: 'center', cursor: 'pointer',
               background: dragging ? 'rgba(6,182,212,0.05)' : 'var(--bg-card2)',
               transition: 'border-color 0.15s, background 0.15s',
               display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
@@ -270,19 +270,19 @@ export default function MealModalPhotoAI({ onSave }: Props) {
         {hiddenInputs}
 
         {/* Preview + overlay */}
-        <div style={{ position: 'relative', borderRadius: 12, overflow: 'hidden', lineHeight: 0 }}>
+        <div style={{ position: 'relative', borderRadius: 'var(--r-md)', overflow: 'hidden', lineHeight: 0 }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={preview!} alt="preview"
-            style={{ width: '100%', height: 200, objectFit: 'cover', display: 'block', borderRadius: 12 }} />
+            style={{ width: '100%', height: 200, objectFit: 'cover', display: 'block', borderRadius: 'var(--r-md)' }} />
 
           {loading && (
             <div style={{
               position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.52)',
-              borderRadius: 12, display: 'flex', flexDirection: 'column',
+              borderRadius: 'var(--r-md)', display: 'flex', flexDirection: 'column',
               alignItems: 'center', justifyContent: 'center', gap: 10,
             }}>
               <OverlaySpinner />
-              <p style={{ color: '#fff', fontSize: 12, fontWeight: 500, fontFamily: 'DM Sans,sans-serif', margin: 0 }}>
+              <p style={{ color: '#fff', fontSize: 12, fontWeight: 500, fontFamily: 'var(--font-body)', margin: 0 }}>
                 {t('w2b.analyzing')}
               </p>
             </div>
@@ -292,15 +292,15 @@ export default function MealModalPhotoAI({ onSave }: Props) {
         {/* Error message */}
         {error && (
           <>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#EF4444', fontSize: 13, fontFamily: 'DM Sans,sans-serif' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#EF4444', fontSize: 13, fontFamily: 'var(--font-body)' }}>
               <IconWarning />
               {error}
             </div>
             <button onClick={changePhoto}
               style={{
-                padding: '7px 0', borderRadius: 8, border: '1px solid var(--border)',
+                padding: '7px 0', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)',
                 background: 'transparent', color: 'var(--text-dim)',
-                fontSize: 12, fontFamily: 'DM Sans,sans-serif', cursor: 'pointer',
+                fontSize: 12, fontFamily: 'var(--font-body)', cursor: 'pointer',
               }}>
               {t('w2b.changePhoto')}
             </button>
@@ -319,42 +319,42 @@ export default function MealModalPhotoAI({ onSave }: Props) {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <ConfidenceBadge level={result.confidence} />
         <button onClick={reset}
-          style={{ fontSize: 11, color: 'var(--text-dim)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
+          style={{ fontSize: 11, color: 'var(--text-dim)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
           {t('w2b.restart')}
         </button>
       </div>
 
       {/* Meal name */}
       <input value={mealName} onChange={e => setMealName(e.target.value)}
-        style={{ width: '100%', background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 8, padding: '7px 10px', fontSize: 13, fontWeight: 600, color: 'var(--text)', fontFamily: 'Syne,sans-serif', outline: 'none', boxSizing: 'border-box' }} />
+        style={{ width: '100%', background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 'var(--r-sm)', padding: '7px 10px', fontSize: 13, fontWeight: 600, color: 'var(--text)', fontFamily: 'var(--font-body)', outline: 'none', boxSizing: 'border-box' }} />
 
       {/* Items list */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 64px 54px', gap: 6, paddingBottom: 4, borderBottom: '1px solid var(--border)' }}>
           {[t('w2b.thFood'), t('w2b.thQty'), 'Kcal'].map(h => (
-            <span key={h} style={{ fontSize: 9, color: 'var(--text-dim)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', fontFamily: 'DM Sans,sans-serif' }}>{h}</span>
+            <span key={h} style={{ fontSize: 10, color: 'var(--text-dim)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', fontFamily: 'var(--font-body)' }}>{h}</span>
           ))}
         </div>
         {items.map((it, i) => (
           <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 64px 54px', gap: 6, alignItems: 'center' }}>
             <input value={it.name} onChange={e => updateItemName(i, e.target.value)}
-              style={{ background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 7px', fontSize: 11, color: 'var(--text)', outline: 'none', fontFamily: 'DM Sans,sans-serif' }} />
+              style={{ background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 'var(--r-sm)', padding: '4px 7px', fontSize: 11, color: 'var(--text)', outline: 'none', fontFamily: 'var(--font-body)' }} />
             <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
               <input type="number" value={it.qty} min={0} onChange={e => updateItemQty(i, Number(e.target.value))}
-                style={{ width: '100%', background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 5px', fontSize: 11, color: 'var(--text)', outline: 'none', fontFamily: 'DM Mono,monospace', textAlign: 'center' }} />
-              <span style={{ fontSize: 9, color: 'var(--text-dim)', whiteSpace: 'nowrap' }}>{it.unit}</span>
+                style={{ width: '100%', background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 'var(--r-sm)', padding: '4px 5px', fontSize: 11, color: 'var(--text)', outline: 'none', fontFamily: 'var(--font-body)', textAlign: 'center' }} />
+              <span style={{ fontSize: 10, color: 'var(--text-dim)', whiteSpace: 'nowrap' }}>{it.unit}</span>
             </div>
             <input type="number" value={it.kcal} min={0} onChange={e => updateItemKcal(i, Number(e.target.value))}
-              style={{ background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 7px', fontSize: 11, color: '#06B6D4', outline: 'none', fontFamily: 'DM Mono,monospace', textAlign: 'center' }} />
+              style={{ background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 'var(--r-sm)', padding: '4px 7px', fontSize: 11, color: '#06B6D4', outline: 'none', fontFamily: 'var(--font-body)', textAlign: 'center' }} />
           </div>
         ))}
         {/* Totals row */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 64px 54px', gap: 6, paddingTop: 6, borderTop: '1px solid var(--border)' }}>
-          <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text)', fontFamily: 'Syne,sans-serif' }}>{t('w2b.total')}</span>
+          <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-body)' }}>{t('w2b.total')}</span>
           <span />
-          <span style={{ fontSize: 11, fontWeight: 700, color: '#06B6D4', fontFamily: 'DM Mono,monospace', textAlign: 'center' }}>{totalKcal}</span>
+          <span style={{ fontSize: 11, fontWeight: 700, color: '#06B6D4', fontFamily: 'var(--font-body)', textAlign: 'center' }}>{totalKcal}</span>
         </div>
-        <div style={{ display: 'flex', gap: 12, fontSize: 10, color: 'var(--text-dim)', fontFamily: 'DM Mono,monospace', paddingLeft: 2 }}>
+        <div style={{ display: 'flex', gap: 12, fontSize: 10, color: 'var(--text-dim)', fontFamily: 'var(--font-body)', paddingLeft: 2 }}>
           <span>P {Math.round(result.totals.prot * ratio)}g</span>
           <span>G {Math.round(result.totals.gluc * ratio)}g</span>
           <span>L {Math.round(result.totals.lip  * ratio)}g</span>
@@ -367,7 +367,7 @@ export default function MealModalPhotoAI({ onSave }: Props) {
 
       {/* Save button */}
       <button onClick={() => void handleSave()} disabled={saving}
-        style={{ width: '100%', padding: '10px 0', borderRadius: 10, border: 'none', background: saving ? 'var(--border)' : 'linear-gradient(90deg,#06B6D4,#3B82F6)', color: '#fff', fontWeight: 700, fontSize: 13, cursor: saving ? 'default' : 'pointer', fontFamily: 'Syne,sans-serif' }}>
+        style={{ width: '100%', padding: '10px 0', borderRadius: 'var(--r-sm)', border: 'none', background: saving ? 'var(--border)' : 'linear-gradient(90deg,#06B6D4,#3B82F6)', color: '#fff', fontWeight: 700, fontSize: 13, cursor: saving ? 'default' : 'pointer', fontFamily: 'var(--font-body)' }}>
         {saving ? t('w2b.saving') : t('w2b.saveMeal')}
       </button>
     </div>

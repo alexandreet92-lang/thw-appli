@@ -90,7 +90,7 @@ export default function BoxeLauncher({ open, onClose, onStart, sport = 'boxe' }:
         <div style={{ width: 40, height: 4, borderRadius: 4, background: 'var(--border-mid)', margin: '10px auto 0', flexShrink: 0 }} />
 
         <div style={{ padding: '14px 20px 6px', flexShrink: 0 }}>
-          <h3 style={{ margin: 0, fontSize: 21, fontWeight: 800, color: 'var(--text)' }}>{SPORT_LABEL}</h3>
+          <h3 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: 'var(--text)' }}>{SPORT_LABEL}</h3>
           <p style={{ margin: '3px 0 0', fontSize: 12.5, color: 'var(--text-dim)' }}>Choisis une séance à lancer, ou démarre sans programme.</p>
         </div>
 
@@ -122,7 +122,7 @@ export default function BoxeLauncher({ open, onClose, onStart, sport = 'boxe' }:
               {/* SECTION 3 — No Training : lancer sans programme */}
               <SectionLabel>No Training</SectionLabel>
               <button onClick={() => { onStart({ title: `Séance ${SPORT_LABEL.toLowerCase()} libre`, moves: [], circuits: [], sport, free: true }); handleClose() }}
-                style={{ width: '100%', padding: '15px 16px', borderRadius: 16, cursor: 'pointer', border: `1px solid ${ACCENT}`, background: tint(8), color: ACCENT, fontSize: 14.5, fontWeight: 800, display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left' }}>
+                style={{ width: '100%', padding: '15px 16px', borderRadius: 'var(--r-md)', cursor: 'pointer', border: `1px solid ${ACCENT}`, background: tint(8), color: ACCENT, fontSize: 14.5, fontWeight: 800, display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left' }}>
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={ACCENT} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><polygon points="5 3 19 12 5 21 5 3"/></svg>
                 Lancer sans programme
               </button>
@@ -146,8 +146,8 @@ function EmptyHint({ children }: { children: React.ReactNode }) {
 function SessionRow({ s, onPick }: { s: PlannedBoxe; onPick: () => void }) {
   return (
     <button onClick={onPick}
-      style={{ textAlign: 'left', padding: '15px 16px', borderRadius: 16, cursor: 'pointer', border: '1px solid var(--border)', background: 'var(--bg-card2)', display: 'flex', alignItems: 'center', gap: 13, width: '100%' }}>
-      <span style={{ width: 46, height: 46, borderRadius: 12, background: tint(9), color: ACCENT, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 14, lineHeight: 1 }}>
+      style={{ textAlign: 'left', padding: '15px 16px', borderRadius: 'var(--r-md)', cursor: 'pointer', border: '1px solid var(--border)', background: 'var(--bg-card2)', display: 'flex', alignItems: 'center', gap: 13, width: '100%' }}>
+      <span style={{ width: 46, height: 46, borderRadius: 'var(--r-md)', background: tint(9), color: ACCENT, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 14, lineHeight: 1 }}>
         {DAYS[s.dayIndex] ?? ''}
       </span>
       <span style={{ flex: 1, minWidth: 0 }}>

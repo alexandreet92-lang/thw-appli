@@ -88,7 +88,7 @@ export default function MealTypesSection({
 
   const cardStyle: React.CSSProperties = {
     background: 'var(--bg-card)',
-    borderRadius: 16,
+    borderRadius: 'var(--r-md)',
     border: '1px solid var(--border)',
     padding: 20,
     marginBottom: 16,
@@ -98,15 +98,15 @@ export default function MealTypesSection({
     <div style={cardStyle}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-        <h2 style={{ fontFamily: 'Syne,sans-serif', fontSize: 18, fontWeight: 700, margin: 0, color: 'var(--text)' }}>
+        <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700, margin: 0, color: 'var(--text)' }}>
           {t('w2a.my_meal_types')}
         </h2>
         <button
           onClick={() => setCreating(true)}
           style={{
-            padding: '7px 14px', borderRadius: 8, border: 'none', cursor: 'pointer',
+            padding: '7px 14px', borderRadius: 'var(--r-sm)', border: 'none', cursor: 'pointer',
             background: 'linear-gradient(90deg,#06B6D4,#3B82F6)',
-            color: '#fff', fontFamily: 'Syne,sans-serif', fontWeight: 700, fontSize: 12,
+            color: '#fff', fontFamily: 'var(--font-body)', fontWeight: 700, fontSize: 12,
             whiteSpace: 'nowrap',
           }}
         >{t('w2a.create_meal_plus')}</button>
@@ -120,12 +120,12 @@ export default function MealTypesSection({
             <button key={key}
               onClick={() => setFilter(key)}
               style={{
-                padding: '4px 11px', borderRadius: 20, cursor: 'pointer',
+                padding: '4px 11px', borderRadius: 'var(--r-lg)', cursor: 'pointer',
                 border: active ? 'none' : '1px solid var(--border)',
                 background: active ? 'linear-gradient(90deg,#06B6D4,#3B82F6)' : 'transparent',
                 color: active ? '#fff' : 'var(--text-dim)',
                 fontWeight: active ? 700 : 400,
-                fontSize: 10, fontFamily: 'Syne,sans-serif',
+                fontSize: 10, fontFamily: 'var(--font-body)',
               }}
             >{label}</button>
           )
@@ -134,9 +134,9 @@ export default function MealTypesSection({
         <button
           onClick={handleAISuggest}
           style={{
-            marginLeft: 'auto', padding: '4px 11px', borderRadius: 20, cursor: 'pointer',
+            marginLeft: 'auto', padding: '4px 11px', borderRadius: 'var(--r-lg)', cursor: 'pointer',
             border: '1px solid var(--border)', background: 'transparent',
-            color: 'var(--text-dim)', fontSize: 10, fontFamily: 'Syne,sans-serif',
+            color: 'var(--text-dim)', fontSize: 10, fontFamily: 'var(--font-body)',
             display: 'flex', alignItems: 'center', gap: 5,
           }}
         >
@@ -166,7 +166,7 @@ export default function MealTypesSection({
             return (
               <div key={tpl.id} style={{
                 background: 'var(--bg-card2)', border: '1px solid var(--border)',
-                borderRadius: 12, overflow: 'hidden', position: 'relative',
+                borderRadius: 'var(--r-md)', overflow: 'hidden', position: 'relative',
               }}>
                 {/* Photo zone */}
                 <div style={{
@@ -187,7 +187,7 @@ export default function MealTypesSection({
                     title={tpl.is_favorite ? t('w2a.remove_favorite') : t('w2a.add_favorite')}
                     style={{
                       position: 'absolute', top: 8, right: 8,
-                      width: 30, height: 30, borderRadius: 8,
+                      width: 30, height: 30, borderRadius: 'var(--r-sm)',
                       background: 'rgba(0,0,0,0.45)', border: 'none', cursor: 'pointer',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                     }}
@@ -205,7 +205,7 @@ export default function MealTypesSection({
                     title={t('w2a.delete')}
                     style={{
                       position: 'absolute', top: 8, left: 8,
-                      width: 30, height: 30, borderRadius: 8,
+                      width: 30, height: 30, borderRadius: 'var(--r-sm)',
                       background: 'rgba(0,0,0,0.45)', border: 'none', cursor: 'pointer',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                     }}
@@ -227,8 +227,8 @@ export default function MealTypesSection({
                   {timing && tc && (
                     <div style={{ marginBottom: 6 }}>
                       <span style={{
-                        padding: '2px 9px', borderRadius: 20, fontSize: 9, fontWeight: 700,
-                        background: tc.bg, color: tc.color, fontFamily: 'Syne,sans-serif',
+                        padding: '2px 9px', borderRadius: 'var(--r-lg)', fontSize: 10, fontWeight: 700,
+                        background: tc.bg, color: tc.color, fontFamily: 'var(--font-body)',
                       }}>{t(`w2a.timing_${timing}`)}</span>
                     </div>
                   )}

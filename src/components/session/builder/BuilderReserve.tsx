@@ -82,7 +82,7 @@ function ReserveCard({ fav, accent, onEdit, onDelete, onToggleStar }: {
           <h3 style={{ fontFamily: FD, fontSize: 16, fontWeight: 600, color: 'var(--text)', margin: '0 0 4px', lineHeight: 1.3 }}>{fav.name}</h3>
           <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', alignItems: 'center' }}>
             {types.map(tp => (
-              <span key={tp} style={{ padding: '2px 8px', borderRadius: 99, background: 'var(--bg-card2)',
+              <span key={tp} style={{ padding: '2px 8px', borderRadius: 'var(--r-pill)', background: 'var(--bg-card2)',
                 fontFamily: FB, fontSize: 10.5, fontWeight: 600, color: 'var(--text-mid)' }}>{tp}</span>
             ))}
           </div>
@@ -222,7 +222,7 @@ export function BuilderReserve() {
   )
 
   const chip = (active: boolean, accent: string): React.CSSProperties => ({
-    padding: '5px 13px', borderRadius: 99,
+    padding: '5px 13px', borderRadius: 'var(--r-pill)',
     border: `1px solid ${active ? accent : 'var(--border)'}`,
     background: active ? accent : 'transparent',
     color: active ? 'var(--on-primary)' : 'var(--text-dim)',
@@ -265,7 +265,7 @@ export function BuilderReserve() {
                 ))}
                 {(typeFilters.length > 0 || starredOnly) && (
                   <button onClick={() => { setTypeFilters([]); setStarredOnly(false) }}
-                    style={{ padding: '4px 10px', borderRadius: 99, border: 'none', background: 'transparent',
+                    style={{ padding: '4px 10px', borderRadius: 'var(--r-pill)', border: 'none', background: 'transparent',
                       color: 'var(--text-dim)', fontFamily: FB, fontSize: 10, cursor: 'pointer', textDecoration: 'underline' }}>
                     {t('session.effacer')}
                   </button>

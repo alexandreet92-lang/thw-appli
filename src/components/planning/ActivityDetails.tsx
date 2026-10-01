@@ -575,7 +575,7 @@ function buildElevLapStats(full: FullActivity, sport: string): ElevLapStat[] {
   })
 }
 
-const elevAxisLbl: React.CSSProperties = { fontSize: 9, fontWeight: 600, color: 'var(--text-dim)', fontFamily: 'DM Mono, monospace', letterSpacing: '0.02em', pointerEvents: 'none' }
+const elevAxisLbl: React.CSSProperties = { fontSize: 10, fontWeight: 600, color: 'var(--text-dim)', fontFamily: 'var(--font-body)', letterSpacing: '0.02em', pointerEvents: 'none' }
 
 /** Profil altimétrique RÉEL interactif : survol → onHover(fraction 0…1).
  *  Mode `detailed` (fiche) : plus haut, axes km + altitude, et tooltip du bloc
@@ -687,7 +687,7 @@ export function ActivityElevation({ full, height = 64, cursor, onHover, showTitl
           <div style={{
             position: 'absolute', top: 4, left: `${cursor * 100}%`,
             transform: cursor > 0.6 ? 'translateX(calc(-100% - 10px))' : 'translateX(10px)',
-            background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 9,
+            background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-sm)',
             padding: '8px 10px', pointerEvents: 'none', boxShadow: 'var(--shadow-card)',
             zIndex: 3, minWidth: 132,
           }}>
@@ -695,7 +695,7 @@ export function ActivityElevation({ full, height = 64, cursor, onHover, showTitl
               {tooltipRows.map(([label, value]) => (
                 <Fragment key={label}>
                   <span style={{ fontSize: 9.5, color: 'var(--text-dim)', fontWeight: 600 }}>{label}</span>
-                  <span style={{ fontSize: 11, color: 'var(--text)', fontWeight: 700, fontFamily: 'DM Mono, monospace', textAlign: 'right', whiteSpace: 'nowrap' }}>{value}</span>
+                  <span style={{ fontSize: 11, color: 'var(--text)', fontWeight: 700, fontFamily: 'var(--font-body)', textAlign: 'right', whiteSpace: 'nowrap' }}>{value}</span>
                 </Fragment>
               ))}
             </div>
@@ -753,7 +753,7 @@ export function ActivityMap({ latlng, width, height, color, cursorLL }: {
   const cursor = cursorLL ? fit(cursorLL[0], cursorLL[1]) : null
   return (
     <svg width="100%" height={height} viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="xMidYMid meet"
-      style={{ display: 'block', maxWidth: width, background: 'var(--bg-alt)', borderRadius: 12, border: '1px solid var(--border)' }}>
+      style={{ display: 'block', maxWidth: width, background: 'var(--bg-alt)', borderRadius: 'var(--r-md)', border: '1px solid var(--border)' }}>
       {/* Casing (halo) + trait couleur du sport */}
       <path d={d} fill="none" stroke="var(--bg-card)" strokeWidth={6} strokeLinejoin="round" strokeLinecap="round" />
       <path d={d} fill="none" stroke={stroke} strokeWidth={3} strokeLinejoin="round" strokeLinecap="round" />
@@ -832,7 +832,7 @@ export function ActivityHoverPreview({ activity, planned, anchor }: {
       position: 'fixed', left, top, width: WIDTH, zIndex: 3000,
       pointerEvents: 'none',
       background: 'var(--bg-card)', border: '1px solid var(--border)',
-      borderRadius: 14, padding: 12,
+      borderRadius: 'var(--r-md)', padding: 12,
       boxShadow: 'var(--shadow-card)',
       maxHeight: '80vh', overflow: 'hidden',
       animation: 'ahpIn .16s ease-out forwards',
@@ -923,7 +923,7 @@ export function ActivityBubble({ activity, planned, onClick }: {
         onMouseEnter={e => setTip(e.currentTarget.getBoundingClientRect())} onMouseLeave={() => setTip(null)}
         style={{
           display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: 2, padding: '4px 6px',
-          borderRadius: 8, border: 'none', background: color, cursor: 'pointer', width: '100%',
+          borderRadius: 'var(--r-sm)', border: 'none', background: color, cursor: 'pointer', width: '100%',
           boxSizing: 'border-box', position: 'relative',
         }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 4, minWidth: 0 }}>
@@ -934,7 +934,7 @@ export function ActivityBubble({ activity, planned, onClick }: {
           </span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, flexWrap: 'wrap' }}>
-          <span className="tnum" style={{ fontSize: 9, fontWeight: 700, color: '#fff', whiteSpace: 'nowrap' }}>{formatHM(actMin)}</span>
+          <span className="tnum" style={{ fontSize: 10, fontWeight: 700, color: '#fff', whiteSpace: 'nowrap' }}>{formatHM(actMin)}</span>
           {rpe != null && <span className="tnum" style={{ fontSize: 8.5, fontWeight: 600, color: 'rgba(255,255,255,0.8)', whiteSpace: 'nowrap' }}>RPE {rpe}</span>}
         </div>
       </button>

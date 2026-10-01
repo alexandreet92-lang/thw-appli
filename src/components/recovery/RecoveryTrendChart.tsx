@@ -79,7 +79,7 @@ export default function RecoveryTrendChart({ weeks }: Props) {
   const gridY = [0, 0.25, 0.5, 0.75, 1].map(t => PAD.t + t * (H - PAD.t - PAD.b))
 
   return (
-    <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 20, padding: 20, boxShadow: 'var(--shadow-card)' }}>
+    <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-lg)', padding: 20, boxShadow: 'var(--shadow-card)' }}>
       {/* Navigation semaine */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
         <span style={{ fontFamily: 'var(--font-body)', fontWeight: 600, fontSize: 13, color: 'var(--text)' }}>{t('recovery.trendChart.weekOf')} {week.label}</span>
@@ -88,7 +88,7 @@ export default function RecoveryTrendChart({ weeks }: Props) {
             const disabled = wIdx + d < 0 || wIdx + d > weeks.length - 1
             return (
               <button key={g} disabled={disabled} onClick={() => setWIdx(i => i + d)} aria-label={d < 0 ? t('recovery.trendChart.prevWeek') : t('recovery.trendChart.nextWeek')}
-                style={{ width: 30, height: 30, borderRadius: 9, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-mid)', fontSize: 16, lineHeight: 1, cursor: disabled ? 'default' : 'pointer', opacity: disabled ? 0.35 : 1 }}>{g}</button>
+                style={{ width: 30, height: 30, borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-mid)', fontSize: 16, lineHeight: 1, cursor: disabled ? 'default' : 'pointer', opacity: disabled ? 0.35 : 1 }}>{g}</button>
             )
           })}
         </div>
@@ -108,7 +108,7 @@ export default function RecoveryTrendChart({ weeks }: Props) {
           if (sensorEmpty) {
             return (
               <a key={s} href="/connections"
-                style={{ display: 'block', textAlign: 'left', padding: '9px 11px', borderRadius: 12,
+                style={{ display: 'block', textAlign: 'left', padding: '9px 11px', borderRadius: 'var(--r-md)',
                   background: 'transparent', border: '1px solid var(--border)', textDecoration: 'none' }}>
                 <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                   <span style={{ width: 7, height: 7, borderRadius: 2, background: 'var(--text-dim)', flexShrink: 0 }} />
@@ -122,7 +122,7 @@ export default function RecoveryTrendChart({ weeks }: Props) {
           }
           return (
             <button key={s} onClick={() => toggle(s)} onDoubleClick={() => isolate(s)} disabled={!live} title={live ? t(cfg.labelKey) : t(cfg.emptyKey)}
-              style={{ textAlign: 'left', padding: '9px 11px', borderRadius: 12, cursor: live ? 'pointer' : 'default',
+              style={{ textAlign: 'left', padding: '9px 11px', borderRadius: 'var(--r-md)', cursor: live ? 'pointer' : 'default',
                 background: live && on ? 'var(--bg-card2)' : 'transparent', border: '1px solid var(--border)',
                 opacity: live ? (on ? 1 : 0.5) : 0.45 }}>
               <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -137,7 +137,7 @@ export default function RecoveryTrendChart({ weeks }: Props) {
               ) : (
                 <span style={{ display: 'block', marginTop: 4 }}>
                   <span style={{ ...NUM, fontWeight: 600, fontSize: 19, color: 'var(--text-dim)' }}>—</span>
-                  <span style={{ display: 'block', fontFamily: 'var(--font-body)', fontSize: 9, fontWeight: 500, color: 'var(--text-dim)' }}>{t(cfg.emptyKey)}</span>
+                  <span style={{ display: 'block', fontFamily: 'var(--font-body)', fontSize: 10, fontWeight: 500, color: 'var(--text-dim)' }}>{t(cfg.emptyKey)}</span>
                 </span>
               )}
             </button>
@@ -176,7 +176,7 @@ export default function RecoveryTrendChart({ weeks }: Props) {
         )}
 
         {hover && anyVisible && (
-          <div style={{ position: 'absolute', top: 4, left: Math.min(hover.px + 12, W - 150), pointerEvents: 'none', background: 'var(--bg-card)', border: '1px solid var(--border-mid)', borderRadius: 10, padding: '8px 10px', boxShadow: 'var(--shadow)', zIndex: 3, minWidth: 120 }}>
+          <div style={{ position: 'absolute', top: 4, left: Math.min(hover.px + 12, W - 150), pointerEvents: 'none', background: 'var(--bg-card)', border: '1px solid var(--border-mid)', borderRadius: 'var(--r-sm)', padding: '8px 10px', boxShadow: 'var(--shadow)', zIndex: 3, minWidth: 120 }}>
             <p style={{ margin: '0 0 5px', fontFamily: 'var(--font-body)', fontSize: 10, color: 'var(--text-dim)', fontWeight: 600 }}>{t(DAY_KEYS[hover.day])} · {week.label}</p>
             {KEYS.filter(s => visible[s] && hasData[s]).map(s => {
               const v = week.values[s][hover.day]

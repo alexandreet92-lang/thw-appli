@@ -74,7 +74,7 @@ export default function ProgramDetailView({ program, coachName, coachSlug }: { p
       <div style={card}>
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, flexWrap: 'wrap' }}>
           <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(22px,5vw,30px)', fontWeight: 600, color: 'var(--text)', margin: 0, lineHeight: 1.15, flex: 1 }}>{p.title}</h1>
-          {p.ai_enabled && <span style={{ padding: '5px 11px', borderRadius: 999, background: 'var(--primary-dim)', color: 'var(--primary)', fontSize: 12, fontWeight: 700 }}>{t('w1d.aiBadge')}</span>}
+          {p.ai_enabled && <span style={{ padding: '5px 11px', borderRadius: 'var(--r-pill)', background: 'var(--primary-dim)', color: 'var(--primary)', fontSize: 12, fontWeight: 700 }}>{t('w1d.aiBadge')}</span>}
         </div>
         {p.objective && <p style={{ fontSize: 14.5, color: 'var(--primary)', fontWeight: 600, margin: '8px 0 0' }}>{p.objective}</p>}
         {coachName && (
@@ -134,7 +134,7 @@ export default function ProgramDetailView({ program, coachName, coachSlug }: { p
         <div style={{ ...card, marginTop: 16, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '12px clamp(16px,4vw,24px)' }}>
           <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.05em', textTransform: 'uppercase' as const, color: 'var(--text-dim)' }}>{t('w1d.yourRefs')}</span>
           {formatRefs(refs).map(r => (
-            <span key={r} className="tnum" style={{ fontSize: 13, fontWeight: 700, color: 'var(--primary)', background: 'var(--bg-card2)', borderRadius: 999, padding: '4px 11px' }}>{r}</span>
+            <span key={r} className="tnum" style={{ fontSize: 13, fontWeight: 700, color: 'var(--primary)', background: 'var(--bg-card2)', borderRadius: 'var(--r-pill)', padding: '4px 11px' }}>{r}</span>
           ))}
           <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>{t('w1d.refsNote')}</span>
         </div>

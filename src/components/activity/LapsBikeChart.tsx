@@ -255,7 +255,7 @@ export function LapsBikeChart({ activityId, cachedLaps, avgWatts, ftp, onLapTap 
                 stroke="var(--border)" strokeWidth="0.5" strokeDasharray={w === 0 ? '' : '2 3'}
                 vectorEffect="non-scaling-stroke" />
               <text x={PAD_L - 4} y={y + 3.5} textAnchor="end"
-                fontSize="9" fill="var(--text-dim)" style={{ fontVariantNumeric: 'tabular-nums', fontFamily: 'Barlow Condensed, sans-serif' }}>
+                fontSize="9" fill="var(--text-dim)" style={{ fontVariantNumeric: 'tabular-nums', fontFamily: 'var(--font-body)' }}>
                 {w}
               </text>
             </g>
@@ -305,7 +305,7 @@ export function LapsBikeChart({ activityId, cachedLaps, avgWatts, ftp, onLapTap 
               {showLabel && (
                 <text x={bX + bW / 2} y={bY - 4} textAnchor="middle"
                   fontSize="9" fill="#7C3AED" fontWeight="600"
-                  style={{ fontVariantNumeric: 'tabular-nums', fontFamily: 'Barlow Condensed, sans-serif', pointerEvents: 'none' }}>
+                  style={{ fontVariantNumeric: 'tabular-nums', fontFamily: 'var(--font-body)', pointerEvents: 'none' }}>
                   {Math.round(w)}
                 </text>
               )}
@@ -314,7 +314,7 @@ export function LapsBikeChart({ activityId, cachedLaps, avgWatts, ftp, onLapTap 
                 <text x={bX + bW / 2} y={PAD_T + CH + PAD_B - 8}
                   textAnchor="middle" fontSize="10"
                   fill="var(--text-dim)"
-                  style={{ fontVariantNumeric: 'tabular-nums', fontFamily: 'Barlow Condensed, sans-serif', pointerEvents: 'none' }}>
+                  style={{ fontVariantNumeric: 'tabular-nums', fontFamily: 'var(--font-body)', pointerEvents: 'none' }}>
                   {i + 1}
                 </text>
               )}

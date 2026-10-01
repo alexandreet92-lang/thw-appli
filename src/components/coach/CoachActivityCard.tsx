@@ -60,7 +60,7 @@ export function CoachActivityCard() {
           </p>
         </div>
         <button role="switch" aria-checked={enabled} aria-label={t('w3d.allow_coach_changes')} onClick={toggle} disabled={saving}
-          style={{ flexShrink: 0, width: 44, height: 26, borderRadius: 999, border: 'none', cursor: saving ? 'default' : 'pointer', background: enabled ? 'var(--primary)' : 'var(--border-mid)', position: 'relative', transition: 'background 160ms' }}>
+          style={{ flexShrink: 0, width: 44, height: 26, borderRadius: 'var(--r-pill)', border: 'none', cursor: saving ? 'default' : 'pointer', background: enabled ? 'var(--primary)' : 'var(--border-mid)', position: 'relative', transition: 'background 160ms' }}>
           <span style={{ position: 'absolute', top: 3, left: enabled ? 21 : 3, width: 20, height: 20, borderRadius: '50%', background: '#fff', transition: 'left 160ms', boxShadow: '0 1px 3px rgba(0,0,0,0.25)' }} />
         </button>
       </div>

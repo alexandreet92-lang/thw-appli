@@ -35,7 +35,7 @@ export default function CoachesDirectory() {
     return true
   })
   const chip = (active: boolean): React.CSSProperties => ({
-    padding: '7px 13px', borderRadius: 999, cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 12.5, fontWeight: 600, whiteSpace: 'nowrap',
+    padding: '7px 13px', borderRadius: 'var(--r-pill)', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 12.5, fontWeight: 600, whiteSpace: 'nowrap',
     border: `1px solid ${active ? 'var(--primary)' : 'var(--border)'}`, background: active ? 'var(--primary-dim)' : 'var(--bg-card2)', color: active ? 'var(--primary)' : 'var(--text-dim)',
   })
 
@@ -80,8 +80,8 @@ export default function CoachesDirectory() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                   {(c.avatar_url || c.logo_url)
                     // eslint-disable-next-line @next/next/no-img-element
-                    ? <img src={c.avatar_url || c.logo_url || ''} alt={name} style={{ width: 52, height: 52, borderRadius: 14, objectFit: 'cover', flexShrink: 0 }} />
-                    : <div style={{ width: 52, height: 52, borderRadius: 14, background: 'var(--primary-gradient)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 600, flexShrink: 0 }}>{name.charAt(0).toUpperCase()}</div>}
+                    ? <img src={c.avatar_url || c.logo_url || ''} alt={name} style={{ width: 52, height: 52, borderRadius: 'var(--r-md)', objectFit: 'cover', flexShrink: 0 }} />
+                    : <div style={{ width: 52, height: 52, borderRadius: 'var(--r-md)', background: 'var(--primary-gradient)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 600, flexShrink: 0 }}>{name.charAt(0).toUpperCase()}</div>}
                   <div style={{ minWidth: 0 }}>
                     <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</div>
                     {c.location && <div style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 2 }}>{c.location}</div>}
@@ -96,7 +96,7 @@ export default function CoachesDirectory() {
                 )}
                 {c.sports.length > 0 && (
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 'auto' }}>
-                    {c.sports.slice(0, 4).map(s => <span key={s} style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-dim)', background: 'var(--bg-card2)', padding: '4px 9px', borderRadius: 999 }}>{SPORT_LABEL[s] ? t('w2h.sport.' + s) : s}</span>)}
+                    {c.sports.slice(0, 4).map(s => <span key={s} style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-dim)', background: 'var(--bg-card2)', padding: '4px 9px', borderRadius: 'var(--r-pill)' }}>{SPORT_LABEL[s] ? t('w2h.sport.' + s) : s}</span>)}
                   </div>
                 )}
               </Link>

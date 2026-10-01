@@ -78,7 +78,7 @@ export function LastActivityCard() {
           </Link>
           {/* Action rapide « Analyser une activité » → ouvre le détail + lance l'analyse IA */}
           <Link href={`/activities?id=${act.id}&analyze=1`}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 'var(--space-3)', padding: '6px 12px', borderRadius: 999, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--primary)', fontFamily: FB, fontSize: 12.5, fontWeight: 600, textDecoration: 'none' }}>
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 'var(--space-3)', padding: '6px 12px', borderRadius: 'var(--r-pill)', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--primary)', fontFamily: FB, fontSize: 12.5, fontWeight: 600, textDecoration: 'none' }}>
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/></svg>
             {t('dashboard.analyzeWithAI')}
           </Link>

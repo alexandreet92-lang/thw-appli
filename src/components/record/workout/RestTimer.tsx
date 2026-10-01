@@ -59,20 +59,20 @@ export default function RestTimer({ seconds, onDone, isDark, accent = '#06B6D4' 
           />
         </svg>
         <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-          <span style={{ fontSize: 34, fontWeight: 700, color: text, fontFamily: 'DM Sans, sans-serif', lineHeight: 1 }}>{remaining}</span>
+          <span style={{ fontSize: 34, fontWeight: 700, color: text, fontFamily: 'var(--font-body)', lineHeight: 1 }}>{remaining}</span>
           <span style={{ fontSize: 11, color: dim, marginTop: 2 }}>sec</span>
         </div>
       </div>
       {/* Ajuster la récup à la volée (±15s) */}
       <div style={{ display: 'flex', gap: 12 }}>
         <button onClick={() => setRemaining(r => Math.max(1, r - 15))}
-          style={{ padding: '9px 18px', borderRadius: 999, background: 'var(--bg-card2)', border: '1px solid var(--border)', color: text, fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}>−15s</button>
+          style={{ padding: '9px 18px', borderRadius: 'var(--r-pill)', background: 'var(--bg-card2)', border: '1px solid var(--border)', color: text, fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>−15s</button>
         <button onClick={() => setRemaining(r => r + 15)}
-          style={{ padding: '9px 18px', borderRadius: 999, background: 'var(--bg-card2)', border: '1px solid var(--border)', color: text, fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}>+15s</button>
+          style={{ padding: '9px 18px', borderRadius: 'var(--r-pill)', background: 'var(--bg-card2)', border: '1px solid var(--border)', color: text, fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>+15s</button>
       </div>
       <button
         onClick={() => onDone(elapsedSec())}
-        style={{ padding: '10px 28px', borderRadius: 12, background: accent, border: 'none', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}
+        style={{ padding: '10px 28px', borderRadius: 'var(--r-md)', background: accent, border: 'none', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)' }}
       >
         {t('record.restSkip')}
       </button>

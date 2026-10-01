@@ -443,7 +443,7 @@ export default function MapPage({
         role={hasRoute ? 'button' : undefined}
         style={{
           position: 'absolute', top: 'calc(env(safe-area-inset-top) + 62px)', left: 16, right: 16,
-          minHeight: 54, borderRadius: 16, zIndex: 30,
+          minHeight: 54, borderRadius: 'var(--r-md)', zIndex: 30,
           background: 'var(--live-float)', border: '1px solid var(--live-hairline-2)',
           backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
           display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px',
@@ -451,7 +451,7 @@ export default function MapPage({
         }}
       >
         <div style={{
-          width: 36, height: 36, borderRadius: 10, flexShrink: 0,
+          width: 36, height: 36, borderRadius: 'var(--r-sm)', flexShrink: 0,
           background: hasRoute ? 'var(--live-accent-soft)' : 'var(--live-hairline)',
           color: hasRoute ? 'var(--live-accent)' : 'var(--live-label)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -603,7 +603,7 @@ export default function MapPage({
             <div style={{
               position: 'absolute', top: 'calc(env(safe-area-inset-top) + 172px)', right: 24, zIndex: 31,
               background: 'var(--live-float)', border: '1px solid var(--live-hairline-2)',
-              borderRadius: 14, overflow: 'hidden', minWidth: 150,
+              borderRadius: 'var(--r-md)', overflow: 'hidden', minWidth: 150,
               backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
             }}>
               {([['std', 'w2c.layerStandard'], ['sat', 'w2c.layerSatellite'], ['hyb', 'w2c.layerHybrid'], ['dark', 'w2c.layerDark']] as [LayerId, string][]).map(([id, lbl], i) => (
@@ -638,7 +638,7 @@ export default function MapPage({
       {!started && hasRoute && (
         <div className="lv2-num" style={{
           position: 'absolute', bottom: 'calc(env(safe-area-inset-bottom) + 156px)', left: '50%', transform: 'translateX(-50%)',
-          height: 32, padding: '0 17px', borderRadius: 16, zIndex: 20,
+          height: 32, padding: '0 17px', borderRadius: 'var(--r-md)', zIndex: 20,
           background: 'var(--live-btn-map)', border: '1px solid var(--live-hairline-2)',
           display: 'flex', alignItems: 'center', whiteSpace: 'nowrap',
           fontSize: 12.5, fontWeight: 600, color: 'var(--live-text-2)',

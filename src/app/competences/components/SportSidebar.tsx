@@ -16,7 +16,7 @@ interface Props {
 }
 
 const labelStyle: React.CSSProperties = {
-  fontSize: 9, fontWeight: 700, letterSpacing: '1.3px',
+  fontSize: 10, fontWeight: 700, letterSpacing: '1.3px',
   textTransform: 'uppercase', color: 'var(--text-dim)',
   margin: '0 0 6px', padding: '0 10px',
 }
@@ -27,8 +27,8 @@ function Item({ active, icon, label, onClick }: { active: boolean; icon: React.R
       onClick={onClick}
       style={{
         display: 'flex', alignItems: 'center', gap: 10, width: '100%',
-        padding: '8px 10px', borderRadius: 8, border: 'none', textAlign: 'left',
-        cursor: 'pointer', fontSize: 13, fontFamily: 'DM Sans, sans-serif',
+        padding: '8px 10px', borderRadius: 'var(--r-sm)', border: 'none', textAlign: 'left',
+        cursor: 'pointer', fontSize: 13, fontFamily: 'var(--font-body)',
         transition: 'background 120ms, color 120ms',
         background: active ? 'rgba(6,182,212,0.10)' : 'transparent',
         color: active ? '#06B6D4' : 'var(--text)',

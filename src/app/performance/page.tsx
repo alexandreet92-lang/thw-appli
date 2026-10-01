@@ -88,7 +88,7 @@ function StatBox({ label, value, unit, sub, color, onSelect, selected }: {
       style={{
         background: selected ? 'rgba(6,182,212,0.08)' : 'var(--bg-card2)',
         border: `1px solid ${selected ? '#06B6D4' : 'var(--border)'}`,
-        borderRadius:12, padding:'11px 13px',
+        borderRadius: 'var(--r-md)', padding:'11px 13px',
         cursor: onSelect ? 'pointer' : undefined,
         transition: 'border-color 0.15s, background 0.15s, box-shadow 0.15s',
         boxShadow: selected ? '0 0 0 2px rgba(6,182,212,0.15)' : undefined,
@@ -96,7 +96,7 @@ function StatBox({ label, value, unit, sub, color, onSelect, selected }: {
       }}
     >
       <p style={{ fontSize:10, fontWeight:600, textTransform:'uppercase' as const, letterSpacing:'0.07em', color:'var(--text-dim)', margin:'0 0 4px' }}>{label}</p>
-      <p style={{ fontFamily:'Syne,sans-serif', fontSize:20, fontWeight:700, color:selected?'var(--primary)':color||'var(--text)', margin:0, lineHeight:1 }}>
+      <p style={{ fontFamily: 'var(--font-display)', fontSize:20, fontWeight:700, color:selected?'var(--primary)':color||'var(--text)', margin:0, lineHeight:1 }}>
         {isInt ? <CountUp value={value as number} /> : value}
         {unit && <span style={{ fontSize:11, fontWeight:400, color:'var(--text-dim)', marginLeft:3 }}>{unit}</span>}
       </p>
@@ -113,7 +113,7 @@ function NInput({ label, value, onChange, unit, step }: { label:string; value:nu
         {label}{unit && <span style={{ fontWeight:400, marginLeft:3, textTransform:'none' as const }}>({unit})</span>}
       </p>
       <input type="number" value={value === 0 ? '' : value} step={step||1} placeholder="—" onChange={e => onChange(parseFloat(e.target.value)||0)}
-        style={{ width:'100%', padding:'7px 10px', borderRadius:8, border:'1px solid var(--border)', background:'var(--input-bg)', color:'var(--text)', fontFamily:'DM Mono,monospace', fontSize:12, outline:'none' }}/>
+        style={{ width:'100%', padding:'7px 10px', borderRadius: 'var(--r-sm)', border:'1px solid var(--border)', background:'var(--input-bg)', color:'var(--text)', fontFamily: 'var(--font-body)', fontSize:12, outline:'none' }}/>
     </div>
   )
 }
@@ -123,7 +123,7 @@ function TInput({ label, value, onChange, placeholder }: { label:string; value:s
     <div>
       <p style={{ fontSize:10, fontWeight:600, textTransform:'uppercase' as const, letterSpacing:'0.06em', color:'var(--text-dim)', marginBottom:4 }}>{label}</p>
       <input type="text" value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
-        style={{ width:'100%', padding:'7px 10px', borderRadius:8, border:'1px solid var(--border)', background:'var(--input-bg)', color:'var(--text)', fontFamily:'DM Mono,monospace', fontSize:12, outline:'none' }}/>
+        style={{ width:'100%', padding:'7px 10px', borderRadius: 'var(--r-sm)', border:'1px solid var(--border)', background:'var(--input-bg)', color:'var(--text)', fontFamily: 'var(--font-body)', fontSize:12, outline:'none' }}/>
     </div>
   )
 }
@@ -154,7 +154,7 @@ function SelectedDatumBubble({ datum, onClear, onAsk }: {
       zIndex:1100,
       display:'flex', alignItems:'center', gap:10,
       padding:'10px 14px 10px 16px',
-      borderRadius:14,
+      borderRadius: 'var(--r-md)',
       background:'var(--bg-card)',
       border:'1px solid rgba(6,182,212,0.45)',
       boxShadow:'0 8px 32px rgba(0,0,0,0.25), 0 0 0 1px rgba(6,182,212,0.08)',
@@ -163,13 +163,13 @@ function SelectedDatumBubble({ datum, onClear, onAsk }: {
       whiteSpace:'nowrap' as const,
     }}>
       <div style={{ minWidth:0 }}>
-        <p style={{ fontSize:9, fontWeight:600, textTransform:'uppercase' as const, letterSpacing:'0.07em', color:'var(--text-dim)', margin:0 }}>{datum.label}</p>
-        <p style={{ fontFamily:'DM Mono,monospace', fontSize:14, fontWeight:700, color:'var(--primary)', margin:0 }}>{datum.value}</p>
+        <p style={{ fontSize: 10, fontWeight:600, textTransform:'uppercase' as const, letterSpacing:'0.07em', color:'var(--text-dim)', margin:0 }}>{datum.label}</p>
+        <p style={{ fontFamily: 'var(--font-body)', fontSize:14, fontWeight:700, color:'var(--primary)', margin:0 }}>{datum.value}</p>
       </div>
       <button
         onClick={onAsk}
         style={{
-          padding:'7px 14px', borderRadius:10,
+          padding:'7px 14px', borderRadius: 'var(--r-sm)',
           background:'linear-gradient(135deg,#06B6D4,#5b6fff)',
           border:'none', color:'#fff', fontSize:12, fontWeight:600, cursor:'pointer',
           whiteSpace:'nowrap' as const, flexShrink:0,
@@ -180,7 +180,7 @@ function SelectedDatumBubble({ datum, onClear, onAsk }: {
       <button
         onClick={onClear}
         style={{
-          width:24, height:24, borderRadius:6, border:'1px solid var(--border)',
+          width:24, height:24, borderRadius: 'var(--r-sm)', border:'1px solid var(--border)',
           background:'var(--bg-card2)', color:'var(--text-dim)', cursor:'pointer',
           fontSize:16, display:'flex', alignItems:'center', justifyContent:'center',
           flexShrink:0, lineHeight:1,
@@ -886,7 +886,7 @@ function TestProtocolPanel({ open: ot, onClose, onFtpUpdate }: { open: OpenTest 
   const SH = ({ icon, label, color }: { icon: React.ReactNode; label: string; color: string }) => (
     <div style={{ display:'flex', alignItems:'center', gap:7, marginBottom:9 }}>
       <span style={{ color, opacity:0.9 }}>{icon}</span>
-      <span style={{ fontFamily:'Syne,sans-serif', fontSize:11, fontWeight:700, textTransform:'uppercase' as const, letterSpacing:'0.07em', color }}>{label}</span>
+      <span style={{ fontFamily: 'var(--font-body)', fontSize:11, fontWeight:700, textTransform:'uppercase' as const, letterSpacing:'0.07em', color }}>{label}</span>
     </div>
   )
 
@@ -901,18 +901,18 @@ function TestProtocolPanel({ open: ot, onClose, onFtpUpdate }: { open: OpenTest 
         {/* Header */}
         <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:12, marginBottom:20 }}>
           <div style={{ display:'flex', alignItems:'center', gap:12 }}>
-            <div style={{ width:44, height:44, borderRadius:13, background:`${cfg.color}18`, border:`1px solid ${cfg.color}40`, display:'flex', alignItems:'center', justifyContent:'center', color:cfg.color, flexShrink:0 }}>
+            <div style={{ width:44, height:44, borderRadius: 'var(--r-md)', background:`${cfg.color}18`, border:`1px solid ${cfg.color}40`, display:'flex', alignItems:'center', justifyContent:'center', color:cfg.color, flexShrink:0 }}>
               {cfg.icon}
             </div>
             <div>
               <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:3 }}>
-                <h2 style={{ fontFamily:'Syne,sans-serif', fontSize:19, fontWeight:800, margin:0, letterSpacing:'-0.02em' }}>{ot.test.name}</h2>
-                <span style={{ fontSize:9, fontWeight:700, padding:'2px 7px', borderRadius:20, background:`${DIFFICULTY_COLOR[ot.test.difficulty]}20`, color:DIFFICULTY_COLOR[ot.test.difficulty], textTransform:'uppercase' as const, letterSpacing:'0.07em', flexShrink:0 }}>{ot.test.difficulty}</span>
+                <h2 style={{ fontFamily: 'var(--font-display)', fontSize:19, fontWeight:800, margin:0, letterSpacing:'-0.02em' }}>{ot.test.name}</h2>
+                <span style={{ fontSize: 10, fontWeight:700, padding:'2px 7px', borderRadius: 'var(--r-lg)', background:`${DIFFICULTY_COLOR[ot.test.difficulty]}20`, color:DIFFICULTY_COLOR[ot.test.difficulty], textTransform:'uppercase' as const, letterSpacing:'0.07em', flexShrink:0 }}>{ot.test.difficulty}</span>
               </div>
               <p style={{ fontSize:11, color:cfg.color, margin:0, fontWeight:600 }}>{cfg.label} · {ot.test.duration}</p>
             </div>
           </div>
-          <button onClick={onClose} style={{ width:32, height:32, borderRadius:8, border:'1px solid var(--border)', background:'var(--bg-card2)', color:'var(--text-dim)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', fontSize:18, flexShrink:0 }}>×</button>
+          <button onClick={onClose} style={{ width:32, height:32, borderRadius: 'var(--r-sm)', border:'1px solid var(--border)', background:'var(--bg-card2)', color:'var(--text-dim)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', fontSize:18, flexShrink:0 }}>×</button>
         </div>
 
         {!proto ? (
@@ -923,14 +923,14 @@ function TestProtocolPanel({ open: ot, onClose, onFtpUpdate }: { open: OpenTest 
           <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
 
             {/* Objectif */}
-            <div style={{ padding:'13px 16px', borderRadius:13, background:`${cfg.color}0d`, border:`1px solid ${cfg.color}30` }}>
+            <div style={{ padding:'13px 16px', borderRadius: 'var(--r-md)', background:`${cfg.color}0d`, border:`1px solid ${cfg.color}30` }}>
               <SH icon={<IcoTarget/>} label={t('performance.objective')} color={cfg.color}/>
               <p style={{ fontSize:13, color:'var(--text)', margin:0, lineHeight:1.65 }}>{proto.objectif}</p>
             </div>
 
             {/* Avertissement */}
             {proto.avertissement && (
-              <div style={{ padding:'12px 16px', borderRadius:13, background:'rgba(251,146,60,0.08)', border:'1px solid rgba(251,146,60,0.35)' }}>
+              <div style={{ padding:'12px 16px', borderRadius: 'var(--r-md)', background:'rgba(251,146,60,0.08)', border:'1px solid rgba(251,146,60,0.35)' }}>
                 <SH icon={<IcoWarn/>} label={t('performance.warning')} color="#f97316"/>
                 <p style={{ fontSize:12.5, color:'var(--text-mid)', margin:0, lineHeight:1.6 }}>{proto.avertissement}</p>
               </div>
@@ -938,7 +938,7 @@ function TestProtocolPanel({ open: ot, onClose, onFtpUpdate }: { open: OpenTest 
 
             {/* Conditions + Échauffement — grid 2 col */}
             <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap:10 }}>
-              <div style={{ padding:'12px 14px', borderRadius:12, background:'var(--bg-card2)', border:'1px solid var(--border)' }}>
+              <div style={{ padding:'12px 14px', borderRadius: 'var(--r-md)', background:'var(--bg-card2)', border:'1px solid var(--border)' }}>
                 <SH icon={<IcoCheck/>} label={t('performance.conditions')} color="var(--text-mid)"/>
                 <ul style={{ margin:0, padding:'0 0 0 14px', display:'flex', flexDirection:'column', gap:4 }}>
                   {proto.conditions.map((c,i) => (
@@ -946,7 +946,7 @@ function TestProtocolPanel({ open: ot, onClose, onFtpUpdate }: { open: OpenTest 
                   ))}
                 </ul>
               </div>
-              <div style={{ padding:'12px 14px', borderRadius:12, background:'var(--bg-card2)', border:'1px solid var(--border)' }}>
+              <div style={{ padding:'12px 14px', borderRadius: 'var(--r-md)', background:'var(--bg-card2)', border:'1px solid var(--border)' }}>
                 <SH icon={<IcoFlame/>} label={t('performance.warmup')} color="#f59e0b"/>
                 <ul style={{ margin:0, padding:'0 0 0 14px', display:'flex', flexDirection:'column', gap:4 }}>
                   {proto.echauffement.map((e,i) => (
@@ -957,12 +957,12 @@ function TestProtocolPanel({ open: ot, onClose, onFtpUpdate }: { open: OpenTest 
             </div>
 
             {/* Étapes */}
-            <div style={{ padding:'13px 16px', borderRadius:13, background:'var(--bg-card2)', border:'1px solid var(--border)' }}>
+            <div style={{ padding:'13px 16px', borderRadius: 'var(--r-md)', background:'var(--bg-card2)', border:'1px solid var(--border)' }}>
               <SH icon={<IcoList/>} label={t('performance.protocolSteps')} color="var(--text)"/>
               <div style={{ display:'flex', flexDirection:'column', gap:7 }}>
                 {proto.etapes.map((e, i) => (
                   <div key={i} style={{ display:'flex', gap:10, alignItems:'flex-start' }}>
-                    <span style={{ fontFamily:'DM Mono,monospace', fontSize:10, fontWeight:700, color:cfg.color, width:18, flexShrink:0, paddingTop:2 }}>{i+1}.</span>
+                    <span style={{ fontFamily: 'var(--font-body)', fontSize:10, fontWeight:700, color:cfg.color, width:18, flexShrink:0, paddingTop:2 }}>{i+1}.</span>
                     <p style={{ fontSize:12.5, color:'var(--text)', margin:0, lineHeight:1.6 }}>{e}</p>
                   </div>
                 ))}
@@ -970,7 +970,7 @@ function TestProtocolPanel({ open: ot, onClose, onFtpUpdate }: { open: OpenTest 
             </div>
 
             {/* Interprétation */}
-            <div style={{ padding:'13px 16px', borderRadius:13, background:'rgba(34,197,94,0.06)', border:'1px solid rgba(34,197,94,0.25)' }}>
+            <div style={{ padding:'13px 16px', borderRadius: 'var(--r-md)', background:'rgba(34,197,94,0.06)', border:'1px solid rgba(34,197,94,0.25)' }}>
               <SH icon={<IcoBook/>} label={t('performance.resultsInterpretation')} color="#22c55e"/>
               <div style={{ display:'flex', flexDirection:'column', gap:5 }}>
                 {proto.interpretation.map((r, i) => (
@@ -984,7 +984,7 @@ function TestProtocolPanel({ open: ot, onClose, onFtpUpdate }: { open: OpenTest 
 
             {/* Erreurs + Fréquence — grid 2 col */}
             <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap:10 }}>
-              <div style={{ padding:'12px 14px', borderRadius:12, background:'rgba(239,68,68,0.06)', border:'1px solid rgba(239,68,68,0.20)' }}>
+              <div style={{ padding:'12px 14px', borderRadius: 'var(--r-md)', background:'rgba(239,68,68,0.06)', border:'1px solid rgba(239,68,68,0.20)' }}>
                 <SH icon={<IcoWarn/>} label={t('performance.commonMistakes')} color="#ef4444"/>
                 <ul style={{ margin:0, padding:'0 0 0 14px', display:'flex', flexDirection:'column', gap:4 }}>
                   {proto.erreurs.map((e,i) => (
@@ -992,7 +992,7 @@ function TestProtocolPanel({ open: ot, onClose, onFtpUpdate }: { open: OpenTest 
                   ))}
                 </ul>
               </div>
-              <div style={{ padding:'12px 14px', borderRadius:12, background:'rgba(99,102,241,0.07)', border:'1px solid rgba(99,102,241,0.22)' }}>
+              <div style={{ padding:'12px 14px', borderRadius: 'var(--r-md)', background:'rgba(99,102,241,0.07)', border:'1px solid rgba(99,102,241,0.22)' }}>
                 <SH icon={<IcoClock/>} label={t('performance.frequency')} color="#818cf8"/>
                 <p style={{ fontSize:12, color:'var(--text-mid)', margin:0, lineHeight:1.6 }}>{proto.frequence}</p>
               </div>
@@ -1005,14 +1005,14 @@ function TestProtocolPanel({ open: ot, onClose, onFtpUpdate }: { open: OpenTest 
               const derived = computeDerived(ot.test.id, vals, weightKg, gender)
               return (
                 <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
-                  <div style={{ padding:'14px 16px', borderRadius:13, background:'var(--bg-card2)', border:`1px solid ${cfg.color}35` }}>
+                  <div style={{ padding:'14px 16px', borderRadius: 'var(--r-md)', background:'var(--bg-card2)', border:`1px solid ${cfg.color}35` }}>
                     {/* Gender toggle in header */}
                     <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:10 }}>
                       <SH icon={<IcoSave/>} label={t('performance.enterMyResults')} color={cfg.color}/>
                       {hasBench && (
                         <div style={{ display:'flex', alignItems:'center', gap:6 }}>
                           <span style={{ fontSize:10, color:'var(--text-dim)' }}>{t('performance.gender')}</span>
-                          <div style={{ display:'flex', background:'var(--bg)', borderRadius:7, overflow:'hidden', border:'1px solid var(--border)' }}>
+                          <div style={{ display:'flex', background:'var(--bg)', borderRadius: 'var(--r-sm)', overflow:'hidden', border:'1px solid var(--border)' }}>
                             {(['M','F'] as const).map(g => (
                               <button key={g} onClick={() => setGender(g)} style={{ padding:'3px 11px', background:gender===g?cfg.color:'transparent', border:'none', cursor:'pointer', color:gender===g?'#fff':'var(--text-dim)', fontSize:11, fontWeight:700, transition:'background 0.15s' }}>{g}</button>
                             ))}
@@ -1031,7 +1031,7 @@ function TestProtocolPanel({ open: ot, onClose, onFtpUpdate }: { open: OpenTest 
                             value={vals[f.cle] ?? ''}
                             onChange={e => setVal(f.cle, e.target.value)}
                             placeholder={f.placeholder ?? (f.unite ? t('performance.inUnit', { unit: f.unite }) : '—')}
-                            style={{ padding:'7px 10px', borderRadius:8, border:'1px solid var(--border)', background:'var(--bg)', color:'var(--text)', fontSize:13, fontFamily:'DM Mono,monospace', outline:'none', width:'100%', boxSizing:'border-box' as const }}
+                            style={{ padding:'7px 10px', borderRadius: 'var(--r-sm)', border:'1px solid var(--border)', background:'var(--bg)', color:'var(--text)', fontSize:13, fontFamily: 'var(--font-body)', outline:'none', width:'100%', boxSizing:'border-box' as const }}
                           />
                           {f.helper && <span style={{ fontSize:10, color:'var(--text-dim)' }}>{f.helper}</span>}
                         </div>
@@ -1039,13 +1039,13 @@ function TestProtocolPanel({ open: ot, onClose, onFtpUpdate }: { open: OpenTest 
                     </div>
 
                     {/* Poids de l'athlète au moment du test (éditable → W/kg exacts). */}
-                    <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:11, padding:'8px 11px', borderRadius:9, background:'var(--bg)', border:'1px solid var(--border)' }}>
+                    <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:11, padding:'8px 11px', borderRadius: 'var(--r-sm)', background:'var(--bg)', border:'1px solid var(--border)' }}>
                       <span style={{ fontSize:11, color:'var(--text-dim)', fontWeight:600, flexShrink:0 }}>{t('performance.weightAtTest')}</span>
                       <input
                         type="number" inputMode="decimal" value={weightKg > 0 ? weightKg : ''} placeholder="—"
                         onChange={e => setWeightKg(parseFloat(e.target.value) || 0)}
                         onBlur={() => { void saveWeight(weightKg) }}
-                        style={{ width:74, padding:'5px 8px', borderRadius:7, border:'1px solid var(--border)', background:'var(--bg-card2)', color:'var(--text)', fontSize:13, fontFamily:'DM Mono,monospace', outline:'none', textAlign:'right' as const }}
+                        style={{ width:74, padding:'5px 8px', borderRadius: 'var(--r-sm)', border:'1px solid var(--border)', background:'var(--bg-card2)', color:'var(--text)', fontSize:13, fontFamily: 'var(--font-body)', outline:'none', textAlign:'right' as const }}
                       />
                       <span style={{ fontSize:11, color:'var(--text-dim)' }}>kg</span>
                       {weightSaving && <span style={{ fontSize:10, color:'var(--text-dim)' }}>…</span>}
@@ -1053,13 +1053,13 @@ function TestProtocolPanel({ open: ot, onClose, onFtpUpdate }: { open: OpenTest 
 
                     {/* Résultats calculés — chaque valeur en W est doublée d'un W/kg. */}
                     {derived.length > 0 && (
-                      <div style={{ marginTop:11, padding:'11px 13px', borderRadius:10, background:`${cfg.color}0d`, border:`1px solid ${cfg.color}30` }}>
-                        <div style={{ fontFamily:'Syne,sans-serif', fontSize:10, fontWeight:700, textTransform:'uppercase' as const, letterSpacing:'0.07em', color:cfg.color, marginBottom:8 }}>{t('performance.computedResults')}</div>
+                      <div style={{ marginTop:11, padding:'11px 13px', borderRadius: 'var(--r-sm)', background:`${cfg.color}0d`, border:`1px solid ${cfg.color}30` }}>
+                        <div style={{ fontFamily: 'var(--font-body)', fontSize:10, fontWeight:700, textTransform:'uppercase' as const, letterSpacing:'0.07em', color:cfg.color, marginBottom:8 }}>{t('performance.computedResults')}</div>
                         <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap:'8px 12px' }}>
                           {derived.filter(d => !d.hidden).map(d => (
                             <div key={d.key} style={{ display:'flex', flexDirection:'column', gap:1 }}>
                               <span style={{ fontSize:10, color:'var(--text-dim)', fontWeight:600 }}>{d.label}</span>
-                              <span className="tnum" style={{ fontSize:15, fontWeight:700, color:'var(--text)', fontFamily:'DM Mono,monospace' }}>
+                              <span className="tnum" style={{ fontSize:15, fontWeight:700, color:'var(--text)', fontFamily: 'var(--font-body)' }}>
                                 {d.display ?? d.value}{d.unit && !d.display ? <span style={{ fontSize:11, color:'var(--text-dim)', marginLeft:3 }}>{d.unit}</span> : null}
                                 {d.wkg && weightKg > 0 && (
                                   <span style={{ fontSize:11, color:cfg.color, marginLeft:7, fontWeight:600 }}>· {(d.value / weightKg).toFixed(2)} W/kg</span>
@@ -1081,7 +1081,7 @@ function TestProtocolPanel({ open: ot, onClose, onFtpUpdate }: { open: OpenTest 
                         <select
                           value={activityId}
                           onChange={e => setActivityId(e.target.value)}
-                          style={{ padding:'7px 10px', borderRadius:8, border:'1px solid var(--border)', background:'var(--bg)', color:'var(--text)', fontSize:12.5, fontFamily:'DM Sans,sans-serif', outline:'none', width:'100%', boxSizing:'border-box' as const, cursor:'pointer' }}
+                          style={{ padding:'7px 10px', borderRadius: 'var(--r-sm)', border:'1px solid var(--border)', background:'var(--bg)', color:'var(--text)', fontSize:12.5, fontFamily: 'var(--font-body)', outline:'none', width:'100%', boxSizing:'border-box' as const, cursor:'pointer' }}
                         >
                           <option value="">{t('performance.noActivityLinked')}</option>
                           {activities.map(a => (
@@ -1096,7 +1096,7 @@ function TestProtocolPanel({ open: ot, onClose, onFtpUpdate }: { open: OpenTest 
                     <button
                       onClick={() => { void handleSave() }}
                       disabled={saving}
-                      style={{ marginTop:12, width:'100%', padding:'10px', borderRadius:10, background:saved ? 'rgba(34,197,94,0.25)' : saving ? 'var(--bg-card2)' : `${cfg.color}22`, color:saved ? '#22c55e' : saving ? 'var(--text-dim)' : cfg.color, fontSize:13, fontWeight:700, cursor:saving?'not-allowed':'pointer', fontFamily:'DM Sans,sans-serif', transition:'all 0.2s', border:`1px solid ${saved ? 'rgba(34,197,94,0.5)' : saving ? 'var(--border)' : cfg.color+'40'}` }}
+                      style={{ marginTop:12, width:'100%', padding:'10px', borderRadius: 'var(--r-sm)', background:saved ? 'rgba(34,197,94,0.25)' : saving ? 'var(--bg-card2)' : `${cfg.color}22`, color:saved ? '#22c55e' : saving ? 'var(--text-dim)' : cfg.color, fontSize:13, fontWeight:700, cursor:saving?'not-allowed':'pointer', fontFamily: 'var(--font-body)', transition:'all 0.2s', border:`1px solid ${saved ? 'rgba(34,197,94,0.5)' : saving ? 'var(--border)' : cfg.color+'40'}` }}
                     >
                       {saved ? t('performance.resultsSaved') : saving ? t('performance.saving') : t('performance.saveThisTest')}
                     </button>
@@ -1106,7 +1106,7 @@ function TestProtocolPanel({ open: ot, onClose, onFtpUpdate }: { open: OpenTest 
                       {!planOpen ? (
                         <button
                           onClick={() => setPlanOpen(true)}
-                          style={{ width:'100%', padding:'9px', borderRadius:9, border:'1px dashed var(--border)', background:'transparent', color:'var(--text-mid)', fontSize:12, fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:7, fontFamily:'DM Sans,sans-serif' }}
+                          style={{ width:'100%', padding:'9px', borderRadius: 'var(--r-sm)', border:'1px dashed var(--border)', background:'transparent', color:'var(--text-mid)', fontSize:12, fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:7, fontFamily: 'var(--font-body)' }}
                         >
                           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="12" y1="14" x2="12" y2="18"/><line x1="10" y1="16" x2="14" y2="16"/></svg>
                           {t('performance.addToPlanning')}
@@ -1115,12 +1115,12 @@ function TestProtocolPanel({ open: ot, onClose, onFtpUpdate }: { open: OpenTest 
                         <div style={{ display:'flex', alignItems:'center', gap:8 }}>
                           <input
                             type="date" value={planDate} onChange={e => setPlanDate(e.target.value)}
-                            style={{ flex:1, padding:'7px 10px', borderRadius:8, border:'1px solid var(--border)', background:'var(--bg)', color:'var(--text)', fontSize:12.5, fontFamily:'DM Sans,sans-serif', outline:'none' }}
+                            style={{ flex:1, padding:'7px 10px', borderRadius: 'var(--r-sm)', border:'1px solid var(--border)', background:'var(--bg)', color:'var(--text)', fontSize:12.5, fontFamily: 'var(--font-body)', outline:'none' }}
                           />
                           <button
                             onClick={() => { void addToPlanning() }}
                             disabled={!planDate || planSaving}
-                            style={{ padding:'8px 14px', borderRadius:8, border:`1px solid ${cfg.color}40`, background:planDone ? 'rgba(34,197,94,0.25)' : `${cfg.color}22`, color:planDone ? '#22c55e' : cfg.color, fontSize:12.5, fontWeight:700, cursor:(!planDate||planSaving)?'not-allowed':'pointer', whiteSpace:'nowrap' as const, fontFamily:'DM Sans,sans-serif' }}
+                            style={{ padding:'8px 14px', borderRadius: 'var(--r-sm)', border:`1px solid ${cfg.color}40`, background:planDone ? 'rgba(34,197,94,0.25)' : `${cfg.color}22`, color:planDone ? '#22c55e' : cfg.color, fontSize:12.5, fontWeight:700, cursor:(!planDate||planSaving)?'not-allowed':'pointer', whiteSpace:'nowrap' as const, fontFamily: 'var(--font-body)' }}
                           >
                             {planDone ? t('performance.added') : planSaving ? t('performance.saving') : t('performance.confirm')}
                           </button>
@@ -1136,10 +1136,10 @@ function TestProtocolPanel({ open: ot, onClose, onFtpUpdate }: { open: OpenTest 
 
                   {/* Level reference table — always visible for scored tests */}
                   {hasBench && (
-                    <div style={{ padding:'14px 16px', borderRadius:13, background:'var(--bg-card2)', border:'1px solid var(--border)' }}>
+                    <div style={{ padding:'14px 16px', borderRadius: 'var(--r-md)', background:'var(--bg-card2)', border:'1px solid var(--border)' }}>
                       <div style={{ display:'flex', alignItems:'center', gap:7, marginBottom:12 }}>
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={cfg.color} strokeWidth={2}><path d="M3 3h18M3 9h18M3 15h18M3 21h18"/></svg>
-                        <span style={{ fontFamily:'Syne,sans-serif', fontSize:11, fontWeight:700, textTransform:'uppercase' as const, letterSpacing:'0.07em', color:cfg.color }}>{t('performance.referenceLevels')}</span>
+                        <span style={{ fontFamily: 'var(--font-body)', fontSize:11, fontWeight:700, textTransform:'uppercase' as const, letterSpacing:'0.07em', color:cfg.color }}>{t('performance.referenceLevels')}</span>
                         {scoreResult && (
                           <ScoreBadge score={scoreResult.overall} level={scoreResult.level} size="sm" />
                         )}
@@ -1157,7 +1157,7 @@ function TestProtocolPanel({ open: ot, onClose, onFtpUpdate }: { open: OpenTest 
             })()}
 
             {/* Documents */}
-            <div style={{ padding:'14px 16px', borderRadius:13, background:'var(--bg-card2)', border:'1px solid var(--border)' }}>
+            <div style={{ padding:'14px 16px', borderRadius: 'var(--r-md)', background:'var(--bg-card2)', border:'1px solid var(--border)' }}>
               <SH icon={<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>} label={t('performance.documents')} color="var(--text-mid)"/>
               <input
                 ref={fileInputRef}
@@ -1174,7 +1174,7 @@ function TestProtocolPanel({ open: ot, onClose, onFtpUpdate }: { open: OpenTest 
               {pendingDocs.length > 0 && (
                 <div style={{ display:'flex', flexDirection:'column', gap:5, marginBottom:10 }}>
                   {pendingDocs.map((doc, i) => (
-                    <div key={i} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'6px 10px', borderRadius:8, background:'var(--bg)', border:'1px solid var(--border)' }}>
+                    <div key={i} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'6px 10px', borderRadius: 'var(--r-sm)', background:'var(--bg)', border:'1px solid var(--border)' }}>
                       <span style={{ fontSize:11, color:'var(--text)', flex:1, minWidth:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' as const }}>{doc.name}</span>
                       <span style={{ fontSize:10, color:'var(--text-dim)', marginLeft:8, flexShrink:0 }}>{(doc.file.size / 1024).toFixed(0)} KB</span>
                       <button onClick={() => setPendingDocs(p => p.filter((_, j) => j !== i))}
@@ -1185,7 +1185,7 @@ function TestProtocolPanel({ open: ot, onClose, onFtpUpdate }: { open: OpenTest 
               )}
               <button
                 onClick={() => fileInputRef.current?.click()}
-                style={{ width:'100%', padding:'8px', borderRadius:9, border:'1px dashed var(--border)', background:'transparent', color:'var(--text-dim)', fontSize:11, fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:6, transition:'border-color 0.15s, color 0.15s' }}
+                style={{ width:'100%', padding:'8px', borderRadius: 'var(--r-sm)', border:'1px dashed var(--border)', background:'transparent', color:'var(--text-dim)', fontSize:11, fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:6, transition:'border-color 0.15s, color 0.15s' }}
                 onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = cfg.color; (e.currentTarget as HTMLButtonElement).style.color = cfg.color }}
                 onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border)'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-dim)' }}
               >
@@ -1201,14 +1201,14 @@ function TestProtocolPanel({ open: ot, onClose, onFtpUpdate }: { open: OpenTest 
 
             {/* Historique des résultats */}
             {(history.length > 0 || histLoading) && (
-              <div style={{ padding:'14px 16px', borderRadius:13, background:'var(--bg-card2)', border:'1px solid var(--border)' }}>
+              <div style={{ padding:'14px 16px', borderRadius: 'var(--r-md)', background:'var(--bg-card2)', border:'1px solid var(--border)' }}>
                 <div
                   onClick={() => setShowHistory(h => !h)}
                   style={{ display:'flex', alignItems:'center', justifyContent:'space-between', cursor:'pointer' }}
                 >
                   <div style={{ display:'flex', alignItems:'center', gap:7 }}>
                     <IcoClock/>
-                    <span style={{ fontFamily:'Syne,sans-serif', fontSize:11, fontWeight:700, textTransform:'uppercase' as const, letterSpacing:'0.07em', color:'var(--text-mid)' }}>
+                    <span style={{ fontFamily: 'var(--font-body)', fontSize:11, fontWeight:700, textTransform:'uppercase' as const, letterSpacing:'0.07em', color:'var(--text-mid)' }}>
                       {t('performance.history')} ({history.length})
                     </span>
                   </div>
@@ -1220,11 +1220,11 @@ function TestProtocolPanel({ open: ot, onClose, onFtpUpdate }: { open: OpenTest 
                   ) : (
                     <div style={{ display:'flex', flexDirection:'column', gap:6, marginTop:10 }}>
                       {history.map(entry => (
-                        <div key={entry.id} style={{ padding:'9px 12px', borderRadius:9, background:'var(--bg)', border:'1px solid var(--border)' }}>
+                        <div key={entry.id} style={{ padding:'9px 12px', borderRadius: 'var(--r-sm)', background:'var(--bg)', border:'1px solid var(--border)' }}>
                           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:5 }}>
-                            <p style={{ fontSize:10, fontWeight:700, color:cfg.color, margin:0, fontFamily:'DM Mono,monospace' }}>{entry.date}</p>
+                            <p style={{ fontSize:10, fontWeight:700, color:cfg.color, margin:0, fontFamily: 'var(--font-body)' }}>{entry.date}</p>
                             {entry.documents && entry.documents.length > 0 && (
-                              <span style={{ fontSize:9, color:'var(--text-dim)', display:'flex', alignItems:'center', gap:3 }}>
+                              <span style={{ fontSize: 10, color:'var(--text-dim)', display:'flex', alignItems:'center', gap:3 }}>
                                 <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
                                 {entry.documents.length} doc{entry.documents.length > 1 ? 's' : ''}
                               </span>
@@ -1237,7 +1237,7 @@ function TestProtocolPanel({ open: ot, onClose, onFtpUpdate }: { open: OpenTest 
                               return (
                                 <span key={k} style={{ fontSize:11, color:'var(--text-mid)' }}>
                                   <span style={{ color:'var(--text-dim)' }}>{fieldDef?.label ?? k} : </span>
-                                  <span style={{ fontFamily:'DM Mono,monospace', fontWeight:600, color:'var(--text)' }}>{v}{fieldDef?.unite ? ` ${fieldDef.unite}` : ''}</span>
+                                  <span style={{ fontFamily: 'var(--font-body)', fontWeight:600, color:'var(--text)' }}>{v}{fieldDef?.unite ? ` ${fieldDef.unite}` : ''}</span>
                                 </span>
                               )
                             })}
@@ -1320,10 +1320,10 @@ function HistoriqueTestsPanel({ onClose }: { onClose: () => void }) {
         {/* Header */}
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20 }}>
           <div>
-            <h2 style={{ fontFamily:'Syne,sans-serif', fontSize:19, fontWeight:800, margin:'0 0 3px', letterSpacing:'-0.02em' }}>{t('performance.testsHistory')}</h2>
+            <h2 style={{ fontFamily: 'var(--font-display)', fontSize:19, fontWeight:800, margin:'0 0 3px', letterSpacing:'-0.02em' }}>{t('performance.testsHistory')}</h2>
             <p style={{ fontSize:11, color:'var(--text-dim)', margin:0 }}>{t('performance.allDisciplinesSortedByDate')}</p>
           </div>
-          <button onClick={onClose} style={{ width:32, height:32, borderRadius:8, border:'1px solid var(--border)', background:'var(--bg-card2)', color:'var(--text-dim)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', fontSize:18, flexShrink:0 }}>×</button>
+          <button onClick={onClose} style={{ width:32, height:32, borderRadius: 'var(--r-sm)', border:'1px solid var(--border)', background:'var(--bg-card2)', color:'var(--text-dim)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', fontSize:18, flexShrink:0 }}>×</button>
         </div>
 
         {loading ? (
@@ -1339,19 +1339,19 @@ function HistoriqueTestsPanel({ onClose }: { onClose: () => void }) {
               const sportCfg = r.sport ? TEST_SPORT_TABS.find(t => t.id === r.sport) : undefined
               const vals = Object.entries(r.valeurs).filter(([,v]) => v && String(v).trim())
               return (
-                <div key={r.id} style={{ padding:'13px 16px', borderRadius:14, background:'var(--bg-card2)', border:'1px solid var(--border)' }}>
+                <div key={r.id} style={{ padding:'13px 16px', borderRadius: 'var(--r-md)', background:'var(--bg-card2)', border:'1px solid var(--border)' }}>
                   <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:10, marginBottom: vals.length > 0 ? 10 : 0 }}>
                     <div style={{ flex:1, minWidth:0 }}>
                       <div style={{ display:'flex', alignItems:'center', gap:7, marginBottom:3, flexWrap:'wrap' as const }}>
                         {sportCfg && (
-                          <span style={{ fontSize:9, fontWeight:700, padding:'2px 7px', borderRadius:20, background:`${sportCfg.color}18`, color:sportCfg.color, textTransform:'uppercase' as const, letterSpacing:'0.07em', flexShrink:0 }}>{sportCfg.label}</span>
+                          <span style={{ fontSize: 10, fontWeight:700, padding:'2px 7px', borderRadius: 'var(--r-lg)', background:`${sportCfg.color}18`, color:sportCfg.color, textTransform:'uppercase' as const, letterSpacing:'0.07em', flexShrink:0 }}>{sportCfg.label}</span>
                         )}
-                        <h3 style={{ fontFamily:'Syne,sans-serif', fontSize:13, fontWeight:700, margin:0, color:'var(--text)' }}>{r.nom}</h3>
+                        <h3 style={{ fontFamily: 'var(--font-body)', fontSize:13, fontWeight:700, margin:0, color:'var(--text)' }}>{r.nom}</h3>
                       </div>
                       <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                        <p style={{ fontSize:11, color:'var(--text-dim)', margin:0, fontFamily:'DM Mono,monospace' }}>{fmtDate(r.date)}</p>
+                        <p style={{ fontSize:11, color:'var(--text-dim)', margin:0, fontFamily: 'var(--font-body)' }}>{fmtDate(r.date)}</p>
                         {r.documents && r.documents.length > 0 && (
-                          <span style={{ fontSize:9, color:'var(--text-dim)', display:'flex', alignItems:'center', gap:3 }}>
+                          <span style={{ fontSize: 10, color:'var(--text-dim)', display:'flex', alignItems:'center', gap:3 }}>
                             <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
                             {r.documents.length} doc{r.documents.length > 1 ? 's' : ''}
                           </span>
@@ -1362,9 +1362,9 @@ function HistoriqueTestsPanel({ onClose }: { onClose: () => void }) {
                   {vals.length > 0 && (
                     <div style={{ display:'flex', gap:8, flexWrap:'wrap' as const }}>
                       {vals.slice(0, 6).map(([k, v]) => (
-                        <div key={k} style={{ padding:'4px 10px', borderRadius:8, background:'var(--bg-card)', border:'1px solid var(--border)' }}>
+                        <div key={k} style={{ padding:'4px 10px', borderRadius: 'var(--r-sm)', background:'var(--bg-card)', border:'1px solid var(--border)' }}>
                           <span style={{ fontSize:10, color:'var(--text-dim)' }}>{k}: </span>
-                          <span style={{ fontSize:10, fontWeight:700, color:'var(--text)', fontFamily:'DM Mono,monospace' }}>{v}</span>
+                          <span style={{ fontSize:10, fontWeight:700, color:'var(--text)', fontFamily: 'var(--font-body)' }}>{v}</span>
                         </div>
                       ))}
                     </div>
@@ -1422,7 +1422,7 @@ function TestsTab({ profile, onAnalyzeTest, initialSport, initialTestId, onFtpUp
         <div style={{ position:'relative', flex:1, minWidth:180, maxWidth:320 }}>
           <button
             onClick={() => setSportMenuOpen(o => !o)}
-            style={{ width:'100%', padding:'10px 14px', borderRadius:12, border:'1px solid', borderColor:sportMenuOpen?cfg.color:'var(--border)', background:'var(--bg-card)', color:cfg.color, fontFamily:'DM Sans,sans-serif', fontSize:13, fontWeight:700, cursor:'pointer', boxShadow:'var(--shadow-card)', transition:'all 0.15s', display:'flex', alignItems:'center', gap:9 }}>
+            style={{ width:'100%', padding:'10px 14px', borderRadius: 'var(--r-md)', border:'1px solid', borderColor:sportMenuOpen?cfg.color:'var(--border)', background:'var(--bg-card)', color:cfg.color, fontFamily: 'var(--font-body)', fontSize:13, fontWeight:700, cursor:'pointer', boxShadow:'var(--shadow-card)', transition:'all 0.15s', display:'flex', alignItems:'center', gap:9 }}>
             <span style={{ display:'flex' }}>{cfg.icon}</span>
             <span style={{ flex:1, textAlign:'left' as const }}>{cfg.label}</span>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} style={{ transform:sportMenuOpen?'rotate(180deg)':'none', transition:'transform 0.15s', opacity:0.7 }}><polyline points="6 9 12 15 18 9"/></svg>
@@ -1430,10 +1430,10 @@ function TestsTab({ profile, onAnalyzeTest, initialSport, initialTestId, onFtpUp
           {sportMenuOpen && (
             <>
               <div onClick={() => setSportMenuOpen(false)} style={{ position:'fixed', inset:0, zIndex:40 }}/>
-              <div style={{ position:'absolute', top:'calc(100% + 6px)', left:0, right:0, zIndex:41, background:'var(--bg-card)', border:'1px solid var(--border)', borderRadius:12, boxShadow:'0 12px 34px rgba(0,0,0,0.24)', overflow:'hidden', padding:4 }}>
+              <div style={{ position:'absolute', top:'calc(100% + 6px)', left:0, right:0, zIndex:41, background:'var(--bg-card)', border:'1px solid var(--border)', borderRadius: 'var(--r-md)', boxShadow:'0 12px 34px rgba(0,0,0,0.24)', overflow:'hidden', padding:4 }}>
                 {TEST_SPORT_TABS.map(s => (
                   <button key={s.id} onClick={() => { setTestSport(s.id); setSportMenuOpen(false) }}
-                    style={{ width:'100%', padding:'9px 11px', borderRadius:9, border:'none', cursor:'pointer', background:testSport===s.id?s.bg:'transparent', color:testSport===s.id?s.color:'var(--text-mid)', fontFamily:'DM Sans,sans-serif', fontSize:13, fontWeight:testSport===s.id?700:500, display:'flex', alignItems:'center', gap:10, transition:'background 0.12s' }}>
+                    style={{ width:'100%', padding:'9px 11px', borderRadius: 'var(--r-sm)', border:'none', cursor:'pointer', background:testSport===s.id?s.bg:'transparent', color:testSport===s.id?s.color:'var(--text-mid)', fontFamily: 'var(--font-body)', fontSize:13, fontWeight:testSport===s.id?700:500, display:'flex', alignItems:'center', gap:10, transition:'background 0.12s' }}>
                     <span style={{ display:'flex', opacity:testSport===s.id?1:0.65 }}>{s.icon}</span>{s.label}
                     <span style={{ marginLeft:'auto', fontSize:10, color:'var(--text-dim)' }}>{TESTS[s.id].length}</span>
                   </button>
@@ -1446,7 +1446,7 @@ function TestsTab({ profile, onAnalyzeTest, initialSport, initialTestId, onFtpUp
         {/* Bouton Historique */}
         <button
           onClick={() => setShowHistorique(true)}
-          style={{ padding:'9px 14px', borderRadius:11, border:'1px solid var(--border)', background:'var(--bg-card)', color:'var(--text-dim)', fontSize:11, fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', gap:6, whiteSpace:'nowrap' as const, transition:'border-color 0.15s, color 0.15s', flexShrink:0 }}
+          style={{ padding:'9px 14px', borderRadius: 'var(--r-md)', border:'1px solid var(--border)', background:'var(--bg-card)', color:'var(--text-dim)', fontSize:11, fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', gap:6, whiteSpace:'nowrap' as const, transition:'border-color 0.15s, color 0.15s', flexShrink:0 }}
           onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = '#5b6fff'; (e.currentTarget as HTMLButtonElement).style.color = '#5b6fff' }}
           onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border)'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-dim)' }}
         >
@@ -1458,8 +1458,8 @@ function TestsTab({ profile, onAnalyzeTest, initialSport, initialTestId, onFtpUp
       {/* Section label */}
       <div style={{ display:'flex', alignItems:'center', gap:8 }}>
         <div style={{ width:3, height:18, borderRadius:2, background:cfg.color }}/>
-        <span style={{ fontFamily:'Syne,sans-serif', fontSize:13, fontWeight:700, color:'var(--text)' }}>{cfg.label}</span>
-        <span style={{ fontSize:11, padding:'2px 9px', borderRadius:20, background:`${cfg.color}15`, color:cfg.color, fontWeight:600 }}>
+        <span style={{ fontFamily: 'var(--font-body)', fontSize:13, fontWeight:700, color:'var(--text)' }}>{cfg.label}</span>
+        <span style={{ fontSize:11, padding:'2px 9px', borderRadius: 'var(--r-lg)', background:`${cfg.color}15`, color:cfg.color, fontWeight:600 }}>
           {tests.length} test{tests.length > 1 ? 's' : ''}
         </span>
       </div>

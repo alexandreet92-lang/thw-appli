@@ -52,13 +52,13 @@ function DailySummaryBar({ kcal, prot, gluc, lip }: { kcal: number; prot: number
     { label: t('w2a.col_lip'),  val: lip,  color: '#8B5CF6', unit: 'g' },
   ]
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6, marginBottom: 16, background: 'var(--bg-card2)', borderRadius: 12, padding: '10px 12px' }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6, marginBottom: 16, background: 'var(--bg-card2)', borderRadius: 'var(--r-md)', padding: '10px 12px' }}>
       {items.map(it => (
         <div key={it.label} style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: 16, fontWeight: 800, color: it.color, fontFamily: 'Syne,sans-serif', lineHeight: 1 }}>
+          <div style={{ fontSize: 16, fontWeight: 800, color: it.color, fontFamily: 'var(--font-body)', lineHeight: 1 }}>
             {it.val}<span style={{ fontSize: 10 }}>{it.unit}</span>
           </div>
-          <div style={{ fontSize: 9, color: 'var(--text-dim)', fontFamily: 'DM Sans,sans-serif', marginTop: 2 }}>{it.label}</div>
+          <div style={{ fontSize: 10, color: 'var(--text-dim)', fontFamily: 'var(--font-body)', marginTop: 2 }}>{it.label}</div>
         </div>
       ))}
     </div>
@@ -73,7 +73,7 @@ function SlotCard({ slot, entry, onAdd, onEdit }: {
   onEdit: (e: DailyMealEntry) => void
 }) {
   const { t } = useI18n()
-  const base: CSSProperties = { borderRadius: 14, border: '1px solid var(--border)', background: 'var(--bg-card2)', padding: '14px 12px', minHeight: 90, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, cursor: 'pointer', transition: 'border-color 0.15s' }
+  const base: CSSProperties = { borderRadius: 'var(--r-md)', border: '1px solid var(--border)', background: 'var(--bg-card2)', padding: '14px 12px', minHeight: 90, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, cursor: 'pointer', transition: 'border-color 0.15s' }
 
   if (!entry) {
     return (
@@ -81,7 +81,7 @@ function SlotCard({ slot, entry, onAdd, onEdit }: {
         onMouseEnter={e => (e.currentTarget.style.borderColor = '#06B6D4')}
         onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border)')}>
         <div style={{ color: 'var(--text-dim)', opacity: 0.6 }}>{SLOT_ICONS[slot]}</div>
-        <span style={{ fontSize: 10, color: 'var(--text-dim)', fontFamily: 'DM Sans,sans-serif', textAlign: 'center' }}>
+        <span style={{ fontSize: 10, color: 'var(--text-dim)', fontFamily: 'var(--font-body)', textAlign: 'center' }}>
           {t(`w2a.slot_${slot}`)}
         </span>
         <div style={{ width: 32, height: 32, borderRadius: '50%', border: '1.5px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-dim)', fontSize: 20, lineHeight: 1 }}>+</div>
@@ -92,7 +92,7 @@ function SlotCard({ slot, entry, onAdd, onEdit }: {
   return (
     <div style={{ ...base, alignItems: 'flex-start', justifyContent: 'flex-start', cursor: 'default' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 4, width: '100%' }}>
-        <span style={{ fontSize: 10, color: 'var(--text-dim)', fontFamily: 'Syne,sans-serif', fontWeight: 700, flex: 1 }}>
+        <span style={{ fontSize: 10, color: 'var(--text-dim)', fontFamily: 'var(--font-body)', fontWeight: 700, flex: 1 }}>
           {t(`w2a.slot_${slot}`)}
         </span>
         {entry.actual_kcal != null && (
@@ -107,18 +107,18 @@ function SlotCard({ slot, entry, onAdd, onEdit }: {
         </button>
       </div>
       {entry.meal_name && (
-        <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)', fontFamily: 'DM Sans,sans-serif', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const }}>
+        <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)', fontFamily: 'var(--font-body)', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const }}>
           {entry.meal_name}
         </span>
       )}
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 2 }}>
-        {entry.actual_kcal != null && <span style={{ fontSize: 10, color: 'var(--primary)', fontFamily: 'DM Mono,monospace', fontWeight: 700 }}>{entry.actual_kcal} kcal</span>}
-        {entry.actual_prot != null && <span style={{ fontSize: 10, color: '#3B82F6', fontFamily: 'DM Mono,monospace' }}>{t('w2a.abbr_prot', { n: entry.actual_prot })}</span>}
-        {entry.actual_gluc != null && <span style={{ fontSize: 10, color: '#F97316', fontFamily: 'DM Mono,monospace' }}>{t('w2a.abbr_gluc', { n: entry.actual_gluc })}</span>}
-        {entry.actual_lip  != null && <span style={{ fontSize: 10, color: '#8B5CF6', fontFamily: 'DM Mono,monospace' }}>{t('w2a.abbr_lip', { n: entry.actual_lip })}</span>}
+        {entry.actual_kcal != null && <span style={{ fontSize: 10, color: 'var(--primary)', fontFamily: 'var(--font-body)', fontWeight: 700 }}>{entry.actual_kcal} kcal</span>}
+        {entry.actual_prot != null && <span style={{ fontSize: 10, color: '#3B82F6', fontFamily: 'var(--font-body)' }}>{t('w2a.abbr_prot', { n: entry.actual_prot })}</span>}
+        {entry.actual_gluc != null && <span style={{ fontSize: 10, color: '#F97316', fontFamily: 'var(--font-body)' }}>{t('w2a.abbr_gluc', { n: entry.actual_gluc })}</span>}
+        {entry.actual_lip  != null && <span style={{ fontSize: 10, color: '#8B5CF6', fontFamily: 'var(--font-body)' }}>{t('w2a.abbr_lip', { n: entry.actual_lip })}</span>}
       </div>
       <button onClick={onAdd}
-        style={{ marginTop: 6, alignSelf: 'flex-end', background: 'none', border: '1px dashed var(--border)', borderRadius: 6, padding: '3px 8px', fontSize: 10, color: 'var(--text-dim)', cursor: 'pointer' }}>
+        style={{ marginTop: 6, alignSelf: 'flex-end', background: 'none', border: '1px dashed var(--border)', borderRadius: 'var(--r-sm)', padding: '3px 8px', fontSize: 10, color: 'var(--text-dim)', cursor: 'pointer' }}>
         {t('w2a.add_plus')}
       </button>
     </div>

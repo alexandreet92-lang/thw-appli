@@ -99,7 +99,7 @@ export function SessionCard({ s }: { s: LinkedWorkout }) {
   doneByExo.forEach(arr => arr.sort((a, b) => a.setIndex - b.setIndex))
 
   return (
-    <div style={{ background: 'var(--bg-card2)', borderRadius: 14, padding: 16, margin: '12px 0' }}>
+    <div style={{ background: 'var(--bg-card2)', borderRadius: 'var(--r-md)', padding: 16, margin: '12px 0' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
         <span style={{ width: 7, height: 7, borderRadius: '50%', background: GYM, flexShrink: 0 }} />
         <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>{t('activities.recordedSession')}</span>

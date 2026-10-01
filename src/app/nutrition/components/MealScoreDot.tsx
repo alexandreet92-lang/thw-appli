@@ -29,7 +29,7 @@ export default function MealScoreDot({ calories, prot, fat }: Props) {
         onMouseEnter={() => setShow(true)}  onMouseLeave={() => setShow(false)}
         onTouchStart={() => setShow(true)}  onTouchEnd={() => setTimeout(() => setShow(false), 1200)} />
       {show && (
-        <div style={{ position: 'absolute', top: 12, right: 0, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 8px', fontSize: 10, color: 'var(--text)', whiteSpace: 'nowrap', zIndex: 10, boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }}>
+        <div style={{ position: 'absolute', top: 12, right: 0, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-sm)', padding: '4px 8px', fontSize: 10, color: 'var(--text)', whiteSpace: 'nowrap', zIndex: 10, boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }}>
           {tip}
         </div>
       )}

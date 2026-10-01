@@ -74,7 +74,7 @@ export default function YearGridView({ year, races, stages, colorForDay, onMonth
           >
             <div style={{
               fontSize: 15, fontWeight: 800, letterSpacing: '-0.01em', marginBottom: 6,
-              color: isCurrent ? RED : 'var(--text)', fontFamily: 'Syne, sans-serif',
+              color: isCurrent ? RED : 'var(--text)', fontFamily: 'var(--font-body)',
             }}>
               {name}
             </div>

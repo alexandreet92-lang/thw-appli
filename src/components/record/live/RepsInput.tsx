@@ -16,11 +16,11 @@ interface Props {
 }
 
 const card: React.CSSProperties = {
-  flex: 1, background: 'rgba(0,0,0,0.28)', border: '1px solid rgba(255,255,255,0.28)', borderRadius: 20,
+  flex: 1, background: 'rgba(0,0,0,0.28)', border: '1px solid rgba(255,255,255,0.28)', borderRadius: 'var(--r-lg)',
   padding: '12px 8px 10px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
 }
 const stp: React.CSSProperties = {
-  width: 46, height: 46, borderRadius: 14, border: '2px solid currentColor', background: 'transparent',
+  width: 46, height: 46, borderRadius: 'var(--r-md)', border: '2px solid currentColor', background: 'transparent',
   color: 'inherit', fontSize: 26, fontWeight: 800, display: 'grid', placeItems: 'center', cursor: 'pointer', flexShrink: 0,
 }
 const cl: React.CSSProperties = { fontSize: 11, letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 800, opacity: 0.85 }

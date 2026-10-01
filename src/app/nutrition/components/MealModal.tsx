@@ -94,7 +94,7 @@ export default function MealModal({ slot, onSave, onClose, initialData }: Props)
 
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-          <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', fontFamily: 'Syne,sans-serif' }}>
+          <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-body)' }}>
             {SLOT_LABELS[slot]}
           </span>
           <button onClick={close}
@@ -104,10 +104,10 @@ export default function MealModal({ slot, onSave, onClose, initialData }: Props)
         </div>
 
         {/* Tab selector */}
-        <div style={{ display: 'flex', gap: 4, marginBottom: 20, background: 'var(--bg-card2)', borderRadius: 10, padding: 4 }}>
+        <div style={{ display: 'flex', gap: 4, marginBottom: 20, background: 'var(--bg-card2)', borderRadius: 'var(--r-sm)', padding: 4 }}>
           {TABS.map(tb => (
             <button key={tb.key} onClick={() => setTab(tb.key)}
-              style={{ flex: 1, padding: '7px 0', borderRadius: 7, border: 'none', fontFamily: 'Syne,sans-serif', fontWeight: tab === tb.key ? 700 : 400, fontSize: 12,
+              style={{ flex: 1, padding: '7px 0', borderRadius: 'var(--r-sm)', border: 'none', fontFamily: 'var(--font-body)', fontWeight: tab === tb.key ? 700 : 400, fontSize: 12,
                 background: tab === tb.key ? 'var(--bg-card)' : 'transparent',
                 color: tab === tb.key ? 'var(--text)' : 'var(--text-dim)',
                 cursor: 'pointer', transition: 'background 0.15s, color 0.15s' }}>

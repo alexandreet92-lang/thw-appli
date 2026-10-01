@@ -69,8 +69,8 @@ export default function SeedDishesPage() {
   if (!authChecked) {
     return (
       <div style={{ maxWidth: 560, margin: '0 auto', padding: 24 }}>
-        <div style={{ height: 28, width: '50%', borderRadius: 8, background: 'var(--border)', animation: 'pulse 1.4s ease-in-out infinite' }} />
-        <div style={{ height: 120, marginTop: 16, borderRadius: 12, background: 'var(--bg-card2)', animation: 'pulse 1.4s ease-in-out infinite' }} />
+        <div style={{ height: 28, width: '50%', borderRadius: 'var(--r-sm)', background: 'var(--border)', animation: 'pulse 1.4s ease-in-out infinite' }} />
+        <div style={{ height: 120, marginTop: 16, borderRadius: 'var(--r-md)', background: 'var(--bg-card2)', animation: 'pulse 1.4s ease-in-out infinite' }} />
       </div>
     )
   }
@@ -79,42 +79,42 @@ export default function SeedDishesPage() {
 
   return (
     <div style={{ maxWidth: 560, margin: '0 auto', padding: '24px 16px 64px' }}>
-      <h1 style={{ fontFamily: 'Syne,sans-serif', fontWeight: 700, fontSize: 24, color: 'var(--text)', margin: '0 0 4px' }}>
+      <h1 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 24, color: 'var(--text)', margin: '0 0 4px' }}>
         {t('admin.dishes.title')}
       </h1>
-      <p style={{ fontFamily: 'DM Sans,sans-serif', fontSize: 13, color: 'var(--text-mid)', margin: '0 0 24px', lineHeight: 1.5 }}>
+      <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-mid)', margin: '0 0 24px', lineHeight: 1.5 }}>
         {t('admin.dishes.intro')}
       </p>
 
       {/* État actuel */}
-      <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 12, padding: 16, marginBottom: 16 }}>
+      <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: 16, marginBottom: 16 }}>
         <div style={label}>{t('admin.dishes.dishesInDb')}</div>
-        <div style={{ fontFamily: 'DM Mono,monospace', fontWeight: 700, fontSize: 32, color: count ? CYAN : 'var(--text-dim)', marginTop: 4 }}>
+        <div style={{ fontFamily: 'var(--font-body)', fontWeight: 700, fontSize: 32, color: count ? CYAN : 'var(--text-dim)', marginTop: 4 }}>
           {count ?? '—'}
         </div>
       </div>
 
       {/* Contrôle */}
-      <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 12, padding: 16 }}>
+      <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: 16 }}>
         <button onClick={() => void runSeed()} disabled={running}
-          style={{ width: '100%', padding: '12px 0', borderRadius: 10, border: 'none', minHeight: 44,
+          style={{ width: '100%', padding: '12px 0', borderRadius: 'var(--r-sm)', border: 'none', minHeight: 44,
             background: running ? 'var(--border)' : `linear-gradient(135deg,${CYAN},#3B82F6)`,
-            color: '#fff', fontWeight: 700, fontSize: 14, fontFamily: 'Syne,sans-serif',
+            color: '#fff', fontWeight: 700, fontSize: 14, fontFamily: 'var(--font-body)',
             cursor: running ? 'default' : 'pointer' }}>
           {running ? t('admin.dishes.rebuilding') : t('admin.dishes.rebuild')}
         </button>
 
         <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: '10px 0 0', lineHeight: 1.5 }}>
-          {t('admin.dishes.apiKeyBefore')}<code style={{ fontFamily: 'DM Mono,monospace' }}>SPOONACULAR_API_KEY</code>{t('admin.dishes.apiKeyAfter')}
+          {t('admin.dishes.apiKeyBefore')}<code style={{ fontFamily: 'var(--font-body)' }}>SPOONACULAR_API_KEY</code>{t('admin.dishes.apiKeyAfter')}
         </p>
       </div>
 
       {/* Résultat */}
       {result && (
-        <div style={{ marginTop: 16, background: 'var(--bg-card)', border: `1px solid ${result.ok ? `${CYAN}55` : 'rgba(239,68,68,0.4)'}`, borderRadius: 12, padding: 16 }}>
+        <div style={{ marginTop: 16, background: 'var(--bg-card)', border: `1px solid ${result.ok ? `${CYAN}55` : 'rgba(239,68,68,0.4)'}`, borderRadius: 'var(--r-md)', padding: 16 }}>
           {result.ok ? (
             <>
-              <div style={{ fontFamily: 'Syne,sans-serif', fontWeight: 700, fontSize: 14, color: CYAN, marginBottom: 4 }}>
+              <div style={{ fontFamily: 'var(--font-body)', fontWeight: 700, fontSize: 14, color: CYAN, marginBottom: 4 }}>
                 {t('admin.dishes.resultOk', { inserted: result.inserted ?? 0, photos: result.photos ?? 0 })}
               </div>
               {result.warning && (
@@ -124,15 +124,15 @@ export default function SeedDishesPage() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                   {result.breakdown.map(b => (
                     <div key={b.type} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
-                      <span style={{ color: 'var(--text-mid)', fontFamily: 'DM Sans,sans-serif' }}>{b.type}</span>
-                      <span style={{ color: 'var(--text)', fontFamily: 'DM Mono,monospace' }}>{b.count}</span>
+                      <span style={{ color: 'var(--text-mid)', fontFamily: 'var(--font-body)' }}>{b.type}</span>
+                      <span style={{ color: 'var(--text)', fontFamily: 'var(--font-body)' }}>{b.count}</span>
                     </div>
                   ))}
                 </div>
               )}
             </>
           ) : (
-            <div style={{ fontFamily: 'DM Sans,sans-serif', fontSize: 13, color: 'var(--danger)', lineHeight: 1.5 }}>
+            <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--danger)', lineHeight: 1.5 }}>
               ✗ {result.error}
             </div>
           )}

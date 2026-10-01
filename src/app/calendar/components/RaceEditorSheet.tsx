@@ -27,11 +27,11 @@ interface Props {
 const SPORTS: RaceSport[] = ['run', 'trail', 'bike', 'swim', 'hyrox', 'triathlon', 'rowing']
 const LEVELS: RaceLevel[] = ['main', 'important', 'secondary', 'gty']  // GTY = donnée existante, conservée
 const LBL: React.CSSProperties = { fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-dim)', margin: '0 0 8px' }
-const INP: React.CSSProperties = { width: '100%', boxSizing: 'border-box', padding: '11px 13px', borderRadius: 11, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 14, outline: 'none' }
+const INP: React.CSSProperties = { width: '100%', boxSizing: 'border-box', padding: '11px 13px', borderRadius: 'var(--r-md)', border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 14, outline: 'none' }
 // Pastille de sélection (sport / objectif) — sélection = teinte + texte coloré,
 // sans bordure dure (design system : pas de surface/bordure colorée pleine).
 function pill(on: boolean, color: string, bg: string): React.CSSProperties {
-  return { padding: '9px 16px', borderRadius: 999, cursor: 'pointer', fontSize: 12.5, fontWeight: on ? 700 : 600,
+  return { padding: '9px 16px', borderRadius: 'var(--r-pill)', cursor: 'pointer', fontSize: 12.5, fontWeight: on ? 700 : 600,
     border: `1px solid ${on ? 'transparent' : 'var(--border)'}`, background: on ? bg : 'transparent',
     color: on ? color : 'var(--text-mid)', transition: 'background .15s, color .15s' }
 }
@@ -204,15 +204,15 @@ export default function RaceEditorSheet({ race, initialDate, initialLevel, onClo
             {isEdit && onDelete && (confirmDelete ? (
               <div style={{ display: 'flex', gap: 8, alignItems: 'center', flex: 1, flexWrap: 'wrap' }}>
                 <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--danger)' }}>{t('calendar.deleteRaceConfirm')}</span>
-                <button onClick={onDelete} style={{ padding: '10px 16px', borderRadius: 999, background: 'var(--danger)', border: 'none', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>{t('calendar.confirm')}</button>
-                <button onClick={() => setConfirmDelete(false)} style={{ padding: '10px 14px', borderRadius: 999, background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-mid)', fontSize: 13, cursor: 'pointer' }}>{t('calendar.cancel')}</button>
+                <button onClick={onDelete} style={{ padding: '10px 16px', borderRadius: 'var(--r-pill)', background: 'var(--danger)', border: 'none', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>{t('calendar.confirm')}</button>
+                <button onClick={() => setConfirmDelete(false)} style={{ padding: '10px 14px', borderRadius: 'var(--r-pill)', background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-mid)', fontSize: 13, cursor: 'pointer' }}>{t('calendar.cancel')}</button>
               </div>
             ) : (
-              <button onClick={() => setConfirmDelete(true)} style={{ padding: 12, borderRadius: 999, background: 'transparent', border: '1px solid #ef4444', color: 'var(--danger)', fontSize: 13.5, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>{t('calendar.delete')}</button>
+              <button onClick={() => setConfirmDelete(true)} style={{ padding: 12, borderRadius: 'var(--r-pill)', background: 'transparent', border: '1px solid #ef4444', color: 'var(--danger)', fontSize: 13.5, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>{t('calendar.delete')}</button>
             ))}
             {!confirmDelete && (<>
-              <button onClick={requestClose} style={{ flex: 1, padding: 12, borderRadius: 999, background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-mid)', fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}>{t('calendar.close')}</button>
-              <button onClick={handleSave} disabled={saving || !name.trim()} style={{ flex: 2, padding: 12, borderRadius: 999, background: SPORT_COLOR[sport], border: 'none', color: '#fff', fontWeight: 700, fontSize: 13.5, cursor: saving ? 'wait' : 'pointer', opacity: !name.trim() ? 0.5 : 1 }}>{saving ? '…' : isEdit ? t('calendar.save') : t('calendar.add')}</button>
+              <button onClick={requestClose} style={{ flex: 1, padding: 12, borderRadius: 'var(--r-pill)', background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-mid)', fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}>{t('calendar.close')}</button>
+              <button onClick={handleSave} disabled={saving || !name.trim()} style={{ flex: 2, padding: 12, borderRadius: 'var(--r-pill)', background: SPORT_COLOR[sport], border: 'none', color: '#fff', fontWeight: 700, fontSize: 13.5, cursor: saving ? 'wait' : 'pointer', opacity: !name.trim() ? 0.5 : 1 }}>{saving ? '…' : isEdit ? t('calendar.save') : t('calendar.add')}</button>
             </>)}
           </div>
         </div>

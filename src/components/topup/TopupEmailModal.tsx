@@ -62,7 +62,7 @@ export default function TopupEmailModal({ isOpen, onClose }: Props) {
     >
       <div
         onClick={e => e.stopPropagation()}
-        style={{ width: 440, maxWidth: '100%', background: 'var(--bg-card)', borderRadius: 16, padding: 32, boxShadow: '0 24px 70px rgba(0,0,0,0.5)', border: '0.5px solid var(--border-mid)' }}
+        style={{ width: 440, maxWidth: '100%', background: 'var(--bg-card)', borderRadius: 'var(--r-md)', padding: 32, boxShadow: '0 24px 70px rgba(0,0,0,0.5)', border: '0.5px solid var(--border-mid)' }}
       >
         {sent ? (
           <div style={{ textAlign: 'center' }}>
@@ -73,7 +73,7 @@ export default function TopupEmailModal({ isOpen, onClose }: Props) {
             <p style={{ fontSize: 13, color: 'var(--text-mid)', lineHeight: 1.6, margin: '0 0 24px' }}>
               {t('shared.checkMailbox')}
             </p>
-            <button onClick={onClose} style={{ width: '100%', padding: 12, borderRadius: 10, border: '0.5px solid var(--border-mid)', background: 'var(--bg-alt)', color: 'var(--text)', fontSize: 14, fontWeight: 500, cursor: 'pointer' }}>
+            <button onClick={onClose} style={{ width: '100%', padding: 12, borderRadius: 'var(--r-sm)', border: '0.5px solid var(--border-mid)', background: 'var(--bg-alt)', color: 'var(--text)', fontSize: 14, fontWeight: 500, cursor: 'pointer' }}>
               {t('shared.close')}
             </button>
           </div>
@@ -93,13 +93,13 @@ export default function TopupEmailModal({ isOpen, onClose }: Props) {
               onKeyDown={e => { if (e.key === 'Enter') void submit() }}
               placeholder={t('shared.emailPlaceholder')}
               className="topup-email-input"
-              style={{ width: '100%', background: 'var(--bg-alt)', border: '1px solid var(--border-mid)', borderRadius: 10, padding: '12px 14px', fontSize: 14, color: 'var(--text)', outline: 'none', marginBottom: 14, fontFamily: 'DM Sans, sans-serif' }}
+              style={{ width: '100%', background: 'var(--bg-alt)', border: '1px solid var(--border-mid)', borderRadius: 'var(--r-sm)', padding: '12px 14px', fontSize: 14, color: 'var(--text)', outline: 'none', marginBottom: 14, fontFamily: 'var(--font-body)' }}
             />
             {error && <p style={{ fontSize: 12, color: 'var(--danger)', margin: '0 0 12px', textAlign: 'center' }}>{error}</p>}
             <button
               onClick={() => void submit()}
               disabled={loading || !email}
-              style={{ width: '100%', padding: 12, borderRadius: 10, border: 'none', background: 'var(--primary)', color: '#fff', fontSize: 14, fontWeight: 500, cursor: loading || !email ? 'not-allowed' : 'pointer', opacity: loading || !email ? 0.6 : 1 }}
+              style={{ width: '100%', padding: 12, borderRadius: 'var(--r-sm)', border: 'none', background: 'var(--primary)', color: '#fff', fontSize: 14, fontWeight: 500, cursor: loading || !email ? 'not-allowed' : 'pointer', opacity: loading || !email ? 0.6 : 1 }}
             >
               {loading ? t('shared.sending') : t('shared.sendLink')}
             </button>

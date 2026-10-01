@@ -1149,7 +1149,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                 {iconId ? <AppIcon id={iconId} size={Math.round(d * 0.44)} /> : <KindIcon kind={n.kind} size={Math.round(d * 0.44)} />}
                 {st === 'done' && <span style={{ position: 'absolute', top: -3, right: -3, width: 13, height: 13, borderRadius: '50%', background: '#22C55E', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg></span>}
                 {st === 'running' && <span style={{ position: 'absolute', top: -3, right: -3, width: 12, height: 12, borderRadius: '50%', background: 'var(--bg-card)', border: `2px solid color-mix(in srgb, ${col} 25%, transparent)`, borderTopColor: col, animation: 'studio_spin 0.7s linear infinite' }} />}
-                {st === 'error' && <span style={{ position: 'absolute', top: -3, right: -3, width: 13, height: 13, borderRadius: '50%', background: 'var(--danger)', color: '#fff', fontSize: 9, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>!</span>}
+                {st === 'error' && <span style={{ position: 'absolute', top: -3, right: -3, width: 13, height: 13, borderRadius: '50%', background: 'var(--danger)', color: '#fff', fontSize: 10, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>!</span>}
               </div>
               <span style={{ marginTop: 2, maxWidth: d + 30, fontSize: 7.5, fontWeight: 700, color: on ? col : 'var(--text-mid)', textAlign: 'center', lineHeight: 1.05, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: 'var(--font-body)' }}>{n.title}</span>
             </div>
@@ -1167,7 +1167,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
     return (
       <div style={{
         display: 'flex', flexDirection: 'column', gap: 8, padding: '11px 12px 9px',
-        borderRadius: 18, border: '1px solid var(--border)', background: 'var(--bg-card)',
+        borderRadius: 'var(--r-lg)', border: '1px solid var(--border)', background: 'var(--bg-card)',
         boxShadow: '0 2px 6px rgba(0,0,0,0.06), 0 12px 32px rgba(0,0,0,0.10)',
       }}>
         <AutoGrowTextarea value={value} onChange={onChange} onSend={onSend} placeholder={placeholder} disabled={chatBusy} />
@@ -1186,7 +1186,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
           {/* Sélecteur de modèle IA (logo + nom) */}
           <div style={{ position: 'relative' }}>
             <PressPop onClick={() => setModelMenuOpen(o => !o)} disabled={chatBusy} title={t('w1i.ai_model')} popScale={1.08}
-              style={{ display: 'flex', alignItems: 'center', gap: 6, height: 32, padding: '0 11px 0 9px', borderRadius: 999, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-mid)', cursor: chatBusy ? 'default' : 'pointer', fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 700 }}>
+              style={{ display: 'flex', alignItems: 'center', gap: 6, height: 32, padding: '0 11px 0 9px', borderRadius: 'var(--r-pill)', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-mid)', cursor: chatBusy ? 'default' : 'pointer', fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 700 }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={builderModel === 'hermes' ? '/logos/logo_3bras.png' : builderModel === 'zeus' ? '/logos/logo_6bras.png' : '/logos/logo_4bras.png'} alt="" width={17} height={17} style={{ objectFit: 'contain', flexShrink: 0 }} />
               {MODEL_LABEL[builderModel]}
@@ -1195,10 +1195,10 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
             {modelMenuOpen && (
               <>
                 <div onClick={() => setModelMenuOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 19 }} />
-                <div style={{ position: 'absolute', ...(menuUp ? { bottom: 36 } : { top: 36 }), left: 0, zIndex: 20, width: 200, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 12, boxShadow: '0 12px 34px rgba(0,0,0,0.2)', padding: 5, animation: 'studio_in 0.14s ease' }}>
+                <div style={{ position: 'absolute', ...(menuUp ? { bottom: 36 } : { top: 36 }), left: 0, zIndex: 20, width: 200, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', boxShadow: '0 12px 34px rgba(0,0,0,0.2)', padding: 5, animation: 'studio_in 0.14s ease' }}>
                   {(['hermes', 'athena', 'zeus'] as StudioModel[]).map(m => (
                     <button key={m} onClick={() => { setBuilderModel(m); setModelMenuOpen(false) }}
-                      style={{ display: 'flex', alignItems: 'center', gap: 9, width: '100%', padding: '8px 9px', borderRadius: 9, border: 'none', background: builderModel === m ? 'color-mix(in srgb, var(--studio-accent) 9%, transparent)' : 'transparent', cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font-body)' }}>
+                      style={{ display: 'flex', alignItems: 'center', gap: 9, width: '100%', padding: '8px 9px', borderRadius: 'var(--r-sm)', border: 'none', background: builderModel === m ? 'color-mix(in srgb, var(--studio-accent) 9%, transparent)' : 'transparent', cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font-body)' }}>
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={m === 'hermes' ? '/logos/logo_3bras.png' : m === 'zeus' ? '/logos/logo_6bras.png' : '/logos/logo_4bras.png'} alt="" width={20} height={20} style={{ objectFit: 'contain', flexShrink: 0 }} />
                       <span style={{ flex: 1, fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{MODEL_LABEL[m]}</span>
@@ -1213,7 +1213,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
           {/* Jauge d'utilisation des tokens */}
           {access?.allowed && (
             <button onClick={() => setWalletOpen(true)} title={t('w1i.usage_gauge')} aria-label={t('w1i.usage_gauge')}
-              style={{ width: 32, height: 32, borderRadius: 10, border: 'none', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, position: 'relative' }}>
+              style={{ width: 32, height: 32, borderRadius: 'var(--r-sm)', border: 'none', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, position: 'relative' }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 21a9 9 0 100-18 9 9 0 000 18z" opacity="0.4"/><path d="M12 3a9 9 0 018.5 6"/><path d="M12 12l3.5-3.5"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/></svg>
               {access.monthlyLimit > 0 && access.remaining < 1e12 && (
                 <span style={{ position: 'absolute', top: 5, right: 5, width: 6, height: 6, borderRadius: '50%', background: access.remaining <= 0 ? 'var(--danger)' : (access.monthlyUsed / Math.max(1, access.monthlyLimit)) > 0.85 ? '#F59E0B' : '#22C55E' }} />
@@ -1225,7 +1225,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
               fiable). Reviendra dans une version ultérieure. */}
           {!isNativeApp() && (
           <button onClick={() => { setMicTarget(micField); micBaseRef.current = micField === 'chat' ? chatInput : desc; setMicOpen(true) }} disabled={chatBusy} title={t('w1i.describe_voice')} aria-label={t('w1i.describe_voice')}
-            style={{ width: 32, height: 32, borderRadius: 10, border: 'none', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            style={{ width: 32, height: 32, borderRadius: 'var(--r-sm)', border: 'none', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <rect x="9" y="2" width="6" height="11" rx="3"/><path d="M5 10a7 7 0 0 0 14 0M12 19v3"/>
             </svg>
@@ -1233,7 +1233,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
           )}
           {/* Envoyer */}
           <button onClick={onSend} disabled={!ready} aria-label={t('w1i.send')}
-            style={{ width: 34, height: 34, borderRadius: 11, border: 'none', cursor: ready ? 'pointer' : 'not-allowed',
+            style={{ width: 34, height: 34, borderRadius: 'var(--r-md)', border: 'none', cursor: ready ? 'pointer' : 'not-allowed',
               background: ready ? 'var(--studio-accent)' : 'var(--border)', color: ready ? '#fff' : 'var(--text-dim)',
               display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             {chatBusy ? (
@@ -1281,10 +1281,10 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
               <div style={{ whiteSpace: 'pre-wrap' }}>{m.text}</div>
               {/* Carte cliquable → ouvre la maquette en sur-page (fond carte + ombre). */}
               <button onClick={() => { setPreviewSel(null); setMockupMsgId(m.id) }}
-                style={{ display: 'flex', alignItems: 'center', gap: 11, width: '100%', marginTop: 12, padding: '11px 12px', borderRadius: 14, border: '1px solid var(--border)', background: 'var(--bg-card)', cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font-body)', boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 8px 24px rgba(0,0,0,0.08)' }}
+                style={{ display: 'flex', alignItems: 'center', gap: 11, width: '100%', marginTop: 12, padding: '11px 12px', borderRadius: 'var(--r-md)', border: '1px solid var(--border)', background: 'var(--bg-card)', cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font-body)', boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 8px 24px rgba(0,0,0,0.08)' }}
                 onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'color-mix(in srgb, var(--studio-accent) 45%, var(--border))' }}
                 onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border)' }}>
-                <span style={{ width: 40, height: 40, borderRadius: 11, flexShrink: 0, background: 'color-mix(in srgb, var(--studio-accent) 12%, transparent)', color: 'var(--studio-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <span style={{ width: 40, height: 40, borderRadius: 'var(--r-md)', flexShrink: 0, background: 'color-mix(in srgb, var(--studio-accent) 12%, transparent)', color: 'var(--studio-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><circle cx="5" cy="6" r="2.2"/><circle cx="19" cy="6" r="2.2"/><circle cx="12" cy="18" r="2.2"/><path d="M7 6.6 10.6 16.4M17 6.6 13.4 16.4"/></svg>
                 </span>
                 <span style={{ flex: 1, minWidth: 0 }}>
@@ -1300,11 +1300,11 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                   <div style={{ marginTop: 10, fontSize: 12, fontWeight: 700, color: 'var(--studio-accent)' }}>{t('w1i.confirm_build_question')}</div>
                   <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
                     <button onClick={() => confirmPlan(m.id)}
-                      style={{ flex: 1, padding: '9px 0', borderRadius: 10, border: 'none', background: 'var(--studio-accent)', color: '#fff', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
+                      style={{ flex: 1, padding: '9px 0', borderRadius: 'var(--r-sm)', border: 'none', background: 'var(--studio-accent)', color: '#fff', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
                       {t('w1i.confirm')}
                     </button>
                     <button onClick={() => declinePlan(m.id)}
-                      style={{ padding: '9px 14px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-mid)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
+                      style={{ padding: '9px 14px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-mid)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
                       {t('w1i.no')}
                     </button>
                   </div>
@@ -1631,24 +1631,24 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
             value={graph.name}
             onChange={e => commit({ ...graph, name: e.target.value })}
             aria-label={t('w1i.system_name')}
-            style={{ marginLeft: 2, minWidth: 0, flex: '0 1 240px', padding: '6px 10px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-mid)', fontSize: 13, fontFamily: 'var(--font-body)', outline: 'none' }}
+            style={{ marginLeft: 2, minWidth: 0, flex: '0 1 240px', padding: '6px 10px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-mid)', fontSize: 13, fontFamily: 'var(--font-body)', outline: 'none' }}
           />
         )}
 
         {/* Solde Studio — clic : détail + packs */}
         {access?.allowed && (
           <button onClick={() => setWalletOpen(true)} title={t('w1i.balance_tooltip')}
-            style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8, padding: '0 18px', minHeight: 44, borderRadius: 999, border: 'none', background: 'color-mix(in srgb, var(--text) 10%, var(--bg))', color: 'var(--text)', fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)', flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>
+            style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8, padding: '0 18px', minHeight: 44, borderRadius: 'var(--r-pill)', border: 'none', background: 'color-mix(in srgb, var(--text) 10%, var(--bg))', color: 'var(--text)', fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)', flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" style={{ color: 'var(--studio-accent)' }} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
             {access.remaining > 1e12 ? t('w1i.unlimited') : t('w1i.tokens_amount', { n: formatTokens(access.remaining) })}
           </button>
         )}
 
         {view === 'canvas' && (<>
-        <div style={{ display: 'flex', gap: 2, marginLeft: isMobile ? 0 : (access?.allowed ? 0 : 'auto'), width: isMobile ? '100%' : 'auto', order: isMobile ? 3 : 0, background: 'var(--bg-card2)', borderRadius: 10, padding: 3 }}>
+        <div style={{ display: 'flex', gap: 2, marginLeft: isMobile ? 0 : (access?.allowed ? 0 : 'auto'), width: isMobile ? '100%' : 'auto', order: isMobile ? 3 : 0, background: 'var(--bg-card2)', borderRadius: 'var(--r-sm)', padding: 3 }}>
           {(['canvas', 'chat', 'rendu', 'runs', 'methode'] as Tab[]).map(tb => (
             <button key={tb} onClick={() => setTab(tb)}
-              style={{ flex: isMobile ? 1 : '0 0 auto', padding: isMobile ? '9px 6px' : '6px 14px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: isMobile ? 12.5 : 13, fontWeight: 600, fontFamily: 'var(--font-body)',
+              style={{ flex: isMobile ? 1 : '0 0 auto', padding: isMobile ? '9px 6px' : '6px 14px', borderRadius: 'var(--r-sm)', border: 'none', cursor: 'pointer', fontSize: isMobile ? 12.5 : 13, fontWeight: 600, fontFamily: 'var(--font-body)',
                 background: tab === tb ? 'var(--bg)' : 'transparent', color: tab === tb ? 'var(--text)' : 'var(--text-dim)',
                 boxShadow: tab === tb ? 'var(--shadow-card)' : 'none' }}>
               {tb === 'canvas' ? t('w1i.tab_canvas') : tb === 'chat' ? t('w1i.tab_pilotage') : tb === 'rendu' ? t('w1i.tab_rendu') : tb === 'runs' ? t('w1i.tab_journal') : t('w1i.tab_method')}
@@ -1658,21 +1658,21 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
 
         {/* Chat Architecte — ouvre la discussion en plein écran */}
         <button onClick={() => { setChatFull(true); if (tab !== 'canvas') setTab('canvas') }} title={t('w1i.chat_architect_full')} aria-label={t('w1i.chat_architect')}
-          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: isMobile ? '0 9px' : '0 12px', height: 34, borderRadius: 10, border: '1px solid var(--border)', background: chatMsgs.length > 0 ? 'color-mix(in srgb, var(--studio-accent) 10%, transparent)' : 'var(--bg-card2)', color: chatMsgs.length > 0 ? 'var(--studio-accent)' : 'var(--text-mid)', cursor: 'pointer', fontSize: 12.5, fontWeight: 700, fontFamily: 'var(--font-body)', flexShrink: 0 }}>
+          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: isMobile ? '0 9px' : '0 12px', height: 34, borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: chatMsgs.length > 0 ? 'color-mix(in srgb, var(--studio-accent) 10%, transparent)' : 'var(--bg-card2)', color: chatMsgs.length > 0 ? 'var(--studio-accent)' : 'var(--text-mid)', cursor: 'pointer', fontSize: 12.5, fontWeight: 700, fontFamily: 'var(--font-body)', flexShrink: 0 }}>
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.4 8.4 0 01-8.5 8.5 8.6 8.6 0 01-3.9-.9L3 21l1.9-5.6a8.4 8.4 0 01-.9-3.9A8.4 8.4 0 0112.5 3 8.4 8.4 0 0121 11.5z"/></svg>
           {!isMobile && t('w1i.chat')}
         </button>
 
         {/* Planifier — run autonome récurrent */}
         <button onClick={() => setScheduleOpen(true)} title={schedule?.enabled ? t('w1i.schedule_active_edit') : t('w1i.schedule_this_system_auto')} aria-label={t('w1i.schedule_this_system')}
-          style={{ width: 34, height: 34, borderRadius: 10, border: '1px solid var(--border)', background: schedule?.enabled ? 'color-mix(in srgb, var(--studio-accent) 10%, transparent)' : 'var(--bg-card2)', color: schedule?.enabled ? 'var(--studio-accent)' : 'var(--text-mid)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          style={{ width: 34, height: 34, borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: schedule?.enabled ? 'color-mix(in srgb, var(--studio-accent) 10%, transparent)' : 'var(--bg-card2)', color: schedule?.enabled ? 'var(--studio-accent)' : 'var(--text-mid)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
         </button>
 
         {/* Roster — lancer le système sur plusieurs athlètes (coach) */}
         {isCoachSystem && coachAccess && (
           <button onClick={() => { setRosterView(null); setRosterOpen(true) }} title={t('w1i.roster_run_title')} aria-label={t('w1i.roster')}
-            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: isMobile ? '0 9px' : '0 12px', height: 34, borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-mid)', cursor: 'pointer', fontSize: 12.5, fontWeight: 700, fontFamily: 'var(--font-body)', flexShrink: 0 }}>
+            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: isMobile ? '0 9px' : '0 12px', height: 34, borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-mid)', cursor: 'pointer', fontSize: 12.5, fontWeight: 700, fontFamily: 'var(--font-body)', flexShrink: 0 }}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
             {!isMobile && t('w1i.roster')}
           </button>
@@ -1699,9 +1699,9 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
 
         {/* ── Contrôle pré-run : ce qui bloque / ce qui alerte ── */}
         {issues && (
-          <div style={{ position: 'absolute', top: 12, right: 12, zIndex: 9, width: 330, maxHeight: 'calc(100% - 24px)', overflowY: 'auto', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 14, boxShadow: '0 2px 6px rgba(0,0,0,0.06), 0 14px 40px rgba(0,0,0,0.16)', padding: 14, animation: 'studio_in 0.18s ease' }}>
+          <div style={{ position: 'absolute', top: 12, right: 12, zIndex: 9, width: 330, maxHeight: 'calc(100% - 24px)', overflowY: 'auto', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', boxShadow: '0 2px 6px rgba(0,0,0,0.06), 0 14px 40px rgba(0,0,0,0.16)', padding: 14, animation: 'studio_in 0.18s ease' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-              <span style={{ width: 24, height: 24, borderRadius: 8, background: issues.errors.length ? 'rgba(239,68,68,0.12)' : 'rgba(245,158,11,0.14)', color: issues.errors.length ? 'var(--danger)' : '#F59E0B', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <span style={{ width: 24, height: 24, borderRadius: 'var(--r-sm)', background: issues.errors.length ? 'rgba(239,68,68,0.12)' : 'rgba(245,158,11,0.14)', color: issues.errors.length ? 'var(--danger)' : '#F59E0B', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg>
               </span>
               <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-body)', flex: 1 }}>
@@ -1725,7 +1725,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
             ))}
             {issues.canForce && (
               <button onClick={() => void runOnce(true)}
-                style={{ marginTop: 10, width: '100%', padding: '9px 0', borderRadius: 9, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
+                style={{ marginTop: 10, width: '100%', padding: '9px 0', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
                 {t('w1i.launch_anyway')}
               </button>
             )}
@@ -1764,13 +1764,13 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
               return (
                 <div style={{ position: 'absolute', top, left: '50%', transform: 'translateX(-50%)', zIndex: 5, maxWidth: isMobile ? 'calc(100% - 24px)' : 560 }}>
                   <button onClick={openObjEditor} title={t('w1i.objective_tooltip')}
-                    style={{ display: 'flex', alignItems: 'center', gap: 8, maxWidth: '100%', padding: '6px 12px', borderRadius: 999, border: `1px solid color-mix(in srgb, ${accent} 45%, var(--border))`, background: 'var(--bg-card)', color: 'var(--text)', cursor: 'pointer', boxShadow: '0 2px 10px rgba(0,0,0,0.08)', fontFamily: 'var(--font-body)' }}>
+                    style={{ display: 'flex', alignItems: 'center', gap: 8, maxWidth: '100%', padding: '6px 12px', borderRadius: 'var(--r-pill)', border: `1px solid color-mix(in srgb, ${accent} 45%, var(--border))`, background: 'var(--bg-card)', color: 'var(--text)', cursor: 'pointer', boxShadow: '0 2px 10px rgba(0,0,0,0.08)', fontFamily: 'var(--font-body)' }}>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={accent} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="0.6" fill={accent}/></svg>
                     {graph.objective?.text ? (
                       <>
                         <span style={{ fontSize: 12.5, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{graph.objective.text}</span>
                         {dleft !== null && (
-                          <span style={{ flexShrink: 0, fontSize: 10.5, fontWeight: 800, letterSpacing: '0.02em', color: accent, background: `color-mix(in srgb, ${accent} 12%, transparent)`, border: `1px solid color-mix(in srgb, ${accent} 35%, transparent)`, borderRadius: 999, padding: '2px 8px' }}>
+                          <span style={{ flexShrink: 0, fontSize: 10.5, fontWeight: 800, letterSpacing: '0.02em', color: accent, background: `color-mix(in srgb, ${accent} 12%, transparent)`, border: `1px solid color-mix(in srgb, ${accent} 35%, transparent)`, borderRadius: 'var(--r-pill)', padding: '2px 8px' }}>
                             {expired ? t('w1i.deadline_passed') : soon ? t('w1i.days_left', { n: dleft }) : new Date(graph.objective.deadline + 'T00:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
                           </span>
                         )}
@@ -1780,12 +1780,12 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                     )}
                   </button>
                   {expired && (
-                    <div style={{ marginTop: 6, padding: '7px 11px', borderRadius: 10, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)', fontSize: 11.5, color: 'var(--danger)', fontFamily: 'var(--font-body)', lineHeight: 1.45 }}>
+                    <div style={{ marginTop: 6, padding: '7px 11px', borderRadius: 'var(--r-sm)', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)', fontSize: 11.5, color: 'var(--danger)', fontFamily: 'var(--font-body)', lineHeight: 1.45 }}>
                       {t('w1i.objective_expired_msg')}
                     </div>
                   )}
                   {healthAlert && (
-                    <div title={t('w1i.system_limits_load', { alert: healthAlert })} style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 7, padding: '6px 11px', borderRadius: 10, background: 'rgba(245,158,11,0.10)', border: '1px solid rgba(245,158,11,0.35)', color: '#B45309', fontFamily: 'var(--font-body)' }}>
+                    <div title={t('w1i.system_limits_load', { alert: healthAlert })} style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 7, padding: '6px 11px', borderRadius: 'var(--r-sm)', background: 'rgba(245,158,11,0.10)', border: '1px solid rgba(245,158,11,0.35)', color: '#B45309', fontFamily: 'var(--font-body)' }}>
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4M12 17h.01"/></svg>
                       <span style={{ fontSize: 11.5, fontWeight: 700, lineHeight: 1.35 }}>{t('w1i.safety_mode_load', { alert: healthAlert })}</span>
                     </div>
@@ -1797,7 +1797,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
             {/* ── Barre flottante : annuler · rétablir · exemple · vider ── */}
             <div style={{ position: 'absolute', top: 14, left: 12, zIndex: 8, display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-start' }}>
               {(graph.nodes.length > 0 || canUndo || canRedo) && (
-                <div style={{ display: 'flex', gap: 4, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 10, padding: 3, boxShadow: '0 6px 18px rgba(0,0,0,0.10)' }}>
+                <div style={{ display: 'flex', gap: 4, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-sm)', padding: 3, boxShadow: '0 6px 18px rgba(0,0,0,0.10)' }}>
                   <button onClick={undo} disabled={!canUndo} title={t('w1i.undo_shortcut')} aria-label={t('w1i.undo')}
                     style={{ ...zBtn, opacity: canUndo ? 1 : 0.35, cursor: canUndo ? 'pointer' : 'default' }}>
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M9 14L4 9l5-5"/><path d="M4 9h11a5 5 0 015 5 5 5 0 01-5 5H8"/></svg>
@@ -1840,7 +1840,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                 <span style={{ width: 38, height: 38, borderRadius: '50%', flexShrink: 0, background: `linear-gradient(140deg, ${color}, color-mix(in srgb, ${color} 60%, #000))`, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: dim ? 0.55 : 1, boxShadow: '0 3px 10px rgba(0,0,0,0.2)' }}>{node}</span>
               )
               const row = (key: string, color: string, icon: React.ReactNode, label: string, sub: string | null, onClick: () => void, dim = false, tag?: string) => (
-                <button key={key} onClick={onClick} style={{ display: 'flex', alignItems: 'center', gap: 11, width: '100%', padding: '7px 9px', borderRadius: 10, border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font-body)' }}
+                <button key={key} onClick={onClick} style={{ display: 'flex', alignItems: 'center', gap: 11, width: '100%', padding: '7px 9px', borderRadius: 'var(--r-sm)', border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font-body)' }}
                   onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)' }}
                   onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}>
                   {bubble(color, icon, dim)}
@@ -1854,7 +1854,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
               return (
                 <>
                   <div onClick={close} style={{ position: 'absolute', inset: 0, zIndex: 9 }} />
-                  <div style={{ position: 'absolute', top: 14, left: 70, zIndex: 10, width: 300, maxHeight: 'calc(100% - 28px)', display: 'flex', flexDirection: 'column', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 16, boxShadow: '0 12px 40px rgba(0,0,0,0.28)', overflow: 'hidden', animation: 'studio_in 0.16s ease' }}>
+                  <div style={{ position: 'absolute', top: 14, left: 70, zIndex: 10, width: 300, maxHeight: 'calc(100% - 28px)', display: 'flex', flexDirection: 'column', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', boxShadow: '0 12px 40px rgba(0,0,0,0.28)', overflow: 'hidden', animation: 'studio_in 0.16s ease' }}>
                     {branching && (
                       <div style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 12px', borderBottom: '1px solid var(--border)', background: 'rgba(59,146,212,0.06)' }}>
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" style={{ color: 'var(--studio-accent)' }} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 3v12a3 3 0 003 3h6"/><path d="M15 15l3 3-3 3"/></svg>
@@ -1865,7 +1865,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                     )}
                     <div style={{ padding: 10, borderBottom: '1px solid var(--border)' }}>
                       <input autoFocus value={pickerQuery} onChange={e => setPickerQuery(e.target.value)} placeholder={t('w1i.search_tool_app')}
-                        style={{ width: '100%', boxSizing: 'border-box', padding: '9px 11px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 13, outline: 'none', fontFamily: 'var(--font-body)' }} />
+                        style={{ width: '100%', boxSizing: 'border-box', padding: '9px 11px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 13, outline: 'none', fontFamily: 'var(--font-body)' }} />
                     </div>
                     <div style={{ overflowY: 'auto', padding: 6 }}>
                       {tools.length > 0 && <div style={paletteHdr}>{t('w1i.tools')}</div>}
@@ -1905,7 +1905,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
 
             {/* Contexte athlète ciblé (coach) — chip épinglé en haut du canvas. */}
             {coachAccess && scopeTab === 'coach' && openAthleteName && (
-              <div style={{ position: 'absolute', top: 14, left: '50%', transform: 'translateX(-50%)', zIndex: 8, display: 'inline-flex', alignItems: 'center', gap: 8, padding: '6px 8px 6px 12px', borderRadius: 999, background: 'var(--bg-card)', border: '1px solid var(--border)', boxShadow: '0 4px 14px rgba(0,0,0,0.14)' }}>
+              <div style={{ position: 'absolute', top: 14, left: '50%', transform: 'translateX(-50%)', zIndex: 8, display: 'inline-flex', alignItems: 'center', gap: 8, padding: '6px 8px 6px 12px', borderRadius: 'var(--r-pill)', background: 'var(--bg-card)', border: '1px solid var(--border)', boxShadow: '0 4px 14px rgba(0,0,0,0.14)' }}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" style={{ color: 'var(--studio-accent)' }} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
                 <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-body)' }}>{t('w1i.athlete_label', { name: openAthleteName })}</span>
                 <button onClick={() => setAthletePickerOpen(true)} title={t('w1i.change_athlete')} style={{ border: 'none', background: 'transparent', color: 'var(--text-mid)', cursor: 'pointer', fontSize: 11, fontWeight: 700, fontFamily: 'var(--font-body)', padding: '2px 4px' }}>{t('w1i.change')}</button>
@@ -2065,7 +2065,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                       {/* Champ d'objectif/rôle — au survol ou à la sélection */}
                       {open && roleBearing && (
                         <div onPointerDown={e => e.stopPropagation()} onClick={e => e.stopPropagation()}
-                          style={{ position: 'absolute', top: NODE_D + 34, left: NODE_D / 2 - 112, width: 224, zIndex: 8, background: 'var(--bg-card)', border: `1px solid ${col}`, borderRadius: 12, padding: 8, boxShadow: '0 10px 30px rgba(0,0,0,0.28)', animation: 'studio_in 0.14s ease' }}>
+                          style={{ position: 'absolute', top: NODE_D + 34, left: NODE_D / 2 - 112, width: 224, zIndex: 8, background: 'var(--bg-card)', border: `1px solid ${col}`, borderRadius: 'var(--r-md)', padding: 8, boxShadow: '0 10px 30px rgba(0,0,0,0.28)', animation: 'studio_in 0.14s ease' }}>
                           <textarea value={n.role ?? ''} onChange={e => patchNode(n.id, { role: e.target.value })} placeholder={rolePh}
                             rows={3} style={{ width: '100%', boxSizing: 'border-box', resize: 'none', border: 'none', outline: 'none', background: 'transparent', color: 'var(--text)', fontSize: 12, lineHeight: 1.45, fontFamily: 'var(--font-body)' }} />
                           {preview && <div style={{ marginTop: 4, paddingTop: 6, borderTop: '1px solid var(--border)', fontSize: 11, color: 'var(--text-dim)', maxHeight: 60, overflow: 'hidden' }}>{preview.slice(0, 180)}</div>}
@@ -2073,7 +2073,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                       )}
                       {open && !roleBearing && subtitle && (
                         <div onPointerDown={e => e.stopPropagation()}
-                          style={{ position: 'absolute', top: NODE_D + 34, left: NODE_D / 2 - 100, width: 200, zIndex: 8, background: 'var(--bg-card)', border: `1px solid ${col}`, borderRadius: 12, padding: '8px 10px', boxShadow: '0 10px 30px rgba(0,0,0,0.28)', fontSize: 11.5, color: 'var(--text-mid)', fontFamily: 'var(--font-body)' }}>
+                          style={{ position: 'absolute', top: NODE_D + 34, left: NODE_D / 2 - 100, width: 200, zIndex: 8, background: 'var(--bg-card)', border: `1px solid ${col}`, borderRadius: 'var(--r-md)', padding: '8px 10px', boxShadow: '0 10px 30px rgba(0,0,0,0.28)', fontSize: 11.5, color: 'var(--text-mid)', fontFamily: 'var(--font-body)' }}>
                           <div style={{ fontWeight: 700, color: col, marginBottom: 2 }}>{subtitle}</div>
                           {n.kind === 'source' ? t('w1i.source_desc') : t('w1i.action_desc')}
                         </div>
@@ -2100,7 +2100,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                     <p style={{ margin: '5px 0 0', fontSize: 12.5, color: 'var(--text-mid)', lineHeight: 1.5, fontFamily: 'var(--font-body)' }}>
                       {t('w1i.blank_canvas_hint_a')}<b style={{ color: 'var(--studio-accent)' }}>+</b>{t('w1i.blank_canvas_hint_b')}
                     </p>
-                    <button onClick={loadExample} style={{ pointerEvents: 'auto', marginTop: 12, padding: '7px 14px', borderRadius: 9, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-mid)', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
+                    <button onClick={loadExample} style={{ pointerEvents: 'auto', marginTop: 12, padding: '7px 14px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-mid)', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
                       {t('w1i.or_load_example')}
                     </button>
                   </div>
@@ -2108,7 +2108,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
               )}
 
               {/* ── Contrôles de la toile : zoom · ajuster · ranger ── */}
-              <div style={{ position: 'absolute', right: 12, bottom: 14, zIndex: 5, display: 'flex', alignItems: 'center', gap: 2, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 12, padding: 3, boxShadow: '0 2px 6px rgba(0,0,0,0.06), 0 10px 28px rgba(0,0,0,0.10)' }}>
+              <div style={{ position: 'absolute', right: 12, bottom: 14, zIndex: 5, display: 'flex', alignItems: 'center', gap: 2, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: 3, boxShadow: '0 2px 6px rgba(0,0,0,0.06), 0 10px 28px rgba(0,0,0,0.10)' }}>
                 <button onClick={() => zoomBy(1 / 1.2)} title={t('w1i.zoom_out')} aria-label={t('w1i.zoom_out')} style={zBtn}>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M5 12h14"/></svg>
                 </button>
@@ -2167,7 +2167,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                 ? { position: 'absolute', left: 0, right: 0, bottom: 0, maxHeight: '62%', background: 'var(--bg-card)', borderTop: '1px solid var(--border)', borderTopLeftRadius: 18, borderTopRightRadius: 18, padding: 16, overflowY: 'auto', zIndex: 9, boxShadow: '0 -10px 34px rgba(0,0,0,0.20)', animation: 'studio_in 0.18s ease' }
                 : { position: 'absolute', top: 0, right: chatOpen ? CHAT_W : 0, bottom: 0, width: 300, background: 'var(--bg-card)', borderLeft: '1px solid var(--border)', padding: 16, overflowY: 'auto', zIndex: 4, animation: 'studio_in 0.18s ease' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
-                  <span style={{ width: 24, height: 24, borderRadius: 8, background: `color-mix(in srgb, ${KIND_COLOR[sel.kind]} 13%, transparent)`, color: KIND_COLOR[sel.kind], display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <span style={{ width: 24, height: 24, borderRadius: 'var(--r-sm)', background: `color-mix(in srgb, ${KIND_COLOR[sel.kind]} 13%, transparent)`, color: KIND_COLOR[sel.kind], display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <KindIcon kind={sel.kind} size={13} />
                   </span>
                   <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-mid)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{KIND_LABEL[sel.kind]}</span>
@@ -2226,7 +2226,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                     <div style={{ display: 'flex', gap: 6 }}>
                       {(['hermes', 'athena', 'zeus'] as StudioModel[]).map(m => (
                         <button key={m} onClick={() => patchNode(sel.id, { model: m })}
-                          style={{ flex: 1, padding: '8px 0', borderRadius: 8, border: `1px solid ${sel.model === m ? KIND_COLOR[sel.kind] : 'var(--border)'}`, cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'var(--font-body)',
+                          style={{ flex: 1, padding: '8px 0', borderRadius: 'var(--r-sm)', border: `1px solid ${sel.model === m ? KIND_COLOR[sel.kind] : 'var(--border)'}`, cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'var(--font-body)',
                             background: sel.model === m ? KIND_COLOR[sel.kind] : 'var(--bg-card2)', color: sel.model === m ? '#fff' : 'var(--text-mid)' }}>
                           {MODEL_LABEL[m]}
                         </button>
@@ -2236,7 +2236,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                 )}
                 {sel.kind !== 'trigger' && (
                   <button onClick={() => deleteNode(sel.id)}
-                    style={{ marginTop: 18, width: '100%', padding: '10px 0', borderRadius: 9, border: '1px solid rgba(239,68,68,0.4)', background: 'rgba(239,68,68,0.08)', color: 'var(--danger)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
+                    style={{ marginTop: 18, width: '100%', padding: '10px 0', borderRadius: 'var(--r-sm)', border: '1px solid rgba(239,68,68,0.4)', background: 'rgba(239,68,68,0.08)', color: 'var(--danger)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
                     {t('w1i.delete_node')}
                   </button>
                 )}
@@ -2254,12 +2254,12 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
             <div style={{ marginBottom: 20 }}>
               <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-body)' }}>{label}</div>
               {hint && <div style={{ fontSize: 12, color: 'var(--text-dim)', margin: '3px 0 9px', fontFamily: 'var(--font-body)', lineHeight: 1.5 }}>{hint}</div>}
-              <div style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 4, background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 12, padding: 4 }}>
+              <div style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 4, background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: 4 }}>
                 {opts.map(([v, lbl]) => {
                   const on = current === v
                   return (
                     <button key={v} onClick={() => pick(v)}
-                      style={{ padding: '9px 15px', borderRadius: 9, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'var(--font-body)', background: on ? 'var(--studio-accent)' : 'transparent', color: on ? '#fff' : 'var(--text-mid)' }}>{lbl}</button>
+                      style={{ padding: '9px 15px', borderRadius: 'var(--r-sm)', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'var(--font-body)', background: on ? 'var(--studio-accent)' : 'transparent', color: on ? '#fff' : 'var(--text-mid)' }}>{lbl}</button>
                   )
                 })}
               </div>
@@ -2294,7 +2294,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                 <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', marginBottom: 8 }}>{t('w3d.method_rules')}</div>
                 <textarea value={(m.rules ?? []).join('\n')} onChange={e => setM({ rules: e.target.value.split('\n') })}
                   placeholder={t('w3d.method_rules_ph')} rows={5}
-                  style={{ width: '100%', boxSizing: 'border-box', resize: 'vertical', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', borderRadius: 12, padding: '12px 14px', fontFamily: 'var(--font-body)', fontSize: 13.5, lineHeight: 1.55, outline: 'none' }} />
+                  style={{ width: '100%', boxSizing: 'border-box', resize: 'vertical', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', borderRadius: 'var(--r-md)', padding: '12px 14px', fontFamily: 'var(--font-body)', fontSize: 13.5, lineHeight: 1.55, outline: 'none' }} />
                 <div style={{ fontSize: 11.5, color: 'var(--text-dim)', marginTop: 8, fontFamily: 'var(--font-body)' }}>{t('w1i.method_autosave')}</div>
               </div>
               <div>
@@ -2302,7 +2302,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                 <div style={{ fontSize: 12, color: 'var(--text-dim)', margin: '0 0 9px', lineHeight: 1.5 }}>{t('w3d.method_examples_hint')}</div>
                 <textarea value={(m.sessionExamples ?? []).join('\n')} onChange={e => setM({ sessionExamples: e.target.value.split('\n') })}
                   placeholder={t('w3d.method_examples_ph')} rows={5}
-                  style={{ width: '100%', boxSizing: 'border-box', resize: 'vertical', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', borderRadius: 12, padding: '12px 14px', fontFamily: 'var(--font-body)', fontSize: 13.5, lineHeight: 1.55, outline: 'none' }} />
+                  style={{ width: '100%', boxSizing: 'border-box', resize: 'vertical', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', borderRadius: 'var(--r-md)', padding: '12px 14px', fontFamily: 'var(--font-body)', fontSize: 13.5, lineHeight: 1.55, outline: 'none' }} />
               </div>
             </div>
           )
@@ -2316,31 +2316,31 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                 style={{ ...fld, resize: 'vertical', lineHeight: 1.5, marginBottom: 18 }} placeholder={t('w1i.agents_together_ph')} />
             ) : <p style={{ fontSize: 13, color: 'var(--text-dim)' }}>{t('w1i.no_trigger_hint')}</p>}
 
-            {runErr && <div style={{ padding: 12, borderRadius: 10, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)', color: 'var(--danger)', fontSize: 13, marginBottom: 16 }}>{runErr}</div>}
+            {runErr && <div style={{ padding: 12, borderRadius: 'var(--r-sm)', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)', color: 'var(--danger)', fontSize: 13, marginBottom: 16 }}>{runErr}</div>}
 
             {runCost !== null && (
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '6px 12px', borderRadius: 999, background: 'rgba(59,146,212,0.08)', border: '1px solid rgba(59,146,212,0.25)', marginBottom: 16, fontSize: 12, fontWeight: 700, color: 'var(--studio-accent)', fontFamily: 'var(--font-body)', fontVariantNumeric: 'tabular-nums' }}>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '6px 12px', borderRadius: 'var(--r-pill)', background: 'rgba(59,146,212,0.08)', border: '1px solid rgba(59,146,212,0.25)', marginBottom: 16, fontSize: 12, fontWeight: 700, color: 'var(--studio-accent)', fontFamily: 'var(--font-body)', fontVariantNumeric: 'tabular-nums' }}>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
                 {t('w1i.run_cost', { n: formatTokens(runCost) })}
               </div>
             )}
 
             {approval && (
-              <div style={{ padding: 16, borderRadius: 16, background: 'var(--bg-card)', border: '1px solid rgba(245,158,11,0.45)', boxShadow: '0 2px 6px rgba(0,0,0,0.06), 0 14px 40px rgba(0,0,0,0.16)', marginBottom: 18, animation: 'studio_in 0.2s ease' }}>
+              <div style={{ padding: 16, borderRadius: 'var(--r-md)', background: 'var(--bg-card)', border: '1px solid rgba(245,158,11,0.45)', boxShadow: '0 2px 6px rgba(0,0,0,0.06), 0 14px 40px rgba(0,0,0,0.16)', marginBottom: 18, animation: 'studio_in 0.2s ease' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                  <span style={{ width: 26, height: 26, borderRadius: 8, background: 'rgba(245,158,11,0.14)', color: '#F59E0B', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <span style={{ width: 26, height: 26, borderRadius: 'var(--r-sm)', background: 'rgba(245,158,11,0.14)', color: '#F59E0B', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                     <KindIcon kind={approval.node.kind} size={14} />
                   </span>
                   <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-display)', flex: 1 }}>{approval.node.title}</span>
-                  <span style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '0.05em', textTransform: 'uppercase', color: '#F59E0B', background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.35)', borderRadius: 999, padding: '3px 9px' }}>{t('w1i.your_approval')}</span>
+                  <span style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '0.05em', textTransform: 'uppercase', color: '#F59E0B', background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.35)', borderRadius: 'var(--r-pill)', padding: '3px 9px' }}>{t('w1i.your_approval')}</span>
                 </div>
                 {approval.node.role && <div style={{ fontSize: 12.5, color: 'var(--text-mid)', marginBottom: 10, lineHeight: 1.5, fontFamily: 'var(--font-body)' }}>{approval.node.role}</div>}
-                <div style={{ maxHeight: 420, overflowY: 'auto', padding: '14px 16px', borderRadius: 12, background: 'var(--bg-card2)', border: '1px solid var(--border)', marginBottom: 14 }}>
+                <div style={{ maxHeight: 420, overflowY: 'auto', padding: '14px 16px', borderRadius: 'var(--r-md)', background: 'var(--bg-card2)', border: '1px solid var(--border)', marginBottom: 14 }}>
                   {approval.content ? <StudioMarkdown text={approval.content} /> : <span style={{ fontSize: 13, color: 'var(--text-dim)' }}>{t('w1i.no_input_content')}</span>}
                 </div>
                 <div style={{ display: 'flex', gap: 8 }}>
                   <button onClick={() => approval.resolve(true)} style={{ ...cta, flex: 1, justifyContent: 'center' }}>{t('w1i.validate_continue')}</button>
-                  <button onClick={() => approval.resolve(false)} style={{ flex: 1, padding: '9px 0', borderRadius: 9, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-mid)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>{t('w1i.refuse')}</button>
+                  <button onClick={() => approval.resolve(false)} style={{ flex: 1, padding: '9px 0', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-mid)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>{t('w1i.refuse')}</button>
                 </div>
               </div>
             )}
@@ -2350,7 +2350,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
             {running && logs.length === 0 && <p style={{ fontSize: 13, color: 'var(--text-dim)', animation: 'studio_pulse 1.4s ease infinite' }}>{t('w1i.agents_working')}</p>}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {logs.map((l, i) => (
-                <div key={i} style={{ padding: 13, borderRadius: 13, background: 'var(--bg-card)', border: '1px solid var(--border)', animation: 'studio_in 0.2s ease' }}>
+                <div key={i} style={{ padding: 13, borderRadius: 'var(--r-md)', background: 'var(--bg-card)', border: '1px solid var(--border)', animation: 'studio_in 0.2s ease' }}>
                   <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)', marginBottom: 5 }}>{l.title}</div>
                   <div style={{ fontSize: 13, color: 'var(--text-mid)', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>{l.text}</div>
                 </div>
@@ -2379,14 +2379,14 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
           return (
           <div style={{ position: 'absolute', inset: 0, overflowY: 'auto', padding: '20px 18px', maxWidth: 820, margin: '0 auto' }}>
             {runCost !== null && (
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '6px 12px', borderRadius: 999, background: 'rgba(59,146,212,0.08)', border: '1px solid rgba(59,146,212,0.25)', marginBottom: 14, fontSize: 12, fontWeight: 700, color: 'var(--studio-accent)', fontFamily: 'var(--font-body)', fontVariantNumeric: 'tabular-nums' }}>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '6px 12px', borderRadius: 'var(--r-pill)', background: 'rgba(59,146,212,0.08)', border: '1px solid rgba(59,146,212,0.25)', marginBottom: 14, fontSize: 12, fontWeight: 700, color: 'var(--studio-accent)', fontFamily: 'var(--font-body)', fontVariantNumeric: 'tabular-nums' }}>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
                 {t('w1i.run_cost', { n: formatTokens(runCost) })}
               </div>
             )}
             {/* Bandeau : ce qui a été écrit dans l'app (Planning / Calendrier / Notifs). */}
             {writes.length > 0 && (
-              <div style={{ marginBottom: 16, padding: '12px 14px', borderRadius: 14, background: 'rgba(34,197,94,0.07)', border: '1px solid rgba(34,197,94,0.35)' }}>
+              <div style={{ marginBottom: 16, padding: '12px 14px', borderRadius: 'var(--r-md)', background: 'rgba(34,197,94,0.07)', border: '1px solid rgba(34,197,94,0.35)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: writes.length ? 6 : 0 }}>
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#22C55E" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
                   <span style={{ fontSize: 13, fontWeight: 800, color: '#16A34A', fontFamily: 'var(--font-body)' }}>{t('w1i.run_wrote_in_app')}</span>
@@ -2400,7 +2400,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
               </div>
             )}
             {applyResult && (
-              <div style={{ marginBottom: 16, padding: '12px 14px', borderRadius: 14, display: 'flex', alignItems: 'center', gap: 10,
+              <div style={{ marginBottom: 16, padding: '12px 14px', borderRadius: 'var(--r-md)', display: 'flex', alignItems: 'center', gap: 10,
                 background: applyResult.ok ? 'rgba(34,197,94,0.07)' : 'rgba(239,68,68,0.07)',
                 border: `1px solid ${applyResult.ok ? 'rgba(34,197,94,0.35)' : 'rgba(239,68,68,0.35)'}` }}>
                 <span style={{ flex: 1, fontSize: 12.5, fontWeight: 700, color: applyResult.ok ? '#16A34A' : 'var(--danger)', fontFamily: 'var(--font-body)' }}>{applyResult.text}</span>
@@ -2423,16 +2423,16 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                 {selNode && (
                   <div style={{ marginTop: 14, animation: 'studio_in 0.2s ease' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                      <span style={{ width: 26, height: 26, borderRadius: 8, background: `color-mix(in srgb, ${KIND_COLOR[selNode.kind]} 14%, transparent)`, color: KIND_COLOR[selNode.kind], display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <span style={{ width: 26, height: 26, borderRadius: 'var(--r-sm)', background: `color-mix(in srgb, ${KIND_COLOR[selNode.kind]} 14%, transparent)`, color: KIND_COLOR[selNode.kind], display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                         <KindIcon kind={selNode.kind} size={14} />
                       </span>
                       <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-display)' }}>{selNode.title}</span>
-                      <span style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-dim)', background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 6, padding: '2px 7px' }}>{sub(selNode)}</span>
+                      <span style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-dim)', background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 'var(--r-sm)', padding: '2px 7px' }}>{sub(selNode)}</span>
                       <div style={{ flex: 1 }} />
                       {selText.trim() && (<>
                         {(selNode.kind === 'agent' || selNode.kind === 'merge') && (
                           <button onClick={() => void addRenderToPlanning(selText)} disabled={applyBusy} title={t('w1i.add_to_planning')}
-                            style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 11px', borderRadius: 8, border: 'none', background: '#16A34A', color: '#fff', fontSize: 11.5, fontWeight: 700, cursor: applyBusy ? 'default' : 'pointer', opacity: applyBusy ? 0.6 : 1, fontFamily: 'var(--font-body)' }}>
+                            style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 11px', borderRadius: 'var(--r-sm)', border: 'none', background: '#16A34A', color: '#fff', fontSize: 11.5, fontWeight: 700, cursor: applyBusy ? 'default' : 'pointer', opacity: applyBusy ? 0.6 : 1, fontFamily: 'var(--font-body)' }}>
                             {applyBusy ? (
                               <span style={{ width: 12, height: 12, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.4)', borderTopColor: '#fff', animation: 'studio_spin 0.7s linear infinite' }} />
                             ) : (
@@ -2442,12 +2442,12 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                           </button>
                         )}
                         <button onClick={() => continueWithCoach(selNode.title, selText)} title={t('w1i.continue_with_coach')}
-                          style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 11px', borderRadius: 8, border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
+                          style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 11px', borderRadius: 'var(--r-sm)', border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
                           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
                           {t('w1i.continue')}
                         </button>
                         <button onClick={() => copyRender(selNode.id, selText)} title={t('w1i.copy')}
-                          style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 11px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-card)', color: copied === selNode.id ? '#22C55E' : 'var(--text-mid)', fontSize: 11.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
+                          style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 11px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-card)', color: copied === selNode.id ? '#22C55E' : 'var(--text-mid)', fontSize: 11.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
                           {copied === selNode.id ? (
                             <><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg> {t('w1i.copied')}</>
                           ) : (
@@ -2457,7 +2457,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                       </>)}
                     </div>
                     {selNode.role && <div style={{ fontSize: 12, color: 'var(--text-dim)', marginBottom: 8, lineHeight: 1.5, fontFamily: 'var(--font-body)' }}>{selNode.role}</div>}
-                    <div style={{ padding: '14px 18px', borderRadius: 14, background: 'var(--bg-card)', border: '1px solid var(--border)', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+                    <div style={{ padding: '14px 18px', borderRadius: 'var(--r-md)', background: 'var(--bg-card)', border: '1px solid var(--border)', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
                       {selText.trim()
                         ? <StudioMarkdown text={selText} />
                         : <span style={{ fontSize: 13.5, color: 'var(--text-dim)' }}>{selNode.kind === 'source' ? t('w1i.source_no_text') : t('w1i.no_output_last_run')}</span>}
@@ -2505,11 +2505,11 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
             <div style={{ maxWidth: 760, margin: '0 auto' }}>
             {/* En-tête : progression vers l'objectif */}
             {(obj?.text || allRuns.length > 0) && (
-              <div style={{ padding: '14px 16px', borderRadius: 16, background: 'linear-gradient(150deg, color-mix(in srgb, var(--studio-accent) 8%, var(--bg-card)), var(--bg-card))', border: '1px solid color-mix(in srgb, var(--studio-accent) 22%, var(--border))', marginBottom: 18 }}>
+              <div style={{ padding: '14px 16px', borderRadius: 'var(--r-md)', background: 'linear-gradient(150deg, color-mix(in srgb, var(--studio-accent) 8%, var(--bg-card)), var(--bg-card))', border: '1px solid color-mix(in srgb, var(--studio-accent) 22%, var(--border))', marginBottom: 18 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ color: 'var(--studio-accent)', display: 'flex', flexShrink: 0 }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="0.7" fill="currentColor"/></svg></span>
                   <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-dim)', fontFamily: 'var(--font-body)' }}>{t('w1i.progress_to_objective')}</span>
-                  {deadlineChip && <span style={{ marginLeft: 'auto', fontSize: 11, fontWeight: 800, color: deadlineChip.col, background: `color-mix(in srgb, ${deadlineChip.col} 12%, transparent)`, borderRadius: 7, padding: '3px 9px', fontFamily: 'var(--font-body)' }}>{deadlineChip.text}</span>}
+                  {deadlineChip && <span style={{ marginLeft: 'auto', fontSize: 11, fontWeight: 800, color: deadlineChip.col, background: `color-mix(in srgb, ${deadlineChip.col} 12%, transparent)`, borderRadius: 'var(--r-sm)', padding: '3px 9px', fontFamily: 'var(--font-body)' }}>{deadlineChip.text}</span>}
                 </div>
                 <div style={{ fontSize: 15.5, fontWeight: 700, color: 'var(--text)', margin: '8px 0 0', fontFamily: 'var(--font-display)', lineHeight: 1.3 }}>{obj?.text || graph.name}</div>
                 <div style={{ fontSize: 12.5, color: 'var(--text-mid)', marginTop: 6, fontFamily: 'var(--font-body)' }}>
@@ -2520,13 +2520,13 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                 {(nextRunLabel || healthAlert) && (
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7, marginTop: 10 }}>
                     {nextRunLabel && (
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 700, color: 'var(--studio-accent)', background: 'color-mix(in srgb, var(--studio-accent) 10%, transparent)', borderRadius: 8, padding: '4px 9px', fontFamily: 'var(--font-body)' }}>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 700, color: 'var(--studio-accent)', background: 'color-mix(in srgb, var(--studio-accent) 10%, transparent)', borderRadius: 'var(--r-sm)', padding: '4px 9px', fontFamily: 'var(--font-body)' }}>
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
                         {t('w1i.next_run', { label: nextRunLabel })}
                       </span>
                     )}
                     {healthAlert && (
-                      <span title={healthAlert} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 700, color: '#B45309', background: 'rgba(245,158,11,0.12)', borderRadius: 8, padding: '4px 9px', fontFamily: 'var(--font-body)' }}>
+                      <span title={healthAlert} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 700, color: '#B45309', background: 'rgba(245,158,11,0.12)', borderRadius: 'var(--r-sm)', padding: '4px 9px', fontFamily: 'var(--font-body)' }}>
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4M12 17h.01"/></svg>
                         {t('w1i.safety_mode_active')}
                       </span>
@@ -2561,7 +2561,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                       <div style={{ flexShrink: 0, width: 32, display: 'flex', justifyContent: 'center', paddingTop: 12 }}>
                         <span style={{ width: 12, height: 12, borderRadius: '50%', background: stCol, border: '3px solid var(--bg)', boxShadow: `0 0 0 1px ${stCol}`, zIndex: 1 }} />
                       </div>
-                      <div style={{ flex: 1, minWidth: 0, borderRadius: 13, background: 'var(--bg-card)', border: '1px solid var(--border)', overflow: 'hidden', animation: 'studio_in 0.2s ease' }}>
+                      <div style={{ flex: 1, minWidth: 0, borderRadius: 'var(--r-md)', background: 'var(--bg-card)', border: '1px solid var(--border)', overflow: 'hidden', animation: 'studio_in 0.2s ease' }}>
                         <button onClick={() => setOpenRunId(open ? null : r.id)}
                           style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '12px 14px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font-body)' }}>
                           <span style={{ flex: 1, minWidth: 0 }}>
@@ -2582,7 +2582,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                             {(r.renders ?? []).filter(x => x.text).map((x, i) => (
                               <div key={i} style={{ marginTop: 10 }}>
                                 <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)', marginBottom: 4, fontFamily: 'var(--font-body)' }}>{x.title}</div>
-                                <div style={{ maxHeight: 300, overflowY: 'auto', padding: '8px 10px', borderRadius: 9, background: 'var(--bg-card2)' }}>
+                                <div style={{ maxHeight: 300, overflowY: 'auto', padding: '8px 10px', borderRadius: 'var(--r-sm)', background: 'var(--bg-card2)' }}>
                                   <StudioMarkdown text={x.text} />
                                 </div>
                               </div>
@@ -2606,7 +2606,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
             {access && !access.allowed ? (
               /* ── Paywall : Studio réservé Pro/Expert ── */
               <div style={{ maxWidth: 660, margin: '40px auto 0', textAlign: 'center' }}>
-                <span style={{ width: 60, height: 60, borderRadius: 18, background: 'rgba(59,146,212,0.12)', color: 'var(--studio-accent)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                <span style={{ width: 60, height: 60, borderRadius: 'var(--r-lg)', background: 'rgba(59,146,212,0.12)', color: 'var(--studio-accent)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
                   <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
                 </span>
                 <h2 style={{ fontSize: 22, fontWeight: 700, color: 'var(--text)', margin: '16px 0 8px', fontFamily: 'var(--font-display)' }}>{t('w1i.paywall_title')}</h2>
@@ -2616,7 +2616,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                 <a href="/settings/subscription" style={{ ...cta, display: 'inline-flex', textDecoration: 'none' }}>{t('w1i.see_subscriptions')}</a>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginTop: 34, opacity: 0.65 }}>
                   {STUDIO_PACKS.map(p => (
-                    <div key={p.key} style={{ padding: '16px 14px', borderRadius: 14, border: '1px solid var(--border)', background: 'var(--bg-card)', textAlign: 'left' }}>
+                    <div key={p.key} style={{ padding: '16px 14px', borderRadius: 'var(--r-md)', border: '1px solid var(--border)', background: 'var(--bg-card)', textAlign: 'left' }}>
                       <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-body)' }}>{p.label}</div>
                       <div style={{ fontSize: 19, fontWeight: 800, color: 'var(--text)', margin: '6px 0 2px', fontFamily: 'var(--font-display)' }}>{formatTokens(p.tokens)} <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-dim)' }}>{t('w1i.tokens_word')}</span></div>
                       <div style={{ fontSize: 11.5, color: 'var(--text-dim)', fontFamily: 'var(--font-body)' }}>{p.tagline}</div>
@@ -2635,7 +2635,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                     const count = f === null ? systems.length : systems.filter(s => s.folder === f).length
                     return (
                       <button key={f ?? '__all'} onClick={() => setActiveFolder(f)}
-                        style={{ display: 'flex', alignItems: 'center', gap: 14, width: '100%', padding: '0 14px', minHeight: isMobile ? 50 : 40, borderRadius: 18, border: 'none', cursor: 'pointer', textAlign: 'left',
+                        style={{ display: 'flex', alignItems: 'center', gap: 14, width: '100%', padding: '0 14px', minHeight: isMobile ? 50 : 40, borderRadius: 'var(--r-lg)', border: 'none', cursor: 'pointer', textAlign: 'left',
                           background: on ? 'color-mix(in srgb, var(--text) 13%, var(--bg))' : 'transparent', color: 'var(--text)',
                           fontSize: isMobile ? 17 : 13, fontWeight: 500, fontFamily: 'var(--font-body)' }}>
                         <svg width={isMobile ? 22 : 14} height={isMobile ? 22 : 14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
@@ -2653,13 +2653,13 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
 
                 <div style={{ flex: 1, minWidth: 0 }}>
                 {homeErr && (
-                  <div style={{ marginBottom: 14, padding: '10px 14px', borderRadius: 10, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)', color: 'var(--danger)', fontSize: 12.5, fontFamily: 'var(--font-body)' }}>{homeErr}</div>
+                  <div style={{ marginBottom: 14, padding: '10px 14px', borderRadius: 'var(--r-sm)', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)', color: 'var(--danger)', fontSize: 12.5, fontFamily: 'var(--font-body)' }}>{homeErr}</div>
                 )}
 
                 {/* ── Suggestion proactive : signal santé détecté → système dédié ── */}
                 {activeFolder === null && !homeLoading && healthAlert && !systems.some(s => /bless|retour|récup|recup|rééduc|reeduc|prudent/.test(`${s.name} ${s.graph?.objective?.text ?? ''}`.toLowerCase())) && (
                   <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'stretch' : 'center', gap: 12, padding: '20px', borderRadius: 'var(--r-lg)', background: 'var(--bg-card2)', marginBottom: 18 }}>
-                    <span style={{ width: 34, height: 34, borderRadius: 10, background: 'rgba(245,158,11,0.15)', color: '#F59E0B', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <span style={{ width: 34, height: 34, borderRadius: 'var(--r-sm)', background: 'rgba(245,158,11,0.15)', color: '#F59E0B', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4M12 17h.01"/></svg>
                     </span>
                     <div style={{ flex: 1, minWidth: 0 }}>
@@ -2667,7 +2667,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                       <div style={{ fontSize: 14, color: 'var(--text-mid)', marginTop: 4, fontFamily: 'var(--font-body)', lineHeight: 1.5 }}>{t('w1i.ease_off_body', { alert: healthAlert })}</div>
                     </div>
                     <button onClick={() => void startFirstSystem(t('w1i.manage_situation_obj', { alert: healthAlert }))}
-                      style={{ padding: '0 22px', minHeight: 48, borderRadius: 999, border: 'none', background: 'var(--text)', color: 'var(--bg)', fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)', flexShrink: 0, whiteSpace: 'nowrap' }}>
+                      style={{ padding: '0 22px', minHeight: 48, borderRadius: 'var(--r-pill)', border: 'none', background: 'var(--text)', color: 'var(--bg)', fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)', flexShrink: 0, whiteSpace: 'nowrap' }}>
                       {t('w1i.create_this_system')}
                     </button>
                   </div>
@@ -2687,9 +2687,9 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                       <input value={firstObjective} onChange={e => setFirstObjective(e.target.value)}
                         onKeyDown={e => { if (e.key === 'Enter') void startFirstSystem(firstObjective) }}
                         placeholder={t('w1i.first_objective_ph')}
-                        style={{ flex: 1, minWidth: 0, padding: '12px 14px', borderRadius: 12, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 14, fontFamily: 'var(--font-body)', outline: 'none' }} />
+                        style={{ flex: 1, minWidth: 0, padding: '12px 14px', borderRadius: 'var(--r-md)', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 14, fontFamily: 'var(--font-body)', outline: 'none' }} />
                       <button onClick={() => void startFirstSystem(firstObjective)}
-                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, padding: '12px 20px', borderRadius: 12, border: 'none', background: 'var(--studio-accent)', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)', flexShrink: 0 }}>
+                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, padding: '12px 20px', borderRadius: 'var(--r-md)', border: 'none', background: 'var(--studio-accent)', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)', flexShrink: 0 }}>
                         {t('w1i.create_my_system')}
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
                       </button>
@@ -2700,14 +2700,14 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
 
                 {/* ── Deux espaces : Pour moi · Pour mes athlètes ── */}
                 {activeFolder === null && (
-                <div style={{ display: 'inline-flex', gap: 4, padding: 4, borderRadius: 999, background: 'var(--bg-card2)', margin: '0 0 18px' }}>
+                <div style={{ display: 'inline-flex', gap: 4, padding: 4, borderRadius: 'var(--r-pill)', background: 'var(--bg-card2)', margin: '0 0 18px' }}>
                   {([['perso', t('w1i.for_me')], ['coach', t('w1i.for_my_athletes')]] as const).map(([v, l]) => {
                     // « Pour mes athlètes » verrouillé sans abonnement coach.
                     const locked = v === 'coach' && !coachAccess
                     return (
                       <button key={v} onClick={() => { if (locked) { setScopeTab('perso'); alert(t('w1i.athletes_space_locked')); return } setScopeTab(v) }}
                         title={locked ? t('w1i.coach_only') : undefined}
-                        style={{ padding: '0 20px', minHeight: 44, borderRadius: 999, border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 15, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 6,
+                        style={{ padding: '0 20px', minHeight: 44, borderRadius: 'var(--r-pill)', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 15, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 6,
                           background: scopeTab === v ? 'var(--bg)' : 'transparent', color: scopeTab === v ? 'var(--text)' : 'var(--text-mid)', opacity: locked ? 0.55 : 1, transition: 'background 0.25s ease, color 0.25s ease' }}>
                         {l}
                         {locked && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>}
@@ -2723,9 +2723,9 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                   const sports = Array.from(new Set(coachAthletes.flatMap(a => a.sports))).filter(Boolean)
                   const filtered = coachAthletes.filter(a => !sportFilter || a.sports.includes(sportFilter))
                   const toggle = (id: string) => setAthleteSel(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n })
-                  const chip = (active: boolean) => ({ padding: '6px 12px', borderRadius: 999, border: `1px solid ${active ? 'var(--studio-accent)' : 'var(--border)'}`, background: active ? 'color-mix(in srgb, var(--studio-accent) 12%, var(--bg-card))' : 'var(--bg-card)', color: active ? 'var(--studio-accent)' : 'var(--text-mid)', cursor: 'pointer', fontSize: 12.5, fontWeight: 700, fontFamily: 'var(--font-body)' } as const)
+                  const chip = (active: boolean) => ({ padding: '6px 12px', borderRadius: 'var(--r-pill)', border: `1px solid ${active ? 'var(--studio-accent)' : 'var(--border)'}`, background: active ? 'color-mix(in srgb, var(--studio-accent) 12%, var(--bg-card))' : 'var(--bg-card)', color: active ? 'var(--studio-accent)' : 'var(--text-mid)', cursor: 'pointer', fontSize: 12.5, fontWeight: 700, fontFamily: 'var(--font-body)' } as const)
                   return (
-                    <div style={{ marginBottom: 20, padding: 14, borderRadius: 16, border: '1px solid var(--border)', background: 'var(--bg-card)' }}>
+                    <div style={{ marginBottom: 20, padding: 14, borderRadius: 'var(--r-md)', border: '1px solid var(--border)', background: 'var(--bg-card)' }}>
                       <div style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--text)', fontFamily: 'var(--font-body)', marginBottom: 3 }}>{t('w1i.select_athletes')}</div>
                       <p style={{ fontSize: 11.5, color: 'var(--text-dim)', margin: '0 0 11px', fontFamily: 'var(--font-body)', lineHeight: 1.5 }}>{t('w1i.select_athletes_hint')}</p>
                       {sports.length > 1 && (
@@ -2763,7 +2763,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                       <span style={{ fontSize: 17, fontWeight: 600, color: 'var(--text)', fontFamily: 'var(--font-body)' }}>{scopeTab === 'coach' ? t('w1i.recommended_for_athletes') : t('w1i.recommended_for_you')}</span>
                       <div style={{ flex: 1 }} />
                       <button onClick={() => void loadRecos(true)} disabled={recosLoading} title={t('w1i.regenerate_recos')} aria-label={t('w1i.regenerate')}
-                        style={{ display: 'flex', alignItems: 'center', gap: 5, height: 40, padding: '0 16px', borderRadius: 999, border: 'none', background: 'var(--bg-card2)', color: 'var(--text-mid)', cursor: recosLoading ? 'default' : 'pointer', fontSize: 14, fontWeight: 600, fontFamily: 'var(--font-body)' }}>
+                        style={{ display: 'flex', alignItems: 'center', gap: 5, height: 40, padding: '0 16px', borderRadius: 'var(--r-pill)', border: 'none', background: 'var(--bg-card2)', color: 'var(--text-mid)', cursor: recosLoading ? 'default' : 'pointer', fontSize: 14, fontWeight: 600, fontFamily: 'var(--font-body)' }}>
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={recosLoading ? { animation: 'studio_spin 0.8s linear infinite' } : undefined}><path d="M21 12a9 9 0 11-2.6-6.4M21 3v6h-6"/></svg>
                         {t('w1i.regenerate')}
                       </button>
@@ -2773,9 +2773,9 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: 12 }}>
                         {[0, 1, 2].map(i => (
                           <div key={i} style={{ minHeight: 130, borderRadius: 'var(--r-lg)', background: 'var(--bg-card2)', padding: 20, animation: 'studio_pulse 1.4s ease infinite' }}>
-                            <div style={{ width: '55%', height: 13, borderRadius: 6, background: 'var(--bg-card2)' }} />
-                            <div style={{ width: '92%', height: 9, borderRadius: 6, background: 'var(--bg-card2)', marginTop: 12 }} />
-                            <div style={{ width: '80%', height: 9, borderRadius: 6, background: 'var(--bg-card2)', marginTop: 7 }} />
+                            <div style={{ width: '55%', height: 13, borderRadius: 'var(--r-sm)', background: 'var(--bg-card2)' }} />
+                            <div style={{ width: '92%', height: 9, borderRadius: 'var(--r-sm)', background: 'var(--bg-card2)', marginTop: 12 }} />
+                            <div style={{ width: '80%', height: 9, borderRadius: 'var(--r-sm)', background: 'var(--bg-card2)', marginTop: 7 }} />
                           </div>
                         ))}
                       </div>
@@ -2791,7 +2791,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                               onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 6px 20px rgba(59,146,212,0.16)'; (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-1px)' }}
                               onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 1px 3px rgba(0,0,0,0.05)'; (e.currentTarget as HTMLButtonElement).style.transform = 'none' }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                <span style={{ width: 26, height: 26, borderRadius: 8, background: 'rgba(59,146,212,0.14)', color: 'var(--studio-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                <span style={{ width: 26, height: 26, borderRadius: 'var(--r-sm)', background: 'rgba(59,146,212,0.14)', color: 'var(--studio-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="5" cy="6" r="2.4"/><circle cx="19" cy="6" r="2.4"/><circle cx="12" cy="18" r="2.4"/><path d="M7.2 7.2 10.5 16M16.8 7.2 13.5 16"/></svg>
                                 </span>
                                 <span style={{ fontSize: 17, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.title}</span>
@@ -2858,17 +2858,17 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
                               </button>
                               {folderMenuFor === s.id && (
-                                <div style={{ position: 'absolute', bottom: 30, right: -8, zIndex: 30, width: 210, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 12, boxShadow: '0 10px 32px rgba(0,0,0,0.18)', padding: 6, animation: 'studio_in 0.15s ease' }}>
+                                <div style={{ position: 'absolute', bottom: 30, right: -8, zIndex: 30, width: 210, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', boxShadow: '0 10px 32px rgba(0,0,0,0.18)', padding: 6, animation: 'studio_in 0.15s ease' }}>
                                   {Array.from(new Set(systems.map(x => x.folder).filter((f): f is string => Boolean(f)))).sort().map(f => (
                                     <button key={f} onClick={() => void moveToFolder(s.id, f)}
-                                      style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '8px 10px', borderRadius: 8, border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left', fontSize: 12.5, fontWeight: 600, color: 'var(--text)', fontFamily: 'var(--font-body)' }}>
+                                      style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '8px 10px', borderRadius: 'var(--r-sm)', border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left', fontSize: 12.5, fontWeight: 600, color: 'var(--text)', fontFamily: 'var(--font-body)' }}>
                                       <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f}</span>
                                       {s.folder === f && <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" style={{ color: 'var(--studio-accent)' }} strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>}
                                     </button>
                                   ))}
                                   {s.folder && (
                                     <button onClick={() => void moveToFolder(s.id, null)}
-                                      style={{ display: 'flex', width: '100%', padding: '8px 10px', borderRadius: 8, border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left', fontSize: 12.5, color: 'var(--text-dim)', fontFamily: 'var(--font-body)' }}>
+                                      style={{ display: 'flex', width: '100%', padding: '8px 10px', borderRadius: 'var(--r-sm)', border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left', fontSize: 12.5, color: 'var(--text-dim)', fontFamily: 'var(--font-body)' }}>
                                       {t('w1i.remove_from_folder')}
                                     </button>
                                   )}
@@ -2876,10 +2876,10 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                                     <input value={newFolderName} onChange={e => setNewFolderName(e.target.value)}
                                       onKeyDown={e => { if (e.key === 'Enter' && newFolderName.trim()) void moveToFolder(s.id, newFolderName.trim()) }}
                                       placeholder={t('w1i.new_folder_ph')}
-                                      style={{ flex: 1, minWidth: 0, padding: '6px 8px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 12, fontFamily: 'var(--font-body)', outline: 'none' }} />
+                                      style={{ flex: 1, minWidth: 0, padding: '6px 8px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 12, fontFamily: 'var(--font-body)', outline: 'none' }} />
                                     <button onClick={() => { if (newFolderName.trim()) void moveToFolder(s.id, newFolderName.trim()) }}
                                       disabled={!newFolderName.trim()}
-                                      style={{ padding: '0 10px', borderRadius: 7, border: 'none', background: newFolderName.trim() ? 'var(--studio-accent)' : 'var(--border)', color: newFolderName.trim() ? '#fff' : 'var(--text-dim)', fontSize: 12, fontWeight: 700, cursor: newFolderName.trim() ? 'pointer' : 'default', fontFamily: 'var(--font-body)' }}>
+                                      style={{ padding: '0 10px', borderRadius: 'var(--r-sm)', border: 'none', background: newFolderName.trim() ? 'var(--studio-accent)' : 'var(--border)', color: newFolderName.trim() ? '#fff' : 'var(--text-dim)', fontSize: 12, fontWeight: 700, cursor: newFolderName.trim() ? 'pointer' : 'default', fontFamily: 'var(--font-body)' }}>
                                       OK
                                     </button>
                                   </div>
@@ -2912,11 +2912,11 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))', gap: 12 }}>
                   {STUDIO_TEMPLATES.map(tpl => (
                     <button key={tpl.key} onClick={() => void newSystem(tpl.name, tpl.build())}
-                      style={{ borderRadius: 16, border: '1px solid var(--border)', background: 'var(--bg-card)', cursor: 'pointer', padding: '14px 14px 13px', textAlign: 'left', fontFamily: 'var(--font-body)', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', transition: 'box-shadow 150ms, transform 150ms' }}
+                      style={{ borderRadius: 'var(--r-md)', border: '1px solid var(--border)', background: 'var(--bg-card)', cursor: 'pointer', padding: '14px 14px 13px', textAlign: 'left', fontFamily: 'var(--font-body)', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', transition: 'box-shadow 150ms, transform 150ms' }}
                       onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 6px 20px rgba(0,0,0,0.10)'; (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-1px)' }}
                       onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 1px 3px rgba(0,0,0,0.05)'; (e.currentTarget as HTMLButtonElement).style.transform = 'none' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span style={{ width: 26, height: 26, borderRadius: 8, background: 'rgba(59,146,212,0.12)', color: 'var(--studio-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <span style={{ width: 26, height: 26, borderRadius: 'var(--r-sm)', background: 'rgba(59,146,212,0.12)', color: 'var(--studio-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="5" cy="6" r="2.4"/><circle cx="19" cy="6" r="2.4"/><circle cx="12" cy="18" r="2.4"/><path d="M7.2 7.2 10.5 16M16.8 7.2 13.5 16"/></svg>
                         </span>
                         <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)' }}>{tpl.name}</span>
@@ -2939,7 +2939,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
           const create = () => { setNewSysOpen(false); void newSystem(newSysName.trim() || t('w1i.my_system'), emptyGraph(), chosen, scopeTab === 'coach' ? newSysAthlete : null) }
           return (
             <div onClick={() => setNewSysOpen(false)} style={{ position: 'absolute', inset: 0, zIndex: 40, background: 'rgba(0,0,0,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, animation: 'studio_in 0.16s ease' }}>
-              <div onClick={e => e.stopPropagation()} style={{ width: 'min(420px, 100%)', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 18, boxShadow: '0 20px 60px rgba(0,0,0,0.3)', padding: 18 }}>
+              <div onClick={e => e.stopPropagation()} style={{ width: 'min(420px, 100%)', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-lg)', boxShadow: '0 20px 60px rgba(0,0,0,0.3)', padding: 18 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 14 }}>
                   <StudioLogo size={20} />
                   <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-display)', flex: 1 }}>{t('w1i.new_system')}</span>
@@ -2964,14 +2964,14 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                 <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: '0 0 8px', lineHeight: 1.5 }}>{t('w1i.folder_hint')}</p>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
                   <button onClick={() => { setNewSysFolder(null); setNewSysNewFolder('') }}
-                    style={{ padding: '6px 12px', borderRadius: 999, border: `1px solid ${!chosen ? 'var(--studio-accent)' : 'var(--border)'}`, background: !chosen ? 'color-mix(in srgb, var(--studio-accent) 10%, transparent)' : 'var(--bg-card2)', color: !chosen ? 'var(--studio-accent)' : 'var(--text-mid)', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
+                    style={{ padding: '6px 12px', borderRadius: 'var(--r-pill)', border: `1px solid ${!chosen ? 'var(--studio-accent)' : 'var(--border)'}`, background: !chosen ? 'color-mix(in srgb, var(--studio-accent) 10%, transparent)' : 'var(--bg-card2)', color: !chosen ? 'var(--studio-accent)' : 'var(--text-mid)', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
                     {t('w1i.no_folder')}
                   </button>
                   {folders.map(f => {
                     const on = !newSysNewFolder.trim() && newSysFolder === f
                     return (
                       <button key={f} onClick={() => { setNewSysFolder(f); setNewSysNewFolder('') }}
-                        style={{ padding: '6px 12px', borderRadius: 999, border: `1px solid ${on ? 'var(--studio-accent)' : 'var(--border)'}`, background: on ? 'color-mix(in srgb, var(--studio-accent) 10%, transparent)' : 'var(--bg-card2)', color: on ? 'var(--studio-accent)' : 'var(--text-mid)', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
+                        style={{ padding: '6px 12px', borderRadius: 'var(--r-pill)', border: `1px solid ${on ? 'var(--studio-accent)' : 'var(--border)'}`, background: on ? 'color-mix(in srgb, var(--studio-accent) 10%, transparent)' : 'var(--bg-card2)', color: on ? 'var(--studio-accent)' : 'var(--text-mid)', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
                         {f}
                       </button>
                     )
@@ -2980,7 +2980,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                 <input value={newSysNewFolder} onChange={e => setNewSysNewFolder(e.target.value)} placeholder={t('w1i.new_folder_plus_ph')}
                   onKeyDown={e => { if (e.key === 'Enter') create() }} style={fld} />
                 <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
-                  <button onClick={create} style={{ flex: 1, padding: '10px 0', borderRadius: 11, border: 'none', background: 'var(--studio-accent)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
+                  <button onClick={create} style={{ flex: 1, padding: '10px 0', borderRadius: 'var(--r-md)', border: 'none', background: 'var(--studio-accent)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
                     {t('w1i.create')}{chosen ? t('w1i.in_folder_suffix', { folder: chosen }) : ''}
                   </button>
                 </div>
@@ -2992,7 +2992,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
         {/* ══ Sélecteur d'athlète cible (coach) ══ */}
         {athletePickerOpen && (
           <div onClick={() => setAthletePickerOpen(false)} style={{ position: 'absolute', inset: 0, zIndex: 41, background: 'rgba(0,0,0,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, animation: 'studio_in 0.16s ease' }}>
-            <div onClick={e => e.stopPropagation()} style={{ width: 'min(400px, 100%)', maxHeight: '80%', display: 'flex', flexDirection: 'column', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 18, boxShadow: '0 20px 60px rgba(0,0,0,0.3)', padding: 18 }}>
+            <div onClick={e => e.stopPropagation()} style={{ width: 'min(400px, 100%)', maxHeight: '80%', display: 'flex', flexDirection: 'column', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-lg)', boxShadow: '0 20px 60px rgba(0,0,0,0.3)', padding: 18 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 6 }}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" style={{ color: 'var(--studio-accent)' }} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
                 <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-display)', flex: 1 }}>{t('w1i.system_athlete')}</span>
@@ -3003,14 +3003,14 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
               <p style={{ fontSize: 12, color: 'var(--text-dim)', margin: '0 0 12px', lineHeight: 1.5, fontFamily: 'var(--font-body)' }}>{t('w1i.athlete_picker_hint')}</p>
               <div style={{ overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4 }}>
                 <button onClick={() => { setSystemAthlete(null); setAthletePickerOpen(false) }}
-                  style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 11, border: 'none', background: !openAthleteId ? 'color-mix(in srgb, var(--studio-accent) 10%, transparent)' : 'transparent', cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font-body)', color: !openAthleteId ? 'var(--studio-accent)' : 'var(--text)', fontSize: 13.5, fontWeight: 600 }}>
+                  style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 'var(--r-md)', border: 'none', background: !openAthleteId ? 'color-mix(in srgb, var(--studio-accent) 10%, transparent)' : 'transparent', cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font-body)', color: !openAthleteId ? 'var(--studio-accent)' : 'var(--text)', fontSize: 13.5, fontWeight: 600 }}>
                   {t('w1i.all_my_athletes')} <span style={{ fontWeight: 400, color: 'var(--text-dim)', fontSize: 12 }}>{t('w1i.choose_at_launch_suffix')}</span>
                 </button>
                 {coachAthletes.map(a => {
                   const on = openAthleteId === a.id
                   return (
                     <button key={a.id} onClick={() => { setSystemAthlete(a.id); setAthletePickerOpen(false) }}
-                      style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 11, border: 'none', background: on ? 'color-mix(in srgb, var(--studio-accent) 10%, transparent)' : 'transparent', cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font-body)', color: on ? 'var(--studio-accent)' : 'var(--text)', fontSize: 13.5, fontWeight: 600 }}>
+                      style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 'var(--r-md)', border: 'none', background: on ? 'color-mix(in srgb, var(--studio-accent) 10%, transparent)' : 'transparent', cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font-body)', color: on ? 'var(--studio-accent)' : 'var(--text)', fontSize: 13.5, fontWeight: 600 }}>
                       <span style={{ width: 22, height: 22, borderRadius: '50%', flexShrink: 0, background: 'var(--bg-card2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: 'var(--text-mid)' }}>{a.name.charAt(0).toUpperCase()}</span>
                       {a.name}
                     </button>
@@ -3089,9 +3089,9 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
             <div onClick={requestCloseMockup} style={{ position: 'absolute', inset: 0, background: 'rgba(15,23,42,0.42)', backdropFilter: 'blur(2px)', WebkitBackdropFilter: 'blur(2px)' }} />
             <div onClick={e => e.stopPropagation()} style={panelStyle}>
               {/* Poignée mobile */}
-              {isMobile && <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 8 }}><span style={{ width: 40, height: 4, borderRadius: 999, background: 'var(--border-mid)' }} /></div>}
+              {isMobile && <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 8 }}><span style={{ width: 40, height: 4, borderRadius: 'var(--r-pill)', background: 'var(--border-mid)' }} /></div>}
               <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', borderBottom: '1px solid var(--border)' }}>
-                <span style={{ width: 30, height: 30, borderRadius: 9, background: 'color-mix(in srgb, var(--studio-accent) 12%, transparent)', color: 'var(--studio-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <span style={{ width: 30, height: 30, borderRadius: 'var(--r-sm)', background: 'color-mix(in srgb, var(--studio-accent) 12%, transparent)', color: 'var(--studio-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                   <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><circle cx="5" cy="6" r="2.2"/><circle cx="19" cy="6" r="2.2"/><circle cx="12" cy="18" r="2.2"/><path d="M7 6.6 10.6 16.4M17 6.6 13.4 16.4"/></svg>
                 </span>
                 <div style={{ flex: 1, minWidth: 0 }}>
@@ -3105,13 +3105,13 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
               <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: 18 }}>
                 <div style={{ maxWidth: 700, margin: '0 auto' }}>
                   {why && (
-                    <div style={{ display: 'flex', gap: 9, alignItems: 'flex-start', padding: '11px 13px', borderRadius: 13, background: 'color-mix(in srgb, var(--studio-accent) 7%, var(--bg-card))', border: '1px solid color-mix(in srgb, var(--studio-accent) 25%, var(--border))', marginBottom: 14 }}>
+                    <div style={{ display: 'flex', gap: 9, alignItems: 'flex-start', padding: '11px 13px', borderRadius: 'var(--r-md)', background: 'color-mix(in srgb, var(--studio-accent) 7%, var(--bg-card))', border: '1px solid color-mix(in srgb, var(--studio-accent) 25%, var(--border))', marginBottom: 14 }}>
                       <span style={{ color: 'var(--studio-accent)', flexShrink: 0, marginTop: 1 }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l2.4 7.4H22l-6 4.6 2.3 7.4-6.3-4.6L5.7 21 8 14 2 9.4h7.6z"/></svg></span>
                       <span style={{ fontSize: 13, color: 'var(--text-mid)', lineHeight: 1.55, fontFamily: 'var(--font-body)' }}>{why}</span>
                     </div>
                   )}
                   <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-dim)', margin: '0 0 8px', textAlign: 'center' }}>{t('w1i.tap_bubble_role')}</div>
-                  <div style={{ borderRadius: 18, background: 'var(--bg-card)', border: '1px solid var(--border)', boxShadow: '0 1px 3px rgba(0,0,0,0.05), 0 18px 44px rgba(0,0,0,0.08)', padding: '14px 10px' }}>
+                  <div style={{ borderRadius: 'var(--r-lg)', background: 'var(--bg-card)', border: '1px solid var(--border)', boxShadow: '0 1px 3px rgba(0,0,0,0.05), 0 18px 44px rgba(0,0,0,0.08)', padding: '14px 10px' }}>
                     {miniGraph(g, {
                       bare: true, width: 660, height: 400, maxScale: 1,
                       selectedId: sel ? sel.id : null,
@@ -3119,7 +3119,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                     })}
                   </div>
                   {outputs.length > 0 && (
-                    <div style={{ marginTop: 14, padding: '13px 15px', borderRadius: 14, background: 'var(--bg-card)', border: '1px solid var(--border)', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+                    <div style={{ marginTop: 14, padding: '13px 15px', borderRadius: 'var(--r-md)', background: 'var(--bg-card)', border: '1px solid var(--border)', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 9 }}>
                         <span style={{ color: '#22C55E', display: 'flex' }}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg></span>
                         <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text)', fontFamily: 'var(--font-body)' }}>{t('w1i.what_you_receive')}</span>
@@ -3127,7 +3127,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
                         {outputs.map(n => (
                           <div key={n.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 9 }}>
-                            <span style={{ width: 22, height: 22, borderRadius: 7, background: `color-mix(in srgb, ${KIND_COLOR[n.kind]} 15%, transparent)`, color: KIND_COLOR[n.kind], display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}><KindIcon kind={n.kind} size={12} /></span>
+                            <span style={{ width: 22, height: 22, borderRadius: 'var(--r-sm)', background: `color-mix(in srgb, ${KIND_COLOR[n.kind]} 15%, transparent)`, color: KIND_COLOR[n.kind], display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}><KindIcon kind={n.kind} size={12} /></span>
                             <span style={{ fontSize: 13, color: 'var(--text-mid)', lineHeight: 1.45, fontFamily: 'var(--font-body)' }}>{outLabel(n)}</span>
                           </div>
                         ))}
@@ -3135,11 +3135,11 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                     </div>
                   )}
                   {sel && (
-                    <div style={{ marginTop: 12, padding: '12px 15px', borderRadius: 14, background: 'var(--bg-card)', border: `1px solid color-mix(in srgb, ${KIND_COLOR[sel.kind]} 40%, var(--border))`, boxShadow: '0 1px 3px rgba(0,0,0,0.05)', animation: 'studio_in 0.16s ease' }}>
+                    <div style={{ marginTop: 12, padding: '12px 15px', borderRadius: 'var(--r-md)', background: 'var(--bg-card)', border: `1px solid color-mix(in srgb, ${KIND_COLOR[sel.kind]} 40%, var(--border))`, boxShadow: '0 1px 3px rgba(0,0,0,0.05)', animation: 'studio_in 0.16s ease' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
-                        <span style={{ width: 26, height: 26, borderRadius: 8, background: `color-mix(in srgb, ${KIND_COLOR[sel.kind]} 15%, transparent)`, color: KIND_COLOR[sel.kind], display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><KindIcon kind={sel.kind} size={14} /></span>
+                        <span style={{ width: 26, height: 26, borderRadius: 'var(--r-sm)', background: `color-mix(in srgb, ${KIND_COLOR[sel.kind]} 15%, transparent)`, color: KIND_COLOR[sel.kind], display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><KindIcon kind={sel.kind} size={14} /></span>
                         <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-display)' }}>{sel.title}</span>
-                        <span style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-dim)', background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 6, padding: '2px 8px', marginLeft: 'auto' }}>{sub(sel)}</span>
+                        <span style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-dim)', background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 'var(--r-sm)', padding: '2px 8px', marginLeft: 'auto' }}>{sub(sel)}</span>
                       </div>
                       {sel.role && <div style={{ fontSize: 13, color: 'var(--text-mid)', marginTop: 7, lineHeight: 1.55, fontFamily: 'var(--font-body)' }}>{sel.role}</div>}
                       {(sel.kind === 'agent' || sel.kind === 'merge') && sel.model && <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase', color: KIND_COLOR[sel.kind], marginTop: 7 }}>{MODEL_LABEL[sel.model]}</div>}
@@ -3151,9 +3151,9 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                 <div style={{ flexShrink: 0, borderTop: '1px solid var(--border)', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10, width: '100%', boxSizing: 'border-box' }}>
                   <span style={{ flex: 1, fontSize: 12.5, fontWeight: 700, color: 'var(--studio-accent)', fontFamily: 'var(--font-body)' }}>{askLabel}</span>
                   <button onClick={doDecline}
-                    style={{ padding: '10px 16px', borderRadius: 11, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-mid)', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>{t('w1i.no')}</button>
+                    style={{ padding: '10px 16px', borderRadius: 'var(--r-md)', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-mid)', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>{t('w1i.no')}</button>
                   <button onClick={doConfirm}
-                    style={{ padding: '10px 22px', borderRadius: 11, border: 'none', background: 'var(--studio-accent)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>{confirmLabel}</button>
+                    style={{ padding: '10px 22px', borderRadius: 'var(--r-md)', border: 'none', background: 'var(--studio-accent)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>{confirmLabel}</button>
                 </div>
               )}
             </div>
@@ -3164,7 +3164,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
       {/* ══ Éditeur d'objectif (système vivant) ══ */}
       {objEditOpen && (
         <div onClick={() => setObjEditOpen(false)} style={{ position: 'absolute', inset: 0, zIndex: 40, background: 'rgba(0,0,0,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, animation: 'studio_in 0.16s ease' }}>
-          <div onClick={e => e.stopPropagation()} style={{ width: 'min(440px, 100%)', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 18, boxShadow: '0 20px 60px rgba(0,0,0,0.3)', padding: 18 }}>
+          <div onClick={e => e.stopPropagation()} style={{ width: 'min(440px, 100%)', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-lg)', boxShadow: '0 20px 60px rgba(0,0,0,0.3)', padding: 18 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 6 }}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" style={{ color: 'var(--studio-accent)' }} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="0.6" fill="currentColor"/></svg>
               <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-display)', flex: 1 }}>{t('w1i.system_objective')}</span>
@@ -3181,12 +3181,12 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
             <label style={lbl}>{t('w1i.deadline_optional')}</label>
             <input type="date" value={objDeadline} onChange={e => setObjDeadline(e.target.value)} style={{ ...fld, cursor: 'pointer' }} />
             <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
-              <button onClick={saveObjective} style={{ flex: 1, padding: '10px 0', borderRadius: 11, border: 'none', background: 'var(--studio-accent)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
+              <button onClick={saveObjective} style={{ flex: 1, padding: '10px 0', borderRadius: 'var(--r-md)', border: 'none', background: 'var(--studio-accent)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
                 {t('w1i.save')}
               </button>
               {graph.objective && (
                 <button onClick={() => { commit({ ...graph, objective: null }); setObjEditOpen(false) }}
-                  style={{ padding: '10px 14px', borderRadius: 11, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-mid)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
+                  style={{ padding: '10px 14px', borderRadius: 'var(--r-md)', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-mid)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
                   {t('w1i.remove')}
                 </button>
               )}
@@ -3201,14 +3201,14 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
         const hasHuman = graph.nodes.some(n => n.kind === 'validation' || (n.kind === 'action' && n.actionKey !== 'notify_report'))
         const cur = schedule ?? { frequency: 'weekly' as const, hour: 18, weekday: 6, enabled: false }
         const DAYS = [t('w1i.day_monday'), t('w1i.day_tuesday'), t('w1i.day_wednesday'), t('w1i.day_thursday'), t('w1i.day_friday'), t('w1i.day_saturday'), t('w1i.day_sunday')]
-        const selStyle: React.CSSProperties = { padding: '9px 11px', borderRadius: 9, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 13, fontFamily: 'var(--font-body)', outline: 'none', cursor: 'pointer' }
+        const selStyle: React.CSSProperties = { padding: '9px 11px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 13, fontFamily: 'var(--font-body)', outline: 'none', cursor: 'pointer' }
         return (
           <div onClick={() => setScheduleOpen(false)}
             style={{ position: 'fixed', inset: 0, zIndex: 13700, background: 'rgba(15,23,42,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
             <div onClick={e => e.stopPropagation()}
-              style={{ width: 'min(480px, 100%)', background: 'var(--bg-card)', borderRadius: 20, border: '1px solid var(--border)', boxShadow: '0 24px 70px rgba(0,0,0,0.35)', padding: '22px 22px 18px', animation: 'studio_in 0.2s ease' }}>
+              style={{ width: 'min(480px, 100%)', background: 'var(--bg-card)', borderRadius: 'var(--r-lg)', border: '1px solid var(--border)', boxShadow: '0 24px 70px rgba(0,0,0,0.35)', padding: '22px 22px 18px', animation: 'studio_in 0.2s ease' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-                <span style={{ width: 32, height: 32, borderRadius: 10, background: 'rgba(59,146,212,0.12)', color: 'var(--studio-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <span style={{ width: 32, height: 32, borderRadius: 'var(--r-sm)', background: 'rgba(59,146,212,0.12)', color: 'var(--studio-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
                 </span>
                 <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-display)', flex: 1 }}>{t('w1i.schedule_this_system')}</div>
@@ -3223,7 +3223,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                     {t('w1i.autonomy_p1a')}<b>{t('w1i.validation_word')}</b>{t('w1i.autonomy_p1b')}<b>{t('w1i.write_word')}</b>{t('w1i.autonomy_p1c')}<b>{t('w1i.autonomy_word')}</b>{t('w1i.autonomy_p1d')}<b>{t('w1i.notification_word')}</b>{t('w1i.autonomy_p1e')}
                   </p>
                   <button onClick={() => { commit(makeGraphAutonomous(graph)) }}
-                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%', padding: '12px 14px', borderRadius: 12, border: 'none', background: 'var(--studio-accent)', color: '#fff', fontSize: 13.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
+                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%', padding: '12px 14px', borderRadius: 'var(--r-md)', border: 'none', background: 'var(--studio-accent)', color: '#fff', fontSize: 13.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
                     {t('w1i.make_autonomous')}
                   </button>
@@ -3238,8 +3238,8 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                   </p>
                   {/* Activation */}
                   <button onClick={() => void saveSchedule({ ...cur, enabled: !cur.enabled })} disabled={scheduleSaving}
-                    style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '11px 14px', borderRadius: 12, border: '1px solid var(--border)', background: cur.enabled ? 'color-mix(in srgb, var(--studio-accent) 8%, transparent)' : 'var(--bg-card2)', cursor: 'pointer', marginBottom: 12 }}>
-                    <span style={{ width: 38, height: 22, borderRadius: 999, background: cur.enabled ? 'var(--studio-accent)' : 'var(--border-mid)', position: 'relative', transition: 'background 180ms', flexShrink: 0 }}>
+                    style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '11px 14px', borderRadius: 'var(--r-md)', border: '1px solid var(--border)', background: cur.enabled ? 'color-mix(in srgb, var(--studio-accent) 8%, transparent)' : 'var(--bg-card2)', cursor: 'pointer', marginBottom: 12 }}>
+                    <span style={{ width: 38, height: 22, borderRadius: 'var(--r-pill)', background: cur.enabled ? 'var(--studio-accent)' : 'var(--border-mid)', position: 'relative', transition: 'background 180ms', flexShrink: 0 }}>
                       <span style={{ position: 'absolute', top: 2, left: cur.enabled ? 18 : 2, width: 18, height: 18, borderRadius: '50%', background: '#fff', transition: 'left 180ms', boxShadow: '0 1px 3px rgba(0,0,0,0.25)' }} />
                     </span>
                     <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-body)' }}>{cur.enabled ? t('w1i.schedule_active') : t('w1i.schedule_disabled')}</span>
@@ -3287,13 +3287,13 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
             idle:    { bg: 'var(--bg-card2)', col: 'var(--text-dim)', label: t('w1i.roster_pending') },
           }
           const c = map[st ?? 'idle']
-          return <span style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.03em', textTransform: 'uppercase', color: c.col, background: c.bg, borderRadius: 999, padding: '3px 9px', flexShrink: 0 }}>{c.label}</span>
+          return <span style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.03em', textTransform: 'uppercase', color: c.col, background: c.bg, borderRadius: 'var(--r-pill)', padding: '3px 9px', flexShrink: 0 }}>{c.label}</span>
         }
         return (
           <div onClick={() => { if (!rosterRunning) { setRosterOpen(false); setRosterView(null) } }}
             style={{ position: 'fixed', inset: 0, zIndex: 13700, background: 'rgba(15,23,42,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
             <div onClick={e => e.stopPropagation()}
-              style={{ width: 'min(560px, 100%)', maxHeight: '86vh', display: 'flex', flexDirection: 'column', background: 'var(--bg-card)', borderRadius: 20, border: '1px solid var(--border)', boxShadow: '0 24px 70px rgba(0,0,0,0.35)', animation: 'studio_in 0.2s ease', fontFamily: 'var(--font-body)' }}>
+              style={{ width: 'min(560px, 100%)', maxHeight: '86vh', display: 'flex', flexDirection: 'column', background: 'var(--bg-card)', borderRadius: 'var(--r-lg)', border: '1px solid var(--border)', boxShadow: '0 24px 70px rgba(0,0,0,0.35)', animation: 'studio_in 0.2s ease', fontFamily: 'var(--font-body)' }}>
               {/* En-tête */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '18px 20px 12px', flexShrink: 0 }}>
                 {rosterView ? (
@@ -3301,7 +3301,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                     <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
                   </button>
                 ) : (
-                  <span style={{ width: 32, height: 32, borderRadius: 10, background: 'color-mix(in srgb, var(--studio-accent) 12%, transparent)', color: 'var(--studio-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <span style={{ width: 32, height: 32, borderRadius: 'var(--r-sm)', background: 'color-mix(in srgb, var(--studio-accent) 12%, transparent)', color: 'var(--studio-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                     <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/></svg>
                   </span>
                 )}
@@ -3318,9 +3318,9 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
               {rosterView && detail ? (
                 <div style={{ flex: 1, overflowY: 'auto', padding: '0 20px 18px' }}>
                   {detail.state === 'error'
-                    ? <div style={{ padding: '12px 14px', borderRadius: 12, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)', color: 'var(--danger)', fontSize: 13 }}>{detail.error}</div>
+                    ? <div style={{ padding: '12px 14px', borderRadius: 'var(--r-md)', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)', color: 'var(--danger)', fontSize: 13 }}>{detail.error}</div>
                     : detail.text?.trim()
-                      ? <div style={{ padding: '14px 16px', borderRadius: 14, background: 'var(--bg-card2)', border: '1px solid var(--border)' }}><StudioMarkdown text={detail.text} /></div>
+                      ? <div style={{ padding: '14px 16px', borderRadius: 'var(--r-md)', background: 'var(--bg-card2)', border: '1px solid var(--border)' }}><StudioMarkdown text={detail.text} /></div>
                       : <p style={{ fontSize: 13, color: 'var(--text-dim)' }}>{t('w1i.roster_no_output')}</p>}
                 </div>
               ) : (
@@ -3342,7 +3342,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                           onClick={() => { if (hasResults) { if (clickable) setRosterView(a.id) } else toggleRoster(a.id) }}
                           style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '10px 6px', borderBottom: '1px solid var(--border)', cursor: clickable ? 'pointer' : 'default' }}>
                           {!hasResults && (
-                            <span style={{ width: 20, height: 20, borderRadius: 6, flexShrink: 0, border: `2px solid ${selected ? 'var(--studio-accent)' : 'var(--border-mid)'}`, background: selected ? 'var(--studio-accent)' : 'transparent', display: 'grid', placeItems: 'center' }}>
+                            <span style={{ width: 20, height: 20, borderRadius: 'var(--r-sm)', flexShrink: 0, border: `2px solid ${selected ? 'var(--studio-accent)' : 'var(--border-mid)'}`, background: selected ? 'var(--studio-accent)' : 'transparent', display: 'grid', placeItems: 'center' }}>
                               {selected && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>}
                             </span>
                           )}
@@ -3366,16 +3366,16 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                       </div>
                     )}
                     {rosterRunning ? (
-                      <button onClick={stopRoster} style={{ width: '100%', height: 50, borderRadius: 14, border: 'none', background: '#374151', color: '#fff', fontSize: 15, fontWeight: 800, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
+                      <button onClick={stopRoster} style={{ width: '100%', height: 50, borderRadius: 'var(--r-md)', border: 'none', background: '#374151', color: '#fff', fontSize: 15, fontWeight: 800, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
                         {t('w1i.roster_stop')} ({doneN}/{targets.length})
                       </button>
                     ) : hasResults ? (
-                      <button onClick={() => setRosterResults({})} style={{ width: '100%', height: 50, borderRadius: 14, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 15, fontWeight: 800, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
+                      <button onClick={() => setRosterResults({})} style={{ width: '100%', height: 50, borderRadius: 'var(--r-md)', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 15, fontWeight: 800, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
                         {t('w1i.roster_new')}
                       </button>
                     ) : (
                       <button onClick={() => void runRoster()} disabled={rosterSel.size === 0}
-                        style={{ width: '100%', height: 50, borderRadius: 14, border: 'none', background: rosterSel.size ? 'var(--studio-accent)' : 'var(--border)', color: rosterSel.size ? '#fff' : 'var(--text-dim)', fontSize: 15, fontWeight: 800, cursor: rosterSel.size ? 'pointer' : 'default', fontFamily: 'var(--font-body)' }}>
+                        style={{ width: '100%', height: 50, borderRadius: 'var(--r-md)', border: 'none', background: rosterSel.size ? 'var(--studio-accent)' : 'var(--border)', color: rosterSel.size ? '#fff' : 'var(--text-dim)', fontSize: 15, fontWeight: 800, cursor: rosterSel.size ? 'pointer' : 'default', fontFamily: 'var(--font-body)' }}>
                         {t('w1i.roster_launch', { n: rosterSel.size })}
                       </button>
                     )}
@@ -3391,9 +3391,9 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
         <div onClick={() => setWalletOpen(false)}
           style={{ position: 'fixed', inset: 0, zIndex: 13700, background: 'rgba(15,23,42,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
           <div onClick={e => e.stopPropagation()}
-            style={{ width: 'min(520px, 100%)', maxHeight: '85vh', overflowY: 'auto', background: 'var(--bg-card)', borderRadius: 20, border: '1px solid var(--border)', boxShadow: '0 24px 70px rgba(0,0,0,0.35)', padding: '22px 22px 18px', animation: 'studio_in 0.2s ease' }}>
+            style={{ width: 'min(520px, 100%)', maxHeight: '85vh', overflowY: 'auto', background: 'var(--bg-card)', borderRadius: 'var(--r-lg)', border: '1px solid var(--border)', boxShadow: '0 24px 70px rgba(0,0,0,0.35)', padding: '22px 22px 18px', animation: 'studio_in 0.2s ease' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-              <span style={{ width: 32, height: 32, borderRadius: 10, background: 'rgba(59,146,212,0.12)', color: 'var(--studio-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <span style={{ width: 32, height: 32, borderRadius: 'var(--r-sm)', background: 'rgba(59,146,212,0.12)', color: 'var(--studio-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
               </span>
               <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-display)', flex: 1 }}>{t('w1i.studio_tokens')}</div>
@@ -3403,7 +3403,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
             </div>
 
             {/* Jauge mensuelle */}
-            <div style={{ padding: '12px 14px', borderRadius: 12, background: 'var(--bg-card2)', marginBottom: 10 }}>
+            <div style={{ padding: '12px 14px', borderRadius: 'var(--r-md)', background: 'var(--bg-card2)', marginBottom: 10 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, fontWeight: 600, color: 'var(--text-mid)', fontFamily: 'var(--font-body)' }}>
                 <span>{t('w1i.monthly_quota_included', { tier: access.tier === 'expert' ? 'Expert' : 'Pro' })}</span>
                 <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatTokens(Math.min(access.monthlyUsed, access.monthlyLimit))} / {formatTokens(access.monthlyLimit)}</span>
@@ -3420,7 +3420,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
             <div style={{ fontSize: 11.5, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-dim)', margin: '14px 0 8px', fontFamily: 'var(--font-body)' }}>{t('w1i.recharge')}</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {STUDIO_PACKS.map(p => (
-                <div key={p.key} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderRadius: 12, border: '1px solid var(--border)', background: 'var(--bg-card)' }}>
+                <div key={p.key} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderRadius: 'var(--r-md)', border: '1px solid var(--border)', background: 'var(--bg-card)' }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-body)' }}>{p.label} — {formatTokens(p.tokens)} {t('w1i.tokens_word')}</div>
                     <div style={{ fontSize: 11.5, color: 'var(--text-dim)', marginTop: 2, fontFamily: 'var(--font-body)' }}>{p.tagline}</div>
@@ -3429,7 +3429,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
               ))}
             </div>
             <button onClick={() => setTokenEmailOpen(true)}
-              style={{ marginTop: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%', padding: '11px 0', borderRadius: 11, border: 'none', background: 'var(--studio-accent)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
+              style={{ marginTop: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%', padding: '11px 0', borderRadius: 'var(--r-md)', border: 'none', background: 'var(--studio-accent)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
               {t('w1i.buy_packs_site')}
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 5L2 7"/></svg>
             </button>
@@ -3446,9 +3446,9 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
         <div onClick={() => setHelpOpen(false)}
           style={{ position: 'fixed', inset: 0, zIndex: 13700, background: 'rgba(15,23,42,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
           <div onClick={e => e.stopPropagation()}
-            style={{ width: 'min(560px, 100%)', maxHeight: '85vh', overflowY: 'auto', background: 'var(--bg-card)', borderRadius: 20, border: '1px solid var(--border)', boxShadow: '0 24px 70px rgba(0,0,0,0.35)', padding: '24px 24px 20px', animation: 'studio_in 0.22s ease' }}>
+            style={{ width: 'min(560px, 100%)', maxHeight: '85vh', overflowY: 'auto', background: 'var(--bg-card)', borderRadius: 'var(--r-lg)', border: '1px solid var(--border)', boxShadow: '0 24px 70px rgba(0,0,0,0.35)', padding: '24px 24px 20px', animation: 'studio_in 0.22s ease' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-              <span style={{ width: 34, height: 34, borderRadius: 11, background: 'rgba(59,146,212,0.12)', color: 'var(--studio-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <span style={{ width: 34, height: 34, borderRadius: 'var(--r-md)', background: 'rgba(59,146,212,0.12)', color: 'var(--studio-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><circle cx="5" cy="6" r="2.4"/><circle cx="19" cy="6" r="2.4"/><circle cx="12" cy="18" r="2.4"/><path d="M7.2 7.2 10.5 16M16.8 7.2 13.5 16"/></svg>
               </span>
               <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-display)', flex: 1 }}>{t('w1i.help_title')}</div>
@@ -3479,7 +3479,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
             </div>
 
             <a href={siteUrl} target="_blank" rel="noreferrer"
-              style={{ marginTop: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '11px 0', borderRadius: 11, background: 'var(--primary)', color: '#fff', fontSize: 13, fontWeight: 700, textDecoration: 'none', fontFamily: 'var(--font-body)' }}>
+              style={{ marginTop: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '11px 0', borderRadius: 'var(--r-md)', background: 'var(--primary)', color: '#fff', fontSize: 13, fontWeight: 700, textDecoration: 'none', fontFamily: 'var(--font-body)' }}>
               {t('w1i.full_guide')}
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M7 17L17 7M8 7h9v9"/></svg>
             </a>
@@ -3494,8 +3494,8 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
 }
 
 const iconBtn: React.CSSProperties = { border: 'none', background: 'color-mix(in srgb, var(--text) 10%, var(--bg))', cursor: 'pointer', color: 'var(--text)', display: 'flex', alignItems: 'center', justifyContent: 'center', width: 44, height: 44, borderRadius: '50%', flexShrink: 0, boxShadow: '0 2px 12px rgba(0,0,0,0.20)' }
-const zBtn: React.CSSProperties = { width: 30, height: 28, borderRadius: 8, border: 'none', background: 'transparent', color: 'var(--text-mid)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }
+const zBtn: React.CSSProperties = { width: 30, height: 28, borderRadius: 'var(--r-sm)', border: 'none', background: 'transparent', color: 'var(--text-mid)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }
 const paletteHdr: React.CSSProperties = { fontSize: 9.5, fontWeight: 800, letterSpacing: '0.09em', textTransform: 'uppercase', color: 'var(--text-dim)', padding: '3px 8px 2px' }
-const cta: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 7, padding: '0 20px', minHeight: 44, borderRadius: 999, border: 'none', background: 'var(--primary)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)', flexShrink: 0 }
+const cta: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 7, padding: '0 20px', minHeight: 44, borderRadius: 'var(--r-pill)', border: 'none', background: 'var(--primary)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)', flexShrink: 0 }
 const lbl: React.CSSProperties = { fontSize: 12, fontWeight: 600, color: 'var(--text-mid)', margin: '0 0 5px', display: 'block' }
-const fld: React.CSSProperties = { width: '100%', boxSizing: 'border-box', padding: '9px 11px', borderRadius: 9, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 13, fontFamily: 'var(--font-body)', outline: 'none', marginBottom: 14 }
+const fld: React.CSSProperties = { width: '100%', boxSizing: 'border-box', padding: '9px 11px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 13, fontFamily: 'var(--font-body)', outline: 'none', marginBottom: 14 }

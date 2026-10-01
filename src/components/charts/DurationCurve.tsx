@@ -38,11 +38,11 @@ export function DurationCurve({ series, compare, unit = 'W', height = 220, inver
     <svg ref={ref} viewBox={`0 0 ${W} ${height}`} width="100%" height={height} preserveAspectRatio="none"
       onPointerMove={onMove} onPointerLeave={() => setHx(null)} style={{ display: 'block', touchAction: 'none' }}>
       <defs><linearGradient id="dcF" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="var(--primary)" stopOpacity="0.22" /><stop offset="100%" stopColor="var(--primary)" stopOpacity="0.02" /></linearGradient></defs>
-      {Array.from({ length: yT + 1 }, (_, k) => { const v = vMin + ((vMax - vMin) / yT) * k; return <g key={k}><line x1={padL} y1={y(v)} x2={W - padR} y2={y(v)} stroke={INK.grid} strokeWidth={1} /><text x={padL - 5} y={y(v) + 3} textAnchor="end" style={{ fontSize: 9, fill: INK.dim }}>{Math.round(v)}</text></g> })}
+      {Array.from({ length: yT + 1 }, (_, k) => { const v = vMin + ((vMax - vMin) / yT) * k; return <g key={k}><line x1={padL} y1={y(v)} x2={W - padR} y2={y(v)} stroke={INK.grid} strokeWidth={1} /><text x={padL - 5} y={y(v) + 3} textAnchor="end" style={{ fontSize: 10, fill: INK.dim }}>{Math.round(v)}</text></g> })}
       {compare && <path d={line(compare.filter(p => p.t > 0 && p.v > 0).sort((a, b) => a.t - b.t))} fill="none" stroke={INK.dim} strokeWidth={1.6} strokeDasharray="4 4" vectorEffect="non-scaling-stroke" />}
       <path d={area} fill="url(#dcF)" />
       <path d={line(pts)} fill="none" stroke="var(--primary)" strokeWidth={2.4} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
-      {TICKS.map(t => <text key={t} x={lx(t)} y={height - 6} textAnchor="middle" style={{ fontSize: 9, fill: INK.dim }}>{fmtDuration(t)}</text>)}
+      {TICKS.map(t => <text key={t} x={lx(t)} y={height - 6} textAnchor="middle" style={{ fontSize: 10, fill: INK.dim }}>{fmtDuration(t)}</text>)}
       {near && hx != null && (
         <g pointerEvents="none">
           <line x1={lx(near.t)} y1={padT} x2={lx(near.t)} y2={height - padB} stroke={INK.text} strokeWidth={1} opacity={0.22} />

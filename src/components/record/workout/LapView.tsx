@@ -63,7 +63,7 @@ export default function LapView({ exercise, onSetDone, onRestDone, isDark, accen
   const activeEx = exercises.length > 0 ? exercises[currentEx] : exercise
 
   return (
-    <div style={{ padding: '20px', fontFamily: 'DM Sans, sans-serif' }}>
+    <div style={{ padding: '20px', fontFamily: 'var(--font-body)' }}>
       <p style={{ fontSize: 13, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: dim, margin: '0 0 4px' }}>Circuit</p>
       <p style={{ fontSize: 13, color: dim, margin: '0 0 20px' }}>{t('record.lapRoundProgress', { current: done ? rounds : currentRound + 1, total: rounds })}</p>
 
@@ -93,12 +93,12 @@ export default function LapView({ exercise, onSetDone, onRestDone, isDark, accen
           )}
 
           {/* Exercice en cours — reps / charge éditables (ce que tu as réellement fait) */}
-          <div style={{ background: surface, borderRadius: 16, padding: '16px', marginBottom: 20 }}>
+          <div style={{ background: surface, borderRadius: 'var(--r-md)', padding: '16px', marginBottom: 20 }}>
             <p style={{ fontSize: 13, color: dim, margin: '0 0 14px', textAlign: 'center', fontWeight: 600 }}>{activeEx.name}</p>
             {(() => {
               const v = valOf(activeEx.id, activeEx)
               const setV = (patch: Partial<{ reps: number; weightKg: number }>) => setVals(s => ({ ...s, [activeEx.id]: { ...v, ...patch } }))
-              const stepBtn = { width: 40, height: 40, borderRadius: 11, background: 'var(--bg-card)', border: `1px solid ${separator}`, color: text, fontSize: 20, cursor: 'pointer' } as React.CSSProperties
+              const stepBtn = { width: 40, height: 40, borderRadius: 'var(--r-md)', background: 'var(--bg-card)', border: `1px solid ${separator}`, color: text, fontSize: 20, cursor: 'pointer' } as React.CSSProperties
               return (
                 <div style={{ display: 'flex', gap: 12 }}>
                   <div style={{ flex: 1 }}>
@@ -122,7 +122,7 @@ export default function LapView({ exercise, onSetDone, onRestDone, isDark, accen
             })()}
           </div>
 
-          <button onClick={handleNext} style={{ width: '100%', height: 52, borderRadius: 16, background: `linear-gradient(135deg, ${accent}, ${accent}bb)`, border: 'none', color: '#fff', fontSize: 16, fontWeight: 600, cursor: 'pointer' }}>
+          <button onClick={handleNext} style={{ width: '100%', height: 52, borderRadius: 'var(--r-md)', background: `linear-gradient(135deg, ${accent}, ${accent}bb)`, border: 'none', color: '#fff', fontSize: 16, fontWeight: 600, cursor: 'pointer' }}>
             {t('record.lapNext')}
           </button>
         </>

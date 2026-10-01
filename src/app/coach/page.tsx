@@ -18,7 +18,7 @@ const STC: Record<Forme, string> = { ok: '#22C55E', warn: '#F59E0B', injured: '#
 const BODY = 'var(--font-body)'
 const DISP = 'var(--font-display)'
 const num: React.CSSProperties = { fontFamily: BODY, fontVariantNumeric: 'tabular-nums' }
-const card: React.CSSProperties = { borderRadius: 18, border: '1px solid var(--border)', background: 'var(--bg-card)' }
+const card: React.CSSProperties = { borderRadius: 'var(--r-lg)', border: '1px solid var(--border)', background: 'var(--bg-card)' }
 const initials = (n: string) => n.split(/\s+/).map(w => w[0]).filter(Boolean).slice(0, 2).join('').toUpperCase()
 const ORDER: Record<Forme, number> = { injured: 0, inactive: 1, warn: 2, ok: 3 }
 
@@ -91,7 +91,7 @@ export default function CoachDashboard() {
         {/* À suivre en priorité */}
         <div data-guide="coach-priority" style={{ ...card, padding: 16 }}>
           <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
-            {t('w3d.priority_title')} {priority.length > 0 && <span style={{ ...num, fontSize: 11.5, color: 'var(--text-mid)', background: 'var(--bg-alt)', borderRadius: 6, padding: '1px 7px' }}>{priority.length}</span>}
+            {t('w3d.priority_title')} {priority.length > 0 && <span style={{ ...num, fontSize: 11.5, color: 'var(--text-mid)', background: 'var(--bg-alt)', borderRadius: 'var(--r-sm)', padding: '1px 7px' }}>{priority.length}</span>}
           </div>
           {loading ? <div style={{ fontSize: 13, color: 'var(--text-dim)' }}>{t('w3d.loading')}</div>
             : priority.length === 0 ? <div style={{ fontSize: 13, color: 'var(--text-dim)' }}>{t('w3d.priority_empty')}</div>
@@ -104,7 +104,7 @@ export default function CoachDashboard() {
                       <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.name}</div>
                       <div style={{ fontSize: 12, color: 'var(--text-mid)', marginTop: 1 }}><b style={{ color: STC[a.status] }}>{t(`w3d.forme_${a.status}`)}</b>{a.reason ? ` — ${a.reason}` : ''}</div>
                     </div>
-                    {a.unread > 0 && <span style={{ ...num, background: 'var(--danger)', color: '#fff', fontSize: 10, fontWeight: 800, borderRadius: 9, minWidth: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 5px', flexShrink: 0 }}>{a.unread}</span>}
+                    {a.unread > 0 && <span style={{ ...num, background: 'var(--danger)', color: '#fff', fontSize: 10, fontWeight: 800, borderRadius: 'var(--r-sm)', minWidth: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 5px', flexShrink: 0 }}>{a.unread}</span>}
                   </Link>
                 ))}
               </div>
@@ -137,7 +137,7 @@ export default function CoachDashboard() {
         <div style={{ ...card, padding: '14px 16px', marginTop: 16, display: 'flex', alignItems: 'center', gap: 12 }}>
           <span style={{ ...num, fontSize: 22, fontWeight: 700, color: 'var(--primary)' }}>{pending}</span>
           <div style={{ flex: 1, fontSize: 13, color: 'var(--text-mid)' }}>{pending > 1 ? t('w3d.pending_invites_plural') : t('w3d.pending_invites_singular')}</div>
-          <button onClick={() => router.push('/coach/athletes')} style={{ padding: '8px 14px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: BODY }}>{t('w3d.manage')}</button>
+          <button onClick={() => router.push('/coach/athletes')} style={{ padding: '8px 14px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: BODY }}>{t('w3d.manage')}</button>
         </div>
       )}
 
@@ -145,7 +145,7 @@ export default function CoachDashboard() {
       <div data-guide="coach-tiles" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12, marginTop: 16 }}>
         {QUICK.map(q => (
           <Link key={q.href} href={q.href} style={{ ...card, padding: '16px', display: 'flex', alignItems: 'center', gap: 11, textDecoration: 'none', color: 'var(--text)' }}>
-            <span style={{ width: 34, height: 34, borderRadius: 10, background: 'color-mix(in srgb, var(--primary) 12%, transparent)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <span style={{ width: 34, height: 34, borderRadius: 'var(--r-sm)', background: 'color-mix(in srgb, var(--primary) 12%, transparent)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">{q.icon}</svg>
             </span>
             <span style={{ fontSize: 14, fontWeight: 600 }}>{q.label}</span>

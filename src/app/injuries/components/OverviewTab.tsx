@@ -67,11 +67,11 @@ function Card({ inj, logs, onOpen }: { inj: Injury; logs: InjuryLog[]; onOpen: (
   const trend = painTrend(logs, inj.id)
   return (
     <div className="card-interactive" onClick={onOpen} style={{ background: 'var(--bg-card2)', borderRadius: 'var(--r-md)', padding: 'var(--space-4)', display: 'flex', gap: 'var(--space-3)', marginBottom: 'var(--space-2)' }}>
-      <span style={{ width: 3, alignSelf: 'stretch', borderRadius: 999, background: sevC, flexShrink: 0 }} />
+      <span style={{ width: 3, alignSelf: 'stretch', borderRadius: 'var(--r-pill)', background: sevC, flexShrink: 0 }} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
           <span style={{ fontFamily: FD, fontSize: 15, fontWeight: 600, color: 'var(--text)' }}>{inj.zone}{side}</span>
-          <span style={{ fontFamily: FB, fontSize: 9, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: sevC, background: `color-mix(in srgb, ${sevC} 14%, transparent)`, padding: '2px 7px', borderRadius: 999 }}>{SEV[inj.severity].label}</span>
+          <span style={{ fontFamily: FB, fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: sevC, background: `color-mix(in srgb, ${sevC} 14%, transparent)`, padding: '2px 7px', borderRadius: 'var(--r-pill)' }}>{SEV[inj.severity].label}</span>
           {inj.structure && <span style={{ fontFamily: FB, fontSize: 11, color: 'var(--text-dim)' }}>· {inj.structure}</span>}
           {spark.length >= 2 && (
             <span style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6 }}>

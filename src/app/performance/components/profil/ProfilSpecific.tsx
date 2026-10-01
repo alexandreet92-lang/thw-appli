@@ -109,7 +109,7 @@ export function ProfilSpecific({ p, wkg, specSport, onSport, params, fields, onE
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             {(years && years.length ? years : (year ? [year] : [])).map(y => (
               <button key={y} onClick={() => onYear?.(y)} style={{
-                padding: '4px 11px', borderRadius: 999, border: `1px solid ${y === year ? 'var(--primary)' : 'var(--border)'}`,
+                padding: '4px 11px', borderRadius: 'var(--r-pill)', border: `1px solid ${y === year ? 'var(--primary)' : 'var(--border)'}`,
                 background: y === year ? 'var(--primary-dim)' : 'transparent', color: y === year ? 'var(--primary)' : 'var(--text-dim)',
                 fontFamily: FB, fontSize: 12, fontWeight: y === year ? 600 : 500, cursor: 'pointer',
               }}>{y}</button>
@@ -124,7 +124,7 @@ export function ProfilSpecific({ p, wkg, specSport, onSport, params, fields, onE
         </div>
       )}
       {notEnough && (
-        <p style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-dim)', margin: 0, padding: '8px 12px', background: 'var(--bg-card2)', borderRadius: 10 }}>
+        <p style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-dim)', margin: 0, padding: '8px 12px', background: 'var(--bg-card2)', borderRadius: 'var(--r-sm)' }}>
           {t('performance.notEnoughData')}
         </p>
       )}

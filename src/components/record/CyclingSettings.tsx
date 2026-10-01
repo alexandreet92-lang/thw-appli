@@ -228,7 +228,7 @@ function CyclingSettingsInner({ open, onClose, isDark, settings, updateSetting: 
           </div>
 
           {menuOpenId === page.id && (
-            <div ref={menuRef} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', zIndex: 100, background: t.bg, border: `1px solid ${t.separator}`, borderRadius: 12, overflow: 'hidden', boxShadow: '0 8px 24px rgba(0,0,0,0.15)', minWidth: 150 }}>
+            <div ref={menuRef} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', zIndex: 100, background: t.bg, border: `1px solid ${t.separator}`, borderRadius: 'var(--r-md)', overflow: 'hidden', boxShadow: '0 8px 24px rgba(0,0,0,0.15)', minWidth: 150 }}>
               <button onClick={e => { e.stopPropagation(); startRename(page); setMenuOpenId(null) }}
                 style={{ width: '100%', padding: '13px 16px', background: 'none', border: 'none', textAlign: 'left', fontSize: 15, color: t.text, cursor: 'pointer' }}>{tr('record.commonRename')}</button>
               <div style={{ height: 1, background: t.separator }} />
@@ -238,13 +238,13 @@ function CyclingSettingsInner({ open, onClose, isDark, settings, updateSetting: 
           )}
 
           {confirmDeleteId === page.id && (
-            <div style={{ padding: '10px 16px', background: 'rgba(239,68,68,0.08)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 4, marginBottom: 4 }}>
+            <div style={{ padding: '10px 16px', background: 'rgba(239,68,68,0.08)', borderRadius: 'var(--r-sm)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 4, marginBottom: 4 }}>
               <span style={{ fontSize: 13, color: 'var(--danger)' }}>{tr('record.commonDeletePageConfirm')}</span>
               <div style={{ display: 'flex', gap: 8 }}>
                 <button onClick={() => { deletePage(page.id); setConfirmDeleteId(null) }}
-                  style={{ padding: '5px 14px', borderRadius: 8, background: 'var(--danger)', border: 'none', color: 'white', fontSize: 13, cursor: 'pointer' }}>{tr('record.commonYes')}</button>
+                  style={{ padding: '5px 14px', borderRadius: 'var(--r-sm)', background: 'var(--danger)', border: 'none', color: 'white', fontSize: 13, cursor: 'pointer' }}>{tr('record.commonYes')}</button>
                 <button onClick={() => setConfirmDeleteId(null)}
-                  style={{ padding: '5px 14px', borderRadius: 8, background: t.separator, border: 'none', color: t.text, fontSize: 13, cursor: 'pointer' }}>{tr('record.commonNo')}</button>
+                  style={{ padding: '5px 14px', borderRadius: 'var(--r-sm)', background: t.separator, border: 'none', color: t.text, fontSize: 13, cursor: 'pointer' }}>{tr('record.commonNo')}</button>
               </div>
             </div>
           )}
@@ -275,7 +275,7 @@ function CyclingSettingsInner({ open, onClose, isDark, settings, updateSetting: 
           background: t.bg, color: t.text,
           borderTopLeftRadius: 24, borderTopRightRadius: 24,
           display: 'flex', flexDirection: 'column', overflow: 'hidden',
-          fontFamily: 'DM Sans, sans-serif',
+          fontFamily: 'var(--font-body)',
           boxShadow: '0 -8px 32px rgba(0,0,0,0.18)',
         }}
       >
@@ -286,7 +286,7 @@ function CyclingSettingsInner({ open, onClose, isDark, settings, updateSetting: 
 
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px 12px', flexShrink: 0 }}>
-          <h2 style={{ fontSize: 18, fontWeight: 700, color: t.text, margin: 0, fontFamily: 'Syne, sans-serif' }}>{tr('record.cyclingSettingsTitle')}</h2>
+          <h2 style={{ fontSize: 18, fontWeight: 700, color: t.text, margin: 0, fontFamily: 'var(--font-display)' }}>{tr('record.cyclingSettingsTitle')}</h2>
           <button onClick={handleClose} aria-label={tr('record.commonClose')}
             style={{ color: t.dim, background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', lineHeight: 1, padding: '4px 8px' }}>×</button>
         </div>
@@ -303,11 +303,11 @@ function CyclingSettingsInner({ open, onClose, isDark, settings, updateSetting: 
                   width: '100%', display: 'flex', alignItems: 'center', gap: 14,
                   padding: '14px 20px', background: 'none', border: 'none',
                   cursor: 'pointer', borderBottom: `1px solid ${t.separator}`,
-                  textAlign: 'left', fontFamily: 'DM Sans, sans-serif',
+                  textAlign: 'left', fontFamily: 'var(--font-body)',
                 }}
               >
                 <div style={{
-                  width: 36, height: 36, borderRadius: 10,
+                  width: 36, height: 36, borderRadius: 'var(--r-sm)',
                   background: 'rgba(6,182,212,0.10)',
                   color: '#06B6D4',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -350,7 +350,7 @@ function CyclingSettingsInner({ open, onClose, isDark, settings, updateSetting: 
                     <path d="M12 5l-5 5 5 5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
                   </svg>
                 </button>
-                <h3 style={{ fontSize: 17, fontWeight: 700, color: t.text, margin: 0, flex: 1, fontFamily: 'Syne, sans-serif' }}>
+                <h3 style={{ fontSize: 17, fontWeight: 700, color: t.text, margin: 0, flex: 1, fontFamily: 'var(--font-body)' }}>
                   {(() => { const s = SECTIONS.find(s => s.id === activeSection); return s ? tr(s.labelKey) : '' })()}
                 </h3>
               </div>

@@ -97,7 +97,7 @@ export function SuiviSection({ dailyLogs, plan, weightKg, today }: Props) {
         {PERIODS.map(p => (
           <button key={p} onClick={() => setDays(p)} style={{
             border: 'none', background: days === p ? 'var(--bg-card2)' : 'transparent', cursor: 'pointer',
-            borderRadius: 999, padding: '5px 14px',
+            borderRadius: 'var(--r-pill)', padding: '5px 14px',
             fontFamily: FB, fontSize: 13, fontWeight: days === p ? 600 : 500,
             color: days === p ? 'var(--text)' : 'var(--text-dim)',
           }}>{p === 1 ? t('nutrition.tab.today') : t('nutrition.suivi.daysN', { n: p })}</button>

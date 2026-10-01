@@ -43,7 +43,7 @@ export function GymRecords({ recordYear, onSelect, selectedDatum }: {
 
   function onSaved(rec: GymRec) { setRecords(prev => [rec, ...prev.filter(r => r.id !== rec.id)]) }
 
-  const card: React.CSSProperties = { background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 16, padding: 18 }
+  const card: React.CSSProperties = { background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: 18 }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -66,7 +66,7 @@ export function GymRecords({ recordYear, onSelect, selectedDatum }: {
                   <div key={t} onClick={() => b && onSelect?.(`${ex.name} — ${t}`, display)}
                     style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '4px 6px', borderRadius: 'var(--r-sm)', background: sel ? 'var(--bg-card2)' : 'transparent', cursor: b && onSelect ? 'pointer' : 'default' }}>
                     <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--text-mid)', width: 96, flexShrink: 0 }}>{typeLabel(t)}</span>
-                    <div style={{ flex: 1, height: 6, borderRadius: 999, background: 'var(--bg-card2)', overflow: 'hidden' }}>
+                    <div style={{ flex: 1, height: 6, borderRadius: 'var(--r-pill)', background: 'var(--bg-card2)', overflow: 'hidden' }}>
                       <div style={{ width: mounted ? `${(v / max) * 100}%` : '0%', height: '100%', background: GYM, opacity: 0.5, transition: 'width 0.9s cubic-bezier(0.32,0.72,0,1)' }} />
                     </div>
                     <span className="tnum" style={{ fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 600, color: b ? 'var(--text)' : 'var(--text-dim)', width: 58, textAlign: 'right', flexShrink: 0 }}>{display}</span>

@@ -124,7 +124,7 @@ export default function AthleteFiche() {
   const recAvg = (k: keyof RecoveryRow) => { const v = rec.map(x => Number(x[k])).filter(n => Number.isFinite(n) && n > 0); return v.length ? v.reduce((s, x) => s + x, 0) / v.length : null }
   const tss7 = acts.filter(a => a.started_at && (Date.now() - new Date(a.started_at).getTime()) < 7 * 86400000).reduce((s, a) => s + (a.tss ?? 0), 0)
 
-  const card: React.CSSProperties = { borderRadius: 16, border: '1px solid var(--border)', background: 'var(--bg-card)', padding: 16 }
+  const card: React.CSSProperties = { borderRadius: 'var(--r-md)', border: '1px solid var(--border)', background: 'var(--bg-card)', padding: 16 }
   const secLabel: React.CSSProperties = { fontSize: 10.5, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-dim)', margin: '0 0 12px' }
   const num: React.CSSProperties = { fontFamily: 'var(--font-body)', fontVariantNumeric: 'tabular-nums' }
 
@@ -133,7 +133,7 @@ export default function AthleteFiche() {
       <div style={{ width: '100%', padding: '48px clamp(16px,4vw,40px)', textAlign: 'center', fontFamily: 'var(--font-body)' }}>
         <h1 style={{ fontSize: 22, fontWeight: 600, color: 'var(--text)', fontFamily: 'var(--font-display)' }}>{t('w1e.notFoundTitle')}</h1>
         <p style={{ fontSize: 14, color: 'var(--text-mid)', marginTop: 8 }}>{t('w1e.notFoundBody')}</p>
-        <button onClick={() => router.push('/coach/athletes')} style={{ marginTop: 16, padding: '10px 18px', borderRadius: 11, border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 13.5, fontWeight: 700, cursor: 'pointer' }}>{t('w1e.backToAthletes')}</button>
+        <button onClick={() => router.push('/coach/athletes')} style={{ marginTop: 16, padding: '10px 18px', borderRadius: 'var(--r-md)', border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 13.5, fontWeight: 700, cursor: 'pointer' }}>{t('w1e.backToAthletes')}</button>
       </div>
     )
   }
@@ -167,7 +167,7 @@ export default function AthleteFiche() {
     <div style={{ width: '100%', padding: '18px clamp(16px,4vw,40px) 60px', boxSizing: 'border-box', fontFamily: 'var(--font-body)' }}>
       {/* En-tête */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 13, marginBottom: 16 }}>
-        <button onClick={() => router.push('/coach/athletes')} aria-label={t('w1e.back')} style={{ width: 34, height: 34, borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-mid)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+        <button onClick={() => router.push('/coach/athletes')} aria-label={t('w1e.back')} style={{ width: 34, height: 34, borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-mid)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M11 18l-6-6 6-6" /></svg>
         </button>
         <Avatar url={profile?.avatar_url ?? null} name={name} size={48} />
@@ -184,7 +184,7 @@ export default function AthleteFiche() {
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 18 }}>
         {ACTIONS.map(a => (
           <button key={a.kind} onClick={() => { if (a.kind === 'message') openCoachMessage({ athleteId: id, name, avatar: profile?.avatar_url ?? null }); else setDrawer(a.kind) }}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '8px 14px', borderRadius: 11, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)', transition: 'border-color .14s, color .14s' }}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '8px 14px', borderRadius: 'var(--r-md)', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)', transition: 'border-color .14s, color .14s' }}
             onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = 'color-mix(in srgb, var(--primary) 45%, var(--border))'; (e.currentTarget as HTMLElement).style.color = 'var(--primary)' }}
             onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)'; (e.currentTarget as HTMLElement).style.color = 'var(--text)' }}>
             {a.icon}{t(ACTION_KEY[a.kind])}
@@ -359,7 +359,7 @@ export default function AthleteFiche() {
                       const m = providerMeta(c.provider)
                       return (
                         <div key={c.provider} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 0', borderTop: i ? '1px solid var(--border)' : 'none' }}>
-                          <span style={{ width: 38, height: 38, borderRadius: 10, background: `color-mix(in srgb, ${m.color} 16%, transparent)`, color: m.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12.5, fontWeight: 800, flexShrink: 0, letterSpacing: '0.02em' }}>{m.initials}</span>
+                          <span style={{ width: 38, height: 38, borderRadius: 'var(--r-sm)', background: `color-mix(in srgb, ${m.color} 16%, transparent)`, color: m.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12.5, fontWeight: 800, flexShrink: 0, letterSpacing: '0.02em' }}>{m.initials}</span>
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>{m.name}</div>
                             <div style={{ ...num, fontSize: 12, color: c.last_error ? 'var(--danger)' : 'var(--text-dim)', marginTop: 2 }}>

@@ -51,7 +51,7 @@ export default function SegmentDetail({ segmentId, onClose, isDark }: Props) {
       position: 'fixed', inset: 0, zIndex: 10010,
       background: bg, color: text,
       display: 'flex', flexDirection: 'column',
-      fontFamily: 'DM Sans, sans-serif',
+      fontFamily: 'var(--font-body)',
       paddingTop: 'env(safe-area-inset-top)',
       transform: shown && !closing ? 'translateY(0)' : 'translateY(100%)',
       transition: 'transform 280ms cubic-bezier(0.16,1,0.3,1)',
@@ -80,8 +80,8 @@ export default function SegmentDetail({ segmentId, onClose, isDark }: Props) {
               { l: 'D+', v: `${Math.round(segment.elevation_gain_m)} m` },
               { l: t('shared.visibility'), v: segment.is_public ? t('shared.public') : t('shared.private') },
             ].map(({ l, v }) => (
-              <div key={l} style={{ flex: 1, background: isDark ? 'rgba(255,255,255,0.06)' : '#F3F4F6', borderRadius: 10, padding: '10px 12px', textAlign: 'center' }}>
-                <p style={{ fontSize: 9, color: dim, textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 3px' }}>{l}</p>
+              <div key={l} style={{ flex: 1, background: isDark ? 'rgba(255,255,255,0.06)' : '#F3F4F6', borderRadius: 'var(--r-sm)', padding: '10px 12px', textAlign: 'center' }}>
+                <p style={{ fontSize: 10, color: dim, textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 3px' }}>{l}</p>
                 <p style={{ fontSize: 14, fontWeight: 700, color: text, margin: 0 }}>{v}</p>
               </div>
             ))}
@@ -95,7 +95,7 @@ export default function SegmentDetail({ segmentId, onClose, isDark }: Props) {
           <button
             key={tabKey}
             onClick={() => setTab(tabKey)}
-            style={{ flex: 1, height: 44, border: 'none', background: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: tab === tabKey ? '#06B6D4' : dim, fontFamily: 'DM Sans, sans-serif', borderBottom: `2px solid ${tab === tabKey ? '#06B6D4' : 'transparent'}`, transition: 'all 200ms' }}
+            style={{ flex: 1, height: 44, border: 'none', background: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: tab === tabKey ? '#06B6D4' : dim, fontFamily: 'var(--font-body)', borderBottom: `2px solid ${tab === tabKey ? '#06B6D4' : 'transparent'}`, transition: 'all 200ms' }}
           >
             {tabKey === 'leaderboard' ? t('shared.leaderboard') : t('shared.myHistory')}
           </button>

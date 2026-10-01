@@ -47,7 +47,7 @@ export function LinkActivitySheet({ segment, onClose, onLink }: {
         <div style={{ padding: '12px 20px 0' }}>
           <input value={q} onChange={e => setQ(e.target.value)} placeholder={t('performance.searchNameDate')}
             className="rec-drawer"
-            style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1px solid var(--border-mid)', background: 'var(--input-bg)', color: 'var(--text)', fontFamily: 'var(--font-body)', fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
+            style={{ width: '100%', padding: '10px 12px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border-mid)', background: 'var(--input-bg)', color: 'var(--text)', fontFamily: 'var(--font-body)', fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
         </div>
 
         {/* Liste */}

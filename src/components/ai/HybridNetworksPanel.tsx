@@ -50,7 +50,7 @@ function renderMD(text: string): ReactNode {
   while (i < lines.length) {
     const line = lines[i]
     if (line.startsWith('## ')) {
-      nodes.push(<p key={i} style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', margin: '10px 0 4px', fontFamily: 'Syne,sans-serif' }}>{line.slice(3)}</p>)
+      nodes.push(<p key={i} style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', margin: '10px 0 4px', fontFamily: 'var(--font-body)' }}>{line.slice(3)}</p>)
     } else if (line.startsWith('### ')) {
       nodes.push(<p key={i} style={{ fontSize: 12, fontWeight: 700, color: 'var(--ai-text)', margin: '8px 0 3px' }}>{line.slice(4)}</p>)
     } else if (line.startsWith('- ') || line.startsWith('* ')) {
@@ -172,16 +172,16 @@ function IdeaCard({ idea }: { idea: BriefIdea }) {
   }
 
   return (
-    <div style={{ background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)', borderRadius: 12, padding: 14, position: 'relative' }}>
+    <div style={{ background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)', borderRadius: 'var(--r-md)', padding: 14, position: 'relative' }}>
       {/* Badges */}
       <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 8 }}>
-        <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 99, background: tier.color, color: '#fff', letterSpacing: 0.4 }}>
+        <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 'var(--r-pill)', background: tier.color, color: '#fff', letterSpacing: 0.4 }}>
           {tier.label}
         </span>
-        <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 99, background: pillarC, color: '#fff', textTransform: 'uppercase', letterSpacing: 0.6 }}>
+        <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 'var(--r-pill)', background: pillarC, color: '#fff', textTransform: 'uppercase', letterSpacing: 0.6 }}>
           {idea.pillar}
         </span>
-        <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 99, background: 'rgba(255,255,255,0.08)', color: 'var(--ai-text)', textTransform: 'uppercase', letterSpacing: 0.6 }}>
+        <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 'var(--r-pill)', background: 'rgba(255,255,255,0.08)', color: 'var(--ai-text)', textTransform: 'uppercase', letterSpacing: 0.6 }}>
           {idea.format}
         </span>
         <span style={{ fontSize: 10, color: 'var(--ai-dim)', marginLeft: 'auto', alignSelf: 'center' }}>
@@ -189,7 +189,7 @@ function IdeaCard({ idea }: { idea: BriefIdea }) {
         </span>
       </div>
       {/* Hook */}
-      <p style={{ fontFamily: 'Syne,sans-serif', fontSize: 14, fontWeight: 700, margin: '0 0 8px', lineHeight: 1.35, color: 'var(--ai-text)' }}>
+      <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 700, margin: '0 0 8px', lineHeight: 1.35, color: 'var(--ai-text)' }}>
         {idea.hook}
       </p>
       {/* Structure */}
@@ -197,13 +197,13 @@ function IdeaCard({ idea }: { idea: BriefIdea }) {
       <p style={{ fontSize: 12, whiteSpace: 'pre-wrap', color: 'var(--ai-mid)', margin: '0 0 10px' }}>{idea.structure}</p>
       {/* Caption */}
       <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--ai-dim)', margin: '0 0 3px' }}>{t('ai.caption')}</p>
-      <p style={{ fontSize: 12, whiteSpace: 'pre-wrap', background: 'rgba(0,0,0,0.2)', padding: '8px 10px', borderRadius: 8, margin: '0 0 8px', color: 'var(--ai-mid)' }}>
+      <p style={{ fontSize: 12, whiteSpace: 'pre-wrap', background: 'rgba(0,0,0,0.2)', padding: '8px 10px', borderRadius: 'var(--r-sm)', margin: '0 0 8px', color: 'var(--ai-mid)' }}>
         {idea.caption}
       </p>
       {/* Hashtags */}
       <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 8 }}>
         {idea.hashtags?.map(h => (
-          <span key={h} style={{ fontSize: 11, color: '#5b6fff', background: 'rgba(91,111,255,0.12)', padding: '1px 7px', borderRadius: 5 }}>
+          <span key={h} style={{ fontSize: 11, color: '#5b6fff', background: 'rgba(91,111,255,0.12)', padding: '1px 7px', borderRadius: 'var(--r-sm)' }}>
             #{h.replace(/^#/, '')}
           </span>
         ))}
@@ -215,7 +215,7 @@ function IdeaCard({ idea }: { idea: BriefIdea }) {
       {/* Copy */}
       <button
         onClick={copyCaption}
-        style={{ position: 'absolute', top: 10, right: 10, background: 'transparent', border: '1px solid var(--ai-border)', borderRadius: 6, padding: '2px 8px', fontSize: 10, cursor: 'pointer', color: copied ? '#22c55e' : 'var(--ai-dim)' }}
+        style={{ position: 'absolute', top: 10, right: 10, background: 'transparent', border: '1px solid var(--ai-border)', borderRadius: 'var(--r-sm)', padding: '2px 8px', fontSize: 10, cursor: 'pointer', color: copied ? '#22c55e' : 'var(--ai-dim)' }}
       >
         {copied ? t('ai.copied') : t('ai.copy')}
       </button>
@@ -225,9 +225,9 @@ function IdeaCard({ idea }: { idea: BriefIdea }) {
 
 function KpiCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
-    <div style={{ background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)', borderRadius: 10, padding: '12px 14px' }}>
+    <div style={{ background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)', borderRadius: 'var(--r-sm)', padding: '12px 14px' }}>
       <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--ai-dim)', margin: '0 0 4px' }}>{label}</p>
-      <p style={{ fontFamily: 'Syne,sans-serif', fontSize: 22, fontWeight: 700, color: 'var(--ai-text)', margin: 0, lineHeight: 1.1 }}>{value}</p>
+      <p style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 700, color: 'var(--ai-text)', margin: 0, lineHeight: 1.1 }}>{value}</p>
       {sub && <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: '3px 0 0' }}>{sub}</p>}
     </div>
   )
@@ -249,7 +249,7 @@ function QuickActionCard({
       disabled={disabled || loading}
       style={{
         display: 'flex', alignItems: 'flex-start', gap: 10, padding: '11px 14px',
-        borderRadius: 10, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)',
+        borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)',
         cursor: (disabled || loading) ? 'wait' : 'pointer', textAlign: 'left', width: '100%',
         opacity: (disabled || loading) ? 0.65 : 1, transition: 'border-color 0.12s',
       }}
@@ -517,11 +517,11 @@ export default function HybridNetworksPanel({
   if (!isAdmin) {
     return (
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 28px', gap: 18, animation: 'ai_slidein 0.2s ease' }}>
-        <div style={{ width: 56, height: 56, borderRadius: 16, background: 'rgba(91,111,255,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#5b6fff' }}>
+        <div style={{ width: 56, height: 56, borderRadius: 'var(--r-md)', background: 'rgba(91,111,255,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#5b6fff' }}>
           <IconGlobe size={28} />
         </div>
         <div style={{ textAlign: 'center' }}>
-          <p style={{ fontFamily: 'Syne,sans-serif', fontWeight: 700, fontSize: 18, color: 'var(--ai-text)', margin: '0 0 8px' }}>Hybrid Networks</p>
+          <p style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 18, color: 'var(--ai-text)', margin: '0 0 8px' }}>Hybrid Networks</p>
           <p style={{ fontSize: 13, color: 'var(--ai-mid)', margin: '0 0 6px', lineHeight: 1.7 }}>{t('ai.hnTagline')}</p>
           <p style={{ fontSize: 12, color: 'var(--ai-dim)', margin: 0 }}>{t('ai.agentComingSoon')}</p>
         </div>
@@ -546,10 +546,10 @@ export default function HybridNetworksPanel({
         {/* ── HEADER ─────────────────────────────────────────── */}
         <div style={{ marginBottom: 20, animation: 'ai_slidein 0.2s ease' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-            <div style={{ width: 32, height: 32, borderRadius: 8, background: 'rgba(91,111,255,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#5b6fff', flexShrink: 0 }}>
+            <div style={{ width: 32, height: 32, borderRadius: 'var(--r-sm)', background: 'rgba(91,111,255,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#5b6fff', flexShrink: 0 }}>
               <IconGlobe size={16} />
             </div>
-            <p style={{ fontFamily: 'Syne,sans-serif', fontWeight: 700, fontSize: 16, color: 'var(--ai-text)', margin: 0 }}>
+            <p style={{ fontFamily: 'var(--font-body)', fontWeight: 700, fontSize: 16, color: 'var(--ai-text)', margin: 0 }}>
               Hybrid Networks
             </p>
           </div>
@@ -599,7 +599,7 @@ export default function HybridNetworksPanel({
 
         {/* ── ERRORS ─────────────────────────────────────────── */}
         {(syncError || briefError || analyzeError) && (
-          <div style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 8, padding: '8px 12px', marginBottom: 16, fontSize: 12, color: 'var(--danger)' }}>
+          <div style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 'var(--r-sm)', padding: '8px 12px', marginBottom: 16, fontSize: 12, color: 'var(--danger)' }}>
             {syncError ?? briefError ?? analyzeError}
           </div>
         )}
@@ -644,9 +644,9 @@ export default function HybridNetworksPanel({
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
               {(snapshot.top_posts ?? []).slice(0, 3).map((post, i) => (
-                <div key={i} style={{ background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)', borderRadius: 10, padding: '9px 12px', display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                <div key={i} style={{ background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)', borderRadius: 'var(--r-sm)', padding: '9px 12px', display: 'flex', alignItems: 'flex-start', gap: 10 }}>
                   <span style={{
-                    fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 99,
+                    fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 'var(--r-pill)',
                     background: FORMAT_COLORS[post.format] ?? '#666', color: '#fff',
                     textTransform: 'uppercase', letterSpacing: 0.5, flexShrink: 0, marginTop: 1,
                   }}>
@@ -695,13 +695,13 @@ export default function HybridNetworksPanel({
           <div style={{ animation: 'ai_slidein 0.25s ease' }}>
 
             {/* A — Score global */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)', borderRadius: 12, padding: '14px 16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)', borderRadius: 'var(--r-md)', padding: '14px 16px' }}>
               <div style={{
-                width: 52, height: 52, borderRadius: 12, flexShrink: 0,
+                width: 52, height: 52, borderRadius: 'var(--r-md)', flexShrink: 0,
                 background: (SCORE_COLORS[analysis.overall_score] ?? '#888') + '18',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}>
-                <span style={{ fontFamily: 'Syne,sans-serif', fontSize: 28, fontWeight: 700, color: SCORE_COLORS[analysis.overall_score] ?? '#888' }}>
+                <span style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 700, color: SCORE_COLORS[analysis.overall_score] ?? '#888' }}>
                   {analysis.overall_score}
                 </span>
               </div>
@@ -715,7 +715,7 @@ export default function HybridNetworksPanel({
             </div>
 
             {/* F — Résumé */}
-            <div style={{ background: 'rgba(91,111,255,0.06)', border: '1px solid rgba(91,111,255,0.15)', borderRadius: 10, padding: '10px 14px', marginBottom: 14 }}>
+            <div style={{ background: 'rgba(91,111,255,0.06)', border: '1px solid rgba(91,111,255,0.15)', borderRadius: 'var(--r-sm)', padding: '10px 14px', marginBottom: 14 }}>
               <p style={{ fontSize: 12, color: 'var(--ai-mid)', margin: 0, lineHeight: 1.6, fontStyle: 'italic' }}>
                 &ldquo;{analysis.summary}&rdquo;
               </p>
@@ -727,7 +727,7 @@ export default function HybridNetworksPanel({
                 <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: '#22c55e', margin: '0 0 7px' }}>{t('ai.whatWorks')}</p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                   {(analysis.what_works ?? []).map((item, i) => (
-                    <div key={i} style={{ background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.2)', borderRadius: 8, padding: '9px 12px' }}>
+                    <div key={i} style={{ background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.2)', borderRadius: 'var(--r-sm)', padding: '9px 12px' }}>
                       <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 4px' }}>{item.insight}</p>
                       <p style={{ fontSize: 11, color: '#22c55e', margin: 0 }}>→ {item.action}</p>
                     </div>
@@ -742,7 +742,7 @@ export default function HybridNetworksPanel({
                 <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--danger)', margin: '0 0 7px' }}>{t('ai.whatDoesntWork')}</p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                   {(analysis.what_doesnt_work ?? []).map((item, i) => (
-                    <div key={i} style={{ background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 8, padding: '9px 12px' }}>
+                    <div key={i} style={{ background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 'var(--r-sm)', padding: '9px 12px' }}>
                       <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 4px' }}>{item.insight}</p>
                       <p style={{ fontSize: 11, color: '#f59e0b', margin: 0 }}>→ {item.action}</p>
                     </div>
@@ -757,11 +757,11 @@ export default function HybridNetworksPanel({
                 <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--ai-dim)', margin: '0 0 7px' }}>{t('ai.recommendations')}</p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                   {(analysis.recommendations ?? []).map((rec, i) => (
-                    <div key={i} style={{ background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)', borderRadius: 8, padding: '9px 12px', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-                      <span style={{ fontFamily: 'Syne,sans-serif', fontSize: 14, fontWeight: 700, color: '#5b6fff', flexShrink: 0, width: 16, textAlign: 'center' }}>{rec.priority}</span>
+                    <div key={i} style={{ background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)', borderRadius: 'var(--r-sm)', padding: '9px 12px', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                      <span style={{ fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 700, color: '#5b6fff', flexShrink: 0, width: 16, textAlign: 'center' }}>{rec.priority}</span>
                       <div style={{ flex: 1 }}>
                         <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 6px' }}>{rec.action}</p>
-                        <span style={{ fontSize: 10, fontWeight: 700, padding: '1px 7px', borderRadius: 99, background: EFFORT_COLORS[rec.effort] + '20', color: EFFORT_COLORS[rec.effort], textTransform: 'uppercase', letterSpacing: 0.4 }}>
+                        <span style={{ fontSize: 10, fontWeight: 700, padding: '1px 7px', borderRadius: 'var(--r-pill)', background: EFFORT_COLORS[rec.effort] + '20', color: EFFORT_COLORS[rec.effort], textTransform: 'uppercase', letterSpacing: 0.4 }}>
                           {rec.effort}
                         </span>
                       </div>
@@ -773,17 +773,17 @@ export default function HybridNetworksPanel({
 
             {/* E — Projection */}
             {analysis.growth_projection && (
-              <div style={{ background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)', borderRadius: 10, padding: '10px 14px', marginBottom: 8 }}>
+              <div style={{ background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)', borderRadius: 'var(--r-sm)', padding: '10px 14px', marginBottom: 8 }}>
                 <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--ai-dim)', margin: '0 0 6px' }}>{t('ai.projectionEnd2026')}</p>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 5 }}>
-                  <span style={{ fontSize: 18, fontWeight: 700, fontFamily: 'Syne,sans-serif', color: 'var(--ai-text)' }}>
+                  <span style={{ fontSize: 18, fontWeight: 700, fontFamily: 'var(--font-display)', color: 'var(--ai-text)' }}>
                     {analysis.growth_projection.current_followers.toLocaleString(currentLocale())}
                   </span>
                   <span style={{ fontSize: 12, color: 'var(--ai-dim)' }}>→</span>
-                  <span style={{ fontSize: 18, fontWeight: 700, fontFamily: 'Syne,sans-serif', color: analysis.growth_projection.on_track ? '#22c55e' : '#f59e0b' }}>
+                  <span style={{ fontSize: 18, fontWeight: 700, fontFamily: 'var(--font-display)', color: analysis.growth_projection.on_track ? '#22c55e' : '#f59e0b' }}>
                     {analysis.growth_projection.projected_dec_2026.toLocaleString(currentLocale())}
                   </span>
-                  <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 99, background: analysis.growth_projection.on_track ? 'rgba(34,197,94,0.12)' : 'rgba(245,158,11,0.12)', color: analysis.growth_projection.on_track ? '#22c55e' : '#f59e0b', fontWeight: 600 }}>
+                  <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 'var(--r-pill)', background: analysis.growth_projection.on_track ? 'rgba(34,197,94,0.12)' : 'rgba(245,158,11,0.12)', color: analysis.growth_projection.on_track ? '#22c55e' : '#f59e0b', fontWeight: 600 }}>
                     {analysis.growth_projection.on_track ? t('ai.onTrack') : t('ai.toAccelerate')}
                   </span>
                 </div>
@@ -809,7 +809,7 @@ export default function HybridNetworksPanel({
                 gap: 8, alignItems: 'flex-start',
               }}>
                 {msg.role === 'assistant' && (
-                  <div style={{ width: 26, height: 26, borderRadius: 7, background: 'rgba(91,111,255,0.14)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}>
+                  <div style={{ width: 26, height: 26, borderRadius: 'var(--r-sm)', background: 'rgba(91,111,255,0.14)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}>
                     <IconGlobe size={13} />
                   </div>
                 )}
@@ -876,7 +876,7 @@ export default function HybridNetworksPanel({
             onClick={() => void sendMessage()}
             disabled={!chatInput.trim() || chatLoading}
             style={{
-              width: 34, height: 34, borderRadius: 10, border: 'none',
+              width: 34, height: 34, borderRadius: 'var(--r-sm)', border: 'none',
               background: (!chatInput.trim() || chatLoading) ? 'var(--ai-border)' : '#5b6fff',
               color: '#fff', cursor: (!chatInput.trim() || chatLoading) ? 'default' : 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center',

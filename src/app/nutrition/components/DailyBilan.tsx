@@ -46,7 +46,7 @@ function BigRing({ consumed, target }: { consumed: number; target: number }) {
           style={{ transition: 'stroke-dashoffset 800ms ease-out' }} />
       </svg>
       <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-        <span style={{ fontFamily: 'Syne,sans-serif', fontWeight: 700, fontSize: 22, color: 'var(--text)', lineHeight: 1 }}>
+        <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 22, color: 'var(--text)', lineHeight: 1 }}>
           {Math.round(consumed)}
         </span>
         <span style={{ fontSize: 10, color: 'var(--text-dim)', marginTop: 2 }}>kcal</span>
@@ -72,13 +72,13 @@ function MiniRing({ consumed, target, color, label }: { consumed: number; target
             style={{ transition: 'stroke-dashoffset 800ms ease-out' }} />
         </svg>
         <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <span style={{ fontFamily: 'DM Mono,monospace', fontWeight: 700, fontSize: 11, color }}>
+          <span style={{ fontFamily: 'var(--font-body)', fontWeight: 700, fontSize: 11, color }}>
             {Math.round(consumed)}
           </span>
         </div>
       </div>
       <div style={{ textAlign: 'center' }}>
-        <div style={{ fontSize: 10, fontFamily: 'DM Mono,monospace', color: 'var(--text-mid)' }}>
+        <div style={{ fontSize: 10, fontFamily: 'var(--font-body)', color: 'var(--text-mid)' }}>
           {Math.round(consumed)}g / {Math.round(target)}g
         </div>
         <div style={{ fontSize: 10, color: 'var(--text-dim)' }}>{label}</div>
@@ -93,10 +93,10 @@ export default function DailyBilan({ consumed, targets, dayType }: DailyBilanPro
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-        <p style={{ fontFamily: 'Syne,sans-serif', fontWeight: 700, fontSize: 16, color: 'var(--text)', margin: 0 }}>
+        <p style={{ fontFamily: 'var(--font-body)', fontWeight: 700, fontSize: 16, color: 'var(--text)', margin: 0 }}>
           {t('w3h.daily_summary')}
         </p>
-        <div style={{ padding: '4px 10px', borderRadius: 8, background: badge.bg, border: `1px solid ${badge.border}`, color: badge.text, fontSize: 11, fontFamily: 'Syne,sans-serif', fontWeight: 700 }}>
+        <div style={{ padding: '4px 10px', borderRadius: 'var(--r-sm)', background: badge.bg, border: `1px solid ${badge.border}`, color: badge.text, fontSize: 11, fontFamily: 'var(--font-body)', fontWeight: 700 }}>
           {t(`w3h.daytype_${dayType}`)}
         </div>
       </div>

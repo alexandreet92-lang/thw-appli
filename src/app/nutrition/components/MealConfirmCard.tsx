@@ -21,7 +21,7 @@ export default function MealConfirmCard({ mealName, calories, protein, visible }
       transition: 'opacity 300ms ease, transform 300ms ease',
       background: 'var(--bg-card)',
       border: '1px solid var(--border)',
-      borderRadius: 16,
+      borderRadius: 'var(--r-md)',
       boxShadow: '0 8px 32px rgba(0,0,0,0.28)',
       padding: '12px 20px',
       display: 'flex',
@@ -47,7 +47,7 @@ export default function MealConfirmCard({ mealName, calories, protein, visible }
         </svg>
       </div>
       <div style={{ minWidth: 0 }}>
-        <p style={{ margin: 0, fontFamily: 'Syne,sans-serif', fontWeight: 600, fontSize: 13, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+        <p style={{ margin: 0, fontFamily: 'var(--font-body)', fontWeight: 600, fontSize: 13, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis' }}>
           {mealName}
         </p>
         <p style={{ margin: 0, fontSize: 11, color: 'var(--text-dim)', marginTop: 2 }}>

@@ -81,7 +81,7 @@ export function BarcodeScanner({ onDetected, onClose }: Props) {
   return (
     <div className="fixed inset-0 bg-black z-[100] flex flex-col">
       <div className="flex items-center justify-between p-4 flex-shrink-0">
-        <p className="text-white font-medium text-base" style={{ fontFamily: 'Syne,sans-serif' }}>
+        <p className="text-white font-medium text-base" style={{ fontFamily: 'var(--font-body)' }}>
           {t('w3h.scan_product')}
         </p>
         <button

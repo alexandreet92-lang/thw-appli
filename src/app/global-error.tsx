@@ -51,7 +51,7 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
 
   return (
     <html lang={lang}>
-      <body style={{ margin: 0, minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, background: '#0b0b0f', color: '#e8e8ea', fontFamily: 'system-ui, sans-serif' }}>
+      <body style={{ margin: 0, minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, background: '#0b0b0f', color: '#e8e8ea', fontFamily: 'var(--font-body)' }}>
         <div style={{ maxWidth: 440, width: '100%', textAlign: 'center' }}>
           <div style={{ fontSize: 40, marginBottom: 10 }}>⚠️</div>
           <h1 style={{ fontSize: 22, fontWeight: 800, margin: '0 0 8px' }}>
@@ -61,9 +61,9 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
             {isChunk ? tx.deployed : tx.reload_hint}
           </p>
           <button onClick={() => { try { sessionStorage.removeItem('thw_chunk_reloaded') } catch { /* ignore */ } location.reload() }}
-            style={{ padding: '10px 18px', borderRadius: 12, border: 'none', background: 'var(--primary)', color: '#fff', fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>{tx.reload}</button>
+            style={{ padding: '10px 18px', borderRadius: 'var(--r-md)', border: 'none', background: 'var(--primary)', color: '#fff', fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>{tx.reload}</button>
           {!isChunk && (error?.message || error?.digest) && (
-            <pre style={{ textAlign: 'left', whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontSize: 11.5, lineHeight: 1.5, color: '#6b7075', background: '#101014', border: '1px solid #26262b', borderRadius: 10, padding: '10px 12px', marginTop: 16, maxHeight: 200, overflow: 'auto' }}>
+            <pre style={{ textAlign: 'left', whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontSize: 11.5, lineHeight: 1.5, color: '#6b7075', background: '#101014', border: '1px solid #26262b', borderRadius: 'var(--r-sm)', padding: '10px 12px', marginTop: 16, maxHeight: 200, overflow: 'auto' }}>
               {error?.message || ''}{error?.digest ? `\n\n[digest] ${error.digest}` : ''}
             </pre>
           )}

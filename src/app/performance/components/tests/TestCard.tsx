@@ -22,7 +22,7 @@ export function TestCard({ test, onOpen }: { test: TestLike; onOpen: () => void 
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', flexWrap: 'wrap', marginBottom: 'var(--space-1)' }}>
           <h3 style={{ fontFamily: FD, fontSize: 15, fontWeight: 600, margin: 0, color: 'var(--text)' }}>{test.name}</h3>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontFamily: FB, fontSize: 9, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: c }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontFamily: FB, fontSize: 10, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: c }}>
             <span style={{ width: 6, height: 6, borderRadius: '50%', background: c }} />{test.difficulty}
           </span>
         </div>

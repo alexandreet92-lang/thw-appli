@@ -158,7 +158,7 @@ export function IapStoreSheet(p: IapStoreSheetProps) {
 
         <div style={{ flex: 1, overflowY: 'auto', padding: '0 var(--space-5) var(--space-5)' }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/icon-192.png" alt="" width={72} height={72} style={{ display: 'block', margin: 'var(--space-2) auto var(--space-5)', borderRadius: 18 }} />
+          <img src="/icon-192.png" alt="" width={72} height={72} style={{ display: 'block', margin: 'var(--space-2) auto var(--space-5)', borderRadius: 'var(--r-lg)' }} />
           <h2 style={{ margin: '0 0 var(--space-5)', textAlign: 'center', fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 600, color: 'var(--text)', lineHeight: 1.2 }}>
             {p.tab === 'tokens' ? 'Recharger des tokens' : 'Abonnements disponibles'}
           </h2>

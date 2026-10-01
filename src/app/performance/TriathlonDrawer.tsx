@@ -87,11 +87,11 @@ export function TriathlonDrawer(p: TriathlonDrawerProps) {
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 600, color: 'var(--text-mid)' }}>
               <span style={{ width: 7, height: 7, borderRadius: '50%', background: TRI_DOT }} />Triathlon
             </span>
-            <span style={{ padding: '3px 9px', borderRadius: 8, background: 'var(--bg-card2)', fontFamily: 'var(--font-body)', fontSize: 11, fontWeight: 600, color: 'var(--text-mid)' }}>{fmtLabel}</span>
+            <span style={{ padding: '3px 9px', borderRadius: 'var(--r-sm)', background: 'var(--bg-card2)', fontFamily: 'var(--font-body)', fontSize: 11, fontWeight: 600, color: 'var(--text-mid)' }}>{fmtLabel}</span>
             <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 600, color: 'var(--text)', margin: 0 }}>{t('performance.enterRace')}</h2>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <input type="date" value={date} onChange={e => setDate(e.target.value)} className="rec-drawer" style={{ padding: '5px 9px', borderRadius: 8, border: '1px solid var(--border-mid)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 11, outline: 'none' }} />
+            <input type="date" value={date} onChange={e => setDate(e.target.value)} className="rec-drawer" style={{ padding: '5px 9px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border-mid)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 11, outline: 'none' }} />
             <button onClick={close} style={{ width: 28, height: 28, borderRadius: '50%', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 16 }}>×</button>
           </div>
         </div>
@@ -113,7 +113,7 @@ export function TriathlonDrawer(p: TriathlonDrawerProps) {
           </TriSegment>
 
           {/* Total */}
-          <div style={{ background: 'var(--bg-card2)', borderRadius: 14, padding: '14px 16px' }}>
+          <div style={{ background: 'var(--bg-card2)', borderRadius: 'var(--r-md)', padding: '14px 16px' }}>
             <p style={{ fontFamily: 'var(--font-body)', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-dim)', margin: '0 0 8px' }}>{t('performance.totalTime')}</p>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
               <input className="rec-drawer tnum" value={displayTotal} onChange={e => setDraft(e.target.value)} placeholder={t('performance.autoOrManual')} style={{ ...triInp, maxWidth: 180, fontWeight: 600 }} />

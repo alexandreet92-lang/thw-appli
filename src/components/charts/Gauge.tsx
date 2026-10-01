@@ -50,7 +50,7 @@ export function Gauge({ value, min = 0, max = 100, size = 168, thickness = 16, c
         {/* pointeur */}
         {(() => { const [px, py] = polar(cx, cy, r, valDeg); return <circle cx={px} cy={py} r={thickness / 2 - 1} fill={INK.surface} stroke={c} strokeWidth={3} /> })()}
         {/* héro */}
-        <text x={cx} y={cy - size * 0.02} textAnchor="middle" style={{ fontFamily: 'Syne, sans-serif', fontSize: size * 0.24, fontWeight: 800, fill: c }}>
+        <text x={cx} y={cy - size * 0.02} textAnchor="middle" style={{ fontFamily: 'var(--font-body)', fontSize: size * 0.24, fontWeight: 800, fill: c }}>
           {valueText ?? Math.round(value)}
         </text>
         {unit && <text x={cx} y={cy + size * 0.11} textAnchor="middle" style={{ fontSize: size * 0.075, fontWeight: 700, fill: INK.dim }}>{unit}</text>}

@@ -509,16 +509,16 @@ export function ScoreBadge({ score, level, size = 'md' }: { score: number; level
       display: 'inline-flex', alignItems: 'center', gap: size === 'sm' ? 4 : 6,
       background: level.color + '1a',
       border: `1px solid ${level.color}55`,
-      borderRadius: 10,
+      borderRadius: 'var(--r-sm)',
       padding: pad,
       color: level.color,
-      fontFamily: 'Syne, sans-serif',
+      fontFamily: 'var(--font-body)',
       fontWeight: 700,
       fontSize,
       whiteSpace: 'nowrap' as const,
     }}>
       <span>{level.label}</span>
-      <span style={{ fontFamily: 'DM Mono, monospace', fontSize: fontSize - 1, opacity: 0.9 }}>
+      <span style={{ fontFamily: 'var(--font-body)', fontSize: fontSize - 1, opacity: 0.9 }}>
         {score.toFixed(1)}
       </span>
     </span>
@@ -552,7 +552,7 @@ export function LevelTable({ testId, gender, currentScore, accentColor }: LevelT
             <p style={{ fontSize: 10.5, color: 'var(--text-dim)', margin: '6px 0 0', lineHeight: 1.5 }}>{sub.annotation}</p>
           </div>
         ))}
-        <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: 0, lineHeight: 1.55, padding: '10px 12px', borderRadius: 8, background: 'var(--bg-card2)', border: '1px solid var(--border)' }}>
+        <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: 0, lineHeight: 1.55, padding: '10px 12px', borderRadius: 'var(--r-sm)', background: 'var(--bg-card2)', border: '1px solid var(--border)' }}>
           ℹ️ {bench.annotation}
         </p>
       </div>
@@ -562,7 +562,7 @@ export function LevelTable({ testId, gender, currentScore, accentColor }: LevelT
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       <BenchmarkTable rows={bench.rows} gender={gender} currentLevelLabel={currentLevel?.label ?? null} accentColor={accentColor} />
-      <p style={{ fontSize: 10.5, color: 'var(--text-dim)', margin: 0, lineHeight: 1.55, padding: '10px 12px', borderRadius: 8, background: 'var(--bg-card2)', border: '1px solid var(--border)' }}>
+      <p style={{ fontSize: 10.5, color: 'var(--text-dim)', margin: 0, lineHeight: 1.55, padding: '10px 12px', borderRadius: 'var(--r-sm)', background: 'var(--bg-card2)', border: '1px solid var(--border)' }}>
         ℹ️ {bench.annotation}
       </p>
     </div>
@@ -577,7 +577,7 @@ function BenchmarkTable({ rows, gender, currentLevelLabel, accentColor }: {
 }) {
   const { t } = useI18n()
   return (
-    <div style={{ overflowX: 'auto' as const, borderRadius: 10, border: '1px solid var(--border)' }}>
+    <div style={{ overflowX: 'auto' as const, borderRadius: 'var(--r-sm)', border: '1px solid var(--border)' }}>
       <table style={{ width: '100%', borderCollapse: 'collapse' as const, fontSize: 11.5 }}>
         <thead>
           <tr style={{ background: 'var(--bg-card2)' }}>
@@ -610,19 +610,19 @@ function BenchmarkTable({ rows, gender, currentLevelLabel, accentColor }: {
                       {row.label}
                     </span>
                     {isHighlighted && (
-                      <span style={{ fontSize: 9, background: row.color + '22', color: row.color, border: `1px solid ${row.color}44`, borderRadius: 5, padding: '1px 5px', fontWeight: 700 }}>
+                      <span style={{ fontSize: 10, background: row.color + '22', color: row.color, border: `1px solid ${row.color}44`, borderRadius: 'var(--r-sm)', padding: '1px 5px', fontWeight: 700 }}>
                         {t('w1c.vous')}
                       </span>
                     )}
                   </div>
                 </td>
-                <td style={{ padding: '7px 10px', textAlign: 'center' as const, fontFamily: 'DM Mono, monospace', color: isHighlighted ? row.color : 'var(--text-dim)', fontWeight: isHighlighted ? 700 : 400 }}>
+                <td style={{ padding: '7px 10px', textAlign: 'center' as const, fontFamily: 'var(--font-body)', color: isHighlighted ? row.color : 'var(--text-dim)', fontWeight: isHighlighted ? 700 : 400 }}>
                   {row.score === 3 ? '0-4' : row.score}
                 </td>
-                <td style={{ padding: '7px 10px', textAlign: 'center' as const, fontFamily: 'DM Mono, monospace', color: gender === 'M' ? (isHighlighted ? row.color : 'var(--text)') : 'var(--text-dim)', fontWeight: gender === 'M' && isHighlighted ? 700 : 400 }}>
+                <td style={{ padding: '7px 10px', textAlign: 'center' as const, fontFamily: 'var(--font-body)', color: gender === 'M' ? (isHighlighted ? row.color : 'var(--text)') : 'var(--text-dim)', fontWeight: gender === 'M' && isHighlighted ? 700 : 400 }}>
                   {row.hDisplay}
                 </td>
-                <td style={{ padding: '7px 10px', textAlign: 'center' as const, fontFamily: 'DM Mono, monospace', color: gender === 'F' ? (isHighlighted ? row.color : 'var(--text)') : 'var(--text-dim)', fontWeight: gender === 'F' && isHighlighted ? 700 : 400 }}>
+                <td style={{ padding: '7px 10px', textAlign: 'center' as const, fontFamily: 'var(--font-body)', color: gender === 'F' ? (isHighlighted ? row.color : 'var(--text)') : 'var(--text-dim)', fontWeight: gender === 'F' && isHighlighted ? 700 : 400 }}>
                   {row.fDisplay}
                 </td>
               </tr>
@@ -640,7 +640,7 @@ export function TestScoreDisplay({ result, accentColor }: { result: TestScoreRes
   return (
     <div style={{
       padding: '14px 16px',
-      borderRadius: 13,
+      borderRadius: 'var(--r-md)',
       background: result.level.color + '0d',
       border: `1px solid ${result.level.color}33`,
     }}>
@@ -653,7 +653,7 @@ export function TestScoreDisplay({ result, accentColor }: { result: TestScoreRes
         </div>
         <div style={{ textAlign: 'right' as const }}>
           <div style={{ fontSize: 11, color: 'var(--text-dim)', marginBottom: 2 }}>{t('w1c.percentile')}</div>
-          <div style={{ fontFamily: 'DM Mono, monospace', fontSize: 13, color: result.level.color, fontWeight: 700 }}>
+          <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: result.level.color, fontWeight: 700 }}>
             {result.level.label === 'Alien' ? '>99%' :
              result.level.label === 'Élite' ? 'Top 1%' :
              result.level.label === 'AHN' ? 'Top 5%' :
@@ -667,7 +667,7 @@ export function TestScoreDisplay({ result, accentColor }: { result: TestScoreRes
       {result.subScores && result.subScores.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4 }}>
           {result.subScores.map(sub => (
-            <div key={sub.key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '5px 8px', borderRadius: 8, background: 'var(--bg-card2)' }}>
+            <div key={sub.key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '5px 8px', borderRadius: 'var(--r-sm)', background: 'var(--bg-card2)' }}>
               <span style={{ fontSize: 12, color: 'var(--text-mid)', fontWeight: 500 }}>{sub.label}</span>
               <ScoreBadge score={sub.score} level={sub.level} size="sm" />
             </div>

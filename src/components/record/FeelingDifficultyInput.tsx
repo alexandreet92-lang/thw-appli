@@ -69,7 +69,7 @@ export function FeelingDifficultyInput({ feeling, difficulty, onFeeling, onDiffi
 }) {
   const { t } = useI18n()
   return (
-    <div style={{ display: 'flex', gap: 12, background: 'var(--bg-card2)', borderRadius: 14, padding: '16px 12px' }}>
+    <div style={{ display: 'flex', gap: 12, background: 'var(--bg-card2)', borderRadius: 'var(--r-md)', padding: '16px 12px' }}>
       <Gauge value={feeling}    max={5}  kind="feeling"    label={t('actp.feeling_upper')    || 'Ressenti'}  onChange={onFeeling} />
       <Gauge value={difficulty} max={10} kind="difficulty" label={t('actp.difficulty_upper') || 'Difficulté'} onChange={onDifficulty} />
     </div>

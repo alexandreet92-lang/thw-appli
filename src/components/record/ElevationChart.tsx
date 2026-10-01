@@ -210,7 +210,7 @@ export default function ElevationChart({ data, surfaces, height = 100, isDark = 
         )}
       </svg>
       {cursor && (
-        <div style={{ position: 'absolute', top: 2, left: `${Math.max(6, Math.min(94, (cursor.x / W) * 100))}%`, transform: 'translateX(-50%)', background: 'rgba(0,0,0,0.78)', borderRadius: 7, padding: '3px 9px', pointerEvents: 'none', whiteSpace: 'nowrap' }}>
+        <div style={{ position: 'absolute', top: 2, left: `${Math.max(6, Math.min(94, (cursor.x / W) * 100))}%`, transform: 'translateX(-50%)', background: 'rgba(0,0,0,0.78)', borderRadius: 'var(--r-sm)', padding: '3px 9px', pointerEvents: 'none', whiteSpace: 'nowrap' }}>
           <p style={{ fontSize: 12, color: 'white', margin: 0, fontWeight: 600 }}>{Math.round(cursor.point.altitudeM)}m · {cursor.slope >= 0 ? '+' : ''}{cursor.slope.toFixed(1)}%</p>
           <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.6)', margin: 0 }}>{(cursor.point.distanceM / 1000).toFixed(2)}km</p>
         </div>

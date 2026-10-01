@@ -22,7 +22,7 @@ const SC = {
 }
 
 const navBtnStyle: CSSProperties = {
-  width: 32, height: 32, borderRadius: 8, border: '1px solid var(--border)',
+  width: 32, height: 32, borderRadius: 'var(--r-sm)', border: '1px solid var(--border)',
   background: 'var(--bg-card2)', cursor: 'pointer', display: 'flex',
   alignItems: 'center', justifyContent: 'center', color: 'var(--text)',
 }
@@ -83,7 +83,7 @@ export default function CalendarView({ targetKcal, onDayClick }: Props) {
         <button style={navBtnStyle} onClick={() => nav(-1)}>
           <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>
         </button>
-        <span style={{ fontFamily: 'Syne,sans-serif', fontWeight: 600, fontSize: 14, color: 'var(--text)' }}>
+        <span style={{ fontFamily: 'var(--font-body)', fontWeight: 600, fontSize: 14, color: 'var(--text)' }}>
           {t(`w3h.month_${month}`)} {year}
         </span>
         <button style={{ ...navBtnStyle, opacity: (year > now.getFullYear() || isCurrentMonth) ? 0.3 : 1, cursor: (year > now.getFullYear() || isCurrentMonth) ? 'default' : 'pointer' }}
@@ -95,7 +95,7 @@ export default function CalendarView({ targetKcal, onDayClick }: Props) {
       {/* DOW header */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 3, marginBottom: 4 }}>
         {DOW.map((d, i) => (
-          <div key={i} style={{ textAlign: 'center', fontSize: 10, color: 'var(--text-dim)', fontWeight: 600, fontFamily: 'DM Sans,sans-serif', paddingBottom: 4 }}>{t(`w3h.dow_${i}`)}</div>
+          <div key={i} style={{ textAlign: 'center', fontSize: 10, color: 'var(--text-dim)', fontWeight: 600, fontFamily: 'var(--font-body)', paddingBottom: 4 }}>{t(`w3h.dow_${i}`)}</div>
         ))}
       </div>
 
@@ -113,7 +113,7 @@ export default function CalendarView({ targetKcal, onDayClick }: Props) {
             <div key={i}
               onClick={() => { if (!isFuture) onDayClick?.(dateISO) }}
               style={{
-                aspectRatio: '1', borderRadius: 8,
+                aspectRatio: '1', borderRadius: 'var(--r-sm)',
                 display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2,
                 background: bg, color,
                 cursor: isFuture ? 'default' : 'pointer',
@@ -125,7 +125,7 @@ export default function CalendarView({ targetKcal, onDayClick }: Props) {
               onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.background = bg }}>
               <span style={{ fontSize: 11, fontWeight: 600 }}>{day}</span>
               {kcal > 0 && (
-                <span style={{ fontSize: 9, opacity: 0.75, lineHeight: 1 }}>
+                <span style={{ fontSize: 10, opacity: 0.75, lineHeight: 1 }}>
                   {kcal > 999 ? `${(kcal / 1000).toFixed(1)}k` : kcal}
                 </span>
               )}
@@ -143,7 +143,7 @@ export default function CalendarView({ targetKcal, onDayClick }: Props) {
         ] as const).map(({ color, label }) => (
           <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
             <div style={{ width: 7, height: 7, borderRadius: '50%', background: color, flexShrink: 0 }} />
-            <span style={{ fontSize: 10, color: 'var(--text-dim)', fontFamily: 'DM Sans,sans-serif' }}>{label}</span>
+            <span style={{ fontSize: 10, color: 'var(--text-dim)', fontFamily: 'var(--font-body)' }}>{label}</span>
           </div>
         ))}
       </div>

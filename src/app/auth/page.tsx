@@ -47,7 +47,7 @@ function Brand() {
   return (
     <div className="hbl-brand">
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/logos/logo_app.png" alt="Hybrid" style={{ width: 54, height: 54, borderRadius: 15, objectFit: 'cover', boxShadow: 'var(--shadow-card)' }} />
+      <img src="/logos/logo_app.png" alt="Hybrid" style={{ width: 54, height: 54, borderRadius: 'var(--r-md)', objectFit: 'cover', boxShadow: 'var(--shadow-card)' }} />
       <div style={{ fontFamily: FD, fontSize: 22, fontWeight: 600, letterSpacing: '-0.4px', color: 'var(--text)', marginTop: 14, lineHeight: 1 }}>Hybrid</div>
       <div style={{ fontFamily: FB, fontSize: 10.5, fontWeight: 600, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'var(--text-dim)', marginTop: 7 }}>{t('auth.heroTagline')}</div>
     </div>
@@ -322,7 +322,7 @@ function AuthPageInner() {
 
               <label onClick={() => setAcceptedTerms(v => !v)} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '4px 0 18px', cursor: 'pointer' }}>
                 <span style={{
-                  width: 20, height: 20, borderRadius: 6, flexShrink: 0, marginTop: 1,
+                  width: 20, height: 20, borderRadius: 'var(--r-sm)', flexShrink: 0, marginTop: 1,
                   background: acceptedTerms ? 'var(--primary)' : 'transparent',
                   border: `2px solid ${acceptedTerms ? 'var(--primary)' : 'var(--border-mid)'}`,
                   display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 150ms',

@@ -29,12 +29,12 @@ function ChartMockup() {
   const kpis = [{ l: 'CTL', v: '68', u: '' }, { l: 'ATL', v: '74', u: '' }, { l: 'TSB', v: '-6', u: '' }]
 
   return (
-    <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: 18, padding: 18, width: '100%', maxWidth: 320, border: '1px solid rgba(255,255,255,0.08)' }}>
+    <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: 'var(--r-lg)', padding: 18, width: '100%', maxWidth: 320, border: '1px solid rgba(255,255,255,0.08)' }}>
       <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
         {kpis.map(k => (
-          <div key={k.l} style={{ flex: 1, background: 'rgba(255,255,255,0.05)', borderRadius: 10, padding: '8px 10px' }}>
-            <p style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)', margin: '0 0 2px', textTransform: 'uppercase', fontFamily: 'DM Sans, sans-serif' }}>{k.l}</p>
-            <p style={{ fontSize: 20, fontWeight: 700, color: 'var(--primary)', margin: 0, fontFamily: 'DM Mono, monospace' }}>{k.v}</p>
+          <div key={k.l} style={{ flex: 1, background: 'rgba(255,255,255,0.05)', borderRadius: 'var(--r-sm)', padding: '8px 10px' }}>
+            <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', margin: '0 0 2px', textTransform: 'uppercase', fontFamily: 'var(--font-body)' }}>{k.l}</p>
+            <p style={{ fontSize: 20, fontWeight: 700, color: 'var(--primary)', margin: 0, fontFamily: 'var(--font-body)' }}>{k.v}</p>
           </div>
         ))}
       </div>
@@ -56,7 +56,7 @@ function ChartMockup() {
           ) : null
         })}
       </svg>
-      <p style={{ fontSize: 9, color: 'rgba(255,255,255,0.3)', margin: '6px 0 0', textAlign: 'right', fontFamily: 'DM Sans, sans-serif' }}>{t('onboarding.weeksN', { n: 8 })}</p>
+      <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', margin: '6px 0 0', textAlign: 'right', fontFamily: 'var(--font-body)' }}>{t('onboarding.weeksN', { n: 8 })}</p>
     </div>
   )
 }
@@ -67,8 +67,8 @@ export default function PerformanceSlide() {
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, padding: '0 24px', gap: 28 }}>
       <ChartMockup />
       <div style={{ textAlign: 'center' }}>
-        <h2 style={{ fontSize: 26, fontWeight: 800, color: '#fff', margin: '0 0 10px', fontFamily: 'Syne, sans-serif' }}>{t('onboarding.perfTitle')}</h2>
-        <p style={{ fontSize: 15, color: 'rgba(255,255,255,0.58)', lineHeight: 1.6, margin: 0, fontFamily: 'DM Sans, sans-serif' }}>{t('onboarding.perfSub1')}<br />{t('onboarding.perfSub2')}</p>
+        <h2 style={{ fontSize: 26, fontWeight: 800, color: '#fff', margin: '0 0 10px', fontFamily: 'var(--font-display)' }}>{t('onboarding.perfTitle')}</h2>
+        <p style={{ fontSize: 15, color: 'rgba(255,255,255,0.58)', lineHeight: 1.6, margin: 0, fontFamily: 'var(--font-body)' }}>{t('onboarding.perfSub1')}<br />{t('onboarding.perfSub2')}</p>
       </div>
     </div>
   )

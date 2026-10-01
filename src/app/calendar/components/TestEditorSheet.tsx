@@ -34,7 +34,7 @@ const SPORTS: { id: CatalogSport; label: string; color: string }[] = [
 const sportColor = (s: CatalogSport) => SPORTS.find(x => x.id === s)?.color ?? '#8b5cf6'
 
 const LBL: React.CSSProperties = { fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-dim)', margin: '0 0 8px' }
-const INP: React.CSSProperties = { width: '100%', boxSizing: 'border-box', padding: '11px 13px', borderRadius: 11, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 14, outline: 'none' }
+const INP: React.CSSProperties = { width: '100%', boxSizing: 'border-box', padding: '11px 13px', borderRadius: 'var(--r-md)', border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 14, outline: 'none' }
 
 export default function TestEditorSheet({ mode = 'create', initial, initialDate, onClose, onDelete, onSave }: {
   mode?: 'create' | 'edit'
@@ -109,7 +109,7 @@ export default function TestEditorSheet({ mode = 'create', initial, initialDate,
               <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}>
                 {SPORTS.map(s => {
                   const on = sport === s.id
-                  return <button key={s.id} onClick={() => { setSport(s.id); setRef(null) }} style={{ padding: '9px 16px', borderRadius: 999, border: `1px solid ${on ? 'transparent' : 'var(--border)'}`, cursor: 'pointer', fontSize: 12.5, fontWeight: on ? 700 : 600, background: on ? `${s.color}1f` : 'transparent', color: on ? s.color : 'var(--text-mid)', transition: 'background .15s, color .15s' }}>{t(`w2e.sport.${s.id}`)}</button>
+                  return <button key={s.id} onClick={() => { setSport(s.id); setRef(null) }} style={{ padding: '9px 16px', borderRadius: 'var(--r-pill)', border: `1px solid ${on ? 'transparent' : 'var(--border)'}`, cursor: 'pointer', fontSize: 12.5, fontWeight: on ? 700 : 600, background: on ? `${s.color}1f` : 'transparent', color: on ? s.color : 'var(--text-mid)', transition: 'background .15s, color .15s' }}>{t(`w2e.sport.${s.id}`)}</button>
                 })}
               </div>
             </div>
@@ -126,7 +126,7 @@ export default function TestEditorSheet({ mode = 'create', initial, initialDate,
 
             {/* Procédé du test lié (même déroulé que la page Performance) */}
             {ref && protocolForSlug(ref) && (
-              <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 14, padding: '16px 16px 18px' }}>
+              <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: '16px 16px 18px' }}>
                 <p style={{ ...LBL, color: accent, marginBottom: 12 }}>{t('w2e.testProcedure')}</p>
                 <TestProtocolView proto={protocolForSlug(ref)!} accent={accent} />
               </div>
@@ -149,15 +149,15 @@ export default function TestEditorSheet({ mode = 'create', initial, initialDate,
             {isEdit && onDelete && (confirmDelete ? (
               <div style={{ display: 'flex', gap: 8, alignItems: 'center', flex: 1, flexWrap: 'wrap' }}>
                 <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--danger)' }}>{t('w2e.deleteTestConfirm')}</span>
-                <button onClick={onDelete} style={{ padding: '10px 16px', borderRadius: 999, background: 'var(--danger)', border: 'none', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>{t('w2e.confirm')}</button>
-                <button onClick={() => setConfirmDelete(false)} style={{ padding: '10px 14px', borderRadius: 999, background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-mid)', fontSize: 13, cursor: 'pointer' }}>{t('w2e.cancel')}</button>
+                <button onClick={onDelete} style={{ padding: '10px 16px', borderRadius: 'var(--r-pill)', background: 'var(--danger)', border: 'none', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>{t('w2e.confirm')}</button>
+                <button onClick={() => setConfirmDelete(false)} style={{ padding: '10px 14px', borderRadius: 'var(--r-pill)', background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-mid)', fontSize: 13, cursor: 'pointer' }}>{t('w2e.cancel')}</button>
               </div>
             ) : (
-              <button onClick={() => setConfirmDelete(true)} style={{ padding: 12, borderRadius: 999, background: 'transparent', border: '1px solid #ef4444', color: 'var(--danger)', fontSize: 13.5, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>{t('w2e.delete')}</button>
+              <button onClick={() => setConfirmDelete(true)} style={{ padding: 12, borderRadius: 'var(--r-pill)', background: 'transparent', border: '1px solid #ef4444', color: 'var(--danger)', fontSize: 13.5, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>{t('w2e.delete')}</button>
             ))}
             {!confirmDelete && (<>
-              <button onClick={requestClose} style={{ flex: 1, padding: 12, borderRadius: 999, background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-mid)', fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}>{t('w2e.close')}</button>
-              <button onClick={handleSave} disabled={saving || !title.trim() || !date} style={{ flex: 2, padding: 12, borderRadius: 999, background: accent, border: 'none', color: '#fff', fontWeight: 700, fontSize: 13.5, cursor: saving ? 'wait' : 'pointer', opacity: (!title.trim() || !date) ? 0.5 : 1 }}>{saving ? '…' : isEdit ? t('w2e.save') : t('w2e.schedule')}</button>
+              <button onClick={requestClose} style={{ flex: 1, padding: 12, borderRadius: 'var(--r-pill)', background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-mid)', fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}>{t('w2e.close')}</button>
+              <button onClick={handleSave} disabled={saving || !title.trim() || !date} style={{ flex: 2, padding: 12, borderRadius: 'var(--r-pill)', background: accent, border: 'none', color: '#fff', fontWeight: 700, fontSize: 13.5, cursor: saving ? 'wait' : 'pointer', opacity: (!title.trim() || !date) ? 0.5 : 1 }}>{saving ? '…' : isEdit ? t('w2e.save') : t('w2e.schedule')}</button>
             </>)}
           </div>
         </div>

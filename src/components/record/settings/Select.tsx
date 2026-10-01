@@ -23,7 +23,7 @@ export function Select({ value, options, onChange, disabled, theme }: Props) {
 
   return (
     <div style={{
-      borderRadius: 8,
+      borderRadius: 'var(--r-sm)',
       border: `1px solid ${justChanged ? '#10B981' : theme.separator}`,
       transition: 'border-color 300ms',
       overflow: 'hidden',
@@ -41,7 +41,7 @@ export function Select({ value, options, onChange, disabled, theme }: Props) {
           cursor: disabled ? 'default' : 'pointer',
           outline: 'none',
           opacity: disabled ? 0.4 : 1,
-          fontFamily: 'DM Sans, sans-serif',
+          fontFamily: 'var(--font-body)',
         }}
       >
         {options.map(opt => (

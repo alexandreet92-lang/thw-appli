@@ -130,7 +130,7 @@ export default function CoachInsightsAdminPage() {
   if (!authChecked) return null;
 
   return (
-    <div style={{ maxWidth: 880, margin: "0 auto", padding: "32px 20px", fontFamily: "DM Sans, sans-serif", color: "#111827" }}>
+    <div style={{ maxWidth: 880, margin: "0 auto", padding: "32px 20px", fontFamily: 'var(--font-body)', color: "#111827" }}>
       <div style={{ display: "flex", alignItems: "baseline", gap: 12, flexWrap: "wrap" }}>
         <h1 style={{ fontSize: 24, fontWeight: 700, margin: 0 }}>{t("admin.insights.title")}</h1>
         <Link href="/admin/coach-feedback" style={{ fontSize: 13, color: "var(--primary)" }}>{t("admin.insights.feedbackLink")}</Link>
@@ -142,7 +142,7 @@ export default function CoachInsightsAdminPage() {
       {/* Distillation automatique (phase 3) */}
       <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", margin: "14px 0 4px" }}>
         <button onClick={() => void distill()} disabled={distilling}
-          style={{ padding: "8px 16px", borderRadius: 9, border: "1px solid #06B6D4", background: "rgba(6,182,212,0.10)", color: "#0E7490", fontWeight: 600, cursor: "pointer", opacity: distilling ? 0.5 : 1 }}>
+          style={{ padding: "8px 16px", borderRadius: 'var(--r-sm)', border: "1px solid #06B6D4", background: "rgba(6,182,212,0.10)", color: "#0E7490", fontWeight: 600, cursor: "pointer", opacity: distilling ? 0.5 : 1 }}>
           {distilling ? t("admin.insights.distilling") : t("admin.insights.distillNow")}
         </button>
         <span style={{ fontSize: 12, color: "#9CA3AF" }}>{t("admin.insights.distillHint")}</span>
@@ -150,7 +150,7 @@ export default function CoachInsightsAdminPage() {
       {distillMsg && <p style={{ fontSize: 13, color: "#0E7490", margin: "4px 0 0" }}>{distillMsg}</p>}
 
       {/* Création */}
-      <div style={{ border: "1px solid #E5E7EB", borderRadius: 12, padding: 16, margin: "18px 0", background: "#fff" }}>
+      <div style={{ border: "1px solid #E5E7EB", borderRadius: 'var(--r-md)', padding: 16, margin: "18px 0", background: "#fff" }}>
         <div style={{ fontWeight: 600, marginBottom: 10 }}>{t("admin.insights.newInsight")}</div>
         <div style={{ display: "flex", gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
           <select value={sport} onChange={e => setSport(e.target.value)} style={input(140)}>
@@ -162,7 +162,7 @@ export default function CoachInsightsAdminPage() {
           placeholder={t("admin.insights.textPlaceholder")}
           style={{ ...input(0), width: "100%", resize: "vertical", marginBottom: 8 }} />
         <button onClick={() => void create()} disabled={saving || !topic.trim() || !text.trim()}
-          style={{ padding: "9px 18px", borderRadius: 9, border: "none", cursor: "pointer", background: "var(--primary)", color: "#fff", fontWeight: 600, opacity: saving || !topic.trim() || !text.trim() ? 0.5 : 1 }}>
+          style={{ padding: "9px 18px", borderRadius: 'var(--r-sm)', border: "none", cursor: "pointer", background: "var(--primary)", color: "#fff", fontWeight: 600, opacity: saving || !topic.trim() || !text.trim() ? 0.5 : 1 }}>
           {saving ? t("admin.insights.saving") : t("admin.insights.addActive")}
         </button>
       </div>
@@ -176,7 +176,7 @@ export default function CoachInsightsAdminPage() {
         {rows.map(r => (
           <div key={r.id} style={{
             border: "1px solid #E5E7EB", borderLeft: `4px solid ${STATUS_COLOR[r.status]}`,
-            borderRadius: 12, padding: "12px 14px", background: "#fff",
+            borderRadius: 'var(--r-md)', padding: "12px 14px", background: "#fff",
           }}>
             <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginBottom: 6 }}>
               <span style={{ ...tag(STATUS_COLOR[r.status] + "22", STATUS_COLOR[r.status]), textTransform: "uppercase" as const }}>{r.status}</span>
@@ -199,11 +199,11 @@ export default function CoachInsightsAdminPage() {
 }
 
 function input(width: number): React.CSSProperties {
-  return { padding: "8px 10px", borderRadius: 8, border: "1px solid #D1D5DB", fontSize: 14, fontFamily: "inherit", ...(width ? { width } : {}) };
+  return { padding: "8px 10px", borderRadius: 'var(--r-sm)', border: "1px solid #D1D5DB", fontSize: 14, fontFamily: "inherit", ...(width ? { width } : {}) };
 }
 function tag(bg = "rgba(6,182,212,0.10)", color = "#0E7490"): React.CSSProperties {
-  return { padding: "2px 8px", borderRadius: 6, fontSize: 11, fontWeight: 600, background: bg, color };
+  return { padding: "2px 8px", borderRadius: 'var(--r-sm)', fontSize: 11, fontWeight: 600, background: bg, color };
 }
 function btn(color: string): React.CSSProperties {
-  return { padding: "5px 11px", borderRadius: 7, border: `1px solid ${color}40`, background: "transparent", color, fontSize: 12, cursor: "pointer", fontWeight: 500 };
+  return { padding: "5px 11px", borderRadius: 'var(--r-sm)', border: `1px solid ${color}40`, background: "transparent", color, fontSize: 12, cursor: "pointer", fontWeight: 500 };
 }

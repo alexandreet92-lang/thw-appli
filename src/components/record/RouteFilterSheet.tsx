@@ -57,7 +57,7 @@ export default function RouteFilterSheet({ kind, value, onApply, onClose, isDark
         position: 'relative', width: '100%', maxWidth: 560, background: bg,
         borderTopLeftRadius: 24, borderTopRightRadius: 24, boxShadow: '0 -8px 40px rgba(0,0,0,0.25)',
         transform: shown && !closing ? 'translateY(0)' : 'translateY(100%)', transition: 'transform 0.30s cubic-bezier(0.32,0.72,0,1)',
-        padding: '10px 20px calc(20px + env(safe-area-inset-bottom, 0px))', fontFamily: 'DM Sans, sans-serif',
+        padding: '10px 20px calc(20px + env(safe-area-inset-bottom, 0px))', fontFamily: 'var(--font-body)',
       }}>
         <div style={{ display: 'flex', justifyContent: 'center', paddingBottom: 12 }}>
           <span style={{ width: 40, height: 4, borderRadius: 2, background: track }} />
@@ -80,7 +80,7 @@ export default function RouteFilterSheet({ kind, value, onApply, onClose, isDark
             {SPORTS.map(s => {
               const on = sport === s.id
               return (
-                <button key={s.id} onClick={() => setSport(s.id)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '13px 6px', border: 'none', background: 'transparent', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}>
+                <button key={s.id} onClick={() => setSport(s.id)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '13px 6px', border: 'none', background: 'transparent', cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
                   <span style={{ fontSize: 15, fontWeight: on ? 700 : 500, color: on ? ACCENT : text }}>{s.label}</span>
                   {on && <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={ACCENT} strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>}
                 </button>
@@ -90,8 +90,8 @@ export default function RouteFilterSheet({ kind, value, onApply, onClose, isDark
         )}
 
         <div style={{ display: 'flex', gap: 12, marginTop: 26, justifyContent: 'flex-end' }}>
-          <button onClick={reset} style={{ height: 46, padding: '0 22px', borderRadius: 999, border: `1.5px solid ${ACCENT}`, background: 'transparent', color: ACCENT, fontSize: 14.5, fontWeight: 700, cursor: 'pointer' }}>Réinitialiser</button>
-          <button onClick={apply} style={{ height: 46, padding: '0 30px', borderRadius: 999, border: 'none', background: ACCENT, color: '#fff', fontSize: 14.5, fontWeight: 800, cursor: 'pointer' }}>Utiliser</button>
+          <button onClick={reset} style={{ height: 46, padding: '0 22px', borderRadius: 'var(--r-pill)', border: `1.5px solid ${ACCENT}`, background: 'transparent', color: ACCENT, fontSize: 14.5, fontWeight: 700, cursor: 'pointer' }}>Réinitialiser</button>
+          <button onClick={apply} style={{ height: 46, padding: '0 30px', borderRadius: 'var(--r-pill)', border: 'none', background: ACCENT, color: '#fff', fontSize: 14.5, fontWeight: 800, cursor: 'pointer' }}>Utiliser</button>
         </div>
       </div>
     </div>,

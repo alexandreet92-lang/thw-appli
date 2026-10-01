@@ -16,9 +16,9 @@ function slotForHour(h: number): MealSlotKey {
 
 // ── Shared styles ─────────────────────────────────────────────────
 const inputStyle: React.CSSProperties = {
-  width: '100%', padding: '8px 10px', borderRadius: 8,
+  width: '100%', padding: '8px 10px', borderRadius: 'var(--r-sm)',
   border: '1px solid var(--border)', background: 'var(--bg-card2)',
-  color: 'var(--text)', fontSize: 12, fontFamily: 'DM Sans,sans-serif',
+  color: 'var(--text)', fontSize: 12, fontFamily: 'var(--font-body)',
   outline: 'none', boxSizing: 'border-box',
 }
 
@@ -46,7 +46,7 @@ function Toast({ visible, message }: { visible: boolean; message: string }) {
     <div style={{
       position: 'fixed', bottom: 32, left: '50%', transform: 'translateX(-50%)',
       background: 'rgba(6,182,212,0.95)', color: '#fff', padding: '10px 20px',
-      borderRadius: 10, fontSize: 13, fontFamily: 'Syne,sans-serif', fontWeight: 700,
+      borderRadius: 'var(--r-sm)', fontSize: 13, fontFamily: 'var(--font-body)', fontWeight: 700,
       zIndex: 9999, transition: 'opacity 0.3s', opacity: visible ? 1 : 0,
       pointerEvents: 'none',
     }}>
@@ -147,18 +147,18 @@ function RegularMealCreateModal({
         onClick={e => e.stopPropagation()}
         style={{
           width: '100%', maxWidth: 540, maxHeight: '85vh', overflowY: 'auto',
-          background: 'var(--bg-card)', borderRadius: 16, padding: 24,
+          background: 'var(--bg-card)', borderRadius: 'var(--r-md)', padding: 24,
           boxShadow: '0 24px 80px rgba(0,0,0,0.4)',
           transform: shown && !closing ? 'translateY(0)' : 'translateY(100%)', transition: 'transform 0.28s cubic-bezier(0.32,0.72,0,1)',
         }}
       >
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-          <h2 style={{ fontFamily: 'Syne,sans-serif', fontSize: 16, fontWeight: 800, margin: 0, color: 'var(--text)' }}>
+          <h2 style={{ fontFamily: 'var(--font-body)', fontSize: 16, fontWeight: 800, margin: 0, color: 'var(--text)' }}>
             {t('w2a.add_regular_meal')}
           </h2>
           <button onClick={requestClose} style={{
-            width: 32, height: 32, borderRadius: 8, border: '1px solid var(--border)',
+            width: 32, height: 32, borderRadius: 'var(--r-sm)', border: '1px solid var(--border)',
             background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 18,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>x</button>
@@ -188,7 +188,7 @@ function RegularMealCreateModal({
                   gap: 4, marginBottom: 2,
                 }}>
                   {[t('w2a.col_ingredient'), t('w2a.col_qty_g'), t('w2a.col_kcal'), t('w2a.col_prot'), t('w2a.col_gluc'), t('w2a.col_lip'), ''].map((h, i) => (
-                    <span key={i} style={{ fontSize: 9, color: 'var(--text-dim)', fontWeight: 700, textAlign: 'center', textTransform: 'uppercase' }}>
+                    <span key={i} style={{ fontSize: 10, color: 'var(--text-dim)', fontWeight: 700, textAlign: 'center', textTransform: 'uppercase' }}>
                       {h}
                     </span>
                   ))}
@@ -209,7 +209,7 @@ function RegularMealCreateModal({
                       style={{ ...inputStyle, textAlign: 'center', padding: '6px 4px' }} />
                   ))}
                   <button onClick={() => removeIng(i)} style={{
-                    width: 28, height: 36, borderRadius: 7,
+                    width: 28, height: 36, borderRadius: 'var(--r-sm)',
                     border: '1px solid rgba(239,68,68,0.35)', background: 'transparent',
                     color: 'var(--danger)', cursor: 'pointer', fontSize: 16,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -217,9 +217,9 @@ function RegularMealCreateModal({
                 </div>
               ))}
               <button onClick={addIng} style={{
-                padding: '8px', borderRadius: 8, border: '1px dashed var(--border)',
+                padding: '8px', borderRadius: 'var(--r-sm)', border: '1px dashed var(--border)',
                 background: 'transparent', color: 'var(--text-dim)', fontSize: 11,
-                cursor: 'pointer', fontFamily: 'DM Sans,sans-serif',
+                cursor: 'pointer', fontFamily: 'var(--font-body)',
               }}>{t('w2a.add_ingredient')}</button>
             </div>
           </div>
@@ -227,7 +227,7 @@ function RegularMealCreateModal({
           {/* Real-time totals */}
           {ings.length > 0 && (
             <div style={{
-              background: 'var(--bg-card2)', borderRadius: 10,
+              background: 'var(--bg-card2)', borderRadius: 'var(--r-sm)',
               padding: '12px 14px', border: '1px solid var(--border)',
             }}>
               <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-dim)', marginBottom: 8, letterSpacing: '0.05em' }}>
@@ -241,10 +241,10 @@ function RegularMealCreateModal({
                   { label: t('w2a.lip_full'), value: totals.fat_g.toFixed(1),              unit: 'g' },
                 ].map(({ label, value, unit }) => (
                   <div key={label} style={{ textAlign: 'center' }}>
-                    <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)', fontFamily: 'Syne,sans-serif' }}>
+                    <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-body)' }}>
                       {value}{unit}
                     </div>
-                    <div style={{ fontSize: 9, color: 'var(--text-dim)', textTransform: 'uppercase', fontWeight: 700 }}>
+                    <div style={{ fontSize: 10, color: 'var(--text-dim)', textTransform: 'uppercase', fontWeight: 700 }}>
                       {label}
                     </div>
                   </div>
@@ -256,7 +256,7 @@ function RegularMealCreateModal({
           {/* Actions */}
           <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
             <button onClick={requestClose} style={{
-              padding: '10px 16px', borderRadius: 8,
+              padding: '10px 16px', borderRadius: 'var(--r-sm)',
               border: '1px solid var(--border)', background: 'transparent',
               color: 'var(--text-dim)', fontSize: 12, cursor: 'pointer',
             }}>{t('w2a.cancel')}</button>
@@ -264,11 +264,11 @@ function RegularMealCreateModal({
               onClick={() => void handleSave()}
               disabled={saving || !name.trim()}
               style={{
-                flex: 1, padding: '10px', borderRadius: 8, border: 'none',
+                flex: 1, padding: '10px', borderRadius: 'var(--r-sm)', border: 'none',
                 background: name.trim() ? 'linear-gradient(90deg,#06B6D4,#3B82F6)' : 'var(--border)',
                 color: '#fff', fontSize: 13, fontWeight: 700,
                 cursor: name.trim() && !saving ? 'pointer' : 'not-allowed',
-                fontFamily: 'Syne,sans-serif',
+                fontFamily: 'var(--font-body)',
               }}
             >{saving ? t('w2a.saving') : t('w2a.save')}</button>
           </div>
@@ -313,12 +313,12 @@ function RegularMealCard({
       <Toast visible={toast.visible} message={toast.message} />
       <div style={{
         background: 'var(--bg-card2)', border: '1px solid var(--border)',
-        borderRadius: 12, padding: '12px 14px',
+        borderRadius: 'var(--r-md)', padding: '12px 14px',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           {/* Meal icon */}
           <div style={{
-            width: 36, height: 36, borderRadius: 8, flexShrink: 0,
+            width: 36, height: 36, borderRadius: 'var(--r-sm)', flexShrink: 0,
             background: 'rgba(6,182,212,0.12)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>
@@ -353,18 +353,18 @@ function RegularMealCard({
               onClick={() => void handleUtiliser()}
               disabled={using}
               style={{
-                padding: '5px 11px', borderRadius: 7,
+                padding: '5px 11px', borderRadius: 'var(--r-sm)',
                 border: '1px solid var(--border)', background: 'transparent',
                 color: 'var(--text-dim)', fontSize: 11,
                 cursor: using ? 'default' : 'pointer', opacity: using ? 0.6 : 1,
-                fontFamily: 'Syne,sans-serif', fontWeight: 600,
+                fontFamily: 'var(--font-body)', fontWeight: 600,
                 whiteSpace: 'nowrap',
               }}
             >{t('w2a.use')}</button>
             <button
               onClick={() => setConfirmDelete(true)}
               style={{
-                width: 30, height: 30, borderRadius: 7,
+                width: 30, height: 30, borderRadius: 'var(--r-sm)',
                 border: '1px solid rgba(239,68,68,0.3)', background: 'transparent',
                 cursor: 'pointer',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -383,7 +383,7 @@ function RegularMealCard({
         {confirmDelete && (
           <div style={{
             marginTop: 10, padding: '8px 12px',
-            background: 'rgba(239,68,68,0.07)', borderRadius: 8,
+            background: 'rgba(239,68,68,0.07)', borderRadius: 'var(--r-sm)',
             border: '1px solid rgba(239,68,68,0.2)',
             display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
           }}>
@@ -392,15 +392,15 @@ function RegularMealCard({
               <button
                 onClick={() => void onDelete(habit.id)}
                 style={{
-                  padding: '4px 12px', borderRadius: 6, border: 'none',
+                  padding: '4px 12px', borderRadius: 'var(--r-sm)', border: 'none',
                   background: 'var(--danger)', color: '#fff',
-                  fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'Syne,sans-serif',
+                  fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)',
                 }}
               >{t('w2a.yes')}</button>
               <button
                 onClick={() => setConfirmDelete(false)}
                 style={{
-                  padding: '4px 12px', borderRadius: 6,
+                  padding: '4px 12px', borderRadius: 'var(--r-sm)',
                   border: '1px solid var(--border)', background: 'transparent',
                   color: 'var(--text-dim)', fontSize: 11, cursor: 'pointer',
                 }}
@@ -521,7 +521,7 @@ function TrainingFuelSection({
       }}>
         {COLS.map(c => (
           <div key={c.field} style={{
-            fontSize: 9, fontWeight: 700, textTransform: 'uppercase',
+            fontSize: 10, fontWeight: 700, textTransform: 'uppercase',
             letterSpacing: '0.06em', color: 'var(--text-dim)',
             padding: '0 10px', textAlign: c.numeric ? 'center' : 'left',
           }}>{c.label}</div>
@@ -568,7 +568,7 @@ function TrainingFuelSection({
                       if (e.key === 'Escape') setEditCell(null)
                     }}
                     style={{
-                      width: '100%', padding: '4px 6px', borderRadius: 6,
+                      width: '100%', padding: '4px 6px', borderRadius: 'var(--r-sm)',
                       border: '1px solid #06B6D4', background: 'var(--bg-card)',
                       color: 'var(--text)', fontSize: 12,
                       outline: 'none', boxSizing: 'border-box',
@@ -590,7 +590,7 @@ function TrainingFuelSection({
             <button
               onClick={() => void onDelete(habit.id)}
               style={{
-                width: 26, height: 26, borderRadius: 6,
+                width: 26, height: 26, borderRadius: 'var(--r-sm)',
                 border: '1px solid rgba(239,68,68,0.3)', background: 'transparent',
                 cursor: 'pointer',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -624,17 +624,17 @@ function TrainingFuelSection({
             onClick={() => void handleAddRow()}
             disabled={!newName.trim()}
             style={{
-              padding: '8px 14px', borderRadius: 8, border: 'none',
+              padding: '8px 14px', borderRadius: 'var(--r-sm)', border: 'none',
               background: newName.trim() ? 'linear-gradient(90deg,#06B6D4,#3B82F6)' : 'var(--border)',
               color: '#fff', fontSize: 12, fontWeight: 700,
               cursor: newName.trim() ? 'pointer' : 'not-allowed',
-              fontFamily: 'Syne,sans-serif',
+              fontFamily: 'var(--font-body)',
             }}
           >{t('w2a.add')}</button>
           <button
             onClick={() => { setAdding(false); setNewName('') }}
             style={{
-              padding: '8px 12px', borderRadius: 8,
+              padding: '8px 12px', borderRadius: 'var(--r-sm)',
               border: '1px solid var(--border)', background: 'transparent',
               color: 'var(--text-dim)', fontSize: 12, cursor: 'pointer',
             }}
@@ -644,10 +644,10 @@ function TrainingFuelSection({
         <button
           onClick={() => setAdding(true)}
           style={{
-            marginTop: 10, padding: '8px 14px', borderRadius: 8,
+            marginTop: 10, padding: '8px 14px', borderRadius: 'var(--r-sm)',
             border: '1px dashed var(--border)', background: 'transparent',
             color: 'var(--text-dim)', fontSize: 11, cursor: 'pointer',
-            fontFamily: 'DM Sans,sans-serif',
+            fontFamily: 'var(--font-body)',
           }}
         >{t('w2a.add_product')}</button>
       )}
@@ -710,21 +710,21 @@ export default function HabitudesSection({
 
   const cardStyle: React.CSSProperties = {
     background: 'var(--bg-card)',
-    borderRadius: 16,
+    borderRadius: 'var(--r-md)',
     border: '1px solid var(--border)',
     padding: 20,
     marginBottom: 16,
   }
 
   const subTitleStyle: React.CSSProperties = {
-    fontFamily: 'Syne,sans-serif', fontSize: 14, fontWeight: 700,
+    fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 700,
     color: 'var(--text)', margin: 0,
   }
 
   return (
     <div style={cardStyle}>
       {/* Section title */}
-      <h2 style={{ fontFamily: 'Syne,sans-serif', fontSize: 18, fontWeight: 700, margin: '0 0 20px', color: 'var(--text)' }}>
+      <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700, margin: '0 0 20px', color: 'var(--text)' }}>
         {t('w2a.my_habits')}
       </h2>
 
@@ -741,10 +741,10 @@ export default function HabitudesSection({
               <button
                 onClick={() => setCreatingMeal(true)}
                 style={{
-                  padding: '6px 13px', borderRadius: 8,
+                  padding: '6px 13px', borderRadius: 'var(--r-sm)',
                   border: '1px solid var(--border)', background: 'transparent',
                   color: 'var(--text-dim)', fontSize: 11, cursor: 'pointer',
-                  fontFamily: 'Syne,sans-serif', fontWeight: 600,
+                  fontFamily: 'var(--font-body)', fontWeight: 600,
                 }}
               >{t('w2a.add_plus')}</button>
             </div>

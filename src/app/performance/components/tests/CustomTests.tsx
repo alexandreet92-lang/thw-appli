@@ -60,9 +60,9 @@ export function CustomTests({ sport, color }: { sport: string; color: string }) 
     <div style={{ marginTop: 6 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '2px 0 10px' }}>
         <div style={{ width: 3, height: 18, borderRadius: 2, background: color }} />
-        <span style={{ fontFamily: 'Syne,sans-serif', fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{t('perf.customTests')}</span>
-        {tests.length > 0 && <span style={{ fontSize: 11, padding: '2px 9px', borderRadius: 20, background: `color-mix(in srgb, ${color} 15%, transparent)`, color, fontWeight: 600 }}>{tests.length}</span>}
-        <button onClick={() => setCreateOpen(true)} style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 5, padding: '6px 11px', borderRadius: 999, border: 'none', background: color, color: 'var(--on-primary)', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+        <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{t('perf.customTests')}</span>
+        {tests.length > 0 && <span style={{ fontSize: 11, padding: '2px 9px', borderRadius: 'var(--r-lg)', background: `color-mix(in srgb, ${color} 15%, transparent)`, color, fontWeight: 600 }}>{tests.length}</span>}
+        <button onClick={() => setCreateOpen(true)} style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 5, padding: '6px 11px', borderRadius: 'var(--r-pill)', border: 'none', background: color, color: 'var(--on-primary)', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
           <Plus size={14} /> {t('perf.createTest')}
         </button>
       </div>
@@ -77,13 +77,13 @@ export function CustomTests({ sport, color }: { sport: string; color: string }) 
           const sub = last ? `${t('perf.lastValue')} : ${last.value}${ct.unite ? ` ${ct.unite}` : ''}`
             : (ct.protocol?.objectif || ct.description || t('perf.tapToLog'))
           return (
-            <div key={ct.id} onClick={() => setOpenTest(ct)} style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '12px 14px', borderRadius: 12, background: 'var(--bg-card)', border: '1px solid var(--border)', cursor: 'pointer' }}>
-              <span style={{ width: 32, height: 32, borderRadius: 9, background: `color-mix(in srgb, ${color} 12%, transparent)`, color, display: 'grid', placeItems: 'center', flexShrink: 0 }}><FlaskConical size={16} /></span>
+            <div key={ct.id} onClick={() => setOpenTest(ct)} style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '12px 14px', borderRadius: 'var(--r-md)', background: 'var(--bg-card)', border: '1px solid var(--border)', cursor: 'pointer' }}>
+              <span style={{ width: 32, height: 32, borderRadius: 'var(--r-sm)', background: `color-mix(in srgb, ${color} 12%, transparent)`, color, display: 'grid', placeItems: 'center', flexShrink: 0 }}><FlaskConical size={16} /></span>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 14.5, fontWeight: 700, color: 'var(--text)' }}>{ct.nom}</div>
                 <div style={{ fontSize: 12, color: 'var(--text-dim)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sub}</div>
               </div>
-              <button onClick={e => { e.stopPropagation(); void remove(ct.id) }} aria-label={t('perf.delete')} style={{ width: 30, height: 30, borderRadius: 8, border: 'none', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', display: 'grid', placeItems: 'center', flexShrink: 0 }}><Trash2 size={15} /></button>
+              <button onClick={e => { e.stopPropagation(); void remove(ct.id) }} aria-label={t('perf.delete')} style={{ width: 30, height: 30, borderRadius: 'var(--r-sm)', border: 'none', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', display: 'grid', placeItems: 'center', flexShrink: 0 }}><Trash2 size={15} /></button>
             </div>
           )
         })}
@@ -102,7 +102,7 @@ function ListField({ label, icon, accent, items, onChange, placeholder }: {
   const set = (i: number, v: string) => onChange(items.map((x, j) => (j === i ? v : x)))
   const add = () => onChange([...items, ''])
   const del = (i: number) => onChange(items.length > 1 ? items.filter((_, j) => j !== i) : [''])
-  const inp: React.CSSProperties = { flex: 1, boxSizing: 'border-box', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 13, outline: 'none' }
+  const inp: React.CSSProperties = { flex: 1, boxSizing: 'border-box', padding: '8px 10px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 13, outline: 'none' }
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 7 }}>
@@ -113,10 +113,10 @@ function ListField({ label, icon, accent, items, onChange, placeholder }: {
         {items.map((v, i) => (
           <div key={i} style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
             <input style={inp} value={v} onChange={e => set(i, e.target.value)} placeholder={placeholder} />
-            <button onClick={() => del(i)} aria-label="—" style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', cursor: 'pointer', display: 'grid', placeItems: 'center', flexShrink: 0 }}><X size={14} /></button>
+            <button onClick={() => del(i)} aria-label="—" style={{ width: 30, height: 30, borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', cursor: 'pointer', display: 'grid', placeItems: 'center', flexShrink: 0 }}><X size={14} /></button>
           </div>
         ))}
-        <button onClick={add} style={{ alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: 5, padding: '5px 10px', borderRadius: 8, border: `1px dashed ${accent}66`, background: 'transparent', color: accent, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}><Plus size={13} /> {label}</button>
+        <button onClick={add} style={{ alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: 5, padding: '5px 10px', borderRadius: 'var(--r-sm)', border: `1px dashed ${accent}66`, background: 'transparent', color: accent, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}><Plus size={13} /> {label}</button>
       </div>
     </div>
   )
@@ -133,7 +133,7 @@ function CustomTestForm({ sport, color, onClose, onSaved }: { sport: string; col
   const [unite, setUnite] = useState('')
   const [p, setP] = useState<Protocol>(emptyProtocol)
   const [busy, setBusy] = useState(false)
-  const inp: React.CSSProperties = { width: '100%', boxSizing: 'border-box', padding: '9px 11px', borderRadius: 9, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 13.5, outline: 'none' }
+  const inp: React.CSSProperties = { width: '100%', boxSizing: 'border-box', padding: '9px 11px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 13.5, outline: 'none' }
   const upd = (patch: Partial<Protocol>) => setP(prev => ({ ...prev, ...patch }))
 
   const save = async () => {
@@ -162,15 +162,15 @@ function CustomTestForm({ sport, color, onClose, onSaved }: { sport: string; col
   return createPortal(
     <>
       <div onClick={requestClose} style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', opacity: shown && !closing ? 1 : 0, transition: 'opacity 0.26s ease' }} />
-      <div onClick={e => e.stopPropagation()} style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 10000, maxHeight: 'calc(100dvh - 72px)', background: 'var(--bg-card)', borderRadius: '22px 22px 0 0', border: '1px solid var(--border)', borderBottom: 'none', display: 'flex', flexDirection: 'column', fontFamily: 'DM Sans,sans-serif', transform: shown && !closing ? 'translateY(0)' : 'translateY(100%)', transition: 'transform 0.30s cubic-bezier(0.32,0.72,0,1)' }}>
+      <div onClick={e => e.stopPropagation()} style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 10000, maxHeight: 'calc(100dvh - 72px)', background: 'var(--bg-card)', borderRadius: '22px 22px 0 0', border: '1px solid var(--border)', borderBottom: 'none', display: 'flex', flexDirection: 'column', fontFamily: 'var(--font-body)', transform: shown && !closing ? 'translateY(0)' : 'translateY(100%)', transition: 'transform 0.30s cubic-bezier(0.32,0.72,0,1)' }}>
         {/* En-tête */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '18px 20px 12px', borderBottom: '1px solid var(--border)' }}>
-          <span style={{ width: 34, height: 34, borderRadius: 10, background: `color-mix(in srgb, ${color} 14%, transparent)`, color, display: 'grid', placeItems: 'center', flexShrink: 0 }}><FlaskConical size={18} /></span>
+          <span style={{ width: 34, height: 34, borderRadius: 'var(--r-sm)', background: `color-mix(in srgb, ${color} 14%, transparent)`, color, display: 'grid', placeItems: 'center', flexShrink: 0 }}><FlaskConical size={18} /></span>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <h3 style={{ fontFamily: 'Syne,sans-serif', fontSize: 17, fontWeight: 800, margin: 0, color: 'var(--text)' }}>{t('perf.createTest')}</h3>
+            <h3 style={{ fontFamily: 'var(--font-body)', fontSize: 17, fontWeight: 800, margin: 0, color: 'var(--text)' }}>{t('perf.createTest')}</h3>
             <p style={{ fontSize: 12, color: 'var(--text-dim)', margin: '2px 0 0' }}>{t('perf.customTestFormHint')}</p>
           </div>
-          <button onClick={requestClose} aria-label={t('perf.close')} style={{ width: 30, height: 30, borderRadius: 8, background: 'var(--bg-card2)', border: '1px solid var(--border)', color: 'var(--text-dim)', cursor: 'pointer', display: 'grid', placeItems: 'center', flexShrink: 0 }}><X size={16} /></button>
+          <button onClick={requestClose} aria-label={t('perf.close')} style={{ width: 30, height: 30, borderRadius: 'var(--r-sm)', background: 'var(--bg-card2)', border: '1px solid var(--border)', color: 'var(--text-dim)', cursor: 'pointer', display: 'grid', placeItems: 'center', flexShrink: 0 }}><X size={16} /></button>
         </div>
 
         {/* Corps défilant */}
@@ -207,8 +207,8 @@ function CustomTestForm({ sport, color, onClose, onSaved }: { sport: string; col
 
         {/* Pied */}
         <div style={{ display: 'flex', gap: 8, padding: '12px 20px 16px', borderTop: '1px solid var(--border)' }}>
-          <button onClick={requestClose} style={{ flex: 1, padding: 11, borderRadius: 10, background: 'var(--bg-card2)', border: '1px solid var(--border)', color: 'var(--text-mid)', fontSize: 13, cursor: 'pointer' }}>{t('perf.cancel')}</button>
-          <button onClick={() => void save()} disabled={!nom.trim() || busy} style={{ flex: 2, padding: 11, borderRadius: 10, background: color, border: 'none', color: 'var(--on-primary)', fontFamily: 'Syne,sans-serif', fontWeight: 700, fontSize: 13, cursor: 'pointer', opacity: !nom.trim() ? 0.5 : 1 }}>{busy ? t('perf.saving') : t('perf.create')}</button>
+          <button onClick={requestClose} style={{ flex: 1, padding: 11, borderRadius: 'var(--r-sm)', background: 'var(--bg-card2)', border: '1px solid var(--border)', color: 'var(--text-mid)', fontSize: 13, cursor: 'pointer' }}>{t('perf.cancel')}</button>
+          <button onClick={() => void save()} disabled={!nom.trim() || busy} style={{ flex: 2, padding: 11, borderRadius: 'var(--r-sm)', background: color, border: 'none', color: 'var(--on-primary)', fontFamily: 'var(--font-body)', fontWeight: 700, fontSize: 13, cursor: 'pointer', opacity: !nom.trim() ? 0.5 : 1 }}>{busy ? t('perf.saving') : t('perf.create')}</button>
         </div>
       </div>
     </>,
@@ -228,7 +228,7 @@ function CustomTestDetail({ test, color, onClose, onSaved }: { test: CustomTest;
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10))
   const [note, setNote] = useState('')
   const [busy, setBusy] = useState(false)
-  const inp: React.CSSProperties = { width: '100%', boxSizing: 'border-box', padding: '9px 11px', borderRadius: 9, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 13.5, outline: 'none' }
+  const inp: React.CSSProperties = { width: '100%', boxSizing: 'border-box', padding: '9px 11px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 13.5, outline: 'none' }
 
   const save = async () => {
     if (!value.trim() || busy) return
@@ -243,7 +243,7 @@ function CustomTestDetail({ test, color, onClose, onSaved }: { test: CustomTest;
   const hist = [...(test.results ?? [])].reverse()
 
   const Section = ({ icon, label, accent, children, tint }: { icon: React.ReactNode; label: string; accent: string; children: React.ReactNode; tint?: string }) => (
-    <div style={{ padding: '13px 16px', borderRadius: 13, background: tint ?? 'var(--bg-card2)', border: `1px solid ${tint ? `${accent}30` : 'var(--border)'}` }}>
+    <div style={{ padding: '13px 16px', borderRadius: 'var(--r-md)', background: tint ?? 'var(--bg-card2)', border: `1px solid ${tint ? `${accent}30` : 'var(--border)'}` }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 8 }}>
         <span style={{ color: accent, display: 'grid', placeItems: 'center' }}>{icon}</span>
         <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: accent }}>{label}</span>
@@ -260,14 +260,14 @@ function CustomTestDetail({ test, color, onClose, onSaved }: { test: CustomTest;
   return createPortal(
     <>
       <div onClick={requestClose} style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', opacity: shown && !closing ? 1 : 0, transition: 'opacity 0.26s ease' }} />
-      <div onClick={e => e.stopPropagation()} style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 10000, maxHeight: 'calc(100dvh - 72px)', background: 'var(--bg-card)', borderRadius: '22px 22px 0 0', border: '1px solid var(--border)', borderBottom: 'none', display: 'flex', flexDirection: 'column', fontFamily: 'DM Sans,sans-serif', transform: shown && !closing ? 'translateY(0)' : 'translateY(100%)', transition: 'transform 0.30s cubic-bezier(0.32,0.72,0,1)' }}>
+      <div onClick={e => e.stopPropagation()} style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 10000, maxHeight: 'calc(100dvh - 72px)', background: 'var(--bg-card)', borderRadius: '22px 22px 0 0', border: '1px solid var(--border)', borderBottom: 'none', display: 'flex', flexDirection: 'column', fontFamily: 'var(--font-body)', transform: shown && !closing ? 'translateY(0)' : 'translateY(100%)', transition: 'transform 0.30s cubic-bezier(0.32,0.72,0,1)' }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 11, padding: '18px 20px 12px', borderBottom: '1px solid var(--border)' }}>
-          <span style={{ width: 34, height: 34, borderRadius: 10, background: `color-mix(in srgb, ${color} 14%, transparent)`, color, display: 'grid', placeItems: 'center', flexShrink: 0 }}><FlaskConical size={18} /></span>
+          <span style={{ width: 34, height: 34, borderRadius: 'var(--r-sm)', background: `color-mix(in srgb, ${color} 14%, transparent)`, color, display: 'grid', placeItems: 'center', flexShrink: 0 }}><FlaskConical size={18} /></span>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <h3 style={{ fontFamily: 'Syne,sans-serif', fontSize: 17, fontWeight: 800, margin: 0, color: 'var(--text)' }}>{test.nom}</h3>
+            <h3 style={{ fontFamily: 'var(--font-body)', fontSize: 17, fontWeight: 800, margin: 0, color: 'var(--text)' }}>{test.nom}</h3>
             <p style={{ fontSize: 11.5, color: 'var(--text-dim)', margin: '2px 0 0' }}>{t('perf.customTestBadge')}</p>
           </div>
-          <button onClick={requestClose} aria-label={t('perf.close')} style={{ width: 30, height: 30, borderRadius: 8, background: 'var(--bg-card2)', border: '1px solid var(--border)', color: 'var(--text-dim)', cursor: 'pointer', display: 'grid', placeItems: 'center', flexShrink: 0 }}><X size={16} /></button>
+          <button onClick={requestClose} aria-label={t('perf.close')} style={{ width: 30, height: 30, borderRadius: 'var(--r-sm)', background: 'var(--bg-card2)', border: '1px solid var(--border)', color: 'var(--text-dim)', cursor: 'pointer', display: 'grid', placeItems: 'center', flexShrink: 0 }}><X size={16} /></button>
         </div>
 
         <div style={{ overflowY: 'auto', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -287,7 +287,7 @@ function CustomTestDetail({ test, color, onClose, onSaved }: { test: CustomTest;
               <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
                 {p.etapes.map((e, i) => (
                   <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-                    <span style={{ fontFamily: 'DM Mono,monospace', fontSize: 10, fontWeight: 700, color, width: 18, flexShrink: 0, paddingTop: 2 }}>{i + 1}.</span>
+                    <span style={{ fontFamily: 'var(--font-body)', fontSize: 10, fontWeight: 700, color, width: 18, flexShrink: 0, paddingTop: 2 }}>{i + 1}.</span>
                     <p style={{ fontSize: 12.5, color: 'var(--text)', margin: 0, lineHeight: 1.55 }}>{e}</p>
                   </div>
                 ))}
@@ -320,7 +320,7 @@ function CustomTestDetail({ test, color, onClose, onSaved }: { test: CustomTest;
               <input type="date" style={{ ...inp, flex: 1 }} value={date} onChange={e => setDate(e.target.value)} />
             </div>
             <input style={{ ...inp, marginBottom: 10 }} value={note} onChange={e => setNote(e.target.value)} placeholder={t('perf.noteOptional')} />
-            <button onClick={() => void save()} disabled={!value.trim() || busy} style={{ width: '100%', padding: 10, borderRadius: 9, background: color, border: 'none', color: 'var(--on-primary)', fontFamily: 'Syne,sans-serif', fontWeight: 700, fontSize: 13, cursor: 'pointer', opacity: !value.trim() ? 0.5 : 1 }}>{t('perf.saveValue')}</button>
+            <button onClick={() => void save()} disabled={!value.trim() || busy} style={{ width: '100%', padding: 10, borderRadius: 'var(--r-sm)', background: color, border: 'none', color: 'var(--on-primary)', fontFamily: 'var(--font-body)', fontWeight: 700, fontSize: 13, cursor: 'pointer', opacity: !value.trim() ? 0.5 : 1 }}>{t('perf.saveValue')}</button>
 
             {hist.length > 0 && (
               <div style={{ marginTop: 14 }}>

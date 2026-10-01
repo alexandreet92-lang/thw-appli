@@ -31,7 +31,7 @@ export function BrickPicker({ runs, accent, onPick, onCreate, onClose }: {
 
   const card: React.CSSProperties = {
     display: 'flex', alignItems: 'center', gap: 12, width: '100%',
-    padding: '12px 14px', borderRadius: 12, cursor: 'pointer', textAlign: 'left',
+    padding: '12px 14px', borderRadius: 'var(--r-md)', cursor: 'pointer', textAlign: 'left',
     border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)',
   }
 
@@ -44,7 +44,7 @@ export function BrickPicker({ runs, accent, onPick, onCreate, onClose }: {
     }}>
       <div onClick={e => e.stopPropagation()} style={{
         width: 'min(460px, 100%)', maxHeight: '82vh', overflowY: 'auto',
-        background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 18,
+        background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-lg)',
         padding: 20, boxShadow: 'var(--shadow-card)',
         opacity: shown ? 1 : 0, transform: shown ? 'translateY(0)' : 'translateY(8px)',
         transition: 'opacity 0.2s ease, transform 0.28s cubic-bezier(0.32,0.72,0,1)',
@@ -53,7 +53,7 @@ export function BrickPicker({ runs, accent, onPick, onCreate, onClose }: {
           <span style={{ display: 'inline-flex', alignItems: 'center', color: accent }}>
             <SportIcon sport="bike" size={20} /><IconArrowDown size={15} /><SportIcon sport="run" size={20} />
           </span>
-          <h3 style={{ margin: 0, fontFamily: 'Syne, sans-serif', fontSize: 17, fontWeight: 700, color: 'var(--text)' }}>
+          <h3 style={{ margin: 0, fontFamily: 'var(--font-body)', fontSize: 17, fontWeight: 700, color: 'var(--text)' }}>
             {t('w4c.brick_title')}
           </h3>
           <button onClick={requestClose} aria-label={t('w4c.brick_close_aria')} style={{ marginLeft: 'auto', width: 30, height: 30, borderRadius: '50%', border: 'none', background: 'var(--bg-card2)', color: 'var(--text-mid)', cursor: 'pointer', fontSize: 15 }}>✕</button>

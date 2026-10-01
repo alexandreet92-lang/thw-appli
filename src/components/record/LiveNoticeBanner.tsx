@@ -48,7 +48,7 @@ export default function LiveNoticeBanner({ noticeKey }: { noticeKey: string | nu
   const { t } = useI18n()
   if (!noticeKey) return null
   return (
-    <div style={{ position: 'fixed', top: 'calc(100px + env(safe-area-inset-top))', left: 16, right: 16, zIndex: 1000, background: 'rgba(6,182,212,0.92)', backdropFilter: 'blur(8px)', borderRadius: 12, padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 8 }}> {/* design-allow-color */}
+    <div style={{ position: 'fixed', top: 'calc(100px + env(safe-area-inset-top))', left: 16, right: 16, zIndex: 1000, background: 'rgba(6,182,212,0.92)', backdropFilter: 'blur(8px)', borderRadius: 'var(--r-md)', padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 8 }}> {/* design-allow-color */}
       <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#fff', flexShrink: 0 }} /> {/* design-allow-color */}
       <span style={{ fontSize: 13, fontWeight: 600, color: '#fff' }}>{t(noticeKey)}</span> {/* design-allow-color */}
     </div>

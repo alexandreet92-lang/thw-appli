@@ -127,7 +127,7 @@ export default function GpxFullView({ fileUrl, height = 320 }: { fileUrl: string
   void pts
 
   return (
-    <div style={{ borderRadius: 10, overflow: 'hidden', border: '1px solid var(--border)' }}>
+    <div style={{ borderRadius: 'var(--r-sm)', overflow: 'hidden', border: '1px solid var(--border)' }}>
       <div style={{ position: 'relative', height: mapH, background: '#1a1a2e' }}>
         <div ref={mapDivRef} style={{ width: '100%', height: '100%' }} />
         {status === 'loading' && (

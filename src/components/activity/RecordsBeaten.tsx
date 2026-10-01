@@ -100,7 +100,7 @@ export function RecordsBeaten({ activityId, isBike }: Props) {
       style={{
         background:   'rgba(234, 179, 8, 0.04)',
         border:       '1px solid var(--border)',
-        borderRadius: 12,
+        borderRadius: 'var(--r-md)',
         margin:       '12px 0',
         overflow:     'hidden',
       }}
@@ -168,7 +168,7 @@ export function RecordsBeaten({ activityId, isBike }: Props) {
                 fontWeight:         700,
                 color:              accent,
                 fontVariantNumeric: 'tabular-nums',
-                fontFamily:         'Barlow Condensed, sans-serif',
+                fontFamily: 'var(--font-body)',
                 letterSpacing:      '-0.01em',
               }}>
                 {r.watts}
@@ -183,7 +183,7 @@ export function RecordsBeaten({ activityId, isBike }: Props) {
 
               {/* Tag catégorie */}
               <span style={{
-                fontSize:       9,
+                fontSize: 10,
                 fontWeight:     700,
                 letterSpacing:  '0.08em',
                 textTransform:  'uppercase',

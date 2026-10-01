@@ -37,7 +37,7 @@ export default function TriSegments({ pd, setPd, bikeParcours, runParcours }: {
         <p style={{ fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-dim)', margin: '0 0 6px' }}>{t('calendar.distance')}</p>
         <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}>
           {TRI_FORMATS.map(f => { const on = pd.triFormat === f.label; return (
-            <button key={f.label} onClick={() => pickFormat(f)} style={{ padding: '8px 16px', borderRadius: 999, border: `1px solid ${on ? TRI : 'var(--border)'}`, background: on ? 'var(--bg-card)' : 'transparent', color: on ? TRI : 'var(--text-dim)', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>{f.label}</button>
+            <button key={f.label} onClick={() => pickFormat(f)} style={{ padding: '8px 16px', borderRadius: 'var(--r-pill)', border: `1px solid ${on ? TRI : 'var(--border)'}`, background: on ? 'var(--bg-card)' : 'transparent', color: on ? TRI : 'var(--text-dim)', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>{f.label}</button>
           ) })}
         </div>
       </div>

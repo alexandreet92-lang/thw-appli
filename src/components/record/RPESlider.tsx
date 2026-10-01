@@ -42,7 +42,7 @@ export default function RPESlider({ value, onChange, isDark = false }: Props) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-      <div style={{ fontSize: 52, fontWeight: 700, color, lineHeight: 1, fontFamily: 'DM Sans, sans-serif' }}>
+      <div style={{ fontSize: 52, fontWeight: 700, color, lineHeight: 1, fontFamily: 'var(--font-body)' }}>
         {displayValue}
       </div>
       <div style={{ fontSize: 13, color: isDark ? 'rgba(255,255,255,0.55)' : '#6B7280', marginBottom: 8 }}>

@@ -116,7 +116,7 @@ function Skeleton({ className = '', style }: { className?: string; style?: React
         background:      'linear-gradient(90deg, var(--bg-card) 25%, var(--bg-card2) 50%, var(--bg-card) 75%)',
         backgroundSize:  '200% 100%',
         animation:       'shimmer 1.4s infinite linear',
-        borderRadius:    8,
+        borderRadius: 'var(--r-sm)',
         ...style,
       }}
     />
@@ -141,8 +141,8 @@ function UsageBar({ used, limit, label, resetAt }: {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-        <span style={{ fontSize: 13, color: 'var(--text)', fontFamily: 'DM Sans, sans-serif' }}>{label}</span>
-        <span style={{ fontSize: 12, color: 'var(--text-dim)', fontFamily: 'DM Mono, monospace' }}>
+        <span style={{ fontSize: 13, color: 'var(--text)', fontFamily: 'var(--font-body)' }}>{label}</span>
+        <span style={{ fontSize: 12, color: 'var(--text-dim)', fontFamily: 'var(--font-body)' }}>
           {used}<span style={{ opacity: 0.5 }}> / {limitStr}</span>
         </span>
       </div>
@@ -155,7 +155,7 @@ function UsageBar({ used, limit, label, resetAt }: {
           transition:   'width 0.5s ease',
         }} />
       </div>
-      <span style={{ fontSize: 11, color: 'var(--text-dim)', fontFamily: 'DM Sans, sans-serif' }}>
+      <span style={{ fontSize: 11, color: 'var(--text-dim)', fontFamily: 'var(--font-body)' }}>
         {t('misc.resetOn', { date: resetStr })}
       </span>
     </div>
@@ -174,7 +174,7 @@ function FeatureValue({ value }: { value: string | boolean }) {
     '6 mois':          t('misc.months6'),
     '24 mois':         t('misc.months24'),
   }
-  return <span style={{ fontSize: 13, color: 'var(--text)', fontFamily: 'DM Sans, sans-serif' }}>{valueMap[value] ?? value}</span>
+  return <span style={{ fontSize: 13, color: 'var(--text)', fontFamily: 'var(--font-body)' }}>{valueMap[value] ?? value}</span>
 }
 
 // ── Main page ──────────────────────────────────────────────────
@@ -348,7 +348,7 @@ export default function SubscriptionPage() {
 
         {/* ── Header ───────────────────────────────────────────── */}
         <h1 style={{
-          fontFamily: 'Syne, sans-serif',
+          fontFamily: 'var(--font-body)',
           fontSize:   28,
           fontWeight: 700,
           margin:     '0 0 4px',
@@ -356,7 +356,7 @@ export default function SubscriptionPage() {
         }}>
           {t('misc.mySubscription')}
         </h1>
-        <p style={{ fontSize: 14, color: 'var(--text-dim)', fontFamily: 'DM Sans, sans-serif', margin: '0 0 32px' }}>
+        <p style={{ fontSize: 14, color: 'var(--text-dim)', fontFamily: 'var(--font-body)', margin: '0 0 32px' }}>
           {t('misc.subIntro')}
         </p>
 
@@ -364,12 +364,12 @@ export default function SubscriptionPage() {
         {banner && (
           <div style={{
             padding:      '12px 16px',
-            borderRadius: 8,
+            borderRadius: 'var(--r-sm)',
             marginBottom: 24,
             background:   banner.type === 'success' ? 'rgba(6,182,212,0.12)' : 'rgba(239,68,68,0.12)',
             border:       `1px solid ${banner.type === 'success' ? 'rgba(6,182,212,0.4)' : 'rgba(239,68,68,0.4)'}`,
             color:        banner.type === 'success' ? '#06B6D4' : '#ef4444',
-            fontFamily:   'DM Sans, sans-serif',
+            fontFamily: 'var(--font-body)',
             fontSize:     14,
             display:      'flex',
             alignItems:   'center',
@@ -385,12 +385,12 @@ export default function SubscriptionPage() {
         {canceled && !banner && (
           <div style={{
             padding:      '12px 16px',
-            borderRadius: 8,
+            borderRadius: 'var(--r-sm)',
             marginBottom: 24,
             background:   'var(--bg-card)',
             border:       '1px solid var(--border)',
             color:        'var(--text-mid)',
-            fontFamily:   'DM Sans, sans-serif',
+            fontFamily: 'var(--font-body)',
             fontSize:     14,
           }}>
             {t('misc.paymentCanceled')}
@@ -401,7 +401,7 @@ export default function SubscriptionPage() {
         <section style={{
           background:   'var(--bg-card)',
           border:       '1.5px solid var(--border)',
-          borderRadius: 12,
+          borderRadius: 'var(--r-md)',
           padding:      '20px 24px',
           marginBottom: 32,
           display:      'flex',
@@ -417,7 +417,7 @@ export default function SubscriptionPage() {
               ) : (
                 <>
                   <span style={{
-                    fontFamily:  'Syne, sans-serif',
+                    fontFamily: 'var(--font-body)',
                     fontSize:    18,
                     fontWeight:  700,
                     color:       'var(--text)',
@@ -430,7 +430,7 @@ export default function SubscriptionPage() {
                       fontWeight:   600,
                       padding:      '2px 8px',
                       borderRadius: 4,
-                      fontFamily:   'DM Sans, sans-serif',
+                      fontFamily: 'var(--font-body)',
                       background:   'rgba(6,182,212,0.12)',
                       color:        '#06B6D4',
                     }}>
@@ -443,7 +443,7 @@ export default function SubscriptionPage() {
                       fontWeight:   600,
                       padding:      '2px 8px',
                       borderRadius: 4,
-                      fontFamily:   'DM Sans, sans-serif',
+                      fontFamily: 'var(--font-body)',
                       background:   subStatus === 'active' || subStatus === 'trialing'
                         ? 'rgba(6,182,212,0.12)' : 'rgba(239,68,68,0.12)',
                       color:        subStatus === 'active' || subStatus === 'trialing'
@@ -461,15 +461,15 @@ export default function SubscriptionPage() {
             {loading ? (
               <Skeleton className="" style={{ width: 200, height: 16 }} />
             ) : isUnlimited ? (
-              <span style={{ fontSize: 13, color: 'var(--text-dim)', fontFamily: 'DM Sans, sans-serif' }}>
+              <span style={{ fontSize: 13, color: 'var(--text-dim)', fontFamily: 'var(--font-body)' }}>
                 {t('misc.unlimitedAccess')}
               </span>
             ) : periodEnd ? (
-              <span style={{ fontSize: 13, color: 'var(--text-dim)', fontFamily: 'DM Sans, sans-serif' }}>
+              <span style={{ fontSize: 13, color: 'var(--text-dim)', fontFamily: 'var(--font-body)' }}>
                 {t('misc.nextBilling', { date: periodEnd })}
               </span>
             ) : (
-              <span style={{ fontSize: 13, color: 'var(--text-dim)', fontFamily: 'DM Sans, sans-serif' }}>
+              <span style={{ fontSize: 13, color: 'var(--text-dim)', fontFamily: 'var(--font-body)' }}>
                 {t('misc.noActiveSub')}
               </span>
             )}
@@ -478,10 +478,10 @@ export default function SubscriptionPage() {
           {/* Bandeau essai / gratuit — état non payant */}
           {!loading && !isUnlimited && (currentTier === 'trial' || currentTier === 'free') && (
             <div style={{
-              marginTop: 12, padding: '12px 14px', borderRadius: 10,
+              marginTop: 12, padding: '12px 14px', borderRadius: 'var(--r-sm)',
               background: currentTier === 'trial' ? 'rgba(6,182,212,0.10)' : 'var(--bg-card2)',
               border: `1px solid ${currentTier === 'trial' ? 'rgba(6,182,212,0.28)' : 'var(--border)'}`,
-              fontFamily: 'DM Sans, sans-serif', fontSize: 13, color: 'var(--text-mid)', lineHeight: 1.5,
+              fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-mid)', lineHeight: 1.5,
             }}>
               {currentTier === 'trial'
                 ? (typeof data?.trial_days_left === 'number'
@@ -505,7 +505,7 @@ export default function SubscriptionPage() {
         {/* ── Usage du mois ─────────────────────────────────────── */}
         {!isUnlimited && (
         <section style={{ marginBottom: 40 }}>
-          <h2 style={{ fontFamily: 'Syne, sans-serif', fontSize: 16, fontWeight: 700, margin: '0 0 16px', color: 'var(--text)' }}>
+          <h2 style={{ fontFamily: 'var(--font-body)', fontSize: 16, fontWeight: 700, margin: '0 0 16px', color: 'var(--text)' }}>
             {t('misc.currentUsage')}
           </h2>
           <div style={{
@@ -515,7 +515,7 @@ export default function SubscriptionPage() {
           }}>
             {loading
               ? Array.from({ length: 5 }).map((_, i) => (
-                  <div key={i} style={{ background: 'var(--bg-card)', borderRadius: 8, padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <div key={i} style={{ background: 'var(--bg-card)', borderRadius: 'var(--r-sm)', padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
                     <Skeleton className="" style={{ width: '60%', height: 14 }} />
                     <Skeleton className="" style={{ width: '100%', height: 4 }} />
                     <Skeleton className="" style={{ width: '40%', height: 11 }} />
@@ -525,7 +525,7 @@ export default function SubscriptionPage() {
                   const stat = data?.usage?.[type]
                   if (!stat) return null
                   return (
-                    <div key={type} style={{ background: 'var(--bg-card)', borderRadius: 8, padding: 16 }}>
+                    <div key={type} style={{ background: 'var(--bg-card)', borderRadius: 'var(--r-sm)', padding: 16 }}>
                       <UsageBar
                         label={usageLabels[type] ?? label}
                         used={stat.used}
@@ -544,7 +544,7 @@ export default function SubscriptionPage() {
         {!isUnlimited && (
         <section>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
-            <h2 style={{ fontFamily: 'Syne, sans-serif', fontSize: 16, fontWeight: 700, margin: 0, color: 'var(--text)' }}>
+            <h2 style={{ fontFamily: 'var(--font-body)', fontSize: 16, fontWeight: 700, margin: 0, color: 'var(--text)' }}>
               {t('misc.changePlan')}
             </h2>
           </div>
@@ -565,7 +565,7 @@ export default function SubscriptionPage() {
                   {/* Header */}
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                      <span style={{ fontFamily: 'Syne, sans-serif', fontSize: 18, fontWeight: 700, color: 'var(--text)' }}>
+                      <span style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700, color: 'var(--text)' }}>
                         {plan.name}
                       </span>
                       {isActive && (
@@ -576,7 +576,7 @@ export default function SubscriptionPage() {
                           borderRadius: 4,
                           background:   'rgba(6,182,212,0.12)',
                           color:        '#06B6D4',
-                          fontFamily:   'DM Sans, sans-serif',
+                          fontFamily: 'var(--font-body)',
                         }}>
                           {t('misc.currentPlan')}
                         </span>
@@ -589,13 +589,13 @@ export default function SubscriptionPage() {
                           borderRadius: 4,
                           background:   'rgba(6,182,212,0.08)',
                           color:        '#06B6D4',
-                          fontFamily:   'DM Sans, sans-serif',
+                          fontFamily: 'var(--font-body)',
                         }}>
                           {t('misc.recommended')}
                         </span>
                       )}
                     </div>
-                    <p style={{ fontSize: 13, color: 'var(--text-dim)', fontFamily: 'DM Sans, sans-serif', margin: 0 }}>
+                    <p style={{ fontSize: 13, color: 'var(--text-dim)', fontFamily: 'var(--font-body)', margin: 0 }}>
                       {planSubtitles[plan.tier] ?? plan.subtitle}
                     </p>
                   </div>
@@ -607,7 +607,7 @@ export default function SubscriptionPage() {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                     {FEATURES.map(f => (
                       <div key={f.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                        <span style={{ fontSize: 13, color: 'var(--text-mid)', fontFamily: 'DM Sans, sans-serif', flex: 1 }}>
+                        <span style={{ fontSize: 13, color: 'var(--text-mid)', fontFamily: 'var(--font-body)', flex: 1 }}>
                           {featureLabels[f.label] ?? f.label}
                         </span>
                         <FeatureValue value={f.values[plan.tier]} />
@@ -659,7 +659,7 @@ export default function SubscriptionPage() {
             marginTop:  40,
             fontSize:   12,
             color:      'var(--text-dim)',
-            fontFamily: 'DM Sans, sans-serif',
+            fontFamily: 'var(--font-body)',
             textAlign:  'center',
             lineHeight: 1.6,
           }}>

@@ -22,12 +22,12 @@ export default function RowingTypeSelector({ selected, onChange, isDark }: Props
         return (
           <button key={t.id} onClick={() => onChange(t.id)}
             style={{
-              padding:'8px 14px', borderRadius:20,
+              padding:'8px 14px', borderRadius: 'var(--r-lg)',
               background: active ? `rgba(6,182,212,0.12)` : surfaceMuted,
               border: `1.5px solid ${active ? ACCENT : border}`,
               color: active ? ACCENT : text,
               fontSize:14, fontWeight: active ? 600 : 400,
-              cursor:'pointer', fontFamily:'DM Sans, sans-serif',
+              cursor:'pointer', fontFamily: 'var(--font-body)',
               transition:'all 120ms',
             }}>
             {t.labelKey ? tr(t.labelKey) : t.label}

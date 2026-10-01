@@ -45,13 +45,13 @@ export function NewGroupModal({ asAdmin, onClose, onCreated }: { asAdmin: boolea
   return createPortal(
     <div style={{ position: 'fixed', inset: 0, zIndex: 12000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, fontFamily: 'var(--font-body)' }}>
       <div onClick={requestClose} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.42)', opacity: shown ? 1 : 0, transition: 'opacity 0.26s ease' }} />
-      <div style={{ position: 'relative', width: 'min(460px, 100%)', maxHeight: '82vh', display: 'flex', flexDirection: 'column', background: 'var(--bg)', borderRadius: 20, overflow: 'hidden', boxShadow: '0 24px 70px rgba(0,0,0,0.4)', transform: shown ? 'translateY(0)' : 'translateY(100%)', transition: 'transform 0.3s cubic-bezier(0.32,0.72,0,1)' }}>
+      <div style={{ position: 'relative', width: 'min(460px, 100%)', maxHeight: '82vh', display: 'flex', flexDirection: 'column', background: 'var(--bg)', borderRadius: 'var(--r-lg)', overflow: 'hidden', boxShadow: '0 24px 70px rgba(0,0,0,0.4)', transform: shown ? 'translateY(0)' : 'translateY(100%)', transition: 'transform 0.3s cubic-bezier(0.32,0.72,0,1)' }}>
         <div style={{ flexShrink: 0, padding: '16px 18px 12px', borderBottom: '1px solid var(--border)' }}>
           <div style={{ fontSize: 17, fontWeight: 600, color: 'var(--text)', fontFamily: 'var(--font-display)' }}>{t('w2d.newGroup')}</div>
           <div style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 2 }}>{asAdmin ? t('w2d.newGroupAdminHint') : t('w2d.newGroupNoAdminHint')}</div>
         </div>
         <div style={{ padding: '14px 18px', flexShrink: 0 }}>
-          <input value={name} onChange={e => setName(e.target.value)} autoFocus placeholder={t('w2d.groupNamePlaceholder')} style={{ width: '100%', boxSizing: 'border-box', padding: '11px 13px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 14, outline: 'none', fontFamily: 'var(--font-body)' }} />
+          <input value={name} onChange={e => setName(e.target.value)} autoFocus placeholder={t('w2d.groupNamePlaceholder')} style={{ width: '100%', boxSizing: 'border-box', padding: '11px 13px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 14, outline: 'none', fontFamily: 'var(--font-body)' }} />
         </div>
         <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '0 18px' }}>
           <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-dim)', margin: '4px 0 6px' }}>{t('w2d.members')} {sel.size > 0 ? `· ${sel.size}` : ''}</div>
@@ -69,8 +69,8 @@ export function NewGroupModal({ asAdmin, onClose, onCreated }: { asAdmin: boolea
           })}
         </div>
         <div style={{ flexShrink: 0, display: 'flex', gap: 10, padding: '14px 18px', borderTop: '1px solid var(--border)' }}>
-          <button onClick={requestClose} style={{ flex: 1, padding: '11px', borderRadius: 12, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-mid)', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>{t('w2d.cancel')}</button>
-          <button onClick={() => void create()} disabled={busy || !name.trim()} style={{ flex: 1, padding: '11px', borderRadius: 12, border: 'none', background: name.trim() && !busy ? 'var(--primary)' : 'var(--bg-card2)', color: name.trim() && !busy ? 'var(--on-primary)' : 'var(--text-dim)', fontSize: 14, fontWeight: 700, cursor: name.trim() && !busy ? 'pointer' : 'default', fontFamily: 'var(--font-body)' }}>{t('w2d.create')}</button>
+          <button onClick={requestClose} style={{ flex: 1, padding: '11px', borderRadius: 'var(--r-md)', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-mid)', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>{t('w2d.cancel')}</button>
+          <button onClick={() => void create()} disabled={busy || !name.trim()} style={{ flex: 1, padding: '11px', borderRadius: 'var(--r-md)', border: 'none', background: name.trim() && !busy ? 'var(--primary)' : 'var(--bg-card2)', color: name.trim() && !busy ? 'var(--on-primary)' : 'var(--text-dim)', fontSize: 14, fontWeight: 700, cursor: name.trim() && !busy ? 'pointer' : 'default', fontFamily: 'var(--font-body)' }}>{t('w2d.create')}</button>
         </div>
       </div>
     </div>,
@@ -115,7 +115,7 @@ export function GroupChat({ group, onChanged, onClosed }: { group: GroupSummary;
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0, position: 'relative' }}>
       <div style={headStyle}>
-        <button onClick={onClosed} aria-label={t('w2d.back')} style={{ width: 30, height: 30, borderRadius: 9, border: 'none', background: 'var(--bg-card2)', color: 'var(--text-mid)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+        <button onClick={onClosed} aria-label={t('w2d.back')} style={{ width: 30, height: 30, borderRadius: 'var(--r-sm)', border: 'none', background: 'var(--bg-card2)', color: 'var(--text-mid)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
         </button>
         <span style={{ width: 34, height: 34, borderRadius: group.isDm ? '50%' : 11, overflow: 'hidden', background: 'color-mix(in srgb, var(--primary) 14%, transparent)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontWeight: 800 }}>
@@ -129,7 +129,7 @@ export function GroupChat({ group, onChanged, onClosed }: { group: GroupSummary;
           {!group.isDm && <div style={{ fontSize: 11.5, color: 'var(--text-dim)' }}>{t(members.length > 1 ? 'w2d.membersCountPlural' : 'w2d.membersCountSingular', { n: members.length })}{isAdmin ? t('w2d.youAreAdmin') : ''}</div>}
         </div>
         {!group.isDm && (
-          <button onClick={() => setPanel(true)} aria-label={t('w2d.members')} style={{ width: 32, height: 32, borderRadius: 9, border: 'none', background: 'var(--bg-card2)', color: 'var(--text-mid)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <button onClick={() => setPanel(true)} aria-label={t('w2d.members')} style={{ width: 32, height: 32, borderRadius: 'var(--r-sm)', border: 'none', background: 'var(--bg-card2)', color: 'var(--text-mid)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></svg>
           </button>
         )}
@@ -148,18 +148,18 @@ export function GroupChat({ group, onChanged, onClosed }: { group: GroupSummary;
             <div key={m.id} style={{ display: 'flex', flexDirection: 'column', alignItems: mine ? 'flex-end' : 'flex-start', position: 'relative' }}>
               {showName && <span style={{ fontSize: 11, color: 'var(--text-dim)', margin: '0 0 3px 4px', fontWeight: 600 }}>{m.senderName}</span>}
               {isBlocked ? (
-                <div style={{ maxWidth: '78%', padding: '8px 12px', borderRadius: 14, background: 'transparent', color: 'var(--text-dim)', fontSize: 12.5, fontStyle: 'italic', border: '1px dashed var(--border)' }}>
+                <div style={{ maxWidth: '78%', padding: '8px 12px', borderRadius: 'var(--r-md)', background: 'transparent', color: 'var(--text-dim)', fontSize: 12.5, fontStyle: 'italic', border: '1px dashed var(--border)' }}>
                   Message masqué (utilisateur bloqué)
                 </div>
               ) : (
                 <div onClick={e => { if (canReport) { e.stopPropagation(); setMenuId(menuId === m.id ? null : m.id) } }}
-                  style={{ maxWidth: '78%', padding: '8px 12px', borderRadius: 14, background: mine ? 'var(--primary)' : 'var(--bg-card2)', color: mine ? 'var(--on-primary)' : 'var(--text)', fontSize: 13.5, lineHeight: 1.4, whiteSpace: 'pre-wrap', wordBreak: 'break-word', cursor: canReport ? 'pointer' : 'default' }}>
+                  style={{ maxWidth: '78%', padding: '8px 12px', borderRadius: 'var(--r-md)', background: mine ? 'var(--primary)' : 'var(--bg-card2)', color: mine ? 'var(--on-primary)' : 'var(--text)', fontSize: 13.5, lineHeight: 1.4, whiteSpace: 'pre-wrap', wordBreak: 'break-word', cursor: canReport ? 'pointer' : 'default' }}>
                   {m.body}
                   <span style={{ display: 'block', fontSize: 9.5, opacity: 0.6, marginTop: 3, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{fmtT(m.createdAt)}</span>
                 </div>
               )}
               {menuId === m.id && canReport && (
-                <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: 4, zIndex: 20, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.22)', overflow: 'hidden', minWidth: 140 }}>
+                <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: 4, zIndex: 20, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-sm)', boxShadow: '0 8px 24px rgba(0,0,0,0.22)', overflow: 'hidden', minWidth: 140 }}>
                   <ReportBlockActions
                     targetUserId={m.senderId}
                     targetName={m.senderName}
@@ -181,8 +181,8 @@ export function GroupChat({ group, onChanged, onClosed }: { group: GroupSummary;
       {/* Composer */}
       <div style={{ flexShrink: 0, display: 'flex', gap: 8, padding: '10px 12px', borderTop: '1px solid var(--border)' }}>
         <input value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void send() } }}
-          placeholder={t('w2d.groupMessagePlaceholder')} style={{ flex: 1, padding: '10px 13px', borderRadius: 12, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 13.5, outline: 'none', fontFamily: 'var(--font-body)' }} />
-        <button onClick={() => void send()} disabled={!input.trim()} style={{ width: 40, borderRadius: 12, border: 'none', background: input.trim() ? 'var(--primary)' : 'var(--bg-card2)', color: input.trim() ? 'var(--on-primary)' : 'var(--text-dim)', cursor: input.trim() ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          placeholder={t('w2d.groupMessagePlaceholder')} style={{ flex: 1, padding: '10px 13px', borderRadius: 'var(--r-md)', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 13.5, outline: 'none', fontFamily: 'var(--font-body)' }} />
+        <button onClick={() => void send()} disabled={!input.trim()} style={{ width: 40, borderRadius: 'var(--r-md)', border: 'none', background: input.trim() ? 'var(--primary)' : 'var(--bg-card2)', color: input.trim() ? 'var(--on-primary)' : 'var(--text-dim)', cursor: input.trim() ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" /></svg>
         </button>
       </div>
@@ -215,7 +215,7 @@ function MembersPanel({ group, members, isAdmin, me, onClose, onRefresh, onLeftO
   return (
     <div style={{ position: 'absolute', inset: 0, zIndex: 5, background: 'var(--bg)', display: 'flex', flexDirection: 'column', opacity: shown ? 1 : 0, transform: shown ? 'translateY(0) scale(1)' : 'translateY(-6px) scale(0.98)', transition: 'opacity 0.18s ease, transform 0.18s ease' }}>
       <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', borderBottom: '1px solid var(--border)' }}>
-        <button onClick={requestClose} aria-label={t('w2d.close')} style={{ width: 30, height: 30, borderRadius: 9, border: 'none', background: 'var(--bg-card2)', color: 'var(--text-mid)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <button onClick={requestClose} aria-label={t('w2d.close')} style={{ width: 30, height: 30, borderRadius: 'var(--r-sm)', border: 'none', background: 'var(--bg-card2)', color: 'var(--text-mid)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
         </button>
         <div style={{ flex: 1, minWidth: 0, fontSize: 15, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-display)' }}>{t('w2d.groupMembers')}</div>
@@ -226,8 +226,8 @@ function MembersPanel({ group, members, isAdmin, me, onClose, onRefresh, onLeftO
           <div style={{ padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
             {renaming ? (
               <div style={{ display: 'flex', gap: 8 }}>
-                <input value={name} onChange={e => setName(e.target.value)} autoFocus style={{ flex: 1, padding: '9px 11px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 13.5, outline: 'none', fontFamily: 'var(--font-body)' }} />
-                <button onClick={async () => { await renameGroup(group.id, name); setRenaming(false); await onRefresh() }} style={{ padding: '0 14px', borderRadius: 10, border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>OK</button>
+                <input value={name} onChange={e => setName(e.target.value)} autoFocus style={{ flex: 1, padding: '9px 11px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 13.5, outline: 'none', fontFamily: 'var(--font-body)' }} />
+                <button onClick={async () => { await renameGroup(group.id, name); setRenaming(false); await onRefresh() }} style={{ padding: '0 14px', borderRadius: 'var(--r-sm)', border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>OK</button>
               </div>
             ) : (
               <button onClick={() => { setName(group.name); setRenaming(true) }} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'none', border: 'none', color: 'var(--text-mid)', fontSize: 13, cursor: 'pointer', padding: 0, fontFamily: 'var(--font-body)' }}>
@@ -247,7 +247,7 @@ function MembersPanel({ group, members, isAdmin, me, onClose, onRefresh, onLeftO
               {m.role === 'admin' && <div style={{ fontSize: 11, color: 'var(--primary)', fontWeight: 700 }}>{t('w2d.admin')}</div>}
             </div>
             {isAdmin && m.userId !== me && (
-              <button onClick={async () => { await removeMember(group.id, m.userId); await onRefresh() }} aria-label={t('w2d.remove')} style={{ width: 30, height: 30, borderRadius: 8, border: 'none', background: 'var(--bg-card2)', color: 'var(--danger)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <button onClick={async () => { await removeMember(group.id, m.userId); await onRefresh() }} aria-label={t('w2d.remove')} style={{ width: 30, height: 30, borderRadius: 'var(--r-sm)', border: 'none', background: 'var(--bg-card2)', color: 'var(--danger)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6L6 18M6 6l12 12" /></svg>
               </button>
             )}
@@ -262,7 +262,7 @@ function MembersPanel({ group, members, isAdmin, me, onClose, onRefresh, onLeftO
                 <div key={p.id} style={row}>
                   <Avatar url={p.avatar} name={p.name} size={30} />
                   <div style={{ flex: 1, fontSize: 13.5, color: 'var(--text)' }}>{p.name}</div>
-                  <button onClick={async () => { await addMembers(group.id, [p.id]); setPool(pl => pl.filter(x => x.id !== p.id)); await onRefresh() }} style={{ padding: '6px 12px', borderRadius: 9, border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer' }}>{t('w2d.add')}</button>
+                  <button onClick={async () => { await addMembers(group.id, [p.id]); setPool(pl => pl.filter(x => x.id !== p.id)); await onRefresh() }} style={{ padding: '6px 12px', borderRadius: 'var(--r-sm)', border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer' }}>{t('w2d.add')}</button>
                 </div>
               ))}
               <button onClick={() => setAdding(false)} style={{ marginTop: 6, background: 'none', border: 'none', color: 'var(--text-dim)', fontSize: 12.5, cursor: 'pointer', padding: 0, fontFamily: 'var(--font-body)' }}>{t('w2d.done')}</button>

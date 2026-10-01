@@ -46,7 +46,7 @@ export default function GlobalAIButton() {
           alignItems:  'center',
           gap:         8,
           padding:     '9px 16px 9px 12px',
-          borderRadius: 14,
+          borderRadius: 'var(--r-md)',
           cursor:      'pointer',
           boxShadow:   open
             ? '0 0 0 3px rgba(139,92,246,0.14), 0 8px 32px rgba(0,0,0,0.22)'
@@ -64,7 +64,7 @@ export default function GlobalAIButton() {
 
         {/* Label */}
         <span style={{
-          fontFamily:  'DM Sans, sans-serif',
+          fontFamily: 'var(--font-body)',
           fontSize:    13,
           fontWeight:  600,
           background:  'linear-gradient(90deg,#8b5cf6,#5b6fff)',

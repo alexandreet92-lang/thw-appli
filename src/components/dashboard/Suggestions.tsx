@@ -83,17 +83,17 @@ export function Suggestions() {
         const accent = s.tone === 'warn' ? 'var(--danger)' : 'var(--primary)'
         return (
           <div key={s.kind} style={{ position: 'relative', display: 'flex', gap: 'var(--space-3)', padding: 'var(--space-4)', borderRadius: 'var(--r-lg)', background: 'var(--bg-card2)', border: `1px solid color-mix(in srgb, ${accent} 30%, var(--border))` }}>
-            <span style={{ flexShrink: 0, width: 34, height: 34, borderRadius: 10, display: 'grid', placeItems: 'center', color: accent, background: `color-mix(in srgb, ${accent} 12%, transparent)` }}><Icon kind={s.kind} /></span>
+            <span style={{ flexShrink: 0, width: 34, height: 34, borderRadius: 'var(--r-sm)', display: 'grid', placeItems: 'center', color: accent, background: `color-mix(in srgb, ${accent} 12%, transparent)` }}><Icon kind={s.kind} /></span>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontFamily: FD, fontSize: 14.5, fontWeight: 700, color: 'var(--text)' }}>{c.title}</div>
               <div style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-mid)', lineHeight: 1.5, marginTop: 2 }}>{c.body}</div>
               {c.href ? (
-                <Link href={c.href} style={{ display: 'inline-block', marginTop: 'var(--space-3)', padding: '6px 12px', borderRadius: 999, background: accent, color: 'var(--on-primary)', fontFamily: FB, fontSize: 12.5, fontWeight: 700, textDecoration: 'none' }}>{c.cta}</Link>
+                <Link href={c.href} style={{ display: 'inline-block', marginTop: 'var(--space-3)', padding: '6px 12px', borderRadius: 'var(--r-pill)', background: accent, color: 'var(--on-primary)', fontFamily: FB, fontSize: 12.5, fontWeight: 700, textDecoration: 'none' }}>{c.cta}</Link>
               ) : (
-                <button type="button" onClick={c.onClick} style={{ marginTop: 'var(--space-3)', padding: '6px 12px', borderRadius: 999, border: 'none', background: accent, color: 'var(--on-primary)', fontFamily: FB, fontSize: 12.5, fontWeight: 700, cursor: 'pointer' }}>{c.cta}</button>
+                <button type="button" onClick={c.onClick} style={{ marginTop: 'var(--space-3)', padding: '6px 12px', borderRadius: 'var(--r-pill)', border: 'none', background: accent, color: 'var(--on-primary)', fontFamily: FB, fontSize: 12.5, fontWeight: 700, cursor: 'pointer' }}>{c.cta}</button>
               )}
             </div>
-            <button type="button" onClick={() => dismiss(s.kind)} aria-label={t('suggest.dismiss')} style={{ position: 'absolute', top: 8, right: 8, width: 26, height: 26, borderRadius: 8, border: 'none', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', display: 'grid', placeItems: 'center' }}>
+            <button type="button" onClick={() => dismiss(s.kind)} aria-label={t('suggest.dismiss')} style={{ position: 'absolute', top: 8, right: 8, width: 26, height: 26, borderRadius: 'var(--r-sm)', border: 'none', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', display: 'grid', placeItems: 'center' }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
             </button>
           </div>

@@ -61,7 +61,7 @@ export default function EMOMView({ exercise, onSetDone, isDark, accent }: Props)
   const phaseColor = isWork ? accent : '#22C55E'
 
   return (
-    <div style={{ padding: '20px', fontFamily: 'DM Sans, sans-serif' }}>
+    <div style={{ padding: '20px', fontFamily: 'var(--font-body)' }}>
       <p style={{ fontSize: 13, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: dim, margin: '0 0 4px' }}>EMOM</p>
       <p style={{ fontSize: 13, color: dim, margin: '0 0 20px' }}>{t('record.emomMinuteProgress', { current: currentMinute + 1, total: totalMinutes })}</p>
 
@@ -81,16 +81,16 @@ export default function EMOMView({ exercise, onSetDone, isDark, accent }: Props)
         </p>
       </div>
 
-      <div style={{ background: surface, borderRadius: 14, padding: '14px 16px', marginBottom: 20 }}>
+      <div style={{ background: surface, borderRadius: 'var(--r-md)', padding: '14px 16px', marginBottom: 20 }}>
         <p style={{ fontSize: 13, color: dim, margin: '0 0 12px' }}>{activeExo.name}{exos.length > 1 ? ` ${t('record.emomExoIndex', { current: (currentMinute % exos.length) + 1, total: exos.length })}` : ''}</p>
         <div style={{ display: 'flex', gap: 12 }}>
           {([[t('record.emomReps'), 'reps', 1], [t('record.emomLoadKg'), 'weightKg', 2.5]] as const).map(([label, key, step]) => (
             <div key={key} style={{ flex: 1 }}>
               <p style={{ fontSize: 10, color: dim, textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 6px', textAlign: 'center' }}>{label}</p>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <button onClick={() => setAv({ [key]: Math.max(0, +(av[key] - step).toFixed(1)) })} style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--bg-card)', border: `1px solid ${separator}`, color: text, fontSize: 18, cursor: 'pointer' }}>−</button>
+                <button onClick={() => setAv({ [key]: Math.max(0, +(av[key] - step).toFixed(1)) })} style={{ width: 36, height: 36, borderRadius: 'var(--r-sm)', background: 'var(--bg-card)', border: `1px solid ${separator}`, color: text, fontSize: 18, cursor: 'pointer' }}>−</button>
                 <span style={{ flex: 1, textAlign: 'center', fontSize: 22, fontWeight: 700, color: text }}>{av[key]}</span>
-                <button onClick={() => setAv({ [key]: +(av[key] + step).toFixed(1) })} style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--bg-card)', border: `1px solid ${separator}`, color: text, fontSize: 18, cursor: 'pointer' }}>+</button>
+                <button onClick={() => setAv({ [key]: +(av[key] + step).toFixed(1) })} style={{ width: 36, height: 36, borderRadius: 'var(--r-sm)', background: 'var(--bg-card)', border: `1px solid ${separator}`, color: text, fontSize: 18, cursor: 'pointer' }}>+</button>
               </div>
             </div>
           ))}
@@ -98,12 +98,12 @@ export default function EMOMView({ exercise, onSetDone, isDark, accent }: Props)
       </div>
 
       {!done && !running && (
-        <button onClick={() => setRunning(true)} style={{ width: '100%', height: 52, borderRadius: 16, background: `linear-gradient(135deg, ${accent}, ${accent}bb)`, border: 'none', color: '#fff', fontSize: 16, fontWeight: 600, cursor: 'pointer' }}>
+        <button onClick={() => setRunning(true)} style={{ width: '100%', height: 52, borderRadius: 'var(--r-md)', background: `linear-gradient(135deg, ${accent}, ${accent}bb)`, border: 'none', color: '#fff', fontSize: 16, fontWeight: 600, cursor: 'pointer' }}>
           {t('record.emomStart')}
         </button>
       )}
       {running && (
-        <button onClick={handleDone} disabled={completedThisMinuteRef.current} style={{ width: '100%', height: 52, borderRadius: 16, background: completedThisMinuteRef.current ? surface : `linear-gradient(135deg, ${accent}, ${accent}bb)`, border: 'none', color: completedThisMinuteRef.current ? dim : '#fff', fontSize: 16, fontWeight: 600, cursor: completedThisMinuteRef.current ? 'default' : 'pointer' }}>
+        <button onClick={handleDone} disabled={completedThisMinuteRef.current} style={{ width: '100%', height: 52, borderRadius: 'var(--r-md)', background: completedThisMinuteRef.current ? surface : `linear-gradient(135deg, ${accent}, ${accent}bb)`, border: 'none', color: completedThisMinuteRef.current ? dim : '#fff', fontSize: 16, fontWeight: 600, cursor: completedThisMinuteRef.current ? 'default' : 'pointer' }}>
           {completedThisMinuteRef.current ? t('record.emomDoneMark') : t('record.emomMarkDone')}
         </button>
       )}

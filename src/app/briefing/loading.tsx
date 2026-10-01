@@ -11,7 +11,7 @@ export default function Loading() {
       {/* Article cards */}
       {Array.from({ length: 4 }).map((_, i) => (
         <div key={i} style={{
-          padding: '14px 16px', borderRadius: 14,
+          padding: '14px 16px', borderRadius: 'var(--r-md)',
           background: 'var(--bg-card)', border: '1px solid var(--border)',
           display: 'flex', gap: 14, alignItems: 'flex-start',
         }}>

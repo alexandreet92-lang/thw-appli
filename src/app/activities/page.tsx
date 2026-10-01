@@ -537,7 +537,7 @@ function Chip({ label, active, onClick }: { label: string; active: boolean; onCl
         background: active ? T.accent : T.surface,
         color: active ? '#fff' : T.textSub,
         border: `1px solid ${active ? T.accent : T.border}`,
-        borderRadius: 20, padding: '4px 12px', fontSize: 12,
+        borderRadius: 'var(--r-lg)', padding: '4px 12px', fontSize: 12,
         cursor: 'pointer', fontWeight: active ? 600 : 400, transition: 'all 0.15s',
       }}
     >
@@ -562,10 +562,10 @@ function TooltipInfo({ text }: { text: string }) {
     <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', marginLeft: 5, cursor: 'help' }}
       onMouseEnter={() => setShow(true)} onMouseLeave={() => setShow(false)}>
       <span style={{ width: 14, height: 14, borderRadius: '50%', background: T.border, display: 'inline-flex',
-        alignItems: 'center', justifyContent: 'center', fontSize: 9, color: T.textSub, fontWeight: 700, lineHeight: 1 }}>?</span>
+        alignItems: 'center', justifyContent: 'center', fontSize: 10, color: T.textSub, fontWeight: 700, lineHeight: 1 }}>?</span>
       {show && (
         <div style={{ position: 'absolute', bottom: '120%', left: '50%', transform: 'translateX(-50%)',
-          background: T.text, color: '#fff', fontSize: 11, padding: '8px 10px', borderRadius: 6,
+          background: T.text, color: '#fff', fontSize: 11, padding: '8px 10px', borderRadius: 'var(--r-sm)',
           width: 220, lineHeight: 1.5, zIndex: 999, pointerEvents: 'none', whiteSpace: 'pre-wrap',
           boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}>
           {text}
@@ -1186,7 +1186,7 @@ function PowerCurveChart({ watts, activityId, activityDurationS, ftp }: {
         <div style={{ flexShrink: 0, width: 38, paddingTop: PAD_TOP, paddingBottom: 26 }}>
           <div style={{ position: 'relative', height: CHART_H }}>
             {yTicks.map(w => (
-              <span key={`yl-${w}`} style={{ position: 'absolute', right: 6, top: `${(yOf(w) / H) * 100}%`, transform: 'translateY(-50%)', fontSize: 11, color: 'var(--text-dim)', fontFamily: 'DM Mono, monospace', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{w}</span>
+              <span key={`yl-${w}`} style={{ position: 'absolute', right: 6, top: `${(yOf(w) / H) * 100}%`, transform: 'translateY(-50%)', fontSize: 11, color: 'var(--text-dim)', fontFamily: 'var(--font-body)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{w}</span>
             ))}
           </div>
         </div>
@@ -1259,7 +1259,7 @@ function PowerCurveChart({ watts, activityId, activityDurationS, ftp }: {
             const pct = (sqrtX(DURATIONS[i]) / W) * 100
             const tx = pct < 3 ? '0%' : pct > 97 ? '-100%' : '-50%'
             return (
-              <span key={`vp-${i}`} style={{ position: 'absolute', left: `${pct}%`, top: `${(yOf(mmp[i]) / H) * 100}%`, transform: `translate(${tx}, calc(-100% - ${isBeaten ? 26 : 10}px))`, padding: '2px 8px', borderRadius: 8, background: 'var(--bg-card)', border: '1px solid var(--border)', boxShadow: '0 1px 5px rgba(0,0,0,0.10)', fontSize: 12, fontWeight: 800, color: 'var(--text)', fontFamily: 'DM Mono, monospace', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', pointerEvents: 'none' }}>{mmp[i]}<span style={{ fontSize: 8.5, fontWeight: 600, opacity: 0.6, marginLeft: 2 }}>W</span></span>
+              <span key={`vp-${i}`} style={{ position: 'absolute', left: `${pct}%`, top: `${(yOf(mmp[i]) / H) * 100}%`, transform: `translate(${tx}, calc(-100% - ${isBeaten ? 26 : 10}px))`, padding: '2px 8px', borderRadius: 'var(--r-sm)', background: 'var(--bg-card)', border: '1px solid var(--border)', boxShadow: '0 1px 5px rgba(0,0,0,0.10)', fontSize: 12, fontWeight: 800, color: 'var(--text)', fontFamily: 'var(--font-body)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', pointerEvents: 'none' }}>{mmp[i]}<span style={{ fontSize: 8.5, fontWeight: 600, opacity: 0.6, marginLeft: 2 }}>W</span></span>
             )
           })
         })()}
@@ -1267,7 +1267,7 @@ function PowerCurveChart({ watts, activityId, activityDurationS, ftp }: {
         {xLabels.map(({ d, label }) => {
           const pct = (sqrtX(d) / W) * 100
           return (
-            <span key={`xl-${d}`} style={{ position: 'absolute', left: `${pct}%`, top: '100%', marginTop: 7, transform: edgeTx(pct), fontSize: 11.5, fontWeight: 600, color: 'var(--text-mid)', fontFamily: 'DM Mono, monospace', whiteSpace: 'nowrap', pointerEvents: 'none' }}>{label}</span>
+            <span key={`xl-${d}`} style={{ position: 'absolute', left: `${pct}%`, top: '100%', marginTop: 7, transform: edgeTx(pct), fontSize: 11.5, fontWeight: 600, color: 'var(--text-mid)', fontFamily: 'var(--font-body)', whiteSpace: 'nowrap', pointerEvents: 'none' }}>{label}</span>
           )
         })}
         </div>
@@ -1290,7 +1290,7 @@ function PowerCurveChart({ watts, activityId, activityDurationS, ftp }: {
               top:           Math.max(4, mmpMousePos.y - 110),
               background:    'var(--bg-card)',
               border:        '1px solid var(--border)',
-              borderRadius:  10,
+              borderRadius: 'var(--r-sm)',
               padding:       '10px 12px',
               fontSize:      11,
               boxShadow:     '0 4px 20px rgba(0,0,0,0.45)',
@@ -1298,7 +1298,7 @@ function PowerCurveChart({ watts, activityId, activityDurationS, ftp }: {
               zIndex:        20,
               whiteSpace:    'nowrap',
               minWidth:      180,
-              fontFamily:    'Inter, system-ui, -apple-system, sans-serif',
+              fontFamily: 'var(--font-body)',
             }}>
               {/* Header durée large + record battu badge */}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
@@ -1312,7 +1312,7 @@ function PowerCurveChart({ watts, activityId, activityDurationS, ftp }: {
                 </span>
                 {isBeat && (
                   <span style={{
-                    fontSize: 9, fontWeight: 700,
+                    fontSize: 10, fontWeight: 700,
                     background: '#10b981', color: '#fff',
                     padding: '2px 6px', borderRadius: 4,
                     textTransform: 'uppercase', letterSpacing: '0.05em',
@@ -1415,7 +1415,7 @@ function PowerCurveChart({ watts, activityId, activityDurationS, ftp }: {
         {ftp && ftp > 0 && (
           <div style={{
             marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 5,
-            color: 'var(--text-dim)', fontSize: 9, fontWeight: 600,
+            color: 'var(--text-dim)', fontSize: 10, fontWeight: 600,
             letterSpacing: '0.05em',
           }}>
             Zones FTP {ftp} W
@@ -1509,7 +1509,7 @@ function GapChart({ velocity, altitude, distance }: { velocity: number[]; altitu
       </div>
 
       {idx !== null && (
-        <div style={{ display: 'flex', gap: 14, marginBottom: 8, background: T.bgAlt, borderRadius: 8, padding: '6px 12px', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: 14, marginBottom: 8, background: T.bgAlt, borderRadius: 'var(--r-sm)', padding: '6px 12px', alignItems: 'center' }}>
           <span style={{ fontSize: 11, color: '#f97316', fontWeight: 600, fontFamily: T.fontMono }}>{t('actp.real')} {fmtPace(pace[idx])}</span>
           <span style={{ fontSize: 11, color: '#86efac', fontWeight: 600, fontFamily: T.fontMono }}>GAP {fmtPace(gap[idx])}</span>
           {gap[idx] > 0 && pace[idx] > 0 && Math.abs(gap[idx] - pace[idx]) > 3 && (
@@ -1577,7 +1577,7 @@ function TimelineBar({ totalS, cursorPct }: { totalS: number; cursorPct: number 
       {ticks.map(t => (
         <div key={t} style={{ position: 'absolute', left: `${(t / totalS) * 100}%`, top: 0, transform: 'translateX(-50%)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
           <div style={{ width: 1, height: 6, backgroundColor: 'var(--border-mid)' }} />
-          <span style={{ fontSize: 9, color: 'var(--text-dim)', whiteSpace: 'nowrap', lineHeight: 1.2 }}>{fmtTick(t)}</span>
+          <span style={{ fontSize: 10, color: 'var(--text-dim)', whiteSpace: 'nowrap', lineHeight: 1.2 }}>{fmtTick(t)}</span>
         </div>
       ))}
       {cursorPct !== null && (
@@ -1603,7 +1603,7 @@ function InfoAccordion({ title, summary, children }: {
       padding: '14px 18px',
       background: 'var(--bg-card2)',
       border: '1px solid var(--border)',
-      borderRadius: 10,
+      borderRadius: 'var(--r-sm)',
     }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
         <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', lineHeight: 1.4 }}>{title}</span>
@@ -1719,7 +1719,7 @@ function DecouplingChart({ watts, heartrate, decouplingPct, altitude, temp, time
         ref={decoupContainerRef}
         style={{
           position: 'relative', cursor: 'crosshair',
-          background: 'var(--bg-card2)', borderRadius: 10,
+          background: 'var(--bg-card2)', borderRadius: 'var(--r-sm)',
           overflow: 'hidden',
         }}
       >
@@ -1758,13 +1758,13 @@ function DecouplingChart({ watts, heartrate, decouplingPct, altitude, temp, time
             top: Math.max(0, decoupMousePos.y - 90),
             background: 'var(--bg-card)',
             border: '1px solid var(--border)',
-            borderRadius: 12,
+            borderRadius: 'var(--r-md)',
             padding: '10px 14px',
             pointerEvents: 'none',
             zIndex: 20,
             whiteSpace: 'nowrap',
             boxShadow: '0 4px 16px rgba(0,0,0,0.10)',
-            fontFamily: 'Inter, system-ui, -apple-system, sans-serif',
+            fontFamily: 'var(--font-body)',
           }}>
             {time && time[idx] != null && (
               <div style={{
@@ -1837,15 +1837,15 @@ function DecouplingChart({ watts, heartrate, decouplingPct, altitude, temp, time
           {t('actp.hrd_p1_pre')}<strong style={{ color: 'var(--text)', fontWeight: 600 }}>{t('actp.hr_drift')}</strong>{t('actp.hrd_p1_post')}
         </p>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, margin: '12px 0' }}>
-          <div style={{ padding: '10px 12px', borderRadius: 8, backgroundColor: 'var(--zone-good-bg)', border: '1px solid var(--zone-good-border)' }}>
+          <div style={{ padding: '10px 12px', borderRadius: 'var(--r-sm)', backgroundColor: 'var(--zone-good-bg)', border: '1px solid var(--zone-good-border)' }}>
             <p style={{ fontSize: 12, fontWeight: 700, color: '#16A34A', margin: '0 0 3px' }}>{'< 5%'}</p>
             <p style={{ fontSize: 11, color: 'var(--text-body)', margin: 0, lineHeight: 1.5 }}>{t('actp.hrd_lvl_good')}</p>
           </div>
-          <div style={{ padding: '10px 12px', borderRadius: 8, backgroundColor: 'var(--zone-med-bg)', border: '1px solid var(--zone-med-border)' }}>
+          <div style={{ padding: '10px 12px', borderRadius: 'var(--r-sm)', backgroundColor: 'var(--zone-med-bg)', border: '1px solid var(--zone-med-border)' }}>
             <p style={{ fontSize: 12, fontWeight: 700, color: '#D97706', margin: '0 0 3px' }}>5 – 8%</p>
             <p style={{ fontSize: 11, color: 'var(--text-body)', margin: 0, lineHeight: 1.5 }}>{t('actp.hrd_lvl_med')}</p>
           </div>
-          <div style={{ padding: '10px 12px', borderRadius: 8, backgroundColor: 'var(--zone-bad-bg)', border: '1px solid var(--zone-bad-border)' }}>
+          <div style={{ padding: '10px 12px', borderRadius: 'var(--r-sm)', backgroundColor: 'var(--zone-bad-bg)', border: '1px solid var(--zone-bad-border)' }}>
             <p style={{ fontSize: 12, fontWeight: 700, color: '#DC2626', margin: '0 0 3px' }}>{'>  8%'}</p>
             <p style={{ fontSize: 11, color: 'var(--text-body)', margin: 0, lineHeight: 1.5 }}>{t('actp.hrd_lvl_bad')}</p>
           </div>
@@ -1933,7 +1933,7 @@ function HrCumulativeChart({ heartrate, maxHrEst }: { heartrate: number[]; maxHr
         ref={containerRef2}
         style={{
           position: 'relative', cursor: 'crosshair',
-          background: 'var(--bg-card2)', borderRadius: 10,
+          background: 'var(--bg-card2)', borderRadius: 'var(--r-sm)',
           overflow: 'hidden',
         }}
       >
@@ -1962,13 +1962,13 @@ function HrCumulativeChart({ heartrate, maxHrEst }: { heartrate: number[]; maxHr
             top: Math.max(0, mousePos.y - 70),
             background: 'var(--bg-card)',
             border: '1px solid var(--border)',
-            borderRadius: 12,
+            borderRadius: 'var(--r-md)',
             padding: '10px 14px',
             pointerEvents: 'none',
             zIndex: 20,
             boxShadow: '0 4px 16px rgba(0,0,0,0.10)',
             whiteSpace: 'nowrap',
-            fontFamily: 'Inter, system-ui, -apple-system, sans-serif',
+            fontFamily: 'var(--font-body)',
           }}>
             <div style={{
               fontSize: 10, opacity: 0.6, textTransform: 'uppercase',
@@ -1988,7 +1988,7 @@ function HrCumulativeChart({ heartrate, maxHrEst }: { heartrate: number[]; maxHr
       {/* X axis — bpm labels */}
       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
         {[minHr, ...Array.from({length:4},(_,i)=>Math.round(minHr+(maxHr-minHr)*(i+1)/5)), maxHr].map(bpm => (
-          <span key={bpm} style={{ fontSize: 9, color: T.textMuted, fontFamily: T.fontMono }}>{bpm}</span>
+          <span key={bpm} style={{ fontSize: 10, color: T.textMuted, fontFamily: T.fontMono }}>{bpm}</span>
         ))}
       </div>
 
@@ -2651,7 +2651,7 @@ function SelectionSheet(props: SelectionSheetProps) {
           maxHeight:    '90vh',
           overflowY:    'auto',
           paddingBottom: 24,
-          fontFamily:   'Inter, system-ui, -apple-system, sans-serif',
+          fontFamily: 'var(--font-body)',
         }}
       >
         {/* Handle */}
@@ -3252,7 +3252,7 @@ function SyncCharts({ activity, hrZones, powerZones, paceZones, polylinePoints, 
               top: 80,
               pointerEvents: 'none',
               zIndex: 200,
-              borderRadius: 10,
+              borderRadius: 'var(--r-sm)',
               padding: '8px 12px',
               minWidth: 140,
             }}
@@ -3281,7 +3281,7 @@ function SyncCharts({ activity, hrZones, powerZones, paceZones, polylinePoints, 
             top: Math.max(4, mousePos.y - 56),
             background: T.surface,
             border: `1px solid ${T.border}`,
-            borderRadius: 8,
+            borderRadius: 'var(--r-sm)',
             padding: '7px 11px',
             pointerEvents: 'none',
             zIndex: 210,
@@ -3336,7 +3336,7 @@ function SyncCharts({ activity, hrZones, powerZones, paceZones, polylinePoints, 
             })}
           </div>
           {selLap && (
-            <div style={{ marginTop: 10, background: T.bg, borderRadius: 7, padding: '12px 14px', border: `1px solid ${T.border}` }}>
+            <div style={{ marginTop: 10, background: T.bg, borderRadius: 'var(--r-sm)', padding: '12px 14px', border: `1px solid ${T.border}` }}>
               <div style={{ fontSize: 11, fontWeight: 600, color: T.textSub, marginBottom: 8 }}>{t('actp.interval')} #{selectedLap! + 1}</div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, fontSize: 12 }}>
                 {selLap.distance_m > 0 && <span><span style={{ color: T.textMuted }}>{t('actp.dist_short')} </span>{fmtDist(selLap.distance_m)}</span>}
@@ -3794,7 +3794,7 @@ export function ActivityCurves({ activity, onHoverRatio }: ActivityCurvesProps) 
       display:      'inline-flex',
       gap:          2,
       padding:      3,
-      borderRadius: 8,
+      borderRadius: 'var(--r-sm)',
       border:       '1px solid var(--border)',
       background:   'var(--bg-card2)',
       marginBottom: 12,
@@ -3814,7 +3814,7 @@ export function ActivityCurves({ activity, onHoverRatio }: ActivityCurvesProps) 
               alignItems:   'center',
               gap:          6,
               padding:      '7px 10px',
-              borderRadius: 5,
+              borderRadius: 'var(--r-sm)',
               border:       'none',
               background:   active ? 'var(--bg-card)' : 'transparent',
               color:        active ? 'var(--text)' : 'var(--text-dim)',
@@ -3846,7 +3846,7 @@ export function ActivityCurves({ activity, onHoverRatio }: ActivityCurvesProps) 
         transition:    'opacity 0.15s',
         background:    'var(--bg-card)',
         border:        '1px solid var(--border)',
-        borderRadius:  12,
+        borderRadius: 'var(--r-md)',
         padding:       '10px 14px',
         boxShadow:     '0 4px 16px rgba(0,0,0,0.10)',
         pointerEvents: 'none',
@@ -3903,7 +3903,7 @@ export function ActivityCurves({ activity, onHoverRatio }: ActivityCurvesProps) 
         transition:    'opacity 0.15s',
         background:    monoBg,
         color:         monoTxtClr,
-        borderRadius:  12,
+        borderRadius: 'var(--r-md)',
         padding:       '12px 16px',
         boxShadow:     '0 4px 16px rgba(0,0,0,0.15)',
         pointerEvents: 'none',
@@ -4020,7 +4020,7 @@ export function ActivityCurves({ activity, onHoverRatio }: ActivityCurvesProps) 
             display:      'flex',
             position:     'relative',
             background:   'var(--bg-card2)',
-            borderRadius: 10,
+            borderRadius: 'var(--r-sm)',
             overflow:     'hidden',
             touchAction:  'none',
             cursor:       'crosshair',
@@ -4050,7 +4050,7 @@ export function ActivityCurves({ activity, onHoverRatio }: ActivityCurvesProps) 
                   </span>
                   {st && (
                     <span style={{
-                      fontSize:           9,
+                      fontSize: 10,
                       color:              'var(--text-dim)',
                       marginTop:          2,
                       fontVariantNumeric: 'tabular-nums',
@@ -4136,7 +4136,7 @@ export function ActivityCurves({ activity, onHoverRatio }: ActivityCurvesProps) 
         {/* Labels axe X commun en bas */}
         <div style={{
           display: 'flex', justifyContent: 'space-between',
-          padding: '6px 2px 0 62px', fontSize: 9, color: 'var(--text-dim)',
+          padding: '6px 2px 0 62px', fontSize: 10, color: 'var(--text-dim)',
           fontVariantNumeric: 'tabular-nums',
         }}>
           {xLabels.map((l, i) => <span key={i}>{l.label}</span>)}
@@ -4182,7 +4182,7 @@ export function ActivityCurves({ activity, onHoverRatio }: ActivityCurvesProps) 
                 style={{
                   flexShrink:   0,
                   padding:      '7px 12px',
-                  borderRadius: 999,
+                  borderRadius: 'var(--r-pill)',
                   border:       '1px solid var(--border)',
                   background:   active ? 'var(--text)' : 'var(--bg-card2)',
                   color:        active ? 'var(--bg)'   : 'var(--text-dim)',
@@ -4213,7 +4213,7 @@ export function ActivityCurves({ activity, onHoverRatio }: ActivityCurvesProps) 
             position:     'relative',
             height:       monoH,
             background:   'var(--bg-card2)',
-            borderRadius: 10,
+            borderRadius: 'var(--r-sm)',
             overflow:     'visible',
             touchAction:  'none',
             cursor:       'crosshair',
@@ -4221,7 +4221,7 @@ export function ActivityCurves({ activity, onHoverRatio }: ActivityCurvesProps) 
         >
           <svg
             viewBox={`0 0 ${W} ${monoH}`}
-            style={{ width: '100%', height: '100%', display: 'block', borderRadius: 10 }}
+            style={{ width: '100%', height: '100%', display: 'block', borderRadius: 'var(--r-sm)' }}
             preserveAspectRatio="none"
           >
             {altPath && <path d={altPath} fill="#94a3b8" fillOpacity={0.2} />}
@@ -4304,7 +4304,7 @@ export function ActivityCurves({ activity, onHoverRatio }: ActivityCurvesProps) 
         {/* Labels axe X */}
         <div style={{
           display: 'flex', justifyContent: 'space-between',
-          padding: '6px 2px 0', fontSize: 9, color: 'var(--text-dim)',
+          padding: '6px 2px 0', fontSize: 10, color: 'var(--text-dim)',
           fontVariantNumeric: 'tabular-nums',
         }}>
           {xLabels.map((l, i) => <span key={i}>{l.label}</span>)}
@@ -4351,7 +4351,7 @@ export function ActivityCurves({ activity, onHoverRatio }: ActivityCurvesProps) 
                 alignItems:   'center',
                 gap:          6,
                 padding:      '6px 8px',
-                borderRadius: 6,
+                borderRadius: 'var(--r-sm)',
                 border:       '1px solid var(--border)',
                 background:   'var(--bg-card2)',
                 color:        def.color,
@@ -4382,7 +4382,7 @@ export function ActivityCurves({ activity, onHoverRatio }: ActivityCurvesProps) 
         onPointerCancel={onPointerLeaveOrUp}
         style={{
           background:    'var(--bg-card2)',
-          borderRadius:  10,
+          borderRadius: 'var(--r-sm)',
           overflow:      'visible',
           position:      'relative',
           height:        overlaidH,
@@ -4392,7 +4392,7 @@ export function ActivityCurves({ activity, onHoverRatio }: ActivityCurvesProps) 
       >
         <svg
           viewBox={`0 0 ${W} ${overlaidH}`}
-          style={{ width: '100%', height: '100%', display: 'block', borderRadius: 10 }}
+          style={{ width: '100%', height: '100%', display: 'block', borderRadius: 'var(--r-sm)' }}
           preserveAspectRatio="none"
         >
           {/* Grille subtile */}
@@ -4465,7 +4465,7 @@ export function ActivityCurves({ activity, onHoverRatio }: ActivityCurvesProps) 
       {/* Labels axe X */}
       <div style={{
         display: 'flex', justifyContent: 'space-between',
-        padding: '6px 2px 0', fontSize: 9, color: 'var(--text-dim)',
+        padding: '6px 2px 0', fontSize: 10, color: 'var(--text-dim)',
         fontVariantNumeric: 'tabular-nums',
       }}>
         {xLabels.map((l, i) => <span key={i}>{l.label}</span>)}
@@ -4673,7 +4673,7 @@ function SectionDonneesSpecifiques({ inRange, zones, bikeZones, runZones, hrZone
           const c = SPORT_PILL_COLOR[sp] ?? T.accent
           return (
             <button key={sp} onClick={() => setActiveSport(sp)} style={{
-              padding: '5px 14px', fontSize: 13, fontWeight: 600, borderRadius: 20,
+              padding: '5px 14px', fontSize: 13, fontWeight: 600, borderRadius: 'var(--r-lg)',
               cursor: 'pointer', border: `1px solid ${active ? c : T.border}`,
               background: active ? c : T.bgAlt,
               color: active ? '#fff' : T.textMuted,
@@ -5094,7 +5094,7 @@ function WeekDetailModal({ week, activities, zones, onClose }: {
         const active = sportFilter === sp
         return (
           <button key={sp} onClick={() => setSportFilter(sp)} style={{
-            padding: '3px 11px', borderRadius: 20, fontSize: 11, fontWeight: 600, cursor: 'pointer',
+            padding: '3px 11px', borderRadius: 'var(--r-lg)', fontSize: 11, fontWeight: 600, cursor: 'pointer',
             border: active ? 'none' : `1px solid ${T.border}`,
             background: active ? 'linear-gradient(135deg,#06B6D4,#3B82F6)' : T.bgAlt,
             color: active ? '#fff' : T.textMuted,
@@ -5114,7 +5114,7 @@ function WeekDetailModal({ week, activities, zones, onClose }: {
         <div key={band.label} style={{ marginBottom: 10 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
             <div style={{ fontSize: 12, fontWeight: 600, color: T.text }}>
-              <span style={{ fontSize: 9, color: band.color, fontWeight: 700, marginRight: 5,
+              <span style={{ fontSize: 10, color: band.color, fontWeight: 700, marginRight: 5,
                 background: band.color + '22', borderRadius: 3, padding: '1px 4px' }}>{band.sub}</span>
               {band.label}
             </div>
@@ -5262,7 +5262,7 @@ function WeekDetailModal({ week, activities, zones, onClose }: {
           <div key={act.id}
             onClick={() => { window.location.href = `/activities?id=${act.id}` }}
             style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 8px',
-              cursor: 'pointer', borderRadius: 8, marginBottom: 1 }}
+              cursor: 'pointer', borderRadius: 'var(--r-sm)', marginBottom: 1 }}
             onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.background = T.bgAlt }}
             onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.background = 'transparent' }}
           >
@@ -5297,7 +5297,7 @@ function WeekDetailModal({ week, activities, zones, onClose }: {
               const cnt = weekActs.filter(a => normalizeSport(a.sport_type) === sp).length
               return (
                 <span key={sp} style={{ display: 'inline-flex', alignItems: 'center', gap: 4,
-                  background: T.bgAlt, borderRadius: 10, padding: '2px 8px', fontSize: 12 }}>
+                  background: T.bgAlt, borderRadius: 'var(--r-sm)', padding: '2px 8px', fontSize: 12 }}>
                   <span style={{ width: 6, height: 6, borderRadius: '50%', background: SPORT_COLOR[sp as SportType] ?? '#888', flexShrink: 0 }} />
                   <span style={{ color: T.text, fontWeight: 600 }}>{sportLabel(sp, t)}</span>
                   <span style={{ color: T.textMuted }}>{cnt}</span>
@@ -5331,7 +5331,7 @@ function WeekDetailModal({ week, activities, zones, onClose }: {
         { label: t('actp.sessions'),  value: week.count.toString() },
       ].map(k => (
         <div key={k.label} style={{ background: T.bgAlt, borderRadius: T.radiusSm, padding: '9px 12px' }}>
-          <div style={{ fontSize: 9, color: T.textMuted, textTransform: 'uppercase', letterSpacing: 0.7,
+          <div style={{ fontSize: 10, color: T.textMuted, textTransform: 'uppercase', letterSpacing: 0.7,
             fontWeight: 700, fontFamily: T.fontDisplay, marginBottom: 3 }}>{k.label}</div>
           <div className="stat-number" style={{ fontSize: 15, color: T.text }}>{k.value}</div>
         </div>
@@ -5706,7 +5706,7 @@ function SectionDonnees({ activities, zones, profile }: {
           {/* GAUCHE: dropdown période */}
           <div style={{ position: 'relative' }}>
             <button onClick={() => setPeriodMenuOpen(v => !v)} style={{
-              padding: '6px 12px', borderRadius: 16, border: '1px solid var(--border)',
+              padding: '6px 12px', borderRadius: 'var(--r-md)', border: '1px solid var(--border)',
               background: 'var(--bg)', fontSize: 13, fontWeight: 500, color: 'var(--text)',
               cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5,
             }}>
@@ -5721,7 +5721,7 @@ function SectionDonnees({ activities, zones, profile }: {
                 style={{
                   position: 'absolute', top: 'calc(100% + 6px)', left: 0, zIndex: 300,
                   background: 'var(--bg-card)', border: '1px solid var(--border)',
-                  borderRadius: 12, boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+                  borderRadius: 'var(--r-md)', boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
                   overflow: 'hidden', minWidth: 130,
                 }}>
                 {(Object.keys(TIME_FILTER_KEYS) as TimeFilter[]).map(f => (
@@ -5750,7 +5750,7 @@ function SectionDonnees({ activities, zones, profile }: {
                 background: filter === f ? 'linear-gradient(135deg, #06B6D4, #3B82F6)' : 'var(--bg)',
                 color: filter === f ? '#fff' : 'var(--text-dim)',
                 border: `1px solid ${filter === f ? 'transparent' : 'var(--border)'}`,
-                borderRadius: 20, padding: '4px 12px', fontSize: 12, cursor: 'pointer',
+                borderRadius: 'var(--r-lg)', padding: '4px 12px', fontSize: 12, cursor: 'pointer',
                 fontWeight: filter === f ? 600 : 400, transition: 'all 0.15s',
               }}>
                 {t(TIME_FILTER_KEYS[f])}
@@ -5845,7 +5845,7 @@ function SectionDonnees({ activities, zones, profile }: {
                       background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius,
                       padding: '14px 14px 12px', borderTop: `3px solid ${color}`,
                     }}>
-                      <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.08em', color, marginBottom: 6 }}>{key}</div>
+                      <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.08em', color, marginBottom: 6 }}>{key}</div>
                       <div className="stat-number" style={{ fontSize: 28, fontWeight: 700, color, lineHeight: 1, marginBottom: 4 }}>
                         {val > 0 && key === 'TSB' ? '+' : ''}{val}
                       </div>
@@ -5853,7 +5853,7 @@ function SectionDonnees({ activities, zones, profile }: {
                       <div style={{ height: 4, background: 'var(--border)', borderRadius: 2, overflow: 'hidden', marginBottom: 4 }}>
                         <div style={{ height: '100%', width: `${barPct}%`, background: color, borderRadius: 2, transition: 'width 0.5s' }} />
                       </div>
-                      <div style={{ fontSize: 9, color: 'var(--text-dim)' }}>{note}</div>
+                      <div style={{ fontSize: 10, color: 'var(--text-dim)' }}>{note}</div>
                     </div>
                   )
                 })}
@@ -5971,7 +5971,7 @@ function SectionDonnees({ activities, zones, profile }: {
                     <div style={{
                       position: 'absolute', top: PMC_PT, left: `${leftPct}%`, zIndex: 3, pointerEvents: 'none',
                       transform: flip ? 'translateX(calc(-100% - 10px))' : 'translateX(10px)',
-                      minWidth: 150, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 10,
+                      minWidth: 150, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 'var(--r-sm)',
                       boxShadow: '0 8px 24px rgba(0,0,0,0.18)', padding: '10px 13px',
                     }}>
                       <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--text)', marginBottom: 6 }}>
@@ -6014,7 +6014,7 @@ function SectionDonnees({ activities, zones, profile }: {
                   const tr = trendOf(curr, prev)
                   return (
                     <div key={label} style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '14px 16px' }}>
-                      <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.08em', color: 'var(--text-dim)', marginBottom: 6 }}>{label}</div>
+                      <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.08em', color: 'var(--text-dim)', marginBottom: 6 }}>{label}</div>
                       <div className="stat-number" style={{ fontSize: 22, fontWeight: 700, color: 'var(--text)', lineHeight: 1.2, marginBottom: 4 }}>{fmt(curr)}</div>
                       <div style={{ fontSize: 11, color: tr.color, fontWeight: 600 }}>
                         {tr.arrow} {tr.pct !== 0 ? `${Math.abs(tr.pct).toFixed(0)}%` : 'Stable'}
@@ -6248,9 +6248,9 @@ function SectionDonnees({ activities, zones, profile }: {
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
               <SectionTitle>{t('actp.load_calendar')}</SectionTitle>
               <span style={{
-                fontSize: 9, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase',
+                fontSize: 10, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase',
                 background: 'rgba(6,182,212,0.15)', color: '#06B6D4',
-                padding: '2px 7px', borderRadius: 10, marginBottom: 14,
+                padding: '2px 7px', borderRadius: 'var(--r-sm)', marginBottom: 14,
               }}>{t('actp.new')}</span>
             </div>
             {(() => {
@@ -6321,7 +6321,7 @@ function SectionDonnees({ activities, zones, profile }: {
                   {heatHover && (
                     <div style={{
                       position: 'absolute', bottom: '100%', left: '50%', transform: 'translateX(-50%)',
-                      background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8,
+                      background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 'var(--r-sm)',
                       padding: '8px 12px', fontSize: 12, pointerEvents: 'none', whiteSpace: 'nowrap',
                       boxShadow: '0 4px 12px rgba(0,0,0,0.1)', zIndex: 10,
                     }}>
@@ -6405,8 +6405,8 @@ function ActivityRow({ a, selected, onClick }: { a: Activity; selected: boolean;
         </div>
         <div style={{ fontSize: 11, color: T.textMuted, marginTop: 3, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           <span>{fmtDateShort(a.started_at)}</span>
-          <span style={{ color: col, fontWeight: 600, fontSize: 10, background: col + '18', padding: '1px 7px', borderRadius: 20 }}>{sportLabel(a.sport_type, t)}</span>
-          {a.is_race && <span style={{ color: '#ef4444', fontWeight: 700, fontSize: 10, background: '#ef444415', padding: '1px 7px', borderRadius: 20 }}>{t('actp.race_short')}</span>}
+          <span style={{ color: col, fontWeight: 600, fontSize: 10, background: col + '18', padding: '1px 7px', borderRadius: 'var(--r-lg)' }}>{sportLabel(a.sport_type, t)}</span>
+          {a.is_race && <span style={{ color: '#ef4444', fontWeight: 700, fontSize: 10, background: '#ef444415', padding: '1px 7px', borderRadius: 'var(--r-lg)' }}>{t('actp.race_short')}</span>}
           {a.tss != null && <span style={{ color: T.textMuted, fontSize: 10, fontFamily: T.fontMono }}>TSS {Math.round(Number(a.tss))}</span>}
           {(a.rpe ?? a.perceived_effort) != null && <span style={{ color: T.textMuted, fontSize: 10, fontFamily: T.fontMono }}>RPE {Number(a.rpe ?? a.perceived_effort).toFixed(1)}</span>}
         </div>
@@ -6651,10 +6651,10 @@ function GaugeEditModal({ open, kind, value, onClose, onSave }: {
           position: 'fixed', top: '50%', left: '50%',
           transform: 'translate(-50%, -50%)',
           zIndex: 16001,
-          background: 'var(--bg)', borderRadius: 16,
+          background: 'var(--bg)', borderRadius: 'var(--r-md)',
           padding: 24, boxShadow: '0 20px 60px rgba(0,0,0,0.4)',
           width: '90vw', maxWidth: 380,
-          fontFamily: 'Inter, system-ui, -apple-system, sans-serif',
+          fontFamily: 'var(--font-body)',
           animation: 'fdModalEnter 0.22s cubic-bezier(0.32,0.72,0,1)',
         }}
       >
@@ -6710,7 +6710,7 @@ function GaugeEditModal({ open, kind, value, onClose, onSave }: {
         {/* Actions */}
         <div style={{ display: 'flex', gap: 12 }}>
           <button onClick={onClose} disabled={saving} style={{
-            flex: 1, padding: '12px 16px', borderRadius: 10,
+            flex: 1, padding: '12px 16px', borderRadius: 'var(--r-sm)',
             background: 'var(--bg-card2)', border: '1px solid var(--border)',
             color: 'var(--text)', fontSize: 14, fontWeight: 600, cursor: 'pointer',
             fontFamily: 'inherit',
@@ -6719,7 +6719,7 @@ function GaugeEditModal({ open, kind, value, onClose, onSave }: {
             onClick={async () => { setSaving(true); await onSave(draft) }}
             disabled={saving}
             style={{
-              flex: 1, padding: '12px 16px', borderRadius: 10,
+              flex: 1, padding: '12px 16px', borderRadius: 'var(--r-sm)',
               background: '#06b6d4', border: 'none',
               color: 'white', fontSize: 14, fontWeight: 600, cursor: 'pointer',
               opacity: saving ? 0.6 : 1, fontFamily: 'inherit',
@@ -6744,7 +6744,7 @@ function FeelingDifficultyCard({ feeling, difficulty, onEdit, compact = false }:
 
   return (
     <div style={{
-      background: 'var(--bg-card2)', borderRadius: 14, padding: compact ? 12 : 20,
+      background: 'var(--bg-card2)', borderRadius: 'var(--r-md)', padding: compact ? 12 : 20,
       margin: compact ? 0 : '16px 0',
       display: 'grid', gridTemplateColumns: '1fr 1fr', gap: compact ? 8 : 16,
     }}>
@@ -7325,7 +7325,7 @@ conseil pour la prochaine séance similaire.`
     return (
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gap: 8 }}>
         {visible.map(s => (
-          <div key={s.label} style={{ background: T.bg, borderRadius: 6, padding: '8px 10px' }}>
+          <div key={s.label} style={{ background: T.bg, borderRadius: 'var(--r-sm)', padding: '8px 10px' }}>
             <div style={{ fontSize: 10, color: T.textMuted, marginBottom: 2 }}>{s.label}</div>
             <div style={{ fontSize: 14, fontWeight: 600, color: T.text }}>{s.v}</div>
           </div>
@@ -7377,7 +7377,7 @@ conseil pour la prochaine séance similaire.`
             disabled={isDeleting}
             style={{
               flex: 1, padding: '12px 0',
-              borderRadius: 12, border: '1px solid var(--info-border)',
+              borderRadius: 'var(--r-md)', border: '1px solid var(--info-border)',
               background: 'transparent', color: 'var(--text-body)',
               fontSize: 14, fontWeight: 600, cursor: 'pointer',
               opacity: isDeleting ? 0.5 : 1,
@@ -7390,7 +7390,7 @@ conseil pour la prochaine séance similaire.`
             disabled={isDeleting}
             style={{
               flex: 1, padding: '12px 0',
-              borderRadius: 12, border: 'none',
+              borderRadius: 'var(--r-md)', border: 'none',
               background: '#EF4444', color: 'white',
               fontSize: 14, fontWeight: 700, cursor: 'pointer',
               opacity: isDeleting ? 0.7 : 1,
@@ -7438,7 +7438,7 @@ conseil pour la prochaine séance similaire.`
         <div>
           <div style={editLabel}>Ressenti & difficulté</div>
           <FeelingDifficultyCard feeling={localFeeling} difficulty={localDifficulty} onEdit={setFdEditing} />
-          <button onClick={() => setShowRpeModal(true)} style={{ marginTop: 12, display: 'inline-flex', alignItems: 'center', gap: 7, padding: '9px 15px', borderRadius: 999, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-mid)', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
+          <button onClick={() => setShowRpeModal(true)} style={{ marginTop: 12, display: 'inline-flex', alignItems: 'center', gap: 7, padding: '9px 15px', borderRadius: 'var(--r-pill)', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-mid)', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
             RPE & sensation
           </button>
         </div>
@@ -7889,7 +7889,7 @@ conseil pour la prochaine séance similaire.`
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
               {!readOnly && (
                 <button onClick={() => setEditOpen(true)} style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 6, height: 38, padding: '0 15px', borderRadius: 999, border: 'none',
+                  display: 'inline-flex', alignItems: 'center', gap: 6, height: 38, padding: '0 15px', borderRadius: 'var(--r-pill)', border: 'none',
                   background: 'var(--primary)', color: 'var(--on-primary)', cursor: 'pointer', fontSize: 13.5, fontWeight: 700, fontFamily: 'var(--font-body)',
                 }}>
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
@@ -7985,7 +7985,7 @@ conseil pour la prochaine séance similaire.`
                 : undefined}
               style={{
                 display: 'flex', alignItems: 'center', gap: 6,
-                width: '100%', padding: '10px 16px', borderRadius: 8,
+                width: '100%', padding: '10px 16px', borderRadius: 'var(--r-sm)',
                 background: 'none', border: '1px solid var(--border)',
                 color: 'var(--text-mid)', fontSize: 13, cursor: 'pointer',
               }}
@@ -8141,7 +8141,7 @@ conseil pour la prochaine séance similaire.`
                             : undefined}
                           style={{
                             display: 'flex', alignItems: 'center', gap: 6,
-                            padding: '6px 14px', borderRadius: 20,
+                            padding: '6px 14px', borderRadius: 'var(--r-lg)',
                             background: 'linear-gradient(135deg,#06B6D4,#818CF8)',
                             border: 'none', color: 'white',
                             fontSize: 12, fontWeight: 500, cursor: 'pointer',
@@ -8240,7 +8240,7 @@ conseil pour la prochaine séance similaire.`
                 style={{
                   display: 'inline-flex', alignItems: 'center', gap: 7,
                   padding: '9px 16px', background: 'rgba(239,68,68,0.07)', color: '#ef4444',
-                  border: '1px solid rgba(239,68,68,0.32)', borderRadius: 999,
+                  border: '1px solid rgba(239,68,68,0.32)', borderRadius: 'var(--r-pill)',
                   fontSize: 13, fontWeight: 600, cursor: 'pointer',
                   transition: 'background 0.15s ease', fontFamily: 'inherit',
                 }}
@@ -8312,12 +8312,12 @@ conseil pour la prochaine séance similaire.`
         <div style={{ flex: 1, minWidth: 0, fontWeight: 700, fontSize: 15, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           <span>{a.title}</span>
         </div>
-        <span style={{ fontSize: 12, background: col + '18', color: col, padding: '2px 8px', borderRadius: 20, flexShrink: 0, fontWeight: 600 }}>
+        <span style={{ fontSize: 12, background: col + '18', color: col, padding: '2px 8px', borderRadius: 'var(--r-lg)', flexShrink: 0, fontWeight: 600 }}>
           {sportLabel(a.sport_type, t)}
         </span>
         <span style={{ fontSize: 12, color: 'var(--text-muted)', whiteSpace: 'nowrap', flexShrink: 0 }}>
           {fmtDate(a.started_at)}
-          {a.is_race && <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 700, color: '#ef4444', background: '#ef444415', padding: '2px 8px', borderRadius: 20 }}>{t('actp.competition')}</span>}
+          {a.is_race && <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 700, color: '#ef4444', background: '#ef444415', padding: '2px 8px', borderRadius: 'var(--r-lg)' }}>{t('actp.competition')}</span>}
         </span>
         <div style={{ flex: 1 }} />
         {/* Attribution Strava + lien retour vers l'activité source (Brand Guidelines). */}
@@ -8330,7 +8330,7 @@ conseil pour la prochaine séance similaire.`
         {!readOnly && (
           <button onClick={() => setEditOpen(true)} style={{
             display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 13, fontWeight: 700,
-            color: 'var(--on-primary)', background: 'var(--primary)', border: 'none', borderRadius: 8,
+            color: 'var(--on-primary)', background: 'var(--primary)', border: 'none', borderRadius: 'var(--r-sm)',
             padding: '8px 16px', cursor: 'pointer', flexShrink: 0, fontFamily: 'inherit',
           }}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
@@ -8344,7 +8344,7 @@ conseil pour la prochaine séance similaire.`
           style={{
             fontSize: 13, fontWeight: 600,
             color: '#ef4444', background: 'transparent',
-            border: '2px solid #ef4444', borderRadius: 8,
+            border: '2px solid #ef4444', borderRadius: 'var(--r-sm)',
             padding: '6px 14px', cursor: 'pointer', flexShrink: 0,
             transition: 'background 0.15s ease, transform 0.1s ease',
             fontFamily: 'inherit',
@@ -8385,13 +8385,13 @@ conseil pour la prochaine séance similaire.`
 
         {/* ── Bandeaux aviron indoor / natation (type d'eau) ── */}
         {isRowing && !isRowingOutdoor && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--bg-card2)', padding: '10px 14px', borderRadius: 10, marginBottom: 14, fontSize: 12, color: 'var(--text)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--bg-card2)', padding: '10px 14px', borderRadius: 'var(--r-sm)', marginBottom: 14, fontSize: 12, color: 'var(--text)' }}>
             <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#06b6d4', flexShrink: 0 }} />
             <span><strong>{t('actp.rowing_indoor')}</strong> · {t('actp.ergometer')}</span>
           </div>
         )}
         {isSwim && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--bg-card2)', padding: '10px 14px', borderRadius: 10, marginBottom: 14, fontSize: 12, color: 'var(--text)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--bg-card2)', padding: '10px 14px', borderRadius: 'var(--r-sm)', marginBottom: 14, fontSize: 12, color: 'var(--text)' }}>
             <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#0ea5e9', flexShrink: 0 }} />
             <span><strong>{isOpenWater ? t('actp.open_water') : t('actp.pool')}</strong>{a.avg_temp_c != null ? ` · ${Math.round(Number(a.avg_temp_c))} °C` : ''}</span>
           </div>
@@ -8422,11 +8422,11 @@ conseil pour la prochaine séance similaire.`
             { label: 'SM · SN', value: `${smsn.sm} · ${smsn.sn}` },
           ]
           const kpiNode = (
-            <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 12, padding: '12px 16px' }}>
+            <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: '12px 16px' }}>
               <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', alignItems: 'flex-end' }}>
                 {dp.map(r => (
                   <div key={r.label} style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 0.4, textTransform: 'uppercase', color: 'var(--text-dim)', marginBottom: 2, whiteSpace: 'nowrap' }}>{r.label}</div>
+                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 0.4, textTransform: 'uppercase', color: 'var(--text-dim)', marginBottom: 2, whiteSpace: 'nowrap' }}>{r.label}</div>
                     <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)', fontVariantNumeric: 'tabular-nums', lineHeight: 1.05, whiteSpace: 'nowrap' }}>{r.value}</div>
                   </div>
                 ))}
@@ -8434,7 +8434,7 @@ conseil pour la prochaine séance similaire.`
             </div>
           )
           const mapNode = !mapExpanded ? (
-            <div style={{ position: 'relative', width: '100%', paddingBottom: '175%', borderRadius: 12, overflow: 'hidden' }}>
+            <div style={{ position: 'relative', width: '100%', paddingBottom: '175%', borderRadius: 'var(--r-md)', overflow: 'hidden' }}>
               <div style={{ position: 'absolute', inset: 0 }}>
                 <ActivityMapCard activity={a as unknown as Record<string, unknown>} isMobile={false} expanded={false} fill onToggle={() => setMapExpanded(true)} hoverGps={hoverGps} highlights={hoverHighlight ?? undefined} />
               </div>
@@ -8484,7 +8484,7 @@ conseil pour la prochaine séance similaire.`
           <div style={{ display: 'grid', gridTemplateColumns: mapExpanded ? '1fr' : '1fr 1fr', gap: 16, marginBottom: 20 }}>
             {/* Carte — quand agrandie, elle est déplacée au-dessus des courbes (plus bas) */}
             {!mapExpanded && (
-            <div style={{ aspectRatio: '1 / 1', borderRadius: 10, overflow: 'hidden' }}>
+            <div style={{ aspectRatio: '1 / 1', borderRadius: 'var(--r-sm)', overflow: 'hidden' }}>
               <ActivityMapCard
                 activity={a as unknown as Record<string, unknown>}
                 isMobile={false}
@@ -8498,7 +8498,7 @@ conseil pour la prochaine séance similaire.`
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14, minWidth: 0 }}>
 
               {/* ── Données détaillées — 2 colonnes (dans la colonne du hero) ── */}
-              <div style={{ background: 'var(--bg-card)', borderRadius: 10, border: '1px solid var(--border)' }}>
+              <div style={{ background: 'var(--bg-card)', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 20, padding: '16px 20px' }}>
 
             {/* ── PUISSANCE (bike) / EFFORT (run/gym) ── */}
@@ -8665,7 +8665,7 @@ conseil pour la prochaine séance similaire.`
               : undefined}
             style={{
               display: 'flex', alignItems: 'center', gap: 6,
-              padding: '8px 16px', borderRadius: 8,
+              padding: '8px 16px', borderRadius: 'var(--r-sm)',
               background: 'none', border: '1px solid var(--border)',
               color: 'var(--text-mid)', fontSize: 13, cursor: 'pointer',
             }}
@@ -8679,7 +8679,7 @@ conseil pour la prochaine séance similaire.`
 
         {/* ── CARTE AGRANDIE — placée juste au-dessus des COURBES (bureau) ── */}
         {mapExpanded && (
-          <div style={{ height: 460, borderRadius: 10, overflow: 'hidden', marginBottom: 20 }}>
+          <div style={{ height: 460, borderRadius: 'var(--r-sm)', overflow: 'hidden', marginBottom: 20 }}>
             <ActivityMapCard
               activity={a as unknown as Record<string, unknown>}
               isMobile={false}
@@ -8902,7 +8902,7 @@ conseil pour la prochaine séance similaire.`
                   const border = ins.type === 'good' ? 'rgba(34,197,94,0.2)' : ins.type === 'warn' ? 'rgba(249,115,22,0.2)' : T.border
                   return (
                     <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', background: bg,
-                      borderRadius: 8, padding: '10px 14px', border: `1px solid ${border}` }}>
+                      borderRadius: 'var(--r-sm)', padding: '10px 14px', border: `1px solid ${border}` }}>
                       <div style={{ width: 7, height: 7, borderRadius: '50%', background: dot, marginTop: 4, flexShrink: 0 }} />
                       <span style={{ fontSize: 12, color: T.text, lineHeight: 1.55, fontFamily: T.fontBody }}>{ins.text}</span>
                     </div>
@@ -8980,7 +8980,7 @@ conseil pour la prochaine séance similaire.`
                         : undefined}
                       style={{
                         display: 'flex', alignItems: 'center', gap: 6,
-                        padding: '6px 14px', borderRadius: 20,
+                        padding: '6px 14px', borderRadius: 'var(--r-lg)',
                         background: 'linear-gradient(135deg,#06B6D4,#818CF8)',
                         border: 'none', color: 'white',
                         fontSize: 12, fontWeight: 500, cursor: 'pointer',
@@ -9235,7 +9235,7 @@ function DayPanel({ date, acts, isMobile, onClose, onSelect }: {
         const col = SPORT_COLOR[a.sport_type] ?? '#888'
         return (
           <div key={a.id} onClick={() => { onSelect(a); onClose() }}
-            style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: T.bg, borderRadius: 10, border: `1px solid ${T.border}`, cursor: 'pointer' }}>
+            style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: T.bg, borderRadius: 'var(--r-sm)', border: `1px solid ${T.border}`, cursor: 'pointer' }}>
             <div style={{ width: 8, height: 8, borderRadius: '50%', background: col, flexShrink: 0 }} />
             <div style={{ flex: 1 }}>
               <p style={{ fontSize: 13, fontWeight: 600, color: T.text, margin: 0, lineHeight: 1.3 }}>
@@ -9467,7 +9467,7 @@ function CalendarGrid({ activities, onSelect }: { activities: Activity[]; onSele
 // Badge « NOUVEAU » — mise en avant de l'activité créée par l'écran live (?new=<id>).
 function NewActivityBadge() {
   return (
-    <span style={{ position: 'absolute', top: 10, right: 12, zIndex: 3, fontSize: 10, fontWeight: 800, letterSpacing: '0.08em', color: '#06B6D4', background: 'rgba(6,182,212,0.12)', padding: '3px 8px', borderRadius: 8, pointerEvents: 'none' }}>NOUVEAU</span> // design-allow-color
+    <span style={{ position: 'absolute', top: 10, right: 12, zIndex: 3, fontSize: 10, fontWeight: 800, letterSpacing: '0.08em', color: '#06B6D4', background: 'rgba(6,182,212,0.12)', padding: '3px 8px', borderRadius: 'var(--r-sm)', pointerEvents: 'none' }}>NOUVEAU</span> // design-allow-color
   )
 }
 
@@ -9654,16 +9654,16 @@ function SectionAnalyse({ activities, zones, profile, deepLinkId, deepLinkEdit, 
               value={search} onChange={e => setSearch(e.target.value)}
               placeholder={t('activities.search')}
               style={{ flex: '1 1 160px', background: T.surface, border: `1px solid ${T.border}`,
-                borderRadius: 7, padding: '7px 12px', fontSize: 12, color: T.text, outline: 'none' }}
+                borderRadius: 'var(--r-sm)', padding: '7px 12px', fontSize: 12, color: T.text, outline: 'none' }}
             />
             <select value={sport} onChange={e => setSport(e.target.value as 'all'|SportType)}
-              style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 7,
+              style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 'var(--r-sm)',
                 padding: '7px 10px', fontSize: 12, color: T.text, outline: 'none' }}>
               <option value="all">{t('activities.allSports')}</option>
               {allSports.map(s => <option key={s} value={s}>{sportLabel(s, t)}</option>)}
             </select>
             <select value={raceFilter} onChange={e => setRaceFilter(e.target.value as typeof raceFilter)}
-              style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 7,
+              style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 'var(--r-sm)',
                 padding: '7px 10px', fontSize: 12, color: T.text, outline: 'none' }}>
               <option value="all">{t('activities.filterAll')}</option>
               <option value="training">{t('activities.trainings')}</option>
@@ -9706,8 +9706,8 @@ function SectionAnalyse({ activities, zones, profile, deepLinkId, deepLinkEdit, 
                     <div style={{ padding: '10px 16px', background: 'rgba(239,68,68,0.06)', borderTop: `1px solid rgba(239,68,68,0.15)`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                       <span style={{ fontSize: 13, color: '#EF4444' }}>{t('activities.deleteActivityConfirm')}</span>
                       <div style={{ display: 'flex', gap: 8 }}>
-                        <button onClick={() => { onDelete?.(act.id); setConfirmDeleteId(null); setSwipedId(null) }} style={{ padding: '5px 14px', borderRadius: 8, background: '#EF4444', border: 'none', color: 'white', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>{t('activities.delete')}</button>
-                        <button onClick={() => { setConfirmDeleteId(null); setSwipedId(null) }} style={{ padding: '5px 14px', borderRadius: 8, background: T.border, border: 'none', color: T.text, fontSize: 13, cursor: 'pointer' }}>{t('activities.cancel')}</button>
+                        <button onClick={() => { onDelete?.(act.id); setConfirmDeleteId(null); setSwipedId(null) }} style={{ padding: '5px 14px', borderRadius: 'var(--r-sm)', background: '#EF4444', border: 'none', color: 'white', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>{t('activities.delete')}</button>
+                        <button onClick={() => { setConfirmDeleteId(null); setSwipedId(null) }} style={{ padding: '5px 14px', borderRadius: 'var(--r-sm)', background: T.border, border: 'none', color: T.text, fontSize: 13, cursor: 'pointer' }}>{t('activities.cancel')}</button>
                       </div>
                     </div>
                   )}
@@ -9779,7 +9779,7 @@ function ViewSegmented({ value, onChange }: {
       display:       'inline-flex',
       gap:           2,
       padding:       3,
-      borderRadius:  8,
+      borderRadius: 'var(--r-sm)',
       border:        '1px solid var(--border)',
       background:    'transparent',
       marginBottom:  16,
@@ -9796,7 +9796,7 @@ function ViewSegmented({ value, onChange }: {
               alignItems:   'center',
               gap:          6,
               padding:      isMobile ? '5px 8px' : '5px 12px',
-              borderRadius: 5,
+              borderRadius: 'var(--r-sm)',
               border:       'none',
               background:   active ? 'var(--bg-card2)' : 'transparent',
               color:        active ? 'var(--text)' : 'var(--text-dim)',
@@ -10413,7 +10413,7 @@ function TrainingPageInner() {
                     top: menuPos.top, right: menuPos.right,
                     background: 'var(--bg)',
                     border: '1px solid var(--border)',
-                    borderRadius: 12,
+                    borderRadius: 'var(--r-md)',
                     boxShadow: '0 8px 24px rgba(0,0,0,0.1)',
                     minWidth: 220,
                     overflow: 'hidden',
@@ -10446,7 +10446,7 @@ function TrainingPageInner() {
                     >
                       {/* Logo */}
                       <div style={{
-                        width: 28, height: 28, borderRadius: 6, flexShrink: 0, overflow: 'hidden',
+                        width: 28, height: 28, borderRadius: 'var(--r-sm)', flexShrink: 0, overflow: 'hidden',
                         background: svc.logo ? '#fff' : svc.color,
                         border: svc.logo ? '1px solid rgba(0,0,0,0.08)' : 'none',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -10455,7 +10455,7 @@ function TrainingPageInner() {
                           // eslint-disable-next-line @next/next/no-img-element
                           <img src={`/logos/apps/${svc.logo}.png`} alt={svc.name} width={22} height={22} style={{ objectFit: 'contain', width: '100%', height: '100%' }} />
                         ) : (
-                          <span style={{ fontSize: 8, fontWeight: 700, color: '#fff', fontFamily: 'Syne,sans-serif' }}>{svc.initial}</span>
+                          <span style={{ fontSize: 10, fontWeight: 700, color: '#fff', fontFamily: 'var(--font-body)' }}>{svc.initial}</span>
                         )}
                       </div>
                       <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)', flex: 1 }}>{svc.name}</span>
@@ -10489,7 +10489,7 @@ function TrainingPageInner() {
               <div style={{ background: 'rgba(220,38,38,0.07)', border: '1px solid rgba(220,38,38,0.25)', borderRadius: T.radius, padding: '16px 18px', marginBottom: 20 }}>
                 <div style={{ fontSize: 14, fontWeight: 600, color: '#dc2626', marginBottom: 5 }}>{t('actp.load_error')}</div>
                 <div style={{ fontSize: 12, color: T.textMuted, marginBottom: 12, fontFamily: 'monospace' }}>{error}</div>
-                <button onClick={reload} style={{ background: T.accent, color: '#fff', border: 'none', borderRadius: 6, padding: '6px 14px', cursor: 'pointer', fontSize: 12 }}>
+                <button onClick={reload} style={{ background: T.accent, color: '#fff', border: 'none', borderRadius: 'var(--r-sm)', padding: '6px 14px', cursor: 'pointer', fontSize: 12 }}>
                   {t('actp.retry')}
                 </button>
               </div>

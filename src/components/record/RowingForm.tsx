@@ -66,7 +66,7 @@ export default function RowingForm({ onClose, prefill }: Props) {
   const ACCENT = '#06B6D4'
 
   const LABEL: React.CSSProperties = { fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.1em', color:muted, margin:'0 0 10px', display:'block' }
-  const INPUT: React.CSSProperties = { width:'100%', boxSizing:'border-box', background:surface, border:`1px solid ${border}`, borderRadius:12, padding:'12px 16px', fontSize:15, color:text, outline:'none', fontFamily:'DM Sans, sans-serif' }
+  const INPUT: React.CSSProperties = { width:'100%', boxSizing:'border-box', background:surface, border:`1px solid ${border}`, borderRadius: 'var(--r-md)', padding:'12px 16px', fontSize:15, color:text, outline:'none', fontFamily: 'var(--font-body)' }
   const NUM_SM: React.CSSProperties = { ...INPUT, width:72, padding:'12px 8px', textAlign:'center' }
 
   const handleSave = async () => {
@@ -111,13 +111,13 @@ export default function RowingForm({ onClose, prefill }: Props) {
   if (saved) return <RowingSummary session={saved} onClose={onClose} />
 
   return (
-    <div style={{ position:'fixed', inset:0, zIndex:10004, background:bg, color:text, display:'flex', flexDirection:'column', fontFamily:'DM Sans, sans-serif', paddingTop:'env(safe-area-inset-top)' }}>
+    <div style={{ position:'fixed', inset:0, zIndex:10004, background:bg, color:text, display:'flex', flexDirection:'column', fontFamily: 'var(--font-body)', paddingTop:'env(safe-area-inset-top)' }}>
       <div style={{ height:52, flexShrink:0, display:'flex', alignItems:'center', padding:'0 16px', borderBottom:`1px solid ${border}`, position:'relative' }}>
         <button onClick={onClose} style={{ width:36, height:36, borderRadius:'50%', background:btnBg, border:'none', color:text, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M1 1l12 12M13 1L1 13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
         </button>
         <span style={{ position:'absolute', left:'50%', transform:'translateX(-50%)', fontSize:15, fontWeight:600 }}>{t('record.rowingNewSession')}</span>
-        <button onClick={handleSave} disabled={saving} style={{ marginLeft:'auto', padding:'7px 14px', borderRadius:10, background:'none', border:'none', color:ACCENT, fontSize:15, fontWeight:600, cursor:saving?'default':'pointer', opacity:saving?0.5:1 }}>
+        <button onClick={handleSave} disabled={saving} style={{ marginLeft:'auto', padding:'7px 14px', borderRadius: 'var(--r-sm)', background:'none', border:'none', color:ACCENT, fontSize:15, fontWeight:600, cursor:saving?'default':'pointer', opacity:saving?0.5:1 }}>
           {saving ? '…' : t('record.rowingSave')}
         </button>
       </div>
@@ -155,7 +155,7 @@ export default function RowingForm({ onClose, prefill }: Props) {
           <span style={LABEL}>{t('record.rowingTotalDistance')}</span>
           <div style={{ display:'flex', gap:10, alignItems:'center', marginBottom:10 }}>
             <input type="number" min={0} step={distUnit==='km'?0.1:100} value={distVal||''} onChange={e => setDistVal(parseFloat(e.target.value)||0)} placeholder="0" style={{ ...INPUT, width:120 }} />
-            <div style={{ display:'flex', gap:0, borderRadius:10, overflow:'hidden', border:`1px solid ${border}` }}>
+            <div style={{ display:'flex', gap:0, borderRadius: 'var(--r-sm)', overflow:'hidden', border:`1px solid ${border}` }}>
               {(['m','km'] as const).map(u => (
                 <button key={u} onClick={() => setDistUnit(u)} style={{ padding:'10px 16px', background: distUnit===u ? ACCENT : surface, color: distUnit===u ? '#FFF' : text, border:'none', cursor:'pointer', fontSize:14, fontWeight:distUnit===u?600:400 }}>{u}</button>
               ))}
@@ -167,7 +167,7 @@ export default function RowingForm({ onClose, prefill }: Props) {
         </div>
 
         {split500 > 0 && watts > 0 && (
-          <div style={{ marginBottom:24, padding:'14px 16px', background:surface, borderRadius:12, border:`1px solid ${border}` }}>
+          <div style={{ marginBottom:24, padding:'14px 16px', background:surface, borderRadius: 'var(--r-md)', border:`1px solid ${border}` }}>
             <p style={{ margin:'0 0 4px', fontSize:15, fontWeight:600, color:text }}>{t('record.rowingEstPower')} {watts} w</p>
             <p style={{ margin:0, fontSize:11, color:muted, fontStyle:'italic' }}>{t('record.rowingEstPowerNote')}</p>
           </div>
@@ -197,7 +197,7 @@ export default function RowingForm({ onClose, prefill }: Props) {
       </div>
 
       <div style={{ position:'absolute', bottom:0, left:0, right:0, padding:'16px 20px', paddingBottom:'max(env(safe-area-inset-bottom),20px)', background: isDark?'linear-gradient(transparent,#0A0A0A 40%)':'linear-gradient(transparent,#FFFFFF 40%)' }}>
-        <button onClick={handleSave} disabled={saving} style={{ width:'100%', height:52, borderRadius:16, background:`linear-gradient(135deg,${ACCENT},#2563EB)`, border:'none', color:'#fff', fontSize:16, fontWeight:600, cursor:saving?'default':'pointer', opacity:saving?0.7:1, boxShadow:`0 4px 20px rgba(6,182,212,0.35)` }}>
+        <button onClick={handleSave} disabled={saving} style={{ width:'100%', height:52, borderRadius: 'var(--r-md)', background:`linear-gradient(135deg,${ACCENT},#2563EB)`, border:'none', color:'#fff', fontSize:16, fontWeight:600, cursor:saving?'default':'pointer', opacity:saving?0.7:1, boxShadow:`0 4px 20px rgba(6,182,212,0.35)` }}>
           {saving ? t('record.rowingSaving') : t('record.rowingSaveActivity')}
         </button>
       </div>

@@ -9,7 +9,7 @@ export function SegmentCard({ color, label, volume, children }: {
   color: string; label: string; volume?: string; children: ReactNode
 }) {
   return (
-    <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 16, overflow: 'hidden' }}>
+    <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', overflow: 'hidden' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '13px 16px', borderBottom: '1px solid var(--border)' }}>
         <span style={{ width: 8, height: 8, borderRadius: '50%', background: color, flexShrink: 0 }} />
         <span className="ed-fr" style={{ fontSize: 15.5, fontWeight: 600, color: 'var(--text)' }}>{label}</span>
@@ -24,7 +24,7 @@ export function TransitionCard({ label, from, to, value, onChange }: {
   label: string; from: string; to: string; value: string; onChange: (v: string) => void
 }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'var(--bg-card2)', border: '1px dashed var(--border)', borderRadius: 12, padding: '10px 14px' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'var(--bg-card2)', border: '1px dashed var(--border)', borderRadius: 'var(--r-md)', padding: '10px 14px' }}>
       <span style={{ width: 9, height: 9, borderRadius: '50%', background: 'var(--text-dim)', flexShrink: 0 }} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <p className="ed-fr" style={{ margin: 0, fontSize: 13.5, fontWeight: 600, color: 'var(--text)' }}>{label}</p>
@@ -33,7 +33,7 @@ export function TransitionCard({ label, from, to, value, onChange }: {
         </p>
       </div>
       <input value={value} onChange={e => onChange(e.target.value)} placeholder="02:00"
-        className="ed-tnum" style={{ width: 74, textAlign: 'center', background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: 9, padding: '7px 6px', fontSize: 13, color: 'var(--text)', outline: 'none' }} />
+        className="ed-tnum" style={{ width: 74, textAlign: 'center', background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: 'var(--r-sm)', padding: '7px 6px', fontSize: 13, color: 'var(--text)', outline: 'none' }} />
     </div>
   )
 }
@@ -45,7 +45,7 @@ export function SegInput({ label, value, onChange, placeholder, type }: {
     <div>
       <p style={fLbl}>{label}</p>
       <input value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} type={type}
-        className="ed-tnum" style={{ width: '100%', boxSizing: 'border-box', background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: 9, padding: '9px 11px', fontSize: 13.5, color: 'var(--text)', outline: 'none' }} />
+        className="ed-tnum" style={{ width: '100%', boxSizing: 'border-box', background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: 'var(--r-sm)', padding: '9px 11px', fontSize: 13.5, color: 'var(--text)', outline: 'none' }} />
     </div>
   )
 }
@@ -56,9 +56,9 @@ export function CalcField({ label, value }: { label: string; value: string }) {
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
         <span style={fLbl}>{label}</span>
-        <span style={{ fontSize: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-dim)', border: '1px dashed var(--border-mid)', borderRadius: 5, padding: '1px 5px' }}>{t('calendar.calcBadge')}</span>
+        <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-dim)', border: '1px dashed var(--border-mid)', borderRadius: 'var(--r-sm)', padding: '1px 5px' }}>{t('calendar.calcBadge')}</span>
       </div>
-      <div className="ed-tnum" style={{ background: 'var(--bg-card2)', border: '1px dashed var(--border-mid)', borderRadius: 9, padding: '9px 11px', fontSize: 13.5, fontWeight: 600, color: value === '—' ? 'var(--text-dim)' : 'var(--text)' }}>{value}</div>
+      <div className="ed-tnum" style={{ background: 'var(--bg-card2)', border: '1px dashed var(--border-mid)', borderRadius: 'var(--r-sm)', padding: '9px 11px', fontSize: 13.5, fontWeight: 600, color: value === '—' ? 'var(--text-dim)' : 'var(--text)' }}>{value}</div>
     </div>
   )
 }

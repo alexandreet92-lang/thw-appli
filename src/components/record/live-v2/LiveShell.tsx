@@ -657,7 +657,7 @@ export default function LiveShell({
       {autoPausedNow && (
         <div style={{
           position: 'absolute', top: 'calc(env(safe-area-inset-top) + 54px)', left: 12,
-          height: 24, padding: '0 10px', borderRadius: 12, zIndex: 56,
+          height: 24, padding: '0 10px', borderRadius: 'var(--r-md)', zIndex: 56,
           background: 'var(--live-warn-bg)', border: '1px solid var(--live-warn-border)',
           display: 'inline-flex', alignItems: 'center', gap: 6,
           fontSize: 11, fontWeight: 700, color: 'var(--live-warn)', opacity: 0.92,
@@ -671,7 +671,7 @@ export default function LiveShell({
       {toast && (
         <div style={{
           position: 'absolute', top: 'calc(env(safe-area-inset-top) + 126px)', left: '50%', transform: 'translateX(-50%)',
-          height: 36, padding: '0 18px', borderRadius: 18, zIndex: 90,
+          height: 36, padding: '0 18px', borderRadius: 'var(--r-lg)', zIndex: 90,
           background: 'var(--live-toast-bg)', border: '1px solid var(--live-hairline-2)',
           display: 'flex', alignItems: 'center', whiteSpace: 'nowrap',
           fontSize: 13, fontWeight: 600, color: 'var(--live-text)', pointerEvents: 'none',
@@ -687,7 +687,7 @@ export default function LiveShell({
           position: 'absolute', left: 16, right: 16,
           bottom: 'calc(env(safe-area-inset-bottom) + 172px)', zIndex: 58,
           background: 'var(--live-float)', border: '1px solid var(--live-hairline-2)',
-          borderRadius: 18, padding: '14px 16px',
+          borderRadius: 'var(--r-lg)', padding: '14px 16px',
           backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -703,7 +703,7 @@ export default function LiveShell({
               onClick={() => { clearLiveBackup(); setPendingBackup(null); showToast(t('w2c.activityDeleted')) }}
               className="lv2-press"
               style={{
-                height: 32, padding: '0 12px', borderRadius: 16, cursor: 'pointer',
+                height: 32, padding: '0 12px', borderRadius: 'var(--r-md)', cursor: 'pointer',
                 background: 'transparent', border: '1px solid var(--live-hairline-2)',
                 color: 'var(--live-danger)', fontSize: 12.5, fontWeight: 700, flexShrink: 0,
               }}
@@ -717,7 +717,7 @@ export default function LiveShell({
                 onClick={handleResumeBackup}
                 className="lv2-press"
                 style={{
-                  flex: 1, height: 40, borderRadius: 20, border: 'none', cursor: 'pointer',
+                  flex: 1, height: 40, borderRadius: 'var(--r-lg)', border: 'none', cursor: 'pointer',
                   background: 'var(--live-accent)', color: 'var(--live-accent-on)', fontSize: 13.5, fontWeight: 800,
                 }}
               >
@@ -728,7 +728,7 @@ export default function LiveShell({
               onClick={handleRestoreBackup}
               className="lv2-press"
               style={{
-                flex: 1, height: 40, borderRadius: 20, cursor: 'pointer',
+                flex: 1, height: 40, borderRadius: 'var(--r-lg)', cursor: 'pointer',
                 background: pendingBackup.live ? 'var(--live-surface-2)' : 'var(--live-accent)',
                 border: 'none',
                 color: pendingBackup.live ? 'var(--live-text)' : 'var(--live-accent-on)',
@@ -879,7 +879,7 @@ export default function LiveShell({
             </svg>
             <div style={{
               position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 21, fontWeight: 800, letterSpacing: '0.13em', color: 'var(--live-text)',
+              fontSize: 22, fontWeight: 800, letterSpacing: '0.13em', color: 'var(--live-text)',
             }}>
               LAP
             </div>

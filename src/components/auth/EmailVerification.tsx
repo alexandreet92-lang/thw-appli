@@ -64,7 +64,7 @@ export function EmailVerification({ email, onBack }: Props) {
       <p style={{ fontSize: 14, color: 'var(--text-mid)', lineHeight: 1.6, margin: '0 0 8px', fontFamily: 'var(--font-body)' }}>
         {t('verify.sentTo')}
       </p>
-      <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--primary)', margin: '0 0 32px', padding: '8px 16px', borderRadius: 8, background: 'var(--primary-dim)', display: 'inline-block', fontFamily: 'var(--font-body)' }}>
+      <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--primary)', margin: '0 0 32px', padding: '8px 16px', borderRadius: 'var(--r-sm)', background: 'var(--primary-dim)', display: 'inline-block', fontFamily: 'var(--font-body)' }}>
         {email}
       </p>
       <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: '0 0 24px', lineHeight: 1.5, fontFamily: 'var(--font-body)' }}>
@@ -75,7 +75,7 @@ export function EmailVerification({ email, onBack }: Props) {
         onClick={handleResend}
         disabled={resending || countdown > 0}
         style={{
-          width: '100%', height: 48, borderRadius: 12, marginBottom: 12,
+          width: '100%', height: 48, borderRadius: 'var(--r-md)', marginBottom: 12,
           background: resent ? 'rgba(16,185,129,0.15)' : 'var(--bg-card2)',
           border: `1px solid ${resent ? 'rgba(16,185,129,0.4)' : 'var(--border-mid)'}`,
           color: resent ? '#10B981' : countdown > 0 ? 'var(--text-dim)' : 'var(--text)',

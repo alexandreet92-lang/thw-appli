@@ -54,7 +54,7 @@ export function ExerciseCard({ variant, item, index, accent, circuitType, hideRe
         <span className="se-tnum" style={{ fontSize: 11, fontWeight: 700, color: 'var(--se-dim)', flexShrink: 0 }}>#{index + 1}</span>
         <input value={item.name} onChange={e => set({ name: e.target.value })} placeholder={t('planning.exerciseNamePlaceholder')}
           className="se-fr" style={{ flex: 1, minWidth: 0, background: 'transparent', border: 'none', outline: 'none', color: 'var(--se-text)', fontSize: 15, fontWeight: 600, padding: 0 }} />
-        <span style={{ flexShrink: 0, fontSize: 8.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--se-dim)', border: '1px solid var(--se-rule)', borderRadius: 6, padding: '2px 7px' }}>
+        <span style={{ flexShrink: 0, fontSize: 8.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--se-dim)', border: '1px solid var(--se-rule)', borderRadius: 'var(--r-sm)', padding: '2px 7px' }}>
           {variant === 'muscu' ? t(PATTERN_LABEL_KEY[item.category]) : isStation ? t('planning.station') : t('planning.free')}
         </span>
         {onReplace && (
@@ -72,12 +72,12 @@ export function ExerciseCard({ variant, item, index, accent, circuitType, hideRe
             {/* Reps ⇄ Temps : toggle en guise de label (gainage / core = temps) */}
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, minHeight: 16 }}>
-                <div style={{ display: 'inline-flex', gap: 2, padding: 2, borderRadius: 999, background: 'var(--se-card2)', border: '1px solid var(--se-rule)' }}>
+                <div style={{ display: 'inline-flex', gap: 2, padding: 2, borderRadius: 'var(--r-pill)', background: 'var(--se-card2)', border: '1px solid var(--se-rule)' }}>
                   {([['reps', t('planning.repsShort')], ['time', t('planning.time')]] as const).map(([m, label]) => {
                     const on = (timeMode ? 'time' : 'reps') === m
                     return (
                       <button key={m} type="button" onClick={() => setMode(m)}
-                        style={{ border: 'none', cursor: 'pointer', borderRadius: 999, padding: '2px 9px', fontSize: 9, fontWeight: on ? 700 : 600, letterSpacing: '0.04em', textTransform: 'uppercase', background: on ? 'var(--se-card)' : 'transparent', color: on ? accent : 'var(--se-dim)', boxShadow: on ? '0 1px 2px rgba(0,0,0,0.08)' : 'none' }}>{label}</button>
+                        style={{ border: 'none', cursor: 'pointer', borderRadius: 'var(--r-pill)', padding: '2px 9px', fontSize: 10, fontWeight: on ? 700 : 600, letterSpacing: '0.04em', textTransform: 'uppercase', background: on ? 'var(--se-card)' : 'transparent', color: on ? accent : 'var(--se-dim)', boxShadow: on ? '0 1px 2px rgba(0,0,0,0.08)' : 'none' }}>{label}</button>
                     )
                   })}
                 </div>
@@ -102,7 +102,7 @@ export function ExerciseCard({ variant, item, index, accent, circuitType, hideRe
             {MUSCU_PATTERNS.map(p => {
               const on = item.category === p
               return <button key={p} type="button" onClick={() => set({ category: p })}
-                style={{ border: `1px solid ${on ? accent : 'var(--se-rule)'}`, background: on ? accent : 'transparent', color: on ? '#fff' : 'var(--se-dim)', borderRadius: 999, padding: '4px 11px', fontSize: 10.5, fontWeight: 600, cursor: 'pointer' }}>{t(PATTERN_LABEL_KEY[p])}</button>
+                style={{ border: `1px solid ${on ? accent : 'var(--se-rule)'}`, background: on ? accent : 'transparent', color: on ? '#fff' : 'var(--se-dim)', borderRadius: 'var(--r-pill)', padding: '4px 11px', fontSize: 10.5, fontWeight: 600, cursor: 'pointer' }}>{t(PATTERN_LABEL_KEY[p])}</button>
             })}
           </div>
         </>
@@ -122,7 +122,7 @@ export function ExerciseCard({ variant, item, index, accent, circuitType, hideRe
           </div>
           {isRun && (
             <div>
-              <FieldLabel right={<span style={{ fontSize: 9, color: 'var(--se-dim)' }}>{t('planning.derivedDistanceTime')}</span>}>{t('planning.pacePerKm')}</FieldLabel>
+              <FieldLabel right={<span style={{ fontSize: 10, color: 'var(--se-dim)' }}>{t('planning.derivedDistanceTime')}</span>}>{t('planning.pacePerKm')}</FieldLabel>
               <Stepper value={item.distanceM && item.targetTimeSec ? secToPace(item.targetTimeSec / (item.distanceM / 1000)) : '0:00'} unit="/km"
                 onChange={v => { const ps = paceToSec(v); if (!isNaN(ps) && item.distanceM) set({ targetTimeSec: Math.round(ps * item.distanceM / 1000) }) }}
                 onDec={() => { if (item.distanceM && item.targetTimeSec) { const ps = item.targetTimeSec / (item.distanceM / 1000) - 5; set({ targetTimeSec: Math.round(ps * item.distanceM / 1000) }) } }}
@@ -145,7 +145,7 @@ export function ExerciseCard({ variant, item, index, accent, circuitType, hideRe
             )}
             {item.inclinePct !== undefined && (
               <div>
-                <FieldLabel right={(item.inclinePct ?? 0) >= 1 && (item.distanceM ?? 0) > 0 ? <span style={{ fontSize: 9, color: accent, fontWeight: 700 }}>+{Math.round((item.distanceM ?? 0) * (item.inclinePct ?? 0) / 100)} m D+</span> : undefined}>Pente % (tapis)</FieldLabel>
+                <FieldLabel right={(item.inclinePct ?? 0) >= 1 && (item.distanceM ?? 0) > 0 ? <span style={{ fontSize: 10, color: accent, fontWeight: 700 }}>+{Math.round((item.distanceM ?? 0) * (item.inclinePct ?? 0) / 100)} m D+</span> : undefined}>Pente % (tapis)</FieldLabel>
                 <Stepper value={String(item.inclinePct ?? 0)} unit="%"
                   onChange={v => set({ inclinePct: Math.max(0, parseFloat(v) || 0) })}
                   onDec={() => set({ inclinePct: Math.max(0, (item.inclinePct ?? 0) - 0.5) })}
@@ -158,7 +158,7 @@ export function ExerciseCard({ variant, item, index, accent, circuitType, hideRe
 
       {/* Notes */}
       <input value={item.notes ?? ''} onChange={e => set({ notes: e.target.value })} placeholder={t('planning.notesPlaceholder')}
-        style={{ width: '100%', boxSizing: 'border-box', background: 'var(--se-card2)', border: '1px solid var(--se-rule)', borderRadius: 9, padding: '8px 10px', fontSize: 12, color: 'var(--se-text)', outline: 'none' }} />
+        style={{ width: '100%', boxSizing: 'border-box', background: 'var(--se-card2)', border: '1px solid var(--se-rule)', borderRadius: 'var(--r-sm)', padding: '8px 10px', fontSize: 12, color: 'var(--se-text)', outline: 'none' }} />
     </div>
   )
 }

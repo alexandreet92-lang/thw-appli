@@ -32,7 +32,7 @@ export function ZoneDistribution({ seconds, target, height = 34, showModel = tru
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       {/* barre empilée */}
-      <div style={{ display: 'flex', gap: 2, height, borderRadius: 8, overflow: 'hidden' }}>
+      <div style={{ display: 'flex', gap: 2, height, borderRadius: 'var(--r-sm)', overflow: 'hidden' }}>
         {pct.map((p, i) => p > 0 && (
           <div key={i} title={`${Z_LABEL[i]} · ${fmtDuration(seconds[i])} (${fmtPct(p)})`}
             style={{ width: `${p}%`, background: ZONE[i], display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: p > 6 ? 0 : 2 }}>
@@ -62,7 +62,7 @@ export function ZoneDistribution({ seconds, target, height = 34, showModel = tru
           </span>
         ))}
         {showModel && tot > 0 && (
-          <span style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6, padding: '3px 10px', borderRadius: 999, background: `${verdict.color}1a`, border: `1px solid ${verdict.color}55` }}>
+          <span style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6, padding: '3px 10px', borderRadius: 'var(--r-pill)', background: `${verdict.color}1a`, border: `1px solid ${verdict.color}55` }}>
             <span style={{ width: 6, height: 6, borderRadius: '50%', background: verdict.color }} />
             <span style={{ fontSize: 11, fontWeight: 700, color: verdict.color }}>{t(`w4c.zonedist_verdict_${verdict.key}`)}</span>
           </span>

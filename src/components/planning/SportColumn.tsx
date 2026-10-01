@@ -12,7 +12,7 @@ const startTs = (b: TrainingBlocData) => getWeekStart(b.startYear, b.startWeek).
 
 function CompactCard({ b, onOpen, future }: { b: TrainingBlocData; onOpen: (id: string) => void; future?: boolean }) {
   return (
-    <div onClick={() => onOpen(b.id)} style={{ border: '1px dashed var(--border)', borderRadius: 11, padding: '9px 12px', cursor: 'pointer', opacity: future ? 0.85 : 0.55, background: 'var(--bg-card)' }}>
+    <div onClick={() => onOpen(b.id)} style={{ border: '1px dashed var(--border)', borderRadius: 'var(--r-md)', padding: '9px 12px', cursor: 'pointer', opacity: future ? 0.85 : 0.55, background: 'var(--bg-card)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
         <span style={{ width: 7, height: 7, borderRadius: '50%', background: SPORT_COLORS[b.sport], flexShrink: 0 }} />
         <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.name}</span>
@@ -27,7 +27,7 @@ function Section({ title, count, open, onToggle, children }: { title: string; co
     <div>
       <div onClick={onToggle} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', padding: '4px 2px' }}>
         <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.05em', color: 'var(--text-dim)' }}>{title} · {count}</span>
-        <span style={{ fontSize: 9, color: 'var(--text-dim)', display: 'inline-block', transform: open ? 'rotate(180deg)' : 'none', transition: 'transform .2s' }}>▾</span>
+        <span style={{ fontSize: 10, color: 'var(--text-dim)', display: 'inline-block', transform: open ? 'rotate(180deg)' : 'none', transition: 'transform .2s' }}>▾</span>
       </div>
       {open && <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 6 }}>{children}</div>}
     </div>
@@ -69,7 +69,7 @@ export function SportColumn({ sport, blocs, onOpen, onCreate }: {
         </Section>
       )}
 
-      <button onClick={() => onCreate(sport)} style={{ padding: '8px', borderRadius: 10, border: '1px dashed var(--border)', background: 'transparent', color: 'var(--text-dim)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>{t('planning.newBlocPlus')}</button>
+      <button onClick={() => onCreate(sport)} style={{ padding: '8px', borderRadius: 'var(--r-sm)', border: '1px dashed var(--border)', background: 'transparent', color: 'var(--text-dim)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>{t('planning.newBlocPlus')}</button>
     </div>
   )
 }

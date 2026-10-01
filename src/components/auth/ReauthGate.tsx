@@ -17,7 +17,7 @@ const DAY = 86_400_000
 const FB = 'var(--font-body)', FD = 'var(--font-display)'
 const field: React.CSSProperties = {
   width: '100%', height: 48, boxSizing: 'border-box', background: 'var(--input-bg)',
-  border: '1px solid var(--border-mid)', borderRadius: 12, padding: '0 14px',
+  border: '1px solid var(--border-mid)', borderRadius: 'var(--r-md)', padding: '0 14px',
   color: 'var(--text)', fontFamily: FB, fontSize: 15, outline: 'none',
 }
 
@@ -71,7 +71,7 @@ export function ReauthGate() {
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 5000, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-      <div style={{ width: '100%', maxWidth: 380, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 20, padding: '28px 24px' }}>
+      <div style={{ width: '100%', maxWidth: 380, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-lg)', padding: '28px 24px' }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/logos/logo_4bras.png" alt="" style={{ width: 40, height: 40, objectFit: 'contain', display: 'block', margin: '0 auto 14px' }} />
         <h2 style={{ fontFamily: FD, fontSize: 19, fontWeight: 600, color: 'var(--text)', textAlign: 'center', margin: '0 0 6px' }}>{t('authpage.reauthTitle')}</h2>
@@ -82,7 +82,7 @@ export function ReauthGate() {
         <div style={{ height: 10 }} />
         <input value={password} onChange={e => setPassword(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') void confirm() }} placeholder={t('auth.password')} type="password" autoFocus style={field} />
         {error && <p style={{ color: 'var(--danger)', fontFamily: FB, fontSize: 12, margin: '10px 0 0' }}>{error}</p>}
-        <button onClick={() => void confirm()} disabled={disabled} style={{ width: '100%', height: 48, marginTop: 16, borderRadius: 12, border: 'none', background: disabled ? 'var(--bg-card2)' : 'var(--primary-gradient)', color: disabled ? 'var(--text-dim)' : '#fff', fontFamily: FB, fontSize: 15, fontWeight: 700, cursor: disabled ? 'not-allowed' : 'pointer' }}>
+        <button onClick={() => void confirm()} disabled={disabled} style={{ width: '100%', height: 48, marginTop: 16, borderRadius: 'var(--r-md)', border: 'none', background: disabled ? 'var(--bg-card2)' : 'var(--primary-gradient)', color: disabled ? 'var(--text-dim)' : '#fff', fontFamily: FB, fontSize: 15, fontWeight: 700, cursor: disabled ? 'not-allowed' : 'pointer' }}>
           {loading ? t('authpage.verifying') : t('authpage.confirmBtn')}
         </button>
         <button onClick={() => void logout()} style={{ width: '100%', marginTop: 10, background: 'none', border: 'none', color: 'var(--text-dim)', fontFamily: FB, fontSize: 13, cursor: 'pointer' }}>{t('authpage.logout')}</button>

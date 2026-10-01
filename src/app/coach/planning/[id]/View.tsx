@@ -80,7 +80,7 @@ export default function CoachAthletePlanningPage() {
 
   const analyze = () => window.dispatchEvent(new CustomEvent('thw:open-coach', { detail: { prompt: t('w1h.analyze_athlete_prompt', { name: athlete?.name ?? t('w1h.this_athlete') }) } }))
 
-  const iconBtn: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, height: 34, padding: '0 12px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-mid)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)', textDecoration: 'none', flexShrink: 0 }
+  const iconBtn: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, height: 34, padding: '0 12px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-mid)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)', textDecoration: 'none', flexShrink: 0 }
 
   return (
     <PlanningScopeContext.Provider value={athleteId}>
@@ -89,7 +89,7 @@ export default function CoachAthletePlanningPage() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap', padding: '0 clamp(16px,4vw,40px) 12px', maxWidth: 1200, margin: '0 auto' }}>
           {/* Identité */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 11, minWidth: 0, flex: '1 1 230px' }}>
-            <Link href="/coach/planning" aria-label={t('w1h.aria_back_athletes')} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 34, height: 34, borderRadius: 10, color: 'var(--text-mid)', flexShrink: 0, textDecoration: 'none', border: '1px solid var(--border)', background: 'var(--bg-card)' }}>
+            <Link href="/coach/planning" aria-label={t('w1h.aria_back_athletes')} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 34, height: 34, borderRadius: 'var(--r-sm)', color: 'var(--text-mid)', flexShrink: 0, textDecoration: 'none', border: '1px solid var(--border)', background: 'var(--bg-card)' }}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
             </Link>
             <Avatar url={athlete?.avatar ?? null} name={athlete?.name ?? null} size={40} />

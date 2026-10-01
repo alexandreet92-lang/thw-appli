@@ -70,7 +70,7 @@ export function Greeting({ rightSlot }: { rightSlot?: React.ReactNode }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', marginTop: 'var(--space-2)', flexWrap: 'wrap' }}>
           <span style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-mid)' }}>{formatLongDate()}</span>
           {badge && (
-            <span style={{ fontFamily: FB, fontSize: 11, fontWeight: 600, color: 'var(--text-mid)', background: 'var(--bg-hover)', padding: '2px 8px', borderRadius: 999 }}>
+            <span style={{ fontFamily: FB, fontSize: 11, fontWeight: 600, color: 'var(--text-mid)', background: 'var(--bg-hover)', padding: '2px 8px', borderRadius: 'var(--r-pill)' }}>
               {badge}
             </span>
           )}

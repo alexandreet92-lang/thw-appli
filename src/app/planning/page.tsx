@@ -718,8 +718,8 @@ export function SportBadge({ sport, size='sm' }:{ sport:SportType; size?:'sm'|'x
   const col = SPORT_BORDER[sport] ?? '#9ca3af'  // fallback gris si sport inconnu
   const abbr = SPORT_ABBR[sport] ?? '???'
   const sz = size==='xs'
-    ? { fontSize:7, padding:'1px 4px', borderRadius:3 }
-    : { fontSize:8, padding:'2px 5px', borderRadius:4 }
+    ? { fontSize: 10, padding:'1px 4px', borderRadius:3 }
+    : { fontSize: 10, padding:'2px 5px', borderRadius:4 }
   return (
     <span style={{ background:`${col}22`, color:col, fontWeight:800, letterSpacing:'0.04em', ...sz }}>
       {abbr}
@@ -958,10 +958,10 @@ function usePlanning(weekStartParam?:string) {
 export function InfoModal({ title, content, onClose }:{ title:string; content:React.ReactNode; onClose:()=>void }) {
   return (
     <div onClick={onClose} style={{ position:'fixed',inset:0,zIndex:500,background:'rgba(0,0,0,0.6)',backdropFilter:'blur(8px)',display:'flex',alignItems:'center',justifyContent:'center',padding:16 }}>
-      <div onClick={e=>e.stopPropagation()} style={{ background:'var(--bg-card)',borderRadius:18,border:'1px solid var(--border-mid)',padding:24,maxWidth:400,width:'100%' }}>
+      <div onClick={e=>e.stopPropagation()} style={{ background:'var(--bg-card)',borderRadius: 'var(--r-lg)',border:'1px solid var(--border-mid)',padding:24,maxWidth:400,width:'100%' }}>
         <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14 }}>
-          <h3 style={{ fontFamily:'Syne,sans-serif',fontSize:15,fontWeight:700,margin:0 }}>{title}</h3>
-          <button onClick={onClose} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius:8,padding:'4px 9px',cursor:'pointer',color:'var(--text-dim)',fontSize:16 }}>×</button>
+          <h3 style={{ fontFamily: 'var(--font-body)',fontSize:15,fontWeight:700,margin:0 }}>{title}</h3>
+          <button onClick={onClose} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius: 'var(--r-sm)',padding:'4px 9px',cursor:'pointer',color:'var(--text-dim)',fontSize:16 }}>×</button>
         </div>
         <div style={{ fontSize:13,color:'var(--text-mid)',lineHeight:1.7 }}>{content}</div>
       </div>
@@ -1010,7 +1010,7 @@ export function ActivityQuickModal({ activity, onClose }:{ activity:TrainingActi
     return s != null ? `${fmtPaceSec(s)}/km` : null
   })()
   const col = SPORT_BORDER[sp]
-  const sectionLbl: React.CSSProperties = { fontSize:9,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'var(--text-dim)',margin:'0 0 6px' }
+  const sectionLbl: React.CSSProperties = { fontSize: 10,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'var(--text-dim)',margin:'0 0 6px' }
   const cursorLL = sampleLLAtFraction(full, cursor)
   const mapColor = col.startsWith('#') ? col.slice(1) : undefined
   const hasMap = !strengthMode && !!full?.latlng
@@ -1031,15 +1031,15 @@ export function ActivityQuickModal({ activity, onClose }:{ activity:TrainingActi
         ...(full?.rpe != null ? [{ label:'RPE', value:String(Math.round(full.rpe*10)/10), mono:true }] : []),
         ...(a.tss ? [{ label:'SM', value:`${Math.round(a.tss)}`, mono:true, color:'#5b6fff' }] : []),
       ].map(({ label, value, mono, small, color })=>(
-        <div key={label} style={{ background:'var(--bg-card2)',borderRadius:10,padding:'10px 12px' }}>
-          <p style={{ fontSize:9,color:'var(--text-dim)',margin:'0 0 3px',textTransform:'uppercase' as const,letterSpacing:'0.07em' }}>{label}</p>
+        <div key={label} style={{ background:'var(--bg-card2)',borderRadius: 'var(--r-sm)',padding:'10px 12px' }}>
+          <p style={{ fontSize: 10,color:'var(--text-dim)',margin:'0 0 3px',textTransform:'uppercase' as const,letterSpacing:'0.07em' }}>{label}</p>
           <p style={{ fontSize:small?11:13,fontWeight:700,margin:0,fontFamily:mono?'DM Mono,monospace':'inherit',color:color??'var(--text)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' as const }}>{value}</p>
         </div>
       ))}
     </div>
   )
   const comparison = planned ? (
-    <div style={{ background:'var(--bg-card2)',borderRadius:12,padding:'12px 14px' }}>
+    <div style={{ background:'var(--bg-card2)',borderRadius: 'var(--r-md)',padding:'12px 14px' }}>
       <p style={sectionLbl}>{t('plnp.activity.planVsDone')}</p>
       <CompareGrid planned={planned} full={full} activity={a} />
     </div>
@@ -1076,7 +1076,7 @@ export function ActivityQuickModal({ activity, onClose }:{ activity:TrainingActi
   const _detailHref = _scopedUid ? `/activities?id=${a.id}&uid=${_scopedUid}` : `/activities?id=${a.id}`
   const detailBtn = (
     <a href={_detailHref}
-      style={{ display:'block',textAlign:'center' as const,padding:'10px 16px',borderRadius:10,background:col,color:'#fff',fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:12.5,textDecoration:'none',letterSpacing:'0.02em',width:'100%',boxSizing:'border-box' as const }}>
+      style={{ display:'block',textAlign:'center' as const,padding:'10px 16px',borderRadius: 'var(--r-sm)',background:col,color:'#fff',fontFamily: 'var(--font-body)',fontWeight:700,fontSize:12.5,textDecoration:'none',letterSpacing:'0.02em',width:'100%',boxSizing:'border-box' as const }}>
       {t('plnp.activity.viewDetails')}
     </a>
   )
@@ -1088,11 +1088,11 @@ export function ActivityQuickModal({ activity, onClose }:{ activity:TrainingActi
         <div style={{ display:'flex',alignItems:'center',gap:10,marginBottom:16 }}>
           <div style={{ flex:1,minWidth:0 }}>
             <div style={{ marginBottom:3 }}>
-              <span style={{ fontSize:8,fontWeight:800,background:col,color:'#fff',padding:'2px 6px',borderRadius:4,letterSpacing:'0.06em' }}>{t('plnp.activity.completed')}</span>
+              <span style={{ fontSize: 10,fontWeight:800,background:col,color:'#fff',padding:'2px 6px',borderRadius:4,letterSpacing:'0.06em' }}>{t('plnp.activity.completed')}</span>
             </div>
             {/* On affiche le VRAI titre de l'activité (celui donné dans Training),
                 pas le nom de la séance planifiée : c'est l'activité réalisée. */}
-            <p style={{ fontFamily:'Syne,sans-serif',fontSize:16,fontWeight:700,margin:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' as const }}>{a.name || planned?.title}</p>
+            <p style={{ fontFamily: 'var(--font-body)',fontSize:16,fontWeight:700,margin:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' as const }}>{a.name || planned?.title}</p>
           </div>
         </div>
 
@@ -1176,21 +1176,21 @@ function RaceDetailSheet({ race, onClose, onEdit }: { race: FullRace|null; onClo
   return (
     <BottomSheet isOpen={!!race} onClose={onClose}>
       <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:16 }}>
-        <div style={{ width:44, height:44, borderRadius:12, background:cfg.bg, border:`1px solid ${cfg.border}55`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+        <div style={{ width:44, height:44, borderRadius: 'var(--r-md)', background:cfg.bg, border:`1px solid ${cfg.border}55`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
           <Flag size={20} color={col} strokeWidth={2.4} />
         </div>
         <div style={{ flex:1, minWidth:0 }}>
           <div style={{ marginBottom:3 }}>
-            <span style={{ fontSize:8, fontWeight:800, background:cfg.border, color:'#fff', padding:'2px 6px', borderRadius:4, letterSpacing:'0.06em', textTransform:'uppercase' as const }}>{cfg.label}</span>
+            <span style={{ fontSize: 10, fontWeight:800, background:cfg.border, color:'#fff', padding:'2px 6px', borderRadius:4, letterSpacing:'0.06em', textTransform:'uppercase' as const }}>{cfg.label}</span>
           </div>
-          <p style={{ fontFamily:'Syne,sans-serif', fontSize:16, fontWeight:700, margin:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' as const }}>{r.name}</p>
+          <p style={{ fontFamily: 'var(--font-body)', fontSize:16, fontWeight:700, margin:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' as const }}>{r.name}</p>
         </div>
       </div>
 
       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginBottom:16 }}>
         {cells.map(({ label, value, mono, small })=>(
-          <div key={label} style={{ background:'var(--bg-card2)', borderRadius:10, padding:'10px 12px' }}>
-            <p style={{ fontSize:9, color:'var(--text-dim)', margin:'0 0 3px', textTransform:'uppercase' as const, letterSpacing:'0.07em' }}>{label}</p>
+          <div key={label} style={{ background:'var(--bg-card2)', borderRadius: 'var(--r-sm)', padding:'10px 12px' }}>
+            <p style={{ fontSize: 10, color:'var(--text-dim)', margin:'0 0 3px', textTransform:'uppercase' as const, letterSpacing:'0.07em' }}>{label}</p>
             <p style={{ fontSize:small?12:14, fontWeight:700, margin:0, fontFamily:mono?'DM Mono,monospace':'inherit', color:'var(--text)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:small?'normal':'nowrap' as const, textTransform:small?'capitalize' as const:undefined }}>{value}</p>
           </div>
         ))}
@@ -1202,7 +1202,7 @@ function RaceDetailSheet({ race, onClose, onEdit }: { race: FullRace|null; onClo
         <div style={{ display:'flex', flexDirection:'column' as const, gap:12, marginBottom:16 }}>
           {routeList.map(rt=>(
             <div key={rt.label}>
-              <p style={{ fontSize:9, fontWeight:700, textTransform:'uppercase' as const, letterSpacing:'0.06em', color:'var(--text-dim)', margin:'0 0 6px' }}>{rt.label}</p>
+              <p style={{ fontSize: 10, fontWeight:700, textTransform:'uppercase' as const, letterSpacing:'0.06em', color:'var(--text-dim)', margin:'0 0 6px' }}>{rt.label}</p>
               <ParcoursViewer fileUrl={rt.url} />
               <a href={rt.url} target="_blank" rel="noopener noreferrer" style={{ display:'inline-block', marginTop:6, fontSize:11.5, fontWeight:600, color:col, textDecoration:'none' }}>{t('plnp.race.openRoute')} →</a>
             </div>
@@ -1211,8 +1211,8 @@ function RaceDetailSheet({ race, onClose, onEdit }: { race: FullRace|null; onClo
       )}
 
       <div style={{ display:'flex', gap:10 }}>
-        <button onClick={()=>onEdit(r)} style={{ flex:1, padding:'13px 16px', borderRadius:12, border:'none', background:cfg.border, color:'#fff', fontFamily:'Syne,sans-serif', fontWeight:700, fontSize:14, cursor:'pointer' }}>{t('plnp.race.edit')}</button>
-        <a href={`/calendar?race=${r.id}`} style={{ flex:1, textAlign:'center' as const, padding:'13px 16px', borderRadius:12, border:'1px solid var(--border)', background:'var(--bg-card2)', color:'var(--text-mid)', fontFamily:'Syne,sans-serif', fontWeight:700, fontSize:14, textDecoration:'none' }}>{t('plnp.race.viewCalendar')}</a>
+        <button onClick={()=>onEdit(r)} style={{ flex:1, padding:'13px 16px', borderRadius: 'var(--r-md)', border:'none', background:cfg.border, color:'#fff', fontFamily: 'var(--font-body)', fontWeight:700, fontSize:14, cursor:'pointer' }}>{t('plnp.race.edit')}</button>
+        <a href={`/calendar?race=${r.id}`} style={{ flex:1, textAlign:'center' as const, padding:'13px 16px', borderRadius: 'var(--r-md)', border:'1px solid var(--border)', background:'var(--bg-card2)', color:'var(--text-mid)', fontFamily: 'var(--font-body)', fontWeight:700, fontSize:14, textDecoration:'none' }}>{t('plnp.race.viewCalendar')}</a>
       </div>
     </BottomSheet>
   )
@@ -1247,7 +1247,7 @@ function BlockRow({ block, sport, isExpanded, onToggle, onPatch, onDelete }:{
     : fmtDuration(block.durationMin)
   const valueLabel = block.value ? `${block.value}${sport==='bike'?'W':''}` : null
   const inputStyle: React.CSSProperties = {
-    width:'100%', padding:'7px 10px', borderRadius:7,
+    width:'100%', padding:'7px 10px', borderRadius: 'var(--r-sm)',
     border:'1px solid var(--border)', background:'var(--bg-card)',
     color:'var(--text)', fontSize:12, outline:'none' as const,
   }
@@ -1260,7 +1260,7 @@ function BlockRow({ block, sport, isExpanded, onToggle, onPatch, onDelete }:{
 
   return (
     <div style={{
-      borderRadius:9,
+      borderRadius: 'var(--r-sm)',
       background:`${c}11`,
       borderLeft:`3px solid ${c}`,
       border:`1px solid ${c}22`,
@@ -1271,13 +1271,13 @@ function BlockRow({ block, sport, isExpanded, onToggle, onPatch, onDelete }:{
         display:'flex', alignItems:'center', gap:9,
         padding:'9px 12px', cursor:'pointer',
       }}>
-        <span style={{ fontSize:10,fontWeight:800,color:c,minWidth:22,fontFamily:'DM Mono,monospace' }}>Z{block.zone}</span>
+        <span style={{ fontSize:10,fontWeight:800,color:c,minWidth:22,fontFamily: 'var(--font-body)' }}>Z{block.zone}</span>
         <span style={{ flex:1, fontSize:12, minWidth:0, overflow:'hidden', textOverflow:'ellipsis' as const, whiteSpace:'nowrap' as const, color:'var(--text)' }}>
           {block.label}
         </span>
-        <span style={{ fontSize:11, fontFamily:'DM Mono,monospace', color:'var(--text-mid)', flexShrink:0 }}>{durLabel}</span>
+        <span style={{ fontSize:11, fontFamily: 'var(--font-body)', color:'var(--text-mid)', flexShrink:0 }}>{durLabel}</span>
         {valueLabel && (
-          <span style={{ fontSize:11,fontFamily:'DM Mono,monospace',fontWeight:700,color:c,flexShrink:0 }}>{valueLabel}</span>
+          <span style={{ fontSize:11,fontFamily: 'var(--font-body)',fontWeight:700,color:c,flexShrink:0 }}>{valueLabel}</span>
         )}
         <span style={{ color:'var(--text-dim)',fontSize:10,flexShrink:0,transform:isExpanded?'rotate(90deg)':'none',transition:'transform 0.14s' }}>▸</span>
       </div>
@@ -1294,11 +1294,11 @@ function BlockRow({ block, sport, isExpanded, onToggle, onPatch, onDelete }:{
               const active = block.zone === z
               return (
                 <button key={z} onClick={()=>onPatch({ zone: z })} style={{
-                  flex:1, padding:'8px 0', borderRadius:6,
+                  flex:1, padding:'8px 0', borderRadius: 'var(--r-sm)',
                   border: active ? `2px solid ${zc}` : '1px solid var(--border)',
                   background: active ? `${zc}26` : 'var(--bg-card)',
                   color: active ? zc : 'var(--text-mid)',
-                  fontSize:11, fontWeight:700, fontFamily:'DM Mono,monospace', cursor:'pointer',
+                  fontSize:11, fontWeight:700, fontFamily: 'var(--font-body)', cursor:'pointer',
                 }}>
                   Z{z}
                 </button>
@@ -1312,7 +1312,7 @@ function BlockRow({ block, sport, isExpanded, onToggle, onPatch, onDelete }:{
               const active = block.mode === m
               return (
                 <button key={m} onClick={()=>onPatch({ mode:m })} style={{
-                  flex:1, padding:'8px 0', borderRadius:6,
+                  flex:1, padding:'8px 0', borderRadius: 'var(--r-sm)',
                   border: active ? '2px solid #06B6D4' : '1px solid var(--border)',
                   background: active ? 'rgba(6,182,212,0.10)' : 'var(--bg-card)',
                   color: active ? '#06B6D4' : 'var(--text-mid)',
@@ -1331,14 +1331,14 @@ function BlockRow({ block, sport, isExpanded, onToggle, onPatch, onDelete }:{
                 <div style={{ flex:1 }}>
                   <input type="number" min={0} max={12} value={dh}
                     onChange={e=>onPatch({ durationMin: hMinToMin(parseInt(e.target.value)||0, dm) })}
-                    style={{ ...inputStyle, fontFamily:'DM Mono,monospace' }} />
-                  <span style={{ fontSize:9, color:'var(--text-dim)' }}>{t('plnp.unit.hours')}</span>
+                    style={{ ...inputStyle, fontFamily: 'var(--font-body)' }} />
+                  <span style={{ fontSize: 10, color:'var(--text-dim)' }}>{t('plnp.unit.hours')}</span>
                 </div>
                 <div style={{ flex:1 }}>
                   <input type="number" min={0} max={59} value={dm}
                     onChange={e=>onPatch({ durationMin: hMinToMin(dh, parseInt(e.target.value)||0) })}
-                    style={{ ...inputStyle, fontFamily:'DM Mono,monospace' }} />
-                  <span style={{ fontSize:9, color:'var(--text-dim)' }}>{t('plnp.unit.minutes')}</span>
+                    style={{ ...inputStyle, fontFamily: 'var(--font-body)' }} />
+                  <span style={{ fontSize: 10, color:'var(--text-dim)' }}>{t('plnp.unit.minutes')}</span>
                 </div>
               </div>
             </>
@@ -1349,20 +1349,20 @@ function BlockRow({ block, sport, isExpanded, onToggle, onPatch, onDelete }:{
                 <div style={{ flex:1 }}>
                   <input type="number" min={1} max={50} value={block.reps ?? 1}
                     onChange={e=>onPatch({ reps: Math.max(1, parseInt(e.target.value)||1) })}
-                    style={{ ...inputStyle, fontFamily:'DM Mono,monospace' }} />
-                  <span style={{ fontSize:9, color:'var(--text-dim)' }}>{t('plnp.unit.reps')}</span>
+                    style={{ ...inputStyle, fontFamily: 'var(--font-body)' }} />
+                  <span style={{ fontSize: 10, color:'var(--text-dim)' }}>{t('plnp.unit.reps')}</span>
                 </div>
                 <div style={{ flex:1 }}>
                   <input type="number" min={0} max={120} value={block.effortMin ?? 0}
                     onChange={e=>onPatch({ effortMin: Math.max(0, parseInt(e.target.value)||0) })}
-                    style={{ ...inputStyle, fontFamily:'DM Mono,monospace' }} />
-                  <span style={{ fontSize:9, color:'var(--text-dim)' }}>{t('plnp.block.effortMin')}</span>
+                    style={{ ...inputStyle, fontFamily: 'var(--font-body)' }} />
+                  <span style={{ fontSize: 10, color:'var(--text-dim)' }}>{t('plnp.block.effortMin')}</span>
                 </div>
                 <div style={{ flex:1 }}>
                   <input type="number" min={0} max={60} value={block.recoveryMin ?? 0}
                     onChange={e=>onPatch({ recoveryMin: Math.max(0, parseInt(e.target.value)||0) })}
-                    style={{ ...inputStyle, fontFamily:'DM Mono,monospace' }} />
-                  <span style={{ fontSize:9, color:'var(--text-dim)' }}>{t('plnp.block.recoveryMin')}</span>
+                    style={{ ...inputStyle, fontFamily: 'var(--font-body)' }} />
+                  <span style={{ fontSize: 10, color:'var(--text-dim)' }}>{t('plnp.block.recoveryMin')}</span>
                 </div>
               </div>
             </>
@@ -1382,13 +1382,13 @@ function BlockRow({ block, sport, isExpanded, onToggle, onPatch, onDelete }:{
 
           <div style={{ display:'flex', gap:8, marginTop:14 }}>
             <button onClick={onDelete} style={{
-              padding:'8px 12px', borderRadius:8,
+              padding:'8px 12px', borderRadius: 'var(--r-sm)',
               background:'rgba(255,95,95,0.10)', border:'1px solid rgba(255,95,95,0.25)',
               color:'#ff5f5f', fontSize:11, cursor:'pointer', fontWeight:600,
             }}>{t('plnp.block.delete')}</button>
             <div style={{ flex:1 }} />
             <button onClick={onToggle} style={{
-              padding:'8px 14px', borderRadius:8,
+              padding:'8px 14px', borderRadius: 'var(--r-sm)',
               background:'var(--bg-card)', border:'1px solid var(--border)',
               color:'var(--text-mid)', fontSize:11, cursor:'pointer',
             }}>{t('plnp.block.collapse')}</button>
@@ -1410,14 +1410,14 @@ function Last10WeeksModal({ onClose }:{ onClose:()=>void }) {
   function tssColor(tss:number):string { if(tss<avgTSS*0.8)return '#6b7280'; if(tss<=avgTSS*1.15)return '#22c55e'; return '#ef4444' }
   return (
     <div onClick={onClose} style={{ position:'fixed',inset:0,zIndex:200,background:'rgba(0,0,0,0.5)',backdropFilter:'blur(4px)',display:'flex',alignItems:'center',justifyContent:'center',padding:16 }}>
-      <div onClick={e=>e.stopPropagation()} style={{ background:'var(--bg-card)',borderRadius:18,border:'1px solid var(--border-mid)',padding:24,maxWidth:580,width:'100%',maxHeight:'90vh',overflowY:'auto' }}>
-        {tssInfo && <InfoModal title={t('plnp.tss.infoTitle')} content={<><p><strong>TSS (Training Stress Score)</strong> {t('plnp.tss.infoLine1')}</p><p>{t('plnp.tss.infoLine2')}</p><p style={{ fontFamily:'DM Mono,monospace',fontSize:12,background:'var(--bg-card2)',padding:'8px 12px',borderRadius:8 }}>{t('plnp.tss.infoFormula')}</p><p>⬛ <span style={{color:'#6b7280'}}>{t('plnp.tss.grey')}</span> — {t('plnp.tss.greyDesc')} · 🟩 <span style={{color:'#22c55e'}}>{t('plnp.tss.green')}</span> — {t('plnp.tss.greenDesc')} · 🟥 <span style={{color:'var(--danger)'}}>{t('plnp.tss.red')}</span> — {t('plnp.tss.redDesc')}</p></>} onClose={()=>setTssInfo(false)}/>}
+      <div onClick={e=>e.stopPropagation()} style={{ background:'var(--bg-card)',borderRadius: 'var(--r-lg)',border:'1px solid var(--border-mid)',padding:24,maxWidth:580,width:'100%',maxHeight:'90vh',overflowY:'auto' }}>
+        {tssInfo && <InfoModal title={t('plnp.tss.infoTitle')} content={<><p><strong>TSS (Training Stress Score)</strong> {t('plnp.tss.infoLine1')}</p><p>{t('plnp.tss.infoLine2')}</p><p style={{ fontFamily: 'var(--font-body)',fontSize:12,background:'var(--bg-card2)',padding:'8px 12px',borderRadius: 'var(--r-sm)' }}>{t('plnp.tss.infoFormula')}</p><p>⬛ <span style={{color:'#6b7280'}}>{t('plnp.tss.grey')}</span> — {t('plnp.tss.greyDesc')} · 🟩 <span style={{color:'#22c55e'}}>{t('plnp.tss.green')}</span> — {t('plnp.tss.greenDesc')} · 🟥 <span style={{color:'var(--danger)'}}>{t('plnp.tss.red')}</span> — {t('plnp.tss.redDesc')}</p></>} onClose={()=>setTssInfo(false)}/>}
         <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:20 }}>
           <div>
-            <h3 style={{ fontFamily:'Syne,sans-serif',fontSize:17,fontWeight:700,margin:0 }}>{t('plnp.last10.title')}</h3>
+            <h3 style={{ fontFamily: 'var(--font-body)',fontSize:17,fontWeight:700,margin:0 }}>{t('plnp.last10.title')}</h3>
             <p style={{ fontSize:12,color:'var(--text-dim)',margin:'3px 0 0' }}>{t('plnp.last10.subtitle')}</p>
           </div>
-          <button onClick={onClose} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius:9,padding:'5px 9px',cursor:'pointer',color:'var(--text-dim)',fontSize:16 }}>×</button>
+          <button onClick={onClose} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius: 'var(--r-sm)',padding:'5px 9px',cursor:'pointer',color:'var(--text-dim)',fontSize:16 }}>×</button>
         </div>
         <div style={{ display:'flex',alignItems:'center',gap:8,marginBottom:10 }}>
           <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'var(--text-dim)',margin:0 }}>TSS</p>
@@ -1431,9 +1431,9 @@ function Last10WeeksModal({ onClose }:{ onClose:()=>void }) {
         </div>
         <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:10,marginTop:14 }}>
           {[{l:t('plnp.last10.volPlanned'),v:'0h',c:'var(--text-dim)'},{l:t('plnp.last10.volDone'),v:'0h',c:'#06B6D4'},{l:t('plnp.last10.tssTotal'),v:'0',c:'#ffb340'}].map(x=>(
-            <div key={x.l} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius:10,padding:'10px 12px' }}>
+            <div key={x.l} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius: 'var(--r-sm)',padding:'10px 12px' }}>
               <p style={{ fontSize:10,color:'var(--text-dim)',margin:'0 0 4px' }}>{x.l}</p>
-              <p style={{ fontFamily:'Syne,sans-serif',fontSize:18,fontWeight:700,color:x.c as string,margin:0 }}>{x.v}</p>
+              <p style={{ fontFamily: 'var(--font-display)',fontSize:18,fontWeight:700,color:x.c as string,margin:0 }}>{x.v}</p>
             </div>
           ))}
         </div>
@@ -1620,7 +1620,7 @@ function ChartSection({
             <span style={{ fontSize: 10, color: 'var(--text-dim)', fontWeight: 400 }}>{subtitle}</span>
           )}
           <span style={{
-            fontSize: 9, color: 'var(--text-dim)', flexShrink: 0, userSelect: 'none' as const,
+            fontSize: 10, color: 'var(--text-dim)', flexShrink: 0, userSelect: 'none' as const,
             display: 'inline-block', transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s', marginLeft: 4,
           }}>▼</span>
         </button>
@@ -1711,14 +1711,14 @@ function AiPlanBubble({ plan }: { plan: AiTrainingPlan }) {
           style={{
             display: 'flex', alignItems: 'center', gap: 6,
             padding: '7px 13px 7px 10px',
-            borderRadius: 24,
+            borderRadius: 'var(--r-lg)',
             cursor: isDragging ? 'grabbing' : 'grab',
             boxShadow: open
               ? '0 0 0 3px rgba(139,92,246,0.14), 0 4px 16px rgba(139,92,246,0.22)'
               : '0 2px 10px rgba(0,0,0,0.14)',
           }}
         >
-          <span style={{ fontSize: 9, color: 'rgba(139,92,246,0.5)', letterSpacing: '0px', marginRight: -1 }}>⠿</span>
+          <span style={{ fontSize: 10, color: 'rgba(139,92,246,0.5)', letterSpacing: '0px', marginRight: -1 }}>⠿</span>
           <span style={{ fontSize: 13 }}>✦</span>
           <span style={{ fontSize: 11, fontWeight: 600, color: open ? '#a78bfa' : 'var(--text-mid)', whiteSpace: 'nowrap' as const }}>
             Coach IA
@@ -1954,7 +1954,7 @@ function PlanHeaderAndGraphics({ plan, sessions, currentWeekStart, nextRace, onR
   const PERIOD_W = 400, PERIOD_H = 26
 
   return (
-    <div style={{ borderRadius: 14, border: '1px solid var(--border)', background: 'var(--bg-card)', padding: '14px 16px', marginBottom: 8 }}>
+    <div style={{ borderRadius: 'var(--r-md)', border: '1px solid var(--border)', background: 'var(--bg-card)', padding: '14px 16px', marginBottom: 8 }}>
 
       {/* ── HEADER ── */}
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
@@ -1962,12 +1962,12 @@ function PlanHeaderAndGraphics({ plan, sessions, currentWeekStart, nextRace, onR
           <p style={{ fontSize: 10, fontWeight: 700, color: '#8b5cf6', margin: 0, letterSpacing: '0.12em', textTransform: 'uppercase' as const }}>{t('plnp.plan.current')}</p>
           {/* Titre + bouton PDF côte à côte */}
           <div style={{ display:'flex', alignItems:'center', gap:8, margin:'2px 0 4px' }}>
-            <p style={{ fontSize: 17, fontWeight: 800, color: 'var(--text)', margin: 0, fontFamily: 'Syne,sans-serif', lineHeight: 1.2, flex: 1, minWidth: 0 }}>{plan.name}</p>
+            <p style={{ fontSize: 17, fontWeight: 800, color: 'var(--text)', margin: 0, fontFamily: 'var(--font-body)', lineHeight: 1.2, flex: 1, minWidth: 0 }}>{plan.name}</p>
             <button
               onClick={() => exportPlanToPDF(plan, t)}
               title={t('plnp.plan.exportPdf')}
               style={{
-                padding:'4px 10px', borderRadius:7,
+                padding:'4px 10px', borderRadius: 'var(--r-sm)',
                 background:'rgba(139,92,246,0.10)', border:'1px solid rgba(139,92,246,0.25)',
                 color:'#8b5cf6', fontSize:10, fontWeight:600, cursor:'pointer',
                 display:'flex', alignItems:'center', gap:4, flexShrink:0,
@@ -1996,13 +1996,13 @@ function PlanHeaderAndGraphics({ plan, sessions, currentWeekStart, nextRace, onR
           const accentCol = nextRace.level === 'gty' ? 'var(--gty-text)' : cfg.color
           return (
             <div style={{ flexShrink: 0, textAlign: 'right' as const, minWidth: 100 }}>
-              <p style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-dim)', margin: '0 0 3px', textTransform: 'uppercase' as const, letterSpacing: '0.1em' }}>{t('plnp.plan.nextGoal')}</p>
-              <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2, padding: '6px 10px', borderRadius: 10, background: cfg.bg, border: `1px solid ${cfg.border}` }}>
+              <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-dim)', margin: '0 0 3px', textTransform: 'uppercase' as const, letterSpacing: '0.1em' }}>{t('plnp.plan.nextGoal')}</p>
+              <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2, padding: '6px 10px', borderRadius: 'var(--r-sm)', background: cfg.bg, border: `1px solid ${cfg.border}` }}>
                 {days > 0 && (
-                  <span style={{ fontSize: 20, fontWeight: 800, color: accentCol, fontFamily: 'Syne,sans-serif', lineHeight: 1 }}>J-{days}</span>
+                  <span style={{ fontSize: 20, fontWeight: 800, color: accentCol, fontFamily: 'var(--font-display)', lineHeight: 1 }}>J-{days}</span>
                 )}
                 <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text)', lineHeight: 1.2, maxWidth: 110, textAlign: 'right' as const }}>{nextRace.name}</span>
-                <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>
+                <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>
                   {new Date(nextRace.date).toLocaleDateString(currentLocale(), { day: 'numeric', month: 'short' })}
                 </span>
               </div>
@@ -2025,7 +2025,7 @@ function PlanHeaderAndGraphics({ plan, sessions, currentWeekStart, nextRace, onR
           {plan.blocs_periodisation.length > 0 && (
             <ChartSection title={t('plnp.chart.periodization')}>
               <svg width="100%" viewBox={`0 0 ${PERIOD_W} ${PERIOD_H}`} preserveAspectRatio="none"
-                style={{ display: 'block', borderRadius: 5, marginBottom: 8, cursor: 'pointer' }}>
+                style={{ display: 'block', borderRadius: 'var(--r-sm)', marginBottom: 8, cursor: 'pointer' }}>
                 {(() => {
                   const total = plan.duree_semaines || 1
                   let offX = 0
@@ -2077,7 +2077,7 @@ function PlanHeaderAndGraphics({ plan, sessions, currentWeekStart, nextRace, onR
                 return (
                   <div style={{
                     background: `${col}60`, border: `1px solid ${col}`,
-                    borderRadius: 8, padding: '10px 12px', marginBottom: 8,
+                    borderRadius: 'var(--r-sm)', padding: '10px 12px', marginBottom: 8,
                     display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 16px',
                   }}>
                     <div style={{ gridColumn: '1/-1', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
@@ -2085,8 +2085,8 @@ function PlanHeaderAndGraphics({ plan, sessions, currentWeekStart, nextRace, onR
                       <button onClick={() => setSelectedBloc(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-dim)', fontSize: 12, padding: 0 }}>✕</button>
                     </div>
                     <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>{t('plnp.chart.phase')} <strong style={{ color: txt }}>{b.type}</strong></span>
-                    <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>{t('plnp.field.duration')} <strong style={{ color: 'var(--text-mid)', fontFamily: 'DM Mono,monospace' }}>S{b.semaine_debut}–S{b.semaine_fin} · {t('plnp.chart.weeksShort', { n: dur })}</strong></span>
-                    {b.volume_hebdo_h != null && <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>{t('plnp.chart.volumePerWeek')} <strong style={{ color: 'var(--text-mid)', fontFamily: 'DM Mono,monospace' }}>{formatDuration(Math.round(b.volume_hebdo_h * 60))}</strong></span>}
+                    <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>{t('plnp.field.duration')} <strong style={{ color: 'var(--text-mid)', fontFamily: 'var(--font-body)' }}>S{b.semaine_debut}–S{b.semaine_fin} · {t('plnp.chart.weeksShort', { n: dur })}</strong></span>
+                    {b.volume_hebdo_h != null && <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>{t('plnp.chart.volumePerWeek')} <strong style={{ color: 'var(--text-mid)', fontFamily: 'var(--font-body)' }}>{formatDuration(Math.round(b.volume_hebdo_h * 60))}</strong></span>}
                     {b.description && <p style={{ gridColumn: '1/-1', fontSize: 10, color: 'var(--text-mid)', margin: '4px 0 0', lineHeight: 1.5 }}>{b.description}</p>}
                   </div>
                 )
@@ -2224,7 +2224,7 @@ function PlanHeaderAndGraphics({ plan, sessions, currentWeekStart, nextRace, onR
                       {selBar.theme && <p style={{ fontSize: 11, color: 'var(--text-mid)', margin: '0 0 10px', fontStyle: 'italic' }}>{selBar.theme}</p>}
                       <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' as const, marginBottom: selBar.sportStats.length > 0 ? 12 : 0 }}>
                         <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>
-                          {t('plnp.chart.volume')} <strong style={{ color: 'var(--text)', fontFamily: 'DM Mono,monospace' }}>{formatDuration(Math.round(selBar.volume_h * 60))}</strong>
+                          {t('plnp.chart.volume')} <strong style={{ color: 'var(--text)', fontFamily: 'var(--font-body)' }}>{formatDuration(Math.round(selBar.volume_h * 60))}</strong>
                         </span>
                         <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>
                           {t('plnp.chart.sessions')} <strong style={{ color: 'var(--text)' }}>{selBar.seanceCount}</strong>
@@ -2236,7 +2236,7 @@ function PlanHeaderAndGraphics({ plan, sessions, currentWeekStart, nextRace, onR
                             <div key={sport} style={{ display: 'grid', gridTemplateColumns: '70px 22px 44px', alignItems: 'center', gap: 6 }}>
                               <span style={{ fontSize: 11, fontWeight: 700, color: sportColor(sport), textTransform: 'capitalize' as const, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{sport}</span>
                               <span style={{ fontSize: 11, color: 'var(--text-dim)', textAlign: 'right' as const }}>{count}×</span>
-                              <span style={{ fontSize: 11, fontFamily: 'DM Mono,monospace', color: 'var(--text)', textAlign: 'right' as const }}>{formatDuration(mins)}</span>
+                              <span style={{ fontSize: 11, fontFamily: 'var(--font-body)', color: 'var(--text)', textAlign: 'right' as const }}>{formatDuration(mins)}</span>
                             </div>
                           ))}
                         </div>
@@ -2292,7 +2292,7 @@ function PlanHeaderAndGraphics({ plan, sessions, currentWeekStart, nextRace, onR
                         animation: 'barFill 0.9s cubic-bezier(0.25,1,0.5,1) both',
                       }} />
                     </div>
-                    <span style={{ fontSize: 10, fontFamily: 'DM Mono,monospace', color: 'var(--text-mid)', minWidth: 36, textAlign: 'right' as const }}>{formatDuration(mins)}</span>
+                    <span style={{ fontSize: 10, fontFamily: 'var(--font-body)', color: 'var(--text-mid)', minWidth: 36, textAlign: 'right' as const }}>{formatDuration(mins)}</span>
                   </div>
                 )
               })}
@@ -2395,7 +2395,7 @@ function PlanHeaderAndGraphics({ plan, sessions, currentWeekStart, nextRace, onR
                 }
                 <text x={cx} y={cy + 4} textAnchor="middle" fontSize={8} fontWeight={700} fill="var(--text)" fontFamily="DM Mono,monospace">{sub}</text>
               </svg>
-              <span style={{ fontSize: 9, color: 'var(--text-dim)', textAlign: 'center' as const, lineHeight: 1.3 }}>{label}</span>
+              <span style={{ fontSize: 10, color: 'var(--text-dim)', textAlign: 'center' as const, lineHeight: 1.3 }}>{label}</span>
             </div>
           )
         }
@@ -2477,13 +2477,13 @@ function DayBubble({ sport, label, session, done, onClick, draggable, onDragStar
         <button data-guide="plan-bubble" onClick={onClick} draggable={draggable} onDragStart={onDragStart} onDragEnd={onDragEnd}
           onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
           onMouseEnter={e => setTip(e.currentTarget.getBoundingClientRect())} onMouseLeave={() => setTip(null)}
-          style={{ display:'flex',flexDirection:'column',alignItems:'stretch',gap:2,padding:'4px 6px',borderRadius:8,border:'none',borderLeft:`2px solid ${color}`,background:'var(--bg-card2)',cursor:'pointer',width:'100%',boxSizing:'border-box',opacity:done?0.55:1,transform:lifted?'scale(1.06)':undefined,boxShadow:lifted?'0 6px 16px rgba(0,0,0,0.35)':undefined,transition:'transform .12s, box-shadow .12s',touchAction:onTouchStart?'pan-y':undefined,position:'relative',zIndex:lifted?20:undefined }}>
+          style={{ display:'flex',flexDirection:'column',alignItems:'stretch',gap:2,padding:'4px 6px',borderRadius: 'var(--r-sm)',border:'none',borderLeft:`2px solid ${color}`,background:'var(--bg-card2)',cursor:'pointer',width:'100%',boxSizing:'border-box',opacity:done?0.55:1,transform:lifted?'scale(1.06)':undefined,boxShadow:lifted?'0 6px 16px rgba(0,0,0,0.35)':undefined,transition:'transform .12s, box-shadow .12s',touchAction:onTouchStart?'pan-y':undefined,position:'relative',zIndex:lifted?20:undefined }}>
           <div style={{ display:'flex',alignItems:'flex-start',gap:4,minWidth:0 }}>
             {Ico ? <span style={{ flexShrink:0,marginTop:1,display:'flex' }}><Ico size={13} color={color} stroke={2.2} /></span> : <span style={{ width:7,height:7,borderRadius:'50%',background:color,flexShrink:0,marginTop:3 }} />}
             <span style={{ flex:1,minWidth:0,fontSize:9.5,fontWeight:700,lineHeight:1.18,color:'var(--text)',textAlign:'left',display:'-webkit-box',WebkitLineClamp:2,WebkitBoxOrient:'vertical',overflow:'hidden',overflowWrap:'anywhere',wordBreak:'break-word' }}>{session.title || (cfg?.label ? t(cfg.label) : sport)}</span>
           </div>
           <div style={{ display:'flex',alignItems:'center',justifyContent:'center',gap:5,flexWrap:'wrap' }}>
-            <span className="tnum" style={{ fontSize:9,fontWeight:700,color,whiteSpace:'nowrap' }}>{formatHM(session.durationMin)}</span>
+            <span className="tnum" style={{ fontSize: 10,fontWeight:700,color,whiteSpace:'nowrap' }}>{formatHM(session.durationMin)}</span>
             {session.rpe != null && <span className="tnum" style={{ fontSize:8.5,fontWeight:600,color:'var(--text-dim)',whiteSpace:'nowrap' }}>RPE {session.rpe}</span>}
           </div>
         </button>
@@ -2496,9 +2496,9 @@ function DayBubble({ sport, label, session, done, onClick, draggable, onDragStar
   return (
     <button onClick={onClick} draggable={draggable} onDragStart={onDragStart} onDragEnd={onDragEnd}
       onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
-      style={{ display:'flex',flexDirection:'column',alignItems:'center',gap:2,padding:'3px 2px',borderRadius:8,border:'none',background:'var(--bg-card2)',cursor:'pointer',width:'100%',boxSizing:'border-box',opacity:done?0.55:1,transform:lifted?'scale(1.06)':undefined,boxShadow:lifted?'0 6px 16px rgba(0,0,0,0.35)':undefined,transition:'transform .12s, box-shadow .12s',touchAction:onTouchStart?'pan-y':undefined,position:'relative',zIndex:lifted?20:undefined }}>
+      style={{ display:'flex',flexDirection:'column',alignItems:'center',gap:2,padding:'3px 2px',borderRadius: 'var(--r-sm)',border:'none',background:'var(--bg-card2)',cursor:'pointer',width:'100%',boxSizing:'border-box',opacity:done?0.55:1,transform:lifted?'scale(1.06)':undefined,boxShadow:lifted?'0 6px 16px rgba(0,0,0,0.35)':undefined,transition:'transform .12s, box-shadow .12s',touchAction:onTouchStart?'pan-y':undefined,position:'relative',zIndex:lifted?20:undefined }}>
       {Ico ? <Ico size={15} color={color} stroke={2.2} /> : <span style={{ width:7,height:7,borderRadius:'50%',background:color }} />}
-      <span className="tnum" style={{ width:'100%',textAlign:'center',background:color,color:'var(--on-primary)',borderRadius:999,padding:'1px 0',fontSize:9.5,fontWeight:700,fontFamily:'var(--font-body)' }}>{label}</span>
+      <span className="tnum" style={{ width:'100%',textAlign:'center',background:color,color:'var(--on-primary)',borderRadius: 'var(--r-pill)',padding:'1px 0',fontSize:9.5,fontWeight:700,fontFamily:'var(--font-body)' }}>{label}</span>
     </button>
   )
 }
@@ -2510,7 +2510,7 @@ function RaceBubble({ race, onClick }: { race: { name: string; level: RaceLevel 
   const col = race.level === 'gty' ? 'var(--gty-text)' : cfg.color
   return (
     <button onClick={onClick}
-      style={{ display:'flex',alignItems:'center',gap:4,padding:'4px 6px',borderRadius:8,border:`1px solid ${cfg.border}55`,borderLeft:`3px solid ${cfg.border}`,background:cfg.bg,cursor:'pointer',width:'100%',boxSizing:'border-box',textAlign:'left' }}>
+      style={{ display:'flex',alignItems:'center',gap:4,padding:'4px 6px',borderRadius: 'var(--r-sm)',border:`1px solid ${cfg.border}55`,borderLeft:`3px solid ${cfg.border}`,background:cfg.bg,cursor:'pointer',width:'100%',boxSizing:'border-box',textAlign:'left' }}>
       <Flag size={12} color={col} strokeWidth={2.4} style={{ flexShrink:0 }} />
       <span style={{ flex:1,minWidth:0,fontSize:9.5,fontWeight:800,lineHeight:1.15,color:col,display:'-webkit-box',WebkitLineClamp:2,WebkitBoxOrient:'vertical',overflow:'hidden',overflowWrap:'anywhere',wordBreak:'break-word' }}>{race.name}</span>
     </button>
@@ -2584,7 +2584,7 @@ function WeekCycles({ ws, blocs }: { ws: string; blocs: TrainingBlocData[] }) {
   const { t } = useI18n()
   const wn = isoWeekNum(ws); const yr = new Date(ws + 'T00:00:00').getFullYear()
   const rows = blocs.filter(b => b.startYear === yr && b.startWeek <= wn && wn < b.startWeek + b.durationWeeks)
-  if (rows.length === 0) return <span style={{ fontSize: 9, color: 'var(--text-dim)', fontStyle: 'italic' as const }}>{t('plnp.cycle.noneThisWeek')}</span>
+  if (rows.length === 0) return <span style={{ fontSize: 10, color: 'var(--text-dim)', fontStyle: 'italic' as const }}>{t('plnp.cycle.noneThisWeek')}</span>
   return (
     <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 6 }}>
       {rows.map(b => { const m = BLOC_SPORT_MAP[b.sport]; return (
@@ -2623,14 +2623,14 @@ function CycleSummary({ onOpen }: { onOpen: () => void }) {
     <div style={{ marginBottom: 16 }}>
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:10 }}>
         <p style={{ fontFamily:'var(--font-display)', fontSize:15, fontWeight:600, color:'var(--text)', margin:0 }}>{t('plnp.cycle.title')}</p>
-        <button onClick={onOpen} aria-label={t('plnp.cycle.manageAria')} style={{ width:28, height:28, borderRadius:8, border:'none', background:'var(--primary-dim)', color:'var(--primary)', fontSize:18, lineHeight:1, cursor:'pointer' }}>+</button>
+        <button onClick={onOpen} aria-label={t('plnp.cycle.manageAria')} style={{ width:28, height:28, borderRadius: 'var(--r-sm)', border:'none', background:'var(--primary-dim)', color:'var(--primary)', fontSize:18, lineHeight:1, cursor:'pointer' }}>+</button>
       </div>
       {rows.length === 0 ? (
-        <button onClick={onOpen} style={{ width:'100%', textAlign:'left' as const, padding:'12px 14px', borderRadius:12, border:'1px dashed var(--border)', background:'transparent', color:'var(--text-dim)', fontSize:13, cursor:'pointer' }}>{t('plnp.cycle.noneDefined')}</button>
+        <button onClick={onOpen} style={{ width:'100%', textAlign:'left' as const, padding:'12px 14px', borderRadius: 'var(--r-md)', border:'1px dashed var(--border)', background:'transparent', color:'var(--text-dim)', fontSize:13, cursor:'pointer' }}>{t('plnp.cycle.noneDefined')}</button>
       ) : (
         <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
           {rows.map(([sport, b]) => { const m = BLOC_SPORT_MAP[sport]; return (
-            <button key={sport} onClick={onOpen} style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 12px', borderRadius:12, border:'none', background:'var(--bg-card2)', cursor:'pointer', textAlign:'left' as const, width:'100%' }}>
+            <button key={sport} onClick={onOpen} style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 12px', borderRadius: 'var(--r-md)', border:'none', background:'var(--bg-card2)', cursor:'pointer', textAlign:'left' as const, width:'100%' }}>
               <SportIcon sport={m?.key ?? sport} size={26} />
               <div style={{ flex:1, minWidth:0 }}>
                 <div style={{ fontFamily:'var(--font-body)', fontSize:13.5, fontWeight:600, color:'var(--text)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' as const }}>{b.name}</div>
@@ -2648,10 +2648,10 @@ function CycleSummary({ onOpen }: { onOpen: () => void }) {
 function IntensityMenuPortal({ anchor, value, onPick }: { anchor: DOMRect; value: DayIntensity; onPick: (i: DayIntensity) => void }) {
   const { t } = useI18n()
   return createPortal(
-    <div data-day-picker style={{ position:'fixed', top:anchor.bottom+4, left:anchor.left+anchor.width/2, transform:'translateX(-50%)', zIndex:3000, background:'var(--bg-card)', border:'1px solid var(--border)', borderRadius:9, padding:4, display:'flex', flexDirection:'column', gap:2, boxShadow:'0 10px 28px rgba(0,0,0,0.28)', minWidth:108, animation:'dpIn .14s ease-out', transformOrigin:'top center' }}>
+    <div data-day-picker style={{ position:'fixed', top:anchor.bottom+4, left:anchor.left+anchor.width/2, transform:'translateX(-50%)', zIndex:3000, background:'var(--bg-card)', border:'1px solid var(--border)', borderRadius: 'var(--r-sm)', padding:4, display:'flex', flexDirection:'column', gap:2, boxShadow:'0 10px 28px rgba(0,0,0,0.28)', minWidth:108, animation:'dpIn .14s ease-out', transformOrigin:'top center' }}>
       <style>{`@keyframes dpIn{from{opacity:0;transform:translateX(-50%) scale(.92)}to{opacity:1;transform:translateX(-50%) scale(1)}}`}</style>
       {INTENSITY_ORDER.map(it => { const c = INTENSITY_CONFIG[it]; const active = value === it; return (
-        <button key={it} onClick={() => onPick(it)} style={{ display:'flex', alignItems:'center', gap:7, padding:'7px 11px', borderRadius:6, border:'none', background:active?c.bg:'transparent', color:c.color, fontSize:12, fontWeight:active?700:500, cursor:'pointer', textAlign:'left' as const, whiteSpace:'nowrap' as const }}>
+        <button key={it} onClick={() => onPick(it)} style={{ display:'flex', alignItems:'center', gap:7, padding:'7px 11px', borderRadius: 'var(--r-sm)', border:'none', background:active?c.bg:'transparent', color:c.color, fontSize:12, fontWeight:active?700:500, cursor:'pointer', textAlign:'left' as const, whiteSpace:'nowrap' as const }}>
           <span style={{ width:8, height:8, borderRadius:'50%', background:c.color }} />{t('plnp.intensityCfg.' + it)}
         </button>
       )})}
@@ -2908,7 +2908,7 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
     return (
       <div style={{ marginTop: 8 }}>
         <button onClick={() => detailPlanWeek(dwk)} disabled={busy}
-          style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, padding: '7px 8px', borderRadius: 8, border: 'none',
+          style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, padding: '7px 8px', borderRadius: 'var(--r-sm)', border: 'none',
             background: busy ? 'var(--bg-card3, rgba(120,120,120,0.16))' : 'var(--primary)', color: busy ? 'var(--text-mid)' : 'var(--on-primary)',
             fontSize: 9.5, fontWeight: 800, lineHeight: 1.2, cursor: busy ? 'default' : 'pointer', fontFamily: 'inherit' }}
           title="Générer les séances de cette semaine (calibrées sur tes zones)">
@@ -3185,14 +3185,14 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
     const RAIL = 54, SB = 206
     const cols = `${RAIL}px repeat(7,minmax(0,1fr)) ${SB}px`
     return (
-      <div style={{ border: '1px solid var(--border)', borderRadius: 16, overflow: 'hidden', background: 'var(--bg-card)', boxShadow: 'var(--shadow-card)' }}>
+      <div style={{ border: '1px solid var(--border)', borderRadius: 'var(--r-md)', overflow: 'hidden', background: 'var(--bg-card)', boxShadow: 'var(--shadow-card)' }}>
         <style>{`@media(max-width:767px){.wg-desktop{display:none!important}}@media(min-width:768px){.wg-mobile{display:none!important}}`}</style>
         <div className="wg-desktop"><div style={{ overflowX: 'auto' as const }}><div style={{ minWidth: 940 }}>
           {/* En-tête jours */}
           <div style={{ display: 'grid', gridTemplateColumns: cols, background: 'var(--bg-card2)', borderBottom: '1px solid var(--border)' }}>
             <div />
             {t('plnp.dayAbbrs').split(',').map(d => <div key={d} style={{ padding: '10px 4px', textAlign: 'center' as const, fontSize: 9.5, fontWeight: 700, letterSpacing: '0.06em', color: 'var(--text-dim)' }}>{d}.</div>)}
-            <div style={{ padding: '10px 10px', fontSize: 9, fontWeight: 800, letterSpacing: '0.06em', color: 'var(--text-dim)', borderLeft: '1px solid var(--border)' }}>{t('plnp.volume').toUpperCase()}</div>
+            <div style={{ padding: '10px 10px', fontSize: 10, fontWeight: 800, letterSpacing: '0.06em', color: 'var(--text-dim)', borderLeft: '1px solid var(--border)' }}>{t('plnp.volume').toUpperCase()}</div>
           </div>
           {/* Lignes semaine — en mode Comparer : pour CHAQUE semaine, la ligne
               Plan A puis juste en dessous la ligne Plan B (interclassé par semaine),
@@ -3215,9 +3215,9 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
               <div key={`${ws}_${pv}`} style={{ display: 'grid', gridTemplateColumns: cols, borderBottom: '1px solid var(--border)' }}>
                 {/* rail semaine (+ badge Plan A/B en mode Comparer) */}
                 <div style={{ display: 'flex', flexDirection: 'column' as const, alignItems: 'center', justifyContent: 'center', gap: 1, borderRight: '1px solid var(--border)', background: 'var(--bg-card2)' }}>
-                  <span style={{ fontSize: 12, fontWeight: 800, color: 'var(--text)', fontFamily: 'Syne,sans-serif' }}>S{isoWeekNum(ws)}</span>
-                  <span style={{ fontSize: 8, color: 'var(--text-dim)' }}>{new Date(ws + 'T00:00:00').toLocaleDateString(currentLocale(), { day: 'numeric', month: 'short' })}</span>
-                  {compareMode && <span style={{ fontSize: 9, fontWeight: 800, color: pv === 'A' ? 'var(--primary)' : '#a78bfa', marginTop: 2 }}>Plan {pv}</span>}
+                  <span style={{ fontSize: 12, fontWeight: 800, color: 'var(--text)', fontFamily: 'var(--font-body)' }}>S{isoWeekNum(ws)}</span>
+                  <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>{new Date(ws + 'T00:00:00').toLocaleDateString(currentLocale(), { day: 'numeric', month: 'short' })}</span>
+                  {compareMode && <span style={{ fontSize: 10, fontWeight: 800, color: pv === 'A' ? 'var(--primary)' : '#a78bfa', marginTop: 2 }}>Plan {pv}</span>}
                 </div>
                 {/* jours */}
                 {w.map((d, i) => {
@@ -3273,15 +3273,15 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
                 {/* cumul volumes / cycle — toggle */}
                 <div data-guide="plan-volume" style={{ padding: '9px 10px', borderLeft: '1px solid var(--border)', background: 'var(--bg-card2)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 6, marginBottom: 8 }}>
-                    <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-mid)', textTransform: 'uppercase' as const, letterSpacing: '0.04em' }}>{t('plnp.volume')}</span>
-                    <button onClick={() => setDatasWeek(ws)} title={t('plnp.datasTitle')} style={{ fontSize: 9, fontWeight: 700, color: 'var(--primary)', background: 'var(--primary-dim)', border: 'none', borderRadius: 6, padding: '3px 8px', cursor: 'pointer' }}>{t('plnp.datas')}</button>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-mid)', textTransform: 'uppercase' as const, letterSpacing: '0.04em' }}>{t('plnp.volume')}</span>
+                    <button onClick={() => setDatasWeek(ws)} title={t('plnp.datasTitle')} style={{ fontSize: 10, fontWeight: 700, color: 'var(--primary)', background: 'var(--primary-dim)', border: 'none', borderRadius: 'var(--r-sm)', padding: '3px 8px', cursor: 'pointer' }}>{t('plnp.datas')}</button>
                   </div>
                   {sideTab === 'volume' ? (<>
                     <p className="tnum" style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-dim)', margin: '0 0 6px' }}>{t('plnp.done')} <span style={{ color: 'var(--text)' }}>{formatHM(doneTotal)}</span> / {formatHM(plannedTotal)}</p>
                     {sportsSet.map(sp => (
                       <VolBar key={sp} sport={sp} planned={volPlanned[sp] || 0} done={volDone[sp] || 0} />
                     ))}
-                    {plannedTotal === 0 && doneTotal === 0 && !planWeekNeedingDetail(ws) && <span style={{ fontSize: 9, color: 'var(--text-dim)', fontStyle: 'italic' as const }}>{t('plnp.rest')}</span>}
+                    {plannedTotal === 0 && doneTotal === 0 && !planWeekNeedingDetail(ws) && <span style={{ fontSize: 10, color: 'var(--text-dim)', fontStyle: 'italic' as const }}>{t('plnp.rest')}</span>}
                   </>) : <WeekCycles ws={ws} blocs={cycleBlocs} />}
                   {renderDetailWeekBtn(ws)}
                 </div>
@@ -3309,7 +3309,7 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
               <div key={`${ws}_${pv}`} style={{ borderBottom:'1px solid var(--border)', padding:'8px 0' }}>
                 {/* En-tête semaine : S## + volume réalisé / prévu à droite */}
                 <div style={{ display:'flex', alignItems:'baseline', justifyContent:'space-between', gap:6, margin:'0 8px 6px' }}>
-                  <span style={{ fontSize:11, fontWeight:800, color:'var(--text)', fontFamily:'Syne,sans-serif' }}>S{isoWeekNum(ws)}<span style={{ fontWeight:500, color:'var(--text-dim)', marginLeft:5 }}>{new Date(ws+'T00:00:00').toLocaleDateString(currentLocale(),{ day:'numeric', month:'short' })}</span></span>{compareMode && <span style={{ fontSize:10, fontWeight:800, color: pv==='A'?'var(--primary)':'#a78bfa', marginLeft:8 }}>Plan {pv}</span>}
+                  <span style={{ fontSize:11, fontWeight:800, color:'var(--text)', fontFamily: 'var(--font-body)' }}>S{isoWeekNum(ws)}<span style={{ fontWeight:500, color:'var(--text-dim)', marginLeft:5 }}>{new Date(ws+'T00:00:00').toLocaleDateString(currentLocale(),{ day:'numeric', month:'short' })}</span></span>{compareMode && <span style={{ fontSize:10, fontWeight:800, color: pv==='A'?'var(--primary)':'#a78bfa', marginLeft:8 }}>Plan {pv}</span>}
                   <span data-guide="plan-volume" className="tnum" style={{ fontSize:11, fontWeight:700, color:'var(--text-dim)' }}><span style={{ color:'var(--text)' }}>{formatHM(mDoneTot)}</span> / {formatHM(mPlanTot)}</span>
                 </div>
                 {/* Carrousel coulissant : page 1 = jours · page 2 = volume/cycle + Datas */}
@@ -3324,7 +3324,7 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
                         const sess = d.sessions.filter(s=>!d.activities.some(a=>matchActivity(a,d.sessions)?.id===s.id))
                         const acts = d.activities  // toutes les activités réalisées (comme desktop)
                         return (
-                          <div key={i} data-mday={i} data-mws={ws} data-guide="plan-day" style={{ minWidth:0, display:'flex', flexDirection:'column' as const, gap:3, alignItems:'center', borderRadius:8, background:isDropTarget?'var(--primary-dim)':'transparent', transition:'background .12s' }}>
+                          <div key={i} data-mday={i} data-mws={ws} data-guide="plan-day" style={{ minWidth:0, display:'flex', flexDirection:'column' as const, gap:3, alignItems:'center', borderRadius: 'var(--r-sm)', background:isDropTarget?'var(--primary-dim)':'transparent', transition:'background .12s' }}>
                             <DayHeader abbr={d.day} num={dates[i]} intensity={d.intensity} isToday={isToday}
                               plus onPlus={() => setDayPicker(p => p === `m_${hid}` ? null : `m_${hid}`)} open={dayPicker === `m_${hid}`}
                               onPick={(it) => { void setDayIntensityWeek(ws, i, it, pv); setDayPicker(null) }}
@@ -3349,7 +3349,7 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
                   <div style={{ flex:'0 0 100%', scrollSnapAlign:'start' as const, padding:'0 8px', boxSizing:'border-box' as const }}>
                     <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:6, marginBottom:8 }}>
                       <span style={{ fontSize:11, fontWeight:700, color:'var(--text-mid)', textTransform:'uppercase' as const, letterSpacing:'0.04em' }}>{t('plnp.volume')}</span>
-                      <button onClick={()=>setDatasWeek(ws)} style={{ fontSize:10, fontWeight:700, color:'var(--primary)', background:'var(--primary-dim)', border:'none', borderRadius:6, padding:'4px 10px', cursor:'pointer' }}>{t('plnp.datas')}</button>
+                      <button onClick={()=>setDatasWeek(ws)} style={{ fontSize:10, fontWeight:700, color:'var(--primary)', background:'var(--primary-dim)', border:'none', borderRadius: 'var(--r-sm)', padding:'4px 10px', cursor:'pointer' }}>{t('plnp.datas')}</button>
                     </div>
                     {sideTab==='volume' ? (
                       mSports.length ? mSports.map(sp=><VolBar key={sp} sport={sp} planned={mPlan[sp]||0} done={mDone[sp]||0} />)
@@ -3404,15 +3404,15 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
         <div className="thw-datas-panel" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', overflowY: 'auto', boxShadow: 'var(--shadow)', boxSizing: 'border-box' as const }}>
           <div className="thw-datas-grab" />
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
-            <span style={{ fontFamily: 'Syne,sans-serif', fontWeight: 700, fontSize: 19, color: 'var(--text)' }}>{t('plnp.week')} S{isoWeekNum(datasWeek)} <span style={{ fontSize: 12, color: 'var(--text-dim)', fontWeight: 500 }}>· {new Date(datasWeek + 'T00:00:00').toLocaleDateString(currentLocale(), { day: 'numeric', month: 'short' })}</span></span>
+            <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 19, color: 'var(--text)' }}>{t('plnp.week')} S{isoWeekNum(datasWeek)} <span style={{ fontSize: 12, color: 'var(--text-dim)', fontWeight: 500 }}>· {new Date(datasWeek + 'T00:00:00').toLocaleDateString(currentLocale(), { day: 'numeric', month: 'short' })}</span></span>
             <button onClick={() => setDatasWeek(null)} style={{ width: 30, height: 30, borderRadius: '50%', background: 'var(--bg-card2)', border: 'none', cursor: 'pointer', color: 'var(--text-mid)', fontSize: 14 }}>✕</button>
           </div>
           {/* Totaux */}
           <div style={{ display: 'flex', gap: 8, marginBottom: 18, flexWrap: 'wrap' as const }}>
             {[[t('plnp.sessions').toUpperCase(), String(totalN), 'var(--text)'], [t('plnp.volume').toUpperCase(), formatHM(totalMin), 'var(--text)'], ['SM', String(sm), '#06B6D4'], ['SN', String(sn), '#8B5CF6']].map((c, i) => (
-              <div key={i} style={{ flex: '1 1 110px', padding: '11px 14px', borderRadius: 12, background: 'var(--bg-card2)', border: '1px solid var(--border)' }}>
-                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.05em', color: 'var(--text-dim)' }}>{c[0]}</div>
-                <div style={{ fontSize: 20, fontWeight: 700, color: c[2], fontFamily: 'Syne,sans-serif', marginTop: 2 }}>{c[1]}</div>
+              <div key={i} style={{ flex: '1 1 110px', padding: '11px 14px', borderRadius: 'var(--r-md)', background: 'var(--bg-card2)', border: '1px solid var(--border)' }}>
+                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.05em', color: 'var(--text-dim)' }}>{c[0]}</div>
+                <div style={{ fontSize: 20, fontWeight: 700, color: c[2], fontFamily: 'var(--font-display)', marginTop: 2 }}>{c[1]}</div>
               </div>
             ))}
           </div>
@@ -3422,7 +3422,7 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
             {PLAN_SPORTS.filter(sp => counts[sp]).map(sp => (
               <div key={sp} style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
                 <SportIcon sport={sp} size={20} />
-                <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', fontFamily: 'Syne,sans-serif' }}>{counts[sp]}</span>
+                <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-body)' }}>{counts[sp]}</span>
               </div>
             ))}
           </div>
@@ -3435,12 +3435,12 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
               return (
                 <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: 4 }}>
                   <span style={{ fontSize: 8.5, color: 'var(--text-dim)', fontWeight: 700, height: 11 }}>{tot > 0 ? formatHM(tot) : ''}</span>
-                  <div style={{ width: '70%', maxWidth: 30, height: GH, display: 'flex', flexDirection: 'column-reverse' as const, borderRadius: 6, overflow: 'hidden', background: 'var(--bg-card2)' }}>
+                  <div style={{ width: '70%', maxWidth: 30, height: GH, display: 'flex', flexDirection: 'column-reverse' as const, borderRadius: 'var(--r-sm)', overflow: 'hidden', background: 'var(--bg-card2)' }}>
                     {PLAN_SPORTS.filter(sp => m[sp]).map(sp => (
                       <div key={sp} style={{ height: `${(m[sp] / maxDay) * GH}px`, background: iconColor(sp) }} />
                     ))}
                   </div>
-                  <span style={{ fontSize: 9, color: i === todayIdx && datasWeek === currentWeekStart ? 'var(--primary)' : 'var(--text-dim)', fontWeight: 700 }}>{t('plnp.dayLetters').split(',')[i]}</span>
+                  <span style={{ fontSize: 10, color: i === todayIdx && datasWeek === currentWeekStart ? 'var(--primary)' : 'var(--text-dim)', fontWeight: 700 }}>{t('plnp.dayLetters').split(',')[i]}</span>
                 </div>
               )
             })}
@@ -3627,7 +3627,7 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
     const isCurrentWeek = ws===currentWeekStart
     const chev: React.CSSProperties = { flexShrink:0, width:18, border:'none', background:'transparent', color:'var(--text-dim)', fontSize:20, lineHeight:1, cursor:'pointer', padding:0 }
     return (
-      <div style={{ background:'var(--bg-card)',border:`1px solid ${plan?planColor+'44':'var(--border)'}`,borderRadius:16,overflow:'hidden',boxShadow:'var(--shadow-card)',overflowX:'auto' }}>
+      <div style={{ background:'var(--bg-card)',border:`1px solid ${plan?planColor+'44':'var(--border)'}`,borderRadius: 'var(--r-md)',overflow:'hidden',boxShadow:'var(--shadow-card)',overflowX:'auto' }}>
         <style>{`@media(max-width:767px){.wg-desktop{display:none!important}}@media(min-width:768px){.wg-mobile{display:none!important}}`}</style>
         {labelTag && <div style={{ padding:'6px 14px',background:`${planColor}11`,borderBottom:`1px solid ${planColor}33`,display:'flex',alignItems:'center',gap:8 }}>
           <span style={{ fontSize:10,fontWeight:700,color:planColor,letterSpacing:'0.08em',textTransform:'uppercase' as const }}>{labelTag}</span>
@@ -3637,7 +3637,7 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
         <div style={{ display:'grid',gridTemplateColumns:'60px repeat(7,1fr)',borderBottom:'1px solid var(--border)',background:'var(--bg-card)',minWidth:520 }}>
           <div style={{ padding:'10px 8px', background:'transparent' }}/>
           {w.map((d,i)=>{ const cfg=INTENSITY_CONFIG[d.intensity]; const isCurrent = ws===currentWeekStart; const isPickerOpen = isCurrent && intensityPickerDay===i; return (
-            <div key={d.day} style={{ padding:'9px 6px',textAlign:'center' as const,minWidth:68,margin:'6px 3px',borderRadius:10,background:'var(--bg-card)',border:i===todayIdx&&isCurrent?'1px solid rgba(34,211,238,.4)':'1px solid var(--border)' }}>
+            <div key={d.day} style={{ padding:'9px 6px',textAlign:'center' as const,minWidth:68,margin:'6px 3px',borderRadius: 'var(--r-sm)',background:'var(--bg-card)',border:i===todayIdx&&isCurrent?'1px solid rgba(34,211,238,.4)':'1px solid var(--border)' }}>
               <p style={{ fontSize:9.5,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.05em',margin:'0 0 3px',color:'var(--text-dim)' }}>{d.day}</p>
               <p style={{ fontSize:16,fontWeight:700,margin:'0 0 5px',color:i===todayIdx&&isCurrent?'#22d3ee':'var(--text)' }}>{wDates[i]}</p>
               <div data-intensity-picker style={{ display:'inline-flex',alignItems:'center',justifyContent:'center',position:'relative' as const }}>
@@ -3648,7 +3648,7 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
                     d.intensity === 'low' ? t('plnp.intensity.lowTip') :
                     d.intensity === 'mid' ? t('plnp.intensity.midTip') :
                     t('plnp.intensity.hardTip')}
-                  style={{ padding:'2px 9px 2px 7px',borderRadius:20,background:cfg.bg,border:`1px solid ${cfg.border}`,color:cfg.color,fontSize:9,fontWeight:700,cursor:!isCurrent?'help':'pointer',display:'inline-flex',alignItems:'center',gap:3 }}>
+                  style={{ padding:'2px 9px 2px 7px',borderRadius: 'var(--r-lg)',background:cfg.bg,border:`1px solid ${cfg.border}`,color:cfg.color,fontSize: 10,fontWeight:700,cursor:!isCurrent?'help':'pointer',display:'inline-flex',alignItems:'center',gap:3 }}>
                   {t('plnp.intensityCfg.' + d.intensity)}
                   {isCurrent && (
                     <svg width={7} height={7} viewBox="0 0 10 10" style={{ opacity:0.7,transform:isPickerOpen?'rotate(180deg)':'none',transition:'transform 0.12s' }}>
@@ -3660,7 +3660,7 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
                   <div data-intensity-picker style={{
                     position:'absolute' as const, top:'calc(100% + 4px)', left:'50%', transform:'translateX(-50%)',
                     zIndex:60, minWidth:90,
-                    background:'var(--bg-card)', border:'1px solid var(--border)', borderRadius:9,
+                    background:'var(--bg-card)', border:'1px solid var(--border)', borderRadius: 'var(--r-sm)',
                     padding:4, boxShadow:'0 8px 20px rgba(0,0,0,0.10), 0 2px 4px rgba(0,0,0,0.06)',
                     display:'flex', flexDirection:'column' as const, gap:2,
                   }}>
@@ -3672,13 +3672,13 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
                           key={intensity}
                           onClick={()=>{ setDayIntensity(i, intensity); setIntensityPickerDay(null) }}
                           style={{
-                            padding:'6px 10px', borderRadius:6,
+                            padding:'6px 10px', borderRadius: 'var(--r-sm)',
                             background: active ? c.bg : 'transparent',
                             border: active ? `1px solid ${c.border}` : '1px solid transparent',
                             color: c.color, fontSize:11, fontWeight: active ? 700 : 500,
                             cursor:'pointer', textAlign:'left' as const,
                             display:'flex', alignItems:'center', gap:6,
-                            fontFamily:'DM Sans, sans-serif',
+                            fontFamily: 'var(--font-body)',
                           }}
                           onMouseEnter={e=>{ if (!active) (e.currentTarget as HTMLElement).style.background = c.bg }}
                           onMouseLeave={e=>{ if (!active) (e.currentTarget as HTMLElement).style.background = 'transparent' }}
@@ -3696,7 +3696,7 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
         </div>
         <div style={{ display:'grid',gridTemplateColumns:'60px repeat(7,1fr)',minWidth:520 }}>
           <div style={{ padding:'8px',display:'flex',alignItems:'flex-start',justifyContent:'flex-end',paddingTop:12 }}>
-            <span style={{ fontSize:9,color:'var(--text-dim)',textTransform:'uppercase' as const,writingMode:'vertical-rl' as const,transform:'rotate(180deg)' }}>{t('plnp.sessions')}</span>
+            <span style={{ fontSize: 10,color:'var(--text-dim)',textTransform:'uppercase' as const,writingMode:'vertical-rl' as const,transform:'rotate(180deg)' }}>{t('plnp.sessions')}</span>
           </div>
           {w.map((d,i)=>(
             <div key={d.day}
@@ -3718,17 +3718,17 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
                 {/* Planned sessions (hide ones matched by an activity) */}
                 {d.sessions.filter(s=>!d.activities.some(a=>matchActivity(a,d.sessions)?.id===s.id)).map(s=>(
                   <div key={s.id} data-noadd draggable onDragStart={()=>{cancelHover();onDragStart(s.id,i)}} onMouseEnter={e=>scheduleHover(s,e.currentTarget)} onMouseLeave={cancelHover} onTouchStart={e=>{e.stopPropagation();cancelHover();onTouchStart(s.id,i,e)}} onTouchMove={onTouchMove} onTouchEnd={onTouchEndPoint} onClick={()=>{cancelHover();setDetailModal(s)}}
-                    style={{ borderRadius:8,padding:'7px 9px',marginBottom:4,background:'#1b212b',borderLeft:`2px solid ${SPORT_BORDER[s.sport]}`,cursor:'grab',opacity:s.status==='done'?0.75:1,position:'relative',overflow:'hidden' }}>
+                    style={{ borderRadius: 'var(--r-sm)',padding:'7px 9px',marginBottom:4,background:'#1b212b',borderLeft:`2px solid ${SPORT_BORDER[s.sport]}`,cursor:'grab',opacity:s.status==='done'?0.75:1,position:'relative',overflow:'hidden' }}>
                     {/* teinte de fond par sport — très subtile */}
                     <div style={{ position:'absolute',inset:0,opacity:.08,background:SPORT_BORDER[s.sport],pointerEvents:'none' }} />
-                    {s.status==='done' && <span style={{ position:'absolute',top:3,right:3,fontSize:7,background:SPORT_BORDER[s.sport],color:'#fff',padding:'1px 3px',borderRadius:2,fontWeight:700,zIndex:1 }}>{t('plnp.doneBadge')}</span>}
+                    {s.status==='done' && <span style={{ position:'absolute',top:3,right:3,fontSize: 10,background:SPORT_BORDER[s.sport],color:'#fff',padding:'1px 3px',borderRadius:2,fontWeight:700,zIndex:1 }}>{t('plnp.doneBadge')}</span>}
                     {s.status!=='done' && isSessionModified(s) && <span title={t('plnp.modifiedByYou')} style={{ position:'absolute',top:4,right:4,width:5,height:5,borderRadius:'50%',background:'#f97316',flexShrink:0,zIndex:1 }} />}
-                    {s.planVariant && <span style={{ position:'absolute',top:3,left:3,fontSize:7,fontWeight:800,color:s.planVariant==='A'?'var(--primary)':'#a78bfa',zIndex:1 }}>{s.planVariant}</span>}
+                    {s.planVariant && <span style={{ position:'absolute',top:3,left:3,fontSize: 10,fontWeight:800,color:s.planVariant==='A'?'var(--primary)':'#a78bfa',zIndex:1 }}>{s.planVariant}</span>}
                     {/* contenu */}
                     <div style={{ position:'relative' }}>
-                      <div style={{ fontSize:8,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'.04em',color:'rgba(230,237,243,.38)',marginBottom:2 }}>{SPORT_SHORT[s.sport]}</div>
+                      <div style={{ fontSize: 10,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'.04em',color:'rgba(230,237,243,.38)',marginBottom:2 }}>{SPORT_SHORT[s.sport]}</div>
                       <div style={{ fontSize:11,fontWeight:600,color:'#e6edf3',lineHeight:1.2,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' as const }}>{s.title}</div>
-                      <div style={{ fontSize:9.5,color:'rgba(230,237,243,.38)',marginTop:2,fontFamily:'DM Mono,monospace' }}>{s.time} · {formatHM(s.durationMin)}</div>
+                      <div style={{ fontSize:9.5,color:'rgba(230,237,243,.38)',marginTop:2,fontFamily: 'var(--font-body)' }}>{s.time} · {formatHM(s.durationMin)}</div>
                     </div>
                     {/* barre de progression (réalisé/prévu) */}
                     <div style={{ position:'absolute',bottom:0,left:0,right:0,height:2,background:'rgba(255,255,255,.06)' }}>
@@ -3737,8 +3737,8 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
                   </div>
                 ))}
                 <div style={{ display:'flex',gap:3,marginTop:2 }}>
-                  <button onClick={()=>{setAddModalFavorites(false);setAddModal({dayIndex:i,plan:plan??activePlan,weekStart:ws})}} style={{ flex:1,padding:'3px',borderRadius:5,background:'transparent',border:'1px dashed var(--border)',color:'var(--text-dim)',fontSize:9,cursor:'pointer' }}>+</button>
-                  {planningFavorites.length>0&&<button onClick={()=>{setAddModalFavorites(true);setAddModal({dayIndex:i,plan:plan??activePlan,weekStart:ws})}} style={{ padding:'3px 5px',borderRadius:5,background:'transparent',border:'1px dashed var(--border)',color:'var(--text-dim)',fontSize:9,cursor:'pointer' }} title={t('plnp.loadFavorite')}>★</button>}
+                  <button onClick={()=>{setAddModalFavorites(false);setAddModal({dayIndex:i,plan:plan??activePlan,weekStart:ws})}} style={{ flex:1,padding:'3px',borderRadius: 'var(--r-sm)',background:'transparent',border:'1px dashed var(--border)',color:'var(--text-dim)',fontSize: 10,cursor:'pointer' }}>+</button>
+                  {planningFavorites.length>0&&<button onClick={()=>{setAddModalFavorites(true);setAddModal({dayIndex:i,plan:plan??activePlan,weekStart:ws})}} style={{ padding:'3px 5px',borderRadius: 'var(--r-sm)',background:'transparent',border:'1px dashed var(--border)',color:'var(--text-dim)',fontSize: 10,cursor:'pointer' }} title={t('plnp.loadFavorite')}>★</button>}
                 </div>
               </div>
             </div>
@@ -3757,8 +3757,8 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
                 const acts = d.activities  // toutes les activités réalisées (comme desktop)
                 return (
                   <div key={d.day} style={{ minWidth:0,display:'flex',flexDirection:'column',gap:3,alignItems:'center' }}>
-                    <div style={{ width:'100%',textAlign:'center' as const,borderRadius:8,padding:'3px 0',boxSizing:'border-box' as const,background:today?'var(--bg)':'transparent',border:today?'1px solid var(--border-mid)':'1px solid transparent' }}>
-                      <p style={{ fontSize:9,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.02em',margin:0,color:today?'var(--text)':'var(--text-dim)' }}>{d.day}</p>
+                    <div style={{ width:'100%',textAlign:'center' as const,borderRadius: 'var(--r-sm)',padding:'3px 0',boxSizing:'border-box' as const,background:today?'var(--bg)':'transparent',border:today?'1px solid var(--border-mid)':'1px solid transparent' }}>
+                      <p style={{ fontSize: 10,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.02em',margin:0,color:today?'var(--text)':'var(--text-dim)' }}>{d.day}</p>
                       <p className="tnum" style={{ fontSize:14,fontWeight:700,margin:0,color:'var(--text)' }}>{wDates[i]}</p>
                     </div>
                     {(() => {
@@ -3795,10 +3795,10 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
            demande : on ne bascule plus le programme IA sur la page Planning. ── */}
       {/* ── BANNIÈRE PLAN À VENIR — visible quand le plan démarre dans une semaine future ── */}
       {upcomingPlan && !aiPlan && (
-        <div style={{ padding:'14px 18px',borderRadius:14,background:'rgba(6,182,212,0.08)',border:'1px solid rgba(6,182,212,0.30)',display:'flex',alignItems:'center',gap:14,flexWrap:'wrap' as const }}>
+        <div style={{ padding:'14px 18px',borderRadius: 'var(--r-md)',background:'rgba(6,182,212,0.08)',border:'1px solid rgba(6,182,212,0.30)',display:'flex',alignItems:'center',gap:14,flexWrap:'wrap' as const }}>
           <span style={{ fontSize:22 }}>📅</span>
           <div style={{ flex:1,minWidth:0 }}>
-            <p style={{ fontFamily:'Syne,sans-serif',fontSize:14,fontWeight:700,margin:'0 0 2px',color:'var(--primary)' }}>
+            <p style={{ fontFamily: 'var(--font-body)',fontSize:14,fontWeight:700,margin:'0 0 2px',color:'var(--primary)' }}>
               {upcomingPlan.name}
             </p>
             <p style={{ fontSize:11,color:'var(--text-dim)',margin:0 }}>
@@ -3812,7 +3812,7 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
               const newOffset = Math.round((startMs - baseMs) / (7 * 86400000))
               setWeekOffset(newOffset)
             }}
-            style={{ padding:'8px 16px',borderRadius:9,background:'linear-gradient(135deg,#06B6D4,#5b6fff)',border:'none',color:'#fff',fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:12,cursor:'pointer',flexShrink:0 }}>
+            style={{ padding:'8px 16px',borderRadius: 'var(--r-sm)',background:'linear-gradient(135deg,#06B6D4,#5b6fff)',border:'none',color:'#fff',fontFamily: 'var(--font-body)',fontWeight:700,fontSize:12,cursor:'pointer',flexShrink:0 }}>
             {t('plnp.upcoming.viewWeek1')}
           </button>
         </div>
@@ -3871,26 +3871,26 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
         {addChooser && (
           <div style={{ display:'flex', flexDirection:'column', gap:10, paddingBottom:8 }}>
             <button data-guide="chooser-training" onClick={()=>{ const c=addChooser; setAddChooser(null); setAddModal({ dayIndex:c.dayIndex, plan:c.plan, weekStart:c.weekStart }) }}
-              style={{ display:'flex', alignItems:'center', gap:12, padding:'16px', borderRadius:14, border:'1px solid var(--border)', background:'var(--bg-card2)', cursor:'pointer', textAlign:'left' as const }}>
-              <span style={{ width:44, height:44, borderRadius:12, background:'var(--primary-dim)', color:'var(--primary)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}><Dumbbell size={22} /></span>
+              style={{ display:'flex', alignItems:'center', gap:12, padding:'16px', borderRadius: 'var(--r-md)', border:'1px solid var(--border)', background:'var(--bg-card2)', cursor:'pointer', textAlign:'left' as const }}>
+              <span style={{ width:44, height:44, borderRadius: 'var(--r-md)', background:'var(--primary-dim)', color:'var(--primary)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}><Dumbbell size={22} /></span>
               <span style={{ flex:1 }}>
-                <span style={{ display:'block', fontFamily:'Syne,sans-serif', fontSize:15, fontWeight:700, color:'var(--text)' }}>{t('plnp.add.training')}</span>
+                <span style={{ display:'block', fontFamily: 'var(--font-body)', fontSize:15, fontWeight:700, color:'var(--text)' }}>{t('plnp.add.training')}</span>
                 <span style={{ display:'block', fontSize:12, color:'var(--text-dim)', marginTop:2 }}>{t('plnp.add.trainingHint')}</span>
               </span>
             </button>
             <button data-guide="chooser-race" onClick={()=>{ const c=addChooser; setAddChooser(null); setRaceEditor({ date: chooserDateISO(c) }) }}
-              style={{ display:'flex', alignItems:'center', gap:12, padding:'16px', borderRadius:14, border:'1px solid var(--border)', background:'var(--bg-card2)', cursor:'pointer', textAlign:'left' as const }}>
-              <span style={{ width:44, height:44, borderRadius:12, background:'rgba(239,68,68,0.12)', color:'var(--danger)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}><Flag size={22} /></span>
+              style={{ display:'flex', alignItems:'center', gap:12, padding:'16px', borderRadius: 'var(--r-md)', border:'1px solid var(--border)', background:'var(--bg-card2)', cursor:'pointer', textAlign:'left' as const }}>
+              <span style={{ width:44, height:44, borderRadius: 'var(--r-md)', background:'rgba(239,68,68,0.12)', color:'var(--danger)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}><Flag size={22} /></span>
               <span style={{ flex:1 }}>
-                <span style={{ display:'block', fontFamily:'Syne,sans-serif', fontSize:15, fontWeight:700, color:'var(--text)' }}>{t('plnp.add.race')}</span>
+                <span style={{ display:'block', fontFamily: 'var(--font-body)', fontSize:15, fontWeight:700, color:'var(--text)' }}>{t('plnp.add.race')}</span>
                 <span style={{ display:'block', fontSize:12, color:'var(--text-dim)', marginTop:2 }}>{t('plnp.add.raceHint')}</span>
               </span>
             </button>
             <button data-guide="chooser-test" onClick={()=>{ const c=addChooser; setAddChooser(null); setTestPlanner({ dayIndex:c.dayIndex, plan:c.plan, weekStart:c.weekStart }) }}
-              style={{ display:'flex', alignItems:'center', gap:12, padding:'16px', borderRadius:14, border:'1px solid var(--border)', background:'var(--bg-card2)', cursor:'pointer', textAlign:'left' as const }}>
-              <span style={{ width:44, height:44, borderRadius:12, background:'rgba(139,92,246,0.14)', color:'#8b5cf6', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, fontFamily:'Syne,sans-serif', fontWeight:800, fontSize:18 }}>T</span>
+              style={{ display:'flex', alignItems:'center', gap:12, padding:'16px', borderRadius: 'var(--r-md)', border:'1px solid var(--border)', background:'var(--bg-card2)', cursor:'pointer', textAlign:'left' as const }}>
+              <span style={{ width:44, height:44, borderRadius: 'var(--r-md)', background:'rgba(139,92,246,0.14)', color:'#8b5cf6', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, fontFamily: 'var(--font-display)', fontWeight:800, fontSize:18 }}>T</span>
               <span style={{ flex:1 }}>
-                <span style={{ display:'block', fontFamily:'Syne,sans-serif', fontSize:15, fontWeight:700, color:'var(--text)' }}>Test de forme</span>
+                <span style={{ display:'block', fontFamily: 'var(--font-body)', fontSize:15, fontWeight:700, color:'var(--text)' }}>Test de forme</span>
                 <span style={{ display:'block', fontSize:12, color:'var(--text-dim)', marginTop:2 }}>Planifie un test Performance (VMA, FTP, CSS…) — voir le procédé.</span>
               </span>
             </button>
@@ -3911,19 +3911,19 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
       {tab === 'training' && (<>
       {/* ── Controls — desktop (ancienne interface) ── */}
       <div id="tr-ctrl-desktop" style={{ display:'flex',alignItems:'center',gap:8,flexWrap:'wrap' as const }}>
-        <div data-guide="plan-weeknav" style={{ display:'flex',alignItems:'center',gap:4,background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:10,padding:'4px 6px' }}>
-          <button onClick={()=>setWeekOffset(o=>o-1)} style={{ background:'none',border:'none',color:'var(--text-mid)',cursor:'pointer',fontSize:16,padding:'2px 6px',borderRadius:6 }}>←</button>
+        <div data-guide="plan-weeknav" style={{ display:'flex',alignItems:'center',gap:4,background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius: 'var(--r-sm)',padding:'4px 6px' }}>
+          <button onClick={()=>setWeekOffset(o=>o-1)} style={{ background:'none',border:'none',color:'var(--text-mid)',cursor:'pointer',fontSize:16,padding:'2px 6px',borderRadius: 'var(--r-sm)' }}>←</button>
           <span style={{ fontSize:11,fontWeight:600,color:'var(--text)',minWidth:120,textAlign:'center' as const }}>{getWeekLabel(currentWeekStart)}</span>
-          <button onClick={()=>setWeekOffset(o=>o+1)} style={{ background:'none',border:'none',color:'var(--text-mid)',cursor:'pointer',fontSize:16,padding:'2px 6px',borderRadius:6 }}>→</button>
-          {weekOffset!==0&&<button onClick={()=>setWeekOffset(0)} style={{ fontSize:9,padding:'2px 6px',borderRadius:5,background:'rgba(6,182,212,0.10)',border:'1px solid rgba(6,182,212,0.25)',color:'var(--primary)',cursor:'pointer',fontWeight:600 }}>{t('plnp.today')}</button>}
+          <button onClick={()=>setWeekOffset(o=>o+1)} style={{ background:'none',border:'none',color:'var(--text-mid)',cursor:'pointer',fontSize:16,padding:'2px 6px',borderRadius: 'var(--r-sm)' }}>→</button>
+          {weekOffset!==0&&<button onClick={()=>setWeekOffset(0)} style={{ fontSize: 10,padding:'2px 6px',borderRadius: 'var(--r-sm)',background:'rgba(6,182,212,0.10)',border:'1px solid rgba(6,182,212,0.25)',color:'var(--primary)',cursor:'pointer',fontWeight:600 }}>{t('plnp.today')}</button>}
         </div>
         <div style={{ position:'relative' }}>
-          <button onClick={()=>setShowRangeDd(x=>!x)} style={{ padding:'6px 12px',borderRadius:9,border:'1px solid var(--border)',background:'var(--bg-card)',color:'var(--text-mid)',fontSize:11,cursor:'pointer',display:'flex',alignItems:'center',gap:5 }}>
-            {t('plnp.weeksN', { n: weekRange })} <span style={{ fontSize:9 }}>▾</span>
+          <button onClick={()=>setShowRangeDd(x=>!x)} style={{ padding:'6px 12px',borderRadius: 'var(--r-sm)',border:'1px solid var(--border)',background:'var(--bg-card)',color:'var(--text-mid)',fontSize:11,cursor:'pointer',display:'flex',alignItems:'center',gap:5 }}>
+            {t('plnp.weeksN', { n: weekRange })} <span style={{ fontSize: 10 }}>▾</span>
           </button>
-          {showRangeDd&&<div style={{ position:'absolute',top:'calc(100% + 4px)',left:0,background:'var(--bg-card)',border:'1px solid var(--border-mid)',borderRadius:10,boxShadow:'var(--shadow)',zIndex:50,minWidth:130,padding:4 }}>
+          {showRangeDd&&<div style={{ position:'absolute',top:'calc(100% + 4px)',left:0,background:'var(--bg-card)',border:'1px solid var(--border-mid)',borderRadius: 'var(--r-sm)',boxShadow:'var(--shadow)',zIndex:50,minWidth:130,padding:4 }}>
             {([5,10,20] as WeekRange[]).map(r=>(
-              <button key={r} onClick={()=>{setWeekRange(r);setShowRangeDd(false)}} style={{ width:'100%',padding:'7px 12px',borderRadius:7,border:'none',background:weekRange===r?'rgba(6,182,212,0.10)':'transparent',color:weekRange===r?'var(--primary)':'var(--text-mid)',fontSize:12,cursor:'pointer',textAlign:'left' as const,fontWeight:weekRange===r?600:400 }}>
+              <button key={r} onClick={()=>{setWeekRange(r);setShowRangeDd(false)}} style={{ width:'100%',padding:'7px 12px',borderRadius: 'var(--r-sm)',border:'none',background:weekRange===r?'rgba(6,182,212,0.10)':'transparent',color:weekRange===r?'var(--primary)':'var(--text-mid)',fontSize:12,cursor:'pointer',textAlign:'left' as const,fontWeight:weekRange===r?600:400 }}>
                 {t('plnp.weeksN', { n: r })}
               </button>
             ))}
@@ -3932,14 +3932,14 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
         <div style={{ marginLeft:'auto', position:'relative' }}>
           {showPlanDd && <div onClick={()=>setShowPlanDd(false)} style={{ position:'fixed',inset:0,zIndex:49 }}/>}
           <button data-guide="plan-abtoggle" onClick={()=>setShowPlanDd(x=>!x)}
-            style={{ padding:'6px 12px',borderRadius:9,border:'1px solid var(--border)',background:'var(--bg-card)',color:'var(--text-mid)',fontSize:11,cursor:'pointer',display:'flex',alignItems:'center',gap:5,fontWeight:600 }}>
-            {compareMode ? t('plnp.compare') : `Plan ${activePlan}`} <span style={{ fontSize:9 }}>▾</span>
+            style={{ padding:'6px 12px',borderRadius: 'var(--r-sm)',border:'1px solid var(--border)',background:'var(--bg-card)',color:'var(--text-mid)',fontSize:11,cursor:'pointer',display:'flex',alignItems:'center',gap:5,fontWeight:600 }}>
+            {compareMode ? t('plnp.compare') : `Plan ${activePlan}`} <span style={{ fontSize: 10 }}>▾</span>
           </button>
           {showPlanDd && (
-            <div style={{ position:'absolute',top:'calc(100% + 4px)',right:0,background:'var(--bg-card)',border:'1px solid var(--border-mid)',borderRadius:10,boxShadow:'0 8px 20px rgba(0,0,0,0.14)',zIndex:50,minWidth:150,padding:4 }}>
+            <div style={{ position:'absolute',top:'calc(100% + 4px)',right:0,background:'var(--bg-card)',border:'1px solid var(--border-mid)',borderRadius: 'var(--r-sm)',boxShadow:'0 8px 20px rgba(0,0,0,0.14)',zIndex:50,minWidth:150,padding:4 }}>
               {(['A','B'] as PlanVariant[]).map(p=>(
                 <button key={p} onClick={()=>{setActivePlan(p);setCompareMode(false);setShowPlanDd(false)}}
-                  style={{ width:'100%',padding:'7px 12px',borderRadius:7,border:'none',
+                  style={{ width:'100%',padding:'7px 12px',borderRadius: 'var(--r-sm)',border:'none',
                     background:!compareMode&&activePlan===p?'rgba(6,182,212,0.10)':'transparent',
                     color:!compareMode&&activePlan===p?'#06B6D4':'var(--text-mid)',
                     fontSize:12,cursor:'pointer',textAlign:'left' as const,fontWeight:!compareMode&&activePlan===p?700:400 }}>
@@ -3947,7 +3947,7 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
                 </button>
               ))}
               <button onClick={()=>{setCompareMode(x=>!x);setShowPlanDd(false)}}
-                style={{ width:'100%',padding:'7px 12px',borderRadius:7,border:'none',
+                style={{ width:'100%',padding:'7px 12px',borderRadius: 'var(--r-sm)',border:'none',
                   background:compareMode?'rgba(255,179,64,0.10)':'transparent',
                   color:compareMode?'#ffb340':'var(--text-mid)',
                   fontSize:12,cursor:'pointer',textAlign:'left' as const,fontWeight:compareMode?700:400 }}>
@@ -3961,22 +3961,22 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
       {/* ── Controls — mobile (3 lignes en carte) ── */}
       <div id="tr-ctrl-mobile" style={{ display:'flex',alignItems:'center',gap:6,flexWrap:'wrap' as const }}>
         {/* Navigation semaine — compacte */}
-        <button data-guide="plan-weeknav" onClick={()=>setWeekOffset(o=>o-1)} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',cursor:'pointer',fontSize:14,padding:'4px 9px',borderRadius:8,lineHeight:1 }}>←</button>
+        <button data-guide="plan-weeknav" onClick={()=>setWeekOffset(o=>o-1)} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',cursor:'pointer',fontSize:14,padding:'4px 9px',borderRadius: 'var(--r-sm)',lineHeight:1 }}>←</button>
         <span style={{ fontSize:11,fontWeight:700,color:'var(--text)',minWidth:96,textAlign:'center' as const }}>{getWeekLabel(currentWeekStart)}</span>
-        <button onClick={()=>setWeekOffset(o=>o+1)} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',cursor:'pointer',fontSize:14,padding:'4px 9px',borderRadius:8,lineHeight:1 }}>→</button>
-        {weekOffset!==0 && <button onClick={()=>setWeekOffset(0)} style={{ fontSize:10,padding:'4px 9px',borderRadius:8,background:'var(--primary-dim)',border:'none',color:'var(--primary)',cursor:'pointer',fontWeight:700 }}>{t('plnp.today')}</button>}
+        <button onClick={()=>setWeekOffset(o=>o+1)} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',cursor:'pointer',fontSize:14,padding:'4px 9px',borderRadius: 'var(--r-sm)',lineHeight:1 }}>→</button>
+        {weekOffset!==0 && <button onClick={()=>setWeekOffset(0)} style={{ fontSize:10,padding:'4px 9px',borderRadius: 'var(--r-sm)',background:'var(--primary-dim)',border:'none',color:'var(--primary)',cursor:'pointer',fontWeight:700 }}>{t('plnp.today')}</button>}
         {/* Sélecteur période — bulle compacte */}
         <div style={{ position:'relative' }}>
           <button onClick={()=>setShowRangeDd(x=>!x)}
-            style={{ padding:'5px 11px',borderRadius:8,border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text)',fontSize:11,cursor:'pointer',display:'flex',alignItems:'center',gap:5,fontWeight:600 }}>
+            style={{ padding:'5px 11px',borderRadius: 'var(--r-sm)',border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text)',fontSize:11,cursor:'pointer',display:'flex',alignItems:'center',gap:5,fontWeight:600 }}>
             <span>{t('plnp.weeksNShort', { n: weekRange })}</span>
-            <span style={{ fontSize:9,color:'var(--text-dim)' }}>▾</span>
+            <span style={{ fontSize: 10,color:'var(--text-dim)' }}>▾</span>
           </button>
           {showRangeDd&&<div onClick={()=>setShowRangeDd(false)} style={{ position:'fixed',inset:0,zIndex:49 }}/>}
-          {showRangeDd&&<div style={{ position:'absolute',top:'calc(100% + 6px)',left:0,minWidth:130,background:'var(--bg-card)',border:'1px solid var(--border-mid)',borderRadius:12,boxShadow:'0 8px 24px rgba(0,0,0,0.18)',zIndex:50,padding:5 }}>
+          {showRangeDd&&<div style={{ position:'absolute',top:'calc(100% + 6px)',left:0,minWidth:130,background:'var(--bg-card)',border:'1px solid var(--border-mid)',borderRadius: 'var(--r-md)',boxShadow:'0 8px 24px rgba(0,0,0,0.18)',zIndex:50,padding:5 }}>
             {([5,10,20] as WeekRange[]).map(r=>(
               <button key={r} onClick={()=>{setWeekRange(r);setShowRangeDd(false)}}
-                style={{ width:'100%',padding:'8px 12px',borderRadius:8,border:'none',
+                style={{ width:'100%',padding:'8px 12px',borderRadius: 'var(--r-sm)',border:'none',
                   background:weekRange===r?'rgba(6,182,212,0.10)':'transparent',
                   color:weekRange===r?'#06B6D4':'var(--text-mid)',
                   fontSize:12,cursor:'pointer',textAlign:'left' as const,fontWeight:weekRange===r?700:400 }}>
@@ -3989,15 +3989,15 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
         <div style={{ position:'relative' }}>
           {showPlanDd && <div onClick={()=>setShowPlanDd(false)} style={{ position:'fixed',inset:0,zIndex:49 }}/>}
           <button data-guide="plan-abtoggle" onClick={()=>setShowPlanDd(x=>!x)}
-            style={{ padding:'5px 11px',borderRadius:8,border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text)',fontSize:11,cursor:'pointer',display:'flex',alignItems:'center',gap:5,fontWeight:600 }}>
+            style={{ padding:'5px 11px',borderRadius: 'var(--r-sm)',border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text)',fontSize:11,cursor:'pointer',display:'flex',alignItems:'center',gap:5,fontWeight:600 }}>
             <span>{compareMode ? 'A & B' : `Plan ${activePlan}`}</span>
-            <span style={{ fontSize:9,color:'var(--text-dim)' }}>▾</span>
+            <span style={{ fontSize: 10,color:'var(--text-dim)' }}>▾</span>
           </button>
           {showPlanDd && (
-            <div style={{ position:'absolute',top:'calc(100% + 6px)',left:0,minWidth:180,background:'var(--bg-card)',border:'1px solid var(--border-mid)',borderRadius:12,boxShadow:'0 8px 24px rgba(0,0,0,0.18)',zIndex:50,padding:5 }}>
+            <div style={{ position:'absolute',top:'calc(100% + 6px)',left:0,minWidth:180,background:'var(--bg-card)',border:'1px solid var(--border-mid)',borderRadius: 'var(--r-md)',boxShadow:'0 8px 24px rgba(0,0,0,0.18)',zIndex:50,padding:5 }}>
               {(['A','B'] as PlanVariant[]).map(p=>(
                 <button key={p} onClick={()=>{setActivePlan(p);setCompareMode(false);setShowPlanDd(false)}}
-                  style={{ width:'100%',padding:'8px 12px',borderRadius:8,border:'none',
+                  style={{ width:'100%',padding:'8px 12px',borderRadius: 'var(--r-sm)',border:'none',
                     background:!compareMode&&activePlan===p?'rgba(6,182,212,0.10)':'transparent',
                     color:!compareMode&&activePlan===p?'#06B6D4':'var(--text-mid)',
                     fontSize:12,cursor:'pointer',textAlign:'left' as const,fontWeight:!compareMode&&activePlan===p?700:400 }}>
@@ -4005,7 +4005,7 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
                 </button>
               ))}
               <button onClick={()=>{setCompareMode(x=>!x);setShowPlanDd(false)}}
-                style={{ width:'100%',padding:'8px 12px',borderRadius:8,border:'none',
+                style={{ width:'100%',padding:'8px 12px',borderRadius: 'var(--r-sm)',border:'none',
                   background:compareMode?'rgba(255,179,64,0.10)':'transparent',
                   color:compareMode?'#ffb340':'var(--text-mid)',
                   fontSize:12,cursor:'pointer',textAlign:'left' as const,fontWeight:compareMode?700:400 }}>
@@ -4361,10 +4361,10 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
     const col = t.fromTraining ? (t.color||TASK_CONFIG[t.type].color) : getTaskColor(t)
     return (
       <div key={t.id} onClick={e=>{e.stopPropagation();if(!t.fromTraining)setEditModal(t)}}
-        style={{ borderRadius:5,padding:'3px 5px',background:`${col}18`,borderLeft:`2px solid ${col}`,cursor:t.fromTraining?'default':'pointer',position:'relative',marginBottom:2 }}>
-        {t.priority && <span style={{ position:'absolute',top:1,right:2,fontSize:8,color:'#ffb340',fontWeight:900 }}>•</span>}
-        <p style={{ fontSize:9,fontWeight:600,margin:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' as const,color:col,paddingRight:t.priority?10:0 }}>{t.title}</p>
-        <p style={{ fontSize:8,color:'var(--text-dim)',margin:'1px 0 0' }}>{formatHM(t.durationMin)}</p>
+        style={{ borderRadius: 'var(--r-sm)',padding:'3px 5px',background:`${col}18`,borderLeft:`2px solid ${col}`,cursor:t.fromTraining?'default':'pointer',position:'relative',marginBottom:2 }}>
+        {t.priority && <span style={{ position:'absolute',top:1,right:2,fontSize: 10,color:'#ffb340',fontWeight:900 }}>•</span>}
+        <p style={{ fontSize: 10,fontWeight:600,margin:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' as const,color:col,paddingRight:t.priority?10:0 }}>{t.title}</p>
+        <p style={{ fontSize: 10,color:'var(--text-dim)',margin:'1px 0 0' }}>{formatHM(t.durationMin)}</p>
       </div>
     )
   }
@@ -4397,7 +4397,7 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
     }
 
     return (
-      <div style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:16,overflow:'hidden',boxShadow:'var(--shadow-card)' }}>
+      <div style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius: 'var(--r-md)',overflow:'hidden',boxShadow:'var(--shadow-card)' }}>
         {/* Day headers */}
         <div style={{ display:'grid',gridTemplateColumns:`50px repeat(${cols},1fr)`,borderBottom:'1px solid var(--border)',background:'var(--bg-card2)' }}>
           <div/>
@@ -4405,7 +4405,7 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
             <div key={d} style={{ padding:'7px 4px',textAlign:'center' as const,borderLeft:'1px solid var(--border)',position:'relative' }}>
               {/* Tap sur l'en-tête du jour → vue jour façon iOS */}
               <div onClick={e=>{e.stopPropagation();setDayViewDay(d)}} style={{ cursor:'pointer' }}>
-                <p style={{ fontSize:9,color:'var(--text-dim)',textTransform:'uppercase' as const,margin:'0 0 2px' }}>{t('plnp.dayAbbrs').split(',')[d]}</p>
+                <p style={{ fontSize: 10,color:'var(--text-dim)',textTransform:'uppercase' as const,margin:'0 0 2px' }}>{t('plnp.dayAbbrs').split(',')[d]}</p>
                 <div style={{ display:'inline-flex',alignItems:'center',justifyContent:'center',
                   width:isToday?28:undefined,height:isToday?28:undefined,
                   borderRadius:isToday?'50%':undefined,
@@ -4415,7 +4415,7 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
                 </div>
               </div>
               <div style={{ display:'flex',alignItems:'center',justifyContent:'center',gap:3 }}>
-                <span style={{ padding:'1px 5px',borderRadius:20,background:load.bg,border:`1px solid ${load.border}`,color:load.color,fontSize:8,fontWeight:700 }}>{t('plnp.intensityCfg.' + loadKey)}</span>
+                <span style={{ padding:'1px 5px',borderRadius: 'var(--r-lg)',background:load.bg,border:`1px solid ${load.border}`,color:load.color,fontSize: 10,fontWeight:700 }}>{t('plnp.intensityCfg.' + loadKey)}</span>
                 <button onClick={e=>{e.stopPropagation();openNewTask(d,9,0)}}
                   style={{ width:16,height:16,borderRadius:4,border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text-dim)',fontSize:11,lineHeight:1,cursor:'pointer',display:'inline-flex',alignItems:'center',justifyContent:'center',padding:0 }}>+</button>
               </div>
@@ -4428,7 +4428,7 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
             {/* Hour labels column — style vue jour iOS */}
             <div style={{ width:50, flexShrink:0, position:'relative', borderRight:'1px solid var(--border)' }}>
               {HOURS.map((hour,i)=>(
-                <div key={hour} style={{ position:'absolute', top:i*CELL_H - 6, right:7, fontSize:11, fontFamily:'DM Mono,monospace', color:'var(--text-dim)' }}>
+                <div key={hour} style={{ position:'absolute', top:i*CELL_H - 6, right:7, fontSize:11, fontFamily: 'var(--font-body)', color:'var(--text-dim)' }}>
                   {String(hour).padStart(2,'0')}:00
                 </div>
               ))}
@@ -4490,15 +4490,15 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
                   const heightPx=Math.max(actMin/60*CELL_H,28)
                   return (
                     <div key={a.id} onClick={e=>{e.stopPropagation();setActivityDetail(a)}}
-                      style={{ position:'absolute' as const,top:topPx,height:heightPx,left:4,right:4,borderRadius:8,
+                      style={{ position:'absolute' as const,top:topPx,height:heightPx,left:4,right:4,borderRadius: 'var(--r-sm)',
                         padding:'4px 6px',background:`color-mix(in srgb, ${col} 14%, transparent)`,borderLeft:`3px solid ${col}`,
                         cursor:'pointer',zIndex:2,overflow:'hidden' as const }}>
                       <div style={{ display:'flex',alignItems:'center',gap:3 }}>
                         <SportBadge sport={sp} size="xs"/>
-                        <p style={{ fontSize:9,fontWeight:600,margin:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' as const,color:col }}>{a.name}</p>
-                        <span style={{ fontSize:8,background:col,color:'#fff',padding:'0 3px',borderRadius:2,fontWeight:700,flexShrink:0,marginLeft:'auto' }}>✓</span>
+                        <p style={{ fontSize: 10,fontWeight:600,margin:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' as const,color:col }}>{a.name}</p>
+                        <span style={{ fontSize: 10,background:col,color:'#fff',padding:'0 3px',borderRadius:2,fontWeight:700,flexShrink:0,marginLeft:'auto' }}>✓</span>
                       </div>
-                      {heightPx>=44&&<p style={{ fontSize:8,color:'var(--text-dim)',margin:'2px 0 0',fontFamily:'DM Mono,monospace' }}>{String(a.startHour).padStart(2,'0')}:{String(a.startMin).padStart(2,'0')} · {formatHM(actMin)}</p>}
+                      {heightPx>=44&&<p style={{ fontSize: 10,color:'var(--text-dim)',margin:'2px 0 0',fontFamily: 'var(--font-body)' }}>{String(a.startHour).padStart(2,'0')}:{String(a.startMin).padStart(2,'0')} · {formatHM(actMin)}</p>}
                     </div>
                   )
                 })}
@@ -4519,11 +4519,11 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
                       onTouchMove={onSessionTouchMove}
                       onTouchEnd={onSessionTouchEnd}
                       onClick={e=>e.stopPropagation()}
-                      style={{ position:'absolute' as const,top:topPx,height:heightPx,left:4,right:4,borderRadius:8,
+                      style={{ position:'absolute' as const,top:topPx,height:heightPx,left:4,right:4,borderRadius: 'var(--r-sm)',
                         padding:'4px 6px',background:SESSION_BG,borderLeft:`3px solid ${SESSION_COLOR}`,
                         cursor:'grab',zIndex:3,overflow:'hidden' as const,userSelect:'none' as const }}>
-                      <p style={{ fontSize:9,fontWeight:700,margin:0,color:SESSION_COLOR,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' as const }}>{sportAbbr?`[${sportAbbr}] `:''}{t.title}</p>
-                      {heightPx>=44&&<p style={{ fontSize:8,color:'var(--text-dim)',margin:'2px 0 0',fontFamily:'DM Mono,monospace' }}>{String(t.startHour).padStart(2,'0')}:{String(t.startMin).padStart(2,'0')} · {formatHM(t.durationMin)}{sportAbbr?` · ${sportAbbr}`:''}</p>}
+                      <p style={{ fontSize: 10,fontWeight:700,margin:0,color:SESSION_COLOR,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' as const }}>{sportAbbr?`[${sportAbbr}] `:''}{t.title}</p>
+                      {heightPx>=44&&<p style={{ fontSize: 10,color:'var(--text-dim)',margin:'2px 0 0',fontFamily: 'var(--font-body)' }}>{String(t.startHour).padStart(2,'0')}:{String(t.startMin).padStart(2,'0')} · {formatHM(t.durationMin)}{sportAbbr?` · ${sportAbbr}`:''}</p>}
                     </div>
                   )
                 })}
@@ -4546,19 +4546,19 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
                       onTouchMove={onTaskTouchMove}
                       onTouchEnd={onTaskTouchEnd}
                       onClick={e=>{e.stopPropagation();setEditModal(wt)}}
-                      style={{ position:'absolute' as const,top:topPx,height:heightPx,left:4,right:4,borderRadius:8,
+                      style={{ position:'absolute' as const,top:topPx,height:heightPx,left:4,right:4,borderRadius: 'var(--r-sm)',
                         padding:'4px 6px',background:`color-mix(in srgb, ${col} 14%, transparent)`,borderLeft:`3px solid ${col}`,
                         cursor:'pointer',zIndex:1,overflow:'hidden' as const }}>
-                      {wt.priority&&<span style={{ position:'absolute' as const,top:1,right:2,fontSize:8,color:'#ffb340',fontWeight:900 }}>•</span>}
+                      {wt.priority&&<span style={{ position:'absolute' as const,top:1,right:2,fontSize: 10,color:'#ffb340',fontWeight:900 }}>•</span>}
                       {/* Ligne 1 : titre + horaire */}
                       <div style={{ display:'flex',alignItems:'baseline',gap:4,overflow:'hidden' as const }}>
-                        <p style={{ fontSize:9,fontWeight:700,margin:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' as const,color:col,paddingRight:wt.priority?10:0,flexShrink:1,minWidth:0 }}>{wt.title}</p>
-                        {heightPx>=28&&<span style={{ fontSize:7,color:col,opacity:0.75,whiteSpace:'nowrap' as const,flexShrink:0 }}>{timeLabel}</span>}
+                        <p style={{ fontSize: 10,fontWeight:700,margin:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' as const,color:col,paddingRight:wt.priority?10:0,flexShrink:1,minWidth:0 }}>{wt.title}</p>
+                        {heightPx>=28&&<span style={{ fontSize: 10,color:col,opacity:0.75,whiteSpace:'nowrap' as const,flexShrink:0 }}>{timeLabel}</span>}
                       </div>
                       {/* Ligne 2 : description tronquée */}
                       {heightPx>=40&&wt.description&&<p style={{ fontSize:7.5,color:'var(--text-dim)',margin:'1px 0 0',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' as const,lineHeight:1.3 }}>{wt.description}</p>}
                       {/* Ligne 3 : sous-tâches */}
-                      {heightPx>=52&&totalCount>0&&<p style={{ fontSize:7,color:'var(--text-dim)',margin:'1px 0 0',opacity:0.8 }}>{doneCount}/{totalCount} {t('plnp.subtasks')}</p>}
+                      {heightPx>=52&&totalCount>0&&<p style={{ fontSize: 10,color:'var(--text-dim)',margin:'1px 0 0',opacity:0.8 }}>{doneCount}/{totalCount} {t('plnp.subtasks')}</p>}
                     </div>
                   )
                 })}
@@ -4573,12 +4573,12 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
   return (
     <div style={{ display:'flex',flexDirection:'column',gap:14 }}>
       {/* ── Tâches du jour (simple checklist) ── */}
-      <div style={{ borderRadius:12,border:'1px solid var(--border)',background:'var(--bg-card2)',overflow:'hidden' }}>
+      <div style={{ borderRadius: 'var(--r-md)',border:'1px solid var(--border)',background:'var(--bg-card2)',overflow:'hidden' }}>
         <div style={{ padding:'10px 14px 8px',borderBottom:'1px solid var(--border)' }}>
           <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:6 }}>
             <p style={{ fontSize:10,fontWeight:600,color:'var(--text-dim)',textTransform:'uppercase' as const,letterSpacing:'0.08em',margin:0 }}>{t('plnp.dailyTasks')}</p>
             <button onClick={()=>setShowSectionEditor(true)}
-              style={{ fontSize:10,padding:'3px 8px',borderRadius:6,border:'1px solid var(--border)',background:'var(--bg-card)',color:'var(--text-dim)',cursor:'pointer' }}>⚙</button>
+              style={{ fontSize:10,padding:'3px 8px',borderRadius: 'var(--r-sm)',border:'1px solid var(--border)',background:'var(--bg-card)',color:'var(--text-dim)',cursor:'pointer' }}>⚙</button>
           </div>
           {dailyTasks.length>0&&(()=>{
             const total=dailyTasks.length
@@ -4586,12 +4586,12 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
             const pct=Math.round((done/total)*100)
             return (
               <div style={{ display:'flex',alignItems:'center',gap:8 }}>
-                <div style={{ flex:1,height:4,borderRadius:99,background:'var(--border)',overflow:'hidden' }}>
-                  <div style={{ height:'100%',borderRadius:99,transition:'width 0.3s',width:`${pct}%`,
+                <div style={{ flex:1,height:4,borderRadius: 'var(--r-pill)',background:'var(--border)',overflow:'hidden' }}>
+                  <div style={{ height:'100%',borderRadius: 'var(--r-pill)',transition:'width 0.3s',width:`${pct}%`,
                     background:pct===100?'#22c55e':pct>50?'#facc15':'var(--primary)' }}/>
                 </div>
                 <span style={{ fontSize:11,fontWeight:700,fontFamily:'"DM Mono",monospace',color:pct===100?'#22c55e':'var(--text-mid)',flexShrink:0 }}>{pct}%</span>
-                <span style={{ fontSize:9,color:'var(--text-dim)',flexShrink:0 }}>{done}/{total}</span>
+                <span style={{ fontSize: 10,color:'var(--text-dim)',flexShrink:0 }}>{done}/{total}</span>
               </div>
             )
           })()}
@@ -4608,7 +4608,7 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
                       border:task.done?'1.5px solid #22c55e':'1.5px solid var(--border)',
                       background:task.done?'#22c55e':'transparent',
                       display:'flex',alignItems:'center',justifyContent:'center',
-                    }}>{task.done&&<span style={{ color:'#fff',fontSize:9 }}>✓</span>}</button>
+                    }}>{task.done&&<span style={{ color:'#fff',fontSize: 10 }}>✓</span>}</button>
                     {sec&&<span style={{ width:6,height:6,borderRadius:'50%',background:sec.color,flexShrink:0 }}/>}
                     <span style={{ fontSize:12,flex:1,color:task.done?'var(--text-dim)':'var(--text)',textDecoration:task.done?'line-through':'none' }}>{task.text}</span>
                     <button onClick={()=>deleteDailyTask(task.id)} style={{ background:'none',border:'none',color:'var(--text-dim)',cursor:'pointer',fontSize:13,opacity:0.4,padding:'0 2px',lineHeight:1 }}>×</button>
@@ -4621,10 +4621,10 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
             <input value={newTaskText} onChange={e=>setNewTaskText(e.target.value)}
               onKeyDown={e=>{if(e.key==='Enter')addDailyTask()}}
               placeholder={t('plnp.addTaskPlaceholder')}
-              style={{ flex:1,padding:'6px 10px',borderRadius:7,border:'1px solid var(--border)',background:'var(--bg-card)',color:'var(--text)',fontSize:11,outline:'none' }}/>
+              style={{ flex:1,padding:'6px 10px',borderRadius: 'var(--r-sm)',border:'1px solid var(--border)',background:'var(--bg-card)',color:'var(--text)',fontSize:11,outline:'none' }}/>
             {sections.length>0&&(
               <select value={newTaskSection??''} onChange={e=>setNewTaskSection(e.target.value||null)}
-                style={{ padding:'6px 7px',borderRadius:7,border:'1px solid var(--border)',background:'var(--bg-card)',color:'var(--text)',fontSize:11,outline:'none',maxWidth:80 }}>
+                style={{ padding:'6px 7px',borderRadius: 'var(--r-sm)',border:'1px solid var(--border)',background:'var(--bg-card)',color:'var(--text)',fontSize:11,outline:'none',maxWidth:80 }}>
                 {sections.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
               </select>
             )}
@@ -4637,23 +4637,23 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
         <div onClick={()=>setShowSectionEditor(false)}
           style={{ position:'fixed' as const,inset:0,zIndex:300,background:'rgba(0,0,0,0.55)',backdropFilter:'blur(4px)',display:'flex',alignItems:'center',justifyContent:'center',padding:16 }}>
           <div onClick={e=>e.stopPropagation()}
-            style={{ background:'var(--bg-card)',borderRadius:18,border:'1px solid var(--border-mid)',padding:22,maxWidth:400,width:'100%',maxHeight:'80vh',overflowY:'auto' as const }}>
+            style={{ background:'var(--bg-card)',borderRadius: 'var(--r-lg)',border:'1px solid var(--border-mid)',padding:22,maxWidth:400,width:'100%',maxHeight:'80vh',overflowY:'auto' as const }}>
             <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:16 }}>
-              <h3 style={{ fontFamily:'Syne,sans-serif',fontSize:15,fontWeight:700,margin:0 }}>{t('plnp.sections')}</h3>
+              <h3 style={{ fontFamily: 'var(--font-body)',fontSize:15,fontWeight:700,margin:0 }}>{t('plnp.sections')}</h3>
               <button onClick={()=>setShowSectionEditor(false)}
-                style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius:8,padding:'4px 8px',cursor:'pointer',color:'var(--text-dim)',fontSize:14 }}>×</button>
+                style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius: 'var(--r-sm)',padding:'4px 8px',cursor:'pointer',color:'var(--text-dim)',fontSize:14 }}>×</button>
             </div>
             <div style={{ display:'flex',flexDirection:'column' as const,gap:8,marginBottom:14 }}>
               {sections.map(s=>(
-                <div key={s.id} style={{ display:'flex',alignItems:'center',gap:8,padding:'8px 10px',borderRadius:10,background:'var(--bg-card2)',border:'1px solid var(--border)' }}>
+                <div key={s.id} style={{ display:'flex',alignItems:'center',gap:8,padding:'8px 10px',borderRadius: 'var(--r-sm)',background:'var(--bg-card2)',border:'1px solid var(--border)' }}>
                   <input type="color" value={s.color} onChange={e=>updateSectionColor(s.id,e.target.value)}
                     style={{ width:28,height:28,border:'none',padding:0,cursor:'pointer',borderRadius:4,background:'none' }}/>
                   <input defaultValue={s.name} onBlur={e=>updateSectionName(s.id,e.target.value)}
-                    style={{ flex:1,padding:'5px 8px',borderRadius:7,border:'1px solid var(--border)',background:'var(--bg-card)',color:'var(--text)',fontSize:12,outline:'none' }}/>
-                  {s.isSportDefault&&<span style={{ fontSize:9,padding:'2px 6px',borderRadius:10,background:`${s.color}33`,color:s.color,fontWeight:700 }}>{t('plnp.sportBadge')}</span>}
+                    style={{ flex:1,padding:'5px 8px',borderRadius: 'var(--r-sm)',border:'1px solid var(--border)',background:'var(--bg-card)',color:'var(--text)',fontSize:12,outline:'none' }}/>
+                  {s.isSportDefault&&<span style={{ fontSize: 10,padding:'2px 6px',borderRadius: 'var(--r-sm)',background:`${s.color}33`,color:s.color,fontWeight:700 }}>{t('plnp.sportBadge')}</span>}
                   {!s.isSportDefault&&(
                     <button onClick={()=>deleteSection(s.id)}
-                      style={{ padding:'4px 8px',borderRadius:7,background:'rgba(255,95,95,0.1)',border:'1px solid rgba(255,95,95,0.25)',color:'#ff5f5f',fontSize:11,cursor:'pointer' }}>✕</button>
+                      style={{ padding:'4px 8px',borderRadius: 'var(--r-sm)',background:'rgba(255,95,95,0.1)',border:'1px solid rgba(255,95,95,0.25)',color:'#ff5f5f',fontSize:11,cursor:'pointer' }}>✕</button>
                   )}
                 </div>
               ))}
@@ -4662,9 +4662,9 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
               <input value={newSectionName} onChange={e=>setNewSectionName(e.target.value)}
                 onKeyDown={e=>{if(e.key==='Enter')addSection()}}
                 placeholder={t('plnp.newSectionPlaceholder')}
-                style={{ flex:1,padding:'7px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--bg-card)',color:'var(--text)',fontSize:12,outline:'none' }}/>
+                style={{ flex:1,padding:'7px 10px',borderRadius: 'var(--r-sm)',border:'1px solid var(--border)',background:'var(--bg-card)',color:'var(--text)',fontSize:12,outline:'none' }}/>
               <button onClick={addSection}
-                style={{ padding:'7px 14px',borderRadius:8,border:'none',background:'var(--primary)',color:'#fff',fontSize:11,fontWeight:700,cursor:'pointer' }}>{t('plnp.add')}</button>
+                style={{ padding:'7px 14px',borderRadius: 'var(--r-sm)',border:'none',background:'var(--primary)',color:'#fff',fontSize:11,fontWeight:700,cursor:'pointer' }}>{t('plnp.add')}</button>
             </div>
           </div>
         </div>
@@ -4672,13 +4672,13 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
 
       {/* MOBILE — switch + nav */}
       <div style={{ display:'flex',flexDirection:'column',gap:8 }} id="mobile-week">
-        <div style={{ display:'flex',gap:1,background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius:10,padding:3,alignSelf:'flex-start' }}>
+        <div style={{ display:'flex',gap:1,background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius: 'var(--r-sm)',padding:3,alignSelf:'flex-start' }}>
           {([['today',t('plnp.view.today')],['3days',t('plnp.view.3days')]] as ['today'|'3days',string][]).map(([v,l])=>(
-            <button key={v} onClick={()=>setMobileView(v)} style={{ padding:'6px 12px',borderRadius:8,border:'none',cursor:'pointer',fontSize:11,background:mobileView===v?'var(--bg-card)':'transparent',color:mobileView===v?'var(--text)':'var(--text-dim)',fontWeight:mobileView===v?600:400 }}>{l}</button>
+            <button key={v} onClick={()=>setMobileView(v)} style={{ padding:'6px 12px',borderRadius: 'var(--r-sm)',border:'none',cursor:'pointer',fontSize:11,background:mobileView===v?'var(--bg-card)':'transparent',color:mobileView===v?'var(--text)':'var(--text-dim)',fontWeight:mobileView===v?600:400 }}>{l}</button>
           ))}
         </div>
         {mobileView==='3days' && (
-          <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:11,padding:'7px 13px' }}>
+          <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius: 'var(--r-md)',padding:'7px 13px' }}>
             <button onClick={()=>setMobileDayOffset(Math.max(0,mobileDayOffset-1))} disabled={mobileDayOffset===0} style={{ background:'none',border:'none',color:mobileDayOffset===0?'var(--border)':'var(--text-mid)',cursor:'pointer',fontSize:16,padding:'2px 6px' }}>←</button>
             <span style={{ fontSize:12,fontWeight:600 }}>{dayLabels[mobileDayOffset]} — {dayLabels[Math.min(mobileDayOffset+2,6)]}</span>
             <button onClick={()=>setMobileDayOffset(Math.min(4,mobileDayOffset+1))} disabled={mobileDayOffset>=4} style={{ background:'none',border:'none',color:mobileDayOffset>=4?'var(--border)':'var(--text-mid)',cursor:'pointer',fontSize:16,padding:'2px 6px' }}>→</button>
@@ -4689,9 +4689,9 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
 
       {/* DESKTOP — masqué sur mobile via CSS inline trick */}
       <div id="desktop-week" style={{ display:'none' }}>
-        <div style={{ display:'flex',gap:1,background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius:10,padding:3,alignSelf:'flex-start',marginBottom:12 }}>
+        <div style={{ display:'flex',gap:1,background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius: 'var(--r-sm)',padding:3,alignSelf:'flex-start',marginBottom:12 }}>
           {([['today',t('plnp.view.today')],['week',t('plnp.view.fullWeek')]] as ['today'|'week',string][]).map(([v,l])=>(
-            <button key={v} onClick={()=>setDesktopView(v)} style={{ padding:'6px 14px',borderRadius:8,border:'none',cursor:'pointer',fontSize:12,background:desktopView===v?'var(--bg-card)':'transparent',color:desktopView===v?'var(--text)':'var(--text-dim)',fontWeight:desktopView===v?600:400 }}>{l}</button>
+            <button key={v} onClick={()=>setDesktopView(v)} style={{ padding:'6px 14px',borderRadius: 'var(--r-sm)',border:'none',cursor:'pointer',fontSize:12,background:desktopView===v?'var(--bg-card)':'transparent',color:desktopView===v?'var(--text)':'var(--text-dim)',fontWeight:desktopView===v?600:400 }}>{l}</button>
           ))}
         </div>
         <CalendarGrid days={desktopVisibleDays} cols={desktopVisibleDays.length}/>
@@ -4739,23 +4739,23 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
           display:'flex',alignItems:'center',justifyContent:'center',padding:16,
         }}>
           <div onClick={e=>e.stopPropagation()} style={{
-            background:'var(--bg-card)',borderRadius:18,padding:22,
+            background:'var(--bg-card)',borderRadius: 'var(--r-lg)',padding:22,
             maxWidth:440,width:'100%',border:'1px solid var(--border-mid)',
             maxHeight:'85vh',overflowY:'auto' as const,
           }}>
             <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:16 }}>
-              <h3 style={{ fontFamily:'Syne,sans-serif',fontSize:15,fontWeight:700,margin:0 }}>{t('plnp.task.new')}</h3>
-              <button onClick={()=>setShowNewTask(false)} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius:8,padding:'4px 8px',cursor:'pointer',color:'var(--text-dim)',fontSize:14 }}>×</button>
+              <h3 style={{ fontFamily: 'var(--font-body)',fontSize:15,fontWeight:700,margin:0 }}>{t('plnp.task.new')}</h3>
+              <button onClick={()=>setShowNewTask(false)} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius: 'var(--r-sm)',padding:'4px 8px',cursor:'pointer',color:'var(--text-dim)',fontSize:14 }}>×</button>
             </div>
 
             {/* 1. Catégorie — sans Sport */}
             {sections.filter(s=>!s.isSportDefault).length>0&&(
               <div style={{ marginBottom:14 }}>
-                <p style={{ fontSize:9,fontWeight:600,color:'var(--text-dim)',textTransform:'uppercase' as const,letterSpacing:'0.08em',margin:'0 0 6px' }}>{t('plnp.task.category')}</p>
+                <p style={{ fontSize: 10,fontWeight:600,color:'var(--text-dim)',textTransform:'uppercase' as const,letterSpacing:'0.08em',margin:'0 0 6px' }}>{t('plnp.task.category')}</p>
                 <div style={{ display:'flex',gap:5,flexWrap:'wrap' as const }}>
                   {sections.filter(s=>!s.isSportDefault).map(s=>(
                     <button key={s.id} onClick={()=>setNewTask(t=>({...t,sectionId:s.id}))} style={{
-                      padding:'5px 12px',borderRadius:7,fontSize:11,fontWeight:600,cursor:'pointer',
+                      padding:'5px 12px',borderRadius: 'var(--r-sm)',fontSize:11,fontWeight:600,cursor:'pointer',
                       background:newTask.sectionId===s.id?`${s.color}20`:'transparent',
                       border:newTask.sectionId===s.id?`1.5px solid ${s.color}`:'1px solid var(--border)',
                       color:newTask.sectionId===s.id?s.color:'var(--text-dim)',
@@ -4771,46 +4771,46 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
 
             {/* 2. Titre */}
             <div style={{ marginBottom:14 }}>
-              <p style={{ fontSize:9,fontWeight:600,color:'var(--text-dim)',textTransform:'uppercase' as const,letterSpacing:'0.08em',margin:'0 0 6px' }}>{t('plnp.task.title')}</p>
+              <p style={{ fontSize: 10,fontWeight:600,color:'var(--text-dim)',textTransform:'uppercase' as const,letterSpacing:'0.08em',margin:'0 0 6px' }}>{t('plnp.task.title')}</p>
               <input value={newTask.text} onChange={e=>setNewTask(nt=>({...nt,text:e.target.value}))}
                 onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey)handleSubmitNewTask()}}
                 placeholder={t('plnp.task.namePlaceholder')} autoFocus
-                style={{ width:'100%',padding:'10px 12px',borderRadius:9,border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text)',fontSize:14,fontWeight:600,outline:'none',boxSizing:'border-box' as const }}/>
+                style={{ width:'100%',padding:'10px 12px',borderRadius: 'var(--r-sm)',border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text)',fontSize:14,fontWeight:600,outline:'none',boxSizing:'border-box' as const }}/>
             </div>
 
             {/* 3. Description */}
             <div style={{ marginBottom:14 }}>
-              <p style={{ fontSize:9,fontWeight:600,color:'var(--text-dim)',textTransform:'uppercase' as const,letterSpacing:'0.08em',margin:'0 0 6px' }}>{t('plnp.task.description')}</p>
+              <p style={{ fontSize: 10,fontWeight:600,color:'var(--text-dim)',textTransform:'uppercase' as const,letterSpacing:'0.08em',margin:'0 0 6px' }}>{t('plnp.task.description')}</p>
               <textarea value={newTask.description} onChange={e=>setNewTask(nt=>({...nt,description:e.target.value}))}
                 placeholder={t('plnp.task.descPlaceholder')} rows={3}
-                style={{ width:'100%',padding:'8px 12px',borderRadius:9,border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text-mid)',fontSize:12,outline:'none',resize:'vertical' as const,fontFamily:'"DM Sans",sans-serif',lineHeight:1.5,boxSizing:'border-box' as const }}/>
+                style={{ width:'100%',padding:'8px 12px',borderRadius: 'var(--r-sm)',border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text-mid)',fontSize:12,outline:'none',resize:'vertical' as const,fontFamily:'"DM Sans",sans-serif',lineHeight:1.5,boxSizing:'border-box' as const }}/>
             </div>
 
             {/* 4. Horaire */}
             <div style={{ marginBottom:14 }}>
-              <p style={{ fontSize:9,fontWeight:600,color:'var(--text-dim)',textTransform:'uppercase' as const,letterSpacing:'0.08em',margin:'0 0 6px' }}>{t('plnp.task.schedule')}</p>
+              <p style={{ fontSize: 10,fontWeight:600,color:'var(--text-dim)',textTransform:'uppercase' as const,letterSpacing:'0.08em',margin:'0 0 6px' }}>{t('plnp.task.schedule')}</p>
               <div style={{ display:'flex',gap:10,alignItems:'center',flexWrap:'wrap' as const }}>
                 <div style={{ display:'flex',alignItems:'center',gap:4 }}>
                   <span style={{ fontSize:10,color:'var(--text-dim)' }}>{t('plnp.task.start')}</span>
                   <input type="number" min={0} max={23} value={newTask.startHour}
                     onChange={e=>setNewTask(nt=>({...nt,startHour:parseInt(e.target.value)||0}))}
-                    style={{ width:40,padding:'6px',borderRadius:6,border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text)',fontSize:13,fontFamily:'"DM Mono",monospace',textAlign:'center' as const,outline:'none' }}/>
+                    style={{ width:40,padding:'6px',borderRadius: 'var(--r-sm)',border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text)',fontSize:13,fontFamily:'"DM Mono",monospace',textAlign:'center' as const,outline:'none' }}/>
                   <span style={{ color:'var(--text-dim)' }}>:</span>
                   <input type="number" min={0} max={59} step={5} value={newTask.startMin}
                     onChange={e=>setNewTask(nt=>({...nt,startMin:parseInt(e.target.value)||0}))}
-                    style={{ width:40,padding:'6px',borderRadius:6,border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text)',fontSize:13,fontFamily:'"DM Mono",monospace',textAlign:'center' as const,outline:'none' }}/>
+                    style={{ width:40,padding:'6px',borderRadius: 'var(--r-sm)',border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text)',fontSize:13,fontFamily:'"DM Mono",monospace',textAlign:'center' as const,outline:'none' }}/>
                 </div>
                 <div style={{ display:'flex',alignItems:'center',gap:4 }}>
                   <span style={{ fontSize:10,color:'var(--text-dim)' }}>{t('plnp.field.duration')}</span>
                   <input type="number" min={0} max={12}
                     value={Math.floor((newTask.durationMin||0)/60)}
                     onChange={e=>{ const h=parseInt(e.target.value)||0; const m=(newTask.durationMin||0)%60; setNewTask(nt=>({...nt,durationMin:h*60+m})) }}
-                    style={{ width:36,padding:'6px',borderRadius:6,border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text)',fontSize:13,fontFamily:'"DM Mono",monospace',textAlign:'center' as const,outline:'none' }}/>
+                    style={{ width:36,padding:'6px',borderRadius: 'var(--r-sm)',border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text)',fontSize:13,fontFamily:'"DM Mono",monospace',textAlign:'center' as const,outline:'none' }}/>
                   <span style={{ fontSize:10,color:'var(--text-dim)' }}>h</span>
                   <input type="number" min={0} max={59} step={5}
                     value={(newTask.durationMin||0)%60}
                     onChange={e=>{ const h=Math.floor((newTask.durationMin||0)/60); const m=parseInt(e.target.value)||0; setNewTask(nt=>({...nt,durationMin:h*60+m})) }}
-                    style={{ width:36,padding:'6px',borderRadius:6,border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text)',fontSize:13,fontFamily:'"DM Mono",monospace',textAlign:'center' as const,outline:'none' }}/>
+                    style={{ width:36,padding:'6px',borderRadius: 'var(--r-sm)',border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text)',fontSize:13,fontFamily:'"DM Mono",monospace',textAlign:'center' as const,outline:'none' }}/>
                   <span style={{ fontSize:10,color:'var(--text-dim)' }}>min</span>
                 </div>
                 {(newTask.durationMin||0)>0&&(
@@ -4823,11 +4823,11 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
 
             {/* 5. Priorité */}
             <div style={{ marginBottom:14 }}>
-              <p style={{ fontSize:9,fontWeight:600,color:'var(--text-dim)',textTransform:'uppercase' as const,letterSpacing:'0.08em',margin:'0 0 6px' }}>{t('plnp.task.priority')}</p>
+              <p style={{ fontSize: 10,fontWeight:600,color:'var(--text-dim)',textTransform:'uppercase' as const,letterSpacing:'0.08em',margin:'0 0 6px' }}>{t('plnp.task.priority')}</p>
               <div style={{ display:'flex',gap:5 }}>
                 {([['low',t('plnp.priority.low'),'#6b7280'],['medium',t('plnp.priority.medium'),'#f97316'],['high',t('plnp.priority.high'),'#ef4444']] as ['low'|'medium'|'high',string,string][]).map(([id,label,color])=>(
                   <button key={id} onClick={()=>setNewTask(nt=>({...nt,priority:id}))} style={{
-                    padding:'5px 12px',borderRadius:7,fontSize:10,fontWeight:600,cursor:'pointer',
+                    padding:'5px 12px',borderRadius: 'var(--r-sm)',fontSize:10,fontWeight:600,cursor:'pointer',
                     background:newTask.priority===id?`${color}15`:'transparent',
                     border:newTask.priority===id?`1.5px solid ${color}`:'1px solid var(--border)',
                     color:newTask.priority===id?color:'var(--text-dim)',
@@ -4838,20 +4838,20 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
 
             {/* 6. Sous-tâches */}
             <div style={{ marginBottom:14 }}>
-              <p style={{ fontSize:9,fontWeight:600,color:'var(--text-dim)',textTransform:'uppercase' as const,letterSpacing:'0.08em',margin:'0 0 6px' }}>{t('plnp.subtasksLabel')}</p>
+              <p style={{ fontSize: 10,fontWeight:600,color:'var(--text-dim)',textTransform:'uppercase' as const,letterSpacing:'0.08em',margin:'0 0 6px' }}>{t('plnp.subtasksLabel')}</p>
               {newTask.subtasks.map((st,i)=>(
                 <div key={i} style={{ display:'flex',gap:6,alignItems:'center',marginBottom:4 }}>
                   <span style={{ fontSize:10,color:'var(--text-dim)',width:14 }}>{i+1}.</span>
                   <input value={st}
                     onChange={e=>{ const upd=[...newTask.subtasks]; upd[i]=e.target.value; setNewTask(nt=>({...nt,subtasks:upd})) }}
                     placeholder={t('plnp.stepPlaceholder')}
-                    style={{ flex:1,padding:'5px 8px',borderRadius:6,border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text)',fontSize:11,outline:'none' }}/>
+                    style={{ flex:1,padding:'5px 8px',borderRadius: 'var(--r-sm)',border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text)',fontSize:11,outline:'none' }}/>
                   <button onClick={()=>setNewTask(nt=>({...nt,subtasks:nt.subtasks.filter((_,j)=>j!==i)}))}
                     style={{ background:'none',border:'none',color:'var(--text-dim)',cursor:'pointer',fontSize:12,opacity:0.5 }}>×</button>
                 </div>
               ))}
               <button onClick={()=>setNewTask(nt=>({...nt,subtasks:[...nt.subtasks,'']}))} style={{
-                padding:'5px 10px',borderRadius:6,border:'1px dashed var(--border)',
+                padding:'5px 10px',borderRadius: 'var(--r-sm)',border:'1px dashed var(--border)',
                 background:'transparent',color:'var(--text-dim)',fontSize:10,cursor:'pointer',
               }}>{t('plnp.addSubtask')}</button>
             </div>
@@ -4875,7 +4875,7 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
                     <button key={i} onClick={()=>setNewTask(nt=>({
                       ...nt,recurrenceDays:nt.recurrenceDays.includes(i)?nt.recurrenceDays.filter(d=>d!==i):[...nt.recurrenceDays,i],
                     }))} style={{
-                      width:32,height:32,borderRadius:6,fontSize:9,fontWeight:600,cursor:'pointer',
+                      width:32,height:32,borderRadius: 'var(--r-sm)',fontSize: 10,fontWeight:600,cursor:'pointer',
                       background:newTask.recurrenceDays.includes(i)?'var(--primary)':'var(--bg-card2)',
                       border:newTask.recurrenceDays.includes(i)?'none':'1px solid var(--border)',
                       color:newTask.recurrenceDays.includes(i)?'#fff':'var(--text-dim)',
@@ -4888,13 +4888,13 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
             {/* Actions */}
             <div style={{ display:'flex',gap:8 }}>
               <button onClick={()=>setShowNewTask(false)} style={{
-                flex:1,padding:10,borderRadius:8,border:'1px solid var(--border)',
+                flex:1,padding:10,borderRadius: 'var(--r-sm)',border:'1px solid var(--border)',
                 background:'transparent',color:'var(--text-dim)',fontSize:12,cursor:'pointer',
               }}>{t('plnp.cancel')}</button>
               <button onClick={handleSubmitNewTask} style={{
-                flex:1,padding:10,borderRadius:8,border:'none',
+                flex:1,padding:10,borderRadius: 'var(--r-sm)',border:'none',
                 background:sections.find(s=>s.id===newTask.sectionId)?.color??'#6366f1',
-                color:'#fff',fontSize:12,fontWeight:700,cursor:'pointer',fontFamily:'Syne,sans-serif',
+                color:'#fff',fontSize:12,fontWeight:700,cursor:'pointer',fontFamily: 'var(--font-body)',
               }}>{t('plnp.add')}</button>
             </div>
           </div>
@@ -4925,22 +4925,22 @@ function TaskEditModal({ task, sections, onClose, onSave, onDelete }:{
 
   return (
     <div onClick={onClose} style={{ position:'fixed',inset:0,zIndex:200,background:'rgba(0,0,0,0.5)',backdropFilter:'blur(4px)',display:'flex',alignItems:'center',justifyContent:'center',padding:16 }}>
-      <div onClick={e=>e.stopPropagation()} style={{ background:'var(--bg-card)',borderRadius:18,border:'1px solid var(--border-mid)',padding:22,maxWidth:440,width:'100%',maxHeight:'85vh',overflowY:'auto' as const }}>
+      <div onClick={e=>e.stopPropagation()} style={{ background:'var(--bg-card)',borderRadius: 'var(--r-lg)',border:'1px solid var(--border-mid)',padding:22,maxWidth:440,width:'100%',maxHeight:'85vh',overflowY:'auto' as const }}>
 
         {/* Header */}
         <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:16 }}>
-          <h3 style={{ fontFamily:'Syne,sans-serif',fontSize:15,fontWeight:700,margin:0 }}>{t('plnp.task.edit')}</h3>
-          <button onClick={onClose} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius:8,padding:'4px 8px',cursor:'pointer',color:'var(--text-dim)',fontSize:14 }}>×</button>
+          <h3 style={{ fontFamily: 'var(--font-body)',fontSize:15,fontWeight:700,margin:0 }}>{t('plnp.task.edit')}</h3>
+          <button onClick={onClose} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius: 'var(--r-sm)',padding:'4px 8px',cursor:'pointer',color:'var(--text-dim)',fontSize:14 }}>×</button>
         </div>
 
         {/* 1. Catégorie */}
         {nonSportSections.length>0&&(
           <div style={{ marginBottom:14 }}>
-            <p style={{ fontSize:9,fontWeight:600,color:'var(--text-dim)',textTransform:'uppercase' as const,letterSpacing:'0.08em',margin:'0 0 6px' }}>{t('plnp.task.category')}</p>
+            <p style={{ fontSize: 10,fontWeight:600,color:'var(--text-dim)',textTransform:'uppercase' as const,letterSpacing:'0.08em',margin:'0 0 6px' }}>{t('plnp.task.category')}</p>
             <div style={{ display:'flex',gap:5,flexWrap:'wrap' as const }}>
               {nonSportSections.map(s=>(
                 <button key={s.id} onClick={()=>setForm(f=>({...f,sectionId:s.id}))} style={{
-                  padding:'5px 12px',borderRadius:7,fontSize:11,fontWeight:600,cursor:'pointer',
+                  padding:'5px 12px',borderRadius: 'var(--r-sm)',fontSize:11,fontWeight:600,cursor:'pointer',
                   background:form.sectionId===s.id?`${s.color}20`:'transparent',
                   border:form.sectionId===s.id?`1.5px solid ${s.color}`:'1px solid var(--border)',
                   color:form.sectionId===s.id?s.color:'var(--text-dim)',
@@ -4956,42 +4956,42 @@ function TaskEditModal({ task, sections, onClose, onSave, onDelete }:{
 
         {/* 2. Titre */}
         <div style={{ marginBottom:14 }}>
-          <p style={{ fontSize:9,fontWeight:600,color:'var(--text-dim)',textTransform:'uppercase' as const,letterSpacing:'0.08em',margin:'0 0 6px' }}>{t('plnp.task.title')}</p>
+          <p style={{ fontSize: 10,fontWeight:600,color:'var(--text-dim)',textTransform:'uppercase' as const,letterSpacing:'0.08em',margin:'0 0 6px' }}>{t('plnp.task.title')}</p>
           <input value={form.title} onChange={e=>setForm(f=>({...f,title:e.target.value}))}
-            style={{ width:'100%',padding:'10px 12px',borderRadius:9,border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text)',fontSize:14,fontWeight:600,outline:'none',boxSizing:'border-box' as const }}/>
+            style={{ width:'100%',padding:'10px 12px',borderRadius: 'var(--r-sm)',border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text)',fontSize:14,fontWeight:600,outline:'none',boxSizing:'border-box' as const }}/>
         </div>
 
         {/* 3. Description */}
         <div style={{ marginBottom:14 }}>
-          <p style={{ fontSize:9,fontWeight:600,color:'var(--text-dim)',textTransform:'uppercase' as const,letterSpacing:'0.08em',margin:'0 0 6px' }}>{t('plnp.task.description')}</p>
+          <p style={{ fontSize: 10,fontWeight:600,color:'var(--text-dim)',textTransform:'uppercase' as const,letterSpacing:'0.08em',margin:'0 0 6px' }}>{t('plnp.task.description')}</p>
           <textarea value={form.description??''} onChange={e=>setForm(f=>({...f,description:e.target.value}))}
             placeholder={t('plnp.task.descPlaceholder')} rows={3}
-            style={{ width:'100%',padding:'8px 12px',borderRadius:9,border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text-mid)',fontSize:12,outline:'none',resize:'vertical' as const,fontFamily:'"DM Sans",sans-serif',lineHeight:1.5,boxSizing:'border-box' as const }}/>
+            style={{ width:'100%',padding:'8px 12px',borderRadius: 'var(--r-sm)',border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text-mid)',fontSize:12,outline:'none',resize:'vertical' as const,fontFamily:'"DM Sans",sans-serif',lineHeight:1.5,boxSizing:'border-box' as const }}/>
         </div>
 
         {/* 4. Horaire */}
         <div style={{ marginBottom:14 }}>
-          <p style={{ fontSize:9,fontWeight:600,color:'var(--text-dim)',textTransform:'uppercase' as const,letterSpacing:'0.08em',margin:'0 0 6px' }}>{t('plnp.task.schedule')}</p>
+          <p style={{ fontSize: 10,fontWeight:600,color:'var(--text-dim)',textTransform:'uppercase' as const,letterSpacing:'0.08em',margin:'0 0 6px' }}>{t('plnp.task.schedule')}</p>
           <div style={{ display:'flex',gap:10,alignItems:'center',flexWrap:'wrap' as const }}>
             <div style={{ display:'flex',alignItems:'center',gap:4 }}>
               <span style={{ fontSize:10,color:'var(--text-dim)' }}>{t('plnp.task.start')}</span>
               <input type="number" min={0} max={23} value={form.startHour}
                 onChange={e=>setForm(f=>({...f,startHour:parseInt(e.target.value)||0}))}
-                style={{ width:40,padding:'6px',borderRadius:6,border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text)',fontSize:13,fontFamily:'"DM Mono",monospace',textAlign:'center' as const,outline:'none' }}/>
+                style={{ width:40,padding:'6px',borderRadius: 'var(--r-sm)',border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text)',fontSize:13,fontFamily:'"DM Mono",monospace',textAlign:'center' as const,outline:'none' }}/>
               <span style={{ color:'var(--text-dim)' }}>:</span>
               <input type="number" min={0} max={59} step={5} value={form.startMin}
                 onChange={e=>setForm(f=>({...f,startMin:parseInt(e.target.value)||0}))}
-                style={{ width:40,padding:'6px',borderRadius:6,border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text)',fontSize:13,fontFamily:'"DM Mono",monospace',textAlign:'center' as const,outline:'none' }}/>
+                style={{ width:40,padding:'6px',borderRadius: 'var(--r-sm)',border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text)',fontSize:13,fontFamily:'"DM Mono",monospace',textAlign:'center' as const,outline:'none' }}/>
             </div>
             <div style={{ display:'flex',alignItems:'center',gap:4 }}>
               <span style={{ fontSize:10,color:'var(--text-dim)' }}>{t('plnp.field.duration')}</span>
               <input type="number" min={0} max={12} value={Math.floor(form.durationMin/60)}
                 onChange={e=>{ const h=parseInt(e.target.value)||0; const m=form.durationMin%60; setForm(f=>({...f,durationMin:h*60+m})) }}
-                style={{ width:36,padding:'6px',borderRadius:6,border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text)',fontSize:13,fontFamily:'"DM Mono",monospace',textAlign:'center' as const,outline:'none' }}/>
+                style={{ width:36,padding:'6px',borderRadius: 'var(--r-sm)',border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text)',fontSize:13,fontFamily:'"DM Mono",monospace',textAlign:'center' as const,outline:'none' }}/>
               <span style={{ fontSize:10,color:'var(--text-dim)' }}>h</span>
               <input type="number" min={0} max={59} step={5} value={form.durationMin%60}
                 onChange={e=>{ const h=Math.floor(form.durationMin/60); const m=parseInt(e.target.value)||0; setForm(f=>({...f,durationMin:h*60+m})) }}
-                style={{ width:36,padding:'6px',borderRadius:6,border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text)',fontSize:13,fontFamily:'"DM Mono",monospace',textAlign:'center' as const,outline:'none' }}/>
+                style={{ width:36,padding:'6px',borderRadius: 'var(--r-sm)',border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text)',fontSize:13,fontFamily:'"DM Mono",monospace',textAlign:'center' as const,outline:'none' }}/>
               <span style={{ fontSize:10,color:'var(--text-dim)' }}>min</span>
             </div>
             {form.durationMin>0&&(
@@ -5004,14 +5004,14 @@ function TaskEditModal({ task, sections, onClose, onSave, onDelete }:{
 
         {/* 5. Priorité */}
         <div style={{ marginBottom:14 }}>
-          <p style={{ fontSize:9,fontWeight:600,color:'var(--text-dim)',textTransform:'uppercase' as const,letterSpacing:'0.08em',margin:'0 0 6px' }}>{t('plnp.task.priority')}</p>
+          <p style={{ fontSize: 10,fontWeight:600,color:'var(--text-dim)',textTransform:'uppercase' as const,letterSpacing:'0.08em',margin:'0 0 6px' }}>{t('plnp.task.priority')}</p>
           <div style={{ display:'flex',gap:5 }}>
             {([['low',t('plnp.priority.low'),'#6b7280'],['medium',t('plnp.priority.medium'),'#f97316'],['high',t('plnp.priority.high'),'#ef4444']] as ['low'|'medium'|'high',string,string][]).map(([id,label,color])=>{
               // priority is boolean: true = haute, false = basse
               const isSelected = id==='high'?!!form.priority:id==='low'?!form.priority:false
               return (
                 <button key={id} onClick={()=>setForm(f=>({...f,priority:id!=='low'}))} style={{
-                  padding:'5px 12px',borderRadius:7,fontSize:10,fontWeight:600,cursor:'pointer',
+                  padding:'5px 12px',borderRadius: 'var(--r-sm)',fontSize:10,fontWeight:600,cursor:'pointer',
                   background:isSelected?`${color}15`:'transparent',
                   border:isSelected?`1.5px solid ${color}`:'1px solid var(--border)',
                   color:isSelected?color:'var(--text-dim)',
@@ -5023,7 +5023,7 @@ function TaskEditModal({ task, sections, onClose, onSave, onDelete }:{
 
         {/* 6. Sous-tâches */}
         <div style={{ marginBottom:14 }}>
-          <p style={{ fontSize:9,fontWeight:600,color:'var(--text-dim)',textTransform:'uppercase' as const,letterSpacing:'0.08em',margin:'0 0 6px' }}>{t('plnp.subtasksLabel')}</p>
+          <p style={{ fontSize: 10,fontWeight:600,color:'var(--text-dim)',textTransform:'uppercase' as const,letterSpacing:'0.08em',margin:'0 0 6px' }}>{t('plnp.subtasksLabel')}</p>
           {(form.subtasks??[]).map((st,i)=>(
             <div key={i} style={{ display:'flex',gap:6,alignItems:'center',marginBottom:5 }}>
               <button onClick={()=>setForm(f=>({...f,subtasks:(f.subtasks??[]).map((x,j)=>j===i?{...x,done:!x.done}:x)}))} style={{
@@ -5033,13 +5033,13 @@ function TaskEditModal({ task, sections, onClose, onSave, onDelete }:{
               }}>{st.done&&<span style={{ color:'#fff',fontSize:10 }}>✓</span>}</button>
               <input value={st.label}
                 onChange={e=>{ const upd=[...(form.subtasks??[])]; upd[i]={...upd[i],label:e.target.value}; setForm(f=>({...f,subtasks:upd})) }}
-                style={{ flex:1,padding:'5px 8px',borderRadius:6,border:'1px solid var(--border)',background:'var(--bg-card2)',color:st.done?'var(--text-dim)':'var(--text)',fontSize:11,outline:'none',textDecoration:st.done?'line-through':'none' }}/>
+                style={{ flex:1,padding:'5px 8px',borderRadius: 'var(--r-sm)',border:'1px solid var(--border)',background:'var(--bg-card2)',color:st.done?'var(--text-dim)':'var(--text)',fontSize:11,outline:'none',textDecoration:st.done?'line-through':'none' }}/>
               <button onClick={()=>setForm(f=>({...f,subtasks:(f.subtasks??[]).filter((_,j)=>j!==i)}))}
                 style={{ background:'none',border:'none',color:'var(--text-dim)',cursor:'pointer',fontSize:14,opacity:0.5 }}>×</button>
             </div>
           ))}
           <button onClick={()=>setForm(f=>({...f,subtasks:[...(f.subtasks??[]),{label:'',done:false}]}))} style={{
-            padding:'5px 10px',borderRadius:6,border:'1px dashed var(--border)',
+            padding:'5px 10px',borderRadius: 'var(--r-sm)',border:'1px dashed var(--border)',
             background:'transparent',color:'var(--text-dim)',fontSize:10,cursor:'pointer',
           }}>{t('plnp.addSubtask')}</button>
         </div>
@@ -5061,7 +5061,7 @@ function TaskEditModal({ task, sections, onClose, onSave, onDelete }:{
                 <button key={i} onClick={()=>setForm(f=>({
                   ...f,recurrenceDays:(f.recurrenceDays??[]).includes(i)?(f.recurrenceDays??[]).filter(d=>d!==i):[...(f.recurrenceDays??[]),i],
                 }))} style={{
-                  width:32,height:32,borderRadius:6,fontSize:9,fontWeight:600,cursor:'pointer',
+                  width:32,height:32,borderRadius: 'var(--r-sm)',fontSize: 10,fontWeight:600,cursor:'pointer',
                   background:(form.recurrenceDays??[]).includes(i)?'var(--primary)':'var(--bg-card2)',
                   border:(form.recurrenceDays??[]).includes(i)?'none':'1px solid var(--border)',
                   color:(form.recurrenceDays??[]).includes(i)?'#fff':'var(--text-dim)',
@@ -5073,9 +5073,9 @@ function TaskEditModal({ task, sections, onClose, onSave, onDelete }:{
 
         {/* Actions */}
         <div style={{ display:'flex',gap:8 }}>
-          <button onClick={()=>onDelete(task.id)} style={{ padding:'9px 12px',borderRadius:10,background:'transparent',border:'none',color:'#ff5f5f',fontSize:12,cursor:'pointer',fontWeight:600 }}>{t('plnp.delete')}</button>
-          <button onClick={onClose} style={{ padding:'9px 14px',borderRadius:10,border:'1px solid var(--border)',background:'transparent',color:'var(--text-dim)',fontSize:12,cursor:'pointer' }}>{t('plnp.cancel')}</button>
-          <button onClick={()=>onSave(form)} style={{ flex:1,padding:10,borderRadius:10,background:activeSec?activeSec.color:'linear-gradient(135deg,#06B6D4,#5b6fff)',border:'none',color:'#fff',fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:12,cursor:'pointer' }}>{t('plnp.save')}</button>
+          <button onClick={()=>onDelete(task.id)} style={{ padding:'9px 12px',borderRadius: 'var(--r-sm)',background:'transparent',border:'none',color:'#ff5f5f',fontSize:12,cursor:'pointer',fontWeight:600 }}>{t('plnp.delete')}</button>
+          <button onClick={onClose} style={{ padding:'9px 14px',borderRadius: 'var(--r-sm)',border:'1px solid var(--border)',background:'transparent',color:'var(--text-dim)',fontSize:12,cursor:'pointer' }}>{t('plnp.cancel')}</button>
+          <button onClick={()=>onSave(form)} style={{ flex:1,padding:10,borderRadius: 'var(--r-sm)',background:activeSec?activeSec.color:'linear-gradient(135deg,#06B6D4,#5b6fff)',border:'none',color:'#fff',fontFamily: 'var(--font-body)',fontWeight:700,fontSize:12,cursor:'pointer' }}>{t('plnp.save')}</button>
         </div>
 
       </div>
@@ -5115,15 +5115,15 @@ function RaceYearTab() {
     <div style={{ display:'flex',flexDirection:'column',gap:14 }}>
       {/* GTY */}
       {gty && (
-        <div style={{ padding:'14px 18px',borderRadius:14,background:'var(--gty-bg)',border:'2px solid var(--gty-border)',display:'flex',alignItems:'center',gap:14,flexWrap:'wrap' as const }}>
+        <div style={{ padding:'14px 18px',borderRadius: 'var(--r-md)',background:'var(--gty-bg)',border:'2px solid var(--gty-border)',display:'flex',alignItems:'center',gap:14,flexWrap:'wrap' as const }}>
           <span style={{ width:10,height:10,borderRadius:'50%',background:'var(--gty-text)',display:'inline-block',flexShrink:0,opacity:0.7 }} />
           <div style={{ flex:1 }}>
             <p style={{ fontSize:11,fontWeight:600,letterSpacing:'0.1em',textTransform:'uppercase' as const,color:'var(--gty-text)',opacity:0.6,margin:'0 0 2px' }}>{t('plnp.race.gty')}</p>
-            <p style={{ fontFamily:'Syne,sans-serif',fontSize:18,fontWeight:800,color:'var(--gty-text)',margin:'0 0 2px' }}>{gty.name}</p>
+            <p style={{ fontFamily: 'var(--font-display)',fontSize:18,fontWeight:800,color:'var(--gty-text)',margin:'0 0 2px' }}>{gty.name}</p>
             {gty.goal && <p style={{ fontSize:12,color:'var(--gty-text)',opacity:0.7,margin:0 }}>{gty.goal}</p>}
           </div>
           <div style={{ textAlign:'center' as const }}>
-            <p style={{ fontFamily:'Syne,sans-serif',fontSize:30,fontWeight:800,color:'var(--gty-text)',margin:0,lineHeight:1 }}>{Math.max(0,daysUntil(gty.date))}</p>
+            <p style={{ fontFamily: 'var(--font-display)',fontSize:30,fontWeight:800,color:'var(--gty-text)',margin:0,lineHeight:1 }}>{Math.max(0,daysUntil(gty.date))}</p>
             <p style={{ fontSize:10,color:'var(--gty-text)',opacity:0.6,margin:0 }}>{t('plnp.race.daysLeft')}</p>
           </div>
         </div>
@@ -5133,12 +5133,12 @@ function RaceYearTab() {
       <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap' as const,gap:8 }}>
         <div style={{ display:'flex',gap:5 }}>
           {([['year',t('plnp.race.yearView')],['month',t('plnp.race.monthView')]] as [CalView,string][]).map(([v,l])=>(
-            <button key={v} onClick={()=>setCalView(v)} style={{ padding:'6px 12px',borderRadius:9,border:'1px solid',borderColor:calView===v?'var(--primary)':'var(--border)',background:calView===v?'rgba(6,182,212,0.10)':'var(--bg-card)',color:calView===v?'var(--primary)':'var(--text-mid)',fontSize:11,cursor:'pointer',fontWeight:calView===v?600:400 }}>{l}</button>
+            <button key={v} onClick={()=>setCalView(v)} style={{ padding:'6px 12px',borderRadius: 'var(--r-sm)',border:'1px solid',borderColor:calView===v?'var(--primary)':'var(--border)',background:calView===v?'rgba(6,182,212,0.10)':'var(--bg-card)',color:calView===v?'var(--primary)':'var(--text-mid)',fontSize:11,cursor:'pointer',fontWeight:calView===v?600:400 }}>{l}</button>
           ))}
         </div>
         <div style={{ display:'flex',gap:6,alignItems:'center' }}>
-          {raceByLevel.map(x=>{ const cfg=RACE_CONFIG[x.level]; return <span key={x.level} style={{ padding:'2px 7px',borderRadius:20,background:cfg.bg,border:`1px solid ${cfg.border}`,color:x.level==='gty'?'var(--gty-text)':cfg.color,fontSize:9,fontWeight:700 }}>{x.count} {x.level==='gty'?cfg.label:t('plnp.raceLevel.'+x.level)}</span> })}
-          <button onClick={()=>setAddModal({month:currentMonth})} style={{ padding:'6px 12px',borderRadius:9,background:'linear-gradient(135deg,#06B6D4,#5b6fff)',border:'none',color:'#fff',fontSize:11,fontWeight:600,cursor:'pointer' }}>{t('plnp.race.addShort')}</button>
+          {raceByLevel.map(x=>{ const cfg=RACE_CONFIG[x.level]; return <span key={x.level} style={{ padding:'2px 7px',borderRadius: 'var(--r-lg)',background:cfg.bg,border:`1px solid ${cfg.border}`,color:x.level==='gty'?'var(--gty-text)':cfg.color,fontSize: 10,fontWeight:700 }}>{x.count} {x.level==='gty'?cfg.label:t('plnp.raceLevel.'+x.level)}</span> })}
+          <button onClick={()=>setAddModal({month:currentMonth})} style={{ padding:'6px 12px',borderRadius: 'var(--r-sm)',background:'linear-gradient(135deg,#06B6D4,#5b6fff)',border:'none',color:'#fff',fontSize:11,fontWeight:600,cursor:'pointer' }}>{t('plnp.race.addShort')}</button>
         </div>
       </div>
 
@@ -5147,14 +5147,14 @@ function RaceYearTab() {
         <div style={{ overflowX:'auto' }}>
           <div style={{ display:'grid',gridTemplateColumns:'repeat(4,minmax(140px,1fr))',gap:10,minWidth:560 }}>
             {MONTHS_TR.map((month,mi)=>{ const mr=getRacesForMonth(mi); return (
-              <div key={mi} style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:12,padding:12,boxShadow:'var(--shadow-card)',cursor:'pointer' }} onClick={()=>{setCurrentMonth(mi);setCalView('month')}}>
-                <p style={{ fontFamily:'Syne,sans-serif',fontSize:13,fontWeight:700,margin:'0 0 7px',color:mr.length>0?'var(--text)':'var(--text-dim)' }}>{MONTHS_SHORT_TR[mi]}</p>
+              <div key={mi} style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius: 'var(--r-md)',padding:12,boxShadow:'var(--shadow-card)',cursor:'pointer' }} onClick={()=>{setCurrentMonth(mi);setCalView('month')}}>
+                <p style={{ fontFamily: 'var(--font-body)',fontSize:13,fontWeight:700,margin:'0 0 7px',color:mr.length>0?'var(--text)':'var(--text-dim)' }}>{MONTHS_SHORT_TR[mi]}</p>
 {mr.length>0 ? mr.sort((a,b)=>new Date(a.date).getDate()-new Date(b.date).getDate()).map(r=>{ const cfg=RACE_CONFIG[r.level]; return (
-                  <div key={r.id} onClick={e=>{e.stopPropagation();setDetailModal(r)}} style={{ display:'flex',alignItems:'center',gap:5,padding:'4px 6px',borderRadius:7,background:cfg.bg,border:`1px solid ${cfg.border}44`,cursor:'pointer',marginBottom:4 }}>
+                  <div key={r.id} onClick={e=>{e.stopPropagation();setDetailModal(r)}} style={{ display:'flex',alignItems:'center',gap:5,padding:'4px 6px',borderRadius: 'var(--r-sm)',background:cfg.bg,border:`1px solid ${cfg.border}44`,cursor:'pointer',marginBottom:4 }}>
                     <span style={{ width:6,height:6,borderRadius:'50%',background:r.level==='gty'?'var(--gty-text)':cfg.color,display:'inline-block',flexShrink:0 }} />
                     <div style={{ flex:1,minWidth:0 }}>
                       <p style={{ fontSize:10,fontWeight:600,margin:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' as const,color:r.level==='gty'?'var(--gty-text)':cfg.color }}>{r.name}</p>
-                      <p style={{ fontSize:9,color:'var(--text-dim)',margin:0 }}>{new Date(r.date).getDate()} {MONTHS_SHORT_TR[mi]}</p>
+                      <p style={{ fontSize: 10,color:'var(--text-dim)',margin:0 }}>{new Date(r.date).getDate()} {MONTHS_SHORT_TR[mi]}</p>
                     </div>
                   </div>
                 )}) : (<p style={{ fontSize:10,color:'var(--text-dim)',margin:0,fontStyle:'italic' as const }}>{t('plnp.race.noneMonth')}</p>)}
@@ -5166,23 +5166,23 @@ function RaceYearTab() {
 
       {/* Vue mensuelle */}
       {calView==='month' && (
-        <div style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:16,padding:16,boxShadow:'var(--shadow-card)' }}>
+        <div style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius: 'var(--r-md)',padding:16,boxShadow:'var(--shadow-card)' }}>
           <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14 }}>
             <div style={{ display:'flex',alignItems:'center',gap:9 }}>
-              <button onClick={()=>setCurrentMonth(m=>Math.max(0,m-1))} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius:8,padding:'5px 10px',cursor:'pointer',color:'var(--text-mid)',fontSize:13 }}>←</button>
-              <h2 style={{ fontFamily:'Syne,sans-serif',fontSize:15,fontWeight:700,margin:0 }}>{MONTHS_TR[currentMonth]} {year}</h2>
-              <button onClick={()=>setCurrentMonth(m=>Math.min(11,m+1))} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius:8,padding:'5px 10px',cursor:'pointer',color:'var(--text-mid)',fontSize:13 }}>→</button>
+              <button onClick={()=>setCurrentMonth(m=>Math.max(0,m-1))} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius: 'var(--r-sm)',padding:'5px 10px',cursor:'pointer',color:'var(--text-mid)',fontSize:13 }}>←</button>
+              <h2 style={{ fontFamily: 'var(--font-body)',fontSize:15,fontWeight:700,margin:0 }}>{MONTHS_TR[currentMonth]} {year}</h2>
+              <button onClick={()=>setCurrentMonth(m=>Math.min(11,m+1))} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius: 'var(--r-sm)',padding:'5px 10px',cursor:'pointer',color:'var(--text-mid)',fontSize:13 }}>→</button>
             </div>
           </div>
           <div style={{ display:'grid',gridTemplateColumns:'repeat(7,1fr)',gap:2,marginBottom:5 }}>
-            {t('plnp.dayLetters').split(',').map((d,i)=><div key={i} style={{ textAlign:'center' as const,fontSize:9,fontWeight:600,color:'var(--text-dim)',padding:'3px 0' }}>{d}</div>)}
+            {t('plnp.dayLetters').split(',').map((d,i)=><div key={i} style={{ textAlign:'center' as const,fontSize: 10,fontWeight:600,color:'var(--text-dim)',padding:'3px 0' }}>{d}</div>)}
           </div>
           <div style={{ display:'grid',gridTemplateColumns:'repeat(7,1fr)',gap:2 }}>
-            {Array.from({length:getFirstDay(currentMonth)-1},(_,i)=><div key={`e${i}`} style={{ height:60,borderRadius:7,background:'var(--bg-card2)',opacity:0.3 }}/>)}
+            {Array.from({length:getFirstDay(currentMonth)-1},(_,i)=><div key={`e${i}`} style={{ height:60,borderRadius: 'var(--r-sm)',background:'var(--bg-card2)',opacity:0.3 }}/>)}
             {Array.from({length:getDaysInMonth(currentMonth)},(_,i)=>{ const day=i+1; const ds=`${year}-${String(currentMonth+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`; const dr=races.filter(r=>r.date===ds); const isToday=new Date().toDateString()===new Date(ds).toDateString(); return (
-              <div key={day} onClick={()=>setAddModal({month:currentMonth,day})} style={{ height:60,borderRadius:7,background:'var(--bg-card2)',border:`1px solid ${isToday?'#06B6D4':'var(--border)'}`,padding:'3px 4px',cursor:'pointer',display:'flex',flexDirection:'column',gap:1 }}>
+              <div key={day} onClick={()=>setAddModal({month:currentMonth,day})} style={{ height:60,borderRadius: 'var(--r-sm)',background:'var(--bg-card2)',border:`1px solid ${isToday?'#06B6D4':'var(--border)'}`,padding:'3px 4px',cursor:'pointer',display:'flex',flexDirection:'column',gap:1 }}>
                 <p style={{ fontSize:10,fontWeight:isToday?700:500,color:isToday?'var(--primary)':'var(--text-mid)',margin:0,textAlign:'right' as const }}>{day}</p>
-                {dr.map(r=>{ const cfg=RACE_CONFIG[r.level]; return <div key={r.id} onClick={e=>{e.stopPropagation();setDetailModal(r)}} style={{ borderRadius:3,padding:'1px 3px',background:cfg.bg,border:`1px solid ${cfg.border}44`,cursor:'pointer' }}><p style={{ fontSize:7,fontWeight:600,margin:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' as const,color:r.level==='gty'?'var(--gty-text)':cfg.color }}>{r.name}</p></div> })}
+                {dr.map(r=>{ const cfg=RACE_CONFIG[r.level]; return <div key={r.id} onClick={e=>{e.stopPropagation();setDetailModal(r)}} style={{ borderRadius:3,padding:'1px 3px',background:cfg.bg,border:`1px solid ${cfg.border}44`,cursor:'pointer' }}><p style={{ fontSize: 10,fontWeight:600,margin:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' as const,color:r.level==='gty'?'var(--gty-text)':cfg.color }}>{r.name}</p></div> })}
               </div>
             )})}
           </div>
@@ -5191,19 +5191,19 @@ function RaceYearTab() {
 
       {/* Prochaine course */}
       {nextRace && (
-        <div style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:13,padding:14,boxShadow:'var(--shadow-card)' }}>
+        <div style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius: 'var(--r-md)',padding:14,boxShadow:'var(--shadow-card)' }}>
           <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'var(--text-dim)',margin:'0 0 9px' }}>{t('plnp.race.next')}</p>
           <div style={{ display:'flex',alignItems:'center',gap:12,flexWrap:'wrap' as const }}>
-            <div style={{ width:52,height:52,borderRadius:11,background:RACE_CONFIG[nextRace.level].bg,border:`2px solid ${RACE_CONFIG[nextRace.level].border}`,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',flexShrink:0 }}>
-              <span style={{ fontFamily:'Syne,sans-serif',fontSize:18,fontWeight:800,color:nextRace.level==='gty'?'var(--gty-text)':RACE_CONFIG[nextRace.level].color,lineHeight:1 }}>{daysUntil(nextRace.date)}</span>
-              <span style={{ fontSize:7,color:'var(--text-dim)' }}>{t('plnp.race.days')}</span>
+            <div style={{ width:52,height:52,borderRadius: 'var(--r-md)',background:RACE_CONFIG[nextRace.level].bg,border:`2px solid ${RACE_CONFIG[nextRace.level].border}`,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',flexShrink:0 }}>
+              <span style={{ fontFamily: 'var(--font-display)',fontSize:18,fontWeight:800,color:nextRace.level==='gty'?'var(--gty-text)':RACE_CONFIG[nextRace.level].color,lineHeight:1 }}>{daysUntil(nextRace.date)}</span>
+              <span style={{ fontSize: 10,color:'var(--text-dim)' }}>{t('plnp.race.days')}</span>
             </div>
             <div style={{ flex:1 }}>
-              <p style={{ fontFamily:'Syne,sans-serif',fontSize:15,fontWeight:700,margin:0 }}>{nextRace.name}</p>
+              <p style={{ fontFamily: 'var(--font-body)',fontSize:15,fontWeight:700,margin:0 }}>{nextRace.name}</p>
               <p style={{ fontSize:11,color:'var(--text-dim)',margin:'2px 0 4px' }}>{new Date(nextRace.date).toLocaleDateString(currentLocale(),{weekday:'long',day:'numeric',month:'long'})}</p>
               {nextRace.goal && <p style={{ fontSize:11,color:'var(--text-mid)',margin:0 }}>{nextRace.goal}</p>}
             </div>
-            <button onClick={()=>setEditModal(nextRace)} style={{ padding:'5px 10px',borderRadius:8,background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',fontSize:11,cursor:'pointer' }}>{t('plnp.edit')}</button>
+            <button onClick={()=>setEditModal(nextRace)} style={{ padding:'5px 10px',borderRadius: 'var(--r-sm)',background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',fontSize:11,cursor:'pointer' }}>{t('plnp.edit')}</button>
           </div>
         </div>
       )}
@@ -5211,22 +5211,22 @@ function RaceYearTab() {
       {/* Liste courses */}
       {races.length>0 && (
         <div style={{ display:'flex',flexDirection:'column',gap:8 }}>
-          <p style={{ fontFamily:'Syne,sans-serif',fontSize:13,fontWeight:700,margin:0,color:'var(--text-dim)' }}>{t('plnp.race.allTitle', { year, n: races.length })}</p>
+          <p style={{ fontFamily: 'var(--font-body)',fontSize:13,fontWeight:700,margin:0,color:'var(--text-dim)' }}>{t('plnp.race.allTitle', { year, n: races.length })}</p>
           {(['gty','main','important','secondary'] as RaceLevel[]).map(level=>{ const lr=races.filter(r=>r.level===level).sort((a,b)=>new Date(a.date).getTime()-new Date(b.date).getTime()); if(!lr.length)return null; const cfg=RACE_CONFIG[level]; return (
             <div key={level}>
               <p style={{ fontSize:10,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.08em',color:level==='gty'?'var(--text)':cfg.color,margin:'0 0 5px' }}>{level==='gty'?cfg.label:t('plnp.raceLevel.'+level)} ({lr.length})</p>
               {lr.map(r=>{ const days=daysUntil(r.date),past=days<0; return (
-                <div key={r.id} style={{ display:'flex',alignItems:'center',gap:11,padding:'11px 13px',borderRadius:10,background:past?'var(--bg-card2)':cfg.bg,border:`1px solid ${past?'var(--border)':cfg.border+'44'}`,marginBottom:5,opacity:past?0.65:1 }}>
+                <div key={r.id} style={{ display:'flex',alignItems:'center',gap:11,padding:'11px 13px',borderRadius: 'var(--r-sm)',background:past?'var(--bg-card2)':cfg.bg,border:`1px solid ${past?'var(--border)':cfg.border+'44'}`,marginBottom:5,opacity:past?0.65:1 }}>
                   <div style={{ textAlign:'center' as const,minWidth:40,flexShrink:0 }}>
-                    <p style={{ fontFamily:'Syne,sans-serif',fontSize:past?13:18,fontWeight:800,color:past?'var(--text-dim)':level==='gty'?'var(--gty-text)':cfg.color,margin:0,lineHeight:1 }}>{past?'✓':days}</p>
-                    <p style={{ fontSize:8,color:'var(--text-dim)',margin:0 }}>{past?t('plnp.race.past'):t('plnp.race.days')}</p>
+                    <p style={{ fontFamily: 'var(--font-body)',fontSize:past?13:18,fontWeight:800,color:past?'var(--text-dim)':level==='gty'?'var(--gty-text)':cfg.color,margin:0,lineHeight:1 }}>{past?'✓':days}</p>
+                    <p style={{ fontSize: 10,color:'var(--text-dim)',margin:0 }}>{past?t('plnp.race.past'):t('plnp.race.days')}</p>
                   </div>
                   <div style={{ flex:1,minWidth:0,cursor:'pointer' }} onClick={()=>setDetailModal(r)}>
                     <p style={{ fontSize:12,fontWeight:600,margin:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' as const }}>{r.name}</p>
                     <p style={{ fontSize:10,color:'var(--text-dim)',margin:'2px 0 0' }}>{new Date(r.date).toLocaleDateString(currentLocale(),{day:'numeric',month:'long'})} · {SPORT_LABEL[r.sport as SportType]}</p>
-                    {r.goal && <p style={{ fontSize:9,color:'var(--text-mid)',margin:'1px 0 0' }}>{r.goal}</p>}
+                    {r.goal && <p style={{ fontSize: 10,color:'var(--text-mid)',margin:'1px 0 0' }}>{r.goal}</p>}
                   </div>
-                  <button onClick={()=>setEditModal(r)} style={{ padding:'4px 8px',borderRadius:7,background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-dim)',fontSize:10,cursor:'pointer' }}>{t('plnp.edit')}</button>
+                  <button onClick={()=>setEditModal(r)} style={{ padding:'4px 8px',borderRadius: 'var(--r-sm)',background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-dim)',fontSize:10,cursor:'pointer' }}>{t('plnp.edit')}</button>
                 </div>
               )})}
             </div>
@@ -5234,14 +5234,14 @@ function RaceYearTab() {
 
           {/* Compteur par sport */}
           {sportCounts.length>0 && (
-            <div style={{ marginTop:4,padding:'10px 14px',borderRadius:11,background:'var(--bg-card)',border:'1px solid var(--border)' }}>
+            <div style={{ marginTop:4,padding:'10px 14px',borderRadius: 'var(--r-md)',background:'var(--bg-card)',border:'1px solid var(--border)' }}>
               <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'var(--text-dim)',margin:'0 0 8px' }}>{t('plnp.race.bySport')}</p>
               <div style={{ display:'flex',gap:14,flexWrap:'wrap' as const }}>
                 {sportCounts.map(x=>(
                   <div key={x.sport} style={{ display:'flex',alignItems:'center',gap:6 }}>
                     <SportBadge sport={x.sport as SportType} size="sm"/>
                     <span style={{ fontSize:12,color:'var(--text-mid)' }}>{SPORT_LABEL[x.sport as SportType]}</span>
-                    <span style={{ fontFamily:'Syne,sans-serif',fontSize:16,fontWeight:700,color:'var(--text)' }}>{x.count}</span>
+                    <span style={{ fontFamily: 'var(--font-body)',fontSize:16,fontWeight:700,color:'var(--text)' }}>{x.count}</span>
                   </div>
                 ))}
               </div>
@@ -5251,11 +5251,11 @@ function RaceYearTab() {
       )}
 
       {races.length===0 && (
-        <div style={{ padding:'32px 20px',textAlign:'center' as const,background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:14 }}>
+        <div style={{ padding:'32px 20px',textAlign:'center' as const,background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius: 'var(--r-md)' }}>
           <p style={{ fontSize:32,marginBottom:8 }}>🏁</p>
-          <p style={{ fontFamily:'Syne,sans-serif',fontSize:15,fontWeight:700,margin:'0 0 6px' }}>{t('plnp.race.emptyTitle')}</p>
+          <p style={{ fontFamily: 'var(--font-body)',fontSize:15,fontWeight:700,margin:'0 0 6px' }}>{t('plnp.race.emptyTitle')}</p>
           <p style={{ fontSize:12,color:'var(--text-dim)',margin:'0 0 16px' }}>{t('plnp.race.emptySub')}</p>
-          <button onClick={()=>setAddModal({month:currentMonth})} style={{ padding:'9px 20px',borderRadius:10,background:'linear-gradient(135deg,#06B6D4,#5b6fff)',border:'none',color:'#fff',fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:13,cursor:'pointer' }}>{t('plnp.race.addFull')}</button>
+          <button onClick={()=>setAddModal({month:currentMonth})} style={{ padding:'9px 20px',borderRadius: 'var(--r-sm)',background:'linear-gradient(135deg,#06B6D4,#5b6fff)',border:'none',color:'#fff',fontFamily: 'var(--font-body)',fontWeight:700,fontSize:13,cursor:'pointer' }}>{t('plnp.race.addFull')}</button>
         </div>
       )}
 
@@ -5275,30 +5275,30 @@ function RaceAddModal({ month, day, year, onClose, onSave }:{ month:number; day?
   const RSL: Record<RaceSport,string> = {run:t('plnp.raceSport.run'),trail:t('plnp.raceSport.trail'),bike:t('plnp.raceSport.bike'),swim:t('plnp.raceSport.swim'),hyrox:t('plnp.raceSport.hyrox'),triathlon:t('plnp.raceSport.triathlon'),rowing:t('plnp.raceSport.rowing')}
   return (
     <div onClick={onClose} style={{ position:'fixed',inset:0,zIndex:200,background:'rgba(0,0,0,0.5)',backdropFilter:'blur(4px)',display:'flex',alignItems:'center',justifyContent:'center',padding:16,overflowY:'auto' }}>
-      <div onClick={e=>e.stopPropagation()} style={{ background:'var(--bg-card)',borderRadius:18,border:'1px solid var(--border-mid)',padding:22,maxWidth:500,width:'100%',maxHeight:'92vh',overflowY:'auto' }}>
+      <div onClick={e=>e.stopPropagation()} style={{ background:'var(--bg-card)',borderRadius: 'var(--r-lg)',border:'1px solid var(--border-mid)',padding:22,maxWidth:500,width:'100%',maxHeight:'92vh',overflowY:'auto' }}>
         <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:16 }}>
-          <h3 style={{ fontFamily:'Syne,sans-serif',fontSize:15,fontWeight:700,margin:0 }}>{t('plnp.race.addTitle')}</h3>
-          <button onClick={onClose} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius:8,padding:'4px 8px',cursor:'pointer',color:'var(--text-dim)',fontSize:14 }}>×</button>
+          <h3 style={{ fontFamily: 'var(--font-body)',fontSize:15,fontWeight:700,margin:0 }}>{t('plnp.race.addTitle')}</h3>
+          <button onClick={onClose} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius: 'var(--r-sm)',padding:'4px 8px',cursor:'pointer',color:'var(--text-dim)',fontSize:14 }}>×</button>
         </div>
         <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:7 }}>{t('plnp.field.sport')}</p>
         <div style={{ display:'flex',gap:5,flexWrap:'wrap' as const,marginBottom:14 }}>
-          {RACE_SPORTS.map(s=>{ const rc=RACE_SPORT_COLOR[s]; return <button key={s} onClick={()=>{setSport(s);setHyroxCat('');setHyroxLvl('');setHyroxGen('')}} style={{ padding:'5px 9px',borderRadius:8,border:'1px solid',borderColor:sport===s?rc.border:'var(--border)',background:sport===s?rc.bg:'var(--bg-card2)',color:sport===s?rc.border:'var(--text-mid)',fontSize:11,cursor:'pointer' }}>{RSL[s]}</button> })}
+          {RACE_SPORTS.map(s=>{ const rc=RACE_SPORT_COLOR[s]; return <button key={s} onClick={()=>{setSport(s);setHyroxCat('');setHyroxLvl('');setHyroxGen('')}} style={{ padding:'5px 9px',borderRadius: 'var(--r-sm)',border:'1px solid',borderColor:sport===s?rc.border:'var(--border)',background:sport===s?rc.bg:'var(--bg-card2)',color:sport===s?rc.border:'var(--text-mid)',fontSize:11,cursor:'pointer' }}>{RSL[s]}</button> })}
         </div>
         <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:7 }}>{t('plnp.field.level')}</p>
         <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:6,marginBottom:14 }}>
-          {(['gty','main','important','secondary'] as RaceLevel[]).map(l=>{ const cfg=RACE_CONFIG[l]; return <button key={l} onClick={()=>setLevel(l)} style={{ padding:'8px 10px',borderRadius:9,border:'1px solid',cursor:'pointer',textAlign:'left' as const,borderColor:level===l?cfg.border:'var(--border)',background:level===l?cfg.bg:'var(--bg-card2)' }}><p style={{ fontSize:11,fontWeight:600,margin:0,color:level===l?l==='gty'?'var(--gty-text)':cfg.color:'var(--text)' }}>{l==='gty'?cfg.label:t('plnp.raceLevel.'+l)}</p></button> })}
+          {(['gty','main','important','secondary'] as RaceLevel[]).map(l=>{ const cfg=RACE_CONFIG[l]; return <button key={l} onClick={()=>setLevel(l)} style={{ padding:'8px 10px',borderRadius: 'var(--r-sm)',border:'1px solid',cursor:'pointer',textAlign:'left' as const,borderColor:level===l?cfg.border:'var(--border)',background:level===l?cfg.bg:'var(--bg-card2)' }}><p style={{ fontSize:11,fontWeight:600,margin:0,color:level===l?l==='gty'?'var(--gty-text)':cfg.color:'var(--text)' }}>{l==='gty'?cfg.label:t('plnp.raceLevel.'+l)}</p></button> })}
         </div>
         <div style={{ display:'grid',gridTemplateColumns:'2fr 1fr',gap:9,marginBottom:12 }}>
-          <div><p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>{t('plnp.field.name')}</p><input value={name} onChange={e=>setName(e.target.value)} placeholder={t('plnp.race.namePlaceholder')} style={{ width:'100%',padding:'7px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:12,outline:'none' }}/></div>
-          <div><p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>{t('plnp.field.date')}</p><input type="date" value={date} onChange={e=>setDate(e.target.value)} style={{ width:'100%',padding:'7px 9px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:12,outline:'none' }}/></div>
+          <div><p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>{t('plnp.field.name')}</p><input value={name} onChange={e=>setName(e.target.value)} placeholder={t('plnp.race.namePlaceholder')} style={{ width:'100%',padding:'7px 10px',borderRadius: 'var(--r-sm)',border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:12,outline:'none' }}/></div>
+          <div><p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>{t('plnp.field.date')}</p><input type="date" value={date} onChange={e=>setDate(e.target.value)} style={{ width:'100%',padding:'7px 9px',borderRadius: 'var(--r-sm)',border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:12,outline:'none' }}/></div>
         </div>
-        {sport==='run'&&<div style={{ marginBottom:12 }}><p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:7 }}>{t('plnp.field.distance')}</p><div style={{ display:'flex',gap:5,flexWrap:'wrap' as const,marginBottom:8 }}>{RUN_DISTANCES.map(d=><button key={d} onClick={()=>setRunDist(d)} style={{ padding:'5px 10px',borderRadius:8,border:'1px solid',borderColor:runDist===d?'#22c55e':'var(--border)',background:runDist===d?'rgba(34,197,94,0.10)':'var(--bg-card2)',color:runDist===d?'#22c55e':'var(--text-mid)',fontSize:11,cursor:'pointer' }}>{d}</button>)}</div><p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>{t('plnp.race.goalTime')}</p><input value={goalTime} onChange={e=>setGoalTime(e.target.value)} placeholder="Ex: 1h25:00" style={{ width:'100%',padding:'7px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontFamily:'DM Mono,monospace',fontSize:12,outline:'none' }}/></div>}
-        {sport==='triathlon'&&<div style={{ marginBottom:12 }}><p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:7 }}>{t('plnp.field.distance')}</p><div style={{ display:'flex',flexDirection:'column',gap:5,marginBottom:10 }}>{TRI_DISTANCES.map(d=><button key={d} onClick={()=>setTriDist(d)} style={{ padding:'8px 12px',borderRadius:9,border:'1px solid',borderColor:triDist===d?'#a855f7':'var(--border)',background:triDist===d?'rgba(168,85,247,0.10)':'var(--bg-card2)',cursor:'pointer',textAlign:'left' as const }}><p style={{ fontSize:12,fontWeight:600,margin:0,color:triDist===d?'#a855f7':'var(--text)' }}>{d}</p><p style={{ fontSize:10,color:'var(--text-dim)',margin:'2px 0 0' }}>{t('plnp.tri.swimAbbr')} {TRI_SWIM[d]} · {t('plnp.tri.bike')} {TRI_BIKE[d]} · {t('plnp.tri.run')} {TRI_RUN[d]}</p></button>)}</div><div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:8 }}>{[{l:t('plnp.tri.swim'),v:goalSwim,s:setGoalSwim,p:'32:00'},{l:t('plnp.tri.bike'),v:goalBike,s:setGoalBike,p:'2h25'},{l:t('plnp.tri.run'),v:goalRun,s:setGoalRun,p:'1h35'},{l:t('plnp.tri.total'),v:goalTime,s:setGoalTime,p:'4h40'}].map(x=><div key={x.l}><p style={{ fontSize:10,color:'var(--text-dim)',marginBottom:3 }}>{x.l}</p><input value={x.v} onChange={e=>x.s(e.target.value)} placeholder={x.p} style={{ width:'100%',padding:'6px 8px',borderRadius:7,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontFamily:'DM Mono,monospace',fontSize:11,outline:'none' }}/></div>)}</div></div>}
-        {sport==='hyrox'&&<div style={{ marginBottom:12 }}><p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:7 }}>{t('plnp.field.category')}</p><div style={{ display:'flex',gap:6,marginBottom:10 }}>{['Solo','Double','Relay'].map(c=><button key={c} onClick={()=>{setHyroxCat(c);setHyroxLvl('');setHyroxGen('')}} style={{ flex:1,padding:'8px',borderRadius:9,border:'1px solid',borderColor:hyroxCat===c?'var(--danger)':'var(--border)',background:hyroxCat===c?'rgba(239,68,68,0.10)':'var(--bg-card2)',color:hyroxCat===c?'var(--danger)':'var(--text-mid)',fontSize:12,cursor:'pointer',fontWeight:hyroxCat===c?600:400 }}>{c}</button>)}</div>{hyroxCat&&<div style={{ display:'flex',gap:6,marginBottom:10 }}>{(hyroxCat==='Relay'?['Open']:['Open','Pro']).map(l=><button key={l} onClick={()=>{setHyroxLvl(l);setHyroxGen('')}} style={{ flex:1,padding:'8px',borderRadius:9,border:'1px solid',borderColor:hyroxLvl===l?'var(--danger)':'var(--border)',background:hyroxLvl===l?'rgba(239,68,68,0.10)':'var(--bg-card2)',color:hyroxLvl===l?'var(--danger)':'var(--text-mid)',fontSize:12,cursor:'pointer' }}>{l}</button>)}</div>}{hyroxCat&&hyroxLvl&&<div style={{ display:'flex',gap:6,marginBottom:10 }}>{[['Homme',t('plnp.gender.male')],['Femme',t('plnp.gender.female')],['Mixte',t('plnp.gender.mixed')]].map(([g,gl])=><button key={g} onClick={()=>setHyroxGen(g)} style={{ flex:1,padding:'8px',borderRadius:9,border:'1px solid',borderColor:hyroxGen===g?'var(--danger)':'var(--border)',background:hyroxGen===g?'rgba(239,68,68,0.10)':'var(--bg-card2)',color:hyroxGen===g?'var(--danger)':'var(--text-mid)',fontSize:12,cursor:'pointer' }}>{gl}</button>)}</div>}<p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>{t('plnp.field.goal')}</p><input value={goalTime} onChange={e=>setGoalTime(e.target.value)} placeholder="Ex: 59:00" style={{ width:'100%',padding:'7px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontFamily:'DM Mono,monospace',fontSize:12,outline:'none' }}/></div>}
-        {!['run','triathlon','hyrox'].includes(sport)&&<div style={{ marginBottom:12 }}><p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>{t('plnp.field.goal')}</p><input value={goalTime} onChange={e=>setGoalTime(e.target.value)} placeholder={t('plnp.race.goalPlaceholder')} style={{ width:'100%',padding:'7px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:12,outline:'none' }}/></div>}
+        {sport==='run'&&<div style={{ marginBottom:12 }}><p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:7 }}>{t('plnp.field.distance')}</p><div style={{ display:'flex',gap:5,flexWrap:'wrap' as const,marginBottom:8 }}>{RUN_DISTANCES.map(d=><button key={d} onClick={()=>setRunDist(d)} style={{ padding:'5px 10px',borderRadius: 'var(--r-sm)',border:'1px solid',borderColor:runDist===d?'#22c55e':'var(--border)',background:runDist===d?'rgba(34,197,94,0.10)':'var(--bg-card2)',color:runDist===d?'#22c55e':'var(--text-mid)',fontSize:11,cursor:'pointer' }}>{d}</button>)}</div><p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>{t('plnp.race.goalTime')}</p><input value={goalTime} onChange={e=>setGoalTime(e.target.value)} placeholder="Ex: 1h25:00" style={{ width:'100%',padding:'7px 10px',borderRadius: 'var(--r-sm)',border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontFamily: 'var(--font-body)',fontSize:12,outline:'none' }}/></div>}
+        {sport==='triathlon'&&<div style={{ marginBottom:12 }}><p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:7 }}>{t('plnp.field.distance')}</p><div style={{ display:'flex',flexDirection:'column',gap:5,marginBottom:10 }}>{TRI_DISTANCES.map(d=><button key={d} onClick={()=>setTriDist(d)} style={{ padding:'8px 12px',borderRadius: 'var(--r-sm)',border:'1px solid',borderColor:triDist===d?'#a855f7':'var(--border)',background:triDist===d?'rgba(168,85,247,0.10)':'var(--bg-card2)',cursor:'pointer',textAlign:'left' as const }}><p style={{ fontSize:12,fontWeight:600,margin:0,color:triDist===d?'#a855f7':'var(--text)' }}>{d}</p><p style={{ fontSize:10,color:'var(--text-dim)',margin:'2px 0 0' }}>{t('plnp.tri.swimAbbr')} {TRI_SWIM[d]} · {t('plnp.tri.bike')} {TRI_BIKE[d]} · {t('plnp.tri.run')} {TRI_RUN[d]}</p></button>)}</div><div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:8 }}>{[{l:t('plnp.tri.swim'),v:goalSwim,s:setGoalSwim,p:'32:00'},{l:t('plnp.tri.bike'),v:goalBike,s:setGoalBike,p:'2h25'},{l:t('plnp.tri.run'),v:goalRun,s:setGoalRun,p:'1h35'},{l:t('plnp.tri.total'),v:goalTime,s:setGoalTime,p:'4h40'}].map(x=><div key={x.l}><p style={{ fontSize:10,color:'var(--text-dim)',marginBottom:3 }}>{x.l}</p><input value={x.v} onChange={e=>x.s(e.target.value)} placeholder={x.p} style={{ width:'100%',padding:'6px 8px',borderRadius: 'var(--r-sm)',border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontFamily: 'var(--font-body)',fontSize:11,outline:'none' }}/></div>)}</div></div>}
+        {sport==='hyrox'&&<div style={{ marginBottom:12 }}><p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:7 }}>{t('plnp.field.category')}</p><div style={{ display:'flex',gap:6,marginBottom:10 }}>{['Solo','Double','Relay'].map(c=><button key={c} onClick={()=>{setHyroxCat(c);setHyroxLvl('');setHyroxGen('')}} style={{ flex:1,padding:'8px',borderRadius: 'var(--r-sm)',border:'1px solid',borderColor:hyroxCat===c?'var(--danger)':'var(--border)',background:hyroxCat===c?'rgba(239,68,68,0.10)':'var(--bg-card2)',color:hyroxCat===c?'var(--danger)':'var(--text-mid)',fontSize:12,cursor:'pointer',fontWeight:hyroxCat===c?600:400 }}>{c}</button>)}</div>{hyroxCat&&<div style={{ display:'flex',gap:6,marginBottom:10 }}>{(hyroxCat==='Relay'?['Open']:['Open','Pro']).map(l=><button key={l} onClick={()=>{setHyroxLvl(l);setHyroxGen('')}} style={{ flex:1,padding:'8px',borderRadius: 'var(--r-sm)',border:'1px solid',borderColor:hyroxLvl===l?'var(--danger)':'var(--border)',background:hyroxLvl===l?'rgba(239,68,68,0.10)':'var(--bg-card2)',color:hyroxLvl===l?'var(--danger)':'var(--text-mid)',fontSize:12,cursor:'pointer' }}>{l}</button>)}</div>}{hyroxCat&&hyroxLvl&&<div style={{ display:'flex',gap:6,marginBottom:10 }}>{[['Homme',t('plnp.gender.male')],['Femme',t('plnp.gender.female')],['Mixte',t('plnp.gender.mixed')]].map(([g,gl])=><button key={g} onClick={()=>setHyroxGen(g)} style={{ flex:1,padding:'8px',borderRadius: 'var(--r-sm)',border:'1px solid',borderColor:hyroxGen===g?'var(--danger)':'var(--border)',background:hyroxGen===g?'rgba(239,68,68,0.10)':'var(--bg-card2)',color:hyroxGen===g?'var(--danger)':'var(--text-mid)',fontSize:12,cursor:'pointer' }}>{gl}</button>)}</div>}<p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>{t('plnp.field.goal')}</p><input value={goalTime} onChange={e=>setGoalTime(e.target.value)} placeholder="Ex: 59:00" style={{ width:'100%',padding:'7px 10px',borderRadius: 'var(--r-sm)',border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontFamily: 'var(--font-body)',fontSize:12,outline:'none' }}/></div>}
+        {!['run','triathlon','hyrox'].includes(sport)&&<div style={{ marginBottom:12 }}><p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>{t('plnp.field.goal')}</p><input value={goalTime} onChange={e=>setGoalTime(e.target.value)} placeholder={t('plnp.race.goalPlaceholder')} style={{ width:'100%',padding:'7px 10px',borderRadius: 'var(--r-sm)',border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:12,outline:'none' }}/></div>}
         <div style={{ display:'flex',gap:8 }}>
-          <button onClick={onClose} style={{ flex:1,padding:10,borderRadius:10,background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',fontSize:12,cursor:'pointer' }}>{t('plnp.cancel')}</button>
-          <button onClick={()=>onSave({name:name||t('plnp.race.defaultName'),sport,date,level,goal:goalTime||undefined,runDistance:sport==='run'?runDist:undefined,triDistance:sport==='triathlon'?triDist:undefined,hyroxCategory:hyroxCat||undefined,hyroxLevel:hyroxLvl||undefined,hyroxGender:hyroxGen||undefined,goalTime:goalTime||undefined,goalSwimTime:goalSwim||undefined,goalBikeTime:goalBike||undefined,goalRunTime:goalRun||undefined})} style={{ flex:2,padding:10,borderRadius:10,background:'linear-gradient(135deg,#06B6D4,#5b6fff)',border:'none',color:'#fff',fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:12,cursor:'pointer' }}>{t('plnp.race.addBtn')}</button>
+          <button onClick={onClose} style={{ flex:1,padding:10,borderRadius: 'var(--r-sm)',background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',fontSize:12,cursor:'pointer' }}>{t('plnp.cancel')}</button>
+          <button onClick={()=>onSave({name:name||t('plnp.race.defaultName'),sport,date,level,goal:goalTime||undefined,runDistance:sport==='run'?runDist:undefined,triDistance:sport==='triathlon'?triDist:undefined,hyroxCategory:hyroxCat||undefined,hyroxLevel:hyroxLvl||undefined,hyroxGender:hyroxGen||undefined,goalTime:goalTime||undefined,goalSwimTime:goalSwim||undefined,goalBikeTime:goalBike||undefined,goalRunTime:goalRun||undefined})} style={{ flex:2,padding:10,borderRadius: 'var(--r-sm)',background:'linear-gradient(135deg,#06B6D4,#5b6fff)',border:'none',color:'#fff',fontFamily: 'var(--font-body)',fontWeight:700,fontSize:12,cursor:'pointer' }}>{t('plnp.race.addBtn')}</button>
         </div>
       </div>
     </div>
@@ -5310,19 +5310,19 @@ function RaceEditModal({ race, onClose, onSave }:{ race:Race; onClose:()=>void; 
   const [form,setForm]=useState<Race>({...race})
   return (
     <div onClick={onClose} style={{ position:'fixed',inset:0,zIndex:200,background:'rgba(0,0,0,0.5)',backdropFilter:'blur(4px)',display:'flex',alignItems:'center',justifyContent:'center',padding:16 }}>
-      <div onClick={e=>e.stopPropagation()} style={{ background:'var(--bg-card)',borderRadius:18,border:'1px solid var(--border-mid)',padding:22,maxWidth:440,width:'100%',maxHeight:'92vh',overflowY:'auto' }}>
+      <div onClick={e=>e.stopPropagation()} style={{ background:'var(--bg-card)',borderRadius: 'var(--r-lg)',border:'1px solid var(--border-mid)',padding:22,maxWidth:440,width:'100%',maxHeight:'92vh',overflowY:'auto' }}>
         <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:16 }}>
-          <h3 style={{ fontFamily:'Syne,sans-serif',fontSize:15,fontWeight:700,margin:0 }}>{t('plnp.editTitle')}</h3>
-          <button onClick={onClose} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius:8,padding:'4px 8px',cursor:'pointer',color:'var(--text-dim)',fontSize:14 }}>×</button>
+          <h3 style={{ fontFamily: 'var(--font-body)',fontSize:15,fontWeight:700,margin:0 }}>{t('plnp.editTitle')}</h3>
+          <button onClick={onClose} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius: 'var(--r-sm)',padding:'4px 8px',cursor:'pointer',color:'var(--text-dim)',fontSize:14 }}>×</button>
         </div>
-        <div style={{ marginBottom:10 }}><p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>{t('plnp.field.name')}</p><input value={form.name} onChange={e=>setForm({...form,name:e.target.value})} style={{ width:'100%',padding:'7px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:12,outline:'none' }}/></div>
-        <div style={{ marginBottom:10 }}><p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>{t('plnp.field.date')}</p><input type="date" value={form.date} onChange={e=>setForm({...form,date:e.target.value})} style={{ width:'100%',padding:'7px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:12,outline:'none' }}/></div>
-        <div style={{ marginBottom:10 }}><p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:6 }}>{t('plnp.field.level')}</p><div style={{ display:'flex',gap:5,flexWrap:'wrap' as const }}>{(['secondary','important','main','gty'] as RaceLevel[]).map(l=>{ const cfg=RACE_CONFIG[l]; return <button key={l} onClick={()=>setForm({...form,level:l})} style={{ padding:'4px 9px',borderRadius:7,border:'1px solid',borderColor:form.level===l?cfg.border:'var(--border)',background:form.level===l?cfg.bg:'var(--bg-card2)',color:form.level===l?l==='gty'?'var(--gty-text)':cfg.color:'var(--text-mid)',fontSize:10,cursor:'pointer',fontWeight:form.level===l?700:400 }}>{l==='gty'?cfg.label:t('plnp.raceLevel.'+l)}</button> })}</div></div>
-        <div style={{ marginBottom:10 }}><p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>{t('plnp.field.goal')}</p><input value={form.goal??''} onChange={e=>setForm({...form,goal:e.target.value})} style={{ width:'100%',padding:'7px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:12,outline:'none' }}/></div>
-        <div style={{ marginBottom:14 }}><p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>{t('plnp.field.strategy')}</p><textarea value={form.strategy??''} onChange={e=>setForm({...form,strategy:e.target.value})} rows={2} style={{ width:'100%',padding:'7px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:12,outline:'none',resize:'none' as const }}/></div>
+        <div style={{ marginBottom:10 }}><p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>{t('plnp.field.name')}</p><input value={form.name} onChange={e=>setForm({...form,name:e.target.value})} style={{ width:'100%',padding:'7px 10px',borderRadius: 'var(--r-sm)',border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:12,outline:'none' }}/></div>
+        <div style={{ marginBottom:10 }}><p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>{t('plnp.field.date')}</p><input type="date" value={form.date} onChange={e=>setForm({...form,date:e.target.value})} style={{ width:'100%',padding:'7px 10px',borderRadius: 'var(--r-sm)',border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:12,outline:'none' }}/></div>
+        <div style={{ marginBottom:10 }}><p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:6 }}>{t('plnp.field.level')}</p><div style={{ display:'flex',gap:5,flexWrap:'wrap' as const }}>{(['secondary','important','main','gty'] as RaceLevel[]).map(l=>{ const cfg=RACE_CONFIG[l]; return <button key={l} onClick={()=>setForm({...form,level:l})} style={{ padding:'4px 9px',borderRadius: 'var(--r-sm)',border:'1px solid',borderColor:form.level===l?cfg.border:'var(--border)',background:form.level===l?cfg.bg:'var(--bg-card2)',color:form.level===l?l==='gty'?'var(--gty-text)':cfg.color:'var(--text-mid)',fontSize:10,cursor:'pointer',fontWeight:form.level===l?700:400 }}>{l==='gty'?cfg.label:t('plnp.raceLevel.'+l)}</button> })}</div></div>
+        <div style={{ marginBottom:10 }}><p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>{t('plnp.field.goal')}</p><input value={form.goal??''} onChange={e=>setForm({...form,goal:e.target.value})} style={{ width:'100%',padding:'7px 10px',borderRadius: 'var(--r-sm)',border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:12,outline:'none' }}/></div>
+        <div style={{ marginBottom:14 }}><p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>{t('plnp.field.strategy')}</p><textarea value={form.strategy??''} onChange={e=>setForm({...form,strategy:e.target.value})} rows={2} style={{ width:'100%',padding:'7px 10px',borderRadius: 'var(--r-sm)',border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:12,outline:'none',resize:'none' as const }}/></div>
         <div style={{ display:'flex',gap:8 }}>
-          <button onClick={onClose} style={{ flex:1,padding:10,borderRadius:10,background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',fontSize:12,cursor:'pointer' }}>{t('plnp.cancel')}</button>
-          <button onClick={()=>onSave(form)} style={{ flex:2,padding:10,borderRadius:10,background:'linear-gradient(135deg,#06B6D4,#5b6fff)',border:'none',color:'#fff',fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:12,cursor:'pointer' }}>{t('plnp.save')}</button>
+          <button onClick={onClose} style={{ flex:1,padding:10,borderRadius: 'var(--r-sm)',background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',fontSize:12,cursor:'pointer' }}>{t('plnp.cancel')}</button>
+          <button onClick={()=>onSave(form)} style={{ flex:2,padding:10,borderRadius: 'var(--r-sm)',background:'linear-gradient(135deg,#06B6D4,#5b6fff)',border:'none',color:'#fff',fontFamily: 'var(--font-body)',fontWeight:700,fontSize:12,cursor:'pointer' }}>{t('plnp.save')}</button>
         </div>
       </div>
     </div>
@@ -5340,27 +5340,27 @@ function RaceDetailModal({ race, onClose, onDelete, onValidate, onEdit }:{ race:
   function setVd(patch:Record<string,any>) { setForm(f=>({...f,validationData:{...f.validationData,...patch}})) }
   return (
     <div onClick={onClose} style={{ position:'fixed',inset:0,zIndex:200,background:'rgba(0,0,0,0.5)',backdropFilter:'blur(4px)',display:'flex',alignItems:'center',justifyContent:'center',padding:16,overflowY:'auto' }}>
-      <div onClick={e=>e.stopPropagation()} style={{ background:'var(--bg-card)',borderRadius:18,border:'1px solid var(--border-mid)',padding:22,maxWidth:500,width:'100%',maxHeight:'92vh',overflowY:'auto' }}>
+      <div onClick={e=>e.stopPropagation()} style={{ background:'var(--bg-card)',borderRadius: 'var(--r-lg)',border:'1px solid var(--border-mid)',padding:22,maxWidth:500,width:'100%',maxHeight:'92vh',overflowY:'auto' }}>
 
         {/* Header */}
         <div style={{ display:'flex',alignItems:'flex-start',justifyContent:'space-between',marginBottom:14 }}>
           <div>
             <div style={{ display:'flex',alignItems:'center',gap:8,marginBottom:4 }}>
-              <span style={{ padding:'2px 8px',borderRadius:20,background:cfg.bg,border:`1px solid ${cfg.border}`,color:race.level==='gty'?'var(--gty-text)':cfg.color,fontSize:9,fontWeight:700 }}>{race.level==='gty'?cfg.label:t('plnp.raceLevel.'+race.level)}</span>
-              {race.hyroxCategory && <span style={{ fontSize:9,color:'var(--text-dim)' }}>{race.hyroxCategory} · {race.hyroxLevel} · {race.hyroxGender}</span>}
+              <span style={{ padding:'2px 8px',borderRadius: 'var(--r-lg)',background:cfg.bg,border:`1px solid ${cfg.border}`,color:race.level==='gty'?'var(--gty-text)':cfg.color,fontSize: 10,fontWeight:700 }}>{race.level==='gty'?cfg.label:t('plnp.raceLevel.'+race.level)}</span>
+              {race.hyroxCategory && <span style={{ fontSize: 10,color:'var(--text-dim)' }}>{race.hyroxCategory} · {race.hyroxLevel} · {race.hyroxGender}</span>}
             </div>
-            <h3 style={{ fontFamily:'Syne,sans-serif',fontSize:16,fontWeight:700,margin:0 }}>{race.name}</h3>
+            <h3 style={{ fontFamily: 'var(--font-body)',fontSize:16,fontWeight:700,margin:0 }}>{race.name}</h3>
             <p style={{ fontSize:11,color:'var(--text-dim)',margin:'3px 0 0' }}>{SPORT_LABEL[race.sport as SportType] ?? race.sport} · {new Date(race.date).toLocaleDateString(currentLocale(),{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</p>
             {race.runDistance && <p style={{ fontSize:11,color:'var(--text-mid)',margin:'2px 0 0' }}>{race.runDistance} — {RUN_KM[race.runDistance]}km</p>}
             {race.triDistance && <p style={{ fontSize:11,color:'var(--text-mid)',margin:'2px 0 0' }}>{race.triDistance} · {t('plnp.tri.swimAbbr')} {TRI_SWIM[race.triDistance]} · {t('plnp.tri.bike')} {TRI_BIKE[race.triDistance]} · {t('plnp.tri.run')} {TRI_RUN[race.triDistance]}</p>}
           </div>
-          <button onClick={onClose} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius:8,padding:'4px 8px',cursor:'pointer',color:'var(--text-dim)',fontSize:14 }}>×</button>
+          <button onClick={onClose} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius: 'var(--r-sm)',padding:'4px 8px',cursor:'pointer',color:'var(--text-dim)',fontSize:14 }}>×</button>
         </div>
 
         {/* Tabs */}
         <div style={{ display:'flex',gap:5,marginBottom:14 }}>
           {(['detail','validate'] as const).map(tb=>(
-            <button key={tb} onClick={()=>setTab(tb)} style={{ flex:1,padding:'7px',borderRadius:9,border:'1px solid',borderColor:tab===tb?RACE_SPORT_COLOR[race.sport].border:'var(--border)',background:tab===tb?RACE_SPORT_COLOR[race.sport].bg:'var(--bg-card2)',color:tab===tb?RACE_SPORT_COLOR[race.sport].border:'var(--text-mid)',fontSize:11,fontWeight:tab===tb?600:400,cursor:'pointer' }}>
+            <button key={tb} onClick={()=>setTab(tb)} style={{ flex:1,padding:'7px',borderRadius: 'var(--r-sm)',border:'1px solid',borderColor:tab===tb?RACE_SPORT_COLOR[race.sport].border:'var(--border)',background:tab===tb?RACE_SPORT_COLOR[race.sport].bg:'var(--bg-card2)',color:tab===tb?RACE_SPORT_COLOR[race.sport].border:'var(--text-mid)',fontSize:11,fontWeight:tab===tb?600:400,cursor:'pointer' }}>
               {tb==='detail'?t('plnp.race.tabDetail'):t('plnp.race.tabValidate')}
             </button>
           ))}
@@ -5369,10 +5369,10 @@ function RaceDetailModal({ race, onClose, onDelete, onValidate, onEdit }:{ race:
         {/* DETAIL */}
         {tab==='detail' && (
           <div>
-            <div style={{ padding:'10px 14px',borderRadius:11,background:days>0?cfg.bg:'var(--bg-card2)',border:`1px solid ${days>0?cfg.border+'44':'var(--border)'}`,marginBottom:12,display:'flex',alignItems:'center',gap:12 }}>
+            <div style={{ padding:'10px 14px',borderRadius: 'var(--r-md)',background:days>0?cfg.bg:'var(--bg-card2)',border:`1px solid ${days>0?cfg.border+'44':'var(--border)'}`,marginBottom:12,display:'flex',alignItems:'center',gap:12 }}>
               <div style={{ textAlign:'center' as const,flexShrink:0 }}>
-                <p style={{ fontFamily:'Syne,sans-serif',fontSize:24,fontWeight:800,color:days>0?race.level==='gty'?'var(--gty-text)':cfg.color:'var(--text-dim)',margin:0,lineHeight:1 }}>{days>0?days:'✓'}</p>
-                <p style={{ fontSize:9,color:'var(--text-dim)',margin:0 }}>{days>0?t('plnp.race.days'):t('plnp.race.past')}</p>
+                <p style={{ fontFamily: 'var(--font-display)',fontSize:24,fontWeight:800,color:days>0?race.level==='gty'?'var(--gty-text)':cfg.color:'var(--text-dim)',margin:0,lineHeight:1 }}>{days>0?days:'✓'}</p>
+                <p style={{ fontSize: 10,color:'var(--text-dim)',margin:0 }}>{days>0?t('plnp.race.days'):t('plnp.race.past')}</p>
               </div>
               <div>
                 {race.goal        && <p style={{ fontSize:13,fontWeight:600,margin:'0 0 3px' }}>{race.goal}</p>}
@@ -5385,20 +5385,20 @@ function RaceDetailModal({ race, onClose, onDelete, onValidate, onEdit }:{ race:
             </div>
             {/* Résultats déjà validés */}
             {race.validated && vd.vTime && (
-              <div style={{ padding:'10px 14px',borderRadius:11,background:'rgba(6,182,212,0.08)',border:'1px solid rgba(6,182,212,0.2)',marginBottom:12 }}>
+              <div style={{ padding:'10px 14px',borderRadius: 'var(--r-md)',background:'rgba(6,182,212,0.08)',border:'1px solid rgba(6,182,212,0.2)',marginBottom:12 }}>
                 <p style={{ fontSize:11,fontWeight:700,color:'var(--primary)',margin:'0 0 6px' }}>{t('plnp.race.resultsValidated')}</p>
-                {vd.vTime      && <p style={{ fontSize:12,margin:'2px 0',fontFamily:'DM Mono,monospace' }}>{t('plnp.race.time')} : {vd.vTime}</p>}
-                {vd.vKm        && <p style={{ fontSize:12,margin:'2px 0',fontFamily:'DM Mono,monospace' }}>{t('plnp.field.distance')} : {vd.vKm} km</p>}
-                {vd.vSpeed     && <p style={{ fontSize:12,margin:'2px 0',fontFamily:'DM Mono,monospace' }}>{t('plnp.race.speed')} : {vd.vSpeed}</p>}
-                {vd.vElevation && <p style={{ fontSize:12,margin:'2px 0',fontFamily:'DM Mono,monospace' }}>{t('plnp.race.elevation')} : {vd.vElevation}m</p>}
+                {vd.vTime      && <p style={{ fontSize:12,margin:'2px 0',fontFamily: 'var(--font-body)' }}>{t('plnp.race.time')} : {vd.vTime}</p>}
+                {vd.vKm        && <p style={{ fontSize:12,margin:'2px 0',fontFamily: 'var(--font-body)' }}>{t('plnp.field.distance')} : {vd.vKm} km</p>}
+                {vd.vSpeed     && <p style={{ fontSize:12,margin:'2px 0',fontFamily: 'var(--font-body)' }}>{t('plnp.race.speed')} : {vd.vSpeed}</p>}
+                {vd.vElevation && <p style={{ fontSize:12,margin:'2px 0',fontFamily: 'var(--font-body)' }}>{t('plnp.race.elevation')} : {vd.vElevation}m</p>}
                 {/* Triathlon splits */}
-                {vd.vSwimTime  && <p style={{ fontSize:12,margin:'2px 0',fontFamily:'DM Mono,monospace' }}>{t('plnp.tri.swimAbbr')}: {vd.vSwimTime} · {t('plnp.tri.bike')}: {vd.vBikeTime} · {t('plnp.tri.run')}: {vd.vRunTime}</p>}
+                {vd.vSwimTime  && <p style={{ fontSize:12,margin:'2px 0',fontFamily: 'var(--font-body)' }}>{t('plnp.tri.swimAbbr')}: {vd.vSwimTime} · {t('plnp.tri.bike')}: {vd.vBikeTime} · {t('plnp.tri.run')}: {vd.vRunTime}</p>}
               </div>
             )}
             <div style={{ display:'flex',gap:7 }}>
-              <button onClick={()=>onDelete(race.id)} style={{ padding:'8px 11px',borderRadius:9,background:'rgba(255,95,95,0.10)',border:'1px solid rgba(255,95,95,0.25)',color:'#ff5f5f',fontSize:11,cursor:'pointer' }}>{t('plnp.delete')}</button>
-              <button onClick={onEdit} style={{ padding:'8px 11px',borderRadius:9,background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',fontSize:11,cursor:'pointer' }}>{t('plnp.edit')}</button>
-              <button onClick={onClose} style={{ flex:1,padding:9,borderRadius:9,background:'linear-gradient(135deg,#06B6D4,#5b6fff)',border:'none',color:'#fff',fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:11,cursor:'pointer' }}>{t('plnp.close')}</button>
+              <button onClick={()=>onDelete(race.id)} style={{ padding:'8px 11px',borderRadius: 'var(--r-sm)',background:'rgba(255,95,95,0.10)',border:'1px solid rgba(255,95,95,0.25)',color:'#ff5f5f',fontSize:11,cursor:'pointer' }}>{t('plnp.delete')}</button>
+              <button onClick={onEdit} style={{ padding:'8px 11px',borderRadius: 'var(--r-sm)',background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',fontSize:11,cursor:'pointer' }}>{t('plnp.edit')}</button>
+              <button onClick={onClose} style={{ flex:1,padding:9,borderRadius: 'var(--r-sm)',background:'linear-gradient(135deg,#06B6D4,#5b6fff)',border:'none',color:'#fff',fontFamily: 'var(--font-body)',fontWeight:700,fontSize:11,cursor:'pointer' }}>{t('plnp.close')}</button>
             </div>
           </div>
         )}
@@ -5410,16 +5410,16 @@ function RaceDetailModal({ race, onClose, onDelete, onValidate, onEdit }:{ race:
             {race.sport==='hyrox' && (
               <div>
                 <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:9,marginBottom:14 }}>
-                  <div><p style={{ fontSize:10,color:'var(--text-dim)',marginBottom:3 }}>{t('plnp.race.totalTime')}</p><input value={vd.vTime??''} onChange={e=>setVd({vTime:e.target.value})} placeholder="58:45" style={{ width:'100%',padding:'7px 9px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontFamily:'DM Mono,monospace',fontSize:12,outline:'none' }}/></div>
-                  <div><p style={{ fontSize:10,color:'var(--text-dim)',marginBottom:3 }}>{t('plnp.race.avgHr')}</p><input value={vd.vHrAvg??''} onChange={e=>setVd({vHrAvg:e.target.value})} placeholder="168bpm" style={{ width:'100%',padding:'7px 9px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontFamily:'DM Mono,monospace',fontSize:12,outline:'none' }}/></div>
+                  <div><p style={{ fontSize:10,color:'var(--text-dim)',marginBottom:3 }}>{t('plnp.race.totalTime')}</p><input value={vd.vTime??''} onChange={e=>setVd({vTime:e.target.value})} placeholder="58:45" style={{ width:'100%',padding:'7px 9px',borderRadius: 'var(--r-sm)',border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontFamily: 'var(--font-body)',fontSize:12,outline:'none' }}/></div>
+                  <div><p style={{ fontSize:10,color:'var(--text-dim)',marginBottom:3 }}>{t('plnp.race.avgHr')}</p><input value={vd.vHrAvg??''} onChange={e=>setVd({vHrAvg:e.target.value})} placeholder="168bpm" style={{ width:'100%',padding:'7px 9px',borderRadius: 'var(--r-sm)',border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontFamily: 'var(--font-body)',fontSize:12,outline:'none' }}/></div>
                 </div>
                 <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--danger)',marginBottom:7 }}>{t('plnp.race.stations')}</p>
                 <div style={{ display:'flex',flexDirection:'column',gap:6,marginBottom:12 }}>
                   {HYROX_STATIONS.map((station,i)=>(
-                    <div key={station} style={{ display:'flex',alignItems:'center',gap:8,padding:'6px 10px',borderRadius:8,background:'rgba(239,68,68,0.06)',border:'1px solid rgba(239,68,68,0.15)' }}>
-                      <span style={{ fontSize:9,fontWeight:600,color:'var(--danger)',width:18,flexShrink:0 }}>{i+1}</span>
+                    <div key={station} style={{ display:'flex',alignItems:'center',gap:8,padding:'6px 10px',borderRadius: 'var(--r-sm)',background:'rgba(239,68,68,0.06)',border:'1px solid rgba(239,68,68,0.15)' }}>
+                      <span style={{ fontSize: 10,fontWeight:600,color:'var(--danger)',width:18,flexShrink:0 }}>{i+1}</span>
                       <span style={{ flex:1,fontSize:11 }}>{station}</span>
-                      <input value={(vd.vStations??{})[station]??''} onChange={e=>setVd({vStations:{...(vd.vStations??{}),[station]:e.target.value}})} placeholder="ex: 1:45" style={{ width:70,padding:'4px 6px',borderRadius:6,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontFamily:'DM Mono,monospace',fontSize:11,outline:'none' }}/>
+                      <input value={(vd.vStations??{})[station]??''} onChange={e=>setVd({vStations:{...(vd.vStations??{}),[station]:e.target.value}})} placeholder="ex: 1:45" style={{ width:70,padding:'4px 6px',borderRadius: 'var(--r-sm)',border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontFamily: 'var(--font-body)',fontSize:11,outline:'none' }}/>
                     </div>
                   ))}
                 </div>
@@ -5427,14 +5427,14 @@ function RaceDetailModal({ race, onClose, onDelete, onValidate, onEdit }:{ race:
                 <div style={{ display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:6,marginBottom:12 }}>
                   {Array.from({length:8},(_,i)=>(
                     <div key={i}>
-                      <p style={{ fontSize:9,color:'var(--text-dim)',marginBottom:2 }}>{t('plnp.tri.run')} {i+1}</p>
-                      <input value={(vd.vRuns??[])[i]??''} onChange={e=>{ const runs=[...(vd.vRuns??Array(8).fill(''))]; runs[i]=e.target.value; setVd({vRuns:runs}) }} placeholder="4:20" style={{ width:'100%',padding:'5px 7px',borderRadius:6,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontFamily:'DM Mono,monospace',fontSize:11,outline:'none' }}/>
+                      <p style={{ fontSize: 10,color:'var(--text-dim)',marginBottom:2 }}>{t('plnp.tri.run')} {i+1}</p>
+                      <input value={(vd.vRuns??[])[i]??''} onChange={e=>{ const runs=[...(vd.vRuns??Array(8).fill(''))]; runs[i]=e.target.value; setVd({vRuns:runs}) }} placeholder="4:20" style={{ width:'100%',padding:'5px 7px',borderRadius: 'var(--r-sm)',border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontFamily: 'var(--font-body)',fontSize:11,outline:'none' }}/>
                     </div>
                   ))}
                 </div>
                 <div style={{ marginBottom:12 }}>
                   <p style={{ fontSize:10,color:'var(--text-dim)',marginBottom:3 }}>{t('plnp.race.roxzone')}</p>
-                  <input value={vd.vRoxzone??''} onChange={e=>setVd({vRoxzone:e.target.value})} placeholder="8:30" style={{ width:'100%',padding:'7px 9px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontFamily:'DM Mono,monospace',fontSize:12,outline:'none' }}/>
+                  <input value={vd.vRoxzone??''} onChange={e=>setVd({vRoxzone:e.target.value})} placeholder="8:30" style={{ width:'100%',padding:'7px 9px',borderRadius: 'var(--r-sm)',border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontFamily: 'var(--font-body)',fontSize:12,outline:'none' }}/>
                 </div>
               </div>
             )}
@@ -5445,7 +5445,7 @@ function RaceDetailModal({ race, onClose, onDelete, onValidate, onEdit }:{ race:
                 {[{l:t('plnp.tri.swim'),k:'vSwimTime',p:'32:00'},{l:t('plnp.tri.bike'),k:'vBikeTime',p:'2h25:00'},{l:t('plnp.tri.run'),k:'vRunTime',p:'1h35:00'},{l:t('plnp.tri.total'),k:'vTime',p:'4h40:00'},{l:'T1',k:'vT1',p:'2:30'},{l:'T2',k:'vT2',p:'1:45'}].map(x=>(
                   <div key={x.k}>
                     <p style={{ fontSize:10,color:'var(--text-dim)',marginBottom:3 }}>{x.l}</p>
-                    <input value={vd[x.k]??''} onChange={e=>setVd({[x.k]:e.target.value})} placeholder={x.p} style={{ width:'100%',padding:'7px 9px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontFamily:'DM Mono,monospace',fontSize:12,outline:'none' }}/>
+                    <input value={vd[x.k]??''} onChange={e=>setVd({[x.k]:e.target.value})} placeholder={x.p} style={{ width:'100%',padding:'7px 9px',borderRadius: 'var(--r-sm)',border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontFamily: 'var(--font-body)',fontSize:12,outline:'none' }}/>
                   </div>
                 ))}
               </div>
@@ -5454,19 +5454,19 @@ function RaceDetailModal({ race, onClose, onDelete, onValidate, onEdit }:{ race:
             {/* AUTRES SPORTS */}
             {!['hyrox','triathlon'].includes(race.sport) && (
               <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:9,marginBottom:14 }}>
-                <div><p style={{ fontSize:10,color:'var(--text-dim)',marginBottom:3 }}>{t('plnp.race.timeInput')}</p><input value={vd.vTime??''} onChange={e=>setVd({vTime:e.target.value})} placeholder="85" style={{ width:'100%',padding:'7px 9px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontFamily:'DM Mono,monospace',fontSize:12,outline:'none' }}/></div>
-                <div><p style={{ fontSize:10,color:'var(--text-dim)',marginBottom:3 }}>{t('plnp.race.distanceKm')}</p><input value={vd.vKm??''} onChange={e=>setVd({vKm:e.target.value})} placeholder={race.runDistance?String(RUN_KM[race.runDistance??'']||''):''} style={{ width:'100%',padding:'7px 9px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontFamily:'DM Mono,monospace',fontSize:12,outline:'none' }}/></div>
-                <div><p style={{ fontSize:10,color:'var(--text-dim)',marginBottom:3 }}>{t('plnp.race.elevationM')}</p><input value={vd.vElevation??''} onChange={e=>setVd({vElevation:e.target.value})} placeholder="0" style={{ width:'100%',padding:'7px 9px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontFamily:'DM Mono,monospace',fontSize:12,outline:'none' }}/></div>
+                <div><p style={{ fontSize:10,color:'var(--text-dim)',marginBottom:3 }}>{t('plnp.race.timeInput')}</p><input value={vd.vTime??''} onChange={e=>setVd({vTime:e.target.value})} placeholder="85" style={{ width:'100%',padding:'7px 9px',borderRadius: 'var(--r-sm)',border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontFamily: 'var(--font-body)',fontSize:12,outline:'none' }}/></div>
+                <div><p style={{ fontSize:10,color:'var(--text-dim)',marginBottom:3 }}>{t('plnp.race.distanceKm')}</p><input value={vd.vKm??''} onChange={e=>setVd({vKm:e.target.value})} placeholder={race.runDistance?String(RUN_KM[race.runDistance??'']||''):''} style={{ width:'100%',padding:'7px 9px',borderRadius: 'var(--r-sm)',border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontFamily: 'var(--font-body)',fontSize:12,outline:'none' }}/></div>
+                <div><p style={{ fontSize:10,color:'var(--text-dim)',marginBottom:3 }}>{t('plnp.race.elevationM')}</p><input value={vd.vElevation??''} onChange={e=>setVd({vElevation:e.target.value})} placeholder="0" style={{ width:'100%',padding:'7px 9px',borderRadius: 'var(--r-sm)',border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontFamily: 'var(--font-body)',fontSize:12,outline:'none' }}/></div>
                 {vd.vTime&&vd.vKm&&(
-                  <div style={{ padding:'7px 9px',borderRadius:8,background:'rgba(6,182,212,0.08)',border:'1px solid rgba(6,182,212,0.2)' }}>
-                    <p style={{ fontSize:9,color:'var(--text-dim)',margin:'0 0 2px' }}>{t('plnp.race.autoSpeed')}</p>
-                    <p style={{ fontFamily:'DM Mono,monospace',fontSize:13,fontWeight:700,color:'var(--primary)',margin:0 }}>{speed}</p>
+                  <div style={{ padding:'7px 9px',borderRadius: 'var(--r-sm)',background:'rgba(6,182,212,0.08)',border:'1px solid rgba(6,182,212,0.2)' }}>
+                    <p style={{ fontSize: 10,color:'var(--text-dim)',margin:'0 0 2px' }}>{t('plnp.race.autoSpeed')}</p>
+                    <p style={{ fontFamily: 'var(--font-body)',fontSize:13,fontWeight:700,color:'var(--primary)',margin:0 }}>{speed}</p>
                   </div>
                 )}
               </div>
             )}
 
-            <button onClick={()=>onValidate({...form,validated:true,validationData:{...vd,vSpeed:speed}})} style={{ width:'100%',padding:11,borderRadius:10,background:`linear-gradient(135deg,${RACE_SPORT_COLOR[race.sport].border},#5b6fff)`,border:'none',color:'#fff',fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:13,cursor:'pointer',marginTop:4 }}>{t('plnp.race.validateResults')}</button>
+            <button onClick={()=>onValidate({...form,validated:true,validationData:{...vd,vSpeed:speed}})} style={{ width:'100%',padding:11,borderRadius: 'var(--r-sm)',background:`linear-gradient(135deg,${RACE_SPORT_COLOR[race.sport].border},#5b6fff)`,border:'none',color:'#fff',fontFamily: 'var(--font-body)',fontWeight:700,fontSize:13,cursor:'pointer',marginTop:4 }}>{t('plnp.race.validateResults')}</button>
           </div>
         )}
       </div>

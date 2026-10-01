@@ -57,11 +57,11 @@ export function EnduranceStats({ blocks, sport, denivM }: { blocks: MBlock[]; sp
   if (denivM > 0) cells.push({ label: t('w3b.elevation_gain'), value: `${denivM} m` })
 
   return (
-    <div style={{ display: 'flex', gap: 8, background: 'var(--bg-card2)', borderRadius: 14, padding: 14, marginTop: 4 }}>
+    <div style={{ display: 'flex', gap: 8, background: 'var(--bg-card2)', borderRadius: 'var(--r-md)', padding: 14, marginTop: 4 }}>
       {cells.map(c => (
         <div key={c.label} style={{ flex: 1, textAlign: 'center' }}>
           <div style={{ fontSize: 17, fontWeight: 800, color: 'var(--text)', fontVariantNumeric: 'tabular-nums' }}>{c.value}</div>
-          <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-mid)', marginTop: 2 }}>{c.label}</div>
+          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-mid)', marginTop: 2 }}>{c.label}</div>
         </div>
       ))}
     </div>

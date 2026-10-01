@@ -19,14 +19,14 @@ function autoTitle(sport: string) {
 }
 
 const LABEL: React.CSSProperties = { fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-dim)', margin: '0 0 10px', display: 'block' }
-const INPUT: React.CSSProperties = { width: '100%', boxSizing: 'border-box', background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 12, padding: '12px 16px', fontSize: 15, color: 'var(--text)', outline: 'none', fontFamily: 'DM Sans, sans-serif' }
+const INPUT: React.CSSProperties = { width: '100%', boxSizing: 'border-box', background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: '12px 16px', fontSize: 15, color: 'var(--text)', outline: 'none', fontFamily: 'var(--font-body)' }
 const NUM_SM: React.CSSProperties = { ...INPUT, width: 72, padding: '12px 8px', textAlign: 'center' }
 function Chips<T extends string>({ items, value, onChange }: { items: { id: T; label: string; labelKey?: string }[]; value: T; onChange: (v: T) => void }) {
   const { t } = useI18n()
   return (
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
       {items.map(it => (
-        <button key={it.id} onClick={() => onChange(it.id)} style={{ padding: '8px 16px', borderRadius: 20, border: 'none', background: value === it.id ? 'var(--primary)' : 'var(--bg-card2)', color: value === it.id ? '#FFF' : 'var(--text)', fontSize: 14, fontWeight: 500, cursor: 'pointer' }}>{it.labelKey ? t(it.labelKey) : it.label}</button>
+        <button key={it.id} onClick={() => onChange(it.id)} style={{ padding: '8px 16px', borderRadius: 'var(--r-lg)', border: 'none', background: value === it.id ? 'var(--primary)' : 'var(--bg-card2)', color: value === it.id ? '#FFF' : 'var(--text)', fontSize: 14, fontWeight: 500, cursor: 'pointer' }}>{it.labelKey ? t(it.labelKey) : it.label}</button>
       ))}
     </div>
   )
@@ -98,10 +98,10 @@ export default function PadelForm({ onClose }: Props) {
     const resultLabels: Record<Result, string> = { win: t('record.padelResultWin'), loss: t('record.padelResultLoss'), draw: t('record.padelResultDraw') }
     const fmtDur = `${String(Math.floor(saved.durationSec/3600)).padStart(2,'0')}:${String(Math.floor((saved.durationSec%3600)/60)).padStart(2,'0')}:${String(saved.durationSec%60).padStart(2,'0')}`
     return (
-      <div style={{ position: 'fixed', inset: 0, zIndex: 10004, background: 'var(--bg)', color: 'var(--text)', display: 'flex', flexDirection: 'column', fontFamily: 'DM Sans, sans-serif', paddingTop: 'env(safe-area-inset-top)', alignItems: 'center', justifyContent: 'center', gap: 20 }}>
+      <div style={{ position: 'fixed', inset: 0, zIndex: 10004, background: 'var(--bg)', color: 'var(--text)', display: 'flex', flexDirection: 'column', fontFamily: 'var(--font-body)', paddingTop: 'env(safe-area-inset-top)', alignItems: 'center', justifyContent: 'center', gap: 20 }}>
         <span style={{ fontSize: 48 }}>🎾</span>
         <p style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>{t('record.padelSessionSaved')}</p>
-        <div style={{ display: 'inline-block', padding: '6px 20px', borderRadius: 20, background: resultColors[saved.result], color: '#FFF', fontWeight: 700, fontSize: 15 }}>{resultLabels[saved.result]}</div>
+        <div style={{ display: 'inline-block', padding: '6px 20px', borderRadius: 'var(--r-lg)', background: resultColors[saved.result], color: '#FFF', fontWeight: 700, fontSize: 15 }}>{resultLabels[saved.result]}</div>
         {saved.sets.length > 0 && <p style={{ fontSize: 18, fontWeight: 600, color: 'var(--primary)', margin: 0 }}>{setsWonMe} — {setsWonOpp}</p>}
         <div style={{ textAlign: 'center', color: 'var(--text-dim)', fontSize: 14, lineHeight: 2 }}>
           <p style={{ margin: 0 }}>{t('record.padelSummaryDuration')} {fmtDur}</p>
@@ -109,7 +109,7 @@ export default function PadelForm({ onClose }: Props) {
           <p style={{ margin: 0 }}>{t('record.padelSummarySurface')} {(() => { const s = PADEL_SURFACES.find(s => s.id === saved.surface); return s?.labelKey ? t(s.labelKey) : s?.label })()}</p>
           <p style={{ margin: 0 }}>{t('record.padelSummaryRpe')} {saved.rpe}/10</p>
         </div>
-        <button onClick={onClose} style={{ padding: '14px 40px', borderRadius: 16, background: 'linear-gradient(135deg,#06B6D4,#2563EB)', border: 'none', color: '#FFF', fontSize: 16, fontWeight: 600, cursor: 'pointer' }}>{t('record.padelFinish')}</button>
+        <button onClick={onClose} style={{ padding: '14px 40px', borderRadius: 'var(--r-md)', background: 'linear-gradient(135deg,#06B6D4,#2563EB)', border: 'none', color: '#FFF', fontSize: 16, fontWeight: 600, cursor: 'pointer' }}>{t('record.padelFinish')}</button>
       </div>
     )
   }
@@ -119,7 +119,7 @@ export default function PadelForm({ onClose }: Props) {
   const resultLabels: Record<Result, string> = { win: t('record.padelResultWin'), loss: t('record.padelResultLoss'), draw: t('record.padelResultDraw') }
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 10004, background: 'var(--bg)', color: 'var(--text)', display: 'flex', flexDirection: 'column', fontFamily: 'DM Sans, sans-serif', paddingTop: 'env(safe-area-inset-top)' }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 10004, background: 'var(--bg)', color: 'var(--text)', display: 'flex', flexDirection: 'column', fontFamily: 'var(--font-body)', paddingTop: 'env(safe-area-inset-top)' }}>
       <div style={{ height: 52, flexShrink: 0, display: 'flex', alignItems: 'center', padding: '0 16px', borderBottom: '1px solid var(--border)', position: 'relative' }}>
         <button onClick={onClose} style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--bg-card2)', border: 'none', color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, lineHeight: 1 }}>×</button>
         <span style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', fontSize: 15, fontWeight: 600 }}>{t('record.padelNewSession')}</span>
@@ -132,7 +132,7 @@ export default function PadelForm({ onClose }: Props) {
           <label style={LABEL}>{t('record.padelOpponent')}</label>
           <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
             {([{ id: 'solo', label: t('record.padelSolo') }, { id: 'double', label: t('record.padelDoubleMode') }] as const).map(m => (
-              <button key={m.id} onClick={() => setIsDouble(m.id === 'double')} style={{ padding: '8px 20px', borderRadius: 20, border: 'none', background: (m.id === 'double') === isDouble ? 'var(--primary)' : 'var(--bg-card2)', color: (m.id === 'double') === isDouble ? '#FFF' : 'var(--text)', fontSize: 14, fontWeight: 500, cursor: 'pointer' }}>{m.label}</button>
+              <button key={m.id} onClick={() => setIsDouble(m.id === 'double')} style={{ padding: '8px 20px', borderRadius: 'var(--r-lg)', border: 'none', background: (m.id === 'double') === isDouble ? 'var(--primary)' : 'var(--bg-card2)', color: (m.id === 'double') === isDouble ? '#FFF' : 'var(--text)', fontSize: 14, fontWeight: 500, cursor: 'pointer' }}>{m.label}</button>
             ))}
           </div>
           <input value={opponent} onChange={e => setOpponent(e.target.value)} placeholder={t('record.padelOpponentPlaceholder')} style={{ ...INPUT, marginBottom: isDouble ? 8 : 0 }} />
@@ -147,7 +147,7 @@ export default function PadelForm({ onClose }: Props) {
           <label style={LABEL}>{t('record.padelResult')}</label>
           <div style={{ display: 'flex', gap: 8 }}>
             {(['win','loss','draw'] as Result[]).map(r => (
-              <button key={r} onClick={() => setResult(r)} style={{ flex: 1, padding: '10px', borderRadius: 12, border: `2px solid ${result === r ? resultColors[r] : 'transparent'}`, background: result === r ? `${resultColors[r]}20` : 'var(--bg-card2)', color: result === r ? resultColors[r] : 'var(--text-mid)', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>{resultLabels[r]}</button>
+              <button key={r} onClick={() => setResult(r)} style={{ flex: 1, padding: '10px', borderRadius: 'var(--r-md)', border: `2px solid ${result === r ? resultColors[r] : 'transparent'}`, background: result === r ? `${resultColors[r]}20` : 'var(--bg-card2)', color: result === r ? resultColors[r] : 'var(--text-mid)', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>{resultLabels[r]}</button>
             ))}
           </div>
         </div>
@@ -169,7 +169,7 @@ export default function PadelForm({ onClose }: Props) {
       </div>
 
       <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '16px 20px', paddingBottom: 'max(env(safe-area-inset-bottom),20px)', background: 'linear-gradient(transparent, var(--bg) 40%)' }}>
-        <button onClick={handleSave} disabled={saving} style={{ width: '100%', height: 52, borderRadius: 16, background: 'linear-gradient(135deg,#06B6D4,#2563EB)', border: 'none', color: '#fff', fontSize: 16, fontWeight: 600, cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.7 : 1, boxShadow: '0 4px 20px rgba(6,182,212,0.35)' }}>
+        <button onClick={handleSave} disabled={saving} style={{ width: '100%', height: 52, borderRadius: 'var(--r-md)', background: 'linear-gradient(135deg,#06B6D4,#2563EB)', border: 'none', color: '#fff', fontSize: 16, fontWeight: 600, cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.7 : 1, boxShadow: '0 4px 20px rgba(6,182,212,0.35)' }}>
           {saving ? t('record.padelSaving') : t('record.padelSaveActivity')}
         </button>
       </div>

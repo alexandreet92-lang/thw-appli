@@ -28,17 +28,17 @@ export function FilterMenu({ label, value, options, onChange }: { label: string;
     <div ref={ref} style={{ position: 'relative' }}>
       <style>{anim}</style>
       <button onClick={() => setOpen(o => !o)}
-        style={{ display: 'inline-flex', alignItems: 'center', gap: 7, border: `1px solid ${active || open ? 'color-mix(in srgb, var(--primary) 45%, var(--border))' : 'var(--border)'}`, background: active ? 'color-mix(in srgb, var(--primary) 12%, transparent)' : 'var(--bg-card)', color: active ? 'var(--primary)' : 'var(--text-mid)', borderRadius: 999, padding: '7px 12px', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: BODY }}>
+        style={{ display: 'inline-flex', alignItems: 'center', gap: 7, border: `1px solid ${active || open ? 'color-mix(in srgb, var(--primary) 45%, var(--border))' : 'var(--border)'}`, background: active ? 'color-mix(in srgb, var(--primary) 12%, transparent)' : 'var(--bg-card)', color: active ? 'var(--primary)' : 'var(--text-mid)', borderRadius: 'var(--r-pill)', padding: '7px 12px', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: BODY }}>
         {label}{active && current ? ` · ${current.label}` : ''}
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform .18s' }}><path d="M6 9l6 6 6-6" /></svg>
       </button>
       {open && (
-        <div style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, minWidth: 210, zIndex: 60, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 14, boxShadow: '0 16px 40px rgba(0,0,0,0.22)', padding: 6, animation: 'cmMenuIn .16s cubic-bezier(.32,.72,0,1)', maxHeight: 320, overflowY: 'auto' }}>
+        <div style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, minWidth: 210, zIndex: 60, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', boxShadow: '0 16px 40px rgba(0,0,0,0.22)', padding: 6, animation: 'cmMenuIn .16s cubic-bezier(.32,.72,0,1)', maxHeight: 320, overflowY: 'auto' }}>
           {[{ value: '__all__', label: 'Tous' } as Opt, ...options].map(o => {
             const sel = o.value === value
             return (
               <button key={o.value} onClick={() => { onChange(o.value); setOpen(false) }}
-                style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', textAlign: 'left', padding: '9px 10px', borderRadius: 9, border: 'none', background: sel ? 'color-mix(in srgb, var(--primary) 10%, transparent)' : 'transparent', cursor: 'pointer', fontFamily: BODY }}
+                style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', textAlign: 'left', padding: '9px 10px', borderRadius: 'var(--r-sm)', border: 'none', background: sel ? 'color-mix(in srgb, var(--primary) 10%, transparent)' : 'transparent', cursor: 'pointer', fontFamily: BODY }}
                 onMouseEnter={e => { if (!sel) (e.currentTarget as HTMLElement).style.background = 'var(--bg-alt)' }}
                 onMouseLeave={e => { if (!sel) (e.currentTarget as HTMLElement).style.background = 'transparent' }}>
                 <span style={{ width: 16, flexShrink: 0, color: 'var(--primary)' }}>{sel && <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>}</span>
@@ -74,7 +74,7 @@ export function RowActionsMenu({ actions }: { actions: Action[] }) {
 
   return (
     <>
-      <button ref={btn} onClick={toggle} aria-label="Actions" style={{ width: 34, height: 34, borderRadius: 10, border: '1px solid var(--border)', background: open ? 'var(--bg-alt)' : 'transparent', color: 'var(--text-mid)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+      <button ref={btn} onClick={toggle} aria-label="Actions" style={{ width: 34, height: 34, borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: open ? 'var(--bg-alt)' : 'transparent', color: 'var(--text-mid)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
         onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'var(--bg-alt)'}
         onMouseLeave={e => { if (!open) (e.currentTarget as HTMLElement).style.background = 'transparent' }}>
         <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.8" /><circle cx="12" cy="12" r="1.8" /><circle cx="19" cy="12" r="1.8" /></svg>
@@ -83,10 +83,10 @@ export function RowActionsMenu({ actions }: { actions: Action[] }) {
         <>
           <style>{anim}</style>
           <div onClick={e => { e.stopPropagation(); setOpen(false) }} style={{ position: 'fixed', inset: 0, zIndex: 13000 }} />
-          <div style={{ position: 'fixed', top: pos.top, left: pos.left, width: W, zIndex: 13001, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 14, boxShadow: '0 18px 48px rgba(0,0,0,0.28)', padding: 6, animation: 'cmMenuIn .16s cubic-bezier(.32,.72,0,1)' }}>
+          <div style={{ position: 'fixed', top: pos.top, left: pos.left, width: W, zIndex: 13001, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', boxShadow: '0 18px 48px rgba(0,0,0,0.28)', padding: 6, animation: 'cmMenuIn .16s cubic-bezier(.32,.72,0,1)' }}>
             {actions.map((a, i) => (
               <button key={i} onClick={e => { e.stopPropagation(); setOpen(false); a.onClick() }}
-                style={{ display: 'flex', alignItems: 'center', gap: 11, width: '100%', textAlign: 'left', padding: '10px 11px', borderRadius: 9, border: 'none', background: 'transparent', cursor: 'pointer', fontFamily: BODY, color: a.danger ? 'var(--danger)' : 'var(--text)' }}
+                style={{ display: 'flex', alignItems: 'center', gap: 11, width: '100%', textAlign: 'left', padding: '10px 11px', borderRadius: 'var(--r-sm)', border: 'none', background: 'transparent', cursor: 'pointer', fontFamily: BODY, color: a.danger ? 'var(--danger)' : 'var(--text)' }}
                 onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = a.danger ? 'rgba(239,68,68,0.08)' : 'var(--bg-alt)'}
                 onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}>
                 <span style={{ display: 'flex', flexShrink: 0, color: a.danger ? 'var(--danger)' : 'var(--text-mid)' }}>{a.icon}</span>

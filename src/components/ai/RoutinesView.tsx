@@ -229,7 +229,7 @@ function ListView({ routines, loading, err, onNew, onOpen, onToggle }: {
       {routines.map((r, i) => (
         <AnimatedItem key={r.id} index={i}>
         <Card onClick={() => onOpen(r.id)} className="cursor-pointer flex-row items-center gap-3.5 px-5 py-[18px] min-h-[76px] transition-transform duration-200 active:scale-[0.985]">
-          <div style={{ width: 44, height: 44, borderRadius: 14, background: r.enabled ? 'var(--primary-dim)' : 'var(--bg-alt)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <div style={{ width: 44, height: 44, borderRadius: 'var(--r-md)', background: r.enabled ? 'var(--primary-dim)' : 'var(--bg-alt)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={r.enabled ? ACCENT : 'var(--text-dim)'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4M4.9 19.1l2.8-2.8M16.3 7.7l2.8-2.8"/></svg>
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
@@ -295,7 +295,7 @@ function FormView({ initial, onCancel, onSaved }: { initial: FormState; onCancel
                   onClick={() => { set({ name: t(`w1a.r_tpl_${i}_name`), prompt: t(`w1a.r_tpl_${i}_prompt`), frequency: tpl.frequency, hour: tpl.hour, ...(tpl.model ? { model: tpl.model } : {}) }); setAppliedTpl(i) }}
                   onMouseEnter={e => { if (!on) (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)' }}
                   onMouseLeave={e => { if (!on) (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-card2)' }}
-                  style={{ padding: '8px 14px', borderRadius: 10, border: `1px solid ${on ? 'var(--primary)' : 'var(--border)'}`, background: on ? 'var(--primary-dim)' : 'var(--bg-card2)', color: on ? 'var(--primary)' : 'var(--text-mid)', fontSize: 13, fontWeight: on ? 600 : 500, cursor: 'pointer', fontFamily: FB, transition: 'background 0.14s, color 0.14s, border-color 0.14s' }}>
+                  style={{ padding: '8px 14px', borderRadius: 'var(--r-sm)', border: `1px solid ${on ? 'var(--primary)' : 'var(--border)'}`, background: on ? 'var(--primary-dim)' : 'var(--bg-card2)', color: on ? 'var(--primary)' : 'var(--text-mid)', fontSize: 13, fontWeight: on ? 600 : 500, cursor: 'pointer', fontFamily: FB, transition: 'background 0.14s, color 0.14s, border-color 0.14s' }}>
                   {t(`w1a.r_tpl_${i}_label`)}
                 </button>
               )
@@ -396,7 +396,7 @@ function DetailView({ id, routine, onEdit, onChanged, onDeleted }: {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 18, maxWidth: 640, margin: '0 auto' }}>
       {/* En-tête routine */}
       <div>
-        <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--text)', fontFamily: 'Syne,DM Sans,sans-serif' }}>{routine.name}</div>
+        <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-display)' }}>{routine.name}</div>
         <div style={{ fontSize: 13, color: 'var(--text-dim)', marginTop: 3 }}>{scheduleLabel(routine)}{!routine.enabled && t('w1a.r_enPause')}{routine.allow_write && t('w1a.r_peutAgir')}</div>
       </div>
 
@@ -420,7 +420,7 @@ function DetailView({ id, routine, onEdit, onChanged, onDeleted }: {
       {/* Prompt */}
       <div>
         <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase', color: 'var(--text-dim)', marginBottom: 6 }}>{t('w1a.r_instruction')}</div>
-        <div style={{ fontSize: 13.5, lineHeight: 1.6, color: 'var(--text)', padding: '12px 14px', borderRadius: 10, background: 'var(--bg-alt)', border: '0.5px solid var(--border)', whiteSpace: 'pre-wrap' }}>{routine.prompt}</div>
+        <div style={{ fontSize: 13.5, lineHeight: 1.6, color: 'var(--text)', padding: '12px 14px', borderRadius: 'var(--r-sm)', background: 'var(--bg-alt)', border: '0.5px solid var(--border)', whiteSpace: 'pre-wrap' }}>{routine.prompt}</div>
       </div>
 
       {/* Historique */}
@@ -436,11 +436,11 @@ function DetailView({ id, routine, onEdit, onChanged, onDeleted }: {
               const isOpen = openRun === run.id
               const color = run.status === 'error' ? '#ef4444' : run.status === 'running' ? '#f59e0b' : '#22c55e'
               return (
-                <div key={run.id} style={{ borderRadius: 10, border: '0.5px solid var(--border)', background: 'var(--bg-card)', overflow: 'hidden' }}>
+                <div key={run.id} style={{ borderRadius: 'var(--r-sm)', border: '0.5px solid var(--border)', background: 'var(--bg-card)', overflow: 'hidden' }}>
                   <button onClick={() => setOpenRun(isOpen ? null : run.id)}
                     style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '11px 14px', border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left' }}>
                     <span style={{ width: 8, height: 8, borderRadius: '50%', background: color, flexShrink: 0 }} />
-                    <span style={{ flex: 1, fontSize: 13, color: 'var(--text)', fontFamily: 'DM Sans,sans-serif' }}>{fmtWhen(run.created_at)}</span>
+                    <span style={{ flex: 1, fontSize: 13, color: 'var(--text)', fontFamily: 'var(--font-body)' }}>{fmtWhen(run.created_at)}</span>
                     <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>{run.status === 'error' ? t('w1a.r_statusError') : run.status === 'running' ? t('w1a.r_statusRunning') : t('w1a.r_statusDone')}</span>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ transform: isOpen ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s', flexShrink: 0 }}><path d="M9 6l6 6-6 6"/></svg>
                   </button>

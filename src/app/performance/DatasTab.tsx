@@ -270,7 +270,7 @@ function BackfillRecordsButton({ onDone }: { onDone?: () => void | Promise<void>
       title={t('perf2.recalculateTitle')}
       style={{
         padding:      '4px 10px',
-        borderRadius: 6,
+        borderRadius: 'var(--r-sm)',
         border:       `1px solid ${state.kind === 'idle' || state.kind === 'busy' ? 'var(--border)' : color}`,
         background:   busy ? 'var(--bg-card2)' : 'transparent',
         color,
@@ -421,7 +421,7 @@ function TimeBarChart({ records, chartDists, onBarClick, actMap, onAll, distKm }
   const BAR_H = 104
 
   const distTabBtn = (active: boolean): React.CSSProperties => ({
-    padding: '4px 11px', borderRadius: 999, cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 11.5,
+    padding: '4px 11px', borderRadius: 'var(--r-pill)', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 11.5,
     fontWeight: active ? 600 : 500,
     border: `1px solid ${active ? 'var(--primary)' : 'var(--border)'}`,
     background: active ? 'var(--primary-dim)' : 'transparent',
@@ -429,7 +429,7 @@ function TimeBarChart({ records, chartDists, onBarClick, actMap, onAll, distKm }
   })
   const sortBtn = (active: boolean): React.CSSProperties => ({
     padding: '5px 12px', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 11.5,
-    fontWeight: active ? 600 : 500, borderRadius: 999,
+    fontWeight: active ? 600 : 500, borderRadius: 'var(--r-pill)',
     background: active ? 'var(--bg-card)' : 'transparent', color: active ? 'var(--text)' : 'var(--text-dim)',
   })
 
@@ -448,11 +448,11 @@ function TimeBarChart({ records, chartDists, onBarClick, actMap, onAll, distKm }
       {/* Tri : année + chronologique / meilleur */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
         <select value={yearFilter} onChange={e => setYearFilter(e.target.value)}
-          style={{ padding: '6px 10px', borderRadius: 999, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontFamily: 'var(--font-body)', fontSize: 11.5, outline: 'none', cursor: 'pointer' }}>
+          style={{ padding: '6px 10px', borderRadius: 'var(--r-pill)', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontFamily: 'var(--font-body)', fontSize: 11.5, outline: 'none', cursor: 'pointer' }}>
           <option value="all">{t('perf2.allYears')}</option>
           {years.map(y => <option key={y} value={y}>{y}</option>)}
         </select>
-        <div style={{ display: 'inline-flex', gap: 2, padding: 3, borderRadius: 999, background: 'var(--bg-card2)', border: '1px solid var(--border)' }}>
+        <div style={{ display: 'inline-flex', gap: 2, padding: 3, borderRadius: 'var(--r-pill)', background: 'var(--bg-card2)', border: '1px solid var(--border)' }}>
           <button onClick={() => setSortMode('chrono')} style={sortBtn(sortMode === 'chrono')}>{t('perf2.chronological')}</button>
           <button onClick={() => setSortMode('best')} style={sortBtn(sortMode === 'best')}>{t('perf2.best')}</button>
         </div>
@@ -479,12 +479,12 @@ function TimeBarChart({ records, chartDists, onBarClick, actMap, onAll, distKm }
                     display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, padding: 0 }}>
                   <span className="tnum" style={{ fontFamily: 'var(--font-body)', fontSize: 11, fontWeight: 700, color: 'var(--text)' }}>{r.performance}</span>
                   <div style={{ height: BAR_H, width: '100%', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
-                    <div style={{ width: 14, height: `${hPct}%`, background: col, borderRadius: 7,
+                    <div style={{ width: 14, height: `${hPct}%`, background: col, borderRadius: 'var(--r-sm)',
                       boxShadow: isBest ? `0 0 0 2px var(--bg-card), 0 0 0 3px ${col}` : 'none',
                       animation: 'chartBarEnter 0.9s cubic-bezier(0.25,1,0.5,1) both', transformBox: 'fill-box', transformOrigin: 'bottom' }} />
                   </div>
                   <span style={{ fontFamily: 'var(--font-body)', fontSize: 9.5, color: 'var(--text-dim)', whiteSpace: 'nowrap' }}>{fmtDay(r.achieved_at)}</span>
-                  {isBest && <span style={{ fontSize: 8, fontWeight: 700, color: col }}>★ PR</span>}
+                  {isBest && <span style={{ fontSize: 10, fontWeight: 700, color: col }}>★ PR</span>}
                 </button>
               )
             })}
@@ -498,7 +498,7 @@ function TimeBarChart({ records, chartDists, onBarClick, actMap, onAll, distKm }
             const left = Math.min(hover.x * 74 + 8, 240)
             return (
               <div style={{ position: 'absolute', top: -6, left, transform: 'translateY(-100%)', zIndex: 20,
-                background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 10, padding: '9px 12px',
+                background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 'var(--r-sm)', padding: '9px 12px',
                 pointerEvents: 'none', minWidth: 148, boxShadow: '0 4px 18px rgba(0,0,0,0.3)' }}>
                 <p style={{ fontFamily: 'var(--font-display)', fontSize: 12, fontWeight: 700, color: 'var(--text)', margin: '0 0 4px' }}>{r.distance_label} · {r.performance}</p>
                 <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: '0 0 3px' }}>{new Date(r.achieved_at).toLocaleDateString(currentLocale(), { day: '2-digit', month: 'short', year: 'numeric' })}</p>
@@ -578,12 +578,12 @@ function HyroxTestsBandeau({ onNavigateToTests }: { onNavigateToTests?: () => vo
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <div style={{ width: 3, height: 18, borderRadius: 2, background: 'linear-gradient(180deg,#ef4444,#f97316)', flexShrink: 0 }} />
-          <h2 style={{ fontFamily: 'Syne,sans-serif', fontSize: 13, fontWeight: 700, margin: 0 }}>{t('perf2.hyroxTests')}</h2>
+          <h2 style={{ fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 700, margin: 0 }}>{t('perf2.hyroxTests')}</h2>
           <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>{t('perf2.mostRecentResults')}</span>
         </div>
         <button onClick={onNavigateToTests} style={{
           display: 'flex', alignItems: 'center', gap: 5,
-          padding: '5px 11px', borderRadius: 8,
+          padding: '5px 11px', borderRadius: 'var(--r-sm)',
           border: '1px solid rgba(239,68,68,0.35)',
           background: 'rgba(239,68,68,0.08)',
           color: 'var(--danger)', fontSize: 11, fontWeight: 600,
@@ -610,7 +610,7 @@ function HyroxTestsBandeau({ onNavigateToTests }: { onNavigateToTests?: () => vo
                 onClick={() => goToTest(td.urlTest)}
                 style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  padding: '9px 12px', borderRadius: 9, cursor: 'pointer',
+                  padding: '9px 12px', borderRadius: 'var(--r-sm)', cursor: 'pointer',
                   background: latest ? 'rgba(239,68,68,0.06)' : 'var(--bg-card2)',
                   border: `1px solid ${latest ? 'rgba(239,68,68,0.18)' : 'var(--border)'}`,
                   transition: 'background 0.15s, border-color 0.15s',
@@ -622,9 +622,9 @@ function HyroxTestsBandeau({ onNavigateToTests }: { onNavigateToTests?: () => vo
                     background: latest ? 'var(--danger)' : 'var(--text-dim)',
                   }} />
                   <div>
-                    <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)', margin: 0, fontFamily: 'Syne,sans-serif' }}>{t(HYROX_TEST_LABEL_KEY[td.id] ?? '')}</p>
+                    <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)', margin: 0, fontFamily: 'var(--font-body)' }}>{t(HYROX_TEST_LABEL_KEY[td.id] ?? '')}</p>
                     {latest && (
-                      <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '1px 0 0', fontFamily: 'DM Mono,monospace' }}>
+                      <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '1px 0 0', fontFamily: 'var(--font-body)' }}>
                         {latest.performed_at.slice(0, 10)}
                       </p>
                     )}
@@ -636,7 +636,7 @@ function HyroxTestsBandeau({ onNavigateToTests }: { onNavigateToTests?: () => vo
                     <>
                       {latest.level && (
                         <span style={{
-                          padding: '2px 8px', borderRadius: 5,
+                          padding: '2px 8px', borderRadius: 'var(--r-sm)',
                           background: `${lvlColor}20`, border: `1px solid ${lvlColor}50`,
                           fontSize: 10, fontWeight: 700, color: lvlColor,
                         }}>
@@ -644,7 +644,7 @@ function HyroxTestsBandeau({ onNavigateToTests }: { onNavigateToTests?: () => vo
                         </span>
                       )}
                       {latest.score !== null && (
-                        <span style={{ fontSize: 9, color: 'var(--text-dim)', fontFamily: 'DM Mono,monospace' }}>
+                        <span style={{ fontSize: 10, color: 'var(--text-dim)', fontFamily: 'var(--font-body)' }}>
                           {latest.score.toFixed(1)}
                         </span>
                       )}
@@ -671,7 +671,7 @@ function Card({ children, style }: { children: React.ReactNode; style?: React.CS
   return (
     <div style={{
       background: 'var(--bg-card)', border: '1px solid var(--border)',
-      borderRadius: 16, padding: 20, boxShadow: 'var(--shadow-card)', ...style,
+      borderRadius: 'var(--r-md)', padding: 20, boxShadow: 'var(--shadow-card)', ...style,
     }}>
       {children}
     </div>
@@ -685,7 +685,7 @@ function NInput({ label, value, onChange, unit, step }: { label: string; value: 
         {label}{unit && <span style={{ fontWeight: 400, marginLeft: 3, textTransform: 'none' }}>({unit})</span>}
       </p>
       <input type="number" value={value} step={step || 1} onChange={e => onChange(parseFloat(e.target.value) || 0)}
-        style={{ width: '100%', padding: '7px 10px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontFamily: 'DM Mono,monospace', fontSize: 12, outline: 'none' }} />
+        style={{ width: '100%', padding: '7px 10px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontFamily: 'var(--font-body)', fontSize: 12, outline: 'none' }} />
     </div>
   )
 }
@@ -695,7 +695,7 @@ function TInput({ label, value, onChange, placeholder }: { label: string; value:
     <div>
       <p style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-dim)', marginBottom: 4 }}>{label}</p>
       <input type="text" value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
-        style={{ width: '100%', padding: '7px 10px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontFamily: 'DM Mono,monospace', fontSize: 12, outline: 'none' }} />
+        style={{ width: '100%', padding: '7px 10px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontFamily: 'var(--font-body)', fontSize: 12, outline: 'none' }} />
     </div>
   )
 }
@@ -732,14 +732,14 @@ function ZBars({ zones, onSelect, selectedKey, editKey, editDraft, onEditStart, 
             style={{
               display: 'flex', alignItems: 'center', gap: 10,
               padding: '4px 6px',
-              borderRadius: 8,
+              borderRadius: 'var(--r-sm)',
               cursor: (onSelect && !isEditing) ? 'pointer' : undefined,
               background: isEditing ? `${Z_COLORS[i]}10` : sel ? `${Z_COLORS[i]}14` : undefined,
               border: isEditing ? `1px solid ${Z_COLORS[i]}88` : sel ? `1px solid ${Z_COLORS[i]}55` : '1px solid transparent',
               transition: 'background 0.15s, border-color 0.15s',
             }}
           >
-            <span style={{ width: 26, height: 26, borderRadius: 6, background: `${Z_COLORS[i]}22`, border: `1px solid ${Z_COLORS[i]}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, color: Z_COLORS[i], flexShrink: 0 }}>{z.z}</span>
+            <span style={{ width: 26, height: 26, borderRadius: 'var(--r-sm)', background: `${Z_COLORS[i]}22`, border: `1px solid ${Z_COLORS[i]}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, color: Z_COLORS[i], flexShrink: 0 }}>{z.z}</span>
             <div style={{ flex: 1 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: isEditing ? 0 : 2 }}>
                 <span style={{ fontSize: 11, color: 'var(--text-mid)' }}>{z.label}</span>
@@ -749,19 +749,19 @@ function ZBars({ zones, onSelect, selectedKey, editKey, editDraft, onEditStart, 
                       value={editDraft ?? ''}
                       onChange={e => onEditChange?.(e.target.value)}
                       autoFocus
-                      style={{ width: 160, padding: '3px 7px', borderRadius: 5, border: `1px solid ${Z_COLORS[i]}`, background: 'var(--input-bg)', color: 'var(--text)', fontFamily: 'DM Mono,monospace', fontSize: 11, outline: 'none' }}
+                      style={{ width: 160, padding: '3px 7px', borderRadius: 'var(--r-sm)', border: `1px solid ${Z_COLORS[i]}`, background: 'var(--input-bg)', color: 'var(--text)', fontFamily: 'var(--font-body)', fontSize: 11, outline: 'none' }}
                       onKeyDown={e => { if (e.key === 'Enter') onEditConfirm?.(); if (e.key === 'Escape') onEditCancel?.() }}
                     />
                     <button
                       onClick={onEditConfirm}
                       disabled={editSaving}
-                      style={{ padding: '3px 9px', borderRadius: 5, border: 'none', background: Z_COLORS[i], color: '#000', fontSize: 10, fontWeight: 700, cursor: 'pointer', opacity: editSaving ? 0.6 : 1 }}
+                      style={{ padding: '3px 9px', borderRadius: 'var(--r-sm)', border: 'none', background: Z_COLORS[i], color: '#000', fontSize: 10, fontWeight: 700, cursor: 'pointer', opacity: editSaving ? 0.6 : 1 }}
                     >
                       {editSaving ? '…' : 'OK'}
                     </button>
                     <button
                       onClick={onEditCancel}
-                      style={{ padding: '3px 7px', borderRadius: 5, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', fontSize: 10, cursor: 'pointer' }}
+                      style={{ padding: '3px 7px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', fontSize: 10, cursor: 'pointer' }}
                     >
                       ✕
                     </button>
@@ -771,7 +771,7 @@ function ZBars({ zones, onSelect, selectedKey, editKey, editDraft, onEditStart, 
                     onClick={e => { e.stopPropagation(); onEditStart?.(key, z.range) }}
                     title={onEditStart ? 'Cliquer pour modifier' : undefined}
                     style={{
-                      fontSize: 11, fontFamily: 'DM Mono,monospace', color: Z_COLORS[i], fontWeight: 600,
+                      fontSize: 11, fontFamily: 'var(--font-body)', color: Z_COLORS[i], fontWeight: 600,
                       cursor: onEditStart ? 'text' : undefined,
                       padding: onEditStart ? '2px 5px' : undefined,
                       borderRadius: onEditStart ? 4 : undefined,
@@ -784,9 +784,9 @@ function ZBars({ zones, onSelect, selectedKey, editKey, editDraft, onEditStart, 
                 )}
               </div>
               {!isEditing && (
-                <div style={{ height: 5, borderRadius: 999, background: `${Z_COLORS[i]}22`, overflow: 'hidden' }}>
+                <div style={{ height: 5, borderRadius: 'var(--r-pill)', background: `${Z_COLORS[i]}22`, overflow: 'hidden' }}>
                   <div style={{
-                    height: '100%', width: `${Math.min(100, 20 + i * 16)}%`, background: Z_COLORS[i], opacity: 0.7, borderRadius: 999,
+                    height: '100%', width: `${Math.min(100, 20 + i * 16)}%`, background: Z_COLORS[i], opacity: 0.7, borderRadius: 'var(--r-pill)',
                     transformOrigin: 'left center',
                     transform: ready ? 'scaleX(1)' : 'scaleX(0)',
                     transition: `transform 1.1s cubic-bezier(0.25,1,0.5,1) ${i * 60}ms`,
@@ -835,7 +835,7 @@ function RecordRow({ label, rec24, rec23, sub, date, onSelect, selected, actions
       <div style={{ flex: 1 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <span className="tnum" style={{ fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{rec24}</span>
-          {isPR && <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 4, background: 'transparent', color: 'var(--primary)', fontWeight: 700 }}>PR</span>}
+          {isPR && <span style={{ fontSize: 10, padding: '1px 5px', borderRadius: 4, background: 'transparent', color: 'var(--primary)', fontWeight: 700 }}>PR</span>}
           {sub && <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>{sub}</span>}
           {dateStr && rec24 !== '—' && (
             <span className="tnum" style={{ fontSize: 10, color: 'var(--text-dim)', marginLeft: 'auto', whiteSpace: 'nowrap' }}>{dateStr}</span>
@@ -866,10 +866,10 @@ function PowerCompareOverlay({ bikeByYear, weight, onClose }: {
   return createPortal(
     <div onClick={e => { if (e.target === e.currentTarget) onClose() }}
       style={{ position: 'fixed', inset: 0, zIndex: 3300, background: 'rgba(0,0,0,0.72)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-      <div style={{ width: '100%', maxWidth: 820, maxHeight: 'calc(100dvh - 64px)', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 18, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <div style={{ width: '100%', maxWidth: 820, maxHeight: 'calc(100dvh - 64px)', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-lg)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
           <div>
-            <h2 style={{ fontFamily: 'Syne,sans-serif', fontSize: 15, fontWeight: 700, margin: 0, color: 'var(--text)' }}>{t('perf2.compareYears')}</h2>
+            <h2 style={{ fontFamily: 'var(--font-body)', fontSize: 15, fontWeight: 700, margin: 0, color: 'var(--text)' }}>{t('perf2.compareYears')}</h2>
             <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: '3px 0 0' }}>
               {t('perf2.powerRecords')}{weight > 0 ? ` · ${weight} kg` : ''}
             </p>
@@ -946,7 +946,7 @@ function RecordsAllOverlay({ title, records, actMap, distKm, onEdit, onDelete, o
       <div style={{ width: '100%', maxWidth: 640, maxHeight: 'calc(100dvh - 56px)', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '20px 20px 0 0', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
           <div>
-            <h2 style={{ fontFamily: 'Syne,sans-serif', fontSize: 15, fontWeight: 700, margin: 0, color: 'var(--text)' }}>{title}</h2>
+            <h2 style={{ fontFamily: 'var(--font-body)', fontSize: 15, fontWeight: 700, margin: 0, color: 'var(--text)' }}>{title}</h2>
             <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: '3px 0 0' }}>{sorted.length} {sorted.length > 1 ? t('perf2.activities') : t('perf2.activity')}</p>
           </div>
           <button onClick={onClose} style={{ width: 30, height: 30, borderRadius: '50%', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 17 }}>×</button>
@@ -958,13 +958,13 @@ function RecordsAllOverlay({ title, records, actMap, distKm, onEdit, onDelete, o
             const act = r.activity_id ? actMap?.[r.activity_id] : undefined
             const pace = paceOf(r)
             return (
-              <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10, marginBottom: 6, background: 'var(--bg-card2)' }}>
+              <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 'var(--r-sm)', marginBottom: 6, background: 'var(--bg-card2)' }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                     <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, fontWeight: 600, color: 'var(--text-mid)' }}>{r.distance_label}</span>
                     <span className="tnum" style={{ fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>{r.performance}</span>
                     {pace && <span className="tnum" style={{ fontSize: 10, color: 'var(--text-dim)' }}>{pace}</span>}
-                    {r.activity_id && <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--primary)', border: '1px solid var(--primary)', borderRadius: 5, padding: '1px 5px' }}>{t('perf2.linked')}</span>}
+                    {r.activity_id && <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--primary)', border: '1px solid var(--primary)', borderRadius: 'var(--r-sm)', padding: '1px 5px' }}>{t('perf2.linked')}</span>}
                   </div>
                   <div style={{ display: 'flex', gap: 10, marginTop: 3, flexWrap: 'wrap' }}>
                     <span className="tnum" style={{ fontSize: 10.5, color: 'var(--text-dim)' }}>{new Date(r.achieved_at).toLocaleDateString(currentLocale(), { day: '2-digit', month: 'short', year: 'numeric' })}</span>
@@ -973,8 +973,8 @@ function RecordsAllOverlay({ title, records, actMap, distKm, onEdit, onDelete, o
                     {act?.avg_temp_c != null && <span className="tnum" style={{ fontSize: 10.5, color: 'var(--text-dim)' }}>{Math.round(act.avg_temp_c)}°C</span>}
                   </div>
                 </div>
-                <button onClick={() => onEdit(r)} style={{ flexShrink: 0, padding: '5px 10px', borderRadius: 7, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-mid)', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>{t('perf2.edit')}</button>
-                <button onClick={() => { if (window.confirm(t('perf2.confirmDelete'))) onDelete(r.id) }} style={{ flexShrink: 0, padding: '5px 10px', borderRadius: 7, border: '1px solid var(--border)', background: 'transparent', color: 'var(--danger)', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>{t('perf2.delete')}</button>
+                <button onClick={() => onEdit(r)} style={{ flexShrink: 0, padding: '5px 10px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-mid)', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>{t('perf2.edit')}</button>
+                <button onClick={() => { if (window.confirm(t('perf2.confirmDelete'))) onDelete(r.id) }} style={{ flexShrink: 0, padding: '5px 10px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'transparent', color: 'var(--danger)', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>{t('perf2.delete')}</button>
               </div>
             )
           })}
@@ -990,7 +990,7 @@ function SectionHeader({ label, gradient }: { label: string; gradient: string })
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '4px 0' }}>
       <div style={{ width: 3, height: 20, borderRadius: 2, background: gradient }} />
-      <h2 style={{ fontFamily: 'Syne,sans-serif', fontSize: 14, fontWeight: 700, margin: 0, color: 'var(--text)' }}>{label}</h2>
+      <h2 style={{ fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 700, margin: 0, color: 'var(--text)' }}>{label}</h2>
     </div>
   )
 }
@@ -1068,14 +1068,14 @@ function RecordDrawer({ sport, distLabel, draft, setDraft, date, setDate, saving
 
   // ── Styles ────────────────────────────────────────────────────
   const inp: React.CSSProperties = {
-    width: '100%', padding: '10px 12px', borderRadius: 10,
+    width: '100%', padding: '10px 12px', borderRadius: 'var(--r-sm)',
     border: '1px solid var(--border-mid)', background: 'var(--input-bg)',
     color: 'var(--text)', fontFamily: 'var(--font-body)', fontSize: 13,
     outline: 'none', boxSizing: 'border-box',
   }
   const secBox = (): React.CSSProperties => ({
     background: 'var(--bg-card2)', border: 'none',
-    borderRadius: 14, padding: '14px 16px', marginBottom: 12,
+    borderRadius: 'var(--r-md)', padding: '14px 16px', marginBottom: 12,
   })
   const secHdr: React.CSSProperties = {
     display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12,
@@ -1089,7 +1089,7 @@ function RecordDrawer({ sport, distLabel, draft, setDraft, date, setDate, saving
     letterSpacing: '0.06em', color: 'var(--text-dim)', marginBottom: 5, marginTop: 0,
   }
   const tog = (active: boolean): React.CSSProperties => ({
-    padding: '6px 13px', borderRadius: 8, border: 'none', cursor: 'pointer',
+    padding: '6px 13px', borderRadius: 'var(--r-sm)', border: 'none', cursor: 'pointer',
     fontFamily: 'var(--font-body)', fontSize: 11, fontWeight: active ? 600 : 500,
     background: active ? 'var(--bg-elev)' : 'transparent',
     color: active ? 'var(--text)' : 'var(--text-dim)',
@@ -1319,7 +1319,7 @@ function RecordDrawer({ sport, distLabel, draft, setDraft, date, setDate, saving
               <span style={{ width:7, height:7, borderRadius:'50%', background:color, flexShrink:0 }} />
               {sportLabel}
             </span>
-            <span style={{ padding:'3px 9px', borderRadius:8, background:'var(--bg-card2)', fontFamily:'var(--font-body)', fontSize:11, fontWeight:600, color:'var(--text-mid)' }}>
+            <span style={{ padding:'3px 9px', borderRadius: 'var(--r-sm)', background:'var(--bg-card2)', fontFamily:'var(--font-body)', fontSize:11, fontWeight:600, color:'var(--text-mid)' }}>
               {distLabel}
             </span>
             <h2 style={{ fontFamily:'var(--font-display)', fontSize:17, fontWeight:600, color:'var(--text)', margin:0 }}>
@@ -1328,7 +1328,7 @@ function RecordDrawer({ sport, distLabel, draft, setDraft, date, setDate, saving
           </div>
           <div style={{ display:'flex', alignItems:'center', gap:8 }}>
             <input type="date" value={date} onChange={e => setDate(e.target.value)}
-              style={{ padding:'5px 9px', borderRadius:8, border:'1px solid var(--border)', background:'var(--input-bg)', color:'var(--text)', fontSize:11, outline:'none' }} />
+              style={{ padding:'5px 9px', borderRadius: 'var(--r-sm)', border:'1px solid var(--border)', background:'var(--input-bg)', color:'var(--text)', fontSize:11, outline:'none' }} />
             <button onClick={onClose} style={{ width:28, height:28, borderRadius:'50%', border:'1px solid var(--border)', background:'var(--bg-card2)', color:'var(--text-dim)', cursor:'pointer', fontSize:16, display:'flex', alignItems:'center', justifyContent:'center' }}>×</button>
           </div>
         </div>
@@ -1340,7 +1340,7 @@ function RecordDrawer({ sport, distLabel, draft, setDraft, date, setDate, saving
 
           {/* Lier une activité (course / natation / vélo) */}
           {(sport === 'run' || sport === 'swim' || sport === 'bike') && onOpenLink && (
-            <div style={{ background:'var(--bg-card2)', borderRadius:14, padding:'12px 16px', marginBottom:12, display:'flex', alignItems:'center', justifyContent:'space-between', gap:10 }}>
+            <div style={{ background:'var(--bg-card2)', borderRadius: 'var(--r-md)', padding:'12px 16px', marginBottom:12, display:'flex', alignItems:'center', justifyContent:'space-between', gap:10 }}>
               <div style={{ minWidth:0 }}>
                 <p style={{ ...secLbl, margin:0 }}>{t('perf2.linkedActivity')}</p>
                 <p style={{ fontFamily:'var(--font-body)', fontSize:12, color: activityId ? 'var(--text)' : 'var(--text-dim)', margin:'3px 0 0', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
@@ -1349,9 +1349,9 @@ function RecordDrawer({ sport, distLabel, draft, setDraft, date, setDate, saving
               </div>
               <div style={{ display:'flex', gap:6, flexShrink:0 }}>
                 {activityId && onUnlink && (
-                  <button onClick={onUnlink} style={{ padding:'6px 10px', borderRadius:8, border:'1px solid var(--border)', background:'transparent', color:'var(--text-dim)', fontSize:11, fontWeight:600, cursor:'pointer' }}>{t('perf2.unlink')}</button>
+                  <button onClick={onUnlink} style={{ padding:'6px 10px', borderRadius: 'var(--r-sm)', border:'1px solid var(--border)', background:'transparent', color:'var(--text-dim)', fontSize:11, fontWeight:600, cursor:'pointer' }}>{t('perf2.unlink')}</button>
                 )}
-                <button onClick={onOpenLink} style={{ padding:'6px 12px', borderRadius:8, border:'none', background:'var(--primary)', color:'var(--on-primary)', fontSize:11, fontWeight:600, cursor:'pointer' }}>
+                <button onClick={onOpenLink} style={{ padding:'6px 12px', borderRadius: 'var(--r-sm)', border:'none', background:'var(--primary)', color:'var(--on-primary)', fontSize:11, fontWeight:600, cursor:'pointer' }}>
                   {activityId ? t('perf2.change') : t('perf2.link')}
                 </button>
               </div>
@@ -1360,14 +1360,14 @@ function RecordDrawer({ sport, distLabel, draft, setDraft, date, setDate, saving
 
           {/* Résumé */}
           {validItems.length > 0 && (
-            <div style={{ background:'var(--bg-card2)', border:'none', borderRadius:14, padding:'14px 16px' }}>
+            <div style={{ background:'var(--bg-card2)', border:'none', borderRadius: 'var(--r-md)', padding:'14px 16px' }}>
               <div style={{ marginBottom:12 }}>
                 <span style={{ fontFamily:'var(--font-body)', fontSize:11, fontWeight:600, textTransform:'uppercase', letterSpacing:'0.06em', color:'var(--text-dim)' }}>{t('perf2.summary')}</span>
               </div>
               <div style={{ display:'grid', gridTemplateColumns:'repeat(2, 1fr)', gap:10 }}>
                 {validItems.map(item => (
                   <div key={item.label}>
-                    <p style={{ fontFamily:'var(--font-body)', fontSize:9, color:'var(--text-dim)', textTransform:'uppercase', letterSpacing:'0.06em', margin:'0 0 2px' }}>{item.label}</p>
+                    <p style={{ fontFamily:'var(--font-body)', fontSize: 10, color:'var(--text-dim)', textTransform:'uppercase', letterSpacing:'0.06em', margin:'0 0 2px' }}>{item.label}</p>
                     <p className="tnum" style={{ fontFamily:'var(--font-body)', fontSize:13, fontWeight:600, margin:0, color:'var(--text)' }}>{item.value}</p>
                   </div>
                 ))}
@@ -1415,7 +1415,7 @@ function EmptyState({ icon, title, description }: { icon: 'chart' | 'activity'; 
           </svg>
         )}
       </div>
-      <p style={{ fontFamily: 'Syne,sans-serif', fontSize: 13, fontWeight: 700, color: 'var(--text)', margin: 0 }}>{title}</p>
+      <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 700, color: 'var(--text)', margin: 0 }}>{title}</p>
       <p style={{ fontSize: 12, color: 'var(--text-dim)', margin: 0, maxWidth: 220 }}>{description}</p>
     </div>
   )
@@ -1425,10 +1425,10 @@ function EmptyState({ icon, title, description }: { icon: 'chart' | 'activity'; 
 function ModeToggle({ mode, onChange }: { mode: 'auto' | 'manual'; onChange: (m: 'auto' | 'manual') => void }) {
   const { t } = useI18n()
   return (
-    <div style={{ display: 'flex', gap: 4, background: 'var(--bg-card2)', borderRadius: 8, padding: 3, border: '1px solid var(--border)' }}>
+    <div style={{ display: 'flex', gap: 4, background: 'var(--bg-card2)', borderRadius: 'var(--r-sm)', padding: 3, border: '1px solid var(--border)' }}>
       {(['auto', 'manual'] as const).map(m => (
         <button key={m} onClick={() => onChange(m)} style={{
-          padding: '4px 10px', borderRadius: 6, border: 'none', cursor: 'pointer', fontSize: 11, fontWeight: mode === m ? 700 : 400,
+          padding: '4px 10px', borderRadius: 'var(--r-sm)', border: 'none', cursor: 'pointer', fontSize: 11, fontWeight: mode === m ? 700 : 400,
           background: mode === m ? 'var(--bg-card)' : 'transparent',
           color: mode === m ? 'var(--text)' : 'var(--text-dim)',
           boxShadow: mode === m ? '0 1px 3px rgba(0,0,0,0.12)' : 'none',
@@ -1775,7 +1775,7 @@ function ZonesSubTab({ profile, onSelect, selectedDatum, onOpenAI }: {
           onClick={() => onOpenAI('Aide-moi à estimer mes zones d\'entraînement. Dis-moi quel sport ou paramètre tu veux calibrer (running, cyclisme, natation, aviron, fréquence cardiaque) et je calcule tes zones personnalisées.')}
           style={{
             display: 'flex', alignItems: 'center', gap: 8,
-            padding: '10px 16px', borderRadius: 10,
+            padding: '10px 16px', borderRadius: 'var(--r-sm)',
             border: '1px solid rgba(139,92,246,0.35)',
             background: 'linear-gradient(135deg, rgba(139,92,246,0.08), rgba(91,111,255,0.08))',
             color: '#8b5cf6', fontSize: 12, fontWeight: 600, cursor: 'pointer',
@@ -1803,7 +1803,7 @@ function ZonesSubTab({ profile, onSelect, selectedDatum, onOpenAI }: {
         <Card>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 8 }}>
             <div>
-              <h3 style={{ fontFamily: 'Syne,sans-serif', fontSize: 13, fontWeight: 700, margin: 0 }}>{t('perf2.cycling')}</h3>
+              <h3 style={{ fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 700, margin: 0 }}>{t('perf2.cycling')}</h3>
               <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: '2px 0 0' }}>
                 FTP : {localFtp}W — {(localFtp / profile.weight).toFixed(2)} W/kg
                 {bikeInputType === 'cp20' && cp20Watts > 0 && <span style={{ color: '#8b5cf6', marginLeft: 6 }}>(CP20 × 0.95)</span>}
@@ -1814,10 +1814,10 @@ function ZonesSubTab({ profile, onSelect, selectedDatum, onOpenAI }: {
 
           {/* FTP / CP20 input row */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
-            <div style={{ display: 'flex', gap: 3, background: 'var(--bg-card2)', borderRadius: 7, padding: 2, border: '1px solid var(--border)' }}>
+            <div style={{ display: 'flex', gap: 3, background: 'var(--bg-card2)', borderRadius: 'var(--r-sm)', padding: 2, border: '1px solid var(--border)' }}>
               {(['ftp', 'cp20'] as const).map(bt => (
                 <button key={bt} onClick={() => { setBikeInputType(bt); setIsDirty(true) }} style={{
-                  padding: '3px 9px', borderRadius: 5, border: 'none', cursor: 'pointer', fontSize: 10, fontWeight: bikeInputType === bt ? 700 : 400,
+                  padding: '3px 9px', borderRadius: 'var(--r-sm)', border: 'none', cursor: 'pointer', fontSize: 10, fontWeight: bikeInputType === bt ? 700 : 400,
                   background: bikeInputType === bt ? 'var(--bg-card)' : 'transparent',
                   color: bikeInputType === bt ? 'var(--text)' : 'var(--text-dim)',
                 }}>
@@ -1829,16 +1829,16 @@ function ZonesSubTab({ profile, onSelect, selectedDatum, onOpenAI }: {
               <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                 <input type="number" value={ftpLocalInput} placeholder={String(profile.ftp)}
                   onChange={e => { setFtpLocalInput(e.target.value); setIsDirty(true) }}
-                  style={{ width: 72, padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontFamily: 'DM Mono,monospace', fontSize: 11, outline: 'none' }} />
+                  style={{ width: 72, padding: '4px 8px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontFamily: 'var(--font-body)', fontSize: 11, outline: 'none' }} />
                 <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>W</span>
               </div>
             ) : (
               <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                 <input type="number" value={cp20Input} placeholder="CP20 (W)"
                   onChange={e => { setCp20Input(e.target.value); setIsDirty(true) }}
-                  style={{ width: 90, padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontFamily: 'DM Mono,monospace', fontSize: 11, outline: 'none' }} />
+                  style={{ width: 90, padding: '4px 8px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontFamily: 'var(--font-body)', fontSize: 11, outline: 'none' }} />
                 <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>W</span>
-                {cp20Watts > 0 && <span style={{ fontSize: 10, color: '#8b5cf6', fontFamily: 'DM Mono,monospace' }}>→ FTP {localFtp}W</span>}
+                {cp20Watts > 0 && <span style={{ fontSize: 10, color: '#8b5cf6', fontFamily: 'var(--font-body)' }}>→ FTP {localFtp}W</span>}
               </div>
             )}
           </div>
@@ -1871,7 +1871,7 @@ function ZonesSubTab({ profile, onSelect, selectedDatum, onOpenAI }: {
                 <button
                   onClick={() => { void handleSaveZones('bike') }}
                   disabled={saving2}
-                  style={{ marginTop: 10, padding: '6px 16px', borderRadius: 7, border: 'none', background: 'var(--primary)', color: '#fff', fontSize: 11, fontWeight: 700, cursor: saving2 ? 'not-allowed' : 'pointer', opacity: saving2 ? 0.7 : 1 }}
+                  style={{ marginTop: 10, padding: '6px 16px', borderRadius: 'var(--r-sm)', border: 'none', background: 'var(--primary)', color: '#fff', fontSize: 11, fontWeight: 700, cursor: saving2 ? 'not-allowed' : 'pointer', opacity: saving2 ? 0.7 : 1 }}
                 >
                   {saving2 ? t('perf2.saving') : t('perf2.save')}
                 </button>
@@ -1881,20 +1881,20 @@ function ZonesSubTab({ profile, onSelect, selectedDatum, onOpenAI }: {
             <div>
               {bikeManual.map((z, i) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                  <span style={{ width: 26, height: 26, borderRadius: 6, background: `${Z_COLORS[i]}22`, border: `1px solid ${Z_COLORS[i]}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, color: Z_COLORS[i], flexShrink: 0 }}>Z{i + 1}</span>
+                  <span style={{ width: 26, height: 26, borderRadius: 'var(--r-sm)', background: `${Z_COLORS[i]}22`, border: `1px solid ${Z_COLORS[i]}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, color: Z_COLORS[i], flexShrink: 0 }}>Z{i + 1}</span>
                   <span style={{ fontSize: 10, color: 'var(--text-mid)', minWidth: 72 }}>{BIKE_ZONE_LABELS[i]}</span>
                   <input type="number" value={z.minW} onChange={e => { const v = [...bikeManual]; v[i] = {...v[i], minW: parseInt(e.target.value)||0}; setBikeManual(v); setIsDirty(true) }}
-                    style={{ width: 66, padding: '5px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontFamily: 'DM Mono,monospace', fontSize: 11, outline: 'none' }} />
+                    style={{ width: 66, padding: '5px 8px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontFamily: 'var(--font-body)', fontSize: 11, outline: 'none' }} />
                   <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>–</span>
                   <input type="number" value={z.maxW} onChange={e => { const v = [...bikeManual]; v[i] = {...v[i], maxW: parseInt(e.target.value)||0}; setBikeManual(v); setIsDirty(true) }}
-                    style={{ width: 66, padding: '5px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontFamily: 'DM Mono,monospace', fontSize: 11, outline: 'none' }} />
+                    style={{ width: 66, padding: '5px 8px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontFamily: 'var(--font-body)', fontSize: 11, outline: 'none' }} />
                   <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>W</span>
                 </div>
               ))}
               <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
-                <button onClick={resetBike} style={{ padding: '5px 12px', borderRadius: 7, background: 'var(--bg-card2)', border: '1px solid var(--border)', color: 'var(--text-dim)', fontSize: 11, cursor: 'pointer' }}>{t('perf2.reset')}</button>
+                <button onClick={resetBike} style={{ padding: '5px 12px', borderRadius: 'var(--r-sm)', background: 'var(--bg-card2)', border: '1px solid var(--border)', color: 'var(--text-dim)', fontSize: 11, cursor: 'pointer' }}>{t('perf2.reset')}</button>
                 {isDirty && (
-                  <button onClick={() => { void handleSaveZones('bike') }} disabled={saving2} style={{ padding: '5px 14px', borderRadius: 7, border: 'none', background: 'var(--primary)', color: '#fff', fontSize: 11, fontWeight: 700, cursor: saving2 ? 'not-allowed' : 'pointer', opacity: saving2 ? 0.7 : 1 }}>
+                  <button onClick={() => { void handleSaveZones('bike') }} disabled={saving2} style={{ padding: '5px 14px', borderRadius: 'var(--r-sm)', border: 'none', background: 'var(--primary)', color: '#fff', fontSize: 11, fontWeight: 700, cursor: saving2 ? 'not-allowed' : 'pointer', opacity: saving2 ? 0.7 : 1 }}>
                     {saving2 ? t('perf2.saving') : t('perf2.save')}
                   </button>
                 )}
@@ -1909,7 +1909,7 @@ function ZonesSubTab({ profile, onSelect, selectedDatum, onOpenAI }: {
         <Card>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, flexWrap: 'wrap', gap: 8 }}>
             <div>
-              <h3 style={{ fontFamily: 'Syne,sans-serif', fontSize: 13, fontWeight: 700, margin: 0 }}>Running</h3>
+              <h3 style={{ fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 700, margin: 0 }}>Running</h3>
               <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: '2px 0 0' }}>{t('perf2.thresholdPaceLabel')} : {profile.thresholdPace}/km</p>
             </div>
             <ModeToggle mode={runMode} onChange={setRunMode} />
@@ -1922,13 +1922,13 @@ function ZonesSubTab({ profile, onSelect, selectedDatum, onOpenAI }: {
                   <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>10 km :</span>
                   <input type="text" value={run10kmInput} placeholder="ex: 37:20"
                     onChange={e => { setRun10kmInput(e.target.value); setIsRunDirty(true) }}
-                    style={{ width: 72, padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontFamily: 'DM Mono,monospace', fontSize: 11, outline: 'none' }} />
+                    style={{ width: 72, padding: '4px 8px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontFamily: 'var(--font-body)', fontSize: 11, outline: 'none' }} />
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                   <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>{t('perf2.enduranceLabel')} :</span>
                   <input type="text" value={runEndurInput} placeholder="ex: 5:30"
                     onChange={e => { setRunEndurInput(e.target.value); setIsRunDirty(true) }}
-                    style={{ width: 72, padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontFamily: 'DM Mono,monospace', fontSize: 11, outline: 'none' }} />
+                    style={{ width: 72, padding: '4px 8px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontFamily: 'var(--font-body)', fontSize: 11, outline: 'none' }} />
                   <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>/km</span>
                 </div>
               </div>
@@ -1945,7 +1945,7 @@ function ZonesSubTab({ profile, onSelect, selectedDatum, onOpenAI }: {
                 editSaving={sbSaving}
               />
               {isRunDirty && (
-                <button onClick={() => { void handleSaveZones('run') }} disabled={saving2} style={{ marginTop: 10, padding: '6px 16px', borderRadius: 7, border: 'none', background: 'var(--primary)', color: '#fff', fontSize: 11, fontWeight: 700, cursor: saving2 ? 'not-allowed' : 'pointer', opacity: saving2 ? 0.7 : 1 }}>
+                <button onClick={() => { void handleSaveZones('run') }} disabled={saving2} style={{ marginTop: 10, padding: '6px 16px', borderRadius: 'var(--r-sm)', border: 'none', background: 'var(--primary)', color: '#fff', fontSize: 11, fontWeight: 700, cursor: saving2 ? 'not-allowed' : 'pointer', opacity: saving2 ? 0.7 : 1 }}>
                   {saving2 ? t('perf2.saving') : t('perf2.save')}
                 </button>
               )}
@@ -1954,20 +1954,20 @@ function ZonesSubTab({ profile, onSelect, selectedDatum, onOpenAI }: {
             <div>
               {runManual.map((z, i) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                  <span style={{ width: 26, height: 26, borderRadius: 6, background: `${Z_COLORS[i]}22`, border: `1px solid ${Z_COLORS[i]}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, color: Z_COLORS[i], flexShrink: 0 }}>Z{i + 1}</span>
+                  <span style={{ width: 26, height: 26, borderRadius: 'var(--r-sm)', background: `${Z_COLORS[i]}22`, border: `1px solid ${Z_COLORS[i]}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, color: Z_COLORS[i], flexShrink: 0 }}>Z{i + 1}</span>
                   <span style={{ fontSize: 11, color: 'var(--text-mid)', minWidth: 52 }}>{ZONE_LABELS[i]}</span>
                   <input type="text" value={z.min} placeholder="min" onChange={e => { const v = [...runManual]; v[i] = {...v[i], min: e.target.value}; setRunManual(v); setIsRunDirty(true) }}
-                    style={{ width: 64, padding: '5px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontFamily: 'DM Mono,monospace', fontSize: 11, outline: 'none' }} />
+                    style={{ width: 64, padding: '5px 8px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontFamily: 'var(--font-body)', fontSize: 11, outline: 'none' }} />
                   <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>–</span>
                   <input type="text" value={z.max} placeholder="max" onChange={e => { const v = [...runManual]; v[i] = {...v[i], max: e.target.value}; setRunManual(v); setIsRunDirty(true) }}
-                    style={{ width: 64, padding: '5px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontFamily: 'DM Mono,monospace', fontSize: 11, outline: 'none' }} />
+                    style={{ width: 64, padding: '5px 8px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontFamily: 'var(--font-body)', fontSize: 11, outline: 'none' }} />
                   <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>/km</span>
                 </div>
               ))}
               <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
-                <button onClick={resetRun} style={{ padding: '5px 12px', borderRadius: 7, background: 'var(--bg-card2)', border: '1px solid var(--border)', color: 'var(--text-dim)', fontSize: 11, cursor: 'pointer' }}>{t('perf2.reset')}</button>
+                <button onClick={resetRun} style={{ padding: '5px 12px', borderRadius: 'var(--r-sm)', background: 'var(--bg-card2)', border: '1px solid var(--border)', color: 'var(--text-dim)', fontSize: 11, cursor: 'pointer' }}>{t('perf2.reset')}</button>
                 {isRunDirty && (
-                  <button onClick={() => { void handleSaveZones('run') }} disabled={saving2} style={{ padding: '5px 14px', borderRadius: 7, border: 'none', background: 'var(--primary)', color: '#fff', fontSize: 11, fontWeight: 700, cursor: saving2 ? 'not-allowed' : 'pointer', opacity: saving2 ? 0.7 : 1 }}>
+                  <button onClick={() => { void handleSaveZones('run') }} disabled={saving2} style={{ padding: '5px 14px', borderRadius: 'var(--r-sm)', border: 'none', background: 'var(--primary)', color: '#fff', fontSize: 11, fontWeight: 700, cursor: saving2 ? 'not-allowed' : 'pointer', opacity: saving2 ? 0.7 : 1 }}>
                     {saving2 ? t('perf2.saving') : t('perf2.save')}
                   </button>
                 )}
@@ -1982,9 +1982,9 @@ function ZonesSubTab({ profile, onSelect, selectedDatum, onOpenAI }: {
         <Card>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 8 }}>
             <div>
-              <h3 style={{ fontFamily: 'Syne,sans-serif', fontSize: 13, fontWeight: 700, margin: 0 }}>{t('perf2.rowing')}</h3>
+              <h3 style={{ fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 700, margin: 0 }}>{t('perf2.rowing')}</h3>
               <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: '2px 0 0' }}>
-                {t('perf2.thresholdSplit')} : <strong style={{ fontFamily: 'DM Mono,monospace', color: 'var(--primary)' }}>{localRowSplit}/500m</strong>
+                {t('perf2.thresholdSplit')} : <strong style={{ fontFamily: 'var(--font-body)', color: 'var(--primary)' }}>{localRowSplit}/500m</strong>
                 {time2000mInput && <span style={{ color: '#8b5cf6', marginLeft: 6 }}>{t('perf2.from2000m')}</span>}
               </p>
             </div>
@@ -1997,17 +1997,17 @@ function ZonesSubTab({ profile, onSelect, selectedDatum, onOpenAI }: {
               <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>2000m :</span>
               <input type="text" value={time2000mInput} placeholder="ex: 6:52"
                 onChange={e => { setTime2000mInput(e.target.value); setIsDirty(true) }}
-                style={{ width: 68, padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontFamily: 'DM Mono,monospace', fontSize: 11, outline: 'none' }} />
+                style={{ width: 68, padding: '4px 8px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontFamily: 'var(--font-body)', fontSize: 11, outline: 'none' }} />
             </div>
             <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>{t('perf2.orDirectSplit')}</span>
             {editRowThresh ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <input type="text" value={rowThreshSplit} onChange={e => { setRowThreshSplit(e.target.value); setIsDirty(true) }}
-                  style={{ width: 56, padding: '3px 6px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontFamily: 'DM Mono,monospace', fontSize: 11, outline: 'none' }} />
-                <button onClick={() => setEditRowThresh(false)} style={{ padding: '3px 8px', borderRadius: 5, border: 'none', background: 'var(--primary)', color: '#fff', fontSize: 10, cursor: 'pointer' }}>OK</button>
+                  style={{ width: 56, padding: '3px 6px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontFamily: 'var(--font-body)', fontSize: 11, outline: 'none' }} />
+                <button onClick={() => setEditRowThresh(false)} style={{ padding: '3px 8px', borderRadius: 'var(--r-sm)', border: 'none', background: 'var(--primary)', color: '#fff', fontSize: 10, cursor: 'pointer' }}>OK</button>
               </div>
             ) : (
-              <button onClick={() => setEditRowThresh(true)} style={{ padding: '2px 8px', borderRadius: 5, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--primary)', fontFamily: 'DM Mono,monospace', fontSize: 11, cursor: 'pointer' }}>
+              <button onClick={() => setEditRowThresh(true)} style={{ padding: '2px 8px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--primary)', fontFamily: 'var(--font-body)', fontSize: 11, cursor: 'pointer' }}>
                 {rowThreshSplit}/500m
               </button>
             )}
@@ -2028,7 +2028,7 @@ function ZonesSubTab({ profile, onSelect, selectedDatum, onOpenAI }: {
                 editSaving={sbSaving}
               />
               {isDirty && (
-                <button onClick={() => { void handleSaveZones('rowing') }} disabled={saving2} style={{ marginTop: 10, padding: '6px 16px', borderRadius: 7, border: 'none', background: 'var(--primary)', color: '#fff', fontSize: 11, fontWeight: 700, cursor: saving2 ? 'not-allowed' : 'pointer', opacity: saving2 ? 0.7 : 1 }}>
+                <button onClick={() => { void handleSaveZones('rowing') }} disabled={saving2} style={{ marginTop: 10, padding: '6px 16px', borderRadius: 'var(--r-sm)', border: 'none', background: 'var(--primary)', color: '#fff', fontSize: 11, fontWeight: 700, cursor: saving2 ? 'not-allowed' : 'pointer', opacity: saving2 ? 0.7 : 1 }}>
                   {saving2 ? t('perf2.saving') : t('perf2.save')}
                 </button>
               )}
@@ -2037,20 +2037,20 @@ function ZonesSubTab({ profile, onSelect, selectedDatum, onOpenAI }: {
             <div>
               {rowManual.map((z, i) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                  <span style={{ width: 26, height: 26, borderRadius: 6, background: `${Z_COLORS[i]}22`, border: `1px solid ${Z_COLORS[i]}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, color: Z_COLORS[i], flexShrink: 0 }}>Z{i + 1}</span>
+                  <span style={{ width: 26, height: 26, borderRadius: 'var(--r-sm)', background: `${Z_COLORS[i]}22`, border: `1px solid ${Z_COLORS[i]}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, color: Z_COLORS[i], flexShrink: 0 }}>Z{i + 1}</span>
                   <span style={{ fontSize: 11, color: 'var(--text-mid)', minWidth: 52 }}>{ZONE_LABELS[i]}</span>
                   <input type="text" value={z.min} placeholder="min" onChange={e => { const v = [...rowManual]; v[i] = {...v[i], min: e.target.value}; setRowManual(v); setIsDirty(true) }}
-                    style={{ width: 64, padding: '5px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontFamily: 'DM Mono,monospace', fontSize: 11, outline: 'none' }} />
+                    style={{ width: 64, padding: '5px 8px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontFamily: 'var(--font-body)', fontSize: 11, outline: 'none' }} />
                   <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>–</span>
                   <input type="text" value={z.max} placeholder="max" onChange={e => { const v = [...rowManual]; v[i] = {...v[i], max: e.target.value}; setRowManual(v); setIsDirty(true) }}
-                    style={{ width: 64, padding: '5px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontFamily: 'DM Mono,monospace', fontSize: 11, outline: 'none' }} />
+                    style={{ width: 64, padding: '5px 8px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontFamily: 'var(--font-body)', fontSize: 11, outline: 'none' }} />
                   <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>/500m</span>
                 </div>
               ))}
               <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
-                <button onClick={resetRow} style={{ padding: '5px 12px', borderRadius: 7, background: 'var(--bg-card2)', border: '1px solid var(--border)', color: 'var(--text-dim)', fontSize: 11, cursor: 'pointer' }}>{t('perf2.reset')}</button>
+                <button onClick={resetRow} style={{ padding: '5px 12px', borderRadius: 'var(--r-sm)', background: 'var(--bg-card2)', border: '1px solid var(--border)', color: 'var(--text-dim)', fontSize: 11, cursor: 'pointer' }}>{t('perf2.reset')}</button>
                 {isDirty && (
-                  <button onClick={() => { void handleSaveZones('rowing') }} disabled={saving2} style={{ padding: '5px 14px', borderRadius: 7, border: 'none', background: 'var(--primary)', color: '#fff', fontSize: 11, fontWeight: 700, cursor: saving2 ? 'not-allowed' : 'pointer', opacity: saving2 ? 0.7 : 1 }}>
+                  <button onClick={() => { void handleSaveZones('rowing') }} disabled={saving2} style={{ padding: '5px 14px', borderRadius: 'var(--r-sm)', border: 'none', background: 'var(--primary)', color: '#fff', fontSize: 11, fontWeight: 700, cursor: saving2 ? 'not-allowed' : 'pointer', opacity: saving2 ? 0.7 : 1 }}>
                     {saving2 ? t('perf2.saving') : t('perf2.save')}
                   </button>
                 )}
@@ -2065,9 +2065,9 @@ function ZonesSubTab({ profile, onSelect, selectedDatum, onOpenAI }: {
         <Card>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 8 }}>
             <div>
-              <h3 style={{ fontFamily: 'Syne,sans-serif', fontSize: 13, fontWeight: 700, margin: 0 }}>{t('perf2.swimming')}</h3>
+              <h3 style={{ fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 700, margin: 0 }}>{t('perf2.swimming')}</h3>
               <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: '2px 0 0' }}>
-                CSS : <strong style={{ fontFamily: 'DM Mono,monospace', color: 'var(--primary)' }}>{localCSS}/100m</strong>
+                CSS : <strong style={{ fontFamily: 'var(--font-body)', color: 'var(--primary)' }}>{localCSS}/100m</strong>
                 {time400mInput && <span style={{ color: '#8b5cf6', marginLeft: 6 }}>{t('perf2.from400m')}</span>}
               </p>
             </div>
@@ -2080,7 +2080,7 @@ function ZonesSubTab({ profile, onSelect, selectedDatum, onOpenAI }: {
               <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>400m :</span>
               <input type="text" value={time400mInput} placeholder="ex: 5:10"
                 onChange={e => { setTime400mInput(e.target.value); setIsDirty(true) }}
-                style={{ width: 68, padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontFamily: 'DM Mono,monospace', fontSize: 11, outline: 'none' }} />
+                style={{ width: 68, padding: '4px 8px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontFamily: 'var(--font-body)', fontSize: 11, outline: 'none' }} />
               <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>{t('perf2.cssEstimated')}</span>
             </div>
           </div>
@@ -2100,7 +2100,7 @@ function ZonesSubTab({ profile, onSelect, selectedDatum, onOpenAI }: {
                 editSaving={sbSaving}
               />
               {isDirty && (
-                <button onClick={() => { void handleSaveZones('swim') }} disabled={saving2} style={{ marginTop: 10, padding: '6px 16px', borderRadius: 7, border: 'none', background: 'var(--primary)', color: '#fff', fontSize: 11, fontWeight: 700, cursor: saving2 ? 'not-allowed' : 'pointer', opacity: saving2 ? 0.7 : 1 }}>
+                <button onClick={() => { void handleSaveZones('swim') }} disabled={saving2} style={{ marginTop: 10, padding: '6px 16px', borderRadius: 'var(--r-sm)', border: 'none', background: 'var(--primary)', color: '#fff', fontSize: 11, fontWeight: 700, cursor: saving2 ? 'not-allowed' : 'pointer', opacity: saving2 ? 0.7 : 1 }}>
                   {saving2 ? t('perf2.saving') : t('perf2.save')}
                 </button>
               )}
@@ -2109,20 +2109,20 @@ function ZonesSubTab({ profile, onSelect, selectedDatum, onOpenAI }: {
             <div>
               {swimManual.map((z, i) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                  <span style={{ width: 26, height: 26, borderRadius: 6, background: `${Z_COLORS[i]}22`, border: `1px solid ${Z_COLORS[i]}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, color: Z_COLORS[i], flexShrink: 0 }}>Z{i + 1}</span>
+                  <span style={{ width: 26, height: 26, borderRadius: 'var(--r-sm)', background: `${Z_COLORS[i]}22`, border: `1px solid ${Z_COLORS[i]}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, color: Z_COLORS[i], flexShrink: 0 }}>Z{i + 1}</span>
                   <span style={{ fontSize: 11, color: 'var(--text-mid)', minWidth: 52 }}>{ZONE_LABELS[i]}</span>
                   <input type="text" value={z.min} placeholder="min" onChange={e => { const v = [...swimManual]; v[i] = {...v[i], min: e.target.value}; setSwimManual(v); setIsDirty(true) }}
-                    style={{ width: 64, padding: '5px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontFamily: 'DM Mono,monospace', fontSize: 11, outline: 'none' }} />
+                    style={{ width: 64, padding: '5px 8px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontFamily: 'var(--font-body)', fontSize: 11, outline: 'none' }} />
                   <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>–</span>
                   <input type="text" value={z.max} placeholder="max" onChange={e => { const v = [...swimManual]; v[i] = {...v[i], max: e.target.value}; setSwimManual(v); setIsDirty(true) }}
-                    style={{ width: 64, padding: '5px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontFamily: 'DM Mono,monospace', fontSize: 11, outline: 'none' }} />
+                    style={{ width: 64, padding: '5px 8px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontFamily: 'var(--font-body)', fontSize: 11, outline: 'none' }} />
                   <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>/100m</span>
                 </div>
               ))}
               <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
-                <button onClick={resetSwim} style={{ padding: '5px 12px', borderRadius: 7, background: 'var(--bg-card2)', border: '1px solid var(--border)', color: 'var(--text-dim)', fontSize: 11, cursor: 'pointer' }}>{t('perf2.reset')}</button>
+                <button onClick={resetSwim} style={{ padding: '5px 12px', borderRadius: 'var(--r-sm)', background: 'var(--bg-card2)', border: '1px solid var(--border)', color: 'var(--text-dim)', fontSize: 11, cursor: 'pointer' }}>{t('perf2.reset')}</button>
                 {isDirty && (
-                  <button onClick={() => { void handleSaveZones('swim') }} disabled={saving2} style={{ padding: '5px 14px', borderRadius: 7, border: 'none', background: 'var(--primary)', color: '#fff', fontSize: 11, fontWeight: 700, cursor: saving2 ? 'not-allowed' : 'pointer', opacity: saving2 ? 0.7 : 1 }}>
+                  <button onClick={() => { void handleSaveZones('swim') }} disabled={saving2} style={{ padding: '5px 14px', borderRadius: 'var(--r-sm)', border: 'none', background: 'var(--primary)', color: '#fff', fontSize: 11, fontWeight: 700, cursor: saving2 ? 'not-allowed' : 'pointer', opacity: saving2 ? 0.7 : 1 }}>
                     {saving2 ? t('perf2.saving') : t('perf2.save')}
                   </button>
                 )}
@@ -2138,11 +2138,11 @@ function ZonesSubTab({ profile, onSelect, selectedDatum, onOpenAI }: {
       <Card>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, flexWrap: 'wrap', gap: 8 }}>
           <div>
-            <h3 style={{ fontFamily: 'Syne,sans-serif', fontSize: 13, fontWeight: 700, margin: 0 }}>{t('perf2.heartRateLower')}</h3>
+            <h3 style={{ fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 700, margin: 0 }}>{t('perf2.heartRateLower')}</h3>
             <div style={{ display: 'flex', gap: 12, fontSize: 11, marginTop: 4 }}>
-              <span style={{ color: 'var(--text-dim)' }}>{t('perf2.rest')} : <strong style={{ color: '#22c55e', fontFamily: 'DM Mono,monospace' }}>{profile.hrRest}bpm</strong></span>
-              <span style={{ color: 'var(--text-dim)' }}>LTHR : <strong style={{ color: '#f97316', fontFamily: 'DM Mono,monospace' }}>{profile.lthr}bpm</strong></span>
-              <span style={{ color: 'var(--text-dim)' }}>Max : <strong style={{ color: 'var(--danger)', fontFamily: 'DM Mono,monospace' }}>{localHrMax}bpm</strong></span>
+              <span style={{ color: 'var(--text-dim)' }}>{t('perf2.rest')} : <strong style={{ color: '#22c55e', fontFamily: 'var(--font-body)' }}>{profile.hrRest}bpm</strong></span>
+              <span style={{ color: 'var(--text-dim)' }}>LTHR : <strong style={{ color: '#f97316', fontFamily: 'var(--font-body)' }}>{profile.lthr}bpm</strong></span>
+              <span style={{ color: 'var(--text-dim)' }}>Max : <strong style={{ color: 'var(--danger)', fontFamily: 'var(--font-body)' }}>{localHrMax}bpm</strong></span>
             </div>
           </div>
           <ModeToggle mode={hrMode} onChange={setHrMode} />
@@ -2155,7 +2155,7 @@ function ZonesSubTab({ profile, onSelect, selectedDatum, onOpenAI }: {
               <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>{t('perf2.hrMaxLabel')} :</span>
               <input type="number" value={fcMaxInput} placeholder="ex: 185"
                 onChange={e => { setFcMaxInput(e.target.value); setIsHrDirty(true) }}
-                style={{ width: 72, padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontFamily: 'DM Mono,monospace', fontSize: 11, outline: 'none' }} />
+                style={{ width: 72, padding: '4px 8px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontFamily: 'var(--font-body)', fontSize: 11, outline: 'none' }} />
               <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>bpm</span>
             </div>
             <ZBars
@@ -2175,7 +2175,7 @@ function ZonesSubTab({ profile, onSelect, selectedDatum, onOpenAI }: {
               editSaving={false}
             />
             {isHrDirty && (
-              <button onClick={() => { void handleSaveHR() }} disabled={saving2} style={{ marginTop: 10, padding: '6px 16px', borderRadius: 7, border: 'none', background: 'var(--danger)', color: '#fff', fontSize: 11, fontWeight: 700, cursor: saving2 ? 'not-allowed' : 'pointer', opacity: saving2 ? 0.7 : 1 }}>
+              <button onClick={() => { void handleSaveHR() }} disabled={saving2} style={{ marginTop: 10, padding: '6px 16px', borderRadius: 'var(--r-sm)', border: 'none', background: 'var(--danger)', color: '#fff', fontSize: 11, fontWeight: 700, cursor: saving2 ? 'not-allowed' : 'pointer', opacity: saving2 ? 0.7 : 1 }}>
                 {saving2 ? t('perf2.saving') : t('perf2.save')}
               </button>
             )}
@@ -2187,20 +2187,20 @@ function ZonesSubTab({ profile, onSelect, selectedDatum, onOpenAI }: {
           <div>
             {hrManual.map((z, i) => (
               <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                <span style={{ width: 26, height: 26, borderRadius: 6, background: `${Z_COLORS[i]}22`, border: `1px solid ${Z_COLORS[i]}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, color: Z_COLORS[i], flexShrink: 0 }}>Z{i + 1}</span>
+                <span style={{ width: 26, height: 26, borderRadius: 'var(--r-sm)', background: `${Z_COLORS[i]}22`, border: `1px solid ${Z_COLORS[i]}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, color: Z_COLORS[i], flexShrink: 0 }}>Z{i + 1}</span>
                 <span style={{ fontSize: 11, color: 'var(--text-mid)', minWidth: 52 }}>{ZONE_LABELS[i]}</span>
                 <input type="number" value={z.min} onChange={e => { const v = [...hrManual]; v[i] = {...v[i], min: parseInt(e.target.value)||0}; setHrManual(v); setIsHrDirty(true) }}
-                  style={{ width: 60, padding: '5px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontFamily: 'DM Mono,monospace', fontSize: 11, outline: 'none' }} />
+                  style={{ width: 60, padding: '5px 8px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontFamily: 'var(--font-body)', fontSize: 11, outline: 'none' }} />
                 <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>–</span>
                 <input type="number" value={z.max} onChange={e => { const v = [...hrManual]; v[i] = {...v[i], max: parseInt(e.target.value)||0}; setHrManual(v); setIsHrDirty(true) }}
-                  style={{ width: 60, padding: '5px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontFamily: 'DM Mono,monospace', fontSize: 11, outline: 'none' }} />
+                  style={{ width: 60, padding: '5px 8px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontFamily: 'var(--font-body)', fontSize: 11, outline: 'none' }} />
                 <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>bpm</span>
               </div>
             ))}
             <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
-              <button onClick={resetHR} style={{ padding: '5px 12px', borderRadius: 7, background: 'var(--bg-card2)', border: '1px solid var(--border)', color: 'var(--text-dim)', fontSize: 11, cursor: 'pointer' }}>{t('perf2.reset')}</button>
+              <button onClick={resetHR} style={{ padding: '5px 12px', borderRadius: 'var(--r-sm)', background: 'var(--bg-card2)', border: '1px solid var(--border)', color: 'var(--text-dim)', fontSize: 11, cursor: 'pointer' }}>{t('perf2.reset')}</button>
               {isHrDirty && (
-                <button onClick={() => { void handleSaveHR() }} disabled={saving2} style={{ padding: '5px 14px', borderRadius: 7, border: 'none', background: 'var(--danger)', color: '#fff', fontSize: 11, fontWeight: 700, cursor: saving2 ? 'not-allowed' : 'pointer', opacity: saving2 ? 0.7 : 1 }}>
+                <button onClick={() => { void handleSaveHR() }} disabled={saving2} style={{ padding: '5px 14px', borderRadius: 'var(--r-sm)', border: 'none', background: 'var(--danger)', color: '#fff', fontSize: 11, fontWeight: 700, cursor: saving2 ? 'not-allowed' : 'pointer', opacity: saving2 ? 0.7 : 1 }}>
                   {saving2 ? t('perf2.saving') : t('perf2.save')}
                 </button>
               )}
@@ -2210,7 +2210,7 @@ function ZonesSubTab({ profile, onSelect, selectedDatum, onOpenAI }: {
 
         {/* HR gradient bar — Coggan/Allen FCmax */}
         <div style={{ marginTop: 16 }}>
-          <div style={{ display: 'flex', height: 14, borderRadius: 7, overflow: 'hidden' }}>
+          <div style={{ display: 'flex', height: 14, borderRadius: 'var(--r-sm)', overflow: 'hidden' }}>
             {hrZonesAuto.map((z, i) => {
               // Z5 has min=max=hrMax → give it a fixed visual slice
               const flex = i === 4 ? Math.round(localHrMax * 0.05) : z.max - z.min
@@ -2222,11 +2222,11 @@ function ZonesSubTab({ profile, onSelect, selectedDatum, onOpenAI }: {
               const flex = i === 4 ? Math.round(localHrMax * 0.05) : z.max - z.min
               return (
                 <div key={z.z} style={{ flex, textAlign: 'center' }}>
-                  <span style={{ fontSize: 9, fontFamily: 'DM Mono,monospace', color: Z_COLORS[i] }}>{z.min}</span>
+                  <span style={{ fontSize: 10, fontFamily: 'var(--font-body)', color: Z_COLORS[i] }}>{z.min}</span>
                 </div>
               )
             })}
-            <span style={{ fontSize: 9, fontFamily: 'DM Mono,monospace', color: Z_COLORS[3] }}>{localHrMax}</span>
+            <span style={{ fontSize: 10, fontFamily: 'var(--font-body)', color: Z_COLORS[3] }}>{localHrMax}</span>
           </div>
         </div>
       </Card>
@@ -2459,7 +2459,7 @@ function PowerCurveLogSVG({ bikeByYear, hiddenYears, selectedYear, weight }: {
           left: cursor.svgX < W * 0.55 ? cursor.pxX + 14 : cursor.pxX - 198,
           background: 'var(--bg-card)',
           border: '1px solid var(--border)',
-          borderRadius: 8,
+          borderRadius: 'var(--r-sm)',
           padding: '8px 12px',
           pointerEvents: 'none',
           zIndex: 20,
@@ -3062,7 +3062,7 @@ function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests }: 
           <CyclingRadar profile={profile} />
           <Card>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, flexWrap: 'wrap', gap: 8 }}>
-              <h2 style={{ fontFamily: 'Syne,sans-serif', fontSize: 14, fontWeight: 700, margin: 0 }}>Power Curve</h2>
+              <h2 style={{ fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 700, margin: 0 }}>Power Curve</h2>
               {/* Year filter — same state as global pills */}
               <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
                 {(['All Time', ...bikeYears] as string[]).map(yr => {
@@ -3070,7 +3070,7 @@ function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests }: 
                   const color  = yr === 'All Time' ? '#5b6fff' : (getPCColor(yr, bikeYears))
                   return (
                     <button key={yr} onClick={() => setRecordYear(yr)} style={{
-                      padding: '4px 10px', borderRadius: 16, border: 'none',
+                      padding: '4px 10px', borderRadius: 'var(--r-md)', border: 'none',
                       cursor: 'pointer', whiteSpace: 'nowrap',
                       fontSize: 11, fontWeight: active ? 700 : 500,
                       transition: 'background 0.15s, color 0.15s',
@@ -3097,7 +3097,7 @@ function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests }: 
                 return (
                   <button key={yr} onClick={() => toggleHiddenYear(yr)} style={{
                     display: 'flex', alignItems: 'center', gap: 5,
-                    padding: '4px 10px', borderRadius: 20, border: '1px solid',
+                    padding: '4px 10px', borderRadius: 'var(--r-lg)', border: '1px solid',
                     borderColor: hidden ? 'var(--border)' : color,
                     background: hidden ? 'var(--bg-card2)' : `${color}18`,
                     cursor: 'pointer', opacity: hidden ? 0.4 : 1,
@@ -3114,7 +3114,7 @@ function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests }: 
           <Card>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, gap: 8 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-                <h2 style={{ fontFamily: 'Syne,sans-serif', fontSize: 14, fontWeight: 700, margin: 0 }}>{t('perf2.powerRecords')}</h2>
+                <h2 style={{ fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 700, margin: 0 }}>{t('perf2.powerRecords')}</h2>
                 {/* Toast auto-sync : visible quand on entre dans le sport vélo */}
                 {bikeSyncStatus.kind === 'syncing' && (
                   <span style={{ fontSize: 10, color: 'var(--text-dim)', fontStyle: 'italic' }}>
@@ -3126,7 +3126,7 @@ function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests }: 
                     fontSize:     10,
                     fontWeight:   600,
                     padding:      '2px 8px',
-                    borderRadius: 999,
+                    borderRadius: 'var(--r-pill)',
                     background:   bikeSyncStatus.beats > 0 ? 'rgba(16,185,129,0.10)' : 'rgba(6,182,212,0.10)',
                     color:        bikeSyncStatus.beats > 0 ? '#10B981' : '#06B6D4',
                     border:       `1px solid ${bikeSyncStatus.beats > 0 ? 'rgba(16,185,129,0.35)' : 'rgba(6,182,212,0.35)'}`,
@@ -3144,7 +3144,7 @@ function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests }: 
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
                 <button onClick={() => setCompareOpen(true)}
-                  style={{ padding: '4px 11px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-mid)', fontSize: 11, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                  style={{ padding: '4px 11px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-mid)', fontSize: 11, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>
                   {t('perf2.compareYears')}
                 </button>
                 <BackfillRecordsButton onDone={loadBikeRecords} />
@@ -3165,7 +3165,7 @@ function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests }: 
                   actions={
                     <button
                       onClick={() => openDrawer('bike', d, eff.id, eff.w > 0 ? String(eff.w) : '')}
-                      style={{ padding: '3px 9px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', fontSize: 10, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}
+                      style={{ padding: '3px 9px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', fontSize: 10, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}
                     >
                       {t('perf2.edit')}
                     </button>
@@ -3187,7 +3187,7 @@ function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests }: 
           <RunningRadar profile={profile} />
           <Card>
             <div style={{ display: 'flex', alignItems: 'center', marginBottom: 12 }}>
-              <h2 style={{ fontFamily: 'Syne,sans-serif', fontSize: 14, fontWeight: 700, margin: 0 }}>{t('perf2.recordsRunning')}</h2>
+              <h2 style={{ fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 700, margin: 0 }}>{t('perf2.recordsRunning')}</h2>
             </div>
             <TimeBarChart records={allSpRecords.filter(r => r.sport === 'run')} chartDists={CHART_DISTS.run} onBarClick={r => openDrawer('run', r.distance_label, r.id, r.performance)} actMap={linkedActs} onAll={() => setRunAllOpen(true)} distKm={RUN_KM} />
             {runAllOpen && (
@@ -3210,7 +3210,7 @@ function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests }: 
                   selected={sel}
                   actions={
                     <button onClick={() => openDrawer('run', d, spBest?.id ?? null, spBest?.perf ?? '')}
-                      style={{ padding: '3px 9px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', fontSize: 10, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                      style={{ padding: '3px 9px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', fontSize: 10, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>
                       {t('perf2.edit')}
                     </button>
                   } />
@@ -4093,7 +4093,7 @@ function YearDatasSubTab() {
 
           {/* Ligne 1 : toggle Auto/Manuel + sélecteur d'année */}
           <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-            <div style={{ display: 'flex', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
+            <div style={{ display: 'flex', border: '1px solid var(--border)', borderRadius: 'var(--r-sm)', overflow: 'hidden' }}>
               {(['auto', 'manual'] as const).map(m => (
                 <button key={m} onClick={() => {
                   setMode(m)
@@ -4109,7 +4109,7 @@ function YearDatasSubTab() {
               ))}
             </div>
             <select value={selectedYear} onChange={e => setSelectedYear(e.target.value)}
-              style={{ flex: 1, padding: '5px 10px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 12, cursor: 'pointer', outline: 'none' }}>
+              style={{ flex: 1, padding: '5px 10px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 12, cursor: 'pointer', outline: 'none' }}>
               {mode === 'auto' && <option value="all">{t('perf2.allYears')}</option>}
               {allYears.map(yr => <option key={yr} value={yr}>{yr}</option>)}
             </select>
@@ -4123,10 +4123,10 @@ function YearDatasSubTab() {
                 onChange={e => setAddYearInput(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleAddYear()}
                 placeholder="2023" min="2000" max="2035"
-                style={{ flex: 1, padding: '5px 7px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 12, outline: 'none' }}
+                style={{ flex: 1, padding: '5px 7px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 12, outline: 'none' }}
               />
               <button onClick={handleAddYear} style={{
-                padding: '5px 12px', borderRadius: 7, border: '1px solid #a855f7',
+                padding: '5px 12px', borderRadius: 'var(--r-sm)', border: '1px solid #a855f7',
                 background: 'rgba(168,85,247,0.12)', color: '#a855f7', fontSize: 11, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap',
               }}>{t('perf2.enterYearBtn')}</button>
             </div>
@@ -4140,7 +4140,7 @@ function YearDatasSubTab() {
                 onClick={() => setShowSyncMenu(v => !v)}
                 disabled={syncing}
                 style={{
-                  width: '100%', padding: '5px 11px', borderRadius: 7, border: '1px solid var(--border)',
+                  width: '100%', padding: '5px 11px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)',
                   background: showSyncMenu ? 'var(--bg-card2)' : 'var(--bg-card)',
                   color: 'var(--text)', fontSize: 11, fontWeight: 600,
                   cursor: syncing ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap',
@@ -4157,14 +4157,14 @@ function YearDatasSubTab() {
                 <div style={{
                   position: 'absolute', top: 'calc(100% + 5px)', left: 0, zIndex: 200,
                   background: 'var(--bg-card)', border: '1px solid var(--border)',
-                  borderRadius: 10, padding: 4, minWidth: 210,
+                  borderRadius: 'var(--r-sm)', padding: 4, minWidth: 210,
                   boxShadow: '0 8px 28px rgba(0,0,0,0.22)',
                 }}>
                   <button
                     onClick={() => void handleSync('strava')}
                     disabled={!stravaConnected}
                     style={{
-                      width: '100%', padding: '8px 11px', borderRadius: 7, border: 'none',
+                      width: '100%', padding: '8px 11px', borderRadius: 'var(--r-sm)', border: 'none',
                       background: 'transparent', textAlign: 'left',
                       cursor: stravaConnected ? 'pointer' : 'not-allowed',
                       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -4185,7 +4185,7 @@ function YearDatasSubTab() {
                   <div style={{ height: 1, background: 'var(--border)', margin: '3px 6px' }} />
                   {(['Garmin', 'Polar', 'Wahoo'] as const).map(p => (
                     <div key={p} style={{
-                      padding: '8px 11px', borderRadius: 7,
+                      padding: '8px 11px', borderRadius: 'var(--r-sm)',
                       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                       opacity: 0.45, cursor: 'not-allowed',
                       color: 'var(--text)', fontSize: 12, fontWeight: 500,
@@ -4206,7 +4206,7 @@ function YearDatasSubTab() {
                         onClick={() => { void handleImportHistory(); setShowSyncMenu(false) }}
                         disabled={importing || syncing}
                         style={{
-                          width: '100%', padding: '8px 11px', borderRadius: 7, border: 'none',
+                          width: '100%', padding: '8px 11px', borderRadius: 'var(--r-sm)', border: 'none',
                           background: 'transparent', textAlign: 'left',
                           cursor: importing || syncing ? 'not-allowed' : 'pointer',
                           display: 'flex', alignItems: 'center', gap: 8,
@@ -4234,7 +4234,7 @@ function YearDatasSubTab() {
           <SectionHeader label={t('perf2.annualData')} gradient="linear-gradient(180deg,#a855f7,#5b6fff)" />
           <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
             {/* Mode toggle */}
-            <div style={{ display: 'flex', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
+            <div style={{ display: 'flex', border: '1px solid var(--border)', borderRadius: 'var(--r-sm)', overflow: 'hidden' }}>
               {(['auto', 'manual'] as const).map(m => (
                 <button key={m} onClick={() => {
                   setMode(m)
@@ -4251,7 +4251,7 @@ function YearDatasSubTab() {
             </div>
             {/* Year selector */}
             <select value={selectedYear} onChange={e => setSelectedYear(e.target.value)}
-              style={{ padding: '5px 10px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 12, cursor: 'pointer', outline: 'none' }}>
+              style={{ padding: '5px 10px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 12, cursor: 'pointer', outline: 'none' }}>
               {mode === 'auto' && <option value="all">{t('perf2.allYears')}</option>}
               {allYears.map(yr => <option key={yr} value={yr}>{yr}</option>)}
             </select>
@@ -4263,10 +4263,10 @@ function YearDatasSubTab() {
                   onChange={e => setAddYearInput(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && handleAddYear()}
                   placeholder="2023" min="2000" max="2035"
-                  style={{ width: 58, padding: '5px 7px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 12, outline: 'none' }}
+                  style={{ width: 58, padding: '5px 7px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 12, outline: 'none' }}
                 />
                 <button onClick={handleAddYear} style={{
-                  padding: '5px 10px', borderRadius: 7, border: '1px solid #a855f7',
+                  padding: '5px 10px', borderRadius: 'var(--r-sm)', border: '1px solid #a855f7',
                   background: 'rgba(168,85,247,0.12)', color: '#a855f7', fontSize: 11, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap',
                 }}>+ Saisir</button>
               </div>
@@ -4277,7 +4277,7 @@ function YearDatasSubTab() {
                 onClick={() => setShowSyncMenu(v => !v)}
                 disabled={syncing}
                 style={{
-                  padding: '5px 11px', borderRadius: 7, border: '1px solid var(--border)',
+                  padding: '5px 11px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)',
                   background: showSyncMenu ? 'var(--bg-card2)' : 'var(--bg-card)',
                   color: 'var(--text)', fontSize: 11, fontWeight: 600,
                   cursor: syncing ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap',
@@ -4294,7 +4294,7 @@ function YearDatasSubTab() {
                 <div style={{
                   position: 'absolute', top: 'calc(100% + 5px)', right: 0, zIndex: 200,
                   background: 'var(--bg-card)', border: '1px solid var(--border)',
-                  borderRadius: 10, padding: 4, minWidth: 210,
+                  borderRadius: 'var(--r-sm)', padding: 4, minWidth: 210,
                   boxShadow: '0 8px 28px rgba(0,0,0,0.22)',
                 }}>
                   {/* Strava */}
@@ -4302,7 +4302,7 @@ function YearDatasSubTab() {
                     onClick={() => void handleSync('strava')}
                     disabled={!stravaConnected}
                     style={{
-                      width: '100%', padding: '8px 11px', borderRadius: 7, border: 'none',
+                      width: '100%', padding: '8px 11px', borderRadius: 'var(--r-sm)', border: 'none',
                       background: 'transparent', textAlign: 'left',
                       cursor: stravaConnected ? 'pointer' : 'not-allowed',
                       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -4324,7 +4324,7 @@ function YearDatasSubTab() {
                   {/* Garmin / Polar / Wahoo — bientôt disponible */}
                   {(['Garmin', 'Polar', 'Wahoo'] as const).map(p => (
                     <div key={p} style={{
-                      padding: '8px 11px', borderRadius: 7,
+                      padding: '8px 11px', borderRadius: 'var(--r-sm)',
                       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                       opacity: 0.45, cursor: 'not-allowed',
                       color: 'var(--text)', fontSize: 12, fontWeight: 500,
@@ -4345,7 +4345,7 @@ function YearDatasSubTab() {
                         onClick={() => { void handleImportHistory(); setShowSyncMenu(false) }}
                         disabled={importing || syncing}
                         style={{
-                          width: '100%', padding: '8px 11px', borderRadius: 7, border: 'none',
+                          width: '100%', padding: '8px 11px', borderRadius: 'var(--r-sm)', border: 'none',
                           background: 'transparent', textAlign: 'left',
                           cursor: importing || syncing ? 'not-allowed' : 'pointer',
                           display: 'flex', alignItems: 'center', gap: 8,
@@ -4372,7 +4372,7 @@ function YearDatasSubTab() {
       {/* Sync message */}
       {syncMsg && (
         <div style={{
-          padding: '8px 12px', borderRadius: 8, fontSize: 12,
+          padding: '8px 12px', borderRadius: 'var(--r-sm)', fontSize: 12,
           background: syncMsg.ok ? 'rgba(34,197,94,0.10)' : 'rgba(239,68,68,0.10)',
           border: `1px solid ${syncMsg.ok ? 'rgba(34,197,94,0.30)' : 'rgba(239,68,68,0.30)'}`,
           color: syncMsg.ok ? '#22c55e' : '#ef4444',
@@ -4389,7 +4389,7 @@ function YearDatasSubTab() {
       {/* Import progress */}
       {importProgress && (
         <div style={{
-          padding: '10px 14px', borderRadius: 10,
+          padding: '10px 14px', borderRadius: 'var(--r-sm)',
           background: importProgress.done && importProgress.error
             ? 'rgba(239,68,68,0.07)'
             : importProgress.done
@@ -4405,7 +4405,7 @@ function YearDatasSubTab() {
             <>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 7 }}>
                 <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>{t('perf2.stravaImportInProgress')}</span>
-                <span style={{ fontSize: 11, fontFamily: 'DM Mono,monospace', color: '#a855f7', fontWeight: 700 }}>
+                <span style={{ fontSize: 11, fontFamily: 'var(--font-body)', color: '#a855f7', fontWeight: 700 }}>
                   {importProgress.imported} {t('perf2.activities')}
                 </span>
               </div>
@@ -4459,7 +4459,7 @@ function YearDatasSubTab() {
               ? (displayAuto   ? m.fromAuto(displayAuto)            : 0)
               : (displayManual ? (m.fromManual(displayManual) ?? 0) : 0)
             return (
-              <div key={mk} style={{ background: 'var(--bg-card2)', borderRadius: 10, padding: '10px 12px' }}>
+              <div key={mk} style={{ background: 'var(--bg-card2)', borderRadius: 'var(--r-sm)', padding: '10px 12px' }}>
                 <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '0 0 3px' }}>{t(YD_METRIC_KEY[m.key] ?? '') || m.label}</p>
                 <p className="tnum" style={{ fontFamily: 'var(--font-body)', fontSize: 16, fontWeight: 600, color: 'var(--text)', margin: 0 }}>
                   {val > 0 ? m.fmt(val) : <span style={{ color: 'var(--text-dim)', fontWeight: 400, fontSize: 12 }}>—</span>}
@@ -4484,12 +4484,12 @@ function YearDatasSubTab() {
         {/* ── Controls ── */}
         <div className="yd-reveal" style={{ marginBottom: c1CompareMode ? 8 : 12 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
-            <h3 style={{ fontFamily: 'Syne,sans-serif', fontSize: 13, fontWeight: 700, margin: 0 }}>
+            <h3 style={{ fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 700, margin: 0 }}>
               {t('perf2.volumeBySport')}
             </h3>
             <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
               {/* Toggle Mois / Semaine */}
-              <div style={{ display: 'flex', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
+              <div style={{ display: 'flex', border: '1px solid var(--border)', borderRadius: 'var(--r-sm)', overflow: 'hidden' }}>
                 {(['mois', 'semaine'] as const).map(p => (
                   <button key={p} onClick={() => setChart1Period(p)} style={{
                     padding: '4px 9px', fontSize: 11, fontWeight: 600, border: 'none', cursor: 'pointer',
@@ -4505,11 +4505,11 @@ function YearDatasSubTab() {
               {!c1CompareMode && (
                 <>
                   <select value={chart1Year} onChange={e => setChart1Year(e.target.value)}
-                    style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 11, outline: 'none', cursor: 'pointer' }}>
+                    style={{ padding: '4px 8px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 11, outline: 'none', cursor: 'pointer' }}>
                     {c1YearOpts.map(yr => <option key={yr} value={yr}>{yr}</option>)}
                   </select>
                   <select value={chart1Metric} onChange={e => setChart1Metric(e.target.value as 'km' | 'heures' | 'nb_sorties')}
-                    style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 11, outline: 'none', cursor: 'pointer' }}>
+                    style={{ padding: '4px 8px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 11, outline: 'none', cursor: 'pointer' }}>
                     <option value="heures">{t('perf2.hours')}</option>
                     <option value="km">{t('perf2.distanceKm')}</option>
                     <option value="nb_sorties">{t('perf2.sessionsShort')}</option>
@@ -4524,7 +4524,7 @@ function YearDatasSubTab() {
                   if (next && isMobile) setC1CompareSheet(true)
                 }}
                 style={{
-                  padding: '4px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer',
+                  padding: '4px 10px', borderRadius: 'var(--r-sm)', fontSize: 11, fontWeight: 600, cursor: 'pointer',
                   border: c1CompareMode ? 'none' : '1px solid var(--primary)',
                   background: c1CompareMode ? 'var(--primary)' : 'transparent',
                   color: c1CompareMode ? '#fff' : 'var(--primary)',
@@ -4538,20 +4538,20 @@ function YearDatasSubTab() {
                 <button
                   onClick={() => setC1FeatOpen(v => !v)}
                   style={{
-                    padding: '4px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer',
+                    padding: '4px 10px', borderRadius: 'var(--r-sm)', fontSize: 11, fontWeight: 600, cursor: 'pointer',
                     border: '1px solid var(--border)',
                     background: c1FeatOpen ? 'var(--bg-card2)' : 'transparent',
                     color: 'var(--text-dim)',
                     transition: 'background 0.15s',
                     display: 'flex', alignItems: 'center', gap: 4,
                   }}>
-                  {t('perf2.display')} <span style={{ fontSize: 9, opacity: 0.7 }}>{c1FeatOpen ? '▲' : '▼'}</span>
+                  {t('perf2.display')} <span style={{ fontSize: 10, opacity: 0.7 }}>{c1FeatOpen ? '▲' : '▼'}</span>
                 </button>
                 {c1FeatOpen && (
                   <div style={{
                     position: 'absolute', top: 'calc(100% + 6px)', right: 0, zIndex: 50,
                     background: 'var(--bg-card)', border: '1px solid var(--border)',
-                    borderRadius: 8, padding: '8px 12px', minWidth: 148,
+                    borderRadius: 'var(--r-sm)', padding: '8px 12px', minWidth: 148,
                     boxShadow: '0 4px 16px rgba(0,0,0,0.10)',
                     display: 'flex', flexDirection: 'column', gap: 8,
                   }}>
@@ -4585,16 +4585,16 @@ function YearDatasSubTab() {
           {c1CompareMode && !isMobile && (
             <div style={{
               display: 'flex', gap: 12, alignItems: 'center', marginTop: 10,
-              padding: '8px 12px', background: 'var(--bg-card2)', borderRadius: 8, flexWrap: 'wrap',
+              padding: '8px 12px', background: 'var(--bg-card2)', borderRadius: 'var(--r-sm)', flexWrap: 'wrap',
             }}>
               {/* Sélecteur sport */}
               <select value={c1CompareSport} onChange={e => setC1CompareSport(e.target.value)}
-                style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 11, outline: 'none', cursor: 'pointer' }}>
+                style={{ padding: '4px 8px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 11, outline: 'none', cursor: 'pointer' }}>
                 {YD_SPORTS.map(sp => <option key={sp.id} value={sp.id}>{t(YD_SPORT_KEY[sp.id] ?? '') || sp.label}</option>)}
               </select>
               {/* Sélecteur métrique */}
               <select value={chart1Metric} onChange={e => setChart1Metric(e.target.value as 'km' | 'heures' | 'nb_sorties')}
-                style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 11, outline: 'none', cursor: 'pointer' }}>
+                style={{ padding: '4px 8px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 11, outline: 'none', cursor: 'pointer' }}>
                 <option value="heures">{t('perf2.hours')}</option>
                 <option value="km">{t('perf2.distanceKm')}</option>
                 <option value="nb_sorties">{t('perf2.sessionsShort')}</option>
@@ -4632,10 +4632,10 @@ function YearDatasSubTab() {
               <div style={{
                 position: 'absolute', top: 8, right: 8, zIndex: 10, pointerEvents: 'none',
                 background: 'var(--bg-card)', border: '1px solid var(--border)',
-                borderRadius: 8, padding: '10px 12px', minWidth: 140, maxWidth: 200,
+                borderRadius: 'var(--r-sm)', padding: '10px 12px', minWidth: 140, maxWidth: 200,
               }}>
                 {hoveredPoint !== null && (
-                  <p style={{ fontFamily: 'DM Sans,sans-serif', fontSize: 11, fontWeight: 600, margin: '0 0 5px', color: 'var(--text-mid)' }}>
+                  <p style={{ fontFamily: 'var(--font-body)', fontSize: 11, fontWeight: 600, margin: '0 0 5px', color: 'var(--text-mid)' }}>
                     {C1_LABELS[hoveredPoint]}
                   </p>
                 )}
@@ -4646,12 +4646,12 @@ function YearDatasSubTab() {
                       🏆 {t('perf2.competition')}
                     </p>
                     <p style={{ fontSize: 10, fontWeight: 600, color: 'var(--text)', margin: '0 0 2px', wordBreak: 'break-word' }}>{c1HoveredRace.title ?? '—'}</p>
-                    <p style={{ fontSize: 10, fontFamily: 'DM Mono,monospace', color: 'var(--text-dim)', margin: 0 }}>
+                    <p style={{ fontSize: 10, fontFamily: 'var(--font-body)', color: 'var(--text-dim)', margin: 0 }}>
                       {fmtDate(c1HoveredRace.started_at)}
                       {c1HoveredRace.distance_m ? ` · ${Math.round(c1HoveredRace.distance_m / 1000)} km` : ''}
                       {c1HoveredRace.moving_time_s ? ` · ${Math.floor(c1HoveredRace.moving_time_s / 3600)}h${String(Math.floor((c1HoveredRace.moving_time_s % 3600) / 60)).padStart(2, '0')}` : ''}
                     </p>
-                    <p style={{ fontSize: 9, color: 'var(--primary)', margin: '3px 0 0', fontWeight: 600 }}>{t('perf2.clickActivityDetail')}</p>
+                    <p style={{ fontSize: 10, color: 'var(--primary)', margin: '3px 0 0', fontWeight: 600 }}>{t('perf2.clickActivityDetail')}</p>
                   </div>
                 )}
                 {/* Section blessure */}
@@ -4660,11 +4660,11 @@ function YearDatasSubTab() {
                     <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--danger)', margin: '0 0 3px' }}>⚡ {t('perf2.injury')}</p>
                     <p style={{ fontSize: 10, fontWeight: 600, color: 'var(--text)', margin: '0 0 2px' }}>{c1HoveredInjury.nom}</p>
                     <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '0 0 2px' }}>{c1HoveredInjury.type}</p>
-                    <p style={{ fontSize: 10, fontFamily: 'DM Mono,monospace', color: 'var(--text-dim)', margin: 0 }}>
+                    <p style={{ fontSize: 10, fontFamily: 'var(--font-body)', color: 'var(--text-dim)', margin: 0 }}>
                       {fmtDate(c1HoveredInjury.date_debut)}
                       {c1HoveredInjury.date_fin ? ` → ${fmtDate(c1HoveredInjury.date_fin)}` : ` (${t('perf2.ongoing')})`}
                     </p>
-                    <p style={{ fontSize: 9, color: 'var(--danger)', margin: '3px 0 0', fontWeight: 600 }}>{t('perf2.clickInjuries')}</p>
+                    <p style={{ fontSize: 10, color: 'var(--danger)', margin: '3px 0 0', fontWeight: 600 }}>{t('perf2.clickInjuries')}</p>
                   </div>
                 )}
                 {hoveredPoint !== null && (c1CompareMode ? (
@@ -4677,7 +4677,7 @@ function YearDatasSubTab() {
                       <div key={yr} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
                         <span style={{ width: 6, height: 6, borderRadius: '50%', background: color, flexShrink: 0 }} />
                         <span style={{ fontSize: 11, fontWeight: 600, color }}>{yr}</span>
-                        <span style={{ fontSize: 11, fontFamily: 'DM Mono,monospace', fontWeight: 700, color: 'var(--text-dim)', marginLeft: 4 }}>
+                        <span style={{ fontSize: 11, fontFamily: 'var(--font-body)', fontWeight: 700, color: 'var(--text-dim)', marginLeft: 4 }}>
                           {c1FmtVal(v)}
                         </span>
                       </div>
@@ -4695,7 +4695,7 @@ function YearDatasSubTab() {
                           <span style={{ fontSize: 11, fontWeight: 600, color: sp.color }}>{t(YD_SPORT_KEY[sp.id] ?? '') || sp.label}</span>
                         </span>
                         <div style={{ paddingLeft: 10 }}>
-                          <p style={{ fontSize: 11, fontFamily: 'DM Mono,monospace', fontWeight: 700, color: 'var(--text-dim)', margin: '1px 0' }}>
+                          <p style={{ fontSize: 11, fontFamily: 'var(--font-body)', fontWeight: 700, color: 'var(--text-dim)', margin: '1px 0' }}>
                             {c1FmtVal(v)}
                           </p>
                         </div>
@@ -4762,7 +4762,7 @@ function YearDatasSubTab() {
                   return (
                     <g key={v}>
                       <line x1={C1_PL} y1={y} x2={C1_SVG_W - C1_PR} y2={y} stroke="var(--border)" strokeWidth="1" strokeOpacity="0.3" strokeDasharray="3 3" />
-                      <text x={C1_PL - 3} y={y + 4} textAnchor="end" style={{ fontSize: 8, fill: 'var(--text-dim)', fontFamily: 'DM Mono,monospace' }}>
+                      <text x={C1_PL - 3} y={y + 4} textAnchor="end" style={{ fontSize: 10, fill: 'var(--text-dim)', fontFamily: 'var(--font-body)' }}>
                         {chart1Metric === 'heures' ? `${v}h` : `${Math.round(v)}`}
                       </text>
                     </g>
@@ -4854,13 +4854,13 @@ function YearDatasSubTab() {
               {chart1Period === 'mois'
                 ? MONTHS.map((m, i) => (
                     <text key={i} x={c1X(i)} y={C1_H - 4} textAnchor="middle"
-                      style={{ fontSize: 8, fill: 'var(--text-dim)', fontFamily: 'DM Mono,monospace' }}>
+                      style={{ fontSize: 10, fill: 'var(--text-dim)', fontFamily: 'var(--font-body)' }}>
                       {m}
                     </text>
                   ))
                 : Array.from({ length: 52 }, (_, i) => i).filter(i => i % 8 === 0).map(i => (
                     <text key={i} x={c1X(i)} y={C1_H - 4} textAnchor="middle"
-                      style={{ fontSize: 8, fill: 'var(--text-dim)', fontFamily: 'DM Mono,monospace' }}>
+                      style={{ fontSize: 10, fill: 'var(--text-dim)', fontFamily: 'var(--font-body)' }}>
                       S{i + 1}
                     </text>
                   ))
@@ -4908,10 +4908,10 @@ function YearDatasSubTab() {
               return (
                 <div key={sp.id} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
                   <span style={{ fontSize: 10, color: 'var(--text-dim)', width: 58, textAlign: 'right', flexShrink: 0 }}>{t(YD_SPORT_KEY[sp.id] ?? '') || sp.label}</span>
-                  <div style={{ flex: 1, height: 10, borderRadius: 5, background: 'var(--border)', overflow: 'hidden' }}>
-                    <div style={{ width: `${pct}%`, height: '100%', background: sp.color, borderRadius: 5, transition: 'width 0.4s' }} />
+                  <div style={{ flex: 1, height: 10, borderRadius: 'var(--r-sm)', background: 'var(--border)', overflow: 'hidden' }}>
+                    <div style={{ width: `${pct}%`, height: '100%', background: sp.color, borderRadius: 'var(--r-sm)', transition: 'width 0.4s' }} />
                   </div>
-                  <span style={{ fontSize: 10, fontFamily: 'DM Mono,monospace', color: sp.color, width: 52, flexShrink: 0, fontWeight: 600 }}>
+                  <span style={{ fontSize: 10, fontFamily: 'var(--font-body)', color: sp.color, width: 52, flexShrink: 0, fontWeight: 600 }}>
                     {fmt}
                   </span>
                 </div>
@@ -4940,20 +4940,20 @@ function YearDatasSubTab() {
               onClick={e => e.stopPropagation()}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-                <h4 style={{ fontFamily: 'Syne,sans-serif', fontWeight: 700, fontSize: 13, margin: 0 }}>{t('perf2.compareMode')}</h4>
+                <h4 style={{ fontFamily: 'var(--font-body)', fontWeight: 700, fontSize: 13, margin: 0 }}>{t('perf2.compareMode')}</h4>
                 <button onClick={() => setC1CompareSheet(false)}
                   style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: 'var(--text-dim)', padding: 4 }}>✕</button>
               </div>
               {/* Sport */}
               <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '0 0 4px' }}>{t('perf2.sport')}</p>
               <select value={c1CompareSport} onChange={e => setC1CompareSport(e.target.value)}
-                style={{ width: '100%', padding: '6px 10px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 12, outline: 'none', marginBottom: 12 }}>
+                style={{ width: '100%', padding: '6px 10px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 12, outline: 'none', marginBottom: 12 }}>
                 {YD_SPORTS.map(sp => <option key={sp.id} value={sp.id}>{t(YD_SPORT_KEY[sp.id] ?? '') || sp.label}</option>)}
               </select>
               {/* Métrique */}
               <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '0 0 4px' }}>{t('perf2.metric')}</p>
               <select value={chart1Metric} onChange={e => setChart1Metric(e.target.value as 'km' | 'heures' | 'nb_sorties')}
-                style={{ width: '100%', padding: '6px 10px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 12, outline: 'none', marginBottom: 14 }}>
+                style={{ width: '100%', padding: '6px 10px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 12, outline: 'none', marginBottom: 14 }}>
                 <option value="heures">{t('perf2.hours')}</option>
                 <option value="km">{t('perf2.distanceKm')}</option>
                 <option value="nb_sorties">{t('perf2.sessionsShort')}</option>
@@ -4967,7 +4967,7 @@ function YearDatasSubTab() {
                   return (
                     <label key={yr} style={{
                       display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer',
-                      padding: '5px 10px', borderRadius: 20,
+                      padding: '5px 10px', borderRadius: 'var(--r-lg)',
                       background: checked ? `${color}22` : 'var(--bg-card2)',
                       border: `1px solid ${checked ? color : 'var(--border)'}`,
                     }}>
@@ -4986,7 +4986,7 @@ function YearDatasSubTab() {
               <button
                 onClick={() => setC1CompareSheet(false)}
                 style={{
-                  marginTop: 18, width: '100%', padding: '10px', borderRadius: 8,
+                  marginTop: 18, width: '100%', padding: '10px', borderRadius: 'var(--r-sm)',
                   background: 'var(--primary)', color: '#fff', fontWeight: 700, fontSize: 13,
                   border: 'none', cursor: 'pointer',
                 }}>
@@ -5005,7 +5005,7 @@ function YearDatasSubTab() {
               {t('perf2.comparisonByYear')} — {t(YD_SPORT_KEY[activeSport] ?? '') || sportDef.label}
             </h3>
             <select value={validMetric} onChange={e => setChartMetric(e.target.value)}
-              style={{ padding: '5px 8px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 11, outline: 'none', cursor: 'pointer' }}>
+              style={{ padding: '5px 8px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 11, outline: 'none', cursor: 'pointer' }}>
               {sportMetrics.map(mk => <option key={mk} value={mk}>{t(YD_METRIC_KEY[mk] ?? '') || YD_METRICS[mk]?.label}</option>)}
             </select>
           </div>
@@ -5028,7 +5028,7 @@ function YearDatasSubTab() {
                       <g key={v}>
                         <line x1={lPad} y1={y} x2={SVG_W - 8} y2={y} stroke="var(--border)" strokeWidth="0.5" />
                         <text x={lPad - 3} y={y + 4} textAnchor="end"
-                          style={{ fontSize: 8, fontFamily: 'DM Mono,monospace', fill: 'var(--text-dim)' }}>
+                          style={{ fontSize: 10, fontFamily: 'var(--font-body)', fill: 'var(--text-dim)' }}>
                           {metricDef.fmt(v)}
                         </text>
                       </g>
@@ -5054,7 +5054,7 @@ function YearDatasSubTab() {
                         {sel && <rect x={bx - 1} y={by - 1} width={barW + 2} height={bh + 1} rx={4} fill="none" stroke={col} strokeWidth="1.5" />}
                         {(!isMobile || barW >= 18) && (
                           <text x={cx} y={svgH - 5} textAnchor="middle"
-                            style={{ fontSize: isMobile ? 8 : 9, fontFamily: 'DM Mono,monospace', fill: sel ? col : 'var(--text-dim)', fontWeight: sel ? '700' : '400' }}>
+                            style={{ fontSize: isMobile ? 8 : 9, fontFamily: 'var(--font-body)', fill: sel ? col : 'var(--text-dim)', fontWeight: sel ? '700' : '400' }}>
                             {yr.slice(2)}
                           </text>
                         )}
@@ -5067,10 +5067,10 @@ function YearDatasSubTab() {
                     position: 'absolute', top: 4, pointerEvents: 'none', zIndex: 10,
                     left:  hoveredBar.svgX < SVG_W / 2 ? `calc(${(hoveredBar.svgX / SVG_W * 100).toFixed(1)}% + 10px)` : undefined,
                     right: hoveredBar.svgX >= SVG_W / 2 ? `calc(${((SVG_W - hoveredBar.svgX) / SVG_W * 100).toFixed(1)}% + 10px)` : undefined,
-                    background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 8, padding: '5px 10px', whiteSpace: 'nowrap',
+                    background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-sm)', padding: '5px 10px', whiteSpace: 'nowrap',
                   }}>
                     <p style={{ fontSize: 11, fontWeight: 700, margin: '0 0 2px', color: SPORT_DS_COLOR[activeSport] ?? YEAR_DEFAULT_COLOR }}>{hoveredBar.year}</p>
-                    <p style={{ fontSize: 12, fontFamily: 'DM Mono,monospace', margin: 0 }}>
+                    <p style={{ fontSize: 12, fontFamily: 'var(--font-body)', margin: 0 }}>
                       {t(YD_METRIC_KEY[metricDef.key] ?? '') || metricDef.label}: <strong>{metricDef.fmt(hoveredBar.val)}</strong>
                     </p>
                   </div>
@@ -5100,7 +5100,7 @@ function YearDatasSubTab() {
                 <svg viewBox={`0 0 ${SVG_W} ${C3_H}`} style={{ width: '100%', height: C3_H, overflow: 'visible' }}>
                   <line x1={C3_PL} y1={C3_PT + c3PlotH} x2={SVG_W - C3_PR} y2={C3_PT + c3PlotH} stroke="var(--border)" strokeWidth="1" />
                   <text x={C3_PL - 3} y={C3_PT + 5} textAnchor="end"
-                    style={{ fontSize: 8, fill: 'var(--text-dim)', fontFamily: 'DM Mono,monospace' }}>
+                    style={{ fontSize: 10, fill: 'var(--text-dim)', fontFamily: 'var(--font-body)' }}>
                     {fmt(max)}
                   </text>
                   {c3Stats.map((s, i) => {
@@ -5119,12 +5119,12 @@ function YearDatasSubTab() {
                         />
                         {val > 0 && (
                           <text x={cx} y={by - 4} textAnchor="middle" className="tnum"
-                            style={{ fontSize: 9, fill: 'var(--text)', fontFamily: 'var(--font-body)', fontWeight: 600 }}>
+                            style={{ fontSize: 10, fill: 'var(--text)', fontFamily: 'var(--font-body)', fontWeight: 600 }}>
                             {fmt(val)}
                           </text>
                         )}
                         <text x={cx} y={C3_H - 3} textAnchor="middle"
-                          style={{ fontSize: 8, fill: 'var(--text-dim)', fontFamily: 'DM Mono,monospace' }}>
+                          style={{ fontSize: 10, fill: 'var(--text-dim)', fontFamily: 'var(--font-body)' }}>
                           {s.year.slice(2)}
                         </text>
                       </g>
@@ -5140,7 +5140,7 @@ function YearDatasSubTab() {
       {/* ── Manual entry list ── */}
       {mode === 'manual' && (
         <Card>
-          <h3 style={{ fontFamily: 'Syne,sans-serif', fontSize: 13, fontWeight: 700, margin: '0 0 10px' }}>
+          <h3 style={{ fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 700, margin: '0 0 10px' }}>
             {t(YD_SPORT_KEY[activeSport] ?? '') || sportDef.label} — {t('perf2.manualEntry')}
           </h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -5150,8 +5150,8 @@ function YearDatasSubTab() {
 
               if (isEditing) {
                 return (
-                  <div key={yr} style={{ border: `1.5px solid ${col}50`, borderRadius: 10, padding: 14, background: 'var(--bg-card2)' }}>
-                    <p style={{ fontFamily: 'Syne,sans-serif', fontSize: 12, fontWeight: 700, color: col, margin: '0 0 10px' }}>{yr}</p>
+                  <div key={yr} style={{ border: `1.5px solid ${col}50`, borderRadius: 'var(--r-sm)', padding: 14, background: 'var(--bg-card2)' }}>
+                    <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 700, color: col, margin: '0 0 10px' }}>{yr}</p>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 10 }}>
                       {sportMetrics.map(mk => {
                         const m = YD_METRICS[mk]; if (!m) return null
@@ -5165,18 +5165,18 @@ function YearDatasSubTab() {
                                 ...p,
                                 [m.manualKey]: e.target.value === '' ? null : parseFloat(e.target.value),
                               }))}
-                              style={{ width: '100%', padding: '6px 8px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 12, outline: 'none', boxSizing: 'border-box' }} />
+                              style={{ width: '100%', padding: '6px 8px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 12, outline: 'none', boxSizing: 'border-box' }} />
                           </div>
                         )
                       })}
                     </div>
                     <div style={{ display: 'flex', gap: 6 }}>
                       <button onClick={() => { void saveManual(yr) }} disabled={saving}
-                        style={{ padding: '6px 16px', borderRadius: 7, border: 'none', background: '#22c55e', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer', opacity: saving ? 0.6 : 1 }}>
+                        style={{ padding: '6px 16px', borderRadius: 'var(--r-sm)', border: 'none', background: '#22c55e', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer', opacity: saving ? 0.6 : 1 }}>
                         {saving ? '…' : t('perf2.confirm')}
                       </button>
                       <button onClick={() => { setEditYear(null); setEditDraft({}) }}
-                        style={{ padding: '6px 12px', borderRadius: 7, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-dim)', fontSize: 12, cursor: 'pointer' }}>
+                        style={{ padding: '6px 12px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-dim)', fontSize: 12, cursor: 'pointer' }}>
                         {t('perf2.cancel')}
                       </button>
                     </div>
@@ -5185,8 +5185,8 @@ function YearDatasSubTab() {
               }
 
               return (
-                <div key={yr} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 8, background: 'var(--bg-card2)' }}>
-                  <span style={{ fontFamily: 'DM Mono,monospace', fontSize: 13, fontWeight: 700, color: col, minWidth: 36 }}>{yr}</span>
+                <div key={yr} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 'var(--r-sm)', background: 'var(--bg-card2)' }}>
+                  <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 700, color: col, minWidth: 36 }}>{yr}</span>
                   <div style={{ flex: 1, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                     {entry
                       ? sportMetrics.slice(0, 3).map(mk => {
@@ -5194,14 +5194,14 @@ function YearDatasSubTab() {
                           return v != null && v > 0 ? (
                             <span key={mk} style={{ fontSize: 11 }}>
                               <span style={{ color: 'var(--text-dim)' }}>{t(YD_METRIC_KEY[m.key] ?? '') || m.label} </span>
-                              <span style={{ fontFamily: 'DM Mono,monospace', fontWeight: 600 }}>{m.fmt(v)}</span>
+                              <span style={{ fontFamily: 'var(--font-body)', fontWeight: 600 }}>{m.fmt(v)}</span>
                             </span>
                           ) : null
                         })
                       : <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>{t('perf2.noData')}</span>}
                   </div>
                   <button onClick={() => startEdit(yr)}
-                    style={{ padding: '4px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-dim)', fontSize: 11, cursor: 'pointer', flexShrink: 0 }}>
+                    style={{ padding: '4px 12px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-dim)', fontSize: 11, cursor: 'pointer', flexShrink: 0 }}>
                     {entry ? t('perf2.edit') : t('perf2.enterYearBtn')}
                   </button>
                 </div>

@@ -191,7 +191,7 @@ export default function SkiScreen({ onExit, onFinished }: Props) {
         </button>
         <div style={{ display:'flex', gap:6, flex:1, justifyContent:'center' }}>
           {(['ski', 'snowboard'] as const).map(type => (
-            <button key={type} onClick={() => setSkiType(type)} style={{ padding:'5px 14px', borderRadius:8, background: skiType===type ? 'rgba(6,182,212,0.15)' : btnBg, border:`1.5px solid ${skiType===type ? '#06B6D4' : 'transparent'}`, color: skiType===type ? '#06B6D4' : labelColor, fontSize:13, fontWeight:500, cursor:'pointer' }}>
+            <button key={type} onClick={() => setSkiType(type)} style={{ padding:'5px 14px', borderRadius: 'var(--r-sm)', background: skiType===type ? 'rgba(6,182,212,0.15)' : btnBg, border:`1.5px solid ${skiType===type ? '#06B6D4' : 'transparent'}`, color: skiType===type ? '#06B6D4' : labelColor, fontSize:13, fontWeight:500, cursor:'pointer' }}>
               {type === 'ski' ? 'Ski' : 'Snowboard'}
             </button>
           ))}

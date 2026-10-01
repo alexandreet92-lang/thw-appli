@@ -119,7 +119,7 @@ export function ChannelEditSheet({ channel, isMuted, onClose, onSaved }: {
           <span style={{ display: 'block', fontFamily: FB, fontSize: 13.5, fontWeight: 600, color: 'var(--text)' }}>{muted ? t('w1g.ch.notifMuted') : t('w1g.ch.notifAll')}</span>
           <span style={{ display: 'block', fontFamily: FB, fontSize: 11.5, color: 'var(--text-dim)', marginTop: 1 }}>{muted ? t('w1g.ch.notifMutedSub') : t('w1g.ch.notifAllSub')}</span>
         </span>
-        <span aria-hidden style={{ flexShrink: 0, width: 42, height: 24, borderRadius: 999, background: !muted ? 'var(--primary)' : 'var(--border-mid)', position: 'relative', transition: 'background 0.18s ease' }}>
+        <span aria-hidden style={{ flexShrink: 0, width: 42, height: 24, borderRadius: 'var(--r-pill)', background: !muted ? 'var(--primary)' : 'var(--border-mid)', position: 'relative', transition: 'background 0.18s ease' }}>
           <span style={{ position: 'absolute', top: 2, left: !muted ? 20 : 2, width: 20, height: 20, borderRadius: '50%', background: 'var(--bg-card)', transition: 'left 0.18s ease', boxShadow: '0 1px 3px rgba(0,0,0,0.25)' }} />
         </span>
       </button>

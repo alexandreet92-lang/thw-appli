@@ -54,7 +54,7 @@ export default function PagePreview({ page, theme, selectedField, onFieldClick, 
       <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
         <div style={{
           flex: 1, margin: '12px 12px 6px',
-          borderRadius: 12, border: `1px solid ${theme.separator}`,
+          borderRadius: 'var(--r-md)', border: `1px solid ${theme.separator}`,
           background: `linear-gradient(135deg, ${theme.cardBg}, ${theme.bg})`,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           color: theme.dim, fontSize: 12,
@@ -74,7 +74,7 @@ export default function PagePreview({ page, theme, selectedField, onFieldClick, 
                 borderRight: i < arr.length - 1 ? `1px solid ${theme.separator}` : undefined,
               }}
             >
-              <p style={{ fontSize: 9, color: theme.dim, textTransform: 'uppercase', letterSpacing: '1.2px', margin: 0 }}>
+              <p style={{ fontSize: 10, color: theme.dim, textTransform: 'uppercase', letterSpacing: '1.2px', margin: 0 }}>
                 {(() => { const f = ALL_FIELDS.find(f => f.id === id); return f?.labelKey ? t(f.labelKey) : f?.label })()}
               </p>
               <p style={{ fontSize: 28, fontWeight: 700, color: theme.text, margin: 0, lineHeight: 1, fontFamily }}>
@@ -147,7 +147,7 @@ export default function PagePreview({ page, theme, selectedField, onFieldClick, 
           minHeight: 70,
         }}
       >
-        <p style={{ fontSize: 9, color: theme.dim, textTransform: 'uppercase', letterSpacing: '1.2px', margin: 0 }}>
+        <p style={{ fontSize: 10, color: theme.dim, textTransform: 'uppercase', letterSpacing: '1.2px', margin: 0 }}>
           {field?.labelKey ? t(field.labelKey) : field?.label}
         </p>
         <p style={{ fontSize: 28, fontWeight: 700, color: theme.text, margin: 0, lineHeight: 1, fontFamily }}>

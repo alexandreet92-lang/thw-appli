@@ -65,14 +65,14 @@ export default function WeeklySummary({ history, prevHistory, activities, prevAc
   ]
 
   return (
-    <div style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:20,padding:20,boxShadow:'var(--shadow-card)' }}>
+    <div style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius: 'var(--r-lg)',padding:20,boxShadow:'var(--shadow-card)' }}>
       <p style={{ fontSize:10,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.1em',color:'var(--text-dim)',margin:'0 0 14px' }}>
         {t('recovery.weekly.title')}
       </p>
       <div style={{ display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(110px,1fr))',gap:12,marginBottom:14 }}>
         {METRICS.map(m => (
           <div key={m.label} style={{ textAlign:'center' as const }}>
-            <p style={{ fontFamily:'Syne,sans-serif',fontSize:20,fontWeight:800,color:m.color,margin:'0 0 2px',lineHeight:1 }}>{m.value}</p>
+            <p style={{ fontFamily: 'var(--font-display)',fontSize:20,fontWeight:800,color:m.color,margin:'0 0 2px',lineHeight:1 }}>{m.value}</p>
             <p style={{ fontSize:10,color:'var(--text-dim)',margin:0 }}>{m.label}</p>
           </div>
         ))}
@@ -81,14 +81,14 @@ export default function WeeklySummary({ history, prevHistory, activities, prevAc
       {/* Comparaison semaine précédente */}
       <div style={{ display:'flex',gap:16,flexWrap:'wrap' as const }}>
         {deltaScore != null && (
-          <div style={{ display:'flex',alignItems:'center',gap:5,padding:'4px 10px',borderRadius:20,background:deltaScore>=0?'rgba(16,185,129,0.1)':'rgba(239,68,68,0.1)',border:`1px solid ${deltaScore>=0?'rgba(16,185,129,0.3)':'rgba(239,68,68,0.3)'}` }}>
+          <div style={{ display:'flex',alignItems:'center',gap:5,padding:'4px 10px',borderRadius: 'var(--r-lg)',background:deltaScore>=0?'rgba(16,185,129,0.1)':'rgba(239,68,68,0.1)',border:`1px solid ${deltaScore>=0?'rgba(16,185,129,0.3)':'rgba(239,68,68,0.3)'}` }}>
             <span style={{ fontSize:11,color:deltaScore>=0?'#10B981':'var(--danger)',fontWeight:600 }}>
               {deltaScore>=0?'↑':'↓'} {deltaScore>=0?'+':''}{deltaScore} {t('recovery.weekly.ptsAvgScore')}
             </span>
           </div>
         )}
         {Math.abs(deltaVol) > 60 && (
-          <div style={{ display:'flex',alignItems:'center',gap:5,padding:'4px 10px',borderRadius:20,background:deltaVol>=0?'rgba(16,185,129,0.1)':'rgba(239,68,68,0.1)',border:`1px solid ${deltaVol>=0?'rgba(16,185,129,0.3)':'rgba(239,68,68,0.3)'}` }}>
+          <div style={{ display:'flex',alignItems:'center',gap:5,padding:'4px 10px',borderRadius: 'var(--r-lg)',background:deltaVol>=0?'rgba(16,185,129,0.1)':'rgba(239,68,68,0.1)',border:`1px solid ${deltaVol>=0?'rgba(16,185,129,0.3)':'rgba(239,68,68,0.3)'}` }}>
             <span style={{ fontSize:11,color:deltaVol>=0?'#10B981':'var(--danger)',fontWeight:600 }}>
               {deltaVol>=0?'↑':'↓'} {deltaVol>=0?'+':''}{fmtSec(Math.abs(deltaVol))} {t('recovery.weekly.volumeSuffix')}
             </span>

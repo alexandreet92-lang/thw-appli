@@ -41,7 +41,7 @@ export default function FieldPicker({ open, excludeIds, onClose, onSelect, theme
               width: '100%', display: 'flex', alignItems: 'center',
               padding: '16px 20px', background: 'none', border: 'none',
               cursor: 'pointer', borderBottom: `1px solid ${theme.separator}`,
-              textAlign: 'left', fontFamily: 'DM Sans, sans-serif',
+              textAlign: 'left', fontFamily: 'var(--font-body)',
             }}
           >
             <div style={{ flex: 1 }}>
@@ -114,7 +114,7 @@ export default function FieldPicker({ open, excludeIds, onClose, onSelect, theme
           borderRadius: '24px 24px 0 0',
           display: 'flex', flexDirection: 'column',
           overflow: 'hidden',
-          fontFamily: 'DM Sans, sans-serif',
+          fontFamily: 'var(--font-body)',
           boxShadow: '0 -8px 32px rgba(0,0,0,0.18)',
         }}
       >
@@ -136,7 +136,7 @@ export default function FieldPicker({ open, excludeIds, onClose, onSelect, theme
               </svg>
             </button>
           )}
-          <h2 style={{ fontSize: 18, fontWeight: 700, color: theme.text, margin: 0, flex: 1, fontFamily: 'Syne, sans-serif' }}>
+          <h2 style={{ fontSize: 18, fontWeight: 700, color: theme.text, margin: 0, flex: 1, fontFamily: 'var(--font-display)' }}>
             {selectedCategory ? t(FIELD_CATEGORY_KEYS[selectedCategory]) : t('record.fieldPickerTitle')}
           </h2>
           <button onClick={handleClose}
@@ -148,7 +148,7 @@ export default function FieldPicker({ open, excludeIds, onClose, onSelect, theme
         {/* Barre de recherche */}
         <div style={{ padding: '0 16px 12px' }}>
           <div style={{
-            background: theme.cardBg, borderRadius: 12, border: `1px solid ${theme.separator}`,
+            background: theme.cardBg, borderRadius: 'var(--r-md)', border: `1px solid ${theme.separator}`,
             padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 8,
           }}>
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -159,7 +159,7 @@ export default function FieldPicker({ open, excludeIds, onClose, onSelect, theme
               placeholder={t('record.fieldPickerSearch')}
               value={search}
               onChange={e => setSearch(e.target.value)}
-              style={{ background: 'none', border: 'none', outline: 'none', color: theme.text, fontSize: 15, flex: 1, fontFamily: 'DM Sans, sans-serif' }}
+              style={{ background: 'none', border: 'none', outline: 'none', color: theme.text, fontSize: 15, flex: 1, fontFamily: 'var(--font-body)' }}
             />
           </div>
         </div>
@@ -187,7 +187,7 @@ function FieldRow({ field, theme, onClick, categoryLabel }: {
         width: '100%', display: 'flex', alignItems: 'center', gap: 12,
         padding: '15px 20px', background: 'none', border: 'none',
         cursor: 'pointer', borderBottom: `1px solid ${theme.separator}`,
-        textAlign: 'left', fontFamily: 'DM Sans, sans-serif',
+        textAlign: 'left', fontFamily: 'var(--font-body)',
       }}
     >
       <div style={{ flex: 1, minWidth: 0 }}>

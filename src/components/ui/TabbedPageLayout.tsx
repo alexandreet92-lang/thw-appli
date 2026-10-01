@@ -107,7 +107,7 @@ export function TabbedPageLayout<T extends string>({ title, headerExtra, tabs, a
             return (
               <button key={t.id} onClick={() => onChange(t.id)} title={t.label}
                 style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '8px 10px',
-                  borderRadius: 9, marginBottom: 3, cursor: 'pointer', border: 'none', textAlign: 'left', fontFamily: FB,
+                  borderRadius: 'var(--r-sm)', marginBottom: 3, cursor: 'pointer', border: 'none', textAlign: 'left', fontFamily: FB,
                   background: on ? 'var(--primary-dim)' : 'transparent', transition: 'background 0.14s', whiteSpace: 'nowrap' }}
                 onMouseEnter={e => { if (!on) (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)' }}
                 onMouseLeave={e => { if (!on) (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}>
@@ -133,12 +133,12 @@ export function TabbedPageLayout<T extends string>({ title, headerExtra, tabs, a
   const tabsBar = (
     <div className="tpl-tabscroll" style={{ marginBottom: 'var(--space-5)', overflowX: 'auto', WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'] }}>
       <style>{`.tpl-tabscroll{scrollbar-width:none}.tpl-tabscroll::-webkit-scrollbar{display:none}`}</style>
-      <div role="tablist" data-guide="page-tabs" style={{ display: 'inline-flex', gap: 2, padding: 3, borderRadius: 999, background: 'var(--bg-card2)' }}>
+      <div role="tablist" data-guide="page-tabs" style={{ display: 'inline-flex', gap: 2, padding: 3, borderRadius: 'var(--r-pill)', background: 'var(--bg-card2)' }}>
         {tabs.map(t => {
           const on = t.id === active
           return (
             <button key={t.id} role="tab" aria-selected={on} onClick={() => onChange(t.id)}
-              style={{ border: 'none', cursor: 'pointer', borderRadius: 999, padding: '7px 16px', fontFamily: FB, whiteSpace: 'nowrap',
+              style={{ border: 'none', cursor: 'pointer', borderRadius: 'var(--r-pill)', padding: '7px 16px', fontFamily: FB, whiteSpace: 'nowrap',
                 fontSize: 13, fontWeight: on ? 700 : 600,
                 background: on ? 'var(--bg-elev)' : 'transparent',
                 color: on ? 'var(--text)' : 'var(--text-mid)',

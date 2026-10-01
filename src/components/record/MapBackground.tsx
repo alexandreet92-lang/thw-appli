@@ -99,7 +99,7 @@ function LayerSelector({ layer, onChange }: {
               background: active ? 'var(--primary)' : 'var(--bg)',
               color: active ? 'var(--on-primary)' : 'var(--text)',
               border: active ? 'none' : '1px solid var(--border)',
-              fontFamily: 'DM Sans, sans-serif',
+              fontFamily: 'var(--font-body)',
               fontSize: 11, fontWeight: 700, letterSpacing: '0.04em',
               boxShadow: '0 2px 8px rgba(0,0,0,0.25)',
             }}

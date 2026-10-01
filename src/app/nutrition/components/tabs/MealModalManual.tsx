@@ -121,10 +121,10 @@ export default function MealModalManual({ initialName = '', initialKcal = 0, ini
       )}
 
       <input value={name} onChange={e => setName(e.target.value)} placeholder={t('w2b.mealNamePlaceholder')}
-        style={{ width: '100%', background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', fontSize: 13, color: 'var(--text)', fontFamily: 'DM Sans,sans-serif' }} />
+        style={{ width: '100%', background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: 'var(--r-sm)', padding: '8px 12px', fontSize: 13, color: 'var(--text)', fontFamily: 'var(--font-body)' }} />
 
       <button onClick={() => void handleSave()} disabled={saving || !hasItems}
-        style={{ width: '100%', padding: '10px 0', borderRadius: 10, border: 'none', background: hasItems ? 'linear-gradient(90deg,#06B6D4,#3B82F6)' : 'var(--border)', color: '#fff', fontWeight: 700, fontSize: 13, cursor: hasItems ? 'pointer' : 'default', fontFamily: 'Syne,sans-serif' }}>
+        style={{ width: '100%', padding: '10px 0', borderRadius: 'var(--r-sm)', border: 'none', background: hasItems ? 'linear-gradient(90deg,#06B6D4,#3B82F6)' : 'var(--border)', color: '#fff', fontWeight: 700, fontSize: 13, cursor: hasItems ? 'pointer' : 'default', fontFamily: 'var(--font-body)' }}>
         {saving ? t('w2b.saving') : t('w2b.save')}
       </button>
 

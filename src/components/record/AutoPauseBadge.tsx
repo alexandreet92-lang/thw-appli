@@ -22,7 +22,7 @@ export default function AutoPauseBadge({ active, isDark }: Props) {
         left: '50%', transform: 'translateX(-50%)',
         zIndex: 1500, pointerEvents: 'none',
         display: 'flex', alignItems: 'center', gap: 6,
-        padding: '5px 12px', borderRadius: 999,
+        padding: '5px 12px', borderRadius: 'var(--r-pill)',
         background: isDark ? 'rgba(255,255,255,0.10)' : 'rgba(0,0,0,0.06)', // design-allow-color
         color: isDark ? '#FFFFFF' : '#0A0A0A', // design-allow-color
         backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',

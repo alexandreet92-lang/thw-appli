@@ -39,7 +39,7 @@ export default function AICoachingTip({ exercise, enabled, isDark }: Props) {
         padding: '14px 18px',
         background: 'rgba(6,182,212,0.08)',
         border: '1px solid rgba(6,182,212,0.20)',
-        borderRadius: 14,
+        borderRadius: 'var(--r-md)',
         maxWidth: 320, textAlign: 'center',
       }}>
         {loading ? (

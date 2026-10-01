@@ -68,9 +68,9 @@ export default function RecoveryWaterfall({ checkin, activities, hrvToday, hrvMi
   const totalColor = total >= 75 ? '#10B981' : total >= 50 ? '#F59E0B' : '#EF4444'
 
   return (
-    <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 20, padding: 24, boxShadow: 'var(--shadow-card)' }}>
+    <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-lg)', padding: 24, boxShadow: 'var(--shadow-card)' }}>
       <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-dim)', margin: '0 0 4px' }}>{t('recovery.title')}</p>
-      <h2 style={{ fontFamily: 'Syne,sans-serif', fontSize: 18, fontWeight: 700, margin: '0 0 18px' }}>{t('recovery.waterfall.title')}</h2>
+      <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700, margin: '0 0 18px' }}>{t('recovery.waterfall.title')}</h2>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
         {factors.map((f, i) => {
@@ -107,7 +107,7 @@ export default function RecoveryWaterfall({ checkin, activities, hrvToday, hrvMi
               <span style={{
                 fontSize: 10, fontWeight: 700, width: 30, textAlign: 'right',
                 color: f.pts > 0 ? '#10B981' : f.pts < 0 ? '#EF4444' : 'var(--text-dim)',
-                fontFamily: 'DM Mono,monospace',
+                fontFamily: 'var(--font-body)',
               }}>
                 {f.pts > 0 ? '+' : ''}{f.pts}
               </span>
@@ -118,7 +118,7 @@ export default function RecoveryWaterfall({ checkin, activities, hrvToday, hrvMi
         {/* Total */}
         <div style={{ borderTop: '1px solid var(--border)', paddingTop: 10, marginTop: 4, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>{t('recovery.waterfall.totalScore')}</span>
-          <span style={{ fontSize: 22, fontWeight: 800, color: totalColor, fontFamily: 'Syne,sans-serif' }}>
+          <span style={{ fontSize: 22, fontWeight: 800, color: totalColor, fontFamily: 'var(--font-display)' }}>
             {total}/100
           </span>
         </div>

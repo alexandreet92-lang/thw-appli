@@ -57,8 +57,8 @@ function Gauge({ label, used, limit, resetLabel, big }: { label: string; used: n
           <span style={{ fontSize: 17, fontWeight: 600, color: 'var(--text)', fontFamily: 'var(--font-body)' }}>{label}</span>
           <span style={{ fontSize: 14, color: 'var(--text-mid)', fontVariantNumeric: 'tabular-nums' }}>{Math.round(p)} % · {resetLabel}</span>
         </div>
-        <div style={{ height: 8, background: 'color-mix(in srgb, var(--text) 12%, var(--bg))', borderRadius: 999, overflow: 'hidden' }}>
-          <div style={{ height: '100%', width: `${p}%`, background: barColor(p), borderRadius: 999, transition: 'width 0.6s cubic-bezier(0.22,1,0.36,1)' }} />
+        <div style={{ height: 8, background: 'color-mix(in srgb, var(--text) 12%, var(--bg))', borderRadius: 'var(--r-pill)', overflow: 'hidden' }}>
+          <div style={{ height: '100%', width: `${p}%`, background: barColor(p), borderRadius: 'var(--r-pill)', transition: 'width 0.6s cubic-bezier(0.22,1,0.36,1)' }} />
         </div>
         <div style={{ fontSize: 14, color: 'var(--text-dim)', marginTop: 12, fontVariantNumeric: 'tabular-nums' }}>{fmt(used)} / {fmt(limit)} tokens</div>
       </div>
@@ -109,7 +109,7 @@ export default function TokenUsageBubble({ onBuyTokens, currentModel = 'athena',
         onClick={() => setOpen(o => !o)}
         title={t('ai.tokenUsage')}
         className="aip-icon-btn"
-        style={{ width: 28, height: 28, borderRadius: 6, color: open ? 'var(--ai-text)' : 'var(--ai-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}
+        style={{ width: 28, height: 28, borderRadius: 'var(--r-sm)', color: open ? 'var(--ai-text)' : 'var(--ai-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}
       >
         <CircleGauge size={16} />
         <span style={{ position: 'absolute', bottom: 3, right: 3, width: 6, height: 6, borderRadius: '50%', background: dotColor(maxPct), border: '1px solid var(--ai-bg)' }} />
@@ -127,7 +127,7 @@ export default function TokenUsageBubble({ onBuyTokens, currentModel = 'athena',
               <div style={{ height: 1, background: 'var(--border)' }} />
               <div style={{ padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text)' }}>{t('ai.bonusTokens')}</span>
-                <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--primary)', fontFamily: 'DM Mono, monospace' }}>{fmt(limits.bonus_tokens)}</span>
+                <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--primary)', fontFamily: 'var(--font-body)' }}>{fmt(limits.bonus_tokens)}</span>
               </div>
             </>
           )}
@@ -143,7 +143,7 @@ export default function TokenUsageBubble({ onBuyTokens, currentModel = 'athena',
               <div style={{ padding: '12px 16px', borderTop: '1px solid var(--border)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                   <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text)' }}>{t('ai.currentModel')}</span>
-                  <span style={{ padding: '2px 8px', borderRadius: 12, fontSize: 10, fontWeight: 500, color: 'var(--primary)', background: 'rgba(6,182,212,0.10)', border: '0.5px solid rgba(6,182,212,0.25)' }}>{name}</span>
+                  <span style={{ padding: '2px 8px', borderRadius: 'var(--r-md)', fontSize: 10, fontWeight: 500, color: 'var(--primary)', background: 'rgba(6,182,212,0.10)', border: '0.5px solid rgba(6,182,212,0.25)' }}>{name}</span>
                 </div>
                 {mult > 1 && (
                   <p style={{ fontSize: 11, color: 'var(--text-mid)', lineHeight: 1.5, margin: '6px 0 8px' }}>
@@ -159,7 +159,7 @@ export default function TokenUsageBubble({ onBuyTokens, currentModel = 'athena',
           <div style={{ height: 1, background: 'var(--border)' }} />
           <button
             onClick={() => { setOpen(false); onBuyTokens() }}
-            style={{ width: '100%', padding: '10px 16px', margin: 0, background: 'var(--bg-alt)', border: '0.5px solid var(--border)', borderRadius: 8, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: 'var(--text)', fontFamily: 'DM Sans, sans-serif' }}
+            style={{ width: '100%', padding: '10px 16px', margin: 0, background: 'var(--bg-alt)', border: '0.5px solid var(--border)', borderRadius: 'var(--r-sm)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: 'var(--text)', fontFamily: 'var(--font-body)' }}
             onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)' }}
             onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-alt)' }}
           >
@@ -197,7 +197,7 @@ export default function TokenUsageBubble({ onBuyTokens, currentModel = 'athena',
                 </div>
                 <button
                   onClick={() => { setOpen(false); onBuyTokens() }}
-                  style={{ width: '100%', minHeight: 56, borderRadius: 999, border: 'none', cursor: 'pointer', background: 'var(--text)', color: 'var(--bg)', fontSize: 17, fontWeight: 600, fontFamily: 'var(--font-body)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}
+                  style={{ width: '100%', minHeight: 56, borderRadius: 'var(--r-pill)', border: 'none', cursor: 'pointer', background: 'var(--text)', color: 'var(--bg)', fontSize: 17, fontWeight: 600, fontFamily: 'var(--font-body)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}
                 >
                   <ShoppingBag size={20} /> {t('ai.buyTokens')}
                 </button>
@@ -209,7 +209,7 @@ export default function TokenUsageBubble({ onBuyTokens, currentModel = 'athena',
           <div style={{
             position: 'absolute', bottom: 'calc(100% + 8px)', right: 0, zIndex: 300,
             width: 300, maxWidth: 'calc(100vw - 24px)',
-            background: 'var(--bg-card)', border: '1px solid var(--border-mid)', borderRadius: 14,
+            background: 'var(--bg-card)', border: '1px solid var(--border-mid)', borderRadius: 'var(--r-md)',
             boxShadow: '0 10px 40px rgba(0,0,0,0.2)', padding: 4,
             animation: 'aip_menu_up 0.16s ease-out',
           }}>

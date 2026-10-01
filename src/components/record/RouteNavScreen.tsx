@@ -269,7 +269,7 @@ export default function RouteNavScreen({ route, sport, showWatts, isDark, hr, wa
             onClick={() => { if (!bannerOpen) setBannerOpen(true) }}
             style={{ display: 'flex', alignItems: 'center', gap: 13, padding: bannerOpen ? '16px 18px 18px' : '12px 16px', flexShrink: 0, cursor: 'pointer' }}
           >
-            <div style={{ width: bannerOpen ? 48 : 44, height: bannerOpen ? 48 : 44, borderRadius: 13, flexShrink: 0, background: 'var(--primary-dim)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'width .25s, height .25s' }}>
+            <div style={{ width: bannerOpen ? 48 : 44, height: bannerOpen ? 48 : 44, borderRadius: 'var(--r-md)', flexShrink: 0, background: 'var(--primary-dim)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'width .25s, height .25s' }}>
               <ManeuverIcon type={nextStep?.type ?? 6} size={bannerOpen ? 28 : 24} />
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
@@ -315,7 +315,7 @@ export default function RouteNavScreen({ route, sport, showWatts, isDark, hr, wa
         </div>
         {/* Poignée repliée : indicateur « tirer vers le bas » */}
         {!bannerOpen && (
-          <div onClick={() => setBannerOpen(true)} style={{ pointerEvents: 'auto', width: 44, height: 5, borderRadius: 5, background: 'var(--border-mid)', margin: '6px auto 0', cursor: 'pointer' }} />
+          <div onClick={() => setBannerOpen(true)} style={{ pointerEvents: 'auto', width: 44, height: 5, borderRadius: 'var(--r-sm)', background: 'var(--border-mid)', margin: '6px auto 0', cursor: 'pointer' }} />
         )}
       </div>
       )}
@@ -334,14 +334,14 @@ export default function RouteNavScreen({ route, sport, showWatts, isDark, hr, wa
         onTouchEnd={e => { const dy = e.changedTouches[0].clientY - pStartY.current; if (dy < -30) setProfileOpen(true); else if (dy > 30) setProfileOpen(false) }}
         style={{ position: 'absolute', left: 0, right: 0, bottom: 0, zIndex: 1100, background: 'var(--bg)', borderTopLeftRadius: 22, borderTopRightRadius: 22, boxShadow: '0 -6px 26px rgba(0,0,0,0.2)', paddingBottom: embedded ? 8 : 'calc(8px + env(safe-area-inset-bottom))' }}
       >
-        <div onClick={() => setProfileOpen(o => !o)} style={{ width: 44, height: 5, borderRadius: 5, background: 'var(--border-mid)', margin: '8px auto 4px', cursor: 'pointer' }} />
+        <div onClick={() => setProfileOpen(o => !o)} style={{ width: 44, height: 5, borderRadius: 'var(--r-sm)', background: 'var(--border-mid)', margin: '8px auto 4px', cursor: 'pointer' }} />
 
         {/* Profil altimétrique — coulisse à l'ouverture / fermeture */}
         <div style={{ maxHeight: profileOpen ? 180 : 0, opacity: profileOpen ? 1 : 0, overflow: 'hidden', transition: 'max-height .4s cubic-bezier(.22,.61,.36,1), opacity .3s ease' }}>
           {ep.length > 1 && (
             <div style={{ padding: '6px 14px 10px' }}>
               <div style={{ position: 'relative' }}>
-                <svg width="100%" height={H} viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" style={{ display: 'block', borderRadius: 8 }}>
+                <svg width="100%" height={H} viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" style={{ display: 'block', borderRadius: 'var(--r-sm)' }}>
                   <defs>
                     <linearGradient id="navElevAll" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="0%" style={{ stopColor: 'var(--text-dim)', stopOpacity: 0.22 }} />

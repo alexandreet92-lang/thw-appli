@@ -52,7 +52,7 @@ export function MonthlySummary({ activities }: { activities: RecapAct[] }) {
         {storyOpen && <RecapStory period="month" activities={activities} onClose={() => setStoryOpen(false)} />}
         <button onClick={() => setStoryOpen(true)} style={{
           display: 'flex', alignItems: 'center', gap: 11, width: '100%', marginBottom: 16, cursor: 'pointer',
-          padding: '12px 14px', borderRadius: 14, border: '1px solid var(--border)', background: 'var(--bg-card)', textAlign: 'left',
+          padding: '12px 14px', borderRadius: 'var(--r-md)', border: '1px solid var(--border)', background: 'var(--bg-card)', textAlign: 'left',
         }}>
           <span style={{ width: 34, height: 34, borderRadius: '50%', background: accent, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <svg width="13" height="14" viewBox="0 0 15 16" aria-hidden><path d="M2 1.5v13l11-6.5z" fill="#fff" /></svg>
@@ -92,7 +92,7 @@ export function MonthlySummary({ activities }: { activities: RecapAct[] }) {
 
   return (
     <div style={{
-      position: 'relative', borderRadius: 18, padding: '18px 18px 20px', marginBottom: 16, overflow: 'hidden',
+      position: 'relative', borderRadius: 'var(--r-lg)', padding: '18px 18px 20px', marginBottom: 16, overflow: 'hidden',
       background: `linear-gradient(135deg, ${accent} 0%, #0b0b0f 130%)`,
       animation: 'monthlyIn 0.5s cubic-bezier(0.2,0.8,0.2,1)',
     }}>
@@ -110,7 +110,7 @@ export function MonthlySummary({ activities }: { activities: RecapAct[] }) {
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         <button onClick={onShare} style={{
-          display: 'inline-flex', alignItems: 'center', gap: 7, padding: '9px 16px', borderRadius: 999,
+          display: 'inline-flex', alignItems: 'center', gap: 7, padding: '9px 16px', borderRadius: 'var(--r-pill)',
           background: 'rgba(255,255,255,0.18)', border: '1px solid rgba(255,255,255,0.3)', color: '#fff',
           fontSize: 13, fontWeight: 700, cursor: 'pointer',
         }}><IconShare2 size={15} /> {t('activities.msShare')}</button>

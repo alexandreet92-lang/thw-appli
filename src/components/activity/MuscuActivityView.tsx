@@ -91,7 +91,7 @@ export function MuscuActivityView({ activity, z2DurationS, jauges }: Props) {
       {jauges}
 
       {/* Hero KPIs muscu (réels) — pas de Distance/Vitesse/Allure/D+ */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 1, background: 'var(--border)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 1, background: 'var(--border)', border: '1px solid var(--border)', borderRadius: 'var(--r-sm)', overflow: 'hidden' }}>
         {kpis.map(k => <KpiTile key={k.label} {...k} />)}
       </div>
 

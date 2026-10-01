@@ -91,7 +91,7 @@ export function ActivityMediaHero({ activityId, initialMedia, points, bottomInse
 
   const fileInput = <input ref={inputRef} type="file" accept="image/*,video/*" multiple hidden onChange={e => onFiles(e.target.files)} />
   const addBtnStyle: React.CSSProperties = {
-    width: 40, height: 40, borderRadius: 12, border: 'none', cursor: 'pointer', padding: 0,
+    width: 40, height: 40, borderRadius: 'var(--r-md)', border: 'none', cursor: 'pointer', padding: 0,
     display: 'flex', alignItems: 'center', justifyContent: 'center',
     background: 'rgba(0,0,0,0.55)', color: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.3)', backdropFilter: 'blur(6px)',
   }
@@ -117,12 +117,12 @@ export function ActivityMediaHero({ activityId, initialMedia, points, bottomInse
       <div style={{ padding: '0 16px', marginBottom: 8 }}>
         {fileInput}
         {media.length === 0 ? (
-          <button onClick={() => inputRef.current?.click()} disabled={busy} style={{ width: '100%', padding: '22px 16px', borderRadius: 16, border: '1.5px dashed var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+          <button onClick={() => inputRef.current?.click()} disabled={busy} style={{ width: '100%', padding: '22px 16px', borderRadius: 'var(--r-md)', border: '1.5px dashed var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
             {busy ? <IconLoader2 size={24} className="thw-spin" /> : <IconPlus size={24} />}
             <span style={{ fontSize: 13, fontWeight: 600 }}>{t('w3f.add_photo_video')}</span>
           </button>
         ) : (
-          <div style={{ position: 'relative', borderRadius: 16, overflow: 'hidden', border: '1px solid var(--border)' }}>
+          <div style={{ position: 'relative', borderRadius: 'var(--r-md)', overflow: 'hidden', border: '1px solid var(--border)' }}>
             {renderGallery(220, 16)}
             <button onClick={() => inputRef.current?.click()} disabled={busy} style={{ ...addBtnStyle, position: 'absolute', bottom: 10, right: 10 }}>{busy ? <IconLoader2 size={18} className="thw-spin" /> : <IconPlus size={20} />}</button>
           </div>
@@ -148,7 +148,7 @@ export function ActivityMediaHero({ activityId, initialMedia, points, bottomInse
       {media.length > 0 && (
         <button onClick={() => setMode(showPhoto ? 'map' : 'photo')} aria-label={t('w3f.toggle_map_photo')} style={{
           position: 'absolute', left: 12, bottom: bottomInset + 16, zIndex: 11,
-          width: insetSize, height: insetSize, borderRadius: 14, overflow: 'hidden', padding: 0, cursor: 'pointer',
+          width: insetSize, height: insetSize, borderRadius: 'var(--r-md)', overflow: 'hidden', padding: 0, cursor: 'pointer',
           border: '2px solid #fff', boxShadow: '0 3px 12px rgba(0,0,0,0.35)', background: 'var(--bg-card2)',
         }}>
           {showPhoto

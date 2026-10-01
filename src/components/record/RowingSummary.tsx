@@ -36,9 +36,9 @@ export default function RowingSummary({ session, onClose }: Props) {
   ]
 
   return (
-    <div style={{ position:'fixed', inset:0, zIndex:10005, background:'#0A0A0A', color:'#FFF', display:'flex', flexDirection:'column', fontFamily:'DM Sans, sans-serif', paddingTop:'env(safe-area-inset-top)' }}>
+    <div style={{ position:'fixed', inset:0, zIndex:10005, background:'#0A0A0A', color:'#FFF', display:'flex', flexDirection:'column', fontFamily: 'var(--font-body)', paddingTop:'env(safe-area-inset-top)' }}>
       <div style={{ height:52, flexShrink:0, display:'flex', alignItems:'center', padding:'0 16px', borderBottom:'1px solid rgba(255,255,255,0.08)' }}>
-        <span style={{ flex:1, textAlign:'center', fontSize:16, fontWeight:700, fontFamily:'Syne, sans-serif' }}>{t('record.rowingSummaryTitle')}</span>
+        <span style={{ flex:1, textAlign:'center', fontSize:16, fontWeight:700, fontFamily: 'var(--font-body)' }}>{t('record.rowingSummaryTitle')}</span>
         <button onClick={onClose} style={{ position:'absolute', right:16, background:'none', border:'none', color:'rgba(255,255,255,0.55)', fontSize:22, cursor:'pointer', lineHeight:1 }}>×</button>
       </div>
 
@@ -49,10 +49,10 @@ export default function RowingSummary({ session, onClose }: Props) {
               <path d="M3 17c3-3 7-3 9 0s7 3 9 0"/><path d="M12 17V7"/><path d="M9 7h6"/>
             </svg>
           </div>
-          <p style={{ fontSize:20, fontWeight:700, color:'#FFF', margin:0, fontFamily:'Syne, sans-serif' }}>{t('record.rowingSummarySport')}</p>
+          <p style={{ fontSize:20, fontWeight:700, color:'#FFF', margin:0, fontFamily: 'var(--font-display)' }}>{t('record.rowingSummarySport')}</p>
         </div>
 
-        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:1, background:'rgba(255,255,255,0.06)', borderRadius:16, overflow:'hidden', marginBottom:20 }}>
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:1, background:'rgba(255,255,255,0.06)', borderRadius: 'var(--r-md)', overflow:'hidden', marginBottom:20 }}>
           {stats.map((s, i) => (
             <div key={i} style={{ padding:'16px 12px', background:'#0A0A0A', textAlign:'center' }}>
               <p style={{ fontSize:10, color:'rgba(255,255,255,0.40)', textTransform:'uppercase', letterSpacing:'1.5px', margin:'0 0 4px' }}>{s.label}</p>
@@ -69,7 +69,7 @@ export default function RowingSummary({ session, onClose }: Props) {
               const split = calcSplit500(p.durationSec, p.distanceM)
               const watts = calcWatts(split)
               return (
-                <div key={p.id} style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 14px', background:'rgba(255,255,255,0.04)', borderRadius:10, marginBottom:8 }}>
+                <div key={p.id} style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 14px', background:'rgba(255,255,255,0.04)', borderRadius: 'var(--r-sm)', marginBottom:8 }}>
                   <span style={{ fontSize:12, fontWeight:700, color:'var(--primary)', minWidth:20 }}>#{i+1}</span>
                   <span style={{ fontSize:14, color:'#FFF', flex:1 }}>{p.distanceM >= 1000 ? `${p.distanceM/1000}km` : `${p.distanceM}m`}</span>
                   <span style={{ fontSize:13, color:'var(--primary)', fontWeight:600 }}>{formatSplit(split)}</span>
@@ -82,7 +82,7 @@ export default function RowingSummary({ session, onClose }: Props) {
       </div>
 
       <div style={{ padding:'16px', paddingBottom:'max(env(safe-area-inset-bottom),16px)', borderTop:'1px solid rgba(255,255,255,0.08)' }}>
-        <button onClick={onClose} style={{ width:'100%', height:52, borderRadius:16, background:'linear-gradient(135deg,#06B6D4,#2563EB)', border:'none', color:'#fff', fontSize:16, fontWeight:600, cursor:'pointer' }}>
+        <button onClick={onClose} style={{ width:'100%', height:52, borderRadius: 'var(--r-md)', background:'linear-gradient(135deg,#06B6D4,#2563EB)', border:'none', color:'#fff', fontSize:16, fontWeight:600, cursor:'pointer' }}>
           {t('record.rowingSummaryFinish')}
         </button>
       </div>

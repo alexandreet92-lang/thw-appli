@@ -60,7 +60,7 @@ export function DistanceRecords(props: DistanceRecordsProps) {
     return { ...d, best, sec, level: levelOf(d.id, d.m, sec, paceBaseM, bench), prev: getPrev(d.id) }
   })
 
-  const card: React.CSSProperties = { background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 16, padding: 20 }
+  const card: React.CSSProperties = { background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: 20 }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -106,13 +106,13 @@ export function DistanceRecords(props: DistanceRecordsProps) {
               style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', borderRadius: 'var(--r-sm)', marginBottom: 4, cursor: perf !== '—' ? 'pointer' : 'default', background: sel ? 'var(--bg-card2)' : 'transparent', userSelect: 'none' }}>
               <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, fontWeight: 500, color: 'var(--text-mid)', minWidth: 78, flexShrink: 0 }}>{r.label ?? r.id}</span>
               {/* Jauge horizontale (niveau) */}
-              <div style={{ flex: '0 0 64px', height: 6, borderRadius: 999, background: 'var(--bg-card2)', overflow: 'hidden' }}>
+              <div style={{ flex: '0 0 64px', height: 6, borderRadius: 'var(--r-pill)', background: 'var(--bg-card2)', overflow: 'hidden' }}>
                 <div style={{ width: mounted ? `${r.level * 10}%` : '0%', height: '100%', background: color, opacity: 0.5, transition: 'width 0.9s cubic-bezier(0.32,0.72,0,1)' }} />
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                   <span className="tnum" style={{ fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{perf}</span>
-                  {isPR && <span style={{ fontFamily: 'var(--font-body)', fontSize: 9, fontWeight: 700, color: 'var(--primary)' }}>PR</span>}
+                  {isPR && <span style={{ fontFamily: 'var(--font-body)', fontSize: 10, fontWeight: 700, color: 'var(--primary)' }}>PR</span>}
                   {speed && <span className="tnum" style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: 'var(--text-dim)' }}>{speed}</span>}
                 </div>
                 {r.prev?.perf && r.prev.perf !== '—' && (

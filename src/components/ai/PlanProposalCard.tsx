@@ -99,7 +99,7 @@ export function PlanProposalCard({
   return (
     <div style={card}>
       {/* Titre */}
-      <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'Syne,sans-serif' }}>
+      <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'var(--font-body)' }}>
         {prog.nom ?? proposal.requirements.name ?? t('ai.trainingPlan')}
       </p>
       {(prog.objectif_principal ?? proposal.requirements.objectif_principal) && (
@@ -149,7 +149,7 @@ export function PlanProposalCard({
                 <div key={d.sport} style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 4, fontSize: 12 }}>
                   <span style={{ width: 9, height: 9, borderRadius: '50%', background: d.color, flexShrink: 0 }} />
                   <span style={{ flex: 1, color: 'var(--ai-text)' }}>{sportLabel(d.sport)}</span>
-                  <span style={{ color: 'var(--ai-dim)', fontFamily: 'DM Mono,monospace', fontSize: 11 }}>{Math.round(d.min / total * 100)}%</span>
+                  <span style={{ color: 'var(--ai-dim)', fontFamily: 'var(--font-body)', fontSize: 11 }}>{Math.round(d.min / total * 100)}%</span>
                 </div>
               )
             })}
@@ -166,7 +166,7 @@ export function PlanProposalCard({
               <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
                 <span style={{ ...phaseDot, background: phaseColor(b.type) }} />
                 <span style={{ fontWeight: 600, color: 'var(--ai-text)' }}>{b.nom}</span>
-                <span style={{ color: 'var(--ai-dim)', fontFamily: 'DM Mono,monospace', fontSize: 11 }}>
+                <span style={{ color: 'var(--ai-dim)', fontFamily: 'var(--font-body)', fontSize: 11 }}>
                   S{b.semaine_debut}–{b.semaine_fin}{b.volume_hebdo_h ? ` · ${b.volume_hebdo_h}h` : ''}
                 </span>
               </div>
@@ -185,7 +185,7 @@ export function PlanProposalCard({
             return (
               <div key={num} style={{ marginBottom: 10 }}>
                 <button onClick={() => setOpenWeek(open ? null : num)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', padding: '7px 0', border: 'none', borderBottom: '1px solid var(--ai-border)', background: 'transparent', cursor: 'pointer' }}>
-                  <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'Syne,sans-serif' }}>{t('ai.weekN', { n: num })}{w.type ? ` · ${w.type}` : ''}</span>
+                  <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'var(--font-body)' }}>{t('ai.weekN', { n: num })}{w.type ? ` · ${w.type}` : ''}</span>
                   <span style={{ fontSize: 11, color: 'var(--ai-dim)' }}>{weekVol(w)}h · {t('ai.sessionsCount', { n: (w.seances ?? []).length })} {open ? '▾' : '▸'}</span>
                 </button>
                 {open && (
@@ -196,7 +196,7 @@ export function PlanProposalCard({
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
                           <span style={dayChip}>{DAYS[s.jour ?? 0]}</span>
                           <span style={{ fontWeight: 700, color: 'var(--ai-text)' }}>{s.titre}</span>
-                          <span style={{ marginLeft: 'auto', color: 'var(--ai-dim)', fontSize: 11, fontFamily: 'DM Mono,monospace', flexShrink: 0 }}>
+                          <span style={{ marginLeft: 'auto', color: 'var(--ai-dim)', fontSize: 11, fontFamily: 'var(--font-body)', flexShrink: 0 }}>
                             {sportLabel(s.sport)} · {s.duree_min}′
                           </span>
                         </div>
@@ -254,16 +254,16 @@ export function PlanProposalCard({
 
 // ── Styles ──────────────────────────────────────────────────────
 const card: React.CSSProperties = { marginTop: 6, padding: '2px 2px 4px' }
-const sectionTitle: React.CSSProperties = { margin: '0 0 6px', fontSize: 9.5, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--ai-dim)', fontFamily: 'DM Sans,sans-serif' }
-const kpi: React.CSSProperties = { flex: 1, padding: '6px 3px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', textAlign: 'center' }
-const kpiL: React.CSSProperties = { margin: 0, fontSize: 8, color: 'var(--ai-dim)', textTransform: 'uppercase', letterSpacing: '0.04em' }
-const kpiV: React.CSSProperties = { margin: '2px 0 0', fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'DM Mono,monospace' }
+const sectionTitle: React.CSSProperties = { margin: '0 0 6px', fontSize: 9.5, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--ai-dim)', fontFamily: 'var(--font-body)' }
+const kpi: React.CSSProperties = { flex: 1, padding: '6px 3px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', textAlign: 'center' }
+const kpiL: React.CSSProperties = { margin: 0, fontSize: 10, color: 'var(--ai-dim)', textTransform: 'uppercase', letterSpacing: '0.04em' }
+const kpiV: React.CSSProperties = { margin: '2px 0 0', fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'var(--font-body)' }
 const phaseDot: React.CSSProperties = { width: 8, height: 8, borderRadius: '50%', flexShrink: 0 }
-const dayChip: React.CSSProperties = { fontSize: 9.5, fontWeight: 700, color: 'var(--ai-mid)', background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)', borderRadius: 5, padding: '2px 5px', minWidth: 30, textAlign: 'center' }
+const dayChip: React.CSSProperties = { fontSize: 9.5, fontWeight: 700, color: 'var(--ai-mid)', background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)', borderRadius: 'var(--r-sm)', padding: '2px 5px', minWidth: 30, textAlign: 'center' }
 const weekHead: React.CSSProperties = { display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', padding: '8px 10px', border: 'none', background: 'var(--ai-bg2)', cursor: 'pointer' }
 const bullet: React.CSSProperties = { margin: '2px 0', fontSize: 12, color: 'var(--ai-text)', lineHeight: 1.4 }
-const ghostBtn: React.CSSProperties = { padding: '9px 14px', borderRadius: 10, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }
-const primaryBtn: React.CSSProperties = { display: 'flex', alignItems: 'center', flex: 1, justifyContent: 'center', padding: '10px 16px', borderRadius: 10, border: 'none', background: '#3C90D5', color: '#fff', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'Syne,sans-serif', boxShadow: '0 3px 10px rgba(60,144,213,0.34)' }
+const ghostBtn: React.CSSProperties = { padding: '9px 14px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }
+const primaryBtn: React.CSSProperties = { display: 'flex', alignItems: 'center', flex: 1, justifyContent: 'center', padding: '10px 16px', borderRadius: 'var(--r-sm)', border: 'none', background: '#3C90D5', color: '#fff', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)', boxShadow: '0 3px 10px rgba(60,144,213,0.34)' }
 const spinner: React.CSSProperties = { width: 18, height: 18, borderRadius: '50%', border: '2.5px solid var(--ai-border)', borderTopColor: '#3C90D5', animation: 'pp_spin 0.7s linear infinite', flexShrink: 0 }
 
 function phaseColor(type: string): string {
@@ -302,10 +302,10 @@ function RichText({ text }: { text: string }) {
         }
         // Sous-titre : ligne courte se terminant par ':' (ou ## markdown)
         if (t.startsWith('#')) {
-          return <p key={i} style={{ margin: '10px 0 4px', fontSize: 14, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'Syne,sans-serif' }}>{t.replace(/^#+\s*/, '')}</p>
+          return <p key={i} style={{ margin: '10px 0 4px', fontSize: 14, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'var(--font-body)' }}>{t.replace(/^#+\s*/, '')}</p>
         }
         if (t.length <= 46 && /[:：]$/.test(t)) {
-          return <p key={i} style={{ margin: '9px 0 3px', fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'Syne,sans-serif' }}>{parseBold(t)}</p>
+          return <p key={i} style={{ margin: '9px 0 3px', fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'var(--font-body)' }}>{parseBold(t)}</p>
         }
         return <p key={i} style={{ margin: '0 0 5px', fontSize: 13, lineHeight: 1.55, color: 'var(--ai-text)' }}>{parseBold(t)}</p>
       })}

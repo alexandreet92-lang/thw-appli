@@ -191,7 +191,7 @@ export function Avatar({ url, name, size = 40 }: { url: string | null; name: str
       flexShrink: 0,
       background: 'linear-gradient(135deg, #06B6D4, #5b6fff)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontFamily: 'Syne, sans-serif',
+      fontFamily: 'var(--font-body)',
       fontWeight: 700,
       fontSize: size * 0.35,
       color: '#fff',
@@ -228,9 +228,9 @@ function NavItem({
       style={{
         display: 'flex', alignItems: 'center', gap: 10,
         padding: '9px 12px',
-        borderRadius: 10,
+        borderRadius: 'var(--r-sm)',
         textDecoration: 'none',
-        fontFamily: 'DM Sans, sans-serif',
+        fontFamily: 'var(--font-body)',
         fontSize: 13,
         fontWeight: active ? 600 : 400,
         color: active ? '#06B6D4' : 'var(--text-mid)',
@@ -338,7 +338,7 @@ export function SidebarContent({ onClose, headerSlot, expanded = true }: { onClo
         />
         <div style={{ minWidth: 0 }}>
           <div style={{
-            fontFamily: 'Syne, sans-serif',
+            fontFamily: 'var(--font-body)',
             fontWeight: 700,
             fontSize: 13,
             color: 'var(--text)',
@@ -408,10 +408,10 @@ export function SidebarContent({ onClose, headerSlot, expanded = true }: { onClo
           className="thw-nav-item" data-active="0"
           style={{
             display: 'flex', alignItems: 'center', gap: 10,
-            padding: '9px 12px', borderRadius: 10,
+            padding: '9px 12px', borderRadius: 'var(--r-sm)',
             border: 'none', background: 'transparent', cursor: 'pointer',
             color: 'var(--text-mid)', fontSize: 13,
-            fontFamily: 'DM Sans, sans-serif', width: '100%',
+            fontFamily: 'var(--font-body)', width: '100%',
             textAlign: 'left',
             transition: 'background 0.14s',
           }}
@@ -485,7 +485,7 @@ export function Sidebar() {
           width: 36, height: 36,
           background: 'var(--nav-bg)',
           border: '1px solid var(--nav-border)',
-          borderRadius: 8,
+          borderRadius: 'var(--r-sm)',
           cursor: 'pointer',
           padding: 0,
           boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
@@ -581,7 +581,7 @@ export function Sidebar() {
           <img
             src="/logos/logo_app.png"
             alt="THW Coaching"
-            style={{ width: 36, height: 36, borderRadius: 8, objectFit: 'contain' }}
+            style={{ width: 36, height: 36, borderRadius: 'var(--r-sm)', objectFit: 'contain' }}
           />
         </Link>
 

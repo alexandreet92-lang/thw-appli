@@ -174,7 +174,7 @@ export function MacroDonut({
       <div style={{
         fontSize:   10,
         color:      'var(--text-dim)',
-        fontFamily: 'DM Sans,sans-serif',
+        fontFamily: 'var(--font-body)',
         textAlign:  'center',
         lineHeight: 1.2,
       }}>
@@ -183,9 +183,9 @@ export function MacroDonut({
 
       {/* ── Unit ─────────────────────────────────────────────── */}
       <div style={{
-        fontSize:   9,
+        fontSize: 10,
         color:      'var(--text-dim)',
-        fontFamily: 'DM Mono,monospace',
+        fontFamily: 'var(--font-body)',
         opacity:    0.7,
       }}>
         {unit}
@@ -199,15 +199,15 @@ export function MacroDonut({
           gap:          4,
           marginTop:    2,
           padding:      '2px 7px',
-          borderRadius: 999,
+          borderRadius: 'var(--r-pill)',
           background:   `${statusColor}1a`,
         }}>
           <span style={{ width: 5, height: 5, borderRadius: '50%', background: statusColor, flexShrink: 0 }} />
           <span style={{
-            fontSize:   9,
+            fontSize: 10,
             fontWeight: 700,
             color:      statusColor,
-            fontFamily: 'DM Sans,sans-serif',
+            fontFamily: 'var(--font-body)',
             whiteSpace: 'nowrap',
           }}>
             {statusLabel}

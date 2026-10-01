@@ -67,7 +67,7 @@ export default function ProgressSheet({ blocks, timeline, stepIdx, onClose }: Pr
   return (
     <div onClick={e => { if (e.target === e.currentTarget) onClose() }}
       style={{ position: 'absolute', inset: 0, zIndex: 30, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'flex-end' }}>
-      <div style={{ display: 'flex', flexDirection: 'column', width: '100%', maxHeight: '82%', background: 'var(--bg-card)', borderRadius: '28px 28px 0 0', borderTop: '1px solid var(--border-mid)', fontFamily: 'DM Sans, sans-serif' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', width: '100%', maxHeight: '82%', background: 'var(--bg-card)', borderRadius: '28px 28px 0 0', borderTop: '1px solid var(--border-mid)', fontFamily: 'var(--font-body)' }}>
         {/* En-tête figé : titre + légende */}
         <div style={{ flexShrink: 0, padding: '14px 18px 10px' }}>
           <div style={{ width: 40, height: 4, borderRadius: 2, background: 'var(--border-mid)', margin: '0 auto 12px' }} />
@@ -84,7 +84,7 @@ export default function ProgressSheet({ blocks, timeline, stepIdx, onClose }: Pr
           {groups.map(bg => {
             const multiTour = bg.tours.length > 1
             return (
-              <div key={bg.blockIdx} style={{ background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 16, padding: '12px 14px', marginBottom: 12 }}>
+              <div key={bg.blockIdx} style={{ background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: '12px 14px', marginBottom: 12 }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: multiTour ? 6 : 8 }}>
                   <span style={{ fontSize: 13, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--primary)', fontWeight: 800 }}>{bg.title}</span>
                   <span style={{ fontSize: 11, color: 'var(--text-mid)', fontWeight: 700 }}>{bg.toursTotal} {bg.toursTotal > 1 ? t('w3a.tours_plural') : t('w3a.tour_singular')}</span>
@@ -98,7 +98,7 @@ export default function ProgressSheet({ blocks, timeline, stepIdx, onClose }: Pr
                     )}
                     {tg.rows.map(r => (
                       <div key={r.gi} ref={r.tone === 'now' ? nowRef : undefined}
-                        style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '8px 6px', borderRadius: 10, background: r.tone === 'now' ? 'var(--primary-dim)' : 'transparent' }}>
+                        style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '8px 6px', borderRadius: 'var(--r-sm)', background: r.tone === 'now' ? 'var(--primary-dim)' : 'transparent' }}>
                         <ToneDot tone={r.tone} />
                         <span style={{ flex: 1, fontSize: 15, fontWeight: 700, color: r.tone === 'done' ? 'var(--text-dim)' : r.tone === 'next' ? 'var(--text-mid)' : 'var(--text)', textDecoration: r.tone === 'done' ? 'line-through' : 'none' }}>{r.name}</span>
                         <span style={{ fontSize: 13, color: 'var(--text-mid)', fontWeight: 700 }}>{r.meta}</span>
@@ -114,7 +114,7 @@ export default function ProgressSheet({ blocks, timeline, stepIdx, onClose }: Pr
 
         {/* Pied figé */}
         <div style={{ flexShrink: 0, padding: '10px 18px calc(env(safe-area-inset-bottom) + 16px)', borderTop: '1px solid var(--border)' }}>
-          <button onClick={onClose} style={{ width: '100%', height: 50, borderRadius: 14, background: 'var(--bg-card2)', border: '1px solid var(--border-mid)', color: 'var(--text)', fontWeight: 800, cursor: 'pointer' }}>{t('w4a.close')}</button>
+          <button onClick={onClose} style={{ width: '100%', height: 50, borderRadius: 'var(--r-md)', background: 'var(--bg-card2)', border: '1px solid var(--border-mid)', color: 'var(--text)', fontWeight: 800, cursor: 'pointer' }}>{t('w4a.close')}</button>
         </div>
       </div>
     </div>

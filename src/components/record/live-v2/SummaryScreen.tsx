@@ -306,7 +306,7 @@ export default function SummaryScreen({
         <input
           value={title} onChange={e => setTitle(e.target.value)} placeholder={defaultTitle}
           style={{
-            width: '100%', height: 46, borderRadius: 12, padding: '0 14px', marginBottom: 18,
+            width: '100%', height: 46, borderRadius: 'var(--r-md)', padding: '0 14px', marginBottom: 18,
             background: 'var(--live-surface)', border: '1px solid var(--live-hairline-2)',
             color: 'var(--live-text)', fontSize: 15, fontWeight: 600, outline: 'none',
           }}
@@ -317,7 +317,7 @@ export default function SummaryScreen({
         <textarea
           value={comment} onChange={e => setComment(e.target.value)} rows={3} placeholder={t('w3a.comment_placeholder')}
           style={{
-            width: '100%', borderRadius: 12, padding: '11px 14px', marginBottom: 18, resize: 'none',
+            width: '100%', borderRadius: 'var(--r-md)', padding: '11px 14px', marginBottom: 18, resize: 'none',
             background: 'var(--live-surface)', border: '1px solid var(--live-hairline-2)',
             color: 'var(--live-text)', fontSize: 14.5, fontWeight: 500, outline: 'none', lineHeight: 1.4,
             fontFamily: 'inherit',
@@ -333,7 +333,7 @@ export default function SummaryScreen({
               <button
                 key={c.id} onClick={() => setSport(c.id)} className="lv2-press"
                 style={{
-                  height: 38, padding: '0 16px', borderRadius: 19, cursor: 'pointer',
+                  height: 38, padding: '0 16px', borderRadius: 'var(--r-lg)', cursor: 'pointer',
                   border: on ? '1px solid var(--live-accent)' : '1px solid var(--live-hairline-2)',
                   background: on ? 'var(--live-accent-soft)' : 'var(--live-surface)',
                   color: on ? 'var(--live-accent)' : 'var(--live-text)', fontSize: 13.5, fontWeight: 700,
@@ -349,11 +349,11 @@ export default function SummaryScreen({
         <div style={LABEL}>{t('w3a.main_data')}</div>
         <div style={{
           display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 1, marginBottom: 18,
-          background: 'var(--live-hairline)', border: '1px solid var(--live-hairline)', borderRadius: 14, overflow: 'hidden',
+          background: 'var(--live-hairline)', border: '1px solid var(--live-hairline)', borderRadius: 'var(--r-md)', overflow: 'hidden',
         }}>
           {dataCells.map(c => (
             <div key={c.label} style={{ background: 'var(--live-surface)', padding: '13px 8px 15px', textAlign: 'center' }}>
-              <div className="lv2-eyebrow" style={{ fontSize: 9 }}>{c.label}</div>
+              <div className="lv2-eyebrow" style={{ fontSize: 10 }}>{c.label}</div>
               <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 3, marginTop: 7 }}>
                 <span className="lv2-num" style={{ fontSize: 20, fontWeight: 800 }}>{c.value}</span>
                 {c.unit && <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--live-label)' }}>{c.unit}</span>}
@@ -365,7 +365,7 @@ export default function SummaryScreen({
         {/* Carte du tracé réel */}
         <div style={LABEL}>{t('w3a.route_map')}</div>
         <div style={{
-          height: MAP_H, borderRadius: 16, overflow: 'hidden', position: 'relative', marginBottom: 18,
+          height: MAP_H, borderRadius: 'var(--r-md)', overflow: 'hidden', position: 'relative', marginBottom: 18,
           background: 'var(--live-map-bg)', border: '1px solid var(--live-hairline)',
         }}>
           {track.length > 1 ? (
@@ -421,7 +421,7 @@ export default function SummaryScreen({
               <button
                 key={o.id} onClick={() => setVisibility(o.id)} className="lv2-press"
                 style={{
-                  flex: 1, height: 66, borderRadius: 14, cursor: 'pointer',
+                  flex: 1, height: 66, borderRadius: 'var(--r-md)', cursor: 'pointer',
                   border: on ? '1px solid var(--live-accent)' : '1px solid var(--live-hairline-2)',
                   background: on ? 'var(--live-accent-soft)' : 'var(--live-surface)',
                   color: on ? 'var(--live-accent)' : 'var(--live-text-2)',
@@ -483,7 +483,7 @@ function SummaryRow({ onClick, value, valueColor, suffix }: {
     <button
       onClick={onClick} className="lv2-press"
       style={{
-        width: '100%', height: 50, borderRadius: 12, padding: '0 14px', cursor: 'pointer',
+        width: '100%', height: 50, borderRadius: 'var(--r-md)', padding: '0 14px', cursor: 'pointer',
         background: 'var(--live-surface)', border: '1px solid var(--live-hairline-2)',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       }}

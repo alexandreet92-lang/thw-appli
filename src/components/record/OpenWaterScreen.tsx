@@ -93,14 +93,14 @@ export default function OpenWaterScreen({ onExit, onFinished }: Props) {
   if (!mounted) return null
 
   const content = (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: bg, color: text, display: 'flex', flexDirection: 'column', paddingTop: 'env(safe-area-inset-top)', fontFamily: 'DM Sans, sans-serif' }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: bg, color: text, display: 'flex', flexDirection: 'column', paddingTop: 'env(safe-area-inset-top)', fontFamily: 'var(--font-body)' }}>
 
       {/* Summary */}
       {showSummary && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 10002, background: bg, display: 'flex', flexDirection: 'column', paddingTop: 'env(safe-area-inset-top)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.08)', flexShrink: 0 }}>
-            <p style={{ fontSize: 18, fontWeight: 700, margin: 0, fontFamily: 'Syne, sans-serif' }}>{t('record.openWaterSessionDone')}</p>
-            <button onClick={onFinished} style={{ padding: '8px 20px', background: 'linear-gradient(135deg,#06B6D4,#2563EB)', border: 'none', borderRadius: 12, color: '#FFF', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>{t('record.openWaterFinish')}</button>
+            <p style={{ fontSize: 18, fontWeight: 700, margin: 0, fontFamily: 'var(--font-display)' }}>{t('record.openWaterSessionDone')}</p>
+            <button onClick={onFinished} style={{ padding: '8px 20px', background: 'linear-gradient(135deg,#06B6D4,#2563EB)', border: 'none', borderRadius: 'var(--r-md)', color: '#FFF', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>{t('record.openWaterFinish')}</button>
           </div>
           <div style={{ flex: 1, minHeight: 0 }}><SessionTraceMap points={summaryPts} isDark={isDark} /></div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', flexShrink: 0, borderTop: '1px solid rgba(255,255,255,0.08)' }}>
@@ -126,7 +126,7 @@ export default function OpenWaterScreen({ onExit, onFinished }: Props) {
         </button>
         <div style={{ flex: 1, display: 'flex', gap: 6, justifyContent: 'center' }}>
           {OPEN_WATER_BODIES.map(b => (
-            <button key={b.id} onClick={() => setWaterBody(b.id)} style={{ padding: '4px 12px', borderRadius: 8, background: waterBody === b.id ? 'rgba(6,182,212,0.15)' : btnBg, border: `1.5px solid ${waterBody === b.id ? '#06B6D4' : 'transparent'}`, color: waterBody === b.id ? '#06B6D4' : dim, fontSize: 12, fontWeight: 500, cursor: 'pointer' }}>{b.labelKey ? t(b.labelKey) : b.label}</button>
+            <button key={b.id} onClick={() => setWaterBody(b.id)} style={{ padding: '4px 12px', borderRadius: 'var(--r-sm)', background: waterBody === b.id ? 'rgba(6,182,212,0.15)' : btnBg, border: `1.5px solid ${waterBody === b.id ? '#06B6D4' : 'transparent'}`, color: waterBody === b.id ? '#06B6D4' : dim, fontSize: 12, fontWeight: 500, cursor: 'pointer' }}>{b.labelKey ? t(b.labelKey) : b.label}</button>
           ))}
         </div>
       </div>

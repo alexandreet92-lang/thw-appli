@@ -23,7 +23,7 @@ export default function CompetenceCard({ competence, conflicts, onToggle, onOpen
       style={{
         background: 'var(--bg-card)',
         border: active ? '0.5px solid rgba(6,182,212,0.5)' : '0.5px solid var(--border)',
-        borderRadius: 12,
+        borderRadius: 'var(--r-md)',
         padding: '14px 16px',
         cursor: 'pointer',
         transition: 'border-color 150ms',
@@ -41,7 +41,7 @@ export default function CompetenceCard({ competence, conflicts, onToggle, onOpen
           onClick={e => { e.stopPropagation(); onToggle() }}
           aria-label={active ? t('competences.deactivate') : t('competences.activate')}
           style={{
-            width: 32, height: 17, borderRadius: 9, flexShrink: 0,
+            width: 32, height: 17, borderRadius: 'var(--r-sm)', flexShrink: 0,
             cursor: 'pointer', position: 'relative',
             background: active ? 'var(--primary)' : 'var(--toggle-off)',
             border: active ? 'none' : '1px solid rgba(0,0,0,0.05)',
@@ -81,7 +81,7 @@ export default function CompetenceCard({ competence, conflicts, onToggle, onOpen
           <span key={s} style={{
             display: 'inline-flex', alignItems: 'center', gap: 4,
             fontSize: 10, color: 'rgba(6,182,212,0.85)',
-            border: '0.5px solid rgba(6,182,212,0.25)', borderRadius: 5, padding: '2px 8px',
+            border: '0.5px solid rgba(6,182,212,0.25)', borderRadius: 'var(--r-sm)', padding: '2px 8px',
           }}>
             {sportIcon(s as SportFilter, 11)}
             {t(SPORT_LABELS[s as SportFilter] ?? s)}
@@ -92,7 +92,7 @@ export default function CompetenceCard({ competence, conflicts, onToggle, onOpen
           <span key={c.id} style={{
             display: 'inline-flex', alignItems: 'center', gap: 4,
             fontSize: 10, color: 'rgba(239,68,68,0.85)',
-            border: '0.5px solid rgba(239,68,68,0.35)', borderRadius: 5, padding: '2px 8px',
+            border: '0.5px solid rgba(239,68,68,0.35)', borderRadius: 'var(--r-sm)', padding: '2px 8px',
           }}>
             <AlertTriangle size={11} strokeWidth={1.8} />
             {t('competences.conflictTag', { nom: c.nom })}
@@ -104,7 +104,7 @@ export default function CompetenceCard({ competence, conflicts, onToggle, onOpen
             onClick={e => { e.stopPropagation(); onOpenDetail() }}
             style={{
               marginLeft: 'auto', fontSize: 10, color: 'var(--text-dim)',
-              border: '0.5px solid var(--border)', borderRadius: 5, padding: '2px 8px',
+              border: '0.5px solid var(--border)', borderRadius: 'var(--r-sm)', padding: '2px 8px',
               background: 'transparent', cursor: 'pointer',
             }}
           >

@@ -117,14 +117,14 @@ export default function BodyTracking() {
       {/* Weight + Hydration row */}
       <div style={{ display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(240px,1fr))',gap:14 }}>
         {/* Weight */}
-        <div style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:20,padding:20,boxShadow:'var(--shadow-card)' }}>
+        <div style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius: 'var(--r-lg)',padding:20,boxShadow:'var(--shadow-card)' }}>
           <p style={{ fontSize:10,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.1em',color:'var(--text-dim)',margin:'0 0 12px' }}>{t('recovery.body.weight')}</p>
           <div style={{ display:'flex',gap:8,marginBottom:12 }}>
             <input type="number" step={0.1} min={30} max={200} value={weightInput} onChange={e=>setWeightInput(e.target.value)}
               placeholder={weights.length?String(weights[weights.length-1].weight_kg):'70.0'}
-              style={{ flex:1,padding:'7px 10px',borderRadius:9,border:'1px solid var(--border)',background:'var(--input-bg,var(--bg-card2))',color:'var(--text)',fontSize:13,outline:'none',fontFamily:'DM Mono,monospace' }} />
+              style={{ flex:1,padding:'7px 10px',borderRadius: 'var(--r-sm)',border:'1px solid var(--border)',background:'var(--input-bg,var(--bg-card2))',color:'var(--text)',fontSize:13,outline:'none',fontFamily: 'var(--font-body)' }} />
             <span style={{ display:'flex',alignItems:'center',fontSize:12,color:'var(--text-dim)' }}>kg</span>
-            <button onClick={saveWeight} disabled={saving==='weight'} style={{ padding:'7px 14px',borderRadius:9,background:'linear-gradient(135deg,#6b7280,#9ca3af)',border:'none',color:'#fff',fontSize:12,cursor:'pointer',fontWeight:600,opacity:saving==='weight'?0.6:1 }}>
+            <button onClick={saveWeight} disabled={saving==='weight'} style={{ padding:'7px 14px',borderRadius: 'var(--r-sm)',background:'linear-gradient(135deg,#6b7280,#9ca3af)',border:'none',color:'#fff',fontSize:12,cursor:'pointer',fontWeight:600,opacity:saving==='weight'?0.6:1 }}>
               {saving==='weight'?'…':t('recovery.save')}
             </button>
           </div>
@@ -144,7 +144,7 @@ export default function BodyTracking() {
         </div>
 
         {/* Hydration */}
-        <div style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:20,padding:20,boxShadow:'var(--shadow-card)' }}>
+        <div style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius: 'var(--r-lg)',padding:20,boxShadow:'var(--shadow-card)' }}>
           <p style={{ fontSize:10,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.1em',color:'var(--text-dim)',margin:'0 0 12px' }}>{t('recovery.body.hydration')}</p>
           <div style={{ display:'flex',alignItems:'flex-end',gap:12,marginBottom:16 }}>
             {/* Glass */}
@@ -159,7 +159,7 @@ export default function BodyTracking() {
               <div style={{ display:'flex',gap:6,flexWrap:'wrap' as const }}>
                 {HYDRATION_OPTS.map(v=>(
                   <button key={v} onClick={()=>saveHydration(v)}
-                    style={{ padding:'4px 9px',borderRadius:7,border:'1px solid',fontSize:11,cursor:'pointer',borderColor:todayHyd===v?'var(--primary)':'var(--border)',background:todayHyd===v?'rgba(6,182,212,0.12)':'var(--bg-card2)',color:todayHyd===v?'var(--primary)':'var(--text-mid)',fontWeight:todayHyd===v?600:400,opacity:saving==='hyd'?0.6:1 }}>
+                    style={{ padding:'4px 9px',borderRadius: 'var(--r-sm)',border:'1px solid',fontSize:11,cursor:'pointer',borderColor:todayHyd===v?'var(--primary)':'var(--border)',background:todayHyd===v?'rgba(6,182,212,0.12)':'var(--bg-card2)',color:todayHyd===v?'var(--primary)':'var(--text-mid)',fontWeight:todayHyd===v?600:400,opacity:saving==='hyd'?0.6:1 }}>
                     {v}L
                   </button>
                 ))}
@@ -170,7 +170,7 @@ export default function BodyTracking() {
       </div>
 
       {/* Pain zones — pill grid */}
-      <div style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:20,padding:20,boxShadow:'var(--shadow-card)' }}>
+      <div style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius: 'var(--r-lg)',padding:20,boxShadow:'var(--shadow-card)' }}>
         <p style={{ fontSize:10,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.1em',color:'var(--text-dim)',margin:'0 0 12px' }}>{t('recovery.body.painZones')}</p>
         <div style={{ display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:6,marginBottom:14 }}>
           {BODY_ZONES.map(z => {
@@ -181,7 +181,7 @@ export default function BodyTracking() {
                 title={cnt > 0 ? t('recovery.body.countPer30', { n: cnt }) : undefined}
                 style={{
                   padding:'6px 4px',
-                  borderRadius:8,
+                  borderRadius: 'var(--r-sm)',
                   border:`1px solid ${selected?'#ef4444':'var(--border)'}`,
                   background:selected?'rgba(239,68,68,0.10)':'var(--bg-card2)',
                   color:selected?'#ef4444':'var(--text-dim)',
@@ -195,7 +195,7 @@ export default function BodyTracking() {
                 }}>
                 {t(z.labelKey)}
                 {cnt > 0 && !selected && (
-                  <span style={{ display:'block',fontSize:8,color:'rgba(239,68,68,0.6)',marginTop:1 }}>{cnt}×</span>
+                  <span style={{ display:'block',fontSize: 10,color:'rgba(239,68,68,0.6)',marginTop:1 }}>{cnt}×</span>
                 )}
               </button>
             )

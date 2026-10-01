@@ -412,7 +412,7 @@ function ChartBlock({ spec, embedded = false }: { spec: ChartSpec; embedded?: bo
   return (
     <div style={{ margin: embedded ? 0 : '12px 0', marginLeft: embedded ? 0 : 34, background: 'transparent', overflow: 'hidden' }}>
       {!embedded && spec.title && (
-        <div style={{ fontFamily: 'Syne,sans-serif', fontSize: 13, fontWeight: 700, color: 'var(--text)', padding: '0 2px 8px' }}>
+        <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 700, color: 'var(--text)', padding: '0 2px 8px' }}>
           {spec.title}{unit ? ` · ${unit}` : ''}
         </div>
       )}
@@ -587,8 +587,8 @@ function SourcesBadge({ sources }: { sources: WebSource[] }) {
         onClick={() => setOpen(true)}
         style={{
           display: 'inline-flex', alignItems: 'center', gap: 9, cursor: 'pointer',
-          padding: '5px 12px 5px 12px', borderRadius: 999, border: '1px solid var(--border)',
-          background: 'var(--bg-card)', fontSize: 13, color: 'var(--text)', fontFamily: 'DM Sans,sans-serif',
+          padding: '5px 12px 5px 12px', borderRadius: 'var(--r-pill)', border: '1px solid var(--border)',
+          background: 'var(--bg-card)', fontSize: 13, color: 'var(--text)', fontFamily: 'var(--font-body)',
         }}
       >
         <span style={{ fontWeight: 600 }}>{t('aip.sources.label')}</span>
@@ -647,7 +647,7 @@ function SourcesBadge({ sources }: { sources: WebSource[] }) {
                 {sources.map((s, i) => (
                   <a
                     key={i} href={s.url} target="_blank" rel="noopener noreferrer"
-                    style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '13px 14px', borderRadius: 14, textDecoration: 'none', color: 'inherit' }}
+                    style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '13px 14px', borderRadius: 'var(--r-md)', textDecoration: 'none', color: 'inherit' }}
                     onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.background = 'var(--ai-bg2)' }}
                     onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.background = 'transparent' }}
                   >
@@ -679,8 +679,8 @@ function WebSearchBadge({ queries }: { queries: string[] }) {
         onClick={() => setOpen(o => !o)}
         style={{
           display: 'inline-flex', alignItems: 'center', gap: 7, cursor: 'pointer',
-          padding: '5px 10px', borderRadius: 999, border: '1px solid var(--border)',
-          background: 'var(--bg-card)', fontSize: 12, color: 'var(--text-mid)', fontFamily: 'DM Sans,sans-serif',
+          padding: '5px 10px', borderRadius: 'var(--r-pill)', border: '1px solid var(--border)',
+          background: 'var(--bg-card)', fontSize: 12, color: 'var(--text-mid)', fontFamily: 'var(--font-body)',
         }}
       >
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#06B6D4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -747,17 +747,17 @@ function ChartCard({ spec }: { spec: ChartSpec }) {
         style={{
           display: 'flex', alignItems: 'center', gap: 12, width: '100%', maxWidth: 460,
           margin: '12px auto', padding: '11px 13px',
-          border: '1px solid var(--border)', borderRadius: 14, background: 'var(--bg-card)',
+          border: '1px solid var(--border)', borderRadius: 'var(--r-md)', background: 'var(--bg-card)',
           cursor: 'pointer', textAlign: 'left', transition: 'box-shadow 0.14s, border-color 0.14s',
         }}
         onMouseEnter={e => { const t = e.currentTarget as HTMLButtonElement; t.style.boxShadow = '0 4px 16px rgba(0,0,0,0.08)'; t.style.borderColor = 'var(--text-mid)' }}
         onMouseLeave={e => { const t = e.currentTarget as HTMLButtonElement; t.style.boxShadow = 'none'; t.style.borderColor = 'var(--border)' }}
       >
-        <div style={{ width: 60, height: 40, borderRadius: 9, background: 'rgba(6,182,212,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+        <div style={{ width: 60, height: 40, borderRadius: 'var(--r-sm)', background: 'rgba(6,182,212,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
           <ChartThumb spec={spec} />
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', fontFamily: 'Syne,sans-serif', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{title}</div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-body)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{title}</div>
           <div style={{ fontSize: 11.5, color: 'var(--text-mid)', marginTop: 2 }}>{sub}</div>
         </div>
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-mid)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
@@ -783,7 +783,7 @@ function ChartViewer({ spec, onClose }: { spec: ChartSpec; onClose: () => void }
         <div style={{ width: 40, height: 4, borderRadius: 2, background: 'var(--border)', margin: '6px auto 14px' }} />
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 12 }}>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)', fontFamily: 'Syne,sans-serif', lineHeight: 1.25 }}>{spec.title || t('aip.chart.chart')}</div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-display)', lineHeight: 1.25 }}>{spec.title || t('aip.chart.chart')}</div>
             {spec.y_unit && <div style={{ fontSize: 12, color: 'var(--text-mid)', marginTop: 2 }}>{t('aip.chart.unit')} : {spec.y_unit}</div>}
           </div>
           <button onClick={onClose} aria-label={t('aip.close')} style={{ width: 34, height: 34, borderRadius: '50%', border: 'none', background: 'var(--bg-alt)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -904,8 +904,8 @@ const MsgContent = memo(function MsgContent({ text, fontFamily }: { text: string
         const dataRows = rows.slice(1)
         blocks.push(
           <div key={`table-${i}`} data-hscroll style={{ overflowX: 'auto', overscrollBehaviorX: 'contain', touchAction: 'pan-x pan-y', WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'], margin: '12px 0', maxWidth: '100%' }}>
-            <div style={{ minWidth: '100%', width: 'fit-content', border: '1px solid var(--ai-border)', borderRadius: 12, overflow: 'hidden', boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5, fontFamily: 'DM Sans,sans-serif' }}>
+            <div style={{ minWidth: '100%', width: 'fit-content', border: '1px solid var(--ai-border)', borderRadius: 'var(--r-md)', overflow: 'hidden', boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5, fontFamily: 'var(--font-body)' }}>
                 <thead>
                   <tr style={{ background: 'var(--ai-bg2)' }}>
                     {headers.map((h, hi) => (
@@ -939,7 +939,7 @@ const MsgContent = memo(function MsgContent({ text, fontFamily }: { text: string
       const lvl = Math.min(hMatch[1].length, 4) as 1 | 2 | 3 | 4
       blocks.push(
         <div key={i} style={{
-          fontFamily: 'Syne, sans-serif',
+          fontFamily: 'var(--font-body)',
           color: 'var(--ai-text)',
           ...HEADING_STYLES[lvl],
         }}>
@@ -953,7 +953,7 @@ const MsgContent = memo(function MsgContent({ text, fontFamily }: { text: string
     if (nMatch) {
       blocks.push(
         <div key={i} style={{ display: 'flex', gap: 9, marginBottom: 5 }}>
-          <span style={{ color: 'var(--ai-dim)', minWidth: 18, fontSize: 12, fontWeight: 700, flexShrink: 0, marginTop: 3, fontFamily: 'DM Mono,monospace' }}>
+          <span style={{ color: 'var(--ai-dim)', minWidth: 18, fontSize: 12, fontWeight: 700, flexShrink: 0, marginTop: 3, fontFamily: 'var(--font-body)' }}>
             {nMatch[1]}.
           </span>
           <span style={{ fontSize: 16, fontWeight: 450, lineHeight: 1.72 }}>{parseBold(nMatch[2])}</span>
@@ -1055,7 +1055,7 @@ function parseBold(text: string): React.ReactNode {
   if (parts.length === 1) return text
   return <>{parts.map((p, j) => {
     if (p.startsWith('**') && p.endsWith('**')) return <strong key={j} style={{ fontWeight: 700, color: 'var(--ai-text)' }}>{p.slice(2, -2)}</strong>
-    if (p.startsWith('`') && p.endsWith('`')) return <code key={j} style={{ background: '#F3F4F6', padding: '2px 6px', borderRadius: 4, fontFamily: 'ui-monospace,SF Mono,Menlo,monospace', fontSize: 13, color: '#d63384' }}>{p.slice(1, -1)}</code>
+    if (p.startsWith('`') && p.endsWith('`')) return <code key={j} style={{ background: '#F3F4F6', padding: '2px 6px', borderRadius: 4, fontFamily: 'var(--font-body)', fontSize: 13, color: '#d63384' }}>{p.slice(1, -1)}</code>
     return <span key={j}>{p}</span>
   })}</>
 }
@@ -1072,14 +1072,14 @@ function CodeBlock({ lang, code }: { lang: string; code: string }) {
       onMouseLeave={() => setShowBtn(false)}
     >
       {lang && (
-        <div style={{ background: '#E9EBF0', padding: '3px 12px', borderRadius: '8px 8px 0 0', fontSize: 11, color: '#6B7280', fontFamily: 'ui-monospace,SF Mono,Menlo,monospace', borderBottom: '1px solid #E5E7EB' }}>
+        <div style={{ background: '#E9EBF0', padding: '3px 12px', borderRadius: '8px 8px 0 0', fontSize: 11, color: '#6B7280', fontFamily: 'var(--font-body)', borderBottom: '1px solid #E5E7EB' }}>
           {lang}
         </div>
       )}
       <pre style={{
         background: '#F6F8FA', borderRadius: lang ? '0 0 8px 8px' : 8,
         padding: '12px 16px', margin: 0, overflowX: 'auto',
-        fontFamily: 'ui-monospace,SF Mono,Menlo,monospace', fontSize: 13, lineHeight: 1.55,
+        fontFamily: 'var(--font-body)', fontSize: 13, lineHeight: 1.55,
         border: '1px solid #E5E7EB', borderTop: lang ? 'none' : undefined,
       }}>
         <code style={{ color: '#24292e' }}>{code}</code>
@@ -1089,7 +1089,7 @@ function CodeBlock({ lang, code }: { lang: string; code: string }) {
           onClick={() => { void navigator.clipboard.writeText(code); setCopied(true); setTimeout(() => setCopied(false), 1500) }}
           style={{
             position: 'absolute', top: lang ? 28 : 6, right: 8,
-            background: 'white', border: '1px solid #E5E7EB', borderRadius: 6,
+            background: 'white', border: '1px solid #E5E7EB', borderRadius: 'var(--r-sm)',
             padding: '3px 7px', cursor: 'pointer', fontSize: 11, color: '#6B7280',
             display: 'flex', alignItems: 'center', gap: 4,
           }}
@@ -1400,20 +1400,20 @@ function SessionBlockChart({ blocks, total, sport }: { blocks: SessionBlock[]; t
           <div style={{
             position: 'absolute', bottom: '100%', left: '50%', transform: 'translateX(-50%)',
             background: 'var(--ai-bg)', border: '1px solid var(--ai-border)',
-            borderRadius: 7, padding: '5px 11px', zIndex: 20,
+            borderRadius: 'var(--r-sm)', padding: '5px 11px', zIndex: 20,
             fontSize: 11, whiteSpace: 'nowrap', marginBottom: 6,
             boxShadow: '0 4px 14px rgba(0,0,0,0.20)', pointerEvents: 'none',
             display: 'flex', alignItems: 'center', gap: 5,
           }}>
             <span style={{ fontWeight: 600, color: 'var(--ai-text)' }}>{hb.label}</span>
             <span style={{ color: 'var(--ai-dim)' }}>·</span>
-            <span style={{ color: 'var(--ai-text)', fontFamily: 'DM Mono,monospace' }}>{hb.duration_min}′</span>
+            <span style={{ color: 'var(--ai-text)', fontFamily: 'var(--font-body)' }}>{hb.duration_min}′</span>
             <span style={{ color: 'var(--ai-dim)' }}>·</span>
             <span style={{ color: col, fontWeight: 700 }}>{hb.intensity.split(' ')[0]}</span>
             {hb.rawValue !== undefined && hb.rawValue > 0 && (
               <>
                 <span style={{ color: 'var(--ai-dim)' }}>·</span>
-                <span style={{ color: 'var(--ai-text)', fontFamily: 'DM Mono,monospace', fontWeight: 600 }}>
+                <span style={{ color: 'var(--ai-text)', fontFamily: 'var(--font-body)', fontWeight: 600 }}>
                   {formatRawValue(hb.rawValue, sport)}
                 </span>
               </>
@@ -1421,7 +1421,7 @@ function SessionBlockChart({ blocks, total, sport }: { blocks: SessionBlock[]; t
             {hb.cadence !== undefined && (
               <>
                 <span style={{ color: 'var(--ai-dim)' }}>·</span>
-                <span style={{ color: 'var(--ai-mid)', fontFamily: 'DM Mono,monospace' }}>{hb.cadence} rpm</span>
+                <span style={{ color: 'var(--ai-mid)', fontFamily: 'var(--font-body)' }}>{hb.cadence} rpm</span>
               </>
             )}
           </div>
@@ -1450,7 +1450,7 @@ function SessionBlockChart({ blocks, total, sport }: { blocks: SessionBlock[]; t
               onMouseLeave={() => setHovIdx(null)}
             >
               {widthPct > 12 && heightPct > 40 && (
-                <span style={{ fontSize: 9, fontWeight: 700, color: 'rgba(255,255,255,0.9)', letterSpacing: '0.03em' }}>
+                <span style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.9)', letterSpacing: '0.03em' }}>
                   {b.duration_min}′
                 </span>
               )}
@@ -1471,7 +1471,7 @@ function SessionBlockChart({ blocks, total, sport }: { blocks: SessionBlock[]; t
             >
               {pct > 8 && (
                 <div style={{
-                  fontSize: 9, lineHeight: 1.2,
+                  fontSize: 10, lineHeight: 1.2,
                   color: isHov ? col : 'var(--ai-dim)',
                   fontWeight: isHov ? 600 : 400,
                   overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
@@ -1585,25 +1585,25 @@ function AddToLibraryModal({ session, onClose }: { session: ParsedSession; onClo
       onClick={onClose}
     >
       <div onClick={e => e.stopPropagation()} style={{
-        background: 'var(--ai-bg)', borderRadius: 14, padding: 22,
+        background: 'var(--ai-bg)', borderRadius: 'var(--r-md)', padding: 22,
         width: 320, border: '1px solid var(--ai-border)',
         boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
       }}>
         {done ? (
           <div style={{ textAlign: 'center', padding: '8px 0' }}>
             <div style={{ marginBottom: 8, display: 'flex', justifyContent: 'center' }}><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#22C55E" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 12l3 3 5-6"/></svg></div>
-            <p style={{ fontFamily: 'Syne,sans-serif', fontSize: 15, fontWeight: 700, margin: '0 0 5px', color: 'var(--ai-text)' }}>{t('aip.lib.added')}</p>
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: 15, fontWeight: 700, margin: '0 0 5px', color: 'var(--ai-text)' }}>{t('aip.lib.added')}</p>
             <p style={{ fontSize: 12, color: 'var(--ai-dim)', margin: '0 0 16px' }}>
               {t('aip.lib.findInLibrary')}
             </p>
-            <button onClick={onClose} style={{ padding: '8px 22px', borderRadius: 9, border: 'none', background: 'var(--ai-gradient)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+            <button onClick={onClose} style={{ padding: '8px 22px', borderRadius: 'var(--r-sm)', border: 'none', background: 'var(--ai-gradient)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
               {t('aip.close')}
             </button>
           </div>
         ) : (
           <>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-              <h3 style={{ fontFamily: 'Syne,sans-serif', fontSize: 14, fontWeight: 700, margin: 0, color: 'var(--ai-text)' }}>
+              <h3 style={{ fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 700, margin: 0, color: 'var(--ai-text)' }}>
                 {t('aip.lib.addToLibrary')}
               </h3>
               <button onClick={onClose} style={{ width: 26, height: 26, borderRadius: '50%', border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-dim)', cursor: 'pointer', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
@@ -1615,10 +1615,10 @@ function AddToLibraryModal({ session, onClose }: { session: ParsedSession; onClo
                   value={nom}
                   onChange={e => setNom(e.target.value)}
                   placeholder={t('aip.lib.sessionNamePlaceholder')}
-                  style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 12, outline: 'none', boxSizing: 'border-box', fontFamily: 'DM Sans,sans-serif' }}
+                  style={{ width: '100%', padding: '8px 10px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 12, outline: 'none', boxSizing: 'border-box', fontFamily: 'var(--font-body)' }}
                 />
               </div>
-              <div style={{ padding: '8px 10px', borderRadius: 8, background: 'rgba(91,111,255,0.06)', border: '1px solid rgba(91,111,255,0.15)' }}>
+              <div style={{ padding: '8px 10px', borderRadius: 'var(--r-sm)', background: 'rgba(91,111,255,0.06)', border: '1px solid rgba(91,111,255,0.15)' }}>
                 <div style={{ fontSize: 11, color: 'var(--ai-dim)', marginBottom: 4 }}>
                   {t(SPORT_LABELS_FR[session.sport] ?? session.sport)} · {formatDuration(session.total_min)} · {t('aip.lib.effortBlocks', { n: session.blocks.filter(b => b.rawValue !== 0).length })}
                 </div>
@@ -1628,7 +1628,7 @@ function AddToLibraryModal({ session, onClose }: { session: ParsedSession; onClo
               </div>
               {errMsg && <p style={{ fontSize: 11, color: '#ef4444', margin: 0 }}>{errMsg}</p>}
               <button onClick={() => void save()} disabled={saving} style={{
-                padding: '10px', borderRadius: 9, border: 'none', marginTop: 2,
+                padding: '10px', borderRadius: 'var(--r-sm)', border: 'none', marginTop: 2,
                 background: saving ? 'var(--ai-border)' : 'var(--ai-gradient)',
                 color: '#fff', fontSize: 13, fontWeight: 700,
                 cursor: saving ? 'not-allowed' : 'pointer',
@@ -1690,7 +1690,7 @@ function SessionCard({ text, isStreaming }: { text: string; isStreaming: boolean
   return (
     <>
       <div style={{
-        borderRadius: 12, border: '1px solid var(--ai-border)',
+        borderRadius: 'var(--r-md)', border: '1px solid var(--ai-border)',
         background: 'var(--ai-bg2)', overflow: 'hidden',
         marginLeft: 34,
       }}>
@@ -1701,10 +1701,10 @@ function SessionCard({ text, isStreaming }: { text: string; isStreaming: boolean
           borderBottom: '1px solid var(--ai-border)',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-            <span style={{ fontFamily: 'Syne,sans-serif', fontSize: 12, fontWeight: 700, color: 'var(--ai-text)' }}>
+            <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 700, color: 'var(--ai-text)' }}>
               {sportLabel} · {formatDuration(total)}
             </span>
-            <span style={{ fontSize: 9, padding: '2px 7px', borderRadius: 10, background: 'var(--ai-accent-dim)', color: 'var(--ai-accent)', fontWeight: 700, letterSpacing: '0.05em' }}>
+            <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 'var(--r-sm)', background: 'var(--ai-accent-dim)', color: 'var(--ai-accent)', fontWeight: 700, letterSpacing: '0.05em' }}>
               {t('aip.session')}
             </span>
           </div>
@@ -1723,17 +1723,17 @@ function SessionCard({ text, isStreaming }: { text: string; isStreaming: boolean
           {editMode ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
               {editedBlocks.map((b, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 8px', borderRadius: 7, background: 'rgba(0,0,0,0.04)' }}>
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 8px', borderRadius: 'var(--r-sm)', background: 'rgba(0,0,0,0.04)' }}>
                   <div style={{ width: 8, height: 8, borderRadius: '50%', background: SESSION_ZONE_COLORS[(b.zone - 1) % 5], flexShrink: 0 }} />
                   <input
                     value={b.label}
                     onChange={e => updateBlock(i, 'label', e.target.value)}
-                    style={{ flex: 1, padding: '3px 7px', borderRadius: 5, border: '1px solid var(--ai-border)', background: 'var(--ai-bg)', color: 'var(--ai-text)', fontSize: 11, outline: 'none', fontFamily: 'DM Sans,sans-serif' }}
+                    style={{ flex: 1, padding: '3px 7px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'var(--ai-bg)', color: 'var(--ai-text)', fontSize: 11, outline: 'none', fontFamily: 'var(--font-body)' }}
                   />
                   <input
                     type="number" value={b.duration_min} min={1}
                     onChange={e => updateBlock(i, 'duration_min', parseInt(e.target.value) || 1)}
-                    style={{ width: 46, padding: '3px 6px', borderRadius: 5, border: '1px solid var(--ai-border)', background: 'var(--ai-bg)', color: 'var(--ai-text)', fontSize: 11, outline: 'none', textAlign: 'center', fontFamily: 'DM Mono,monospace' }}
+                    style={{ width: 46, padding: '3px 6px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'var(--ai-bg)', color: 'var(--ai-text)', fontSize: 11, outline: 'none', textAlign: 'center', fontFamily: 'var(--font-body)' }}
                   />
                   <span style={{ fontSize: 10, color: 'var(--ai-dim)', flexShrink: 0 }}>min</span>
                   <select
@@ -1743,7 +1743,7 @@ function SessionCard({ text, isStreaming }: { text: string; isStreaming: boolean
                       updateBlock(i, 'zone', z)
                       updateBlock(i, 'intensity', `Z${z}`)
                     }}
-                    style={{ width: 50, padding: '3px 4px', borderRadius: 5, border: '1px solid var(--ai-border)', background: 'var(--ai-bg)', color: 'var(--ai-text)', fontSize: 11, outline: 'none', cursor: 'pointer' }}
+                    style={{ width: 50, padding: '3px 4px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'var(--ai-bg)', color: 'var(--ai-text)', fontSize: 11, outline: 'none', cursor: 'pointer' }}
                   >
                     {[1, 2, 3, 4, 5].map(z => <option key={z} value={z}>Z{z}</option>)}
                   </select>
@@ -1756,20 +1756,20 @@ function SessionCard({ text, isStreaming }: { text: string; isStreaming: boolean
                 const zCol = SESSION_ZONE_COLORS[(b.zone - 1) % 5]
                 const isRecupRow = b.rawValue === 0
                 return (
-                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '3px 8px', borderRadius: 6 }}>
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '3px 8px', borderRadius: 'var(--r-sm)' }}>
                     <div style={{ width: 6, height: 6, borderRadius: '50%', background: zCol, flexShrink: 0, opacity: isRecupRow ? 0.4 : 1 }} />
                     <span style={{ flex: 1, fontSize: 11.5, color: isRecupRow ? 'var(--ai-dim)' : 'var(--ai-text)', lineHeight: 1.3 }}>{b.label}</span>
-                    <span style={{ fontSize: 10.5, fontFamily: 'DM Mono,monospace', color: 'var(--ai-mid)', flexShrink: 0 }}>{b.duration_min}′</span>
+                    <span style={{ fontSize: 10.5, fontFamily: 'var(--font-body)', color: 'var(--ai-mid)', flexShrink: 0 }}>{b.duration_min}′</span>
                     <span style={{ fontSize: 10, color: zCol, fontWeight: 700, minWidth: 22, textAlign: 'right', flexShrink: 0 }}>
                       {b.intensity.split(' ')[0]}
                     </span>
                     {b.rawValue !== undefined && b.rawValue > 0 && (
-                      <span style={{ fontSize: 10, fontFamily: 'DM Mono,monospace', color: 'var(--ai-text)', minWidth: 44, textAlign: 'right', flexShrink: 0, fontWeight: 600 }}>
+                      <span style={{ fontSize: 10, fontFamily: 'var(--font-body)', color: 'var(--ai-text)', minWidth: 44, textAlign: 'right', flexShrink: 0, fontWeight: 600 }}>
                         {formatRawValue(b.rawValue, session.sport)}
                       </span>
                     )}
                     {b.cadence !== undefined && (
-                      <span style={{ fontSize: 10, fontFamily: 'DM Mono,monospace', color: 'var(--ai-dim)', minWidth: 42, textAlign: 'right', flexShrink: 0 }}>
+                      <span style={{ fontSize: 10, fontFamily: 'var(--font-body)', color: 'var(--ai-dim)', minWidth: 42, textAlign: 'right', flexShrink: 0 }}>
                         {b.cadence} rpm
                       </span>
                     )}
@@ -1789,12 +1789,12 @@ function SessionCard({ text, isStreaming }: { text: string; isStreaming: boolean
           }}>
             <span style={{ fontSize: 10, color: 'var(--ai-dim)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>{t('aip.avgTarget')}</span>
             {avgRaw !== null && (
-              <span style={{ fontSize: 12, fontFamily: 'DM Mono,monospace', fontWeight: 700, color: 'var(--ai-text)' }}>
+              <span style={{ fontSize: 12, fontFamily: 'var(--font-body)', fontWeight: 700, color: 'var(--ai-text)' }}>
                 {formatRawValue(avgRaw, session.sport)}
               </span>
             )}
             {avgCadence !== null && (
-              <span style={{ fontSize: 12, fontFamily: 'DM Mono,monospace', color: 'var(--ai-mid)' }}>
+              <span style={{ fontSize: 12, fontFamily: 'var(--font-body)', color: 'var(--ai-mid)' }}>
                 {avgCadence} rpm
               </span>
             )}
@@ -1804,19 +1804,19 @@ function SessionCard({ text, isStreaming }: { text: string; isStreaming: boolean
         <div style={{ display: 'flex', gap: 6, padding: '0 10px 11px' }}>
           {editMode ? (
             <>
-              <button onClick={() => setEditMode(false)} style={{ flex: 1, padding: '7px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg)', color: 'var(--ai-mid)', fontSize: 11, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
+              <button onClick={() => setEditMode(false)} style={{ flex: 1, padding: '7px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'var(--ai-bg)', color: 'var(--ai-mid)', fontSize: 11, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
                 {t('aip.cancel')}
               </button>
-              <button onClick={confirmEdit} style={{ flex: 2, padding: '7px', borderRadius: 8, border: 'none', background: 'rgba(91,111,255,0.15)', color: '#5b6fff', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
+              <button onClick={confirmEdit} style={{ flex: 2, padding: '7px', borderRadius: 'var(--r-sm)', border: 'none', background: 'rgba(91,111,255,0.15)', color: '#5b6fff', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
                 {t('aip.confirmEdits')}
               </button>
             </>
           ) : (
             <>
-              <button onClick={() => { setEditedBlocks(session.blocks); setEditMode(true) }} style={{ flex: 1, padding: '7px 10px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg)', color: 'var(--ai-mid)', fontSize: 11, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
+              <button onClick={() => { setEditedBlocks(session.blocks); setEditMode(true) }} style={{ flex: 1, padding: '7px 10px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'var(--ai-bg)', color: 'var(--ai-mid)', fontSize: 11, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
                 {t('aip.edit')}
               </button>
-              <button onClick={() => setShowModal(true)} style={{ flex: 2, padding: '7px 10px', borderRadius: 8, border: 'none', background: 'var(--ai-gradient)', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
+              <button onClick={() => setShowModal(true)} style={{ flex: 2, padding: '7px 10px', borderRadius: 'var(--r-sm)', border: 'none', background: 'var(--ai-gradient)', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
                 + {t('aip.lib.addToLibrary')}
               </button>
             </>
@@ -1939,18 +1939,18 @@ function AthletePicker({ athletes, active, onPick, disabled = false }: {
   return (
     <div ref={ref} style={{ position: 'relative', flexShrink: 0 }}>
       <button onClick={() => { if (!disabled) setOpen(p => !p) }} disabled={disabled} title={t('aip.targetedAthlete')}
-        style={{ height: 28, borderRadius: 999, border: `1px solid ${active || open ? 'var(--ai-mid)' : 'var(--ai-border)'}`, background: active || open ? 'var(--ai-bg2)' : 'transparent', cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.45 : 1, display: 'flex', alignItems: 'center', gap: 6, padding: active ? '0 10px 0 3px' : '0 11px', fontFamily: 'var(--font-body)', fontSize: 12.5, fontWeight: 600, color: 'var(--ai-text)', maxWidth: 150 }}>
+        style={{ height: 28, borderRadius: 'var(--r-pill)', border: `1px solid ${active || open ? 'var(--ai-mid)' : 'var(--ai-border)'}`, background: active || open ? 'var(--ai-bg2)' : 'transparent', cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.45 : 1, display: 'flex', alignItems: 'center', gap: 6, padding: active ? '0 10px 0 3px' : '0 11px', fontFamily: 'var(--font-body)', fontSize: 12.5, fontWeight: 600, color: 'var(--ai-text)', maxWidth: 150 }}>
         {active ? <><AthleteMini a={active} /><span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{active.name}</span></>
           : <><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></svg><span>Athlète</span></>}
       </button>
       {open && (
-        <div style={{ position: 'absolute', bottom: 'calc(100% + 8px)', left: 0, width: 244, maxHeight: 340, display: 'flex', flexDirection: 'column', background: 'var(--ai-bg)', border: '1px solid var(--ai-border)', borderRadius: 14, boxShadow: '0 16px 44px rgba(0,0,0,0.32)', overflow: 'hidden', zIndex: 40, fontFamily: 'var(--font-body)' }}>
+        <div style={{ position: 'absolute', bottom: 'calc(100% + 8px)', left: 0, width: 244, maxHeight: 340, display: 'flex', flexDirection: 'column', background: 'var(--ai-bg)', border: '1px solid var(--ai-border)', borderRadius: 'var(--r-md)', boxShadow: '0 16px 44px rgba(0,0,0,0.32)', overflow: 'hidden', zIndex: 40, fontFamily: 'var(--font-body)' }}>
           <div style={{ padding: 8, borderBottom: '1px solid var(--ai-border)', flexShrink: 0 }}>
-            <input value={q} onChange={e => setQ(e.target.value)} autoFocus placeholder={t("aip.search_athlete")} style={{ width: '100%', boxSizing: 'border-box', padding: '8px 10px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 13, outline: 'none', fontFamily: 'var(--font-body)' }} />
+            <input value={q} onChange={e => setQ(e.target.value)} autoFocus placeholder={t("aip.search_athlete")} style={{ width: '100%', boxSizing: 'border-box', padding: '8px 10px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 13, outline: 'none', fontFamily: 'var(--font-body)' }} />
           </div>
           <div style={{ overflowY: 'auto', padding: 5 }}>
             {active && (
-              <button onClick={() => { onPick(null); setOpen(false) }} style={{ display: 'flex', alignItems: 'center', gap: 9, width: '100%', padding: '8px 9px', borderRadius: 9, border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--ai-mid)', fontSize: 13, fontFamily: 'var(--font-body)', textAlign: 'left' }}>
+              <button onClick={() => { onPick(null); setOpen(false) }} style={{ display: 'flex', alignItems: 'center', gap: 9, width: '100%', padding: '8px 9px', borderRadius: 'var(--r-sm)', border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--ai-mid)', fontSize: 13, fontFamily: 'var(--font-body)', textAlign: 'left' }}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6L6 18M6 6l12 12" /></svg>
                 Aucun athlète ciblé
               </button>
@@ -1960,7 +1960,7 @@ function AthletePicker({ athletes, active, onPick, disabled = false }: {
             ) : filtered.map(a => {
               const on = active?.id === a.id
               return (
-                <button key={a.id} onClick={() => { onPick(a); setOpen(false) }} style={{ display: 'flex', alignItems: 'center', gap: 9, width: '100%', padding: '7px 9px', borderRadius: 9, border: 'none', background: on ? 'var(--ai-bg2)' : 'transparent', cursor: 'pointer', color: 'var(--ai-text)', fontSize: 13.5, fontWeight: on ? 700 : 500, fontFamily: 'var(--font-body)', textAlign: 'left' }}
+                <button key={a.id} onClick={() => { onPick(a); setOpen(false) }} style={{ display: 'flex', alignItems: 'center', gap: 9, width: '100%', padding: '7px 9px', borderRadius: 'var(--r-sm)', border: 'none', background: on ? 'var(--ai-bg2)' : 'transparent', cursor: 'pointer', color: 'var(--ai-text)', fontSize: 13.5, fontWeight: on ? 700 : 500, fontFamily: 'var(--font-body)', textAlign: 'left' }}
                   onMouseEnter={e => { if (!on) (e.currentTarget as HTMLButtonElement).style.background = 'var(--ai-bg2)' }}
                   onMouseLeave={e => { if (!on) (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}>
                   <AthleteMini a={a} size={26} />
@@ -2038,7 +2038,7 @@ function ModelPicker({ model, onChange, disabled = false, isMobile = false }: {
               style={{
                 display: 'flex', alignItems: 'center', gap: 10,
                 width: '100%', padding: isMobile ? '13px 14px' : '10px 14px',
-                border: 'none', borderRadius: 10,
+                border: 'none', borderRadius: 'var(--r-sm)',
                 background: isA ? 'rgba(120,130,150,0.10)' : 'transparent',
                 cursor: 'pointer', textAlign: 'left',
                 transition: 'background 0.1s',
@@ -2050,13 +2050,13 @@ function ModelPicker({ model, onChange, disabled = false, isMobile = false }: {
                 <div style={{
                   fontSize: isMobile ? 15 : 13, fontWeight: isA ? 700 : 600,
                   color: 'var(--text)',
-                  fontFamily: 'Syne,sans-serif', lineHeight: 1.25,
+                  fontFamily: 'var(--font-body)', lineHeight: 1.25,
                 }}>
                   {mc.name}
                 </div>
                 <div style={{
                   fontSize: isMobile ? 12 : 11, color: 'var(--text-mid)',
-                  fontFamily: 'DM Sans,sans-serif', marginTop: 2,
+                  fontFamily: 'var(--font-body)', marginTop: 2,
                 }}>
                   {t(mc.desc)}
                 </div>
@@ -2077,13 +2077,13 @@ function ModelPicker({ model, onChange, disabled = false, isMobile = false }: {
           <div style={{
             position: 'absolute', bottom: 'calc(100% + 10px)', left: '50%',
             transform: 'translateX(-50%)', background: 'var(--ai-bg)',
-            border: '1px solid var(--ai-border)', borderRadius: 13,
+            border: '1px solid var(--ai-border)', borderRadius: 'var(--r-md)',
             boxShadow: '0 8px 28px rgba(0,0,0,0.13)', overflow: 'hidden',
             minWidth: 188, zIndex: 50, padding: 4, animation: 'ai_slidein_center 0.14s ease',
           }}>
             <div style={{
-              padding: '6px 10px 6px', fontSize: 9, fontWeight: 700, color: 'var(--ai-dim)',
-              letterSpacing: '0.08em', textTransform: 'uppercase', fontFamily: 'DM Sans,sans-serif',
+              padding: '6px 10px 6px', fontSize: 10, fontWeight: 700, color: 'var(--ai-dim)',
+              letterSpacing: '0.08em', textTransform: 'uppercase', fontFamily: 'var(--font-body)',
             }}>
               {t('aip.model.aiModel')}
             </div>
@@ -2324,7 +2324,7 @@ function WeakpointsFlow({ onCancel, onRecordConv }: {
 
     return (
       <div style={{ padding: '4px 0' }}>
-        <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 6px', fontFamily: 'Syne,sans-serif' }}>
+        <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 6px', fontFamily: 'var(--font-body)' }}>
           {t('aip.wp.title')}
         </p>
         <p style={{ fontSize: 12, color: 'var(--ai-mid)', margin: '0 0 16px', lineHeight: 1.6 }}>
@@ -2337,7 +2337,7 @@ function WeakpointsFlow({ onCancel, onRecordConv }: {
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 20 }}>
           {gateChecks.map((c, i) => (
-            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 10, background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)' }}>
+            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 'var(--r-sm)', background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)' }}>
               <div style={{ width: 18, height: 18, borderRadius: '50%', background: c.ok ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 {c.ok ? (
                   <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="3" strokeLinecap="round"><path d="M20 6L9 17l-5-5"/></svg>
@@ -2349,7 +2349,7 @@ function WeakpointsFlow({ onCancel, onRecordConv }: {
                 {c.label}
               </span>
               {c.detail && (
-                <span style={{ fontSize: 10, color: 'var(--ai-dim)', fontFamily: 'DM Mono,monospace' }}>{c.detail}</span>
+                <span style={{ fontSize: 10, color: 'var(--ai-dim)', fontFamily: 'var(--font-body)' }}>{c.detail}</span>
               )}
               {!c.ok && (
                 <a href={c.link} style={{ fontSize: 10, color: '#5b6fff', fontWeight: 600, textDecoration: 'none' }}>
@@ -2365,10 +2365,10 @@ function WeakpointsFlow({ onCancel, onRecordConv }: {
         </p>
 
         <button onClick={() => setPhase('sports')} style={{
-          width: '100%', padding: '11px', borderRadius: 10,
+          width: '100%', padding: '11px', borderRadius: 'var(--r-sm)',
           background: 'var(--ai-gradient)', border: 'none',
           color: '#fff', fontSize: 13, fontWeight: 700,
-          cursor: 'pointer', fontFamily: 'Syne,sans-serif',
+          cursor: 'pointer', fontFamily: 'var(--font-body)',
         }}>
           {t('aip.wp.chooseSports')} →
         </button>
@@ -2383,7 +2383,7 @@ function WeakpointsFlow({ onCancel, onRecordConv }: {
   if (phase === 'sports') {
     return (
       <div style={{ padding: '8px 0 4px' }}>
-        <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 5px', fontFamily: 'Syne,sans-serif' }}>
+        <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 5px', fontFamily: 'var(--font-body)' }}>
           {t('aip.wp.whichSports')}
         </p>
         <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: '0 0 14px' }}>
@@ -2394,13 +2394,13 @@ function WeakpointsFlow({ onCancel, onRecordConv }: {
             const on = selected.includes(s)
             return (
               <button key={s} onClick={() => toggle(s)} style={{
-                padding: '7px 13px', borderRadius: 20,
+                padding: '7px 13px', borderRadius: 'var(--r-lg)',
                 border: `1px solid ${on ? 'var(--ai-accent)' : 'var(--ai-border)'}`,
                 background: on ? 'var(--ai-accent-dim)' : 'var(--ai-bg2)',
                 color: on ? 'var(--ai-accent)' : 'var(--ai-mid)',
                 fontSize: 12, fontWeight: on ? 600 : 400,
                 cursor: 'pointer', transition: 'all 0.12s',
-                fontFamily: 'DM Sans,sans-serif',
+                fontFamily: 'var(--font-body)',
               }}>
                 {s}
               </button>
@@ -2412,20 +2412,20 @@ function WeakpointsFlow({ onCancel, onRecordConv }: {
         )}
         <div style={{ display: 'flex', gap: 8 }}>
           <button onClick={() => setPhase('gate')} style={{
-            padding: '9px 16px', borderRadius: 9,
+            padding: '9px 16px', borderRadius: 'var(--r-sm)',
             border: '1px solid var(--ai-border)', background: 'transparent',
             color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer',
-            fontFamily: 'DM Sans,sans-serif',
+            fontFamily: 'var(--font-body)',
           }}>
             {t('aip.back')}
           </button>
           <button onClick={() => { void generate() }} disabled={selected.length === 0} style={{
-            flex: 1, padding: '9px 16px', borderRadius: 9,
+            flex: 1, padding: '9px 16px', borderRadius: 'var(--r-sm)',
             border: 'none',
             background: selected.length > 0 ? 'var(--ai-gradient)' : 'var(--ai-border)',
             color: '#fff', fontSize: 12, fontWeight: 700,
             cursor: selected.length > 0 ? 'pointer' : 'not-allowed',
-            fontFamily: 'DM Sans,sans-serif', transition: 'background 0.15s',
+            fontFamily: 'var(--font-body)', transition: 'background 0.15s',
           }}>
             {t('aip.analyze')} {selected.length > 0 ? `(${selected.length})` : ''}
           </button>
@@ -2439,7 +2439,7 @@ function WeakpointsFlow({ onCancel, onRecordConv }: {
     return (
       <div style={{ padding: '48px 0', textAlign: 'center' }}>
         <div style={{ width: 32, height: 32, borderRadius: '50%', border: '3px solid rgba(6,182,212,0.15)', borderTop: '3px solid var(--ai-accent)', animation: 'ai_spin 0.8s linear infinite', margin: '0 auto 16px' }} />
-        <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 6px', fontFamily: 'Syne,sans-serif' }}>
+        <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 6px', fontFamily: 'var(--font-body)' }}>
           {t('aip.analyzing')}
         </p>
         <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: 0, lineHeight: 1.6, maxWidth: 260, marginLeft: 'auto', marginRight: 'auto' }}>
@@ -2475,7 +2475,7 @@ function WeakpointsFlow({ onCancel, onRecordConv }: {
           </text>
         </svg>
         <div>
-          <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 6px', fontFamily: 'Syne,sans-serif' }}>
+          <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 6px', fontFamily: 'var(--font-body)' }}>
             {t('aip.wp.scoreGlobal')}
           </p>
           <p style={{ fontSize: 12, color: 'var(--ai-mid)', margin: 0, lineHeight: 1.6 }}>
@@ -2491,15 +2491,15 @@ function WeakpointsFlow({ onCancel, onRecordConv }: {
             {t('aip.wp.athleticProfile')}
           </p>
           {(report.profil_athletique.forces_majeures ?? []).map((f, i) => (
-            <div key={`fg-${i}`} style={{ padding: '8px 12px', borderRadius: 8, background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.15)', marginBottom: 4 }}>
+            <div key={`fg-${i}`} style={{ padding: '8px 12px', borderRadius: 'var(--r-sm)', background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.15)', marginBottom: 4 }}>
               <p style={{ fontSize: 12, fontWeight: 600, color: '#22c55e', margin: '0 0 2px' }}>{f.label}</p>
               <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: '0 0 2px', lineHeight: 1.4 }}>{f.detail}</p>
               {f.evidence && <p style={{ fontSize: 10, color: 'var(--ai-dim)', margin: 0, fontStyle: 'italic' }}>{f.evidence}</p>}
             </div>
           ))}
           {(report.profil_athletique.faiblesses_majeures ?? []).map((f, i) => (
-            <div key={`fw-${i}`} style={{ padding: '8px 12px', borderRadius: 8, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.15)', marginBottom: 4, display: 'flex', gap: 8 }}>
-              <span style={{ fontSize: 9, fontWeight: 700, color: '#ef4444', background: 'rgba(239,68,68,0.15)', borderRadius: 4, padding: '2px 5px', alignSelf: 'flex-start', flexShrink: 0 }}>P{f.priority}</span>
+            <div key={`fw-${i}`} style={{ padding: '8px 12px', borderRadius: 'var(--r-sm)', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.15)', marginBottom: 4, display: 'flex', gap: 8 }}>
+              <span style={{ fontSize: 10, fontWeight: 700, color: '#ef4444', background: 'rgba(239,68,68,0.15)', borderRadius: 4, padding: '2px 5px', alignSelf: 'flex-start', flexShrink: 0 }}>P{f.priority}</span>
               <div>
                 <p style={{ fontSize: 12, fontWeight: 600, color: '#ef4444', margin: '0 0 2px' }}>{f.label}</p>
                 <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: '0 0 2px', lineHeight: 1.4 }}>{f.detail}</p>
@@ -2519,7 +2519,7 @@ function WeakpointsFlow({ onCancel, onRecordConv }: {
           const open   = expandedSport === i
           const sColor = wpScoreColor(sa.score)
           return (
-            <div key={i} style={{ border: '1px solid var(--ai-border)', borderRadius: 10, overflow: 'hidden' }}>
+            <div key={i} style={{ border: '1px solid var(--ai-border)', borderRadius: 'var(--r-sm)', overflow: 'hidden' }}>
               <button
                 onClick={() => setExpandedSport(open ? null : i)}
                 style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: 'var(--ai-bg2)', border: 'none', cursor: 'pointer', textAlign: 'left' }}
@@ -2543,7 +2543,7 @@ function WeakpointsFlow({ onCancel, onRecordConv }: {
                     <>
                       <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#22c55e', margin: '0 0 6px' }}>{t('aip.wp.strengths')}</p>
                       {(sa.forces ?? []).map((f, fi) => (
-                        <div key={fi} style={{ padding: '8px 12px', borderRadius: 8, background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.15)', marginBottom: 4 }}>
+                        <div key={fi} style={{ padding: '8px 12px', borderRadius: 'var(--r-sm)', background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.15)', marginBottom: 4 }}>
                           <p style={{ fontSize: 12, fontWeight: 600, color: '#22c55e', margin: '0 0 2px' }}>{f.label}</p>
                           <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: '0 0 2px', lineHeight: 1.4 }}>{f.detail}</p>
                           {f.evidence && <p style={{ fontSize: 10, color: 'var(--ai-dim)', margin: 0, fontStyle: 'italic' }}>{f.evidence}</p>}
@@ -2556,8 +2556,8 @@ function WeakpointsFlow({ onCancel, onRecordConv }: {
                     <>
                       <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#ef4444', margin: `${(sa.forces ?? []).length > 0 ? '10px' : '0'} 0 6px` }}>{t('aip.wp.weaknesses')}</p>
                       {(sa.faiblesses ?? []).sort((a, b) => a.priority - b.priority).map((f, fi) => (
-                        <div key={fi} style={{ padding: '8px 12px', borderRadius: 8, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.15)', marginBottom: 4, display: 'flex', gap: 8 }}>
-                          <span style={{ fontSize: 9, fontWeight: 700, color: '#ef4444', background: 'rgba(239,68,68,0.15)', borderRadius: 4, padding: '2px 5px', alignSelf: 'flex-start', flexShrink: 0 }}>P{f.priority}</span>
+                        <div key={fi} style={{ padding: '8px 12px', borderRadius: 'var(--r-sm)', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.15)', marginBottom: 4, display: 'flex', gap: 8 }}>
+                          <span style={{ fontSize: 10, fontWeight: 700, color: '#ef4444', background: 'rgba(239,68,68,0.15)', borderRadius: 4, padding: '2px 5px', alignSelf: 'flex-start', flexShrink: 0 }}>P{f.priority}</span>
                           <div>
                             <p style={{ fontSize: 12, fontWeight: 600, color: '#ef4444', margin: '0 0 2px' }}>{f.label}</p>
                             <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: '0 0 2px', lineHeight: 1.4 }}>{f.detail}</p>
@@ -2569,7 +2569,7 @@ function WeakpointsFlow({ onCancel, onRecordConv }: {
                   )}
                   {/* Évolution */}
                   {sa.evolution && (
-                    <div style={{ marginTop: 10, padding: '8px 10px', borderRadius: 8, background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)' }}>
+                    <div style={{ marginTop: 10, padding: '8px 10px', borderRadius: 'var(--r-sm)', background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)' }}>
                       <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--ai-dim)', margin: '0 0 4px' }}>{t('aip.wp.trend')}</p>
                       <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: 0, lineHeight: 1.4 }}>{sa.evolution}</p>
                     </div>
@@ -2592,15 +2592,15 @@ function WeakpointsFlow({ onCancel, onRecordConv }: {
           )}
           {/* Points positifs */}
           {(diag.points_positifs ?? []).map((p, i) => (
-            <div key={`dp-${i}`} style={{ padding: '8px 12px', borderRadius: 8, background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.15)', marginBottom: 4 }}>
+            <div key={`dp-${i}`} style={{ padding: '8px 12px', borderRadius: 'var(--r-sm)', background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.15)', marginBottom: 4 }}>
               <p style={{ fontSize: 12, fontWeight: 600, color: '#22c55e', margin: '0 0 2px' }}>{p.label}</p>
               <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: 0, lineHeight: 1.4 }}>{p.detail}</p>
             </div>
           ))}
           {/* Points négatifs */}
           {(diag.points_negatifs ?? []).sort((a, b) => a.priority - b.priority).map((p, i) => (
-            <div key={`dn-${i}`} style={{ padding: '8px 12px', borderRadius: 8, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.15)', marginBottom: 4, display: 'flex', gap: 8 }}>
-              <span style={{ fontSize: 9, fontWeight: 700, color: '#ef4444', background: 'rgba(239,68,68,0.15)', borderRadius: 4, padding: '2px 5px', alignSelf: 'flex-start', flexShrink: 0 }}>P{p.priority}</span>
+            <div key={`dn-${i}`} style={{ padding: '8px 12px', borderRadius: 'var(--r-sm)', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.15)', marginBottom: 4, display: 'flex', gap: 8 }}>
+              <span style={{ fontSize: 10, fontWeight: 700, color: '#ef4444', background: 'rgba(239,68,68,0.15)', borderRadius: 4, padding: '2px 5px', alignSelf: 'flex-start', flexShrink: 0 }}>P{p.priority}</span>
               <div>
                 <p style={{ fontSize: 12, fontWeight: 600, color: '#ef4444', margin: '0 0 2px' }}>{p.label}</p>
                 <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: 0, lineHeight: 1.4 }}>{p.detail}</p>
@@ -2613,7 +2613,7 @@ function WeakpointsFlow({ onCancel, onRecordConv }: {
               { key: 'coherence_objectifs', label: t('aip.wp.goalCoherence'), val: diag.coherence_objectifs },
               { key: 'recuperation',        label: t('aip.wp.recovery'),        val: diag.recuperation },
             ] as const).map(({ key, label, val }) => val ? (
-              <div key={key} style={{ padding: '10px 12px', borderRadius: 10, background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)' }}>
+              <div key={key} style={{ padding: '10px 12px', borderRadius: 'var(--r-sm)', background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
                   <div style={{ width: 8, height: 8, borderRadius: '50%', background: wpStatusColor(val.status), flexShrink: 0 }} />
                   <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--ai-text)' }}>{label}</span>
@@ -2633,12 +2633,12 @@ function WeakpointsFlow({ onCancel, onRecordConv }: {
         {(report.plan_action ?? []).sort((a, b) => a.priority - b.priority).map((act, i) => {
           const open = expandedAction === i
           return (
-            <div key={i} style={{ border: '1px solid var(--ai-border)', borderRadius: 10, overflow: 'hidden' }}>
+            <div key={i} style={{ border: '1px solid var(--ai-border)', borderRadius: 'var(--r-sm)', overflow: 'hidden' }}>
               <button
                 onClick={() => setExpandedAction(open ? null : i)}
                 style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', background: 'var(--ai-bg2)', border: 'none', cursor: 'pointer', textAlign: 'left' }}
               >
-                <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--ai-accent)', background: 'var(--ai-accent-dim)', borderRadius: 4, padding: '2px 6px', flexShrink: 0 }}>
+                <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--ai-accent)', background: 'var(--ai-accent-dim)', borderRadius: 4, padding: '2px 6px', flexShrink: 0 }}>
                   P{act.priority}
                 </span>
                 <span style={{ flex: 1, fontSize: 12, fontWeight: 600, color: 'var(--ai-text)' }}>{act.action}</span>
@@ -2670,10 +2670,10 @@ function WeakpointsFlow({ onCancel, onRecordConv }: {
 
       {/* ─── 7. Fermer ───────────────────────────────────── */}
       <button onClick={onCancel} style={{
-        width: '100%', padding: '10px', borderRadius: 10,
+        width: '100%', padding: '10px', borderRadius: 'var(--r-sm)',
         border: '1px solid var(--ai-border)', background: 'transparent',
         color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer', marginTop: 4,
-        fontFamily: 'DM Sans,sans-serif',
+        fontFamily: 'var(--font-body)',
       }}>
         {t('aip.close')}
       </button>
@@ -2846,7 +2846,7 @@ function NutritionGate({ onContinue, onCancel }: {
 
   return (
     <div style={{ padding: '4px 0' }}>
-      <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 6px', fontFamily: 'Syne,sans-serif' }}>
+      <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 6px', fontFamily: 'var(--font-body)' }}>
         {t('aip.nutri.title')}
       </p>
       <p style={{ fontSize: 12, color: 'var(--ai-mid)', margin: '0 0 16px', lineHeight: 1.6 }}>
@@ -2857,7 +2857,7 @@ function NutritionGate({ onContinue, onCancel }: {
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 20 }}>
         {checks.map((c, i) => (
-          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 10, background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)' }}>
+          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 'var(--r-sm)', background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)' }}>
             <div style={{ width: 18, height: 18, borderRadius: '50%', background: c.ok ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
               {c.ok ? (
                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="3" strokeLinecap="round"><path d="M20 6L9 17l-5-5"/></svg>
@@ -2869,7 +2869,7 @@ function NutritionGate({ onContinue, onCancel }: {
               {c.label}
             </span>
             {c.detail && (
-              <span style={{ fontSize: 10, color: 'var(--ai-dim)', fontFamily: 'DM Mono,monospace' }}>{c.detail}</span>
+              <span style={{ fontSize: 10, color: 'var(--ai-dim)', fontFamily: 'var(--font-body)' }}>{c.detail}</span>
             )}
             {!c.ok && (
               <a href={c.link} style={{ fontSize: 10, color: '#5b6fff', fontWeight: 600, textDecoration: 'none' }}>
@@ -2885,10 +2885,10 @@ function NutritionGate({ onContinue, onCancel }: {
       </p>
 
       <button onClick={() => onContinue({ weight: s?.weight, height: s?.height }, templates)} style={{
-        width: '100%', padding: '11px', borderRadius: 10,
+        width: '100%', padding: '11px', borderRadius: 'var(--r-sm)',
         background: 'linear-gradient(135deg,#f97316,#ef4444)',
         border: 'none', color: '#fff', fontSize: 13, fontWeight: 700,
-        cursor: 'pointer', fontFamily: 'Syne,sans-serif',
+        cursor: 'pointer', fontFamily: 'var(--font-body)',
       }}>
         {t('aip.nutri.continueQuestionnaire')} →
       </button>
@@ -2966,7 +2966,7 @@ function NutritionFlow({ onCancel, onRecordConv }: {
     return (
       <div style={{ padding: '32px 0', textAlign: 'center' }}>
         <div style={{ width: 40, height: 40, borderRadius: '50%', border: '3px solid rgba(249,115,22,0.2)', borderTop: '3px solid #f97316', animation: 'ai_spin 0.8s linear infinite', margin: '0 auto 16px' }} />
-        <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 8px', fontFamily: 'Syne,sans-serif' }}>{t('aip.nutri.creating')}</p>
+        <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 8px', fontFamily: 'var(--font-body)' }}>{t('aip.nutri.creating')}</p>
         <p style={{ fontSize: 12, color: 'var(--ai-dim)', margin: 0, lineHeight: 1.6 }}>{t('aip.nutri.creatingSub')}</p>
       </div>
     )
@@ -2979,12 +2979,12 @@ function NutritionFlow({ onCancel, onRecordConv }: {
         <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'rgba(34,197,94,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round"><path d="M20 6L9 17l-5-5"/></svg>
         </div>
-        <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 6px', fontFamily: 'Syne,sans-serif' }}>{t('aip.nutri.saved')}</p>
+        <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 6px', fontFamily: 'var(--font-body)' }}>{t('aip.nutri.saved')}</p>
         <p style={{ fontSize: 12, color: 'var(--ai-mid)', margin: '0 0 20px', lineHeight: 1.5 }}>
           {t('aip.nutri.savedSub')}
         </p>
         <button onClick={onCancel} style={{
-          padding: '10px 24px', borderRadius: 10, border: '1px solid var(--ai-border)',
+          padding: '10px 24px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)',
           background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer',
         }}>
           {t('aip.close')}
@@ -3095,7 +3095,7 @@ function NutritionFlow({ onCancel, onRecordConv }: {
 
     return (
       <div style={{ padding: '4px 0' }}>
-        <p style={{ fontSize: 16, fontWeight: 800, color: 'var(--ai-text)', margin: '0 0 4px', fontFamily: 'Syne,sans-serif' }}>{t('aip.nutri.title')}</p>
+        <p style={{ fontSize: 16, fontWeight: 800, color: 'var(--ai-text)', margin: '0 0 4px', fontFamily: 'var(--font-body)' }}>{t('aip.nutri.title')}</p>
         <p style={{ fontSize: 12, color: 'var(--ai-mid)', margin: '0 0 16px', lineHeight: 1.5 }}>{plan.resume}</p>
 
         {/* Sélecteur Essentiel / Complet */}
@@ -3105,7 +3105,7 @@ function NutritionFlow({ onCancel, onRecordConv }: {
             const p = type === 'minimal' ? plan.plan_minimal : plan.plan_maximal
             return (
               <button key={type} onClick={() => setActivePlanType(type)} style={{
-                flex: 1, padding: '12px', borderRadius: 12, textAlign: 'center',
+                flex: 1, padding: '12px', borderRadius: 'var(--r-md)', textAlign: 'center',
                 border: `1.5px solid ${active ? '#f97316' : 'var(--ai-border)'}`,
                 background: active ? 'rgba(249,115,22,0.08)' : 'var(--ai-bg2)',
                 cursor: 'pointer', transition: 'all 0.15s',
@@ -3128,11 +3128,11 @@ function NutritionFlow({ onCancel, onRecordConv }: {
             { label: t('aip.nutri.dayMedium'),    kcal: currentPlan.calories_mid,  macros: currentPlan.macros_mid,  color: '#f97316' },
             { label: t('aip.nutri.dayIntense'), kcal: currentPlan.calories_hard, macros: currentPlan.macros_hard, color: '#ef4444' },
           ].map(d => (
-            <div key={d.label} style={{ padding: '10px', borderRadius: 10, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', textAlign: 'center' }}>
-              <p style={{ fontSize: 9, fontWeight: 700, color: d.color, margin: '0 0 4px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{d.label}</p>
-              <p style={{ fontSize: 18, fontWeight: 800, color: 'var(--ai-text)', margin: '0 0 4px', fontFamily: 'DM Mono,monospace' }}>{d.kcal}</p>
-              <p style={{ fontSize: 9, color: 'var(--ai-dim)', margin: 0 }}>kcal</p>
-              <div style={{ marginTop: 6, display: 'flex', justifyContent: 'center', gap: 6, fontSize: 9, color: 'var(--ai-mid)' }}>
+            <div key={d.label} style={{ padding: '10px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', textAlign: 'center' }}>
+              <p style={{ fontSize: 10, fontWeight: 700, color: d.color, margin: '0 0 4px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{d.label}</p>
+              <p style={{ fontSize: 18, fontWeight: 800, color: 'var(--ai-text)', margin: '0 0 4px', fontFamily: 'var(--font-body)' }}>{d.kcal}</p>
+              <p style={{ fontSize: 10, color: 'var(--ai-dim)', margin: 0 }}>kcal</p>
+              <div style={{ marginTop: 6, display: 'flex', justifyContent: 'center', gap: 6, fontSize: 10, color: 'var(--ai-mid)' }}>
                 <span>P:{d.macros.proteines}g</span>
                 <span>G:{d.macros.glucides}g</span>
                 <span>L:{d.macros.lipides}g</span>
@@ -3143,7 +3143,7 @@ function NutritionFlow({ onCancel, onRecordConv }: {
 
         {/* Warnings */}
         {plan.warnings.length > 0 && (
-          <div style={{ padding: '10px 12px', borderRadius: 10, background: 'rgba(249,115,22,0.08)', border: '1px solid rgba(249,115,22,0.2)', marginBottom: 14 }}>
+          <div style={{ padding: '10px 12px', borderRadius: 'var(--r-sm)', background: 'rgba(249,115,22,0.08)', border: '1px solid rgba(249,115,22,0.2)', marginBottom: 14 }}>
             {plan.warnings.map((w, i) => (
               <p key={i} style={{ fontSize: 11, color: '#f97316', margin: i > 0 ? '4px 0 0' : 0, lineHeight: 1.5 }}>⚠ {w}</p>
             ))}
@@ -3170,7 +3170,7 @@ function NutritionFlow({ onCancel, onRecordConv }: {
                 }}>
                   <span style={{ fontSize: 10, fontWeight: 700, color: typeColor, minWidth: 50 }}>{typeLabel}</span>
                   <span style={{ flex: 1, fontSize: 12, color: 'var(--ai-text)', fontWeight: 500 }}>{dayLabel}</span>
-                  <span style={{ fontSize: 10, fontFamily: 'DM Mono,monospace', color: 'var(--ai-dim)' }}>{jour.kcal} kcal</span>
+                  <span style={{ fontSize: 10, fontFamily: 'var(--font-body)', color: 'var(--ai-dim)' }}>{jour.kcal} kcal</span>
                   <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--ai-dim)" strokeWidth="2" style={{ transform: isExpanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s', flexShrink: 0 }}>
                     <path d="M6 9l6 6 6-6"/>
                   </svg>
@@ -3202,15 +3202,15 @@ function NutritionFlow({ onCancel, onRecordConv }: {
         {error && <p style={{ fontSize: 12, color: '#ef4444', margin: '0 0 8px', textAlign: 'center' }}>{error}</p>}
 
         <button onClick={() => void savePlan()} disabled={saving} style={{
-          width: '100%', padding: '12px', borderRadius: 10,
+          width: '100%', padding: '12px', borderRadius: 'var(--r-sm)',
           background: saving ? 'var(--ai-border)' : 'linear-gradient(135deg,#f97316,#ef4444)',
           border: 'none', color: saving ? 'var(--ai-dim)' : '#fff', fontSize: 13, fontWeight: 700,
-          cursor: saving ? 'not-allowed' : 'pointer', fontFamily: 'Syne,sans-serif', marginBottom: 8,
+          cursor: saving ? 'not-allowed' : 'pointer', fontFamily: 'var(--font-body)', marginBottom: 8,
         }}>
           {saving ? t('aip.saving') : `${t('aip.nutri.addToPlanning')} →`}
         </button>
         <button onClick={onCancel} style={{
-          width: '100%', padding: '10px', borderRadius: 10,
+          width: '100%', padding: '10px', borderRadius: 'var(--r-sm)',
           border: '1px solid var(--ai-border)', background: 'transparent',
           color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer',
         }}>
@@ -3253,12 +3253,12 @@ function NutritionFlow({ onCancel, onRecordConv }: {
             transition: 'width 0.3s ease',
           }} />
         </div>
-        <span style={{ fontSize: 10, color: 'var(--ai-dim)', flexShrink: 0, fontFamily: 'DM Mono,monospace' }}>
+        <span style={{ fontSize: 10, color: 'var(--ai-dim)', flexShrink: 0, fontFamily: 'var(--font-body)' }}>
           {step + 1}/{NUTRITION_STEPS.length}
         </span>
       </div>
 
-      <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 12px', fontFamily: 'Syne,sans-serif', lineHeight: 1.4 }}>
+      <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 12px', fontFamily: 'var(--font-body)', lineHeight: 1.4 }}>
         {t(cur.qKey)}
       </p>
 
@@ -3267,13 +3267,13 @@ function NutritionFlow({ onCancel, onRecordConv }: {
           const on = answers[step].includes(opt)
           return (
             <button key={opt} onClick={() => toggleOption(opt)} style={{
-              padding: '9px 13px', borderRadius: 9, textAlign: 'left',
+              padding: '9px 13px', borderRadius: 'var(--r-sm)', textAlign: 'left',
               border: `1px solid ${on ? '#f97316' : 'var(--ai-border)'}`,
               background: on ? 'rgba(249,115,22,0.1)' : 'var(--ai-bg2)',
               color: on ? '#f97316' : 'var(--ai-mid)',
               fontSize: 12, fontWeight: on ? 600 : 400,
               cursor: 'pointer', transition: 'all 0.12s',
-              fontFamily: 'DM Sans,sans-serif',
+              fontFamily: 'var(--font-body)',
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             }}>
               <span>{opt}</span>
@@ -3292,26 +3292,26 @@ function NutritionFlow({ onCancel, onRecordConv }: {
       <div style={{ display: 'flex', gap: 8 }}>
         {step > 0 && (
           <button onClick={() => setStep(s => s - 1)} style={{
-            padding: '9px 14px', borderRadius: 9,
+            padding: '9px 14px', borderRadius: 'var(--r-sm)',
             border: '1px solid var(--ai-border)', background: 'transparent',
             color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer',
-            fontFamily: 'DM Sans,sans-serif',
+            fontFamily: 'var(--font-body)',
           }}>{t('aip.back')}</button>
         )}
         {step === 0 && (
           <button onClick={onCancel} style={{
-            padding: '9px 14px', borderRadius: 9,
+            padding: '9px 14px', borderRadius: 'var(--r-sm)',
             border: '1px solid var(--ai-border)', background: 'transparent',
             color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer',
-            fontFamily: 'DM Sans,sans-serif',
+            fontFamily: 'var(--font-body)',
           }}>{t('aip.cancel')}</button>
         )}
         <button onClick={next} disabled={!canNext} style={{
-          flex: 1, padding: '9px 16px', borderRadius: 9, border: 'none',
+          flex: 1, padding: '9px 16px', borderRadius: 'var(--r-sm)', border: 'none',
           background: canNext ? 'linear-gradient(135deg,#f97316,#ef4444)' : 'var(--ai-border)',
           color: '#fff', fontSize: 12, fontWeight: 700,
           cursor: canNext ? 'pointer' : 'not-allowed',
-          fontFamily: 'DM Sans,sans-serif', transition: 'background 0.15s',
+          fontFamily: 'var(--font-body)', transition: 'background 0.15s',
         }}>
           {isLast ? t('aip.nutri.generatePlan') : t('aip.next')}
         </button>
@@ -3630,10 +3630,10 @@ FORMATAGE OBLIGATOIRE :
         )}
 
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-          <button onClick={onCancel} style={{ padding: '10px 6px', border: 'none', background: 'transparent', color: 'var(--ai-dim)', fontSize: 13, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
+          <button onClick={onCancel} style={{ padding: '10px 6px', border: 'none', background: 'transparent', color: 'var(--ai-dim)', fontSize: 13, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
             {t('aip.cancel')}
           </button>
-          <button onClick={() => setStep('event')} disabled={loading} style={{ flex: 1, padding: '11px 16px', borderRadius: 12, border: 'none', background: loading ? 'var(--ai-border)' : 'var(--ai-gradient)', color: '#fff', fontSize: 13, fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
+          <button onClick={() => setStep('event')} disabled={loading} style={{ flex: 1, padding: '11px 16px', borderRadius: 'var(--r-md)', border: 'none', background: loading ? 'var(--ai-border)' : 'var(--ai-gradient)', color: '#fff', fontSize: 13, fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer', fontFamily: 'var(--font-body)' }}>
             {t('aip.continue')}
           </button>
         </div>
@@ -3646,7 +3646,7 @@ FORMATAGE OBLIGATOIRE :
     const plannedRaces = gateData?.plannedRaces ?? []
     return (
       <div style={{ padding: '8px 0 4px' }}>
-        <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 5px', fontFamily: 'Syne,sans-serif' }}>
+        <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 5px', fontFamily: 'var(--font-body)' }}>
           {t('aip.recharge.whichGoal')}
         </p>
         <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: '0 0 14px' }}>
@@ -3662,12 +3662,12 @@ FORMATAGE OBLIGATOIRE :
               <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                 {plannedRaces.map(race => (
                   <button key={race.id} onClick={() => { setEventType('race_planned'); setSelectedRace(race) }} style={{
-                    padding: '10px 12px', borderRadius: 9, textAlign: 'left' as const,
+                    padding: '10px 12px', borderRadius: 'var(--r-sm)', textAlign: 'left' as const,
                     border: `1px solid ${eventType === 'race_planned' && selectedRace?.id === race.id ? '#5b6fff' : 'var(--ai-border)'}`,
                     background: eventType === 'race_planned' && selectedRace?.id === race.id ? 'rgba(91,111,255,0.1)' : 'var(--ai-bg2)',
                     cursor: 'pointer', transition: 'all 0.12s',
                   }}>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: eventType === 'race_planned' && selectedRace?.id === race.id ? '#5b6fff' : 'var(--ai-text)', fontFamily: 'Syne,sans-serif' }}>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: eventType === 'race_planned' && selectedRace?.id === race.id ? '#5b6fff' : 'var(--ai-text)', fontFamily: 'var(--font-body)' }}>
                       {race.name}
                     </div>
                     <div style={{ fontSize: 10, color: 'var(--ai-dim)', marginTop: 2 }}>
@@ -3680,22 +3680,22 @@ FORMATAGE OBLIGATOIRE :
           )}
 
           <button onClick={() => { setEventType('race_manual'); setSelectedRace(null) }} style={{
-            padding: '10px 12px', borderRadius: 9, textAlign: 'left' as const,
+            padding: '10px 12px', borderRadius: 'var(--r-sm)', textAlign: 'left' as const,
             border: `1px solid ${eventType === 'race_manual' ? '#5b6fff' : 'var(--ai-border)'}`,
             background: eventType === 'race_manual' ? 'rgba(91,111,255,0.1)' : 'var(--ai-bg2)',
             cursor: 'pointer', transition: 'all 0.12s',
           }}>
-            <div style={{ fontSize: 12, fontWeight: 600, color: eventType === 'race_manual' ? '#5b6fff' : 'var(--ai-text)', fontFamily: 'Syne,sans-serif' }}>{t('aip.recharge.otherRace')}</div>
+            <div style={{ fontSize: 12, fontWeight: 600, color: eventType === 'race_manual' ? '#5b6fff' : 'var(--ai-text)', fontFamily: 'var(--font-body)' }}>{t('aip.recharge.otherRace')}</div>
             <div style={{ fontSize: 10, color: 'var(--ai-dim)', marginTop: 2 }}>{t('aip.recharge.otherRaceSub')}</div>
           </button>
 
           <button onClick={() => { setEventType('training'); setSelectedRace(null) }} style={{
-            padding: '10px 12px', borderRadius: 9, textAlign: 'left' as const,
+            padding: '10px 12px', borderRadius: 'var(--r-sm)', textAlign: 'left' as const,
             border: `1px solid ${eventType === 'training' ? '#5b6fff' : 'var(--ai-border)'}`,
             background: eventType === 'training' ? 'rgba(91,111,255,0.1)' : 'var(--ai-bg2)',
             cursor: 'pointer', transition: 'all 0.12s',
           }}>
-            <div style={{ fontSize: 12, fontWeight: 600, color: eventType === 'training' ? '#5b6fff' : 'var(--ai-text)', fontFamily: 'Syne,sans-serif' }}>{t('aip.recharge.trainingSession')}</div>
+            <div style={{ fontSize: 12, fontWeight: 600, color: eventType === 'training' ? '#5b6fff' : 'var(--ai-text)', fontFamily: 'var(--font-body)' }}>{t('aip.recharge.trainingSession')}</div>
             <div style={{ fontSize: 10, color: 'var(--ai-dim)', marginTop: 2 }}>{t('aip.recharge.trainingSessionSub')}</div>
           </button>
         </div>
@@ -3706,12 +3706,12 @@ FORMATAGE OBLIGATOIRE :
               placeholder={t('aip.recharge.raceNamePlaceholder')}
               value={manualRaceName}
               onChange={e => setManualRaceName(e.target.value)}
-              style={{ padding: '8px 10px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 12, outline: 'none' }}
+              style={{ padding: '8px 10px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 12, outline: 'none' }}
             />
             <div style={{ display: 'flex', gap: 7 }}>
               {['running', 'cycling', 'triathlon', 'trail', 'ultra'].map(sp => (
                 <button key={sp} onClick={() => setManualRaceSport(sp)} style={{
-                  flex: 1, padding: '7px 4px', borderRadius: 7, fontSize: 9,
+                  flex: 1, padding: '7px 4px', borderRadius: 'var(--r-sm)', fontSize: 10,
                   border: `1px solid ${manualRaceSport === sp ? '#5b6fff' : 'var(--ai-border)'}`,
                   background: manualRaceSport === sp ? 'rgba(91,111,255,0.1)' : 'var(--ai-bg2)',
                   color: manualRaceSport === sp ? '#5b6fff' : 'var(--ai-mid)', cursor: 'pointer',
@@ -3724,7 +3724,7 @@ FORMATAGE OBLIGATOIRE :
               type="date"
               value={manualRaceDate}
               onChange={e => setManualRaceDate(e.target.value)}
-              style={{ padding: '8px 10px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 12, outline: 'none' }}
+              style={{ padding: '8px 10px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 12, outline: 'none' }}
             />
           </div>
         )}
@@ -3735,7 +3735,7 @@ FORMATAGE OBLIGATOIRE :
             <div style={{ display: 'flex', gap: 6 }}>
               {['Haute', 'Très haute', 'Longue distance'].map(lvl => (
                 <button key={lvl} onClick={() => setTrainingIntensity(lvl)} style={{
-                  flex: 1, padding: '8px 4px', borderRadius: 8, fontSize: 10,
+                  flex: 1, padding: '8px 4px', borderRadius: 'var(--r-sm)', fontSize: 10,
                   border: `1px solid ${trainingIntensity === lvl ? '#5b6fff' : 'var(--ai-border)'}`,
                   background: trainingIntensity === lvl ? 'rgba(91,111,255,0.1)' : 'var(--ai-bg2)',
                   color: trainingIntensity === lvl ? '#5b6fff' : 'var(--ai-mid)', cursor: 'pointer',
@@ -3748,10 +3748,10 @@ FORMATAGE OBLIGATOIRE :
         )}
 
         <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={() => setStep('gate')} style={{ padding: '9px 16px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer' }}>
+          <button onClick={() => setStep('gate')} style={{ padding: '9px 16px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer' }}>
             {t('aip.back')}
           </button>
-          <button onClick={() => setStep('questions')} disabled={!eventType} style={{ flex: 1, padding: '9px 16px', borderRadius: 9, border: 'none', background: eventType ? 'var(--ai-gradient)' : 'var(--ai-border)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: eventType ? 'pointer' : 'not-allowed' }}>
+          <button onClick={() => setStep('questions')} disabled={!eventType} style={{ flex: 1, padding: '9px 16px', borderRadius: 'var(--r-sm)', border: 'none', background: eventType ? 'var(--ai-gradient)' : 'var(--ai-border)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: eventType ? 'pointer' : 'not-allowed' }}>
             {t('aip.continue')}
           </button>
         </div>
@@ -3765,7 +3765,7 @@ FORMATAGE OBLIGATOIRE :
     const canSubmit = !!nutritionExp && (!showSolids || !!solidsTolerance)
     return (
       <div style={{ padding: '8px 0 4px' }}>
-        <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 5px', fontFamily: 'Syne,sans-serif' }}>
+        <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 5px', fontFamily: 'var(--font-body)' }}>
           {t('aip.recharge.customize')}
         </p>
         <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: '0 0 14px' }}>
@@ -3784,7 +3784,7 @@ FORMATAGE OBLIGATOIRE :
               { id: 'protocol',   label: t('aip.recharge.nutriExpProtocol') },
             ] as { id: string; label: string }[]).map(opt => (
               <button key={opt.id} onClick={() => setNutritionExp(opt.id)} style={{
-                padding: '10px 12px', borderRadius: 8, textAlign: 'left' as const,
+                padding: '10px 12px', borderRadius: 'var(--r-sm)', textAlign: 'left' as const,
                 border: `1px solid ${nutritionExp === opt.id ? '#5b6fff' : 'var(--ai-border)'}`,
                 background: nutritionExp === opt.id ? 'rgba(91,111,255,0.1)' : 'var(--ai-bg2)',
                 color: nutritionExp === opt.id ? '#5b6fff' : 'var(--ai-mid)',
@@ -3809,7 +3809,7 @@ FORMATAGE OBLIGATOIRE :
                 { id: 'no',            label: t('aip.recharge.solidsNo') },
               ] as { id: string; label: string }[]).map(opt => (
                 <button key={opt.id} onClick={() => setSolidsTolerance(opt.id)} style={{
-                  padding: '10px 12px', borderRadius: 8, textAlign: 'left' as const,
+                  padding: '10px 12px', borderRadius: 'var(--r-sm)', textAlign: 'left' as const,
                   border: `1px solid ${solidsTolerance === opt.id ? '#5b6fff' : 'var(--ai-border)'}`,
                   background: solidsTolerance === opt.id ? 'rgba(91,111,255,0.1)' : 'var(--ai-bg2)',
                   color: solidsTolerance === opt.id ? '#5b6fff' : 'var(--ai-mid)',
@@ -3831,9 +3831,9 @@ FORMATAGE OBLIGATOIRE :
             type="time"
             value={raceStartTime}
             onChange={e => setRaceStartTime(e.target.value)}
-            style={{ padding: '8px 10px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 12, outline: 'none' }}
+            style={{ padding: '8px 10px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 12, outline: 'none' }}
           />
-          <p style={{ fontSize: 9, color: 'var(--ai-dim)', margin: '4px 0 0' }}>{t('aip.recharge.startTimeHint')}</p>
+          <p style={{ fontSize: 10, color: 'var(--ai-dim)', margin: '4px 0 0' }}>{t('aip.recharge.startTimeHint')}</p>
         </div>
 
         {/* Durée estimée (courses uniquement) */}
@@ -3845,7 +3845,7 @@ FORMATAGE OBLIGATOIRE :
             <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' as const }}>
               {['< 1h30', '1h30–3h', '3h–6h', '6h–12h', '> 12h'].map(d => (
                 <button key={d} onClick={() => setEstimatedDuration(d)} style={{
-                  padding: '7px 8px', borderRadius: 7, fontSize: 10,
+                  padding: '7px 8px', borderRadius: 'var(--r-sm)', fontSize: 10,
                   border: `1px solid ${estimatedDuration === d ? 'var(--ai-accent)' : 'var(--ai-border)'}`,
                   background: estimatedDuration === d ? 'rgba(6,182,212,0.06)' : 'var(--ai-bg2)',
                   color: estimatedDuration === d ? 'var(--ai-accent)' : 'var(--ai-mid)', cursor: 'pointer',
@@ -3867,12 +3867,12 @@ FORMATAGE OBLIGATOIRE :
             onChange={e => setRechargeNotes(e.target.value)}
             placeholder={t('aip.recharge.notesPlaceholder')}
             rows={2}
-            style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 11, outline: 'none', resize: 'vertical', boxSizing: 'border-box' as const }}
+            style={{ width: '100%', padding: '8px 10px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 11, outline: 'none', resize: 'vertical', boxSizing: 'border-box' as const }}
           />
         </div>
 
         <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={() => setStep('event')} style={{ padding: '9px 16px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer' }}>
+          <button onClick={() => setStep('event')} style={{ padding: '9px 16px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer' }}>
             {t('aip.back')}
           </button>
           <button
@@ -3922,7 +3922,7 @@ FORMATAGE OBLIGATOIRE :
             }}
             disabled={!canSubmit}
             style={{
-              flex: 1, padding: '9px 16px', borderRadius: 9, border: 'none',
+              flex: 1, padding: '9px 16px', borderRadius: 'var(--r-sm)', border: 'none',
               background: canSubmit ? 'var(--ai-gradient)' : 'var(--ai-border)',
               color: '#fff', fontSize: 12, fontWeight: 700,
               cursor: canSubmit ? 'pointer' : 'not-allowed',
@@ -4026,7 +4026,7 @@ FORMATAGE OBLIGATOIRE :
 
     return (
       <div style={{ padding: '8px 0 4px' }}>
-        <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'Syne,sans-serif', margin: '0 0 4px' }}>
+        <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'var(--font-body)', margin: '0 0 4px' }}>
           {t('aip.recharge.resultTitle')}
         </p>
         <p style={{ fontSize: 10, color: 'var(--ai-dim)', margin: '0 0 12px' }}>
@@ -4041,16 +4041,16 @@ FORMATAGE OBLIGATOIRE :
             { label: t('aip.recharge.kpiCarbTarget'), value: gateData?.weight ? `${Math.round(gateData.weight * 10)}g/j` : '700g/j' },
             { label: t('aip.recharge.kpiStart'),     value: raceStartTime || '08:00' },
           ] as { label: string; value: string }[]).map(kpi => (
-            <div key={kpi.label} style={{ padding: '8px 6px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', textAlign: 'center' as const }}>
-              <p style={{ fontSize: 8, color: 'var(--ai-dim)', margin: 0, textTransform: 'uppercase' as const, letterSpacing: '0.06em' }}>{kpi.label}</p>
-              <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', margin: '2px 0 0', fontFamily: 'DM Mono,monospace' }}>{kpi.value}</p>
+            <div key={kpi.label} style={{ padding: '8px 6px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', textAlign: 'center' as const }}>
+              <p style={{ fontSize: 10, color: 'var(--ai-dim)', margin: 0, textTransform: 'uppercase' as const, letterSpacing: '0.06em' }}>{kpi.label}</p>
+              <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', margin: '2px 0 0', fontFamily: 'var(--font-body)' }}>{kpi.value}</p>
             </div>
           ))}
         </div>
 
         {/* Contenu complet en markdown — scrollable */}
         <div style={{
-          padding: '14px', borderRadius: 12,
+          padding: '14px', borderRadius: 'var(--r-md)',
           border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)',
           maxHeight: '60vh', overflowY: 'auto' as const,
         }}>
@@ -4071,10 +4071,10 @@ FORMATAGE OBLIGATOIRE :
             <button
               onClick={() => { void generateRechargePDF() }}
               style={{
-                flex: 1, padding: '9px', borderRadius: 9,
+                flex: 1, padding: '9px', borderRadius: 'var(--r-sm)',
                 border: '1px solid rgba(6,182,212,0.4)', background: 'rgba(6,182,212,0.06)',
                 color: 'var(--ai-accent, #06B6D4)', fontSize: 12, fontWeight: 600,
-                cursor: 'pointer', fontFamily: 'DM Sans,sans-serif',
+                cursor: 'pointer', fontFamily: 'var(--font-body)',
               }}
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 6, verticalAlign: '-2px' }}><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>{t('aip.downloadPdf')}
@@ -4086,7 +4086,7 @@ FORMATAGE OBLIGATOIRE :
                   onRecordConv(label, result)
                 }}
                 style={{
-                  padding: '9px 12px', borderRadius: 9,
+                  padding: '9px 12px', borderRadius: 'var(--r-sm)',
                   border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)',
                   color: 'var(--ai-mid)', fontSize: 11, cursor: 'pointer',
                 }}
@@ -4095,7 +4095,7 @@ FORMATAGE OBLIGATOIRE :
               </button>
             )}
             <button onClick={onCancel} style={{
-              padding: '9px 12px', borderRadius: 9,
+              padding: '9px 12px', borderRadius: 'var(--r-sm)',
               border: '1px solid var(--ai-border)', background: 'transparent',
               color: 'var(--ai-dim)', fontSize: 11, cursor: 'pointer',
             }}>
@@ -4348,7 +4348,7 @@ function AnalyzeTestFlow({ onCancel, onRecordConv }: {
     const hasSports = Object.keys(gateData.sportCounts).length > 0
     return (
       <div style={{ padding: '8px 0 4px' }}>
-        <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 12px', fontFamily: 'Syne,sans-serif' }}>
+        <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 12px', fontFamily: 'var(--font-body)' }}>
           {t('aip.test.title')}
         </p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 16 }}>
@@ -4374,17 +4374,17 @@ function AnalyzeTestFlow({ onCancel, onRecordConv }: {
           </div>
         </div>
         {!hasSports ? (
-          <div style={{ padding: '12px', borderRadius: 10, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', marginBottom: 14, fontSize: 12, color: '#ef4444', lineHeight: 1.5 }}>
+          <div style={{ padding: '12px', borderRadius: 'var(--r-sm)', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', marginBottom: 14, fontSize: 12, color: '#ef4444', lineHeight: 1.5 }}>
             {t('aip.test.noneDoneHintPre')} <strong>Performance → Tests</strong> {t('aip.test.noneDoneHintPost')}
           </div>
         ) : null}
         {error && <p style={{ fontSize: 11, color: '#ef4444', margin: '0 0 8px' }}>{error}</p>}
         <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={onCancel} style={{ padding: '9px 14px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
+          <button onClick={onCancel} style={{ padding: '9px 14px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
             {t('aip.cancel')}
           </button>
           {hasSports && (
-            <button onClick={() => setPhase('sport')} style={{ flex: 1, padding: '9px', borderRadius: 9, border: 'none', background: 'var(--ai-gradient)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
+            <button onClick={() => setPhase('sport')} style={{ flex: 1, padding: '9px', borderRadius: 'var(--r-sm)', border: 'none', background: 'var(--ai-gradient)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
               {t('aip.continue')}
             </button>
           )}
@@ -4397,14 +4397,14 @@ function AnalyzeTestFlow({ onCancel, onRecordConv }: {
     const availableSports = Object.keys(gateData.sportCounts)
     return (
       <div style={{ padding: '8px 0 4px' }}>
-        <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 4px', fontFamily: 'Syne,sans-serif' }}>{t('aip.test.whichSport')}</p>
+        <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 4px', fontFamily: 'var(--font-body)' }}>{t('aip.test.whichSport')}</p>
         <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: '0 0 14px' }}>
           {availableSports.map(sp => `${t(AE_SPORT_LABELS[sp] ?? sp)} (${gateData.sportCounts[sp]})`).join(' · ')}
         </p>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7, marginBottom: 16 }}>
           {availableSports.map(sp => (
             <button key={sp} onClick={() => void loadTestsForSport(sp)}
-              style={{ padding: '8px 16px', borderRadius: 20, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-mid)', fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif', transition: 'all 0.12s' }}
+              style={{ padding: '8px 16px', borderRadius: 'var(--r-lg)', border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-mid)', fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font-body)', transition: 'all 0.12s' }}
               onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = '#5b6fff'; (e.currentTarget as HTMLButtonElement).style.color = '#5b6fff' }}
               onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--ai-border)'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--ai-mid)' }}
             >
@@ -4412,7 +4412,7 @@ function AnalyzeTestFlow({ onCancel, onRecordConv }: {
             </button>
           ))}
         </div>
-        <button onClick={() => setPhase('gate')} style={{ padding: '9px 14px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer' }}>
+        <button onClick={() => setPhase('gate')} style={{ padding: '9px 14px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer' }}>
           {t('aip.back')}
         </button>
       </div>
@@ -4432,8 +4432,8 @@ function AnalyzeTestFlow({ onCancel, onRecordConv }: {
     if (!tests.length) {
       return (
         <div style={{ padding: '8px 0 4px' }}>
-          <div style={{ padding: '16px', borderRadius: 10, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', marginBottom: 14 }}>
-            <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 6px', fontFamily: 'Syne,sans-serif' }}>
+          <div style={{ padding: '16px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', marginBottom: 14 }}>
+            <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 6px', fontFamily: 'var(--font-body)' }}>
               {t('aip.test.noTestInSport', { sport: t(AE_SPORT_LABELS[sport ?? ''] ?? sport ?? '') })}
             </p>
             <p style={{ fontSize: 12, color: 'var(--ai-mid)', margin: 0 }}>
@@ -4441,10 +4441,10 @@ function AnalyzeTestFlow({ onCancel, onRecordConv }: {
             </p>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
-            <button onClick={() => setPhase('sport')} style={{ flex: 1, padding: '9px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer' }}>
+            <button onClick={() => setPhase('sport')} style={{ flex: 1, padding: '9px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer' }}>
               {t('aip.test.otherSport')}
             </button>
-            <button onClick={onCancel} style={{ flex: 1, padding: '9px', borderRadius: 9, border: 'none', background: 'var(--ai-bg2)', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer' }}>
+            <button onClick={onCancel} style={{ flex: 1, padding: '9px', borderRadius: 'var(--r-sm)', border: 'none', background: 'var(--ai-bg2)', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer' }}>
               {t('aip.close')}
             </button>
           </div>
@@ -4461,7 +4461,7 @@ function AnalyzeTestFlow({ onCancel, onRecordConv }: {
 
     return (
       <div style={{ padding: '8px 0 4px' }}>
-        <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 4px', fontFamily: 'Syne,sans-serif' }}>
+        <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 4px', fontFamily: 'var(--font-body)' }}>
           {t(tests.length > 1 ? 'aip.test.nTestsInSport' : 'aip.test.nTestInSport', { n: tests.length, sport: t(AE_SPORT_LABELS[sport ?? ''] ?? sport ?? '') })}
         </p>
         <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: '0 0 12px' }}>{t('aip.test.selectTest')}</p>
@@ -4487,19 +4487,19 @@ function AnalyzeTestFlow({ onCancel, onRecordConv }: {
             return (
               <div key={tst.id} onClick={() => setSelectedTest(isSelected ? null : tst)}
                 style={{
-                  padding: '12px 14px', borderRadius: 12, cursor: 'pointer',
+                  padding: '12px 14px', borderRadius: 'var(--r-md)', cursor: 'pointer',
                   border: `1px solid ${isSelected ? 'var(--ai-accent)' : 'var(--ai-border)'}`,
                   background: isSelected ? 'rgba(91,111,255,0.06)' : 'var(--ai-bg2)',
                   transition: 'all 0.12s',
                 }}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'Syne,sans-serif' }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'var(--font-body)' }}>
                     {tst.test_definitions?.nom ?? t('aip.test.testFallback')}
                   </span>
-                  <span style={{ fontSize: 10, color: 'var(--ai-dim)', fontFamily: 'DM Mono,monospace' }}>{tst.date}</span>
+                  <span style={{ fontSize: 10, color: 'var(--ai-dim)', fontFamily: 'var(--font-body)' }}>{tst.date}</span>
                 </div>
-                <div style={{ fontSize: 16, fontWeight: 800, fontFamily: 'DM Mono,monospace', color: 'var(--ai-accent)', marginBottom: 6 }}>
+                <div style={{ fontSize: 16, fontWeight: 800, fontFamily: 'var(--font-body)', color: 'var(--ai-accent)', marginBottom: 6 }}>
                   {Object.entries(tst.valeurs).slice(0, 2).map(([k, v]) => `${k}: ${v}`).join(' · ')}
                 </div>
                 {ctx && (
@@ -4539,8 +4539,8 @@ function AnalyzeTestFlow({ onCancel, onRecordConv }: {
                   </div>
                 )}
                 {isSelected && sameType.length >= 2 && (
-                  <div style={{ marginTop: 8, padding: '8px', borderRadius: 8, background: 'var(--ai-bg)' }}>
-                    <p style={{ fontSize: 9, color: 'var(--ai-dim)', margin: '0 0 4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('aip.test.evolution')}</p>
+                  <div style={{ marginTop: 8, padding: '8px', borderRadius: 'var(--r-sm)', background: 'var(--ai-bg)' }}>
+                    <p style={{ fontSize: 10, color: 'var(--ai-dim)', margin: '0 0 4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('aip.test.evolution')}</p>
                     <TestEvolutionMiniChart points={sameType.map(x => ({
                       date: x.date,
                       valeur: typeof Object.values(x.valeurs)[0] === 'number' ? Object.values(x.valeurs)[0] as number : 0,
@@ -4553,12 +4553,12 @@ function AnalyzeTestFlow({ onCancel, onRecordConv }: {
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <button onClick={() => { setPhase('sport'); setTests([]); setTestContexts(new Map()) }}
-            style={{ padding: '9px 14px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer' }}>
+            style={{ padding: '9px 14px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer' }}>
             {t('aip.back')}
           </button>
           <button onClick={() => void handleGenerate()}
             disabled={!selectedTest}
-            style={{ flex: 1, padding: '9px', borderRadius: 9, border: 'none', background: selectedTest ? 'var(--ai-gradient)' : 'var(--ai-bg2)', color: selectedTest ? '#fff' : 'var(--ai-dim)', fontSize: 12, fontWeight: 700, cursor: selectedTest ? 'pointer' : 'not-allowed' }}>
+            style={{ flex: 1, padding: '9px', borderRadius: 'var(--r-sm)', border: 'none', background: selectedTest ? 'var(--ai-gradient)' : 'var(--ai-bg2)', color: selectedTest ? '#fff' : 'var(--ai-dim)', fontSize: 12, fontWeight: 700, cursor: selectedTest ? 'pointer' : 'not-allowed' }}>
             {t('aip.test.analyzeThis')} →
           </button>
         </div>
@@ -4574,7 +4574,7 @@ function AnalyzeTestFlow({ onCancel, onRecordConv }: {
       <div style={{ padding: '8px 0 4px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
           <div>
-            <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 2px', fontFamily: 'Syne,sans-serif' }}>
+            <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 2px', fontFamily: 'var(--font-body)' }}>
               {testNom} · {selectedTest.date}
             </p>
             <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: 0 }}>
@@ -4583,18 +4583,18 @@ function AnalyzeTestFlow({ onCancel, onRecordConv }: {
           </div>
         </div>
 
-        <div style={{ padding: '12px 14px', borderRadius: 10, background: 'linear-gradient(135deg, rgba(91,111,255,0.06) 0%, rgba(6,182,212,0.04) 100%)', border: '1px solid rgba(91,111,255,0.15)', marginBottom: 10 }}>
-          <p style={{ fontSize: 12, fontWeight: 800, color: 'var(--ai-accent)', fontFamily: 'Syne,sans-serif', margin: '0 0 4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+        <div style={{ padding: '12px 14px', borderRadius: 'var(--r-sm)', background: 'linear-gradient(135deg, rgba(91,111,255,0.06) 0%, rgba(6,182,212,0.04) 100%)', border: '1px solid rgba(91,111,255,0.15)', marginBottom: 10 }}>
+          <p style={{ fontSize: 12, fontWeight: 800, color: 'var(--ai-accent)', fontFamily: 'var(--font-body)', margin: '0 0 4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
             {report.interpretation.niveau}
           </p>
           <p style={{ fontSize: 12, color: 'var(--ai-text)', margin: '0 0 4px', fontWeight: 500 }}>{report.interpretation.signification}</p>
           <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: 0, lineHeight: 1.5 }}>{report.interpretation.detail}</p>
         </div>
 
-        <div style={{ padding: '12px 14px', borderRadius: 10, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', marginBottom: 10 }}>
+        <div style={{ padding: '12px 14px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', marginBottom: 10 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-            <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--ai-text)', margin: 0, fontFamily: 'Syne,sans-serif', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('aip.test.reliabilityTitle')}</p>
-            <span style={{ fontSize: 13, fontWeight: 800, fontFamily: 'DM Mono,monospace', color: report.fiabilite.score >= 80 ? '#22c55e' : report.fiabilite.score >= 60 ? '#f97316' : '#ef4444' }}>
+            <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--ai-text)', margin: 0, fontFamily: 'var(--font-body)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('aip.test.reliabilityTitle')}</p>
+            <span style={{ fontSize: 13, fontWeight: 800, fontFamily: 'var(--font-body)', color: report.fiabilite.score >= 80 ? '#22c55e' : report.fiabilite.score >= 60 ? '#f97316' : '#ef4444' }}>
               {report.fiabilite.score}%
             </span>
           </div>
@@ -4612,17 +4612,17 @@ function AnalyzeTestFlow({ onCancel, onRecordConv }: {
             ))}
           </div>
           {report.fiabilite.estimation_corrigee && (
-            <div style={{ marginTop: 10, padding: '8px 10px', borderRadius: 8, background: 'rgba(249,115,22,0.08)', border: '1px solid rgba(249,115,22,0.2)', fontSize: 11, color: '#f97316', lineHeight: 1.5 }}>
+            <div style={{ marginTop: 10, padding: '8px 10px', borderRadius: 'var(--r-sm)', background: 'rgba(249,115,22,0.08)', border: '1px solid rgba(249,115,22,0.2)', fontSize: 11, color: '#f97316', lineHeight: 1.5 }}>
               {report.fiabilite.estimation_corrigee}
             </div>
           )}
         </div>
 
         {report.evolution.disponible && report.evolution.tests.length > 0 && (
-          <div style={{ padding: '12px 14px', borderRadius: 10, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', marginBottom: 10 }}>
-            <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 8px', fontFamily: 'Syne,sans-serif', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('aip.test.evolution')}</p>
+          <div style={{ padding: '12px 14px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', marginBottom: 10 }}>
+            <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 8px', fontFamily: 'var(--font-body)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('aip.test.evolution')}</p>
             {report.evolution.tests.length >= 2 && (
-              <div style={{ marginBottom: 8, padding: '6px', borderRadius: 8, background: 'var(--ai-bg)' }}>
+              <div style={{ marginBottom: 8, padding: '6px', borderRadius: 'var(--r-sm)', background: 'var(--ai-bg)' }}>
                 <TestEvolutionMiniChart points={report.evolution.tests.map(t => ({ date: t.date, valeur: t.valeur }))} />
               </div>
             )}
@@ -4634,12 +4634,12 @@ function AnalyzeTestFlow({ onCancel, onRecordConv }: {
         )}
 
         <div style={{
-          padding: '12px 14px', borderRadius: 10, marginBottom: 10,
+          padding: '12px 14px', borderRadius: 'var(--r-sm)', marginBottom: 10,
           border: `1px solid ${report.impact_zones.mise_a_jour_necessaire ? 'rgba(249,115,22,0.3)' : 'var(--ai-border)'}`,
           background: report.impact_zones.mise_a_jour_necessaire ? 'rgba(249,115,22,0.05)' : 'var(--ai-bg2)',
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-            <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--ai-text)', margin: 0, fontFamily: 'Syne,sans-serif', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('aip.test.zonesImpact')}</p>
+            <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--ai-text)', margin: 0, fontFamily: 'var(--font-body)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('aip.test.zonesImpact')}</p>
             {report.impact_zones.ecart_pct != null && (
               <span style={{ fontSize: 11, fontWeight: 700, color: report.impact_zones.mise_a_jour_necessaire ? '#f97316' : '#22c55e' }}>
                 {report.impact_zones.mise_a_jour_necessaire ? `⚠ ${t('aip.test.gap')} ${report.impact_zones.ecart_pct}%` : `✓ ${t('aip.test.upToDate')}`}
@@ -4659,10 +4659,10 @@ function AnalyzeTestFlow({ onCancel, onRecordConv }: {
               <tbody>
                 {report.impact_zones.zones_estimees.map((z, i) => (
                   <tr key={i}>
-                    <td style={{ padding: '3px 6px', fontWeight: 700, fontFamily: 'DM Mono,monospace', color: 'var(--ai-accent)' }}>{z.zone}</td>
+                    <td style={{ padding: '3px 6px', fontWeight: 700, fontFamily: 'var(--font-body)', color: 'var(--ai-accent)' }}>{z.zone}</td>
                     <td style={{ padding: '3px 6px', color: 'var(--ai-mid)' }}>{z.label}</td>
-                    <td style={{ padding: '3px 6px', fontFamily: 'DM Mono,monospace', color: 'var(--ai-text)' }}>{z.watts_min ?? z.hr_min ?? z.allure_min ?? '—'}</td>
-                    <td style={{ padding: '3px 6px', fontFamily: 'DM Mono,monospace', color: 'var(--ai-text)' }}>{z.watts_max ?? z.hr_max ?? z.allure_max ?? '—'}</td>
+                    <td style={{ padding: '3px 6px', fontFamily: 'var(--font-body)', color: 'var(--ai-text)' }}>{z.watts_min ?? z.hr_min ?? z.allure_min ?? '—'}</td>
+                    <td style={{ padding: '3px 6px', fontFamily: 'var(--font-body)', color: 'var(--ai-text)' }}>{z.watts_max ?? z.hr_max ?? z.allure_max ?? '—'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -4673,7 +4673,7 @@ function AnalyzeTestFlow({ onCancel, onRecordConv }: {
         {report.recommandations.length > 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 10 }}>
             {report.recommandations.map((r, i) => (
-              <div key={i} style={{ padding: '10px 12px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)' }}>
+              <div key={i} style={{ padding: '10px 12px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)' }}>
                 <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 2px' }}>{r.label}</p>
                 <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: 0, lineHeight: 1.4 }}>{r.detail}</p>
               </div>
@@ -4681,12 +4681,12 @@ function AnalyzeTestFlow({ onCancel, onRecordConv }: {
           </div>
         )}
 
-        <div style={{ padding: '8px 12px', borderRadius: 8, background: 'var(--ai-bg2)', fontSize: 10, color: 'var(--ai-dim)', marginBottom: 10 }}>
+        <div style={{ padding: '8px 12px', borderRadius: 'var(--r-sm)', background: 'var(--ai-bg2)', fontSize: 10, color: 'var(--ai-dim)', marginBottom: 10 }}>
           <p style={{ margin: '0 0 2px' }}>{t('aip.sources')} : {report.sources_used.join(' · ')}</p>
           <p style={{ margin: 0 }}>{t('aip.test.confidence')} : <strong style={{ color: confidenceColor }}>{report.confiance}</strong></p>
         </div>
 
-        <button onClick={onCancel} style={{ width: '100%', padding: '9px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer' }}>
+        <button onClick={onCancel} style={{ width: '100%', padding: '9px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer' }}>
           {t('aip.close')}
         </button>
       </div>
@@ -5077,15 +5077,15 @@ Niveau de confiance : [élevé/modéré/faible] — [justification courte]
     if (!activities?.length) {
       return (
         <div style={{ padding: '8px 0 4px' }}>
-          <div style={{ padding: '16px', borderRadius: 10, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', marginBottom: 14 }}>
-            <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 8px', fontFamily: 'Syne,sans-serif' }}>
+          <div style={{ padding: '16px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', marginBottom: 14 }}>
+            <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 8px', fontFamily: 'var(--font-body)' }}>
               {t('aip.ae.noActivities')}
             </p>
             <p style={{ fontSize: 12, color: 'var(--ai-mid)', margin: 0, lineHeight: 1.5 }}>
               {t('aip.ae.connectStravaPre')} <strong style={{ color: 'var(--ai-text)' }}>Connexions → Strava → Synchroniser</strong>.
             </p>
           </div>
-          <button onClick={onCancel} style={{ padding: '9px 16px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
+          <button onClick={onCancel} style={{ padding: '9px 16px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
             {t('aip.close')}
           </button>
         </div>
@@ -5094,7 +5094,7 @@ Niveau de confiance : [élevé/modéré/faible] — [justification courte]
 
     return (
       <div style={{ padding: '8px 0 4px' }}>
-        <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 4px', fontFamily: 'Syne,sans-serif' }}>
+        <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 4px', fontFamily: 'var(--font-body)' }}>
           {t('aip.ae.whichSession')}
         </p>
         <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: '0 0 10px' }}>
@@ -5106,7 +5106,7 @@ Niveau de confiance : [élevé/modéré/faible] — [justification courte]
             <div
               onClick={() => { setCompareMode(p => !p); setCompareAct(null) }}
               style={{
-                width: 28, height: 16, borderRadius: 8,
+                width: 28, height: 16, borderRadius: 'var(--r-sm)',
                 background: compareMode ? 'linear-gradient(135deg,#06B6D4,#5b6fff)' : 'var(--ai-border)',
                 position: 'relative', cursor: 'pointer', transition: 'background 0.15s',
               }}
@@ -5128,7 +5128,7 @@ Niveau de confiance : [élevé/modéré/faible] — [justification courte]
         </div>
 
         {compareMode && selectedAct && compareAct && compareAct.sport_type !== selectedAct.sport_type && (
-          <div style={{ padding: '6px 10px', borderRadius: 7, background: 'rgba(249,115,22,0.1)', border: '1px solid rgba(249,115,22,0.3)', fontSize: 11, color: '#f97316', marginBottom: 8 }}>
+          <div style={{ padding: '6px 10px', borderRadius: 'var(--r-sm)', background: 'rgba(249,115,22,0.1)', border: '1px solid rgba(249,115,22,0.3)', fontSize: 11, color: '#f97316', marginBottom: 8 }}>
             {t('aip.ae.differentSports', { a: selectedAct.sport_type, b: compareAct.sport_type })}
           </div>
         )}
@@ -5143,24 +5143,24 @@ Niveau de confiance : [élevé/modéré/faible] — [justification courte]
               <div key={a.id}
                 onClick={() => handleSelectActivity(a)}
                 style={{
-                  padding: '9px 12px', borderRadius: 8, cursor: 'pointer',
+                  padding: '9px 12px', borderRadius: 'var(--r-sm)', cursor: 'pointer',
                   border: `1px solid ${isMain ? '#5b6fff' : isCmp ? '#06B6D4' : 'var(--ai-border)'}`,
                   background: isMain ? 'rgba(91,111,255,0.08)' : isCmp ? 'rgba(6,182,212,0.08)' : 'var(--ai-bg2)',
                   transition: 'all 0.1s',
                 }}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--ai-text)', fontFamily: 'DM Sans,sans-serif' }}>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--ai-text)', fontFamily: 'var(--font-body)' }}>
                     {t(AE_SPORT_LABELS[a.sport_type] ?? a.sport_type)}
                     {isMain && <span style={{ marginLeft: 6, fontSize: 10, color: '#5b6fff', fontWeight: 700 }}>{t('aip.ae.main')}</span>}
                     {isCmp && <span style={{ marginLeft: 6, fontSize: 10, color: '#06B6D4', fontWeight: 700 }}>{t('aip.ae.compareTag')}</span>}
                   </span>
-                  <span style={{ fontSize: 10, color: 'var(--ai-dim)', fontFamily: 'DM Mono,monospace' }}>{dateStr}</span>
+                  <span style={{ fontSize: 10, color: 'var(--ai-dim)', fontFamily: 'var(--font-body)' }}>{dateStr}</span>
                 </div>
                 <div style={{ fontSize: 11, color: 'var(--ai-mid)', marginTop: 2, lineHeight: 1.4 }}>
                   {fmtDuration(a.moving_time_s)} · {fmtDist(a.distance_m)} · TSS {a.tss ?? '—'} · FC {a.average_heartrate ?? '—'}bpm
                   <span style={{
-                    marginLeft: 8, padding: '1px 6px', borderRadius: 4, fontSize: 9, fontWeight: 600,
+                    marginLeft: 8, padding: '1px 6px', borderRadius: 4, fontSize: 10, fontWeight: 600,
                     background: hasStreams ? 'rgba(34,197,94,0.12)' : 'rgba(249,115,22,0.12)',
                     color: hasStreams ? '#22c55e' : '#f97316',
                   }}>
@@ -5173,7 +5173,7 @@ Niveau de confiance : [élevé/modéré/faible] — [justification courte]
         </div>
 
         <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={onCancel} style={{ padding: '9px 14px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
+          <button onClick={onCancel} style={{ padding: '9px 14px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
             {t('aip.cancel')}
           </button>
           {selectedAct && compareMode && compareAct && (
@@ -5181,11 +5181,11 @@ Niveau de confiance : [élevé/modéré/faible] — [justification courte]
               onClick={() => void handleGenerate()}
               disabled={generating}
               style={{
-                flex: 1, padding: '9px', borderRadius: 9, border: 'none',
+                flex: 1, padding: '9px', borderRadius: 'var(--r-sm)', border: 'none',
                 background: generating ? 'var(--ai-bg2)' : 'var(--ai-gradient)',
                 color: generating ? 'var(--ai-dim)' : '#fff',
                 fontSize: 12, fontWeight: 700, cursor: generating ? 'not-allowed' : 'pointer',
-                fontFamily: 'DM Sans,sans-serif',
+                fontFamily: 'var(--font-body)',
               }}>
               {generating ? t('aip.preparing') : t('aip.ae.compareBoth')}
             </button>
@@ -5202,7 +5202,7 @@ Niveau de confiance : [élevé/modéré/faible] — [justification courte]
 
     return (
       <div style={{ padding: '8px 0 4px' }}>
-        <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 4px', fontFamily: 'Syne,sans-serif' }}>
+        <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 4px', fontFamily: 'var(--font-body)' }}>
           {t('aip.ae.contextLoaded')}
         </p>
         <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: '0 0 12px' }}>
@@ -5215,7 +5215,7 @@ Niveau de confiance : [élevé/modéré/faible] — [justification courte]
             <span>{t('aip.ae.loadingContext')}</span>
           </div>
         ) : ctxData ? (
-          <div style={{ padding: '10px 12px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', marginBottom: 14, fontSize: 11, lineHeight: 1.7, color: 'var(--ai-mid)' }}>
+          <div style={{ padding: '10px 12px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', marginBottom: 14, fontSize: 11, lineHeight: 1.7, color: 'var(--ai-mid)' }}>
             <div>
               <span style={{ fontWeight: 600, color: 'var(--ai-text)' }}>{t('aip.ae.zones')} {act.sport_type}</span>
               {ctxData.zones
@@ -5243,7 +5243,7 @@ Niveau de confiance : [élevé/modéré/faible] — [justification courte]
             <div>{t(ctxData.similarCount !== 1 ? 'aip.ae.nSimilarPlural' : 'aip.ae.nSimilarSingular', { n: ctxData.similarCount })}</div>
             <div style={{ marginTop: 4 }}>
               <span style={{
-                padding: '2px 8px', borderRadius: 5, fontSize: 10, fontWeight: 600,
+                padding: '2px 8px', borderRadius: 'var(--r-sm)', fontSize: 10, fontWeight: 600,
                 background: hasStreams ? 'rgba(34,197,94,0.12)' : 'rgba(249,115,22,0.12)',
                 color: hasStreams ? '#22c55e' : '#f97316',
               }}>
@@ -5255,19 +5255,19 @@ Niveau de confiance : [élevé/modéré/faible] — [justification courte]
 
         <div style={{ display: 'flex', gap: 8 }}>
           <button onClick={() => setStep('select')}
-            style={{ padding: '9px 14px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
+            style={{ padding: '9px 14px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
             {t('aip.back')}
           </button>
           <button
             onClick={() => void handleGenerate()}
             disabled={generating || loadingCtx}
             style={{
-              flex: 1, padding: '9px', borderRadius: 9, border: 'none',
+              flex: 1, padding: '9px', borderRadius: 'var(--r-sm)', border: 'none',
               background: generating || loadingCtx ? 'var(--ai-bg2)' : 'var(--ai-gradient)',
               color: generating || loadingCtx ? 'var(--ai-dim)' : '#fff',
               fontSize: 12, fontWeight: 700,
               cursor: generating || loadingCtx ? 'not-allowed' : 'pointer',
-              fontFamily: 'DM Sans,sans-serif',
+              fontFamily: 'var(--font-body)',
             }}>
             {generating ? t('aip.preparing') : loadingCtx ? t('aip.loading') : t('aip.ae.generateAnalysis')}
           </button>
@@ -5311,7 +5311,7 @@ function RouteMap({ latlng }: { latlng: [number, number][] }) {
   const [ex, ey] = project(sampled[sampled.length - 1])
 
   return (
-    <div style={{ margin: '10px 0', borderRadius: 12, overflow: 'hidden', border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)' }}>
+    <div style={{ margin: '10px 0', borderRadius: 'var(--r-md)', overflow: 'hidden', border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)' }}>
       <div style={{ padding: '9px 12px 4px', fontSize: 11, fontWeight: 600, color: 'var(--ai-mid)' }}>{t('aip.stream.route')}</div>
       <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ display: 'block' }}>
         <path d={d} fill="none" stroke="var(--ai-accent)" strokeWidth={2.4} strokeLinejoin="round" strokeLinecap="round" />
@@ -5407,10 +5407,10 @@ function RouteCard({ spec }: { spec: RouteSpec }) {
     ? ll[Math.max(0, Math.min(ll.length - 1, Math.round(cursor * (ll.length - 1))))]
     : null
   return (
-    <div style={{ margin: '12px 0', marginLeft: 34, borderRadius: 12, overflow: 'hidden', border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)' }}>
+    <div style={{ margin: '12px 0', marginLeft: 34, borderRadius: 'var(--r-md)', overflow: 'hidden', border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)' }}>
       <div style={{ padding: '10px 14px 6px' }}>
-        {spec.title && <p style={{ margin: 0, fontSize: 13.5, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'Syne, sans-serif' }}>{spec.title}</p>}
-        {stats.length > 0 && <p style={{ margin: '2px 0 0', fontSize: 11.5, color: 'var(--ai-mid)', fontFamily: 'DM Mono, monospace' }}>{stats.join(' · ')}</p>}
+        {spec.title && <p style={{ margin: 0, fontSize: 13.5, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'var(--font-body)' }}>{spec.title}</p>}
+        {stats.length > 0 && <p style={{ margin: '2px 0 0', fontSize: 11.5, color: 'var(--ai-mid)', fontFamily: 'var(--font-body)' }}>{stats.join(' · ')}</p>}
         {surf && <p style={{ margin: '2px 0 0', fontSize: 10.5, color: 'var(--ai-dim)' }}>{surf}</p>}
       </div>
       {ll.length > 1 && (
@@ -5455,7 +5455,7 @@ function ChatImage({ url, alt }: { url: string; alt?: string }) {
   }
   return (
     <div style={{ marginLeft: 34, margin: '10px 0', maxWidth: 420 }}>
-      <div style={{ borderRadius: 12, overflow: 'hidden', border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)' }}>
+      <div style={{ borderRadius: 'var(--r-md)', overflow: 'hidden', border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)' }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={url} alt={alt ?? ''} loading="lazy" onError={() => setErrored(true)} style={{ display: 'block', width: '100%', height: 'auto', maxHeight: 460, objectFit: 'contain', background: 'var(--ai-bg2)' }} />
       </div>
@@ -5662,8 +5662,8 @@ function StreamProfileChart({ streams, zones, sport }: {
       {cursor !== null && (
         <div style={{
           display: 'flex', gap: 10, marginBottom: 6, flexWrap: 'wrap', minHeight: 18,
-          background: 'var(--ai-bg2)', borderRadius: 6, padding: '4px 10px', alignItems: 'center',
-          fontSize: 10, fontFamily: 'DM Mono, monospace',
+          background: 'var(--ai-bg2)', borderRadius: 'var(--r-sm)', padding: '4px 10px', alignItems: 'center',
+          fontSize: 10, fontFamily: 'var(--font-body)',
         }}>
           {hrS      && <span style={{ color: '#ef4444', fontWeight: 600 }}>{t('aip.stream.hr')} {Math.round(hrS[Math.min(cursor, hrS.length - 1)])}bpm</span>}
           {isBike && wattsS && <span style={{ color: '#5b6fff', fontWeight: 600 }}>{Math.round(wattsS[Math.min(cursor, wattsS.length - 1)])}W</span>}
@@ -5673,7 +5673,7 @@ function StreamProfileChart({ streams, zones, sport }: {
           {cadenceS && <span style={{ color: '#8b5cf6', fontWeight: 600 }}>{Math.round(cadenceS[Math.min(cursor, cadenceS.length - 1)])}rpm</span>}
           {altS     && <span style={{ color: 'var(--ai-dim)', fontWeight: 500 }}>{Math.round(altS[Math.min(cursor, altS.length - 1)])}m</span>}
           {time.length > cursor && (
-            <span style={{ color: 'var(--ai-dim)', marginLeft: 'auto', fontSize: 9 }}>
+            <span style={{ color: 'var(--ai-dim)', marginLeft: 'auto', fontSize: 10 }}>
               {(() => { const t = time[cursor] - (time[0] ?? 0); return `${Math.floor(t / 60)}:${String(Math.round(t % 60)).padStart(2, '0')}` })()}
             </span>
           )}
@@ -5728,9 +5728,9 @@ function StreamProfileChart({ streams, zones, sport }: {
 
           return (
             <div key={track.label} style={{ marginBottom: 2 }}>
-              <div style={{ fontSize: 9, color: 'var(--ai-dim)', marginBottom: 1, display: 'flex', justifyContent: 'space-between' }}>
+              <div style={{ fontSize: 10, color: 'var(--ai-dim)', marginBottom: 1, display: 'flex', justifyContent: 'space-between' }}>
                 <span style={{ color: track.color, fontWeight: 600 }}>{track.displayLabel}</span>
-                <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 8 }}>{rangeLabel}</span>
+                <span style={{ fontFamily: 'var(--font-body)', fontSize: 10 }}>{rangeLabel}</span>
               </div>
               <svg
                 viewBox={`0 0 1000 ${track.H}`}
@@ -5796,7 +5796,7 @@ function StreamProfileChart({ streams, zones, sport }: {
         >
           <div
             style={{
-              background: 'var(--ai-bg, #1a1a2e)', borderRadius: 12,
+              background: 'var(--ai-bg, #1a1a2e)', borderRadius: 'var(--r-md)',
               padding: '20px 24px', minWidth: 260, maxWidth: 340,
               border: '1px solid var(--ai-border)',
               boxShadow: '0 12px 40px rgba(0,0,0,0.25)',
@@ -5804,7 +5804,7 @@ function StreamProfileChart({ streams, zones, sport }: {
             onClick={e => e.stopPropagation()}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'Syne, sans-serif' }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'var(--font-body)' }}>
                 {t('aip.stream.selection')}{selStats.dur ? ` — ${Math.floor(selStats.dur / 60)}min${String(Math.round(selStats.dur % 60)).padStart(2, '0')}` : ''}
               </div>
               <button
@@ -5816,7 +5816,7 @@ function StreamProfileChart({ streams, zones, sport }: {
               {selStats.dist != null && selStats.dist > 0 && (
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <span style={{ color: 'var(--ai-dim)' }}>{t('aip.stream.distance')}</span>
-                  <span style={{ fontWeight: 600, color: 'var(--ai-text)', fontFamily: 'DM Mono, monospace' }}>
+                  <span style={{ fontWeight: 600, color: 'var(--ai-text)', fontFamily: 'var(--font-body)' }}>
                     {selStats.dist >= 1000 ? `${(selStats.dist / 1000).toFixed(2)} km` : `${Math.round(selStats.dist)} m`}
                   </span>
                 </div>
@@ -5824,37 +5824,37 @@ function StreamProfileChart({ streams, zones, sport }: {
               {selStats.hrMoy != null && (
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <span style={{ color: 'var(--ai-dim)' }}>{t('aip.stream.hrAvg')}</span>
-                  <span style={{ fontWeight: 600, color: 'var(--ai-text)', fontFamily: 'DM Mono, monospace' }}>{selStats.hrMoy} bpm</span>
+                  <span style={{ fontWeight: 600, color: 'var(--ai-text)', fontFamily: 'var(--font-body)' }}>{selStats.hrMoy} bpm</span>
                 </div>
               )}
               {selStats.hrMax != null && (
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <span style={{ color: 'var(--ai-dim)' }}>{t('aip.stream.hrMax')}</span>
-                  <span style={{ fontWeight: 600, color: 'var(--ai-text)', fontFamily: 'DM Mono, monospace' }}>{selStats.hrMax} bpm</span>
+                  <span style={{ fontWeight: 600, color: 'var(--ai-text)', fontFamily: 'var(--font-body)' }}>{selStats.hrMax} bpm</span>
                 </div>
               )}
               {selStats.watts != null && (
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <span style={{ color: 'var(--ai-dim)' }}>{t('aip.stream.wattsAvg')}</span>
-                  <span style={{ fontWeight: 600, color: 'var(--ai-text)', fontFamily: 'DM Mono, monospace' }}>{selStats.watts} W</span>
+                  <span style={{ fontWeight: 600, color: 'var(--ai-text)', fontFamily: 'var(--font-body)' }}>{selStats.watts} W</span>
                 </div>
               )}
               {selStats.pace != null && (
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <span style={{ color: 'var(--ai-dim)' }}>{t('aip.stream.paceAvg')}</span>
-                  <span style={{ fontWeight: 600, color: 'var(--ai-text)', fontFamily: 'DM Mono, monospace' }}>{fmtPaceFromSKm(selStats.pace)}</span>
+                  <span style={{ fontWeight: 600, color: 'var(--ai-text)', fontFamily: 'var(--font-body)' }}>{fmtPaceFromSKm(selStats.pace)}</span>
                 </div>
               )}
               {selStats.dPlus != null && selStats.dPlus > 0 && (
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <span style={{ color: 'var(--ai-dim)' }}>D+</span>
-                  <span style={{ fontWeight: 600, color: 'var(--ai-text)', fontFamily: 'DM Mono, monospace' }}>+{selStats.dPlus} m</span>
+                  <span style={{ fontWeight: 600, color: 'var(--ai-text)', fontFamily: 'var(--font-body)' }}>+{selStats.dPlus} m</span>
                 </div>
               )}
               {selStats.cad != null && (
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <span style={{ color: 'var(--ai-dim)' }}>{t('aip.stream.cadenceAvg')}</span>
-                  <span style={{ fontWeight: 600, color: 'var(--ai-text)', fontFamily: 'DM Mono, monospace' }}>{selStats.cad} rpm</span>
+                  <span style={{ fontWeight: 600, color: 'var(--ai-text)', fontFamily: 'var(--font-body)' }}>{selStats.cad} rpm</span>
                 </div>
               )}
             </div>
@@ -5896,7 +5896,7 @@ function CardiacDriftChart({ heartrate, driftPct }: { heartrate: number[]; drift
     <div style={{ marginBottom: 14 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
         <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--ai-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: 0 }}>{t('aip.drift.title')}</p>
-        <span style={{ fontSize: 13, fontWeight: 800, fontFamily: 'DM Mono,monospace', color: driftColor }}>{driftPct > 0 ? '+' : ''}{driftPct.toFixed(1)}%</span>
+        <span style={{ fontSize: 13, fontWeight: 800, fontFamily: 'var(--font-body)', color: driftColor }}>{driftPct > 0 ? '+' : ''}{driftPct.toFixed(1)}%</span>
       </div>
       <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: H, display: 'block' }}>
         <path d={path} fill="none" stroke="rgba(239,68,68,0.3)" strokeWidth="1" />
@@ -5933,11 +5933,11 @@ function ZoneDistributionBar({ distribution, target }: {
       <div style={{ display: 'flex', height: 18, borderRadius: 4, overflow: 'hidden', marginBottom: 2 }}>
         {active.map(z => (
           <div key={z.zone} style={{ width: `${z.pct}%`, background: ZONE_COLORS[z.zone] ?? z.color, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            {z.pct > 8 && <span style={{ fontSize: 8, fontWeight: 700, color: '#fff' }}>{z.zone}</span>}
+            {z.pct > 8 && <span style={{ fontSize: 10, fontWeight: 700, color: '#fff' }}>{z.zone}</span>}
           </div>
         ))}
       </div>
-      <p style={{ fontSize: 9, color: 'var(--ai-dim)', margin: '0 0 4px' }}>{t('aip.zoneDist.done')}</p>
+      <p style={{ fontSize: 10, color: 'var(--ai-dim)', margin: '0 0 4px' }}>{t('aip.zoneDist.done')}</p>
       {target && target.filter(z => z.pct > 0).length > 0 && (
         <>
           <div style={{ display: 'flex', height: 10, borderRadius: 3, overflow: 'hidden', marginBottom: 2, opacity: 0.5 }}>
@@ -5945,7 +5945,7 @@ function ZoneDistributionBar({ distribution, target }: {
               <div key={z.zone} style={{ width: `${z.pct}%`, background: ZONE_COLORS[z.zone] ?? '#999' }} />
             ))}
           </div>
-          <p style={{ fontSize: 9, color: 'var(--ai-dim)', margin: '0 0 4px' }}>{t('aip.zoneDist.target')}</p>
+          <p style={{ fontSize: 10, color: 'var(--ai-dim)', margin: '0 0 4px' }}>{t('aip.zoneDist.target')}</p>
         </>
       )}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 4 }}>
@@ -6756,7 +6756,7 @@ IMPORTANT: Réponds UNIQUEMENT en JSON valide (commence par {, finit par }). For
     const hasActivities = totalCount > 0
     return (
       <div style={{ padding: '8px 0 4px' }}>
-        <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 12px', fontFamily: 'Syne,sans-serif' }}>{t('aip.at.title')}</p>
+        <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 12px', fontFamily: 'var(--font-body)' }}>{t('aip.at.title')}</p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
             <span style={{ color: hasActivities ? '#22c55e' : '#ef4444' }}>{hasActivities ? '✓' : '✗'}</span>
@@ -6768,16 +6768,16 @@ IMPORTANT: Réponds UNIQUEMENT en JSON valide (commence par {, finit par }). For
           </div>
         </div>
         {!hasActivities && (
-          <div style={{ padding: '12px', borderRadius: 10, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', marginBottom: 14, fontSize: 12, color: '#ef4444', lineHeight: 1.5 }}>
+          <div style={{ padding: '12px', borderRadius: 'var(--r-sm)', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', marginBottom: 14, fontSize: 12, color: '#ef4444', lineHeight: 1.5 }}>
             {t('aip.at.noActivitySync')}
           </div>
         )}
         {error && <p style={{ fontSize: 11, color: '#ef4444', margin: '0 0 8px' }}>{error}</p>}
         <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={onCancel} style={{ padding: '9px 14px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer' }}>{t('aip.cancel')}</button>
+          <button onClick={onCancel} style={{ padding: '9px 14px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer' }}>{t('aip.cancel')}</button>
           {hasActivities && (
             <button onClick={() => { setPhase('type_select') }}
-              style={{ flex: 1, padding: '9px', borderRadius: 9, border: 'none', background: 'var(--ai-gradient)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+              style={{ flex: 1, padding: '9px', borderRadius: 'var(--r-sm)', border: 'none', background: 'var(--ai-gradient)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
               {t('aip.continue')} →
             </button>
           )}
@@ -6798,7 +6798,7 @@ IMPORTANT: Réponds UNIQUEMENT en JSON valide (commence par {, finit par }). For
   if (phase === 'type_select') {
     return (
       <div style={{ padding: '8px 0 4px' }}>
-        <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 4px', fontFamily: 'Syne,sans-serif' }}>
+        <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 4px', fontFamily: 'var(--font-body)' }}>
           {t('aip.at.title')}
         </p>
         <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: '0 0 14px' }}>
@@ -6813,7 +6813,7 @@ IMPORTANT: Réponds UNIQUEMENT en JSON valide (commence par {, finit par }). For
             { id: 'year' as const, label: t('aip.at.typeYear'), desc: t('aip.at.typeYearDesc'), icon: <><rect x="3" y="4" width="18" height="17" rx="2" /><path d="M3 9h18M8 2v4M16 2v4" /></> },
           ]).map(opt => (
             <button key={opt.id} onClick={() => setAnalysisType(opt.id)} style={{
-              display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10,
+              display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 'var(--r-sm)',
               border: `1px solid ${analysisType === opt.id ? 'var(--ai-accent)' : 'var(--ai-border)'}`,
               background: analysisType === opt.id ? 'rgba(6,182,212,0.06)' : 'var(--ai-bg2)',
               cursor: 'pointer', textAlign: 'left' as const, width: '100%',
@@ -6835,7 +6835,7 @@ IMPORTANT: Réponds UNIQUEMENT en JSON valide (commence par {, finit par }). For
             <div style={{ display: 'flex', gap: 6 }}>
               {(['single', 'compare'] as const).map(m => (
                 <button key={m} onClick={() => setCompareMode(m === 'compare')} style={{
-                  flex: 1, padding: '8px', borderRadius: 8, fontSize: 11,
+                  flex: 1, padding: '8px', borderRadius: 'var(--r-sm)', fontSize: 11,
                   border: `1px solid ${(m === 'compare') === compareMode ? 'var(--ai-accent)' : 'var(--ai-border)'}`,
                   background: (m === 'compare') === compareMode ? 'rgba(6,182,212,0.06)' : 'var(--ai-bg2)',
                   color: (m === 'compare') === compareMode ? 'var(--ai-accent)' : 'var(--ai-mid)',
@@ -6849,7 +6849,7 @@ IMPORTANT: Réponds UNIQUEMENT en JSON valide (commence par {, finit par }). For
         )}
 
         <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={onCancel} style={{ padding: '9px 16px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer' }}>{t('aip.cancel')}</button>
+          <button onClick={onCancel} style={{ padding: '9px 16px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer' }}>{t('aip.cancel')}</button>
           <button
             onClick={() => {
               if (analysisType === 'training' || analysisType === 'race') setPhase('select')
@@ -6857,7 +6857,7 @@ IMPORTANT: Réponds UNIQUEMENT en JSON valide (commence par {, finit par }). For
               else if (analysisType === 'year') { void loadAvailableYears(); setPhase('year_select') }
             }}
             disabled={!analysisType}
-            style={{ flex: 1, padding: '9px', borderRadius: 9, border: 'none', background: analysisType ? 'var(--ai-gradient)' : 'var(--ai-border)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: analysisType ? 'pointer' : 'not-allowed' }}
+            style={{ flex: 1, padding: '9px', borderRadius: 'var(--r-sm)', border: 'none', background: analysisType ? 'var(--ai-gradient)' : 'var(--ai-border)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: analysisType ? 'pointer' : 'not-allowed' }}
           >{t('aip.continue')} →</button>
         </div>
       </div>
@@ -6907,7 +6907,7 @@ IMPORTANT: Réponds UNIQUEMENT en JSON valide (commence par {, finit par }). For
         <button key={a.id} onClick={() => toggleSelect(a)}
           style={{
             display: 'flex', alignItems: 'center', gap: 10, width: '100%',
-            padding: '10px 12px', borderRadius: 10, textAlign: 'left',
+            padding: '10px 12px', borderRadius: 'var(--r-sm)', textAlign: 'left',
             border: `1.5px solid ${isSelected ? '#5b6fff' : 'var(--ai-border)'}`,
             background: isSelected ? 'rgba(91,111,255,0.06)' : 'var(--ai-bg2)',
             cursor: 'pointer', transition: 'all 0.12s',
@@ -6916,18 +6916,18 @@ IMPORTANT: Réponds UNIQUEMENT en JSON valide (commence par {, finit par }). For
           <div style={{ flex: 1, minWidth: 0 }}>
             <p style={{ fontSize: 12, fontWeight: 600, color: isSelected ? '#5b6fff' : 'var(--ai-text)', margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {a.title ?? a.sport_type.replace('_', ' ')}
-              {a.is_race && <span style={{ fontSize: 9, fontWeight: 700, color: '#f97316', marginLeft: 6 }}>{t('aip.at.raceTag')}</span>}
+              {a.is_race && <span style={{ fontSize: 10, fontWeight: 700, color: '#f97316', marginLeft: 6 }}>{t('aip.at.raceTag')}</span>}
             </p>
             <p style={{ fontSize: 10, color: 'var(--ai-dim)', margin: 0 }}>
               {dateStr} · {durMin}min{distKm ? ` · ${distKm}km` : ''}{a.tss ? ` · TSS ${a.tss}` : ''}
             </p>
           </div>
           <div style={{ display: 'flex', gap: 4, flexShrink: 0, alignItems: 'center' }}>
-            {hasStreams && <span style={{ fontSize: 8, fontWeight: 700, padding: '2px 5px', borderRadius: 4, background: 'rgba(91,111,255,0.12)', color: '#5b6fff' }}>{t('aip.at.streamsTag')}</span>}
+            {hasStreams && <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 5px', borderRadius: 4, background: 'rgba(91,111,255,0.12)', color: '#5b6fff' }}>{t('aip.at.streamsTag')}</span>}
             {isSelected && (
               <div style={{ width: 18, height: 18, borderRadius: '50%', background: '#5b6fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 {compareMode
-                  ? <span style={{ fontSize: 9, fontWeight: 700, color: '#fff' }}>{idx === 0 ? 'A' : 'B'}</span>
+                  ? <span style={{ fontSize: 10, fontWeight: 700, color: '#fff' }}>{idx === 0 ? 'A' : 'B'}</span>
                   : <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round"><path d="M20 6L9 17l-5-5"/></svg>}
               </div>
             )}
@@ -6938,7 +6938,7 @@ IMPORTANT: Réponds UNIQUEMENT en JSON valide (commence par {, finit par }). For
 
     return (
       <div style={{ padding: '4px 0' }}>
-        <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 4px', fontFamily: 'Syne,sans-serif' }}>
+        <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 4px', fontFamily: 'var(--font-body)' }}>
           {analysisType === 'race' ? t('aip.at.titleRaces') : t('aip.at.title')}
         </p>
 
@@ -6950,7 +6950,7 @@ IMPORTANT: Réponds UNIQUEMENT en JSON valide (commence par {, finit par }). For
         </label>
 
         {showSimilarOnly && (
-          <div style={{ padding: '8px 12px', borderRadius: 8, background: 'rgba(91,111,255,0.06)', border: '1px solid rgba(91,111,255,0.2)', marginBottom: 10, fontSize: 11, color: '#5b6fff' }}>
+          <div style={{ padding: '8px 12px', borderRadius: 'var(--r-sm)', background: 'rgba(91,111,255,0.06)', border: '1px solid rgba(91,111,255,0.2)', marginBottom: 10, fontSize: 11, color: '#5b6fff' }}>
             {t('aip.at.similarTo', { name: selected[0].title ?? selected[0].sport_type, min: Math.round((selected[0].moving_time_s ?? 0) / 60) })}
           </div>
         )}
@@ -6959,7 +6959,7 @@ IMPORTANT: Réponds UNIQUEMENT en JSON valide (commence par {, finit par }). For
         <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 12 }}>
           {(['', ...availableSports] as string[]).map(sp => (
             <button key={sp || '__all__'} onClick={() => setSportFilter(sp || null)}
-              style={{ padding: '5px 12px', borderRadius: 20, border: `1px solid ${(sp === '' ? !sportFilter : sportFilter === sp) ? '#5b6fff' : 'var(--ai-border)'}`, background: (sp === '' ? !sportFilter : sportFilter === sp) ? 'rgba(91,111,255,0.08)' : 'transparent', color: (sp === '' ? !sportFilter : sportFilter === sp) ? '#5b6fff' : 'var(--ai-mid)', fontSize: 11, fontWeight: 600, cursor: 'pointer', textTransform: 'capitalize' }}>
+              style={{ padding: '5px 12px', borderRadius: 'var(--r-lg)', border: `1px solid ${(sp === '' ? !sportFilter : sportFilter === sp) ? '#5b6fff' : 'var(--ai-border)'}`, background: (sp === '' ? !sportFilter : sportFilter === sp) ? 'rgba(91,111,255,0.08)' : 'transparent', color: (sp === '' ? !sportFilter : sportFilter === sp) ? '#5b6fff' : 'var(--ai-mid)', fontSize: 11, fontWeight: 600, cursor: 'pointer', textTransform: 'capitalize' }}>
               {sp === '' ? t('aip.all') : t(AE_SPORT_LABELS[sp] ?? sp.replace('_', ' '))}
             </button>
           ))}
@@ -6990,7 +6990,7 @@ IMPORTANT: Réponds UNIQUEMENT en JSON valide (commence par {, finit par }). For
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginBottom: 10, padding: '6px 0', borderTop: '1px solid var(--ai-border)', borderBottom: '1px solid var(--ai-border)' }}>
           <button onClick={() => setSelectedMonth(prev => prev.month === 0 ? { year: prev.year - 1, month: 11 } : { year: prev.year, month: prev.month - 1 })}
             style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--ai-mid)', fontSize: 16, padding: '2px 8px', lineHeight: 1 }}>◀</button>
-          <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'Syne,sans-serif', minWidth: 130, textAlign: 'center' }}>
+          <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'var(--font-body)', minWidth: 130, textAlign: 'center' }}>
             {MONTHS_FR[selectedMonth.month]} {selectedMonth.year}
           </span>
           <button onClick={() => setSelectedMonth(prev => prev.month === 11 ? { year: prev.year + 1, month: 0 } : { year: prev.year, month: prev.month + 1 })}
@@ -7016,12 +7016,12 @@ IMPORTANT: Réponds UNIQUEMENT en JSON valide (commence par {, finit par }). For
           onClick={() => void handleAnalyze()}
           disabled={selected.length === 0 || (compareMode && selected.length < 2)}
           style={{
-            width: '100%', padding: '11px', borderRadius: 10, border: 'none',
+            width: '100%', padding: '11px', borderRadius: 'var(--r-sm)', border: 'none',
             background: (selected.length > 0 && (!compareMode || selected.length === 2))
               ? 'linear-gradient(135deg,#06B6D4,#5b6fff)' : 'var(--ai-border)',
             color: (selected.length > 0 && (!compareMode || selected.length === 2)) ? '#fff' : 'var(--ai-dim)',
             fontSize: 13, fontWeight: 700, cursor: selected.length > 0 ? 'pointer' : 'not-allowed',
-            fontFamily: 'Syne,sans-serif', marginBottom: 6,
+            fontFamily: 'var(--font-body)', marginBottom: 6,
           }}>
           {compareMode
             ? selected.length === 2
@@ -7058,12 +7058,12 @@ IMPORTANT: Réponds UNIQUEMENT en JSON valide (commence par {, finit par }). For
       <div style={{ padding: '8px 0 4px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
           <div>
-            <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 2px', fontFamily: 'Syne,sans-serif' }}>
+            <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 2px', fontFamily: 'var(--font-body)' }}>
               {mainAct.title ?? t(AE_SPORT_LABELS[mainAct.sport_type] ?? mainAct.sport_type)}
             </p>
             <p style={{ fontSize: 10, color: 'var(--ai-dim)', margin: 0 }}>{mainAct.started_at.slice(0, 10)}</p>
           </div>
-          <span style={{ padding: '4px 10px', borderRadius: 20, background: `${vColor}1a`, color: vColor, fontSize: 11, fontWeight: 700, border: `1px solid ${vColor}33` }}>
+          <span style={{ padding: '4px 10px', borderRadius: 'var(--r-lg)', background: `${vColor}1a`, color: vColor, fontSize: 11, fontWeight: 700, border: `1px solid ${vColor}33` }}>
             {verdictLabels[report.verdict]}
           </span>
         </div>
@@ -7075,10 +7075,10 @@ IMPORTANT: Réponds UNIQUEMENT en JSON valide (commence par {, finit par }). For
             { label: 'TSS', value: report.kpis.tss != null ? String(report.kpis.tss) : '—' },
             { label: 'EI', value: report.kpis.efficiency_index != null ? report.kpis.efficiency_index.toFixed(2) : '—', sub: report.kpis.ei_vs_average != null ? `${report.kpis.ei_vs_average > 0 ? '+' : ''}${report.kpis.ei_vs_average.toFixed(1)}%` : '' },
           ].map(k => (
-            <div key={k.label} style={{ padding: '8px 6px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', textAlign: 'center' }}>
-              <p style={{ fontSize: 9, fontWeight: 700, color: 'var(--ai-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 2px' }}>{k.label}</p>
-              <p style={{ fontSize: 14, fontWeight: 800, fontFamily: 'DM Mono,monospace', color: 'var(--ai-text)', margin: 0 }}>{k.value}</p>
-              {k.sub && <p style={{ fontSize: 9, color: 'var(--ai-dim)', margin: 0 }}>{k.sub}</p>}
+            <div key={k.label} style={{ padding: '8px 6px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', textAlign: 'center' }}>
+              <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--ai-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 2px' }}>{k.label}</p>
+              <p style={{ fontSize: 14, fontWeight: 800, fontFamily: 'var(--font-body)', color: 'var(--ai-text)', margin: 0 }}>{k.value}</p>
+              {k.sub && <p style={{ fontSize: 10, color: 'var(--ai-dim)', margin: 0 }}>{k.sub}</p>}
             </div>
           ))}
         </div>
@@ -7127,7 +7127,7 @@ IMPORTANT: Réponds UNIQUEMENT en JSON valide (commence par {, finit par }). For
 
         {/* ── Séparateur + titre Analyse du coach ── */}
         <div style={{ margin: '16px 0 10px', borderBottom: '1px solid var(--ai-border)' }} />
-        <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'Syne, sans-serif', margin: '0 0 10px', letterSpacing: '-0.01em' }}>
+        <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'var(--font-body)', margin: '0 0 10px', letterSpacing: '-0.01em' }}>
           {t('aip.at.coachAnalysis')}
         </p>
 
@@ -7144,9 +7144,9 @@ IMPORTANT: Réponds UNIQUEMENT en JSON valide (commence par {, finit par }). For
         ))}
 
         {report.comparison && (
-          <div style={{ padding: '12px 14px', borderRadius: 10, border: '1px solid rgba(6,182,212,0.2)', background: 'rgba(6,182,212,0.04)', marginBottom: 10 }}>
+          <div style={{ padding: '12px 14px', borderRadius: 'var(--r-sm)', border: '1px solid rgba(6,182,212,0.2)', background: 'rgba(6,182,212,0.04)', marginBottom: 10 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-              <p style={{ fontSize: 11, fontWeight: 700, color: '#06B6D4', margin: 0, fontFamily: 'Syne,sans-serif', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('aip.at.comparison')}</p>
+              <p style={{ fontSize: 11, fontWeight: 700, color: '#06B6D4', margin: 0, fontFamily: 'var(--font-body)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('aip.at.comparison')}</p>
               <span style={{ fontSize: 11, fontWeight: 700, color: report.comparison.progression === 'progression' ? '#22c55e' : report.comparison.progression === 'regression' ? '#ef4444' : 'var(--ai-mid)' }}>
                 {report.comparison.progression === 'progression' ? `↑ ${t('aip.at.progression')}` : report.comparison.progression === 'regression' ? `↓ ${t('aip.at.regression')}` : `= ${t('aip.at.stable')}`}
               </span>
@@ -7163,9 +7163,9 @@ IMPORTANT: Réponds UNIQUEMENT en JSON valide (commence par {, finit par }). For
                 {(report.comparison?.deltas ?? []).map((d, i) => (
                   <tr key={i}>
                     <td style={{ padding: '3px 5px', color: 'var(--ai-mid)' }}>{d.metrique}</td>
-                    <td style={{ padding: '3px 5px', fontFamily: 'DM Mono,monospace', color: 'var(--ai-text)', textAlign: 'center' }}>{d.a ?? '—'}</td>
-                    <td style={{ padding: '3px 5px', fontFamily: 'DM Mono,monospace', color: 'var(--ai-text)', textAlign: 'center' }}>{d.b ?? '—'}</td>
-                    <td style={{ padding: '3px 5px', fontFamily: 'DM Mono,monospace', fontWeight: 700, textAlign: 'center', color: (d.delta ?? '').startsWith('+') ? '#22c55e' : (d.delta ?? '').startsWith('-') ? '#ef4444' : 'var(--ai-mid)' }}>{d.delta ?? '—'}</td>
+                    <td style={{ padding: '3px 5px', fontFamily: 'var(--font-body)', color: 'var(--ai-text)', textAlign: 'center' }}>{d.a ?? '—'}</td>
+                    <td style={{ padding: '3px 5px', fontFamily: 'var(--font-body)', color: 'var(--ai-text)', textAlign: 'center' }}>{d.b ?? '—'}</td>
+                    <td style={{ padding: '3px 5px', fontFamily: 'var(--font-body)', fontWeight: 700, textAlign: 'center', color: (d.delta ?? '').startsWith('+') ? '#22c55e' : (d.delta ?? '').startsWith('-') ? '#ef4444' : 'var(--ai-mid)' }}>{d.delta ?? '—'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -7179,7 +7179,7 @@ IMPORTANT: Réponds UNIQUEMENT en JSON valide (commence par {, finit par }). For
             <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--ai-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 6px' }}>{t('aip.at.optimizationTips')}</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {(report.conseils ?? []).map((c, i) => (
-                <div key={i} style={{ padding: '10px 12px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)' }}>
+                <div key={i} style={{ padding: '10px 12px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)' }}>
                   <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 2px' }}>{c.label}</p>
                   <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: '0 0 2px', lineHeight: 1.4 }}>{c.detail}</p>
                   <p style={{ fontSize: 10, color: 'var(--ai-dim)', margin: 0, fontStyle: 'italic' }}>{c.data_justification}</p>
@@ -7199,7 +7199,7 @@ IMPORTANT: Réponds UNIQUEMENT en JSON valide (commence par {, finit par }). For
                 <button
                   key={i}
                   onClick={() => handleFollowUp(action)}
-                  style={{ padding: '7px 12px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 11, cursor: 'pointer', fontWeight: 500, fontFamily: 'DM Sans, sans-serif', transition: 'border-color 0.15s, background 0.15s' }}
+                  style={{ padding: '7px 12px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 11, cursor: 'pointer', fontWeight: 500, fontFamily: 'var(--font-body)', transition: 'border-color 0.15s, background 0.15s' }}
                   onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(6,182,212,0.5)'; (e.currentTarget as HTMLButtonElement).style.background = 'rgba(6,182,212,0.06)' }}
                   onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--ai-border)'; (e.currentTarget as HTMLButtonElement).style.background = 'var(--ai-bg2)' }}
                 >
@@ -7210,12 +7210,12 @@ IMPORTANT: Réponds UNIQUEMENT en JSON valide (commence par {, finit par }). For
           </div>
         )}
 
-        <div style={{ padding: '8px 12px', borderRadius: 8, background: 'var(--ai-bg2)', fontSize: 10, color: 'var(--ai-dim)', marginBottom: 10 }}>
+        <div style={{ padding: '8px 12px', borderRadius: 'var(--r-sm)', background: 'var(--ai-bg2)', fontSize: 10, color: 'var(--ai-dim)', marginBottom: 10 }}>
           <p style={{ margin: '0 0 2px' }}>{t('aip.sources')} : {report.sources_used.join(' · ')}</p>
           <p style={{ margin: 0 }}>{t('aip.test.confidence')} : <strong style={{ color: confidenceColor }}>{report.confiance}</strong></p>
         </div>
 
-        <button onClick={onCancel} style={{ width: '100%', padding: '9px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer' }}>
+        <button onClick={onCancel} style={{ width: '100%', padding: '9px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer' }}>
           {t('aip.close')}
         </button>
       </div>
@@ -7232,7 +7232,7 @@ IMPORTANT: Réponds UNIQUEMENT en JSON valide (commence par {, finit par }). For
     ]
     return (
       <div style={{ padding: '8px 0 4px' }}>
-        <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 12px', fontFamily: 'Syne,sans-serif' }}>
+        <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 12px', fontFamily: 'var(--font-body)' }}>
           {compareMode ? t('aip.at.select2periods') : t('aip.at.selectPeriod')}
         </p>
 
@@ -7242,7 +7242,7 @@ IMPORTANT: Réponds UNIQUEMENT en JSON valide (commence par {, finit par }). For
         <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' as const, marginBottom: 8 }}>
           {shortcuts.map(s => (
             <button key={s.label} onClick={() => setPeriod1(s)} style={{
-              padding: '5px 10px', borderRadius: 6, fontSize: 10,
+              padding: '5px 10px', borderRadius: 'var(--r-sm)', fontSize: 10,
               border: `1px solid ${period1?.label === s.label ? 'var(--ai-accent)' : 'var(--ai-border)'}`,
               background: period1?.label === s.label ? 'rgba(6,182,212,0.06)' : 'var(--ai-bg2)',
               color: period1?.label === s.label ? 'var(--ai-accent)' : 'var(--ai-mid)', cursor: 'pointer',
@@ -7251,17 +7251,17 @@ IMPORTANT: Réponds UNIQUEMENT en JSON valide (commence par {, finit par }). For
         </div>
         <div style={{ display: 'flex', gap: 6, marginBottom: 8, alignItems: 'flex-end' }}>
           <div>
-            <label style={{ fontSize: 9, color: 'var(--ai-dim)', display: 'block', marginBottom: 3 }}>{t('aip.at.from')}</label>
+            <label style={{ fontSize: 10, color: 'var(--ai-dim)', display: 'block', marginBottom: 3 }}>{t('aip.at.from')}</label>
             <input type="date" value={customStart1} onChange={e => setCustomStart1(e.target.value)}
-              style={{ padding: '5px 7px', borderRadius: 6, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 11, outline: 'none' }} />
+              style={{ padding: '5px 7px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 11, outline: 'none' }} />
           </div>
           <div>
-            <label style={{ fontSize: 9, color: 'var(--ai-dim)', display: 'block', marginBottom: 3 }}>{t('aip.at.to')}</label>
+            <label style={{ fontSize: 10, color: 'var(--ai-dim)', display: 'block', marginBottom: 3 }}>{t('aip.at.to')}</label>
             <input type="date" value={customEnd1} onChange={e => setCustomEnd1(e.target.value)}
-              style={{ padding: '5px 7px', borderRadius: 6, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 11, outline: 'none' }} />
+              style={{ padding: '5px 7px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 11, outline: 'none' }} />
           </div>
           <button onClick={() => { if (customStart1 && customEnd1) setPeriod1({ start: customStart1, end: customEnd1, label: `${customStart1} → ${customEnd1}` }) }}
-            style={{ padding: '5px 10px', borderRadius: 6, fontSize: 10, border: 'none', background: 'var(--ai-accent)', color: '#fff', cursor: 'pointer', height: 28 }}>OK</button>
+            style={{ padding: '5px 10px', borderRadius: 'var(--r-sm)', fontSize: 10, border: 'none', background: 'var(--ai-accent)', color: '#fff', cursor: 'pointer', height: 28 }}>OK</button>
         </div>
         {period1 && <p style={{ fontSize: 11, color: 'var(--ai-accent)', marginBottom: 10 }}>✓ {period1.label}</p>}
 
@@ -7271,7 +7271,7 @@ IMPORTANT: Réponds UNIQUEMENT en JSON valide (commence par {, finit par }). For
             <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' as const, marginBottom: 8 }}>
               {shortcuts.map(s => (
                 <button key={s.label} onClick={() => setPeriod2(s)} style={{
-                  padding: '5px 10px', borderRadius: 6, fontSize: 10,
+                  padding: '5px 10px', borderRadius: 'var(--r-sm)', fontSize: 10,
                   border: `1px solid ${period2?.label === s.label ? '#f97316' : 'var(--ai-border)'}`,
                   background: period2?.label === s.label ? 'rgba(249,115,22,0.06)' : 'var(--ai-bg2)',
                   color: period2?.label === s.label ? '#f97316' : 'var(--ai-mid)', cursor: 'pointer',
@@ -7280,17 +7280,17 @@ IMPORTANT: Réponds UNIQUEMENT en JSON valide (commence par {, finit par }). For
             </div>
             <div style={{ display: 'flex', gap: 6, marginBottom: 8, alignItems: 'flex-end' }}>
               <div>
-                <label style={{ fontSize: 9, color: 'var(--ai-dim)', display: 'block', marginBottom: 3 }}>{t('aip.at.from')}</label>
+                <label style={{ fontSize: 10, color: 'var(--ai-dim)', display: 'block', marginBottom: 3 }}>{t('aip.at.from')}</label>
                 <input type="date" value={customStart2} onChange={e => setCustomStart2(e.target.value)}
-                  style={{ padding: '5px 7px', borderRadius: 6, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 11, outline: 'none' }} />
+                  style={{ padding: '5px 7px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 11, outline: 'none' }} />
               </div>
               <div>
-                <label style={{ fontSize: 9, color: 'var(--ai-dim)', display: 'block', marginBottom: 3 }}>{t('aip.at.to')}</label>
+                <label style={{ fontSize: 10, color: 'var(--ai-dim)', display: 'block', marginBottom: 3 }}>{t('aip.at.to')}</label>
                 <input type="date" value={customEnd2} onChange={e => setCustomEnd2(e.target.value)}
-                  style={{ padding: '5px 7px', borderRadius: 6, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 11, outline: 'none' }} />
+                  style={{ padding: '5px 7px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 11, outline: 'none' }} />
               </div>
               <button onClick={() => { if (customStart2 && customEnd2) setPeriod2({ start: customStart2, end: customEnd2, label: `${customStart2} → ${customEnd2}` }) }}
-                style={{ padding: '5px 10px', borderRadius: 6, fontSize: 10, border: 'none', background: '#f97316', color: '#fff', cursor: 'pointer', height: 28 }}>OK</button>
+                style={{ padding: '5px 10px', borderRadius: 'var(--r-sm)', fontSize: 10, border: 'none', background: '#f97316', color: '#fff', cursor: 'pointer', height: 28 }}>OK</button>
             </div>
             {period2 && <p style={{ fontSize: 11, color: '#f97316', marginBottom: 10 }}>✓ {period2.label}</p>}
           </>
@@ -7298,10 +7298,10 @@ IMPORTANT: Réponds UNIQUEMENT en JSON valide (commence par {, finit par }). For
 
         {error && <p style={{ fontSize: 11, color: '#ef4444', margin: '0 0 8px' }}>{error}</p>}
         <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={() => setPhase('type_select')} style={{ padding: '9px 16px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer' }}>{t('aip.back')}</button>
+          <button onClick={() => setPhase('type_select')} style={{ padding: '9px 16px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer' }}>{t('aip.back')}</button>
           <button onClick={() => { void loadAndAnalyzePeriod() }}
             disabled={!period1 || (compareMode && !period2)}
-            style={{ flex: 1, padding: '9px', borderRadius: 9, border: 'none', background: period1 ? 'var(--ai-gradient)' : 'var(--ai-border)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: period1 ? 'pointer' : 'not-allowed' }}
+            style={{ flex: 1, padding: '9px', borderRadius: 'var(--r-sm)', border: 'none', background: period1 ? 'var(--ai-gradient)' : 'var(--ai-border)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: period1 ? 'pointer' : 'not-allowed' }}
           >{t('aip.analyze')} →</button>
         </div>
       </div>
@@ -7311,7 +7311,7 @@ IMPORTANT: Réponds UNIQUEMENT en JSON valide (commence par {, finit par }). For
   if (phase === 'year_select') {
     return (
       <div style={{ padding: '8px 0 4px' }}>
-        <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 12px', fontFamily: 'Syne,sans-serif' }}>
+        <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 12px', fontFamily: 'var(--font-body)' }}>
           {compareMode ? t('aip.at.compare2years') : t('aip.at.selectYear')}
         </p>
         <p style={{ fontSize: 10, fontWeight: 600, color: 'var(--ai-dim)', margin: '0 0 6px', textTransform: 'uppercase' as const }}>
@@ -7320,11 +7320,11 @@ IMPORTANT: Réponds UNIQUEMENT en JSON valide (commence par {, finit par }). For
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' as const, marginBottom: 10 }}>
           {availableYears.map(y => (
             <button key={y} onClick={() => setYear1(y)} style={{
-              padding: '8px 14px', borderRadius: 8, fontSize: 12,
+              padding: '8px 14px', borderRadius: 'var(--r-sm)', fontSize: 12,
               border: `1px solid ${year1 === y ? 'var(--ai-accent)' : 'var(--ai-border)'}`,
               background: year1 === y ? 'rgba(6,182,212,0.06)' : 'var(--ai-bg2)',
               color: year1 === y ? 'var(--ai-accent)' : 'var(--ai-mid)',
-              cursor: 'pointer', fontWeight: year1 === y ? 700 : 400, fontFamily: 'DM Mono,monospace',
+              cursor: 'pointer', fontWeight: year1 === y ? 700 : 400, fontFamily: 'var(--font-body)',
             }}>{y}</button>
           ))}
         </div>
@@ -7334,11 +7334,11 @@ IMPORTANT: Réponds UNIQUEMENT en JSON valide (commence par {, finit par }). For
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' as const, marginBottom: 10 }}>
               {availableYears.filter(y => y !== year1).map(y => (
                 <button key={y} onClick={() => setYear2(y)} style={{
-                  padding: '8px 14px', borderRadius: 8, fontSize: 12,
+                  padding: '8px 14px', borderRadius: 'var(--r-sm)', fontSize: 12,
                   border: `1px solid ${year2 === y ? '#f97316' : 'var(--ai-border)'}`,
                   background: year2 === y ? 'rgba(249,115,22,0.06)' : 'var(--ai-bg2)',
                   color: year2 === y ? '#f97316' : 'var(--ai-mid)',
-                  cursor: 'pointer', fontWeight: year2 === y ? 700 : 400, fontFamily: 'DM Mono,monospace',
+                  cursor: 'pointer', fontWeight: year2 === y ? 700 : 400, fontFamily: 'var(--font-body)',
                 }}>{y}</button>
               ))}
             </div>
@@ -7346,10 +7346,10 @@ IMPORTANT: Réponds UNIQUEMENT en JSON valide (commence par {, finit par }). For
         )}
         {error && <p style={{ fontSize: 11, color: '#ef4444', margin: '0 0 8px' }}>{error}</p>}
         <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={() => setPhase('type_select')} style={{ padding: '9px 16px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer' }}>{t('aip.back')}</button>
+          <button onClick={() => setPhase('type_select')} style={{ padding: '9px 16px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer' }}>{t('aip.back')}</button>
           <button onClick={() => { void loadAndAnalyzeYear() }}
             disabled={!year1 || (compareMode && !year2)}
-            style={{ flex: 1, padding: '9px', borderRadius: 9, border: 'none', background: year1 ? 'var(--ai-gradient)' : 'var(--ai-border)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: year1 ? 'pointer' : 'not-allowed' }}
+            style={{ flex: 1, padding: '9px', borderRadius: 'var(--r-sm)', border: 'none', background: year1 ? 'var(--ai-gradient)' : 'var(--ai-border)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: year1 ? 'pointer' : 'not-allowed' }}
           >{t('aip.analyze')} →</button>
         </div>
       </div>
@@ -7367,9 +7367,9 @@ IMPORTANT: Réponds UNIQUEMENT en JSON valide (commence par {, finit par }). For
             { label: t('aip.stream.durationKpi'), value: pd.summary.totalHours.toFixed(0) + 'h' },
             { label: 'TSS', value: String(Math.round(pd.summary.totalTSS)) },
           ].map(kpi => (
-            <div key={kpi.label} style={{ padding: '8px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', textAlign: 'center' as const }}>
-              <p style={{ fontSize: 9, color: 'var(--ai-dim)', margin: 0, textTransform: 'uppercase' as const, letterSpacing: '0.06em' }}>{kpi.label}</p>
-              <p style={{ fontSize: 16, fontWeight: 700, color: 'var(--ai-text)', margin: '4px 0 0', fontFamily: 'DM Mono,monospace' }}>{kpi.value}</p>
+            <div key={kpi.label} style={{ padding: '8px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', textAlign: 'center' as const }}>
+              <p style={{ fontSize: 10, color: 'var(--ai-dim)', margin: 0, textTransform: 'uppercase' as const, letterSpacing: '0.06em' }}>{kpi.label}</p>
+              <p style={{ fontSize: 16, fontWeight: 700, color: 'var(--ai-text)', margin: '4px 0 0', fontFamily: 'var(--font-body)' }}>{kpi.value}</p>
             </div>
           ))}
         </div>
@@ -7382,14 +7382,14 @@ IMPORTANT: Réponds UNIQUEMENT en JSON valide (commence par {, finit par }). For
                 <div style={{ flex: 1, height: 6, borderRadius: 3, background: 'var(--ai-border)', overflow: 'hidden' }}>
                   <div style={{ width: `${pd.summary.totalKm > 0 ? (d.km / pd.summary.totalKm) * 100 : 0}%`, height: '100%', borderRadius: 3, background: 'var(--ai-accent)' }} />
                 </div>
-                <span style={{ fontSize: 9, color: 'var(--ai-dim)', fontFamily: 'DM Mono,monospace', width: 50, textAlign: 'right' as const }}>{d.km.toFixed(0)}km</span>
+                <span style={{ fontSize: 10, color: 'var(--ai-dim)', fontFamily: 'var(--font-body)', width: 50, textAlign: 'right' as const }}>{d.km.toFixed(0)}km</span>
               </div>
             ))}
           </div>
         )}
 
         <div style={{ margin: '14px 0', borderBottom: '1px solid var(--ai-border)' }} />
-        <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'Syne,sans-serif', margin: '0 0 10px' }}>{t('aip.at.coachAnalysis')}</p>
+        <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'var(--font-body)', margin: '0 0 10px' }}>{t('aip.at.coachAnalysis')}</p>
         <MsgContent text={periodResult.analysis} />
 
         {(periodResult.key_metrics ?? []).length > 0 && (
@@ -7401,8 +7401,8 @@ IMPORTANT: Réponds UNIQUEMENT en JSON valide (commence par {, finit par }). For
                   {m.trend === 'up' ? '↑' : m.trend === 'down' ? '↓' : '→'}
                 </span>
                 <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--ai-text)' }}>{m.label}</span>
-                <span style={{ fontSize: 11, color: 'var(--ai-accent)', fontFamily: 'DM Mono,monospace', marginLeft: 'auto' }}>{m.value}</span>
-                <span style={{ fontSize: 9, color: 'var(--ai-dim)', maxWidth: 120 }}>{m.detail}</span>
+                <span style={{ fontSize: 11, color: 'var(--ai-accent)', fontFamily: 'var(--font-body)', marginLeft: 'auto' }}>{m.value}</span>
+                <span style={{ fontSize: 10, color: 'var(--ai-dim)', maxWidth: 120 }}>{m.detail}</span>
               </div>
             ))}
           </div>
@@ -7430,7 +7430,7 @@ IMPORTANT: Réponds UNIQUEMENT en JSON valide (commence par {, finit par }). For
           <div style={{ marginBottom: 14 }}>
             <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--ai-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.06em', margin: '0 0 6px' }}>{t('aip.at.recommendations')}</p>
             {periodResult.recommendations.map((r, i) => (
-              <div key={i} style={{ padding: '8px 10px', borderRadius: 8, background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)', marginBottom: 4 }}>
+              <div key={i} style={{ padding: '8px 10px', borderRadius: 'var(--r-sm)', background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)', marginBottom: 4 }}>
                 <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--ai-text)', margin: 0 }}>{r.label}</p>
                 <p style={{ fontSize: 10, color: 'var(--ai-mid)', margin: '3px 0 0' }}>{r.detail}</p>
               </div>
@@ -7454,9 +7454,9 @@ IMPORTANT: Réponds UNIQUEMENT en JSON valide (commence par {, finit par }). For
                   {periodResult.comparison.deltas.map((d, i) => (
                     <tr key={i}>
                       <td style={{ padding: '4px 6px', color: 'var(--ai-mid)', borderBottom: '1px solid var(--ai-border)' }}>{d.metric}</td>
-                      <td style={{ padding: '4px 6px', color: 'var(--ai-text)', textAlign: 'right' as const, fontFamily: 'DM Mono,monospace', borderBottom: '1px solid var(--ai-border)' }}>{d.period_a}</td>
-                      <td style={{ padding: '4px 6px', color: 'var(--ai-text)', textAlign: 'right' as const, fontFamily: 'DM Mono,monospace', borderBottom: '1px solid var(--ai-border)' }}>{d.period_b}</td>
-                      <td style={{ padding: '4px 6px', color: d.delta.startsWith('+') ? '#22c55e' : d.delta.startsWith('-') ? '#ef4444' : 'var(--ai-dim)', textAlign: 'right' as const, fontWeight: 600, fontFamily: 'DM Mono,monospace', borderBottom: '1px solid var(--ai-border)' }}>{d.delta}</td>
+                      <td style={{ padding: '4px 6px', color: 'var(--ai-text)', textAlign: 'right' as const, fontFamily: 'var(--font-body)', borderBottom: '1px solid var(--ai-border)' }}>{d.period_a}</td>
+                      <td style={{ padding: '4px 6px', color: 'var(--ai-text)', textAlign: 'right' as const, fontFamily: 'var(--font-body)', borderBottom: '1px solid var(--ai-border)' }}>{d.period_b}</td>
+                      <td style={{ padding: '4px 6px', color: d.delta.startsWith('+') ? '#22c55e' : d.delta.startsWith('-') ? '#ef4444' : 'var(--ai-dim)', textAlign: 'right' as const, fontWeight: 600, fontFamily: 'var(--font-body)', borderBottom: '1px solid var(--ai-border)' }}>{d.delta}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -7468,7 +7468,7 @@ IMPORTANT: Réponds UNIQUEMENT en JSON valide (commence par {, finit par }). For
           </div>
         )}
 
-        <button onClick={onCancel} style={{ width: '100%', padding: '9px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer', marginTop: 8 }}>
+        <button onClick={onCancel} style={{ width: '100%', padding: '9px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer', marginTop: 8 }}>
           {t('aip.close')}
         </button>
       </div>
@@ -7500,12 +7500,12 @@ function TrainingReportView({ data }: { data: TrainingReportData }) {
       {/* En-tête */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
         <div>
-          <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 2px', fontFamily: 'Syne,sans-serif' }}>
+          <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 2px', fontFamily: 'var(--font-body)' }}>
             {mainAct.title ?? t(AE_SPORT_LABELS[mainAct.sport_type] ?? mainAct.sport_type)}
           </p>
           <p style={{ fontSize: 10, color: 'var(--ai-dim)', margin: 0 }}>{mainAct.started_at.slice(0, 10)}</p>
         </div>
-        <span style={{ padding: '4px 10px', borderRadius: 20, background: `${vColor}1a`, color: vColor, fontSize: 11, fontWeight: 700, border: `1px solid ${vColor}33` }}>
+        <span style={{ padding: '4px 10px', borderRadius: 'var(--r-lg)', background: `${vColor}1a`, color: vColor, fontSize: 11, fontWeight: 700, border: `1px solid ${vColor}33` }}>
           {verdictLabels[report.verdict]}
         </span>
       </div>
@@ -7518,10 +7518,10 @@ function TrainingReportView({ data }: { data: TrainingReportData }) {
           { label: 'TSS', value: report.kpis.tss != null ? String(report.kpis.tss) : '—' },
           { label: 'EI', value: report.kpis.efficiency_index != null ? report.kpis.efficiency_index.toFixed(2) : '—', sub: report.kpis.ei_vs_average != null ? `${report.kpis.ei_vs_average > 0 ? '+' : ''}${report.kpis.ei_vs_average.toFixed(1)}%` : '' },
         ].map(k => (
-          <div key={k.label} style={{ padding: '8px 6px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', textAlign: 'center' }}>
-            <p style={{ fontSize: 9, fontWeight: 700, color: 'var(--ai-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 2px' }}>{k.label}</p>
-            <p style={{ fontSize: 14, fontWeight: 800, fontFamily: 'DM Mono,monospace', color: 'var(--ai-text)', margin: 0 }}>{k.value}</p>
-            {k.sub && <p style={{ fontSize: 9, color: 'var(--ai-dim)', margin: 0 }}>{k.sub}</p>}
+          <div key={k.label} style={{ padding: '8px 6px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', textAlign: 'center' }}>
+            <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--ai-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 2px' }}>{k.label}</p>
+            <p style={{ fontSize: 14, fontWeight: 800, fontFamily: 'var(--font-body)', color: 'var(--ai-text)', margin: 0 }}>{k.value}</p>
+            {k.sub && <p style={{ fontSize: 10, color: 'var(--ai-dim)', margin: 0 }}>{k.sub}</p>}
           </div>
         ))}
       </div>
@@ -7553,7 +7553,7 @@ function TrainingReportView({ data }: { data: TrainingReportData }) {
 
       {/* ── Séparateur + titre Analyse du coach ── */}
       <div style={{ margin: '16px 0 10px', borderBottom: '1px solid var(--ai-border)' }} />
-      <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'Syne, sans-serif', margin: '0 0 10px', letterSpacing: '-0.01em' }}>
+      <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'var(--font-body)', margin: '0 0 10px', letterSpacing: '-0.01em' }}>
         {t('aip.at.coachAnalysis')}
       </p>
 
@@ -7571,9 +7571,9 @@ function TrainingReportView({ data }: { data: TrainingReportData }) {
 
       {/* Tableau de comparaison */}
       {report.comparison && (
-        <div style={{ padding: '12px 14px', borderRadius: 10, border: '1px solid rgba(6,182,212,0.2)', background: 'rgba(6,182,212,0.04)', marginBottom: 10 }}>
+        <div style={{ padding: '12px 14px', borderRadius: 'var(--r-sm)', border: '1px solid rgba(6,182,212,0.2)', background: 'rgba(6,182,212,0.04)', marginBottom: 10 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-            <p style={{ fontSize: 11, fontWeight: 700, color: '#06B6D4', margin: 0, fontFamily: 'Syne,sans-serif', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('aip.at.comparison')}</p>
+            <p style={{ fontSize: 11, fontWeight: 700, color: '#06B6D4', margin: 0, fontFamily: 'var(--font-body)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('aip.at.comparison')}</p>
             <span style={{ fontSize: 11, fontWeight: 700, color: report.comparison.progression === 'progression' ? '#22c55e' : report.comparison.progression === 'regression' ? '#ef4444' : 'var(--ai-mid)' }}>
               {report.comparison.progression === 'progression' ? `↑ ${t('aip.at.progression')}` : report.comparison.progression === 'regression' ? `↓ ${t('aip.at.regression')}` : `= ${t('aip.at.stable')}`}
             </span>
@@ -7590,9 +7590,9 @@ function TrainingReportView({ data }: { data: TrainingReportData }) {
               {(report.comparison?.deltas ?? []).map((d, i) => (
                 <tr key={i}>
                   <td style={{ padding: '3px 5px', color: 'var(--ai-mid)' }}>{d.metrique}</td>
-                  <td style={{ padding: '3px 5px', fontFamily: 'DM Mono,monospace', color: 'var(--ai-text)', textAlign: 'center' }}>{d.a ?? '—'}</td>
-                  <td style={{ padding: '3px 5px', fontFamily: 'DM Mono,monospace', color: 'var(--ai-text)', textAlign: 'center' }}>{d.b ?? '—'}</td>
-                  <td style={{ padding: '3px 5px', fontFamily: 'DM Mono,monospace', fontWeight: 700, textAlign: 'center', color: (d.delta ?? '').startsWith('+') ? '#22c55e' : (d.delta ?? '').startsWith('-') ? '#ef4444' : 'var(--ai-mid)' }}>{d.delta ?? '—'}</td>
+                  <td style={{ padding: '3px 5px', fontFamily: 'var(--font-body)', color: 'var(--ai-text)', textAlign: 'center' }}>{d.a ?? '—'}</td>
+                  <td style={{ padding: '3px 5px', fontFamily: 'var(--font-body)', color: 'var(--ai-text)', textAlign: 'center' }}>{d.b ?? '—'}</td>
+                  <td style={{ padding: '3px 5px', fontFamily: 'var(--font-body)', fontWeight: 700, textAlign: 'center', color: (d.delta ?? '').startsWith('+') ? '#22c55e' : (d.delta ?? '').startsWith('-') ? '#ef4444' : 'var(--ai-mid)' }}>{d.delta ?? '—'}</td>
                 </tr>
               ))}
             </tbody>
@@ -7607,7 +7607,7 @@ function TrainingReportView({ data }: { data: TrainingReportData }) {
           <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--ai-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 6px' }}>{t('aip.at.optimizationTips')}</p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {(report.conseils ?? []).map((c, i) => (
-              <div key={i} style={{ padding: '10px 12px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)' }}>
+              <div key={i} style={{ padding: '10px 12px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)' }}>
                 <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 2px' }}>{c.label}</p>
                 <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: '0 0 2px', lineHeight: 1.4 }}>{c.detail}</p>
                 <p style={{ fontSize: 10, color: 'var(--ai-dim)', margin: 0, fontStyle: 'italic' }}>{c.data_justification}</p>
@@ -7618,7 +7618,7 @@ function TrainingReportView({ data }: { data: TrainingReportData }) {
       )}
 
       {/* Sources */}
-      <div style={{ padding: '8px 12px', borderRadius: 8, background: 'var(--ai-bg2)', fontSize: 10, color: 'var(--ai-dim)' }}>
+      <div style={{ padding: '8px 12px', borderRadius: 'var(--r-sm)', background: 'var(--ai-bg2)', fontSize: 10, color: 'var(--ai-dim)' }}>
         <p style={{ margin: '0 0 2px' }}>{t('aip.sources')} : {(report.sources_used ?? []).join(' · ')}</p>
         <p style={{ margin: 0 }}>{t('aip.test.confidence')} : <strong style={{ color: confidenceColor }}>{report.confiance}</strong></p>
       </div>
@@ -7880,7 +7880,7 @@ const TP_INTENSITE_COLORS: Record<string, string> = {
 function tpPillStyle(active: boolean): React.CSSProperties {
   return {
     padding: '6px 14px',
-    borderRadius: 99,
+    borderRadius: 'var(--r-pill)',
     fontSize: 11,
     fontWeight: 600,
     cursor: 'pointer',
@@ -7895,7 +7895,7 @@ function tpPillStyle(active: boolean): React.CSSProperties {
 function tpInputStyle(): React.CSSProperties {
   return {
     padding: '8px 10px',
-    borderRadius: 8,
+    borderRadius: 'var(--r-sm)',
     border: '1px solid var(--ai-border)',
     background: 'var(--ai-bg2)',
     color: 'var(--ai-text)',
@@ -8104,7 +8104,7 @@ function TpSectionWrap({ id, label, ok, total, isOpen, onToggle, children }: {
             ? <XCircle size={13} color="#ef4444" />
             : <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--ai-dim)', fontVariantNumeric: 'tabular-nums' }}>{ok}/{total}</span>}
         </div>
-        <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', fontFamily: 'Syne,sans-serif' }}>
+        <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', fontFamily: 'var(--font-body)' }}>
           {label}
         </span>
         <ChevronDown
@@ -8242,7 +8242,7 @@ function TpIntroScreen({ onContinue, onCancel }: { onContinue: () => void; onCan
     <div style={{ paddingBottom: 80 }}>
       {/* Header */}
       <div style={{ marginBottom: 16 }}>
-        <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 6px', fontFamily: 'Syne,sans-serif' }}>
+        <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 6px', fontFamily: 'var(--font-body)' }}>
           {t('aip.tp.introTitle')}
         </p>
         <p style={{ fontSize: 12, color: 'var(--ai-mid)', margin: 0, lineHeight: 1.65 }}>
@@ -8299,10 +8299,10 @@ function TpIntroScreen({ onContinue, onCancel }: { onContinue: () => void; onCan
         <button
           onClick={onContinue}
           style={{
-            width: '100%', padding: '11px 16px', borderRadius: 10,
+            width: '100%', padding: '11px 16px', borderRadius: 'var(--r-sm)',
             background: 'linear-gradient(135deg,#6366f1,#8b5cf6)',
             border: 'none', color: '#fff', fontSize: 13, fontWeight: 700,
-            cursor: 'pointer', fontFamily: 'Syne,sans-serif', letterSpacing: '0.01em',
+            cursor: 'pointer', fontFamily: 'var(--font-body)', letterSpacing: '0.01em',
           }}
         >
           {t('aip.nutri.continueQuestionnaire')} →
@@ -8895,14 +8895,14 @@ function TrainingPlanFlow({
     return (
       <div style={{ padding: '16px 0 4px' }}>
         <div style={{
-          borderRadius: 12,
+          borderRadius: 'var(--r-md)',
           border: '1px solid rgba(139,92,246,0.3)',
           background: 'rgba(139,92,246,0.06)',
           padding: 20,
           marginBottom: 16,
         }}>
           <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'center' }}><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="var(--ai-accent)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg></div>
-          <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 8px', fontFamily: 'Syne,sans-serif' }}>
+          <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 8px', fontFamily: 'var(--font-body)' }}>
             Zeus requis
           </p>
           <p style={{ fontSize: 12, color: 'var(--ai-mid)', margin: '0 0 16px', lineHeight: 1.6 }}>
@@ -8913,7 +8913,7 @@ function TrainingPlanFlow({
           </p>
           <button
             onClick={onCancel}
-            style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}
+            style={{ padding: '8px 16px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer', fontFamily: 'var(--font-body)' }}
           >
             Fermer
           </button>
@@ -9052,7 +9052,7 @@ function TrainingPlanFlow({
 
     const modalCard: React.CSSProperties = {
       background: 'var(--ai-bg)',
-      borderRadius: 14,
+      borderRadius: 'var(--r-md)',
       padding: 24,
       maxWidth: 340,
       width: '90%',
@@ -9073,20 +9073,20 @@ function TrainingPlanFlow({
 
         {/* ── HEADER ─────────────────────────────────── */}
         <div style={{ marginBottom: 16 }}>
-          <p style={{ fontSize: 16, fontWeight: 800, color: 'var(--ai-text)', margin: '0 0 4px', fontFamily: 'Syne,sans-serif' }}>
+          <p style={{ fontSize: 16, fontWeight: 800, color: 'var(--ai-text)', margin: '0 0 4px', fontFamily: 'var(--font-body)' }}>
             {program.nom}
           </p>
           <p style={{ fontSize: 12, color: 'var(--ai-mid)', margin: '0 0 10px' }}>
             {program.objectif_principal}
           </p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-            <span style={{ fontSize: 11, padding: '3px 9px', borderRadius: 99, background: 'rgba(107,114,128,0.12)', color: 'var(--ai-mid)' }}>
+            <span style={{ fontSize: 11, padding: '3px 9px', borderRadius: 'var(--r-pill)', background: 'rgba(107,114,128,0.12)', color: 'var(--ai-mid)' }}>
               {totalWeeks} semaines{liveData ? ' · live' : ''}
             </span>
-            <span style={{ fontSize: 11, padding: '3px 9px', borderRadius: 99, background: 'rgba(107,114,128,0.12)', color: 'var(--ai-mid)' }}>
+            <span style={{ fontSize: 11, padding: '3px 9px', borderRadius: 'var(--r-pill)', background: 'rgba(107,114,128,0.12)', color: 'var(--ai-mid)' }}>
               {totalSeances} séances{liveData ? '' : ' détaillées'}
             </span>
-            <span style={{ fontSize: 11, padding: '3px 9px', borderRadius: 99, background: 'rgba(107,114,128,0.12)', color: 'var(--ai-mid)' }}>
+            <span style={{ fontSize: 11, padding: '3px 9px', borderRadius: 'var(--r-pill)', background: 'rgba(107,114,128,0.12)', color: 'var(--ai-mid)' }}>
               {sportsLabel}
             </span>
           </div>
@@ -9112,7 +9112,7 @@ function TrainingPlanFlow({
             <svg
               width="100%" viewBox="0 0 400 56"
               preserveAspectRatio="none"
-              style={{ display: 'block', borderRadius: 6, overflow: 'hidden', marginBottom: 8 }}
+              style={{ display: 'block', borderRadius: 'var(--r-sm)', overflow: 'hidden', marginBottom: 8 }}
             >
               {(() => {
                 const blocs = program.blocs_periodisation ?? []
@@ -9188,7 +9188,7 @@ function TrainingPlanFlow({
             return (
             <div key={semaine.numero} style={{
               border: '1px solid var(--ai-border)',
-              borderRadius: 10,
+              borderRadius: 'var(--r-sm)',
               background: 'var(--ai-bg2)',
               padding: hasSeances ? 12 : '8px 12px',
               marginBottom: hasSeances ? 10 : 4,
@@ -9204,7 +9204,7 @@ function TrainingPlanFlow({
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
                   <span style={{
-                    fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 99,
+                    fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 'var(--r-pill)',
                     ...weekBadgeStyle(semaine.type),
                   }}>
                     {semaine.type}
@@ -9226,7 +9226,7 @@ function TrainingPlanFlow({
                     {TP_JOURS[seance.jour] ?? '?'}
                   </span>
                   <span style={{
-                    fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 99,
+                    fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 'var(--r-pill)',
                     background: 'rgba(139,92,246,0.12)', color: '#8b5cf6',
                   }}>
                     {seance.sport}
@@ -9239,7 +9239,7 @@ function TrainingPlanFlow({
                   </span>
                   {seance.tss > 0 && (
                     <span style={{
-                      fontSize: 10, fontWeight: 600, padding: '2px 6px', borderRadius: 99,
+                      fontSize: 10, fontWeight: 600, padding: '2px 6px', borderRadius: 'var(--r-pill)',
                       background: 'rgba(0,0,0,0.12)', color: 'var(--ai-mid)', flexShrink: 0,
                     }}>
                       TSS {seance.tss}
@@ -9380,7 +9380,7 @@ function TrainingPlanFlow({
                   title="Synchroniser avec le planning"
                   style={{
                     display: 'flex', alignItems: 'center', gap: 5,
-                    fontSize: 11, padding: '5px 12px', borderRadius: 8,
+                    fontSize: 11, padding: '5px 12px', borderRadius: 'var(--r-sm)',
                     border: '1.5px solid #8b5cf6',
                     background: liveLoading ? 'transparent' : 'rgba(139,92,246,0.12)',
                     color: liveLoading ? 'var(--ai-dim)' : '#8b5cf6',
@@ -9438,13 +9438,13 @@ function TrainingPlanFlow({
               {/* Panel détail semaine sélectionnée */}
               {sel && (
                 <div style={{
-                  marginTop: 10, padding: '10px 12px', borderRadius: 9,
+                  marginTop: 10, padding: '10px 12px', borderRadius: 'var(--r-sm)',
                   border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)',
                   position: 'relative',
                 }}>
                   <button onClick={() => setSelectedBar(null)} style={{ position: 'absolute', top: 8, right: 10, background: 'none', border: 'none', color: 'var(--ai-dim)', cursor: 'pointer', fontSize: 14, padding: 0, lineHeight: 1 }}>×</button>
                   <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 6 }}>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'Syne,sans-serif' }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'var(--font-body)' }}>
                       {sel.label} — {sel.type}
                     </span>
                     <span style={{ fontSize: 11, color: 'var(--ai-dim)' }}>{sel.theme}</span>
@@ -9456,8 +9456,8 @@ function TrainingPlanFlow({
                       { l: 'Séances',v: `${sel.seanceCount}` },
                     ].map(kpi => (
                       <div key={kpi.l}>
-                        <p style={{ fontSize: 9, color: 'var(--ai-dim)', margin: '0 0 1px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{kpi.l}</p>
-                        <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--ai-text)', margin: 0, fontFamily: 'DM Mono,monospace' }}>{kpi.v}</p>
+                        <p style={{ fontSize: 10, color: 'var(--ai-dim)', margin: '0 0 1px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{kpi.l}</p>
+                        <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--ai-text)', margin: 0, fontFamily: 'var(--font-body)' }}>{kpi.v}</p>
                       </div>
                     ))}
                   </div>
@@ -9466,7 +9466,7 @@ function TrainingPlanFlow({
                       {sel.sportStats.map((st, si) => (
                         <div key={si} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <span style={{ fontSize: 11, color: 'var(--ai-mid)', textTransform: 'capitalize' }}>{st.sport}</span>
-                          <span style={{ fontSize: 11, color: 'var(--ai-dim)', fontFamily: 'DM Mono,monospace' }}>
+                          <span style={{ fontSize: 11, color: 'var(--ai-dim)', fontFamily: 'var(--font-body)' }}>
                             {st.count}× {fmtH(st.durationH)}
                           </span>
                         </div>
@@ -9486,13 +9486,13 @@ function TrainingPlanFlow({
 
         {/* ── PROGRAMME ADAPTATIF ──────────────────── */}
         <div style={{
-          borderRadius: 10,
+          borderRadius: 'var(--r-sm)',
           border: '1px solid var(--ai-border)',
           background: 'var(--ai-bg2)',
           padding: 16,
           marginBottom: 20,
         }}>
-          <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 10px', fontFamily: 'Syne,sans-serif' }}>
+          <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 10px', fontFamily: 'var(--font-body)' }}>
             Un programme qui évolue avec toi
           </p>
           <p style={{ fontSize: 12, color: 'var(--ai-mid)', margin: '0 0 8px', lineHeight: 1.7 }}>
@@ -9511,13 +9511,13 @@ function TrainingPlanFlow({
         <div style={{ display: 'flex', gap: 8 }}>
           <button
             onClick={() => { setModifyText(''); setModifyChecks([]); setPhase('modifying') }}
-            style={{ flex: 1, padding: '9px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer' }}
+            style={{ flex: 1, padding: '9px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer' }}
           >
             Modifier
           </button>
           <button
             onClick={() => { void copyPlan() }}
-            style={{ flex: 1, padding: '9px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: copyFeedback === 'copied' ? '#22c55e' : 'var(--ai-mid)', fontSize: 12, cursor: 'pointer', transition: 'color 0.14s' }}
+            style={{ flex: 1, padding: '9px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'transparent', color: copyFeedback === 'copied' ? '#22c55e' : 'var(--ai-mid)', fontSize: 12, cursor: 'pointer', transition: 'color 0.14s' }}
           >
             {copyFeedback === 'copied' ? 'Copié ✓' : 'Copier'}
           </button>
@@ -9525,7 +9525,7 @@ function TrainingPlanFlow({
             onClick={() => void saveToPlanning('check')}
             disabled={saving}
             style={{
-              flex: 2, padding: '9px', borderRadius: 9, border: 'none',
+              flex: 2, padding: '9px', borderRadius: 'var(--r-sm)', border: 'none',
               background: saving ? 'rgba(139,92,246,0.3)' : 'linear-gradient(135deg,#8b5cf6,#5b6fff)',
               color: '#fff', fontSize: 12, fontWeight: 700, cursor: saving ? 'default' : 'pointer',
             }}
@@ -9540,7 +9540,7 @@ function TrainingPlanFlow({
         {planStep === 'conflict' && conflictInfo && (
           <div style={modalOverlay}>
             <div style={modalCard}>
-              <p style={{ fontSize: 14, fontWeight: 800, color: 'var(--ai-text)', margin: '0 0 10px', fontFamily: 'Syne,sans-serif' }}>
+              <p style={{ fontSize: 14, fontWeight: 800, color: 'var(--ai-text)', margin: '0 0 10px', fontFamily: 'var(--font-body)' }}>
                 Séances existantes détectées
               </p>
               <p style={{ fontSize: 12, color: 'var(--ai-mid)', margin: '0 0 16px', lineHeight: 1.6 }}>
@@ -9549,19 +9549,19 @@ function TrainingPlanFlow({
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 <button
                   onClick={() => void saveToPlanning('replace')}
-                  style={{ background: '#ef4444', color: '#fff', padding: '10px', borderRadius: 9, border: 'none', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+                  style={{ background: '#ef4444', color: '#fff', padding: '10px', borderRadius: 'var(--r-sm)', border: 'none', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
                 >
                   Remplacer tout
                 </button>
                 <button
                   onClick={() => void saveToPlanning('merge')}
-                  style={{ background: 'rgba(139,92,246,0.1)', color: '#8b5cf6', padding: '10px', borderRadius: 9, border: '1px solid #8b5cf6', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+                  style={{ background: 'rgba(139,92,246,0.1)', color: '#8b5cf6', padding: '10px', borderRadius: 'var(--r-sm)', border: '1px solid #8b5cf6', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
                 >
                   Fusionner
                 </button>
                 <button
                   onClick={() => { setPlanStep('idle'); setConflictInfo(null) }}
-                  style={{ background: 'transparent', color: 'var(--ai-mid)', padding: '10px', borderRadius: 9, border: '1px solid var(--ai-border)', fontSize: 12, cursor: 'pointer' }}
+                  style={{ background: 'transparent', color: 'var(--ai-mid)', padding: '10px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', fontSize: 12, cursor: 'pointer' }}
                 >
                   Annuler
                 </button>
@@ -9574,7 +9574,7 @@ function TrainingPlanFlow({
         {planStep === 'confirm' && (
           <div style={modalOverlay}>
             <div style={modalCard}>
-              <p style={{ fontSize: 14, fontWeight: 800, color: 'var(--ai-text)', margin: '0 0 10px', fontFamily: 'Syne,sans-serif' }}>
+              <p style={{ fontSize: 14, fontWeight: 800, color: 'var(--ai-text)', margin: '0 0 10px', fontFamily: 'var(--font-body)' }}>
                 Ajouter au Planning
               </p>
               <p style={{ fontSize: 12, color: 'var(--ai-mid)', margin: '0 0 4px' }}>
@@ -9589,13 +9589,13 @@ function TrainingPlanFlow({
               <div style={{ display: 'flex', gap: 8 }}>
                 <button
                   onClick={() => setPlanStep('idle')}
-                  style={{ flex: 1, background: 'transparent', color: 'var(--ai-mid)', padding: '9px', borderRadius: 9, border: '1px solid var(--ai-border)', fontSize: 12, cursor: 'pointer' }}
+                  style={{ flex: 1, background: 'transparent', color: 'var(--ai-mid)', padding: '9px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', fontSize: 12, cursor: 'pointer' }}
                 >
                   Annuler
                 </button>
                 <button
                   onClick={() => void saveToPlanning('replace')}
-                  style={{ flex: 1, background: 'linear-gradient(135deg,#8b5cf6,#5b6fff)', color: '#fff', padding: '9px', borderRadius: 9, border: 'none', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+                  style={{ flex: 1, background: 'linear-gradient(135deg,#8b5cf6,#5b6fff)', color: '#fff', padding: '9px', borderRadius: 'var(--r-sm)', border: 'none', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
                 >
                   Confirmer
                 </button>
@@ -9627,7 +9627,7 @@ function TrainingPlanFlow({
           <div style={modalOverlay}>
             <div style={{ ...modalCard, textAlign: 'center' }}>
               <p style={{ fontSize: 32, margin: '0 0 10px', color: '#22c55e' }}>✓</p>
-              <p style={{ fontSize: 14, fontWeight: 800, color: 'var(--ai-text)', margin: '0 0 6px', fontFamily: 'Syne,sans-serif' }}>
+              <p style={{ fontSize: 14, fontWeight: 800, color: 'var(--ai-text)', margin: '0 0 6px', fontFamily: 'var(--font-body)' }}>
                 Programme ajouté avec succès
               </p>
               <p style={{ fontSize: 12, color: 'var(--ai-mid)', margin: '0 0 4px' }}>
@@ -9644,13 +9644,13 @@ function TrainingPlanFlow({
               <div style={{ display: 'flex', gap: 8 }}>
                 <button
                   onClick={() => setPlanStep('idle')}
-                  style={{ flex: 1, background: 'transparent', color: 'var(--ai-mid)', padding: '9px', borderRadius: 9, border: '1px solid var(--ai-border)', fontSize: 12, cursor: 'pointer' }}
+                  style={{ flex: 1, background: 'transparent', color: 'var(--ai-mid)', padding: '9px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', fontSize: 12, cursor: 'pointer' }}
                 >
                   Fermer
                 </button>
                 <button
                   onClick={() => { window.location.href = `/planning?week=${encodeURIComponent(startDate)}` }}
-                  style={{ flex: 1, background: 'linear-gradient(135deg,#8b5cf6,#5b6fff)', color: '#fff', padding: '9px', borderRadius: 9, border: 'none', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+                  style={{ flex: 1, background: 'linear-gradient(135deg,#8b5cf6,#5b6fff)', color: '#fff', padding: '9px', borderRadius: 'var(--r-sm)', border: 'none', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
                 >
                   Voir le Planning →
                 </button>
@@ -9663,19 +9663,19 @@ function TrainingPlanFlow({
         {planStep === 'error' && (
           <div style={modalOverlay}>
             <div style={modalCard}>
-              <p style={{ fontSize: 14, fontWeight: 800, color: '#ef4444', margin: '0 0 16px', fontFamily: 'Syne,sans-serif' }}>
+              <p style={{ fontSize: 14, fontWeight: 800, color: '#ef4444', margin: '0 0 16px', fontFamily: 'var(--font-body)' }}>
                 Erreur lors de l&apos;insertion
               </p>
               <div style={{ display: 'flex', gap: 8 }}>
                 <button
                   onClick={() => setPlanStep('idle')}
-                  style={{ flex: 1, background: 'transparent', color: 'var(--ai-mid)', padding: '9px', borderRadius: 9, border: '1px solid var(--ai-border)', fontSize: 12, cursor: 'pointer' }}
+                  style={{ flex: 1, background: 'transparent', color: 'var(--ai-mid)', padding: '9px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', fontSize: 12, cursor: 'pointer' }}
                 >
                   Annuler
                 </button>
                 <button
                   onClick={() => void saveToPlanning('replace')}
-                  style={{ flex: 1, background: 'linear-gradient(135deg,#8b5cf6,#5b6fff)', color: '#fff', padding: '9px', borderRadius: 9, border: 'none', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+                  style={{ flex: 1, background: 'linear-gradient(135deg,#8b5cf6,#5b6fff)', color: '#fff', padding: '9px', borderRadius: 'var(--r-sm)', border: 'none', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
                 >
                   Réessayer
                 </button>
@@ -9697,11 +9697,11 @@ function TrainingPlanFlow({
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
           <button
             onClick={() => setPhase('result')}
-            style={{ width: 26, height: 26, borderRadius: 6, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', cursor: 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            style={{ width: 26, height: 26, borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', cursor: 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           >
             ←
           </button>
-          <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', margin: 0, fontFamily: 'Syne,sans-serif' }}>
+          <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', margin: 0, fontFamily: 'var(--font-body)' }}>
             Que veux-tu changer ?
           </p>
         </div>
@@ -9724,7 +9724,7 @@ function TrainingPlanFlow({
         <div style={{ display: 'flex', gap: 8 }}>
           <button
             onClick={() => setPhase('result')}
-            style={{ padding: '9px 14px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer' }}
+            style={{ padding: '9px 14px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer' }}
           >
             Retour
           </button>
@@ -9732,7 +9732,7 @@ function TrainingPlanFlow({
             onClick={() => { if (modifyText.trim()) void generate(modifyText.trim()) }}
             disabled={!modifyText.trim()}
             style={{
-              flex: 1, padding: '9px', borderRadius: 9, border: 'none',
+              flex: 1, padding: '9px', borderRadius: 'var(--r-sm)', border: 'none',
               background: modifyText.trim() ? 'linear-gradient(135deg,#8b5cf6,#5b6fff)' : 'rgba(139,92,246,0.2)',
               color: '#fff', fontSize: 12, fontWeight: 700, cursor: modifyText.trim() ? 'pointer' : 'default',
             }}
@@ -9753,7 +9753,7 @@ function TrainingPlanFlow({
       // ── BLOC 0 : Objectif ────────────────────────────────────
       case 0: return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-          <p style={{ fontSize: 13, fontWeight: 700, color: '#8b5cf6', margin: '0 0 4px', fontFamily: 'Syne,sans-serif' }}>
+          <p style={{ fontSize: 13, fontWeight: 700, color: '#8b5cf6', margin: '0 0 4px', fontFamily: 'var(--font-body)' }}>
             Objectif et course cible
           </p>
 
@@ -9798,7 +9798,7 @@ function TrainingPlanFlow({
               <span style={tpLabelStyle()}>Goal of the Year</span>
               <button
                 onClick={() => setField('goal_races', [...form.goal_races, { nom: '', date: '', sport: 'Running', level: 'important', goal_libre: '' }])}
-                style={{ fontSize: 11, color: '#8b5cf6', background: 'rgba(139,92,246,0.1)', border: '1px solid rgba(139,92,246,0.3)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', fontWeight: 700 }}
+                style={{ fontSize: 11, color: '#8b5cf6', background: 'rgba(139,92,246,0.1)', border: '1px solid rgba(139,92,246,0.3)', borderRadius: 'var(--r-sm)', padding: '4px 10px', cursor: 'pointer', fontWeight: 700 }}
               >{t('aip.q.addRace')}</button>
             </div>
 
@@ -9816,7 +9816,7 @@ function TrainingPlanFlow({
 
             {/* Cards */}
             {form.goal_races.map((race, idx) => (
-              <div key={idx} style={{ border: `1px solid ${LEVEL_COLOR[race.level]}44`, borderRadius: 10, padding: '10px 12px', marginBottom: 8, background: `${LEVEL_COLOR[race.level]}06` }}>
+              <div key={idx} style={{ border: `1px solid ${LEVEL_COLOR[race.level]}44`, borderRadius: 'var(--r-sm)', padding: '10px 12px', marginBottom: 8, background: `${LEVEL_COLOR[race.level]}06` }}>
 
                 {/* ─ En-tête : nom · date · × ─ */}
                 <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', marginBottom: 8 }}>
@@ -9844,7 +9844,7 @@ function TrainingPlanFlow({
                 <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 8 }}>
                   {(['gty', 'main', 'important', 'secondary'] as const).map(lv => (
                     <button key={lv} onClick={() => setGoalRaceLevel(idx, lv)} style={{
-                      padding: '4px 10px', borderRadius: 99, fontSize: 10, fontWeight: 700, cursor: 'pointer',
+                      padding: '4px 10px', borderRadius: 'var(--r-pill)', fontSize: 10, fontWeight: 700, cursor: 'pointer',
                       border: `1px solid ${LEVEL_COLOR[lv]}`,
                       background: race.level === lv ? LEVEL_COLOR[lv] : 'transparent',
                       color: race.level === lv ? '#fff' : LEVEL_COLOR[lv],
@@ -10045,7 +10045,7 @@ function TrainingPlanFlow({
       // ── BLOC 1 : Profil ──────────────────────────────────────
       case 1: return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-          <p style={{ fontSize: 13, fontWeight: 700, color: '#8b5cf6', margin: '0 0 4px', fontFamily: 'Syne,sans-serif' }}>
+          <p style={{ fontSize: 13, fontWeight: 700, color: '#8b5cf6', margin: '0 0 4px', fontFamily: 'var(--font-body)' }}>
             Profil et historique
           </p>
 
@@ -10070,7 +10070,7 @@ function TrainingPlanFlow({
           <div>
             <span style={tpLabelStyle()}>Meilleure performance</span>
             {personalRecords.length > 0 ? (
-              <div style={{ background: 'var(--bg-card2)', borderRadius: 8, padding: '10px 12px', marginTop: 6 }}>
+              <div style={{ background: 'var(--bg-card2)', borderRadius: 'var(--r-sm)', padding: '10px 12px', marginTop: 6 }}>
                 {(() => {
                   const ORDER = ['run', 'trail', 'bike', 'triathlon', 'swim', 'rowing', 'hyrox']
                   const LABELS: Record<string, string> = {
@@ -10165,7 +10165,7 @@ function TrainingPlanFlow({
 
         return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-          <p style={{ fontSize: 13, fontWeight: 700, color: '#8b5cf6', margin: '0 0 4px', fontFamily: 'Syne,sans-serif' }}>
+          <p style={{ fontSize: 13, fontWeight: 700, color: '#8b5cf6', margin: '0 0 4px', fontFamily: 'var(--font-body)' }}>
             Disponibilité
           </p>
 
@@ -10316,7 +10316,7 @@ function TrainingPlanFlow({
       // ── BLOC 3 : Équipement ──────────────────────────────────
       case 3: return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-          <p style={{ fontSize: 13, fontWeight: 700, color: '#8b5cf6', margin: '0 0 4px', fontFamily: 'Syne,sans-serif' }}>
+          <p style={{ fontSize: 13, fontWeight: 700, color: '#8b5cf6', margin: '0 0 4px', fontFamily: 'var(--font-body)' }}>
             Équipement et accès
           </p>
 
@@ -10346,7 +10346,7 @@ function TrainingPlanFlow({
 
         return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-          <p style={{ fontSize: 13, fontWeight: 700, color: '#8b5cf6', margin: '0 0 4px', fontFamily: 'Syne,sans-serif' }}>
+          <p style={{ fontSize: 13, fontWeight: 700, color: '#8b5cf6', margin: '0 0 4px', fontFamily: 'var(--font-body)' }}>
             Blessures et contraintes
           </p>
 
@@ -10469,7 +10469,7 @@ function TrainingPlanFlow({
 
         return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-          <p style={{ fontSize: 13, fontWeight: 700, color: '#8b5cf6', margin: '0 0 4px', fontFamily: 'Syne,sans-serif' }}>
+          <p style={{ fontSize: 13, fontWeight: 700, color: '#8b5cf6', margin: '0 0 4px', fontFamily: 'var(--font-body)' }}>
             Méthodes et périodisation
           </p>
 
@@ -10483,7 +10483,7 @@ function TrainingPlanFlow({
             {form.blocs_custom && (
               <div>
                 {form.blocs_custom_detail.map((b, i) => (
-                  <div key={i} style={{ border: '1px solid var(--ai-border)', borderRadius: 8, padding: 10, marginBottom: 8 }}>
+                  <div key={i} style={{ border: '1px solid var(--ai-border)', borderRadius: 'var(--r-sm)', padding: 10, marginBottom: 8 }}>
                     {/* Nom + supprimer */}
                     <div style={{ display: 'flex', gap: 6, marginBottom: 8, alignItems: 'center' }}>
                       <input type="text" placeholder="Nom du bloc" value={b.nom} onChange={e => {
@@ -10520,7 +10520,7 @@ function TrainingPlanFlow({
                   </div>
                 ))}
                 <button onClick={() => setField('blocs_custom_detail', [...form.blocs_custom_detail, { nom: '', type: 'Aérobie', duree_semaines: 4 }])}
-                  style={{ fontSize: 12, color: '#8b5cf6', background: 'transparent', border: '1px dashed rgba(139,92,246,0.4)', borderRadius: 8, padding: '7px 14px', cursor: 'pointer', width: '100%' }}>
+                  style={{ fontSize: 12, color: '#8b5cf6', background: 'transparent', border: '1px dashed rgba(139,92,246,0.4)', borderRadius: 'var(--r-sm)', padding: '7px 14px', cursor: 'pointer', width: '100%' }}>
                   + Ajouter un bloc
                 </button>
               </div>
@@ -10530,7 +10530,7 @@ function TrainingPlanFlow({
           {/* ── Entraînements spéciaux ─────────────────────────── */}
           <div>
             <span style={tpLabelStyle()}>{t('aip.q.specialTraining')}</span>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, background: 'var(--bg-card2)', borderRadius: 8, padding: '10px 12px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, background: 'var(--bg-card2)', borderRadius: 'var(--r-sm)', padding: '10px 12px' }}>
 
               {/* Heat training */}
               <div>
@@ -10647,7 +10647,7 @@ function TrainingPlanFlow({
                 {/* 1 — Points forts / Points faibles */}
                 <div>
                   <span style={tpLabelStyle()}>Points forts / Points faibles</span>
-                  <div style={{ background: 'var(--bg-card2)', borderRadius: 8, padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <div style={{ background: 'var(--bg-card2)', borderRadius: 'var(--r-sm)', padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 10 }}>
                     <div>
                       {subLabel('Points forts')}
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 6 }}>
@@ -10675,7 +10675,7 @@ function TrainingPlanFlow({
                 {/* 2 — Difficultés habituelles */}
                 <div>
                   <span style={tpLabelStyle()}>{t('aip.q.usualDifficulties')}</span>
-                  <div style={{ background: 'var(--bg-card2)', borderRadius: 8, padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <div style={{ background: 'var(--bg-card2)', borderRadius: 'var(--r-sm)', padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 8 }}>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
                       {DIFFICUL.map(d => (
                         <button key={d} onClick={() => setField('difficultes', toggleArr(form.difficultes, d))}
@@ -10691,7 +10691,7 @@ function TrainingPlanFlow({
                 {/* 3 — Types d'efforts */}
                 <div>
                   <span style={tpLabelStyle()}>Types d&apos;efforts</span>
-                  <div style={{ background: 'var(--bg-card2)', borderRadius: 8, padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <div style={{ background: 'var(--bg-card2)', borderRadius: 'var(--r-sm)', padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 10 }}>
                     <div>
                       {subLabel('J\'aime')}
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 6 }}>
@@ -10768,7 +10768,7 @@ function TrainingPlanFlow({
                             <button key={t.val}
                               onClick={() => setField('journees_type', { ...form.journees_type, [jour]: sel ? '' : t.val })}
                               style={{
-                                padding: '3px 8px', borderRadius: 6, fontSize: 11, cursor: 'pointer',
+                                padding: '3px 8px', borderRadius: 'var(--r-sm)', fontSize: 11, cursor: 'pointer',
                                 border: `1px solid ${t.color}`,
                                 background: sel ? t.color : 'transparent',
                                 color: sel ? '#fff' : t.color,
@@ -10797,7 +10797,7 @@ function TrainingPlanFlow({
       // ── BLOC 6 : Récupération ────────────────────────────────
       case 6: return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-          <p style={{ fontSize: 13, fontWeight: 700, color: '#8b5cf6', margin: '0 0 4px', fontFamily: 'Syne,sans-serif' }}>
+          <p style={{ fontSize: 13, fontWeight: 700, color: '#8b5cf6', margin: '0 0 4px', fontFamily: 'var(--font-body)' }}>
             Récupération et mode de vie
           </p>
 
@@ -10844,7 +10844,7 @@ function TrainingPlanFlow({
           {/* ── Habitudes d'entraînement ─────────────────────── */}
           <div>
             <span style={tpLabelStyle()}>{t('aip.q.trainingHabits')}</span>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, background: 'var(--bg-card2)', borderRadius: 8, padding: '10px 12px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, background: 'var(--bg-card2)', borderRadius: 'var(--r-sm)', padding: '10px 12px' }}>
 
               {/* Easy lundi */}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -10920,7 +10920,7 @@ function TrainingPlanFlow({
           {/* ── Suivi et récupération ─────────────────────────── */}
           <div>
             <span style={tpLabelStyle()}>{t('aip.q.tracking')}</span>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, background: 'var(--bg-card2)', borderRadius: 8, padding: '10px 12px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, background: 'var(--bg-card2)', borderRadius: 'var(--r-sm)', padding: '10px 12px' }}>
 
               {/* HRV */}
               <div>
@@ -10997,7 +10997,7 @@ function TrainingPlanFlow({
       // ── BLOC 7 : Nutrition ───────────────────────────────────
       case 7: return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-          <p style={{ fontSize: 13, fontWeight: 700, color: '#8b5cf6', margin: '0 0 4px', fontFamily: 'Syne,sans-serif' }}>
+          <p style={{ fontSize: 13, fontWeight: 700, color: '#8b5cf6', margin: '0 0 4px', fontFamily: 'var(--font-body)' }}>
             Nutrition
           </p>
 
@@ -11086,8 +11086,8 @@ function TrainingPlanFlow({
           <span style={{ fontSize: 11, color: 'var(--ai-dim)' }}>Étape {step + 1}/8 — {BLOC_TITLES[step]}</span>
           <span style={{ fontSize: 11, color: '#8b5cf6', fontWeight: 700 }}>{Math.round((step + 1) / 8 * 100)}%</span>
         </div>
-        <div style={{ height: 3, borderRadius: 99, background: 'var(--ai-border)' }}>
-          <div style={{ height: '100%', borderRadius: 99, background: '#8b5cf6', width: `${(step + 1) / 8 * 100}%`, transition: 'width 0.3s' }} />
+        <div style={{ height: 3, borderRadius: 'var(--r-pill)', background: 'var(--ai-border)' }}>
+          <div style={{ height: '100%', borderRadius: 'var(--r-pill)', background: '#8b5cf6', width: `${(step + 1) / 8 * 100}%`, transition: 'width 0.3s' }} />
         </div>
       </div>
 
@@ -11102,7 +11102,7 @@ function TrainingPlanFlow({
             <button
               onClick={() => void generate()}
               style={{
-                padding: '8px 16px', borderRadius: 9, border: 'none',
+                padding: '8px 16px', borderRadius: 'var(--r-sm)', border: 'none',
                 background: 'linear-gradient(135deg,#8b5cf6,#5b6fff)',
                 color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer',
               }}
@@ -11118,7 +11118,7 @@ function TrainingPlanFlow({
         <button
           onClick={step === 0 ? onCancel : () => setStep(s => s - 1)}
           style={{
-            padding: '9px 14px', borderRadius: 9, border: '1px solid var(--ai-border)',
+            padding: '9px 14px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)',
             background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer',
           }}
         >
@@ -11128,7 +11128,7 @@ function TrainingPlanFlow({
           <button
             onClick={() => setStep(s => s + 1)}
             style={{
-              flex: 1, padding: '9px', borderRadius: 9, border: 'none',
+              flex: 1, padding: '9px', borderRadius: 'var(--r-sm)', border: 'none',
               background: 'linear-gradient(135deg,#8b5cf6,#5b6fff)',
               color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer',
             }}
@@ -11139,7 +11139,7 @@ function TrainingPlanFlow({
           <button
             onClick={() => void generate()}
             style={{
-              flex: 1, padding: '9px', borderRadius: 9, border: 'none',
+              flex: 1, padding: '9px', borderRadius: 'var(--r-sm)', border: 'none',
               background: 'linear-gradient(135deg,#8b5cf6,#5b6fff)',
               color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer',
             }}
@@ -11302,7 +11302,7 @@ function SBIntensityChart({ blocs, sport, onClickEffortBloc }: {
 
   return (
     <div style={{ marginBottom: 14, position: 'relative' }}>
-      <p style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.06em', color: 'var(--ai-dim)', margin: '0 0 6px', fontFamily: 'DM Sans,sans-serif' }}>
+      <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.06em', color: 'var(--ai-dim)', margin: '0 0 6px', fontFamily: 'var(--font-body)' }}>
         Profil d'intensité
       </p>
 
@@ -11315,7 +11315,7 @@ function SBIntensityChart({ blocs, sport, onClickEffortBloc }: {
           transform: 'translateX(-50%)',
           background: 'var(--ai-bg)',
           border: '1px solid var(--ai-border)',
-          borderRadius: 8,
+          borderRadius: 'var(--r-sm)',
           padding: '7px 11px',
           zIndex: 30,
           fontSize: 11,
@@ -11323,7 +11323,7 @@ function SBIntensityChart({ blocs, sport, onClickEffortBloc }: {
           marginBottom: 6,
           boxShadow: '0 6px 20px rgba(0,0,0,0.25)',
           pointerEvents: 'none',
-          fontFamily: 'DM Sans, sans-serif',
+          fontFamily: 'var(--font-body)',
         }}>
           <div style={{ fontWeight: 700, color: 'var(--ai-text)', marginBottom: 4, fontSize: 12 }}>
             {hovBar.isRecup ? 'Récupération' : hovBar.bloc.nom}
@@ -11414,10 +11414,10 @@ function SBIntensityChart({ blocs, sport, onClickEffortBloc }: {
               left: `${bar.xPct}%`,
               width: `${bar.wPct}%`,
               textAlign: 'center' as const,
-              fontSize: 8,
+              fontSize: 10,
               lineHeight: '16px',
               color: col,
-              fontFamily: 'DM Mono, monospace',
+              fontFamily: 'var(--font-body)',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
               whiteSpace: 'nowrap' as const,
@@ -11450,18 +11450,18 @@ function SBSessionCard({ session }: { session: SBSession }) {
       <div style={{ marginBottom: 12 }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 6 }}>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <p style={{ fontFamily: 'Syne,sans-serif', fontSize: 14, fontWeight: 800, color: 'var(--ai-text)', margin: '0 0 5px', lineHeight: 1.2 }}>
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 800, color: 'var(--ai-text)', margin: '0 0 5px', lineHeight: 1.2 }}>
               {session.nom}
             </p>
             <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 5 }}>
-              <span style={{ fontSize: 9, padding: '2px 7px', borderRadius: 9, background: `${color}22`, color, fontWeight: 700, letterSpacing: '0.04em', fontFamily: 'DM Sans,sans-serif' }}>
+              <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 'var(--r-sm)', background: `${color}22`, color, fontWeight: 700, letterSpacing: '0.04em', fontFamily: 'var(--font-body)' }}>
                 {sportObj?.label ?? session.sport}
               </span>
-              <span style={{ fontSize: 9, padding: '2px 7px', borderRadius: 9, background: `${INTENSITE_COLOR[session.intensite] ?? '#5b6fff'}22`, color: INTENSITE_COLOR[session.intensite] ?? '#5b6fff', fontWeight: 700, letterSpacing: '0.04em', fontFamily: 'DM Sans,sans-serif' }}>
+              <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 'var(--r-sm)', background: `${INTENSITE_COLOR[session.intensite] ?? '#5b6fff'}22`, color: INTENSITE_COLOR[session.intensite] ?? '#5b6fff', fontWeight: 700, letterSpacing: '0.04em', fontFamily: 'var(--font-body)' }}>
                 {session.intensite}
               </span>
               {(session.tags ?? []).slice(0, 3).map(tag => (
-                <span key={tag} style={{ fontSize: 9, padding: '2px 7px', borderRadius: 9, background: 'var(--ai-bg2)', color: 'var(--ai-dim)', fontFamily: 'DM Sans,sans-serif' }}>
+                <span key={tag} style={{ fontSize: 10, padding: '2px 7px', borderRadius: 'var(--r-sm)', background: 'var(--ai-bg2)', color: 'var(--ai-dim)', fontFamily: 'var(--font-body)' }}>
                   {tag}
                 </span>
               ))}
@@ -11476,9 +11476,9 @@ function SBSessionCard({ session }: { session: SBSession }) {
             { label: 'TSS',   val: String(session.tss_estime) },
             { label: 'RPE',   val: `${session.rpe_cible}/10` },
           ].map(({ label, val }) => (
-            <div key={label} style={{ textAlign: 'center' as const, padding: '8px 6px', borderRadius: 9, background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)' }}>
-              <div style={{ fontSize: 9, color: 'var(--ai-dim)', fontFamily: 'DM Sans,sans-serif', marginBottom: 2 }}>{label}</div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'DM Mono,monospace' }}>{val}</div>
+            <div key={label} style={{ textAlign: 'center' as const, padding: '8px 6px', borderRadius: 'var(--r-sm)', background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)' }}>
+              <div style={{ fontSize: 10, color: 'var(--ai-dim)', fontFamily: 'var(--font-body)', marginBottom: 2 }}>{label}</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'var(--font-body)' }}>{val}</div>
             </div>
           ))}
         </div>
@@ -11487,40 +11487,40 @@ function SBSessionCard({ session }: { session: SBSession }) {
         <SBIntensityChart blocs={session.blocs} sport={session.sport} />
 
         {/* Description */}
-        <p style={{ fontSize: 12, color: 'var(--ai-mid)', margin: '0 0 10px', fontFamily: 'DM Sans,sans-serif', lineHeight: 1.5, fontStyle: 'italic' as const }}>
+        <p style={{ fontSize: 12, color: 'var(--ai-mid)', margin: '0 0 10px', fontFamily: 'var(--font-body)', lineHeight: 1.5, fontStyle: 'italic' as const }}>
           {session.description}
         </p>
       </div>
 
       {/* Blocs */}
-      <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.06em', color: 'var(--ai-dim)', margin: '0 0 8px', fontFamily: 'DM Sans,sans-serif' }}>
+      <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.06em', color: 'var(--ai-dim)', margin: '0 0 8px', fontFamily: 'var(--font-body)' }}>
         Structure — {session.blocs.length} blocs
       </p>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         {session.blocs.map((bloc, i) => (
-          <div key={i} style={{ padding: '10px 12px', borderRadius: 10, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)' }}>
+          <div key={i} style={{ padding: '10px 12px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)' }}>
             <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 4 }}>
-              <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'DM Sans,sans-serif' }}>{bloc.nom}</span>
-              <span style={{ fontSize: 10, color: 'var(--ai-mid)', fontFamily: 'DM Mono,monospace' }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'var(--font-body)' }}>{bloc.nom}</span>
+              <span style={{ fontSize: 10, color: 'var(--ai-mid)', fontFamily: 'var(--font-body)' }}>
                 {bloc.repetitions > 1 ? `${bloc.repetitions}×` : ''}{bloc.duree_effort}min
                 {bloc.recup > 0 ? ` / ${bloc.recup}min récup` : ''}
               </span>
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 4, marginBottom: 4 }}>
               {(bloc.zone_effort ?? []).map(z => (
-                <span key={z} style={{ fontSize: 9, padding: '1px 6px', borderRadius: 6, background: 'rgba(91,111,255,0.15)', color: '#5b6fff', fontWeight: 700, fontFamily: 'DM Mono,monospace' }}>{z}</span>
+                <span key={z} style={{ fontSize: 10, padding: '1px 6px', borderRadius: 'var(--r-sm)', background: 'rgba(91,111,255,0.15)', color: '#5b6fff', fontWeight: 700, fontFamily: 'var(--font-body)' }}>{z}</span>
               ))}
               {bloc.watts != null && (
-                <span style={{ fontSize: 9, padding: '1px 6px', borderRadius: 6, background: 'rgba(249,115,22,0.15)', color: '#f97316', fontFamily: 'DM Mono,monospace' }}>{bloc.watts}W</span>
+                <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 'var(--r-sm)', background: 'rgba(249,115,22,0.15)', color: '#f97316', fontFamily: 'var(--font-body)' }}>{bloc.watts}W</span>
               )}
               {bloc.allure_cible && (
-                <span style={{ fontSize: 9, padding: '1px 6px', borderRadius: 6, background: 'rgba(34,197,94,0.15)', color: '#22c55e', fontFamily: 'DM Mono,monospace' }}>{bloc.allure_cible}</span>
+                <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 'var(--r-sm)', background: 'rgba(34,197,94,0.15)', color: '#22c55e', fontFamily: 'var(--font-body)' }}>{bloc.allure_cible}</span>
               )}
               {bloc.fc_cible != null && (
-                <span style={{ fontSize: 9, padding: '1px 6px', borderRadius: 6, background: 'rgba(239,68,68,0.12)', color: '#ef4444', fontFamily: 'DM Mono,monospace' }}>{bloc.fc_cible}bpm</span>
+                <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 'var(--r-sm)', background: 'rgba(239,68,68,0.12)', color: '#ef4444', fontFamily: 'var(--font-body)' }}>{bloc.fc_cible}bpm</span>
               )}
             </div>
-            <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: 0, fontFamily: 'DM Sans,sans-serif', lineHeight: 1.4 }}>{bloc.consigne}</p>
+            <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: 0, fontFamily: 'var(--font-body)', lineHeight: 1.4 }}>{bloc.consigne}</p>
           </div>
         ))}
       </div>
@@ -11727,7 +11727,7 @@ function SessionBuilderFlow({ onCancel, onRecordConv }: {
   if (phase === 'sport') {
     return (
       <div style={{ padding: '8px 0 4px' }}>
-        <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 4px', fontFamily: 'Syne,sans-serif' }}>
+        <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 4px', fontFamily: 'var(--font-body)' }}>
           Créer une séance
         </p>
         <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: '0 0 14px' }}>
@@ -11738,7 +11738,7 @@ function SessionBuilderFlow({ onCancel, onRecordConv }: {
             <button key={s.id} onClick={() => { setSport(s.id); setSousType(null); setTypesSeance([]); setPhase('type') }}
               style={{
                 display: 'flex', alignItems: 'center', gap: 10,
-                padding: '10px 14px', borderRadius: 10, textAlign: 'left',
+                padding: '10px 14px', borderRadius: 'var(--r-sm)', textAlign: 'left',
                 border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)',
                 cursor: 'pointer', transition: 'all 0.12s', width: '100%',
               }}
@@ -11754,16 +11754,16 @@ function SessionBuilderFlow({ onCancel, onRecordConv }: {
               }}
             >
               <div style={{ width: 8, height: 8, borderRadius: '50%', background: s.color, flexShrink: 0 }} />
-              <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--ai-text)', fontFamily: 'DM Sans,sans-serif' }}>
+              <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--ai-text)', fontFamily: 'var(--font-body)' }}>
                 {s.label}
               </span>
             </button>
           ))}
         </div>
         <button onClick={onCancel} style={{
-          padding: '8px 16px', borderRadius: 9, border: '1px solid var(--ai-border)',
+          padding: '8px 16px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)',
           background: 'transparent', color: 'var(--ai-mid)', fontSize: 12,
-          cursor: 'pointer', fontFamily: 'DM Sans,sans-serif',
+          cursor: 'pointer', fontFamily: 'var(--font-body)',
         }}>{t('aip.ui.cancel')}</button>
       </div>
     )
@@ -11780,13 +11780,13 @@ function SessionBuilderFlow({ onCancel, onRecordConv }: {
         {/* Back + sport label */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
           <button onClick={() => setPhase('sport')} style={{
-            width: 26, height: 26, borderRadius: 6, border: '1px solid var(--ai-border)',
+            width: 26, height: 26, borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)',
             background: 'transparent', color: 'var(--ai-mid)', cursor: 'pointer', fontSize: 14,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>←</button>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <div style={{ width: 8, height: 8, borderRadius: '50%', background: sportColor }} />
-            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'Syne,sans-serif' }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'var(--font-body)' }}>
               {sportLabel}
             </span>
           </div>
@@ -11801,12 +11801,12 @@ function SessionBuilderFlow({ onCancel, onRecordConv }: {
             <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 6 }}>
               {SB_VELO_SOUS_TYPES.map(st => (
                 <button key={st} onClick={() => setSousType(sousType === st ? null : st)} style={{
-                  padding: '6px 12px', borderRadius: 20,
+                  padding: '6px 12px', borderRadius: 'var(--r-lg)',
                   border: `1px solid ${sousType === st ? '#f97316' : 'var(--ai-border)'}`,
                   background: sousType === st ? 'rgba(249,115,22,0.12)' : 'var(--ai-bg2)',
                   color: sousType === st ? '#f97316' : 'var(--ai-mid)',
                   fontSize: 12, fontWeight: sousType === st ? 600 : 400,
-                  cursor: 'pointer', fontFamily: 'DM Sans,sans-serif',
+                  cursor: 'pointer', fontFamily: 'var(--font-body)',
                 }}>{st}</button>
               ))}
             </div>
@@ -11822,12 +11822,12 @@ function SessionBuilderFlow({ onCancel, onRecordConv }: {
             const on = typesSeance.includes(t)
             return (
               <button key={t} onClick={() => toggleType(t)} style={{
-                padding: '7px 13px', borderRadius: 20,
+                padding: '7px 13px', borderRadius: 'var(--r-lg)',
                 border: `1px solid ${on ? sportColor : 'var(--ai-border)'}`,
                 background: on ? `${sportColor}1a` : 'var(--ai-bg2)',
                 color: on ? sportColor : 'var(--ai-mid)',
                 fontSize: 12, fontWeight: on ? 600 : 400,
-                cursor: 'pointer', transition: 'all 0.12s', fontFamily: 'DM Sans,sans-serif',
+                cursor: 'pointer', transition: 'all 0.12s', fontFamily: 'var(--font-body)',
               }}>{t}</button>
             )
           })}
@@ -11843,9 +11843,9 @@ function SessionBuilderFlow({ onCancel, onRecordConv }: {
           placeholder={t('aip.q.sessionExamplePh')}
           rows={2}
           style={{
-            width: '100%', padding: '8px 10px', borderRadius: 9,
+            width: '100%', padding: '8px 10px', borderRadius: 'var(--r-sm)',
             border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)',
-            color: 'var(--ai-text)', fontSize: 12, fontFamily: 'DM Sans,sans-serif',
+            color: 'var(--ai-text)', fontSize: 12, fontFamily: 'var(--font-body)',
             resize: 'none' as const, outline: 'none', boxSizing: 'border-box' as const,
             marginBottom: 14,
           }}
@@ -11855,19 +11855,19 @@ function SessionBuilderFlow({ onCancel, onRecordConv }: {
 
         <div style={{ display: 'flex', gap: 8 }}>
           <button onClick={onCancel} style={{
-            padding: '9px 14px', borderRadius: 9, border: '1px solid var(--ai-border)',
+            padding: '9px 14px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)',
             background: 'transparent', color: 'var(--ai-mid)', fontSize: 12,
-            cursor: 'pointer', fontFamily: 'DM Sans,sans-serif',
+            cursor: 'pointer', fontFamily: 'var(--font-body)',
           }}>{t('aip.ui.cancel')}</button>
           <button
             onClick={() => void generate()}
             disabled={typesSeance.length === 0}
             style={{
-              flex: 1, padding: '9px', borderRadius: 9, border: 'none',
+              flex: 1, padding: '9px', borderRadius: 'var(--r-sm)', border: 'none',
               background: typesSeance.length > 0 ? 'var(--ai-gradient)' : 'var(--ai-border)',
               color: '#fff', fontSize: 12, fontWeight: 700,
               cursor: typesSeance.length > 0 ? 'pointer' : 'not-allowed',
-              fontFamily: 'DM Sans,sans-serif', transition: 'background 0.15s',
+              fontFamily: 'var(--font-body)', transition: 'background 0.15s',
             }}
           >
             Générer la séance
@@ -11882,7 +11882,7 @@ function SessionBuilderFlow({ onCancel, onRecordConv }: {
     return (
       <div style={{ padding: '24px 0', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
         <Dots />
-        <p style={{ fontSize: 13, color: 'var(--ai-mid)', fontFamily: 'DM Sans,sans-serif', margin: 0 }}>
+        <p style={{ fontSize: 13, color: 'var(--ai-mid)', fontFamily: 'var(--font-body)', margin: 0 }}>
           {session ? 'Modification en cours…' : 'Génération en cours…'}
         </p>
       </div>
@@ -11894,24 +11894,24 @@ function SessionBuilderFlow({ onCancel, onRecordConv }: {
     return (
       <div style={{ padding: '16px 0', textAlign: 'center' }}>
         <div style={{ marginBottom: 10, display: 'flex', justifyContent: 'center' }}><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#22C55E" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 12l3 3 5-6"/></svg></div>
-        <p style={{ fontFamily: 'Syne,sans-serif', fontSize: 14, fontWeight: 700, margin: '0 0 6px', color: 'var(--ai-text)' }}>
+        <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 700, margin: '0 0 6px', color: 'var(--ai-text)' }}>
           Séance ajoutée ✓
         </p>
-        <p style={{ fontSize: 12, color: 'var(--ai-mid)', margin: '0 0 16px', fontFamily: 'DM Sans,sans-serif' }}>
+        <p style={{ fontSize: 12, color: 'var(--ai-mid)', margin: '0 0 16px', fontFamily: 'var(--font-body)' }}>
           {session?.nom} a été ajoutée à ta bibliothèque.
         </p>
         <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
           <button onClick={onCancel} style={{
-            padding: '8px 16px', borderRadius: 9, border: '1px solid var(--ai-border)',
+            padding: '8px 16px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)',
             background: 'transparent', color: 'var(--ai-mid)', fontSize: 12,
-            cursor: 'pointer', fontFamily: 'DM Sans,sans-serif',
+            cursor: 'pointer', fontFamily: 'var(--font-body)',
           }}>{t('aip.ui.close')}</button>
           <a href="/session" style={{
             display: 'inline-flex', alignItems: 'center',
-            padding: '8px 16px', borderRadius: 9, border: 'none',
+            padding: '8px 16px', borderRadius: 'var(--r-sm)', border: 'none',
             background: 'var(--ai-gradient)',
             color: '#fff', fontSize: 12, fontWeight: 700,
-            cursor: 'pointer', fontFamily: 'DM Sans,sans-serif',
+            cursor: 'pointer', fontFamily: 'var(--font-body)',
             textDecoration: 'none',
           }}>
             Voir dans Session →
@@ -11927,15 +11927,15 @@ function SessionBuilderFlow({ onCancel, onRecordConv }: {
       <div style={{ padding: '8px 0 4px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
           <button onClick={() => setPhase('result')} style={{
-            width: 26, height: 26, borderRadius: 6, border: '1px solid var(--ai-border)',
+            width: 26, height: 26, borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)',
             background: 'transparent', color: 'var(--ai-mid)', cursor: 'pointer', fontSize: 14,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>←</button>
-          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', fontFamily: 'Syne,sans-serif' }}>
+          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', fontFamily: 'var(--font-body)' }}>
             Modifier la séance
           </span>
         </div>
-        <p style={{ fontSize: 12, color: 'var(--ai-dim)', margin: '0 0 10px', fontFamily: 'DM Sans,sans-serif' }}>
+        <p style={{ fontSize: 12, color: 'var(--ai-dim)', margin: '0 0 10px', fontFamily: 'var(--font-body)' }}>
           Décris les changements souhaités
         </p>
         <textarea
@@ -11943,28 +11943,28 @@ function SessionBuilderFlow({ onCancel, onRecordConv }: {
           onChange={e => setModifyText(e.target.value)}
           rows={4}
           style={{
-            width: '100%', padding: '10px 12px', borderRadius: 9,
+            width: '100%', padding: '10px 12px', borderRadius: 'var(--r-sm)',
             border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)',
-            color: 'var(--ai-text)', fontSize: 12, fontFamily: 'DM Sans,sans-serif',
+            color: 'var(--ai-text)', fontSize: 12, fontFamily: 'var(--font-body)',
             resize: 'none' as const, outline: 'none', boxSizing: 'border-box' as const,
             marginBottom: 12,
           }}
         />
         <div style={{ display: 'flex', gap: 8 }}>
           <button onClick={() => setPhase('result')} style={{
-            padding: '9px 14px', borderRadius: 9, border: '1px solid var(--ai-border)',
+            padding: '9px 14px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)',
             background: 'transparent', color: 'var(--ai-mid)', fontSize: 12,
-            cursor: 'pointer', fontFamily: 'DM Sans,sans-serif',
+            cursor: 'pointer', fontFamily: 'var(--font-body)',
           }}>{t('aip.ui.cancel')}</button>
           <button
             onClick={() => void generate(modifyText)}
             disabled={modifyText.trim().length < 10}
             style={{
-              flex: 1, padding: '9px', borderRadius: 9, border: 'none',
+              flex: 1, padding: '9px', borderRadius: 'var(--r-sm)', border: 'none',
               background: modifyText.trim().length >= 10 ? 'var(--ai-gradient)' : 'var(--ai-border)',
               color: '#fff', fontSize: 12, fontWeight: 700,
               cursor: modifyText.trim().length >= 10 ? 'pointer' : 'not-allowed',
-              fontFamily: 'DM Sans,sans-serif',
+              fontFamily: 'var(--font-body)',
             }}
           >
             Régénérer
@@ -11987,18 +11987,18 @@ function SessionBuilderFlow({ onCancel, onRecordConv }: {
         <div style={{ marginBottom: 12 }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 6 }}>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ fontFamily: 'Syne,sans-serif', fontSize: 14, fontWeight: 800, color: 'var(--ai-text)', margin: '0 0 5px', lineHeight: 1.2 }}>
+              <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 800, color: 'var(--ai-text)', margin: '0 0 5px', lineHeight: 1.2 }}>
                 {session.nom}
               </p>
               <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 5 }}>
-                <span style={{ fontSize: 9, padding: '2px 7px', borderRadius: 9, background: `${color}22`, color, fontWeight: 700, letterSpacing: '0.04em', fontFamily: 'DM Sans,sans-serif' }}>
+                <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 'var(--r-sm)', background: `${color}22`, color, fontWeight: 700, letterSpacing: '0.04em', fontFamily: 'var(--font-body)' }}>
                   {sportObj?.label ?? session.sport}
                 </span>
-                <span style={{ fontSize: 9, padding: '2px 7px', borderRadius: 9, background: `${INTENSITE_COLOR[session.intensite] ?? '#5b6fff'}22`, color: INTENSITE_COLOR[session.intensite] ?? '#5b6fff', fontWeight: 700, letterSpacing: '0.04em', fontFamily: 'DM Sans,sans-serif' }}>
+                <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 'var(--r-sm)', background: `${INTENSITE_COLOR[session.intensite] ?? '#5b6fff'}22`, color: INTENSITE_COLOR[session.intensite] ?? '#5b6fff', fontWeight: 700, letterSpacing: '0.04em', fontFamily: 'var(--font-body)' }}>
                   {session.intensite}
                 </span>
                 {session.tags.slice(0, 3).map(tag => (
-                  <span key={tag} style={{ fontSize: 9, padding: '2px 7px', borderRadius: 9, background: 'var(--ai-bg2)', color: 'var(--ai-dim)', fontFamily: 'DM Sans,sans-serif' }}>
+                  <span key={tag} style={{ fontSize: 10, padding: '2px 7px', borderRadius: 'var(--r-sm)', background: 'var(--ai-bg2)', color: 'var(--ai-dim)', fontFamily: 'var(--font-body)' }}>
                     {tag}
                   </span>
                 ))}
@@ -12013,9 +12013,9 @@ function SessionBuilderFlow({ onCancel, onRecordConv }: {
               { label: 'TSS',   val: String(session.tss_estime) },
               { label: 'RPE',   val: `${session.rpe_cible}/10` },
             ].map(({ label, val }) => (
-              <div key={label} style={{ textAlign: 'center', padding: '8px 6px', borderRadius: 9, background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)' }}>
-                <div style={{ fontSize: 9, color: 'var(--ai-dim)', fontFamily: 'DM Sans,sans-serif', marginBottom: 2 }}>{label}</div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'DM Mono,monospace' }}>{val}</div>
+              <div key={label} style={{ textAlign: 'center', padding: '8px 6px', borderRadius: 'var(--r-sm)', background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)' }}>
+                <div style={{ fontSize: 10, color: 'var(--ai-dim)', fontFamily: 'var(--font-body)', marginBottom: 2 }}>{label}</div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'var(--font-body)' }}>{val}</div>
               </div>
             ))}
           </div>
@@ -12024,53 +12024,53 @@ function SessionBuilderFlow({ onCancel, onRecordConv }: {
           <SBIntensityChart blocs={session.blocs} sport={session.sport} onClickEffortBloc={openEditBloc} />
 
           {/* Description */}
-          <p style={{ fontSize: 12, color: 'var(--ai-mid)', margin: '0 0 10px', fontFamily: 'DM Sans,sans-serif', lineHeight: 1.5, fontStyle: 'italic' }}>
+          <p style={{ fontSize: 12, color: 'var(--ai-mid)', margin: '0 0 10px', fontFamily: 'var(--font-body)', lineHeight: 1.5, fontStyle: 'italic' }}>
             {session.description}
           </p>
         </div>
 
         {/* Blocs */}
-        <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.06em', color: 'var(--ai-dim)', margin: '0 0 8px', fontFamily: 'DM Sans,sans-serif' }}>
+        <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.06em', color: 'var(--ai-dim)', margin: '0 0 8px', fontFamily: 'var(--font-body)' }}>
           Structure — {session.blocs.length} blocs
         </p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 14 }}>
           {session.blocs.map((bloc, i) => (
             <div key={i} style={{
-              padding: '10px 12px', borderRadius: 10,
+              padding: '10px 12px', borderRadius: 'var(--r-sm)',
               border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)',
             }}>
               <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 4 }}>
-                <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'DM Sans,sans-serif' }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'var(--font-body)' }}>
                   {bloc.nom}
                 </span>
-                <span style={{ fontSize: 10, color: 'var(--ai-mid)', fontFamily: 'DM Mono,monospace' }}>
+                <span style={{ fontSize: 10, color: 'var(--ai-mid)', fontFamily: 'var(--font-body)' }}>
                   {bloc.repetitions > 1 ? `${bloc.repetitions}×` : ''}{bloc.duree_effort}min
                   {bloc.recup > 0 ? ` / ${bloc.recup}min récup` : ''}
                 </span>
               </div>
               <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 4, marginBottom: 4 }}>
                 {bloc.zone_effort.map(z => (
-                  <span key={z} style={{ fontSize: 9, padding: '1px 6px', borderRadius: 6, background: 'rgba(91,111,255,0.15)', color: '#5b6fff', fontWeight: 700, fontFamily: 'DM Mono,monospace' }}>
+                  <span key={z} style={{ fontSize: 10, padding: '1px 6px', borderRadius: 'var(--r-sm)', background: 'rgba(91,111,255,0.15)', color: '#5b6fff', fontWeight: 700, fontFamily: 'var(--font-body)' }}>
                     {z}
                   </span>
                 ))}
                 {bloc.watts != null && (
-                  <span style={{ fontSize: 9, padding: '1px 6px', borderRadius: 6, background: 'rgba(249,115,22,0.15)', color: '#f97316', fontFamily: 'DM Mono,monospace' }}>
+                  <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 'var(--r-sm)', background: 'rgba(249,115,22,0.15)', color: '#f97316', fontFamily: 'var(--font-body)' }}>
                     {bloc.watts}W
                   </span>
                 )}
                 {bloc.allure_cible && (
-                  <span style={{ fontSize: 9, padding: '1px 6px', borderRadius: 6, background: 'rgba(34,197,94,0.15)', color: '#22c55e', fontFamily: 'DM Mono,monospace' }}>
+                  <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 'var(--r-sm)', background: 'rgba(34,197,94,0.15)', color: '#22c55e', fontFamily: 'var(--font-body)' }}>
                     {bloc.allure_cible}
                   </span>
                 )}
                 {bloc.fc_cible != null && (
-                  <span style={{ fontSize: 9, padding: '1px 6px', borderRadius: 6, background: 'rgba(239,68,68,0.12)', color: '#ef4444', fontFamily: 'DM Mono,monospace' }}>
+                  <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 'var(--r-sm)', background: 'rgba(239,68,68,0.12)', color: '#ef4444', fontFamily: 'var(--font-body)' }}>
                     {bloc.fc_cible}bpm
                   </span>
                 )}
               </div>
-              <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: 0, fontFamily: 'DM Sans,sans-serif', lineHeight: 1.4 }}>
+              <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: 0, fontFamily: 'var(--font-body)', lineHeight: 1.4 }}>
                 {bloc.consigne}
               </p>
             </div>
@@ -12084,10 +12084,10 @@ function SessionBuilderFlow({ onCancel, onRecordConv }: {
           <button
             onClick={() => { setModifyText('Voici ce que je veux changer : '); setPhase('modify') }}
             style={{
-              flex: 1, padding: '9px', borderRadius: 9,
+              flex: 1, padding: '9px', borderRadius: 'var(--r-sm)',
               border: '1px solid var(--ai-border)', background: 'transparent',
               color: 'var(--ai-mid)', fontSize: 12, fontWeight: 500,
-              cursor: 'pointer', fontFamily: 'DM Sans,sans-serif',
+              cursor: 'pointer', fontFamily: 'var(--font-body)',
             }}
           >
             Modifier
@@ -12096,10 +12096,10 @@ function SessionBuilderFlow({ onCancel, onRecordConv }: {
             onClick={() => void save()}
             disabled={saving}
             style={{
-              flex: 2, padding: '9px', borderRadius: 9, border: 'none',
+              flex: 2, padding: '9px', borderRadius: 'var(--r-sm)', border: 'none',
               background: saving ? 'var(--ai-border)' : 'var(--ai-gradient)',
               color: '#fff', fontSize: 12, fontWeight: 700,
-              cursor: saving ? 'not-allowed' : 'pointer', fontFamily: 'DM Sans,sans-serif',
+              cursor: saving ? 'not-allowed' : 'pointer', fontFamily: 'var(--font-body)',
             }}
           >
             {saving ? 'Sauvegarde…' : '+ Ajouter à la bibliothèque'}
@@ -12113,69 +12113,69 @@ function SessionBuilderFlow({ onCancel, onRecordConv }: {
             onClick={() => setEditBloc(null)}
           >
             <div
-              style={{ background: 'var(--ai-bg)', border: '1px solid var(--ai-border)', borderRadius: 16, padding: '20px 20px 16px', width: 300, maxWidth: '92vw', boxShadow: '0 20px 60px rgba(0,0,0,0.4)' }}
+              style={{ background: 'var(--ai-bg)', border: '1px solid var(--ai-border)', borderRadius: 'var(--r-md)', padding: '20px 20px 16px', width: 300, maxWidth: '92vw', boxShadow: '0 20px 60px rgba(0,0,0,0.4)' }}
               onClick={e => e.stopPropagation()}
             >
-              <p style={{ fontSize: 13, fontWeight: 700, margin: '0 0 4px', fontFamily: 'Syne,sans-serif', color: 'var(--ai-text)' }}>
+              <p style={{ fontSize: 13, fontWeight: 700, margin: '0 0 4px', fontFamily: 'var(--font-body)', color: 'var(--ai-text)' }}>
                 Modifier le bloc
               </p>
-              <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: '0 0 16px', fontFamily: 'DM Sans,sans-serif' }}>
+              <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: '0 0 16px', fontFamily: 'var(--font-body)' }}>
                 {editBloc.nom}
               </p>
 
-              <label style={{ display: 'block', fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.06em', color: 'var(--ai-dim)', marginBottom: 4, fontFamily: 'DM Sans,sans-serif' }}>
+              <label style={{ display: 'block', fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.06em', color: 'var(--ai-dim)', marginBottom: 4, fontFamily: 'var(--font-body)' }}>
                 Durée d&apos;effort (min)
               </label>
               <input
                 type="number" min={1} value={editDuree}
                 onChange={e => setEditDuree(e.target.value)}
-                style={{ width: '100%', padding: '7px 10px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 13, fontFamily: 'DM Mono,monospace', boxSizing: 'border-box' as const, outline: 'none', marginBottom: 12 }}
+                style={{ width: '100%', padding: '7px 10px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 13, fontFamily: 'var(--font-body)', boxSizing: 'border-box' as const, outline: 'none', marginBottom: 12 }}
               />
 
-              <label style={{ display: 'block', fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.06em', color: 'var(--ai-dim)', marginBottom: 4, fontFamily: 'DM Sans,sans-serif' }}>
+              <label style={{ display: 'block', fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.06em', color: 'var(--ai-dim)', marginBottom: 4, fontFamily: 'var(--font-body)' }}>
                 Zone effort
               </label>
               <input
                 type="text" value={editZone}
                 onChange={e => setEditZone(e.target.value)}
                 placeholder="ex: Z4 ou Z4/Z5"
-                style={{ width: '100%', padding: '7px 10px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 13, fontFamily: 'DM Mono,monospace', boxSizing: 'border-box' as const, outline: 'none', marginBottom: 12 }}
+                style={{ width: '100%', padding: '7px 10px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 13, fontFamily: 'var(--font-body)', boxSizing: 'border-box' as const, outline: 'none', marginBottom: 12 }}
               />
 
-              <label style={{ display: 'block', fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.06em', color: 'var(--ai-dim)', marginBottom: 4, fontFamily: 'DM Sans,sans-serif' }}>
+              <label style={{ display: 'block', fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.06em', color: 'var(--ai-dim)', marginBottom: 4, fontFamily: 'var(--font-body)' }}>
                 FC cible (bpm)
               </label>
               <input
                 type="number" min={0} value={editFc}
                 onChange={e => setEditFc(e.target.value)}
                 placeholder="ex: 158"
-                style={{ width: '100%', padding: '7px 10px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 13, fontFamily: 'DM Mono,monospace', boxSizing: 'border-box' as const, outline: 'none', marginBottom: 12 }}
+                style={{ width: '100%', padding: '7px 10px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 13, fontFamily: 'var(--font-body)', boxSizing: 'border-box' as const, outline: 'none', marginBottom: 12 }}
               />
 
               {isRunSport && (
                 <>
-                  <label style={{ display: 'block', fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.06em', color: 'var(--ai-dim)', marginBottom: 4, fontFamily: 'DM Sans,sans-serif' }}>
+                  <label style={{ display: 'block', fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.06em', color: 'var(--ai-dim)', marginBottom: 4, fontFamily: 'var(--font-body)' }}>
                     Allure cible
                   </label>
                   <input
                     type="text" value={editAllure}
                     onChange={e => setEditAllure(e.target.value)}
                     placeholder="ex: 4:08/km"
-                    style={{ width: '100%', padding: '7px 10px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 13, fontFamily: 'DM Mono,monospace', boxSizing: 'border-box' as const, outline: 'none', marginBottom: 12 }}
+                    style={{ width: '100%', padding: '7px 10px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 13, fontFamily: 'var(--font-body)', boxSizing: 'border-box' as const, outline: 'none', marginBottom: 12 }}
                   />
                 </>
               )}
 
               {isCycleSport && (
                 <>
-                  <label style={{ display: 'block', fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.06em', color: 'var(--ai-dim)', marginBottom: 4, fontFamily: 'DM Sans,sans-serif' }}>
+                  <label style={{ display: 'block', fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.06em', color: 'var(--ai-dim)', marginBottom: 4, fontFamily: 'var(--font-body)' }}>
                     Puissance (watts)
                   </label>
                   <input
                     type="number" min={0} value={editWatts}
                     onChange={e => setEditWatts(e.target.value)}
                     placeholder="ex: 280"
-                    style={{ width: '100%', padding: '7px 10px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 13, fontFamily: 'DM Mono,monospace', boxSizing: 'border-box' as const, outline: 'none', marginBottom: 12 }}
+                    style={{ width: '100%', padding: '7px 10px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 13, fontFamily: 'var(--font-body)', boxSizing: 'border-box' as const, outline: 'none', marginBottom: 12 }}
                   />
                 </>
               )}
@@ -12183,13 +12183,13 @@ function SessionBuilderFlow({ onCancel, onRecordConv }: {
               <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
                 <button
                   onClick={() => setEditBloc(null)}
-                  style={{ flex: 1, padding: '9px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}
+                  style={{ flex: 1, padding: '9px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer', fontFamily: 'var(--font-body)' }}
                 >
                   Annuler
                 </button>
                 <button
                   onClick={applyBlocEdit}
-                  style={{ flex: 2, padding: '9px', borderRadius: 9, border: 'none', background: 'var(--ai-gradient)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}
+                  style={{ flex: 2, padding: '9px', borderRadius: 'var(--r-sm)', border: 'none', background: 'var(--ai-gradient)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}
                 >
                   Appliquer
                 </button>
@@ -12613,10 +12613,10 @@ function PlusMenu({
         }}
         style={{
           display: 'flex', alignItems: 'flex-start', gap: 12,
-          width: '100%', padding: '12px 14px', borderRadius: 12, marginBottom: 2, minHeight: 44,
+          width: '100%', padding: '12px 14px', borderRadius: 'var(--r-md)', marginBottom: 2, minHeight: 44,
           color: 'var(--ai-text)', cursor: 'pointer',
           border: 'none', background: 'transparent', textAlign: 'left',
-          fontFamily: 'DM Sans,sans-serif', transition: 'background 120ms',
+          fontFamily: 'var(--font-body)', transition: 'background 120ms',
         }}
         onMouseEnter={hoverOn} onMouseLeave={hoverOff}
       >
@@ -12644,34 +12644,34 @@ function PlusMenu({
   // Item compact de l'écran principal
   const rowStyle: React.CSSProperties = {
     display: 'flex', alignItems: 'center', gap: 10,
-    width: '100%', padding: '8px 10px', borderRadius: 8,
+    width: '100%', padding: '8px 10px', borderRadius: 'var(--r-sm)',
     fontSize: 13, color: 'var(--text)', cursor: 'pointer',
     border: 'none', background: 'transparent', textAlign: 'left',
-    fontFamily: 'DM Sans,sans-serif', transition: 'background 120ms',
+    fontFamily: 'var(--font-body)', transition: 'background 120ms',
   }
   const sepStyle: React.CSSProperties = { height: 1, background: 'var(--border)', margin: '4px 0' }
   const photoTileStyle: React.CSSProperties = {
-    flexShrink: 0, width: 100, height: 92, borderRadius: 16,
+    flexShrink: 0, width: 100, height: 92, borderRadius: 'var(--r-md)',
     border: 'none', background: 'var(--surface-neutral)',
     display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 7,
-    cursor: 'pointer', fontFamily: 'DM Sans,sans-serif',
+    cursor: 'pointer', fontFamily: 'var(--font-body)',
   }
   const photoTileLabel: React.CSSProperties = { fontSize: 12, color: 'var(--text)', fontWeight: 500 }
   // ── Style mobile « cartes groupées » (façon Claude) : blocs arrondis,
   //    grande typo, cibles tactiles confortables, séparateurs en retrait. ──
-  const mGroup: React.CSSProperties = { background: 'var(--surface-neutral)', borderRadius: 16, overflow: 'hidden', marginBottom: 12 }
+  const mGroup: React.CSSProperties = { background: 'var(--surface-neutral)', borderRadius: 'var(--r-md)', overflow: 'hidden', marginBottom: 12 }
   const mRow: React.CSSProperties = {
     display: 'flex', alignItems: 'center', gap: 14, width: '100%',
     padding: '15px 16px', minHeight: 56, boxSizing: 'border-box',
     fontSize: 16, fontWeight: 500, color: 'var(--text)', textAlign: 'left',
-    background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: 'DM Sans,sans-serif',
+    background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)',
   }
   const mDiv: React.CSSProperties = { height: 1, background: 'var(--border)', marginLeft: 52 }
   const mHint: React.CSSProperties = { fontSize: 13, color: 'var(--text-dim)', flexShrink: 0, fontWeight: 500 }
   const mTile: React.CSSProperties = {
-    flexShrink: 0, width: 106, height: 102, borderRadius: 18, border: 'none', background: 'var(--surface-neutral)',
+    flexShrink: 0, width: 106, height: 102, borderRadius: 'var(--r-lg)', border: 'none', background: 'var(--surface-neutral)',
     display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 9,
-    cursor: 'pointer', fontFamily: 'DM Sans,sans-serif',
+    cursor: 'pointer', fontFamily: 'var(--font-body)',
   }
 
   // État vide (thème « Et d'autres sports » — à venir)
@@ -12699,9 +12699,9 @@ function PlusMenu({
               onClick={() => setActiveTheme(t.id)}
               style={{
                 display: 'flex', alignItems: 'center', gap: 8,
-                width: '100%', padding: '9px 10px', borderRadius: 8,
+                width: '100%', padding: '9px 10px', borderRadius: 'var(--r-sm)',
                 fontSize: 13, cursor: 'pointer', border: 'none', textAlign: 'left',
-                fontFamily: 'DM Sans,sans-serif',
+                fontFamily: 'var(--font-body)',
                 transition: 'background 120ms, color 120ms',
                 background: active ? 'var(--bg-hover)' : 'transparent',
                 color: active ? 'var(--ai-text)' : 'var(--text-mid)',
@@ -12729,16 +12729,16 @@ function PlusMenu({
       {PLUS_CONNECTORS.map(c => (
         <div key={c.id} style={{
           display: 'flex', alignItems: 'center', gap: 13,
-          padding: '13px 14px', borderRadius: 14,
+          padding: '13px 14px', borderRadius: 'var(--r-md)',
           border: '1px solid var(--border)', marginBottom: 8,
         }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={c.logo} alt={c.name} width={30} height={30} style={{ borderRadius: 8, objectFit: 'contain', flexShrink: 0, background: '#fff' }} />
+          <img src={c.logo} alt={c.name} width={30} height={30} style={{ borderRadius: 'var(--r-sm)', objectFit: 'contain', flexShrink: 0, background: '#fff' }} />
           <span style={{ flex: 1, minWidth: 0, fontSize: 15.5, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</span>
           {c.connected ? (
             <>
               <div style={{
-                width: 44, height: 26, borderRadius: 999, background: '#06B6D4', position: 'relative', flexShrink: 0,
+                width: 44, height: 26, borderRadius: 'var(--r-pill)', background: '#06B6D4', position: 'relative', flexShrink: 0,
                 animation: 'aip_toggle_pulse 0.3s ease-out',
               }}>
                 <div style={{ position: 'absolute', top: 3, right: 3, width: 20, height: 20, borderRadius: '50%', background: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,0.25)' }} />
@@ -12747,10 +12747,10 @@ function PlusMenu({
             </>
           ) : (
             <>
-              <div style={{ width: 44, height: 26, borderRadius: 999, background: 'var(--border)', position: 'relative', flexShrink: 0 }}>
+              <div style={{ width: 44, height: 26, borderRadius: 'var(--r-pill)', background: 'var(--border)', position: 'relative', flexShrink: 0 }}>
                 <div style={{ position: 'absolute', top: 3, left: 3, width: 20, height: 20, borderRadius: '50%', background: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,0.25)' }} />
               </div>
-              <a href="/connections" style={{ fontSize: 13, color: '#06B6D4', fontWeight: 600, border: '1px solid #06B6D4', borderRadius: 8, padding: '6px 12px', marginLeft: 4, textDecoration: 'none', flexShrink: 0 }}>
+              <a href="/connections" style={{ fontSize: 13, color: '#06B6D4', fontWeight: 600, border: '1px solid #06B6D4', borderRadius: 'var(--r-sm)', padding: '6px 12px', marginLeft: 4, textDecoration: 'none', flexShrink: 0 }}>
                 Connecter →
               </a>
             </>
@@ -12762,7 +12762,7 @@ function PlusMenu({
 
   const competencesList = (
     <div style={{ padding: 8, minWidth: 232, maxWidth: 280, maxHeight: 'min(380px, 66vh)', overflowY: 'auto' }}>
-      <div style={{ padding: '4px 8px 8px', fontSize: 11, color: 'var(--text-dim)', fontFamily: 'DM Sans,sans-serif' }}>
+      <div style={{ padding: '4px 8px 8px', fontSize: 11, color: 'var(--text-dim)', fontFamily: 'var(--font-body)' }}>
         {compNames.length > 0
           ? `${compNames.length} / ${compLimit} active${compNames.length > 1 ? 's' : ''}`
           : 'Aucune compétence active'}
@@ -12770,7 +12770,7 @@ function PlusMenu({
       {compNames.map((nom, i) => (
         <div key={i} style={{
           display: 'flex', alignItems: 'center', gap: 8,
-          padding: '8px 10px', borderRadius: 9, marginBottom: 3,
+          padding: '8px 10px', borderRadius: 'var(--r-sm)', marginBottom: 3,
           border: '0.5px solid var(--border)', background: 'var(--bg-alt)',
         }}>
           <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#06B6D4', flexShrink: 0 }} />
@@ -12782,9 +12782,9 @@ function PlusMenu({
         onClick={() => { onClose(); onClosePanel(); router.push('/competences') }}
         style={{
           display: 'flex', alignItems: 'center', gap: 8, width: '100%',
-          padding: '9px 10px', borderRadius: 9, marginTop: 3,
+          padding: '9px 10px', borderRadius: 'var(--r-sm)', marginTop: 3,
           border: '1px dashed var(--border-mid)', background: 'transparent',
-          color: 'var(--text-mid)', cursor: 'pointer', fontFamily: 'DM Sans,sans-serif',
+          color: 'var(--text-mid)', cursor: 'pointer', fontFamily: 'var(--font-body)',
           fontSize: 13, fontWeight: 600, transition: 'background 120ms',
         }}
         onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)' }}
@@ -12812,7 +12812,7 @@ function PlusMenu({
               const sel = selectedPhotos.includes(url)
               return (
               <button key={i} onClick={() => togglePhoto(url)} aria-label={`Photo ${i + 1}`} aria-pressed={sel}
-                style={{ position: 'relative', flexShrink: 0, width: 102, height: 102, borderRadius: 18, padding: 0, border: sel ? '2.5px solid #06B6D4' : 'none', background: 'var(--surface-neutral)', overflow: 'hidden', cursor: 'pointer' }}>
+                style={{ position: 'relative', flexShrink: 0, width: 102, height: 102, borderRadius: 'var(--r-lg)', padding: 0, border: sel ? '2.5px solid #06B6D4' : 'none', background: 'var(--surface-neutral)', overflow: 'hidden', cursor: 'pointer' }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={url} alt="" loading="lazy" onError={() => setRecentPhotos(p => p.filter(u => u !== url))}
                   style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
@@ -12883,7 +12883,7 @@ function PlusMenu({
               <Globe size={20} color="var(--text-mid)" style={{ flexShrink: 0 }} />
               <span style={{ flex: 1 }}>Recherche Web</span>
               <span style={{
-                width: 46, height: 28, borderRadius: 999, flexShrink: 0, position: 'relative',
+                width: 46, height: 28, borderRadius: 'var(--r-pill)', flexShrink: 0, position: 'relative',
                 background: webSearchOn ? '#06B6D4' : 'var(--border)', transition: 'background 0.18s',
               }}>
                 <span style={{
@@ -12899,7 +12899,7 @@ function PlusMenu({
             <div style={{ position: 'sticky', bottom: 0, zIndex: 5, padding: '10px 4px calc(6px + env(safe-area-inset-bottom, 0px))', background: 'linear-gradient(to top, var(--bg-card) 62%, transparent)' }}>
               <PressPop popScale={1.03}
                 onClick={() => { const urls = selectedPhotos; setSelectedPhotos([]); urls.forEach(u => onPickPhoto(u)); onClose() }}
-                style={{ width: '100%', height: 54, borderRadius: 999, border: 'none', cursor: 'pointer', background: 'var(--text)', color: 'var(--bg)', fontFamily: 'DM Sans,sans-serif', fontSize: 16, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, boxShadow: '0 6px 20px rgba(0,0,0,0.22)' }}>
+                style={{ width: '100%', height: 54, borderRadius: 'var(--r-pill)', border: 'none', cursor: 'pointer', background: 'var(--text)', color: 'var(--bg)', fontFamily: 'var(--font-body)', fontSize: 16, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, boxShadow: '0 6px 20px rgba(0,0,0,0.22)' }}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" /></svg>
                 {selectedPhotos.length > 1 ? `Joindre ${selectedPhotos.length} photos` : 'Joindre 1 photo'}
               </PressPop>
@@ -12934,7 +12934,7 @@ function PlusMenu({
                   onClick={() => { onPickPhoto(url); onClose() }}
                   aria-label={`Photo ${i + 1}`}
                   style={{
-                    flexShrink: 0, width: 92, height: 92, borderRadius: 16, padding: 0,
+                    flexShrink: 0, width: 92, height: 92, borderRadius: 'var(--r-md)', padding: 0,
                     border: 'none', background: 'var(--surface-neutral)',
                     overflow: 'hidden', cursor: 'pointer', position: 'relative',
                   }}
@@ -13029,7 +13029,7 @@ function PlusMenu({
             <span style={{ flex: 1 }}>Recherche Web</span>
             {/* Interrupteur */}
             <span style={{
-              width: 38, height: 22, borderRadius: 999, flexShrink: 0, position: 'relative',
+              width: 38, height: 22, borderRadius: 'var(--r-pill)', flexShrink: 0, position: 'relative',
               background: webSearchOn ? 'var(--ai-accent, #06B6D4)' : 'var(--border)',
               transition: 'background 0.18s',
             }}>
@@ -13067,8 +13067,8 @@ function PlusMenu({
                         onClick={() => setMobileTheme(t.id)}
                         style={{
                           display: 'flex', alignItems: 'center', gap: 13,
-                          width: '100%', padding: '14px 14px', borderRadius: 12, marginBottom: 2, minHeight: 56,
-                          fontFamily: 'DM Sans,sans-serif', cursor: 'pointer', border: 'none', textAlign: 'left',
+                          width: '100%', padding: '14px 14px', borderRadius: 'var(--r-md)', marginBottom: 2, minHeight: 56,
+                          fontFamily: 'var(--font-body)', cursor: 'pointer', border: 'none', textAlign: 'left',
                           background: 'transparent', color: 'var(--ai-text)', transition: 'background 120ms',
                         }}
                         onMouseEnter={hoverOn} onMouseLeave={hoverOff}
@@ -13168,7 +13168,7 @@ function PlusMenu({
   return (
     <div ref={ref} className="aip-plus-menu" style={{
       position: 'absolute', bottom: 'calc(100% + 8px)', left: 0, zIndex: 200,
-      minWidth: 260, borderRadius: 12, padding: 6,
+      minWidth: 260, borderRadius: 'var(--r-md)', padding: 6,
       boxShadow: '0 8px 32px rgba(0,0,0,0.24)',
       maxHeight: '72vh', overflow: activeScreen === 'main' ? 'visible' : 'hidden',
       animation: 'aip_menu_up 0.18s ease-out',
@@ -13193,7 +13193,7 @@ function PlusMenu({
                 : { left: flyoutRect.right + 6 }),
               bottom: Math.max(8, window.innerHeight - flyoutRect.bottom),
               maxHeight: `min(66vh, ${Math.round(flyoutRect.bottom - 8)}px)`,
-              borderRadius: 12, boxShadow: '0 8px 32px rgba(0,0,0,0.24)',
+              borderRadius: 'var(--r-md)', boxShadow: '0 8px 32px rgba(0,0,0,0.24)',
               overflow: 'hidden', animation: 'ai_slidein 0.14s ease',
             }}
           >
@@ -13335,7 +13335,7 @@ function HistoryDrawer({
   // (50 px de haut, texte blanc 17 px, icône 22 px).
   const rowBtn: React.CSSProperties = underlay ? {
     display: 'flex', alignItems: 'center', gap: 14, width: '100%', minHeight: 50, padding: '0 14px',
-    borderRadius: 18, border: 'none', background: 'transparent', cursor: 'pointer',
+    borderRadius: 'var(--r-lg)', border: 'none', background: 'transparent', cursor: 'pointer',
     color: 'var(--text)', fontSize: 17, fontWeight: 500, fontFamily: 'var(--font-body)', textAlign: 'left',
   } : {}
   const ic = underlay ? 22 : 15
@@ -13350,7 +13350,7 @@ function HistoryDrawer({
           </span>
           {persistent && onToggleCollapse && (
             <button type="button" onClick={() => { haptic(); onToggleCollapse() }} aria-label={t('aip.collapseSidebar')}
-              style={{ width: 28, height: 28, borderRadius: 7, border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-mid)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+              style={{ width: 28, height: 28, borderRadius: 'var(--r-sm)', border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-mid)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
               onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)' }}
               onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}>
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/></svg>
@@ -13369,7 +13369,7 @@ function HistoryDrawer({
               border: underlay ? 'none' : '0.5px solid var(--border)', background: underlay ? 'color-mix(in srgb, var(--text) 12%, var(--bg-card))' : 'var(--bg-alt)',
               boxShadow: underlay ? '0 4px 16px rgba(0,0,0,0.3)' : undefined,
               color: 'var(--text)', fontSize: underlay ? 20 : 13, fontWeight: 600,
-              fontFamily: 'DM Sans,sans-serif',
+              fontFamily: 'var(--font-body)',
             }}
           >
             {avatarUrl
@@ -13378,20 +13378,20 @@ function HistoryDrawer({
               : (initials || '?')}
           </button>
           {avatarMenu && (
-            <div style={{ position: 'absolute', ...(underlay ? { bottom: '115%', left: 0 } : { top: '110%', right: 0 }), zIndex: 100, minWidth: 210, background: 'var(--bg-card)', border: '0.5px solid var(--border)', borderRadius: 12, boxShadow: '0 10px 34px rgba(0,0,0,0.22)', overflow: 'hidden', padding: 4 }}>
+            <div style={{ position: 'absolute', ...(underlay ? { bottom: '115%', left: 0 } : { top: '110%', right: 0 }), zIndex: 100, minWidth: 210, background: 'var(--bg-card)', border: '0.5px solid var(--border)', borderRadius: 'var(--r-md)', boxShadow: '0 10px 34px rgba(0,0,0,0.22)', overflow: 'hidden', padding: 4 }}>
               {[
                 { label: 'Paramètres', section: 'profil' },
                 { label: 'Modèles', section: 'modele' },
                 { label: 'Abonnement', section: 'abonnement' },
               ].map(it => (
                 <button key={it.section} onClick={() => openSettings(it.section)}
-                  style={{ display: 'block', width: '100%', textAlign: 'left', padding: '9px 12px', border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text)', fontSize: 13.5, fontFamily: 'DM Sans,sans-serif', borderRadius: 8 }}
+                  style={{ display: 'block', width: '100%', textAlign: 'left', padding: '9px 12px', border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text)', fontSize: 13.5, fontFamily: 'var(--font-body)', borderRadius: 'var(--r-sm)' }}
                   onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)' }}
                   onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}>{it.label}</button>
               ))}
               {/* Langue — sous-menu inline */}
               <button onClick={() => setLangMenu(o => !o)}
-                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, width: '100%', textAlign: 'left', padding: '9px 12px', border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text)', fontSize: 13.5, fontFamily: 'DM Sans,sans-serif', borderRadius: 8 }}
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, width: '100%', textAlign: 'left', padding: '9px 12px', border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text)', fontSize: 13.5, fontFamily: 'var(--font-body)', borderRadius: 'var(--r-sm)' }}
                 onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)' }}
                 onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}>
                 <span>Langue</span>
@@ -13401,7 +13401,7 @@ function HistoryDrawer({
                 <div style={{ padding: '2px 0 2px 8px' }}>
                   {([['fr', 'Français'], ['en', 'English'], ['es', 'Español']] as const).map(([code, label]) => (
                     <button key={code} onClick={() => { setLang(code); setAvatarMenu(false); setLangMenu(false) }}
-                      style={{ display: 'flex', alignItems: 'center', gap: 7, width: '100%', textAlign: 'left', padding: '8px 12px', border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-mid)', fontSize: 13, fontFamily: 'DM Sans,sans-serif', borderRadius: 8 }}>
+                      style={{ display: 'flex', alignItems: 'center', gap: 7, width: '100%', textAlign: 'left', padding: '8px 12px', border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-mid)', fontSize: 13, fontFamily: 'var(--font-body)', borderRadius: 'var(--r-sm)' }}>
                       {lang === code && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={ '#5b6fff' } strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>}
                       <span style={{ marginLeft: lang === code ? 0 : 19 }}>{label}</span>
                     </button>
@@ -13420,10 +13420,10 @@ function HistoryDrawer({
           onClick={onNew}
           style={{
             display: 'flex', alignItems: 'center', gap: 8,
-            width: '100%', padding: '8px 8px', borderRadius: 8,
+            width: '100%', padding: '8px 8px', borderRadius: 'var(--r-sm)',
             border: '0.5px solid var(--border)', background: 'transparent',
             color: 'var(--text)', fontSize: 14, fontWeight: 400, cursor: 'pointer',
-            fontFamily: 'DM Sans,sans-serif', textAlign: 'left',
+            fontFamily: 'var(--font-body)', textAlign: 'left',
             transition: 'background 0.12s',
           }}
           onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)' }}
@@ -13440,10 +13440,10 @@ function HistoryDrawer({
           onClick={() => setProjectsOpen(o => !o)}
           style={{
             display: 'flex', alignItems: 'center', gap: 8,
-            width: '100%', padding: '8px 8px', borderRadius: 8,
+            width: '100%', padding: '8px 8px', borderRadius: 'var(--r-sm)',
             border: 'none', background: 'transparent', cursor: 'pointer',
             color: 'var(--text-mid)', fontSize: 14, fontWeight: 400,
-            fontFamily: 'DM Sans,sans-serif', textAlign: 'left',
+            fontFamily: 'var(--font-body)', textAlign: 'left',
             ...rowBtn,
           }}
           onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)' }}
@@ -13470,10 +13470,10 @@ function HistoryDrawer({
                     onClick={() => onSelectProject(isActive ? null : p.id)}
                     style={{
                       display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0,
-                      padding: '6px 8px', borderRadius: 7, border: 'none', cursor: 'pointer',
+                      padding: '6px 8px', borderRadius: 'var(--r-sm)', border: 'none', cursor: 'pointer',
                       background: isActive ? 'var(--bg-hover)' : 'transparent',
                       color: 'var(--text)', fontSize: 13, fontWeight: isActive ? 600 : 450,
-                      fontFamily: 'DM Sans,sans-serif', textAlign: 'left',
+                      fontFamily: 'var(--font-body)', textAlign: 'left',
                     }}
                     onMouseEnter={e => { if (!isActive) (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)' }}
                     onMouseLeave={e => { if (!isActive) (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
@@ -13486,7 +13486,7 @@ function HistoryDrawer({
                     onClick={() => setProjModal({ id: p.id, name: p.name, instructions: p.instructions })}
                     aria-label="Modifier le projet"
                     className="aip-proj-edit"
-                    style={{ flexShrink: 0, width: 24, height: 24, borderRadius: 5, border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    style={{ flexShrink: 0, width: 24, height: 24, borderRadius: 'var(--r-sm)', border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                   >
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"/></svg>
                   </button>
@@ -13497,9 +13497,9 @@ function HistoryDrawer({
               onClick={() => setProjModal({ name: '', instructions: '' })}
               style={{
                 display: 'flex', alignItems: 'center', gap: 8, width: '100%',
-                padding: '6px 8px', borderRadius: 7, border: 'none', cursor: 'pointer',
+                padding: '6px 8px', borderRadius: 'var(--r-sm)', border: 'none', cursor: 'pointer',
                 background: 'transparent', color: 'var(--text-mid)', fontSize: underlay ? 16 : 12.5, minHeight: underlay ? 44 : undefined,
-                fontFamily: 'DM Sans,sans-serif', textAlign: 'left',
+                fontFamily: 'var(--font-body)', textAlign: 'left',
               }}
               onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)' }}
               onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
@@ -13515,10 +13515,10 @@ function HistoryDrawer({
           onClick={() => { haptic(); onOpenRoutines() }}
           style={{
             display: 'flex', alignItems: 'center', gap: 8,
-            width: '100%', padding: '8px 8px', borderRadius: 8,
+            width: '100%', padding: '8px 8px', borderRadius: 'var(--r-sm)',
             border: 'none', background: 'transparent', cursor: 'pointer',
             color: 'var(--text-mid)', fontSize: 14, fontWeight: 400,
-            fontFamily: 'DM Sans,sans-serif', textAlign: 'left',
+            fontFamily: 'var(--font-body)', textAlign: 'left',
             ...rowBtn,
           }}
           onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)' }}
@@ -13535,10 +13535,10 @@ function HistoryDrawer({
           onClick={() => { haptic(); onOpenStudio() }}
           style={{
             display: 'flex', alignItems: 'center', gap: 8,
-            width: '100%', padding: '8px 8px', borderRadius: 8,
+            width: '100%', padding: '8px 8px', borderRadius: 'var(--r-sm)',
             border: 'none', background: 'transparent', cursor: 'pointer',
             color: 'var(--text-mid)', fontSize: 14, fontWeight: 400,
-            fontFamily: 'DM Sans,sans-serif', textAlign: 'left',
+            fontFamily: 'var(--font-body)', textAlign: 'left',
             ...rowBtn,
           }}
           onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)' }}
@@ -13658,10 +13658,10 @@ function HistoryDrawer({
                   }}
                   onBlur={() => setRenId(null)}
                   style={{
-                    width: '100%', padding: '5px 7px', borderRadius: 6,
+                    width: '100%', padding: '5px 7px', borderRadius: 'var(--r-sm)',
                     border: '1px solid rgba(91,111,255,0.5)',
                     background: 'var(--ai-bg)', color: 'var(--ai-text)',
-                    fontFamily: 'DM Sans, sans-serif', fontSize: 11,
+                    fontFamily: 'var(--font-body)', fontSize: 11,
                     outline: 'none', boxSizing: 'border-box',
                   }}
                 />
@@ -13698,7 +13698,7 @@ function HistoryDrawer({
                 } : undefined}
                 onDragEnd={onConvDragEnd}
                 style={{
-                  padding: '11px 10px 11px 12px', borderRadius: 10, cursor: 'pointer',
+                  padding: '11px 10px 11px 12px', borderRadius: 'var(--r-sm)', cursor: 'pointer',
                   background: conv.id === activeId ? 'rgba(127,127,127,0.14)' : 'transparent',
                   boxShadow: 'none',
                   border: 'none', touchAction: 'pan-y', WebkitTapHighlightColor: 'transparent',
@@ -13778,13 +13778,13 @@ function HistoryDrawer({
                       background: 'color-mix(in srgb, var(--ai-bg) 82%, transparent)',
                       WebkitBackdropFilter: 'blur(22px) saturate(1.7)', backdropFilter: 'blur(22px) saturate(1.7)',
                       border: '1px solid var(--ai-border)',
-                      borderRadius: 16, boxShadow: '0 18px 48px rgba(0,0,0,0.28)',
+                      borderRadius: 'var(--r-md)', boxShadow: '0 18px 48px rgba(0,0,0,0.28)',
                       padding: 6, minWidth: 220,
                     }}>
                       {/* Ligne de menu générique (icône · libellé · raccourci) façon menu contextuel. */}
                       {/* Épingler */}
                       <button onClick={() => { onPin(conv.id); setMenuId(null) }}
-                        style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '9px 10px', borderRadius: 8, border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--ai-text)', fontFamily: 'DM Sans,sans-serif', fontSize: 13.5, textAlign: 'left' }}
+                        style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '9px 10px', borderRadius: 'var(--r-sm)', border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--ai-text)', fontFamily: 'var(--font-body)', fontSize: 13.5, textAlign: 'left' }}
                         onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--ai-bg2)' }}
                         onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
                       >
@@ -13794,7 +13794,7 @@ function HistoryDrawer({
                       </button>
                       {/* Renommer */}
                       <button onClick={() => { setRenId(conv.id); setRenVal(conv.title); setMenuId(null) }}
-                        style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '9px 10px', borderRadius: 8, border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--ai-text)', fontFamily: 'DM Sans,sans-serif', fontSize: 13.5, textAlign: 'left' }}
+                        style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '9px 10px', borderRadius: 'var(--r-sm)', border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--ai-text)', fontFamily: 'var(--font-body)', fontSize: 13.5, textAlign: 'left' }}
                         onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--ai-bg2)' }}
                         onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
                       >
@@ -13804,7 +13804,7 @@ function HistoryDrawer({
                       </button>
                       {/* Ajouter au projet */}
                       <button onClick={() => setMoveMenuId(moveMenuId === conv.id ? null : conv.id)}
-                        style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '9px 10px', borderRadius: 8, border: 'none', background: moveMenuId === conv.id ? 'var(--ai-bg2)' : 'transparent', cursor: 'pointer', color: 'var(--ai-text)', fontFamily: 'DM Sans,sans-serif', fontSize: 13.5, textAlign: 'left' }}
+                        style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '9px 10px', borderRadius: 'var(--r-sm)', border: 'none', background: moveMenuId === conv.id ? 'var(--ai-bg2)' : 'transparent', cursor: 'pointer', color: 'var(--ai-text)', fontFamily: 'var(--font-body)', fontSize: 13.5, textAlign: 'left' }}
                         onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--ai-bg2)' }}
                         onMouseLeave={e => { if (moveMenuId !== conv.id) (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
                       >
@@ -13813,14 +13813,14 @@ function HistoryDrawer({
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--ai-dim)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ transform: moveMenuId === conv.id ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s' }}><path d="M9 6l6 6-6 6"/></svg>
                       </button>
                       {moveMenuId === conv.id && (
-                        <div style={{ margin: '2px 0', maxHeight: 180, overflowY: 'auto', background: 'var(--ai-bg2)', borderRadius: 8 }}>
+                        <div style={{ margin: '2px 0', maxHeight: 180, overflowY: 'auto', background: 'var(--ai-bg2)', borderRadius: 'var(--r-sm)' }}>
                           {projects.length === 0 && (
                             <div style={{ padding: '8px 12px', fontSize: 11.5, color: 'var(--ai-dim)' }}>Aucun projet. Crée-en un d’abord.</div>
                           )}
                           {projects.map(p => (
                             <button key={p.id}
                               onClick={() => { onMoveConvToProject(conv.id, p.id); setMoveMenuId(null); setMenuId(null) }}
-                              style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '8px 12px 8px 16px', border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--ai-text)', fontFamily: 'DM Sans,sans-serif', fontSize: 13, textAlign: 'left' }}
+                              style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '8px 12px 8px 16px', border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--ai-text)', fontFamily: 'var(--font-body)', fontSize: 13, textAlign: 'left' }}
                             >
                               <span style={{ width: 8, height: 8, borderRadius: '50%', background: p.color, flexShrink: 0 }} />
                               <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</span>
@@ -13830,7 +13830,7 @@ function HistoryDrawer({
                           {conv.projectId && (
                             <button
                               onClick={() => { onMoveConvToProject(conv.id, null); setMoveMenuId(null); setMenuId(null) }}
-                              style={{ display: 'block', width: '100%', padding: '8px 12px 8px 16px', border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--ai-dim)', fontFamily: 'DM Sans,sans-serif', fontSize: 12.5, textAlign: 'left' }}
+                              style={{ display: 'block', width: '100%', padding: '8px 12px 8px 16px', border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--ai-dim)', fontFamily: 'var(--font-body)', fontSize: 12.5, textAlign: 'left' }}
                             >Retirer du projet</button>
                           )}
                         </div>
@@ -13843,19 +13843,19 @@ function HistoryDrawer({
                           <div style={{ display: 'flex', gap: 5 }}>
                             <button
                               onClick={() => { setConfirmId(null); setMenuId(null) }}
-                              style={{ flex: 1, padding: '6px 0', borderRadius: 7, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-dim)', fontSize: 11.5, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
+                              style={{ flex: 1, padding: '6px 0', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-dim)', fontSize: 11.5, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
                               Annuler
                             </button>
                             <button
                               onClick={() => { onDelete(conv.id); setConfirmId(null); setMenuId(null) }}
-                              style={{ flex: 1, padding: '6px 0', borderRadius: 7, border: 'none', background: '#ef4444', color: '#fff', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
+                              style={{ flex: 1, padding: '6px 0', borderRadius: 'var(--r-sm)', border: 'none', background: '#ef4444', color: '#fff', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
                               Supprimer
                             </button>
                           </div>
                         </div>
                       ) : (
                         <button onClick={() => setConfirmId(conv.id)}
-                          style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '9px 10px', borderRadius: 8, border: 'none', background: 'transparent', cursor: 'pointer', color: '#ef4444', fontFamily: 'DM Sans,sans-serif', fontSize: 13.5, textAlign: 'left' }}
+                          style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '9px 10px', borderRadius: 'var(--r-sm)', border: 'none', background: 'transparent', cursor: 'pointer', color: '#ef4444', fontFamily: 'var(--font-body)', fontSize: 13.5, textAlign: 'left' }}
                           onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(239,68,68,0.12)' }}
                           onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
                         >
@@ -13880,7 +13880,7 @@ function HistoryDrawer({
           style={{
             position: 'absolute', bottom: 20, left: 84, right: 16,
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, zIndex: 5,
-            minHeight: 56, padding: '0 20px', borderRadius: 999, border: 'none',
+            minHeight: 56, padding: '0 20px', borderRadius: 'var(--r-pill)', border: 'none',
             background: 'var(--text)', color: 'var(--bg-card)',
             fontSize: 17, fontWeight: 600, fontFamily: 'var(--font-body)',
             cursor: 'pointer', whiteSpace: 'nowrap',
@@ -13902,9 +13902,9 @@ function HistoryDrawer({
         >
           <div
             onClick={e => e.stopPropagation()}
-            style={{ width: '100%', maxWidth: 380, background: 'var(--bg-card)', borderRadius: 16, border: '0.5px solid var(--border)', padding: 18, boxShadow: '0 20px 60px rgba(0,0,0,0.35)', display: 'flex', flexDirection: 'column', gap: 12 }}
+            style={{ width: '100%', maxWidth: 380, background: 'var(--bg-card)', borderRadius: 'var(--r-md)', border: '0.5px solid var(--border)', padding: 18, boxShadow: '0 20px 60px rgba(0,0,0,0.35)', display: 'flex', flexDirection: 'column', gap: 12 }}
           >
-            <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)', fontFamily: 'Syne,DM Sans,sans-serif' }}>
+            <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-body)' }}>
               {projModal.id ? 'Modifier le projet' : 'Nouveau projet'}
             </div>
             <input
@@ -13912,26 +13912,26 @@ function HistoryDrawer({
               value={projModal.name}
               onChange={e => setProjModal(m => m ? { ...m, name: e.target.value } : m)}
               placeholder={t("aip.project_name_ph")}
-              style={{ width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: 9, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text)', fontSize: 14, fontFamily: 'DM Sans,sans-serif', outline: 'none' }}
+              style={{ width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text)', fontSize: 14, fontFamily: 'var(--font-body)', outline: 'none' }}
             />
             <textarea
               value={projModal.instructions}
               onChange={e => setProjModal(m => m ? { ...m, instructions: e.target.value } : m)}
               placeholder={t("aip.project_context_ph")}
               rows={5}
-              style={{ width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: 9, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text)', fontSize: 13, lineHeight: 1.5, fontFamily: 'DM Sans,sans-serif', outline: 'none', resize: 'vertical' }}
+              style={{ width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text)', fontSize: 13, lineHeight: 1.5, fontFamily: 'var(--font-body)', outline: 'none', resize: 'vertical' }}
             />
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               {projModal.id && (
                 <button
                   onClick={() => { const id = projModal.id!; setProjModal(null); onDeleteProject(id) }}
-                  style={{ padding: '9px 12px', borderRadius: 9, border: 'none', background: 'transparent', color: '#ef4444', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}
+                  style={{ padding: '9px 12px', borderRadius: 'var(--r-sm)', border: 'none', background: 'transparent', color: '#ef4444', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)' }}
                 >Supprimer</button>
               )}
               <div style={{ flex: 1 }} />
               <button
                 onClick={() => { if (!projSaving) setProjModal(null) }}
-                style={{ padding: '9px 14px', borderRadius: 9, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-mid)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}
+                style={{ padding: '9px 14px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-mid)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)' }}
               >Annuler</button>
               <button
                 disabled={!projModal.name.trim() || projSaving}
@@ -13944,7 +13944,7 @@ function HistoryDrawer({
                     setProjModal(null)
                   } finally { setProjSaving(false) }
                 }}
-                style={{ padding: '9px 16px', borderRadius: 9, border: 'none', background: (!projModal.name.trim() || projSaving) ? 'var(--border)' : 'var(--text)', color: 'var(--bg-card)', fontSize: 13, fontWeight: 700, cursor: (!projModal.name.trim() || projSaving) ? 'not-allowed' : 'pointer', fontFamily: 'DM Sans,sans-serif' }}
+                style={{ padding: '9px 16px', borderRadius: 'var(--r-sm)', border: 'none', background: (!projModal.name.trim() || projSaving) ? 'var(--border)' : 'var(--text)', color: 'var(--bg-card)', fontSize: 13, fontWeight: 700, cursor: (!projModal.name.trim() || projSaving) ? 'not-allowed' : 'pointer', fontFamily: 'var(--font-body)' }}
               >{projSaving ? '…' : projModal.id ? 'Enregistrer' : 'Créer'}</button>
             </div>
           </div>
@@ -15158,7 +15158,7 @@ Sports : ${sports} | Objectif : ${goal}`
         <div style={{ marginBottom: 18 }}>
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 6 }}>
             <span style={{ fontSize: 13, color: 'var(--ai-mid)' }}>Configuration de ton app</span>
-            <span style={{ fontSize: 22, fontWeight: 600, color: 'var(--ai-text)', fontVariantNumeric: 'tabular-nums', fontFamily: 'DM Sans,sans-serif' }}>
+            <span style={{ fontSize: 22, fontWeight: 600, color: 'var(--ai-text)', fontVariantNumeric: 'tabular-nums', fontFamily: 'var(--font-body)' }}>
               {health.score}<span style={{ fontSize: 13, color: 'var(--ai-dim)', marginLeft: 1 }}>%</span>
             </span>
           </div>
@@ -15178,12 +15178,12 @@ Sports : ${sports} | Objectif : ${goal}`
 
       {/* Raccourcis */}
       <div style={{ display: 'flex', gap: 16, marginBottom: 14 }}>
-        <button onClick={selectAll} style={{ padding: '4px 2px', border: 'none', background: 'transparent', color: 'var(--ai-accent)', fontSize: 12.5, fontWeight: 500, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
+        <button onClick={selectAll} style={{ padding: '4px 2px', border: 'none', background: 'transparent', color: 'var(--ai-accent)', fontSize: 12.5, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
           Tout sélectionner
         </button>
         <button onClick={selectMissing} disabled={!health || health.checks.every(c => c.ok)} style={{
           padding: '4px 2px', border: 'none', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12.5, fontWeight: 500,
-          cursor: 'pointer', fontFamily: 'DM Sans,sans-serif',
+          cursor: 'pointer', fontFamily: 'var(--font-body)',
           opacity: !health || health.checks.every(c => c.ok) ? 0.4 : 1,
         }}>
           Ce qu'il me reste à configurer
@@ -15196,7 +15196,7 @@ Sports : ${sports} | Objectif : ${goal}`
           const active = selected.includes(page.id)
           return (
             <button key={page.id} onClick={() => toggle(page.id)} style={{
-              padding: '11px 13px', borderRadius: 12, textAlign: 'left',
+              padding: '11px 13px', borderRadius: 'var(--r-md)', textAlign: 'left',
               border: active ? '1px solid var(--ai-accent)' : '1px solid var(--ai-border)',
               background: active ? 'var(--ai-bg2)' : 'transparent',
               cursor: 'pointer', transition: 'all 0.12s',
@@ -15212,11 +15212,11 @@ Sports : ${sports} | Objectif : ${goal}`
         onClick={handleGenerate}
         disabled={selected.length === 0}
         style={{
-          width: '100%', padding: '12px', borderRadius: 12,
+          width: '100%', padding: '12px', borderRadius: 'var(--r-md)',
           background: selected.length > 0 ? 'var(--ai-gradient)' : 'var(--ai-border)',
           border: 'none', color: selected.length > 0 ? '#fff' : 'var(--ai-dim)',
           fontSize: 13, fontWeight: 600, cursor: selected.length > 0 ? 'pointer' : 'not-allowed',
-          fontFamily: 'DM Sans,sans-serif',
+          fontFamily: 'var(--font-body)',
         }}>
         Explorer {selected.length > 0 ? `(${selected.length} section${selected.length > 1 ? 's' : ''})` : ''}
       </button>
@@ -15444,7 +15444,7 @@ function ToolCallPreview({
         const { borderColor, emoji, label, description } = toolCallMeta(tc)
         return (
           <div key={i} style={{
-            borderRadius: 10,
+            borderRadius: 'var(--r-sm)',
             border: `1px solid ${borderColor}44`,
             borderLeft: `3px solid ${borderColor}`,
             background: `${borderColor}0e`,
@@ -15452,17 +15452,17 @@ function ToolCallPreview({
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 5 }}>
               {n > 1 && (
-                <span style={{ fontSize: 10, fontFamily: 'DM Mono,monospace', color: 'var(--ai-dim)', minWidth: 18 }}>
+                <span style={{ fontSize: 10, fontFamily: 'var(--font-body)', color: 'var(--ai-dim)', minWidth: 18 }}>
                   {i + 1}/{n}
                 </span>
               )}
-              <span style={{ fontSize: 13, color: borderColor, fontWeight: 800, lineHeight: 1, fontFamily: 'DM Mono,monospace' }}>{emoji}</span>
+              <span style={{ fontSize: 13, color: borderColor, fontWeight: 800, lineHeight: 1, fontFamily: 'var(--font-body)' }}>{emoji}</span>
               <span style={{
                 fontSize: 10.5, fontWeight: 700, color: borderColor,
-                fontFamily: 'Syne,sans-serif', textTransform: 'uppercase', letterSpacing: '0.06em',
+                fontFamily: 'var(--font-body)', textTransform: 'uppercase', letterSpacing: '0.06em',
               }}>{label}</span>
             </div>
-            <p style={{ fontSize: 12.5, color: 'var(--ai-text)', margin: 0, lineHeight: 1.5, fontFamily: 'DM Sans,sans-serif' }}>
+            <p style={{ fontSize: 12.5, color: 'var(--ai-text)', margin: 0, lineHeight: 1.5, fontFamily: 'var(--font-body)' }}>
               {description}
             </p>
           </div>
@@ -15471,7 +15471,7 @@ function ToolCallPreview({
 
       {/* ── Erreur ─────────────────────────────────────────── */}
       {applyStatus === 'error' && applyError && (
-        <p style={{ fontSize: 11, color: '#ef4444', margin: 0, padding: '7px 11px', borderRadius: 8, background: 'rgba(239,68,68,0.08)', fontFamily: 'DM Sans,sans-serif' }}>
+        <p style={{ fontSize: 11, color: '#ef4444', margin: 0, padding: '7px 11px', borderRadius: 'var(--r-sm)', background: 'rgba(239,68,68,0.08)', fontFamily: 'var(--font-body)' }}>
           {applyError}
         </p>
       )}
@@ -15482,12 +15482,12 @@ function ToolCallPreview({
           onClick={onCancel}
           disabled={isApplying}
           style={{
-            flex: 1, padding: '8px 10px', borderRadius: 8,
+            flex: 1, padding: '8px 10px', borderRadius: 'var(--r-sm)',
             border: '1px solid var(--ai-border)',
             background: 'var(--ai-bg)', color: 'var(--ai-mid)',
             fontSize: 12, fontWeight: 600,
             cursor: isApplying ? 'not-allowed' : 'pointer',
-            fontFamily: 'DM Sans,sans-serif',
+            fontFamily: 'var(--font-body)',
             opacity: isApplying ? 0.5 : 1,
           }}
         >
@@ -15497,13 +15497,13 @@ function ToolCallPreview({
           onClick={onApply}
           disabled={isApplying}
           style={{
-            flex: 2, padding: '8px 10px', borderRadius: 8,
+            flex: 2, padding: '8px 10px', borderRadius: 'var(--r-sm)',
             border: 'none',
             background: isApplying ? 'var(--ai-border)' : 'var(--ai-gradient)',
             color: isApplying ? 'var(--ai-mid)' : '#fff',
             fontSize: 12, fontWeight: 700,
             cursor: isApplying ? 'not-allowed' : 'pointer',
-            fontFamily: 'DM Sans,sans-serif',
+            fontFamily: 'var(--font-body)',
           }}
         >
           {isApplying ? 'Application…' : applyLabel}
@@ -15539,7 +15539,7 @@ function RuleHelperFlow({ category, onPrepare, onCancel }: {
 
   return (
     <div style={{ padding: '8px 0 4px' }}>
-      <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 4px', fontFamily: 'Syne,sans-serif' }}>
+      <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 4px', fontFamily: 'var(--font-body)' }}>
         Formuler une règle — {catLabel}
       </p>
       <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: '0 0 14px' }}>
@@ -15551,28 +15551,28 @@ function RuleHelperFlow({ category, onPrepare, onCancel }: {
         placeholder="Ex : je ne veux pas faire de squats parce que j'ai mal au genou..."
         rows={3}
         style={{
-          width: '100%', padding: '10px 12px', borderRadius: 10,
+          width: '100%', padding: '10px 12px', borderRadius: 'var(--r-sm)',
           border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)',
           color: 'var(--ai-text)', fontSize: 12, outline: 'none',
-          resize: 'none', fontFamily: 'DM Sans,sans-serif', lineHeight: 1.5,
+          resize: 'none', fontFamily: 'var(--font-body)', lineHeight: 1.5,
           boxSizing: 'border-box',
         }}
       />
       <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
         <button
           onClick={onCancel}
-          style={{ flex: 1, padding: '9px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}
+          style={{ flex: 1, padding: '9px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer', fontFamily: 'var(--font-body)' }}
         >{t('aip.ui.cancel')}</button>
         <button
           onClick={generate}
           disabled={description.trim().length < 5}
           style={{
-            flex: 2, padding: '9px', borderRadius: 9, border: 'none',
+            flex: 2, padding: '9px', borderRadius: 'var(--r-sm)', border: 'none',
             background: description.trim().length >= 5 ? 'linear-gradient(135deg, #06B6D4, #5b6fff)' : 'var(--ai-bg2)',
             color: description.trim().length >= 5 ? '#fff' : 'var(--ai-dim)',
             fontSize: 12, fontWeight: 600,
             cursor: description.trim().length >= 5 ? 'pointer' : 'not-allowed',
-            fontFamily: 'DM Sans,sans-serif',
+            fontFamily: 'var(--font-body)',
           }}
         >{t('aip.ui.formulateRule')}</button>
       </div>
@@ -15917,7 +15917,7 @@ FORMAT DE RÉPONSE OBLIGATOIRE (JSON uniquement, 0 texte avant ou après) :
   if (phase === 'sport') {
     return (
       <div style={{ padding: '8px 0 4px' }}>
-        <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 5px', fontFamily: 'Syne,sans-serif' }}>
+        <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 5px', fontFamily: 'var(--font-body)' }}>
           Estimer mes zones
         </p>
         <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: '0 0 14px' }}>
@@ -15931,12 +15931,12 @@ FORMAT DE RÉPONSE OBLIGATOIRE (JSON uniquement, 0 texte avant ou après) :
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7, marginBottom: 16 }}>
             {userSports.map(s => (
               <button key={s} onClick={() => { void handleSportSelect(s) }} style={{
-                padding: '7px 13px', borderRadius: 20,
+                padding: '7px 13px', borderRadius: 'var(--r-lg)',
                 border: '1px solid var(--ai-border)',
                 background: 'var(--ai-bg2)',
                 color: 'var(--ai-mid)',
                 fontSize: 12, cursor: 'pointer',
-                fontFamily: 'DM Sans,sans-serif',
+                fontFamily: 'var(--font-body)',
               }}>
                 {SPORT_LABELS[s] ?? s}
               </button>
@@ -15971,18 +15971,18 @@ FORMAT DE RÉPONSE OBLIGATOIRE (JSON uniquement, 0 texte avant ou après) :
     const isBlocked = gateData.activitiesCount < 5 && gateData.testsCount === 0
     return (
       <div style={{ padding: '8px 0 4px' }}>
-        <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 14px', fontFamily: 'Syne,sans-serif' }}>
+        <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 14px', fontFamily: 'var(--font-body)' }}>
           Estimer mes zones — {SPORT_LABELS[selectedSport ?? ''] ?? selectedSport}
         </p>
         {isBlocked ? (
-          <div style={{ padding: '12px', borderRadius: 10, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', marginBottom: 14 }}>
+          <div style={{ padding: '12px', borderRadius: 'var(--r-sm)', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', marginBottom: 14 }}>
             <p style={{ fontSize: 12, color: '#ef4444', margin: 0, lineHeight: 1.6 }}>
               Pas assez de données pour estimer tes zones ({gateData.activitiesCount} activité(s) disponible(s), minimum 5 requises). Pour obtenir des zones précises : réalise un test dans Performance → Tests, ou saisis tes valeurs manuellement dans Performance → Zones.
             </p>
           </div>
         ) : (
           <>
-            <div style={{ padding: '12px', borderRadius: 10, background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)', marginBottom: 14 }}>
+            <div style={{ padding: '12px', borderRadius: 'var(--r-sm)', background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)', marginBottom: 14 }}>
               <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--ai-dim)', letterSpacing: '0.08em', textTransform: 'uppercase', margin: '0 0 8px' }}>
                 Données disponibles pour l&apos;estimation
               </p>
@@ -16007,10 +16007,10 @@ FORMAT DE RÉPONSE OBLIGATOIRE (JSON uniquement, 0 texte avant ou après) :
             </div>
             {error && <p style={{ fontSize: 11, color: '#ef4444', margin: '0 0 10px' }}>{error}</p>}
             <button onClick={() => { void generate() }} style={{
-              width: '100%', padding: '11px', borderRadius: 10,
+              width: '100%', padding: '11px', borderRadius: 'var(--r-sm)',
               background: 'var(--ai-gradient)', border: 'none',
               color: '#fff', fontSize: 13, fontWeight: 700,
-              cursor: 'pointer', fontFamily: 'Syne,sans-serif',
+              cursor: 'pointer', fontFamily: 'var(--font-body)',
             }}>
               Estimer mes zones
             </button>
@@ -16028,7 +16028,7 @@ FORMAT DE RÉPONSE OBLIGATOIRE (JSON uniquement, 0 texte avant ou après) :
     return (
       <div style={{ padding: '48px 0', textAlign: 'center' }}>
         <div style={{ width: 32, height: 32, borderRadius: '50%', border: '3px solid rgba(6,182,212,0.15)', borderTop: '3px solid var(--ai-accent)', animation: 'ai_spin 0.8s linear infinite', margin: '0 auto 16px' }} />
-        <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 6px', fontFamily: 'Syne,sans-serif' }}>
+        <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 6px', fontFamily: 'var(--font-body)' }}>
           Estimation en cours…
         </p>
         <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: 0, lineHeight: 1.6 }}>
@@ -16045,7 +16045,7 @@ FORMAT DE RÉPONSE OBLIGATOIRE (JSON uniquement, 0 texte avant ou après) :
       {/* Confidence badge */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
         <span style={{
-          fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 6,
+          fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 'var(--r-sm)',
           background: confidenceBg(result.confiance),
           color: confidenceColor(result.confiance),
           letterSpacing: '0.06em', textTransform: 'uppercase',
@@ -16063,12 +16063,12 @@ FORMAT DE RÉPONSE OBLIGATOIRE (JSON uniquement, 0 texte avant ou après) :
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             {result.estimation.zones.map((z, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', borderRadius: 8, background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)' }}>
-                <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--ai-accent)', fontFamily: 'DM Mono,monospace', minWidth: 24 }}>{z.id}</span>
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', borderRadius: 'var(--r-sm)', background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)' }}>
+                <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--ai-accent)', fontFamily: 'var(--font-body)', minWidth: 24 }}>{z.id}</span>
                 <span style={{ flex: 1, fontSize: 12, color: 'var(--ai-text)', fontWeight: 500 }}>{z.label}</span>
-                {z.hr_max != null && <span style={{ fontSize: 11, color: 'var(--ai-mid)', fontFamily: 'DM Mono,monospace' }}>{z.hr_max} bpm</span>}
-                {z.watts_max != null && <span style={{ fontSize: 11, color: 'var(--ai-mid)', fontFamily: 'DM Mono,monospace' }}>{z.watts_max}W</span>}
-                {z.pace_max_s_km != null && <span style={{ fontSize: 11, color: 'var(--ai-mid)', fontFamily: 'DM Mono,monospace' }}>{fmtPace(z.pace_max_s_km)}</span>}
+                {z.hr_max != null && <span style={{ fontSize: 11, color: 'var(--ai-mid)', fontFamily: 'var(--font-body)' }}>{z.hr_max} bpm</span>}
+                {z.watts_max != null && <span style={{ fontSize: 11, color: 'var(--ai-mid)', fontFamily: 'var(--font-body)' }}>{z.watts_max}W</span>}
+                {z.pace_max_s_km != null && <span style={{ fontSize: 11, color: 'var(--ai-mid)', fontFamily: 'var(--font-body)' }}>{fmtPace(z.pace_max_s_km)}</span>}
               </div>
             ))}
           </div>
@@ -16077,7 +16077,7 @@ FORMAT DE RÉPONSE OBLIGATOIRE (JSON uniquement, 0 texte avant ou après) :
 
       {/* Comparison vs current zones */}
       {result.comparaison && (
-        <div style={{ padding: '10px 12px', borderRadius: 10, background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)', marginBottom: 14 }}>
+        <div style={{ padding: '10px 12px', borderRadius: 'var(--r-sm)', background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)', marginBottom: 14 }}>
           <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--ai-dim)', margin: '0 0 6px' }}>
             Comparaison zones actuelles
           </p>
@@ -16089,7 +16089,7 @@ FORMAT DE RÉPONSE OBLIGATOIRE (JSON uniquement, 0 texte avant ou après) :
 
       {/* Zone drift */}
       {result.zone_drift && (
-        <div style={{ padding: '10px 12px', borderRadius: 10, background: result.zone_drift.detected ? 'rgba(249,115,22,0.08)' : 'var(--ai-bg2)', border: `1px solid ${result.zone_drift.detected ? 'rgba(249,115,22,0.25)' : 'var(--ai-border)'}`, marginBottom: 14 }}>
+        <div style={{ padding: '10px 12px', borderRadius: 'var(--r-sm)', background: result.zone_drift.detected ? 'rgba(249,115,22,0.08)' : 'var(--ai-bg2)', border: `1px solid ${result.zone_drift.detected ? 'rgba(249,115,22,0.25)' : 'var(--ai-border)'}`, marginBottom: 14 }}>
           <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: result.zone_drift.detected ? '#f97316' : 'var(--ai-dim)', margin: '0 0 4px' }}>
             Dérive de zones{result.zone_drift.detected ? ' détectée' : ''}
           </p>
@@ -16098,7 +16098,7 @@ FORMAT DE RÉPONSE OBLIGATOIRE (JSON uniquement, 0 texte avant ou après) :
       )}
 
       {/* Method + sources */}
-      <div style={{ padding: '8px 10px', borderRadius: 8, background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)', marginBottom: 14 }}>
+      <div style={{ padding: '8px 10px', borderRadius: 'var(--r-sm)', background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)', marginBottom: 14 }}>
         <p style={{ fontSize: 10, color: 'var(--ai-dim)', margin: '0 0 2px', fontStyle: 'italic' }}>Méthode : {result.methode_estimation}</p>
         <p style={{ fontSize: 10, color: 'var(--ai-dim)', margin: 0 }}>Sources : {result.sources.join(' · ')}</p>
       </div>
@@ -16361,7 +16361,7 @@ FORMAT OBLIGATOIRE (JSON uniquement) :
     const isGateBlocked = gateCount !== null && gateCount < 20
     return (
       <div style={{ padding: '8px 0 4px' }}>
-        <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 14px', fontFamily: 'Syne,sans-serif' }}>
+        <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 14px', fontFamily: 'var(--font-body)' }}>
           Analyser ma progression
         </p>
 
@@ -16370,12 +16370,12 @@ FORMAT OBLIGATOIRE (JSON uniquement) :
         <div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
           {PERIODS.map(p => (
             <button key={p.v} onClick={() => setPeriod(p.v)} style={{
-              flex: 1, padding: '7px', borderRadius: 8,
+              flex: 1, padding: '7px', borderRadius: 'var(--r-sm)',
               border: `1px solid ${period === p.v ? 'var(--ai-accent)' : 'var(--ai-border)'}`,
               background: period === p.v ? 'var(--ai-accent-dim)' : 'var(--ai-bg2)',
               color: period === p.v ? 'var(--ai-accent)' : 'var(--ai-mid)',
               fontSize: 12, fontWeight: period === p.v ? 700 : 400,
-              cursor: 'pointer', fontFamily: 'DM Sans,sans-serif',
+              cursor: 'pointer', fontFamily: 'var(--font-body)',
             }}>
               {p.label}
             </button>
@@ -16394,12 +16394,12 @@ FORMAT OBLIGATOIRE (JSON uniquement) :
               const on = selectedSports.includes(s)
               return (
                 <button key={s} onClick={() => toggleSport(s)} style={{
-                  padding: '6px 12px', borderRadius: 18,
+                  padding: '6px 12px', borderRadius: 'var(--r-lg)',
                   border: `1px solid ${on ? 'var(--ai-accent)' : 'var(--ai-border)'}`,
                   background: on ? 'var(--ai-accent-dim)' : 'var(--ai-bg2)',
                   color: on ? 'var(--ai-accent)' : 'var(--ai-mid)',
                   fontSize: 12, fontWeight: on ? 600 : 400,
-                  cursor: 'pointer', fontFamily: 'DM Sans,sans-serif',
+                  cursor: 'pointer', fontFamily: 'var(--font-body)',
                 }}>
                   {SPORT_LABELS[s] ?? s}
                 </button>
@@ -16413,7 +16413,7 @@ FORMAT OBLIGATOIRE (JSON uniquement) :
           <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: '0 0 10px' }}>{t('aip.ui.checkingData')}</p>
         )}
         {isGateBlocked && !checkingGate && (
-          <div style={{ padding: '10px 12px', borderRadius: 8, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', marginBottom: 12 }}>
+          <div style={{ padding: '10px 12px', borderRadius: 'var(--r-sm)', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', marginBottom: 12 }}>
             <p style={{ fontSize: 12, color: '#ef4444', margin: 0, lineHeight: 1.5 }}>
               Pas assez de données ({gateCount} activités) pour une tendance significative. Il faut au moins 20 activités.
             </p>
@@ -16429,11 +16429,11 @@ FORMAT OBLIGATOIRE (JSON uniquement) :
           onClick={() => { void generate() }}
           disabled={selectedSports.length === 0 || isGateBlocked || checkingGate}
           style={{
-            width: '100%', padding: '11px', borderRadius: 10, border: 'none',
+            width: '100%', padding: '11px', borderRadius: 'var(--r-sm)', border: 'none',
             background: (selectedSports.length > 0 && !isGateBlocked && !checkingGate) ? 'var(--ai-gradient)' : 'var(--ai-border)',
             color: '#fff', fontSize: 13, fontWeight: 700,
             cursor: (selectedSports.length > 0 && !isGateBlocked && !checkingGate) ? 'pointer' : 'not-allowed',
-            fontFamily: 'Syne,sans-serif',
+            fontFamily: 'var(--font-body)',
           }}
         >
           Analyser
@@ -16450,7 +16450,7 @@ FORMAT OBLIGATOIRE (JSON uniquement) :
     return (
       <div style={{ padding: '48px 0', textAlign: 'center' }}>
         <div style={{ width: 32, height: 32, borderRadius: '50%', border: '3px solid rgba(6,182,212,0.15)', borderTop: '3px solid var(--ai-accent)', animation: 'ai_spin 0.8s linear infinite', margin: '0 auto 16px' }} />
-        <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 6px', fontFamily: 'Syne,sans-serif' }}>
+        <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 6px', fontFamily: 'var(--font-body)' }}>
           Analyse de progression…
         </p>
         <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: 0, lineHeight: 1.6 }}>
@@ -16495,10 +16495,10 @@ FORMAT OBLIGATOIRE (JSON uniquement) :
 
       {/* Per-sport analysis */}
       {result.sports_analyses.map((sa, i) => (
-        <div key={i} style={{ marginBottom: 14, padding: '10px 12px', borderRadius: 10, background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)' }}>
+        <div key={i} style={{ marginBottom: 14, padding: '10px 12px', borderRadius: 'var(--r-sm)', background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
             <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--ai-text)', textTransform: 'capitalize' }}>{sa.sport}</span>
-            <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 5, background: `${tendanceColor(sa.tendance)}18`, color: tendanceColor(sa.tendance) }}>
+            <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 'var(--r-sm)', background: `${tendanceColor(sa.tendance)}18`, color: tendanceColor(sa.tendance) }}>
               {tendanceLabel(sa.tendance)}
             </span>
           </div>
@@ -16542,8 +16542,8 @@ FORMAT OBLIGATOIRE (JSON uniquement) :
             Recommandations
           </p>
           {result.recommandations.sort((a, b) => a.priorite - b.priorite).map((r, i) => (
-            <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 6, padding: '8px 10px', borderRadius: 8, background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)' }}>
-              <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--ai-accent)', background: 'var(--ai-accent-dim)', borderRadius: 4, padding: '2px 5px', alignSelf: 'flex-start', flexShrink: 0 }}>P{r.priorite}</span>
+            <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 6, padding: '8px 10px', borderRadius: 'var(--r-sm)', background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)' }}>
+              <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--ai-accent)', background: 'var(--ai-accent-dim)', borderRadius: 4, padding: '2px 5px', alignSelf: 'flex-start', flexShrink: 0 }}>P{r.priorite}</span>
               <div>
                 <p style={{ fontSize: 12, color: 'var(--ai-text)', margin: '0 0 2px', fontWeight: 500 }}>{r.action}</p>
                 <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: 0 }}>{r.impact_estime}</p>
@@ -16554,7 +16554,7 @@ FORMAT OBLIGATOIRE (JSON uniquement) :
       )}
 
       {/* Sources + confiance */}
-      <div style={{ padding: '8px 10px', borderRadius: 8, background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)', marginBottom: 14 }}>
+      <div style={{ padding: '8px 10px', borderRadius: 'var(--r-sm)', background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)', marginBottom: 14 }}>
         <p style={{ fontSize: 10, color: 'var(--ai-dim)', margin: '0 0 2px', fontStyle: 'italic' }}>Confiance : {result.confiance} — {result.raison_confiance}</p>
         <p style={{ fontSize: 10, color: 'var(--ai-dim)', margin: 0 }}>Sources : {result.sources.join(' · ')}</p>
       </div>
@@ -16843,19 +16843,19 @@ Activités 60j: ${activities60d.length} · Séances soirée avec données sommei
 
     return (
       <div style={{ padding: '8px 0 4px' }}>
-        <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'Syne,sans-serif', margin: '0 0 4px' }}>
+        <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'var(--font-body)', margin: '0 0 4px' }}>
           Conseils sommeil
         </p>
 
         {error && (
-          <div style={{ padding: '8px 10px', borderRadius: 8, background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', color: '#ef4444', fontSize: 11, marginBottom: 12 }}>
+          <div style={{ padding: '8px 10px', borderRadius: 'var(--r-sm)', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', color: '#ef4444', fontSize: 11, marginBottom: 12 }}>
             {error}
           </div>
         )}
 
         {/* Verdict rapide */}
         {gateData && (
-          <div style={{ padding: '10px 12px', borderRadius: 10, border: `1px solid ${sleepStatus}40`, background: `${sleepStatus}08`, marginBottom: 12 }}>
+          <div style={{ padding: '10px 12px', borderRadius: 'var(--r-sm)', border: `1px solid ${sleepStatus}40`, background: `${sleepStatus}08`, marginBottom: 12 }}>
             <p style={{ fontSize: 13, fontWeight: 700, color: sleepStatus, margin: 0 }}>{sleepLabel}</p>
             {gateData.avgDuration != null && (
               <p style={{ fontSize: 10, color: 'var(--ai-dim)', margin: '4px 0 0' }}>
@@ -16876,9 +16876,9 @@ Activités 60j: ${activities60d.length} · Séances soirée avec données sommei
               { label: 'Nuits trackées', value: String(gateData.nightsCount), ok: gateData.nightsCount >= 10 },
               { label: 'Séances soirée', value: String(gateData.eveningSessionsCount), ok: true },
             ] as { label: string; value: string; ok: boolean }[]).map(item => (
-              <div key={item.label} style={{ padding: '6px 8px', borderRadius: 7, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', display: 'flex', justifyContent: 'space-between' }}>
+              <div key={item.label} style={{ padding: '6px 8px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', display: 'flex', justifyContent: 'space-between' }}>
                 <span style={{ fontSize: 10, color: 'var(--ai-dim)' }}>{item.label}</span>
-                <span style={{ fontSize: 10, fontWeight: 600, color: item.ok ? 'var(--ai-text)' : '#f97316', fontFamily: 'DM Mono,monospace' }}>{item.value}</span>
+                <span style={{ fontSize: 10, fontWeight: 600, color: item.ok ? 'var(--ai-text)' : '#f97316', fontFamily: 'var(--font-body)' }}>{item.value}</span>
               </div>
             ))}
           </div>
@@ -16891,13 +16891,13 @@ Activités 60j: ${activities60d.length} · Séances soirée avec données sommei
         )}
 
         <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={onCancel} style={{ padding: '9px 16px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer' }}>
+          <button onClick={onCancel} style={{ padding: '9px 16px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer' }}>
             Annuler
           </button>
           <button
             onClick={() => void runAnalysis()}
             disabled={!gateData}
-            style={{ flex: 1, padding: '9px', borderRadius: 9, border: 'none', background: 'var(--ai-gradient)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: gateData ? 'pointer' : 'not-allowed', opacity: gateData ? 1 : 0.5 }}
+            style={{ flex: 1, padding: '9px', borderRadius: 'var(--r-sm)', border: 'none', background: 'var(--ai-gradient)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: gateData ? 'pointer' : 'not-allowed', opacity: gateData ? 1 : 0.5 }}
           >
             Analyser mon sommeil →
           </button>
@@ -16923,34 +16923,34 @@ Activités 60j: ${activities60d.length} · Séances soirée avec données sommei
 
     return (
       <div style={{ padding: '8px 0 4px' }}>
-        <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'Syne,sans-serif', margin: '0 0 10px' }}>
+        <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'var(--font-body)', margin: '0 0 10px' }}>
           Analyse du sommeil
         </p>
 
         {/* KPIs */}
         {d && (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 5, marginBottom: 10 }}>
-            <div style={{ padding: '7px 4px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', textAlign: 'center' as const }}>
-              <p style={{ fontSize: 8, color: 'var(--ai-dim)', margin: 0 }}>{t('aip.ui.avgDuration')}</p>
-              <p style={{ fontSize: 14, fontWeight: 700, color: d.avgDuration == null ? 'var(--ai-dim)' : d.avgDuration >= 7.5 ? '#22c55e' : d.avgDuration >= 6.5 ? '#f97316' : '#ef4444', margin: '2px 0 0', fontFamily: 'DM Mono,monospace' }}>
+            <div style={{ padding: '7px 4px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', textAlign: 'center' as const }}>
+              <p style={{ fontSize: 10, color: 'var(--ai-dim)', margin: 0 }}>{t('aip.ui.avgDuration')}</p>
+              <p style={{ fontSize: 14, fontWeight: 700, color: d.avgDuration == null ? 'var(--ai-dim)' : d.avgDuration >= 7.5 ? '#22c55e' : d.avgDuration >= 6.5 ? '#f97316' : '#ef4444', margin: '2px 0 0', fontFamily: 'var(--font-body)' }}>
                 {d.avgDuration != null ? `${d.avgDuration}h` : '—'}
               </p>
             </div>
-            <div style={{ padding: '7px 4px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', textAlign: 'center' as const }}>
-              <p style={{ fontSize: 8, color: 'var(--ai-dim)', margin: 0 }}>{t('aip.ui.quality')}</p>
-              <p style={{ fontSize: 14, fontWeight: 700, color: d.avgQuality == null ? 'var(--ai-dim)' : d.avgQuality >= 70 ? '#22c55e' : '#f97316', margin: '2px 0 0', fontFamily: 'DM Mono,monospace' }}>
+            <div style={{ padding: '7px 4px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', textAlign: 'center' as const }}>
+              <p style={{ fontSize: 10, color: 'var(--ai-dim)', margin: 0 }}>{t('aip.ui.quality')}</p>
+              <p style={{ fontSize: 14, fontWeight: 700, color: d.avgQuality == null ? 'var(--ai-dim)' : d.avgQuality >= 70 ? '#22c55e' : '#f97316', margin: '2px 0 0', fontFamily: 'var(--font-body)' }}>
                 {d.avgQuality ?? '—'}
               </p>
             </div>
-            <div style={{ padding: '7px 4px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', textAlign: 'center' as const }}>
-              <p style={{ fontSize: 8, color: 'var(--ai-dim)', margin: 0 }}>NUITS &lt;7H</p>
-              <p style={{ fontSize: 14, fontWeight: 700, color: d.nightsUnder7h > d.nightsCount * 0.3 ? '#ef4444' : '#22c55e', margin: '2px 0 0', fontFamily: 'DM Mono,monospace' }}>
+            <div style={{ padding: '7px 4px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', textAlign: 'center' as const }}>
+              <p style={{ fontSize: 10, color: 'var(--ai-dim)', margin: 0 }}>NUITS &lt;7H</p>
+              <p style={{ fontSize: 14, fontWeight: 700, color: d.nightsUnder7h > d.nightsCount * 0.3 ? '#ef4444' : '#22c55e', margin: '2px 0 0', fontFamily: 'var(--font-body)' }}>
                 {d.nightsUnder7h}/{d.nightsCount}
               </p>
             </div>
-            <div style={{ padding: '7px 4px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', textAlign: 'center' as const }}>
-              <p style={{ fontSize: 8, color: 'var(--ai-dim)', margin: 0 }}>HEURE LIMITE</p>
-              <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--ai-text)', margin: '2px 0 0', fontFamily: 'DM Mono,monospace' }}>
+            <div style={{ padding: '7px 4px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', textAlign: 'center' as const }}>
+              <p style={{ fontSize: 10, color: 'var(--ai-dim)', margin: 0 }}>HEURE LIMITE</p>
+              <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--ai-text)', margin: '2px 0 0', fontFamily: 'var(--font-body)' }}>
                 {d.cutoffAnalysis.length > 0
                   ? d.cutoffAnalysis.reduce((a, b) => a.avgQuality > b.avgQuality ? a : b).bucket
                   : '—'}
@@ -16961,8 +16961,8 @@ Activités 60j: ${activities60d.length} · Séances soirée avec données sommei
 
         {/* Corrélation séances soirée / sommeil */}
         {d && d.cutoffAnalysis.length > 0 && (
-          <div style={{ marginBottom: 10, padding: '8px 10px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)' }}>
-            <p style={{ fontSize: 9, fontWeight: 700, color: 'var(--ai-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.06em', margin: '0 0 6px' }}>
+          <div style={{ marginBottom: 10, padding: '8px 10px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)' }}>
+            <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--ai-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.06em', margin: '0 0 6px' }}>
               Impact heure d'entraînement sur le sommeil
             </p>
             <div style={{ display: 'flex', gap: 4 }}>
@@ -16976,8 +16976,8 @@ Activités 60j: ${activities60d.length} · Séances soirée avec données sommei
                   }}>
                     <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--ai-text)' }}>{b.avgQuality}</span>
                   </div>
-                  <p style={{ fontSize: 8, color: 'var(--ai-dim)', margin: 0 }}>{b.bucket}</p>
-                  <p style={{ fontSize: 7, color: 'var(--ai-dim)', margin: 0 }}>{b.count} séances</p>
+                  <p style={{ fontSize: 10, color: 'var(--ai-dim)', margin: 0 }}>{b.bucket}</p>
+                  <p style={{ fontSize: 10, color: 'var(--ai-dim)', margin: 0 }}>{b.count} séances</p>
                 </div>
               ))}
             </div>
@@ -16985,9 +16985,9 @@ Activités 60j: ${activities60d.length} · Séances soirée avec données sommei
         )}
 
         <div style={{ margin: '10px 0', borderBottom: '1px solid var(--ai-border)' }} />
-        <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'Syne,sans-serif', margin: '0 0 8px' }}>Analyse du coach</p>
+        <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'var(--font-body)', margin: '0 0 8px' }}>Analyse du coach</p>
 
-        <div style={{ padding: '12px', borderRadius: 12, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', maxHeight: '55vh', overflowY: 'auto' as const }}>
+        <div style={{ padding: '12px', borderRadius: 'var(--r-md)', border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', maxHeight: '55vh', overflowY: 'auto' as const }}>
           {rawAnalysis
             ? <MsgContent text={rawAnalysis} />
             : <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: 0 }}>Analyse en cours...</p>
@@ -17011,14 +17011,14 @@ Activités 60j: ${activities60d.length} · Séances soirée avec données sommei
                 <button key={i} onClick={() => {
                   if (onFollowUp) onFollowUp(action.label, action.prompt)
                 }} style={{
-                  padding: '7px 12px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)',
-                  color: 'var(--ai-text)', fontSize: 11, cursor: 'pointer', fontWeight: 500, fontFamily: 'DM Sans,sans-serif',
+                  padding: '7px 12px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)',
+                  color: 'var(--ai-text)', fontSize: 11, cursor: 'pointer', fontWeight: 500, fontFamily: 'var(--font-body)',
                 }}>
                   {action.label} →
                 </button>
               ))}
             </div>
-            <button onClick={onCancel} style={{ width: '100%', padding: '9px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-dim)', fontSize: 12, cursor: 'pointer' }}>
+            <button onClick={onCancel} style={{ width: '100%', padding: '9px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-dim)', fontSize: 12, cursor: 'pointer' }}>
               Fermer
             </button>
           </div>
@@ -17342,19 +17342,19 @@ Séances 48h: ${next48h.map((p: any) => `${p.sport} ${p.title ?? ''} ${p.duratio
 
     return (
       <div style={{ padding: '8px 0 4px' }}>
-        <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'Syne,sans-serif', margin: '0 0 4px' }}>
+        <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'var(--font-body)', margin: '0 0 4px' }}>
           Analyser ma récupération
         </p>
 
         {error && (
-          <div style={{ padding: '8px 10px', borderRadius: 8, background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', color: '#ef4444', fontSize: 11, marginBottom: 12 }}>
+          <div style={{ padding: '8px 10px', borderRadius: 'var(--r-sm)', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', color: '#ef4444', fontSize: 11, marginBottom: 12 }}>
             {error}
           </div>
         )}
 
         {/* Verdict rapide */}
         {gateData && (
-          <div style={{ padding: '10px 12px', borderRadius: 10, border: `1px solid ${verdictColor}40`, background: `${verdictColor}08`, marginBottom: 12 }}>
+          <div style={{ padding: '10px 12px', borderRadius: 'var(--r-sm)', border: `1px solid ${verdictColor}40`, background: `${verdictColor}08`, marginBottom: 12 }}>
             <p style={{ fontSize: 13, fontWeight: 700, color: verdictColor, margin: 0 }}>{verdictLabel}</p>
             {gateData.latestHrv && gateData.hrvBaseline && (
               <p style={{ fontSize: 10, color: 'var(--ai-dim)', margin: '4px 0 0' }}>
@@ -17375,9 +17375,9 @@ Séances 48h: ${next48h.map((p: any) => `${p.sport} ${p.title ?? ''} ${p.duratio
               { label: 'Activités 7j', value: String(gateData.activitiesCount7d), ok: gateData.activitiesCount7d > 0 },
               { label: 'Métriques 28j', value: `${gateData.metricsCount}j`, ok: gateData.metricsCount >= 7 },
             ] as { label: string; value: string; ok: boolean }[]).map(item => (
-              <div key={item.label} style={{ padding: '6px 8px', borderRadius: 7, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', display: 'flex', justifyContent: 'space-between' }}>
+              <div key={item.label} style={{ padding: '6px 8px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', display: 'flex', justifyContent: 'space-between' }}>
                 <span style={{ fontSize: 10, color: 'var(--ai-dim)' }}>{item.label}</span>
-                <span style={{ fontSize: 10, fontWeight: 600, color: item.ok ? 'var(--ai-text)' : '#f97316', fontFamily: 'DM Mono,monospace' }}>{item.value}</span>
+                <span style={{ fontSize: 10, fontWeight: 600, color: item.ok ? 'var(--ai-text)' : '#f97316', fontFamily: 'var(--font-body)' }}>{item.value}</span>
               </div>
             ))}
           </div>
@@ -17385,7 +17385,7 @@ Séances 48h: ${next48h.map((p: any) => `${p.sport} ${p.title ?? ''} ${p.duratio
 
         {/* Prochaine séance */}
         {gateData?.nextSession && (
-          <div style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', marginBottom: 12 }}>
+          <div style={{ padding: '6px 10px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', marginBottom: 12 }}>
             <span style={{ fontSize: 10, color: 'var(--ai-dim)' }}>{t('aip.ui.nextSession')}</span>
             <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--ai-text)' }}>
               {gateData.nextSession.sport} · {gateData.nextSession.title ?? ''} · {gateData.nextSession.duration_min}min · {gateData.nextSession.intensite}
@@ -17394,13 +17394,13 @@ Séances 48h: ${next48h.map((p: any) => `${p.sport} ${p.title ?? ''} ${p.duratio
         )}
 
         <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={onCancel} style={{ padding: '9px 16px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer' }}>
+          <button onClick={onCancel} style={{ padding: '9px 16px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer' }}>
             Annuler
           </button>
           <button
             onClick={() => void runAnalysis()}
             disabled={!gateData}
-            style={{ flex: 1, padding: '9px', borderRadius: 9, border: 'none', background: 'var(--ai-gradient)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: gateData ? 'pointer' : 'not-allowed', opacity: gateData ? 1 : 0.5 }}
+            style={{ flex: 1, padding: '9px', borderRadius: 'var(--r-sm)', border: 'none', background: 'var(--ai-gradient)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: gateData ? 'pointer' : 'not-allowed', opacity: gateData ? 1 : 0.5 }}
           >
             Analyser en détail →
           </button>
@@ -17427,38 +17427,38 @@ Séances 48h: ${next48h.map((p: any) => `${p.sport} ${p.title ?? ''} ${p.duratio
 
     return (
       <div style={{ padding: '8px 0 4px' }}>
-        <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'Syne,sans-serif', margin: '0 0 10px' }}>
+        <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'var(--font-body)', margin: '0 0 10px' }}>
           Analyse de la récupération
         </p>
 
         {/* KPIs */}
         {d && (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 5, marginBottom: 10 }}>
-            <div style={{ padding: '7px 4px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', textAlign: 'center' as const }}>
-              <p style={{ fontSize: 8, color: 'var(--ai-dim)', margin: 0 }}>HRV</p>
-              <p style={{ fontSize: 14, fontWeight: 700, color: d.latestHrv ? (d.hrvBaseline && d.latestHrv >= d.hrvBaseline ? '#22c55e' : '#f97316') : 'var(--ai-dim)', margin: '2px 0 0', fontFamily: 'DM Mono,monospace' }}>
+            <div style={{ padding: '7px 4px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', textAlign: 'center' as const }}>
+              <p style={{ fontSize: 10, color: 'var(--ai-dim)', margin: 0 }}>HRV</p>
+              <p style={{ fontSize: 14, fontWeight: 700, color: d.latestHrv ? (d.hrvBaseline && d.latestHrv >= d.hrvBaseline ? '#22c55e' : '#f97316') : 'var(--ai-dim)', margin: '2px 0 0', fontFamily: 'var(--font-body)' }}>
                 {d.latestHrv ?? '—'}
               </p>
             </div>
-            <div style={{ padding: '7px 4px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', textAlign: 'center' as const }}>
-              <p style={{ fontSize: 8, color: '#06B6D4', margin: 0 }}>TSB</p>
-              <p style={{ fontSize: 14, fontWeight: 700, color: d.tsbFinal < -10 ? '#ef4444' : d.tsbFinal > 5 ? '#22c55e' : 'var(--ai-text)', margin: '2px 0 0', fontFamily: 'DM Mono,monospace' }}>{d.tsbFinal}</p>
+            <div style={{ padding: '7px 4px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', textAlign: 'center' as const }}>
+              <p style={{ fontSize: 10, color: '#06B6D4', margin: 0 }}>TSB</p>
+              <p style={{ fontSize: 14, fontWeight: 700, color: d.tsbFinal < -10 ? '#ef4444' : d.tsbFinal > 5 ? '#22c55e' : 'var(--ai-text)', margin: '2px 0 0', fontFamily: 'var(--font-body)' }}>{d.tsbFinal}</p>
             </div>
-            <div style={{ padding: '7px 4px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', textAlign: 'center' as const }}>
-              <p style={{ fontSize: 8, color: 'var(--ai-dim)', margin: 0 }}>TSS 7J</p>
-              <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--ai-text)', margin: '2px 0 0', fontFamily: 'DM Mono,monospace' }}>{d.tss7d}</p>
+            <div style={{ padding: '7px 4px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', textAlign: 'center' as const }}>
+              <p style={{ fontSize: 10, color: 'var(--ai-dim)', margin: 0 }}>TSS 7J</p>
+              <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--ai-text)', margin: '2px 0 0', fontFamily: 'var(--font-body)' }}>{d.tss7d}</p>
             </div>
-            <div style={{ padding: '7px 4px', borderRadius: 8, border: `1px solid ${rC}`, background: 'var(--ai-bg2)', textAlign: 'center' as const }}>
-              <p style={{ fontSize: 8, color: rC, margin: 0 }}>RISQUE</p>
-              <p style={{ fontSize: 14, fontWeight: 700, color: rC, margin: '2px 0 0', fontFamily: 'DM Mono,monospace' }}>{d.riskScore}/100</p>
+            <div style={{ padding: '7px 4px', borderRadius: 'var(--r-sm)', border: `1px solid ${rC}`, background: 'var(--ai-bg2)', textAlign: 'center' as const }}>
+              <p style={{ fontSize: 10, color: rC, margin: 0 }}>RISQUE</p>
+              <p style={{ fontSize: 14, fontWeight: 700, color: rC, margin: '2px 0 0', fontFamily: 'var(--font-body)' }}>{d.riskScore}/100</p>
             </div>
           </div>
         )}
 
         <div style={{ margin: '10px 0', borderBottom: '1px solid var(--ai-border)' }} />
-        <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'Syne,sans-serif', margin: '0 0 8px' }}>Diagnostic du coach</p>
+        <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'var(--font-body)', margin: '0 0 8px' }}>Diagnostic du coach</p>
 
-        <div style={{ padding: '12px', borderRadius: 12, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', maxHeight: '55vh', overflowY: 'auto' as const }}>
+        <div style={{ padding: '12px', borderRadius: 'var(--r-md)', border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', maxHeight: '55vh', overflowY: 'auto' as const }}>
           {rawAnalysis
             ? <MsgContent text={rawAnalysis} />
             : <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: 0 }}>Analyse en cours...</p>
@@ -17482,14 +17482,14 @@ Séances 48h: ${next48h.map((p: any) => `${p.sport} ${p.title ?? ''} ${p.duratio
                 <button key={i} onClick={() => {
                   if (onFollowUp) onFollowUp(action.label, action.prompt)
                 }} style={{
-                  padding: '7px 12px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)',
-                  color: 'var(--ai-text)', fontSize: 11, cursor: 'pointer', fontWeight: 500, fontFamily: 'DM Sans,sans-serif',
+                  padding: '7px 12px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)',
+                  color: 'var(--ai-text)', fontSize: 11, cursor: 'pointer', fontWeight: 500, fontFamily: 'var(--font-body)',
                 }}>
                   {action.label} →
                 </button>
               ))}
             </div>
-            <button onClick={onCancel} style={{ width: '100%', padding: '9px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-dim)', fontSize: 12, cursor: 'pointer' }}>
+            <button onClick={onCancel} style={{ width: '100%', padding: '9px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-dim)', fontSize: 12, cursor: 'pointer' }}>
               Fermer
             </button>
           </div>
@@ -17970,7 +17970,7 @@ Patterns 4 semaines (${typeDriftData.length} données): ${typeDriftData.length >
 
     return (
       <div style={{ padding: '8px 0 4px' }}>
-        <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'Syne,sans-serif', margin: '0 0 4px' }}>
+        <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'var(--font-body)', margin: '0 0 4px' }}>
           Analyser ma semaine
         </p>
         <p style={{ fontSize: 10, color: 'var(--ai-dim)', margin: '0 0 14px' }}>
@@ -17978,7 +17978,7 @@ Patterns 4 semaines (${typeDriftData.length} données): ${typeDriftData.length >
         </p>
 
         {error && (
-          <div style={{ padding: '8px 10px', borderRadius: 8, background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', color: '#ef4444', fontSize: 11, marginBottom: 12 }}>
+          <div style={{ padding: '8px 10px', borderRadius: 'var(--r-sm)', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', color: '#ef4444', fontSize: 11, marginBottom: 12 }}>
             {error}
           </div>
         )}
@@ -17992,9 +17992,9 @@ Patterns 4 semaines (${typeDriftData.length} données): ${typeDriftData.length >
               { label: 'Profil athlète', value: gateData.weight ? `${gateData.weight}kg${gateData.ftp ? ` · FTP ${gateData.ftp}W` : ''}${gateData.vma ? ` · VMA ${gateData.vma}km/h` : ''}` : 'non renseigné', ok: !!gateData.weight },
               { label: 'Prochaine course', value: gateData.nextRace ? `${gateData.nextRace.name} (${gateData.nextRace.date})` : 'aucune', ok: !!gateData.nextRace },
             ] as { label: string; value: string; ok: boolean }[]).map(item => (
-              <div key={item.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 10px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)' }}>
+              <div key={item.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 10px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)' }}>
                 <span style={{ fontSize: 11, color: 'var(--ai-mid)' }}>{item.label}</span>
-                <span style={{ fontSize: 11, fontWeight: 600, color: item.ok ? '#22c55e' : '#f97316', fontFamily: 'DM Mono,monospace' }}>{item.value}</span>
+                <span style={{ fontSize: 11, fontWeight: 600, color: item.ok ? '#22c55e' : '#f97316', fontFamily: 'var(--font-body)' }}>{item.value}</span>
               </div>
             ))}
           </div>
@@ -18007,13 +18007,13 @@ Patterns 4 semaines (${typeDriftData.length} données): ${typeDriftData.length >
         )}
 
         <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={onCancel} style={{ padding: '9px 16px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer' }}>
+          <button onClick={onCancel} style={{ padding: '9px 16px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer' }}>
             Annuler
           </button>
           <button
             onClick={() => setPhase('options')}
             disabled={!gateData}
-            style={{ flex: 1, padding: '9px', borderRadius: 9, border: 'none', background: 'var(--ai-gradient)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: gateData ? 'pointer' : 'not-allowed', opacity: gateData ? 1 : 0.5 }}
+            style={{ flex: 1, padding: '9px', borderRadius: 'var(--r-sm)', border: 'none', background: 'var(--ai-gradient)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: gateData ? 'pointer' : 'not-allowed', opacity: gateData ? 1 : 0.5 }}
           >
             Continuer →
           </button>
@@ -18026,7 +18026,7 @@ Patterns 4 semaines (${typeDriftData.length} données): ${typeDriftData.length >
   if (phase === 'options') {
     return (
       <div style={{ padding: '8px 0 4px' }}>
-        <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', fontFamily: 'Syne,sans-serif', margin: '0 0 12px' }}>
+        <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', fontFamily: 'var(--font-body)', margin: '0 0 12px' }}>
           Quelle semaine analyser ?
         </p>
 
@@ -18036,24 +18036,24 @@ Patterns 4 semaines (${typeDriftData.length} données): ${typeDriftData.length >
             { id: 'last' as const, label: 'Semaine dernière', desc: 'Bilan complet de la semaine passée' },
           ]).map(opt => (
             <button key={opt.id} onClick={() => setWeekChoice(opt.id)} style={{
-              flex: 1, padding: '10px 8px', borderRadius: 10, textAlign: 'left' as const,
+              flex: 1, padding: '10px 8px', borderRadius: 'var(--r-sm)', textAlign: 'left' as const,
               border: `1px solid ${weekChoice === opt.id ? 'var(--ai-accent)' : 'var(--ai-border)'}`,
               background: weekChoice === opt.id ? 'rgba(6,182,212,0.06)' : 'var(--ai-bg2)',
               cursor: 'pointer',
             }}>
               <p style={{ fontSize: 12, fontWeight: 600, color: weekChoice === opt.id ? 'var(--ai-accent)' : 'var(--ai-text)', margin: 0 }}>{opt.label}</p>
-              <p style={{ fontSize: 9, color: 'var(--ai-dim)', margin: '3px 0 0' }}>{opt.desc}</p>
+              <p style={{ fontSize: 10, color: 'var(--ai-dim)', margin: '3px 0 0' }}>{opt.desc}</p>
             </button>
           ))}
         </div>
 
         <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={() => setPhase('gate')} style={{ padding: '9px 16px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer' }}>
+          <button onClick={() => setPhase('gate')} style={{ padding: '9px 16px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer' }}>
             Retour
           </button>
           <button
             onClick={() => void runAnalysis()}
-            style={{ flex: 1, padding: '9px', borderRadius: 9, border: 'none', background: 'var(--ai-gradient)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+            style={{ flex: 1, padding: '9px', borderRadius: 'var(--r-sm)', border: 'none', background: 'var(--ai-gradient)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
           >
             Analyser →
           </button>
@@ -18079,7 +18079,7 @@ Patterns 4 semaines (${typeDriftData.length} données): ${typeDriftData.length >
 
     return (
       <div style={{ padding: '8px 0 4px' }}>
-        <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'Syne,sans-serif', margin: '0 0 10px' }}>
+        <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'var(--font-body)', margin: '0 0 10px' }}>
           Analyse — {weekChoice === 'last' ? 'Semaine dernière' : 'Cette semaine'}
         </p>
 
@@ -18091,47 +18091,47 @@ Patterns 4 semaines (${typeDriftData.length} données): ${typeDriftData.length >
             { label: 'Durée', value: `${kpis.totalHours}h` },
             { label: 'TSS', value: String(kpis.tssCumul) },
           ] as { label: string; value: string }[]).map(kpi => (
-            <div key={kpi.label} style={{ padding: '7px 4px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', textAlign: 'center' as const }}>
-              <p style={{ fontSize: 8, color: 'var(--ai-dim)', margin: 0, textTransform: 'uppercase' as const, letterSpacing: '0.06em' }}>{kpi.label}</p>
-              <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', margin: '2px 0 0', fontFamily: 'DM Mono,monospace' }}>{kpi.value}</p>
+            <div key={kpi.label} style={{ padding: '7px 4px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', textAlign: 'center' as const }}>
+              <p style={{ fontSize: 10, color: 'var(--ai-dim)', margin: 0, textTransform: 'uppercase' as const, letterSpacing: '0.06em' }}>{kpi.label}</p>
+              <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', margin: '2px 0 0', fontFamily: 'var(--font-body)' }}>{kpi.value}</p>
             </div>
           ))}
         </div>
 
         {/* CTL / ATL / TSB / Risque */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 5, marginBottom: 8 }}>
-          <div style={{ padding: '7px 4px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', textAlign: 'center' as const }}>
-            <p style={{ fontSize: 8, color: '#22c55e', margin: 0 }}>CTL</p>
-            <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', margin: '2px 0 0', fontFamily: 'DM Mono,monospace' }}>{kpis.ctlFinal}</p>
+          <div style={{ padding: '7px 4px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', textAlign: 'center' as const }}>
+            <p style={{ fontSize: 10, color: '#22c55e', margin: 0 }}>CTL</p>
+            <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', margin: '2px 0 0', fontFamily: 'var(--font-body)' }}>{kpis.ctlFinal}</p>
           </div>
-          <div style={{ padding: '7px 4px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', textAlign: 'center' as const }}>
-            <p style={{ fontSize: 8, color: '#f97316', margin: 0 }}>ATL</p>
-            <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', margin: '2px 0 0', fontFamily: 'DM Mono,monospace' }}>{kpis.atlFinal}</p>
+          <div style={{ padding: '7px 4px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', textAlign: 'center' as const }}>
+            <p style={{ fontSize: 10, color: '#f97316', margin: 0 }}>ATL</p>
+            <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', margin: '2px 0 0', fontFamily: 'var(--font-body)' }}>{kpis.atlFinal}</p>
           </div>
-          <div style={{ padding: '7px 4px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', textAlign: 'center' as const }}>
-            <p style={{ fontSize: 8, color: '#06B6D4', margin: 0 }}>TSB</p>
-            <p style={{ fontSize: 13, fontWeight: 700, color: kpis.tsbFinal < -10 ? '#ef4444' : kpis.tsbFinal > 5 ? '#22c55e' : 'var(--ai-text)', margin: '2px 0 0', fontFamily: 'DM Mono,monospace' }}>{kpis.tsbFinal}</p>
+          <div style={{ padding: '7px 4px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', textAlign: 'center' as const }}>
+            <p style={{ fontSize: 10, color: '#06B6D4', margin: 0 }}>TSB</p>
+            <p style={{ fontSize: 13, fontWeight: 700, color: kpis.tsbFinal < -10 ? '#ef4444' : kpis.tsbFinal > 5 ? '#22c55e' : 'var(--ai-text)', margin: '2px 0 0', fontFamily: 'var(--font-body)' }}>{kpis.tsbFinal}</p>
           </div>
-          <div style={{ padding: '7px 4px', borderRadius: 8, border: `1px solid ${riskColor}`, background: 'var(--ai-bg2)', textAlign: 'center' as const }}>
-            <p style={{ fontSize: 8, color: riskColor, margin: 0 }}>RISQUE</p>
-            <p style={{ fontSize: 13, fontWeight: 700, color: riskColor, margin: '2px 0 0', fontFamily: 'DM Mono,monospace' }}>{kpis.riskScore}/100</p>
+          <div style={{ padding: '7px 4px', borderRadius: 'var(--r-sm)', border: `1px solid ${riskColor}`, background: 'var(--ai-bg2)', textAlign: 'center' as const }}>
+            <p style={{ fontSize: 10, color: riskColor, margin: 0 }}>RISQUE</p>
+            <p style={{ fontSize: 13, fontWeight: 700, color: riskColor, margin: '2px 0 0', fontFamily: 'var(--font-body)' }}>{kpis.riskScore}/100</p>
           </div>
         </div>
 
         {/* Prochaine course */}
         {kpis.nextRace && (
-          <div style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ padding: '6px 10px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ fontSize: 11, color: 'var(--ai-mid)' }}>🏁 {kpis.nextRace.name}</span>
-            <span style={{ fontSize: 11, fontWeight: 700, color: (kpis.daysToRace ?? 99) < 14 ? '#f97316' : 'var(--ai-accent)', fontFamily: 'DM Mono,monospace' }}>J-{kpis.daysToRace}</span>
+            <span style={{ fontSize: 11, fontWeight: 700, color: (kpis.daysToRace ?? 99) < 14 ? '#f97316' : 'var(--ai-accent)', fontFamily: 'var(--font-body)' }}>J-{kpis.daysToRace}</span>
           </div>
         )}
 
         {/* Analyse markdown */}
         <div style={{ margin: '12px 0 8px', borderBottom: '1px solid var(--ai-border)' }} />
-        <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'Syne,sans-serif', margin: '0 0 8px' }}>
+        <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'var(--font-body)', margin: '0 0 8px' }}>
           Analyse du coach
         </p>
-        <div style={{ padding: '12px', borderRadius: 12, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', maxHeight: '55vh', overflowY: 'auto' as const }}>
+        <div style={{ padding: '12px', borderRadius: 'var(--r-md)', border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', maxHeight: '55vh', overflowY: 'auto' as const }}>
           {rawAnalysis
             ? <MsgContent text={rawAnalysis} />
             : <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: 0 }}>Analyse en cours...</p>
@@ -18155,8 +18155,8 @@ Patterns 4 semaines (${typeDriftData.length} données): ${typeDriftData.length >
               <button key={i} onClick={() => {
                 if (onFollowUp) onFollowUp(action.label, action.prompt)
               }} style={{
-                padding: '7px 12px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)',
-                color: 'var(--ai-text)', fontSize: 11, cursor: 'pointer', fontWeight: 500, fontFamily: 'DM Sans,sans-serif',
+                padding: '7px 12px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)',
+                color: 'var(--ai-text)', fontSize: 11, cursor: 'pointer', fontWeight: 500, fontFamily: 'var(--font-body)',
               }}>
                 {action.label} →
               </button>
@@ -18219,21 +18219,21 @@ Patterns 4 semaines (${typeDriftData.length} données): ${typeDriftData.length >
                 doc.save('THW_Analyse_Semaine.pdf')
               }}
               style={{
-                flex: 1, padding: '9px', borderRadius: 9,
+                flex: 1, padding: '9px', borderRadius: 'var(--r-sm)',
                 border: '1px solid rgba(6,182,212,0.4)', background: 'rgba(6,182,212,0.06)',
                 color: 'var(--ai-accent, #06B6D4)', fontSize: 12, fontWeight: 600, cursor: 'pointer',
               }}
             >
               Télécharger PDF
             </button>
-            <button onClick={onCancel} style={{ flex: 1, padding: '9px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-dim)', fontSize: 12, cursor: 'pointer' }}>
+            <button onClick={onCancel} style={{ flex: 1, padding: '9px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-dim)', fontSize: 12, cursor: 'pointer' }}>
               Fermer
             </button>
           </div>
         )}
 
         {!generating && rawAnalysis.length <= 100 && (
-          <button onClick={onCancel} style={{ width: '100%', padding: '9px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-dim)', fontSize: 12, cursor: 'pointer', marginTop: 10 }}>
+          <button onClick={onCancel} style={{ width: '100%', padding: '9px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-dim)', fontSize: 12, cursor: 'pointer', marginTop: 10 }}>
             Fermer
           </button>
         )}
@@ -18456,8 +18456,8 @@ async function generateRacePDF(
     head: [sectionHeaders],
     body: sectionRows,
     margin: { left: margin, right: margin },
-    styles: { fontSize: 7, cellPadding: 2, font: 'helvetica', overflow: 'linebreak' },
-    headStyles: { fillColor: brand, textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 7 },
+    styles: { fontSize: 10, cellPadding: 2, font: 'helvetica', overflow: 'linebreak' },
+    headStyles: { fillColor: brand, textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 10 },
     alternateRowStyles: { fillColor: [245, 245, 250] },
     columnStyles: {
       0: { cellWidth: 36 },
@@ -18485,8 +18485,8 @@ async function generateRacePDF(
     head: [['Timing', 'Glucides', 'Hydratation', 'Conseil']],
     body: nutriRows,
     margin: { left: margin, right: margin },
-    styles: { fontSize: 7, cellPadding: 2, font: 'helvetica', overflow: 'linebreak' },
-    headStyles: { fillColor: green, textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 7 },
+    styles: { fontSize: 10, cellPadding: 2, font: 'helvetica', overflow: 'linebreak' },
+    headStyles: { fillColor: green, textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 10 },
     alternateRowStyles: { fillColor: [245, 250, 245] },
     columnStyles: {
       0: { cellWidth: 28 },
@@ -18512,8 +18512,8 @@ async function generateRacePDF(
       head: [['Discipline', 'Objectif', 'Conseil']],
       body: triRows,
       margin: { left: margin, right: margin },
-      styles: { fontSize: 7, cellPadding: 2, font: 'helvetica', overflow: 'linebreak' },
-      headStyles: { fillColor: brand, textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 7 },
+      styles: { fontSize: 10, cellPadding: 2, font: 'helvetica', overflow: 'linebreak' },
+      headStyles: { fillColor: brand, textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 10 },
       columnStyles: { 0: { cellWidth: 26 }, 1: { cellWidth: 26 }, 2: { cellWidth: 'auto' } },
     })
     y = (doc.lastAutoTable?.finalY ?? y) + 6
@@ -18544,8 +18544,8 @@ async function generateRacePDF(
       head: [['Condition', 'Impact', 'Allure', 'Conseil']],
       body: meteoRows,
       margin: { left: margin, right: margin },
-      styles: { fontSize: 7, cellPadding: 2, font: 'helvetica', overflow: 'linebreak' },
-      headStyles: { fillColor: orange, textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 7 },
+      styles: { fontSize: 10, cellPadding: 2, font: 'helvetica', overflow: 'linebreak' },
+      headStyles: { fillColor: orange, textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 10 },
       columnStyles: { 0: { cellWidth: 22 }, 1: { cellWidth: 28 }, 2: { cellWidth: 20 }, 3: { cellWidth: 'auto' } },
     })
     y = (doc.lastAutoTable?.finalY ?? y) + 6
@@ -18908,10 +18908,10 @@ function ElevationProfileChart({ profile, height = 140, climbs: climbsOverride }
           transform: cursorPct > 0.7 ? 'translateX(-110%)' : 'translateX(10px)',
           background: 'var(--ai-bg, rgba(10,10,10,0.95))',
           border: '1px solid var(--ai-border)',
-          borderRadius: 6,
+          borderRadius: 'var(--r-sm)',
           padding: '5px 9px',
           fontSize: 10,
-          fontFamily: 'DM Mono,monospace',
+          fontFamily: 'var(--font-body)',
           color: 'var(--ai-text, #e5e5e5)',
           pointerEvents: 'none',
           whiteSpace: 'nowrap',
@@ -19539,7 +19539,7 @@ FORMAT JSON STRICT :
     const today = new Date()
     return (
       <div style={{ padding: '8px 0 4px' }}>
-        <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 5px', fontFamily: 'Syne,sans-serif' }}>
+        <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 5px', fontFamily: 'var(--font-body)' }}>
           Stratégie de course
         </p>
         <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: '0 0 14px' }}>
@@ -19560,15 +19560,15 @@ FORMAT JSON STRICT :
                   const isSelected = selectedRace?.id === r.id
                   return (
                     <button key={r.id} onClick={() => setSelectedRace(r)} style={{
-                      padding: '10px 12px', borderRadius: 10, textAlign: 'left',
+                      padding: '10px 12px', borderRadius: 'var(--r-sm)', textAlign: 'left',
                       border: `1px solid ${isSelected ? 'var(--ai-accent)' : 'var(--ai-border)'}`,
                       background: isSelected ? 'var(--ai-accent-dim)' : 'var(--ai-bg2)',
-                      cursor: 'pointer', fontFamily: 'DM Sans,sans-serif',
+                      cursor: 'pointer', fontFamily: 'var(--font-body)',
                     }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
                         <span style={{ fontSize: 12, fontWeight: 600, color: isSelected ? 'var(--ai-accent)' : 'var(--ai-text)' }}>{r.name}</span>
                         {isImminent && (
-                          <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 4, background: 'rgba(239,68,68,0.15)', color: '#ef4444', letterSpacing: '0.06em' }}>
+                          <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 4, background: 'rgba(239,68,68,0.15)', color: '#ef4444', letterSpacing: '0.06em' }}>
                             IMMINENT
                           </span>
                         )}
@@ -19590,34 +19590,34 @@ FORMAT JSON STRICT :
                 <div style={{ display: 'flex', gap: 6 }}>
                   {SUPPORTED_SPORTS.map(s => (
                     <button key={s} onClick={() => setManualSport(s)} style={{
-                      flex: 1, padding: '6px', borderRadius: 7, fontSize: 11,
+                      flex: 1, padding: '6px', borderRadius: 'var(--r-sm)', fontSize: 11,
                       border: `1px solid ${manualSport === s ? 'var(--ai-accent)' : 'var(--ai-border)'}`,
                       background: manualSport === s ? 'var(--ai-accent-dim)' : 'var(--ai-bg2)',
                       color: manualSport === s ? 'var(--ai-accent)' : 'var(--ai-mid)',
-                      cursor: 'pointer', fontFamily: 'DM Sans,sans-serif',
+                      cursor: 'pointer', fontFamily: 'var(--font-body)',
                     }}>
                       {SPORT_LABELS[s] ?? s}
                     </button>
                   ))}
                 </div>
                 <input type="number" placeholder="Distance (km)" value={manualDistance} onChange={e => setManualDistance(e.target.value)}
-                  style={{ padding: '8px 10px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 12, outline: 'none', fontFamily: 'DM Sans,sans-serif' }} />
+                  style={{ padding: '8px 10px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 12, outline: 'none', fontFamily: 'var(--font-body)' }} />
                 <input type="number" placeholder={t('aip.ui.elevPosOptPh')} value={manualDenivele} onChange={e => setManualDenivele(e.target.value)}
-                  style={{ padding: '8px 10px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 12, outline: 'none', fontFamily: 'DM Sans,sans-serif' }} />
+                  style={{ padding: '8px 10px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 12, outline: 'none', fontFamily: 'var(--font-body)' }} />
                 <input type="date" value={manualDate} onChange={e => setManualDate(e.target.value)}
-                  style={{ padding: '8px 10px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 12, outline: 'none', fontFamily: 'DM Sans,sans-serif' }} />
+                  style={{ padding: '8px 10px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 12, outline: 'none', fontFamily: 'var(--font-body)' }} />
                 <input type="text" placeholder={t('aip.ui.timeGoalPh')} value={manualGoalTime} onChange={e => setManualGoalTime(e.target.value)}
-                  style={{ padding: '8px 10px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 12, outline: 'none', fontFamily: 'DM Sans,sans-serif' }} />
+                  style={{ padding: '8px 10px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 12, outline: 'none', fontFamily: 'var(--font-body)' }} />
                 <button onClick={() => setManualMode(false)} style={{ fontSize: 11, color: 'var(--ai-accent)', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', padding: 0 }}>
                   ← Utiliser une course planifiée
                 </button>
               </div>
             ) : (
               <button onClick={() => { setSelectedRace(null); setManualMode(true) }} style={{
-                width: '100%', padding: '9px', borderRadius: 9, marginBottom: 12,
+                width: '100%', padding: '9px', borderRadius: 'var(--r-sm)', marginBottom: 12,
                 border: '1px solid var(--ai-border)', background: 'transparent',
                 color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer',
-                fontFamily: 'DM Sans,sans-serif',
+                fontFamily: 'var(--font-body)',
               }}>
                 Saisir manuellement
               </button>
@@ -19640,12 +19640,12 @@ FORMAT JSON STRICT :
                   onClick={() => courseFileRef.current?.click()}
                   disabled={uploadingFile}
                   style={{
-                    width: '100%', padding: '10px', borderRadius: 8,
+                    width: '100%', padding: '10px', borderRadius: 'var(--r-sm)',
                     border: `1px dashed ${courseProfile ? 'rgba(6,182,212,0.5)' : 'var(--ai-border)'}`,
                     background: courseProfile ? 'rgba(6,182,212,0.04)' : 'var(--ai-bg2)',
                     color: courseProfile ? 'var(--ai-accent)' : 'var(--ai-mid)',
                     fontSize: 11, cursor: uploadingFile ? 'default' : 'pointer',
-                    fontFamily: 'DM Sans,sans-serif',
+                    fontFamily: 'var(--font-body)',
                   }}
                 >
                   {uploadingFile
@@ -19662,7 +19662,7 @@ FORMAT JSON STRICT :
                 {uploadError && (
                   <p style={{ fontSize: 10, color: '#ef4444', margin: '4px 0 0' }}>{uploadError}</p>
                 )}
-                <p style={{ fontSize: 9, color: 'var(--ai-dim)', margin: '4px 0 0' }}>
+                <p style={{ fontSize: 10, color: 'var(--ai-dim)', margin: '4px 0 0' }}>
                   Exporte depuis Strava, Garmin Connect, Komoot ou autre
                 </p>
               </div>
@@ -19671,18 +19671,18 @@ FORMAT JSON STRICT :
         )}
 
         <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={onCancel} style={{ padding: '9px 16px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
+          <button onClick={onCancel} style={{ padding: '9px 16px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
             Annuler
           </button>
           <button
             onClick={() => { setPhase('questions'); void preloadAthleteData() }}
             disabled={!manualMode && !selectedRace}
             style={{
-              flex: 1, padding: '9px', borderRadius: 9, border: 'none',
+              flex: 1, padding: '9px', borderRadius: 'var(--r-sm)', border: 'none',
               background: (manualMode || selectedRace) ? 'var(--ai-gradient)' : 'var(--ai-border)',
               color: '#fff', fontSize: 12, fontWeight: 700,
               cursor: (manualMode || selectedRace) ? 'pointer' : 'not-allowed',
-              fontFamily: 'DM Sans,sans-serif',
+              fontFamily: 'var(--font-body)',
             }}
           >
             Continuer →
@@ -19703,18 +19703,18 @@ FORMAT JSON STRICT :
 
     return (
       <div style={{ padding: '8px 0 4px' }}>
-        <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 14px', fontFamily: 'Syne,sans-serif' }}>
+        <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 14px', fontFamily: 'var(--font-body)' }}>
           Quelques questions
         </p>
 
         {/* Profil altimétrique si fichier uploadé */}
         {courseProfile && (
-          <div style={{ marginBottom: 16, padding: '10px 12px', borderRadius: 10, background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)' }}>
+          <div style={{ marginBottom: 16, padding: '10px 12px', borderRadius: 'var(--r-sm)', background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)' }}>
             <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--ai-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 8px' }}>
               Profil du parcours
             </p>
             <ElevationProfileChart profile={courseProfile} height={140} climbs={allClimbs} />
-            <div style={{ display: 'flex', gap: 14, fontSize: 11, color: 'var(--ai-mid)', marginTop: 4, marginBottom: 8, fontFamily: 'DM Mono,monospace', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: 14, fontSize: 11, color: 'var(--ai-mid)', marginTop: 4, marginBottom: 8, fontFamily: 'var(--font-body)', flexWrap: 'wrap' }}>
               <span><strong style={{ color: 'var(--ai-text)' }}>{courseProfile.total_distance_km}</strong>km</span>
               <span>D+ <strong style={{ color: 'var(--ai-text)' }}>{courseProfile.total_denivele_pos}</strong>m</span>
               <span>D- <strong style={{ color: 'var(--ai-text)' }}>{courseProfile.total_denivele_neg}</strong>m</span>
@@ -19722,20 +19722,20 @@ FORMAT JSON STRICT :
             </div>
             {allClimbs.length > 0 && (
               <div style={{ marginTop: 2, marginBottom: 4 }}>
-                <p style={{ fontSize: 9, fontWeight: 700, color: 'var(--ai-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 4px' }}>
+                <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--ai-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 4px' }}>
                   Difficultés majeures
                 </p>
                 {allClimbs.map((c, i) => (
                   <div key={i} style={{ fontSize: 10, color: 'var(--ai-mid)', padding: '3px 0', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                     <span style={{
-                      fontSize: 8, fontWeight: 700, padding: '1px 5px', borderRadius: 3,
+                      fontSize: 10, fontWeight: 700, padding: '1px 5px', borderRadius: 3,
                       background: (CLIMB_CAT_COLORS[c.categorie] ?? '#f97316') + '25',
                       color: CLIMB_CAT_COLORS[c.categorie] ?? '#f97316',
-                      fontFamily: 'DM Mono,monospace',
+                      fontFamily: 'var(--font-body)',
                     }}>
                       {CLIMB_CAT_LABELS[c.categorie]}
                     </span>
-                    <span style={{ fontFamily: 'DM Mono,monospace', color: 'var(--ai-dim)' }}>{c.start_km}–{c.end_km}km</span>
+                    <span style={{ fontFamily: 'var(--font-body)', color: 'var(--ai-dim)' }}>{c.start_km}–{c.end_km}km</span>
                     <span>{c.distance_km}km · {c.pente_moyenne_pct}% moy · max {c.pente_max_pct}% · {c.altitude_max}m</span>
                     {c.isManual && (
                       <button onClick={() => setManualClimbs(prev => prev.filter(mc =>
@@ -19749,28 +19749,28 @@ FORMAT JSON STRICT :
             {/* Ajout manuel de montée */}
             <div style={{ marginTop: 4 }}>
               {!showAddClimb ? (
-                <button onClick={() => setShowAddClimb(true)} style={{ fontSize: 10, color: 'var(--ai-accent)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'DM Sans,sans-serif', textDecoration: 'underline' }}>
+                <button onClick={() => setShowAddClimb(true)} style={{ fontSize: 10, color: 'var(--ai-accent)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'var(--font-body)', textDecoration: 'underline' }}>
                   + Ajouter une montée manuellement
                 </button>
               ) : (
-                <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', padding: '6px 8px', borderRadius: 8, background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)' }}>
+                <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', padding: '6px 8px', borderRadius: 'var(--r-sm)', background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)' }}>
                   <span style={{ fontSize: 10, color: 'var(--ai-dim)' }}>{t('aip.ui.startKm')}</span>
                   <input type="number" step="0.1" placeholder="ex: 115" value={newClimbStart} onChange={e => setNewClimbStart(e.target.value)}
-                    style={{ width: 60, padding: '4px 6px', borderRadius: 6, border: '1px solid var(--ai-border)', background: 'var(--ai-bg)', color: 'var(--ai-text)', fontSize: 11, fontFamily: 'DM Mono,monospace', outline: 'none' }} />
+                    style={{ width: 60, padding: '4px 6px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'var(--ai-bg)', color: 'var(--ai-text)', fontSize: 11, fontFamily: 'var(--font-body)', outline: 'none' }} />
                   <span style={{ fontSize: 10, color: 'var(--ai-dim)' }}>Fin km</span>
                   <input type="number" step="0.1" placeholder="ex: 135" value={newClimbEnd} onChange={e => setNewClimbEnd(e.target.value)}
-                    style={{ width: 60, padding: '4px 6px', borderRadius: 6, border: '1px solid var(--ai-border)', background: 'var(--ai-bg)', color: 'var(--ai-text)', fontSize: 11, fontFamily: 'DM Mono,monospace', outline: 'none' }} />
+                    style={{ width: 60, padding: '4px 6px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'var(--ai-bg)', color: 'var(--ai-text)', fontSize: 11, fontFamily: 'var(--font-body)', outline: 'none' }} />
                   <button onClick={() => {
                     const s = parseFloat(newClimbStart), e = parseFloat(newClimbEnd)
                     if (!isNaN(s) && !isNaN(e) && e > s) {
                       setManualClimbs(prev => [...prev, { start_km: s, end_km: e }])
                       setNewClimbStart(''); setNewClimbEnd(''); setShowAddClimb(false)
                     }
-                  }} style={{ padding: '4px 10px', borderRadius: 6, fontSize: 10, border: 'none', background: 'var(--ai-accent)', color: '#000', cursor: 'pointer', fontWeight: 600 }}>
+                  }} style={{ padding: '4px 10px', borderRadius: 'var(--r-sm)', fontSize: 10, border: 'none', background: 'var(--ai-accent)', color: '#000', cursor: 'pointer', fontWeight: 600 }}>
                     Ajouter
                   </button>
                   <button onClick={() => { setShowAddClimb(false); setNewClimbStart(''); setNewClimbEnd('') }}
-                    style={{ padding: '4px 8px', borderRadius: 6, fontSize: 10, border: '1px solid var(--ai-border)', background: 'none', color: 'var(--ai-dim)', cursor: 'pointer' }}>
+                    style={{ padding: '4px 8px', borderRadius: 'var(--r-sm)', fontSize: 10, border: '1px solid var(--ai-border)', background: 'none', color: 'var(--ai-dim)', cursor: 'pointer' }}>
                     Annuler
                   </button>
                 </div>
@@ -19786,12 +19786,12 @@ FORMAT JSON STRICT :
             <div style={{ display: 'flex', gap: 6 }}>
               {(['Plat', 'Vallonné', 'Montagneux'] as const).map(p => (
                 <button key={p} onClick={() => setProfilParcours(p)} style={{
-                  flex: 1, padding: '8px 4px', borderRadius: 8, fontSize: 11,
+                  flex: 1, padding: '8px 4px', borderRadius: 'var(--r-sm)', fontSize: 11,
                   border: `1px solid ${profilParcours === p ? 'var(--ai-accent)' : 'var(--ai-border)'}`,
                   background: profilParcours === p ? 'var(--ai-accent-dim)' : 'var(--ai-bg2)',
                   color: profilParcours === p ? 'var(--ai-accent)' : 'var(--ai-mid)',
                   cursor: 'pointer', fontWeight: profilParcours === p ? 700 : 400,
-                  fontFamily: 'DM Sans,sans-serif',
+                  fontFamily: 'var(--font-body)',
                 }}>
                   {p}
                 </button>
@@ -19805,7 +19805,7 @@ FORMAT JSON STRICT :
           <div style={{ marginBottom: 16 }}>
             <p style={{ fontSize: 12, color: 'var(--ai-mid)', margin: '0 0 8px' }}>{t('aip.ui.maxAltitudePh')}</p>
             <input type="number" placeholder="Ex: 2500" value={altitudeMax} onChange={e => setAltitudeMax(e.target.value)}
-              style={{ width: '100%', padding: '9px 10px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 12, outline: 'none', fontFamily: 'DM Sans,sans-serif', boxSizing: 'border-box' }} />
+              style={{ width: '100%', padding: '9px 10px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 12, outline: 'none', fontFamily: 'var(--font-body)', boxSizing: 'border-box' }} />
           </div>
         )}
 
@@ -19817,12 +19817,12 @@ FORMAT JSON STRICT :
               <div style={{ display: 'flex', gap: 6 }}>
                 {(['S', 'M', 'L', 'XL'] as const).map(d => (
                   <button key={d} onClick={() => setTriDistance(d)} style={{
-                    flex: 1, padding: '7px 4px', borderRadius: 8, fontSize: 11,
+                    flex: 1, padding: '7px 4px', borderRadius: 'var(--r-sm)', fontSize: 11,
                     border: `1px solid ${triDistance === d ? 'var(--ai-accent)' : 'var(--ai-border)'}`,
                     background: triDistance === d ? 'var(--ai-accent-dim)' : 'var(--ai-bg2)',
                     color: triDistance === d ? 'var(--ai-accent)' : 'var(--ai-mid)',
                     cursor: 'pointer', fontWeight: triDistance === d ? 700 : 400,
-                    fontFamily: 'DM Sans,sans-serif',
+                    fontFamily: 'var(--font-body)',
                   }}>
                     {d === 'S' ? 'Sprint' : d === 'M' ? 'Olympique' : d === 'L' ? '70.3' : 'Ironman'}
                   </button>
@@ -19833,11 +19833,11 @@ FORMAT JSON STRICT :
               <p style={{ fontSize: 12, color: 'var(--ai-mid)', margin: '0 0 8px' }}>{t('aip.ui.goalsByDiscipline')}</p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <input type="text" placeholder="Natation (ex: 30min)" value={triSwimGoal} onChange={e => setTriSwimGoal(e.target.value)}
-                  style={{ padding: '8px 10px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 12, outline: 'none', fontFamily: 'DM Sans,sans-serif' }} />
+                  style={{ padding: '8px 10px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 12, outline: 'none', fontFamily: 'var(--font-body)' }} />
                 <input type="text" placeholder={t('aip.ui.bikePh')} value={triBikeGoal} onChange={e => setTriBikeGoal(e.target.value)}
-                  style={{ padding: '8px 10px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 12, outline: 'none', fontFamily: 'DM Sans,sans-serif' }} />
+                  style={{ padding: '8px 10px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 12, outline: 'none', fontFamily: 'var(--font-body)' }} />
                 <input type="text" placeholder="CAP (ex: 45min)" value={triRunGoal} onChange={e => setTriRunGoal(e.target.value)}
-                  style={{ padding: '8px 10px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 12, outline: 'none', fontFamily: 'DM Sans,sans-serif' }} />
+                  style={{ padding: '8px 10px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 12, outline: 'none', fontFamily: 'var(--font-body)' }} />
               </div>
             </div>
           </>
@@ -19845,7 +19845,7 @@ FORMAT JSON STRICT :
 
         {/* ── Données de l'athlète ── */}
         {athletePreview ? (
-          <div style={{ marginBottom: 16, padding: '10px 12px', borderRadius: 10, background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)' }}>
+          <div style={{ marginBottom: 16, padding: '10px 12px', borderRadius: 'var(--r-sm)', background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)' }}>
             <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--ai-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 8px' }}>
               Tes données
             </p>
@@ -19853,19 +19853,19 @@ FORMAT JSON STRICT :
             {/* Profil */}
             <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginBottom: 6, fontSize: 11 }}>
               {athletePreview.profile?.ftp_watts && (
-                <span style={{ color: 'var(--ai-mid)' }}>FTP <strong style={{ color: 'var(--ai-text)', fontFamily: 'DM Mono,monospace' }}>{athletePreview.profile.ftp_watts}W</strong></span>
+                <span style={{ color: 'var(--ai-mid)' }}>FTP <strong style={{ color: 'var(--ai-text)', fontFamily: 'var(--font-body)' }}>{athletePreview.profile.ftp_watts}W</strong></span>
               )}
               {athletePreview.profile?.weight_kg && (
-                <span style={{ color: 'var(--ai-mid)' }}>{t('aip.ui.weight')} <strong style={{ color: 'var(--ai-text)', fontFamily: 'DM Mono,monospace' }}>{athletePreview.profile.weight_kg}kg</strong></span>
+                <span style={{ color: 'var(--ai-mid)' }}>{t('aip.ui.weight')} <strong style={{ color: 'var(--ai-text)', fontFamily: 'var(--font-body)' }}>{athletePreview.profile.weight_kg}kg</strong></span>
               )}
               {athletePreview.profile?.ftp_watts && athletePreview.profile?.weight_kg && (
-                <span style={{ color: 'var(--ai-mid)' }}>W/kg <strong style={{ color: 'var(--ai-text)', fontFamily: 'DM Mono,monospace' }}>{(athletePreview.profile.ftp_watts / athletePreview.profile.weight_kg).toFixed(2)}</strong></span>
+                <span style={{ color: 'var(--ai-mid)' }}>W/kg <strong style={{ color: 'var(--ai-text)', fontFamily: 'var(--font-body)' }}>{(athletePreview.profile.ftp_watts / athletePreview.profile.weight_kg).toFixed(2)}</strong></span>
               )}
               {athletePreview.profile?.vma && (
-                <span style={{ color: 'var(--ai-mid)' }}>VMA <strong style={{ color: 'var(--ai-text)', fontFamily: 'DM Mono,monospace' }}>{athletePreview.profile.vma}km/h</strong></span>
+                <span style={{ color: 'var(--ai-mid)' }}>VMA <strong style={{ color: 'var(--ai-text)', fontFamily: 'var(--font-body)' }}>{athletePreview.profile.vma}km/h</strong></span>
               )}
               {athletePreview.profile?.lthr && (
-                <span style={{ color: 'var(--ai-mid)' }}>LTHR <strong style={{ color: 'var(--ai-text)', fontFamily: 'DM Mono,monospace' }}>{athletePreview.profile.lthr}bpm</strong></span>
+                <span style={{ color: 'var(--ai-mid)' }}>LTHR <strong style={{ color: 'var(--ai-text)', fontFamily: 'var(--font-body)' }}>{athletePreview.profile.lthr}bpm</strong></span>
               )}
             </div>
 
@@ -19875,7 +19875,7 @@ FORMAT JSON STRICT :
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
                   <span style={{ fontSize: 10, color: '#22c55e', fontWeight: 600 }}>{t('aip.ui.zonesConfiguredCheck')}</span>
                 </div>
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', fontSize: 10, fontFamily: 'DM Mono,monospace', color: 'var(--ai-dim)' }}>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', fontSize: 10, fontFamily: 'var(--font-body)', color: 'var(--ai-dim)' }}>
                   {athletePreview.zones.z1_value && <span>Z1: {athletePreview.zones.z1_value}</span>}
                   {athletePreview.zones.z2_value && <span>Z2: {athletePreview.zones.z2_value}</span>}
                   {athletePreview.zones.z3_value && <span>Z3: {athletePreview.zones.z3_value}</span>}
@@ -19894,7 +19894,7 @@ FORMAT JSON STRICT :
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 2 }}>
                   {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                   {athletePreview.tests.slice(0, 3).map((t: any, i: number) => (
-                    <span key={i} style={{ fontSize: 9, color: 'var(--ai-dim)', fontFamily: 'DM Mono,monospace' }}>
+                    <span key={i} style={{ fontSize: 10, color: 'var(--ai-dim)', fontFamily: 'var(--font-body)' }}>
                       {t.test_definitions?.nom ?? 'Test'}{t.date ? ` (${t.date})` : ''}
                     </span>
                   ))}
@@ -19916,7 +19916,7 @@ FORMAT JSON STRICT :
                 <div style={{ marginTop: 3 }}>
                   {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                   {athletePreview.races.slice(0, 5).map((r: any, i: number) => (
-                    <p key={i} style={{ fontSize: 9, color: 'var(--ai-dim)', margin: '1px 0', fontFamily: 'DM Mono,monospace' }}>
+                    <p key={i} style={{ fontSize: 10, color: 'var(--ai-dim)', margin: '1px 0', fontFamily: 'var(--font-body)' }}>
                       {r.title ?? r.sport_type ?? '—'}
                       {r.distance_m != null ? ` · ${(r.distance_m / 1000).toFixed(1)}km` : ''}
                       {r.moving_time_s != null ? ` · ${Math.floor(r.moving_time_s / 3600)}h${String(Math.floor((r.moving_time_s % 3600) / 60)).padStart(2, '0')}` : ''}
@@ -19935,7 +19935,7 @@ FORMAT JSON STRICT :
             )}
           </div>
         ) : (
-          <div style={{ marginBottom: 16, padding: '10px 12px', borderRadius: 10, background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)' }}>
+          <div style={{ marginBottom: 16, padding: '10px 12px', borderRadius: 'var(--r-sm)', background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)' }}>
             <p style={{ fontSize: 10, color: 'var(--ai-dim)' }}>{t('aip.ui.loadingData')}</p>
           </div>
         )}
@@ -19946,12 +19946,12 @@ FORMAT JSON STRICT :
           <div style={{ display: 'flex', gap: 4 }}>
             {[1, 2, 3, 4, 5].map(v => (
               <button key={v} onClick={() => setRessenti(v)} style={{
-                flex: 1, padding: '8px 4px', borderRadius: 8, fontSize: 11,
+                flex: 1, padding: '8px 4px', borderRadius: 'var(--r-sm)', fontSize: 11,
                 border: `1px solid ${ressenti === v ? 'var(--ai-accent)' : 'var(--ai-border)'}`,
                 background: ressenti === v ? 'var(--ai-accent-dim)' : 'var(--ai-bg2)',
                 color: ressenti === v ? 'var(--ai-accent)' : 'var(--ai-mid)',
                 cursor: 'pointer', fontWeight: ressenti === v ? 700 : 400,
-                fontFamily: 'DM Sans,sans-serif',
+                fontFamily: 'var(--font-body)',
               }}>
                 {v}
               </button>
@@ -19968,7 +19968,7 @@ FORMAT JSON STRICT :
           <div style={{ marginBottom: 16 }}>
             <p style={{ fontSize: 12, color: 'var(--ai-mid)', margin: '0 0 8px' }}>Objectif de temps {isTriQ ? 'total' : ''} (optionnel)</p>
             <input type="text" placeholder="Ex: 3h30, 45min…" value={objectifTemps} onChange={e => setObjectifTemps(e.target.value)}
-              style={{ width: '100%', padding: '9px 10px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 12, outline: 'none', fontFamily: 'DM Sans,sans-serif', boxSizing: 'border-box' }} />
+              style={{ width: '100%', padding: '9px 10px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 12, outline: 'none', fontFamily: 'var(--font-body)', boxSizing: 'border-box' }} />
           </div>
         )}
 
@@ -19978,12 +19978,12 @@ FORMAT JSON STRICT :
           <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
             {(['idéal', 'chaud', 'froid', 'vent', 'pluie'] as const).map(m => (
               <button key={m} onClick={() => setMeteoScenario(meteoScenario === m ? null : m)} style={{
-                padding: '6px 10px', borderRadius: 7, fontSize: 11,
+                padding: '6px 10px', borderRadius: 'var(--r-sm)', fontSize: 11,
                 border: `1px solid ${meteoScenario === m ? 'var(--ai-accent)' : 'var(--ai-border)'}`,
                 background: meteoScenario === m ? 'var(--ai-accent-dim)' : 'var(--ai-bg2)',
                 color: meteoScenario === m ? 'var(--ai-accent)' : 'var(--ai-mid)',
                 cursor: 'pointer', fontWeight: meteoScenario === m ? 700 : 400,
-                fontFamily: 'DM Sans,sans-serif',
+                fontFamily: 'var(--font-body)',
               }}>
                 {m === 'idéal' ? '☀️ Idéal' : m === 'chaud' ? '🌡️ Chaud' : m === 'froid' ? '🥶 Froid' : m === 'vent' ? '💨 Vent' : '🌧️ Pluie'}
               </button>
@@ -19995,22 +19995,22 @@ FORMAT JSON STRICT :
         <div style={{ marginBottom: 16 }}>
           <p style={{ fontSize: 12, color: 'var(--ai-mid)', margin: '0 0 8px' }}>{t('aip.ui.additionalInfo')}</p>
           <textarea placeholder={t('aip.ui.notesPh')} value={notesLibres} onChange={e => setNotesLibres(e.target.value)}
-            style={{ width: '100%', padding: '9px 10px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 12, outline: 'none', fontFamily: 'DM Sans,sans-serif', boxSizing: 'border-box', resize: 'none', minHeight: 60, lineHeight: 1.5 }} />
+            style={{ width: '100%', padding: '9px 10px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 12, outline: 'none', fontFamily: 'var(--font-body)', boxSizing: 'border-box', resize: 'none', minHeight: 60, lineHeight: 1.5 }} />
         </div>
 
         <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={() => setPhase('race')} style={{ padding: '9px 16px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
+          <button onClick={() => setPhase('race')} style={{ padding: '9px 16px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
             Retour
           </button>
           <button
             onClick={() => { void loadContext(); setPhase('context') }}
             disabled={!canContinue}
             style={{
-              flex: 1, padding: '9px', borderRadius: 9, border: 'none',
+              flex: 1, padding: '9px', borderRadius: 'var(--r-sm)', border: 'none',
               background: canContinue ? 'var(--ai-gradient)' : 'var(--ai-border)',
               color: '#fff', fontSize: 12, fontWeight: 700,
               cursor: canContinue ? 'pointer' : 'not-allowed',
-              fontFamily: 'DM Sans,sans-serif',
+              fontFamily: 'var(--font-body)',
             }}
           >
             Continuer →
@@ -20034,7 +20034,7 @@ FORMAT JSON STRICT :
     if (!contextData.hasZonesOrTests) {
       return (
         <div style={{ padding: '8px 0' }}>
-          <div style={{ padding: '12px', borderRadius: 10, background: 'rgba(249,115,22,0.08)', border: '1px solid rgba(249,115,22,0.2)', marginBottom: 14 }}>
+          <div style={{ padding: '12px', borderRadius: 'var(--r-sm)', background: 'rgba(249,115,22,0.08)', border: '1px solid rgba(249,115,22,0.2)', marginBottom: 14 }}>
             <p style={{ fontSize: 12, color: '#f97316', margin: 0, lineHeight: 1.6 }}>
               Pour des allures personnalisées, configure tes zones dans Performance → Zones ou réalise un test dans Performance → Tests.
             </p>
@@ -20044,10 +20044,10 @@ FORMAT JSON STRICT :
           </p>
           {error && <p style={{ fontSize: 11, color: '#ef4444', margin: '0 0 10px' }}>{error}</p>}
           <div style={{ display: 'flex', gap: 8 }}>
-            <button onClick={() => setPhase('questions')} style={{ padding: '9px 16px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
+            <button onClick={() => setPhase('questions')} style={{ padding: '9px 16px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
               Retour
             </button>
-            <button onClick={() => { void generate() }} style={{ flex: 1, padding: '9px', borderRadius: 9, border: 'none', background: 'var(--ai-gradient)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
+            <button onClick={() => { void generate() }} style={{ flex: 1, padding: '9px', borderRadius: 'var(--r-sm)', border: 'none', background: 'var(--ai-gradient)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
               Générer ma stratégie
             </button>
           </div>
@@ -20057,10 +20057,10 @@ FORMAT JSON STRICT :
 
     return (
       <div style={{ padding: '8px 0' }}>
-        <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 12px', fontFamily: 'Syne,sans-serif' }}>
+        <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 12px', fontFamily: 'var(--font-body)' }}>
           Contexte chargé
         </p>
-        <div style={{ padding: '10px 12px', borderRadius: 10, background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)', marginBottom: 14 }}>
+        <div style={{ padding: '10px 12px', borderRadius: 'var(--r-sm)', background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)', marginBottom: 14 }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
               <span style={{ color: 'var(--ai-mid)' }}>{t('aip.ui.zonesConfigured')}</span>
@@ -20082,14 +20082,14 @@ FORMAT JSON STRICT :
         </div>
         {error && <p style={{ fontSize: 11, color: '#ef4444', margin: '0 0 10px' }}>{error}</p>}
         <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={() => setPhase('questions')} style={{ padding: '9px 16px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
+          <button onClick={() => setPhase('questions')} style={{ padding: '9px 16px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
             Retour
           </button>
           <button onClick={() => { void generate() }} style={{
-            flex: 1, padding: '9px', borderRadius: 9, border: 'none',
+            flex: 1, padding: '9px', borderRadius: 'var(--r-sm)', border: 'none',
             background: 'var(--ai-gradient)',
             color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer',
-            fontFamily: 'DM Sans,sans-serif',
+            fontFamily: 'var(--font-body)',
           }}>
             Générer ma stratégie
           </button>
@@ -20103,7 +20103,7 @@ FORMAT JSON STRICT :
     return (
       <div style={{ padding: '48px 0', textAlign: 'center' }}>
         <div style={{ width: 32, height: 32, borderRadius: '50%', border: '3px solid rgba(6,182,212,0.15)', borderTop: '3px solid var(--ai-accent)', animation: 'ai_spin 0.8s linear infinite', margin: '0 auto 16px' }} />
-        <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 6px', fontFamily: 'Syne,sans-serif' }}>
+        <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 6px', fontFamily: 'var(--font-body)' }}>
           Génération de la stratégie…
         </p>
         <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: 0, lineHeight: 1.6 }}>
@@ -20136,7 +20136,7 @@ FORMAT JSON STRICT :
   return (
     <div style={{ padding: '4px 0' }}>
       {/* Verdict card */}
-      <div style={{ padding: '12px', borderRadius: 10, background: `${vc}12`, border: `1px solid ${vc}30`, marginBottom: 14 }}>
+      <div style={{ padding: '12px', borderRadius: 'var(--r-sm)', background: `${vc}12`, border: `1px solid ${vc}30`, marginBottom: 14 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
           <span style={{ fontSize: 12, fontWeight: 700, color: vc }}>{verdictLabel(result.verdict_objectif.status)}</span>
           <span style={{ fontSize: 11, color: 'var(--ai-dim)' }}>{result.verdict_objectif.confiance}% confiance</span>
@@ -20145,20 +20145,20 @@ FORMAT JSON STRICT :
       </div>
 
       {/* Forme au jour J */}
-      <div style={{ padding: '10px 12px', borderRadius: 10, background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)', marginBottom: 14 }}>
+      <div style={{ padding: '10px 12px', borderRadius: 'var(--r-sm)', background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)', marginBottom: 14 }}>
         <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--ai-dim)', margin: '0 0 6px' }}>
           Forme au jour J
         </p>
         <div style={{ display: 'flex', gap: 12, marginBottom: 6 }}>
           {result.forme_au_jour_j.tsb_actuel != null && (
             <div>
-              <p style={{ fontSize: 9, color: 'var(--ai-dim)', margin: '0 0 2px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>TSB actuel</p>
+              <p style={{ fontSize: 10, color: 'var(--ai-dim)', margin: '0 0 2px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>TSB actuel</p>
               <p style={{ fontSize: 14, fontWeight: 700, color: result.forme_au_jour_j.tsb_actuel >= 0 ? '#22c55e' : '#ef4444', margin: 0 }}>{result.forme_au_jour_j.tsb_actuel}</p>
             </div>
           )}
           {result.forme_au_jour_j.tsb_projete != null && (
             <div>
-              <p style={{ fontSize: 9, color: 'var(--ai-dim)', margin: '0 0 2px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{t('aip.ui.tsbRaceDay')}</p>
+              <p style={{ fontSize: 10, color: 'var(--ai-dim)', margin: '0 0 2px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{t('aip.ui.tsbRaceDay')}</p>
               <p style={{ fontSize: 14, fontWeight: 700, color: result.forme_au_jour_j.tsb_projete >= 0 ? '#22c55e' : '#f97316', margin: 0 }}>{result.forme_au_jour_j.tsb_projete}</p>
             </div>
           )}
@@ -20172,12 +20172,12 @@ FORMAT JSON STRICT :
 
       {/* Profil altimétrique du parcours importé */}
       {courseProfile && (
-        <div style={{ padding: '10px 12px', borderRadius: 10, background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)', marginBottom: 14 }}>
+        <div style={{ padding: '10px 12px', borderRadius: 'var(--r-sm)', background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)', marginBottom: 14 }}>
           <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--ai-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 8px' }}>
             Profil du parcours
           </p>
           <ElevationProfileChart profile={courseProfile} height={140} climbs={allClimbs} />
-          <div style={{ display: 'flex', gap: 14, fontSize: 11, color: 'var(--ai-mid)', marginTop: 4, marginBottom: 6, fontFamily: 'DM Mono,monospace', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: 14, fontSize: 11, color: 'var(--ai-mid)', marginTop: 4, marginBottom: 6, fontFamily: 'var(--font-body)', flexWrap: 'wrap' }}>
             <span><strong style={{ color: 'var(--ai-text)' }}>{courseProfile.total_distance_km}</strong>km</span>
             <span>D+ <strong style={{ color: 'var(--ai-text)' }}>{courseProfile.total_denivele_pos}</strong>m</span>
             <span>D- <strong style={{ color: 'var(--ai-text)' }}>{courseProfile.total_denivele_neg}</strong>m</span>
@@ -20185,22 +20185,22 @@ FORMAT JSON STRICT :
           </div>
           {allClimbs.length > 0 && (
             <div style={{ marginBottom: 6 }}>
-              <p style={{ fontSize: 9, fontWeight: 700, color: 'var(--ai-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 4px' }}>
+              <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--ai-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 4px' }}>
                 Difficultés majeures
               </p>
               {allClimbs.map((c, i) => (
                 <div key={i} style={{ fontSize: 10, color: 'var(--ai-mid)', padding: '3px 0', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                   <span style={{
-                    fontSize: 8, fontWeight: 700, padding: '1px 5px', borderRadius: 3,
+                    fontSize: 10, fontWeight: 700, padding: '1px 5px', borderRadius: 3,
                     background: (CLIMB_CAT_COLORS[c.categorie] ?? '#f97316') + '25',
                     color: CLIMB_CAT_COLORS[c.categorie] ?? '#f97316',
-                    fontFamily: 'DM Mono,monospace',
+                    fontFamily: 'var(--font-body)',
                   }}>
                     {CLIMB_CAT_LABELS[c.categorie]}
                   </span>
-                  <span style={{ fontFamily: 'DM Mono,monospace', color: 'var(--ai-dim)' }}>{c.start_km}–{c.end_km}km</span>
+                  <span style={{ fontFamily: 'var(--font-body)', color: 'var(--ai-dim)' }}>{c.start_km}–{c.end_km}km</span>
                   <span>{c.distance_km}km · {c.pente_moyenne_pct}% moy · max {c.pente_max_pct}% · {c.altitude_max}m</span>
-                  {c.isManual && <span style={{ fontSize: 8, color: 'var(--ai-dim)', fontStyle: 'italic' }}>manuel</span>}
+                  {c.isManual && <span style={{ fontSize: 10, color: 'var(--ai-dim)', fontStyle: 'italic' }}>manuel</span>}
                 </div>
               ))}
             </div>
@@ -20214,20 +20214,20 @@ FORMAT JSON STRICT :
           <div style={{ display: 'flex', gap: 4, marginBottom: 10 }}>
             {result.scenarios.map(s => (
               <button key={s.nom} onClick={() => setActiveScenario(s.nom)} style={{
-                flex: 1, padding: '7px 4px', borderRadius: 8, fontSize: 10, fontWeight: activeScenario === s.nom ? 700 : 400,
+                flex: 1, padding: '7px 4px', borderRadius: 'var(--r-sm)', fontSize: 10, fontWeight: activeScenario === s.nom ? 700 : 400,
                 border: `1px solid ${activeScenario === s.nom ? scenarioColor(s.nom) : 'var(--ai-border)'}`,
                 background: activeScenario === s.nom ? `${scenarioColor(s.nom)}18` : 'var(--ai-bg2)',
                 color: activeScenario === s.nom ? scenarioColor(s.nom) : 'var(--ai-mid)',
-                cursor: 'pointer', fontFamily: 'DM Sans,sans-serif', textTransform: 'capitalize',
+                cursor: 'pointer', fontFamily: 'var(--font-body)', textTransform: 'capitalize',
               }}>
                 {s.nom}<br />
-                <span style={{ fontSize: 9, fontWeight: 400, opacity: 0.8 }}>{s.objectif_temps} · {s.probabilite}%</span>
+                <span style={{ fontSize: 10, fontWeight: 400, opacity: 0.8 }}>{s.objectif_temps} · {s.probabilite}%</span>
               </button>
             ))}
           </div>
 
           {currentScenario && (
-            <div style={{ padding: '10px 12px', borderRadius: 10, background: 'var(--ai-bg2)', border: `1px solid ${scenarioColor(currentScenario.nom)}30`, marginBottom: 14 }}>
+            <div style={{ padding: '10px 12px', borderRadius: 'var(--r-sm)', background: 'var(--ai-bg2)', border: `1px solid ${scenarioColor(currentScenario.nom)}30`, marginBottom: 14 }}>
               {/* Stratégie sections */}
               {currentScenario.strategie_sections.length > 0 && (
                 <div style={{ marginBottom: 12 }}>
@@ -20235,17 +20235,17 @@ FORMAT JSON STRICT :
                     Stratégie par section
                   </p>
                   {currentScenario.strategie_sections.map((s, i) => (
-                    <div key={i} style={{ padding: '7px 9px', borderRadius: 7, background: 'var(--ai-bg)', border: '1px solid var(--ai-border)', marginBottom: 4 }}>
+                    <div key={i} style={{ padding: '7px 9px', borderRadius: 'var(--r-sm)', background: 'var(--ai-bg)', border: '1px solid var(--ai-border)', marginBottom: 4 }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 3 }}>
                         <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--ai-text)' }}>{s.section}</span>
                         <div style={{ display: 'flex', gap: 6 }}>
-                          <span style={{ fontSize: 10, color: 'var(--ai-accent)', fontFamily: 'DM Mono,monospace' }}>{s.zone}</span>
+                          <span style={{ fontSize: 10, color: 'var(--ai-accent)', fontFamily: 'var(--font-body)' }}>{s.zone}</span>
                           <span style={{ fontSize: 10, color: 'var(--ai-dim)' }}>RPE {s.rpe_cible}</span>
                         </div>
                       </div>
                       <div style={{ display: 'flex', gap: 8, marginBottom: 3 }}>
-                        {s.allure_cible && <span style={{ fontSize: 11, color: 'var(--ai-mid)', fontFamily: 'DM Mono,monospace' }}>{s.allure_cible}</span>}
-                        {s.watts_cibles && <span style={{ fontSize: 11, color: 'var(--ai-mid)', fontFamily: 'DM Mono,monospace' }}>{s.watts_cibles}W</span>}
+                        {s.allure_cible && <span style={{ fontSize: 11, color: 'var(--ai-mid)', fontFamily: 'var(--font-body)' }}>{s.allure_cible}</span>}
+                        {s.watts_cibles && <span style={{ fontSize: 11, color: 'var(--ai-mid)', fontFamily: 'var(--font-body)' }}>{s.watts_cibles}W</span>}
                         {s.pourcentage_ftp != null && <span style={{ fontSize: 11, color: 'var(--ai-dim)' }}>{s.pourcentage_ftp}% FTP</span>}
                       </div>
                       <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: 0, lineHeight: 1.4, fontStyle: 'italic' }}>{s.conseil}</p>
@@ -20261,8 +20261,8 @@ FORMAT JSON STRICT :
                     Nutrition course
                   </p>
                   {currentScenario.nutrition_course.map((n, i) => (
-                    <div key={i} style={{ padding: '6px 9px', borderRadius: 7, background: 'var(--ai-bg)', border: '1px solid var(--ai-border)', marginBottom: 4, display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-                      <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--ai-accent)', fontFamily: 'DM Mono,monospace', minWidth: 56, flexShrink: 0 }}>{n.timing}</span>
+                    <div key={i} style={{ padding: '6px 9px', borderRadius: 'var(--r-sm)', background: 'var(--ai-bg)', border: '1px solid var(--ai-border)', marginBottom: 4, display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                      <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--ai-accent)', fontFamily: 'var(--font-body)', minWidth: 56, flexShrink: 0 }}>{n.timing}</span>
                       <div>
                         <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: '0 0 2px' }}>{n.glucides_g}g glucides · {n.hydratation_ml}ml</p>
                         <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: 0, fontStyle: 'italic' }}>{n.conseil}</p>
@@ -20283,7 +20283,7 @@ FORMAT JSON STRICT :
               </div>
 
               {/* Plan B */}
-              <div style={{ padding: '8px 10px', borderRadius: 7, background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)', marginBottom: 12 }}>
+              <div style={{ padding: '8px 10px', borderRadius: 'var(--r-sm)', background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)', marginBottom: 12 }}>
                 <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#ef4444', margin: '0 0 5px' }}>Plan B</p>
                 <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: '0 0 2px' }}><strong style={{ color: 'var(--ai-text)' }}>{t('aip.ui.triggerColon')}</strong> {currentScenario.plan_b.declencheur}</p>
                 <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: '0 0 2px' }}><strong style={{ color: 'var(--ai-text)' }}>Action :</strong> {currentScenario.plan_b.action}</p>
@@ -20311,10 +20311,10 @@ FORMAT JSON STRICT :
             Impacts météo
           </p>
           {result.meteo_impacts.map((m, i) => (
-            <div key={i} style={{ padding: '8px 10px', borderRadius: 8, background: 'rgba(249,115,22,0.06)', border: '1px solid rgba(249,115,22,0.18)', marginBottom: 4 }}>
+            <div key={i} style={{ padding: '8px 10px', borderRadius: 'var(--r-sm)', background: 'rgba(249,115,22,0.06)', border: '1px solid rgba(249,115,22,0.18)', marginBottom: 4 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
                 <span style={{ fontSize: 11, fontWeight: 700, color: '#f97316', textTransform: 'capitalize' }}>{m.condition}</span>
-                {m.ajustement_allure && <span style={{ fontSize: 10, fontFamily: 'DM Mono,monospace', color: '#f97316' }}>{m.ajustement_allure}</span>}
+                {m.ajustement_allure && <span style={{ fontSize: 10, fontFamily: 'var(--font-body)', color: '#f97316' }}>{m.ajustement_allure}</span>}
               </div>
               <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: '0 0 2px' }}>{m.impact}</p>
               <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: 0, fontStyle: 'italic' }}>{m.conseil}</p>
@@ -20325,7 +20325,7 @@ FORMAT JSON STRICT :
 
       {/* Triathlon repartition */}
       {result.triathlon_repartition && (
-        <div style={{ padding: '10px 12px', borderRadius: 10, background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)', marginBottom: 14 }}>
+        <div style={{ padding: '10px 12px', borderRadius: 'var(--r-sm)', background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)', marginBottom: 14 }}>
           <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--ai-dim)', margin: '0 0 8px' }}>
             Répartition triathlon
           </p>
@@ -20337,7 +20337,7 @@ FORMAT JSON STRICT :
               <div key={disc} style={{ marginBottom: 8 }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
                   <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--ai-text)' }}>{label}</span>
-                  <span style={{ fontSize: 11, fontFamily: 'DM Mono,monospace', color: 'var(--ai-accent)' }}>{d.objectif}</span>
+                  <span style={{ fontSize: 11, fontFamily: 'var(--font-body)', color: 'var(--ai-accent)' }}>{d.objectif}</span>
                 </div>
                 <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: 0, fontStyle: 'italic' }}>{d.conseil}</p>
               </div>
@@ -20347,7 +20347,7 @@ FORMAT JSON STRICT :
       )}
 
       {/* Sources + confiance */}
-      <div style={{ padding: '8px 10px', borderRadius: 8, background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)', marginBottom: 14 }}>
+      <div style={{ padding: '8px 10px', borderRadius: 'var(--r-sm)', background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)', marginBottom: 14 }}>
         <p style={{ fontSize: 10, color: 'var(--ai-dim)', margin: '0 0 2px', fontStyle: 'italic' }}>
           Confiance : {result.confiance} — {result.raison_confiance}
         </p>
@@ -20365,10 +20365,10 @@ FORMAT JSON STRICT :
           <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
             {followUpActions.map((action, i) => (
               <button key={i} onClick={() => handleRaceFollowUp(action)} style={{
-                padding: '8px 12px', borderRadius: 8, textAlign: 'left',
+                padding: '8px 12px', borderRadius: 'var(--r-sm)', textAlign: 'left',
                 border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)',
                 color: 'var(--ai-text)', fontSize: 12, cursor: 'pointer',
-                fontFamily: 'DM Sans,sans-serif', lineHeight: 1.4,
+                fontFamily: 'var(--font-body)', lineHeight: 1.4,
               }}>
                 {action.label}
               </button>
@@ -20397,21 +20397,21 @@ FORMAT JSON STRICT :
             )
           }}
           style={{
-            flex: 1, padding: '9px 12px', borderRadius: 9,
+            flex: 1, padding: '9px 12px', borderRadius: 'var(--r-sm)',
             border: '1px solid rgba(6,182,212,0.4)',
             background: 'rgba(6,182,212,0.06)',
             color: 'var(--ai-accent)', fontSize: 12, fontWeight: 600,
-            cursor: 'pointer', fontFamily: 'DM Sans,sans-serif',
+            cursor: 'pointer', fontFamily: 'var(--font-body)',
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
           }}
         >
           📄 Exporter « {(result.scenarios?.find(s => s.nom === activeScenario) ?? result.scenarios?.[0])?.nom === 'conservateur' ? 'Prudent' : (result.scenarios?.find(s => s.nom === activeScenario) ?? result.scenarios?.[0])?.nom === 'agressif' ? 'Agressif' : 'Optimal'} » en PDF
         </button>
         <button onClick={onCancel} style={{
-          padding: '9px 16px', borderRadius: 9,
+          padding: '9px 16px', borderRadius: 'var(--r-sm)',
           border: '1px solid var(--ai-border)', background: 'transparent',
           color: 'var(--ai-dim)', fontSize: 12, cursor: 'pointer',
-          fontFamily: 'DM Sans,sans-serif',
+          fontFamily: 'var(--font-body)',
         }}>
           Fermer
         </button>
@@ -20438,7 +20438,7 @@ function RaceStrategyView({ data }: { data: RaceStrategyData }) {
       </p>
 
       {/* Verdict */}
-      <div style={{ padding: '10px 12px', borderRadius: 10, background: `${vc}12`, border: `1px solid ${vc}30`, marginBottom: 12 }}>
+      <div style={{ padding: '10px 12px', borderRadius: 'var(--r-sm)', background: `${vc}12`, border: `1px solid ${vc}30`, marginBottom: 12 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
           <span style={{ fontSize: 12, fontWeight: 700, color: vc }}>{verdictLbl}</span>
           <span style={{ fontSize: 11, color: 'var(--ai-dim)' }}>{result.verdict_objectif.confiance}% confiance</span>
@@ -20448,18 +20448,18 @@ function RaceStrategyView({ data }: { data: RaceStrategyData }) {
 
       {/* Forme au jour J */}
       {(result.forme_au_jour_j.tsb_actuel != null || result.forme_au_jour_j.verdict) && (
-        <div style={{ padding: '8px 12px', borderRadius: 10, background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)', marginBottom: 12 }}>
+        <div style={{ padding: '8px 12px', borderRadius: 'var(--r-sm)', background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)', marginBottom: 12 }}>
           <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--ai-dim)', margin: '0 0 5px' }}>{t('aip.ui.formRaceDay')}</p>
           <div style={{ display: 'flex', gap: 12, marginBottom: 4 }}>
             {result.forme_au_jour_j.tsb_actuel != null && (
               <div>
-                <p style={{ fontSize: 9, color: 'var(--ai-dim)', margin: '0 0 1px', textTransform: 'uppercase' }}>TSB actuel</p>
+                <p style={{ fontSize: 10, color: 'var(--ai-dim)', margin: '0 0 1px', textTransform: 'uppercase' }}>TSB actuel</p>
                 <p style={{ fontSize: 14, fontWeight: 700, color: result.forme_au_jour_j.tsb_actuel >= 0 ? '#22c55e' : '#ef4444', margin: 0 }}>{result.forme_au_jour_j.tsb_actuel}</p>
               </div>
             )}
             {result.forme_au_jour_j.tsb_projete != null && (
               <div>
-                <p style={{ fontSize: 9, color: 'var(--ai-dim)', margin: '0 0 1px', textTransform: 'uppercase' }}>{t('aip.ui.tsbRaceDay')}</p>
+                <p style={{ fontSize: 10, color: 'var(--ai-dim)', margin: '0 0 1px', textTransform: 'uppercase' }}>{t('aip.ui.tsbRaceDay')}</p>
                 <p style={{ fontSize: 14, fontWeight: 700, color: result.forme_au_jour_j.tsb_projete >= 0 ? '#22c55e' : '#f97316', margin: 0 }}>{result.forme_au_jour_j.tsb_projete}</p>
               </div>
             )}
@@ -20474,31 +20474,31 @@ function RaceStrategyView({ data }: { data: RaceStrategyData }) {
           <div style={{ display: 'flex', gap: 4, marginBottom: 10 }}>
             {result.scenarios.map(s => (
               <button key={s.nom} onClick={() => setActiveScenario(s.nom)} style={{
-                flex: 1, padding: '7px 4px', borderRadius: 8, fontSize: 10, fontWeight: activeScenario === s.nom ? 700 : 400,
+                flex: 1, padding: '7px 4px', borderRadius: 'var(--r-sm)', fontSize: 10, fontWeight: activeScenario === s.nom ? 700 : 400,
                 border: `1px solid ${activeScenario === s.nom ? scenarioColor(s.nom) : 'var(--ai-border)'}`,
                 background: activeScenario === s.nom ? `${scenarioColor(s.nom)}18` : 'var(--ai-bg2)',
                 color: activeScenario === s.nom ? scenarioColor(s.nom) : 'var(--ai-mid)',
-                cursor: 'pointer', fontFamily: 'DM Sans,sans-serif', textTransform: 'capitalize',
+                cursor: 'pointer', fontFamily: 'var(--font-body)', textTransform: 'capitalize',
               }}>
                 {s.nom}<br />
-                <span style={{ fontSize: 9, fontWeight: 400 }}>{s.objectif_temps} · {s.probabilite}%</span>
+                <span style={{ fontSize: 10, fontWeight: 400 }}>{s.objectif_temps} · {s.probabilite}%</span>
               </button>
             ))}
           </div>
 
           {currentScenario && (
-            <div style={{ padding: '10px 12px', borderRadius: 10, background: 'var(--ai-bg2)', border: `1px solid ${scenarioColor(currentScenario.nom)}30`, marginBottom: 12 }}>
+            <div style={{ padding: '10px 12px', borderRadius: 'var(--r-sm)', background: 'var(--ai-bg2)', border: `1px solid ${scenarioColor(currentScenario.nom)}30`, marginBottom: 12 }}>
               {currentScenario.strategie_sections.length > 0 && (
                 <div style={{ marginBottom: 10 }}>
                   <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--ai-dim)', margin: '0 0 5px' }}>{t('aip.ui.strategyBySection')}</p>
                   {currentScenario.strategie_sections.map((s, i) => (
-                    <div key={i} style={{ padding: '6px 8px', borderRadius: 7, background: 'var(--ai-bg)', border: '1px solid var(--ai-border)', marginBottom: 3 }}>
+                    <div key={i} style={{ padding: '6px 8px', borderRadius: 'var(--r-sm)', background: 'var(--ai-bg)', border: '1px solid var(--ai-border)', marginBottom: 3 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
                         <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--ai-text)' }}>{s.section}</span>
-                        <span style={{ fontSize: 10, color: 'var(--ai-accent)', fontFamily: 'DM Mono,monospace' }}>{s.zone} · RPE {s.rpe_cible}</span>
+                        <span style={{ fontSize: 10, color: 'var(--ai-accent)', fontFamily: 'var(--font-body)' }}>{s.zone} · RPE {s.rpe_cible}</span>
                       </div>
                       {(s.allure_cible || s.watts_cibles) && (
-                        <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: '0 0 2px', fontFamily: 'DM Mono,monospace' }}>
+                        <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: '0 0 2px', fontFamily: 'var(--font-body)' }}>
                           {s.allure_cible}{s.allure_cible && s.watts_cibles ? ' · ' : ''}{s.watts_cibles ? `${s.watts_cibles}W` : ''}
                         </p>
                       )}
@@ -20520,7 +20520,7 @@ function RaceStrategyView({ data }: { data: RaceStrategyData }) {
         <div style={{ marginBottom: 12 }}>
           <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--ai-dim)', margin: '0 0 5px' }}>{t('aip.ui.weatherImpacts')}</p>
           {result.meteo_impacts.map((m, i) => (
-            <div key={i} style={{ padding: '7px 10px', borderRadius: 7, background: 'rgba(249,115,22,0.06)', border: '1px solid rgba(249,115,22,0.18)', marginBottom: 4 }}>
+            <div key={i} style={{ padding: '7px 10px', borderRadius: 'var(--r-sm)', background: 'rgba(249,115,22,0.06)', border: '1px solid rgba(249,115,22,0.18)', marginBottom: 4 }}>
               <p style={{ fontSize: 11, fontWeight: 700, color: '#f97316', margin: '0 0 2px', textTransform: 'capitalize' }}>{m.condition}{m.ajustement_allure ? ` · ${m.ajustement_allure}` : ''}</p>
               <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: 0 }}>{m.conseil}</p>
             </div>
@@ -20530,7 +20530,7 @@ function RaceStrategyView({ data }: { data: RaceStrategyData }) {
 
       {/* Triathlon repartition */}
       {result.triathlon_repartition && (
-        <div style={{ padding: '8px 12px', borderRadius: 10, background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)', marginBottom: 12 }}>
+        <div style={{ padding: '8px 12px', borderRadius: 'var(--r-sm)', background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)', marginBottom: 12 }}>
           <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--ai-dim)', margin: '0 0 6px' }}>{t('aip.ui.triathlonSplit')}</p>
           {(['natation', 'velo', 'cap'] as const).map(disc => {
             const d = result.triathlon_repartition![disc]
@@ -20538,7 +20538,7 @@ function RaceStrategyView({ data }: { data: RaceStrategyData }) {
             return (
               <div key={disc} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
                 <span style={{ fontSize: 11, color: 'var(--ai-text)' }}>{disc === 'natation' ? '🏊 Natation' : disc === 'velo' ? '🚴 Vélo' : '🏃 CAP'}</span>
-                <span style={{ fontSize: 11, fontFamily: 'DM Mono,monospace', color: 'var(--ai-accent)' }}>{d.objectif}</span>
+                <span style={{ fontSize: 11, fontFamily: 'var(--font-body)', color: 'var(--ai-accent)' }}>{d.objectif}</span>
               </div>
             )
           })}
@@ -20568,10 +20568,10 @@ function RaceStrategyView({ data }: { data: RaceStrategyData }) {
             )
           }}
           style={{
-            width: '100%', padding: '8px 12px', borderRadius: 9,
+            width: '100%', padding: '8px 12px', borderRadius: 'var(--r-sm)',
             border: '1px solid rgba(6,182,212,0.4)', background: 'rgba(6,182,212,0.06)',
             color: 'var(--ai-accent)', fontSize: 11, fontWeight: 600,
-            cursor: 'pointer', fontFamily: 'DM Sans,sans-serif',
+            cursor: 'pointer', fontFamily: 'var(--font-body)',
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
           }}
         >
@@ -20653,11 +20653,11 @@ function SecondaryChatColumn({
     }}>
       {/* Header volet — titre + fermeture */}
       <div style={{ height: 50, padding: '10px 10px 10px 14px', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-        <span style={{ flex: 1, minWidth: 0, fontSize: 13.5, fontWeight: 500, color: 'var(--ai-text)', fontFamily: 'DM Sans,sans-serif', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <span style={{ flex: 1, minWidth: 0, fontSize: 13.5, fontWeight: 500, color: 'var(--ai-text)', fontFamily: 'var(--font-body)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {conv.title}
         </span>
         <button onClick={onClose} title="Fermer le volet" aria-label="Fermer le volet"
-          style={{ width: 26, height: 26, borderRadius: 8, border: '0.5px solid var(--ai-border)', background: 'var(--ai-bg2)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--ai-dim)', flexShrink: 0 }}
+          style={{ width: 26, height: 26, borderRadius: 'var(--r-sm)', border: '0.5px solid var(--ai-border)', background: 'var(--ai-bg2)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--ai-dim)', flexShrink: 0 }}
         >
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
         </button>
@@ -20668,7 +20668,7 @@ function SecondaryChatColumn({
         {conv.msgs.map(m => (
           m.role === 'user' ? (
             <div key={m.id} style={{ display: 'flex', justifyContent: 'flex-end', margin: '10px 0' }}>
-              <div style={{ maxWidth: '85%', background: 'var(--ai-bg2)', color: 'var(--ai-text)', padding: '8px 12px', borderRadius: 14, fontSize: 14, lineHeight: 1.45, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
+              <div style={{ maxWidth: '85%', background: 'var(--ai-bg2)', color: 'var(--ai-text)', padding: '8px 12px', borderRadius: 'var(--r-md)', fontSize: 14, lineHeight: 1.45, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
                 {m.content}
               </div>
             </div>
@@ -20692,13 +20692,13 @@ function SecondaryChatColumn({
         <input ref={photoRef} type="file" accept="image/*" onChange={onFile} style={{ display: 'none' }} />
         <input ref={fileRef} type="file" accept=".pdf,.txt,.csv,.md,.json,image/*" onChange={onFile} style={{ display: 'none' }} />
 
-        <div style={{ border: '1px solid var(--ai-border)', borderRadius: 16, background: 'var(--ai-bg)' }}>
+        <div style={{ border: '1px solid var(--ai-border)', borderRadius: 'var(--r-md)', background: 'var(--ai-bg)' }}>
           {/* Aperçu pièce jointe */}
           {attachment && (
             <div style={{ padding: '8px 12px 0', display: 'flex', alignItems: 'flex-start', gap: 8 }}>
               {attachment.isImage && attachment.preview
-                ? <img src={attachment.preview} alt={attachment.name} style={{ maxHeight: 180, maxWidth: '78%', width: 'auto', borderRadius: 12, objectFit: 'contain', border: '1px solid var(--ai-border)', display: 'block' }} />
-                : <div style={{ padding: '6px 12px', borderRadius: 10, background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)', fontSize: 12, color: 'var(--ai-text)', display: 'flex', alignItems: 'center', gap: 7 }}>
+                ? <img src={attachment.preview} alt={attachment.name} style={{ maxHeight: 180, maxWidth: '78%', width: 'auto', borderRadius: 'var(--r-md)', objectFit: 'contain', border: '1px solid var(--ai-border)', display: 'block' }} />
+                : <div style={{ padding: '6px 12px', borderRadius: 'var(--r-sm)', background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)', fontSize: 12, color: 'var(--ai-text)', display: 'flex', alignItems: 'center', gap: 7 }}>
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg><span style={{ maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{attachment.name}</span>
                   </div>}
               <button onClick={() => setAttachment(null)} aria-label="Retirer"
@@ -20716,7 +20716,7 @@ function SecondaryChatColumn({
             placeholder={t("aip.write_message")}
             rows={1}
             className="aip-textarea"
-            style={{ display: 'block', width: '100%', resize: 'none', border: 'none', outline: 'none', background: 'transparent', color: 'var(--ai-text)', fontFamily: 'DM Sans,sans-serif', lineHeight: 1.5, padding: '12px 14px 4px', minHeight: 44, maxHeight: 160, boxSizing: 'border-box' }}
+            style={{ display: 'block', width: '100%', resize: 'none', border: 'none', outline: 'none', background: 'transparent', color: 'var(--ai-text)', fontFamily: 'var(--font-body)', lineHeight: 1.5, padding: '12px 14px 4px', minHeight: 44, maxHeight: 160, boxSizing: 'border-box' }}
           />
 
           {/* Ligne basse : + · modèle · méthode · spacer · envoyer */}
@@ -20724,22 +20724,22 @@ function SecondaryChatColumn({
             {/* + menu compact (pièces jointes + recherche web) */}
             <div style={{ position: 'relative', flexShrink: 0 }}>
               <button onClick={() => setPlusOpen(o => !o)} title="Actions" className="aip-icon-btn"
-                style={{ width: 28, height: 28, borderRadius: 6, color: plusOpen ? 'var(--ai-text)' : 'var(--ai-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                style={{ width: 28, height: 28, borderRadius: 'var(--r-sm)', color: plusOpen ? 'var(--ai-text)' : 'var(--ai-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
               </button>
               {plusOpen && (
                 <>
                   <div onClick={() => setPlusOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 70 }} />
-                  <div style={{ position: 'absolute', bottom: '100%', left: 0, marginBottom: 6, zIndex: 71, background: 'var(--ai-bg)', border: '1px solid var(--ai-border)', borderRadius: 12, boxShadow: '0 14px 40px rgba(0,0,0,0.22)', padding: 5, minWidth: 210 }}>
+                  <div style={{ position: 'absolute', bottom: '100%', left: 0, marginBottom: 6, zIndex: 71, background: 'var(--ai-bg)', border: '1px solid var(--ai-border)', borderRadius: 'var(--r-md)', boxShadow: '0 14px 40px rgba(0,0,0,0.22)', padding: 5, minWidth: 210 }}>
                     <button onClick={() => { setPlusOpen(false); photoRef.current?.click() }}
-                      style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '9px 10px', borderRadius: 8, border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--ai-text)', fontFamily: 'DM Sans,sans-serif', fontSize: 13.5, textAlign: 'left' }}
+                      style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '9px 10px', borderRadius: 'var(--r-sm)', border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--ai-text)', fontFamily: 'var(--font-body)', fontSize: 13.5, textAlign: 'left' }}
                       onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--ai-bg2)' }}
                       onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}>
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="M21 15l-5-5L5 21"/></svg>
                       <span style={{ flex: 1 }}>Ajouter une photo</span>
                     </button>
                     <button onClick={() => { setPlusOpen(false); fileRef.current?.click() }}
-                      style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '9px 10px', borderRadius: 8, border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--ai-text)', fontFamily: 'DM Sans,sans-serif', fontSize: 13.5, textAlign: 'left' }}
+                      style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '9px 10px', borderRadius: 'var(--r-sm)', border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--ai-text)', fontFamily: 'var(--font-body)', fontSize: 13.5, textAlign: 'left' }}
                       onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--ai-bg2)' }}
                       onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}>
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>
@@ -20747,12 +20747,12 @@ function SecondaryChatColumn({
                     </button>
                     <div style={{ height: 1, background: 'var(--ai-border)', margin: '4px 6px' }} />
                     <button onClick={() => setWebSearchOn(v => !v)}
-                      style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '9px 10px', borderRadius: 8, border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--ai-text)', fontFamily: 'DM Sans,sans-serif', fontSize: 13.5, textAlign: 'left' }}
+                      style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '9px 10px', borderRadius: 'var(--r-sm)', border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--ai-text)', fontFamily: 'var(--font-body)', fontSize: 13.5, textAlign: 'left' }}
                       onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--ai-bg2)' }}
                       onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}>
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 010 20 15 15 0 010-20"/></svg>
                       <span style={{ flex: 1 }}>Recherche web</span>
-                      <span style={{ width: 30, height: 18, borderRadius: 9, background: webSearchOn ? '#06B6D4' : 'var(--ai-border)', position: 'relative', transition: 'background 0.15s', flexShrink: 0 }}>
+                      <span style={{ width: 30, height: 18, borderRadius: 'var(--r-sm)', background: webSearchOn ? '#06B6D4' : 'var(--ai-border)', position: 'relative', transition: 'background 0.15s', flexShrink: 0 }}>
                         <span style={{ position: 'absolute', top: 2, left: webSearchOn ? 14 : 2, width: 14, height: 14, borderRadius: '50%', background: '#fff', transition: 'left 0.15s' }} />
                       </span>
                     </button>
@@ -23446,7 +23446,7 @@ export default function AIPanel({
             <button
               onClick={() => { haptic(); setSidebarCollapsed(false) }}
               aria-label={t('aip.openSidebar')}
-              style={{ position: 'absolute', top: 16, left: 12, zIndex: 40, width: 34, height: 34, borderRadius: 9, border: '0.5px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-mid)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 14px rgba(0,0,0,0.12)' }}
+              style={{ position: 'absolute', top: 16, left: 12, zIndex: 40, width: 34, height: 34, borderRadius: 'var(--r-sm)', border: '0.5px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-mid)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 14px rgba(0,0,0,0.12)' }}
               onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)' }}
               onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-card)' }}
             >
@@ -23520,7 +23520,7 @@ export default function AIPanel({
             {/* Titre = nom de la conversation active */}
             <span style={{
               fontSize: 14, fontWeight: 500, color: 'var(--text)',
-              fontFamily: 'DM Sans,sans-serif', lineHeight: 1.2,
+              fontFamily: 'var(--font-body)', lineHeight: 1.2,
               overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
               flex: 1, minWidth: 0,
             }}>
@@ -23543,7 +23543,7 @@ export default function AIPanel({
                       title={t('aip.splitScreenTitle')}
                       aria-label={t('aip.splitScreen')}
                       style={{
-                        width: 26, height: 26, borderRadius: 8,
+                        width: 26, height: 26, borderRadius: 'var(--r-sm)',
                         border: '0.5px solid var(--border)', background: splitPickerOpen ? 'var(--bg-alt)' : 'var(--bg-hover)',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         cursor: 'pointer', color: 'var(--text-mid)', flexShrink: 0,
@@ -23562,7 +23562,7 @@ export default function AIPanel({
                         <div style={{
                           position: 'absolute', right: 0, top: '100%', marginTop: 6, zIndex: 71,
                           background: 'var(--ai-bg)', border: '1px solid var(--ai-border)',
-                          borderRadius: 12, boxShadow: '0 14px 40px rgba(0,0,0,0.22)',
+                          borderRadius: 'var(--r-md)', boxShadow: '0 14px 40px rgba(0,0,0,0.22)',
                           padding: 6, minWidth: 240, maxHeight: 320, overflowY: 'auto',
                         }}>
                           <div style={{ padding: '5px 9px 7px', fontSize: 11, fontWeight: 600, color: 'var(--ai-dim)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
@@ -23571,7 +23571,7 @@ export default function AIPanel({
                           {candidates.slice(0, 40).map(c => (
                             <button key={c.id}
                               onClick={() => openSplit(c.id)}
-                              style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '8px 9px', borderRadius: 8, border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--ai-text)', fontFamily: 'DM Sans,sans-serif', fontSize: 13, textAlign: 'left' }}
+                              style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '8px 9px', borderRadius: 'var(--r-sm)', border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--ai-text)', fontFamily: 'var(--font-body)', fontSize: 13, textAlign: 'left' }}
                               onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--ai-bg2)' }}
                               onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
                             >
@@ -23592,7 +23592,7 @@ export default function AIPanel({
                   onClick={exportMarkdown}
                   title="Exporter en Markdown"
                   style={{
-                    width: 26, height: 26, borderRadius: 8,
+                    width: 26, height: 26, borderRadius: 'var(--r-sm)',
                     border: '0.5px solid var(--border)', background: 'var(--bg-hover)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     cursor: 'pointer', color: 'var(--text-mid)', flexShrink: 0,
@@ -23614,7 +23614,7 @@ export default function AIPanel({
                 onClick={onClose}
                 title={t('aip.ui.close')}
                 style={{
-                  width: 26, height: 26, borderRadius: 8,
+                  width: 26, height: 26, borderRadius: 'var(--r-sm)',
                   border: '0.5px solid var(--border)', background: 'var(--bg-hover)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   cursor: 'pointer', color: 'var(--text-mid)', flexShrink: 0,
@@ -23740,12 +23740,12 @@ export default function AIPanel({
                   // Actions sans question → petite carte de confirmation directe.
                   if (clarify.questions.length === 0) {
                     return (
-                      <div style={{ background: 'var(--ai-surface, var(--bg-card))', border: '1px solid var(--ai-border, var(--border))', borderRadius: 16, padding: 18 }}>
-                        <p style={{ margin: 0, fontSize: 15, fontWeight: 800, color: 'var(--ai-text, var(--text))', fontFamily: 'Syne,sans-serif' }}>{label}</p>
+                      <div style={{ background: 'var(--ai-surface, var(--bg-card))', border: '1px solid var(--ai-border, var(--border))', borderRadius: 'var(--r-md)', padding: 18 }}>
+                        <p style={{ margin: 0, fontSize: 15, fontWeight: 800, color: 'var(--ai-text, var(--text))', fontFamily: 'var(--font-body)' }}>{label}</p>
                         <p style={{ margin: '4px 0 12px', fontSize: 12.5, color: 'var(--ai-dim, var(--text-dim))', lineHeight: 1.4 }}>{spec.objective}. Tu peux joindre un fichier via <strong>+</strong> avant de générer.</p>
                         <div style={{ display: 'flex', gap: 8 }}>
-                          <button onClick={done} style={{ padding: '10px 16px', borderRadius: 11, border: '1px solid var(--ai-border, var(--border))', background: 'transparent', color: 'var(--ai-mid, var(--text-mid))', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>{t('ai.cancel') || 'Annuler'}</button>
-                          <button onClick={() => { done(); void send(label, buildPrompt('')) }} style={{ padding: '10px 18px', borderRadius: 11, border: 'none', background: 'linear-gradient(135deg,#06B6D4,#3B82F6)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>{t('ai.generateNow')}</button>
+                          <button onClick={done} style={{ padding: '10px 16px', borderRadius: 'var(--r-md)', border: '1px solid var(--ai-border, var(--border))', background: 'transparent', color: 'var(--ai-mid, var(--text-mid))', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>{t('ai.cancel') || 'Annuler'}</button>
+                          <button onClick={() => { done(); void send(label, buildPrompt('')) }} style={{ padding: '10px 18px', borderRadius: 'var(--r-md)', border: 'none', background: 'linear-gradient(135deg,#06B6D4,#3B82F6)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>{t('ai.generateNow')}</button>
                         </div>
                       </div>
                     )
@@ -24096,7 +24096,7 @@ export default function AIPanel({
                             background: '#E5E7EB', display: 'flex', alignItems: 'center', justifyContent: 'center',
                           }}>
                             {userInitials ? (
-                              <span style={{ fontSize: 11, fontWeight: 500, color: '#374151', fontFamily: 'DM Sans,sans-serif', userSelect: 'none' }}>{userInitials}</span>
+                              <span style={{ fontSize: 11, fontWeight: 500, color: '#374151', fontFamily: 'var(--font-body)', userSelect: 'none' }}>{userInitials}</span>
                             ) : (
                               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2" strokeLinecap="round">
                                 <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2M12 11a4 4 0 100-8 4 4 0 000 8z"/>
@@ -24144,9 +24144,9 @@ export default function AIPanel({
                         onClick={() => setReasoningMsgId(msg.id)}
                         style={{
                           display: 'inline-flex', alignItems: 'center', gap: 6, marginLeft: 34, marginTop: 4,
-                          padding: '4px 10px 4px 8px', borderRadius: 999,
+                          padding: '4px 10px 4px 8px', borderRadius: 'var(--r-pill)',
                           border: '1px solid var(--ai-border)', background: 'transparent',
-                          color: 'var(--ai-mid)', cursor: 'pointer', fontFamily: 'DM Sans,sans-serif',
+                          color: 'var(--ai-mid)', cursor: 'pointer', fontFamily: 'var(--font-body)',
                           fontSize: 11.5, fontWeight: 600, transition: 'background 120ms',
                         }}
                         onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--ai-bg2)' }}
@@ -24187,28 +24187,28 @@ export default function AIPanel({
                               { label: 'Durée', value: `${d.totalHours}h` },
                               { label: 'TSS', value: String(d.tssCumul) },
                             ] as { label: string; value: string }[]).map(kpi => (
-                              <div key={kpi.label} style={{ padding: '5px 3px', borderRadius: 6, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', textAlign: 'center' as const }}>
-                                <p style={{ fontSize: 7, color: 'var(--ai-dim)', margin: 0, textTransform: 'uppercase' as const }}>{kpi.label}</p>
-                                <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--ai-text)', margin: '1px 0 0', fontFamily: 'DM Mono,monospace' }}>{kpi.value}</p>
+                              <div key={kpi.label} style={{ padding: '5px 3px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', textAlign: 'center' as const }}>
+                                <p style={{ fontSize: 10, color: 'var(--ai-dim)', margin: 0, textTransform: 'uppercase' as const }}>{kpi.label}</p>
+                                <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--ai-text)', margin: '1px 0 0', fontFamily: 'var(--font-body)' }}>{kpi.value}</p>
                               </div>
                             ))}
                           </div>
                           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 4, marginBottom: 8 }}>
-                            <div style={{ padding: '5px 3px', borderRadius: 6, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', textAlign: 'center' as const }}>
-                              <p style={{ fontSize: 7, color: '#22c55e', margin: 0 }}>CTL</p>
-                              <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--ai-text)', margin: '1px 0 0', fontFamily: 'DM Mono,monospace' }}>{d.ctlFinal}</p>
+                            <div style={{ padding: '5px 3px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', textAlign: 'center' as const }}>
+                              <p style={{ fontSize: 10, color: '#22c55e', margin: 0 }}>CTL</p>
+                              <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--ai-text)', margin: '1px 0 0', fontFamily: 'var(--font-body)' }}>{d.ctlFinal}</p>
                             </div>
-                            <div style={{ padding: '5px 3px', borderRadius: 6, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', textAlign: 'center' as const }}>
-                              <p style={{ fontSize: 7, color: '#f97316', margin: 0 }}>ATL</p>
-                              <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--ai-text)', margin: '1px 0 0', fontFamily: 'DM Mono,monospace' }}>{d.atlFinal}</p>
+                            <div style={{ padding: '5px 3px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', textAlign: 'center' as const }}>
+                              <p style={{ fontSize: 10, color: '#f97316', margin: 0 }}>ATL</p>
+                              <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--ai-text)', margin: '1px 0 0', fontFamily: 'var(--font-body)' }}>{d.atlFinal}</p>
                             </div>
-                            <div style={{ padding: '5px 3px', borderRadius: 6, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', textAlign: 'center' as const }}>
-                              <p style={{ fontSize: 7, color: '#06B6D4', margin: 0 }}>TSB</p>
-                              <p style={{ fontSize: 12, fontWeight: 700, color: d.tsbFinal < -10 ? '#ef4444' : d.tsbFinal > 5 ? '#22c55e' : 'var(--ai-text)', margin: '1px 0 0', fontFamily: 'DM Mono,monospace' }}>{d.tsbFinal}</p>
+                            <div style={{ padding: '5px 3px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', textAlign: 'center' as const }}>
+                              <p style={{ fontSize: 10, color: '#06B6D4', margin: 0 }}>TSB</p>
+                              <p style={{ fontSize: 12, fontWeight: 700, color: d.tsbFinal < -10 ? '#ef4444' : d.tsbFinal > 5 ? '#22c55e' : 'var(--ai-text)', margin: '1px 0 0', fontFamily: 'var(--font-body)' }}>{d.tsbFinal}</p>
                             </div>
-                            <div style={{ padding: '5px 3px', borderRadius: 6, border: `1px solid ${rC}`, background: 'var(--ai-bg2)', textAlign: 'center' as const }}>
-                              <p style={{ fontSize: 7, color: rC, margin: 0 }}>RISQUE</p>
-                              <p style={{ fontSize: 12, fontWeight: 700, color: rC, margin: '1px 0 0', fontFamily: 'DM Mono,monospace' }}>{d.riskScore}/100</p>
+                            <div style={{ padding: '5px 3px', borderRadius: 'var(--r-sm)', border: `1px solid ${rC}`, background: 'var(--ai-bg2)', textAlign: 'center' as const }}>
+                              <p style={{ fontSize: 10, color: rC, margin: 0 }}>RISQUE</p>
+                              <p style={{ fontSize: 12, fontWeight: 700, color: rC, margin: '1px 0 0', fontFamily: 'var(--font-body)' }}>{d.riskScore}/100</p>
                             </div>
                           </div>
                           <MsgContent text={wa.rawAnalysis} />
@@ -24228,7 +24228,7 @@ export default function AIPanel({
                            bien voir quand le coach part chercher sur le web. */
                         <div style={{
                           display: 'inline-flex', alignItems: 'center', gap: 9, marginLeft: 34, marginTop: 2,
-                          padding: '5px 11px 5px 8px', borderRadius: 999,
+                          padding: '5px 11px 5px 8px', borderRadius: 'var(--r-pill)',
                           border: '1px solid var(--ai-accent-line, rgba(6,182,212,0.40))',
                           background: 'var(--ai-accent-soft, rgba(6,182,212,0.06))',
                           animation: 'ai_msg_in 0.18s ease both',
@@ -24333,7 +24333,7 @@ export default function AIPanel({
                                 setCopiedMsgId(msg.id)
                                 setTimeout(() => setCopiedMsgId(null), 1500)
                               }}
-                              style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 4, borderRadius: 6, color: '#6B7280', display: 'flex', alignItems: 'center' }}
+                              style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 4, borderRadius: 'var(--r-sm)', color: '#6B7280', display: 'flex', alignItems: 'center' }}
                               onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = '#F3F4F6' }}
                               onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
                             >
@@ -24351,7 +24351,7 @@ export default function AIPanel({
                                 const prevUser = active.msgs.slice(0, idx).reverse().find(m => m.role === 'user')
                                 if (prevUser) void send(prevUser.content)
                               }}
-                              style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 4, borderRadius: 6, color: '#6B7280', display: 'flex', alignItems: 'center' }}
+                              style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 4, borderRadius: 'var(--r-sm)', color: '#6B7280', display: 'flex', alignItems: 'center' }}
                               onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = '#F3F4F6' }}
                               onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
                             >
@@ -24366,7 +24366,7 @@ export default function AIPanel({
                                   <button
                                     title={t('aip.ui.goodResponse')}
                                     onClick={() => sendCoachFeedback(msg, prevUser?.content, active.id, 1)}
-                                    style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 4, borderRadius: 6, color: fb === 1 ? '#22c55e' : '#6B7280', display: 'flex', alignItems: 'center' }}
+                                    style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 4, borderRadius: 'var(--r-sm)', color: fb === 1 ? '#22c55e' : '#6B7280', display: 'flex', alignItems: 'center' }}
                                     onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = '#F3F4F6' }}
                                     onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
                                   >
@@ -24376,7 +24376,7 @@ export default function AIPanel({
                                   <button
                                     title={t('aip.ui.badResponse')}
                                     onClick={() => sendCoachFeedback(msg, prevUser?.content, active.id, -1)}
-                                    style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 4, borderRadius: 6, color: fb === -1 ? '#ef4444' : '#6B7280', display: 'flex', alignItems: 'center' }}
+                                    style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 4, borderRadius: 'var(--r-sm)', color: fb === -1 ? '#ef4444' : '#6B7280', display: 'flex', alignItems: 'center' }}
                                     onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = '#F3F4F6' }}
                                     onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
                                   >
@@ -24481,7 +24481,7 @@ export default function AIPanel({
                 <div style={{
                   margin: '8px 10px 0',
                   padding: '8px 12px',
-                  borderRadius: 8,
+                  borderRadius: 'var(--r-sm)',
                   borderLeft: '3px solid var(--ai-accent)',
                   background: 'var(--ai-accent-dim)',
                   display: 'flex', alignItems: 'flex-start', gap: 8,
@@ -24517,13 +24517,13 @@ export default function AIPanel({
                     <span style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--ai-mid)' }}>
                       {images.length} photo{images.length > 1 ? 's' : ''} · {fmtBytes(imgUsedPending)}
                     </span>
-                    <button onClick={() => setImages([])} style={{ border: 'none', background: 'transparent', color: 'var(--ai-dim)', fontSize: 11.5, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>Tout retirer</button>
+                    <button onClick={() => setImages([])} style={{ border: 'none', background: 'transparent', color: 'var(--ai-dim)', fontSize: 11.5, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>Tout retirer</button>
                   </div>
                   <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4, WebkitOverflowScrolling: 'touch' }} data-hscroll>
                     {images.map((im, idx) => (
                       <div key={idx} style={{ position: 'relative', flexShrink: 0 }}>
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={im.preview} alt={im.name} style={{ width: 66, height: 66, objectFit: 'cover', borderRadius: 12, border: '1px solid var(--ai-border)', display: 'block' }} />
+                        <img src={im.preview} alt={im.name} style={{ width: 66, height: 66, objectFit: 'cover', borderRadius: 'var(--r-md)', border: '1px solid var(--ai-border)', display: 'block' }} />
                         <button onClick={() => setImages(prev => prev.filter((_, i) => i !== idx))} aria-label="Retirer"
                           style={{ position: 'absolute', top: -6, right: -6, width: 20, height: 20, borderRadius: '50%', border: '2px solid var(--ai-bg)', background: 'rgba(0,0,0,0.72)', color: '#fff', cursor: 'pointer', fontSize: 12, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
                       </div>
@@ -24531,7 +24531,7 @@ export default function AIPanel({
                     {/* Bouton « + » pour ajouter encore des photos */}
                     {images.length < MAX_IMAGES_PER_MSG && (
                       <button onClick={() => photosRef.current?.click()} aria-label="Ajouter des photos"
-                        style={{ width: 66, height: 66, flexShrink: 0, borderRadius: 12, border: '1px dashed var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        style={{ width: 66, height: 66, flexShrink: 0, borderRadius: 'var(--r-md)', border: '1px dashed var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
                       </button>
                     )}
@@ -24543,10 +24543,10 @@ export default function AIPanel({
               {attachment && (
                 <div style={{ padding: '8px 12px 0', display: 'flex', alignItems: 'flex-start', gap: 8 }}>
                   {attachment.isImage && attachment.preview
-                    ? <img src={attachment.preview} alt={attachment.name} style={{ maxHeight: 200, maxWidth: '78%', width: 'auto', borderRadius: 12, objectFit: 'contain', border: '1px solid var(--ai-border)', display: 'block' }} />
+                    ? <img src={attachment.preview} alt={attachment.name} style={{ maxHeight: 200, maxWidth: '78%', width: 'auto', borderRadius: 'var(--r-md)', objectFit: 'contain', border: '1px solid var(--ai-border)', display: 'block' }} />
                     : attachment.kind === 'parcours'
                     ? (
-                      <div style={{ padding: '6px 12px', borderRadius: 10, background: 'rgba(6,182,212,0.06)', border: '1px solid rgba(6,182,212,0.35)', fontSize: 12, color: 'var(--ai-text)', display: 'flex', alignItems: 'center', gap: 7 }}>
+                      <div style={{ padding: '6px 12px', borderRadius: 'var(--r-sm)', background: 'rgba(6,182,212,0.06)', border: '1px solid rgba(6,182,212,0.35)', fontSize: 12, color: 'var(--ai-text)', display: 'flex', alignItems: 'center', gap: 7 }}>
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M9 6l-6 3v12l6-3 6 3 6-3V6l-6 3-6-3zM9 6v12M15 9v12"/></svg>
                         <span style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.25 }}>
                           <span style={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 600 }}>{attachment.name}</span>
@@ -24555,7 +24555,7 @@ export default function AIPanel({
                       </div>
                     )
                     : (
-                      <div style={{ padding: '6px 12px', borderRadius: 10, background: 'var(--ai-bg)', border: '1px solid var(--ai-border)', fontSize: 12, color: 'var(--ai-text)', display: 'flex', alignItems: 'center', gap: 7 }}>
+                      <div style={{ padding: '6px 12px', borderRadius: 'var(--r-sm)', background: 'var(--ai-bg)', border: '1px solid var(--ai-border)', fontSize: 12, color: 'var(--ai-text)', display: 'flex', alignItems: 'center', gap: 7 }}>
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg><span style={{ maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{attachment.name}</span>
                       </div>
                     )
@@ -24579,7 +24579,7 @@ export default function AIPanel({
 
               {/* Quota stockage discussion atteint → chat bloqué */}
               {imgOverBudget && (
-                <div style={{ margin: '6px 12px 0', padding: '9px 12px', borderRadius: 10, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)', fontSize: 11.5, color: 'var(--ai-text)', lineHeight: 1.4 }}>
+                <div style={{ margin: '6px 12px 0', padding: '9px 12px', borderRadius: 'var(--r-sm)', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)', fontSize: 11.5, color: 'var(--ai-text)', lineHeight: 1.4 }}>
                   📷 Stockage photos de cette discussion atteint ({fmtBytes(imgBudget)}). Ouvre une <strong>nouvelle discussion</strong> pour continuer à envoyer des photos.
                 </div>
               )}
@@ -24604,7 +24604,7 @@ export default function AIPanel({
                   </svg>
                   <span style={{
                     flex: 1, fontSize: 11, fontWeight: 600, color: '#06B6D4',
-                    fontFamily: 'DM Sans, sans-serif',
+                    fontFamily: 'var(--font-body)',
                     overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                   }}>
                     {activeQA.label}
@@ -24641,7 +24641,7 @@ export default function AIPanel({
                   display: 'block', width: '100%',
                   background: 'transparent',
                   border: 'none', outline: 'none', resize: 'none',
-                  fontFamily: 'DM Sans, sans-serif',
+                  fontFamily: 'var(--font-body)',
                   fontSize: 16, lineHeight: 1.5, color: 'var(--ai-text)',
                   padding: '14px 16px 6px',
                   minHeight: 52, maxHeight: 200,
@@ -24737,7 +24737,7 @@ export default function AIPanel({
                     title={recording ? 'Annuler' : 'Dictée vocale'}
                     className="aip-icon-btn"
                     style={{
-                      width: 28, height: 28, borderRadius: 6, flexShrink: 0,
+                      width: 28, height: 28, borderRadius: 'var(--r-sm)', flexShrink: 0,
                       color: recording ? '#06B6D4' : 'var(--ai-dim)',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                     }}
@@ -24871,7 +24871,7 @@ export default function AIPanel({
               style={{
                 flex: '0 0 220px', display: 'flex', alignItems: 'center', justifyContent: 'center',
                 borderLeft: '2px dashed var(--ai-accent, #06B6D4)', background: 'rgba(6,182,212,0.06)',
-                color: 'var(--ai-accent, #06B6D4)', fontSize: 13, fontWeight: 600, fontFamily: 'DM Sans,sans-serif',
+                color: 'var(--ai-accent, #06B6D4)', fontSize: 13, fontWeight: 600, fontFamily: 'var(--font-body)',
                 textAlign: 'center', padding: 16,
               }}
             >
@@ -24994,7 +24994,7 @@ export default function AIPanel({
         const mName = MODEL_CONFIGS[model].name
         return (
           <div onClick={() => setTokenLimitMsg(null)} style={{ position: 'fixed', inset: 0, zIndex: 1200, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 18 }}>
-            <div onClick={e => e.stopPropagation()} style={{ width: 420, maxWidth: '100%', background: 'var(--bg-card)', borderRadius: 16, padding: 24, border: '0.5px solid var(--border-mid)', boxShadow: '0 24px 70px rgba(0,0,0,0.5)' }}>
+            <div onClick={e => e.stopPropagation()} style={{ width: 420, maxWidth: '100%', background: 'var(--bg-card)', borderRadius: 'var(--r-md)', padding: 24, border: '0.5px solid var(--border-mid)', boxShadow: '0 24px 70px rgba(0,0,0,0.5)' }}>
               <h3 style={{ margin: '0 0 8px', fontSize: 16, fontWeight: 600, color: 'var(--text)' }}>Limite atteinte</h3>
               <p style={{ margin: '0 0 6px', fontSize: 13, color: 'var(--text-mid)', lineHeight: 1.55 }}>{tokenLimitMsg}</p>
               {mult > 1 && (
@@ -25005,16 +25005,16 @@ export default function AIPanel({
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {model !== 'hermes' && (
                   <button onClick={() => { setModel('hermes'); setTokenLimitMsg(null) }}
-                    style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '0.5px solid var(--border-mid)', background: 'transparent', color: 'var(--text)', fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}>
+                    style={{ width: '100%', padding: '10px 14px', borderRadius: 'var(--r-sm)', border: '0.5px solid var(--border-mid)', background: 'transparent', color: 'var(--text)', fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
                     Switcher sur Hermès (× 1)
                   </button>
                 )}
                 <button onClick={() => { setTokenLimitMsg(null); openTopup() }}
-                  style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: 'none', background: '#06B6D4', color: '#fff', fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}>
+                  style={{ width: '100%', padding: '10px 14px', borderRadius: 'var(--r-sm)', border: 'none', background: '#06B6D4', color: '#fff', fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
                   Acheter des tokens
                 </button>
                 <button onClick={() => setTokenLimitMsg(null)}
-                  style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '0.5px solid var(--border)', background: 'transparent', color: 'var(--text-mid)', fontSize: 13, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}>
+                  style={{ width: '100%', padding: '10px 14px', borderRadius: 'var(--r-sm)', border: '0.5px solid var(--border)', background: 'transparent', color: 'var(--text-mid)', fontSize: 13, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
                   Fermer
                 </button>
               </div>
@@ -25051,13 +25051,13 @@ export default function AIPanel({
             style={{
               display: 'flex', alignItems: 'center', gap: 7,
               padding: '7px 14px 7px 12px',
-              borderRadius: 20,
+              borderRadius: 'var(--r-lg)',
               background: 'var(--ai-text)',
               color: 'var(--ai-bg)',
               border: 'none',
               fontSize: 12, fontWeight: 600,
               cursor: 'pointer',
-              fontFamily: 'DM Sans,sans-serif',
+              fontFamily: 'var(--font-body)',
               boxShadow: '0 4px 22px rgba(0,0,0,0.22)',
               whiteSpace: 'nowrap',
               transition: 'opacity 0.12s',
@@ -25094,7 +25094,7 @@ export default function AIPanel({
             style={{
               width: '100%', maxWidth: 460,
               background: 'var(--ai-bg)', color: 'var(--ai-text)',
-              borderRadius: 22,
+              borderRadius: 'var(--r-lg)',
               border: '1px solid var(--ai-border, rgba(127,127,127,0.16))',
               boxShadow: '0 18px 60px rgba(0,0,0,0.34)',
               padding: '24px 22px 20px',
@@ -25103,7 +25103,7 @@ export default function AIPanel({
             }}
           >
             <div style={{
-              width: 46, height: 46, borderRadius: 14,
+              width: 46, height: 46, borderRadius: 'var(--r-md)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               background: 'color-mix(in srgb, var(--ai-text) 8%, transparent)',
               marginBottom: 14,
@@ -25144,10 +25144,10 @@ export default function AIPanel({
                   if (replay) setTimeout(replay, 0)
                 }}
                 style={{
-                  width: '100%', padding: '14px', borderRadius: 14, border: 'none',
+                  width: '100%', padding: '14px', borderRadius: 'var(--r-md)', border: 'none',
                   background: 'var(--ai-text)', color: 'var(--ai-bg)',
                   fontSize: 15, fontWeight: 700, cursor: 'pointer',
-                  fontFamily: 'DM Sans,sans-serif',
+                  fontFamily: 'var(--font-body)',
                 }}
               >
                 Accepter et continuer
@@ -25155,11 +25155,11 @@ export default function AIPanel({
               <button
                 onClick={() => { setAiConsentOpen(false); pendingSendRef.current = null }}
                 style={{
-                  width: '100%', padding: '13px', borderRadius: 14,
+                  width: '100%', padding: '13px', borderRadius: 'var(--r-md)',
                   border: '1px solid var(--ai-border, rgba(127,127,127,0.18))',
                   background: 'transparent', color: 'var(--ai-text)',
                   fontSize: 15, fontWeight: 600, cursor: 'pointer',
-                  fontFamily: 'DM Sans,sans-serif',
+                  fontFamily: 'var(--font-body)',
                 }}
               >
                 Refuser

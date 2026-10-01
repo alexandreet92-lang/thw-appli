@@ -107,7 +107,7 @@ export default function CyclingSettingsParams({ settings, updateSetting, theme, 
           </div>
           <div style={{ display:'flex', alignItems:'center', gap:8 }}>
             <span style={{ fontSize:12, color:'#8C8C8C' }}>{t('record.cyclingParamsNotConnected')}</span>
-            <span style={{ fontSize:10, color:'var(--primary)', border:'1px solid rgba(6,182,212,0.4)', borderRadius:20, padding:'2px 8px' }}>{t('record.cyclingParamsSoon')}</span>
+            <span style={{ fontSize:10, color:'var(--primary)', border:'1px solid rgba(6,182,212,0.4)', borderRadius: 'var(--r-lg)', padding:'2px 8px' }}>{t('record.cyclingParamsSoon')}</span>
           </div>
         </div>
       ))}
@@ -150,7 +150,7 @@ export default function CyclingSettingsParams({ settings, updateSetting, theme, 
             if (!val) return null
             return (
               <div key={z} style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 16px', borderBottom:`1px solid ${theme.separator}` }}>
-                <div style={{ width:28, height:28, borderRadius:8, background: ZONE_COLORS[z], display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:700, color:'white', flexShrink:0 }}>Z{z}</div>
+                <div style={{ width:28, height:28, borderRadius: 'var(--r-sm)', background: ZONE_COLORS[z], display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:700, color:'white', flexShrink:0 }}>Z{z}</div>
                 <span style={{ flex:1, fontSize:14, color:theme.text }}>{t(ZONE_LABEL_KEYS[z])}</span>
                 <span style={{ fontSize:13, color:'#8C8C8C' }}>{val} w</span>
               </div>

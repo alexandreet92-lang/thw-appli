@@ -143,7 +143,7 @@ export function fieldById(id: string): DataField | undefined {
 export type DataFont = 'system' | 'mono' | 'rounded' | 'condensed' | 'sport'
 
 export const FONT_OPTIONS: { id: DataFont; label: string; labelKey: string; fontFamily: string }[] = [
-  { id: 'system',    label: 'Système',    labelKey: 'rectypes.fontSystem',    fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif' },
+  { id: 'system',    label: 'Système',    labelKey: 'rectypes.fontSystem',    fontFamily: 'var(--font-body)' },
   { id: 'mono',      label: 'Monospace',  labelKey: 'rectypes.fontMono',      fontFamily: '"SF Mono", "Roboto Mono", "Courier New", monospace' },
   { id: 'rounded',   label: 'Arrondie',   labelKey: 'rectypes.fontRounded',   fontFamily: '"Nunito", "Varela Round", system-ui, sans-serif' },
   { id: 'condensed', label: 'Condensée',  labelKey: 'rectypes.fontCondensed', fontFamily: '"Barlow Condensed", "Arial Narrow", sans-serif' },

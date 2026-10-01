@@ -110,9 +110,9 @@ export default function CoachSubscriptionPage() {
       )}
 
       {/* Toggle mensuel / annuel */}
-      <div style={{ display: 'inline-flex', gap: 3, padding: 3, borderRadius: 999, background: 'var(--bg-card2)', marginBottom: 20 }}>
+      <div style={{ display: 'inline-flex', gap: 3, padding: 3, borderRadius: 'var(--r-pill)', background: 'var(--bg-card2)', marginBottom: 20 }}>
         {(['monthly', 'yearly'] as const).map(b => (
-          <button key={b} onClick={() => setBilling(b)} style={{ padding: '7px 16px', borderRadius: 999, border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 700, background: billing === b ? 'var(--bg-card)' : 'transparent', color: billing === b ? 'var(--primary)' : 'var(--text-mid)', boxShadow: billing === b ? '0 1px 3px rgba(0,0,0,0.12)' : 'none' }}>
+          <button key={b} onClick={() => setBilling(b)} style={{ padding: '7px 16px', borderRadius: 'var(--r-pill)', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 700, background: billing === b ? 'var(--bg-card)' : 'transparent', color: billing === b ? 'var(--primary)' : 'var(--text-mid)', boxShadow: billing === b ? '0 1px 3px rgba(0,0,0,0.12)' : 'none' }}>
             {b === 'monthly' ? t('w3c.monthly') : t('w3c.annual')}{b === 'yearly' && <span style={{ fontSize: 11, marginLeft: 5, color: 'var(--text-dim)' }}>−17 %</span>}
           </button>
         ))}
@@ -121,9 +121,9 @@ export default function CoachSubscriptionPage() {
       {/* Formule athlète incluse : Pro ou Expert (le pack débloque ce niveau athlète). */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20, flexWrap: 'wrap' }}>
         <span style={{ fontSize: 12.5, color: 'var(--text-dim)', fontWeight: 600 }}>Formule athlète incluse&nbsp;:</span>
-        <div style={{ display: 'inline-flex', gap: 3, padding: 3, borderRadius: 999, background: 'var(--bg-card2)' }}>
+        <div style={{ display: 'inline-flex', gap: 3, padding: 3, borderRadius: 'var(--r-pill)', background: 'var(--bg-card2)' }}>
           {(['premium', 'pro', 'expert'] as const).map(tr => (
-            <button key={tr} onClick={() => setCoachTier(tr)} style={{ padding: '7px 14px', borderRadius: 999, border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 700, background: coachTier === tr ? 'var(--bg-card)' : 'transparent', color: coachTier === tr ? 'var(--primary)' : 'var(--text-mid)', boxShadow: coachTier === tr ? '0 1px 3px rgba(0,0,0,0.12)' : 'none' }}>
+            <button key={tr} onClick={() => setCoachTier(tr)} style={{ padding: '7px 14px', borderRadius: 'var(--r-pill)', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 700, background: coachTier === tr ? 'var(--bg-card)' : 'transparent', color: coachTier === tr ? 'var(--primary)' : 'var(--text-mid)', boxShadow: coachTier === tr ? '0 1px 3px rgba(0,0,0,0.12)' : 'none' }}>
               {tr === 'premium' ? 'Athlète Premium' : tr === 'pro' ? 'Athlète Pro' : 'Athlète Expert'}
             </button>
           ))}

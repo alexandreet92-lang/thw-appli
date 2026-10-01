@@ -162,7 +162,7 @@ function FeedCard({ a, onOpen, canFollow, isFollowing, onToggleFollow, eng, onKu
         </Link>
         {canFollow && (
           <button onClick={onToggleFollow}
-            style={{ flexShrink: 0, padding: '6px 13px', borderRadius: 999, cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 600,
+            style={{ flexShrink: 0, padding: '6px 13px', borderRadius: 'var(--r-pill)', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 600,
               border: isFollowing ? '1px solid var(--border-mid)' : 'none', background: isFollowing ? 'transparent' : 'var(--primary)', color: isFollowing ? 'var(--text-mid)' : 'var(--on-primary)' }}>
             {isFollowing ? t('w4c.feed_following') : t('w4c.feed_follow')}
           </button>

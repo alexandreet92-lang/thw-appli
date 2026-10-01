@@ -73,7 +73,7 @@ function Card({ p, rp, drag, dragging, onOpen }: { p: CoachProgram; rp: number; 
     <div onClick={isTop ? onOpen : undefined}
       style={{
         position: 'absolute', top: 0, left: '50%', width: '88%', height: '100%', zIndex: z, opacity,
-        borderRadius: 24, background: cardBg(sport), color: 'white', boxShadow: shadow, overflow: 'hidden',
+        borderRadius: 'var(--r-lg)', background: cardBg(sport), color: 'white', boxShadow: shadow, overflow: 'hidden',
         padding: 'clamp(16px, 4.5vw, 22px)', display: 'flex', flexDirection: 'column', boxSizing: 'border-box',
         transform, transformOrigin: 'center top',
         // Pendant le drag : pas de transition (suit le doigt). Au relâchement :
@@ -100,7 +100,7 @@ function Card({ p, rp, drag, dragging, onOpen }: { p: CoachProgram; rp: number; 
           <span style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em', opacity: 0.92 }}>{t(`w3d.sport_${sport}`)}</span>
           {p.specialty && <Pill>{p.specialty}</Pill>}
           {p.level && <Pill>{t(`w3d.level_${p.level}`)}</Pill>}
-          {p.ai_enabled && <span style={{ fontSize: 10, fontWeight: 800, padding: '2px 8px', borderRadius: 999, background: 'rgba(0,0,0,0.20)' }}>{t('w3d.ai_badge')}</span>}
+          {p.ai_enabled && <span style={{ fontSize: 10, fontWeight: 800, padding: '2px 8px', borderRadius: 'var(--r-pill)', background: 'rgba(0,0,0,0.20)' }}>{t('w3d.ai_badge')}</span>}
         </div>
         <div style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(20px, 5.2vw, 26px)', fontWeight: 600, lineHeight: 1.12, marginBottom: 10, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical' as const, overflow: 'hidden' }}>{p.title}</div>
         {p.description && <div style={{ fontSize: 13, opacity: 0.9, lineHeight: 1.5, display: '-webkit-box', WebkitLineClamp: 4, WebkitBoxOrient: 'vertical' as const, overflow: 'hidden' }}>{p.description}</div>}
@@ -111,7 +111,7 @@ function Card({ p, rp, drag, dragging, onOpen }: { p: CoachProgram; rp: number; 
       {/* Bas : prix — masqué dans l'app native (règles App Store). */}
       {!hidePrice && (
         <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
-          <span style={{ fontSize: 15, fontWeight: 800, background: 'rgba(255,255,255,0.22)', padding: '5px 12px', borderRadius: 999, whiteSpace: 'nowrap' }}>{priceStr(p) || t('w3d.free')}</span>
+          <span style={{ fontSize: 15, fontWeight: 800, background: 'rgba(255,255,255,0.22)', padding: '5px 12px', borderRadius: 'var(--r-pill)', whiteSpace: 'nowrap' }}>{priceStr(p) || t('w3d.free')}</span>
         </div>
       )}
     </div>
@@ -121,7 +121,7 @@ function Stat({ label, value }: { label: string; value: string }) {
   return <div><div style={{ fontSize: 10.5, opacity: 0.82, fontWeight: 600 }}>{label}</div><div className="tnum" style={{ fontSize: 17, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{value}</div></div>
 }
 function Pill({ children }: { children: React.ReactNode }) {
-  return <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 999, background: 'rgba(255,255,255,0.20)' }}>{children}</span>
+  return <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 'var(--r-pill)', background: 'rgba(255,255,255,0.20)' }}>{children}</span>
 }
 
 // ── Une pile (carrousel) pour UN sport ──
@@ -165,7 +165,7 @@ function Stack({ list, onOpen, height }: { list: CoachProgram[]; onOpen: (p: Coa
         <div style={{ display: 'flex', gap: 5, justifyContent: 'center', marginTop: 12 }}>
           {list.map((_, i) => (
             <button key={i} onClick={() => setCur(i)} aria-label={t('w3d.program_n', { n: i + 1 })}
-              style={{ width: i === cur ? 16 : 6, height: 6, borderRadius: 999, border: 'none', cursor: 'pointer', padding: 0, background: i === cur ? 'var(--text)' : 'var(--border-mid)', transition: 'width 200ms, background 200ms' }} />
+              style={{ width: i === cur ? 16 : 6, height: 6, borderRadius: 'var(--r-pill)', border: 'none', cursor: 'pointer', padding: 0, background: i === cur ? 'var(--text)' : 'var(--border-mid)', transition: 'width 200ms, background 200ms' }} />
           ))}
         </div>
       )}
@@ -186,7 +186,7 @@ function SportCircle({ sport, on, onClick }: { sport: string; on: boolean; onCli
   const Icon = SPORT_GLYPH[sport] ?? IconRun
   return (
     <button onClick={onClick} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, border: 'none', background: 'transparent', cursor: 'pointer', padding: 0, flexShrink: 0, fontFamily: 'var(--font-body)' }}>
-      <span style={{ width: 58, height: 58, borderRadius: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: on ? sportVar(sport) : 'var(--bg-card2)', boxShadow: on ? '0 8px 20px rgba(0,0,0,0.20)' : 'none', transition: 'background 180ms, box-shadow 180ms' }}>
+      <span style={{ width: 58, height: 58, borderRadius: 'var(--r-pill)', display: 'flex', alignItems: 'center', justifyContent: 'center', background: on ? sportVar(sport) : 'var(--bg-card2)', boxShadow: on ? '0 8px 20px rgba(0,0,0,0.20)' : 'none', transition: 'background 180ms, box-shadow 180ms' }}>
         <Icon size={26} color={on ? 'white' : 'var(--text-mid)'} stroke={2} />
       </span>
       <span style={{ fontSize: 11.5, fontWeight: on ? 700 : 600, color: on ? 'var(--text)' : 'var(--text-dim)' }}>{t(`w3d.sport_${sport}`)}</span>
@@ -194,7 +194,7 @@ function SportCircle({ sport, on, onClick }: { sport: string; on: boolean; onCli
   )
 }
 function SpecPill({ label, on, onClick }: { label: string; on: boolean; onClick: () => void }) {
-  return <button onClick={onClick} style={{ padding: '8px 16px', borderRadius: 999, border: on ? '2px solid var(--primary)' : '2px solid var(--border)', background: on ? 'var(--primary-dim)' : 'transparent', color: on ? 'var(--primary)' : 'var(--text-mid)', fontSize: 13, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0, fontFamily: 'var(--font-body)' }}>{label}</button>
+  return <button onClick={onClick} style={{ padding: '8px 16px', borderRadius: 'var(--r-pill)', border: on ? '2px solid var(--primary)' : '2px solid var(--border)', background: on ? 'var(--primary-dim)' : 'transparent', color: on ? 'var(--primary)' : 'var(--text-mid)', fontSize: 13, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0, fontFamily: 'var(--font-body)' }}>{label}</button>
 }
 
 export default function ProgramDeck({ programs, onOpen }: { programs: CoachProgram[]; onOpen: (p: CoachProgram) => void }) {
@@ -273,6 +273,6 @@ export default function ProgramDeck({ programs, onOpen }: { programs: CoachProgr
 }
 
 const arrow: React.CSSProperties = {
-  position: 'absolute', top: '46%', transform: 'translateY(-50%)', width: 32, height: 32, borderRadius: 999, border: 'none', cursor: 'pointer', zIndex: 50,
+  position: 'absolute', top: '46%', transform: 'translateY(-50%)', width: 32, height: 32, borderRadius: 'var(--r-pill)', border: 'none', cursor: 'pointer', zIndex: 50,
   background: 'var(--bg-card)', color: 'var(--text)', boxShadow: '0 4px 14px rgba(0,0,0,0.22)', alignItems: 'center', justifyContent: 'center', padding: 0,
 }

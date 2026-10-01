@@ -72,9 +72,9 @@ export default function DataSources({ sourcesRef }: Props) {
 
   return (
     <div ref={sourcesRef} id="rc-sources"
-      style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:20,padding:24,boxShadow:'var(--shadow-card)' }}>
+      style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius: 'var(--r-lg)',padding:24,boxShadow:'var(--shadow-card)' }}>
       <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.1em',color:'var(--text-dim)',margin:'0 0 4px' }}>{t('recovery.sources.eyebrow')}</p>
-      <h2 style={{ fontFamily:'Syne,sans-serif',fontSize:18,fontWeight:700,margin:'0 0 18px' }}>{t('recovery.sources.title')}</h2>
+      <h2 style={{ fontFamily: 'var(--font-display)',fontSize:18,fontWeight:700,margin:'0 0 18px' }}>{t('recovery.sources.title')}</h2>
 
       {connected.length > 0 && (
         <div style={{ marginBottom:14 }}>
@@ -84,7 +84,7 @@ export default function DataSources({ sourcesRef }: Props) {
               const info = connInfo.find(c => c.provider === s.provider)
               const isSyncing = syncing === s.provider
               return (
-                <div key={s.id} style={{ display:'flex',alignItems:'center',gap:12,padding:'12px 14px',borderRadius:12,background:'rgba(34,197,94,0.06)',border:'1px solid rgba(34,197,94,0.2)' }}>
+                <div key={s.id} style={{ display:'flex',alignItems:'center',gap:12,padding:'12px 14px',borderRadius: 'var(--r-md)',background:'rgba(34,197,94,0.06)',border:'1px solid rgba(34,197,94,0.2)' }}>
                   <div style={{ width:8,height:8,borderRadius:'50%',background:'#22c55e',flexShrink:0 }} />
                   <div style={{ flex:1 }}>
                     <p style={{ fontSize:13,fontWeight:600,margin:0 }}>{s.name}</p>
@@ -93,13 +93,13 @@ export default function DataSources({ sourcesRef }: Props) {
                   <div style={{ display:'flex',flexDirection:'column' as const,alignItems:'flex-end',gap:4 }}>
                     <span style={{ fontSize:10,color:'#22c55e',fontWeight:600 }}>{t('recovery.status.connected')}</span>
                     {info?.last_used_at && (
-                      <p style={{ fontSize:9,color:'var(--text-dim)',margin:0 }}>{t('recovery.sources.syncPrefix')} {formatRelative(info.last_used_at, t)}</p>
+                      <p style={{ fontSize: 10,color:'var(--text-dim)',margin:0 }}>{t('recovery.sources.syncPrefix')} {formatRelative(info.last_used_at, t)}</p>
                     )}
                     {s.provider && (
                       <button
                         onClick={() => handleSync(s.provider!)}
                         disabled={!!isSyncing}
-                        style={{ padding:'3px 10px',borderRadius:6,background:'transparent',border:'1px solid rgba(34,197,94,0.4)',color:'#22c55e',fontSize:9,cursor:isSyncing?'not-allowed':'pointer',opacity:isSyncing?0.6:1,display:'flex',alignItems:'center',gap:4 }}>
+                        style={{ padding:'3px 10px',borderRadius: 'var(--r-sm)',background:'transparent',border:'1px solid rgba(34,197,94,0.4)',color:'#22c55e',fontSize: 10,cursor:isSyncing?'not-allowed':'pointer',opacity:isSyncing?0.6:1,display:'flex',alignItems:'center',gap:4 }}>
                         {isSyncing ? (
                           <svg width={10} height={10} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} style={{ animation:'spin 0.8s linear infinite' }}>
                             <path d="M12 2a10 10 0 0110 10" opacity={0.3}/><path d="M12 2a10 10 0 0110 10"/>
@@ -126,7 +126,7 @@ export default function DataSources({ sourcesRef }: Props) {
           <p style={{ fontSize:10,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'var(--text-dim)',margin:'0 0 8px' }}>{t('recovery.sources.available')}</p>
           <div style={{ display:'flex',flexDirection:'column' as const,gap:6 }}>
             {available.map(s => (
-              <div key={s.id} style={{ position:'relative' as const,display:'flex',alignItems:'center',gap:12,padding:'10px 14px',borderRadius:12,background:'var(--bg-card2)',border:'1px solid var(--border)',opacity:0.8 }}>
+              <div key={s.id} style={{ position:'relative' as const,display:'flex',alignItems:'center',gap:12,padding:'10px 14px',borderRadius: 'var(--r-md)',background:'var(--bg-card2)',border:'1px solid var(--border)',opacity:0.8 }}>
                 <div style={{ width:8,height:8,borderRadius:'50%',background:'var(--border)',flexShrink:0 }} />
                 <div style={{ flex:1 }}>
                   <p style={{ fontSize:12,fontWeight:600,margin:0,color:'var(--text-mid)' }}>{s.name}</p>
@@ -135,7 +135,7 @@ export default function DataSources({ sourcesRef }: Props) {
                 <div style={{ position:'relative' as const }}>
                   {s.provider ? (
                     <a href={`/connections`}
-                      style={{ padding:'5px 12px',borderRadius:8,background:'var(--bg-card)',border:'1px solid var(--border)',color:'var(--text-dim)',fontSize:10,cursor:'pointer',textDecoration:'none',display:'inline-block' }}>
+                      style={{ padding:'5px 12px',borderRadius: 'var(--r-sm)',background:'var(--bg-card)',border:'1px solid var(--border)',color:'var(--text-dim)',fontSize:10,cursor:'pointer',textDecoration:'none',display:'inline-block' }}>
                       {t('recovery.sources.connect')}
                     </a>
                   ) : (
@@ -144,11 +144,11 @@ export default function DataSources({ sourcesRef }: Props) {
                         onMouseEnter={() => setTooltip(s.id)}
                         onMouseLeave={() => setTooltip(null)}
                         onClick={() => setTooltip(t => t === s.id ? null : s.id)}
-                        style={{ padding:'5px 12px',borderRadius:8,background:'var(--bg-card)',border:'1px solid var(--border)',color:'var(--text-dim)',fontSize:10,cursor:'pointer' }}>
+                        style={{ padding:'5px 12px',borderRadius: 'var(--r-sm)',background:'var(--bg-card)',border:'1px solid var(--border)',color:'var(--text-dim)',fontSize:10,cursor:'pointer' }}>
                         {t('recovery.sources.soon')}
                       </button>
                       {tooltip === s.id && (
-                        <div style={{ position:'absolute' as const,right:0,top:'calc(100% + 6px)',zIndex:50,minWidth:170,padding:'8px 12px',borderRadius:9,background:'var(--bg-card)',border:'1px solid var(--border)',boxShadow:'0 4px 14px rgba(0,0,0,0.12)' }}>
+                        <div style={{ position:'absolute' as const,right:0,top:'calc(100% + 6px)',zIndex:50,minWidth:170,padding:'8px 12px',borderRadius: 'var(--r-sm)',background:'var(--bg-card)',border:'1px solid var(--border)',boxShadow:'0 4px 14px rgba(0,0,0,0.12)' }}>
                           <p style={{ fontSize:11,color:'var(--text-mid)',margin:0,lineHeight:1.5 }}>{t('recovery.sources.soonAvailable')}</p>
                         </div>
                       )}

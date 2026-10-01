@@ -38,7 +38,7 @@ function BigCell({ label, value, unit, t }: {
       <p style={{
         margin: '6px 0 0',
         fontSize: 44, fontWeight: 700, lineHeight: 1,
-        color: t.text, fontFamily: 'DM Mono, monospace',
+        color: t.text, fontFamily: 'var(--font-body)',
       }}>{value}</p>
       {unit && (
         <p style={{ margin: '4px 0 0', fontSize: 12, color: t.label }}>{unit}</p>
@@ -65,7 +65,7 @@ export default function CyclingPage2({ isDark, distanceM, trackPoints, currentPo
         <div style={{
           position: 'relative',
           width: '100%', height: '100%',
-          borderRadius: 16, overflow: 'hidden',
+          borderRadius: 'var(--r-md)', overflow: 'hidden',
           border: `1px solid ${t.separator}`,
         }}>
           <MapBackground trackPoints={trackPoints} currentPosition={currentPosition} />
@@ -73,7 +73,7 @@ export default function CyclingPage2({ isDark, distanceM, trackPoints, currentPo
             <div style={{
               position: 'absolute', top: 10, left: 10, zIndex: 1000,
               display: 'flex', alignItems: 'center', gap: 6,
-              padding: '5px 10px 5px 8px', borderRadius: 999,
+              padding: '5px 10px 5px 8px', borderRadius: 'var(--r-pill)',
               background: 'var(--bg)', border: '1px solid var(--border)',
               boxShadow: '0 2px 8px rgba(0,0,0,0.25)', // design-allow-color
             }}>

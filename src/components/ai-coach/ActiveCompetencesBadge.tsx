@@ -56,7 +56,7 @@ export default function ActiveCompetencesBadge() {
 
   const pill: React.CSSProperties = {
     display: 'inline-flex', alignItems: 'center', gap: 4,
-    padding: '3px 9px', borderRadius: 999, fontSize: 11, fontWeight: 600,
+    padding: '3px 9px', borderRadius: 'var(--r-pill)', fontSize: 11, fontWeight: 600,
     background: 'rgba(6,182,212,0.12)', color: 'var(--primary)',
     border: '1px solid rgba(6,182,212,0.3)', cursor: 'pointer', whiteSpace: 'nowrap',
   }

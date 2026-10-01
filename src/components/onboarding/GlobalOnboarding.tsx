@@ -81,7 +81,7 @@ export function GlobalOnboarding({ onDone }: Props) {
       style={{
         position: 'fixed', inset: 0, zIndex: 99999,
         display: 'flex', flexDirection: 'column',
-        background: theme.bg, fontFamily: 'DM Sans, sans-serif',
+        background: theme.bg, fontFamily: 'var(--font-body)',
         transition: 'background 600ms ease',
         animation: exiting ? 'gob-out 280ms ease-in forwards' : 'gob-in 350ms ease-out forwards',
         overflow: 'hidden',
@@ -100,7 +100,7 @@ export function GlobalOnboarding({ onDone }: Props) {
       </div>
 
       {/* Bouton Passer */}
-      <button onClick={handleDismiss} style={{ position: 'absolute', top: 16, right: 20, padding: '5px 12px', borderRadius: 20, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.5)', fontSize: 12, cursor: 'pointer', zIndex: 10, fontFamily: 'DM Sans, sans-serif' }}>
+      <button onClick={handleDismiss} style={{ position: 'absolute', top: 16, right: 20, padding: '5px 12px', borderRadius: 'var(--r-lg)', background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.5)', fontSize: 12, cursor: 'pointer', zIndex: 10, fontFamily: 'var(--font-body)' }}>
         {t('onboarding.skip')}
       </button>
 
@@ -115,12 +115,12 @@ export function GlobalOnboarding({ onDone }: Props) {
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '16px 28px 28px', background: 'linear-gradient(to top, rgba(5,8,18,0.95) 75%, transparent)', overflowY: 'auto', WebkitOverflowScrolling: 'touch' } as React.CSSProperties}>
 
         {slide.meta.badge && (
-          <div style={{ alignSelf: 'flex-start', padding: '3px 10px', borderRadius: 20, background: `rgba(${hexRgb(accent)},0.15)`, border: `1px solid rgba(${hexRgb(accent)},0.3)`, marginBottom: 10 }}>
+          <div style={{ alignSelf: 'flex-start', padding: '3px 10px', borderRadius: 'var(--r-lg)', background: `rgba(${hexRgb(accent)},0.15)`, border: `1px solid rgba(${hexRgb(accent)},0.3)`, marginBottom: 10 }}>
             <span style={{ fontSize: 10, color: accent, fontWeight: 600, letterSpacing: 1, textTransform: 'uppercase' }}>{t(slide.meta.badge)}</span>
           </div>
         )}
 
-        <h2 key={`t${current}`} style={{ fontSize: 22, fontWeight: 800, color: 'white', margin: '0 0 8px', lineHeight: 1.2, letterSpacing: '-0.3px', fontFamily: 'Syne, sans-serif', animation: 'gob-slide-up 0.4s cubic-bezier(0.16,1,0.3,1) both' }}>
+        <h2 key={`t${current}`} style={{ fontSize: 22, fontWeight: 800, color: 'white', margin: '0 0 8px', lineHeight: 1.2, letterSpacing: '-0.3px', fontFamily: 'var(--font-display)', animation: 'gob-slide-up 0.4s cubic-bezier(0.16,1,0.3,1) both' }}>
           {t(slide.meta.title)}
         </h2>
         <p key={`d${current}`} style={{ fontSize: 14, color: 'rgba(255,255,255,0.6)', lineHeight: 1.6, margin: 0, animation: 'gob-slide-up 0.4s 0.06s cubic-bezier(0.16,1,0.3,1) both' }}>
@@ -154,11 +154,11 @@ export function GlobalOnboarding({ onDone }: Props) {
               <button onClick={() => goTo(current - 1)} style={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.6)', cursor: 'pointer', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>←</button>
             )}
             {isLast ? (
-              <button onClick={handleDismiss} style={{ padding: '10px 24px', borderRadius: 24, background: `linear-gradient(135deg, #8B5CF6, #06B6D4)`, border: 'none', color: 'white', fontSize: 15, fontWeight: 800, cursor: 'pointer', letterSpacing: '-0.3px', fontFamily: 'DM Sans, sans-serif', animation: 'go-pulse-glow 2s ease-in-out infinite' }}>
+              <button onClick={handleDismiss} style={{ padding: '10px 24px', borderRadius: 'var(--r-lg)', background: `linear-gradient(135deg, #8B5CF6, #06B6D4)`, border: 'none', color: 'white', fontSize: 15, fontWeight: 800, cursor: 'pointer', letterSpacing: '-0.3px', fontFamily: 'var(--font-body)', animation: 'go-pulse-glow 2s ease-in-out infinite' }}>
                 {t('onboarding.startAdventure')} →
               </button>
             ) : (
-              <button onClick={() => goTo(current + 1)} style={{ padding: '9px 20px', borderRadius: 24, background: `linear-gradient(135deg, ${accent}, ${accent}99)`, border: 'none', color: 'white', fontSize: 13, fontWeight: 600, cursor: 'pointer', boxShadow: `0 4px 16px ${accent}55`, fontFamily: 'DM Sans, sans-serif' }}>
+              <button onClick={() => goTo(current + 1)} style={{ padding: '9px 20px', borderRadius: 'var(--r-lg)', background: `linear-gradient(135deg, ${accent}, ${accent}99)`, border: 'none', color: 'white', fontSize: 13, fontWeight: 600, cursor: 'pointer', boxShadow: `0 4px 16px ${accent}55`, fontFamily: 'var(--font-body)' }}>
                 {t('onboarding.next')} →
               </button>
             )}

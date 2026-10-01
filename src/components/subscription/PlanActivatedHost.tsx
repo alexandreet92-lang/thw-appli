@@ -65,7 +65,7 @@ export function PlanActivatedHost() {
         onClick={e => e.stopPropagation()}
         style={{
           position: 'relative', width: 'min(440px, 100%)', maxHeight: '88vh', overflowY: 'auto',
-          background: 'var(--bg-card)', borderRadius: 24, padding: '30px 26px 24px',
+          background: 'var(--bg-card)', borderRadius: 'var(--r-lg)', padding: '30px 26px 24px',
           boxShadow: '0 30px 90px rgba(0,0,0,0.4)', border: `1px solid ${accent}44`,
           animation: 'thw-pa-pop 0.3s cubic-bezier(0.2,0.8,0.2,1) both',
         }}
@@ -102,7 +102,7 @@ export function PlanActivatedHost() {
 
         <button
           onClick={() => setTier(null)}
-          style={{ width: '100%', marginTop: 22, height: 48, borderRadius: 14, border: 'none', background: accent, color: '#fff', fontFamily: 'var(--font-body)', fontSize: 15, fontWeight: 700, cursor: 'pointer' }}
+          style={{ width: '100%', marginTop: 22, height: 48, borderRadius: 'var(--r-md)', border: 'none', background: accent, color: '#fff', fontFamily: 'var(--font-body)', fontSize: 15, fontWeight: 700, cursor: 'pointer' }}
         >
           C'est parti 🚀
         </button>

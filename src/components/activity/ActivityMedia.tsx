@@ -79,7 +79,7 @@ export function ActivityMedia({ activityId, initialMedia, initialComment, showPh
     } catch (e) { console.error('[ActivityMedia] delete', e) }
   }
 
-  const tile: React.CSSProperties = { position: 'relative', aspectRatio: '1', borderRadius: 12, overflow: 'hidden', background: 'var(--bg-card2)', cursor: 'pointer', border: '1px solid var(--border)' }
+  const tile: React.CSSProperties = { position: 'relative', aspectRatio: '1', borderRadius: 'var(--r-md)', overflow: 'hidden', background: 'var(--bg-card2)', cursor: 'pointer', border: '1px solid var(--border)' }
 
   return (
     <div style={{ marginTop: 4 }}>
@@ -92,14 +92,14 @@ export function ActivityMedia({ activityId, initialMedia, initialComment, showPh
           onBlur={saveComment}
           placeholder={t("actmedia.comment_ph")}
           rows={2}
-          style={{ width: '100%', resize: 'vertical', minHeight: 44, padding: '10px 12px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 14, lineHeight: 1.5, outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }}
+          style={{ width: '100%', resize: 'vertical', minHeight: 44, padding: '10px 12px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 14, lineHeight: 1.5, outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }}
         />
       </div>
       {showPhotos && (<>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
         <span style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-dim)' }}>{t('lo.photosVideos')}</span>
         <button onClick={() => inputRef.current?.click()} disabled={busy} style={{
-          display: 'inline-flex', alignItems: 'center', gap: 6, height: 32, padding: '0 12px', borderRadius: 999,
+          display: 'inline-flex', alignItems: 'center', gap: 6, height: 32, padding: '0 12px', borderRadius: 'var(--r-pill)',
           border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 12.5, fontWeight: 700, cursor: busy ? 'default' : 'pointer',
         }}>
           {busy ? <IconLoader2 size={15} className="thw-spin" /> : <IconPlus size={15} />}
@@ -113,7 +113,7 @@ export function ActivityMedia({ activityId, initialMedia, initialComment, showPh
 
       {media.length === 0 ? (
         <button onClick={() => inputRef.current?.click()} disabled={busy} style={{
-          width: '100%', padding: '22px 16px', borderRadius: 14, border: '1.5px dashed var(--border)', background: 'transparent',
+          width: '100%', padding: '22px 16px', borderRadius: 'var(--r-md)', border: '1.5px dashed var(--border)', background: 'transparent',
           color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
         }}>
           <IconPhoto size={26} />

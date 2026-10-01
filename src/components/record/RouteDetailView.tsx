@@ -174,16 +174,16 @@ export default function RouteDetailView({ route, isDark, sportLabel, onClose, on
   const stat = (label: string, value: string, color = text) => (
     <div>
       <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', color: dim, marginBottom: 3 }}>{label}</div>
-      <div style={{ fontSize: 21, fontWeight: 800, color, fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>{value}</div>
+      <div style={{ fontSize: 22, fontWeight: 800, color, fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>{value}</div>
     </div>
   )
 
   const menuItem = (label: string, danger = false, onClick?: () => void, icon?: React.ReactNode) => (
-    <button onClick={onClick} style={{ display: 'flex', alignItems: 'center', gap: 9, width: '100%', padding: '9px 11px', borderRadius: 8, border: 'none', background: 'transparent', color: danger ? '#EF4444' : text, fontSize: 13.5, fontWeight: 600, cursor: 'pointer', textAlign: 'left', fontFamily: 'DM Sans, sans-serif' }}>{icon}{label}</button>
+    <button onClick={onClick} style={{ display: 'flex', alignItems: 'center', gap: 9, width: '100%', padding: '9px 11px', borderRadius: 'var(--r-sm)', border: 'none', background: 'transparent', color: danger ? '#EF4444' : text, fontSize: 13.5, fontWeight: 600, cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font-body)' }}>{icon}{label}</button>
   )
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 10010, background: bg, display: 'flex', flexDirection: 'column', fontFamily: 'DM Sans, sans-serif', paddingTop: 'env(safe-area-inset-top)', transform: shown && !closing ? 'translateX(0)' : 'translateX(100%)', transition: 'transform 300ms cubic-bezier(0.32,0.72,0,1)' }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 10010, background: bg, display: 'flex', flexDirection: 'column', fontFamily: 'var(--font-body)', paddingTop: 'env(safe-area-inset-top)', transform: shown && !closing ? 'translateX(0)' : 'translateX(100%)', transition: 'transform 300ms cubic-bezier(0.32,0.72,0,1)' }}>
       {/* En-tête */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderBottom: `1px solid ${border}`, flexShrink: 0 }}>
         <button onClick={requestClose} aria-label="Retour" style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', color: ACCENT, fontSize: 15, fontWeight: 600, cursor: 'pointer', padding: 0 }}>
@@ -206,7 +206,7 @@ export default function RouteDetailView({ route, isDark, sportLabel, onClose, on
               {/* « Utiliser » = démarrer une activité avec ce parcours → mobile uniquement
                   (on n'enregistre pas depuis un ordinateur). */}
               {isNarrow && (
-                <button onClick={onUse} style={{ flex: '1 1 auto', minWidth: 150, height: 44, borderRadius: 12, border: 'none', background: ACCENT, color: '#fff', fontSize: 14.5, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                <button onClick={onUse} style={{ flex: '1 1 auto', minWidth: 150, height: 44, borderRadius: 'var(--r-md)', border: 'none', background: ACCENT, color: '#fff', fontSize: 14.5, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
                   <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
                   Utiliser ce parcours
                 </button>
@@ -222,7 +222,7 @@ export default function RouteDetailView({ route, isDark, sportLabel, onClose, on
                 {menuOpen && (
                   <>
                     <div onClick={() => setMenuOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 4 }} />
-                    <div style={{ position: 'absolute', top: 48, right: 0, zIndex: 5, background: panel, border: `1px solid ${border}`, borderRadius: 12, boxShadow: '0 10px 30px rgba(0,0,0,0.25)', padding: 5, minWidth: 190, display: 'flex', flexDirection: 'column', gap: 1 }}>
+                    <div style={{ position: 'absolute', top: 48, right: 0, zIndex: 5, background: panel, border: `1px solid ${border}`, borderRadius: 'var(--r-md)', boxShadow: '0 10px 30px rgba(0,0,0,0.25)', padding: 5, minWidth: 190, display: 'flex', flexDirection: 'column', gap: 1 }}>
                       {menuItem('Dupliquer', false, () => { setMenuOpen(false); onDuplicate() }, <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="11" height="11" rx="2" /><path d="M5 15V5a2 2 0 012-2h10" /></svg>)}
                       {menuItem('Exporter en GPX', false, () => { setMenuOpen(false); onExport() }, <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v12M8 11l4 4 4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2" /></svg>)}
                       {pushTargets.map(p => menuItem(`Envoyer vers ${p === 'garmin' ? 'Garmin' : p === 'wahoo' ? 'Wahoo' : p}`, false, () => { setMenuOpen(false); onPush?.(p) }, <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="7" /><circle cx="12" cy="12" r="2.5" /></svg>))}
@@ -245,7 +245,7 @@ export default function RouteDetailView({ route, isDark, sportLabel, onClose, on
 
           {/* Colonne droite : carte + profil */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <div style={{ position: 'relative', width: '100%', aspectRatio: '16 / 10', borderRadius: 16, overflow: 'hidden', border: `1px solid ${border}`, background: surface }}>
+            <div style={{ position: 'relative', width: '100%', aspectRatio: '16 / 10', borderRadius: 'var(--r-md)', overflow: 'hidden', border: `1px solid ${border}`, background: surface }}>
               {bounds ? (
                 <MapContainer bounds={bounds} boundsOptions={{ padding: [24, 24] }} zoomControl scrollWheelZoom={false} attributionControl={false} style={{ position: 'absolute', inset: 0, background: surface }}>
                   <TileLayer url={tileUrl(isDark)} tileSize={512} zoomOffset={-1} detectRetina maxZoom={20} attribution={ATTR} />
@@ -284,7 +284,7 @@ export default function RouteDetailView({ route, isDark, sportLabel, onClose, on
                   </svg>
                   {/* Bulle suivant la souris */}
                   {hp && (
-                    <div style={{ position: 'absolute', top: 0, left: `${(hp.d / Math.max(1, totalM)) * 100}%`, transform: `translateX(${hp.d / Math.max(1, totalM) > 0.85 ? '-105%' : '8px'})`, pointerEvents: 'none', background: panel, border: `1px solid ${border}`, borderRadius: 8, boxShadow: '0 6px 20px rgba(0,0,0,0.22)', padding: '6px 9px', whiteSpace: 'nowrap' }}>
+                    <div style={{ position: 'absolute', top: 0, left: `${(hp.d / Math.max(1, totalM)) * 100}%`, transform: `translateX(${hp.d / Math.max(1, totalM) > 0.85 ? '-105%' : '8px'})`, pointerEvents: 'none', background: panel, border: `1px solid ${border}`, borderRadius: 'var(--r-sm)', boxShadow: '0 6px 20px rgba(0,0,0,0.22)', padding: '6px 9px', whiteSpace: 'nowrap' }}>
                       <div style={{ fontSize: 12, fontWeight: 800, color: text, fontVariantNumeric: 'tabular-nums' }}>{Math.round(hp.alt)} m</div>
                       <div style={{ fontSize: 11, color: dim, fontVariantNumeric: 'tabular-nums' }}>km {(hp.d / 1000).toFixed(1)}</div>
                     </div>
@@ -299,12 +299,12 @@ export default function RouteDetailView({ route, isDark, sportLabel, onClose, on
       {/* Confirmation suppression */}
       {confirmDel && (
         <div onClick={() => setConfirmDel(false)} style={{ position: 'fixed', inset: 0, zIndex: 20, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-          <div onClick={e => e.stopPropagation()} style={{ background: panel, borderRadius: 16, border: `1px solid ${border}`, padding: 22, maxWidth: 360, width: '100%' }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: panel, borderRadius: 'var(--r-md)', border: `1px solid ${border}`, padding: 22, maxWidth: 360, width: '100%' }}>
             <p style={{ fontSize: 16, fontWeight: 700, color: text, margin: '0 0 6px' }}>Supprimer ce parcours ?</p>
             <p style={{ fontSize: 13, color: dim, margin: '0 0 18px', lineHeight: 1.5 }}>« {route.name} » sera définitivement supprimé.</p>
             <div style={{ display: 'flex', gap: 8 }}>
-              <button onClick={() => setConfirmDel(false)} style={{ flex: 1, height: 42, borderRadius: 10, border: 'none', background: surface, color: text, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>Annuler</button>
-              <button onClick={() => { setConfirmDel(false); onDelete(); requestClose() }} style={{ flex: 1, height: 42, borderRadius: 10, border: 'none', background: '#EF4444', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>Supprimer</button>
+              <button onClick={() => setConfirmDel(false)} style={{ flex: 1, height: 42, borderRadius: 'var(--r-sm)', border: 'none', background: surface, color: text, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>Annuler</button>
+              <button onClick={() => { setConfirmDel(false); onDelete(); requestClose() }} style={{ flex: 1, height: 42, borderRadius: 'var(--r-sm)', border: 'none', background: '#EF4444', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>Supprimer</button>
             </div>
           </div>
         </div>

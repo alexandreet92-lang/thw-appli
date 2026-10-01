@@ -61,7 +61,7 @@ export default function HrvHeatmap({ rows }: Props) {
       {/* Day headers */}
       <div style={{ display: 'flex', gap: 3, marginBottom: 3 }}>
         {DAY_LABEL_KEYS.map((d, i) => (
-          <div key={i} style={{ width: 20, fontSize: 8, color: 'var(--text-dim)', textAlign: 'center', flexShrink: 0 }}>{t(d)}</div>
+          <div key={i} style={{ width: 20, fontSize: 10, color: 'var(--text-dim)', textAlign: 'center', flexShrink: 0 }}>{t(d)}</div>
         ))}
       </div>
       {/* Grid */}
@@ -92,11 +92,11 @@ export default function HrvHeatmap({ rows }: Props) {
       </div>
       {/* Legend */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8 }}>
-        <span style={{ fontSize: 8, color: 'var(--text-dim)' }}>{t('recovery.hrv.low')}</span>
+        <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>{t('recovery.hrv.low')}</span>
         {['#EF4444', '#F59E0B', '#10B981', '#059669'].map(c => (
           <div key={c} style={{ width: 12, height: 12, borderRadius: 2, background: c }} />
         ))}
-        <span style={{ fontSize: 8, color: 'var(--text-dim)' }}>{t('recovery.hrv.high')}</span>
+        <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>{t('recovery.hrv.high')}</span>
       </div>
     </div>
   )

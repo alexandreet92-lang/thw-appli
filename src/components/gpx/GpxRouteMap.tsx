@@ -62,7 +62,7 @@ export default function GpxRouteMap({ fileUrl, height = 220 }: Props) {
   }, [fileUrl])
 
   return (
-    <div style={{ position: 'relative', height, borderRadius: 8, overflow: 'hidden', background: '#1a1a2e' }}>
+    <div style={{ position: 'relative', height, borderRadius: 'var(--r-sm)', overflow: 'hidden', background: '#1a1a2e' }}>
       <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
       {status === 'loading' && (
         <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.5)', fontSize: 11, color: '#9ca3af', pointerEvents: 'none' }}>

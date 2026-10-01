@@ -125,7 +125,7 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
         <Avatar url={profile?.avatar_url ?? null} name={profile?.full_name ?? null} size={36} />
       </button>
       <div style={{ opacity: railOpen ? 1 : 0, transition: 'opacity 150ms ease', minWidth: 0 }}>
-        <div style={{ fontFamily: FD, fontSize: 21, fontWeight: 600, color: 'var(--text)', lineHeight: 1.05, whiteSpace: 'nowrap' }}>Hybrid</div>
+        <div style={{ fontFamily: FD, fontSize: 22, fontWeight: 600, color: 'var(--text)', lineHeight: 1.05, whiteSpace: 'nowrap' }}>Hybrid</div>
         <div style={{ fontFamily: 'var(--font-body)', fontSize: 11.5, fontWeight: 700, color: 'var(--text-dim)', marginTop: 2, whiteSpace: 'nowrap' }}>{t('shared.interfaceAthlete')}</div>
       </div>
     </div>
@@ -139,7 +139,7 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
         <Avatar url={profile?.avatar_url ?? null} name={profile?.full_name ?? null} size={36} />
       </button>
       <div style={{ opacity: railOpen ? 1 : 0, transition: 'opacity 150ms ease', minWidth: 0 }}>
-        <div style={{ fontFamily: FD, fontSize: 21, fontWeight: 600, color: 'var(--text)', lineHeight: 1.05, whiteSpace: 'nowrap' }}>Hybrid</div>
+        <div style={{ fontFamily: FD, fontSize: 22, fontWeight: 600, color: 'var(--text)', lineHeight: 1.05, whiteSpace: 'nowrap' }}>Hybrid</div>
         <div style={{ fontFamily: 'var(--font-body)', fontSize: 11.5, fontWeight: 700, color: 'var(--primary)', marginTop: 2, whiteSpace: 'nowrap' }}>{t('shared.interfaceCoach')}</div>
       </div>
     </div>
@@ -147,7 +147,7 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
 
   const fab: React.CSSProperties = {
     position: 'fixed', top: 12, width: 38, height: 38, zIndex: 120,
-    display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 12,
+    display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 'var(--r-md)',
     border: '1px solid var(--glass-border)', background: 'var(--glass-bg)',
     backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
     boxShadow: '0 4px 16px rgba(0,0,0,0.12)', cursor: 'pointer', padding: 0,
@@ -198,7 +198,7 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
         <Link href="/record" aria-label={t('nav.startActivity')} data-guide="start-workout"
           style={{
             position: 'fixed', top: 12, right: isRecord ? 108 : 154, height: 38, zIndex: 130,
-            display: 'flex', alignItems: 'center', gap: 7, padding: '0 14px', borderRadius: 12,
+            display: 'flex', alignItems: 'center', gap: 7, padding: '0 14px', borderRadius: 'var(--r-md)',
             background: 'var(--primary)', color: 'var(--on-primary)', textDecoration: 'none',
             boxShadow: 'var(--shadow-card)', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 700,
           }}>
@@ -210,7 +210,7 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
         {!isRecord && (
           <button data-guide="app-search" aria-label={t('dsh.searchApp')} title={t('dsh.searchWhereTap')} onClick={openSearch}
             style={{ position: 'fixed', top: 12, right: 274, height: 38, width: 38, zIndex: 130,
-              display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 12,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 'var(--r-md)',
               background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', color: 'var(--text)', cursor: 'pointer', boxShadow: 'var(--shadow-card)' }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
           </button>
@@ -240,7 +240,7 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
             <path d="M13.73 21a2 2 0 0 1-3.46 0" />
           </svg>
           {unreadNotifs > 0 && (
-            <span style={{ position: 'absolute', top: 7, right: 7, minWidth: 15, height: 15, padding: '0 4px', borderRadius: 8, background: 'var(--danger)', color: '#fff', fontSize: 9, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1, boxShadow: '0 0 0 2px var(--bg)' }}>
+            <span style={{ position: 'absolute', top: 7, right: 7, minWidth: 15, height: 15, padding: '0 4px', borderRadius: 'var(--r-sm)', background: 'var(--danger)', color: '#fff', fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1, boxShadow: '0 0 0 2px var(--bg)' }}>
               {unreadNotifs > 9 ? '9+' : unreadNotifs}
             </span>
           )}

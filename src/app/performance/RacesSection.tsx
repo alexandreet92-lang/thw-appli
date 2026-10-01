@@ -211,7 +211,7 @@ function matchDurFilter(sec: number, id: DurFilterId | null): boolean {
 
 // ─── Shared styles ────────────────────────────────────────────────────────────
 const inp: React.CSSProperties = {
-  width:'100%', padding:'10px 12px', borderRadius:10,
+  width:'100%', padding:'10px 12px', borderRadius: 'var(--r-sm)',
   border:'1px solid var(--border-mid)', background:'var(--input-bg)',
   color:'var(--text)', fontFamily:'var(--font-body)',fontVariantNumeric:'tabular-nums', fontSize:13,
   outline:'none', boxSizing:'border-box',
@@ -219,7 +219,7 @@ const inp: React.CSSProperties = {
 const inpGrey: React.CSSProperties = { ...inp, border:'1px solid var(--border)' }
 const secBox = (_bg?: string, _border?: string): React.CSSProperties => ({
   background:'var(--bg-card2)', border:'1px solid var(--border)',
-  borderRadius:12, padding:'14px 16px', marginBottom:10,
+  borderRadius: 'var(--r-md)', padding:'14px 16px', marginBottom:10,
 })
 const secHdr: React.CSSProperties = { display:'flex', alignItems:'center', gap:8, marginBottom:10 }
 const secLbl = (_color?: string): React.CSSProperties => ({
@@ -231,7 +231,7 @@ const lbl10: React.CSSProperties = {
   letterSpacing:'0.06em', color:'var(--text-dim)', marginBottom:4, marginTop:0,
 }
 const tog = (active: boolean, _color?: string): React.CSSProperties => ({
-  padding:'6px 12px', borderRadius:8, cursor:'pointer',
+  padding:'6px 12px', borderRadius: 'var(--r-sm)', cursor:'pointer',
   border:`1px solid ${active ? 'var(--primary)' : 'var(--border)'}`,
   fontSize:11, fontWeight: active ? 700 : 500,
   background: active ? 'var(--primary-dim)' : 'transparent',
@@ -243,7 +243,7 @@ const tog = (active: boolean, _color?: string): React.CSSProperties => ({
 function Accordion({ title, children }: { title: string; children: React.ReactNode }) {
   const [open, setOpen] = useState(false)
   return (
-    <div style={{ border:'1px solid var(--border)', borderRadius:12, overflow:'hidden', marginTop:12 }}>
+    <div style={{ border:'1px solid var(--border)', borderRadius: 'var(--r-md)', overflow:'hidden', marginTop:12 }}>
       <button onClick={() => setOpen(o => !o)} style={{
         width:'100%', display:'flex', alignItems:'center', justifyContent:'space-between',
         padding:'12px 16px', background:'var(--bg-card2)', border:'none',
@@ -514,7 +514,7 @@ function ScatterRaceSVG({ races, allYears, onPointClick, highlightIds }: {
           <div style={{
             position:'absolute', left:ttX, top:ttY, zIndex:10,
             background:'var(--bg-card2)', border:'1px solid var(--border)',
-            borderRadius:10, padding:'10px 12px', pointerEvents:'none',
+            borderRadius: 'var(--r-sm)', padding:'10px 12px', pointerEvents:'none',
             minWidth:160, boxShadow:'0 4px 20px rgba(0,0,0,0.3)',
           }}>
             <p style={{ fontFamily:'var(--font-display)', fontSize:12, fontWeight:700, color:'var(--text)', margin:'0 0 6px' }}>{r.name}</p>
@@ -682,7 +682,7 @@ function StravaImportDrawer({ existingStravaIds, weightKg, onImported, onClose }
           <div style={{ display:'flex', alignItems:'center', gap:8 }}>
             {/* Toggle Courses / Tout */}
             <button onClick={() => setRacesOnly(v => !v)} style={{
-              display:'flex', alignItems:'center', gap:5, padding:'5px 10px', borderRadius:8,
+              display:'flex', alignItems:'center', gap:5, padding:'5px 10px', borderRadius: 'var(--r-sm)',
               border:`1px solid ${racesOnly ? RACE_COLOR + '50' : 'var(--border)'}`,
               background: racesOnly ? `${RACE_COLOR}12` : 'var(--bg-card2)',
               color: racesOnly ? RACE_COLOR : 'var(--text-dim)',
@@ -702,14 +702,14 @@ function StravaImportDrawer({ existingStravaIds, weightKg, onImported, onClose }
         </div>
 
         <div style={{ flex:1, overflowY:'auto', padding:'12px 16px 24px' }}>
-          {error && <div style={{ fontSize:12, color:'#f87171', background:'rgba(239,68,68,0.1)', borderRadius:8, padding:'8px 12px', marginBottom:12 }}>{error}</div>}
+          {error && <div style={{ fontSize:12, color:'#f87171', background:'rgba(239,68,68,0.1)', borderRadius: 'var(--r-sm)', padding:'8px 12px', marginBottom:12 }}>{error}</div>}
           {loading && (
             <div style={{ textAlign:'center', padding:'32px 20px', color:'var(--text-dim)', fontSize:12 }}>{t('perf2.loading')}</div>
           )}
           {!loading && activities.length === 0 && (
             <div style={{ textAlign:'center', padding:'32px 20px', color:'var(--text-dim)', fontSize:12 }}>
               {racesOnly
-                ? <><p style={{ margin:'0 0 8px' }}>{t('perf2.noStravaRaceDetected')}</p><button onClick={() => setRacesOnly(false)} style={{ padding:'6px 12px', borderRadius:8, border:'1px solid var(--border)', background:'var(--bg-card2)', color:'var(--text-mid)', fontSize:11, cursor:'pointer' }}>{t('perf2.seeAllBikeRides')}</button></>
+                ? <><p style={{ margin:'0 0 8px' }}>{t('perf2.noStravaRaceDetected')}</p><button onClick={() => setRacesOnly(false)} style={{ padding:'6px 12px', borderRadius: 'var(--r-sm)', border:'1px solid var(--border)', background:'var(--bg-card2)', color:'var(--text-mid)', fontSize:11, cursor:'pointer' }}>{t('perf2.seeAllBikeRides')}</button></>
                 : t('perf2.allStravaBikeImported')}
             </div>
           )}
@@ -720,7 +720,7 @@ function StravaImportDrawer({ existingStravaIds, weightKg, onImported, onClose }
             return (
               <div key={a.id} style={{
                 background:'var(--bg-card2)', border:'1px solid var(--border)',
-                borderRadius:12, padding:'12px 14px', marginBottom:8,
+                borderRadius: 'var(--r-md)', padding:'12px 14px', marginBottom:8,
                 display:'flex', alignItems:'center', gap:12,
               }}>
                 <div style={{ flex:1, minWidth:0 }}>
@@ -733,7 +733,7 @@ function StravaImportDrawer({ existingStravaIds, weightKg, onImported, onClose }
                   </div>
                 </div>
                 <button onClick={() => void handleImport(a)} disabled={importing === a.id} style={{
-                  padding:'7px 14px', borderRadius:8,
+                  padding:'7px 14px', borderRadius: 'var(--r-sm)',
                   background:`${RACE_COLOR}15`, border:`1px solid ${RACE_COLOR}40`,
                   color: RACE_COLOR, fontSize:12, fontWeight:600,
                   cursor: importing === a.id ? 'not-allowed' : 'pointer', whiteSpace:'nowrap', flexShrink:0,
@@ -941,7 +941,7 @@ function FileUploadDrawer({ weightKg, onSaved, onClose }: {
           <label style={{
             display:'flex', alignItems:'center', gap:10, padding:'12px 14px',
             background:'var(--bg-card2)', border:`2px dashed ${activity ? RACE_COLOR : 'var(--border)'}`,
-            borderRadius:12, cursor:'pointer',
+            borderRadius: 'var(--r-md)', cursor:'pointer',
           }}>
             {parsing
               ? <div style={{ width:18, height:18, border:`2px solid ${RACE_COLOR}40`, borderTopColor:RACE_COLOR, borderRadius:'50%', animation:'spin 0.8s linear infinite' }}/>
@@ -957,7 +957,7 @@ function FileUploadDrawer({ weightKg, onSaved, onClose }: {
                   : t('perf2.chooseGpxFit')}
             </span>
             {activity && !parsing && (
-              <span style={{ fontSize:10, fontWeight:700, color:'#22c55e', background:'rgba(34,197,94,0.12)', padding:'3px 8px', borderRadius:5, border:'1px solid rgba(34,197,94,0.3)' }}>
+              <span style={{ fontSize:10, fontWeight:700, color:'#22c55e', background:'rgba(34,197,94,0.12)', padding:'3px 8px', borderRadius: 'var(--r-sm)', border:'1px solid rgba(34,197,94,0.3)' }}>
                 {Object.entries(activity).filter(([k, v]) => v != null && v !== false && k !== 'source' && k !== 'has_power').length} {t('perf2.fieldsExtracted')}
               </span>
             )}
@@ -965,12 +965,12 @@ function FileUploadDrawer({ weightKg, onSaved, onClose }: {
           </label>
 
           {error && (
-            <div style={{ fontSize:12, color:'#f87171', background:'rgba(239,68,68,0.1)', borderRadius:8, padding:'8px 12px' }}>{error}</div>
+            <div style={{ fontSize:12, color:'#f87171', background:'rgba(239,68,68,0.1)', borderRadius: 'var(--r-sm)', padding:'8px 12px' }}>{error}</div>
           )}
 
           {/* ── No-power notice */}
           {activity && !activity.has_power && (
-            <div style={{ background:'rgba(234,179,8,0.08)', border:'1px solid rgba(234,179,8,0.25)', borderRadius:10, padding:'10px 14px' }}>
+            <div style={{ background:'rgba(234,179,8,0.08)', border:'1px solid rgba(234,179,8,0.25)', borderRadius: 'var(--r-sm)', padding:'10px 14px' }}>
               <p style={{ fontSize:12, fontWeight:700, color:'#eab308', margin:'0 0 4px' }}>⚠ {t('perf2.noPowerSensorDetected')}</p>
               <p style={{ fontSize:11, color:'var(--text-dim)', margin:0 }}>
                 {t('perf2.noPowerHint')}
@@ -1120,7 +1120,7 @@ function FileUploadDrawer({ weightKg, onSaved, onClose }: {
                     display:'flex', flexDirection:'column', alignItems:'center', padding:'7px 10px', gap:2,
                   }}>
                     <span style={{ fontSize:13, fontWeight:700 }}>{v}</span>
-                    <span style={{ fontSize:9, opacity:0.8 }}>{INTENSITY_LABELS[v]}</span>
+                    <span style={{ fontSize: 10, opacity:0.8 }}>{INTENSITY_LABELS[v]}</span>
                   </button>
                 ))}
               </div>
@@ -1140,7 +1140,7 @@ function FileUploadDrawer({ weightKg, onSaved, onClose }: {
 
           {/* ── Score preview */}
           {sd && (
-            <div style={{ background:'rgba(139,92,246,0.08)', border:'1px solid rgba(139,92,246,0.25)', borderRadius:12, padding:'12px 14px' }}>
+            <div style={{ background:'rgba(139,92,246,0.08)', border:'1px solid rgba(139,92,246,0.25)', borderRadius: 'var(--r-md)', padding:'12px 14px' }}>
               <div style={{ display:'flex', alignItems:'center', gap:12 }}>
                 <div style={{ fontFamily:'var(--font-body)',fontVariantNumeric:'tabular-nums', fontSize:36, fontWeight:900, color: levelOf(sd.total).color }}>{sd.total.toFixed(0)}</div>
                 <div>
@@ -1157,9 +1157,9 @@ function FileUploadDrawer({ weightKg, onSaved, onClose }: {
 
         {/* Footer */}
         <div style={{ padding:'12px 18px 20px', background:'var(--bg-card)', borderTop:`1px solid ${RACE_COLOR}20`, flexShrink:0 }}>
-          {error && <div style={{ fontSize:11, color:'#f87171', background:'rgba(239,68,68,0.1)', borderRadius:8, padding:'6px 10px', marginBottom:8 }}>{error}</div>}
+          {error && <div style={{ fontSize:11, color:'#f87171', background:'rgba(239,68,68,0.1)', borderRadius: 'var(--r-sm)', padding:'6px 10px', marginBottom:8 }}>{error}</div>}
           <button onClick={() => void handleSave()} disabled={!name || saving} style={{
-            width:'100%', padding:'14px', borderRadius:12, border:'none',
+            width:'100%', padding:'14px', borderRadius: 'var(--r-md)', border:'none',
             cursor: name && !saving ? 'pointer' : 'not-allowed',
             background: name && !saving ? 'var(--primary)' : 'var(--bg-card2)',
             color: name && !saving ? '#fff' : 'var(--text-dim)',
@@ -1294,7 +1294,7 @@ function RaceCardDrawer({ race: initialRace, onSaved, onDeleted, onClose }: {
                 <h2 style={{ fontFamily:'var(--font-display)', fontSize:16, fontWeight:600, margin:0, color:'var(--text)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{race.name}</h2>
                 <span style={{
                   display:'inline-flex', alignItems:'center', gap:6,
-                  fontSize:10, fontWeight:600, padding:'3px 8px', borderRadius:5,
+                  fontSize:10, fontWeight:600, padding:'3px 8px', borderRadius: 'var(--r-sm)',
                   background:'var(--bg-card2)', color:'var(--text-mid)',
                 }}><span style={{ width:6, height:6, borderRadius:'50%', background:RACE_COLOR }}/>{t(RACE_TYPE_KEY[raceType] ?? '') || RACE_TYPES.find(rt => rt.value === raceType)?.label || raceType}</span>
               </div>
@@ -1450,7 +1450,7 @@ function RaceCardDrawer({ race: initialRace, onSaved, onDeleted, onClose }: {
                     display:'flex', flexDirection:'column', alignItems:'center', padding:'8px 10px', gap:2,
                   }}>
                     <span style={{ fontSize:13, fontWeight:700 }}>{v}</span>
-                    <span style={{ fontSize:9, opacity:0.8 }}>{INTENSITY_LABELS[v]}</span>
+                    <span style={{ fontSize: 10, opacity:0.8 }}>{INTENSITY_LABELS[v]}</span>
                   </button>
                 ))}
               </div>
@@ -1494,7 +1494,7 @@ function RaceCardDrawer({ race: initialRace, onSaved, onDeleted, onClose }: {
                 { lbl:'cRessenti', val:`×${sd.cRessenti.toFixed(2)}`, col: sd.cRessenti > 1 ? '#22c55e' : 'var(--text-dim)' },
               ].map(({ lbl, val, col }) => (
                 <div key={lbl} style={{
-                  padding:'5px 10px', borderRadius:6,
+                  padding:'5px 10px', borderRadius: 'var(--r-sm)',
                   background:'rgba(139,92,246,0.1)', border:'1px solid rgba(139,92,246,0.2)',
                 }}>
                   <span style={{ fontSize:10, color:'var(--text-dim)' }}>{lbl} </span>
@@ -1508,9 +1508,9 @@ function RaceCardDrawer({ race: initialRace, onSaved, onDeleted, onClose }: {
 
         {/* ── FOOTER */}
         <div style={{ padding:'12px 16px 20px', background:'var(--bg-card)', borderTop:`1px solid ${RACE_COLOR}20`, flexShrink:0 }}>
-          {error && <div style={{ fontSize:11, color:'#f87171', background:'rgba(239,68,68,0.1)', borderRadius:8, padding:'6px 10px', marginBottom:8 }}>{error}</div>}
+          {error && <div style={{ fontSize:11, color:'#f87171', background:'rgba(239,68,68,0.1)', borderRadius: 'var(--r-sm)', padding:'6px 10px', marginBottom:8 }}>{error}</div>}
           <button onClick={() => void handleSave()} disabled={saving} style={{
-            width:'100%', padding:'14px', borderRadius:12, border:'none',
+            width:'100%', padding:'14px', borderRadius: 'var(--r-md)', border:'none',
             cursor: saving ? 'not-allowed' : 'pointer',
             background: saving ? 'var(--bg-card2)' : 'var(--primary)',
             color: saving ? 'var(--text-dim)' : '#fff',
@@ -1519,7 +1519,7 @@ function RaceCardDrawer({ race: initialRace, onSaved, onDeleted, onClose }: {
             {saving ? t('perf2.saving') : t('perf2.save')}
           </button>
           <button onClick={() => void handleDelete()} disabled={deleting} style={{
-            width:'100%', padding:'10px', borderRadius:12,
+            width:'100%', padding:'10px', borderRadius: 'var(--r-md)',
             border:'1px solid rgba(239,68,68,0.4)', cursor:'pointer',
             background:'rgba(239,68,68,0.08)', color:'#f87171',
             fontFamily:'var(--font-body)', fontSize:13, fontWeight:600,
@@ -1654,12 +1654,12 @@ function RaceRankingDrawer({ races, onClose, onFilterChange, onRaceClick }: {
                   {bestBands.map(({ label, best }) => best && (
                     <div key={label} style={{
                       background:'var(--bg-card2)', border:'1px solid var(--border)',
-                      borderRadius:10, padding:'10px 12px', textAlign:'center', cursor:'pointer',
+                      borderRadius: 'var(--r-sm)', padding:'10px 12px', textAlign:'center', cursor:'pointer',
                     }} onClick={() => { onRaceClick(best!); }}>
                       <div style={{ fontSize:10, color:'var(--text-dim)', marginBottom:4 }}>{label}</div>
                       <div style={{ fontFamily:'var(--font-body)',fontVariantNumeric:'tabular-nums', fontSize:18, fontWeight:900,
                                     color:RACE_COLOR }}>{best.wpkg_np!.toFixed(2)}</div>
-                      <div style={{ fontSize:9, color:'var(--text-dim)', marginTop:2 }}>W/kg NP</div>
+                      <div style={{ fontSize: 10, color:'var(--text-dim)', marginTop:2 }}>W/kg NP</div>
                       <div style={{ fontSize:10, color:'var(--text-mid)', marginTop:3,
                                     overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
                         {best.name}
@@ -1679,11 +1679,11 @@ function RaceRankingDrawer({ races, onClose, onFilterChange, onRaceClick }: {
             const col  = scoreColor(sd.total)
             const isOpen = expanded === r.id
             return (
-              <div key={r.id} style={{ background:'var(--bg-card2)', border:'1px solid var(--border)', borderRadius:12, marginBottom:8, overflow:'hidden' }}>
+              <div key={r.id} style={{ background:'var(--bg-card2)', border:'1px solid var(--border)', borderRadius: 'var(--r-md)', marginBottom:8, overflow:'hidden' }}>
                 <div style={{ padding:'12px 14px', cursor:'pointer', display:'flex', alignItems:'center', gap:12 }}
                   onClick={() => setExpanded(isOpen ? null : r.id)}>
                   <div style={{
-                    width:32, height:32, borderRadius:8, flexShrink:0,
+                    width:32, height:32, borderRadius: 'var(--r-sm)', flexShrink:0,
                     background: rank === 1 ? 'rgba(251,191,36,0.15)' : 'var(--bg-card)',
                     border:`1px solid ${rank === 1 ? 'rgba(251,191,36,0.4)' : 'var(--border)'}`,
                     display:'flex', alignItems:'center', justifyContent:'center',
@@ -1693,7 +1693,7 @@ function RaceRankingDrawer({ races, onClose, onFilterChange, onRaceClick }: {
                   <div style={{ flex:1, minWidth:0 }}>
                     <div style={{ display:'flex', alignItems:'center', gap:6, flexWrap:'wrap' }}>
                       <span style={{ fontFamily:'var(--font-display)', fontSize:13, fontWeight:700, color:'var(--text)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{r.name}</span>
-                      {rank === 1 && <span style={{ fontSize:9, fontWeight:700, padding:'2px 6px', borderRadius:4, background:'rgba(251,191,36,0.15)', color:'#fbbf24', border:'1px solid rgba(251,191,36,0.3)' }}>⭐ {t('perf2.bestPerf')}</span>}
+                      {rank === 1 && <span style={{ fontSize: 10, fontWeight:700, padding:'2px 6px', borderRadius:4, background:'rgba(251,191,36,0.15)', color:'#fbbf24', border:'1px solid rgba(251,191,36,0.3)' }}>⭐ {t('perf2.bestPerf')}</span>}
                     </div>
                     <div style={{ display:'flex', gap:8, marginTop:2, flexWrap:'wrap' }}>
                       <span style={{ fontSize:11, color:'var(--text-dim)' }}>{new Date(r.date).toLocaleDateString(currentLocale(),{day:'2-digit',month:'short',year:'numeric'})}</span>
@@ -1706,7 +1706,7 @@ function RaceRankingDrawer({ races, onClose, onFilterChange, onRaceClick }: {
                     <div style={{ height:4, borderRadius:2, background:'var(--bg-card)', marginTop:4, width:70 }}>
                       <div style={{ height:'100%', width:`${Math.min(100,sd.total)}%`, background:col, borderRadius:2 }}/>
                     </div>
-                    <div style={{ fontSize:9, fontWeight:700, color:col, marginTop:3 }}>{levelOf(sd.total).label}</div>
+                    <div style={{ fontSize: 10, fontWeight:700, color:col, marginTop:3 }}>{levelOf(sd.total).label}</div>
                   </div>
                 </div>
                 {isOpen && (
@@ -1719,7 +1719,7 @@ function RaceRankingDrawer({ races, onClose, onFilterChange, onRaceClick }: {
                         { lbl:'cRessenti', val:`×${sd.cRessenti.toFixed(2)}` },
                       ].map(({ lbl, val }) => (
                         <div key={lbl} style={{
-                          padding:'4px 8px', borderRadius:5,
+                          padding:'4px 8px', borderRadius: 'var(--r-sm)',
                           background:`${RACE_COLOR}12`, border:`1px solid ${RACE_COLOR}25`,
                           fontFamily:'var(--font-body)',fontVariantNumeric:'tabular-nums', fontSize:11,
                         }}>
@@ -1729,7 +1729,7 @@ function RaceRankingDrawer({ races, onClose, onFilterChange, onRaceClick }: {
                       ))}
                     </div>
                     <button onClick={() => onRaceClick(r)} style={{
-                      padding:'7px 14px', borderRadius:8,
+                      padding:'7px 14px', borderRadius: 'var(--r-sm)',
                       background:`${RACE_COLOR}15`, border:`1px solid ${RACE_COLOR}40`,
                       color:RACE_COLOR, fontSize:12, fontWeight:600, cursor:'pointer',
                     }}>{t('perf2.openCard')} →</button>
@@ -1741,10 +1741,10 @@ function RaceRankingDrawer({ races, onClose, onFilterChange, onRaceClick }: {
 
           <BaremeAccordion/>
           <Accordion title={t('perf2.calcMethod')}>
-            <div style={{ background:'var(--bg-card2)', border:'1px solid var(--border)', borderRadius:8, padding:'10px 14px', marginBottom:8, fontFamily:'var(--font-body)',fontVariantNumeric:'tabular-nums', fontSize:12, color:RACE_COLOR }}>
+            <div style={{ background:'var(--bg-card2)', border:'1px solid var(--border)', borderRadius: 'var(--r-sm)', padding:'10px 14px', marginBottom:8, fontFamily:'var(--font-body)',fontVariantNumeric:'tabular-nums', fontSize:12, color:RACE_COLOR }}>
               score_brut = (NP W/kg ÷ Réf. Alien) × 100
             </div>
-            <div style={{ background:'var(--bg-card2)', border:'1px solid var(--border)', borderRadius:8, padding:'10px 14px', fontFamily:'var(--font-body)',fontVariantNumeric:'tabular-nums', fontSize:12, color:RACE_COLOR }}>
+            <div style={{ background:'var(--bg-card2)', border:'1px solid var(--border)', borderRadius: 'var(--r-sm)', padding:'10px 14px', fontFamily:'var(--font-body)',fontVariantNumeric:'tabular-nums', fontSize:12, color:RACE_COLOR }}>
               score = min(100, score_brut × cTemp × cD+ × cRessenti)
             </div>
             <p style={{ fontSize:12, color:'var(--text-dim)', lineHeight:1.65, margin:'10px 0 0' }}>
@@ -1798,7 +1798,7 @@ export function RacesSection({ profile }: RacesSectionProps) {
   }
 
   return (
-    <div style={{ background:'var(--bg-card)', borderRadius:16, padding:'16px 16px 12px', border:'1px solid var(--border)', marginTop:16 }}>
+    <div style={{ background:'var(--bg-card)', borderRadius: 'var(--r-md)', padding:'16px 16px 12px', border:'1px solid var(--border)', marginTop:16 }}>
       {/* Header */}
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14, flexWrap:'wrap', gap:8 }}>
         <div>
@@ -1813,7 +1813,7 @@ export function RacesSection({ profile }: RacesSectionProps) {
         </div>
         <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
           <button onClick={() => setShowStrava(true)} style={{
-            display:'flex', alignItems:'center', gap:6, padding:'7px 12px', borderRadius:8,
+            display:'flex', alignItems:'center', gap:6, padding:'7px 12px', borderRadius: 'var(--r-sm)',
             background:'rgba(249,115,22,0.08)', border:'1px solid rgba(249,115,22,0.3)',
             color:'#f97316', fontSize:12, fontWeight:600, cursor:'pointer', whiteSpace:'nowrap',
           }}>
@@ -1821,7 +1821,7 @@ export function RacesSection({ profile }: RacesSectionProps) {
             + {t('perf2.importFromStrava')}
           </button>
           <button onClick={() => setShowUpload(true)} style={{
-            display:'flex', alignItems:'center', gap:6, padding:'7px 12px', borderRadius:8,
+            display:'flex', alignItems:'center', gap:6, padding:'7px 12px', borderRadius: 'var(--r-sm)',
             background:'var(--bg-card2)', border:'1px solid var(--border)',
             color:'var(--text-mid)', fontSize:12, fontWeight:600, cursor:'pointer', whiteSpace:'nowrap',
           }}>
@@ -1829,7 +1829,7 @@ export function RacesSection({ profile }: RacesSectionProps) {
             + {t('perf2.uploadFile')}
           </button>
           <button onClick={() => setShowRanking(true)} disabled={races.length === 0} style={{
-            display:'flex', alignItems:'center', gap:6, padding:'7px 12px', borderRadius:8,
+            display:'flex', alignItems:'center', gap:6, padding:'7px 12px', borderRadius: 'var(--r-sm)',
             background: races.length > 0 ? 'var(--bg-card2)' : 'transparent',
             border:'1px solid var(--border)', color:'var(--text-mid)',
             fontSize:12, fontWeight:600, cursor: races.length > 0 ? 'pointer' : 'not-allowed',
@@ -1842,11 +1842,11 @@ export function RacesSection({ profile }: RacesSectionProps) {
       </div>
 
       {/* Content */}
-      {!loaded && <div className="skeleton-shimmer" style={{ height:220, borderRadius:8 }}/>}
+      {!loaded && <div className="skeleton-shimmer" style={{ height:220, borderRadius: 'var(--r-sm)' }}/>}
       {loaded && races.length === 0 && (
         <div style={{
           padding:'32px 20px', display:'flex', flexDirection:'column', alignItems:'center',
-          gap:14, border:'1px dashed var(--border)', borderRadius:12, textAlign:'center',
+          gap:14, border:'1px dashed var(--border)', borderRadius: 'var(--r-md)', textAlign:'center',
         }}>
           <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth={1.5}>
             <circle cx="12" cy="12" r="10"/><polyline points="12 8 12 12 14 14"/>
@@ -1857,7 +1857,7 @@ export function RacesSection({ profile }: RacesSectionProps) {
           </div>
           <div style={{ display:'flex', gap:8, flexWrap:'wrap', justifyContent:'center' }}>
             <button onClick={() => setShowStrava(true)} style={{
-              display:'flex', alignItems:'center', gap:6, padding:'8px 14px', borderRadius:9,
+              display:'flex', alignItems:'center', gap:6, padding:'8px 14px', borderRadius: 'var(--r-sm)',
               background:'rgba(249,115,22,0.10)', border:'1px solid rgba(249,115,22,0.35)',
               color:'#f97316', fontSize:12, fontWeight:600, cursor:'pointer',
             }}>
@@ -1865,7 +1865,7 @@ export function RacesSection({ profile }: RacesSectionProps) {
               {t('perf2.importFromStrava')}
             </button>
             <button onClick={() => setShowUpload(true)} style={{
-              display:'flex', alignItems:'center', gap:6, padding:'8px 14px', borderRadius:9,
+              display:'flex', alignItems:'center', gap:6, padding:'8px 14px', borderRadius: 'var(--r-sm)',
               background:'var(--bg-card2)', border:'1px solid var(--border)',
               color:'var(--text-mid)', fontSize:12, fontWeight:600, cursor:'pointer',
             }}>

@@ -44,11 +44,11 @@ export default function ToastContainer({ toasts, onDismiss }: Props) {
         const Icon = t.type === 'success' ? CheckIcon : t.type === 'error' ? XIcon : InfoIcon
         return (
           <div key={t.id} className={`toast-item${t.leaving ? ' leaving' : ''}`} style={{ pointerEvents: 'auto' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px 12px', borderRadius: 12, background: s.bg, border: `1px solid ${s.border}`, boxShadow: '0 8px 32px rgba(0,0,0,0.45)', position: 'relative', overflow: 'hidden' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px 12px', borderRadius: 'var(--r-md)', background: s.bg, border: `1px solid ${s.border}`, boxShadow: '0 8px 32px rgba(0,0,0,0.45)', position: 'relative', overflow: 'hidden' }}>
               <div style={{ width: 28, height: 28, borderRadius: '50%', background: s.iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 <Icon />
               </div>
-              <span style={{ fontSize: 13, fontWeight: 500, color: s.text, fontFamily: 'DM Sans,sans-serif', lineHeight: 1.4, flex: 1 }}>
+              <span style={{ fontSize: 13, fontWeight: 500, color: s.text, fontFamily: 'var(--font-body)', lineHeight: 1.4, flex: 1 }}>
                 {t.message}
               </span>
               <button onClick={() => onDismiss(t.id)}

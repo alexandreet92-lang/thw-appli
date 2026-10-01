@@ -202,9 +202,9 @@ function ExerciseListBuilder({ sport, exercises, onChange, onCircuitsChange }: {
   }
 
   const inputStyle: React.CSSProperties = {
-    width: '100%', padding: '6px 8px', borderRadius: 7,
+    width: '100%', padding: '6px 8px', borderRadius: 'var(--r-sm)',
     border: '1px solid var(--border)', background: 'var(--input-bg)',
-    color: 'var(--text)', fontSize: 13, fontFamily: 'DM Mono,monospace', outline: 'none',
+    color: 'var(--text)', fontSize: 13, fontFamily: 'var(--font-body)', outline: 'none',
   }
   const accentInputStyle: React.CSSProperties = {
     ...inputStyle, border: `1px solid ${accentColor}44`, background: `${accentColor}08`,
@@ -216,7 +216,7 @@ function ExerciseListBuilder({ sport, exercises, onChange, onCircuitsChange }: {
         const circuitExercises = getBlocksForCircuit(circuit.id)
         return (
           <div key={circuit.id} style={{
-            marginBottom: 16, borderRadius: 14,
+            marginBottom: 16, borderRadius: 'var(--r-md)',
             border: `1px solid ${accentColor}33`,
             background: 'var(--bg-card2)',
             overflow: 'hidden',
@@ -229,26 +229,26 @@ function ExerciseListBuilder({ sport, exercises, onChange, onCircuitsChange }: {
                   onClick={() => setChangingTypeFor(changingTypeFor === circuit.id ? null : circuit.id)}
                   style={{
                     display: 'flex', alignItems: 'center', gap: 4,
-                    padding: '3px 8px', borderRadius: 6, border: `1px solid ${accentColor}55`,
+                    padding: '3px 8px', borderRadius: 'var(--r-sm)', border: `1px solid ${accentColor}55`,
                     background: `${accentColor}22`, color: accentColor,
                     fontSize: 10, fontWeight: 700, cursor: 'pointer', flexShrink: 0,
                   }}
                 >
                   {CIRCUIT_TYPES.find(c => c.id === (circuit.type ?? 'series'))?.icon ?? '🔁'}{' '}
                   {CIRCUIT_TYPES.find(c => c.id === (circuit.type ?? 'series'))?.label ?? t('sed.series')}
-                  <span style={{ fontSize: 8, opacity: 0.7 }}>▾</span>
+                  <span style={{ fontSize: 10, opacity: 0.7 }}>▾</span>
                 </button>
                 <input
                   value={circuit.name}
                   onChange={e => updateCircuit(circuit.id, { name: e.target.value })}
-                  style={{ flex: '1 1 80px', minWidth: 70, padding: '5px 8px', borderRadius: 7, border: `1px solid ${accentColor}44`, background: 'var(--input-bg)', color: 'var(--text)', fontSize: 13, fontWeight: 700, outline: 'none' }}
+                  style={{ flex: '1 1 80px', minWidth: 70, padding: '5px 8px', borderRadius: 'var(--r-sm)', border: `1px solid ${accentColor}44`, background: 'var(--input-bg)', color: 'var(--text)', fontSize: 13, fontWeight: 700, outline: 'none' }}
                 />
                 {(circuit.type ?? 'series') !== 'series' && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <span style={{ fontSize: 10, color: 'var(--text-dim)', whiteSpace: 'nowrap' as const }}>{t('sed.rounds')}</span>
                     <input type="number" min={1} max={20} value={circuit.rounds}
                       onChange={e => updateCircuit(circuit.id, { rounds: parseInt(e.target.value) || 1 })}
-                      style={{ width: 54, padding: '5px 6px', borderRadius: 7, border: `1px solid ${accentColor}44`, background: 'var(--input-bg)', color: 'var(--text)', fontSize: 13, fontFamily: 'DM Mono,monospace', outline: 'none', textAlign: 'center' as const }} />
+                      style={{ width: 54, padding: '5px 6px', borderRadius: 'var(--r-sm)', border: `1px solid ${accentColor}44`, background: 'var(--input-bg)', color: 'var(--text)', fontSize: 13, fontFamily: 'var(--font-body)', outline: 'none', textAlign: 'center' as const }} />
                   </div>
                 )}
                 {(circuit.type ?? 'series') !== 'series' && (
@@ -256,7 +256,7 @@ function ExerciseListBuilder({ sport, exercises, onChange, onCircuitsChange }: {
                     <span style={{ fontSize: 10, color: 'var(--text-dim)', whiteSpace: 'nowrap' as const }}>{t('sed.restPerRoundS')}</span>
                     <input type="number" min={0} step={15} value={circuit.restBetweenRoundsSec}
                       onChange={e => updateCircuit(circuit.id, { restBetweenRoundsSec: parseInt(e.target.value) || 0 })}
-                      style={{ width: 64, padding: '5px 6px', borderRadius: 7, border: `1px solid ${accentColor}44`, background: 'var(--input-bg)', color: 'var(--text)', fontSize: 13, fontFamily: 'DM Mono,monospace', outline: 'none', textAlign: 'center' as const }} />
+                      style={{ width: 64, padding: '5px 6px', borderRadius: 'var(--r-sm)', border: `1px solid ${accentColor}44`, background: 'var(--input-bg)', color: 'var(--text)', fontSize: 13, fontFamily: 'var(--font-body)', outline: 'none', textAlign: 'center' as const }} />
                   </div>
                 )}
                 {sport === 'hyrox' && (
@@ -264,7 +264,7 @@ function ExerciseListBuilder({ sport, exercises, onChange, onCircuitsChange }: {
                     <span style={{ fontSize: 10, color: 'var(--text-dim)', whiteSpace: 'nowrap' as const }}>{t('sed.targetTimeS')}</span>
                     <input type="number" min={0} step={30} value={circuit.targetTimeSec ?? 0}
                       onChange={e => updateCircuit(circuit.id, { targetTimeSec: parseInt(e.target.value) || undefined })}
-                      style={{ width: 70, padding: '5px 6px', borderRadius: 7, border: `1px solid ${accentColor}44`, background: 'var(--input-bg)', color: 'var(--text)', fontSize: 13, fontFamily: 'DM Mono,monospace', outline: 'none', textAlign: 'center' as const }} />
+                      style={{ width: 70, padding: '5px 6px', borderRadius: 'var(--r-sm)', border: `1px solid ${accentColor}44`, background: 'var(--input-bg)', color: 'var(--text)', fontSize: 13, fontFamily: 'var(--font-body)', outline: 'none', textAlign: 'center' as const }} />
                   </div>
                 )}
                 {circuits.length > 1 && (
@@ -281,7 +281,7 @@ function ExerciseListBuilder({ sport, exercises, onChange, onCircuitsChange }: {
                       setChangingTypeFor(null)
                     }} style={{
                       display: 'flex', alignItems: 'center', gap: 5,
-                      padding: '5px 10px', borderRadius: 7,
+                      padding: '5px 10px', borderRadius: 'var(--r-sm)',
                       border: (circuit.type ?? 'series') === ct.id ? `2px solid ${accentColor}` : '1px solid var(--border)',
                       background: (circuit.type ?? 'series') === ct.id ? `${accentColor}22` : 'var(--bg-card)',
                       color: (circuit.type ?? 'series') === ct.id ? accentColor : 'var(--text)',
@@ -301,7 +301,7 @@ function ExerciseListBuilder({ sport, exercises, onChange, onCircuitsChange }: {
                 const catColor = EXO_CATEGORY_COLOR[e.category] ?? accentColor
                 return (
                   <div key={e.id} style={{
-                    borderRadius: 10, background: 'var(--bg-card)',
+                    borderRadius: 'var(--r-sm)', background: 'var(--bg-card)',
                     border: `1px solid ${accentColor}22`, borderLeft: `3px solid ${accentColor}`,
                     padding: '9px 12px',
                   }}>
@@ -316,14 +316,14 @@ function ExerciseListBuilder({ sport, exercises, onChange, onCircuitsChange }: {
                           disabled={idx === circuitExercises.length - 1}
                           style={{ background: 'none', border: 'none', color: idx === circuitExercises.length - 1 ? 'var(--border)' : 'var(--text-dim)', cursor: idx === circuitExercises.length - 1 ? 'default' : 'pointer', fontSize: 10, padding: '0 2px', lineHeight: 1 }}>▼</button>
                       </div>
-                      <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-dim)', fontFamily: 'DM Mono,monospace', flexShrink: 0 }}>#{idx + 1}</span>
+                      <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-dim)', fontFamily: 'var(--font-body)', flexShrink: 0 }}>#{idx + 1}</span>
                       <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{e.name}</span>
                       {exoDef?.official && (
-                        <span title="Station Hyrox officielle" style={{ fontSize: 9, fontWeight: 800, color: '#fff', background: catColor, padding: '2px 6px', borderRadius: 5, textTransform: 'uppercase' as const, flexShrink: 0, letterSpacing: '0.04em' }}>
+                        <span title="Station Hyrox officielle" style={{ fontSize: 10, fontWeight: 800, color: '#fff', background: catColor, padding: '2px 6px', borderRadius: 'var(--r-sm)', textTransform: 'uppercase' as const, flexShrink: 0, letterSpacing: '0.04em' }}>
                           Officiel
                         </span>
                       )}
-                      <span style={{ fontSize: 9, fontWeight: 700, color: catColor, background: `${catColor}18`, padding: '2px 6px', borderRadius: 5, textTransform: 'uppercase' as const, flexShrink: 0 }}>
+                      <span style={{ fontSize: 10, fontWeight: 700, color: catColor, background: `${catColor}18`, padding: '2px 6px', borderRadius: 'var(--r-sm)', textTransform: 'uppercase' as const, flexShrink: 0 }}>
                         {EXO_CATEGORY_LABEL[e.category]}
                       </span>
                       <button onClick={() => removeExo(e.id)}
@@ -334,21 +334,21 @@ function ExerciseListBuilder({ sport, exercises, onChange, onCircuitsChange }: {
                       {/* Séries uniquement pour le type "series" — les autres utilisent les tours/rounds du circuit */}
                       {(circuit.type ?? 'series') === 'series' && (
                         <div>
-                          <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px' }}>{t('sed.series')}</p>
+                          <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '0 0 3px' }}>{t('sed.series')}</p>
                           <input type="number" min={1} value={e.sets}
                             onChange={ev => updExo(e.id, 'sets', parseInt(ev.target.value) || 1)}
                             style={inputStyle} />
                         </div>
                       )}
                       <div>
-                        <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px' }}>Reps</p>
+                        <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '0 0 3px' }}>Reps</p>
                         <input type="number" min={1} value={e.reps}
                           onChange={ev => updExo(e.id, 'reps', parseInt(ev.target.value) || 1)}
                           style={inputStyle} />
                       </div>
                       {(exoDef?.hasWeight ?? e.weightKg !== undefined) && (
                         <div>
-                          <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px' }}>{t('sed.loadKg')}</p>
+                          <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '0 0 3px' }}>{t('sed.loadKg')}</p>
                           <input type="number" min={0} step={2.5} value={e.weightKg ?? 0}
                             onChange={ev => updExo(e.id, 'weightKg', parseFloat(ev.target.value) || 0)}
                             style={accentInputStyle} />
@@ -356,7 +356,7 @@ function ExerciseListBuilder({ sport, exercises, onChange, onCircuitsChange }: {
                       )}
                       {(exoDef?.hasDistance ?? e.distanceM !== undefined) && (
                         <div>
-                          <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px' }}>{t('sed.distanceM')}</p>
+                          <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '0 0 3px' }}>{t('sed.distanceM')}</p>
                           <input type="number" min={0} step={5} value={e.distanceM ?? 0}
                             onChange={ev => updExo(e.id, 'distanceM', parseInt(ev.target.value) || 0)}
                             style={accentInputStyle} />
@@ -364,7 +364,7 @@ function ExerciseListBuilder({ sport, exercises, onChange, onCircuitsChange }: {
                       )}
                       {(exoDef?.hasKcal ?? e.kcal !== undefined) && (
                         <div>
-                          <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px' }}>{t('sed.kcalTarget')}</p>
+                          <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '0 0 3px' }}>{t('sed.kcalTarget')}</p>
                           <input type="number" min={0} value={e.kcal ?? 0}
                             onChange={ev => updExo(e.id, 'kcal', parseInt(ev.target.value) || 0)}
                             style={accentInputStyle} />
@@ -372,19 +372,19 @@ function ExerciseListBuilder({ sport, exercises, onChange, onCircuitsChange }: {
                       )}
                       {(exoDef?.hasTime ?? e.targetTimeSec !== undefined) && (
                         <div>
-                          <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px' }}>{t('sed.targetTimeSec')}</p>
+                          <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '0 0 3px' }}>{t('sed.targetTimeSec')}</p>
                           <input type="number" min={0} step={5} value={e.targetTimeSec ?? 0}
                             onChange={ev => updExo(e.id, 'targetTimeSec', parseInt(ev.target.value) || 0)}
                             style={accentInputStyle} />
                           {(e.targetTimeSec ?? 0) > 0 && (
-                            <p style={{ fontSize: 10, color: accentColor, fontWeight: 600, margin: '4px 0 0', fontFamily: 'DM Mono,monospace' }}>{fmtTime(e.targetTimeSec ?? 0)}</p>
+                            <p style={{ fontSize: 10, color: accentColor, fontWeight: 600, margin: '4px 0 0', fontFamily: 'var(--font-body)' }}>{fmtTime(e.targetTimeSec ?? 0)}</p>
                           )}
                         </div>
                       )}
                       {/* Watts cible (assault/echo bike, vélo classique) */}
                       {exoDef?.hasWatts && (
                         <div>
-                          <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px' }}>Watts</p>
+                          <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '0 0 3px' }}>Watts</p>
                           <input type="number" min={0} step={5} value={e.watts ?? 0}
                             onChange={ev => updExo(e.id, 'watts', parseInt(ev.target.value) || 0)}
                             style={accentInputStyle} />
@@ -393,7 +393,7 @@ function ExerciseListBuilder({ sport, exercises, onChange, onCircuitsChange }: {
                       {/* Allure /500 m (rameur, skierg) — saisie m:ss */}
                       {exoDef?.hasPace500 && (
                         <div>
-                          <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px' }}>Allure /500m</p>
+                          <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '0 0 3px' }}>Allure /500m</p>
                           <input value={(e.pace500Sec ?? 0) > 0 ? fmtTime(e.pace500Sec ?? 0) : ''} placeholder="1:50"
                             onChange={ev => { const m = ev.target.value.match(/^(\d+):(\d{1,2})$/); const s = m ? (+m[1]) * 60 + (+m[2]) : (parseInt(ev.target.value) || 0); updExo(e.id, 'pace500Sec', s) }}
                             style={accentInputStyle} />
@@ -402,17 +402,17 @@ function ExerciseListBuilder({ sport, exercises, onChange, onCircuitsChange }: {
                       {/* Course tapis : % pente → D+ auto (distance × pente / 100) */}
                       {exoDef?.hasIncline && (
                         <div>
-                          <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px' }}>Pente % (tapis)</p>
+                          <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '0 0 3px' }}>Pente % (tapis)</p>
                           <input type="number" min={0} step={0.5} value={e.inclinePct ?? 0}
                             onChange={ev => updExo(e.id, 'inclinePct', parseFloat(ev.target.value) || 0)}
                             style={accentInputStyle} />
                           {(e.inclinePct ?? 0) >= 1 && (e.distanceM ?? 0) > 0 && (
-                            <p style={{ fontSize: 10, color: accentColor, fontWeight: 600, margin: '4px 0 0', fontFamily: 'DM Mono,monospace' }}>+{Math.round((e.distanceM ?? 0) * (e.inclinePct ?? 0) / 100)} m D+</p>
+                            <p style={{ fontSize: 10, color: accentColor, fontWeight: 600, margin: '4px 0 0', fontFamily: 'var(--font-body)' }}>+{Math.round((e.distanceM ?? 0) * (e.inclinePct ?? 0) / 100)} m D+</p>
                           )}
                         </div>
                       )}
                       <div>
-                        <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px' }}>{t('sed.restSec')}</p>
+                        <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '0 0 3px' }}>{t('sed.restSec')}</p>
                         <input type="number" min={0} step={15} value={e.restSec}
                           onChange={ev => updExo(e.id, 'restSec', parseInt(ev.target.value) || 0)}
                           style={inputStyle} />
@@ -422,7 +422,7 @@ function ExerciseListBuilder({ sport, exercises, onChange, onCircuitsChange }: {
                     <div style={{ marginTop: 6 }}>
                       <input value={e.notes ?? ''} onChange={ev => updExo(e.id, 'notes', ev.target.value)}
                         placeholder={t('sed.notesPlaceholder')}
-                        style={{ width: '100%', padding: '6px 8px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 11, outline: 'none' }} />
+                        style={{ width: '100%', padding: '6px 8px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 11, outline: 'none' }} />
                     </div>
                   </div>
                 )
@@ -432,7 +432,7 @@ function ExerciseListBuilder({ sport, exercises, onChange, onCircuitsChange }: {
               {addingToCircuit === circuit.id ? (
                 <div style={{
                   background: 'var(--bg-card)', border: '1px solid var(--border-mid)',
-                  borderRadius: 12, padding: '12px 14px',
+                  borderRadius: 'var(--r-md)', padding: '12px 14px',
                   boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
@@ -443,12 +443,12 @@ function ExerciseListBuilder({ sport, exercises, onChange, onCircuitsChange }: {
                   <input value={query} onChange={ev => setQuery(ev.target.value)}
                     placeholder={t('sed.exoSearchPlaceholder')}
                     autoFocus
-                    style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 13, outline: 'none', marginBottom: 8 }} />
+                    style={{ width: '100%', padding: '8px 10px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 13, outline: 'none', marginBottom: 8 }} />
                   <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' as const, marginBottom: 8 }}>
                     {catOptions.map(cat => (
                       <button key={cat.id} onClick={() => setCatFilter(catFilter === cat.id ? undefined : cat.id)}
                         style={{
-                          padding: '3px 8px', borderRadius: 6, border: '1px solid', fontSize: 10, cursor: 'pointer',
+                          padding: '3px 8px', borderRadius: 'var(--r-sm)', border: '1px solid', fontSize: 10, cursor: 'pointer',
                           borderColor: catFilter === cat.id ? accentColor : 'var(--border)',
                           background: catFilter === cat.id ? `${accentColor}22` : 'transparent',
                           color: catFilter === cat.id ? accentColor : 'var(--text-dim)',
@@ -463,7 +463,7 @@ function ExerciseListBuilder({ sport, exercises, onChange, onCircuitsChange }: {
                       <button key={exo.id} onClick={() => addExerciseToCircuit(exo, circuit.id)}
                         style={{
                           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                          padding: '7px 10px', borderRadius: 7, border: '1px solid var(--border)',
+                          padding: '7px 10px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)',
                           background: 'var(--bg-card2)', color: 'var(--text)', cursor: 'pointer',
                           textAlign: 'left' as const, width: '100%',
                         }}>
@@ -471,7 +471,7 @@ function ExerciseListBuilder({ sport, exercises, onChange, onCircuitsChange }: {
                           <span style={{ fontSize: 12, fontWeight: 600 }}>{exo.name}</span>
                           {exo.aliases[0] && <span style={{ fontSize: 10, color: 'var(--text-dim)', marginLeft: 5 }}>({exo.aliases[0]})</span>}
                         </div>
-                        <span style={{ fontSize: 9, fontWeight: 700, color: EXO_CATEGORY_COLOR[exo.category], background: `${EXO_CATEGORY_COLOR[exo.category]}18`, padding: '2px 5px', borderRadius: 4, textTransform: 'uppercase' as const, flexShrink: 0 }}>
+                        <span style={{ fontSize: 10, fontWeight: 700, color: EXO_CATEGORY_COLOR[exo.category], background: `${EXO_CATEGORY_COLOR[exo.category]}18`, padding: '2px 5px', borderRadius: 4, textTransform: 'uppercase' as const, flexShrink: 0 }}>
                           {EXO_CATEGORY_LABEL[exo.category]}
                         </span>
                       </button>
@@ -480,7 +480,7 @@ function ExerciseListBuilder({ sport, exercises, onChange, onCircuitsChange }: {
                       <div style={{ padding: '10px', textAlign: 'center' as const }}>
                         <p style={{ fontSize: 12, color: 'var(--text-dim)', marginBottom: 8 }}>{t('sed.noExoFound', { q: query })}</p>
                         <button onClick={() => addCustomToCircuit(circuit.id)} style={{
-                          padding: '7px 14px', borderRadius: 7,
+                          padding: '7px 14px', borderRadius: 'var(--r-sm)',
                           background: `${accentColor}22`, border: `1px solid ${accentColor}`,
                           color: accentColor, fontSize: 12, fontWeight: 700, cursor: 'pointer',
                         }}>{t('sed.createQuoted', { q: query })}</button>
@@ -490,7 +490,7 @@ function ExerciseListBuilder({ sport, exercises, onChange, onCircuitsChange }: {
                 </div>
               ) : (
                 <button onClick={() => { setAddingToCircuit(circuit.id); setQuery('') }} style={{
-                  width: '100%', padding: '9px', borderRadius: 9,
+                  width: '100%', padding: '9px', borderRadius: 'var(--r-sm)',
                   background: 'transparent', border: `1px dashed ${accentColor}55`,
                   color: accentColor, fontSize: 12, cursor: 'pointer',
                 }}>{t('sed.addExerciseBtn')}</button>
@@ -503,21 +503,21 @@ function ExerciseListBuilder({ sport, exercises, onChange, onCircuitsChange }: {
       {/* Bouton ajouter un circuit — avec sélecteur de type */}
       {!showCircuitTypeMenu ? (
         <button onClick={() => setShowCircuitTypeMenu(true)} style={{
-          width: '100%', padding: '10px', borderRadius: 10,
+          width: '100%', padding: '10px', borderRadius: 'var(--r-sm)',
           background: 'transparent', border: `2px dashed ${accentColor}44`,
           color: accentColor, fontSize: 12, fontWeight: 700, cursor: 'pointer',
           marginTop: 4,
         }}>+ Ajouter un circuit</button>
       ) : (
         <div style={{
-          marginTop: 4, padding: '12px 14px', borderRadius: 12,
+          marginTop: 4, padding: '12px 14px', borderRadius: 'var(--r-md)',
           border: '1px solid var(--border)', background: 'var(--bg-card2)',
         }}>
           <p style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-dim)', margin: '0 0 8px' }}>{t('sed.whichCircuitType')}</p>
           <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 4 }}>
             {CIRCUIT_TYPES.map(ct => (
               <button key={ct.id} onClick={() => addCircuit(ct.id)} style={{
-                display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 8,
+                display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 'var(--r-sm)',
                 border: '1px solid var(--border)', background: 'var(--bg-card)',
                 cursor: 'pointer', textAlign: 'left' as const, width: '100%',
               }}>
@@ -530,7 +530,7 @@ function ExerciseListBuilder({ sport, exercises, onChange, onCircuitsChange }: {
             ))}
           </div>
           <button onClick={() => setShowCircuitTypeMenu(false)} style={{
-            marginTop: 8, width: '100%', padding: '7px', borderRadius: 6,
+            marginTop: 8, width: '100%', padding: '7px', borderRadius: 'var(--r-sm)',
             border: '1px solid var(--border)', background: 'transparent',
             color: 'var(--text-dim)', fontSize: 10, cursor: 'pointer',
           }}>{t('sed.cancel')}</button>
@@ -621,14 +621,14 @@ function StrengthBlockRenderer({ blocks, onChange, accent, exoHistory }: {
               {/* Ligne 1 : point + type badge + nom + quantité + repos + ×  */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                 <div style={{ width: 6, height: 6, borderRadius: '50%', background: accent, flexShrink: 0 }} />
-                <span style={{ fontSize: 9, fontWeight: 700, color: accent, background: `${accent}18`, padding: '2px 7px', borderRadius: 5, textTransform: 'uppercase' as const, letterSpacing: '0.06em', flexShrink: 0, whiteSpace: 'nowrap' as const }}>
+                <span style={{ fontSize: 10, fontWeight: 700, color: accent, background: `${accent}18`, padding: '2px 7px', borderRadius: 'var(--r-sm)', textTransform: 'uppercase' as const, letterSpacing: '0.06em', flexShrink: 0, whiteSpace: 'nowrap' as const }}>
                   {CIRCUIT_TYPES.find(c => c.id === circuitType)?.label ?? t('sed.series')}
                 </span>
                 <input value={b.label} onChange={e => {
                   const upd = [...blocks]; upd[i] = { ...b, label: e.target.value }; onChange(upd)
                 }} style={{
                   flex: 1, background: 'none', border: 'none', outline: 'none',
-                  fontSize: 15, fontWeight: 700, color: 'var(--text)', fontFamily: 'Syne, sans-serif', minWidth: 0,
+                  fontSize: 15, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-body)', minWidth: 0,
                 }} />
                 {/* Quantité : rounds ou minutes (uniquement pour les circuits non-series) */}
                 {circuitType !== 'series' && (
@@ -641,8 +641,8 @@ function StrengthBlockRenderer({ blocks, onChange, accent, exoHistory }: {
                         else upd[i] = { ...b, zone: parseInt(e.target.value) || 1 }
                         onChange(upd)
                       }}
-                      style={{ width: 38, padding: '3px 6px', borderRadius: 5, border: `1px solid ${accent}44`, background: `${accent}08`, color: accent, fontSize: 12, fontFamily: '"DM Mono",monospace', textAlign: 'center' as const, outline: 'none' }} />
-                    <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>{isEmom ? 'min' : t('sed.roundsShort')}</span>
+                      style={{ width: 38, padding: '3px 6px', borderRadius: 'var(--r-sm)', border: `1px solid ${accent}44`, background: `${accent}08`, color: accent, fontSize: 12, fontFamily: '"DM Mono",monospace', textAlign: 'center' as const, outline: 'none' }} />
+                    <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>{isEmom ? 'min' : t('sed.roundsShort')}</span>
                   </div>
                 )}
                 {/* Repos (sauf EMOM/tabata) */}
@@ -651,8 +651,8 @@ function StrengthBlockRenderer({ blocks, onChange, accent, exoHistory }: {
                     <input type="number" min={0} max={600} step={15}
                       value={b.recoveryMin != null ? Math.round(b.recoveryMin * 60) : 90}
                       onChange={e => { const upd = [...blocks]; upd[i] = { ...b, recoveryMin: (parseInt(e.target.value) || 0) / 60 }; onChange(upd) }}
-                      style={{ width: 42, padding: '3px 6px', borderRadius: 5, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-dim)', fontSize: 12, fontFamily: '"DM Mono",monospace', textAlign: 'center' as const, outline: 'none' }} />
-                    <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>{t('sed.sRest')}</span>
+                      style={{ width: 42, padding: '3px 6px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-dim)', fontSize: 12, fontFamily: '"DM Mono",monospace', textAlign: 'center' as const, outline: 'none' }} />
+                    <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>{t('sed.sRest')}</span>
                   </div>
                 )}
                 <button onClick={() => onChange(blocks.filter((_, j) => j !== i))} style={{
@@ -672,7 +672,7 @@ function StrengthBlockRenderer({ blocks, onChange, accent, exoHistory }: {
                     }
                     onChange(upd)
                   }} style={{
-                    padding: '4px 10px', borderRadius: 6, fontSize: 9, fontWeight: 600, cursor: 'pointer',
+                    padding: '4px 10px', borderRadius: 'var(--r-sm)', fontSize: 10, fontWeight: 600, cursor: 'pointer',
                     background: circuitType === ct.id ? `${accent}15` : 'transparent',
                     border: circuitType === ct.id ? `1px solid ${accent}55` : '1px solid var(--border)',
                     color: circuitType === ct.id ? accent : 'var(--text-dim)',
@@ -684,7 +684,7 @@ function StrengthBlockRenderer({ blocks, onChange, accent, exoHistory }: {
               </div>
               {/* ── Ajouter un exercice au circuit ── */}
               {addingToCircuit === b.id ? (
-                <div style={{ marginTop: 10, background: 'var(--bg-card)', border: '1px solid var(--border-mid)', borderRadius: 10, padding: '10px 12px' }}>
+                <div style={{ marginTop: 10, background: 'var(--bg-card)', border: '1px solid var(--border-mid)', borderRadius: 'var(--r-sm)', padding: '10px 12px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 7 }}>
                     <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text)' }}>{t('sed.addExercise')}</span>
                     <button onClick={() => { setAddingToCircuit(null); setSearchQuery(''); setCatFilter(undefined) }}
@@ -693,11 +693,11 @@ function StrengthBlockRenderer({ blocks, onChange, accent, exoHistory }: {
                   <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
                     placeholder={t('sed.exoSearchPlaceholder')}
                     autoFocus
-                    style={{ width: '100%', padding: '7px 10px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--input-bg,var(--bg-card2))', color: 'var(--text)', fontSize: 12, outline: 'none', marginBottom: 7, boxSizing: 'border-box' as const }} />
+                    style={{ width: '100%', padding: '7px 10px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--input-bg,var(--bg-card2))', color: 'var(--text)', fontSize: 12, outline: 'none', marginBottom: 7, boxSizing: 'border-box' as const }} />
                   <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' as const, marginBottom: 7 }}>
                     {([{ id: 'push', label: 'Push' }, { id: 'pull', label: 'Pull' }, { id: 'legs', label: 'Legs' }, { id: 'mixte', label: 'Mixte' }, { id: 'abdos', label: 'Abdos' }] as { id: ExoCategory; label: string }[]).map(cat => (
                       <button key={cat.id} onClick={() => setCatFilter(catFilter === cat.id ? undefined : cat.id)} style={{
-                        padding: '2px 7px', borderRadius: 5, border: '1px solid', fontSize: 9, cursor: 'pointer', fontWeight: 600,
+                        padding: '2px 7px', borderRadius: 'var(--r-sm)', border: '1px solid', fontSize: 10, cursor: 'pointer', fontWeight: 600,
                         borderColor: catFilter === cat.id ? accent : 'var(--border)',
                         background: catFilter === cat.id ? `${accent}22` : 'transparent',
                         color: catFilter === cat.id ? accent : 'var(--text-dim)',
@@ -708,12 +708,12 @@ function StrengthBlockRenderer({ blocks, onChange, accent, exoHistory }: {
                     {searchResults.slice(0, 20).map(exo => (
                       <button key={exo.id} onClick={() => insertExerciseAfterCircuit(b.id, exo)} style={{
                         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                        padding: '6px 9px', borderRadius: 6, border: '1px solid var(--border)',
+                        padding: '6px 9px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)',
                         background: 'var(--bg-card2)', color: 'var(--text)', cursor: 'pointer',
                         textAlign: 'left' as const, width: '100%',
                       }}>
                         <span style={{ fontSize: 12, fontWeight: 600 }}>{exo.name}</span>
-                        <span style={{ fontSize: 9, fontWeight: 700, color: EXO_CATEGORY_COLOR[exo.category], background: `${EXO_CATEGORY_COLOR[exo.category]}18`, padding: '2px 5px', borderRadius: 4, textTransform: 'uppercase' as const, flexShrink: 0 }}>
+                        <span style={{ fontSize: 10, fontWeight: 700, color: EXO_CATEGORY_COLOR[exo.category], background: `${EXO_CATEGORY_COLOR[exo.category]}18`, padding: '2px 5px', borderRadius: 4, textTransform: 'uppercase' as const, flexShrink: 0 }}>
                           {EXO_CATEGORY_LABEL[exo.category]}
                         </span>
                       </button>
@@ -722,7 +722,7 @@ function StrengthBlockRenderer({ blocks, onChange, accent, exoHistory }: {
                       <div style={{ padding: '8px', textAlign: 'center' as const }}>
                         <p style={{ fontSize: 11, color: 'var(--text-dim)', marginBottom: 6 }}>{t('sed.noResultsFor', { q: searchQuery })}</p>
                         <button onClick={() => insertCustomAfterCircuit(b.id, searchQuery.trim())} style={{
-                          padding: '6px 12px', borderRadius: 6, background: `${accent}22`,
+                          padding: '6px 12px', borderRadius: 'var(--r-sm)', background: `${accent}22`,
                           border: `1px solid ${accent}`, color: accent, fontSize: 11, fontWeight: 700, cursor: 'pointer',
                         }}>{t('sed.createQuoted', { q: searchQuery.trim() })}</button>
                       </div>
@@ -731,7 +731,7 @@ function StrengthBlockRenderer({ blocks, onChange, accent, exoHistory }: {
                 </div>
               ) : (
                 <button onClick={() => { setAddingToCircuit(b.id); setSearchQuery(''); setCatFilter(undefined) }} style={{
-                  width: '100%', marginTop: 8, padding: '7px', borderRadius: 7,
+                  width: '100%', marginTop: 8, padding: '7px', borderRadius: 'var(--r-sm)',
                   background: 'transparent', border: `1px dashed ${accent}44`,
                   color: accent, fontSize: 11, cursor: 'pointer', fontWeight: 600,
                 }}>{t('sed.addExerciseBtn')}</button>
@@ -760,7 +760,7 @@ function StrengthBlockRenderer({ blocks, onChange, accent, exoHistory }: {
             )}
 
             <div style={{
-              padding: '12px 16px', borderRadius: 10, marginBottom: isChained ? 0 : 6,
+              padding: '12px 16px', borderRadius: 'var(--r-sm)', marginBottom: isChained ? 0 : 6,
               border: '1px solid var(--border)', background: 'var(--bg-card2)',
             }}>
               {/* Ligne 1 : numéro + nom + supprimer */}
@@ -784,7 +784,7 @@ function StrengthBlockRenderer({ blocks, onChange, accent, exoHistory }: {
                 if (!hist) return null
                 const dateStr = hist.date ? new Date(hist.date).toLocaleDateString(currentLocale(), { day: 'numeric', month: 'short' }) : ''
                 return (
-                  <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 6px 18px', fontStyle: 'italic' as const }}>
+                  <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '0 0 6px 18px', fontStyle: 'italic' as const }}>
                     {t('sed.last')} {hist.weight}kg × {hist.reps}{dateStr ? ` (${dateStr})` : ''}
                   </p>
                 )
@@ -795,10 +795,10 @@ function StrengthBlockRenderer({ blocks, onChange, accent, exoHistory }: {
                 {/* Séries — uniquement pour circuit de type "series" */}
                 {isSeries && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>{t('sed.series')}</span>
+                    <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>{t('sed.series')}</span>
                     <input type="number" min={1} max={20} value={b.zone ?? 3}
                       onChange={e => { const upd = [...blocks]; upd[i] = { ...b, zone: parseInt(e.target.value) || 1 }; onChange(upd) }}
-                      style={{ width: 40, padding: '4px 6px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 13, fontFamily: '"DM Mono", monospace', textAlign: 'center' as const, outline: 'none' }} />
+                      style={{ width: 40, padding: '4px 6px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 13, fontFamily: '"DM Mono", monospace', textAlign: 'center' as const, outline: 'none' }} />
                   </div>
                 )}
 
@@ -806,35 +806,35 @@ function StrengthBlockRenderer({ blocks, onChange, accent, exoHistory }: {
 
                 {/* Reps */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                  <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>Reps</span>
+                  <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>Reps</span>
                   <input type="number" min={0} max={200} value={b.reps ?? 10}
                     onChange={e => { const upd = [...blocks]; upd[i] = { ...b, reps: parseInt(e.target.value) || 0 }; onChange(upd) }}
-                    style={{ width: 44, padding: '4px 6px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 13, fontFamily: '"DM Mono", monospace', textAlign: 'center' as const, outline: 'none' }} />
+                    style={{ width: 44, padding: '4px 6px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 13, fontFamily: '"DM Mono", monospace', textAlign: 'center' as const, outline: 'none' }} />
                 </div>
 
                 {/* Charge */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                  <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>{t('sed.load')}</span>
+                  <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>{t('sed.load')}</span>
                   <input value={b.value || ''} placeholder="—"
                     onChange={e => { const upd = [...blocks]; upd[i] = { ...b, value: e.target.value }; onChange(upd) }}
-                    style={{ width: 56, padding: '4px 6px', borderRadius: 6, border: `1px solid ${accent}44`, background: `${accent}08`, color: accent, fontSize: 13, fontFamily: '"DM Mono", monospace', textAlign: 'center' as const, fontWeight: 700, outline: 'none' }} />
-                  <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>kg</span>
+                    style={{ width: 56, padding: '4px 6px', borderRadius: 'var(--r-sm)', border: `1px solid ${accent}44`, background: `${accent}08`, color: accent, fontSize: 13, fontFamily: '"DM Mono", monospace', textAlign: 'center' as const, fontWeight: 700, outline: 'none' }} />
+                  <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>kg</span>
                 </div>
 
                 {/* Repos */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                  <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>{t('sed.rest')}</span>
+                  <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>{t('sed.rest')}</span>
                   <input type="number" min={0} max={600} step={15}
                     value={b.recoveryMin != null ? Math.round(b.recoveryMin * 60) : 90}
                     onChange={e => { const upd = [...blocks]; upd[i] = { ...b, recoveryMin: (parseInt(e.target.value) || 0) / 60 }; onChange(upd) }}
-                    style={{ width: 48, padding: '4px 6px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 13, fontFamily: '"DM Mono", monospace', textAlign: 'center' as const, outline: 'none' }} />
-                  <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>s</span>
+                    style={{ width: 48, padding: '4px 6px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 13, fontFamily: '"DM Mono", monospace', textAlign: 'center' as const, outline: 'none' }} />
+                  <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>s</span>
                 </div>
 
                 {/* Temps (gainage, etc.) */}
                 {(b.effortMin ?? 0) > 0 && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>{t('sed.time')}</span>
+                    <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>{t('sed.time')}</span>
                     <span style={{ fontSize: 13, fontFamily: '"DM Mono", monospace', color: accent, fontWeight: 600 }}>
                       {Math.round((b.effortMin ?? 0) * 60)}s
                     </span>
@@ -1234,16 +1234,16 @@ function BlockBuilder({ sport, blocks, onChange, nutritionItems, exoHistory, ath
     <div>
       {/* ══ TSS HEADER + BARRE D'INTENSITÉ ══ */}
       {!isStrengthSportBB && blocks.length > 0 && (
-        <div style={{ borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card)', marginBottom: 14, overflow: 'hidden' }}>
+        <div style={{ borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-card)', marginBottom: 14, overflow: 'hidden' }}>
           {/* 3-metric row */}
           <div style={{ display: 'flex', borderBottom: '1px solid var(--border)' }}>
             <div style={{ flex: 1, padding: '11px 14px', textAlign: 'center' as const }}>
-              <p style={{ fontSize: 10, textTransform: 'uppercase' as const, letterSpacing: '0.07em', color: 'var(--text-dim)', margin: '0 0 2px' }}>SM<span style={{ fontSize: 8, color: 'var(--text-dim)' }}> {t('sed.metabShort')}</span></p>
+              <p style={{ fontSize: 10, textTransform: 'uppercase' as const, letterSpacing: '0.07em', color: 'var(--text-dim)', margin: '0 0 2px' }}>SM<span style={{ fontSize: 10, color: 'var(--text-dim)' }}> {t('sed.metabShort')}</span></p>
               <p style={{ fontSize: 19, fontWeight: 700, color: '#06B6D4', fontFamily: 'var(--font-display)', margin: 0 }}>{smsnBB.sm}</p>
             </div>
             <div style={{ width: 1, background: 'var(--border)', alignSelf: 'stretch' as const }} />
             <div style={{ flex: 1, padding: '11px 14px', textAlign: 'center' as const }}>
-              <p style={{ fontSize: 10, textTransform: 'uppercase' as const, letterSpacing: '0.07em', color: 'var(--text-dim)', margin: '0 0 2px' }}>SN<span style={{ fontSize: 8, color: 'var(--text-dim)' }}> {t('sed.neuroShort')}</span></p>
+              <p style={{ fontSize: 10, textTransform: 'uppercase' as const, letterSpacing: '0.07em', color: 'var(--text-dim)', margin: '0 0 2px' }}>SN<span style={{ fontSize: 10, color: 'var(--text-dim)' }}> {t('sed.neuroShort')}</span></p>
               <p style={{ fontSize: 19, fontWeight: 700, color: '#8B5CF6', fontFamily: 'var(--font-display)', margin: 0 }}>{smsnBB.sn}</p>
             </div>
             <div style={{ width: 1, background: 'var(--border)', alignSelf: 'stretch' as const }} />
@@ -1265,20 +1265,20 @@ function BlockBuilder({ sport, blocks, onChange, nutritionItems, exoHistory, ath
 
       {/* Hover tooltip */}
       {hoveredBar && !hoveredBar.isRecovery && (
-        <div style={{ position: 'fixed' as const, zIndex: 1100, left: hoveredBar.x, top: hoveredBar.y - 8, transform: 'translate(-50%,-100%)', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', boxShadow: '0 4px 16px rgba(0,0,0,0.2)', pointerEvents: 'none' as const, whiteSpace: 'nowrap' as const, fontSize: 11 }}>
+        <div style={{ position: 'fixed' as const, zIndex: 1100, left: hoveredBar.x, top: hoveredBar.y - 8, transform: 'translate(-50%,-100%)', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-sm)', padding: '8px 12px', boxShadow: '0 4px 16px rgba(0,0,0,0.2)', pointerEvents: 'none' as const, whiteSpace: 'nowrap' as const, fontSize: 11 }}>
           <p style={{ fontWeight: 700, color: 'var(--text)', margin: '0 0 4px' }}>{hoveredBar.block.label}</p>
           <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 2, color: 'var(--text-dim)' }}>
-            <span>{t('sed.duration')} : <strong style={{ fontFamily: 'DM Mono,monospace' }}>{hoveredBar.block.mode === 'interval' && hoveredBar.block.effortMin ? fmtDuration(hoveredBar.block.effortMin) : fmtDuration(hoveredBar.block.durationMin)}</strong></span>
+            <span>{t('sed.duration')} : <strong style={{ fontFamily: 'var(--font-body)' }}>{hoveredBar.block.mode === 'interval' && hoveredBar.block.effortMin ? fmtDuration(hoveredBar.block.effortMin) : fmtDuration(hoveredBar.block.durationMin)}</strong></span>
             <span>Zone : <strong style={{ color: zc(hoveredBar.block.zone) }}>Z{hoveredBar.block.zone} — {znm(hoveredBar.block.zone)}</strong></span>
-            {hoveredBar.block.value && <span>{sport === 'bike' ? t('sed.power') : t('sed.pace')} : <strong style={{ fontFamily: 'DM Mono,monospace' }}>{hoveredBar.block.value}{sport === 'bike' ? 'W' : '/km'}</strong></span>}
-            {hoveredBar.block.hrAvg && parseInt(hoveredBar.block.hrAvg) > 0 && <span>{t('sed.avgHr')} : <strong style={{ fontFamily: 'DM Mono,monospace' }}>{hoveredBar.block.hrAvg} bpm</strong></span>}
+            {hoveredBar.block.value && <span>{sport === 'bike' ? t('sed.power') : t('sed.pace')} : <strong style={{ fontFamily: 'var(--font-body)' }}>{hoveredBar.block.value}{sport === 'bike' ? 'W' : '/km'}</strong></span>}
+            {hoveredBar.block.hrAvg && parseInt(hoveredBar.block.hrAvg) > 0 && <span>{t('sed.avgHr')} : <strong style={{ fontFamily: 'var(--font-body)' }}>{hoveredBar.block.hrAvg} bpm</strong></span>}
           </div>
         </div>
       )}
 
       {/* ══ GUIDE CIRCUITS (gym/hyrox) ══ */}
       {isStrengthSportBB && (
-        <div style={{ padding: '10px 14px', borderRadius: 10, marginBottom: 12, background: `${accentBB}07`, border: `1px solid ${accentBB}18` }}>
+        <div style={{ padding: '10px 14px', borderRadius: 'var(--r-sm)', marginBottom: 12, background: `${accentBB}07`, border: `1px solid ${accentBB}18` }}>
           <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--text)', margin: '0 0 7px' }}>{t('sed.circuitTypes')}</p>
           <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 3 }}>
             {CIRCUIT_TYPES.map(ct => (
@@ -1296,13 +1296,13 @@ function BlockBuilder({ sport, blocks, onChange, nutritionItems, exoHistory, ath
       {!isStrengthSportBB && blocks.length > 0 && (() => {
         const Hpx = 150
         return (
-          <div style={{ borderRadius: 12, border: '1px solid var(--border)', background: 'var(--bg-card)', padding: '14px 14px 12px', marginBottom: 12 }}>
+          <div style={{ borderRadius: 'var(--r-md)', border: '1px solid var(--border)', background: 'var(--bg-card)', padding: '14px 14px 12px', marginBottom: 12 }}>
             <p style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' as const, color: 'var(--text-dim)', margin: '0 0 12px' }}>{t('sed.intensityProfile')} <span style={{ fontWeight: 500, textTransform: 'none' as const, letterSpacing: 0 }}>{t('sed.intensityProfileHint')}</span></p>
             <div style={{ display: 'flex', gap: 8 }}>
               {/* axe zones (bulles) */}
               <div style={{ position: 'relative' as const, width: 28, height: Hpx, flexShrink: 0 }}>
                 {Array.from({ length: maxZone }, (_, k) => k + 1).map(z => { const top = Hpx - (z / maxZone) * Hpx; return (
-                  <span key={z} style={{ position: 'absolute' as const, top: top - 8, left: 0, fontSize: 8.5, fontWeight: 700, color: '#fff', background: zc(z), borderRadius: 7, padding: '1px 5px', lineHeight: 1.4 }}>Z{z}</span>) })}
+                  <span key={z} style={{ position: 'absolute' as const, top: top - 8, left: 0, fontSize: 8.5, fontWeight: 700, color: '#fff', background: zc(z), borderRadius: 'var(--r-sm)', padding: '1px 5px', lineHeight: 1.4 }}>Z{z}</span>) })}
               </div>
               {/* barres draggables */}
               <div ref={barsRef} style={{ flex: 1, height: Hpx, display: 'flex', alignItems: 'flex-end', gap: 3, position: 'relative' as const }}>
@@ -1341,16 +1341,16 @@ function BlockBuilder({ sport, blocks, onChange, nutritionItems, exoHistory, ath
             if (b.type === 'circuit_header') {
               const cc = SPORT_BORDER[sport]
               return (
-                <div key={b.id} {...dragProps} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 10, background: `${cc}08`, border: `1px solid ${cc}22`, borderLeft: `4px solid ${cc}`, opacity: isDragging ? 0.5 : 1, outline: isDragOver ? `2px solid ${cc}` : 'none' }}>
+                <div key={b.id} {...dragProps} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 'var(--r-sm)', background: `${cc}08`, border: `1px solid ${cc}22`, borderLeft: `4px solid ${cc}`, opacity: isDragging ? 0.5 : 1, outline: isDragOver ? `2px solid ${cc}` : 'none' }}>
                   <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4" stroke={cc} strokeWidth="1.5"/><path d="M3.5 5L4.5 6L6.5 4" stroke={cc} strokeWidth="1.5" strokeLinecap="round"/></svg>
-                  <input value={b.label} onChange={e => onChange(blocks.map((x,j)=>j===bi?{...x,label:e.target.value}:x))} style={{ flex:1, background:'none', border:'none', outline:'none', fontSize:13, fontWeight:700, color:'var(--text)', fontFamily:'Syne,sans-serif', minWidth:0 }} />
+                  <input value={b.label} onChange={e => onChange(blocks.map((x,j)=>j===bi?{...x,label:e.target.value}:x))} style={{ flex:1, background:'none', border:'none', outline:'none', fontSize:13, fontWeight:700, color:'var(--text)', fontFamily: 'var(--font-body)', minWidth:0 }} />
                   <div style={{ display:'flex', gap:8, alignItems:'center', flexShrink:0 }}>
                     <div style={{ display:'flex', alignItems:'center', gap:4 }}>
-                      <input type="number" min={1} max={20} value={b.zone??3} onChange={e=>onChange(blocks.map((x,j)=>j===bi?{...x,zone:parseInt(e.target.value)||3}:x))} style={{ width:36,padding:'3px 5px',borderRadius:5,border:'1px solid var(--border)',background:'var(--bg-card2)',color:cc,fontSize:12,fontFamily:'"DM Mono",monospace',textAlign:'center' as const,outline:'none' }}/>
+                      <input type="number" min={1} max={20} value={b.zone??3} onChange={e=>onChange(blocks.map((x,j)=>j===bi?{...x,zone:parseInt(e.target.value)||3}:x))} style={{ width:36,padding:'3px 5px',borderRadius: 'var(--r-sm)',border:'1px solid var(--border)',background:'var(--bg-card2)',color:cc,fontSize:12,fontFamily:'"DM Mono",monospace',textAlign:'center' as const,outline:'none' }}/>
                       <span style={{fontSize:10,color:'var(--text-dim)'}}>rounds</span>
                     </div>
                     <div style={{ display:'flex', alignItems:'center', gap:4 }}>
-                      <input type="number" min={0} max={10} step={0.5} value={b.recoveryMin??2} onChange={e=>onChange(blocks.map((x,j)=>j===bi?{...x,recoveryMin:parseFloat(e.target.value)||0}:x))} style={{ width:42,padding:'3px 5px',borderRadius:5,border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text-dim)',fontSize:12,fontFamily:'"DM Mono",monospace',textAlign:'center' as const,outline:'none' }}/>
+                      <input type="number" min={0} max={10} step={0.5} value={b.recoveryMin??2} onChange={e=>onChange(blocks.map((x,j)=>j===bi?{...x,recoveryMin:parseFloat(e.target.value)||0}:x))} style={{ width:42,padding:'3px 5px',borderRadius: 'var(--r-sm)',border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text-dim)',fontSize:12,fontFamily:'"DM Mono",monospace',textAlign:'center' as const,outline:'none' }}/>
                       <span style={{fontSize:10,color:'var(--text-dim)'}}>{t('sed.minRest')}</span>
                     </div>
                   </div>
@@ -1370,11 +1370,11 @@ function BlockBuilder({ sport, blocks, onChange, nutritionItems, exoHistory, ath
               return (
                 <div key={b.id} {...dragProps}
                   onMouseEnter={() => setHoveredBlockId(b.id)} onMouseLeave={() => setHoveredBlockId(null)}
-                  style={{ borderRadius: 10, overflow: 'hidden', border: '1px solid var(--border)', opacity: isDragging ? 0.5 : 1, outline: isDragOver ? '2px solid var(--primary)' : 'none', borderColor: isHov ? 'var(--border-mid)' : 'var(--border)', transition: 'border-color 0.12s' }}>
+                  style={{ borderRadius: 'var(--r-sm)', overflow: 'hidden', border: '1px solid var(--border)', opacity: isDragging ? 0.5 : 1, outline: isDragOver ? '2px solid var(--primary)' : 'none', borderColor: isHov ? 'var(--border-mid)' : 'var(--border)', transition: 'border-color 0.12s' }}>
                   {/* Header */}
                   <div style={{ background: 'var(--bg-card2)', padding: '9px 12px', display: 'flex', alignItems: 'center', gap: 8, borderBottom: '1px solid var(--border)' }}>
-                    <span style={{ padding: '3px 8px', borderRadius: 6, background: `${col}1A`, color: col, fontSize: 11, fontWeight: 700, flexShrink: 0 }}>Z{b.zone}</span>
-                    <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-dim)', background: 'var(--bg-elev)', padding: '3px 8px', borderRadius: 6, flexShrink: 0, letterSpacing: '0.04em' }}>INTERVAL</span>
+                    <span style={{ padding: '3px 8px', borderRadius: 'var(--r-sm)', background: `${col}1A`, color: col, fontSize: 11, fontWeight: 700, flexShrink: 0 }}>Z{b.zone}</span>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-dim)', background: 'var(--bg-elev)', padding: '3px 8px', borderRadius: 'var(--r-sm)', flexShrink: 0, letterSpacing: '0.04em' }}>INTERVAL</span>
                     <span style={{ flex: 1, fontSize: 13, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{b.reps}× {b.label || `${Math.round((b.effortMin??0)*10)/10}min`}</span>
                     <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', flexShrink: 0 }}>{formatHM(Math.round((b.reps??1)*((b.effortMin??0)+(b.recoveryMin??0))))}</span>
                     <button onClick={() => duplicate(bi)} style={{ background:'none', border:'none', color:'var(--text-dim)', cursor:'pointer', fontSize:12, padding:'0 3px', flexShrink:0 }} title={t('sed.duplicate')}>📋</button>
@@ -1382,56 +1382,56 @@ function BlockBuilder({ sport, blocks, onChange, nutritionItems, exoHistory, ath
                   </div>
                   {/* Body */}
                   <div style={{ padding: '10px 12px', background: 'var(--bg-card)', display: 'flex', flexDirection: 'column' as const, gap: 8 }}>
-                    <div style={{ padding: '8px 10px', borderRadius: 8, background: 'var(--bg-card2)', border: '1px solid var(--border)' }}>
-                      <p style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.06em', color: 'var(--text-dim)', margin: '0 0 6px' }}>Effort</p>
+                    <div style={{ padding: '8px 10px', borderRadius: 'var(--r-sm)', background: 'var(--bg-card2)', border: '1px solid var(--border)' }}>
+                      <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.06em', color: 'var(--text-dim)', margin: '0 0 6px' }}>Effort</p>
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(90px,1fr))', gap: 8 }}>
                         <div>
-                          <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px', textTransform: 'uppercase' as const }}>{t('sed.repetitions')}</p>
-                          <input type="number" min={1} value={b.reps??5} onChange={e=>upd(b.id,'reps',parseInt(e.target.value)||1)} style={{ width:'100%', padding:'6px 10px', borderRadius:6, border:'1px solid var(--border)', background:'var(--bg-card)', color:'var(--text)', fontSize:13, fontFamily:'var(--font-display)', fontWeight:700, outline:'none' }}/>
+                          <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '0 0 3px', textTransform: 'uppercase' as const }}>{t('sed.repetitions')}</p>
+                          <input type="number" min={1} value={b.reps??5} onChange={e=>upd(b.id,'reps',parseInt(e.target.value)||1)} style={{ width:'100%', padding:'6px 10px', borderRadius: 'var(--r-sm)', border:'1px solid var(--border)', background:'var(--bg-card)', color:'var(--text)', fontSize:13, fontFamily:'var(--font-display)', fontWeight:700, outline:'none' }}/>
                         </div>
                         <div>
-                          <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px', textTransform: 'uppercase' as const }}>{t('sed.duration')}</p>
-                          <input value={durMMSS(b.effortMin??0)} onChange={e=>upd(b.id,'effortMin',mmssToMin(e.target.value))} placeholder="4:00" style={{ width:'100%', padding:'6px 10px', borderRadius:6, border:'1px solid var(--border)', background:'var(--bg-card)', color:'var(--text)', fontSize:13, fontFamily:'var(--font-display)', fontWeight:700, outline:'none' }}/>
-                          {effortRange && sport !== 'bike' && <p style={{ fontSize:9, color:'var(--text-dim)', margin:'2px 0 0', fontFamily:'var(--font-display)' }}>{effortRange}</p>}
+                          <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '0 0 3px', textTransform: 'uppercase' as const }}>{t('sed.duration')}</p>
+                          <input value={durMMSS(b.effortMin??0)} onChange={e=>upd(b.id,'effortMin',mmssToMin(e.target.value))} placeholder="4:00" style={{ width:'100%', padding:'6px 10px', borderRadius: 'var(--r-sm)', border:'1px solid var(--border)', background:'var(--bg-card)', color:'var(--text)', fontSize:13, fontFamily:'var(--font-display)', fontWeight:700, outline:'none' }}/>
+                          {effortRange && sport !== 'bike' && <p style={{ fontSize: 10, color:'var(--text-dim)', margin:'2px 0 0', fontFamily:'var(--font-display)' }}>{effortRange}</p>}
                         </div>
                         <div>
-                          <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px', textTransform: 'uppercase' as const }}>Zone</p>
-                          <input type="number" min={1} max={7} value={b.zone} onChange={e=>upd(b.id,'zone',parseInt(e.target.value)||3)} style={{ width:'100%', padding:'6px 10px', borderRadius:6, border:'1px solid var(--border)', background:'var(--bg-card)', color:'var(--text)', fontSize:13, fontFamily:'var(--font-display)', fontWeight:700, outline:'none' }}/>
+                          <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '0 0 3px', textTransform: 'uppercase' as const }}>Zone</p>
+                          <input type="number" min={1} max={7} value={b.zone} onChange={e=>upd(b.id,'zone',parseInt(e.target.value)||3)} style={{ width:'100%', padding:'6px 10px', borderRadius: 'var(--r-sm)', border:'1px solid var(--border)', background:'var(--bg-card)', color:'var(--text)', fontSize:13, fontFamily:'var(--font-display)', fontWeight:700, outline:'none' }}/>
                         </div>
                         <div>
-                          <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px', textTransform: 'uppercase' as const }}>{vLabel}</p>
+                          <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '0 0 3px', textTransform: 'uppercase' as const }}>{vLabel}</p>
                           {relKind ? (
                             <div style={{ position:'relative' as const, display:'flex', alignItems:'center' }}>
-                              <input type="number" min={0} max={200} value={b.value} onChange={e=>setPct(b.id,'value',e.target.value)} placeholder={vPlh} style={{ width:'100%', padding:'6px 20px 6px 10px', borderRadius:6, border:'1px solid var(--border)', background:'var(--bg-card)', color:'var(--text)', fontSize:13, fontFamily:'var(--font-display)', outline:'none', fontWeight:700, boxSizing:'border-box' as const }}/>
-                              <span style={{ position:'absolute' as const, right:7, fontSize:9, color:'var(--text-dim)', pointerEvents:'none' as const }}>%</span>
+                              <input type="number" min={0} max={200} value={b.value} onChange={e=>setPct(b.id,'value',e.target.value)} placeholder={vPlh} style={{ width:'100%', padding:'6px 20px 6px 10px', borderRadius: 'var(--r-sm)', border:'1px solid var(--border)', background:'var(--bg-card)', color:'var(--text)', fontSize:13, fontFamily:'var(--font-display)', outline:'none', fontWeight:700, boxSizing:'border-box' as const }}/>
+                              <span style={{ position:'absolute' as const, right:7, fontSize: 10, color:'var(--text-dim)', pointerEvents:'none' as const }}>%</span>
                             </div>
                           ) : (
-                            <input value={b.value} onChange={e=>upd(b.id,'value',e.target.value)} placeholder={vPlh} style={{ width:'100%', padding:'6px 10px', borderRadius:6, border:'1px solid var(--border)', background:'var(--bg-card)', color:'var(--text)', fontSize:13, fontFamily:'var(--font-display)', outline:'none', fontWeight:700 }}/>
+                            <input value={b.value} onChange={e=>upd(b.id,'value',e.target.value)} placeholder={vPlh} style={{ width:'100%', padding:'6px 10px', borderRadius: 'var(--r-sm)', border:'1px solid var(--border)', background:'var(--bg-card)', color:'var(--text)', fontSize:13, fontFamily:'var(--font-display)', outline:'none', fontWeight:700 }}/>
                           )}
-                          {!relKind && sport==='bike' && ftp && parseInt(b.value||'0')>0 && <p style={{ fontSize:9, color:'var(--text-dim)', margin:'2px 0 0' }}>{Math.round(parseInt(b.value||'0')/ftp*100)}% FTP</p>}
+                          {!relKind && sport==='bike' && ftp && parseInt(b.value||'0')>0 && <p style={{ fontSize: 10, color:'var(--text-dim)', margin:'2px 0 0' }}>{Math.round(parseInt(b.value||'0')/ftp*100)}% FTP</p>}
                         </div>
                       </div>
                     </div>
-                    <div style={{ padding: '8px 10px', borderRadius: 8, background: 'rgba(107,114,128,0.06)', border: '1px solid rgba(107,114,128,0.15)' }}>
-                      <p style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.06em', color: 'var(--text-dim)', margin: '0 0 6px' }}>{t('sed.recovery')}</p>
+                    <div style={{ padding: '8px 10px', borderRadius: 'var(--r-sm)', background: 'rgba(107,114,128,0.06)', border: '1px solid rgba(107,114,128,0.15)' }}>
+                      <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.06em', color: 'var(--text-dim)', margin: '0 0 6px' }}>{t('sed.recovery')}</p>
                       <div style={{ display: 'grid', gridTemplateColumns: sport==='bike' ? '1fr 1fr 1fr' : '1fr 1fr', gap: 8 }}>
                         <div>
-                          <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px', textTransform: 'uppercase' as const }}>{t('sed.duration')}</p>
-                          <input value={durMMSS(b.recoveryMin??0)} onChange={e=>upd(b.id,'recoveryMin',mmssToMin(e.target.value))} placeholder="1:00" style={{ width:'100%', padding:'6px 10px', borderRadius:6, border:'1px solid var(--border)', background:'var(--bg-card)', color:'var(--text)', fontSize:13, fontFamily:'var(--font-display)', fontWeight:700, outline:'none' }}/>
+                          <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '0 0 3px', textTransform: 'uppercase' as const }}>{t('sed.duration')}</p>
+                          <input value={durMMSS(b.recoveryMin??0)} onChange={e=>upd(b.id,'recoveryMin',mmssToMin(e.target.value))} placeholder="1:00" style={{ width:'100%', padding:'6px 10px', borderRadius: 'var(--r-sm)', border:'1px solid var(--border)', background:'var(--bg-card)', color:'var(--text)', fontSize:13, fontFamily:'var(--font-display)', fontWeight:700, outline:'none' }}/>
                         </div>
                         <div>
-                          <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px', textTransform: 'uppercase' as const }}>{t('sed.zoneRecovery')}</p>
-                          <input type="number" min={1} max={7} value={b.recoveryZone??1} onChange={e=>upd(b.id,'recoveryZone',parseInt(e.target.value)||1)} style={{ width:'100%', padding:'6px 10px', borderRadius:6, border:'1px solid var(--border)', background:'var(--bg-card2)', color:'var(--text)', fontSize:13, fontFamily:'DM Mono,monospace', outline:'none' }}/>
+                          <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '0 0 3px', textTransform: 'uppercase' as const }}>{t('sed.zoneRecovery')}</p>
+                          <input type="number" min={1} max={7} value={b.recoveryZone??1} onChange={e=>upd(b.id,'recoveryZone',parseInt(e.target.value)||1)} style={{ width:'100%', padding:'6px 10px', borderRadius: 'var(--r-sm)', border:'1px solid var(--border)', background:'var(--bg-card2)', color:'var(--text)', fontSize:13, fontFamily: 'var(--font-body)', outline:'none' }}/>
                         </div>
                         {sport==='bike' && (
                           <div>
-                            <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px', textTransform: 'uppercase' as const }}>{t('sed.wattsRecovery')}</p>
-                            <input type="number" min={0} step={5} value={b.recoveryValue??''} placeholder="180" onChange={e=>upd(b.id,'recoveryValue',e.target.value)} style={{ width:'100%', padding:'6px 10px', borderRadius:6, border:'1px solid rgba(107,114,128,0.25)', background:'var(--bg-card2)', color:'var(--text-mid)', fontSize:13, fontFamily:'DM Mono,monospace', outline:'none', fontWeight:600 }}/>
-                            {ftp && parseInt(b.recoveryValue||'0')>0 && <p style={{ fontSize:9, color:'var(--text-dim)', margin:'2px 0 0' }}>{Math.round(parseInt(b.recoveryValue||'0')/ftp*100)}% FTP · {zc(getZone('bike',b.recoveryValue??''))}</p>}
+                            <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '0 0 3px', textTransform: 'uppercase' as const }}>{t('sed.wattsRecovery')}</p>
+                            <input type="number" min={0} step={5} value={b.recoveryValue??''} placeholder="180" onChange={e=>upd(b.id,'recoveryValue',e.target.value)} style={{ width:'100%', padding:'6px 10px', borderRadius: 'var(--r-sm)', border:'1px solid rgba(107,114,128,0.25)', background:'var(--bg-card2)', color:'var(--text-mid)', fontSize:13, fontFamily: 'var(--font-body)', outline:'none', fontWeight:600 }}/>
+                            {ftp && parseInt(b.recoveryValue||'0')>0 && <p style={{ fontSize: 10, color:'var(--text-dim)', margin:'2px 0 0' }}>{Math.round(parseInt(b.recoveryValue||'0')/ftp*100)}% FTP · {zc(getZone('bike',b.recoveryValue??''))}</p>}
                           </div>
                         )}
                       </div>
-                      <p style={{ fontSize:9, color:'var(--text-dim)', margin:'5px 0 0', fontFamily:'DM Mono,monospace' }}>{recovFmt} {t('sed.inZone')} Z{b.recoveryZone??1}{(b.recoveryZone??1)<=1?` — ${t('sed.walkVerySlowJog')}`:(b.recoveryZone??1)===2?` — ${t('sed.slowJog')}`:''}</p>
+                      <p style={{ fontSize: 10, color:'var(--text-dim)', margin:'5px 0 0', fontFamily: 'var(--font-body)' }}>{recovFmt} {t('sed.inZone')} Z{b.recoveryZone??1}{(b.recoveryZone??1)<=1?` — ${t('sed.walkVerySlowJog')}`:(b.recoveryZone??1)===2?` — ${t('sed.slowJog')}`:''}</p>
                     </div>
                   </div>
                   {/* Footer */}
@@ -1454,10 +1454,10 @@ function BlockBuilder({ sport, blocks, onChange, nutritionItems, exoHistory, ath
             return (
               <div key={b.id} {...dragProps}
                 onMouseEnter={() => setHoveredBlockId(b.id)} onMouseLeave={() => setHoveredBlockId(null)}
-                style={{ borderRadius: 10, border: '1px solid var(--border)', overflow: 'hidden', opacity: isDragging ? 0.5 : 1, outline: isDragOver ? '2px solid var(--primary)' : 'none', borderColor: isHov ? 'var(--border-mid)' : 'var(--border)', transition: 'border-color 0.12s' }}>
+                style={{ borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', overflow: 'hidden', opacity: isDragging ? 0.5 : 1, outline: isDragOver ? '2px solid var(--primary)' : 'none', borderColor: isHov ? 'var(--border-mid)' : 'var(--border)', transition: 'border-color 0.12s' }}>
                 {/* Header */}
                 <div style={{ background: 'var(--bg-card2)', padding: '9px 12px', display: 'flex', alignItems: 'center', gap: 8, borderBottom: '1px solid var(--border)' }}>
-                  <span style={{ padding: '3px 8px', borderRadius: 6, background: `${col}1A`, color: col, fontSize: 11, fontWeight: 700, flexShrink: 0 }}>Z{b.zone}</span>
+                  <span style={{ padding: '3px 8px', borderRadius: 'var(--r-sm)', background: `${col}1A`, color: col, fontSize: 11, fontWeight: 700, flexShrink: 0 }}>Z{b.zone}</span>
                   <select value={b.type} onChange={e => changeType(b.id, e.target.value)} style={{ background: 'transparent', border: 'none', outline: 'none', color: 'var(--text)', fontSize: 12, fontWeight: 600, cursor: 'pointer', padding: '2px 4px' }}>
                     {(Object.entries(BLOCK_TYPE_LABEL) as [BlockType,string][]).filter(([k]) => k !== 'circuit_header').map(([k,v]) => <option key={k} value={k}>{v}</option>)}
                   </select>
@@ -1471,7 +1471,7 @@ function BlockBuilder({ sport, blocks, onChange, nutritionItems, exoHistory, ath
                 </div>
                 {/* Body */}
                 <div style={{ padding: '10px 12px', background: 'var(--bg-card)' }}>
-                  <input value={b.label} onChange={e=>upd(b.id,'label',e.target.value)} placeholder={t('sed.blockNamePlaceholder')} style={{ width:'100%', padding:'8px 11px', borderRadius:8, border:'1px solid var(--border)', background:'var(--bg-card2)', color:'var(--text)', fontSize:13, outline:'none', boxSizing:'border-box' as const, marginBottom:10 }}/>
+                  <input value={b.label} onChange={e=>upd(b.id,'label',e.target.value)} placeholder={t('sed.blockNamePlaceholder')} style={{ width:'100%', padding:'8px 11px', borderRadius: 'var(--r-sm)', border:'1px solid var(--border)', background:'var(--bg-card2)', color:'var(--text)', fontSize:13, outline:'none', boxSizing:'border-box' as const, marginBottom:10 }}/>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8, alignItems: 'end' }}>
                     <StepperField label={t('sed.duration')} value={durMMSS(b.durationMin)}
                       onChange={v=>upd(b.id,'durationMin',mmssToMin(v))}
@@ -1483,19 +1483,19 @@ function BlockBuilder({ sport, blocks, onChange, nutritionItems, exoHistory, ath
                           <p style={{ fontSize:9.5, fontWeight:700, textTransform:'uppercase' as const, letterSpacing:'0.06em', color:'var(--text-dim)', margin:0 }}>{vLabel}</p>
                         </div>
                         <div style={{ position:'relative' as const, display:'flex', alignItems:'center', height:34 }}>
-                          <input type="number" min={0} max={200} placeholder={vPlh} value={b.value} onChange={e=>setPct(b.id,'value',e.target.value)} style={{ width:'100%', padding:'0 20px 0 10px', borderRadius:8, border:`1px solid ${col}50`, background:'var(--bg-card2)', color:col, fontSize:15, fontFamily:'var(--font-display)', outline:'none', fontWeight:700, boxSizing:'border-box' as const }}/>
-                          <span style={{ position:'absolute' as const, right:6, fontSize:9, color:'var(--text-dim)', pointerEvents:'none' as const }}>%</span>
+                          <input type="number" min={0} max={200} placeholder={vPlh} value={b.value} onChange={e=>setPct(b.id,'value',e.target.value)} style={{ width:'100%', padding:'0 20px 0 10px', borderRadius: 'var(--r-sm)', border:`1px solid ${col}50`, background:'var(--bg-card2)', color:col, fontSize:15, fontFamily:'var(--font-display)', outline:'none', fontWeight:700, boxSizing:'border-box' as const }}/>
+                          <span style={{ position:'absolute' as const, right:6, fontSize: 10, color:'var(--text-dim)', pointerEvents:'none' as const }}>%</span>
                         </div>
                       </div>
                     ) : inFtpPct && sport === 'bike' && ftp ? (
                       <div>
                         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:4, minHeight:14 }}>
                           <p style={{ fontSize:9.5, fontWeight:700, textTransform:'uppercase' as const, letterSpacing:'0.06em', color:'var(--text-dim)', margin:0 }}>{vLabel}</p>
-                          <button onClick={() => setFtpPctMode(p=>({...p,[b.id]:!p[b.id]}))} style={{ fontSize:8, padding:'1px 5px', borderRadius:3, border:`1px solid ${col}`, background:`${col}15`, color:col, cursor:'pointer', fontWeight:600 }}>→W</button>
+                          <button onClick={() => setFtpPctMode(p=>({...p,[b.id]:!p[b.id]}))} style={{ fontSize: 10, padding:'1px 5px', borderRadius:3, border:`1px solid ${col}`, background:`${col}15`, color:col, cursor:'pointer', fontWeight:600 }}>→W</button>
                         </div>
                         <div style={{ position:'relative' as const, display:'flex', alignItems:'center', height:34 }}>
-                          <input type="number" min={1} max={200} placeholder="75" value={wattsNum>0?Math.round(wattsNum/ftp*100):''} onChange={e=>{const p=parseFloat(e.target.value)||0;upd(b.id,'value',String(Math.round(ftp*p/100)))}} style={{ width:'100%', padding:'0 20px 0 10px', borderRadius:8, border:`1px solid ${col}50`, background:'var(--bg-card2)', color:col, fontSize:15, fontFamily:'var(--font-display)', outline:'none', fontWeight:700, boxSizing:'border-box' as const }}/>
-                          <span style={{ position:'absolute' as const, right:6, fontSize:9, color:'var(--text-dim)', pointerEvents:'none' as const }}>%</span>
+                          <input type="number" min={1} max={200} placeholder="75" value={wattsNum>0?Math.round(wattsNum/ftp*100):''} onChange={e=>{const p=parseFloat(e.target.value)||0;upd(b.id,'value',String(Math.round(ftp*p/100)))}} style={{ width:'100%', padding:'0 20px 0 10px', borderRadius: 'var(--r-sm)', border:`1px solid ${col}50`, background:'var(--bg-card2)', color:col, fontSize:15, fontFamily:'var(--font-display)', outline:'none', fontWeight:700, boxSizing:'border-box' as const }}/>
+                          <span style={{ position:'absolute' as const, right:6, fontSize: 10, color:'var(--text-dim)', pointerEvents:'none' as const }}>%</span>
                         </div>
                       </div>
                     ) : (
@@ -1504,7 +1504,7 @@ function BlockBuilder({ sport, blocks, onChange, nutritionItems, exoHistory, ath
                         onDec={()=>upd(b.id,'value',bumpPaceOrWatts(b.value||'',-1))}
                         onInc={()=>upd(b.id,'value',bumpPaceOrWatts(b.value||'',1))}
                         headerRight={sport === 'bike' && ftp ? (
-                          <button onClick={() => setFtpPctMode(p=>({...p,[b.id]:!p[b.id]}))} style={{ fontSize:8, padding:'1px 5px', borderRadius:3, border:'1px solid var(--border)', background:'transparent', color:'var(--text-dim)', cursor:'pointer', fontWeight:600 }}>%FTP</button>
+                          <button onClick={() => setFtpPctMode(p=>({...p,[b.id]:!p[b.id]}))} style={{ fontSize: 10, padding:'1px 5px', borderRadius:3, border:'1px solid var(--border)', background:'transparent', color:'var(--text-dim)', cursor:'pointer', fontWeight:600 }}>%FTP</button>
                         ) : undefined} />
                     )}
                     <StepperField label={t('sed.hr')} unit="bpm" value={b.hrAvg||''} color="var(--text)"
@@ -1512,10 +1512,10 @@ function BlockBuilder({ sport, blocks, onChange, nutritionItems, exoHistory, ath
                       onDec={()=>upd(b.id,'hrAvg',String(Math.max(0,(parseInt(b.hrAvg||'0')||0)-1)))}
                       onInc={()=>upd(b.id,'hrAvg',String((parseInt(b.hrAvg||'0')||0)+1))} />
                   </div>
-                  {sport==='bike' && ftp && wattsNum>0 && !inFtpPct && <p style={{ fontSize:9, color:'var(--text-dim)', margin:'6px 0 0' }}>{Math.round(wattsNum/ftp*100)}% FTP</p>}
+                  {sport==='bike' && ftp && wattsNum>0 && !inFtpPct && <p style={{ fontSize: 10, color:'var(--text-dim)', margin:'6px 0 0' }}>{Math.round(wattsNum/ftp*100)}% FTP</p>}
                   {/* FTP warning */}
                   {warnFtp && (
-                    <div style={{ marginTop:8, padding:'5px 10px', borderRadius:6, background:'rgba(234,88,12,0.08)', border:'1px solid rgba(234,88,12,0.25)', display:'flex', alignItems:'center', gap:5 }}>
+                    <div style={{ marginTop:8, padding:'5px 10px', borderRadius: 'var(--r-sm)', background:'rgba(234,88,12,0.08)', border:'1px solid rgba(234,88,12,0.25)', display:'flex', alignItems:'center', gap:5 }}>
                       <span style={{ fontSize:11 }}>⚠</span>
                       <span style={{ fontSize:10, color:'#EA580C', fontWeight:600 }}>{wattsNum}W &gt; FTP ({ftp}W) {t('sed.overMin', { min: b.durationMin })} — {t('sed.unsustainableIntensity')}</span>
                     </div>
@@ -1539,11 +1539,11 @@ function BlockBuilder({ sport, blocks, onChange, nutritionItems, exoHistory, ath
       {/* ══ BOUTONS AJOUTER ══ */}
       {sport === 'gym' || sport === 'hyrox' ? (
         <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 6 }}>
-          <button onClick={() => onChange([...blocks,{id:`b_${Date.now()}`,mode:'single',type:'effort',durationMin:0,zone:3,value:'',hrAvg:'',label:t('sed.exercise'),reps:10,recoveryMin:1.5}])} style={{ width:'100%', padding:'10px', borderRadius:10, background:'transparent', border:'1px dashed var(--border-mid)', color:'var(--text-dim)', fontSize:12, cursor:'pointer' }}>{t('sed.plusExercise')}</button>
+          <button onClick={() => onChange([...blocks,{id:`b_${Date.now()}`,mode:'single',type:'effort',durationMin:0,zone:3,value:'',hrAvg:'',label:t('sed.exercise'),reps:10,recoveryMin:1.5}])} style={{ width:'100%', padding:'10px', borderRadius: 'var(--r-sm)', background:'transparent', border:'1px dashed var(--border-mid)', color:'var(--text-dim)', fontSize:12, cursor:'pointer' }}>{t('sed.plusExercise')}</button>
           {!showCircuitMenu ? (
-            <button onClick={() => setShowCircuitMenu(true)} style={{ width:'100%', padding:'10px', borderRadius:10, background:'transparent', border:`1px dashed ${SPORT_BORDER[sport]}66`, color:SPORT_BORDER[sport], fontSize:12, cursor:'pointer' }}>{t('sed.addCircuit')}</button>
+            <button onClick={() => setShowCircuitMenu(true)} style={{ width:'100%', padding:'10px', borderRadius: 'var(--r-sm)', background:'transparent', border:`1px dashed ${SPORT_BORDER[sport]}66`, color:SPORT_BORDER[sport], fontSize:12, cursor:'pointer' }}>{t('sed.addCircuit')}</button>
           ) : (
-            <div style={{ padding:'12px 14px', borderRadius:12, border:'1px solid var(--border)', background:'var(--bg-card2)' }}>
+            <div style={{ padding:'12px 14px', borderRadius: 'var(--r-md)', border:'1px solid var(--border)', background:'var(--bg-card2)' }}>
               <p style={{ fontSize:10, fontWeight:600, color:'var(--text-dim)', margin:'0 0 8px' }}>{t('sed.whichCircuitType')}</p>
               <div style={{ display:'flex', flexDirection:'column' as const, gap:4 }}>
                 {CIRCUIT_TYPES.map(ct => (
@@ -1551,7 +1551,7 @@ function BlockBuilder({ sport, blocks, onChange, nutritionItems, exoHistory, ath
                     const nExos = blocks.filter(x=>x.type==='circuit_header').length
                     onChange([...blocks,{id:`circuit_${Date.now()}`,mode:ct.id,type:'circuit_header',label:`${ct.label} ${nExos+1}`,zone:ct.id==='tabata'?8:3,durationMin:ct.id==='emom'?12:0,recoveryMin:ct.id==='tabata'||ct.id==='emom'?0:1.5,reps:0,value:'',hrAvg:''}])
                     setShowCircuitMenu(false)
-                  }} style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 12px', borderRadius:8, border:'1px solid var(--border)', background:'var(--bg-card)', cursor:'pointer', textAlign:'left' as const, width:'100%' }}>
+                  }} style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 12px', borderRadius: 'var(--r-sm)', border:'1px solid var(--border)', background:'var(--bg-card)', cursor:'pointer', textAlign:'left' as const, width:'100%' }}>
                     <span style={{ fontSize:14, width:20, textAlign:'center' as const, flexShrink:0 }}>{ct.icon}</span>
                     <div style={{ flex:1, minWidth:0 }}>
                       <span style={{ fontSize:12, fontWeight:700, color:'var(--text)' }}>{ct.label}</span>
@@ -1560,7 +1560,7 @@ function BlockBuilder({ sport, blocks, onChange, nutritionItems, exoHistory, ath
                   </button>
                 ))}
               </div>
-              <button onClick={()=>setShowCircuitMenu(false)} style={{ marginTop:8, width:'100%', padding:'7px', borderRadius:6, border:'1px solid var(--border)', background:'transparent', color:'var(--text-dim)', fontSize:10, cursor:'pointer' }}>{t('sed.cancel')}</button>
+              <button onClick={()=>setShowCircuitMenu(false)} style={{ marginTop:8, width:'100%', padding:'7px', borderRadius: 'var(--r-sm)', border:'1px solid var(--border)', background:'transparent', color:'var(--text-dim)', fontSize:10, cursor:'pointer' }}>{t('sed.cancel')}</button>
             </div>
           )}
         </div>
@@ -1569,8 +1569,8 @@ function BlockBuilder({ sport, blocks, onChange, nutritionItems, exoHistory, ath
           <button onClick={addSingle}
             onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.borderColor='var(--primary)'}}
             onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.borderColor='var(--border)'}}
-            style={{ flex:1, padding:'12px 14px', borderRadius:12, background:'var(--bg-card2)', border:'1px solid var(--border)', cursor:'pointer', display:'flex', alignItems:'center', gap:11, textAlign:'left' as const, transition:'border-color .15s' }}>
-            <span style={{ width:30, height:30, borderRadius:9, background:'var(--bg-elev)', color:'var(--text-mid)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:18, fontWeight:300, flexShrink:0, lineHeight:1 }}>+</span>
+            style={{ flex:1, padding:'12px 14px', borderRadius: 'var(--r-md)', background:'var(--bg-card2)', border:'1px solid var(--border)', cursor:'pointer', display:'flex', alignItems:'center', gap:11, textAlign:'left' as const, transition:'border-color .15s' }}>
+            <span style={{ width:30, height:30, borderRadius: 'var(--r-sm)', background:'var(--bg-elev)', color:'var(--text-mid)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:18, fontWeight:300, flexShrink:0, lineHeight:1 }}>+</span>
             <span style={{ display:'flex', flexDirection:'column' as const, gap:1 }}>
               <span style={{ fontSize:13, fontWeight:700, color:'var(--text)' }}>{t('sed.simpleBlock')}</span>
               <span style={{ fontSize:10.5, color:'var(--text-dim)' }}>{t('sed.continuousEffort')}</span>
@@ -1579,8 +1579,8 @@ function BlockBuilder({ sport, blocks, onChange, nutritionItems, exoHistory, ath
           <button onClick={addInterval}
             onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.borderColor='var(--primary)'}}
             onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.borderColor='var(--border)'}}
-            style={{ flex:1, padding:'12px 14px', borderRadius:12, background:'var(--bg-card2)', border:'1px solid var(--border)', cursor:'pointer', display:'flex', alignItems:'center', gap:11, textAlign:'left' as const, transition:'border-color .15s' }}>
-            <span style={{ width:30, height:30, borderRadius:9, background:'var(--bg-elev)', color:'var(--text-mid)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:15, flexShrink:0, lineHeight:1 }}>⟳</span>
+            style={{ flex:1, padding:'12px 14px', borderRadius: 'var(--r-md)', background:'var(--bg-card2)', border:'1px solid var(--border)', cursor:'pointer', display:'flex', alignItems:'center', gap:11, textAlign:'left' as const, transition:'border-color .15s' }}>
+            <span style={{ width:30, height:30, borderRadius: 'var(--r-sm)', background:'var(--bg-elev)', color:'var(--text-mid)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:15, flexShrink:0, lineHeight:1 }}>⟳</span>
             <span style={{ display:'flex', flexDirection:'column' as const, gap:1 }}>
               <span style={{ fontSize:13, fontWeight:700, color:'var(--text)' }}>{t('sed.repetitions')}</span>
               <span style={{ fontSize:10.5, color:'var(--text-dim)' }}>{t('sed.intervals')}</span>
@@ -2101,18 +2101,18 @@ function IntervalPanel({
     <div style={{ padding:'12px 14px', background:'var(--bg-card2)', borderTop:'1px solid var(--border)' }}>
       {/* Presets */}
       <div style={{ marginBottom:10 }}>
-        <p style={{ fontSize:9, fontWeight:700, textTransform:'uppercase' as const, letterSpacing:'0.06em', color:'var(--text-dim)', margin:'0 0 6px' }}>Presets</p>
+        <p style={{ fontSize: 10, fontWeight:700, textTransform:'uppercase' as const, letterSpacing:'0.06em', color:'var(--text-dim)', margin:'0 0 6px' }}>Presets</p>
         <div style={{ display:'flex', gap:4, flexWrap:'wrap' as const }}>
           {PRESETS.map(p => {
             const active = p.blocks.length === iBlocks.length && p.blocks.every((pb, i) => pb.type === iBlocks[i]?.type && pb.sec === iBlocks[i]?.sec)
             const pCol = wattsColor(p.blocks.find(b=>b.type==='effort')?.watts ?? defaultWatts)
             return (
               <button key={p.l} onClick={() => { setIBlocks(p.blocks); setReps(Math.max(1, perRepSec > 0 ? Math.floor(blockSec / p.blocks.reduce((a,b) => a+b.sec,0)) : 8)) }}
-                style={{ padding:'3px 8px', borderRadius:5, border:'1px solid var(--border)', fontSize:9, fontWeight:600, cursor:'pointer', fontFamily:'DM Mono,monospace',
+                style={{ padding:'3px 8px', borderRadius: 'var(--r-sm)', border:'1px solid var(--border)', fontSize: 10, fontWeight:600, cursor:'pointer', fontFamily: 'var(--font-body)',
                   background: active ? `${pCol}22` : 'var(--bg-card)', color: active ? pCol : 'var(--text-mid)' }}>{p.l}</button>
             )
           })}
-          <button onClick={() => onChange(null)} style={{ padding:'3px 8px', borderRadius:5, border:'1px solid rgba(239,68,68,0.35)', background:'rgba(239,68,68,0.07)', color:'#ef4444', fontSize:9, fontWeight:600, cursor:'pointer', marginLeft:'auto' }}>✕ {t('sed.delete')}</button>
+          <button onClick={() => onChange(null)} style={{ padding:'3px 8px', borderRadius: 'var(--r-sm)', border:'1px solid rgba(239,68,68,0.35)', background:'rgba(239,68,68,0.07)', color:'#ef4444', fontSize: 10, fontWeight:600, cursor:'pointer', marginLeft:'auto' }}>✕ {t('sed.delete')}</button>
         </div>
       </div>
       {/* Blocks list */}
@@ -2121,23 +2121,23 @@ function IntervalPanel({
           const col = wattsColor(ib.watts)
           const isEf = ib.type === 'effort'
           return (
-            <div key={idx} style={{ display:'flex', alignItems:'center', gap:6, padding:'6px 9px', borderRadius:7,
+            <div key={idx} style={{ display:'flex', alignItems:'center', gap:6, padding:'6px 9px', borderRadius: 'var(--r-sm)',
               border:`1px solid ${col}40`, background:`${col}07` }}>
               {/* Type toggle */}
               <button onClick={() => updateBlock(idx, 'type', isEf ? 'recovery' : 'effort')}
-                style={{ padding:'2px 7px', borderRadius:4, border:`1px solid ${col}60`, background:`${col}20`, color:col, fontSize:8, fontWeight:700, cursor:'pointer', minWidth:46, flexShrink:0 }}>
+                style={{ padding:'2px 7px', borderRadius:4, border:`1px solid ${col}60`, background:`${col}20`, color:col, fontSize: 10, fontWeight:700, cursor:'pointer', minWidth:46, flexShrink:0 }}>
                 {isEf ? t('sed.effortUpper') : t('sed.recovUpper')}
               </button>
               {/* Duration */}
               <input type="text" defaultValue={toMmSs(ib.sec)} key={`sec_${idx}_${ib.sec}`}
                 onBlur={e => updateBlock(idx, 'sec', Math.max(5, parseMmSs(e.target.value)))}
-                style={{ width:44, padding:'2px 4px', borderRadius:4, border:`1px solid ${col}40`, background:'var(--bg-card)', color:'var(--text)', fontSize:10, fontFamily:'DM Mono,monospace', textAlign:'center' as const, outline:'none' }}/>
-              <span style={{ fontSize:8, color:'var(--text-dim)', flexShrink:0 }}>mm:ss</span>
+                style={{ width:44, padding:'2px 4px', borderRadius:4, border:`1px solid ${col}40`, background:'var(--bg-card)', color:'var(--text)', fontSize:10, fontFamily: 'var(--font-body)', textAlign:'center' as const, outline:'none' }}/>
+              <span style={{ fontSize: 10, color:'var(--text-dim)', flexShrink:0 }}>mm:ss</span>
               {/* Watts */}
               <input type="number" value={ib.watts} onChange={e => updateBlock(idx, 'watts', Math.max(50, Math.min(600, parseInt(e.target.value)||0)))}
-                style={{ width:44, padding:'2px 4px', borderRadius:4, border:`1px solid ${col}40`, background:'var(--bg-card)', color:col, fontSize:10, fontWeight:700, fontFamily:'DM Mono,monospace', textAlign:'center' as const, outline:'none' }}/>
-              <span style={{ fontSize:8, color:'var(--text-dim)', flexShrink:0 }}>W</span>
-              <span style={{ fontSize:9, fontWeight:700, color:col, flexShrink:0 }}>{wattsZone(ib.watts)}</span>
+                style={{ width:44, padding:'2px 4px', borderRadius:4, border:`1px solid ${col}40`, background:'var(--bg-card)', color:col, fontSize:10, fontWeight:700, fontFamily: 'var(--font-body)', textAlign:'center' as const, outline:'none' }}/>
+              <span style={{ fontSize: 10, color:'var(--text-dim)', flexShrink:0 }}>W</span>
+              <span style={{ fontSize: 10, fontWeight:700, color:col, flexShrink:0 }}>{wattsZone(ib.watts)}</span>
               <div style={{ flex:1 }}/>
               {iBlocks.length > 1 && (
                 <button onClick={() => removeBlock(idx)}
@@ -2150,25 +2150,25 @@ function IntervalPanel({
       {/* Add block buttons */}
       <div style={{ display:'flex', gap:5, marginBottom:8 }}>
         <button onClick={() => addBlock('effort')}
-          style={{ padding:'3px 9px', borderRadius:5, border:'1px solid rgba(239,68,68,0.35)', background:'rgba(239,68,68,0.07)', color:'#EF4444', fontSize:9, fontWeight:600, cursor:'pointer' }}>{t('sed.plusEffort')}</button>
+          style={{ padding:'3px 9px', borderRadius: 'var(--r-sm)', border:'1px solid rgba(239,68,68,0.35)', background:'rgba(239,68,68,0.07)', color:'#EF4444', fontSize: 10, fontWeight:600, cursor:'pointer' }}>{t('sed.plusEffort')}</button>
         <button onClick={() => addBlock('recovery')}
-          style={{ padding:'3px 9px', borderRadius:5, border:'1px solid rgba(16,185,129,0.35)', background:'rgba(16,185,129,0.07)', color:'#10B981', fontSize:9, fontWeight:600, cursor:'pointer' }}>{t('sed.plusRecov')}</button>
+          style={{ padding:'3px 9px', borderRadius: 'var(--r-sm)', border:'1px solid rgba(16,185,129,0.35)', background:'rgba(16,185,129,0.07)', color:'#10B981', fontSize: 10, fontWeight:600, cursor:'pointer' }}>{t('sed.plusRecov')}</button>
       </div>
       {/* Reps row */}
       <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:8 }}>
-        <span style={{ fontSize:9, color:'var(--text-dim)', whiteSpace:'nowrap' as const }}>{t('sed.repetitions')}</span>
+        <span style={{ fontSize: 10, color:'var(--text-dim)', whiteSpace:'nowrap' as const }}>{t('sed.repetitions')}</span>
         <input type="number" value={reps} min={1} max={99} onChange={e => setReps(Math.max(1,parseInt(e.target.value)||1))}
-          style={{ width:40, padding:'2px 5px', borderRadius:4, border:'1px solid var(--border)', background:'var(--bg-card)', color:'var(--text)', fontSize:11, fontWeight:700, fontFamily:'DM Mono,monospace', textAlign:'center' as const, outline:'none' }}/>
+          style={{ width:40, padding:'2px 5px', borderRadius:4, border:'1px solid var(--border)', background:'var(--bg-card)', color:'var(--text)', fontSize:11, fontWeight:700, fontFamily: 'var(--font-body)', textAlign:'center' as const, outline:'none' }}/>
         <button onClick={() => { if(perRepSec>0) setReps(Math.max(1,Math.floor(blockSec/perRepSec))) }}
-          style={{ padding:'2px 8px', borderRadius:4, border:'1px solid var(--border)', background:'var(--bg-card)', color:'var(--text-mid)', fontSize:9, fontWeight:600, cursor:'pointer' }}>Auto</button>
-        <span style={{ fontSize:10, color:'var(--text)', fontFamily:'DM Mono,monospace' }}>
+          style={{ padding:'2px 8px', borderRadius:4, border:'1px solid var(--border)', background:'var(--bg-card)', color:'var(--text-mid)', fontSize: 10, fontWeight:600, cursor:'pointer' }}>Auto</button>
+        <span style={{ fontSize:10, color:'var(--text)', fontFamily: 'var(--font-body)' }}>
           = {Math.floor(totMin)}:{String(Math.round((totMin%1)*60)).padStart(2,'0')}
         </span>
-        {overflow && <span style={{ fontSize:9, color:'#ef4444', background:'rgba(239,68,68,0.1)', borderRadius:3, padding:'1px 5px' }}>⚠ +{Math.round((totSec-blockSec)/60)}min</span>}
-        {!overflow && remainSec > 30 && <span style={{ fontSize:9, color:'#eab308', background:'rgba(234,179,8,0.1)', borderRadius:3, padding:'1px 5px' }}>⚠ {t('sed.minNotCovered', { min: Math.round(remainSec/60) })}</span>}
+        {overflow && <span style={{ fontSize: 10, color:'#ef4444', background:'rgba(239,68,68,0.1)', borderRadius:3, padding:'1px 5px' }}>⚠ +{Math.round((totSec-blockSec)/60)}min</span>}
+        {!overflow && remainSec > 30 && <span style={{ fontSize: 10, color:'#eab308', background:'rgba(234,179,8,0.1)', borderRadius:3, padding:'1px 5px' }}>⚠ {t('sed.minNotCovered', { min: Math.round(remainSec/60) })}</span>}
       </div>
       {/* Summary formula */}
-      <div style={{ padding:'6px 9px', borderRadius:5, background:'var(--bg-card)', border:'1px solid var(--border)', fontSize:9, fontFamily:'DM Mono,monospace', color:'var(--text-mid)', marginBottom:8 }}>
+      <div style={{ padding:'6px 9px', borderRadius: 'var(--r-sm)', background:'var(--bg-card)', border:'1px solid var(--border)', fontSize: 10, fontFamily: 'var(--font-body)', color:'var(--text-mid)', marginBottom:8 }}>
         {reps} × ({iBlocks.map(b => `${fmtSec(b.sec)} @${b.watts}W`).join(' + ')})
         {' '}= <strong style={{ color:overflow?'#ef4444':'var(--text)' }}>{Math.floor(totMin)}:{String(Math.round((totMin%1)*60)).padStart(2,'0')}</strong>
       </div>
@@ -2183,7 +2183,7 @@ function IntervalPanel({
       {/* Apply */}
       <button
         onClick={() => { onChange({ blocks: iBlocks, reps }); onClose() }}
-        style={{ width:'100%', padding:'7px', borderRadius:7, border:'none', background:`linear-gradient(135deg,${wattsColor(efW)},${wattsColor(efW)}bb)`, color:'#fff', fontSize:11, fontWeight:700, cursor:'pointer' }}>
+        style={{ width:'100%', padding:'7px', borderRadius: 'var(--r-sm)', border:'none', background:`linear-gradient(135deg,${wattsColor(efW)},${wattsColor(efW)}bb)`, color:'#fff', fontSize:11, fontWeight:700, cursor:'pointer' }}>
         ⚡ {t('sed.applyIntervals')}
       </button>
     </div>
@@ -2646,7 +2646,7 @@ function ElevationChart({ profile, totalKm, accent, onHover, terrainBlocks, onBl
               top: `${yTopPct}%`,
               transform: 'translateX(-50%) translateY(calc(-100% - 10px))',
               background: 'var(--bg-card)',
-              borderRadius: 10,
+              borderRadius: 'var(--r-sm)',
               boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
               border: `1.5px solid ${gradTopT}50`,
               padding: '10px 14px',
@@ -2673,14 +2673,14 @@ function ElevationChart({ profile, totalKm, accent, onHover, terrainBlocks, onBl
               <button
                 onMouseDown={e => e.stopPropagation()}
                 onClick={e => { e.stopPropagation(); setHoveredGauge(null); onGaugeAction?.(pg.blockIdx, 'modify') }}
-                style={{ flex: 1, padding: '5px 0', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg)', fontSize: 10, fontWeight: 700, cursor: 'pointer', color: 'var(--text)' }}
+                style={{ flex: 1, padding: '5px 0', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg)', fontSize: 10, fontWeight: 700, cursor: 'pointer', color: 'var(--text)' }}
               >
                 {t('sed.modify')}
               </button>
               <button
                 onMouseDown={e => e.stopPropagation()}
                 onClick={e => { e.stopPropagation(); setHoveredGauge(null); onGaugeAction?.(pg.blockIdx, 'intervals') }}
-                style={{ flex: 1, padding: '5px 0', borderRadius: 6, border: `1px solid ${gradTopT}60`, background: `${gradTopT}15`, fontSize: 10, fontWeight: 700, cursor: 'pointer', color: gradTopT }}
+                style={{ flex: 1, padding: '5px 0', borderRadius: 'var(--r-sm)', border: `1px solid ${gradTopT}60`, background: `${gradTopT}15`, fontSize: 10, fontWeight: 700, cursor: 'pointer', color: gradTopT }}
               >
                 ⚡ {t('sed.intervals')}
               </button>
@@ -2692,7 +2692,7 @@ function ElevationChart({ profile, totalKm, accent, onHover, terrainBlocks, onBl
       {cursor && !dragging && (
         <div style={{
           display: 'flex', gap: 16, padding: '7px 12px',
-          borderRadius: 8, background: 'var(--bg-card)', border: '1px solid var(--border)',
+          borderRadius: 'var(--r-sm)', background: 'var(--bg-card)', border: '1px solid var(--border)',
           marginTop: 5, fontSize: 11, justifyContent: 'center', flexWrap: 'wrap' as const,
         }}>
           <span style={{ color: 'var(--text-dim)' }}>km <strong style={{ color: 'var(--text)', fontFamily: '"DM Mono",monospace' }}>{cursor.distKm.toFixed(1)}</strong></span>
@@ -2786,7 +2786,7 @@ function GPSMapInner({ trace, accent, hoveredKm, elevationProfile }: {
   return (
     <>
       <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
-      <div ref={mapRef} style={{ width: '100%', height: 400, borderRadius: 10, overflow: 'hidden', zIndex: 0 }}/>
+      <div ref={mapRef} style={{ width: '100%', height: 400, borderRadius: 'var(--r-sm)', overflow: 'hidden', zIndex: 0 }}/>
     </>
   )
 }
@@ -2801,7 +2801,7 @@ function GPSMapWrapper({ trace, accent, hoveredKm, elevationProfile }: {
   const [mounted, setMounted] = useState(false)
   useEffect(() => setMounted(true), [])
   if (!mounted) return (
-    <div style={{ width: '100%', height: 400, borderRadius: 10, background: 'var(--bg-card2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-dim)', fontSize: 11 }}>
+    <div style={{ width: '100%', height: 400, borderRadius: 'var(--r-sm)', background: 'var(--bg-card2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-dim)', fontSize: 11 }}>
       {t('sed.loadingMap')}
     </div>
   )
@@ -3249,7 +3249,7 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog, exoHis
       <div onClick={e => e.stopPropagation()} style={{ position: 'fixed' as const, inset: 0, zIndex: 2000, background: 'var(--bg)', color: 'var(--text)', overflowY: 'auto' as const }}>
         <div style={{ padding: '80px 24px 28px', maxWidth: 500, margin: '0 auto' }}>
           <p style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.1em', margin: '0 0 4px' }}>{t('sed.readyToStart')}</p>
-          <h1 style={{ fontSize: 22, fontWeight: 800, margin: '0 0 20px', fontFamily: 'Syne, sans-serif', color: 'var(--text)' }}>{sessionTitle}</h1>
+          <h1 style={{ fontSize: 22, fontWeight: 800, margin: '0 0 20px', fontFamily: 'var(--font-display)', color: 'var(--text)' }}>{sessionTitle}</h1>
           {circuits.map((circ, ci) => (
             <div key={ci} style={{ marginBottom: 16 }}>
               <p style={{ fontSize: 10, fontWeight: 700, color: accent, textTransform: 'uppercase' as const, letterSpacing: '0.08em', margin: '0 0 6px' }}>
@@ -3258,7 +3258,7 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog, exoHis
               </p>
               <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 5 }}>
                 {circ.exos.map((exo, ei) => (
-                  <div key={exo.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card)' }}>
+                  <div key={exo.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-card)' }}>
                     <span style={{ fontSize: 11, color: 'var(--text-dim)', fontFamily: '"DM Mono",monospace', width: 18, flexShrink: 0 }}>{ei + 1}</span>
                     <div style={{ flex: 1 }}>
                       <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{exo.label}</span>
@@ -3281,10 +3281,10 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog, exoHis
               {t('sed.vibrateEndRest')}
             </label>
           </div>
-          <button onClick={startSession} style={{ width: '100%', padding: '16px', borderRadius: 12, border: 'none', background: `linear-gradient(135deg, ${accent}, ${accent}bb)`, color: '#fff', fontSize: 16, fontWeight: 800, cursor: 'pointer', fontFamily: 'Syne, sans-serif', letterSpacing: '0.02em' }}>
+          <button onClick={startSession} style={{ width: '100%', padding: '16px', borderRadius: 'var(--r-md)', border: 'none', background: `linear-gradient(135deg, ${accent}, ${accent}bb)`, color: '#fff', fontSize: 16, fontWeight: 800, cursor: 'pointer', fontFamily: 'var(--font-body)', letterSpacing: '0.02em' }}>
             ▶ {t('sed.startSession')}
           </button>
-          <button onClick={onExit} style={{ width: '100%', padding: '12px', borderRadius: 10, marginTop: 10, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-dim)', fontSize: 12, cursor: 'pointer' }}>{t('sed.cancel')}</button>
+          <button onClick={onExit} style={{ width: '100%', padding: '12px', borderRadius: 'var(--r-sm)', marginTop: 10, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-dim)', fontSize: 12, cursor: 'pointer' }}>{t('sed.cancel')}</button>
         </div>
       </div>
     )
@@ -3340,7 +3340,7 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog, exoHis
         )}
         <div style={{ padding: '80px 24px 32px', maxWidth: 500, margin: '0 auto', textAlign: 'center' as const }}>
           <div style={{ fontSize: 56, marginBottom: 8, display: 'inline-block', animation: 'trophy-bounce 1.2s ease-in-out 3' }}>🏆</div>
-          <h2 style={{ fontSize: 24, fontWeight: 800, fontFamily: 'Syne, sans-serif', margin: '0 0 4px', color: 'var(--text)' }}>{t('sed.sessionDone')}</h2>
+          <h2 style={{ fontSize: 24, fontWeight: 800, fontFamily: 'var(--font-display)', margin: '0 0 4px', color: 'var(--text)' }}>{t('sed.sessionDone')}</h2>
           {motivMsg && <p style={{ fontSize: 14, color: accent, fontWeight: 700, margin: '0 0 24px' }}>{motivMsg}</p>}
 
           {/* KPIs */}
@@ -3353,8 +3353,8 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog, exoHis
               { label: t('sed.rest'),     value: fmtTimer(totalRestAccum) },
               { label: t('sed.exercises'), value: String(totalExosCount) },
             ] as { label: string; value: string }[]).map(kpi => (
-              <div key={kpi.label} style={{ padding: '10px 6px', borderRadius: 10, background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
-                <p style={{ fontSize: 8, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.07em', margin: '0 0 3px' }}>{kpi.label}</p>
+              <div key={kpi.label} style={{ padding: '10px 6px', borderRadius: 'var(--r-sm)', background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+                <p style={{ fontSize: 10, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.07em', margin: '0 0 3px' }}>{kpi.label}</p>
                 <p style={{ fontSize: 15, fontWeight: 800, fontFamily: '"DM Mono",monospace', color: accent, margin: 0 }}>{kpi.value}</p>
               </div>
             ))}
@@ -3365,7 +3365,7 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog, exoHis
             {circuits.map((circ, ci) => (
               <div key={ci} style={{ marginBottom: 14 }}>
                 {circuits.length > 1 && (
-                  <p style={{ fontSize: 9, fontWeight: 700, color: accent, textTransform: 'uppercase' as const, letterSpacing: '0.08em', margin: '0 0 8px' }}>{circ.label}</p>
+                  <p style={{ fontSize: 10, fontWeight: 700, color: accent, textTransform: 'uppercase' as const, letterSpacing: '0.08em', margin: '0 0 8px' }}>{circ.label}</p>
                 )}
                 {circ.exos.filter(e => e.logSets.length > 0).map(e => (
                   <div key={e.id} style={{ padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
@@ -3376,7 +3376,7 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog, exoHis
                     <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' as const }}>
                       {e.logSets.map((set, si) => (
                         <span key={si} style={{
-                          fontSize: 10, fontFamily: '"DM Mono",monospace', padding: '3px 8px', borderRadius: 5,
+                          fontSize: 10, fontFamily: '"DM Mono",monospace', padding: '3px 8px', borderRadius: 'var(--r-sm)',
                           background: set.note === 'fail' ? 'rgba(239,68,68,0.12)' : set.note === 'hard' ? 'rgba(249,115,22,0.12)' : 'var(--bg-card)',
                           border: '1px solid var(--border)',
                           color: set.note === 'fail' ? '#ef4444' : set.note === 'hard' ? '#f97316' : 'var(--text-mid)',
@@ -3392,7 +3392,7 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog, exoHis
           </div>
 
           {/* Sync montre */}
-          <div style={{ padding: '12px 14px', borderRadius: 10, background: 'var(--bg-card)', border: '1px solid var(--border)', marginBottom: 20, textAlign: 'left' as const }}>
+          <div style={{ padding: '12px 14px', borderRadius: 'var(--r-sm)', background: 'var(--bg-card)', border: '1px solid var(--border)', marginBottom: 20, textAlign: 'left' as const }}>
             <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text)', margin: '0 0 4px' }}>📡 {t('sed.correlateWatch')}</p>
             <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: 0, lineHeight: 1.5 }}>
               {t('sed.correlateWatchDesc')}
@@ -3414,10 +3414,10 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog, exoHis
               })),
             })
             onExit()
-          }} style={{ width: '100%', padding: '14px', borderRadius: 10, border: 'none', background: `linear-gradient(135deg, ${accent}, ${accent}bb)`, color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'Syne, sans-serif' }}>
+          }} style={{ width: '100%', padding: '14px', borderRadius: 'var(--r-sm)', border: 'none', background: `linear-gradient(135deg, ${accent}, ${accent}bb)`, color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
             ✓ {t('sed.finishAndSave')}
           </button>
-          <button onClick={onExit} style={{ width: '100%', padding: '11px', borderRadius: 10, marginTop: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-dim)', fontSize: 12, cursor: 'pointer' }}>{t('sed.closeWithoutSaving')}</button>
+          <button onClick={onExit} style={{ width: '100%', padding: '11px', borderRadius: 'var(--r-sm)', marginTop: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-dim)', fontSize: 12, cursor: 'pointer' }}>{t('sed.closeWithoutSaving')}</button>
         </div>
       </div>
     )
@@ -3452,16 +3452,16 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog, exoHis
           </div>
           <span style={{ fontSize: 16, fontFamily: '"DM Mono",monospace', color: 'var(--text-mid)', fontWeight: 700, margin: '0 12px', flexShrink: 0 }}>{fmtTimer(elapsed)}</span>
           <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-            <button onClick={() => setVibrateEnabled(v => !v)} title={vibrateEnabled ? t('sed.vibrationOn') : t('sed.vibrationOff')} style={{ background: 'none', border: '1px solid var(--border)', color: vibrateEnabled ? accent : 'var(--text-dim)', fontSize: 14, cursor: 'pointer', padding: '5px 8px', borderRadius: 8, lineHeight: 1 }}>
+            <button onClick={() => setVibrateEnabled(v => !v)} title={vibrateEnabled ? t('sed.vibrationOn') : t('sed.vibrationOff')} style={{ background: 'none', border: '1px solid var(--border)', color: vibrateEnabled ? accent : 'var(--text-dim)', fontSize: 14, cursor: 'pointer', padding: '5px 8px', borderRadius: 'var(--r-sm)', lineHeight: 1 }}>
               {vibrateEnabled ? '📳' : '🔕'}
             </button>
-            <button onClick={togglePause} style={{ background: 'none', border: '1px solid var(--border)', color: 'var(--text-mid)', fontSize: 13, cursor: 'pointer', padding: '5px 11px', borderRadius: 8 }}>{phase === 'paused' ? '▶' : '⏸'}</button>
-            <button onClick={onExit} style={{ background: 'none', border: '1px solid var(--border)', color: 'var(--text-dim)', fontSize: 13, cursor: 'pointer', padding: '5px 9px', borderRadius: 8 }}>✕</button>
+            <button onClick={togglePause} style={{ background: 'none', border: '1px solid var(--border)', color: 'var(--text-mid)', fontSize: 13, cursor: 'pointer', padding: '5px 11px', borderRadius: 'var(--r-sm)' }}>{phase === 'paused' ? '▶' : '⏸'}</button>
+            <button onClick={onExit} style={{ background: 'none', border: '1px solid var(--border)', color: 'var(--text-dim)', fontSize: 13, cursor: 'pointer', padding: '5px 9px', borderRadius: 'var(--r-sm)' }}>✕</button>
           </div>
         </div>
         {/* Progress bar */}
-        <div style={{ height: 3, borderRadius: 99, background: 'var(--border)', marginBottom: 16, overflow: 'hidden' }}>
-          <div style={{ height: '100%', width: `${progressPct * 100}%`, background: `linear-gradient(90deg, ${accent}, ${accent}cc)`, borderRadius: 99, transition: 'width 0.4s' }} />
+        <div style={{ height: 3, borderRadius: 'var(--r-pill)', background: 'var(--border)', marginBottom: 16, overflow: 'hidden' }}>
+          <div style={{ height: '100%', width: `${progressPct * 100}%`, background: `linear-gradient(90deg, ${accent}, ${accent}cc)`, borderRadius: 'var(--r-pill)', transition: 'width 0.4s' }} />
         </div>
       </div>
 
@@ -3472,11 +3472,11 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog, exoHis
         {phase === 'paused' && (
           <div style={{ textAlign: 'center' as const, padding: '60px 0 40px' }}>
             <div style={{ fontSize: 52, marginBottom: 16 }}>⏸</div>
-            <p style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)', fontFamily: 'Syne, sans-serif', margin: '0 0 8px' }}>{t('sed.paused')}</p>
+            <p style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)', fontFamily: 'var(--font-display)', margin: '0 0 8px' }}>{t('sed.paused')}</p>
             <p style={{ fontSize: 12, color: 'var(--text-dim)', margin: '0 0 32px' }}>{t('sed.elapsed', { time: fmtTimer(elapsed) })}</p>
-            <button onClick={togglePause} style={{ padding: '15px 48px', borderRadius: 14, border: 'none', background: `linear-gradient(135deg, ${accent}, ${accent}bb)`, color: '#fff', fontSize: 16, fontWeight: 800, cursor: 'pointer', fontFamily: 'Syne, sans-serif', marginBottom: 12 }}>▶ {t('sed.resume')}</button>
+            <button onClick={togglePause} style={{ padding: '15px 48px', borderRadius: 'var(--r-md)', border: 'none', background: `linear-gradient(135deg, ${accent}, ${accent}bb)`, color: '#fff', fontSize: 16, fontWeight: 800, cursor: 'pointer', fontFamily: 'var(--font-body)', marginBottom: 12 }}>▶ {t('sed.resume')}</button>
             <br />
-            <button onClick={() => { setPhase('done'); setShowConfetti(true); pickMotiv() }} style={{ padding: '11px 28px', borderRadius: 10, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-dim)', fontSize: 12, cursor: 'pointer', marginTop: 8 }}>
+            <button onClick={() => { setPhase('done'); setShowConfetti(true); pickMotiv() }} style={{ padding: '11px 28px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-dim)', fontSize: 12, cursor: 'pointer', marginTop: 8 }}>
               {t('sed.finishSession')}
             </button>
           </div>
@@ -3487,17 +3487,17 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog, exoHis
             {/* ── Phase badge + Nom exo ── */}
             <div style={{ textAlign: 'center' as const, marginBottom: 20, paddingTop: 8 }}>
               <p style={{
-                display: 'inline-block', fontSize: 9, fontWeight: 700,
+                display: 'inline-block', fontSize: 10, fontWeight: 700,
                 color: phase === 'rest' ? '#f97316' : accent,
                 textTransform: 'uppercase' as const, letterSpacing: '0.14em',
                 margin: '0 0 12px',
-                padding: '4px 12px', borderRadius: 99,
+                padding: '4px 12px', borderRadius: 'var(--r-pill)',
                 background: phase === 'rest' ? 'rgba(249,115,22,0.10)' : `${accent}15`,
                 border: `1px solid ${phase === 'rest' ? 'rgba(249,115,22,0.22)' : `${accent}28`}`,
               }}>
                 {phase === 'rest' ? `⏱ ${t('sed.restPhase')}` : ct === 'emom' ? `⏱ MIN ${currentSetNum}/${currentCircuit?.durationMin ?? 12}` : ct === 'tabata' ? `⚡ ROUND ${currentSetNum}/8` : `${t('sed.setUpper')} ${currentSetNum}/${currentExo.targetSets}`}
               </p>
-              <h2 style={{ fontSize: 28, fontWeight: 900, fontFamily: 'Syne, sans-serif', margin: '0 0 16px', color: 'var(--text)', lineHeight: 1.1, letterSpacing: '-0.01em' }}>{currentExo.label}</h2>
+              <h2 style={{ fontSize: 28, fontWeight: 900, fontFamily: 'var(--font-display)', margin: '0 0 16px', color: 'var(--text)', lineHeight: 1.1, letterSpacing: '-0.01em' }}>{currentExo.label}</h2>
               {motivMsg && phase === 'work' && (
                 <p style={{ fontSize: 11, color: accent, fontStyle: 'italic' as const, margin: '-8px 0 10px', opacity: 0.75 }}>{motivMsg}</p>
               )}
@@ -3524,7 +3524,7 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog, exoHis
                   const nc     = set?.note === 'fail' ? '#ef4444' : set?.note === 'hard' ? '#f97316' : set?.note === 'easy' ? '#22c55e' : undefined
                   return (
                     <div key={i} style={{
-                      minWidth: 46, height: 50, borderRadius: 11, padding: '0 7px',
+                      minWidth: 46, height: 50, borderRadius: 'var(--r-md)', padding: '0 7px',
                       display: 'flex', flexDirection: 'column' as const, alignItems: 'center', justifyContent: 'center',
                       background: done ? (nc ?? accent) : active ? `${accent}20` : 'var(--bg-card)',
                       border: `1.5px solid ${done ? (nc ?? accent) : active ? accent : 'var(--border)'}`,
@@ -3532,7 +3532,7 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog, exoHis
                       transition: 'all 0.25s',
                     }}>
                       <span style={{ fontSize: 14, fontWeight: 800, fontFamily: '"DM Mono",monospace', lineHeight: 1 }}>{i + 1}</span>
-                      {done && set && <span style={{ fontSize: 8, opacity: 0.85, marginTop: 2, fontFamily: '"DM Mono",monospace' }}>{set.weight || '—'}×{set.reps}</span>}
+                      {done && set && <span style={{ fontSize: 10, opacity: 0.85, marginTop: 2, fontFamily: '"DM Mono",monospace' }}>{set.weight || '—'}×{set.reps}</span>}
                     </div>
                   )
                 })}
@@ -3559,15 +3559,15 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog, exoHis
                 <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginBottom: 14, flexWrap: 'wrap' as const }}>
                   {[-30, -10, +10, +30].map(d => (
                     <button key={d} onClick={() => adjustRest(d)} style={{
-                      padding: '9px 16px', borderRadius: 9, border: '1px solid var(--border)',
+                      padding: '9px 16px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)',
                       background: 'var(--bg-card)', color: 'var(--text-mid)', fontSize: 12, cursor: 'pointer', fontFamily: '"DM Mono",monospace', fontWeight: 600,
                     }}>{d > 0 ? '+' : ''}{d}s</button>
                   ))}
                 </div>
                 {/* Aperçu prochain exo */}
                 {nextExo && (
-                  <div style={{ padding: '12px 16px', borderRadius: 10, background: 'var(--bg-card)', border: '1px solid var(--border)', textAlign: 'left' as const, marginBottom: 14 }}>
-                    <p style={{ fontSize: 9, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.08em', margin: '0 0 4px' }}>
+                  <div style={{ padding: '12px 16px', borderRadius: 'var(--r-sm)', background: 'var(--bg-card)', border: '1px solid var(--border)', textAlign: 'left' as const, marginBottom: 14 }}>
+                    <p style={{ fontSize: 10, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.08em', margin: '0 0 4px' }}>
                       {t('sed.next')}{nextCircuit && nextCircuit !== currentCircuit ? ` · ${nextCircuit.label}` : ''}
                     </p>
                     <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', margin: 0 }}>
@@ -3578,7 +3578,7 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog, exoHis
                     </p>
                   </div>
                 )}
-                <button onClick={skipRest} style={{ padding: '10px 26px', borderRadius: 9, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-mid)', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>
+                <button onClick={skipRest} style={{ padding: '10px 26px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-mid)', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>
                   {t('sed.skipRest')}
                 </button>
               </div>
@@ -3591,13 +3591,13 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog, exoHis
                 <div style={{ display: 'flex', gap: 14, justifyContent: 'center', alignItems: 'flex-end', marginBottom: 12 }}>
                   {/* Charge */}
                   <div style={{ textAlign: 'center' as const }}>
-                    <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 7px', textTransform: 'uppercase' as const, letterSpacing: '0.07em' }}>{t('sed.loadKgLabel')}</p>
+                    <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '0 0 7px', textTransform: 'uppercase' as const, letterSpacing: '0.07em' }}>{t('sed.loadKgLabel')}</p>
                     <input
                       value={editWeight}
                       placeholder="—"
                       onChange={e => setEditingSet({ reps: editReps, weight: e.target.value })}
                       style={{
-                        width: 100, padding: '12px 10px', borderRadius: 12,
+                        width: 100, padding: '12px 10px', borderRadius: 'var(--r-md)',
                         border: `2px solid ${accent}55`,
                         background: 'var(--bg-card)', color: accent,
                         fontSize: 36, fontFamily: '"DM Mono",monospace',
@@ -3608,13 +3608,13 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog, exoHis
                   <span style={{ fontSize: 28, color: 'var(--border)', fontWeight: 300, marginBottom: 10, lineHeight: 1 }}>×</span>
                   {/* Reps */}
                   <div style={{ textAlign: 'center' as const }}>
-                    <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 7px', textTransform: 'uppercase' as const, letterSpacing: '0.07em' }}>Reps</p>
+                    <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '0 0 7px', textTransform: 'uppercase' as const, letterSpacing: '0.07em' }}>Reps</p>
                     <input
                       type="number" min={0} max={999}
                       value={editReps}
                       onChange={e => setEditingSet({ reps: parseInt(e.target.value) || 0, weight: editWeight })}
                       style={{
-                        width: 80, padding: '12px 8px', borderRadius: 12,
+                        width: 80, padding: '12px 8px', borderRadius: 'var(--r-md)',
                         border: '1px solid var(--border)',
                         background: 'var(--bg-card)', color: 'var(--text)',
                         fontSize: 32, fontFamily: '"DM Mono",monospace',
@@ -3627,9 +3627,9 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog, exoHis
 
                 {/* Bouton principal */}
                 <button onClick={() => validateSet('ok')} style={{
-                  width: '100%', padding: '19px', borderRadius: 14, border: 'none',
+                  width: '100%', padding: '19px', borderRadius: 'var(--r-md)', border: 'none',
                   background: `linear-gradient(135deg, ${accent}, ${accent}bb)`, color: '#fff',
-                  fontSize: 16, fontWeight: 900, cursor: 'pointer', fontFamily: 'Syne, sans-serif',
+                  fontSize: 16, fontWeight: 900, cursor: 'pointer', fontFamily: 'var(--font-body)',
                   letterSpacing: '0.01em', boxShadow: `0 4px 24px ${accent}30`,
                 }}>
                   {ct === 'emom' ? `⏱ ${t('sed.validateMin', { n: currentSetNum })}` :
@@ -3644,37 +3644,37 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog, exoHis
 
             {/* ── Actions secondaires ── */}
             <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginBottom: 20, marginTop: 16, flexWrap: 'wrap' as const }}>
-              <button onClick={skipExo} style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-dim)', fontSize: 11, cursor: 'pointer', fontWeight: 500 }}>{t('sed.skip')}</button>
-              <button onClick={() => setReplaceSearch(currentExo.id)} style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-dim)', fontSize: 11, cursor: 'pointer', fontWeight: 500 }}>⇄ {t('sed.replace')}</button>
+              <button onClick={skipExo} style={{ padding: '8px 16px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-dim)', fontSize: 11, cursor: 'pointer', fontWeight: 500 }}>{t('sed.skip')}</button>
+              <button onClick={() => setReplaceSearch(currentExo.id)} style={{ padding: '8px 16px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-dim)', fontSize: 11, cursor: 'pointer', fontWeight: 500 }}>⇄ {t('sed.replace')}</button>
             </div>
 
             {/* ── Remplacement ── */}
             {replaceSearch === currentExo.id && (
-              <div style={{ padding: '14px', borderRadius: 12, border: '1px solid var(--border)', background: 'var(--bg-card)', marginBottom: 16 }}>
+              <div style={{ padding: '14px', borderRadius: 'var(--r-md)', border: '1px solid var(--border)', background: 'var(--bg-card)', marginBottom: 16 }}>
                 <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
                   placeholder={t('sed.searchExercise')} autoFocus
-                  style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontSize: 13, outline: 'none', marginBottom: 8, boxSizing: 'border-box' as const }} />
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontSize: 13, outline: 'none', marginBottom: 8, boxSizing: 'border-box' as const }} />
                 <div style={{ maxHeight: 160, overflowY: 'auto' as const, display: 'flex', flexDirection: 'column' as const, gap: 4 }}>
                   {EXERCISE_DATABASE.filter(e => {
                     const q = searchQuery.toLowerCase()
                     return !q || e.name.toLowerCase().includes(q) || e.aliases.some(a => a.toLowerCase().includes(q))
                   }).slice(0, 8).map(e => (
                     <button key={e.id} onClick={() => replaceExo(e.name)} style={{
-                      width: '100%', padding: '9px 12px', borderRadius: 7, border: '1px solid var(--border)',
+                      width: '100%', padding: '9px 12px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)',
                       background: 'var(--bg)', color: 'var(--text)', fontSize: 12, cursor: 'pointer', textAlign: 'left' as const, fontWeight: 500,
                     }}>
                       {e.name} <span style={{ color: 'var(--text-dim)', fontSize: 10 }}>{e.aliases[0] ?? ''}</span>
                     </button>
                   ))}
                 </div>
-                <button onClick={() => { setReplaceSearch(null); setSearchQuery('') }} style={{ marginTop: 8, width: '100%', padding: '8px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-dim)', fontSize: 11, cursor: 'pointer' }}>{t('sed.cancel')}</button>
+                <button onClick={() => { setReplaceSearch(null); setSearchQuery('') }} style={{ marginTop: 8, width: '100%', padding: '8px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-dim)', fontSize: 11, cursor: 'pointer' }}>{t('sed.cancel')}</button>
               </div>
             )}
 
             {/* ── Exercice suivant (work phase) ── */}
             {nextExo && phase === 'work' && (
-              <div style={{ marginTop: 20, padding: '12px 16px', borderRadius: 10, background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
-                <p style={{ fontSize: 9, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.06em', margin: '0 0 4px' }}>
+              <div style={{ marginTop: 20, padding: '12px 16px', borderRadius: 'var(--r-sm)', background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+                <p style={{ fontSize: 10, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.06em', margin: '0 0 4px' }}>
                   {t('sed.upNext')}{nextCircuit && nextCircuit !== currentCircuit ? ` · ${nextCircuit.label}` : ''}
                 </p>
                 <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-mid)', margin: 0 }}>
@@ -5307,7 +5307,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
         }}>
           <div style={{
             display: 'inline-flex', alignItems: 'center', gap: 8,
-            padding: '4px 12px 4px 4px', borderRadius: 99,
+            padding: '4px 12px 4px 4px', borderRadius: 'var(--r-pill)',
             background: `${accent}18`, border: `1px solid ${accent}35`,
             flexShrink: 0,
           }}>
@@ -5334,7 +5334,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
             color: selPlan === 'A' ? '#22d3ee' : '#a78bfa',
             background: selPlan === 'A' ? 'rgba(34,211,238,0.1)' : 'rgba(167,139,250,0.1)',
             border: `1px solid ${selPlan === 'A' ? 'rgba(34,211,238,0.25)' : 'rgba(167,139,250,0.25)'}`,
-            borderRadius: 6, padding: '3px 10px',
+            borderRadius: 'var(--r-sm)', padding: '3px 10px',
           }}>Plan {selPlan}</span>
 
           <button onClick={requestClose} style={{
@@ -5373,7 +5373,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
             <input className="sed-title-in sed-title-box" value={title} onChange={e => setTitle(e.target.value)}
               placeholder={`${SPORT_LABEL[sport]} ${trainingTypes.join('+')}`}
               style={{
-                width: '100%', background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 10,
+                width: '100%', background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 'var(--r-sm)',
                 color: 'var(--text)', transition: 'border-color 0.15s, box-shadow 0.15s',
                 fontSize: mobile ? 18 : 21, fontWeight: 700, outline: 'none', padding: mobile ? '10px 12px' : '11px 14px', minWidth: 0,
                 fontFamily: 'var(--font-display)', letterSpacing: '-0.02em', boxSizing: 'border-box' as const,
@@ -5383,7 +5383,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
             </p>
           </div>
           <button onClick={handlePrintMemo} title={t('sed.printMemo')}
-            style={{ flexShrink: 0, height: 34, padding: '0 12px', borderRadius: 10, cursor: 'pointer', border: `1px solid ${accent}`, background: 'transparent', color: accent, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 12, fontWeight: 700 }}>
+            style={{ flexShrink: 0, height: 34, padding: '0 12px', borderRadius: 'var(--r-sm)', cursor: 'pointer', border: `1px solid ${accent}`, background: 'transparent', color: accent, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 12, fontWeight: 700 }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v8H6z"/></svg>
             Mémo
           </button>
@@ -5391,14 +5391,14 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
           {isEdit && onRepeat && session && (
             <div style={{ position: 'relative', flexShrink: 0 }}>
               <button onClick={() => setShowRepeatMenu(v => !v)} title={t('sed.repeatNextWeeks')}
-                style={{ height: 34, padding: '0 12px', borderRadius: 10, cursor: 'pointer', border: `1px solid ${accent}`, background: 'transparent', color: accent, display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700 }}>
+                style={{ height: 34, padding: '0 12px', borderRadius: 'var(--r-sm)', cursor: 'pointer', border: `1px solid ${accent}`, background: 'transparent', color: accent, display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700 }}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
                 Répéter
               </button>
               {showRepeatMenu && (
                 <>
                   <div onClick={() => setShowRepeatMenu(false)} style={{ position: 'fixed', inset: 0, zIndex: 40 }} />
-                  <div style={{ position: 'absolute', top: 40, right: 0, zIndex: 41, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 14, boxShadow: 'var(--shadow-card)', padding: 8, width: 230 }}>
+                  <div style={{ position: 'absolute', top: 40, right: 0, zIndex: 41, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', boxShadow: 'var(--shadow-card)', padding: 8, width: 230 }}>
                     <p style={{ margin: '4px 8px 8px', fontSize: 11, fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-dim)' }}>{t('sed.repeatSameDay')}</p>
                     {[
                       { label: 'Chaque semaine · 4 fois', n: 1, c: 4 },
@@ -5407,7 +5407,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                       { label: 'Toutes les 2 sem. · 8 fois', n: 2, c: 8 },
                     ].map(opt => (
                       <button key={opt.label} onClick={() => { setShowRepeatMenu(false); onRepeat({ ...session, sport, title, time, durationMin: dur, rpe, blocks, notes: desc }, opt.n, opt.c); requestClose() }}
-                        style={{ width: '100%', textAlign: 'left', padding: '10px 10px', borderRadius: 9, border: 'none', background: 'transparent', color: 'var(--text)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+                        style={{ width: '100%', textAlign: 'left', padding: '10px 10px', borderRadius: 'var(--r-sm)', border: 'none', background: 'transparent', color: 'var(--text)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
                         onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-card2)')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
                         {opt.label}
                       </button>
@@ -5418,7 +5418,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
             </div>
           )}
           <button onClick={handleCompteRendu} title={t('sed.reportDownloadImage')}
-            style={{ flexShrink: 0, height: 34, padding: '0 13px', borderRadius: 10, cursor: 'pointer', border: 'none', background: 'var(--primary)', color: 'var(--on-primary, #06121A)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 12, fontWeight: 700 }}>
+            style={{ flexShrink: 0, height: 34, padding: '0 13px', borderRadius: 'var(--r-sm)', cursor: 'pointer', border: 'none', background: 'var(--primary)', color: 'var(--on-primary, #06121A)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 12, fontWeight: 700 }}>
             <svg width="13" height="13" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M6 8L2.5 4.5h2V1h3v3.5h2L6 8Z" fill="currentColor"/>
               <rect x="1.5" y="10" width="9" height="1.2" rx="0.6" fill="currentColor"/>
@@ -5426,14 +5426,14 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
             {t('sed.report')}
           </button>
           <button onClick={handleExportPDF} title={t('sed.exportPdf')}
-            style={{ flexShrink: 0, width: 34, height: 34, borderRadius: 10, cursor: 'pointer', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-mid)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            style={{ flexShrink: 0, width: 34, height: 34, borderRadius: 'var(--r-sm)', cursor: 'pointer', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-mid)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <svg width="13" height="13" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M6 8.5L2 4.5h2.5V1h3v3.5H10L6 8.5Z" fill="currentColor"/>
               <rect x="1" y="10" width="10" height="1.2" rx="0.6" fill="currentColor"/>
             </svg>
           </button>
           <button onClick={() => parcoursInputRef.current?.click()} title={t('sed.addRouteFile')}
-            style={{ flexShrink: 0, height: 34, padding: '0 11px', borderRadius: 10, cursor: 'pointer', border: '1px solid var(--border)', background: parcoursData ? `${accent}12` : 'transparent', color: parcoursData ? accent : 'var(--text-mid)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, fontSize: 11, fontWeight: 600, whiteSpace: 'nowrap' as const }}>
+            style={{ flexShrink: 0, height: 34, padding: '0 11px', borderRadius: 'var(--r-sm)', cursor: 'pointer', border: '1px solid var(--border)', background: parcoursData ? `${accent}12` : 'transparent', color: parcoursData ? accent : 'var(--text-mid)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, fontSize: 11, fontWeight: 600, whiteSpace: 'nowrap' as const }}>
             <svg width="13" height="13" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M6 1.5C4.07 1.5 2.5 3.07 2.5 5c0 2.5 3.5 5.5 3.5 5.5s3.5-3 3.5-5.5C9.5 3.07 7.93 1.5 6 1.5Zm0 4.75a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5Z" fill="currentColor"/>
             </svg>
@@ -5445,7 +5445,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
         {mode === 'create' && favorites.length > 0 && (
           <div style={{ padding: mobile ? '0 16px 10px' : '0 24px 12px' }}>
             <button onClick={() => setShowFavorites(!showFavorites)} style={{
-              width: '100%', padding: '9px', borderRadius: 8,
+              width: '100%', padding: '9px', borderRadius: 'var(--r-sm)',
               border: '1px solid var(--border)', background: showFavorites ? `${accent}10` : 'var(--bg-card2)',
               color: showFavorites ? accent : 'var(--text-dim)', fontSize: 11, cursor: 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontWeight: 600,
@@ -5466,7 +5466,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                     setDesc(fav.notes ?? '')
                     setShowFavorites(false)
                   }} style={{
-                    width: '100%', padding: '8px 12px', borderRadius: 8, textAlign: 'left' as const,
+                    width: '100%', padding: '8px 12px', borderRadius: 'var(--r-sm)', textAlign: 'left' as const,
                     border: '1px solid var(--border)', background: 'var(--bg-card2)',
                     color: 'var(--text)', fontSize: 12, cursor: 'pointer',
                   }}>
@@ -5489,7 +5489,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
           alignItems: 'start' as const,
         }}>
           {/* GAUCHE — carte paramètres */}
-          <div style={{ display: 'flex', flexDirection: 'column' as const, gap: mobile ? 14 : 20, background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 14, padding: mobile ? 16 : 18 }}>
+          <div style={{ display: 'flex', flexDirection: 'column' as const, gap: mobile ? 14 : 20, background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: mobile ? 16 : 18 }}>
             {/* Sport — tous les logos sur une ligne, clic = sélection */}
             <div>
               <span style={lbl}>{t('sed.sport')}</span>
@@ -5501,7 +5501,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                     <button key={sp} disabled={locked} onClick={() => handleSportChange(sp)} title={SPORT_LABEL[sp]}
                       style={{
                         display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: 5,
-                        padding: '6px 4px', borderRadius: 10, cursor: locked ? 'not-allowed' : 'pointer',
+                        padding: '6px 4px', borderRadius: 'var(--r-sm)', cursor: locked ? 'not-allowed' : 'pointer',
                         border: 'none', background: 'transparent',
                         minWidth: 48, flex: '1 1 0',
                         opacity: locked ? 0.25 : selected ? 1 : 0.4,
@@ -5522,7 +5522,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                 <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' as const, alignItems: 'center' }}>
                   {(Object.keys(RUN_FAMILY_LABEL) as RunFamily[]).map(fam => (
                     <button key={fam} onClick={() => setRunFamily(fam)} style={{
-                      padding: '6px 13px', borderRadius: 999, fontSize: 11.5, fontWeight: 700, cursor: 'pointer',
+                      padding: '6px 13px', borderRadius: 'var(--r-pill)', fontSize: 11.5, fontWeight: 700, cursor: 'pointer',
                       border: runFamily === fam ? `1px solid ${accent}` : '1px solid var(--border)',
                       background: runFamily === fam ? accent : 'transparent',
                       color: runFamily === fam ? '#fff' : 'var(--text-dim)',
@@ -5533,7 +5533,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                 <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' as const, alignItems: 'center' }}>
                   {(Object.keys(RUNNING_SUB_LABEL) as RunningSub[]).map(sub => (
                     <button key={sub} onClick={() => setRunningSub(sub)} style={{
-                      padding: '5px 12px', borderRadius: 7, fontSize: 11, fontWeight: 600, cursor: 'pointer',
+                      padding: '5px 12px', borderRadius: 'var(--r-sm)', fontSize: 11, fontWeight: 600, cursor: 'pointer',
                       border: runningSub === sub ? `1px solid ${accent}` : '1px solid var(--border)',
                       background: runningSub === sub ? `${accent}15` : 'transparent',
                       color: runningSub === sub ? accent : 'var(--text-dim)',
@@ -5546,7 +5546,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                 <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' as const, alignItems: 'center' }}>
                   {(Object.keys(CYCLING_SUB_LABEL) as CyclingSub[]).map(sub => (
                     <button key={sub} onClick={() => setCyclingSub(sub)} style={{
-                      padding: '5px 12px', borderRadius: 7, fontSize: 11, fontWeight: 600, cursor: 'pointer',
+                      padding: '5px 12px', borderRadius: 'var(--r-sm)', fontSize: 11, fontWeight: 600, cursor: 'pointer',
                       border: cyclingSub === sub ? `1px solid ${accent}` : '1px solid var(--border)',
                       background: cyclingSub === sub ? `${accent}15` : 'transparent',
                       color: cyclingSub === sub ? accent : 'var(--text-dim)',
@@ -5557,7 +5557,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                       Re-clic quand actif → détache l'enchaînement. */}
                   <button onClick={handleBrickButton} title={t('sed.brickTooltip')}
                     style={{
-                      padding: '5px 12px', borderRadius: 7, fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                      padding: '5px 12px', borderRadius: 'var(--r-sm)', fontSize: 11, fontWeight: 700, cursor: 'pointer',
                       marginLeft: 'auto',
                       border: `1px solid ${brickRun ? SPORT_BORDER['run'] : 'var(--border)'}`,
                       background: brickRun ? `${SPORT_BORDER['run']}1f` : 'transparent',
@@ -5583,7 +5583,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                         setTrainingTypes(next)
                         if (!active && !title) setTitle(`${SPORT_LABEL[sport]} ${next.join('+')}`)
                       }} style={{
-                        padding: mobile ? '5px 11px' : '6px 14px', borderRadius: 7,
+                        padding: mobile ? '5px 11px' : '6px 14px', borderRadius: 'var(--r-sm)',
                         fontSize: mobile ? 10 : 11, fontWeight: 600, cursor: 'pointer',
                         background: active ? accent : 'var(--bg-card)',
                         color: active ? '#fff' : 'var(--text-dim)',
@@ -5601,23 +5601,23 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
               <div style={{ flex: 1 }}>
                 <span style={lbl}>{t('sed.date')}</span>
                 <input type="date" value={date} onChange={e => setDate(e.target.value)} style={{
-                  padding: '9px 12px', borderRadius: 9, width: '100%', boxSizing: 'border-box' as const,
+                  padding: '9px 12px', borderRadius: 'var(--r-sm)', width: '100%', boxSizing: 'border-box' as const,
                   border: '1px solid var(--border)', background: 'var(--bg-card)',
-                  color: 'var(--text-dim)', fontSize: 12, fontFamily: 'DM Mono, monospace', outline: 'none',
+                  color: 'var(--text-dim)', fontSize: 12, fontFamily: 'var(--font-body)', outline: 'none',
                 }} />
               </div>
               <div>
                 <span style={lbl}>{t('sed.timeOfDay')}</span>
                 <input type="time" value={time} onChange={e => setTime(e.target.value)} style={{
-                  padding: '9px 12px', borderRadius: 9, width: 100,
+                  padding: '9px 12px', borderRadius: 'var(--r-sm)', width: 100,
                   border: '1px solid var(--border)', background: 'var(--bg-card)',
-                  color: 'var(--text-dim)', fontSize: 13, fontFamily: 'DM Mono, monospace', fontWeight: 600, outline: 'none',
+                  color: 'var(--text-dim)', fontSize: 13, fontFamily: 'var(--font-body)', fontWeight: 600, outline: 'none',
                 }} />
               </div>
             </div>
             {/* RPE */}
             <div style={{
-              padding: '16px 18px', borderRadius: 14,
+              padding: '16px 18px', borderRadius: 'var(--r-md)',
               border: '1px solid var(--border)', background: 'var(--bg-card2)',
             }}>
               <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 14 }}>
@@ -5633,8 +5633,8 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                 </span>
               </div>
               <div style={{ position: 'relative' as const, height: 22, display: 'flex', alignItems: 'center' }}>
-                <div style={{ width: '100%', height: 8, borderRadius: 99, background: 'var(--bg-elev)', position: 'relative' as const }}>
-                  <div style={{ position: 'absolute' as const, left: 0, top: 0, height: '100%', width: `${(rpe / 10) * 100}%`, borderRadius: 99, background: 'linear-gradient(90deg, #4ade80, #facc15, #fb923c, #f87171)', transition: 'width 0.1s' }} />
+                <div style={{ width: '100%', height: 8, borderRadius: 'var(--r-pill)', background: 'var(--bg-elev)', position: 'relative' as const }}>
+                  <div style={{ position: 'absolute' as const, left: 0, top: 0, height: '100%', width: `${(rpe / 10) * 100}%`, borderRadius: 'var(--r-pill)', background: 'linear-gradient(90deg, #4ade80, #facc15, #fb923c, #f87171)', transition: 'width 0.1s' }} />
                   <div style={{ position: 'absolute' as const, top: '50%', left: `${(rpe / 10) * 100}%`, transform: 'translate(-50%,-50%)', width: 20, height: 20, borderRadius: '50%', background: 'var(--bg-card)', border: `3px solid ${rpeCol}`, boxShadow: '0 2px 6px rgba(0,0,0,0.3)', pointerEvents: 'none' as const }} />
                 </div>
                 <input type="range" min={0} max={10} step={0.5} value={rpe} onChange={e => setRpe(parseFloat(e.target.value))}
@@ -5643,12 +5643,12 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
             </div>
 
             {/* Durée — stepper compact */}
-            <div style={{ padding: '14px 18px', borderRadius: 14, border: '1px solid var(--border)', background: 'var(--bg-card2)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ padding: '14px 18px', borderRadius: 'var(--r-md)', border: '1px solid var(--border)', background: 'var(--bg-card2)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <span style={lbl}>{t('sed.duration')}</span>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <button onClick={() => setDur(Math.max(5, dur - 5))} style={{ width: 28, height: 28, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-elev)', color: 'var(--text-mid)', fontSize: 16, cursor: 'pointer', padding: 0 }}>−</button>
-                <span style={{ fontSize: 21, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-display)', minWidth: 74, textAlign: 'center' as const }}>{fmtDurLocal(dur)}</span>
-                <button onClick={() => setDur(Math.min(360, dur + 5))} style={{ width: 28, height: 28, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-elev)', color: 'var(--text-mid)', fontSize: 16, cursor: 'pointer', padding: 0 }}>+</button>
+                <button onClick={() => setDur(Math.max(5, dur - 5))} style={{ width: 28, height: 28, borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-elev)', color: 'var(--text-mid)', fontSize: 16, cursor: 'pointer', padding: 0 }}>−</button>
+                <span style={{ fontSize: 22, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-display)', minWidth: 74, textAlign: 'center' as const }}>{fmtDurLocal(dur)}</span>
+                <button onClick={() => setDur(Math.min(360, dur + 5))} style={{ width: 28, height: 28, borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-elev)', color: 'var(--text-mid)', fontSize: 16, cursor: 'pointer', padding: 0 }}>+</button>
               </div>
             </div>
 
@@ -5657,7 +5657,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
           {/* DROITE */}
           <div style={{ display: 'flex', flexDirection: 'column' as const, gap: mobile ? 14 : 24 }}>
             {/* Résumé — SM / SN + répartition de zones (remplace le donut) */}
-            <div style={{ padding: '16px 18px', borderRadius: 14, border: '1px solid var(--border)', background: 'var(--bg-card2)' }}>
+            <div style={{ padding: '16px 18px', borderRadius: 'var(--r-md)', border: '1px solid var(--border)', background: 'var(--bg-card2)' }}>
               <div style={{ display: 'flex', gap: 28, marginBottom: 14 }}>
                 <div><div style={{ fontSize: 30, fontWeight: 700, color: '#06B6D4', fontFamily: 'var(--font-display)', lineHeight: 1 }}>{smsn.sm}</div><div style={{ fontSize: 10, color: 'var(--text-dim)', marginTop: 3 }}>{t('sed.smMetabolic')}</div></div>
                 <div><div style={{ fontSize: 30, fontWeight: 700, color: '#8B5CF6', fontFamily: 'var(--font-display)', lineHeight: 1 }}>{smsn.sn}</div><div style={{ fontSize: 10, color: 'var(--text-dim)', marginTop: 3 }}>{t('sed.snNeuro')}</div></div>
@@ -5708,7 +5708,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                 {/* Ligne principale : estimation */}
                 {hasEstimate && (
                   <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-                    <span style={{ fontSize: 9, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.08em', lineHeight: 1.4 }}>
+                    <span style={{ fontSize: 10, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.08em', lineHeight: 1.4 }}>
                       {sport === 'bike' || sport === 'elliptique' ? t('sed.estAvgWatts') : t('sed.estAvgPace')}
                     </span>
                     <span style={{ fontSize: 17, fontWeight: 800, color: accent, fontFamily: '"DM Mono", monospace', letterSpacing: '-0.02em' }}>
@@ -5730,7 +5730,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                         {hrRef.label}{' '}
                         <strong style={{ fontFamily: '"DM Mono", monospace', color: 'var(--text-mid)', fontWeight: 700 }}>{hrRef.value}</strong>
                         {athleteData?.hrMax && (
-                          <span style={{ fontSize: 8, color: 'var(--text-dim)', marginLeft: 4 }}>/ {t('sed.hrMax')} {athleteData.hrMax}</span>
+                          <span style={{ fontSize: 10, color: 'var(--text-dim)', marginLeft: 4 }}>/ {t('sed.hrMax')} {athleteData.hrMax}</span>
                         )}
                       </span>
                     )}
@@ -5746,9 +5746,9 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
         {/* TSS INFO MODAL */}
         {tssInfo && (
           <div onClick={() => setTssInfo(false)} style={{ position: 'fixed' as const, inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-            <div onClick={e => e.stopPropagation()} style={{ background: 'var(--bg-card)', borderRadius: 14, padding: 20, maxWidth: 520, width: '100%', maxHeight: '80vh', overflowY: 'auto' as const, border: '1px solid var(--border)' }}>
+            <div onClick={e => e.stopPropagation()} style={{ background: 'var(--bg-card)', borderRadius: 'var(--r-md)', padding: 20, maxWidth: 520, width: '100%', maxHeight: '80vh', overflowY: 'auto' as const, border: '1px solid var(--border)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 14 }}>
-                <h3 style={{ fontSize: 15, fontWeight: 700, margin: 0, fontFamily: 'Syne, sans-serif' }}>TSS — Training Stress Score</h3>
+                <h3 style={{ fontSize: 15, fontWeight: 700, margin: 0, fontFamily: 'var(--font-body)' }}>TSS — Training Stress Score</h3>
                 <button onClick={() => setTssInfo(false)} style={{ background: 'none', border: 'none', color: 'var(--text-dim)', fontSize: 16, cursor: 'pointer' }}>×</button>
               </div>
               <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: '0 0 14px', lineHeight: 1.6 }}>{t('sed.tssDesc')}</p>
@@ -5756,7 +5756,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
               <table style={{ width: '100%', borderCollapse: 'collapse' as const, marginBottom: 16 }}>
                 <tbody>{TSS_SESSION.map((r, i) => (
                   <tr key={i} style={{ borderBottom: '1px solid var(--border)' }}>
-                    <td style={{ padding: '6px 8px', fontSize: 11, fontFamily: 'DM Mono, monospace', fontWeight: 600, color: 'var(--text-dim)', width: 70 }}>{r.range}</td>
+                    <td style={{ padding: '6px 8px', fontSize: 11, fontFamily: 'var(--font-body)', fontWeight: 600, color: 'var(--text-dim)', width: 70 }}>{r.range}</td>
                     <td style={{ padding: '6px 8px', fontSize: 11, color: 'var(--text-dim)' }}>{r.label}</td>
                     <td style={{ padding: '6px 8px', fontSize: 10, color: 'var(--text-dim)' }}>{r.desc}</td>
                   </tr>
@@ -5766,7 +5766,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
               <table style={{ width: '100%', borderCollapse: 'collapse' as const }}>
                 <tbody>{TSS_WEEKLY.map((r, i) => (
                   <tr key={i} style={{ borderBottom: '1px solid var(--border)' }}>
-                    <td style={{ padding: '6px 8px', fontSize: 11, fontFamily: 'DM Mono, monospace', fontWeight: 600, color: 'var(--text-dim)', width: 90 }}>{r.range}</td>
+                    <td style={{ padding: '6px 8px', fontSize: 11, fontFamily: 'var(--font-body)', fontWeight: 600, color: 'var(--text-dim)', width: 90 }}>{r.range}</td>
                     <td style={{ padding: '6px 8px', fontSize: 11, color: 'var(--text-dim)' }}>{r.level}</td>
                   </tr>
                 ))}</tbody>
@@ -5784,10 +5784,10 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
           <textarea value={desc} onChange={e => setDesc(e.target.value)} rows={mobile ? 3 : 4}
             placeholder={t('sed.descriptionPlaceholder')}
             style={{
-              width: '100%', padding: '12px 14px', borderRadius: 10, boxSizing: 'border-box' as const,
+              width: '100%', padding: '12px 14px', borderRadius: 'var(--r-sm)', boxSizing: 'border-box' as const,
               border: '1px solid var(--border)', background: 'var(--bg-card)',
               color: 'var(--text-dim)', fontSize: 12, outline: 'none', resize: 'vertical' as const,
-              fontFamily: 'DM Sans, sans-serif', lineHeight: 1.6,
+              fontFamily: 'var(--font-body)', lineHeight: 1.6,
             }} />
         </div>
 
@@ -5798,14 +5798,14 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
               <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: 0 }}>{t('sed.readingRoute')}</p>
             )}
             {parcoursError && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderRadius: 10, background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.25)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderRadius: 'var(--r-sm)', background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.25)' }}>
                 <span style={{ fontSize: 11, color: '#ef4444', flex: 1 }}>⚠ {parcoursError}</span>
                 <button onClick={() => { setParcoursFile(null); setParcoursData(null); setParcoursError(null) }}
                   style={{ background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 14 }}>×</button>
               </div>
             )}
             {parcoursData && (
-              <div style={{ padding: '14px 16px', borderRadius: 12, border: '1px solid var(--border)', background: 'var(--bg-card)' }}>
+              <div style={{ padding: '14px 16px', borderRadius: 'var(--r-md)', border: '1px solid var(--border)', background: 'var(--bg-card)' }}>
                 {/* En-tête : nom + métriques + supprimer */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, flexWrap: 'wrap' as const }}>
                   <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{parcoursData.name}</span>
@@ -5829,7 +5829,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                     )}
                   </div>
                   <button onClick={() => { setParcoursFile(null); setParcoursData(null) }}
-                    style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text-dim)', cursor: 'pointer', fontSize: 10, padding: '3px 10px', flexShrink: 0 }}>
+                    style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 'var(--r-sm)', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 10, padding: '3px 10px', flexShrink: 0 }}>
                     {t('sed.delete')}
                   </button>
                 </div>
@@ -5855,7 +5855,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                       title={drawModeActive ? t('sed.cancelDrawing') : t('sed.drawSpecificBlock')}
                       style={{
                         position: 'absolute' as const, top: 4, right: 4, zIndex: 10,
-                        width: 26, height: 26, borderRadius: 6,
+                        width: 26, height: 26, borderRadius: 'var(--r-sm)',
                         border: drawModeActive ? `2px solid #f97316` : '1px solid var(--border)',
                         background: drawModeActive ? 'rgba(249,115,22,0.15)' : 'var(--bg-card)',
                         color: drawModeActive ? '#f97316' : 'var(--text-dim)',
@@ -5875,7 +5875,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                         <div style={{
                           position: 'absolute' as const, top: 28, left,
                           zIndex: 50, background: 'var(--bg-card)', border: '1px solid var(--border)',
-                          borderRadius: 12, boxShadow: '0 8px 28px rgba(0,0,0,0.28)', padding: '14px 16px',
+                          borderRadius: 'var(--r-md)', boxShadow: '0 8px 28px rgba(0,0,0,0.28)', padding: '14px 16px',
                           minWidth: 220,
                         }}>
                           <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text)', marginBottom: 2 }}>
@@ -5891,7 +5891,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                                 value={displayPW}
                                 min={50} max={600}
                                 onCommit={w => { setPendingWatts(w); setPendingHr(wattToFc(w, pb_ftp, pb_lthr)) }}
-                                style={{ flex: 1, padding: '5px 8px', borderRadius: 6, border: `1px solid ${accent}50`, background: 'var(--bg-card2)', color: accent, fontSize: 14, fontWeight: 800, fontFamily: 'DM Mono,monospace', textAlign: 'right' as const, outline: 'none' }}
+                                style={{ flex: 1, padding: '5px 8px', borderRadius: 'var(--r-sm)', border: `1px solid ${accent}50`, background: 'var(--bg-card2)', color: accent, fontSize: 14, fontWeight: 800, fontFamily: 'var(--font-body)', textAlign: 'right' as const, outline: 'none' }}
                               />
                               <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>W</span>
                             </div>
@@ -5901,7 +5901,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                                 value={displayPH}
                                 min={60} max={220}
                                 onCommit={hr => setPendingHr(hr)}
-                                style={{ flex: 1, padding: '5px 8px', borderRadius: 6, border: '1px solid #ef444450', background: 'var(--bg-card2)', color: '#ef4444', fontSize: 14, fontWeight: 800, fontFamily: 'DM Mono,monospace', textAlign: 'right' as const, outline: 'none' }}
+                                style={{ flex: 1, padding: '5px 8px', borderRadius: 'var(--r-sm)', border: '1px solid #ef444450', background: 'var(--bg-card2)', color: '#ef4444', fontSize: 14, fontWeight: 800, fontFamily: 'var(--font-body)', textAlign: 'right' as const, outline: 'none' }}
                               />
                               <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>bpm</span>
                             </div>
@@ -5927,11 +5927,11 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                                   setPendingBlock(null)
                                   setDrawModeActive(false)
                                 }}
-                                style={{ flex: 1, padding: '7px 0', borderRadius: 7, border: 'none', background: `linear-gradient(135deg, ${accent}, ${accent}bb)`, color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
+                                style={{ flex: 1, padding: '7px 0', borderRadius: 'var(--r-sm)', border: 'none', background: `linear-gradient(135deg, ${accent}, ${accent}bb)`, color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
                               >{t('sed.createBlock')}</button>
                               <button
                                 onClick={() => { setPendingBlock(null); setDrawModeActive(false) }}
-                                style={{ padding: '7px 12px', borderRadius: 7, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-dim)', fontSize: 11, cursor: 'pointer' }}
+                                style={{ padding: '7px 12px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-dim)', fontSize: 11, cursor: 'pointer' }}
                               >{t('sed.cancel')}</button>
                             </div>
                           </div>
@@ -6191,7 +6191,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                           disabled={terrainLoading}
                           style={{
                             display: 'flex', alignItems: 'center', gap: 6,
-                            padding: '7px 14px', borderRadius: 8, border: `1px solid ${accent}40`,
+                            padding: '7px 14px', borderRadius: 'var(--r-sm)', border: `1px solid ${accent}40`,
                             background: `${accent}12`, color: accent,
                             fontSize: 11, fontWeight: 700, cursor: terrainLoading ? 'not-allowed' : 'pointer',
                             opacity: terrainLoading ? 0.6 : 1,
@@ -6283,7 +6283,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                   {zones.map((z, i) => (
                     <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
                       <div style={{ width: 6, height: 6, borderRadius: 2, background: z.c, opacity: (pcts[i] ?? 0) > 0 ? 1 : 0.25, flexShrink: 0 }} />
-                      <span style={{ fontSize: 7.5, color: (pcts[i] ?? 0) > 0 ? 'var(--text)' : 'var(--text-dim)', fontFamily: 'DM Mono,monospace', whiteSpace: 'nowrap' as const }}>
+                      <span style={{ fontSize: 7.5, color: (pcts[i] ?? 0) > 0 ? 'var(--text)' : 'var(--text-dim)', fontFamily: 'var(--font-body)', whiteSpace: 'nowrap' as const }}>
                         {z.label} {z.lo}{z.hi != null ? `–${z.hi}` : '+'}{unit}
                       </span>
                     </div>
@@ -6352,7 +6352,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
           const wheelSz = mobile ? 160 : 190
 
           return (
-            <div style={{ margin: mobile ? '10px 16px 0' : '10px 24px 0', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card)', padding: '14px 16px' }}>
+            <div style={{ margin: mobile ? '10px 16px 0' : '10px 24px 0', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-card)', padding: '14px 16px' }}>
               {/* Wheels row — W centré côté gauche, FC centré côté droit, même taille */}
               <div style={{ display: 'flex', alignItems: 'flex-start' }}>
                 {/* Moitié gauche — W */}
@@ -6400,17 +6400,17 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                   <div style={{ marginTop: 12, paddingTop: 10, borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' as const }}>
                     {carbEst && (
                       <>
-                        <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.06em' }}>🍯 {t('sed.carbs')}</span>
-                        <span style={{ fontSize: 22, fontWeight: 800, fontFamily: 'DM Mono,monospace', color: accent }}>{carbEst.lo}–{carbEst.hi}g</span>
+                        <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.06em' }}>🍯 {t('sed.carbs')}</span>
+                        <span style={{ fontSize: 22, fontWeight: 800, fontFamily: 'var(--font-body)', color: accent }}>{carbEst.lo}–{carbEst.hi}g</span>
                         <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>{carbEst.loGh}–{carbEst.hiGh}g/h</span>
                         <div style={{ width: 1, height: 24, background: 'var(--border)', flexShrink: 0 }} />
                       </>
                     )}
-                    <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.06em' }}>⚡ {t('sed.avg')}</span>
-                    <span style={{ fontSize: 22, fontWeight: 800, fontFamily: 'DM Mono,monospace', color: 'var(--text)' }}>{avgPower}<span style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-dim)', marginLeft: 2 }}>W</span></span>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.06em' }}>⚡ {t('sed.avg')}</span>
+                    <span style={{ fontSize: 22, fontWeight: 800, fontFamily: 'var(--font-body)', color: 'var(--text)' }}>{avgPower}<span style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-dim)', marginLeft: 2 }}>W</span></span>
                     <div style={{ width: 1, height: 24, background: 'var(--border)', flexShrink: 0 }} />
-                    <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.06em' }}>❤️ {t('sed.avgHrShort')}</span>
-                    <span style={{ fontSize: 22, fontWeight: 800, fontFamily: 'DM Mono,monospace', color: '#ef4444' }}>{avgFc}<span style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-dim)', marginLeft: 2 }}>bpm</span></span>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.06em' }}>❤️ {t('sed.avgHrShort')}</span>
+                    <span style={{ fontSize: 22, fontWeight: 800, fontFamily: 'var(--font-body)', color: '#ef4444' }}>{avgFc}<span style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-dim)', marginLeft: 2 }}>bpm</span></span>
                   </div>
                 )
               })()}
@@ -6426,7 +6426,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
           {!parcoursData && (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
               <span style={lbl}>{t('sed.sessionBuilder')}</span>
-              <div style={{ display: 'flex', gap: 0, background: 'var(--bg-card)', borderRadius: 7, border: '1px solid var(--border)', overflow: 'hidden' }}>
+              <div style={{ display: 'flex', gap: 0, background: 'var(--bg-card)', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', overflow: 'hidden' }}>
                 <button onClick={() => setBuilderTab('manual')} style={{
                   padding: '6px 14px', border: 'none', fontSize: 10, fontWeight: 600, cursor: 'pointer',
                   background: builderTab === 'manual' ? `${accent}18` : 'transparent',
@@ -6496,10 +6496,10 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
               if (effectiveStep === 'ask') {
                 const climbs = segs.filter(s => s.type === 'climb')
                 return (
-                  <div style={{ borderRadius: 12, border: `1px solid ${accent}20`, background: `${accent}05`, padding: 18 }}>
+                  <div style={{ borderRadius: 'var(--r-md)', border: `1px solid ${accent}20`, background: `${accent}05`, padding: 18 }}>
                     <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', marginBottom: 16 }}>
                       <div style={{ width: 28, height: 28, borderRadius: '50%', background: `linear-gradient(135deg, ${accent}, ${accent}bb)`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 13, color: '#fff' }}>✦</div>
-                      <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 10, padding: '12px 14px', flex: 1 }}>
+                      <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-sm)', padding: '12px 14px', flex: 1 }}>
                         <p style={{ margin: '0 0 10px', fontSize: 13, color: 'var(--text)', lineHeight: 1.5, fontWeight: 500 }}>
                           {t('sed.buildFromRouteQuestion')}
                         </p>
@@ -6511,12 +6511,12 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                     </div>
                     <div style={{ display: 'flex', gap: 8 }}>
                       <button onClick={() => { initClimbConfigs(); setAiFlowStep('parcours') }} style={{
-                        flex: 2, padding: '10px 16px', borderRadius: 9, border: 'none',
+                        flex: 2, padding: '10px 16px', borderRadius: 'var(--r-sm)', border: 'none',
                         background: `linear-gradient(135deg, ${accent}, ${accent}bb)`,
-                        color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'Syne, sans-serif',
+                        color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)',
                       }}>⛰ {t('sed.yesIntegrateRoute')}</button>
                       <button onClick={() => setAiFlowStep('free')} style={{
-                        flex: 1, padding: '10px 16px', borderRadius: 9,
+                        flex: 1, padding: '10px 16px', borderRadius: 'var(--r-sm)',
                         border: '1px solid var(--border)', background: 'transparent',
                         color: 'var(--text-dim)', fontSize: 12, fontWeight: 600, cursor: 'pointer',
                       }}>{t('sed.freeText')}</button>
@@ -6541,14 +6541,14 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                     </div>
 
                     {/* Durée totale prévue (requis pour TSS) */}
-                    <div style={{ borderRadius: 10, border: `1px solid ${accent}30`, background: `${accent}06`, padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 10, position: 'relative' as const }}>
+                    <div style={{ borderRadius: 'var(--r-sm)', border: `1px solid ${accent}30`, background: `${accent}06`, padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 10, position: 'relative' as const }}>
                       <div style={{ flex: 1 }}>
                         <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text)', marginBottom: 2 }}>{t('sed.plannedRideDuration')}</div>
                         <div style={{ fontSize: 10, color: 'var(--text-dim)' }}>{t('sed.hoursMinutesTss')}</div>
                       </div>
                       <button
                         onClick={() => setShowDurPicker(v => !v)}
-                        style={{ minWidth: 64, padding: '5px 10px', borderRadius: 6, border: `1px solid ${accent}50`, background: 'var(--bg-card2)', color: totalDuration ? 'var(--text)' : 'var(--text-dim)', fontSize: 13, fontWeight: 700, fontFamily: 'DM Mono, monospace', cursor: 'pointer', textAlign: 'center' as const }}
+                        style={{ minWidth: 64, padding: '5px 10px', borderRadius: 'var(--r-sm)', border: `1px solid ${accent}50`, background: 'var(--bg-card2)', color: totalDuration ? 'var(--text)' : 'var(--text-dim)', fontSize: 13, fontWeight: 700, fontFamily: 'var(--font-body)', cursor: 'pointer', textAlign: 'center' as const }}
                       >{totalDuration || '—:——'}</button>
                       {showDurPicker && (() => {
                         const parts = totalDuration.split(':')
@@ -6557,21 +6557,21 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                         const hours = Array.from({ length: 13 }, (_, i) => i)
                         const mins  = Array.from({ length: 12 }, (_, i) => i * 5)
                         return (
-                          <div style={{ position: 'absolute' as const, right: 0, top: '100%', marginTop: 6, zIndex: 200, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 12, boxShadow: '0 8px 32px rgba(0,0,0,0.35)', padding: 12, display: 'flex', gap: 0, minWidth: 180 }}>
+                          <div style={{ position: 'absolute' as const, right: 0, top: '100%', marginTop: 6, zIndex: 200, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', boxShadow: '0 8px 32px rgba(0,0,0,0.35)', padding: 12, display: 'flex', gap: 0, minWidth: 180 }}>
                             <div style={{ flex: 1 }}>
-                              <div style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-dim)', textAlign: 'center' as const, marginBottom: 6, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>{t('sed.hours')}</div>
+                              <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-dim)', textAlign: 'center' as const, marginBottom: 6, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>{t('sed.hours')}</div>
                               <div style={{ maxHeight: 200, overflowY: 'auto' as const, display: 'flex', flexDirection: 'column' as const, gap: 2 }}>
                                 {hours.map(h => (
-                                  <button key={h} onClick={() => { setTotalDuration(`${h}:${String(curM).padStart(2, '0')}`); setDur(h * 60 + curM); setShowDurPicker(false) }} style={{ padding: '6px 8px', borderRadius: 7, border: 'none', background: curH === h ? `${accent}22` : 'transparent', color: curH === h ? accent : 'var(--text)', fontSize: 13, fontWeight: curH === h ? 800 : 500, fontFamily: 'DM Mono, monospace', cursor: 'pointer', textAlign: 'center' as const }}>{h}h</button>
+                                  <button key={h} onClick={() => { setTotalDuration(`${h}:${String(curM).padStart(2, '0')}`); setDur(h * 60 + curM); setShowDurPicker(false) }} style={{ padding: '6px 8px', borderRadius: 'var(--r-sm)', border: 'none', background: curH === h ? `${accent}22` : 'transparent', color: curH === h ? accent : 'var(--text)', fontSize: 13, fontWeight: curH === h ? 800 : 500, fontFamily: 'var(--font-body)', cursor: 'pointer', textAlign: 'center' as const }}>{h}h</button>
                                 ))}
                               </div>
                             </div>
                             <div style={{ width: 1, background: 'var(--border)', margin: '0 8px' }} />
                             <div style={{ flex: 1 }}>
-                              <div style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-dim)', textAlign: 'center' as const, marginBottom: 6, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>{t('sed.minutes')}</div>
+                              <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-dim)', textAlign: 'center' as const, marginBottom: 6, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>{t('sed.minutes')}</div>
                               <div style={{ maxHeight: 200, overflowY: 'auto' as const, display: 'flex', flexDirection: 'column' as const, gap: 2 }}>
                                 {mins.map(m => (
-                                  <button key={m} onClick={() => { setTotalDuration(`${curH}:${String(m).padStart(2, '0')}`); setDur(curH * 60 + m); setShowDurPicker(false) }} style={{ padding: '6px 8px', borderRadius: 7, border: 'none', background: curM === m ? `${accent}22` : 'transparent', color: curM === m ? accent : 'var(--text)', fontSize: 13, fontWeight: curM === m ? 800 : 500, fontFamily: 'DM Mono, monospace', cursor: 'pointer', textAlign: 'center' as const }}>{String(m).padStart(2, '0')}</button>
+                                  <button key={m} onClick={() => { setTotalDuration(`${curH}:${String(m).padStart(2, '0')}`); setDur(curH * 60 + m); setShowDurPicker(false) }} style={{ padding: '6px 8px', borderRadius: 'var(--r-sm)', border: 'none', background: curM === m ? `${accent}22` : 'transparent', color: curM === m ? accent : 'var(--text)', fontSize: 13, fontWeight: curM === m ? 800 : 500, fontFamily: 'var(--font-body)', cursor: 'pointer', textAlign: 'center' as const }}>{String(m).padStart(2, '0')}</button>
                                 ))}
                               </div>
                             </div>
@@ -6586,7 +6586,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                       const bLthr = athleteData?.lthrBike ?? athleteData?.lthrRun ?? 170
                       const displayHr = bulkHr > 0 ? bulkHr : wattToFc(bulkWatts, bFtp, bLthr)
                       return (
-                        <div style={{ borderRadius: 10, border: `1px solid ${accent}30`, background: `${accent}06`, padding: '10px 12px' }}>
+                        <div style={{ borderRadius: 'var(--r-sm)', border: `1px solid ${accent}30`, background: `${accent}06`, padding: '10px 12px' }}>
                           <div style={{ fontSize: 10, fontWeight: 700, color: accent, textTransform: 'uppercase' as const, letterSpacing: '0.06em', marginBottom: 8 }}>⚡ {t('sed.samePowerAllClimbs')}</div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -6594,11 +6594,11 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                                 value={bulkWatts}
                                 min={50} max={600}
                                 onCommit={w => { setBulkWatts(w); setBulkHr(wattToFc(w, bFtp, bLthr)) }}
-                                style={{ width: 60, padding: '5px 7px', borderRadius: 6, border: `1px solid ${accent}50`, background: 'var(--bg-card2)', color: accent, fontSize: 14, fontWeight: 800, fontFamily: 'DM Mono, monospace', textAlign: 'right' as const, outline: 'none' }}
+                                style={{ width: 60, padding: '5px 7px', borderRadius: 'var(--r-sm)', border: `1px solid ${accent}50`, background: 'var(--bg-card2)', color: accent, fontSize: 14, fontWeight: 800, fontFamily: 'var(--font-body)', textAlign: 'right' as const, outline: 'none' }}
                               />
                               <span style={{ fontSize: 11, color: 'var(--text-dim)', fontWeight: 600 }}>W</span>
                             </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontFamily: 'DM Mono, monospace', fontSize: 9, fontWeight: 700 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontFamily: 'var(--font-body)', fontSize: 10, fontWeight: 700 }}>
                               <span style={{ color: zoneColor(bulkWatts), background: `${zoneColor(bulkWatts)}18`, borderRadius: 4, padding: '1px 5px' }}>{zoneLabel(bulkWatts)}</span>
                               <span style={{ color: 'var(--text-dim)' }}>{bFtp > 0 ? Math.round((bulkWatts / bFtp) * 100) : 0}% FTP</span>
                             </div>
@@ -6607,7 +6607,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                                 value={displayHr}
                                 min={60} max={220}
                                 onCommit={hr => setBulkHr(hr)}
-                                style={{ width: 52, padding: '5px 7px', borderRadius: 6, border: '1px solid #ef444450', background: 'var(--bg-card2)', color: '#ef4444', fontSize: 13, fontWeight: 800, fontFamily: 'DM Mono, monospace', textAlign: 'right' as const, outline: 'none' }}
+                                style={{ width: 52, padding: '5px 7px', borderRadius: 'var(--r-sm)', border: '1px solid #ef444450', background: 'var(--bg-card2)', color: '#ef4444', fontSize: 13, fontWeight: 800, fontFamily: 'var(--font-body)', textAlign: 'right' as const, outline: 'none' }}
                               />
                               <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>bpm</span>
                             </div>
@@ -6621,7 +6621,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                                   return { ...c, watts: bulkWatts, hrAvg: applyHr, estimatedMin: mins }
                                 }))
                               }}
-                              style={{ padding: '6px 16px', borderRadius: 7, border: 'none', background: `linear-gradient(135deg, ${accent}, ${accent}bb)`, color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}
+                              style={{ padding: '6px 16px', borderRadius: 'var(--r-sm)', border: 'none', background: `linear-gradient(135deg, ${accent}, ${accent}bb)`, color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}
                             >{t('sed.applyToAll')}</button>
                           </div>
                         </div>
@@ -6640,14 +6640,14 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                       )
                       return (
                         <div key={ci} style={{
-                          borderRadius: 10, border: `1px solid ${cfg.selected ? `${zc}40` : 'var(--border)'}`,
+                          borderRadius: 'var(--r-sm)', border: `1px solid ${cfg.selected ? `${zc}40` : 'var(--border)'}`,
                           background: cfg.selected ? `${zc}07` : 'var(--bg-card)', overflow: 'hidden',
                         }}>
                           <div style={{ padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 9 }}>
                             {/* Checkbox */}
                             <button
                               onClick={() => setClimbConfigs(prev => prev.map((c, i) => i === ci ? { ...c, selected: !c.selected } : c))}
-                              style={{ width: 18, height: 18, borderRadius: 5, border: `2px solid ${cfg.selected ? zc : 'var(--border)'}`, background: cfg.selected ? zc : 'transparent', cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
+                              style={{ width: 18, height: 18, borderRadius: 'var(--r-sm)', border: `2px solid ${cfg.selected ? zc : 'var(--border)'}`, background: cfg.selected ? zc : 'transparent', cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
                               {cfg.selected && <span style={{ fontSize: 10, color: '#fff', lineHeight: 1 }}>✓</span>}
                             </button>
                             {/* Accent bar */}
@@ -6658,7 +6658,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                                 {t('sed.climbNoun')} {ci + 1}
                                 <span style={{ fontWeight: 400, color: 'var(--text-dim)', fontSize: 10 }}>km {seg.startKm}→{seg.endKm}</span>
                                 {overrideBlock && (
-                                  <span style={{ fontSize: 9, fontWeight: 700, color: '#f97316', background: 'rgba(249,115,22,0.12)', borderRadius: 4, padding: '1px 5px', letterSpacing: '0.04em' }}>OVERRIDE</span>
+                                  <span style={{ fontSize: 10, fontWeight: 700, color: '#f97316', background: 'rgba(249,115,22,0.12)', borderRadius: 4, padding: '1px 5px', letterSpacing: '0.04em' }}>OVERRIDE</span>
                                 )}
                               </div>
                               <div style={{ fontSize: 10, color: 'var(--text-dim)', display: 'flex', flexWrap: 'wrap' as const, gap: '0 6px' }}>
@@ -6668,13 +6668,13 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                                 <span>·</span>
                                 <span>D+{seg.elevationDeltaM}m</span>
                                 <span>·</span>
-                                <span style={{ fontFamily: 'DM Mono, monospace', color: 'var(--text)', fontWeight: 600 }}>
+                                <span style={{ fontFamily: 'var(--font-body)', color: 'var(--text)', fontWeight: 600 }}>
                                   {overrideBlock ? overrideBlock.estimatedMin.toFixed(0) : timeMin.toFixed(0)} min
                                 </span>
                                 {cfg.selected && (
                                   <>
                                     <span>·</span>
-                                    <span style={{ fontFamily: 'DM Mono, monospace', color: '#ef4444', fontWeight: 700 }}>
+                                    <span style={{ fontFamily: 'var(--font-body)', color: '#ef4444', fontWeight: 700 }}>
                                       {cfg.hrAvg ?? wattToFc(cfg.watts, trainingZones.bike.ftp_watts ?? athleteData?.ftp ?? 250, athleteData?.lthrBike ?? athleteData?.lthrRun ?? 170)} bpm
                                     </span>
                                   </>
@@ -6698,7 +6698,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                                         const hr = wattToFc(w, curFtp, curLthr)
                                         setClimbConfigs(prev => prev.map((c, i) => i === ci ? { ...c, watts: w, hrAvg: hr, estimatedMin: mins } : c))
                                       }}
-                                      style={{ width: 52, padding: '3px 6px', borderRadius: 6, border: `1px solid ${overrideBlock ? '#f97316' : zc}60`, background: 'var(--bg-card2)', color: overrideBlock ? '#f97316' : zc, fontSize: 12, fontWeight: 700, fontFamily: 'DM Mono, monospace', textAlign: 'right' as const, outline: 'none', cursor: disabled ? 'default' : 'text' }}
+                                      style={{ width: 52, padding: '3px 6px', borderRadius: 'var(--r-sm)', border: `1px solid ${overrideBlock ? '#f97316' : zc}60`, background: 'var(--bg-card2)', color: overrideBlock ? '#f97316' : zc, fontSize: 12, fontWeight: 700, fontFamily: 'var(--font-body)', textAlign: 'right' as const, outline: 'none', cursor: disabled ? 'default' : 'text' }}
                                     />
                                     <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>W</span>
                                   </div>
@@ -6706,7 +6706,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                                     const wNow = overrideBlock ? overrideBlock.watts : cfg.watts
                                     const pct = curFtp > 0 ? Math.round((wNow / curFtp) * 100) : 0
                                     return (
-                                      <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontFamily: 'DM Mono, monospace', fontSize: 9, fontWeight: 700 }}>
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontFamily: 'var(--font-body)', fontSize: 10, fontWeight: 700 }}>
                                         <span style={{ color: zc, background: `${zc}18`, borderRadius: 4, padding: '1px 5px' }}>{zoneLabel(wNow)}</span>
                                         <span style={{ color: 'var(--text-dim)' }}>{pct}% FTP</span>
                                       </div>
@@ -6720,9 +6720,9 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                                         if (disabled) return
                                         setClimbConfigs(prev => prev.map((c, i) => i === ci ? { ...c, hrAvg: hr } : c))
                                       }}
-                                      style={{ width: 52, padding: '3px 6px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: '#ef4444', fontSize: 11, fontWeight: 700, fontFamily: 'DM Mono, monospace', textAlign: 'right' as const, outline: 'none', cursor: disabled ? 'default' : 'text' }}
+                                      style={{ width: 52, padding: '3px 6px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: '#ef4444', fontSize: 11, fontWeight: 700, fontFamily: 'var(--font-body)', textAlign: 'right' as const, outline: 'none', cursor: disabled ? 'default' : 'text' }}
                                     />
-                                    <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>bpm</span>
+                                    <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>bpm</span>
                                   </div>
                                 </div>
                               )
@@ -6732,7 +6732,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                           {cfg.selected && !overrideBlock && (
                             <button
                               onClick={() => setOpenIntervals(prev => ({ ...prev, [`c_${ci}`]: !prev[`c_${ci}`] }))}
-                              style={{ margin:'6px 12px 0', padding:'4px 10px', borderRadius:6, border:`1px solid ${zc}40`, background:openIntervals[`c_${ci}`]?`${zc}20`:`${zc}08`, color:zc, fontSize:9, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', gap:4 }}>
+                              style={{ margin:'6px 12px 0', padding:'4px 10px', borderRadius: 'var(--r-sm)', border:`1px solid ${zc}40`, background:openIntervals[`c_${ci}`]?`${zc}20`:`${zc}08`, color:zc, fontSize: 10, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', gap:4 }}>
                               <span>⚡</span>
                               <span>{cfg.intervals ? t('sed.intervalsSummary', { reps: cfg.intervals.reps, n: cfg.intervals.blocks.length }) : t('sed.intervals')}</span>
                               <span style={{ opacity:0.6 }}>{openIntervals[`c_${ci}`] ? '▲' : '▼'}</span>
@@ -6764,7 +6764,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                       const efFtp = trainingZones.bike.ftp_watts ?? athleteData?.ftp ?? 250
                       const efLthr = athleteData?.lthrBike ?? athleteData?.lthrRun ?? 170
                       return (
-                        <div style={{ borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card)', padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <div style={{ borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-card)', padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 10 }}>
                           <div style={{ flex: 1 }}>
                             <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text)', marginBottom: 2 }}>{t('sed.flatsDescents')}</div>
                             <div style={{ fontSize: 10, color: 'var(--text-dim)' }}>
@@ -6777,7 +6777,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                                 value={efWatts}
                                 min={50} max={600}
                                 onCommit={w => { setEfWatts(w); setEfHr(wattToFc(w, efFtp, efLthr)) }}
-                                style={{ width: 52, padding: '3px 6px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 12, fontWeight: 700, fontFamily: 'DM Mono, monospace', textAlign: 'right' as const, outline: 'none' }}
+                                style={{ width: 52, padding: '3px 6px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 12, fontWeight: 700, fontFamily: 'var(--font-body)', textAlign: 'right' as const, outline: 'none' }}
                               />
                               <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>W</span>
                             </div>
@@ -6786,9 +6786,9 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                                 value={efHr > 0 ? efHr : wattToFc(efWatts, efFtp, efLthr)}
                                 min={60} max={220}
                                 onCommit={setEfHr}
-                                style={{ width: 52, padding: '3px 6px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: '#ef4444', fontSize: 11, fontWeight: 700, fontFamily: 'DM Mono, monospace', textAlign: 'right' as const, outline: 'none' }}
+                                style={{ width: 52, padding: '3px 6px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: '#ef4444', fontSize: 11, fontWeight: 700, fontFamily: 'var(--font-body)', textAlign: 'right' as const, outline: 'none' }}
                               />
-                              <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>bpm</span>
+                              <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>bpm</span>
                             </div>
                           </div>
                         </div>
@@ -6796,7 +6796,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                     })()}
 
                     {/* ── Blocs spécifiques ─────────────────────── */}
-                    <div style={{ borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card)', overflow: 'hidden' }}>
+                    <div style={{ borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-card)', overflow: 'hidden' }}>
                       <div style={{ padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 8 }}>
                         <div style={{ flex: 1 }}>
                           <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text)' }}>{t('sed.specificBlocks')}</div>
@@ -6817,7 +6817,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                             const mins         = estimateTimeOnSegment(dist, gradInit, defaultW, athleteWeight, bikeWeight)
                             setSpecificBlocks(prev => [...prev, { id: newId, startKm: defaultStart, endKm: defaultEnd, watts: defaultW, estimatedMin: mins }])
                           }}
-                          style={{ padding: '5px 10px', borderRadius: 7, border: `1px solid ${accent}40`, background: `${accent}10`, color: accent, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
+                          style={{ padding: '5px 10px', borderRadius: 'var(--r-sm)', border: `1px solid ${accent}40`, background: `${accent}10`, color: accent, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
                         >{t('sed.add')}</button>
                       </div>
                       {specificBlocks.length > 0 && (
@@ -6827,7 +6827,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                 {/* km début */}
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 3, flex: 1 }}>
-                                  <span style={{ fontSize: 9, color: 'var(--text-dim)', width: 24 }}>km</span>
+                                  <span style={{ fontSize: 10, color: 'var(--text-dim)', width: 24 }}>km</span>
                                   <LocalInput
                                     value={sb.startKm}
                                     min={0}
@@ -6843,7 +6843,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                                       const mins = estimateTimeOnSegment(dist, grad, sb.watts, athleteWeight, bikeWeight)
                                       setSpecificBlocks(prev => prev.map(x => x.id === sb.id ? { ...x, startKm: v, estimatedMin: mins } : x))
                                     }}
-                                    style={{ width: 52, padding: '3px 5px', borderRadius: 5, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 11, fontFamily: 'DM Mono, monospace', textAlign: 'right' as const, outline: 'none' }}
+                                    style={{ width: 52, padding: '3px 5px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 11, fontFamily: 'var(--font-body)', textAlign: 'right' as const, outline: 'none' }}
                                   />
                                   <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>→</span>
                                   <LocalInput
@@ -6861,7 +6861,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                                       const mins = estimateTimeOnSegment(dist, grad, sb.watts, athleteWeight, bikeWeight)
                                       setSpecificBlocks(prev => prev.map(x => x.id === sb.id ? { ...x, endKm: v, estimatedMin: mins } : x))
                                     }}
-                                    style={{ width: 52, padding: '3px 5px', borderRadius: 5, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 11, fontFamily: 'DM Mono, monospace', textAlign: 'right' as const, outline: 'none' }}
+                                    style={{ width: 52, padding: '3px 5px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 11, fontFamily: 'var(--font-body)', textAlign: 'right' as const, outline: 'none' }}
                                   />
                                 </div>
                                 {/* Watts */}
@@ -6880,7 +6880,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                                       const autoHr = wattToFc(w, trainingZones.bike.ftp_watts ?? athleteData?.ftp ?? 250, athleteData?.lthrBike ?? athleteData?.lthrRun ?? 170)
                                       setSpecificBlocks(prev => prev.map(x => x.id === sb.id ? { ...x, watts: w, hrAvg: autoHr, estimatedMin: mins } : x))
                                     }}
-                                    style={{ width: 52, padding: '3px 5px', borderRadius: 5, border: `1px solid ${zoneColor(sb.watts)}60`, background: 'var(--bg-card2)', color: zoneColor(sb.watts), fontSize: 11, fontWeight: 700, fontFamily: 'DM Mono, monospace', textAlign: 'right' as const, outline: 'none' }}
+                                    style={{ width: 52, padding: '3px 5px', borderRadius: 'var(--r-sm)', border: `1px solid ${zoneColor(sb.watts)}60`, background: 'var(--bg-card2)', color: zoneColor(sb.watts), fontSize: 11, fontWeight: 700, fontFamily: 'var(--font-body)', textAlign: 'right' as const, outline: 'none' }}
                                   />
                                   <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>W</span>
                                 </div>
@@ -6894,9 +6894,9 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                                         value={sb.hrAvg ?? wattToFc(sb.watts, sbFtp, sbLthr)}
                                         min={60} max={220}
                                         onCommit={v => setSpecificBlocks(prev => prev.map(x => x.id === sb.id ? { ...x, hrAvg: v } : x))}
-                                        style={{ width: 44, padding: '3px 5px', borderRadius: 5, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: '#ef4444', fontSize: 10, fontWeight: 700, fontFamily: 'DM Mono, monospace', textAlign: 'right' as const, outline: 'none' }}
+                                        style={{ width: 44, padding: '3px 5px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: '#ef4444', fontSize: 10, fontWeight: 700, fontFamily: 'var(--font-body)', textAlign: 'right' as const, outline: 'none' }}
                                       />
-                                      <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>bpm</span>
+                                      <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>bpm</span>
                                     </div>
                                   )
                                 })()}
@@ -6906,7 +6906,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                               {/* Intervalles button for specific block */}
                               <button
                                 onClick={() => setOpenIntervals(prev => ({ ...prev, [sb.id]: !prev[sb.id] }))}
-                                style={{ margin:'2px 0 0', padding:'3px 9px', borderRadius:5, border:`1px solid ${zoneColor(sb.watts)}40`, background:openIntervals[sb.id]?`${zoneColor(sb.watts)}20`:`${zoneColor(sb.watts)}08`, color:zoneColor(sb.watts), fontSize:9, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', gap:4, alignSelf:'flex-start' as const }}>
+                                style={{ margin:'2px 0 0', padding:'3px 9px', borderRadius: 'var(--r-sm)', border:`1px solid ${zoneColor(sb.watts)}40`, background:openIntervals[sb.id]?`${zoneColor(sb.watts)}20`:`${zoneColor(sb.watts)}08`, color:zoneColor(sb.watts), fontSize: 10, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', gap:4, alignSelf:'flex-start' as const }}>
                                 <span>⚡</span>
                                 <span>{sb.intervals ? t('sed.intervalsSummary', { reps: sb.intervals.reps, n: sb.intervals.blocks.length }) : t('sed.intervals')}</span>
                                 <span style={{ opacity:0.6 }}>{openIntervals[sb.id]?'▲':'▼'}</span>
@@ -6923,12 +6923,12 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                               )}
                               {/* Durée estimée NR */}
                               <div style={{ fontSize: 10, color: 'var(--text-dim)', paddingLeft: 28 }}>
-                                ⏱ ~<strong style={{ color: 'var(--text)', fontFamily: 'DM Mono, monospace' }}>{sb.estimatedMin.toFixed(0)}</strong> {t('sed.estMin')}
+                                ⏱ ~<strong style={{ color: 'var(--text)', fontFamily: 'var(--font-body)' }}>{sb.estimatedMin.toFixed(0)}</strong> {t('sed.estMin')}
                                 {specificBlocks.some(x => x.id === sb.id && climbConfigs.some(c => {
                                   const seg = segs[c.segIdx]
                                   return seg && sb.startKm < seg.endKm && sb.endKm > seg.startKm
                                 })) && (
-                                  <span style={{ marginLeft: 8, color: '#f97316', fontWeight: 700, fontSize: 9 }}>{t('sed.climbOverride')}</span>
+                                  <span style={{ marginLeft: 8, color: '#f97316', fontWeight: 700, fontSize: 10 }}>{t('sed.climbOverride')}</span>
                                 )}
                               </div>
                             </div>
@@ -6939,31 +6939,31 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
 
                     {/* TSS + durée preview */}
                     <div style={{ display: 'flex', gap: 8 }}>
-                      <div style={{ flex: 1, borderRadius: 10, border: `1px solid ${tssResult ? accent + '40' : 'var(--border)'}`, background: tssResult ? `${accent}08` : 'var(--bg-card)', padding: '10px 8px', textAlign: 'center' as const }}>
-                        <div style={{ fontSize: 18, fontWeight: 800, color: tssResult ? accent : 'var(--text-dim)', fontFamily: 'DM Mono, monospace' }}>{tssResult ? String(tssResult.tss) : '—'}</div>
-                        <div style={{ fontSize: 9, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.06em', marginTop: 2 }}>
+                      <div style={{ flex: 1, borderRadius: 'var(--r-sm)', border: `1px solid ${tssResult ? accent + '40' : 'var(--border)'}`, background: tssResult ? `${accent}08` : 'var(--bg-card)', padding: '10px 8px', textAlign: 'center' as const }}>
+                        <div style={{ fontSize: 18, fontWeight: 800, color: tssResult ? accent : 'var(--text-dim)', fontFamily: 'var(--font-body)' }}>{tssResult ? String(tssResult.tss) : '—'}</div>
+                        <div style={{ fontSize: 10, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.06em', marginTop: 2 }}>
                           {tssResult ? 'TSS' : t('sed.tssEnterDuration')}
                         </div>
                         {tssResult && (
-                          <div style={{ fontSize: 8, color: 'var(--text-dim)', fontFamily: 'DM Mono, monospace', marginTop: 3 }}>
+                          <div style={{ fontSize: 10, color: 'var(--text-dim)', fontFamily: 'var(--font-body)', marginTop: 3 }}>
                             NP {tssResult.np}W · IF {tssResult.ifVal.toFixed(2)}
                           </div>
                         )}
                       </div>
-                      <div style={{ flex: 1, borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card)', padding: '10px 8px', textAlign: 'center' as const }}>
-                        <div style={{ fontSize: 18, fontWeight: 800, color: totalDurMin > 0 ? 'var(--text)' : 'var(--text-dim)', fontFamily: 'DM Mono, monospace' }}>
+                      <div style={{ flex: 1, borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-card)', padding: '10px 8px', textAlign: 'center' as const }}>
+                        <div style={{ fontSize: 18, fontWeight: 800, color: totalDurMin > 0 ? 'var(--text)' : 'var(--text-dim)', fontFamily: 'var(--font-body)' }}>
                           {totalDurMin > 0 ? `${Math.floor(totalDurMin / 60)}h${String(totalDurMin % 60).padStart(2, '0')}` : '—'}
                         </div>
-                        <div style={{ fontSize: 9, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.06em', marginTop: 2 }}>{t('sed.totalDuration')}</div>
+                        <div style={{ fontSize: 10, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.06em', marginTop: 2 }}>{t('sed.totalDuration')}</div>
                       </div>
-                      <div style={{ flex: 1, borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card)', padding: '10px 8px', textAlign: 'center' as const }}>
-                        <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--text)', fontFamily: 'DM Mono, monospace' }}>{Math.round(totalClimbMin)}</div>
-                        <div style={{ fontSize: 9, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.06em', marginTop: 2 }}>{t('sed.minClimbs')}</div>
+                      <div style={{ flex: 1, borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-card)', padding: '10px 8px', textAlign: 'center' as const }}>
+                        <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--text)', fontFamily: 'var(--font-body)' }}>{Math.round(totalClimbMin)}</div>
+                        <div style={{ fontSize: 10, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.06em', marginTop: 2 }}>{t('sed.minClimbs')}</div>
                       </div>
                     </div>
 
                     {aiError && (
-                      <div style={{ padding: '10px 12px', borderRadius: 8, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.20)', color: '#ef4444', fontSize: 11, lineHeight: 1.5 }}>
+                      <div style={{ padding: '10px 12px', borderRadius: 'var(--r-sm)', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.20)', color: '#ef4444', fontSize: 11, lineHeight: 1.5 }}>
                         {aiError}
                       </div>
                     )}
@@ -7010,19 +7010,19 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                       const totalClimbS = climbRows.reduce((s, r) => s + r.min * 60, 0)
 
                       return (
-                        <div style={{ borderRadius: 12, border: `1px solid ${accent}30`, background: `${accent}06`, padding: 14, display: 'flex', flexDirection: 'column' as const, gap: 10 }}>
+                        <div style={{ borderRadius: 'var(--r-md)', border: `1px solid ${accent}30`, background: `${accent}06`, padding: 14, display: 'flex', flexDirection: 'column' as const, gap: 10 }}>
                           {/* Title */}
                           <div style={{ fontSize: 10, fontWeight: 700, color: accent, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>{t('sed.sessionSummary')}</div>
 
                           {/* Côtes */}
                           {climbRows.map((r, i) => (
-                            <div key={r.segIdx} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', borderRadius: 8, background: 'var(--bg-card)', border: `1px solid ${r.zc}30` }}>
+                            <div key={r.segIdx} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', borderRadius: 'var(--r-sm)', background: 'var(--bg-card)', border: `1px solid ${r.zc}30` }}>
                               <div style={{ width: 3, height: 32, borderRadius: 2, background: r.zc, flexShrink: 0 }} />
                               <div style={{ flex: 1, minWidth: 0 }}>
                                 <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
                                   {t('sed.climbNoun')} {i + 1} · km{r.seg.startKm}→{r.seg.endKm}
                                 </div>
-                                <div style={{ fontSize: 9, color: 'var(--text-dim)', marginTop: 1 }}>{r.min.toFixed(0)} min · {r.zl}</div>
+                                <div style={{ fontSize: 10, color: 'var(--text-dim)', marginTop: 1 }}>{r.min.toFixed(0)} min · {r.zl}</div>
                               </div>
                               <LocalInput
                                 value={r.w}
@@ -7031,9 +7031,9 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                                   const mins = estimateTimeOnSegment(r.seg.distanceKm, r.seg.avgGradient, newW, athleteWeight, bikeWeight)
                                   setClimbConfigs(prev => prev.map(c => c.segIdx === r.segIdx ? { ...c, watts: newW, estimatedMin: mins } : c))
                                 }}
-                                style={{ width: 52, padding: '3px 6px', borderRadius: 6, border: `1px solid ${r.zc}50`, background: 'var(--bg-card2)', color: r.zc, fontSize: 12, fontWeight: 800, fontFamily: 'DM Mono, monospace', textAlign: 'right' as const, outline: 'none' }}
+                                style={{ width: 52, padding: '3px 6px', borderRadius: 'var(--r-sm)', border: `1px solid ${r.zc}50`, background: 'var(--bg-card2)', color: r.zc, fontSize: 12, fontWeight: 800, fontFamily: 'var(--font-body)', textAlign: 'right' as const, outline: 'none' }}
                               />
-                              <span style={{ fontSize: 9, color: 'var(--text-dim)', flexShrink: 0 }}>W</span>
+                              <span style={{ fontSize: 10, color: 'var(--text-dim)', flexShrink: 0 }}>W</span>
                             </div>
                           ))}
 
@@ -7042,13 +7042,13 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                             const r = sb.watts / ftp
                             const zc = r > 1.50 ? '#6B21A8' : r > 1.20 ? '#991B1B' : r > 1.05 ? '#ef4444' : r > 0.87 ? '#f97316' : r > 0.75 ? '#eab308' : r > 0.55 ? '#22c55e' : '#9ca3af'
                             return (
-                              <div key={sb.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', borderRadius: 8, background: 'var(--bg-card)', border: '1px solid rgba(249,115,22,0.25)' }}>
+                              <div key={sb.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', borderRadius: 'var(--r-sm)', background: 'var(--bg-card)', border: '1px solid rgba(249,115,22,0.25)' }}>
                                 <div style={{ width: 3, height: 32, borderRadius: 2, background: '#f97316', flexShrink: 0 }} />
                                 <div style={{ flex: 1, minWidth: 0 }}>
                                   <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
                                     {t('sed.block')} {i + 1} · km{sb.startKm}→{sb.endKm}
                                   </div>
-                                  <div style={{ fontSize: 9, color: 'var(--text-dim)', marginTop: 1 }}>{sb.estimatedMin.toFixed(0)} min{sb.hrAvg ? ` · ${t('sed.hr')} ~${sb.hrAvg}` : ''}</div>
+                                  <div style={{ fontSize: 10, color: 'var(--text-dim)', marginTop: 1 }}>{sb.estimatedMin.toFixed(0)} min{sb.hrAvg ? ` · ${t('sed.hr')} ~${sb.hrAvg}` : ''}</div>
                                 </div>
                                 <LocalInput
                                   value={sb.watts}
@@ -7056,28 +7056,28 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                                   onCommit={newW => {
                                     setSpecificBlocks(prev => prev.map(x => x.id === sb.id ? { ...x, watts: newW } : x))
                                   }}
-                                  style={{ width: 52, padding: '3px 6px', borderRadius: 6, border: `1px solid ${zc}50`, background: 'var(--bg-card2)', color: zc, fontSize: 12, fontWeight: 800, fontFamily: 'DM Mono, monospace', textAlign: 'right' as const, outline: 'none' }}
+                                  style={{ width: 52, padding: '3px 6px', borderRadius: 'var(--r-sm)', border: `1px solid ${zc}50`, background: 'var(--bg-card2)', color: zc, fontSize: 12, fontWeight: 800, fontFamily: 'var(--font-body)', textAlign: 'right' as const, outline: 'none' }}
                                 />
-                                <span style={{ fontSize: 9, color: 'var(--text-dim)', flexShrink: 0 }}>W</span>
+                                <span style={{ fontSize: 10, color: 'var(--text-dim)', flexShrink: 0 }}>W</span>
                               </div>
                             )
                           })}
 
                           {/* EF */}
                           {remainingS > 0 && (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', borderRadius: 8, background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', borderRadius: 'var(--r-sm)', background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
                               <div style={{ width: 3, height: 32, borderRadius: 2, background: '#22c55e', flexShrink: 0 }} />
                               <div style={{ flex: 1, minWidth: 0 }}>
                                 <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text)' }}>{t('sed.flatsDescents')}</div>
-                                <div style={{ fontSize: 9, color: 'var(--text-dim)', marginTop: 1 }}>{Math.round(remainingS / 60)} min · Z2</div>
+                                <div style={{ fontSize: 10, color: 'var(--text-dim)', marginTop: 1 }}>{Math.round(remainingS / 60)} min · Z2</div>
                               </div>
                               <LocalInput
                                 value={efWatts}
                                 min={50} max={600}
                                 onCommit={setEfWatts}
-                                style={{ width: 52, padding: '3px 6px', borderRadius: 6, border: '1px solid rgba(34,197,94,0.4)', background: 'var(--bg-card2)', color: '#22c55e', fontSize: 12, fontWeight: 800, fontFamily: 'DM Mono, monospace', textAlign: 'right' as const, outline: 'none' }}
+                                style={{ width: 52, padding: '3px 6px', borderRadius: 'var(--r-sm)', border: '1px solid rgba(34,197,94,0.4)', background: 'var(--bg-card2)', color: '#22c55e', fontSize: 12, fontWeight: 800, fontFamily: 'var(--font-body)', textAlign: 'right' as const, outline: 'none' }}
                               />
-                              <span style={{ fontSize: 9, color: 'var(--text-dim)', flexShrink: 0 }}>W</span>
+                              <span style={{ fontSize: 10, color: 'var(--text-dim)', flexShrink: 0 }}>W</span>
                             </div>
                           )}
 
@@ -7089,14 +7089,14 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                               { lbl: 'Kcal', val: kcal > 0 ? String(kcal) : '—' },
                               { lbl: t('sed.totalUp'), val: `${Math.round(totalClimbS / 60)}min` },
                             ].map(({ lbl, val }) => (
-                              <div key={lbl} style={{ borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-card)', padding: '8px 6px', textAlign: 'center' as const }}>
-                                <div style={{ fontSize: 13, fontWeight: 800, color: accent, fontFamily: 'DM Mono, monospace' }}>{val}</div>
-                                <div style={{ fontSize: 8, color: 'var(--text-dim)', marginTop: 2, textTransform: 'uppercase' as const, letterSpacing: '0.06em' }}>{lbl}</div>
+                              <div key={lbl} style={{ borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-card)', padding: '8px 6px', textAlign: 'center' as const }}>
+                                <div style={{ fontSize: 13, fontWeight: 800, color: accent, fontFamily: 'var(--font-body)' }}>{val}</div>
+                                <div style={{ fontSize: 10, color: 'var(--text-dim)', marginTop: 2, textTransform: 'uppercase' as const, letterSpacing: '0.06em' }}>{lbl}</div>
                               </div>
                             ))}
                           </div>
                           {tssResult && (
-                            <div style={{ fontSize: 8, color: 'var(--text-dim)', fontFamily: 'DM Mono, monospace', textAlign: 'center' as const }}>
+                            <div style={{ fontSize: 10, color: 'var(--text-dim)', fontFamily: 'var(--font-body)', textAlign: 'center' as const }}>
                               NP {tssResult.np}W · IF {tssResult.ifVal.toFixed(2)}
                             </div>
                           )}
@@ -7109,10 +7109,10 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
 
               // ── STEP FREE TEXT (inchangé) ─────────────────────
               return (
-                <div style={{ borderRadius: 12, border: `1px solid ${accent}15`, padding: mobile ? '14px' : '18px', background: `${accent}05` }}>
+                <div style={{ borderRadius: 'var(--r-md)', border: `1px solid ${accent}15`, padding: mobile ? '14px' : '18px', background: `${accent}05` }}>
                   {hasClimbs && (
                     <button onClick={() => setAiFlowStep('ask')} style={{
-                      marginBottom: 10, padding: '4px 10px', borderRadius: 7,
+                      marginBottom: 10, padding: '4px 10px', borderRadius: 'var(--r-sm)',
                       border: '1px solid var(--border)', background: 'transparent',
                       color: 'var(--text-dim)', fontSize: 10, fontWeight: 600, cursor: 'pointer',
                     }}>{t('sed.backToRouteFlow')}</button>
@@ -7122,7 +7122,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                     {!isStrength && (() => {
                       const tot = parseSessionTextMinutes(aiPrompt)
                       return tot > 0 ? (
-                        <span style={{ position: 'absolute', top: 10, right: 10, zIndex: 3, padding: '3px 10px', borderRadius: 999, background: accent, color: '#fff', fontSize: 11.5, fontWeight: 800, fontFamily: '"DM Mono", monospace', boxShadow: '0 1px 5px rgba(0,0,0,0.18)', pointerEvents: 'none' }}>{formatHM(tot)}</span>
+                        <span style={{ position: 'absolute', top: 10, right: 10, zIndex: 3, padding: '3px 10px', borderRadius: 'var(--r-pill)', background: accent, color: '#fff', fontSize: 11.5, fontWeight: 800, fontFamily: '"DM Mono", monospace', boxShadow: '0 1px 5px rgba(0,0,0,0.18)', pointerEvents: 'none' }}>{formatHM(tot)}</span>
                       ) : null
                     })()}
                     <textarea value={aiPrompt}
@@ -7142,7 +7142,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                         : t('sed.aiEndurancePlaceholder')}
                       style={{
                         width: '100%', background: 'var(--bg-card2)', border: '1px solid var(--border)',
-                        borderRadius: 9, color: 'var(--text)', padding: 12, fontSize: 13, outline: 'none',
+                        borderRadius: 'var(--r-sm)', color: 'var(--text)', padding: 12, fontSize: 13, outline: 'none',
                         resize: 'vertical' as const, fontFamily: '"DM Sans", sans-serif', lineHeight: 1.6,
                         boxSizing: 'border-box' as const, minHeight: 140,
                       }} />
@@ -7152,7 +7152,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                       )
                       if (filtered.length === 0) return null
                       return (
-                        <div style={{ position: 'absolute' as const, bottom: '100%', left: 0, right: 0, marginBottom: 4, borderRadius: 10, overflow: 'hidden', background: 'var(--bg-card)', border: '1px solid var(--border)', boxShadow: '0 -6px 24px rgba(0,0,0,0.18)', zIndex: 20 }}>
+                        <div style={{ position: 'absolute' as const, bottom: '100%', left: 0, right: 0, marginBottom: 4, borderRadius: 'var(--r-sm)', overflow: 'hidden', background: 'var(--bg-card)', border: '1px solid var(--border)', boxShadow: '0 -6px 24px rgba(0,0,0,0.18)', zIndex: 20 }}>
                           {filtered.map((ct, idx) => (
                             <button key={ct.id} onClick={() => {
                               const lines = aiPrompt.split('\n')
@@ -7172,13 +7172,13 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                     })()}
                   </div>
                   <button onClick={() => handleAIGenerate()} disabled={aiLoading || !aiPrompt.trim()} style={{
-                    marginTop: 8, width: '100%', padding: 11, borderRadius: 9, border: 'none',
+                    marginTop: 8, width: '100%', padding: 11, borderRadius: 'var(--r-sm)', border: 'none',
                     background: aiLoading ? 'var(--border)' : `linear-gradient(135deg, ${accent}, ${accent}bb)`,
                     color: '#fff', fontSize: 12, fontWeight: 700, cursor: aiLoading ? 'wait' : 'pointer',
-                    fontFamily: 'Syne, sans-serif',
+                    fontFamily: 'var(--font-body)',
                   }}>{aiLoading ? t('sed.generating') : t('sed.generateBlocks')}</button>
                   {aiError && (
-                    <div style={{ marginTop: 8, padding: '10px 12px', borderRadius: 8, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.20)', color: '#ef4444', fontSize: 11, lineHeight: 1.5, wordBreak: 'break-all' as const }}>
+                    <div style={{ marginTop: 8, padding: '10px 12px', borderRadius: 'var(--r-sm)', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.20)', color: '#ef4444', fontSize: 11, lineHeight: 1.5, wordBreak: 'break-all' as const }}>
                       {aiError}
                     </div>
                   )}
@@ -7194,11 +7194,11 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
         {/* STRATÉGIE NUTRITIONNELLE */}
         <div style={{ padding: mobile ? '20px 16px 14px' : '20px 24px 18px' }}>
           <button onClick={() => setNutritionOpen(!nutritionOpen)} style={{
-            width: '100%', padding: '12px 14px', borderRadius: 12,
+            width: '100%', padding: '12px 14px', borderRadius: 'var(--r-md)',
             border: '1px solid var(--border)', background: nutritionOpen ? 'var(--bg-card2)' : 'var(--bg-card)',
             cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 11, transition: 'background 0.15s',
           }}>
-            <span style={{ width: 30, height: 30, borderRadius: 9, background: `${accent}16`, color: accent, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <span style={{ width: 30, height: 30, borderRadius: 'var(--r-sm)', background: `${accent}16`, color: accent, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
               <svg width="15" height="15" viewBox="0 0 14 14" fill="none"><path d="M7 1.2C4.6 4.2 2.6 6.4 2.6 8.7a4.4 4.4 0 0 0 8.8 0C11.4 6.4 9.4 4.2 7 1.2Z" fill="currentColor"/></svg>
             </span>
             <span style={{ flex: 1, textAlign: 'left' as const, display: 'flex', flexDirection: 'column' as const, gap: 1, minWidth: 0 }}>
@@ -7210,7 +7210,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
               </span>
             </span>
             {nutritionItems.length > 0 && (
-              <span style={{ fontSize: 11, fontWeight: 700, color: accent, fontFamily: 'var(--font-display)', background: `${accent}12`, borderRadius: 7, padding: '3px 9px', flexShrink: 0 }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: accent, fontFamily: 'var(--font-display)', background: `${accent}12`, borderRadius: 'var(--r-sm)', padding: '3px 9px', flexShrink: 0 }}>
                 {nutritionItems.reduce((s, x) => s + x.glucidesG, 0)}g
               </span>
             )}
@@ -7219,12 +7219,12 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
 
           {nutritionOpen && (
             <div style={{
-              marginTop: 10, padding: '16px', borderRadius: 12,
+              marginTop: 10, padding: '16px', borderRadius: 'var(--r-md)',
               border: '1px solid var(--border)', background: 'var(--bg-card2)',
             }}>
               {/* Toggle Manuel / IA */}
               <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
-                <div style={{ display: 'flex', gap: 0, background: 'var(--bg-card)', borderRadius: 7, border: '1px solid var(--border)', overflow: 'hidden' }}>
+                <div style={{ display: 'flex', gap: 0, background: 'var(--bg-card)', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', overflow: 'hidden' }}>
                   <button onClick={() => setNutritionTab('manual')} style={{
                     padding: '5px 12px', border: 'none', fontSize: 10, fontWeight: 600, cursor: 'pointer',
                     background: nutritionTab === 'manual' ? `${accent}18` : 'transparent',
@@ -7255,7 +7255,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                           const items = grouped[timeMin]
                           return (
                             <div key={timeMin} style={{
-                              padding: '10px 14px', borderRadius: 10,
+                              padding: '10px 14px', borderRadius: 'var(--r-sm)',
                               border: '1px solid var(--border)', background: 'var(--bg-card)',
                             }}>
                               {/* En-tête du moment */}
@@ -7264,7 +7264,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                                   {timeMin === 0 ? t('sed.startShort') : `${timeMin}'`}
                                 </span>
                                 <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
-                                <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>
+                                <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>
                                   {items.reduce((s, x) => s + x.glucidesG, 0)}{t('sed.gCarbsShort')}
                                 </span>
                               </div>
@@ -7281,7 +7281,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                                   {/* Type */}
                                   <select value={item.type}
                                     onChange={e => setNutritionItems(prev => prev.map(x => x.id === item.id ? { ...x, type: e.target.value as NutritionItem['type'] } : x))}
-                                    style={{ fontSize: 9, padding: '3px 6px', borderRadius: 5, border: `1px solid ${accent}44`, background: `${accent}0a`, color: accent, outline: 'none', cursor: 'pointer' }}>
+                                    style={{ fontSize: 10, padding: '3px 6px', borderRadius: 'var(--r-sm)', border: `1px solid ${accent}44`, background: `${accent}0a`, color: accent, outline: 'none', cursor: 'pointer' }}>
                                     {NUTRITION_TYPES.map(nt => <option key={nt.id} value={nt.id}>{t(`sed.nutType_${nt.id}`)}</option>)}
                                   </select>
                                   {/* Nom + sélecteur produits athlète */}
@@ -7296,7 +7296,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                                           const prod = athleteProducts.find(p => p.name === e.target.value)
                                           if (prod) setNutritionItems(prev => prev.map(x => x.id === item.id ? { ...x, name: prod.name, glucidesG: prod.glucidesG, proteinesG: prod.proteinesG, quantity: prod.quantity } : x))
                                         }}
-                                        style={{ appearance: 'none' as const, padding: '2px 6px', borderRadius: 4, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', fontSize: 9, cursor: 'pointer', outline: 'none' }}>
+                                        style={{ appearance: 'none' as const, padding: '2px 6px', borderRadius: 4, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', fontSize: 10, cursor: 'pointer', outline: 'none' }}>
                                         <option value="">{t('sed.myProducts')}</option>
                                         {athleteProducts.filter(p => p.type === item.type).map(p => (
                                           <option key={p.name} value={p.name}>{p.name} ({p.glucidesG}{t('sed.gCarbsShort')})</option>
@@ -7308,13 +7308,13 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                                   <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
                                     <input type="number" min={0} value={item.glucidesG}
                                       onChange={e => setNutritionItems(prev => prev.map(x => x.id === item.id ? { ...x, glucidesG: parseInt(e.target.value) || 0 } : x))}
-                                      style={{ width: 38, padding: '3px 6px', borderRadius: 5, border: '1px solid var(--border)', background: 'var(--bg-card)', color: accent, fontSize: 11, fontFamily: '"DM Mono",monospace', fontWeight: 700, textAlign: 'center' as const, outline: 'none' }} />
-                                    <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>g</span>
+                                      style={{ width: 38, padding: '3px 6px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-card)', color: accent, fontSize: 11, fontFamily: '"DM Mono",monospace', fontWeight: 700, textAlign: 'center' as const, outline: 'none' }} />
+                                    <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>g</span>
                                   </div>
                                   {/* Quantité */}
                                   <input value={item.quantity} placeholder={t('sed.qtyShort')}
                                     onChange={e => setNutritionItems(prev => prev.map(x => x.id === item.id ? { ...x, quantity: e.target.value } : x))}
-                                    style={{ width: 56, padding: '3px 6px', borderRadius: 5, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-mid)', fontSize: 11, fontFamily: '"DM Mono",monospace', outline: 'none' }} />
+                                    style={{ width: 56, padding: '3px 6px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-mid)', fontSize: 11, fontFamily: '"DM Mono",monospace', outline: 'none' }} />
                                   {/* Supprimer */}
                                   <button onClick={() => setNutritionItems(prev => prev.filter(x => x.id !== item.id))} style={{
                                     background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 14, padding: 0, lineHeight: 1,
@@ -7338,12 +7338,12 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                         })}
                         {/* Summary — 2 chips */}
                         <div style={{ display: 'flex', gap: 8 }}>
-                          <div style={{ flex: 1, padding: '8px 12px', borderRadius: 9, background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
-                            <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.05em', color: 'var(--text-dim)' }}>{t('sed.totalCarbs')}</div>
+                          <div style={{ flex: 1, padding: '8px 12px', borderRadius: 'var(--r-sm)', background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+                            <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.05em', color: 'var(--text-dim)' }}>{t('sed.totalCarbs')}</div>
                             <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-display)', lineHeight: 1.2 }}>{nutritionItems.reduce((s, x) => s + x.glucidesG, 0)}<span style={{ fontSize: 11, color: 'var(--text-dim)' }}> g</span></div>
                           </div>
-                          <div style={{ flex: 1, padding: '8px 12px', borderRadius: 9, background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
-                            <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.05em', color: 'var(--text-dim)' }}>{t('sed.intake')}</div>
+                          <div style={{ flex: 1, padding: '8px 12px', borderRadius: 'var(--r-sm)', background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+                            <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.05em', color: 'var(--text-dim)' }}>{t('sed.intake')}</div>
                             <div style={{ fontSize: 17, fontWeight: 700, color: accent, fontFamily: 'var(--font-display)', lineHeight: 1.2 }}>{dur > 0 ? Math.round(nutritionItems.reduce((s, x) => s + x.glucidesG, 0) / (dur / 60)) : 0}<span style={{ fontSize: 11, color: 'var(--text-dim)' }}> g/h</span></div>
                           </div>
                         </div>
@@ -7360,7 +7360,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                       name: '', quantity: '1 gel', glucidesG: 25, proteinesG: 0, notes: '',
                     }])
                   }} style={{
-                    width: '100%', padding: '10px', borderRadius: 9,
+                    width: '100%', padding: '10px', borderRadius: 'var(--r-sm)',
                     border: `1px dashed ${accent}55`, background: `${accent}0c`,
                     color: accent, fontSize: 11.5, fontWeight: 600, cursor: 'pointer',
                   }}>{t('sed.addRefuel')}</button>
@@ -7372,7 +7372,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                     placeholder={t('sed.nutritionAiPlaceholder')}
                     style={{
                       width: '100%', background: 'var(--bg-card)', border: '1px solid var(--border)',
-                      borderRadius: 9, color: 'var(--text)', padding: 12, fontSize: 12, outline: 'none',
+                      borderRadius: 'var(--r-sm)', color: 'var(--text)', padding: 12, fontSize: 12, outline: 'none',
                       resize: 'vertical' as const, fontFamily: '"DM Sans", sans-serif', lineHeight: 1.5,
                       boxSizing: 'border-box' as const,
                     }} />
@@ -7442,11 +7442,11 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                     } catch (e) { console.error('[Nutrition IA]', e) }
                     finally { setNutritionAiLoading(false) }
                   }} disabled={nutritionAiLoading || !nutritionAiPrompt.trim()} style={{
-                    marginTop: 8, width: '100%', padding: 11, borderRadius: 9, border: 'none',
+                    marginTop: 8, width: '100%', padding: 11, borderRadius: 'var(--r-sm)', border: 'none',
                     background: nutritionAiLoading ? 'var(--border)' : `linear-gradient(135deg, ${accent}, ${accent}bb)`,
                     color: '#fff', fontSize: 12, fontWeight: 700,
                     cursor: nutritionAiLoading ? 'wait' : 'pointer',
-                    fontFamily: 'Syne, sans-serif',
+                    fontFamily: 'var(--font-body)',
                     opacity: !nutritionAiPrompt.trim() ? 0.5 : 1,
                   }}>
                     {nutritionAiLoading ? t('sed.generating') : t('sed.generateStrategy')}
@@ -7476,7 +7476,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
               <svg width={20} height={20} viewBox="0 0 24 24" fill="none">
                 <path d="M8 5v14l11-7z" fill="#fff" />
               </svg>
-              <span style={{ fontSize: 8, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' as const }}>{t('sed.launch')}</span>
+              <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' as const }}>{t('sed.launch')}</span>
             </button>
           </div>
         )}
@@ -7499,14 +7499,14 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                 onClick={() => { if (isDirty) { setShowCloseModal(true) } else { requestClose() } }}
                 onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = '#111827' }}
                 onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = '#6B7280' }}
-                style={{ padding: '8px 10px', borderRadius: 8, border: 'none', background: 'transparent', color: '#6B7280', fontSize: 14, fontWeight: 500, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, transition: 'color 0.15s' }}
+                style={{ padding: '8px 10px', borderRadius: 'var(--r-sm)', border: 'none', background: 'transparent', color: '#6B7280', fontSize: 14, fontWeight: 500, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, transition: 'color 0.15s' }}
               >
                 <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
                 {t('sed.close')}
               </button>
               {/* ── Gauche : actions secondaires (text-only, no bg) ── */}
               <button onClick={handleExportPDF} title={t('sed.exportPdf')} style={{
-                padding: '8px 12px', borderRadius: 8, cursor: 'pointer',
+                padding: '8px 12px', borderRadius: 'var(--r-sm)', cursor: 'pointer',
                 border: '1px solid var(--border)', background: 'transparent',
                 color: 'var(--text-dim)', fontSize: 11, fontWeight: 600,
                 display: 'flex', alignItems: 'center', gap: 5,
@@ -7515,7 +7515,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                 PDF
               </button>
               <button onClick={() => parcoursInputRef.current?.click()} title={t('sed.importRouteFile')} style={{
-                padding: '8px 12px', borderRadius: 8, cursor: 'pointer',
+                padding: '8px 12px', borderRadius: 'var(--r-sm)', cursor: 'pointer',
                 border: '1px solid var(--border)', background: 'transparent',
                 color: 'var(--text-dim)', fontSize: 11, fontWeight: 600,
                 display: 'flex', alignItems: 'center', gap: 5,
@@ -7539,13 +7539,13 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                   alert(t('sed.favoriteSaved'))
                 } catch (e) { console.error('[Fav]', e) }
               }} style={{
-                padding: '8px 12px', borderRadius: 8,
+                padding: '8px 12px', borderRadius: 'var(--r-sm)',
                 border: '1px solid var(--border)', background: 'transparent',
                 color: 'var(--text-dim)', fontSize: 11, fontWeight: 600, cursor: 'pointer',
               }}>★ {t('sed.favorite')}</button>
               {onDuplicate && session && (
                 <button onClick={() => setShowDuplicateMenu(true)} style={{
-                  padding: '8px 12px', borderRadius: 8,
+                  padding: '8px 12px', borderRadius: 'var(--r-sm)',
                   border: '1px solid var(--border)', background: 'transparent',
                   color: 'var(--text-dim)', fontSize: 11, fontWeight: 600, cursor: 'pointer',
                 }}>{t('sed.duplicate')}</button>
@@ -7557,7 +7557,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
               <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
                 {(['A', 'B'] as PlanVariant[]).map(p => (
                   <button key={p} onClick={() => setSelPlan(p)} style={{
-                    padding: '6px 12px', borderRadius: 7, fontSize: 11, fontWeight: 600, cursor: 'pointer',
+                    padding: '6px 12px', borderRadius: 'var(--r-sm)', fontSize: 11, fontWeight: 600, cursor: 'pointer',
                     background: selPlan === p ? (p === 'A' ? 'rgba(6,182,212,0.10)' : 'rgba(167,139,250,0.10)') : 'transparent',
                     border: selPlan === p ? `1px solid ${p === 'A' ? '#06B6D4' : '#a78bfa'}` : '1px solid var(--border)',
                     color: selPlan === p ? (p === 'A' ? '#06B6D4' : '#a78bfa') : 'var(--text-dim)',
@@ -7570,7 +7570,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
               {/* ── Droite : actions principales ── */}
               {onDelete && session && (
                 <button onClick={() => { if (confirm(t('sed.deleteSessionConfirm'))) { onDelete(session.id); requestClose() } }} style={{
-                  padding: '8px 12px', borderRadius: 8,
+                  padding: '8px 12px', borderRadius: 'var(--r-sm)',
                   background: 'transparent', border: 'none',
                   color: '#ef4444', fontSize: 11, fontWeight: 600, cursor: 'pointer',
                 }}>{t('sed.delete')}</button>
@@ -7583,14 +7583,14 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                   if (typeof o.notes === 'string') setDesc(o.notes)
                   if (typeof o.rpe === 'number') setRpe(o.rpe)
                 }} style={{
-                  padding: '8px 12px', borderRadius: 8,
+                  padding: '8px 12px', borderRadius: 'var(--r-sm)',
                   background: 'transparent', border: 'none',
                   color: 'var(--text-dim)', fontSize: 11, cursor: 'pointer', fontWeight: 600,
                 }}>{t('sed.resetAi')}</button>
               )}
               {session?.status !== 'done' && onValidate && session && (
                 <button onClick={() => onValidate({ ...session, sport, title, time, durationMin: dur, rpe, blocks, notes: desc })} style={{
-                  padding: '8px 14px', borderRadius: 8,
+                  padding: '8px 14px', borderRadius: 'var(--r-sm)',
                   background: 'transparent', border: '1px solid rgba(34,197,94,0.5)',
                   color: '#22c55e', fontSize: 11, fontWeight: 600, cursor: 'pointer',
                 }}>{t('sed.validate')}</button>
@@ -7640,20 +7640,20 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                 } catch (e) { console.error('[Save]', e) }
                 finally { setSaving(false) }
               }} style={{
-                padding: '10px 22px', borderRadius: 9,
+                padding: '10px 22px', borderRadius: 'var(--r-sm)',
                 border: 'none',
                 background: saved ? '#22c55e' : `linear-gradient(135deg, ${accent}, ${accent}cc)`,
                 color: '#fff', fontSize: 12, fontWeight: 700, cursor: saving ? 'wait' : 'pointer',
                 boxShadow: saved ? 'none' : `0 4px 14px ${accent}40`,
                 transition: 'background 0.3s, box-shadow 0.2s',
-                fontFamily: 'Syne, sans-serif', letterSpacing: '0.01em',
+                fontFamily: 'var(--font-body)', letterSpacing: '0.01em',
               }}>{saving ? '…' : saved ? `✓ ${t('sed.saved')}` : t('sed.save')}</button>
             </div>
           ) : (
             /* Mode create */
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
               <button onClick={requestClose} style={{
-                padding: '10px 20px', borderRadius: 8,
+                padding: '10px 20px', borderRadius: 'var(--r-sm)',
                 background: 'var(--bg-card)', border: '1px solid var(--border)',
                 color: 'var(--text-dim)', fontSize: 12, cursor: 'pointer',
               }}>{t('sed.cancel')}</button>
@@ -7673,15 +7673,15 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                   alert(t('sed.favoriteSaved'))
                 } catch (e) { console.error('[Fav]', e) }
               }} style={{
-                padding: '10px 20px', borderRadius: 8,
+                padding: '10px 20px', borderRadius: 'var(--r-sm)',
                 background: 'var(--bg-card)', border: '1px solid var(--border)',
                 color: 'var(--text-dim)', fontSize: 12, cursor: 'pointer',
               }}>★ {t('sed.favorite')}</button>
               <div style={{ flex: 1 }} />
               <button onClick={handleSubmit} style={{
-                padding: '10px 28px', borderRadius: 8, border: 'none',
+                padding: '10px 28px', borderRadius: 'var(--r-sm)', border: 'none',
                 background: accent, color: '#fff', fontSize: 12, fontWeight: 700,
-                cursor: 'pointer', fontFamily: 'Syne, sans-serif',
+                cursor: 'pointer', fontFamily: 'var(--font-body)',
               }}>{t('sed.addSession')}</button>
             </div>
           )}
@@ -7696,12 +7696,12 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
             display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16,
           }} onClick={() => setShowCloseModal(false)}>
             <div onClick={e => e.stopPropagation()} style={{
-              background: 'var(--bg-card)', borderRadius: 16, padding: 32,
+              background: 'var(--bg-card)', borderRadius: 'var(--r-md)', padding: 32,
               maxWidth: 400, width: '100%', border: '1px solid var(--border)',
               display: 'flex', flexDirection: 'column' as const, gap: 0,
             }}>
               <div style={{ fontSize: 32, marginBottom: 12, lineHeight: 1 }}>⚠</div>
-              <div style={{ fontSize: 18, fontWeight: 600, color: '#111827', fontFamily: 'Syne, sans-serif', marginBottom: 8 }}>
+              <div style={{ fontSize: 18, fontWeight: 600, color: '#111827', fontFamily: 'var(--font-display)', marginBottom: 8 }}>
                 {t('sed.unsavedChanges')}
               </div>
               <div style={{ fontSize: 14, color: '#6B7280', marginBottom: 24, lineHeight: 1.5 }}>
@@ -7753,7 +7753,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                   } catch (e) { console.error('[Save+Close]', e) }
                   finally { setSaving(false) }
                 }} style={{
-                  width: '100%', padding: '12px 16px', borderRadius: 8,
+                  width: '100%', padding: '12px 16px', borderRadius: 'var(--r-sm)',
                   background: '#111827', border: 'none',
                   color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer',
                 }}>
@@ -7761,7 +7761,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                 </button>
                 {/* Quitter sans enregistrer */}
                 <button onClick={() => { setShowCloseModal(false); requestClose() }} style={{
-                  width: '100%', padding: '12px 16px', borderRadius: 8,
+                  width: '100%', padding: '12px 16px', borderRadius: 'var(--r-sm)',
                   background: 'transparent', border: '1px solid #EF4444',
                   color: '#EF4444', fontSize: 14, fontWeight: 600, cursor: 'pointer',
                 }}>
@@ -7769,7 +7769,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                 </button>
                 {/* Annuler */}
                 <button onClick={() => setShowCloseModal(false)} style={{
-                  width: '100%', padding: '12px 16px', borderRadius: 8,
+                  width: '100%', padding: '12px 16px', borderRadius: 'var(--r-sm)',
                   background: 'transparent', border: 'none',
                   color: '#6B7280', fontSize: 14, fontWeight: 500, cursor: 'pointer',
                 }}>
@@ -7805,19 +7805,19 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
             display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16,
           }} onClick={() => { setShowDuplicateMenu(false); setDupDate('') }}>
             <div onClick={e => e.stopPropagation()} style={{
-              background: 'var(--bg-card)', borderRadius: 16, padding: 20,
+              background: 'var(--bg-card)', borderRadius: 'var(--r-md)', padding: 20,
               maxWidth: 340, width: '100%', border: '1px solid var(--border)',
             }}>
-              <h3 style={{ fontSize: 15, fontWeight: 700, margin: '0 0 4px', fontFamily: 'Syne, sans-serif', color: 'var(--text)' }}>{t('sed.duplicate')}</h3>
+              <h3 style={{ fontSize: 15, fontWeight: 700, margin: '0 0 4px', fontFamily: 'var(--font-body)', color: 'var(--text)' }}>{t('sed.duplicate')}</h3>
               <p style={{ fontSize: 11.5, color: 'var(--text-dim)', margin: '0 0 16px' }}>{t('sed.duplicateToDate')}</p>
 
               {/* Date libre — n'importe quelle semaine */}
               <label style={{ display: 'block', fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-dim)', marginBottom: 8 }}>{t('sed.targetDate')}</label>
               <input type="date" value={pickedDate} onChange={e => setDupDate(e.target.value)}
-                style={{ width: '100%', boxSizing: 'border-box', padding: '11px 14px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 14, fontFamily: 'var(--font-body)', outline: 'none' }} />
+                style={{ width: '100%', boxSizing: 'border-box', padding: '11px 14px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 14, fontFamily: 'var(--font-body)', outline: 'none' }} />
               <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: '8px 0 0', textTransform: 'capitalize' }}>{fmtPicked}</p>
               <button onClick={() => { const r = dupResolve(pickedDate); doDuplicate(r.dayIndex, r.weekStart) }}
-                style={{ marginTop: 12, width: '100%', padding: '12px', borderRadius: 12, border: 'none', background: 'linear-gradient(135deg, #06B6D4, #2563EB)', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
+                style={{ marginTop: 12, width: '100%', padding: '12px', borderRadius: 'var(--r-md)', border: 'none', background: 'linear-gradient(135deg, #06B6D4, #2563EB)', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
                 {t('sed.duplicate')}
               </button>
 
@@ -7826,7 +7826,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4 }}>
                 {[t('sed.mondayShort'), t('sed.tuesdayShort'), t('sed.wednesdayShort'), t('sed.thursdayShort'), t('sed.fridayShort'), t('sed.saturdayShort'), t('sed.sundayShort')].map((day, i) => (
                   <button key={i} onClick={() => doDuplicate(i, curWs)} title={day} style={{
-                    padding: '9px 0', borderRadius: 8, textAlign: 'center' as const,
+                    padding: '9px 0', borderRadius: 'var(--r-sm)', textAlign: 'center' as const,
                     border: `1px solid ${i === (session.dayIndex ?? 0) ? 'var(--primary)' : 'var(--border)'}`, background: 'var(--bg-card2)',
                     color: 'var(--text)', fontSize: 11, cursor: 'pointer', fontWeight: 600,
                   }}>{day}</button>
@@ -7834,7 +7834,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
               </div>
 
               <button onClick={() => { setShowDuplicateMenu(false); setDupDate('') }} style={{
-                marginTop: 14, width: '100%', padding: 9, borderRadius: 8,
+                marginTop: 14, width: '100%', padding: 9, borderRadius: 'var(--r-sm)',
                 border: '1px solid var(--border)', background: 'transparent',
                 color: 'var(--text-dim)', fontSize: 11, cursor: 'pointer',
               }}>{t('sed.cancel')}</button>

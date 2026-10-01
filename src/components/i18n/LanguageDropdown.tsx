@@ -21,7 +21,7 @@ export function LanguageDropdown() {
   return (
     <div ref={ref} style={{ position: 'fixed', top: 'calc(env(safe-area-inset-top) + 12px)', right: 16, zIndex: 60 }}>
       <button onClick={() => setOpen(o => !o)} aria-haspopup="listbox" aria-expanded={open} style={{
-        display: 'inline-flex', alignItems: 'center', gap: 9, height: 40, padding: '0 8px 0 12px', borderRadius: 999,
+        display: 'inline-flex', alignItems: 'center', gap: 9, height: 40, padding: '0 8px 0 12px', borderRadius: 'var(--r-pill)',
         border: '1px solid var(--glass-border)', background: 'var(--glass-bg)',
         backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
         boxShadow: '0 2px 12px rgba(0,0,0,0.12)', color: 'var(--text)',
@@ -36,7 +36,7 @@ export function LanguageDropdown() {
 
       <div role="listbox" style={{
         position: 'absolute', top: 46, right: 0, minWidth: 170, padding: 6, transformOrigin: 'top right',
-        background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 14, boxShadow: 'var(--shadow-card)',
+        background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', boxShadow: 'var(--shadow-card)',
         opacity: open ? 1 : 0, transform: open ? 'translateY(0) scale(1)' : 'translateY(-8px) scale(0.96)',
         pointerEvents: open ? 'auto' : 'none', transition: 'opacity 0.18s ease, transform 0.2s cubic-bezier(0.16,1,0.3,1)',
       }}>
@@ -44,7 +44,7 @@ export function LanguageDropdown() {
           const on = l.code === lang
           return (
             <button key={l.code} role="option" aria-selected={on} onClick={() => { setLang(l.code); setOpen(false) }} style={{
-              display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '9px 12px', borderRadius: 10, border: 'none',
+              display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '9px 12px', borderRadius: 'var(--r-sm)', border: 'none',
               background: on ? 'var(--primary-dim)' : 'transparent', color: on ? 'var(--primary)' : 'var(--text)',
               fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: on ? 600 : 500, cursor: 'pointer', textAlign: 'left',
             }}

@@ -138,7 +138,7 @@ export function RoadBadge({ info }: { info: RoadBadgeInfo }) {
   return (
     <span className="lv2-num" style={{
       display: 'inline-flex', alignItems: 'center', height: 19, padding: '0 7px',
-      borderRadius: 5, fontSize: 11.5, fontWeight: 800, letterSpacing: '0.02em',
+      borderRadius: 'var(--r-sm)', fontSize: 11.5, fontWeight: 800, letterSpacing: '0.02em',
       background: info.kind === 'dep' ? 'var(--live-badge-dep-bg)' : 'var(--live-badge-hwy-bg)',
       color: info.kind === 'dep' ? 'var(--live-badge-dep-text)' : 'var(--live-badge-hwy-text)',
     }}>
@@ -251,7 +251,7 @@ export default function GuidePanel({
       style={{
         position: 'absolute',
         top: 'calc(env(safe-area-inset-top) + 56px)', left: 16, right: 16, bottom: 150,
-        borderRadius: 24, zIndex: 40,
+        borderRadius: 'var(--r-lg)', zIndex: 40,
         background: 'var(--live-guide-panel)', border: '1px solid var(--live-hairline-2)',
         backdropFilter: 'blur(22px)', WebkitBackdropFilter: 'blur(22px)',
         display: 'flex', flexDirection: 'column', overflow: 'hidden',
@@ -270,7 +270,7 @@ export default function GuidePanel({
           borderBottom: '1px solid var(--live-hairline)',
         }}>
           <div style={{
-            width: 44, height: 44, borderRadius: 12, flexShrink: 0,
+            width: 44, height: 44, borderRadius: 'var(--r-md)', flexShrink: 0,
             background: 'var(--live-accent-soft)', color: 'var(--live-accent)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>
@@ -329,7 +329,7 @@ export default function GuidePanel({
                     <div style={{ marginLeft: 'auto', paddingTop: 5, flexShrink: 0 }}>
                       <span style={{
                         display: 'inline-flex', alignItems: 'center', height: 22, padding: '0 9px',
-                        borderRadius: 7, background: 'var(--live-chip-bg)',
+                        borderRadius: 'var(--r-sm)', background: 'var(--live-chip-bg)',
                         fontSize: 12, fontWeight: 600, color: 'var(--live-text-2)',
                       }}>
                         {exitChipLabel(s.exitNumber)}

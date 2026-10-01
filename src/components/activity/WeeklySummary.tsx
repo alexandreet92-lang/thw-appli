@@ -69,7 +69,7 @@ export function WeeklySummary({ activities }: { activities: RecapAct[] }) {
 
   return (
     <div style={{
-      position: 'relative', borderRadius: 18, padding: '18px 18px 20px', marginBottom: 16, overflow: 'hidden',
+      position: 'relative', borderRadius: 'var(--r-lg)', padding: '18px 18px 20px', marginBottom: 16, overflow: 'hidden',
       background: `linear-gradient(135deg, ${accent} 0%, #0b0b0f 130%)`,
       animation: 'weeklyIn 0.5s cubic-bezier(0.2,0.8,0.2,1)',
     }}>
@@ -86,7 +86,7 @@ export function WeeklySummary({ activities }: { activities: RecapAct[] }) {
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         <button onClick={onShare} style={{
-          display: 'inline-flex', alignItems: 'center', gap: 7, padding: '9px 16px', borderRadius: 999,
+          display: 'inline-flex', alignItems: 'center', gap: 7, padding: '9px 16px', borderRadius: 'var(--r-pill)',
           background: 'rgba(255,255,255,0.18)', border: '1px solid rgba(255,255,255,0.3)', color: '#fff',
           fontSize: 13, fontWeight: 700, cursor: 'pointer',
         }}><IconShare2 size={15} /> {t('lo.shareMyWeek')}</button>

@@ -171,7 +171,7 @@ export default function ParcoursViewer({ file, fileUrl, data: dataProp, mapHeigh
     return <p style={{ fontSize:12, color:'var(--danger)', margin:'8px 0 0' }}>{t('shared.gpxInvalid')}</p>
   }
   if (status === 'loading' || !data) {
-    return <div style={{ height: mapHeight, borderRadius:12, background:'#0F172A', display:'flex', alignItems:'center', justifyContent:'center', color:'#64748B', fontSize:12 }}>{t('shared.readingRoute')}</div>
+    return <div style={{ height: mapHeight, borderRadius: 'var(--r-md)', background:'#0F172A', display:'flex', alignItems:'center', justifyContent:'center', color:'#64748B', fontSize:12 }}>{t('shared.readingRoute')}</div>
   }
 
   const KPI = ({ label, value }: { label: string; value: string }) => (
@@ -182,7 +182,7 @@ export default function ParcoursViewer({ file, fileUrl, data: dataProp, mapHeigh
   )
 
   return (
-    <div style={{ borderRadius:12, border:'1px solid var(--border)' }}>
+    <div style={{ borderRadius: 'var(--r-md)', border:'1px solid var(--border)' }}>
       {/* KPIs */}
       <div style={{ display:'flex', gap:14, padding:'12px 14px', background:'var(--bg-card2)', flexWrap:'wrap', borderRadius:'12px 12px 0 0' }}>
         <KPI label={t('shared.distance')} value={`${(data.distanceM/1000).toFixed(1)} km`} />

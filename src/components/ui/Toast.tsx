@@ -42,8 +42,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             background: 'rgba(6,182,212,0.18)',
             border: '1px solid rgba(6,182,212,0.45)',
             backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)',
-            color: '#fff', borderRadius: 12, padding: '10px 14px',
-            fontSize: 13, fontWeight: 500, fontFamily: 'DM Sans, sans-serif',
+            color: '#fff', borderRadius: 'var(--r-md)', padding: '10px 14px',
+            fontSize: 13, fontWeight: 500, fontFamily: 'var(--font-body)',
             boxShadow: '0 6px 22px rgba(0,0,0,0.25)',
           }}
           role="status"

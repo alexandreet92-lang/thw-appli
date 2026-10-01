@@ -14,18 +14,18 @@ function MockupPhone() {
     return () => clearInterval(i)
   }, [])
   return (
-    <div style={{ width: 156, height: 272, border: '2.5px solid rgba(255,255,255,0.18)', borderRadius: 22, overflow: 'hidden', background: '#0A0A0A', margin: '0 auto', boxShadow: '0 20px 60px rgba(0,0,0,0.5)' }}>
+    <div style={{ width: 156, height: 272, border: '2.5px solid rgba(255,255,255,0.18)', borderRadius: 'var(--r-lg)', overflow: 'hidden', background: '#0A0A0A', margin: '0 auto', boxShadow: '0 20px 60px rgba(0,0,0,0.5)' }}>
       <div style={{ padding: '14px 12px 8px', textAlign: 'center', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
-        <p style={{ fontSize: 8, color: 'rgba(255,255,255,0.38)', margin: '0 0 2px', letterSpacing: 1.2, fontFamily: 'DM Sans, sans-serif' }}>{t('onboarding.speed')}</p>
-        <p style={{ fontSize: 38, fontWeight: 700, color: '#fff', margin: 0, transition: 'all 0.6s ease', fontFamily: 'DM Mono, monospace', lineHeight: 1 }}>{speed}</p>
-        <p style={{ fontSize: 8, color: 'rgba(255,255,255,0.38)', margin: '2px 0 0', fontFamily: 'DM Sans, sans-serif' }}>km/h</p>
+        <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.38)', margin: '0 0 2px', letterSpacing: 1.2, fontFamily: 'var(--font-body)' }}>{t('onboarding.speed')}</p>
+        <p style={{ fontSize: 38, fontWeight: 700, color: '#fff', margin: 0, transition: 'all 0.6s ease', fontFamily: 'var(--font-body)', lineHeight: 1 }}>{speed}</p>
+        <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.38)', margin: '2px 0 0', fontFamily: 'var(--font-body)' }}>km/h</p>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1, background: 'rgba(255,255,255,0.06)', margin: '8px 0 0' }}>
         {[{ l: t('onboarding.hr'), v: hr, u: 'bpm' }, { l: 'D+', v: 245, u: 'm' }, { l: t('onboarding.dist'), v: '18.4', u: 'km' }, { l: t('onboarding.durationShort'), v: '38:24', u: '' }].map((d, i) => (
           <div key={i} style={{ padding: '8px 4px', textAlign: 'center', background: '#131313' }}>
-            <p style={{ fontSize: 7, color: 'rgba(255,255,255,0.38)', margin: '0 0 2px', fontFamily: 'DM Sans, sans-serif' }}>{d.l}</p>
-            <p style={{ fontSize: 19, fontWeight: 700, color: '#fff', margin: 0, fontFamily: 'DM Mono, monospace', transition: 'all 0.6s ease' }}>{d.v}</p>
-            <p style={{ fontSize: 7, color: 'rgba(255,255,255,0.38)', margin: 0, fontFamily: 'DM Sans, sans-serif' }}>{d.u}</p>
+            <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.38)', margin: '0 0 2px', fontFamily: 'var(--font-body)' }}>{d.l}</p>
+            <p style={{ fontSize: 19, fontWeight: 700, color: '#fff', margin: 0, fontFamily: 'var(--font-body)', transition: 'all 0.6s ease' }}>{d.v}</p>
+            <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.38)', margin: 0, fontFamily: 'var(--font-body)' }}>{d.u}</p>
           </div>
         ))}
       </div>
@@ -53,7 +53,7 @@ export default function RecordSlide() {
       <div style={{ display: 'flex', gap: 14, justifyContent: 'center' }}>
         {SPORT_ICONS.map((s, i) => (
           <div key={s.label} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, animation: `fade-in-up 0.4s ${i * 80}ms both` }}>
-            <div style={{ width: 36, height: 36, borderRadius: 10, background: `${s.color}22`, border: `1px solid ${s.color}55`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ width: 36, height: 36, borderRadius: 'var(--r-sm)', background: `${s.color}22`, border: `1px solid ${s.color}55`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={s.color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                 <path d={s.path} />
               </svg>
@@ -62,8 +62,8 @@ export default function RecordSlide() {
         ))}
       </div>
       <div style={{ textAlign: 'center' }}>
-        <h2 style={{ fontSize: 26, fontWeight: 800, color: '#fff', margin: '0 0 10px', fontFamily: 'Syne, sans-serif' }}>{t('onboarding.recordTitle')}</h2>
-        <p style={{ fontSize: 15, color: 'rgba(255,255,255,0.58)', lineHeight: 1.6, margin: 0, fontFamily: 'DM Sans, sans-serif' }}>{t('onboarding.recordSub1')}<br />{t('onboarding.recordSub2')}</p>
+        <h2 style={{ fontSize: 26, fontWeight: 800, color: '#fff', margin: '0 0 10px', fontFamily: 'var(--font-display)' }}>{t('onboarding.recordTitle')}</h2>
+        <p style={{ fontSize: 15, color: 'rgba(255,255,255,0.58)', lineHeight: 1.6, margin: 0, fontFamily: 'var(--font-body)' }}>{t('onboarding.recordSub1')}<br />{t('onboarding.recordSub2')}</p>
       </div>
     </div>
   )

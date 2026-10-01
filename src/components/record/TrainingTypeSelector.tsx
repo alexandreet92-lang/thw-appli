@@ -63,7 +63,7 @@ export default function TrainingTypeSelector({ selected, onChange, isDark = fals
             onClick={() => toggle(type.id)}
             title={descText}
             style={{
-              padding: '10px 16px', borderRadius: 9999,
+              padding: '10px 16px', borderRadius: 'var(--r-pill)',
               fontSize: 14, fontWeight: 500,
               border: active ? 'none' : `1px solid ${isDark ? 'rgba(255,255,255,0.15)' : '#E5E7EB'}`,
               background: active
@@ -71,7 +71,7 @@ export default function TrainingTypeSelector({ selected, onChange, isDark = fals
                 : (isDark ? 'rgba(255,255,255,0.06)' : '#F9FAFB'),
               color: active ? '#fff' : (isDark ? '#fff' : '#374151'),
               cursor: 'pointer',
-              fontFamily: 'DM Sans, sans-serif',
+              fontFamily: 'var(--font-body)',
               transition: 'all 150ms',
             }}
           >

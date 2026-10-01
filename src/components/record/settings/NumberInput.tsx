@@ -29,7 +29,7 @@ export function NumberInput({ value, min, max, step, unit, onChange, disabled, t
       <button
         onClick={() => canDec && handleChange(Math.max(min, value - step))}
         style={{
-          width: 28, height: 28, borderRadius: 8,
+          width: 28, height: 28, borderRadius: 'var(--r-sm)',
           background: theme.separator, border: 'none',
           color: theme.text, cursor: canDec ? 'pointer' : 'default',
           opacity: canDec ? 1 : 0.3, fontSize: 18, lineHeight: 1,
@@ -48,7 +48,7 @@ export function NumberInput({ value, min, max, step, unit, onChange, disabled, t
       <button
         onClick={() => canInc && handleChange(Math.min(max, value + step))}
         style={{
-          width: 28, height: 28, borderRadius: 8,
+          width: 28, height: 28, borderRadius: 'var(--r-sm)',
           background: theme.separator, border: 'none',
           color: theme.text, cursor: canInc ? 'pointer' : 'default',
           opacity: canInc ? 1 : 0.3, fontSize: 18, lineHeight: 1,

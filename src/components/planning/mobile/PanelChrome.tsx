@@ -26,7 +26,7 @@ function DuplicatePopover({ accent, sport, onApply, onClose }: { accent: string;
   const [mag, setMag] = useState(0)
   const [content, setContent] = useState<'full' | 'titleDuration'>('full')
 
-  const seg = (on: boolean): React.CSSProperties => ({ flex: 1, padding: '8px 6px', borderRadius: 9, cursor: 'pointer', fontSize: 11.5, fontWeight: 700, border: `1px solid ${on ? accent : 'var(--se-rule)'}`, background: on ? accent : 'var(--se-card)', color: on ? '#fff' : 'var(--se-dim)' })
+  const seg = (on: boolean): React.CSSProperties => ({ flex: 1, padding: '8px 6px', borderRadius: 'var(--r-sm)', cursor: 'pointer', fontSize: 11.5, fontWeight: 700, border: `1px solid ${on ? accent : 'var(--se-rule)'}`, background: on ? accent : 'var(--se-card)', color: on ? '#fff' : 'var(--se-dim)' })
   const chips = adjMode === 'min' ? durChips(sport) : PCT_CHIPS
 
   function apply() {
@@ -38,8 +38,8 @@ function DuplicatePopover({ accent, sport, onApply, onClose }: { accent: string;
   return (
     <>
       <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 40 }} />
-      <div style={{ position: 'absolute', top: 38, right: 0, zIndex: 41, background: 'var(--se-card)', border: '1px solid var(--se-rule)', borderRadius: 14, boxShadow: '0 8px 30px rgba(0,0,0,0.22)', padding: 16, width: 288, maxHeight: '78vh', overflowY: 'auto' }}>
-        <p style={{ margin: '0 0 4px', fontFamily: 'Syne, sans-serif', fontSize: 14, fontWeight: 700, color: 'var(--se-text)' }}>{t('pch.duplicateSession')}</p>
+      <div style={{ position: 'absolute', top: 38, right: 0, zIndex: 41, background: 'var(--se-card)', border: '1px solid var(--se-rule)', borderRadius: 'var(--r-md)', boxShadow: '0 8px 30px rgba(0,0,0,0.22)', padding: 16, width: 288, maxHeight: '78vh', overflowY: 'auto' }}>
+        <p style={{ margin: '0 0 4px', fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 700, color: 'var(--se-text)' }}>{t('pch.duplicateSession')}</p>
         <p style={{ margin: '0 0 14px', fontSize: 11.5, color: 'var(--se-dim)' }}>Répète cette séance dans le planning.</p>
 
         <Lbl>{t('performance.frequency')}</Lbl>
@@ -52,7 +52,7 @@ function DuplicatePopover({ accent, sport, onApply, onClose }: { accent: string;
         <Lbl>Nombre de semaines</Lbl>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '7px 0 14px' }}>
           <button type="button" onClick={() => setCount(c => Math.max(1, c - 1))} style={stepBtn}>−</button>
-          <span className="se-tnum" style={{ flex: 1, textAlign: 'center', fontFamily: 'Syne, sans-serif', fontSize: 24, fontWeight: 800, color: 'var(--se-text)' }}>{count}</span>
+          <span className="se-tnum" style={{ flex: 1, textAlign: 'center', fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 800, color: 'var(--se-text)' }}>{count}</span>
           <button type="button" onClick={() => setCount(c => Math.min(52, c + 1))} style={stepBtn}>+</button>
         </div>
 
@@ -70,7 +70,7 @@ function DuplicatePopover({ accent, sport, onApply, onClose }: { accent: string;
             </div>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 14 }}>
               {chips.map(v => (
-                <button key={v} type="button" onClick={() => setMag(m => m === v ? 0 : v)} style={{ padding: '7px 12px', borderRadius: 999, cursor: 'pointer', fontSize: 12, fontWeight: 700, border: `1px solid ${mag === v ? accent : 'var(--se-rule)'}`, background: mag === v ? `${accent}1a` : 'var(--se-card)', color: mag === v ? accent : 'var(--se-dim)' }}>
+                <button key={v} type="button" onClick={() => setMag(m => m === v ? 0 : v)} style={{ padding: '7px 12px', borderRadius: 'var(--r-pill)', cursor: 'pointer', fontSize: 12, fontWeight: 700, border: `1px solid ${mag === v ? accent : 'var(--se-rule)'}`, background: mag === v ? `${accent}1a` : 'var(--se-card)', color: mag === v ? accent : 'var(--se-dim)' }}>
                   {dir > 0 ? '+' : '−'}{v}{adjMode === 'min' ? '′' : '%'}
                 </button>
               ))}
@@ -85,7 +85,7 @@ function DuplicatePopover({ accent, sport, onApply, onClose }: { accent: string;
         </div>
 
         <button type="button" onClick={apply}
-          style={{ width: '100%', padding: '12px', borderRadius: 12, border: 'none', background: accent, color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+          style={{ width: '100%', padding: '12px', borderRadius: 'var(--r-md)', border: 'none', background: accent, color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
           Appliquer
         </button>
       </div>
@@ -95,7 +95,7 @@ function DuplicatePopover({ accent, sport, onApply, onClose }: { accent: string;
 function Lbl({ children }: { children: React.ReactNode }) {
   return <span style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--se-dim)' }}>{children}</span>
 }
-const stepBtn: React.CSSProperties = { width: 40, height: 40, borderRadius: 10, border: '1px solid var(--se-rule)', background: 'var(--se-card)', color: 'var(--se-text)', fontSize: 20, cursor: 'pointer', flexShrink: 0 }
+const stepBtn: React.CSSProperties = { width: 40, height: 40, borderRadius: 'var(--r-sm)', border: '1px solid var(--se-rule)', background: 'var(--se-card)', color: 'var(--se-text)', fontSize: 20, cursor: 'pointer', flexShrink: 0 }
 
 export function PanelHeader({ p, titleSize = 21, padding = '14px 18px', bordered = true, stacked = false }: { p: SessionEditorPanelProps; titleSize?: number; padding?: string; bordered?: boolean; stacked?: boolean }) {
   const { t } = useI18n()
@@ -104,20 +104,20 @@ export function PanelHeader({ p, titleSize = 21, padding = '14px 18px', bordered
 
   const memoBtn = (
     <button data-guide="builder-memo" type="button" onClick={p.onPrintMemo} aria-label={t('sed.printMemo')} title={t('sed.printMemo')}
-      style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6, height: 30, padding: '0 11px', borderRadius: 999, border: `1px solid ${p.sportAccent}`, background: 'transparent', color: p.sportAccent, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+      style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6, height: 30, padding: '0 11px', borderRadius: 'var(--r-pill)', border: `1px solid ${p.sportAccent}`, background: 'transparent', color: p.sportAccent, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
       <IconPrinter size={15} /> Mémo
     </button>
   )
   const dupBtn = p.onDuplicateRepeat && (
     <div style={{ position: 'relative', flexShrink: 0 }}>
       <button type="button" onClick={() => setDupOpen(o => !o)} aria-label={t('pch.duplicateSession')} title={t('pch.duplicateSession')}
-        style={{ display: 'flex', alignItems: 'center', gap: 6, height: 30, padding: '0 11px', borderRadius: 999, border: `1px solid ${p.sportAccent}`, background: dupOpen ? p.sportAccent : 'transparent', color: dupOpen ? '#fff' : p.sportAccent, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+        style={{ display: 'flex', alignItems: 'center', gap: 6, height: 30, padding: '0 11px', borderRadius: 'var(--r-pill)', border: `1px solid ${p.sportAccent}`, background: dupOpen ? p.sportAccent : 'transparent', color: dupOpen ? '#fff' : p.sportAccent, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
         <IconCopy size={15} /> Dupliquer
       </button>
       {dupOpen && <DuplicatePopover accent={p.sportAccent} sport={p.sport} onApply={p.onDuplicateRepeat} onClose={() => setDupOpen(false)} />}
     </div>
   )
-  const planBadge = !p.reserveMode && <span style={{ flexShrink: 0, fontSize: 11.5, fontWeight: 700, color: planCol, border: `1px solid ${planCol}`, borderRadius: 999, padding: '3px 11px' }}>{t('planning.planPrefix')} {p.selPlan}</span>
+  const planBadge = !p.reserveMode && <span style={{ flexShrink: 0, fontSize: 11.5, fontWeight: 700, color: planCol, border: `1px solid ${planCol}`, borderRadius: 'var(--r-pill)', padding: '3px 11px' }}>{t('planning.planPrefix')} {p.selPlan}</span>
   const closeBtn = (
     <button type="button" onClick={p.onClose} style={{ flexShrink: 0, width: 30, height: 30, borderRadius: '50%', border: '1px solid var(--se-rule)', background: 'transparent', color: 'var(--se-dim)', fontSize: 15, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
   )
@@ -169,7 +169,7 @@ export function PanelFooter({ p, floating }: { p: SessionEditorPanelProps; float
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', ...wrap }}>
         <span style={{ pointerEvents: 'auto', flex: 1, minWidth: 140, fontSize: 13.5, fontWeight: 600, color: 'var(--se-text)' }}>{t('planning.deleteSessionConfirm')}</span>
         <button type="button" onClick={() => setConfirmDelete(false)} style={footBtn}>{t('planning.cancel')}</button>
-        <button type="button" onClick={p.onDelete} style={{ pointerEvents: 'auto', padding: '12px 22px', borderRadius: 999, border: 'none', background: 'var(--pat-hyrox)', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 16px rgba(0,0,0,0.18)' }}>{t('planning.delete')}</button>
+        <button type="button" onClick={p.onDelete} style={{ pointerEvents: 'auto', padding: '12px 22px', borderRadius: 'var(--r-pill)', border: 'none', background: 'var(--pat-hyrox)', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 16px rgba(0,0,0,0.18)' }}>{t('planning.delete')}</button>
       </div>
     )
   }
@@ -181,13 +181,13 @@ export function PanelFooter({ p, floating }: { p: SessionEditorPanelProps; float
       {!p.reserveMode && <button type="button" onClick={p.onFavorite} style={footIcon} aria-label={t('planning.saveFavorite')}><IconStar size={17} /></button>}
       {p.onDelete && <button type="button" onClick={() => setConfirmDelete(true)} style={footDanger} aria-label={t('planning.deleteSession')}><IconTrash size={17} /></button>}
       <div style={{ flex: 1 }} />
-      <button data-guide="builder-add" type="button" onClick={p.onSave} disabled={p.saving} style={{ pointerEvents: 'auto', padding: '12px 24px', borderRadius: 999, border: 'none', background: p.accent, color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', opacity: p.saving ? 0.6 : 1, boxShadow: '0 4px 16px rgba(0,0,0,0.18)' }}>
+      <button data-guide="builder-add" type="button" onClick={p.onSave} disabled={p.saving} style={{ pointerEvents: 'auto', padding: '12px 24px', borderRadius: 'var(--r-pill)', border: 'none', background: p.accent, color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', opacity: p.saving ? 0.6 : 1, boxShadow: '0 4px 16px rgba(0,0,0,0.18)' }}>
         {p.saved ? t('planning.savedCheck') : (p.reserveMode || p.mode === 'edit') ? t('planning.save') : t('planning.add')} →
       </button>
     </div>
   )
 }
 
-const footBtn: React.CSSProperties = { pointerEvents: 'auto', display: 'flex', alignItems: 'center', gap: 4, padding: '10px 15px', borderRadius: 999, border: '1px solid var(--se-rule)', background: 'var(--se-card)', color: 'var(--se-text)', fontSize: 13, fontWeight: 600, cursor: 'pointer', boxShadow: '0 2px 10px rgba(0,0,0,0.10)' }
+const footBtn: React.CSSProperties = { pointerEvents: 'auto', display: 'flex', alignItems: 'center', gap: 4, padding: '10px 15px', borderRadius: 'var(--r-pill)', border: '1px solid var(--se-rule)', background: 'var(--se-card)', color: 'var(--se-text)', fontSize: 13, fontWeight: 600, cursor: 'pointer', boxShadow: '0 2px 10px rgba(0,0,0,0.10)' }
 const footIcon: React.CSSProperties = { pointerEvents: 'auto', width: 40, height: 40, borderRadius: '50%', border: '1px solid var(--se-rule)', background: 'var(--se-card)', color: 'var(--se-text)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 10px rgba(0,0,0,0.10)' }
 const footDanger: React.CSSProperties = { ...footIcon, border: '1px solid var(--pat-hyrox)', color: 'var(--pat-hyrox)' }

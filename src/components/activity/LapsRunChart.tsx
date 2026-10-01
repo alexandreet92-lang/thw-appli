@@ -177,7 +177,7 @@ export function LapsRunChart({ activityId, cachedLaps, avgSpeedMs, onLapTap }: P
           {yMarks.map((m, i) => (
             <g key={i}>
               <line x1={PAD_L} y1={m.y} x2={PAD_L + innerW} y2={m.y} stroke="var(--border)" strokeWidth="0.5" strokeDasharray="2 3" vectorEffect="non-scaling-stroke" />
-              <text x={PAD_L - 4} y={m.y + 3.5} textAnchor="end" fontSize="9" fill="var(--text-dim)" style={{ fontVariantNumeric: 'tabular-nums', fontFamily: 'Barlow Condensed, sans-serif' }}>{m.label}</text>
+              <text x={PAD_L - 4} y={m.y + 3.5} textAnchor="end" fontSize="9" fill="var(--text-dim)" style={{ fontVariantNumeric: 'tabular-nums', fontFamily: 'var(--font-body)' }}>{m.label}</text>
             </g>
           ))}
           <text x={8} y={PAD_T + CH / 2} textAnchor="middle" fontSize="8" fill="var(--text-dim)" transform={`rotate(-90, 8, ${PAD_T + CH / 2})`}>min/km</text>
@@ -200,13 +200,13 @@ export function LapsRunChart({ activityId, cachedLaps, avgSpeedMs, onLapTap }: P
                 <rect x={bX} y={bY} width={bW} height={bH} fill={fill} rx={1.5} style={{ pointerEvents: 'none' }} />
                 {showLabel && (
                   <text x={bX + bW / 2} y={bY - 4} textAnchor="middle" fontSize="9" fill="#7C3AED" fontWeight="600"
-                    style={{ fontVariantNumeric: 'tabular-nums', fontFamily: 'Barlow Condensed, sans-serif', pointerEvents: 'none' }}>
+                    style={{ fontVariantNumeric: 'tabular-nums', fontFamily: 'var(--font-body)', pointerEvents: 'none' }}>
                     {formatPace(speedMsToPace(sp))}
                   </text>
                 )}
                 {showTickName && (
                   <text x={bX + bW / 2} y={PAD_T + CH + PAD_B - 8} textAnchor="middle" fontSize="10" fill="var(--text-dim)"
-                    style={{ fontVariantNumeric: 'tabular-nums', fontFamily: 'Barlow Condensed, sans-serif', pointerEvents: 'none' }}>
+                    style={{ fontVariantNumeric: 'tabular-nums', fontFamily: 'var(--font-body)', pointerEvents: 'none' }}>
                     {i + 1}
                   </text>
                 )}

@@ -14,7 +14,7 @@ const san = (s: string) => s.toUpperCase().split('').filter(c => ALLOWED.include
 const clean = (code: string) => san(code).slice(0, 8)
 
 const cellBase: React.CSSProperties = {
-  width: 'clamp(30px, 9vw, 42px)', height: 'clamp(40px, 12vw, 52px)', borderRadius: 12,
+  width: 'clamp(30px, 9vw, 42px)', height: 'clamp(40px, 12vw, 52px)', borderRadius: 'var(--r-md)',
   display: 'flex', alignItems: 'center', justifyContent: 'center',
   fontFamily: 'var(--font-body)', fontSize: 'clamp(17px, 5vw, 22px)', fontWeight: 700,
   fontVariantNumeric: 'tabular-nums', color: 'var(--text)', boxSizing: 'border-box',
@@ -95,12 +95,12 @@ export function InviteCodeReveal({ code }: { code: string }) {
   const [copied, setCopied] = useState(false)
   const copy = () => { void navigator.clipboard?.writeText(code); setCopied(true); setTimeout(() => setCopied(false), 1600) }
   return (
-    <div style={{ marginTop: 14, padding: 'clamp(14px, 3vw, 18px)', borderRadius: 16, border: '1px solid var(--border)', background: 'var(--bg-alt)', animation: 'cmReveal .25s cubic-bezier(.32,.72,0,1)' }}>
+    <div style={{ marginTop: 14, padding: 'clamp(14px, 3vw, 18px)', borderRadius: 'var(--r-md)', border: '1px solid var(--border)', background: 'var(--bg-alt)', animation: 'cmReveal .25s cubic-bezier(.32,.72,0,1)' }}>
       <style>{REVEAL}</style>
       <div style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 12 }}>{t('w3d.invite_code')}</div>
       <CodeDisplay code={code} />
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 14, flexWrap: 'wrap' }}>
-        <button onClick={copy} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '9px 15px', borderRadius: 11, border: 'none', background: copied ? 'color-mix(in srgb, #22c55e 16%, transparent)' : 'var(--primary)', color: copied ? '#22c55e' : 'var(--on-primary)', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)', transition: 'background .15s' }}>
+        <button onClick={copy} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '9px 15px', borderRadius: 'var(--r-md)', border: 'none', background: copied ? 'color-mix(in srgb, #22c55e 16%, transparent)' : 'var(--primary)', color: copied ? '#22c55e' : 'var(--on-primary)', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)', transition: 'background .15s' }}>
           {copied
             ? <><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>{t('w3d.copied')}</>
             : <><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>{t('w3d.copy')}</>}

@@ -33,14 +33,14 @@ export default function SummaryScreen({ title, blocks, onStart, onClose }: Props
   const exos = views.reduce((a, v) => a + v.exos.length, 0)
 
   const stat = (n: string, l: string) => (
-    <div style={{ flex: 1, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 14, padding: '11px 12px' }}>
+    <div style={{ flex: 1, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: '11px 12px' }}>
       <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)' }}>{n}</div>
       <div style={{ fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-mid)', fontWeight: 700, marginTop: 2 }}>{l}</div>
     </div>
   )
 
   return (
-    <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', background: 'var(--bg)', color: 'var(--text)', fontFamily: 'DM Sans, sans-serif' }}>
+    <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', background: 'var(--bg)', color: 'var(--text)', fontFamily: 'var(--font-body)' }}>
       <div style={{ padding: 'calc(env(safe-area-inset-top) + 12px) 22px 14px', flexShrink: 0 }}>
         <button onClick={onClose} aria-label={t('w3a.back')} style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--bg-card2)', border: '1px solid var(--border)', color: 'var(--text)', cursor: 'pointer', display: 'grid', placeItems: 'center', marginBottom: 10 }}><IconChevronLeft size={18} /></button>
         <div style={{ fontSize: 11, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--primary)', fontWeight: 800 }}>{t('w3a.ready_to_start')}</div>
@@ -52,14 +52,14 @@ export default function SummaryScreen({ title, blocks, onStart, onClose }: Props
 
       <div style={{ flex: 1, overflowY: 'auto', padding: '6px 18px 12px' }}>
         {views.map((v, i) => (
-          <div key={i} style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 18, padding: '14px 16px', marginBottom: 10 }}>
+          <div key={i} style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-lg)', padding: '14px 16px', marginBottom: 10 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
               <span style={{ fontSize: 13, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--primary)', fontWeight: 800 }}>{v.title} · {v.rounds} {v.rounds > 1 ? t('w3a.tours_plural') : t('w3a.tour_singular')}</span>
               {v.restTour > 0 && <span style={{ fontSize: 12, color: 'var(--text-mid)', fontWeight: 700 }}>{t('w3a.recovery_short')} {v.restTour}s</span>}
             </div>
             {v.exos.map((e, j) => (
               <div key={j} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 0', borderBottom: j < v.exos.length - 1 ? '1px solid var(--border)' : 'none' }}>
-                <span style={{ width: 30, height: 30, borderRadius: 9, background: 'var(--bg-card2)', display: 'grid', placeItems: 'center', color: 'var(--text-mid)', flexShrink: 0 }}>{e.time ? <IconClock size={15} /> : <IconHash size={15} />}</span>
+                <span style={{ width: 30, height: 30, borderRadius: 'var(--r-sm)', background: 'var(--bg-card2)', display: 'grid', placeItems: 'center', color: 'var(--text-mid)', flexShrink: 0 }}>{e.time ? <IconClock size={15} /> : <IconHash size={15} />}</span>
                 <span style={{ flex: 1, fontSize: 16, fontWeight: 700 }}>{e.name}</span>
                 <span style={{ fontSize: 14, color: e.time ? 'var(--phase-prepare)' : 'var(--text-mid)', fontWeight: 700 }}>{e.text}</span>
               </div>
@@ -69,7 +69,7 @@ export default function SummaryScreen({ title, blocks, onStart, onClose }: Props
       </div>
 
       <div style={{ padding: '12px 20px calc(env(safe-area-inset-bottom) + 20px)', flexShrink: 0 }}>
-        <button onClick={onStart} style={{ width: '100%', height: 54, border: 'none', borderRadius: 15, cursor: 'pointer', background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 17, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+        <button onClick={onStart} style={{ width: '100%', height: 54, border: 'none', borderRadius: 'var(--r-md)', cursor: 'pointer', background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 17, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
           {t('w3a.start')} <IconArrowRight size={18} />
         </button>
       </div>

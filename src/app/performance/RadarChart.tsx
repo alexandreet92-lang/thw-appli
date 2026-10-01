@@ -692,14 +692,14 @@ function RadarTooltip({ tooltip }: { tooltip: TooltipState }) {
       zIndex: 9999,
       background: 'var(--bg-card2)',
       border: `1px solid ${lv.color}44`,
-      borderRadius: 10,
+      borderRadius: 'var(--r-sm)',
       padding: '10px 14px',
       minWidth: 180,
       pointerEvents: 'none',
       boxShadow: `0 4px 24px rgba(0,0,0,0.4), 0 0 0 1px ${lv.color}22`,
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-        <span style={{ fontFamily: 'Syne,sans-serif', fontWeight: 700, fontSize: 13, color: 'var(--text)' }}>
+        <span style={{ fontFamily: 'var(--font-body)', fontWeight: 700, fontSize: 13, color: 'var(--text)' }}>
           {axis.label}
         </span>
         {axis.score > 0 && (
@@ -707,7 +707,7 @@ function RadarTooltip({ tooltip }: { tooltip: TooltipState }) {
             background: lv.color + '22',
             color: lv.color,
             border: `1px solid ${lv.color}55`,
-            borderRadius: 6,
+            borderRadius: 'var(--r-sm)',
             padding: '1px 7px',
             fontSize: 10,
             fontWeight: 700,
@@ -826,7 +826,7 @@ function UpdateModal({ sport, title, axisDefs, gender, currentValues, onClose, o
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
           <div>
-            <div style={{ fontFamily: 'Syne,sans-serif', fontWeight: 700, fontSize: 16, color: 'var(--text)' }}>
+            <div style={{ fontFamily: 'var(--font-body)', fontWeight: 700, fontSize: 16, color: 'var(--text)' }}>
               {title}
             </div>
             <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 2 }}>
@@ -857,9 +857,9 @@ function UpdateModal({ sport, title, axisDefs, gender, currentValues, onClose, o
                 style={{
                   width: '100%', boxSizing: 'border-box',
                   background: 'var(--bg-card2, var(--bg))', border: '1px solid var(--border)',
-                  borderRadius: 8, padding: '9px 12px',
+                  borderRadius: 'var(--r-sm)', padding: '9px 12px',
                   color: 'var(--text)', fontSize: 14,
-                  fontFamily: 'DM Mono, monospace',
+                  fontFamily: 'var(--font-body)',
                   outline: 'none',
                 }}
               />
@@ -871,7 +871,7 @@ function UpdateModal({ sport, title, axisDefs, gender, currentValues, onClose, o
         </div>
 
         {error && (
-          <div style={{ marginTop: 14, fontSize: 12, color: '#f87171', background: 'rgba(239,68,68,0.1)', borderRadius: 8, padding: '8px 12px' }}>
+          <div style={{ marginTop: 14, fontSize: 12, color: '#f87171', background: 'rgba(239,68,68,0.1)', borderRadius: 'var(--r-sm)', padding: '8px 12px' }}>
             {error}
           </div>
         )}
@@ -881,7 +881,7 @@ function UpdateModal({ sport, title, axisDefs, gender, currentValues, onClose, o
           <button
             onClick={handleClose}
             style={{
-              flex: 1, padding: '12px', borderRadius: 10,
+              flex: 1, padding: '12px', borderRadius: 'var(--r-sm)',
               background: 'var(--bg-card2)', border: '1px solid var(--border)',
               color: 'var(--text-mid)', fontSize: 14, cursor: 'pointer',
             }}
@@ -892,7 +892,7 @@ function UpdateModal({ sport, title, axisDefs, gender, currentValues, onClose, o
             onClick={handleSave}
             disabled={saving}
             style={{
-              flex: 2, padding: '12px', borderRadius: 10,
+              flex: 2, padding: '12px', borderRadius: 'var(--r-sm)',
               background: saving ? 'rgba(91,111,255,0.4)' : '#5B6FFF',
               border: 'none', color: '#fff',
               fontSize: 14, fontWeight: 700, cursor: saving ? 'not-allowed' : 'pointer',
@@ -1016,7 +1016,7 @@ function BenchmarkModal({ title, sportColor, axisDefs, rawValues, onClose }: Ben
           borderBottom: '1px solid var(--border)',
         }}>
           <div>
-            <div style={{ fontFamily: 'Syne,sans-serif', fontWeight: 700, fontSize: 15, color: 'var(--text)' }}>
+            <div style={{ fontFamily: 'var(--font-body)', fontWeight: 700, fontSize: 15, color: 'var(--text)' }}>
               {t('w1c.bareme_title', { title })}
             </div>
             <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 2 }}>
@@ -1025,7 +1025,7 @@ function BenchmarkModal({ title, sportColor, axisDefs, rawValues, onClose }: Ben
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             {/* Gender tabs */}
-            <div style={{ display: 'flex', background: 'rgba(128,128,128,0.12)', borderRadius: 8, overflow: 'hidden' }}>
+            <div style={{ display: 'flex', background: 'rgba(128,128,128,0.12)', borderRadius: 'var(--r-sm)', overflow: 'hidden' }}>
               {(['M', 'F'] as const).map(gi => (
                 <button key={gi} onClick={() => setG(gi)} style={{
                   padding: '4px 12px',
@@ -1073,7 +1073,7 @@ function BenchmarkModal({ title, sportColor, axisDefs, rawValues, onClose }: Ben
                     whiteSpace: 'nowrap', minWidth: 100,
                   }}>
                     <div style={{ fontWeight: 700 }}>{def.label}</div>
-                    <div style={{ fontSize: 9, opacity: 0.55, fontWeight: 400, marginTop: 1 }}>{def.unit}</div>
+                    <div style={{ fontSize: 10, opacity: 0.55, fontWeight: 400, marginTop: 1 }}>{def.unit}</div>
                   </th>
                 ))}
               </tr>
@@ -1091,7 +1091,7 @@ function BenchmarkModal({ title, sportColor, axisDefs, rawValues, onClose }: Ben
                     <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
                       <div style={{ width: 8, height: 8, borderRadius: '50%', background: lv.color, flexShrink: 0 }} />
                       <span style={{ fontWeight: 700, color: lv.color, fontSize: 11 }}>{lv.label}</span>
-                      <span style={{ fontSize: 9, color: 'var(--text-dim)', opacity: 0.55 }}>{lv.score}</span>
+                      <span style={{ fontSize: 10, color: 'var(--text-dim)', opacity: 0.55 }}>{lv.score}</span>
                     </div>
                   </td>
                   {/* Value cells */}
@@ -1101,7 +1101,7 @@ function BenchmarkModal({ title, sportColor, axisDefs, rawValues, onClose }: Ben
                     return (
                       <td key={def.key} style={{
                         padding: '7px 10px', textAlign: 'center',
-                        fontFamily: 'DM Mono, monospace',
+                        fontFamily: 'var(--font-body)',
                         fontSize: 10, whiteSpace: 'nowrap',
                         background: isMe ? `${lv.color}1A` : 'transparent',
                         borderLeft: isMe ? `2px solid ${lv.color}60` : '2px solid transparent',
@@ -1239,7 +1239,7 @@ function RadarCard({ dbSport, title, sportColor, axisDefs, defaultValues, extraC
   return (
     <div style={{
       background: 'var(--bg-card)',
-      borderRadius: 16,
+      borderRadius: 'var(--r-md)',
       padding: '16px 16px 12px',
       border: '1px solid var(--border)',
       position: 'relative',
@@ -1247,7 +1247,7 @@ function RadarCard({ dbSport, title, sportColor, axisDefs, defaultValues, extraC
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span style={{ fontFamily: 'Syne,sans-serif', fontWeight: 700, fontSize: 14, color: 'var(--text)' }}>
+          <span style={{ fontFamily: 'var(--font-body)', fontWeight: 700, fontSize: 14, color: 'var(--text)' }}>
             {title}
           </span>
           {overallLevel && (
@@ -1255,11 +1255,11 @@ function RadarCard({ dbSport, title, sportColor, axisDefs, defaultValues, extraC
               background: overallLevel.color + '22',
               color: overallLevel.color,
               border: `1px solid ${overallLevel.color}55`,
-              borderRadius: 8,
+              borderRadius: 'var(--r-sm)',
               padding: '2px 9px',
               fontSize: 11,
               fontWeight: 700,
-              fontFamily: 'Syne,sans-serif',
+              fontFamily: 'var(--font-body)',
             }}>
               {overallLevel.label} · {overall.toFixed(1)}
             </span>
@@ -1300,7 +1300,7 @@ function RadarCard({ dbSport, title, sportColor, axisDefs, defaultValues, extraC
         {LEVELS.map(lv => (
           <div key={lv.label} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
             <div style={{ width: 7, height: 7, borderRadius: '50%', background: lv.color, opacity: 0.8 }} />
-            <span style={{ fontSize: 9, color: 'var(--text-dim)', fontWeight: 500 }}>
+            <span style={{ fontSize: 10, color: 'var(--text-dim)', fontWeight: 500 }}>
               {lv.label} <span style={{ opacity: 0.55 }}>{lv.pct}</span>
             </span>
           </div>
@@ -1407,7 +1407,7 @@ export function HyroxRadar() {
         padding: '4px 11px',
         background: 'var(--bg-card2)',
         border: '1px solid var(--border)',
-        borderRadius: 8,
+        borderRadius: 'var(--r-sm)',
         color: 'var(--text-mid)',
         fontSize: 11, fontWeight: 600,
         cursor: 'pointer',

@@ -105,7 +105,7 @@ export default function SleepScoreRing(p: SleepRingData) {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 5, width: '100%', maxWidth: 200 }}>
         {FACTORS.map((f, i) => (
           <div key={f.labelKey} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ fontSize: 9, color: f.color, width: 60, flexShrink: 0 }}>{t(f.labelKey)}</span>
+            <span style={{ fontSize: 10, color: f.color, width: 60, flexShrink: 0 }}>{t(f.labelKey)}</span>
             <div style={{ flex: 1, height: 3, background: `${f.color}22`, borderRadius: 2, overflow: 'hidden' }}>
               <div style={{
                 height: '100%', background: f.color, borderRadius: 2,
@@ -113,14 +113,14 @@ export default function SleepScoreRing(p: SleepRingData) {
                 transition: `width 0.4s ease-out ${i * 0.3 + 0.15}s`,
               }} />
             </div>
-            <span style={{ fontSize: 9, color: 'var(--text-dim)', width: 30, textAlign: 'right', fontFamily: 'DM Mono,monospace' }}>
+            <span style={{ fontSize: 10, color: 'var(--text-dim)', width: 30, textAlign: 'right', fontFamily: 'var(--font-body)' }}>
               {subtitles[i]}
             </span>
           </div>
         ))}
       </div>
       {!p.fromDevice && (
-        <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: 0, fontStyle: 'italic', textAlign: 'center' }}>
+        <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: 0, fontStyle: 'italic', textAlign: 'center' }}>
           {t('recovery.sleepRing.estimated')}
         </p>
       )}

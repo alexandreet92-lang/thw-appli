@@ -204,7 +204,7 @@ export function SessionHoverPreview({ session, anchor }: { session: Session; anc
       position: 'fixed', left, top, width: WIDTH, zIndex: 3000,
       pointerEvents: 'none',
       background: 'var(--bg-card)', border: '1px solid var(--border)',
-      borderRadius: 14, padding: 12,
+      borderRadius: 'var(--r-md)', padding: 12,
       boxShadow: 'var(--shadow-card)',
       maxHeight: '78vh', overflow: 'hidden',
       animation: 'shpIn .16s ease-out forwards',
@@ -375,10 +375,10 @@ export function SessionHoverPreview({ session, anchor }: { session: Session; anc
           {mapUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img data-testid="shp-map" src={mapUrl} alt={t('w3g.shp_map_alt')} width={MAP_W} height={MAP_H}
-              style={{ display: 'block', width: MAP_W, height: MAP_H, objectFit: 'cover', borderRadius: 10, border: '1px solid var(--border)' }} />
+              style={{ display: 'block', width: MAP_W, height: MAP_H, objectFit: 'cover', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)' }} />
           ) : (
             <svg data-testid="shp-map" width={MAP_W} height={MAP_H} viewBox={`0 0 ${MAP_W} ${MAP_H}`}
-              style={{ display: 'block', background: 'var(--bg-alt)', borderRadius: 10 }}>
+              style={{ display: 'block', background: 'var(--bg-alt)', borderRadius: 'var(--r-sm)' }}>
               {/* contour puis tracé bleu */}
               <path d={traceD} fill="none" stroke="var(--bg-card)" strokeWidth={4} strokeLinejoin="round" strokeLinecap="round" opacity={0.9} />
               <path d={traceD} fill="none" stroke="var(--primary)" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />

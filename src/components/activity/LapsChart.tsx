@@ -157,7 +157,7 @@ export function LapsChart({ laps, streams, avgWatts, hoveredLap, onHoverLap }: P
       {/* X axis */}
       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 2 }}>
         {xLabels.map(({ pct, label }) => (
-          <span key={pct} style={{ fontSize: 9, color: 'var(--text-dim)', fontVariantNumeric: 'tabular-nums' }}>
+          <span key={pct} style={{ fontSize: 10, color: 'var(--text-dim)', fontVariantNumeric: 'tabular-nums' }}>
             {label}
           </span>
         ))}
@@ -171,7 +171,7 @@ export function LapsChart({ laps, streams, avgWatts, hoveredLap, onHoverLap }: P
           top:           Math.max(0, tooltipPos.y - 70),
           background:    'var(--bg-card)',
           border:        '1px solid var(--border-mid)',
-          borderRadius:  8,
+          borderRadius: 'var(--r-sm)',
           padding:       '8px 12px',
           pointerEvents: 'none',
           zIndex:        50,

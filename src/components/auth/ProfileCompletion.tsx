@@ -31,9 +31,9 @@ const OBJECTIVES = [
 
 const inputStyle: React.CSSProperties = {
   width: '100%', height: 56, background: 'rgba(255,255,255,0.07)',
-  border: '1px solid rgba(255,255,255,0.15)', borderRadius: 14,
+  border: '1px solid rgba(255,255,255,0.15)', borderRadius: 'var(--r-md)',
   padding: '0 20px', color: 'white', fontSize: 22, fontWeight: 600,
-  outline: 'none', boxSizing: 'border-box', fontFamily: 'DM Sans, sans-serif',
+  outline: 'none', boxSizing: 'border-box', fontFamily: 'var(--font-body)',
   textAlign: 'center',
 }
 
@@ -85,7 +85,7 @@ export function ProfileCompletion({ onDone }: Props) {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: BG, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px 0', fontFamily: 'DM Sans, sans-serif' }}>
+    <div style={{ minHeight: '100vh', background: BG, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px 0', fontFamily: 'var(--font-body)' }}>
       <div style={{ width: '100%', maxWidth: 400, padding: '0 24px' }}>
 
         {/* Progress bar */}
@@ -111,7 +111,7 @@ export function ProfileCompletion({ onDone }: Props) {
             }}>
               {firstName ? firstName[0]?.toUpperCase() : '?'}
             </div>
-            <h2 style={{ fontSize: 26, fontWeight: 800, color: 'white', margin: '0 0 8px', fontFamily: 'Syne, sans-serif' }}>
+            <h2 style={{ fontSize: 26, fontWeight: 800, color: 'white', margin: '0 0 8px', fontFamily: 'var(--font-display)' }}>
               {t('welcome.t0')}
             </h2>
             <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.45)', margin: '0 0 32px', lineHeight: 1.5 }}>
@@ -131,7 +131,7 @@ export function ProfileCompletion({ onDone }: Props) {
         {/* Step 2 — Sport */}
         {step === 2 && (
           <div>
-            <h2 style={{ fontSize: 24, fontWeight: 800, color: 'white', margin: '0 0 8px', textAlign: 'center', fontFamily: 'Syne, sans-serif' }}>
+            <h2 style={{ fontSize: 24, fontWeight: 800, color: 'white', margin: '0 0 8px', textAlign: 'center', fontFamily: 'var(--font-display)' }}>
               {t('authpage.step2Title')}
             </h2>
             <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.45)', margin: '0 0 28px', textAlign: 'center', lineHeight: 1.5 }}>
@@ -143,12 +143,12 @@ export function ProfileCompletion({ onDone }: Props) {
                   key={s.id}
                   onClick={() => setPrimarySport(s.id)}
                   style={{
-                    padding: '16px 12px', borderRadius: 14,
+                    padding: '16px 12px', borderRadius: 'var(--r-md)',
                     background: primarySport === s.id ? `rgba(${hexRgb(s.color)},0.15)` : 'rgba(255,255,255,0.05)',
                     border: `1.5px solid ${primarySport === s.id ? s.color : 'rgba(255,255,255,0.1)'}`,
                     color: primarySport === s.id ? s.color : 'rgba(255,255,255,0.6)',
                     fontSize: 14, fontWeight: 600, cursor: 'pointer',
-                    transition: 'all 200ms', fontFamily: 'DM Sans, sans-serif',
+                    transition: 'all 200ms', fontFamily: 'var(--font-body)',
                   }}
                 >
                   {t(s.labelKey)}
@@ -161,7 +161,7 @@ export function ProfileCompletion({ onDone }: Props) {
         {/* Step 3 — Objectif */}
         {step === 3 && (
           <div>
-            <h2 style={{ fontSize: 24, fontWeight: 800, color: 'white', margin: '0 0 8px', textAlign: 'center', fontFamily: 'Syne, sans-serif' }}>
+            <h2 style={{ fontSize: 24, fontWeight: 800, color: 'white', margin: '0 0 8px', textAlign: 'center', fontFamily: 'var(--font-display)' }}>
               {t('authpage.step3Title')}
             </h2>
             <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.45)', margin: '0 0 28px', textAlign: 'center', lineHeight: 1.5 }}>
@@ -173,10 +173,10 @@ export function ProfileCompletion({ onDone }: Props) {
                 onClick={() => setObjective(o.id)}
                 style={{
                   width: '100%', marginBottom: 10, padding: '14px 16px',
-                  borderRadius: 14, textAlign: 'left',
+                  borderRadius: 'var(--r-md)', textAlign: 'left',
                   background: objective === o.id ? `rgba(${hexRgb(o.color)},0.12)` : 'rgba(255,255,255,0.05)',
                   border: `1.5px solid ${objective === o.id ? o.color : 'rgba(255,255,255,0.1)'}`,
-                  cursor: 'pointer', transition: 'all 200ms', fontFamily: 'DM Sans, sans-serif',
+                  cursor: 'pointer', transition: 'all 200ms', fontFamily: 'var(--font-body)',
                 }}
               >
                 <p style={{ fontSize: 15, fontWeight: 600, margin: '0 0 3px', color: objective === o.id ? o.color : 'white' }}>{t(o.labelKey)}</p>
@@ -191,18 +191,18 @@ export function ProfileCompletion({ onDone }: Props) {
           onClick={handleNext}
           disabled={isDisabled || saving}
           style={{
-            width: '100%', height: 52, borderRadius: 14, marginTop: 24,
+            width: '100%', height: 52, borderRadius: 'var(--r-md)', marginTop: 24,
             background: 'linear-gradient(135deg, #06B6D4, #2563EB)',
             border: 'none', color: 'white', fontSize: 16, fontWeight: 700,
             cursor: isDisabled ? 'not-allowed' : 'pointer',
             opacity: isDisabled || saving ? 0.4 : 1,
-            transition: 'opacity 200ms', fontFamily: 'DM Sans, sans-serif',
+            transition: 'opacity 200ms', fontFamily: 'var(--font-body)',
           }}
         >
           {saving ? t('common.saving') : step < 3 ? `${t('common.continue')} →` : `${t('common.finish')} →`}
         </button>
 
-        <button onClick={handleSkip} style={{ display: 'block', margin: '12px auto 0', background: 'none', border: 'none', color: 'rgba(255,255,255,0.25)', fontSize: 13, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}>
+        <button onClick={handleSkip} style={{ display: 'block', margin: '12px auto 0', background: 'none', border: 'none', color: 'rgba(255,255,255,0.25)', fontSize: 13, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
           {t('authpage.skipStep')}
         </button>
       </div>

@@ -66,9 +66,9 @@ export function GuideLiveDemo({ dataGuide }: { dataGuide?: string }) {
   const distKm = ((loop * speedKmh) / 3600).toFixed(2)
   const hr = Math.round(118 + cur.zone * 14 + Math.sin(elapsed * 2) * 2 + into * 0.6)
 
-  const tile: React.CSSProperties = { flex: 1, padding: '10px 12px', borderRadius: 14, background: 'var(--bg-card)', border: '1px solid var(--border)', textAlign: 'center' }
+  const tile: React.CSSProperties = { flex: 1, padding: '10px 12px', borderRadius: 'var(--r-md)', background: 'var(--bg-card)', border: '1px solid var(--border)', textAlign: 'center' }
   const tileLabel: React.CSSProperties = { fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-dim)', margin: 0 }
-  const tileVal: React.CSSProperties = { fontFamily: 'DM Mono, monospace', fontSize: 22, fontWeight: 700, color: 'var(--text)', margin: '3px 0 0', fontVariantNumeric: 'tabular-nums' }
+  const tileVal: React.CSSProperties = { fontFamily: 'var(--font-body)', fontSize: 22, fontWeight: 700, color: 'var(--text)', margin: '3px 0 0', fontVariantNumeric: 'tabular-nums' }
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 40000, background: 'var(--bg)', display: 'flex', flexDirection: 'column', overflow: 'hidden', fontFamily: 'var(--font-body, DM Sans, sans-serif)' }}>
@@ -85,7 +85,7 @@ export function GuideLiveDemo({ dataGuide }: { dataGuide?: string }) {
       {/* Chrono géant — cible du halo du guide */}
       <div data-guide={dataGuide} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '10px 0 6px', flexShrink: 0 }}>
         <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-dim)' }}>{t('gld.time')}</p>
-        <p style={{ margin: '2px 0 0', fontFamily: 'DM Mono, monospace', fontSize: 62, fontWeight: 700, lineHeight: 1, color: 'var(--text)', fontVariantNumeric: 'tabular-nums' }}>{chrono}</p>
+        <p style={{ margin: '2px 0 0', fontFamily: 'var(--font-body)', fontSize: 62, fontWeight: 700, lineHeight: 1, color: 'var(--text)', fontVariantNumeric: 'tabular-nums' }}>{chrono}</p>
       </div>
 
       {/* Métriques live */}
@@ -101,7 +101,7 @@ export function GuideLiveDemo({ dataGuide }: { dataGuide?: string }) {
           {PHASES.map((p, i) => (
             <div key={p.key} style={{ flex: p.sec, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', height: '100%' }}>
               <div style={{
-                height: `${28 + p.zone * 13}%`, borderRadius: 5,
+                height: `${28 + p.zone * 13}%`, borderRadius: 'var(--r-sm)',
                 background: i === curIdx ? p.accent : `color-mix(in srgb, ${p.accent} 32%, transparent)`,
                 border: i === curIdx ? `1px solid ${p.accent}` : '1px solid transparent',
                 transition: 'background .3s, height .3s',
@@ -110,35 +110,35 @@ export function GuideLiveDemo({ dataGuide }: { dataGuide?: string }) {
           ))}
         </div>
         {/* Barre de progression globale */}
-        <div style={{ marginTop: 8, height: 4, borderRadius: 999, background: 'var(--border)', overflow: 'hidden' }}>
-          <div style={{ height: '100%', width: `${(loop / TOTAL) * 100}%`, background: 'linear-gradient(90deg,#06B6D4,#3B82F6)', borderRadius: 999 }} />
+        <div style={{ marginTop: 8, height: 4, borderRadius: 'var(--r-pill)', background: 'var(--border)', overflow: 'hidden' }}>
+          <div style={{ height: '100%', width: `${(loop / TOTAL) * 100}%`, background: 'linear-gradient(90deg,#06B6D4,#3B82F6)', borderRadius: 'var(--r-pill)' }} />
         </div>
       </div>
 
       {/* Bloc en cours + prochain */}
       <div style={{ padding: '10px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '13px 15px', borderRadius: 16, background: `color-mix(in srgb, ${cur.accent} 12%, transparent)`, border: `1px solid ${cur.accent}` }}>
-          <div style={{ width: 44, height: 44, borderRadius: 12, background: cur.accent, color: '#fff', display: 'grid', placeItems: 'center', flexShrink: 0, fontFamily: 'DM Mono, monospace', fontWeight: 700, fontSize: 13 }}>Z{cur.zone}</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '13px 15px', borderRadius: 'var(--r-md)', background: `color-mix(in srgb, ${cur.accent} 12%, transparent)`, border: `1px solid ${cur.accent}` }}>
+          <div style={{ width: 44, height: 44, borderRadius: 'var(--r-md)', background: cur.accent, color: '#fff', display: 'grid', placeItems: 'center', flexShrink: 0, fontFamily: 'var(--font-body)', fontWeight: 700, fontSize: 13 }}>Z{cur.zone}</div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <p style={{ margin: 0, fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: cur.accent }}>{t('gld.current')}</p>
             <p style={{ margin: '2px 0 0', fontSize: 16, fontWeight: 800, color: 'var(--text)' }}>{phaseLabel(cur.key)}</p>
           </div>
           <div style={{ textAlign: 'right', flexShrink: 0 }}>
-            <p style={{ margin: 0, fontFamily: 'DM Mono, monospace', fontSize: 18, fontWeight: 700, color: 'var(--text)' }}>{mmss(cur.sec - into)}</p>
+            <p style={{ margin: 0, fontFamily: 'var(--font-body)', fontSize: 18, fontWeight: 700, color: 'var(--text)' }}>{mmss(cur.sec - into)}</p>
             <p style={{ margin: '2px 0 0', fontSize: 11, color: 'var(--text-dim)' }}>{t('gld.remaining')} · {cur.pace}/km</p>
           </div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 15px', borderRadius: 14, background: 'var(--bg-card)', border: '1px dashed var(--border)', opacity: 0.85 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 15px', borderRadius: 'var(--r-md)', background: 'var(--bg-card)', border: '1px dashed var(--border)', opacity: 0.85 }}>
           <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-dim)' }}>{t('gld.next')}</span>
           <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-mid)' }}>{phaseLabel(next.key)}</span>
-          <span style={{ marginLeft: 'auto', fontFamily: 'DM Mono, monospace', fontSize: 13, color: 'var(--text-dim)' }}>{mmss(next.sec)}</span>
+          <span style={{ marginLeft: 'auto', fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-dim)' }}>{mmss(next.sec)}</span>
         </div>
       </div>
 
       {/* Barre d'action live (Pause / Terminer) — illustratif */}
       <div style={{ marginTop: 'auto', display: 'flex', gap: 10, padding: '12px 16px calc(16px + env(safe-area-inset-bottom))', flexShrink: 0 }}>
-        <button disabled style={{ flex: 1, padding: 14, borderRadius: 14, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-mid)', fontSize: 14, fontWeight: 700, cursor: 'default' }}>{t('gld.pause')}</button>
-        <button disabled style={{ flex: 1, padding: 14, borderRadius: 14, border: 'none', background: 'var(--danger)', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'default' }}>{t('gld.finish')}</button>
+        <button disabled style={{ flex: 1, padding: 14, borderRadius: 'var(--r-md)', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-mid)', fontSize: 14, fontWeight: 700, cursor: 'default' }}>{t('gld.pause')}</button>
+        <button disabled style={{ flex: 1, padding: 14, borderRadius: 'var(--r-md)', border: 'none', background: 'var(--danger)', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'default' }}>{t('gld.finish')}</button>
       </div>
     </div>
   )

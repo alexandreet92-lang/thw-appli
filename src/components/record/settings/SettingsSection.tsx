@@ -20,7 +20,7 @@ export function SettingsSection({ title, children, theme }: SectionProps) {
         padding: '0 0 8px', margin: 0,
       }}>{title}</p>
       <div style={{
-        borderRadius: 14, overflow: 'hidden',
+        borderRadius: 'var(--r-md)', overflow: 'hidden',
         border: `1px solid ${theme.separator}`,
       }}>
         {children}
@@ -41,7 +41,7 @@ export function SettingsSectionSubtitle({ label, badge, theme }: SubtitleProps) 
       </span>
       {badge && (
         <span style={{
-          fontSize: 9, color: 'var(--primary)',
+          fontSize: 10, color: 'var(--primary)',
           border: '1px solid rgba(6,182,212,0.4)',
           borderRadius: 4, padding: '1px 6px', fontWeight: 700,
         }}>{badge}</span>

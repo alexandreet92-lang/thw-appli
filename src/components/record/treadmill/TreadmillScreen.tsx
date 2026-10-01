@@ -226,7 +226,7 @@ export default function TreadmillScreen({ onExit, onFinished }: Props) {
             { v: `${(plan.totalDistanceM / 1000).toFixed(1).replace('.', ',')}`, l: 'km prévus' },
             { v: String(plan.steps.length), l: 'intervalles' },
           ].map(s => (
-            <div key={s.l} style={{ flex: 1, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 14, padding: '11px 12px' }}>
+            <div key={s.l} style={{ flex: 1, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: '11px 12px' }}>
               <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--text)', fontVariantNumeric: 'tabular-nums' }}>{s.v}</div>
               <div style={{ fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-mid)', fontWeight: 700, marginTop: 2 }}>{s.l}</div>
             </div>
@@ -244,7 +244,7 @@ export default function TreadmillScreen({ onExit, onFinished }: Props) {
             <div style={{ display: 'flex', gap: 8, overflowX: 'auto', WebkitOverflowScrolling: 'touch', paddingBottom: 4 }}>
               {/* Course libre */}
               <button onClick={() => select(null)}
-                style={{ flexShrink: 0, textAlign: 'left', padding: '10px 14px', borderRadius: 14, cursor: 'pointer', fontFamily: FB,
+                style={{ flexShrink: 0, textAlign: 'left', padding: '10px 14px', borderRadius: 'var(--r-md)', cursor: 'pointer', fontFamily: FB,
                   border: selectedId == null ? '1.5px solid var(--primary)' : '1px solid var(--border)',
                   background: selectedId == null ? 'color-mix(in srgb, var(--primary) 8%, var(--bg-card))' : 'var(--bg-card)' }}>
                 <div style={{ fontSize: 13.5, fontWeight: 700, color: selectedId == null ? 'var(--primary)' : 'var(--text)' }}>Course libre</div>
@@ -254,13 +254,13 @@ export default function TreadmillScreen({ onExit, onFinished }: Props) {
                 const on = selectedId === o.id
                 return (
                   <button key={o.id} onClick={() => select(o.id)}
-                    style={{ flexShrink: 0, textAlign: 'left', padding: '10px 14px', borderRadius: 14, cursor: 'pointer', fontFamily: FB, maxWidth: 220,
+                    style={{ flexShrink: 0, textAlign: 'left', padding: '10px 14px', borderRadius: 'var(--r-md)', cursor: 'pointer', fontFamily: FB, maxWidth: 220,
                       border: on ? '1.5px solid var(--primary)' : '1px solid var(--border)',
                       background: on ? 'color-mix(in srgb, var(--primary) 8%, var(--bg-card))' : 'var(--bg-card)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                       <span style={{ fontSize: 13.5, fontWeight: 700, color: on ? 'var(--primary)' : 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{o.title}</span>
                       {o.isTreadmill && (
-                        <span style={{ flexShrink: 0, fontSize: 8.5, fontWeight: 800, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--primary)', background: 'color-mix(in srgb, var(--primary) 14%, transparent)', borderRadius: 5, padding: '2px 5px' }}>Tapis</span>
+                        <span style={{ flexShrink: 0, fontSize: 8.5, fontWeight: 800, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--primary)', background: 'color-mix(in srgb, var(--primary) 14%, transparent)', borderRadius: 'var(--r-sm)', padding: '2px 5px' }}>Tapis</span>
                       )}
                     </div>
                     <div style={{ fontSize: 11, color: 'var(--text-mid)', marginTop: 2, textTransform: 'capitalize' }}>
@@ -273,17 +273,17 @@ export default function TreadmillScreen({ onExit, onFinished }: Props) {
           </div>
         )}
         {isFree && options.length === 0 && !loading && (
-          <div style={{ fontSize: 13, color: 'var(--text-mid)', background: 'var(--bg-card2)', borderRadius: 12, padding: '12px 14px', marginBottom: 12 }}>
+          <div style={{ fontSize: 13, color: 'var(--text-mid)', background: 'var(--bg-card2)', borderRadius: 'var(--r-md)', padding: '12px 14px', marginBottom: 12 }}>
             Aucune séance course planifiée ces deux semaines — mode libre. Ajuste vitesse et pente à la volée.
           </div>
         )}
         {isFree && selectedId != null && (
-          <div style={{ fontSize: 13, color: 'var(--text-mid)', background: 'var(--bg-card2)', borderRadius: 12, padding: '12px 14px', marginBottom: 12 }}>
+          <div style={{ fontSize: 13, color: 'var(--text-mid)', background: 'var(--bg-card2)', borderRadius: 'var(--r-md)', padding: '12px 14px', marginBottom: 12 }}>
             Cette séance n'a pas de blocs détaillés — elle se lance en mode libre.
           </div>
         )}
         {plan.steps.map((s, i) => (
-          <div key={i} style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 16, padding: '13px 15px', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div key={i} style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: '13px 15px', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 12 }}>
             <span style={{ width: 8, height: 8, borderRadius: 3, background: zoneBg(s.zone), flexShrink: 0 }} />
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>{s.name}</div>
@@ -305,7 +305,7 @@ export default function TreadmillScreen({ onExit, onFinished }: Props) {
         <button
           onClick={() => { setPhase('live'); setRunning(true) }}
           disabled={loading}
-          style={{ width: '100%', height: 54, border: 'none', borderRadius: 15, cursor: 'pointer', background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 17, fontWeight: 800, fontFamily: FB, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+          style={{ width: '100%', height: 54, border: 'none', borderRadius: 'var(--r-md)', cursor: 'pointer', background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 17, fontWeight: 800, fontFamily: FB, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
           {t('record.startSession')}
         </button>
       </div>
@@ -370,8 +370,8 @@ export default function TreadmillScreen({ onExit, onFinished }: Props) {
           { l: 'Allure', v: curPaceSec != null ? `${fmtPaceSec(curPaceSec)}` : '—' },
           { l: 'Kcal', v: String(kcal) },
         ].map(s => (
-          <div key={s.l} style={{ flex: 1, background: chipBg, borderRadius: 12, padding: '8px 6px', textAlign: 'center' }}>
-            <div style={{ fontSize: 9, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', color: dimInk }}>{s.l}</div>
+          <div key={s.l} style={{ flex: 1, background: chipBg, borderRadius: 'var(--r-md)', padding: '8px 6px', textAlign: 'center' }}>
+            <div style={{ fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', color: dimInk }}>{s.l}</div>
             <div style={{ fontSize: 16, fontWeight: 800, marginTop: 2, fontVariantNumeric: 'tabular-nums' }}>{s.v}</div>
           </div>
         ))}
@@ -395,7 +395,7 @@ export default function TreadmillScreen({ onExit, onFinished }: Props) {
             ? <span style={{ fontVariantNumeric: 'tabular-nums' }}>{hr.bpm ?? '—'} bpm</span>
             : hr.supported
               ? <button onClick={() => void hr.connect()} disabled={hr.status === 'connecting'}
-                  style={{ background: chipBg, border: 'none', color: ink, borderRadius: 9, padding: '5px 12px', fontSize: 11.5, fontWeight: 800, cursor: 'pointer', fontFamily: FB }}>
+                  style={{ background: chipBg, border: 'none', color: ink, borderRadius: 'var(--r-sm)', padding: '5px 12px', fontSize: 11.5, fontWeight: 800, cursor: 'pointer', fontFamily: FB }}>
                   {hr.status === 'connecting' ? 'Connexion…' : 'Connecter'}
                 </button>
               : null}
@@ -407,10 +407,10 @@ export default function TreadmillScreen({ onExit, onFinished }: Props) {
 
       {/* Contrôles */}
       <div style={{ display: 'flex', gap: 10, padding: '10px 16px calc(env(safe-area-inset-bottom) + 16px)', flexShrink: 0 }}>
-        <button onClick={() => setRunning(r => !r)} style={{ flex: 1, height: 52, borderRadius: 14, background: chipBg, border: 'none', color: ink, fontSize: 15, fontWeight: 800, cursor: 'pointer', fontFamily: FB }}>
+        <button onClick={() => setRunning(r => !r)} style={{ flex: 1, height: 52, borderRadius: 'var(--r-md)', background: chipBg, border: 'none', color: ink, fontSize: 15, fontWeight: 800, cursor: 'pointer', fontFamily: FB }}>
           {running ? 'Pause' : 'Reprendre'}
         </button>
-        <button onClick={() => { setRunning(false); setPhase('review') }} style={{ flex: 1, height: 52, borderRadius: 14, background: step.zone >= 5 ? 'rgba(255,255,255,0.2)' : 'rgba(10,12,16,0.14)', border: 'none', color: ink, fontSize: 15, fontWeight: 800, cursor: 'pointer', fontFamily: FB }}>
+        <button onClick={() => { setRunning(false); setPhase('review') }} style={{ flex: 1, height: 52, borderRadius: 'var(--r-md)', background: step.zone >= 5 ? 'rgba(255,255,255,0.2)' : 'rgba(10,12,16,0.14)', border: 'none', color: ink, fontSize: 15, fontWeight: 800, cursor: 'pointer', fontFamily: FB }}>
           {planComplete ? 'Terminer ✓' : 'Terminer'}
         </button>
       </div>
@@ -419,7 +419,7 @@ export default function TreadmillScreen({ onExit, onFinished }: Props) {
 
   // ── Écran 2 — données de séance (fond du thème : noir en sombre, blanc en clair) ──
   const statCell = (l: string, v: string) => (
-    <div key={l} style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 14, padding: '11px 12px' }}>
+    <div key={l} style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: '11px 12px' }}>
       <div style={{ fontSize: 9.5, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-dim)' }}>{l}</div>
       <div style={{ fontSize: 19, fontWeight: 800, color: 'var(--text)', marginTop: 3, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{v}</div>
     </div>
@@ -433,7 +433,7 @@ export default function TreadmillScreen({ onExit, onFinished }: Props) {
       </div>
 
       {/* Bloc en cours */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 14, padding: '11px 14px', marginBottom: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: '11px 14px', marginBottom: 12 }}>
         <span style={{ width: 10, height: 10, borderRadius: 4, background: zoneBg(step.zone), flexShrink: 0 }} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 14, fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{step.name}</div>
@@ -456,7 +456,7 @@ export default function TreadmillScreen({ onExit, onFinished }: Props) {
 
       {/* Profil altimétrique (réel, cumulé) */}
       <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-dim)', margin: '0 2px 8px' }}>{t('tm.altitudeProfile')}</div>
-      <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 14, padding: '10px 12px', marginBottom: 14 }}>
+      <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: '10px 12px', marginBottom: 14 }}>
         <AltProfile series={altSeriesRef.current} height={96} />
       </div>
 
@@ -466,7 +466,7 @@ export default function TreadmillScreen({ onExit, onFinished }: Props) {
         {plan.steps.map((s, i) => {
           const state = i < stepIdx ? 'done' : i === stepIdx ? 'now' : 'next'
           return (
-            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, borderRadius: 12, padding: '9px 12px',
+            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, borderRadius: 'var(--r-md)', padding: '9px 12px',
               background: state === 'now' ? 'color-mix(in srgb, var(--primary) 8%, var(--bg-card))' : 'var(--bg-card)',
               border: state === 'now' ? '1.5px solid var(--primary)' : '1px solid var(--border)',
               opacity: state === 'done' ? 0.65 : 1 }}>
@@ -544,11 +544,11 @@ export default function TreadmillScreen({ onExit, onFinished }: Props) {
           return (
             <>
               <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-dim)', margin: '0 2px 8px' }}>{t('plnp.activity.planVsDone')}</div>
-              <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 14, padding: '12px 14px', marginBottom: 14 }}>
+              <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: '12px 14px', marginBottom: 14 }}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: '5px 18px', alignItems: 'baseline' }}>
                   <span />
-                  <span style={{ fontSize: 9, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-dim)' }}>Prévu</span>
-                  <span style={{ fontSize: 9, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-dim)' }}>{t('calendar.realized')}</span>
+                  <span style={{ fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-dim)' }}>Prévu</span>
+                  <span style={{ fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-dim)' }}>{t('calendar.realized')}</span>
                   {rows.map(r => (
                     <FragmentRowTm key={r.l} r={r} />
                   ))}
@@ -559,20 +559,20 @@ export default function TreadmillScreen({ onExit, onFinished }: Props) {
         })()}
 
         <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-dim)', margin: '0 2px 8px' }}>{t('tm.altitudeProfile')}</div>
-        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 14, padding: '10px 12px', marginBottom: 18 }}>
+        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: '10px 12px', marginBottom: 18 }}>
           <AltProfile series={altSeriesRef.current} height={110} />
         </div>
 
         <button onClick={handleSave}
-          style={{ width: '100%', height: 54, borderRadius: 15, background: 'var(--primary)', color: 'var(--on-primary)', border: 'none', fontSize: 16, fontWeight: 800, cursor: 'pointer', fontFamily: FB, marginBottom: 10 }}>
+          style={{ width: '100%', height: 54, borderRadius: 'var(--r-md)', background: 'var(--primary)', color: 'var(--on-primary)', border: 'none', fontSize: 16, fontWeight: 800, cursor: 'pointer', fontFamily: FB, marginBottom: 10 }}>
           Enregistrer la séance
         </button>
         <button onClick={() => setConfirmDelete(true)}
-          style={{ width: '100%', height: 48, borderRadius: 14, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.4)', color: 'var(--danger)', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: FB, marginBottom: 10 }}>
+          style={{ width: '100%', height: 48, borderRadius: 'var(--r-md)', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.4)', color: 'var(--danger)', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: FB, marginBottom: 10 }}>
           Supprimer la séance
         </button>
         <button onClick={() => { setPhase('live'); setRunning(true) }}
-          style={{ width: '100%', padding: '10px 0', borderRadius: 12, background: 'transparent', border: 'none', color: 'var(--text-mid)', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: FB }}>
+          style={{ width: '100%', padding: '10px 0', borderRadius: 'var(--r-md)', background: 'transparent', border: 'none', color: 'var(--text-mid)', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: FB }}>
           Reprendre la séance
         </button>
       </div>
@@ -582,16 +582,16 @@ export default function TreadmillScreen({ onExit, onFinished }: Props) {
         <div style={{ position: 'fixed', inset: 0, zIndex: 10001, background: 'rgba(15,23,42,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}
           onClick={() => setConfirmDelete(false)}>
           <div onClick={e => e.stopPropagation()}
-            style={{ width: 'min(360px, 100%)', background: 'var(--bg-card)', borderRadius: 18, border: '1px solid var(--border)', boxShadow: '0 20px 60px rgba(0,0,0,0.3)', padding: '20px 20px 16px' }}>
+            style={{ width: 'min(360px, 100%)', background: 'var(--bg-card)', borderRadius: 'var(--r-lg)', border: '1px solid var(--border)', boxShadow: '0 20px 60px rgba(0,0,0,0.3)', padding: '20px 20px 16px' }}>
             <div style={{ fontSize: 16, fontWeight: 800, marginBottom: 6 }}>Supprimer cette séance ?</div>
             <p style={{ fontSize: 13, color: 'var(--text-mid)', lineHeight: 1.5, margin: '0 0 16px' }}>Elle ne sera pas enregistrée — toutes les données de cette session seront perdues.</p>
             <div style={{ display: 'flex', gap: 8 }}>
               <button onClick={() => setConfirmDelete(false)}
-                style={{ flex: 1, height: 44, borderRadius: 12, background: 'var(--bg-card2)', border: '1px solid var(--border)', color: 'var(--text)', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: FB }}>
+                style={{ flex: 1, height: 44, borderRadius: 'var(--r-md)', background: 'var(--bg-card2)', border: '1px solid var(--border)', color: 'var(--text)', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: FB }}>
                 Annuler
               </button>
               <button onClick={onExit}
-                style={{ flex: 1, height: 44, borderRadius: 12, background: 'var(--danger)', border: 'none', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: FB }}>
+                style={{ flex: 1, height: 44, borderRadius: 'var(--r-md)', background: 'var(--danger)', border: 'none', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: FB }}>
                 Supprimer
               </button>
             </div>
@@ -612,13 +612,13 @@ export default function TreadmillScreen({ onExit, onFinished }: Props) {
           { l: 'Allure moy.', v: distRef.current > 0 ? `${fmtPaceSec(seconds / (distRef.current / 1000))}/km` : '—' },
           { l: 'D+', v: `${Math.round(elevRef.current)} m` },
         ].map(s => (
-          <div key={s.l} style={{ background: 'var(--bg-card2)', borderRadius: 14, padding: 14, textAlign: 'center' }}>
+          <div key={s.l} style={{ background: 'var(--bg-card2)', borderRadius: 'var(--r-md)', padding: 14, textAlign: 'center' }}>
             <p style={{ fontSize: 10, color: 'var(--text-mid)', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 4px', fontWeight: 700 }}>{s.l}</p>
             <p style={{ fontSize: 20, fontWeight: 700, margin: 0, fontVariantNumeric: 'tabular-nums' }}>{s.v}</p>
           </div>
         ))}
       </div>
-      <button onClick={onFinished} style={{ padding: '14px 48px', borderRadius: 15, background: 'var(--primary)', color: 'var(--on-primary)', border: 'none', fontSize: 16, fontWeight: 800, cursor: 'pointer', fontFamily: FB }}>Terminer</button>
+      <button onClick={onFinished} style={{ padding: '14px 48px', borderRadius: 'var(--r-md)', background: 'var(--primary)', color: 'var(--on-primary)', border: 'none', fontSize: 16, fontWeight: 800, cursor: 'pointer', fontFamily: FB }}>Terminer</button>
     </div>
   )
 
@@ -667,7 +667,7 @@ function AltProfile({ series, height }: { series: number[]; height: number }) {
 // connecté. Ligne SVG plate + invite. Prête à recevoir une vraie série FC.
 function HrPlaceholder({ ink, dimInk, supported }: { ink: string; dimInk: string; supported?: boolean }) {
   return (
-    <div style={{ position: 'relative', height: 56, borderRadius: 12, background: 'transparent', border: `1px dashed ${dimInk}`, overflow: 'hidden' }}>
+    <div style={{ position: 'relative', height: 56, borderRadius: 'var(--r-md)', background: 'transparent', border: `1px dashed ${dimInk}`, overflow: 'hidden' }}>
       <svg viewBox="0 0 300 56" preserveAspectRatio="none" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}>
         <line x1="0" y1="28" x2="300" y2="28" stroke={ink} strokeOpacity="0.35" strokeWidth="1.5" strokeDasharray="4 5" />
       </svg>
@@ -690,7 +690,7 @@ function HrSpark({ samples, ink, dimInk }: { samples: number[]; ink: string; dim
   const Y = (v: number) => PAD + (1 - (v - lo) / range) * (H - PAD * 2)
   const d = pts.map((v, i) => `${i === 0 ? 'M' : 'L'} ${X(i).toFixed(1)} ${Y(v).toFixed(1)}`).join(' ')
   return (
-    <div style={{ position: 'relative', height: H, borderRadius: 12, overflow: 'hidden' }}>
+    <div style={{ position: 'relative', height: H, borderRadius: 'var(--r-md)', overflow: 'hidden' }}>
       <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}>
         <path d={`${d} L ${W} ${H} L 0 ${H} Z`} fill={ink} opacity={0.12} />
         <path d={d} fill="none" stroke={ink} strokeWidth={2} strokeLinecap="round" vectorEffect="non-scaling-stroke" />

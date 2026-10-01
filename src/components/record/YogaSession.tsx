@@ -74,7 +74,7 @@ export default function YogaSession({ exercises, title, isDark, onClose }: Props
   }
 
   const content = (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 10002, background: bg, display: 'flex', flexDirection: 'column', fontFamily: 'DM Sans, sans-serif', paddingTop: 'env(safe-area-inset-top)' }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 10002, background: bg, display: 'flex', flexDirection: 'column', fontFamily: 'var(--font-body)', paddingTop: 'env(safe-area-inset-top)' }}>
 
       {/* Header */}
       <div style={{ height: 52, flexShrink: 0, display: 'flex', alignItems: 'center', padding: '0 12px', gap: 8 }}>
@@ -115,7 +115,7 @@ export default function YogaSession({ exercises, title, isDark, onClose }: Props
             </div>
 
             {session.phase === 'idle' && (
-              <button onClick={session.start} style={{ padding: '14px 40px', borderRadius: 16, background: 'linear-gradient(135deg,#06B6D4,#2563EB)', border: 'none', color: '#FFF', fontSize: 16, fontWeight: 600, cursor: 'pointer' }}>{t('record.yogaStart')}</button>
+              <button onClick={session.start} style={{ padding: '14px 40px', borderRadius: 'var(--r-md)', background: 'linear-gradient(135deg,#06B6D4,#2563EB)', border: 'none', color: '#FFF', fontSize: 16, fontWeight: 600, cursor: 'pointer' }}>{t('record.yogaStart')}</button>
             )}
 
             {cur && <AICoachingTip exercise={cur} enabled={aiEnabled && session.phase === 'exercise'} isDark={isDark} />}
@@ -135,12 +135,12 @@ export default function YogaSession({ exercises, title, isDark, onClose }: Props
       {/* Controls */}
       {session.phase !== 'idle' && session.phase !== 'finished' && (
         <div style={{ padding: '12px 20px', paddingBottom: 'max(env(safe-area-inset-bottom),16px)', display: 'flex', gap: 10, flexShrink: 0 }}>
-          <button onClick={session.skip} style={{ flex: 1, height: 48, borderRadius: 14, background: btnBg, border: 'none', color: text, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>{t('record.yogaSkip')}</button>
-          <button onClick={isRunning ? session.pause : session.resume} style={{ flex: 2, height: 48, borderRadius: 14, background: isRunning ? 'rgba(6,182,212,0.15)' : 'linear-gradient(135deg,#06B6D4,#2563EB)', border: 'none', color: isRunning ? 'var(--primary)' : '#FFF', fontSize: 15, fontWeight: 600, cursor: 'pointer' }}>
+          <button onClick={session.skip} style={{ flex: 1, height: 48, borderRadius: 'var(--r-md)', background: btnBg, border: 'none', color: text, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>{t('record.yogaSkip')}</button>
+          <button onClick={isRunning ? session.pause : session.resume} style={{ flex: 2, height: 48, borderRadius: 'var(--r-md)', background: isRunning ? 'rgba(6,182,212,0.15)' : 'linear-gradient(135deg,#06B6D4,#2563EB)', border: 'none', color: isRunning ? 'var(--primary)' : '#FFF', fontSize: 15, fontWeight: 600, cursor: 'pointer' }}>
             {isRunning ? t('record.yogaPause') : t('record.yogaResume')}
           </button>
           {session.phase === 'exercise' && (
-            <button onClick={() => session.addTime(30)} style={{ flex: 1, height: 48, borderRadius: 14, background: btnBg, border: 'none', color: text, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>+30s</button>
+            <button onClick={() => session.addTime(30)} style={{ flex: 1, height: 48, borderRadius: 'var(--r-md)', background: btnBg, border: 'none', color: text, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>+30s</button>
           )}
         </div>
       )}
@@ -148,12 +148,12 @@ export default function YogaSession({ exercises, title, isDark, onClose }: Props
       {/* Confirm close */}
       {confirmClose && (
         <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-          <div style={{ background: isDark ? '#1A1A1A' : '#FFF', borderRadius: 20, padding: 24, width: '100%', maxWidth: 320 }}>
+          <div style={{ background: isDark ? '#1A1A1A' : '#FFF', borderRadius: 'var(--r-lg)', padding: 24, width: '100%', maxWidth: 320 }}>
             <p style={{ fontSize: 16, fontWeight: 700, color: text, margin: '0 0 8px' }}>{t('record.yogaQuitConfirm')}</p>
             <p style={{ fontSize: 14, color: dim, margin: '0 0 20px' }}>{t('record.yogaQuitWarning')}</p>
             <div style={{ display: 'flex', gap: 10 }}>
-              <button onClick={() => { setConfirmClose(false); session.resume() }} style={{ flex: 1, height: 44, borderRadius: 12, background: btnBg, border: 'none', color: text, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>{t('record.yogaCancel')}</button>
-              <button onClick={onClose} style={{ flex: 1, height: 44, borderRadius: 12, background: 'var(--danger)', border: 'none', color: '#FFF', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>{t('record.yogaQuit')}</button>
+              <button onClick={() => { setConfirmClose(false); session.resume() }} style={{ flex: 1, height: 44, borderRadius: 'var(--r-md)', background: btnBg, border: 'none', color: text, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>{t('record.yogaCancel')}</button>
+              <button onClick={onClose} style={{ flex: 1, height: 44, borderRadius: 'var(--r-md)', background: 'var(--danger)', border: 'none', color: '#FFF', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>{t('record.yogaQuit')}</button>
             </div>
           </div>
         </div>

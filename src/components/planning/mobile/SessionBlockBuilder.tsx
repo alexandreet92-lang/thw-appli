@@ -318,7 +318,7 @@ export function SessionBlockBuilder({ sport, runningSub, accent, blocks, onChang
         {cells.map((c, i) => (
           <div key={c.label} style={{ padding: '12px 10px', borderLeft: i ? '1px solid var(--se-rule)' : 'none' }}>
             <p style={{ margin: 0, fontSize: 8.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--se-dim)' }}>{c.label}</p>
-            <p className="se-fr se-tnum" style={{ margin: '4px 0 0', fontSize: 21, fontWeight: 600, color: c.color ?? 'var(--se-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.value}</p>
+            <p className="se-fr se-tnum" style={{ margin: '4px 0 0', fontSize: 22, fontWeight: 600, color: c.color ?? 'var(--se-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.value}</p>
           </div>
         ))}
       </div>
@@ -440,7 +440,7 @@ export function SessionBlockBuilder({ sport, runningSub, accent, blocks, onChang
             {aiLoading ? tr('planning.generating') : tr('planning.generateBlocks')}
           </button>
           {aiError && (
-            <p style={{ margin: '8px 0 0', padding: '8px 10px', borderRadius: 8, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: 'var(--danger)', fontSize: 11, lineHeight: 1.4 }}>{aiError}</p>
+            <p style={{ margin: '8px 0 0', padding: '8px 10px', borderRadius: 'var(--r-sm)', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: 'var(--danger)', fontSize: 11, lineHeight: 1.4 }}>{aiError}</p>
           )}
           {/* Résumé live sous « Générer les blocs » : dès qu'il y a des blocs,
               leurs stats ; SINON, estimation EN DIRECT du texte tapé (parseur
@@ -536,7 +536,7 @@ export function SessionBlockBuilder({ sport, runningSub, accent, blocks, onChang
 }
 
 const stepBtn: React.CSSProperties = {
-  width: 30, height: 30, borderRadius: 8, flexShrink: 0,
+  width: 30, height: 30, borderRadius: 'var(--r-sm)', flexShrink: 0,
   border: '1px solid var(--se-rule)', background: 'transparent',
   color: 'var(--se-text)', fontSize: 16, fontWeight: 600, lineHeight: 1, cursor: 'pointer',
 }

@@ -27,7 +27,7 @@ export function MmpTable({ sessionMmp, recordMmp, durations, labels, sessionN, f
             key={f}
             onClick={() => onFilter(f)}
             style={{
-              padding: '3px 10px', borderRadius: 5, fontSize: 11, fontWeight: 600,
+              padding: '3px 10px', borderRadius: 'var(--r-sm)', fontSize: 11, fontWeight: 600,
               cursor: 'pointer', border: '1px solid var(--border)',
               background: filter === f ? 'var(--border-mid)' : 'transparent',
               color:      filter === f ? 'var(--text)'       : 'var(--text-dim)',

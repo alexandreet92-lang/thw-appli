@@ -8,7 +8,7 @@ import type { Action } from './sessionReducer'
 import type { EngineState } from './sessionReducer'
 
 const chip: React.CSSProperties = {
-  border: '2px solid currentColor', borderRadius: 20, padding: '8px 14px', fontSize: 13, fontWeight: 800,
+  border: '2px solid currentColor', borderRadius: 'var(--r-lg)', padding: '8px 14px', fontSize: 13, fontWeight: 800,
   opacity: 0.85, cursor: 'pointer', background: 'transparent', color: 'inherit',
 }
 

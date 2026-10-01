@@ -80,7 +80,7 @@ export default function MealModalTemplates({ slot, onSelect }: Props) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       <input value={search} onChange={e => setSearch(e.target.value)} placeholder={tr('w4b.search_placeholder')}
-        style={{ width: '100%', background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '7px 12px', fontSize: 12, color: 'var(--text)', fontFamily: 'DM Sans,sans-serif' }} />
+        style={{ width: '100%', background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: 'var(--r-sm)', padding: '7px 12px', fontSize: 12, color: 'var(--text)', fontFamily: 'var(--font-body)' }} />
 
       {filtered.length === 0 ? (
         <div style={{ textAlign: 'center', color: 'var(--text-dim)', padding: '28px 0', fontSize: 12 }}>
@@ -90,13 +90,13 @@ export default function MealModalTemplates({ slot, onSelect }: Props) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 340, overflowY: 'auto' }}>
           {filtered.map(t => (
             <button key={t.id} onClick={() => onSelect(t)}
-              style={{ background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', textAlign: 'left', cursor: 'pointer', transition: 'border-color 0.15s' }}
+              style={{ background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 'var(--r-sm)', padding: '10px 14px', textAlign: 'left', cursor: 'pointer', transition: 'border-color 0.15s' }}
               onMouseEnter={e => (e.currentTarget.style.borderColor = '#06B6D4')}
               onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border)')}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', marginBottom: 5, fontFamily: 'Syne,sans-serif' }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', marginBottom: 5, fontFamily: 'var(--font-body)' }}>
                 {t.nom}
               </div>
-              <div style={{ display: 'flex', gap: 10, fontSize: 10, fontFamily: 'DM Mono,monospace', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', gap: 10, fontSize: 10, fontFamily: 'var(--font-body)', flexWrap: 'wrap' }}>
                 {t.kcal      != null && <span style={{ color: 'var(--primary)' }}>{t.kcal} kcal</span>}
                 {t.proteines != null && <span style={{ color: '#3B82F6' }}>{tr('w4b.ml_p')} {t.proteines}g</span>}
                 {t.glucides  != null && <span style={{ color: '#F97316' }}>{tr('w4b.ml_g')} {t.glucides}g</span>}

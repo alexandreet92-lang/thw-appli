@@ -58,11 +58,11 @@ export default function SessionEditSheet({ blocks, currentBlockIdx, isDark, onCh
 
   const roundsOf = (b: WorkoutExercise) => Math.max(1, b.mode === 'circuit' ? b.circuitRounds ?? 1 : b.sets)
 
-  const stepBtn: React.CSSProperties = { width: 30, height: 30, borderRadius: 8, border: '1px solid var(--border-mid)', background: 'var(--bg-card)', color: 'var(--text)', display: 'grid', placeItems: 'center', cursor: 'pointer' }
-  const addBtn: React.CSSProperties = { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, height: 48, borderRadius: 14, cursor: 'pointer', fontWeight: 800, fontSize: 14 }
+  const stepBtn: React.CSSProperties = { width: 30, height: 30, borderRadius: 'var(--r-sm)', border: '1px solid var(--border-mid)', background: 'var(--bg-card)', color: 'var(--text)', display: 'grid', placeItems: 'center', cursor: 'pointer' }
+  const addBtn: React.CSSProperties = { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, height: 48, borderRadius: 'var(--r-md)', cursor: 'pointer', fontWeight: 800, fontSize: 14 }
 
   return (
-    <div style={{ position: 'absolute', inset: 0, zIndex: 40, display: 'flex', flexDirection: 'column', background: 'var(--bg)', color: 'var(--text)', fontFamily: 'DM Sans, sans-serif' }}>
+    <div style={{ position: 'absolute', inset: 0, zIndex: 40, display: 'flex', flexDirection: 'column', background: 'var(--bg)', color: 'var(--text)', fontFamily: 'var(--font-body)' }}>
       {/* En-tête */}
       <div style={{ flexShrink: 0, padding: 'calc(env(safe-area-inset-top) + 12px) 18px 12px' }}>
         <button onClick={onClose} aria-label={t('w3a.back')} style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--bg-card2)', border: '1px solid var(--border)', color: 'var(--text)', cursor: 'pointer', display: 'grid', placeItems: 'center', marginBottom: 10 }}><IconChevronLeft size={18} /></button>
@@ -77,7 +77,7 @@ export default function SessionEditSheet({ blocks, currentBlockIdx, isDark, onCh
           const exos = isCircuit ? b.circuitExercises ?? [] : [b]
           const current = i === currentBlockIdx
           return (
-            <div key={b.id} style={{ background: 'var(--bg-card)', border: `1px solid ${current ? 'var(--primary)' : 'var(--border)'}`, borderRadius: 18, padding: '12px 14px', marginBottom: 10 }}>
+            <div key={b.id} style={{ background: 'var(--bg-card)', border: `1px solid ${current ? 'var(--primary)' : 'var(--border)'}`, borderRadius: 'var(--r-lg)', padding: '12px 14px', marginBottom: 10 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 13, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--primary)', fontWeight: 800 }}>
                   {isCircuit && <IconLayoutGrid size={15} />}{isCircuit ? `${t('w3a.circuit')}` : cap(b.name)}
@@ -95,7 +95,7 @@ export default function SessionEditSheet({ blocks, currentBlockIdx, isDark, onCh
                   <span style={{ flex: 1, fontSize: 15, fontWeight: 700 }}>{cap(e.name)}</span>
                   <span style={{ fontSize: 13, color: 'var(--text-mid)', fontWeight: 700 }}>{metaText(e, t)}</span>
                   {isCircuit && (
-                    <button onClick={() => removeFromCircuit(i, j)} aria-label={t('w4a.edit_remove')} style={{ width: 28, height: 28, borderRadius: 8, border: 'none', background: 'transparent', color: 'var(--text-mid)', display: 'grid', placeItems: 'center', cursor: 'pointer' }}><IconTrash size={14} /></button>
+                    <button onClick={() => removeFromCircuit(i, j)} aria-label={t('w4a.edit_remove')} style={{ width: 28, height: 28, borderRadius: 'var(--r-sm)', border: 'none', background: 'transparent', color: 'var(--text-mid)', display: 'grid', placeItems: 'center', cursor: 'pointer' }}><IconTrash size={14} /></button>
                   )}
                 </div>
               ))}
@@ -126,7 +126,7 @@ export default function SessionEditSheet({ blocks, currentBlockIdx, isDark, onCh
 
       {/* Pied : terminer (reste en pause côté appelant) */}
       <div style={{ flexShrink: 0, padding: '10px 20px calc(env(safe-area-inset-bottom) + 18px)', borderTop: '1px solid var(--border)' }}>
-        <button onClick={onClose} style={{ width: '100%', height: 52, border: 'none', borderRadius: 15, cursor: 'pointer', background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 16, fontWeight: 800 }}>
+        <button onClick={onClose} style={{ width: '100%', height: 52, border: 'none', borderRadius: 'var(--r-md)', cursor: 'pointer', background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 16, fontWeight: 800 }}>
           {t('w4a.edit_done')}
         </button>
       </div>

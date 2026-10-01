@@ -14,7 +14,7 @@ export function LanguageSelector({ size = 'md' }: { size?: 'sm' | 'md' }) {
         const on = lang === l.code
         return (
           <button key={l.code} onClick={() => setLang(l.code)} aria-pressed={on} style={{
-            display: 'inline-flex', alignItems: 'center', gap: 8, padding: pad, borderRadius: 999, cursor: 'pointer',
+            display: 'inline-flex', alignItems: 'center', gap: 8, padding: pad, borderRadius: 'var(--r-pill)', cursor: 'pointer',
             border: `1px solid ${on ? 'var(--primary)' : 'var(--border-mid)'}`,
             background: on ? 'var(--primary-dim)' : 'var(--bg-card2)',
             color: on ? 'var(--primary)' : 'var(--text)',

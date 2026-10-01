@@ -619,7 +619,7 @@ export function VoiceConversation({ onTurn, onClose }: {
             {userMsg && (
               <div style={{ display: 'flex', justifyContent: 'flex-end', margin: '6px 0 18px' }}>
                 <span style={{
-                  maxWidth: '80%', padding: '8px 13px', borderRadius: 16,
+                  maxWidth: '80%', padding: '8px 13px', borderRadius: 'var(--r-md)',
                   background: 'var(--bg-card2)', color: 'var(--text)',
                   fontSize: 14, fontWeight: 600, fontFamily: 'var(--font-body)', lineHeight: 1.35,
                 }}>
@@ -642,7 +642,7 @@ export function VoiceConversation({ onTurn, onClose }: {
             {liveUser && (
               <div style={{ display: 'flex', justifyContent: 'flex-end', margin: '14px 0 0', animation: 'vc_in 0.2s ease' }}>
                 <span style={{
-                  maxWidth: '80%', padding: '8px 13px', borderRadius: 16,
+                  maxWidth: '80%', padding: '8px 13px', borderRadius: 'var(--r-md)',
                   background: 'var(--bg-card2)', color: 'var(--text-mid)',
                   fontSize: 14, fontWeight: 600, fontFamily: 'var(--font-body)', lineHeight: 1.35,
                 }}>
@@ -749,7 +749,7 @@ function circleBtn(kind: 'light' | 'dark'): React.CSSProperties {
 
 function fbBtn(active: boolean): React.CSSProperties {
   return {
-    width: 34, height: 34, borderRadius: 10, border: 'none', cursor: 'pointer',
+    width: 34, height: 34, borderRadius: 'var(--r-sm)', border: 'none', cursor: 'pointer',
     background: active ? 'var(--bg-card2)' : 'transparent',
     color: active ? 'var(--text)' : 'var(--text-dim)',
     display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -836,7 +836,7 @@ function SettingsSheet({ settings, onChange, onClose }: {
               <button onClick={() => cycleStyle(-1)} aria-label={t('ai.previousVoice')} style={carouselArrow('left')}>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
               </button>
-              <span style={{ fontSize: 27, fontWeight: 600, fontFamily: 'var(--font-display)', color: 'var(--text)' }}>{STYLE_LABEL[settings.style]}</span>
+              <span style={{ fontSize: 28, fontWeight: 600, fontFamily: 'var(--font-display)', color: 'var(--text)' }}>{STYLE_LABEL[settings.style]}</span>
               <span style={{ fontSize: 13, fontFamily: 'var(--font-body)', color: 'var(--text-mid)' }}>{STYLE_DESC[settings.style]}</span>
               <button onClick={() => cycleStyle(1)} aria-label={t('ai.nextVoice')} style={carouselArrow('right')}>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>
@@ -854,7 +854,7 @@ function SettingsSheet({ settings, onChange, onClose }: {
           <button onClick={cycleLang} style={settingRow()}>
             <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <span style={{ fontSize: 16, fontWeight: 600, fontFamily: 'var(--font-body)', color: 'var(--text)' }}>{t('ai.language')}</span>
-              <span style={{ fontSize: 11, fontWeight: 600, fontFamily: 'var(--font-body)', color: 'var(--text-mid)', background: 'var(--bg-card)', borderRadius: 6, padding: '2px 7px' }}>Beta</span>
+              <span style={{ fontSize: 11, fontWeight: 600, fontFamily: 'var(--font-body)', color: 'var(--text-mid)', background: 'var(--bg-card)', borderRadius: 'var(--r-sm)', padding: '2px 7px' }}>Beta</span>
             </span>
             <span style={rowValue()}>{LANG_LABEL[settings.lang]} <Chevrons /></span>
           </button>
@@ -900,7 +900,7 @@ function carouselArrow(side: 'left' | 'right'): React.CSSProperties {
 function settingRow(): React.CSSProperties {
   return {
     display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%',
-    padding: '15px 18px', borderRadius: 16, border: 'none', cursor: 'pointer', textAlign: 'left',
+    padding: '15px 18px', borderRadius: 'var(--r-md)', border: 'none', cursor: 'pointer', textAlign: 'left',
     background: 'var(--bg-card2)',
   }
 }
@@ -915,7 +915,7 @@ function rowValue(): React.CSSProperties {
 function modeRow(active: boolean): React.CSSProperties {
   return {
     display: 'flex', alignItems: 'center', gap: 10, width: '100%',
-    padding: '14px 18px', borderRadius: 16, marginBottom: 8, cursor: 'pointer', textAlign: 'left',
+    padding: '14px 18px', borderRadius: 'var(--r-md)', marginBottom: 8, cursor: 'pointer', textAlign: 'left',
     border: 'none',
     background: active ? 'var(--bg-card2)' : 'transparent',
   }

@@ -62,7 +62,7 @@ export function FitnessCards({ ctl, atl, tsb }: FitnessCardsProps) {
       <div style={{
         marginBottom: 20,
         border: '1px solid var(--info-border)',
-        borderRadius: 16,
+        borderRadius: 'var(--r-md)',
         overflow: 'hidden',
         display: 'flex',
       }}>

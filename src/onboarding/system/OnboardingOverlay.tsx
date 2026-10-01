@@ -63,7 +63,7 @@ export function OnboardingOverlay({ config, onDismiss }: Props) {
         position: 'fixed', inset: 0, zIndex: 99998,
         background: 'linear-gradient(160deg, #060614 0%, #0A0F1E 50%, #050B1A 100%)',
         display: 'flex', flexDirection: 'column', overflow: 'hidden',
-        fontFamily: 'DM Sans, sans-serif',
+        fontFamily: 'var(--font-body)',
         animation: exiting ? 'ob-fade-out 280ms ease-in forwards' : 'ob-fade-in 350ms ease-out forwards',
       }}>
       <style>{`
@@ -82,12 +82,12 @@ export function OnboardingOverlay({ config, onDismiss }: Props) {
       {/* Passer — top right */}
       <button onClick={handleDismiss} style={{
         position: 'absolute', top: 16, right: 20,
-        padding: '5px 12px', borderRadius: 20,
+        padding: '5px 12px', borderRadius: 'var(--r-lg)',
         background: 'rgba(255,255,255,0.08)',
         border: '1px solid rgba(255,255,255,0.12)',
         color: 'rgba(255,255,255,0.5)',
         fontSize: 12, cursor: 'pointer', zIndex: 10,
-        fontFamily: 'DM Sans, sans-serif',
+        fontFamily: 'var(--font-body)',
       }}>
         {t('onboarding.skip')}
       </button>
@@ -109,7 +109,7 @@ export function OnboardingOverlay({ config, onDismiss }: Props) {
         {slide.badge && (
           <div style={{
             alignSelf: 'flex-start',
-            padding: '3px 10px', borderRadius: 20,
+            padding: '3px 10px', borderRadius: 'var(--r-lg)',
             background: 'rgba(6,182,212,0.15)',
             border: '1px solid rgba(6,182,212,0.3)',
             marginBottom: 10,
@@ -126,7 +126,7 @@ export function OnboardingOverlay({ config, onDismiss }: Props) {
           style={{
             fontSize: 24, fontWeight: 800, color: 'white',
             margin: '0 0 10px', lineHeight: 1.2, letterSpacing: '-0.3px',
-            fontFamily: 'Syne, sans-serif',
+            fontFamily: 'var(--font-body)',
             animation: 'ob-slide-up 0.4s cubic-bezier(0.16,1,0.3,1) both',
           }}
         >
@@ -204,23 +204,23 @@ export function OnboardingOverlay({ config, onDismiss }: Props) {
             )}
             {current < slides.length - 1 ? (
               <button onClick={() => goTo(current + 1)} style={{
-                padding: '9px 20px', borderRadius: 24,
+                padding: '9px 20px', borderRadius: 'var(--r-lg)',
                 background: 'linear-gradient(135deg, #06B6D4, #2563EB)',
                 border: 'none', color: 'white',
                 fontSize: 13, fontWeight: 600, cursor: 'pointer',
                 boxShadow: '0 4px 16px rgba(6,182,212,0.35)',
-                fontFamily: 'DM Sans, sans-serif',
+                fontFamily: 'var(--font-body)',
               }}>
                 {t('onboarding.next')} →
               </button>
             ) : (
               <button onClick={handleDismiss} style={{
-                padding: '10px 24px', borderRadius: 24,
+                padding: '10px 24px', borderRadius: 'var(--r-lg)',
                 background: 'linear-gradient(135deg, #06B6D4, #2563EB)',
                 border: 'none', color: 'white',
                 fontSize: 14, fontWeight: 700, cursor: 'pointer',
                 boxShadow: '0 4px 20px rgba(6,182,212,0.4)',
-                fontFamily: 'DM Sans, sans-serif',
+                fontFamily: 'var(--font-body)',
               }}>
                 {t('onboarding.letsGo')} ✦
               </button>

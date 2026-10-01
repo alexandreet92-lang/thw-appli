@@ -53,7 +53,7 @@ export default function SessionSummaryPage1({ session, theme, isDark, dataFontFa
         display: 'grid', gridTemplateColumns: '1fr 1fr',
         gap: 1, background: theme.separator,
         border: `1px solid ${theme.separator}`,
-        borderRadius: 16, overflow: 'hidden', margin: '16px 16px 0',
+        borderRadius: 'var(--r-md)', overflow: 'hidden', margin: '16px 16px 0',
       }}>
         {stats.map((s, i) => (
           <div key={i} style={{ padding: '16px 12px', background: theme.bg, textAlign: 'center' }}>
@@ -75,7 +75,7 @@ export default function SessionSummaryPage1({ session, theme, isDark, dataFontFa
           {/* Carte du tracé */}
           <div style={{
             height: 200, margin: '16px 16px 0',
-            borderRadius: 16, overflow: 'hidden',
+            borderRadius: 'var(--r-md)', overflow: 'hidden',
             border: `1px solid ${theme.separator}`,
           }}>
             <SessionTraceMap points={session.gps_points} isDark={isDark} />
@@ -84,7 +84,7 @@ export default function SessionSummaryPage1({ session, theme, isDark, dataFontFa
           {/* Profil d'altitude */}
           <div style={{
             margin: '12px 16px 0',
-            borderRadius: 12, overflow: 'hidden',
+            borderRadius: 'var(--r-md)', overflow: 'hidden',
             border: `1px solid ${theme.separator}`,
             background: isDark ? 'rgba(255,255,255,0.03)' : '#FAFAFA',
           }}>

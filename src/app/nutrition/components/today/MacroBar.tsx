@@ -37,8 +37,8 @@ export function MacroBar({ label, consumed, target, color }: {
         </span>
       </div>
       {/* Piste + repère d'objectif (100 %) à droite ; remplissage coloré (rouge si dépassé) */}
-      <div style={{ position: 'relative', width: '100%', height: 6, borderRadius: 999, background: 'var(--border)', overflow: 'hidden', boxSizing: 'border-box' }}>
-        <div style={{ width: `${w * 100}%`, height: '100%', background: barColor, borderRadius: 999, transition: reduce.current ? 'none' : 'width 0.9s cubic-bezier(0.22,1,0.36,1)' }} />
+      <div style={{ position: 'relative', width: '100%', height: 6, borderRadius: 'var(--r-pill)', background: 'var(--border)', overflow: 'hidden', boxSizing: 'border-box' }}>
+        <div style={{ width: `${w * 100}%`, height: '100%', background: barColor, borderRadius: 'var(--r-pill)', transition: reduce.current ? 'none' : 'width 0.9s cubic-bezier(0.22,1,0.36,1)' }} />
       </div>
     </div>
   )

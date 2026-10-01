@@ -66,7 +66,7 @@ export function FeedbackSheet({ open, onClose }: { open: boolean; onClose: () =>
               const on = cat === c.id
               return (
                 <button key={c.id} onClick={() => setCat(c.id)} style={{
-                  display: 'flex', alignItems: 'center', gap: 8, padding: '11px 12px', borderRadius: 12, cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', gap: 8, padding: '11px 12px', borderRadius: 'var(--r-md)', cursor: 'pointer',
                   border: `1.5px solid ${on ? c.color : 'var(--border)'}`, background: on ? `${c.color}14` : 'var(--bg-card2)',
                   color: on ? c.color : 'var(--text-mid)', fontFamily: FB, fontSize: 12.5, fontWeight: 600, textAlign: 'left' }}>
                   <c.Icon size={17} /> {t(`w3h.fbcat_${c.id}`)}
@@ -75,12 +75,12 @@ export function FeedbackSheet({ open, onClose }: { open: boolean; onClose: () =>
             })}
           </div>
           <textarea value={msg} onChange={e => setMsg(e.target.value)} rows={5} placeholder={t('w3h.fb_placeholder')}
-            style={{ width: '100%', boxSizing: 'border-box', padding: '12px 14px', borderRadius: 12, border: '1px solid var(--border)',
+            style={{ width: '100%', boxSizing: 'border-box', padding: '12px 14px', borderRadius: 'var(--r-md)', border: '1px solid var(--border)',
               background: 'var(--bg-card2)', color: 'var(--text)', fontFamily: FB, fontSize: 14, outline: 'none', resize: 'vertical', marginBottom: 'var(--space-3)' }} />
           {err && <p style={{ fontFamily: FB, fontSize: 12.5, color: 'var(--danger)', margin: '0 0 var(--space-3)' }}>{err}</p>}
           <button onClick={submit} disabled={saving || !msg.trim()} style={{
             width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-            padding: '14px 16px', borderRadius: 14, border: 'none', cursor: saving || !msg.trim() ? 'default' : 'pointer',
+            padding: '14px 16px', borderRadius: 'var(--r-md)', border: 'none', cursor: saving || !msg.trim() ? 'default' : 'pointer',
             background: 'var(--primary)', color: 'var(--on-primary, #fff)', fontFamily: FB, fontSize: 14.5, fontWeight: 700,
             opacity: saving || !msg.trim() ? 0.55 : 1, boxShadow: '0 4px 14px color-mix(in srgb, var(--primary) 35%, transparent)' }}>
             <IconSend size={17} /> {saving ? t('w3h.fb_sending') : t('w3h.fb_send')}

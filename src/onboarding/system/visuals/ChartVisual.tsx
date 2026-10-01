@@ -56,7 +56,7 @@ export function ChartVisual({ config }: Props) {
                 minWidth: 18, opacity: 0,
                 animation: `stagger-in 400ms ${i * 80}ms forwards`,
               }} />
-              {labels[i] && <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)' }}>{labels[i]}</span>}
+              {labels[i] && <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)' }}>{labels[i]}</span>}
             </div>
           ))}
         </div>

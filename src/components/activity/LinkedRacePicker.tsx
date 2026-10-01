@@ -113,7 +113,7 @@ export function LinkedRacePicker({ activityId, activityDate, activitySport, init
         <div style={{ fontSize: 12.5, color: 'var(--text-dim)' }}>{t('w3f.no_races')}</div>
       ) : (
         <select value={sel} onChange={e => void save(e.target.value)}
-          style={{ width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: 11, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 13.5, fontFamily: 'var(--font-body)', outline: 'none' }}>
+          style={{ width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: 'var(--r-md)', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 13.5, fontFamily: 'var(--font-body)', outline: 'none' }}>
           <option value="">{t('w3f.no_linked_race')}</option>
           {sorted.map(r => (
             <option key={r.id} value={r.id}>{r.name} · {new Date(r.date + 'T12:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}</option>
@@ -129,7 +129,7 @@ export function LinkedRacePicker({ activityId, activityDate, activitySport, init
           <div style={{ marginTop: 8 }}>
             <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', marginBottom: 6 }}>{t('w3f.linked_race_day')}</div>
             <select value={selDate || race.date} onChange={e => void save(sel, e.target.value)}
-              style={{ width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: 11, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 13.5, fontFamily: 'var(--font-body)', outline: 'none' }}>
+              style={{ width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: 'var(--r-md)', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 13.5, fontFamily: 'var(--font-body)', outline: 'none' }}>
               {days.map(d => (
                 <option key={d} value={d}>{new Date(d + 'T12:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'short' })}</option>
               ))}
@@ -143,7 +143,7 @@ export function LinkedRacePicker({ activityId, activityDate, activitySport, init
           <div style={{ display: 'flex', alignItems: 'stretch', gap: 8, overflowX: 'auto', paddingBottom: 4 }}>
             {siblings.map((s, i) => (
               <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-                <a href={`/activities?id=${s.id}`} style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 9, padding: '9px 12px', borderRadius: 12, border: `1px solid ${s.id === activityId ? 'var(--primary)' : 'var(--border)'}`, background: s.id === activityId ? 'var(--primary-dim)' : 'var(--bg-card2)', minWidth: 150 }}>
+                <a href={`/activities?id=${s.id}`} style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 9, padding: '9px 12px', borderRadius: 'var(--r-md)', border: `1px solid ${s.id === activityId ? 'var(--primary)' : 'var(--border)'}`, background: s.id === activityId ? 'var(--primary-dim)' : 'var(--bg-card2)', minWidth: 150 }}>
                   <SportIcon sport={s.sport_type ?? 'run'} size={30} />
                   <div style={{ minWidth: 0 }}>
                     <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 120 }}>{s.title || t('w3f.activity')}</div>

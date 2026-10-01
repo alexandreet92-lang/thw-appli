@@ -425,7 +425,7 @@ export default function RouteCreator({ onClose, onLoadRoute, isDark, initialView
         </button>
         {!isNarrow && (
           <>
-            <div style={{ display: 'flex', alignItems: 'center', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 12, boxShadow: '0 2px 10px rgba(0,0,0,0.18)', overflow: 'hidden', height: 44 }}>
+            <div style={{ display: 'flex', alignItems: 'center', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', boxShadow: '0 2px 10px rgba(0,0,0,0.18)', overflow: 'hidden', height: 44 }}>
               <button onClick={undo} disabled={!waypoints.length} aria-label={t('record.routeCreatorUndo')} style={{ ...groupBtn, height: 44, opacity: waypoints.length ? 1 : 0.35 }}>
                 <svg width="17" height="17" viewBox="0 0 18 18" fill="none"><path d="M3 9a6 6 0 1 1 1.5 4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"/><path d="M3 5v4h4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"/></svg>
               </button>
@@ -439,7 +439,7 @@ export default function RouteCreator({ onClose, onLoadRoute, isDark, initialView
               </button>
             </div>
             <button onClick={() => setShowSave(true)} disabled={waypoints.length < 2}
-              style={{ height: 44, padding: '0 18px', borderRadius: 12, border: 'none', cursor: waypoints.length < 2 ? 'default' : 'pointer', display: 'flex', alignItems: 'center', gap: 8, fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 700,
+              style={{ height: 44, padding: '0 18px', borderRadius: 'var(--r-md)', border: 'none', cursor: waypoints.length < 2 ? 'default' : 'pointer', display: 'flex', alignItems: 'center', gap: 8, fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 700,
                 background: waypoints.length < 2 ? 'var(--bg-card2)' : SAVE_BLUE, color: waypoints.length < 2 ? 'var(--text-dim)' : '#fff', boxShadow: waypoints.length < 2 ? 'none' : '0 2px 12px rgba(37,99,235,0.4)' }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg>
               {t('record.routeCreatorSaveRoute')}
@@ -463,12 +463,12 @@ export default function RouteCreator({ onClose, onLoadRoute, isDark, initialView
 
       {/* Popover styles de carte */}
       {layersOpen && (
-        <div style={{ position: 'absolute', top: 'calc(env(safe-area-inset-top) + 62px)', right: 64, zIndex: 1001, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 14, boxShadow: '0 6px 24px rgba(0,0,0,0.22)', padding: 6, display: 'flex', flexDirection: 'column', gap: 2, minWidth: 130 }}>
+        <div style={{ position: 'absolute', top: 'calc(env(safe-area-inset-top) + 62px)', right: 64, zIndex: 1001, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', boxShadow: '0 6px 24px rgba(0,0,0,0.22)', padding: 6, display: 'flex', flexDirection: 'column', gap: 2, minWidth: 130 }}>
           {(['std', 'sat', 'hyb'] as Layer[]).map(l => {
             const on = layer === l
             return (
               <button key={l} onClick={() => { setLayer(l); setLayersOpen(false) }}
-                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '9px 12px', borderRadius: 10, border: 'none', background: on ? 'var(--primary-dim)' : 'transparent', color: on ? 'var(--primary)' : 'var(--text)', fontSize: 13.5, fontWeight: on ? 600 : 500, cursor: 'pointer', textAlign: 'left' }}>
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '9px 12px', borderRadius: 'var(--r-sm)', border: 'none', background: on ? 'var(--primary-dim)' : 'transparent', color: on ? 'var(--primary)' : 'var(--text)', fontSize: 13.5, fontWeight: on ? 600 : 500, cursor: 'pointer', textAlign: 'left' }}>
                 {LAYER_LABEL[l]}
                 {on && <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2.6" strokeLinecap="round"><path d="M20 6L9 17l-5-5"/></svg>}
               </button>
@@ -481,7 +481,7 @@ export default function RouteCreator({ onClose, onLoadRoute, isDark, initialView
       {searchOpen && (
         <div style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 1002, background: 'var(--bg)', borderBottom: '1px solid var(--border)', padding: 'calc(env(safe-area-inset-top) + 10px) 12px 12px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8, background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 12, padding: '9px 12px' }}>
+            <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8, background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: '9px 12px' }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
               <input autoFocus value={searchQ} onChange={e => setSearchQ(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') void geocode() }}
                 placeholder={t('record.routeCreatorSearchPlaceholder')} style={{ flex: 1, border: 'none', background: 'transparent', outline: 'none', color: 'var(--text)', fontSize: 15, fontFamily: 'var(--font-body)' }} />
@@ -527,14 +527,14 @@ export default function RouteCreator({ onClose, onLoadRoute, isDark, initialView
             {moreOpen && (
               <>
                 <div onClick={() => setMoreOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 1 }} />
-                <div style={{ position: 'absolute', bottom: 52, right: 0, zIndex: 2, minWidth: 210, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 16, boxShadow: '0 8px 30px rgba(0,0,0,0.24)', padding: 6, overflow: 'hidden' }}>
+                <div style={{ position: 'absolute', bottom: 52, right: 0, zIndex: 2, minWidth: 210, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', boxShadow: '0 8px 30px rgba(0,0,0,0.24)', padding: 6, overflow: 'hidden' }}>
                   <button onClick={() => { reverseRoute(); setMoreOpen(false) }} disabled={!canSave}
-                    style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', padding: '12px 12px', borderRadius: 11, border: 'none', background: 'transparent', color: canSave ? 'var(--text)' : 'var(--text-dim)', cursor: canSave ? 'pointer' : 'default', fontFamily: 'var(--font-body)', fontSize: 14.5, fontWeight: 600, textAlign: 'left', opacity: canSave ? 1 : 0.5 }}>
+                    style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', padding: '12px 12px', borderRadius: 'var(--r-md)', border: 'none', background: 'transparent', color: canSave ? 'var(--text)' : 'var(--text-dim)', cursor: canSave ? 'pointer' : 'default', fontFamily: 'var(--font-body)', fontSize: 14.5, fontWeight: 600, textAlign: 'left', opacity: canSave ? 1 : 0.5 }}>
                     <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M17 2l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
                     {t('record.routeCreatorReverseRoute')}
                   </button>
                   <button onClick={() => { resetEditor(); setMoreOpen(false) }} disabled={!hasPts}
-                    style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', padding: '12px 12px', borderRadius: 11, border: 'none', background: 'transparent', color: hasPts ? '#EF4444' : 'var(--text-dim)', cursor: hasPts ? 'pointer' : 'default', fontFamily: 'var(--font-body)', fontSize: 14.5, fontWeight: 600, textAlign: 'left', opacity: hasPts ? 1 : 0.5 }}>
+                    style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', padding: '12px 12px', borderRadius: 'var(--r-md)', border: 'none', background: 'transparent', color: hasPts ? '#EF4444' : 'var(--text-dim)', cursor: hasPts ? 'pointer' : 'default', fontFamily: 'var(--font-body)', fontSize: 14.5, fontWeight: 600, textAlign: 'left', opacity: hasPts ? 1 : 0.5 }}>
                     <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
                     {t('record.routeCreatorDeleteRoute')}
                   </button>
@@ -560,7 +560,7 @@ export default function RouteCreator({ onClose, onLoadRoute, isDark, initialView
             <div style={{ flex: 1 }} />
             {/* Sport sélectionné — tappable pour rouvrir le sélecteur */}
             <button onClick={() => setSportPickerOpen(true)} aria-label={currentSport.label}
-              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px 8px 10px', borderRadius: 999, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 13.5, fontWeight: 700, flexShrink: 0 }}>
+              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px 8px 10px', borderRadius: 'var(--r-pill)', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 13.5, fontWeight: 700, flexShrink: 0 }}>
               <span style={{ width: 26, height: 26, borderRadius: '50%', background: 'var(--primary)', color: 'var(--on-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 <currentSport.Icon size={16} stroke={2} />
               </span>
@@ -575,7 +575,7 @@ export default function RouteCreator({ onClose, onLoadRoute, isDark, initialView
             </div>
           )}
           <button onClick={() => setShowSave(true)} disabled={!canSave}
-            style={{ width: '100%', height: 52, borderRadius: 15, border: 'none', cursor: canSave ? 'pointer' : 'default',
+            style={{ width: '100%', height: 52, borderRadius: 'var(--r-md)', border: 'none', cursor: canSave ? 'pointer' : 'default',
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 9, fontFamily: 'var(--font-body)', fontSize: 16, fontWeight: 700,
               background: canSave ? SAVE_BLUE : 'var(--bg-card2)', color: canSave ? '#fff' : 'var(--text-dim)',
               boxShadow: canSave ? '0 4px 16px rgba(37,99,235,0.38)' : 'none' }}>
@@ -591,12 +591,12 @@ export default function RouteCreator({ onClose, onLoadRoute, isDark, initialView
       {!isNarrow && (
         <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 1000, background: 'var(--bg-card)', borderTop: '1px solid var(--border)', boxShadow: '0 -6px 26px rgba(0,0,0,0.14)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 22, padding: '10px 20px', flexWrap: 'wrap', borderBottom: '1px solid var(--border)' }}>
-            <div style={{ display: 'flex', gap: 2, background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 12, padding: 3 }}>
+            <div style={{ display: 'flex', gap: 2, background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: 3 }}>
               {SPORT_CHIPS.map(({ id, Icon, label }) => {
                 const on = sport === id
                 return (
                   <button key={id} onClick={() => pickSport(id)} title={label}
-                    style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 9, border: 'none', background: on ? 'var(--bg-card)' : 'transparent', color: on ? 'var(--primary)' : 'var(--text-dim)', boxShadow: on ? '0 1px 5px rgba(0,0,0,0.14)' : 'none', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 12.5, fontWeight: on ? 700 : 600 }}>
+                    style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 'var(--r-sm)', border: 'none', background: on ? 'var(--bg-card)' : 'transparent', color: on ? 'var(--primary)' : 'var(--text-dim)', boxShadow: on ? '0 1px 5px rgba(0,0,0,0.14)' : 'none', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 12.5, fontWeight: on ? 700 : 600 }}>
                     <Icon size={16} stroke={2} /><span>{label}</span>
                   </button>
                 )
@@ -609,13 +609,13 @@ export default function RouteCreator({ onClose, onLoadRoute, isDark, initialView
               { label: t('record.routeCreatorEstDuration'), value: distanceM > 0 ? fmtDur((distanceM / 1000) / (SPEED_KMH[sport] ?? 18) * 3600) : '--', unit: '' },
             ].map((s, i) => (
               <div key={i}>
-                <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: 0, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{s.label}</p>
+                <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: 0, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{s.label}</p>
                 <p style={{ fontSize: 18, fontWeight: 800, color: 'var(--text)', margin: '2px 0 0', lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{s.value}{s.unit && <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-dim)' }}> {s.unit}</span>}</p>
               </div>
             ))}
             <div style={{ flex: 1 }} />
             <span style={{ fontSize: 12, color: 'var(--text-dim)', fontVariantNumeric: 'tabular-nums' }}>{snapping ? t('record.routeCreatorCalculating') : `${waypoints.length} point${waypoints.length !== 1 ? 's' : ''}`}</span>
-            <label style={{ ...groupBtn, width: 40, height: 34, border: '1px solid var(--border)', borderRadius: 10, background: 'var(--bg-card2)' }} aria-label={t('record.routeCreatorImportGpx')} title={t('record.routeCreatorImportGpx')}>
+            <label style={{ ...groupBtn, width: 40, height: 34, border: '1px solid var(--border)', borderRadius: 'var(--r-sm)', background: 'var(--bg-card2)' }} aria-label={t('record.routeCreatorImportGpx')} title={t('record.routeCreatorImportGpx')}>
               <input type="file" accept=".gpx" onChange={handleGPX} style={{ display: 'none' }} />
               <svg width="16" height="16" viewBox="0 0 18 18" fill="none"><path d="M9 2v10M5 8l4-4 4 4M3 15h12" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"/></svg>
             </label>
@@ -639,15 +639,15 @@ export default function RouteCreator({ onClose, onLoadRoute, isDark, initialView
             <p style={{ margin: '0 0 6px', fontSize: 18, fontWeight: 800, color: 'var(--text)', fontFamily: 'var(--font-display)' }}>{t('record.routeExitTitle')}</p>
             <p style={{ margin: '0 0 18px', fontSize: 13.5, color: 'var(--text-dim)', lineHeight: 1.45 }}>{t('record.routeExitSub')}</p>
             <button onClick={() => { setConfirmExit(false); setShowSave(true) }}
-              style={{ width: '100%', height: 50, borderRadius: 14, border: 'none', background: SAVE_BLUE, color: '#fff', fontSize: 15.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)', marginBottom: 10 }}>
+              style={{ width: '100%', height: 50, borderRadius: 'var(--r-md)', border: 'none', background: SAVE_BLUE, color: '#fff', fontSize: 15.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)', marginBottom: 10 }}>
               {t('record.routeExitSave')}
             </button>
             <button onClick={() => { setConfirmExit(false); exitCreate() }}
-              style={{ width: '100%', height: 50, borderRadius: 14, border: '1px solid var(--border)', background: 'transparent', color: '#EF4444', fontSize: 15.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)', marginBottom: 10 }}>
+              style={{ width: '100%', height: 50, borderRadius: 'var(--r-md)', border: '1px solid var(--border)', background: 'transparent', color: '#EF4444', fontSize: 15.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)', marginBottom: 10 }}>
               {t('record.routeExitDiscard')}
             </button>
             <button onClick={() => setConfirmExit(false)}
-              style={{ width: '100%', height: 46, borderRadius: 14, border: 'none', background: 'transparent', color: 'var(--text-dim)', fontSize: 14.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
+              style={{ width: '100%', height: 46, borderRadius: 'var(--r-md)', border: 'none', background: 'transparent', color: 'var(--text-dim)', fontSize: 14.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
               {t('record.routeExitCancel')}
             </button>
           </div>

@@ -54,7 +54,7 @@ export function CategoryRow({ icon: Ic, accent, soft, name, subtitle, count, onC
         <div style={{ fontFamily: FD, fontSize: 15.5, fontWeight: 600, color: 'var(--text)' }}>{name}</div>
         {subtitle && <div style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-dim)', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{subtitle}</div>}
       </div>
-      <span style={{ minWidth: 26, height: 22, padding: '0 8px', borderRadius: 999, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+      <span style={{ minWidth: 26, height: 22, padding: '0 8px', borderRadius: 'var(--r-pill)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
         background: soft, color: accent, fontFamily: FB, fontSize: 12, fontWeight: 700, fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
         {count}
       </span>

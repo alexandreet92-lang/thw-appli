@@ -56,7 +56,7 @@ export function SplashScreen({ onDone }: Props) {
           <h1 style={{
             fontSize: 42, fontWeight: 900, margin: 0,
             letterSpacing: '-1px',
-            fontFamily: 'Syne, sans-serif',
+            fontFamily: 'var(--font-body)',
             background: 'linear-gradient(135deg, #fff 30%, rgba(6,182,212,0.8))',
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent',
@@ -71,7 +71,7 @@ export function SplashScreen({ onDone }: Props) {
             fontSize: 12, color: 'rgba(255,255,255,0.4)',
             letterSpacing: 3, textTransform: 'uppercase',
             margin: '12px 0 0',
-            fontFamily: 'DM Sans, sans-serif',
+            fontFamily: 'var(--font-body)',
             animation: 'fade-in 0.4s both',
           }}>
             {t('auth.tagline')}

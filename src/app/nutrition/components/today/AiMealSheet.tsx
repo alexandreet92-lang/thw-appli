@@ -50,7 +50,7 @@ export function AiMealSheet({ slotLabel, onClose, onConfirm }: {
   }
 
   const INP: React.CSSProperties = {
-    width: '100%', boxSizing: 'border-box', padding: '9px 11px', borderRadius: 9,
+    width: '100%', boxSizing: 'border-box', padding: '9px 11px', borderRadius: 'var(--r-sm)',
     border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)',
     fontFamily: FB, fontSize: 15, fontWeight: 600, outline: 'none', textAlign: 'center',
   }
@@ -69,7 +69,7 @@ export function AiMealSheet({ slotLabel, onClose, onConfirm }: {
         <div style={{ width: 40, height: 4, borderRadius: 4, background: 'var(--border-mid)', margin: '0 auto var(--space-4)' }} />
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-3)' }}>
           <h3 style={{ fontFamily: FD, fontSize: 17, fontWeight: 600, margin: 0, color: 'var(--text)' }}>{t('nutrition.ai.describeMeal')} — {slotLabel}</h3>
-          <button onClick={close} style={{ background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 8, padding: '4px 10px', cursor: 'pointer', color: 'var(--text-dim)', fontSize: 14 }}>✕</button>
+          <button onClick={close} style={{ background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 'var(--r-sm)', padding: '4px 10px', cursor: 'pointer', color: 'var(--text-dim)', fontSize: 14 }}>✕</button>
         </div>
 
         <textarea
@@ -78,12 +78,12 @@ export function AiMealSheet({ slotLabel, onClose, onConfirm }: {
           rows={3}
           autoFocus
           placeholder={t('nutrition.ai.mealPlaceholder')}
-          style={{ width: '100%', boxSizing: 'border-box', padding: 12, borderRadius: 10, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontFamily: FB, fontSize: 14, outline: 'none', resize: 'vertical', lineHeight: 1.5 }}
+          style={{ width: '100%', boxSizing: 'border-box', padding: 12, borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontFamily: FB, fontSize: 14, outline: 'none', resize: 'vertical', lineHeight: 1.5 }}
         />
 
         {!res ? (
           <button onClick={() => void analyze()} disabled={loading || !text.trim()}
-            style={{ marginTop: 'var(--space-3)', width: '100%', padding: 13, borderRadius: 10, border: 'none', background: loading ? 'var(--border)' : 'var(--ai-accent)', color: '#fff', fontFamily: FD, fontWeight: 700, fontSize: 14, cursor: loading || !text.trim() ? 'default' : 'pointer', opacity: !text.trim() ? 0.5 : 1 }}>
+            style={{ marginTop: 'var(--space-3)', width: '100%', padding: 13, borderRadius: 'var(--r-sm)', border: 'none', background: loading ? 'var(--border)' : 'var(--ai-accent)', color: '#fff', fontFamily: FD, fontWeight: 700, fontSize: 14, cursor: loading || !text.trim() ? 'default' : 'pointer', opacity: !text.trim() ? 0.5 : 1 }}>
             {loading ? t('nutrition.ai.analyzing') : t('nutrition.ai.analyzeBtn')}
           </button>
         ) : (
@@ -101,8 +101,8 @@ export function AiMealSheet({ slotLabel, onClose, onConfirm }: {
               ))}
             </div>
             <div style={{ display: 'flex', gap: 'var(--space-2)', marginTop: 'var(--space-4)' }}>
-              <button onClick={() => setRes(null)} style={{ flex: 1, padding: 12, borderRadius: 10, background: 'var(--bg-card2)', border: '1px solid var(--border)', color: 'var(--text-mid)', fontFamily: FB, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>{t('nutrition.ai.restart')}</button>
-              <button onClick={validate} style={{ flex: 2, padding: 12, borderRadius: 10, background: 'var(--primary)', border: 'none', color: 'var(--on-primary, #06121A)', fontFamily: FD, fontSize: 13.5, fontWeight: 700, cursor: 'pointer' }}>{t('nutrition.validate')}</button>
+              <button onClick={() => setRes(null)} style={{ flex: 1, padding: 12, borderRadius: 'var(--r-sm)', background: 'var(--bg-card2)', border: '1px solid var(--border)', color: 'var(--text-mid)', fontFamily: FB, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>{t('nutrition.ai.restart')}</button>
+              <button onClick={validate} style={{ flex: 2, padding: 12, borderRadius: 'var(--r-sm)', background: 'var(--primary)', border: 'none', color: 'var(--on-primary, #06121A)', fontFamily: FD, fontSize: 13.5, fontWeight: 700, cursor: 'pointer' }}>{t('nutrition.validate')}</button>
             </div>
           </>
         )}

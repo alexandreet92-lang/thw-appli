@@ -10,7 +10,7 @@ import type { RideMetrics } from './types'
 
 function Stat({ label, value, unit }: { label: string; value: string | number; unit?: string }) {
   return (
-    <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 14, padding: '13px 14px' }}>
+    <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: '13px 14px' }}>
       <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-mid)' }}>{label}</div>
       <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)', fontVariantNumeric: 'tabular-nums', marginTop: 3 }}>
         {value}{unit && <small style={{ fontSize: 12, color: 'var(--text-mid)', fontWeight: 700, marginLeft: 2 }}>{unit}</small>}
@@ -54,7 +54,7 @@ export default function RideSummary({ metrics, elapsedS, smEst, defaultTitle, sa
         {/* Titre */}
         <label style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-mid)', display: 'block', marginBottom: 7 }}>{t('w2c.sessionTitle')}</label>
         <input value={title} onChange={e => setTitle(e.target.value)} placeholder={t('w2c.sessionTitlePlaceholder')}
-          style={{ width: '100%', boxSizing: 'border-box', padding: '12px 14px', borderRadius: 12, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 15, outline: 'none', marginBottom: 20 }} />
+          style={{ width: '100%', boxSizing: 'border-box', padding: '12px 14px', borderRadius: 'var(--r-md)', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 15, outline: 'none', marginBottom: 20 }} />
 
         {/* RPE */}
         <label style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-mid)', display: 'flex', justifyContent: 'space-between', marginBottom: 7 }}>
@@ -67,10 +67,10 @@ export default function RideSummary({ metrics, elapsedS, smEst, defaultTitle, sa
         {/* Sensations */}
         <label style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-mid)', display: 'block', marginBottom: 7 }}>{t('w2c.sensations')}</label>
         <textarea value={comment} onChange={e => setComment(e.target.value)} rows={3} placeholder={t('w2c.sensationsPlaceholder')}
-          style={{ width: '100%', boxSizing: 'border-box', padding: '12px 14px', borderRadius: 12, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 14, outline: 'none', resize: 'vertical', lineHeight: 1.5, marginBottom: 24 }} />
+          style={{ width: '100%', boxSizing: 'border-box', padding: '12px 14px', borderRadius: 'var(--r-md)', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 14, outline: 'none', resize: 'vertical', lineHeight: 1.5, marginBottom: 24 }} />
 
         <button onClick={() => onSave(title.trim() || defaultTitle, rpe, comment)} disabled={saving}
-          style={{ width: '100%', padding: 15, borderRadius: 14, border: 'none', background: accent, color: 'var(--on-primary)', fontSize: 15.5, fontWeight: 800, cursor: saving ? 'wait' : 'pointer', opacity: saving ? 0.6 : 1 }}>
+          style={{ width: '100%', padding: 15, borderRadius: 'var(--r-md)', border: 'none', background: accent, color: 'var(--on-primary)', fontSize: 15.5, fontWeight: 800, cursor: saving ? 'wait' : 'pointer', opacity: saving ? 0.6 : 1 }}>
           {saving ? t('w2c.saving') : t('w2c.save')}
         </button>
       </div>

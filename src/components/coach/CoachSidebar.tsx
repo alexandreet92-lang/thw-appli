@@ -33,7 +33,7 @@ function isActive(pathname: string, href: string): boolean {
 function CoachNavItem({ href, label, icon, active, onClick, expanded }: { href: string; label: string; icon: React.ReactNode; active: boolean; onClick?: () => void; expanded: boolean }) {
   return (
     <Link href={href} onClick={onClick} className="thw-nav-item" data-active={active ? '1' : '0'}
-      style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', borderRadius: 10, textDecoration: 'none',
+      style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', borderRadius: 'var(--r-sm)', textDecoration: 'none',
         fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: active ? 600 : 400,
         color: active ? COACH_ACCENT : 'var(--text-mid)', background: active ? 'color-mix(in srgb, var(--primary) 10%, transparent)' : 'transparent',
         borderLeft: `3px solid ${active ? COACH_ACCENT : 'transparent'}`, transition: 'background 0.14s, color 0.14s' }}
@@ -56,11 +56,11 @@ export function CoachSidebarContent({ onClose, onOpenAI, headerSlot, expanded = 
       {/* En-tête : nom de l'app « Hybrid » + type d'interface (coach) */}
       {headerSlot !== undefined ? headerSlot : (
         <div style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '16px 14px 12px', borderBottom: '1px solid var(--nav-border)', flexShrink: 0 }}>
-          <span style={{ width: 36, height: 36, borderRadius: 11, background: `color-mix(in srgb, ${COACH_ACCENT} 14%, transparent)`, color: COACH_ACCENT, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <span style={{ width: 36, height: 36, borderRadius: 'var(--r-md)', background: `color-mix(in srgb, ${COACH_ACCENT} 14%, transparent)`, color: COACH_ACCENT, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
           </span>
           <div style={{ minWidth: 0, ...lbl }}>
-            <div style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 21, color: 'var(--text)', lineHeight: 1.05, whiteSpace: 'nowrap' }}>Hybrid</div>
+            <div style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 22, color: 'var(--text)', lineHeight: 1.05, whiteSpace: 'nowrap' }}>Hybrid</div>
             <div style={{ fontFamily: 'var(--font-body)', fontSize: 11.5, fontWeight: 700, color: COACH_ACCENT, marginTop: 2, whiteSpace: 'nowrap' }}>Interface coach</div>
           </div>
         </div>
@@ -77,20 +77,20 @@ export function CoachSidebarContent({ onClose, onOpenAI, headerSlot, expanded = 
       {/* Bas : retour appli athlète + assistant coach + thème */}
       <div style={{ borderTop: '1px solid var(--nav-border)', padding: '8px', display: 'flex', flexDirection: 'column', gap: 2, flexShrink: 0 }}>
         <Link href="/" onClick={onClose} className="thw-nav-item" data-active="0"
-          style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', borderRadius: 10, textDecoration: 'none', color: 'var(--text-mid)', fontFamily: 'var(--font-body)', fontSize: 13 }}>
+          style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', borderRadius: 'var(--r-sm)', textDecoration: 'none', color: 'var(--text-mid)', fontFamily: 'var(--font-body)', fontSize: 13 }}>
           <span style={{ flexShrink: 0, opacity: 0.6, display: 'flex' }}><svg {...ic}><path d="M19 12H5M11 18l-6-6 6-6"/></svg></span>
           <span style={lbl}>{t('coach.backToMyApp')}</span>
         </Link>
         {onOpenAI && (
           <button onClick={onOpenAI} className="thw-nav-item" data-active="0"
-            style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', borderRadius: 10, border: 'none', background: 'transparent', color: 'var(--text-mid)', fontFamily: 'var(--font-body)', fontSize: 13, cursor: 'pointer', textAlign: 'left' }}>
+            style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', borderRadius: 'var(--r-sm)', border: 'none', background: 'transparent', color: 'var(--text-mid)', fontFamily: 'var(--font-body)', fontSize: 13, cursor: 'pointer', textAlign: 'left' }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/logos/logo_4bras.png" alt="" style={{ width: 18, height: 18, objectFit: 'contain', flexShrink: 0 }} />
             <span style={lbl}>Assistant coach</span>
           </button>
         )}
         <button onClick={toggleTheme} className="thw-nav-item" data-active="0"
-          style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', borderRadius: 10, border: 'none', background: 'transparent', color: 'var(--text-mid)', fontFamily: 'var(--font-body)', fontSize: 13, cursor: 'pointer', textAlign: 'left' }}>
+          style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', borderRadius: 'var(--r-sm)', border: 'none', background: 'transparent', color: 'var(--text-mid)', fontFamily: 'var(--font-body)', fontSize: 13, cursor: 'pointer', textAlign: 'left' }}>
           <span style={{ flexShrink: 0, opacity: 0.6, display: 'flex' }}>
             {mode === 'dark'
               ? <svg {...ic}><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>

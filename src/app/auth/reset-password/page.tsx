@@ -14,12 +14,12 @@ import { useI18n } from '@/lib/i18n'
 const BG = 'linear-gradient(160deg, #060614 0%, #0A0F1E 50%, #050B1A 100%)'
 
 const primaryBtn: React.CSSProperties = {
-  width: '100%', height: 52, borderRadius: 14,
+  width: '100%', height: 52, borderRadius: 'var(--r-md)',
   background: 'linear-gradient(135deg, #06B6D4, #2563EB)',
   border: 'none', color: 'white',
   fontSize: 16, fontWeight: 700, cursor: 'pointer',
   boxShadow: '0 4px 20px rgba(6,182,212,0.35)',
-  fontFamily: 'DM Sans, sans-serif',
+  fontFamily: 'var(--font-body)',
   transition: 'opacity 200ms',
 }
 
@@ -121,7 +121,7 @@ export default function ResetPasswordPage() {
         <div style={{ textAlign: 'center', marginBottom: 40 }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/logos/logo_4bras.png" alt="Hybrid" style={{ width: 40, height: 40 }} />
-          <h2 style={{ fontSize: 24, fontWeight: 800, color: 'white', margin: '10px 0 4px', letterSpacing: '-0.5px', fontFamily: 'Syne, sans-serif' }}>
+          <h2 style={{ fontSize: 24, fontWeight: 800, color: 'white', margin: '10px 0 4px', letterSpacing: '-0.5px', fontFamily: 'var(--font-display)' }}>
             Hybrid
           </h2>
         </div>
@@ -138,10 +138,10 @@ export default function ResetPasswordPage() {
                 <path d="M8 18l7 7 13-14" stroke="#10B981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
             </div>
-            <h3 style={{ fontSize: 22, fontWeight: 700, color: 'white', margin: '0 0 12px', fontFamily: 'Syne, sans-serif' }}>
+            <h3 style={{ fontSize: 22, fontWeight: 700, color: 'white', margin: '0 0 12px', fontFamily: 'var(--font-display)' }}>
               {t('authpage.passwordChanged')}
             </h3>
-            <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)', margin: '0 0 28px', fontFamily: 'DM Sans, sans-serif' }}>
+            <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)', margin: '0 0 28px', fontFamily: 'var(--font-body)' }}>
               {t('authpage.signedInRedirect')}
             </p>
             <button onClick={() => { window.location.href = '/' }} style={primaryBtn}>
@@ -149,15 +149,15 @@ export default function ResetPasswordPage() {
             </button>
           </div>
         ) : linkState === 'checking' ? (
-          <p style={{ textAlign: 'center', color: 'rgba(255,255,255,0.5)', fontSize: 14, fontFamily: 'DM Sans, sans-serif' }}>
+          <p style={{ textAlign: 'center', color: 'rgba(255,255,255,0.5)', fontSize: 14, fontFamily: 'var(--font-body)' }}>
             {t('authpage.resetChecking')}
           </p>
         ) : linkState === 'invalid' ? (
           <div style={{ textAlign: 'center' }}>
-            <h3 style={{ color: 'white', fontSize: 22, fontWeight: 700, margin: '0 0 12px', fontFamily: 'Syne, sans-serif' }}>
+            <h3 style={{ color: 'white', fontSize: 22, fontWeight: 700, margin: '0 0 12px', fontFamily: 'var(--font-display)' }}>
               {t('authpage.resetLinkInvalid')}
             </h3>
-            <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: 14, margin: '0 0 28px', lineHeight: 1.5, fontFamily: 'DM Sans, sans-serif' }}>
+            <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: 14, margin: '0 0 28px', lineHeight: 1.5, fontFamily: 'var(--font-body)' }}>
               {linkError}
             </p>
             <button onClick={() => router.replace('/auth')} style={primaryBtn}>
@@ -166,10 +166,10 @@ export default function ResetPasswordPage() {
           </div>
         ) : (
           <>
-            <h3 style={{ color: 'white', fontSize: 22, fontWeight: 700, margin: '0 0 8px', textAlign: 'center', fontFamily: 'Syne, sans-serif' }}>
+            <h3 style={{ color: 'white', fontSize: 22, fontWeight: 700, margin: '0 0 8px', textAlign: 'center', fontFamily: 'var(--font-display)' }}>
               {t('authpage.newPassword')}
             </h3>
-            <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: 14, margin: '0 0 28px', textAlign: 'center', lineHeight: 1.5, fontFamily: 'DM Sans, sans-serif' }}>
+            <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: 14, margin: '0 0 28px', textAlign: 'center', lineHeight: 1.5, fontFamily: 'var(--font-body)' }}>
               {t('authpage.chooseSecurePassword')}
             </p>
 
@@ -179,7 +179,7 @@ export default function ResetPasswordPage() {
             <AuthInput label={t('auth.confirm')} type="password" placeholder="••••••••" value={confirm} onChange={setConfirm} showToggle />
 
             {confirm && password !== confirm && (
-              <p style={{ fontSize: 12, color: 'var(--danger)', margin: '4px 0 0', fontFamily: 'DM Sans, sans-serif' }}>
+              <p style={{ fontSize: 12, color: 'var(--danger)', margin: '4px 0 0', fontFamily: 'var(--font-body)' }}>
                 {t('auth.pwMismatch')}
               </p>
             )}

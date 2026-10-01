@@ -93,7 +93,7 @@ export function CreateChannelSheet({ onClose, onCreate }: {
           <span style={{ display: 'block', fontFamily: FB, fontSize: 13.5, fontWeight: 600, color: 'var(--text)' }}>{t('w1g.ch.private')}</span>
           <span style={{ display: 'block', fontFamily: FB, fontSize: 11.5, color: 'var(--text-dim)', marginTop: 1 }}>{t('w1g.ch.privateSub')}</span>
         </span>
-        <span aria-hidden style={{ flexShrink: 0, width: 42, height: 24, borderRadius: 999, background: priv ? 'var(--primary)' : 'var(--surface-neutral)', position: 'relative', transition: 'background 0.18s ease' }}>
+        <span aria-hidden style={{ flexShrink: 0, width: 42, height: 24, borderRadius: 'var(--r-pill)', background: priv ? 'var(--primary)' : 'var(--surface-neutral)', position: 'relative', transition: 'background 0.18s ease' }}>
           <span style={{ position: 'absolute', top: 2, left: priv ? 20 : 2, width: 20, height: 20, borderRadius: '50%', background: 'var(--bg-card)', transition: 'left 0.18s ease', boxShadow: '0 1px 3px rgba(0,0,0,0.25)' }} />
         </span>
       </button>

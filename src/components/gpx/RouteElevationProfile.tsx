@@ -405,16 +405,16 @@ export default function RouteElevationProfile({
   const flipLeft = hoverPx + CURSOR_GAP + BUBBLE_W > boxW
 
   const inputStyle: React.CSSProperties = {
-    width: 56, padding: '5px 6px', borderRadius: 8, border: '1px solid var(--border)',
+    width: 56, padding: '5px 6px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)',
     background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 12, outline: 'none',
     fontVariantNumeric: 'tabular-nums',
   }
   const miniLabel: React.CSSProperties = {
-    fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em',
+    fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em',
     color: 'var(--text-dim)', display: 'block', marginBottom: 3,
   }
   const seqBtn = (active: boolean): React.CSSProperties => ({
-    height: 26, padding: '0 9px', borderRadius: 8, cursor: 'pointer',
+    height: 26, padding: '0 9px', borderRadius: 'var(--r-sm)', cursor: 'pointer',
     border: '1px solid var(--border)',
     background: active ? 'var(--primary-dim)' : 'transparent',
     color: active ? 'var(--primary)' : 'var(--text-mid)',
@@ -552,7 +552,7 @@ export default function RouteElevationProfile({
       {!hideAxis && (
         <div style={{
           display: 'flex', justifyContent: 'space-between', padding: '4px 2px 0',
-          fontSize: 9, color: 'var(--text-dim)', fontVariantNumeric: 'tabular-nums',
+          fontSize: 10, color: 'var(--text-dim)', fontVariantNumeric: 'tabular-nums',
         }}>
           {[0, 0.25, 0.5, 0.75, 1].map(pct => (
             <span key={pct}>{(pct * total).toFixed(1)}km</span>
@@ -567,7 +567,7 @@ export default function RouteElevationProfile({
           left: hoverPx + (flipLeft ? -CURSOR_GAP : CURSOR_GAP),
           transform: flipLeft ? 'translateX(-100%)' : 'none',
           background: 'var(--bg-card)', border: '1px solid var(--border)',
-          borderRadius: 10, padding: '7px 10px', pointerEvents: 'none',
+          borderRadius: 'var(--r-sm)', padding: '7px 10px', pointerEvents: 'none',
           whiteSpace: 'nowrap', zIndex: 30, boxShadow: '0 4px 14px rgba(0,0,0,0.18)',
           fontVariantNumeric: 'tabular-nums', lineHeight: 1.45,
         }}>
@@ -589,7 +589,7 @@ export default function RouteElevationProfile({
             left: `${Math.max(20, Math.min(80, ((xOf(pending.startKm) + xOf(pending.endKm)) / 2 / W) * 100))}%`,
             transform: 'translateX(-50%)',
             background: 'var(--bg-card)', border: '1px solid var(--border)',
-            borderRadius: 12, padding: '12px 14px', zIndex: 40, minWidth: 240,
+            borderRadius: 'var(--r-md)', padding: '12px 14px', zIndex: 40, minWidth: 240,
             boxShadow: '0 8px 28px rgba(0,0,0,0.25)',
           }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
@@ -675,7 +675,7 @@ export default function RouteElevationProfile({
           <div style={{ display: 'flex', gap: 8 }}>
             <button type="button" onClick={submitPending} disabled={pendingWatts <= 0}
               style={{
-                flex: 1, padding: '8px 0', borderRadius: 10, border: 'none', cursor: pendingWatts > 0 ? 'pointer' : 'default',
+                flex: 1, padding: '8px 0', borderRadius: 'var(--r-sm)', border: 'none', cursor: pendingWatts > 0 ? 'pointer' : 'default',
                 background: 'var(--primary, #06B6D4)', color: 'var(--on-primary, #fff)', fontSize: 12, fontWeight: 700,
                 opacity: pendingWatts > 0 ? 1 : 0.5,
               }}>
@@ -684,7 +684,7 @@ export default function RouteElevationProfile({
             {pending.id && sequencing.onRemoveBlock && (
               <button type="button" onClick={removePending} aria-label={t('w2f.remove_block')}
                 style={{
-                  padding: '8px 12px', borderRadius: 10, border: '1px solid var(--border)', cursor: 'pointer',
+                  padding: '8px 12px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', cursor: 'pointer',
                   background: 'transparent', color: 'var(--danger, #EF4444)', fontSize: 12, fontWeight: 700,
                 }}>
                 {t('w2f.remove')}

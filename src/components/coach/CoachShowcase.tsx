@@ -91,7 +91,7 @@ export default function CoachShowcase({ profile, programs = [], counts, isCoach,
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
               <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(28px,5vw,42px)', fontWeight: 600, letterSpacing: '-0.01em', color: 'var(--text)', margin: 0, lineHeight: 1.05 }}>{name}</h1>
               {isCoach && (
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 11px', borderRadius: 999, background: 'var(--primary-dim)', color: 'var(--primary)', fontSize: 12, fontWeight: 700 }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 11px', borderRadius: 'var(--r-pill)', background: 'var(--primary-dim)', color: 'var(--primary)', fontSize: 12, fontWeight: 700 }}>
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
                   {t('w1j.coachBadge')}
                 </span>
@@ -104,7 +104,7 @@ export default function CoachShowcase({ profile, programs = [], counts, isCoach,
                 {profile.location}
               </span>}
               {profile.sports.slice(0, 5).map(s => (
-                <span key={s} style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-mid)', background: 'var(--bg-card2)', padding: '5px 11px', borderRadius: 999 }}>{SPORT_LABEL[s] ?? s}</span>
+                <span key={s} style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-mid)', background: 'var(--bg-card2)', padding: '5px 11px', borderRadius: 'var(--r-pill)' }}>{SPORT_LABEL[s] ?? s}</span>
               ))}
             </div>
 
@@ -122,7 +122,7 @@ export default function CoachShowcase({ profile, programs = [], counts, isCoach,
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 18 }}>
               {onToggleFollow && !isOwner && (
                 <button onClick={onToggleFollow} disabled={followBusy}
-                  style={{ height: 42, padding: '0 24px', borderRadius: 999, border: 'none', cursor: followBusy ? 'default' : 'pointer', fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 700, background: isFollowing ? 'var(--bg-card2)' : 'var(--primary)', color: isFollowing ? 'var(--text-mid)' : 'var(--on-primary)', opacity: followBusy ? 0.6 : 1 }}>
+                  style={{ height: 42, padding: '0 24px', borderRadius: 'var(--r-pill)', border: 'none', cursor: followBusy ? 'default' : 'pointer', fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 700, background: isFollowing ? 'var(--bg-card2)' : 'var(--primary)', color: isFollowing ? 'var(--text-mid)' : 'var(--on-primary)', opacity: followBusy ? 0.6 : 1 }}>
                   {isFollowing ? t('w1j.subscribed') : t('w1j.subscribe')}
                 </button>
               )}

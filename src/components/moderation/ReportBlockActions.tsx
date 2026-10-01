@@ -26,7 +26,7 @@ const overlay: React.CSSProperties = {
   justifyContent: 'center', padding: 20,
 }
 const card: React.CSSProperties = {
-  width: '100%', maxWidth: 380, background: 'var(--bg-card)', borderRadius: 18,
+  width: '100%', maxWidth: 380, background: 'var(--bg-card)', borderRadius: 'var(--r-lg)',
   border: '1px solid var(--border)', boxShadow: '0 24px 60px rgba(0,0,0,0.4)',
   padding: 20, display: 'flex', flexDirection: 'column', gap: 12,
 }
@@ -107,10 +107,10 @@ export function ReportBlockActions({
             </div>
             <textarea value={note} onChange={e => setNote(e.target.value)} rows={2}
               placeholder="Détails (facultatif)…"
-              style={{ resize: 'none', padding: '9px 12px', borderRadius: 12, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text)', fontSize: 13, fontFamily: 'var(--font-body)', outline: 'none' }} />
+              style={{ resize: 'none', padding: '9px 12px', borderRadius: 'var(--r-md)', border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text)', fontSize: 13, fontFamily: 'var(--font-body)', outline: 'none' }} />
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 4 }}>
-              <button onClick={() => closeOverlay(() => { setDialog(null); onClose?.() })} style={{ fontSize: 13, padding: '8px 14px', borderRadius: 10, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-mid)', cursor: 'pointer' }}>Annuler</button>
-              <button onClick={() => void submitReport()} disabled={busy} style={{ fontSize: 13, padding: '8px 16px', borderRadius: 10, border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', cursor: busy ? 'default' : 'pointer', fontWeight: 700, opacity: busy ? 0.6 : 1 }}>{busy ? 'Envoi…' : 'Envoyer'}</button>
+              <button onClick={() => closeOverlay(() => { setDialog(null); onClose?.() })} style={{ fontSize: 13, padding: '8px 14px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-mid)', cursor: 'pointer' }}>Annuler</button>
+              <button onClick={() => void submitReport()} disabled={busy} style={{ fontSize: 13, padding: '8px 16px', borderRadius: 'var(--r-sm)', border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', cursor: busy ? 'default' : 'pointer', fontWeight: 700, opacity: busy ? 0.6 : 1 }}>{busy ? 'Envoi…' : 'Envoyer'}</button>
             </div>
           </div>
         </div>
@@ -124,8 +124,8 @@ export function ReportBlockActions({
               Vous ne pourrez plus vous envoyer de messages. Vous pourrez le débloquer à tout moment depuis les réglages.
             </p>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 4 }}>
-              <button onClick={() => closeOverlay(() => { setDialog(null); onClose?.() })} style={{ fontSize: 13, padding: '8px 14px', borderRadius: 10, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-mid)', cursor: 'pointer' }}>Annuler</button>
-              <button onClick={() => void confirmBlock()} disabled={busy} style={{ fontSize: 13, padding: '8px 16px', borderRadius: 10, border: 'none', background: 'var(--danger)', color: '#fff', cursor: busy ? 'default' : 'pointer', fontWeight: 700, opacity: busy ? 0.6 : 1 }}>{busy ? '…' : 'Bloquer'}</button>
+              <button onClick={() => closeOverlay(() => { setDialog(null); onClose?.() })} style={{ fontSize: 13, padding: '8px 14px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-mid)', cursor: 'pointer' }}>Annuler</button>
+              <button onClick={() => void confirmBlock()} disabled={busy} style={{ fontSize: 13, padding: '8px 16px', borderRadius: 'var(--r-sm)', border: 'none', background: 'var(--danger)', color: '#fff', cursor: busy ? 'default' : 'pointer', fontWeight: 700, opacity: busy ? 0.6 : 1 }}>{busy ? '…' : 'Bloquer'}</button>
             </div>
           </div>
         </div>
@@ -143,7 +143,7 @@ export function ReportBlockActions({
               </p>
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-              <button onClick={() => closeOverlay(() => { setDone(null); onClose?.() })} style={{ fontSize: 13, padding: '8px 16px', borderRadius: 10, border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', cursor: 'pointer', fontWeight: 700 }}>OK</button>
+              <button onClick={() => closeOverlay(() => { setDone(null); onClose?.() })} style={{ fontSize: 13, padding: '8px 16px', borderRadius: 'var(--r-sm)', border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', cursor: 'pointer', fontWeight: 700 }}>OK</button>
             </div>
           </div>
         </div>

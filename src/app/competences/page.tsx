@@ -163,7 +163,7 @@ export default function CompetencesPage() {
   }, [router])
 
   const badge = (
-    <span style={{ fontSize: 12, fontWeight: 500, background: 'var(--bg-alt)', border: '0.5px solid var(--border-mid)', borderRadius: 20, padding: '5px 14px', color: 'var(--text)', whiteSpace: 'nowrap' }}>
+    <span style={{ fontSize: 12, fontWeight: 500, background: 'var(--bg-alt)', border: '0.5px solid var(--border-mid)', borderRadius: 'var(--r-lg)', padding: '5px 14px', color: 'var(--text)', whiteSpace: 'nowrap' }}>
       <span style={{ color: 'var(--primary)', fontWeight: 700, fontSize: 13 }}>{limit.active_count}</span> / {limit.limit} {t('competences.activesPlan', { plan: limit.planLabel })}
     </span>
   )
@@ -190,13 +190,13 @@ export default function CompetencesPage() {
             onClick={e => e.stopPropagation()}
             style={{
               maxWidth: 420, width: '100%', background: 'var(--bg-card)',
-              border: '0.5px solid var(--border-mid)', borderRadius: 16,
+              border: '0.5px solid var(--border-mid)', borderRadius: 'var(--r-md)',
               boxShadow: '0 20px 60px rgba(0,0,0,0.5)', padding: '22px 22px 18px',
               display: 'flex', flexDirection: 'column', gap: 12,
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(6,182,212,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <div style={{ width: 36, height: 36, borderRadius: 'var(--r-sm)', background: 'rgba(6,182,212,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 <Lock size={18} color="#06B6D4" />
               </div>
               <div>
@@ -214,13 +214,13 @@ export default function CompetencesPage() {
             <div style={{ display: 'flex', gap: 8, marginTop: 2 }}>
               <button
                 onClick={() => { setActiveTab('actives'); setLimitModal(false) }}
-                style={{ flex: 1, fontSize: 12.5, background: 'transparent', color: 'var(--text)', border: '0.5px solid var(--border-mid)', borderRadius: 9, padding: '9px 14px', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}
+                style={{ flex: 1, fontSize: 12.5, background: 'transparent', color: 'var(--text)', border: '0.5px solid var(--border-mid)', borderRadius: 'var(--r-sm)', padding: '9px 14px', cursor: 'pointer', fontFamily: 'var(--font-body)' }}
               >
                 {t('competences.viewActiveSkills')}
               </button>
               <button
                 onClick={() => router.push('/settings/subscription')}
-                style={{ flex: 1, fontSize: 12.5, fontWeight: 500, background: 'var(--primary)', color: '#fff', border: 'none', borderRadius: 9, padding: '9px 14px', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}
+                style={{ flex: 1, fontSize: 12.5, fontWeight: 500, background: 'var(--primary)', color: '#fff', border: 'none', borderRadius: 'var(--r-sm)', padding: '9px 14px', cursor: 'pointer', fontFamily: 'var(--font-body)' }}
               >
                 {t('competences.discoverPlans')}
               </button>
@@ -232,7 +232,7 @@ export default function CompetencesPage() {
         <div style={{
           position: 'fixed', bottom: 80, left: '50%', transform: 'translateX(-50%)', zIndex: 110,
           maxWidth: 480, width: 'calc(100% - 28px)',
-          background: 'var(--bg-card)', border: '0.5px solid var(--border-mid)', borderRadius: 12,
+          background: 'var(--bg-card)', border: '0.5px solid var(--border-mid)', borderRadius: 'var(--r-md)',
           boxShadow: '0 12px 40px rgba(0,0,0,0.4)', padding: '12px 14px',
           display: 'flex', flexDirection: 'column', gap: 10,
         }}>
@@ -240,8 +240,8 @@ export default function CompetencesPage() {
             {t('competences.conflictBar', { nom: conflictState.blocker.nom })}
           </span>
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-            <button onClick={() => setConflictState(null)} style={{ fontSize: 12, background: 'transparent', color: 'var(--text-mid)', border: '0.5px solid var(--border)', borderRadius: 8, padding: '7px 14px', cursor: 'pointer' }}>{t('competences.cancel')}</button>
-            <button onClick={() => void resolveConflict()} style={{ fontSize: 12, fontWeight: 500, background: 'var(--primary)', color: '#fff', border: 'none', borderRadius: 8, padding: '7px 14px', cursor: 'pointer' }}>{t('competences.deactivateOtherActivateThis')}</button>
+            <button onClick={() => setConflictState(null)} style={{ fontSize: 12, background: 'transparent', color: 'var(--text-mid)', border: '0.5px solid var(--border)', borderRadius: 'var(--r-sm)', padding: '7px 14px', cursor: 'pointer' }}>{t('competences.cancel')}</button>
+            <button onClick={() => void resolveConflict()} style={{ fontSize: 12, fontWeight: 500, background: 'var(--primary)', color: '#fff', border: 'none', borderRadius: 'var(--r-sm)', padding: '7px 14px', cursor: 'pointer' }}>{t('competences.deactivateOtherActivateThis')}</button>
           </div>
         </div>
       )}
@@ -259,7 +259,7 @@ export default function CompetencesPage() {
           padding: 'calc(14px + env(safe-area-inset-top)) 16px 14px', background: 'var(--bg-card)', borderBottom: '0.5px solid var(--border)',
         }}>
           <button onClick={() => setMobileOpen(true)} aria-label={t('competences.filters')}
-            style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--bg-alt)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            style={{ width: 32, height: 32, borderRadius: 'var(--r-sm)', background: 'var(--bg-alt)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <Menu size={16} color="var(--text)" />
           </button>
           <div style={{ textAlign: 'center', minWidth: 0 }}>
@@ -267,7 +267,7 @@ export default function CompetencesPage() {
             <div style={{ fontSize: 11, color: 'var(--text-mid)' }}>{t('competences.subtitleMobile')}</div>
           </div>
           <button onClick={goBack} aria-label={t('competences.backToCoach')}
-            style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--bg-alt)', border: '0.5px solid var(--border)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            style={{ width: 32, height: 32, borderRadius: 'var(--r-sm)', background: 'var(--bg-alt)', border: '0.5px solid var(--border)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <X size={16} color="var(--text)" />
           </button>
         </div>
@@ -280,8 +280,8 @@ export default function CompetencesPage() {
               <button key={s} onClick={() => setActiveSport(s)}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0,
-                  fontSize: 12, padding: '6px 14px', borderRadius: 18, cursor: 'pointer',
-                  fontFamily: 'DM Sans, sans-serif', whiteSpace: 'nowrap',
+                  fontSize: 12, padding: '6px 14px', borderRadius: 'var(--r-lg)', cursor: 'pointer',
+                  fontFamily: 'var(--font-body)', whiteSpace: 'nowrap',
                   border: `0.5px solid ${a ? 'rgba(6,182,212,0.4)' : 'var(--border)'}`,
                   background: a ? 'rgba(6,182,212,0.12)' : 'var(--bg-card)',
                   color: a ? '#06B6D4' : 'var(--text-mid)',
@@ -345,7 +345,7 @@ export default function CompetencesPage() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           {badge}
           <button onClick={focusCreate}
-            style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--primary)', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}>
+            style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--primary)', color: '#fff', border: 'none', borderRadius: 'var(--r-sm)', padding: '8px 16px', fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
             <Plus size={15} /> {t('competences.create')}
           </button>
         </div>
@@ -383,7 +383,7 @@ export default function CompetencesPage() {
 }
 
 const noticeStyle: React.CSSProperties = {
-  margin: '8px 14px', padding: '8px 12px', borderRadius: 8,
+  margin: '8px 14px', padding: '8px 12px', borderRadius: 'var(--r-sm)',
   background: 'rgba(239,68,68,0.08)', border: '0.5px solid rgba(239,68,68,0.3)',
   color: 'var(--danger)', fontSize: 12,
 }

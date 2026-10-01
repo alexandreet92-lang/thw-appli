@@ -663,7 +663,7 @@ export default function BriefingPage() {
           <div style={{ ...card, padding: 20, textAlign: 'center' }}>
             <p style={{
               margin: 0,
-              fontFamily: 'Syne, sans-serif',
+              fontFamily: 'var(--font-body)',
               fontSize: 15, fontWeight: 700,
               color: 'var(--text)',
             }}>
@@ -680,7 +680,7 @@ export default function BriefingPage() {
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 10, flexWrap: 'wrap' }}>
                   <span style={{
                     fontSize: 10, fontWeight: 700, letterSpacing: '0.04em',
-                    padding: '3px 9px', borderRadius: 99,
+                    padding: '3px 9px', borderRadius: 'var(--r-pill)',
                     background: 'rgba(139,92,246,0.12)', color: '#8b5cf6',
                     textTransform: 'uppercase',
                   }}>
@@ -689,7 +689,7 @@ export default function BriefingPage() {
                   <h2 style={{
                     flex: 1, minWidth: 180,
                     margin: 0,
-                    fontFamily: 'Syne, sans-serif',
+                    fontFamily: 'var(--font-body)',
                     fontWeight: 700, fontSize: 15, lineHeight: 1.35,
                     color: 'var(--text)',
                   }}>
@@ -729,7 +729,7 @@ export default function BriefingPage() {
                   <div style={{
                     marginTop: 4,
                     padding: '10px 12px',
-                    borderRadius: 8,
+                    borderRadius: 'var(--r-sm)',
                     background: 'var(--bg2, rgba(0,0,0,0.03))',
                     borderLeft: '3px solid #06B6D4',
                   }}>
@@ -797,7 +797,7 @@ export default function BriefingPage() {
                       {task.priority && (
                         <span style={{
                           fontSize: 10, fontWeight: 700,
-                          padding: '2px 7px', borderRadius: 99,
+                          padding: '2px 7px', borderRadius: 'var(--r-pill)',
                           background: 'rgba(239,68,68,0.12)', color: 'var(--danger)',
                         }}>
                           {t('briefing.priority')}
@@ -832,7 +832,7 @@ export default function BriefingPage() {
                 fontSize: 11,
                 color: 'var(--text-dim)',
                 padding: '2px 8px',
-                borderRadius: 99,
+                borderRadius: 'var(--r-pill)',
                 background: 'var(--bg2, rgba(0,0,0,0.04))',
                 border: '1px solid var(--border, rgba(0,0,0,0.08))',
               }}>
@@ -847,7 +847,7 @@ export default function BriefingPage() {
             }}>
               <p style={{
                 margin: '0 0 6px',
-                fontFamily: 'Syne, sans-serif', fontWeight: 700, fontSize: 15,
+                fontFamily: 'var(--font-body)', fontWeight: 700, fontSize: 15,
                 color: 'var(--text)',
               }}>
                 {t('briefing.notYetAvailable')}
@@ -869,7 +869,7 @@ export default function BriefingPage() {
                 }}>
                   <p style={{
                     margin: '0 0 12px',
-                    fontFamily: 'Syne, sans-serif',
+                    fontFamily: 'var(--font-body)',
                     fontSize: 11, fontWeight: 700, letterSpacing: '0.14em',
                     textTransform: 'uppercase',
                     color: '#06B6D4',
@@ -911,7 +911,7 @@ export default function BriefingPage() {
                       style={{
                         border: 'none', background: 'transparent', cursor: 'pointer',
                         padding: '10px 14px', marginBottom: -1,
-                        fontFamily: 'DM Sans, sans-serif',
+                        fontFamily: 'var(--font-body)',
                         fontSize: 13,
                         fontWeight: active ? 700 : 500,
                         color: active ? '#06B6D4' : 'var(--text-mid)',
@@ -924,7 +924,7 @@ export default function BriefingPage() {
                       {count > 0 && (
                         <span style={{
                           fontSize: 11, fontWeight: 600,
-                          padding: '1px 7px', borderRadius: 99,
+                          padding: '1px 7px', borderRadius: 'var(--r-pill)',
                           background: active ? 'rgba(6,182,212,0.14)' : 'var(--bg2, rgba(0,0,0,0.05))',
                           color: active ? '#06B6D4' : 'var(--text-dim)',
                         }}>
@@ -952,8 +952,8 @@ export default function BriefingPage() {
                         style={{
                           cursor: 'pointer',
                           padding: '5px 11px',
-                          borderRadius: 99,
-                          fontFamily: 'DM Sans, sans-serif',
+                          borderRadius: 'var(--r-pill)',
+                          fontFamily: 'var(--font-body)',
                           fontSize: 12,
                           fontWeight: active ? 700 : 500,
                           border: active
@@ -968,7 +968,7 @@ export default function BriefingPage() {
                         {st.nom}
                         <span style={{
                           fontSize: 10, fontWeight: 600,
-                          padding: '0 6px', borderRadius: 99, minWidth: 16,
+                          padding: '0 6px', borderRadius: 'var(--r-pill)', minWidth: 16,
                           display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                           background: active ? 'rgba(6,182,212,0.18)' : 'var(--bg2, rgba(0,0,0,0.05))',
                           color: active ? '#06B6D4' : 'var(--text-dim)',
@@ -1000,7 +1000,7 @@ export default function BriefingPage() {
                         <h3 style={{
                           flex: 1, minWidth: 240,
                           margin: 0,
-                          fontFamily: 'Syne, sans-serif',
+                          fontFamily: 'var(--font-body)',
                           fontWeight: 700, fontSize: 16, lineHeight: 1.35,
                           color: 'var(--text)',
                         }}>
@@ -1009,7 +1009,7 @@ export default function BriefingPage() {
                         <span style={{
                           flexShrink: 0,
                           fontSize: 11, fontWeight: 700,
-                          padding: '3px 10px', borderRadius: 99,
+                          padding: '3px 10px', borderRadius: 'var(--r-pill)',
                           background: c.bg, color: c.fg,
                           letterSpacing: '0.02em',
                         }}>
@@ -1072,11 +1072,11 @@ export default function BriefingPage() {
               style={{
                 background: 'linear-gradient(135deg, #f59e0b 0%, #ef4444 100%)',
                 color: 'white', border: 'none',
-                padding: '10px 20px', borderRadius: 10,
+                padding: '10px 20px', borderRadius: 'var(--r-sm)',
                 fontSize: 14, fontWeight: 600,
                 cursor: mktLoading ? 'wait' : 'pointer',
                 opacity: mktLoading ? 0.65 : 1,
-                fontFamily: 'DM Sans, sans-serif',
+                fontFamily: 'var(--font-body)',
               }}
             >
               {mktLoading ? t('briefing.generating') : t('briefing.generateBrief')}
@@ -1089,10 +1089,10 @@ export default function BriefingPage() {
                 background: 'transparent',
                 color: instaApiSyncing ? 'var(--text-dim)' : 'var(--text)',
                 border: '1px solid var(--border, rgba(0,0,0,0.15))',
-                padding: '10px 20px', borderRadius: 10,
+                padding: '10px 20px', borderRadius: 'var(--r-sm)',
                 fontSize: 14, fontWeight: 600,
                 cursor: instaApiSyncing ? 'wait' : 'pointer',
-                fontFamily: 'DM Sans, sans-serif',
+                fontFamily: 'var(--font-body)',
                 display: 'flex', alignItems: 'center', gap: 7,
               }}
             >
@@ -1125,7 +1125,7 @@ export default function BriefingPage() {
           {mktError && (
             <div style={{
               background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)',
-              padding: '10px 14px', borderRadius: 8, marginBottom: 14,
+              padding: '10px 14px', borderRadius: 'var(--r-sm)', marginBottom: 14,
               fontSize: 13, color: 'var(--danger)',
             }}>
               {mktError}
@@ -1181,9 +1181,9 @@ export default function BriefingPage() {
               placeholder={t('briefing.ideaPlaceholder')}
               rows={2}
               style={{
-                flex: '1 1 260px', padding: '10px 12px', borderRadius: 8,
+                flex: '1 1 260px', padding: '10px 12px', borderRadius: 'var(--r-sm)',
                 border: '1px solid var(--border, rgba(0,0,0,0.1))',
-                fontFamily: 'DM Sans, sans-serif', fontSize: 13,
+                fontFamily: 'var(--font-body)', fontSize: 13,
                 resize: 'vertical', background: 'var(--bg2)',
                 color: 'var(--text)',
               }}
@@ -1193,9 +1193,9 @@ export default function BriefingPage() {
               onChange={e => setMktNewCtx(e.target.value)}
               placeholder={t('briefing.contextPlaceholder')}
               style={{
-                flex: '0 1 180px', padding: '10px 12px', borderRadius: 8,
+                flex: '0 1 180px', padding: '10px 12px', borderRadius: 'var(--r-sm)',
                 border: '1px solid var(--border, rgba(0,0,0,0.1))',
-                fontFamily: 'DM Sans, sans-serif', fontSize: 13,
+                fontFamily: 'var(--font-body)', fontSize: 13,
                 background: 'var(--bg2)', color: 'var(--text)',
               }}
             />
@@ -1205,11 +1205,11 @@ export default function BriefingPage() {
               style={{
                 background: mktNewIdea.trim() ? '#1a1a1a' : 'var(--border)',
                 color: 'white', border: 'none',
-                padding: '0 18px', borderRadius: 8,
+                padding: '0 18px', borderRadius: 'var(--r-sm)',
                 fontSize: 13, fontWeight: 600,
                 cursor: mktNewIdea.trim() ? 'pointer' : 'not-allowed',
                 opacity: mktNewIdea.trim() ? 1 : 0.4,
-                fontFamily: 'DM Sans, sans-serif',
+                fontFamily: 'var(--font-body)',
               }}
             >
               {t('briefing.add')}
@@ -1277,7 +1277,7 @@ export default function BriefingPage() {
             }}
             style={{
               border: `2px dashed ${instaDragOver ? '#f59e0b' : 'var(--border, rgba(0,0,0,0.12))'}`,
-              borderRadius: 12,
+              borderRadius: 'var(--r-md)',
               padding: '24px 16px',
               textAlign: 'center',
               cursor: instaUploading ? 'wait' : 'pointer',
@@ -1306,7 +1306,7 @@ export default function BriefingPage() {
           {instaError && (
             <div style={{
               background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)',
-              padding: '10px 14px', borderRadius: 8, marginBottom: 10,
+              padding: '10px 14px', borderRadius: 'var(--r-sm)', marginBottom: 10,
               fontSize: 13, color: 'var(--danger)',
             }}>
               {instaError}
@@ -1316,7 +1316,7 @@ export default function BriefingPage() {
           {instaAmbiguities.length > 0 && (
             <div style={{
               background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.2)',
-              padding: '10px 14px', borderRadius: 8, marginBottom: 10,
+              padding: '10px 14px', borderRadius: 'var(--r-sm)', marginBottom: 10,
               fontSize: 12, color: '#f59e0b',
             }}>
               <strong>{t('briefing.ambiguitiesDetected')}</strong>
@@ -1360,7 +1360,7 @@ export default function BriefingPage() {
                     <pre style={{
                       fontSize: 11, marginTop: 8, overflow: 'auto',
                       maxHeight: 320, background: 'var(--bg2)',
-                      padding: 10, borderRadius: 6,
+                      padding: 10, borderRadius: 'var(--r-sm)',
                     }}>
                       {JSON.stringify(h.brief_content, null, 2)}
                     </pre>
@@ -1385,13 +1385,13 @@ function MktIdeaCard({ idea }: { idea: BriefIdea }) {
     <div style={{ ...card, padding: 18, position: 'relative' } as React.CSSProperties}>
       {/* Badges */}
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
-        <span style={{ fontSize: 10, fontWeight: 700, padding: '3px 9px', borderRadius: 99, background: tier.color, color: '#fff', letterSpacing: 0.4 }}>
+        <span style={{ fontSize: 10, fontWeight: 700, padding: '3px 9px', borderRadius: 'var(--r-pill)', background: tier.color, color: '#fff', letterSpacing: 0.4 }}>
           {tier.label}
         </span>
-        <span style={{ fontSize: 10, fontWeight: 700, padding: '3px 9px', borderRadius: 99, background: pillarC, color: '#fff', textTransform: 'uppercase', letterSpacing: 0.8 }}>
+        <span style={{ fontSize: 10, fontWeight: 700, padding: '3px 9px', borderRadius: 'var(--r-pill)', background: pillarC, color: '#fff', textTransform: 'uppercase', letterSpacing: 0.8 }}>
           {idea.pillar}
         </span>
-        <span style={{ fontSize: 10, fontWeight: 700, padding: '3px 9px', borderRadius: 99, background: '#1a1a1a', color: '#fff', textTransform: 'uppercase', letterSpacing: 0.8 }}>
+        <span style={{ fontSize: 10, fontWeight: 700, padding: '3px 9px', borderRadius: 'var(--r-pill)', background: '#1a1a1a', color: '#fff', textTransform: 'uppercase', letterSpacing: 0.8 }}>
           {idea.format}
         </span>
         <span style={{ fontSize: 11, color: 'var(--text-dim)', marginLeft: 'auto', alignSelf: 'center' }}>
@@ -1400,7 +1400,7 @@ function MktIdeaCard({ idea }: { idea: BriefIdea }) {
       </div>
 
       {/* Hook */}
-      <h3 style={{ fontFamily: 'Syne, sans-serif', fontSize: 16, fontWeight: 700, margin: '0 0 10px', lineHeight: 1.35, color: 'var(--text)' }}>
+      <h3 style={{ fontFamily: 'var(--font-body)', fontSize: 16, fontWeight: 700, margin: '0 0 10px', lineHeight: 1.35, color: 'var(--text)' }}>
         {idea.hook}
       </h3>
 
@@ -1410,14 +1410,14 @@ function MktIdeaCard({ idea }: { idea: BriefIdea }) {
 
       {/* Caption */}
       <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-dim)', marginBottom: 4 }}>Caption</div>
-      <div style={{ fontSize: 13, whiteSpace: 'pre-wrap', background: 'var(--bg2, rgba(0,0,0,0.03))', padding: '10px 12px', borderRadius: 8, marginBottom: 10, color: 'var(--text-mid)' }}>
+      <div style={{ fontSize: 13, whiteSpace: 'pre-wrap', background: 'var(--bg2, rgba(0,0,0,0.03))', padding: '10px 12px', borderRadius: 'var(--r-sm)', marginBottom: 10, color: 'var(--text-mid)' }}>
         {idea.caption}
       </div>
 
       {/* Hashtags */}
       <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 10 }}>
         {idea.hashtags?.map(h => (
-          <span key={h} style={{ fontSize: 12, color: '#5b6fff', background: 'rgba(91,111,255,0.1)', padding: '2px 8px', borderRadius: 6 }}>
+          <span key={h} style={{ fontSize: 12, color: '#5b6fff', background: 'rgba(91,111,255,0.1)', padding: '2px 8px', borderRadius: 'var(--r-sm)' }}>
             #{h.replace(/^#/, '')}
           </span>
         ))}
@@ -1437,7 +1437,7 @@ function MktIdeaCard({ idea }: { idea: BriefIdea }) {
         style={{
           position: 'absolute', top: 14, right: 14,
           background: 'transparent', border: '1px solid var(--border, rgba(0,0,0,0.1))',
-          borderRadius: 6, padding: '3px 9px', fontSize: 11,
+          borderRadius: 'var(--r-sm)', padding: '3px 9px', fontSize: 11,
           cursor: 'pointer', color: 'var(--text-dim)',
         }}
       >{t('briefing.copy')}</button>
@@ -1456,7 +1456,7 @@ function InstaSnapshotCard({ snapshot, compact = false }: { snapshot: InstaSnaps
           <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>{snapshot.snapshot_date}</span>
           {snapshot.reach_total != null && <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>Reach {snapshot.reach_total.toLocaleString(currentLocale())}</span>}
           {snapshot.followers_count != null && <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>Followers {snapshot.followers_count.toLocaleString(currentLocale())}</span>}
-          {snapshot.best_format && <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 99, background: 'rgba(245,158,11,0.1)', color: '#f59e0b', fontWeight: 600 }}>{snapshot.best_format}</span>}
+          {snapshot.best_format && <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 'var(--r-pill)', background: 'rgba(245,158,11,0.1)', color: '#f59e0b', fontWeight: 600 }}>{snapshot.best_format}</span>}
         </div>
       </div>
     )
@@ -1521,7 +1521,7 @@ function InstaSnapshotCard({ snapshot, compact = false }: { snapshot: InstaSnaps
       {/* Résumé */}
       {snapshot.insights_summary && (
         <div style={{
-          padding: '10px 12px', borderRadius: 8,
+          padding: '10px 12px', borderRadius: 'var(--r-sm)',
           background: 'rgba(245,158,11,0.05)', borderLeft: '3px solid #f59e0b',
           fontSize: 13, lineHeight: 1.6, color: 'var(--text-mid)',
           marginBottom: topPosts.length > 0 ? 12 : 0,
@@ -1540,11 +1540,11 @@ function InstaSnapshotCard({ snapshot, compact = false }: { snapshot: InstaSnaps
             {topPosts.slice(0, 3).map((p, i) => (
               <div key={i} style={{
                 display: 'flex', gap: 10, alignItems: 'flex-start',
-                padding: '8px 10px', borderRadius: 8,
+                padding: '8px 10px', borderRadius: 'var(--r-sm)',
                 background: 'var(--bg2, rgba(0,0,0,0.03))',
               }}>
                 <span style={{
-                  fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 99,
+                  fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 'var(--r-pill)',
                   background: '#1a1a1a', color: '#fff', textTransform: 'uppercase',
                   letterSpacing: 0.5, flexShrink: 0,
                 }}>{p.format}</span>
@@ -1572,7 +1572,7 @@ function InstaSnapshotCard({ snapshot, compact = false }: { snapshot: InstaSnaps
 const cardStyle: React.CSSProperties = {
   background: 'var(--bg2, #fff)',
   border: '1px solid var(--border, rgba(0,0,0,0.08))',
-  borderRadius: 14,
+  borderRadius: 'var(--r-md)',
 }
 
 // ── Sous-composant métrique ───────────────────────────────────
@@ -1604,19 +1604,19 @@ const page: React.CSSProperties = {
   maxWidth: 820,
   margin: '0 auto',
   padding: '28px 20px 60px',
-  fontFamily: 'DM Sans, sans-serif',
+  fontFamily: 'var(--font-body)',
   color: 'var(--text)',
 }
 
 const card: React.CSSProperties = {
   background: 'var(--bg2, #fff)',
   border: '1px solid var(--border, rgba(0,0,0,0.08))',
-  borderRadius: 14,
+  borderRadius: 'var(--r-md)',
 }
 
 const h1Style: React.CSSProperties = {
   margin: 0,
-  fontFamily: 'Syne, sans-serif',
+  fontFamily: 'var(--font-body)',
   fontWeight: 800, fontSize: 28,
   letterSpacing: '-0.015em',
   color: 'var(--text)',
@@ -1632,7 +1632,7 @@ const dateStyle: React.CSSProperties = {
 
 const sectionLabel: React.CSSProperties = {
   margin: '0 0 10px',
-  fontFamily: 'Syne, sans-serif',
+  fontFamily: 'var(--font-body)',
   fontSize: 11, fontWeight: 700, letterSpacing: '0.14em',
   textTransform: 'uppercase',
   color: '#06B6D4',

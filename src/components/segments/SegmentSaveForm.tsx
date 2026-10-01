@@ -42,7 +42,7 @@ export default function SegmentSaveForm({ defaultName = '', sport, onSave, onClo
       position: 'fixed', inset: 0, zIndex: 10010,
       background: bg, color: text,
       display: 'flex', flexDirection: 'column',
-      fontFamily: 'DM Sans, sans-serif',
+      fontFamily: 'var(--font-body)',
       paddingTop: 'env(safe-area-inset-top)',
       transform: shown && !closing ? 'translateY(0)' : 'translateY(100%)',
       transition: 'transform 280ms cubic-bezier(0.16,1,0.3,1)',
@@ -52,7 +52,7 @@ export default function SegmentSaveForm({ defaultName = '', sport, onSave, onClo
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
         </button>
         <span style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', fontSize: 15, fontWeight: 600 }}>{t('shared.createSegment')}</span>
-        <button onClick={handleSave} disabled={saving || !name.trim()} style={{ marginLeft: 'auto', padding: '7px 14px', borderRadius: 10, background: 'none', border: 'none', color: name.trim() ? 'var(--primary)' : dim, fontSize: 15, fontWeight: 600, cursor: name.trim() ? 'pointer' : 'default', opacity: saving ? 0.5 : 1 }}>
+        <button onClick={handleSave} disabled={saving || !name.trim()} style={{ marginLeft: 'auto', padding: '7px 14px', borderRadius: 'var(--r-sm)', background: 'none', border: 'none', color: name.trim() ? 'var(--primary)' : dim, fontSize: 15, fontWeight: 600, cursor: name.trim() ? 'pointer' : 'default', opacity: saving ? 0.5 : 1 }}>
           {saving ? '…' : t('shared.create')}
         </button>
       </div>
@@ -65,13 +65,13 @@ export default function SegmentSaveForm({ defaultName = '', sport, onSave, onClo
             onChange={e => setName(e.target.value)}
             placeholder={t('shared.segmentNamePlaceholder')}
             autoFocus
-            style={{ width: '100%', boxSizing: 'border-box', background: surface, border: `1px solid ${border}`, borderRadius: 12, padding: '12px 16px', fontSize: 16, color: text, outline: 'none', fontFamily: 'DM Sans, sans-serif' }}
+            style={{ width: '100%', boxSizing: 'border-box', background: surface, border: `1px solid ${border}`, borderRadius: 'var(--r-md)', padding: '12px 16px', fontSize: 16, color: text, outline: 'none', fontFamily: 'var(--font-body)' }}
           />
         </div>
 
         <div style={{ marginBottom: 24 }}>
           <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: dim, marginBottom: 10 }}>{t('shared.sport')}</p>
-          <div style={{ background: surface, borderRadius: 12, padding: '12px 16px', border: `1px solid ${border}` }}>
+          <div style={{ background: surface, borderRadius: 'var(--r-md)', padding: '12px 16px', border: `1px solid ${border}` }}>
             <span style={{ fontSize: 15, color: text, fontWeight: 500 }}>
               {sport === 'cycling' ? t('shared.sportCycling') : sport === 'running' ? t('shared.sportRunning') : sport === 'trail' ? t('shared.sportTrail') : sport === 'mtb' ? t('shared.sportMtb') : sport === 'hiking' ? t('shared.sportHiking') : sport}
             </span>
@@ -85,7 +85,7 @@ export default function SegmentSaveForm({ defaultName = '', sport, onSave, onClo
           </div>
           <button
             onClick={() => setIsPublic(p => !p)}
-            style={{ width: 44, height: 26, borderRadius: 13, background: isPublic ? 'var(--primary)' : (isDark ? 'rgba(255,255,255,0.15)' : '#D1D5DB'), border: 'none', cursor: 'pointer', position: 'relative', transition: 'background 200ms' }}
+            style={{ width: 44, height: 26, borderRadius: 'var(--r-md)', background: isPublic ? 'var(--primary)' : (isDark ? 'rgba(255,255,255,0.15)' : '#D1D5DB'), border: 'none', cursor: 'pointer', position: 'relative', transition: 'background 200ms' }}
           >
             <span style={{ position: 'absolute', top: 3, left: isPublic ? 21 : 3, width: 20, height: 20, borderRadius: '50%', background: '#fff', transition: 'left 200ms', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
           </button>
@@ -93,7 +93,7 @@ export default function SegmentSaveForm({ defaultName = '', sport, onSave, onClo
       </div>
 
       <div style={{ padding: '16px 20px', paddingBottom: 'max(env(safe-area-inset-bottom),20px)' }}>
-        <button onClick={handleSave} disabled={saving || !name.trim()} style={{ width: '100%', height: 52, borderRadius: 16, background: name.trim() ? 'linear-gradient(135deg,#06B6D4,#2563EB)' : (isDark ? 'rgba(255,255,255,0.08)' : '#F3F4F6'), border: 'none', color: name.trim() ? '#fff' : dim, fontSize: 16, fontWeight: 600, cursor: name.trim() ? 'pointer' : 'default', fontFamily: 'DM Sans, sans-serif' }}>
+        <button onClick={handleSave} disabled={saving || !name.trim()} style={{ width: '100%', height: 52, borderRadius: 'var(--r-md)', background: name.trim() ? 'linear-gradient(135deg,#06B6D4,#2563EB)' : (isDark ? 'rgba(255,255,255,0.08)' : '#F3F4F6'), border: 'none', color: name.trim() ? '#fff' : dim, fontSize: 16, fontWeight: 600, cursor: name.trim() ? 'pointer' : 'default', fontFamily: 'var(--font-body)' }}>
           {saving ? t('shared.creating') : t('shared.createTheSegment')}
         </button>
       </div>

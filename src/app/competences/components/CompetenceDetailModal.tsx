@@ -150,7 +150,7 @@ Garde le prompt entre 80 et 150 mots. Réponds d'abord en expliquant brièvement
   const headerNode = (closeFn: () => void) => (
     <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, padding: '20px 24px', borderBottom: '0.5px solid var(--border)', flexShrink: 0 }}>
       <div style={{ display: 'flex', gap: 12, minWidth: 0 }}>
-        <div style={{ width: 24, height: 24, borderRadius: 8, background: 'rgba(6,182,212,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 2 }}>
+        <div style={{ width: 24, height: 24, borderRadius: 'var(--r-sm)', background: 'rgba(6,182,212,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 2 }}>
           <Zap size={14} color="#06B6D4" />
         </div>
         <div style={{ minWidth: 0 }}>
@@ -159,10 +159,10 @@ Garde le prompt entre 80 et 150 mots. Réponds d'abord en expliquant brièvement
           {(isActive || conflicts.length > 0) && (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 7 }}>
               {isActive && (
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, fontWeight: 600, color: 'var(--primary)', background: 'rgba(6,182,212,0.12)', border: '0.5px solid rgba(6,182,212,0.3)', borderRadius: 5, padding: '2px 8px' }}>{t('competences.active')}</span>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, fontWeight: 600, color: 'var(--primary)', background: 'rgba(6,182,212,0.12)', border: '0.5px solid rgba(6,182,212,0.3)', borderRadius: 'var(--r-sm)', padding: '2px 8px' }}>{t('competences.active')}</span>
               )}
               {conflicts.map(c => (
-                <span key={c.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, color: 'rgba(239,68,68,0.9)', border: '0.5px solid rgba(239,68,68,0.35)', borderRadius: 5, padding: '2px 8px' }}>
+                <span key={c.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, color: 'rgba(239,68,68,0.9)', border: '0.5px solid rgba(239,68,68,0.35)', borderRadius: 'var(--r-sm)', padding: '2px 8px' }}>
                   <AlertTriangle size={10} strokeWidth={1.8} /> {c.nom}
                 </span>
               ))}
@@ -235,13 +235,13 @@ Garde le prompt entre 80 et 150 mots. Réponds d'abord en expliquant brièvement
                   {isLast && isStreaming && <span style={{ color: 'var(--text-dim)' }}>▋</span>}
                 </div>
                 {proposed && (
-                  <div style={{ marginTop: 8, background: 'var(--bg-alt)', border: '0.5px solid var(--border)', borderRadius: 8, padding: 12 }}>
+                  <div style={{ marginTop: 8, background: 'var(--bg-alt)', border: '0.5px solid var(--border)', borderRadius: 'var(--r-sm)', padding: 12 }}>
                     <div style={{ fontSize: 13, lineHeight: 1.6, color: 'var(--text-mid)', whiteSpace: 'pre-wrap', marginBottom: 8, fontFamily: "'Inter', system-ui, sans-serif" }}>
                       {proposed}
                     </div>
                     <button
                       onClick={() => setCurrentPrompt(proposed)}
-                      style={{ fontSize: 11, background: 'var(--primary)', color: '#fff', border: 'none', borderRadius: 6, padding: '5px 12px', cursor: 'pointer', fontWeight: 500 }}
+                      style={{ fontSize: 11, background: 'var(--primary)', color: '#fff', border: 'none', borderRadius: 'var(--r-sm)', padding: '5px 12px', cursor: 'pointer', fontWeight: 500 }}
                     >
                       {t('competences.applyThisVersion')}
                     </button>
@@ -262,7 +262,7 @@ Garde le prompt entre 80 et 150 mots. Réponds d'abord en expliquant brièvement
             onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void send() } }}
             placeholder={t('competences.reshapePlaceholder')}
             rows={1}
-            style={{ width: '100%', background: 'transparent', border: 'none', outline: 'none', resize: 'none', fontSize: 13, color: 'var(--text)', fontFamily: 'DM Sans, sans-serif', minHeight: 22, maxHeight: 100 }}
+            style={{ width: '100%', background: 'transparent', border: 'none', outline: 'none', resize: 'none', fontSize: 13, color: 'var(--text)', fontFamily: 'var(--font-body)', minHeight: 22, maxHeight: 100 }}
           />
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 }}>
             <MicButton onTranscript={setInput} iconSize={15} boxSize={22} />
@@ -285,15 +285,15 @@ Garde le prompt entre 80 et 150 mots. Réponds d'abord en expliquant brièvement
       {isCustom ? (
         <button
           onClick={() => { if (confirm(t('competences.deleteConfirm'))) onDelete() }}
-          style={{ background: 'transparent', color: 'var(--danger)', border: '0.5px solid rgba(239,68,68,0.3)', borderRadius: 8, padding: '8px 16px', fontSize: 12, fontWeight: 500, cursor: 'pointer' }}
+          style={{ background: 'transparent', color: 'var(--danger)', border: '0.5px solid rgba(239,68,68,0.3)', borderRadius: 'var(--r-sm)', padding: '8px 16px', fontSize: 12, fontWeight: 500, cursor: 'pointer' }}
         >{t('competences.delete')}</button>
       ) : <span />}
       <div style={{ display: 'flex', gap: 8 }}>
-        <button onClick={closeFn} style={{ background: 'transparent', color: 'var(--text-mid)', border: '0.5px solid var(--border)', borderRadius: 8, padding: '8px 16px', fontSize: 12, cursor: 'pointer' }}>{t('competences.close')}</button>
+        <button onClick={closeFn} style={{ background: 'transparent', color: 'var(--text-mid)', border: '0.5px solid var(--border)', borderRadius: 'var(--r-sm)', padding: '8px 16px', fontSize: 12, cursor: 'pointer' }}>{t('competences.close')}</button>
         <button
           onClick={() => onSave(currentPrompt)}
           disabled={!dirty}
-          style={{ background: dirty ? 'var(--primary)' : 'var(--border)', color: dirty ? '#fff' : 'var(--text-dim)', border: 'none', borderRadius: 8, padding: '8px 18px', fontSize: 12, fontWeight: 500, cursor: dirty ? 'pointer' : 'not-allowed', opacity: dirty ? 1 : 0.6 }}
+          style={{ background: dirty ? 'var(--primary)' : 'var(--border)', color: dirty ? '#fff' : 'var(--text-dim)', border: 'none', borderRadius: 'var(--r-sm)', padding: '8px 18px', fontSize: 12, fontWeight: 500, cursor: dirty ? 'pointer' : 'not-allowed', opacity: dirty ? 1 : 0.6 }}
         >{t('competences.save')}</button>
       </div>
     </div>
@@ -342,7 +342,7 @@ Garde le prompt entre 80 et 150 mots. Réponds d'abord en expliquant brièvement
         onClick={e => e.stopPropagation()}
         style={{
           width: 620, maxHeight: 620, background: 'var(--bg-card)',
-          border: '0.5px solid var(--border-mid)', borderRadius: 14,
+          border: '0.5px solid var(--border-mid)', borderRadius: 'var(--r-md)',
           boxShadow: '0 20px 60px rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column', overflow: 'hidden',
           transform: shown ? 'scale(1)' : 'scale(0.95)', transition: 'transform 250ms cubic-bezier(0.2,0.9,0.3,1)',
         }}

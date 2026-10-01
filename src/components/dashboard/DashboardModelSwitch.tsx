@@ -17,7 +17,7 @@ export function DashboardModelSwitch({ value, onChange }: { value: DashboardMode
   const { t } = useI18n()
   return (
     <div role="tablist" data-guide="dash-model-switch" aria-label={t('dashboard.modelSwitchLabel')}
-      style={{ display: 'inline-flex', gap: 2, padding: 3, borderRadius: 999, background: 'var(--bg-card2)' }}>
+      style={{ display: 'inline-flex', gap: 2, padding: 3, borderRadius: 'var(--r-pill)', background: 'var(--bg-card2)' }}>
       {SEGMENTS.map(s => {
         const active = s.key === value
         return (
@@ -27,7 +27,7 @@ export function DashboardModelSwitch({ value, onChange }: { value: DashboardMode
             aria-selected={active}
             onClick={() => onChange(s.key)}
             style={{
-              border: 'none', cursor: 'pointer', borderRadius: 999, padding: '6px 14px',
+              border: 'none', cursor: 'pointer', borderRadius: 'var(--r-pill)', padding: '6px 14px',
               fontFamily: FB, fontSize: 12, fontWeight: 600,
               background: active ? 'var(--bg-elev)' : 'transparent',
               color: active ? 'var(--text)' : 'var(--text-mid)',

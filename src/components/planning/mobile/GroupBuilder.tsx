@@ -91,11 +91,11 @@ export function GroupBuilder({ variant, accent, exercises, setExercises, circuit
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 220, overflowY: 'auto' }}>
         {results.map(def => (
           <button key={def.id} type="button" onClick={() => onDef(def)}
-            style={{ textAlign: 'left', border: 'none', background: 'transparent', color: 'var(--se-text)', fontSize: 13, padding: '7px 6px', borderRadius: 8, cursor: 'pointer' }}>{def.name}</button>
+            style={{ textAlign: 'left', border: 'none', background: 'transparent', color: 'var(--se-text)', fontSize: 13, padding: '7px 6px', borderRadius: 'var(--r-sm)', cursor: 'pointer' }}>{def.name}</button>
         ))}
         {query.trim() && (
           <button type="button" onClick={() => onCustomName(query.trim())}
-            style={{ textAlign: 'left', border: '1px dashed var(--se-rule)', background: 'transparent', color: accent, fontSize: 13, fontWeight: 600, padding: '7px 8px', borderRadius: 8, cursor: 'pointer', marginTop: 2 }}>{tr('planning.createQuoted', { q: query.trim() })}</button>
+            style={{ textAlign: 'left', border: '1px dashed var(--se-rule)', background: 'transparent', color: accent, fontSize: 13, fontWeight: 600, padding: '7px 8px', borderRadius: 'var(--r-sm)', cursor: 'pointer', marginTop: 2 }}>{tr('planning.createQuoted', { q: query.trim() })}</button>
         )}
       </div>
     </div>
@@ -122,14 +122,14 @@ export function GroupBuilder({ variant, accent, exercises, setExercises, circuit
               className="se-fr" style={{ flex: 1, minWidth: 0, background: 'transparent', border: 'none', outline: 'none', fontSize: 15, fontWeight: 600, color: 'var(--se-text)' }} />
             {variant === 'hyrox' && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', color: 'var(--se-dim)' }}>{tr('planning.target')}</span>
+                <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: 'var(--se-dim)' }}>{tr('planning.target')}</span>
                 <input value={fmtSec(c.targetTimeSec ?? 0)} onChange={e => { const m = e.target.value.match(/^(\d+):(\d{1,2})$/); updateCircuit(c.id, { targetTimeSec: m ? (+m[1]) * 60 + (+m[2]) : (parseInt(e.target.value) || 0) }) }}
-                  className="se-fr se-tnum" style={{ width: 52, textAlign: 'center', background: 'var(--se-card)', border: '1px solid var(--se-rule)', borderRadius: 8, padding: '4px 4px', fontSize: 12, color: 'var(--se-text)', outline: 'none' }} />
+                  className="se-fr se-tnum" style={{ width: 52, textAlign: 'center', background: 'var(--se-card)', border: '1px solid var(--se-rule)', borderRadius: 'var(--r-sm)', padding: '4px 4px', fontSize: 12, color: 'var(--se-text)', outline: 'none' }} />
               </div>
             )}
             {variant !== 'hyrox' && (
               <button type="button" onClick={() => setTypeMenu(typeMenu === c.id ? null : c.id)}
-                style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 9px', borderRadius: 999, border: `1px solid ${accent}`, background: `${accent}14`, color: accent, fontSize: 11.5, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 9px', borderRadius: 'var(--r-pill)', border: `1px solid ${accent}`, background: `${accent}14`, color: accent, fontSize: 11.5, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>
                 <span>{CIRCUIT_TYPES.find(t => t.id === (c.type ?? 'series'))?.icon ?? '▤'}</span>
                 {CIRCUIT_TYPES.find(t => t.id === (c.type ?? 'series'))?.label ?? tr('planning.seriesPlural')}
               </button>
@@ -137,7 +137,7 @@ export function GroupBuilder({ variant, accent, exercises, setExercises, circuit
             <div style={{ position: 'relative' }}>
               <button type="button" onClick={() => setMenu(menu === c.id ? null : c.id)} style={{ border: 'none', background: 'transparent', color: 'var(--se-dim)', cursor: 'pointer', display: 'flex', padding: 2 }}><IconDotsVertical size={17} /></button>
               {menu === c.id && (
-                <div style={{ position: 'absolute', right: 0, top: 24, zIndex: 5, background: 'var(--se-card)', border: '1px solid var(--se-rule)', borderRadius: 10, boxShadow: '0 6px 20px rgba(0,0,0,0.12)', overflow: 'hidden' }}>
+                <div style={{ position: 'absolute', right: 0, top: 24, zIndex: 5, background: 'var(--se-card)', border: '1px solid var(--se-rule)', borderRadius: 'var(--r-sm)', boxShadow: '0 6px 20px rgba(0,0,0,0.12)', overflow: 'hidden' }}>
                   <button type="button" onClick={() => removeCircuit(c.id)} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 14px', border: 'none', background: 'transparent', color: '#ff5f5f', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}><IconTrash size={15} /> {tr('planning.deleteGroup')}</button>
                 </div>
               )}
@@ -227,7 +227,7 @@ export function GroupBuilder({ variant, accent, exercises, setExercises, circuit
         {!isLastCircuit && (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', margin: '0 0 0' }}>
             <div style={{ width: 2, height: 10, background: 'var(--se-rule)' }} />
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px', borderRadius: 999, border: '1px dashed var(--se-rule)', background: 'var(--se-card)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px', borderRadius: 'var(--r-pill)', border: '1px dashed var(--se-rule)', background: 'var(--se-card)' }}>
               <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--se-dim)', whiteSpace: 'nowrap' }}>⏱ {tr('planning.restAfterCircuit')}</span>
               <Stepper value={String(c.restAfterCircuitSec ?? 0)} unit="s"
                 onChange={v => updateCircuit(c.id, { restAfterCircuitSec: Math.max(0, parseInt(v) || 0) })}
@@ -270,7 +270,7 @@ function CircuitTypeChips({ current, accent, onPick }: {
         const on = (current ?? 'series') === ct.id
         return (
           <button key={ct.id} type="button" onClick={() => onPick(ct.id)}
-            style={{ display: 'flex', alignItems: 'center', gap: 9, textAlign: 'left', padding: '8px 10px', borderRadius: 10, cursor: 'pointer',
+            style={{ display: 'flex', alignItems: 'center', gap: 9, textAlign: 'left', padding: '8px 10px', borderRadius: 'var(--r-sm)', cursor: 'pointer',
               border: on ? `2px solid ${accent}` : '1px solid var(--se-rule)', background: on ? `${accent}14` : 'var(--se-card)' }}>
             <span style={{ fontSize: 16, width: 20, textAlign: 'center', flexShrink: 0 }}>{ct.icon}</span>
             <span style={{ minWidth: 0 }}>

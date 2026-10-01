@@ -548,7 +548,7 @@ export default function RecordPage() {
         {/* Paramètres de la séance — révélés en dépliant le sheet */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '4px 16px 16px', WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'] }}>
           <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '6px 4px 10px' }}>{t('record.pageSessionSettings')}</p>
-          <div style={{ background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 16, overflow: 'hidden' }}>
+          <div style={{ background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', overflow: 'hidden' }}>
             {([
               { key: 'liveshare', label: t('record.pageLiveShareLabel'), sub: t('record.pageLiveShareSub'), on: liveShare,   set: (v: boolean) => { if (v) { setLiveShareSheetOpen(true) } else { setLiveShare(false); void stopLiveShare(liveShareId ?? undefined); setLiveShareId(null) } },
                 icon: <><circle cx="12" cy="12" r="2.5"/><path d="M7.5 7.5a6 6 0 0 0 0 9M16.5 7.5a6 6 0 0 1 0 9M4.5 4.5a10 10 0 0 0 0 15M19.5 4.5a10 10 0 0 1 0 15"/></> },
@@ -558,14 +558,14 @@ export default function RecordPage() {
                 icon: <><circle cx="12" cy="12" r="9"/><path d="M10 9v6M14 9v6"/></> },
             ] as const).map((row, i) => (
               <div key={row.key} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '13px 14px', borderTop: i > 0 ? '1px solid var(--border)' : 'none' }}>
-                <span style={{ width: 32, height: 32, borderRadius: 9, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-card)', color: 'var(--text-mid)' }}>
+                <span style={{ width: 32, height: 32, borderRadius: 'var(--r-sm)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-card)', color: 'var(--text-mid)' }}>
                   <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">{row.icon}</svg>
                 </span>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <p style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--text)', margin: 0 }}>{row.label}</p>
                   <p style={{ fontSize: 10.5, color: 'var(--text-dim)', margin: '2px 0 0', lineHeight: 1.4 }}>{row.sub}</p>
                 </div>
-                <button onClick={() => row.set(!row.on)} aria-label={row.label} style={{ width: 40, height: 23, borderRadius: 12, background: row.on ? 'var(--primary)' : 'var(--border-mid)', border: 'none', cursor: 'pointer', position: 'relative', flexShrink: 0, transition: 'background 0.2s' }}>
+                <button onClick={() => row.set(!row.on)} aria-label={row.label} style={{ width: 40, height: 23, borderRadius: 'var(--r-md)', background: row.on ? 'var(--primary)' : 'var(--border-mid)', border: 'none', cursor: 'pointer', position: 'relative', flexShrink: 0, transition: 'background 0.2s' }}>
                   <span style={{ width: 17, height: 17, borderRadius: '50%', background: '#fff', position: 'absolute', top: 3, left: row.on ? 20 : 3, transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.3)' }} />
                 </button>
               </div>
@@ -579,7 +579,7 @@ export default function RecordPage() {
                     const on = autoPauseSpeed === v
                     return (
                       <button key={v} onClick={() => { setAutoPauseSpeed(v); try { localStorage.setItem('thw-rec-autopause-speed', String(v)) } catch { /* ignore */ } }}
-                        style={{ minWidth: 40, height: 30, padding: '0 8px', borderRadius: 9, border: `1px solid ${on ? 'var(--primary)' : 'var(--border)'}`, background: on ? 'var(--primary)' : 'var(--bg-card)', color: on ? 'var(--on-primary)' : 'var(--text)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}>
+                        style={{ minWidth: 40, height: 30, padding: '0 8px', borderRadius: 'var(--r-sm)', border: `1px solid ${on ? 'var(--primary)' : 'var(--border)'}`, background: on ? 'var(--primary)' : 'var(--bg-card)', color: on ? 'var(--on-primary)' : 'var(--text)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
                         {v}
                       </button>
                     )
@@ -590,13 +590,13 @@ export default function RecordPage() {
             )}
           </div>
 
-          <div style={{ background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 16, overflow: 'hidden', marginTop: 12 }}>
+          <div style={{ background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', overflow: 'hidden', marginTop: 12 }}>
             {([
               { key: 'sensor', label: t('record.pageAddSensorLabel'), sub: t('record.pageAddSensorSub'), icon: <><path d="M4 12h3l2-7 4 14 2-7h5"/></> },
               { key: 'gps',    label: t('record.pageGpsLabel'), sub: t('record.pageGpsSub'), icon: <><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></> },
             ] as const).map((row, i) => (
               <button key={row.key} onClick={() => { if (row.key === 'sensor') setSensorSheetOpen(true); else setGpsSheetOpen(true) }} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '13px 14px', background: 'transparent', border: 'none', borderTop: i > 0 ? '1px solid var(--border)' : 'none', cursor: 'pointer', textAlign: 'left' }}>
-                <span style={{ width: 32, height: 32, borderRadius: 9, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-card)', color: 'var(--text-mid)' }}>
+                <span style={{ width: 32, height: 32, borderRadius: 'var(--r-sm)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-card)', color: 'var(--text-mid)' }}>
                   <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">{row.icon}</svg>
                 </span>
                 <div style={{ flex: 1, minWidth: 0 }}>
@@ -733,7 +733,7 @@ export default function RecordPage() {
               { id: 'outdoor', label: 'Dehors', desc: 'Suivi GPS en extérieur', go: () => { setRunChoiceOpen(false); setView('running') } },
               { id: 'treadmill', label: 'Tapis', desc: 'Séance guidée · allure & pente', go: () => { setRunChoiceOpen(false); setView('treadmill') } },
             ].map(o => (
-              <button key={o.id} onClick={o.go} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 14, padding: '16px', marginBottom: 10, background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 14, cursor: 'pointer', textAlign: 'left', color: 'var(--text)', fontFamily: 'var(--font-body)' }}>
+              <button key={o.id} onClick={o.go} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 14, padding: '16px', marginBottom: 10, background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', cursor: 'pointer', textAlign: 'left', color: 'var(--text)', fontFamily: 'var(--font-body)' }}>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 16, fontWeight: 700 }}>{o.label}</div>
                   <div style={{ fontSize: 13, color: 'var(--text-mid)', marginTop: 2 }}>{o.desc}</div>

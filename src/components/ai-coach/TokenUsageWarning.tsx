@@ -93,7 +93,7 @@ export default function TokenUsageWarning({ onBuyTokens, isMobile = false }: { o
     <div style={{
       margin: isMobile ? '0 2px 8px' : '0 4px 8px',
       padding: '10px 12px',
-      borderRadius: 12,
+      borderRadius: 'var(--r-md)',
       background: bg,
       border: `1px solid ${border}`,
       display: 'flex', alignItems: 'flex-start', gap: 10,
@@ -111,9 +111,9 @@ export default function TokenUsageWarning({ onBuyTokens, isMobile = false }: { o
           <button
             onClick={onBuyTokens}
             style={{
-              marginTop: 8, height: 32, padding: '0 14px', borderRadius: 8, border: 'none',
+              marginTop: 8, height: 32, padding: '0 14px', borderRadius: 'var(--r-sm)', border: 'none',
               background: accent, color: '#fff', fontSize: 12.5, fontWeight: 700, cursor: 'pointer',
-              fontFamily: 'DM Sans, sans-serif',
+              fontFamily: 'var(--font-body)',
             }}
           >Recharger des tokens →</button>
         )}

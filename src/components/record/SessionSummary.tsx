@@ -130,11 +130,11 @@ export default function SessionSummary({ sportType, startedAt, durationSec, done
   if (hr.avg != null) kpis.push({ label: t('w3a.kpi_hr_avg'), value: `${hr.avg}` })
   if (hr.max != null) kpis.push({ label: t('w3a.kpi_hr_max'), value: `${hr.max}` })
 
-  const tile: React.CSSProperties = { background: T.tileBg, border: `1px solid ${T.tileBorder}`, borderRadius: 16, padding: '14px 16px', boxShadow: T.shadow }
+  const tile: React.CSSProperties = { background: T.tileBg, border: `1px solid ${T.tileBorder}`, borderRadius: 'var(--r-md)', padding: '14px 16px', boxShadow: T.shadow }
   const label: React.CSSProperties = { fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: T.muted, margin: 0 }
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 10004, background: T.bg, color: T.text, display: 'flex', flexDirection: 'column', fontFamily: 'DM Sans, sans-serif', transform: shown && !closing ? 'translateY(0)' : 'translateY(100%)', transition: 'transform 320ms cubic-bezier(0.16,1,0.3,1)', paddingTop: 'env(safe-area-inset-top)' }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 10004, background: T.bg, color: T.text, display: 'flex', flexDirection: 'column', fontFamily: 'var(--font-body)', transform: shown && !closing ? 'translateY(0)' : 'translateY(100%)', transition: 'transform 320ms cubic-bezier(0.16,1,0.3,1)', paddingTop: 'env(safe-area-inset-top)' }}>
       {onClose && (
         <button onClick={requestClose} aria-label={t('w3a.close')} style={{ position: 'absolute', top: 'calc(env(safe-area-inset-top) + 12px)', left: 14, width: 38, height: 38, borderRadius: '50%', border: `1px solid ${T.tileBorder}`, background: T.tileBg, color: T.text, cursor: 'pointer', zIndex: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, boxShadow: T.shadow }}>×</button>
       )}
@@ -142,13 +142,13 @@ export default function SessionSummary({ sportType, startedAt, durationSec, done
       <div style={{ flex: 1, overflowY: 'auto', padding: '30px 20px 130px', maxWidth: 760, width: '100%', margin: '0 auto', boxSizing: 'border-box' }}>
         {/* Hero */}
         <div style={{ textAlign: 'center', marginBottom: 26 }}>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '5px 13px', borderRadius: 999, background: T.accentSoft, border: `1px solid ${T.blue}44`, marginBottom: 14 }}>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '5px 13px', borderRadius: 'var(--r-pill)', background: T.accentSoft, border: `1px solid ${T.blue}44`, marginBottom: 14 }}>
             <span style={{ width: 7, height: 7, borderRadius: '50%', background: T.blue }} />
             <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: T.blue }}>{sportLabel(sportType)}</span>
           </div>
-          <h1 style={{ fontFamily: 'Syne, DM Sans, sans-serif', fontSize: 30, fontWeight: 800, margin: '0 0 4px', letterSpacing: '-0.02em', color: T.text }}>{t('w3a.session_done')}</h1>
+          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 30, fontWeight: 800, margin: '0 0 4px', letterSpacing: '-0.02em', color: T.text }}>{t('w3a.session_done')}</h1>
           <p style={{ fontSize: 13.5, color: T.muted, margin: 0, textTransform: 'capitalize' }}>{date}</p>
-          <p style={{ fontFamily: 'Syne, DM Sans, sans-serif', fontSize: 'clamp(52px, 16vw, 84px)', fontWeight: 800, margin: '10px 0 0', lineHeight: 1, color: accent, fontVariantNumeric: 'tabular-nums' }}>{fmtClock(durationSec)}</p>
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: 'clamp(52px, 16vw, 84px)', fontWeight: 800, margin: '10px 0 0', lineHeight: 1, color: accent, fontVariantNumeric: 'tabular-nums' }}>{fmtClock(durationSec)}</p>
         </div>
 
         {/* KPI grid */}
@@ -176,7 +176,7 @@ export default function SessionSummary({ sportType, startedAt, durationSec, done
         {doneList.length > 0 && (
           <div style={{ marginBottom: 8 }}>
             <p style={{ ...label, marginBottom: 10 }}>{t('w3a.what_done')}</p>
-            <div style={{ background: T.tileBg, border: `1px solid ${T.tileBorder}`, borderRadius: 16, overflow: 'hidden', boxShadow: T.shadow }}>
+            <div style={{ background: T.tileBg, border: `1px solid ${T.tileBorder}`, borderRadius: 'var(--r-md)', overflow: 'hidden', boxShadow: T.shadow }}>
               {doneList.map((d, i) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 15px', borderTop: i === 0 ? 'none' : `1px solid ${T.listBorder}` }}>
                   <span className="tnum" style={{ width: 22, fontSize: 12, fontWeight: 800, color: T.faint }}>{i + 1}</span>
@@ -192,7 +192,7 @@ export default function SessionSummary({ sportType, startedAt, durationSec, done
       {/* Bouton Suivant (bleu app) */}
       <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '16px 20px', paddingBottom: 'max(env(safe-area-inset-bottom), 20px)', background: `linear-gradient(transparent, ${T.fadeTo} 45%)` }}>
         <div style={{ maxWidth: 760, margin: '0 auto' }}>
-          <button onClick={onNext} style={{ width: '100%', height: 54, borderRadius: 16, border: 'none', background: APP_BLUE, color: '#fff', fontSize: 16, fontWeight: 800, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, boxShadow: '0 4px 20px rgba(37,99,235,0.32)' }}>
+          <button onClick={onNext} style={{ width: '100%', height: 54, borderRadius: 'var(--r-md)', border: 'none', background: APP_BLUE, color: '#fff', fontSize: 16, fontWeight: 800, cursor: 'pointer', fontFamily: 'var(--font-body)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, boxShadow: '0 4px 20px rgba(37,99,235,0.32)' }}>
             {t('w3a.next')}
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
           </button>

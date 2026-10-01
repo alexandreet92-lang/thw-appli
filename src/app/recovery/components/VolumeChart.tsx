@@ -54,15 +54,15 @@ export default function VolumeChart({ activities }: { activities: ActivityRow[] 
   const barW = Math.max(Math.floor(svgW / nWeeks) - 4, 8)
 
   return (
-    <div style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:20,padding:'20px 20px 16px',boxShadow:'var(--shadow-card)' }}>
+    <div style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius: 'var(--r-lg)',padding:'20px 20px 16px',boxShadow:'var(--shadow-card)' }}>
       <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12,flexWrap:'wrap' as const,gap:8 }}>
         <div>
           <p style={{ fontSize:10,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.1em',color:'var(--text-dim)',margin:0 }}>{t('recovery.metric.volume')}</p>
-          <h3 style={{ fontFamily:'Syne,sans-serif',fontSize:16,fontWeight:700,margin:'2px 0 0' }}>{t('recovery.volume.weeklyTitle')}</h3>
+          <h3 style={{ fontFamily: 'var(--font-body)',fontSize:16,fontWeight:700,margin:'2px 0 0' }}>{t('recovery.volume.weeklyTitle')}</h3>
         </div>
         <div style={{ display:'flex',gap:4 }}>
           {PERIODS.map((p,i)=>(
-            <button key={i} onClick={()=>setPeriod(i)} style={{ padding:'4px 10px',borderRadius:7,border:'1px solid',fontSize:10,cursor:'pointer',borderColor:period===i?'#f97316':'var(--border)',background:period===i?'rgba(249,115,22,0.1)':'var(--bg-card)',color:period===i?'#f97316':'var(--text-mid)',fontWeight:period===i?600:400 }}>{t(p.labelKey)}</button>
+            <button key={i} onClick={()=>setPeriod(i)} style={{ padding:'4px 10px',borderRadius: 'var(--r-sm)',border:'1px solid',fontSize:10,cursor:'pointer',borderColor:period===i?'#f97316':'var(--border)',background:period===i?'rgba(249,115,22,0.1)':'var(--bg-card)',color:period===i?'#f97316':'var(--text-mid)',fontWeight:period===i?600:400 }}>{t(p.labelKey)}</button>
           ))}
         </div>
       </div>
@@ -122,7 +122,7 @@ export default function VolumeChart({ activities }: { activities: ActivityRow[] 
       {hovered !== null && weeks[hovered] && (() => {
         const w = weeks[hovered]
         return (
-          <div style={{ marginTop:8,padding:'8px 12px',borderRadius:10,background:'var(--bg-card2)',border:'1px solid var(--border)',display:'flex',gap:12,flexWrap:'wrap' as const }}>
+          <div style={{ marginTop:8,padding:'8px 12px',borderRadius: 'var(--r-sm)',background:'var(--bg-card2)',border:'1px solid var(--border)',display:'flex',gap:12,flexWrap:'wrap' as const }}>
             <span style={{ fontSize:11,fontWeight:600 }}>{t('recovery.volume.weekOf')} {w.weekStart}</span>
             {w.sports.map(s=>(
               <span key={s.sport} style={{ fontSize:10,color:sportColor(s.sport) }}>

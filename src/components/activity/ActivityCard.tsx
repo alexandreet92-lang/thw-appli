@@ -180,7 +180,7 @@ export function ActivityCard({ data, onClick }: Props) {
         </div>
         {/* Objectif lié (course/triathlon) — ex. « Ironman Leeds Vélo » */}
         {data.raceName && (
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, marginTop: 5, padding: '2px 9px', borderRadius: 999, background: 'color-mix(in srgb, var(--primary) 12%, transparent)', border: '1px solid color-mix(in srgb, var(--primary) 30%, transparent)' }}>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, marginTop: 5, padding: '2px 9px', borderRadius: 'var(--r-pill)', background: 'color-mix(in srgb, var(--primary) 12%, transparent)', border: '1px solid color-mix(in srgb, var(--primary) 30%, transparent)' }}>
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M4 22V4a1 1 0 0 1 1-1h13l-2 4 2 4H6"/></svg>
             <span style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 240 }}>{data.raceName}</span>
           </div>
@@ -231,7 +231,7 @@ export function ActivityCard({ data, onClick }: Props) {
               {s.kind === 'map' && (
                 <span style={{
                   position: 'absolute', top: 10, left: 10,
-                  padding: '4px 10px', borderRadius: 8, fontSize: 11, fontWeight: 700,
+                  padding: '4px 10px', borderRadius: 'var(--r-sm)', fontSize: 11, fontWeight: 700,
                   color: 'var(--text)', background: 'color-mix(in srgb, var(--bg) 82%, transparent)',
                   backdropFilter: 'blur(6px)', border: '1px solid var(--border)',
                 }}>
@@ -245,7 +245,7 @@ export function ActivityCard({ data, onClick }: Props) {
       {/* Étiquette Entraînement / Compétition aussi sous la carte (activités sans carte) */}
       {slides.length === 0 && (
         <div style={{ padding: '0 16px 4px' }}>
-          <span style={{ padding: '3px 10px', borderRadius: 8, fontSize: 11, fontWeight: 700, color: 'var(--text-mid)', border: '1px solid var(--border)' }}>
+          <span style={{ padding: '3px 10px', borderRadius: 'var(--r-sm)', fontSize: 11, fontWeight: 700, color: 'var(--text-mid)', border: '1px solid var(--border)' }}>
             {data.isRace ? t('activities.race') : t('activities.training')}
           </span>
         </div>
@@ -256,7 +256,7 @@ export function ActivityCard({ data, onClick }: Props) {
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, padding: '0 16px 2px' }}>
           {workoutTypeDefs(data.sportType, data.trainingTypes ?? []).map(tp => (
             <span key={tp.id} style={{
-              fontSize: 10, fontWeight: 600, padding: '3px 9px', borderRadius: 7,
+              fontSize: 10, fontWeight: 600, padding: '3px 9px', borderRadius: 'var(--r-sm)',
               color: 'var(--text-mid)', background: 'transparent', border: '1px solid var(--border)',
             }}>{tp.label}</span>
           ))}
@@ -316,13 +316,13 @@ export function ActivityCard({ data, onClick }: Props) {
                     <span style={{
                       fontSize: 13, fontWeight: 700, color: accent,
                       fontVariantNumeric: 'tabular-nums',
-                      fontFamily: 'Barlow Condensed, sans-serif',
+                      fontFamily: 'var(--font-body)',
                     }}>
                       {rec.watts}<span style={{ opacity: 0.7, marginLeft: 3, fontSize: 10 }}>W</span>
                     </span>
                   </span>
                   <span style={{
-                    fontSize: 9, fontWeight: 700, letterSpacing: '0.08em',
+                    fontSize: 10, fontWeight: 700, letterSpacing: '0.08em',
                     textTransform: 'uppercase', color: accent,
                     opacity: isAllTime ? 1 : 0.7,
                     flexShrink: 0,
@@ -353,7 +353,7 @@ function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div>
       <div style={{
-        fontSize: 9, fontWeight: 600, letterSpacing: '0.08em',
+        fontSize: 10, fontWeight: 600, letterSpacing: '0.08em',
         textTransform: 'uppercase', color: 'var(--text-dim)',
         marginBottom: 4,
       }}>{label}</div>

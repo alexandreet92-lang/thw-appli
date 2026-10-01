@@ -35,7 +35,7 @@ export default function AIAssistantButton({ agent, context }: Props) {
           alignItems: 'center',
           gap: 7,
           padding: '6px 12px 6px 8px',
-          borderRadius: 10,
+          borderRadius: 'var(--r-sm)',
           border: '1px solid',
           borderColor: open
             ? 'rgba(91,111,255,0.55)'
@@ -69,7 +69,7 @@ export default function AIAssistantButton({ agent, context }: Props) {
         />
         {/* Label */}
         <span style={{
-          fontFamily: 'DM Sans, sans-serif',
+          fontFamily: 'var(--font-body)',
           fontSize: 12,
           fontWeight: 600,
           background: 'linear-gradient(90deg,#06B6D4,#5b6fff)',

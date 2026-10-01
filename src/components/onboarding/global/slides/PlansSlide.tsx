@@ -47,7 +47,7 @@ export function PlansVisual() {
       `}</style>
       {PLANS.map((plan, i) => (
         <div key={plan.name} style={{
-          flex: 1, padding: '14px 10px', borderRadius: 16, position: 'relative',
+          flex: 1, padding: '14px 10px', borderRadius: 'var(--r-md)', position: 'relative',
           background: plan.highlighted
             ? `linear-gradient(160deg, rgba(${hexRgb(plan.color)},0.18), rgba(${hexRgb(plan.color)},0.05))`
             : 'rgba(255,255,255,0.04)',
@@ -59,28 +59,28 @@ export function PlansVisual() {
               position: 'absolute', top: -10, left: '50%',
               transform: 'translateX(-50%)',
               background: `linear-gradient(135deg, ${plan.color}, #EC4899)`,
-              borderRadius: 20, padding: '2px 10px',
-              fontSize: 9, fontWeight: 700, color: 'white',
+              borderRadius: 'var(--r-lg)', padding: '2px 10px',
+              fontSize: 10, fontWeight: 700, color: 'white',
               whiteSpace: 'nowrap', letterSpacing: 0.5,
-              fontFamily: 'DM Sans, sans-serif',
+              fontFamily: 'var(--font-body)',
             }}>
               {t('onboarding.g.plans.popular')}
             </div>
           )}
 
-          <p style={{ fontSize: 14, fontWeight: 800, color: 'white', margin: '0 0 2px', textAlign: 'center', fontFamily: 'Syne, sans-serif' }}>
+          <p style={{ fontSize: 14, fontWeight: 800, color: 'white', margin: '0 0 2px', textAlign: 'center', fontFamily: 'var(--font-body)' }}>
             {plan.name}
           </p>
 
           {plan.trial && (
-            <div style={{ background: `rgba(${hexRgb(plan.color)},0.15)`, borderRadius: 6, padding: '3px 6px', marginBottom: 8, textAlign: 'center' }}>
-              <span style={{ fontSize: 9, color: plan.color, fontWeight: 700, letterSpacing: 0.5, fontFamily: 'DM Sans, sans-serif' }}>
+            <div style={{ background: `rgba(${hexRgb(plan.color)},0.15)`, borderRadius: 'var(--r-sm)', padding: '3px 6px', marginBottom: 8, textAlign: 'center' }}>
+              <span style={{ fontSize: 10, color: plan.color, fontWeight: 700, letterSpacing: 0.5, fontFamily: 'var(--font-body)' }}>
                 {t(plan.trial).toUpperCase()}
               </span>
             </div>
           )}
 
-          <p style={{ fontSize: 10, color: `rgba(${hexRgb(plan.color)},0.8)`, margin: '0 0 8px', textAlign: 'center', fontWeight: 600, fontFamily: 'DM Sans, sans-serif' }}>
+          <p style={{ fontSize: 10, color: `rgba(${hexRgb(plan.color)},0.8)`, margin: '0 0 8px', textAlign: 'center', fontWeight: 600, fontFamily: 'var(--font-body)' }}>
             {plan.model}
           </p>
 
@@ -88,7 +88,7 @@ export function PlansVisual() {
             {plan.features.map((f, j) => (
               <div key={j} style={{ display: 'flex', gap: 5, alignItems: 'flex-start' }}>
                 <div style={{ width: 12, height: 12, borderRadius: '50%', background: `rgba(${hexRgb(plan.color)},0.25)`, border: `1px solid rgba(${hexRgb(plan.color)},0.4)`, flexShrink: 0, marginTop: 1 }} />
-                <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', lineHeight: 1.4, fontFamily: 'DM Sans, sans-serif' }}>{t(f)}</span>
+                <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', lineHeight: 1.4, fontFamily: 'var(--font-body)' }}>{t(f)}</span>
               </div>
             ))}
           </div>

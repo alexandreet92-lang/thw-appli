@@ -112,12 +112,12 @@ export default function SleepSection({ checkin, history }: Props) {
   if (!ringData && trendNights.length === 0) return null
 
   return (
-    <div style={{ background:'var(--bg-card)', border:'1px solid var(--border)', borderRadius:20, padding:24, boxShadow:'var(--shadow-card)' }}>
+    <div style={{ background:'var(--bg-card)', border:'1px solid var(--border)', borderRadius: 'var(--r-lg)', padding:24, boxShadow:'var(--shadow-card)' }}>
       {/* Header */}
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:20 }}>
         <div>
           <p style={{ fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.1em', color:'var(--text-dim)', margin:'0 0 4px' }}>{t('recovery.metric.sleep')}</p>
-          <h2 style={{ fontFamily:'Syne,sans-serif', fontSize:18, fontWeight:700, margin:0 }}>{t('recovery.sleep.analysisTitle')}</h2>
+          <h2 style={{ fontFamily: 'var(--font-display)', fontSize:18, fontWeight:700, margin:0 }}>{t('recovery.sleep.analysisTitle')}</h2>
         </div>
         {latest?.date && (
           <span style={{ fontSize:10, color:'var(--text-dim)', fontStyle:'italic', paddingTop:4 }}>

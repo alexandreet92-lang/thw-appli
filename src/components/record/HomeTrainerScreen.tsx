@@ -85,25 +85,25 @@ export default function HomeTrainerScreen({ onExit, onFinished }: Props) {
   if (!mounted) return null
 
   const content = (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: bg, color: text, display: 'flex', flexDirection: 'column', paddingTop: 'env(safe-area-inset-top)', fontFamily: 'DM Sans, sans-serif' }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: bg, color: text, display: 'flex', flexDirection: 'column', paddingTop: 'env(safe-area-inset-top)', fontFamily: 'var(--font-body)' }}>
 
       {/* Summary */}
       {showSummary && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 10002, background: bg, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 24, padding: '0 24px', paddingTop: 'env(safe-area-inset-top)' }}>
-          <p style={{ fontSize: 22, fontWeight: 700, margin: 0, fontFamily: 'Syne, sans-serif' }}>{t('record.homeTrainerSessionDone')}</p>
+          <p style={{ fontSize: 22, fontWeight: 700, margin: 0, fontFamily: 'var(--font-display)' }}>{t('record.homeTrainerSessionDone')}</p>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, width: '100%', maxWidth: 340 }}>
             {[
               { l: t('record.commonDistance'), v: `${(distM/1000).toFixed(2)} km` }, { l: t('record.commonDuration'), v: fmt(stopwatch.seconds) },
               { l: t('record.homeTrainerWattsAvg'), v: `${avgWatts} w` }, { l: 'SM', v: String(TSS) },
               { l: 'IF', v: IF.toFixed(2) }, { l: t('record.homeTrainerCalories'), v: `${calories} kcal` },
             ].map(({ l, v }) => (
-              <div key={l} style={{ background: 'rgba(255,255,255,0.06)', borderRadius: 14, padding: '14px', textAlign: 'center' }}>
+              <div key={l} style={{ background: 'rgba(255,255,255,0.06)', borderRadius: 'var(--r-md)', padding: '14px', textAlign: 'center' }}>
                 <p style={{ fontSize: 10, color: dim, textTransform: 'uppercase', letterSpacing: 1, margin: '0 0 4px' }}>{l}</p>
                 <p style={{ fontSize: 20, fontWeight: 700, color: text, margin: 0 }}>{v}</p>
               </div>
             ))}
           </div>
-          <button onClick={onFinished} style={{ padding: '14px 48px', borderRadius: 16, background: 'linear-gradient(135deg,#06B6D4,#2563EB)', border: 'none', color: '#FFF', fontSize: 16, fontWeight: 600, cursor: 'pointer' }}>{t('record.commonFinish')}</button>
+          <button onClick={onFinished} style={{ padding: '14px 48px', borderRadius: 'var(--r-md)', background: 'linear-gradient(135deg,#06B6D4,#2563EB)', border: 'none', color: '#FFF', fontSize: 16, fontWeight: 600, cursor: 'pointer' }}>{t('record.commonFinish')}</button>
         </div>
       )}
 
@@ -121,9 +121,9 @@ export default function HomeTrainerScreen({ onExit, onFinished }: Props) {
         <div style={{ padding: '0 16px 12px', flexShrink: 0 }}>
           <p style={{ fontSize: 10, fontWeight: 700, color: dim, textTransform: 'uppercase', letterSpacing: '0.08em', margin: '8px 0 8px' }}>{t('record.homeTrainerProgram')}</p>
           <div style={{ display: 'flex', gap: 8, overflowX: 'auto' }}>
-            <button onClick={() => setProgram(null)} style={{ padding: '8px 16px', borderRadius: 20, border: 'none', background: !program ? 'var(--primary)' : btnBg, color: !program ? '#FFF' : text, fontSize: 13, fontWeight: 500, cursor: 'pointer', whiteSpace: 'nowrap' }}>{t('record.homeTrainerFree')}</button>
+            <button onClick={() => setProgram(null)} style={{ padding: '8px 16px', borderRadius: 'var(--r-lg)', border: 'none', background: !program ? 'var(--primary)' : btnBg, color: !program ? '#FFF' : text, fontSize: 13, fontWeight: 500, cursor: 'pointer', whiteSpace: 'nowrap' }}>{t('record.homeTrainerFree')}</button>
             {HT_PROGRAMS.map(p => (
-              <button key={p.name} onClick={() => setProgram(p)} style={{ padding: '8px 16px', borderRadius: 20, border: 'none', background: program?.name === p.name ? 'var(--primary)' : btnBg, color: program?.name === p.name ? '#FFF' : text, fontSize: 13, fontWeight: 500, cursor: 'pointer', whiteSpace: 'nowrap' }}>{p.nameKey ? t(p.nameKey) : p.name}</button>
+              <button key={p.name} onClick={() => setProgram(p)} style={{ padding: '8px 16px', borderRadius: 'var(--r-lg)', border: 'none', background: program?.name === p.name ? 'var(--primary)' : btnBg, color: program?.name === p.name ? '#FFF' : text, fontSize: 13, fontWeight: 500, cursor: 'pointer', whiteSpace: 'nowrap' }}>{p.nameKey ? t(p.nameKey) : p.name}</button>
             ))}
           </div>
         </div>
@@ -162,15 +162,15 @@ export default function HomeTrainerScreen({ onExit, onFinished }: Props) {
       {/* Controls */}
       <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, padding: '16px 20px', paddingBottom: 'max(env(safe-area-inset-bottom),20px)', background: 'rgba(10,10,10,0.95)', borderTop: '1px solid rgba(255,255,255,0.08)', display: 'flex', gap: 10 }}>
         {phase === 'ready' && (
-          <button onClick={() => setPhase('running')} style={{ flex: 1, height: 52, borderRadius: 14, background: 'linear-gradient(135deg,#06B6D4,#2563EB)', border: 'none', color: '#FFF', fontSize: 16, fontWeight: 600, cursor: 'pointer' }}>{t('record.commonStart')}</button>
+          <button onClick={() => setPhase('running')} style={{ flex: 1, height: 52, borderRadius: 'var(--r-md)', background: 'linear-gradient(135deg,#06B6D4,#2563EB)', border: 'none', color: '#FFF', fontSize: 16, fontWeight: 600, cursor: 'pointer' }}>{t('record.commonStart')}</button>
         )}
         {phase === 'running' && <>
-          <button onClick={() => setPhase('paused')} style={{ flex: 1, height: 52, borderRadius: 14, background: btnBg, border: 'none', color: text, fontSize: 15, fontWeight: 600, cursor: 'pointer' }}>{t('record.commonPause')}</button>
-          <button onClick={handleStop} style={{ flex: 1, height: 52, borderRadius: 14, background: 'rgba(239,68,68,0.15)', border: 'none', color: 'var(--danger)', fontSize: 15, fontWeight: 600, cursor: 'pointer' }}>{t('record.commonFinish')}</button>
+          <button onClick={() => setPhase('paused')} style={{ flex: 1, height: 52, borderRadius: 'var(--r-md)', background: btnBg, border: 'none', color: text, fontSize: 15, fontWeight: 600, cursor: 'pointer' }}>{t('record.commonPause')}</button>
+          <button onClick={handleStop} style={{ flex: 1, height: 52, borderRadius: 'var(--r-md)', background: 'rgba(239,68,68,0.15)', border: 'none', color: 'var(--danger)', fontSize: 15, fontWeight: 600, cursor: 'pointer' }}>{t('record.commonFinish')}</button>
         </>}
         {phase === 'paused' && <>
-          <button onClick={() => setPhase('running')} style={{ flex: 1, height: 52, borderRadius: 14, background: 'linear-gradient(135deg,#06B6D4,#2563EB)', border: 'none', color: '#FFF', fontSize: 15, fontWeight: 600, cursor: 'pointer' }}>{t('record.commonResume')}</button>
-          <button onClick={handleStop} style={{ flex: 1, height: 52, borderRadius: 14, background: btnBg, border: 'none', color: text, fontSize: 15, fontWeight: 600, cursor: 'pointer' }}>{t('record.commonFinish')}</button>
+          <button onClick={() => setPhase('running')} style={{ flex: 1, height: 52, borderRadius: 'var(--r-md)', background: 'linear-gradient(135deg,#06B6D4,#2563EB)', border: 'none', color: '#FFF', fontSize: 15, fontWeight: 600, cursor: 'pointer' }}>{t('record.commonResume')}</button>
+          <button onClick={handleStop} style={{ flex: 1, height: 52, borderRadius: 'var(--r-md)', background: btnBg, border: 'none', color: text, fontSize: 15, fontWeight: 600, cursor: 'pointer' }}>{t('record.commonFinish')}</button>
         </>}
       </div>
 

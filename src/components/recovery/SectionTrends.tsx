@@ -22,10 +22,10 @@ export default function SectionTrends({ history }: Props) {
 
   if (items.length < 3) {
     return (
-      <div className="card-enter card-enter-2" style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:20,padding:24,boxShadow:'var(--shadow-card)',marginBottom:16 }}>
+      <div className="card-enter card-enter-2" style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius: 'var(--r-lg)',padding:24,boxShadow:'var(--shadow-card)',marginBottom:16 }}>
         <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.1em',color:'var(--text-dim)',margin:'0 0 6px' }}>Recovery Trends</p>
-        <h2 style={{ fontFamily:'Syne,sans-serif',fontSize:18,fontWeight:700,margin:'0 0 16px' }}>{t('recovery.trends.label')}</h2>
-        <div style={{ padding:'20px',textAlign:'center' as const,borderRadius:12,background:'var(--bg-card2)',border:'1px solid var(--border)' }}>
+        <h2 style={{ fontFamily: 'var(--font-display)',fontSize:18,fontWeight:700,margin:'0 0 16px' }}>{t('recovery.trends.label')}</h2>
+        <div style={{ padding:'20px',textAlign:'center' as const,borderRadius: 'var(--r-md)',background:'var(--bg-card2)',border:'1px solid var(--border)' }}>
           <p style={{ fontSize:13,color:'var(--text-dim)',margin:0 }}>{t('recovery.sectionTrends.emptyTitle')}</p>
           <p style={{ fontSize:11,color:'var(--text-dim)',margin:'6px 0 0' }}>{t('recovery.sectionTrends.emptyCount', { n: items.length })}</p>
         </div>
@@ -58,16 +58,16 @@ export default function SectionTrends({ history }: Props) {
     : { text:t('recovery.reco.rest'), color:'#f97316' }
 
   return (
-    <div className="card-enter card-enter-2" style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:20,padding:24,boxShadow:'var(--shadow-card)',marginBottom:16 }}>
+    <div className="card-enter card-enter-2" style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius: 'var(--r-lg)',padding:24,boxShadow:'var(--shadow-card)',marginBottom:16 }}>
       <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:20,flexWrap:'wrap' as const,gap:8 }}>
         <div>
           <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.1em',color:'var(--text-dim)',margin:0 }}>Recovery Trends</p>
-          <h2 style={{ fontFamily:'Syne,sans-serif',fontSize:18,fontWeight:700,margin:'3px 0 0' }}>{t('recovery.trends.label')}</h2>
+          <h2 style={{ fontFamily: 'var(--font-display)',fontSize:18,fontWeight:700,margin:'3px 0 0' }}>{t('recovery.trends.label')}</h2>
         </div>
         <div style={{ display:'flex',gap:4 }}>
           {([7,30] as const).map(v=>(
             <button key={v} onClick={()=>setRange(v)}
-              style={{ padding:'5px 12px',borderRadius:8,border:`1px solid ${range===v?'#06B6D4':'var(--border)'}`,background:range===v?'rgba(6,182,212,0.10)':'var(--bg-card2)',color:range===v?'#06B6D4':'var(--text-dim)',fontSize:10,fontWeight:600,cursor:'pointer' }}>
+              style={{ padding:'5px 12px',borderRadius: 'var(--r-sm)',border:`1px solid ${range===v?'#06B6D4':'var(--border)'}`,background:range===v?'rgba(6,182,212,0.10)':'var(--bg-card2)',color:range===v?'#06B6D4':'var(--text-dim)',fontSize:10,fontWeight:600,cursor:'pointer' }}>
               {t('recovery.days', { n: v })}
             </button>
           ))}
@@ -75,7 +75,7 @@ export default function SectionTrends({ history }: Props) {
       </div>
 
       {/* Recommandation */}
-      <div style={{ padding:'10px 14px',borderRadius:12,background:`${reco.color}14`,border:`1px solid ${reco.color}33`,marginBottom:20 }}>
+      <div style={{ padding:'10px 14px',borderRadius: 'var(--r-md)',background:`${reco.color}14`,border:`1px solid ${reco.color}33`,marginBottom:20 }}>
         <div style={{ display:'flex',alignItems:'center',gap:8 }}>
           <div style={{ width:7,height:7,borderRadius:'50%',background:reco.color,flexShrink:0 }}/>
           <p style={{ fontSize:12,color:reco.color,fontWeight:600,margin:0 }}>{reco.text}</p>
@@ -89,11 +89,11 @@ export default function SectionTrends({ history }: Props) {
           const delta = Math.round((last - mean) * 10) / 10
           const up    = chart.higher ? delta >= 0 : delta <= 0
           return (
-            <div key={chart.key} style={{ padding:'14px',borderRadius:14,background:'var(--bg-card2)',border:'1px solid var(--border)' }}>
+            <div key={chart.key} style={{ padding:'14px',borderRadius: 'var(--r-md)',background:'var(--bg-card2)',border:'1px solid var(--border)' }}>
               <div style={{ display:'flex',alignItems:'flex-start',justifyContent:'space-between',marginBottom:8 }}>
                 <div>
                   <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',margin:0 }}>{chart.label}</p>
-                  <p style={{ fontFamily:'Syne,sans-serif',fontSize:20,fontWeight:800,color:chart.color,margin:'2px 0 0',lineHeight:1 }}>
+                  <p style={{ fontFamily: 'var(--font-display)',fontSize:20,fontWeight:800,color:chart.color,margin:'2px 0 0',lineHeight:1 }}>
                     {last}<span style={{ fontSize:10,fontWeight:400,color:'var(--text-dim)' }}>{chart.unit}</span>
                   </p>
                 </div>
@@ -101,13 +101,13 @@ export default function SectionTrends({ history }: Props) {
                   <span style={{ fontSize:10,fontWeight:600,color:up?'#22c55e':'var(--danger)' }}>
                     {delta>=0?'+':''}{delta}
                   </span>
-                  <span style={{ fontSize:9,color:'var(--text-dim)' }}>moy. {mean}{chart.unit}</span>
+                  <span style={{ fontSize: 10,color:'var(--text-dim)' }}>moy. {mean}{chart.unit}</span>
                 </div>
               </div>
               <div style={{ height:56 }}><LineChart values={chart.values} color={chart.color} height={56}/></div>
               <div style={{ display:'flex',justifyContent:'space-between',marginTop:4 }}>
                 {dayLabels.map((l,i)=>(
-                  <span key={i} style={{ fontSize:8,color:'var(--text-dim)',textAlign:'center' as const,flex:1 }}>{l}</span>
+                  <span key={i} style={{ fontSize: 10,color:'var(--text-dim)',textAlign:'center' as const,flex:1 }}>{l}</span>
                 ))}
               </div>
             </div>

@@ -55,12 +55,12 @@ function StageDayPopover({ stage, date, x, y, onClose, onMouseEnter, onMouseLeav
         style={{
           position:'fixed', left, top, zIndex:491,
           width:W, background:'var(--bg-card)',
-          border:'1px solid var(--border)', borderRadius:12,
+          border:'1px solid var(--border)', borderRadius: 'var(--r-md)',
           padding:12, boxShadow:'0 8px 32px rgba(0,0,0,0.45)',
           pointerEvents:'auto',
         }}
       >
-        <p style={{ fontSize:9,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.08em',color:'#3b82f6',margin:'0 0 2px' }}>
+        <p style={{ fontSize: 10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.08em',color:'#3b82f6',margin:'0 0 2px' }}>
           {stage.name}
         </p>
         <p style={{ fontSize:12,fontWeight:600,color:'var(--text)',margin:'0 0 8px',textTransform:'capitalize' }}>
@@ -74,7 +74,7 @@ function StageDayPopover({ stage, date, x, y, onClose, onMouseEnter, onMouseLeav
         )}
 
         {fetched && fileName && !isGpx && fileUrl && (
-          <div style={{ display:'flex',alignItems:'center',gap:6,padding:'4px 8px',borderRadius:6,background:'var(--bg-card2)',marginBottom:8 }}>
+          <div style={{ display:'flex',alignItems:'center',gap:6,padding:'4px 8px',borderRadius: 'var(--r-sm)',background:'var(--bg-card2)',marginBottom:8 }}>
             <span style={{ fontSize:12 }}>📄</span>
             <span style={{ fontSize:10,color:'var(--text-mid)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' }}>{fileName}</span>
           </div>
@@ -140,23 +140,23 @@ export default function MonthlyView({ races, stages, year, initialMonth, onRaceC
     <>
       <div style={{
         background: 'var(--bg-card)', border: '1px solid var(--border)',
-        borderRadius: 16, padding: 16, boxShadow: 'var(--shadow-card)',
+        borderRadius: 'var(--r-md)', padding: 16, boxShadow: 'var(--shadow-card)',
       }}>
         {/* Header nav */}
         <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14 }}>
           <div style={{ display:'flex',alignItems:'center',gap:10 }}>
-            <button onClick={prevMonth} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius:8,padding:'5px 11px',cursor:'pointer',color:'var(--text-mid)',fontSize:13 }}>←</button>
-            <h2 style={{ fontFamily:'Syne,sans-serif',fontSize:15,fontWeight:700,margin:0 }}>
+            <button onClick={prevMonth} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius: 'var(--r-sm)',padding:'5px 11px',cursor:'pointer',color:'var(--text-mid)',fontSize:13 }}>←</button>
+            <h2 style={{ fontFamily: 'var(--font-body)',fontSize:15,fontWeight:700,margin:0 }}>
               {MONTHS[month]} {year}
             </h2>
-            <button onClick={nextMonth} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius:8,padding:'5px 11px',cursor:'pointer',color:'var(--text-mid)',fontSize:13 }}>→</button>
+            <button onClick={nextMonth} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius: 'var(--r-sm)',padding:'5px 11px',cursor:'pointer',color:'var(--text-mid)',fontSize:13 }}>→</button>
           </div>
         </div>
 
         {/* Day headers */}
         <div style={{ display:'grid',gridTemplateColumns:'repeat(7, 1fr)',gap:2,marginBottom:4 }}>
           {[t('calendar.dow0'),t('calendar.dow1'),t('calendar.dow2'),t('calendar.dow3'),t('calendar.dow4'),t('calendar.dow5'),t('calendar.dow6')].map((d, i) => (
-            <div key={i} style={{ textAlign:'center',fontSize:9,fontWeight:600,color:'var(--text-dim)',padding:'3px 0' }}>{d}</div>
+            <div key={i} style={{ textAlign:'center',fontSize: 10,fontWeight:600,color:'var(--text-dim)',padding:'3px 0' }}>{d}</div>
           ))}
         </div>
 
@@ -164,7 +164,7 @@ export default function MonthlyView({ races, stages, year, initialMonth, onRaceC
         <div style={{ display:'grid',gridTemplateColumns:'repeat(7, 1fr)',gap:2 }}>
           {/* Leading empty cells */}
           {Array.from({ length: firstDayISO - 1 }, (_, i) => (
-            <div key={`e${i}`} style={{ minHeight:72,borderRadius:7,background:'var(--bg-card2)',opacity:0.3 }} />
+            <div key={`e${i}`} style={{ minHeight:72,borderRadius: 'var(--r-sm)',background:'var(--bg-card2)',opacity:0.3 }} />
           ))}
 
           {/* Day cells */}
@@ -180,7 +180,7 @@ export default function MonthlyView({ races, stages, year, initialMonth, onRaceC
                 key={day}
                 onClick={() => onDayClick?.(ds)}
                 style={{
-                  minHeight:72,borderRadius:7,background:'var(--bg-card2)',
+                  minHeight:72,borderRadius: 'var(--r-sm)',background:'var(--bg-card2)',
                   border:`1px solid ${isToday ? '#06B6D4' : 'var(--border)'}`,
                   padding:'3px 4px',display:'flex',flexDirection:'column' as const,gap:1,
                   cursor: onDayClick ? 'pointer' : 'default',
@@ -198,7 +198,7 @@ export default function MonthlyView({ races, stages, year, initialMonth, onRaceC
                       key={r.id}
                       onClick={e => { e.stopPropagation(); onRaceClick(r) }}
                       style={{
-                        height: 24, borderRadius: 6, padding: '0 8px',
+                        height: 24, borderRadius: 'var(--r-sm)', padding: '0 8px',
                         display: 'flex', alignItems: 'center',
                         cursor: 'pointer',
                         background: r.status === 'completed' ? 'var(--bg-card)' : `${cfg.color}26`,
@@ -235,7 +235,7 @@ export default function MonthlyView({ races, stages, year, initialMonth, onRaceC
                     }}
                     onMouseLeave={() => scheduleHide()}
                     style={{
-                      height: 24, borderRadius: 6, padding: '0 8px',
+                      height: 24, borderRadius: 'var(--r-sm)', padding: '0 8px',
                       display: 'flex', alignItems: 'center',
                       background: 'rgba(59,130,246,0.12)',
                       borderLeft: '3px solid #3b82f6',

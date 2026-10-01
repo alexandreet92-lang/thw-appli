@@ -83,7 +83,7 @@ function chartIcon(type: AdvSpec['type']): string {
 export function AdvancedChartCard({ spec }: { spec: AdvSpec }) {
   const { t } = useI18n()
   return (
-    <div className="ac-card" style={{ margin: '16px auto', maxWidth: 580, width: '100%', border: '1px solid var(--border)', borderRadius: 20, background: 'var(--bg-card)', boxShadow: '0 10px 34px rgba(16,24,40,0.10)', overflow: 'hidden', boxSizing: 'border-box' }}>
+    <div className="ac-card" style={{ margin: '16px auto', maxWidth: 580, width: '100%', border: '1px solid var(--border)', borderRadius: 'var(--r-lg)', background: 'var(--bg-card)', boxShadow: '0 10px 34px rgba(16,24,40,0.10)', overflow: 'hidden', boxSizing: 'border-box' }}>
       <style>{`
         @keyframes acReveal{from{opacity:0;transform:translateY(12px) scale(.985)}to{opacity:1;transform:translateY(0) scale(1)}}
         @keyframes acFade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
@@ -96,10 +96,10 @@ export function AdvancedChartCard({ spec }: { spec: AdvSpec }) {
       <div style={{ padding: 18 }}>
         {spec.title && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '0 0 15px' }}>
-            <span aria-hidden style={{ flexShrink: 0, width: 30, height: 30, borderRadius: 9, background: AC_GRAD, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(6,182,212,0.38)' }}>
+            <span aria-hidden style={{ flexShrink: 0, width: 30, height: 30, borderRadius: 'var(--r-sm)', background: AC_GRAD, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(6,182,212,0.38)' }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={chartIcon(spec.type)} /></svg>
             </span>
-            <p style={{ margin: 0, fontFamily: 'Syne, sans-serif', fontSize: 15.5, fontWeight: 800, color: 'var(--text)', lineHeight: 1.15 }}>{spec.title}</p>
+            <p style={{ margin: 0, fontFamily: 'var(--font-body)', fontSize: 15.5, fontWeight: 800, color: 'var(--text)', lineHeight: 1.15 }}>{spec.title}</p>
           </div>
         )}
         <div className="ac-chart"><AdvancedChart spec={spec} /></div>

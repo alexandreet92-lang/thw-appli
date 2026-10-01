@@ -217,8 +217,8 @@ export default function MarketingAdminPage() {
   if (!authChecked) return null;
 
   return (
-    <div style={{ maxWidth: 1100, margin: "0 auto", padding: 24, fontFamily: "DM Sans, system-ui, sans-serif" }}>
-      <h1 style={{ fontFamily: "Syne, sans-serif", fontSize: 32, marginBottom: 4 }}>
+    <div style={{ maxWidth: 1100, margin: "0 auto", padding: 24, fontFamily: 'var(--font-body)' }}>
+      <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 32, marginBottom: 4 }}>
         Marketing Agent
       </h1>
       <p style={{ color: "#666", marginBottom: 24 }}>
@@ -235,7 +235,7 @@ export default function MarketingAdminPage() {
             color: "white",
             border: "none",
             padding: "12px 24px",
-            borderRadius: 12,
+            borderRadius: 'var(--r-md)',
             fontSize: 15,
             fontWeight: 600,
             cursor: loading ? "wait" : "pointer",
@@ -256,7 +256,7 @@ export default function MarketingAdminPage() {
             color: instaApiSyncing ? "#9ca3af" : "white",
             border: "none",
             padding: "12px 20px",
-            borderRadius: 12,
+            borderRadius: 'var(--r-md)',
             fontSize: 15,
             fontWeight: 600,
             cursor: instaApiSyncing ? "wait" : "pointer",
@@ -292,7 +292,7 @@ export default function MarketingAdminPage() {
       </div>
 
       {error && (
-        <div style={{ background: "#fee", border: "1px solid #fcc", padding: 12, borderRadius: 8, marginBottom: 16, color: "#c33" }}>
+        <div style={{ background: "#fee", border: "1px solid #fcc", padding: 12, borderRadius: 'var(--r-sm)', marginBottom: 16, color: "#c33" }}>
           {error}
         </div>
       )}
@@ -300,7 +300,7 @@ export default function MarketingAdminPage() {
       {/* ── Brief du jour ──────────────────────────────────────────── */}
       {brief && (
         <section style={{ marginBottom: 48 }}>
-          <h2 style={{ fontFamily: "Syne, sans-serif", fontSize: 22, marginBottom: 16 }}>
+          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 22, marginBottom: 16 }}>
             {t("admin.marketing.briefOf", { date: brief.date })}
           </h2>
 
@@ -310,7 +310,7 @@ export default function MarketingAdminPage() {
                 background: "#f7f8fa",
                 border: "1px solid #e5e7eb",
                 padding: 16,
-                borderRadius: 12,
+                borderRadius: 'var(--r-md)',
                 marginBottom: 24,
               }}
             >
@@ -339,11 +339,11 @@ export default function MarketingAdminPage() {
       {instaApiSnapshot && (
         <section style={{ marginBottom: 48 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16, flexWrap: "wrap" }}>
-            <h2 style={{ fontFamily: "Syne, sans-serif", fontSize: 22, margin: 0 }}>
+            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 22, margin: 0 }}>
               {t("admin.marketing.instaStats")}
             </h2>
             <span style={{
-              fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 99,
+              fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 'var(--r-pill)',
               background: "linear-gradient(135deg, #833ab4 0%, #fd1d1d 50%, #fcb045 100%)",
               color: "white", letterSpacing: 0.5,
             }}>
@@ -355,25 +355,25 @@ export default function MarketingAdminPage() {
             {/* KPI cards */}
             <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
               {instaApiSnapshot.followers_count != null && (
-                <div style={{ background: "white", border: "1px solid #e5e7eb", borderRadius: 12, padding: "14px 20px", minWidth: 120 }}>
+                <div style={{ background: "white", border: "1px solid #e5e7eb", borderRadius: 'var(--r-md)', padding: "14px 20px", minWidth: 120 }}>
                   <div style={{ fontSize: 11, fontWeight: 600, color: "#999", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>Followers</div>
                   <div style={{ fontSize: 24, fontWeight: 700 }}>{instaApiSnapshot.followers_count.toLocaleString(currentLocale())}</div>
                 </div>
               )}
               {instaApiSnapshot.reach_total != null && (
-                <div style={{ background: "white", border: "1px solid #e5e7eb", borderRadius: 12, padding: "14px 20px", minWidth: 120 }}>
+                <div style={{ background: "white", border: "1px solid #e5e7eb", borderRadius: 'var(--r-md)', padding: "14px 20px", minWidth: 120 }}>
                   <div style={{ fontSize: 11, fontWeight: 600, color: "#999", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>{t("admin.marketing.reach28")}</div>
                   <div style={{ fontSize: 24, fontWeight: 700 }}>{instaApiSnapshot.reach_total.toLocaleString(currentLocale())}</div>
                 </div>
               )}
               {instaApiSnapshot.impressions_total != null && (
-                <div style={{ background: "white", border: "1px solid #e5e7eb", borderRadius: 12, padding: "14px 20px", minWidth: 120 }}>
+                <div style={{ background: "white", border: "1px solid #e5e7eb", borderRadius: 'var(--r-md)', padding: "14px 20px", minWidth: 120 }}>
                   <div style={{ fontSize: 11, fontWeight: 600, color: "#999", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>{t("admin.marketing.impressions28")}</div>
                   <div style={{ fontSize: 24, fontWeight: 700 }}>{instaApiSnapshot.impressions_total.toLocaleString(currentLocale())}</div>
                 </div>
               )}
               {instaApiSnapshot.best_format && (
-                <div style={{ background: "white", border: "1px solid #e5e7eb", borderRadius: 12, padding: "14px 20px", minWidth: 120 }}>
+                <div style={{ background: "white", border: "1px solid #e5e7eb", borderRadius: 'var(--r-md)', padding: "14px 20px", minWidth: 120 }}>
                   <div style={{ fontSize: 11, fontWeight: 600, color: "#999", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>{t("admin.marketing.bestFormat")}</div>
                   <div style={{ fontSize: 18, fontWeight: 700, textTransform: "capitalize" }}>{instaApiSnapshot.best_format}</div>
                 </div>
@@ -388,8 +388,8 @@ export default function MarketingAdminPage() {
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   {(instaApiSnapshot.top_posts ?? []).slice(0, 3).map((p, i) => (
-                    <div key={i} style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "10px 14px", borderRadius: 10, background: "white", border: "1px solid #e5e7eb" }}>
-                      <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 99, background: "#fd1d1d", color: "#fff", textTransform: "uppercase", letterSpacing: 0.5, flexShrink: 0 }}>
+                    <div key={i} style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "10px 14px", borderRadius: 'var(--r-sm)', background: "white", border: "1px solid #e5e7eb" }}>
+                      <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 'var(--r-pill)', background: "#fd1d1d", color: "#fff", textTransform: "uppercase", letterSpacing: 0.5, flexShrink: 0 }}>
                         {p.format}
                       </span>
                       <div style={{ flex: 1, minWidth: 0 }}>
@@ -414,7 +414,7 @@ export default function MarketingAdminPage() {
 
       {/* ── Banque d'idées ─────────────────────────────────────────── */}
       <section style={{ marginBottom: 48 }}>
-        <h2 style={{ fontFamily: "Syne, sans-serif", fontSize: 22, marginBottom: 16 }}>
+        <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 22, marginBottom: 16 }}>
           {t("admin.marketing.ideaBank")}
         </h2>
         <p style={{ color: "#666", fontSize: 14, marginBottom: 12 }}>
@@ -430,7 +430,7 @@ export default function MarketingAdminPage() {
             style={{
               flex: "1 1 300px",
               padding: 12,
-              borderRadius: 8,
+              borderRadius: 'var(--r-sm)',
               border: "1px solid #ddd",
               fontFamily: "inherit",
               fontSize: 14,
@@ -444,7 +444,7 @@ export default function MarketingAdminPage() {
             style={{
               flex: "0 1 200px",
               padding: 12,
-              borderRadius: 8,
+              borderRadius: 'var(--r-sm)',
               border: "1px solid #ddd",
               fontFamily: "inherit",
               fontSize: 14,
@@ -458,7 +458,7 @@ export default function MarketingAdminPage() {
               color: "white",
               border: "none",
               padding: "0 20px",
-              borderRadius: 8,
+              borderRadius: 'var(--r-sm)',
               fontSize: 14,
               fontWeight: 600,
               cursor: newIdea.trim() ? "pointer" : "not-allowed",
@@ -485,7 +485,7 @@ export default function MarketingAdminPage() {
                 padding: 12,
                 background: idea.used ? "#f9f9f9" : "white",
                 border: "1px solid #eee",
-                borderRadius: 8,
+                borderRadius: 'var(--r-sm)',
                 opacity: idea.used ? 0.5 : 1,
               }}
             >
@@ -555,7 +555,7 @@ export default function MarketingAdminPage() {
               }}
               style={{
                 border: `2px dashed ${instaDragOver ? "#5b6fff" : "#ddd"}`,
-                borderRadius: 12,
+                borderRadius: 'var(--r-md)',
                 padding: "32px 24px",
                 textAlign: "center",
                 cursor: instaUploading ? "wait" : "pointer",
@@ -580,12 +580,12 @@ export default function MarketingAdminPage() {
             </div>
 
             {instaError && (
-              <div style={{ background: "#fee", border: "1px solid #fcc", padding: 10, borderRadius: 8, marginBottom: 12, color: "#c33", fontSize: 13 }}>
+              <div style={{ background: "#fee", border: "1px solid #fcc", padding: 10, borderRadius: 'var(--r-sm)', marginBottom: 12, color: "#c33", fontSize: 13 }}>
                 {instaError}
               </div>
             )}
             {instaAmbiguities.length > 0 && (
-              <div style={{ background: "#fffbeb", border: "1px solid #fcd34d", padding: 10, borderRadius: 8, marginBottom: 12, fontSize: 12, color: "#92400e" }}>
+              <div style={{ background: "#fffbeb", border: "1px solid #fcd34d", padding: 10, borderRadius: 'var(--r-sm)', marginBottom: 12, fontSize: 12, color: "#92400e" }}>
                 <strong>{t("admin.marketing.ambiguities")}</strong>
                 <ul style={{ margin: "6px 0 0", paddingLeft: 16 }}>
                   {instaAmbiguities.map((a, i) => <li key={i}>{a}</li>)}
@@ -612,7 +612,7 @@ export default function MarketingAdminPage() {
 
       {/* ── Historique ─────────────────────────────────────────────── */}
       <section>
-        <h2 style={{ fontFamily: "Syne, sans-serif", fontSize: 22, marginBottom: 16 }}>
+        <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 22, marginBottom: 16 }}>
           {t("admin.marketing.history")}
         </h2>
         <div style={{ display: "grid", gap: 8 }}>
@@ -622,7 +622,7 @@ export default function MarketingAdminPage() {
               style={{
                 background: "white",
                 border: "1px solid #eee",
-                borderRadius: 8,
+                borderRadius: 'var(--r-sm)',
                 padding: 12,
               }}
             >
@@ -650,7 +650,7 @@ function IdeaCard({ idea }: { idea: BriefIdea }) {
       style={{
         background: "white",
         border: "1px solid #e5e7eb",
-        borderRadius: 16,
+        borderRadius: 'var(--r-md)',
         padding: 20,
         position: "relative",
       }}
@@ -662,7 +662,7 @@ function IdeaCard({ idea }: { idea: BriefIdea }) {
             fontSize: 11, fontWeight: 700,
             padding: "4px 10px",
             background: tierMeta.color, color: "white",
-            borderRadius: 999, letterSpacing: 0.5,
+            borderRadius: 'var(--r-pill)', letterSpacing: 0.5,
           }}
         >
           {tierMeta.label}
@@ -672,7 +672,7 @@ function IdeaCard({ idea }: { idea: BriefIdea }) {
             fontSize: 11, fontWeight: 600,
             padding: "4px 10px",
             background: pillarColor, color: "white",
-            borderRadius: 999, textTransform: "uppercase", letterSpacing: 1,
+            borderRadius: 'var(--r-pill)', textTransform: "uppercase", letterSpacing: 1,
           }}
         >
           {idea.pillar}
@@ -682,7 +682,7 @@ function IdeaCard({ idea }: { idea: BriefIdea }) {
             fontSize: 11, fontWeight: 600,
             padding: "4px 10px",
             background: "#1a1a1a", color: "white",
-            borderRadius: 999, textTransform: "uppercase", letterSpacing: 1,
+            borderRadius: 'var(--r-pill)', textTransform: "uppercase", letterSpacing: 1,
           }}
         >
           {idea.format}
@@ -692,7 +692,7 @@ function IdeaCard({ idea }: { idea: BriefIdea }) {
         </span>
       </div>
 
-      <h3 style={{ fontFamily: "Syne, sans-serif", fontSize: 18, marginBottom: 12, lineHeight: 1.3 }}>
+      <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 18, marginBottom: 12, lineHeight: 1.3 }}>
         {idea.hook}
       </h3>
 
@@ -710,7 +710,7 @@ function IdeaCard({ idea }: { idea: BriefIdea }) {
         style={{
           fontSize: 14,
           background: "#f7f8fa",
-          padding: 12, borderRadius: 8,
+          padding: 12, borderRadius: 'var(--r-sm)',
           whiteSpace: "pre-wrap", marginBottom: 12,
         }}
       >
@@ -724,7 +724,7 @@ function IdeaCard({ idea }: { idea: BriefIdea }) {
             style={{
               fontSize: 12, color: "#5b6fff",
               background: "#eef0ff",
-              padding: "2px 8px", borderRadius: 6,
+              padding: "2px 8px", borderRadius: 'var(--r-sm)',
             }}
           >
             #{h.replace(/^#/, "")}
@@ -745,7 +745,7 @@ function IdeaCard({ idea }: { idea: BriefIdea }) {
         style={{
           position: "absolute", top: 16, right: 16,
           background: "transparent",
-          border: "1px solid #ddd", borderRadius: 6,
+          border: "1px solid #ddd", borderRadius: 'var(--r-sm)',
           padding: "4px 10px", fontSize: 12,
           cursor: "pointer", color: "#666",
         }}
@@ -767,7 +767,7 @@ function AdminInstaCard({ snapshot, defaultOpen }: { snapshot: InstaSnapshot; de
       style={{
         background: "white",
         border: "1px solid #e5e7eb",
-        borderRadius: 12,
+        borderRadius: 'var(--r-md)',
         padding: 16,
       }}
     >
@@ -785,7 +785,7 @@ function AdminInstaCard({ snapshot, defaultOpen }: { snapshot: InstaSnapshot; de
           </span>
         )}
         {snapshot.best_format && (
-          <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 99, background: "#fffbeb", color: "#92400e", fontWeight: 700 }}>
+          <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 'var(--r-pill)', background: "#fffbeb", color: "#92400e", fontWeight: 700 }}>
             {snapshot.best_format}
           </span>
         )}
@@ -824,7 +824,7 @@ function AdminInstaCard({ snapshot, defaultOpen }: { snapshot: InstaSnapshot; de
         {/* Résumé */}
         {snapshot.insights_summary && (
           <div style={{
-            padding: "12px 14px", borderRadius: 8,
+            padding: "12px 14px", borderRadius: 'var(--r-sm)',
             background: "#fffbeb", borderLeft: "3px solid #f59e0b",
             fontSize: 14, lineHeight: 1.65, color: "#333",
           }}>
@@ -842,10 +842,10 @@ function AdminInstaCard({ snapshot, defaultOpen }: { snapshot: InstaSnapshot; de
               {topPosts.map((p, i) => (
                 <div key={i} style={{
                   display: "flex", gap: 10, alignItems: "flex-start",
-                  padding: "10px 12px", borderRadius: 8, background: "#f7f8fa",
+                  padding: "10px 12px", borderRadius: 'var(--r-sm)', background: "#f7f8fa",
                 }}>
                   <span style={{
-                    fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 99,
+                    fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 'var(--r-pill)',
                     background: "#1a1a1a", color: "#fff", textTransform: "uppercase",
                     letterSpacing: 0.5, flexShrink: 0,
                   }}>{p.format}</span>
@@ -870,7 +870,7 @@ function AdminInstaCard({ snapshot, defaultOpen }: { snapshot: InstaSnapshot; de
         {snapshot.raw_extracted_text && (
           <details>
             <summary style={{ cursor: "pointer", fontSize: 12, color: "#999" }}>{t("admin.marketing.viewRawText")}</summary>
-            <pre style={{ fontSize: 11, marginTop: 8, overflow: "auto", maxHeight: 200, background: "#f7f8fa", padding: 10, borderRadius: 6 }}>
+            <pre style={{ fontSize: 11, marginTop: 8, overflow: "auto", maxHeight: 200, background: "#f7f8fa", padding: 10, borderRadius: 'var(--r-sm)' }}>
               {snapshot.raw_extracted_text}
             </pre>
           </details>

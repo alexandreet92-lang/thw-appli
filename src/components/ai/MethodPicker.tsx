@@ -76,7 +76,7 @@ export function MethodPicker({ method, onChange, disabled = false, isMobile = fa
 
   const rowBase: React.CSSProperties = {
     display: 'flex', alignItems: 'center', gap: 10, width: '100%',
-    padding: isMobile ? '12px 12px' : '9px 12px', border: 'none', borderRadius: 10,
+    padding: isMobile ? '12px 12px' : '9px 12px', border: 'none', borderRadius: 'var(--r-sm)',
     background: 'transparent', cursor: 'pointer', textAlign: 'left',
   }
   const hoverOn = (e: React.MouseEvent) => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-alt)' }
@@ -91,7 +91,7 @@ export function MethodPicker({ method, onChange, disabled = false, isMobile = fa
         onMouseEnter={hoverOn} onMouseLeave={e => { if (method !== 'auto') hoverOff(e) }}
       >
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', fontFamily: 'Syne,sans-serif' }}>{t('ai.methodAutomatic')}</div>
+          <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', fontFamily: 'var(--font-body)' }}>{t('ai.methodAutomatic')}</div>
           <div style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 1 }}>{t('ai.methodAutoDesc')}</div>
         </div>
         {method === 'auto' && <Check />}
@@ -99,7 +99,7 @@ export function MethodPicker({ method, onChange, disabled = false, isMobile = fa
       <div style={{ height: 1, background: 'var(--border)', margin: '6px 8px' }} />
       {SPORTS.map(s => (
         <button key={s} onClick={() => setView(s)} style={rowBase} onMouseEnter={hoverOn} onMouseLeave={hoverOff}>
-          <span style={{ flex: 1, fontSize: 14, fontWeight: 600, color: 'var(--text)', fontFamily: 'Syne,sans-serif' }}>{sportLabel[s]}</span>
+          <span style={{ flex: 1, fontSize: 14, fontWeight: 600, color: 'var(--text)', fontFamily: 'var(--font-body)' }}>{sportLabel[s]}</span>
           <span style={{ color: 'var(--text-dim)' }}><Chevron /></span>
         </button>
       ))}
@@ -126,7 +126,7 @@ export function MethodPicker({ method, onChange, disabled = false, isMobile = fa
             onMouseEnter={hoverOn} onMouseLeave={e => { if (!isA) hoverOff(e) }}
           >
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 13.5, fontWeight: isA ? 700 : 600, color: 'var(--text)', fontFamily: 'Syne,sans-serif' }}>{m.name}</div>
+              <div style={{ fontSize: 13.5, fontWeight: isA ? 700 : 600, color: 'var(--text)', fontFamily: 'var(--font-body)' }}>{m.name}</div>
               <div style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 1, lineHeight: 1.35 }}>{m.short}</div>
             </div>
             {isA && <Check />}
@@ -150,12 +150,12 @@ export function MethodPicker({ method, onChange, disabled = false, isMobile = fa
         title={current ? t('ai.methodNamed', { name: current.name }) : t('ai.methodTraining')}
         className="aip-icon-btn"
         style={{
-          display: 'flex', alignItems: 'center', gap: 4, height: 28, padding: '0 8px', borderRadius: 8,
+          display: 'flex', alignItems: 'center', gap: 4, height: 28, padding: '0 8px', borderRadius: 'var(--r-sm)',
           color: 'var(--ai-mid)', cursor: disabled ? 'default' : 'pointer', maxWidth: 120,
         }}
       >
         <MethodGlyph size={13} />
-        <span style={{ fontSize: 11, fontWeight: 600, fontFamily: 'Syne,sans-serif', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label}</span>
+        <span style={{ fontSize: 11, fontWeight: 600, fontFamily: 'var(--font-body)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label}</span>
       </button>
 
       {open && (isMobile ? (
@@ -163,7 +163,7 @@ export function MethodPicker({ method, onChange, disabled = false, isMobile = fa
       ) : (
         <div style={{
           position: 'absolute', bottom: 'calc(100% + 10px)', left: '50%', transform: 'translateX(-50%)',
-          background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 14,
+          background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)',
           boxShadow: '0 8px 28px rgba(0,0,0,0.16)', overflowY: 'auto', maxHeight: '60vh',
           width: 264, zIndex: 50, padding: 6, color: 'var(--text)', animation: 'ai_slidein_center 0.14s ease',
         }}>

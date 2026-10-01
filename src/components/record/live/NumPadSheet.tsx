@@ -5,7 +5,7 @@ import { useState } from 'react'
 interface Props { title: string; initial: number; onClose: () => void; onSubmit: (v: number) => void }
 
 const key: React.CSSProperties = {
-  height: 54, borderRadius: 15, background: 'var(--bg-card2)', border: '1px solid var(--border)',
+  height: 54, borderRadius: 'var(--r-md)', background: 'var(--bg-card2)', border: '1px solid var(--border)',
   color: 'var(--text)', fontSize: 22, fontWeight: 700, cursor: 'pointer',
 }
 

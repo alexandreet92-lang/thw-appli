@@ -167,9 +167,9 @@ export default function CoachVitrinePage() {
         {/* Profil (pleine largeur) */}
         <CoachShowcase profile={p} programs={programs} counts={counts ?? undefined} isCoach isOwner activitiesHref="/activities"
           actions={<>
-            <button onClick={() => setEditOpen(true)} style={{ height: 42, padding: '0 22px', borderRadius: 999, border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>{t('w1h.edit')}</button>
-            <button onClick={() => setCreateOpen(true)} style={{ height: 42, padding: '0 18px', borderRadius: 999, border: 'none', background: 'var(--bg-card2)', color: 'var(--text-mid)', fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>{t('w1h.add_program')}</button>
-            {p.published && p.slug && <a href={`/c/${p.slug}`} target="_blank" rel="noopener noreferrer" style={{ height: 42, padding: '0 18px', borderRadius: 999, background: 'var(--bg-card2)', color: 'var(--text-mid)', fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 700, textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>{t('w1h.view_public')}</a>}
+            <button onClick={() => setEditOpen(true)} style={{ height: 42, padding: '0 22px', borderRadius: 'var(--r-pill)', border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>{t('w1h.edit')}</button>
+            <button onClick={() => setCreateOpen(true)} style={{ height: 42, padding: '0 18px', borderRadius: 'var(--r-pill)', border: 'none', background: 'var(--bg-card2)', color: 'var(--text-mid)', fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>{t('w1h.add_program')}</button>
+            {p.published && p.slug && <a href={`/c/${p.slug}`} target="_blank" rel="noopener noreferrer" style={{ height: 42, padding: '0 18px', borderRadius: 'var(--r-pill)', background: 'var(--bg-card2)', color: 'var(--text-mid)', fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 700, textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>{t('w1h.view_public')}</a>}
           </>} />
 
         {/* Lien de partage */}
@@ -207,8 +207,8 @@ export default function CoachVitrinePage() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
           {p.avatar_url
             // eslint-disable-next-line @next/next/no-img-element
-            ? <img src={p.avatar_url} alt="" style={{ width: 72, height: 72, borderRadius: 20, objectFit: 'cover' }} />
-            : <div style={{ width: 72, height: 72, borderRadius: 20, background: 'var(--bg-card2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-dim)', fontSize: 24 }}>?</div>}
+            ? <img src={p.avatar_url} alt="" style={{ width: 72, height: 72, borderRadius: 'var(--r-lg)', objectFit: 'cover' }} />
+            : <div style={{ width: 72, height: 72, borderRadius: 'var(--r-lg)', background: 'var(--bg-card2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-dim)', fontSize: 24 }}>?</div>}
           <div style={{ display: 'flex', gap: 8 }}>
             <button onClick={() => avatarInput.current?.click()} disabled={uploading === 'avatar'} style={ghost}>{uploading === 'avatar' ? t('w1h.sending') : t('w1h.choose_photo')}</button>
             {p.avatar_url && <button onClick={() => set({ avatar_url: '' })} style={ghost}>{t('w1h.remove')}</button>}
@@ -252,7 +252,7 @@ export default function CoachVitrinePage() {
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
           {SPORTS.map(s => {
             const on = p.sports.includes(s.key)
-            return <button key={s.key} onClick={() => toggleSport(s.key)} style={{ padding: '7px 13px', borderRadius: 999, border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 12.5, fontWeight: 600, background: on ? 'var(--primary)' : 'var(--bg-card2)', color: on ? 'var(--on-primary)' : 'var(--text-mid)' }}>{s.label}</button>
+            return <button key={s.key} onClick={() => toggleSport(s.key)} style={{ padding: '7px 13px', borderRadius: 'var(--r-pill)', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 12.5, fontWeight: 600, background: on ? 'var(--primary)' : 'var(--bg-card2)', color: on ? 'var(--on-primary)' : 'var(--text-mid)' }}>{s.label}</button>
           })}
         </div>
 

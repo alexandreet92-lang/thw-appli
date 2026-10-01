@@ -31,13 +31,13 @@ export function StatTile({ value, label, unit, delta, deltaGood = 'up', spark, s
   const good = delta == null ? null : (deltaGood === 'up' ? delta >= 0 : delta <= 0)
   const dCol = good == null ? INK.dim : good ? STATUS.good : STATUS.critical
   return (
-    <div style={{ background: INK.surface, border: `1px solid ${INK.grid}`, borderRadius: 16, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 6, minWidth: 0 }}>
+    <div style={{ background: INK.surface, border: `1px solid ${INK.grid}`, borderRadius: 'var(--r-md)', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 6, minWidth: 0 }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
         <p style={{ margin: 0, fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: INK.dim }}>{label}</p>
         {spark && <Sparkline values={spark} color={sparkColor ?? accent ?? 'var(--primary)'} />}
       </div>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-        <span className="tabular-nums" style={{ fontFamily: 'Syne, sans-serif', fontSize: 26, fontWeight: 800, color: accent ?? INK.text, lineHeight: 1 }}>{value}</span>
+        <span className="tabular-nums" style={{ fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 800, color: accent ?? INK.text, lineHeight: 1 }}>{value}</span>
         {unit && <span style={{ fontSize: 12, fontWeight: 600, color: INK.dim }}>{unit}</span>}
         {delta != null && <span className="tabular-nums" style={{ marginLeft: 'auto', fontSize: 12, fontWeight: 800, color: dCol }}>{delta > 0 ? '▲' : delta < 0 ? '▼' : ''} {Math.abs(delta)}</span>}
       </div>

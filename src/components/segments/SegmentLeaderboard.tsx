@@ -54,20 +54,20 @@ export default function SegmentLeaderboard({ segmentId, isDark }: Props) {
   const medals = [gold, silver, bronze]
 
   if (loading) return (
-    <div style={{ padding: '32px 0', textAlign: 'center', color: dim, fontFamily: 'DM Sans, sans-serif' }}>
+    <div style={{ padding: '32px 0', textAlign: 'center', color: dim, fontFamily: 'var(--font-body)' }}>
       {t('shared.loading')}
     </div>
   )
 
   if (!efforts.length) return (
-    <div style={{ padding: '32px 20px', textAlign: 'center', fontFamily: 'DM Sans, sans-serif' }}>
+    <div style={{ padding: '32px 20px', textAlign: 'center', fontFamily: 'var(--font-body)' }}>
       <p style={{ fontSize: 15, color: dim, margin: 0 }}>{t('shared.noEffortRecorded')}</p>
       <p style={{ fontSize: 13, color: dim, margin: '6px 0 0', opacity: 0.7 }}>{t('shared.beFirstSegment')}</p>
     </div>
   )
 
   return (
-    <div style={{ fontFamily: 'DM Sans, sans-serif' }}>
+    <div style={{ fontFamily: 'var(--font-body)' }}>
       {efforts.map((e, i) => {
         const isMe = e.user_id === myId
         const medal = medals[i] ?? null

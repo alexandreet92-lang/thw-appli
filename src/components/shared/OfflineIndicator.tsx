@@ -67,7 +67,7 @@ export default function OfflineIndicator() {
           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
         }}>
           <div style={{ width: 7, height: 7, borderRadius: '50%', background: 'white' }} />
-          <span style={{ fontSize: 12, color: 'white', fontWeight: 600, fontFamily: 'DM Sans, sans-serif' }}>
+          <span style={{ fontSize: 12, color: 'white', fontWeight: 600, fontFamily: 'var(--font-body)' }}>
             {t('shared.offlineSaved')}
           </span>
         </div>
@@ -82,7 +82,7 @@ export default function OfflineIndicator() {
           backdropFilter: 'blur(4px)',
           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
         }}>
-          <span style={{ fontSize: 12, color: 'white', fontWeight: 600, fontFamily: 'DM Sans, sans-serif' }}>
+          <span style={{ fontSize: 12, color: 'white', fontWeight: 600, fontFamily: 'var(--font-body)' }}>
             {t('shared.syncing')}
           </span>
         </div>
@@ -97,7 +97,7 @@ export default function OfflineIndicator() {
           backdropFilter: 'blur(4px)',
           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
         }}>
-          <span style={{ fontSize: 12, color: 'white', fontWeight: 600, fontFamily: 'DM Sans, sans-serif' }}>
+          <span style={{ fontSize: 12, color: 'white', fontWeight: 600, fontFamily: 'var(--font-body)' }}>
             {syncCount > 1 ? t('shared.sessionsSyncedMany', { n: syncCount }) : t('shared.sessionsSyncedOne', { n: syncCount })}
           </span>
         </div>

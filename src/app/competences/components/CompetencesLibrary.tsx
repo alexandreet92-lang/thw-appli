@@ -36,11 +36,11 @@ export default function CompetencesLibrary({ competences, activeTab, onTabChange
                 key={tab.id}
                 onClick={() => onTabChange(tab.id)}
                 style={{
-                  fontSize: 11, padding: '4px 10px', borderRadius: 6,
+                  fontSize: 11, padding: '4px 10px', borderRadius: 'var(--r-sm)',
                   border: '0.5px solid var(--border)', cursor: 'pointer',
                   background: a ? 'var(--bg-hover)' : 'transparent',
                   color: a ? 'var(--text)' : 'var(--text-dim)',
-                  fontFamily: 'DM Sans, sans-serif',
+                  fontFamily: 'var(--font-body)',
                 }}
               >
                 {t(tab.labelKey)}

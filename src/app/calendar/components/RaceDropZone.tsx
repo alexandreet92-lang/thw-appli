@@ -31,7 +31,7 @@ export default function RaceDropZone({ label, list, setter }: {
       <label
         onDragOver={e => { e.preventDefault(); setOver(true) }} onDragLeave={() => setOver(false)}
         onDrop={e => { e.preventDefault(); setOver(false); add(e.dataTransfer.files) }}
-        style={{ border: `1.5px dashed ${over ? 'var(--text-dim)' : 'var(--border-mid)'}`, borderRadius: 12, padding: '16px', textAlign: 'center', cursor: 'pointer', background: 'var(--bg-card2)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}>
+        style={{ border: `1.5px dashed ${over ? 'var(--text-dim)' : 'var(--border-mid)'}`, borderRadius: 'var(--r-md)', padding: '16px', textAlign: 'center', cursor: 'pointer', background: 'var(--bg-card2)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}>
         <IconUpload size={15} color="var(--text-dim)" />
         <p style={{ fontSize: 12, color: 'var(--text-dim)', margin: 0 }}>{t('calendar.dragDropOrBrowse')}</p>
         <input type="file" accept=".gpx,.tcx,.kml,application/gpx+xml,application/vnd.google-earth.kml+xml,application/xml,text/xml,application/octet-stream,*/*"
@@ -41,7 +41,7 @@ export default function RaceDropZone({ label, list, setter }: {
       {list.length > 0 && (
         <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 3 }}>
           {list.map((f, i) => (
-            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 9px', borderRadius: 8, background: 'var(--bg-card2)', border: '1px solid var(--border)' }}>
+            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 9px', borderRadius: 'var(--r-sm)', background: 'var(--bg-card2)', border: '1px solid var(--border)' }}>
               <span style={{ flex: 1, fontSize: 11.5, color: 'var(--text-mid)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.name}</span>
               <button type="button" onClick={e => { e.preventDefault(); e.stopPropagation(); setter(list.filter((_, j) => j !== i)) }} style={{ background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', padding: 0 }}><IconX size={14} /></button>
             </div>

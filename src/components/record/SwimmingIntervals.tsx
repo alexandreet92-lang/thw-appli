@@ -45,9 +45,9 @@ interface Props {
 }
 
 const numStyle = {
-  width: 72, padding: '8px 10px', borderRadius: 8, fontSize: 14,
+  width: 72, padding: '8px 10px', borderRadius: 'var(--r-sm)', fontSize: 14,
   border: '1px solid var(--border)', background: 'var(--bg-card2)',
-  color: 'var(--text)', outline: 'none', fontFamily: 'DM Sans, sans-serif',
+  color: 'var(--text)', outline: 'none', fontFamily: 'var(--font-body)',
   boxSizing: 'border-box' as const,
 }
 
@@ -88,7 +88,7 @@ export default function SwimmingIntervals({ intervals, onChange, poolSizeM, isDa
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       {intervals.map((iv, idx) => (
-        <div key={iv.id} style={{ background: 'var(--bg-card2)', borderRadius: 12, padding: '14px', border: `1px solid ${sep}` }}>
+        <div key={iv.id} style={{ background: 'var(--bg-card2)', borderRadius: 'var(--r-md)', padding: '14px', border: `1px solid ${sep}` }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
             <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--primary)' }}>{t('record.swimSet', { n: idx + 1 })}</span>
             <button onClick={() => remove(iv.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: dim, fontSize: 20, lineHeight: 1, padding: '0 4px' }}>×</button>
@@ -139,10 +139,10 @@ export default function SwimmingIntervals({ intervals, onChange, poolSizeM, isDa
       <button
         onClick={add}
         style={{
-          width: '100%', padding: '12px', borderRadius: 12,
+          width: '100%', padding: '12px', borderRadius: 'var(--r-md)',
           border: `1.5px dashed ${isDark ? 'rgba(255,255,255,0.20)' : '#D1D5DB'}`,
           background: 'none', color: 'var(--primary)', fontSize: 14, fontWeight: 500,
-          cursor: 'pointer', fontFamily: 'DM Sans, sans-serif',
+          cursor: 'pointer', fontFamily: 'var(--font-body)',
         }}
       >
         {t('record.swimAddInterval')}

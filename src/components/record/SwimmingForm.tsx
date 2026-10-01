@@ -30,9 +30,9 @@ const LABEL = {
 const INPUT = {
   width: '100%', boxSizing: 'border-box' as const,
   background: 'var(--bg-card2)', border: '1px solid var(--border)',
-  borderRadius: 12, padding: '12px 16px',
+  borderRadius: 'var(--r-md)', padding: '12px 16px',
   fontSize: 15, color: 'var(--text)', outline: 'none',
-  fontFamily: 'DM Sans, sans-serif',
+  fontFamily: 'var(--font-body)',
 }
 
 const NUM_SM = {
@@ -121,7 +121,7 @@ export default function SwimmingForm({ onClose }: Props) {
   )
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 10004, background: 'var(--bg)', color: 'var(--text)', display: 'flex', flexDirection: 'column', fontFamily: 'DM Sans, sans-serif', paddingTop: 'env(safe-area-inset-top)', transform: shown && !closing ? 'translateY(0)' : 'translateY(100%)', transition: 'transform 300ms cubic-bezier(0.16,1,0.3,1)' }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 10004, background: 'var(--bg)', color: 'var(--text)', display: 'flex', flexDirection: 'column', fontFamily: 'var(--font-body)', paddingTop: 'env(safe-area-inset-top)', transform: shown && !closing ? 'translateY(0)' : 'translateY(100%)', transition: 'transform 300ms cubic-bezier(0.16,1,0.3,1)' }}>
 
       {/* Header */}
       <div style={{ height: 52, flexShrink: 0, display: 'flex', alignItems: 'center', padding: '0 16px', borderBottom: '1px solid var(--border)', position: 'relative' }}>
@@ -166,7 +166,7 @@ export default function SwimmingForm({ onClose }: Props) {
             />
             <div style={{ display: 'flex', gap: 4 }}>
               {(['m', 'yd'] as const).map(u => (
-                <button key={u} onClick={() => setDistUnit(u)} style={{ padding: '10px 14px', borderRadius: 10, border: distUnit === u ? 'none' : '1px solid var(--border)', background: distUnit === u ? 'var(--primary)' : 'transparent', color: distUnit === u ? '#fff' : 'var(--text)', cursor: 'pointer', fontSize: 14, fontFamily: 'DM Sans, sans-serif' }}>{u}</button>
+                <button key={u} onClick={() => setDistUnit(u)} style={{ padding: '10px 14px', borderRadius: 'var(--r-sm)', border: distUnit === u ? 'none' : '1px solid var(--border)', background: distUnit === u ? 'var(--primary)' : 'transparent', color: distUnit === u ? '#fff' : 'var(--text)', cursor: 'pointer', fontSize: 14, fontFamily: 'var(--font-body)' }}>{u}</button>
               ))}
             </div>
           </div>
@@ -196,7 +196,7 @@ export default function SwimmingForm({ onClose }: Props) {
       <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '16px 20px', paddingBottom: 'max(env(safe-area-inset-bottom), 20px)', background: 'linear-gradient(transparent, var(--bg) 40%)' }}>
         <button
           onClick={handleSave} disabled={saving}
-          style={{ width: '100%', height: 52, borderRadius: 16, background: 'linear-gradient(135deg, #06B6D4, #2563EB)', border: 'none', color: '#fff', fontSize: 16, fontWeight: 600, cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.7 : 1, fontFamily: 'DM Sans, sans-serif', boxShadow: '0 4px 20px rgba(6,182,212,0.35)' }}
+          style={{ width: '100%', height: 52, borderRadius: 'var(--r-md)', background: 'linear-gradient(135deg, #06B6D4, #2563EB)', border: 'none', color: '#fff', fontSize: 16, fontWeight: 600, cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.7 : 1, fontFamily: 'var(--font-body)', boxShadow: '0 4px 20px rgba(6,182,212,0.35)' }}
         >
           {saving ? t('record.swimSaving') : t('record.swimSaveActivity')}
         </button>

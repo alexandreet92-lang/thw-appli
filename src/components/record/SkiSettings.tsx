@@ -35,7 +35,7 @@ export default function SkiSettings(props: Props) {
 
 function Toggle({ value, onChange, t }: { value: boolean; onChange: (v: boolean) => void; t: ReturnType<typeof getTheme> }) {
   return (
-    <div onClick={() => onChange(!value)} style={{ width:44, height:26, borderRadius:13, background: value ? 'var(--primary)' : t.separator, cursor:'pointer', position:'relative', transition:'background 0.2s', flexShrink:0 }}>
+    <div onClick={() => onChange(!value)} style={{ width:44, height:26, borderRadius: 'var(--r-md)', background: value ? 'var(--primary)' : t.separator, cursor:'pointer', position:'relative', transition:'background 0.2s', flexShrink:0 }}>
       <div style={{ position:'absolute', top:3, left: value ? 21 : 3, width:20, height:20, borderRadius:'50%', background:'white', transition:'left 0.2s', boxShadow:'0 1px 4px rgba(0,0,0,0.2)' }} />
     </div>
   )
@@ -122,18 +122,18 @@ function SkiSettingsInner({ open, onClose, isDark, settings, updateSetting: upda
             <button onClick={e => { e.stopPropagation(); setMenuOpenId(prev => prev===page.id ? null : page.id) }} style={{ background:'none', border:'none', padding:'8px', color:'#8C8C8C', cursor:'pointer', fontSize:20, lineHeight:1 }}>⋯</button>
           </div>
           {menuOpenId === page.id && (
-            <div ref={menuRef} style={{ position:'absolute', right:8, top:'50%', transform:'translateY(-50%)', zIndex:100, background:t.bg, border:`1px solid ${t.separator}`, borderRadius:12, overflow:'hidden', boxShadow:'0 8px 24px rgba(0,0,0,0.15)', minWidth:150 }}>
+            <div ref={menuRef} style={{ position:'absolute', right:8, top:'50%', transform:'translateY(-50%)', zIndex:100, background:t.bg, border:`1px solid ${t.separator}`, borderRadius: 'var(--r-md)', overflow:'hidden', boxShadow:'0 8px 24px rgba(0,0,0,0.15)', minWidth:150 }}>
               <button onClick={e => { e.stopPropagation(); setRenamingId(page.id); setMenuOpenId(null) }} style={{ width:'100%', padding:'13px 16px', background:'none', border:'none', textAlign:'left', fontSize:15, color:t.text, cursor:'pointer' }}>{tr('record.settingsRename')}</button>
               <div style={{ height:1, background:t.separator }} />
               <button onClick={e => { e.stopPropagation(); setConfirmDeleteId(page.id); setMenuOpenId(null) }} style={{ width:'100%', padding:'13px 16px', background:'none', border:'none', textAlign:'left', fontSize:15, color:'var(--danger)', cursor:'pointer' }}>{tr('record.settingsDelete')}</button>
             </div>
           )}
           {confirmDeleteId === page.id && (
-            <div style={{ padding:'10px 16px', background:'rgba(239,68,68,0.08)', borderRadius:10, display:'flex', alignItems:'center', justifyContent:'space-between', margin:'4px 0' }}>
+            <div style={{ padding:'10px 16px', background:'rgba(239,68,68,0.08)', borderRadius: 'var(--r-sm)', display:'flex', alignItems:'center', justifyContent:'space-between', margin:'4px 0' }}>
               <span style={{ fontSize:13, color:'var(--danger)' }}>{tr('record.settingsDeletePageConfirm')}</span>
               <div style={{ display:'flex', gap:8 }}>
-                <button onClick={() => { deletePage(page.id); setConfirmDeleteId(null) }} style={{ padding:'5px 14px', borderRadius:8, background:'var(--danger)', border:'none', color:'white', fontSize:13, cursor:'pointer' }}>{tr('record.settingsYes')}</button>
-                <button onClick={() => setConfirmDeleteId(null)} style={{ padding:'5px 14px', borderRadius:8, background:t.separator, border:'none', color:t.text, fontSize:13, cursor:'pointer' }}>{tr('record.settingsNo')}</button>
+                <button onClick={() => { deletePage(page.id); setConfirmDeleteId(null) }} style={{ padding:'5px 14px', borderRadius: 'var(--r-sm)', background:'var(--danger)', border:'none', color:'white', fontSize:13, cursor:'pointer' }}>{tr('record.settingsYes')}</button>
+                <button onClick={() => setConfirmDeleteId(null)} style={{ padding:'5px 14px', borderRadius: 'var(--r-sm)', background:t.separator, border:'none', color:t.text, fontSize:13, cursor:'pointer' }}>{tr('record.settingsNo')}</button>
               </div>
             </div>
           )}
@@ -152,7 +152,7 @@ function SkiSettingsInner({ open, onClose, isDark, settings, updateSetting: upda
         <Row label={tr('record.skiAlertSound')} t={t}><Toggle value={settings.alerts.sound} onChange={v => updateSetting('alerts.sound', v)} t={t} /></Row>
         <Row label={tr('record.skiAlertMaxSpeed')} t={t}>
           <select value={settings.alerts.maxSpeedAlert} onChange={e => updateSetting('alerts.maxSpeedAlert', Number(e.target.value))}
-            style={{ background:t.cardBg, border:`1px solid ${t.separator}`, borderRadius:8, color:t.text, padding:'6px 10px', fontSize:14 }}>
+            style={{ background:t.cardBg, border:`1px solid ${t.separator}`, borderRadius: 'var(--r-sm)', color:t.text, padding:'6px 10px', fontSize:14 }}>
             <option value={0}>{tr('record.settingsOff')}</option>
             <option value={80}>80 km/h</option>
             <option value={100}>100 km/h</option>
@@ -172,13 +172,13 @@ function SkiSettingsInner({ open, onClose, isDark, settings, updateSetting: upda
         <Row label={tr('record.skiDisplayKeepAwake')} t={t}><Toggle value={settings.display.keepAwake} onChange={v => updateSetting('display.keepAwake', v)} t={t} /></Row>
         <Row label={tr('record.skiDisplayTheme')} t={t}>
           <select value={settings.display.theme} onChange={e => updateSetting('display.theme', e.target.value)}
-            style={{ background:t.cardBg, border:`1px solid ${t.separator}`, borderRadius:8, color:t.text, padding:'6px 10px', fontSize:14 }}>
+            style={{ background:t.cardBg, border:`1px solid ${t.separator}`, borderRadius: 'var(--r-sm)', color:t.text, padding:'6px 10px', fontSize:14 }}>
             <option value="auto">{tr('record.settingsAuto')}</option><option value="light">{tr('record.skiThemeLight')}</option><option value="dark">{tr('record.skiThemeDark')}</option>
           </select>
         </Row>
         <Row label={tr('record.skiDisplayDataSize')} t={t}>
           <select value={settings.display.dataSize} onChange={e => updateSetting('display.dataSize', e.target.value)}
-            style={{ background:t.cardBg, border:`1px solid ${t.separator}`, borderRadius:8, color:t.text, padding:'6px 10px', fontSize:14 }}>
+            style={{ background:t.cardBg, border:`1px solid ${t.separator}`, borderRadius: 'var(--r-sm)', color:t.text, padding:'6px 10px', fontSize:14 }}>
             <option value="small">{tr('record.skiSizeSmall')}</option><option value="normal">{tr('record.skiSizeNormal')}</option><option value="large">{tr('record.skiSizeLarge')}</option>
           </select>
         </Row>
@@ -189,12 +189,12 @@ function SkiSettingsInner({ open, onClose, isDark, settings, updateSetting: upda
         <Row label={tr('record.skiAthleteMaxHr')} t={t}>
           <input type="number" value={settings.athlete.maxHr} min={100} max={220}
             onChange={e => updateSetting('athlete.maxHr', Number(e.target.value))}
-            style={{ width:70, background:t.cardBg, border:`1px solid ${t.separator}`, borderRadius:8, color:t.text, padding:'6px 10px', fontSize:14, textAlign:'center' }} />
+            style={{ width:70, background:t.cardBg, border:`1px solid ${t.separator}`, borderRadius: 'var(--r-sm)', color:t.text, padding:'6px 10px', fontSize:14, textAlign:'center' }} />
         </Row>
         <Row label={tr('record.skiAthleteRestHr')} t={t} last>
           <input type="number" value={settings.athlete.restHr} min={30} max={100}
             onChange={e => updateSetting('athlete.restHr', Number(e.target.value))}
-            style={{ width:70, background:t.cardBg, border:`1px solid ${t.separator}`, borderRadius:8, color:t.text, padding:'6px 10px', fontSize:14, textAlign:'center' }} />
+            style={{ width:70, background:t.cardBg, border:`1px solid ${t.separator}`, borderRadius: 'var(--r-sm)', color:t.text, padding:'6px 10px', fontSize:14, textAlign:'center' }} />
         </Row>
       </div>
     )
@@ -204,7 +204,7 @@ function SkiSettingsInner({ open, onClose, isDark, settings, updateSetting: upda
         <Row label={tr('record.skiRecordingAutoPauseThreshold')} t={t} last>
           <input type="number" value={settings.recording.autoPauseThreshold} min={0} max={5} step={0.5}
             onChange={e => updateSetting('recording.autoPauseThreshold', Number(e.target.value))}
-            style={{ width:70, background:t.cardBg, border:`1px solid ${t.separator}`, borderRadius:8, color:t.text, padding:'6px 10px', fontSize:14, textAlign:'center' }} />
+            style={{ width:70, background:t.cardBg, border:`1px solid ${t.separator}`, borderRadius: 'var(--r-sm)', color:t.text, padding:'6px 10px', fontSize:14, textAlign:'center' }} />
         </Row>
       </div>
     )
@@ -212,13 +212,13 @@ function SkiSettingsInner({ open, onClose, isDark, settings, updateSetting: upda
       <div>
         <Row label={tr('record.skiUnitsDistance')} t={t}>
           <select value={settings.units.distance} onChange={e => updateSetting('units.distance', e.target.value)}
-            style={{ background:t.cardBg, border:`1px solid ${t.separator}`, borderRadius:8, color:t.text, padding:'6px 10px', fontSize:14 }}>
+            style={{ background:t.cardBg, border:`1px solid ${t.separator}`, borderRadius: 'var(--r-sm)', color:t.text, padding:'6px 10px', fontSize:14 }}>
             <option value="metric">{tr('record.skiUnitKilometers')}</option><option value="imperial">{tr('record.skiUnitMiles')}</option>
           </select>
         </Row>
         <Row label={tr('record.skiUnitsAltitude')} t={t} last>
           <select value={settings.units.altitude} onChange={e => updateSetting('units.altitude', e.target.value)}
-            style={{ background:t.cardBg, border:`1px solid ${t.separator}`, borderRadius:8, color:t.text, padding:'6px 10px', fontSize:14 }}>
+            style={{ background:t.cardBg, border:`1px solid ${t.separator}`, borderRadius: 'var(--r-sm)', color:t.text, padding:'6px 10px', fontSize:14 }}>
             <option value="m">{tr('record.skiUnitMeters')}</option><option value="ft">{tr('record.skiUnitFeet')}</option>
           </select>
         </Row>
@@ -236,17 +236,17 @@ function SkiSettingsInner({ open, onClose, isDark, settings, updateSetting: upda
   return (
     <div style={{ position:'fixed', inset:0, zIndex:10000, display:'flex', alignItems:'flex-end', justifyContent:'center' }}>
       <div onClick={handleClose} style={{ position:'absolute', inset:0, background:'rgba(0,0,0,0.50)', backdropFilter:'blur(4px)', animation: closing?'fade-out 200ms ease-in forwards':'fade-in 200ms ease-out forwards' }} />
-      <div className={closing?'sheet-close':'sheet-open'} style={{ position:'fixed', left:0, right:0, bottom:0, height:'80vh', background:t.bg, color:t.text, borderTopLeftRadius:24, borderTopRightRadius:24, display:'flex', flexDirection:'column', overflow:'hidden', fontFamily:'DM Sans, sans-serif', boxShadow:'0 -8px 32px rgba(0,0,0,0.18)' }}>
+      <div className={closing?'sheet-close':'sheet-open'} style={{ position:'fixed', left:0, right:0, bottom:0, height:'80vh', background:t.bg, color:t.text, borderTopLeftRadius:24, borderTopRightRadius:24, display:'flex', flexDirection:'column', overflow:'hidden', fontFamily: 'var(--font-body)', boxShadow:'0 -8px 32px rgba(0,0,0,0.18)' }}>
         <div style={{ display:'flex', justifyContent:'center', paddingTop:10, flexShrink:0 }}><div style={{ width:40, height:4, borderRadius:2, background:t.separator }} /></div>
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'16px 20px 12px', flexShrink:0 }}>
-          <h2 style={{ fontSize:18, fontWeight:700, color:t.text, margin:0, fontFamily:'Syne, sans-serif' }}>{tr('record.skiSettingsTitle')}</h2>
+          <h2 style={{ fontSize:18, fontWeight:700, color:t.text, margin:0, fontFamily: 'var(--font-display)' }}>{tr('record.skiSettingsTitle')}</h2>
           <button onClick={handleClose} style={{ color:t.dim, background:'none', border:'none', fontSize:22, cursor:'pointer', lineHeight:1, padding:'4px 8px' }}>×</button>
         </div>
         <div style={{ flex:1, overflow:'hidden', position:'relative' }}>
           <div style={{ height:'100%', overflowY:'auto', paddingBottom:24 }}>
             {SECTION_IDS.map(secId => (
-              <button key={secId} onClick={() => openSection(secId)} style={{ width:'100%', display:'flex', alignItems:'center', gap:14, padding:'14px 20px', background:'none', border:'none', cursor:'pointer', borderBottom:`1px solid ${t.separator}`, textAlign:'left', fontFamily:'DM Sans, sans-serif' }}>
-                <div style={{ width:36, height:36, borderRadius:10, background:'rgba(6,182,212,0.10)', color:'var(--primary)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>{SECTION_ICONS[secId]}</div>
+              <button key={secId} onClick={() => openSection(secId)} style={{ width:'100%', display:'flex', alignItems:'center', gap:14, padding:'14px 20px', background:'none', border:'none', cursor:'pointer', borderBottom:`1px solid ${t.separator}`, textAlign:'left', fontFamily: 'var(--font-body)' }}>
+                <div style={{ width:36, height:36, borderRadius: 'var(--r-sm)', background:'rgba(6,182,212,0.10)', color:'var(--primary)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>{SECTION_ICONS[secId]}</div>
                 <div style={{ flex:1 }}>
                   <p style={{ fontSize:15, fontWeight:500, color:t.text, margin:0 }}>{sectionLabel(secId)}</p>
                   <p style={{ fontSize:12, color:'#8C8C8C', margin:'2px 0 0' }}>{sectionDesc(secId)}</p>
@@ -259,7 +259,7 @@ function SkiSettingsInner({ open, onClose, isDark, settings, updateSetting: upda
             <div className={closingSection?'editor-slide-out':'editor-slide-in'} style={{ position:'absolute', inset:0, background:t.bg, zIndex:10, display:'flex', flexDirection:'column', overflowY:'hidden' }}>
               <div style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 16px', borderBottom:`1px solid ${t.separator}`, flexShrink:0 }}>
                 <button onClick={closeSection} style={{ background:'none', border:'none', cursor:'pointer', color:t.text, padding:'4px' }}><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M12 5l-5 5 5 5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/></svg></button>
-                <h3 style={{ fontSize:17, fontWeight:700, color:t.text, margin:0, flex:1, fontFamily:'Syne, sans-serif' }}>{sectionLabel(activeSection)}</h3>
+                <h3 style={{ fontSize:17, fontWeight:700, color:t.text, margin:0, flex:1, fontFamily: 'var(--font-body)' }}>{sectionLabel(activeSection)}</h3>
               </div>
               <div style={{ flex:1, overflowY:'auto', paddingBottom:24 }}>{renderSectionContent(activeSection)}</div>
             </div>

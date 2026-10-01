@@ -47,7 +47,7 @@ function MsgMedia({ url, type, name, mine }: { url: string; type: 'image' | 'par
   if (type === 'image') {
     return (
       <a href={url} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} style={{ display: 'block' }}>
-        <img src={url} alt={name ?? t('w2d.imageAlt')} style={{ maxWidth: '100%', width: 220, maxHeight: 260, objectFit: 'cover', borderRadius: 11, display: 'block' }} />
+        <img src={url} alt={name ?? t('w2d.imageAlt')} style={{ maxWidth: '100%', width: 220, maxHeight: 260, objectFit: 'cover', borderRadius: 'var(--r-md)', display: 'block' }} />
       </a>
     )
   }
@@ -57,7 +57,7 @@ function MsgMedia({ url, type, name, mine }: { url: string; type: 'image' | 'par
     : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
   return (
     <a href={url} target="_blank" rel="noopener noreferrer" download={name ?? undefined} onClick={e => e.stopPropagation()}
-      style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '8px 11px', borderRadius: 10, textDecoration: 'none',
+      style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '8px 11px', borderRadius: 'var(--r-sm)', textDecoration: 'none',
         background: mine ? 'color-mix(in srgb, #000 12%, transparent)' : 'var(--bg-card2)', color: fg, maxWidth: 240 }}>
       <span style={{ flexShrink: 0, display: 'flex' }}>{iconSvg}</span>
       <span style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
@@ -192,24 +192,24 @@ export function MessageThread({ coachId, athleteId, compact = false }: { coachId
           return (
             <div key={m.id} style={{ display: 'contents' }}>
               {showDay && (
-                <div style={{ alignSelf: 'center', margin: i === 0 ? '0 0 12px' : '16px 0 12px', fontSize: 10.5, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-dim)', background: 'var(--bg-card2)', padding: '4px 12px', borderRadius: 999 }}>{dayLabel(m.created_at)}</div>
+                <div style={{ alignSelf: 'center', margin: i === 0 ? '0 0 12px' : '16px 0 12px', fontSize: 10.5, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-dim)', background: 'var(--bg-card2)', padding: '4px 12px', borderRadius: 'var(--r-pill)' }}>{dayLabel(m.created_at)}</div>
               )}
             <div style={{ alignSelf: m.mine ? 'flex-end' : 'flex-start', maxWidth: '82%', position: 'relative', marginTop: i === 0 || showDay ? 0 : grouped ? 3 : 11, animation: m.id.startsWith('tmp-') ? 'mtBubbleIn .2s ease' : undefined }}>
               {editing ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                   <textarea value={editText} onChange={e => setEditText(e.target.value)} rows={2} autoFocus
                     onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void saveEdit() } if (e.key === 'Escape') setEditId(null) }}
-                    style={{ minWidth: 200, resize: 'none', padding: '8px 12px', borderRadius: 12, border: '1px solid var(--primary)', background: 'var(--bg-alt)', color: 'var(--text)', fontSize: 13.5, fontFamily: 'var(--font-body)', outline: 'none', lineHeight: 1.4 }} />
+                    style={{ minWidth: 200, resize: 'none', padding: '8px 12px', borderRadius: 'var(--r-md)', border: '1px solid var(--primary)', background: 'var(--bg-alt)', color: 'var(--text)', fontSize: 13.5, fontFamily: 'var(--font-body)', outline: 'none', lineHeight: 1.4 }} />
                   <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                    <button onClick={() => setEditId(null)} style={{ fontSize: 12, padding: '4px 10px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-mid)', cursor: 'pointer' }}>{t('w2d.cancel')}</button>
-                    <button onClick={() => void saveEdit()} style={{ fontSize: 12, padding: '4px 10px', borderRadius: 8, border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', cursor: 'pointer', fontWeight: 600 }}>{t('w2d.save')}</button>
+                    <button onClick={() => setEditId(null)} style={{ fontSize: 12, padding: '4px 10px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-mid)', cursor: 'pointer' }}>{t('w2d.cancel')}</button>
+                    <button onClick={() => void saveEdit()} style={{ fontSize: 12, padding: '4px 10px', borderRadius: 'var(--r-sm)', border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', cursor: 'pointer', fontWeight: 600 }}>{t('w2d.save')}</button>
                   </div>
                 </div>
               ) : (
                 <>
                   <div
                     onClick={e => { if (hasMenu) { e.stopPropagation(); setMenuId(menuId === m.id ? null : m.id) } }}
-                    style={{ padding: m.media_type === 'image' && !m.body && !deleted ? 4 : '9px 13px', borderRadius: 18, fontSize: 13.5, lineHeight: 1.45, fontFamily: 'var(--font-body)',
+                    style={{ padding: m.media_type === 'image' && !m.body && !deleted ? 4 : '9px 13px', borderRadius: 'var(--r-lg)', fontSize: 13.5, lineHeight: 1.45, fontFamily: 'var(--font-body)',
                       cursor: hasMenu ? 'pointer' : 'default',
                       background: deleted ? 'transparent' : m.mine ? 'var(--primary)' : 'var(--bg-alt)',
                       color: deleted ? 'var(--text-dim)' : m.mine ? 'var(--on-primary)' : 'var(--text)',
@@ -224,7 +224,7 @@ export function MessageThread({ coachId, athleteId, compact = false }: { coachId
                   </div>
                   {/* Menu d'actions : mes messages → Modifier/Supprimer ; ceux de l'autre → Signaler/Bloquer */}
                   {menuId === m.id && hasMenu && (
-                    <div style={{ position: 'absolute', top: '100%', right: m.mine ? 0 : 'auto', left: m.mine ? 'auto' : 0, marginTop: 4, zIndex: 20, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.22)', overflow: 'hidden', minWidth: 140 }}>
+                    <div style={{ position: 'absolute', top: '100%', right: m.mine ? 0 : 'auto', left: m.mine ? 'auto' : 0, marginTop: 4, zIndex: 20, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-sm)', boxShadow: '0 8px 24px rgba(0,0,0,0.22)', overflow: 'hidden', minWidth: 140 }}>
                       {canAct ? (<>
                         <button onClick={e => { e.stopPropagation(); startEdit(m) }} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '9px 12px', border: 'none', background: 'transparent', color: 'var(--text)', fontSize: 13, cursor: 'pointer', textAlign: 'left' }}>
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
@@ -272,9 +272,9 @@ export function MessageThread({ coachId, athleteId, compact = false }: { coachId
 
         {/* Aperçu de la pièce jointe en attente (envoyée AVEC la légende) */}
         {attach && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8, padding: 8, borderRadius: 12, background: 'var(--bg-card2)', border: '1px solid var(--border)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8, padding: 8, borderRadius: 'var(--r-md)', background: 'var(--bg-card2)', border: '1px solid var(--border)' }}>
             {attachPreview
-              ? <img src={attachPreview} alt="" style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 8, flexShrink: 0 }} />
+              ? <img src={attachPreview} alt="" style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 'var(--r-sm)', flexShrink: 0 }} />
               : <span style={{ flexShrink: 0, display: 'flex', color: 'var(--text-mid)' }}><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg></span>}
             <span style={{ flex: 1, minWidth: 0, fontSize: 12.5, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{attach.name}</span>
             <button onClick={() => setAttach(null)} aria-label={t('w2d.remove')} style={{ border: 'none', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 18, flexShrink: 0, lineHeight: 1 }}>×</button>
@@ -290,7 +290,7 @@ export function MessageThread({ coachId, athleteId, compact = false }: { coachId
             </button>
             {plusOpen && (<>
               <div onClick={() => setPlusOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 30 }} />
-              <div style={{ position: 'absolute', bottom: '110%', left: 0, zIndex: 31, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 12, boxShadow: '0 10px 30px rgba(0,0,0,0.22)', overflow: 'hidden', minWidth: 210 }}>
+              <div style={{ position: 'absolute', bottom: '110%', left: 0, zIndex: 31, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', boxShadow: '0 10px 30px rgba(0,0,0,0.22)', overflow: 'hidden', minWidth: 210 }}>
                 <button onClick={() => { setPlusOpen(false); fileRef.current?.click() }} style={menuItem}>
                   <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M21.44 11.05l-9.19 9.19a5 5 0 0 1-7.07-7.07l9.19-9.19a3 3 0 0 1 4.24 4.24l-9.2 9.19a1 1 0 0 1-1.41-1.41l8.49-8.49"/></svg> {t('w2d.attachPhotoFileParcours')}
                 </button>
@@ -306,9 +306,9 @@ export function MessageThread({ coachId, athleteId, compact = false }: { coachId
             onFocus={e => { e.currentTarget.style.borderColor = 'var(--primary)'; e.currentTarget.style.boxShadow = '0 0 0 3px color-mix(in srgb, var(--primary) 15%, transparent)' }}
             onBlur={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.boxShadow = 'none' }}
             placeholder={attach ? t('w2d.captionPlaceholder') : t('w2d.messagePlaceholder')}
-            style={{ flex: 1, resize: 'none', maxHeight: 120, padding: '11px 14px', borderRadius: 14, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 14, fontFamily: 'var(--font-body)', outline: 'none', lineHeight: 1.45, transition: 'border-color .15s, box-shadow .15s', boxShadow: 'var(--shadow-card)' }} />
+            style={{ flex: 1, resize: 'none', maxHeight: 120, padding: '11px 14px', borderRadius: 'var(--r-md)', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 14, fontFamily: 'var(--font-body)', outline: 'none', lineHeight: 1.45, transition: 'border-color .15s, box-shadow .15s', boxShadow: 'var(--shadow-card)' }} />
           <button onClick={() => void send()} disabled={(!input.trim() && !attach) || sending} aria-label={t('w2d.send')}
-            style={{ width: 38, height: 38, borderRadius: 11, border: 'none', background: (input.trim() || attach) ? 'var(--primary)' : 'var(--border)', color: (input.trim() || attach) ? 'var(--on-primary)' : 'var(--text-dim)', cursor: (input.trim() || attach) ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            style={{ width: 38, height: 38, borderRadius: 'var(--r-md)', border: 'none', background: (input.trim() || attach) ? 'var(--primary)' : 'var(--border)', color: (input.trim() || attach) ? 'var(--on-primary)' : 'var(--text-dim)', cursor: (input.trim() || attach) ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
           </button>
         </div>

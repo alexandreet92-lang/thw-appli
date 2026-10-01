@@ -163,7 +163,7 @@ function MacroBar({ label, consumed, objective, color }: { label: string; consum
     <div style={{ marginBottom: 10 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
         <span style={{ fontSize: 11, color: 'var(--text-mid)' }}>{label}</span>
-        <span style={{ fontSize: 11, fontFamily: 'DM Mono,monospace', color }}>
+        <span style={{ fontSize: 11, fontFamily: 'var(--font-body)', color }}>
           {Math.round(consumed)}g / {Math.round(objective)}g
         </span>
       </div>
@@ -328,7 +328,7 @@ function MacrosChart({ logs, activePlan }: { logs: DailyLog[]; activePlan: Nutri
         ].map(item => (
           <div key={item.label} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
             <div style={{ width: 10, height: 10, borderRadius: '50%', background: item.color }} />
-            <span style={{ fontSize: 11, color: 'var(--text-dim)', fontFamily: 'DM Sans,sans-serif' }}>{item.label}</span>
+            <span style={{ fontSize: 11, color: 'var(--text-dim)', fontFamily: 'var(--font-body)' }}>{item.label}</span>
           </div>
         ))}
       </div>
@@ -342,14 +342,14 @@ function MacrosChart({ logs, activePlan }: { logs: DailyLog[]; activePlan: Nutri
 // ══════════════════════════════════════════════════════════════════
 const cardStyle: React.CSSProperties = {
   background: 'var(--bg-card)',
-  borderRadius: 20,
+  borderRadius: 'var(--r-lg)',
   border: '1px solid var(--border)',
   padding: '28px 24px',
   marginBottom: 20,
 }
 
 const sectionTitle: React.CSSProperties = {
-  fontFamily: 'Syne,sans-serif',
+  fontFamily: 'var(--font-body)',
   fontWeight: 700,
   fontSize: 18,
   color: 'var(--text)',
@@ -447,10 +447,10 @@ function TemplateForm({
         <button
           onClick={onCancel}
           style={{
-            padding: '8px 14px', borderRadius: 8,
+            padding: '8px 14px', borderRadius: 'var(--r-sm)',
             border: '1px solid var(--border)', background: 'transparent',
             color: 'var(--text-dim)', fontSize: 12, cursor: 'pointer',
-            fontFamily: 'DM Sans,sans-serif',
+            fontFamily: 'var(--font-body)',
           }}
         >
           {t('nutrition.common.cancel')}
@@ -459,11 +459,11 @@ function TemplateForm({
           onClick={() => void onSave()}
           disabled={saving || !form.nom.trim()}
           style={{
-            flex: 1, padding: '8px', borderRadius: 8, border: 'none',
+            flex: 1, padding: '8px', borderRadius: 'var(--r-sm)', border: 'none',
             background: form.nom.trim() ? 'linear-gradient(135deg,#06B6D4,#5b6fff)' : 'var(--border)',
             color: '#fff', fontSize: 12, fontWeight: 700,
             cursor: form.nom.trim() && !saving ? 'pointer' : 'not-allowed',
-            fontFamily: 'DM Sans,sans-serif',
+            fontFamily: 'var(--font-body)',
           }}
         >
           {saving ? t('nutrition.common.saving') : isEdit ? t('nutrition.common.edit') : t('nutrition.common.add')}
@@ -560,12 +560,12 @@ function MealTemplatesSection({
   const inputStyle: React.CSSProperties = {
     width: '100%',
     padding: '8px 10px',
-    borderRadius: 8,
+    borderRadius: 'var(--r-sm)',
     border: '1px solid var(--border)',
     background: 'var(--bg-card2)',
     color: 'var(--text)',
     fontSize: 13,
-    fontFamily: 'DM Sans,sans-serif',
+    fontFamily: 'var(--font-body)',
     outline: 'none',
     boxSizing: 'border-box',
   }
@@ -605,7 +605,7 @@ function MealTemplatesSection({
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           padding: '16px 20px', borderBottom: '1px solid var(--border)', flexShrink: 0,
         }}>
-          <h2 style={{ fontFamily: 'Syne,sans-serif', fontWeight: 800, fontSize: 16, margin: 0, color: 'var(--text)' }}>
+          <h2 style={{ fontFamily: 'var(--font-body)', fontWeight: 800, fontSize: 16, margin: 0, color: 'var(--text)' }}>
             {tr('nutrition.templates.title')}
           </h2>
           <button
@@ -638,18 +638,18 @@ function MealTemplatesSection({
                       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                       marginBottom: 8,
                     }}>
-                      <span style={{ fontFamily: 'Syne,sans-serif', fontWeight: 700, fontSize: 13, color: 'var(--text)' }}>
+                      <span style={{ fontFamily: 'var(--font-body)', fontWeight: 700, fontSize: 13, color: 'var(--text)' }}>
                         {tr(`nutrition.meal.${mealKey}`)}
                       </span>
                       {addingFor !== mealKey && (
                         <button
                           onClick={() => startAdd(mealKey)}
                           style={{
-                            padding: '4px 10px', borderRadius: 7,
+                            padding: '4px 10px', borderRadius: 'var(--r-sm)',
                             border: '1px solid var(--border)',
                             background: 'transparent',
                             color: 'var(--text-dim)', fontSize: 11,
-                            cursor: 'pointer', fontFamily: 'DM Sans,sans-serif',
+                            cursor: 'pointer', fontFamily: 'var(--font-body)',
                           }}
                         >
                           {tr('nutrition.templates.addBtn')}
@@ -672,7 +672,7 @@ function MealTemplatesSection({
                         return (
                           <div key={t.id} style={{
                             background: 'var(--bg-card2)', border: '1px solid rgba(91,111,255,0.3)',
-                            borderRadius: 10, padding: 14, marginBottom: 8,
+                            borderRadius: 'var(--r-sm)', padding: 14, marginBottom: 8,
                           }}>
                             <TemplateForm
                               form={form}
@@ -691,19 +691,19 @@ function MealTemplatesSection({
                       return (
                         <div key={t.id} style={{
                           display: 'flex', alignItems: 'center', gap: 10,
-                          padding: '10px 12px', borderRadius: 10,
+                          padding: '10px 12px', borderRadius: 'var(--r-sm)',
                           background: 'var(--bg-card2)', border: '1px solid var(--border)',
                           marginBottom: 6,
                           opacity: t.actif ? 1 : 0.5,
                         }}>
                           <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontFamily: 'DM Sans,sans-serif', fontWeight: 600, fontSize: 13, color: 'var(--text)' }}>
+                            <div style={{ fontFamily: 'var(--font-body)', fontWeight: 600, fontSize: 13, color: 'var(--text)' }}>
                               {t.nom}
                             </div>
                             {t.description && (
                               <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 2 }}>{t.description}</div>
                             )}
-                            <div style={{ fontSize: 10, fontFamily: 'DM Mono,monospace', color: 'var(--text-dim)', marginTop: 3 }}>
+                            <div style={{ fontSize: 10, fontFamily: 'var(--font-body)', color: 'var(--text-dim)', marginTop: 3 }}>
                               {t.kcal != null ? `${t.kcal} kcal` : '—'}
                               {t.proteines != null ? ` · P:${t.proteines}g` : ''}
                               {t.glucides != null ? ` G:${t.glucides}g` : ''}
@@ -715,7 +715,7 @@ function MealTemplatesSection({
                             onClick={() => void handleToggle(t)}
                             title={t.actif ? tr('nutrition.templates.deactivate') : tr('nutrition.templates.activate')}
                             style={{
-                              width: 32, height: 18, borderRadius: 9,
+                              width: 32, height: 18, borderRadius: 'var(--r-sm)',
                               border: 'none',
                               background: t.actif ? '#22c55e' : 'var(--border)',
                               cursor: 'pointer', flexShrink: 0, position: 'relative',
@@ -735,7 +735,7 @@ function MealTemplatesSection({
                           <button
                             onClick={() => startEdit(t)}
                             style={{
-                              width: 28, height: 28, borderRadius: 7,
+                              width: 28, height: 28, borderRadius: 'var(--r-sm)',
                               border: '1px solid var(--border)', background: 'transparent',
                               color: 'var(--text-dim)', cursor: 'pointer', fontSize: 13,
                               display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -750,7 +750,7 @@ function MealTemplatesSection({
                           <button
                             onClick={() => void handleDelete(t.id)}
                             style={{
-                              width: 28, height: 28, borderRadius: 7,
+                              width: 28, height: 28, borderRadius: 'var(--r-sm)',
                               border: '1px solid rgba(239,68,68,0.3)', background: 'transparent',
                               color: 'var(--danger)', cursor: 'pointer', fontSize: 13,
                               display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -770,7 +770,7 @@ function MealTemplatesSection({
                     {isAddingHere && (
                       <div style={{
                         background: 'var(--bg-card2)', border: '1px solid rgba(91,111,255,0.3)',
-                        borderRadius: 10, padding: 14, marginBottom: 8,
+                        borderRadius: 'var(--r-sm)', padding: 14, marginBottom: 8,
                       }}>
                         <TemplateForm
                           form={form}
@@ -815,7 +815,7 @@ function NutritionTabs({ tab, onChange }: { tab: NutritionTab; onChange: (t: Nut
       style={{ marginBottom: 22, overflowX: 'auto', WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'] }}
     >
       <style>{`.nt-tabscroll{scrollbar-width:none}.nt-tabscroll::-webkit-scrollbar{display:none}`}</style>
-      <div role="tablist" style={{ display: 'inline-flex', gap: 2, padding: 3, borderRadius: 999, background: 'var(--bg-card2)' }}>
+      <div role="tablist" style={{ display: 'inline-flex', gap: 2, padding: 3, borderRadius: 'var(--r-pill)', background: 'var(--bg-card2)' }}>
         {NUTRITION_TAB_ITEMS.map(t => {
           const active = tab === t.id
           return (
@@ -825,8 +825,8 @@ function NutritionTabs({ tab, onChange }: { tab: NutritionTab; onChange: (t: Nut
               aria-selected={active}
               onClick={() => onChange(t.id)}
               style={{
-                border: 'none', cursor: 'pointer', borderRadius: 999, padding: '7px 16px',
-                fontFamily: 'DM Sans,sans-serif', whiteSpace: 'nowrap',
+                border: 'none', cursor: 'pointer', borderRadius: 'var(--r-pill)', padding: '7px 16px',
+                fontFamily: 'var(--font-body)', whiteSpace: 'nowrap',
                 fontSize: 12, fontWeight: active ? 700 : 600,
                 background: active ? 'var(--bg-elev)' : 'transparent',
                 color: active ? 'var(--text)' : 'var(--text-mid)',
@@ -1139,10 +1139,10 @@ export default function NutritionPage() {
 
       {/* Code scanné — feedback visible */}
       {scannedBarcode && (
-        <div style={{ margin: '12px 20px 0', padding: '10px 14px', borderRadius: 10, background: 'rgba(6,182,212,0.08)', border: '1px solid rgba(6,182,212,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+        <div style={{ margin: '12px 20px 0', padding: '10px 14px', borderRadius: 'var(--r-sm)', background: 'rgba(6,182,212,0.08)', border: '1px solid rgba(6,182,212,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
           <div>
             <p style={{ fontSize: 11, color: 'var(--primary)', fontWeight: 700, margin: 0, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('nutrition.scannedCode')}</p>
-            <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', margin: '2px 0 0', fontFamily: 'DM Mono,monospace' }}>{scannedBarcode}</p>
+            <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', margin: '2px 0 0', fontFamily: 'var(--font-body)' }}>{scannedBarcode}</p>
           </div>
           <button
             onClick={() => setScannedBarcode(null)}
@@ -1299,32 +1299,32 @@ export default function NutritionPage() {
             {/* ── Header ─────────────────────────────────────── */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
               <div>
-                <div style={{ fontFamily: 'Syne,sans-serif', fontWeight: 800, fontSize: 17, color: 'var(--text)' }}>
+                <div style={{ fontFamily: 'var(--font-body)', fontWeight: 800, fontSize: 17, color: 'var(--text)' }}>
                   {formatDate(dayDetailOpen.date)}
                 </div>
                 <div style={{
                   display: 'inline-block', marginTop: 4,
-                  padding: '3px 8px', borderRadius: 6,
+                  padding: '3px 8px', borderRadius: 'var(--r-sm)',
                   background: DAY_COLORS[dayDetailOpen.type_jour].bg,
                   border: `1px solid ${DAY_COLORS[dayDetailOpen.type_jour].border}`,
                   color: DAY_COLORS[dayDetailOpen.type_jour].text,
-                  fontSize: 10, fontFamily: 'Syne,sans-serif', fontWeight: 700,
+                  fontSize: 10, fontFamily: 'var(--font-body)', fontWeight: 700,
                 }}>
                   {t(`nutrition.dayType.${dayDetailOpen.type_jour}`)}
                 </div>
                 {/* Interconnexion → séance qui justifie le type de jour */}
                 {daySess.length > 0 ? (
-                  <a href="/planning" style={{ display: 'block', marginTop: 8, fontSize: 12, color: 'var(--primary)', fontFamily: 'DM Sans,sans-serif', fontWeight: 600, textDecoration: 'none' }}>
+                  <a href="/planning" style={{ display: 'block', marginTop: 8, fontSize: 12, color: 'var(--primary)', fontFamily: 'var(--font-body)', fontWeight: 600, textDecoration: 'none' }}>
                     {daySess.map(s => s.title).filter(Boolean).join(' · ') || t('nutrition.plannedSession')} →
                   </a>
                 ) : (
-                  <div style={{ marginTop: 8, fontSize: 11, color: 'var(--text-dim)', fontFamily: 'DM Sans,sans-serif' }}>{t('nutrition.noSessionLinked')}</div>
+                  <div style={{ marginTop: 8, fontSize: 11, color: 'var(--text-dim)', fontFamily: 'var(--font-body)' }}>{t('nutrition.noSessionLinked')}</div>
                 )}
               </div>
               <button
                 onClick={() => { setDayDetailOpen(null); setEditSlot(null) }}
                 style={{
-                  width: 32, height: 32, borderRadius: 8,
+                  width: 32, height: 32, borderRadius: 'var(--r-sm)',
                   background: 'var(--bg-card2)', border: '1px solid var(--border)',
                   color: 'var(--text-dim)', fontSize: 16, cursor: 'pointer',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -1338,7 +1338,7 @@ export default function NutritionPage() {
             <div style={{
               display: 'flex', gap: 8, justifyContent: 'space-around',
               padding: '12px 8px', background: 'var(--bg-card2)',
-              borderRadius: 12, border: '1px solid var(--border)',
+              borderRadius: 'var(--r-md)', border: '1px solid var(--border)',
               marginBottom: 16,
             }}>
               <MacroDonut label={t('nutrition.macro.calories')}  consumed={modalTotals.kcal} objective={dayDetailOpen.kcal}      unit="kcal" color="#06B6D4" size={72} />
@@ -1354,12 +1354,12 @@ export default function NutritionPage() {
                   key={v}
                   onClick={() => setPlanVariant(v)}
                   style={{
-                    padding: '5px 14px', borderRadius: 8,
+                    padding: '5px 14px', borderRadius: 'var(--r-sm)',
                     border: '1px solid var(--border)',
                     background: planVariant === v ? 'rgba(6,182,212,0.12)' : 'var(--bg-card2)',
                     color: planVariant === v ? '#06B6D4' : 'var(--text-dim)',
                     fontWeight: planVariant === v ? 700 : 400,
-                    fontSize: 12, fontFamily: 'Syne,sans-serif', cursor: 'pointer',
+                    fontSize: 12, fontFamily: 'var(--font-body)', cursor: 'pointer',
                   }}
                 >
                   {t('nutrition.optionLabel', { v })}
@@ -1382,7 +1382,7 @@ export default function NutritionPage() {
                 <div
                   key={mealKey}
                   style={{
-                    borderRadius: 10,
+                    borderRadius: 'var(--r-sm)',
                     background: isValidated ? 'rgba(34,197,94,0.05)' : 'var(--bg-card2)',
                     border: `1px solid ${isValidated ? 'rgba(34,197,94,0.25)' : 'var(--border)'}`,
                     marginBottom: 8,
@@ -1394,7 +1394,7 @@ export default function NutritionPage() {
                     {/* Top: label + actions */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
                       <div style={{
-                        fontSize: 10, fontFamily: 'Syne,sans-serif', fontWeight: 700,
+                        fontSize: 10, fontFamily: 'var(--font-body)', fontWeight: 700,
                         color: 'var(--text-mid)', flex: 1,
                       }}>
                         {t(`nutrition.meal.${mealKey}`)}
@@ -1412,7 +1412,7 @@ export default function NutritionPage() {
                           setEditLip(mealLog?.actual_lip  != null ? String(mealLog.actual_lip)  : '')
                         }}
                         style={{
-                          width: 26, height: 26, borderRadius: 7, flexShrink: 0,
+                          width: 26, height: 26, borderRadius: 'var(--r-sm)', flexShrink: 0,
                           border: `1px solid ${isEditing ? 'rgba(91,111,255,0.5)' : 'var(--border)'}`,
                           background: isEditing ? 'rgba(91,111,255,0.12)' : 'transparent',
                           color: isEditing ? '#5b6fff' : 'var(--text-dim)', cursor: 'pointer',
@@ -1430,13 +1430,13 @@ export default function NutritionPage() {
                         onClick={() => void modalToggleValidated(mealKey, !isValidated, text)}
                         style={{
                           display: 'flex', alignItems: 'center', gap: 5,
-                          padding: '4px 10px', borderRadius: 20, flexShrink: 0,
+                          padding: '4px 10px', borderRadius: 'var(--r-lg)', flexShrink: 0,
                           border: `1.5px solid ${isValidated ? '#22c55e' : 'var(--border)'}`,
                           background: isValidated
                             ? 'rgba(34,197,94,0.15)'
                             : 'var(--bg-card)',
                           color: isValidated ? '#22c55e' : 'var(--text-dim)',
-                          fontFamily: 'Syne,sans-serif', fontWeight: 700, fontSize: 11,
+                          fontFamily: 'var(--font-body)', fontWeight: 700, fontSize: 11,
                           cursor: 'pointer',
                           transition: 'all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)',
                           transform: isValidated ? 'scale(1.05)' : 'scale(1)',
@@ -1468,7 +1468,7 @@ export default function NutritionPage() {
                           {mealLog?.actual_description ?? text}
                         </p>
                         {mealLog?.actual_kcal != null && (
-                          <div style={{ fontSize: 10, fontFamily: 'DM Mono,monospace', color: 'var(--text-dim)', marginTop: 4 }}>
+                          <div style={{ fontSize: 10, fontFamily: 'var(--font-body)', color: 'var(--text-dim)', marginTop: 4 }}>
                             {mealLog.actual_kcal} kcal
                             {mealLog.actual_prot != null ? ` · P:${mealLog.actual_prot}g` : ''}
                             {mealLog.actual_gluc != null ? ` G:${mealLog.actual_gluc}g` : ''}
@@ -1490,10 +1490,10 @@ export default function NutritionPage() {
                         onClick={() => { setFoodSearchBarcode(undefined); setFoodSearchOpen(true) }}
                         style={{
                           display: 'flex', alignItems: 'center', gap: 7, width: '100%',
-                          padding: '7px 10px', borderRadius: 8, marginBottom: 8,
+                          padding: '7px 10px', borderRadius: 'var(--r-sm)', marginBottom: 8,
                           border: '1px solid var(--border)', background: 'var(--bg-card)',
                           cursor: 'pointer', color: 'var(--text-dim)', fontSize: 12,
-                          fontFamily: 'DM Sans,sans-serif',
+                          fontFamily: 'var(--font-body)',
                         }}
                       >
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
@@ -1506,9 +1506,9 @@ export default function NutritionPage() {
                         placeholder={t('nutrition.actualDescPlaceholder')}
                         style={{
                           width: '100%', background: 'var(--input-bg)',
-                          border: '1px solid var(--border)', borderRadius: 8,
+                          border: '1px solid var(--border)', borderRadius: 'var(--r-sm)',
                           padding: '7px 10px', fontSize: 12, color: 'var(--text)',
-                          fontFamily: 'DM Sans,sans-serif', resize: 'vertical',
+                          fontFamily: 'var(--font-body)', resize: 'vertical',
                           marginBottom: 8, boxSizing: 'border-box',
                         }}
                       />
@@ -1520,16 +1520,16 @@ export default function NutritionPage() {
                           { label: t('nutrition.macro.lipG'), val: editLip,  set: setEditLip  },
                         ].map(({ label, val, set }) => (
                           <div key={label}>
-                            <div style={{ fontSize: 9, color: 'var(--text-dim)', marginBottom: 3 }}>{label}</div>
+                            <div style={{ fontSize: 10, color: 'var(--text-dim)', marginBottom: 3 }}>{label}</div>
                             <input
                               type="number"
                               value={val}
                               onChange={e => set(e.target.value)}
                               style={{
                                 width: '100%', background: 'var(--input-bg)',
-                                border: '1px solid var(--border)', borderRadius: 7,
+                                border: '1px solid var(--border)', borderRadius: 'var(--r-sm)',
                                 padding: '5px 7px', fontSize: 12, color: 'var(--text)',
-                                fontFamily: 'DM Mono,monospace', boxSizing: 'border-box',
+                                fontFamily: 'var(--font-body)', boxSizing: 'border-box',
                               }}
                             />
                           </div>
@@ -1548,9 +1548,9 @@ export default function NutritionPage() {
                             setEditSlot(null)
                           }}
                           style={{
-                            flex: 1, padding: '7px 0', borderRadius: 8,
+                            flex: 1, padding: '7px 0', borderRadius: 'var(--r-sm)',
                             background: 'rgba(6,182,212,0.15)', border: '1px solid rgba(6,182,212,0.35)',
-                            color: 'var(--primary)', fontFamily: 'Syne,sans-serif', fontWeight: 700,
+                            color: 'var(--primary)', fontFamily: 'var(--font-body)', fontWeight: 700,
                             fontSize: 12, cursor: 'pointer',
                           }}
                         >
@@ -1559,7 +1559,7 @@ export default function NutritionPage() {
                         <button
                           onClick={() => setEditSlot(null)}
                           style={{
-                            padding: '7px 14px', borderRadius: 8,
+                            padding: '7px 14px', borderRadius: 'var(--r-sm)',
                             background: 'transparent', border: '1px solid var(--border)',
                             color: 'var(--text-dim)', fontSize: 12, cursor: 'pointer',
                           }}
@@ -1593,14 +1593,14 @@ export default function NutritionPage() {
           de crédits non localisé → garde-fou à brancher quand dispo). */}
       {regenConfirm && createPortal(
         <div style={{ position: 'fixed', inset: 0, zIndex: 2100, background: 'rgba(0,0,0,0.62)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }} onClick={() => setRegenConfirm(false)}>
-          <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 380, background: 'var(--bg-card)', borderRadius: 16, padding: 22 }}>
-            <h3 style={{ fontFamily: 'Syne,sans-serif', fontWeight: 800, fontSize: 16, color: 'var(--text)', margin: '0 0 8px' }}>{t('nutrition.regen.title')}</h3>
+          <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 380, background: 'var(--bg-card)', borderRadius: 'var(--r-md)', padding: 22 }}>
+            <h3 style={{ fontFamily: 'var(--font-body)', fontWeight: 800, fontSize: 16, color: 'var(--text)', margin: '0 0 8px' }}>{t('nutrition.regen.title')}</h3>
             <p style={{ fontSize: 13, color: 'var(--text-mid)', lineHeight: 1.5, margin: '0 0 18px' }}>
               {t('nutrition.regen.desc')}
             </p>
             <div style={{ display: 'flex', gap: 8 }}>
-              <button onClick={() => setRegenConfirm(false)} style={{ flex: 1, padding: '10px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontWeight: 600, fontSize: 13, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>{t('nutrition.common.cancel')}</button>
-              <button onClick={() => { setRegenConfirm(false); setAiPanelOpen(true) }} style={{ flex: 1, padding: '10px', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg,#06B6D4,#5b6fff)', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>{t('nutrition.regen.confirm')}</button>
+              <button onClick={() => setRegenConfirm(false)} style={{ flex: 1, padding: '10px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontWeight: 600, fontSize: 13, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>{t('nutrition.common.cancel')}</button>
+              <button onClick={() => { setRegenConfirm(false); setAiPanelOpen(true) }} style={{ flex: 1, padding: '10px', borderRadius: 'var(--r-sm)', border: 'none', background: 'linear-gradient(135deg,#06B6D4,#5b6fff)', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>{t('nutrition.regen.confirm')}</button>
             </div>
           </div>
         </div>,

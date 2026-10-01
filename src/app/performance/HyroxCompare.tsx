@@ -71,8 +71,8 @@ function HyroxRaceOverlay({ race, races, onSelect, onClose }: {
                 <div key={b.label} onClick={() => b.sec > 0 && onSelect?.(`Hyrox ${b.label}`, valStr)}
                   style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: b.sec > 0 && onSelect ? 'pointer' : 'default' }}>
                   <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--text-mid)', width: 116, flexShrink: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.label}</span>
-                  <div style={{ flex: 1, position: 'relative', height: 8, borderRadius: 999, background: 'var(--bg-card2)', overflow: 'hidden' }}>
-                    <div style={{ position: 'absolute', inset: 0, width: mounted ? `${(b.sec / b.max) * 100}%` : '0%', background: b.color, opacity: 0.55, borderRadius: 999, transition: 'width 0.9s cubic-bezier(0.32,0.72,0,1)' }} />
+                  <div style={{ flex: 1, position: 'relative', height: 8, borderRadius: 'var(--r-pill)', background: 'var(--bg-card2)', overflow: 'hidden' }}>
+                    <div style={{ position: 'absolute', inset: 0, width: mounted ? `${(b.sec / b.max) * 100}%` : '0%', background: b.color, opacity: 0.55, borderRadius: 'var(--r-pill)', transition: 'width 0.9s cubic-bezier(0.32,0.72,0,1)' }} />
                     {b.avg > 0 && <span style={{ position: 'absolute', top: -2, bottom: -2, left: `${(b.avg / b.max) * 100}%`, width: 2, background: 'var(--text-mid)', borderRadius: 2 }} />}
                   </div>
                   <span className="tnum" style={{ fontFamily: 'var(--font-body)', fontSize: 11, fontWeight: 600, color: b.sec > 0 ? 'var(--text)' : 'var(--text-dim)', width: 56, textAlign: 'right', flexShrink: 0 }}>{valStr}</span>
@@ -83,7 +83,7 @@ function HyroxRaceOverlay({ race, races, onSelect, onClose }: {
           {/* Runs individuels */}
           {race.runs?.some(x => x) && (
             <div style={{ marginTop: 18, paddingTop: 14, borderTop: '1px solid var(--border)' }}>
-              <p style={{ fontFamily: 'var(--font-body)', fontSize: 9, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 6px' }}>Runs</p>
+              <p style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 6px' }}>Runs</p>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px 12px' }}>
                 {race.runs.map((r, i) => r ? <span key={i} className="tnum" style={{ fontSize: 11, color: 'var(--text-mid)' }}>#{i + 1} {r}</span> : null)}
               </div>
@@ -116,9 +116,9 @@ export function HyroxCompare({ races, onSelect }: { races: HyroxRace[]; onSelect
     ...HYROX_STATIONS.map(s => ({ id: s, label: s })),
     { id: 'run', label: 'Run comp.' },
   ]
-  const card: React.CSSProperties = { background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 16, padding: 20 }
+  const card: React.CSSProperties = { background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: 20 }
   const chip = (active: boolean): React.CSSProperties => ({
-    padding: '5px 11px', borderRadius: 999, cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 11,
+    padding: '5px 11px', borderRadius: 'var(--r-pill)', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 11,
     fontWeight: active ? 600 : 500, border: `1px solid ${active ? 'var(--primary)' : 'var(--border)'}`,
     background: active ? 'var(--primary-dim)' : 'transparent', color: active ? 'var(--primary)' : 'var(--text-dim)', whiteSpace: 'nowrap',
   })
@@ -154,7 +154,7 @@ export function HyroxCompare({ races, onSelect }: { races: HyroxRace[]; onSelect
                     <div style={{ width: '100%', height: mounted ? `${(sec / maxSec) * 100}%` : '0%', background: seg === 'run' ? 'var(--primary)' : HYROX, opacity: isBest ? 0.75 : 0.45, transition: 'height 0.9s cubic-bezier(0.32,0.72,0,1)' }} />
                   </div>
                   <span style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: 'var(--text-dim)' }}>{fmtDate(r.date)}</span>
-                  {isBest && <span style={{ fontSize: 8, fontWeight: 700, color: 'var(--primary)' }}>★</span>}
+                  {isBest && <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--primary)' }}>★</span>}
                 </button>
               )
             })}

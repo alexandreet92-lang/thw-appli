@@ -92,8 +92,8 @@ export default function PlannedLaunchSheet({ open, onClose, sport, label, accent
 
   const Row = ({ r }: { r: PlannedLaunchRow }) => (
     <button onClick={() => { onPick(r); handleClose() }}
-      style={{ textAlign: 'left', padding: '15px 16px', borderRadius: 16, cursor: 'pointer', border: '1px solid var(--border)', background: 'var(--bg-card2)', display: 'flex', alignItems: 'center', gap: 13, width: '100%' }}>
-      <span style={{ width: 46, height: 46, borderRadius: 12, background: `${accent}18`, color: accent, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 14, lineHeight: 1 }}>
+      style={{ textAlign: 'left', padding: '15px 16px', borderRadius: 'var(--r-md)', cursor: 'pointer', border: '1px solid var(--border)', background: 'var(--bg-card2)', display: 'flex', alignItems: 'center', gap: 13, width: '100%' }}>
+      <span style={{ width: 46, height: 46, borderRadius: 'var(--r-md)', background: `${accent}18`, color: accent, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 14, lineHeight: 1 }}>
         {r.dayIndex >= 0 && r.dayIndex <= 6 ? t(`w3b.day_${r.dayIndex}`) : ''}
       </span>
       <span style={{ flex: 1, minWidth: 0 }}>
@@ -118,7 +118,7 @@ export default function PlannedLaunchSheet({ open, onClose, sport, label, accent
         <div style={{ width: 40, height: 4, borderRadius: 4, background: 'var(--border-mid)', margin: '10px auto 0', flexShrink: 0 }} />
 
         <div style={{ padding: '14px 20px 6px', flexShrink: 0 }}>
-          <h3 style={{ margin: 0, fontSize: 21, fontWeight: 800, color: 'var(--text)' }}>{label}</h3>
+          <h3 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: 'var(--text)' }}>{label}</h3>
           <p style={{ margin: '3px 0 0', fontSize: 12.5, color: 'var(--text-dim)' }}>{t('w3b.choose_session')}</p>
         </div>
 
@@ -147,7 +147,7 @@ export default function PlannedLaunchSheet({ open, onClose, sport, label, accent
 
               <SectionLabel>No Training</SectionLabel>
               <button onClick={() => { onFree(); handleClose() }}
-                style={{ width: '100%', padding: '15px 16px', borderRadius: 16, cursor: 'pointer', border: `1px solid ${accent}`, background: `${accent}12`, color: accent, fontSize: 14.5, fontWeight: 800, display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left' }}>
+                style={{ width: '100%', padding: '15px 16px', borderRadius: 'var(--r-md)', cursor: 'pointer', border: `1px solid ${accent}`, background: `${accent}12`, color: accent, fontSize: 14.5, fontWeight: 800, display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left' }}>
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={accent} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><polygon points="5 3 19 12 5 21 5 3"/></svg>
                 {freeLabel ?? t('w3b.launch_no_program')}
               </button>

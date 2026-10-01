@@ -39,7 +39,7 @@ export function GeneralView({ sport }: { sport: string }) {
     return () => { cancel = true }
   }, [sport, cfg.sportTypes])
 
-  if (sessions === null) return <div style={{ height: 200, borderRadius: 14, background: 'var(--bg-card2)', animation: 'pulse 1.4s ease-in-out infinite' }} />
+  if (sessions === null) return <div style={{ height: 200, borderRadius: 'var(--r-md)', background: 'var(--bg-card2)', animation: 'pulse 1.4s ease-in-out infinite' }} />
   if (sessions.length === 0) return <div style={{ fontSize: 13, color: 'var(--text-dim)', padding: '24px 0' }}>{t('progression.noSessions')}</div>
 
   const hero = gen.hero(sessions)
@@ -51,7 +51,7 @@ export function GeneralView({ sport }: { sport: string }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
       {/* Hero + tendance */}
-      <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 16, padding: 18 }}>
+      <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: 18 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, marginBottom: 14 }}>
           <div>
             <div style={{ fontSize: 11, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600 }}>{t(hero.labelKey)}</div>
@@ -72,7 +72,7 @@ export function GeneralView({ sport }: { sport: string }) {
           const r = st.calc(sessions)
           const dc = r.delta.direction === 'up' ? '#22c55e' : r.delta.direction === 'down' ? '#ef4444' : 'var(--text-dim)'
           return (
-            <div key={st.label} style={{ background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 12, padding: '10px 12px' }}>
+            <div key={st.label} style={{ background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: '10px 12px' }}>
               <div style={{ fontSize: 10, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{t(st.labelKey)}</div>
               <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--text)', fontVariantNumeric: 'tabular-nums', marginTop: 3 }}>{r.value}</div>
               <div style={{ fontSize: 10, color: dc, fontVariantNumeric: 'tabular-nums' }}>{r.delta.value}</div>
@@ -88,7 +88,7 @@ export function GeneralView({ sport }: { sport: string }) {
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           {visible.map((s, i) => (
-            <div key={s.id} style={{ display: 'grid', gridTemplateColumns: '64px 1fr auto auto', gap: 10, alignItems: 'center', padding: '8px 10px', background: 'var(--bg-card)', border: '0.5px solid var(--border)', borderRadius: 10 }}>
+            <div key={s.id} style={{ display: 'grid', gridTemplateColumns: '64px 1fr auto auto', gap: 10, alignItems: 'center', padding: '8px 10px', background: 'var(--bg-card)', border: '0.5px solid var(--border)', borderRadius: 'var(--r-sm)' }}>
               <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>{fmtRelDate(s.started_at)}</span>
               <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 12.5, color: 'var(--text)' }}>{s.title || t(cfg.labelKey)}</span>
               <span style={{ display: 'flex', gap: 10 }}>
@@ -101,7 +101,7 @@ export function GeneralView({ sport }: { sport: string }) {
               </span>
               <button onClick={() => setCompare({ a: s, b: sessions[Math.min(i + 1, sessions.length - 1)] })}
                 disabled={sessions.length < 2}
-                style={{ fontSize: 11, fontWeight: 600, color: cfg.color, background: 'none', border: '1px solid var(--border)', borderRadius: 8, padding: '5px 9px', cursor: sessions.length < 2 ? 'default' : 'pointer', whiteSpace: 'nowrap' }}>{t('progression.compare')}</button>
+                style={{ fontSize: 11, fontWeight: 600, color: cfg.color, background: 'none', border: '1px solid var(--border)', borderRadius: 'var(--r-sm)', padding: '5px 9px', cursor: sessions.length < 2 ? 'default' : 'pointer', whiteSpace: 'nowrap' }}>{t('progression.compare')}</button>
             </div>
           ))}
         </div>
@@ -112,14 +112,14 @@ export function GeneralView({ sport }: { sport: string }) {
 
       {compare && createPortal(
         <div onClick={() => setCompare(null)} style={{ position: 'fixed', inset: 0, zIndex: 2100, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-          <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 520, background: 'var(--bg-card)', borderRadius: 16, padding: 20 }}>
+          <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 520, background: 'var(--bg-card)', borderRadius: 'var(--r-md)', padding: 20 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 14 }}>
-              <h3 style={{ fontFamily: 'Syne,sans-serif', fontWeight: 800, fontSize: 16, margin: 0, color: 'var(--text)' }}>{t('progression.comparison')}</h3>
+              <h3 style={{ fontFamily: 'var(--font-body)', fontWeight: 800, fontSize: 16, margin: 0, color: 'var(--text)' }}>{t('progression.comparison')}</h3>
               <button onClick={() => setCompare(null)} style={{ background: 'none', border: 'none', color: 'var(--text-dim)', fontSize: 18, cursor: 'pointer' }}>×</button>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               {([[t('progression.recent'), compare.a, cfg.color], [t('progression.older'), compare.b, 'var(--text-dim)']] as const).map(([lbl, s, col]) => (
-                <div key={lbl} style={{ background: 'var(--bg-card2)', borderRadius: 12, padding: 12 }}>
+                <div key={lbl} style={{ background: 'var(--bg-card2)', borderRadius: 'var(--r-md)', padding: 12 }}>
                   <div style={{ fontSize: 10, color: 'var(--text-dim)', textTransform: 'uppercase' }}>{lbl} · {fmtRelDate(s.started_at)}</div>
                   {gen.columns.map(c => (
                     <div key={c.label} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: 12, borderBottom: '0.5px solid var(--border)' }}>

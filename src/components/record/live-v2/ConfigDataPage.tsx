@@ -136,7 +136,7 @@ export default function ConfigDataPage({ page, ctx, dataSize, gpsStatus, gpsAccu
       {!started && (
         <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginTop: 6 }}>
           <div style={{
-            height: 28, padding: '0 13px', borderRadius: 14,
+            height: 28, padding: '0 13px', borderRadius: 'var(--r-md)',
             background: 'var(--live-surface)', border: '1px solid var(--live-hairline-2)',
             display: 'flex', alignItems: 'center', gap: 7,
             fontSize: 12, fontWeight: 600, color: gpsOk ? 'var(--live-text-2)' : 'var(--live-label)',
@@ -148,7 +148,7 @@ export default function ConfigDataPage({ page, ctx, dataSize, gpsStatus, gpsAccu
             <button
               key={id} onClick={onSensorChipTap}
               style={{
-                height: 28, padding: '0 13px', borderRadius: 14, cursor: 'pointer',
+                height: 28, padding: '0 13px', borderRadius: 'var(--r-md)', cursor: 'pointer',
                 background: 'var(--live-surface)', border: '1px solid var(--live-hairline-2)',
                 display: 'flex', alignItems: 'center', gap: 7,
                 fontSize: 12, fontWeight: 600, color: 'var(--live-label)',

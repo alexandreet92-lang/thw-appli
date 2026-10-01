@@ -38,7 +38,7 @@ export default function GPSPrePermissionScreen({ onAuthorize, onDismiss }: Props
       display: 'flex', flexDirection: 'column',
       alignItems: 'center', justifyContent: 'center',
       padding: '32px 24px', textAlign: 'center',
-      fontFamily: 'DM Sans, sans-serif',
+      fontFamily: 'var(--font-body)',
     }}>
       {/* Icon */}
       <div style={{
@@ -57,7 +57,7 @@ export default function GPSPrePermissionScreen({ onAuthorize, onDismiss }: Props
       {/* Title */}
       <h2 style={{
         margin: '0 0 12px', fontSize: 24, fontWeight: 700,
-        fontFamily: 'Syne, sans-serif', color: '#0A0A0A',
+        fontFamily: 'var(--font-body)', color: '#0A0A0A',
       }}>
         {t('record.gpsPrePermTitle')}
       </h2>
@@ -87,10 +87,10 @@ export default function GPSPrePermissionScreen({ onAuthorize, onDismiss }: Props
       <button
         onClick={handleAuthorize}
         style={{
-          width: '100%', maxWidth: 340, height: 52, borderRadius: 16, border: 'none',
+          width: '100%', maxWidth: 340, height: 52, borderRadius: 'var(--r-md)', border: 'none',
           background: 'linear-gradient(135deg, #06B6D4, #2563EB)',
           color: '#fff', fontSize: 16, fontWeight: 700, cursor: 'pointer',
-          fontFamily: 'DM Sans, sans-serif',
+          fontFamily: 'var(--font-body)',
           boxShadow: '0 4px 20px rgba(6,182,212,0.35)',
           transition: 'transform 0.12s',
         }}
@@ -106,7 +106,7 @@ export default function GPSPrePermissionScreen({ onAuthorize, onDismiss }: Props
         style={{
           marginTop: 14, background: 'none', border: 'none',
           fontSize: 14, color: '#8C8C8C', cursor: 'pointer',
-          fontFamily: 'DM Sans, sans-serif', padding: '6px 16px',
+          fontFamily: 'var(--font-body)', padding: '6px 16px',
         }}
       >
         {t('record.gpsPrePermNotNow')}

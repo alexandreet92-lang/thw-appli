@@ -85,18 +85,18 @@ export default function YogaExercisePicker({ open, onClose, onAdd, isDark }: Pro
           <div style={{ width: 36, height: 4, borderRadius: 2, background: dim }} />
         </div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 20px 12px', flexShrink: 0 }}>
-          <p style={{ fontSize: 17, fontWeight: 700, color: text, margin: 0, fontFamily: 'Syne, sans-serif' }}>{t('record.yogaPickerAddExercise')}</p>
+          <p style={{ fontSize: 17, fontWeight: 700, color: text, margin: 0, fontFamily: 'var(--font-body)' }}>{t('record.yogaPickerAddExercise')}</p>
           <button onClick={handleClose} style={{ background: 'none', border: 'none', color: dim, fontSize: 22, cursor: 'pointer', lineHeight: 1 }}>×</button>
         </div>
         <div style={{ padding: '0 16px 10px', flexShrink: 0 }}>
-          <div style={{ background: surf, borderRadius: 10, padding: '9px 12px', display: 'flex', alignItems: 'center', gap: 8, border: `1px solid ${bord}` }}>
+          <div style={{ background: surf, borderRadius: 'var(--r-sm)', padding: '9px 12px', display: 'flex', alignItems: 'center', gap: 8, border: `1px solid ${bord}` }}>
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="7" cy="7" r="5" stroke="#8C8C8C" strokeWidth="1.5"/><path d="M11 11l3 3" stroke="#8C8C8C" strokeWidth="1.5" strokeLinecap="round"/></svg>
-            <input placeholder={t('record.yogaPickerSearch')} value={search} onChange={e => setSearch(e.target.value)} style={{ background: 'none', border: 'none', outline: 'none', color: text, fontSize: 14, flex: 1, fontFamily: 'DM Sans, sans-serif' }} />
+            <input placeholder={t('record.yogaPickerSearch')} value={search} onChange={e => setSearch(e.target.value)} style={{ background: 'none', border: 'none', outline: 'none', color: text, fontSize: 14, flex: 1, fontFamily: 'var(--font-body)' }} />
           </div>
         </div>
         <div style={{ display: 'flex', gap: 6, padding: '0 16px 10px', overflowX: 'auto', flexShrink: 0 }}>
           {CAT_TABS.map(c => (
-            <button key={c.id} onClick={() => setTab(c.id as 'all' | YogaCategory)} style={{ padding: '6px 14px', borderRadius: 20, border: 'none', background: tab === c.id ? 'var(--primary)' : surf, color: tab === c.id ? '#FFF' : text, fontSize: 13, fontWeight: 500, cursor: 'pointer', whiteSpace: 'nowrap' }}>{c.labelKey ? t(c.labelKey) : c.label}</button>
+            <button key={c.id} onClick={() => setTab(c.id as 'all' | YogaCategory)} style={{ padding: '6px 14px', borderRadius: 'var(--r-lg)', border: 'none', background: tab === c.id ? 'var(--primary)' : surf, color: tab === c.id ? '#FFF' : text, fontSize: 13, fontWeight: 500, cursor: 'pointer', whiteSpace: 'nowrap' }}>{c.labelKey ? t(c.labelKey) : c.label}</button>
           ))}
         </div>
         <div style={{ flex: 1, overflowY: 'auto', padding: '0 8px' }}>
@@ -110,19 +110,19 @@ export default function YogaExercisePicker({ open, onClose, onAdd, isDark }: Pro
             </div>
           ))}
           {!creating ? (
-            <button onClick={() => setCreating(true)} style={{ width: '100%', padding: '14px 16px', background: 'none', border: `1px dashed ${bord}`, borderRadius: 12, color: '#06B6D4', fontSize: 14, cursor: 'pointer', margin: '12px 0', fontFamily: 'DM Sans, sans-serif' }}>{t('record.yogaPickerCreateExercise')}</button>
+            <button onClick={() => setCreating(true)} style={{ width: '100%', padding: '14px 16px', background: 'none', border: `1px dashed ${bord}`, borderRadius: 'var(--r-md)', color: '#06B6D4', fontSize: 14, cursor: 'pointer', margin: '12px 0', fontFamily: 'var(--font-body)' }}>{t('record.yogaPickerCreateExercise')}</button>
           ) : (
             <div style={{ padding: '16px 12px', borderTop: `1px solid ${sep}` }}>
-              <input placeholder={t('record.yogaPickerNamePlaceholder')} value={newName} onChange={e => setNewName(e.target.value)} style={{ width: '100%', boxSizing: 'border-box', background: surf, border: `1px solid ${bord}`, borderRadius: 10, padding: '10px 14px', fontSize: 14, color: text, outline: 'none', marginBottom: 10, fontFamily: 'DM Sans, sans-serif' }} />
+              <input placeholder={t('record.yogaPickerNamePlaceholder')} value={newName} onChange={e => setNewName(e.target.value)} style={{ width: '100%', boxSizing: 'border-box', background: surf, border: `1px solid ${bord}`, borderRadius: 'var(--r-sm)', padding: '10px 14px', fontSize: 14, color: text, outline: 'none', marginBottom: 10, fontFamily: 'var(--font-body)' }} />
               <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
-                <select value={newCat} onChange={e => setNewCat(e.target.value as YogaCategory)} style={{ flex: 1, background: surf, border: `1px solid ${bord}`, borderRadius: 10, padding: '10px 12px', fontSize: 14, color: text, outline: 'none' }}>
+                <select value={newCat} onChange={e => setNewCat(e.target.value as YogaCategory)} style={{ flex: 1, background: surf, border: `1px solid ${bord}`, borderRadius: 'var(--r-sm)', padding: '10px 12px', fontSize: 14, color: text, outline: 'none' }}>
                   {YOGA_CATEGORIES.map(c => <option key={c.id} value={c.id}>{c.labelKey ? t(c.labelKey) : c.label}</option>)}
                 </select>
-                <input type="number" value={newDur} onChange={e => setNewDur(Number(e.target.value))} min={5} style={{ width: 80, background: surf, border: `1px solid ${bord}`, borderRadius: 10, padding: '10px 12px', fontSize: 14, color: text, outline: 'none', textAlign: 'center' }} />
+                <input type="number" value={newDur} onChange={e => setNewDur(Number(e.target.value))} min={5} style={{ width: 80, background: surf, border: `1px solid ${bord}`, borderRadius: 'var(--r-sm)', padding: '10px 12px', fontSize: 14, color: text, outline: 'none', textAlign: 'center' }} />
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
-                <button onClick={() => setCreating(false)} style={{ flex: 1, height: 40, borderRadius: 10, background: surf, border: `1px solid ${bord}`, color: text, fontSize: 14, cursor: 'pointer' }}>{t('record.yogaPickerCancel')}</button>
-                <button onClick={handleCreate} style={{ flex: 1, height: 40, borderRadius: 10, background: 'var(--primary)', border: 'none', color: '#FFF', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>{t('record.yogaPickerCreate')}</button>
+                <button onClick={() => setCreating(false)} style={{ flex: 1, height: 40, borderRadius: 'var(--r-sm)', background: surf, border: `1px solid ${bord}`, color: text, fontSize: 14, cursor: 'pointer' }}>{t('record.yogaPickerCancel')}</button>
+                <button onClick={handleCreate} style={{ flex: 1, height: 40, borderRadius: 'var(--r-sm)', background: 'var(--primary)', border: 'none', color: '#FFF', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>{t('record.yogaPickerCreate')}</button>
               </div>
             </div>
           )}

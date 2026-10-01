@@ -193,8 +193,8 @@ export default function BienvenuePage() {
           <>
             {/* Progression + N/M + Passer (dès l'étape profil) */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18 }}>
-              <div style={{ flex: 1, height: 4, borderRadius: 99, background: 'var(--bg-card2)', overflow: 'hidden' }}>
-                <div style={{ height: '100%', width: `${(dispNum / Math.max(1, totalSteps)) * 100}%`, background: 'var(--primary-gradient)', borderRadius: 99, transition: 'width 0.3s ease' }} />
+              <div style={{ flex: 1, height: 4, borderRadius: 'var(--r-pill)', background: 'var(--bg-card2)', overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: `${(dispNum / Math.max(1, totalSteps)) * 100}%`, background: 'var(--primary-gradient)', borderRadius: 'var(--r-pill)', transition: 'width 0.3s ease' }} />
               </div>
               <span className="tnum" style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-dim)', flexShrink: 0 }}>{t('q.of', { n: dispNum, m: totalSteps })}</span>
               {q?.optional && (
@@ -219,7 +219,7 @@ export default function BienvenuePage() {
                 <button onClick={onBack} aria-label={t('onboarding.back')} style={{ width: 44, height: 44, borderRadius: '50%', border: '1px solid var(--border-mid)', background: 'transparent', color: 'var(--text-mid)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><ArrowLeft size={18} /></button>
               ) : <span />}
               <button onClick={onNext} disabled={!canNext || saving} style={{
-                height: 48, padding: '0 24px', borderRadius: 999, border: 'none',
+                height: 48, padding: '0 24px', borderRadius: 'var(--r-pill)', border: 'none',
                 background: (!canNext || saving) ? 'var(--bg-card2)' : 'var(--primary-gradient)',
                 color: (!canNext || saving) ? 'var(--text-dim)' : '#fff', fontFamily: FB, fontSize: 15, fontWeight: 700,
                 cursor: (!canNext || saving) ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8,
@@ -278,7 +278,7 @@ function ProfileStep({ t, value, onChange }: { t: TF; value: ObProfile | null; o
   const opts: ObProfile[] = ['athlete', 'both', 'coach']
   return (
     <div>
-      <h1 style={{ fontFamily: FD, fontSize: 23, fontWeight: 600, color: 'var(--text)', lineHeight: 1.2, margin: '0 0 20px' }}>{t('ob.profile.q')}</h1>
+      <h1 style={{ fontFamily: FD, fontSize: 22, fontWeight: 600, color: 'var(--text)', lineHeight: 1.2, margin: '0 0 20px' }}>{t('ob.profile.q')}</h1>
       <div style={{ display: 'flex', flexDirection: 'column' }}>
         {opts.map((o, i) => (
           <OptionButton key={o} selected={value === o} multi={false} i={i}
@@ -293,7 +293,7 @@ function ProfileStep({ t, value, onChange }: { t: TF; value: ObProfile | null; o
 function VersionStep({ t, value, onChange }: { t: TF; value: ObVersion | null; onChange: (v: ObVersion) => void }) {
   return (
     <div>
-      <h1 style={{ fontFamily: FD, fontSize: 23, fontWeight: 600, color: 'var(--text)', lineHeight: 1.2, margin: '0 0 6px' }}>{t('ob.version.q')}</h1>
+      <h1 style={{ fontFamily: FD, fontSize: 22, fontWeight: 600, color: 'var(--text)', lineHeight: 1.2, margin: '0 0 6px' }}>{t('ob.version.q')}</h1>
       <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-mid)', margin: '0 0 18px', lineHeight: 1.5 }}>{t('ob.version.hint')}</p>
       {/* Complet mis en avant */}
       <button onClick={() => onChange('full')} style={{
@@ -304,7 +304,7 @@ function VersionStep({ t, value, onChange }: { t: TF; value: ObVersion | null; o
       }}>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
           <span style={{ fontFamily: FB, fontSize: 16, fontWeight: 800, color: 'var(--text)' }}>{t('ob.version.full')}</span>
-          <span style={{ fontFamily: FB, fontSize: 10, fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--primary)', background: 'var(--primary-dim)', borderRadius: 999, padding: '2px 8px' }}>{t('ob.version.recommended')}</span>
+          <span style={{ fontFamily: FB, fontSize: 10, fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--primary)', background: 'var(--primary-dim)', borderRadius: 'var(--r-pill)', padding: '2px 8px' }}>{t('ob.version.recommended')}</span>
         </span>
         <span style={{ display: 'block', fontFamily: FB, fontSize: 13, color: 'var(--text-mid)', marginTop: 5, lineHeight: 1.45 }}>{t('ob.version.fullD')}</span>
       </button>
@@ -405,7 +405,7 @@ function QuestionView(p: QVProps) {
                                 const sel = p.getPerSport(q.id, s, f.id) === ov
                                 return (
                                   <button key={ov} type="button" onClick={() => p.setPerSport(q.id, s, f.id, sel ? '' : ov)}
-                                    style={{ border: 'none', boxShadow: `inset 0 0 0 1px ${sel ? 'var(--primary)' : 'var(--border-mid)'}`, background: sel ? 'var(--primary-dim)' : 'transparent', color: sel ? 'var(--primary)' : 'var(--text-mid)', borderRadius: 999, padding: '5px 11px', fontFamily: FB, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                                    style={{ border: 'none', boxShadow: `inset 0 0 0 1px ${sel ? 'var(--primary)' : 'var(--border-mid)'}`, background: sel ? 'var(--primary-dim)' : 'transparent', color: sel ? 'var(--primary)' : 'var(--text-mid)', borderRadius: 'var(--r-pill)', padding: '5px 11px', fontFamily: FB, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
                                     {t(`ob.${q.id}.${f.id}.${ov}`)}
                                   </button>
                                 )

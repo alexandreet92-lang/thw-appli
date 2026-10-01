@@ -74,7 +74,7 @@ export default function WorkoutLauncher({ sport, open, onClose, onStart, onFreeM
 
   const SessionRow = ({ s }: { s: PlannedSession }) => (
     <button onClick={() => { handleClose(); onStart(s.blocks, s.title) }}
-      style={{ width: '100%', display: 'flex', alignItems: 'center', padding: '14px 16px', background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 12, cursor: 'pointer', marginBottom: 8, textAlign: 'left' }}>
+      style={{ width: '100%', display: 'flex', alignItems: 'center', padding: '14px 16px', background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', cursor: 'pointer', marginBottom: 8, textAlign: 'left' }}>
       <div style={{ flex: 1 }}>
         <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)', margin: 0 }}>{s.title}</p>
         <p style={{ fontSize: 12, color: 'var(--text-mid)', margin: '3px 0 0' }}>
@@ -91,7 +91,7 @@ export default function WorkoutLauncher({ sport, open, onClose, onStart, onFreeM
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 10000, display: 'flex', alignItems: 'flex-end' }}>
       <div onClick={handleClose} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.50)', backdropFilter: 'blur(4px)', animation: closing ? 'fade-out 200ms ease-in forwards' : 'fade-in 200ms ease-out forwards' }} />
-      <div className={closing ? 'sheet-close' : 'sheet-open'} style={{ position: 'fixed', left: 0, right: 0, bottom: 0, maxHeight: '82vh', background: 'var(--bg-card)', borderTopLeftRadius: 24, borderTopRightRadius: 24, display: 'flex', flexDirection: 'column', overflow: 'hidden', fontFamily: 'DM Sans, sans-serif', boxShadow: '0 -8px 32px rgba(0,0,0,0.20)' }}>
+      <div className={closing ? 'sheet-close' : 'sheet-open'} style={{ position: 'fixed', left: 0, right: 0, bottom: 0, maxHeight: '82vh', background: 'var(--bg-card)', borderTopLeftRadius: 24, borderTopRightRadius: 24, display: 'flex', flexDirection: 'column', overflow: 'hidden', fontFamily: 'var(--font-body)', boxShadow: '0 -8px 32px rgba(0,0,0,0.20)' }}>
 
         {/* Drag indicator */}
         <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 10, flexShrink: 0 }}>
@@ -100,7 +100,7 @@ export default function WorkoutLauncher({ sport, open, onClose, onStart, onFreeM
 
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px 12px', flexShrink: 0 }}>
-          <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text)', margin: 0, fontFamily: 'Syne, sans-serif' }}>{label}</h2>
+          <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text)', margin: 0, fontFamily: 'var(--font-display)' }}>{label}</h2>
           <button onClick={handleClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-mid)', fontSize: 22, lineHeight: 1, padding: '4px 8px' }}>×</button>
         </div>
 
@@ -130,7 +130,7 @@ export default function WorkoutLauncher({ sport, open, onClose, onStart, onFreeM
           <div>
             {sectionLabel('No Training')}
             <button onClick={() => { handleClose(); onFreeMode ? onFreeMode(sport) : onStart(sport === 'gym' ? DEFAULT_GYM_EXERCISES : DEFAULT_HYROX_EXERCISES) }}
-              style={{ width: '100%', padding: '15px 16px', borderRadius: 12, cursor: 'pointer', border: `1px solid ${accent}`, background: tint(8), color: accent, fontSize: 14.5, fontWeight: 800, display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left' }}>
+              style={{ width: '100%', padding: '15px 16px', borderRadius: 'var(--r-md)', cursor: 'pointer', border: `1px solid ${accent}`, background: tint(8), color: accent, fontSize: 14.5, fontWeight: 800, display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left' }}>
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={accent} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><polygon points="5 3 19 12 5 21 5 3"/></svg>
               {t('record.workoutLaunch')} · {t('record.workoutNoProgram')}
             </button>

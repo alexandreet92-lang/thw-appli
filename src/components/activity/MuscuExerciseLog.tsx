@@ -35,7 +35,7 @@ function exoFromDef(def: ExoDefinition): Exo {
 }
 
 const inputStyle: React.CSSProperties = {
-  background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: 8,
+  background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: 'var(--r-sm)',
   padding: '7px 9px', fontSize: 13, color: 'var(--text)', fontFamily: 'inherit', boxSizing: 'border-box',
 }
 
@@ -77,7 +77,7 @@ export function MuscuExerciseLog({ activityId }: { activityId: string }) {
   }
 
   return (
-    <div style={{ background: 'var(--bg-card2)', borderRadius: 14, padding: 16, margin: '12px 0' }}>
+    <div style={{ background: 'var(--bg-card2)', borderRadius: 'var(--r-md)', padding: 16, margin: '12px 0' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: nbExos ? 12 : 0 }}>
         <div style={{ display: 'flex', gap: 22 }}>
           <div>
@@ -91,7 +91,7 @@ export function MuscuExerciseLog({ activityId }: { activityId: string }) {
         </div>
         <button onClick={openEditor} style={{
           fontSize: 12, color: GYM, background: 'none', border: '1px solid var(--border)',
-          borderRadius: 999, padding: '6px 14px', cursor: 'pointer', fontWeight: 600, fontFamily: 'inherit',
+          borderRadius: 'var(--r-pill)', padding: '6px 14px', cursor: 'pointer', fontWeight: 600, fontFamily: 'inherit',
         }}>{nbExos ? t('activities.edit') : t('activities.enter')}</button>
       </div>
 
@@ -126,10 +126,10 @@ export function MuscuExerciseLog({ activityId }: { activityId: string }) {
             </div>
 
             {draft.exos.map((e, i) => (
-              <div key={e.id} style={{ border: '1px solid var(--border)', borderRadius: 12, padding: 12, marginBottom: 10 }}>
+              <div key={e.id} style={{ border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: 12, marginBottom: 10 }}>
                 <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
                   <input value={e.name} onChange={ev => patchExo(e.id, 'name', ev.target.value)} placeholder={t('activities.exerciseN', { n: i + 1 })} style={{ ...inputStyle, flex: 1 }} />
-                  <button onClick={() => setDraft(d => ({ ...d, exos: d.exos.filter(x => x.id !== e.id) }))} aria-label={t('activities.delete')} style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text-dim)', cursor: 'pointer', padding: '0 10px', fontSize: 16 }}>−</button>
+                  <button onClick={() => setDraft(d => ({ ...d, exos: d.exos.filter(x => x.id !== e.id) }))} aria-label={t('activities.delete')} style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 'var(--r-sm)', color: 'var(--text-dim)', cursor: 'pointer', padding: '0 10px', fontSize: 16 }}>−</button>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
                   <input value={e.sets} onChange={ev => patchExo(e.id, 'sets', ev.target.value)} placeholder={t('activities.sets')} style={inputStyle} />
@@ -141,13 +141,13 @@ export function MuscuExerciseLog({ activityId }: { activityId: string }) {
             ))}
 
             <button onClick={() => setPicking(true)} style={{
-              width: '100%', padding: '10px', borderRadius: 10, border: '1px dashed var(--border)',
+              width: '100%', padding: '10px', borderRadius: 'var(--r-sm)', border: '1px dashed var(--border)',
               background: 'transparent', color: GYM, fontWeight: 600, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', marginBottom: 16,
             }}>{t('activities.addExerciseLibrary')}</button>
 
             <div style={{ display: 'flex', gap: 10 }}>
-              <button onClick={closeEditor} style={{ flex: 1, padding: '12px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontWeight: 600, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>{t('activities.cancel')}</button>
-              <button onClick={commit} style={{ flex: 1, padding: '12px', borderRadius: 10, border: 'none', background: GYM, color: 'white', fontWeight: 700, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>{t('activities.save')}</button>
+              <button onClick={closeEditor} style={{ flex: 1, padding: '12px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontWeight: 600, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>{t('activities.cancel')}</button>
+              <button onClick={commit} style={{ flex: 1, padding: '12px', borderRadius: 'var(--r-sm)', border: 'none', background: GYM, color: 'white', fontWeight: 700, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>{t('activities.save')}</button>
             </div>
           </div>
         </div>,

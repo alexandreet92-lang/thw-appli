@@ -121,7 +121,7 @@ export function MobilityBuilder({ blocks, accent, onChange }: {
                 <div style={{ padding: '0 14px 12px', display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                   {exos.map(exo => (
                     <button key={exo.id} type="button" onClick={() => add(exo)}
-                      style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '7px 11px', borderRadius: 999, border: '1px dashed var(--se-rule)', background: 'transparent', color: 'var(--se-text)', cursor: 'pointer', fontSize: 12, fontWeight: 500 }}>
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '7px 11px', borderRadius: 'var(--r-pill)', border: '1px dashed var(--se-rule)', background: 'transparent', color: 'var(--se-text)', cursor: 'pointer', fontSize: 12, fontWeight: 500 }}>
                       <IconPlus size={13} color={accent} /> {exo.nom}
                     </button>
                   ))}
@@ -135,4 +135,4 @@ export function MobilityBuilder({ blocks, accent, onChange }: {
   )
 }
 
-const iconBtn: React.CSSProperties = { width: 26, height: 26, borderRadius: 7, border: 'none', background: 'transparent', color: 'var(--se-dim)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }
+const iconBtn: React.CSSProperties = { width: 26, height: 26, borderRadius: 'var(--r-sm)', border: 'none', background: 'transparent', color: 'var(--se-dim)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }

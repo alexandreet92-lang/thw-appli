@@ -72,7 +72,7 @@ export default function RunningSettingsParams({ settings, updateSetting, theme, 
           </div>
           <div style={{ display:'flex', alignItems:'center', gap:8 }}>
             <span style={{ fontSize:12, color:'#8C8C8C' }}>{t('record.runningParamsNotConnected')}</span>
-            <span style={{ fontSize:10, color:'var(--primary)', border:'1px solid rgba(6,182,212,0.4)', borderRadius:20, padding:'2px 8px' }}>{t('record.runningParamsSoon')}</span>
+            <span style={{ fontSize:10, color:'var(--primary)', border:'1px solid rgba(6,182,212,0.4)', borderRadius: 'var(--r-lg)', padding:'2px 8px' }}>{t('record.runningParamsSoon')}</span>
           </div>
         </div>
       ))}
@@ -119,7 +119,7 @@ export default function RunningSettingsParams({ settings, updateSetting, theme, 
             defaultValue={val}
             placeholder="4:30"
             onBlur={e => updateSetting(path, e.target.value.trim() || val)}
-            style={{ width: 70, textAlign:'right', background:'none', border:'none', borderBottom:`1px solid ${theme.separator}`, color:theme.text, fontSize:14, outline:'none', fontFamily:'DM Sans, sans-serif' }}
+            style={{ width: 70, textAlign:'right', background:'none', border:'none', borderBottom:`1px solid ${theme.separator}`, color:theme.text, fontSize:14, outline:'none', fontFamily: 'var(--font-body)' }}
           />
           <span style={{ fontSize:12, color:'#8C8C8C' }}>min/km</span>
         </div>

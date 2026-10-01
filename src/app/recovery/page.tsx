@@ -37,7 +37,7 @@ function OverviewTab({ weeks, readiness }: { weeks: WeekData[]; readiness: Readi
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <ReadinessCard result={readiness} />
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 18px', borderRadius: 14,
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 18px', borderRadius: 'var(--r-md)',
         background: 'var(--bg-card2)', border: '1px solid var(--border)' }}>
         <div style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--primary)', flexShrink: 0 }} />
         <p style={{ fontFamily: 'var(--font-body)', fontSize: 12.5, color: 'var(--text)', margin: 0, lineHeight: 1.5 }}>

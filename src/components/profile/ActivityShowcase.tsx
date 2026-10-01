@@ -136,7 +136,7 @@ function VolumeGauge({ families, totalSec, totalHours }: { families: { key: stri
   return (
     <div style={{ display: 'flex', gap: 16, alignItems: 'stretch' }}>
       {/* Barre */}
-      <div style={{ position: 'relative', width: 46, height: 210, display: 'flex', flexDirection: 'column', borderRadius: 12, overflow: 'hidden', background: 'var(--bg-card2)', flexShrink: 0 }}>
+      <div style={{ position: 'relative', width: 46, height: 210, display: 'flex', flexDirection: 'column', borderRadius: 'var(--r-md)', overflow: 'hidden', background: 'var(--bg-card2)', flexShrink: 0 }}>
         {families.map(f => {
           const pct = f.seconds / totalSec * 100
           const on = hover === f.key
@@ -147,7 +147,7 @@ function VolumeGauge({ families, totalSec, totalHours }: { families: { key: stri
         })}
         <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start', paddingTop: 8 }}>
           <span className="tnum" style={{ fontSize: 18, fontWeight: 800, color: 'var(--on-primary)', textShadow: '0 1px 3px rgba(0,0,0,0.35)', fontVariantNumeric: 'tabular-nums' }}>{totalHours}</span>
-          <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--on-primary)', textShadow: '0 1px 3px rgba(0,0,0,0.35)' }}>{t('w1j.hours')}</span>
+          <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--on-primary)', textShadow: '0 1px 3px rgba(0,0,0,0.35)' }}>{t('w1j.hours')}</span>
         </div>
       </div>
       {/* Légende */}
@@ -247,7 +247,7 @@ function ActivityMapCard({ a, onOpen }: { a: RecentActivity; onOpen: () => void 
           : path
             ? <svg viewBox="0 0 320 150" style={{ width: '100%', height: '100%' }}><path d={path} fill="none" stroke="white" strokeWidth={3.5} strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" /></svg>
             : <span style={{ width: 12, height: 12, borderRadius: '50%', background: meta.color }} />}
-        <span style={{ position: 'absolute', top: 10, left: 10, fontSize: 10.5, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'white', background: 'rgba(0,0,0,0.42)', padding: '3px 9px', borderRadius: 999, backdropFilter: 'blur(2px)' }}>{a.is_race ? t('w1j.race') : meta.label}</span>
+        <span style={{ position: 'absolute', top: 10, left: 10, fontSize: 10.5, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'white', background: 'rgba(0,0,0,0.42)', padding: '3px 9px', borderRadius: 'var(--r-pill)', backdropFilter: 'blur(2px)' }}>{a.is_race ? t('w1j.race') : meta.label}</span>
       </div>
       {/* Données */}
       <div style={{ padding: '12px 14px 14px' }}>
@@ -342,7 +342,7 @@ function WeeklyChart({ weekly }: { weekly: { week: string; count: number; distan
               style={{ flex: '1 1 0', minWidth: 2, height: '100%', display: 'flex', alignItems: 'flex-end', position: 'relative' }}>
               <div style={{ width: '100%', height: `${Math.max(v > 0 ? 3 : 0, v / max * 100)}%`, borderRadius: '2px 2px 0 0', background: on ? 'var(--text)' : 'var(--primary)', opacity: on ? 1 : 0.85, transition: 'opacity 120ms' }} />
               {on && (
-                <div style={{ position: 'absolute', bottom: '100%', left: '50%', transform: 'translateX(-50%)', marginBottom: 6, zIndex: 10, background: 'var(--text)', color: 'var(--bg-card)', borderRadius: 7, padding: '5px 9px', fontSize: 10.5, fontWeight: 700, whiteSpace: 'nowrap', pointerEvents: 'none', boxShadow: '0 4px 14px rgba(0,0,0,0.25)' }}>
+                <div style={{ position: 'absolute', bottom: '100%', left: '50%', transform: 'translateX(-50%)', marginBottom: 6, zIndex: 10, background: 'var(--text)', color: 'var(--bg-card)', borderRadius: 'var(--r-sm)', padding: '5px 9px', fontSize: 10.5, fontWeight: 700, whiteSpace: 'nowrap', pointerEvents: 'none', boxShadow: '0 4px 14px rgba(0,0,0,0.25)' }}>
                   {new Date(w.week).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })} · {fmt(v)}
                 </div>
               )}
@@ -354,7 +354,7 @@ function WeeklyChart({ weekly }: { weekly: { week: string; count: number; distan
   )
 }
 function Toggle({ on, onClick, children }: { on: boolean; onClick: () => void; children: React.ReactNode }) {
-  return <button onClick={onClick} style={{ padding: '5px 12px', borderRadius: 999, border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 700, background: on ? 'var(--primary)' : 'var(--bg-card2)', color: on ? 'var(--on-primary)' : 'var(--text-mid)' }}>{children}</button>
+  return <button onClick={onClick} style={{ padding: '5px 12px', borderRadius: 'var(--r-pill)', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 700, background: on ? 'var(--primary)' : 'var(--bg-card2)', color: on ? 'var(--on-primary)' : 'var(--text-mid)' }}>{children}</button>
 }
 
 function Label({ children }: { children: React.ReactNode }) {

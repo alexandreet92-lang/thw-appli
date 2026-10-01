@@ -73,18 +73,18 @@ function ZoneBar({ zones, formatMin, formatMax }: {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12 }}>
       {zones.map((z) => (
         <div key={z.zone} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div style={{ width: 28, height: 28, borderRadius: 8, background: z.color + '22', border: `1px solid ${z.color}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <div style={{ width: 28, height: 28, borderRadius: 'var(--r-sm)', background: z.color + '22', border: `1px solid ${z.color}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <span style={{ fontSize: 11, fontWeight: 700, color: z.color }}>Z{z.zone}</span>
           </div>
           <div style={{ flex: 1 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
               <span style={{ fontSize: 12, color: 'var(--text-mid)', fontWeight: 500 }}>{z.label}</span>
-              <span style={{ fontSize: 11, fontFamily: 'DM Mono,monospace', color: z.color }}>
+              <span style={{ fontSize: 11, fontFamily: 'var(--font-body)', color: z.color }}>
                 {formatMin(z.wMin ?? z.paceMin)} — {formatMax(z.wMax ?? z.paceMax)}
               </span>
             </div>
-            <div style={{ height: 6, borderRadius: 999, background: 'var(--border)', overflow: 'hidden' }}>
-              <div style={{ height: '100%', width: `${z.zone * 20}%`, background: z.color, opacity: 0.7, borderRadius: 999 }}/>
+            <div style={{ height: 6, borderRadius: 'var(--r-pill)', background: 'var(--border)', overflow: 'hidden' }}>
+              <div style={{ height: '100%', width: `${z.zone * 20}%`, background: z.color, opacity: 0.7, borderRadius: 'var(--r-pill)' }}/>
             </div>
           </div>
         </div>
@@ -102,7 +102,7 @@ function Field({ label, value, onChange, placeholder, hint }: {
       <p style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase' as const, letterSpacing: '0.07em', color: 'var(--text-dim)', marginBottom: 5 }}>{label}</p>
       <input
         value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder}
-        style={{ width: '100%', padding: '9px 12px', borderRadius: 9, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontFamily: 'DM Mono,monospace', fontSize: 13, outline: 'none' }}
+        style={{ width: '100%', padding: '9px 12px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontFamily: 'var(--font-body)', fontSize: 13, outline: 'none' }}
       />
       {hint && <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '4px 0 0' }}>{hint}</p>}
     </div>
@@ -175,7 +175,7 @@ export default function ZonesPage() {
 
       {/* Header */}
       <div style={{ marginBottom: 24 }}>
-        <h1 style={{ fontFamily: 'Syne,sans-serif', fontSize: 26, fontWeight: 700, letterSpacing: '-0.03em', margin: 0 }}>
+        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 700, letterSpacing: '-0.03em', margin: 0 }}>
           {t('misc.zonesTitle')}
         </h1>
         <p style={{ fontSize: 12.5, color: 'var(--text-dim)', margin: '5px 0 0' }}>
@@ -186,7 +186,7 @@ export default function ZonesPage() {
       {/* Tabs */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
         {TABS.map((t) => (
-          <button key={t.id} onClick={() => setTab(t.id)} style={{ padding: '9px 18px', borderRadius: 11, border: '1px solid', borderColor: tab === t.id ? 'var(--primary)' : 'var(--border)', background: tab === t.id ? 'rgba(6,182,212,0.10)' : 'var(--bg-card)', color: tab === t.id ? 'var(--primary)' : 'var(--text-mid)', fontFamily: 'DM Sans,sans-serif', fontSize: 13, fontWeight: tab === t.id ? 600 : 400, cursor: 'pointer' }}>
+          <button key={t.id} onClick={() => setTab(t.id)} style={{ padding: '9px 18px', borderRadius: 'var(--r-md)', border: '1px solid', borderColor: tab === t.id ? 'var(--primary)' : 'var(--border)', background: tab === t.id ? 'rgba(6,182,212,0.10)' : 'var(--bg-card)', color: tab === t.id ? 'var(--primary)' : 'var(--text-mid)', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: tab === t.id ? 600 : 400, cursor: 'pointer' }}>
             {t.emoji} {t.label}
           </button>
         ))}
@@ -197,8 +197,8 @@ export default function ZonesPage() {
         {/* ── RUNNING ── */}
         {tab === 'run' && (
           <>
-            <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 16, padding: 22, boxShadow: 'var(--shadow-card)' }}>
-              <h2 style={{ fontFamily: 'Syne,sans-serif', fontSize: 15, fontWeight: 700, margin: '0 0 18px' }}>{t('misc.paramsRunningTitle')}</h2>
+            <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: 22, boxShadow: 'var(--shadow-card)' }}>
+              <h2 style={{ fontFamily: 'var(--font-body)', fontSize: 15, fontWeight: 700, margin: '0 0 18px' }}>{t('misc.paramsRunningTitle')}</h2>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                 <Field label="LTHR (bpm)" value={lthr} onChange={setLthr} placeholder="172" hint={t('misc.hintLthr')}/>
                 <Field label={t('misc.labelThresholdPace')} value={thresholdPace} onChange={setThresholdPace} placeholder="4:08" hint={t('misc.hintThresholdPace')}/>
@@ -206,7 +206,7 @@ export default function ZonesPage() {
               </div>
 
               {/* Records */}
-              <div style={{ marginTop: 20, padding: '14px 16px', borderRadius: 12, background: 'rgba(6,182,212,0.06)', border: '1px solid rgba(6,182,212,0.15)' }}>
+              <div style={{ marginTop: 20, padding: '14px 16px', borderRadius: 'var(--r-md)', background: 'rgba(6,182,212,0.06)', border: '1px solid rgba(6,182,212,0.15)' }}>
                 <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--primary)', margin: '0 0 12px' }}>📊 {t('misc.personalRecords')}</p>
                 <div style={{ display: 'grid', gridTemplateColumns: narrow ? '1fr' : '1fr 1fr', gap: 10 }}>
                   {[
@@ -218,22 +218,22 @@ export default function ZonesPage() {
                   ].map((r) => (
                     <div key={r.label}>
                       <p style={{ fontSize: 10, color: 'var(--text-dim)', marginBottom: 3 }}>{r.label}</p>
-                      <input placeholder={r.placeholder} style={{ width: '100%', padding: '6px 10px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontFamily: 'DM Mono,monospace', fontSize: 12, outline: 'none' }}/>
+                      <input placeholder={r.placeholder} style={{ width: '100%', padding: '6px 10px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontFamily: 'var(--font-body)', fontSize: 12, outline: 'none' }}/>
                     </div>
                   ))}
                 </div>
               </div>
             </div>
 
-            <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 16, padding: 22, boxShadow: 'var(--shadow-card)' }}>
-              <h2 style={{ fontFamily: 'Syne,sans-serif', fontSize: 15, fontWeight: 700, margin: '0 0 4px' }}>{t('misc.zonesRunningTitle')}</h2>
+            <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: 22, boxShadow: 'var(--shadow-card)' }}>
+              <h2 style={{ fontFamily: 'var(--font-body)', fontSize: 15, fontWeight: 700, margin: '0 0 4px' }}>{t('misc.zonesRunningTitle')}</h2>
               <p style={{ fontSize: 12, color: 'var(--text-dim)', margin: '0 0 0' }}>{t('misc.zonesBasisRun', { lthr, pace: thresholdPace })}</p>
               <ZoneBar
                 zones={runZones}
                 formatMin={(v) => v >= 9000 ? '—' : formatPace(v)}
                 formatMax={(v) => v >= 9000 ? '—' : formatPace(v)}
               />
-              <div style={{ marginTop: 16, padding: '10px 14px', borderRadius: 10, background: 'var(--bg-card2)', border: '1px solid var(--border)' }}>
+              <div style={{ marginTop: 16, padding: '10px 14px', borderRadius: 'var(--r-sm)', background: 'var(--bg-card2)', border: '1px solid var(--border)' }}>
                 <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: 0, lineHeight: 1.6 }}>
                   💡 {t('misc.zonesAutoDetectHint')}
                 </p>
@@ -245,37 +245,37 @@ export default function ZonesPage() {
         {/* ── CYCLISME ── */}
         {tab === 'bike' && (
           <>
-            <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 16, padding: 22, boxShadow: 'var(--shadow-card)' }}>
-              <h2 style={{ fontFamily: 'Syne,sans-serif', fontSize: 15, fontWeight: 700, margin: '0 0 18px' }}>{t('misc.paramsCyclingTitle')}</h2>
+            <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: 22, boxShadow: 'var(--shadow-card)' }}>
+              <h2 style={{ fontFamily: 'var(--font-body)', fontSize: 15, fontWeight: 700, margin: '0 0 18px' }}>{t('misc.paramsCyclingTitle')}</h2>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                 <Field label="FTP (watts)" value={ftp} onChange={setFtp} placeholder="301" hint={t('misc.hintFtp')}/>
                 <Field label={t('misc.labelLthrBike')} value={lthrB} onChange={setLthrB} placeholder="168" hint={t('misc.hintLthrBike')}/>
                 <Field label={t('misc.labelWeight')} value={weight} onChange={setWeight} placeholder="75" hint={t('misc.hintWeightWkg')}/>
               </div>
 
-              <div style={{ marginTop: 16, padding: '12px 14px', borderRadius: 10, background: 'rgba(91,111,255,0.07)', border: '1px solid rgba(91,111,255,0.15)' }}>
+              <div style={{ marginTop: 16, padding: '12px 14px', borderRadius: 'var(--r-sm)', background: 'rgba(91,111,255,0.07)', border: '1px solid rgba(91,111,255,0.15)' }}>
                 <p style={{ fontSize: 11, fontWeight: 600, color: '#5b6fff', margin: '0 0 4px' }}>{t('misc.currentWkg')}</p>
-                <p style={{ fontFamily: 'Syne,sans-serif', fontSize: 22, fontWeight: 700, color: '#5b6fff', margin: 0 }}>
+                <p style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 700, color: '#5b6fff', margin: 0 }}>
                   {ftp && weight ? (parseInt(ftp) / parseInt(weight)).toFixed(2) : '—'}
                   <span style={{ fontSize: 12, color: 'var(--text-dim)', marginLeft: 4 }}>W/kg</span>
                 </p>
               </div>
 
-              <div style={{ marginTop: 14, padding: '14px 16px', borderRadius: 12, background: 'rgba(6,182,212,0.06)', border: '1px solid rgba(6,182,212,0.15)' }}>
+              <div style={{ marginTop: 14, padding: '14px 16px', borderRadius: 'var(--r-md)', background: 'rgba(6,182,212,0.06)', border: '1px solid rgba(6,182,212,0.15)' }}>
                 <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--primary)', margin: '0 0 12px' }}>📊 {t('misc.personalRecords')}</p>
                 <div style={{ display: 'grid', gridTemplateColumns: narrow ? '1fr' : '1fr 1fr', gap: 10 }}>
                   {['5min', '20min', '1h', 'Sprints'].map((r) => (
                     <div key={r}>
                       <p style={{ fontSize: 10, color: 'var(--text-dim)', marginBottom: 3 }}>{t('misc.power')} {r}</p>
-                      <input placeholder="—W" style={{ width: '100%', padding: '6px 10px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontFamily: 'DM Mono,monospace', fontSize: 12, outline: 'none' }}/>
+                      <input placeholder="—W" style={{ width: '100%', padding: '6px 10px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontFamily: 'var(--font-body)', fontSize: 12, outline: 'none' }}/>
                     </div>
                   ))}
                 </div>
               </div>
             </div>
 
-            <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 16, padding: 22, boxShadow: 'var(--shadow-card)' }}>
-              <h2 style={{ fontFamily: 'Syne,sans-serif', fontSize: 15, fontWeight: 700, margin: '0 0 4px' }}>{t('misc.zonesCyclingTitle')}</h2>
+            <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: 22, boxShadow: 'var(--shadow-card)' }}>
+              <h2 style={{ fontFamily: 'var(--font-body)', fontSize: 15, fontWeight: 700, margin: '0 0 4px' }}>{t('misc.zonesCyclingTitle')}</h2>
               <p style={{ fontSize: 12, color: 'var(--text-dim)', margin: '0 0 0' }}>{t('misc.zonesBasisBike', { ftp })}</p>
               <ZoneBar
                 zones={bikeZones}
@@ -289,28 +289,28 @@ export default function ZonesPage() {
         {/* ── NATATION ── */}
         {tab === 'swim' && (
           <>
-            <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 16, padding: 22, boxShadow: 'var(--shadow-card)' }}>
-              <h2 style={{ fontFamily: 'Syne,sans-serif', fontSize: 15, fontWeight: 700, margin: '0 0 18px' }}>{t('misc.paramsSwimmingTitle')}</h2>
+            <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: 22, boxShadow: 'var(--shadow-card)' }}>
+              <h2 style={{ fontFamily: 'var(--font-body)', fontSize: 15, fontWeight: 700, margin: '0 0 18px' }}>{t('misc.paramsSwimmingTitle')}</h2>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                 <Field label={t('misc.labelCss')} value={css} onChange={setCss} placeholder="1:28" hint={t('misc.hintCss')}/>
                 <Field label={t('misc.labelLthrSwim')} value={lthrS} onChange={setLthrS} placeholder="160" hint={t('misc.hintLthrSwim')}/>
               </div>
 
-              <div style={{ marginTop: 20, padding: '14px 16px', borderRadius: 12, background: 'rgba(6,182,212,0.06)', border: '1px solid rgba(6,182,212,0.15)' }}>
+              <div style={{ marginTop: 20, padding: '14px 16px', borderRadius: 'var(--r-md)', background: 'rgba(6,182,212,0.06)', border: '1px solid rgba(6,182,212,0.15)' }}>
                 <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--primary)', margin: '0 0 12px' }}>📊 {t('misc.personalRecords')}</p>
                 <div style={{ display: 'grid', gridTemplateColumns: narrow ? '1fr' : '1fr 1fr', gap: 10 }}>
                   {['100m', '200m', '400m', '1500m'].map((r) => (
                     <div key={r}>
                       <p style={{ fontSize: 10, color: 'var(--text-dim)', marginBottom: 3 }}>{r}</p>
-                      <input placeholder="—:——" style={{ width: '100%', padding: '6px 10px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontFamily: 'DM Mono,monospace', fontSize: 12, outline: 'none' }}/>
+                      <input placeholder="—:——" style={{ width: '100%', padding: '6px 10px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontFamily: 'var(--font-body)', fontSize: 12, outline: 'none' }}/>
                     </div>
                   ))}
                 </div>
               </div>
             </div>
 
-            <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 16, padding: 22, boxShadow: 'var(--shadow-card)' }}>
-              <h2 style={{ fontFamily: 'Syne,sans-serif', fontSize: 15, fontWeight: 700, margin: '0 0 4px' }}>{t('misc.zonesSwimmingTitle')}</h2>
+            <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: 22, boxShadow: 'var(--shadow-card)' }}>
+              <h2 style={{ fontFamily: 'var(--font-body)', fontSize: 15, fontWeight: 700, margin: '0 0 4px' }}>{t('misc.zonesSwimmingTitle')}</h2>
               <p style={{ fontSize: 12, color: 'var(--text-dim)', margin: '0 0 0' }}>{t('misc.zonesBasisSwim', { css })}</p>
               <ZoneBar
                 zones={swimZones}

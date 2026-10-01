@@ -99,7 +99,7 @@ export default function KcalBarChart({ entries }: { entries: KcalEntry[] }) {
         <div style={{
           position: 'absolute', top: 4, right: 4,
           background: 'var(--bg-card)', border: '1px solid var(--border)',
-          borderRadius: 8, padding: '7px 11px', fontSize: 11,
+          borderRadius: 'var(--r-sm)', padding: '7px 11px', fontSize: 11,
           boxShadow: '0 4px 16px rgba(0,0,0,0.18)', pointerEvents: 'none', zIndex: 10,
           whiteSpace: 'nowrap',
         }}>

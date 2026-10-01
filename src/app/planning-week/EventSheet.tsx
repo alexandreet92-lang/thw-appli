@@ -178,7 +178,7 @@ export function EventSheet({ event, draft, calendars, onClose, onSaved }: {
     } finally { setBusy(false) }
   }
 
-  const field: React.CSSProperties = { width: '100%', padding: '10px 12px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text)', fontSize: 14, outline: 'none', fontFamily: 'var(--font-body)', boxSizing: 'border-box' }
+  const field: React.CSSProperties = { width: '100%', padding: '10px 12px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text)', fontSize: 14, outline: 'none', fontFamily: 'var(--font-body)', boxSizing: 'border-box' }
   const label: React.CSSProperties = { fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-dim)', margin: '0 0 5px' }
 
   return (
@@ -208,15 +208,15 @@ export function EventSheet({ event, draft, calendars, onClose, onSaved }: {
                 {event!.sport ? ` · ${event!.sport}` : ''}{event!.meta?.type ? ` · ${event!.meta.type}` : ''}
               </p>
               {event!.description && <p style={{ fontSize: 13.5, color: 'var(--text-mid)', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{event!.description}</p>}
-              <button onClick={onClose} style={{ marginTop: 18, width: '100%', padding: 12, borderRadius: 12, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>Fermer</button>
+              <button onClick={onClose} style={{ marginTop: 18, width: '100%', padding: 12, borderRadius: 'var(--r-md)', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>Fermer</button>
             </>
           ) : (
             <>
               {/* Sélecteur type (création uniquement) */}
               {!editing && (
-                <div style={{ display: 'flex', gap: 6, marginBottom: 16, background: 'var(--bg-card2)', borderRadius: 10, padding: 3 }}>
+                <div style={{ display: 'flex', gap: 6, marginBottom: 16, background: 'var(--bg-card2)', borderRadius: 'var(--r-sm)', padding: 3 }}>
                   {(['event', 'session'] as const).map(k => (
-                    <button key={k} onClick={() => setKind(k)} style={{ flex: 1, padding: '8px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 700, background: kind === k ? 'var(--primary)' : 'transparent', color: kind === k ? 'var(--on-primary,#fff)' : 'var(--text-mid)' }}>{k === 'event' ? 'Événement' : 'Séance'}</button>
+                    <button key={k} onClick={() => setKind(k)} style={{ flex: 1, padding: '8px', borderRadius: 'var(--r-sm)', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 700, background: kind === k ? 'var(--primary)' : 'transparent', color: kind === k ? 'var(--on-primary,#fff)' : 'var(--text-mid)' }}>{k === 'event' ? 'Événement' : 'Séance'}</button>
                   ))}
                 </div>
               )}
@@ -295,13 +295,13 @@ export function EventSheet({ event, draft, calendars, onClose, onSaved }: {
                     <>
                       <div onClick={() => setRecOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 40 }} />
                       <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4, zIndex: 50,
-                        background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 12, boxShadow: 'var(--shadow)', overflow: 'hidden', padding: 4 }}>
+                        background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', boxShadow: 'var(--shadow)', overflow: 'hidden', padding: 4 }}>
                         {recurrencePresets.map(r => {
                           const on = !isCustomActive && rrule === r.v
                           return (
                             <button key={r.v || 'once'} type="button"
                               onClick={() => { setRrule(r.v); setRecOpen(false) }}
-                              style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left', padding: '9px 11px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 13.5, fontFamily: 'inherit',
+                              style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left', padding: '9px 11px', borderRadius: 'var(--r-sm)', border: 'none', cursor: 'pointer', fontSize: 13.5, fontFamily: 'inherit',
                                 background: on ? 'var(--primary-dim)' : 'transparent', color: on ? 'var(--primary)' : 'var(--text)', fontWeight: on ? 700 : 500 }}>
                               <span style={{ width: 16, flexShrink: 0 }}>{on ? '✓' : ''}</span>{r.label}
                             </button>
@@ -309,13 +309,13 @@ export function EventSheet({ event, draft, calendars, onClose, onSaved }: {
                         })}
                         {isCustomActive && (
                           <button type="button" onClick={() => { openCustomModal(); setRecOpen(false) }}
-                            style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left', padding: '9px 11px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 13.5, fontFamily: 'inherit', background: 'var(--primary-dim)', color: 'var(--primary)', fontWeight: 700 }}>
+                            style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left', padding: '9px 11px', borderRadius: 'var(--r-sm)', border: 'none', cursor: 'pointer', fontSize: 13.5, fontFamily: 'inherit', background: 'var(--primary-dim)', color: 'var(--primary)', fontWeight: 700 }}>
                             <span style={{ width: 16, flexShrink: 0 }}>✓</span>{summarizeRRule(rrule)}
                           </button>
                         )}
                         <div style={{ height: 1, background: 'var(--border)', margin: '4px 0' }} />
                         <button type="button" onClick={() => { openCustomModal(); setRecOpen(false) }}
-                          style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left', padding: '9px 11px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 13.5, fontFamily: 'inherit', background: 'transparent', color: 'var(--text-mid)', fontWeight: 600 }}>
+                          style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left', padding: '9px 11px', borderRadius: 'var(--r-sm)', border: 'none', cursor: 'pointer', fontSize: 13.5, fontFamily: 'inherit', background: 'transparent', color: 'var(--text-mid)', fontWeight: 600 }}>
                           <span style={{ width: 16, flexShrink: 0 }}>⚙</span>Personnaliser…
                         </button>
                       </div>
@@ -330,7 +330,7 @@ export function EventSheet({ event, draft, calendars, onClose, onSaved }: {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <span aria-hidden style={{ width: 26, height: 26, borderRadius: '50%', background: color, flexShrink: 0, boxShadow: '0 0 0 2px var(--bg-card), 0 0 0 3px var(--border)' }} />
                   <button type="button" onClick={() => setPaletteOpen(o => !o)}
-                    style={{ padding: '7px 12px', borderRadius: 9, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                    style={{ padding: '7px 12px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
                     {paletteOpen ? 'Fermer' : 'Autres couleurs'}
                   </button>
                 </div>
@@ -356,12 +356,12 @@ export function EventSheet({ event, draft, calendars, onClose, onSaved }: {
               {isSession && (
                 <div style={{ marginBottom: 14 }}>
                   {Array.isArray(event?.blocks) && (event!.blocks as unknown[]).length > 0 && (
-                    <div style={{ padding: '10px 12px', borderRadius: 10, background: 'var(--bg-card2)', border: '1px solid var(--border)', marginBottom: 10 }}>
+                    <div style={{ padding: '10px 12px', borderRadius: 'var(--r-sm)', background: 'var(--bg-card2)', border: '1px solid var(--border)', marginBottom: 10 }}>
                       <p style={{ ...label, marginBottom: 6 }}>Blocs d'intensité</p>
                       <p style={{ fontSize: 12.5, color: 'var(--text-mid)', margin: 0 }}>{(event!.blocks as unknown[]).length} bloc(s) — édition détaillée sur Planning sports.</p>
                     </div>
                   )}
-                  <Link href="/planning" style={{ display: 'block', textAlign: 'center', padding: 11, borderRadius: 11, border: '1px solid var(--primary)', background: 'var(--primary-dim)', color: 'var(--primary)', fontSize: 13.5, fontWeight: 700, textDecoration: 'none' }}>
+                  <Link href="/planning" style={{ display: 'block', textAlign: 'center', padding: 11, borderRadius: 'var(--r-md)', border: '1px solid var(--primary)', background: 'var(--primary-dim)', color: 'var(--primary)', fontSize: 13.5, fontWeight: 700, textDecoration: 'none' }}>
                     Détailler la séance (blocs) sur Planning sports →
                   </Link>
                 </div>
@@ -369,10 +369,10 @@ export function EventSheet({ event, draft, calendars, onClose, onSaved }: {
 
               <div style={{ display: 'flex', gap: 10, marginTop: 6 }}>
                 {editing && (event!.source === 'event' || event!.source === 'google') && (
-                  <button onClick={() => setConfirmDel(true)} disabled={busy} style={{ padding: '12px 16px', borderRadius: 12, border: '1px solid var(--border)', background: 'transparent', color: 'var(--danger)', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>Supprimer</button>
+                  <button onClick={() => setConfirmDel(true)} disabled={busy} style={{ padding: '12px 16px', borderRadius: 'var(--r-md)', border: '1px solid var(--border)', background: 'transparent', color: 'var(--danger)', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>Supprimer</button>
                 )}
-                <button onClick={onClose} disabled={busy} style={{ flex: 1, padding: 12, borderRadius: 12, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>Annuler</button>
-                <button onClick={save} disabled={busy} style={{ flex: 1, padding: 12, borderRadius: 12, border: 'none', background: 'var(--primary)', color: 'var(--on-primary,#fff)', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>{busy ? '…' : editing ? 'Enregistrer' : 'Créer'}</button>
+                <button onClick={onClose} disabled={busy} style={{ flex: 1, padding: 12, borderRadius: 'var(--r-md)', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>Annuler</button>
+                <button onClick={save} disabled={busy} style={{ flex: 1, padding: 12, borderRadius: 'var(--r-md)', border: 'none', background: 'var(--primary)', color: 'var(--on-primary,#fff)', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>{busy ? '…' : editing ? 'Enregistrer' : 'Créer'}</button>
               </div>
             </>
           )}
@@ -383,12 +383,12 @@ export function EventSheet({ event, draft, calendars, onClose, onSaved }: {
       {confirmDel && (
         <div onClick={e => { if (e.target === e.currentTarget) setConfirmDel(false) }}
           style={{ position: 'fixed', inset: 0, zIndex: 620, background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(3px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-          <div style={{ width: 'min(360px,96vw)', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 18, boxShadow: 'var(--shadow)', padding: '20px 22px', boxSizing: 'border-box' }}>
+          <div style={{ width: 'min(360px,96vw)', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-lg)', boxShadow: 'var(--shadow)', padding: '20px 22px', boxSizing: 'border-box' }}>
             <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 700, margin: '0 0 8px', color: 'var(--text)' }}>Supprimer cet événement ?</h3>
             <p style={{ fontSize: 13.5, color: 'var(--text-mid)', margin: '0 0 18px', lineHeight: 1.5 }}>Cette action est définitive et ne peut pas être annulée.</p>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
-              <button onClick={() => setConfirmDel(false)} disabled={busy} style={{ padding: '10px 16px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}>Annuler</button>
-              <button onClick={() => { setConfirmDel(false); void remove() }} disabled={busy} style={{ padding: '10px 18px', borderRadius: 10, border: 'none', background: 'var(--danger)', color: '#fff', fontSize: 13.5, fontWeight: 700, cursor: 'pointer' }}>{busy ? '…' : 'Supprimer'}</button>
+              <button onClick={() => setConfirmDel(false)} disabled={busy} style={{ padding: '10px 16px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}>Annuler</button>
+              <button onClick={() => { setConfirmDel(false); void remove() }} disabled={busy} style={{ padding: '10px 18px', borderRadius: 'var(--r-sm)', border: 'none', background: 'var(--danger)', color: '#fff', fontSize: 13.5, fontWeight: 700, cursor: 'pointer' }}>{busy ? '…' : 'Supprimer'}</button>
             </div>
           </div>
         </div>
@@ -398,7 +398,7 @@ export function EventSheet({ event, draft, calendars, onClose, onSaved }: {
       {customOpen && (
         <div onClick={e => { if (e.target === e.currentTarget) setCustomOpen(false) }}
           style={{ position: 'fixed', inset: 0, zIndex: 600, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(3px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-          <div style={{ width: 'min(400px,96vw)', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 18, boxShadow: 'var(--shadow)', padding: '20px 22px', boxSizing: 'border-box' }}>
+          <div style={{ width: 'min(400px,96vw)', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-lg)', boxShadow: 'var(--shadow)', padding: '20px 22px', boxSizing: 'border-box' }}>
             <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 700, margin: '0 0 18px', color: 'var(--text)' }}>Récurrence personnalisée</h3>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
@@ -450,8 +450,8 @@ export function EventSheet({ event, draft, calendars, onClose, onSaved }: {
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
-              <button onClick={() => setCustomOpen(false)} style={{ padding: '10px 16px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}>Annuler</button>
-              <button onClick={applyCustom} style={{ padding: '10px 18px', borderRadius: 10, border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 13.5, fontWeight: 700, cursor: 'pointer' }}>Terminé</button>
+              <button onClick={() => setCustomOpen(false)} style={{ padding: '10px 16px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}>Annuler</button>
+              <button onClick={applyCustom} style={{ padding: '10px 18px', borderRadius: 'var(--r-sm)', border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 13.5, fontWeight: 700, cursor: 'pointer' }}>Terminé</button>
             </div>
           </div>
         </div>

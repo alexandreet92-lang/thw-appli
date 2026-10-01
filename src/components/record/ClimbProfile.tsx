@@ -76,9 +76,9 @@ export function ClimbProfile({ data, theme }: Props) {
 function ClimbStat({ label, value, unit, t }: { label: string; value: string; unit: string; t: ThemeColors }) {
   return (
     <div style={{ textAlign: 'center', flex: 1 }}>
-      <p style={{ fontSize: 9, color: t.dim, margin: 0, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</p>
-      <p style={{ fontSize: 16, fontWeight: 700, color: t.text, margin: 0, fontFamily: 'DM Mono, monospace' }}>{value}</p>
-      <p style={{ fontSize: 9, color: t.dim, margin: 0 }}>{unit}</p>
+      <p style={{ fontSize: 10, color: t.dim, margin: 0, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</p>
+      <p style={{ fontSize: 16, fontWeight: 700, color: t.text, margin: 0, fontFamily: 'var(--font-body)' }}>{value}</p>
+      <p style={{ fontSize: 10, color: t.dim, margin: 0 }}>{unit}</p>
     </div>
   )
 }

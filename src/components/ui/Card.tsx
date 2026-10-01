@@ -55,7 +55,7 @@ export function StatCard({ label, value, unit, sub, variant = 'default', classNa
           letterSpacing: '0.08em',
           textTransform: 'uppercase',
           color: 'var(--text-dim)',
-          fontFamily: 'DM Sans, sans-serif',
+          fontFamily: 'var(--font-body)',
         }}
       >
         {label}
@@ -63,7 +63,7 @@ export function StatCard({ label, value, unit, sub, variant = 'default', classNa
       <p
         className={cn('text-[30px] font-bold leading-none', valueColors[variant])}
         style={{
-          fontFamily: 'Syne, sans-serif',
+          fontFamily: 'var(--font-body)',
           letterSpacing: '-0.04em',
         }}
       >

@@ -108,18 +108,18 @@ function TrailSettingsInner({ open, onClose, isDark, settings, updateSetting: up
             <button onClick={e => { e.stopPropagation(); setMenuOpenId(prev => prev===page.id ? null : page.id) }} style={{ background:'none', border:'none', padding:'8px', color:'#8C8C8C', cursor:'pointer', fontSize:20, lineHeight:1 }}>⋯</button>
           </div>
           {menuOpenId === page.id && (
-            <div ref={menuRef} style={{ position:'absolute', right:8, top:'50%', transform:'translateY(-50%)', zIndex:100, background:t.bg, border:`1px solid ${t.separator}`, borderRadius:12, overflow:'hidden', boxShadow:'0 8px 24px rgba(0,0,0,0.15)', minWidth:150 }}>
+            <div ref={menuRef} style={{ position:'absolute', right:8, top:'50%', transform:'translateY(-50%)', zIndex:100, background:t.bg, border:`1px solid ${t.separator}`, borderRadius: 'var(--r-md)', overflow:'hidden', boxShadow:'0 8px 24px rgba(0,0,0,0.15)', minWidth:150 }}>
               <button onClick={e => { e.stopPropagation(); setRenamingId(page.id); setMenuOpenId(null) }} style={{ width:'100%', padding:'13px 16px', background:'none', border:'none', textAlign:'left', fontSize:15, color:t.text, cursor:'pointer' }}>{tr('record.settingsRename')}</button>
               <div style={{ height:1, background:t.separator }} />
               <button onClick={e => { e.stopPropagation(); setConfirmDeleteId(page.id); setMenuOpenId(null) }} style={{ width:'100%', padding:'13px 16px', background:'none', border:'none', textAlign:'left', fontSize:15, color:'var(--danger)', cursor:'pointer' }}>{tr('record.settingsDelete')}</button>
             </div>
           )}
           {confirmDeleteId === page.id && (
-            <div style={{ padding:'10px 16px', background:'rgba(239,68,68,0.08)', borderRadius:10, display:'flex', alignItems:'center', justifyContent:'space-between', margin:'4px 0' }}>
+            <div style={{ padding:'10px 16px', background:'rgba(239,68,68,0.08)', borderRadius: 'var(--r-sm)', display:'flex', alignItems:'center', justifyContent:'space-between', margin:'4px 0' }}>
               <span style={{ fontSize:13, color:'var(--danger)' }}>{tr('record.settingsDeletePageConfirm')}</span>
               <div style={{ display:'flex', gap:8 }}>
-                <button onClick={() => { deletePage(page.id); setConfirmDeleteId(null) }} style={{ padding:'5px 14px', borderRadius:8, background:'var(--danger)', border:'none', color:'white', fontSize:13, cursor:'pointer' }}>{tr('record.settingsYes')}</button>
-                <button onClick={() => setConfirmDeleteId(null)} style={{ padding:'5px 14px', borderRadius:8, background:t.separator, border:'none', color:t.text, fontSize:13, cursor:'pointer' }}>{tr('record.settingsNo')}</button>
+                <button onClick={() => { deletePage(page.id); setConfirmDeleteId(null) }} style={{ padding:'5px 14px', borderRadius: 'var(--r-sm)', background:'var(--danger)', border:'none', color:'white', fontSize:13, cursor:'pointer' }}>{tr('record.settingsYes')}</button>
+                <button onClick={() => setConfirmDeleteId(null)} style={{ padding:'5px 14px', borderRadius: 'var(--r-sm)', background:t.separator, border:'none', color:t.text, fontSize:13, cursor:'pointer' }}>{tr('record.settingsNo')}</button>
               </div>
             </div>
           )}
@@ -138,17 +138,17 @@ function TrailSettingsInner({ open, onClose, isDark, settings, updateSetting: up
   return (
     <div style={{ position:'fixed', inset:0, zIndex:10000, display:'flex', alignItems:'flex-end', justifyContent:'center' }}>
       <div onClick={handleClose} style={{ position:'absolute', inset:0, background:'rgba(0,0,0,0.50)', backdropFilter:'blur(4px)', animation: closing?'fade-out 200ms ease-in forwards':'fade-in 200ms ease-out forwards' }} />
-      <div className={closing?'sheet-close':'sheet-open'} style={{ position:'fixed', left:0, right:0, bottom:0, height:'80vh', background:t.bg, color:t.text, borderTopLeftRadius:24, borderTopRightRadius:24, display:'flex', flexDirection:'column', overflow:'hidden', fontFamily:'DM Sans, sans-serif', boxShadow:'0 -8px 32px rgba(0,0,0,0.18)' }}>
+      <div className={closing?'sheet-close':'sheet-open'} style={{ position:'fixed', left:0, right:0, bottom:0, height:'80vh', background:t.bg, color:t.text, borderTopLeftRadius:24, borderTopRightRadius:24, display:'flex', flexDirection:'column', overflow:'hidden', fontFamily: 'var(--font-body)', boxShadow:'0 -8px 32px rgba(0,0,0,0.18)' }}>
         <div style={{ display:'flex', justifyContent:'center', paddingTop:10, flexShrink:0 }}><div style={{ width:40, height:4, borderRadius:2, background:t.separator }} /></div>
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'16px 20px 12px', flexShrink:0 }}>
-          <h2 style={{ fontSize:18, fontWeight:700, color:t.text, margin:0, fontFamily:'Syne, sans-serif' }}>{tr('record.trailSettingsTitle')}</h2>
+          <h2 style={{ fontSize:18, fontWeight:700, color:t.text, margin:0, fontFamily: 'var(--font-display)' }}>{tr('record.trailSettingsTitle')}</h2>
           <button onClick={handleClose} aria-label={tr('record.settingsClose')} style={{ color:t.dim, background:'none', border:'none', fontSize:22, cursor:'pointer', lineHeight:1, padding:'4px 8px' }}>×</button>
         </div>
         <div style={{ flex:1, overflow:'hidden', position:'relative' }}>
           <div style={{ height:'100%', overflowY:'auto', paddingBottom:24 }}>
             {SECTION_IDS.map(secId => (
-              <button key={secId} onClick={() => openSection(secId)} style={{ width:'100%', display:'flex', alignItems:'center', gap:14, padding:'14px 20px', background:'none', border:'none', cursor:'pointer', borderBottom:`1px solid ${t.separator}`, textAlign:'left', fontFamily:'DM Sans, sans-serif' }}>
-                <div style={{ width:36, height:36, borderRadius:10, background:'rgba(245,158,11,0.10)', color:'#F59E0B', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>{SECTION_ICONS[secId]}</div>
+              <button key={secId} onClick={() => openSection(secId)} style={{ width:'100%', display:'flex', alignItems:'center', gap:14, padding:'14px 20px', background:'none', border:'none', cursor:'pointer', borderBottom:`1px solid ${t.separator}`, textAlign:'left', fontFamily: 'var(--font-body)' }}>
+                <div style={{ width:36, height:36, borderRadius: 'var(--r-sm)', background:'rgba(245,158,11,0.10)', color:'#F59E0B', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>{SECTION_ICONS[secId]}</div>
                 <div style={{ flex:1 }}>
                   <p style={{ fontSize:15, fontWeight:500, color:t.text, margin:0 }}>{sectionLabel(secId)}</p>
                   <p style={{ fontSize:12, color:'#8C8C8C', margin:'2px 0 0' }}>{sectionDesc(secId)}</p>
@@ -161,7 +161,7 @@ function TrailSettingsInner({ open, onClose, isDark, settings, updateSetting: up
             <div className={closingSection?'editor-slide-out':'editor-slide-in'} style={{ position:'absolute', inset:0, background:t.bg, zIndex:10, display:'flex', flexDirection:'column', overflowY:'hidden' }}>
               <div style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 16px', borderBottom:`1px solid ${t.separator}`, flexShrink:0 }}>
                 <button onClick={closeSection} style={{ background:'none', border:'none', cursor:'pointer', color:t.text, padding:'4px' }}><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M12 5l-5 5 5 5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/></svg></button>
-                <h3 style={{ fontSize:17, fontWeight:700, color:t.text, margin:0, flex:1, fontFamily:'Syne, sans-serif' }}>{sectionLabel(activeSection)}</h3>
+                <h3 style={{ fontSize:17, fontWeight:700, color:t.text, margin:0, flex:1, fontFamily: 'var(--font-body)' }}>{sectionLabel(activeSection)}</h3>
               </div>
               <div style={{ flex:1, overflowY:'auto', paddingBottom:24 }}>{renderSectionContent(activeSection)}</div>
             </div>

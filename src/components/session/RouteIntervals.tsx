@@ -193,9 +193,9 @@ export default function RouteIntervals({
   // ── État vide : zone d'upload ──
   if (!value) {
     return (
-      <div style={{ marginBottom:16, padding:'18px 16px', borderRadius:14, border:'1px dashed var(--border)', background:'var(--bg-card2)' }}>
+      <div style={{ marginBottom:16, padding:'18px 16px', borderRadius: 'var(--r-md)', border:'1px dashed var(--border)', background:'var(--bg-card2)' }}>
         <p style={{ ...lbl, marginBottom:8 }}>{t('session.parcours')}</p>
-        <label style={{ display:'inline-flex', alignItems:'center', gap:8, padding:'9px 16px', borderRadius:10, border:`1px solid ${accent}`, color:accent, background:`${accent}10`, fontFamily:'DM Sans,sans-serif', fontSize:13, fontWeight:600, cursor:'pointer' }}>
+        <label style={{ display:'inline-flex', alignItems:'center', gap:8, padding:'9px 16px', borderRadius: 'var(--r-sm)', border:`1px solid ${accent}`, color:accent, background:`${accent}10`, fontFamily: 'var(--font-body)', fontSize:13, fontWeight:600, cursor:'pointer' }}>
           {status === 'parsing' ? t('session.lecture') : t('session.importerParcours')}
           <input type="file" accept=".gpx,.tcx,.kml" style={{ display:'none' }}
             onChange={e => { const f = e.target.files?.[0]; if (f) void onFile(f) }}/>
@@ -209,17 +209,17 @@ export default function RouteIntervals({
   }
 
   return (
-    <div style={{ marginBottom:16, borderRadius:14, border:'1px solid var(--border)', overflow:'hidden', background:'var(--bg-card2)' }}>
+    <div style={{ marginBottom:16, borderRadius: 'var(--r-md)', border:'1px solid var(--border)', overflow:'hidden', background:'var(--bg-card2)' }}>
       {/* En-tête */}
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:8, padding:'10px 14px', flexWrap:'wrap' }}>
         <div>
           <p style={lbl}>{t('session.parcours')}</p>
-          <p style={{ fontSize:12, color:'var(--text-main)', margin:'2px 0 0', fontFamily:'DM Sans,sans-serif' }}>
-            {value.fileName} · <span style={{ fontFamily:'DM Mono,monospace' }}>{(value.distanceM/1000).toFixed(1)}km · D+{Math.round(value.elevGain)}m</span>
+          <p style={{ fontSize:12, color:'var(--text-main)', margin:'2px 0 0', fontFamily: 'var(--font-body)' }}>
+            {value.fileName} · <span style={{ fontFamily: 'var(--font-body)' }}>{(value.distanceM/1000).toFixed(1)}km · D+{Math.round(value.elevGain)}m</span>
           </p>
         </div>
         <button onClick={() => { onChange(undefined); setSelected(null) }}
-          style={{ background:'none', border:'1px solid var(--border)', borderRadius:8, padding:'5px 10px', cursor:'pointer', color:'var(--text-dim)', fontSize:11, fontFamily:'DM Sans,sans-serif' }}>
+          style={{ background:'none', border:'1px solid var(--border)', borderRadius: 'var(--r-sm)', padding:'5px 10px', cursor:'pointer', color:'var(--text-dim)', fontSize:11, fontFamily: 'var(--font-body)' }}>
           {t('session.retirer')}
         </button>
       </div>
@@ -262,13 +262,13 @@ export default function RouteIntervals({
             return (
               <div key={seg.index}
                 onMouseEnter={() => setSelected(seg.index)} onMouseLeave={() => setSelected(null)}
-                style={{ display:'flex', alignItems:'center', gap:6, padding:'5px 8px 5px 10px', borderRadius:99,
+                style={{ display:'flex', alignItems:'center', gap:6, padding:'5px 8px 5px 10px', borderRadius: 'var(--r-pill)',
                   border:`1px solid ${on ? c : 'var(--border)'}`, background: on ? `${c}18` : 'var(--bg-card)',
                   borderLeft:`3px solid ${c}` }}>
-                <span style={{ fontSize:10, color:'var(--text-dim)', fontFamily:'DM Mono,monospace' }}>{seg.index+1}</span>
-                <span style={{ fontSize:11, color:'var(--text-main)', fontFamily:'DM Mono,monospace' }}>{(seg.distanceM/1000).toFixed(2)}km</span>
+                <span style={{ fontSize:10, color:'var(--text-dim)', fontFamily: 'var(--font-body)' }}>{seg.index+1}</span>
+                <span style={{ fontSize:11, color:'var(--text-main)', fontFamily: 'var(--font-body)' }}>{(seg.distanceM/1000).toFixed(2)}km</span>
                 <button onClick={() => cycleZone(seg.index)} title={t('session.changerZone')}
-                  style={{ border:'none', background:'transparent', cursor:'pointer', fontSize:11, fontWeight:700, color:c, fontFamily:'DM Mono,monospace', padding:'0 2px' }}>
+                  style={{ border:'none', background:'transparent', cursor:'pointer', fontSize:11, fontWeight:700, color:c, fontFamily: 'var(--font-body)', padding:'0 2px' }}>
                   Z{seg.zone}
                 </button>
                 {seg.index > 0 && (
@@ -280,8 +280,8 @@ export default function RouteIntervals({
           })}
         </div>
         <button onClick={() => onApply(segs)}
-          style={{ alignSelf:'flex-start', padding:'8px 14px', borderRadius:10, border:'none', background:accent, color:'#fff',
-            fontFamily:'DM Sans,sans-serif', fontSize:12, fontWeight:600, cursor:'pointer' }}>
+          style={{ alignSelf:'flex-start', padding:'8px 14px', borderRadius: 'var(--r-sm)', border:'none', background:accent, color:'#fff',
+            fontFamily: 'var(--font-body)', fontSize:12, fontWeight:600, cursor:'pointer' }}>
           {t('session.convertirBlocs')}
         </button>
       </div>

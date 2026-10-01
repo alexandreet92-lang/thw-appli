@@ -50,7 +50,7 @@ export function MealCard({ slotLabel, foods, courses, photoUrl, photos, score, a
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-2)' }}>
         <span style={{ fontFamily: FD, fontSize: 15, fontWeight: 600, color: 'var(--text)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{slotLabel}</span>
         {score != null && (
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, flexShrink: 0, padding: '3px 9px', borderRadius: 999, background: 'var(--bg-card)' }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, flexShrink: 0, padding: '3px 9px', borderRadius: 'var(--r-pill)', background: 'var(--bg-card)' }}>
             <span style={{ width: 7, height: 7, borderRadius: '50%', background: scoreColor(score) }} />
             <span className="tnum" style={{ fontFamily: FB, fontSize: 12, fontWeight: 600, color: 'var(--text)' }}>{score}/10</span>
           </span>

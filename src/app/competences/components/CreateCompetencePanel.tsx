@@ -70,9 +70,9 @@ export default function CreateCompetencePanel({ variant = 'desktop', limitReache
                 key={key}
                 onClick={() => insertExample(ex)}
                 style={{
-                  background: 'var(--bg-alt)', border: '0.5px solid var(--border)', borderRadius: 16,
+                  background: 'var(--bg-alt)', border: '0.5px solid var(--border)', borderRadius: 'var(--r-md)',
                   padding: '5px 12px', fontSize: 11, color: 'var(--text-mid)', cursor: 'pointer',
-                  fontFamily: 'DM Sans, sans-serif', transition: 'border-color 150ms',
+                  fontFamily: 'var(--font-body)', transition: 'border-color 150ms',
                 }}
                 onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = '#06B6D4' }}
                 onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border)' }}
@@ -109,7 +109,7 @@ export default function CreateCompetencePanel({ variant = 'desktop', limitReache
 
       {/* Preview compétence générée */}
       {conv.generatedMetadata && conv.generatedPrompt && (
-        <div style={{ background: 'var(--bg-alt)', border: '0.5px solid var(--border)', borderRadius: 10, padding: 14, marginTop: 10 }}>
+        <div style={{ background: 'var(--bg-alt)', border: '0.5px solid var(--border)', borderRadius: 'var(--r-sm)', padding: 14, marginTop: 10 }}>
           <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{conv.generatedMetadata.nom}</div>
           <p style={{ margin: '4px 0 0', fontSize: 11.5, color: 'var(--text-mid)', lineHeight: 1.5 }}>{conv.generatedMetadata.description_courte}</p>
           <ul style={{ listStyle: 'none', padding: 0, margin: '8px 0 0' }}>
@@ -121,14 +121,14 @@ export default function CreateCompetencePanel({ variant = 'desktop', limitReache
           </ul>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 8 }}>
             {conv.generatedMetadata.sports.map(s => (
-              <span key={s} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, color: 'rgba(6,182,212,0.85)', border: '0.5px solid rgba(6,182,212,0.25)', borderRadius: 5, padding: '2px 8px' }}>
+              <span key={s} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, color: 'rgba(6,182,212,0.85)', border: '0.5px solid rgba(6,182,212,0.25)', borderRadius: 'var(--r-sm)', padding: '2px 8px' }}>
                 {sportIcon(s as SportFilter, 11)}{t(SPORT_LABELS[s as SportFilter] ?? s)}
               </span>
             ))}
           </div>
           <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-            <button onClick={() => inputRef.current?.focus()} style={{ fontSize: 12, background: 'transparent', color: 'var(--text-mid)', border: '0.5px solid var(--border)', borderRadius: 8, padding: '7px 14px', cursor: 'pointer' }}>{t('competences.refine')}</button>
-            <button onClick={() => void doSave()} disabled={saving} style={{ flex: 1, fontSize: 12, fontWeight: 500, background: 'var(--primary)', color: '#fff', border: 'none', borderRadius: 8, padding: '7px 14px', cursor: saving ? 'wait' : 'pointer' }}>
+            <button onClick={() => inputRef.current?.focus()} style={{ fontSize: 12, background: 'transparent', color: 'var(--text-mid)', border: '0.5px solid var(--border)', borderRadius: 'var(--r-sm)', padding: '7px 14px', cursor: 'pointer' }}>{t('competences.refine')}</button>
+            <button onClick={() => void doSave()} disabled={saving} style={{ flex: 1, fontSize: 12, fontWeight: 500, background: 'var(--primary)', color: '#fff', border: 'none', borderRadius: 'var(--r-sm)', padding: '7px 14px', cursor: saving ? 'wait' : 'pointer' }}>
               {saving ? t('competences.saving') : t('competences.saveThisSkill')}
             </button>
           </div>
@@ -151,7 +151,7 @@ export default function CreateCompetencePanel({ variant = 'desktop', limitReache
         onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); doSend() } }}
         placeholder={t('competences.placeholderIdea')}
         rows={1}
-        style={{ width: '100%', background: 'transparent', border: 'none', outline: 'none', resize: 'none', fontSize: 14, color: 'var(--text)', fontFamily: 'DM Sans, sans-serif', minHeight: 24, maxHeight: 120 }}
+        style={{ width: '100%', background: 'transparent', border: 'none', outline: 'none', resize: 'none', fontSize: 14, color: 'var(--text)', fontFamily: 'var(--font-body)', minHeight: 24, maxHeight: 120 }}
       />
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
         <span style={agentBadge}>Athéna</span>
@@ -174,7 +174,7 @@ export default function CreateCompetencePanel({ variant = 'desktop', limitReache
         {(hasConversation || conv.generatedMetadata) && (
           <div style={{
             flex: 1, overflowY: 'auto', padding: 12, marginBottom: 8,
-            background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 16,
+            background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)',
             boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
           }}>{chat}</div>
         )}
@@ -207,7 +207,7 @@ const avatarStyle: React.CSSProperties = {
 }
 const agentBadge: React.CSSProperties = {
   fontSize: 10, color: 'var(--text-mid)', border: '0.5px solid var(--border)',
-  borderRadius: 6, padding: '2px 8px', fontFamily: 'DM Sans, sans-serif', whiteSpace: 'nowrap',
+  borderRadius: 'var(--r-sm)', padding: '2px 8px', fontFamily: 'var(--font-body)', whiteSpace: 'nowrap',
 }
 
 function sendBtn(active: boolean): React.CSSProperties {

@@ -164,7 +164,7 @@ function InviteSheet({ spaceName, onClose }: { spaceName?: string; onClose: () =
 
   const item = (icon: React.ReactNode, label: string, onClick: () => void) => (
     <button onClick={onClick} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, border: 'none', background: 'transparent', cursor: 'pointer', fontFamily: FB }}>
-      <span style={{ width: 56, height: 56, borderRadius: 16, background: 'var(--bg-card2)', border: '1px solid var(--border)', color: 'var(--text)', display: 'grid', placeItems: 'center' }}>{icon}</span>
+      <span style={{ width: 56, height: 56, borderRadius: 'var(--r-md)', background: 'var(--bg-card2)', border: '1px solid var(--border)', color: 'var(--text)', display: 'grid', placeItems: 'center' }}>{icon}</span>
       <span style={{ fontSize: 12, color: 'var(--text-mid)' }}>{label}</span>
     </button>
   )

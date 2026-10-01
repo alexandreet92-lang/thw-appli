@@ -28,7 +28,7 @@ export default function GPSPermissionScreen({ isDark = false }: Props) {
       display: 'flex', flexDirection: 'column',
       alignItems: 'center', justifyContent: 'center',
       padding: '32px 24px', textAlign: 'center',
-      fontFamily: 'DM Sans, sans-serif',
+      fontFamily: 'var(--font-body)',
       overflowY: 'auto',
     }}>
       <div style={{
@@ -44,7 +44,7 @@ export default function GPSPermissionScreen({ isDark = false }: Props) {
         </svg>
       </div>
 
-      <h2 style={{ margin: '0 0 6px', fontSize: 22, fontWeight: 700, fontFamily: 'Syne, sans-serif' }}>
+      <h2 style={{ margin: '0 0 6px', fontSize: 22, fontWeight: 700, fontFamily: 'var(--font-display)' }}>
         {t('record.gpsPermTitle')}
       </h2>
       <p style={{ margin: '0 0 24px', fontSize: 14, color: dim, lineHeight: 1.5, maxWidth: 300 }}>
@@ -52,7 +52,7 @@ export default function GPSPermissionScreen({ isDark = false }: Props) {
       </p>
 
       <div style={{
-        background: card, borderRadius: 12, padding: '16px 20px',
+        background: card, borderRadius: 'var(--r-md)', padding: '16px 20px',
         marginBottom: 28, maxWidth: 340, width: '100%', textAlign: 'left',
       }}>
         {IOS_STEPS.map((step, i) => (
@@ -77,7 +77,7 @@ export default function GPSPermissionScreen({ isDark = false }: Props) {
           width: '100%', maxWidth: 340, height: 52, borderRadius: 40, border: 'none',
           background: 'linear-gradient(135deg, #06B6D4, #2563EB)',
           color: '#fff', fontSize: 15, fontWeight: 700, cursor: 'pointer',
-          fontFamily: 'DM Sans, sans-serif',
+          fontFamily: 'var(--font-body)',
           boxShadow: '0 4px 20px rgba(6,182,212,0.35)',
         }}
       >

@@ -9,7 +9,7 @@ const DEST = '/site/conditions-utilisation.html'
 export default function CguPage() {
   useEffect(() => { window.location.replace(DEST) }, [])
   return (
-    <main style={{ minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, textAlign: 'center', fontFamily: 'system-ui, sans-serif' }}>
+    <main style={{ minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, textAlign: 'center', fontFamily: 'var(--font-body)' }}>
       <p style={{ fontSize: 14, color: '#64748b' }}>
         Redirection…{' '}
         <a href={DEST} style={{ color: 'var(--primary)', fontWeight: 600 }}>Ouvrir les Conditions d’utilisation</a>

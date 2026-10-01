@@ -81,8 +81,8 @@ export default function BarcodeScanner({ onDetected, onClose }: Props) {
         ) : (
           <>
             <video ref={videoRef} muted playsInline
-              style={{ width: '100%', borderRadius: 12, display: 'block', background: '#000' }} />
-            <div style={{ position: 'absolute', inset: 0, borderRadius: 12, pointerEvents: 'none' }}>
+              style={{ width: '100%', borderRadius: 'var(--r-md)', display: 'block', background: '#000' }} />
+            <div style={{ position: 'absolute', inset: 0, borderRadius: 'var(--r-md)', pointerEvents: 'none' }}>
               <div style={{ position: 'absolute', top: '30%', left: 12, right: 12, height: '40%', border: '2px solid #06B6D4', boxShadow: '0 0 0 9999px rgba(0,0,0,0.4)' }} />
             </div>
             <p style={{ color: '#fff', fontSize: 12, textAlign: 'center', marginTop: 10 }}>
@@ -92,7 +92,7 @@ export default function BarcodeScanner({ onDetected, onClose }: Props) {
         )}
       </div>
       <button onClick={requestClose}
-        style={{ marginTop: 24, padding: '10px 28px', borderRadius: 10, border: '1px solid rgba(255,255,255,0.3)', background: 'none', color: '#fff', fontSize: 13, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
+        style={{ marginTop: 24, padding: '10px 28px', borderRadius: 'var(--r-sm)', border: '1px solid rgba(255,255,255,0.3)', background: 'none', color: '#fff', fontSize: 13, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
         {t('w2b.close')}
       </button>
     </div>

@@ -38,7 +38,7 @@ export function VolumeByDiscipline({ sessions }: { sessions: S[] }) {
   if (rows.length === 0) return null
 
   return (
-    <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 16, padding: 18 }}>
+    <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: 18 }}>
       <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 600, color: 'var(--text)', margin: '0 0 14px' }}>{t('planning.volumeByDiscipline')}</h2>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         {rows.map(e => {

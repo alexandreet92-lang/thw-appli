@@ -42,7 +42,7 @@ export default function CoachAthleteCalendarPage() {
     <PlanningScopeContext.Provider value={athleteId}>
       <div style={{ position: 'sticky', top: 0, zIndex: 40, background: 'color-mix(in srgb, var(--bg) 92%, transparent)', backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)', borderBottom: '1px solid var(--border)', paddingTop: 'calc(env(safe-area-inset-top, 0px) + 58px)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '0 clamp(16px,4vw,40px) 12px', maxWidth: 1200, margin: '0 auto' }}>
-          <Link href={`/coach/athlete?id=${athleteId}`} aria-label={t('w4b.back_to_profile')} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 34, height: 34, borderRadius: 10, color: 'var(--text-mid)', flexShrink: 0, textDecoration: 'none', border: '1px solid var(--border)', background: 'var(--bg-card)' }}>
+          <Link href={`/coach/athlete?id=${athleteId}`} aria-label={t('w4b.back_to_profile')} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 34, height: 34, borderRadius: 'var(--r-sm)', color: 'var(--text-mid)', flexShrink: 0, textDecoration: 'none', border: '1px solid var(--border)', background: 'var(--bg-card)' }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
           </Link>
           <Avatar url={athlete?.avatar ?? null} name={athlete?.name ?? null} size={38} />
@@ -50,7 +50,7 @@ export default function CoachAthleteCalendarPage() {
             <div style={{ fontFamily: 'var(--font-display)', fontSize: 16.5, fontWeight: 600, color: 'var(--text)', lineHeight: 1.15, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{athlete?.name ?? t('w4b.athlete')}</div>
             <div style={{ fontSize: 12, color: 'var(--text-dim)' }}>{t('w4b.calendar')}</div>
           </div>
-          <Link href={`/coach/planning/${athleteId}`} style={{ flexShrink: 0, padding: '8px 13px', borderRadius: 10, border: '1px solid var(--border)', color: 'var(--text-mid)', fontSize: 12.5, fontWeight: 700, textDecoration: 'none', fontFamily: 'var(--font-body)' }}>{t('w4b.planning')}</Link>
+          <Link href={`/coach/planning/${athleteId}`} style={{ flexShrink: 0, padding: '8px 13px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', color: 'var(--text-mid)', fontSize: 12.5, fontWeight: 700, textDecoration: 'none', fontFamily: 'var(--font-body)' }}>{t('w4b.planning')}</Link>
         </div>
       </div>
 

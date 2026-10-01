@@ -29,13 +29,13 @@ function PersonRow({ name, avatar, preview, when, unread, active, onClick }: {
   const initial = (name || '?').slice(0, 1).toUpperCase()
   return (
     <button onClick={onClick} className="thw-press msg-row"
-      style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 12px', border: 'none', background: active ? 'var(--bg-alt)' : 'transparent', cursor: 'pointer', textAlign: 'left', width: '100%', fontFamily: 'var(--font-body)', borderRadius: 14, transition: 'background .15s' }}>
+      style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 12px', border: 'none', background: active ? 'var(--bg-alt)' : 'transparent', cursor: 'pointer', textAlign: 'left', width: '100%', fontFamily: 'var(--font-body)', borderRadius: 'var(--r-md)', transition: 'background .15s' }}>
       <span style={{ position: 'relative', flexShrink: 0 }}>
         <span style={{ width: 46, height: 46, borderRadius: '50%', background: avatar ? 'var(--bg-alt)' : gradFor(name), display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', color: '#fff', fontWeight: 800, fontSize: 17 }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           {avatar ? <img src={avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : initial}
         </span>
-        {!!unread && unread > 0 && <span style={{ position: 'absolute', top: -1, right: -1, minWidth: 18, height: 18, padding: '0 5px', borderRadius: 9, background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 10, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 0 2px var(--bg-card)' }}>{unread > 9 ? '9+' : unread}</span>}
+        {!!unread && unread > 0 && <span style={{ position: 'absolute', top: -1, right: -1, minWidth: 18, height: 18, padding: '0 5px', borderRadius: 'var(--r-sm)', background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 10, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 0 2px var(--bg-card)' }}>{unread > 9 ? '9+' : unread}</span>}
       </span>
       <span style={{ flex: 1, minWidth: 0 }}>
         <span style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
@@ -98,7 +98,7 @@ export function MessagesView({ role, title, subtitle, initialThread, initialGrou
   const sel = threads.find(t => t.otherId === selId) ?? null
   const selectedGroup = groups.find(g => g.id === selGroup) ?? null
   const dms = groups.filter(g => g.isDm)
-  const card: React.CSSProperties = { borderRadius: 16, border: '1px solid var(--border)', background: 'var(--bg-card)' }
+  const card: React.CSSProperties = { borderRadius: 'var(--r-md)', border: '1px solid var(--border)', background: 'var(--bg-card)' }
   const fmtGroupWhen = (d: string | null) => d ? fmtWhen(d, t) : ''
 
   // Liste des personnes : DM 1-1 (communauté) + fils coach/athlète, sans le bloc
@@ -139,7 +139,7 @@ export function MessagesView({ role, title, subtitle, initialThread, initialGrou
     <div style={{ ...card, overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
       <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 11, padding: '11px 14px', borderBottom: '1px solid var(--border)', background: 'var(--bg-card)' }}>
         {isNarrow && (
-          <button onClick={() => setSelId(null)} aria-label={t('w3d.back')} className="thw-press" style={{ width: 32, height: 32, borderRadius: 10, border: 'none', background: 'var(--bg-alt)', color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <button onClick={() => setSelId(null)} aria-label={t('w3d.back')} className="thw-press" style={{ width: 32, height: 32, borderRadius: 'var(--r-sm)', border: 'none', background: 'var(--bg-alt)', color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
           </button>
         )}

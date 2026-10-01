@@ -314,9 +314,9 @@ function Messages({ rows }: { rows: FeedbackRow[] }) {
       {rows.map(r => {
         const c = FB_CAT[r.category] ?? FB_CAT.autre
         return (
-          <div key={r.id} style={{ border: '1px solid var(--border)', borderLeft: `3px solid ${c.color}`, borderRadius: 12, padding: '12px 14px', background: 'var(--bg-card2)' }}>
+          <div key={r.id} style={{ border: '1px solid var(--border)', borderLeft: `3px solid ${c.color}`, borderRadius: 'var(--r-md)', padding: '12px 14px', background: 'var(--bg-card2)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 6 }}>
-              <span style={{ fontSize: 10, fontWeight: 800, color: '#fff', background: c.color, padding: '2px 7px', borderRadius: 5, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{c.label}</span>
+              <span style={{ fontSize: 10, fontWeight: 800, color: '#fff', background: c.color, padding: '2px 7px', borderRadius: 'var(--r-sm)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{c.label}</span>
               <span style={{ fontFamily: FB, fontSize: 12, fontWeight: 600, color: 'var(--text)' }}>{r.user_email ?? '—'}</span>
               <span style={{ fontFamily: FB, fontSize: 11, color: 'var(--text-dim)', marginLeft: 'auto' }}>{new Date(r.created_at).toLocaleString(currentLocale())}</span>
             </div>
@@ -344,7 +344,7 @@ export function AdminDashboard({ metrics, adminEmail, feedback }: { metrics: Adm
       {/* Aperçu de la page de connexion (admin only) — nouvel onglet, session conservée */}
       <a href="/auth" target="_blank" rel="noopener noreferrer" style={{
         flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 6, height: 34, padding: '0 14px',
-        borderRadius: 999, border: '1px solid var(--border-mid)', background: 'var(--bg-card2)',
+        borderRadius: 'var(--r-pill)', border: '1px solid var(--border-mid)', background: 'var(--bg-card2)',
         color: 'var(--text)', fontFamily: FB, fontSize: 12, fontWeight: 600, textDecoration: 'none',
       }}>
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M15 3h6v6M10 14L21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /></svg>

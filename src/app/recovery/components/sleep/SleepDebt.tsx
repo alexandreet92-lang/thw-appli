@@ -39,7 +39,7 @@ export default function SleepDebt({ nights7, recommended = 8 }: Props) {
   return (
     <div style={{
       padding: '14px 16px',
-      borderRadius: 14,
+      borderRadius: 'var(--r-md)',
       background: 'var(--bg-card2)',
       border: '1px solid var(--border)',
       display: 'flex',
@@ -64,7 +64,7 @@ export default function SleepDebt({ nights7, recommended = 8 }: Props) {
         <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '0 0 5px' }}>
           {t('recovery.sleepDebt.window', { n: recommended })}
         </p>
-        <p style={{ fontSize: 9, color, margin: 0, fontWeight: 600 }}>{label}</p>
+        <p style={{ fontSize: 10, color, margin: 0, fontWeight: 600 }}>{label}</p>
       </div>
     </div>
   )

@@ -614,7 +614,7 @@ export function ChannelChat({
         <input ref={fileRef} type="file" accept="image/*,application/pdf" multiple style={{ display: 'none' }} onChange={handleFiles} />
         {/* Composer façon IA : carte arrondie, champ sur une ligne PUIS rangée
             d'actions en dessous (photo / activité / séance … micro / envoyer). */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 18, padding: '10px 12px 9px', boxShadow: '0 2px 6px rgba(0,0,0,0.05), 0 10px 28px rgba(0,0,0,0.09)' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-lg)', padding: '10px 12px 9px', boxShadow: '0 2px 6px rgba(0,0,0,0.05), 0 10px 28px rgba(0,0,0,0.09)' }}>
           <textarea ref={taRef} data-guide="comm-composer" value={input} onChange={onInputChange}
             onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && mentionQuery === null) { e.preventDefault(); void send() } }}
             placeholder={t('w1g.writeInChannel', { name: channel.name })} rows={1} disabled={!canPost}

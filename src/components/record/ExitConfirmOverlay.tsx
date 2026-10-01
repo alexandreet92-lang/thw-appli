@@ -33,7 +33,7 @@ export default function ExitConfirmOverlay({ open, isDark, onQuit, onStay }: Pro
         aria-modal="true"
         style={{
           position: 'relative', width: '100%', maxWidth: 320,
-          borderRadius: 20, background: bg, color: text,
+          borderRadius: 'var(--r-lg)', background: bg, color: text,
           padding: '24px 20px 12px', textAlign: 'center',
           boxShadow: '0 12px 40px rgba(0,0,0,0.35)', // design-allow-color
           fontFamily: 'var(--font-body)',
@@ -44,7 +44,7 @@ export default function ExitConfirmOverlay({ open, isDark, onQuit, onStay }: Pro
         <button
           onClick={onStay}
           style={{
-            width: '100%', padding: '13px 16px', borderRadius: 12, border: 'none',
+            width: '100%', padding: '13px 16px', borderRadius: 'var(--r-md)', border: 'none',
             background: 'var(--primary)', color: '#FFFFFF', // design-allow-color
             fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)',
           }}

@@ -92,7 +92,7 @@ export function FriseV1({ readOnly = true, reloadToken = 0, onEdited }: { readOn
       <div style={{ display: 'grid', gridTemplateColumns: GRID, marginBottom: 10 }}>
         <div />
         {W.cols.map(c => (
-          <div key={c.idx} style={{ textAlign: 'center', padding: '3px 2px', borderRadius: 6, background: c.isCurrent ? CY : 'transparent' }}>
+          <div key={c.idx} style={{ textAlign: 'center', padding: '3px 2px', borderRadius: 'var(--r-sm)', background: c.isCurrent ? CY : 'transparent' }}>
             <span style={{ fontSize: 10, fontWeight: c.isCurrent ? 800 : 700, color: c.isCurrent ? '#fff' : 'var(--text-dim)', display: 'block' }}>{c.day}</span>
             <span style={{ fontSize: 8.5, display: 'block', marginTop: 1, color: c.isCurrent ? 'rgba(255,255,255,.75)' : 'var(--text-dim)' }}>{c.month}</span>
           </div>
@@ -125,7 +125,7 @@ export function FriseV1({ readOnly = true, reloadToken = 0, onEdited }: { readOn
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11.5, fontWeight: 700, color: 'var(--text-mid)', height: 34 }}>
                 <span style={{ width: 7, height: 7, borderRadius: '50%', background: color }} />{SPORT_LABELS[sport]}
               </div>
-              <div style={{ gridColumn: '2 / span 12', position: 'relative', height: 34, borderRadius: 7, background: 'var(--bg-card2)' }}>
+              <div style={{ gridColumn: '2 / span 12', position: 'relative', height: 34, borderRadius: 'var(--r-sm)', background: 'var(--bg-card2)' }}>
                 {races.map(r => { const idx = W.indexOfDate(r.date); if (idx < 0 || idx >= COLS) return null
                   return <div key={r.id} style={{ position: 'absolute', top: 0, bottom: 0, left: `${(idx / COLS) * 100}%`, width: `${(1 / COLS) * 100}%`, background: 'rgba(239,68,68,.06)', borderLeft: '1px dashed rgba(239,68,68,.2)', borderRight: '1px dashed rgba(239,68,68,.2)', pointerEvents: 'none' }} /> })}
                 {list.map(b => {
@@ -136,7 +136,7 @@ export function FriseV1({ readOnly = true, reloadToken = 0, onEdited }: { readOn
                   const future = segStart > TODAY_INDEX
                   const range = `${fmt(getWeekStart(b.startYear, b.startWeek))} – ${fmt(getWeekEnd(b.startYear, b.startWeek + b.durationWeeks - 1))}`
                   const label = b.name || b.focus[0] || '—'
-                  const base: React.CSSProperties = { position: 'absolute', top: 5, bottom: 5, left, width, borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 10px', overflow: 'hidden', cursor: readOnly ? 'default' : 'grab', touchAction: 'none' }
+                  const base: React.CSSProperties = { position: 'absolute', top: 5, bottom: 5, left, width, borderRadius: 'var(--r-md)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 10px', overflow: 'hidden', cursor: readOnly ? 'default' : 'grab', touchAction: 'none' }
                   if (future) return (
                     <div key={b.id} data-seg onPointerDown={e => onDown(e, b, 'move')} style={{ ...base, border: `1.5px dashed ${color}` }}>
                       <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-dim)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label}</span>

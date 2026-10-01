@@ -55,10 +55,10 @@ function Step({ value, onChange, unit, step = 1, min = 0, w }: { value: number; 
 }
 function Txt({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
   return <input value={value} placeholder={placeholder} onChange={e => onChange(e.target.value)}
-    style={{ width: '100%', boxSizing: 'border-box', padding: '9px 12px', borderRadius: 9, border: '1px solid var(--se-rule)', background: 'var(--se-card)', color: 'var(--se-text)', fontSize: 14, fontWeight: 500, outline: 'none' }} />
+    style={{ width: '100%', boxSizing: 'border-box', padding: '9px 12px', borderRadius: 'var(--r-sm)', border: '1px solid var(--se-rule)', background: 'var(--se-card)', color: 'var(--se-text)', fontSize: 14, fontWeight: 500, outline: 'none' }} />
 }
 function Chip({ on, onClick, children, accent }: { on: boolean; onClick: () => void; children: React.ReactNode; accent: string }) {
-  return <button type="button" onClick={onClick} style={{ padding: '7px 12px', borderRadius: 999, cursor: 'pointer', fontSize: 12, fontWeight: 700, border: `1px solid ${on ? accent : 'var(--se-rule)'}`, background: on ? accent : 'var(--se-card)', color: on ? '#fff' : 'var(--se-dim)' }}>{children}</button>
+  return <button type="button" onClick={onClick} style={{ padding: '7px 12px', borderRadius: 'var(--r-pill)', cursor: 'pointer', fontSize: 12, fontWeight: 700, border: `1px solid ${on ? accent : 'var(--se-rule)'}`, background: on ? accent : 'var(--se-card)', color: on ? '#fff' : 'var(--se-dim)' }}>{children}</button>
 }
 
 // ── Panneau Temps de référence (toujours visible) ─────────────────
@@ -72,7 +72,7 @@ function ReferenceZones({ pbs }: { pbs: Record<number, number> }) {
           const sec = pbs[d]
           const kmh = sec > 0 ? (d / sec) * 3.6 : 0
           return (
-            <div key={d} style={{ border: '1px solid var(--se-rule)', borderRadius: 10, padding: '9px 6px', textAlign: 'center', background: sec > 0 ? 'var(--se-card)' : 'transparent' }}>
+            <div key={d} style={{ border: '1px solid var(--se-rule)', borderRadius: 'var(--r-sm)', padding: '9px 6px', textAlign: 'center', background: sec > 0 ? 'var(--se-card)' : 'transparent' }}>
               <div style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--se-dim)' }}>{d} m</div>
               <div className="se-tnum" style={{ fontSize: 15, fontWeight: 800, color: sec > 0 ? 'var(--se-text)' : 'var(--se-dim)', marginTop: 2 }}>{fmtSprintTime(sec)}</div>
               <div className="se-tnum" style={{ fontSize: 9.5, color: 'var(--se-dim)', marginTop: 1 }}>{sec > 0 ? fmtSpeed(kmh) : t('w2e.noData')}</div>
@@ -213,9 +213,9 @@ function StairsCard({ x, on }: { x: StairsExt; on: (x: StairsExt) => void }) {
 // ── Bouton d'ajout « évolué » (icône + titre + sous-titre) ─────────
 function AddBtn({ icon, title, sub, accent, onClick }: { icon: React.ReactNode; title: string; sub: string; accent: string; onClick: () => void }) {
   return (
-    <button type="button" onClick={onClick} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 6, padding: '13px 14px', borderRadius: 14, border: `1px solid var(--se-rule)`, background: 'var(--se-card)', cursor: 'pointer', textAlign: 'left', minWidth: 0 }}>
-      <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, borderRadius: 9, background: `${accent}18` }}>{icon}</span>
-      <span style={{ fontFamily: 'Syne, sans-serif', fontSize: 13.5, fontWeight: 700, color: 'var(--se-text)' }}>{title}</span>
+    <button type="button" onClick={onClick} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 6, padding: '13px 14px', borderRadius: 'var(--r-md)', border: `1px solid var(--se-rule)`, background: 'var(--se-card)', cursor: 'pointer', textAlign: 'left', minWidth: 0 }}>
+      <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, borderRadius: 'var(--r-sm)', background: `${accent}18` }}>{icon}</span>
+      <span style={{ fontFamily: 'var(--font-body)', fontSize: 13.5, fontWeight: 700, color: 'var(--se-text)' }}>{title}</span>
       <span style={{ fontSize: 10.5, color: 'var(--se-dim)', lineHeight: 1.25 }}>{sub}</span>
     </button>
   )
@@ -274,15 +274,15 @@ export function SprintsBuilder({ blocks, onChange, accent }: { blocks: MBlock[];
       {sBlocks.map((b, i) => (
         <Card key={b.id} style={{ padding: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-            <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, borderRadius: 8, background: `${accent}18`, flexShrink: 0 }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, borderRadius: 'var(--r-sm)', background: `${accent}18`, flexShrink: 0 }}>
               {b.sx.kind === 'warmup' ? <IconWarm c={accent} /> : b.sx.kind === 'sprint' ? <IconSprint c={accent} /> : <IconStairs c={accent} />}
             </span>
-            <span style={{ flex: 1, fontFamily: 'Syne, sans-serif', fontSize: 15, fontWeight: 700, color: 'var(--se-text)' }}>
+            <span style={{ flex: 1, fontFamily: 'var(--font-body)', fontSize: 15, fontWeight: 700, color: 'var(--se-text)' }}>
               {b.sx.kind === 'warmup' ? t('w2e.warmup') : b.sx.kind === 'sprint' ? t('w2e.sprintDist', { dist: b.sx.distanceM }) : t('w2e.stairs')}
             </span>
-            <button type="button" onClick={() => move(b.id, -1)} disabled={i === 0} style={{ width: 28, height: 28, borderRadius: 7, border: '1px solid var(--se-rule)', background: 'var(--se-card)', color: 'var(--se-dim)', cursor: i === 0 ? 'default' : 'pointer', opacity: i === 0 ? 0.35 : 1 }}>↑</button>
-            <button type="button" onClick={() => move(b.id, 1)} disabled={i === sBlocks.length - 1} style={{ width: 28, height: 28, borderRadius: 7, border: '1px solid var(--se-rule)', background: 'var(--se-card)', color: 'var(--se-dim)', cursor: i === sBlocks.length - 1 ? 'default' : 'pointer', opacity: i === sBlocks.length - 1 ? 0.35 : 1 }}>↓</button>
-            <button type="button" onClick={() => remove(b.id)} style={{ width: 28, height: 28, borderRadius: 7, border: '1px solid var(--se-rule)', background: 'var(--se-card)', color: '#dc2626', cursor: 'pointer' }}>×</button>
+            <button type="button" onClick={() => move(b.id, -1)} disabled={i === 0} style={{ width: 28, height: 28, borderRadius: 'var(--r-sm)', border: '1px solid var(--se-rule)', background: 'var(--se-card)', color: 'var(--se-dim)', cursor: i === 0 ? 'default' : 'pointer', opacity: i === 0 ? 0.35 : 1 }}>↑</button>
+            <button type="button" onClick={() => move(b.id, 1)} disabled={i === sBlocks.length - 1} style={{ width: 28, height: 28, borderRadius: 'var(--r-sm)', border: '1px solid var(--se-rule)', background: 'var(--se-card)', color: 'var(--se-dim)', cursor: i === sBlocks.length - 1 ? 'default' : 'pointer', opacity: i === sBlocks.length - 1 ? 0.35 : 1 }}>↓</button>
+            <button type="button" onClick={() => remove(b.id)} style={{ width: 28, height: 28, borderRadius: 'var(--r-sm)', border: '1px solid var(--se-rule)', background: 'var(--se-card)', color: '#dc2626', cursor: 'pointer' }}>×</button>
           </div>
           {b.sx.kind === 'warmup' && <WarmupCard x={b.sx} on={sx => setBlock(b.id, sx)} accent={accent} />}
           {b.sx.kind === 'sprint' && <SprintCard x={b.sx} on={sx => setBlock(b.id, sx)} accent={accent} pbs={pbs} />}

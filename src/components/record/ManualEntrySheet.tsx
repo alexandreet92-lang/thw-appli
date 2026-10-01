@@ -67,7 +67,7 @@ const SPORTS: SportDef[] = [
 const FB = 'var(--font-body)'
 const FD = 'var(--font-display)'
 const input: React.CSSProperties = {
-  width: '100%', background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: 10,
+  width: '100%', background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: 'var(--r-sm)',
   padding: '9px 11px', fontSize: 14, color: 'var(--text)', fontFamily: FB, boxSizing: 'border-box', outline: 'none',
 }
 const lab: React.CSSProperties = {
@@ -263,7 +263,7 @@ export default function ManualEntrySheet({ onClose, onSaved }: Props) {
         {isTreadmill && (
           <div style={{ marginTop: 12 }}>
             <label style={lab}>{t('w2c.hrLinkFile')}</label>
-            <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, height: 46, borderRadius: 12, background: 'var(--bg-card2)', border: '1px dashed var(--border-mid)', color: 'var(--text)', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+            <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, height: 46, borderRadius: 'var(--r-md)', background: 'var(--bg-card2)', border: '1px dashed var(--border-mid)', color: 'var(--text)', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14"/></svg>
               {importing ? t('w2c.reading') : t('w2c.importFitGpx')}
               <input type="file" accept=".fit,.gpx" onChange={handleImportHr} style={{ display: 'none' }} />
@@ -333,7 +333,7 @@ export default function ManualEntrySheet({ onClose, onSaved }: Props) {
         <div style={{ flex: 1, overflowY: 'auto', padding: '10px 16px calc(env(safe-area-inset-bottom) + 16px)', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
           {SPORTS.map(sp => (
             <button key={sp.id} onClick={() => pickSport(sp)}
-              style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '16px 8px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 14, cursor: 'pointer', color: 'var(--text)', fontFamily: FB }}>
+              style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '16px 8px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', cursor: 'pointer', color: 'var(--text)', fontFamily: FB }}>
               <SportIcon sport={sp.builderSport ?? sp.id} size={30} circle={false} />
               <span style={{ fontSize: 12, fontWeight: 600, textAlign: 'center' }}>{t('w2c.sport_' + sp.id)}</span>
             </button>
@@ -370,7 +370,7 @@ export default function ManualEntrySheet({ onClose, onSaved }: Props) {
               {def?.id === 'running' && (
                 <div style={{ display: 'flex', gap: 8 }}>
                   {(['outdoor', 'treadmill'] as RunningSub[]).map(sfc => (
-                    <button key={sfc} onClick={() => setRunSurface(sfc)} style={{ flex: 1, padding: '10px', borderRadius: 12, border: `1px solid ${runSurface === sfc ? accent : 'var(--border)'}`, background: runSurface === sfc ? accent : 'var(--bg-card2)', color: runSurface === sfc ? '#fff' : 'var(--text)', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: FB }}>
+                    <button key={sfc} onClick={() => setRunSurface(sfc)} style={{ flex: 1, padding: '10px', borderRadius: 'var(--r-md)', border: `1px solid ${runSurface === sfc ? accent : 'var(--border)'}`, background: runSurface === sfc ? accent : 'var(--bg-card2)', color: runSurface === sfc ? '#fff' : 'var(--text)', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: FB }}>
                       {sfc === 'outdoor' ? t('w2c.outdoor') : t('w2c.treadmill')}
                     </button>
                   ))}
@@ -417,7 +417,7 @@ export default function ManualEntrySheet({ onClose, onSaved }: Props) {
               {error && <div style={{ fontSize: 13, color: 'var(--zone-5, #ef4444)', fontWeight: 600, padding: '0 2px' }}>{error}</div>}
             </div>
             <div style={{ padding: '10px 16px calc(env(safe-area-inset-bottom) + 14px)', flexShrink: 0, borderTop: '1px solid var(--border)' }}>
-              <button onClick={handleSave} disabled={saving} style={{ width: '100%', height: 52, borderRadius: 14, background: 'var(--primary)', color: 'var(--on-primary)', border: 'none', fontSize: 16, fontWeight: 800, cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.7 : 1, fontFamily: FB }}>
+              <button onClick={handleSave} disabled={saving} style={{ width: '100%', height: 52, borderRadius: 'var(--r-md)', background: 'var(--primary)', color: 'var(--on-primary)', border: 'none', fontSize: 16, fontWeight: 800, cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.7 : 1, fontFamily: FB }}>
                 {saving ? t('w2c.saving') : t('w2c.saveActivity')}
               </button>
             </div>

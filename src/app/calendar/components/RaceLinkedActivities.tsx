@@ -76,13 +76,13 @@ export function RaceLinkedActivities({ raceId, goalTime }: { raceId: string; goa
           const realizedS = a.moving_time_s ?? a.elapsed_time_s ?? null
           const delta = goalS != null && realizedS != null ? realizedS - goalS : null
           return (
-            <a key={a.id} href={`/activities?id=${a.id}`} style={{ textDecoration: 'none', color: 'inherit', display: 'block', borderRadius: 14, overflow: 'hidden', border: '1px solid var(--border)', background: 'var(--bg-card)' }}>
+            <a key={a.id} href={`/activities?id=${a.id}`} style={{ textDecoration: 'none', color: 'inherit', display: 'block', borderRadius: 'var(--r-md)', overflow: 'hidden', border: '1px solid var(--border)', background: 'var(--bg-card)' }}>
               {map && <img src={map} alt="" style={{ width: '100%', height: 150, objectFit: 'cover', display: 'block' }} loading="lazy" />}
               <div style={{ padding: '11px 14px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                   <span style={{ width: 8, height: 8, borderRadius: '50%', background: col, flexShrink: 0 }} />
                   <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.title || t('calendar.realizedActivity')}</span>
-                  {a.linked_race_date && <span style={{ fontSize: 10.5, fontWeight: 700, color: col, background: `${col}1f`, padding: '2px 7px', borderRadius: 999, flexShrink: 0, textTransform: 'capitalize' }}>{new Date(a.linked_race_date + 'T12:00:00').toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })}</span>}
+                  {a.linked_race_date && <span style={{ fontSize: 10.5, fontWeight: 700, color: col, background: `${col}1f`, padding: '2px 7px', borderRadius: 'var(--r-pill)', flexShrink: 0, textTransform: 'capitalize' }}>{new Date(a.linked_race_date + 'T12:00:00').toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })}</span>}
                   <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--primary)', fontWeight: 600, flexShrink: 0 }}>{t('calendar.openAnalysis')} →</span>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
@@ -92,19 +92,19 @@ export function RaceLinkedActivities({ raceId, goalTime }: { raceId: string; goa
                     a.avg_watts ? { l: t('calendar.mPower'), v: `${Math.round(a.avg_watts)} W` } : { l: t('calendar.mPace'), v: fmtPace(a.avg_pace_s_km) },
                     { l: t('calendar.mHr'), v: a.avg_hr ? `${Math.round(a.avg_hr)} bpm` : '—' },
                   ].map((m, i) => (
-                    <div key={i} style={{ textAlign: 'center', padding: '6px 4px', borderRadius: 9, background: 'var(--bg-card2)' }}>
-                      <p style={{ margin: 0, fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-dim)' }}>{m.l}</p>
-                      <p style={{ margin: '2px 0 0', fontSize: 13, fontWeight: 700, color: 'var(--text)', fontFamily: 'DM Mono, monospace' }}>{m.v}</p>
+                    <div key={i} style={{ textAlign: 'center', padding: '6px 4px', borderRadius: 'var(--r-sm)', background: 'var(--bg-card2)' }}>
+                      <p style={{ margin: 0, fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-dim)' }}>{m.l}</p>
+                      <p style={{ margin: '2px 0 0', fontSize: 13, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-body)' }}>{m.v}</p>
                     </div>
                   ))}
                 </div>
                 {/* Comparaison prévu / réalisé (temps) */}
                 {goalS != null && realizedS != null && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 10, padding: '8px 11px', borderRadius: 10, background: 'var(--bg-card2)', border: '1px solid var(--border)' }}>
-                    <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>{t('calendar.planned')} <strong style={{ color: 'var(--text-mid)', fontFamily: 'DM Mono, monospace' }}>{fmtDur(goalS)}</strong></span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 10, padding: '8px 11px', borderRadius: 'var(--r-sm)', background: 'var(--bg-card2)', border: '1px solid var(--border)' }}>
+                    <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>{t('calendar.planned')} <strong style={{ color: 'var(--text-mid)', fontFamily: 'var(--font-body)' }}>{fmtDur(goalS)}</strong></span>
                     <span style={{ color: 'var(--text-dim)' }}>→</span>
-                    <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>{t('calendar.realized')} <strong style={{ color: 'var(--text)', fontFamily: 'DM Mono, monospace' }}>{fmtDur(realizedS)}</strong></span>
-                    <span style={{ marginLeft: 'auto', fontSize: 12, fontWeight: 800, fontFamily: 'DM Mono, monospace', color: delta != null && delta <= 0 ? '#22c55e' : '#ef4444' }}>
+                    <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>{t('calendar.realized')} <strong style={{ color: 'var(--text)', fontFamily: 'var(--font-body)' }}>{fmtDur(realizedS)}</strong></span>
+                    <span style={{ marginLeft: 'auto', fontSize: 12, fontWeight: 800, fontFamily: 'var(--font-body)', color: delta != null && delta <= 0 ? '#22c55e' : '#ef4444' }}>
                       {delta != null ? (delta <= 0 ? '−' : '+') + fmtDur(Math.abs(delta)) : ''}
                     </span>
                   </div>

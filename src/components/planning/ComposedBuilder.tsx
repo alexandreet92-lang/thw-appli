@@ -20,7 +20,7 @@ function uid() { return `mv_${Date.now()}_${Math.random().toString(36).slice(2, 
 function mmss(sec: number): string { const s = Math.max(0, Math.round(sec)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}` }
 function parseMmss(v: string): number { const m = v.match(/^(\d+):(\d{1,2})$/); if (m) return (+m[1]) * 60 + (+m[2]); const n = parseInt(v, 10); return isNaN(n) ? 0 : n * 60 }
 
-const inp: React.CSSProperties = { width: '100%', boxSizing: 'border-box', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 13, fontFamily: FB, outline: 'none' }
+const inp: React.CSSProperties = { width: '100%', boxSizing: 'border-box', padding: '8px 10px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 13, fontFamily: FB, outline: 'none' }
 const lbl: React.CSSProperties = { fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-dim)', marginBottom: 4, display: 'block' }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
@@ -28,10 +28,10 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 }
 function Seg<T extends string>({ value, options, onChange }: { value: T; options: { v: T; label: string }[]; onChange: (v: T) => void }) {
   return (
-    <div style={{ display: 'inline-flex', gap: 3, padding: 3, borderRadius: 9, background: 'var(--bg-card2)', border: '1px solid var(--border)', flexWrap: 'wrap' }}>
+    <div style={{ display: 'inline-flex', gap: 3, padding: 3, borderRadius: 'var(--r-sm)', background: 'var(--bg-card2)', border: '1px solid var(--border)', flexWrap: 'wrap' }}>
       {options.map(o => (
         <button key={o.v} onClick={() => onChange(o.v)} style={{
-          padding: '5px 10px', borderRadius: 6, border: 'none', cursor: 'pointer', fontFamily: FB, fontSize: 12, fontWeight: 600,
+          padding: '5px 10px', borderRadius: 'var(--r-sm)', border: 'none', cursor: 'pointer', fontFamily: FB, fontSize: 12, fontWeight: 600,
           background: value === o.v ? 'var(--text)' : 'transparent', color: value === o.v ? 'var(--bg)' : 'var(--text-mid)',
         }}>{o.label}</button>
       ))}
@@ -114,15 +114,15 @@ export function ComposedBuilder({ sport, moves, accent, onChange, circuits, onCi
         const cIds = cMoves.map(m => m.id)
         const isMulti = circList.length > 1
         return (
-          <div key={circuit.id} style={{ border: `1px solid ${accent}33`, borderRadius: 14, padding: 12, background: 'var(--bg-card)' }}>
+          <div key={circuit.id} style={{ border: `1px solid ${accent}33`, borderRadius: 'var(--r-md)', padding: 12, background: 'var(--bg-card)' }}>
             {/* En-tête circuit */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
               <input value={circuit.name ?? `Circuit ${ci + 1}`} onChange={e => patchCircuit(circuit.id, { name: e.target.value })}
-                style={{ flex: 1, minWidth: 0, background: 'transparent', border: 'none', outline: 'none', fontFamily: 'Syne, sans-serif', fontSize: 15, fontWeight: 700, color: 'var(--text)', padding: 0 }} />
+                style={{ flex: 1, minWidth: 0, background: 'transparent', border: 'none', outline: 'none', fontFamily: 'var(--font-body)', fontSize: 15, fontWeight: 700, color: 'var(--text)', padding: 0 }} />
               {isMulti && <button onClick={() => removeCircuit(circuit.id)} aria-label="Supprimer le circuit" style={{ ...iconBtn, color: 'var(--danger)' }}><IconTrash size={16} /></button>}
             </div>
             {/* Tours + récup du circuit (+ récup avant le circuit suivant si multi). */}
-            <div style={{ display: 'grid', gridTemplateColumns: ci < circList.length - 1 ? 'repeat(3, 1fr)' : 'repeat(2, 1fr)', gap: 10, marginBottom: 12, background: 'var(--bg-card2)', borderRadius: 10, padding: 10 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: ci < circList.length - 1 ? 'repeat(3, 1fr)' : 'repeat(2, 1fr)', gap: 10, marginBottom: 12, background: 'var(--bg-card2)', borderRadius: 'var(--r-sm)', padding: 10 }}>
               <Field label="Nb de tours"><input type="number" min={1} defaultValue={circuit.rounds} key={`r${circuit.rounds}`} onBlur={e => patchCircuit(circuit.id, { rounds: Math.max(1, +e.target.value || 1) })} style={inp} /></Field>
               <Field label="Récup / tour"><input defaultValue={mmss(circuit.restSec)} key={`rs${circuit.restSec}`} onBlur={e => patchCircuit(circuit.id, { restSec: parseMmss(e.target.value) })} placeholder="m:ss" style={inp} /></Field>
               {ci < circList.length - 1 && (
@@ -134,15 +134,15 @@ export function ComposedBuilder({ sport, moves, accent, onChange, circuits, onCi
             {cMoves.map((m, i) => {
               const d = moveDef(sport, m.kind); if (!d) return null
               return (
-                <div key={m.id} style={{ border: '1px solid var(--border)', borderLeft: `3px solid ${accent}`, borderRadius: 12, padding: 12, background: 'var(--bg-card2)', marginBottom: 8 }}>
+                <div key={m.id} style={{ border: '1px solid var(--border)', borderLeft: `3px solid ${accent}`, borderRadius: 'var(--r-md)', padding: 12, background: 'var(--bg-card2)', marginBottom: 8 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
                     {d.custom ? (
                       <input defaultValue={m.customName ?? ''} key={m.customName} onBlur={e => patch(m.id, { customName: e.target.value })} placeholder="Nom de l'exercice"
-                        style={{ ...inp, flex: 1, fontWeight: 700, fontFamily: 'Syne, sans-serif', fontSize: 14 }} />
+                        style={{ ...inp, flex: 1, fontWeight: 700, fontFamily: 'var(--font-body)', fontSize: 14 }} />
                     ) : (
-                      <span style={{ flex: 1, fontFamily: 'Syne, sans-serif', fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>{composedMoveLabel(m, d)}</span>
+                      <span style={{ flex: 1, fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>{composedMoveLabel(m, d)}</span>
                     )}
-                    <span style={{ fontSize: 11, fontWeight: 700, color: accent, fontFamily: 'DM Mono, monospace' }}>{moveMinutes(m) > 0 ? `${Math.round(moveMinutes(m))} min` : ''}</span>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: accent, fontFamily: 'var(--font-body)' }}>{moveMinutes(m) > 0 ? `${Math.round(moveMinutes(m))} min` : ''}</span>
                     <button onClick={() => move(i, -1, cIds)} disabled={i === 0} aria-label="Monter" style={{ ...iconBtn, opacity: i === 0 ? 0.3 : 1 }}><IconChevronUp size={16} /></button>
                     <button onClick={() => move(i, 1, cIds)} disabled={i === cIds.length - 1} aria-label="Descendre" style={{ ...iconBtn, opacity: i === cIds.length - 1 ? 0.3 : 1 }}><IconChevronDown size={16} /></button>
                     <button onClick={() => remove(m.id)} aria-label="Supprimer" style={{ ...iconBtn, color: 'var(--danger)' }}><IconTrash size={16} /></button>
@@ -247,7 +247,7 @@ export function ComposedBuilder({ sport, moves, accent, onChange, circuits, onCi
                       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
                         {(Object.keys(ROUND_SUPPORT_LABEL) as RoundSupport[]).map(rs => (
                           <button key={rs} onClick={() => patch(m.id, { roundSupport: rs })} style={{
-                            padding: '5px 11px', borderRadius: 8, cursor: 'pointer', fontFamily: FB, fontSize: 12, fontWeight: 600,
+                            padding: '5px 11px', borderRadius: 'var(--r-sm)', cursor: 'pointer', fontFamily: FB, fontSize: 12, fontWeight: 600,
                             border: `1px solid ${m.roundSupport === rs ? accent : 'var(--border)'}`,
                             background: m.roundSupport === rs ? `${accent}18` : 'transparent',
                             color: m.roundSupport === rs ? accent : 'var(--text-mid)',
@@ -269,7 +269,7 @@ export function ComposedBuilder({ sport, moves, accent, onChange, circuits, onCi
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                 {defs.map(d => (
                   <button key={d.kind} onClick={() => add(d.kind, circuit.id)} style={{
-                    display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 12px', borderRadius: 10,
+                    display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 12px', borderRadius: 'var(--r-sm)',
                     border: '1px dashed var(--border)', background: 'transparent', color: 'var(--text-mid)', cursor: 'pointer', fontFamily: FB, fontSize: 12.5, fontWeight: 600,
                   }}><IconPlus size={14} /> {d.label}</button>
                 ))}
@@ -281,14 +281,14 @@ export function ComposedBuilder({ sport, moves, accent, onChange, circuits, onCi
 
       {/* Ajouter un circuit */}
       <button onClick={addCircuit} style={{
-        display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 7, padding: '11px', borderRadius: 12,
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 7, padding: '11px', borderRadius: 'var(--r-md)',
         border: `1px dashed ${accent}66`, background: 'transparent', color: accent, cursor: 'pointer', fontFamily: FB, fontSize: 13, fontWeight: 700,
       }}><IconPlus size={16} /> Ajouter un circuit</button>
     </div>
   )
 }
 
-const iconBtn: React.CSSProperties = { width: 28, height: 28, borderRadius: 7, border: 'none', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }
+const iconBtn: React.CSSProperties = { width: 28, height: 28, borderRadius: 'var(--r-sm)', border: 'none', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }
 
 interface DraftPunch { punch: Punch; side: PunchSide }
 function ComboEditor({ combos, accent, onChange }: { combos: string[]; accent: string; onChange: (c: string[]) => void }) {
@@ -305,12 +305,12 @@ function ComboEditor({ combos, accent, onChange }: { combos: string[]; accent: s
     setDraft(d => d.map((x, j) => (j === i ? { ...x, side } : x)))
   }
   return (
-    <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 10, padding: 10 }}>
+    <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-sm)', padding: 10 }}>
       <span style={lbl}>Combos</span>
       {combos.length > 0 && (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
           {combos.map((c, i) => (
-            <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 8px', borderRadius: 7, background: `${accent}14`, color: accent, fontSize: 12, fontWeight: 700, fontFamily: FB }}>
+            <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 8px', borderRadius: 'var(--r-sm)', background: `${accent}14`, color: accent, fontSize: 12, fontWeight: 700, fontFamily: FB }}>
               {c}
               <button onClick={() => onChange(combos.filter((_, j) => j !== i))} aria-label="Retirer" style={{ border: 'none', background: 'transparent', color: accent, cursor: 'pointer', padding: 0, lineHeight: 1 }}>×</button>
             </span>
@@ -319,20 +319,20 @@ function ComboEditor({ combos, accent, onChange }: { combos: string[]; accent: s
       )}
       <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 8 }}>
         {PUNCHES.map(p => (
-          <button key={p} onClick={() => setDraft(d => [...d, { punch: p, side: 'left' }])} style={{ padding: '5px 10px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', cursor: 'pointer', fontFamily: FB, fontSize: 12, fontWeight: 600 }}>{PUNCH_LABEL[p]}</button>
+          <button key={p} onClick={() => setDraft(d => [...d, { punch: p, side: 'left' }])} style={{ padding: '5px 10px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', cursor: 'pointer', fontFamily: FB, fontSize: 12, fontWeight: 600 }}>{PUNCH_LABEL[p]}</button>
         ))}
       </div>
       {draft.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
             {draft.map((x, i) => (
-              <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 6px', borderRadius: 7, background: 'var(--bg-card2)', border: '1px solid var(--border)' }}>
-                <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 12.5, fontWeight: 700, color: 'var(--text)' }}>{PUNCH_LABEL[x.punch]}</span>
+              <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 6px', borderRadius: 'var(--r-sm)', background: 'var(--bg-card2)', border: '1px solid var(--border)' }}>
+                <span style={{ fontFamily: 'var(--font-body)', fontSize: 12.5, fontWeight: 700, color: 'var(--text)' }}>{PUNCH_LABEL[x.punch]}</span>
                 {needsSide(x.punch) && (
                   <span style={{ display: 'inline-flex', gap: 2 }}>
                     {(['left', 'right'] as PunchSide[]).map(s => (
                       <button key={s} onClick={() => setSide(i, s)} title={s === 'left' ? (lang === 'fr' ? 'Bras gauche' : 'Left arm') : (lang === 'fr' ? 'Bras droit' : 'Right arm')} style={{
-                        width: 20, height: 20, borderRadius: 5, cursor: 'pointer', fontFamily: FB, fontSize: 11, fontWeight: 700, lineHeight: 1,
+                        width: 20, height: 20, borderRadius: 'var(--r-sm)', cursor: 'pointer', fontFamily: FB, fontSize: 11, fontWeight: 700, lineHeight: 1,
                         border: 'none', background: x.side === s ? accent : 'var(--bg-card)', color: x.side === s ? '#fff' : 'var(--text-dim)',
                       }}>{sideSuffix(s, lang)}</button>
                     ))}
@@ -343,9 +343,9 @@ function ComboEditor({ combos, accent, onChange }: { combos: string[]; accent: s
             ))}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ flex: 1, fontFamily: 'DM Mono, monospace', fontSize: 12.5, fontWeight: 700, color: accent }}>{draftStr(draft)}</span>
+            <span style={{ flex: 1, fontFamily: 'var(--font-body)', fontSize: 12.5, fontWeight: 700, color: accent }}>{draftStr(draft)}</span>
             <button onClick={() => setDraft([])} style={{ border: 'none', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 12 }}>Effacer</button>
-            <button onClick={addCombo} style={{ padding: '5px 12px', borderRadius: 8, border: 'none', background: accent, color: '#fff', cursor: 'pointer', fontFamily: FB, fontSize: 12, fontWeight: 700 }}>Ajouter</button>
+            <button onClick={addCombo} style={{ padding: '5px 12px', borderRadius: 'var(--r-sm)', border: 'none', background: accent, color: '#fff', cursor: 'pointer', fontFamily: FB, fontSize: 12, fontWeight: 700 }}>Ajouter</button>
           </div>
         </div>
       )}

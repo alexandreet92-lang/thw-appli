@@ -137,7 +137,7 @@ export function IncomingCallWatcher() {
       `}</style>
       <div className="ic-card" style={{
         animation: 'icSlide .3s cubic-bezier(0.22,0.61,0.36,1) both',
-        background: 'var(--bg-elev, var(--bg-card))', border: '1px solid var(--border)', borderRadius: 18,
+        background: 'var(--bg-elev, var(--bg-card))', border: '1px solid var(--border)', borderRadius: 'var(--r-lg)',
         boxShadow: 'var(--shadow-card, 0 12px 40px rgba(0,0,0,0.28))', padding: '16px 16px 14px',
         display: 'flex', flexDirection: 'column', gap: 12,
       }}>

@@ -152,7 +152,7 @@ export default function WorkoutSession({ sport, exercises: initialExercises, pla
   }
 
   const content = (
-    <div style={{ position:'fixed', inset:0, zIndex:10002, background:'var(--bg-card)', display:'flex', flexDirection:'column', fontFamily:'DM Sans, sans-serif', paddingTop:'env(safe-area-inset-top)' }}>
+    <div style={{ position:'fixed', inset:0, zIndex:10002, background:'var(--bg-card)', display:'flex', flexDirection:'column', fontFamily: 'var(--font-body)', paddingTop:'env(safe-area-inset-top)' }}>
       {/* Header */}
       <div style={{ height:52, flexShrink:0, display:'flex', alignItems:'center', padding:'0 16px', borderBottom:'1px solid var(--border)', gap:10 }}>
         <button onClick={onClose} style={{ width:36, height:36, borderRadius:'50%', background:'var(--bg-card2)', border:'none', color:'var(--text)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>
@@ -188,7 +188,7 @@ export default function WorkoutSession({ sport, exercises: initialExercises, pla
         {exercises.length === 0 && (
           <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', height:'100%', gap:16, padding:32 }}>
             <p style={{ fontSize:15, color:'var(--text-mid)', textAlign:'center' }}>{t('record.workoutNoExercise')}</p>
-            <button onClick={() => setShowSearch(true)} style={{ padding:'12px 28px', borderRadius:14, background:`linear-gradient(135deg, ${accent}, ${accent}cc)`, border:'none', color:'#fff', fontSize:15, fontWeight:600, cursor:'pointer' }}>
+            <button onClick={() => setShowSearch(true)} style={{ padding:'12px 28px', borderRadius: 'var(--r-md)', background:`linear-gradient(135deg, ${accent}, ${accent}cc)`, border:'none', color:'#fff', fontSize:15, fontWeight:600, cursor:'pointer' }}>
               {t('record.workoutAddExercise')}
             </button>
           </div>
@@ -223,7 +223,7 @@ export default function WorkoutSession({ sport, exercises: initialExercises, pla
           <p style={{ fontSize:18, fontWeight:700, color:'var(--text)', margin:0 }}>{Math.round(totalVolumeKg)}</p>
           <p style={{ fontSize:10, color:'var(--text-mid)', textTransform:'uppercase', margin:'2px 0 0', letterSpacing:'0.08em' }}>{t('record.workoutVolKg')}</p>
         </div>
-        <button onClick={() => setShowSave(true)} style={{ padding:'8px 20px', borderRadius:12, background:`linear-gradient(135deg, ${accent}, ${accent}cc)`, border:'none', color:'#fff', fontSize:14, fontWeight:600, cursor:'pointer' }}>
+        <button onClick={() => setShowSave(true)} style={{ padding:'8px 20px', borderRadius: 'var(--r-md)', background:`linear-gradient(135deg, ${accent}, ${accent}cc)`, border:'none', color:'#fff', fontSize:14, fontWeight:600, cursor:'pointer' }}>
           {t('record.workoutFinish')}
         </button>
       </div>
@@ -239,14 +239,14 @@ export default function WorkoutSession({ sport, exercises: initialExercises, pla
               <button onClick={() => setShowManage(false)} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-dim)', fontSize:20, padding:4 }}>✕</button>
             </div>
             {exercises.map((ex, i) => (
-              <div key={ex.id} style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 12px', background:'var(--bg-card2)', border:'1px solid var(--border)', borderRadius:12, marginBottom:8 }}>
+              <div key={ex.id} style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 12px', background:'var(--bg-card2)', border:'1px solid var(--border)', borderRadius: 'var(--r-md)', marginBottom:8 }}>
                 <span style={{ flex:1, minWidth:0, fontSize:14, fontWeight:600, color:'var(--text)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{i + 1}. {ex.name}</span>
-                <button onClick={() => moveBlock(i, -1)} disabled={i === 0} aria-label={t('record.settingsMoveUp')} style={{ background:'none', border:'1px solid var(--border)', borderRadius:8, color:'var(--text-mid)', cursor: i === 0 ? 'default' : 'pointer', opacity: i === 0 ? 0.4 : 1, padding:'4px 9px', fontSize:14 }}>↑</button>
-                <button onClick={() => moveBlock(i, 1)} disabled={i === exercises.length - 1} aria-label={t('record.settingsMoveDown')} style={{ background:'none', border:'1px solid var(--border)', borderRadius:8, color:'var(--text-mid)', cursor: i === exercises.length - 1 ? 'default' : 'pointer', opacity: i === exercises.length - 1 ? 0.4 : 1, padding:'4px 9px', fontSize:14 }}>↓</button>
-                <button onClick={() => removeBlock(i)} aria-label={t('record.settingsDelete')} style={{ background:'none', border:'1px solid var(--border)', borderRadius:8, color:'var(--danger)', cursor:'pointer', padding:'4px 9px', fontSize:14 }}>×</button>
+                <button onClick={() => moveBlock(i, -1)} disabled={i === 0} aria-label={t('record.settingsMoveUp')} style={{ background:'none', border:'1px solid var(--border)', borderRadius: 'var(--r-sm)', color:'var(--text-mid)', cursor: i === 0 ? 'default' : 'pointer', opacity: i === 0 ? 0.4 : 1, padding:'4px 9px', fontSize:14 }}>↑</button>
+                <button onClick={() => moveBlock(i, 1)} disabled={i === exercises.length - 1} aria-label={t('record.settingsMoveDown')} style={{ background:'none', border:'1px solid var(--border)', borderRadius: 'var(--r-sm)', color:'var(--text-mid)', cursor: i === exercises.length - 1 ? 'default' : 'pointer', opacity: i === exercises.length - 1 ? 0.4 : 1, padding:'4px 9px', fontSize:14 }}>↓</button>
+                <button onClick={() => removeBlock(i)} aria-label={t('record.settingsDelete')} style={{ background:'none', border:'1px solid var(--border)', borderRadius: 'var(--r-sm)', color:'var(--danger)', cursor:'pointer', padding:'4px 9px', fontSize:14 }}>×</button>
               </div>
             ))}
-            <button onClick={() => { setShowManage(false); setShowSearch(true) }} style={{ width:'100%', padding:'11px', borderRadius:10, border:'1px dashed var(--border)', background:'transparent', color:accent, fontWeight:600, fontSize:14, cursor:'pointer', marginTop:4 }}>{t('record.workoutAddExercisePlus')}</button>
+            <button onClick={() => { setShowManage(false); setShowSearch(true) }} style={{ width:'100%', padding:'11px', borderRadius: 'var(--r-sm)', border:'1px dashed var(--border)', background:'transparent', color:accent, fontWeight:600, fontSize:14, cursor:'pointer', marginTop:4 }}>{t('record.workoutAddExercisePlus')}</button>
           </div>
         </div>
       )}
@@ -267,7 +267,7 @@ export default function WorkoutSession({ sport, exercises: initialExercises, pla
     return `${ex.sets} × ${ex.reps}${ex.weightKg ? ` · ${ex.weightKg} kg` : ''}`
   }
   const recap = (
-    <div style={{ position:'fixed', inset:0, zIndex:10002, background:'var(--bg-card)', display:'flex', flexDirection:'column', fontFamily:'DM Sans, sans-serif', paddingTop:'env(safe-area-inset-top)' }}>
+    <div style={{ position:'fixed', inset:0, zIndex:10002, background:'var(--bg-card)', display:'flex', flexDirection:'column', fontFamily: 'var(--font-body)', paddingTop:'env(safe-area-inset-top)' }}>
       <div style={{ height:52, flexShrink:0, display:'flex', alignItems:'center', padding:'0 16px', borderBottom:'1px solid var(--border)', gap:10 }}>
         <button onClick={onClose} style={{ width:36, height:36, borderRadius:'50%', background:'var(--bg-card2)', border:'none', color:'var(--text)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
@@ -279,7 +279,7 @@ export default function WorkoutSession({ sport, exercises: initialExercises, pla
         <p style={{ fontSize:11, fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'var(--text-dim)', margin:'0 0 14px' }}>{t('record.workoutRecap')} · {exercises.length} {t(exercises.length > 1 ? 'record.workoutBlocksPlural' : 'record.workoutBlockSingular')}</p>
         {exercises.length === 0 && <p style={{ fontSize:14, color:'var(--text-mid)' }}>{t('record.workoutEmptySession')}</p>}
         {exercises.map((ex, i) => (
-          <div key={ex.id} style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 14px', background:'var(--bg-card2)', border:'1px solid var(--border)', borderRadius:12, marginBottom:8 }}>
+          <div key={ex.id} style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 14px', background:'var(--bg-card2)', border:'1px solid var(--border)', borderRadius: 'var(--r-md)', marginBottom:8 }}>
             <span style={{ fontSize:12, fontWeight:700, color:accent, width:18, flexShrink:0 }}>{i + 1}</span>
             <div style={{ flex:1, minWidth:0 }}>
               <p style={{ fontSize:14, fontWeight:600, color:'var(--text)', margin:0 }}>{ex.name}</p>
@@ -289,7 +289,7 @@ export default function WorkoutSession({ sport, exercises: initialExercises, pla
         ))}
       </div>
       <div style={{ flexShrink:0, padding:'12px 16px', borderTop:'1px solid var(--border)', paddingBottom:'max(env(safe-area-inset-bottom), 12px)' }}>
-        <button onClick={beginSession} style={{ width:'100%', padding:'15px', borderRadius:14, background:`linear-gradient(135deg, ${accent}, #5b6fff)`, border:'none', color:'#fff', fontSize:16, fontWeight:700, cursor:'pointer' }}>
+        <button onClick={beginSession} style={{ width:'100%', padding:'15px', borderRadius: 'var(--r-md)', background:`linear-gradient(135deg, ${accent}, #5b6fff)`, border:'none', color:'#fff', fontSize:16, fontWeight:700, cursor:'pointer' }}>
           {t('record.workoutStartTraining')}
         </button>
       </div>

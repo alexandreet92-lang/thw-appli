@@ -33,9 +33,9 @@ export function TrainingBlockSummary() {
     <section>
       {/* Onglets segmented — sans border autour */}
       <div style={{ marginBottom: 16 }}>
-        <div style={{ display: 'inline-flex', background: 'var(--bg-card2)', borderRadius: 10, padding: 3, gap: 2 }}>
+        <div style={{ display: 'inline-flex', background: 'var(--bg-card2)', borderRadius: 'var(--r-sm)', padding: 3, gap: 2 }}>
           {(['bloc', 'plan'] as const).map(t => (
-            <button key={t} onClick={() => setTab(t)} style={{ padding: '9px 20px', fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer', borderRadius: 8, transition: 'all .18s', background: tab === t ? 'var(--bg-card)' : 'transparent', color: tab === t ? T : 'var(--text-dim)', boxShadow: tab === t ? 'var(--shadow-card)' : 'none' }}>
+            <button key={t} onClick={() => setTab(t)} style={{ padding: '9px 20px', fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer', borderRadius: 'var(--r-sm)', transition: 'all .18s', background: tab === t ? 'var(--bg-card)' : 'transparent', color: tab === t ? T : 'var(--text-dim)', boxShadow: tab === t ? 'var(--shadow-card)' : 'none' }}>
               {t === 'bloc' ? tr('planning.trainingBloc') : tr('planning.trainingPlanification')}
             </button>
           ))}

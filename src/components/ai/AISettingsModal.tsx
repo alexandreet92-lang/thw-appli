@@ -46,7 +46,7 @@ const inputStyle: React.CSSProperties = {
   fontSize: 14, fontFamily: FB, outline: 'none', transition: 'border-color 0.15s, box-shadow 0.15s',
 }
 const fieldLabel: React.CSSProperties = { fontSize: 12.5, fontWeight: 600, color: 'var(--text-mid)', marginBottom: 7, display: 'block', fontFamily: FB }
-const sectionTitleStyle: React.CSSProperties = { fontSize: 23, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-body)', letterSpacing: '-0.01em', marginBottom: 4 }
+const sectionTitleStyle: React.CSSProperties = { fontSize: 22, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-body)', letterSpacing: '-0.01em', marginBottom: 4 }
 const sectionLead: React.CSSProperties = { fontSize: 13, color: 'var(--text-dim)', lineHeight: 1.6, margin: '0 0 20px', maxWidth: 560, fontFamily: FB }
 
 function onFocusRing(e: React.FocusEvent<HTMLElement>) { e.currentTarget.style.borderColor = 'var(--primary)'; e.currentTarget.style.boxShadow = '0 0 0 3px var(--primary-dim)' }
@@ -101,7 +101,7 @@ function Pill({ on, onClick, children }: { on: boolean; onClick: () => void; chi
     <button type="button" onClick={onClick}
       onMouseEnter={e => { if (!on) (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)' }}
       onMouseLeave={e => { if (!on) (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-card2)' }}
-      style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 13px', borderRadius: 999, border: 'none', background: on ? 'var(--primary-dim)' : 'var(--bg-card2)', color: on ? 'var(--primary)' : 'var(--text-mid)', fontSize: 12.5, fontWeight: on ? 600 : 500, cursor: 'pointer', fontFamily: FB, transition: 'background 0.14s, color 0.14s' }}>
+      style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 13px', borderRadius: 'var(--r-pill)', border: 'none', background: on ? 'var(--primary-dim)' : 'var(--bg-card2)', color: on ? 'var(--primary)' : 'var(--text-mid)', fontSize: 12.5, fontWeight: on ? 600 : 500, cursor: 'pointer', fontFamily: FB, transition: 'background 0.14s, color 0.14s' }}>
       {on && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>}
       {children}
     </button>
@@ -115,7 +115,7 @@ function PresetChip({ onClick, children }: { onClick: () => void; children: Reac
     <button type="button" onClick={onClick}
       onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--primary-dim)'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--primary)' }}
       onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-card2)'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-mid)' }}
-      style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 13px', borderRadius: 999, border: 'none', background: 'var(--bg-card2)', color: 'var(--text-mid)', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: FB, transition: 'background 0.14s, color 0.14s' }}>
+      style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 13px', borderRadius: 'var(--r-pill)', border: 'none', background: 'var(--bg-card2)', color: 'var(--text-mid)', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: FB, transition: 'background 0.14s, color 0.14s' }}>
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3l1.9 5.8H20l-4.9 3.6L17 18l-5-3.7L7 18l1.9-5.6L4 8.8h6.1z" /></svg>
       {children}
     </button>
@@ -329,7 +329,7 @@ export default function AISettingsModal({ open, initialSection = 'profil', onClo
           {/* Libellé de groupe — même typo que les réglages principaux. */}
           <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.4px', color: 'var(--text-dim)', padding: '0 4px 8px', fontFamily: FB }}>{g.group}</div>
           {/* Desktop : lignes nues (séparation par le fond). Mobile : carte grise groupée + chevrons. */}
-          <div style={{ background: isWide ? 'transparent' : GREY_CARD, borderRadius: 16, overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: isWide ? 1 : 0 }}>
+          <div style={{ background: isWide ? 'transparent' : GREY_CARD, borderRadius: 'var(--r-md)', overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: isWide ? 1 : 0 }}>
             {g.items.map((it, idx) => {
               const active = section === it.id && isWide
               return (
@@ -396,13 +396,13 @@ export default function AISettingsModal({ open, initialSection = 'profil', onClo
         )}
 
         {/* Toast « Enregistré » */}
-        <div aria-live="polite" style={{ position: 'absolute', bottom: 18, left: '50%', transform: `translateX(-50%) translateY(${savedAt ? 0 : 12}px)`, opacity: savedAt ? 1 : 0, pointerEvents: 'none', transition: 'opacity 0.25s, transform 0.25s', display: 'flex', alignItems: 'center', gap: 8, padding: '9px 15px', borderRadius: 999, background: 'var(--text)', color: 'var(--bg)', fontSize: 13, fontWeight: 600, fontFamily: FB, boxShadow: '0 8px 24px rgba(0,0,0,0.25)' }}>
+        <div aria-live="polite" style={{ position: 'absolute', bottom: 18, left: '50%', transform: `translateX(-50%) translateY(${savedAt ? 0 : 12}px)`, opacity: savedAt ? 1 : 0, pointerEvents: 'none', transition: 'opacity 0.25s, transform 0.25s', display: 'flex', alignItems: 'center', gap: 8, padding: '9px 15px', borderRadius: 'var(--r-pill)', background: 'var(--text)', color: 'var(--bg)', fontSize: 13, fontWeight: 600, fontFamily: FB, boxShadow: '0 8px 24px rgba(0,0,0,0.25)' }}>
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
           {t('w1a.enregistre')}
         </div>
 
         {/* Toast « Échec de l'enregistrement » */}
-        <div aria-live="assertive" style={{ position: 'absolute', bottom: 18, left: '50%', transform: `translateX(-50%) translateY(${errorAt ? 0 : 12}px)`, opacity: errorAt ? 1 : 0, pointerEvents: 'none', transition: 'opacity 0.25s, transform 0.25s', display: 'flex', alignItems: 'center', gap: 8, padding: '9px 15px', borderRadius: 999, background: '#ef4444', color: '#fff', fontSize: 13, fontWeight: 600, fontFamily: FB, boxShadow: '0 8px 24px rgba(0,0,0,0.25)' }}>
+        <div aria-live="assertive" style={{ position: 'absolute', bottom: 18, left: '50%', transform: `translateX(-50%) translateY(${errorAt ? 0 : 12}px)`, opacity: errorAt ? 1 : 0, pointerEvents: 'none', transition: 'opacity 0.25s, transform 0.25s', display: 'flex', alignItems: 'center', gap: 8, padding: '9px 15px', borderRadius: 'var(--r-pill)', background: '#ef4444', color: '#fff', fontSize: 13, fontWeight: 600, fontFamily: FB, boxShadow: '0 8px 24px rgba(0,0,0,0.25)' }}>
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
           {t('w1a.echecEnregistrement')}
         </div>

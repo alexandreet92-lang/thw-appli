@@ -65,7 +65,7 @@ function Section({ label, children }: { label?: string; children: React.ReactNod
   )
 }
 function Group({ children }: { children: React.ReactNode }) {
-  return <div className="thw-glass" style={{ background: GREY_CARD, border: '1px solid var(--border)', borderRadius: 16, overflow: 'hidden' }}>{children}</div>
+  return <div className="thw-glass" style={{ background: GREY_CARD, border: '1px solid var(--border)', borderRadius: 'var(--r-md)', overflow: 'hidden' }}>{children}</div>
 }
 function Line({ first, align = 'center', children }: { first?: boolean; align?: 'center' | 'flex-start'; children: React.ReactNode }) {
   return <div style={{ display: 'flex', alignItems: align, gap: 12, padding: '13px 16px', borderTop: first ? 'none' : '1px solid var(--border)', width: '100%', boxSizing: 'border-box' }}>{children}</div>
@@ -102,13 +102,13 @@ function FieldLine({ first, label, children }: { first?: boolean; label: string;
 }
 
 // ── Contrôles (style athlète : input-bg, border) ─────────────────────
-const ctrl: React.CSSProperties = { border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', borderRadius: 8, padding: '7px 10px', fontSize: 13.5, fontFamily: 'var(--font-body)', outline: 'none' }
+const ctrl: React.CSSProperties = { border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', borderRadius: 'var(--r-sm)', padding: '7px 10px', fontSize: 13.5, fontFamily: 'var(--font-body)', outline: 'none' }
 
 function Seg({ value, options, onChange }: { value: string; options: [string, string][]; onChange: (v: string) => void }) {
   return (
-    <div style={{ display: 'inline-flex', background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: 10, padding: 3, gap: 3, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+    <div style={{ display: 'inline-flex', background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: 'var(--r-sm)', padding: 3, gap: 3, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
       {options.map(([v, l]) => (
-        <button key={v} onClick={() => onChange(v)} style={{ border: 'none', borderRadius: 7, padding: '6px 11px', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)', background: value === v ? 'var(--bg-card)' : 'transparent', color: value === v ? 'var(--primary)' : 'var(--text-mid)', boxShadow: value === v ? '0 1px 3px rgba(0,0,0,.1)' : 'none' }}>{l}</button>
+        <button key={v} onClick={() => onChange(v)} style={{ border: 'none', borderRadius: 'var(--r-sm)', padding: '6px 11px', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)', background: value === v ? 'var(--bg-card)' : 'transparent', color: value === v ? 'var(--primary)' : 'var(--text-mid)', boxShadow: value === v ? '0 1px 3px rgba(0,0,0,.1)' : 'none' }}>{l}</button>
       ))}
     </div>
   )
@@ -184,7 +184,7 @@ function ProfilBloc({ s, set }: { s: S; set: SetFn }) {
                 const on = (s.specialties as string[]).includes(o)
                 return (
                   <button key={o} onClick={() => { const v = s.specialties as string[]; set('specialties', on ? v.filter(x => x !== o) : [...v, o]) }}
-                    style={{ border: `1px solid ${on ? 'color-mix(in srgb, var(--primary) 40%, var(--border))' : 'var(--border)'}`, background: on ? 'color-mix(in srgb, var(--primary) 12%, transparent)' : 'var(--input-bg)', color: on ? 'var(--primary)' : 'var(--text-mid)', borderRadius: 999, padding: '6px 12px', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>{o}</button>
+                    style={{ border: `1px solid ${on ? 'color-mix(in srgb, var(--primary) 40%, var(--border))' : 'var(--border)'}`, background: on ? 'color-mix(in srgb, var(--primary) 12%, transparent)' : 'var(--input-bg)', color: on ? 'var(--primary)' : 'var(--text-mid)', borderRadius: 'var(--r-pill)', padding: '6px 12px', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>{o}</button>
                 )
               })}
             </div>
@@ -343,7 +343,7 @@ function AutoBloc({ s, set, onStudio }: { s: S; set: SetFn; onStudio: () => void
           <ToggleLine label={t('w1b.tog_injury_pause')} sub={t('w1b.tog_injury_pause_sub')} value={!!s.autoInjuryPause} onChange={v => set('autoInjuryPause', v)} />
         </Group>
       </Section>
-      <button onClick={onStudio} style={{ width: '100%', padding: '12px', borderRadius: 12, border: '1px solid color-mix(in srgb, var(--primary) 40%, var(--border))', background: 'color-mix(in srgb, var(--primary) 8%, transparent)', color: 'var(--primary)', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>{t('w1b.btn_custom_auto')}</button>
+      <button onClick={onStudio} style={{ width: '100%', padding: '12px', borderRadius: 'var(--r-md)', border: '1px solid color-mix(in srgb, var(--primary) 40%, var(--border))', background: 'color-mix(in srgb, var(--primary) 8%, transparent)', color: 'var(--primary)', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>{t('w1b.btn_custom_auto')}</button>
     </div>
   )
 }
@@ -412,7 +412,7 @@ function OffreBloc() {
               <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)', margin: 0 }}>{t('w1b.offre_coach')}</p>
               <p style={{ fontSize: 11.5, color: 'var(--text-dim)', margin: '2px 0 0' }}>{t('w1b.offre_coach_sub')}</p>
             </div>
-            <button onClick={() => setEmailModal(true)} style={{ border: 'none', cursor: 'pointer', padding: '8px 14px', borderRadius: 10, background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 13, fontWeight: 700, flexShrink: 0 }}>{t('w1b.manage')}</button>
+            <button onClick={() => setEmailModal(true)} style={{ border: 'none', cursor: 'pointer', padding: '8px 14px', borderRadius: 'var(--r-sm)', background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 13, fontWeight: 700, flexShrink: 0 }}>{t('w1b.manage')}</button>
           </Line>
         </Group>
       </Section>
@@ -558,7 +558,7 @@ export function CoachSettingsContent() {
               {GROUPS.map(g => (
                 <div key={g.title} style={{ marginBottom: 22 }}>
                   <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.08em', margin: '0 0 8px 4px' }}>{g.title}</p>
-                  <div style={{ background: GREY_CARD, border: '1px solid var(--border)', borderRadius: 16, overflow: 'hidden' }}>
+                  <div style={{ background: GREY_CARD, border: '1px solid var(--border)', borderRadius: 'var(--r-md)', overflow: 'hidden' }}>
                     {g.rows.map((r, i) => (
                       <ListRow key={r.id} Icon={r.Icon} label={r.label} value={r.value} last={i === g.rows.length - 1} onClick={() => open(r.id)} />
                     ))}
@@ -567,7 +567,7 @@ export function CoachSettingsContent() {
               ))}
 
               {/* Quitter le mode coach */}
-              <div style={{ background: GREY_CARD, border: '1px solid var(--border)', borderRadius: 16, overflow: 'hidden' }}>
+              <div style={{ background: GREY_CARD, border: '1px solid var(--border)', borderRadius: 'var(--r-md)', overflow: 'hidden' }}>
                 <ListRow Icon={LogOut} label={t('w1b.exit_coach')} danger last onClick={() => setConfirmLeave(true)} />
               </div>
             </div>
@@ -576,12 +576,12 @@ export function CoachSettingsContent() {
 
         {confirmLeave && (
           <div onClick={() => setConfirmLeave(false)} style={{ position: 'fixed', inset: 0, zIndex: 13000, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(3px)', WebkitBackdropFilter: 'blur(3px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-            <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 340, background: 'var(--bg-card)', borderRadius: 18, padding: '22px 20px', boxShadow: '0 24px 60px rgba(0,0,0,0.35)', border: '1px solid var(--border)' }}>
+            <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 340, background: 'var(--bg-card)', borderRadius: 'var(--r-lg)', padding: '22px 20px', boxShadow: '0 24px 60px rgba(0,0,0,0.35)', border: '1px solid var(--border)' }}>
               <p style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 700, color: 'var(--text)', margin: '0 0 6px' }}>{t('w1b.exit_coach_q')}</p>
               <p style={{ fontSize: 13.5, color: 'var(--text-mid)', margin: '0 0 18px', lineHeight: 1.5 }}>{t('w1b.exit_coach_desc')}</p>
               <div style={{ display: 'flex', gap: 10 }}>
-                <button onClick={() => setConfirmLeave(false)} style={{ flex: 1, padding: '11px', borderRadius: 12, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>{t('w1b.cancel')}</button>
-                <button onClick={() => router.push('/')} style={{ flex: 1, padding: '11px', borderRadius: 12, border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>{t('w1b.exit')}</button>
+                <button onClick={() => setConfirmLeave(false)} style={{ flex: 1, padding: '11px', borderRadius: 'var(--r-md)', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>{t('w1b.cancel')}</button>
+                <button onClick={() => router.push('/')} style={{ flex: 1, padding: '11px', borderRadius: 'var(--r-md)', border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>{t('w1b.exit')}</button>
               </div>
             </div>
           </div>

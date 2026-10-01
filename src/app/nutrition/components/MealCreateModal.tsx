@@ -34,9 +34,9 @@ const EMPTY: FormData = {
 }
 
 const inputStyle: React.CSSProperties = {
-  width: '100%', padding: '8px 10px', borderRadius: 8,
+  width: '100%', padding: '8px 10px', borderRadius: 'var(--r-sm)',
   border: '1px solid var(--border)', background: 'var(--bg-card2)',
-  color: 'var(--text)', fontSize: 12, fontFamily: 'DM Sans,sans-serif',
+  color: 'var(--text)', fontSize: 12, fontFamily: 'var(--font-body)',
   outline: 'none', boxSizing: 'border-box',
 }
 
@@ -149,18 +149,18 @@ export default function MealCreateModal({
         onClick={e => e.stopPropagation()}
         style={{
           width: '100%', maxWidth: 560, maxHeight: '80vh', overflowY: 'auto',
-          background: 'var(--bg-card)', borderRadius: 16, padding: 24,
+          background: 'var(--bg-card)', borderRadius: 'var(--r-md)', padding: 24,
           boxShadow: '0 24px 80px rgba(0,0,0,0.4)',
           transform: shown && !closing ? 'translateY(0)' : 'translateY(100%)', transition: 'transform 0.28s cubic-bezier(0.32,0.72,0,1)',
         }}
       >
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-          <h2 style={{ fontFamily: 'Syne,sans-serif', fontSize: 16, fontWeight: 800, margin: 0, color: 'var(--text)' }}>
+          <h2 style={{ fontFamily: 'var(--font-body)', fontSize: 16, fontWeight: 800, margin: 0, color: 'var(--text)' }}>
             {t('w2a.create_meal')}
           </h2>
           <button onClick={requestClose} style={{
-            width: 32, height: 32, borderRadius: 8, border: '1px solid var(--border)',
+            width: 32, height: 32, borderRadius: 'var(--r-sm)', border: '1px solid var(--border)',
             background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 18,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>×</button>
@@ -192,7 +192,7 @@ export default function MealCreateModal({
             {photoPreview && (
               <img src={photoPreview} alt="" style={{
                 width: '100%', height: 140, objectFit: 'cover',
-                borderRadius: 8, marginBottom: 8,
+                borderRadius: 'var(--r-sm)', marginBottom: 8,
               }} />
             )}
             <input type="file" accept="image/*" onChange={handlePhotoChange}
@@ -213,7 +213,7 @@ export default function MealCreateModal({
                 { key: 'lipides' as const,   label: t('w2a.macro_lip_g'),  ph: '8'   },
               ]).map(({ key, label, ph }) => (
                 <div key={key}>
-                  <label style={{ ...labelStyle, fontSize: 9 }}>{label}</label>
+                  <label style={{ ...labelStyle, fontSize: 10 }}>{label}</label>
                   <input type="number" value={form[key]}
                     onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
                     placeholder={ph}
@@ -253,7 +253,7 @@ export default function MealCreateModal({
                     <option value="piece">pcs</option>
                   </select>
                   <button onClick={() => removeIngredient(i)} style={{
-                    width: 28, height: 36, borderRadius: 7,
+                    width: 28, height: 36, borderRadius: 'var(--r-sm)',
                     border: '1px solid rgba(239,68,68,0.35)', background: 'transparent',
                     color: 'var(--danger)', cursor: 'pointer', fontSize: 16,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -261,9 +261,9 @@ export default function MealCreateModal({
                 </div>
               ))}
               <button onClick={addIngredient} style={{
-                padding: '8px', borderRadius: 8, border: '1px dashed var(--border)',
+                padding: '8px', borderRadius: 'var(--r-sm)', border: '1px dashed var(--border)',
                 background: 'transparent', color: 'var(--text-dim)', fontSize: 11,
-                cursor: 'pointer', fontFamily: 'DM Sans,sans-serif',
+                cursor: 'pointer', fontFamily: 'var(--font-body)',
               }}>{t('w2a.add_ingredient')}</button>
             </div>
           </div>
@@ -271,7 +271,7 @@ export default function MealCreateModal({
           {/* Actions */}
           <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
             <button onClick={requestClose} style={{
-              padding: '10px 16px', borderRadius: 8,
+              padding: '10px 16px', borderRadius: 'var(--r-sm)',
               border: '1px solid var(--border)', background: 'transparent',
               color: 'var(--text-dim)', fontSize: 12, cursor: 'pointer',
             }}>{t('w2a.cancel')}</button>
@@ -279,11 +279,11 @@ export default function MealCreateModal({
               onClick={() => void handleSave()}
               disabled={saving || !form.nom.trim()}
               style={{
-                flex: 1, padding: '10px', borderRadius: 8, border: 'none',
+                flex: 1, padding: '10px', borderRadius: 'var(--r-sm)', border: 'none',
                 background: form.nom.trim() ? 'linear-gradient(90deg,#06B6D4,#3B82F6)' : 'var(--border)',
                 color: '#fff', fontSize: 13, fontWeight: 700,
                 cursor: form.nom.trim() && !saving ? 'pointer' : 'not-allowed',
-                fontFamily: 'Syne,sans-serif',
+                fontFamily: 'var(--font-body)',
               }}
             >{saving ? t('w2a.saving') : t('w2a.save')}</button>
           </div>

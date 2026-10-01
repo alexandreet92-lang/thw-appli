@@ -57,19 +57,19 @@ export default function FoodSuggestions({ slot, onSelect }: Props) {
 
   return (
     <div style={{ marginBottom: 16 }}>
-      <p style={{ margin: '0 0 8px', fontSize: 11, color: 'var(--text-dim)', fontFamily: 'DM Sans,sans-serif' }}>
+      <p style={{ margin: '0 0 8px', fontSize: 11, color: 'var(--text-dim)', fontFamily: 'var(--font-body)' }}>
         Recemment consomme
       </p>
       <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4 }}>
         {meals.map(meal => (
           <button key={meal.meal_name} onClick={() => onSelect(meal)}
-            style={{ flexShrink: 0, background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 12, padding: '8px 12px', cursor: 'pointer', textAlign: 'left', transition: 'border-color 0.15s' }}
+            style={{ flexShrink: 0, background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: '8px 12px', cursor: 'pointer', textAlign: 'left', transition: 'border-color 0.15s' }}
             onMouseEnter={e => (e.currentTarget.style.borderColor = '#06B6D4')}
             onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border)')}>
-            <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: 'var(--text)', fontFamily: 'DM Sans,sans-serif', whiteSpace: 'nowrap' }}>
+            <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: 'var(--text)', fontFamily: 'var(--font-body)', whiteSpace: 'nowrap' }}>
               {meal.meal_name}
             </p>
-            <p style={{ margin: 0, fontSize: 10, color: 'var(--text-dim)', fontFamily: 'DM Mono,monospace', marginTop: 2 }}>
+            <p style={{ margin: 0, fontSize: 10, color: 'var(--text-dim)', fontFamily: 'var(--font-body)', marginTop: 2 }}>
               {meal.kcal} kcal
             </p>
           </button>

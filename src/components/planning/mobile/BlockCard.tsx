@@ -153,7 +153,7 @@ export function BlockCard({ block: b, sport, runningSub, accent, refs, riderKg, 
                 }}
                 title={has ? `${d.label} · ${secToPace(paceSec!)}/km` : tr('planning.noReferenceTime')}
                 style={{
-                  flexShrink: 0, borderRadius: 999, padding: '5px 11px', fontSize: 11.5, fontWeight: 700, cursor: 'pointer',
+                  flexShrink: 0, borderRadius: 'var(--r-pill)', padding: '5px 11px', fontSize: 11.5, fontWeight: 700, cursor: 'pointer',
                   border: `1px solid ${sel ? accent : 'var(--se-rule)'}`,
                   background: 'transparent',
                   color: !has ? 'var(--se-rule)' : sel ? accent : 'var(--se-dim)',
@@ -267,7 +267,7 @@ export function BlockCard({ block: b, sport, runningSub, accent, refs, riderKg, 
         <div style={{ position: 'relative', flexShrink: 0 }}>
           <button type="button" onClick={e => { e.stopPropagation(); setMenu(m => !m) }} style={{ border: 'none', background: 'transparent', color: 'var(--se-dim)', cursor: 'pointer', display: 'flex', padding: 2 }}><IconDotsVertical size={18} /></button>
           {menu && (
-            <div onClick={e => e.stopPropagation()} style={{ position: 'absolute', right: 0, top: 26, zIndex: 5, background: 'var(--se-card)', border: '1px solid var(--se-rule)', borderRadius: 10, boxShadow: '0 6px 20px rgba(0,0,0,0.12)', overflow: 'hidden' }}>
+            <div onClick={e => e.stopPropagation()} style={{ position: 'absolute', right: 0, top: 26, zIndex: 5, background: 'var(--se-card)', border: '1px solid var(--se-rule)', borderRadius: 'var(--r-sm)', boxShadow: '0 6px 20px rgba(0,0,0,0.12)', overflow: 'hidden' }}>
               <button type="button" onClick={() => { setMenu(false); onDuplicate() }} style={menuBtn}><IconCopy size={15} /> {tr('planning.duplicate')}</button>
               <button type="button" onClick={() => { setMenu(false); onRemove() }} style={{ ...menuBtn, color: '#ff5f5f' }}><IconTrash size={15} /> {tr('planning.delete')}</button>
             </div>
@@ -285,7 +285,7 @@ export function BlockCard({ block: b, sport, runningSub, accent, refs, riderKg, 
               <div style={{ display: 'flex', gap: 4 }}>
                 {(['warmup', 'effort', 'recovery'] as const).map(t => (
                   <button key={t} type="button" onClick={() => set({ type: t, label: '', zone: t === 'warmup' ? 2 : t === 'recovery' ? 1 : b.zone })}
-                    style={{ border: `1px solid ${b.type === t ? accent : 'var(--se-rule)'}`, background: 'transparent', color: b.type === t ? accent : 'var(--se-dim)', borderRadius: 999, padding: '4px 9px', fontSize: 10, fontWeight: 600, cursor: 'pointer' }}>
+                    style={{ border: `1px solid ${b.type === t ? accent : 'var(--se-rule)'}`, background: 'transparent', color: b.type === t ? accent : 'var(--se-dim)', borderRadius: 'var(--r-pill)', padding: '4px 9px', fontSize: 10, fontWeight: 600, cursor: 'pointer' }}>
                     {t === 'warmup' ? tr('planning.warmupShort') : t === 'recovery' ? tr('planning.recovery') : tr('planning.effort')}
                   </button>
                 ))}
@@ -341,7 +341,7 @@ export function BlockCard({ block: b, sport, runningSub, accent, refs, riderKg, 
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
               {canProgressive && (
                 <button type="button" onClick={() => set({ progressive: !b.progressive, ...(b.progressive ? { repValues: undefined } : {}) })} title={tr('planning.progressive')}
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: 4, border: `1px solid ${b.progressive ? accent : 'var(--se-rule)'}`, background: 'transparent', color: b.progressive ? accent : 'var(--se-dim)', borderRadius: 999, padding: '4px 10px', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}>
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 4, border: `1px solid ${b.progressive ? accent : 'var(--se-rule)'}`, background: 'transparent', color: b.progressive ? accent : 'var(--se-dim)', borderRadius: 'var(--r-pill)', padding: '4px 10px', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}>
                   ↗ {tr('planning.progressive')}
                 </button>
               )}
@@ -401,7 +401,7 @@ export function BlockCard({ block: b, sport, runningSub, accent, refs, riderKg, 
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                     <button type="button"
                       onClick={() => set({ shuttleLegM: on ? 0 : Math.round(dist / 2) })}
-                      style={{ display: 'inline-flex', alignItems: 'center', gap: 5, border: `1px solid ${on ? accent : 'var(--se-rule)'}`, background: 'transparent', color: on ? accent : 'var(--se-dim)', borderRadius: 999, padding: '5px 12px', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: 5, border: `1px solid ${on ? accent : 'var(--se-rule)'}`, background: 'transparent', color: on ? accent : 'var(--se-dim)', borderRadius: 'var(--r-pill)', padding: '5px 12px', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
                       ↔ {on ? tr('planning.shuttleOn') : tr('planning.shuttleActivate')}
                     </button>
                     {on && (
@@ -470,7 +470,7 @@ export function BlockCard({ block: b, sport, runningSub, accent, refs, riderKg, 
                   return (
                     <button key={eq} type="button"
                       onClick={() => set({ equipment: active ? (b.equipment ?? []).filter(x => x !== eq) : [...(b.equipment ?? []), eq] })}
-                      style={{ border: `1px solid ${active ? accent : 'var(--se-rule)'}`, background: active ? `${accent}14` : 'transparent', color: active ? accent : 'var(--se-dim)', borderRadius: 999, padding: '5px 11px', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
+                      style={{ border: `1px solid ${active ? accent : 'var(--se-rule)'}`, background: active ? `${accent}14` : 'transparent', color: active ? accent : 'var(--se-dim)', borderRadius: 'var(--r-pill)', padding: '5px 11px', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
                       {eq}
                     </button>
                   )
@@ -488,7 +488,7 @@ function Field({ label, eq, opt, children }: { label: string; eq?: string; opt?:
   const { t: tr } = useI18n()
   return (
     <div>
-      <FieldLabel right={opt ? <span style={{ fontSize: 8.5, fontWeight: 700, color: 'var(--se-dim)', border: '1px solid var(--se-rule)', borderRadius: 5, padding: '1px 5px' }}>{tr('planning.option')}</span> : undefined}>{label}</FieldLabel>
+      <FieldLabel right={opt ? <span style={{ fontSize: 8.5, fontWeight: 700, color: 'var(--se-dim)', border: '1px solid var(--se-rule)', borderRadius: 'var(--r-sm)', padding: '1px 5px' }}>{tr('planning.option')}</span> : undefined}>{label}</FieldLabel>
       {children}
       {eq && <p style={{ margin: '5px 2px 0', fontSize: 10, color: 'var(--se-dim)' }}>{eq}</p>}
     </div>

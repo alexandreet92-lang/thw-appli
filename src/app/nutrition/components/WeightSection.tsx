@@ -120,7 +120,7 @@ function HistoryTable({
       type={type} value={editRow?.[field] ?? ''}
       onChange={e => setEditRow(r => r ? { ...r, [field]: e.target.value } : r)}
       style={{
-        width: '100%', padding: '3px 5px', borderRadius: 5,
+        width: '100%', padding: '3px 5px', borderRadius: 'var(--r-sm)',
         border: '1px solid #06B6D4', background: 'var(--bg-card)',
         color: 'var(--text)', fontSize: 11, outline: 'none', boxSizing: 'border-box',
       }}
@@ -135,12 +135,12 @@ function HistoryTable({
       {sorted.length === 0 ? (
         <div style={{ color: 'var(--text-dim)', fontSize: 12, padding: '12px 0' }}>{t('w2a.no_measure')}</div>
       ) : (
-        <div style={{ maxHeight: 256, overflowY: 'auto', border: '1px solid var(--border)', borderRadius: 10 }}>
+        <div style={{ maxHeight: 256, overflowY: 'auto', border: '1px solid var(--border)', borderRadius: 'var(--r-sm)' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ background: 'var(--bg-card2)' }}>
                 {[t('w2a.th_date'), t('w2a.th_weight'), t('w2a.th_fat'), t('w2a.th_muscle'), t('w2a.th_bmi'), ''].map(h => (
-                  <th key={h} style={{ ...tdBase, fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-dim)' }}>{h}</th>
+                  <th key={h} style={{ ...tdBase, fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-dim)' }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -157,11 +157,11 @@ function HistoryTable({
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                           <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>{t('w2a.delete_measure_confirm')}</span>
                           <button onClick={() => void onDelete(m.id).then(() => setConfirmId(null))}
-                            style={{ padding: '3px 10px', borderRadius: 6, border: 'none', background: 'var(--danger)', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
+                            style={{ padding: '3px 10px', borderRadius: 'var(--r-sm)', border: 'none', background: 'var(--danger)', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
                             {t('w2a.yes')}
                           </button>
                           <button onClick={() => setConfirmId(null)}
-                            style={{ padding: '3px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-dim)', fontSize: 11, cursor: 'pointer' }}>
+                            style={{ padding: '3px 10px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-dim)', fontSize: 11, cursor: 'pointer' }}>
                             {t('w2a.no')}
                           </button>
                         </div>
@@ -182,22 +182,22 @@ function HistoryTable({
                       {isEditing ? (
                         <div style={{ display: 'flex', gap: 4 }}>
                           <button onClick={() => void commitEdit()} title={t('w2a.validate')}
-                            style={{ width: 26, height: 26, borderRadius: 6, border: '1px solid rgba(34,197,94,0.4)', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            style={{ width: 26, height: 26, borderRadius: 'var(--r-sm)', border: '1px solid rgba(34,197,94,0.4)', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             <IconCheck />
                           </button>
                           <button onClick={() => { setEditingId(null); setEditRow(null) }} title={t('w2a.cancel')}
-                            style={{ width: 26, height: 26, borderRadius: 6, border: '1px solid rgba(239,68,68,0.3)', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            style={{ width: 26, height: 26, borderRadius: 'var(--r-sm)', border: '1px solid rgba(239,68,68,0.3)', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             <IconX />
                           </button>
                         </div>
                       ) : (
                         <div style={{ display: 'flex', gap: 4 }}>
                           <button onClick={() => startEdit(m)} title={t('w2a.edit')}
-                            style={{ width: 26, height: 26, borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            style={{ width: 26, height: 26, borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             <IconPencil />
                           </button>
                           <button onClick={() => setConfirmId(m.id)} title={t('w2a.delete')}
-                            style={{ width: 26, height: 26, borderRadius: 6, border: '1px solid rgba(239,68,68,0.3)', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            style={{ width: 26, height: 26, borderRadius: 'var(--r-sm)', border: '1px solid rgba(239,68,68,0.3)', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             <IconTrash />
                           </button>
                         </div>
@@ -284,13 +284,13 @@ export default function WeightSection({ showToast }: WeightSectionProps) {
   const canSave = !!form.weight_kg && !saving
   const btnBg = saveSuccess ? '#22C55E' : (canSave || saving) ? 'linear-gradient(90deg,#06B6D4,#3B82F6)' : 'var(--border)'
 
-  const cardStyle: React.CSSProperties = { background: 'var(--bg-card)', borderRadius: 16, border: '1px solid var(--border)', padding: 20, marginBottom: 16 }
-  const iStyle: React.CSSProperties = { padding: '5px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 12, outline: 'none', fontFamily: 'DM Mono,monospace', textAlign: 'center' as const, width: 72, boxSizing: 'border-box' as const }
+  const cardStyle: React.CSSProperties = { background: 'var(--bg-card)', borderRadius: 'var(--r-md)', border: '1px solid var(--border)', padding: 20, marginBottom: 16 }
+  const iStyle: React.CSSProperties = { padding: '5px 8px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 12, outline: 'none', fontFamily: 'var(--font-body)', textAlign: 'center' as const, width: 72, boxSizing: 'border-box' as const }
   const btnRnd: React.CSSProperties = { width: 28, height: 28, borderRadius: '50%', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', cursor: 'pointer', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }
 
   return (
     <div style={cardStyle}>
-      <p style={{ fontFamily: 'Syne,sans-serif', fontWeight: 700, fontSize: 18, color: 'var(--text)', margin: '0 0 16px' }}>
+      <p style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 18, color: 'var(--text)', margin: '0 0 16px' }}>
         {t('w2a.weight_composition')}
       </p>
 
@@ -298,22 +298,22 @@ export default function WeightSection({ showToast }: WeightSectionProps) {
       {last && (
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 14 }}>
           {last.weight_kg != null && (
-            <span style={{ padding: '3px 10px', borderRadius: 20, background: 'rgba(6,182,212,0.12)', border: '1px solid #06B6D4', color: 'var(--primary)', fontSize: 11, fontFamily: 'DM Mono,monospace', fontWeight: 600 }}>
+            <span style={{ padding: '3px 10px', borderRadius: 'var(--r-lg)', background: 'rgba(6,182,212,0.12)', border: '1px solid #06B6D4', color: 'var(--primary)', fontSize: 11, fontFamily: 'var(--font-body)', fontWeight: 600 }}>
               {last.weight_kg.toFixed(1)} kg
             </span>
           )}
           {last.fat_mass_percent != null && (
-            <span style={{ padding: '3px 10px', borderRadius: 20, background: 'rgba(249,115,22,0.12)', border: '1px solid #F97316', color: '#F97316', fontSize: 11, fontFamily: 'DM Mono,monospace', fontWeight: 600 }}>
+            <span style={{ padding: '3px 10px', borderRadius: 'var(--r-lg)', background: 'rgba(249,115,22,0.12)', border: '1px solid #F97316', color: '#F97316', fontSize: 11, fontFamily: 'var(--font-body)', fontWeight: 600 }}>
               {last.fat_mass_percent.toFixed(1)}% MG
             </span>
           )}
           {last.muscle_mass_kg != null && (
-            <span style={{ padding: '3px 10px', borderRadius: 20, background: 'rgba(59,130,246,0.12)', border: '1px solid #3B82F6', color: '#3B82F6', fontSize: 11, fontFamily: 'DM Mono,monospace', fontWeight: 600 }}>
+            <span style={{ padding: '3px 10px', borderRadius: 'var(--r-lg)', background: 'rgba(59,130,246,0.12)', border: '1px solid #3B82F6', color: '#3B82F6', fontSize: 11, fontFamily: 'var(--font-body)', fontWeight: 600 }}>
               {last.muscle_mass_kg.toFixed(1)} kg MM
             </span>
           )}
           {last.weight_kg && heightCm && (
-            <span style={{ padding: '3px 10px', borderRadius: 20, background: 'rgba(139,92,246,0.12)', border: '1px solid #8B5CF6', color: '#8B5CF6', fontSize: 11, fontFamily: 'DM Mono,monospace', fontWeight: 600 }}>
+            <span style={{ padding: '3px 10px', borderRadius: 'var(--r-lg)', background: 'rgba(139,92,246,0.12)', border: '1px solid #8B5CF6', color: '#8B5CF6', fontSize: 11, fontFamily: 'var(--font-body)', fontWeight: 600 }}>
               IMC {(last.weight_kg / ((heightCm / 100) ** 2)).toFixed(1)}
             </span>
           )}
@@ -398,7 +398,7 @@ export default function WeightSection({ showToast }: WeightSectionProps) {
         <div style={{ marginBottom: 14 }}>
           <label style={{ fontSize: 10, color: 'var(--text-dim)', display: 'block', marginBottom: 4, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('w2a.th_date')}</label>
           <input type="date" value={date} onChange={e => setDate(e.target.value)}
-            style={{ background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 8, padding: '7px 10px', fontSize: 12, color: 'var(--text)', outline: 'none' }}
+            style={{ background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 'var(--r-sm)', padding: '7px 10px', fontSize: 12, color: 'var(--text)', outline: 'none' }}
           />
         </div>
 
@@ -432,9 +432,9 @@ export default function WeightSection({ showToast }: WeightSectionProps) {
           onClick={() => void handleSave()}
           disabled={!canSave && !saving}
           style={{
-            width: '100%', height: 42, borderRadius: 10, border: 'none',
+            width: '100%', height: 42, borderRadius: 'var(--r-sm)', border: 'none',
             background: btnBg, color: '#fff',
-            fontFamily: 'Syne,sans-serif', fontWeight: 700, fontSize: 13,
+            fontFamily: 'var(--font-body)', fontWeight: 700, fontSize: 13,
             cursor: canSave || saving ? 'pointer' : 'not-allowed',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             transition: 'background 0.3s',

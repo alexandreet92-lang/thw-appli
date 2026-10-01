@@ -53,11 +53,11 @@ export default function LiveShareSheet({ sport, onStarted, onClose, isDark }: {
       <div onClick={requestClose} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)', opacity: shown && !closing ? 1 : 0, transition: 'opacity 0.24s ease' }} />
       <div role="dialog" aria-modal="true" style={{ position: 'relative', width: '100%', maxWidth: 520, maxHeight: '86vh', display: 'flex', flexDirection: 'column', background: bg, borderTopLeftRadius: 24, borderTopRightRadius: 24, boxShadow: '0 -8px 40px rgba(0,0,0,0.25)',
         transform: shown && !closing ? 'translateY(0)' : 'translateY(100%)', transition: 'transform 0.30s cubic-bezier(0.32,0.72,0,1)',
-        padding: '10px 18px calc(16px + env(safe-area-inset-bottom, 0px))', fontFamily: 'DM Sans, sans-serif' }}>
+        padding: '10px 18px calc(16px + env(safe-area-inset-bottom, 0px))', fontFamily: 'var(--font-body)' }}>
         <div style={{ display: 'flex', justifyContent: 'center', paddingBottom: 10, flexShrink: 0 }}><span style={{ width: 40, height: 4, borderRadius: 2, background: track }} /></div>
         <div style={{ flexShrink: 0, marginBottom: 12 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: 21, fontWeight: 800, color: text, fontFamily: 'var(--font-display)' }}>{t('record.liveShareTitle')}</span>
+            <span style={{ fontSize: 22, fontWeight: 800, color: text, fontFamily: 'var(--font-display)' }}>{t('record.liveShareTitle')}</span>
             <button onClick={requestClose} aria-label={t('record.routeCreatorClose')} style={{ width: 32, height: 32, borderRadius: '50%', border: 'none', background: surface, color: text, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
             </button>
@@ -71,7 +71,7 @@ export default function LiveShareSheet({ sport, onStarted, onClose, isDark }: {
             : people.map(p => {
               const on = sel.has(p.id)
               return (
-                <button key={p.id} onClick={() => toggle(p.id)} style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', padding: '10px 6px', border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left', fontFamily: 'DM Sans, sans-serif' }}>
+                <button key={p.id} onClick={() => toggle(p.id)} style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', padding: '10px 6px', border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font-body)' }}>
                   <span style={{ width: 40, height: 40, borderRadius: '50%', flexShrink: 0, overflow: 'hidden', background: surface, display: 'flex', alignItems: 'center', justifyContent: 'center', color: dim, fontWeight: 800 }}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     {p.avatar ? <img src={p.avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : p.name.slice(0, 1).toUpperCase()}
@@ -86,7 +86,7 @@ export default function LiveShareSheet({ sport, onStarted, onClose, isDark }: {
         </div>
 
         <button onClick={start} disabled={sel.size === 0 || starting}
-          style={{ flexShrink: 0, marginTop: 12, width: '100%', height: 52, borderRadius: 15, border: 'none', cursor: sel.size === 0 ? 'default' : 'pointer', background: sel.size === 0 ? surface : ACCENT, color: sel.size === 0 ? dim : '#fff', fontSize: 16, fontWeight: 800, fontFamily: 'DM Sans, sans-serif' }}>
+          style={{ flexShrink: 0, marginTop: 12, width: '100%', height: 52, borderRadius: 'var(--r-md)', border: 'none', cursor: sel.size === 0 ? 'default' : 'pointer', background: sel.size === 0 ? surface : ACCENT, color: sel.size === 0 ? dim : '#fff', fontSize: 16, fontWeight: 800, fontFamily: 'var(--font-body)' }}>
           {starting ? t('record.liveShareStarting') : (sel.size > 0 ? t('record.liveShareStartN', { n: sel.size }) : t('record.liveShareStart'))}
         </button>
       </div>

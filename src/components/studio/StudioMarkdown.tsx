@@ -74,7 +74,7 @@ export default function StudioMarkdown({ text }: { text: string }) {
         if (adv) { blocks.push(<AdvancedChartCard key={key++} spec={adv} />); continue }
       }
       blocks.push(
-        <pre key={key++} style={{ overflowX: 'auto', margin: '8px 0', padding: '10px 12px', borderRadius: 10, background: 'var(--bg-alt)', border: '1px solid var(--border)', fontSize: 12, lineHeight: 1.5, color: 'var(--text-mid)', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' }}>{raw}</pre>,
+        <pre key={key++} style={{ overflowX: 'auto', margin: '8px 0', padding: '10px 12px', borderRadius: 'var(--r-sm)', background: 'var(--bg-alt)', border: '1px solid var(--border)', fontSize: 12, lineHeight: 1.5, color: 'var(--text-mid)', fontFamily: 'var(--font-body)' }}>{raw}</pre>,
       )
       continue
     }

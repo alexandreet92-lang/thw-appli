@@ -173,7 +173,7 @@ export function ViewOnStrava({
         display: 'inline-flex',
         alignItems: 'center',
         gap: 6,
-        fontFamily: 'DM Sans, sans-serif',
+        fontFamily: 'var(--font-body)',
         fontSize: Math.max(11, Math.round(height * 0.4)),
         fontWeight: 600,
         textDecoration: 'none',

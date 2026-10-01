@@ -457,7 +457,7 @@ function AnalysisControls({ mode, metric, sport, hasLaps, onMode, onMetric, t }:
 }) {
   const seg = (active: boolean): React.CSSProperties => ({
     padding: '6px 14px', fontSize: 12.5, fontWeight: 600, cursor: 'pointer',
-    borderRadius: 8, border: '1px solid ' + (active ? 'var(--text)' : 'var(--border)'),
+    borderRadius: 'var(--r-sm)', border: '1px solid ' + (active ? 'var(--text)' : 'var(--border)'),
     background: active ? 'var(--text)' : 'transparent',
     color: active ? 'var(--bg)' : 'var(--text-mid)',
     fontFamily: 'inherit', transition: 'all .15s ease', whiteSpace: 'nowrap',
@@ -636,7 +636,7 @@ function TooltipBox({ xPct, accent, children }: { xPct: number; accent: string; 
     <div style={{
       position: 'absolute', top: 6, left: `${leftPct}%`,
       transform: `translateX(${flip ? '-100%' : '0'}) translateX(${flip ? -8 : 8}px)`,
-      background: 'var(--bg-card)', border: `1px solid ${accent}44`, borderRadius: 9,
+      background: 'var(--bg-card)', border: `1px solid ${accent}44`, borderRadius: 'var(--r-sm)',
       boxShadow: '0 6px 22px rgba(0,0,0,0.14)', padding: '9px 11px', pointerEvents: 'none',
       zIndex: 5, minWidth: 128, fontSize: 12,
     }}>{children}</div>
@@ -724,7 +724,7 @@ function AnalysisTable({ splits, mode, sport, hovered, setHovered, onTap, onHove
   return (
     <div style={{ marginBottom: 22 }}>
       <SectionTitle text={t('actp.precise_data')} />
-      <div style={{ overflowX: 'auto', border: '1px solid var(--border)', borderRadius: 10 }}>
+      <div style={{ overflowX: 'auto', border: '1px solid var(--border)', borderRadius: 'var(--r-sm)' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
           <thead>
             <tr style={{ background: 'var(--bg-card2)' }}>

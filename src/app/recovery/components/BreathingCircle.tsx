@@ -70,7 +70,7 @@ export default function BreathingCircle() {
         <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-dim)', margin: '0 0 4px', textAlign: 'center' }}>
           {t('recovery.breathing.eyebrow')}
         </p>
-        <h3 style={{ fontFamily: 'Syne,sans-serif', fontSize: 16, fontWeight: 700, margin: 0, textAlign: 'center', color: 'var(--text)' }}>
+        <h3 style={{ fontFamily: 'var(--font-body)', fontSize: 16, fontWeight: 700, margin: 0, textAlign: 'center', color: 'var(--text)' }}>
           {t('recovery.breathing.title')}
         </h3>
       </div>
@@ -97,7 +97,7 @@ export default function BreathingCircle() {
             {label}
           </span>
           {active && (
-            <span style={{ fontSize: 20, fontWeight: 800, color: '#fff', fontFamily: 'DM Mono,monospace', marginTop: 4 }}>
+            <span style={{ fontSize: 20, fontWeight: 800, color: '#fff', fontFamily: 'var(--font-body)', marginTop: 4 }}>
               {counter}
             </span>
           )}
@@ -107,7 +107,7 @@ export default function BreathingCircle() {
       {/* Controls */}
       {!active ? (
         <button onClick={start} style={{
-          padding: '10px 28px', borderRadius: 22, border: 'none',
+          padding: '10px 28px', borderRadius: 'var(--r-lg)', border: 'none',
           background: 'linear-gradient(135deg, #3B82F6, #06B6D4)',
           color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer',
           boxShadow: '0 4px 14px rgba(59,130,246,0.35)',
@@ -122,7 +122,7 @@ export default function BreathingCircle() {
             </span>
           )}
           <button onClick={stop} style={{
-            padding: '7px 20px', borderRadius: 18, border: '1px solid var(--border)',
+            padding: '7px 20px', borderRadius: 'var(--r-lg)', border: '1px solid var(--border)',
             background: 'transparent', color: 'var(--text-dim)', fontSize: 11, cursor: 'pointer',
           }}>
             {t('recovery.breathing.stop')}
@@ -130,7 +130,7 @@ export default function BreathingCircle() {
         </div>
       )}
 
-      <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: 0, textAlign: 'center' }}>
+      <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: 0, textAlign: 'center' }}>
         {t('recovery.breathing.footer')}
       </p>
     </div>

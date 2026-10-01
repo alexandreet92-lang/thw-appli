@@ -411,7 +411,7 @@ export default function BoxeScreen({ session, onClose, isDark }: Props) {
                   </div>
                   {/* Course : bascule km/h ↔ min/km */}
                   {liveInt.kind === 'speed' && (
-                    <div style={{ display: 'inline-flex', border: '1.5px solid rgba(255,255,255,0.8)', borderRadius: 999, overflow: 'hidden' }}>
+                    <div style={{ display: 'inline-flex', border: '1.5px solid rgba(255,255,255,0.8)', borderRadius: 'var(--r-pill)', overflow: 'hidden' }}>
                       {(['kmh', 'minkm'] as const).map(u => (
                         <button key={u} onClick={() => setRunUnit(u)} style={{ padding: '5px 12px', fontSize: 12, fontWeight: 800, border: 'none', cursor: 'pointer', background: runUnit === u ? '#fff' : 'transparent', color: runUnit === u ? '#000' : '#fff' }}>{u === 'kmh' ? 'km/h' : 'min/km'}</button>
                       ))}
@@ -435,7 +435,7 @@ export default function BoxeScreen({ session, onClose, isDark }: Props) {
               <Stepper label="REPS" value={String(liveReps)} onDec={() => setLiveReps(n => Math.max(0, n - 1))} onInc={() => setLiveReps(n => n + 1)} />
               <Stepper label="CHARGE (KG)" value={liveKg === 0 ? 'PDC' : String(liveKg)} onDec={() => setLiveKg(n => Math.max(0, +(n - 2.5).toFixed(1)))} onInc={() => setLiveKg(n => +(n + 2.5).toFixed(1))} />
             </div>
-            {!isDone && <button onClick={completeReps} style={{ marginTop: 22, padding: '13px 34px', borderRadius: 999, border: '2px solid #fff', background: 'rgba(255,255,255,0.18)', color: '#fff', fontSize: 15.5, fontWeight: 800, cursor: 'pointer' }}>Valider · Suivant →</button>}
+            {!isDone && <button onClick={completeReps} style={{ marginTop: 22, padding: '13px 34px', borderRadius: 'var(--r-pill)', border: '2px solid #fff', background: 'rgba(255,255,255,0.18)', color: '#fff', fontSize: 15.5, fontWeight: 800, cursor: 'pointer' }}>Valider · Suivant →</button>}
           </>
         )}
       </div>
@@ -452,12 +452,12 @@ export default function BoxeScreen({ session, onClose, isDark }: Props) {
       {!isDone && (
         <div style={{ flexShrink: 0, display: 'flex', gap: 10, padding: '10px 24px 0', justifyContent: 'center' }}>
           <button onClick={() => { haptic("light"); goBack() }} disabled={idx === 0}
-            style={{ flex: 1, maxWidth: 200, padding: '9px 12px', borderRadius: 999, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: idx === 0 ? 'var(--text-dim)' : 'var(--text)', fontSize: 13, fontWeight: 800, cursor: idx === 0 ? 'default' : 'pointer', opacity: idx === 0 ? 0.5 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+            style={{ flex: 1, maxWidth: 200, padding: '9px 12px', borderRadius: 'var(--r-pill)', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: idx === 0 ? 'var(--text-dim)' : 'var(--text)', fontSize: 13, fontWeight: 800, cursor: idx === 0 ? 'default' : 'pointer', opacity: idx === 0 ? 0.5 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
             Précédent
           </button>
           <button onClick={() => { haptic("light"); advance() }}
-            style={{ flex: 1, maxWidth: 200, padding: '9px 12px', borderRadius: 999, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 13, fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+            style={{ flex: 1, maxWidth: 200, padding: '9px 12px', borderRadius: 'var(--r-pill)', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 13, fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
             {cur.phase === 'rest' ? 'Passer le repos' : 'Passer'}
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6"/></svg>
           </button>
@@ -472,7 +472,7 @@ export default function BoxeScreen({ session, onClose, isDark }: Props) {
         </div>
         {isDone ? (
           // La voix ouvre automatiquement le résumé ; ce bouton n'est qu'un secours pour le rouvrir.
-          <button onClick={() => { setSaveStep('summary'); setShowSave(true) }} style={{ height: 52, padding: '0 22px', borderRadius: 999, border: `2px solid ${ACCENT}`, background: 'transparent', color: ACCENT, cursor: 'pointer', fontWeight: 800, fontSize: 13.5, whiteSpace: 'nowrap' }}>Voir le résumé →</button>
+          <button onClick={() => { setSaveStep('summary'); setShowSave(true) }} style={{ height: 52, padding: '0 22px', borderRadius: 'var(--r-pill)', border: `2px solid ${ACCENT}`, background: 'transparent', color: ACCENT, cursor: 'pointer', fontWeight: 800, fontSize: 13.5, whiteSpace: 'nowrap' }}>Voir le résumé →</button>
         ) : (
           <button onClick={() => setRunning(r => !r)} style={{ width: 84, height: 84, borderRadius: '50%', border: `3px solid ${ACCENT}`, background: 'transparent', color: ACCENT, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             {running ? <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>
@@ -527,8 +527,8 @@ export default function BoxeScreen({ session, onClose, isDark }: Props) {
         <p style={{ fontSize: 11, letterSpacing: '0.14em', textTransform: 'uppercase', color: ACCENT, fontWeight: 800, margin: '4px 0 6px' }}>{t('record.readyToStart')}</p>
         <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 700, color: 'var(--text)', margin: '0 0 18px' }}>{session.title}</h2>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10, marginBottom: 18 }}>
-          <div style={{ background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 14, padding: '13px 14px' }}><div style={{ fontSize: 20, fontWeight: 800, color: 'var(--text)' }}>~{Math.round(estimateDurationSec(buildWorkoutSteps(wBlocks)) / 60)} min</div><div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', color: 'var(--text-dim)', textTransform: 'uppercase' }}>Durée est.</div></div>
-          <div style={{ background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 14, padding: '13px 14px' }}><div style={{ fontSize: 20, fontWeight: 800, color: 'var(--text)' }}>{wBlocks.length}</div><div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', color: 'var(--text-dim)', textTransform: 'uppercase' }}>Blocs</div></div>
+          <div style={{ background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: '13px 14px' }}><div style={{ fontSize: 20, fontWeight: 800, color: 'var(--text)' }}>~{Math.round(estimateDurationSec(buildWorkoutSteps(wBlocks)) / 60)} min</div><div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', color: 'var(--text-dim)', textTransform: 'uppercase' }}>Durée est.</div></div>
+          <div style={{ background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: '13px 14px' }}><div style={{ fontSize: 20, fontWeight: 800, color: 'var(--text)' }}>{wBlocks.length}</div><div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', color: 'var(--text-dim)', textTransform: 'uppercase' }}>Blocs</div></div>
         </div>
         {wBlocks.map((b, i) => {
           const isCircuit = b.mode === 'circuit'
@@ -536,7 +536,7 @@ export default function BoxeScreen({ session, onClose, isDark }: Props) {
             ? `${b.circuitRounds ?? 1} tour${(b.circuitRounds ?? 1) > 1 ? 's' : ''} · ${(b.circuitExercises ?? []).length} exos`
             : b.durationSec ? `${b.sets} × ${b.durationSec}s` : `${b.sets} × ${b.reps}${b.weightKg ? ` · ${b.weightKg} kg` : ''}`
           return (
-            <div key={b.id || i} style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 14, padding: '13px 15px', marginBottom: 10 }}>
+            <div key={b.id || i} style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: '13px 15px', marginBottom: 10 }}>
               <span style={{ color: 'var(--text-dim)', fontWeight: 800, fontSize: 13 }}>{i + 1}</span>
               <span style={{ flex: 1, fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>{isCircuit ? (b.name || `Circuit ${i + 1}`) : b.name}</span>
               <span style={{ fontSize: 12.5, color: 'var(--text-mid)', fontWeight: 600 }}>{line}</span>
@@ -558,15 +558,15 @@ export default function BoxeScreen({ session, onClose, isDark }: Props) {
         <p style={{ fontSize: 11, letterSpacing: '0.14em', textTransform: 'uppercase', color: ACCENT, fontWeight: 800, margin: '4px 0 6px' }}>{t('record.readyToStart')}</p>
         <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 700, color: 'var(--text)', margin: '0 0 18px' }}>{session.title}</h2>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 18 }}>
-          <div style={{ background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 14, padding: '13px 14px' }}><div style={{ fontSize: 20, fontWeight: 800, color: 'var(--text)' }}>~{preDurMin} min</div><div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', color: 'var(--text-dim)', textTransform: 'uppercase' }}>Durée est.</div></div>
-          <div style={{ background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 14, padding: '13px 14px' }}><div style={{ fontSize: 20, fontWeight: 800, color: 'var(--text)' }}>{preTours}</div><div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', color: 'var(--text-dim)', textTransform: 'uppercase' }}>Tours</div></div>
-          <div style={{ background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 14, padding: '13px 14px' }}><div style={{ fontSize: 20, fontWeight: 800, color: 'var(--text)' }}>{session.moves.length}</div><div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', color: 'var(--text-dim)', textTransform: 'uppercase' }}>Exos</div></div>
+          <div style={{ background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: '13px 14px' }}><div style={{ fontSize: 20, fontWeight: 800, color: 'var(--text)' }}>~{preDurMin} min</div><div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', color: 'var(--text-dim)', textTransform: 'uppercase' }}>Durée est.</div></div>
+          <div style={{ background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: '13px 14px' }}><div style={{ fontSize: 20, fontWeight: 800, color: 'var(--text)' }}>{preTours}</div><div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', color: 'var(--text-dim)', textTransform: 'uppercase' }}>Tours</div></div>
+          <div style={{ background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: '13px 14px' }}><div style={{ fontSize: 20, fontWeight: 800, color: 'var(--text)' }}>{session.moves.length}</div><div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', color: 'var(--text-dim)', textTransform: 'uppercase' }}>Exos</div></div>
         </div>
         {preCircuits.map((c, ci) => {
           const cm = session.moves.filter(m => (m.circuitId ?? preFirstId) === c.id)
           if (!cm.length) return null
           return (
-            <div key={c.id} style={{ background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 16, padding: '14px 16px', marginBottom: 12 }}>
+            <div key={c.id} style={{ background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: '14px 16px', marginBottom: 12 }}>
               <p style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: ACCENT, margin: '0 0 10px' }}>{c.name || `Circuit ${ci + 1}`} · {Math.max(1, c.rounds)} tour{c.rounds > 1 ? 's' : ''}</p>
               {cm.map(m => {
                 const def = moveDef(sport as ComposedSport, m.kind)
@@ -600,7 +600,7 @@ export default function BoxeScreen({ session, onClose, isDark }: Props) {
       {!started ? (<>
         {isWorkout ? preStartWorkout : preStart}
         <div style={{ flexShrink: 0, padding: '12px 18px calc(14px + env(safe-area-inset-bottom))', borderTop: '1px solid var(--border)' }}>
-          <button onClick={() => { voice.unlock(); setStarted(true); setRunning(true) }} style={{ width: '100%', maxWidth: 560, margin: '0 auto', display: 'block', padding: 15, borderRadius: 14, border: 'none', background: ACCENT, color: ACCENT_ON, fontSize: 15.5, fontWeight: 800, cursor: 'pointer' }}>Commencer</button>
+          <button onClick={() => { voice.unlock(); setStarted(true); setRunning(true) }} style={{ width: '100%', maxWidth: 560, margin: '0 auto', display: 'block', padding: 15, borderRadius: 'var(--r-md)', border: 'none', background: ACCENT, color: ACCENT_ON, fontSize: 15.5, fontWeight: 800, cursor: 'pointer' }}>Commencer</button>
         </div>
       </>) : isDesktop ? (
         // Desktop : split gauche (séance/chrono) / droite (données)
@@ -642,13 +642,13 @@ export default function BoxeScreen({ session, onClose, isDark }: Props) {
           Terminer et enregistrer. Carte opaque + texte contrasté (lisible). */}
       {!running && !isDone && elapsed > 0 && !showOverview && (
         <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.62)', backdropFilter: 'blur(3px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 4, padding: 20 }}>
-          <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 22, padding: 24, width: 'min(360px, 90vw)', textAlign: 'center', boxShadow: '0 24px 60px rgba(0,0,0,0.4)' }}>
+          <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-lg)', padding: 24, width: 'min(360px, 90vw)', textAlign: 'center', boxShadow: '0 24px 60px rgba(0,0,0,0.4)' }}>
             <p style={{ fontSize: 18, fontWeight: 800, color: 'var(--text)', margin: '0 0 4px' }}>{t('record.sessionPaused')}</p>
             <p style={{ fontSize: 13, color: 'var(--text-mid)', margin: '0 0 20px' }}>Temps écoulé · {fmtDur(elapsed)}</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <button onClick={() => setRunning(true)} style={{ width: '100%', padding: 15, borderRadius: 14, border: 'none', background: '#22c55e', color: '#fff', fontSize: 15.5, fontWeight: 800, cursor: 'pointer' }}>Reprendre</button>
-              <button onClick={() => { setSaveStep('summary'); setShowSave(true) }} style={{ width: '100%', padding: 15, borderRadius: 14, border: 'none', background: ACCENT, color: ACCENT_ON, fontSize: 15.5, fontWeight: 800, cursor: 'pointer' }}>Terminer et enregistrer</button>
-              <button onClick={onClose} style={{ width: '100%', padding: 15, borderRadius: 14, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 14.5, fontWeight: 700, cursor: 'pointer' }}>Terminer sans enregistrer</button>
+              <button onClick={() => setRunning(true)} style={{ width: '100%', padding: 15, borderRadius: 'var(--r-md)', border: 'none', background: '#22c55e', color: '#fff', fontSize: 15.5, fontWeight: 800, cursor: 'pointer' }}>Reprendre</button>
+              <button onClick={() => { setSaveStep('summary'); setShowSave(true) }} style={{ width: '100%', padding: 15, borderRadius: 'var(--r-md)', border: 'none', background: ACCENT, color: ACCENT_ON, fontSize: 15.5, fontWeight: 800, cursor: 'pointer' }}>Terminer et enregistrer</button>
+              <button onClick={onClose} style={{ width: '100%', padding: 15, borderRadius: 'var(--r-md)', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 14.5, fontWeight: 700, cursor: 'pointer' }}>Terminer sans enregistrer</button>
             </div>
           </div>
         </div>
@@ -656,12 +656,12 @@ export default function BoxeScreen({ session, onClose, isDark }: Props) {
 
       {confirmClose && (
         <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 5 }}>
-          <div style={{ background: 'var(--bg-card)', borderRadius: 18, padding: 20, width: 'min(320px, 86vw)', textAlign: 'center' }}>
+          <div style={{ background: 'var(--bg-card)', borderRadius: 'var(--r-lg)', padding: 20, width: 'min(320px, 86vw)', textAlign: 'center' }}>
             <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', margin: '0 0 4px' }}>Quitter la séance ?</p>
             <p style={{ fontSize: 13, color: 'var(--text-mid)', margin: '0 0 16px' }}>La séance en cours ne sera pas enregistrée.</p>
             <div style={{ display: 'flex', gap: 10 }}>
-              <button onClick={() => setConfirmClose(false)} style={{ flex: 1, padding: 12, borderRadius: 999, background: 'var(--bg-card2)', border: '1px solid var(--border)', color: 'var(--text)', fontWeight: 700, cursor: 'pointer' }}>Annuler</button>
-              <button onClick={onClose} style={{ flex: 1, padding: 12, borderRadius: 999, background: ACCENT, border: 'none', color: ACCENT_ON, fontWeight: 700, cursor: 'pointer' }}>Quitter</button>
+              <button onClick={() => setConfirmClose(false)} style={{ flex: 1, padding: 12, borderRadius: 'var(--r-pill)', background: 'var(--bg-card2)', border: '1px solid var(--border)', color: 'var(--text)', fontWeight: 700, cursor: 'pointer' }}>Annuler</button>
+              <button onClick={onClose} style={{ flex: 1, padding: 12, borderRadius: 'var(--r-pill)', background: ACCENT, border: 'none', color: ACCENT_ON, fontWeight: 700, cursor: 'pointer' }}>Quitter</button>
             </div>
           </div>
         </div>
@@ -675,7 +675,7 @@ export default function BoxeScreen({ session, onClose, isDark }: Props) {
 // Puce blanche (réglage temps) posée sur le bloc de phase coloré.
 function WhiteChip({ children, onClick }: { children: React.ReactNode; onClick: () => void }) {
   return (
-    <button onClick={onClick} style={{ padding: '10px 18px', borderRadius: 999, border: '2px solid rgba(255,255,255,0.9)', background: 'rgba(255,255,255,0.14)', color: '#fff', fontSize: 14, fontWeight: 800, cursor: 'pointer' }}>{children}</button>
+    <button onClick={onClick} style={{ padding: '10px 18px', borderRadius: 'var(--r-pill)', border: '2px solid rgba(255,255,255,0.9)', background: 'rgba(255,255,255,0.14)', color: '#fff', fontSize: 14, fontWeight: 800, cursor: 'pointer' }}>{children}</button>
   )
 }
 
@@ -712,15 +712,15 @@ function IntensityEditor({ intensity, runUnit, onCancel, onSubmit }: { intensity
   }
   return createPortal(
     <div onClick={onCancel} style={{ position: 'fixed', inset: 0, zIndex: 10010, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-      <div onClick={e => e.stopPropagation()} style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 20, padding: 22, width: 'min(320px, 90vw)' }}>
+      <div onClick={e => e.stopPropagation()} style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-lg)', padding: 22, width: 'min(320px, 90vw)' }}>
         <p style={{ fontSize: 16, fontWeight: 800, color: 'var(--text)', margin: '0 0 4px' }}>Cible exacte</p>
         <p style={{ fontSize: 12.5, color: 'var(--text-mid)', margin: '0 0 14px' }}>{isPace ? 'Format mm:ss' : `En ${disp.unit}`}</p>
         <input autoFocus value={val} onChange={e => setVal(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') submit() }}
           inputMode={isPace ? 'text' : 'decimal'} placeholder={disp.value}
-          style={{ width: '100%', boxSizing: 'border-box', padding: '12px 14px', borderRadius: 12, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 20, fontWeight: 800, textAlign: 'center', outline: 'none' }} />
+          style={{ width: '100%', boxSizing: 'border-box', padding: '12px 14px', borderRadius: 'var(--r-md)', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 20, fontWeight: 800, textAlign: 'center', outline: 'none' }} />
         <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
-          <button onClick={onCancel} style={{ flex: 1, padding: 12, borderRadius: 12, background: 'var(--bg-card2)', border: '1px solid var(--border)', color: 'var(--text)', fontWeight: 700, cursor: 'pointer' }}>Annuler</button>
-          <button onClick={submit} style={{ flex: 1, padding: 12, borderRadius: 12, background: 'var(--text)', border: 'none', color: 'var(--bg)', fontWeight: 800, cursor: 'pointer' }}>Valider</button>
+          <button onClick={onCancel} style={{ flex: 1, padding: 12, borderRadius: 'var(--r-md)', background: 'var(--bg-card2)', border: '1px solid var(--border)', color: 'var(--text)', fontWeight: 700, cursor: 'pointer' }}>Annuler</button>
+          <button onClick={submit} style={{ flex: 1, padding: 12, borderRadius: 'var(--r-md)', background: 'var(--text)', border: 'none', color: 'var(--bg)', fontWeight: 800, cursor: 'pointer' }}>Valider</button>
         </div>
       </div>
     </div>,
@@ -730,7 +730,7 @@ function IntensityEditor({ intensity, runUnit, onCancel, onSubmit }: { intensity
 
 function Metric({ label, value, unit }: { label: string; value: string; unit?: string }) {
   return (
-    <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 14, padding: '13px 14px' }}>
+    <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: '13px 14px' }}>
       <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-dim)' }}>{label}</div>
       <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)', fontVariantNumeric: 'tabular-nums', marginTop: 3 }}>
         {value}{unit && <small style={{ fontSize: 11, color: 'var(--text-mid)', fontWeight: 700, marginLeft: 2 }}>{unit}</small>}
@@ -744,7 +744,7 @@ function OverviewSheet({ timeline, idx, onClose }: { timeline: BoxeStep[]; idx: 
   const { t } = useI18n()
   const efforts = timeline.map((s, i) => ({ s, i })).filter(x => x.s.phase === 'work')
   const Row = ({ s, state }: { s: BoxeStep; state: 'done' | 'now' | 'todo' }) => (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10, marginBottom: 6,
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 'var(--r-sm)', marginBottom: 6,
       background: state === 'now' ? tint(8) : 'var(--bg-card2)', border: state === 'now' ? `1px solid ${tint(40)}` : '1px solid transparent', opacity: state === 'done' ? 0.5 : 1 }}>
       <span style={{ width: 8, height: 8, borderRadius: '50%', background: state === 'done' ? 'var(--text-dim)' : state === 'now' ? ACCENT : 'var(--border-mid)', flexShrink: 0 }} />
       <span style={{ flex: 1, minWidth: 0 }}>

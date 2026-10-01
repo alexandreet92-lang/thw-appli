@@ -210,7 +210,7 @@ export default function SportSelector({ open, onClose, selectedSport, onSelect, 
           display: 'flex', flexDirection: 'column', overflow: 'hidden',
           willChange: 'transform',
           color: 'var(--text)',
-          fontFamily: 'DM Sans, sans-serif',
+          fontFamily: 'var(--font-body)',
           boxShadow: '0 -8px 32px rgba(0,0,0,0.18)',
         }}
       >
@@ -221,7 +221,7 @@ export default function SportSelector({ open, onClose, selectedSport, onSelect, 
 
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px 12px' }}>
-          <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)', margin: 0, fontFamily: 'Syne, sans-serif' }}>
+          <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)', margin: 0, fontFamily: 'var(--font-display)' }}>
             {t('record.sportSelectorTitle')}
           </h2>
           <button
@@ -239,7 +239,7 @@ export default function SportSelector({ open, onClose, selectedSport, onSelect, 
         {/* Search */}
         <div style={{ padding: '0 16px 12px' }}>
           <div style={{
-            background: 'var(--bg-card2)', borderRadius: 12,
+            background: 'var(--bg-card2)', borderRadius: 'var(--r-md)',
             padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 8,
             border: '1px solid var(--border)',
           }}>
@@ -254,7 +254,7 @@ export default function SportSelector({ open, onClose, selectedSport, onSelect, 
               style={{
                 background: 'none', border: 'none', outline: 'none',
                 color: 'var(--text)', fontSize: 15, flex: 1,
-                fontFamily: 'DM Sans, sans-serif',
+                fontFamily: 'var(--font-body)',
               }}
             />
           </div>
@@ -275,7 +275,7 @@ export default function SportSelector({ open, onClose, selectedSport, onSelect, 
                   style={{
                     display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
                     minWidth: 64, background: 'none', border: 'none', cursor: 'pointer',
-                    fontFamily: 'DM Sans, sans-serif',
+                    fontFamily: 'var(--font-body)',
                   }}
                 >
                   <span style={{
@@ -320,7 +320,7 @@ export default function SportSelector({ open, onClose, selectedSport, onSelect, 
                       width: '100%', display: 'flex', alignItems: 'center', gap: 14,
                       padding: '14px 12px',
                       background: 'none', border: 'none', cursor: 'pointer',
-                      borderRadius: 10,
+                      borderRadius: 'var(--r-sm)',
                       color: 'var(--text)',
                       textAlign: 'left',
                       transition: 'background-color 100ms',
@@ -335,7 +335,7 @@ export default function SportSelector({ open, onClose, selectedSport, onSelect, 
                     }}>
                       {sport.icon}
                     </span>
-                    <span style={{ fontSize: 16, color: 'var(--text)', fontWeight: 400, fontFamily: 'DM Sans, sans-serif' }}>
+                    <span style={{ fontSize: 16, color: 'var(--text)', fontWeight: 400, fontFamily: 'var(--font-body)' }}>
                       {sportLabelText(sport)}
                     </span>
                     {active && (
@@ -364,10 +364,10 @@ export default function SportSelector({ open, onClose, selectedSport, onSelect, 
             <button
               onClick={() => { handleClose(); onManual() }}
               style={{
-                width: '100%', height: 46, borderRadius: 12,
+                width: '100%', height: 46, borderRadius: 'var(--r-md)',
                 background: 'var(--bg-card2)', border: '1px solid var(--border)',
                 color: 'var(--text)', fontSize: 14, fontWeight: 700, cursor: 'pointer',
-                fontFamily: 'DM Sans, sans-serif', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                fontFamily: 'var(--font-body)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
               }}
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>

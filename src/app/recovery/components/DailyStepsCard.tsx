@@ -71,12 +71,12 @@ export default function DailyStepsCard() {
   return (
     <div style={{
       background: 'var(--bg-card)', border: '1px solid var(--border)',
-      borderRadius: 20, padding: 24, boxShadow: 'var(--shadow-card)',
+      borderRadius: 'var(--r-lg)', padding: 24, boxShadow: 'var(--shadow-card)',
     }}>
       <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-dim)', margin: '0 0 4px' }}>
         {t('recovery.steps.eyebrow')}
       </p>
-      <h2 style={{ fontFamily: 'Syne,sans-serif', fontSize: 18, fontWeight: 700, margin: '0 0 16px' }}>
+      <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700, margin: '0 0 16px' }}>
         {t('recovery.steps.title')}
       </h2>
 
@@ -85,7 +85,7 @@ export default function DailyStepsCard() {
         {/* Compteur + barre */}
         <div style={{ flex: 1, minWidth: 180 }}>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 10 }}>
-            <span style={{ fontFamily: 'Syne,sans-serif', fontSize: 36, fontWeight: 800, color: reached ? '#10B981' : 'var(--text)', lineHeight: 1 }}>
+            <span style={{ fontFamily: 'var(--font-display)', fontSize: 36, fontWeight: 800, color: reached ? '#10B981' : 'var(--text)', lineHeight: 1 }}>
               {steps.toLocaleString(currentLocale())}
             </span>
             <span style={{ fontSize: 13, color: 'var(--text-dim)', fontWeight: 500 }}>
@@ -94,11 +94,11 @@ export default function DailyStepsCard() {
           </div>
 
           {/* Barre de progression */}
-          <div style={{ height: 8, borderRadius: 8, background: 'var(--bg-card2)', overflow: 'hidden', marginBottom: 6 }}>
+          <div style={{ height: 8, borderRadius: 'var(--r-sm)', background: 'var(--bg-card2)', overflow: 'hidden', marginBottom: 6 }}>
             <div style={{
               height: '100%',
               width: animated ? `${pct * 100}%` : '0%',
-              borderRadius: 8,
+              borderRadius: 'var(--r-sm)',
               background: reached
                 ? 'linear-gradient(90deg, #10B981, #059669)'
                 : steps > GOAL * 0.6
@@ -112,7 +112,7 @@ export default function DailyStepsCard() {
             <span style={{ fontSize: 10, color: reached ? '#10B981' : 'var(--text-dim)', fontWeight: reached ? 700 : 400 }}>
               {reached ? t('recovery.steps.goalReached') : t('recovery.steps.goalPct', { n: Math.round(pct * 100) })}
             </span>
-            <span style={{ fontSize: 9, color: 'var(--text-dim)', fontFamily: 'DM Mono,monospace' }}>
+            <span style={{ fontSize: 10, color: 'var(--text-dim)', fontFamily: 'var(--font-body)' }}>
               {data.date}
             </span>
           </div>
@@ -120,17 +120,17 @@ export default function DailyStepsCard() {
           {/* Stats secondaires */}
           <div style={{ display: 'flex', gap: 12, marginTop: 12, flexWrap: 'wrap' }}>
             {data.active_calories != null && (
-              <div style={{ padding: '5px 10px', borderRadius: 8, background: 'var(--bg-card2)', border: '1px solid var(--border)' }}>
-                <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 1px' }}>{t('recovery.steps.activeCal')}</p>
-                <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', margin: 0, fontFamily: 'DM Mono,monospace' }}>
+              <div style={{ padding: '5px 10px', borderRadius: 'var(--r-sm)', background: 'var(--bg-card2)', border: '1px solid var(--border)' }}>
+                <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '0 0 1px' }}>{t('recovery.steps.activeCal')}</p>
+                <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', margin: 0, fontFamily: 'var(--font-body)' }}>
                   {data.active_calories} kcal
                 </p>
               </div>
             )}
             {data.active_time_s != null && (
-              <div style={{ padding: '5px 10px', borderRadius: 8, background: 'var(--bg-card2)', border: '1px solid var(--border)' }}>
-                <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 1px' }}>{t('recovery.steps.activeTime')}</p>
-                <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', margin: 0, fontFamily: 'DM Mono,monospace' }}>
+              <div style={{ padding: '5px 10px', borderRadius: 'var(--r-sm)', background: 'var(--bg-card2)', border: '1px solid var(--border)' }}>
+                <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '0 0 1px' }}>{t('recovery.steps.activeTime')}</p>
+                <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', margin: 0, fontFamily: 'var(--font-body)' }}>
                   {fmtTime(data.active_time_s)}
                 </p>
               </div>
@@ -141,7 +141,7 @@ export default function DailyStepsCard() {
         {/* Sparkline 7j */}
         {spark.length >= 3 && (
           <div style={{ flexShrink: 0 }}>
-            <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 4px', textAlign: 'center' }}>{t('recovery.last7days')}</p>
+            <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '0 0 4px', textAlign: 'center' }}>{t('recovery.last7days')}</p>
             <svg viewBox={`0 0 ${W} ${H + 14}`} style={{ width: W, height: H + 14, display: 'block' }}>
               {/* Ligne objectif */}
               <line

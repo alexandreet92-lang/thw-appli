@@ -12,7 +12,7 @@ interface Props {
 
 function MacroPill({ label, value, color }: { label: string; value: number; color: string }) {
   return (
-    <span style={{ fontSize: 10, color, fontFamily: 'DM Mono,monospace' }}>
+    <span style={{ fontSize: 10, color, fontFamily: 'var(--font-body)' }}>
       {label} {value}g
     </span>
   )
@@ -28,11 +28,11 @@ function FoodRow({ food, onSelect }: { food: FoodItem; onSelect: (food: FoodItem
       onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
     >
       <div style={{ flex: 1, minWidth: 0 }}>
-        <p style={{ margin: 0, fontSize: 13, color: 'var(--text)', fontFamily: 'DM Sans,sans-serif', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+        <p style={{ margin: 0, fontSize: 13, color: 'var(--text)', fontFamily: 'var(--font-body)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
           {food.product_name}
         </p>
         <div style={{ display: 'flex', gap: 8, marginTop: 2 }}>
-          <span style={{ fontSize: 10, color: 'var(--primary)', fontFamily: 'DM Mono,monospace' }}>{n['energy-kcal_100g']} kcal</span>
+          <span style={{ fontSize: 10, color: 'var(--primary)', fontFamily: 'var(--font-body)' }}>{n['energy-kcal_100g']} kcal</span>
           <MacroPill label="P" value={n.proteins_100g} color="#22c55e" />
           <MacroPill label="G" value={n.carbohydrates_100g} color="#eab308" />
           <MacroPill label="L" value={n.fat_100g} color="#f97316" />
@@ -48,7 +48,7 @@ function Skeleton() {
     <div style={{ padding: '10px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
       {[72, 56, 64].map((w, i) => (
         <div key={i}>
-          <div style={{ height: 13, borderRadius: 6, background: 'var(--border)', width: `${w}%`, animation: 'pulse 1.4s ease-in-out infinite' }} />
+          <div style={{ height: 13, borderRadius: 'var(--r-sm)', background: 'var(--border)', width: `${w}%`, animation: 'pulse 1.4s ease-in-out infinite' }} />
           <div style={{ height: 10, borderRadius: 4, background: 'var(--border)', width: '45%', marginTop: 5, animation: 'pulse 1.4s ease-in-out infinite', opacity: 0.6 }} />
         </div>
       ))}
@@ -127,23 +127,23 @@ export function FoodSearchSheet({ onSelect, onClose, initialBarcode }: Props) {
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="2" strokeLinecap="round" style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}>
               <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
             </svg>
-            <input ref={inputRef} value={query} onChange={e => handleChange(e.target.value)} placeholder={t('nutrition.foodSearch.placeholder')} style={{ width: '100%', padding: '9px 9px 9px 32px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card2)', fontSize: 14, color: 'var(--text)', fontFamily: 'DM Sans,sans-serif', outline: 'none', boxSizing: 'border-box' }} />
+            <input ref={inputRef} value={query} onChange={e => handleChange(e.target.value)} placeholder={t('nutrition.foodSearch.placeholder')} style={{ width: '100%', padding: '9px 9px 9px 32px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-card2)', fontSize: 14, color: 'var(--text)', fontFamily: 'var(--font-body)', outline: 'none', boxSizing: 'border-box' }} />
           </div>
-          <button onClick={requestClose} style={{ width: 34, height: 34, borderRadius: 8, border: 'none', background: 'var(--bg-card2)', cursor: 'pointer', color: 'var(--text-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <button onClick={requestClose} style={{ width: 34, height: 34, borderRadius: 'var(--r-sm)', border: 'none', background: 'var(--bg-card2)', cursor: 'pointer', color: 'var(--text-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
           </button>
         </div>
 
         {/* Confirm grams */}
         {pending && (
-          <div style={{ margin: '0 16px 12px', padding: '12px 14px', borderRadius: 12, background: 'var(--bg-card2)', border: '1px solid var(--border)' }}>
-            <p style={{ margin: '0 0 8px', fontSize: 12, fontWeight: 600, color: 'var(--text)', fontFamily: 'DM Sans,sans-serif' }}>{pending.product_name}</p>
+          <div style={{ margin: '0 16px 12px', padding: '12px 14px', borderRadius: 'var(--r-md)', background: 'var(--bg-card2)', border: '1px solid var(--border)' }}>
+            <p style={{ margin: '0 0 8px', fontSize: 12, fontWeight: 600, color: 'var(--text)', fontFamily: 'var(--font-body)' }}>{pending.product_name}</p>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <input type="number" value={grams} onChange={e => setGrams(e.target.value)} min="1" style={{ width: 80, padding: '6px 8px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-card)', fontSize: 14, color: 'var(--text)', fontFamily: 'DM Mono,monospace', outline: 'none' }} />
+              <input type="number" value={grams} onChange={e => setGrams(e.target.value)} min="1" style={{ width: 80, padding: '6px 8px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-card)', fontSize: 14, color: 'var(--text)', fontFamily: 'var(--font-body)', outline: 'none' }} />
               <span style={{ fontSize: 13, color: 'var(--text-dim)' }}>g</span>
               <div style={{ flex: 1 }} />
-              <button onClick={() => setPending(null)} style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-dim)', fontSize: 12, cursor: 'pointer' }}>{t('nutrition.common.back')}</button>
-              <button onClick={handleConfirm} style={{ padding: '6px 14px', borderRadius: 8, border: 'none', background: 'linear-gradient(135deg,#06B6D4,#3B82F6)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'Syne,sans-serif' }}>{t('nutrition.common.add')}</button>
+              <button onClick={() => setPending(null)} style={{ padding: '6px 12px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-dim)', fontSize: 12, cursor: 'pointer' }}>{t('nutrition.common.back')}</button>
+              <button onClick={handleConfirm} style={{ padding: '6px 14px', borderRadius: 'var(--r-sm)', border: 'none', background: 'linear-gradient(135deg,#06B6D4,#3B82F6)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>{t('nutrition.common.add')}</button>
             </div>
           </div>
         )}
@@ -189,7 +189,7 @@ export function FoodSearchSheet({ onSelect, onClose, initialBarcode }: Props) {
                       {t('nutrition.foodSearch.notFound', { query })}<br/>
                       <span style={{ fontSize: 11 }}>{t('nutrition.foodSearch.tryAgain')}</span>
                     </p>
-                    <button onClick={requestClose} style={{ padding: '8px 18px', borderRadius: 10, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-dim)', fontSize: 12, cursor: 'pointer', marginTop: 4 }}>{t('nutrition.foodSearch.manualEntry')}</button>
+                    <button onClick={requestClose} style={{ padding: '8px 18px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-dim)', fontSize: 12, cursor: 'pointer', marginTop: 4 }}>{t('nutrition.foodSearch.manualEntry')}</button>
                   </div>
                 )}
               </>

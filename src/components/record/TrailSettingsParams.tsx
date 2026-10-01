@@ -75,7 +75,7 @@ export default function TrailSettingsParams({ settings, updateSetting, theme, se
           </div>
           <div style={{ display:'flex', alignItems:'center', gap:8 }}>
             <span style={{ fontSize:12, color:'#8C8C8C' }}>{t('record.trailSensorNotConnected')}</span>
-            <span style={{ fontSize:10, color:'#F59E0B', border:'1px solid rgba(245,158,11,0.4)', borderRadius:20, padding:'2px 8px' }}>{t('record.trailSensorSoon')}</span>
+            <span style={{ fontSize:10, color:'#F59E0B', border:'1px solid rgba(245,158,11,0.4)', borderRadius: 'var(--r-lg)', padding:'2px 8px' }}>{t('record.trailSensorSoon')}</span>
           </div>
         </div>
       ))}
@@ -122,7 +122,7 @@ export default function TrailSettingsParams({ settings, updateSetting, theme, se
         <div key={path} style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 16px', borderBottom:`1px solid ${theme.separator}` }}>
           <span style={{ flex:1, fontSize:14, color:theme.text }}>{label}</span>
           <input key={val} defaultValue={val} placeholder="4:30" onBlur={e => updateSetting(path, e.target.value.trim() || val)}
-            style={{ width:70, textAlign:'right', background:'none', border:'none', borderBottom:`1px solid ${theme.separator}`, color:theme.text, fontSize:14, outline:'none', fontFamily:'DM Sans, sans-serif' }} />
+            style={{ width:70, textAlign:'right', background:'none', border:'none', borderBottom:`1px solid ${theme.separator}`, color:theme.text, fontSize:14, outline:'none', fontFamily: 'var(--font-body)' }} />
           <span style={{ fontSize:12, color:'#8C8C8C' }}>min/km</span>
         </div>
       ))}

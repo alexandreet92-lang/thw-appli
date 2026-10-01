@@ -67,7 +67,7 @@ function Frise({ injuries, onOpen }: { injuries: Injury[]; onOpen: (i: Injury) =
               <span style={{ fontFamily: FB, fontSize: 11.5, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{i.zone}</span>
             </div>
             <div style={{ position: 'relative', flex: 1, height: '100%' }}>
-              <div title={tip} style={{ position: 'absolute', top: '50%', transform: 'translateY(-50%)', left: `${x1}%`, width: `${w}%`, minWidth: 14, height: BAR_H, borderRadius: 999, background: c, opacity: active ? 1 : 0.5 }} />
+              <div title={tip} style={{ position: 'absolute', top: '50%', transform: 'translateY(-50%)', left: `${x1}%`, width: `${w}%`, minWidth: 14, height: BAR_H, borderRadius: 'var(--r-pill)', background: c, opacity: active ? 1 : 0.5 }} />
               {active && <div style={{ position: 'absolute', top: '50%', left: `${x2}%`, transform: 'translate(-50%,-50%)', width: BAR_H + 6, height: BAR_H + 6, borderRadius: '50%', border: `1.5px solid ${c}`, opacity: 0.6, pointerEvents: 'none' }} />}
             </div>
           </div>

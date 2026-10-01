@@ -40,7 +40,7 @@ export default function GpsSettingsSheet({ onClose, isDark }: { onClose: () => v
   const seg = <T extends string>(value: T, current: T, set: (v: T) => void, txt: string, sub: string, persistKey: string) => {
     const on = current === value
     return (
-      <button key={value} onClick={() => { set(value); save(persistKey, value) }} style={{ flex: 1, padding: '11px 8px', borderRadius: 12, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', textAlign: 'center',
+      <button key={value} onClick={() => { set(value); save(persistKey, value) }} style={{ flex: 1, padding: '11px 8px', borderRadius: 'var(--r-md)', cursor: 'pointer', fontFamily: 'var(--font-body)', textAlign: 'center',
         background: on ? 'rgba(6,182,212,0.12)' : surface, border: `1.5px solid ${on ? ACCENT : 'transparent'}` }}>
         <span style={{ display: 'block', fontSize: 13.5, fontWeight: 700, color: on ? ACCENT : text }}>{txt}</span>
         <span style={{ display: 'block', fontSize: 10.5, color: dim, marginTop: 2 }}>{sub}</span>
@@ -53,10 +53,10 @@ export default function GpsSettingsSheet({ onClose, isDark }: { onClose: () => v
       <div onClick={requestClose} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)', opacity: shown && !closing ? 1 : 0, transition: 'opacity 0.24s ease' }} />
       <div role="dialog" aria-modal="true" style={{ position: 'relative', width: '100%', maxWidth: 520, background: bg, borderTopLeftRadius: 24, borderTopRightRadius: 24, boxShadow: '0 -8px 40px rgba(0,0,0,0.25)',
         transform: shown && !closing ? 'translateY(0)' : 'translateY(100%)', transition: 'transform 0.30s cubic-bezier(0.32,0.72,0,1)',
-        padding: '10px 18px calc(20px + env(safe-area-inset-bottom, 0px))', fontFamily: 'DM Sans, sans-serif' }}>
+        padding: '10px 18px calc(20px + env(safe-area-inset-bottom, 0px))', fontFamily: 'var(--font-body)' }}>
         <div style={{ display: 'flex', justifyContent: 'center', paddingBottom: 12 }}><span style={{ width: 40, height: 4, borderRadius: 2, background: track }} /></div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-          <span style={{ fontSize: 21, fontWeight: 800, color: text, fontFamily: 'var(--font-display)' }}>{t('record.gpsSheetTitle')}</span>
+          <span style={{ fontSize: 22, fontWeight: 800, color: text, fontFamily: 'var(--font-display)' }}>{t('record.gpsSheetTitle')}</span>
           <button onClick={requestClose} aria-label={t('record.routeCreatorClose')} style={{ width: 32, height: 32, borderRadius: '50%', border: 'none', background: surface, color: text, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
           </button>
@@ -75,13 +75,13 @@ export default function GpsSettingsSheet({ onClose, isDark }: { onClose: () => v
           {seg<'auto' | '1' | '5'>('5', freq, setFreq, '5 s', t('record.gpsSheetFreqBattery'), 'thw-rec-gps-freq')}
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 14px', borderRadius: 14, background: surface, border: `1px solid ${border}` }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 14px', borderRadius: 'var(--r-md)', background: surface, border: `1px solid ${border}` }}>
           <div style={{ flex: 1, minWidth: 0 }}>
             <p style={{ fontSize: 14, fontWeight: 700, color: text, margin: 0 }}>{t('record.gpsSheetKeepAwake')}</p>
             <p style={{ fontSize: 11.5, color: dim, margin: '2px 0 0' }}>{t('record.gpsSheetKeepAwakeSub')}</p>
           </div>
           <button onClick={() => { const v = !keepAwake; setKeepAwake(v); save('thw-rec-keep-awake', String(v)) }} aria-label={t('record.gpsSheetKeepAwake')}
-            style={{ width: 46, height: 28, borderRadius: 999, background: keepAwake ? ACCENT : track, border: 'none', cursor: 'pointer', position: 'relative', flexShrink: 0, transition: 'background 0.2s' }}>
+            style={{ width: 46, height: 28, borderRadius: 'var(--r-pill)', background: keepAwake ? ACCENT : track, border: 'none', cursor: 'pointer', position: 'relative', flexShrink: 0, transition: 'background 0.2s' }}>
             <span style={{ width: 22, height: 22, borderRadius: '50%', background: '#fff', position: 'absolute', top: 3, left: keepAwake ? 21 : 3, transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.3)' }} />
           </button>
         </div>

@@ -26,7 +26,7 @@ export function BlocStartWeekPicker({ options, startKey, durationWeeks, onSelect
               borderRadius: isStart ? '6px 0 0 6px' : isEnd ? '0 6px 6px 0' : inRange ? 0 : 6,
             }}>
             <span style={{ fontSize: 11, fontWeight: 700, display: 'block' }}>{opt.day}</span>
-            <span style={{ fontSize: 9, display: 'block', opacity: .8 }}>{opt.month}</span>
+            <span style={{ fontSize: 10, display: 'block', opacity: .8 }}>{opt.month}</span>
           </div>
         )
       })}

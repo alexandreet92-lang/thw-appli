@@ -67,7 +67,7 @@ export function MainFields(p: {
                   title={locked ? tr('planning.brickRunOnly') : undefined}
                   style={{ border: 'none', background: 'transparent', cursor: locked ? 'not-allowed' : 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, padding: 0, flex: 1, opacity: locked ? 0.3 : 1 }}>
                   <span style={{ opacity: on ? 1 : 0.4, display: 'flex' }}><SportIcon sport={s} size={23} circle={false} /></span>
-                  <span style={{ fontSize: 9, fontWeight: on ? 700 : 500, color: on ? sportColor(s) : 'var(--se-dim)' }}>{SPORT_SHORT[s]}</span>
+                  <span style={{ fontSize: 10, fontWeight: on ? 700 : 500, color: on ? sportColor(s) : 'var(--se-dim)' }}>{SPORT_SHORT[s]}</span>
                   <span style={{ width: 16, height: 2, borderRadius: 2, background: on ? sportColor(s) : 'transparent' }} />
                 </button>
               )
@@ -91,7 +91,7 @@ export function MainFields(p: {
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {(Object.keys(RUN_FAMILY_LABEL) as RunFamily[]).map(k => {
             const on = k === (p.runFamily ?? 'endurance')
-            return <button key={k} type="button" onClick={() => p.setRunFamily?.(k)} style={{ padding: '10px 14px', borderRadius: 999, cursor: 'pointer', fontSize: 12.5, fontWeight: 700, border: `1px solid ${on ? p.accent : 'var(--se-rule)'}`, background: on ? p.accent : 'var(--se-card)', color: on ? '#fff' : 'var(--se-dim)' }}>{RUN_FAMILY_LABEL[k]}</button>
+            return <button key={k} type="button" onClick={() => p.setRunFamily?.(k)} style={{ padding: '10px 14px', borderRadius: 'var(--r-pill)', cursor: 'pointer', fontSize: 12.5, fontWeight: 700, border: `1px solid ${on ? p.accent : 'var(--se-rule)'}`, background: on ? p.accent : 'var(--se-card)', color: on ? '#fff' : 'var(--se-dim)' }}>{RUN_FAMILY_LABEL[k]}</button>
           })}
         </div>
       )}
@@ -109,7 +109,7 @@ export function MainFields(p: {
       {/* Brick Run : enchaînement vélo → course à pied (crée une course liée) */}
       {p.sport === 'bike' && !p.reserveMode && (
         <button type="button" onClick={() => (p.onBrickButton ? p.onBrickButton() : p.setBrickRun(!p.brickRun))} title={tr('planning.brickRunTitle')}
-          style={{ alignSelf: 'flex-start', padding: '10px 16px', borderRadius: 999, cursor: 'pointer', fontSize: 13, fontWeight: 700,
+          style={{ alignSelf: 'flex-start', padding: '10px 16px', borderRadius: 'var(--r-pill)', cursor: 'pointer', fontSize: 13, fontWeight: 700,
             border: `1px solid ${p.brickRun ? sportColor('run') : 'var(--se-rule)'}`,
             background: p.brickRun ? `${sportColor('run')}1f` : 'var(--se-card)',
             color: p.brickRun ? sportColor('run') : 'var(--se-dim)', display: 'flex', alignItems: 'center', gap: 7 }}>
@@ -125,7 +125,7 @@ export function MainFields(p: {
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
             {trainTypes.map(t => {
               const on = p.trainingTypes.includes(t)
-              return <button key={t} type="button" onClick={() => p.setTrainingTypes(on ? p.trainingTypes.filter(x => x !== t) : [...p.trainingTypes, t])} style={{ padding: '8px 18px', borderRadius: 999, cursor: 'pointer', fontSize: 13, fontWeight: 600, border: `1px solid ${on ? p.accent : 'var(--se-rule)'}`, background: on ? p.accent : 'var(--se-card)', color: on ? '#fff' : 'var(--se-dim)' }}>{t}</button>
+              return <button key={t} type="button" onClick={() => p.setTrainingTypes(on ? p.trainingTypes.filter(x => x !== t) : [...p.trainingTypes, t])} style={{ padding: '8px 18px', borderRadius: 'var(--r-pill)', cursor: 'pointer', fontSize: 13, fontWeight: 600, border: `1px solid ${on ? p.accent : 'var(--se-rule)'}`, background: on ? p.accent : 'var(--se-card)', color: on ? '#fff' : 'var(--se-dim)' }}>{t}</button>
             })}
           </div>
         </div>
@@ -168,7 +168,7 @@ export function MainFields(p: {
             <input defaultValue={fmtDur(p.dur)} key={p.dur} placeholder="2h00"
               onBlur={e => { const v = parseDurInput(e.target.value); if (v != null) p.setDur(Math.max(5, Math.min(600, v))) }}
               onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
-              style={{ width: 52, textAlign: 'center', background: 'var(--se-card2)', border: '1px solid var(--se-rule)', borderRadius: 8, padding: '5px 4px', fontSize: 12, color: 'var(--se-text)', outline: 'none', flexShrink: 0 }} />
+              style={{ width: 52, textAlign: 'center', background: 'var(--se-card2)', border: '1px solid var(--se-rule)', borderRadius: 'var(--r-sm)', padding: '5px 4px', fontSize: 12, color: 'var(--se-text)', outline: 'none', flexShrink: 0 }} />
           </div>
           <div style={{ marginTop: 10 }}>
             <Gauge value={p.dur} min={5} max={600} step={5} onChange={n => p.setDur(n)} color={p.accent} />

@@ -126,13 +126,13 @@ export function RunningLapsSection({ activityId, cachedLaps, streams, avgSpeedMs
               <rect x={bX} y={bY} width={bW} height={bH} fill={GREEN} fillOpacity={isHover ? 1 : 0.85} rx={1.5} />
               {showLabel && (
                 <text x={bX + bW / 2} y={bY - 4} textAnchor="middle" fontSize="9" fill="#059669" fontWeight="600"
-                  style={{ fontVariantNumeric: 'tabular-nums', fontFamily: 'Barlow Condensed, sans-serif' }}>
+                  style={{ fontVariantNumeric: 'tabular-nums', fontFamily: 'var(--font-body)' }}>
                   {formatPace(speedMsToPace(sp))}
                 </text>
               )}
               {showTick && (
                 <text x={bX + bW / 2} y={SVG_H - 6} textAnchor="middle" fontSize="10" fill="var(--text-dim)"
-                  style={{ fontVariantNumeric: 'tabular-nums', fontFamily: 'Barlow Condensed, sans-serif' }}>{i + 1}</text>
+                  style={{ fontVariantNumeric: 'tabular-nums', fontFamily: 'var(--font-body)' }}>{i + 1}</text>
               )}
             </g>
           )

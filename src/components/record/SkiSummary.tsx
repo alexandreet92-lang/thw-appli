@@ -44,14 +44,14 @@ export default function SkiSummary({ snap, isDark, onClose }: Props) {
   const sep  = isDark ? 'rgba(255,255,255,0.08)' : '#E8E8E8'
 
   return (
-    <div style={{ position:'fixed', inset:0, zIndex:10001, background:bg, display:'flex', flexDirection:'column', fontFamily:'DM Sans, sans-serif', paddingTop:'env(safe-area-inset-top)' }}>
+    <div style={{ position:'fixed', inset:0, zIndex:10001, background:bg, display:'flex', flexDirection:'column', fontFamily: 'var(--font-body)', paddingTop:'env(safe-area-inset-top)' }}>
       {/* Header */}
       <div style={{ display:'flex', alignItems:'center', padding:'12px 16px', borderBottom:`1px solid ${sep}`, flexShrink:0 }}>
         <div style={{ flex:1 }}>
-          <p style={{ fontSize:18, fontWeight:700, color:text, margin:0, fontFamily:'Syne, sans-serif' }}>{t('record.skiSummaryTitle')}</p>
+          <p style={{ fontSize:18, fontWeight:700, color:text, margin:0, fontFamily: 'var(--font-display)' }}>{t('record.skiSummaryTitle')}</p>
           <p style={{ fontSize:13, color:dim, margin:'2px 0 0' }}>{snap.skiType === 'ski' ? 'Ski' : 'Snowboard'} · {new Date(snap.startedAtISO).toLocaleDateString(currentLocale())}</p>
         </div>
-        <button onClick={onClose} style={{ padding:'8px 20px', background:'linear-gradient(135deg,#06B6D4,#2563EB)', border:'none', borderRadius:12, color:'white', fontSize:14, fontWeight:600, cursor:'pointer' }}>{t('record.skiSummaryFinish')}</button>
+        <button onClick={onClose} style={{ padding:'8px 20px', background:'linear-gradient(135deg,#06B6D4,#2563EB)', border:'none', borderRadius: 'var(--r-md)', color:'white', fontSize:14, fontWeight:600, cursor:'pointer' }}>{t('record.skiSummaryFinish')}</button>
       </div>
 
       {/* Page dots */}

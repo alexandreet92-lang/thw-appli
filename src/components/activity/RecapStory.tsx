@@ -158,7 +158,7 @@ function DeltaBadge({ cur, prev }: { cur: number; prev: number; }) {
   const up = pct >= 0
   const c = up ? '#34d399' : '#f87171'
   return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 12, fontWeight: 800, color: c, background: `${c}22`, borderRadius: 999, padding: '3px 9px' }}>
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 12, fontWeight: 800, color: c, background: `${c}22`, borderRadius: 'var(--r-pill)', padding: '3px 9px' }}>
       {up ? '▲' : '▼'} {Math.abs(pct)}%
     </span>
   )
@@ -174,7 +174,7 @@ function RecordsList({ title, entries, accent, fmtVal, active, periodLabel }: {
   return (
     <div style={{ padding: '64px 22px 24px', height: '100%', display: 'flex', flexDirection: 'column' }}>
       <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.7)' }}>{t('lo.records')} · {title}</div>
-      <div style={{ fontSize: 23, fontWeight: 800, color: '#fff', marginTop: 4 }}>{t('lo.yourPerfs', { period: periodLabel })}</div>
+      <div style={{ fontSize: 22, fontWeight: 800, color: '#fff', marginTop: 4 }}>{t('lo.yourPerfs', { period: periodLabel })}</div>
       {prCount > 0 && <div style={{ fontSize: 13, fontWeight: 700, color: accent, marginTop: 2, marginBottom: 10 }}>🏆 {t(prCount > 1 ? 'lo.recordsBeatenPlural' : 'lo.recordsBeatenSingular', { n: prCount })}</div>}
       {entries.length === 0 ? (
         <div style={{ margin: 'auto', textAlign: 'center', color: 'rgba(255,255,255,0.7)' }}>
@@ -187,7 +187,7 @@ function RecordsList({ title, entries, accent, fmtVal, active, periodLabel }: {
             const rec = e.pr === 'all-time' ? { txt: `🏆 ${t('lo.recordLabel')}`, col: '#fbbf24' } : e.pr === 'year' ? { txt: `🥇 ${t('lo.yearLabel')}`, col: '#a3e635' } : null
             const beat = e.pr ? null : (e.allTimeValue != null ? t('lo.recordValue', { v: fmtVal(e.allTimeValue) }) : null)
             return (
-              <div key={e.key} style={{ display: 'flex', alignItems: 'center', gap: 8, background: e.pr ? `${rec!.col}1f` : 'rgba(255,255,255,0.08)', border: e.pr ? `1px solid ${rec!.col}66` : '1px solid transparent', borderRadius: 10, padding: '9px 12px', opacity: active ? 1 : 0, transform: active ? 'none' : 'translateY(8px)', transition: `all .4s ${Math.min(i * 35, 500)}ms` }}>
+              <div key={e.key} style={{ display: 'flex', alignItems: 'center', gap: 8, background: e.pr ? `${rec!.col}1f` : 'rgba(255,255,255,0.08)', border: e.pr ? `1px solid ${rec!.col}66` : '1px solid transparent', borderRadius: 'var(--r-sm)', padding: '9px 12px', opacity: active ? 1 : 0, transform: active ? 'none' : 'translateY(8px)', transition: `all .4s ${Math.min(i * 35, 500)}ms` }}>
                 <span style={{ width: 74, fontSize: 13, fontWeight: 700, color: '#fff', flexShrink: 0 }}>{e.label}</span>
                 <span style={{ flex: 1, fontSize: 17, fontWeight: 800, color: accent, fontFamily: '"DM Mono",monospace' }}>{fmtVal(e.periodValue)}</span>
                 {rec
@@ -227,12 +227,12 @@ function MapCarousel({ acts, active, label }: { acts: RecapAct[]; active: boolea
     <div style={{ padding: '64px 26px 30px', height: '100%', display: 'flex', flexDirection: 'column' }}>
       <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.7)' }}>{label}</div>
       <div style={{ fontSize: 24, fontWeight: 800, color: '#fff', marginTop: 4, marginBottom: 16 }}>{t('lo.biggestSessions')}</div>
-      <div key={a.started_at} style={{ flex: 1, display: 'flex', flexDirection: 'column', borderRadius: 20, overflow: 'hidden', background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', animation: 'storyFade .5s ease' }}>
+      <div key={a.started_at} style={{ flex: 1, display: 'flex', flexDirection: 'column', borderRadius: 'var(--r-lg)', overflow: 'hidden', background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', animation: 'storyFade .5s ease' }}>
         <div style={{ position: 'relative', flex: 1, minHeight: 0, background: `linear-gradient(160deg, ${c}55, #0a0a0f)` }}>
           {url
             ? <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
             : <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.5)', fontSize: 12 }}>{t('lo.noRoute')}</div>}
-          <div style={{ position: 'absolute', top: 12, left: 12, display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(6px)', borderRadius: 999, padding: '6px 12px 6px 8px' }}>
+          <div style={{ position: 'absolute', top: 12, left: 12, display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(6px)', borderRadius: 'var(--r-pill)', padding: '6px 12px 6px 8px' }}>
             <div style={{ width: 26, height: 26, borderRadius: '50%', background: c, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{Cfg ? <Cfg.Icon size={15} color="#fff" stroke={2.3} /> : null}</div>
             <span style={{ fontSize: 12, fontWeight: 800, color: '#fff' }}>{sportLabel(String(k))}</span>
           </div>
@@ -425,7 +425,7 @@ export function RecapStory({ period, activities, refDate, onClose }: {
                 { l: t('lo.avgRpe'), v: cur.rpeAvg != null ? cur.rpeAvg.toFixed(1) : '—' },
                 { l: t('lo.totalElev'), v: `${Math.round(cur.elev)}m` },
               ].map((x, i) => (
-                <div key={i} style={{ background: 'rgba(255,255,255,0.08)', borderRadius: 12, padding: '12px 10px', textAlign: 'center', opacity: active ? 1 : 0, transition: `opacity .5s ${600 + i * 100}ms` }}>
+                <div key={i} style={{ background: 'rgba(255,255,255,0.08)', borderRadius: 'var(--r-md)', padding: '12px 10px', textAlign: 'center', opacity: active ? 1 : 0, transition: `opacity .5s ${600 + i * 100}ms` }}>
                   <div style={{ fontSize: 20, fontWeight: 800, color: '#fff' }}>{x.v}</div>
                   <div style={{ fontSize: 9.5, color: 'rgba(255,255,255,0.55)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: 3 }}>{x.l}</div>
                 </div>
@@ -462,7 +462,7 @@ export function RecapStory({ period, activities, refDate, onClose }: {
           return (
             <div style={{ padding: '64px 26px 30px', height: '100%', display: 'flex', flexDirection: 'column' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <div style={{ width: 48, height: 48, borderRadius: 14, background: 'rgba(255,255,255,0.16)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ width: 48, height: 48, borderRadius: 'var(--r-md)', background: 'rgba(255,255,255,0.16)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   {Cfg ? <Cfg.Icon size={26} color="#fff" stroke={2.2} /> : null}
                 </div>
                 <div>
@@ -479,7 +479,7 @@ export function RecapStory({ period, activities, refDate, onClose }: {
                 ))}
               </div>
               {s.best && (
-                <div style={{ marginTop: 'auto', background: 'rgba(255,255,255,0.1)', borderRadius: 14, padding: '13px 15px', display: 'flex', alignItems: 'center', gap: 11, opacity: active ? 1 : 0, transition: 'opacity .6s .5s' }}>
+                <div style={{ marginTop: 'auto', background: 'rgba(255,255,255,0.1)', borderRadius: 'var(--r-md)', padding: '13px 15px', display: 'flex', alignItems: 'center', gap: 11, opacity: active ? 1 : 0, transition: 'opacity .6s .5s' }}>
                   <IconBolt size={20} color="#fff" />
                   <div style={{ minWidth: 0 }}>
                     <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.6)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('lo.bestSession')}</div>
@@ -548,8 +548,8 @@ export function RecapStory({ period, activities, refDate, onClose }: {
                 const k = sportKeyFromType(r.sport_type) ?? r.sport_type
                 const Cfg = sportCfg(String(k))
                 return (
-                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 13, background: 'rgba(255,255,255,0.1)', borderRadius: 15, padding: '13px 15px', opacity: active ? 1 : 0, transform: active ? 'none' : 'translateX(12px)', transition: `all .5s ${i * 100}ms` }}>
-                    <div style={{ width: 42, height: 42, borderRadius: 12, background: sportColor(String(k)), display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{Cfg ? <Cfg.Icon size={22} color="#fff" stroke={2.2} /> : <IconMedal size={20} color="#fff" />}</div>
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 13, background: 'rgba(255,255,255,0.1)', borderRadius: 'var(--r-md)', padding: '13px 15px', opacity: active ? 1 : 0, transform: active ? 'none' : 'translateX(12px)', transition: `all .5s ${i * 100}ms` }}>
+                    <div style={{ width: 42, height: 42, borderRadius: 'var(--r-md)', background: sportColor(String(k)), display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{Cfg ? <Cfg.Icon size={22} color="#fff" stroke={2.2} /> : <IconMedal size={20} color="#fff" />}</div>
                     <div style={{ minWidth: 0, flex: 1 }}>
                       <div style={{ fontSize: 15, fontWeight: 800, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.title || t('lo.raceFallback')}</div>
                       <div style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.6)' }}>{new Date(r.started_at).toLocaleDateString(currentLocale(), { day: 'numeric', month: 'short' })} · {sportLabel(String(k))}</div>
@@ -588,8 +588,8 @@ export function RecapStory({ period, activities, refDate, onClose }: {
             <div style={{ fontSize: 24, fontWeight: 800, color: '#fff', marginTop: 4, marginBottom: 22 }}>{t(period === 'week' ? 'lo.yourMomentsWeek' : 'lo.yourMomentsMonth')}</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {cards.map((c, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 14, background: 'rgba(255,255,255,0.1)', borderRadius: 16, padding: '15px 16px', opacity: active ? 1 : 0, transform: active ? 'none' : 'scale(.95) translateY(10px)', transition: `all .5s cubic-bezier(.2,.8,.2,1) ${i * 110}ms` }}>
-                  <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(255,255,255,0.16)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{c.icon}</div>
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 14, background: 'rgba(255,255,255,0.1)', borderRadius: 'var(--r-md)', padding: '15px 16px', opacity: active ? 1 : 0, transform: active ? 'none' : 'scale(.95) translateY(10px)', transition: `all .5s cubic-bezier(.2,.8,.2,1) ${i * 110}ms` }}>
+                  <div style={{ width: 44, height: 44, borderRadius: 'var(--r-md)', background: 'rgba(255,255,255,0.16)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{c.icon}</div>
                   <div style={{ minWidth: 0, flex: 1 }}>
                     <div style={{ fontSize: 10.5, color: 'rgba(255,255,255,0.6)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{c.label}</div>
                     <div style={{ fontSize: 19, fontWeight: 800, color: '#fff' }}>{c.value}</div>
@@ -607,7 +607,7 @@ export function RecapStory({ period, activities, refDate, onClose }: {
                 { label: t('lo.distance'), value: cur.dist > 0 ? `${Math.round(cur.dist / 1000)} km` : '—' },
                 { label: t('lo.smTotal'), value: String(Math.round(cur.sm)) },
               ], filename: `hybrid-${period}.png`,
-            })} style={{ marginTop: 'auto', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '13px', borderRadius: 999, background: '#fff', border: 'none', color: '#0a0a0f', fontSize: 14, fontWeight: 800, cursor: 'pointer', opacity: active ? 1 : 0, transition: 'opacity .6s .5s' }}>
+            })} style={{ marginTop: 'auto', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '13px', borderRadius: 'var(--r-pill)', background: '#fff', border: 'none', color: '#0a0a0f', fontSize: 14, fontWeight: 800, cursor: 'pointer', opacity: active ? 1 : 0, transition: 'opacity .6s .5s' }}>
               <IconShare2 size={17} /> {t(period === 'week' ? 'lo.shareMyWeekPage' : 'lo.shareMyMonth')}
             </button>
           </div>
@@ -725,4 +725,4 @@ export function RecapStory({ period, activities, refDate, onClose }: {
 const overlay: React.CSSProperties = { position: 'fixed', inset: 0, zIndex: 13000, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)', display: 'flex', justifyContent: 'center', animation: 'storyFade .25s ease' }
 const closeBtn: React.CSSProperties = { position: 'absolute', top: 24, right: 16, zIndex: 6, width: 34, height: 34, borderRadius: '50%', background: 'rgba(0,0,0,0.3)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }
 const navArrow: React.CSSProperties = { position: 'absolute', top: '50%', transform: 'translateY(-50%)', zIndex: 6, width: 38, height: 38, borderRadius: '50%', background: 'rgba(255,255,255,0.15)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }
-const pillBtn: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 6, height: 34, padding: '0 13px', borderRadius: 999, background: 'rgba(255,255,255,0.18)', border: '1px solid rgba(255,255,255,0.28)', cursor: 'pointer' }
+const pillBtn: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 6, height: 34, padding: '0 13px', borderRadius: 'var(--r-pill)', background: 'rgba(255,255,255,0.18)', border: '1px solid rgba(255,255,255,0.28)', cursor: 'pointer' }

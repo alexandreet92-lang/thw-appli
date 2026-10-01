@@ -30,7 +30,7 @@ export function SportCard({ theme, onSelect }: { theme: SportTheme; onSelect: (i
       <div className="lib-card lib-card--soon" aria-disabled="true" tabIndex={-1}
         style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', padding: 'var(--space-5)',
           minHeight: 150, borderRadius: 'var(--r-lg)', background: 'var(--bg-card2)', border: '1px solid var(--border)', opacity: 0.6 }}>
-        <span style={{ position: 'absolute', top: 'var(--space-4)', right: 'var(--space-4)', padding: '3px 9px', borderRadius: 999,
+        <span style={{ position: 'absolute', top: 'var(--space-4)', right: 'var(--space-4)', padding: '3px 9px', borderRadius: 'var(--r-pill)',
           background: 'var(--bg-elev)', color: 'var(--text-dim)', fontFamily: FB, fontSize: 10, fontWeight: 600,
           textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('session.bientot')}</span>
         {chip}{title}{tagline}

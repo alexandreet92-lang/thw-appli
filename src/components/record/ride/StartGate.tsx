@@ -29,7 +29,7 @@ function Row({ icon, label, st, onClick }: { icon: React.ReactNode; label: strin
   const on = st === 'connected'
   return (
     <button onClick={onClick} disabled={st === 'connecting'} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '13px 14px', background: 'transparent', border: 'none', borderTop: '1px solid var(--border)', cursor: 'pointer', textAlign: 'left', color: 'var(--text)' }}>
-      <span style={{ width: 34, height: 34, borderRadius: 9, display: 'grid', placeItems: 'center', background: 'var(--bg-card)', color: on ? 'var(--charge-low)' : 'var(--text-mid)' }}>{icon}</span>
+      <span style={{ width: 34, height: 34, borderRadius: 'var(--r-sm)', display: 'grid', placeItems: 'center', background: 'var(--bg-card)', color: on ? 'var(--charge-low)' : 'var(--text-mid)' }}>{icon}</span>
       <span style={{ flex: 1, fontSize: 14, fontWeight: 700 }}>{label}</span>
       <span style={{ fontSize: 12, fontWeight: 800, color: on ? 'var(--charge-low)' : 'var(--primary)' }}>{t(STAT[st])}</span>
     </button>

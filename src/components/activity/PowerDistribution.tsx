@@ -98,7 +98,7 @@ export function PowerDistribution({ watts, ftp }: Props) {
             key={m}
             onClick={() => setMode(m)}
             style={{
-              padding: '3px 10px', borderRadius: 5, fontSize: 11, fontWeight: 600,
+              padding: '3px 10px', borderRadius: 'var(--r-sm)', fontSize: 11, fontWeight: 600,
               cursor: 'pointer', border: '1px solid var(--border)',
               background: mode === m ? 'var(--border-mid)' : 'transparent',
               color: mode === m ? 'var(--text)' : 'var(--text-dim)',
@@ -176,7 +176,7 @@ export function PowerDistribution({ watts, ftp }: Props) {
       {/* Insight */}
       {insight && (
         <div style={{
-          marginTop: 12, padding: '8px 12px', borderRadius: 8, fontSize: 12,
+          marginTop: 12, padding: '8px 12px', borderRadius: 'var(--r-sm)', fontSize: 12,
           color: 'var(--text-body)', lineHeight: 1.55,
           background: insight.type === 'good' ? 'rgba(16,185,129,0.06)' : 'var(--bg-card2)',
           border: `1px solid ${insight.type === 'good' ? 'rgba(16,185,129,0.2)' : 'var(--border)'}`,

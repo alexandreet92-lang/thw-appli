@@ -18,12 +18,12 @@ function NumRow({ label, desc, value, onChange, min, max, step, unit }: { label:
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 0', borderBottom: `1px solid rgba(255,255,255,0.07)` }}>
       <div>
-        <p style={{ fontSize: 15, fontWeight: 500, color: '#fff', margin: 0, fontFamily: 'DM Sans, sans-serif' }}>{label}</p>
-        {desc && <p style={{ fontSize: 12, color: dim, margin: '2px 0 0', fontFamily: 'DM Sans, sans-serif' }}>{desc}</p>}
+        <p style={{ fontSize: 15, fontWeight: 500, color: '#fff', margin: 0, fontFamily: 'var(--font-body)' }}>{label}</p>
+        {desc && <p style={{ fontSize: 12, color: dim, margin: '2px 0 0', fontFamily: 'var(--font-body)' }}>{desc}</p>}
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         <button onClick={() => onChange(Math.max(min, value - step))} style={{ width: 36, height: 36, borderRadius: '50%', background: surface, border: `1px solid ${border}`, color: '#fff', fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>−</button>
-        <span style={{ fontSize: 20, fontWeight: 700, color: 'var(--primary)', minWidth: 56, textAlign: 'center', fontFamily: 'DM Mono, monospace' }}>{value}<span style={{ fontSize: 11, color: dim, fontWeight: 400, marginLeft: 2 }}>{unit}</span></span>
+        <span style={{ fontSize: 20, fontWeight: 700, color: 'var(--primary)', minWidth: 56, textAlign: 'center', fontFamily: 'var(--font-body)' }}>{value}<span style={{ fontSize: 11, color: dim, fontWeight: 400, marginLeft: 2 }}>{unit}</span></span>
         <button onClick={() => onChange(Math.min(max, value + step))} style={{ width: 36, height: 36, borderRadius: '50%', background: surface, border: `1px solid ${border}`, color: '#fff', fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
       </div>
     </div>
@@ -69,8 +69,8 @@ export default function SetupScreen({ onComplete }: Props) {
       <style>{`@keyframes ob-slide-in{from{transform:translateX(100%)}to{transform:translateX(0)}}`}</style>
 
       <div style={{ padding: '20px 20px 0' }}>
-        <h2 style={{ fontSize: 28, fontWeight: 800, color: '#fff', margin: '0 0 6px', fontFamily: 'Syne, sans-serif' }}>{t('onboarding.setupTitle')}</h2>
-        <p style={{ fontSize: 14, color: dim, margin: 0, fontFamily: 'DM Sans, sans-serif' }}>{t('onboarding.setupSubtitle')}</p>
+        <h2 style={{ fontSize: 28, fontWeight: 800, color: '#fff', margin: '0 0 6px', fontFamily: 'var(--font-display)' }}>{t('onboarding.setupTitle')}</h2>
+        <p style={{ fontSize: 14, color: dim, margin: 0, fontFamily: 'var(--font-body)' }}>{t('onboarding.setupSubtitle')}</p>
       </div>
 
       <div style={{ flex: 1, overflowY: 'auto', padding: '8px 20px' }}>
@@ -78,10 +78,10 @@ export default function SetupScreen({ onComplete }: Props) {
         <NumRow label={t('onboarding.maxHr')} desc={t('onboarding.maxHrDesc')} value={maxHr} onChange={setMaxHr} min={100} max={220} step={1} unit="bpm" />
 
         <div style={{ padding: '16px 0' }}>
-          <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: dim, margin: '0 0 12px', fontFamily: 'DM Sans, sans-serif' }}>{t('onboarding.primarySport')}</p>
+          <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: dim, margin: '0 0 12px', fontFamily: 'var(--font-body)' }}>{t('onboarding.primarySport')}</p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
             {SPORTS.map(s => (
-              <button key={s} onClick={() => setPrimarySport(p => p === s ? '' : s)} style={{ padding: '8px 16px', borderRadius: 20, background: primarySport === s ? 'rgba(6,182,212,0.18)' : surface, border: `1px solid ${primarySport === s ? '#06B6D4' : border}`, color: primarySport === s ? '#06B6D4' : 'rgba(255,255,255,0.75)', fontSize: 14, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', transition: 'all 200ms' }}>
+              <button key={s} onClick={() => setPrimarySport(p => p === s ? '' : s)} style={{ padding: '8px 16px', borderRadius: 'var(--r-lg)', background: primarySport === s ? 'rgba(6,182,212,0.18)' : surface, border: `1px solid ${primarySport === s ? '#06B6D4' : border}`, color: primarySport === s ? '#06B6D4' : 'rgba(255,255,255,0.75)', fontSize: 14, cursor: 'pointer', fontFamily: 'var(--font-body)', transition: 'all 200ms' }}>
                 {s}
               </button>
             ))}
@@ -90,7 +90,7 @@ export default function SetupScreen({ onComplete }: Props) {
 
         {/* Visite guidée — le choix se fait ICI (plus de pop-up au démarrage) */}
         <div style={{ padding: '16px 0' }}>
-          <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: dim, margin: '0 0 12px', fontFamily: 'DM Sans, sans-serif' }}>{t('onboarding.guideTitle')}</p>
+          <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: dim, margin: '0 0 12px', fontFamily: 'var(--font-body)' }}>{t('onboarding.guideTitle')}</p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {([
               { id: 'express' as GuideChoice, label: t('w3g.guide_express') },
@@ -98,7 +98,7 @@ export default function SetupScreen({ onComplete }: Props) {
               { id: 'none' as GuideChoice, label: t('onboarding.guideNone') },
             ]).map(opt => (
               <button key={opt.id} onClick={() => setGuide(opt.id)}
-                style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', borderRadius: 12, background: guide === opt.id ? 'rgba(6,182,212,0.18)' : surface, border: `1px solid ${guide === opt.id ? '#06B6D4' : border}`, color: guide === opt.id ? '#06B6D4' : 'rgba(255,255,255,0.75)', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', textAlign: 'left', transition: 'all 200ms' }}>
+                style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', borderRadius: 'var(--r-md)', background: guide === opt.id ? 'rgba(6,182,212,0.18)' : surface, border: `1px solid ${guide === opt.id ? '#06B6D4' : border}`, color: guide === opt.id ? '#06B6D4' : 'rgba(255,255,255,0.75)', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)', textAlign: 'left', transition: 'all 200ms' }}>
                 <span style={{ width: 16, height: 16, borderRadius: '50%', flexShrink: 0, border: `2px solid ${guide === opt.id ? '#06B6D4' : border}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   {guide === opt.id && <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--primary)' }} />}
                 </span>
@@ -110,7 +110,7 @@ export default function SetupScreen({ onComplete }: Props) {
       </div>
 
       <div style={{ padding: '16px 20px', paddingBottom: 'max(env(safe-area-inset-bottom),24px)' }}>
-        <button onClick={handleStart} disabled={saving} style={{ width: '100%', height: 54, borderRadius: 16, background: 'linear-gradient(135deg,#06B6D4,#2563EB)', border: 'none', color: '#fff', fontSize: 17, fontWeight: 700, cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.7 : 1, fontFamily: 'DM Sans, sans-serif', boxShadow: '0 4px 24px rgba(6,182,212,0.35)' }}>
+        <button onClick={handleStart} disabled={saving} style={{ width: '100%', height: 54, borderRadius: 'var(--r-md)', background: 'linear-gradient(135deg,#06B6D4,#2563EB)', border: 'none', color: '#fff', fontSize: 17, fontWeight: 700, cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.7 : 1, fontFamily: 'var(--font-body)', boxShadow: '0 4px 24px rgba(6,182,212,0.35)' }}>
           {saving ? t('onboarding.saving') : t('onboarding.startAdventure') + ' 🚀'}
         </button>
       </div>

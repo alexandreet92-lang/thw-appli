@@ -31,8 +31,8 @@ export function MealMacroGauges({ prot, gluc, lip }: { prot: number; gluc: numbe
               <span style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-mid)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t(r.labelKey)}</span>
               <span className="tnum" style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-mid)', flexShrink: 0 }}>{grams} g · {kcal} kcal</span>
             </div>
-            <div style={{ width: '100%', height: 6, borderRadius: 999, background: 'var(--border)', overflow: 'hidden', boxSizing: 'border-box' }}>
-              <div style={{ width: `${pct * 100}%`, height: '100%', background: r.color, borderRadius: 999, transition: 'width 0.5s ease' }} />
+            <div style={{ width: '100%', height: 6, borderRadius: 'var(--r-pill)', background: 'var(--border)', overflow: 'hidden', boxSizing: 'border-box' }}>
+              <div style={{ width: `${pct * 100}%`, height: '100%', background: r.color, borderRadius: 'var(--r-pill)', transition: 'width 0.5s ease' }} />
             </div>
           </div>
         )

@@ -28,7 +28,7 @@ export function AIModelsVisual() {
       {MODELS.map((m, i) => (
         <div key={m.name} style={{
           display: 'flex', alignItems: 'center', gap: 14,
-          padding: '12px 14px', borderRadius: 14,
+          padding: '12px 14px', borderRadius: 'var(--r-md)',
           background: `rgba(${hexRgb(m.color)}, 0.08)`,
           border: `1px solid rgba(${hexRgb(m.color)}, 0.25)`,
           animation: `go-slide-right 0.4s ${i * 0.15}s cubic-bezier(0.16,1,0.3,1) both`,
@@ -36,14 +36,14 @@ export function AIModelsVisual() {
           <img src={m.icon} alt={m.name} style={{ width: 38, height: 38, flexShrink: 0 }} />
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
-              <span style={{ fontSize: 15, fontWeight: 700, color: 'white', fontFamily: 'Syne, sans-serif' }}>{m.name}</span>
+              <span style={{ fontSize: 15, fontWeight: 700, color: 'white', fontFamily: 'var(--font-body)' }}>{m.name}</span>
               <div style={{ display: 'flex', gap: 3 }}>
                 {[1,2,3].map(j => (
                   <div key={j} style={{ width: 5, height: 5, borderRadius: '50%', background: j <= m.level ? m.color : 'rgba(255,255,255,0.12)' }} />
                 ))}
               </div>
             </div>
-            <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', margin: 0, lineHeight: 1.4, fontFamily: 'DM Sans, sans-serif' }}>{t(m.desc)}</p>
+            <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', margin: 0, lineHeight: 1.4, fontFamily: 'var(--font-body)' }}>{t(m.desc)}</p>
           </div>
         </div>
       ))}

@@ -178,7 +178,7 @@ export function AddToPlanning({ sport, title, objectif, niveaux, defaultNiveau, 
   return (
     <>
       <button onClick={reopen}
-        style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '10px 16px', borderRadius: 999,
+        style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '10px 16px', borderRadius: 'var(--r-pill)',
           border: 'none', background: 'var(--primary)', color: 'var(--on-primary, #fff)',
           fontFamily: FB, fontSize: 13, fontWeight: 600, cursor: 'pointer', boxShadow: '0 2px 10px rgba(0,0,0,0.10)' }}>
         <IconCalendarPlus size={17} /> {t('w2e.addToPlanning')}
@@ -204,7 +204,7 @@ export function AddToPlanning({ sport, title, objectif, niveaux, defaultNiveau, 
                     const on = niveau === n.id
                     return (
                       <button key={n.id} onClick={() => setNiveau(n.id)} style={{
-                        padding: '9px 4px', borderRadius: 12, cursor: 'pointer', fontFamily: FB, fontSize: 12, fontWeight: 600,
+                        padding: '9px 4px', borderRadius: 'var(--r-md)', cursor: 'pointer', fontFamily: FB, fontSize: 12, fontWeight: 600,
                         border: `1.5px solid ${on ? 'var(--primary)' : 'var(--border)'}`,
                         background: on ? 'var(--primary)' : 'var(--bg-card2)',
                         color: on ? 'var(--on-primary, #fff)' : 'var(--text-mid)', transition: 'all .15s' }}>{n.label}</button>
@@ -225,7 +225,7 @@ export function AddToPlanning({ sport, title, objectif, niveaux, defaultNiveau, 
                   </button>
                 )}
               </div>
-              <div style={{ marginTop: 'var(--space-3)', padding: 'var(--space-4)', borderRadius: 16, background: 'var(--bg-card2)' }}>
+              <div style={{ marginTop: 'var(--space-3)', padding: 'var(--space-4)', borderRadius: 'var(--r-md)', background: 'var(--bg-card2)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-3)' }}>
                   <button onClick={() => shiftMonth(-1)} disabled={!canPrev} aria-label={t('w2e.prevMonth')} style={{
                     width: 32, height: 32, borderRadius: '50%', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -254,7 +254,7 @@ export function AddToPlanning({ sport, title, objectif, niveaux, defaultNiveau, 
                     const daySess = planMap[dateKey(d)] ?? []
                     return (
                       <button key={i} onClick={() => !past && setSel(startOfDay(d))} disabled={past} title={daySess.map(s => s.title).join(' · ')} style={{
-                        aspectRatio: '1', borderRadius: 12, position: 'relative',
+                        aspectRatio: '1', borderRadius: 'var(--r-md)', position: 'relative',
                         border: on ? 'none' : isSug ? '1.5px solid var(--primary)' : isToday ? '1.5px solid var(--text-dim)' : 'none',
                         background: on ? 'var(--primary)' : daySess.length ? 'var(--bg-card)' : 'transparent',
                         color: on ? 'var(--on-primary, #fff)' : past ? 'var(--text-dim)' : 'var(--text)',
@@ -282,7 +282,7 @@ export function AddToPlanning({ sport, title, objectif, niveaux, defaultNiveau, 
             {errMsg && <p style={{ fontFamily: FB, fontSize: 12.5, color: 'var(--danger)', margin: '0 0 var(--space-3)' }}>{errMsg}</p>}
 
             <button onClick={computeBlocks ? goToEditor : directAdd} disabled={saving} style={{
-              width: '100%', padding: '14px 16px', borderRadius: 14, border: 'none',
+              width: '100%', padding: '14px 16px', borderRadius: 'var(--r-md)', border: 'none',
               cursor: saving ? 'default' : 'pointer', background: 'var(--primary)', color: 'var(--on-primary, #fff)',
               fontFamily: FB, fontSize: 14.5, fontWeight: 700, opacity: saving ? 0.6 : 1,
               boxShadow: '0 4px 14px color-mix(in srgb, var(--primary) 35%, transparent)' }}>

@@ -36,7 +36,7 @@ async function resize(file: File): Promise<{ base64: string; mimeType: string }>
 }
 
 const FB = 'var(--font-body)', FD = 'var(--font-display)'
-const inp: React.CSSProperties = { padding: '7px 9px', borderRadius: 10, border: '1px solid var(--border-mid)', background: 'var(--input-bg)', color: 'var(--text)', fontFamily: FB, fontSize: 13, outline: 'none', boxSizing: 'border-box' }
+const inp: React.CSSProperties = { padding: '7px 9px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border-mid)', background: 'var(--input-bg)', color: 'var(--text)', fontFamily: FB, fontSize: 13, outline: 'none', boxSizing: 'border-box' }
 
 export function PhotoMealEditor({ file, onCancel, onConfirm }: { file: File; onCancel: () => void; onConfirm: (r: PhotoConfirm) => void }) {
   const { t: tr } = useI18n()

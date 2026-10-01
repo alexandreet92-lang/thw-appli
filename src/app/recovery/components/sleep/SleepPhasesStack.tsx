@@ -45,7 +45,7 @@ export default function SleepPhasesStack({ nights }: { nights: SleepNightPhases[
         {SEGS.map(s => (
           <div key={s.key} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
             <div style={{ width: 8, height: 8, borderRadius: 2, background: s.color }} />
-            <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>{t(s.labelKey)}</span>
+            <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>{t(s.labelKey)}</span>
           </div>
         ))}
       </div>
@@ -66,7 +66,7 @@ export default function SleepPhasesStack({ nights }: { nights: SleepNightPhases[
           return (
             <div key={n.date} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <span style={{
-                fontSize: 9, color: 'var(--text-dim)', width: 58,
+                fontSize: 10, color: 'var(--text-dim)', width: 58,
                 flexShrink: 0, textTransform: 'capitalize',
               }}>{d}</span>
               <div style={{ flex: 1, height: 16, borderRadius: 3, overflow: 'hidden', display: 'flex' }}>
@@ -83,8 +83,8 @@ export default function SleepPhasesStack({ nights }: { nights: SleepNightPhases[
                 ))}
               </div>
               <span style={{
-                fontSize: 9, color: 'var(--text-dim)', width: 32,
-                textAlign: 'right', fontFamily: 'DM Mono,monospace',
+                fontSize: 10, color: 'var(--text-dim)', width: 32,
+                textAlign: 'right', fontFamily: 'var(--font-body)',
               }}>{fmtMin(n.totalMin)}</span>
             </div>
           )
@@ -94,7 +94,7 @@ export default function SleepPhasesStack({ nights }: { nights: SleepNightPhases[
         <div style={{
           fontSize: 10, marginTop: 6, padding: '3px 9px',
           background: 'var(--bg-card)', border: '1px solid var(--border)',
-          borderRadius: 6, display: 'inline-block', color: 'var(--text)',
+          borderRadius: 'var(--r-sm)', display: 'inline-block', color: 'var(--text)',
         }}>
           {t(tip.label)} · {fmtMin(tip.min)}
         </div>

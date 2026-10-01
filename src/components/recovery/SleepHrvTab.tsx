@@ -47,7 +47,7 @@ function HrvCard({ rows }: { rows: HrvRow[] }) {
   const dColor = delta === 0 ? 'var(--text-dim)' : delta > 0 ? 'var(--charge-low)' : 'var(--charge-hard)'
 
   return (
-    <div data-guide="rec-hrv" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 20, padding: 20, boxShadow: 'var(--shadow-card)' }}>
+    <div data-guide="rec-hrv" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-lg)', padding: 20, boxShadow: 'var(--shadow-card)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
         <span style={{ width: 7, height: 7, borderRadius: 2, background: 'var(--rec-hrv)', flexShrink: 0 }} />
         <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 600, margin: 0, color: 'var(--text)' }}>{t('recovery.hrv.title')}</h2>
@@ -82,11 +82,11 @@ function HrvCard({ rows }: { rows: HrvRow[] }) {
 function SleepPendingCard() {
   const { t } = useI18n()
   return (
-    <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 20, padding: 20, boxShadow: 'var(--shadow-card)' }}>
+    <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-lg)', padding: 20, boxShadow: 'var(--shadow-card)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
         <Moon size={16} color="var(--text-mid)" style={{ flexShrink: 0 }} />
         <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 600, margin: 0, color: 'var(--text)' }}>{t('recovery.sleepPending.title')}</h2>
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, marginLeft: 'auto', padding: '4px 10px', borderRadius: 999,
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, marginLeft: 'auto', padding: '4px 10px', borderRadius: 'var(--r-pill)',
           background: 'var(--bg-card2)', border: '1px solid var(--border)' }}>
           <Hourglass size={11} color="var(--text-mid)" />
           <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, fontWeight: 600, color: 'var(--text-mid)' }}>{t('recovery.badge.pending')}</span>

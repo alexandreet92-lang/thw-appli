@@ -34,15 +34,15 @@ export default function SelectPlanPage() {
 
       {/* Logo */}
       <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:32 }}>
-        <div style={{ width:40, height:40, borderRadius:12, background:'linear-gradient(135deg,#06B6D4,#5b6fff)', display:'flex', alignItems:'center', justifyContent:'center', fontFamily:'Syne,sans-serif', fontWeight:800, fontSize:12, color:'#fff' }}>THW</div>
-        <span style={{ fontFamily:'Syne,sans-serif', fontWeight:700, fontSize:16 }}>THW Coaching</span>
+        <div style={{ width:40, height:40, borderRadius: 'var(--r-md)', background:'linear-gradient(135deg,#06B6D4,#5b6fff)', display:'flex', alignItems:'center', justifyContent:'center', fontFamily: 'var(--font-body)', fontWeight:800, fontSize:12, color:'#fff' }}>THW</div>
+        <span style={{ fontFamily: 'var(--font-body)', fontWeight:700, fontSize:16 }}>THW Coaching</span>
       </div>
 
       <div style={{ textAlign:'center', marginBottom:32 }}>
-        <div style={{ display:'inline-flex', alignItems:'center', gap:8, padding:'6px 14px', borderRadius:20, background:'rgba(255,179,64,0.12)', border:'1px solid rgba(255,179,64,0.3)', marginBottom:14 }}>
+        <div style={{ display:'inline-flex', alignItems:'center', gap:8, padding:'6px 14px', borderRadius: 'var(--r-lg)', background:'rgba(255,179,64,0.12)', border:'1px solid rgba(255,179,64,0.3)', marginBottom:14 }}>
           <span style={{ fontSize:12, fontWeight:700, color:'#ffb340' }}>⏰ {t('onboarding.trialExpired')}</span>
         </div>
-        <h1 style={{ fontFamily:'Syne,sans-serif', fontSize:26, fontWeight:800, margin:'0 0 10px', letterSpacing:'-0.02em' }}>{t('onboarding.choosePlan')}</h1>
+        <h1 style={{ fontFamily: 'var(--font-display)', fontSize:26, fontWeight:800, margin:'0 0 10px', letterSpacing:'-0.02em' }}>{t('onboarding.choosePlan')}</h1>
         <p style={{ fontSize:14, color:'var(--text-dim)', margin:0, maxWidth:400 }}>
           {t('onboarding.trialOverSubtitle')}
         </p>
@@ -51,17 +51,17 @@ export default function SelectPlanPage() {
       {/* Plans */}
       <div style={{ display:'flex', flexDirection:'column', gap:12, width:'100%', maxWidth:480 }}>
         {PLANS.map(p => (
-          <div key={p.id} style={{ position:'relative', padding:'20px', borderRadius:16, background:'var(--bg-card)', border:`2px solid ${p.highlighted?p.color:'var(--border)'}`, boxShadow:p.highlighted?`0 0 0 1px ${p.color}33`:'var(--shadow-card)' }}>
+          <div key={p.id} style={{ position:'relative', padding:'20px', borderRadius: 'var(--r-md)', background:'var(--bg-card)', border:`2px solid ${p.highlighted?p.color:'var(--border)'}`, boxShadow:p.highlighted?`0 0 0 1px ${p.color}33`:'var(--shadow-card)' }}>
             {p.highlighted && (
-              <div style={{ position:'absolute', top:-12, left:'50%', transform:'translateX(-50%)', padding:'3px 14px', borderRadius:20, background:p.gradient, color:'#fff', fontSize:10, fontWeight:700, whiteSpace:'nowrap' }}>
+              <div style={{ position:'absolute', top:-12, left:'50%', transform:'translateX(-50%)', padding:'3px 14px', borderRadius: 'var(--r-lg)', background:p.gradient, color:'#fff', fontSize:10, fontWeight:700, whiteSpace:'nowrap' }}>
                 {t('onboarding.recommended')}
               </div>
             )}
             <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14 }}>
-              <span style={{ fontFamily:'Syne,sans-serif', fontSize:18, fontWeight:700, color:p.color }}>{p.label}</span>
+              <span style={{ fontFamily: 'var(--font-display)', fontSize:18, fontWeight:700, color:p.color }}>{p.label}</span>
               {!hidePrice && (
                 <div style={{ textAlign:'right' }}>
-                  <p style={{ fontFamily:'DM Mono,monospace', fontSize:15, fontWeight:700, color:'var(--text)', margin:0 }}>{p.annual}</p>
+                  <p style={{ fontFamily: 'var(--font-body)', fontSize:15, fontWeight:700, color:'var(--text)', margin:0 }}>{p.annual}</p>
                   <p style={{ fontSize:10, color:'var(--text-dim)', margin:'2px 0 0' }}>{p.monthly} · <span style={{ color:'#22c55e', fontWeight:600 }}>-{p.save}</span></p>
                 </div>
               )}
@@ -77,14 +77,14 @@ export default function SelectPlanPage() {
             {hidePrice ? (
               <button
                 onClick={()=>openIapStore('athlete')}
-                style={{ width:'100%', padding:'12px', borderRadius:11, background:'var(--bg-card2)', border:'1px solid var(--border)', color:'var(--text-mid)', fontFamily:'Syne,sans-serif', fontWeight:700, fontSize:13, cursor:'pointer' }}>
+                style={{ width:'100%', padding:'12px', borderRadius: 'var(--r-md)', background:'var(--bg-card2)', border:'1px solid var(--border)', color:'var(--text-mid)', fontFamily: 'var(--font-body)', fontWeight:700, fontSize:13, cursor:'pointer' }}>
                 {t('onboarding.choosePlanLabel', { label: p.label })}
               </button>
             ) : (
               <>
                 <button
                   onClick={()=>{ /* TODO: lien Stripe */ alert(`Redirection Stripe — ${p.label}`) }}
-                  style={{ width:'100%', padding:'12px', borderRadius:11, background:p.gradient, border:'none', color:'#fff', fontFamily:'Syne,sans-serif', fontWeight:700, fontSize:14, cursor:'pointer' }}>
+                  style={{ width:'100%', padding:'12px', borderRadius: 'var(--r-md)', background:p.gradient, border:'none', color:'#fff', fontFamily: 'var(--font-body)', fontWeight:700, fontSize:14, cursor:'pointer' }}>
                   {t('onboarding.choosePlanLabel', { label: p.label })}
                 </button>
                 <p style={{ fontSize:10, color:'var(--text-dim)', textAlign:'center', margin:'8px 0 0' }}>{t('onboarding.securePayment')}</p>

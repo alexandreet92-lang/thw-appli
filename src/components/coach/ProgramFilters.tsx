@@ -68,10 +68,10 @@ export default function ProgramFilters({ programs, value, onChange }: {
   return (
     <>
       <button onClick={() => setOpen(true)}
-        style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '9px 15px', borderRadius: 999, cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 700,
+        style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '9px 15px', borderRadius: 'var(--r-pill)', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 700,
           border: activeCount ? '1px solid var(--primary)' : '1px solid var(--border)', background: activeCount ? 'var(--primary-dim)' : 'var(--bg-card2)', color: activeCount ? 'var(--primary)' : 'var(--text-mid)' }}>
         <IconAdjustmentsHorizontal size={17} /> {t('w1d.filters')}
-        {activeCount > 0 && <span className="tnum" style={{ minWidth: 18, height: 18, borderRadius: 999, background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 11, fontWeight: 800, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0 5px' }}>{activeCount}</span>}
+        {activeCount > 0 && <span className="tnum" style={{ minWidth: 18, height: 18, borderRadius: 'var(--r-pill)', background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 11, fontWeight: 800, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0 5px' }}>{activeCount}</span>}
       </button>
 
       {open && typeof document !== 'undefined' && createPortal(
@@ -80,7 +80,7 @@ export default function ProgramFilters({ programs, value, onChange }: {
           <div style={{ position: 'relative', width: '100%', maxWidth: 420, background: 'var(--bg-card)', borderRadius: 'var(--r-lg)', padding: 'clamp(20px,5vw,28px)', boxShadow: '0 24px 60px rgba(0,0,0,0.3)', opacity: shown && !closing ? 1 : 0, transform: shown && !closing ? 'none' : 'translateY(12px) scale(0.96)', transition: 'opacity 0.22s ease, transform 0.22s cubic-bezier(0.32,0.72,0,1)' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
               <span style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 600, color: 'var(--text)' }}>{t('w1d.filters')}</span>
-              <button onClick={requestClose} aria-label={t('w1d.close')} style={{ width: 34, height: 34, borderRadius: 999, border: 'none', background: 'var(--bg-card2)', color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><IconX size={18} /></button>
+              <button onClick={requestClose} aria-label={t('w1d.close')} style={{ width: 34, height: 34, borderRadius: 'var(--r-pill)', border: 'none', background: 'var(--bg-card2)', color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><IconX size={18} /></button>
             </div>
 
             {hasMultiSport && <Group label={t('w1d.sport')}>
@@ -117,5 +117,5 @@ function Group({ label, children }: { label: string; children: React.ReactNode }
   )
 }
 function Chip({ on, onClick, children }: { on: boolean; onClick: () => void; children: React.ReactNode }) {
-  return <button onClick={onClick} style={{ padding: '9px 16px', borderRadius: 999, border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 13.5, fontWeight: 700, background: on ? 'var(--primary)' : 'var(--bg-card2)', color: on ? 'var(--on-primary)' : 'var(--text-mid)' }}>{children}</button>
+  return <button onClick={onClick} style={{ padding: '9px 16px', borderRadius: 'var(--r-pill)', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 13.5, fontWeight: 700, background: on ? 'var(--primary)' : 'var(--bg-card2)', color: on ? 'var(--on-primary)' : 'var(--text-mid)' }}>{children}</button>
 }

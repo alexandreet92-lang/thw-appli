@@ -11,8 +11,8 @@ const HYROX_DOT = '#ec4899' // design-allow-color — teinte sport hyrox sanctio
 const SCRIM = 'rgba(0,0,0,0.72)' // design-allow-color — voile de feuille
 
 const fieldLbl: React.CSSProperties = { fontFamily: 'var(--font-body)', fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-dim)', margin: '0 0 5px' }
-const inp: React.CSSProperties = { width: '100%', padding: '9px 11px', borderRadius: 10, border: '1px solid var(--border-mid)', background: 'var(--input-bg)', color: 'var(--text)', fontFamily: 'var(--font-body)', fontSize: 13, outline: 'none', boxSizing: 'border-box' }
-const sec: React.CSSProperties = { background: 'var(--bg-card2)', borderRadius: 14, padding: '14px 16px', marginBottom: 12 }
+const inp: React.CSSProperties = { width: '100%', padding: '9px 11px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border-mid)', background: 'var(--input-bg)', color: 'var(--text)', fontFamily: 'var(--font-body)', fontSize: 13, outline: 'none', boxSizing: 'border-box' }
+const sec: React.CSSProperties = { background: 'var(--bg-card2)', borderRadius: 'var(--r-md)', padding: '14px 16px', marginBottom: 12 }
 const secLbl: React.CSSProperties = { fontFamily: 'var(--font-body)', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-dim)', margin: '0 0 12px' }
 
 export function HyroxRaceSheet({ onClose, onSaved }: { onClose: () => void; onSaved: (r: HyroxRace) => void }) {
@@ -56,7 +56,7 @@ export function HyroxRaceSheet({ onClose, onSaved }: { onClose: () => void; onSa
             <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 600, color: 'var(--text)', margin: 0 }}>{t('performance.addRace')}</h2>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <input type="date" value={date} onChange={e => setDate(e.target.value)} className="rec-drawer" style={{ padding: '5px 9px', borderRadius: 8, border: '1px solid var(--border-mid)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 11, outline: 'none' }} />
+            <input type="date" value={date} onChange={e => setDate(e.target.value)} className="rec-drawer" style={{ padding: '5px 9px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border-mid)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 11, outline: 'none' }} />
             <button onClick={close} style={{ width: 28, height: 28, borderRadius: '50%', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 16 }}>×</button>
           </div>
         </div>
@@ -93,7 +93,7 @@ export function HyroxRaceSheet({ onClose, onSaved }: { onClose: () => void; onSa
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 8 }}>
               {Array.from({ length: 8 }).map((_, i) => (
                 <div key={i}>
-                  <p style={{ fontFamily: 'var(--font-body)', fontSize: 9, color: 'var(--text-dim)', margin: '0 0 4px', textAlign: 'center' }}>Run {i + 1}</p>
+                  <p style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: 'var(--text-dim)', margin: '0 0 4px', textAlign: 'center' }}>Run {i + 1}</p>
                   <input className="rec-drawer" value={runs[i]} onChange={e => setRuns(p => { const n = [...p]; n[i] = e.target.value; return n })} placeholder="mm:ss" style={{ ...inp, padding: 6, textAlign: 'center' }} />
                 </div>
               ))}

@@ -30,21 +30,21 @@ export function QuickActionsVisual() {
       `}</style>
       {ACTIONS.map((a, i) => (
         <div key={i} style={{
-          padding: '12px', borderRadius: 14,
+          padding: '12px', borderRadius: 'var(--r-md)',
           background: 'rgba(249,115,22,0.07)',
           border: '1px solid rgba(249,115,22,0.2)',
           animation: `go-scale-in 0.3s ${i * 0.07}s cubic-bezier(0.34,1.56,0.64,1) both`,
         }}>
           <div style={{
-            width: 32, height: 32, borderRadius: 8,
+            width: 32, height: 32, borderRadius: 'var(--r-sm)',
             background: 'rgba(249,115,22,0.14)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             marginBottom: 8, fontSize: 16,
           }}>
             {a.icon}
           </div>
-          <p style={{ fontSize: 12, fontWeight: 600, color: 'white', margin: '0 0 3px', fontFamily: 'DM Sans, sans-serif', lineHeight: 1.3 }}>{t(a.label)}</p>
-          <p style={{ fontSize: 10, color: 'rgba(249,115,22,0.7)', margin: 0, fontWeight: 600, fontFamily: 'DM Sans, sans-serif' }}>{a.model}</p>
+          <p style={{ fontSize: 12, fontWeight: 600, color: 'white', margin: '0 0 3px', fontFamily: 'var(--font-body)', lineHeight: 1.3 }}>{t(a.label)}</p>
+          <p style={{ fontSize: 10, color: 'rgba(249,115,22,0.7)', margin: 0, fontWeight: 600, fontFamily: 'var(--font-body)' }}>{a.model}</p>
         </div>
       ))}
     </div>

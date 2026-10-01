@@ -192,7 +192,7 @@ export default function ProgramWizard({ program, onDone }: { program: CoachProgr
       <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
         {STEPS.map((lbl, i) => (
           <div key={lbl} style={{ flex: 1, textAlign: 'center' }}>
-            <div style={{ height: 4, borderRadius: 999, background: step >= i + 1 ? 'var(--primary)' : 'var(--bg-card2)' }} />
+            <div style={{ height: 4, borderRadius: 'var(--r-pill)', background: step >= i + 1 ? 'var(--primary)' : 'var(--bg-card2)' }} />
             <div style={{ fontSize: 11.5, fontWeight: 700, color: step >= i + 1 ? 'var(--text)' : 'var(--text-dim)', marginTop: 6 }}>{lbl}</div>
           </div>
         ))}
@@ -263,7 +263,7 @@ export default function ProgramWizard({ program, onDone }: { program: CoachProgr
                   <div style={{ display: 'flex', gap: 5 }}>
                     {PHASE_PALETTE.map(c => (
                       <button key={c} onClick={() => setPhase(i, { color: c })} aria-label={t('w1d.color')}
-                        style={{ width: 20, height: 20, borderRadius: 999, border: (ph.color ?? PHASE_PALETTE[i % PHASE_PALETTE.length]) === c ? '2px solid var(--text)' : '2px solid transparent', background: c, cursor: 'pointer', padding: 0 }} />
+                        style={{ width: 20, height: 20, borderRadius: 'var(--r-pill)', border: (ph.color ?? PHASE_PALETTE[i % PHASE_PALETTE.length]) === c ? '2px solid var(--text)' : '2px solid transparent', background: c, cursor: 'pointer', padding: 0 }} />
                     ))}
                   </div>
                   <input value={ph.label} onChange={e => setPhase(i, { label: e.target.value })} style={{ ...inp, flex: 1, minWidth: 150 }} placeholder={t('w1d.phaseName')} />
@@ -292,7 +292,7 @@ export default function ProgramWizard({ program, onDone }: { program: CoachProgr
                   <div style={{ padding: 16 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10, flexWrap: 'wrap' }}>
                       <div style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 600, color: 'var(--text)' }}>{w.label || t('w1d.weekN', { n: wi + 1 })}</div>
-                      {ph && <span style={{ fontSize: 10.5, fontWeight: 700, color: ph.color, background: 'var(--bg-card2)', borderRadius: 999, padding: '2px 9px' }}>{ph.label}</span>}
+                      {ph && <span style={{ fontSize: 10.5, fontWeight: 700, color: ph.color, background: 'var(--bg-card2)', borderRadius: 'var(--r-pill)', padding: '2px 9px' }}>{ph.label}</span>}
                       <span style={{ flex: 1 }} />
                       {wk && wk.hours > 0 && <span className="tnum" style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-mid)' }}>{wk.hours} h</span>}
                     </div>
@@ -479,8 +479,8 @@ export default function ProgramWizard({ program, onDone }: { program: CoachProgr
                       <span style={{ width: 8, height: 8, borderRadius: '50%', background: sportDot(s.sport), flexShrink: 0 }} />
                       <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{SPORT_LABEL[s.sport] ?? s.sport}</span>
                     </div>
-                    <div style={{ height: 10, borderRadius: 999, background: 'var(--bg-card2)', overflow: 'hidden' }}>
-                      <div style={{ height: '100%', width: `${Math.round(s.minutes / maxMin * 100)}%`, borderRadius: 999, background: sportDot(s.sport), transition: 'width 700ms ease' }} />
+                    <div style={{ height: 10, borderRadius: 'var(--r-pill)', background: 'var(--bg-card2)', overflow: 'hidden' }}>
+                      <div style={{ height: '100%', width: `${Math.round(s.minutes / maxMin * 100)}%`, borderRadius: 'var(--r-pill)', background: sportDot(s.sport), transition: 'width 700ms ease' }} />
                     </div>
                     <span className="tnum" style={{ fontSize: 12, color: 'var(--text-dim)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
                       {s.sessions} {t('w1d.sessAbbr')} · {Math.round(s.minutes / 60 * 10) / 10} h{s.distance ? ` · ${s.distance} ${s.sport === 'swim' ? 'm' : 'km'}` : ''}{s.rpe ? ` · RPE ${s.rpe}` : ''}
@@ -501,7 +501,7 @@ export default function ProgramWizard({ program, onDone }: { program: CoachProgr
                   const col = ph.color || PHASE_PALETTE[i % PHASE_PALETTE.length]
                   return (
                     <div key={i} style={{ flex: span, minWidth: 0 }}>
-                      <div style={{ height: 8, borderRadius: 999, background: col }} />
+                      <div style={{ height: 8, borderRadius: 'var(--r-pill)', background: col }} />
                       <div style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--text-mid)', marginTop: 5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ph.label || t('w1d.phase')}</div>
                       <div className="tnum" style={{ fontSize: 10, color: 'var(--text-dim)' }}>S{ph.fromWeek}–S{ph.toWeek}</div>
                     </div>
@@ -614,7 +614,7 @@ function WeeklyBars({ weekly, recapSport }: { weekly: WeeklyAgg[]; recapSport: s
           return (
             <div key={w.index} onMouseEnter={() => setHover(w.index)} onMouseLeave={() => setHover(h => h === w.index ? null : h)}
               style={{ flex: '1 0 20px', minWidth: 20, display: 'flex', flexDirection: 'column', alignItems: 'center', height: '100%', justifyContent: 'flex-end', position: 'relative', cursor: 'default' }}>
-              {showLabels && total > 0 && <span className="tnum" style={{ position: 'absolute', top: -2, fontSize: 9, fontWeight: 700, color: on ? 'var(--text)' : 'var(--text-dim)' }}>{fmtH(total)}</span>}
+              {showLabels && total > 0 && <span className="tnum" style={{ position: 'absolute', top: -2, fontSize: 10, fontWeight: 700, color: on ? 'var(--text)' : 'var(--text-dim)' }}>{fmtH(total)}</span>}
               <div style={{ width: '76%', maxWidth: 28, display: 'flex', flexDirection: 'column-reverse', height: `${Math.round(total / maxMin * 100)}%`, borderRadius: '5px 5px 0 0', overflow: 'hidden', outline: on ? '2px solid var(--text)' : 'none', outlineOffset: 1, transition: 'outline 120ms' }}>
                 {entries.map(([sp, m]) => (
                   <div key={sp} style={{ height: `${Math.round(m / total * 100)}%`, background: sportDot(sp) }} />
@@ -622,7 +622,7 @@ function WeeklyBars({ weekly, recapSport }: { weekly: WeeklyAgg[]; recapSport: s
               </div>
               <span style={{ position: 'absolute', bottom: -20, fontSize: 9.5, fontWeight: on ? 700 : 500, color: on ? 'var(--text)' : 'var(--text-dim)' }}>{w.index + 1}</span>
               {on && total > 0 && (
-                <div style={{ position: 'absolute', bottom: 'calc(100% + 4px)', left: '50%', transform: 'translateX(-50%)', zIndex: 5, background: 'var(--text)', color: 'var(--bg-card)', borderRadius: 8, padding: '6px 9px', whiteSpace: 'nowrap', fontSize: 11, fontWeight: 600, boxShadow: '0 6px 18px rgba(0,0,0,0.25)', pointerEvents: 'none' }}>
+                <div style={{ position: 'absolute', bottom: 'calc(100% + 4px)', left: '50%', transform: 'translateX(-50%)', zIndex: 5, background: 'var(--text)', color: 'var(--bg-card)', borderRadius: 'var(--r-sm)', padding: '6px 9px', whiteSpace: 'nowrap', fontSize: 11, fontWeight: 600, boxShadow: '0 6px 18px rgba(0,0,0,0.25)', pointerEvents: 'none' }}>
                   <div style={{ fontWeight: 800 }}>{t('w1d.week')} {w.index + 1} · {fmtH(total)}</div>
                   {entries.map(([sp, m]) => <div key={sp} style={{ opacity: 0.85 }}>{SPORT_LABEL[sp] ?? sp} · {fmtH(m)}</div>)}
                   {recapSport === 'all' && <div style={{ opacity: 0.7 }}>{nbSea} {t('w1d.sportWord')}{nbSea > 1 ? 's' : ''}</div>}
@@ -679,7 +679,7 @@ function LoadLine({ weekly }: { weekly: WeeklyAgg[] }) {
       </svg>
       {/* Bulle à droite du curseur */}
       {hover != null && (
-        <div style={{ position: 'absolute', top: 4, left: `calc(${hoverX}% + 10px)`, transform: hoverX > 72 ? 'translateX(-100%) translateX(-20px)' : 'none', zIndex: 5, background: 'var(--text)', color: 'var(--bg-card)', borderRadius: 8, padding: '6px 10px', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap', boxShadow: '0 6px 18px rgba(0,0,0,0.25)', pointerEvents: 'none' }}>
+        <div style={{ position: 'absolute', top: 4, left: `calc(${hoverX}% + 10px)`, transform: hoverX > 72 ? 'translateX(-100%) translateX(-20px)' : 'none', zIndex: 5, background: 'var(--text)', color: 'var(--bg-card)', borderRadius: 'var(--r-sm)', padding: '6px 10px', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap', boxShadow: '0 6px 18px rgba(0,0,0,0.25)', pointerEvents: 'none' }}>
           {t('w1d.week')} {weekly[hover].index + 1} · {t('w1d.loadWord')} {weekly[hover].load}
           <span style={{ display: 'block', fontWeight: 500, opacity: 0.8 }}>{weekly[hover].hours} h {t('w1d.ofSessions')}</span>
         </div>
@@ -773,5 +773,5 @@ const ghost: React.CSSProperties = { padding: '11px 16px', borderRadius: 'var(--
 const addBtn: React.CSSProperties = { alignSelf: 'flex-start', padding: '8px 14px', borderRadius: 'var(--r-md)', border: 'none', background: 'var(--bg-card2)', color: 'var(--primary)', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 700, cursor: 'pointer' }
 const removeBtn: React.CSSProperties = { width: 34, height: 34, flexShrink: 0, borderRadius: 'var(--r-sm)', border: 'none', background: 'var(--bg-card)', color: 'var(--text-dim)', fontFamily: 'var(--font-body)', fontSize: 18, lineHeight: 1, cursor: 'pointer' }
 function chip(on: boolean): React.CSSProperties {
-  return { padding: '8px 14px', borderRadius: 999, border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 700, background: on ? 'var(--primary)' : 'var(--bg-card2)', color: on ? 'var(--on-primary)' : 'var(--text-mid)' }
+  return { padding: '8px 14px', borderRadius: 'var(--r-pill)', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 700, background: on ? 'var(--primary)' : 'var(--bg-card2)', color: on ? 'var(--on-primary)' : 'var(--text-mid)' }
 }

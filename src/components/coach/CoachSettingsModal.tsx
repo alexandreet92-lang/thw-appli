@@ -38,7 +38,7 @@ export function CoachSettingsModal({ open, onClose }: { open: boolean; onClose: 
         onClick={e => e.stopPropagation()}
         style={{
           position: 'relative', width: 'min(940px, 94vw)', height: 'min(86vh, 920px)',
-          background: 'var(--bg)', borderRadius: 20, border: '1px solid var(--border-mid)',
+          background: 'var(--bg)', borderRadius: 'var(--r-lg)', border: '1px solid var(--border-mid)',
           boxShadow: '0 24px 80px rgba(0,0,0,0.35)', overflow: 'hidden',
           display: 'flex', flexDirection: 'column',
           transform: open ? 'scale(1)' : 'scale(0.97)', transition: 'transform 0.2s cubic-bezier(0.32,0.72,0,1)',

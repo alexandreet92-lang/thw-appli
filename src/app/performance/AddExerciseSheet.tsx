@@ -45,7 +45,7 @@ export function AddExerciseSheet({ onClose, onAdded }: { onClose: () => void; on
         <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px 100px' }}>
           <p style={{ fontFamily: 'var(--font-body)', fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-dim)', margin: '0 0 5px' }}>{t('performance.exerciseName')}</p>
           <input className="rec-drawer" value={name} onChange={e => setName(e.target.value)} autoFocus placeholder={t('performance.egHipThrust')}
-            style={{ width: '100%', padding: '11px 12px', borderRadius: 10, border: '1px solid var(--border-mid)', background: 'var(--input-bg)', color: 'var(--text)', fontFamily: 'var(--font-body)', fontSize: 14, outline: 'none', boxSizing: 'border-box' }} />
+            style={{ width: '100%', padding: '11px 12px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border-mid)', background: 'var(--input-bg)', color: 'var(--text)', fontFamily: 'var(--font-body)', fontSize: 14, outline: 'none', boxSizing: 'border-box' }} />
 
           <p style={{ fontFamily: 'var(--font-body)', fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-dim)', margin: '18px 0 8px' }}>{t('performance.recordTypesToTrack')}</p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
@@ -53,7 +53,7 @@ export function AddExerciseSheet({ onClose, onAdded }: { onClose: () => void; on
               const on = types.includes(t)
               return (
                 <button key={t} onClick={() => toggle(t)}
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 12px', borderRadius: 999, border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: on ? 600 : 500, background: on ? 'var(--primary-dim)' : 'var(--bg-card2)', color: on ? 'var(--primary)' : 'var(--text-dim)' }}>
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 12px', borderRadius: 'var(--r-pill)', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: on ? 600 : 500, background: on ? 'var(--primary-dim)' : 'var(--bg-card2)', color: on ? 'var(--primary)' : 'var(--text-dim)' }}>
                   <span style={{ width: 13, height: 13, borderRadius: 4, flexShrink: 0, background: on ? 'var(--primary)' : 'transparent', border: on ? 'none' : '1.5px solid var(--border-mid)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: 'var(--on-primary)', fontSize: 10 }}>{on ? '✓' : ''}</span>
                   {typeLabel(t)}
                 </button>

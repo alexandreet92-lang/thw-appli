@@ -44,7 +44,7 @@ export default function LapsList({ laps, isDark = false }: Props) {
           style={{
             display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8,
             padding: '10px 12px',
-            fontSize: 13, color: text, fontFamily: 'DM Mono, monospace',
+            fontSize: 13, color: text, fontFamily: 'var(--font-body)',
             borderTop: `1px solid ${separator}`,
           }}
         >

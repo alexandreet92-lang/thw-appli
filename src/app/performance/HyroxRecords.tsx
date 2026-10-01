@@ -25,7 +25,7 @@ export function HyroxRecords({ onSelect }: { onSelect?: (label: string, value: s
     ...(Object.keys(HYROX_FORMAT_LABELS) as (keyof typeof HYROX_FORMAT_LABELS)[]).map(f => ({ id: f as FilterFmt, label: HYROX_FORMAT_LABELS[f] })),
   ]
 
-  const card: React.CSSProperties = { background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 16, padding: 20 }
+  const card: React.CSSProperties = { background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: 20 }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>

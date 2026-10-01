@@ -145,8 +145,8 @@ export function SectionLayout({
               <button key={s.id} onClick={() => go(s.id)} title={s.label}
                 style={{
                   position: 'relative', display: 'flex', alignItems: 'center', gap: 10, width: '100%',
-                  padding: '8px 10px', borderRadius: 9, marginBottom: 3, cursor: 'pointer',
-                  border: 'none', textAlign: 'left', fontFamily: 'DM Sans,sans-serif',
+                  padding: '8px 10px', borderRadius: 'var(--r-sm)', marginBottom: 3, cursor: 'pointer',
+                  border: 'none', textAlign: 'left', fontFamily: 'var(--font-body)',
                   background: active ? 'rgba(6,182,212,0.10)' : 'transparent',
                   transition: 'background 0.14s', whiteSpace: 'nowrap',
                 }}
@@ -182,14 +182,14 @@ export function SectionLayout({
       <>
       {/* Onglets mobile — segmented control « pilule » (style Dashboard), défilable au doigt */}
       <div className="sl-tabscroll" style={{ padding: '12px 12px 0', overflowX: 'auto', WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'] }}>
-        <div role="tablist" style={{ display: 'inline-flex', gap: 2, padding: 3, borderRadius: 999, background: 'var(--bg-card2)' }}>
+        <div role="tablist" style={{ display: 'inline-flex', gap: 2, padding: 3, borderRadius: 'var(--r-pill)', background: 'var(--bg-card2)' }}>
           {sections.map(s => {
             const active = activeId === s.id
             return (
               <button key={s.id} role="tab" aria-selected={active} onClick={() => go(s.id)}
                 style={{
-                  border: 'none', cursor: 'pointer', borderRadius: 999, padding: '7px 16px',
-                  fontFamily: 'DM Sans,sans-serif', whiteSpace: 'nowrap', fontSize: tabFont,
+                  border: 'none', cursor: 'pointer', borderRadius: 'var(--r-pill)', padding: '7px 16px',
+                  fontFamily: 'var(--font-body)', whiteSpace: 'nowrap', fontSize: tabFont,
                   fontWeight: active ? 700 : 600,
                   background: active ? 'var(--bg-elev)' : 'transparent',
                   color: active ? 'var(--text)' : 'var(--text-mid)',

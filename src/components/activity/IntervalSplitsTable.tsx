@@ -280,10 +280,10 @@ export function IntervalSplitsTable({ streams, sport, activityLabel, historyEF, 
           {t('w3f.intervals_comparison')}
         </div>
         {/* Toggle 30 min / 1 h (vélo) · 15 / 30 min (course) */}
-        <div style={{ display: 'flex', gap: 2, background: 'var(--bg-alt)', borderRadius: 9, padding: 2 }}>
+        <div style={{ display: 'flex', gap: 2, background: 'var(--bg-alt)', borderRadius: 'var(--r-sm)', padding: 2 }}>
           {options.map(o => (
             <button key={o.s} onClick={() => setIntervalS(o.s)}
-              style={{ padding: '4px 11px', borderRadius: 7, border: 'none', cursor: 'pointer', fontSize: 11, fontWeight: 700, fontFamily: 'var(--font-body)',
+              style={{ padding: '4px 11px', borderRadius: 'var(--r-sm)', border: 'none', cursor: 'pointer', fontSize: 11, fontWeight: 700, fontFamily: 'var(--font-body)',
                 background: intervalS === o.s ? 'var(--bg-card)' : 'transparent', color: intervalS === o.s ? 'var(--text)' : 'var(--text-dim)',
                 boxShadow: intervalS === o.s ? '0 1px 4px rgba(0,0,0,0.10)' : 'none' }}>
               {o.label}
@@ -292,7 +292,7 @@ export function IntervalSplitsTable({ streams, sport, activityLabel, historyEF, 
         </div>
       </div>
 
-      <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch', border: '1px solid var(--border)', borderRadius: 12 }}>
+      <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch', border: '1px solid var(--border)', borderRadius: 'var(--r-md)' }}>
         <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: sport === 'bike' ? 860 : 700, background: 'var(--bg-card)' }}>
           <thead>
             <tr>
@@ -384,7 +384,7 @@ export function IntervalSplitsTable({ streams, sport, activityLabel, historyEF, 
       <div style={{ marginTop: 12 }}>
         <button
           onClick={() => (ai.status === 'idle' || ai.status === 'done' || ai.status === 'error') ? ai.run(buildPrompt()) : undefined}
-          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 15px', borderRadius: 20,
+          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 15px', borderRadius: 'var(--r-lg)',
             border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--primary)',
             fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3z"/></svg>

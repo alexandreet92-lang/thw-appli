@@ -49,7 +49,7 @@ export default function UpdatePasswordPage() {
       <div style={{
         background: 'var(--bg-card)',
         border: '1px solid var(--border)',
-        borderRadius: 20,
+        borderRadius: 'var(--r-lg)',
         padding: 32,
         maxWidth: 400,
         width: '100%',
@@ -58,16 +58,16 @@ export default function UpdatePasswordPage() {
 
         {/* Logo */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 28 }}>
-          <div style={{ width: 40, height: 40, borderRadius: 12, background: 'linear-gradient(135deg,#06B6D4,#5b6fff)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Syne,sans-serif', fontWeight: 800, fontSize: 12, color: '#fff', boxShadow: '0 0 16px rgba(6,182,212,0.3)' }}>
+          <div style={{ width: 40, height: 40, borderRadius: 'var(--r-md)', background: 'linear-gradient(135deg,#06B6D4,#5b6fff)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-body)', fontWeight: 800, fontSize: 12, color: '#fff', boxShadow: '0 0 16px rgba(6,182,212,0.3)' }}>
             THW
           </div>
           <div>
-            <p style={{ fontFamily: 'Syne,sans-serif', fontWeight: 700, fontSize: 15, color: 'var(--text)', margin: 0, lineHeight: 1.2 }}>THW Coaching</p>
+            <p style={{ fontFamily: 'var(--font-body)', fontWeight: 700, fontSize: 15, color: 'var(--text)', margin: 0, lineHeight: 1.2 }}>THW Coaching</p>
             <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: 0 }}>{t('authpage.newPassword')}</p>
           </div>
         </div>
 
-        <p style={{ fontFamily: 'Syne,sans-serif', fontWeight: 700, fontSize: 18, color: 'var(--text)', margin: '0 0 8px' }}>
+        <p style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 18, color: 'var(--text)', margin: '0 0 8px' }}>
           {t('auth.forgotTitle')}
         </p>
         <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: '0 0 24px' }}>
@@ -83,7 +83,7 @@ export default function UpdatePasswordPage() {
               onChange={e => setPassword(e.target.value)}
               placeholder="••••••••"
               onKeyDown={e => e.key === 'Enter' && handleSubmit()}
-              style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 13, outline: 'none', fontFamily: 'DM Sans,sans-serif', boxSizing: 'border-box' }}
+              style={{ width: '100%', padding: '10px 12px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 13, outline: 'none', fontFamily: 'var(--font-body)', boxSizing: 'border-box' }}
             />
           </div>
           <div>
@@ -94,18 +94,18 @@ export default function UpdatePasswordPage() {
               onChange={e => setConfirm(e.target.value)}
               placeholder="••••••••"
               onKeyDown={e => e.key === 'Enter' && handleSubmit()}
-              style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 13, outline: 'none', fontFamily: 'DM Sans,sans-serif', boxSizing: 'border-box' }}
+              style={{ width: '100%', padding: '10px 12px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 13, outline: 'none', fontFamily: 'var(--font-body)', boxSizing: 'border-box' }}
             />
           </div>
 
           {error && (
-            <div style={{ padding: '9px 12px', borderRadius: 9, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: 'var(--danger)', fontSize: 12 }}>
+            <div style={{ padding: '9px 12px', borderRadius: 'var(--r-sm)', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: 'var(--danger)', fontSize: 12 }}>
               {error}
             </div>
           )}
 
           {success && (
-            <div style={{ padding: '9px 12px', borderRadius: 9, background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.2)', color: '#22c55e', fontSize: 12 }}>
+            <div style={{ padding: '9px 12px', borderRadius: 'var(--r-sm)', background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.2)', color: '#22c55e', fontSize: 12 }}>
               {success}
             </div>
           )}

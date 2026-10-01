@@ -211,7 +211,7 @@ function AppLogo({ app, size = 44, logoErrors, onError }: {
         />
       ) : (
         <span style={{
-          fontFamily: 'Syne, sans-serif', fontWeight: 700,
+          fontFamily: 'var(--font-body)', fontWeight: 700,
           fontSize: Math.round(size * 0.27), color: '#fff', letterSpacing: '0.02em',
         }}>
           {app.logoInitial}
@@ -226,25 +226,25 @@ function AppLogo({ app, size = 44, logoErrors, onError }: {
 function StatusBadge({ status }: { status: ConnectionStatus }) {
   const { t } = useI18n()
   if (status === 'connected') return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 20, background: 'rgba(34,197,94,0.13)', color: '#22c55e', fontSize: 10, fontFamily: 'DM Sans, sans-serif', fontWeight: 600, whiteSpace: 'nowrap' }}>
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 'var(--r-lg)', background: 'rgba(34,197,94,0.13)', color: '#22c55e', fontSize: 10, fontFamily: 'var(--font-body)', fontWeight: 600, whiteSpace: 'nowrap' }}>
       <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#22c55e', flexShrink: 0, boxShadow: '0 0 4px #22c55e' }} />
       {t('connections.connected')}
     </span>
   )
   if (status === 'pending') return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '2px 8px', borderRadius: 20, background: 'var(--primary-dim)', color: ACCENT, fontSize: 10, fontFamily: 'DM Sans, sans-serif', fontWeight: 600, whiteSpace: 'nowrap' }}>
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '2px 8px', borderRadius: 'var(--r-lg)', background: 'var(--primary-dim)', color: ACCENT, fontSize: 10, fontFamily: 'var(--font-body)', fontWeight: 600, whiteSpace: 'nowrap' }}>
       <Spinner size={8} color={ACCENT} />
       {t('connections.inProgress')}
     </span>
   )
   if (status === 'available') return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 8px', borderRadius: 20, background: 'var(--bg-card2)', border: '1px solid var(--border)', color: 'var(--text-dim)', fontSize: 10, fontFamily: 'DM Sans, sans-serif', fontWeight: 500, whiteSpace: 'nowrap' }}>
+    <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 8px', borderRadius: 'var(--r-lg)', background: 'var(--bg-card2)', border: '1px solid var(--border)', color: 'var(--text-dim)', fontSize: 10, fontFamily: 'var(--font-body)', fontWeight: 500, whiteSpace: 'nowrap' }}>
       {t('connections.available')}
     </span>
   )
   // coming
   return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 8px', borderRadius: 20, background: 'rgba(249,115,22,0.10)', color: '#f97316', fontSize: 10, fontFamily: 'DM Sans, sans-serif', fontWeight: 500, whiteSpace: 'nowrap' }}>
+    <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 8px', borderRadius: 'var(--r-lg)', background: 'rgba(249,115,22,0.10)', color: '#f97316', fontSize: 10, fontFamily: 'var(--font-body)', fontWeight: 500, whiteSpace: 'nowrap' }}>
       {t('connections.statusComing')}
     </span>
   )
@@ -268,7 +268,7 @@ function AppRow({ app, effectiveStatus, lastSync, isSyncing, isHovered, logoErro
     <div onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave}
       style={{
         padding: isMobile ? '10px 12px' : '12px 16px',
-        borderRadius: 12,
+        borderRadius: 'var(--r-md)',
         border: '1px solid var(--border)',
         background: isHovered ? 'var(--bg-hover)' : 'var(--bg-card)',
         marginBottom: 6,
@@ -285,11 +285,11 @@ function AppRow({ app, effectiveStatus, lastSync, isSyncing, isHovered, logoErro
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0 }}>
         <AppLogo app={app} size={isMobile ? 36 : 44} logoErrors={logoErrors} onError={onLogoError} />
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontFamily: 'Syne, sans-serif', fontWeight: 500, fontSize: isMobile ? 13 : 14, color: 'var(--text)', lineHeight: 1.3, marginBottom: isMobile ? 0 : 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          <div style={{ fontFamily: 'var(--font-body)', fontWeight: 500, fontSize: isMobile ? 13 : 14, color: 'var(--text)', lineHeight: 1.3, marginBottom: isMobile ? 0 : 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {app.name}
           </div>
           {!isMobile && (
-            <div style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 12, color: 'var(--text-mid)', lineHeight: 1.4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-mid)', lineHeight: 1.4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               {t(`connections.appDesc.${app.id}`)}
             </div>
           )}
@@ -303,12 +303,12 @@ function AppRow({ app, effectiveStatus, lastSync, isSyncing, isHovered, logoErro
           <PoweredByStrava variant="muted" height={11} />
         )}
         {needsReconnect && (
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 7px', borderRadius: 20, background: 'rgba(249,115,22,0.12)', color: '#f97316', fontSize: 10, fontFamily: 'DM Sans, sans-serif', fontWeight: 600, whiteSpace: 'nowrap' }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 7px', borderRadius: 'var(--r-lg)', background: 'rgba(249,115,22,0.12)', color: '#f97316', fontSize: 10, fontFamily: 'var(--font-body)', fontWeight: 600, whiteSpace: 'nowrap' }}>
             {t('connections.v3Reconnect')}
           </span>
         )}
         {!isMobile && effectiveStatus === 'connected' && lastSync && (
-          <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 10, color: 'var(--text-dim)' }}>{lastSync}</span>
+          <span style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: 'var(--text-dim)' }}>{lastSync}</span>
         )}
       </div>
 
@@ -320,11 +320,11 @@ function AppRow({ app, effectiveStatus, lastSync, isSyncing, isHovered, logoErro
           <button onClick={onConnect}
             onMouseEnter={() => setSyncHov(true)} onMouseLeave={() => setSyncHov(false)}
             style={{
-              padding: '5px 10px', borderRadius: 7,
+              padding: '5px 10px', borderRadius: 'var(--r-sm)',
               border: `1px solid #f97316`,
               background: syncHov ? 'rgba(249,115,22,0.12)' : 'transparent',
               color: '#f97316',
-              fontSize: 11, fontFamily: 'DM Sans, sans-serif', fontWeight: 600,
+              fontSize: 11, fontFamily: 'var(--font-body)', fontWeight: 600,
               cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5,
               transition: 'background 0.14s', whiteSpace: 'nowrap',
             }}>
@@ -338,11 +338,11 @@ function AppRow({ app, effectiveStatus, lastSync, isSyncing, isHovered, logoErro
             <button onClick={onSync} disabled={isSyncing}
               onMouseEnter={() => setSyncHov(true)} onMouseLeave={() => setSyncHov(false)}
               style={{
-                padding: '5px 10px', borderRadius: 7,
+                padding: '5px 10px', borderRadius: 'var(--r-sm)',
                 border: `1px solid ${syncHov && !isSyncing ? 'var(--border-mid)' : 'var(--border)'}`,
                 background: syncHov && !isSyncing ? 'var(--bg-hover)' : 'transparent',
                 color: isSyncing ? 'var(--text-dim)' : 'var(--text-mid)',
-                fontSize: 11, fontFamily: 'DM Sans, sans-serif', fontWeight: 500,
+                fontSize: 11, fontFamily: 'var(--font-body)', fontWeight: 500,
                 cursor: isSyncing ? 'default' : 'pointer',
                 display: 'flex', alignItems: 'center', gap: 5,
                 transition: 'background 0.14s, border-color 0.14s',
@@ -358,11 +358,11 @@ function AppRow({ app, effectiveStatus, lastSync, isSyncing, isHovered, logoErro
             <button onClick={onDisconnect}
               onMouseEnter={() => setDisconnectHov(true)} onMouseLeave={() => setDisconnectHov(false)}
               style={{
-                padding: '5px 10px', borderRadius: 7,
+                padding: '5px 10px', borderRadius: 'var(--r-sm)',
                 border: 'none',
                 background: disconnectHov ? 'rgba(239,68,68,0.08)' : 'transparent',
                 color: disconnectHov ? '#ef4444' : 'var(--text-dim)',
-                fontSize: 11, fontFamily: 'DM Sans, sans-serif', fontWeight: 500,
+                fontSize: 11, fontFamily: 'var(--font-body)', fontWeight: 500,
                 cursor: 'pointer',
                 transition: 'background 0.14s, color 0.14s',
                 whiteSpace: 'nowrap',
@@ -377,10 +377,10 @@ function AppRow({ app, effectiveStatus, lastSync, isSyncing, isHovered, logoErro
           <button onClick={onDisconnect}
             onMouseEnter={() => setDisconnectHov(true)} onMouseLeave={() => setDisconnectHov(false)}
             style={{
-              padding: '5px 10px', borderRadius: 7, border: 'none',
+              padding: '5px 10px', borderRadius: 'var(--r-sm)', border: 'none',
               background: disconnectHov ? 'rgba(239,68,68,0.08)' : 'transparent',
               color: disconnectHov ? '#ef4444' : 'var(--text-dim)',
-              fontSize: 11, fontFamily: 'DM Sans, sans-serif', fontWeight: 500,
+              fontSize: 11, fontFamily: 'var(--font-body)', fontWeight: 500,
               cursor: 'pointer', transition: 'background 0.14s, color 0.14s', whiteSpace: 'nowrap',
             }}>
             {t('connections.disconnect')}
@@ -388,7 +388,7 @@ function AppRow({ app, effectiveStatus, lastSync, isSyncing, isHovered, logoErro
         )}
 
         {effectiveStatus === 'pending' && (
-          <span style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 10px', color: 'var(--text-dim)', fontSize: 11, fontFamily: 'DM Sans, sans-serif', fontWeight: 500 }}>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 10px', color: 'var(--text-dim)', fontSize: 11, fontFamily: 'var(--font-body)', fontWeight: 500 }}>
             <Spinner size={11} color="var(--text-dim)" />
             {t('connections.authorizing')}
           </span>
@@ -403,11 +403,11 @@ function AppRow({ app, effectiveStatus, lastSync, isSyncing, isHovered, logoErro
           <button onClick={onConnect}
             onMouseEnter={() => setConnectHov(true)} onMouseLeave={() => setConnectHov(false)}
             style={{
-              padding: '5px 12px', borderRadius: 7,
+              padding: '5px 12px', borderRadius: 'var(--r-sm)',
               border: `1px solid ${ACCENT}`,
               background: connectHov ? ACCENT : 'transparent',
               color: connectHov ? '#fff' : ACCENT,
-              fontSize: 11, fontFamily: 'DM Sans, sans-serif', fontWeight: 600,
+              fontSize: 11, fontFamily: 'var(--font-body)', fontWeight: 600,
               cursor: 'pointer',
               display: 'flex', alignItems: 'center', gap: 5,
               transition: 'background 0.15s, color 0.15s',
@@ -422,10 +422,10 @@ function AppRow({ app, effectiveStatus, lastSync, isSyncing, isHovered, logoErro
 
         {effectiveStatus === 'coming' && (
           <button disabled style={{
-            padding: '5px 10px', borderRadius: 7,
+            padding: '5px 10px', borderRadius: 'var(--r-sm)',
             border: '1px solid var(--border)',
             background: 'transparent', color: 'var(--text-dim)',
-            fontSize: 11, fontFamily: 'DM Sans, sans-serif', fontWeight: 400,
+            fontSize: 11, fontFamily: 'var(--font-body)', fontWeight: 400,
             cursor: 'default', opacity: 0.55, whiteSpace: 'nowrap',
           }}>
             {t('connections.comingSoon')}
@@ -452,7 +452,7 @@ function ComingGrid({ apps, logoErrors, onLogoError }: {
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
         {apps.map(app => (
           <div key={app.id} title={t('connections.comingSoonTitle', { name: app.name })}
-            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px 4px 5px', borderRadius: 20, border: '1px solid var(--border)', background: 'var(--bg-card2)', opacity: 0.5 }}>
+            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px 4px 5px', borderRadius: 'var(--r-lg)', border: '1px solid var(--border)', background: 'var(--bg-card2)', opacity: 0.5 }}>
             <AppLogo app={app} size={18} logoErrors={logoErrors} onError={onLogoError} />
             <span style={{ fontFamily: 'var(--font-body)', fontSize: 11.5, color: 'var(--text-mid)', whiteSpace: 'nowrap' }}>{app.name}</span>
           </div>
@@ -470,11 +470,11 @@ function PillFilter({ label, active, onClick }: { label: string; active: boolean
     <button onClick={onClick}
       onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}
       style={{
-        padding: '6px 14px', borderRadius: 20,
+        padding: '6px 14px', borderRadius: 'var(--r-lg)',
         border: active ? 'none' : '1px solid var(--border)',
         background: active ? ACCENT : hov ? 'var(--bg-hover)' : 'var(--bg-card2)',
         color: active ? '#fff' : hov ? 'var(--text)' : 'var(--text-dim)',
-        fontFamily: 'DM Sans, sans-serif', fontSize: 12, fontWeight: active ? 600 : 400,
+        fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: active ? 600 : 400,
         cursor: 'pointer',
         transition: 'background 0.14s, color 0.14s',
         whiteSpace: 'nowrap',
@@ -496,11 +496,11 @@ function ConnectModal({ modal, app, logoErrors, onLogoError, onCancel, onContinu
   return (
     <div onClick={onCancel} style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.50)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
       <div onClick={(e: React.MouseEvent) => e.stopPropagation()}
-        style={{ width: '100%', maxWidth: 400, background: 'var(--bg-card)', borderRadius: 20, border: '1px solid var(--border-mid)', padding: 28, boxShadow: '0 20px 60px rgba(0,0,0,0.3)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, animation: 'fadeUp 0.22s ease forwards' }}>
+        style={{ width: '100%', maxWidth: 400, background: 'var(--bg-card)', borderRadius: 'var(--r-lg)', border: '1px solid var(--border-mid)', padding: 28, boxShadow: '0 20px 60px rgba(0,0,0,0.3)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, animation: 'fadeUp 0.22s ease forwards' }}>
         {modal.step === 'loading' ? (
           <div style={{ padding: '16px 0', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
             <Spinner size={36} color={ACCENT} />
-            <span style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 14, color: 'var(--text-mid)', textAlign: 'center' }}>
+            <span style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-mid)', textAlign: 'center' }}>
               {t('connections.redirecting', { name: app.name })}
             </span>
           </div>
@@ -508,22 +508,22 @@ function ConnectModal({ modal, app, logoErrors, onLogoError, onCancel, onContinu
           <>
             <AppLogo app={app} size={56} logoErrors={logoErrors} onError={onLogoError} />
             <div style={{ textAlign: 'center' }}>
-              <div style={{ fontFamily: 'Syne, sans-serif', fontWeight: 700, fontSize: 17, color: 'var(--text)', marginBottom: 8 }}>
+              <div style={{ fontFamily: 'var(--font-body)', fontWeight: 700, fontSize: 17, color: 'var(--text)', marginBottom: 8 }}>
                 {t('connections.connectingTo', { name: app.name })}
               </div>
-              <p style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 13, color: 'var(--text-mid)', lineHeight: 1.6, margin: 0, maxWidth: 320 }}>
+              <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-mid)', lineHeight: 1.6, margin: 0, maxWidth: 320 }}>
                 {t('connections.modalDescription', { name: app.name })}
               </p>
             </div>
             <div style={{ display: 'flex', gap: 10, width: '100%', marginTop: 4 }}>
               <button onClick={onCancel}
                 onMouseEnter={() => setCancelHov(true)} onMouseLeave={() => setCancelHov(false)}
-                style={{ flex: 1, padding: '10px 0', borderRadius: 10, border: '1px solid var(--border-mid)', background: cancelHov ? 'var(--bg-hover)' : 'transparent', color: 'var(--text-mid)', fontFamily: 'DM Sans, sans-serif', fontSize: 13, fontWeight: 500, cursor: 'pointer', transition: 'background 0.14s' }}>
+                style={{ flex: 1, padding: '10px 0', borderRadius: 'var(--r-sm)', border: '1px solid var(--border-mid)', background: cancelHov ? 'var(--bg-hover)' : 'transparent', color: 'var(--text-mid)', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 500, cursor: 'pointer', transition: 'background 0.14s' }}>
                 {t('connections.cancel')}
               </button>
               <button onClick={onContinue}
                 onMouseEnter={() => setContinueHov(true)} onMouseLeave={() => setContinueHov(false)}
-                style={{ flex: 1, padding: '10px 0', borderRadius: 10, border: 'none', background: continueHov ? ACCENT_HOVER : ACCENT, color: '#fff', fontFamily: 'DM Sans, sans-serif', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, boxShadow: `0 2px 14px ${ACCENT_GLOW}`, transition: 'background 0.14s' }}>
+                style={{ flex: 1, padding: '10px 0', borderRadius: 'var(--r-sm)', border: 'none', background: continueHov ? ACCENT_HOVER : ACCENT, color: '#fff', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, boxShadow: `0 2px 14px ${ACCENT_GLOW}`, transition: 'background 0.14s' }}>
                 {t('connections.continue')}
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
                   <line x1="5" y1="12" x2="19" y2="12" /><polyline points="12 5 19 12 12 19" />
@@ -543,7 +543,7 @@ function Toast({ message, type = 'info', onDismiss }: { message: string; type?: 
   useEffect(() => { const t = setTimeout(onDismiss, 4500); return () => clearTimeout(t) }, [onDismiss])
   const color = type === 'success' ? '#22c55e' : type === 'error' ? '#ef4444' : ACCENT
   return (
-    <div style={{ position: 'fixed', bottom: 28, right: 24, zIndex: 2000, background: 'var(--bg-card)', border: '1px solid var(--border-mid)', borderRadius: 12, padding: '11px 18px', boxShadow: '0 8px 32px rgba(0,0,0,0.20)', fontFamily: 'DM Sans, sans-serif', fontSize: 13, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 10, animation: 'fadeUp 0.2s ease forwards', maxWidth: 360 }}>
+    <div style={{ position: 'fixed', bottom: 28, right: 24, zIndex: 2000, background: 'var(--bg-card)', border: '1px solid var(--border-mid)', borderRadius: 'var(--r-md)', padding: '11px 18px', boxShadow: '0 8px 32px rgba(0,0,0,0.20)', fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 10, animation: 'fadeUp 0.2s ease forwards', maxWidth: 360 }}>
       <span style={{ width: 8, height: 8, borderRadius: '50%', background: color, flexShrink: 0, boxShadow: `0 0 6px ${color}` }} />
       {message}
     </div>
@@ -602,28 +602,28 @@ function CalendarSyncCard({ isMobile }: { isMobile: boolean }) {
   )
 
   return (
-    <div style={{ border: '1px solid var(--border)', background: 'var(--bg-card)', borderRadius: 14, padding: isMobile ? 14 : 16, marginBottom: 8 }}>
+    <div style={{ border: '1px solid var(--border)', background: 'var(--bg-card)', borderRadius: 'var(--r-md)', padding: isMobile ? 14 : 16, marginBottom: 8 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <div style={{ width: 40, height: 40, borderRadius: 10, flexShrink: 0, background: 'var(--bg-card2)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ width: 40, height: 40, borderRadius: 'var(--r-sm)', flexShrink: 0, background: 'var(--bg-card2)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           {CalIcon}
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontFamily: 'Syne, sans-serif', fontWeight: 600, fontSize: isMobile ? 14 : 15, color: 'var(--text)', lineHeight: 1.25 }}>
+          <div style={{ fontFamily: 'var(--font-body)', fontWeight: 600, fontSize: isMobile ? 14 : 15, color: 'var(--text)', lineHeight: 1.25 }}>
             Calendrier
           </div>
-          <div style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 12, color: 'var(--text-mid)', lineHeight: 1.4, marginTop: 2 }}>
+          <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-mid)', lineHeight: 1.4, marginTop: 2 }}>
             Séances, courses et objectifs dans Apple, Google ou Outlook — à jour automatiquement.
           </div>
         </div>
         {state !== 'ready' && (
           <button data-guide="conn-connect" onClick={connect} disabled={state === 'loading'}
-            style={{ flexShrink: 0, padding: '7px 14px', borderRadius: 8, border: 'none', background: ACCENT, color: '#fff', fontFamily: 'DM Sans, sans-serif', fontSize: 12.5, fontWeight: 700, cursor: state === 'loading' ? 'default' : 'pointer', display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}>
+            style={{ flexShrink: 0, padding: '7px 14px', borderRadius: 'var(--r-sm)', border: 'none', background: ACCENT, color: '#fff', fontFamily: 'var(--font-body)', fontSize: 12.5, fontWeight: 700, cursor: state === 'loading' ? 'default' : 'pointer', display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}>
             {state === 'loading' ? <Spinner size={12} color="#fff" /> : null}
             {state === 'loading' ? 'Connexion…' : 'Connecter'}
           </button>
         )}
         {state === 'ready' && (
-          <span style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 20, background: 'rgba(34,197,94,0.12)', color: '#22c55e', fontSize: 11, fontFamily: 'DM Sans, sans-serif', fontWeight: 600 }}>
+          <span style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 'var(--r-lg)', background: 'rgba(34,197,94,0.12)', color: '#22c55e', fontSize: 11, fontFamily: 'var(--font-body)', fontWeight: 600 }}>
             <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e' }} />
             Connecté
           </span>
@@ -632,15 +632,15 @@ function CalendarSyncCard({ isMobile }: { isMobile: boolean }) {
 
       {state === 'ready' && urls && open && (
         <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border)' }}>
-          <p style={{ margin: '0 0 6px', fontFamily: 'DM Sans, sans-serif', fontSize: 12, color: 'var(--text-mid)', lineHeight: 1.5 }}>
+          <p style={{ margin: '0 0 6px', fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-mid)', lineHeight: 1.5 }}>
             Ajoute tes calendriers — chaque type a déjà sa couleur.
           </p>
           {CAL_KINDS.map(c => (
             <div key={c.kind} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
               <span style={{ width: 9, height: 9, borderRadius: '50%', background: c.color, flexShrink: 0 }} />
-              <span style={{ flex: 1, minWidth: 0, fontFamily: 'DM Sans, sans-serif', fontSize: 13.5, fontWeight: 500, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.label}</span>
+              <span style={{ flex: 1, minWidth: 0, fontFamily: 'var(--font-body)', fontSize: 13.5, fontWeight: 500, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.label}</span>
               <a href={`${urls.webcal}?cal=${c.kind}`}
-                style={{ flexShrink: 0, fontFamily: 'DM Sans, sans-serif', fontSize: 12.5, fontWeight: 700, color: ACCENT, textDecoration: 'none' }}>
+                style={{ flexShrink: 0, fontFamily: 'var(--font-body)', fontSize: 12.5, fontWeight: 700, color: ACCENT, textDecoration: 'none' }}>
                 S’abonner
               </a>
             </div>
@@ -648,7 +648,7 @@ function CalendarSyncCard({ isMobile }: { isMobile: boolean }) {
 
           {/* Google / Outlook : copier les liens (secondaire, replié) */}
           <button onClick={() => setShowCopy(v => !v)}
-            style={{ marginTop: 10, background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', fontSize: 12, color: 'var(--text-dim)', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+            style={{ marginTop: 10, background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
             <span style={{ fontSize: 10, transform: showCopy ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s' }}>▸</span>
             Google / Outlook — copier les liens
           </button>
@@ -657,20 +657,20 @@ function CalendarSyncCard({ isMobile }: { isMobile: boolean }) {
               {CAL_KINDS.map(c => (
                 <div key={c.kind} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0' }}>
                   <span style={{ width: 7, height: 7, borderRadius: '50%', background: c.color, flexShrink: 0 }} />
-                  <span style={{ flex: 1, fontFamily: 'DM Sans, sans-serif', fontSize: 12.5, color: 'var(--text-mid)' }}>{c.label}</span>
+                  <span style={{ flex: 1, fontFamily: 'var(--font-body)', fontSize: 12.5, color: 'var(--text-mid)' }}>{c.label}</span>
                   <button onClick={() => copyLink(c.kind)}
-                    style={{ flexShrink: 0, padding: '4px 10px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-mid)', fontFamily: 'DM Sans, sans-serif', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
+                    style={{ flexShrink: 0, padding: '4px 10px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-mid)', fontFamily: 'var(--font-body)', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
                     {copiedKind === c.kind ? '✓ Copié' : 'Copier'}
                   </button>
                 </div>
               ))}
-              <p style={{ margin: '6px 0 0', fontFamily: 'DM Sans, sans-serif', fontSize: 11, color: 'var(--text-dim)', lineHeight: 1.5 }}>
+              <p style={{ margin: '6px 0 0', fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--text-dim)', lineHeight: 1.5 }}>
                 Ajouter un calendrier → <em>Depuis une URL</em> → colle le lien.
               </p>
             </div>
           )}
 
-          <p style={{ margin: '12px 0 0', fontFamily: 'DM Sans, sans-serif', fontSize: 11, color: 'var(--text-dim)', lineHeight: 1.5 }}>
+          <p style={{ margin: '12px 0 0', fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--text-dim)', lineHeight: 1.5 }}>
             Liens privés — ne les partage pas.
           </p>
         </div>
@@ -905,12 +905,12 @@ function ConnectionsInner() {
                 {t('connections.title')}
               </h1>
               {!isMobile && (
-                <p style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 13, color: 'var(--text-mid)', marginTop: 5, marginBottom: 0, maxWidth: 500, lineHeight: 1.6 }}>
+                <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-mid)', marginTop: 5, marginBottom: 0, maxWidth: 500, lineHeight: 1.6 }}>
                   {t('connections.subtitle')}
                 </p>
               )}
               {!loadingStatus && connectedCount > 0 && (
-                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 6, fontFamily: 'DM Mono, monospace', fontSize: 11, color: '#22c55e' }}>
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 6, fontFamily: 'var(--font-body)', fontSize: 11, color: '#22c55e' }}>
                   <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e', display: 'inline-block', boxShadow: '0 0 6px #22c55e' }} />
                   {connectedCount > 1
                     ? t('connections.appsConnectedPlural', { n: connectedCount })
@@ -924,7 +924,7 @@ function ConnectionsInner() {
               <button onClick={handleSyncAll} disabled={syncingAll || loadingStatus || connectedCount === 0}
                 onMouseEnter={() => setSyncAllHov(true)} onMouseLeave={() => setSyncAllHov(false)}
                 style={{
-                  padding: '7px 14px', height: 34, borderRadius: 999, border: 'none',
+                  padding: '7px 14px', height: 34, borderRadius: 'var(--r-pill)', border: 'none',
                   background: (syncingAll || connectedCount === 0) ? 'var(--bg-card2)' : syncAllHov ? ACCENT_HOVER : 'var(--primary-gradient)',
                   color: (syncingAll || connectedCount === 0) ? 'var(--text-dim)' : '#fff',
                   fontFamily: 'var(--font-body)', fontWeight: 600, fontSize: 12,
@@ -954,10 +954,10 @@ function ConnectionsInner() {
                   onFocus={() => setSearchFocused(true)} onBlur={() => setSearchFocused(false)}
                   style={{
                     width: '100%', padding: '8px 12px 8px 34px',
-                    borderRadius: 12,
+                    borderRadius: 'var(--r-md)',
                     border: `1px solid ${searchFocused ? `${ACCENT}80` : 'var(--border)'}`,
                     background: 'var(--input-bg)', color: 'var(--text)',
-                    fontFamily: 'DM Sans, sans-serif', fontSize: 13, outline: 'none',
+                    fontFamily: 'var(--font-body)', fontSize: 13, outline: 'none',
                     boxSizing: 'border-box' as const,
                     boxShadow: searchFocused ? `0 0 0 3px ${ACCENT}18` : 'none',
                     transition: 'border-color 0.14s, box-shadow 0.14s',
@@ -988,11 +988,11 @@ function ConnectionsInner() {
                     onClick={() => setCatFilter(prev => prev === cat.id ? null : cat.id)}
                     style={{
                       width: '100%', textAlign: 'left',
-                      padding: '7px 10px', borderRadius: 8, border: 'none',
+                      padding: '7px 10px', borderRadius: 'var(--r-sm)', border: 'none',
                       borderLeft: isActive ? `2px solid ${ACCENT}` : '2px solid transparent',
                       background: isActive ? `${ACCENT}12` : 'transparent',
                       color: isActive ? ACCENT : 'var(--text-dim)',
-                      fontFamily: 'DM Sans, sans-serif', fontSize: 13,
+                      fontFamily: 'var(--font-body)', fontSize: 13,
                       fontWeight: isActive ? 600 : 400,
                       cursor: 'pointer', marginBottom: 2,
                       display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
@@ -1000,7 +1000,7 @@ function ConnectionsInner() {
                     }}>
                     <span style={{ lineHeight: 1.3 }}>{t(`connections.category.${cat.id}`)}</span>
                     {catConnected > 0 && (
-                      <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 10, color: '#22c55e', background: 'rgba(34,197,94,0.12)', padding: '1px 5px', borderRadius: 8, flexShrink: 0 }}>
+                      <span style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: '#22c55e', background: 'rgba(34,197,94,0.12)', padding: '1px 5px', borderRadius: 'var(--r-sm)', flexShrink: 0 }}>
                         {catConnected}
                       </span>
                     )}
@@ -1015,7 +1015,7 @@ function ConnectionsInner() {
           <div style={{ flex: 1, minWidth: 0, paddingTop: 24, paddingLeft: isMobile ? 16 : 0, paddingRight: isMobile ? 16 : 0 }}>
             <CalendarSyncCard isMobile={isMobile} />
             {filteredApps.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text-dim)', fontFamily: 'DM Sans, sans-serif', fontSize: 14 }}>
+              <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text-dim)', fontFamily: 'var(--font-body)', fontSize: 14 }}>
                 {t('connections.noResults')}
               </div>
             ) : (
@@ -1032,7 +1032,7 @@ function ConnectionsInner() {
                     {/* Section header */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
                       <span style={{
-                        fontFamily: 'DM Sans, sans-serif', fontWeight: 600, fontSize: 11,
+                        fontFamily: 'var(--font-body)', fontWeight: 600, fontSize: 11,
                         letterSpacing: '0.10em', textTransform: 'uppercase' as const,
                         color: 'var(--text-dim)', whiteSpace: 'nowrap', flexShrink: 0,
                       }}>
@@ -1041,13 +1041,13 @@ function ConnectionsInner() {
                       <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
                         {connCount > 0 && (
-                          <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 10, color: '#22c55e', background: 'rgba(34,197,94,0.12)', padding: '2px 7px', borderRadius: 10 }}>
+                          <span style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: '#22c55e', background: 'rgba(34,197,94,0.12)', padding: '2px 7px', borderRadius: 'var(--r-sm)' }}>
                             {connCount > 1
                               ? t('connections.connectedCountPlural', { n: connCount })
                               : t('connections.connectedCountSingular', { n: connCount })}
                           </span>
                         )}
-                        <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 10, color: 'var(--text-dim)', background: 'var(--bg-card2)', border: '1px solid var(--border)', padding: '2px 7px', borderRadius: 10 }}>
+                        <span style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: 'var(--text-dim)', background: 'var(--bg-card2)', border: '1px solid var(--border)', padding: '2px 7px', borderRadius: 'var(--r-sm)' }}>
                           {catApps.length > 1
                             ? t('connections.appCountPlural', { n: catApps.length })
                             : t('connections.appCountSingular', { n: catApps.length })}

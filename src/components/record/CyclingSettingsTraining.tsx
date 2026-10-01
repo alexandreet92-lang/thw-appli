@@ -50,7 +50,7 @@ export default function CyclingSettingsTraining({ theme }: Props) {
           description={t('record.cyclingTrainingLinkSessionDesc')}
           disabled
           right={
-            <span style={{ fontSize: 10, color: 'var(--primary)', border: '1px solid rgba(6,182,212,0.4)', borderRadius: 20, padding: '2px 8px', whiteSpace: 'nowrap' }}>{t('record.cyclingParamsSoon')}</span>
+            <span style={{ fontSize: 10, color: 'var(--primary)', border: '1px solid rgba(6,182,212,0.4)', borderRadius: 'var(--r-lg)', padding: '2px 8px', whiteSpace: 'nowrap' }}>{t('record.cyclingParamsSoon')}</span>
           }
         />
         {linked && (
@@ -84,7 +84,7 @@ export default function CyclingSettingsTraining({ theme }: Props) {
               <div style={{ width: 40, height: 4, borderRadius: 2, background: theme.separator }} />
             </div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px 8px' }}>
-              <h3 style={{ fontSize: 17, fontWeight: 700, color: theme.text, margin: 0, fontFamily: 'Syne, sans-serif' }}>{t('record.cyclingTrainingPickSession')}</h3>
+              <h3 style={{ fontSize: 17, fontWeight: 700, color: theme.text, margin: 0, fontFamily: 'var(--font-body)' }}>{t('record.cyclingTrainingPickSession')}</h3>
               <button onClick={closePicker} style={{ background: 'none', border: 'none', fontSize: 22, color: theme.dim, cursor: 'pointer' }}>×</button>
             </div>
             <div style={{ flex: 1, overflowY: 'auto' }}>
@@ -93,7 +93,7 @@ export default function CyclingSettingsTraining({ theme }: Props) {
                 : sessions.map(s => (
                   <button key={s.id}
                     onClick={() => { setLinked({ id: s.id, name: s.title, day: DAYS[s.day_index] ?? '', duration: `${s.duration_min} min` }); closePicker() }}
-                    style={{ width: '100%', display: 'flex', alignItems: 'center', padding: '14px 20px', background: 'none', border: 'none', borderBottom: `1px solid ${theme.separator}`, cursor: 'pointer', textAlign: 'left', gap: 12, fontFamily: 'DM Sans, sans-serif' }}>
+                    style={{ width: '100%', display: 'flex', alignItems: 'center', padding: '14px 20px', background: 'none', border: 'none', borderBottom: `1px solid ${theme.separator}`, cursor: 'pointer', textAlign: 'left', gap: 12, fontFamily: 'var(--font-body)' }}>
                     <div style={{ flex: 1 }}>
                       <p style={{ fontSize: 15, color: theme.text, margin: 0, fontWeight: 500 }}>{s.title}</p>
                       <p style={{ fontSize: 12, color: '#8C8C8C', margin: '2px 0 0' }}>{DAYS[s.day_index]} · {s.duration_min} min · {s.sport}</p>

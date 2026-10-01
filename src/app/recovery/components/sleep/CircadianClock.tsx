@@ -98,7 +98,7 @@ export default function CircadianClock({ windows }: Props) {
         <text x={cx} y={cy + 10} textAnchor="middle" fill="var(--text-dim)" fontSize={9}>/10</text>
         <text x={cx} y={cy + 23} textAnchor="middle" fill="var(--text-dim)" fontSize={8}>{t('recovery.circadian.regularity')}</text>
       </svg>
-      <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: 0, textAlign: 'center' }}>
+      <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: 0, textAlign: 'center' }}>
         {t('recovery.circadian.footer', { n: recent.length })}
       </p>
     </div>

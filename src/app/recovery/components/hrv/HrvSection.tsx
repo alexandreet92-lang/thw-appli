@@ -81,14 +81,14 @@ export default function HrvSection() {
   return (
     <div style={{
       background: 'var(--bg-card)', border: '1px solid var(--border)',
-      borderRadius: 20, padding: 24, boxShadow: 'var(--shadow-card)',
+      borderRadius: 'var(--r-lg)', padding: 24, boxShadow: 'var(--shadow-card)',
     }}>
       {/* Header */}
       <div style={{ marginBottom: 20 }}>
         <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-dim)', margin: '0 0 4px' }}>
           HRV
         </p>
-        <h2 style={{ fontFamily: 'Syne,sans-serif', fontSize: 18, fontWeight: 700, margin: 0 }}>
+        <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700, margin: 0 }}>
           {t('recovery.hrv.hrvChartTitle')}
         </h2>
       </div>

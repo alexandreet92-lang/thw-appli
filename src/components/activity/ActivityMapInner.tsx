@@ -66,7 +66,7 @@ function LayerSelector({ layer, onChange }: {
               background: active ? '#ffffff' : 'rgba(0,0,0,0.55)',
               color: active ? '#0A0A0A' : '#ffffff',
               backdropFilter: 'blur(8px)',
-              fontFamily: 'DM Sans, sans-serif',
+              fontFamily: 'var(--font-body)',
               fontSize: 10, fontWeight: 700,
               boxShadow: '0 2px 8px rgba(0,0,0,0.25)',
             }}

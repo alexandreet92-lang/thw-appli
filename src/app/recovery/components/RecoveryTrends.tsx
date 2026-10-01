@@ -47,7 +47,7 @@ function Sparkline({ data, metricKey, color, delayMs }: { data: ScoredCheckin[],
   return (
     <div>
       <div style={{ display:'flex',justifyContent:'space-between',alignItems:'baseline',marginBottom:4 }}>
-        <span style={{ fontFamily:'Syne,sans-serif',fontSize:24,fontWeight:800,color }}>{cur}</span>
+        <span style={{ fontFamily: 'var(--font-display)',fontSize:24,fontWeight:800,color }}>{cur}</span>
         <span style={{ fontSize:10,color:delta>=0?'#10B981':'var(--danger)',fontWeight:600 }}>{delta>=0?'+':''}{delta} {t('recovery.trends.vsAvg')}</span>
       </div>
       <svg viewBox={`0 0 ${W} ${H}`} style={{ width:'100%',height:H,display:'block' }}>
@@ -76,11 +76,11 @@ export default function RecoveryTrends({ history, activities }: { history: Check
 
   if (history.length < 3) {
     return (
-      <div style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:20,padding:36,textAlign:'center' as const,boxShadow:'var(--shadow-card)' }}>
+      <div style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius: 'var(--r-lg)',padding:36,textAlign:'center' as const,boxShadow:'var(--shadow-card)' }}>
         <svg width={32} height={32} viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth={1.5} strokeLinecap="round" style={{ marginBottom:8 }}>
           <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
         </svg>
-        <p style={{ fontFamily:'Syne,sans-serif',fontSize:15,fontWeight:700,margin:'0 0 6px' }}>{t('recovery.trends.label')}</p>
+        <p style={{ fontFamily: 'var(--font-body)',fontSize:15,fontWeight:700,margin:'0 0 6px' }}>{t('recovery.trends.label')}</p>
         <p style={{ fontSize:12,color:'var(--text-dim)',margin:0 }}>
           {t('recovery.trends.empty', { n: history.length })}
         </p>
@@ -106,15 +106,15 @@ export default function RecoveryTrends({ history, activities }: { history: Check
   return (
     <div style={{ display:'flex',flexDirection:'column' as const,gap:16 }}>
       {/* Score trend */}
-      <div style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:20,padding:24,boxShadow:'var(--shadow-card)' }}>
+      <div style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius: 'var(--r-lg)',padding:24,boxShadow:'var(--shadow-card)' }}>
         <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:16,flexWrap:'wrap' as const,gap:8 }}>
           <div>
             <p style={{ fontSize:10,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.1em',color:'var(--text-dim)',margin:0 }}>{t('recovery.trends.label')}</p>
-            <h2 style={{ fontFamily:'Syne,sans-serif',fontSize:18,fontWeight:700,margin:'2px 0 0' }}>{t('recovery.trends.scoreTitle')}</h2>
+            <h2 style={{ fontFamily: 'var(--font-display)',fontSize:18,fontWeight:700,margin:'2px 0 0' }}>{t('recovery.trends.scoreTitle')}</h2>
           </div>
           <div style={{ display:'flex',gap:4 }}>
             {PERIODS.map((p,i)=>(
-              <button key={i} onClick={()=>setPeriod(i)} style={{ padding:'4px 10px',borderRadius:7,border:'1px solid',fontSize:10,cursor:'pointer',borderColor:period===i?'#3B8FD4':'var(--border)',background:period===i?'rgba(59,143,212,0.12)':'var(--bg-card)',color:period===i?'#3B8FD4':'var(--text-mid)',fontWeight:period===i?600:400 }}>{t(p.labelKey)}</button>
+              <button key={i} onClick={()=>setPeriod(i)} style={{ padding:'4px 10px',borderRadius: 'var(--r-sm)',border:'1px solid',fontSize:10,cursor:'pointer',borderColor:period===i?'#3B8FD4':'var(--border)',background:period===i?'rgba(59,143,212,0.12)':'var(--bg-card)',color:period===i?'#3B8FD4':'var(--text-mid)',fontWeight:period===i?600:400 }}>{t(p.labelKey)}</button>
             ))}
           </div>
         </div>
@@ -140,7 +140,7 @@ export default function RecoveryTrends({ history, activities }: { history: Check
             ))}
           </svg>
           {tooltip && (
-            <div style={{ position:'absolute' as const,left:tooltip.x+8,top:Math.max(tooltip.y-50,0),background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:9,padding:'7px 10px',fontSize:11,pointerEvents:'none' as const,boxShadow:'0 4px 12px rgba(0,0,0,0.2)',zIndex:10 }}>
+            <div style={{ position:'absolute' as const,left:tooltip.x+8,top:Math.max(tooltip.y-50,0),background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius: 'var(--r-sm)',padding:'7px 10px',fontSize:11,pointerEvents:'none' as const,boxShadow:'0 4px 12px rgba(0,0,0,0.2)',zIndex:10 }}>
               <p style={{ margin:'0 0 2px',fontWeight:600 }}>{tooltip.c.date}</p>
               <p style={{ margin:0,color:'#3B8FD4',fontWeight:600 }}>{t('recovery.trends.tooltip.score', { n: tooltip.c.score })}</p>
               <p style={{ margin:'2px 0 0',fontSize:10,color:'var(--text-dim)' }}>{t('recovery.trends.tooltip.metrics', { f: tooltip.c.fatigue, e: tooltip.c.energy, s: tooltip.c.stress, m: tooltip.c.motivation })}</p>
@@ -152,7 +152,7 @@ export default function RecoveryTrends({ history, activities }: { history: Check
       {/* Sparklines grid */}
       <div style={{ display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(160px,1fr))',gap:12 }}>
         {METRICS.map((m, mi) => (
-          <div key={m.key} style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:14,padding:'12px 14px',boxShadow:'var(--shadow-card)' }}>
+          <div key={m.key} style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius: 'var(--r-md)',padding:'12px 14px',boxShadow:'var(--shadow-card)' }}>
             <p style={{ fontSize:10,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'var(--text-dim)',margin:'0 0 6px' }}>{t(m.labelKey)}</p>
             {data.length >= 2 ? <Sparkline data={data} metricKey={m.key} color={m.color} delayMs={mi*80} /> : <p style={{ fontSize:11,color:'var(--text-dim)',margin:0 }}>—</p>}
           </div>
@@ -161,9 +161,9 @@ export default function RecoveryTrends({ history, activities }: { history: Check
 
       {/* Correlation */}
       {corrData.length >= 5 && (
-        <div style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:20,padding:20,boxShadow:'var(--shadow-card)' }}>
+        <div style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius: 'var(--r-lg)',padding:20,boxShadow:'var(--shadow-card)' }}>
           <p style={{ fontSize:10,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.1em',color:'var(--text-dim)',margin:'0 0 4px' }}>{t('recovery.trends.corr.label')}</p>
-          <h3 style={{ fontFamily:'Syne,sans-serif',fontSize:15,fontWeight:700,margin:'0 0 14px' }}>{t('recovery.trends.corr.title')}</h3>
+          <h3 style={{ fontFamily: 'var(--font-body)',fontSize:15,fontWeight:700,margin:'0 0 14px' }}>{t('recovery.trends.corr.title')}</h3>
           <div style={{ overflowX:'auto' as const }}>
             <svg viewBox={`0 0 ${W} 80`} style={{ width:'100%',minWidth:250,height:'auto',display:'block' }}>
               {corrData.map((d,i)=>{

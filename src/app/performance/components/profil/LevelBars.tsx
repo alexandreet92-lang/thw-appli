@@ -23,12 +23,12 @@ export function LevelBars({ metrics }: { metrics: LevelMetric[] }) {
               <span style={{ fontFamily: FB, fontSize: 10, color: 'var(--text-dim)' }}>{m.qualifier}</span>
             </span>
           </div>
-          <div style={{ position: 'relative', height: 6, borderRadius: 999, background: 'var(--border)' }}>
+          <div style={{ position: 'relative', height: 6, borderRadius: 'var(--r-pill)', background: 'var(--border)' }}>
             <span style={{ position: 'absolute', top: '50%', left: `${mounted ? Math.max(0, Math.min(100, m.pct)) : 0}%`, width: 12, height: 12, borderRadius: '50%', background: 'var(--primary)', transform: 'translate(-50%,-50%)', transition: 'left 0.9s cubic-bezier(0.25,1,0.5,1)' }} />
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 'var(--space-1)' }}>
-            <span style={{ fontFamily: FB, fontSize: 9, color: 'var(--text-dim)' }}>{t('performance.levelBeginner')}</span>
-            <span style={{ fontFamily: FB, fontSize: 9, color: 'var(--text-dim)' }}>{t('performance.levelElite')}</span>
+            <span style={{ fontFamily: FB, fontSize: 10, color: 'var(--text-dim)' }}>{t('performance.levelBeginner')}</span>
+            <span style={{ fontFamily: FB, fontSize: 10, color: 'var(--text-dim)' }}>{t('performance.levelElite')}</span>
           </div>
         </div>
       ))}

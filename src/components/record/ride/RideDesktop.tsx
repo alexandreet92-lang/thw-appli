@@ -17,7 +17,7 @@ const panel: React.CSSProperties = { background: 'var(--bg-card)', border: '1px 
 
 function Chip({ name, on }: { name: string; on: boolean }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 7, background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 20, padding: '6px 12px', fontSize: 12, fontWeight: 700, color: 'var(--text-mid)' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 7, background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 'var(--r-lg)', padding: '6px 12px', fontSize: 12, fontWeight: 700, color: 'var(--text-mid)' }}>
       <span style={{ width: 7, height: 7, borderRadius: '50%', background: on ? 'var(--charge-low)' : 'var(--text-dim)' }} />{name}
     </div>
   )

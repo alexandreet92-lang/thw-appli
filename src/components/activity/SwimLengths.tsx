@@ -35,7 +35,7 @@ export function SwimLengths({ activityId, distanceM }: { activityId: string; dis
   const lengths = isSet && distanceM && distanceM > 0 && pool > 0 ? Math.round(distanceM / pool) : null
 
   return (
-    <div style={{ background: 'var(--bg-card2)', borderRadius: 14, padding: 16, margin: '12px 0' }}>
+    <div style={{ background: 'var(--bg-card2)', borderRadius: 'var(--r-md)', padding: 16, margin: '12px 0' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
         <div>
           <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-dim)' }}>
@@ -52,7 +52,7 @@ export function SwimLengths({ activityId, distanceM }: { activityId: string; dis
         {!editing && (
           <button onClick={() => setEditing(true)} style={{
             fontSize: 12, color: SWIM, background: 'none', border: '1px solid var(--border)',
-            borderRadius: 999, padding: '6px 14px', cursor: 'pointer', fontWeight: 600, fontFamily: 'inherit',
+            borderRadius: 'var(--r-pill)', padding: '6px 14px', cursor: 'pointer', fontWeight: 600, fontFamily: 'inherit',
           }}>{isSet ? t('activities.pool') : t('activities.fillIn')}</button>
         )}
       </div>
@@ -61,7 +61,7 @@ export function SwimLengths({ activityId, distanceM }: { activityId: string; dis
         <div style={{ marginTop: 14, display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
           {PRESETS.map(p => (
             <button key={p} onClick={() => commit(p)} style={{
-              padding: '6px 14px', borderRadius: 999, cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'inherit',
+              padding: '6px 14px', borderRadius: 'var(--r-pill)', cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'inherit',
               border: `1px solid ${pool === p ? SWIM : 'var(--border)'}`,
               background: pool === p ? 'var(--bg-card)' : 'transparent',
               color: pool === p ? SWIM : 'var(--text-dim)',
@@ -70,10 +70,10 @@ export function SwimLengths({ activityId, distanceM }: { activityId: string; dis
           <input
             type="number" min={1} value={draft} onChange={e => setDraft(e.target.value)}
             placeholder="m"
-            style={{ width: 64, background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '6px 8px', fontSize: 13, color: 'var(--text)', fontFamily: 'inherit' }}
+            style={{ width: 64, background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: 'var(--r-sm)', padding: '6px 8px', fontSize: 13, color: 'var(--text)', fontFamily: 'inherit' }}
           />
           <button onClick={() => commit(Number(draft))} style={{
-            padding: '6px 14px', borderRadius: 8, border: 'none', background: SWIM, color: 'white',
+            padding: '6px 14px', borderRadius: 'var(--r-sm)', border: 'none', background: SWIM, color: 'white',
             fontWeight: 700, fontSize: 12, cursor: 'pointer', fontFamily: 'inherit',
           }}>OK</button>
         </div>

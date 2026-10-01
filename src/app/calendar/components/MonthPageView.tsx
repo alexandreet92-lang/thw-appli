@@ -67,14 +67,14 @@ export default function MonthPageView({ year, month, races, stages, itemsForDay,
           style={{
             display: 'inline-flex', alignItems: 'center', gap: 3, cursor: 'pointer',
             background: 'none', border: 'none', padding: '4px 6px 4px 0',
-            color: RED, fontSize: 17, fontWeight: 700, fontFamily: 'Syne, sans-serif',
+            color: RED, fontSize: 17, fontWeight: 700, fontFamily: 'var(--font-body)',
           }}
         >
           <svg width="11" height="18" viewBox="0 0 11 18"><path d="M9 2 L2 9 L9 16" stroke="currentColor" strokeWidth="2.4" fill="none" strokeLinecap="round" strokeLinejoin="round" /></svg>
           {year}
         </button>
       </div>
-      <h2 style={{ fontFamily: 'Syne, sans-serif', fontSize: 30, fontWeight: 800, margin: '0 0 10px', letterSpacing: '-0.02em' }}>
+      <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 30, fontWeight: 800, margin: '0 0 10px', letterSpacing: '-0.02em' }}>
         {MONTHS[month]}
       </h2>
 
@@ -126,16 +126,16 @@ export default function MonthPageView({ year, month, races, stages, itemsForDay,
                   key={it.key}
                   onClick={e => { e.stopPropagation(); it.onClick() }}
                   style={{
-                    display: 'flex', alignItems: 'center', gap: 3, padding: '2px 4px', borderRadius: 5,
+                    display: 'flex', alignItems: 'center', gap: 3, padding: '2px 4px', borderRadius: 'var(--r-sm)',
                     background: `color-mix(in srgb, ${it.color} 15%, transparent)`, overflow: 'hidden',
                   }}
                 >
                   <span style={{ width: 3, alignSelf: 'stretch', minHeight: 9, borderRadius: 2, background: it.color, flexShrink: 0 }} />
-                  <span style={{ fontSize: 9, fontWeight: 700, color: it.color, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{it.label}</span>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: it.color, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{it.label}</span>
                 </div>
               ))}
               {extra > 0 && (
-                <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-dim)', paddingLeft: 4 }}>+{extra}</span>
+                <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-dim)', paddingLeft: 4 }}>+{extra}</span>
               )}
             </div>
           )

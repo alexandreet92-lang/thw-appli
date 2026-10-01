@@ -66,7 +66,7 @@ export function SleepCard() {
 
           {night.stages.length > 0 && (
             <>
-              <div style={{ display: 'flex', height: 10, borderRadius: 999, overflow: 'hidden', background: 'var(--bg-hover)' }}>
+              <div style={{ display: 'flex', height: 10, borderRadius: 'var(--r-pill)', overflow: 'hidden', background: 'var(--bg-hover)' }}>
                 {night.stages.map(s => (
                   <div key={s.key} title={s.label} style={{
                     width: mounted || reduce ? `${(s.min / night.totalMin) * 100}%` : '0%',

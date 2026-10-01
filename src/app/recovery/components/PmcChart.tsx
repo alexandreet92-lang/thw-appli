@@ -55,15 +55,15 @@ export default function PmcChart({ activities }: { activities: ActivityRow[] }) 
   }
 
   return (
-    <div style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:20,padding:'20px 20px 16px',boxShadow:'var(--shadow-card)' }}>
+    <div style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius: 'var(--r-lg)',padding:'20px 20px 16px',boxShadow:'var(--shadow-card)' }}>
       <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12,flexWrap:'wrap' as const,gap:8 }}>
         <div>
           <p style={{ fontSize:10,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.1em',color:'var(--text-dim)',margin:0 }}>{t('recovery.pmc.performance')}</p>
-          <h3 style={{ fontFamily:'Syne,sans-serif',fontSize:16,fontWeight:700,margin:'2px 0 0' }}>CTL · ATL · TSB</h3>
+          <h3 style={{ fontFamily: 'var(--font-body)',fontSize:16,fontWeight:700,margin:'2px 0 0' }}>CTL · ATL · TSB</h3>
         </div>
         <div style={{ display:'flex',gap:4 }}>
           {PERIODS.map((p,i)=>(
-            <button key={i} onClick={()=>setPeriod(i)} style={{ padding:'4px 10px',borderRadius:7,border:'1px solid',fontSize:10,cursor:'pointer',borderColor:period===i?'#3B8FD4':'var(--border)',background:period===i?'rgba(59,143,212,0.12)':'var(--bg-card)',color:period===i?'#3B8FD4':'var(--text-mid)',fontWeight:period===i?600:400 }}>{t(p.labelKey)}</button>
+            <button key={i} onClick={()=>setPeriod(i)} style={{ padding:'4px 10px',borderRadius: 'var(--r-sm)',border:'1px solid',fontSize:10,cursor:'pointer',borderColor:period===i?'#3B8FD4':'var(--border)',background:period===i?'rgba(59,143,212,0.12)':'var(--bg-card)',color:period===i?'#3B8FD4':'var(--text-mid)',fontWeight:period===i?600:400 }}>{t(p.labelKey)}</button>
           ))}
         </div>
       </div>
@@ -111,7 +111,7 @@ export default function PmcChart({ activities }: { activities: ActivityRow[] }) 
           })()}
         </svg>
         {tooltip && (
-          <div style={{ position:'absolute' as const,left:Math.min(tooltip.x+8,W-140),top:Math.max(tooltip.y-60,0),background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:9,padding:'7px 10px',fontSize:11,pointerEvents:'none' as const,boxShadow:'0 4px 12px rgba(0,0,0,0.2)',zIndex:10,minWidth:130 }}>
+          <div style={{ position:'absolute' as const,left:Math.min(tooltip.x+8,W-140),top:Math.max(tooltip.y-60,0),background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius: 'var(--r-sm)',padding:'7px 10px',fontSize:11,pointerEvents:'none' as const,boxShadow:'0 4px 12px rgba(0,0,0,0.2)',zIndex:10,minWidth:130 }}>
             <p style={{ margin:'0 0 3px',fontWeight:600 }}>{tooltip.point.date}</p>
             <p style={{ margin:'1px 0',color:'#3B8FD4' }}>CTL: {tooltip.point.ctl.toFixed(1)}</p>
             <p style={{ margin:'1px 0',color:'var(--danger)' }}>ATL: {tooltip.point.atl.toFixed(1)}</p>

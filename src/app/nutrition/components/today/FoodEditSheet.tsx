@@ -70,7 +70,7 @@ export function FoodEditSheet({ food, slotLabel, onClose, onSave }: {
     onSave({ name: d.name.trim(), qty: d.qty.trim(), unit: d.unit, prot, gluc, lip, kcal, course: food?.course })
   }
 
-  const field: React.CSSProperties = { width: '100%', padding: '10px 12px', borderRadius: 10, border: '1px solid var(--border-mid)', background: 'var(--input-bg)', color: 'var(--text)', fontFamily: FB, fontSize: 14, outline: 'none', boxSizing: 'border-box' }
+  const field: React.CSSProperties = { width: '100%', padding: '10px 12px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border-mid)', background: 'var(--input-bg)', color: 'var(--text)', fontFamily: FB, fontSize: 14, outline: 'none', boxSizing: 'border-box' }
   const lbl: React.CSSProperties = { fontFamily: FB, fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-dim)', margin: '0 0 5px' }
 
   function macroInput(key: 'prot' | 'gluc' | 'lip', label: string) {

@@ -48,10 +48,10 @@ export function Donut({ slices, size = 168, thickness = 20, centerValue, centerL
         {/* centre */}
         {(centerValue != null || hi != null) && (
           <>
-            <text x={cx} y={cy - 2} textAnchor="middle" style={{ fontFamily: 'Syne, sans-serif', fontSize: size * 0.19, fontWeight: 800, fill: INK.text }}>
+            <text x={cx} y={cy - 2} textAnchor="middle" style={{ fontFamily: 'var(--font-body)', fontSize: size * 0.19, fontWeight: 800, fill: INK.text }}>
               {hi != null ? fmtNum(segs[hi].value) : centerValue}
             </text>
-            <text x={cx} y={cy + size * 0.13} textAnchor="middle" style={{ fontFamily: 'DM Sans, sans-serif', fontSize: size * 0.075, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', fill: INK.dim }}>
+            <text x={cx} y={cy + size * 0.13} textAnchor="middle" style={{ fontFamily: 'var(--font-body)', fontSize: size * 0.075, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', fill: INK.dim }}>
               {hi != null ? segs[hi].label : centerLabel}
             </text>
           </>

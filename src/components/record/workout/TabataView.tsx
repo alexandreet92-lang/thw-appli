@@ -59,7 +59,7 @@ export default function TabataView({ exercise, onSetDone, isDark, accent }: Prop
   const progress = remaining / total
 
   return (
-    <div style={{ padding: '20px', fontFamily: 'DM Sans, sans-serif' }}>
+    <div style={{ padding: '20px', fontFamily: 'var(--font-body)' }}>
       <p style={{ fontSize: 13, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: dim, margin: '0 0 4px' }}>Tabata</p>
       <p style={{ fontSize: 13, color: dim, margin: '0 0 16px' }}>{t('record.tabataRoundProgress', { current: phase === 'done' ? totalRounds : round + 1, total: totalRounds })}</p>
 
@@ -90,13 +90,13 @@ export default function TabataView({ exercise, onSetDone, isDark, accent }: Prop
         <p style={{ fontSize: 12, color: dim, margin: '4px 0 0' }}>{workSec}s / {restSec}s</p>
       </div>
 
-      <div style={{ background: surface, borderRadius: 12, padding: '12px 16px', marginBottom: 20, textAlign: 'center' }}>
+      <div style={{ background: surface, borderRadius: 'var(--r-md)', padding: '12px 16px', marginBottom: 20, textAlign: 'center' }}>
         <p style={{ fontSize: 13, color: dim, margin: '0 0 2px' }}>{exercise.name}</p>
         <p style={{ fontSize: 18, fontWeight: 700, color: text, margin: 0 }}>Max reps {exercise.weightKg > 0 ? `@ ${exercise.weightKg}kg` : ''}</p>
       </div>
 
       {phase === 'idle' && (
-        <button onClick={start} style={{ width: '100%', height: 52, borderRadius: 16, background: `linear-gradient(135deg, ${accent}, ${accent}bb)`, border: 'none', color: '#fff', fontSize: 16, fontWeight: 600, cursor: 'pointer' }}>
+        <button onClick={start} style={{ width: '100%', height: 52, borderRadius: 'var(--r-md)', background: `linear-gradient(135deg, ${accent}, ${accent}bb)`, border: 'none', color: '#fff', fontSize: 16, fontWeight: 600, cursor: 'pointer' }}>
           {t('record.tabataStart')}
         </button>
       )}

@@ -57,8 +57,8 @@ export default function RowingPieces({ pieces, onChange, practiceType, isDark }:
   const avgWatts = calcWatts(totalSplit)
 
   const inputStyle = (w?: number): React.CSSProperties => ({
-    background:'none', border:`1px solid ${border}`, borderRadius:8, padding:'6px 8px',
-    fontSize:14, color:text, outline:'none', fontFamily:'DM Sans, sans-serif', width: w ? w : undefined,
+    background:'none', border:`1px solid ${border}`, borderRadius: 'var(--r-sm)', padding:'6px 8px',
+    fontSize:14, color:text, outline:'none', fontFamily: 'var(--font-body)', width: w ? w : undefined,
   })
 
   return (
@@ -69,7 +69,7 @@ export default function RowingPieces({ pieces, onChange, practiceType, isDark }:
           <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
             {PRESETS.map(pr => (
               <button key={pr.label} onClick={() => applyPreset(pr.count, pr.dist)}
-                style={{ padding:'5px 12px', borderRadius:16, background:'none', border:`1px solid ${border}`, color:dim, fontSize:12, cursor:'pointer', fontFamily:'DM Sans, sans-serif' }}>
+                style={{ padding:'5px 12px', borderRadius: 'var(--r-md)', background:'none', border:`1px solid ${border}`, color:dim, fontSize:12, cursor:'pointer', fontFamily: 'var(--font-body)' }}>
                 {pr.label}
               </button>
             ))}
@@ -82,7 +82,7 @@ export default function RowingPieces({ pieces, onChange, practiceType, isDark }:
           const split = calcSplit500(p.durationSec, p.distanceM)
           const watts = calcWatts(split)
           return (
-            <div key={p.id} style={{ background:cardBg, border:`1px solid ${border}`, borderRadius:12, padding:'12px 14px' }}>
+            <div key={p.id} style={{ background:cardBg, border:`1px solid ${border}`, borderRadius: 'var(--r-md)', padding:'12px 14px' }}>
               <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8 }}>
                 <span style={{ fontSize:12, fontWeight:700, color:ACCENT }}>{t('record.rowingPiecesSet', { n: idx+1 })}</span>
                 <button onClick={() => removePiece(p.id)} style={{ background:'none', border:'none', cursor:'pointer', color:dim, fontSize:18, lineHeight:1, padding:'0 4px' }}>×</button>
@@ -124,12 +124,12 @@ export default function RowingPieces({ pieces, onChange, practiceType, isDark }:
         })}
       </div>
 
-      <button onClick={addPiece} style={{ width:'100%', padding:'12px', borderRadius:12, background:'none', border:`1.5px dashed ${border}`, color:ACCENT, fontSize:14, fontWeight:600, cursor:'pointer', fontFamily:'DM Sans, sans-serif' }}>
+      <button onClick={addPiece} style={{ width:'100%', padding:'12px', borderRadius: 'var(--r-md)', background:'none', border:`1.5px dashed ${border}`, color:ACCENT, fontSize:14, fontWeight:600, cursor:'pointer', fontFamily: 'var(--font-body)' }}>
         {t('record.rowingPiecesAddSet')}
       </button>
 
       {pieces.length > 0 && totalDur > 0 && (
-        <div style={{ marginTop:12, padding:'10px 14px', background:`rgba(6,182,212,0.06)`, borderRadius:10, border:`1px solid rgba(6,182,212,0.15)` }}>
+        <div style={{ marginTop:12, padding:'10px 14px', background:`rgba(6,182,212,0.06)`, borderRadius: 'var(--r-sm)', border:`1px solid rgba(6,182,212,0.15)` }}>
           <p style={{ margin:0, fontSize:13, color:text, fontWeight:500 }}>
             {t('record.rowingPiecesTotal')} <span style={{ color:ACCENT, fontWeight:700 }}>{totalDist >= 1000 ? `${(totalDist/1000).toFixed(1)}km` : `${totalDist}m`}</span>
             {' · '}{fmtTotal(totalDur)}

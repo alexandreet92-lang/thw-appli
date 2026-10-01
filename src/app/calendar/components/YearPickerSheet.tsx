@@ -52,7 +52,7 @@ export default function YearPickerSheet({ selected, onSelect, onClose }: Props) 
         paddingBottom: 'calc(env(safe-area-inset-bottom) + 10px)',
       }}>
         <div style={{ width: 40, height: 4, borderRadius: 4, background: 'var(--border-mid)', margin: '12px auto 6px', flexShrink: 0 }} />
-        <p style={{ fontFamily: 'Syne, sans-serif', fontSize: 17, fontWeight: 800, textAlign: 'center', margin: '2px 0 12px', flexShrink: 0 }}>
+        <p style={{ fontFamily: 'var(--font-body)', fontSize: 17, fontWeight: 800, textAlign: 'center', margin: '2px 0 12px', flexShrink: 0 }}>
           {t('calendar.chooseYear')}
         </p>
         <div ref={listRef} style={{ overflowY: 'auto', padding: '0 20px 8px', WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'] }}>
@@ -66,7 +66,7 @@ export default function YearPickerSheet({ selected, onSelect, onClose }: Props) 
                 style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%',
                   padding: '13px 0', border: 'none', cursor: 'pointer', background: 'transparent',
-                  fontFamily: 'Syne, sans-serif', fontSize: on ? 24 : 19,
+                  fontFamily: 'var(--font-body)', fontSize: on ? 24 : 19,
                   fontWeight: on ? 800 : 500,
                   color: on ? RED : 'var(--text)',
                 }}

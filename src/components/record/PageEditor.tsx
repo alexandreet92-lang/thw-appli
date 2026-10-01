@@ -146,7 +146,7 @@ function PageEditorInner({ page: initial, allPages, onPageUpdated, onClose, isDa
         position: 'fixed', inset: 0, zIndex: 10004,
         background: t.bg, color: t.text,
         display: 'flex', flexDirection: 'column',
-        fontFamily: 'DM Sans, sans-serif',
+        fontFamily: 'var(--font-body)',
         paddingTop: 'env(safe-area-inset-top)',
         overflowY: 'auto',
       }}
@@ -166,7 +166,7 @@ function PageEditorInner({ page: initial, allPages, onPageUpdated, onClose, isDa
           style={{
             flex: 1, fontSize: 17, fontWeight: 700, background: 'none', border: 'none',
             borderBottom: `1px solid ${t.separator}`, color: t.text,
-            outline: 'none', padding: '2px 4px', fontFamily: 'Syne, sans-serif', minWidth: 0,
+            outline: 'none', padding: '2px 4px', fontFamily: 'var(--font-body)', minWidth: 0,
           }}
         />
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
@@ -182,7 +182,7 @@ function PageEditorInner({ page: initial, allPages, onPageUpdated, onClose, isDa
             onClick={removeLastField}
             disabled={page.fields.length <= 1}
             style={{
-              width: 32, height: 32, borderRadius: 8, padding: 0,
+              width: 32, height: 32, borderRadius: 'var(--r-sm)', padding: 0,
               background: page.fields.length <= 1 ? t.cardBg : 'rgba(239,68,68,0.12)',
               border: `1.5px solid ${page.fields.length <= 1 ? t.separator : 'rgba(239,68,68,0.3)'}`,
               color: page.fields.length <= 1 ? t.dim : '#EF4444',
@@ -202,7 +202,7 @@ function PageEditorInner({ page: initial, allPages, onPageUpdated, onClose, isDa
             onClick={addFieldSlot}
             disabled={page.fields.length >= maxForPage}
             style={{
-              width: 32, height: 32, borderRadius: 8, padding: 0,
+              width: 32, height: 32, borderRadius: 'var(--r-sm)', padding: 0,
               background: page.fields.length >= maxForPage ? t.cardBg : 'rgba(6,182,212,0.12)',
               border: `1.5px solid ${page.fields.length >= maxForPage ? t.separator : 'rgba(6,182,212,0.35)'}`,
               color: page.fields.length >= maxForPage ? t.dim : '#06B6D4',
@@ -226,11 +226,11 @@ function PageEditorInner({ page: initial, allPages, onPageUpdated, onClose, isDa
             return (
               <button key={pos} onClick={() => setBigPosition(pos)}
                 style={{
-                  padding: '6px 14px', borderRadius: 20, fontSize: 12, fontWeight: 500,
+                  padding: '6px 14px', borderRadius: 'var(--r-lg)', fontSize: 12, fontWeight: 500,
                   background: active ? 'rgba(6,182,212,0.20)' : 'transparent',
                   border: `1px solid ${active ? '#06B6D4' : t.separator}`,
                   color: active ? '#06B6D4' : t.dim, cursor: 'pointer',
-                  fontFamily: 'DM Sans, sans-serif',
+                  fontFamily: 'var(--font-body)',
                 }}>
                 {pos === 'top' ? tr('record.pageEditorBigFieldTop') : tr('record.pageEditorBigFieldMiddle')}
               </button>
@@ -241,7 +241,7 @@ function PageEditorInner({ page: initial, allPages, onPageUpdated, onClose, isDa
 
       {/* Aperçu */}
       <div style={{
-        margin: '0 16px', border: `1px solid ${t.separator}`, borderRadius: 16, overflow: 'hidden',
+        margin: '0 16px', border: `1px solid ${t.separator}`, borderRadius: 'var(--r-md)', overflow: 'hidden',
         background: t.bg, minHeight: 320, position: 'relative', flexShrink: 0,
       }}>
         <PagePreview
@@ -252,7 +252,7 @@ function PageEditorInner({ page: initial, allPages, onPageUpdated, onClose, isDa
         />
         <div style={{
           position: 'absolute', top: 8, right: 8,
-          background: 'rgba(0,0,0,0.50)', borderRadius: 6,
+          background: 'rgba(0,0,0,0.50)', borderRadius: 'var(--r-sm)',
           padding: '2px 8px', fontSize: 10, color: '#fff', letterSpacing: '0.04em',
         }}>{tr('record.pageEditorPreview')}</div>
       </div>

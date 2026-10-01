@@ -26,7 +26,7 @@ export function ProgressionSportView({ sport, onBack }: { sport: string; onBack:
       <button onClick={onBack} aria-label={t('progression.back')}
         style={{ width: 36, height: 36, borderRadius: '50%', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 18, cursor: 'pointer', flexShrink: 0 }}>‹</button>
       <div>
-        <h1 style={{ fontFamily: 'Syne,sans-serif', fontWeight: 800, fontSize: 22, color: 'var(--text)', margin: 0 }}>{t('progression.sportViewTitle', { sport: config ? t(config.labelKey) : sport })}</h1>
+        <h1 style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 22, color: 'var(--text)', margin: 0 }}>{t('progression.sportViewTitle', { sport: config ? t(config.labelKey) : sport })}</h1>
         <p style={{ fontSize: 12, color: 'var(--text-dim)', margin: '2px 0 0' }}>{t('progression.sportViewSubtitle')}</p>
       </div>
     </header>
@@ -59,9 +59,9 @@ export function ProgressionSportView({ sport, onBack }: { sport: string; onBack:
               aria-disabled={comingSoon || undefined}
               title={comingSoon ? t('progression.familyComingSoon', { label: t(f.labelKey) }) : undefined}
               style={{
-                padding: '7px 14px', borderRadius: 999, border: '1px solid var(--border)',
+                padding: '7px 14px', borderRadius: 'var(--r-pill)', border: '1px solid var(--border)',
                 cursor: comingSoon ? 'default' : 'pointer', opacity: comingSoon ? 0.45 : 1,
-                whiteSpace: 'nowrap', fontSize: 12, fontWeight: active === f.id ? 700 : 500, fontFamily: 'DM Sans,sans-serif',
+                whiteSpace: 'nowrap', fontSize: 12, fontWeight: active === f.id ? 700 : 500, fontFamily: 'var(--font-body)',
                 background: active === f.id ? `${config.color}1f` : 'var(--bg-card2)',
                 color: active === f.id ? config.color : 'var(--text-dim)',
               }}

@@ -211,7 +211,7 @@ function MiniDonut({ title, data, size = 80 }: { title: string; data: ZoneArc[];
   const visible = data.filter(d => d.pct > 0)
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-      <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.10em', textTransform: 'uppercase', color: 'var(--text-dim)' }}>{title}</div>
+      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.10em', textTransform: 'uppercase', color: 'var(--text-dim)' }}>{title}</div>
       <svg viewBox={`0 0 ${size} ${size}`} style={{ width: size, height: size, flexShrink: 0 }}>
         <circle cx={CX} cy={CY} r={(R_OUT + R_IN) / 2} fill="none" stroke="var(--bg-card2)" strokeWidth={R_OUT - R_IN} />
         {data.map((d, i) => {
@@ -231,7 +231,7 @@ function MiniDonut({ title, data, size = 80 }: { title: string; data: ZoneArc[];
       <ul style={{
         listStyle: 'none', margin: 0, padding: 0, width: '100%',
         display: 'flex', flexDirection: 'column', gap: 2,
-        fontSize: 9, color: 'var(--text)', fontVariantNumeric: 'tabular-nums',
+        fontSize: 10, color: 'var(--text)', fontVariantNumeric: 'tabular-nums',
       }}>
         {visible.map((d, i) => (
           <li key={i} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -327,7 +327,7 @@ function HeroStat({ label, value, unit, color }: { label: string; value: string;
   return (
     <div style={{ textAlign: 'center', padding: '0 8px' }}>
       <div style={{
-        fontSize: 9, fontWeight: 600,
+        fontSize: 10, fontWeight: 600,
         textTransform: 'uppercase', letterSpacing: '0.1em',
         color: 'var(--text-dim)', marginBottom: 4,
       }}>{label}</div>
@@ -468,12 +468,12 @@ function LapDetailsSheet({ open, onClose, lap, lapIndex, streams, ftp, bikeZones
           onClick={e => e.stopPropagation()}
           style={{
             position: 'relative', zIndex: 14900,
-            background: 'var(--bg)', borderRadius: 18,
+            background: 'var(--bg)', borderRadius: 'var(--r-lg)',
             width: 'min(680px, 100%)', maxHeight: '88vh', overflowY: 'auto',
             padding: '22px 24px 26px',
             boxShadow: '0 24px 70px rgba(0,0,0,0.45)',
             animation: `${closing ? 'lapSheetPopOut 0.22s ease-in forwards' : 'lapSheetPopIn 0.26s cubic-bezier(0.34,1.3,0.5,1)'}`,
-            fontFamily: 'Inter, system-ui, -apple-system, sans-serif',
+            fontFamily: 'var(--font-body)',
           }}
         >
           {renderLapBody()}
@@ -491,7 +491,7 @@ function LapDetailsSheet({ open, onClose, lap, lapIndex, streams, ftp, bikeZones
           boxShadow: '0 -10px 40px rgba(0,0,0,0.3)',
           maxWidth: 600, margin: '0 auto',
           animation: `${closing ? 'lapSheetDown 0.28s ease-in forwards' : 'lapSheetUp 0.3s cubic-bezier(0.4,0,0.2,1)'}`,
-          fontFamily: 'Inter, system-ui, -apple-system, sans-serif',
+          fontFamily: 'var(--font-body)',
         }}
       >
         {/* Handle */}
@@ -757,7 +757,7 @@ export function LapsDetailView(props: LapsDetailViewProps) {
           background: 'var(--bg)',
           display: 'flex', flexDirection: 'column',
           animation: `${closing ? 'lapsViewOut 0.32s cubic-bezier(0.4,0,0.2,1) forwards' : 'lapsViewIn 0.3s cubic-bezier(0.4,0,0.2,1)'}`,
-          fontFamily: 'Inter, system-ui, -apple-system, sans-serif',
+          fontFamily: 'var(--font-body)',
         }}
       >
         {/* Bouton FERMER toujours visible (fixe) — même si l'en-tête défile hors
@@ -860,7 +860,7 @@ export function LapsDetailView(props: LapsDetailViewProps) {
           }}>
             {yLabels.map((v, i) => (
               <span key={i} style={{
-                fontSize: 9, color: 'var(--text-dim)',
+                fontSize: 10, color: 'var(--text-dim)',
                 fontVariantNumeric: 'tabular-nums',
                 textAlign: 'right',
               }}>{v}</span>
@@ -1050,7 +1050,7 @@ export function LapsDetailView(props: LapsDetailViewProps) {
               background: PURPLE_ACTIVE,
               color: '#fff',
               padding: '10px 18px',
-              borderRadius: 8, border: 'none',
+              borderRadius: 'var(--r-sm)', border: 'none',
               fontSize: 13, fontWeight: 600, cursor: 'pointer',
               transition: 'background 0.15s ease, transform 0.1s ease',
               fontFamily: 'inherit',

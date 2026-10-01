@@ -75,9 +75,9 @@ export function CommentsSheet({ activityId, onClose, onCount }: { activityId: st
         <div style={{ display: 'flex', gap: 8, padding: '12px 16px', borderTop: '1px solid var(--border)', flexShrink: 0 }}>
           <input value={text} onChange={e => setText(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void send() } }}
             placeholder={t('w3f.add_comment')} maxLength={2000}
-            style={{ flex: 1, padding: '10px 12px', borderRadius: 999, border: '1px solid var(--border-mid)', background: 'var(--input-bg)', color: 'var(--text)', fontFamily: FB, fontSize: 13.5, outline: 'none' }} />
+            style={{ flex: 1, padding: '10px 12px', borderRadius: 'var(--r-pill)', border: '1px solid var(--border-mid)', background: 'var(--input-bg)', color: 'var(--text)', fontFamily: FB, fontSize: 13.5, outline: 'none' }} />
           <button onClick={() => void send()} disabled={!text.trim() || sending}
-            style={{ padding: '0 16px', borderRadius: 999, border: 'none', background: text.trim() ? 'var(--primary)' : 'var(--bg-card2)', color: text.trim() ? 'var(--on-primary)' : 'var(--text-dim)', fontFamily: FB, fontSize: 13.5, fontWeight: 600, cursor: text.trim() ? 'pointer' : 'default' }}>
+            style={{ padding: '0 16px', borderRadius: 'var(--r-pill)', border: 'none', background: text.trim() ? 'var(--primary)' : 'var(--bg-card2)', color: text.trim() ? 'var(--on-primary)' : 'var(--text-dim)', fontFamily: FB, fontSize: 13.5, fontWeight: 600, cursor: text.trim() ? 'pointer' : 'default' }}>
             {t('w3f.send')}
           </button>
         </div>

@@ -40,7 +40,7 @@ const sportLabel = (s: StageSport) => STAGE_SPORTS.find(x => x.id === s)?.label 
 const sportColor = (s: StageSport) => STAGE_SPORTS.find(x => x.id === s)?.color ?? 'var(--text-dim)'
 
 const LBL: React.CSSProperties = { fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-dim)', margin: '0 0 8px' }
-const INP: React.CSSProperties = { width: '100%', boxSizing: 'border-box', padding: '11px 13px', borderRadius: 11, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 14, outline: 'none' }
+const INP: React.CSSProperties = { width: '100%', boxSizing: 'border-box', padding: '11px 13px', borderRadius: 'var(--r-md)', border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 14, outline: 'none' }
 const isGpx = (n: string) => /\.(gpx|tcx|kml)$/i.test(n)
 
 function getDaysBetween(start: string, end: string): string[] {
@@ -218,7 +218,7 @@ export default function EventModal({ mode = 'create', initialData, initialDate, 
                 {STAGE_SPORTS.map(s => {
                   const on = sports.includes(s.id)
                   return (
-                    <button key={s.id} onClick={() => toggleSport(s.id)} style={{ padding: '9px 16px', borderRadius: 999, border: `1px solid ${on ? 'transparent' : 'var(--border)'}`, cursor: 'pointer', fontSize: 12.5, fontWeight: on ? 700 : 600, background: on ? `${s.color}1f` : 'transparent', color: on ? s.color : 'var(--text-mid)', transition: 'background .15s, color .15s' }}>{s.label}</button>
+                    <button key={s.id} onClick={() => toggleSport(s.id)} style={{ padding: '9px 16px', borderRadius: 'var(--r-pill)', border: `1px solid ${on ? 'transparent' : 'var(--border)'}`, cursor: 'pointer', fontSize: 12.5, fontWeight: on ? 700 : 600, background: on ? `${s.color}1f` : 'transparent', color: on ? s.color : 'var(--text-mid)', transition: 'background .15s, color .15s' }}>{s.label}</button>
                   )
                 })}
               </div>
@@ -246,14 +246,14 @@ export default function EventModal({ mode = 'create', initialData, initialDate, 
                   {days.map(d => {
                     const dp = program[d] ?? { matin: [], aprem: [] }
                     return (
-                      <div key={d} style={{ border: '1px solid var(--border)', borderRadius: 12, padding: '12px 14px', background: 'var(--bg-card)' }}>
+                      <div key={d} style={{ border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: '12px 14px', background: 'var(--bg-card)' }}>
                         <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', margin: '0 0 10px', textTransform: 'capitalize' }}>{labelDay(d)}</p>
                         {(['matin','aprem'] as const).map(slot => (
                           <div key={slot} style={{ marginBottom: 10 }}>
                             <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 6px' }}>{slot === 'matin' ? t('calendar.morning') : t('calendar.afternoon')}</p>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                               {dp[slot].map((ses, i) => (
-                                <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: 7, padding: '10px 11px', borderRadius: 12, border: '1px solid var(--border)', background: 'var(--bg-card2)' }}>
+                                <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: 7, padding: '10px 11px', borderRadius: 'var(--r-md)', border: '1px solid var(--border)', background: 'var(--bg-card2)' }}>
                                   {/* Ligne 1 : sport · heure · supprimer */}
                                   <div style={{ display: 'flex', gap: 7, alignItems: 'center' }}>
                                     <span style={{ width: 8, height: 8, borderRadius: '50%', background: sportColor(ses.sport), flexShrink: 0 }} />
@@ -261,7 +261,7 @@ export default function EventModal({ mode = 'create', initialData, initialDate, 
                                       {sportOptions.map(sp => <option key={sp} value={sp}>{sportLabel(sp)}</option>)}
                                     </select>
                                     <input type="time" value={ses.time ?? ''} onChange={e => updSession(d, slot, i, { time: e.target.value })} style={{ ...INP, width: 118, flex: 'none', padding: '8px 10px' }} />
-                                    <button onClick={() => rmSession(d, slot, i)} aria-label={t('calendar.remove')} style={{ width: 30, height: 30, borderRadius: 8, background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--danger)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><IconX size={15} /></button>
+                                    <button onClick={() => rmSession(d, slot, i)} aria-label={t('calendar.remove')} style={{ width: 30, height: 30, borderRadius: 'var(--r-sm)', background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--danger)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><IconX size={15} /></button>
                                   </div>
                                   {/* Ligne 2 : titre */}
                                   <input value={ses.title ?? ''} onChange={e => updSession(d, slot, i, { title: e.target.value })} placeholder={t('calendar.sessionTitlePlaceholder')} style={{ ...INP, padding: '8px 10px' }} />
@@ -269,7 +269,7 @@ export default function EventModal({ mode = 'create', initialData, initialDate, 
                                   <input value={ses.detail} onChange={e => updSession(d, slot, i, { detail: e.target.value })} placeholder={t('calendar.detailPlaceholder')} style={{ ...INP, padding: '8px 10px' }} />
                                 </div>
                               ))}
-                              <button onClick={() => addSession(d, slot)} style={{ alignSelf: 'flex-start', fontSize: 11.5, color: 'var(--text-dim)', background: 'var(--bg-card2)', border: '1px dashed var(--border-mid)', borderRadius: 9, padding: '7px 12px', cursor: 'pointer' }}>
+                              <button onClick={() => addSession(d, slot)} style={{ alignSelf: 'flex-start', fontSize: 11.5, color: 'var(--text-dim)', background: 'var(--bg-card2)', border: '1px dashed var(--border-mid)', borderRadius: 'var(--r-sm)', padding: '7px 12px', cursor: 'pointer' }}>
                                 {slot === 'matin' ? t('calendar.addMorningSession') : t('calendar.addAfternoonSession')}
                               </button>
                             </div>
@@ -292,7 +292,7 @@ export default function EventModal({ mode = 'create', initialData, initialDate, 
                                 : dayParcoursUrl[d] ? <ParcoursViewer fileUrl={dayParcoursUrl[d].url} /> : null}
                             </>
                           ) : (
-                            <label style={{ display: 'block', textAlign: 'center', fontSize: 11.5, color: 'var(--text-dim)', background: 'var(--bg-card2)', border: '1.5px dashed var(--border-mid)', borderRadius: 10, padding: 12, cursor: 'pointer' }}>
+                            <label style={{ display: 'block', textAlign: 'center', fontSize: 11.5, color: 'var(--text-dim)', background: 'var(--bg-card2)', border: '1.5px dashed var(--border-mid)', borderRadius: 'var(--r-sm)', padding: 12, cursor: 'pointer' }}>
                               {t('calendar.importRoute')}
                               <input type="file" accept=".gpx,.tcx,.kml" style={{ display: 'none' }} onChange={e => { const f = e.target.files?.[0]; if (f) void pickDayParcours(d, f); e.target.value = '' }} />
                             </label>
@@ -313,15 +313,15 @@ export default function EventModal({ mode = 'create', initialData, initialDate, 
             {isEdit && onDelete && (confirmDelete ? (
               <div style={{ display: 'flex', gap: 8, alignItems: 'center', flex: 1, flexWrap: 'wrap' }}>
                 <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--danger)' }}>{t('calendar.deleteStageConfirm')}</span>
-                <button onClick={onDelete} style={{ padding: '10px 16px', borderRadius: 999, background: 'var(--danger)', border: 'none', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>{t('calendar.confirm')}</button>
-                <button onClick={() => setConfirmDelete(false)} style={{ padding: '10px 14px', borderRadius: 999, background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-mid)', fontSize: 13, cursor: 'pointer' }}>{t('calendar.cancel')}</button>
+                <button onClick={onDelete} style={{ padding: '10px 16px', borderRadius: 'var(--r-pill)', background: 'var(--danger)', border: 'none', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>{t('calendar.confirm')}</button>
+                <button onClick={() => setConfirmDelete(false)} style={{ padding: '10px 14px', borderRadius: 'var(--r-pill)', background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-mid)', fontSize: 13, cursor: 'pointer' }}>{t('calendar.cancel')}</button>
               </div>
             ) : (
-              <button onClick={() => setConfirmDelete(true)} style={{ padding: 12, borderRadius: 999, background: 'transparent', border: '1px solid #ef4444', color: 'var(--danger)', fontSize: 13.5, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>{t('calendar.delete')}</button>
+              <button onClick={() => setConfirmDelete(true)} style={{ padding: 12, borderRadius: 'var(--r-pill)', background: 'transparent', border: '1px solid #ef4444', color: 'var(--danger)', fontSize: 13.5, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>{t('calendar.delete')}</button>
             ))}
             {!confirmDelete && (<>
-              <button onClick={requestClose} style={{ flex: 1, padding: 12, borderRadius: 999, background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-mid)', fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}>{t('calendar.close')}</button>
-              <button onClick={handleSave} disabled={saving || !name.trim() || !startDate || !endDate} style={{ flex: 2, padding: 12, borderRadius: 999, background: accent, border: 'none', color: '#fff', fontWeight: 700, fontSize: 13.5, cursor: saving ? 'wait' : 'pointer', opacity: (!name.trim() || !startDate || !endDate) ? 0.5 : 1 }}>{saving ? '…' : isEdit ? t('calendar.save') : t('calendar.add')}</button>
+              <button onClick={requestClose} style={{ flex: 1, padding: 12, borderRadius: 'var(--r-pill)', background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-mid)', fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}>{t('calendar.close')}</button>
+              <button onClick={handleSave} disabled={saving || !name.trim() || !startDate || !endDate} style={{ flex: 2, padding: 12, borderRadius: 'var(--r-pill)', background: accent, border: 'none', color: '#fff', fontWeight: 700, fontSize: 13.5, cursor: saving ? 'wait' : 'pointer', opacity: (!name.trim() || !startDate || !endDate) ? 0.5 : 1 }}>{saving ? '…' : isEdit ? t('calendar.save') : t('calendar.add')}</button>
             </>)}
           </div>
         </div>

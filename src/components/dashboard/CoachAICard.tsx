@@ -52,7 +52,7 @@ export function CoachAICard() {
 
       <div style={{
         display: 'flex', alignItems: 'center', gap: 'var(--space-2)',
-        background: 'var(--bg-card)', borderRadius: 999, padding: '6px 6px 6px 16px',
+        background: 'var(--bg-card)', borderRadius: 'var(--r-pill)', padding: '6px 6px 6px 16px',
         border: '1px solid var(--border)',
       }}>
         <input

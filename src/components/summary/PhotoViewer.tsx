@@ -52,7 +52,7 @@ export default function PhotoViewer({ photos, initialIndex, onClose }: Props) {
         src={photos[idx].url}
         alt=""
         onClick={e => e.stopPropagation()}
-        style={{ maxWidth: '92vw', maxHeight: '80vh', objectFit: 'contain', borderRadius: 10 }}
+        style={{ maxWidth: '92vw', maxHeight: '80vh', objectFit: 'contain', borderRadius: 'var(--r-sm)' }}
       />
 
       {/* Dots */}

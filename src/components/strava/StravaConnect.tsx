@@ -41,14 +41,14 @@ export function StravaConnect() {
           right:         20,
           zIndex:        999,
           padding:       '12px 18px',
-          borderRadius:  12,
+          borderRadius: 'var(--r-md)',
           background:    toast.ok ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)',
           border:        `1px solid ${toast.ok ? 'rgba(34,197,94,0.4)' : 'rgba(239,68,68,0.4)'}`,
           color:         toast.ok ? '#22c55e' : '#ef4444',
           fontSize:      13,
           fontWeight:    600,
           backdropFilter:'blur(8px)',
-          fontFamily:    'DM Sans, sans-serif',
+          fontFamily: 'var(--font-body)',
         }}>
           {t(toast.key)}
         </div>
@@ -61,7 +61,7 @@ export function StravaConnect() {
             disabled={syncing}
             style={{
               padding:    '6px 14px',
-              borderRadius: 9,
+              borderRadius: 'var(--r-sm)',
               background: 'rgba(252,76,2,0.10)',
               border:     '1px solid rgba(252,76,2,0.3)',
               color:      '#FC4C02',
@@ -69,7 +69,7 @@ export function StravaConnect() {
               fontWeight: 600,
               cursor:     syncing ? 'not-allowed' : 'pointer',
               opacity:    syncing ? 0.6 : 1,
-              fontFamily: 'DM Sans, sans-serif',
+              fontFamily: 'var(--font-body)',
             }}
           >
             {syncing ? `⟳ ${t('shared.syncInProgress')}` : `↻ ${t('shared.synchronize')}`}
@@ -79,21 +79,21 @@ export function StravaConnect() {
             onClick={disconnect}
             style={{
               padding:    '6px 14px',
-              borderRadius: 9,
+              borderRadius: 'var(--r-sm)',
               background: 'rgba(239,68,68,0.08)',
               border:     '1px solid rgba(239,68,68,0.2)',
               color:      '#ef4444',
               fontSize:   11,
               fontWeight: 600,
               cursor:     'pointer',
-              fontFamily: 'DM Sans, sans-serif',
+              fontFamily: 'var(--font-body)',
             }}
           >
             {t('shared.disconnect')}
           </button>
 
           {activities.length > 0 && (
-            <span style={{ fontSize: 10, color: 'var(--text-dim)', fontFamily: 'DM Mono, monospace' }}>
+            <span style={{ fontSize: 10, color: 'var(--text-dim)', fontFamily: 'var(--font-body)' }}>
               {activities.length > 1 ? t('shared.activityCountMany', { n: activities.length }) : t('shared.activityCountOne', { n: activities.length })}
             </span>
           )}

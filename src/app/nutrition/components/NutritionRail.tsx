@@ -46,8 +46,8 @@ export function NutritionRail({ tab, onChange }: { tab: NutritionTab; onChange: 
           <button key={s.id} onClick={() => onChange(s.id)} title={t(`nutrition.tab.${s.id}`)}
             style={{
               position: 'relative', display: 'flex', alignItems: 'center', gap: 10, width: '100%',
-              padding: '8px 10px', borderRadius: 9, marginBottom: 3, cursor: 'pointer',
-              border: 'none', textAlign: 'left', fontFamily: 'DM Sans,sans-serif',
+              padding: '8px 10px', borderRadius: 'var(--r-sm)', marginBottom: 3, cursor: 'pointer',
+              border: 'none', textAlign: 'left', fontFamily: 'var(--font-body)',
               background: active ? 'rgba(6,182,212,0.10)' : 'transparent',
               transition: 'background 0.14s', whiteSpace: 'nowrap',
             }}

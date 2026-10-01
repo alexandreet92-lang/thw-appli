@@ -28,7 +28,7 @@ export default function YogaSettings({ open, onClose, isDark, aiTipsEnabled, onT
 
   function Toggle({ value, onChange }: { value: boolean; onChange: (v: boolean) => void }) {
     return (
-      <div onClick={() => onChange(!value)} style={{ width: 44, height: 26, borderRadius: 13, background: value ? 'var(--primary)' : (isDark ? 'rgba(255,255,255,0.15)' : '#D1D5DB'), cursor: 'pointer', position: 'relative', transition: 'background 200ms', flexShrink: 0 }}>
+      <div onClick={() => onChange(!value)} style={{ width: 44, height: 26, borderRadius: 'var(--r-md)', background: value ? 'var(--primary)' : (isDark ? 'rgba(255,255,255,0.15)' : '#D1D5DB'), cursor: 'pointer', position: 'relative', transition: 'background 200ms', flexShrink: 0 }}>
         <div style={{ position: 'absolute', top: 3, left: value ? 21 : 3, width: 20, height: 20, borderRadius: '50%', background: '#FFF', transition: 'left 200ms', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
       </div>
     )
@@ -42,7 +42,7 @@ export default function YogaSettings({ open, onClose, isDark, aiTipsEnabled, onT
           <div style={{ width: 36, height: 4, borderRadius: 2, background: dim }} />
         </div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 20px 12px' }}>
-          <p style={{ fontSize: 18, fontWeight: 700, color: text, margin: 0, fontFamily: 'Syne, sans-serif' }}>{t('record.yogaSettingsTitle')}</p>
+          <p style={{ fontSize: 18, fontWeight: 700, color: text, margin: 0, fontFamily: 'var(--font-display)' }}>{t('record.yogaSettingsTitle')}</p>
           <button onClick={handleClose} style={{ background: 'none', border: 'none', color: dim, fontSize: 22, cursor: 'pointer', lineHeight: 1, padding: '4px 8px' }}>×</button>
         </div>
         <p style={{ fontSize: 11, fontWeight: 700, color: dim, letterSpacing: '0.08em', textTransform: 'uppercase', padding: '0 20px 6px', margin: 0 }}>{t('record.yogaSettingsAiTips')}</p>

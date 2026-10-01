@@ -29,7 +29,7 @@ export default function ActivityPhotos({ sessionId }: Props) {
   return (
     <>
       <div style={{ padding: '14px 20px', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
-        <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'rgba(255,255,255,0.45)', margin: '0 0 10px', fontFamily: 'DM Sans, sans-serif' }}>
+        <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'rgba(255,255,255,0.45)', margin: '0 0 10px', fontFamily: 'var(--font-body)' }}>
           {t('shared.photos')} · {photos.length}
         </p>
         <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: 6 }}>
@@ -37,7 +37,7 @@ export default function ActivityPhotos({ sessionId }: Props) {
             <button
               key={p.id}
               onClick={() => setViewerIdx(i)}
-              style={{ padding: 0, border: 'none', borderRadius: 10, overflow: 'hidden', cursor: 'pointer', aspectRatio: '1', background: 'rgba(255,255,255,0.06)' }}
+              style={{ padding: 0, border: 'none', borderRadius: 'var(--r-sm)', overflow: 'hidden', cursor: 'pointer', aspectRatio: '1', background: 'rgba(255,255,255,0.06)' }}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={p.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />

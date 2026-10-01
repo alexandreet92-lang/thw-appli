@@ -26,29 +26,29 @@ export default function NextRaceBar({ races, onEdit }: Props) {
   return (
     <div style={{
       background: 'var(--bg-card)', border: '1px solid var(--border)',
-      borderRadius: 13, padding: 14, boxShadow: 'var(--shadow-card)',
+      borderRadius: 'var(--r-md)', padding: 14, boxShadow: 'var(--shadow-card)',
       display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' as const,
     }}>
       {/* Jours restants */}
       <div style={{
-        width: 54, height: 54, borderRadius: 12,
+        width: 54, height: 54, borderRadius: 'var(--r-md)',
         background: cfg.bg, border: `2px solid ${cfg.border}`,
         display: 'flex', flexDirection: 'column' as const,
         alignItems: 'center', justifyContent: 'center', flexShrink: 0,
       }}>
         <span style={{
-          fontFamily: 'Syne, sans-serif', fontSize: 20, fontWeight: 800,
+          fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 800,
           color: next.level === 'gty' ? '#fff' : cfg.color, lineHeight: 1,
         }}>
           {days}
         </span>
-        <span style={{ fontSize: 8, color: 'var(--text-dim)' }}>{t('calendar.days')}</span>
+        <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>{t('calendar.days')}</span>
       </div>
 
       {/* Infos course */}
       <div style={{ flex: 1, minWidth: 0 }}>
         <p style={{
-          fontFamily: 'Syne, sans-serif', fontSize: 15, fontWeight: 700, margin: 0,
+          fontFamily: 'var(--font-body)', fontSize: 15, fontWeight: 700, margin: 0,
           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const,
         }}>
           {next.name}
@@ -61,7 +61,7 @@ export default function NextRaceBar({ races, onEdit }: Props) {
       <button
         onClick={() => onEdit(next)}
         style={{
-          padding: '6px 14px', borderRadius: 8, background: 'var(--bg-card2)',
+          padding: '6px 14px', borderRadius: 'var(--r-sm)', background: 'var(--bg-card2)',
           border: '1px solid var(--border)', color: 'var(--text-mid)',
           fontSize: 11, fontWeight: 600, cursor: 'pointer', flexShrink: 0,
         }}

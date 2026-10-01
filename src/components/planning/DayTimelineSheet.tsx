@@ -80,7 +80,7 @@ export default function DayTimelineSheet({
         <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: 'calc(env(safe-area-inset-top) + 12px) 14px 8px', flexShrink: 0 }}>
           <button onClick={close} aria-label={monthLabel} style={{
             display: 'inline-flex', alignItems: 'center', gap: 4, background: 'none', border: 'none',
-            cursor: 'pointer', color: RED, fontSize: 18, fontWeight: 700, fontFamily: 'Syne, sans-serif', padding: '4px 2px',
+            cursor: 'pointer', color: RED, fontSize: 18, fontWeight: 700, fontFamily: 'var(--font-display)', padding: '4px 2px',
           }}>
             <svg width="11" height="18" viewBox="0 0 11 18"><path d="M9 2 L2 9 L9 16" stroke="currentColor" strokeWidth="2.4" fill="none" strokeLinecap="round" strokeLinejoin="round" /></svg>
             {monthLabel}
@@ -109,7 +109,7 @@ export default function DayTimelineSheet({
 
         {/* Titre du jour */}
         <div style={{ padding: '10px 16px 6px', flexShrink: 0 }}>
-          <span style={{ fontSize: 15, fontWeight: 800, color: isToday ? RED : 'var(--text)', fontFamily: 'Syne, sans-serif' }}>{dayTitle}</span>
+          <span style={{ fontSize: 15, fontWeight: 800, color: isToday ? RED : 'var(--text)', fontFamily: 'var(--font-body)' }}>{dayTitle}</span>
         </div>
 
         {/* Timeline horaire */}
@@ -118,7 +118,7 @@ export default function DayTimelineSheet({
             {/* Colonne des heures */}
             <div style={{ width: 54, flexShrink: 0, position: 'relative', borderRight: '1px solid var(--border)' }}>
               {HOURS.map((h, i) => (
-                <div key={h} style={{ position: 'absolute', top: i * CELL_H - 6, right: 8, fontSize: 11, fontFamily: 'DM Mono, monospace', color: 'var(--text-dim)' }}>
+                <div key={h} style={{ position: 'absolute', top: i * CELL_H - 6, right: 8, fontSize: 11, fontFamily: 'var(--font-body)', color: 'var(--text-dim)' }}>
                   {String(h).padStart(2, '0')}:00
                 </div>
               ))}
@@ -135,7 +135,7 @@ export default function DayTimelineSheet({
                 return (
                   <div key={it.id} onClick={it.onClick}
                     style={{
-                      position: 'absolute', top, height: h, left: 6, right: 8, borderRadius: 8,
+                      position: 'absolute', top, height: h, left: 6, right: 8, borderRadius: 'var(--r-sm)',
                       padding: '5px 8px', background: `color-mix(in srgb, ${it.color} 14%, transparent)`,
                       borderLeft: `3px solid ${it.color}`, cursor: it.onClick ? 'pointer' : 'default',
                       overflow: 'hidden', zIndex: 2,
@@ -144,14 +144,14 @@ export default function DayTimelineSheet({
                       <span style={{ fontSize: 12, fontWeight: 700, color: it.color, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{it.label}</span>
                       {it.done && <span style={{ fontSize: 10, background: it.color, color: '#fff', borderRadius: 3, padding: '0 3px', fontWeight: 800, flexShrink: 0 }}>✓</span>}
                     </div>
-                    {it.sublabel && h >= 40 && <div style={{ fontSize: 10.5, color: 'var(--text-dim)', marginTop: 2, fontFamily: 'DM Mono, monospace' }}>{it.sublabel}</div>}
+                    {it.sublabel && h >= 40 && <div style={{ fontSize: 10.5, color: 'var(--text-dim)', marginTop: 2, fontFamily: 'var(--font-body)' }}>{it.sublabel}</div>}
                   </div>
                 )
               })}
               {/* Trait d'heure courante */}
               {nowTop >= 0 && (
                 <div style={{ position: 'absolute', top: nowTop, left: 0, right: 0, zIndex: 4, display: 'flex', alignItems: 'center', pointerEvents: 'none' }}>
-                  <div style={{ position: 'absolute', left: -46, background: RED, color: '#fff', fontSize: 10.5, fontWeight: 800, borderRadius: 6, padding: '1px 5px', fontFamily: 'DM Mono, monospace' }}>{nowLabel}</div>
+                  <div style={{ position: 'absolute', left: -46, background: RED, color: '#fff', fontSize: 10.5, fontWeight: 800, borderRadius: 'var(--r-sm)', padding: '1px 5px', fontFamily: 'var(--font-body)' }}>{nowLabel}</div>
                   <div style={{ width: 7, height: 7, borderRadius: '50%', background: RED, marginLeft: -3.5 }} />
                   <div style={{ flex: 1, height: 1.5, background: RED }} />
                 </div>
@@ -163,8 +163,8 @@ export default function DayTimelineSheet({
         {/* Bouton Aujourd'hui */}
         <div style={{ position: 'absolute', left: 16, bottom: 'calc(env(safe-area-inset-bottom) + 16px)', zIndex: 6 }}>
           <button onClick={onToday} className="thw-glass thw-press" style={{
-            padding: '11px 20px', borderRadius: 24, border: 'none', cursor: 'pointer',
-            fontSize: 15, fontWeight: 700, color: 'var(--text)', fontFamily: 'Syne, sans-serif',
+            padding: '11px 20px', borderRadius: 'var(--r-lg)', border: 'none', cursor: 'pointer',
+            fontSize: 15, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-body)',
           }}>
             Aujourd&apos;hui
           </button>

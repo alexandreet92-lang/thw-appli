@@ -33,7 +33,7 @@ export default function ExerciseSearch({ sport, onAdd, onClose, isDark }: Props)
   }, [query, pool])
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 10010, background: bg, display: 'flex', flexDirection: 'column', fontFamily: 'DM Sans, sans-serif', transform: shown && !closing ? 'translateX(0)' : 'translateX(100%)', transition: 'transform 300ms cubic-bezier(0.32,0.72,0,1)' }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 10010, background: bg, display: 'flex', flexDirection: 'column', fontFamily: 'var(--font-body)', transform: shown && !closing ? 'translateX(0)' : 'translateX(100%)', transition: 'transform 300ms cubic-bezier(0.32,0.72,0,1)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderBottom: `1px solid ${separator}`, paddingTop: 'calc(12px + env(safe-area-inset-top))' }}>
         <button onClick={requestClose} style={{ background: 'none', border: 'none', color: text, fontSize: 22, cursor: 'pointer', lineHeight: 1, padding: 4 }}>×</button>
         <input
@@ -41,7 +41,7 @@ export default function ExerciseSearch({ sport, onAdd, onClose, isDark }: Props)
           value={query}
           onChange={e => setQuery(e.target.value)}
           placeholder={t('record.searchPlaceholder')}
-          style={{ flex: 1, background: surface, border: `1px solid ${border}`, borderRadius: 12, padding: '10px 14px', fontSize: 15, color: text, outline: 'none', fontFamily: 'DM Sans, sans-serif' }}
+          style={{ flex: 1, background: surface, border: `1px solid ${border}`, borderRadius: 'var(--r-md)', padding: '10px 14px', fontSize: 15, color: text, outline: 'none', fontFamily: 'var(--font-body)' }}
         />
       </div>
       <div style={{ flex: 1, overflowY: 'auto' }}>
@@ -51,7 +51,7 @@ export default function ExerciseSearch({ sport, onAdd, onClose, isDark }: Props)
             onClick={() => { onAdd({ ...ex, id: `${ex.id}_${Date.now()}` }); requestClose() }}
             style={{ width: '100%', display: 'flex', alignItems: 'center', padding: '14px 16px', background: 'none', border: 'none', cursor: 'pointer', borderBottom: idx < filtered.length - 1 ? `1px solid ${separator}` : 'none', gap: 12, textAlign: 'left' }}
           >
-            <div style={{ width: 36, height: 36, borderRadius: 10, background: surface, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <div style={{ width: 36, height: 36, borderRadius: 'var(--r-sm)', background: surface, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                 <path d="M2 8h3M11 8h3M5 4v8M11 4v8M5 8h6" stroke={dim} strokeWidth="1.6" strokeLinecap="round"/>
               </svg>

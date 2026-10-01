@@ -123,7 +123,7 @@ export function CompositionTab(p: Props) {
               <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
                 {summaries.map(s => (
                   <button key={s.year} onClick={() => setYear(s.year)} style={{ border: '1px solid var(--border)', background: 'var(--bg-card2)', cursor: 'pointer',
-                    borderRadius: 999, padding: '9px 20px', fontFamily: FB, fontSize: 14, fontWeight: 600, color: 'var(--text)',
+                    borderRadius: 'var(--r-pill)', padding: '9px 20px', fontFamily: FB, fontSize: 14, fontWeight: 600, color: 'var(--text)',
                     display: 'flex', alignItems: 'center', gap: 7 }}>
                     {s.year}
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="2" strokeLinecap="round"><path d="M18 15l-6-6-6 6" /></svg>

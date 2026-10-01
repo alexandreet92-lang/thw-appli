@@ -56,7 +56,7 @@ export function GymEditSheet({ exercise, types, initialType, getBest, onClose, o
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 600, color: 'var(--text-mid)' }}>
               <span style={{ width: 7, height: 7, borderRadius: '50%', background: GYM_DOT }} />{t('performance.sportGym')}
             </span>
-            <span style={{ padding: '3px 9px', borderRadius: 8, background: 'var(--bg-card2)', fontFamily: 'var(--font-body)', fontSize: 11, fontWeight: 600, color: 'var(--text-mid)' }}>{exercise}</span>
+            <span style={{ padding: '3px 9px', borderRadius: 'var(--r-sm)', background: 'var(--bg-card2)', fontFamily: 'var(--font-body)', fontSize: 11, fontWeight: 600, color: 'var(--text-mid)' }}>{exercise}</span>
             <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 600, color: 'var(--text)', margin: 0 }}>{t('performance.editRecord')}</h2>
           </div>
           <button onClick={close} style={{ width: 28, height: 28, borderRadius: '50%', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 16 }}>×</button>
@@ -71,7 +71,7 @@ export function GymEditSheet({ exercise, types, initialType, getBest, onClose, o
             <p style={{ fontFamily: 'var(--font-body)', fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-dim)', margin: '0 0 5px' }}>{fieldLabel}</p>
             <div style={{ display: 'flex', alignItems: 'center', gap: 0, position: 'relative', maxWidth: 220 }}>
               <input className="rec-drawer" type="number" value={value} onChange={e => setValue(e.target.value)} autoFocus placeholder="0"
-                style={{ width: '100%', padding: '11px 48px 11px 12px', borderRadius: 10, border: '1px solid var(--border-mid)', background: 'var(--input-bg)', color: 'var(--text)', fontFamily: 'var(--font-body)', fontSize: 15, fontWeight: 600, outline: 'none', boxSizing: 'border-box' }} />
+                style={{ width: '100%', padding: '11px 48px 11px 12px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border-mid)', background: 'var(--input-bg)', color: 'var(--text)', fontFamily: 'var(--font-body)', fontSize: 15, fontWeight: 600, outline: 'none', boxSizing: 'border-box' }} />
               <span style={{ position: 'absolute', right: 12, fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', pointerEvents: 'none' }}>{unitTxt}</span>
             </div>
           </div>
@@ -79,7 +79,7 @@ export function GymEditSheet({ exercise, types, initialType, getBest, onClose, o
           <div style={{ marginTop: 16 }}>
             <p style={{ fontFamily: 'var(--font-body)', fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-dim)', margin: '0 0 5px' }}>{t('performance.date')}</p>
             <input type="date" value={date} onChange={e => setDate(e.target.value)} className="rec-drawer"
-              style={{ padding: '9px 11px', borderRadius: 10, border: '1px solid var(--border-mid)', background: 'var(--input-bg)', color: 'var(--text)', fontFamily: 'var(--font-body)', fontSize: 13, outline: 'none' }} />
+              style={{ padding: '9px 11px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border-mid)', background: 'var(--input-bg)', color: 'var(--text)', fontFamily: 'var(--font-body)', fontSize: 13, outline: 'none' }} />
           </div>
         </div>
 

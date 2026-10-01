@@ -53,7 +53,7 @@ export default function SwimmingSummary({ session, onClose }: Props) {
   return (
     <div style={{
       position: 'fixed', inset: 0, zIndex: 10005, background: 'var(--bg)', color: 'var(--text)',
-      display: 'flex', flexDirection: 'column', fontFamily: 'DM Sans, sans-serif',
+      display: 'flex', flexDirection: 'column', fontFamily: 'var(--font-body)',
       paddingTop: 'env(safe-area-inset-top)',
       transform: shown && !closing ? 'translateY(0)' : 'translateY(40px)',
       opacity: shown && !closing ? 1 : 0,
@@ -66,7 +66,7 @@ export default function SwimmingSummary({ session, onClose }: Props) {
         </span>
         <button
           onClick={requestClose}
-          style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'var(--primary)', fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}
+          style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'var(--primary)', fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)' }}
         >
           {t('record.swimSummaryClose')}
         </button>
@@ -75,7 +75,7 @@ export default function SwimmingSummary({ session, onClose }: Props) {
       <div style={{ flex: 1, overflowY: 'auto', padding: '16px' }}>
         <div style={{
           display: 'grid', gridTemplateColumns: '1fr 1fr',
-          gap: 1, background: 'var(--border)', borderRadius: 16, overflow: 'hidden',
+          gap: 1, background: 'var(--border)', borderRadius: 'var(--r-md)', overflow: 'hidden',
           border: '1px solid var(--border)', marginBottom: 16,
         }}>
           {stats.map((s, i) => (
@@ -93,7 +93,7 @@ export default function SwimmingSummary({ session, onClose }: Props) {
               {t('record.swimSets')}
             </p>
             {session.intervals.map((iv, idx) => (
-              <div key={iv.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', background: 'var(--bg-card)', borderRadius: 10, marginBottom: 6, border: '1px solid var(--border)' }}>
+              <div key={iv.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', background: 'var(--bg-card)', borderRadius: 'var(--r-sm)', marginBottom: 6, border: '1px solid var(--border)' }}>
                 <span style={{ fontSize: 14, fontWeight: 500 }}>{t('record.swimSet', { n: idx + 1 })} — {iv.distanceM}m</span>
                 <span style={{ fontSize: 13, color: 'var(--primary)', fontWeight: 600 }}>{pace100m(iv.distanceM, iv.durationSec)}</span>
               </div>

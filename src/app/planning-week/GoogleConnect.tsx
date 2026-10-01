@@ -35,7 +35,7 @@ export function GoogleConnectButton({ onChange }: { onChange: () => void }) {
 
   if (!status.connected) {
     return (
-      <button onClick={connect} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', justifyContent: 'center', padding: '10px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}>
+      <button onClick={connect} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', justifyContent: 'center', padding: '10px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}>
         <span style={{ width: 16, height: 16, borderRadius: 3, background: 'conic-gradient(#4285F4,#EA4335,#FBBC05,#34A853)' }} />
         Connecter Google Agenda
       </button>
@@ -49,7 +49,7 @@ export function GoogleConnectButton({ onChange }: { onChange: () => void }) {
         <input type="checkbox" checked={status.suppressReminders !== false} onChange={e => void toggleSuppress(e.target.checked)} />
         Laisser Google gérer les rappels de cette page (éviter les doublons)
       </label>
-      <button onClick={disconnect} disabled={busy} style={{ padding: '8px', borderRadius: 9, border: '1px solid var(--border)', background: 'transparent', color: 'var(--danger)', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>Déconnecter</button>
+      <button onClick={disconnect} disabled={busy} style={{ padding: '8px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'transparent', color: 'var(--danger)', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>Déconnecter</button>
     </div>
   )
 }

@@ -15,7 +15,7 @@ function Kpi({ label, value, accent }: { label: string; value: number; accent: s
   return (
     <div style={{ flex: 1, minWidth: 0, borderLeft: `3px solid ${accent}`, background: 'var(--bg-card2)', borderRadius: 'var(--r-md)', padding: 'var(--space-3)' }}>
       <p style={{ margin: 0, fontFamily: FB, fontSize: 11, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-mid)' }}>{label}</p>
-      <p className="tnum" style={{ margin: '4px 0 0', ...NUM, fontSize: 23, fontWeight: 600, color: 'var(--text)' }}>
+      <p className="tnum" style={{ margin: '4px 0 0', ...NUM, fontSize: 22, fontWeight: 600, color: 'var(--text)' }}>
         {`${value > 0 && label.startsWith('TSB') ? '+' : ''}${Math.round(value)}`}
       </p>
     </div>

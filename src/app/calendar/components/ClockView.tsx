@@ -309,7 +309,7 @@ export default function ClockView({ events, year }: Props) {
         <div style={{
           position: 'fixed', left: tip.x + 14, top: tip.y - 10, zIndex: 1000,
           background: 'var(--bg-card)', border: '1px solid var(--border)',
-          borderRadius: 9, padding: '9px 12px', fontSize: 11, color: 'var(--text)',
+          borderRadius: 'var(--r-sm)', padding: '9px 12px', fontSize: 11, color: 'var(--text)',
           pointerEvents: 'none', whiteSpace: 'pre-line', lineHeight: 1.7,
           boxShadow: '0 6px 24px rgba(0,0,0,0.35)',
         }}>

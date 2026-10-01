@@ -45,7 +45,7 @@ export function PeopleSearchSheet({ onClose }: { onClose: () => void }) {
         </div>
         <div style={{ padding: '12px 20px 0' }}>
           <input autoFocus value={q} onChange={e => setQ(e.target.value)} placeholder={t('w3f.name_or_username')}
-            style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1px solid var(--border-mid)', background: 'var(--input-bg)', color: 'var(--text)', fontFamily: FB, fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
+            style={{ width: '100%', padding: '10px 12px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border-mid)', background: 'var(--input-bg)', color: 'var(--text)', fontFamily: FB, fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
         </div>
         <div style={{ flex: 1, overflowY: 'auto', padding: '12px 16px 24px' }}>
           {people === null ? (
@@ -55,14 +55,14 @@ export function PeopleSearchSheet({ onClose }: { onClose: () => void }) {
           ) : list.map(p => {
             const isF = following.has(p.id)
             return (
-              <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '9px 8px', borderRadius: 12 }}>
+              <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '9px 8px', borderRadius: 'var(--r-md)' }}>
                 <Avatar url={p.avatar} name={p.name} size={38} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontFamily: FB, fontSize: 14, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</div>
                   {(p.username || p.sports.length > 0) && <div style={{ fontSize: 11.5, color: 'var(--text-dim)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.username ? `@${p.username}` : ''}{p.username && p.sports.length ? ' · ' : ''}{p.sports.slice(0, 3).join(', ')}</div>}
                 </div>
                 <button onClick={() => void toggle(p.id)} disabled={busy === p.id}
-                  style={{ flexShrink: 0, padding: '7px 14px', borderRadius: 999, cursor: 'pointer', fontFamily: FB, fontSize: 12.5, fontWeight: 600,
+                  style={{ flexShrink: 0, padding: '7px 14px', borderRadius: 'var(--r-pill)', cursor: 'pointer', fontFamily: FB, fontSize: 12.5, fontWeight: 600,
                     border: isF ? '1px solid var(--border-mid)' : 'none', background: isF ? 'transparent' : 'var(--primary)', color: isF ? 'var(--text-mid)' : 'var(--on-primary)' }}>
                   {isF ? t('w3f.following') : t('w3f.follow')}
                 </button>

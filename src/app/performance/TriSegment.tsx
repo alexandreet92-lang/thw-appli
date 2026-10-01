@@ -12,7 +12,7 @@ const lbl: React.CSSProperties = {
   letterSpacing: '0.06em', color: 'var(--text-dim)', marginBottom: 5, marginTop: 0,
 }
 export const triInp: React.CSSProperties = {
-  width: '100%', padding: '10px 12px', borderRadius: 10, border: '1px solid var(--border-mid)',
+  width: '100%', padding: '10px 12px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border-mid)',
   background: 'var(--input-bg)', color: 'var(--text)', fontFamily: 'var(--font-body)', fontSize: 13,
   outline: 'none', boxSizing: 'border-box',
 }
@@ -35,7 +35,7 @@ export function TriSegment({ title, distLabel, dot, segment, time, setTime, time
   const [showLink, setShowLink] = useState(false)
   const timeLabelText = timeLabel ?? t('performance.timeHms')
   return (
-    <div style={{ background: 'var(--bg-card2)', borderRadius: 14, padding: '14px 16px', marginBottom: 10 }}>
+    <div style={{ background: 'var(--bg-card2)', borderRadius: 'var(--r-md)', padding: '14px 16px', marginBottom: 10 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
         {dot && <span style={{ width: 7, height: 7, borderRadius: '50%', background: dot, flexShrink: 0 }} />}
         <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-mid)' }}>{title}</span>
@@ -57,7 +57,7 @@ export function TriSegment({ title, distLabel, dot, segment, time, setTime, time
       {chips && chips.length > 0 && (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 8px', marginTop: 12 }}>
           {chips.map(c => (
-            <span key={c.label} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 9px', borderRadius: 999, background: 'var(--bg-elev)', fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--text-mid)' }}>
+            <span key={c.label} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 9px', borderRadius: 'var(--r-pill)', background: 'var(--bg-elev)', fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--text-mid)' }}>
               <span style={{ color: 'var(--text-dim)' }}>{c.label}</span>
               <span className="tnum" style={{ color: 'var(--text)' }}>{c.value}</span>
             </span>

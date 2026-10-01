@@ -106,10 +106,10 @@ export default function WeightChart({ measurements, heightCm, targetWeight }: Pr
               onClick={() => { if (!disabled) { setMetric(m); setHover(null) } }}
               disabled={disabled}
               style={{
-                padding: '5px 12px', borderRadius: 20, border: active ? 'none' : '1px solid var(--border)',
+                padding: '5px 12px', borderRadius: 'var(--r-lg)', border: active ? 'none' : '1px solid var(--border)',
                 background: active ? 'linear-gradient(90deg,#06B6D4,#3B82F6)' : 'transparent',
                 color: active ? '#fff' : disabled ? 'var(--text-dim)' : 'var(--text-dim)',
-                fontSize: 11, fontFamily: 'Syne,sans-serif', fontWeight: active ? 700 : 400,
+                fontSize: 11, fontFamily: 'var(--font-body)', fontWeight: active ? 700 : 400,
                 cursor: disabled ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap',
                 opacity: disabled ? 0.4 : 1,
               }}
@@ -125,7 +125,7 @@ export default function WeightChart({ measurements, heightCm, targetWeight }: Pr
       {trend !== null && (
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 6 }}>
           <span style={{
-            fontSize: 11, fontWeight: 600, fontFamily: 'DM Mono,monospace',
+            fontSize: 11, fontWeight: 600, fontFamily: 'var(--font-body)',
             color: trendIsGood ? '#22C55E' : '#EF4444',
           }}>
             {trend > 0 ? '▲' : '▼'} {Math.abs(trend).toFixed(1)} {cfg.unit || 'pt'}{t('w3h.per_week')}
@@ -206,7 +206,7 @@ export default function WeightChart({ measurements, heightCm, targetWeight }: Pr
           <div style={{
             position: 'absolute', top: 6, right: 4, zIndex: 10, pointerEvents: 'none',
             background: 'var(--bg-card)', border: '1px solid var(--border)',
-            borderRadius: 8, padding: '7px 12px', fontSize: 11,
+            borderRadius: 'var(--r-sm)', padding: '7px 12px', fontSize: 11,
             boxShadow: '0 4px 16px rgba(0,0,0,0.18)',
           }}>
             <div style={{ fontWeight: 700, color: 'var(--text)', marginBottom: 3 }}>

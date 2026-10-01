@@ -32,7 +32,7 @@ export default function PhaseShell(p: Props) {
   const bg = `var(--phase-${p.color})`
   const ink = `var(--phase-${p.color}-ink)`
   return (
-    <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', background: bg, color: ink, transition: 'background 0.3s', fontFamily: 'DM Sans, sans-serif' }}>
+    <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', background: bg, color: ink, transition: 'background 0.3s', fontFamily: 'var(--font-body)' }}>
       {/* Top bar */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: 'calc(env(safe-area-inset-top) + 12px) 20px 0', flexShrink: 0 }}>
         <button aria-label="Pause" onClick={p.onPause} style={round}><IconPlayerPauseFilled size={18} /></button>

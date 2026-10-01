@@ -79,7 +79,7 @@ export default function HrvTrend({ rows }: Props) {
         <div style={{ display: 'flex', gap: 3 }}>
           {PERIODS.map((p, i) => (
             <button key={i} onClick={() => setPeriod(i)}
-              style={{ padding: '3px 9px', borderRadius: 6, border: '1px solid', fontSize: 9, cursor: 'pointer',
+              style={{ padding: '3px 9px', borderRadius: 'var(--r-sm)', border: '1px solid', fontSize: 10, cursor: 'pointer',
                 borderColor: period===i ? '#7C3AED' : 'var(--border)',
                 background: period===i ? 'rgba(124,58,237,0.1)' : 'transparent',
                 color: period===i ? '#7C3AED' : 'var(--text-dim)', fontWeight: period===i ? 700 : 400 }}>

@@ -12,7 +12,7 @@ import { FB } from './lib'
 
 const PILL: React.CSSProperties = {
   display: 'inline-flex', alignItems: 'center', minHeight: 36, padding: '0 14px',
-  borderRadius: 999, background: 'var(--bg-card2)', color: 'var(--text)',
+  borderRadius: 'var(--r-pill)', background: 'var(--bg-card2)', color: 'var(--text)',
   fontFamily: FB, fontSize: 13, fontWeight: 500, textDecoration: 'none',
   border: 'none', cursor: 'pointer',
 }

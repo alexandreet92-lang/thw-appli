@@ -26,9 +26,9 @@ const MESSAGE_KEYS: Record<string, string> = {
 export function FamilyEmptyState({ family, label }: { family: string; label: string }) {
   const { t } = useI18n()
   return (
-    <div style={{ textAlign: 'center', padding: '40px 20px', background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 16 }}>
+    <div style={{ textAlign: 'center', padding: '40px 20px', background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)' }}>
       <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="1.5" strokeLinecap="round" style={{ marginBottom: 12, opacity: 0.7 }}><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
-      <h3 style={{ fontFamily: 'Syne,sans-serif', fontWeight: 700, fontSize: 16, color: 'var(--text)', margin: '0 0 8px' }}>{t('progression.familyComingSoon', { label })}</h3>
+      <h3 style={{ fontFamily: 'var(--font-body)', fontWeight: 700, fontSize: 16, color: 'var(--text)', margin: '0 0 8px' }}>{t('progression.familyComingSoon', { label })}</h3>
       <p style={{ fontSize: 13, color: 'var(--text-dim)', lineHeight: 1.5, maxWidth: 420, margin: '0 auto 10px' }}>{MESSAGE_KEYS[family] ? t(MESSAGE_KEYS[family]) : t('progression.familyMsgDefault')}</p>
       <p style={{ fontSize: 12, color: 'var(--text-mid)' }}>{t('progression.familyHintBefore')}<strong>{t('progression.familyGeneralTab')}</strong>{t('progression.familyHintAfter')}</p>
     </div>

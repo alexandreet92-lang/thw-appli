@@ -65,5 +65,5 @@ const chip = (accent: string, dashed: boolean): React.CSSProperties => ({
   flexShrink: 0, whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: 4,
   border: dashed ? `1px dashed ${accent}` : '1px solid var(--se-rule)',
   background: dashed ? 'transparent' : 'var(--se-card)', color: dashed ? accent : 'var(--se-text)',
-  borderRadius: 999, padding: '8px 13px', fontSize: 12, fontWeight: 600, cursor: 'pointer',
+  borderRadius: 'var(--r-pill)', padding: '8px 13px', fontSize: 12, fontWeight: 600, cursor: 'pointer',
 })

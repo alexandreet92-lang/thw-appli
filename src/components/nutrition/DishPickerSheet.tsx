@@ -25,7 +25,7 @@ function DishCard({ dish, onSelect }: { dish: DishItem; onSelect: (d: DishItem) 
       onClick={() => onSelect(dish)}
       style={{
         display: 'flex', flexDirection: 'column', textAlign: 'left', padding: 0,
-        border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden',
+        border: '1px solid var(--border)', borderRadius: 'var(--r-md)', overflow: 'hidden',
         background: 'var(--bg-card2)', cursor: 'pointer', minHeight: 44,
       }}
     >
@@ -41,10 +41,10 @@ function DishCard({ dish, onSelect }: { dish: DishItem; onSelect: (d: DishItem) 
         )}
       </div>
       <div style={{ padding: '8px 10px 10px' }}>
-        <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: 'var(--text)', fontFamily: 'DM Sans,sans-serif', lineHeight: 1.25, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+        <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: 'var(--text)', fontFamily: 'var(--font-body)', lineHeight: 1.25, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
           {dish.name}
         </p>
-        <p style={{ margin: '4px 0 0', fontSize: 11, color: CYAN, fontFamily: 'DM Mono,monospace', fontWeight: 700 }}>
+        <p style={{ margin: '4px 0 0', fontSize: 11, color: CYAN, fontFamily: 'var(--font-body)', fontWeight: 700 }}>
           {kcalPortion} kcal
           <span style={{ color: 'var(--text-dim)', fontWeight: 400 }}> · {dish.default_portion_g}g</span>
         </p>
@@ -57,10 +57,10 @@ function GridSkeleton() {
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 10, padding: '4px 16px 16px' }}>
       {Array.from({ length: 6 }).map((_, i) => (
-        <div key={i} style={{ borderRadius: 12, overflow: 'hidden', border: '1px solid var(--border)' }}>
+        <div key={i} style={{ borderRadius: 'var(--r-md)', overflow: 'hidden', border: '1px solid var(--border)' }}>
           <div style={{ width: '100%', aspectRatio: '4 / 3', background: 'var(--border)', animation: 'pulse 1.4s ease-in-out infinite' }} />
           <div style={{ padding: '8px 10px 10px' }}>
-            <div style={{ height: 12, borderRadius: 6, background: 'var(--border)', width: '80%', animation: 'pulse 1.4s ease-in-out infinite' }} />
+            <div style={{ height: 12, borderRadius: 'var(--r-sm)', background: 'var(--border)', width: '80%', animation: 'pulse 1.4s ease-in-out infinite' }} />
             <div style={{ height: 10, borderRadius: 4, background: 'var(--border)', width: '40%', marginTop: 6, opacity: 0.6, animation: 'pulse 1.4s ease-in-out infinite' }} />
           </div>
         </div>
@@ -129,9 +129,9 @@ export function DishPickerSheet({ onSelect, onClose }: Props) {
               <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
             </svg>
             <input ref={inputRef} value={query} onChange={e => setQuery(e.target.value)} placeholder={t('lo.searchDish')}
-              style={{ width: '100%', padding: '9px 9px 9px 32px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card2)', fontSize: 14, color: 'var(--text)', fontFamily: 'DM Sans,sans-serif', outline: 'none', boxSizing: 'border-box' }} />
+              style={{ width: '100%', padding: '9px 9px 9px 32px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-card2)', fontSize: 14, color: 'var(--text)', fontFamily: 'var(--font-body)', outline: 'none', boxSizing: 'border-box' }} />
           </div>
-          <button onClick={requestClose} style={{ width: 40, height: 40, borderRadius: 8, border: 'none', background: 'var(--bg-card2)', cursor: 'pointer', color: 'var(--text-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <button onClick={requestClose} style={{ width: 40, height: 40, borderRadius: 'var(--r-sm)', border: 'none', background: 'var(--bg-card2)', cursor: 'pointer', color: 'var(--text-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
           </button>
         </div>
@@ -144,11 +144,11 @@ export function DishPickerSheet({ onSelect, onClose }: Props) {
               return (
                 <button key={c.key} onClick={() => setCategory(c.key)}
                   style={{
-                    flexShrink: 0, padding: '8px 14px', borderRadius: 999, minHeight: 36, cursor: 'pointer',
+                    flexShrink: 0, padding: '8px 14px', borderRadius: 'var(--r-pill)', minHeight: 36, cursor: 'pointer',
                     border: `1px solid ${active ? CYAN : 'var(--border)'}`,
                     background: active ? `${CYAN}1f` : 'transparent',
                     color: active ? CYAN : 'var(--text-mid)',
-                    fontFamily: 'DM Sans,sans-serif', fontSize: 12, fontWeight: active ? 700 : 500, whiteSpace: 'nowrap',
+                    fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: active ? 700 : 500, whiteSpace: 'nowrap',
                   }}>
                   {c.label}
                 </button>
@@ -159,15 +159,15 @@ export function DishPickerSheet({ onSelect, onClose }: Props) {
 
         {/* Confirm grammage */}
         {pending && macros && (
-          <div style={{ margin: '0 16px 12px', padding: '12px 14px', borderRadius: 12, background: 'var(--bg-card2)', border: '1px solid var(--border)' }}>
+          <div style={{ margin: '0 16px 12px', padding: '12px 14px', borderRadius: 'var(--r-md)', background: 'var(--bg-card2)', border: '1px solid var(--border)' }}>
             <div style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
               {pending.image_url && (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={pending.image_url} alt="" style={{ width: 48, height: 48, borderRadius: 8, objectFit: 'cover', flexShrink: 0 }} />
+                <img src={pending.image_url} alt="" style={{ width: 48, height: 48, borderRadius: 'var(--r-sm)', objectFit: 'cover', flexShrink: 0 }} />
               )}
               <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: 'var(--text)', fontFamily: 'DM Sans,sans-serif', lineHeight: 1.25 }}>{pending.name}</p>
-                <div style={{ display: 'flex', gap: 10, marginTop: 4, fontFamily: 'DM Mono,monospace', fontSize: 11 }}>
+                <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-body)', lineHeight: 1.25 }}>{pending.name}</p>
+                <div style={{ display: 'flex', gap: 10, marginTop: 4, fontFamily: 'var(--font-body)', fontSize: 11 }}>
                   <span style={{ color: CYAN, fontWeight: 700 }}>{macros.kcal} kcal</span>
                   <span style={{ color: 'var(--text-dim)' }}>{t('lo.macroProt')} {macros.prot}</span>
                   <span style={{ color: 'var(--text-dim)' }}>{t('lo.macroGluc')} {macros.gluc}</span>
@@ -176,13 +176,13 @@ export function DishPickerSheet({ onSelect, onClose }: Props) {
               </div>
             </div>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <button onClick={() => setGrams(g => Math.max(10, g - 10))} style={{ width: 44, height: 44, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 20, cursor: 'pointer', flexShrink: 0 }}>−</button>
-              <div style={{ flex: 1, textAlign: 'center', fontFamily: 'DM Mono,monospace', fontWeight: 700, fontSize: 16, color: 'var(--text)' }}>{grams} g</div>
-              <button onClick={() => setGrams(g => g + 10)} style={{ width: 44, height: 44, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 20, cursor: 'pointer', flexShrink: 0 }}>+</button>
+              <button onClick={() => setGrams(g => Math.max(10, g - 10))} style={{ width: 44, height: 44, borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 20, cursor: 'pointer', flexShrink: 0 }}>−</button>
+              <div style={{ flex: 1, textAlign: 'center', fontFamily: 'var(--font-body)', fontWeight: 700, fontSize: 16, color: 'var(--text)' }}>{grams} g</div>
+              <button onClick={() => setGrams(g => g + 10)} style={{ width: 44, height: 44, borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 20, cursor: 'pointer', flexShrink: 0 }}>+</button>
             </div>
             <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
-              <button onClick={() => setPending(null)} style={{ flex: 1, padding: '10px 0', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-dim)', fontSize: 12, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>{t('lo.back')}</button>
-              <button onClick={handleConfirm} style={{ flex: 2, padding: '10px 0', borderRadius: 8, border: 'none', background: `linear-gradient(135deg,${CYAN},#3B82F6)`, color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'Syne,sans-serif' }}>{t('lo.addToMeal')}</button>
+              <button onClick={() => setPending(null)} style={{ flex: 1, padding: '10px 0', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-dim)', fontSize: 12, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>{t('lo.back')}</button>
+              <button onClick={handleConfirm} style={{ flex: 2, padding: '10px 0', borderRadius: 'var(--r-sm)', border: 'none', background: `linear-gradient(135deg,${CYAN},#3B82F6)`, color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>{t('lo.addToMeal')}</button>
             </div>
           </div>
         )}

@@ -104,10 +104,10 @@ function PhasePills({ phases }: { phases: SleepPhase[] }) {
   return (
     <div style={{ display:'flex',gap:8,flexWrap:'wrap' as const,marginBottom:16 }}>
       {entries.map(([stage, labelKey]) => (
-        <div key={stage} style={{ display:'flex',alignItems:'center',gap:6,padding:'6px 12px',borderRadius:20,background:`${PHASE_CONFIG[stage].color}18`,border:`1px solid ${PHASE_CONFIG[stage].color}40` }}>
+        <div key={stage} style={{ display:'flex',alignItems:'center',gap:6,padding:'6px 12px',borderRadius: 'var(--r-lg)',background:`${PHASE_CONFIG[stage].color}18`,border:`1px solid ${PHASE_CONFIG[stage].color}40` }}>
           <div style={{ width:8,height:8,borderRadius:'50%',background:PHASE_CONFIG[stage].color,flexShrink:0 }} />
           <span style={{ fontSize:11,fontWeight:600,color:PHASE_CONFIG[stage].color }}>{t(labelKey)}</span>
-          <span style={{ fontSize:12,fontWeight:700,color:'var(--text)',fontFamily:'DM Mono,monospace' }}>{fmtMinutes(totals[stage])}</span>
+          <span style={{ fontSize:12,fontWeight:700,color:'var(--text)',fontFamily: 'var(--font-body)' }}>{fmtMinutes(totals[stage])}</span>
         </div>
       ))}
     </div>
@@ -183,7 +183,7 @@ function SummaryBar({ phases, sleepStart, sleepEnd }: { phases: SleepPhase[]; sl
         <span style={{ fontSize:10,color:'var(--text-dim)' }}>{sleepStart}</span>
         <span style={{ fontSize:10,color:'var(--text-dim)' }}>{sleepEnd}</span>
       </div>
-      <div style={{ display:'flex',height:10,borderRadius:5,overflow:'hidden' }}>
+      <div style={{ display:'flex',height:10,borderRadius: 'var(--r-sm)',overflow:'hidden' }}>
         {phases.map((p, i) => (
           <div key={i} style={{ width:`${(p.durationMin/totalMin)*100}%`,height:'100%',background:PHASE_CONFIG[p.stage].color,flexShrink:0 }} />
         ))}
@@ -207,7 +207,7 @@ function ScoreCircle({ score }: { score: number }) {
           transform="rotate(-90 27 27)" style={{ transition:'stroke-dashoffset 1.2s ease-out' }} />
         <text x={27} y={31} textAnchor="middle" fill="#8B5CF6" fontSize={12} fontWeight={700}>{score}</text>
       </svg>
-      <span style={{ fontSize:9,color:'var(--text-dim)',textAlign:'center' as const }}>{t('recovery.hypno.scoreWord')}<br/>{t('recovery.hypno.sleepWord')}</span>
+      <span style={{ fontSize: 10,color:'var(--text-dim)',textAlign:'center' as const }}>{t('recovery.hypno.scoreWord')}<br/>{t('recovery.hypno.sleepWord')}</span>
     </div>
   )
 }
@@ -238,13 +238,13 @@ export default function SleepHypnogram({ sleepData, polarConnected = false }: Pr
 
   return (
     <div style={{ position:'relative' as const,marginTop:4 }}>
-      <div style={{ padding:'16px',borderRadius:14,background:'var(--bg-card2)',border:'1px solid var(--border)' }}>
+      <div style={{ padding:'16px',borderRadius: 'var(--r-md)',background:'var(--bg-card2)',border:'1px solid var(--border)' }}>
 
         {/* Real data source label */}
         {hasDeviceSleepData && (
           <div style={{ display:'flex',alignItems:'center',gap:6,marginBottom:12 }}>
             <span style={{ width:6,height:6,borderRadius:'50%',background:'#8B5CF6',boxShadow:'0 0 5px #8B5CF6',flexShrink:0,display:'inline-block' }} />
-            <span style={{ fontSize:10,fontWeight:600,color:'#8B5CF6',fontFamily:'DM Mono,monospace' }}>{t('recovery.hypno.polarData')}</span>
+            <span style={{ fontSize:10,fontWeight:600,color:'#8B5CF6',fontFamily: 'var(--font-body)' }}>{t('recovery.hypno.polarData')}</span>
             <span style={{ fontSize:10,color:'var(--text-dim)',marginLeft:'auto' }}>
               {sleepStart} → {sleepEnd}
             </span>
@@ -270,21 +270,21 @@ export default function SleepHypnogram({ sleepData, polarConnected = false }: Pr
 
       {/* Overlay — état selon connexion device */}
       {!hasDeviceSleepData && !polarConnected && (
-        <div style={{ position:'absolute' as const,inset:0,borderRadius:14,background:'rgba(var(--bg-card-rgb,255,255,255),0.55)',backdropFilter:'blur(2px)',display:'flex',flexDirection:'column' as const,alignItems:'center',justifyContent:'center',gap:10,pointerEvents:'none' as const }}>
-          <div style={{ padding:'8px 16px',borderRadius:20,background:'rgba(139,92,246,0.12)',border:'1px solid rgba(139,92,246,0.35)',textAlign:'center' as const }}>
+        <div style={{ position:'absolute' as const,inset:0,borderRadius: 'var(--r-md)',background:'rgba(var(--bg-card-rgb,255,255,255),0.55)',backdropFilter:'blur(2px)',display:'flex',flexDirection:'column' as const,alignItems:'center',justifyContent:'center',gap:10,pointerEvents:'none' as const }}>
+          <div style={{ padding:'8px 16px',borderRadius: 'var(--r-lg)',background:'rgba(139,92,246,0.12)',border:'1px solid rgba(139,92,246,0.35)',textAlign:'center' as const }}>
             <p style={{ fontSize:12,fontWeight:700,color:'#8B5CF6',margin:'0 0 3px' }}>{t('recovery.hypno.preview')}</p>
             <p style={{ fontSize:10,color:'var(--text-mid)',margin:0,lineHeight:1.4 }}>{t('recovery.hypno.previewL1')}<br/>{t('recovery.hypno.previewL2')}</p>
           </div>
         </div>
       )}
       {!hasDeviceSleepData && polarConnected && (
-        <div style={{ position:'absolute' as const,inset:0,borderRadius:14,background:'rgba(var(--bg-card-rgb,255,255,255),0.45)',backdropFilter:'blur(1px)',display:'flex',flexDirection:'column' as const,alignItems:'center',justifyContent:'center',gap:8,pointerEvents:'none' as const }}>
-          <div style={{ padding:'8px 16px',borderRadius:20,background:'rgba(139,92,246,0.10)',border:'1px solid rgba(139,92,246,0.25)',textAlign:'center' as const }}>
+        <div style={{ position:'absolute' as const,inset:0,borderRadius: 'var(--r-md)',background:'rgba(var(--bg-card-rgb,255,255,255),0.45)',backdropFilter:'blur(1px)',display:'flex',flexDirection:'column' as const,alignItems:'center',justifyContent:'center',gap:8,pointerEvents:'none' as const }}>
+          <div style={{ padding:'8px 16px',borderRadius: 'var(--r-lg)',background:'rgba(139,92,246,0.10)',border:'1px solid rgba(139,92,246,0.25)',textAlign:'center' as const }}>
             <p style={{ fontSize:11,fontWeight:600,color:'#8B5CF6',margin:'0 0 3px',display:'flex',alignItems:'center',gap:6,justifyContent:'center' }}>
               <span style={{ width:6,height:6,borderRadius:'50%',background:'#8B5CF6',display:'inline-block',animation:'pulse 1.5s ease-in-out infinite' }} />
               {t('recovery.hypno.waitingData')}
             </p>
-            <p style={{ fontSize:9,color:'var(--text-mid)',margin:0,lineHeight:1.4 }}>{t('recovery.hypno.syncL1')}<br/>{t('recovery.hypno.syncL2')}</p>
+            <p style={{ fontSize: 10,color:'var(--text-mid)',margin:0,lineHeight:1.4 }}>{t('recovery.hypno.syncL1')}<br/>{t('recovery.hypno.syncL2')}</p>
           </div>
         </div>
       )}

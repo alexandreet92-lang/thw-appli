@@ -220,7 +220,7 @@ const BAREM_BP_IDX  = [ 1,  2,  3,  4,  5,  6]
 
 // ─── Shared styles ────────────────────────────────────────────────────────────
 const inp: React.CSSProperties = {
-  width: '100%', padding: '10px 12px', borderRadius: 10,
+  width: '100%', padding: '10px 12px', borderRadius: 'var(--r-sm)',
   border: '1px solid var(--border-mid)', background: 'var(--input-bg)',
   color: 'var(--text)', fontFamily: 'var(--font-body)', fontSize: 13,
   fontVariantNumeric: 'tabular-nums',
@@ -231,7 +231,7 @@ const inpGrey: React.CSSProperties = { ...inp, border: '1px solid var(--border)'
 // pas par des cadres colorés). Les anciens args de couleur sont ignorés.
 const secBox = (_bg?: string, _border?: string): React.CSSProperties => ({
   background: 'var(--bg-card2)', border: '1px solid var(--border)',
-  borderRadius: 12, padding: '14px 16px', marginBottom: 10,
+  borderRadius: 'var(--r-md)', padding: '14px 16px', marginBottom: 10,
 })
 const secHdr: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }
 const secLbl = (_color?: string): React.CSSProperties => ({
@@ -243,7 +243,7 @@ const lbl10: React.CSSProperties = {
   letterSpacing: '0.06em', color: 'var(--text-dim)', marginBottom: 5, marginTop: 0,
 }
 const tog = (active: boolean, _color?: string): React.CSSProperties => ({
-  padding: '6px 12px', borderRadius: 8, cursor: 'pointer',
+  padding: '6px 12px', borderRadius: 'var(--r-sm)', cursor: 'pointer',
   border: `1px solid ${active ? 'var(--primary)' : 'var(--border)'}`,
   fontSize: 11, fontWeight: active ? 700 : 500,
   background: active ? 'var(--primary-dim)' : 'transparent',
@@ -253,7 +253,7 @@ const tog = (active: boolean, _color?: string): React.CSSProperties => ({
 const calcBadge = (txt: string, _color?: string) => (
   <div style={{
     display: 'inline-flex', alignItems: 'center', gap: 5,
-    padding: '4px 10px', borderRadius: 6,
+    padding: '4px 10px', borderRadius: 'var(--r-sm)',
     background: 'var(--bg-card2)', border: '1px solid var(--border)',
     fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 700, color: 'var(--text)',
     fontVariantNumeric: 'tabular-nums',
@@ -346,16 +346,16 @@ function ScatterSVG({ climbs, allYears, onPointClick, highlightIds }: {
         <div style={{
           position: 'fixed', left: tooltip.x+14, top: tooltip.y-8,
           zIndex: 9999, background: 'var(--bg-card2)', border: '1px solid var(--border)',
-          borderRadius: 10, padding: '10px 14px', minWidth: 200, pointerEvents: 'none',
+          borderRadius: 'var(--r-sm)', padding: '10px 14px', minWidth: 200, pointerEvents: 'none',
           boxShadow: '0 4px 24px rgba(0,0,0,0.55)',
         }}>
-          <div style={{ fontFamily:'Syne,sans-serif', fontWeight:700, fontSize:13, color:'var(--text)', marginBottom:6 }}>{tooltip.climb.name}</div>
+          <div style={{ fontFamily: 'var(--font-body)', fontWeight:700, fontSize:13, color:'var(--text)', marginBottom:6 }}>{tooltip.climb.name}</div>
           <div style={{ display:'flex', flexDirection:'column', gap:3 }}>
             <span style={{ fontSize:11, color:'var(--text-dim)' }}>{new Date(tooltip.climb.date).toLocaleDateString(currentLocale(),{day:'2-digit',month:'short',year:'numeric'})}</span>
-            <span style={{ fontFamily:'DM Mono,monospace', fontSize:14, fontWeight:700, color:BIKE_COLOR }}>{tooltip.climb.wpkg.toFixed(2)} W/kg</span>
-            <span style={{ fontFamily:'DM Mono,monospace', fontSize:11, color:'var(--text-mid)' }}>{tooltip.climb.watts_avg} W · {secToHMS(tooltip.climb.duration_seconds)}</span>
+            <span style={{ fontFamily: 'var(--font-body)', fontSize:14, fontWeight:700, color:BIKE_COLOR }}>{tooltip.climb.wpkg.toFixed(2)} W/kg</span>
+            <span style={{ fontFamily: 'var(--font-body)', fontSize:11, color:'var(--text-mid)' }}>{tooltip.climb.watts_avg} W · {secToHMS(tooltip.climb.duration_seconds)}</span>
             {tooltip.climb.score != null && (
-              <span style={{ fontFamily:'DM Mono,monospace', fontSize:11, color: scoreColor(tooltip.climb.score) }}>
+              <span style={{ fontFamily: 'var(--font-body)', fontSize:11, color: scoreColor(tooltip.climb.score) }}>
                 {t('perf2.score')} {tooltip.climb.score.toFixed(0)}/100 — {levelOf(tooltip.climb.score).label}
               </span>
             )}
@@ -528,7 +528,7 @@ function ClimbDrawer({ profileWeight, existing, onSaved, onDeleted, onClose }: C
           background:'var(--bg-card)', borderBottom:'1px solid var(--border)',
         }}>
           <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-            <span style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'4px 10px', borderRadius:8, background:'var(--bg-card2)', fontSize:11, fontWeight:600, color:'var(--text-mid)' }}>
+            <span style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'4px 10px', borderRadius: 'var(--r-sm)', background:'var(--bg-card2)', fontSize:11, fontWeight:600, color:'var(--text-mid)' }}>
               <span style={{ width:7, height:7, borderRadius:'50%', background:BIKE_COLOR }}/>{t('perf2.cycling')}
             </span>
             <h2 style={{ fontFamily:'var(--font-display)', fontSize:16, fontWeight:600, margin:0, color:'var(--text)' }}>
@@ -537,7 +537,7 @@ function ClimbDrawer({ profileWeight, existing, onSaved, onDeleted, onClose }: C
           </div>
           <div style={{ display:'flex', alignItems:'center', gap:8 }}>
             <input type="date" value={date} onChange={e => setDate(e.target.value)}
-              style={{ padding:'5px 9px', borderRadius:8, border:'1px solid var(--border)', background:'var(--input-bg)', color:'var(--text)', fontSize:11, outline:'none' }}/>
+              style={{ padding:'5px 9px', borderRadius: 'var(--r-sm)', border:'1px solid var(--border)', background:'var(--input-bg)', color:'var(--text)', fontSize:11, outline:'none' }}/>
             <button onClick={handleClose} style={{
               width:28, height:28, borderRadius:'50%', border:'1px solid var(--border)',
               background:'var(--bg-card2)', color:'var(--text-dim)', cursor:'pointer',
@@ -560,7 +560,7 @@ function ClimbDrawer({ profileWeight, existing, onSaved, onDeleted, onClose }: C
             {existing?.race_id && (
               <div style={{ marginTop:8, display:'flex', alignItems:'center', gap:6,
                             background:'var(--bg-card2)', border:'1px solid var(--border)',
-                            borderRadius:8, padding:'6px 10px' }}>
+                            borderRadius: 'var(--r-sm)', padding:'6px 10px' }}>
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth={2}><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
                 <span style={{ fontSize:11, color:'var(--text-dim)' }}>{t('perf2.linkedRace')} :</span>
                 <span style={{ fontSize:11, fontWeight:600, color:'var(--text)' }}>{raceName ?? '…'}</span>
@@ -637,14 +637,14 @@ function ClimbDrawer({ profileWeight, existing, onSaved, onDeleted, onClose }: C
                     padding:'6px 10px', gap:2, flex:1, minWidth:54,
                   }}>
                     <span style={{ fontSize:13, fontWeight:700 }}>{v}</span>
-                    <span style={{ fontSize:9, opacity:0.8 }}>{t(`perf2.intensity_${v}`)}</span>
+                    <span style={{ fontSize: 10, opacity:0.8 }}>{t(`perf2.intensity_${v}`)}</span>
                   </button>
                 ))}
               </div>
             </div>
             <div style={{ display:'flex', alignItems:'center', gap:10 }}>
               <button type="button" onClick={()=>setWithNutrition(v=>!v)} style={{
-                width:36, height:20, borderRadius:10, flexShrink:0,
+                width:36, height:20, borderRadius: 'var(--r-sm)', flexShrink:0,
                 background: withNutrition ? 'var(--primary)' : 'var(--bg-card2)',
                 border:`1px solid ${withNutrition ? 'var(--primary)' : 'var(--border)'}`,
                 cursor:'pointer', position:'relative', transition:'background 0.2s',
@@ -657,7 +657,7 @@ function ClimbDrawer({ profileWeight, existing, onSaved, onDeleted, onClose }: C
 
           {/* RÉSUMÉ avec score */}
           {canSave && previewScore != null && (
-            <div style={{ background:'var(--bg-card2)', border:'1px solid var(--border)', borderRadius:12, padding:'14px 16px' }}>
+            <div style={{ background:'var(--bg-card2)', border:'1px solid var(--border)', borderRadius: 'var(--r-md)', padding:'14px 16px' }}>
               <div style={secHdr}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth={2.5}><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
                 <span style={secLbl()}>{t('perf2.summary')}</span>
@@ -687,9 +687,9 @@ function ClimbDrawer({ profileWeight, existing, onSaved, onDeleted, onClose }: C
 
         {/* Fixed save */}
         <div style={{ position:'absolute', bottom:0, left:0, right:0, padding:'12px 20px 20px', background:'var(--bg-card)', borderTop:'1px solid var(--border)' }}>
-          {error && <div style={{ fontSize:11, color:'#f87171', background:'rgba(239,68,68,0.1)', borderRadius:8, padding:'6px 10px', marginBottom:8 }}>{error}</div>}
+          {error && <div style={{ fontSize:11, color:'#f87171', background:'rgba(239,68,68,0.1)', borderRadius: 'var(--r-sm)', padding:'6px 10px', marginBottom:8 }}>{error}</div>}
           <button onClick={()=>void handleSave()} disabled={!canSave||saving} style={{
-            width:'100%', padding:'14px', borderRadius:12, border:'none',
+            width:'100%', padding:'14px', borderRadius: 'var(--r-md)', border:'none',
             cursor: canSave&&!saving ? 'pointer' : 'not-allowed',
             background: canSave&&!saving ? 'var(--primary)' : 'var(--bg-card2)',
             color: canSave&&!saving ? 'var(--on-primary)' : 'var(--text-dim)',
@@ -700,7 +700,7 @@ function ClimbDrawer({ profileWeight, existing, onSaved, onDeleted, onClose }: C
           </button>
           {isEdit && (
             <button onClick={()=>void handleDelete()} disabled={deleting} style={{
-              width:'100%', padding:'10px', borderRadius:12,
+              width:'100%', padding:'10px', borderRadius: 'var(--r-md)',
               border:'1px solid rgba(239,68,68,0.4)', cursor:'pointer',
               background:'rgba(239,68,68,0.08)', color:'#f87171',
               fontFamily:'var(--font-body)', fontSize:13, fontWeight:600, transition:'all 0.15s',
@@ -719,11 +719,11 @@ function ClimbDrawer({ profileWeight, existing, onSaved, onDeleted, onClose }: C
 function Accordion({ title, children }: { title: string; children: React.ReactNode }) {
   const [open, setOpen] = useState(false)
   return (
-    <div style={{ border:'1px solid var(--border)', borderRadius:12, overflow:'hidden', marginTop:12 }}>
+    <div style={{ border:'1px solid var(--border)', borderRadius: 'var(--r-md)', overflow:'hidden', marginTop:12 }}>
       <button onClick={()=>setOpen(o=>!o)} style={{
         width:'100%', display:'flex', alignItems:'center', justifyContent:'space-between',
         padding:'12px 16px', background:'var(--bg-card2)', border:'none',
-        cursor:'pointer', color:'var(--text)', fontFamily:'Syne,sans-serif',
+        cursor:'pointer', color:'var(--text)', fontFamily: 'var(--font-body)',
         fontSize:12, fontWeight:700, textAlign:'left',
       }}>
         {title}
@@ -811,11 +811,11 @@ function BaremeAccordion() {
               const bpIdx = BAREM_BP_IDX[ri]
               return (
                 <tr key={dur} style={{ background: ri%2===0 ? 'transparent' : 'rgba(255,255,255,0.02)' }}>
-                  <td style={{ padding:'5px 6px', fontFamily:'DM Mono,monospace', color:'var(--text-dim)', fontWeight:600 }}>{dur} min</td>
+                  <td style={{ padding:'5px 6px', fontFamily: 'var(--font-body)', color:'var(--text-dim)', fontWeight:600 }}>{dur} min</td>
                   {shownLevels.map((l, li) => {
                     const val = REF_TABLES_ALL[tab][li][bpIdx]
                     return (
-                      <td key={l.label} style={{ padding:'5px 6px', fontFamily:'DM Mono,monospace', color:'var(--text-mid)', textAlign:'right' }}>
+                      <td key={l.label} style={{ padding:'5px 6px', fontFamily: 'var(--font-body)', color:'var(--text-mid)', textAlign:'right' }}>
                         ≥ {val.toFixed(1)}
                       </td>
                     )
@@ -965,37 +965,37 @@ function RankingDrawer({ climbs, onClose, onFilterChange }: {
             return (
               <div key={c.id} style={{
                 background:'var(--bg-card2)', border:'1px solid var(--border)',
-                borderRadius:12, marginBottom:8, overflow:'hidden',
+                borderRadius: 'var(--r-md)', marginBottom:8, overflow:'hidden',
               }}>
                 <div style={{ padding:'12px 14px', cursor:'pointer', display:'flex', alignItems:'center', gap:12 }}
                   onClick={()=>setExpanded(isOpen ? null : c.id)}>
                   {/* Rang */}
                   <div style={{
-                    width:32, height:32, borderRadius:8, flexShrink:0,
+                    width:32, height:32, borderRadius: 'var(--r-sm)', flexShrink:0,
                     background: rank===1 ? 'rgba(251,191,36,0.15)' : 'var(--bg-card)',
                     border:`1px solid ${rank===1 ? 'rgba(251,191,36,0.4)' : 'var(--border)'}`,
                     display:'flex', alignItems:'center', justifyContent:'center',
-                    fontFamily:'DM Mono,monospace', fontSize:12, fontWeight:700,
+                    fontFamily: 'var(--font-body)', fontSize:12, fontWeight:700,
                     color: rank===1 ? '#fbbf24' : 'var(--text-dim)',
                   }}>{rank}</div>
                   {/* Nom */}
                   <div style={{ flex:1, minWidth:0 }}>
                     <div style={{ display:'flex', alignItems:'center', gap:6, flexWrap:'wrap' }}>
-                      <span style={{ fontFamily:'Syne,sans-serif', fontSize:13, fontWeight:700, color:'var(--text)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{c.name}</span>
-                      {rank===1 && <span style={{ fontSize:9, fontWeight:700, padding:'2px 6px', borderRadius:4, background:'rgba(251,191,36,0.15)', color:'#fbbf24', border:'1px solid rgba(251,191,36,0.3)' }}>⭐ {t('perf2.bestPerf')}</span>}
+                      <span style={{ fontFamily: 'var(--font-body)', fontSize:13, fontWeight:700, color:'var(--text)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{c.name}</span>
+                      {rank===1 && <span style={{ fontSize: 10, fontWeight:700, padding:'2px 6px', borderRadius:4, background:'rgba(251,191,36,0.15)', color:'#fbbf24', border:'1px solid rgba(251,191,36,0.3)' }}>⭐ {t('perf2.bestPerf')}</span>}
                     </div>
                     <div style={{ display:'flex', gap:8, marginTop:2 }}>
                       <span style={{ fontSize:11, color:'var(--text-dim)' }}>{new Date(c.date).toLocaleDateString(currentLocale(),{day:'2-digit',month:'short',year:'numeric'})}</span>
-                      <span style={{ fontFamily:'DM Mono,monospace', fontSize:11, color:BIKE_COLOR }}>{c.wpkg.toFixed(2)} W/kg</span>
+                      <span style={{ fontFamily: 'var(--font-body)', fontSize:11, color:BIKE_COLOR }}>{c.wpkg.toFixed(2)} W/kg</span>
                     </div>
                   </div>
                   {/* Score */}
                   <div style={{ textAlign:'right', flexShrink:0, minWidth:70 }}>
-                    <div style={{ fontFamily:'DM Mono,monospace', fontSize:18, fontWeight:800, color:col }}>{sd.total.toFixed(0)}</div>
+                    <div style={{ fontFamily: 'var(--font-body)', fontSize:18, fontWeight:800, color:col }}>{sd.total.toFixed(0)}</div>
                     <div style={{ height:4, borderRadius:2, background:'var(--bg-card)', marginTop:4, width:70 }}>
                       <div style={{ height:'100%', width:`${Math.min(100,sd.total)}%`, background:col, borderRadius:2 }}/>
                     </div>
-                    <div style={{ fontSize:9, color:'var(--text-dim)', marginTop:2 }}>/ 100 · {levelOf(sd.total).label}</div>
+                    <div style={{ fontSize: 10, color:'var(--text-dim)', marginTop:2 }}>/ 100 · {levelOf(sd.total).label}</div>
                   </div>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth={2}
                     style={{ transform: isOpen ? 'rotate(180deg)' : 'none', transition:'transform 0.2s', flexShrink:0 }}>
@@ -1016,13 +1016,13 @@ function RankingDrawer({ climbs, onClose, onFilterChange }: {
                       ] as { label: string; val: string; color: string }[]).map(({ label, val, color }) => (
                         <div key={label} style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                           <span style={{ fontSize:11, color:'var(--text-dim)' }}>{label}</span>
-                          <span style={{ fontFamily:'DM Mono,monospace', fontSize:11, color, fontWeight:600 }}>{val}</span>
+                          <span style={{ fontFamily: 'var(--font-body)', fontSize:11, color, fontWeight:600 }}>{val}</span>
                         </div>
                       ))}
                       <div style={{ height:1, background:'var(--border)', margin:'4px 0' }}/>
                       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                         <span style={{ fontSize:11, fontWeight:700, color:'var(--text)' }}>{t('perf2.finalScore')}</span>
-                        <span style={{ fontFamily:'DM Mono,monospace', fontSize:13, fontWeight:800, color:col }}>{sd.total.toFixed(1)} / 100</span>
+                        <span style={{ fontFamily: 'var(--font-body)', fontSize:13, fontWeight:800, color:col }}>{sd.total.toFixed(1)} / 100</span>
                       </div>
                     </div>
                   </div>
@@ -1036,7 +1036,7 @@ function RankingDrawer({ climbs, onClose, onFilterChange }: {
 
           {/* ── Accordion : Méthode ── */}
           <Accordion title={t('perf2.calcMethod')}>
-            <p style={{ fontSize:12, fontWeight:700, color:'var(--text)', margin:'0 0 6px', fontFamily:'Syne,sans-serif' }}>{t('lo2.scoreHowTitle')}</p>
+            <p style={{ fontSize:12, fontWeight:700, color:'var(--text)', margin:'0 0 6px', fontFamily: 'var(--font-body)' }}>{t('lo2.scoreHowTitle')}</p>
             <p style={{ fontSize:12, color:'var(--text-dim)', lineHeight:1.65, margin:'0 0 10px' }}>
               {t('lo2.scoreP1a')}<strong style={{ color:'var(--text)' }}>Alien</strong>{t('lo2.scoreP1b')}<em>{t('lo2.scoreP1et')}</em>{t('lo2.scoreP1c')}
             </p>
@@ -1045,10 +1045,10 @@ function RankingDrawer({ climbs, onClose, onFilterChange }: {
             </p>
 
             {/* Formule */}
-            <div style={{ background:'var(--bg-card2)', border:`1px solid ${BIKE_COLOR}30`, borderRadius:8, padding:'10px 14px', margin:'0 0 6px', fontFamily:'DM Mono,monospace', fontSize:12, color:BIKE_COLOR }}>
+            <div style={{ background:'var(--bg-card2)', border:`1px solid ${BIKE_COLOR}30`, borderRadius: 'var(--r-sm)', padding:'10px 14px', margin:'0 0 6px', fontFamily: 'var(--font-body)', fontSize:12, color:BIKE_COLOR }}>
               {t('lo2.scoreFormula1')}
             </div>
-            <div style={{ background:'var(--bg-card2)', border:`1px solid ${BIKE_COLOR}30`, borderRadius:8, padding:'10px 14px', margin:'0 0 14px', fontFamily:'DM Mono,monospace', fontSize:12, color:BIKE_COLOR }}>
+            <div style={{ background:'var(--bg-card2)', border:`1px solid ${BIKE_COLOR}30`, borderRadius: 'var(--r-sm)', padding:'10px 14px', margin:'0 0 14px', fontFamily: 'var(--font-body)', fontSize:12, color:BIKE_COLOR }}>
               {t('lo2.scoreFormula2')}
             </div>
             <p style={{ fontSize:12, color:'var(--text-dim)', lineHeight:1.65, margin:'0 0 14px' }}>
@@ -1080,13 +1080,13 @@ function RankingDrawer({ climbs, onClose, onFilterChange }: {
                 note: 'lo2.scoreEx4Note',
               },
             ].map(ex => (
-              <div key={ex.title} style={{ marginBottom:14, padding:'10px 12px', background:'var(--bg-card2)', borderRadius:8, border:'1px solid var(--border)' }}>
-                <p style={{ fontSize:11, fontWeight:700, color:'var(--text)', margin:'0 0 6px', fontFamily:'Syne,sans-serif' }}>{t(ex.title)}</p>
+              <div key={ex.title} style={{ marginBottom:14, padding:'10px 12px', background:'var(--bg-card2)', borderRadius: 'var(--r-sm)', border:'1px solid var(--border)' }}>
+                <p style={{ fontSize:11, fontWeight:700, color:'var(--text)', margin:'0 0 6px', fontFamily: 'var(--font-body)' }}>{t(ex.title)}</p>
                 {ex.lines.map(l => (
-                  <p key={l} style={{ fontSize:11, color:'var(--text-dim)', margin:'0 0 3px', fontFamily:'DM Mono,monospace' }}>{t(l)}</p>
+                  <p key={l} style={{ fontSize:11, color:'var(--text-dim)', margin:'0 0 3px', fontFamily: 'var(--font-body)' }}>{t(l)}</p>
                 ))}
                 {ex.result && (
-                  <p style={{ fontSize:11, fontWeight:700, color:BIKE_COLOR, margin:'6px 0 0', fontFamily:'DM Mono,monospace' }}>{t(ex.result)}</p>
+                  <p style={{ fontSize:11, fontWeight:700, color:BIKE_COLOR, margin:'6px 0 0', fontFamily: 'var(--font-body)' }}>{t(ex.result)}</p>
                 )}
                 {ex.note && (
                   <p style={{ fontSize:11, color:'var(--text-mid)', margin:'6px 0 0', lineHeight:1.5, fontStyle:'italic' }}>→ {t(ex.note)}</p>
@@ -1095,7 +1095,7 @@ function RankingDrawer({ climbs, onClose, onFilterChange }: {
             ))}
 
             {/* Tableau des 3 facteurs */}
-            <p style={{ fontSize:11, fontWeight:700, color:'var(--text)', margin:'4px 0 8px', fontFamily:'Syne,sans-serif', textTransform:'uppercase', letterSpacing:'0.05em' }}>{t('lo2.score3Factors')}</p>
+            <p style={{ fontSize:11, fontWeight:700, color:'var(--text)', margin:'4px 0 8px', fontFamily: 'var(--font-body)', textTransform:'uppercase', letterSpacing:'0.05em' }}>{t('lo2.score3Factors')}</p>
             <div style={{ overflowX:'auto' }}>
               <table style={{ width:'100%', borderCollapse:'collapse', fontSize:11 }}>
                 <thead>
@@ -1113,7 +1113,7 @@ function RankingDrawer({ climbs, onClose, onFilterChange }: {
                   ].map(([f, imp, desc], i) => (
                     <tr key={f} style={{ background: i%2===0 ? 'transparent' : 'rgba(255,255,255,0.02)' }}>
                       <td style={{ padding:'5px 8px', color:'var(--text)', fontWeight:600 }}>{t(f)}</td>
-                      <td style={{ padding:'5px 8px', fontFamily:'DM Mono,monospace', color:BIKE_COLOR, fontWeight:700 }}>{imp}</td>
+                      <td style={{ padding:'5px 8px', fontFamily: 'var(--font-body)', color:BIKE_COLOR, fontWeight:700 }}>{imp}</td>
                       <td style={{ padding:'5px 8px', color:'var(--text-dim)' }}>{t(desc)}</td>
                     </tr>
                   ))}
@@ -1122,7 +1122,7 @@ function RankingDrawer({ climbs, onClose, onFilterChange }: {
             </div>
 
             {/* Valeurs détaillées */}
-            <p style={{ fontSize:11, fontWeight:700, color:'var(--text)', margin:'14px 0 8px', fontFamily:'Syne,sans-serif', textTransform:'uppercase', letterSpacing:'0.05em' }}>{t('lo2.scoreCoeffValues')}</p>
+            <p style={{ fontSize:11, fontWeight:700, color:'var(--text)', margin:'14px 0 8px', fontFamily: 'var(--font-body)', textTransform:'uppercase', letterSpacing:'0.05em' }}>{t('lo2.scoreCoeffValues')}</p>
             {[
               { label:'lo2.scoreCoeffTemp', rows:[['lo2.scoreTemp0','×1.00'],['lo2.scoreTemp1','×1.01'],['lo2.scoreTemp2','×1.02'],['lo2.scoreTemp3','×1.03'],['lo2.scoreTemp4','×1.04'],['lo2.scoreTemp5','×1.04']] },
               { label:'lo2.scoreCoeffAltitude', rows:[['lo2.scoreAlt0','×1.00'],['lo2.scoreAlt1','×1.01'],['lo2.scoreAlt2','×1.02'],['lo2.scoreAlt3','×1.03'],['lo2.scoreAlt4','×1.04'],['lo2.scoreAlt5','×1.05']] },
@@ -1134,7 +1134,7 @@ function RankingDrawer({ climbs, onClose, onFilterChange }: {
                   {rows.map(([cat, coeff]) => (
                     <div key={cat} style={{ display:'flex', justifyContent:'space-between', fontSize:11 }}>
                       <span style={{ color:'var(--text-dim)' }}>{t(cat)}</span>
-                      <span style={{ fontFamily:'DM Mono,monospace', color:BIKE_COLOR, fontWeight:700 }}>{coeff}</span>
+                      <span style={{ fontFamily: 'var(--font-body)', color:BIKE_COLOR, fontWeight:700 }}>{coeff}</span>
                     </div>
                   ))}
                 </div>
@@ -1185,11 +1185,11 @@ export function ClimbsSection({ profile }: ClimbsSectionProps) {
   }
 
   return (
-    <div style={{ background:'var(--bg-card)', borderRadius:16, padding:'16px 16px 12px', border:'1px solid var(--border)' }}>
+    <div style={{ background:'var(--bg-card)', borderRadius: 'var(--r-md)', padding:'16px 16px 12px', border:'1px solid var(--border)' }}>
       {/* Header */}
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14, flexWrap:'wrap', gap:8 }}>
         <div>
-          <h2 style={{ fontFamily:'Syne,sans-serif', fontSize:14, fontWeight:700, margin:0, color:'var(--text)' }}>
+          <h2 style={{ fontFamily: 'var(--font-body)', fontSize:14, fontWeight:700, margin:0, color:'var(--text)' }}>
             {t('perf2.climbsWkgByDuration')}
           </h2>
           {loaded && climbs.length > 0 && (
@@ -1201,7 +1201,7 @@ export function ClimbsSection({ profile }: ClimbsSectionProps) {
         {/* 2 boutons uniquement */}
         <div style={{ display:'flex', gap:8 }}>
           <button onClick={()=>setShowRanking(true)} disabled={climbs.length === 0} style={{
-            display:'flex', alignItems:'center', gap:6, padding:'7px 14px', borderRadius:8,
+            display:'flex', alignItems:'center', gap:6, padding:'7px 14px', borderRadius: 'var(--r-sm)',
             background: climbs.length > 0 ? 'var(--bg-card2)' : 'transparent',
             border:'1px solid var(--border)', color:'var(--text-mid)',
             fontSize:12, fontWeight:600, cursor: climbs.length > 0 ? 'pointer' : 'not-allowed',
@@ -1214,7 +1214,7 @@ export function ClimbsSection({ profile }: ClimbsSectionProps) {
             {t('perf2.ranking')}
           </button>
           <button onClick={()=>setShowDrawer(true)} style={{
-            display:'flex', alignItems:'center', gap:6, padding:'7px 14px', borderRadius:8,
+            display:'flex', alignItems:'center', gap:6, padding:'7px 14px', borderRadius: 'var(--r-sm)',
             background:`${BIKE_COLOR}15`, border:`1px solid ${BIKE_COLOR}40`,
             color:BIKE_COLOR, fontSize:12, fontWeight:600,
             cursor:'pointer', whiteSpace:'nowrap', minHeight:36,
@@ -1226,11 +1226,11 @@ export function ClimbsSection({ profile }: ClimbsSectionProps) {
       </div>
 
       {/* Skeleton */}
-      {!loaded && <div className="skeleton-shimmer" style={{ height:220, borderRadius:8 }}/>}
+      {!loaded && <div className="skeleton-shimmer" style={{ height:220, borderRadius: 'var(--r-sm)' }}/>}
 
       {/* Empty */}
       {loaded && climbs.length === 0 && (
-        <div style={{ textAlign:'center', padding:'36px 20px', border:'1px dashed var(--border)', borderRadius:10, lineHeight:1.6 }}>
+        <div style={{ textAlign:'center', padding:'36px 20px', border:'1px dashed var(--border)', borderRadius: 'var(--r-sm)', lineHeight:1.6 }}>
           <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--border)" strokeWidth={1.5} style={{ marginBottom:8 }}>
             <polyline points="3 17 9 11 13 15 22 6"/><polyline points="14 6 22 6 22 14"/>
           </svg>
@@ -1247,9 +1247,9 @@ export function ClimbsSection({ profile }: ClimbsSectionProps) {
             {allYears.map(yr => {
               const col = yearColor(yr, allYears)
               return (
-                <div key={yr} style={{ display:'flex', alignItems:'center', gap:5, padding:'3px 10px', borderRadius:20, background:`${col}15`, border:`1px solid ${col}35` }}>
+                <div key={yr} style={{ display:'flex', alignItems:'center', gap:5, padding:'3px 10px', borderRadius: 'var(--r-lg)', background:`${col}15`, border:`1px solid ${col}35` }}>
                   <span style={{ width:7, height:7, borderRadius:'50%', background:col, display:'inline-block' }}/>
-                  <span style={{ fontSize:11, fontWeight:600, color:col, fontFamily:'DM Mono,monospace' }}>{yr}</span>
+                  <span style={{ fontSize:11, fontWeight:600, color:col, fontFamily: 'var(--font-body)' }}>{yr}</span>
                 </div>
               )
             })}

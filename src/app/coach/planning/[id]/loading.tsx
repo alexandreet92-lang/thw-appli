@@ -1,7 +1,7 @@
 // Skeleton instantané pendant le chargement du planning d'un athlète —
 // évite l'impression de « page qui rame » : la structure apparaît tout de suite.
 export default function Loading() {
-  const bar: React.CSSProperties = { background: 'var(--bg-card2)', borderRadius: 8 }
+  const bar: React.CSSProperties = { background: 'var(--bg-card2)', borderRadius: 'var(--r-sm)' }
   return (
     <div>
       <div style={{ borderBottom: '1px solid var(--border)', padding: '11px clamp(16px,4vw,40px)' }}>
@@ -11,7 +11,7 @@ export default function Loading() {
             <div style={{ ...bar, width: 150, height: 14 }} />
             <div style={{ ...bar, width: 190, height: 11 }} />
           </div>
-          <div style={{ ...bar, width: 200, height: 44, marginLeft: 'auto', borderRadius: 12 }} />
+          <div style={{ ...bar, width: 200, height: 44, marginLeft: 'auto', borderRadius: 'var(--r-md)' }} />
         </div>
       </div>
       <div style={{ padding: '20px clamp(16px,4vw,40px)', display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 1200, margin: '0 auto' }}>

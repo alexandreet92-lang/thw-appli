@@ -42,12 +42,12 @@ export function TreadmillProfilePreview({ blocks }: { blocks: MBlock[] }) {
   const stat = (label: string, value: string) => (
     <div style={{ flex: 1, textAlign: 'center' }}>
       <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--text)', fontVariantNumeric: 'tabular-nums' }}>{value}</div>
-      <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-mid)', marginTop: 2 }}>{label}</div>
+      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-mid)', marginTop: 2 }}>{label}</div>
     </div>
   )
 
   return (
-    <div style={{ background: 'var(--bg-card2)', borderRadius: 14, padding: 14, marginTop: 4 }}>
+    <div style={{ background: 'var(--bg-card2)', borderRadius: 'var(--r-md)', padding: 14, marginTop: 4 }}>
       <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-dim)', marginBottom: 10 }}>
         Profil altimétrique · estimé
       </div>

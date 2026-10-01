@@ -175,7 +175,7 @@ export function CoachQuestionCard({
                 <span key={i} style={{ width: i === page ? 14 : 5, height: 5, borderRadius: 3, background: i === page ? '#3C90D5' : 'var(--ai-border)', transition: 'width 0.2s, background 0.2s' }} />
               ))}
             </div>
-            <span style={{ fontSize: 11, color: 'var(--ai-dim)', fontFamily: 'DM Mono,monospace' }}>{page + 1}/{qs.length}</span>
+            <span style={{ fontSize: 11, color: 'var(--ai-dim)', fontFamily: 'var(--font-body)' }}>{page + 1}/{qs.length}</span>
           </div>
         )}
       </div>
@@ -183,7 +183,7 @@ export function CoachQuestionCard({
       {/* Contenu swipeable */}
       <div style={{ overflow: 'hidden' }} onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
         <div ref={wrapRef} key={page} style={{ animation: anim ? `cq_${anim} 0.24s ease` : undefined }}>
-          <p style={{ margin: '0 0 6px', fontSize: 16.5, fontWeight: 600, color: 'var(--ai-text)', lineHeight: 1.35, fontFamily: 'Syne,sans-serif' }}>{q.question}</p>
+          <p style={{ margin: '0 0 6px', fontSize: 16.5, fontWeight: 600, color: 'var(--ai-text)', lineHeight: 1.35, fontFamily: 'var(--font-body)' }}>{q.question}</p>
 
           {/* Options — rangées épurées séparées par un filet */}
           <div style={{ borderTop: '1px solid var(--ai-border)' }}>
@@ -202,9 +202,9 @@ export function CoachQuestionCard({
                 >
                   <span style={{ flex: 1, minWidth: 0 }}>
                     <span style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: 14.5, fontWeight: 600, color: sel ? '#3C90D5' : 'var(--ai-text)', fontFamily: 'Syne,sans-serif' }}>{opt.label}</span>
+                      <span style={{ fontSize: 14.5, fontWeight: 600, color: sel ? '#3C90D5' : 'var(--ai-text)', fontFamily: 'var(--font-body)' }}>{opt.label}</span>
                       {opt.recommended && (
-                        <span style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '0.03em', textTransform: 'uppercase', color: '#3C90D5', background: 'rgba(60,144,213,0.12)', border: '1px solid rgba(60,144,213,0.35)', borderRadius: 999, padding: '1px 7px' }}>Recommandé</span>
+                        <span style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '0.03em', textTransform: 'uppercase', color: '#3C90D5', background: 'rgba(60,144,213,0.12)', border: '1px solid rgba(60,144,213,0.35)', borderRadius: 'var(--r-pill)', padding: '1px 7px' }}>Recommandé</span>
                       )}
                     </span>
                     {opt.description && <span style={{ display: 'block', fontSize: 12.5, color: 'var(--ai-dim)', marginTop: 2, lineHeight: 1.45 }}>{opt.description}</span>}
@@ -223,7 +223,7 @@ export function CoachQuestionCard({
               value={a.other}
               onChange={e => setOther(e.target.value)}
               placeholder={q.options.length === 0 ? t('ai.yourAnswer') : t('ai.other')}
-              style={{ flex: 1, minWidth: 0, padding: '10px 8px', border: 'none', background: 'transparent', color: 'var(--ai-text)', fontSize: 13.5, fontFamily: 'DM Sans,sans-serif', outline: 'none', boxSizing: 'border-box' }}
+              style={{ flex: 1, minWidth: 0, padding: '10px 8px', border: 'none', background: 'transparent', color: 'var(--ai-text)', fontSize: 13.5, fontFamily: 'var(--font-body)', outline: 'none', boxSizing: 'border-box' }}
             />
             {voiceSupported && (
               <button onClick={toggleDictation} aria-label={t('ai.dictate')} style={{ flexShrink: 0, width: 32, height: 32, borderRadius: '50%', border: 'none', background: listening ? 'rgba(60,144,213,0.15)' : 'transparent', color: listening ? '#3C90D5' : 'var(--ai-mid)', cursor: 'pointer', display: 'grid', placeItems: 'center' }}>
@@ -250,7 +250,7 @@ export function CoachQuestionCard({
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
           {t('ai.previous')}
         </button>
-        <button onClick={() => { if (isLast) submit(); else goNext() }} disabled={!canProceed} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 18px', borderRadius: 999, border: 'none', cursor: canProceed ? 'pointer' : 'not-allowed', background: canProceed ? '#3C90D5' : 'var(--ai-border)', color: '#fff', fontSize: 13, fontWeight: 700, fontFamily: 'Syne,sans-serif', boxShadow: canProceed ? '0 3px 10px rgba(60,144,213,0.32)' : 'none', transition: 'background 0.15s' }}>
+        <button onClick={() => { if (isLast) submit(); else goNext() }} disabled={!canProceed} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 18px', borderRadius: 'var(--r-pill)', border: 'none', cursor: canProceed ? 'pointer' : 'not-allowed', background: canProceed ? '#3C90D5' : 'var(--ai-border)', color: '#fff', fontSize: 13, fontWeight: 700, fontFamily: 'var(--font-body)', boxShadow: canProceed ? '0 3px 10px rgba(60,144,213,0.32)' : 'none', transition: 'background 0.15s' }}>
           {isLast ? t('ai.send') : t('ai.next')}
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">{isLast ? <path d="M5 12h14M13 6l6 6-6 6" /> : <path d="M9 18l6-6-6-6" />}</svg>
         </button>
@@ -265,6 +265,6 @@ export function CoachQuestionCard({
 }
 
 // ── Styles ──────────────────────────────────────────────────────
-const cardStyle: React.CSSProperties = { border: '1px solid var(--ai-border)', borderRadius: 16, padding: 14, background: 'var(--ai-bg)', marginTop: 4 }
-const chip: React.CSSProperties = { fontSize: 9.5, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--ai-mid)', background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)', padding: '3px 8px', borderRadius: 6, fontFamily: 'DM Sans,sans-serif' }
+const cardStyle: React.CSSProperties = { border: '1px solid var(--ai-border)', borderRadius: 'var(--r-md)', padding: 14, background: 'var(--ai-bg)', marginTop: 4 }
+const chip: React.CSSProperties = { fontSize: 9.5, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--ai-mid)', background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)', padding: '3px 8px', borderRadius: 'var(--r-sm)', fontFamily: 'var(--font-body)' }
 const checkBadge: React.CSSProperties = { width: 18, height: 18, borderRadius: '50%', background: '#3C90D5', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }

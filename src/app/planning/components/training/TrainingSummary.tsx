@@ -143,7 +143,7 @@ export function TrainingSummary<S extends Sess>(p: Props<S>) {
         <div>
           <p style={{ fontFamily: FB, fontSize: 11, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-dim)', margin: '0 0 10px' }}>{t('planning.today')}{p.today ? ` — ${p.today.day} ${p.today.date}` : ''}</p>
           {p.todaySessions.map(s => (
-            <div key={s.id} onClick={() => p.onOpenSession(s)} style={{ display: 'flex', alignItems: 'center', gap: 14, background: 'var(--bg-card2)', borderRadius: 12, padding: '12px 14px', marginBottom: 7, borderLeft: `3px solid ${sv(s.sport)}`, cursor: 'pointer' }}>
+            <div key={s.id} onClick={() => p.onOpenSession(s)} style={{ display: 'flex', alignItems: 'center', gap: 14, background: 'var(--bg-card2)', borderRadius: 'var(--r-md)', padding: '12px 14px', marginBottom: 7, borderLeft: `3px solid ${sv(s.sport)}`, cursor: 'pointer' }}>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontFamily: FB, fontWeight: 600, fontSize: 13.5, color: 'var(--text)' }}>{s.title}</div>
                 <div className="tnum" style={{ fontFamily: FB, fontSize: 11.5, color: 'var(--text-dim)', marginTop: 2 }}>{s.time} · {mm(s.durationMin)}{s.tss ? ` · SM ${s.tss}` : ''}</div>

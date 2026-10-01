@@ -13,14 +13,14 @@ export function TrainingRaceSelector({ value, onChange }: { value: boolean; onCh
   return (
     <div style={{
       display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4, padding: 4,
-      background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 14,
+      background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)',
     }}>
       {opts.map(o => {
         const on = value === o.race
         return (
           <button key={o.label} onClick={() => { if (value !== o.race) onChange(o.race) }} style={{
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
-            padding: '10px 8px', borderRadius: 11, border: 'none', cursor: 'pointer',
+            padding: '10px 8px', borderRadius: 'var(--r-md)', border: 'none', cursor: 'pointer',
             background: on ? o.color : 'transparent',
             color: on ? '#fff' : 'var(--text-mid)',
             fontFamily: 'inherit', fontSize: 13.5, fontWeight: 700,

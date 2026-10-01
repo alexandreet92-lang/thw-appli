@@ -70,7 +70,7 @@ export default function GlobalSaveToast() {
           display: 'flex', alignItems: 'center', gap: 9,
           background: err ? 'rgba(239,68,68,0.16)' : 'rgba(16,185,129,0.16)',
           border: `1px solid ${accent}66`,
-          color: 'var(--text)', borderRadius: 999, padding: '8px 15px 8px 9px',
+          color: 'var(--text)', borderRadius: 'var(--r-pill)', padding: '8px 15px 8px 9px',
           fontSize: 13, fontWeight: 700, letterSpacing: '-0.01em',
           fontFamily: 'var(--font-body, "DM Sans", sans-serif)',
           backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',

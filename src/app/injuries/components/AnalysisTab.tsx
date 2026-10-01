@@ -127,7 +127,7 @@ function FragilityRadar({ inj }: { inj: Injury[] }) {
         {[0.33, 0.66, 1].map(f => <polygon key={f} points={ring(f)} fill="none" stroke="var(--border)" strokeWidth={1} />)}
         {axes.map((_, i) => { const [ex, ey] = pt(i, R); return <line key={i} x1={cx} y1={cy} x2={ex} y2={ey} stroke="var(--border)" strokeWidth={1} /> })}
         <polygon points={poly} fill="color-mix(in srgb, var(--charge-hard) 20%, transparent)" stroke="var(--charge-hard)" strokeWidth={1.8} strokeLinejoin="round" />
-        {axes.map((a, i) => { const [lx, ly] = pt(i, R + 15); return <text key={a.region} x={lx} y={ly} textAnchor="middle" dominantBaseline="middle" style={{ fontFamily: FB, fontSize: 9, fill: 'var(--text-dim)' }}>{a.region}</text> })}
+        {axes.map((a, i) => { const [lx, ly] = pt(i, R + 15); return <text key={a.region} x={lx} y={ly} textAnchor="middle" dominantBaseline="middle" style={{ fontFamily: FB, fontSize: 10, fill: 'var(--text-dim)' }}>{a.region}</text> })}
       </svg>
     </div>
   )
@@ -146,7 +146,7 @@ function MechanismDonut({ inj }: { inj: Injury[] }) {
         <svg viewBox="0 0 42 42" width={128} height={128}>
           <circle cx="21" cy="21" r="15.9" fill="none" stroke="var(--charge-mid)" strokeWidth="6" />
           <circle cx="21" cy="21" r="15.9" fill="none" stroke="var(--charge-hard)" strokeWidth="6" strokeDasharray={`${dash} ${C - dash}`} transform="rotate(-90 21 21)" strokeLinecap="round" />
-          <text x="21" y="20.5" textAnchor="middle" style={{ fontFamily: FB, fontSize: 7, fontWeight: 700, fill: 'var(--text)' }}>{progPct}%</text>
+          <text x="21" y="20.5" textAnchor="middle" style={{ fontFamily: FB, fontSize: 10, fontWeight: 700, fill: 'var(--text)' }}>{progPct}%</text>
           <text x="21" y="27" textAnchor="middle" style={{ fontFamily: FB, fontSize: 3.4, fill: 'var(--text-dim)' }}>{L.progressive.toLowerCase()}</text>
         </svg>
       </div>
@@ -179,7 +179,7 @@ function SeasonHeatmap({ inj }: { inj: Injury[] }) {
           </div>
         ))}
         <span />
-        {L.months.map((mo, i) => <span key={i} style={{ ...muted, fontSize: 9, textAlign: 'center' }}>{mo}</span>)}
+        {L.months.map((mo, i) => <span key={i} style={{ ...muted, fontSize: 10, textAlign: 'center' }}>{mo}</span>)}
       </div>
     </>
   )
@@ -292,7 +292,7 @@ export function AnalysisTab({ injuries, logs }: { injuries: Injury[]; logs: Inju
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                       <span style={{ fontFamily: FB, fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{z.zone}</span>
                       {z.status !== 'ok'
-                        ? <span style={{ fontFamily: FB, fontSize: 10, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: CHRONIC_COLOR[z.status], background: `color-mix(in srgb, ${CHRONIC_COLOR[z.status]} 14%, transparent)`, padding: '2px 8px', borderRadius: 999 }}>{z.status === 'chronic' ? L.tagChronic : L.tagWatch}</span>
+                        ? <span style={{ fontFamily: FB, fontSize: 10, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: CHRONIC_COLOR[z.status], background: `color-mix(in srgb, ${CHRONIC_COLOR[z.status]} 14%, transparent)`, padding: '2px 8px', borderRadius: 'var(--r-pill)' }}>{z.status === 'chronic' ? L.tagChronic : L.tagWatch}</span>
                         : <span style={{ ...muted, fontSize: 11 }}>{L.noRecidive}</span>}
                     </div>
                     <span className="tnum" style={{ ...muted }}>{z.count} {z.count > 1 ? t('w1f.episodes') : t('w1f.episode')}{z.avgIntervalDays != null ? ` · ${L.everyMonths(Math.max(1, Math.round(z.avgIntervalDays / 30)))}` : ''}</span>
@@ -317,11 +317,11 @@ export function AnalysisTab({ injuries, logs }: { injuries: Injury[]; logs: Inju
                   <div key={i}>
                     <span style={muted}>{r.zone}</span>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
-                      <div style={{ flex: 1, height: 6, borderRadius: 999, background: 'var(--bg-card2)', overflow: 'hidden' }}><i style={{ display: 'block', height: '100%', width: `${(r.estDays / m) * 100}%`, background: 'var(--text-dim)', borderRadius: 999 }} /></div>
+                      <div style={{ flex: 1, height: 6, borderRadius: 'var(--r-pill)', background: 'var(--bg-card2)', overflow: 'hidden' }}><i style={{ display: 'block', height: '100%', width: `${(r.estDays / m) * 100}%`, background: 'var(--text-dim)', borderRadius: 'var(--r-pill)' }} /></div>
                       <span className="tnum" style={{ ...muted, fontSize: 11, width: 52, textAlign: 'right' }}>{L.est} {r.estDays}{L.day}</span>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3 }}>
-                      <div style={{ flex: 1, height: 6, borderRadius: 999, background: 'var(--bg-card2)', overflow: 'hidden' }}><i style={{ display: 'block', height: '100%', width: `${(r.realDays / m) * 100}%`, background: r.delta > 0 ? 'var(--charge-hard)' : 'var(--charge-low)', borderRadius: 999 }} /></div>
+                      <div style={{ flex: 1, height: 6, borderRadius: 'var(--r-pill)', background: 'var(--bg-card2)', overflow: 'hidden' }}><i style={{ display: 'block', height: '100%', width: `${(r.realDays / m) * 100}%`, background: r.delta > 0 ? 'var(--charge-hard)' : 'var(--charge-low)', borderRadius: 'var(--r-pill)' }} /></div>
                       <span className="tnum" style={{ fontSize: 11, width: 52, textAlign: 'right', color: r.delta > 0 ? 'var(--charge-hard)' : 'var(--charge-low)' }}>{L.real} {r.realDays}{L.day}</span>
                     </div>
                   </div>
@@ -349,8 +349,8 @@ export function AnalysisTab({ injuries, logs }: { injuries: Injury[]; logs: Inju
               {adh.map((a, i) => (
                 <div key={i}>
                   <span style={muted}>{a.zone}</span>
-                  <div style={{ height: 6, borderRadius: 999, background: 'var(--bg-card2)', overflow: 'hidden', margin: '6px 0' }}>
-                    <i style={{ display: 'block', height: '100%', width: `${a.adherence}%`, background: SEV[a.severity].varc, borderRadius: 999 }} />
+                  <div style={{ height: 6, borderRadius: 'var(--r-pill)', background: 'var(--bg-card2)', overflow: 'hidden', margin: '6px 0' }}>
+                    <i style={{ display: 'block', height: '100%', width: `${a.adherence}%`, background: SEV[a.severity].varc, borderRadius: 'var(--r-pill)' }} />
                   </div>
                   <span className="tnum" style={{ ...muted }}>{a.adherence}% · {a.days} {L.day}<span style={{ opacity: 0.5 }}> · {Math.round((a.days / maxAdhDays) * 100)}%{t('w1f.ofLongest')}</span></span>
                 </div>

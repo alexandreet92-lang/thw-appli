@@ -8,7 +8,7 @@ export default function Loading() {
       {/* Provider cards */}
       {Array.from({ length: 4 }).map((_, i) => (
         <div key={i} style={{
-          padding: '16px', borderRadius: 16,
+          padding: '16px', borderRadius: 'var(--r-md)',
           background: 'var(--bg-card)', border: '1px solid var(--border)',
           display: 'flex', alignItems: 'center', gap: 14,
         }}>

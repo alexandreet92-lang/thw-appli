@@ -96,13 +96,13 @@ export default function SwimmingStrokeSelector({ value, onChange, isDark = false
             onClick={() => onChange(active ? '' : id)}
             style={{
               display: 'flex', alignItems: 'center', gap: 6,
-              padding: '8px 14px', borderRadius: 9999, fontSize: 14, fontWeight: 500,
+              padding: '8px 14px', borderRadius: 'var(--r-pill)', fontSize: 14, fontWeight: 500,
               border: active ? 'none' : `1px solid ${isDark ? 'rgba(255,255,255,0.15)' : '#E5E7EB'}`,
               background: active
                 ? 'linear-gradient(135deg, #06B6D4, #2563EB)'
                 : isDark ? 'rgba(255,255,255,0.06)' : '#F9FAFB',
               color: active ? '#fff' : isDark ? '#fff' : '#374151',
-              cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', transition: 'all 150ms',
+              cursor: 'pointer', fontFamily: 'var(--font-body)', transition: 'all 150ms',
             }}
           >
             <Icon />

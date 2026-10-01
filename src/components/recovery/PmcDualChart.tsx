@@ -78,7 +78,7 @@ export default function PmcDualChart() {
   const tl = useTrainingLoad()
 
   return (
-    <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 20, padding: 20, boxShadow: 'var(--shadow-card)' }}>
+    <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-lg)', padding: 20, boxShadow: 'var(--shadow-card)' }}>
       <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 600, margin: '0 0 4px', color: 'var(--text)' }}>Performance Management Chart</h2>
       <p style={{ ...NUM, fontFamily: 'var(--font-body)', fontSize: 11.5, color: 'var(--text-dim)', margin: '0 0 16px' }}>
         {t('recovery.pmc.legend', { n: tl.series.length })}

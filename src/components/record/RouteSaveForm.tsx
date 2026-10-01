@@ -56,7 +56,7 @@ export default function RouteSaveForm({ routeName, onChangeName, onSave, onClose
   // Segmented control réutilisable (type d'usage).
   const seg = <T,>(value: T, current: T, set: (v: T) => void, txt: string) => (
     <button key={String(value)} onClick={() => set(value)}
-      style={{ flex: 1, padding: '10px 8px', borderRadius: 10, cursor: 'pointer', fontSize: 13.5, fontWeight: 600, fontFamily: 'var(--font-body)',
+      style={{ flex: 1, padding: '10px 8px', borderRadius: 'var(--r-sm)', cursor: 'pointer', fontSize: 13.5, fontWeight: 600, fontFamily: 'var(--font-body)',
         background: current === value ? 'rgba(37,99,235,0.12)' : surface,
         border: `1.5px solid ${current === value ? SAVE_BLUE : 'transparent'}`,
         color: current === value ? SAVE_BLUE : text, transition: 'background 0.14s, border-color 0.14s' }}>
@@ -66,7 +66,7 @@ export default function RouteSaveForm({ routeName, onChangeName, onSave, onClose
 
   // Ligne de choix « radio » (Qui peut voir cet itinéraire ?).
   const radioRow = (on: boolean, onClick: () => void, title: string, desc: string, icon: React.ReactNode) => (
-    <button onClick={onClick} style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', textAlign: 'left', padding: '13px 14px', borderRadius: 13, cursor: 'pointer',
+    <button onClick={onClick} style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', textAlign: 'left', padding: '13px 14px', borderRadius: 'var(--r-md)', cursor: 'pointer',
       background: on ? 'rgba(37,99,235,0.10)' : surface, border: `1.5px solid ${on ? SAVE_BLUE : 'transparent'}`, fontFamily: 'var(--font-body)', marginBottom: 8 }}>
       <span style={{ width: 34, height: 34, borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: on ? SAVE_BLUE : (isDark ? 'rgba(255,255,255,0.08)' : '#EDF0F3'), color: on ? '#fff' : mid }}>{icon}</span>
       <span style={{ flex: 1 }}>
@@ -82,9 +82,9 @@ export default function RouteSaveForm({ routeName, onChangeName, onSave, onClose
   // Interrupteur (toggle) réutilisable.
   const toggleRow = (on: boolean, onToggle: () => void, title: string, icon: React.ReactNode) => (
     <button onClick={onToggle} style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', textAlign: 'left', padding: '12px 4px', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
-      <span style={{ width: 32, height: 32, borderRadius: 9, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: surface, color: mid }}>{icon}</span>
+      <span style={{ width: 32, height: 32, borderRadius: 'var(--r-sm)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: surface, color: mid }}>{icon}</span>
       <span style={{ flex: 1, fontSize: 14.5, fontWeight: 600, color: text }}>{title}</span>
-      <span style={{ width: 44, height: 26, borderRadius: 999, flexShrink: 0, background: on ? SAVE_BLUE : (isDark ? 'rgba(255,255,255,0.18)' : '#D1D5DB'), position: 'relative', transition: 'background 0.18s' }}>
+      <span style={{ width: 44, height: 26, borderRadius: 'var(--r-pill)', flexShrink: 0, background: on ? SAVE_BLUE : (isDark ? 'rgba(255,255,255,0.18)' : '#D1D5DB'), position: 'relative', transition: 'background 0.18s' }}>
         <span style={{ position: 'absolute', top: 3, left: on ? 21 : 3, width: 20, height: 20, borderRadius: '50%', background: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,0.3)', transition: 'left 0.18s' }} />
       </span>
     </button>
@@ -99,7 +99,7 @@ export default function RouteSaveForm({ routeName, onChangeName, onSave, onClose
   const panel: React.CSSProperties = isNarrow
     ? { position: 'relative', width: '100%', maxHeight: '94vh', overflowY: 'auto', background: bg, borderTopLeftRadius: 24, borderTopRightRadius: 24, boxShadow: '0 -10px 50px rgba(0,0,0,0.35)', padding: '10px 20px calc(24px + env(safe-area-inset-bottom))', fontFamily: 'var(--font-body)',
         transform: shown && !closing ? 'translateY(0)' : 'translateY(100%)', transition: 'transform 0.30s cubic-bezier(0.32,0.72,0,1)' }
-    : { position: 'relative', width: 'min(460px, 100%)', maxHeight: '92vh', overflowY: 'auto', background: bg, borderRadius: 20, border: `1px solid ${border}`, padding: '22px 22px 20px', boxShadow: '0 24px 70px rgba(0,0,0,0.35)', fontFamily: 'var(--font-body)',
+    : { position: 'relative', width: 'min(460px, 100%)', maxHeight: '92vh', overflowY: 'auto', background: bg, borderRadius: 'var(--r-lg)', border: `1px solid ${border}`, padding: '22px 22px 20px', boxShadow: '0 24px 70px rgba(0,0,0,0.35)', fontFamily: 'var(--font-body)',
         transform: shown && !closing ? 'translateY(0)' : 'translateY(24px)', opacity: shown && !closing ? 1 : 0, transition: 'transform 0.28s cubic-bezier(0.32,0.72,0,1), opacity 0.28s ease' }
 
   return (
@@ -115,7 +115,7 @@ export default function RouteSaveForm({ routeName, onChangeName, onSave, onClose
         </div>
 
         {/* Résumé : distance · dénivelé · temps (+ sport) */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 14px', borderRadius: 14, background: surface, border: `1px solid ${border}`, marginBottom: 18 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 14px', borderRadius: 'var(--r-md)', background: surface, border: `1px solid ${border}`, marginBottom: 18 }}>
           {stats.map((s, i) => (
             <div key={i} style={{ flex: 1, textAlign: 'center', borderLeft: i > 0 ? `1px solid ${border}` : 'none' }}>
               <p style={{ fontSize: 9.5, color: mid, margin: 0, textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 700 }}>{s.label}</p>
@@ -132,7 +132,7 @@ export default function RouteSaveForm({ routeName, onChangeName, onSave, onClose
           onChange={e => onChangeName(e.target.value)}
           placeholder={t('record.routeSaveNamePlaceholder')}
           autoFocus={!isNarrow}
-          style={{ width: '100%', boxSizing: 'border-box', background: surface, border: `1px solid ${border}`, borderRadius: 12, padding: '13px 14px', fontSize: 15, color: text, outline: 'none', fontFamily: 'var(--font-body)', marginBottom: 18 }}
+          style={{ width: '100%', boxSizing: 'border-box', background: surface, border: `1px solid ${border}`, borderRadius: 'var(--r-md)', padding: '13px 14px', fontSize: 15, color: text, outline: 'none', fontFamily: 'var(--font-body)', marginBottom: 18 }}
         />
 
         {/* Type d'usage : Entraînement / Compétition */}
@@ -158,7 +158,7 @@ export default function RouteSaveForm({ routeName, onChangeName, onSave, onClose
         </div>
 
         <button onClick={handleSave} disabled={saving}
-          style={{ width: '100%', height: 52, borderRadius: 15, background: saving ? surface : SAVE_BLUE, border: 'none', color: saving ? mid : '#fff', fontSize: 16, fontWeight: 700, cursor: saving ? 'default' : 'pointer', fontFamily: 'var(--font-body)', boxShadow: saving ? 'none' : '0 4px 16px rgba(37,99,235,0.34)' }}>
+          style={{ width: '100%', height: 52, borderRadius: 'var(--r-md)', background: saving ? surface : SAVE_BLUE, border: 'none', color: saving ? mid : '#fff', fontSize: 16, fontWeight: 700, cursor: saving ? 'default' : 'pointer', fontFamily: 'var(--font-body)', boxShadow: saving ? 'none' : '0 4px 16px rgba(37,99,235,0.34)' }}>
           {saving ? t('record.routeSaveSaving') : t('record.routeSaveTitle')}
         </button>
       </div>

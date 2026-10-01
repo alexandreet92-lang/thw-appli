@@ -29,13 +29,13 @@ export function GuideSearch({ open, onClose, onPick }: { open: boolean; onClose:
   if (!open || typeof document === 'undefined') return null
   return createPortal(
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 99000, background: 'rgba(8,10,14,0.5)', backdropFilter: 'blur(3px)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '10vh 16px 16px', fontFamily: 'var(--font-body, DM Sans, sans-serif)' }}>
-      <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 520, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 18, boxShadow: '0 20px 60px rgba(0,0,0,0.35)', overflow: 'hidden' }}>
+      <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 520, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-lg)', boxShadow: '0 20px 60px rgba(0,0,0,0.35)', overflow: 'hidden' }}>
         {/* Champ */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px', borderBottom: '1px solid var(--border)' }}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
           <input ref={inputRef} value={q} onChange={e => setQ(e.target.value)} placeholder={t('w3g.guide_search_placeholder')}
             style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', color: 'var(--text)', fontSize: 15, fontFamily: 'inherit' }} />
-          <kbd style={{ fontSize: 10, color: 'var(--text-dim)', border: '1px solid var(--border)', borderRadius: 6, padding: '2px 6px' }}>{t('w3g.guide_search_esc')}</kbd>
+          <kbd style={{ fontSize: 10, color: 'var(--text-dim)', border: '1px solid var(--border)', borderRadius: 'var(--r-sm)', padding: '2px 6px' }}>{t('w3g.guide_search_esc')}</kbd>
         </div>
 
         {/* Résultats */}
@@ -72,5 +72,5 @@ export function GuideSearch({ open, onClose, onPick }: { open: boolean; onClose:
     document.body,
   )
 }
-const rowStyle: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '11px 12px', borderRadius: 12, border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left' }
-const tourBtn: React.CSSProperties = { padding: '7px 14px', borderRadius: 999, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer' }
+const rowStyle: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '11px 12px', borderRadius: 'var(--r-md)', border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left' }
+const tourBtn: React.CSSProperties = { padding: '7px 14px', borderRadius: 'var(--r-pill)', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer' }

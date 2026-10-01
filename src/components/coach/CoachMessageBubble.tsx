@@ -33,14 +33,14 @@ export function CoachMessageBubble() {
     <>
       <style>{`@keyframes cmbIn{from{opacity:0;transform:translateY(12px) scale(.98)}to{opacity:1;transform:none}}`}</style>
       <div onClick={close} style={{ position: 'fixed', inset: 0, zIndex: 12500, background: 'rgba(0,0,0,0.28)', backdropFilter: 'blur(2px)', opacity: closing ? 0 : 1, transition: 'opacity .2s' }} />
-      <div style={{ position: 'fixed', zIndex: 12501, right: 'clamp(12px, 3vw, 28px)', bottom: 'calc(20px + env(safe-area-inset-bottom))', width: 'min(400px, calc(100vw - 24px))', height: 'min(600px, calc(100vh - 120px))', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 20, boxShadow: '0 24px 64px rgba(0,0,0,0.34)', display: 'flex', flexDirection: 'column', overflow: 'hidden', animation: closing ? 'none' : 'cmbIn .22s cubic-bezier(.32,.72,0,1)', opacity: closing ? 0 : 1, transition: 'opacity .2s' }}>
+      <div style={{ position: 'fixed', zIndex: 12501, right: 'clamp(12px, 3vw, 28px)', bottom: 'calc(20px + env(safe-area-inset-bottom))', width: 'min(400px, calc(100vw - 24px))', height: 'min(600px, calc(100vh - 120px))', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-lg)', boxShadow: '0 24px 64px rgba(0,0,0,0.34)', display: 'flex', flexDirection: 'column', overflow: 'hidden', animation: closing ? 'none' : 'cmbIn .22s cubic-bezier(.32,.72,0,1)', opacity: closing ? 0 : 1, transition: 'opacity .2s' }}>
         <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 11, padding: '12px 14px', borderBottom: '1px solid var(--border)' }}>
           <Avatar url={target.avatar} name={target.name} size={34} />
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontFamily: 'var(--font-display)', fontSize: 14.5, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{target.name}</div>
             <div style={{ fontSize: 11, color: 'var(--primary)', fontWeight: 700 }}>Conversation</div>
           </div>
-          <button onClick={close} aria-label="Fermer" style={{ width: 30, height: 30, borderRadius: 9, border: 'none', background: 'var(--bg-alt)', color: 'var(--text-mid)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <button onClick={close} aria-label="Fermer" style={{ width: 30, height: 30, borderRadius: 'var(--r-sm)', border: 'none', background: 'var(--bg-alt)', color: 'var(--text-mid)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12" /></svg>
           </button>
         </div>

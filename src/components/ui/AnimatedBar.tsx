@@ -23,7 +23,7 @@ export function AnimatedBar({
       className={className}
       style={{
         height,
-        borderRadius: 999,
+        borderRadius: 'var(--r-pill)',
         overflow: 'hidden',
         background: 'var(--border)',
       }}
@@ -32,7 +32,7 @@ export function AnimatedBar({
         style={{
           height: '100%',
           width: `${Math.min(Math.max(pct, 0), 100)}%`,
-          borderRadius: 999,
+          borderRadius: 'var(--r-pill)',
           background: bg,
           transformOrigin: 'left center',
           animation: 'barFill 1.1s cubic-bezier(0.25, 1, 0.5, 1) both',

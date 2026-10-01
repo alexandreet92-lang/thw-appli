@@ -56,23 +56,23 @@ function PackCard({ pack, loading, onChoose }: { pack: Pack; loading: string | n
       }}>
       <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: feat ? 3 : 2, background: feat ? GRAD_H : `linear-gradient(90deg, ${pack.accent}70, transparent 65%)` }} />
       {feat && (
-        <div style={{ position: 'absolute', top: 14, right: 14, display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 11px', borderRadius: 999, background: GRAD, color: '#fff', fontFamily: "'DM Sans', sans-serif", fontSize: 10, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', boxShadow: '0 2px 14px rgba(6,182,212,0.4)' }}>★ {t('misc.recommended')}</div>
+        <div style={{ position: 'absolute', top: 14, right: 14, display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 11px', borderRadius: 'var(--r-pill)', background: GRAD, color: '#fff', fontFamily: "'DM Sans', sans-serif", fontSize: 10, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', boxShadow: '0 2px 14px rgba(6,182,212,0.4)' }}>★ {t('misc.recommended')}</div>
       )}
       <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 600, color: 'var(--text-mid)', letterSpacing: '0.02em', marginBottom: 14 }}>{packName}</div>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 7 }}>
-        <span style={{ fontFamily: "'Syne', sans-serif", fontSize: 27, fontWeight: 800, letterSpacing: '-0.04em', color: 'var(--text)', lineHeight: 1 }}>{pack.tokensLabel}</span>
+        <span style={{ fontFamily: "'Syne', sans-serif", fontSize: 28, fontWeight: 800, letterSpacing: '-0.04em', color: 'var(--text)', lineHeight: 1 }}>{pack.tokensLabel}</span>
         <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, color: 'var(--text-dim)' }}>tokens</span>
       </div>
       <div style={{ marginTop: 14, marginBottom: 18 }}>
-        <div style={{ height: 5, borderRadius: 999, background: 'var(--bg-alt)', overflow: 'hidden', border: '1px solid var(--border)' }}>
-          <div style={{ height: '100%', width: `${pack.vol * 100}%`, borderRadius: 999, background: feat ? GRAD_H : `linear-gradient(90deg, ${pack.accent}, ${pack.accent}88)`, boxShadow: `0 0 10px ${pack.accent}66` }} />
+        <div style={{ height: 5, borderRadius: 'var(--r-pill)', background: 'var(--bg-alt)', overflow: 'hidden', border: '1px solid var(--border)' }}>
+          <div style={{ height: '100%', width: `${pack.vol * 100}%`, borderRadius: 'var(--r-pill)', background: feat ? GRAD_H : `linear-gradient(90deg, ${pack.accent}, ${pack.accent}88)`, boxShadow: `0 0 10px ${pack.accent}66` }} />
         </div>
         {!hidePrice && pack.per && <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 10.5, color: 'var(--text-dim)', marginTop: 8 }}>{pack.per} tokens</div>}
       </div>
       {!hidePrice && (
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 9, marginBottom: 6 }}>
           <span style={{ fontFamily: "'Syne', sans-serif", fontSize: 38, fontWeight: 800, letterSpacing: '-0.05em', lineHeight: 1, background: GRAD, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>{pack.price} €</span>
-          {pack.save && <span style={{ padding: '3px 9px', borderRadius: 999, background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.3)', color: '#22c55e', fontFamily: "'DM Mono', monospace", fontSize: 11, fontWeight: 500 }}>{pack.save}</span>}
+          {pack.save && <span style={{ padding: '3px 9px', borderRadius: 'var(--r-pill)', background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.3)', color: '#22c55e', fontFamily: "'DM Mono', monospace", fontSize: 11, fontWeight: 500 }}>{pack.save}</span>}
         </div>
       )}
       <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, lineHeight: 1.5, color: 'var(--text-mid)', flex: 1, margin: '6px 0 20px' }}>{packDesc}</p>
@@ -80,7 +80,7 @@ function PackCard({ pack, loading, onChoose }: { pack: Pack; loading: string | n
         <button onClick={() => openIapStore('tokens')}
           style={{
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%',
-            padding: '13px 18px', borderRadius: 10, border: '1px solid var(--border)',
+            padding: '13px 18px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)',
             background: 'var(--bg-card2)', color: 'var(--text-mid)',
             fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 600, cursor: 'pointer',
           }}
@@ -91,7 +91,7 @@ function PackCard({ pack, loading, onChoose }: { pack: Pack; loading: string | n
         <button onClick={() => onChoose(pack)} disabled={!!loading} aria-label={t('misc.choosePackAria', { name: packName })}
           style={{
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%',
-            padding: '13px 18px', borderRadius: 10, border: feat ? 'none' : '1px solid #06B6D4',
+            padding: '13px 18px', borderRadius: 'var(--r-sm)', border: feat ? 'none' : '1px solid #06B6D4',
             background: feat ? GRAD : 'rgba(6,182,212,0.08)', color: feat ? '#fff' : 'var(--primary)',
             fontFamily: "'DM Sans', sans-serif", fontSize: 14, fontWeight: 600,
             cursor: loading ? 'default' : 'pointer', opacity: loading && loading !== pack.id ? 0.5 : 1,
@@ -103,7 +103,7 @@ function PackCard({ pack, loading, onChoose }: { pack: Pack; loading: string | n
     </div>
   )
 
-  if (feat) return <div className="topup-reveal" style={{ background: GRAD, borderRadius: 19, padding: 1.5, animation: 'topupProGlow 4s ease-in-out infinite', alignSelf: 'stretch' }}>{inner}</div>
+  if (feat) return <div className="topup-reveal" style={{ background: GRAD, borderRadius: 'var(--r-lg)', padding: 1.5, animation: 'topupProGlow 4s ease-in-out infinite', alignSelf: 'stretch' }}>{inner}</div>
   return <div className="topup-reveal" style={{ alignSelf: 'stretch' }}>{inner}</div>
 }
 
@@ -178,7 +178,7 @@ function TopupInner() {
           <div className="topup-reveal" style={{ marginBottom: 22 }}>
             <TokenGauge value={remaining} total={limit} label={t('misc.currentBalance')} sub={t('misc.monthlyQuota')} />
           </div>
-          <div className="topup-reveal" style={{ display: 'inline-flex', alignItems: 'center', gap: 10, padding: '8px 16px', borderRadius: 999, border: '1px solid var(--border-mid)', background: 'var(--bg-card)' }}>
+          <div className="topup-reveal" style={{ display: 'inline-flex', alignItems: 'center', gap: 10, padding: '8px 16px', borderRadius: 'var(--r-pill)', border: '1px solid var(--border-mid)', background: 'var(--bg-card)' }}>
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: "'DM Mono', monospace", fontSize: 12, color: 'var(--primary)' }}>
               <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--primary)', display: 'inline-block' }} /> {planLabel}
             </span>
@@ -217,10 +217,10 @@ function TopupInner() {
           </div>
           <div className="usage-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, maxWidth: 780, margin: '0 auto' }}>
             {USAGES.map(({ Ic, amt, c }, i) => (
-              <div key={i} className="topup-reveal" style={{ position: 'relative', overflow: 'hidden', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 12, padding: '20px 22px' }}>
+              <div key={i} className="topup-reveal" style={{ position: 'relative', overflow: 'hidden', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: '20px 22px' }}>
                 <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: `linear-gradient(90deg, ${c}, transparent 70%)` }} />
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                  <div style={{ width: 40, height: 40, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', background: `${c}12`, border: `1px solid ${c}30`, color: c, boxShadow: `0 0 12px ${c}22` }}><Ic size={20} /></div>
+                  <div style={{ width: 40, height: 40, borderRadius: 'var(--r-sm)', display: 'flex', alignItems: 'center', justifyContent: 'center', background: `${c}12`, border: `1px solid ${c}30`, color: c, boxShadow: `0 0 12px ${c}22` }}><Ic size={20} /></div>
                   <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 14, fontWeight: 500, color: c }}>{amt}<span style={{ color: 'var(--text-dim)', fontSize: 10, marginLeft: 3 }}>tok</span></span>
                 </div>
                 <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 15, fontWeight: 700, letterSpacing: '-0.01em', color: 'var(--text)', marginBottom: 5 }}>{usageTitles[i]}</div>

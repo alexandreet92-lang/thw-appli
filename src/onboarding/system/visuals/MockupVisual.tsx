@@ -20,12 +20,12 @@ function WeeklyGrid() {
           <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'center' }}>
             <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', textAlign: 'center' }}>{t('onboarding.dayShort' + (i + 1))}</span>
             {sessions[i] ? (
-              <div style={{ width: '100%', borderRadius: 8, padding: '6px 4px', background: `${sessions[i].color}22`, border: `1px solid ${sessions[i].color}55`, textAlign: 'center', opacity: 0, animation: `stagger-in 400ms ${i * 80}ms forwards` }}>
+              <div style={{ width: '100%', borderRadius: 'var(--r-sm)', padding: '6px 4px', background: `${sessions[i].color}22`, border: `1px solid ${sessions[i].color}55`, textAlign: 'center', opacity: 0, animation: `stagger-in 400ms ${i * 80}ms forwards` }}>
                 <div style={{ width: 6, height: 6, borderRadius: '50%', background: sessions[i].color, margin: '0 auto 2px' }} />
-                <span style={{ fontSize: 8, color: 'rgba(255,255,255,0.7)', display: 'block' }}>{sessions[i].duration}</span>
+                <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.7)', display: 'block' }}>{sessions[i].duration}</span>
               </div>
             ) : (
-              <div style={{ width: '100%', height: 44, borderRadius: 8, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }} />
+              <div style={{ width: '100%', height: 44, borderRadius: 'var(--r-sm)', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }} />
             )}
           </div>
         ))}
@@ -45,11 +45,11 @@ function PlannedVsDone() {
     <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 8, width: '100%' }}>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 6, marginBottom: 4 }}>
         {[t('onboarding.colSport'), t('onboarding.planned'), t('onboarding.done'), t('onboarding.colStatus')].map(h => (
-          <span key={h} style={{ fontSize: 9, color: 'rgba(255,255,255,0.35)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{h}</span>
+          <span key={h} style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{h}</span>
         ))}
       </div>
       {rows.map((r, i) => (
-        <div key={r.sport} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 6, alignItems: 'center', background: 'rgba(255,255,255,0.05)', borderRadius: 8, padding: '8px 8px', opacity: 0, animation: `count-up 350ms ${i * 120}ms ease forwards` }}>
+        <div key={r.sport} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 6, alignItems: 'center', background: 'rgba(255,255,255,0.05)', borderRadius: 'var(--r-sm)', padding: '8px 8px', opacity: 0, animation: `count-up 350ms ${i * 120}ms ease forwards` }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <div style={{ width: 6, height: 6, borderRadius: '50%', background: r.color }} />
             <span style={{ fontSize: 11, color: '#fff' }}>{r.sport}</span>
@@ -75,13 +75,13 @@ function SessionLibraryList() {
     <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 8, width: '100%' }}>
       <div style={{ display: 'flex', gap: 6, marginBottom: 4 }}>
         {[t('onboarding.filterAll'), t('onboarding.g.sports.cycling'), t('onboarding.g.sports.running'), t('onboarding.g.sports.strength')].map((f, i) => (
-          <div key={f} style={{ padding: '3px 10px', borderRadius: 12, background: i === 0 ? 'rgba(6,182,212,0.2)' : 'rgba(255,255,255,0.06)', border: `1px solid ${i === 0 ? 'rgba(6,182,212,0.5)' : 'rgba(255,255,255,0.1)'}` }}>
+          <div key={f} style={{ padding: '3px 10px', borderRadius: 'var(--r-md)', background: i === 0 ? 'rgba(6,182,212,0.2)' : 'rgba(255,255,255,0.06)', border: `1px solid ${i === 0 ? 'rgba(6,182,212,0.5)' : 'rgba(255,255,255,0.1)'}` }}>
             <span style={{ fontSize: 10, color: i === 0 ? 'var(--primary)' : 'rgba(255,255,255,0.5)' }}>{f}</span>
           </div>
         ))}
       </div>
       {items.map((s, i) => (
-        <div key={s.name} style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'rgba(255,255,255,0.05)', borderRadius: 10, padding: '10px 12px', opacity: 0, animation: `count-up 350ms ${i * 100}ms ease forwards` }}>
+        <div key={s.name} style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'rgba(255,255,255,0.05)', borderRadius: 'var(--r-sm)', padding: '10px 12px', opacity: 0, animation: `count-up 350ms ${i * 100}ms ease forwards` }}>
           <div style={{ width: 8, height: 8, borderRadius: '50%', background: s.color, flexShrink: 0 }} />
           <div style={{ flex: 1, minWidth: 0 }}>
             <p style={{ fontSize: 12, fontWeight: 600, color: '#fff', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.name}</p>
@@ -97,13 +97,13 @@ function LiveWorkout() {
   const { t } = useI18n()
   return (
     <div style={{ padding: '16px', width: '100%', display: 'flex', flexDirection: 'column', gap: 10 }}>
-      <div style={{ background: 'rgba(139,92,246,0.15)', border: '1px solid rgba(139,92,246,0.4)', borderRadius: 14, padding: '14px 16px' }}>
+      <div style={{ background: 'rgba(139,92,246,0.15)', border: '1px solid rgba(139,92,246,0.4)', borderRadius: 'var(--r-md)', padding: '14px 16px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
           <div>
             <p style={{ fontSize: 16, fontWeight: 700, color: '#fff', margin: 0 }}>{t('onboarding.benchPress')}</p>
             <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', margin: '2px 0 0' }}>{t('onboarding.liveSetInfo')}</p>
           </div>
-          <div style={{ background: 'rgba(139,92,246,0.3)', borderRadius: 8, padding: '4px 10px' }}>
+          <div style={{ background: 'rgba(139,92,246,0.3)', borderRadius: 'var(--r-sm)', padding: '4px 10px' }}>
             <span style={{ fontSize: 12, color: '#A78BFA', fontWeight: 600 }}>{t('onboarding.inProgress')}</span>
           </div>
         </div>
@@ -113,11 +113,11 @@ function LiveWorkout() {
           ))}
         </div>
       </div>
-      <div style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 10, padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 'var(--r-sm)', padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)' }}>{t('onboarding.rest')}</span>
-        <span style={{ fontSize: 22, fontWeight: 800, color: 'var(--primary)', fontFamily: 'DM Mono, monospace' }}>1:30</span>
+        <span style={{ fontSize: 22, fontWeight: 800, color: 'var(--primary)', fontFamily: 'var(--font-body)' }}>1:30</span>
       </div>
-      <div style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 10, padding: '10px 14px' }}>
+      <div style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 'var(--r-sm)', padding: '10px 14px' }}>
         <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', margin: '0 0 4px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{t('onboarding.next')}</p>
         <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)', margin: 0 }}>{t('onboarding.liveNextInfo')}</p>
       </div>
@@ -135,7 +135,7 @@ function ActivityFeed() {
   return (
     <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 8, width: '100%' }}>
       {items.map((a, i) => (
-        <div key={a.title} style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'rgba(255,255,255,0.06)', borderRadius: 10, padding: '10px 12px', opacity: 0, animation: `count-up 350ms ${i * 120}ms ease forwards` }}>
+        <div key={a.title} style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'rgba(255,255,255,0.06)', borderRadius: 'var(--r-sm)', padding: '10px 12px', opacity: 0, animation: `count-up 350ms ${i * 120}ms ease forwards` }}>
           <div style={{ width: 8, height: 8, borderRadius: '50%', background: a.color, flexShrink: 0 }} />
           <div style={{ flex: 1, minWidth: 0 }}>
             <p style={{ fontSize: 12, fontWeight: 600, color: '#fff', margin: 0 }}>{a.title}</p>
@@ -160,10 +160,10 @@ function SegmentLeaderboard() {
     <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 6, width: '100%' }}>
       <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', margin: '0 0 6px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{t('onboarding.segmentName')}</p>
       {rows.map((r, i) => (
-        <div key={r.pos} style={{ display: 'flex', alignItems: 'center', gap: 10, background: r.highlight ? 'rgba(6,182,212,0.15)' : 'rgba(255,255,255,0.04)', border: `1px solid ${r.highlight ? 'rgba(6,182,212,0.3)' : 'transparent'}`, borderRadius: 8, padding: '8px 12px', opacity: 0, animation: `count-up 350ms ${i * 100}ms ease forwards` }}>
+        <div key={r.pos} style={{ display: 'flex', alignItems: 'center', gap: 10, background: r.highlight ? 'rgba(6,182,212,0.15)' : 'rgba(255,255,255,0.04)', border: `1px solid ${r.highlight ? 'rgba(6,182,212,0.3)' : 'transparent'}`, borderRadius: 'var(--r-sm)', padding: '8px 12px', opacity: 0, animation: `count-up 350ms ${i * 100}ms ease forwards` }}>
           <span style={{ fontSize: 12, fontWeight: 700, color: r.pos <= 1 ? '#F59E0B' : r.highlight ? 'var(--primary)' : 'rgba(255,255,255,0.4)', width: 16 }}>{r.pos}</span>
           <span style={{ flex: 1, fontSize: 12, color: r.highlight ? '#fff' : 'rgba(255,255,255,0.7)', fontWeight: r.highlight ? 700 : 400 }}>{r.name}</span>
-          <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)', fontFamily: 'DM Mono, monospace' }}>{r.time}</span>
+          <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)', fontFamily: 'var(--font-body)' }}>{r.time}</span>
           <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', width: 30, textAlign: 'right' }}>{r.gap}</span>
         </div>
       ))}
@@ -179,7 +179,7 @@ function SwipeDelete() {
         <div style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: 70, background: 'var(--danger)', borderRadius: '0 10px 10px 0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <span style={{ fontSize: 20 }}>🗑</span>
         </div>
-        <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: 10, padding: '12px 14px', marginRight: 50, position: 'relative', animation: 'count-up 500ms ease forwards', opacity: 0 }}>
+        <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: 'var(--r-sm)', padding: '12px 14px', marginRight: 50, position: 'relative', animation: 'count-up 500ms ease forwards', opacity: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--primary)' }} />
             <p style={{ fontSize: 12, fontWeight: 600, color: '#fff', margin: 0 }}>{t('onboarding.swipeItemTitle')}</p>
@@ -248,11 +248,11 @@ function MealSlots() {
   return (
     <div style={{ padding: '10px 16px', display: 'flex', flexDirection: 'column', gap: 6, width: '100%' }}>
       {meals.map((m, i) => (
-        <div key={m.name} style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'rgba(255,255,255,0.04)', borderRadius: 8, padding: '8px 12px', opacity: 0, animation: `count-up 300ms ${i * 90}ms ease forwards` }}>
+        <div key={m.name} style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'rgba(255,255,255,0.04)', borderRadius: 'var(--r-sm)', padding: '8px 12px', opacity: 0, animation: `count-up 300ms ${i * 90}ms ease forwards` }}>
           <div style={{ width: 6, height: 6, borderRadius: '50%', background: m.color, flexShrink: 0 }} />
           <span style={{ flex: 1, fontSize: 12, color: m.filled ? '#fff' : 'rgba(255,255,255,0.35)' }}>{m.name}</span>
           <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)' }}>{m.time}</span>
-          {m.filled && <span style={{ fontSize: 11, color: m.color, fontFamily: 'DM Mono, monospace', fontWeight: 700 }}>{m.cal} kcal</span>}
+          {m.filled && <span style={{ fontSize: 11, color: m.color, fontFamily: 'var(--font-body)', fontWeight: 700 }}>{m.cal} kcal</span>}
           {!m.filled && <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.2)' }}>+ {t('onboarding.add')}</span>}
         </div>
       ))}
@@ -265,7 +265,7 @@ function StravaSyncFlow() {
     <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
-          <div style={{ width: 52, height: 52, borderRadius: 14, background: 'rgba(252,76,2,0.15)', border: '1.5px solid rgba(252,76,2,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', animation: 'stagger-in 400ms 0ms both' }}>
+          <div style={{ width: 52, height: 52, borderRadius: 'var(--r-md)', background: 'rgba(252,76,2,0.15)', border: '1.5px solid rgba(252,76,2,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', animation: 'stagger-in 400ms 0ms both' }}>
             <span style={{ fontSize: 22 }}>🟠</span>
           </div>
           <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)' }}>Strava</span>
@@ -273,15 +273,15 @@ function StravaSyncFlow() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
             <div style={{ width: 40, height: 1.5, background: 'linear-gradient(90deg,rgba(252,76,2,0.5),rgba(6,182,212,0.5))', borderRadius: 1 }} />
-            <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)' }}>→</span>
+            <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)' }}>→</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)' }}>←</span>
+            <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)' }}>←</span>
             <div style={{ width: 40, height: 1.5, background: 'linear-gradient(90deg,rgba(6,182,212,0.5),rgba(252,76,2,0.5))', borderRadius: 1 }} />
           </div>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
-          <div style={{ width: 52, height: 52, borderRadius: 14, background: 'rgba(6,182,212,0.15)', border: '1.5px solid rgba(6,182,212,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', animation: 'stagger-in 400ms 200ms both' }}>
+          <div style={{ width: 52, height: 52, borderRadius: 'var(--r-md)', background: 'rgba(6,182,212,0.15)', border: '1.5px solid rgba(6,182,212,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', animation: 'stagger-in 400ms 200ms both' }}>
             <span style={{ fontSize: 22 }}>⚡</span>
           </div>
           <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)' }}>THW</span>
@@ -321,10 +321,10 @@ function MonthGrid() {
   return (
     <div style={{ padding: '14px', width: '100%' }}>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 3 }}>
-        {[1,2,3,4,5,6,7].map(n => <span key={'hdr-' + n} style={{ fontSize: 9, color: 'rgba(255,255,255,0.35)', textAlign: 'center' }}>{t('onboarding.dayShort' + n)}</span>)}
+        {[1,2,3,4,5,6,7].map(n => <span key={'hdr-' + n} style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', textAlign: 'center' }}>{t('onboarding.dayShort' + n)}</span>)}
         {days.map(d => (
-          <div key={d} style={{ aspectRatio: '1', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', borderRadius: 5, background: d === 15 ? 'rgba(6,182,212,0.2)' : 'transparent', border: d === 15 ? '1px solid rgba(6,182,212,0.4)' : 'none' }}>
-            <span style={{ fontSize: 9, color: d === 15 ? 'var(--primary)' : 'rgba(255,255,255,0.6)' }}>{d}</span>
+          <div key={d} style={{ aspectRatio: '1', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', borderRadius: 'var(--r-sm)', background: d === 15 ? 'rgba(6,182,212,0.2)' : 'transparent', border: d === 15 ? '1px solid rgba(6,182,212,0.4)' : 'none' }}>
+            <span style={{ fontSize: 10, color: d === 15 ? 'var(--primary)' : 'rgba(255,255,255,0.6)' }}>{d}</span>
             {dots[d] && <div style={{ width: 3, height: 3, borderRadius: '50%', background: dots[d], marginTop: 1 }} />}
           </div>
         ))}
@@ -348,7 +348,7 @@ function DayDetail() {
         <span style={{ fontSize: 13, color: '#fff', fontWeight: 600 }}>{t('onboarding.dayDetailDate')}</span>
       </div>
       {items.map((it, i) => (
-        <div key={it.label} style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'rgba(255,255,255,0.05)', borderRadius: 10, padding: '10px 12px', opacity: 0, animation: `count-up 350ms ${i * 120}ms ease forwards`, borderLeft: `2.5px solid ${it.color}` }}>
+        <div key={it.label} style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'rgba(255,255,255,0.05)', borderRadius: 'var(--r-sm)', padding: '10px 12px', opacity: 0, animation: `count-up 350ms ${i * 120}ms ease forwards`, borderLeft: `2.5px solid ${it.color}` }}>
           <div style={{ flex: 1 }}>
             <p style={{ fontSize: 12, fontWeight: 600, color: it.done ? '#fff' : 'rgba(255,255,255,0.6)', margin: 0 }}>{it.label}</p>
             <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', margin: '2px 0 0' }}>{it.type} · {it.duration}</p>

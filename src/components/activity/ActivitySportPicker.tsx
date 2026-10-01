@@ -53,7 +53,7 @@ export function ActivitySportPicker({ activityId, sport, onChanged }: { activity
         const on = o.type === cur
         return (
           <button key={o.type} onClick={() => pick(o.type)} disabled={saving} style={{
-            display: 'inline-flex', alignItems: 'center', gap: 7, padding: '8px 13px', borderRadius: 999, cursor: saving ? 'wait' : 'pointer',
+            display: 'inline-flex', alignItems: 'center', gap: 7, padding: '8px 13px', borderRadius: 'var(--r-pill)', cursor: saving ? 'wait' : 'pointer',
             border: `1px solid ${on ? 'var(--primary)' : 'var(--border)'}`, background: on ? 'var(--primary-dim)' : 'var(--bg-card)',
             color: on ? 'var(--primary)' : 'var(--text-dim)', fontSize: 12.5, fontWeight: 600, fontFamily: 'var(--font-body)',
           }}>

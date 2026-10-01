@@ -39,7 +39,7 @@ function Donut({ value, max, color, label, size }: {
           {value}
         </text>
       </svg>
-      <span style={{ fontSize: 9, color: 'var(--text-dim)', fontFamily: 'DM Sans,sans-serif' }}>{label}</span>
+      <span style={{ fontSize: 10, color: 'var(--text-dim)', fontFamily: 'var(--font-body)' }}>{label}</span>
     </div>
   )
 }
@@ -50,10 +50,10 @@ export default function MacroDonuts({ kcal, prot, gluc, lip, size = 56 }: Props)
   return (
     <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end' }}>
       <div style={{ textAlign: 'center', minWidth: 44 }}>
-        <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--primary)', fontFamily: 'Syne,sans-serif', lineHeight: 1 }}>
+        <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--primary)', fontFamily: 'var(--font-display)', lineHeight: 1 }}>
           {kcal}
         </div>
-        <div style={{ fontSize: 9, color: 'var(--text-dim)', fontFamily: 'DM Sans,sans-serif' }}>kcal</div>
+        <div style={{ fontSize: 10, color: 'var(--text-dim)', fontFamily: 'var(--font-body)' }}>kcal</div>
       </div>
       {DONUTS.map(d => (
         <Donut key={d.key}

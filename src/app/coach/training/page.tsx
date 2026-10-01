@@ -101,7 +101,7 @@ export default function CoachTraining() {
     <div style={{ width: '100%', padding: '20px clamp(16px,4vw,40px) 60px', boxSizing: 'border-box', fontFamily: BODY }}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 4, flexWrap: 'wrap' }}>
         <h1 style={{ fontFamily: DISP, fontWeight: 600, fontSize: 28, margin: 0, color: 'var(--text)' }}>Training</h1>
-        <span style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--primary)', background: 'color-mix(in srgb, var(--primary) 12%, transparent)', borderRadius: 7, padding: '3px 9px' }}>Coach</span>
+        <span style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--primary)', background: 'color-mix(in srgb, var(--primary) 12%, transparent)', borderRadius: 'var(--r-sm)', padding: '3px 9px' }}>Coach</span>
         <span style={{ fontSize: 12.5, color: 'var(--text-dim)' }}>{t('w1h.training_subtitle')}</span>
       </div>
 
@@ -113,9 +113,9 @@ export default function CoachTraining() {
       </div>
 
       {loading ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>{Array.from({ length: 4 }).map((_, i) => <div key={i} style={{ height: 74, borderRadius: 16, border: '1px solid var(--border)', background: 'var(--bg-card)', opacity: 0.6 }} />)}</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>{Array.from({ length: 4 }).map((_, i) => <div key={i} style={{ height: 74, borderRadius: 'var(--r-md)', border: '1px solid var(--border)', background: 'var(--bg-card)', opacity: 0.6 }} />)}</div>
       ) : shown.length === 0 ? (
-        <div style={{ borderRadius: 18, border: '1px solid var(--border)', background: 'var(--bg-card)', padding: 26, textAlign: 'center', color: 'var(--text-dim)', fontSize: 14 }}>
+        <div style={{ borderRadius: 'var(--r-lg)', border: '1px solid var(--border)', background: 'var(--bg-card)', padding: 26, textAlign: 'center', color: 'var(--text-dim)', fontSize: 14 }}>
           {athletes.length === 0 ? t('w1h.no_athlete_invite') : t('w1h.no_sessions_21d')}
         </div>
       ) : (
@@ -128,7 +128,7 @@ export default function CoachTraining() {
               <Link key={a.id} href={`/coach/planning/${a.user_id}`}
                 onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = 'color-mix(in srgb, var(--primary) 40%, var(--border))'; el.style.transform = 'translateY(-1px)' }}
                 onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = 'var(--border)'; el.style.transform = 'none' }}
-                style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', padding: '13px 14px 13px 20px', borderRadius: 16, border: '1px solid var(--border)', background: 'var(--bg-card)', cursor: 'pointer', transition: 'transform .16s, border-color .16s', textDecoration: 'none', color: 'inherit' }}>
+                style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', padding: '13px 14px 13px 20px', borderRadius: 'var(--r-md)', border: '1px solid var(--border)', background: 'var(--bg-card)', cursor: 'pointer', transition: 'transform .16s, border-color .16s', textDecoration: 'none', color: 'inherit' }}>
                 <span style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, background: sportColor(a.sport), borderRadius: '16px 0 0 16px' }} />
                 <Avatar url={who?.avatar_url ?? null} name={name} size={38} />
                 <div style={{ flex: '1 1 220px', minWidth: 0 }}>
@@ -142,7 +142,7 @@ export default function CoachTraining() {
                   {metrics.map((m, i) => <span key={i} style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--text)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{m}</span>)}
                 </div>
                 <button onClick={e => { e.preventDefault(); e.stopPropagation(); analyze(a) }}
-                  style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 6, height: 32, padding: '0 12px', borderRadius: 10, border: '1px solid color-mix(in srgb, var(--primary) 40%, var(--border))', background: 'color-mix(in srgb, var(--primary) 9%, transparent)', color: 'var(--primary)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: BODY }}>
+                  style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 6, height: 32, padding: '0 12px', borderRadius: 'var(--r-sm)', border: '1px solid color-mix(in srgb, var(--primary) 40%, var(--border))', background: 'color-mix(in srgb, var(--primary) 9%, transparent)', color: 'var(--primary)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: BODY }}>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z" /></svg>
                   {t('w1h.analyze')}
                 </button>

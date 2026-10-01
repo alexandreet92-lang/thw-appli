@@ -262,14 +262,14 @@ export function TwelveWeekVolume({ activities }: { activities: ActLike[] }) {
   const fmtVal = (v: number) => chartUnit === 'h' ? v.toFixed(v >= 10 ? 0 : 1).replace('.', ',') : String(Math.round(v))
 
   return (
-    <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 18, padding: '16px 18px 12px', marginBottom: 16, boxShadow: 'var(--shadow-card)' }}>
+    <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-lg)', padding: '16px 18px 12px', marginBottom: 16, boxShadow: 'var(--shadow-card)' }}>
       {/* Chips de sport */}
       <div style={{ display: 'flex', gap: 6, overflowX: 'auto', WebkitOverflowScrolling: 'touch', paddingBottom: 10 }}>
         {SPORT_DEFS.map(s => {
           const on = sport === s.key
           return (
             <button key={s.key} onClick={() => { setSport(s.key); setSelIdx(11) }}
-              style={{ flexShrink: 0, padding: '6px 14px', borderRadius: 999, fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)',
+              style={{ flexShrink: 0, padding: '6px 14px', borderRadius: 'var(--r-pill)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)',
                 border: on ? `1.5px solid ${BLUE}` : '1px solid var(--border)',
                 background: on ? 'rgba(59,130,246,0.08)' : 'var(--bg-card)',
                 color: on ? BLUE : 'var(--text-mid)' }}>

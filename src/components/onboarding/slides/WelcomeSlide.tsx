@@ -53,10 +53,10 @@ export default function WelcomeSlide() {
         />
       </div>
 
-      <h1 style={{ fontSize: 36, fontWeight: 800, color: '#fff', margin: '32px 0 16px', letterSpacing: '-0.5px', fontFamily: 'Syne, sans-serif', position: 'relative', zIndex: 1 }}>
+      <h1 style={{ fontSize: 36, fontWeight: 800, color: '#fff', margin: '32px 0 16px', letterSpacing: '-0.5px', fontFamily: 'var(--font-display)', position: 'relative', zIndex: 1 }}>
         THW Coaching
       </h1>
-      <p style={{ fontSize: 17, color: 'rgba(255,255,255,0.62)', lineHeight: 1.65, margin: 0, fontFamily: 'DM Sans, sans-serif', position: 'relative', zIndex: 1 }}>
+      <p style={{ fontSize: 17, color: 'rgba(255,255,255,0.62)', lineHeight: 1.65, margin: 0, fontFamily: 'var(--font-body)', position: 'relative', zIndex: 1 }}>
         {t('onboarding.welcomeTagline1')}<br />{t('onboarding.welcomeTagline2')}
       </p>
     </div>

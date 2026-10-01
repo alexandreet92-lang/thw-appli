@@ -58,11 +58,11 @@ export function SportsVisual() {
       }}>
         {doubled.map((sport, i) => (
           <div key={i} style={{
-            padding: '8px 18px', borderRadius: 24, flexShrink: 0,
+            padding: '8px 18px', borderRadius: 'var(--r-lg)', flexShrink: 0,
             background: `rgba(${hexRgb(sport.color)}, 0.12)`,
             border: `1px solid rgba(${hexRgb(sport.color)}, 0.3)`,
           }}>
-            <span style={{ fontSize: 13, fontWeight: 600, color: sport.color, fontFamily: 'DM Sans, sans-serif' }}>{t(sport.name)}</span>
+            <span style={{ fontSize: 13, fontWeight: 600, color: sport.color, fontFamily: 'var(--font-body)' }}>{t(sport.name)}</span>
           </div>
         ))}
       </div>
@@ -77,11 +77,11 @@ export function SportsVisual() {
       }}>
         {doubled.map((sport, i) => (
           <div key={i} style={{
-            padding: '8px 18px', borderRadius: 24, flexShrink: 0,
+            padding: '8px 18px', borderRadius: 'var(--r-lg)', flexShrink: 0,
             background: `rgba(${hexRgb(sport.color)}, 0.07)`,
             border: `1px solid rgba(${hexRgb(sport.color)}, 0.15)`,
           }}>
-            <span style={{ fontSize: 12, fontWeight: 500, color: `rgba(${hexRgb(sport.color)}, 0.7)`, fontFamily: 'DM Sans, sans-serif' }}>{t(sport.name)}</span>
+            <span style={{ fontSize: 12, fontWeight: 500, color: `rgba(${hexRgb(sport.color)}, 0.7)`, fontFamily: 'var(--font-body)' }}>{t(sport.name)}</span>
           </div>
         ))}
       </div>

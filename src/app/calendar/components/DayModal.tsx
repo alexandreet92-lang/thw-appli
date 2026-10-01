@@ -19,7 +19,7 @@ interface Props {
   onDeleted?: (date: string) => void
 }
 
-const INP = { width:'100%',padding:'7px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:12,outline:'none' }
+const INP = { width:'100%',padding:'7px 10px',borderRadius: 'var(--r-sm)',border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:12,outline:'none' }
 const LBL = { fontSize:10,fontWeight:600 as const,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4,display:'block' as const }
 
 function isGpxName(n: string) { return n.toLowerCase().endsWith('.gpx') }
@@ -263,7 +263,7 @@ export default function DayModal({ stage, date, onClose, onSaved, onDeleted }: P
 
   return createPortal(
     <div onClick={requestClose} style={{ position:'fixed',inset:0,zIndex:9999,background:'rgba(0,0,0,0.6)',backdropFilter:'blur(4px)',display:'flex',alignItems:'center',justifyContent:'center',padding:16,overflowY:'auto',opacity: shown && !closing ? 1 : 0,transition:'opacity 0.28s ease' }}>
-      <div onClick={e => e.stopPropagation()} style={{ background:'var(--bg-card)',borderRadius:18,border:'1px solid var(--border-mid)',padding:24,maxWidth:560,width:'100%',maxHeight:'92vh',overflowY:'auto',display:'flex',flexDirection:'column',gap:16,transform: shown && !closing ? 'translateY(0)' : 'translateY(100%)',transition:'transform 0.28s cubic-bezier(0.32,0.72,0,1)' }}>
+      <div onClick={e => e.stopPropagation()} style={{ background:'var(--bg-card)',borderRadius: 'var(--r-lg)',border:'1px solid var(--border-mid)',padding:24,maxWidth:560,width:'100%',maxHeight:'92vh',overflowY:'auto',display:'flex',flexDirection:'column',gap:16,transform: shown && !closing ? 'translateY(0)' : 'translateY(100%)',transition:'transform 0.28s cubic-bezier(0.32,0.72,0,1)' }}>
 
         {/* Header */}
         <div style={{ display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:12 }}>
@@ -271,16 +271,16 @@ export default function DayModal({ stage, date, onClose, onSaved, onDeleted }: P
             <p style={{ fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.08em',color:'#3b82f6',margin:'0 0 3px' }}>
               {stage.name}
             </p>
-            <h3 style={{ fontFamily:'Syne,sans-serif',fontSize:16,fontWeight:700,margin:0,textTransform:'capitalize' }}>
+            <h3 style={{ fontFamily: 'var(--font-body)',fontSize:16,fontWeight:700,margin:0,textTransform:'capitalize' }}>
               {labelDay(date)}
             </h3>
           </div>
-          <button onClick={requestClose} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius:8,padding:'4px 10px',cursor:'pointer',color:'var(--text-dim)',fontSize:14,flexShrink:0 }}>✕</button>
+          <button onClick={requestClose} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius: 'var(--r-sm)',padding:'4px 10px',cursor:'pointer',color:'var(--text-dim)',fontSize:14,flexShrink:0 }}>✕</button>
         </div>
 
         {/* Guard: missing stageId */}
         {!hasId && (
-          <div style={{ padding:'10px 14px',borderRadius:9,background:'rgba(239,68,68,0.10)',border:'1px solid rgba(239,68,68,0.3)',color:'var(--danger)',fontSize:12 }}>
+          <div style={{ padding:'10px 14px',borderRadius: 'var(--r-sm)',background:'rgba(239,68,68,0.10)',border:'1px solid rgba(239,68,68,0.3)',color:'var(--danger)',fontSize:12 }}>
             {t('calendar.errEventIdNotFound')}
           </div>
         )}
@@ -292,7 +292,7 @@ export default function DayModal({ stage, date, onClose, onSaved, onDeleted }: P
 
         {/* Other file */}
         {!loadFile && displayFile && !isGpxName(displayFile.name) && (
-          <div style={{ display:'flex',alignItems:'center',gap:8,padding:'8px 12px',borderRadius:9,background:'var(--bg-card2)',border:'1px solid var(--border)' }}>
+          <div style={{ display:'flex',alignItems:'center',gap:8,padding:'8px 12px',borderRadius: 'var(--r-sm)',background:'var(--bg-card2)',border:'1px solid var(--border)' }}>
             <span style={{ fontSize:16 }}>📄</span>
             <span style={{ flex:1,fontSize:11,color:'var(--text-mid)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' }}>{displayFile.name}</span>
             {!displayFile.isLocal && (
@@ -316,13 +316,13 @@ export default function DayModal({ stage, date, onClose, onSaved, onDeleted }: P
         <div>
           <label style={LBL}>{t('calendar.dayFile')}</label>
           {newFile ? (
-            <div style={{ display:'flex',alignItems:'center',gap:6,padding:'6px 10px',borderRadius:8,background:'var(--bg-card2)',border:'1px solid var(--border)' }}>
+            <div style={{ display:'flex',alignItems:'center',gap:6,padding:'6px 10px',borderRadius: 'var(--r-sm)',background:'var(--bg-card2)',border:'1px solid var(--border)' }}>
               <span style={{ flex:1,fontSize:11,color:'var(--text-mid)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' }}>{newFile.name}</span>
               <button onClick={() => setNewFile(null)} style={{ background:'none',border:'none',color:'var(--danger)',cursor:'pointer',fontSize:13 }}>✕</button>
             </div>
           ) : (
             <button onClick={() => fileRef.current?.click()} style={{
-              width:'100%',padding:'8px 12px',borderRadius:8,
+              width:'100%',padding:'8px 12px',borderRadius: 'var(--r-sm)',
               border:'1px dashed var(--border)',background:'var(--bg-card2)',
               color:'var(--text-dim)',fontSize:11,cursor:'pointer',
             }}>
@@ -335,12 +335,12 @@ export default function DayModal({ stage, date, onClose, onSaved, onDeleted }: P
 
         {/* Status feedback */}
         {saveStatus === 'success' && (
-          <div style={{ padding:'8px 12px',borderRadius:9,background:'rgba(34,197,94,0.12)',border:'1px solid rgba(34,197,94,0.3)',color:'#22c55e',fontSize:12,fontWeight:600 }}>
+          <div style={{ padding:'8px 12px',borderRadius: 'var(--r-sm)',background:'rgba(34,197,94,0.12)',border:'1px solid rgba(34,197,94,0.3)',color:'#22c55e',fontSize:12,fontWeight:600 }}>
             {saveMsg}
           </div>
         )}
         {saveStatus === 'error' && (
-          <div style={{ padding:'8px 12px',borderRadius:9,background:'rgba(239,68,68,0.10)',border:'1px solid rgba(239,68,68,0.3)',color:'var(--danger)',fontSize:12 }}>
+          <div style={{ padding:'8px 12px',borderRadius: 'var(--r-sm)',background:'rgba(239,68,68,0.10)',border:'1px solid rgba(239,68,68,0.3)',color:'var(--danger)',fontSize:12 }}>
             {saveMsg}
           </div>
         )}
@@ -351,29 +351,29 @@ export default function DayModal({ stage, date, onClose, onSaved, onDeleted }: P
             <button
               onClick={() => setConfirmDelete(true)}
               disabled={deleting || !hasId}
-              style={{ padding:'10px 14px',borderRadius:10,background:'transparent',border:'1px solid rgba(239,68,68,0.4)',color:'var(--danger)',fontSize:12,cursor:'pointer',flexShrink:0 }}>
+              style={{ padding:'10px 14px',borderRadius: 'var(--r-sm)',background:'transparent',border:'1px solid rgba(239,68,68,0.4)',color:'var(--danger)',fontSize:12,cursor:'pointer',flexShrink:0 }}>
               {t('calendar.delete')}
             </button>
           ) : (
             <div style={{ display:'flex',gap:4,alignItems:'center' }}>
               <span style={{ fontSize:11,color:'var(--text-dim)',whiteSpace:'nowrap' }}>{t('calendar.confirmQ')}</span>
               <button onClick={handleDelete} disabled={deleting}
-                style={{ padding:'6px 10px',borderRadius:8,background:'rgba(239,68,68,0.12)',border:'1px solid rgba(239,68,68,0.4)',color:'var(--danger)',fontSize:11,cursor:'pointer' }}>
+                style={{ padding:'6px 10px',borderRadius: 'var(--r-sm)',background:'rgba(239,68,68,0.12)',border:'1px solid rgba(239,68,68,0.4)',color:'var(--danger)',fontSize:11,cursor:'pointer' }}>
                 {deleting ? '…' : t('calendar.yes')}
               </button>
               <button onClick={() => setConfirmDelete(false)}
-                style={{ padding:'6px 10px',borderRadius:8,background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',fontSize:11,cursor:'pointer' }}>
+                style={{ padding:'6px 10px',borderRadius: 'var(--r-sm)',background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',fontSize:11,cursor:'pointer' }}>
                 {t('calendar.no')}
               </button>
             </div>
           )}
-          <button onClick={requestClose} style={{ flex:1,padding:10,borderRadius:10,background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',fontSize:12,cursor:'pointer' }}>
+          <button onClick={requestClose} style={{ flex:1,padding:10,borderRadius: 'var(--r-sm)',background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',fontSize:12,cursor:'pointer' }}>
             {t('calendar.close')}
           </button>
           <button
             onClick={handleSave}
             disabled={isSaving || !hasId}
-            style={{ flex:2,padding:10,borderRadius:10,background:'linear-gradient(135deg,#06B6D4,#5b6fff)',border:'none',color:'#fff',fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:12,cursor:isSaving?'wait':'pointer',opacity:!hasId?0.4:1 }}>
+            style={{ flex:2,padding:10,borderRadius: 'var(--r-sm)',background:'linear-gradient(135deg,#06B6D4,#5b6fff)',border:'none',color:'#fff',fontFamily: 'var(--font-body)',fontWeight:700,fontSize:12,cursor:isSaving?'wait':'pointer',opacity:!hasId?0.4:1 }}>
             {isSaving ? t('calendar.saving') : t('calendar.save')}
           </button>
         </div>

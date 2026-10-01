@@ -140,7 +140,7 @@ export default function PublicProfileView() {
         {profile.sports.length > 0 && (
           <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', marginTop: 14 }}>
             {profile.sports.map(s => (
-              <span key={s} style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-mid)', background: 'var(--bg-card2)', borderRadius: 999, padding: '5px 12px' }}>{sportLabel(s)}</span>
+              <span key={s} style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-mid)', background: 'var(--bg-card2)', borderRadius: 'var(--r-pill)', padding: '5px 12px' }}>{sportLabel(s)}</span>
             ))}
           </div>
         )}
@@ -167,7 +167,7 @@ export default function PublicProfileView() {
 
 const wrap: React.CSSProperties = { maxWidth: 720, margin: '0 auto', padding: '4px clamp(12px,4vw,20px) 80px' }
 function pill(bg: string, color: string): React.CSSProperties {
-  return { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '9px 18px', borderRadius: 999, border: 'none', background: bg, color, fontFamily: 'var(--font-body)', fontSize: 13.5, fontWeight: 700, cursor: 'pointer', textDecoration: 'none' }
+  return { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '9px 18px', borderRadius: 'var(--r-pill)', border: 'none', background: bg, color, fontFamily: 'var(--font-body)', fontSize: 13.5, fontWeight: 700, cursor: 'pointer', textDecoration: 'none' }
 }
 function Stat({ n, label }: { n: number; label: string }) {
   return (

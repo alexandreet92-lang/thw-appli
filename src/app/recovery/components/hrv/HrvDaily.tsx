@@ -39,7 +39,7 @@ export default function HrvDaily({ todayHrv, avg7, allTime }: Props) {
 
   return (
     <div style={{
-      padding: '18px', borderRadius: 14,
+      padding: '18px', borderRadius: 'var(--r-md)',
       background: 'var(--bg-card2)', border: '1px solid var(--border)',
     }}>
       {/* Value row */}
@@ -52,7 +52,7 @@ export default function HrvDaily({ todayHrv, avg7, allTime }: Props) {
         </svg>
         <div>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
-            <span style={{ fontSize: 36, fontWeight: 800, color: 'var(--text)', fontFamily: 'Syne,sans-serif', lineHeight: 1 }}>
+            <span style={{ fontSize: 36, fontWeight: 800, color: 'var(--text)', fontFamily: 'var(--font-display)', lineHeight: 1 }}>
               {Math.round(todayHrv)}
             </span>
             <span style={{ fontSize: 13, color: 'var(--text-dim)' }}>ms</span>
@@ -61,14 +61,14 @@ export default function HrvDaily({ todayHrv, avg7, allTime }: Props) {
             <span style={{ fontSize: 13, fontWeight: 700, color: arrowColor }}>
               {diff >= 0 ? '↑' : '↓'} {Math.abs(Math.round(diff))} ms
             </span>
-            <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>{t('recovery.hrv.vsAvg7')}</span>
+            <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>{t('recovery.hrv.vsAvg7')}</span>
           </div>
         </div>
       </div>
 
       {/* Context bar */}
       <div>
-        <div style={{ display: 'flex', height: 10, borderRadius: 5, overflow: 'hidden', marginBottom: 4 }}>
+        <div style={{ display: 'flex', height: 10, borderRadius: 'var(--r-sm)', overflow: 'hidden', marginBottom: 4 }}>
           {ZONES.map((z, i) => (
             <div key={i} style={{ width: `${z.w}%`, background: z.color }} />
           ))}
@@ -86,7 +86,7 @@ export default function HrvDaily({ todayHrv, avg7, allTime }: Props) {
             borderBottom: `7px solid ${ringColor}`,
           }} />
         </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 8, color: 'var(--text-dim)', marginTop: 2 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--text-dim)', marginTop: 2 }}>
           <span>{Math.round(min)} ms</span>
           <span>{t('recovery.hrv.personalRange')}</span>
           <span>{Math.round(max)} ms</span>

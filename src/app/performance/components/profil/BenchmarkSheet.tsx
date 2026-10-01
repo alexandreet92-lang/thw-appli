@@ -15,7 +15,7 @@ function Input({ value, unit, placeholder, onChange }: { value: string; unit?: s
       <input value={value} placeholder={placeholder ?? ''} onChange={e => onChange(e.target.value)}
         onFocus={() => setFoc(true)} onBlur={() => setFoc(false)}
         style={{
-          width: '100%', background: 'var(--input-bg)', borderRadius: 10, padding: '9px 44px 9px 11px',
+          width: '100%', background: 'var(--input-bg)', borderRadius: 'var(--r-sm)', padding: '9px 44px 9px 11px',
           fontFamily: FB, fontSize: 13, color: 'var(--text)', outline: 'none',
           border: `1px solid ${foc ? 'var(--primary)' : 'var(--border-mid)'}`,
           boxShadow: foc ? '0 0 0 3px var(--primary-dim)' : 'none', transition: 'border-color 0.15s, box-shadow 0.15s',

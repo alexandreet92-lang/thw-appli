@@ -38,7 +38,7 @@ export function FinalVisual() {
         textAlign: 'center',
       }}>
         <img src="/logos/logo_4bras.png" alt="Hybrid" style={{ width: 56, height: 56, display: 'block', margin: '0 auto' }} />
-        <p style={{ fontSize: 18, fontWeight: 900, color: 'white', margin: '6px 0 0', letterSpacing: '-0.5px', fontFamily: 'Syne, sans-serif', whiteSpace: 'nowrap' }}>
+        <p style={{ fontSize: 18, fontWeight: 900, color: 'white', margin: '6px 0 0', letterSpacing: '-0.5px', fontFamily: 'var(--font-display)', whiteSpace: 'nowrap' }}>
           Hybrid
         </p>
       </div>

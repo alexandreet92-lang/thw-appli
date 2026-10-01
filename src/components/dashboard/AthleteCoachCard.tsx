@@ -56,21 +56,21 @@ export function AthleteCoachCard() {
   const since = (d: string | null) => { if (!d) return ''; try { return new Date(d).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }) } catch { return '' } }
   const hasCoach = coaches.length > 0
 
-  const card: React.CSSProperties = { border: '1px solid var(--border)', background: 'var(--bg-card)', borderRadius: 20, padding: 'clamp(18px, 3.5vw, 26px)', marginBottom: 'var(--space-5)' }
+  const card: React.CSSProperties = { border: '1px solid var(--border)', background: 'var(--bg-card)', borderRadius: 'var(--r-lg)', padding: 'clamp(18px, 3.5vw, 26px)', marginBottom: 'var(--space-5)' }
 
   return (
     <div style={card}>
       {/* Pas de coach → bouton compact « Connexion coach » (ouvre une surpage) */}
       {!hasCoach && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          <div style={{ width: 46, height: 46, borderRadius: 14, flexShrink: 0, background: 'color-mix(in srgb, var(--primary) 12%, transparent)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ width: 46, height: 46, borderRadius: 'var(--r-md)', flexShrink: 0, background: 'color-mix(in srgb, var(--primary) 12%, transparent)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M19 8l2 2 3-3" /></svg>
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 600, color: 'var(--text)' }}>{t('w2d.myCoach')}</div>
             <div style={{ fontSize: 12.5, color: 'var(--text-dim)' }}>{t('w2d.linkCoachHint')}</div>
           </div>
-          <button onClick={() => { setAdding(true); setMsg(null) }} style={{ flexShrink: 0, padding: '10px 16px', borderRadius: 12, border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 13.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>{t('w2d.coachConnect')}</button>
+          <button onClick={() => { setAdding(true); setMsg(null) }} style={{ flexShrink: 0, padding: '10px 16px', borderRadius: 'var(--r-md)', border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 13.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>{t('w2d.coachConnect')}</button>
         </div>
       )}
       {/* Coach(s) lié(s) */}
@@ -87,7 +87,7 @@ export function AthleteCoachCard() {
                 <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</div>
                 <div style={{ fontSize: 12.5, color: 'var(--text-dim)' }}>{c.since ? t('w2d.coachSince', { date: since(c.since) }) : t('w2d.yourCoach')}</div>
               </div>
-              <button onClick={() => remove(c.linkId)} aria-label={t('w2d.breakLink')} style={{ width: 32, height: 32, borderRadius: 10, border: 'none', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'background .14s, color .14s' }}
+              <button onClick={() => remove(c.linkId)} aria-label={t('w2d.breakLink')} style={{ width: 32, height: 32, borderRadius: 'var(--r-sm)', border: 'none', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'background .14s, color .14s' }}
                 onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-alt)'; (e.currentTarget as HTMLElement).style.color = '#ef4444' }}
                 onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = 'var(--text-dim)' }}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12" /></svg>
@@ -95,7 +95,7 @@ export function AthleteCoachCard() {
             </div>
           ))}
           {!adding && (
-            <button onClick={() => { setAdding(true); setMsg(null) }} style={{ alignSelf: 'flex-start', marginTop: 4, display: 'inline-flex', alignItems: 'center', gap: 7, padding: '7px 12px', borderRadius: 10, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-mid)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
+            <button onClick={() => { setAdding(true); setMsg(null) }} style={{ alignSelf: 'flex-start', marginTop: 4, display: 'inline-flex', alignItems: 'center', gap: 7, padding: '7px 12px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-mid)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
               {t('w2d.addAnotherCoach')}
             </button>
@@ -108,14 +108,14 @@ export function AthleteCoachCard() {
       {/* Surpage de connexion (code) */}
       <SlideSheet open={adding} onClose={() => { setAdding(false); setCode(''); setResetKey(k => k + 1); setMsg(null) }} title={t('w2d.coachConnect')}>
         <div style={{ maxWidth: 420, margin: '0 auto', padding: '24px clamp(16px,4vw,32px) 64px', textAlign: 'center' }}>
-          <div style={{ width: 52, height: 52, borderRadius: 16, margin: '0 auto 14px', background: 'color-mix(in srgb, var(--primary) 12%, transparent)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ width: 52, height: 52, borderRadius: 'var(--r-md)', margin: '0 auto 14px', background: 'color-mix(in srgb, var(--primary) 12%, transparent)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M19 8l2 2 3-3" /></svg>
           </div>
           <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 19, fontWeight: 600, color: 'var(--text)', margin: '0 0 5px' }}>{t('w2d.connectToCoach')}</h2>
           <p style={{ fontSize: 13.5, color: 'var(--text-mid)', margin: '0 0 20px', lineHeight: 1.55 }}>{t('w2d.enterCoachCode')}</p>
           <CodeInput key={resetKey} onChange={setCode} onComplete={() => { /* prêt à valider */ }} />
           <button onClick={() => void add()} disabled={code.length !== 8 || busy}
-            style={{ minWidth: 170, marginTop: 18, padding: '12px 22px', borderRadius: 12, border: 'none', background: code.length === 8 && !busy ? 'var(--primary)' : 'var(--bg-alt)', color: code.length === 8 && !busy ? 'var(--on-primary)' : 'var(--text-dim)', fontSize: 14.5, fontWeight: 700, cursor: code.length === 8 && !busy ? 'pointer' : 'not-allowed', fontFamily: 'var(--font-body)', transition: 'background .15s' }}>
+            style={{ minWidth: 170, marginTop: 18, padding: '12px 22px', borderRadius: 'var(--r-md)', border: 'none', background: code.length === 8 && !busy ? 'var(--primary)' : 'var(--bg-alt)', color: code.length === 8 && !busy ? 'var(--on-primary)' : 'var(--text-dim)', fontSize: 14.5, fontWeight: 700, cursor: code.length === 8 && !busy ? 'pointer' : 'not-allowed', fontFamily: 'var(--font-body)', transition: 'background .15s' }}>
             {busy ? t('w2d.connecting') : t('w2d.connect')}
           </button>
           {msg && <p style={{ fontSize: 13, color: msg.ok ? '#22c55e' : 'var(--danger)', margin: '14px 0 0', fontWeight: 600 }}>{msg.text}</p>}

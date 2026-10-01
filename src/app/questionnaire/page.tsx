@@ -88,9 +88,9 @@ function StatutBadge({ statut }: { statut: Statut }) {
   return (
     <span style={{
       display: 'inline-flex', alignItems: 'center',
-      padding: '3px 8px', borderRadius: 99,
+      padding: '3px 8px', borderRadius: 'var(--r-pill)',
       fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase',
-      fontFamily: 'DM Sans, sans-serif',
+      fontFamily: 'var(--font-body)',
       color: s.color, background: s.bg,
       border: `1px solid ${s.color}44`,
       whiteSpace: 'nowrap',
@@ -105,9 +105,9 @@ function SportBadge({ sport }: { sport: string | null }) {
   return (
     <span style={{
       display: 'inline-flex', alignItems: 'center',
-      padding: '3px 8px', borderRadius: 99,
+      padding: '3px 8px', borderRadius: 'var(--r-pill)',
       fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'capitalize',
-      fontFamily: 'DM Sans, sans-serif',
+      fontFamily: 'var(--font-body)',
       color, background: bg,
       border: `1px solid ${color}33`,
       whiteSpace: 'nowrap',
@@ -122,7 +122,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
     <div style={{ marginBottom: 22 }}>
       <div style={{
         fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase',
-        color: 'var(--text-dim)', fontFamily: 'DM Sans, sans-serif',
+        color: 'var(--text-dim)', fontFamily: 'var(--font-body)',
         marginBottom: 10, paddingBottom: 6,
         borderBottom: '1px solid var(--border)',
       }}>
@@ -137,10 +137,10 @@ function Field({ label, value }: { label: string; value?: string | number | null
   if (value === null || value === undefined || value === '') return null
   return (
     <div style={{ marginBottom: 10 }}>
-      <div style={{ fontSize: 10, color: 'var(--text-dim)', fontFamily: 'DM Sans, sans-serif', marginBottom: 2 }}>
+      <div style={{ fontSize: 10, color: 'var(--text-dim)', fontFamily: 'var(--font-body)', marginBottom: 2 }}>
         {label}
       </div>
-      <div style={{ fontSize: 13, color: 'var(--text)', fontFamily: 'DM Sans, sans-serif', lineHeight: 1.5 }}>
+      <div style={{ fontSize: 13, color: 'var(--text)', fontFamily: 'var(--font-body)', lineHeight: 1.5 }}>
         {value}
       </div>
     </div>
@@ -154,7 +154,7 @@ function BoolRow({ label, value }: { label: string; value: boolean }) {
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       padding: '7px 0',
       borderBottom: '1px solid var(--border)',
-      fontSize: 12, fontFamily: 'DM Sans, sans-serif',
+      fontSize: 12, fontFamily: 'var(--font-body)',
       color: value ? 'var(--text)' : 'var(--text-dim)',
     }}>
       <span>{label}</span>
@@ -173,7 +173,7 @@ function SkeletonRow() {
   return (
     <div style={{ display: 'grid', gridTemplateColumns: COL, gap: 12, padding: '14px 16px', borderBottom: '1px solid var(--border)', alignItems: 'center' }}>
       {[160, 120, 80, 80, 130, 70, 70].map((w, i) => (
-        <div key={i} style={{ height: 13, borderRadius: 6, background: 'var(--bg-card2)', width: w, maxWidth: '100%', animation: 'shimmer 1.6s ease-in-out infinite' }} />
+        <div key={i} style={{ height: 13, borderRadius: 'var(--r-sm)', background: 'var(--bg-card2)', width: w, maxWidth: '100%', animation: 'shimmer 1.6s ease-in-out infinite' }} />
       ))}
     </div>
   )
@@ -225,7 +225,7 @@ function DetailPanel({
           <button
             onClick={onClose}
             style={{
-              width: 32, height: 32, borderRadius: 8, flexShrink: 0,
+              width: 32, height: 32, borderRadius: 'var(--r-sm)', flexShrink: 0,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               background: 'var(--bg-card2)', border: '1px solid var(--border)',
               cursor: 'pointer', color: 'var(--text-mid)',
@@ -236,7 +236,7 @@ function DetailPanel({
             </svg>
           </button>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontFamily: 'Syne, sans-serif', fontWeight: 700, fontSize: 16, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            <div style={{ fontFamily: 'var(--font-body)', fontWeight: 700, fontSize: 16, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {q.prenom} {q.nom}
             </div>
             <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 2 }}>
@@ -251,7 +251,7 @@ function DetailPanel({
 
           {/* Boutons statut */}
           <div style={{ marginBottom: 24 }}>
-            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-dim)', fontFamily: 'DM Sans, sans-serif', marginBottom: 8 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-dim)', fontFamily: 'var(--font-body)', marginBottom: 8 }}>
               {t('onboarding.changeStatus')}
             </div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -263,9 +263,9 @@ function DetailPanel({
                     onClick={() => onStatut(key)}
                     disabled={saving || active}
                     style={{
-                      padding: '6px 14px', borderRadius: 8, cursor: active ? 'default' : 'pointer',
+                      padding: '6px 14px', borderRadius: 'var(--r-sm)', cursor: active ? 'default' : 'pointer',
                       fontSize: 12, fontWeight: active ? 700 : 400,
-                      fontFamily: 'DM Sans, sans-serif',
+                      fontFamily: 'var(--font-body)',
                       color: active ? s.color : 'var(--text-mid)',
                       background: active ? s.bg : 'transparent',
                       border: `1px solid ${active ? s.color + '55' : 'var(--border)'}`,
@@ -306,22 +306,22 @@ function DetailPanel({
             <Section title={t('onboarding.sectionOtherRaces')}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {q.autres_courses.map((c, i) => (
-                  <div key={i} style={{ padding: '8px 12px', borderRadius: 8, background: 'var(--bg-card2)', border: '1px solid var(--border)' }}>
+                  <div key={i} style={{ padding: '8px 12px', borderRadius: 'var(--r-sm)', background: 'var(--bg-card2)', border: '1px solid var(--border)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 }}>
-                      <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)', fontFamily: 'DM Sans, sans-serif' }}>{c.nom}</span>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)', fontFamily: 'var(--font-body)' }}>{c.nom}</span>
                       {c.importance && (
                         <span style={{
                           fontSize: 10, fontWeight: 700,
                           color: c.importance === 'A' ? '#ef4444' : c.importance === 'B' ? '#f97316' : '#22c55e',
                           background: c.importance === 'A' ? 'rgba(239,68,68,0.1)' : c.importance === 'B' ? 'rgba(249,115,22,0.1)' : 'rgba(34,197,94,0.1)',
                           padding: '2px 7px', borderRadius: 4,
-                          fontFamily: 'DM Sans, sans-serif',
+                          fontFamily: 'var(--font-body)',
                         }}>
                           {c.importance}
                         </span>
                       )}
                     </div>
-                    <div style={{ fontSize: 11, color: 'var(--text-dim)', fontFamily: 'DM Mono, monospace' }}>
+                    <div style={{ fontSize: 11, color: 'var(--text-dim)', fontFamily: 'var(--font-body)' }}>
                       {fmtDate(c.date)}{c.temps_vise ? ` · ${c.temps_vise}` : ''}
                     </div>
                   </div>
@@ -335,12 +335,12 @@ function DetailPanel({
             <Field label={t('onboarding.trainingHoursPerWeek')} value={q.heures_par_semaine ? `${q.heures_par_semaine}h` : null} />
             {q.jours_disponibles?.length > 0 && (
               <div style={{ marginBottom: 10 }}>
-                <div style={{ fontSize: 10, color: 'var(--text-dim)', fontFamily: 'DM Sans, sans-serif', marginBottom: 6 }}>
+                <div style={{ fontSize: 10, color: 'var(--text-dim)', fontFamily: 'var(--font-body)', marginBottom: 6 }}>
                   {t('onboarding.availableDays')}
                 </div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
                   {q.jours_disponibles.map(j => (
-                    <span key={j} style={{ padding: '3px 9px', borderRadius: 6, background: 'rgba(6,182,212,0.1)', color: 'var(--primary)', fontSize: 11, fontWeight: 600, fontFamily: 'DM Sans, sans-serif', border: '1px solid rgba(6,182,212,0.2)' }}>
+                    <span key={j} style={{ padding: '3px 9px', borderRadius: 'var(--r-sm)', background: 'rgba(6,182,212,0.1)', color: 'var(--primary)', fontSize: 11, fontWeight: 600, fontFamily: 'var(--font-body)', border: '1px solid rgba(6,182,212,0.2)' }}>
                       {j}
                     </span>
                   ))}
@@ -379,7 +379,7 @@ function DetailPanel({
           {/* Infos complémentaires */}
           {q.infos_complementaires && (
             <Section title={t('onboarding.sectionAdditionalInfo')}>
-              <div style={{ fontSize: 13, color: 'var(--text)', fontFamily: 'DM Sans, sans-serif', lineHeight: 1.65, background: 'var(--bg-card2)', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--border)' }}>
+              <div style={{ fontSize: 13, color: 'var(--text)', fontFamily: 'var(--font-body)', lineHeight: 1.65, background: 'var(--bg-card2)', padding: '10px 12px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)' }}>
                 {q.infos_complementaires}
               </div>
             </Section>
@@ -393,9 +393,9 @@ function DetailPanel({
               placeholder={t('onboarding.notesPlaceholder')}
               rows={4}
               style={{
-                width: '100%', padding: '10px 12px', borderRadius: 8,
+                width: '100%', padding: '10px 12px', borderRadius: 'var(--r-sm)',
                 background: 'var(--bg-card2)', border: '1px solid var(--border)',
-                color: 'var(--text)', fontSize: 13, fontFamily: 'DM Sans, sans-serif',
+                color: 'var(--text)', fontSize: 13, fontFamily: 'var(--font-body)',
                 resize: 'vertical', outline: 'none', boxSizing: 'border-box', lineHeight: 1.6,
                 transition: 'border-color 0.14s',
               }}
@@ -406,11 +406,11 @@ function DetailPanel({
               onClick={onSaveNotes}
               disabled={saving}
               style={{
-                marginTop: 8, padding: '8px 18px', borderRadius: 8,
+                marginTop: 8, padding: '8px 18px', borderRadius: 'var(--r-sm)',
                 background: saving ? 'var(--bg-card2)' : 'var(--primary)',
                 color: saving ? 'var(--text-dim)' : '#000',
                 border: 'none', cursor: saving ? 'not-allowed' : 'pointer',
-                fontSize: 12, fontWeight: 700, fontFamily: 'DM Sans, sans-serif',
+                fontSize: 12, fontWeight: 700, fontFamily: 'var(--font-body)',
                 transition: 'all 0.14s',
               }}
             >
@@ -508,12 +508,12 @@ export default function QuestionnairePage() {
         }
       `}</style>
 
-      <div style={{ padding: '28px 24px', minHeight: '100vh', background: 'var(--bg)', fontFamily: 'DM Sans, sans-serif' }}>
+      <div style={{ padding: '28px 24px', minHeight: '100vh', background: 'var(--bg)', fontFamily: 'var(--font-body)' }}>
 
         {/* ── Header ── */}
         <div style={{ display: 'flex', alignItems: 'flex-end', gap: 14, marginBottom: 24, flexWrap: 'wrap' }}>
           <div>
-            <h1 style={{ fontFamily: 'Syne, sans-serif', fontWeight: 700, fontSize: 26, color: 'var(--text)', margin: 0, lineHeight: 1.2 }}>
+            <h1 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 26, color: 'var(--text)', margin: 0, lineHeight: 1.2 }}>
               {t('onboarding.applicationsTitle')}
             </h1>
             <p style={{ color: 'var(--text-dim)', fontSize: 13, margin: '4px 0 0' }}>
@@ -522,7 +522,7 @@ export default function QuestionnairePage() {
           </div>
           {countNouveau > 0 && (
             <span style={{
-              padding: '4px 11px', borderRadius: 99, marginBottom: 3,
+              padding: '4px 11px', borderRadius: 'var(--r-pill)', marginBottom: 3,
               background: 'rgba(6,182,212,0.12)', color: 'var(--primary)',
               fontSize: 12, fontWeight: 700,
               border: '1px solid rgba(6,182,212,0.3)',
@@ -547,7 +547,7 @@ export default function QuestionnairePage() {
               value={search}
               onChange={e => setSearch(e.target.value)}
               style={{
-                width: '100%', height: 36, paddingLeft: 32, paddingRight: 12, borderRadius: 8,
+                width: '100%', height: 36, paddingLeft: 32, paddingRight: 12, borderRadius: 'var(--r-sm)',
                 background: 'var(--bg-card)', border: '1px solid var(--border)',
                 color: 'var(--text)', fontSize: 13, outline: 'none', boxSizing: 'border-box',
               }}
@@ -559,7 +559,7 @@ export default function QuestionnairePage() {
             value={filterStatut}
             onChange={e => setFilterStatut(e.target.value as Statut | '')}
             style={{
-              height: 36, padding: '0 28px 0 10px', borderRadius: 8,
+              height: 36, padding: '0 28px 0 10px', borderRadius: 'var(--r-sm)',
               background: 'var(--bg-card)', border: '1px solid var(--border)',
               color: 'var(--text)', fontSize: 13, cursor: 'pointer', outline: 'none',
               appearance: 'none',
@@ -578,7 +578,7 @@ export default function QuestionnairePage() {
             value={filterSport}
             onChange={e => setFilterSport(e.target.value)}
             style={{
-              height: 36, padding: '0 28px 0 10px', borderRadius: 8,
+              height: 36, padding: '0 28px 0 10px', borderRadius: 'var(--r-sm)',
               background: 'var(--bg-card)', border: '1px solid var(--border)',
               color: 'var(--text)', fontSize: 13, cursor: 'pointer', outline: 'none',
               appearance: 'none',
@@ -596,7 +596,7 @@ export default function QuestionnairePage() {
         </div>
 
         {/* ── Tableau ── */}
-        <div style={{ background: 'var(--bg-card)', borderRadius: 12, border: '1px solid var(--border)', overflow: 'hidden' }}>
+        <div style={{ background: 'var(--bg-card)', borderRadius: 'var(--r-md)', border: '1px solid var(--border)', overflow: 'hidden' }}>
 
           {/* En-têtes */}
           <div style={{
@@ -650,7 +650,7 @@ export default function QuestionnairePage() {
             >
               {/* Athlète */}
               <div>
-                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', fontFamily: 'DM Sans, sans-serif' }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', fontFamily: 'var(--font-body)' }}>
                   {q.prenom} {q.nom}
                 </div>
               </div>
@@ -674,14 +674,14 @@ export default function QuestionnairePage() {
                   {q.objectif_course ?? '—'}
                 </div>
                 {q.objectif_date && (
-                  <div style={{ fontSize: 10, color: 'var(--text-dim)', marginTop: 2, fontFamily: 'DM Mono, monospace' }}>
+                  <div style={{ fontSize: 10, color: 'var(--text-dim)', marginTop: 2, fontFamily: 'var(--font-body)' }}>
                     {fmtDate(q.objectif_date)}
                   </div>
                 )}
               </div>
 
               {/* Date soumission */}
-              <div style={{ fontSize: 11, color: 'var(--text-dim)', fontFamily: 'DM Mono, monospace', whiteSpace: 'nowrap' }}>
+              <div style={{ fontSize: 11, color: 'var(--text-dim)', fontFamily: 'var(--font-body)', whiteSpace: 'nowrap' }}>
                 {fmtDate(q.created_at)}
               </div>
 

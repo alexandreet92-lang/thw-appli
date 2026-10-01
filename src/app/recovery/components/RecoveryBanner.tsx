@@ -33,7 +33,7 @@ export default function RecoveryBanner({ sourcesRef }: Props) {
   return (
     <div style={{
       display: 'flex', alignItems: 'center', gap: 12,
-      padding: '12px 16px', borderRadius: 10,
+      padding: '12px 16px', borderRadius: 'var(--r-sm)',
       background: 'rgba(59,143,212,0.07)',
       borderLeft: '3px solid #3B8FD4',
       flexWrap: 'wrap' as const,
@@ -47,7 +47,7 @@ export default function RecoveryBanner({ sourcesRef }: Props) {
         <button
           onClick={scrollToSources}
           style={{
-            padding: '5px 13px', borderRadius: 7,
+            padding: '5px 13px', borderRadius: 'var(--r-sm)',
             background: 'rgba(59,143,212,0.13)', border: '1px solid rgba(59,143,212,0.35)',
             color: '#3B8FD4', fontSize: 11, fontWeight: 600, cursor: 'pointer',
           }}
@@ -57,7 +57,7 @@ export default function RecoveryBanner({ sourcesRef }: Props) {
         <button
           onClick={dismiss}
           style={{
-            padding: '5px 8px', borderRadius: 7,
+            padding: '5px 8px', borderRadius: 'var(--r-sm)',
             background: 'transparent', border: 'none',
             color: 'var(--text-dim)', fontSize: 14, cursor: 'pointer',
           }}

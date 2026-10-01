@@ -54,7 +54,7 @@ export function PmcChart({ points, height = 240 }: { points: PmcPoint[]; height?
         {/* grille panneau haut */}
         {Array.from({ length: ticks + 1 }, (_, k) => {
           const v = (ctlMax / ticks) * k
-          return <g key={k}><line x1={padL} y1={yMain(v)} x2={W - padR} y2={yMain(v)} stroke={INK.grid} strokeWidth={1} /><text x={padL - 5} y={yMain(v) + 3} textAnchor="end" style={{ fontSize: 9, fill: INK.dim }}>{Math.round(v)}</text></g>
+          return <g key={k}><line x1={padL} y1={yMain(v)} x2={W - padR} y2={yMain(v)} stroke={INK.grid} strokeWidth={1} /><text x={padL - 5} y={yMain(v) + 3} textAnchor="end" style={{ fontSize: 10, fill: INK.dim }}>{Math.round(v)}</text></g>
         })}
         <path d={ctlArea} fill="url(#ctlF)" />
         <path d={ctlLine} fill="none" stroke={LOAD.ctl} strokeWidth={2.4} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
@@ -64,11 +64,11 @@ export function PmcChart({ points, height = 240 }: { points: PmcPoint[]; height?
         <line x1={padL} y1={yTsb(0)} x2={W - padR} y2={yTsb(0)} stroke={INK.grid} strokeWidth={1} />
         <path d={tsbPos} fill={LOAD.tsbPos} opacity={0.7} />
         <path d={tsbNeg} fill={LOAD.tsbNeg} opacity={0.7} />
-        <text x={padL - 5} y={yTsb(0) + 3} textAnchor="end" style={{ fontSize: 9, fill: INK.dim }}>0</text>
+        <text x={padL - 5} y={yTsb(0) + 3} textAnchor="end" style={{ fontSize: 10, fill: INK.dim }}>0</text>
         <text x={W - padR} y={tsbTop - 2} textAnchor="end" style={{ fontSize: 8.5, fill: INK.dim, fontWeight: 700, letterSpacing: '0.05em' }}>TSB</text>
 
         {/* axe X (dates) */}
-        {[0, Math.floor(n / 2), n - 1].map(i => <text key={i} x={x(i)} y={height - 4} textAnchor={i === 0 ? 'start' : i === n - 1 ? 'end' : 'middle'} style={{ fontSize: 9, fill: INK.dim }}>{fmtDateShort(points[i].date)}</text>)}
+        {[0, Math.floor(n / 2), n - 1].map(i => <text key={i} x={x(i)} y={height - 4} textAnchor={i === 0 ? 'start' : i === n - 1 ? 'end' : 'middle'} style={{ fontSize: 10, fill: INK.dim }}>{fmtDateShort(points[i].date)}</text>)}
 
         {/* crosshair */}
         {hi != null && (

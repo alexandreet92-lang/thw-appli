@@ -49,7 +49,7 @@ export default function HomeTrainerIntervals({ program, elapsedSec, ftp, isDark 
   return (
     <div style={{ width: '100%', maxWidth: 360 }}>
       {/* Progress bar */}
-      <div style={{ width: '100%', height: 16, borderRadius: 8, overflow: 'hidden', display: 'flex', marginBottom: 12 }}>
+      <div style={{ width: '100%', height: 16, borderRadius: 'var(--r-sm)', overflow: 'hidden', display: 'flex', marginBottom: 12 }}>
         {program.intervals.map((iv, i) => {
           const widthPct = (iv.duration / program.duration) * 100
           const isActive = i === curIdx
@@ -65,7 +65,7 @@ export default function HomeTrainerIntervals({ program, elapsedSec, ftp, isDark 
       </div>
 
       {/* Current interval info */}
-      <div style={{ background: surf, borderRadius: 16, padding: '16px 20px', marginBottom: 12 }}>
+      <div style={{ background: surf, borderRadius: 'var(--r-md)', padding: '16px 20px', marginBottom: 12 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
           <div style={{ width: 10, height: 10, borderRadius: '50%', background: getZoneColor(cur.ftpPercent), flexShrink: 0 }} />
           <p style={{ fontSize: 12, color: dim, textTransform: 'uppercase', letterSpacing: '0.08em', margin: 0 }}>{t(getZoneLabelKey(cur.ftpPercent))}</p>
@@ -87,7 +87,7 @@ export default function HomeTrainerIntervals({ program, elapsedSec, ftp, isDark 
 
       {/* Next interval */}
       {next && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', background: surf, borderRadius: 12, opacity: 0.7 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', background: surf, borderRadius: 'var(--r-md)', opacity: 0.7 }}>
           <div style={{ width: 8, height: 8, borderRadius: '50%', background: getZoneColor(next.ftpPercent), flexShrink: 0 }} />
           <p style={{ fontSize: 13, color: text, margin: 0 }}>{t('record.homeTrainerNext')} {next.nameKey ? t(next.nameKey) : next.name}</p>
           <p style={{ fontSize: 13, color: dim, margin: '0 0 0 auto' }}>{Math.round(ftp * next.ftpPercent / 100)}w · {fmt(next.duration)}</p>

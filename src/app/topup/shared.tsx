@@ -105,10 +105,10 @@ export function Header() {
       <div className="topup-wrap" style={{ paddingTop: 13, paddingBottom: 13, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <a href={APP_URL} style={{ display: 'flex', alignItems: 'center', gap: 11, color: 'var(--text)', textDecoration: 'none' }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.png" alt="Hybrid Training" style={{ width: 32, height: 32, borderRadius: 9 }} />
+          <img src="/logo.png" alt="Hybrid Training" style={{ width: 32, height: 32, borderRadius: 'var(--r-sm)' }} />
           <span style={{ fontFamily: "'Syne', sans-serif", fontSize: 17, fontWeight: 700, letterSpacing: '-0.02em' }}>Hybrid Training</span>
         </a>
-        <a href={APP_URL} className="topup-back" style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '9px 16px', borderRadius: 10, background: 'var(--bg-card)', border: '1px solid var(--border-mid)', color: 'var(--text-mid)', fontSize: 13, fontWeight: 500, textDecoration: 'none' }}>
+        <a href={APP_URL} className="topup-back" style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '9px 16px', borderRadius: 'var(--r-sm)', background: 'var(--bg-card)', border: '1px solid var(--border-mid)', color: 'var(--text-mid)', fontSize: 13, fontWeight: 500, textDecoration: 'none' }}>
           <span className="hdr-back-txt">{t('misc.backToApp')}</span>
           <ArrowRight size={14} />
         </a>
@@ -129,7 +129,7 @@ export function Footer() {
         </div>
         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
           {['Stripe', 'Visa', 'Mastercard', 'Apple Pay', 'G Pay'].map(m => (
-            <span key={m} style={{ fontFamily: "'DM Mono', monospace", fontSize: 10.5, color: 'var(--text-dim)', padding: '4px 9px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--bg-card)' }}>{m}</span>
+            <span key={m} style={{ fontFamily: "'DM Mono', monospace", fontSize: 10.5, color: 'var(--text-dim)', padding: '4px 9px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-card)' }}>{m}</span>
           ))}
         </div>
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 12, color: 'var(--text-dim)' }}>

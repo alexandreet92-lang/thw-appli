@@ -93,15 +93,15 @@ export default function FoodSearch({ onAdd, onBarcode }: Props) {
   }
 
   const macros = selected ? calcMacros(selected, qty) : null
-  const btnBase: CSSProperties = { width: 32, height: 32, borderRadius: 8, border: '1px solid var(--border)', background: 'none', color: 'var(--text)', cursor: 'pointer', fontSize: 18, lineHeight: '1' }
+  const btnBase: CSSProperties = { width: 32, height: 32, borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'none', color: 'var(--text)', cursor: 'pointer', fontSize: 18, lineHeight: '1' }
 
   return (
     <div style={{ position: 'relative' }}>
       <div style={{ display: 'flex', gap: 8 }}>
         <input value={query} onChange={e => handleInput(e.target.value)} placeholder={t('w2b.searchFood')}
-          style={{ flex: 1, background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', fontSize: 13, color: 'var(--text)', fontFamily: 'DM Sans,sans-serif' }} />
+          style={{ flex: 1, background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: 'var(--r-sm)', padding: '8px 12px', fontSize: 13, color: 'var(--text)', fontFamily: 'var(--font-body)' }} />
         <button onClick={onBarcode} title={t('w2b.scanBarcode')}
-          style={{ width: 40, height: 40, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-card2)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          style={{ width: 40, height: 40, borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-card2)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
           <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
             <rect x="2"  y="3" width="2" height="12" fill="var(--text-dim)" /><rect x="5"  y="3" width="1" height="12" fill="var(--text-dim)" />
             <rect x="7"  y="3" width="2" height="12" fill="var(--text-dim)" /><rect x="10" y="3" width="1" height="12" fill="var(--text-dim)" />
@@ -111,7 +111,7 @@ export default function FoodSearch({ onAdd, onBarcode }: Props) {
       </div>
       {loading && <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 4, paddingLeft: 4 }}>{t('w2b.searching')}</div>}
       {open && results.length > 0 && (
-        <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 10, zIndex: 50, maxHeight: 220, overflowY: 'auto' }}>
+        <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-sm)', zIndex: 50, maxHeight: 220, overflowY: 'auto' }}>
           {results.map(food => (
             <button key={food.id} onClick={() => pick(food)}
               style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: 'none', border: 'none', borderBottom: '1px solid var(--border)', cursor: 'pointer', textAlign: 'left' }}>
@@ -126,7 +126,7 @@ export default function FoodSearch({ onAdd, onBarcode }: Props) {
         </div>
       )}
       {selected && macros && (
-        <div style={{ marginTop: 8, background: 'var(--bg-card2)', borderRadius: 10, padding: '10px 12px' }}>
+        <div style={{ marginTop: 8, background: 'var(--bg-card2)', borderRadius: 'var(--r-sm)', padding: '10px 12px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
             <div>
               <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)' }}>{selected.name}</div>
@@ -136,7 +136,7 @@ export default function FoodSearch({ onAdd, onBarcode }: Props) {
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
             <button onClick={() => setQty(q => Math.max(10, q - 10))} style={btnBase}>-</button>
-            <div style={{ flex: 1, textAlign: 'center', fontFamily: 'DM Mono,monospace', fontWeight: 700, fontSize: 15, color: 'var(--text)' }}>{qty} g</div>
+            <div style={{ flex: 1, textAlign: 'center', fontFamily: 'var(--font-body)', fontWeight: 700, fontSize: 15, color: 'var(--text)' }}>{qty} g</div>
             <button onClick={() => setQty(q => q + 10)} style={btnBase}>+</button>
           </div>
           <div style={{ display: 'flex', gap: 12, fontSize: 11, color: 'var(--text-dim)', marginBottom: 10 }}>
@@ -144,7 +144,7 @@ export default function FoodSearch({ onAdd, onBarcode }: Props) {
             <span>P {macros.prot}g</span><span>G {macros.gluc}g</span><span>L {macros.lip}g</span>
           </div>
           <button onClick={add}
-            style={{ width: '100%', padding: '8px 0', borderRadius: 8, border: 'none', background: 'linear-gradient(90deg,#06B6D4,#3B82F6)', color: '#fff', fontWeight: 700, fontSize: 12, cursor: 'pointer', fontFamily: 'Syne,sans-serif' }}>
+            style={{ width: '100%', padding: '8px 0', borderRadius: 'var(--r-sm)', border: 'none', background: 'linear-gradient(90deg,#06B6D4,#3B82F6)', color: '#fff', fontWeight: 700, fontSize: 12, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
             {t('w2b.add')}
           </button>
         </div>

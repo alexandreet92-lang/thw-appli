@@ -36,7 +36,7 @@ export default function GpxRouteSvg({ trace, width = 200, height = 110, color = 
     <svg
       viewBox={`0 0 ${width} ${height}`}
       width={width} height={height}
-      style={{ display: 'block', borderRadius: 6, background: '#111827' }}
+      style={{ display: 'block', borderRadius: 'var(--r-sm)', background: '#111827' }}
     >
       <polyline points={points} fill="none" stroke={color} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
       {/* Start dot */}

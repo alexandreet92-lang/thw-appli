@@ -14,25 +14,25 @@ export default function SectionTrainingLoad({ data }: Props) {
   const maxH  = Math.max(...data.breakdown.map(s=>s.hours), 0.1)
 
   return (
-    <div className="card-enter card-enter-1" style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:20,padding:24,boxShadow:'var(--shadow-card)',marginBottom:16 }}>
+    <div className="card-enter card-enter-1" style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius: 'var(--r-lg)',padding:24,boxShadow:'var(--shadow-card)',marginBottom:16 }}>
       <div style={{ marginBottom:18 }}>
         <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.1em',color:'var(--text-dim)',margin:0 }}>Training Load</p>
-        <h2 style={{ fontFamily:'Syne,sans-serif',fontSize:18,fontWeight:700,margin:'3px 0 0' }}>{t('recovery.trainingLoad.title')}</h2>
+        <h2 style={{ fontFamily: 'var(--font-display)',fontSize:18,fontWeight:700,margin:'3px 0 0' }}>{t('recovery.trainingLoad.title')}</h2>
       </div>
 
       {/* KPIs */}
       <div style={{ display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(120px,1fr))',gap:10,marginBottom:20 }}>
-        <div style={{ padding:'12px',borderRadius:12,background:'var(--bg-card2)',border:'1px solid var(--border)',textAlign:'center' as const }}>
-          <p style={{ fontFamily:'Syne,sans-serif',fontSize:26,fontWeight:800,color:'var(--primary)',margin:0,lineHeight:1 }}>{data.thisWeekCount}</p>
-          <p style={{ fontSize:9,color:'var(--text-dim)',margin:'4px 0 0',textTransform:'uppercase' as const,letterSpacing:'0.06em' }}>{t('recovery.dtype.activities')}</p>
-          <p style={{ fontSize:9,color:'var(--text-dim)',margin:'2px 0 0',opacity:0.7 }}>{t('recovery.trainingLoad.thisWeek')}</p>
+        <div style={{ padding:'12px',borderRadius: 'var(--r-md)',background:'var(--bg-card2)',border:'1px solid var(--border)',textAlign:'center' as const }}>
+          <p style={{ fontFamily: 'var(--font-display)',fontSize:26,fontWeight:800,color:'var(--primary)',margin:0,lineHeight:1 }}>{data.thisWeekCount}</p>
+          <p style={{ fontSize: 10,color:'var(--text-dim)',margin:'4px 0 0',textTransform:'uppercase' as const,letterSpacing:'0.06em' }}>{t('recovery.dtype.activities')}</p>
+          <p style={{ fontSize: 10,color:'var(--text-dim)',margin:'2px 0 0',opacity:0.7 }}>{t('recovery.trainingLoad.thisWeek')}</p>
         </div>
-        <div style={{ padding:'12px',borderRadius:12,background:'var(--bg-card2)',border:'1px solid var(--border)',textAlign:'center' as const }}>
-          <p style={{ fontFamily:'Syne,sans-serif',fontSize:26,fontWeight:800,color:'#22c55e',margin:0,lineHeight:1 }}>
+        <div style={{ padding:'12px',borderRadius: 'var(--r-md)',background:'var(--bg-card2)',border:'1px solid var(--border)',textAlign:'center' as const }}>
+          <p style={{ fontFamily: 'var(--font-display)',fontSize:26,fontWeight:800,color:'#22c55e',margin:0,lineHeight:1 }}>
             {data.thisWeekHours.toFixed(1)}<span style={{ fontSize:12,fontWeight:400,color:'var(--text-dim)' }}>h</span>
           </p>
-          <p style={{ fontSize:9,color:'var(--text-dim)',margin:'4px 0 0',textTransform:'uppercase' as const,letterSpacing:'0.06em' }}>{t('recovery.metric.volume')}</p>
-          <p style={{ fontSize:9,margin:'2px 0 0',fontWeight:600,
+          <p style={{ fontSize: 10,color:'var(--text-dim)',margin:'4px 0 0',textTransform:'uppercase' as const,letterSpacing:'0.06em' }}>{t('recovery.metric.volume')}</p>
+          <p style={{ fontSize: 10,margin:'2px 0 0',fontWeight:600,
             color:delta>=0?'#22c55e':'#ef4444' }}>
             {delta>=0?'+':''}{delta.toFixed(1)}h {t('recovery.trainingLoad.vsPrevWeek')}
           </p>
@@ -51,10 +51,10 @@ export default function SectionTrainingLoad({ data }: Props) {
                 <div key={s.sport}>
                   <div style={{ display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:4 }}>
                     <span style={{ fontSize:11,color:'var(--text-mid)',fontWeight:500 }}>{t(sportLabelKey(s.sport))}</span>
-                    <span style={{ fontSize:11,fontFamily:'DM Mono,monospace',color:'var(--text-dim)' }}>{s.hours.toFixed(1)}h</span>
+                    <span style={{ fontSize:11,fontFamily: 'var(--font-body)',color:'var(--text-dim)' }}>{s.hours.toFixed(1)}h</span>
                   </div>
-                  <div style={{ height:5,borderRadius:99,background:'var(--border)',overflow:'hidden' }}>
-                    <div style={{ height:'100%',width:`${pct}%`,background:col,borderRadius:99,transition:'width 0.6s' }}/>
+                  <div style={{ height:5,borderRadius: 'var(--r-pill)',background:'var(--border)',overflow:'hidden' }}>
+                    <div style={{ height:'100%',width:`${pct}%`,background:col,borderRadius: 'var(--r-pill)',transition:'width 0.6s' }}/>
                   </div>
                 </div>
               )

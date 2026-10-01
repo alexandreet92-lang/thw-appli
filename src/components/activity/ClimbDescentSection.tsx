@@ -177,11 +177,11 @@ function ClimbDetailSheet({ segment, index, onClose }: { segment: ClimbSegment; 
         maxHeight: '80vh', overflowY: 'auto', padding: 16, paddingBottom: 28,
         boxShadow: '0 -10px 40px rgba(0,0,0,0.3)', maxWidth: 600, margin: '0 auto',
         animation: `${closing ? 'cdDown 0.28s ease-in forwards' : 'cdUp 0.3s cubic-bezier(0.4,0,0.2,1)'}`,
-        fontFamily: 'Inter, system-ui, sans-serif',
+        fontFamily: 'var(--font-body)',
       }}>
         <div style={{ width: 40, height: 4, borderRadius: 2, background: 'var(--text-dim)', opacity: 0.4, margin: '0 auto 14px' }} />
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-          <span style={{ background: color, color: '#fff', fontSize: 11, fontWeight: 800, padding: '3px 8px', borderRadius: 6, letterSpacing: '0.04em' }}>
+          <span style={{ background: color, color: '#fff', fontSize: 11, fontWeight: 800, padding: '3px 8px', borderRadius: 'var(--r-sm)', letterSpacing: '0.04em' }}>
             {segment.category === 'HC' ? 'HC' : `CAT ${segment.category}`}
           </span>
           <span style={{ fontSize: 17, fontWeight: 700, color: 'var(--text)' }}>
@@ -279,21 +279,21 @@ export function ClimbDescentSection({ altitude, distance, time, velocity, heartr
 
       {/* Résumé */}
       <div style={{ display: 'flex', gap: 12, margin: '12px 0' }}>
-        <div style={{ flex: 1, textAlign: 'center', padding: '10px 0', background: 'var(--bg-card2)', borderRadius: 10 }}>
+        <div style={{ flex: 1, textAlign: 'center', padding: '10px 0', background: 'var(--bg-card2)', borderRadius: 'var(--r-sm)' }}>
           <div style={{ fontSize: 24, fontWeight: 800, color: '#dc2626', fontVariantNumeric: 'tabular-nums' }}>{climbs.length}</div>
           <div style={{ fontSize: 10, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{t('activities.climbs')}</div>
         </div>
-        <div style={{ flex: 1, textAlign: 'center', padding: '10px 0', background: 'var(--bg-card2)', borderRadius: 10 }}>
+        <div style={{ flex: 1, textAlign: 'center', padding: '10px 0', background: 'var(--bg-card2)', borderRadius: 'var(--r-sm)' }}>
           <div style={{ fontSize: 24, fontWeight: 800, color: '#2563eb', fontVariantNumeric: 'tabular-nums' }}>{descents.length}</div>
           <div style={{ fontSize: 10, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{t('activities.descents')}</div>
         </div>
       </div>
 
       {/* Onglets */}
-      <div style={{ display: 'inline-flex', gap: 2, padding: 3, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-card2)', marginBottom: 10 }}>
+      <div style={{ display: 'inline-flex', gap: 2, padding: 3, borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-card2)', marginBottom: 10 }}>
         {([['climbs', `${t('activities.climbs')} (${climbs.length})`], ['descents', `${t('activities.descents')} (${descents.length})`]] as const).map(([id, lbl]) => (
           <button key={id} onClick={() => setTab(id)} style={{
-            padding: '6px 12px', borderRadius: 5, border: 'none', cursor: 'pointer', fontSize: 11,
+            padding: '6px 12px', borderRadius: 'var(--r-sm)', border: 'none', cursor: 'pointer', fontSize: 11,
             fontWeight: tab === id ? 700 : 500, fontFamily: 'inherit',
             background: tab === id ? 'var(--bg-card)' : 'transparent',
             color: tab === id ? 'var(--text)' : 'var(--text-dim)',
@@ -308,7 +308,7 @@ export function ClimbDescentSection({ altitude, distance, time, velocity, heartr
             display: 'grid', gridTemplateColumns: '34px 1fr 14px', gap: 10, alignItems: 'center',
             width: '100%', textAlign: 'left', padding: '10px 12px',
             background: 'var(--bg-card)', border: '0.5px solid var(--border)',
-            borderLeft: `4px solid ${segColor(s)}`, borderRadius: 10, cursor: 'pointer',
+            borderLeft: `4px solid ${segColor(s)}`, borderRadius: 'var(--r-sm)', cursor: 'pointer',
             fontFamily: 'inherit', touchAction: 'manipulation',
           }}>
             <span style={{ fontSize: 16, fontWeight: 800, color: segColor(s), textAlign: 'center', fontVariantNumeric: 'tabular-nums' }}>

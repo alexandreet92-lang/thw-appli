@@ -69,9 +69,9 @@ export function Gauge({ value, max }: { value: number; max: number }) {
     return () => cancelAnimationFrame(id)
   }, [pct, reduce])
   return (
-    <div style={{ height: 6, borderRadius: 999, background: 'var(--bg-hover)', overflow: 'hidden' }}>
+    <div style={{ height: 6, borderRadius: 'var(--r-pill)', background: 'var(--bg-hover)', overflow: 'hidden' }}>
       <div style={{
-        height: '100%', width: `${w}%`, borderRadius: 999, background: 'var(--primary)',
+        height: '100%', width: `${w}%`, borderRadius: 'var(--r-pill)', background: 'var(--primary)',
         transition: reduce ? 'none' : 'width 0.9s cubic-bezier(0.4,0,0.2,1)',
       }} />
     </div>

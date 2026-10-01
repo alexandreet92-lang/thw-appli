@@ -263,7 +263,7 @@ export function MobileSheet({
           <div style={{ width: 38, height: 4, borderRadius: 2, background: 'var(--border-mid)', margin: '9px auto 2px' }} />
           {title !== undefined && (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '8px 16px 8px' }}>
-              <span style={{ fontSize: 16, fontWeight: 600, fontFamily: 'DM Sans,sans-serif', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{title}</span>
+              <span style={{ fontSize: 16, fontWeight: 600, fontFamily: 'var(--font-body)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{title}</span>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }} onPointerDown={e => e.stopPropagation()}>
                 {headerAction}
                 <PressPop

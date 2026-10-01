@@ -80,7 +80,7 @@ export default function FreeModeScreen({ sport, onClose, isDark }: Props) {
   }
 
   const content = (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 10002, background: 'var(--bg-card)', display: 'flex', flexDirection: 'column', fontFamily: 'DM Sans, sans-serif', paddingTop: 'env(safe-area-inset-top)' }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 10002, background: 'var(--bg-card)', display: 'flex', flexDirection: 'column', fontFamily: 'var(--font-body)', paddingTop: 'env(safe-area-inset-top)' }}>
 
       {/* Header */}
       <div style={{ height: 52, flexShrink: 0, display: 'flex', alignItems: 'center', padding: '0 16px', borderBottom: '1px solid var(--border)', gap: 10 }}>
@@ -128,12 +128,12 @@ export default function FreeModeScreen({ sport, onClose, isDark }: Props) {
       {/* Bottom controls */}
       <div style={{ padding: '16px 24px', paddingBottom: 'max(env(safe-area-inset-bottom), 24px)', display: 'flex', gap: 12, flexShrink: 0 }}>
         <button onClick={() => setRunning(r => !r)}
-          style={{ flex: 1, height: 52, borderRadius: 16, background: running ? 'var(--bg-card2)' : 'linear-gradient(135deg, #06B6D4, #2563EB)', border: '1px solid var(--border)', color: running ? 'var(--text)' : '#fff', fontSize: 15, fontWeight: 600, cursor: 'pointer' }}>
+          style={{ flex: 1, height: 52, borderRadius: 'var(--r-md)', background: running ? 'var(--bg-card2)' : 'linear-gradient(135deg, #06B6D4, #2563EB)', border: '1px solid var(--border)', color: running ? 'var(--text)' : '#fff', fontSize: 15, fontWeight: 600, cursor: 'pointer' }}>
           {running ? t('record.commonPause') : elapsed === 0 ? t('record.commonStart') : t('record.commonResume')}
         </button>
         {elapsed > 0 && (
           <button onClick={() => { setRunning(false); setShowSave(true) }}
-            style={{ flex: 1, height: 52, borderRadius: 16, background: 'var(--bg-card2)', border: '1px solid var(--border)', color: 'var(--text)', fontSize: 15, fontWeight: 600, cursor: 'pointer' }}>
+            style={{ flex: 1, height: 52, borderRadius: 'var(--r-md)', background: 'var(--bg-card2)', border: '1px solid var(--border)', color: 'var(--text)', fontSize: 15, fontWeight: 600, cursor: 'pointer' }}>
             {t('record.commonFinish')}
           </button>
         )}
@@ -142,12 +142,12 @@ export default function FreeModeScreen({ sport, onClose, isDark }: Props) {
       {/* Confirm close overlay */}
       {confirmClose && (
         <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-          <div style={{ background: 'var(--bg-card)', borderRadius: 20, padding: 24, width: '100%', maxWidth: 320 }}>
+          <div style={{ background: 'var(--bg-card)', borderRadius: 'var(--r-lg)', padding: 24, width: '100%', maxWidth: 320 }}>
             <p style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)', margin: '0 0 8px' }}>{t('record.freeModeQuitConfirm')}</p>
             <p style={{ fontSize: 14, color: 'var(--text-mid)', margin: '0 0 20px' }}>{t('record.freeModeQuitWarning')}</p>
             <div style={{ display: 'flex', gap: 10 }}>
-              <button onClick={() => setConfirmClose(false)} style={{ flex: 1, height: 44, borderRadius: 12, background: 'var(--bg-card2)', border: '1px solid var(--border)', color: 'var(--text)', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>{t('record.commonCancel')}</button>
-              <button onClick={onClose} style={{ flex: 1, height: 44, borderRadius: 12, background: 'var(--danger)', border: 'none', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>{t('record.commonQuit')}</button>
+              <button onClick={() => setConfirmClose(false)} style={{ flex: 1, height: 44, borderRadius: 'var(--r-md)', background: 'var(--bg-card2)', border: '1px solid var(--border)', color: 'var(--text)', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>{t('record.commonCancel')}</button>
+              <button onClick={onClose} style={{ flex: 1, height: 44, borderRadius: 'var(--r-md)', background: 'var(--danger)', border: 'none', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>{t('record.commonQuit')}</button>
             </div>
           </div>
         </div>

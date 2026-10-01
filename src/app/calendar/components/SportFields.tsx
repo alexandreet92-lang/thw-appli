@@ -13,9 +13,9 @@ const RUN_DISTS   = ['5 km','10 km','Semi-marathon','Marathon','Autre']
 const RUN_KM: Record<string, number> = { '5 km':5,'10 km':10,'Semi-marathon':21.1,'Marathon':42.195 }
 const ROW_DISTS   = ['500 m','1000 m','2000 m','5000 m','Autre']
 
-const INP = { width:'100%',boxSizing:'border-box' as const,padding:'10px 12px',borderRadius:10,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:13.5,outline:'none' }
+const INP = { width:'100%',boxSizing:'border-box' as const,padding:'10px 12px',borderRadius: 'var(--r-sm)',border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:13.5,outline:'none' }
 const LBL = { fontSize:10,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.08em',color:'var(--text-dim)',marginBottom:7 }
-const MONO = { ...INP, fontFamily:'DM Mono,monospace', letterSpacing:'0.02em' }
+const MONO = { ...INP, fontFamily: 'var(--font-body)', letterSpacing:'0.02em' }
 const READONLY = { ...MONO, background:'var(--bg-card2)',color:'var(--text-dim)',cursor:'default',borderStyle:'dashed' as const,borderColor:'var(--border-mid)' }
 
 interface SF { pd: Record<string,unknown>; setPd: (v: Record<string,unknown>) => void }
@@ -24,7 +24,7 @@ const set = (pd: Record<string,unknown>, key: string, val: unknown) => ({ ...pd,
 // Pastille douce (sélection = teinte + texte coloré, sans bordure dure) — même
 // langage visuel que les pastilles sport/objectif de la coquille éditeur.
 function chip(on: boolean, color: string): React.CSSProperties {
-  return { padding:'8px 13px',borderRadius:999,border:`1px solid ${on?'transparent':'var(--border)'}`,cursor:'pointer',fontSize:12,fontWeight:on?700:600,
+  return { padding:'8px 13px',borderRadius: 'var(--r-pill)',border:`1px solid ${on?'transparent':'var(--border)'}`,cursor:'pointer',fontSize:12,fontWeight:on?700:600,
     background:on?`color-mix(in srgb, ${color} 15%, transparent)`:'transparent',color:on?color:'var(--text-mid)',transition:'background .15s, color .15s' }
 }
 

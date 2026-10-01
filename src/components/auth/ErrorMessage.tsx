@@ -7,7 +7,7 @@ export function ErrorMessage({ error }: Props) {
   return (
     <div style={{
       display: 'flex', alignItems: 'flex-start', gap: 10,
-      padding: '12px 14px', borderRadius: 12, marginTop: 4,
+      padding: '12px 14px', borderRadius: 'var(--r-md)', marginTop: 4,
       background: 'rgba(239,68,68,0.1)',
       border: '1px solid rgba(239,68,68,0.25)',
       animation: 'em-shake 0.4s cubic-bezier(0.36,0.07,0.19,0.97)',

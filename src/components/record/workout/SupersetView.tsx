@@ -55,7 +55,7 @@ export default function SupersetView({ exercise, onSetDone, onRestDone, isDark, 
   const accentB = '#F97316'
 
   return (
-    <div style={{ padding: '20px', fontFamily: 'DM Sans, sans-serif' }}>
+    <div style={{ padding: '20px', fontFamily: 'var(--font-body)' }}>
       <p style={{ fontSize: 13, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: dim, margin: '0 0 4px' }}>Superset</p>
       <p style={{ fontSize: 13, color: dim, margin: '0 0 20px' }}>{t('record.supersetSetProgress', { current: done ? exercise.sets : currentSet + 1, total: exercise.sets })}</p>
 
@@ -75,7 +75,7 @@ export default function SupersetView({ exercise, onSetDone, onRestDone, isDark, 
               const isActive = (i === 0 && phase === 'A') || (i === 1 && phase === 'B')
               const col = i === 0 ? accentA : accentB
               return (
-                <div key={ex.id} style={{ flex: 1, background: isActive ? `${col}18` : surface, border: `2px solid ${isActive ? col : 'transparent'}`, borderRadius: 14, padding: '12px', textAlign: 'center', transition: 'all 0.2s' }}>
+                <div key={ex.id} style={{ flex: 1, background: isActive ? `${col}18` : surface, border: `2px solid ${isActive ? col : 'transparent'}`, borderRadius: 'var(--r-md)', padding: '12px', textAlign: 'center', transition: 'all 0.2s' }}>
                   <div style={{ width: 22, height: 22, borderRadius: '50%', background: col, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: '#fff', margin: '0 auto 8px' }}>{i === 0 ? 'A' : 'B'}</div>
                   <p style={{ fontSize: 12, color: isActive ? text : dim, fontWeight: isActive ? 600 : 400, margin: '0 0 4px' }}>{ex.name}</p>
                   <p style={{ fontSize: 18, fontWeight: 700, color: isActive ? col : dim, margin: 0 }}>
@@ -86,12 +86,12 @@ export default function SupersetView({ exercise, onSetDone, onRestDone, isDark, 
             })}
           </div>
 
-          <div style={{ background: surface, borderRadius: 12, padding: '12px 16px', marginBottom: 20 }}>
+          <div style={{ background: surface, borderRadius: 'var(--r-md)', padding: '12px 16px', marginBottom: 20 }}>
             <p style={{ fontSize: 12, color: dim, margin: '0 0 2px' }}>{t('record.supersetNow')}</p>
             <p style={{ fontSize: 16, fontWeight: 600, color: text, margin: 0 }}>{activeEx.name} — {activeEx.reps} × {activeEx.weightKg > 0 ? `${activeEx.weightKg}kg` : t('record.supersetBodyweight')}</p>
           </div>
 
-          <button onClick={handleMark} style={{ width: '100%', height: 52, borderRadius: 16, background: `linear-gradient(135deg, ${accentA}, ${accentB})`, border: 'none', color: '#fff', fontSize: 16, fontWeight: 600, cursor: 'pointer' }}>
+          <button onClick={handleMark} style={{ width: '100%', height: 52, borderRadius: 'var(--r-md)', background: `linear-gradient(135deg, ${accentA}, ${accentB})`, border: 'none', color: '#fff', fontSize: 16, fontWeight: 600, cursor: 'pointer' }}>
             {t('record.supersetMark', { phase })}
           </button>
         </>

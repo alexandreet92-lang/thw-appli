@@ -41,7 +41,7 @@ function Scale({ value, onChange, lo, hi }: { value: number; onChange: (n: numbe
           const on = n === value
           return (
             <button key={n} onClick={() => onChange(n)} aria-label={`${n}`} style={{
-              flex: 1, height: 38, borderRadius: 10, cursor: 'pointer',
+              flex: 1, height: 38, borderRadius: 'var(--r-sm)', cursor: 'pointer',
               fontFamily: 'var(--font-body)', fontVariantNumeric: 'tabular-nums', fontSize: 14, fontWeight: 600,
               background: on ? 'var(--primary-dim)' : 'var(--bg-card2)',
               border: `1px solid ${on ? 'var(--primary)' : 'var(--border)'}`,
@@ -100,7 +100,7 @@ export default function CheckinTab({ initial, inputs, onSaved }: {
   }
 
   return (
-    <div data-guide="rec-checkin" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 20, padding: 20, boxShadow: 'var(--shadow-card)' }}>
+    <div data-guide="rec-checkin" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-lg)', padding: 20, boxShadow: 'var(--shadow-card)' }}>
       <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 600, margin: '0 0 4px', color: 'var(--text)' }}>{t('recovery.checkin.title')}</h2>
       <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', margin: '0 0 18px' }}>
         {done ? t('recovery.checkin.subtitle.done') : t('recovery.checkin.subtitle.new')}
@@ -120,7 +120,7 @@ export default function CheckinTab({ initial, inputs, onSaved }: {
           {t('recovery.checkin.estimated')} <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 700, color: 'var(--text)' }}>{preview.score ?? '—'}{preview.score != null ? '/100' : ''}</span>
         </span>
         <button onClick={save} disabled={saving} style={{
-          padding: '10px 18px', borderRadius: 11, cursor: saving ? 'default' : 'pointer',
+          padding: '10px 18px', borderRadius: 'var(--r-md)', cursor: saving ? 'default' : 'pointer',
           fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600,
           background: 'var(--primary)', color: 'var(--on-primary)', border: 'none', opacity: saving ? 0.6 : 1,
         }}>{saving ? t('recovery.checkin.saving') : done ? t('recovery.checkin.update') : t('recovery.checkin.submit')}</button>

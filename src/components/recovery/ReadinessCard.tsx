@@ -24,7 +24,7 @@ export default function ReadinessCard({ result }: { result: ReadinessResult | nu
   const has = result != null && result.score != null
 
   return (
-    <div data-guide="rec-readiness" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 20, padding: 20, boxShadow: 'var(--shadow-card)' }}>
+    <div data-guide="rec-readiness" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-lg)', padding: 20, boxShadow: 'var(--shadow-card)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
         <span style={{ width: 7, height: 7, borderRadius: 2, background: 'var(--rec-readiness)', flexShrink: 0 }} />
         <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 600, margin: 0, color: 'var(--text)' }}>{t('recovery.readiness.title')}</h2>
@@ -39,7 +39,7 @@ export default function ReadinessCard({ result }: { result: ReadinessResult | nu
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
             {result!.components.map(c => (
-              <span key={c.key} style={{ display: 'inline-flex', alignItems: 'baseline', gap: 5, padding: '5px 10px', borderRadius: 999,
+              <span key={c.key} style={{ display: 'inline-flex', alignItems: 'baseline', gap: 5, padding: '5px 10px', borderRadius: 'var(--r-pill)',
                 background: 'var(--bg-card2)', border: '1px solid var(--border)' }}>
                 <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--text-mid)', fontWeight: 600 }}>{LABELS[c.key]}</span>
                 <span style={{ ...NUM, fontSize: 12, fontWeight: 600, color: c.active ? 'var(--text)' : 'var(--text-dim)' }}>

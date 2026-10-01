@@ -94,7 +94,7 @@ function Field({ metric, value, onChange }: { metric: Metric; value: number | un
       <label style={{ fontSize: 12, color: 'var(--text-mid)', display: 'block', marginBottom: 6 }}>{t(METRIC_FIELD_KEY[metric])}</label>
       <div style={{
         display: 'flex', alignItems: 'center', background: 'var(--input-bg)',
-        border: `1px solid ${focus ? 'var(--primary)' : 'var(--border)'}`, borderRadius: 10,
+        border: `1px solid ${focus ? 'var(--primary)' : 'var(--border)'}`, borderRadius: 'var(--r-sm)',
         boxShadow: focus ? '0 0 0 3px var(--primary-dim)' : 'none', transition: 'border-color 0.15s, box-shadow 0.15s',
       }}>
         <input
@@ -197,12 +197,12 @@ export function WeeklyGoals({ activities }: { activities: Act[] }) {
   const pickable = GOAL_SPORTS.filter(s => !hasAny(perSport[s.key]))
 
   return (
-    <div style={{ background: 'var(--surface)', borderRadius: 14, border: '1px solid var(--border)', padding: '14px 16px', marginBottom: 16 }}>
+    <div style={{ background: 'var(--surface)', borderRadius: 'var(--r-md)', border: '1px solid var(--border)', padding: '14px 16px', marginBottom: 16 }}>
       {/* En-tête */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: configured.length ? 14 : 12 }}>
         <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-dim)', fontFamily: 'var(--font-display)' }}>{t('activities.weeklyGoals')}</span>
         {streak > 0 && (
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, fontWeight: 700, color: 'var(--sport-gym)', background: 'var(--bg-card2)', padding: '3px 9px', borderRadius: 999, fontVariantNumeric: 'tabular-nums' }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, fontWeight: 700, color: 'var(--sport-gym)', background: 'var(--bg-card2)', padding: '3px 9px', borderRadius: 'var(--r-pill)', fontVariantNumeric: 'tabular-nums' }}>
             <IconFlame size={14} /> {t('activities.weeksStreak', { n: streak })}
           </span>
         )}
@@ -219,7 +219,7 @@ export function WeeklyGoals({ activities }: { activities: Act[] }) {
             onClick={() => openSport(s.key)}
             style={{
               display: 'block', width: '100%', textAlign: 'left', background: 'var(--bg-card2)',
-              border: 'none', borderRadius: 12, padding: '12px 14px', marginBottom: 8, cursor: 'pointer',
+              border: 'none', borderRadius: 'var(--r-md)', padding: '12px 14px', marginBottom: 8, cursor: 'pointer',
               fontFamily: 'inherit',
             }}
           >
@@ -240,7 +240,7 @@ export function WeeklyGoals({ activities }: { activities: Act[] }) {
         <button
           onClick={() => setPicking(true)}
           style={{
-            width: '100%', padding: '11px', borderRadius: 10, border: '1px dashed var(--border)',
+            width: '100%', padding: '11px', borderRadius: 'var(--r-sm)', border: '1px dashed var(--border)',
             background: 'transparent', color: 'var(--primary)', fontWeight: 600, fontSize: 13,
             cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
             marginTop: configured.length ? 4 : 0, fontFamily: 'inherit',
@@ -261,7 +261,7 @@ export function WeeklyGoals({ activities }: { activities: Act[] }) {
               key={s.key}
               onClick={() => openSport(s.key)}
               style={{
-                display: 'flex', alignItems: 'center', gap: 9, padding: '14px', borderRadius: 12,
+                display: 'flex', alignItems: 'center', gap: 9, padding: '14px', borderRadius: 'var(--r-md)',
                 background: 'var(--bg-card2)', border: 'none', cursor: 'pointer', fontFamily: 'inherit',
                 fontSize: 14, fontWeight: 600, color: 'var(--text)', textAlign: 'left',
               }}
@@ -290,14 +290,14 @@ export function WeeklyGoals({ activities }: { activities: Act[] }) {
             ))}
             <button
               onClick={saveDraft}
-              style={{ width: '100%', padding: '14px', borderRadius: 12, border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontWeight: 700, fontSize: 15, cursor: 'pointer', marginTop: 4, fontFamily: 'inherit' }}
+              style={{ width: '100%', padding: '14px', borderRadius: 'var(--r-md)', border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontWeight: 700, fontSize: 15, cursor: 'pointer', marginTop: 4, fontFamily: 'inherit' }}
             >
               {t('activities.save')}
             </button>
             {hasAny(perSport[editCfg.key]) && (
               <button
                 onClick={() => removeSport(editCfg.key)}
-                style={{ width: '100%', padding: '12px', borderRadius: 12, border: 'none', background: 'transparent', color: 'var(--text-dim)', fontWeight: 500, fontSize: 13, cursor: 'pointer', marginTop: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontFamily: 'inherit' }}
+                style={{ width: '100%', padding: '12px', borderRadius: 'var(--r-md)', border: 'none', background: 'transparent', color: 'var(--text-dim)', fontWeight: 500, fontSize: 13, cursor: 'pointer', marginTop: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontFamily: 'inherit' }}
               >
                 <IconTrash size={15} /> {t('activities.removeGoal')}
               </button>

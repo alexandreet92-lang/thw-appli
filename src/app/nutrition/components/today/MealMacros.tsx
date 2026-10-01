@@ -23,8 +23,8 @@ export function MealMacros({ kcal, prot, gluc, lip }: Props) {
           return (
             <div key={r.key} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, fontWeight: 600, color: 'var(--text-mid)', width: 12, flexShrink: 0 }}>{r.label}</span>
-              <div style={{ flex: 1, height: 6, borderRadius: 999, background: 'var(--bg-card2)', overflow: 'hidden' }}>
-                <div style={{ width: `${(val / max) * 100}%`, height: '100%', background: r.color, opacity: 0.7, borderRadius: 999, transition: 'width 0.5s ease' }} />
+              <div style={{ flex: 1, height: 6, borderRadius: 'var(--r-pill)', background: 'var(--bg-card2)', overflow: 'hidden' }}>
+                <div style={{ width: `${(val / max) * 100}%`, height: '100%', background: r.color, opacity: 0.7, borderRadius: 'var(--r-pill)', transition: 'width 0.5s ease' }} />
               </div>
               <span className="tnum" style={{ fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 600, color: val > 0 ? 'var(--text)' : 'var(--text-dim)', width: 38, textAlign: 'right', flexShrink: 0 }}>{val} g</span>
             </div>

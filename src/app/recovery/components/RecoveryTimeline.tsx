@@ -48,25 +48,25 @@ export default function RecoveryTimeline({ activities, recoveryScore }: Props) {
   const fillD = curveD + ` L${W} ${H} L0 ${H} Z`
 
   return (
-    <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 20, padding: 24, boxShadow: 'var(--shadow-card)' }}>
+    <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-lg)', padding: 24, boxShadow: 'var(--shadow-card)' }}>
       <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-dim)', margin: '0 0 4px' }}>{t('recovery.title')}</p>
-      <h2 style={{ fontFamily: 'Syne,sans-serif', fontSize: 18, fontWeight: 700, margin: '0 0 14px' }}>{t('recovery.timeline.title')}</h2>
+      <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700, margin: '0 0 14px' }}>{t('recovery.timeline.title')}</h2>
 
       {/* Info cards */}
       <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
-        <div style={{ padding: '8px 14px', borderRadius: 10, background: 'var(--bg-card2)', border: '1px solid var(--border)' }}>
-          <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 2px' }}>{t('recovery.timeline.lastIntense')}</p>
+        <div style={{ padding: '8px 14px', borderRadius: 'var(--r-sm)', background: 'var(--bg-card2)', border: '1px solid var(--border)' }}>
+          <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '0 0 2px' }}>{t('recovery.timeline.lastIntense')}</p>
           <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)', margin: 0, textTransform: 'capitalize' }}>
             {t('recovery.timeline.lastSessionLine', { sport, tss, time: fmtH(elapsedH) })}
           </p>
         </div>
         {remainH > 0.5 ? (
-          <div style={{ padding: '8px 14px', borderRadius: 10, background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.3)' }}>
-            <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 2px' }}>{t('recovery.timeline.fullRecovery')}</p>
+          <div style={{ padding: '8px 14px', borderRadius: 'var(--r-sm)', background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.3)' }}>
+            <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '0 0 2px' }}>{t('recovery.timeline.fullRecovery')}</p>
             <p style={{ fontSize: 12, fontWeight: 700, color: '#10B981', margin: 0 }}>{t('recovery.timeline.in', { time: fmtH(remainH) })}</p>
           </div>
         ) : (
-          <div style={{ padding: '8px 14px', borderRadius: 10, background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.4)' }}>
+          <div style={{ padding: '8px 14px', borderRadius: 'var(--r-sm)', background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.4)' }}>
             <p style={{ fontSize: 12, fontWeight: 700, color: '#10B981', margin: 0 }}>{t('recovery.timeline.recovered')}</p>
           </div>
         )}

@@ -29,11 +29,11 @@ export function StatsVisual({ config }: Props) {
   return (
     <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '12px 16px', flexWrap: 'wrap' }}>
       {stats.map(({ label, labelKey, value, suffix, color }, i) => (
-        <div key={label} style={{ flex: 1, minWidth: 80, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, background: 'rgba(255,255,255,0.06)', borderRadius: 16, padding: '16px 8px', opacity: 0, animation: `count-up 400ms ${i * 150}ms ease forwards` }}>
-          <span style={{ fontSize: 28, fontWeight: 800, color: color ?? 'var(--primary)', fontFamily: 'DM Mono, monospace', letterSpacing: '-0.02em', lineHeight: 1 }}>
+        <div key={label} style={{ flex: 1, minWidth: 80, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, background: 'rgba(255,255,255,0.06)', borderRadius: 'var(--r-md)', padding: '16px 8px', opacity: 0, animation: `count-up 400ms ${i * 150}ms ease forwards` }}>
+          <span style={{ fontSize: 28, fontWeight: 800, color: color ?? 'var(--primary)', fontFamily: 'var(--font-body)', letterSpacing: '-0.02em', lineHeight: 1 }}>
             {typeof value === 'number' ? <Counter target={value} suffix={suffix} /> : <>{value}{suffix}</>}
           </span>
-          <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', textAlign: 'center', fontFamily: 'DM Sans, sans-serif' }}>{labelKey ? t(labelKey) : label}</span>
+          <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', textAlign: 'center', fontFamily: 'var(--font-body)' }}>{labelKey ? t(labelKey) : label}</span>
         </div>
       ))}
     </div>

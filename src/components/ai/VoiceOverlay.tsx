@@ -317,7 +317,7 @@ export function VoiceOverlay({
     } : {
       pointerEvents: 'auto',
       width: '100%', maxWidth: 620, display: 'flex', alignItems: 'center', gap: 12,
-      background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 22,
+      background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-lg)',
       padding: '9px 12px', boxShadow: '0 14px 44px color-mix(in srgb, var(--text) 15%, transparent)',
       animation: 'vo_pill 0.26s cubic-bezier(0.32,0.72,0,1)',
     }}>
@@ -335,7 +335,7 @@ export function VoiceOverlay({
       <div style={{ flex: 1, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 3.5, overflow: 'hidden', opacity: phase === 'rec' ? 1 : 0.4 }}>
         {Array.from({ length: NBARS }, (_, i) => (
           <span key={i} ref={el => { barsRef.current[i] = el }} style={{
-            width: 3, height: '100%', borderRadius: 999, flexShrink: 0,
+            width: 3, height: '100%', borderRadius: 'var(--r-pill)', flexShrink: 0,
             background: 'var(--text)', transformOrigin: 'center',
             transform: 'scaleY(0.16)', opacity: 0.45,
             transition: 'transform 0.08s ease-out, opacity 0.12s ease-out', willChange: 'transform, opacity',
@@ -398,7 +398,7 @@ export function VoiceOverlay({
           <div style={{
             pointerEvents: 'none', maxWidth: 620, width: '100%',
             background: 'color-mix(in srgb, var(--bg-card) 92%, transparent)',
-            border: '1px solid var(--border)', borderRadius: 12, padding: '8px 12px',
+            border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: '8px 12px',
             maxHeight: '4.5em', overflow: 'hidden',
             WebkitMaskImage: 'linear-gradient(to bottom, transparent 0, #000 14px)',
             maskImage: 'linear-gradient(to bottom, transparent 0, #000 14px)',
@@ -407,7 +407,7 @@ export function VoiceOverlay({
           </div>
         )}
         {phase === 'error' && (
-          <div style={{ pointerEvents: 'none', maxWidth: 420, textAlign: 'center', fontSize: 13, lineHeight: 1.4, color: 'var(--text-mid)', fontFamily: 'var(--font-body)', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 12, padding: '8px 12px' }}>
+          <div style={{ pointerEvents: 'none', maxWidth: 420, textAlign: 'center', fontSize: 13, lineHeight: 1.4, color: 'var(--text-mid)', fontFamily: 'var(--font-body)', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: '8px 12px' }}>
             {errorMsg}
           </div>
         )}

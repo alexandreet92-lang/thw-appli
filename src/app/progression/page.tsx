@@ -94,7 +94,7 @@ export default function ProgressionHub({ onSelectSport }: { onSelectSport?: (id:
       {SPORTS.map(s => <SportBubble key={s.id} sport={{ ...s, label: t(`progression.sport_${s.id}`) }} onClick={el => handleClick(s, el)} />)}
 
       <div className="prog-hub-title">
-        <h2 style={{ fontFamily: 'Syne,sans-serif', fontWeight: 800, fontSize: 18, color: 'var(--text)', margin: 0 }}>{t('progression.hubTitle')}</h2>
+        <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 18, color: 'var(--text)', margin: 0 }}>{t('progression.hubTitle')}</h2>
         <p style={{ fontSize: 12, color: 'var(--text-dim)', margin: '4px 0 0' }}>{t('progression.hubSubtitle')}</p>
       </div>
     </div>

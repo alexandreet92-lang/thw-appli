@@ -68,7 +68,7 @@ export function TrialEndedModal() {
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 13000, background: 'rgba(8,12,18,0.72)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, opacity: shown && !closing ? 1 : 0, transition: 'opacity 0.28s ease' }}>
       <div style={{ width: 'min(460px, 100%)', background: 'var(--bg-card)', borderRadius: 'var(--r-lg)', padding: 'clamp(26px, 5vw, 38px)', boxShadow: '0 30px 80px rgba(0,0,0,0.45)', textAlign: 'center', transform: shown && !closing ? 'translateY(0)' : 'translateY(100%)', opacity: shown && !closing ? 1 : 0, transition: 'transform 0.28s cubic-bezier(0.32,0.72,0,1), opacity 0.28s ease' }}>
-        <div style={{ width: 60, height: 60, borderRadius: 18, margin: '0 auto 18px', background: 'var(--primary-gradient)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 10px 26px rgba(6,182,212,0.3)' }}>
+        <div style={{ width: 60, height: 60, borderRadius: 'var(--r-lg)', margin: '0 auto 18px', background: 'var(--primary-gradient)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 10px 26px rgba(6,182,212,0.3)' }}>
           <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
         </div>
 

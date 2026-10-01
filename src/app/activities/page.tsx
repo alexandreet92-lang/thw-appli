@@ -3,6 +3,7 @@
 export const dynamic = 'force-dynamic'
 
 import { useState, useEffect, useCallback, useMemo, useRef, useContext } from 'react'
+import { AnimatedList, AnimatedItem } from '@/components/motion/AnimatedList'
 import { createPortal } from 'react-dom'
 import { createClient } from '@/lib/supabase/client'
 import { resolvePlanningUid, setPlanningScopeUid, PlanningScopeContext } from '@/lib/planning/scope'
@@ -5253,13 +5254,13 @@ function WeekDetailModal({ week, activities, zones, onClose }: {
       {secTitle(t('actp.activities'))}
       {sortedActs.length === 0 ? (
         <div style={{ fontSize: 12, color: T.textMuted }}>{t('actp.no_activity')}</div>
-      ) : sortedActs.map(act => {
+      ) : <AnimatedList>{sortedActs.map((act, actIdx) => {
         const col  = SPORT_COLOR[act.sport_type] ?? '#888'
         const stat = ['gym','hyrox'].includes(act.sport_type)
           ? fmtDur(act.moving_time_s)
           : (act.distance_m ? fmtDist(act.distance_m) : fmtDur(act.moving_time_s))
         return (
-          <div key={act.id}
+          <AnimatedItem key={act.id} index={actIdx}><div
             onClick={() => { window.location.href = `/activities?id=${act.id}` }}
             style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 8px',
               cursor: 'pointer', borderRadius: 'var(--r-sm)', marginBottom: 1 }}
@@ -5277,9 +5278,9 @@ function WeekDetailModal({ week, activities, zones, onClose }: {
             </div>
             <span className="stat-number" style={{ fontSize: 13, fontWeight: 700, color: T.text, flexShrink: 0 }}>{stat}</span>
             <ChevronRight size={14} color={T.textMuted} />
-          </div>
+          </div></AnimatedItem>
         )
-      })}
+      })}</AnimatedList>}
     </div>
   )
 

@@ -6,6 +6,7 @@ export const dynamic = 'force-dynamic'
 // comme lu à l'ouverture. Clic → route liée. Suppression par item.
 // ══════════════════════════════════════════════════════════════
 import { useEffect, useState } from 'react'
+import { AnimatedList, AnimatedItem } from '@/components/motion/AnimatedList'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { getCurrentUser } from '@/lib/auth/currentUser'
@@ -75,8 +76,9 @@ export default function NotificationsPage() {
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-          {notifs.map(n => (
-            <div key={n.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--space-3)',
+          <AnimatedList>
+          {notifs.map((n, i) => (
+            <AnimatedItem key={n.id} index={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--space-3)',
               background: 'var(--bg-card2)', borderRadius: 'var(--r-md)', padding: 'var(--space-4)' }}>
               <button onClick={() => { if (n.link) router.push(n.link) }} style={{ flex: 1, minWidth: 0, textAlign: 'left',
                 background: 'none', border: 'none', cursor: n.link ? 'pointer' : 'default', padding: 0 }}>
@@ -88,8 +90,9 @@ export default function NotificationsPage() {
               </button>
               <button onClick={() => remove(n.id)} aria-label={t('misc.delete')} style={{ background: 'none', border: 'none', cursor: 'pointer',
                 color: 'var(--text-dim)', fontSize: 16, lineHeight: 1, flexShrink: 0, padding: 2 }}>✕</button>
-            </div>
+            </AnimatedItem>
           ))}
+          </AnimatedList>
         </div>
       )}
     </div>

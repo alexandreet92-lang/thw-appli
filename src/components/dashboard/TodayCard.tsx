@@ -6,12 +6,11 @@
 // ══════════════════════════════════════════════════════════════
 
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { useI18n } from '@/lib/i18n'
 import { createClient } from '@/lib/supabase/client'
 import { getCurrentUser } from '@/lib/auth/currentUser'
 import { sportColor, sportLabel } from '@/components/recovery/helpers'
-import { DashCard, DASH_ICONS, SportDot, Skeleton, EmptyState, useReducedMotion } from './primitives'
+import { DashCard, DASH_ICONS, SportDot, Skeleton, EmptyState } from './primitives'
 import { FB, NUM, formatDuration, weekStartIso, currentDayIndex } from './lib'
 import { currentLocale } from '@/lib/i18n/locale'
 
@@ -22,8 +21,6 @@ const ZONE_KEY: Record<string, string> = { low: 'dashboard.zoneEasy', recovery: 
 
 export function TodayCard() {
   const { t } = useI18n()
-  const router = useRouter()
-  const reduce = useReducedMotion()
   const [loading, setLoading] = useState(true)
   const [session, setSession] = useState<Session | null>(null)
   const [tasks, setTasks] = useState<Task[]>([])
@@ -77,18 +74,6 @@ export function TodayCard() {
           </div>
           <p style={{ margin: '6px 0 0', fontFamily: FB, fontSize: 22, fontWeight: 700, color: 'var(--text)', lineHeight: 1.25, overflowWrap: 'anywhere' }}>{session.title}</p>
           {meta && <p style={{ margin: '6px 0 0', ...NUM, fontSize: 14, color: 'var(--text-mid)' }}>{meta}</p>}
-          <button
-            onClick={e => { e.stopPropagation(); router.push('/session') }}
-            className="thw-press"
-            style={{
-              marginTop: 'var(--space-4)', width: '100%', minHeight: 50, borderRadius: 'var(--r-pill)',
-              border: 'none', background: 'var(--primary)', color: 'var(--on-primary)',
-              fontFamily: FB, fontSize: 16, fontWeight: 700, cursor: 'pointer',
-              transition: reduce ? 'none' : 'opacity 0.15s',
-            }}
-          >
-            {t('dashboard.start')}
-          </button>
         </div>
       )}
 

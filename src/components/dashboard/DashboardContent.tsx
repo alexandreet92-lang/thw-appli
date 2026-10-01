@@ -16,7 +16,6 @@ import { AthleteCoachCard } from './AthleteCoachCard'
 import { UnreadMessagesCard } from './UnreadMessagesCard'
 import { AthleteFormsCard } from '@/components/coach/CustomForms'
 import { CoachActivityCard } from '@/components/coach/CoachActivityCard'
-import { BecomeCoachCard } from '@/components/coach/BecomeCoachCard'
 import { VitrineSection } from './VitrineSection'
 import { DashboardModelSwitch } from './DashboardModelSwitch'
 import { ClassiqueGrid } from './ClassiqueGrid'
@@ -42,15 +41,14 @@ export function DashboardContent() {
     <div className="dash-wrap">
       {/* Émet une fois/jour le résumé du planning du jour (sport + pro + perso). */}
       <DailyPlanningNotifier />
-      <Greeting rightSlot={
-        <div className="dash-desktop-only">
-          <QuickActions />
-        </div>
-      } />
+      {/* Mobile : pas de salutation / titre en haut de page (les sous-onglets suffisent). */}
+      <div className="dash-desktop-only">
+        <Greeting rightSlot={<QuickActions />} />
+      </div>
 
       {/* Ma vitrine + Classique/Datas : rendus UNE seule fois (plus de doublon
           desktop/mobile). QuickActions reste à droite de la salutation en desktop. */}
-      <div style={{ marginTop: 'calc(-1 * var(--space-3))', marginBottom: 'var(--space-5)', display: 'flex', gap: 'var(--space-3)', alignItems: 'center', flexWrap: 'wrap' }}>
+      <div className="dash-toolbar" style={{ marginBottom: 'var(--space-5)', display: 'flex', gap: 'var(--space-3)', alignItems: 'center', flexWrap: 'wrap' }}>
         {vitrineBtn}
         {switch_}
       </div>
@@ -63,7 +61,6 @@ export function DashboardContent() {
 
       <div style={{ marginBottom: 'var(--space-5)' }}><AthleteFormsCard /></div>
       <div style={{ marginBottom: 'var(--space-5)' }}><CoachActivityCard /></div>
-      <div style={{ marginBottom: 'var(--space-5)' }}><BecomeCoachCard /></div>
 
       {ready && (model === 'data' ? <DataGrid /> : <ClassiqueGrid />)}
 

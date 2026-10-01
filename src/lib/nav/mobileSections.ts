@@ -6,13 +6,16 @@
 // ══════════════════════════════════════════════════════════════════
 export type MobileTabKey = 'home' | 'plan' | 'launch' | 'forme' | 'activities'
 
-export interface MobileSubPage { href: string; labelKey: string }
+import type { LucideIcon } from 'lucide-react'
+import { LayoutDashboard, Plug, ClipboardList, CalendarRange, Target, Moon, Apple, Activity, Trophy, HeartPulse, Dumbbell } from 'lucide-react'
+
+export interface MobileSubPage { href: string; labelKey: string; Icon: LucideIcon }
 
 export const MOBILE_SECTIONS: Record<Exclude<MobileTabKey, 'launch'>, MobileSubPage[]> = {
-  home:       [ { href: '/', labelKey: 'nav.dashboard' }, { href: '/connections', labelKey: 'nav.connections' } ],
-  plan:       [ { href: '/planning', labelKey: 'nav.planning' }, { href: '/planning-week', labelKey: 'nav.planningWeek' }, { href: '/calendar', labelKey: 'nav.calendar' } ],
-  forme:      [ { href: '/recovery', labelKey: 'nav.recovery' }, { href: '/nutrition', labelKey: 'nav.nutrition' } ],
-  activities: [ { href: '/activities', labelKey: 'nav.training' }, { href: '/performance', labelKey: 'nav.performance' }, { href: '/injuries', labelKey: 'nav.injuries' }, { href: '/session', labelKey: 'nav.session' } ],
+  home:       [ { href: '/', labelKey: 'nav.dashboard', Icon: LayoutDashboard }, { href: '/connections', labelKey: 'nav.connections', Icon: Plug } ],
+  plan:       [ { href: '/planning', labelKey: 'nav.planning', Icon: ClipboardList }, { href: '/planning-week', labelKey: 'nav.planningWeek', Icon: CalendarRange }, { href: '/calendar', labelKey: 'nav.calendar', Icon: Target } ],
+  forme:      [ { href: '/recovery', labelKey: 'nav.recovery', Icon: Moon }, { href: '/nutrition', labelKey: 'nav.nutrition', Icon: Apple } ],
+  activities: [ { href: '/activities', labelKey: 'nav.training', Icon: Activity }, { href: '/performance', labelKey: 'nav.performance', Icon: Trophy }, { href: '/injuries', labelKey: 'nav.injuries', Icon: HeartPulse }, { href: '/session', labelKey: 'nav.session', Icon: Dumbbell } ],
 }
 
 /** Onglet du bas auquel appartient une route (null = hors des 5 onglets). */

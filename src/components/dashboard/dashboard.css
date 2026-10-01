@@ -112,3 +112,7 @@
   .dash-skel::after { animation: none; }
   .dash-tap { transition: none; }
 }
+
+/* Barre « Ma vitrine · Classique/Datas » : sous la salutation en desktop. */
+@media (min-width: 768px) { .dash-toolbar { margin-top: calc(-1 * var(--space-3)); } }
+@media (max-width: 767px) { .dash-wrap { padding-top: var(--space-4); } }

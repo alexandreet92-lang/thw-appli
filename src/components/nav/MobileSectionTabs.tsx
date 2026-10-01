@@ -1,6 +1,7 @@
 'use client'
-// Sous-onglets d'un onglet du bas (mobile) : ex. Plan → Planning · Planning Week · Objectifs.
-// Pastilles défilables en haut de page ; la pastille active glisse (motion layoutId).
+// Sous-onglets d'un onglet du bas (mobile), façon Strava « Progrès · Activités · Galerie » :
+// rangée pleine largeur collée sous les boutons du haut, icône au-dessus du libellé,
+// onglet actif en texte plein + soulignement qui glisse (motion layoutId).
 import { usePathname, useRouter } from 'next/navigation'
 import { motion, useReducedMotion } from 'motion/react'
 import { useI18n } from '@/lib/i18n'
@@ -16,22 +17,26 @@ export function MobileSectionTabs() {
   if (pages.length < 2) return null
 
   return (
-    <nav aria-label={t('shared.menu')} className="thw-section-tabs"
-      style={{ display: 'flex', gap: 'var(--space-2)', overflowX: 'auto', padding: '0 var(--space-4) var(--space-3)', scrollbarWidth: 'none' }}>
+    <nav aria-label={t('shared.menu')}
+      style={{ position: 'sticky', top: 0, zIndex: 3, display: 'flex', background: 'var(--bg)',
+        boxShadow: '0 -16px 0 var(--bg), inset 0 -1px 0 color-mix(in srgb, var(--text) 10%, transparent)' }}>
       {pages.map(p => {
         const on = p.href === pathname
+        const col = on ? 'var(--text)' : 'var(--text-dim)'
         return (
           <button key={p.href} type="button" aria-current={on ? 'page' : undefined}
             onClick={() => { if (!on) { haptic('light'); router.push(p.href) } }}
-            style={{ position: 'relative', flexShrink: 0, border: 'none', cursor: 'pointer', padding: '9px 16px', borderRadius: 'var(--r-pill)',
-              background: 'var(--surface-neutral)', fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 600,
-              color: on ? 'var(--bg)' : 'var(--text-mid)', WebkitTapHighlightColor: 'transparent' }}>
+            style={{ position: 'relative', flex: 1, minWidth: 0, border: 'none', background: 'none', cursor: 'pointer',
+              padding: '8px 4px 10px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+              WebkitTapHighlightColor: 'transparent' }}>
+            <p.Icon size={24} color={col} strokeWidth={on ? 2.2 : 1.8} />
+            <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: on ? 700 : 600, color: col,
+              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>{t(p.labelKey)}</span>
             {on && (
-              <motion.span layoutId="thw-section-pill" aria-hidden
-                transition={reduce ? { duration: 0 } : { type: 'spring', stiffness: 520, damping: 40 }}
-                style={{ position: 'absolute', inset: 0, borderRadius: 'var(--r-pill)', background: 'var(--text)' }} />
+              <motion.span layoutId="thw-section-underline" aria-hidden
+                transition={reduce ? { duration: 0 } : { type: 'spring', stiffness: 520, damping: 42 }}
+                style={{ position: 'absolute', left: '12%', right: '12%', bottom: 0, height: 3, borderRadius: 'var(--r-pill)', background: 'var(--primary)' }} />
             )}
-            <span style={{ position: 'relative' }}>{t(p.labelKey)}</span>
           </button>
         )
       })}

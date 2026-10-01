@@ -17,18 +17,10 @@ import { UnreadMessagesCard } from './UnreadMessagesCard'
 import { AthleteFormsCard } from '@/components/coach/CustomForms'
 import { CoachActivityCard } from '@/components/coach/CoachActivityCard'
 import { VitrineSection } from './VitrineSection'
-import { DashboardModelSwitch } from './DashboardModelSwitch'
 import { ClassiqueGrid } from './ClassiqueGrid'
-import { DataGrid } from './DataGrid'
-import { useDashboardModel } from './useDashboardModel'
-import { useGuideTabDemo } from '@/components/guide/guideDemo'
 
 export function DashboardContent() {
-  const [model, setModel, ready] = useDashboardModel()
   const [vitrineOpen, setVitrineOpen] = useState(false)
-  // Le guide peut basculer Datas/Classique pour montrer les deux modèles.
-  useGuideTabDemo('dash', (k) => setModel(k === 'data' ? 'data' : 'classique'))
-  const switch_ = <DashboardModelSwitch value={model} onChange={setModel} />
   const vitrineBtn = (
     <button data-guide="vitrine" onClick={() => setVitrineOpen(true)}
       style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '9px 16px', borderRadius: 'var(--r-pill)', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontFamily: 'var(--font-body)', fontSize: 13.5, fontWeight: 700, cursor: 'pointer' }}>
@@ -46,11 +38,10 @@ export function DashboardContent() {
         <Greeting rightSlot={<QuickActions />} />
       </div>
 
-      {/* Ma vitrine + Classique/Datas : rendus UNE seule fois (plus de doublon
+      {/* Ma vitrine : rendu UNE seule fois (plus de doublon
           desktop/mobile). QuickActions reste à droite de la salutation en desktop. */}
       <div className="dash-toolbar" style={{ marginBottom: 'var(--space-5)', display: 'flex', gap: 'var(--space-3)', alignItems: 'center', flexWrap: 'wrap' }}>
         {vitrineBtn}
-        {switch_}
       </div>
 
       <Suggestions />
@@ -62,7 +53,8 @@ export function DashboardContent() {
       <div style={{ marginBottom: 'var(--space-5)' }}><AthleteFormsCard /></div>
       <div style={{ marginBottom: 'var(--space-5)' }}><CoachActivityCard /></div>
 
-      {ready && (model === 'data' ? <DataGrid /> : <ClassiqueGrid />)}
+      {/* Un seul Dashboard (le choix Classique / Datas est supprimé). */}
+      <ClassiqueGrid />
 
       {/* Ma vitrine (profil + activités) — surpage coulissante, coach & athlète */}
       <SlideSheet open={vitrineOpen} onClose={() => setVitrineOpen(false)} title="Ma vitrine">

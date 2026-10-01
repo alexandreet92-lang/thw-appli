@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-dynamic'
 
-import { useState, useEffect, useCallback, useMemo, useRef, useContext } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef, useContext, Fragment } from 'react'
 import { AnimatedList, AnimatedItem } from '@/components/motion/AnimatedList'
 import { createPortal } from 'react-dom'
 import { createClient } from '@/lib/supabase/client'
@@ -56,6 +56,13 @@ import { TwelveWeekVolume } from '@/components/activity/TwelveWeekVolume'
 import { ActivityMedia } from '@/components/activity/ActivityMedia'
 const ActivityMediaHero = nextDynamic(() => import('@/components/activity/ActivityMediaHero').then(m => m.ActivityMediaHero), { ssr: false })
 import { TrainingRaceSelector } from '@/components/activity/TrainingRaceSelector'
+import { useNarrow } from '@/lib/hooks/useNarrow'
+import { usePushNav } from '@/hooks/usePushNav'
+import { useDetailView } from '@/hooks/useDetailView'
+import { useTrainingLoad } from '@/hooks/useTrainingLoad'
+import { DetailSlide } from '@/components/ui/DetailSlide'
+import { DashCard, Metric, MiniBars } from '@/components/dashboard/primitives'
+import { RecapStory, type RecapAct } from '@/components/activity/RecapStory'
 import { LinkedRacePicker } from '@/components/activity/LinkedRacePicker'
 import { shareCard } from '@/lib/share/shareCard'
 import { useSmSn } from '@/hooks/useSmSn'
@@ -9635,6 +9642,32 @@ function SectionAnalyse({ activities, zones, profile, deepLinkId, deepLinkEdit, 
     )
   }
 
+  if (isMobileSA) {
+    const chip = (on: boolean): React.CSSProperties => ({ padding: '8px 14px', borderRadius: 'var(--r-pill)', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap', fontFamily: 'inherit',
+      fontSize: 14, fontWeight: 700, background: on ? 'var(--text)' : 'var(--dash-card, var(--bg-card))', color: on ? 'var(--bg)' : 'var(--text-mid)' })
+    return (
+      <div key="act-list-m" className="thw-list-in" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div data-guide="act-filters" style={{ flex: 1, minWidth: 0, display: 'flex', gap: 8, overflowX: 'auto', scrollbarWidth: 'none' }}>
+            <button type="button" style={chip(sport === 'all' && raceFilter === 'all')} onClick={() => { setSport('all'); setRaceFilter('all') }}>{t('activities.filterAll')}</button>
+            {allSports.map(sp => (
+              <button key={sp} type="button" style={chip(sport === sp)} onClick={() => { setSport(sp); setRaceFilter('all') }}>{sportLabel(sp, t)}</button>
+            ))}
+            <button type="button" style={chip(raceFilter === 'race')} onClick={() => { setSport('all'); setRaceFilter(raceFilter === 'race' ? 'all' : 'race') }}>{t('activities.competitions')}</button>
+          </div>
+          <button type="button" aria-label={t('actp.m.calendar')} onClick={() => setView(view === 'calendar' ? 'cards' : 'calendar')}
+            style={{ width: 40, height: 40, flexShrink: 0, borderRadius: '50%', border: 'none', cursor: 'pointer', display: 'grid', placeItems: 'center',
+              background: view === 'calendar' ? 'var(--text)' : 'var(--dash-card, var(--bg-card))', color: view === 'calendar' ? 'var(--bg)' : 'var(--text)' }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zM16 2v4M8 2v4M3 10h18" /></svg>
+          </button>
+        </div>
+        {view === 'calendar'
+          ? <CalendarGrid activities={filtered} onSelect={setSelected} />
+          : <CardsView activities={filtered} onSelect={setSelected} sentinelRef={sentinelRef} loadingMore={!!loadingMore} highlightId={highlightId} newRef={newRef} groupByWeek />}
+      </div>
+    )
+  }
+
   return (
     <div
       key="act-list"
@@ -9832,13 +9865,40 @@ interface AutoRecRow {
 }
 interface BestRow { distance_label: string; performance: string }
 
-function CardsView({ activities, onSelect, sentinelRef, loadingMore, highlightId, newRef }: {
+// ── Mobile : regroupement par semaine (lundi) ────────────────────
+function weekKeyOf(iso: string): string {
+  const d = new Date(iso); d.setHours(12, 0, 0, 0)
+  d.setDate(d.getDate() - ((d.getDay() + 6) % 7))
+  return localYMD(d)
+}
+function fmtHm(sec: number): string {
+  const h = Math.floor(sec / 3600), m = Math.round((sec % 3600) / 60)
+  return h ? `${h} h ${String(m).padStart(2, '0')}` : `${m} min`
+}
+function WeekHeader({ weekStart, acts }: { weekStart: string; acts: Activity[] }) {
+  const { t } = useI18n()
+  const cur = weekKeyOf(new Date().toISOString())
+  const prevD = new Date(cur + 'T12:00:00'); prevD.setDate(prevD.getDate() - 7)
+  const label = weekStart === cur ? t('actp.m.thisWeek') : weekStart === localYMD(prevD) ? t('actp.m.lastWeek')
+    : t('actp.m.weekOf', { date: new Date(weekStart + 'T12:00:00').toLocaleDateString(currentLocale(), { day: 'numeric', month: 'short' }) })
+  const sec = acts.reduce((s, a) => s + (Number(a.moving_time_s) || 0), 0)
+  return (
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8, margin: '6px 4px -2px', fontSize: 13, fontWeight: 800, color: 'var(--text-mid)' }}>
+      <span style={{ textTransform: 'uppercase', letterSpacing: '0.04em' }}>{label}</span>
+      <span style={{ fontVariantNumeric: 'tabular-nums' }}>{fmtHm(sec)} · {t('actp.m.nSessions', { n: acts.length })}</span>
+    </div>
+  )
+}
+
+function CardsView({ activities, onSelect, sentinelRef, loadingMore, highlightId, newRef, groupByWeek }: {
   activities:  Activity[]
   onSelect:    (a: Activity) => void
   sentinelRef: React.RefObject<HTMLDivElement | null>
   loadingMore: boolean
   highlightId?: string | null
   newRef?:     React.RefObject<HTMLDivElement | null>
+  /** Mobile : en-tête par semaine (« Cette semaine · 2 h 10 · 2 séances »). */
+  groupByWeek?: boolean
 }) {
   const { t } = useI18n()
   const [recordsByActivity, setRecordsByActivity] = useState<Map<string, AutoRecRow[]>>(new Map())
@@ -10005,9 +10065,15 @@ function CardsView({ activities, onSelect, sentinelRef, loadingMore, highlightId
   return (
     <>
       <div className="thw-cards-grid">
-        {cards.map(c => {
+        {cards.map((c, idx) => {
           const isNew = highlightId === c.id
+          const wk = groupByWeek ? weekKeyOf(c.startedAt) : null
+          const header = groupByWeek && (idx === 0 || weekKeyOf(cards[idx - 1].startedAt) !== wk)
+            ? <WeekHeader key={`wk-${wk}`} weekStart={wk as string} acts={activities.filter(a => weekKeyOf(a.started_at) === wk)} />
+            : null
           return (
+            <Fragment key={c.id}>
+            {header}
             <div
               key={c.id}
               ref={isNew ? newRef : undefined}
@@ -10022,6 +10088,7 @@ function CardsView({ activities, onSelect, sentinelRef, loadingMore, highlightId
                 }}
               />
             </div>
+            </Fragment>
           )
         })}
       </div>
@@ -10177,6 +10244,84 @@ function SectionProgression({ activities }: { activities: Activity[] }) {
 }
 
 // ─────────────────────────────────────────────────────────────
+// MOBILE — Statistiques en cartes (semaine, mois + partage, volume 12
+// semaines par sport, charge & forme → Forme, puis « Toutes les
+// statistiques » = la vue complète existante en détail glissant).
+// ─────────────────────────────────────────────────────────────
+function MobileTrainingStats({ activities, zones, profile }: { activities: Activity[]; zones: TrainingZoneRow[]; profile: Profile }) {
+  const { t } = useI18n()
+  const push = usePushNav()
+  const [view, open, close] = useDetailView<'all'>()
+  const [story, setStory] = useState(false)
+  const tl = useTrainingLoad()
+  if (view) {
+    return (
+      <DetailSlide backLabel="Training" onBack={close}>
+        <div className="thw-mdetail"><SectionDonnees activities={activities} zones={zones} profile={profile} /></div>
+      </DetailSlide>
+    )
+  }
+  const now = new Date()
+  const wk = weekKeyOf(now.toISOString())
+  const prevD = new Date(wk + 'T12:00:00'); prevD.setDate(prevD.getDate() - 7)
+  const prevWk = localYMD(prevD)
+  const sum = (arr: Activity[], k: 'moving_time_s' | 'distance_m' | 'elevation_gain_m') => arr.reduce((s, a) => s + (Number(a[k]) || 0), 0)
+  const thisW = activities.filter(a => weekKeyOf(a.started_at) === wk)
+  const lastW = activities.filter(a => weekKeyOf(a.started_at) === prevWk)
+  const tW = sum(thisW, 'moving_time_s'), tL = sum(lastW, 'moving_time_s')
+  const wDelta = tL > 0 ? Math.round(((tW - tL) / tL) * 100) : null
+  const days = Array.from({ length: 7 }, (_, i) => { const d = new Date(wk + 'T12:00:00'); d.setDate(d.getDate() + i); const k = localYMD(d); return thisW.filter(a => a.started_at.slice(0, 10) === k).reduce((s, a) => s + (Number(a.moving_time_s) || 0), 0) })
+  const todayIdx = (now.getDay() + 6) % 7
+  const monthActs = activities.filter(a => { const d = new Date(a.started_at); return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() })
+  const monthName = now.toLocaleDateString(currentLocale(), { month: 'long' })
+  // Volume 12 semaines, empilé par sport (heures).
+  const weeks = Array.from({ length: 12 }, (_, i) => { const d = new Date(wk + 'T12:00:00'); d.setDate(d.getDate() - (11 - i) * 7); return localYMD(d) })
+  const sportsSeen = [...new Set(activities.filter(a => weeks.includes(weekKeyOf(a.started_at))).map(a => a.sport_type))]
+  const perWeek = weeks.map(w => sportsSeen.map(sp => activities.filter(a => a.sport_type === sp && weekKeyOf(a.started_at) === w).reduce((s, a) => s + (Number(a.moving_time_s) || 0), 0) / 3600))
+  const maxW = Math.max(1, ...perWeek.map(r => r.reduce((x, y) => x + y, 0)))
+  const avgW = perWeek.reduce((s, r) => s + r.reduce((x, y) => x + y, 0), 0) / 12
+  const W = 320, H = 110, bw = 20, gap = (W - 12 * bw) / 11
+  const tsb = tl.series.length ? Math.round((tl.TSB_SM + tl.TSB_SN) / 2) : null
+  const I = (d: string) => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={d} /></svg>
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <DashCard icon={I('M3 3v18h18M7 16v-4M12 16V8M17 16v-7')} title={t('actp.m.thisWeek')}>
+        <Metric label={t('actp.m.time')} value={fmtHm(tW)}
+          {...(wDelta != null && Math.abs(wDelta) >= 1 ? { chip: `${wDelta > 0 ? '▲' : '▼'} ${Math.abs(wDelta)} %`, chipColor: wDelta > 0 ? 'var(--success)' : 'var(--charge-hard)' } : {})}
+          sub={`${t('actp.m.nSessions', { n: thisW.length })} · ${(sum(thisW, 'distance_m') / 1000).toLocaleString(currentLocale(), { maximumFractionDigits: 1 })} km`}
+          right={<MiniBars values={days} highlight={todayIdx} />} />
+      </DashCard>
+      <DashCard icon={I('M3 6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zM16 2v4M8 2v4M3 10h18')} title={monthName.charAt(0).toUpperCase() + monthName.slice(1)}>
+        <Metric label={t('actp.m.time')} value={fmtHm(sum(monthActs, 'moving_time_s'))}
+          sub={`${t('actp.m.nSessions', { n: monthActs.length })} · ${Math.round(sum(monthActs, 'distance_m') / 1000).toLocaleString(currentLocale())} km · D+ ${Math.round(sum(monthActs, 'elevation_gain_m')).toLocaleString(currentLocale())} m`} />
+        {monthActs.length > 0 && (
+          <button type="button" onClick={() => setStory(true)} className="thw-press"
+            style={{ width: '100%', marginTop: 12, padding: '10px 0', borderRadius: 'var(--r-pill)', border: 'none', background: 'var(--dash-chip, var(--bg-hover))', color: 'var(--text)', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+            ⤴ {t('actp.m.shareMonth')}
+          </button>
+        )}
+      </DashCard>
+      <DashCard icon={I('M3 3v18h18M7 16v-4M12 16V8M17 16v-7')} title={t('actp.m.volume')} meta={t('actp.m.weeks12')} onOpen={() => open('all')}>
+        <Metric label={t('actp.m.avgWeek')} value={fmtHm(avgW * 3600)} />
+        <svg width="100%" height={H} viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" style={{ display: 'block', marginTop: 12 }}>
+          {perWeek.map((row, i) => { let y = H; return row.map((h, k) => { const hh = (h / maxW) * (H - 4); y -= hh; return hh > 0 ? <rect key={`${i}-${k}`} x={i * (bw + gap)} y={y} width={bw} height={hh} rx={3} fill={SPORT_COLOR[sportsSeen[k]] ?? 'var(--text-dim)'} opacity={i === 11 ? 1 : 0.85} /> : null }) })}
+        </svg>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 12px', marginTop: 8, fontSize: 12, color: 'var(--text-mid)' }}>
+          {sportsSeen.map(sp => <span key={sp}><i style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: SPORT_COLOR[sp] ?? 'var(--text-dim)', marginRight: 4 }} />{sportLabel(sp, t)}</span>)}
+        </div>
+      </DashCard>
+      <DashCard icon={I('m3 17 6-6 4 4 8-8M14 7h7v7')} title={t('recovery.tab.load')} onOpen={() => push('/recovery')}>
+        <Metric label={t('recovery.m.freshness')} value={tsb != null ? `${tsb > 0 ? '+' : ''}${tsb}` : '—'} sub={tl.verdict ? t(`recovery.m.tone.${tl.verdict.tone}`) : undefined} />
+      </DashCard>
+      <DashCard icon={I('M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01')} title={t('actp.m.allStats')} onOpen={() => open('all')}>
+        <p style={{ margin: 0, fontSize: 15, color: 'var(--text-mid)', lineHeight: 1.4 }}>{t('actp.m.allStatsHint')}</p>
+      </DashCard>
+      {story && <RecapStory period="month" activities={activities as unknown as RecapAct[]} onClose={() => setStory(false)} />}
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────
 // NAV CONFIG
 // ─────────────────────────────────────────────────────────────
 type Section = 'donnees' | 'analyse' | 'progression'
@@ -10227,6 +10372,10 @@ function TrainingPageInner() {
   const zones   = useTrainingZones()
   const profile = useProfile()
   const [section, setSection]       = useState<Section>('donnees')
+  // Mobile : on ouvre sur le fil d'activités (façon Strava) tant que
+  // l'utilisateur n'a pas choisi lui-même l'onglet Statistiques.
+  const isMobilePage = useNarrow(767)
+  const [mobileTouched, setMobileTouched] = useState(false)
   const [progSport, setProgSport]   = useState<string | null>(null)
   const [sectionOpen, setSectionOpen] = useState(false)
   const [syncing, setSyncing]           = useState(false)
@@ -10485,6 +10634,36 @@ function TrainingPageInner() {
             </button>
           </div>
   )
+  if (isMobilePage) {
+    const mSec: Section = section === 'donnees' && !mobileTouched ? 'analyse' : section
+    return (
+      <>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: '14px 16px 24px', fontFamily: 'var(--font-body)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div role="tablist" style={{ flex: 1, display: 'flex', background: 'var(--dash-chip, var(--bg-card2))', borderRadius: 'var(--r-pill)', padding: 3 }}>
+              {([['analyse', t('actp.m.activities')], ['donnees', t('actp.m.stats')]] as [Section, string][]).map(([id, l]) => (
+                <button key={id} role="tab" aria-selected={mSec === id} type="button" onClick={() => { setMobileTouched(true); setSection(id) }}
+                  style={{ flex: 1, border: 'none', cursor: 'pointer', borderRadius: 'var(--r-pill)', padding: '8px 0', fontSize: 14, fontWeight: mSec === id ? 700 : 600, fontFamily: 'inherit',
+                    background: mSec === id ? 'var(--dash-card, var(--bg-elev))' : 'transparent', color: mSec === id ? 'var(--text)' : 'var(--text-mid)', boxShadow: mSec === id ? '0 1px 3px rgba(0,0,0,0.10)' : 'none' }}>{l}</button>
+              ))}
+            </div>
+            {topControls}
+          </div>
+          {error && (
+            <div style={{ background: 'var(--dash-card, var(--bg-card))', borderRadius: 'var(--r-lg)', padding: '14px 16px' }}>
+              <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--charge-hard)', marginBottom: 6 }}>{t('actp.load_error')}</div>
+              <button onClick={reload} style={{ border: 'none', background: 'none', color: 'var(--primary)', fontWeight: 700, fontSize: 14, padding: 0, cursor: 'pointer' }}>{t('actp.retry')}</button>
+            </div>
+          )}
+          {loading && !error && <PageLoader />}
+          {!loading && !error && mSec === 'analyse' && <SectionAnalyse activities={activities} zones={zones} profile={profile} deepLinkId={deepLinkId} deepLinkEdit={deepLinkEdit} deepLinkAnalyze={deepLinkAnalyze} highlightId={newActivityId} onDelete={handleDeleteActivity} loadMore={loadMore} hasMore={hasMore} loadingMore={loadingMore} />}
+          {!loading && !error && mSec === 'donnees' && <MobileTrainingStats activities={activities} zones={zones} profile={profile} />}
+        </div>
+        <PageHelp config={TRAINING_ONBOARDING} show={showHelp} onDismiss={dismissHelp} />
+      </>
+    )
+  }
+
   return (
     <>
       <TabbedPageLayout title="Training" headerExtra={topControls} tabs={tabs} active={section} onChange={setSection}

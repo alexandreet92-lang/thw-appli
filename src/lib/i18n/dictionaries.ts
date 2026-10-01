@@ -3540,6 +3540,7 @@ const fr: Dict = {
   'actp.error': 'Erreur', 'actp.polar_up_to_date': 'Polar à jour', 'actp.error_polar': 'Erreur Polar',
   'actp.loading': 'Chargement…', 'actp.connections': 'Connexions', 'actp.connected': 'Connecté',
   'actp.import': 'Importer', 'actp.connect': 'Connecter', 'actp.reload_from_db': 'Recharger depuis la base',
+  'actp.m.thisWeek': "Cette semaine", 'actp.m.lastWeek': "Semaine dernière", 'actp.m.weekOf': "Semaine du {date}", 'actp.m.nSessions': "{n} séance(s)", 'actp.m.calendar': "Calendrier", 'actp.m.time': "Temps", 'actp.m.shareMonth': "Partager mon mois", 'actp.m.volume': "Volume", 'actp.m.weeks12': "12 sem.", 'actp.m.avgWeek': "Moyenne par semaine", 'actp.m.allStats': "Toutes les statistiques", 'actp.m.allStatsHint': "Objectifs de la semaine, charge par jour, polarisation, records, sport par sport.", 'actp.m.activities': "Activités", 'actp.m.stats': "Statistiques",
   'actp.load_error': 'Erreur de chargement', 'actp.retry': 'Réessayer',
   'actp.connection_interrupted': 'Connexion interrompue — réessaie.',
   // perf2
@@ -10537,6 +10538,7 @@ const en: Dict = {
   'actp.error': 'Error', 'actp.polar_up_to_date': 'Polar up to date', 'actp.error_polar': 'Polar error',
   'actp.loading': 'Loading…', 'actp.connections': 'Connections', 'actp.connected': 'Connected',
   'actp.import': 'Import', 'actp.connect': 'Connect', 'actp.reload_from_db': 'Reload from database',
+  'actp.m.thisWeek': "This week", 'actp.m.lastWeek': "Last week", 'actp.m.weekOf': "Week of {date}", 'actp.m.nSessions': "{n} session(s)", 'actp.m.calendar': "Calendar", 'actp.m.time': "Time", 'actp.m.shareMonth': "Share my month", 'actp.m.volume': "Volume", 'actp.m.weeks12': "12 wk", 'actp.m.avgWeek': "Weekly average", 'actp.m.allStats': "All statistics", 'actp.m.allStatsHint': "Weekly goals, daily load, polarisation, records, sport by sport.", 'actp.m.activities': "Activities", 'actp.m.stats': "Statistics",
   'actp.load_error': 'Loading error', 'actp.retry': 'Retry',
   'actp.connection_interrupted': 'Connection interrupted — try again.',
   // perf2
@@ -17676,6 +17678,7 @@ const es: Dict = {
   'actp.error': 'Error', 'actp.polar_up_to_date': 'Polar actualizado', 'actp.error_polar': 'Error de Polar',
   'actp.loading': 'Cargando…', 'actp.connections': 'Conexiones', 'actp.connected': 'Conectado',
   'actp.import': 'Importar', 'actp.connect': 'Conectar', 'actp.reload_from_db': 'Recargar desde la base de datos',
+  'actp.m.thisWeek': "Esta semana", 'actp.m.lastWeek': "Semana pasada", 'actp.m.weekOf': "Semana del {date}", 'actp.m.nSessions': "{n} sesión(es)", 'actp.m.calendar': "Calendario", 'actp.m.time': "Tiempo", 'actp.m.shareMonth': "Compartir mi mes", 'actp.m.volume': "Volumen", 'actp.m.weeks12': "12 sem.", 'actp.m.avgWeek': "Media semanal", 'actp.m.allStats': "Todas las estadísticas", 'actp.m.allStatsHint': "Objetivos semanales, carga diaria, polarización, récords, deporte por deporte.", 'actp.m.activities': "Actividades", 'actp.m.stats': "Estadísticas",
   'actp.load_error': 'Error de carga', 'actp.retry': 'Reintentar',
   'actp.connection_interrupted': 'Conexión interrumpida — inténtalo de nuevo.',
   // perf2

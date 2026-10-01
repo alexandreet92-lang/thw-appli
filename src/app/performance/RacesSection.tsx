@@ -1,5 +1,7 @@
 'use client'
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { Metric } from '@/components/dashboard/primitives'
+import { MCard, MLink, MEmpty, MButtons, MSecondary, M_ICONS } from './mobile/kit'
 import { createPortal } from 'react-dom'
 import { useI18n } from '@/lib/i18n'
 import { createClient } from '@/lib/supabase/client'
@@ -1759,9 +1761,27 @@ function RaceRankingDrawer({ races, onClose, onFilterChange, onRaceClick }: {
 }
 
 // ─── RacesSection ─────────────────────────────────────────────────────────────
-interface RacesSectionProps { profile: { weight: number } }
+interface RacesSectionProps {
+  profile: { weight: number }
+  /** Mobile : cartes Courses vélo (score / mois) · NP W/kg par durée · Classement + imports. */
+  mobile?: boolean
+}
 
-export function RacesSection({ profile }: RacesSectionProps) {
+// Mini courbe du meilleur score par mois (carte mobile).
+function MonthSpark({ values }: { values: number[] }) {
+  if (values.length < 2) return null
+  const W = 110, H = 54, mn = Math.min(...values), mx = Math.max(...values), rg = mx - mn || 1
+  const pts = values.map((v, i) => [4 + (i / (values.length - 1)) * (W - 8), H - 5 - ((v - mn) / rg) * (H - 10)] as const)
+  const last = pts[pts.length - 1]
+  return (
+    <svg width={W} height={H} aria-hidden>
+      <polyline points={pts.map(p => `${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ')} fill="none" stroke={RACE_COLOR} strokeWidth={2.4} strokeLinejoin="round" strokeLinecap="round" />
+      <circle cx={last[0]} cy={last[1]} r={4} fill={RACE_COLOR} />
+    </svg>
+  )
+}
+
+export function RacesSection({ profile, mobile }: RacesSectionProps) {
   const { t } = useI18n()
   const [races,         setRaces]         = useState<RaceRecord[]>([])
   const [loaded,        setLoaded]        = useState(false)
@@ -1795,6 +1815,81 @@ export function RacesSection({ profile }: RacesSectionProps) {
   function handleDeleted(id: string) {
     setRaces(prev => prev.filter(x => x.id !== id))
     setSelectedRace(null)
+  }
+
+  const drawers = (
+    <>
+      {showStrava && (
+        <StravaImportDrawer
+          existingStravaIds={existingStravaIds}
+          weightKg={profile.weight}
+          onImported={r => { handleSaved(r); setShowStrava(false) }}
+          onClose={() => setShowStrava(false)}
+        />
+      )}
+      {showUpload && (
+        <FileUploadDrawer
+          weightKg={profile.weight}
+          onSaved={r => { handleSaved(r); setShowUpload(false) }}
+          onClose={() => setShowUpload(false)}
+        />
+      )}
+      {selectedRace && (
+        <RaceCardDrawer
+          race={selectedRace}
+          onSaved={r => { handleSaved(r); setSelectedRace(null) }}
+          onDeleted={id => handleDeleted(id)}
+          onClose={() => setSelectedRace(null)}
+        />
+      )}
+      {showRanking && (
+        <RaceRankingDrawer
+          races={races}
+          onFilterChange={handleFilterChange}
+          onRaceClick={r => { setShowRanking(false); setSelectedRace(r) }}
+          onClose={() => { setShowRanking(false); setHighlightIds(null) }}
+        />
+      )}
+    </>
+  )
+
+  if (mobile) {
+    const byMonth: Record<string, number> = {}
+    for (const r of races) {
+      const m = r.date.slice(0, 7)
+      const sc = r.score ?? computeRaceScore(r).total
+      if (!byMonth[m] || sc > byMonth[m]) byMonth[m] = sc
+    }
+    const months = Object.keys(byMonth).sort()
+    const vals = months.map(m => Math.round(byMonth[m]))
+    const cur = vals[vals.length - 1]
+    const d = vals.length >= 2 ? cur - vals[vals.length - 2] : null
+    return (
+      <>
+        <MCard icon={M_ICONS.chart} title={t('perf.m.bikeRaces')} meta={races.length ? String(races.length) : undefined}>
+          {!loaded ? <div className="dash-skel" style={{ height: 96, borderRadius: 'var(--r-md)', background: 'var(--dash-soft, var(--bg-card2))' }} />
+            : races.length === 0 ? <MEmpty>{t('perf2.importFirstRaceHint')}</MEmpty>
+            : <Metric label={t('perf2.bestScorePerMonth')} value={cur} unit="/ 100"
+                {...(d != null && d !== 0 ? { chip: `${d > 0 ? '▲' : '▼'} ${Math.abs(d)}`, chipColor: d > 0 ? 'var(--success)' : 'var(--charge-hard)' } : {})}
+                right={<MonthSpark values={vals} />} />}
+        </MCard>
+        {loaded && races.length > 0 && (
+          <MCard title={t('perfm.npWkgByDuration')} meta={t('perfm.tapPoint')}>
+            <ScatterRaceSVG races={races} allYears={allYears} onPointClick={r => setSelectedRace(r)} highlightIds={highlightIds} />
+          </MCard>
+        )}
+        {loaded && races.length > 0 && (
+          <MCard style={{ padding: '6px 18px 10px' }}>
+            <MLink first onClick={() => setShowRanking(true)}>{t('perf2.racesRanking')}</MLink>
+          </MCard>
+        )}
+        <MButtons>
+          <MSecondary onClick={() => setShowStrava(true)}>{t('perf2.importFromStrava')}</MSecondary>
+          <MSecondary onClick={() => setShowUpload(true)}>{t('perf2.uploadFileGpxFit')}</MSecondary>
+        </MButtons>
+        {drawers}
+      </>
+    )
   }
 
   return (
@@ -1890,37 +1985,7 @@ export function RacesSection({ profile }: RacesSectionProps) {
       )}
 
       {/* Drawers */}
-      {showStrava && (
-        <StravaImportDrawer
-          existingStravaIds={existingStravaIds}
-          weightKg={profile.weight}
-          onImported={r => { handleSaved(r); setShowStrava(false) }}
-          onClose={() => setShowStrava(false)}
-        />
-      )}
-      {showUpload && (
-        <FileUploadDrawer
-          weightKg={profile.weight}
-          onSaved={r => { handleSaved(r); setShowUpload(false) }}
-          onClose={() => setShowUpload(false)}
-        />
-      )}
-      {selectedRace && (
-        <RaceCardDrawer
-          race={selectedRace}
-          onSaved={r => { handleSaved(r); setSelectedRace(null) }}
-          onDeleted={id => handleDeleted(id)}
-          onClose={() => setSelectedRace(null)}
-        />
-      )}
-      {showRanking && (
-        <RaceRankingDrawer
-          races={races}
-          onFilterChange={handleFilterChange}
-          onRaceClick={r => { setShowRanking(false); setSelectedRace(r) }}
-          onClose={() => { setShowRanking(false); setHighlightIds(null) }}
-        />
-      )}
+      {drawers}
     </div>
   )
 }

@@ -1624,8 +1624,8 @@ export default function PerformancePage() {
           initialView={tab === 'tests' || mobileTestsKey > 0 ? 'tests' : null}
           profileNode={<ProfilTab onSelect={onSelectDatum} selectedDatum={selectedDatum} profile={profile} setProfile={setProfile} onAnalyzeProfile={handleAnalyzeProfile} />}
           testsNode={<TestsTab profile={profile} onAnalyzeTest={handleAnalyzeTest} initialSport={initialTest?.sport} initialTestId={initialTest?.testId} onFtpUpdate={ftp => setProfile(prev => ({ ...prev, ftp }))} />}
-          yearNode={<YearDatasSubTab />}
-          renderSport={sp => <RecordsSubTab onSelect={onSelectDatum} selectedDatum={selectedDatum} profile={profile} fixedSport={sp} onNavigateToTests={() => setMobileTestsKey(k => k + 1)} />}
+          yearNode={<YearDatasSubTab mobile />}
+          renderSport={(sp, section, nav) => <RecordsSubTab onSelect={onSelectDatum} selectedDatum={selectedDatum} profile={profile} fixedSport={sp} mobile section={section} onNavigate={nav} onNavigateToTests={() => setMobileTestsKey(k => k + 1)} />}
         />
         {overlays}
       </>

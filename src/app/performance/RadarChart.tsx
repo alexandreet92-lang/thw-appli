@@ -6,6 +6,7 @@ import { resolvePlanningUid } from '@/lib/planning/scope'
 import { Segmented } from '@/components/ui/Segmented'
 import { useI18n } from '@/lib/i18n'
 import { DashCard, Metric } from '@/components/dashboard/primitives'
+import { MCard, MSeg, MLevelChip, M_ICONS, NUM, LINE, SOFT_BG } from './mobile/kit'
 
 // ─── Levels ──────────────────────────────────────────────────────────────────
 const LEVELS = [
@@ -910,31 +911,33 @@ function UpdateModal({ sport, title, axisDefs, gender, currentValues, onClose, o
 
 // ─── BenchmarkModal ───────────────────────────────────────────────────────────
 
+/** Valeur d'un seuil de barème, formatée selon l'unité de l'axe. */
+function fmtBench(def: AxisDef, n: number): string {
+  if (def.unit === 's/km') {
+    const m = Math.floor(n / 60), s = Math.round(n % 60)
+    return `${m}:${String(s).padStart(2, '0')}`
+  }
+  if (def.unit === 's/100m') {
+    const m = Math.floor(n / 60), s = Math.round(n % 60)
+    return `${m}:${String(s).padStart(2, '0')}`
+  }
+  if (def.unit === 's') {
+    const h = Math.floor(n / 3600)
+    const m = Math.floor((n % 3600) / 60)
+    const s = Math.round(n % 60)
+    if (h > 0) return `${h}h${String(m).padStart(2,'0')}'${String(s).padStart(2,'0')}`
+    return `${m}'${String(s).padStart(2, '0')}`
+  }
+  if (def.unit === '%') return `${n}%`
+  return n % 1 === 0 ? String(n) : n.toFixed(1)
+}
+
 /** Format the value range for a given axis + level index + gender */
 function formatBenchRange(def: AxisDef, lvIdx: number, gender: 'M' | 'F'): string {
   const bench = gender === 'M' ? def.benchH : def.benchF
   const [a, e, ahn, tba, ba, am] = bench
   const v = [a, e, ahn, tba, ba, am]
-
-  function fv(n: number): string {
-    if (def.unit === 's/km') {
-      const m = Math.floor(n / 60), s = Math.round(n % 60)
-      return `${m}:${String(s).padStart(2, '0')}`
-    }
-    if (def.unit === 's/100m') {
-      const m = Math.floor(n / 60), s = Math.round(n % 60)
-      return `${m}:${String(s).padStart(2, '0')}`
-    }
-    if (def.unit === 's') {
-      const h = Math.floor(n / 3600)
-      const m = Math.floor((n % 3600) / 60)
-      const s = Math.round(n % 60)
-      if (h > 0) return `${h}h${String(m).padStart(2,'0')}'${String(s).padStart(2,'0')}`
-      return `${m}'${String(s).padStart(2, '0')}`
-    }
-    if (def.unit === '%') return `${n}%`
-    return n % 1 === 0 ? String(n) : n.toFixed(1)
-  }
+  const fv = (n: number) => fmtBench(def, n)
 
   if (!def.lowerBetter) {
     // Higher = better: threshold[0] = alien (highest)
@@ -1137,6 +1140,8 @@ interface RadarCardProps {
   /** Mobile : carte résumé (niveau + point fort + mini radar), tap → onOpen. */
   compact?: boolean
   onOpen?: () => void
+  /** Mobile (page détail) : carte radar + carte Barème, façon Strava. */
+  mobile?: boolean
 }
 
 // Mini radar (sans libellés) pour la carte résumé mobile.
@@ -1151,7 +1156,7 @@ function MiniRadar({ scores, color }: { scores: number[]; color: string }) {
   )
 }
 
-function RadarCard({ dbSport, title, sportColor, axisDefs, defaultValues, extraControls, children, compact, onOpen }: RadarCardProps) {
+function RadarCard({ dbSport, title, sportColor, axisDefs, defaultValues, extraControls, children, compact, onOpen, mobile }: RadarCardProps) {
   const { t } = useI18n()
   const [gender, setGender] = useState<'M' | 'F'>('M')
   const [rawValues, setRawValues] = useState<Record<string, number>>({})
@@ -1263,6 +1268,70 @@ function RadarCard({ dbSport, title, sportColor, axisDefs, defaultValues, extraC
           sub={!loaded ? undefined : best ? t('perf.m.strength', { axis: best.label }) : t('w1c.aucune_donnee')}
           right={<MiniRadar scores={axes.map(a => a.score)} color={sportColor} />} />
       </DashCard>
+    )
+  }
+
+  if (mobile) {
+    const meIdx = overallLevel ? LEVELS.findIndex(l => l.label === overallLevel.label) : -1
+    const units = [...new Set(axisDefs.map(d => d.unit))]
+    const th: React.CSSProperties = { padding: '8px 6px', fontSize: 13, fontWeight: 700, color: 'var(--text-mid)', textAlign: 'right', whiteSpace: 'nowrap', borderBottom: `1px solid ${LINE}` }
+    return (
+      <>
+        <MCard icon={M_ICONS.chart} title={title}
+          meta={overallLevel
+            ? <MLevelChip label={`${overallLevel.label} · ${overall.toFixed(1).replace('.', ',')}`} color={overallLevel.color} />
+            : (loaded && !hasData ? t('w1c.aucune_donnee') : null)}>
+          {extraControls && <div style={{ marginBottom: 6 }}>{extraControls}</div>}
+          <div style={{ padding: '8px 0 4px' }}>
+            <RadarSVG axes={axes} onHover={setTooltip} />
+          </div>
+          <div style={{ marginTop: 12 }}>
+            <MSeg ariaLabel={t('w1c.genre')} value={gender} onChange={setGender}
+              options={[{ id: 'M', label: 'H' }, { id: 'F', label: 'F' }]} />
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 14px', marginTop: 12 }}>
+            {LEVELS.map(lv => (
+              <span key={lv.label} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-mid)', whiteSpace: 'nowrap' }}>
+                <span aria-hidden style={{ width: 7, height: 7, borderRadius: '50%', background: lv.color }} />
+                {lv.label} {lv.pct}
+              </span>
+            ))}
+          </div>
+          {children}
+        </MCard>
+
+        <MCard title={t('w1c.bareme')} meta={`${units.length === 1 ? `${units[0]} · ` : ''}${gender === 'M' ? 'H' : 'F'}`}>
+          <div style={{ overflowX: 'auto', scrollbarWidth: 'none', margin: '0 -2px' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'var(--font-body)' }}>
+              <thead>
+                <tr>
+                  <th style={{ ...th, textAlign: 'left', position: 'sticky', left: 0, background: 'var(--dash-card, var(--bg-card))' }}>{t('w1c.niveau')}</th>
+                  {axisDefs.map(d => <th key={d.key} style={th}>{d.label}</th>)}
+                </tr>
+              </thead>
+              <tbody>
+                {BENCH_LEVELS.slice(0, 6).map((lv, i) => {
+                  const me = i === meIdx
+                  return (
+                    <tr key={lv.label} style={{ background: me ? 'var(--primary-dim)' : 'transparent' }}>
+                      <td style={{ padding: '10px 6px', fontSize: 15, fontWeight: 700, color: 'var(--text)', whiteSpace: 'nowrap', borderBottom: i < 5 ? `1px solid ${LINE}` : 'none', position: 'sticky', left: 0, background: me ? SOFT_BG : 'var(--dash-card, var(--bg-card))' }}>{lv.label}</td>
+                      {axisDefs.map(d => {
+                        const b = gender === 'M' ? d.benchH : d.benchF
+                        return (
+                          <td key={d.key} style={{ ...NUM, padding: '10px 6px', fontSize: 15, color: 'var(--text)', textAlign: 'right', whiteSpace: 'nowrap', borderBottom: i < 5 ? `1px solid ${LINE}` : 'none' }}>
+                            {d.lowerBetter ? '≤' : '≥'} {fmtBench(d, b[i]).replace('.', ',')}
+                          </td>
+                        )
+                      })}
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        </MCard>
+        {tooltip && <RadarTooltip tooltip={tooltip} />}
+      </>
     )
   }
 
@@ -1378,7 +1447,7 @@ interface ProfileHint {
   thresholdPace?: string
 }
 
-export function CyclingRadar({ profile, compact, onOpen }: { profile?: ProfileHint; compact?: boolean; onOpen?: () => void }) {
+export function CyclingRadar({ profile, compact, onOpen, mobile }: { profile?: ProfileHint; compact?: boolean; onOpen?: () => void; mobile?: boolean }) {
   const { t } = useI18n()
   const defaults: Record<string, number> = {}
   if (profile?.ftp && profile?.weight && profile.weight > 0) {
@@ -1392,7 +1461,7 @@ export function CyclingRadar({ profile, compact, onOpen }: { profile?: ProfileHi
       sportColor="#3b82f6"
       axisDefs={CYCLING_AXES}
       defaultValues={defaults}
-      compact={compact} onOpen={onOpen}
+      compact={compact} onOpen={onOpen} mobile={mobile}
     />
   )
 }
@@ -1405,7 +1474,7 @@ function paceStringToSec(pace: string): number {
   return parts.length === 2 ? parts[0] * 60 + parts[1] : 0
 }
 
-export function RunningRadar({ profile, compact, onOpen }: { profile?: ProfileHint; compact?: boolean; onOpen?: () => void }) {
+export function RunningRadar({ profile, compact, onOpen, mobile }: { profile?: ProfileHint; compact?: boolean; onOpen?: () => void; mobile?: boolean }) {
   const { t } = useI18n()
   const defaults: Record<string, number> = {}
   if (profile?.vma && profile.vma > 0) defaults['vma'] = profile.vma
@@ -1422,17 +1491,20 @@ export function RunningRadar({ profile, compact, onOpen }: { profile?: ProfileHi
       sportColor="#22c55e"
       axisDefs={RUNNING_AXES}
       defaultValues={defaults}
-      compact={compact} onOpen={onOpen}
+      compact={compact} onOpen={onOpen} mobile={mobile}
     />
   )
 }
 
 // ─── HyroxRadar ───────────────────────────────────────────────────────────────
-export function HyroxRadar({ compact, onOpen }: { compact?: boolean; onOpen?: () => void } = {}) {
+export function HyroxRadar({ compact, onOpen, mobile }: { compact?: boolean; onOpen?: () => void; mobile?: boolean } = {}) {
   const { t } = useI18n()
   const [view, setView] = useState<'main' | 'stations'>('main')
 
-  const toggle = (
+  const toggle = mobile ? (
+    <MSeg ariaLabel={t('w1c.profil_hyrox')} value={view} onChange={setView}
+      options={[{ id: 'main', label: t('perfm.globalView') }, { id: 'stations', label: t('perfm.nineStations') }]} />
+  ) : (
     <button
       onClick={() => setView(v => v === 'main' ? 'stations' : 'main')}
       style={{
@@ -1454,10 +1526,11 @@ export function HyroxRadar({ compact, onOpen }: { compact?: boolean; onOpen?: ()
     return (
       <RadarCard
         dbSport="hyrox"
-        title={t('w1c.profil_hyrox_stations')}
+        title={mobile ? t('w1c.profil_hyrox') : t('w1c.profil_hyrox_stations')}
         sportColor="#ef4444"
         axisDefs={HYROX_STATION_AXES}
         extraControls={toggle}
+        mobile={mobile}
       />
     )
   }
@@ -1469,7 +1542,7 @@ export function HyroxRadar({ compact, onOpen }: { compact?: boolean; onOpen?: ()
       sportColor="#ef4444"
       axisDefs={HYROX_MAIN_AXES}
       extraControls={toggle}
-      compact={compact} onOpen={onOpen}
+      compact={compact} onOpen={onOpen} mobile={mobile}
     />
   )
 }
@@ -1483,7 +1556,7 @@ const TRI_FORMAT_LABELS: Record<TriFormat, string> = {
 
 // `format`/`onFormat` optionnels : si fournis, le sélecteur est piloté par le parent
 // (la page Records) et le sélecteur interne disparaît.
-export function TriathlonRadar({ profile, format: controlled, onFormat, compact, onOpen }: { profile?: ProfileHint; format?: TriFormat; onFormat?: (f: TriFormat) => void; compact?: boolean; onOpen?: () => void }) {
+export function TriathlonRadar({ profile, format: controlled, onFormat, compact, onOpen, mobile }: { profile?: ProfileHint; format?: TriFormat; onFormat?: (f: TriFormat) => void; compact?: boolean; onOpen?: () => void; mobile?: boolean }) {
   const { t } = useI18n()
   const [internal, setInternal] = useState<TriFormat>('703')
   const format = controlled ?? internal
@@ -1508,7 +1581,7 @@ export function TriathlonRadar({ profile, format: controlled, onFormat, compact,
       axisDefs={TRIATHLON_AXES[format]}
       defaultValues={defaults}
       extraControls={formatSelector}
-      compact={compact} onOpen={onOpen}
+      compact={compact} onOpen={onOpen} mobile={mobile}
     />
   )
 }

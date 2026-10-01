@@ -1,5 +1,7 @@
 'use client'
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { Metric } from '@/components/dashboard/primitives'
+import { MCard, MLegendChip, MLink, MRow, MEmpty, MPrimary, M_ICONS } from './mobile/kit'
 import { createPortal } from 'react-dom'
 import { useI18n } from '@/lib/i18n'
 import { createClient } from '@/lib/supabase/client'
@@ -1149,9 +1151,13 @@ function RankingDrawer({ climbs, onClose, onFilterChange }: {
 }
 
 // ─── ClimbsSection ────────────────────────────────────────────────────────────
-interface ClimbsSectionProps { profile: { weight: number } }
+interface ClimbsSectionProps {
+  profile: { weight: number }
+  /** Mobile : cartes Ascensions (meilleur score) · W/kg par durée · Classement + « Ajouter ». */
+  mobile?: boolean
+}
 
-export function ClimbsSection({ profile }: ClimbsSectionProps) {
+export function ClimbsSection({ profile, mobile }: ClimbsSectionProps) {
   const { t } = useI18n()
   const [climbs,       setClimbs]       = useState<ClimbRecord[]>([])
   const [loaded,       setLoaded]       = useState(false)
@@ -1182,6 +1188,52 @@ export function ClimbsSection({ profile }: ClimbsSectionProps) {
   }
   function handleDeleted(id: string) {
     setClimbs(prev => prev.filter(c => c.id !== id))
+  }
+
+  const drawers = (
+    <>
+      {showDrawer && <ClimbDrawer profileWeight={profile.weight} onSaved={handleSaved} onClose={()=>setShowDrawer(false)}/>}
+      {editClimb  && <ClimbDrawer profileWeight={profile.weight} existing={editClimb} onSaved={handleSaved} onDeleted={handleDeleted} onClose={()=>setEditClimb(null)}/>}
+      {showRanking && <RankingDrawer climbs={climbs} onFilterChange={handleFilterChange} onClose={()=>{ setShowRanking(false); setHighlightIds(null) }}/>}
+    </>
+  )
+
+  if (mobile) {
+    const loc = currentLocale()
+    const ranked = climbs.map(c => ({ c, s: c.score ?? calcScore(c) })).sort((a, b) => b.s - a.s)
+    const top = ranked[0]
+    const wkg = (v: number) => v.toLocaleString(loc, { maximumFractionDigits: 1 })
+    return (
+      <>
+        <MCard icon={M_ICONS.chart} title={t('perf.m.climbs')} meta={climbs.length ? String(climbs.length) : undefined}>
+          {!loaded ? <div className="dash-skel" style={{ height: 96, borderRadius: 'var(--r-md)', background: 'var(--dash-soft, var(--bg-card2))' }} />
+            : top ? <Metric label={t('perf.m.bestScore')} value={Math.round(top.s)} unit="/ 100" chip={levelOf(top.s).label}
+                sub={`${top.c.name} · ${wkg(top.c.wpkg)} W/kg · ${Math.round(top.c.duration_seconds / 60)} min`} />
+            : <MEmpty>{t('perf.m.noClimb')}</MEmpty>}
+        </MCard>
+        {loaded && climbs.length > 0 && (
+          <MCard title={t('perfm.wkgByDuration')} meta={t('perfm.tapPoint')}>
+            <ScatterSVG climbs={climbs} allYears={allYears} onPointClick={c => setEditClimb(c)} highlightIds={highlightIds}/>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
+              {[...allYears].reverse().map(yr => <MLegendChip key={yr} color={yearColor(yr, allYears)} label={yr} />)}
+            </div>
+          </MCard>
+        )}
+        {loaded && climbs.length > 0 && (
+          <MCard title={t('perf2.ranking')} meta={t('perfm.allDurations')}>
+            {ranked.slice(0, 2).map(({ c, s: sc }, i) => (
+              <MRow key={c.id} first={i === 0} onClick={() => setEditClimb(c)}
+                label={<><span style={{ display: 'inline-block', width: 28, color: i === 0 ? 'var(--charge-mid)' : 'var(--text)' }}>{i + 1}</span>{c.name}</>}
+                sub={<span style={{ paddingLeft: 28 }}>{new Date(c.date).toLocaleDateString(loc, { day: 'numeric', month: 'short', year: 'numeric' })} · {wkg(c.wpkg)} W/kg</span>}
+                value={Math.round(sc)} />
+            ))}
+            <MLink onClick={() => setShowRanking(true)}>{t('perfm.fullRanking')}</MLink>
+          </MCard>
+        )}
+        <MPrimary onClick={() => setShowDrawer(true)}>+ {t('perf2.addClimb')}</MPrimary>
+        {drawers}
+      </>
+    )
   }
 
   return (
@@ -1257,9 +1309,7 @@ export function ClimbsSection({ profile }: ClimbsSectionProps) {
         </>
       )}
 
-      {showDrawer && <ClimbDrawer profileWeight={profile.weight} onSaved={handleSaved} onClose={()=>setShowDrawer(false)}/>}
-      {editClimb  && <ClimbDrawer profileWeight={profile.weight} existing={editClimb} onSaved={handleSaved} onDeleted={handleDeleted} onClose={()=>setEditClimb(null)}/>}
-      {showRanking && <RankingDrawer climbs={climbs} onFilterChange={handleFilterChange} onClose={()=>{ setShowRanking(false); setHighlightIds(null) }}/>}
+      {drawers}
     </div>
   )
 }

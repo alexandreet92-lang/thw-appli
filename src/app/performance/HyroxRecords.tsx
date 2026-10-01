@@ -7,10 +7,11 @@ import { Segmented } from '@/components/ui/Segmented'
 import { HyroxCompare } from './HyroxCompare'
 import { HyroxRaceSheet } from './HyroxRaceSheet'
 import { fetchRaces, deleteRace, HYROX_FORMAT_LABELS, type HyroxRace } from './hyroxShared'
+import { MCard, MetaSelect, MEmpty, MPrimary, M_ICONS } from './mobile/kit'
 
 type FilterFmt = 'all' | keyof typeof HYROX_FORMAT_LABELS
 
-export function HyroxRecords({ onSelect }: { onSelect?: (label: string, value: string) => void }) {
+export function HyroxRecords({ onSelect, mobile }: { onSelect?: (label: string, value: string) => void; mobile?: boolean }) {
   const { t } = useI18n()
   const [races, setRaces] = useState<HyroxRace[] | null>(null)
   const [fmt, setFmt] = useState<FilterFmt>('all')
@@ -25,6 +26,34 @@ export function HyroxRecords({ onSelect }: { onSelect?: (label: string, value: s
     { id: 'all', label: t('performance.all') },
     ...(Object.keys(HYROX_FORMAT_LABELS) as (keyof typeof HYROX_FORMAT_LABELS)[]).map(f => ({ id: f as FilterFmt, label: HYROX_FORMAT_LABELS[f] })),
   ]
+
+  const sheets = (
+    <>
+      {editing && <HyroxRaceSheet initial={editing} onClose={() => setEditing(null)} onSaved={r => setRaces(prev => (prev ?? []).map(x => x.id === r.id ? r : x).sort((a, b) => b.date.localeCompare(a.date)))} />}
+      {adding && <HyroxRaceSheet onClose={() => setAdding(false)} onSaved={r => setRaces(prev => [r, ...(prev ?? [])])} />}
+    </>
+  )
+  const onDelete = (r: HyroxRace) => { void deleteRace(r.id).then(ok => { if (ok) setRaces(prev => (prev ?? []).filter(x => x.id !== r.id)) }) }
+
+  if (mobile) {
+    const fmtMeta = <MetaSelect ariaLabel="Format" value={fmt} onChange={setFmt} options={fmtOptions} />
+    return (
+      <>
+        {races === null ? (
+          <MCard icon={M_ICONS.trophy} title={t('performance.races')}><div className="dash-skel" style={{ height: 180, borderRadius: 'var(--r-md)', background: 'var(--dash-soft, var(--bg-card2))' }} /></MCard>
+        ) : filtered.length === 0 ? (
+          <MCard icon={M_ICONS.trophy} title={t('performance.races')} meta={fmtMeta}>
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: 17, fontWeight: 700, color: 'var(--text)', margin: '0 0 6px' }}>{t('performance.noRace')}</p>
+            <MEmpty>{t('performance.noRaceDesc')}</MEmpty>
+          </MCard>
+        ) : (
+          <HyroxCompare races={filtered} onSelect={onSelect} onEdit={r => setEditing(r)} onDelete={onDelete} mobile headerMeta={fmtMeta} />
+        )}
+        <MPrimary onClick={() => setAdding(true)}>+ {t('perfm.addHyroxRace')}</MPrimary>
+        {sheets}
+      </>
+    )
+  }
 
   const card: React.CSSProperties = { background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: 20 }
 
@@ -50,11 +79,10 @@ export function HyroxRecords({ onSelect }: { onSelect?: (label: string, value: s
       ) : (
         <HyroxCompare races={filtered} onSelect={onSelect}
           onEdit={r => setEditing(r)}
-          onDelete={r => { void deleteRace(r.id).then(ok => { if (ok) setRaces(prev => (prev ?? []).filter(x => x.id !== r.id)) }) }} />
+          onDelete={onDelete} />
       )}
 
-      {editing && <HyroxRaceSheet initial={editing} onClose={() => setEditing(null)} onSaved={r => setRaces(prev => (prev ?? []).map(x => x.id === r.id ? r : x).sort((a, b) => b.date.localeCompare(a.date)))} />}
-      {adding && <HyroxRaceSheet onClose={() => setAdding(false)} onSaved={r => setRaces(prev => [r, ...(prev ?? [])])} />}
+      {sheets}
     </div>
   )
 }

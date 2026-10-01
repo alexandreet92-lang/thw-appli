@@ -20,6 +20,10 @@ import { ClimbsSection } from './ClimbsSection'
 import { RacesSection } from './RacesSection'
 import { LinkActivitySheet } from './LinkActivitySheet'
 import { currentLocale } from '@/lib/i18n'
+import {
+  PerfMobileContext, usePerfMobile, M_CARD, M_ICONS, MCard, MRow, MLink, MChips, MSeg, MBars, MHint, MEmpty,
+  MButtons, MSecondary, MLegendChip, MetaSelect, MetaButton, MLevelChip, MYearBars, NUM, FB, CARD_BG, CHIP_BG, LINE, shortDay, monthYear,
+} from './mobile/kit'
 
 // ── Types ────────────────────────────────────────────────────────
 export type RecordSport = 'bike' | 'run' | 'swim' | 'rowing' | 'triathlon' | 'hyrox' | 'gym'
@@ -221,7 +225,7 @@ function calcRowZones(splitSec: number) {
 }
 
 // ── BackfillRecordsButton — recalcule les records depuis toutes les activités ──
-function BackfillRecordsButton({ onDone }: { onDone?: () => void | Promise<void> }) {
+function BackfillRecordsButton({ onDone, mobile }: { onDone?: () => void | Promise<void>; mobile?: boolean }) {
   const { t } = useI18n()
   type State =
     | { kind: 'idle' }
@@ -261,6 +265,16 @@ function BackfillRecordsButton({ onDone }: { onDone?: () => void | Promise<void>
     case 'ok-no-beats':  label = `✓ ${state.processed} ${state.processed > 1 ? t('perf2.activities') : t('perf2.activity')} · 0 ${t('perf2.record')}`; color = '#06B6D4'; break
     case 'ok-beats':     label = `✓ ${state.processed} · +${state.beats} ${state.beats > 1 ? t('perf2.records') : t('perf2.record')}`; color = '#10B981'; break
     case 'error':        label = `⚠ ${state.msg}`; color = '#EF4444'; break
+  }
+
+  if (mobile) {
+    const tone = state.kind === 'error' ? 'var(--danger)' : state.kind === 'idle' || state.kind === 'busy' ? 'var(--text)' : 'var(--success)'
+    return (
+      <button type="button" onClick={run} disabled={busy} title={t('perf2.recalculateTitle')}
+        style={{ flex: 1, minHeight: 44, padding: '10px 12px', borderRadius: 'var(--r-pill)', border: 'none', background: CHIP_BG, color: tone, fontFamily: FB, fontSize: 14, fontWeight: 700, cursor: busy ? 'wait' : 'pointer', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', opacity: busy ? 0.7 : 1 }}>
+        {state.kind === 'idle' ? `↻ ${label}` : label}
+      </button>
+    )
   }
 
   return (
@@ -559,7 +573,7 @@ const HYROX_TEST_LABEL_KEY: Record<string, string> = {
   'hyrox-explosivite':   'perf2.hyroxTestExplosivite',
 }
 
-function HyroxTestsBandeau({ onNavigateToTests }: { onNavigateToTests?: () => void }) {
+function HyroxTestsBandeau({ onNavigateToTests, mobile }: { onNavigateToTests?: () => void; mobile?: boolean }) {
   const { t } = useI18n()
   type TestRow = { test_type: string; score: number | null; level: string | null; performed_at: string }
   const [tests,   setTests]   = useState<TestRow[]>([])
@@ -587,6 +601,26 @@ function HyroxTestsBandeau({ onNavigateToTests }: { onNavigateToTests?: () => vo
 
   function goToTest(urlTest: string) {
     router.push(`/performance?tab=tests&sport=hyrox&test=${urlTest}`)
+  }
+
+  if (mobile) {
+    return (
+      <MCard icon={M_ICONS.test} title={t('perf2.hyroxTests')}
+        meta={onNavigateToTests ? <MetaButton onClick={onNavigateToTests}>{t('perf2.takeATest')} ›</MetaButton> : undefined}>
+        {loading ? <div className="dash-skel" style={{ height: 120, borderRadius: 'var(--r-md)', background: 'var(--dash-soft, var(--bg-card2))' }} />
+          : HYROX_TESTS_DEF.map((td, i) => {
+            const latest = getLatest(td.id)
+            const lvlColor = latest?.level ? (HYROX_LEVEL_COLOR[latest.level] ?? 'var(--danger)') : 'var(--text-dim)'
+            return (
+              <MRow key={td.id} first={i === 0} onClick={() => goToTest(td.urlTest)}
+                label={t(HYROX_TEST_LABEL_KEY[td.id] ?? '')}
+                sub={latest ? shortDay(latest.performed_at.slice(0, 10), currentLocale()) : t('perf2.notDone')}
+                value={latest?.level ? <MLevelChip label={latest.level} color={lvlColor} /> : '—'} dim={!latest}
+                right2={latest?.score != null ? latest.score.toFixed(1) : undefined} />
+            )
+          })}
+      </MCard>
+    )
   }
 
   return (
@@ -685,6 +719,8 @@ function HyroxTestsBandeau({ onNavigateToTests }: { onNavigateToTests?: () => vo
 // ── HyroxSection ─────────────────────────────────────────────────
 // ── UI Primitives ────────────────────────────────────────────────
 function Card({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
+  const mobile = usePerfMobile()
+  if (mobile) return <div style={{ ...M_CARD, ...style }}>{children}</div>
   return (
     <div style={{
       background: 'var(--bg-card)', border: '1px solid var(--border)',
@@ -2262,14 +2298,16 @@ function ZonesSubTab({ profile, onSelect, selectedDatum, onOpenAI }: {
 // ════════════════════════════════════════════════
 // POWER CURVE LOG SVG
 // ════════════════════════════════════════════════
-function PowerCurveLogSVG({ bikeByYear, hiddenYears, selectedYear, weight }: {
+function PowerCurveLogSVG({ bikeByYear, hiddenYears, selectedYear, weight, compact }: {
   bikeByYear: Record<string, Record<string, number>>
   hiddenYears: Set<string>
   selectedYear: string
   weight: number
+  /** Mobile : tient dans la largeur de la carte (pas de défilement horizontal). */
+  compact?: boolean
 }) {
-  const W = 760, H = 380
-  const leftMargin = 52, bottomMargin = 36
+  const W = compact ? 340 : 760, H = compact ? 230 : 380
+  const leftMargin = compact ? 40 : 52, bottomMargin = compact ? 30 : 36
 
   const svgRef = useRef<SVGSVGElement>(null)
   const [cursor, setCursor] = useState<{ svgX: number; pxX: number; dur: string | null } | null>(null)
@@ -2360,11 +2398,12 @@ function PowerCurveLogSVG({ bikeByYear, hiddenYears, selectedYear, weight }: {
   function handleMouseLeave() { setCursor(null) }
   function handleTouchEnd() { setCursor(null) }
 
-  const xAxisDurs = ['10s','1min','5min','20min','1h','3h','6h']
+  const xAxisDurs = compact ? ['1min','20min','1h','2h','6h'] : ['10s','1min','5min','20min','1h','3h','6h']
 
-  // Y grid lines at every 100W
+  // Y grid lines at every 100W (200W en compact si la courbe monte haut)
+  const yGridStep = compact && maxW > 700 ? 200 : 100
   const yGridVals: number[] = []
-  for (let w = 0; w <= maxW * 1.1; w += 100) yGridVals.push(w)
+  for (let w = 0; w <= maxW * 1.1; w += yGridStep) yGridVals.push(w)
 
   // Which years to render
   const yearsToRender = selectedYear === 'All Time'
@@ -2390,7 +2429,9 @@ function PowerCurveLogSVG({ bikeByYear, hiddenYears, selectedYear, weight }: {
       <svg
         ref={svgRef}
         viewBox={`0 0 ${W} ${H}`}
-        style={{ width: '100%', minWidth: W, height: H + 4, display: 'block', overflow: 'visible', cursor: 'crosshair' }}
+        style={compact
+          ? { width: '100%', height: 'auto', display: 'block', overflow: 'visible', cursor: 'crosshair', touchAction: 'pan-y' }
+          : { width: '100%', minWidth: W, height: H + 4, display: 'block', overflow: 'visible', cursor: 'crosshair' }}
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
         onTouchMove={handleTouchMove}
@@ -2405,7 +2446,7 @@ function PowerCurveLogSVG({ bikeByYear, hiddenYears, selectedYear, weight }: {
         ))}
 
         {/* Y axis labels */}
-        {yGridVals.filter(w => w % 100 === 0).map(w => (
+        {yGridVals.filter(w => w % yGridStep === 0).map(w => (
           <text key={w} x={leftMargin - 6} y={polyY(w) + 4} textAnchor="end"
             className="tnum" style={{ fontSize: 10, fontFamily: 'var(--font-body)', fill: 'var(--text-dim)' }}>
             {w}W
@@ -2481,7 +2522,7 @@ function PowerCurveLogSVG({ bikeByYear, hiddenYears, selectedYear, weight }: {
         <div style={{
           position: 'absolute',
           top: 14,
-          left: cursor.svgX < W * 0.55 ? cursor.pxX + 14 : cursor.pxX - 198,
+          left: compact ? Math.max(0, Math.min(cursor.pxX - 86, (svgRef.current?.getBoundingClientRect().width ?? 300) - 172)) : cursor.svgX < W * 0.55 ? cursor.pxX + 14 : cursor.pxX - 198,
           background: 'var(--bg-card)',
           border: '1px solid var(--border)',
           borderRadius: 'var(--r-sm)',
@@ -2511,16 +2552,26 @@ function PowerCurveLogSVG({ bikeByYear, hiddenYears, selectedYear, weight }: {
 // ════════════════════════════════════════════════
 // SUB-TAB 2: RECORDS PERSONNELS
 // ════════════════════════════════════════════════
-export function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests, fixedSport }: {
+export function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests, fixedSport, mobile, section, onNavigate }: {
   onSelect: Props['onSelect']
   selectedDatum: Props['selectedDatum']
   profile: Props['profile']
   onNavigateToTests?: () => void
   /** Mobile : page d'un seul sport (pas d'en-tête ni d'onglets de sport). */
   fixedSport?: RecordSport
+  /** Mobile : rendu en cartes façon Strava (mêmes données, mêmes feuilles d'édition). */
+  mobile?: boolean
+  /** Mobile : sous-page du sport (vélo : radar · power · compare · climbs · races ; course : radar). */
+  section?: string
+  /** Mobile : ouvre une sous-page (ex. « compare ») dans la vue détail parente. */
+  onNavigate?: (section: string) => void
 }) {
   const { t } = useI18n()
   const [sport, setSport] = useState<RecordSport>(fixedSport ?? 'bike')
+  // ── Mobile : états d'affichage (distances dépliées, distance/tri de l'évolution course)
+  const [mShowAll, setMShowAll] = useState(false)
+  const [mRunDist, setMRunDist] = useState(CHART_DISTS.run[1] ?? '10km')
+  const [mRunSort, setMRunSort] = useState<'chrono' | 'best'>('chrono')
   const isMobile = useWindowWidth() < 768
   // ── Année globale (pills DS §16) ─────────────────────────────────
   const [recordYear, setRecordYear] = useState('All Time')
@@ -2630,8 +2681,10 @@ export function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTe
 
   // 2. Auto-backfill des records depuis les activités quand on entre dans le sport vélo.
   //    Idempotent côté serveur (records_processed=false uniquement). Toast transitoire.
+  // Mobile : les sous-pages radar / ascensions / courses n'utilisent pas ces records.
+  const needBikeSync = sport === 'bike' && !(mobile && (section === 'radar' || section === 'climbs' || section === 'races'))
   useEffect(() => {
-    if (sport !== 'bike') return
+    if (!needBikeSync) return
     let cancelled = false
     void (async () => {
       setBikeSyncStatus({ kind: 'syncing' })
@@ -2659,7 +2712,7 @@ export function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTe
       }
     })()
     return () => { cancelled = true }
-  }, [sport, loadBikeRecords])
+  }, [needBikeSync, loadBikeRecords])
 
   // Load run/swim/rowing/gym/triathlon records from Supabase
   useEffect(() => {
@@ -3004,10 +3057,218 @@ export function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTe
     ['gym',        t('perf2.gymShort'),      '#f97316'],
   ]
 
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-      {!fixedSport && <SectionHeader label={t('perf2.personalRecords')} gradient="linear-gradient(180deg,#ffb340,#f97316)" />}
+  // ════════════════════════════════════════════════════════════════
+  // MOBILE — mêmes données, mêmes feuilles d'édition, rendu en cartes.
+  // ════════════════════════════════════════════════════════════════
+  function renderMobile(): React.ReactNode {
+    const loc = currentLocale()
+    const fmtDur = (d: string) => d.replace(/^(\d+)(s|min|h)$/, '$1 $2')
+    const fmtDist = (d: string) => d.replace(/^(\d+)(m|km)$/, '$1 $2')
+    const fmtWkg = (w: number) => profile.weight > 0 ? `${(w / profile.weight).toLocaleString(loc, { maximumFractionDigits: 1 })} W/kg` : undefined
+    const yearsOf = (sp: RecordSport): string[] => {
+      const src = sp === 'bike' ? bikeAllRecords.map(r => r.achieved_at) : allSpRecords.filter(r => r.sport === sp).map(r => r.achieved_at)
+      return [...new Set(src.map(d => d.slice(0, 4)))].sort((a, b) => b.localeCompare(a))
+    }
+    const yearChips = (sp: RecordSport) => {
+      const ys = yearsOf(sp)
+      if (!ys.length) return null
+      return <MChips ariaLabel={t('perf2.period')} value={ys.includes(recordYear) ? recordYear : 'All Time'} onChange={setRecordYear}
+        options={['All Time', ...ys].map(y => ({ id: y, label: y }))} />
+    }
 
+    // ── VÉLO ─────────────────────────────────────────────────────
+    if (sport === 'bike') {
+      if (section === 'radar') return <CyclingRadar profile={profile} mobile />
+      if (section === 'climbs') return <ClimbsSection profile={profile} mobile />
+      if (section === 'races') return <RacesSection profile={profile} mobile />
+      if (section === 'compare') {
+        const years = Object.keys(bikeByYear).sort((a, b) => b.localeCompare(a))
+        const rows = BIKE_DURS.filter(d => years.some(y => (bikeByYear[y]?.[d] ?? 0) > 0))
+        const cell: React.CSSProperties = { ...NUM, padding: '12px 6px', textAlign: 'right', whiteSpace: 'nowrap', fontSize: 15, borderTop: `1px solid ${LINE}` }
+        return (
+          <MCard icon={M_ICONS.chart} title={t('perf2.compareYears')}>
+            <p style={{ margin: '0 0 10px', fontSize: 14, color: 'var(--text-mid)', lineHeight: 1.35 }}>
+              {t('perf2.powerRecords')} (W){profile.weight > 0 ? ` · ${profile.weight} kg` : ''} · {t('perfm.bestYearHighlighted')}
+            </p>
+            {rows.length === 0 ? <MEmpty>{t('perf.m.noPower')}</MEmpty> : (
+              <div style={{ overflowX: 'auto', scrollbarWidth: 'none' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: FB }}>
+                  <thead>
+                    <tr>
+                      <th style={{ padding: '6px 6px 8px', textAlign: 'left', fontSize: 13, fontWeight: 700, color: 'var(--text-mid)', position: 'sticky', left: 0, background: CARD_BG }}>{t('perf2.duration')}</th>
+                      {years.map(y => <th key={y} style={{ padding: '6px 6px 8px', textAlign: 'right', fontSize: 13, fontWeight: 800, color: getPCColor(y, years) }}>{y}</th>)}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rows.map(d => {
+                      const vals = years.map(y => bikeByYear[y]?.[d] ?? 0)
+                      const best = Math.max(...vals)
+                      return (
+                        <tr key={d}>
+                          <td style={{ ...cell, textAlign: 'left', fontWeight: 700, color: 'var(--text)', position: 'sticky', left: 0, background: CARD_BG }}>{fmtDur(d)}</td>
+                          {vals.map((w, i) => {
+                            const top = w > 0 && w === best && years.length > 1
+                            return <td key={years[i]} style={{ ...cell, fontWeight: top ? 800 : 500, color: w > 0 ? (top ? 'var(--primary)' : 'var(--text)') : 'var(--text-dim)' }}>{w > 0 ? w.toLocaleString(loc) : '—'}</td>
+                          })}
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </MCard>
+        )
+      }
+      // Courbe de puissance + records de puissance
+      const FEATURED = ['Pmax', '1min', '5min', '20min', '1h']
+      const withRec = BIKE_DURS.filter(d => getEffectiveRec(d).w > 0)
+      const listed = mShowAll ? BIKE_DURS : FEATURED.filter(d => withRec.includes(d)).concat(withRec.filter(d => !FEATURED.includes(d))).slice(0, 5)
+      const ordered = mShowAll ? listed : BIKE_DURS.filter(d => listed.includes(d))
+      const syncNote = bikeSyncStatus.kind === 'syncing' ? t('perf2.syncingRecords')
+        : bikeSyncStatus.kind === 'done' ? (bikeSyncStatus.beats > 0
+          ? `✓ ${bikeSyncStatus.processed} ${bikeSyncStatus.processed > 1 ? t('perf2.processedPlural') : t('perf2.processedSingular')} · +${bikeSyncStatus.beats} ${bikeSyncStatus.beats > 1 ? t('perf2.records') : t('perf2.record')}`
+          : `✓ ${bikeSyncStatus.processed} ${bikeSyncStatus.processed > 1 ? t('perf2.activitiesProcessedPlural') : t('perf2.activityProcessedSingular')}, ${t('perf2.noRecordBeaten')}`)
+        : bikeSyncStatus.kind === 'error' ? `⚠ ${bikeSyncStatus.msg}` : null
+      return (
+        <>
+          {yearChips('bike')}
+          <MCard id="perf-power" icon={M_ICONS.trend} title={t('perf.m.powerCurve')} meta={recordYear === 'All Time' ? undefined : recordYear}>
+            {bikeYears.length === 0 ? <MEmpty>{t('perf.m.noPower')}</MEmpty> : (
+              <>
+                <PowerCurveLogSVG bikeByYear={bikeByYear} hiddenYears={hiddenYears} selectedYear={recordYear} weight={profile.weight} compact />
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
+                  {bikeYears.map(yr => <MLegendChip key={yr} color={getPCColor(yr, bikeYears)} label={yr} off={hiddenYears.has(yr)} onClick={() => toggleHiddenYear(yr)} />)}
+                </div>
+                <MHint>{t('perfm.curveHint')}</MHint>
+              </>
+            )}
+          </MCard>
+          <MCard id="perf-records" icon={M_ICONS.trophy} title={t('perf2.powerRecords')} meta={withRec.length ? String(withRec.length) : undefined}>
+            {ordered.length === 0 && <MEmpty>{t('perf.m.noRecord')}</MEmpty>}
+            {ordered.map((d, i) => {
+              const eff = getEffectiveRec(d)
+              const prev = getPrevRec(d)
+              const has = eff.w > 0
+              return (
+                <MRow key={d} first={i === 0} label={fmtDur(d)} dim={!has}
+                  value={has ? `${eff.w.toLocaleString(loc)} W` : '—'}
+                  right2={has ? fmtWkg(eff.w) : undefined}
+                  sub={has ? [shortDay(eff.date.slice(0, 10), loc), prev && prev.w > 0 ? `${t('perf.m.prev')} ${prev.w.toLocaleString(loc)} W` : null].filter(Boolean).join(' · ') : t('perf2.edit')}
+                  pr={has && !!prev && prev.w > 0 && eff.w > prev.w}
+                  onClick={() => openDrawer('bike', d, eff.id, has ? String(eff.w) : '')} />
+              )
+            })}
+            <MLink first={ordered.length === 0} onClick={() => setMShowAll(v => !v)}>
+              {mShowAll ? t('perfm.seeLess') : t('perfm.seeAllDurations', { n: BIKE_DURS.length })}
+            </MLink>
+            {syncNote && <MHint>{syncNote}</MHint>}
+          </MCard>
+          <MButtons>
+            <MSecondary onClick={() => onNavigate ? onNavigate('compare') : setCompareOpen(true)}>{t('perf2.compareYears')}</MSecondary>
+            <BackfillRecordsButton onDone={loadBikeRecords} mobile />
+          </MButtons>
+          {compareOpen && <PowerCompareOverlay bikeByYear={bikeByYear} weight={profile.weight} onClose={() => setCompareOpen(false)} />}
+        </>
+      )
+    }
+
+    // ── COURSE À PIED (records issus des compétitions) ───────────
+    if (sport === 'run') {
+      if (section === 'radar') return <RunningRadar profile={profile} mobile />
+      const runRecs = allSpRecords.filter(r => r.sport === 'run' && r.performance !== '—')
+      const distRecs = runRecs.filter(r => r.distance_label === mRunDist && (recordYear === 'All Time' || r.achieved_at.slice(0, 4) === recordYear))
+      const shown = [...distRecs].sort((a, b) => mRunSort === 'best' ? toSec(a.performance) - toSec(b.performance) : a.achieved_at.localeCompare(b.achieved_at))
+      const secs = shown.map(r => toSec(r.performance)).filter(x => x > 0)
+      const topSec = secs.length ? Math.max(...secs) : 1
+      const bestSec = secs.length ? Math.min(...secs) : 0
+      const withRec = RUN_DISTS.filter(d => getSpBest('run', d, recordYear))
+      const listed = mShowAll ? RUN_DISTS : withRec.slice(0, 4)
+      return (
+        <>
+          {yearChips('run')}
+          <MCard icon={M_ICONS.chart} title={t('perf.m.evolution')}
+            meta={<MetaSelect ariaLabel={t('perf2.chronological')} value={mRunSort} onChange={setMRunSort}
+              options={[{ id: 'chrono', label: t('perf2.chronological') }, { id: 'best', label: t('perf2.best') }]} />}>
+            <MSeg ariaLabel={t('perf2.distance')} value={mRunDist} onChange={setMRunDist}
+              options={CHART_DISTS.run.map(d => ({ id: d, label: fmtDist(d) }))} />
+            <div style={{ marginTop: 14 }}>
+              {shown.length === 0
+                ? <MEmpty>{t('perf2.addTimeToSee', { dist: fmtDist(mRunDist) })}</MEmpty>
+                : <MBars bars={shown.map(r => {
+                    const sec = toSec(r.performance)
+                    return { key: r.id, top: r.performance, bottom: monthYear(r.achieved_at, loc), pct: (sec / topSec) * 100, color: gaugeTimeColor(mRunDist, sec), best: sec > 0 && sec === bestSec,
+                      onClick: () => openDrawer('run', r.distance_label, r.id, r.performance), ariaLabel: `${t('perf2.edit')} ${r.performance}` }
+                  })} />}
+            </div>
+            <MHint>{t('perfm.tapBarToEdit')}</MHint>
+          </MCard>
+          <MCard icon={M_ICONS.trophy} title={t('perf.m.records')} meta={withRec.length ? String(withRec.length) : undefined}>
+            {listed.length === 0 && <MEmpty>{t('perf.m.noRecord')}</MEmpty>}
+            {listed.map((d, i) => {
+              const b = getSpBest('run', d, recordYear)
+              const prev = getSpPrev('run', d)
+              const sec = b ? toSec(b.perf) : 0
+              const pace = b ? (SPRINT_DISTS.includes(d) || d === '400m' ? calcSpeedKmh(RUN_KM[d] ?? 0, b.perf) : calcPacePerKm(RUN_KM[d] ?? 0, b.perf)) : ''
+              return (
+                <MRow key={d} first={i === 0} label={fmtDist(d)} dim={!b}
+                  value={b?.perf ?? '—'} right2={pace && pace !== '—' ? pace : undefined}
+                  sub={b ? [shortDay(b.date.slice(0, 10), loc), `${t('perf.m.prev')} ${prev?.perf ?? '—'}`].join(' · ') : t('perf2.edit')}
+                  pr={!!b && !!prev && sec > 0 && sec < toSec(prev.perf)}
+                  onClick={() => openDrawer('run', d, b?.id ?? null, b?.perf ?? '')} />
+              )
+            })}
+            <MLink first={listed.length === 0} onClick={() => setMShowAll(v => !v)}>
+              {mShowAll ? t('perfm.seeLess') : t('perfm.seeAllDistances', { n: RUN_DISTS.length })}
+            </MLink>
+            <MLink onClick={() => setRunAllOpen(true)}>{t('perfm.allRaces')}</MLink>
+            <MHint>{t('perf.m.racesOnly')}</MHint>
+          </MCard>
+          {runAllOpen && (
+            <RecordsAllOverlay title={t('perf2.recordsRunning')} records={allSpRecords.filter(r => r.sport === 'run')} actMap={linkedActs} distKm={RUN_KM}
+              onEdit={r => { setRunAllOpen(false); openDrawer('run', r.distance_label, r.id, r.performance) }}
+              onDelete={id => void deleteSpRecord(id)} onClose={() => setRunAllOpen(false)} />
+          )}
+        </>
+      )
+    }
+
+    if (sport === 'swim') return (
+      <>
+        {yearChips('swim')}
+        <SwimRecords mobile getBest={d => getSpBest('swim', d, recordYear)} getPrev={d => getSpPrev('swim', d)} onSelect={onSelect}
+          onEdit={(d, id, perf) => openDrawer('swim', d, id, perf)} />
+      </>
+    )
+    if (sport === 'rowing') return (
+      <>
+        {yearChips('rowing')}
+        <RowingRecords mobile getBest={d => getSpBest('rowing', d, recordYear)} getPrev={d => getSpPrev('rowing', d)} onSelect={onSelect}
+          onEdit={(d, id, perf) => openDrawer('rowing', d, id, perf)} />
+      </>
+    )
+    if (sport === 'triathlon') return (
+      <TriathlonRecords mobile records={allSpRecords.filter(r => r.sport === 'triathlon')} profile={profile} actMap={linkedActs}
+        onEdit={(fmt, rec) => openTriDrawer(fmt, (rec as SpRecord | null) ?? getTrBest(fmt))}
+        onDelete={id => void deleteSpRecord(id)} />
+    )
+    if (sport === 'hyrox') return (
+      <>
+        <HyroxRadar mobile />
+        <HyroxRecords onSelect={onSelect} mobile />
+        <HyroxTestsBandeau onNavigateToTests={onNavigateToTests} mobile />
+      </>
+    )
+    return (
+      <>
+        {yearChips('gym')}
+        <GymRecords recordYear={recordYear} onSelect={onSelect} selectedDatum={selectedDatum} mobile />
+      </>
+    )
+  }
+
+  const overlays = (
+    <>
       {/* Wingate-style record drawer — bike / run / swim / rowing / gym */}
       {drawerSpec && (
         <RecordDrawer
@@ -3074,6 +3335,25 @@ export function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTe
           />
         )
       })()}
+    </>
+  )
+
+  if (mobile) {
+    return (
+      <PerfMobileContext.Provider value={true}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, fontFamily: FB }}>
+          {overlays}
+          {renderMobile()}
+        </div>
+      </PerfMobileContext.Provider>
+    )
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      {!fixedSport && <SectionHeader label={t('perf2.personalRecords')} gradient="linear-gradient(180deg,#ffb340,#f97316)" />}
+
+      {overlays}
 
       {/* Sport tabs */}
       {!fixedSport && <SportTabs
@@ -3482,7 +3762,7 @@ const YD_METRIC_KEY: Record<string, string> = {
   nb_sorties: 'perf2.metricSessions', tss: 'perf2.metricSm', volume_tonnes: 'perf2.metricVolume',
 }
 
-export function YearDatasSubTab() {
+export function YearDatasSubTab({ mobile }: { mobile?: boolean } = {}) {
   const { t } = useI18n()
   const router = useRouter()
   const [loading, setLoading]         = useState(true)
@@ -3545,6 +3825,9 @@ export function YearDatasSubTab() {
   const [c1ShowBlessures, setC1ShowBlessures] = useState(true)
   const [c1FeatOpen,      setC1FeatOpen]      = useState(false)
   const c1FeatRef = useRef<HTMLDivElement>(null)
+
+  // Mobile (page détail Évolution) : métrique du volume global
+  const [c3Metric, setC3Metric] = useState<'heures' | 'nb_sorties' | 'km'>('heures')
 
   // Responsive
   const [isMobile, setIsMobile] = useState(false)
@@ -3982,6 +4265,19 @@ export function YearDatasSubTab() {
   }
 
   // ── Loading ────────────────────────────────────────────────
+  if (loading && mobile) {
+    // Squelette à la forme de la page (en-tête, sports, 4 chiffres, graphes).
+    const sk = (h: number, r = 'var(--r-lg)') => <div className="dash-skel" aria-hidden style={{ height: h, borderRadius: r, background: CARD_BG }} />
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }} aria-busy="true" aria-label={t('perf2.loadingData')}>
+        {sk(44, 'var(--r-pill)')}
+        {sk(36, 'var(--r-pill)')}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,minmax(0,1fr))', gap: 12 }}>{sk(84)}{sk(84)}{sk(84)}{sk(84)}</div>
+        {sk(280)}
+        {sk(180)}
+      </div>
+    )
+  }
   if (loading) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px 20px' }}>
@@ -4124,11 +4420,121 @@ export function YearDatasSubTab() {
   const c3Gap = 5
   const c3BarW = Math.max(10, c3PlotW / c3N - c3Gap)
 
+  // Contenu du menu « Sync » (Strava, autres fournisseurs à venir, import d'historique).
+  function renderSyncItems(importLabel: string): React.ReactNode {
+    return (
+      <>
+        {/* Strava */}
+        <button
+          onClick={() => void handleSync('strava')}
+          disabled={!stravaConnected}
+          style={{
+            width: '100%', padding: '8px 11px', borderRadius: 'var(--r-sm)', border: 'none',
+            background: 'transparent', textAlign: 'left',
+            cursor: stravaConnected ? 'pointer' : 'not-allowed',
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            opacity: stravaConnected ? 1 : 0.5, color: 'var(--text)',
+            fontSize: 12, fontWeight: 500, transition: 'background 0.1s',
+          }}
+          onMouseEnter={e => { if (stravaConnected) (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-card2)' }}
+          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
+        >
+          <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#FC4C02', flexShrink: 0 }} />
+            {t('perf2.syncStrava')}
+          </span>
+          {!stravaConnected && (
+            <span style={{ fontSize: 10, color: 'var(--text-dim)', marginLeft: 6 }}>{t('perf2.notConnected')}</span>
+          )}
+        </button>
+        <div style={{ height: 1, background: 'var(--border)', margin: '3px 6px' }} />
+        {/* Garmin / Polar / Wahoo — bientôt disponible */}
+        {(['Garmin', 'Polar', 'Wahoo'] as const).map(p => (
+          <div key={p} style={{
+            padding: '8px 11px', borderRadius: 'var(--r-sm)',
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            opacity: 0.45, cursor: 'not-allowed',
+            color: 'var(--text)', fontSize: 12, fontWeight: 500,
+          }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--text-dim)', flexShrink: 0 }} />
+              {t('perf2.sync')} {p}
+            </span>
+            <span style={{ fontSize: 10, color: '#a855f7', fontWeight: 600, marginLeft: 6, whiteSpace: 'nowrap' }}>
+              {t('perf2.comingSoon')}
+            </span>
+          </div>
+        ))}
+        {stravaConnected && (
+          <>
+            <div style={{ height: 1, background: 'var(--border)', margin: '3px 6px' }} />
+            <button
+              onClick={() => { void handleImportHistory(); setShowSyncMenu(false) }}
+              disabled={importing || syncing}
+              style={{
+                width: '100%', padding: '8px 11px', borderRadius: 'var(--r-sm)', border: 'none',
+                background: 'transparent', textAlign: 'left',
+                cursor: importing || syncing ? 'not-allowed' : 'pointer',
+                display: 'flex', alignItems: 'center', gap: 8,
+                opacity: importing || syncing ? 0.5 : 1, color: 'var(--text)',
+                fontSize: 12, fontWeight: 500, transition: 'background 0.1s',
+              }}
+              onMouseEnter={e => { if (!importing && !syncing) (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-card2)' }}
+              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
+            >
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                <path d="M12 3v13M7 11l5 5 5-5"/><line x1="4" y1="20" x2="20" y2="20"/>
+              </svg>
+              {importing ? t('perf2.importInProgress') : importLabel}
+            </button>
+          </>
+        )}
+      </>
+    )
+  }
+
+  // Mobile : en-tête compact (Auto/Manuel · année · Sync) — page détail Évolution.
+  const mobileHeader = (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <MSeg ariaLabel={t('perf2.auto')} value={mode} onChange={m => { setMode(m); setSelectedYear(m === 'auto' ? 'all' : (allYears[0] ?? currentYear)); setEditYear(null) }}
+            options={[{ id: 'auto', label: t('perf2.auto') }, { id: 'manual', label: t('perf2.manual') }]} />
+        </div>
+        <select value={selectedYear} onChange={e => setSelectedYear(e.target.value)} aria-label={t('perf2.period')}
+          style={{ ...NUM, minHeight: 44, maxWidth: 150, padding: '10px 10px', borderRadius: 'var(--r-pill)', border: 'none', background: CARD_BG, color: 'var(--text)', fontFamily: FB, fontSize: 14, fontWeight: 700, cursor: 'pointer', outline: 'none' }}>
+          {mode === 'auto' && <option value="all">{t('perf2.allYears')}</option>}
+          {allYears.map(yr => <option key={yr} value={yr}>{yr}</option>)}
+        </select>
+        <div ref={syncMenuRef} style={{ position: 'relative' }}>
+          <button type="button" onClick={() => setShowSyncMenu(v => !v)} disabled={syncing} aria-label={t('perf2.sync')}
+            style={{ minHeight: 44, minWidth: 44, padding: '10px 12px', borderRadius: 'var(--r-pill)', border: 'none', background: CARD_BG, color: 'var(--text)', fontFamily: FB, fontSize: 15, fontWeight: 700, cursor: syncing ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap', opacity: syncing ? 0.7 : 1 }}>
+            {syncing ? `↻ ${t('perf2.syncShort')}` : '↻'}
+          </button>
+          {showSyncMenu && !syncing && (
+            <div style={{ position: 'absolute', top: 'calc(100% + 6px)', right: 0, zIndex: 200, background: CARD_BG, borderRadius: 'var(--r-md)', padding: 4, minWidth: 220, boxShadow: 'var(--shadow-float, var(--shadow-card))' }}>
+              {renderSyncItems(t('perf2.importHistory'))}
+            </div>
+          )}
+        </div>
+      </div>
+      {mode === 'manual' && (
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <input type="number" value={addYearInput} onChange={e => setAddYearInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleAddYear()}
+            placeholder="2023" min="2000" max="2035" aria-label={t('perf2.enterYearBtn')}
+            style={{ ...NUM, flex: 1, minHeight: 44, padding: '10px 14px', borderRadius: 'var(--r-md)', border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontFamily: FB, fontSize: 16, outline: 'none' }} />
+          <MSecondary onClick={handleAddYear}>{t('perf2.enterYearBtn')}</MSecondary>
+        </div>
+      )}
+    </div>
+  )
+
   return (
-    <div className="yd-enter" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+    <PerfMobileContext.Provider value={!!mobile}>
+    <div className="yd-enter" style={{ display: 'flex', flexDirection: 'column', gap: mobile ? 12 : 14, fontFamily: mobile ? FB : undefined }}>
 
       {/* ── Header ── */}
-      {isMobile ? (
+      {mobile ? mobileHeader : isMobile ? (
         /* ── Mobile : 3 lignes ── */
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <SectionHeader label={t('perf2.annualData')} gradient="linear-gradient(180deg,#a855f7,#5b6fff)" />
@@ -4339,71 +4745,7 @@ export function YearDatasSubTab() {
                   borderRadius: 'var(--r-sm)', padding: 4, minWidth: 210,
                   boxShadow: '0 8px 28px rgba(0,0,0,0.22)',
                 }}>
-                  {/* Strava */}
-                  <button
-                    onClick={() => void handleSync('strava')}
-                    disabled={!stravaConnected}
-                    style={{
-                      width: '100%', padding: '8px 11px', borderRadius: 'var(--r-sm)', border: 'none',
-                      background: 'transparent', textAlign: 'left',
-                      cursor: stravaConnected ? 'pointer' : 'not-allowed',
-                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                      opacity: stravaConnected ? 1 : 0.5, color: 'var(--text)',
-                      fontSize: 12, fontWeight: 500, transition: 'background 0.1s',
-                    }}
-                    onMouseEnter={e => { if (stravaConnected) (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-card2)' }}
-                    onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
-                  >
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#FC4C02', flexShrink: 0 }} />
-                      {t('perf2.syncStrava')}
-                    </span>
-                    {!stravaConnected && (
-                      <span style={{ fontSize: 10, color: 'var(--text-dim)', marginLeft: 6 }}>{t('perf2.notConnected')}</span>
-                    )}
-                  </button>
-                  <div style={{ height: 1, background: 'var(--border)', margin: '3px 6px' }} />
-                  {/* Garmin / Polar / Wahoo — bientôt disponible */}
-                  {(['Garmin', 'Polar', 'Wahoo'] as const).map(p => (
-                    <div key={p} style={{
-                      padding: '8px 11px', borderRadius: 'var(--r-sm)',
-                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                      opacity: 0.45, cursor: 'not-allowed',
-                      color: 'var(--text)', fontSize: 12, fontWeight: 500,
-                    }}>
-                      <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--text-dim)', flexShrink: 0 }} />
-                        {t('perf2.sync')} {p}
-                      </span>
-                      <span style={{ fontSize: 10, color: '#a855f7', fontWeight: 600, marginLeft: 6, whiteSpace: 'nowrap' }}>
-                        {t('perf2.comingSoon')}
-                      </span>
-                    </div>
-                  ))}
-                  {stravaConnected && (
-                    <>
-                      <div style={{ height: 1, background: 'var(--border)', margin: '3px 6px' }} />
-                      <button
-                        onClick={() => { void handleImportHistory(); setShowSyncMenu(false) }}
-                        disabled={importing || syncing}
-                        style={{
-                          width: '100%', padding: '8px 11px', borderRadius: 'var(--r-sm)', border: 'none',
-                          background: 'transparent', textAlign: 'left',
-                          cursor: importing || syncing ? 'not-allowed' : 'pointer',
-                          display: 'flex', alignItems: 'center', gap: 8,
-                          opacity: importing || syncing ? 0.5 : 1, color: 'var(--text)',
-                          fontSize: 12, fontWeight: 500, transition: 'background 0.1s',
-                        }}
-                        onMouseEnter={e => { if (!importing && !syncing) (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-card2)' }}
-                        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
-                      >
-                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-                          <path d="M12 3v13M7 11l5 5 5-5"/><line x1="4" y1="20" x2="20" y2="20"/>
-                        </svg>
-                        {importing ? t('perf2.importInProgress') : t('perf2.importStravaHistory')}
-                      </button>
-                    </>
-                  )}
+                  {renderSyncItems(t('perf2.importStravaHistory'))}
                 </div>
               )}
             </div>
@@ -4481,6 +4823,15 @@ export function YearDatasSubTab() {
       )}
 
       {/* ── Sport tabs ── */}
+      {mobile ? (
+        <MChips ariaLabel={t('perf2.sport')} value={activeSport}
+          options={YD_SPORTS.map(sp => ({ id: sp.id, label: t(YD_SPORT_KEY[sp.id] ?? '') || sp.label }))}
+          onChange={(sportId) => {
+            setActiveSport(sportId)
+            setEditYear(null)
+            setChartMetric(YD_SPORT_METRICS[sportId][0] ?? 'km')
+          }} />
+      ) : (
       <SportTabs
         tabs={YD_SPORTS.map(sp => ({ id: sp.id, label: t(YD_SPORT_KEY[sp.id] ?? '') || sp.label, color: sp.color }))}
         value={activeSport}
@@ -4491,15 +4842,24 @@ export function YearDatasSubTab() {
           setChartMetric(YD_SPORT_METRICS[sportId][0] ?? 'km')
         }}
       />
+      )}
 
       {/* ── KPI cards ── */}
       {hasDisplay ? (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 8 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: mobile ? 'repeat(2,minmax(0,1fr))' : 'repeat(2,1fr)', gap: mobile ? 12 : 8 }}>
           {sportMetrics.map(mk => {
             const m = YD_METRICS[mk]; if (!m) return null
             const val = mode === 'auto'
               ? (displayAuto   ? m.fromAuto(displayAuto)            : 0)
               : (displayManual ? (m.fromManual(displayManual) ?? 0) : 0)
+            if (mobile) return (
+              <div key={mk} style={{ background: CARD_BG, borderRadius: 'var(--r-lg)', padding: '14px 16px', minWidth: 0 }}>
+                <p style={{ fontSize: 14, color: 'var(--text-mid)', margin: '0 0 4px' }}>{t(YD_METRIC_KEY[m.key] ?? '') || m.label}</p>
+                <p style={{ ...NUM, fontSize: 28, fontWeight: 800, letterSpacing: '-0.02em', color: val > 0 ? 'var(--text)' : 'var(--text-dim)', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {val > 0 ? m.fmt(val) : '—'}
+                </p>
+              </div>
+            )
             return (
               <div key={mk} style={{ background: 'var(--bg-card2)', borderRadius: 'var(--r-sm)', padding: '10px 12px' }}>
                 <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '0 0 3px' }}>{t(YD_METRIC_KEY[m.key] ?? '') || m.label}</p>
@@ -4526,7 +4886,10 @@ export function YearDatasSubTab() {
         {/* ── Controls ── */}
         <div className="yd-reveal" style={{ marginBottom: c1CompareMode ? 8 : 12 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
-            <h3 style={{ fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 700, margin: 0 }}>
+            <h3 style={mobile
+              ? { fontFamily: FB, fontSize: 17, fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: 10, color: 'var(--text)' }
+              : { fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 700, margin: 0 }}>
+              {mobile && <span aria-hidden style={{ display: 'flex', color: 'var(--primary)' }}>{M_ICONS.chart}</span>}
               {t('perf2.volumeBySport')}
             </h3>
             <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -5039,8 +5402,30 @@ export function YearDatasSubTab() {
         )}
       </Card>
 
+      {/* ════ Mobile : comparaison par année + volume global (barres par année) ════ */}
+      {mobile && (chartVals.some(v => v > 0) || allYears.length > 0) && (
+        <MCard title={t('perf2.comparisonByYear')}
+          meta={<MetaSelect ariaLabel={t('perf2.metric')} value={validMetric} onChange={setChartMetric}
+            options={sportMetrics.map(mk => ({ id: mk, label: t(YD_METRIC_KEY[mk] ?? '') || YD_METRICS[mk]?.label || mk }))} />}>
+          <MYearBars items={chartYears.slice(-6).map((yr) => ({ label: yr, value: chartVals[chartYears.indexOf(yr)] ?? 0 }))}
+            highlight={selectedYear !== 'all' ? selectedYear : chartYears[chartYears.length - 1]}
+            fmt={v => metricDef.fmt(v)} onPick={setSelectedYear} />
+        </MCard>
+      )}
+      {mobile && hasC3Data && (
+        <MCard title={t('perfm.globalVolume')} meta={t('perfm.allDisciplines')}>
+          <MSeg ariaLabel={t('perf2.metric')} value={c3Metric} onChange={setC3Metric}
+            options={[{ id: 'heures', label: t('perf2.hours') }, { id: 'nb_sorties', label: t('perf2.sessionsShort') }, { id: 'km', label: t('perf2.distance') }]} />
+          <div style={{ marginTop: 14 }}>
+            <MYearBars items={c3Stats.slice(-6).map(st => ({ label: st.year, value: st[c3Metric] }))}
+              highlight={selectedYear !== 'all' ? selectedYear : c3Stats[c3Stats.length - 1]?.year}
+              fmt={v => c3Metric === 'heures' ? `${Math.round(v)} h` : c3Metric === 'km' ? `${Math.round(v).toLocaleString(currentLocale())}` : String(v)} />
+          </div>
+        </MCard>
+      )}
+
       {/* ════ Chart 2 — Comparaison inter-années par sport ════ */}
-      {(chartVals.some(v => v > 0) || allYears.length > 0) && (
+      {!mobile && (chartVals.some(v => v > 0) || allYears.length > 0) && (
         <Card>
           <div className="yd-reveal" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
             <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 600, color: 'var(--text)', margin: 0 }}>
@@ -5124,7 +5509,7 @@ export function YearDatasSubTab() {
       )}
 
       {/* ════ Chart 3 — Volume global toutes disciplines ════ */}
-      {hasC3Data && (
+      {!mobile && hasC3Data && (
         <Card>
           <h3 className="yd-reveal" style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 600, color: 'var(--text)', margin: '0 0 14px' }}>
             {t('perf2.globalVolumeAllDisciplines')}
@@ -5265,6 +5650,7 @@ export function YearDatasSubTab() {
       )}
 
     </div>
+    </PerfMobileContext.Provider>
   )
 }
 

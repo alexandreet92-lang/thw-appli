@@ -10,6 +10,7 @@ import { useI18n, currentLocale } from '@/lib/i18n'
 import { Segmented } from '@/components/ui/Segmented'
 import { TriathlonRadar, type TriFormat } from './RadarChart'
 import { toSec, hmsFull } from './triActivities'
+import { MCard, MSeg, MBars, MHint, MEmpty, MPrimary, M_ICONS, monthYear } from './mobile/kit'
 
 const SWIM = '#06b6d4', BIKE = '#3b82f6', RUN = '#f97316' // design-allow-color — teintes sport
 const TRI = '#8B5CF6' // design-allow-color — teinte sport triathlon sanctionnée
@@ -146,12 +147,14 @@ function TriRaceOverlay({ rec, act, onEdit, onDelete, onClose }: {
   )
 }
 
-export function TriathlonRecords({ records, profile, actMap, onEdit, onDelete }: {
+export function TriathlonRecords({ records, profile, actMap, onEdit, onDelete, mobile }: {
   records: TriRec[]
   profile: { ftp: number; weight: number }
   actMap?: Record<string, TriLinkedAct>
   onEdit: (fmt: string, rec: TriRec | null) => void
   onDelete: (id: string) => void
+  /** Mobile : segmenté des formats, profil, jauges des courses, bouton « Ajouter ». */
+  mobile?: boolean
 }) {
   const { t } = useI18n()
   const [sel, setSel] = useState<string>('70.3')
@@ -166,6 +169,38 @@ export function TriathlonRecords({ records, profile, actMap, onEdit, onDelete }:
   const secs = races.map(r => toSec(r.performance)).filter(s => s > 0)
   const topSec = (secs.length ? Math.max(...secs) : 3600) * 1.12
   const bestSec = secs.length ? Math.min(...secs) : 0
+
+  const overlay = detail && (
+    <TriRaceOverlay rec={detail} act={detail.activity_id ? actMap?.[detail.activity_id] : undefined}
+      onEdit={() => { const d = detail; setDetail(null); onEdit(d.distance_label, d) }}
+      onDelete={() => { onDelete(detail.id); setDetail(null) }}
+      onClose={() => setDetail(null)} />
+  )
+
+  if (mobile) {
+    const loc = currentLocale()
+    const segVal = showAll ? 'all' : sel
+    return (
+      <>
+        <MSeg ariaLabel={t('w1c.format')} value={segVal}
+          onChange={v => { if (v === 'all') setShowAll(true); else { setSel(v); setShowAll(false) } }}
+          options={[...DISTS.map(d => ({ id: d.id, label: d.label })), { id: 'all', label: t('perf2.allShort') }]} />
+        {!showAll && <TriathlonRadar profile={profile} format={selDef.radar} mobile />}
+        <MCard icon={M_ICONS.trophy} title={showAll ? t('performance.recordsByDistance') : `${t('perf.m.races')} ${selDef.label}`} meta={races.length ? String(races.length) : undefined}>
+          {races.length === 0
+            ? <MEmpty>{t('perf.m.noRace')}</MEmpty>
+            : <MBars bars={races.map(r => {
+                const sec = toSec(r.performance)
+                const my = monthYear(r.achieved_at, loc)
+                return { key: r.id, top: r.performance, bottom: showAll ? `${r.distance_label} · ${my}` : my, pct: (sec / topSec) * 100, color: TRI, best: sec > 0 && sec === bestSec, onClick: () => setDetail(r), ariaLabel: `${r.distance_label} ${r.performance}` }
+              })} />}
+          {races.length > 0 && <MHint>{t('perf2.tapRaceForBreakdown')}</MHint>}
+        </MCard>
+        <MPrimary onClick={() => onEdit(showAll ? 'M' : sel, null)}>+ {t('perf2.addRace')}</MPrimary>
+        {overlay}
+      </>
+    )
+  }
 
   const card: React.CSSProperties = { background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: 20 }
   const fmtDay = (iso: string) => new Date(iso).toLocaleDateString(currentLocale(), { day: '2-digit', month: 'short' })
@@ -227,12 +262,7 @@ export function TriathlonRecords({ records, profile, actMap, onEdit, onDelete }:
         <p style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: 'var(--text-dim)', margin: '10px 0 0' }}>{t('perf2.tapRaceForBreakdown') /* Touchez une course pour voir la décomposition */}</p>
       </div>
 
-      {detail && (
-        <TriRaceOverlay rec={detail} act={detail.activity_id ? actMap?.[detail.activity_id] : undefined}
-          onEdit={() => { const d = detail; setDetail(null); onEdit(d.distance_label, d) }}
-          onDelete={() => { onDelete(detail.id); setDetail(null) }}
-          onClose={() => setDetail(null)} />
-      )}
+      {overlay}
     </div>
   )
 }

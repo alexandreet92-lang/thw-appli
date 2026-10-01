@@ -5,14 +5,17 @@ import { useEffect, useMemo, useState } from 'react'
 import { useI18n } from '@/lib/i18n'
 import { GymEditSheet } from './GymEditSheet'
 import { AddExerciseSheet } from './AddExerciseSheet'
+import { MCard, MHBar, MSecondary, MetaButton, NUM, FB } from './mobile/kit'
 import { allExercises, isCustom, removeCustom, deleteGym, fetchGym, fmtValue, typeLabel, type GymExercise, type GymRec } from './gymShared'
 
 const GYM = '#8b5cf6' // design-allow-color — teinte sport muscu sanctionnée
 
-export function GymRecords({ recordYear, onSelect, selectedDatum }: {
+export function GymRecords({ recordYear, onSelect, selectedDatum, mobile }: {
   recordYear: string
   onSelect?: (label: string, value: string) => void
   selectedDatum?: { label: string; value: string } | null
+  /** Mobile : une carte par exercice, une jauge par type, « + Ajouter un exercice ». */
+  mobile?: boolean
 }) {
   const { t: tr } = useI18n()
   const [records, setRecords] = useState<GymRec[]>([])
@@ -51,6 +54,49 @@ export function GymRecords({ recordYear, onSelect, selectedDatum }: {
     removeCustom(name)
     setExercises(allExercises())
     setRecords(prev => prev.filter(r => !ids.includes(r.id)))
+  }
+
+  const sheets = (
+    <>
+      {edit && (
+        <GymEditSheet exercise={edit.exercise} types={edit.types} initialType={edit.type}
+          getBest={t => best(edit.exercise, t)} onClose={() => setEdit(null)} onSaved={onSaved}
+          onDeleted={id => setRecords(prev => prev.filter(r => r.id !== id))} />
+      )}
+      {adding && <AddExerciseSheet onClose={() => setAdding(false)} onAdded={() => setExercises(allExercises())} />}
+    </>
+  )
+
+  if (mobile) {
+    return (
+      <>
+        {exercises.map(ex => (
+          <MCard key={ex.name} title={ex.name}
+            meta={isCustom(ex.name) ? <MetaButton onClick={() => void removeExercise(ex.name)}>{tr('perf.delete')}</MetaButton> : undefined}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {ex.types.map(t => {
+                const b = best(ex.name, t)
+                const v = Number(b?.performance) || 0
+                const max = perTypeMax[t] || 1
+                return (
+                  <button key={t} type="button" data-no-fx onClick={() => setEdit({ exercise: ex.name, types: ex.types, type: t })}
+                    aria-label={`${tr('performance.edit')} ${ex.name} ${typeLabel(t)}`}
+                    style={{ display: 'flex', flexDirection: 'column', gap: 8, width: '100%', padding: '8px 0', minHeight: 44, border: 'none', background: 'none', cursor: 'pointer', textAlign: 'left', fontFamily: FB }}>
+                    <span style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10, width: '100%' }}>
+                      <b style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>{typeLabel(t)}</b>
+                      <span style={{ ...NUM, fontSize: 15, color: b ? 'var(--text-mid)' : 'var(--text-dim)', whiteSpace: 'nowrap' }}>{b ? fmtValue(v, t) : '—'}</span>
+                    </span>
+                    <MHBar pct={(v / max) * 100} color="var(--sport-gym)" />
+                  </button>
+                )
+              })}
+            </div>
+          </MCard>
+        ))}
+        <MSecondary full onClick={() => setAdding(true)}>+ {tr('perfm.addExercise')}</MSecondary>
+        {sheets}
+      </>
+    )
   }
 
   const card: React.CSSProperties = { background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: 18 }
@@ -96,12 +142,7 @@ export function GymRecords({ recordYear, onSelect, selectedDatum }: {
         ))}
       </div>
 
-      {edit && (
-        <GymEditSheet exercise={edit.exercise} types={edit.types} initialType={edit.type}
-          getBest={t => best(edit.exercise, t)} onClose={() => setEdit(null)} onSaved={onSaved}
-          onDeleted={id => setRecords(prev => prev.filter(r => r.id !== id))} />
-      )}
-      {adding && <AddExerciseSheet onClose={() => setAdding(false)} onAdded={() => setExercises(allExercises())} />}
+      {sheets}
     </div>
   )
 }

@@ -17,11 +17,19 @@ const BENCH_H: Bench = {
 }
 
 export interface RowingRecordsProps {
-  getBest: (dist: string) => { id: string; perf: string } | null
+  getBest: (dist: string) => { id: string; perf: string; date?: string } | null
   getPrev: (dist: string) => { perf: string } | null
   onSelect: (label: string, value: string) => void
   onEdit: (dist: string, id: string | null, perf: string) => void
   selectedPerf?: string
+  mobile?: boolean
+}
+
+// Puissance Concept2 équivalente : W = 2,80 / (s/m)³.
+function c2Watts(distM: number, sec: number): string | null {
+  if (distM <= 0 || sec <= 0) return null
+  const w = 2.8 / Math.pow(sec / distM, 3)
+  return Number.isFinite(w) && w > 0 ? `${Math.round(w)} W` : null
 }
 
 export function RowingRecords(props: RowingRecordsProps) {
@@ -29,7 +37,7 @@ export function RowingRecords(props: RowingRecordsProps) {
   return (
     <DistanceRecords
       sportLabel={t('performance.sportRowing')} color={ROW} dists={DISTS}
-      benchH={BENCH_H} paceBaseM={500} paceSuffix="/500m"
+      benchH={BENCH_H} paceBaseM={500} paceSuffix="/500m" extra={c2Watts}
       {...props}
     />
   )

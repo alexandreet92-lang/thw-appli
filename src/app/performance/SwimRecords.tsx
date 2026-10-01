@@ -21,11 +21,12 @@ const BENCH_F: Bench = {
 }
 
 export interface SwimRecordsProps {
-  getBest: (dist: string) => { id: string; perf: string } | null
+  getBest: (dist: string) => { id: string; perf: string; date?: string } | null
   getPrev: (dist: string) => { perf: string } | null
   onSelect: (label: string, value: string) => void
   onEdit: (dist: string, id: string | null, perf: string) => void
   selectedPerf?: string
+  mobile?: boolean
 }
 
 export function SwimRecords(props: SwimRecordsProps) {

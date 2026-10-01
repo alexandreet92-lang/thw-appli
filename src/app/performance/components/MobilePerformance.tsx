@@ -26,7 +26,9 @@ export interface PerfProfile {
   ftp: number; weight: number; age: number; lthr: number; hrMax: number; hrRest: number
   thresholdPace: string; vma: number; css: string; vo2max: number
 }
-type View = 'profil' | 'year' | 'tests' | `sport:${RecordSport}`
+// Vue détail : profil, évolution, tests, page d'un sport, ou sous-page d'un sport
+// (vélo : radar · power · compare · climbs · races ; course : radar).
+type View = 'profil' | 'year' | 'tests' | `sport:${RecordSport}` | `sport:${RecordSport}:${string}`
 
 interface PR { sport: string; distance_label: string; performance: string; achieved_at: string }
 const NUM: React.CSSProperties = { fontVariantNumeric: 'tabular-nums', fontFeatureSettings: "'zero' 0" }
@@ -85,7 +87,8 @@ export function MobilePerformance({ profile, setProfile, profileNode, testsNode,
   profileNode: React.ReactNode
   testsNode: React.ReactNode
   yearNode: React.ReactNode
-  renderSport: (s: RecordSport) => React.ReactNode
+  /** Page détail d'un sport ; `section` = sous-page, `nav` ouvre une sous-page enfant. */
+  renderSport: (s: RecordSport, section: string | undefined, nav: (section: string) => void) => React.ReactNode
   initialView?: 'tests' | null
 }) {
   const { t } = useI18n()
@@ -101,7 +104,6 @@ export function MobilePerformance({ profile, setProfile, profileNode, testsNode,
   const [hyrox, setHyrox] = useState<{ temps_final: string; date: string; format: string }[]>([])
   const [yearHours, setYearHours] = useState<Record<string, number>>({})
   const [nextTest, setNextTest] = useState<{ title: string; date: string } | null>(null)
-  const [pendingScroll, setPendingScroll] = useState<string | null>(null)
 
   // Lien direct ?tab=tests → on ouvre l'onglet Tests.
   useEffect(() => { if (initialView === 'tests') open('tests') }, [initialView, open])
@@ -153,26 +155,26 @@ export function MobilePerformance({ profile, setProfile, profileNode, testsNode,
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Après ouverture de la page d'un sport : défile jusqu'à la section tapée.
-  useEffect(() => {
-    if (!view || !pendingScroll) return
-    const id = pendingScroll
-    const tm = setTimeout(() => { document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' }); setPendingScroll(null) }, 650)
-    return () => clearTimeout(tm)
-  }, [view, pendingScroll])
-
-  const openSport = (anchor?: string) => { setPendingScroll(anchor ?? null); open(`sport:${sport}`) }
+  // Ouvre la page du sport courant (ou une de ses sous-pages).
+  const openSport = (section?: string) => open(section ? `sport:${sport}:${section}` : `sport:${sport}`)
 
   if (view) {
+    const [, spId, section] = view.startsWith('sport:') ? view.split(':') as [string, RecordSport, string | undefined] : ['', null, undefined]
+    const sportLabel = spId ? t(SPORTS.find(s => s.id === spId)?.key ?? '') : ''
     const label = view === 'profil' ? t('perf.m.myProfile') : view === 'year' ? t('perf.m.evolution') : view === 'tests' ? 'Tests'
-      : t(SPORTS.find(s => `sport:${s.id}` === view)?.key ?? '')
+      : section === 'compare' ? t('perf2.compareYears') : sportLabel
+    // Lien retour : la page parente (le sport pour ses sous-pages, la courbe pour « Comparer »).
+    const backLabel = !spId ? 'Performance' : section === 'compare' ? t('perf.m.powerCurve') : sportLabel
+    const body = view === 'profil' ? profileNode : view === 'year' ? yearNode : view === 'tests' ? testsNode
+      : spId ? renderSport(spId, section, (sec: string) => open(`sport:${spId}:${sec}`)) : null
+    // Profil & Tests réutilisent les anciens onglets (habillage .thw-mdetail) ;
+    // les pages sport & Évolution ont leur propre rendu mobile en cartes.
+    const legacy = view === 'profil' || view === 'tests'
     return (
       <div style={{ padding: '14px 16px 24px', fontFamily: 'var(--font-body)' }}>
-        <DetailSlide backLabel="Performance" onBack={close}>
+        <DetailSlide backLabel={backLabel} onBack={close}>
           <h2 style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>{label}</h2>
-          <div className="thw-mdetail">
-            {view === 'profil' ? profileNode : view === 'year' ? yearNode : view === 'tests' ? testsNode : renderSport(view.slice(6) as RecordSport)}
-          </div>
+          {legacy ? <div className="thw-mdetail">{body}</div> : body}
         </DetailSlide>
       </div>
     )
@@ -209,23 +211,23 @@ export function MobilePerformance({ profile, setProfile, profileNode, testsNode,
     const bestRace = [...races].filter(r => r.wpkg_np).sort((a, b) => (b.wpkg_np ?? 0) - (a.wpkg_np ?? 0))[0]
     const d20 = b20y && b20p ? watts(b20y.performance) - watts(b20p.performance) : null
     sportCards = <>
-      <CyclingRadar profile={radarHint} compact onOpen={() => openSport()} />
-      <DashCard icon={IC.power} title={t('perf.m.powerCurve')} meta={y} onOpen={() => openSport('perf-power')}>
+      <CyclingRadar profile={radarHint} compact onOpen={() => openSport('radar')} />
+      <DashCard icon={IC.power} title={t('perf.m.powerCurve')} meta={y} onOpen={() => openSport('power')}>
         {b20 ? <Metric label={t('perf.m.best20')} value={watts(b20.performance)} unit="W"
           {...(d20 != null && d20 !== 0 ? { chip: `${d20 > 0 ? '▲' : '▼'} ${Math.abs(d20)} W`, chipColor: d20 > 0 ? 'var(--success)' : 'var(--charge-hard)' } : {})}
           sub={[wkg(watts(b20.performance)), d20 != null ? t('perf.m.vsYear', { y: py }) : null].filter(Boolean).join(' · ')} right={<Spark values={curve} />} />
           : <p style={{ margin: 0, fontSize: 15, color: 'var(--text-mid)' }}>{t('perf.m.noPower')}</p>}
       </DashCard>
-      <DashCard icon={IC.trophy} title={t('perf.m.records')} meta={t('perf.m.powerCount')} onOpen={() => openSport('perf-records')}>
+      <DashCard icon={IC.trophy} title={t('perf.m.records')} meta={t('perf.m.powerCount')} onOpen={() => openSport('power')}>
         {rows.length ? rows.map((r, i) => <RecRow key={r.l} first={i === 0} label={r.l} value={`${watts(r.b!.performance)} W`} right2={wkg(watts(r.b!.performance))}
           sub={`${shortDate(r.b!.achieved_at)}${r.p ? ` · ${t('perf.m.prev')} ${watts(r.p.performance)} W` : ''}`} pr={!!r.p && watts(r.b!.performance) > watts(r.p.performance)} />)
           : <p style={{ margin: 0, fontSize: 15, color: 'var(--text-mid)' }}>{t('perf.m.noRecord')}</p>}
       </DashCard>
-      <DashCard icon={IC.mountain} title={t('perf.m.climbs')} meta={climbs.length ? String(climbs.length) : undefined} onOpen={() => openSport('perf-climbs')}>
+      <DashCard icon={IC.mountain} title={t('perf.m.climbs')} meta={climbs.length ? String(climbs.length) : undefined} onOpen={() => openSport('climbs')}>
         {bestClimb ? <Metric label={t('perf.m.bestScore')} value={bestClimb.score ?? '—'} unit="/ 100" sub={`${bestClimb.name} · ${String(bestClimb.wpkg).replace('.', ',')} W/kg`} />
           : <p style={{ margin: 0, fontSize: 15, color: 'var(--text-mid)' }}>{t('perf.m.noClimb')}</p>}
       </DashCard>
-      <DashCard icon={IC.trophy} title={t('perf.m.bikeRaces')} meta={races.length ? String(races.length) : undefined} onOpen={() => openSport('perf-races')}>
+      <DashCard icon={IC.trophy} title={t('perf.m.bikeRaces')} meta={races.length ? String(races.length) : undefined} onOpen={() => openSport('races')}>
         {bestRace ? <Metric label={t('perf.m.bestNp')} value={String(bestRace.wpkg_np).replace('.', ',')} unit="W/kg" sub={`${bestRace.name} · ${shortDate(bestRace.date)}`} />
           : <p style={{ margin: 0, fontSize: 15, color: 'var(--text-mid)' }}>{t('perf.m.noRace')}</p>}
       </DashCard>
@@ -241,7 +243,7 @@ export function MobilePerformance({ profile, setProfile, profileNode, testsNode,
       const d = parseInt(l, 10); return d ? `${fmtPace(sec / (d / 500))} /500 m` : ''
     }
     sportCards = <>
-      {sport === 'run' && <RunningRadar profile={radarHint} compact onOpen={() => openSport()} />}
+      {sport === 'run' && <RunningRadar profile={radarHint} compact onOpen={() => openSport('radar')} />}
       <DashCard icon={IC.trophy} title={t('perf.m.records')} onOpen={() => openSport()}>
         {list.length ? list.map((r, i) => <RecRow key={r.l} first={i === 0} label={r.l} value={r.b!.performance} right2={per(r.l, toSec(r.b!.performance))}
           sub={`${shortDate(r.b!.achieved_at)}${r.p ? ` · ${t('perf.m.prev')} ${r.p.performance}` : ''}`} pr={!!r.p && toSec(r.b!.performance) < toSec(r.p.performance)} />)

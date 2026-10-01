@@ -9,6 +9,7 @@ import { createPortal } from 'react-dom'
 import { useI18n } from '@/lib/i18n'
 import { HYROX_STATIONS, toSec, hmsTotal, mmss, type HyroxRace } from './hyroxShared'
 import { currentLocale } from '@/lib/i18n'
+import { MCard, MMiniChips, MBars, MHint, M_ICONS, monthYear } from './mobile/kit'
 
 const HYROX = '#ec4899' // design-allow-color — teinte sport hyrox sanctionnée
 const SCRIM = 'rgba(0,0,0,0.72)' // design-allow-color — voile de surpage (scrim)
@@ -113,9 +114,11 @@ function HyroxRaceOverlay({ race, races, onSelect, onClose, onEdit, onDelete }: 
   )
 }
 
-export function HyroxCompare({ races, onSelect, onEdit, onDelete }: {
+export function HyroxCompare({ races, onSelect, onEdit, onDelete, mobile, headerMeta }: {
   races: HyroxRace[]; onSelect?: (label: string, value: string) => void
   onEdit?: (r: HyroxRace) => void; onDelete?: (r: HyroxRace) => void
+  /** Mobile : carte « Courses » (méta = filtre format), segments en pastilles. */
+  mobile?: boolean; headerMeta?: React.ReactNode
 }) {
   const { t } = useI18n()
   const [seg, setSeg] = useState<Seg>('overall')
@@ -136,6 +139,29 @@ export function HyroxCompare({ races, onSelect, onEdit, onDelete }: {
     ...HYROX_STATIONS.map(s => ({ id: s, label: s })),
     { id: 'run', label: 'Run comp.' },
   ]
+  if (mobile) {
+    const loc = currentLocale()
+    return (
+      <>
+        <MCard icon={M_ICONS.trophy} title={seg === 'overall' ? t('performance.races') : t('perf2.bestRaces')} meta={headerMeta}>
+          <MMiniChips options={segOptions} value={seg} onChange={setSeg} />
+          <div style={{ marginTop: 14 }}>
+            {ordered.length === 0
+              ? <p style={{ fontFamily: 'var(--font-body)', fontSize: 15, color: 'var(--text-mid)', margin: 0 }}>{t('perf2.addTimeToSee', { dist: segOptions.find(o => o.id === seg)?.label ?? '' })}</p>
+              : <MBars bars={ordered.map(({ r, sec }, i) => ({
+                  key: r.id, top: segStr(sec, seg), bottom: monthYear(r.date, loc), pct: (sec / maxSec) * 100,
+                  color: seg === 'run' ? 'var(--primary)' : HYROX,
+                  best: seg === 'overall' ? sec > 0 && sec === Math.min(...ordered.filter(x => x.sec > 0).map(x => x.sec)) : i === 0,
+                  onClick: () => setDetail(r), ariaLabel: `${segStr(sec, seg)} ${monthYear(r.date, loc)}`,
+                }))} />}
+          </div>
+          <MHint>{t('perf2.tapRaceForBreakdown')}</MHint>
+        </MCard>
+        {detail && <HyroxRaceOverlay race={detail} races={races} onSelect={onSelect} onEdit={onEdit} onDelete={onDelete} onClose={() => setDetail(null)} />}
+      </>
+    )
+  }
+
   const card: React.CSSProperties = { background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: 20 }
   const chip = (active: boolean): React.CSSProperties => ({
     padding: '5px 11px', borderRadius: 'var(--r-pill)', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 11,

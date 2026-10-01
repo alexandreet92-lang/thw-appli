@@ -6,8 +6,9 @@
 //  2. Lignes détaillées : jauge horizontale + temps + allure auto + PR + Préc. + Modifier.
 // Chiffres neutres (tokens). La teinte sport est fournie par l'appelant (constante sanctionnée).
 import { useEffect, useState } from 'react'
-import { useI18n } from '@/lib/i18n'
+import { useI18n, currentLocale } from '@/lib/i18n'
 import { Segmented } from '@/components/ui/Segmented'
+import { MCard, MBars, MRow, MLink, MEmpty, M_ICONS, shortDay, FB } from './mobile/kit'
 
 export interface DistDef { id: string; m: number; label?: string }
 export type Bench = Record<string, [number, number]> // [elite (niv.10), base (niv.0)] en s / paceBaseM
@@ -39,17 +40,22 @@ export interface DistanceRecordsProps {
   paceBaseM: number
   paceSuffix: string
   showGender?: boolean
-  getBest: (dist: string) => { id: string; perf: string } | null
+  getBest: (dist: string) => { id: string; perf: string; date?: string } | null
   getPrev: (dist: string) => { perf: string } | null
   onSelect: (label: string, value: string) => void
   onEdit: (dist: string, id: string | null, perf: string) => void
   selectedPerf?: string
+  /** Mobile : cartes « Niveau par distance » + « Records » façon Strava. */
+  mobile?: boolean
+  /** Mobile : complément affiché sous l'allure (ex. watts Concept2 en aviron). */
+  extra?: (distM: number, sec: number) => string | null
 }
 
 export function DistanceRecords(props: DistanceRecordsProps) {
-  const { sportLabel, color, dists, benchH, benchF, paceBaseM, paceSuffix, showGender, getBest, getPrev, onSelect, onEdit, selectedPerf } = props
+  const { sportLabel, color, dists, benchH, benchF, paceBaseM, paceSuffix, showGender, getBest, getPrev, onSelect, onEdit, selectedPerf, mobile, extra } = props
   const { t } = useI18n()
   const [gender, setGender] = useState<'M' | 'F'>('M')
+  const [showAll, setShowAll] = useState(false)
   const [mounted, setMounted] = useState(false)
   useEffect(() => { const t = setTimeout(() => setMounted(true), 30); return () => clearTimeout(t) }, [])
   const bench = gender === 'F' && benchF ? benchF : benchH
@@ -59,6 +65,57 @@ export function DistanceRecords(props: DistanceRecordsProps) {
     const sec = best ? toSec(best.perf) : 0
     return { ...d, best, sec, level: levelOf(d.id, d.m, sec, paceBaseM, bench), prev: getPrev(d.id) }
   })
+
+  if (mobile) {
+    const loc = currentLocale()
+    const done = rows.filter(r => r.sec > 0)
+    const bestLevel = done.length ? Math.max(...done.map(r => r.level)) : -1
+    const fmtDist = (r: DistDef) => r.label ?? (r.m >= 1000 && /^\d+m$/.test(r.id) ? `${r.m.toLocaleString(loc)} m` : r.id.replace(/^(\d+)m$/, '$1 m'))
+    const listed = showAll ? rows : done.slice(0, 4)
+    const hf = showGender && benchF ? (
+      <span style={{ display: 'inline-flex', padding: 2, borderRadius: 'var(--r-pill)', background: 'var(--dash-chip, var(--bg-card2))' }}>
+        {(['M', 'F'] as const).map(g => (
+          <button key={g} type="button" onClick={() => setGender(g)} aria-pressed={gender === g} aria-label={t('performance.genderLabel')}
+            style={{ minWidth: 34, minHeight: 32, borderRadius: 'var(--r-pill)', border: 'none', cursor: 'pointer', fontFamily: FB, fontSize: 14, fontWeight: 700,
+              background: gender === g ? 'var(--dash-card, var(--bg-card))' : 'transparent', color: gender === g ? 'var(--text)' : 'var(--text-mid)' }}>{g === 'M' ? 'H' : 'F'}</button>
+        ))}
+      </span>
+    ) : undefined
+    return (
+      <>
+        <MCard icon={M_ICONS.chart} title={t('performance.levelByDistance')} meta={hf}>
+          {done.length === 0
+            ? <MEmpty>{t('perf.m.noRecord')}</MEmpty>
+            : <MBars height={100} bars={done.map(r => ({
+                key: r.id, top: r.best?.perf ?? '—', bottom: fmtDist(r), pct: r.level * 10, color,
+                best: r.level === bestLevel, onClick: () => onEdit(r.id, r.best?.id ?? null, r.best?.perf ?? ''), ariaLabel: `${t('performance.edit')} ${fmtDist(r)}`,
+              }))} />}
+        </MCard>
+        <MCard icon={M_ICONS.trophy} title={t('performance.recordsOf', { sport: sportLabel.toLowerCase() })} meta={done.length ? String(done.length) : undefined}>
+          {listed.length === 0 && <MEmpty>{t('perf.m.noRecord')}</MEmpty>}
+          {listed.map((r, i) => {
+            const perf = r.best?.perf ?? '—'
+            const prev = r.prev?.perf && r.prev.perf !== '—' ? r.prev.perf : null
+            const pace = r.sec > 0 ? paceStr(r.m, r.sec, paceBaseM, ` ${paceSuffix}`) : null
+            const ex = r.sec > 0 && extra ? extra(r.m, r.sec) : null
+            const date = r.best?.date ? shortDay(r.best.date, loc) : ''
+            return (
+              <MRow key={r.id} first={i === 0} label={fmtDist(r)} value={perf} dim={r.sec <= 0}
+                sub={r.sec > 0 ? [date, `${t('perf.m.prev')} ${prev ?? '—'}`].filter(Boolean).join(' · ') : t('performance.edit')}
+                right2={[pace, ex].filter(Boolean).join(' · ') || undefined}
+                pr={!!prev && r.sec > 0 && r.sec < toSec(prev)}
+                onClick={() => onEdit(r.id, r.best?.id ?? null, r.best?.perf ?? '')} />
+            )
+          })}
+          {(showAll || done.length < rows.length || done.length > 4) && (
+            <MLink first={listed.length === 0} onClick={() => setShowAll(v => !v)}>
+              {showAll ? t('perfm.seeLess') : t('perfm.seeAllDistances', { n: rows.length })}
+            </MLink>
+          )}
+        </MCard>
+      </>
+    )
+  }
 
   const card: React.CSSProperties = { background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: 20 }
 

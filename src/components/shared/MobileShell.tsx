@@ -6,12 +6,13 @@
 import { haptic as hapticNative } from '@/lib/haptics'
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import { useProfile } from '@/hooks/useProfile'
-import { SidebarContent, Avatar } from '@/components/shared/Sidebar'
+import { Avatar } from '@/components/shared/Sidebar'
 import { CoachSidebarContent } from '@/components/coach/CoachSidebar'
 import { PageTransition } from '@/components/ui/PageTransition'
+import { MobileSectionTabs } from '@/components/nav/MobileSectionTabs'
 import { EntitlementBanner } from '@/components/subscription/EntitlementBanner'
 import { UpgradeModalHost } from '@/components/subscription/UpgradeModal'
 import { TrialEndedModal } from '@/components/subscription/TrialEndedModal'
@@ -50,6 +51,7 @@ function hScrollAncestor(node: EventTarget | null, stop: HTMLElement | null): HT
 
 export function MobileShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
+  const router = useRouter()
   const { t } = useI18n()
   const { profile } = useProfile()
   const coachAccess = useCoachAccess()   // owner / payant / essai 14 j
@@ -72,6 +74,8 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
   const unreadNotifs = useUnreadNotifCount(notifOpen)
   useNotificationGenerators()
   const [reduce, setReduce] = useState(false)
+  // La sidebar mobile n'existe plus que dans l'espace coach.
+  const isCoach = !!pathname?.startsWith('/coach')
   const panelRef = useRef<HTMLDivElement>(null)
   const g = useRef({ active: false, dragging: false, startX: 0, startY: 0, base: 0, last: 0, hscroll: null as HTMLElement | null, hswipe: false, past: false, vx: 0, lx: 0, lt: 0 })
 
@@ -168,6 +172,8 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
     // Feuilles / modales (portails hors de la page) : leur geste ne doit JAMAIS
     // ouvrir la sidebar — React remonte pourtant l'événement jusqu'ici.
     if (!panelRef.current?.contains(e.target as Node)) { st.active = false; return }
+    // Interface athlète : plus de sidebar sur mobile (navigation par la barre du bas).
+    if (!isCoach) { st.active = false; return }
     st.base = open ? offsetPx() : 0; st.last = st.base
     // Sur la page d'enregistrement (carte plein écran), on NE glisse JAMAIS la
     // sidebar : le doigt sert à déplacer la carte. On n'amorce pas le geste.
@@ -232,19 +238,6 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
   // bouton IA ni notifications — seulement le hamburger. Boutons flottants
   // pleins (blanc le jour / noir la nuit) via les tokens --bg / --text.
   const isRecord = pathname === '/record'
-  const isCoach = pathname.startsWith('/coach')
-
-  const hybridHeader = (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 'calc(env(safe-area-inset-top, 0px) + 18px) 18px 14px', flexShrink: 0 }}>
-      <div>
-        <div style={{ fontFamily: FD, fontSize: 22, fontWeight: 600, color: 'var(--text)', lineHeight: 1.05 }}>Hybrid</div>
-        <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 700, color: 'var(--text-dim)', marginTop: 2 }}>{t('shared.interfaceAthlete')}</div>
-      </div>
-      <button onClick={() => { setOpen(false); setProfileOpen(true) }} aria-label={t('shared.myProfile')} style={{ display: 'flex', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}>
-        <Avatar url={profile?.avatar_url ?? null} name={profile?.full_name ?? null} size={38} />
-      </button>
-    </div>
-  )
 
   // En-tête sidebar coach : « Hybrid » + type d'interface (cyan) + avatar qui
   // ouvre les réglages coach.
@@ -275,11 +268,9 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
     <div className="md:hidden" style={{ position: 'fixed', inset: 0, overflow: 'hidden', background: 'var(--bg)' }}>
       {/* Sidebar fixe EN DESSOUS — surface douce (bg-card) légèrement relevée du
           fond de page pour adoucir le contraste (moins « noir agressif »). */}
-      <aside style={{ position: 'absolute', top: 0, left: 0, bottom: 0, width: `${OPEN_RATIO * 100}%`, maxWidth: 340, zIndex: 1, background: 'var(--bg-card)', display: 'flex', flexDirection: 'column' }}>
-        {isCoach
-          ? <CoachSidebarContent headerSlot={coachHeader} onClose={() => setOpen(false)} onOpenAI={() => { setAiOpen(true); setOpen(false) }} />
-          : <SidebarContent headerSlot={hybridHeader} onClose={() => setOpen(false)} onOpenAI={() => { setAiOpen(true); setOpen(false) }} />}
-      </aside>
+      {isCoach && <aside style={{ position: 'absolute', top: 0, left: 0, bottom: 0, width: `${OPEN_RATIO * 100}%`, maxWidth: 340, zIndex: 1, background: 'var(--bg-card)', display: 'flex', flexDirection: 'column' }}>
+        <CoachSidebarContent headerSlot={coachHeader} onClose={() => setOpen(false)} onOpenAI={() => { setAiOpen(true); setOpen(false) }} />
+      </aside>}
 
       {/* Page qui glisse PAR-DESSUS — transform piloté par l'état (cohérent au re-render) */}
       <div ref={panelRef} onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
@@ -306,9 +297,24 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
             <div aria-hidden style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 'calc(env(safe-area-inset-top) + 56px)', pointerEvents: 'none', zIndex: 4, background: 'linear-gradient(to bottom, var(--bg) 0%, var(--bg) 68%, transparent 100%)' }} />
             <div aria-hidden style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 'calc(env(safe-area-inset-bottom) + 60px)', pointerEvents: 'none', zIndex: 4, background: 'linear-gradient(to top, var(--bg) 0%, var(--bg) 55%, transparent 100%)' }} />
           </>}
-          <button aria-label={t('shared.menu')} onClick={() => settle(!open)} className="thw-press" style={{ ...fab, ...(isRecord ? { background: 'var(--bg)' } : null), left: 12, flexDirection: 'column', gap: 5 }}>
-            {[0, 1, 2].map(i => <span key={i} style={{ width: 20, height: 2, background: 'var(--text)', borderRadius: 2 }} />)}
-          </button>
+          {isCoach ? (
+            <button aria-label={t('shared.menu')} onClick={() => settle(!open)} className="thw-press" style={{ ...fab, left: 12, flexDirection: 'column', gap: 5 }}>
+              {[0, 1, 2].map(i => <span key={i} style={{ width: 20, height: 2, background: 'var(--text)', borderRadius: 2 }} />)}
+            </button>
+          ) : isRecord ? (
+            // Page Lancer : retour à la page précédente (la barre d'onglets y est masquée).
+            <button aria-label={t('profile.back')} onClick={() => { if (window.history.length > 1) router.back(); else router.push('/') }} className="thw-press" style={{ ...fab, background: 'var(--bg)', left: 12 }}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--text)" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
+            </button>
+          ) : (
+            // Réglages (remplace l'ancien menu « 3 traits ») → sur-page Profil & réglages.
+            <button aria-label={t('nav.settings')} onClick={() => setProfileOpen(true)} className="thw-press" style={{ ...fab, left: 12 }}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--text)" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+                <circle cx="12" cy="12" r="3" />
+              </svg>
+            </button>
+          )}
           {/* Bascule d'interface Athlète ⇄ Coach — réservée au propriétaire de l'espace coach. */}
           {!isRecord && coachAccess.access && (
             <Link href={isCoach ? "/" : "/coach"} aria-label={isCoach ? t('shared.backToApp') : t('shared.coachSpace')} onClick={() => setOpen(false)} className="thw-press"
@@ -356,6 +362,8 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
           paddingTop: (hideHeader || isRecord) ? 0 : 'calc(env(safe-area-inset-top) + 54px)' }}>
         <TrialEndedModal />
         <PlanActivatedHost />
+        {/* Sous-onglets de l'onglet courant (ex. Plan → Planning · Planning Week · Objectifs). */}
+        {!isRecord && !isCoach && <MobileSectionTabs />}
         <PageTransition>{children}</PageTransition>
         {/* Espaceur de bas de page : un VRAI élément (jamais rogné par WebKit,
             contrairement à padding-bottom sur un conteneur scrollable) → garantit

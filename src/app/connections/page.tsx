@@ -898,12 +898,13 @@ function ConnectionsInner() {
         <PageHelp config={CONNECTIONS_ONBOARDING} show={show} onDismiss={dismiss} />
 
         {/* ── Header ───────────────────────────────────────────── */}
-        <div style={{ padding: isMobile ? '24px 16px 0' : '32px 32px 0', background: 'var(--bg)' }}>
+        <div style={{ padding: isMobile ? '4px 16px 0' : '32px 32px 0', background: 'var(--bg)' }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
             <div style={{ minWidth: 0 }}>
-              <h1 style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 24, color: 'var(--text)', margin: 0, lineHeight: 1.2 }}>
+              {/* Mobile : pas de titre de page (les sous-onglets indiquent déjà où l'on est). */}
+              {!isMobile && <h1 style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 24, color: 'var(--text)', margin: 0, lineHeight: 1.2 }}>
                 {t('connections.title')}
-              </h1>
+              </h1>}
               {!isMobile && (
                 <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-mid)', marginTop: 5, marginBottom: 0, maxWidth: 500, lineHeight: 1.6 }}>
                   {t('connections.subtitle')}

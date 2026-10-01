@@ -79,6 +79,8 @@ for (const theme of themes) {
   await ctx.addInitScript(([th, sess]) => {
     try { sessionStorage.setItem('splash_v1', '1'); localStorage.setItem('thw-theme', th); localStorage.setItem('sb-dummy-auth-token', sess) } catch { /* ignore */ }
   }, [theme, fakeSession])
+  // @supabase/ssr lit la session dans un cookie (base64url) → pages protégées rendues « connecté ».
+  await ctx.addCookies([{ name: 'sb-dummy-auth-token', value: 'base64-' + Buffer.from(fakeSession).toString('base64url'), domain: 'localhost', path: '/' }])
   await ctx.route('**://dummy.supabase.co/**', r => r.fulfill({ status: 200, headers: { 'content-type': 'application/json', 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'content-range': '0-0/0' }, body: r.request().method() === 'OPTIONS' ? '' : '[]' }))
   await ctx.route(/\/api\//, r => r.fulfill({ status: 503, headers: { 'content-type': 'application/json' }, body: '{"error":"offline"}' }))
   const dir = path.join(OUT, label, theme); fs.mkdirSync(dir, { recursive: true })

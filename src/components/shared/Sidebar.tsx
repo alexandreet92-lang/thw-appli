@@ -134,19 +134,8 @@ const NAV = [
       </svg>
     ),
   },
-  // Onglet « Messages » retiré : la messagerie privée est intégrée à la
-  // Communauté (bouton messages en haut du rail des espaces).
-  {
-    href: '/community',
-    labelKey: 'nav.community',
-    icon: (
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-        <circle cx="9" cy="7" r="4"/>
-        <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>
-      </svg>
-    ),
-  },
+  // Communauté retirée de la navigation (demande produit). La page reste joignable
+  // par les liens « messages » (messagerie privée intégrée à /community?dm=…).
   {
     href: '/connections',
     labelKey: 'nav.connections',

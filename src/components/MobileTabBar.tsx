@@ -6,20 +6,14 @@ import dynamic from 'next/dynamic'
 import { isFullscreenRoute } from '@/lib/layout/fullscreenRoutes'
 import { useI18n } from '@/lib/i18n'
 import type { LucideIcon } from 'lucide-react'
-import {
-  CalendarDays, BarChart3, Grid3x3, ChevronLeft,
-  ClipboardList, Calendar, Dumbbell, HeartPulse,
-  Activity, Moon, Apple, Trophy,
-  Link as LinkIcon, FileText, User, Settings, MessageCircle, Users,
-} from 'lucide-react'
+import { Home, CalendarDays, HeartPulse, Activity, Grid3x3, ClipboardList, MessageCircle, Users } from 'lucide-react'
+import { mobileTabFor, MOBILE_PREFETCH, type MobileTabKey } from '@/lib/nav/mobileSections'
 
 import { TabCapsule, type CapsuleItem } from '@/components/nav/TabCapsule'
 
 const AIPanel = dynamic(() => import('@/components/ai/AIPanel'), { ssr: false })
 
 // ── Types & constants ──────────────────────────────────────────
-
-type Mode = 'main' | 'plan' | 'stats' | 'plus'
 
 const ACCENT = '#06B6D4'
 const DIM    = '#9CA3AF'
@@ -55,38 +49,6 @@ function anyOverpageOpen(): boolean {
   return false
 }
 
-const ROUTE_TO_TAB: Record<string, Exclude<Mode, 'main'>> = {
-  '/planning': 'plan',    '/calendar': 'plan',     '/session': 'plan',  '/injuries': 'plan',
-  '/activities': 'stats', '/recovery': 'stats',    '/nutrition': 'stats', '/performance': 'stats',
-  '/connections': 'plus', '/briefing': 'plus',     '/profile': 'plus',  '/parametres': 'plus',
-  '/community': 'plus',
-}
-
-type Sub = { href: string; labelKey: string; Icon: LucideIcon }
-
-const SUBS: Record<Exclude<Mode, 'main'>, Sub[]> = {
-  plan: [
-    { href: '/planning',  labelKey: 'nav.planning', Icon: ClipboardList },
-    { href: '/calendar',  labelKey: 'nav.calendar', Icon: Calendar },
-    { href: '/session',   labelKey: 'nav.session',  Icon: Dumbbell },
-    { href: '/injuries',  labelKey: 'nav.injuries', Icon: HeartPulse },
-  ],
-  stats: [
-    { href: '/activities',  labelKey: 'nav.training',      Icon: Activity },
-    { href: '/recovery',    labelKey: 'nav.recoveryShort', Icon: Moon },
-    { href: '/nutrition',   labelKey: 'nav.nutrition',     Icon: Apple },
-    { href: '/performance', labelKey: 'nav.perfShort',     Icon: Trophy },
-  ],
-  plus: [
-    { href: '/community',   labelKey: 'nav.community',   Icon: Users },
-    { href: '/connections', labelKey: 'nav.connections', Icon: LinkIcon },
-    { href: '/briefing',    labelKey: 'nav.briefing',    Icon: FileText },
-    { href: '#feedback',    labelKey: 'nav.feedback',    Icon: MessageCircle },
-    { href: '/profile',     labelKey: 'nav.profile',     Icon: User },
-    { href: '/parametres',  labelKey: 'nav.settings',    Icon: Settings },
-  ],
-}
-
 // ── Onglets rapides côté COACH ─────────────────────────────────
 const COACH_TABS: { href: string; labelKey: string; Icon: LucideIcon; match: (p: string) => boolean }[] = [
   { href: '/coach',          labelKey: 'nav.coachHome',     Icon: Grid3x3,       match: p => p === '/coach' },
@@ -101,7 +63,6 @@ export default function MobileTabBar() {
   const pathname              = usePathname()
   const router                = useRouter()
   const { t }                 = useI18n()
-  const [mode, setMode]       = useState<Mode>('main')
   const [aiOpen, setAiOpen]   = useState(false)
   const [hidden, setHidden]   = useState(false)
   const [overpage, setOverpage] = useState(false)
@@ -115,14 +76,7 @@ export default function MobileTabBar() {
 
   // Prefetch all main routes so navigation is instant
   useEffect(() => {
-    const routes = [
-      '/',
-      '/planning', '/calendar', '/session', '/injuries',
-      '/activities', '/recovery', '/nutrition', '/performance',
-      '/connections', '/briefing', '/profile', '/parametres',
-      '/community', '/record',
-    ]
-    routes.forEach(r => router.prefetch(r))
+    MOBILE_PREFETCH.forEach(r => router.prefetch(r))
   }, [router])
 
   // Hide when software keyboard pushes viewport up
@@ -137,9 +91,6 @@ export default function MobileTabBar() {
       window.removeEventListener('resize', check)
     }
   }, [])
-
-  // Return to main on route change
-  useEffect(() => { setMode('main') }, [pathname])
 
   // Masque la barre dès qu'une sur-page (feuille/modale plein écran) est ouverte.
   // On observe l'ajout/retrait d'enfants de <body> (là où les portails montent).
@@ -163,8 +114,6 @@ export default function MobileTabBar() {
       window.removeEventListener('pointerup', schedule, true)
     }
   }, [pathname])
-
-  function switchTo(next: Mode) { if (next !== mode) setMode(next) }
 
   // NB : `hidden` (clavier logiciel) ne doit PAS court-circuiter le rendu ici,
   // sinon l'AIPanel (enfant) se démonte quand le clavier s'ouvre → il se referme,
@@ -203,57 +152,31 @@ export default function MobileTabBar() {
   // Pages d'entrée (connexion, onboarding…) : pas de barre d'onglets
   if (isFullscreenRoute(pathname)) return null
 
-  const activeTab = ROUTE_TO_TAB[pathname]
-  const isSubMode = mode !== 'main'
-
-  const aiIcon = () => (/* eslint-disable-next-line @next/next/no-img-element */ <img src="/logos/logo_4bras.png" alt="" width={27} height={27} style={{ objectFit: 'contain' }} />)
-
-  let items: CapsuleItem[]
-  let activeIndex: number | null
-  if (isSubMode) {
-    const subs = SUBS[mode as Exclude<Mode, 'main'>]
-    items = [
-      { key: 'back', ariaLabel: t('profile.back'), fixedWidth: 48, onSelect: () => switchTo('main'), icon: (c: string) => <ChevronLeft size={26} color={c} /> },
-      ...subs.map(sub => ({
-        key: sub.href, label: t(sub.labelKey), ariaLabel: t(sub.labelKey),
-        icon: (c: string) => <sub.Icon size={24} color={c} />,
-        onSelect: () => {
-          // « Mon Profil » et « Message » s'ouvrent en sur-page (par-dessus la page courante).
-          if (sub.href === '/profile') window.dispatchEvent(new Event('thw:open-profile'))
-          else if (sub.href === '#feedback') window.dispatchEvent(new Event('thw:open-feedback'))
-          else router.push(sub.href)
-        },
-        transient: sub.href === '/profile' || sub.href === '#feedback',
-      })),
-    ]
-    const i = subs.findIndex(sub => sub.href === pathname)
-    activeIndex = i >= 0 ? i + 1 : null
-  } else {
-    const order: Exclude<Mode, 'main'>[] = ['plan', 'stats', 'plus']
-    items = [
-      { key: 'plan', label: t('nav.tabPlan'), ariaLabel: t('nav.tabPlan'), onSelect: () => switchTo('plan'), icon: c => <CalendarDays size={25} color={c} /> },
-      { key: 'stats', label: t('nav.tabStats'), ariaLabel: t('nav.tabStats'), onSelect: () => switchTo('stats'), icon: c => <BarChart3 size={25} color={c} /> },
-      { key: 'start', label: t('nav.tabStart'), ariaLabel: t('nav.startActivity'), onSelect: () => router.push('/record'),
-        icon: () => (
-          <svg width="27" height="27" viewBox="0 0 26 26" fill="none">
-            <circle cx="13" cy="13" r="10" stroke={ACCENT} strokeWidth="1.7" />
-            <circle cx="13" cy="13" r="5" fill={ACCENT} />
-          </svg>
-        ) },
-      { key: 'plus', label: t('nav.tabPlus'), ariaLabel: t('nav.tabPlus'), onSelect: () => switchTo('plus'), icon: c => <Grid3x3 size={25} color={c} /> },
-      { key: 'ai', ariaLabel: t('nav.coachAI'), transient: true, onSelect: () => setAiOpen(o => !o), icon: aiIcon },
-    ]
-    const i = activeTab ? order.indexOf(activeTab) : -1
-    activeIndex = i >= 0 ? (i === 2 ? 3 : i) : null
-  }
+  // 5 onglets façon Strava. Le Coach IA reste dans le bouton en haut à droite (MobileShell).
+  const go = (href: string) => () => { if (pathname !== href) router.push(href) }
+  const tabs: { key: MobileTabKey; item: CapsuleItem }[] = [
+    { key: 'home', item: { key: 'home', label: t('nav.tabHome'), ariaLabel: t('nav.tabHome'), onSelect: go('/'), icon: c => <Home size={25} color={c} /> } },
+    { key: 'plan', item: { key: 'plan', label: t('nav.tabPlan'), ariaLabel: t('nav.tabPlan'), onSelect: go('/planning'), icon: c => <CalendarDays size={25} color={c} /> } },
+    { key: 'launch', item: { key: 'launch', label: t('nav.tabLaunch'), ariaLabel: t('nav.startActivity'), onSelect: go('/record'),
+      icon: () => (
+        <svg width="27" height="27" viewBox="0 0 26 26" fill="none">
+          <circle cx="13" cy="13" r="10" stroke={ACCENT} strokeWidth="1.7" />
+          <circle cx="13" cy="13" r="5" fill={ACCENT} />
+        </svg>
+      ) } },
+    { key: 'forme', item: { key: 'forme', label: t('nav.tabForme'), ariaLabel: t('nav.tabForme'), onSelect: go('/recovery'), icon: c => <HeartPulse size={25} color={c} /> } },
+    { key: 'activities', item: { key: 'activities', label: t('nav.tabActivities'), ariaLabel: t('nav.tabActivities'), onSelect: go('/activities'), icon: c => <Activity size={25} color={c} /> } },
+  ]
+  const items = tabs.map(x => x.item)
+  const current = mobileTabFor(pathname)
+  const i = current ? tabs.findIndex(x => x.key === current) : -1
+  const activeIndex = i >= 0 ? i : null
 
   return (
     <>
       {!hidden && !overpage && !immersive && (
-        <TabCapsule className="mobile-tab-bar md:hidden" items={items} activeIndex={activeIndex} motionKey={mode} accent={ACCENT} dim={DIM} />
+        <TabCapsule className="mobile-tab-bar md:hidden" items={items} activeIndex={activeIndex} motionKey="athlete" accent={ACCENT} dim={DIM} />
       )}
-
-      <AIPanel open={aiOpen} onClose={() => setAiOpen(false)} initialAgent="planning" />
     </>
   )
 }

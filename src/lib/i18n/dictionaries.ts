@@ -148,7 +148,7 @@ const fr: Dict = {
   // Mobile tab bar
   'nav.recoveryShort': 'Récup', 'nav.perfShort': 'Perf', 'nav.briefing': 'Briefing',
   'nav.profile': 'Profil', 'nav.settings': 'Réglages',
-  'nav.tabPlan': 'Plan', 'nav.tabStats': 'Stats', 'nav.tabStart': 'Démarrer', 'nav.tabPlus': 'Plus',
+  'nav.tabPlan': 'Plan', 'nav.tabStats': 'Stats', 'nav.tabStart': 'Démarrer', 'nav.tabPlus': 'Plus', 'nav.tabHome': 'Accueil', 'nav.tabLaunch': 'Lancer', 'nav.tabForme': 'Forme', 'nav.tabActivities': 'Activités',
   'nav.startActivity': 'Démarrer une activité', 'nav.coachAI': 'Coach IA',
   'nav.coachHome': 'Accueil', 'nav.coachAthletes': 'Athlètes', 'nav.coachPrograms': 'Programmes', 'nav.coachMessages': 'Messages',
   // ===== i18n wave (auto) =====
@@ -7297,7 +7297,7 @@ const en: Dict = {
   // Mobile tab bar
   'nav.recoveryShort': 'Recovery', 'nav.perfShort': 'Perf', 'nav.briefing': 'Briefing',
   'nav.profile': 'Profile', 'nav.settings': 'Settings',
-  'nav.tabPlan': 'Plan', 'nav.tabStats': 'Stats', 'nav.tabStart': 'Start', 'nav.tabPlus': 'More',
+  'nav.tabPlan': 'Plan', 'nav.tabStats': 'Stats', 'nav.tabStart': 'Start', 'nav.tabPlus': 'More', 'nav.tabHome': 'Home', 'nav.tabLaunch': 'Start', 'nav.tabForme': 'Health', 'nav.tabActivities': 'Activities',
   'nav.startActivity': 'Start an activity', 'nav.coachAI': 'AI Coach',
   'nav.coachHome': 'Home', 'nav.coachAthletes': 'Athletes', 'nav.coachPrograms': 'Programs', 'nav.coachMessages': 'Messages',
   // ===== i18n wave (auto) =====
@@ -14272,7 +14272,7 @@ const es: Dict = {
   // Mobile tab bar
   'nav.recoveryShort': 'Recup', 'nav.perfShort': 'Rend', 'nav.briefing': 'Resumen',
   'nav.profile': 'Perfil', 'nav.settings': 'Ajustes',
-  'nav.tabPlan': 'Plan', 'nav.tabStats': 'Stats', 'nav.tabStart': 'Iniciar', 'nav.tabPlus': 'Más',
+  'nav.tabPlan': 'Plan', 'nav.tabStats': 'Stats', 'nav.tabStart': 'Iniciar', 'nav.tabPlus': 'Más', 'nav.tabHome': 'Inicio', 'nav.tabLaunch': 'Iniciar', 'nav.tabForme': 'Forma', 'nav.tabActivities': 'Actividades',
   'nav.startActivity': 'Iniciar una actividad', 'nav.coachAI': 'Coach IA',
   'nav.coachHome': 'Inicio', 'nav.coachAthletes': 'Atletas', 'nav.coachPrograms': 'Programas', 'nav.coachMessages': 'Mensajes',
   // ===== i18n wave (auto) =====

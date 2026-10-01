@@ -1,7 +1,6 @@
 'use client'
-// La page /messages a été SUPPRIMÉE : la messagerie privée est désormais
-// intégrée à la page Communauté (mode messages, façon Discord). On redirige
-// les anciens liens / notifications vers /community (en conservant le fil visé).
+// Messages privés RETIRÉS de l'app (demande produit) : les anciens liens et
+// notifications /messages renvoient vers l'Accueil.
 export const dynamic = 'force-dynamic'
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
@@ -9,9 +8,7 @@ import { useRouter } from 'next/navigation'
 export default function MessagesRedirect() {
   const router = useRouter()
   useEffect(() => {
-    let dm = ''
-    try { dm = new URLSearchParams(window.location.search).get('thread') ?? '' } catch { /* ignore */ }
-    router.replace(dm ? `/community?dm=${encodeURIComponent(dm)}` : '/community?dm=1')
+    router.replace('/')
   }, [router])
   return null
 }

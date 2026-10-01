@@ -13,7 +13,6 @@ import { QuickActions } from './QuickActions'
 import { Suggestions } from './Suggestions'
 import { DailyPlanningNotifier } from './DailyPlanningNotifier'
 import { AthleteCoachCard } from './AthleteCoachCard'
-import { UnreadMessagesCard } from './UnreadMessagesCard'
 import { AthleteFormsCard } from '@/components/coach/CustomForms'
 import { CoachActivityCard } from '@/components/coach/CoachActivityCard'
 import { VitrineSection } from './VitrineSection'
@@ -48,7 +47,6 @@ export function DashboardContent() {
 
       <div className="dash-gap"><AthleteCoachCard onlyLinked /></div>
 
-      <UnreadMessagesCard />
 
       <div style={{ marginBottom: 'var(--space-5)' }}><AthleteFormsCard /></div>
       <div style={{ marginBottom: 'var(--space-5)' }}><CoachActivityCard onlyLinked /></div>

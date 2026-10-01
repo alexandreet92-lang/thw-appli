@@ -134,8 +134,7 @@ const NAV = [
       </svg>
     ),
   },
-  // Communauté retirée de la navigation (demande produit). La page reste joignable
-  // par les liens « messages » (messagerie privée intégrée à /community?dm=…).
+  // Communauté et messages privés retirés de la navigation athlète (demande produit).
   {
     href: '/connections',
     labelKey: 'nav.connections',

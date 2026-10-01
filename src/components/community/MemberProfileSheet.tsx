@@ -9,7 +9,6 @@ import { createPortal } from 'react-dom'
 import { useI18n } from '@/lib/i18n'
 import { getMemberProfile, type MemberProfileDetail } from '@/lib/community/members'
 import { toggleFollow } from '@/lib/social/follows'
-import { getOrCreateDirectThread } from '@/lib/messages/groups'
 import type { CommunityMemberInfo } from '@/types/community'
 
 const FB = 'var(--font-body)', FD = 'var(--font-display)'
@@ -53,15 +52,6 @@ export function MemberProfileSheet({ member, onClose }: { member: CommunityMembe
     setBusy(false)
   }
 
-  // « Message » : crée/ouvre le fil 1-1 puis bascule la communauté en mode messages.
-  async function openDm() {
-    if (busy) return
-    setBusy(true)
-    const gid = await getOrCreateDirectThread(member.userId)
-    setBusy(false)
-    try { window.dispatchEvent(new CustomEvent('thw:community-dm', { detail: gid ? { groupId: gid } : { userId: member.userId } })) } catch { /* ignore */ }
-    requestClose()
-  }
 
   if (!mounted || typeof document === 'undefined') return null
 
@@ -101,10 +91,7 @@ export function MemberProfileSheet({ member, onClose }: { member: CommunityMembe
               background: following ? 'var(--surface-neutral)' : 'var(--primary)', color: following ? 'var(--text)' : 'var(--on-primary)' }}>
             {following ? t('w1g.mem.friendAdded') : t('w1g.mem.addFriend')}
           </button>
-          <button onClick={() => void openDm()} disabled={busy} aria-label={t('w1g.mem.message')} title={t('w1g.mem.message')}
-            style={{ width: 46, height: 42, borderRadius: 'var(--r-md)', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
-          </button>
+          {/* « Message » retiré : plus de messages privés. */}
           <button onClick={() => setSoon(true)} aria-label={t('w1g.mem.call')} title={t('w1g.mem.call')}
             style={{ width: 46, height: 42, borderRadius: 'var(--r-md)', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z" /></svg>

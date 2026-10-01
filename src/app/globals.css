@@ -210,6 +210,8 @@
   /* Pages « cartes » mobiles façon Strava (Dashboard) : page grise, cartes blanches. */
   --surface-page: #F2F2F0;
   --surface-card: #FFFFFF;
+  /* Boutons flottants + barre d'onglets mobile : blanc pur en clair. */
+  --float-bg: #FFFFFF;
   --surface-chip: #EDEDEA;
   --surface-bar:  #D5D8DD;
   --surface-soft: #F6F6F4;
@@ -244,6 +246,7 @@
   --gty-border:  rgba(255,255,255,0.15);
   --surface-page: #080A0F;
   --surface-card: #14171E;
+  --float-bg: color-mix(in srgb, var(--text) 10%, var(--bg));
   --surface-chip: #1F232C;
   --surface-bar:  #323846;
   --surface-soft: #1A1E26;

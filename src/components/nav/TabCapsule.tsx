@@ -160,8 +160,8 @@ export function TabCapsule({ items, activeIndex, motionKey, accent, dim, classNa
         bottom: 'max(8px, calc(env(safe-area-inset-bottom, 0px) - 14px))',
         height: BAR_H, padding: PAD, boxSizing: 'border-box',
         borderRadius: 'var(--r-pill)',
-        background: 'color-mix(in srgb, var(--text) 9%, var(--bg))',
-        boxShadow: 'inset 0 0 0 1px color-mix(in srgb, var(--text) 10%, transparent), var(--shadow-float)',
+        background: 'var(--float-bg, color-mix(in srgb, var(--text) 9%, var(--bg)))',
+        boxShadow: 'inset 0 0 0 1px color-mix(in srgb, var(--text) 8%, transparent), var(--shadow-float)',
         touchAction: 'none', WebkitTransform: 'translateZ(0)', userSelect: 'none', WebkitUserSelect: 'none',
       }}
     >

@@ -86,7 +86,7 @@ export function CommunityView() {
   useEffect(() => {
     const h = (e: Event) => {
       const d = (e as CustomEvent).detail as { userId?: string; groupId?: string } | undefined
-      setDmUser(d?.userId ?? null); setDmGroup(d?.groupId ?? null); setMsgMode(true)
+      void d /* messages privés retirés */
     }
     window.addEventListener('thw:community-dm', h as EventListener)
     return () => window.removeEventListener('thw:community-dm', h as EventListener)
@@ -95,7 +95,7 @@ export function CommunityView() {
   useEffect(() => {
     try {
       const p = new URLSearchParams(window.location.search)
-      if (p.has('dm')) { const v = p.get('dm') || ''; setMsgMode(true); setDmUser(v && v !== '1' ? v : null) }
+      /* Messages privés retirés (demande produit) : ?dm= n'ouvre plus rien. */
     } catch { /* ignore */ }
   }, [])
 
@@ -482,10 +482,7 @@ function SpaceRail({ spaces, activeId, loading, messagesActive, onMessages, onSe
   return (
     <div data-guide="comm-spaces" style={{ height: '100%', overflowY: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--space-2)', padding: 'var(--space-3) 0' }}>
       {/* Messages privés — tout en haut : ouvre la messagerie DANS la communauté. */}
-      <button onClick={onMessages} title={t('w1g.privateMessages')} aria-label={t('w1g.privateMessages')}
-        style={{ width: 44, height: 44, borderRadius: 'var(--r-lg)', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', background: messagesActive ? 'var(--primary)' : 'var(--surface-neutral)', color: messagesActive ? 'var(--on-primary)' : 'var(--text)', cursor: 'pointer', flexShrink: 0 }}>
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
-      </button>
+      {/* Messages privés retirés (demande produit). */}
       <span aria-hidden style={{ width: 24, height: 1, background: 'var(--border)', flexShrink: 0, margin: '2px 0' }} />
       {loading ? (
         [0, 1, 2, 3].map(i => <span key={i} style={{ width: 44, height: 44, borderRadius: 'var(--r-md)', background: 'var(--surface-neutral)' }} />)

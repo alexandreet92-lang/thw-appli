@@ -27,6 +27,7 @@ import { FeedbackSheet } from '@/components/feedback/FeedbackSheet'
 import { haptic } from '@/lib/ui/haptic'
 import { useCoachAccess } from '@/hooks/useCoachAccess'
 import { useI18n } from '@/lib/i18n'
+import { setNavDirection } from '@/lib/nav/direction'
 
 const AIPanel = dynamic(() => import('@/components/ai/AIPanel'), { ssr: false })
 const FD = 'var(--font-display)'
@@ -167,7 +168,55 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
     setOpen(next)
   }
 
+  // ── Geste retour (athlète) : glisser depuis le bord gauche vers la droite ──
+  // La page suit le doigt ; au-delà du seuil (ou flick) → retour (historique),
+  // ce qui referme aussi les vues détail internes (useDetailView).
+  const bk = useRef({ on: false, drag: false, x0: 0, y0: 0, dx: 0, vx: 0, lx: 0, lt: 0 })
+  function backStart(e: React.TouchEvent) {
+    const t = e.touches[0]
+    const b = bk.current
+    b.on = false; b.drag = false
+    if (isCoach || pathname === '/record' || t.clientX > 24) return
+    if (!panelRef.current?.contains(e.target as Node)) return
+    if (typeof window !== 'undefined' && window.history.length <= 1) return
+    b.on = true; b.x0 = t.clientX; b.y0 = t.clientY; b.dx = 0; b.vx = 0; b.lx = t.clientX; b.lt = Date.now()
+  }
+  function backMove(e: React.TouchEvent) {
+    const b = bk.current; if (!b.on) return
+    const t = e.touches[0]; const dx = t.clientX - b.x0; const dy = t.clientY - b.y0
+    if (!b.drag) {
+      if (dx < 8) { if (Math.abs(dy) > 10) b.on = false; return }
+      if (Math.abs(dy) > dx) { b.on = false; return }
+      b.drag = true
+      if (panelRef.current) panelRef.current.style.transition = 'none'
+    }
+    const now = Date.now(); if (now > b.lt) b.vx = (t.clientX - b.lx) / (now - b.lt)
+    b.lx = t.clientX; b.lt = now; b.dx = Math.max(0, dx)
+    if (panelRef.current) panelRef.current.style.transform = `translate3d(${b.dx * 0.9}px,0,0)`
+  }
+  function backEnd() {
+    const b = bk.current; const el = panelRef.current
+    if (!b.on || !b.drag) { b.on = false; return }
+    b.on = false; b.drag = false
+    const go = b.dx > Math.min(110, window.innerWidth * 0.28) || b.vx > 0.45
+    if (go) {
+      // La transition de page (« back ») prend le relais : on rend la main tout de suite.
+      if (el) { el.style.transition = 'none'; el.style.transform = '' }
+      hapticNative('light')
+      // Vue détail interne (useDetailView) : popstate la referme, pas de changement de route.
+      if (!(window.history.state as { thwDetail?: string } | null)?.thwDetail) setNavDirection('back')
+      window.history.back()
+      return
+    }
+    if (el) {
+      el.style.transition = reduce ? 'none' : 'transform 220ms cubic-bezier(0.32,0.72,0,1)'; el.style.transform = 'translate3d(0,0,0)'
+      // Au repos : plus de transform (garde le flou backdrop-filter sur iOS).
+      setTimeout(() => { if (!bk.current.drag) { el.style.transition = ''; el.style.transform = '' } }, 240)
+    }
+  }
+
   function onTouchStart(e: React.TouchEvent) {
+    backStart(e)
     const t = e.touches[0]
     const st = g.current
     st.startX = t.clientX; st.startY = t.clientY; st.dragging = false; st.past = false; st.vx = 0; st.lx = t.clientX; st.lt = Date.now()
@@ -189,6 +238,7 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
     st.hswipe = !!(e.target as HTMLElement | null)?.closest?.('[data-hswipe]')
   }
   function onTouchMove(e: React.TouchEvent) {
+    backMove(e)
     const st = g.current; if (!st.active) return
     const t = e.touches[0]; const dx = t.clientX - st.startX; const dy = t.clientY - st.startY
     if (!st.dragging) {
@@ -218,6 +268,7 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
     if (past !== st.past) { st.past = past; hapticNative('light') }
   }
   function onTouchEnd() {
+    backEnd()
     const st = g.current; if (!st.dragging) { st.active = false; return }
     st.dragging = false; st.active = false
     // Un petit geste suffit (façon Claude) : un flick rapide décide seul dans son
@@ -262,8 +313,8 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
   const fab: React.CSSProperties = {
     position: 'absolute', top: 'calc(env(safe-area-inset-top) + 7px)', width: 44, height: 44, borderRadius: '50%',
     display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none',
-    background: 'color-mix(in srgb, var(--text) 10%, var(--bg))',
-    boxShadow: '0 2px 12px rgba(0,0,0,0.20)', cursor: 'pointer', zIndex: 5, padding: 0, WebkitTransform: 'translateZ(0)',
+    background: 'var(--float-bg, color-mix(in srgb, var(--text) 10%, var(--bg)))',
+    boxShadow: '0 2px 12px rgba(0,0,0,0.16)', cursor: 'pointer', zIndex: 5, padding: 0, WebkitTransform: 'translateZ(0)',
   }
 
   return (
@@ -307,7 +358,7 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
             </button>
           ) : isRecord ? (
             // Page Lancer : retour à la page précédente (la barre d'onglets y est masquée).
-            <button aria-label={t('profile.back')} onClick={() => { if (window.history.length > 1) router.back(); else router.push('/') }} className="thw-press" style={{ ...fab, background: 'var(--bg)', left: 12 }}>
+            <button aria-label={t('profile.back')} onClick={() => { if (window.history.length > 1) router.back(); else router.push('/') }} className="thw-press" style={{ ...fab, left: 12 }}>
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--text)" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
             </button>
           ) : (

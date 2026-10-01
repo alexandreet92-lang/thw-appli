@@ -5,6 +5,11 @@
 // compare aux records existants (plus rapide = meilleur), insère les records
 // battus dans personal_records (event_type 'auto_session', activity_id lié),
 // puis marque l'activité records_processed. Idempotent, null-safe.
+//
+// COURSE À PIED : seules les activités marquées compétition (is_race) comptent,
+// et seulement sur LEUR distance de course (un 10 km de compétition → record
+// 10 km ; ses passages au 5 km ne comptent pas). Un 10 km d'entraînement ne
+// crée jamais de record. Natation / aviron : meilleur passage, inchangé.
 // ══════════════════════════════════════════════════════════════
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { notifyUser } from '@/lib/notifications/dispatch'
@@ -66,6 +71,7 @@ function bestTimeForDistance(dist: number[], time: number[], target: number): nu
 interface StreamsShape { distance?: number[] | null; time?: number[] | null }
 interface ActivityRow {
   user_id: string; sport_type: string | null; started_at: string | null
+  is_race: boolean | null; title: string | null
   streams: StreamsShape | null; raw_data: { streams?: StreamsShape | null } | null
   records_processed: boolean | null; records_beaten: any
 }
@@ -85,7 +91,7 @@ export async function processPaceActivityRecords(
   const empty: PaceBeatenPayload = { allTime: [], year: [] }
   const { data: actRaw } = await sb
     .from('activities')
-    .select('user_id, sport_type, started_at, streams, raw_data, records_processed, records_beaten')
+    .select('user_id, sport_type, started_at, is_race, title, streams, raw_data, records_processed, records_beaten')
     .eq('id', activityId).eq('user_id', userId).single()
 
   const activity = actRaw as ActivityRow | null
@@ -96,6 +102,19 @@ export async function processPaceActivityRecords(
 
   if (!opts.force && activity.records_processed && activity.records_beaten) {
     return { payload: activity.records_beaten as PaceBeatenPayload, processed: false, reason: 'cached' }
+  }
+
+  // Course à pied : on repart propre pour cette activité (records auto déjà
+  // tirés d'elle), puis rien d'autre si ce n'est pas une compétition.
+  const isRunRace = sp === 'run' && activity.is_race === true
+  if (sp === 'run') {
+    await sb.from('personal_records').delete()
+      .eq('user_id', userId).eq('sport', 'run').eq('activity_id', activityId)
+      .like('notes', 'Auto-détecté%')
+    if (!isRunRace) {
+      await sb.from('activities').update({ records_processed: true, records_beaten: empty }).eq('id', activityId)
+      return { payload: empty, processed: true, reason: 'not_race' }
+    }
   }
 
   const streams = activity.streams ?? activity.raw_data?.streams ?? null
@@ -138,9 +157,12 @@ export async function processPaceActivityRecords(
   const toInsert: { label: string; time: string }[] = []
 
   const totalDist = dist[dist.length - 1] - dist[0]
-  for (const { m, label } of targets) {
-    if (m > totalDist) continue
-    const sessionSec = bestTimeForDistance(dist, time, m)
+  // Compétition de course : uniquement la distance de course (GPS : −3 % / +6 %).
+  const raceTargets = isRunRace ? targets.filter(t => totalDist >= t.m * 0.97 && totalDist <= t.m * 1.06) : targets
+  for (const { m, label } of raceTargets) {
+    if (m > totalDist && !isRunRace) continue
+    // Compétition : temps total de la course (≈ temps officiel), pas un passage.
+    const sessionSec = isRunRace ? Math.round(time[time.length - 1] - time[0]) : bestTimeForDistance(dist, time, m)
     if (sessionSec <= 0) continue
     const prevAll = bestAll[label] ?? Infinity
     const prevYear = bestYear[label] ?? Infinity
@@ -154,9 +176,9 @@ export async function processPaceActivityRecords(
   if (toInsert.length > 0) {
     const rows = toInsert.map(t => ({
       user_id: userId, sport: sp, distance_label: t.label,
-      performance: t.time, performance_unit: 'time', event_type: 'auto_session',
+      performance: t.time, performance_unit: 'time', event_type: isRunRace ? 'competition' : 'auto_session',
       achieved_at: activityDate, activity_id: activityId,
-      race_name: null, pace_s_km: null, elevation_gain_m: null,
+      race_name: isRunRace ? activity.title : null, pace_s_km: null, elevation_gain_m: null,
       split_swim: null, split_bike: null, split_run: null, station_times: null,
       notes: `Auto-détecté depuis l'activité du ${activityDate}`,
     }))

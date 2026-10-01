@@ -7195,7 +7195,11 @@ export function ActivityDetail({ a, onClose, closing = false, zones, profile, al
   const [localIsRace, setLocalIsRace] = useState<boolean>(!!a.is_race)
   async function saveIsRace(v: boolean) {
     setLocalIsRace(v)
-    try { await createClient().from('activities').update({ is_race: v }).eq('id', a.id) }
+    try {
+      await createClient().from('activities').update({ is_race: v }).eq('id', a.id)
+      // Records : une compétition de course compte, un entraînement non → recalcul.
+      void fetch(`/api/activities/backfill-records?activity=${encodeURIComponent(a.id)}`, { method: 'POST' }).catch(() => {})
+    }
     catch (e) { console.error('[is_race] save', e) }
   }
   const [fdEditing,       setFdEditing]       = useState<null | 'feeling' | 'difficulty'>(null)
